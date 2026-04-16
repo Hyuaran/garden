@@ -68,6 +68,39 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
   const [periods, setPeriods] = useState<FiscalPeriod[]>([]);
   const [shinkoukiData, setShinkoukiData] = useState<Shinkouki[]>([]);
 
+  // --- Callbacks（useEffect より先に定義） ---
+
+  const unlock = useCallback(() => {
+    setIsUnlocked(true);
+  }, []);
+
+  const lockAndLogoutFn = useCallback((reason: "manual" | "timeout") => {
+    const action = reason === "manual" ? "logout_manual" : "logout_timeout";
+    writeAuditLog(action);
+    signOutForest();
+    setIsUnlocked(false);
+    setCompanies([]);
+    setPeriods([]);
+    setShinkoukiData([]);
+  }, []);
+
+  const refreshData = useCallback(async () => {
+    try {
+      const [c, p, s] = await Promise.all([
+        fetchCompanies(),
+        fetchFiscalPeriods(),
+        fetchShinkouki(),
+      ]);
+      setCompanies(c);
+      setPeriods(p);
+      setShinkoukiData(s);
+    } catch (err) {
+      console.error("Forest data fetch error:", err);
+    }
+  }, []);
+
+  // --- Effects ---
+
   // 初期化：認証状態 + 権限チェック
   useEffect(() => {
     (async () => {
@@ -86,7 +119,8 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
           setForestUser(fu);
           setIsUnlocked(isForestUnlocked());
         }
-      } catch {
+      } catch (err) {
+        console.error("[forest] Initialization error:", err);
         // エラー時は未認証扱い
       } finally {
         setLoading(false);
@@ -95,21 +129,6 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // データ取得（ゲート通過後）
-  const refreshData = useCallback(async () => {
-    try {
-      const [c, p, s] = await Promise.all([
-        fetchCompanies(),
-        fetchFiscalPeriods(),
-        fetchShinkouki(),
-      ]);
-      setCompanies(c);
-      setPeriods(p);
-      setShinkoukiData(s);
-    } catch (err) {
-      console.error("Forest data fetch error:", err);
-    }
-  }, []);
-
   useEffect(() => {
     if (isUnlocked) {
       refreshData();
@@ -124,22 +143,7 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
       lockAndLogoutFn("timeout");
     });
     return cleanup;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUnlocked]);
-
-  const unlock = useCallback(() => {
-    setIsUnlocked(true);
-  }, []);
-
-  const lockAndLogoutFn = useCallback((reason: "manual" | "timeout") => {
-    const action = reason === "manual" ? "logout_manual" : "logout_timeout";
-    writeAuditLog(action);
-    signOutForest();
-    setIsUnlocked(false);
-    setCompanies([]);
-    setPeriods([]);
-    setShinkoukiData([]);
-  }, []);
+  }, [isUnlocked, lockAndLogoutFn]);
 
   const value = useMemo<ForestState>(
     () => ({
