@@ -1,49 +1,53 @@
-import { Icons } from "./_components/Icons";
-import { SemiGauge } from "./_components/SemiGauge";
+/**
+ * Garden-Tree ルート（/tree）
+ *
+ * サイドバー・KPIヘッダー付きのレイアウト（layout.tsx + TreeShell）に乗る。
+ * 本格的なダッシュボードは /tree/dashboard 側で実装予定。
+ * ここでは移植進行中であることを示すプレースホルダを表示する。
+ */
+
 import { C } from "./_constants/colors";
 
 export default function TreeHomePage() {
   return (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="flex flex-col items-center gap-8 text-center">
-        <div className="text-6xl">🌳</div>
-        <h1 className="text-3xl font-bold tracking-tight">Garden Tree</h1>
-        <p className="text-lg text-zinc-600 dark:text-zinc-400">架電アプリ</p>
-        <p className="text-sm text-zinc-500 dark:text-zinc-500">
-          Under construction — プロトタイプから移植中
-        </p>
-
-        {/* 共通コンポーネント動作確認 */}
-        <div
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "32px",
+        background: C.bgWarm1,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 640,
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          gap: 20,
+        }}
+      >
+        <div style={{ fontSize: 64 }}>🌳</div>
+        <h1
           style={{
-            background: C.darkGreen,
-            padding: "16px 24px",
-            borderRadius: 12,
-            display: "flex",
-            alignItems: "center",
-            gap: 24,
-            color: "white",
+            fontSize: 28,
+            fontWeight: 800,
+            color: C.darkGreen,
+            letterSpacing: 1,
           }}
         >
-          <SemiGauge
-            label="当日目標"
-            percent={60}
-            sub="2.5P / 4.2P"
-            color={C.gold}
-          />
-          <SemiGauge
-            label="月間目標"
-            percent={100}
-            sub="3.0P / 3.0P"
-            color={C.red}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            {Icons.dashboard}
-            {Icons.phone}
-            {Icons.trophy}
-            {Icons.bell}
-          </div>
-        </div>
+          Garden Tree
+        </h1>
+        <p style={{ fontSize: 14, color: C.textDark, lineHeight: 1.7 }}>
+          架電アプリ — プロトタイプから移植中です。
+          <br />
+          左側のサイドバーから画面を選択してください。
+        </p>
+        <p style={{ fontSize: 12, color: C.textMuted }}>
+          Under construction — feature/tree-foundation
+        </p>
       </div>
     </div>
   );
