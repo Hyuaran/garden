@@ -321,29 +321,42 @@ export default function TreeDashboardPage() {
           </div>
         </div>
 
-        {/* 3-c. 週別カード（4列グリッド） */}
+        {/* 3-c. 週別カード（4列グリッド）
+            grid セルは自動で揃うが、カード本体は内容量で高さが変わるため
+            wrapper を height:100%、カードを flex:1 で揃えて縦枠を統一する。 */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
             gap: 10,
+            alignItems: "stretch",
           }}
         >
           {stacks.map((s, i) => {
             const isActive = s.done > 0 && i === activeIdx;
             const isDone = s.done >= s.target;
             const isFuture = s.done === 0;
+            // プロトタイプと同じく「目標未達・非active」ではラベル無し。
+            // 縦枠統一は minHeight 側で担保する。
+            const statusLabel = isDone
+              ? "達成"
+              : isActive
+                ? "進行中"
+                : isFuture
+                  ? "—"
+                  : "";
             return (
               <div
                 key={`week-${i}`}
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "stretch",
+                  height: "100%",
                 }}
               >
                 <div
                   style={{
+                    flex: 1,
                     padding: "14px 12px",
                     borderRadius: 12,
                     textAlign: "center",
@@ -360,6 +373,8 @@ export default function TreeDashboardPage() {
                     boxShadow: isActive
                       ? "0 2px 8px rgba(201,168,76,0.1)"
                       : "none",
+                    display: "flex",
+                    flexDirection: "column",
                   }}
                 >
                   {!isFuture && (
@@ -428,20 +443,17 @@ export default function TreeDashboardPage() {
                         fontSize: 10,
                         marginTop: 6,
                         fontWeight: 600,
+                        minHeight: 12, // 高さ統一のため空文字でも領域確保
                         color: isDone
                           ? C.lightGreen
                           : isActive
                             ? C.gold
-                            : "#bbb",
+                            : isFuture
+                              ? "#bbb"
+                              : C.textMuted,
                       }}
                     >
-                      {isDone
-                        ? "達成"
-                        : isActive
-                          ? "進行中"
-                          : isFuture
-                            ? "—"
-                            : ""}
+                      {statusLabel}
                     </div>
                   </div>
                 </div>
