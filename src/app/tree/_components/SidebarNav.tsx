@@ -19,6 +19,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useRef, useState, type ReactElement } from "react";
 
 import { C } from "../_constants/colors";
+import { SHOW_DEMO_CONTROLS } from "../_constants/flags";
 import { LOGO_PATH } from "../_constants/logo";
 import { ROLE_CONFIG, ROLES } from "../_constants/roles";
 import { TREE_PATHS } from "../_constants/screens";
@@ -935,51 +936,53 @@ export function SidebarNav() {
         .notif-read-summary::before { content: "＋"; font-size: 12px; font-weight: 700; margin-right: 4px; }
         .notif-read-details[open] > .notif-read-summary::before { content: "−"; }
       `}</style>
-      {/* 権限切替（折りたたみ時はアイコン中央寄せでヒット領域を確保） */}
-      <div
-        style={{
-          padding: 10,
-          borderTop: "1px solid rgba(255,255,255,0.12)",
-          flexShrink: 0,
-        }}
-      >
-        <button
-          type="button"
-          onClick={cycleRole}
-          title={`権限切替（現在: ${rc.fullLabel}）`}
-          aria-label="権限切替"
+      {/* 権限切替（デモ用：本番では SHOW_DEMO_CONTROLS=false で非表示） */}
+      {SHOW_DEMO_CONTROLS && (
+        <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: isExpanded ? "flex-start" : "center",
-            gap: isExpanded ? 10 : 0,
-            width: "100%",
-            minHeight: 36,
-            padding: isExpanded ? "8px 12px" : "6px 0",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 10,
-            background: "rgba(255,255,255,0.08)",
-            color: "rgba(255,255,255,0.85)",
-            cursor: "pointer",
-            fontSize: 11,
-            fontWeight: 600,
-            fontFamily: "'Noto Sans JP', sans-serif",
-            whiteSpace: "nowrap",
-            transition: "background 0.15s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.16)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+            padding: 10,
+            borderTop: "1px solid rgba(255,255,255,0.12)",
+            flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1 }}>
-            🔄
-          </span>
-          {isExpanded && "権限切替"}
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={cycleRole}
+            title={`権限切替（現在: ${rc.fullLabel}）`}
+            aria-label="権限切替"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: isExpanded ? "flex-start" : "center",
+              gap: isExpanded ? 10 : 0,
+              width: "100%",
+              minHeight: 36,
+              padding: isExpanded ? "8px 12px" : "6px 0",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 10,
+              background: "rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.85)",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "'Noto Sans JP', sans-serif",
+              whiteSpace: "nowrap",
+              transition: "background 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.16)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+            }}
+          >
+            <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1 }}>
+              🔄
+            </span>
+            {isExpanded && "権限切替"}
+          </button>
+        </div>
+      )}
       {/* isAway はまだ UI なし（TODO: オーバーレイ実装） */}
       {isAway && null}
     </div>
