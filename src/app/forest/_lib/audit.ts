@@ -23,7 +23,7 @@ export async function writeAuditLog(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return; // 未認証なら記録しない
 
-  await supabase.from("forest_audit_log").insert({
+  const { error } = await supabase.from("forest_audit_log").insert({
     user_id: user.id,
     action,
     target: target ?? null,
@@ -32,4 +32,7 @@ export async function writeAuditLog(
     // Phase A ではクライアントから取得しない（null）
     ip_address: null,
   });
+  if (error) {
+    console.error("[forest-audit] Failed to write log:", error.message);
+  }
 }
