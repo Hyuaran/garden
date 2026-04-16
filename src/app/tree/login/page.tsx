@@ -18,6 +18,7 @@ import { ActionButton } from "../_components/ActionButton";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
+import { LOGO_PATH } from "../_constants/logo";
 import { TREE_PATHS } from "../_constants/screens";
 
 const inputStyle: CSSProperties = {
@@ -76,34 +77,29 @@ export default function TreeLoginPage() {
       <div style={{ position: "relative" }}>
         <WireframeLabel>画面1: ログイン</WireframeLabel>
         <GlassPanel style={{ width: 380, padding: 40, textAlign: "center" }}>
-          <div
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LOGO_PATH}
+            alt="Garden"
             style={{
-              fontSize: 56,
-              lineHeight: 1,
-              marginBottom: 12,
+              width: 80,
+              height: 80,
+              objectFit: "contain",
+              display: "block",
+              margin: "0 auto 12px",
+              borderRadius: 16,
             }}
-          >
-            🌳
-          </div>
+          />
           <h1
             style={{
               fontSize: 24,
               fontWeight: 800,
               color: C.darkGreen,
-              margin: "0 0 4px",
+              margin: "0 0 32px",
             }}
           >
             Garden
           </h1>
-          <p
-            style={{
-              fontSize: 12,
-              color: C.textMuted,
-              margin: "0 0 32px",
-            }}
-          >
-            打刻・ログイン
-          </p>
 
           <form
             onSubmit={(e) => {
@@ -161,7 +157,7 @@ export default function TreeLoginPage() {
             </div>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <ActionButton
-                label="打刻・ログイン"
+                label="log in"
                 large
                 type="submit"
                 color={`linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`}

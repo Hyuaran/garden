@@ -1,14 +1,15 @@
 /**
  * Garden-Tree ワイヤーフレームラベル
  *
- * プロトタイプの <WireframeLabel /> をそのまま移植。
  * 「画面1: ログイン」のような、カードの左上に貼る小さなタブラベル。
+ * 開発中の画面特定用で、本番ビルド（production）では自動的に非表示になる。
  *
- * 実装本番ではおそらく消すが、移植中は画面ごとの識別として便利なので残す。
+ * 表示/非表示は _constants/flags.ts の SHOW_WIREFRAME_LABELS で制御する。
  */
 
 import type { ReactNode } from "react";
 import { C } from "../_constants/colors";
+import { SHOW_WIREFRAME_LABELS } from "../_constants/flags";
 
 type WireframeLabelProps = {
   children: ReactNode;
@@ -19,6 +20,8 @@ export function WireframeLabel({
   children,
   color = C.midGreen,
 }: WireframeLabelProps) {
+  if (!SHOW_WIREFRAME_LABELS) return null;
+
   return (
     <div
       style={{
