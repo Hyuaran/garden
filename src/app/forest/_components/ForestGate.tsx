@@ -1,14 +1,23 @@
 "use client";
 
 /**
- * Forest パスワードゲート
+ * Forest ログイン/パスワードゲート
  *
- * Garden Auth 済み + forest_users 登録済みのユーザーに対して、
- * Forest 専用のパスワード再入力を求める。
- * Supabase Auth の signInWithPassword で再検証。
+ * 社員番号 + パスワード で認証する。Tree の login 画面と UI を揃えつつ、
+ * Forest 専用テーマ（グリーン系グラデーション + 🌲 アイコン）で表示。
+ *
+ * 認証フロー:
+ *  1. ユーザー入力: 社員番号(4桁) + パスワード(自由長)
+ *  2. signInForest(empId, password) を呼ぶ
+ *     → 擬似メール生成 → Supabase Auth → forest_users 権限確認
+ *  3. 成功なら refreshAuth() でコンテキスト状態を更新
+ *     → login/page.tsx が isUnlocked を検知して dashboard にリダイレクト
+ *  4. 失敗なら login_failed ログを記録してエラー表示
+ *
+ * 設計ドキュメント: docs/auth/login-implementation-guide.md
  */
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 
 import { C } from "../_constants/colors";
 import { FOREST_THEME } from "../_constants/theme";
@@ -16,27 +25,54 @@ import { signInForest } from "../_lib/auth";
 import { writeAuditLog } from "../_lib/audit";
 import { useForestState } from "../_state/ForestStateContext";
 
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "12px 16px",
+  border: "1.5px solid #d8f3dc",
+  borderRadius: 10,
+  fontSize: 14,
+  outline: "none",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
+  background: "#fff",
+};
+
+const inputStyleError: CSSProperties = {
+  ...inputStyle,
+  borderColor: C.red,
+};
+
 export function ForestGate() {
-  const { userEmail, unlock } = useForestState();
+  const { forestUser, refreshAuth } = useForestState();
+  // 既に Garden Auth 済みなら社員番号をプレフィル（再認証時）
+  const [empId, setEmpId] = useState(forestUser?.employee_number ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // forestUser が後から読み込まれた場合、社員番号を補完
+  useEffect(() => {
+    if (forestUser?.employee_number && !empId) {
+      setEmpId(forestUser.employee_number);
+    }
+  }, [forestUser, empId]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!userEmail || !password) return;
+    if (!empId || !password) return;
 
     setLoading(true);
     setError("");
 
-    const result = await signInForest(userEmail, password);
+    const result = await signInForest(empId, password);
 
     if (result.success) {
-      writeAuditLog("login");
-      unlock();
+      await writeAuditLog("login");
+      await refreshAuth();
+      // refreshAuth で isUnlocked = true になり、login/page.tsx が dashboard へリダイレクト
     } else {
-      writeAuditLog("login_failed");
-      setError("パスワードが正しくありません");
+      await writeAuditLog("login_failed", empId);
+      setError(result.error ?? "ログインに失敗しました");
     }
     setLoading(false);
   };
@@ -50,6 +86,7 @@ export function ForestGate() {
         justifyContent: "center",
         background: FOREST_THEME.loginBackground,
         fontFamily: "'Noto Sans JP', sans-serif",
+        padding: 16,
       }}
     >
       {/* 上部バー */}
@@ -70,12 +107,12 @@ export function ForestGate() {
           borderRadius: 20,
           padding: "44px 36px 36px",
           maxWidth: 380,
-          width: "90%",
+          width: "100%",
           textAlign: "center",
           boxShadow: "0 12px 48px rgba(0,0,0,0.3)",
         }}
       >
-        <div style={{ fontSize: 36, marginBottom: 8 }}>🌲</div>
+        <div style={{ fontSize: 40, marginBottom: 8 }}>🌲</div>
         <h2
           style={{
             fontSize: 22,
@@ -90,38 +127,50 @@ export function ForestGate() {
           style={{
             fontSize: 12,
             color: FOREST_THEME.textMuted,
-            marginBottom: 24,
+            marginBottom: 28,
             lineHeight: 1.7,
           }}
         >
-          経営データへのアクセスには
+          経営ダッシュボード
           <br />
-          パスワードの再入力が必要です
+          社員番号とパスワードを入力してください
         </p>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 8, textAlign: "left" }}>
+          {/* 社員番号 */}
+          <div style={{ marginBottom: 14, textAlign: "left" }}>
             <label
-              style={{ fontSize: 12, color: FOREST_THEME.textSecondary, display: "block", marginBottom: 4 }}
-            >
-              ログインユーザー
-            </label>
-            <div
               style={{
-                padding: "10px 16px",
-                background: "#f5f5f5",
-                borderRadius: 8,
-                fontSize: 14,
+                fontSize: 12,
                 color: FOREST_THEME.textSecondary,
+                display: "block",
+                marginBottom: 4,
               }}
             >
-              {userEmail}
-            </div>
+              社員番号
+            </label>
+            <input
+              type="text"
+              value={empId}
+              onChange={(e) => setEmpId(e.target.value.replace(/\D/g, ""))}
+              maxLength={4}
+              inputMode="numeric"
+              placeholder="4桁の社員番号"
+              autoComplete="username"
+              autoFocus={!empId}
+              style={error ? inputStyleError : inputStyle}
+            />
           </div>
 
+          {/* パスワード */}
           <div style={{ marginBottom: 20, textAlign: "left" }}>
             <label
-              style={{ fontSize: 12, color: FOREST_THEME.textSecondary, display: "block", marginBottom: 4 }}
+              style={{
+                fontSize: 12,
+                color: FOREST_THEME.textSecondary,
+                display: "block",
+                marginBottom: 4,
+              }}
             >
               パスワード
             </label>
@@ -130,17 +179,9 @@ export function ForestGate() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="パスワードを入力"
-              autoFocus
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                border: `1.5px solid ${error ? C.red : "#d8f3dc"}`,
-                borderRadius: 8,
-                fontSize: 14,
-                outline: "none",
-                boxSizing: "border-box",
-                fontFamily: "inherit",
-              }}
+              autoComplete="current-password"
+              autoFocus={!!empId}
+              style={error ? inputStyleError : inputStyle}
             />
           </div>
 
@@ -152,25 +193,38 @@ export function ForestGate() {
 
           <button
             type="submit"
-            disabled={loading || !password}
+            disabled={loading || !empId || !password}
             style={{
               width: "100%",
               padding: "12px",
-              background: loading
-                ? "#ccc"
-                : `linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`,
+              background:
+                loading || !empId || !password
+                  ? "#ccc"
+                  : `linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`,
               color: "#fff",
               border: "none",
               borderRadius: 10,
               fontSize: 15,
               fontWeight: 700,
-              cursor: loading ? "not-allowed" : "pointer",
+              cursor:
+                loading || !empId || !password ? "not-allowed" : "pointer",
               fontFamily: "inherit",
             }}
           >
-            {loading ? "確認中..." : "アクセス"}
+            {loading ? "確認中..." : "ログイン"}
           </button>
         </form>
+
+        <p
+          style={{
+            marginTop: 20,
+            fontSize: 10,
+            color: FOREST_THEME.textMuted,
+            lineHeight: 1.6,
+          }}
+        >
+          ※ 経営データへのアクセスは許可されたユーザーに限定されます
+        </p>
       </div>
     </div>
   );

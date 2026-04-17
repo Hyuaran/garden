@@ -3,25 +3,26 @@
 /**
  * Forest ログインページ (/forest/login)
  *
- * 状態に応じて3パターンの表示を切り替える:
+ * 状態に応じて表示を切り替える:
  *  1. loading → スピナー
- *  2. 未認証 or 権限なし → AccessDenied
- *  3. 権限あり＋ゲート未通過 → ForestGate
- *  4. 権限あり＋ゲート通過済み → dashboard にリダイレクト
+ *  2. ゲート通過済み → dashboard にリダイレクト
+ *  3. 未認証 or ゲート未通過 → ForestGate（ログインフォーム）
+ *
+ * AccessDenied は「認証成功したが forest_users に登録されていない」
+ * 特殊ケース向け。signInForest が権限なしを検出した時点で signOut されるため、
+ * 通常はこのページでは表示されない（エラーメッセージで代替）。
  */
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { AccessDenied } from "../_components/AccessDenied";
 import { ForestGate } from "../_components/ForestGate";
-import { C } from "../_constants/colors";
 import { FOREST_THEME } from "../_constants/theme";
 import { useForestState } from "../_state/ForestStateContext";
 
 export default function ForestLoginPage() {
   const router = useRouter();
-  const { loading, isAuthenticated, hasPermission, isUnlocked } = useForestState();
+  const { loading, isUnlocked } = useForestState();
 
   useEffect(() => {
     if (!loading && isUnlocked) {
@@ -46,10 +47,6 @@ export default function ForestLoginPage() {
         読み込み中...
       </div>
     );
-  }
-
-  if (!isAuthenticated || !hasPermission) {
-    return <AccessDenied />;
   }
 
   if (isUnlocked) {

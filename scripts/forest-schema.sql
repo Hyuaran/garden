@@ -47,13 +47,20 @@ CREATE TABLE IF NOT EXISTS shinkouki (
 );
 
 -- 4. forest_users (Forest アクセス権)
+--    employee_number は社員番号（4桁ゼロパディング）。ログインUIの社員番号プレフィル用。
+--    擬似メール方式: emp{employee_number}@garden.internal で Supabase Auth にログインする。
 CREATE TABLE IF NOT EXISTS forest_users (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  employee_number text,
   role text NOT NULL DEFAULT 'viewer',
   approved_by uuid REFERENCES auth.users(id),
   approved_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- 既存テーブルに employee_number が無い場合の追加
+ALTER TABLE forest_users ADD COLUMN IF NOT EXISTS employee_number text;
+CREATE INDEX IF NOT EXISTS idx_forest_users_emp ON forest_users(employee_number);
 
 -- 5. forest_audit_log (監査ログ)
 CREATE TABLE IF NOT EXISTS forest_audit_log (

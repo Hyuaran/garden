@@ -21,7 +21,7 @@ import {
 } from "react";
 
 import type { Company, FiscalPeriod, ForestUser, Shinkouki } from "../_constants/companies";
-import { getSession, getUser, isForestUnlocked, signOutForest } from "../_lib/auth";
+import { getSession, isForestUnlocked, signOutForest } from "../_lib/auth";
 import { writeAuditLog } from "../_lib/audit";
 import { fetchCompanies, fetchFiscalPeriods, fetchForestUser, fetchShinkouki } from "../_lib/queries";
 import { startSessionTimer } from "../_lib/session-timer";
@@ -44,8 +44,10 @@ type ForestState = {
   shinkouki: Shinkouki[];
   /** 操作 */
   unlock: () => void;
-  lockAndLogout: (reason: "manual" | "timeout") => void;
+  lockAndLogout: (reason: "manual" | "timeout") => Promise<void>;
   refreshData: () => Promise<void>;
+  /** ログイン成功後に呼ぶ：セッション + forest_user を再取得してゲートを解錠 */
+  refreshAuth: () => Promise<void>;
 };
 
 const ForestStateContext = createContext<ForestState | null>(null);
@@ -74,11 +76,15 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
     setIsUnlocked(true);
   }, []);
 
-  const lockAndLogoutFn = useCallback((reason: "manual" | "timeout") => {
+  const lockAndLogoutFn = useCallback(async (reason: "manual" | "timeout") => {
     const action = reason === "manual" ? "logout_manual" : "logout_timeout";
-    writeAuditLog(action);
-    signOutForest();
+    await writeAuditLog(action);
+    await signOutForest();
+    setIsAuthenticated(false);
+    setHasPermission(false);
     setIsUnlocked(false);
+    setUserEmail(null);
+    setForestUser(null);
     setCompanies([]);
     setPeriods([]);
     setShinkoukiData([]);
@@ -99,34 +105,51 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /**
+   * ログイン成功後に呼ぶ：セッション + forest_user を再取得し、
+   * 権限確認後にゲートを解錠する。
+   */
+  const refreshAuth = useCallback(async () => {
+    try {
+      const session = await getSession();
+      if (!session) {
+        setIsAuthenticated(false);
+        setHasPermission(false);
+        setIsUnlocked(false);
+        setUserEmail(null);
+        setForestUser(null);
+        return;
+      }
+      setIsAuthenticated(true);
+      setUserEmail(session.user.email ?? null);
+
+      const fu = await fetchForestUser(session.user.id);
+      if (fu) {
+        setHasPermission(true);
+        setForestUser(fu);
+        setIsUnlocked(isForestUnlocked());
+      } else {
+        setHasPermission(false);
+        setForestUser(null);
+        setIsUnlocked(false);
+      }
+    } catch (err) {
+      console.error("[forest] Refresh auth error:", err);
+    }
+  }, []);
+
   // --- Effects ---
 
   // 初期化：認証状態 + 権限チェック
   useEffect(() => {
     (async () => {
       try {
-        const session = await getSession();
-        if (!session) {
-          setLoading(false);
-          return;
-        }
-        setIsAuthenticated(true);
-        setUserEmail(session.user.email ?? null);
-
-        const fu = await fetchForestUser(session.user.id);
-        if (fu) {
-          setHasPermission(true);
-          setForestUser(fu);
-          setIsUnlocked(isForestUnlocked());
-        }
-      } catch (err) {
-        console.error("[forest] Initialization error:", err);
-        // エラー時は未認証扱い
+        await refreshAuth();
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [refreshAuth]);
 
   // データ取得（ゲート通過後）
   useEffect(() => {
@@ -159,11 +182,12 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
       unlock,
       lockAndLogout: lockAndLogoutFn,
       refreshData,
+      refreshAuth,
     }),
     [
       loading, isAuthenticated, hasPermission, isUnlocked,
       userEmail, forestUser, companies, periods, shinkoukiData,
-      unlock, lockAndLogoutFn, refreshData,
+      unlock, lockAndLogoutFn, refreshData, refreshAuth,
     ],
   );
 

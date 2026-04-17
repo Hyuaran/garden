@@ -51,6 +51,8 @@ export type Shinkouki = {
 /** forest_users テーブルの行型（Forest アクセス権） */
 export type ForestUser = {
   user_id: string;
+  /** 社員番号（4桁ゼロパディング）。ログインUIのプレフィル用。 */
+  employee_number: string | null;
   role: "admin" | "viewer";
   approved_by: string | null;
   approved_at: string | null;
