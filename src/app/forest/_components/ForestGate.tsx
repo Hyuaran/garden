@@ -64,15 +64,28 @@ export function ForestGate() {
     setLoading(true);
     setError("");
 
+    // 1. 認証のみ（Supabase Auth）
     const result = await signInForest(empId, password);
 
-    if (result.success) {
+    if (!result.success) {
+      await writeAuditLog("login_failed", empId);
+      setError(result.error ?? "ログインに失敗しました");
+      setLoading(false);
+      return;
+    }
+
+    // 2. 認証成功後に権限チェック + 状態更新（forest_users 参照）
+    //    signIn 直後に JWT がクライアントに完全反映されるまで、
+    //    refreshAuth 内で getSession → fetchForestUser の順で実行することで
+    //    タイミング問題を回避する。
+    const authResult = await refreshAuth();
+
+    if (authResult.success) {
       await writeAuditLog("login");
-      await refreshAuth();
       // refreshAuth で isUnlocked = true になり、login/page.tsx が dashboard へリダイレクト
     } else {
       await writeAuditLog("login_failed", empId);
-      setError(result.error ?? "ログインに失敗しました");
+      setError(authResult.error ?? "認証に失敗しました");
     }
     setLoading(false);
   };

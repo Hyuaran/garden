@@ -21,7 +21,7 @@ import {
 } from "react";
 
 import type { Company, FiscalPeriod, ForestUser, Shinkouki } from "../_constants/companies";
-import { getSession, isForestUnlocked, signOutForest } from "../_lib/auth";
+import { clearForestUnlock, getSession, isForestUnlocked, signOutForest } from "../_lib/auth";
 import { writeAuditLog } from "../_lib/audit";
 import { fetchCompanies, fetchFiscalPeriods, fetchForestUser, fetchShinkouki } from "../_lib/queries";
 import { startSessionTimer } from "../_lib/session-timer";
@@ -46,8 +46,11 @@ type ForestState = {
   unlock: () => void;
   lockAndLogout: (reason: "manual" | "timeout") => Promise<void>;
   refreshData: () => Promise<void>;
-  /** ログイン成功後に呼ぶ：セッション + forest_user を再取得してゲートを解錠 */
-  refreshAuth: () => Promise<void>;
+  /**
+   * ログイン成功後に呼ぶ：セッション + forest_user を再取得してゲートを解錠。
+   * 権限なし（forest_users 未登録）の場合は signOut して error を返す。
+   */
+  refreshAuth: () => Promise<{ success: boolean; error?: string }>;
 };
 
 const ForestStateContext = createContext<ForestState | null>(null);
@@ -108,8 +111,9 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
   /**
    * ログイン成功後に呼ぶ：セッション + forest_user を再取得し、
    * 権限確認後にゲートを解錠する。
+   * 権限なしなら signOut + error を返す。
    */
-  const refreshAuth = useCallback(async () => {
+  const refreshAuth = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     try {
       const session = await getSession();
       if (!session) {
@@ -118,23 +122,32 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
         setIsUnlocked(false);
         setUserEmail(null);
         setForestUser(null);
-        return;
+        return { success: false };
       }
-      setIsAuthenticated(true);
-      setUserEmail(session.user.email ?? null);
 
       const fu = await fetchForestUser(session.user.id);
-      if (fu) {
-        setHasPermission(true);
-        setForestUser(fu);
-        setIsUnlocked(isForestUnlocked());
-      } else {
+      if (!fu) {
+        // 権限なし → Supabase Auth 終了、ゲートロック
+        await signOutForest();
+        clearForestUnlock();
+        setIsAuthenticated(false);
         setHasPermission(false);
-        setForestUser(null);
         setIsUnlocked(false);
+        setUserEmail(null);
+        setForestUser(null);
+        return { success: false, error: "Forest へのアクセス権限がありません" };
       }
+
+      // 権限あり → 状態更新
+      setIsAuthenticated(true);
+      setUserEmail(session.user.email ?? null);
+      setHasPermission(true);
+      setForestUser(fu);
+      setIsUnlocked(isForestUnlocked());
+      return { success: true };
     } catch (err) {
       console.error("[forest] Refresh auth error:", err);
+      return { success: false, error: "認証情報の取得に失敗しました" };
     }
   }, []);
 
