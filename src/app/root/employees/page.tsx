@@ -1,0 +1,194 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { PageHeader } from "../_components/PageHeader";
+import { Button } from "../_components/Button";
+import { DataTable, Column } from "../_components/DataTable";
+import { StatusBadge } from "../_components/StatusBadge";
+import { Modal } from "../_components/Modal";
+import { TextField, SelectField, FormGrid, TextareaField } from "../_components/FormField";
+import { fetchEmployees, upsertEmployee, setEmployeeActive, fetchCompanies, fetchSalarySystems } from "../_lib/queries";
+import type { Employee, Company, SalarySystem } from "../_constants/types";
+import { colors } from "../_constants/colors";
+
+const EMP_TYPES = ["正社員", "アルバイト"];
+const ACCOUNT_TYPES = ["普通", "当座"];
+const INS_TYPES = ["加入", "未加入", "一部加入"];
+
+const empty = (nextId: string, companyId: string, salarySystemId: string): Employee => ({
+  employee_id: nextId,
+  employee_number: "",
+  name: "",
+  name_kana: "",
+  company_id: companyId,
+  employment_type: "正社員",
+  salary_system_id: salarySystemId,
+  hire_date: new Date().toISOString().slice(0, 10),
+  termination_date: null,
+  email: "",
+  bank_name: "",
+  bank_code: "",
+  branch_name: "",
+  branch_code: "",
+  account_type: "普通",
+  account_number: "",
+  account_holder: "",
+  account_holder_kana: "",
+  kot_employee_id: null,
+  mf_employee_id: null,
+  insurance_type: "加入",
+  is_active: true,
+  notes: null,
+  created_at: "",
+  updated_at: "",
+});
+
+function nextId(existing: Employee[]): string {
+  const nums = existing.map((e) => parseInt(e.employee_id.replace("EMP-", ""), 10)).filter((n) => !isNaN(n));
+  const max = nums.length > 0 ? Math.max(...nums) : 0;
+  return `EMP-${String(max + 1).padStart(4, "0")}`;
+}
+
+export default function EmployeesPage() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [salarySystems, setSalarySystems] = useState<SalarySystem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterCompany, setFilterCompany] = useState<string>("");
+  const [search, setSearch] = useState("");
+  const [editTarget, setEditTarget] = useState<Employee | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      setLoading(true); setError(null);
+      const [e, c, s] = await Promise.all([fetchEmployees(), fetchCompanies(), fetchSalarySystems()]);
+      setEmployees(e); setCompanies(c); setSalarySystems(s);
+    } catch (e) { setError((e as Error).message); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  const companyMap = useMemo(() => new Map(companies.map((c) => [c.company_id, c])), [companies]);
+  const salaryMap = useMemo(() => new Map(salarySystems.map((s) => [s.salary_system_id, s])), [salarySystems]);
+
+  const filtered = useMemo(() => {
+    let list = employees;
+    if (filterCompany) list = list.filter((e) => e.company_id === filterCompany);
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter((e) => e.name.toLowerCase().includes(s) || e.name_kana.toLowerCase().includes(s) || e.employee_number.toLowerCase().includes(s));
+    }
+    return list;
+  }, [employees, filterCompany, search]);
+
+  async function handleSave() {
+    if (!editTarget) return;
+    try { setSaving(true); await upsertEmployee(editTarget); setEditTarget(null); await load(); }
+    catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
+  }
+
+  async function handleToggleActive(e: Employee) {
+    try { await setEmployeeActive(e.employee_id, !e.is_active); await load(); }
+    catch (err) { setError((err as Error).message); }
+  }
+
+  const columns: Column<Employee>[] = [
+    { key: "id", header: "ID", render: (e) => e.employee_id, width: 100 },
+    { key: "num", header: "社員番号", render: (e) => e.employee_number, width: 90 },
+    { key: "name", header: "氏名", render: (e) => e.name, width: 120 },
+    { key: "kana", header: "カナ", render: (e) => e.name_kana, width: 160 },
+    { key: "company", header: "法人", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, width: 160 },
+    { key: "emp_type", header: "雇用形態", render: (e) => e.employment_type, width: 80 },
+    { key: "salary", header: "給与体系", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, width: 130 },
+    { key: "hire", header: "入社日", render: (e) => e.hire_date, width: 110 },
+    { key: "status", header: "状態", render: (e) => <StatusBadge active={e.is_active} />, width: 80, align: "center" },
+    { key: "actions", header: "", render: (e) => (
+      <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
+        <Button variant="secondary" onClick={() => setEditTarget(e)}>編集</Button>
+        <Button variant={e.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(e)}>{e.is_active ? "無効化" : "有効化"}</Button>
+      </div>
+    ), width: 170, align: "right" },
+  ];
+
+  const canAdd = companies.length > 0 && salarySystems.length > 0;
+
+  return (
+    <>
+      <PageHeader
+        title="従業員マスタ"
+        description="給与処理対象者。退職時は退職日を入力し無効化。業務委託は登録対象外。"
+        actions={
+          <div style={{ display: "flex", gap: 8 }}>
+            <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }}>
+              <option value="">すべての法人</option>
+              {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
+            </select>
+            <input type="search" placeholder="氏名・番号で検索" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 180 }} />
+            <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd}>+ 新規追加</Button>
+          </div>
+        }
+      />
+      {!canAdd && !loading && <div style={{ background: colors.warningBg, color: colors.warning, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>従業員を追加するには、先に法人マスタと給与体系マスタを登録してください。</div>}
+      {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={filtered} />}
+
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title={editTarget?.created_at ? "従業員を編集" : "従業員を追加"} width={860}>
+        {editTarget && (
+          <div>
+            <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: colors.textMuted }}>基本情報</h3>
+            <FormGrid cols={3}>
+              <TextField label="従業員ID" required value={editTarget.employee_id} onChange={(e) => setEditTarget({ ...editTarget, employee_id: e.target.value })} disabled={!!editTarget.created_at} />
+              <TextField label="社員番号" required value={editTarget.employee_number} onChange={(e) => setEditTarget({ ...editTarget, employee_number: e.target.value })} />
+              <SelectField label="所属法人" required value={editTarget.company_id} onChange={(e) => setEditTarget({ ...editTarget, company_id: e.target.value })}>
+                {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
+              </SelectField>
+              <TextField label="氏名" required value={editTarget.name} onChange={(e) => setEditTarget({ ...editTarget, name: e.target.value })} />
+              <TextField label="氏名カナ" required value={editTarget.name_kana} onChange={(e) => setEditTarget({ ...editTarget, name_kana: e.target.value })} />
+              <TextField label="メールアドレス" required type="email" value={editTarget.email} onChange={(e) => setEditTarget({ ...editTarget, email: e.target.value })} />
+              <SelectField label="雇用形態" required value={editTarget.employment_type} onChange={(e) => setEditTarget({ ...editTarget, employment_type: e.target.value })}>
+                {EMP_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </SelectField>
+              <SelectField label="給与体系" required value={editTarget.salary_system_id} onChange={(e) => setEditTarget({ ...editTarget, salary_system_id: e.target.value })}>
+                {salarySystems.map((s) => <option key={s.salary_system_id} value={s.salary_system_id}>{s.system_name}</option>)}
+              </SelectField>
+              <SelectField label="社会保険区分" required value={editTarget.insurance_type} onChange={(e) => setEditTarget({ ...editTarget, insurance_type: e.target.value })}>
+                {INS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </SelectField>
+              <TextField label="入社日" required type="date" value={editTarget.hire_date} onChange={(e) => setEditTarget({ ...editTarget, hire_date: e.target.value })} />
+              <TextField label="退職日" type="date" value={editTarget.termination_date ?? ""} onChange={(e) => setEditTarget({ ...editTarget, termination_date: e.target.value || null })} />
+            </FormGrid>
+
+            <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>振込先口座</h3>
+            <FormGrid cols={3}>
+              <TextField label="銀行名" required value={editTarget.bank_name} onChange={(e) => setEditTarget({ ...editTarget, bank_name: e.target.value })} />
+              <TextField label="金融機関コード（4桁）" required maxLength={4} value={editTarget.bank_code} onChange={(e) => setEditTarget({ ...editTarget, bank_code: e.target.value })} />
+              <SelectField label="口座種別" required value={editTarget.account_type} onChange={(e) => setEditTarget({ ...editTarget, account_type: e.target.value })}>
+                {ACCOUNT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </SelectField>
+              <TextField label="支店名" required value={editTarget.branch_name} onChange={(e) => setEditTarget({ ...editTarget, branch_name: e.target.value })} />
+              <TextField label="支店コード（3桁）" required maxLength={3} value={editTarget.branch_code} onChange={(e) => setEditTarget({ ...editTarget, branch_code: e.target.value })} />
+              <TextField label="口座番号（7桁）" required maxLength={7} value={editTarget.account_number} onChange={(e) => setEditTarget({ ...editTarget, account_number: e.target.value })} />
+              <TextField label="口座名義" required value={editTarget.account_holder} onChange={(e) => setEditTarget({ ...editTarget, account_holder: e.target.value })} />
+              <TextField label="口座名義カナ" required value={editTarget.account_holder_kana} onChange={(e) => setEditTarget({ ...editTarget, account_holder_kana: e.target.value })} />
+            </FormGrid>
+
+            <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>外部ID連携</h3>
+            <FormGrid>
+              <TextField label="キングオブタイムID" value={editTarget.kot_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, kot_employee_id: e.target.value || null })} />
+              <TextField label="MFクラウド給与ID" value={editTarget.mf_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, mf_employee_id: e.target.value || null })} />
+            </FormGrid>
+            <TextareaField label="備考" value={editTarget.notes ?? ""} onChange={(e) => setEditTarget({ ...editTarget, notes: e.target.value || null })} />
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
+              <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
+              <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
+  );
+}
