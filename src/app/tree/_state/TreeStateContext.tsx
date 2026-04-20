@@ -71,6 +71,17 @@ type TreeStateValue = {
   markAllRead: () => void;
   notifCenterOpen: boolean;
   setNotifCenterOpen: (open: boolean) => void;
+
+  /**
+   * マイページ 定期確認ロック
+   * - 3ヶ月に1度、ログイン直後に個人情報の再確認を要求する
+   * - ロック中は他画面への遷移に警告を出す（後続タスク）
+   */
+  mypageLocked: boolean;
+  /** 「変更はありません」で確認完了 → ロック解除 + 確認日保存 */
+  unlockMypage: () => void;
+  /** ダッシュボードからの強制ロック（3ヶ月経過検知時など） */
+  triggerMypageLock: () => void;
 };
 
 const TreeStateContext = createContext<TreeStateValue | null>(null);
@@ -88,6 +99,10 @@ const DEFAULT_STATS: TreeStats = {
 
 const LS_ROLE = "gardenTree_role";
 const LS_MENU_ORDER = "gardenTree_menuOrder";
+const LS_MYPAGE_LAST_CONFIRM = "gardenTree_mypageLastConfirm";
+
+/** 3ヶ月（= 90日）間隔で定期確認 */
+const MYPAGE_CONFIRM_INTERVAL_DAYS = 90;
 
 function readLocalStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -164,6 +179,46 @@ export function TreeStateProvider({ children }: { children: ReactNode }) {
     setNotifCenter((prev) => prev.map((n) => ({ ...n, read: true })));
   }, []);
 
+  // マイページ定期確認ロック：初期値 false。hydration 後に localStorage を読んで判定
+  const [mypageLocked, setMypageLockedState] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(LS_MYPAGE_LAST_CONFIRM);
+      if (!raw) {
+        // 未確認：初回ログイン時は lock を ON にして確認を促す
+        setMypageLockedState(true);
+        return;
+      }
+      const last = new Date(raw);
+      const days = (Date.now() - last.getTime()) / (1000 * 60 * 60 * 24);
+      if (days >= MYPAGE_CONFIRM_INTERVAL_DAYS) {
+        setMypageLockedState(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const unlockMypage = useCallback(() => {
+    setMypageLockedState(false);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(
+          LS_MYPAGE_LAST_CONFIRM,
+          new Date().toISOString(),
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const triggerMypageLock = useCallback(() => {
+    setMypageLockedState(true);
+  }, []);
+
   const value = useMemo<TreeStateValue>(
     () => ({
       role,
@@ -184,6 +239,9 @@ export function TreeStateProvider({ children }: { children: ReactNode }) {
       markAllRead,
       notifCenterOpen,
       setNotifCenterOpen,
+      mypageLocked,
+      unlockMypage,
+      triggerMypageLock,
     }),
     [
       role,
@@ -198,6 +256,9 @@ export function TreeStateProvider({ children }: { children: ReactNode }) {
       markRead,
       markAllRead,
       notifCenterOpen,
+      mypageLocked,
+      unlockMypage,
+      triggerMypageLock,
     ],
   );
 

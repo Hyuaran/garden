@@ -24,6 +24,7 @@ import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
 import { USER } from "../_constants/user";
+import { useTreeState } from "../_state/TreeStateContext";
 
 /* ---------- デモデータ ---------- */
 
@@ -62,9 +63,16 @@ function InfoRow({ label, value, muted }: { label: string; value: string; muted?
 /* ---------- メインコンポーネント ---------- */
 
 export default function MyPagePage() {
+  const { mypageLocked, unlockMypage, triggerMypageLock } = useTreeState();
   const [authenticated, setAuthenticated] = useState(false);
   const [pw, setPw] = useState("");
   const todokeRef = useRef<HTMLDivElement>(null);
+
+  const scrollToTodoke = () => {
+    setTimeout(() => {
+      todokeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
 
   // パスワード変更
   const [showPwChange, setShowPwChange] = useState(false);
@@ -103,8 +111,9 @@ export default function MyPagePage() {
           <div style={{ paddingTop: 8 }} />
         </div>
         <GlassPanel style={{ padding: 40, textAlign: "center" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.textDark, marginBottom: 16 }}>パスワードを入力してください</div>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: C.darkGreen, margin: "0 0 8px" }}>本人確認</h2>
+          <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 24px" }}>個人情報を閲覧するにはパスワードを入力してください</p>
           <input
             type="password"
             value={pw}
@@ -113,13 +122,14 @@ export default function MyPagePage() {
             maxLength={8}
             placeholder="4桁パスワード"
             style={{
-              width: 160, textAlign: "center", padding: "12px 16px", borderRadius: 12,
-              border: "1px solid rgba(0,0,0,0.1)", fontSize: 20, letterSpacing: 8,
-              fontFamily: "'Noto Sans JP', sans-serif", outline: "none",
+              width: "100%", padding: "14px 16px", border: "2px solid #dcedc8",
+              borderRadius: 12, fontSize: 18, textAlign: "center", letterSpacing: 8,
+              boxSizing: "border-box", fontFamily: "'Noto Sans JP', sans-serif",
+              background: C.white, outline: "none",
             }}
           />
           <div style={{ marginTop: 16 }}>
-            <ActionButton label="ログイン" color="#3478c6" onClick={handleLogin} />
+            <ActionButton label="認証してマイページを開く" color="#3478c6" onClick={handleLogin} />
           </div>
           <div style={{ fontSize: 11, color: C.textMuted, marginTop: 12 }}>デモ: 1234</div>
         </GlassPanel>
@@ -134,26 +144,115 @@ export default function MyPagePage() {
         <div style={{ paddingTop: 8 }} />
       </div>
 
+      {/* 定期確認ロック中：変更なし / 変更ありボタン */}
+      {mypageLocked && (
+        <div
+          style={{
+            padding: "16px 24px",
+            marginBottom: 20,
+            borderRadius: 14,
+            background: `linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.04))`,
+            border: `2px solid ${C.gold}44`,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.goldDark, marginBottom: 4 }}>
+                📋 個人情報の定期確認中（3ヶ月に1度）
+              </div>
+              <div style={{ fontSize: 12, color: C.textMuted }}>
+                登録内容に変更がないかご確認ください。変更がある場合は届出から申請できます。
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={unlockMypage}
+                style={{
+                  padding: "12px 24px",
+                  border: "none",
+                  borderRadius: 14,
+                  background: `linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`,
+                  color: C.white,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "'Noto Sans JP', sans-serif",
+                  boxShadow: `0 4px 16px ${C.midGreen}33`,
+                }}
+              >
+                変更はありません
+              </button>
+              <button
+                onClick={scrollToTodoke}
+                style={{
+                  padding: "12px 24px",
+                  border: `2px solid ${C.gold}`,
+                  borderRadius: 14,
+                  background: `rgba(201,168,76,0.06)`,
+                  color: C.goldDark,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "'Noto Sans JP', sans-serif",
+                }}
+              >
+                変更する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* デモ：定期確認を再表示（ロック解除済みのときだけ表示） */}
+      {!mypageLocked && (
+        <div style={{ marginBottom: 12, textAlign: "right" }}>
+          <button
+            onClick={triggerMypageLock}
+            style={{
+              padding: "6px 14px",
+              border: `1px dashed ${C.gold}`,
+              borderRadius: 8,
+              background: "transparent",
+              color: C.goldDark,
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "'Noto Sans JP', sans-serif",
+            }}
+          >
+            🧪 デモ：定期確認バナーを表示
+          </button>
+        </div>
+      )}
+
       {/* 基本情報 */}
       <GlassPanel style={{ padding: 20, marginBottom: 16 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12 }}>基本情報</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
           <InfoRow label="氏名" value={USER.fullName} />
+          <InfoRow label="氏名カナ" value="ショウジ ミコト" />
+          <InfoRow label="生年月日" value="1995/08/15" />
+          <InfoRow label="携帯番号" value="090-1234-5678" />
+          <InfoRow label="郵便番号" value="〒150-0041" />
+          <InfoRow label="住所" value="東京都渋谷区神南1-2-3" />
           <InfoRow label="社員番号" value={USER.empId} />
-          <InfoRow label="生年月日" value="1998/07/15" />
           <InfoRow label="雇用形態" value={USER.employmentType} />
-          <InfoRow label="電話番号" value="090-1234-5678" />
-          <InfoRow label="住所" value="大阪市北区梅田1-2-3" />
         </div>
       </GlassPanel>
 
-      {/* 登録情報 */}
+      {/* 提出・登録情報 */}
       <GlassPanel style={{ padding: 20, marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12 }}>登録情報</div>
-        <InfoRow label="マイナンバー" value="●●●●●●●●●●●●" muted />
-        <InfoRow label="通勤経路" value="JR大阪駅 → 徒歩5分" />
-        <InfoRow label="振込口座" value="●●銀行 ●●支店 普通 ●●●●●●●" muted />
-        <InfoRow label="緊急連絡先" value="090-9876-5432（父）" />
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12 }}>提出・登録情報</div>
+        <InfoRow label="マイナンバー" value="✅ 提出済み" />
+        <InfoRow label="交通費" value="渋谷駅 〜 新宿駅" />
+        <InfoRow label="給与受取口座" value="●●銀行 ●●支店 普通 ●●●●●●●" muted />
+
+        <div style={{ marginTop: 20, fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12 }}>緊急連絡先</div>
+        <InfoRow label="氏名" value="東海林 太郎" />
+        <InfoRow label="続柄" value="父" />
+        <InfoRow label="郵便番号" value="〒150-0042" />
+        <InfoRow label="住所" value="東京都渋谷区宇田川町1-1" />
+        <InfoRow label="連絡先" value="090-9876-5432" />
       </GlassPanel>
 
       {/* 6ヶ月パフォーマンス */}

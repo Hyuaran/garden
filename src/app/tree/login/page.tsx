@@ -157,7 +157,7 @@ export default function TreeLoginPage() {
             </div>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <ActionButton
-                label="log in"
+                label="打刻・ログイン"
                 large
                 type="submit"
                 color={`linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`}
