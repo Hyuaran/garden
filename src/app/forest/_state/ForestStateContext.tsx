@@ -135,7 +135,7 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
         setIsUnlocked(false);
         setUserEmail(null);
         setForestUser(null);
-        return { success: false, error: "Forest へのアクセス権限がありません" };
+        return { success: false, error: "社員番号またはパスワードが正しくありません" };
       }
 
       // 権限あり → 状態更新

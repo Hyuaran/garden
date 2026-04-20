@@ -169,8 +169,8 @@ export function MicroGrid({ companies, periods, shinkouki }: Props) {
                     const hasG = src.gaichuhi != null;
                     const hasR = src.rieki != null;
                     const isNeg = hasR && src.rieki! < 0;
-                    const barU = hasU ? Math.round(Math.sqrt((src.uriage!) / maxVal) * 40) : 0;
-                    const barG = hasG ? Math.round(Math.sqrt((src.gaichuhi!) / maxVal) * 40) : 0;
+                    const barU = hasU ? Math.round(Math.sqrt(Math.max(0, src.uriage!) / maxVal) * 40) : 0;
+                    const barG = hasG ? Math.round(Math.sqrt(Math.max(0, src.gaichuhi!) / maxVal) * 40) : 0;
                     const barR = hasR ? Math.round(Math.sqrt(Math.abs(src.rieki!) / maxVal) * 40) : 0;
 
                     const cellData: CellData = {

@@ -28,7 +28,7 @@ export function DetailModal({ data, onClose }: Props) {
   ];
 
   const handleDriveClick = () => {
-    writeAuditLog("view_detail", `${data.company.id}_ki${data.ki}`);
+    writeAuditLog("click_drive_link", `${data.company.id}_ki${data.ki}`);
   };
 
   return (

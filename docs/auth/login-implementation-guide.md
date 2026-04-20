@@ -279,6 +279,44 @@ CREATE TABLE forest_audit_log (
 
 ---
 
+## ⚠️ Phase A 既知の制限（Phase B/C 対応予定）
+
+### B-1. 監査ログ改ざんリスク【Phase B 必須】
+
+`forest_audit_log` への INSERT はクライアント側（anon key）から行っているため、**認証済みユーザーは任意の `action` / `target` / `user_id` を詐称した INSERT が可能**。
+
+現状の保護:
+- RLS で `user_id = auth.uid()` を強制（authenticated アクション）
+- `login_failed` のみ `user_id IS NULL` に制限（anon ポリシー）
+
+Phase B 対応:
+- 監査ログ INSERT を **Supabase Edge Function 経由** に変更
+- Edge Function 側で `auth.uid()` を取得・強制し、クライアント指定の `user_id` を無視
+- IP アドレスも Edge Function 側で付与
+- クライアントからの直接 INSERT を禁止（RLS で INSERT ポリシー削除）
+
+---
+
+### B-3. sessionStorage ゲートは UI ガードのみ【Phase C 課題】
+
+`sessionStorage` に `forestUnlockedAt` を保存してゲート通過を管理しているが、
+**`sessionStorage` は JavaScript から自由に読み書き可能**。
+
+攻撃シナリオ:
+```javascript
+// XSS やサプライチェーン攻撃で1行実行されるとゲートが突破される
+sessionStorage.setItem("forestUnlockedAt", Date.now().toString());
+```
+
+**重要**: ゲートは UI レベルのアクセス制御のみ。  
+**実質的なデータ保護は Supabase RLS が担っている**（`forest_users` 登録が真の権限境界）。
+
+Phase C 対応:
+- Next.js Server Component で `cookies()` から httpOnly Cookie を読む方式に変更
+- セッション管理をサーバー側に移行（XSS でも改ざん不可）
+
+---
+
 ## 📝 他プロジェクトへの転用手順
 
 1. このファイル（`login-implementation-guide.md`）をコピー

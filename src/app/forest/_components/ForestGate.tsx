@@ -39,7 +39,7 @@ const inputStyle: CSSProperties = {
 
 const inputStyleError: CSSProperties = {
   ...inputStyle,
-  borderColor: C.red,
+  border: `1.5px solid ${C.red}`,
 };
 
 export function ForestGate() {
