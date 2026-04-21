@@ -104,7 +104,7 @@ export function MacroChart({ companies, periods }: Props) {
                   label: (ctx) =>
                     `${ctx.dataset.label}: ${fmtYen(ctx.parsed.y)}`,
                   footer: (items) => {
-                    const total = items.reduce((s, i) => s + i.parsed.y, 0);
+                    const total = items.reduce((s, i) => s + (i.parsed.y ?? 0), 0);
                     return `グループ合計: ${fmtYen(total)}`;
                   },
                 },
