@@ -36,6 +36,8 @@ import { SPROUT_BUTTONS } from "../../_constants/callButtons";
 import { C } from "../../_constants/colors";
 import { SHOW_DEMO_CONTROLS } from "../../_constants/flags";
 import { TREE_PATHS } from "../../_constants/screens";
+import { insertCall } from "../../_lib/queries";
+import { useTreeState } from "../../_state/TreeStateContext";
 
 /** デモ用顧客データ */
 const DEMO_CUSTOMER = {
@@ -46,6 +48,7 @@ const DEMO_CUSTOMER = {
 
 export default function CallingSproutPage() {
   const router = useRouter();
+  const { treeUser } = useTreeState();
 
   // --- タイマーリセット用キー ---
   const [timerKey, setTimerKey] = useState(0);
@@ -64,6 +67,14 @@ export default function CallingSproutPage() {
   const [nextDate, setNextDate] = useState("");
   const [nextTime, setNextTime] = useState("");
 
+  // --- 通話時刻（DB保存用） ---
+  const [connectedAt, setConnectedAt] = useState<Date | null>(null);
+  const [hangupAt, setHangupAt] = useState<Date | null>(null);
+
+  // --- 保存中・エラー ---
+  const [savingCall, setSavingCall] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   // --- 派生フラグ ---
   const isProspect =
     selectedResult !== null &&
@@ -78,25 +89,69 @@ export default function CallingSproutPage() {
 
   // --- フェーズ遷移ハンドラ ---
   const handleConnect = () => {
+    setConnectedAt(new Date());
     setCallPhase("talking");
     setTalkTimerKey((k) => k + 1);
   };
 
   const handleHangup = () => {
+    setHangupAt(new Date());
     setCallPhase("inputting");
     setInputTimerKey((k) => k + 1);
   };
 
-  const handleSubmit = () => {
-    if (canProceed && canProceedNg) {
-      setSelectedResult(null);
-      setCallMemo("");
-      setNgReason("");
-      setNextDate("");
-      setNextTime("");
-      setCallPhase("calling");
-      setTimerKey((k) => k + 1);
+  const handleSubmit = async () => {
+    if (!canProceed || !canProceedNg) return;
+    if (savingCall) return;
+    if (!selectedResult) return;
+    if (!treeUser) {
+      setSaveError("認証情報が取得できません。再ログインしてください");
+      return;
     }
+
+    setSavingCall(true);
+    setSaveError(null);
+
+    // 時刻を確定
+    const endAt = hangupAt ?? new Date();
+    const startAt = connectedAt ?? endAt; // 未接続の場合は 0秒扱い
+
+    // 見込み選択時の次回対応日時
+    const nextContact =
+      isProspect && nextDate && nextTime
+        ? new Date(`${nextDate}T${nextTime}:00`)
+        : undefined;
+
+    const result = await insertCall({
+      employee_id: treeUser.employee_id,
+      started_at: startAt,
+      ended_at: endAt,
+      result_code: selectedResult,
+      call_mode: "sprout",
+      customer_name: cu.name,
+      phone: cu.phone,
+      next_contact_at: nextContact,
+      ng_reason: ngReason || undefined,
+      memo: callMemo || undefined,
+    });
+
+    if (!result.success) {
+      setSaveError(result.error ?? "保存に失敗しました");
+      setSavingCall(false);
+      return;
+    }
+
+    // 保存成功 → 入力リセット・次の架電へ
+    setSelectedResult(null);
+    setCallMemo("");
+    setNgReason("");
+    setNextDate("");
+    setNextTime("");
+    setConnectedAt(null);
+    setHangupAt(null);
+    setCallPhase("calling");
+    setTimerKey((k) => k + 1);
+    setSavingCall(false);
   };
 
   const cu = DEMO_CUSTOMER;
@@ -166,18 +221,37 @@ export default function CallingSproutPage() {
           )}
           {callPhase === "inputting" && (
             <ActionButton
-              label="次の架電へ"
+              label={savingCall ? "保存中..." : "次の架電へ"}
               color={
-                canProceed && canProceedNg
+                canProceed && canProceedNg && !savingCall
                   ? `linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`
                   : "#ccc"
               }
               icon="→"
               onClick={handleSubmit}
+              disabled={savingCall || !canProceed || !canProceedNg}
             />
           )}
         </div>
       </div>
+
+      {/* 保存エラー表示 */}
+      {saveError && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "10px 14px",
+            background: "rgba(196,74,74,0.08)",
+            border: `1px solid ${C.red}`,
+            borderRadius: 10,
+            color: C.red,
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          ⚠️ 保存に失敗しました: {saveError}
+        </div>
+      )}
 
       {/* pulse アニメーション（タイマードット用） */}
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
