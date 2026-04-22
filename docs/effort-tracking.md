@@ -17,7 +17,7 @@
 
 | module | phase / task | estimated_days | actual_days | diff | session | started | finished | notes |
 |---|---|---:|---:|---:|---|---|---|---|
-| Forest | Phase A1: 進行期自動更新 Python スクリプト（PDF → Supabase） | 1.0 | — | — | a-forest (A) / b-main (B) | 2026-04-21 | — | Task 1 は 2026-04-22 に A で完了。Task 2-4 は 2026-04-22 に B で完了。Task 5-7 継続中。spec/plan に見積未記載のため本ファイル作成時にレトロスペクティブに 1.0 d を設定 |
+| Forest | Phase A1: 進行期自動更新 Python スクリプト（PDF → Supabase） | 1.0 | 0.4 | -0.6 | a-forest (A) / b-main (B) | 2026-04-21 | 2026-04-22 | コード・ドキュメント完成、本番 UPDATE 疎通確認済み。4社分PDF で 4/4 件 UPDATE 成功。Task 7 のブラウザ目視確認と日報記録は東海林依頼で残。見積 1.0 d に対し AI 支援で 0.4 d で完了 |
 
 ## 運用メモ
 
@@ -26,9 +26,9 @@
   - Task 2: スクリプト骨組み + `.env.local` 読み込み → ✅ 完了 (2026-04-22, b-main)
   - Task 3: PDF 抽出ロジック移植 → ✅ 完了 (2026-04-22, b-main)
   - Task 4: PDF 走査ループ (dry-run 確認済) → ✅ 完了 (2026-04-22, b-main)
-  - Task 5: Supabase REST API UPDATE → ⏳ 進行中
-  - Task 6: 運用手順書 README → ⏳ 未着手
-  - Task 7: エンドツーエンド動作確認 (東海林依存) → ⏳ 未着手
+  - Task 5: Supabase REST API UPDATE → ✅ 完了 (2026-04-22, b-main / 本番 UPDATE 4/4 成功)
+  - Task 6: 運用手順書 README → ✅ 完了 (2026-04-22, b-main / `scripts/README-shinkouki.md`)
+  - Task 7: エンドツーエンド動作確認 → 🟡 一部完了 (バックアップ取得 + dry-run + 本番 UPDATE 経路疎通は Claude 側で完了。Forest ダッシュボードの目視確認 + 日報記録は東海林依頼で残)
 
 - **Phase A2 / A3 は別 plan で別行追加**。未着手。
 
