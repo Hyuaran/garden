@@ -9,10 +9,7 @@
  *   19-119  101  ダミー（空白）
  */
 
-function padLeftZero(s: string, length: number): string {
-  if (s.length > length) return s.substring(s.length - length);
-  return "0".repeat(length - s.length) + s;
-}
+import { padLeftZero } from "../padding";
 
 export function buildTrailerRecord(
   recordCount: number,

@@ -19,16 +19,7 @@
  */
 
 import type { ZenginSourceAccount } from "../types";
-
-function padRight(s: string, length: number): string {
-  if (s.length > length) return s.substring(0, length);
-  return s + " ".repeat(length - s.length);
-}
-
-function padLeftZero(s: string, length: number): string {
-  if (s.length > length) return s.substring(s.length - length);
-  return "0".repeat(length - s.length) + s;
-}
+import { padRight, padLeftZero } from "../padding";
 
 export function buildHeaderRecord(source: ZenginSourceAccount): string {
   const parts: string[] = [

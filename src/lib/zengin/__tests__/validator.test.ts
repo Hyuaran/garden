@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { validateTransfer } from "../validator";
-import type { ZenginTransferInput } from "../types";
+import { validateTransfer, validateSourceAccount } from "../validator";
+import type { ZenginTransferInput, ZenginSourceAccount } from "../types";
 
 function makeValid(): ZenginTransferInput {
   return {
@@ -92,5 +92,40 @@ describe("validateTransfer", () => {
   it("預金種目が 1/2/4 以外はエラー（型レベルで弾かれるが念のため）", () => {
     const t = { ...makeValid(), payee_account_type: "9" as "1" };
     expect(validateTransfer(t).valid).toBe(false);
+  });
+});
+
+describe("validateSourceAccount", () => {
+  function makeValidSource(): ZenginSourceAccount {
+    return {
+      consignor_code: "0000001234",
+      consignor_name: "ｶ)ﾋｭｱﾗﾝ",
+      transfer_date: "0425",
+      source_bank_code: "0036",
+      source_bank_name: "ﾗｸﾃﾝ",
+      source_branch_code: "251",
+      source_branch_name: "ﾀﾞｲｲﾁ",
+      source_account_type: "1",
+      source_account_number: "7853952",
+    };
+  }
+
+  it("正常なデータなら valid=true", () => {
+    expect(validateSourceAccount(makeValidSource()).valid).toBe(true);
+  });
+
+  it("consignor_name に全角文字が含まれる場合エラー", () => {
+    const s = { ...makeValidSource(), consignor_name: "株式会社ヒュアラン" };
+    expect(validateSourceAccount(s).valid).toBe(false);
+  });
+
+  it("source_bank_code が 4 桁でなければエラー", () => {
+    const s = { ...makeValidSource(), source_bank_code: "123" };
+    expect(validateSourceAccount(s).valid).toBe(false);
+  });
+
+  it("transfer_date が 4 桁でなければエラー", () => {
+    const s = { ...makeValidSource(), transfer_date: "425" };
+    expect(validateSourceAccount(s).valid).toBe(false);
   });
 });

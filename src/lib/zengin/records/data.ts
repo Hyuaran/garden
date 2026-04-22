@@ -22,16 +22,7 @@
 
 import type { ZenginTransferInput } from "../types";
 import { toHalfWidthKana } from "../kana-converter";
-
-function padRight(s: string, length: number): string {
-  if (s.length > length) return s.substring(0, length);
-  return s + " ".repeat(length - s.length);
-}
-
-function padLeftZero(s: string, length: number): string {
-  if (s.length > length) return s.substring(s.length - length);
-  return "0".repeat(length - s.length) + s;
-}
+import { padRight, padLeftZero } from "../padding";
 
 export function buildDataRecord(t: ZenginTransferInput): string {
   // 受取人名を半角カタカナに変換

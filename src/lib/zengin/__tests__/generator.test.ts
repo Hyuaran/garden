@@ -84,4 +84,21 @@ describe("generateZenginCsv", () => {
       generateZenginCsv(transfers, source, { bank: "kyoto" }),
     ).toThrow(/未実装/);
   });
+
+  it("ソースアカウントに全角文字を入れるとエラー（C-1 リグレッション防止）", () => {
+    const badSource = { ...source, consignor_name: "株式会社ヒュアラン" };
+    expect(() =>
+      generateZenginCsv(transfers, badSource, { bank: "rakuten" }),
+    ).toThrow(/全角/);
+  });
+
+  it("合計金額が 12 桁を超えるとエラー（C-3）", () => {
+    const huge = Array(150).fill({
+      ...transfers[0],
+      amount: 9_999_999_999, // 各件 10 桁上限
+    });
+    expect(() =>
+      generateZenginCsv(huge, source, { bank: "rakuten" }),
+    ).toThrow(/合計金額が 12 桁上限/);
+  });
 });

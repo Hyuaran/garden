@@ -9,7 +9,7 @@
 
 export { generateZenginCsv } from "./generator";
 export { toHalfWidthKana } from "./kana-converter";
-export { validateTransfer } from "./validator";
+export { validateTransfer, validateSourceAccount } from "./validator";
 export { getBankProfile } from "./bank-specific";
 export type {
   BankType,
