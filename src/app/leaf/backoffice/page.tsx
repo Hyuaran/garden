@@ -12,6 +12,7 @@ import { StatusBadge } from "./_components/StatusBadge";
 import { SupplyInline } from "./_components/SupplyInline";
 import { StatusFlow } from "./_components/StatusFlow";
 import { NewCaseModal } from "./_components/NewCaseModal";
+import { StatusAdvanceBar } from "./_components/StatusAdvanceBar";
 
 // ─── ロック画面 ───────────────────────────────────────────────────────────────
 function LockScreen({ onUnlock }: { onUnlock: () => void }) {
@@ -647,6 +648,10 @@ export default function BackofficePage() {
         <CaseDetailModal
           c={selected}
           onClose={() => setSelected(null)}
+          onUpdated={(updated) => {
+            setSelected(updated);
+            loadCases();
+          }}
         />
       )}
     </>
@@ -657,9 +662,11 @@ export default function BackofficePage() {
 function CaseDetailModal({
   c,
   onClose,
+  onUpdated,
 }: {
   c: KandenCase;
   onClose: () => void;
+  onUpdated: (updated: KandenCase) => void;
 }) {
   return (
     <div
@@ -752,6 +759,8 @@ function CaseDetailModal({
 
         {/* 詳細情報 */}
         <div style={{ padding: "20px 24px" }}>
+          {/* ステータス操作バー（Phase A-2） */}
+          <StatusAdvanceBar c={c} onUpdated={onUpdated} />
           {/* 供給開始日 */}
           <Section title="供給開始予定日">
             <SupplyInline
