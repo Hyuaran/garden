@@ -20,6 +20,7 @@ import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
 import { USER } from "../_constants/user";
+import { useTreeState } from "../_state/TreeStateContext";
 
 /* ---------- 型定義 ---------- */
 
@@ -61,6 +62,7 @@ function currentTime(): string {
 /* ---------- コンポーネント ---------- */
 
 export default function BreezePage() {
+  const { treeUser } = useTreeState();
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [newMsg, setNewMsg] = useState("");
   const [channel, setChannel] = useState("全体");
@@ -70,7 +72,7 @@ export default function BreezePage() {
     if (!newMsg.trim()) return;
     const msg: ChatMessage = {
       id: Date.now(),
-      sender: USER.fullName,
+      sender: treeUser?.name ?? USER.fullName,
       role: "責任者",
       text: newMsg.trim(),
       time: currentTime(),

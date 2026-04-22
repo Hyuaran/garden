@@ -474,8 +474,8 @@ export function SidebarNav() {
     if (!menuEditMode) router.push(href);
   };
 
-  // ユーザーアイコン表示用
-  const surname = USER.name;
+  // ユーザーアイコン表示用（認証済なら treeUser.name の姓、未認証時は USER fallback）
+  const surname = treeUser?.name.split(/[\s　]/)[0] ?? USER.name;
   const len = surname.length;
   const isTwoLine = len >= 4;
   const displayText = len >= 5 ? surname.slice(0, 4) : surname;
@@ -597,12 +597,12 @@ export function SidebarNav() {
           {isExpanded && (
             <div style={{ overflow: "hidden", whiteSpace: "nowrap" }}>
               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>
-                {USER.employmentType} / {rc.fullLabel}
+                {treeUser?.employment_type ?? USER.employmentType} / {rc.fullLabel}
               </div>
               <div
                 style={{ fontSize: 12, fontWeight: 700, color: C.white }}
               >
-                {USER.fullName}
+                {treeUser?.name ?? USER.fullName}
               </div>
             </div>
           )}

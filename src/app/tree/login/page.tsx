@@ -42,6 +42,7 @@ const inputStyle: CSSProperties = {
   boxSizing: "border-box",
   fontFamily: "'Noto Sans JP', sans-serif",
   background: C.white,
+  color: C.textDark,
 };
 
 export default function TreeLoginPage() {

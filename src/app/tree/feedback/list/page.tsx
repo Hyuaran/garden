@@ -49,12 +49,12 @@ const ALL_FEEDBACKS: FeedbackEntry[] = [
 /* ---------- コンポーネント ---------- */
 
 export default function FeedbackListPage() {
-  const { role } = useTreeState();
+  const { role, treeUser } = useTreeState();
   const [searchTerm, setSearchTerm] = useState("");
   const [likeState, setLikeState] = useState<Record<string, boolean>>({});
   const [showNames, setShowNames] = useState(true);
 
-  const selfName = USER.fullName;
+  const selfName = treeUser?.name ?? USER.fullName;
 
   // 絞り込み
   const filtered = (() => {

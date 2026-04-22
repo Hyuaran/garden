@@ -109,7 +109,8 @@ function medalIcon(r: number): string {
 }
 
 export default function AporanPage() {
-  const { role } = useTreeState();
+  const { role, treeUser } = useTreeState();
+  const selfFullName = treeUser?.name ?? USER.fullName;
 
   const [showHistory, setShowHistory] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -258,7 +259,7 @@ export default function AporanPage() {
       {/* 更新情報 */}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 16, marginBottom: 8, fontSize: 11, color: C.textMuted }}>
         <span>最終更新: 2026/04/12（土）18:30</span>
-        <span>更新者: {USER.fullName}</span>
+        <span>更新者: {selfFullName}</span>
         {role === ROLES.MANAGER && (
           <span style={{ position: "relative" }}
             onMouseEnter={() => setShowHistory(true)}

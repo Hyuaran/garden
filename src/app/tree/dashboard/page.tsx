@@ -31,7 +31,9 @@ import { useTreeState } from "../_state/TreeStateContext";
 
 export default function TreeDashboardPage() {
   const router = useRouter();
-  const { role } = useTreeState();
+  const { role, treeUser } = useTreeState();
+  // 氏名から姓のみ抽出（例: "東海林 美琴" → "東海林"、"上田 基人" → "上田"）
+  const displaySurname = treeUser?.name.split(/[\s　]/)[0] ?? USER.name;
 
   // 月間目標/達成/営業日進捗（プロトタイプと同じデモ値）
   const mt = 60; // 月間目標 (P)
@@ -97,7 +99,7 @@ export default function TreeDashboardPage() {
             margin: 0,
           }}
         >
-          {USER.name}さん、おはようございます!
+          {displaySurname}さん、おはようございます!
         </h2>
         <p
           style={{
