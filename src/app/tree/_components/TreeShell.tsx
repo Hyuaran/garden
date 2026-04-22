@@ -19,7 +19,8 @@ const SIDEBAR_COLLAPSED_WIDTH = 56;
 
 export function TreeShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "";
-  const isBareScreen = pathname === TREE_PATHS.LOGIN;
+  const isBareScreen =
+    pathname === TREE_PATHS.LOGIN || pathname === TREE_PATHS.BIRTHDAY;
 
   if (isBareScreen) {
     return <>{children}</>;
