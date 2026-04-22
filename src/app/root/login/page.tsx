@@ -87,8 +87,9 @@ export default function RootLoginPage() {
       actorEmpNum: empId,
     });
 
-    // 4. 復帰 URL に遷移
-    router.replace(popReturnTo());
+    // 4. 復帰 URL への遷移は useEffect (isAuthenticated 監視) が行う
+    //    ここで router.replace すると useEffect の popReturnTo と二重発火になり
+    //    2 回目は空になるため /root にフォールバックしてしまう。
   };
 
   return (
