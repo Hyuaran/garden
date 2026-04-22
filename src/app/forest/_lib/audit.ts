@@ -17,7 +17,10 @@ export type AuditAction =
   | "logout_timeout"
   | "view_dashboard"
   | "view_detail"
-  | "click_drive_link";
+  | "click_drive_link"
+  | "update_shinkouki"
+  | "upload_pdf"
+  | "period_rollover";
 
 export async function writeAuditLog(
   action: AuditAction,
