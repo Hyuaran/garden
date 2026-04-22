@@ -17,7 +17,7 @@
  * 設計ドキュメント: docs/auth/login-implementation-guide.md
  */
 
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useState, type CSSProperties, type FormEvent } from "react";
 
 import { C } from "../_constants/colors";
 import { FOREST_THEME } from "../_constants/theme";
@@ -35,6 +35,7 @@ const inputStyle: CSSProperties = {
   boxSizing: "border-box",
   fontFamily: "inherit",
   background: "#fff",
+  color: C.textDark,
 };
 
 const inputStyleError: CSSProperties = {
@@ -43,19 +44,11 @@ const inputStyleError: CSSProperties = {
 };
 
 export function ForestGate() {
-  const { forestUser, refreshAuth } = useForestState();
-  // 既に Garden Auth 済みなら社員番号をプレフィル（再認証時）
-  const [empId, setEmpId] = useState(forestUser?.employee_number ?? "");
+  const { refreshAuth } = useForestState();
+  const [empId, setEmpId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // forestUser が後から読み込まれた場合、社員番号を補完
-  useEffect(() => {
-    if (forestUser?.employee_number && !empId) {
-      setEmpId(forestUser.employee_number);
-    }
-  }, [forestUser, empId]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
