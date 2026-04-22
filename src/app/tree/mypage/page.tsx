@@ -23,8 +23,8 @@ import { ActionButton } from "../_components/ActionButton";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
-import { USER } from "../_constants/user";
 import { useTreeState } from "../_state/TreeStateContext";
+import { GARDEN_ROLE_LABELS } from "../../root/_constants/types";
 
 /* ---------- デモデータ ---------- */
 
@@ -63,10 +63,19 @@ function InfoRow({ label, value, muted }: { label: string; value: string; muted?
 /* ---------- メインコンポーネント ---------- */
 
 export default function MyPagePage() {
-  const { mypageLocked, unlockMypage, triggerMypageLock } = useTreeState();
+  const { mypageLocked, unlockMypage, triggerMypageLock, treeUser } = useTreeState();
   const [authenticated, setAuthenticated] = useState(false);
   const [pw, setPw] = useState("");
   const todokeRef = useRef<HTMLDivElement>(null);
+
+  // 実ユーザーデータ（fallback 付き）
+  const displayName = treeUser?.name ?? "-";
+  const displayNameKana = treeUser?.name_kana ?? "-";
+  const displayEmpId = treeUser?.employee_number ?? "-";
+  const displayEmploymentType = treeUser?.employment_type ?? "-";
+  const displayBirthday = treeUser?.birthday ?? "（未登録）";
+  const displayEmail = treeUser?.email ?? "-";
+  const displayRoleLabel = treeUser ? GARDEN_ROLE_LABELS[treeUser.garden_role] : "-";
 
   const scrollToTodoke = () => {
     setTimeout(() => {
@@ -225,24 +234,32 @@ export default function MyPagePage() {
         </div>
       )}
 
-      {/* 基本情報 */}
+      {/* 基本情報（KING OF TIME + 本人申告由来） */}
       <GlassPanel style={{ padding: 20, marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12 }}>基本情報</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12 }}>
+          基本情報
+          <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 500, color: C.textMuted }}>
+            （社員番号・氏名・入社日はKING OF TIME 由来 / 誕生日は本人申告）
+          </span>
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
-          <InfoRow label="氏名" value={USER.fullName} />
-          <InfoRow label="氏名カナ" value="ショウジ ミコト" />
-          <InfoRow label="生年月日" value="1995/08/15" />
-          <InfoRow label="携帯番号" value="090-1234-5678" />
-          <InfoRow label="郵便番号" value="〒150-0041" />
-          <InfoRow label="住所" value="東京都渋谷区神南1-2-3" />
-          <InfoRow label="社員番号" value={USER.empId} />
-          <InfoRow label="雇用形態" value={USER.employmentType} />
+          <InfoRow label="氏名" value={displayName} />
+          <InfoRow label="氏名カナ" value={displayNameKana} />
+          <InfoRow label="社員番号" value={displayEmpId} />
+          <InfoRow label="雇用形態" value={displayEmploymentType} />
+          <InfoRow label="生年月日" value={displayBirthday} />
+          <InfoRow label="Garden権限" value={displayRoleLabel} />
+          <InfoRow label="メール" value={displayEmail} muted />
         </div>
       </GlassPanel>
 
-      {/* 提出・登録情報 */}
+      {/* 提出・登録情報（マネーフォワード電子契約 由来） */}
       <GlassPanel style={{ padding: 20, marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12 }}>提出・登録情報</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 4 }}>提出・登録情報</div>
+        <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 12 }}>
+          ※ 以下の内容はマネーフォワードクラウド電子契約が source of truth です。
+          変更が必要な場合は下部「届出・電子契約」からMFへ移動して届出を提出してください。
+        </div>
         <InfoRow label="マイナンバー" value="✅ 提出済み" />
         <InfoRow label="交通費" value="渋谷駅 〜 新宿駅" />
         <InfoRow label="給与受取口座" value="●●銀行 ●●支店 普通 ●●●●●●●" muted />

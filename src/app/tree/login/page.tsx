@@ -3,16 +3,25 @@
 /**
  * Garden-Tree ログイン画面 (/tree/login)
  *
- * プロトタイプの <LoginScreen /> を移植。
+ * 2026-04-21 改訂：Supabase Auth 接続
  *
- *  - TreeShell 側で /tree/login は「bare screen」扱いになり、
- *    サイドバー・KPIヘッダーは描画されない。
- *  - 現段階では打刻・認証はなく、ボタン押下で /tree/dashboard へ遷移するだけ。
- *  - Supabase Auth 連携（社員番号 + 4桁PIN or Supabase magic link 等）は後続タスク。
+ * フロー:
+ *   1. 社員番号 + パスワード入力
+ *   2. signInTree() で擬似メールに変換 → Supabase Auth signInWithPassword
+ *   3. 成功: refreshAuth() で root_employees.garden_role を取得
+ *   4. garden_role が取得できたら /tree/dashboard へ遷移
+ *
+ *   TreeShell 側で /tree/login は「bare screen」扱いになり、
+ *   サイドバー・KPIヘッダーは描画されない。
  */
 
 import { useRouter } from "next/navigation";
-import { useState, type CSSProperties, type FocusEvent } from "react";
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type FocusEvent,
+} from "react";
 
 import { ActionButton } from "../_components/ActionButton";
 import { GlassPanel } from "../_components/GlassPanel";
@@ -20,6 +29,8 @@ import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
 import { LOGO_PATH } from "../_constants/logo";
 import { TREE_PATHS } from "../_constants/screens";
+import { signInTree } from "../_lib/auth";
+import { useTreeState } from "../_state/TreeStateContext";
 
 const inputStyle: CSSProperties = {
   width: "100%",
@@ -35,11 +46,46 @@ const inputStyle: CSSProperties = {
 
 export default function TreeLoginPage() {
   const router = useRouter();
+  const { isAuthenticated, refreshAuth } = useTreeState();
   const [empId, setEmpId] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // TODO: Supabase Auth 連携（現状はデモ：入力値に関係なくダッシュボードへ）
+  // 既にログイン済みなら直接ダッシュボードへ
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace(TREE_PATHS.DASHBOARD);
+    }
+  }, [isAuthenticated, router]);
+
+  const handleLogin = async () => {
+    if (loading) return;
+    if (!empId || !password) {
+      setError("社員番号とパスワードを入力してください");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    // 1. Supabase Auth でサインイン
+    const signInResult = await signInTree(empId, password);
+    if (!signInResult.success) {
+      setError(signInResult.error ?? "ログインに失敗しました");
+      setLoading(false);
+      return;
+    }
+
+    // 2. 認証成功後に root_employees.garden_role を取得
+    const authResult = await refreshAuth();
+    if (!authResult.success) {
+      setError(authResult.error ?? "権限情報の取得に失敗しました");
+      setLoading(false);
+      return;
+    }
+
+    // 3. ダッシュボードへ遷移
     router.push(TREE_PATHS.DASHBOARD);
   };
 
@@ -129,9 +175,10 @@ export default function TreeLoginPage() {
                 style={inputStyle}
                 inputMode="numeric"
                 autoComplete="username"
+                disabled={loading}
               />
             </div>
-            <div style={{ marginBottom: 28, textAlign: "left" }}>
+            <div style={{ marginBottom: 20, textAlign: "left" }}>
               <label
                 style={{
                   fontSize: 12,
@@ -144,8 +191,8 @@ export default function TreeLoginPage() {
               </label>
               <input
                 type="password"
-                placeholder="4桁パスワード"
-                maxLength={4}
+                placeholder="4桁パスワード（誕生日MMDD）"
+                maxLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onFocus={handleFocus}
@@ -153,15 +200,32 @@ export default function TreeLoginPage() {
                 style={inputStyle}
                 inputMode="numeric"
                 autoComplete="current-password"
+                disabled={loading}
               />
             </div>
+
+            {error && (
+              <div
+                style={{
+                  color: C.red,
+                  fontSize: 12,
+                  marginBottom: 16,
+                  fontWeight: 600,
+                  textAlign: "center",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
             <div style={{ display: "flex", justifyContent: "center" }}>
               <ActionButton
-                label="打刻・ログイン"
+                label={loading ? "認証中..." : "打刻・ログイン"}
                 large
                 type="submit"
                 color={`linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`}
                 onClick={handleLogin}
+                disabled={loading}
               />
             </div>
           </form>
