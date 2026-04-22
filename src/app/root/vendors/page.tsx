@@ -1,0 +1,153 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { PageHeader } from "../_components/PageHeader";
+import { Button } from "../_components/Button";
+import { DataTable, Column } from "../_components/DataTable";
+import { StatusBadge } from "../_components/StatusBadge";
+import { Modal } from "../_components/Modal";
+import { TextField, SelectField, FormGrid, TextareaField } from "../_components/FormField";
+import { fetchVendors, upsertVendor, setVendorActive, fetchCompanies } from "../_lib/queries";
+import type { Vendor, Company } from "../_constants/types";
+import { colors } from "../_constants/colors";
+
+const VENDOR_TYPES = ["外注先", "仕入先", "その他"];
+const ACCOUNT_TYPES = ["普通", "当座"];
+const FEE_BEARERS = ["当方負担", "先方負担"];
+
+const empty = (nextId: string): Vendor => ({
+  vendor_id: nextId,
+  vendor_name: "",
+  vendor_name_kana: "",
+  vendor_type: null,
+  bank_name: "",
+  bank_code: "",
+  branch_name: "",
+  branch_code: "",
+  account_type: "普通",
+  account_number: "",
+  account_holder_kana: "",
+  fee_bearer: "当方負担",
+  company_id: null,
+  notes: null,
+  is_active: true,
+  created_at: "",
+  updated_at: "",
+});
+
+function nextId(existing: Vendor[]): string {
+  const nums = existing.map((v) => parseInt(v.vendor_id.replace("VND-", ""), 10)).filter((n) => !isNaN(n));
+  const max = nums.length > 0 ? Math.max(...nums) : 0;
+  return `VND-${String(max + 1).padStart(3, "0")}`;
+}
+
+export default function VendorsPage() {
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [editTarget, setEditTarget] = useState<Vendor | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      setLoading(true); setError(null);
+      const [v, c] = await Promise.all([fetchVendors(), fetchCompanies()]);
+      setVendors(v); setCompanies(c);
+    } catch (e) { setError((e as Error).message); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    if (!search) return vendors;
+    const s = search.toLowerCase();
+    return vendors.filter((v) => v.vendor_name.toLowerCase().includes(s) || v.vendor_name_kana.toLowerCase().includes(s) || v.vendor_id.toLowerCase().includes(s));
+  }, [vendors, search]);
+
+  async function handleSave() {
+    if (!editTarget) return;
+    try { setSaving(true); await upsertVendor(editTarget); setEditTarget(null); await load(); }
+    catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
+  }
+
+  async function handleToggleActive(v: Vendor) {
+    try { await setVendorActive(v.vendor_id, !v.is_active); await load(); }
+    catch (e) { setError((e as Error).message); }
+  }
+
+  const companyMap = useMemo(() => new Map(companies.map((c) => [c.company_id, c])), [companies]);
+
+  const columns: Column<Vendor>[] = [
+    { key: "id", header: "ID", render: (v) => v.vendor_id, width: 90 },
+    { key: "name", header: "取引先名", render: (v) => v.vendor_name, width: 200 },
+    { key: "kana", header: "カナ", render: (v) => v.vendor_name_kana, width: 200 },
+    { key: "type", header: "区分", render: (v) => v.vendor_type ?? "—", width: 80 },
+    { key: "bank", header: "振込先", render: (v) => `${v.bank_name} ${v.branch_name} ${v.account_type}${v.account_number}` },
+    { key: "fee", header: "手数料", render: (v) => v.fee_bearer, width: 90 },
+    { key: "company", header: "担当法人", render: (v) => v.company_id ? companyMap.get(v.company_id)?.company_name ?? v.company_id : "—", width: 140 },
+    { key: "status", header: "状態", render: (v) => <StatusBadge active={v.is_active} />, width: 80, align: "center" },
+    { key: "actions", header: "", render: (v) => (
+      <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
+        <Button variant="secondary" onClick={() => setEditTarget(v)}>編集</Button>
+        <Button variant={v.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(v)}>{v.is_active ? "無効化" : "有効化"}</Button>
+      </div>
+    ), width: 170, align: "right" },
+  ];
+
+  return (
+    <>
+      <PageHeader
+        title="取引先マスタ"
+        description="振込先（外注先・仕入先等）の口座情報。"
+        actions={
+          <div style={{ display: "flex", gap: 8 }}>
+            <input type="search" placeholder="取引先名・カナ・IDで検索" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 220 }} />
+            <Button onClick={() => setEditTarget(empty(nextId(vendors)))}>+ 新規追加</Button>
+          </div>
+        }
+      />
+      {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={filtered} />}
+
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title={editTarget?.created_at ? "取引先を編集" : "取引先を追加"} width={720}>
+        {editTarget && (
+          <div>
+            <FormGrid>
+              <TextField label="取引先ID" required value={editTarget.vendor_id} onChange={(e) => setEditTarget({ ...editTarget, vendor_id: e.target.value })} disabled={!!editTarget.created_at} />
+              <SelectField label="区分" value={editTarget.vendor_type ?? ""} onChange={(e) => setEditTarget({ ...editTarget, vendor_type: e.target.value || null })}>
+                <option value="">—</option>
+                {VENDOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </SelectField>
+              <TextField label="取引先名" required value={editTarget.vendor_name} onChange={(e) => setEditTarget({ ...editTarget, vendor_name: e.target.value })} />
+              <TextField label="取引先名カナ" required value={editTarget.vendor_name_kana} onChange={(e) => setEditTarget({ ...editTarget, vendor_name_kana: e.target.value })} />
+              <TextField label="銀行名" required value={editTarget.bank_name} onChange={(e) => setEditTarget({ ...editTarget, bank_name: e.target.value })} />
+              <TextField label="金融機関コード（4桁）" required maxLength={4} value={editTarget.bank_code} onChange={(e) => setEditTarget({ ...editTarget, bank_code: e.target.value })} />
+              <TextField label="支店名" required value={editTarget.branch_name} onChange={(e) => setEditTarget({ ...editTarget, branch_name: e.target.value })} />
+              <TextField label="支店コード（3桁）" required maxLength={3} value={editTarget.branch_code} onChange={(e) => setEditTarget({ ...editTarget, branch_code: e.target.value })} />
+              <SelectField label="口座種別" required value={editTarget.account_type} onChange={(e) => setEditTarget({ ...editTarget, account_type: e.target.value })}>
+                {ACCOUNT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </SelectField>
+              <TextField label="口座番号（7桁）" required maxLength={7} value={editTarget.account_number} onChange={(e) => setEditTarget({ ...editTarget, account_number: e.target.value })} />
+              <TextField label="口座名義カナ（全角）" required value={editTarget.account_holder_kana} onChange={(e) => setEditTarget({ ...editTarget, account_holder_kana: e.target.value })} />
+              <SelectField label="手数料負担" required value={editTarget.fee_bearer} onChange={(e) => setEditTarget({ ...editTarget, fee_bearer: e.target.value })}>
+                {FEE_BEARERS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </SelectField>
+              <SelectField label="担当法人" value={editTarget.company_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, company_id: e.target.value || null })}>
+                <option value="">—</option>
+                {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
+              </SelectField>
+            </FormGrid>
+            <TextareaField label="備考" value={editTarget.notes ?? ""} onChange={(e) => setEditTarget({ ...editTarget, notes: e.target.value || null })} />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
+              <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
+              <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
+  );
+}
