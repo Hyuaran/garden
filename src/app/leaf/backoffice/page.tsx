@@ -11,26 +11,51 @@ import { colors } from "../_constants/colors";
 import { StatusBadge } from "./_components/StatusBadge";
 import { SupplyInline } from "./_components/SupplyInline";
 import { StatusFlow } from "./_components/StatusFlow";
+import { NewCaseModal } from "./_components/NewCaseModal";
 
 // ─── ロック画面 ───────────────────────────────────────────────────────────────
 function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   const router = useRouter();
   const [pw, setPw] = useState("");
-  const [empId, setEmpId] = useState("");
+  const [empDisplay, setEmpDisplay] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // マウント時にログインユーザーの社員番号を表示用に取得
+  useEffect(() => {
+    (async () => {
+      const { getUser } = await import("../_lib/auth");
+      const user = await getUser();
+      if (user?.email) {
+        const m = user.email.match(/^emp(\d+)@/);
+        if (m) setEmpDisplay(m[1]);
+      }
+    })();
+  }, []);
 
   async function handleUnlock(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { signInLeaf } = await import("../_lib/auth");
-    const result = await signInLeaf(empId.trim(), pw);
+    const { signInLeaf, getUser } = await import("../_lib/auth");
+    const user = await getUser();
+    if (!user?.email) {
+      setError("セッションが切れています。ログインし直してください。");
+      setLoading(false);
+      return;
+    }
+    const m = user.email.match(/^emp(\d+)@/);
+    if (!m) {
+      setError("アカウント情報の形式が不正です。");
+      setLoading(false);
+      return;
+    }
+    const result = await signInLeaf(m[1], pw);
     setLoading(false);
     if (result.success) {
       onUnlock();
     } else {
-      setError(result.error ?? "認証に失敗しました");
+      setError("パスワードが正しくありません");
     }
   }
 
@@ -62,28 +87,26 @@ function LockScreen({ onUnlock }: { onUnlock: () => void }) {
         <div style={{ fontSize: 18, fontWeight: 700, color: colors.text, marginBottom: 4 }}>
           画面がロックされています
         </div>
+        {empDisplay && (
+          <div
+            style={{
+              fontSize: 13,
+              color: colors.text,
+              background: colors.bg,
+              padding: "6px 10px",
+              borderRadius: 6,
+              display: "inline-block",
+              marginBottom: 12,
+            }}
+          >
+            社員番号: <b>{empDisplay}</b>
+          </div>
+        )}
         <div style={{ fontSize: 13, color: colors.textMuted, marginBottom: 24 }}>
           続けるにはパスワードを入力してください
         </div>
 
         <form onSubmit={handleUnlock}>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={empId}
-            onChange={(e) => setEmpId(e.target.value)}
-            placeholder="社員番号"
-            required
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 6,
-              border: `1.5px solid ${colors.border}`,
-              fontSize: 14,
-              marginBottom: 10,
-              boxSizing: "border-box",
-            }}
-          />
           <input
             type="password"
             value={pw}
@@ -97,8 +120,11 @@ function LockScreen({ onUnlock }: { onUnlock: () => void }) {
               borderRadius: 6,
               border: `1.5px solid ${colors.border}`,
               fontSize: 14,
+              color: colors.text,
+              background: "#fff",
               marginBottom: 16,
               boxSizing: "border-box",
+              outline: "none",
             }}
           />
 
@@ -237,6 +263,9 @@ export default function BackofficePage() {
   // 選択中案件（詳細モーダル用）
   const [selected, setSelected] = useState<KandenCase | null>(null);
 
+  // 新規登録モーダル表示
+  const [showNewCase, setShowNewCase] = useState(false);
+
   // ─ 認証チェック ─
   useEffect(() => {
     if (!isLeafUnlocked()) {
@@ -309,6 +338,15 @@ export default function BackofficePage() {
         />
       )}
 
+      {showNewCase && (
+        <NewCaseModal
+          onClose={() => setShowNewCase(false)}
+          onCreated={() => {
+            loadCases();
+          }}
+        />
+      )}
+
       <div
         style={{
           minHeight: "100vh",
@@ -347,6 +385,21 @@ export default function BackofficePage() {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={() => setShowNewCase(true)}
+              style={{
+                background: colors.accent,
+                border: "1px solid transparent",
+                color: "#fff",
+                padding: "6px 16px",
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              ＋ 新規案件
+            </button>
             <button
               onClick={handleManualLock}
               style={{
@@ -459,8 +512,9 @@ export default function BackofficePage() {
                 borderRadius: 8,
                 border: `1.5px solid ${colors.border}`,
                 fontSize: 13,
+                color: colors.text,
+                background: "#fff",
                 outline: "none",
-                background: colors.bgCard,
               }}
             />
             <button

@@ -41,9 +41,12 @@ export async function fetchCase(caseId: string): Promise<KandenCase | null> {
 
 // ─── 案件 CRUD ────────────────────────────────────────────────────────────────
 
-/** 案件作成 */
+/**
+ * 案件作成
+ * case_id は自前で生成して渡す（generateCaseId() を使う）
+ */
 export async function createCase(
-  payload: Omit<KandenCase, "case_id" | "created_at" | "updated_at">,
+  payload: Omit<KandenCase, "created_at" | "updated_at">,
 ): Promise<KandenCase> {
   const { data, error } = await supabase
     .from("soil_kanden_cases")
@@ -94,6 +97,37 @@ export async function fetchCalendar(
 
   if (error) throw new Error(error.message);
   return (data ?? []) as KandenCalendar[];
+}
+
+// ─── 従業員情報（Root連携・新規案件の営業自動補完用） ───────────────────────
+
+export interface EmployeeLite {
+  employee_number: string;
+  name: string | null;
+  company_id: string | null;
+}
+
+/**
+ * 社員番号から従業員情報を取得（root_employees 参照）
+ * 新規案件の営業担当フィールド自動補完に使用
+ *
+ * NOTE: root_employees には department カラムが無いため、
+ *       営業部署は手動入力に委ねる（自動補完対象外）
+ */
+export async function fetchEmployeeByNumber(
+  empNumber: string,
+): Promise<EmployeeLite | null> {
+  const { data, error } = await supabase
+    .from("root_employees")
+    .select("employee_number, name, company_id")
+    .eq("employee_number", empNumber)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("fetchEmployeeByNumber failed:", error.message);
+    return null;
+  }
+  return data as EmployeeLite | null;
 }
 
 // ─── 次の案件ID生成 ───────────────────────────────────────────────────────────
