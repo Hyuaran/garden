@@ -29,9 +29,12 @@ import { CallTimer } from "../../_components/CallTimer";
 import { GlassPanel } from "../../_components/GlassPanel";
 import { MapLink } from "../../_components/MapLink";
 import { WireframeLabel } from "../../_components/WireframeLabel";
+import { RESULT_BUTTONS } from "../../_constants/callButtons";
 import { C } from "../../_constants/colors";
 import { SHOW_DEMO_CONTROLS } from "../../_constants/flags";
 import { TREE_PATHS } from "../../_constants/screens";
+import { insertCall } from "../../_lib/queries";
+import { useTreeState } from "../../_state/TreeStateContext";
 
 /** デモ用顧客リストデータ */
 type Customer = {
@@ -100,6 +103,7 @@ const PF_ITEMS = (pf: string) => [
 
 export default function CallingBranchPage() {
   const router = useRouter();
+  const { treeUser } = useTreeState();
 
   // --- フェーズ制御 ---
   const [phase, setPhase] = useState<
@@ -114,6 +118,14 @@ export default function CallingBranchPage() {
   const [scriptOpen, setScriptOpen] = useState(false);
   const [scriptPinned, setScriptPinned] = useState(false);
 
+  // --- 通話時刻（DB保存用） ---
+  const [connectedAt, setConnectedAt] = useState<Date | null>(null);
+  const [hangupAt, setHangupAt] = useState<Date | null>(null);
+
+  // --- 保存中・エラー ---
+  const [savingCall, setSavingCall] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const cu = DEMO_CUSTOMERS[selectedCustomer];
 
   // --- フェーズ遷移ハンドラ ---
@@ -122,16 +134,54 @@ export default function CallingBranchPage() {
     setTimerKey((k) => k + 1);
   };
   const handleConnect = () => {
+    setConnectedAt(new Date());
     setPhase("talking");
     setTimerKey((k) => k + 1);
   };
   const handleHangup = () => {
+    setHangupAt(new Date());
     setPhase("inputting");
     setTimerKey((k) => k + 1);
   };
-  const handleResult = () => {
+
+  /**
+   * 結果を保存してフォームをリセットする共通処理。
+   * - 留守 / 不通（未接続）: startAt = endAt = 現在時刻（0秒扱い）
+   * - 通話後の結果選択: startAt = connectedAt, endAt = hangupAt
+   */
+  const saveAndReset = async (resultCode: string) => {
+    if (savingCall) return;
+    if (!treeUser) {
+      setSaveError("認証情報が取得できません。再ログインしてください");
+      return;
+    }
+    setSavingCall(true);
+    setSaveError(null);
+
+    const endAt = hangupAt ?? new Date();
+    const startAt = connectedAt ?? endAt;
+
+    const result = await insertCall({
+      employee_id: treeUser.employee_id,
+      started_at: startAt,
+      ended_at: endAt,
+      result_code: resultCode,
+      call_mode: "branch",
+      customer_name: cu.name,
+      phone: cu.phone,
+    });
+
+    if (!result.success) {
+      setSaveError(result.error ?? "保存に失敗しました");
+      setSavingCall(false);
+      return;
+    }
+
+    setConnectedAt(null);
+    setHangupAt(null);
     setPhase("waiting");
     setTimerKey((k) => k + 1);
+    setSavingCall(false);
   };
 
   return (
@@ -182,15 +232,25 @@ export default function CallingBranchPage() {
             onClick={handleHangup}
           />
         )}
-        {phase === "inputting" && (
-          <ActionButton
-            label="次の架電へ"
-            color={`linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`}
-            icon="→"
-            onClick={handleResult}
-          />
-        )}
       </div>
+
+      {/* 保存エラー表示 */}
+      {saveError && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "10px 14px",
+            background: "rgba(196,74,74,0.08)",
+            border: `1px solid ${C.red}`,
+            borderRadius: 10,
+            color: C.red,
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          ⚠️ 保存に失敗しました: {saveError}
+        </div>
+      )}
 
       {/* pulse アニメーション（タイマードット用） */}
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
@@ -331,15 +391,17 @@ export default function CallingBranchPage() {
           {phase === "calling" && (
             <>
               <ActionButton
-                label="留守"
+                label={savingCall ? "保存中..." : "留守"}
                 color={C.goldDark}
                 icon="📱"
-                onClick={handleResult}
+                onClick={() => saveAndReset("留守")}
+                disabled={savingCall}
               />
               <ActionButton
-                label="不通"
+                label={savingCall ? "保存中..." : "不通"}
                 color="#999"
-                onClick={handleResult}
+                onClick={() => saveAndReset("不通")}
+                disabled={savingCall}
               />
             </>
           )}
@@ -356,16 +418,48 @@ export default function CallingBranchPage() {
             </div>
           )}
           {phase === "inputting" && (
-            <div
-              style={{
-                fontSize: 12,
-                color: "#8a5ac6",
-                textAlign: "center",
-                padding: 8,
-                fontWeight: 600,
-              }}
-            >
-              結果を入力中
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: C.textMuted,
+                  marginBottom: 8,
+                  fontWeight: 600,
+                  textAlign: "center",
+                }}
+              >
+                結果を選択
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 6,
+                }}
+              >
+                {RESULT_BUTTONS.map((b) => (
+                  <button
+                    key={b.label}
+                    onClick={() => saveAndReset(b.label)}
+                    disabled={savingCall}
+                    style={{
+                      padding: "8px 4px",
+                      border: "none",
+                      borderRadius: 8,
+                      background: b.color,
+                      color: C.white,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: savingCall ? "not-allowed" : "pointer",
+                      opacity: savingCall ? 0.5 : 1,
+                      fontFamily: "'Noto Sans JP', sans-serif",
+                      transition: "opacity 0.2s",
+                    }}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </GlassPanel>

@@ -20,8 +20,8 @@
  * - コールシステム連動（将来）: callConnected/callDisconnected イベントで自動フェーズ遷移
  */
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { ActionButton } from "../_components/ActionButton";
 import {
@@ -40,6 +40,7 @@ import { C } from "../_constants/colors";
 import { SHOW_DEMO_CONTROLS } from "../_constants/flags";
 import { ROLES } from "../_constants/roles";
 import { TREE_PATHS } from "../_constants/screens";
+import { insertCall, type CallMode } from "../_lib/queries";
 import { useTreeState } from "../_state/TreeStateContext";
 
 /** デモ用: 前確/後確キュー */
@@ -77,7 +78,18 @@ const DEMO_TOSS_QUEUE: TossItem[] = [
 
 export default function InCallPage() {
   const router = useRouter();
-  const { role } = useTreeState();
+  const searchParams = useSearchParams();
+  const { role, treeUser } = useTreeState();
+
+  // --- フォローコール（/tree/follow-call からの遷移時）---
+  const followMode = useMemo(() => {
+    if (searchParams.get("mode") !== "follow") return null;
+    return {
+      customer: searchParams.get("customer") ?? "",
+      phone: searchParams.get("phone") ?? "",
+    };
+  }, [searchParams]);
+  const isFollow = !!followMode;
 
   // --- フェーズ制御 ---
   const [phase, setPhase] = useState<
@@ -101,6 +113,15 @@ export default function InCallPage() {
   const [scheduleTime, setScheduleTime] = useState("");
   const [nextDate, setNextDate] = useState("");
   const [nextTime, setNextTime] = useState("");
+  const [callMemo, setCallMemo] = useState("");
+
+  // --- 通話時刻（DB保存用） ---
+  const [connectedAt, setConnectedAt] = useState<Date | null>(null);
+  const [hangupAt, setHangupAt] = useState<Date | null>(null);
+
+  // --- 保存中・エラー ---
+  const [savingCall, setSavingCall] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // --- 確認モード ---
   const [confirmMode, setConfirmMode] = useState<ConfirmMode>(null);
@@ -134,11 +155,17 @@ export default function InCallPage() {
           address: "",
           phone: confirmMode!.phone,
         }
-      : {
-          name: "山田 太郎",
-          address: "東京都渋谷区神南1-2-3",
-          phone: "03-1234-5678",
-        };
+      : isFollow && followMode
+        ? {
+            name: followMode.customer,
+            address: "",
+            phone: followMode.phone,
+          }
+        : {
+            name: "山田 太郎",
+            address: "東京都渋谷区神南1-2-3",
+            phone: "03-1234-5678",
+          };
 
   // --- 前確/後確用ボタン定義 ---
   const confirmButtons = isConfirm
@@ -164,32 +191,90 @@ export default function InCallPage() {
     setCallKey((k) => k + 1);
   };
   const handleConnect = () => {
+    setConnectedAt(new Date());
     setPhase("talking");
     setTalkKey((k) => k + 1);
   };
   const handleHangup = () => {
+    setHangupAt(new Date());
     setPhase("inputting");
     setInputKey((k) => k + 1);
   };
-  const handleSubmit = () => {
-    if (canProceed) {
-      if (isConfirm) {
-        setConfirmMode(null);
-        router.push(TREE_PATHS.CONFIRM_WAIT);
-      } else if (isFromToss) {
-        setConfirmMode(null);
-        router.push(TREE_PATHS.TOSS_WAIT);
-      } else {
-        setPhase("waiting");
-        setWaitKey((k) => k + 1);
-      }
-      setSelectedResult(null);
-      setNgReason("");
-      setScheduleDate("");
-      setScheduleTime("");
-      setNextDate("");
-      setNextTime("");
+  const handleSubmit = async () => {
+    if (!canProceed || !selectedResult || savingCall) return;
+    if (!treeUser) {
+      setSaveError("認証情報が取得できません。再ログインしてください");
+      return;
     }
+    setSavingCall(true);
+    setSaveError(null);
+
+    const endAt = hangupAt ?? new Date();
+    const startAt = connectedAt ?? endAt;
+
+    // 前確/後確/フォロー/通常通話/トス後通話で call_mode を切替
+    const callMode: CallMode = isConfirm
+      ? cType === "前確"
+        ? "confirm_pre"
+        : "confirm_post"
+      : isFollow
+        ? "follow"
+        : "branch";
+
+    // 次回対応日時: 時間指定（前確/後確）or 見込A/B/C・コイン（通常通話）
+    const nextContact =
+      isConfirm && selectedResult === "時間指定" && scheduleDate && scheduleTime
+        ? new Date(`${scheduleDate}T${scheduleTime}:00`)
+        : !isConfirm && isProspectResult && nextDate && nextTime
+          ? new Date(`${nextDate}T${nextTime}:00`)
+          : undefined;
+
+    const isOtherNG =
+      selectedResult === "NG その他" ||
+      selectedResult === `${prefix}NG その他`;
+
+    const result = await insertCall({
+      employee_id: treeUser.employee_id,
+      started_at: startAt,
+      ended_at: endAt,
+      result_code: selectedResult,
+      call_mode: callMode,
+      customer_name: cu.name,
+      phone: cu.phone,
+      next_contact_at: nextContact,
+      ng_reason: isOtherNG && ngReason ? ngReason : undefined,
+      memo: callMemo || undefined,
+    });
+
+    if (!result.success) {
+      setSaveError(result.error ?? "保存に失敗しました");
+      setSavingCall(false);
+      return;
+    }
+
+    // 保存成功 → リセット + 遷移
+    if (isConfirm) {
+      setConfirmMode(null);
+      router.push(TREE_PATHS.CONFIRM_WAIT);
+    } else if (isFromToss) {
+      setConfirmMode(null);
+      router.push(TREE_PATHS.TOSS_WAIT);
+    } else if (isFollow) {
+      router.push(TREE_PATHS.FOLLOW_CALL);
+    } else {
+      setPhase("waiting");
+      setWaitKey((k) => k + 1);
+    }
+    setSelectedResult(null);
+    setNgReason("");
+    setScheduleDate("");
+    setScheduleTime("");
+    setNextDate("");
+    setNextTime("");
+    setCallMemo("");
+    setConnectedAt(null);
+    setHangupAt(null);
+    setSavingCall(false);
   };
 
   const handlePanelSelect = (item: {
@@ -325,19 +410,42 @@ export default function InCallPage() {
           {phase === "inputting" && (
             <ActionButton
               label={
-                isConfirm ? `${prefix}結果を保存` : "次の架電へ"
+                savingCall
+                  ? "保存中..."
+                  : isConfirm
+                    ? `${prefix}結果を保存`
+                    : "次の架電へ"
               }
               color={
-                canProceed
+                canProceed && !savingCall
                   ? `linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`
                   : "#ccc"
               }
               icon="→"
               onClick={handleSubmit}
+              disabled={savingCall || !canProceed}
             />
           )}
         </div>
       </div>
+
+      {/* 保存エラー表示 */}
+      {saveError && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "10px 14px",
+            background: "rgba(196,74,74,0.08)",
+            border: `1px solid ${C.red}`,
+            borderRadius: 10,
+            color: C.red,
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          ⚠️ 保存に失敗しました: {saveError}
+        </div>
+      )}
 
       {/* pulse アニメーション */}
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
@@ -593,6 +701,8 @@ export default function InCallPage() {
             <textarea
               placeholder="通話内容や気づいたことをメモ（任意）"
               rows={2}
+              value={callMemo}
+              onChange={(e) => setCallMemo(e.target.value)}
               style={{
                 width: "100%",
                 padding: "10px 12px",
