@@ -24,7 +24,7 @@
 
 | 着手日 | 完了日 | モジュール | Phase/タスク | 見積(d) | 実績(d) | 差分 | セッション | 記録者 | Notes |
 |---|---|---|---|---:|---:|---:|---|---|---|
-| 2026-04-22 | 2026-04-22 | Bud | Phase 1a 全銀協CSVライブラリ | 0.5 | 0.25 | -0.25 | b-main (B) | Claude | 実装+テスト 83件すべて緑。subagent-driven で効率実装、統合テストの見積バイト数誤りをsubagentが検知・修正。銀行取込確認（Task 13 手順書）は東海林さん側未実施。 |
+| 2026-04-22 | 2026-04-22 | Bud | Phase 1a 全銀協CSVライブラリ | 0.5 | 0.35 | -0.15 | b-main (B) | Claude | 実装+テスト 95件すべて緑。subagent-driven で効率実装、最終レビューで致命的3件検出・即修正（sourceAccount検証/padding throw/合計overflow）。銀行取込確認（Task 13 手順書）は東海林さん側未実施。 |
 | 2026-04-22 | (pending) | Bud | Phase 1b 振込管理 | 2.2 | — | — | b-main (B) | Claude | 当初2.0d → キャッシュバック専用フィールド対応で +0.2d |
 | 2026-04-22 | (pending) | Bud | Phase 1c Leaf連携 | 1.0 | — | — | b-main (B) | Claude | 共通部品 + 関電への組み込み。将来のLeafアプリでも流用 |
 | 2026-04-22 | (pending) | Bud | Phase 2a 銀行明細取込 | 1.35 | — | — | b-main (B) | Claude | 楽天/みずほ/PayPay/京都の4銀行。京都銀行は入金のみ |
@@ -84,7 +84,7 @@
 
 | 日付 | Phase | 所感（見積精度・ボトルネック・改善点） |
 |---|---|---|
-| 2026-04-22 | Bud Phase 1a | 見積 0.5d → 実績 0.25d（-0.25d、50% 時短）。subagent-driven-development で機械的な TDD タスクを高速に回せた。プランが具体的で Copy-Paste 近い場合は特に効率化が大きい。教訓：Copy-Paste タスクが多い小さなフェーズは見積をもう少し詰めて良い（次回は Copy-Paste 主体のタスクを 0.05-0.1d 単位で見積もる）。1 点スペック上のバイト数算出誤り（subagent が検知・修正）があり、大きなプラン書きでは数値計算の自己検証を厚めにすべきという気づき。 |
+| 2026-04-22 | Bud Phase 1a | 見積 0.5d → 実績 0.35d（-0.15d、30% 時短）。subagent-driven-development で機械的な TDD タスクを高速に回せた。**最終レビューで Critical 3 件検出**：ZenginSourceAccount 未検証で SJIS 120 byte 破綻、padding helper のサイレント truncation、合計金額 12 桁 overflow の未検知。すべて即修正し、byte 長検証テスト・padding 専用テストを追加。教訓：(1) レビュー subagent は必ずコード品質的な穴を掘り起こす価値がある（省略不可）、(2) 金融データの固定長バイナリは「文字数 = バイト数」という暗黙前提を単体テストで検証しないと SJIS 環境で破綻する、(3) padding helper はデフォルトで throw する方が安全（silent truncate は長期潜伏バグの温床）。 |
 
 ## 運用ルール
 
