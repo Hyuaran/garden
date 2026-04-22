@@ -9,6 +9,10 @@
  */
 
 import type { GardenRole } from "../../root/_constants/types";
+import type {
+  TransferStatus,
+  CashbackApplicationStatus,
+} from "./transfer-status";
 
 // ============================================================
 // Bud 内役割
@@ -50,15 +54,13 @@ export interface BudSessionUser {
 // ============================================================
 // bud_transfers（振込管理・Phase 1で使用）
 // ============================================================
-export type TransferStatus =
-  | "下書き"
-  | "確認済み"
-  | "承認待ち"
-  | "承認済み"
-  | "CSV出力済み"
-  | "振込完了"
-  | "差戻し";
+export type {
+  TransferStatus,
+  CashbackApplicationStatus,
+} from "./transfer-status";
+export { TRANSFER_STATUSES, canTransition } from "./transfer-status";
 
+export type TransferCategory = "regular" | "cashback";
 export type TransferType = "給与" | "外注費" | "経費精算" | "その他";
 export type DataSource = "紙スキャン" | "デジタル入力" | "CSVインポート";
 export type FeeBearer = "当方負担" | "先方負担";
@@ -102,6 +104,24 @@ export interface BudTransfer {
   invoice_pdf_url: string | null;
   created_at: string;
   updated_at: string;
+  // ===== Phase 1b で追加（v2 schema） =====
+  transfer_category: TransferCategory | null;
+  request_company_id: string | null;
+  execute_company_id: string | null;
+  cashback_applicant_name_kana: string | null;
+  cashback_applicant_name: string | null;
+  cashback_applicant_phone: string | null;
+  cashback_customer_id: string | null;
+  cashback_order_date: string | null;
+  cashback_opened_date: string | null;
+  cashback_product_name: string | null;
+  cashback_channel_name: string | null;
+  cashback_partner_code: string | null;
+  cashback_application_status: CashbackApplicationStatus | null;
+  payee_mismatch_confirmed: boolean;
+  expense_category_id: string | null;
+  forest_account_id: string | null;
+  duplicate_key: string | null; // GENERATED 列
 }
 
 // ============================================================
