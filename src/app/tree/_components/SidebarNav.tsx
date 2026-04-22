@@ -259,7 +259,15 @@ export function SidebarNav() {
     startBreak,
     menuOrder,
     setMenuOrder,
+    treeUser,
+    signOut,
   } = useTreeState();
+
+  const handleLogout = async () => {
+    if (!confirm("ログアウトしますか？（退勤打刻は別途「退勤・日報」画面から行ってください）")) return;
+    await signOut();
+    router.push("/tree/login");
+  };
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [showBreakMenu, setShowBreakMenu] = useState(false);
@@ -983,6 +991,55 @@ export function SidebarNav() {
           </button>
         </div>
       )}
+
+      {/* ログアウトボタン（認証時のみ表示） */}
+      {treeUser && (
+        <div
+          style={{
+            padding: 10,
+            borderTop: "1px solid rgba(255,255,255,0.12)",
+            flexShrink: 0,
+          }}
+        >
+          <button
+            type="button"
+            onClick={handleLogout}
+            title={`ログアウト（${treeUser.name}）`}
+            aria-label="ログアウト"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: isExpanded ? "flex-start" : "center",
+              gap: isExpanded ? 10 : 0,
+              width: "100%",
+              minHeight: 36,
+              padding: isExpanded ? "8px 12px" : "6px 0",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 10,
+              background: "rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.85)",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "'Noto Sans JP', sans-serif",
+              whiteSpace: "nowrap",
+              transition: "background 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(196,74,74,0.25)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+            }}
+          >
+            <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1 }}>
+              🚪
+            </span>
+            {isExpanded && "ログアウト"}
+          </button>
+        </div>
+      )}
+
       {/* isAway はまだ UI なし（TODO: オーバーレイ実装） */}
       {isAway && null}
     </div>
