@@ -10,6 +10,8 @@ import { TextField, SelectField, FormGrid, TextareaField } from "../_components/
 import { fetchEmployees, upsertEmployee, setEmployeeActive, fetchCompanies, fetchSalarySystems } from "../_lib/queries";
 import type { Employee, Company, SalarySystem } from "../_constants/types";
 import { colors } from "../_constants/colors";
+import { useRootState } from "../_state/RootStateContext";
+import { writeAudit } from "../_lib/audit";
 
 const EMP_TYPES = ["正社員", "アルバイト"];
 const ACCOUNT_TYPES = ["普通", "当座"];
@@ -50,6 +52,7 @@ function nextId(existing: Employee[]): string {
 }
 
 export default function EmployeesPage() {
+  const { canWrite, rootUser } = useRootState();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [salarySystems, setSalarySystems] = useState<SalarySystem[]>([]);
@@ -85,14 +88,58 @@ export default function EmployeesPage() {
 
   async function handleSave() {
     if (!editTarget) return;
-    try { setSaving(true); await upsertEmployee(editTarget); setEditTarget(null); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_employees",
+        payload: { attempted: "save" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      setSaving(true);
+      await upsertEmployee(editTarget);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_employees",
+        targetId: editTarget.employee_id,
+        payload: { value: editTarget },
+      });
+      setEditTarget(null);
+      await load();
+    } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   }
 
   async function handleToggleActive(e: Employee) {
-    try { await setEmployeeActive(e.employee_id, !e.is_active); await load(); }
-    catch (err) { setError((err as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_employees",
+        payload: { attempted: "toggle_active" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      await setEmployeeActive(e.employee_id, !e.is_active);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_employees",
+        targetId: e.employee_id,
+        payload: { toggle_active: !e.is_active },
+      });
+      await load();
+    } catch (err) { setError((err as Error).message); }
   }
 
   const columns: Column<Employee>[] = [
@@ -107,8 +154,8 @@ export default function EmployeesPage() {
     { key: "status", header: "状態", render: (e) => <StatusBadge active={e.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (e) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(e)}>編集</Button>
-        <Button variant={e.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(e)}>{e.is_active ? "無効化" : "有効化"}</Button>
+        <Button variant="secondary" onClick={() => setEditTarget(e)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button variant={e.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(e)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{e.is_active ? "無効化" : "有効化"}</Button>
       </div>
     ), width: 170, align: "right" },
   ];
@@ -127,7 +174,7 @@ export default function EmployeesPage() {
               {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
             </select>
             <input type="search" placeholder="氏名・番号で検索" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 180 }} />
-            <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd}>+ 新規追加</Button>
+            <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
           </div>
         }
       />
@@ -184,7 +231,7 @@ export default function EmployeesPage() {
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}

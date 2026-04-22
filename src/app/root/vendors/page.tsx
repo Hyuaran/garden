@@ -10,6 +10,8 @@ import { TextField, SelectField, FormGrid, TextareaField } from "../_components/
 import { fetchVendors, upsertVendor, setVendorActive, fetchCompanies } from "../_lib/queries";
 import type { Vendor, Company } from "../_constants/types";
 import { colors } from "../_constants/colors";
+import { useRootState } from "../_state/RootStateContext";
+import { writeAudit } from "../_lib/audit";
 
 const VENDOR_TYPES = ["外注先", "仕入先", "その他"];
 const ACCOUNT_TYPES = ["普通", "当座"];
@@ -42,6 +44,7 @@ function nextId(existing: Vendor[]): string {
 }
 
 export default function VendorsPage() {
+  const { canWrite, rootUser } = useRootState();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,14 +71,58 @@ export default function VendorsPage() {
 
   async function handleSave() {
     if (!editTarget) return;
-    try { setSaving(true); await upsertVendor(editTarget); setEditTarget(null); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_vendors",
+        payload: { attempted: "save" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      setSaving(true);
+      await upsertVendor(editTarget);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_vendors",
+        targetId: editTarget.vendor_id,
+        payload: { value: editTarget },
+      });
+      setEditTarget(null);
+      await load();
+    } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   }
 
   async function handleToggleActive(v: Vendor) {
-    try { await setVendorActive(v.vendor_id, !v.is_active); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_vendors",
+        payload: { attempted: "toggle_active" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      await setVendorActive(v.vendor_id, !v.is_active);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_vendors",
+        targetId: v.vendor_id,
+        payload: { toggle_active: !v.is_active },
+      });
+      await load();
+    } catch (e) { setError((e as Error).message); }
   }
 
   const companyMap = useMemo(() => new Map(companies.map((c) => [c.company_id, c])), [companies]);
@@ -91,8 +138,8 @@ export default function VendorsPage() {
     { key: "status", header: "状態", render: (v) => <StatusBadge active={v.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (v) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(v)}>編集</Button>
-        <Button variant={v.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(v)}>{v.is_active ? "無効化" : "有効化"}</Button>
+        <Button variant="secondary" onClick={() => setEditTarget(v)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button variant={v.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(v)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{v.is_active ? "無効化" : "有効化"}</Button>
       </div>
     ), width: 170, align: "right" },
   ];
@@ -105,7 +152,7 @@ export default function VendorsPage() {
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <input type="search" placeholder="取引先名・カナ・IDで検索" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 220 }} />
-            <Button onClick={() => setEditTarget(empty(nextId(vendors)))}>+ 新規追加</Button>
+            <Button onClick={() => setEditTarget(empty(nextId(vendors)))} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
           </div>
         }
       />
@@ -143,7 +190,7 @@ export default function VendorsPage() {
             <TextareaField label="備考" value={editTarget.notes ?? ""} onChange={(e) => setEditTarget({ ...editTarget, notes: e.target.value || null })} />
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}
