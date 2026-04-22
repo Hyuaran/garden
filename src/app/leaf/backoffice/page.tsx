@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { isLeafUnlocked, clearLeafUnlock, signOutLeaf } from "../_lib/auth";
 import { startLeafSessionTimer } from "../_lib/session-timer";
@@ -267,6 +267,9 @@ export default function BackofficePage() {
   // 新規登録モーダル表示
   const [showNewCase, setShowNewCase] = useState(false);
 
+  // 検索入力ref（Ctrl+F でフォーカス）
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // ─ 認証チェック ─
   useEffect(() => {
     if (!isLeafUnlocked()) {
@@ -324,6 +327,54 @@ export default function BackofficePage() {
     });
     return map;
   }, [cases]);
+
+  // ─ 案件前後移動（Ctrl+↑/↓） ─
+  const navigateCase = useCallback(
+    (dir: 1 | -1) => {
+      setSelected((current) => {
+        if (!current) return current;
+        const idx = filtered.findIndex((x) => x.case_id === current.case_id);
+        if (idx < 0) return current;
+        const nextIdx = idx + dir;
+        if (nextIdx < 0 || nextIdx >= filtered.length) return current;
+        return filtered[nextIdx];
+      });
+    },
+    [filtered],
+  );
+
+  // ─ キーボードショートカット（FileMaker風） ─
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      // Ctrl+F → 検索フォーカス
+      if (e.ctrlKey && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+      // Ctrl+N → 新規案件モーダル
+      if (e.ctrlKey && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        if (!showNewCase) setShowNewCase(true);
+        return;
+      }
+      // Ctrl+↑/↓ → 詳細モーダル内で前後移動
+      if (e.ctrlKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        if (selected) {
+          e.preventDefault();
+          navigateCase(e.key === "ArrowUp" ? -1 : 1);
+        }
+        return;
+      }
+      // Esc → 詳細モーダルを閉じる
+      if (e.key === "Escape" && selected) {
+        setSelected(null);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showNewCase, selected, navigateCase]);
 
   // ─ 離席ボタン ─
   function handleManualLock() {
@@ -388,6 +439,7 @@ export default function BackofficePage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
               onClick={() => setShowNewCase(true)}
+              title="新規案件登録 (Ctrl+N)"
               style={{
                 background: colors.accent,
                 border: "1px solid transparent",
@@ -502,10 +554,17 @@ export default function BackofficePage() {
             }}
           >
             <input
+              ref={searchInputRef}
               type="search"
-              placeholder="🔍 お客様番号・氏名・案件ID・供給地点で検索"
+              placeholder="🔍 お客様番号・氏名・案件ID・供給地点で検索 (Ctrl+F)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setSearch("");
+                  e.currentTarget.blur();
+                }
+              }}
               style={{
                 flex: 1,
                 minWidth: 240,
@@ -647,6 +706,8 @@ export default function BackofficePage() {
       {selected && (
         <CaseDetailModal
           c={selected}
+          filteredList={filtered}
+          onNavigate={navigateCase}
           onClose={() => setSelected(null)}
           onUpdated={(updated) => {
             setSelected(updated);
@@ -661,13 +722,34 @@ export default function BackofficePage() {
 // ─── 案件詳細モーダル ─────────────────────────────────────────────────────────
 function CaseDetailModal({
   c,
+  filteredList,
+  onNavigate,
   onClose,
   onUpdated,
 }: {
   c: KandenCase;
+  filteredList: KandenCase[];
+  onNavigate: (dir: 1 | -1) => void;
   onClose: () => void;
   onUpdated: (updated: KandenCase) => void;
 }) {
+  const currentIdx = filteredList.findIndex((x) => x.case_id === c.case_id);
+  const totalCount = filteredList.length;
+  const canPrev = currentIdx > 0;
+  const canNext = currentIdx >= 0 && currentIdx < totalCount - 1;
+  const navBtnStyle = (disabled: boolean): React.CSSProperties => ({
+    background: disabled ? "transparent" : colors.bg,
+    border: `1px solid ${colors.border}`,
+    color: disabled ? colors.border : colors.text,
+    width: 26,
+    height: 26,
+    borderRadius: 4,
+    fontSize: 11,
+    lineHeight: 1,
+    cursor: disabled ? "not-allowed" : "pointer",
+    padding: 0,
+  });
+
   return (
     <div
       style={{
@@ -714,6 +796,40 @@ function CaseDetailModal({
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {/* 前後移動（FileMaker風） */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button
+                type="button"
+                disabled={!canPrev}
+                onClick={() => onNavigate(-1)}
+                title="前の案件 (Ctrl+↑)"
+                style={navBtnStyle(!canPrev)}
+              >
+                ▲
+              </button>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: colors.textMuted,
+                  minWidth: 44,
+                  textAlign: "center",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {totalCount > 0 && currentIdx >= 0
+                  ? `${currentIdx + 1}/${totalCount}`
+                  : "—"}
+              </span>
+              <button
+                type="button"
+                disabled={!canNext}
+                onClick={() => onNavigate(1)}
+                title="次の案件 (Ctrl+↓)"
+                style={navBtnStyle(!canNext)}
+              >
+                ▼
+              </button>
+            </div>
             {c.is_urgent_sw && (
               <span
                 style={{
@@ -731,6 +847,7 @@ function CaseDetailModal({
             <StatusBadge status={c.status} />
             <button
               onClick={onClose}
+              title="閉じる (Esc)"
               style={{
                 background: "none",
                 border: "none",
