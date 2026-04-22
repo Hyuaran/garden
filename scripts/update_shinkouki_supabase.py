@@ -234,6 +234,65 @@ def format_amount(value) -> str:
     return f"{value:,}"
 
 
+def process_pdfs() -> dict[str, dict]:
+    """PDFディレクトリを走査し、各社の抽出結果を返す
+
+    Returns:
+        {company_id: {"uriage": int, "gaichuhi": int, "rieki": int, "period": str}}
+    """
+    if not PDF_DIR.exists():
+        print(f"❌ PDFディレクトリが見つかりません: {PDF_DIR}")
+        return {}
+
+    all_pdfs = [
+        p for p in PDF_DIR.iterdir()
+        if p.suffix.lower() == ".pdf" and p.is_file()
+    ]
+    target_pdfs = [p for p in all_pdfs if is_financial_statement(p)]
+
+    if not target_pdfs:
+        print("❌ 財務諸表PDFが見つかりませんでした")
+        return {}
+
+    print(f"対象PDF: {len(target_pdfs)}件 (全PDF {len(all_pdfs)}件中)\n")
+
+    updates = {}
+
+    for pdf_path in target_pdfs:
+        print(f"📄 読み込み: {pdf_path.name}")
+        data = extract_with_tables(pdf_path)
+
+        if not data["company_id"]:
+            print(f"  ⚠️  会社名を特定できませんでした。スキップ。\n")
+            continue
+
+        # テーブル抽出で売上も利益も取れなかった場合はテキスト抽出を試行
+        if data["uriage"] is None and data["rieki"] is None:
+            print(f"  (テーブル抽出失敗、テキスト抽出にフォールバック)")
+            data2 = extract_pl_from_pdf(pdf_path)
+            if data2["uriage"] is not None or data2["rieki"] is not None:
+                data = data2
+
+        print(f"  会社: {data['company_id']}")
+        print(f"  期間: ~{data.get('period', '不明')}")
+        print(f"  売上: {format_amount(data['uriage'])}")
+        print(f"  外注: {format_amount(data['gaichuhi'])}")
+        print(f"  利益: {format_amount(data['rieki'])}")
+
+        # 売上・外注・利益のいずれかが取れていれば更新対象
+        if (
+            data["uriage"] is not None
+            or data["gaichuhi"] is not None
+            or data["rieki"] is not None
+        ):
+            updates[data["company_id"]] = data
+        else:
+            print(f"  ⚠️  数値が取れませんでした。スキップ。")
+        print()
+
+    return updates
+
+
 def load_env():
     """環境変数を .env.local から読み込む"""
     if not ENV_PATH.exists():
@@ -262,8 +321,29 @@ def main():
 
     url, key = load_env()
     print(f"Supabase URL: {url}")
-    print(f"PDF ディレクトリ: {PDF_DIR}")
+    print(f"PDFディレクトリ: {PDF_DIR}\n")
+
+    updates = process_pdfs()
+
+    if not updates:
+        print("更新対象がありませんでした")
+        return
+
+    print(f"=== 抽出結果サマリ: {len(updates)}社 ===")
+    for cid, data in updates.items():
+        print(
+            f"  {cid}: 売上={format_amount(data['uriage'])} "
+            f"外注={format_amount(data['gaichuhi'])} "
+            f"利益={format_amount(data['rieki'])}"
+        )
     print()
+
+    if args.dry_run:
+        print("✅ Dry-run 完了（書き込みなし）")
+        return
+
+    # 次のTaskで Supabase UPDATE を実装
+    print("⚠️  Supabase UPDATE は Task 5 で実装します")
 
 
 if __name__ == "__main__":
