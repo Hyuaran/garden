@@ -39,6 +39,9 @@ yarn-error.log*
 # worktrees
 /.worktrees
 
+# Claude Code ユーザーローカル設定
+.claude/settings.local.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
