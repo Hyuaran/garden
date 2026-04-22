@@ -9,6 +9,7 @@
 
 export const TREE_PATHS = {
   LOGIN: "/tree/login",
+  BIRTHDAY: "/tree/birthday",
   DASHBOARD: "/tree/dashboard",
 
   CALLING_SPROUT: "/tree/calling/sprout",
