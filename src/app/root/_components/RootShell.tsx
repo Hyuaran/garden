@@ -5,9 +5,16 @@ import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 import { colors } from "../_constants/colors";
 import { MASTER_MENUS } from "../_constants/types";
+import { UserHeader } from "./UserHeader";
+import { SessionWarningModal } from "./SessionWarningModal";
 
 export function RootShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+
+  // ログイン画面はシェル無し (サイドバー・ヘッダー非表示)
+  if (pathname === "/root/login") {
+    return <>{children}</>;
+  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: "system-ui, -apple-system, 'Segoe UI', Meiryo, sans-serif" }}>
@@ -49,8 +56,12 @@ export function RootShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* メインコンテンツ */}
-      <main style={{ flex: 1, padding: "24px 32px", maxWidth: "100%", overflow: "auto" }}>
-        {children}
+      <main style={{ flex: 1, maxWidth: "100%", overflow: "auto", display: "flex", flexDirection: "column" }}>
+        <UserHeader />
+        <div style={{ padding: "24px 32px", flex: 1 }}>
+          {children}
+        </div>
+        <SessionWarningModal />
       </main>
     </div>
   );
