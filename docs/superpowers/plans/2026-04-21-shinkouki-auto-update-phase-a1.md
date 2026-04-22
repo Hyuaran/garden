@@ -6,7 +6,9 @@
 
 **Architecture:** 既存の `003_GardenForest_使用不可/update_shinkouki_v3.py` のPDF抽出ロジック（pdfplumber による表解析 + 会社名判定 + 損益計算書の主要数値抽出）をそのまま移植し、出力先のみ HTML 書き換え → Supabase UPDATE に差し替える。`.env.local` から Service Role Key を読み取る管理用スクリプトのため RLS をバイパスする。
 
-**Tech Stack:** Python 3.10+ / pdfplumber / supabase-py / python-dotenv
+**Tech Stack:** Python 3.10+ / pdfplumber / requests / python-dotenv
+
+> **Note:** 当初 `supabase-py` 採用予定だったが、Python 3.14 で依存 `pyiceberg` のビルドに C++ Build Tools が必要なため、`requests` で Supabase REST API を直接叩く方式に変更済み（2026-04-22）。
 
 **関連ドキュメント:**
 - 設計書: `docs/superpowers/specs/2026-04-21-shinkouki-auto-update-design.md`
@@ -41,37 +43,37 @@
 
 ---
 
-## Task 1: Python 環境セットアップと依存パッケージ定義
+## Task 1: Python 環境セットアップと依存パッケージ定義 ✅ **完了（2026-04-22, コミット `a18de6c`）**
 
 **Files:**
 - Create: `scripts/requirements.txt`
 
-- [ ] **Step 1: `scripts/requirements.txt` を作成**
+- [x] **Step 1: `scripts/requirements.txt` を作成**
 
 ```
 pdfplumber>=0.11.0
-supabase>=2.9.0
+requests>=2.31.0
 python-dotenv>=1.0.0
 ```
 
-- [ ] **Step 2: 依存パッケージをインストール**
+- [x] **Step 2: 依存パッケージをインストール**
 
 Run (PowerShell):
 ```powershell
-cd C:\Users\shoji\Desktop\garden
+cd C:\garden\b-main
 pip install -r scripts\requirements.txt
 ```
-Expected output: `Successfully installed pdfplumber-X.X.X supabase-X.X.X python-dotenv-X.X.X`
+Expected output: `Successfully installed pdfplumber-X.X.X requests-X.X.X python-dotenv-X.X.X`
 
-- [ ] **Step 3: インストール確認**
+- [x] **Step 3: インストール確認**
 
 Run:
 ```powershell
-python -c "import pdfplumber, supabase, dotenv; print('OK')"
+python -c "import pdfplumber, requests, dotenv; print('OK')"
 ```
 Expected output: `OK`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/requirements.txt
@@ -114,8 +116,8 @@ import sys
 from pathlib import Path
 
 import pdfplumber
+import requests
 from dotenv import load_dotenv
-from supabase import create_client, Client
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
@@ -536,16 +538,25 @@ git commit -m "feat(forest): PDF走査とループ処理を実装（抽出のみ
 `process_pdfs` の下に追加：
 
 ```python
-def update_supabase(client: Client, updates: dict[str, dict]) -> int:
-    """Supabase の shinkouki テーブルを UPDATE する
+def update_supabase(url: str, service_key: str, updates: dict[str, dict]) -> int:
+    """Supabase の shinkouki テーブルを REST API 経由で UPDATE する
 
     Args:
-        client: Supabase クライアント
+        url: Supabase プロジェクト URL
+        service_key: SUPABASE_SERVICE_ROLE_KEY
         updates: {company_id: {uriage, gaichuhi, rieki, period}}
 
     Returns:
         正常に更新された件数
     """
+    endpoint = f"{url}/rest/v1/shinkouki"
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+
     success_count = 0
 
     for cid, data in updates.items():
@@ -570,15 +581,20 @@ def update_supabase(client: Client, updates: dict[str, dict]) -> int:
             continue
 
         try:
-            response = (
-                client.table("shinkouki")
-                .update(payload)
-                .eq("company_id", cid)
-                .execute()
+            response = requests.patch(
+                endpoint,
+                headers=headers,
+                params={"company_id": f"eq.{cid}"},
+                json=payload,
+                timeout=30,
             )
 
-            # response.data が空なら該当行なし
-            if not response.data:
+            if response.status_code >= 400:
+                print(f"  ❌ {cid}: UPDATE 失敗 (HTTP {response.status_code}) - {response.text[:200]}")
+                continue
+
+            rows = response.json() if response.content else []
+            if not rows:
                 print(f"  ❌ {cid}: 該当行なし（shinkouki テーブルに未登録？）")
                 continue
 
@@ -586,8 +602,8 @@ def update_supabase(client: Client, updates: dict[str, dict]) -> int:
             fields = ", ".join(f"{k}={v}" for k, v in payload.items())
             print(f"  ✅ {cid}: {fields}")
 
-        except Exception as e:
-            print(f"  ❌ {cid}: UPDATE 失敗 - {e}")
+        except requests.RequestException as e:
+            print(f"  ❌ {cid}: リクエスト失敗 - {e}")
 
     return success_count
 ```
@@ -597,11 +613,8 @@ def update_supabase(client: Client, updates: dict[str, dict]) -> int:
 `# 次のTaskで Supabase UPDATE を実装` の行と `print("⚠️  Supabase UPDATE は Task 5 で実装します")` を以下に置き換え：
 
 ```python
-    # Supabase クライアント作成
-    client: Client = create_client(url, key)
-
     print(f"=== Supabase UPDATE: {len(updates)}社 ===")
-    success = update_supabase(client, updates)
+    success = update_supabase(url, key, updates)
     print(f"\n✅ 完了: {success}/{len(updates)} 件を更新しました")
 ```
 
