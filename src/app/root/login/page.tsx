@@ -18,6 +18,7 @@ import { colors } from "../_constants/colors";
 import {
   popReturnTo,
   signInRoot,
+  signOutRoot,
   toSyntheticEmail,
 } from "../_lib/auth";
 import { writeAudit } from "../_lib/audit";
@@ -75,6 +76,17 @@ export default function RootLoginPage() {
     // 2. garden_role 確認 (refreshAuth 内で login_denied 監査ログも書かれる)
     const authResult = await refreshAuth();
     if (!authResult.success) {
+      // refreshAuth の内側で login_denied ログは権限拒否時のみ書かれる。
+      // 通信エラー・root_employees 行なし等の「権限拒否以外の失敗」の場合、
+      // Supabase Auth セッションは生きたままなので、ここで強制的にサインアウト
+      // してセッションを破棄する (残留セッションによる権限不一致を防止)。
+      await signOutRoot();
+      await writeAudit({
+        action: "login_failed",
+        actorUserId: signInResult.userId,
+        actorEmpNum: empId,
+        payload: { reason: authResult.error ?? "refreshAuth failed" },
+      });
       setError(authResult.error ?? "権限情報の取得に失敗しました");
       setLoading(false);
       return;

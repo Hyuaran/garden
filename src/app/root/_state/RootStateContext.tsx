@@ -179,6 +179,13 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated]);
 
   // タイマー駆動 (警告 + 自動ログアウト)
+  //   signOut への参照は rootUser 更新の度に変わるが、interval 自体を
+  //   作り直すとタイミングがずれる可能性があるため ref 経由で最新版を呼ぶ。
+  const signOutRef = useRef(signOut);
+  useEffect(() => {
+    signOutRef.current = signOut;
+  }, [signOut]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -190,7 +197,7 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
       setRemainingMs(Math.max(0, remaining));
       if (!isRootUnlocked()) {
         // タイムアウト
-        void signOut("timeout");
+        void signOutRef.current("timeout");
         return;
       }
       if (remaining <= WARNING_OFFSET_MS) {
@@ -200,7 +207,7 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isAuthenticated, signOut]);
+  }, [isAuthenticated]);
 
   const value = useMemo<RootStateValue>(
     () => ({
