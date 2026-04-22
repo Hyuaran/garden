@@ -71,9 +71,16 @@ export async function fetchTransferList(
     query = query.lte("scheduled_date", filter.scheduled_date_to);
   }
   if (filter.search) {
-    // OR 条件: payee_name ILIKE or description ILIKE
-    const s = `%${filter.search}%`;
-    query = query.or(`payee_name.ilike.${s},description.ilike.${s}`);
+    // I-1 対策: PostgREST の or() は CSV-ish DSL。カンマ・括弧・クォートが
+    // フィルタ構文を壊すため除去。ILIKE メタ文字（% _ \）もエスケープ。
+    const sanitized = filter.search
+      .replace(/[\\%_]/g, (c) => `\\${c}`)
+      .replace(/[,()"'\s]+/g, " ")
+      .trim();
+    if (sanitized) {
+      const s = `%${sanitized}%`;
+      query = query.or(`payee_name.ilike.${s},description.ilike.${s}`);
+    }
   }
   if (typeof filter.limit === "number") {
     query = query.limit(filter.limit);

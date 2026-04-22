@@ -79,7 +79,7 @@ export async function createTransfer(
       status: "下書き" as TransferStatus,
       data_source: "デジタル入力",
       transfer_category: input.transfer_category,
-      transfer_type: input.transfer_category === "cashback" ? null : null, // Phase 1b では未使用
+      transfer_type: null, // Phase 1b では未使用（Phase 2/6 で給与/外注費分類時に使用）
       request_date: today.toISOString().substring(0, 10),
       due_date: input.due_date ?? null,
       scheduled_date: input.scheduled_date ?? null,

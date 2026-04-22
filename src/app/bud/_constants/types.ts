@@ -58,7 +58,11 @@ export type {
   TransferStatus,
   CashbackApplicationStatus,
 } from "./transfer-status";
-export { TRANSFER_STATUSES, canTransition } from "./transfer-status";
+export {
+  TRANSFER_STATUSES,
+  CASHBACK_APPLICATION_STATUSES,
+  canTransition,
+} from "./transfer-status";
 
 export type TransferCategory = "regular" | "cashback";
 export type TransferType = "給与" | "外注費" | "経費精算" | "その他";
