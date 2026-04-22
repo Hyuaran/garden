@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { RootShell } from "./_components/RootShell";
+import { RootGate } from "./_components/RootGate";
 import { RootStateProvider } from "./_state/RootStateContext";
 
 export const metadata = {
@@ -9,7 +10,9 @@ export const metadata = {
 export default function Layout({ children }: { children: ReactNode }) {
   return (
     <RootStateProvider>
-      <RootShell>{children}</RootShell>
+      <RootGate>
+        <RootShell>{children}</RootShell>
+      </RootGate>
     </RootStateProvider>
   );
 }
