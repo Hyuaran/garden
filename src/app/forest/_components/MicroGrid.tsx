@@ -21,9 +21,11 @@ type Props = {
   companies: Company[];
   periods: FiscalPeriod[];
   shinkouki: Shinkouki[];
+  /** 進行期セルクリック時のハンドラ（admin のみ渡す）。undefined なら DetailModal にフォールバック */
+  onEditShinkouki?: (companyId: string) => void;
 };
 
-export function MicroGrid({ companies, periods, shinkouki }: Props) {
+export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Props) {
   const [selectedCell, setSelectedCell] = useState<CellData | null>(null);
 
   const years = useMemo(() => {
@@ -57,6 +59,11 @@ export function MicroGrid({ companies, periods, shinkouki }: Props) {
   }, [years, companies, periods, shinkouki]);
 
   const handleCellClick = (cellData: CellData) => {
+    // 進行期セルで admin なら編集モーダル、それ以外は詳細モーダル
+    if (cellData.isShinkouki && onEditShinkouki) {
+      onEditShinkouki(cellData.company.id);
+      return;
+    }
     writeAuditLog("view_detail", `${cellData.company.id}_ki${cellData.ki}`);
     setSelectedCell(cellData);
   };
