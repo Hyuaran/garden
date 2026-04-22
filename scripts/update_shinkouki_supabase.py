@@ -293,6 +293,79 @@ def process_pdfs() -> dict[str, dict]:
     return updates
 
 
+def update_supabase(url: str, service_key: str, updates: dict[str, dict]) -> int:
+    """Supabase の shinkouki テーブルを REST API 経由で UPDATE する
+
+    Args:
+        url: Supabase プロジェクト URL
+        service_key: SUPABASE_SERVICE_ROLE_KEY
+        updates: {company_id: {uriage, gaichuhi, rieki, period}}
+
+    Returns:
+        正常に更新された件数
+    """
+    endpoint = f"{url}/rest/v1/shinkouki"
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+
+    success_count = 0
+
+    for cid, data in updates.items():
+        # 更新ペイロードを構築
+        payload = {}
+        if data["uriage"] is not None:
+            payload["uriage"] = data["uriage"]
+        if data["gaichuhi"] is not None:
+            payload["gaichuhi"] = data["gaichuhi"]
+        if data["rieki"] is not None:
+            payload["rieki"] = data["rieki"]
+
+        # reflected（何月まで反映済みか）
+        if data.get("period"):
+            payload["reflected"] = f"{data['period']}まで反映中"
+
+        # 暫定フラグ: スクリプトで自動反映 = 暫定扱い
+        payload["zantei"] = True
+
+        if not payload:
+            print(f"  {cid}: 更新対象フィールドがありません。スキップ。")
+            continue
+
+        try:
+            response = requests.patch(
+                endpoint,
+                headers=headers,
+                params={"company_id": f"eq.{cid}"},
+                json=payload,
+                timeout=30,
+            )
+
+            if response.status_code >= 400:
+                print(
+                    f"  ❌ {cid}: UPDATE 失敗 (HTTP {response.status_code}) - "
+                    f"{response.text[:200]}"
+                )
+                continue
+
+            rows = response.json() if response.content else []
+            if not rows:
+                print(f"  ❌ {cid}: 該当行なし（shinkouki テーブルに未登録？）")
+                continue
+
+            success_count += 1
+            fields = ", ".join(f"{k}={v}" for k, v in payload.items())
+            print(f"  ✅ {cid}: {fields}")
+
+        except requests.RequestException as e:
+            print(f"  ❌ {cid}: リクエスト失敗 - {e}")
+
+    return success_count
+
+
 def load_env():
     """環境変数を .env.local から読み込む"""
     if not ENV_PATH.exists():
@@ -342,8 +415,9 @@ def main():
         print("✅ Dry-run 完了（書き込みなし）")
         return
 
-    # 次のTaskで Supabase UPDATE を実装
-    print("⚠️  Supabase UPDATE は Task 5 で実装します")
+    print(f"=== Supabase UPDATE: {len(updates)}社 ===")
+    success = update_supabase(url, key, updates)
+    print(f"\n✅ 完了: {success}/{len(updates)} 件を更新しました")
 
 
 if __name__ == "__main__":
