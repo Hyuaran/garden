@@ -9,6 +9,8 @@ import { TextField, SelectField, FormGrid } from "../_components/FormField";
 import { fetchAttendance, upsertAttendance, fetchEmployees } from "../_lib/queries";
 import type { Attendance, Employee } from "../_constants/types";
 import { colors } from "../_constants/colors";
+import { useRootState } from "../_state/RootStateContext";
+import { writeAudit } from "../_lib/audit";
 
 const STATUSES = ["未取込", "取込済", "エラー"];
 
@@ -42,6 +44,7 @@ function currentMonth(): string {
 }
 
 export default function AttendancePage() {
+  const { canWrite, rootUser } = useRootState();
   const [rows, setRows] = useState<Attendance[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,8 +67,31 @@ export default function AttendancePage() {
 
   async function handleSave() {
     if (!editTarget) return;
-    try { setSaving(true); await upsertAttendance(editTarget); setEditTarget(null); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_attendance",
+        payload: { attempted: "save" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      setSaving(true);
+      await upsertAttendance(editTarget);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_attendance",
+        targetId: editTarget.attendance_id,
+        payload: { value: editTarget },
+      });
+      setEditTarget(null);
+      await load();
+    } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   }
 
@@ -83,7 +109,7 @@ export default function AttendancePage() {
     { key: "status", header: "取込", render: (r) => r.import_status, width: 80 },
     { key: "actions", header: "", render: (r) => (
       <div onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(r)}>編集</Button>
+        <Button variant="secondary" onClick={() => setEditTarget(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
       </div>
     ), width: 80, align: "right" },
   ];
@@ -96,7 +122,7 @@ export default function AttendancePage() {
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }} />
-            <Button onClick={() => setEditTarget(empty(employees[0]?.employee_id ?? "", month))} disabled={employees.length === 0}>+ 手動追加</Button>
+            <Button onClick={() => setEditTarget(empty(employees[0]?.employee_id ?? "", month))} disabled={employees.length === 0 || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 手動追加</Button>
           </div>
         }
       />
@@ -134,7 +160,7 @@ export default function AttendancePage() {
             </FormGrid>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}

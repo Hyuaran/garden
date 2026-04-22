@@ -10,6 +10,8 @@ import { TextField, FormGrid } from "../_components/FormField";
 import { fetchInsurance, upsertInsurance, setInsuranceActive } from "../_lib/queries";
 import type { Insurance } from "../_constants/types";
 import { colors } from "../_constants/colors";
+import { useRootState } from "../_state/RootStateContext";
+import { writeAudit } from "../_lib/audit";
 
 const emptyInsurance = (year: string): Insurance => ({
   insurance_id: `INS-${year}`,
@@ -28,6 +30,7 @@ const emptyInsurance = (year: string): Insurance => ({
 });
 
 export default function InsurancePage() {
+  const { canWrite, rootUser } = useRootState();
   const [rows, setRows] = useState<Insurance[]>([]);
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<Insurance | null>(null);
@@ -43,14 +46,58 @@ export default function InsurancePage() {
 
   async function handleSave() {
     if (!editTarget) return;
-    try { setSaving(true); await upsertInsurance(editTarget); setEditTarget(null); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_insurance",
+        payload: { attempted: "save" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      setSaving(true);
+      await upsertInsurance(editTarget);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_insurance",
+        targetId: editTarget.insurance_id,
+        payload: { value: editTarget },
+      });
+      setEditTarget(null);
+      await load();
+    } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   }
 
   async function handleToggleActive(r: Insurance) {
-    try { await setInsuranceActive(r.insurance_id, !r.is_active); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_insurance",
+        payload: { attempted: "toggle_active" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      await setInsuranceActive(r.insurance_id, !r.is_active);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_insurance",
+        targetId: r.insurance_id,
+        payload: { toggle_active: !r.is_active },
+      });
+      await load();
+    } catch (e) { setError((e as Error).message); }
   }
 
   const columns: Column<Insurance>[] = [
@@ -66,8 +113,8 @@ export default function InsurancePage() {
     { key: "status", header: "状態",        render: (r) => <StatusBadge active={r.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (r) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(r)}>編集</Button>
-        <Button variant={r.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(r)}>{r.is_active ? "無効化" : "有効化"}</Button>
+        <Button variant="secondary" onClick={() => setEditTarget(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button variant={r.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{r.is_active ? "無効化" : "有効化"}</Button>
       </div>
     ), width: 170, align: "right" },
   ];
@@ -77,7 +124,7 @@ export default function InsurancePage() {
       <PageHeader
         title="社会保険マスタ"
         description="年度ごとの保険料率。毎年4月に新年度を追加。"
-        actions={<Button onClick={() => setEditTarget(emptyInsurance(String(new Date().getFullYear())))}>+ 新規追加</Button>}
+        actions={<Button onClick={() => setEditTarget(emptyInsurance(String(new Date().getFullYear())))} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>}
       />
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
       {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={rows} />}
@@ -101,7 +148,7 @@ export default function InsurancePage() {
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}
