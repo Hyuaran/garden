@@ -35,6 +35,7 @@ const inputStyle: CSSProperties = {
   boxSizing: "border-box",
   fontFamily: "inherit",
   background: "#fff",
+  color: C.textDark,
 };
 
 const inputStyleError: CSSProperties = {
