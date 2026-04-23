@@ -26,6 +26,7 @@
 |---|---|---|---|---:|---:|---:|---|---|---|
 | 2026-04-22 | 2026-04-22 | Bud | Phase 1a 全銀協CSVライブラリ | 0.5 | 0.35 | -0.15 | b-main (B) | Claude | 実装+テスト 95件すべて緑。subagent-driven で効率実装、最終レビューで致命的3件検出・即修正（sourceAccount検証/padding throw/合計overflow）。銀行取込確認（Task 13 手順書）は東海林さん側未実施。 |
 | 2026-04-23 | 2026-04-23 | Bud | Phase 1b.1 振込管理 Foundation | 0.8 | 0.3 | -0.5 | b-main (B) | Claude | スキーマv2 + RLS 8ポリシー + 型 + ID生成 + 重複検出 + queries + mutations。125 tests全緑（+30新規）。Supabase SQL適用は東海林さん手動待ち。UIはPhase 1b.2。subagent-driven で 5回ディスパッチで完了、非常に効率的だった。 |
+| 2026-04-23 | (pending) | Bud | Phase 1b.2 振込管理 UI | 1.4 | — | — | a-bud (A) | Claude | StatusBadge/FilterBar/MonthlySummary/一覧/フォーム2種/Server Actions/詳細/CSV出力/Shell改修/動作確認手順書 の13タスク。subagent-driven 実装。 |
 | 2026-04-22 | (pending) | Bud | Phase 1c Leaf連携 | 1.0 | — | — | b-main (B) | Claude | 共通部品 + 関電への組み込み。将来のLeafアプリでも流用 |
 | 2026-04-22 | (pending) | Bud | Phase 2a 銀行明細取込 | 1.35 | — | — | b-main (B) | Claude | 楽天/みずほ/PayPay/京都の4銀行。京都銀行は入金のみ |
 | 2026-04-22 | (pending) | Bud | Phase 2b CC明細取込 | 0.8 | — | — | b-main (B) | Claude | オリコ/NTTBiz/三井住友x2。飲食店5000円ルール継承 |
