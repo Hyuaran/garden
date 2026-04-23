@@ -28,7 +28,8 @@
 - 代替解釈で進めたことは成果物冒頭に明記済み。
 
 ## コミット一覧
-（push 後に追記）
+- `64cadda` docs(forest): 自律実行レポートとForestレビュー/テスト案を追加
+  - `fix/forest-modal-height-consistent` ブランチへ push 済（`bfbf24c..64cadda`）
 
 ## 詰まった点・判断保留
 - **v9 HTML 所在不明**: 上記の通り代替解釈で進めたが、もし本来見せたかった原本が
