@@ -202,12 +202,13 @@ export async function selfApproveAsSuperAdmin(
 ): Promise<BudTransfer> {
   const now = new Date().toISOString();
 
+  // super_admin スキップ時は confirmed_by / confirmed_at を NULL のまま残し、
+  // 「二重チェックをスキップした」という事実を明示する（設計判断: I-2 B 案）。
+  // 監査は created_by（起票）と approved_by（承認）の 2 カラムで追跡可能。
   const { data, error } = await supabase
     .from("bud_transfers")
     .update({
       status: "承認済み",
-      confirmed_by: actorUserId,
-      confirmed_at: now,
       approved_by: actorUserId,
       approved_at: now,
     })
