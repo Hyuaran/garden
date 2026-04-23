@@ -34,6 +34,10 @@
 | Phase | 内容 | Estimated (d) | Actual (d) | Diff | Session | Notes |
 |---|---|---|---|---|---|---|
 | A-FMK1 | FileMaker風キーボードショートカット（再実装: Ctrl+F/N/↑↓, Esc + 前後ナビ） | 0.02 | 0.06 | +0.04 | b-main | 元handoffで「約10分」と見積。dev server起動・実機動作確認・Esc/境界テストを含めた実測は約30分弱（0.06d）。消失した `e168896` の再実装のため、コード内容は既知だった |
+| A-1c-spec | 添付ファイル機能 ブレスト・設計書作成（5カテゴリ / 3階層保管 / Supabase Storage連携方針） | 0.25 | - | pending | a-leaf | 2026-04-23 着手。b-main で最初の質問を投げた段階で中断し a-leaf で再開。spec 保存先予定: `docs/superpowers/specs/2026-04-23-leaf-a1c-attachment-design.md`。進行予定 D → A → B |
+| A-1c-D | 添付機能 共通基盤（Supabase Storage バケット / RLS / upload・list・delete API / サムネ生成 / 3階層移行バッチ枠） | 1.00 | - | pending | a-leaf | 2026-04-23 予定着手。spec 確定前の概算見積（要更新）。バケット構造・RLS・API 層・サムネ方式（client-side か Edge Function か）を含む |
+| A-1c-A | 添付機能 Backoffice UI（5カテゴリ表示 / 追加 / 削除 / 諸元・受領書の後付け / ステータス遷移連動） | 1.50 | - | pending | a-leaf | spec 確定前の概算見積（要更新）。諸元添付時の `specs_collected_at` 更新＋ステータス自動遷移含む |
+| A-1c-B | 添付機能 Input UI（営業スマホ：ガイド枠撮影 / JPEG1500px/85%圧縮 / アップロード進捗 / OCR連携） | 1.50 | - | pending | a-leaf | spec 確定前の概算見積（要更新）。カメラAPI・クライアント圧縮・OCR Edge Function 連携・ネット弱い現場でのリトライ含む |
 
 ## Root
 
