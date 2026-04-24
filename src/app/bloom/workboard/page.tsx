@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { supabase } from "../_lib/supabase";
+import { fetchCurrentPhase, fetchNextMilestone } from "../_lib/roadmap-queries";
 import { useBloomState } from "../_state/BloomStateContext";
 import type { DailyLog, PlannedItem } from "../_types/daily-log";
 import type { RoadmapEntry } from "../_types/roadmap-entry";
@@ -33,35 +33,6 @@ function sevenDaysAgoISO(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-async function fetchRunningAndNextMilestone(): Promise<{
-  running: RoadmapEntry | null;
-  milestone: RoadmapEntry | null;
-}> {
-  const now = new Date().toISOString().slice(0, 10);
-
-  const { data: runningData } = await supabase
-    .from("bloom_roadmap_entries")
-    .select("*")
-    .eq("kind", "phase")
-    .eq("is_archived", false)
-    .or(`completed_on.is.null,completed_on.gte.${now}`)
-    .order("sort_order", { ascending: true })
-    .limit(1);
-
-  const { data: milestoneData } = await supabase
-    .from("bloom_roadmap_entries")
-    .select("*")
-    .eq("kind", "milestone")
-    .eq("is_archived", false)
-    .or(`completed_on.is.null,completed_on.gte.${now}`)
-    .order("due_on", { ascending: true, nullsFirst: false })
-    .limit(1);
-
-  return {
-    running: (runningData?.[0] as RoadmapEntry | undefined) ?? null,
-    milestone: (milestoneData?.[0] as RoadmapEntry | undefined) ?? null,
-  };
-}
 
 export default function WorkboardPage() {
   const { bloomUser } = useBloomState();
@@ -81,17 +52,18 @@ export default function WorkboardPage() {
     if (!userId) return;
     setError(null);
     try {
-      const [s, tl, rl, rm] = await Promise.all([
+      const [s, tl, rl, phase, ms] = await Promise.all([
         fetchMyWorkerStatus(userId),
         fetchTodayLog(userId, today),
         fetchRecentLogs(userId, sevenDaysAgoISO()),
-        fetchRunningAndNextMilestone(),
+        fetchCurrentPhase(),
+        fetchNextMilestone(),
       ]);
       setStatus(s);
       setTodayLog(tl);
       setRecentLogs(rl);
-      setRunning(rm.running);
-      setMilestone(rm.milestone);
+      setRunning(phase);
+      setMilestone(ms);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "データ取得に失敗しました";
       console.error("[bloom/workboard] load error:", err);
