@@ -204,6 +204,9 @@ export type KotSyncPreviewResult =
       rows: KotSyncPreviewRow[];
       /** KoT 側で行単位にエラーがあった場合の記述（ヘッダー欠落等） */
       warnings: string[];
+      /** root_kot_sync_log に起票された行の id（クライアントから commit 時に再利用）。
+       *  ログ挿入失敗時は undefined。 */
+      log_id?: string;
     }
   | {
       ok: false;
@@ -215,6 +218,8 @@ export type KotSyncPreviewResult =
       message: string;
       /** 開発時のみ詳細を入れる */
       detail?: unknown;
+      /** 失敗時でも log_id は返す（client がログと紐付けて表示したいため） */
+      log_id?: string;
     };
 
 /**
