@@ -17,7 +17,7 @@
 import type { ModuleCode } from "../_types/module-progress";
 import { supabase } from "./supabase";
 
-const BLOOM_UNLOCKED_KEY = "bloomUnlockedAt";
+const BLOOM_UNLOCKED_KEY = "bloom:unlockedAt";
 
 export type GardenRole =
   | "toss"
