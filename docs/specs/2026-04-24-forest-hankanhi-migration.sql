@@ -16,7 +16,8 @@ BEGIN;
 CREATE TABLE forest_hankanhi (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id      text NOT NULL,            -- Forest の companies.id（'hyuaran' 等）を FK
-  fiscal_period_id uuid,                    -- fiscal_periods.id。進行期は null
+  fiscal_period_id integer,                 -- fiscal_periods.id（integer）。進行期は null
+                                            -- ※ 2026-04-25 訂正: 当初 uuid で書いていたが既存 fiscal_periods.id は integer
   ki              int NOT NULL,             -- 第何期（period がまだ無い進行期にも対応）
   yakuin          bigint,                   -- 役員報酬（円）
   kyuyo           bigint,                   -- 給与手当
