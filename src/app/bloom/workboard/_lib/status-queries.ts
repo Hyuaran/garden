@@ -33,5 +33,5 @@ export async function fetchTeamWorkerStatuses(
     console.error("[bloom] fetchTeamWorkerStatuses failed:", error.message);
     return [];
   }
-  return (data ?? []) as Array<Pick<WorkerStatus, "user_id" | "status" | "updated_at">>;
+  return (data ?? []) as unknown as Array<Pick<WorkerStatus, "user_id" | "status" | "updated_at">>;
 }
