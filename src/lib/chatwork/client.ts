@@ -30,16 +30,37 @@ export class ChatworkError extends Error {
   }
 }
 
+export type ChatworkClientOptions = {
+  fetchImpl?: typeof fetch;
+  /**
+   * true のときは実 API を呼ばず、sendMessage / uploadFile を
+   * no-op（ダミー message_id を返す）に差し替える。
+   * Cron Phase 1 テスト期間の誤送信防止用。
+   */
+  dryRun?: boolean;
+  /** Dry-run 時のログ出力先（既定 console.log） */
+  logger?: (entry: { method: string; roomId: string; body?: string }) => void;
+};
+
 export class ChatworkClient {
   private readonly apiToken: string;
   private readonly fetchImpl: typeof fetch;
+  readonly dryRun: boolean;
+  private readonly logger: NonNullable<ChatworkClientOptions["logger"]>;
 
-  constructor(apiToken: string, fetchImpl?: typeof fetch) {
+  constructor(apiToken: string, options: ChatworkClientOptions = {}) {
     if (!apiToken) {
       throw new Error("ChatworkClient: apiToken is required");
     }
     this.apiToken = apiToken;
-    this.fetchImpl = fetchImpl ?? globalThis.fetch;
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
+    this.dryRun = options.dryRun ?? false;
+    this.logger =
+      options.logger ??
+      ((entry) => {
+        // eslint-disable-next-line no-console
+        console.log("[chatwork:dry-run]", entry);
+      });
   }
 
   private async request<T>(
@@ -83,11 +104,15 @@ export class ChatworkClient {
   }
 
   /** POST /rooms/:room_id/messages */
-  sendMessage(
+  async sendMessage(
     roomId: ChatworkRoomId,
     body: string,
     options: ChatworkSendMessageOptions = {},
   ): Promise<ChatworkMessageSendResult> {
+    if (this.dryRun) {
+      this.logger({ method: "sendMessage", roomId: String(roomId), body });
+      return { message_id: `dry-run-${Date.now()}` };
+    }
     const params = new URLSearchParams();
     params.set("body", body);
     params.set("self_unread", options.selfUnread ? "1" : "0");
@@ -101,11 +126,19 @@ export class ChatworkClient {
   }
 
   /** POST /rooms/:room_id/files */
-  uploadFile(
+  async uploadFile(
     roomId: ChatworkRoomId,
     file: Blob,
     opts: { filename: string; message?: string },
   ): Promise<ChatworkFileUploadResult> {
+    if (this.dryRun) {
+      this.logger({
+        method: "uploadFile",
+        roomId: String(roomId),
+        body: `[file: ${opts.filename} (${file.size} bytes)] ${opts.message ?? ""}`,
+      });
+      return { file_id: 0 };
+    }
     const form = new FormData();
     form.append("file", file, opts.filename);
     if (opts.message) form.append("message", opts.message);

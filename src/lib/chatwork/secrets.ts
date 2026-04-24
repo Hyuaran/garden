@@ -24,6 +24,8 @@ export type ChatworkSecrets = {
   roomIdAlert: string;
   webhookSecret: string | null;
   bloomPublicUrl: string;
+  /** Phase 1 テスト期間の誤送信防止用。true なら実 API を叩かない */
+  dryRun: boolean;
 };
 
 export type ChatworkSecretsPartial = Partial<ChatworkSecrets>;
@@ -47,6 +49,7 @@ export function readSecretsFromEnv(): ChatworkSecrets {
   const webhookSecret = process.env.CHATWORK_WEBHOOK_SECRET ?? null;
   const bloomPublicUrl =
     process.env.BLOOM_PUBLIC_URL ?? "https://garden.hyuaran.com/bloom";
+  const dryRun = parseDryRunFlag(process.env.BLOOM_CHATWORK_DRY_RUN);
 
   const missing: string[] = [];
   if (!apiToken) missing.push("CHATWORK_API_TOKEN");
@@ -62,7 +65,18 @@ export function readSecretsFromEnv(): ChatworkSecrets {
     roomIdAlert,
     webhookSecret,
     bloomPublicUrl,
+    dryRun,
   };
+}
+
+/**
+ * BLOOM_CHATWORK_DRY_RUN: "true" / "1" / "yes" で true、それ以外は false。
+ * 未設定のときは safer default として false（呼び出し側で Phase 1 デフォルト true を明示）。
+ */
+function parseDryRunFlag(raw: string | undefined): boolean {
+  if (!raw) return false;
+  const normalized = raw.trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes";
 }
 
 /**
