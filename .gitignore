@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# claude code (per-machine local override)
+# Claude Code local overrides (per-machine / per-user)
 .claude/settings.local.json
