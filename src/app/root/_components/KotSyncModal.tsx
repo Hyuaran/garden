@@ -20,7 +20,19 @@ function lastMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function toAttendanceRow(r: KotSyncPreviewRow, employee_id: string): Attendance {
+/**
+ * KoT プレビュー行を root_attendance の upsert payload に変換。
+ *
+ * ⚠️ timestamptz 列（created_at / updated_at）は payload に含めない。
+ * 空文字列を送ると Postgres が "invalid input syntax for type timestamp with time zone: \"\"" で拒否する。
+ * - 新規 INSERT: Postgres の DEFAULT now() が効く
+ * - 既存 UPDATE: trigger `trg_root_attendance_updated_at` が updated_at を自動更新する
+ * imported_at は nullable かつ明示的に現在時刻を入れる。
+ */
+function toAttendanceRow(
+  r: KotSyncPreviewRow,
+  employee_id: string,
+): Partial<Attendance> & { attendance_id: string } {
   const attendance_id = `ATT-${r.values!.target_month}-${employee_id.replace("EMP-", "")}`;
   return {
     attendance_id,
@@ -42,8 +54,6 @@ function toAttendanceRow(r: KotSyncPreviewRow, employee_id: string): Attendance 
     imported_at: new Date().toISOString(),
     import_status: "取込済",
     kot_record_id: r.kot_record_id,
-    created_at: "",
-    updated_at: "",
   };
 }
 
