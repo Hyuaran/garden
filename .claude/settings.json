@@ -4,6 +4,7 @@
       "Bash(cp *)",
       "Bash(date *)",
       "Bash(find *)",
+      "Bash(gh api *)",
       "Bash(gh auth *)",
       "Bash(gh pr *)",
       "Bash(git add *)",
@@ -43,6 +44,7 @@
       "Bash(npm run test)",
       "Bash(npm run typecheck)",
       "Bash(npm view *)",
+      "Bash(npx tsc --noEmit)",
       "Bash(python \"G:/マイドライブ/17_システム構築/07_Claude/01_東海林美琴/006_日報自動配信/send_report.py\" *)",
       "Bash(touch *)",
       "Bash(which *)",
@@ -57,6 +59,7 @@
       "mcp__Claude_Preview__preview_snapshot",
       "mcp__Claude_Preview__preview_start",
       "mcp__Claude_Preview__preview_stop",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
       "mcp__ccd_session__mark_chapter"
     ],
     "deny": [
