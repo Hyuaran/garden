@@ -11,12 +11,42 @@
 BEGIN;
 
 -- ---------------------------------------------------------------------
+-- 0. Forest 認証ヘルパー関数（未作成なら作成）
+--    ※ 2026-04-25 追加: 当初は既存前提だったが未作成だったため本 migration で定義
+--    他の Forest spec（T-F4/T-F11 等）でも使用されるため、ここで定義することで共有
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION forest_is_user()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM forest_users WHERE user_id = auth.uid()
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION forest_is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM forest_users
+    WHERE user_id = auth.uid()
+      AND role IN ('admin', 'super_admin')
+  );
+$$;
+
+-- ---------------------------------------------------------------------
 -- 1. テーブル定義
 -- ---------------------------------------------------------------------
 CREATE TABLE forest_hankanhi (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id      text NOT NULL,            -- Forest の companies.id（'hyuaran' 等）を FK
-  fiscal_period_id uuid,                    -- fiscal_periods.id。進行期は null
+  fiscal_period_id integer,                 -- fiscal_periods.id（integer）。進行期は null
+                                            -- ※ 2026-04-25 訂正: 当初 uuid で書いていたが既存 fiscal_periods.id は integer
   ki              int NOT NULL,             -- 第何期（period がまだ無い進行期にも対応）
   yakuin          bigint,                   -- 役員報酬（円）
   kyuyo           bigint,                   -- 給与手当
