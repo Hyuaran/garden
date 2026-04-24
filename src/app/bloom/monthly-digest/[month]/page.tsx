@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { supabase } from "../../_lib/supabase";
 import { useBloomState } from "../../_state/BloomStateContext";
 import type { MonthlyDigest, MonthlyDigestStatus } from "../../_types/monthly-digest";
 import { DigestPageRenderer } from "../components/DigestPageRenderer";
@@ -37,6 +38,8 @@ export default function MonthDigestPage() {
   const [error, setError] = useState<string | null>(null);
   const [projection, setProjection] = useState(false);
   const [projectionStart, setProjectionStart] = useState(0);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!month) return;
@@ -68,6 +71,37 @@ export default function MonthDigestPage() {
     const updated = await archiveDigest(digest.id);
     if (updated) setDigest(updated);
   };
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!digest) return;
+    const monthKey = toMonthKey(digest.digest_month);
+    setPdfDownloading(true);
+    setPdfError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setPdfError("セッションが切れています。再ログインしてください。");
+        return;
+      }
+      const res = await fetch(
+        `/bloom/monthly-digest/${monthKey}/export`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        setPdfError(`PDF 生成エラー: ${body.error ?? res.statusText}`);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : "PDF 取得に失敗しました");
+    } finally {
+      setPdfDownloading(false);
+    }
+  }, [digest]);
 
   if (loading) {
     return <p style={{ fontSize: 13, color: "#6b8e75" }}>読み込み中...</p>;
@@ -143,14 +177,14 @@ export default function MonthDigestPage() {
           >
             🖥️ 投影モード
           </button>
-          <a
-            href={`/bloom/monthly-digest/${key}/export`}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={pdfDownloading}
             style={secondaryBtnStyle}
           >
-            📥 PDF
-          </a>
+            {pdfDownloading ? "⏳ 生成中..." : "📥 PDF"}
+          </button>
           {isAdmin && (
             <>
               <button
@@ -174,6 +208,19 @@ export default function MonthDigestPage() {
           )}
         </div>
       </header>
+
+      {pdfError && (
+        <div style={{
+          padding: "10px 14px",
+          background: "#fef2f2",
+          color: "#7f1d1d",
+          borderRadius: 8,
+          fontSize: 12,
+          marginBottom: 12,
+        }}>
+          {pdfError}
+        </div>
+      )}
 
       {digest.summary && (
         <div

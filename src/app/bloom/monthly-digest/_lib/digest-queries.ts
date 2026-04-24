@@ -10,6 +10,7 @@
  */
 
 import { supabase } from "../../_lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   DigestPage,
   MonthlyDigest,
@@ -44,9 +45,12 @@ export async function fetchDigests(): Promise<MonthlyDigest[]> {
   return (data ?? []) as MonthlyDigest[];
 }
 
-export async function fetchDigestByMonth(month: string): Promise<MonthlyDigest | null> {
+export async function fetchDigestByMonth(
+  month: string,
+  client: SupabaseClient = supabase,
+): Promise<MonthlyDigest | null> {
   const monthStart = toMonthStart(month);
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("bloom_monthly_digests")
     .select("*")
     .eq("digest_month", monthStart)
