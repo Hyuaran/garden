@@ -25,7 +25,15 @@
 | 着手日 | 完了日 | モジュール | Phase/タスク | 見積(d) | 実績(d) | 差分 | セッション | 記録者 | Notes |
 |---|---|---|---|---:|---:|---:|---|---|---|
 | 2026-04-22 | 2026-04-23 | Root | Phase 1 認証・権限管理 | — | 1.0 | — | b-main (B) | Claude | retroactive 記録（着手時点で見積未設定）。設計書+プラン+実装14コミット+レビュー修正3件+ハンドオフ。PR #9 マージ済。実稼働は Claude 実行時間+東海林手動確認（RLS 適用・動作確認・レビュー）の総計を推定 8h 相当。Phase 1 の残作業として「東海林さんの最終 UX 確認（残6シナリオ）」あり。 |
-| 2026-04-23 | (pending) | Root | Phase 2 他アプリからの参照ルール整備 | 0.5 | — | — | a-root (A) | Claude | 見積は暫定（spec 未完成）。着手時点では「Bud/Leaf が Root マスタを参照するためのクエリ整備」として計画されていたが、Bud/Leaf モジュールが未実装のため、a-root では「Root 側で提供する API 契約書・共有クエリヘルパー・RLS 前提条件ドキュメント」に絞って進める方針で東海林さんと確認中。spec 確定後に見積を再調整。 |
+| 2026-04-23 | (pending) | Root | Phase 2 他アプリからの参照ルール整備 | 0.5 | — | — | a-root (A) | Claude | 見積は暫定（spec 未完成）。着手時点では「Bud/Leaf が Root マスタを参照するためのクエリ整備」として計画されていたが、Bud/Leaf モジュールが未実装のため、a-root では「Root 側で提供する API 契約書・共有クエリヘルパー・RLS 前提条件ドキュメント」に絞って進める方針で東海林さんと確認中。spec 確定後に見積を再調整。**2026-04-24 a-main 判断：Phase 2 は保留。Bud/Leaf 連携開始時に精緻化する。** |
+| (予定 2026-04-25) | (pending) | Root | Phase A-1 T1: 法人マスタ CRUD UI | 0.5 | — | — | a-root (A) | Claude | Phase A 7マスタ UI の 1/7。`root_companies` テーブルは Phase 1 で構築済。今回は一覧・新規・編集・無効化の UI + バリデーション。Forest admin UI パターン流用。brand: feature/root-master-ui-20260424。 |
+| (予定 2026-04-25〜5-3) | (pending) | Root | Phase A-1 T2: 銀行口座マスタ CRUD UI | 0.5 | — | — | a-root (A) | Claude | 7マスタ UI の 2/7。`root_bank_accounts`（company_id FK）。T1 完了後に着手。 |
+| (予定 2026-04-25〜5-3) | (pending) | Root | Phase A-1 T3: 取引先マスタ CRUD UI | 0.5 | — | — | a-root (A) | Claude | 7マスタ UI の 3/7。`root_vendors`。口座名義カナ（銀行CSV形式）重要。 |
+| (予定 2026-04-25〜5-3) | (pending) | Root | Phase A-1 T4: 従業員マスタ CRUD UI | 0.5 | — | — | a-root (A) | Claude | 7マスタ UI の 4/7。`root_employees`（Phase 1 で認証用に構築済、今回 CRUD UI 拡張）。KoT ID / MFクラウド ID 入力欄あり。 |
+| (予定 2026-05-04〜10) | (pending) | Root | Phase A-1 T5: 給与体系マスタ CRUD UI | 0.5 | — | — | a-root (A) | Claude | 7マスタ UI の 5/7。`root_salary_systems`。JSON フィールド（手当・控除）UI 設計要検討。 |
+| (予定 2026-05-04〜10) | (pending) | Root | Phase A-1 T6: 社会保険マスタ CRUD UI | 0.5 | — | — | a-root (A) | Claude | 7マスタ UI の 6/7。`root_insurance`。年度別料率・等級テーブル（JSON）。 |
+| (予定 2026-05-04〜10) | (pending) | Root | Phase A-1 T7: 勤怠データ取込 UI | 0.5 | — | — | a-root (A) | Claude | 7マスタ UI の 7/7。`root_attendance`。手動取込画面（CSV インポート）。API 自動化は T8 で別扱い。 |
+| (予定 2026-05-11〜17) | (pending) | Root | Phase A-2: KoT API 連携（取込自動化） | 1.0 | — | — | a-root (A) | Claude | キングオブタイム API で月次自動取込。T7 の手動取込画面を補完。M1 総仕上げ。 |
 
 ## 集計ビュー（完了分のみ反映）
 
@@ -34,7 +42,7 @@
 | モジュール | 累計見積(d) | 累計実績(d) | 誤差率(%) | 完了 Phase 数 |
 |---|---:|---:|---:|---:|
 | Soil | 0 | 0 | — | 0 |
-| **Root** | — | 1.0 | — | 1 |
+| **Root** | 4.5（予定）+ — | 1.0 | — | 1 |
 | Tree | 0 | 0 | — | 0 |
 | Leaf | 0 | 0 | — | 0 |
 | Bud | 0 | 0 | — | 0 |
@@ -42,7 +50,9 @@
 | Seed | 0 | 0 | — | 0 |
 | Forest | 0 | 0 | — | 0 |
 | Rill | 0 | 0 | — | 0 |
-| **全体** | **—** | **1.0** | **—** | **1** |
+| **全体** | **4.5（予定）+ —** | **1.0** | **—** | **1** |
+
+> ※ Root Phase A-1（7マスタ UI）予定 3.5d + Phase A-2（KoT 連携）予定 1.0d = 合計 4.5d。a-main 指示 2026-04-24 に基づく Phase A 範囲。
 
 > ※ 他モジュール（Bud / Forest / Leaf 等）も別 feature ブランチで独自に記録している。develop に統合されたタイミングで本表を再集計する。
 
