@@ -19,6 +19,7 @@ import {
   type FieldErrors,
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
 const VENDOR_TYPES = ["外注先", "仕入先", "その他"];
 const ACCOUNT_TYPES = ["普通", "当座"];
@@ -109,7 +110,9 @@ export default function VendorsPage() {
       setSaving(true);
       setError(null);
       setErrors({});
-      await upsertVendor(editTarget);
+      await upsertVendor(
+        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.vendors }) as Partial<Vendor> & { vendor_id: string },
+      );
       await writeAudit({
         action: "master_update",
         actorUserId: rootUser?.user_id ?? null,

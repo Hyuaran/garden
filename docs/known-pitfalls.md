@@ -122,6 +122,17 @@ export async function GET(req: Request) {
 - §13 禁止事項「Supabase 本番データへの書き込み」に関連
 - 関連: `docs/specs/2026-04-24-bloom-workboard-scaffold.md` §8 Auth
 
+### 2.6 UI 行オブジェクトの初期値 `created_at: ""` を upsert に流して Postgres が拒否
+- **症状**: 新規作成時に `invalid input syntax for type timestamp with time zone: ""` で upsert 失敗
+- **原因**: `emptyX()` ファクトリが型を満たすため `created_at: ""` / `updated_at: ""` を入れ、その値がそのまま payload として Postgres に送られる。`timestamptz NOT NULL DEFAULT now()` 列は空文字を受理できない
+- **予防**:
+  - Insert/Upsert payload から `created_at` / `updated_at` は**常に除外**し、DB の `DEFAULT now()` と `trg_*_updated_at` トリガに任せる
+  - 共通サニタイザ `src/app/root/_lib/sanitize-payload.ts` の `sanitizeUpsertPayload` を各マスタ handleSave で必ず噛ませる
+  - nullable date 列（例: `termination_date`, `effective_to`）も `NULLABLE_DATE_KEYS` に登録して空文字 → undefined 変換
+  - 新マスタ追加時: `NULLABLE_DATE_KEYS` への追記と handleSave 内の sanitize 適用を PR チェックリストに含める
+- **対処**: Root では PR #15 / commit `6f07eef` で KoT 側のみ個別対応、Phase A-3-f で 7 マスタ + KotSyncModal を共通 helper に統合。他モジュールでマスタ追加する場合は同パターンを採用する
+- **波及**: 発見は Root Phase A-2 の §16 テストで。Bud / Leaf で同様の「空文字を timestamptz に流す」フォームを書かない
+
 ---
 
 ## [#3] 空オブジェクト insert バグ（emptyCompany / emptySystem 系）
