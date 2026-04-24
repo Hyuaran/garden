@@ -167,28 +167,35 @@ export function ShinkoukiEditModal({
           </button>
         </div>
 
-        {/* タブコンテンツ */}
-        {tab === "numbers" ? (
-          <NumberUpdateForm
-            companyId={company.id}
-            initial={shinkouki}
-            onSaved={async () => {
-              await onSaved();
-              onClose();
-            }}
-            onClose={onClose}
-          />
-        ) : (
-          <PeriodRolloverForm
-            companyId={company.id}
-            current={shinkouki}
-            onRolledOver={async () => {
-              await onSaved();
-              onClose();
-            }}
-            onClose={onClose}
-          />
-        )}
+        {/*
+          タブコンテンツ
+          タブ切替時に高さがジャンプしないよう、大きい方（📊 数値更新）に
+          合わせて minHeight を固定する。PdfUploader を含む 📊 タブの
+          実測値（≒550px）に小さな余裕を足した 560px を採用。
+        */}
+        <div style={{ minHeight: 560 }}>
+          {tab === "numbers" ? (
+            <NumberUpdateForm
+              companyId={company.id}
+              initial={shinkouki}
+              onSaved={async () => {
+                await onSaved();
+                onClose();
+              }}
+              onClose={onClose}
+            />
+          ) : (
+            <PeriodRolloverForm
+              companyId={company.id}
+              current={shinkouki}
+              onRolledOver={async () => {
+                await onSaved();
+                onClose();
+              }}
+              onClose={onClose}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
