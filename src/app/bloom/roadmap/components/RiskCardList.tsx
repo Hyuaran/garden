@@ -1,5 +1,6 @@
 "use client";
 
+import { useViewModeOptional } from "../../_state/ViewModeContext";
 import type { RoadmapEntry } from "../../_types/roadmap-entry";
 
 type Props = {
@@ -14,7 +15,9 @@ const SEVERITY_STYLE = {
   none: { bg: "#f9fafb", border: "#d1d5db", color: "#374151", icon: "⚪" },
 } as const;
 
-export function RiskCardList({ risks, simpleView = false }: Props) {
+export function RiskCardList({ risks, simpleView }: Props) {
+  const { simple } = useViewModeOptional();
+  const effective = simpleView ?? simple;
   return (
     <section
       style={{
@@ -41,7 +44,7 @@ export function RiskCardList({ risks, simpleView = false }: Props) {
           {risks.map((r) => {
             const style =
               SEVERITY_STYLE[r.banner_severity ?? "none"] ?? SEVERITY_STYLE.none;
-            const label = simpleView ? r.label_ops ?? r.label_dev : r.label_dev;
+            const label = effective ? r.label_ops ?? r.label_dev : r.label_dev;
             return (
               <li
                 key={r.id}

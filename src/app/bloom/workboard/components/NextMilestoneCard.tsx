@@ -1,5 +1,6 @@
 "use client";
 
+import { useViewModeOptional } from "../../_state/ViewModeContext";
 import type { RoadmapEntry } from "../../_types/roadmap-entry";
 
 type Props = {
@@ -7,7 +8,10 @@ type Props = {
   simpleView?: boolean;
 };
 
-export function NextMilestoneCard({ milestone, simpleView = false }: Props) {
+export function NextMilestoneCard({ milestone, simpleView }: Props) {
+  const { simple } = useViewModeOptional();
+  const effective = simpleView ?? simple;
+
   return (
     <section
       style={{
@@ -28,7 +32,7 @@ export function NextMilestoneCard({ milestone, simpleView = false }: Props) {
       {milestone ? (
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#1b4332" }}>
-            {simpleView ? milestone.label_ops ?? milestone.label_dev : milestone.label_dev}
+            {effective ? milestone.label_ops ?? milestone.label_dev : milestone.label_dev}
           </div>
           {milestone.description && (
             <p style={{ fontSize: 12, color: "#40916c", margin: "4px 0 0", lineHeight: 1.6 }}>

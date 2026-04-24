@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 
 import { BLOOM_PATHS } from "../_constants/routes";
 import { useBloomState } from "../_state/BloomStateContext";
+import { ViewModeToggle } from "./ViewModeToggle";
 
 const NAV_ITEMS: Array<{ href: string; label: string }> = [
   { href: BLOOM_PATHS.WORKBOARD, label: "Workboard" },
@@ -63,7 +64,8 @@ export function BloomShell({ children }: { children: ReactNode }) {
             作業可視化・ロードマップ・月次ダイジェスト
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <ViewModeToggle />
           <span style={{ fontSize: 12, color: "#40916c" }}>
             {bloomUser?.name ?? userEmail ?? ""}
           </span>

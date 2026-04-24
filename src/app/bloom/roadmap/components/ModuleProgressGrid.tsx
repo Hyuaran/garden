@@ -1,5 +1,6 @@
 "use client";
 
+import { useViewModeOptional } from "../../_state/ViewModeContext";
 import type {
   ModuleProgress,
   ModuleStatus,
@@ -21,7 +22,9 @@ const STATUS_STYLE: Record<
   unknown: { bg: "#f3f4f6", color: "#6b7280", label: "-" },
 };
 
-export function ModuleProgressGrid({ modules, simpleView = false }: Props) {
+export function ModuleProgressGrid({ modules, simpleView }: Props) {
+  const { simple } = useViewModeOptional();
+  const effective = simpleView ?? simple;
   if (modules.length === 0) {
     return (
       <section style={emptyStyle}>
@@ -54,7 +57,7 @@ export function ModuleProgressGrid({ modules, simpleView = false }: Props) {
       >
         {modules.map((m) => {
           const style = STATUS_STYLE[m.status ?? "unknown"];
-          const label = simpleView ? m.label_ops : m.label_dev;
+          const label = effective ? m.label_ops : m.label_dev;
           return (
             <div
               key={m.module_code}

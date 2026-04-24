@@ -1,14 +1,18 @@
 "use client";
 
+import { useViewModeOptional } from "../../_state/ViewModeContext";
 import type { RoadmapEntry } from "../../_types/roadmap-entry";
 
 type Props = {
   project: RoadmapEntry | null;
-  /** 👥みんな向け: true だと label_ops を優先表示 */
+  /** 省略時は ViewModeContext.simple を採用（👥みんな向けで true） */
   simpleView?: boolean;
 };
 
-export function RunningProjectCard({ project, simpleView = false }: Props) {
+export function RunningProjectCard({ project, simpleView }: Props) {
+  const { simple } = useViewModeOptional();
+  const effective = simpleView ?? simple;
+
   if (!project) {
     return (
       <section style={containerStyle}>
@@ -18,7 +22,7 @@ export function RunningProjectCard({ project, simpleView = false }: Props) {
     );
   }
 
-  const label = simpleView ? project.label_ops ?? project.label_dev : project.label_dev;
+  const label = effective ? project.label_ops ?? project.label_dev : project.label_dev;
   const pct = project.progress_pct ?? 0;
 
   return (
