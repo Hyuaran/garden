@@ -46,23 +46,48 @@ export interface KotHolidayObtained {
   minutes?: number;
 }
 
-/** 月別勤怠 1 行（1 従業員 1 月） */
+/** 休日勤務の内訳（法定休日 / 一般休日 / 割増等） */
+export interface KotHolidayWorkBlock {
+  minutes?: number;
+  dayCount?: number;
+  [k: string]: unknown;
+}
+
+/**
+ * 月別勤怠 1 行（1 従業員 1 月）
+ *
+ * 実機レスポンス（2026-04-24 疎通確認時点）で確認されたフィールドを反映。
+ * 公式 API Doc の初期仕様に無かった（= 推測だった）項目は、実機で空だったため
+ * オプショナル扱いのまま残している（将来 API 拡張時の互換性確保）。
+ */
 export interface KotMonthlyWorking {
   year: number;
   month: number;
   employeeKey: string;
-  /** 総勤務回数（出勤回数） */
+  /** 集計対象期間の開始日（YYYY-MM-DD） */
+  startDate?: string;
+  /** 集計対象期間の終了日（YYYY-MM-DD） */
+  endDate?: string;
+  /** 締処理済か */
+  isClosing?: boolean;
+
+  // --- 日数・回数 ---
+  /** 総勤務回数（打刻ベース） */
   workingCount?: number;
+  /** 総勤務日数 */
+  workingdayCount?: number;
   /** 平日勤務回数 */
   weekdayWorkingCount?: number;
+  /** 平日勤務日数 */
+  weekdayWorkingdayCount?: number;
   /** 遅刻回数 */
   lateCount?: number;
   /** 早退回数 */
   earlyLeaveCount?: number;
-  /** 総勤務日数 */
-  workingdayCount?: number;
-  /** 欠勤日数 */
-  absentdayCount?: number;
+  /** 勤務間インターバル不足回数 */
+  intervalShortageCount?: number;
+
+  // --- 分単位の時間 ---
   /** 所定時間（分） */
   assigned?: number;
   /** 所定外時間（分） */
@@ -71,11 +96,38 @@ export interface KotMonthlyWorking {
   overtime?: number;
   /** 深夜労働時間（分） */
   night?: number;
+  /** 深夜残業時間（分） */
+  nightOvertime?: number;
+  /** 深夜所定外時間（分） */
+  nightUnassigned?: number;
+  /** 遅刻時間（分） */
+  late?: number;
+  /** 早退時間（分） */
+  earlyLeave?: number;
   /** 休憩時間合計（分） */
   breakSum?: number;
-  /** 休暇取得一覧 */
+  /** みなし労働等の拘束時間（分） */
+  bind?: number;
+  /** 対象外時間（分） */
+  regarding?: number;
+
+  // --- 休日勤務 ---
+  /** 休日勤務（総括） */
+  holidayWork?: KotHolidayWorkBlock;
+  /** 法定休日勤務 */
+  legalHolidayWork?: KotHolidayWorkBlock;
+  /** 一般休日（所定休日）勤務 */
+  generalHolidayWork?: KotHolidayWorkBlock;
+  /** 割増対象時間 */
+  premiumWork?: KotHolidayWorkBlock;
+
+  // --- 休暇（旧仕様／将来拡張用。現行レスポンスには無いが互換のため残す） ---
+  /** 欠勤日数（現行レスポンスには含まれない可能性あり） */
+  absentdayCount?: number;
+  /** 休暇取得（有休等）。実機では `customMonthlyWorkings` に入っているケースあり */
   holidaysObtained?: KotHolidayObtained[];
-  /** カスタム項目（企業ごとに任意定義） */
+
+  /** カスタム項目（企業ごとに任意定義。有休取得等が入る場合あり） */
   customMonthlyWorkings?: Array<{ code?: string; name?: string; minutes?: number; dayCount?: number }>;
 }
 

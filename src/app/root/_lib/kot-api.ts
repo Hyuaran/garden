@@ -135,18 +135,18 @@ export async function fetchKotEmployees(opts: { date?: string; includeResigner?:
 /**
  * 月別勤怠を取得。
  *
- * @param date  "YYYY-MM-DD" 形式。指定日を含む月の月次集計が返る。
- *              月初を渡すのが無難（例: 2026-04-01）
+ * @param yearMonth  "YYYY-MM" 形式（例: "2026-04"）。
+ *                   実機確認で KoT API は YYYY-MM のみ受理（YYYY-MM-DD だと HTTP 400 / code 2）。
  */
-export async function fetchKotMonthlyWorkings(date: string): Promise<KotMonthlyWorking[]> {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+export async function fetchKotMonthlyWorkings(yearMonth: string): Promise<KotMonthlyWorking[]> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(yearMonth)) {
     throw new KotApiClientError({
       code: "INVALID_ARG",
       httpStatus: 0,
-      message: `date は YYYY-MM-DD 形式で指定してください（受け取り: "${date}"）`,
+      message: `yearMonth は YYYY-MM 形式で指定してください（受け取り: "${yearMonth}"）`,
     });
   }
-  return kotFetch<KotMonthlyWorking[]>(`/monthly-workings/${date}`);
+  return kotFetch<KotMonthlyWorking[]>(`/monthly-workings/${yearMonth}`);
 }
 
 // ------------------------------------------------------------

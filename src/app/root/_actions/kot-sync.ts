@@ -27,11 +27,14 @@ import { createClient } from "@supabase/supabase-js";
 // Helpers
 // ------------------------------------------------------------
 
-/** YYYY-MM → YYYY-MM-01 */
-function firstOfMonth(yyyymm: string): string {
+function assertYearMonth(yyyymm: string): void {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(yyyymm)) {
     throw new Error(`target_month は YYYY-MM 形式で指定してください（受け取り: "${yyyymm}"）`);
   }
+}
+
+/** /employees?date 用に当月1日 (YYYY-MM-DD) を組み立てる（/employees は YYYY-MM-DD を受理） */
+function firstOfMonth(yyyymm: string): string {
   return `${yyyymm}-01`;
 }
 
@@ -41,11 +44,26 @@ function minToHours(min: number | undefined): number {
   return Math.round((min / 60) * 10) / 10;
 }
 
-/** KoT 休暇一覧から「有休」を抽出して日数を返す */
-function paidLeaveDays(arr: KotMonthlyWorking["holidaysObtained"]): number {
-  if (!arr || arr.length === 0) return 0;
-  const paid = arr.find((h) => /有休|有給|年休/.test(h.name));
-  return paid?.dayCount ?? 0;
+/** KoT 休暇一覧 / customMonthlyWorkings から「有休」日数を抽出 */
+function paidLeaveDays(m: KotMonthlyWorking): number {
+  if (m.holidaysObtained) {
+    const paid = m.holidaysObtained.find((h) => /有休|有給|年休/.test(h.name));
+    if (paid?.dayCount) return paid.dayCount;
+  }
+  if (m.customMonthlyWorkings) {
+    const paid = m.customMonthlyWorkings.find((c) => c.name && /有休|有給|年休/.test(c.name));
+    if (paid?.dayCount) return paid.dayCount;
+  }
+  return 0;
+}
+
+/** 休日勤務の総分数を抽出 */
+function holidayWorkMinutes(m: KotMonthlyWorking): number {
+  const block = m.holidayWork;
+  if (block && typeof block.minutes === "number") return block.minutes;
+  const legal = m.legalHolidayWork?.minutes ?? 0;
+  const general = m.generalHolidayWork?.minutes ?? 0;
+  return legal + general;
 }
 
 /**
@@ -66,9 +84,8 @@ function serviceSupabase() {
 // ------------------------------------------------------------
 
 export async function previewKotMonthlySync(targetMonth: string): Promise<KotSyncPreviewResult> {
-  let date: string;
   try {
-    date = firstOfMonth(targetMonth);
+    assertYearMonth(targetMonth);
   } catch (e) {
     return {
       ok: false,
@@ -78,17 +95,19 @@ export async function previewKotMonthlySync(targetMonth: string): Promise<KotSyn
       message: (e as Error).message,
     };
   }
+  // /employees は yyyy-MM-DD、/monthly-workings は yyyy-MM を受理する（実機確認 2026-04-24）
+  const employeesDate = firstOfMonth(targetMonth); // yyyy-MM-DD
 
   try {
     // 1. KoT 従業員一覧（employeeKey → code マップ用）
-    const kotEmployees = await fetchKotEmployees({ date, includeResigner: true });
+    const kotEmployees = await fetchKotEmployees({ date: employeesDate, includeResigner: true });
     const codeByKey = new Map<string, string>();
     for (const e of kotEmployees) {
       if (e.key && e.code) codeByKey.set(e.key, e.code);
     }
 
-    // 2. KoT 月別勤怠
-    const monthlies = await fetchKotMonthlyWorkings(date);
+    // 2. KoT 月別勤怠（yyyy-MM をそのまま渡す）
+    const monthlies = await fetchKotMonthlyWorkings(targetMonth);
 
     // 3. Garden 側の従業員マスタ（employee_number → employee_id / name / is_active）
     const supa = serviceSupabase();
@@ -127,15 +146,15 @@ export async function previewKotMonthlySync(targetMonth: string): Promise<KotSyn
         target_month: targetMonth,
         working_days: m.workingdayCount ?? m.workingCount ?? 0,
         absence_days: m.absentdayCount ?? 0,
-        paid_leave_days: paidLeaveDays(m.holidaysObtained),
+        paid_leave_days: paidLeaveDays(m),
         scheduled_hours: minToHours(assigned),
         actual_hours: minToHours(actualTotal),
         overtime_hours: minToHours(unassigned),
         legal_overtime_hours: minToHours(overtime),
         night_hours: minToHours(m.night),
-        holiday_hours: 0, // KoT 標準項目に無いため 0（休日出勤はカスタム項目 or 別途）
-        late_hours: 0,    // KoT は lateCount（回数）のみ。分は無いので 0
-        early_leave_hours: 0, // 同上
+        holiday_hours: minToHours(holidayWorkMinutes(m)),
+        late_hours: minToHours(m.late),
+        early_leave_hours: minToHours(m.earlyLeave),
       };
 
       let resolution: KotSyncPreviewRow["resolution"];

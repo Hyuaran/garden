@@ -55,11 +55,19 @@ async function probe(path, label) {
   if (Array.isArray(body)) {
     console.log("  type: array, length:", body.length);
     if (body.length > 0) {
-      const sample = { ...body[0] };
-      // トークンやキーに見えるものだけ伏字にする（念のため）
-      if (typeof sample.key === "string" && sample.key.length > 12) sample.key = sample.key.slice(0, 6) + "...(masked)";
-      console.log("  sample[0] keys:", Object.keys(body[0]).sort());
-      console.log("  sample[0] (masked):", JSON.stringify(sample));
+      // PII 全面マスキング：存在する事実のみを出し、値は一切出さない
+      const keys = Object.keys(body[0]).sort();
+      console.log("  sample[0] keys:", keys);
+      const maskedSummary = {};
+      for (const k of keys) {
+        const v = body[0][k];
+        if (v === null || v === undefined) maskedSummary[k] = "null";
+        else if (Array.isArray(v)) maskedSummary[k] = `array(len=${v.length})`;
+        else if (typeof v === "object") maskedSummary[k] = "object";
+        else if (typeof v === "string") maskedSummary[k] = `string(len=${v.length})`;
+        else maskedSummary[k] = typeof v;
+      }
+      console.log("  sample[0] shape:", JSON.stringify(maskedSummary));
     }
   } else if (body && typeof body === "object") {
     console.log("  type: object, keys:", Object.keys(body));
@@ -70,10 +78,10 @@ async function probe(path, label) {
 try {
   await probe("/employees?limit=1", "employees-1");
 
-  // 当月1日を YYYY-MM-DD で構築（2026-04 の場合 "2026-04-01"）
+  // /monthly-workings は yyyy-MM 形式（実機確認 2026-04-24: yyyy-MM-DD は HTTP 400 code 2）
   const d = new Date();
-  const first = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-  await probe(`/monthly-workings/${first}`, `monthly-workings-${first}`);
+  const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  await probe(`/monthly-workings/${ym}`, `monthly-workings-${ym}`);
 } catch (e) {
   console.error("FATAL:", e.message);
   process.exit(1);
