@@ -10,8 +10,11 @@
  */
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { supabase } from "./supabase";
 import type {
   InsertSyncLogInput,
+  KotSyncStatus,
+  KotSyncType,
   RootKotSyncLog,
   UpdateSyncLogCompleteInput,
   UpdateSyncLogFailureInput,
@@ -89,6 +92,51 @@ export async function updateSyncLogComplete(
   } catch (e) {
     console.error("[kot-sync-log/updateSyncLogComplete] unexpected", e);
   }
+}
+
+/**
+ * A-3-b 用: クライアント（admin/super_admin）から読取。
+ * anon + JWT 経由で RLS を通す（admin 以下は 0 行）。
+ */
+export type FetchSyncLogsFilter = {
+  sync_type?: KotSyncType | null;
+  status?: KotSyncStatus | null;
+  /** ISO YYYY-MM-DD。from 含む */
+  from?: string | null;
+  /** ISO YYYY-MM-DD。to の翌日未満（排他）で filter */
+  to?: string | null;
+  limit?: number;
+  offset?: number;
+};
+
+export async function fetchSyncLogs(filter: FetchSyncLogsFilter = {}): Promise<RootKotSyncLog[]> {
+  const limit = Math.max(1, Math.min(filter.limit ?? 50, 200));
+  const offset = Math.max(0, filter.offset ?? 0);
+
+  let q = supabase
+    .from("root_kot_sync_log")
+    .select("*")
+    .order("triggered_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (filter.sync_type) q = q.eq("sync_type", filter.sync_type);
+  if (filter.status) q = q.eq("status", filter.status);
+  if (filter.from) q = q.gte("triggered_at", `${filter.from}T00:00:00+09:00`);
+  if (filter.to) q = q.lt("triggered_at", `${filter.to}T24:00:00+09:00`);
+
+  const { data, error } = await q;
+  if (error) throw new Error(`fetchSyncLogs failed: ${error.message}`);
+  return (data ?? []) as RootKotSyncLog[];
+}
+
+export async function fetchSyncLogById(id: string): Promise<RootKotSyncLog | null> {
+  const { data, error } = await supabase
+    .from("root_kot_sync_log")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(`fetchSyncLogById failed: ${error.message}`);
+  return (data ?? null) as RootKotSyncLog | null;
 }
 
 /**

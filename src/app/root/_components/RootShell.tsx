@@ -7,14 +7,20 @@ import { colors } from "../_constants/colors";
 import { MASTER_MENUS } from "../_constants/types";
 import { UserHeader } from "./UserHeader";
 import { SessionWarningModal } from "./SessionWarningModal";
+import { useRootState } from "../_state/RootStateContext";
 
 export function RootShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { canWrite } = useRootState();
 
   // ログイン画面はシェル無し (サイドバー・ヘッダー非表示)
   if (pathname === "/root/login") {
     return <>{children}</>;
   }
+
+  // adminOnly メニューは admin 以上のみ表示（canWrite = admin/super_admin）。
+  // manager 以下は直接 URL アクセスでも RootGate が弾くが、ナビからも非表示にする。
+  const menus = MASTER_MENUS.filter((m) => !m.adminOnly || canWrite);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: "system-ui, -apple-system, 'Segoe UI', Meiryo, sans-serif" }}>
@@ -28,7 +34,7 @@ export function RootShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav style={{ padding: "16px 0" }}>
-          {MASTER_MENUS.map((menu) => {
+          {menus.map((menu) => {
             const href = `/root/${menu.slug}`;
             const active = pathname === href || pathname?.startsWith(href + "/");
             return (
