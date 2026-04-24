@@ -14,9 +14,8 @@
 - ✅ 既存ファイル改変ゼロ（`CLAUDE.md`・`settings.json`・コード等は一切触らず）
 
 ## コミット一覧
-（この時点では未commit。次工程で `[a-auto]` タグ付きで commit + push 予定）
-
-- 予定: `docs(auto): [a-auto] smoke-test ドキュメント2件を追加`
+- `f7ba86c`: [a-auto] docs(auto): smoke-test ドキュメント2件を追加
+- push 先: `origin/feature/auto-smoke-test-20260424`（新規ブランチ、PR未作成）
 
 ## 詰まった点・判断保留
 - なし（判断事項ゼロで完走）
