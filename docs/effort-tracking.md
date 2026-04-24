@@ -29,6 +29,7 @@
 | 2026-04-22 | 2026-04-22 | Tree | Phase B Step 4-6 通話履歴保存 | 0.5 | 0.5 | 0 | a-main (A) | Claude | 遡及記録。Branch/通常通話/フォローコールの結果を soil_call_history に INSERT。RLS により自分の行のみ書込可。|
 | 2026-04-22 | 2026-04-22 | Tree | Phase B-β 初回誕生日入力画面 | 0.25 | 0.25 | 0 | a-main (A) | Claude | 遡及記録。/tree/birthday 新設、TreeAuthGate で birthday=null なら誘導、TreeShell bare 表示。Auth パス更新は Phase B 後半に分離。|
 | 2026-04-23 | 2026-04-23 | Tree | Phase B 後半 パスワード MMDD 自動反映 | 0.5 | (pending) | — | a-tree (A) | Claude | `/api/tree/update-password` 新規（service_role_key + 本人 access_token 検証）、`/tree/birthday` から保存後に呼出。動作確認は `npm run dev` + 三好理央アカウント（birthday=null）で実施予定。|
+| 2026-04-24 | (pending) | Tree | Phase B-β 仕様書起草（誕生日同期 / 擬似メール変換 / bare screen） | 0.25 | — | — | a-tree | Claude | a-main B案採択（2026-04-24 09:30 発動の a-auto レビュー提案を受けて）。§12 表記では 予定 0.25d (2h) / 実績 - / 差分 - / 理由「レビューB案採択」/ 担当 a-tree。コード改変なし、`docs/specs/2026-04-24-tree-phase-b-beta-birthday-password.md` を新規作成予定。派生ブランチ `feature/tree-review-20260424-auto` は保留（採用マージも破棄もしない）。|
 | 2026-04-23 | 2026-04-23 | Bud | Phase 1b.1 振込管理 Foundation | 0.8 | 0.3 | -0.5 | b-main (B) | Claude | スキーマv2 + RLS 8ポリシー + 型 + ID生成 + 重複検出 + queries + mutations。125 tests全緑（+30新規）。Supabase SQL適用は東海林さん手動待ち。UIはPhase 1b.2。subagent-driven で 5回ディスパッチで完了、非常に効率的だった。 |
 | 2026-04-22 | (pending) | Bud | Phase 1c Leaf連携 | 1.0 | — | — | b-main (B) | Claude | 共通部品 + 関電への組み込み。将来のLeafアプリでも流用 |
 | 2026-04-22 | (pending) | Bud | Phase 2a 銀行明細取込 | 1.35 | — | — | b-main (B) | Claude | 楽天/みずほ/PayPay/京都の4銀行。京都銀行は入金のみ |
