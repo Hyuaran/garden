@@ -11,6 +11,35 @@
 BEGIN;
 
 -- ---------------------------------------------------------------------
+-- 0. Forest 認証ヘルパー関数（未作成なら作成）
+--    ※ 2026-04-25 追加: 当初は既存前提だったが未作成だったため本 migration で定義
+--    他の Forest spec（T-F4/T-F11 等）でも使用されるため、ここで定義することで共有
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION forest_is_user()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM forest_users WHERE user_id = auth.uid()
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION forest_is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM forest_users
+    WHERE user_id = auth.uid()
+      AND role IN ('admin', 'super_admin')
+  );
+$$;
+
+-- ---------------------------------------------------------------------
 -- 1. テーブル定義
 -- ---------------------------------------------------------------------
 CREATE TABLE forest_hankanhi (
