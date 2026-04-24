@@ -18,6 +18,7 @@ import {
   type FieldErrors,
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { KotSyncModal } from "../_components/KotSyncModal";
 
 const STATUSES = ["未取込", "取込済", "エラー"];
 
@@ -60,10 +61,11 @@ export default function AttendancePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [kotOpen, setKotOpen] = useState<boolean>(false);
 
   const { activeIndex } = useMasterShortcuts<Attendance>({
     rows,
-    modalOpen: !!editTarget,
+    modalOpen: !!editTarget || kotOpen,
     onEditRow: canWrite ? setEditTarget : undefined,
   });
 
@@ -145,15 +147,15 @@ export default function AttendancePage() {
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }} />
-            <Button onClick={() => setEditTarget(empty(employees[0]?.employee_id ?? "", month))} disabled={employees.length === 0 || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 手動追加</Button>
+            <Button variant="primary" onClick={() => setKotOpen(true)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>KoT から月次取込</Button>
+            <Button variant="secondary" onClick={() => setEditTarget(empty(employees[0]?.employee_id ?? "", month))} disabled={employees.length === 0 || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 手動追加</Button>
           </div>
         }
       />
-      <div style={{ background: colors.infoBg, color: colors.info, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 12 }}>
-        キングオブタイムAPI連携は未実装。現在は手動登録/編集のみ対応。
-      </div>
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
       {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={rows} activeIndex={activeIndex} onRowClick={canWrite ? setEditTarget : undefined} emptyMessage={`${month} の勤怠データがありません`} />}
+
+      <KotSyncModal open={kotOpen} onClose={() => setKotOpen(false)} onCompleted={load} defaultMonth={month} />
 
       <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "勤怠データを編集" : "勤怠データを追加"} width={760}>
         {editTarget && (
