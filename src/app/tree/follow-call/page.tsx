@@ -14,9 +14,12 @@
  * - サイドバー・KPIヘッダーは TreeShell が描画
  */
 
+import { useRouter } from "next/navigation";
+
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
+import { TREE_PATHS } from "../_constants/screens";
 
 /* ---------- 型定義 ---------- */
 
@@ -47,8 +50,22 @@ const DEMO_FOLLOW_CALLS: FollowCallItem[] = [
 /* ---------- コンポーネント ---------- */
 
 export default function FollowCallPage() {
+  const router = useRouter();
   const scheduled = DEMO_FOLLOW_CALLS.filter((f) => f.scheduledTime).sort((a, b) => (a.scheduledTime! > b.scheduledTime! ? 1 : -1));
   const unscheduled = DEMO_FOLLOW_CALLS.filter((f) => !f.scheduledTime);
+
+  /**
+   * フォロー対象の顧客情報をクエリパラメータに載せて /tree/call に遷移。
+   * 遷移先では mode=follow を検知して call_mode="follow" で soil_call_history に保存する。
+   */
+  const handleFollowClick = (f: FollowCallItem) => {
+    const params = new URLSearchParams({
+      mode: "follow",
+      customer: f.customer.replace(/\s*様$/, ""),
+      phone: f.phone,
+    });
+    router.push(`${TREE_PATHS.IN_CALL}?${params.toString()}`);
+  };
 
   const totalCount = DEMO_FOLLOW_CALLS.length;
   const scheduledCount = scheduled.length;
@@ -91,7 +108,7 @@ export default function FollowCallPage() {
         {scheduled.map((f) => (
           <div
             key={f.id}
-            onClick={() => {/* navigate to call with follow mode */}}
+            onClick={() => handleFollowClick(f)}
             style={{
               display: "grid", gridTemplateColumns: "70px 1fr 120px 100px 80px 90px 80px 80px 80px",
               padding: "12px 16px", gap: 8, alignItems: "center", cursor: "pointer",
@@ -117,7 +134,7 @@ export default function FollowCallPage() {
       {unscheduled.map((f) => (
         <GlassPanel
           key={f.id}
-          onClick={() => {/* navigate to call with follow mode */}}
+          onClick={() => handleFollowClick(f)}
           style={{ padding: 16, marginBottom: 12, cursor: "pointer", borderLeft: `4px solid ${C.midGreen}` }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>

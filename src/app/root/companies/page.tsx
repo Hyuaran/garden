@@ -11,6 +11,15 @@ import { fetchCompanies, upsertCompany, setCompanyActive } from "../_lib/queries
 import type { Company } from "../_constants/types";
 import { DEFAULT_BANKS } from "../_constants/types";
 import { colors } from "../_constants/colors";
+import { useRootState } from "../_state/RootStateContext";
+import { writeAudit } from "../_lib/audit";
+import {
+  validateCompany,
+  hasErrors,
+  VALIDATION_ERROR_BANNER,
+  type FieldErrors,
+} from "../_lib/validators";
+import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 
 const emptyCompany = (nextId: string): Company => ({
   company_id: nextId,
@@ -33,11 +42,19 @@ function nextCompanyId(existing: Company[]): string {
 }
 
 export default function CompaniesPage() {
+  const { canWrite, rootUser } = useRootState();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<Company | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const { activeIndex } = useMasterShortcuts<Company>({
+    rows: companies,
+    modalOpen: !!editTarget,
+    onEditRow: canWrite ? setEditTarget : undefined,
+  });
 
   async function load() {
     try {
@@ -53,12 +70,40 @@ export default function CompaniesPage() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => { if (!editTarget) setErrors({}); }, [editTarget]);
+
   async function handleSave() {
     if (!editTarget) return;
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_companies",
+        payload: { attempted: "save" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    const errs = validateCompany(editTarget);
+    if (hasErrors(errs)) {
+      setErrors(errs);
+      setError(VALIDATION_ERROR_BANNER);
+      return;
+    }
     try {
       setSaving(true);
       setError(null);
+      setErrors({});
       await upsertCompany(editTarget);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_companies",
+        targetId: editTarget.company_id,
+        payload: { value: editTarget },
+      });
       setEditTarget(null);
       await load();
     } catch (e) {
@@ -69,8 +114,27 @@ export default function CompaniesPage() {
   }
 
   async function handleToggleActive(c: Company) {
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_companies",
+        payload: { attempted: "toggle_active" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
     try {
       await setCompanyActive(c.company_id, !c.is_active);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_companies",
+        targetId: c.company_id,
+        payload: { toggle_active: !c.is_active },
+      });
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -87,8 +151,8 @@ export default function CompaniesPage() {
     { key: "status",   header: "状態",         render: (c) => <StatusBadge active={c.is_active} />, width: 80, align: "center" },
     { key: "actions",  header: "",             render: (c) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(c)}>編集</Button>
-        <Button variant={c.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(c)}>
+        <Button variant="secondary" onClick={() => setEditTarget(c)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button variant={c.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(c)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>
           {c.is_active ? "無効化" : "有効化"}
         </Button>
       </div>
@@ -99,9 +163,9 @@ export default function CompaniesPage() {
     <>
       <PageHeader
         title="法人マスタ"
-        description="6法人の基本情報、デフォルト振込銀行。削除不可。"
+        description="6法人の基本情報、デフォルト振込銀行。削除不可（無効化で管理）。Ctrl+↑↓ で行移動・Ctrl+Enter で編集。"
         actions={
-          <Button variant="primary" onClick={() => setEditTarget(emptyCompany(nextCompanyId(companies)))}>
+          <Button variant="primary" onClick={() => setEditTarget(emptyCompany(nextCompanyId(companies)))} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>
             + 新規追加
           </Button>
         }
@@ -111,28 +175,28 @@ export default function CompaniesPage() {
       {loading ? (
         <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div>
       ) : (
-        <DataTable columns={columns} rows={companies} emptyMessage="法人データがありません" />
+        <DataTable columns={columns} rows={companies} emptyMessage="法人データがありません" activeIndex={activeIndex} onRowClick={canWrite ? setEditTarget : undefined} />
       )}
 
-      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title={editTarget?.created_at ? "法人を編集" : "法人を追加"} width={720}>
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "法人を編集" : "法人を追加"} width={720}>
         {editTarget && (
           <div>
             <FormGrid>
-              <TextField label="法人ID" required value={editTarget.company_id} onChange={(e) => setEditTarget({ ...editTarget, company_id: e.target.value })} disabled={!!editTarget.created_at} />
-              <SelectField label="デフォルト振込銀行" required value={editTarget.default_bank} onChange={(e) => setEditTarget({ ...editTarget, default_bank: e.target.value })}>
+              <TextField label="法人ID" required value={editTarget.company_id} onChange={(e) => setEditTarget({ ...editTarget, company_id: e.target.value })} disabled={!!editTarget.created_at} error={errors.company_id} />
+              <SelectField label="デフォルト振込銀行" required value={editTarget.default_bank} onChange={(e) => setEditTarget({ ...editTarget, default_bank: e.target.value })} error={errors.default_bank}>
                 {DEFAULT_BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
               </SelectField>
-              <TextField label="法人名" required value={editTarget.company_name} onChange={(e) => setEditTarget({ ...editTarget, company_name: e.target.value })} />
-              <TextField label="法人名カナ" required value={editTarget.company_name_kana} onChange={(e) => setEditTarget({ ...editTarget, company_name_kana: e.target.value })} />
-              <TextField label="代表者名" required value={editTarget.representative} onChange={(e) => setEditTarget({ ...editTarget, representative: e.target.value })} />
-              <TextField label="法人番号（13桁）" value={editTarget.corporate_number ?? ""} onChange={(e) => setEditTarget({ ...editTarget, corporate_number: e.target.value || null })} />
-              <TextField label="電話番号" value={editTarget.phone ?? ""} onChange={(e) => setEditTarget({ ...editTarget, phone: e.target.value || null })} />
+              <TextField label="法人名" required value={editTarget.company_name} onChange={(e) => setEditTarget({ ...editTarget, company_name: e.target.value })} error={errors.company_name} />
+              <TextField label="法人名カナ" required value={editTarget.company_name_kana} onChange={(e) => setEditTarget({ ...editTarget, company_name_kana: e.target.value })} error={errors.company_name_kana} />
+              <TextField label="代表者名" required value={editTarget.representative} onChange={(e) => setEditTarget({ ...editTarget, representative: e.target.value })} error={errors.representative} />
+              <TextField label="法人番号（13桁）" value={editTarget.corporate_number ?? ""} onChange={(e) => setEditTarget({ ...editTarget, corporate_number: e.target.value || null })} error={errors.corporate_number} />
+              <TextField label="電話番号" value={editTarget.phone ?? ""} onChange={(e) => setEditTarget({ ...editTarget, phone: e.target.value || null })} error={errors.phone} />
             </FormGrid>
-            <TextField label="本店所在地" required value={editTarget.address} onChange={(e) => setEditTarget({ ...editTarget, address: e.target.value })} />
+            <TextField label="本店所在地" required value={editTarget.address} onChange={(e) => setEditTarget({ ...editTarget, address: e.target.value })} error={errors.address} />
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              <Button variant="primary" onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}

@@ -166,6 +166,65 @@ export interface Attendance {
 }
 
 // ============================================================
+// 8. 認証拡張型（root-auth-schema.sql で追加されるフィールド）
+// ============================================================
+
+/** Garden全体ロール（7段階・2026-04-21 改訂） */
+export type GardenRole =
+  | "toss"         // トス（アポインター）
+  | "closer"       // クローザー
+  | "cs"           // CS（仮）: 前確/後確画面の閲覧権限ここ以上
+  | "staff"        // 一般社員（仮）
+  | "manager"      // 責任者（仮）
+  | "admin"        // 管理者（仮）
+  | "super_admin"; // 全権管理者
+
+/** ロール表示ラベル（日本語） */
+export const GARDEN_ROLE_LABELS: Record<GardenRole, string> = {
+  toss:        "トス",
+  closer:      "クローザー",
+  cs:          "CS",
+  staff:       "一般社員",
+  manager:     "責任者",
+  admin:       "管理者",
+  super_admin: "全権管理者",
+};
+
+/** ロールの階層順序（昇順） */
+export const GARDEN_ROLE_ORDER: GardenRole[] = [
+  "toss",
+  "closer",
+  "cs",
+  "staff",
+  "manager",
+  "admin",
+  "super_admin",
+];
+
+/** 指定ロールが基準ロール以上の権限を持つか（階層比較） */
+export function isRoleAtLeast(target: GardenRole, baseline: GardenRole): boolean {
+  return GARDEN_ROLE_ORDER.indexOf(target) >= GARDEN_ROLE_ORDER.indexOf(baseline);
+}
+
+/** Root 画面閲覧可能なロール（manager 以上） */
+export const ROOT_VIEW_ROLES: GardenRole[] = ["manager", "admin", "super_admin"];
+
+/** Root 編集可能なロール（admin 以上） */
+export const ROOT_WRITE_ROLES: GardenRole[] = ["admin", "super_admin"];
+
+/** Tree 前確/後確画面の閲覧可能ロール（cs 以上） */
+export const TREE_CONFIRM_VIEW_ROLES: GardenRole[] = [
+  "cs", "staff", "manager", "admin", "super_admin",
+];
+
+/** root_employees テーブルに認証拡張フィールドを含めた型 */
+export interface RootEmployee extends Employee {
+  user_id: string | null;
+  garden_role: GardenRole;
+  birthday: string | null; // YYYY-MM-DD
+}
+
+// ============================================================
 // マスタメニュー定義
 // ============================================================
 export interface MasterMenu {
