@@ -10,6 +10,8 @@ import { TextField, SelectField, FormGrid, TextareaField } from "../_components/
 import { fetchSalarySystems, upsertSalarySystem, setSalarySystemActive } from "../_lib/queries";
 import type { SalarySystem } from "../_constants/types";
 import { colors } from "../_constants/colors";
+import { useRootState } from "../_state/RootStateContext";
+import { writeAudit } from "../_lib/audit";
 
 const EMP_TYPES = ["正社員", "アルバイト", "共通"];
 const BASE_TYPES = ["月給", "時給", "日給"];
@@ -39,6 +41,7 @@ function nextId(existing: SalarySystem[]): string {
 }
 
 export default function SalarySystemsPage() {
+  const { canWrite, rootUser } = useRootState();
   const [systems, setSystems] = useState<SalarySystem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<SalarySystem | null>(null);
@@ -54,14 +57,58 @@ export default function SalarySystemsPage() {
 
   async function handleSave() {
     if (!editTarget) return;
-    try { setSaving(true); await upsertSalarySystem(editTarget); setEditTarget(null); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_salary_systems",
+        payload: { attempted: "save" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      setSaving(true);
+      await upsertSalarySystem(editTarget);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_salary_systems",
+        targetId: editTarget.salary_system_id,
+        payload: { value: editTarget },
+      });
+      setEditTarget(null);
+      await load();
+    } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   }
 
   async function handleToggleActive(s: SalarySystem) {
-    try { await setSalarySystemActive(s.salary_system_id, !s.is_active); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_salary_systems",
+        payload: { attempted: "toggle_active" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      await setSalarySystemActive(s.salary_system_id, !s.is_active);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_salary_systems",
+        targetId: s.salary_system_id,
+        payload: { toggle_active: !s.is_active },
+      });
+      await load();
+    } catch (e) { setError((e as Error).message); }
   }
 
   const columns: Column<SalarySystem>[] = [
@@ -75,8 +122,8 @@ export default function SalarySystemsPage() {
     { key: "status", header: "状態", render: (s) => <StatusBadge active={s.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (s) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(s)}>編集</Button>
-        <Button variant={s.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(s)}>{s.is_active ? "無効化" : "有効化"}</Button>
+        <Button variant="secondary" onClick={() => setEditTarget(s)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button variant={s.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(s)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{s.is_active ? "無効化" : "有効化"}</Button>
       </div>
     ), width: 170, align: "right" },
   ];
@@ -86,7 +133,7 @@ export default function SalarySystemsPage() {
       <PageHeader
         title="給与体系マスタ"
         description="雇用形態別の給与計算ルール。従業員マスタから紐づけて使用。"
-        actions={<Button onClick={() => setEditTarget(emptySystem(nextId(systems)))}>+ 新規追加</Button>}
+        actions={<Button onClick={() => setEditTarget(emptySystem(nextId(systems)))} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>}
       />
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
       {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={systems} />}
@@ -112,7 +159,7 @@ export default function SalarySystemsPage() {
             <TextareaField label="備考" value={editTarget.notes ?? ""} onChange={(e) => setEditTarget({ ...editTarget, notes: e.target.value || null })} />
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}

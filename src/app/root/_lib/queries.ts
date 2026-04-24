@@ -14,6 +14,7 @@ import type {
   Employee,
   Insurance,
   Attendance,
+  GardenRole,
 } from "../_constants/types";
 
 // ============================================================
@@ -168,4 +169,47 @@ export async function fetchAttendance(targetMonth?: string): Promise<Attendance[
 export async function upsertAttendance(attendance: Partial<Attendance> & { attendance_id: string }): Promise<void> {
   const { error } = await supabase.from("root_attendance").upsert(attendance, { onConflict: "attendance_id" });
   if (error) throw new Error(`upsertAttendance failed: ${error.message}`);
+}
+
+// ============================================================
+// 認証: ログイン中ユーザーの root_employees 行を取得
+// ============================================================
+
+export type RootUser = {
+  employee_id: string;
+  employee_number: string;
+  name: string;
+  email: string;
+  garden_role: GardenRole;
+  company_id: string;
+  is_active: boolean;
+  user_id: string;
+};
+
+export async function fetchRootUser(userId: string): Promise<RootUser | null> {
+  const { data, error } = await supabase
+    .from("root_employees")
+    .select(
+      [
+        "employee_id",
+        "employee_number",
+        "name",
+        "email",
+        "garden_role",
+        "company_id",
+        "is_active",
+        "user_id",
+      ].join(","),
+    )
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[fetchRootUser]", error.message);
+    return null;
+  }
+  if (!data) return null;
+
+  return data as unknown as RootUser;
 }

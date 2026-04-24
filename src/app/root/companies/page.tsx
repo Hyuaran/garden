@@ -11,6 +11,8 @@ import { fetchCompanies, upsertCompany, setCompanyActive } from "../_lib/queries
 import type { Company } from "../_constants/types";
 import { DEFAULT_BANKS } from "../_constants/types";
 import { colors } from "../_constants/colors";
+import { useRootState } from "../_state/RootStateContext";
+import { writeAudit } from "../_lib/audit";
 
 const emptyCompany = (nextId: string): Company => ({
   company_id: nextId,
@@ -33,6 +35,7 @@ function nextCompanyId(existing: Company[]): string {
 }
 
 export default function CompaniesPage() {
+  const { canWrite, rootUser } = useRootState();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<Company | null>(null);
@@ -55,10 +58,29 @@ export default function CompaniesPage() {
 
   async function handleSave() {
     if (!editTarget) return;
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_companies",
+        payload: { attempted: "save" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
     try {
       setSaving(true);
       setError(null);
       await upsertCompany(editTarget);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_companies",
+        targetId: editTarget.company_id,
+        payload: { value: editTarget },
+      });
       setEditTarget(null);
       await load();
     } catch (e) {
@@ -69,8 +91,27 @@ export default function CompaniesPage() {
   }
 
   async function handleToggleActive(c: Company) {
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_companies",
+        payload: { attempted: "toggle_active" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
     try {
       await setCompanyActive(c.company_id, !c.is_active);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_companies",
+        targetId: c.company_id,
+        payload: { toggle_active: !c.is_active },
+      });
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -87,8 +128,8 @@ export default function CompaniesPage() {
     { key: "status",   header: "状態",         render: (c) => <StatusBadge active={c.is_active} />, width: 80, align: "center" },
     { key: "actions",  header: "",             render: (c) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(c)}>編集</Button>
-        <Button variant={c.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(c)}>
+        <Button variant="secondary" onClick={() => setEditTarget(c)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button variant={c.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(c)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>
           {c.is_active ? "無効化" : "有効化"}
         </Button>
       </div>
@@ -101,7 +142,7 @@ export default function CompaniesPage() {
         title="法人マスタ"
         description="6法人の基本情報、デフォルト振込銀行。削除不可。"
         actions={
-          <Button variant="primary" onClick={() => setEditTarget(emptyCompany(nextCompanyId(companies)))}>
+          <Button variant="primary" onClick={() => setEditTarget(emptyCompany(nextCompanyId(companies)))} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>
             + 新規追加
           </Button>
         }
@@ -132,7 +173,7 @@ export default function CompaniesPage() {
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              <Button variant="primary" onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}

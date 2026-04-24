@@ -65,7 +65,8 @@ function fmtDur(s: number): string {
 /* ---------- コンポーネント ---------- */
 
 export default function WrapUpPage() {
-  const { stats } = useTreeState();
+  const { stats, treeUser } = useTreeState();
+  const displaySurname = treeUser?.name.split(/[\s　]/)[0] ?? USER.name;
   const [memo, setMemo] = useState("");
 
   const totalAway = DEMO_AWAY_LOG.reduce((s, a) => s + (a.adjustedDuration ?? a.duration), 0);
@@ -80,7 +81,7 @@ export default function WrapUpPage() {
 
       {/* 挨拶 */}
       <GlassPanel style={{ padding: 20, marginBottom: 20, textAlign: "center" }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.textDark }}>お疲れさまでした、{USER.name}さん！</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: C.textDark }}>お疲れさまでした、{displaySurname}さん！</div>
         <div style={{ fontSize: 12, color: C.textSub, marginTop: 4 }}>本日の実績を確認して退勤してください</div>
       </GlassPanel>
 

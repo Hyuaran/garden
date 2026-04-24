@@ -15,6 +15,7 @@ import { useState } from "react";
 
 import { C } from "../_constants/colors";
 import { USER } from "../_constants/user";
+import { useTreeState } from "../_state/TreeStateContext";
 
 type Prospect = {
   id: string;
@@ -69,7 +70,8 @@ function fmtDate(d: string): string {
 }
 
 export function ProspectList({ mode = "sprout" }: ProspectListProps) {
-  const myName = USER.fullName;
+  const { treeUser } = useTreeState();
+  const myName = treeUser?.name ?? USER.fullName;
   const prospects = ALL_PROSPECTS.filter((p) => p.owner === myName);
 
   const [filter, setFilter] = useState("当日");
