@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
 import { colors } from "../_constants/colors";
-import { previewKotMonthlySync } from "../_actions/kot-sync";
+import { previewKotMonthlySync, commitKotSyncResult, commitKotSyncFailure } from "../_actions/kot-sync";
 import type { KotSyncPreviewResult, KotSyncPreviewRow } from "../_types/kot";
 import { upsertAttendance } from "../_lib/queries";
 import { writeAudit } from "../_lib/audit";
@@ -101,7 +101,7 @@ export function KotSyncModal({
 
   async function handleFetch() {
     setStage("fetching");
-    const r = await previewKotMonthlySync(targetMonth);
+    const r = await previewKotMonthlySync(targetMonth, rootUser?.user_id ?? undefined);
     setPreview(r);
     setStage(r.ok ? "preview" : "error");
   }
@@ -124,6 +124,8 @@ export function KotSyncModal({
         errs.push({ row: r.index, message: (e as Error).message });
       }
     }
+
+    // 既存 audit（master_update）はそのまま残す。監査とシステム履歴の二層構造。
     await writeAudit({
       action: "master_update",
       actorUserId: rootUser?.user_id ?? null,
@@ -139,6 +141,28 @@ export function KotSyncModal({
         upsert_errors: errs.length,
       },
     });
+
+    // Phase A-3-a: root_kot_sync_log へ最終結果を書き戻す（log_id が取れていれば）
+    if (preview.log_id) {
+      if (ok === 0 && errs.length > 0) {
+        await commitKotSyncFailure(preview.log_id, {
+          error_code: "ALL_UPSERT_FAILED",
+          error_message: `全 ${errs.length} 行 upsert 失敗: ${errs[0]?.message ?? "(詳細なし)"}`,
+          records_fetched: preview.rows.length,
+        });
+      } else {
+        await commitKotSyncResult(preview.log_id, {
+          records_fetched: preview.rows.length,
+          // records_inserted/updated は upsert では区別付きにくいため、成功数を inserted に寄せる
+          // （A-3-b UI では合計値だけ参照するので実害なし。より厳密に分けるなら RPC 化）
+          records_inserted: ok,
+          records_updated: 0,
+          records_skipped: unresolvable.length + warnings.length,
+          upsert_errors: errs.length,
+        });
+      }
+    }
+
     setImportedCount(ok);
     setImportErrors(errs);
     setStage("done");
