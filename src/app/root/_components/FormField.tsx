@@ -11,11 +11,10 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 4,
 };
 
-const inputStyle: React.CSSProperties = {
+const baseInputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
   fontSize: 14,
-  border: `1px solid ${colors.border}`,
   borderRadius: 4,
   background: colors.bgPanel,
   color: colors.text,
@@ -23,29 +22,49 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-export function TextField({ label, required, ...rest }: { label: string; required?: boolean } & InputHTMLAttributes<HTMLInputElement>) {
+const errorTextStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: colors.danger,
+  marginTop: 4,
+  lineHeight: 1.4,
+};
+
+function inputStyle(error: boolean): React.CSSProperties {
+  return {
+    ...baseInputStyle,
+    border: `1px solid ${error ? colors.danger : colors.border}`,
+    background: error ? colors.dangerBg : colors.bgPanel,
+  };
+}
+
+type CommonExtra = { label: string; required?: boolean; error?: string };
+
+export function TextField({ label, required, error, ...rest }: CommonExtra & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label style={{ display: "block", marginBottom: 12 }}>
       <span style={labelStyle}>{label}{required && <span style={{ color: colors.danger, marginLeft: 4 }}>*</span>}</span>
-      <input {...rest} style={inputStyle} />
+      <input {...rest} style={inputStyle(!!error)} aria-invalid={!!error || undefined} />
+      {error && <div style={errorTextStyle}>{error}</div>}
     </label>
   );
 }
 
-export function SelectField({ label, required, children, ...rest }: { label: string; required?: boolean; children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) {
+export function SelectField({ label, required, error, children, ...rest }: CommonExtra & { children: ReactNode } & SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <label style={{ display: "block", marginBottom: 12 }}>
       <span style={labelStyle}>{label}{required && <span style={{ color: colors.danger, marginLeft: 4 }}>*</span>}</span>
-      <select {...rest} style={inputStyle}>{children}</select>
+      <select {...rest} style={inputStyle(!!error)} aria-invalid={!!error || undefined}>{children}</select>
+      {error && <div style={errorTextStyle}>{error}</div>}
     </label>
   );
 }
 
-export function TextareaField({ label, required, ...rest }: { label: string; required?: boolean } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function TextareaField({ label, required, error, ...rest }: CommonExtra & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <label style={{ display: "block", marginBottom: 12 }}>
       <span style={labelStyle}>{label}{required && <span style={{ color: colors.danger, marginLeft: 4 }}>*</span>}</span>
-      <textarea {...rest} style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} />
+      <textarea {...rest} style={{ ...inputStyle(!!error), minHeight: 60, resize: "vertical" }} aria-invalid={!!error || undefined} />
+      {error && <div style={errorTextStyle}>{error}</div>}
     </label>
   );
 }

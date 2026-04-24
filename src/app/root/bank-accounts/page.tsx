@@ -12,6 +12,13 @@ import type { BankAccount, Company } from "../_constants/types";
 import { colors } from "../_constants/colors";
 import { useRootState } from "../_state/RootStateContext";
 import { writeAudit } from "../_lib/audit";
+import {
+  validateBankAccount,
+  hasErrors,
+  VALIDATION_ERROR_BANNER,
+  type FieldErrors,
+} from "../_lib/validators";
+import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 
 const ACCOUNT_TYPES = ["普通", "当座"];
 const PURPOSES = ["メイン", "給与", "経費", "その他"];
@@ -47,6 +54,7 @@ export default function BankAccountsPage() {
   const [editTarget, setEditTarget] = useState<BankAccount | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
 
   async function load() {
     try {
@@ -57,9 +65,16 @@ export default function BankAccountsPage() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => { if (!editTarget) setErrors({}); }, [editTarget]);
 
   const companyMap = useMemo(() => new Map(companies.map((c) => [c.company_id, c])), [companies]);
   const filtered = useMemo(() => filterCompany ? accounts.filter((a) => a.company_id === filterCompany) : accounts, [accounts, filterCompany]);
+
+  const { activeIndex } = useMasterShortcuts<BankAccount>({
+    rows: filtered,
+    modalOpen: !!editTarget,
+    onEditRow: canWrite ? setEditTarget : undefined,
+  });
 
   async function handleSave() {
     if (!editTarget) return;
@@ -74,8 +89,16 @@ export default function BankAccountsPage() {
       setError("編集権限がありません");
       return;
     }
+    const errs = validateBankAccount(editTarget);
+    if (hasErrors(errs)) {
+      setErrors(errs);
+      setError(VALIDATION_ERROR_BANNER);
+      return;
+    }
     try {
       setSaving(true);
+      setError(null);
+      setErrors({});
       await upsertBankAccount(editTarget);
       await writeAudit({
         action: "master_update",
@@ -139,7 +162,7 @@ export default function BankAccountsPage() {
     <>
       <PageHeader
         title="銀行口座マスタ"
-        description="法人ごとの振込元口座。新しい銀行を追加するとここに登録される。"
+        description="法人ごとの振込元口座。Ctrl+↑↓ で行移動・Ctrl+Enter で編集。"
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }}>
@@ -151,25 +174,25 @@ export default function BankAccountsPage() {
         }
       />
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
-      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={filtered} />}
+      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={filtered} activeIndex={activeIndex} onRowClick={canWrite ? setEditTarget : undefined} />}
 
-      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title={editTarget?.created_at ? "銀行口座を編集" : "銀行口座を追加"} width={720}>
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "銀行口座を編集" : "銀行口座を追加"} width={720}>
         {editTarget && (
           <div>
             <FormGrid>
-              <TextField label="口座ID" required value={editTarget.account_id} onChange={(e) => setEditTarget({ ...editTarget, account_id: e.target.value })} disabled={!!editTarget.created_at} />
-              <SelectField label="法人" required value={editTarget.company_id} onChange={(e) => setEditTarget({ ...editTarget, company_id: e.target.value })}>
+              <TextField label="口座ID" required value={editTarget.account_id} onChange={(e) => setEditTarget({ ...editTarget, account_id: e.target.value })} disabled={!!editTarget.created_at} error={errors.account_id} />
+              <SelectField label="法人" required value={editTarget.company_id} onChange={(e) => setEditTarget({ ...editTarget, company_id: e.target.value })} error={errors.company_id}>
                 {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
               </SelectField>
-              <TextField label="銀行名" required value={editTarget.bank_name} onChange={(e) => setEditTarget({ ...editTarget, bank_name: e.target.value })} />
-              <TextField label="金融機関コード（4桁）" required maxLength={4} value={editTarget.bank_code} onChange={(e) => setEditTarget({ ...editTarget, bank_code: e.target.value })} />
-              <TextField label="支店名" required value={editTarget.branch_name} onChange={(e) => setEditTarget({ ...editTarget, branch_name: e.target.value })} />
-              <TextField label="支店コード（3桁）" required maxLength={3} value={editTarget.branch_code} onChange={(e) => setEditTarget({ ...editTarget, branch_code: e.target.value })} />
-              <SelectField label="口座種別" required value={editTarget.account_type} onChange={(e) => setEditTarget({ ...editTarget, account_type: e.target.value })}>
+              <TextField label="銀行名" required value={editTarget.bank_name} onChange={(e) => setEditTarget({ ...editTarget, bank_name: e.target.value })} error={errors.bank_name} />
+              <TextField label="金融機関コード（4桁）" required maxLength={4} inputMode="numeric" value={editTarget.bank_code} onChange={(e) => setEditTarget({ ...editTarget, bank_code: e.target.value })} error={errors.bank_code} />
+              <TextField label="支店名" required value={editTarget.branch_name} onChange={(e) => setEditTarget({ ...editTarget, branch_name: e.target.value })} error={errors.branch_name} />
+              <TextField label="支店コード（3桁）" required maxLength={3} inputMode="numeric" value={editTarget.branch_code} onChange={(e) => setEditTarget({ ...editTarget, branch_code: e.target.value })} error={errors.branch_code} />
+              <SelectField label="口座種別" required value={editTarget.account_type} onChange={(e) => setEditTarget({ ...editTarget, account_type: e.target.value })} error={errors.account_type}>
                 {ACCOUNT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </SelectField>
-              <TextField label="口座番号（7桁）" required maxLength={7} value={editTarget.account_number} onChange={(e) => setEditTarget({ ...editTarget, account_number: e.target.value })} />
-              <TextField label="口座名義" required value={editTarget.account_holder} onChange={(e) => setEditTarget({ ...editTarget, account_holder: e.target.value })} />
+              <TextField label="口座番号（7桁）" required maxLength={7} inputMode="numeric" value={editTarget.account_number} onChange={(e) => setEditTarget({ ...editTarget, account_number: e.target.value })} error={errors.account_number} />
+              <TextField label="口座名義" required value={editTarget.account_holder} onChange={(e) => setEditTarget({ ...editTarget, account_holder: e.target.value })} error={errors.account_holder} />
               <SelectField label="用途" value={editTarget.purpose ?? ""} onChange={(e) => setEditTarget({ ...editTarget, purpose: e.target.value || null })}>
                 <option value="">—</option>
                 {PURPOSES.map((p) => <option key={p} value={p}>{p}</option>)}
