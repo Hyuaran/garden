@@ -19,6 +19,7 @@ import {
   type FieldErrors,
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
 const EMP_TYPES = ["正社員", "アルバイト"];
 const ACCOUNT_TYPES = ["普通", "当座"];
@@ -126,7 +127,9 @@ export default function EmployeesPage() {
       setSaving(true);
       setError(null);
       setErrors({});
-      await upsertEmployee(editTarget);
+      await upsertEmployee(
+        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.employees }) as Partial<Employee> & { employee_id: string },
+      );
       await writeAudit({
         action: "master_update",
         actorUserId: rootUser?.user_id ?? null,

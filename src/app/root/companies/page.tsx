@@ -20,6 +20,7 @@ import {
   type FieldErrors,
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
 const emptyCompany = (nextId: string): Company => ({
   company_id: nextId,
@@ -95,7 +96,9 @@ export default function CompaniesPage() {
       setSaving(true);
       setError(null);
       setErrors({});
-      await upsertCompany(editTarget);
+      await upsertCompany(
+        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.companies }) as Partial<Company> & { company_id: string },
+      );
       await writeAudit({
         action: "master_update",
         actorUserId: rootUser?.user_id ?? null,

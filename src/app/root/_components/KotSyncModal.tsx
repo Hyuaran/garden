@@ -9,6 +9,7 @@ import type { KotSyncPreviewResult, KotSyncPreviewRow } from "../_types/kot";
 import { upsertAttendance } from "../_lib/queries";
 import { writeAudit } from "../_lib/audit";
 import { useRootState } from "../_state/RootStateContext";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 import type { Attendance } from "../_constants/types";
 
 type Stage = "idle" | "fetching" | "preview" | "error" | "importing" | "done";
@@ -23,18 +24,16 @@ function lastMonth(): string {
 /**
  * KoT プレビュー行を root_attendance の upsert payload に変換。
  *
- * ⚠️ timestamptz 列（created_at / updated_at）は payload に含めない。
- * 空文字列を送ると Postgres が "invalid input syntax for type timestamp with time zone: \"\"" で拒否する。
- * - 新規 INSERT: Postgres の DEFAULT now() が効く
- * - 既存 UPDATE: trigger `trg_root_attendance_updated_at` が updated_at を自動更新する
- * imported_at は nullable かつ明示的に現在時刻を入れる。
+ * timestamptz 列の安全性は `sanitizeUpsertPayload` に委譲（Phase A-3-f 以降、7 マスタ共通化）。
+ * - created_at / updated_at は helper が自動除外 → Postgres DEFAULT / trigger に任せる
+ * - imported_at は nullable、明示的に現在時刻を入れる
  */
 function toAttendanceRow(
   r: KotSyncPreviewRow,
   employee_id: string,
 ): Partial<Attendance> & { attendance_id: string } {
   const attendance_id = `ATT-${r.values!.target_month}-${employee_id.replace("EMP-", "")}`;
-  return {
+  const raw: Attendance = {
     attendance_id,
     employee_id,
     target_month: r.values!.target_month,
@@ -54,7 +53,12 @@ function toAttendanceRow(
     imported_at: new Date().toISOString(),
     import_status: "取込済",
     kot_record_id: r.kot_record_id,
+    created_at: "",
+    updated_at: "",
   };
+  return sanitizeUpsertPayload(raw, {
+    nullableDateKeys: NULLABLE_DATE_KEYS.attendance,
+  }) as Partial<Attendance> & { attendance_id: string };
 }
 
 export function KotSyncModal({
