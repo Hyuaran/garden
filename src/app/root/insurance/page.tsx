@@ -12,6 +12,13 @@ import type { Insurance } from "../_constants/types";
 import { colors } from "../_constants/colors";
 import { useRootState } from "../_state/RootStateContext";
 import { writeAudit } from "../_lib/audit";
+import {
+  validateInsurance,
+  hasErrors,
+  VALIDATION_ERROR_BANNER,
+  type FieldErrors,
+} from "../_lib/validators";
+import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 
 const emptyInsurance = (year: string): Insurance => ({
   insurance_id: `INS-${year}`,
@@ -36,6 +43,13 @@ export default function InsurancePage() {
   const [editTarget, setEditTarget] = useState<Insurance | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const { activeIndex } = useMasterShortcuts<Insurance>({
+    rows,
+    modalOpen: !!editTarget,
+    onEditRow: canWrite ? setEditTarget : undefined,
+  });
 
   async function load() {
     try { setLoading(true); setError(null); setRows(await fetchInsurance()); }
@@ -43,6 +57,7 @@ export default function InsurancePage() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => { if (!editTarget) setErrors({}); }, [editTarget]);
 
   async function handleSave() {
     if (!editTarget) return;
@@ -57,8 +72,16 @@ export default function InsurancePage() {
       setError("編集権限がありません");
       return;
     }
+    const errs = validateInsurance(editTarget);
+    if (hasErrors(errs)) {
+      setErrors(errs);
+      setError(VALIDATION_ERROR_BANNER);
+      return;
+    }
     try {
       setSaving(true);
+      setError(null);
+      setErrors({});
       await upsertInsurance(editTarget);
       await writeAudit({
         action: "master_update",
@@ -123,25 +146,25 @@ export default function InsurancePage() {
     <>
       <PageHeader
         title="社会保険マスタ"
-        description="年度ごとの保険料率。毎年4月に新年度を追加。"
+        description="年度ごとの保険料率。毎年4月に新年度を追加。Ctrl+↑↓ 行移動・Ctrl+Enter 編集。"
         actions={<Button onClick={() => setEditTarget(emptyInsurance(String(new Date().getFullYear())))} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>}
       />
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
-      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={rows} />}
+      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={rows} activeIndex={activeIndex} onRowClick={canWrite ? setEditTarget : undefined} />}
 
-      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title={editTarget?.created_at ? "保険料率を編集" : "保険料率を追加"} width={720}>
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "保険料率を編集" : "保険料率を追加"} width={720}>
         {editTarget && (
           <div>
             <FormGrid>
-              <TextField label="保険マスタID" required value={editTarget.insurance_id} onChange={(e) => setEditTarget({ ...editTarget, insurance_id: e.target.value })} disabled={!!editTarget.created_at} />
-              <TextField label="適用年度" required value={editTarget.fiscal_year} onChange={(e) => setEditTarget({ ...editTarget, fiscal_year: e.target.value })} />
-              <TextField label="適用開始日" type="date" required value={editTarget.effective_from} onChange={(e) => setEditTarget({ ...editTarget, effective_from: e.target.value })} />
-              <TextField label="適用終了日" type="date" value={editTarget.effective_to ?? ""} onChange={(e) => setEditTarget({ ...editTarget, effective_to: e.target.value || null })} />
-              <TextField label="健康保険料率（%）" type="number" step="0.001" value={editTarget.health_insurance_rate} onChange={(e) => setEditTarget({ ...editTarget, health_insurance_rate: Number(e.target.value) })} />
-              <TextField label="介護保険料率（%）" type="number" step="0.001" value={editTarget.nursing_insurance_rate} onChange={(e) => setEditTarget({ ...editTarget, nursing_insurance_rate: Number(e.target.value) })} />
-              <TextField label="厚生年金保険料率（%）" type="number" step="0.001" value={editTarget.pension_rate} onChange={(e) => setEditTarget({ ...editTarget, pension_rate: Number(e.target.value) })} />
-              <TextField label="雇用保険料率（%）" type="number" step="0.001" value={editTarget.employment_insurance_rate} onChange={(e) => setEditTarget({ ...editTarget, employment_insurance_rate: Number(e.target.value) })} />
-              <TextField label="子ども・子育て支援金率（%）" type="number" step="0.001" value={editTarget.child_support_rate} onChange={(e) => setEditTarget({ ...editTarget, child_support_rate: Number(e.target.value) })} />
+              <TextField label="保険マスタID" required value={editTarget.insurance_id} onChange={(e) => setEditTarget({ ...editTarget, insurance_id: e.target.value })} disabled={!!editTarget.created_at} error={errors.insurance_id} />
+              <TextField label="適用年度（4桁）" required maxLength={4} inputMode="numeric" value={editTarget.fiscal_year} onChange={(e) => setEditTarget({ ...editTarget, fiscal_year: e.target.value })} error={errors.fiscal_year} />
+              <TextField label="適用開始日" type="date" required value={editTarget.effective_from} onChange={(e) => setEditTarget({ ...editTarget, effective_from: e.target.value })} error={errors.effective_from} />
+              <TextField label="適用終了日" type="date" value={editTarget.effective_to ?? ""} onChange={(e) => setEditTarget({ ...editTarget, effective_to: e.target.value || null })} error={errors.effective_to} />
+              <TextField label="健康保険料率（%）" type="number" step="0.001" min={0} max={100} value={editTarget.health_insurance_rate} onChange={(e) => setEditTarget({ ...editTarget, health_insurance_rate: Number(e.target.value) })} error={errors.health_insurance_rate} />
+              <TextField label="介護保険料率（%）" type="number" step="0.001" min={0} max={100} value={editTarget.nursing_insurance_rate} onChange={(e) => setEditTarget({ ...editTarget, nursing_insurance_rate: Number(e.target.value) })} error={errors.nursing_insurance_rate} />
+              <TextField label="厚生年金保険料率（%）" type="number" step="0.001" min={0} max={100} value={editTarget.pension_rate} onChange={(e) => setEditTarget({ ...editTarget, pension_rate: Number(e.target.value) })} error={errors.pension_rate} />
+              <TextField label="雇用保険料率（%）" type="number" step="0.001" min={0} max={100} value={editTarget.employment_insurance_rate} onChange={(e) => setEditTarget({ ...editTarget, employment_insurance_rate: Number(e.target.value) })} error={errors.employment_insurance_rate} />
+              <TextField label="子ども・子育て支援金率（%）" type="number" step="0.001" min={0} max={100} value={editTarget.child_support_rate} onChange={(e) => setEditTarget({ ...editTarget, child_support_rate: Number(e.target.value) })} error={errors.child_support_rate} />
             </FormGrid>
             <div style={{ background: colors.infoBg, color: colors.info, padding: "8px 12px", borderRadius: 4, fontSize: 12, marginTop: 8 }}>
               等級テーブル（grade_table）はUIからの編集未対応です。Supabaseダッシュボードで直接編集してください。
