@@ -1,1 +1,11 @@
-{"version":"0.0.1","configurations":[{"name":"garden-a-root","runtimeExecutable":"node","runtimeArgs":["-e","process.exit(0)"],"port":3001,"autoPort":false}]}
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "garden-a-root",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3001"],
+      "port": 3001
+    }
+  ]
+}
