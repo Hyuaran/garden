@@ -232,6 +232,8 @@ export interface MasterMenu {
   title: string;
   description: string;
   icon: string;
+  /** admin 以上のロールに限定表示するメニュー（ナビ非表示 + 直接 URL アクセス時は RootGate が弾く） */
+  adminOnly?: boolean;
 }
 
 export const MASTER_MENUS: MasterMenu[] = [
@@ -242,4 +244,5 @@ export const MASTER_MENUS: MasterMenu[] = [
   { slug: "salary-systems",  title: "給与体系マスタ", description: "雇用形態別の計算ルール",                  icon: "💰" },
   { slug: "insurance",       title: "社会保険マスタ", description: "保険料率、等級テーブル",                  icon: "🛡️" },
   { slug: "attendance",      title: "勤怠データ",     description: "キングオブタイムから取込",                icon: "📅" },
+  { slug: "kot-sync-history", title: "KoT 同期履歴",  description: "KoT 連携の同期ログ閲覧・再実行",          icon: "🔄", adminOnly: true },
 ];
