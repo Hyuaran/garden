@@ -91,7 +91,7 @@ export function MacroChart({ companies, periods }: Props) {
       >
         グループ全体の合算利益推移 ～ 森の視界 ～
       </h3>
-      <div style={{ height: 320 }}>
+      <div style={{ height: 360 }}>
         <Line
           data={{ labels, datasets }}
           options={{
