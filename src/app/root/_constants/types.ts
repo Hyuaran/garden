@@ -169,12 +169,13 @@ export interface Attendance {
 // 8. 認証拡張型（root-auth-schema.sql で追加されるフィールド）
 // ============================================================
 
-/** Garden全体ロール（7段階・2026-04-21 改訂） */
+/** Garden全体ロール（8段階・Phase A-3-g で outsource 追加） */
 export type GardenRole =
   | "toss"         // トス（アポインター）
   | "closer"       // クローザー
   | "cs"           // CS（仮）: 前確/後確画面の閲覧権限ここ以上
   | "staff"        // 一般社員（仮）
+  | "outsource"    // 外注（業務委託、Phase A-3-g、staff と manager の間）
   | "manager"      // 責任者（仮）
   | "admin"        // 管理者（仮）
   | "super_admin"; // 全権管理者
@@ -185,17 +186,19 @@ export const GARDEN_ROLE_LABELS: Record<GardenRole, string> = {
   closer:      "クローザー",
   cs:          "CS",
   staff:       "一般社員",
+  outsource:   "外注",
   manager:     "責任者",
   admin:       "管理者",
   super_admin: "全権管理者",
 };
 
-/** ロールの階層順序（昇順） */
+/** ロールの階層順序（昇順）。outsource は staff と manager の間。 */
 export const GARDEN_ROLE_ORDER: GardenRole[] = [
   "toss",
   "closer",
   "cs",
   "staff",
+  "outsource",
   "manager",
   "admin",
   "super_admin",
