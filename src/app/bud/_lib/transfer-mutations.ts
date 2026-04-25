@@ -21,6 +21,7 @@ import { fetchNextSequence } from "./transfer-queries";
 
 export interface CreateTransferInput {
   transfer_category: TransferCategory;
+  data_source?: "紙スキャン" | "デジタル入力" | "CSVインポート";
   request_company_id: string;
   execute_company_id: string;
   source_account_id: string;
@@ -77,7 +78,7 @@ export async function createTransfer(
     .insert({
       transfer_id: transferId,
       status: "下書き" as TransferStatus,
-      data_source: "デジタル入力",
+      data_source: input.data_source ?? "デジタル入力",
       transfer_category: input.transfer_category,
       transfer_type: null, // Phase 1b では未使用（Phase 2/6 で給与/外注費分類時に使用）
       request_date: today.toISOString().substring(0, 10),

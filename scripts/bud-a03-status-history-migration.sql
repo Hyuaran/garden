@@ -12,6 +12,7 @@
 -- ============================================================
 -- 最新の遷移タイムスタンプ・実行者を bud_transfers 側に保持（UI の一覧表示・照合用）
 
+-- 実 PK は transfer_id (text, FK-YYYYMMDD-NNNNNN)。id uuid は存在しない。
 ALTER TABLE bud_transfers
   ADD COLUMN IF NOT EXISTS status_changed_at timestamptz,
   ADD COLUMN IF NOT EXISTS status_changed_by uuid REFERENCES auth.users(id);
@@ -27,7 +28,7 @@ COMMENT ON COLUMN bud_transfers.status_changed_by IS
 
 CREATE TABLE IF NOT EXISTS bud_transfer_status_history (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  transfer_id     uuid NOT NULL REFERENCES bud_transfers(id) ON DELETE CASCADE,
+  transfer_id     text NOT NULL REFERENCES bud_transfers(transfer_id) ON DELETE CASCADE,
   from_status     text,
   to_status       text NOT NULL CHECK (to_status IN (
     '下書き', '確認済み', '承認待ち', '承認済み',
@@ -88,7 +89,7 @@ COMMENT ON FUNCTION bud_can_transition(text, text, text) IS
 -- super_admin 自起票スキップ時は reason='自起票' 自動挿入（A-03 判3）
 
 CREATE OR REPLACE FUNCTION bud_transition_transfer_status(
-  p_transfer_id uuid,
+  p_transfer_id text,
   p_to_status text,
   p_reason text DEFAULT NULL
 ) RETURNS json
@@ -101,12 +102,11 @@ DECLARE
   v_user_role      text;
   v_history_id     uuid;
   v_effective_reason text;
-  v_changed_fields jsonb := '{}'::jsonb;
 BEGIN
   -- 1. 遷移元取得 + 行ロック（楽観ロック代わり）
   SELECT status INTO v_old_status
     FROM bud_transfers
-    WHERE id = p_transfer_id
+    WHERE transfer_id = p_transfer_id
     FOR UPDATE;
 
   IF v_old_status IS NULL THEN
@@ -148,7 +148,7 @@ BEGIN
     SET status = p_to_status,
         status_changed_at = now(),
         status_changed_by = auth.uid()
-    WHERE id = p_transfer_id;
+    WHERE transfer_id = p_transfer_id;
 
   -- 7. status_history INSERT
   INSERT INTO bud_transfer_status_history (
@@ -171,7 +171,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION bud_transition_transfer_status(uuid, text, text) IS
+COMMENT ON FUNCTION bud_transition_transfer_status(text, text, text) IS
   '振込ステータス遷移を atomic 実行（UPDATE + history INSERT）。失敗時は全体 rollback';
 
 -- ============================================================
@@ -224,7 +224,7 @@ CREATE POLICY bud_tsh_no_delete ON bud_transfer_status_history
 -- 6. RPC への GRANT
 -- ============================================================
 
-GRANT EXECUTE ON FUNCTION bud_transition_transfer_status(uuid, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION bud_transition_transfer_status(text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION bud_can_transition(text, text, text) TO authenticated;
 
 -- ============================================================
