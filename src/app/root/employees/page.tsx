@@ -21,7 +21,15 @@ import {
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
-const EMP_TYPES = ["正社員", "アルバイト"];
+/**
+ * 雇用形態選択肢。DB 値（value）と UI ラベル（label）を分離。
+ * Phase A-3-g で 'outsource' を追加（DB は英語、UI は「外注」表示）。
+ */
+const EMP_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "正社員",    label: "正社員" },
+  { value: "アルバイト", label: "アルバイト" },
+  { value: "outsource", label: "外注" },
+];
 const ACCOUNT_TYPES = ["普通", "当座"];
 const INS_TYPES = ["加入", "未加入", "一部加入"];
 
@@ -35,6 +43,7 @@ const empty = (nextId: string, companyId: string, salarySystemId: string): Emplo
   salary_system_id: salarySystemId,
   hire_date: new Date().toISOString().slice(0, 10),
   termination_date: null,
+  contract_end_on: null,
   email: "",
   bank_name: "",
   bank_code: "",
@@ -223,8 +232,13 @@ export default function EmployeesPage() {
               <TextField label="氏名" required value={editTarget.name} onChange={(e) => setEditTarget({ ...editTarget, name: e.target.value })} error={errors.name} />
               <TextField label="氏名カナ" required value={editTarget.name_kana} onChange={(e) => setEditTarget({ ...editTarget, name_kana: e.target.value })} error={errors.name_kana} />
               <TextField label="メールアドレス" required type="email" value={editTarget.email} onChange={(e) => setEditTarget({ ...editTarget, email: e.target.value })} error={errors.email} />
-              <SelectField label="雇用形態" required value={editTarget.employment_type} onChange={(e) => setEditTarget({ ...editTarget, employment_type: e.target.value })} error={errors.employment_type}>
-                {EMP_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              <SelectField label="雇用形態" required value={editTarget.employment_type} onChange={(e) => setEditTarget({
+                ...editTarget,
+                employment_type: e.target.value,
+                // 外注以外を選ぶと契約終了日をクリア
+                contract_end_on: e.target.value === "outsource" ? (editTarget.contract_end_on ?? null) : null,
+              })} error={errors.employment_type}>
+                {EMP_TYPE_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </SelectField>
               <SelectField label="給与体系" required value={editTarget.salary_system_id} onChange={(e) => setEditTarget({ ...editTarget, salary_system_id: e.target.value })} error={errors.salary_system_id}>
                 {salarySystems.map((s) => <option key={s.salary_system_id} value={s.salary_system_id}>{s.system_name}</option>)}
@@ -234,6 +248,15 @@ export default function EmployeesPage() {
               </SelectField>
               <TextField label="入社日" required type="date" value={editTarget.hire_date} onChange={(e) => setEditTarget({ ...editTarget, hire_date: e.target.value })} error={errors.hire_date} />
               <TextField label="退職日" type="date" value={editTarget.termination_date ?? ""} onChange={(e) => setEditTarget({ ...editTarget, termination_date: e.target.value || null })} error={errors.termination_date} />
+              {editTarget.employment_type === "outsource" && (
+                <TextField
+                  label="契約終了日（外注）"
+                  type="date"
+                  value={editTarget.contract_end_on ?? ""}
+                  onChange={(e) => setEditTarget({ ...editTarget, contract_end_on: e.target.value || null })}
+                  error={errors.contract_end_on}
+                />
+              )}
             </FormGrid>
 
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>振込先口座</h3>

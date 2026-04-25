@@ -145,8 +145,19 @@ export function validateEmployee(em: Employee): FieldErrors {
   else if (!isKatakana(em.name_kana)) e.name_kana = "全角カタカナのみ";
   if (!em.company_id) e.company_id = "必須";
   if (!em.employment_type) e.employment_type = "必須";
+  else if (!["正社員", "アルバイト", "outsource"].includes(em.employment_type)) {
+    e.employment_type = "正社員 / アルバイト / 外注 のいずれか";
+  }
   if (!em.salary_system_id) e.salary_system_id = "必須";
   if (!em.hire_date) e.hire_date = "必須";
+  // 外注なら contract_end_on を推奨（未入力でも可、null は「契約継続中」）
+  if (em.contract_end_on && em.hire_date && em.contract_end_on < em.hire_date) {
+    e.contract_end_on = "入社日より前にはできません";
+  }
+  // 外注以外で contract_end_on が入っていたら警告的エラー
+  if (em.employment_type !== "outsource" && em.contract_end_on) {
+    e.contract_end_on = "外注（employment_type=outsource）以外では設定不可";
+  }
   if (em.termination_date && em.hire_date && em.termination_date < em.hire_date) {
     e.termination_date = "入社日より前にはできません";
   }
