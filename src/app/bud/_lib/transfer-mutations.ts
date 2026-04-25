@@ -248,3 +248,77 @@ export async function updateDraftTransfer(
 
   return data;
 }
+
+/**
+ * A-03: 振込ステータス遷移（atomic RPC 呼出版）。
+ *
+ * scripts/bud-a03-status-history-migration.sql で定義された
+ * bud_transition_transfer_status() RPC を呼び、
+ * bud_transfers.status の UPDATE と
+ * bud_transfer_status_history への INSERT を単一トランザクションで実行。
+ */
+
+export type { TransitionErrorCode, TransitionParams } from "./transition-validator";
+import {
+  validateTransitionInput,
+  mapPostgresErrorCode,
+  type TransitionErrorCode,
+  type TransitionParams,
+} from "./transition-validator";
+
+export type TransitionResult =
+  | {
+      success: true;
+      newStatus: TransferStatus;
+      historyId: string;
+      effectiveReason: string | null;
+    }
+  | {
+      success: false;
+      error: string;
+      code: TransitionErrorCode;
+    };
+
+export async function transitionTransferStatus(
+  params: TransitionParams,
+): Promise<TransitionResult> {
+  const validation = validateTransitionInput(params);
+  if (!validation.ok) {
+    return {
+      success: false,
+      error: validation.error,
+      code: validation.code,
+    };
+  }
+
+  const { data, error } = await supabase.rpc("bud_transition_transfer_status", {
+    p_transfer_id: params.transferId,
+    p_to_status: params.toStatus,
+    p_reason: params.reason ?? null,
+  });
+
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+      code: mapPostgresErrorCode(
+        (error as { code?: string }).code,
+        error.message,
+      ),
+    };
+  }
+
+  const result = data as {
+    history_id: string;
+    from_status: string;
+    to_status: string;
+    effective_reason: string | null;
+  };
+
+  return {
+    success: true,
+    newStatus: result.to_status as TransferStatus,
+    historyId: result.history_id,
+    effectiveReason: result.effective_reason,
+  };
+}

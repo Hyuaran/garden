@@ -48,10 +48,31 @@ export const TRANSFER_STATUS_TRANSITIONS: Record<TransferStatus, TransferStatus[
 
 /**
  * 指定の遷移が許可されているか判定（純関数・テスト容易）。
+ * ロール非依存の基本ルール。super_admin 自起票スキップは `canTransitionWithRole` を使用。
  */
 export function canTransition(
   from: TransferStatus,
   to: TransferStatus,
 ): boolean {
   return TRANSFER_STATUS_TRANSITIONS[from].includes(to);
+}
+
+export type BudTransitionRole = "staff" | "approver" | "admin" | "super_admin";
+
+/**
+ * ロールを考慮した遷移可否判定。
+ *
+ * DB 側の `bud_can_transition(text, text, text)` と完全一致させること。
+ * A-03 判3: super_admin が「下書き → 承認済み」へ直接遷移可（自起票スキップ）。
+ * それ以外は `canTransition` と同じ判定。
+ */
+export function canTransitionWithRole(
+  from: TransferStatus,
+  to: TransferStatus,
+  role: BudTransitionRole,
+): boolean {
+  if (role === "super_admin" && from === "下書き" && to === "承認済み") {
+    return true;
+  }
+  return canTransition(from, to);
 }
