@@ -30,15 +30,17 @@
 | Forest | T-F4-02 (Tax Calendar) + T-F11-01 (Tax Detail Modal) | 1.5 | 1.0 | -0.5 | a-forest (A) | 2026-04-25 | 2026-04-25 | Phase 1-4 で types + queries + tax-calendar.ts + TaxPill + TaxDetailModal + TaxCalendar + 統合。64 tests green、累計 157/157。インライン style 規約遵守。判3 高さは判断保留扱い。self-review で overflow-x ラッパー追加 (PR #50 commit f5ff69d)。Vercel pass、レビュー待ち。 |
 | Forest | T-F9-01 (MicroGrid 差分監査) + T-F8-01 (MacroChart 差分検証) | 0.85 | 0.25 | -0.6 | a-forest (A) | 2026-04-25 | 2026-04-25 | 自律実行モード稼働分。spec の 10 点差分主張を全コード照合で検証、12 + 1 (高さ判3) 項目検証で T-F8 はほぼ準拠確認。実装は spec §13 推奨フロー（東海林さん採否合意先行）に従い未着手、audit verification ドキュメントのみ作成 (`docs/forest-audit-t-f9-t-f8-verification-202604251700.md`)。実装時 D2/D4/D8/D10 採用で TDD 込み 0.65d 見込み。 |
 | Forest | F4 反映: MacroChart 高さ 320 → 360 (v9 互換) | 0.05 | 0.05 | 0 | a-forest (A) | 2026-04-25 | 2026-04-25 | T-F3-F8 §12 判3 の判断保留を東海林さん「360 に変更」回答で解消。1 行修正 + 検証テスト 1 件追加。94/94 tests + build OK。PR #59 mini PR 発行（レビュー: a-bloom）。 |
-| Bloom | Phase A-1 Day 1: 基盤（認証・ナビ・レイアウト） | 0.5 | | | a-bloom (A) | 2026-04-25 | | Phase A-1 先行記入（§12）。Forest 認証流用 |
-| Bloom | Phase A-1 Day 1: Supabase migration（bloom_* 8テーブル） | 0.5 | | | a-bloom (A) | 2026-04-25 | | 設計書 §1 SQL。garden-dev Dashboard 手動適用 |
-| Bloom | Phase A-1 Day 2: Workboard 画面（個人可視化） | 0.5 | | | a-bloom (A) | | | ステータス・本日予定・進行中PJ・今週実績・次マイルストーン |
-| Bloom | Phase A-1 Day 2: Roadmap 画面（全体進捗） | 0.5 | | | a-bloom (A) | | | 👥みんな向け / ⚙️開発向け 切替対応 |
-| Bloom | Phase A-1 Day 3: 月次ダイジェスト画面（会議用） | 0.5 | | | a-bloom (A) | | | 毎月15-20日の責任者会議で使用、PDF/画像エクスポート |
-| Bloom | Phase A-1 Day 3: 切替機能・アラート | 0.25 | | | a-bloom (A) | | | localStorage 保存、お知らせバナー |
-| Bloom | Phase A-1 Day 4: Chatwork 連携基盤 | 0.25 | | | a-bloom (A) | | | pgcrypto トークン暗号化（判1）、Garden 開発進捗ルーム |
-| Bloom | Phase A-1 Day 4: 日次・週次・月次 Cron | 1.0 | | | a-bloom (A) | | | Vercel Cron、Node ランタイム（判2） |
-| Bloom | Phase A-1: 他モジュール引っ越し可能な疎結合化 | 0.25 | | | a-bloom (A) | | | bloom_* プレフィックス、components/_lib 分離、将来 Seed 等へ移植可 |
+| Bloom | Phase A-1 Day 1: 基盤（認証・ナビ・レイアウト） | 0.5 | 0.25 | -0.25 | a-bloom (A) | 2026-04-25 | 2026-04-25 | T3 commit `4bfaed0`。Forest 認証スケルトン複製（auth.ts / supabase.ts / session-timer / BloomGate / BloomStateContext）+ layout.tsx + BloomShell + 4タイルナビ。判5 採用で BloomGate は /forest/login リダイレクト |
+| Bloom | Phase A-1 Day 1: Supabase migration（bloom_* 8テーブル） | 0.5 | 0.25 | -0.25 | a-bloom (A) | 2026-04-25 | 2026-04-25 | T1 commit `e375734`。helper-functions / schema / rls 3 ファイル 360 行。garden-dev Dashboard 手動適用済（東海林さん完了確認済）。後続 T9 で bloom-cron-log.sql 追加（4 ファイル目） |
+| Bloom | Phase A-1 Day 2: Workboard 画面（個人可視化） | 0.5 | 0.25 | -0.25 | a-bloom (A) | 2026-04-25 | 2026-04-25 | T4 commit `b0c82a2`。14 ファイル 1089 行（page.tsx + 5 components + 3 data lib）。ステータス・本日予定・進行中PJ・今週実績・次マイルストーン |
+| Bloom | Phase A-1 Day 2: Roadmap 画面（全体進捗） | 0.5 | 0.25 | -0.25 | a-bloom (A) | 2026-04-25 | 2026-04-25 | T5 commit `3af92c0`。10 ファイル（page + 5 components + 2 lib）。👥みんな向け / ⚙️開発向け 切替対応、共有 roadmap-queries lib 昇格 |
+| Bloom | Phase A-1 Day 3: 月次ダイジェスト画面（会議用） | 0.5 | 0.5 | 0 | a-bloom (A) | 2026-04-25 | 2026-04-25 | T6 commit `261ccb3` + T9-7 PDF commit `7538d80`。list / display / edit / 6 kind 別 components / ProjectionViewer + @react-pdf/renderer 本実装 + NotoSansJP 配置（東海林さん手動）。会議資料 PDF エクスポート稼働 |
+| Bloom | Phase A-1 Day 3: 切替機能・アラート | 0.25 | 0.1 | -0.15 | a-bloom (A) | 2026-04-25 | 2026-04-25 | T7 commit `e2e6b18`。ViewModeContext + term-mapping + ViewModeToggle、5 コンポーネントで useViewModeOptional 有効化。localStorage `bloom:viewMode` 保存 |
+| Bloom | Phase A-1 Day 4: Chatwork 連携基盤 | 0.25 | 0.25 | 0 | a-bloom (A) | 2026-04-25 | 2026-04-25 | T8 commit `98a351d`。src/lib/chatwork/ 9 ファイル（client / secrets / webhook / 4 templates / index）。pgcrypto トークン暗号化（判1）。Phase 1 専用ルーム ID で Dry-run 運用 |
+| Bloom | Phase A-1 Day 4: 日次・週次・月次 Cron | 1.0 | 0.5 | -0.5 | a-bloom (A) | 2026-04-25 | 2026-04-25 | T9 commit `039fb43`。13 ファイル + bloom-cron-log.sql。Vercel Cron 3 本（daily/weekly/monthly）+ 共通 runner + auth + log + aggregator。Node ランタイム（判2）+ Dry-run + pre-send log の二重防護。CRON_SECRET / BLOOM_CHATWORK_DRY_RUN env 設定済 |
+| Bloom | Phase A-1: 他モジュール引っ越し可能な疎結合化 | 0.25 | 0.1 | -0.15 | a-bloom (A) | 2026-04-25 | 2026-04-25 | T10 commit `e3f67c5`。docs/bloom-to-seed-migration.md（181 行）+ bloom: prefix 統一（BLOOM_UNLOCKED_KEY → "bloom:unlockedAt"）。1-2h で Seed へ移植可能な構造を確立 |
+| Bloom | fix(bloom): 月次ダイジェスト PDF エクスポート RLS 404 修正 (A2) | — | 0.5 | — | a-bloom (A) | 2026-04-25 | 2026-04-25 | PR #17 マージ済 (commit `1c31b98`)。Route Handler が anon supabase singleton を流用し RLS で 404 になる事件型を JWT 転送 (A2) で修正。known-pitfalls #2 として横断展開、PR #25 spec-cross-rls-audit のリファレンス事例化 |
+| Bloom | fix(bloom): status-queries.ts TS error 解消（develop Vercel build 復旧） | — | 0.05 | — | a-bloom (A) | 2026-04-25 | 2026-04-25 | PR #20 マージ済 (commit `eaf0306`)。`as` → `as unknown as` 1 語追加で `@supabase/supabase-js` 型推論 ParserError を回避。Vercel ビルド復旧 |
 | Root | Phase 1: 認証・権限管理 | — | 1.0 | — | b-main (B) | 2026-04-22 | 2026-04-23 | retroactive 記録（着手時点で見積未設定）。設計書+プラン+実装14コミット+レビュー修正3件+ハンドオフ。PR #9 マージ済。教訓：Tree Phase A 認証パターン流用で高速化、RLS ポリシーは適用前に pg_policies 確認、root_audit_log の INSERT/SELECT ポリシー欠落を後から追加 |
 | Root | Phase 2: 他アプリからの参照ルール整備 | 0.5 | — | — | a-root (A) | 2026-04-23 | | Bud/Leaf 未実装のため「Root 側で提供する API 契約書・共有クエリヘルパー・RLS 前提条件ドキュメント」に絞る方針。**2026-04-24 a-main 判断：Phase 2 は保留。Bud/Leaf 連携開始時に精緻化する。** |
 | Root | Phase A-1: 7マスタ UI 一括仕上げ（validators / FileMaker風UX / 全マスタ適用） | 3.5 | 1.0 | -2.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 当初 T1〜T7 を個別 0.5d×7 の予定だったが、Phase 1 時点で CRUD UI は既に実装済と判明。スコープを「既存実装の仕上げ」に読み替え圧縮。validators.ts / useMasterShortcuts / FormField(error)/ Modal(onSubmit)/ DataTable(activeIndex) を追加し 7 マスタに適用。PR #14。§16 7種テストは東海林さん別途実施予定。 |
@@ -89,13 +91,15 @@
   - 判1-5 確定内容：販管費 = A（別テーブル）/ 納税 = B（3 テーブル分割）/ PDF = B（Storage ミラー）/ ZIP = B（Edge Function + Storage、ただしランタイムは Node）/ Tax Files = B（社内代理入力）
   - F5 アップロード UI と F6 ZIP 本体は Phase B の Storage 統合バッチでまとめ実装する方針（a-main 判断）
 
-- **Bloom Phase A-1 (Workboard)**: 2026-04-25〜29 予定、合計 4.25 d。
-  - Day 1 (1.25 d): T1 migration + T2 型定義 + T3 認証スケルトン
-  - Day 2 (1.0 d): T4 Workboard 画面 + T5 Roadmap 画面
-  - Day 3 (0.75 d): T6 月次ダイジェスト + T7 切替・アラート
-  - Day 4 (1.25 d): T8 Chatwork 連携 + T9 Cron + T10 疎結合化
+- **Bloom Phase A-1 (Workboard)**: 2026-04-25 完走、見積 **4.25 d → 実績 2.45 d (-1.8 d)**。fix 2 件 (PR #17 RLS 404 / PR #20 TS error) で計 0.55 d 追加 → 総計実績 **3.0 d**。
+  - Day 1 (実績 0.5 d / 見積 1.0 d): T1 migration + T3 認証スケルトン（T2 型定義は T1 内で完結）
+  - Day 2 (実績 0.5 d / 見積 1.0 d): T4 Workboard 画面 + T5 Roadmap 画面
+  - Day 3 (実績 0.6 d / 見積 0.75 d): T6 月次ダイジェスト + T9-7 PDF + T7 切替・アラート
+  - Day 4 (実績 0.85 d / 見積 1.25 d): T8 Chatwork 連携 + T9 Cron + T10 疎結合化
+  - fix 2 件 (実績 0.55 d): PR #17 PDF RLS 404 (A2 JWT 転送) + PR #20 status-queries TS error
   - §10.3 判断結果反映（判1: pgcrypto / 判2: Node ランタイム / 判3: DigestPage 型運用 /
     判4: manager クライアント絞込 / 判5: Bloom ログインは /forest/login リダイレクト）
+  - **2026-04-26 a-bloom auto モード稼働で帳簿事後埋め**（Phase A-1 完走から 1 日後の遡及記入）。a-main 認識齟齬を契機に、commit timestamp + PR merge log から逆算で確定 |
 
 - **Root Phase A**: 2026-04-24 に Phase A-1 / A-2 を連続で完走（合計実績 1.5 d、当初見積 4.5 d → 圧縮 -3.0 d）。
   - Phase A-1: 既存 CRUD UI の仕上げ（バリデーション・UX・権限判定）
