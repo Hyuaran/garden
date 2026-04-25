@@ -13,12 +13,14 @@ import type { ReactNode } from "react";
 
 import { FOREST_THEME } from "../_constants/theme";
 import { C } from "../_constants/colors";
+import { fmtDateJP } from "../_lib/format";
 import { useForestState } from "../_state/ForestStateContext";
 
 export function ForestShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "";
   const isLoginPage = pathname === "/forest/login" || pathname === "/forest";
-  const { isUnlocked, userEmail, lockAndLogout } = useForestState();
+  const { isUnlocked, userEmail, lockAndLogout, lastUpdated } =
+    useForestState();
 
   // ログイン画面では背景のみ（ヘッダーなし）
   if (isLoginPage) {
@@ -78,6 +80,16 @@ export function ForestShell({ children }: { children: ReactNode }) {
               }}
             >
               ヒュアラングループ 経営ダッシュボード
+            </p>
+            <p
+              style={{
+                fontSize: 11,
+                color: FOREST_THEME.textMuted,
+                opacity: 0.6,
+                margin: "4px 0 0 0",
+              }}
+            >
+              {`最終更新: ${fmtDateJP(lastUpdated?.at ?? null)}`}
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
