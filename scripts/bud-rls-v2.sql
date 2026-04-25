@@ -60,17 +60,21 @@ CREATE POLICY "bud_transfers_update_review_admin" ON bud_transfers
   );
 
 -- ============================================================
--- 4. 承認待ち → 承認済み への遷移（admin 以上）
+-- 4. 承認待ち → 承認済み への遷移（admin 以上、ただし自起票本人は不可）
 -- ============================================================
+-- A-05 §9 V6: 起票者本人による承認は禁止（金銭関連の二重チェック原則）
+-- super_admin の自起票スキップは別 policy 5 で扱うため、ここでは created_by != auth.uid() を強制
 CREATE POLICY "bud_transfers_update_approval_admin" ON bud_transfers
   FOR UPDATE
   USING (
     status = '承認待ち'
     AND bud_is_admin()
+    AND created_by <> auth.uid()
   )
   WITH CHECK (
     status IN ('承認済み', '差戻し')
     AND bud_is_admin()
+    AND created_by <> auth.uid()
   );
 
 -- ============================================================

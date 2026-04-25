@@ -102,9 +102,10 @@ DECLARE
   v_user_role      text;
   v_history_id     uuid;
   v_effective_reason text;
+  v_created_by     uuid;
 BEGIN
   -- 1. 遷移元取得 + 行ロック（楽観ロック代わり）
-  SELECT status INTO v_old_status
+  SELECT status, created_by INTO v_old_status, v_created_by
     FROM bud_transfers
     WHERE transfer_id = p_transfer_id
     FOR UPDATE;
@@ -128,6 +129,14 @@ BEGIN
   IF NOT bud_can_transition(v_old_status, p_to_status, v_user_role) THEN
     RAISE EXCEPTION 'invalid transition: % -> % by role %', v_old_status, p_to_status, v_user_role
       USING ERRCODE = 'CHECK_VIOLATION';
+  END IF;
+
+  -- 3.5 A-05 §9 V6: 自己承認禁止
+  -- 承認待ち → 承認済み の遷移は起票者本人不可（金銭関連の二重チェック原則）
+  -- ただし super_admin 自起票スキップ（下書き → 承認済み）は除外
+  IF v_old_status = '承認待ち' AND p_to_status = '承認済み' AND v_created_by = auth.uid() THEN
+    RAISE EXCEPTION 'self-approval is not allowed: 起票者本人による承認は不可'
+      USING ERRCODE = 'INSUFFICIENT_PRIVILEGE';
   END IF;
 
   -- 4. 差戻し時の reason 必須チェック

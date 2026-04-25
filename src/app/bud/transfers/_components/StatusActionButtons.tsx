@@ -48,6 +48,9 @@ export function StatusActionButtons({
         transferId: transfer.transfer_id,
         toStatus,
         reason,
+        fromStatus: transfer.status,
+        createdBy,
+        actorUserId: sessionUser?.user_id ?? null,
       });
       if (!result.success) {
         setError(`${result.code}: ${result.error}`);

@@ -96,7 +96,76 @@ describe("validateTransitionInput", () => {
   });
 });
 
+describe("validateTransitionInput — V6 自己承認禁止（A-05 §9）", () => {
+  it("起票者と承認者が同一なら SELF_APPROVAL_FORBIDDEN", () => {
+    const r = validateTransitionInput({
+      transferId: "FK-001",
+      toStatus: "承認済み",
+      fromStatus: "承認待ち",
+      createdBy: "user-1",
+      actorUserId: "user-1",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).toBe("SELF_APPROVAL_FORBIDDEN");
+      expect(r.error).toContain("起票者本人");
+    }
+  });
+
+  it("起票者と承認者が異なれば OK", () => {
+    const r = validateTransitionInput({
+      transferId: "FK-001",
+      toStatus: "承認済み",
+      fromStatus: "承認待ち",
+      createdBy: "user-1",
+      actorUserId: "user-2",
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("createdBy / actorUserId が未指定なら自己承認チェックは発動しない（DB layer に委ねる）", () => {
+    const r = validateTransitionInput({
+      transferId: "FK-001",
+      toStatus: "承認済み",
+      fromStatus: "承認待ち",
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("super_admin の自起票スキップ（下書き → 承認済み）は対象外", () => {
+    const r = validateTransitionInput({
+      transferId: "FK-001",
+      toStatus: "承認済み",
+      fromStatus: "下書き",
+      createdBy: "user-1",
+      actorUserId: "user-1",
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("差戻しは自己でも禁止対象外（V6 は承認のみ）", () => {
+    const r = validateTransitionInput({
+      transferId: "FK-001",
+      toStatus: "差戻し",
+      fromStatus: "承認待ち",
+      reason: "理由テスト10文字以上",
+      createdBy: "user-1",
+      actorUserId: "user-1",
+    });
+    expect(r.ok).toBe(true);
+  });
+});
+
 describe("mapPostgresErrorCode", () => {
+  it("self-approval メッセージ → SELF_APPROVAL_FORBIDDEN", () => {
+    expect(
+      mapPostgresErrorCode(
+        "INSUFFICIENT_PRIVILEGE",
+        "self-approval is not allowed: 起票者本人による承認は不可",
+      ),
+    ).toBe("SELF_APPROVAL_FORBIDDEN");
+  });
+
   it("NO_DATA_FOUND → NOT_FOUND", () => {
     expect(mapPostgresErrorCode("NO_DATA_FOUND", "transfer not found")).toBe(
       "NOT_FOUND",
