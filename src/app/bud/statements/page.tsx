@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { BudGate } from "../_components/BudGate";
 import { BudShell } from "../_components/BudShell";
 import { useBudState } from "../_state/BudStateContext";
@@ -99,13 +100,27 @@ function StatementsContent() {
             銀行入出金の取込・自動照合・手動割当
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setImportOpen(true)}
-          className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700"
-        >
-          + CSV 取込
-        </button>
+        <div className="flex gap-2 items-center">
+          <Link
+            href="/bud/statements/summary"
+            className="text-sm text-emerald-700 hover:underline"
+          >
+            月次集計
+          </Link>
+          <Link
+            href="/bud/statements/imports"
+            className="text-sm text-emerald-700 hover:underline"
+          >
+            取込履歴
+          </Link>
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700"
+          >
+            + CSV 取込
+          </button>
+        </div>
       </div>
 
       <section className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
