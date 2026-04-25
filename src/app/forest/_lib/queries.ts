@@ -14,7 +14,7 @@ import type {
   Shinkouki,
 } from "../_constants/companies";
 import { supabase } from "./supabase";
-import type { Hankanhi, LastUpdatedAt } from "./types";
+import type { Hankanhi, LastUpdatedAt, TaxFile } from "./types";
 
 /**
  * 法人マスタを sort_order 順に全件取得する。
@@ -223,4 +223,58 @@ export async function fetchLastUpdated(): Promise<LastUpdatedAt> {
   if (fpTime === skTime) return { source: "both", at: fpAt! };
   if (fpTime > skTime) return { source: "fiscal_periods", at: fpAt! };
   return { source: "shinkouki", at: skAt! };
+}
+
+/* =====================================================================
+ * T-F5: Tax Files queries
+ * ===================================================================== */
+
+/**
+ * 税理士連携ファイル一覧を `uploaded_at` 降順で取得する。
+ *
+ * @param companyId - 指定時は該当法人のみ。省略時は全法人。
+ * @returns TaxFile[]（該当行なしは空配列）
+ * @throws Supabase エラー発生時
+ */
+export async function fetchTaxFiles(companyId?: string): Promise<TaxFile[]> {
+  let query = supabase
+    .from("forest_tax_files")
+    .select("*");
+
+  if (companyId) {
+    query = query.eq("company_id", companyId);
+  }
+
+  const { data, error } = await query.order("uploaded_at", {
+    ascending: false,
+  });
+
+  if (error) {
+    throw new Error(`fetchTaxFiles: ${error.message}`);
+  }
+
+  return (data ?? []) as TaxFile[];
+}
+
+/**
+ * 税理士連携ファイル本体（forest-tax bucket）の signed URL を発行する。
+ *
+ * @param storagePath - bucket 内パス
+ * @param expiresInSec - 有効期限秒数。既定 600（10 分、単発開きを想定）
+ */
+export async function createTaxFileSignedUrl(
+  storagePath: string,
+  expiresInSec: number = 600,
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from("forest-tax")
+    .createSignedUrl(storagePath, expiresInSec);
+
+  if (error) {
+    throw new Error(`createTaxFileSignedUrl: ${error.message}`);
+  }
+  if (!data?.signedUrl) {
+    throw new Error("createTaxFileSignedUrl: empty signedUrl returned");
+  }
+  return data.signedUrl;
 }

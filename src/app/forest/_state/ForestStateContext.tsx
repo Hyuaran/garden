@@ -23,9 +23,16 @@ import {
 import type { Company, FiscalPeriod, ForestUser, Shinkouki } from "../_constants/companies";
 import { clearForestUnlock, getSession, isForestUnlocked, signOutForest } from "../_lib/auth";
 import { writeAuditLog } from "../_lib/audit";
-import { fetchCompanies, fetchFiscalPeriods, fetchForestUser, fetchLastUpdated, fetchShinkouki } from "../_lib/queries";
+import {
+  fetchCompanies,
+  fetchFiscalPeriods,
+  fetchForestUser,
+  fetchLastUpdated,
+  fetchShinkouki,
+  fetchTaxFiles,
+} from "../_lib/queries";
 import { startSessionTimer } from "../_lib/session-timer";
-import type { LastUpdatedAt } from "../_lib/types";
+import type { LastUpdatedAt, TaxFile } from "../_lib/types";
 
 type ForestState = {
   /** ローディング中 */
@@ -45,6 +52,8 @@ type ForestState = {
   shinkouki: Shinkouki[];
   /** T-F2-01: Forest 全体の最終更新日時 */
   lastUpdated: LastUpdatedAt | null;
+  /** T-F5: 税理士連携ファイル一覧（uploaded_at 降順） */
+  taxFiles: TaxFile[];
   /** 操作 */
   unlock: () => void;
   lockAndLogout: (reason: "manual" | "timeout") => Promise<void>;
@@ -76,6 +85,7 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
   const [periods, setPeriods] = useState<FiscalPeriod[]>([]);
   const [shinkoukiData, setShinkoukiData] = useState<Shinkouki[]>([]);
   const [lastUpdated, setLastUpdated] = useState<LastUpdatedAt | null>(null);
+  const [taxFiles, setTaxFiles] = useState<TaxFile[]>([]);
 
   // --- Callbacks（useEffect より先に定義） ---
 
@@ -96,20 +106,23 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
     setPeriods([]);
     setShinkoukiData([]);
     setLastUpdated(null);
+    setTaxFiles([]);
   }, []);
 
   const refreshData = useCallback(async () => {
     try {
-      const [c, p, s, lu] = await Promise.all([
+      const [c, p, s, lu, tf] = await Promise.all([
         fetchCompanies(),
         fetchFiscalPeriods(),
         fetchShinkouki(),
         fetchLastUpdated(),
+        fetchTaxFiles(),
       ]);
       setCompanies(c);
       setPeriods(p);
       setShinkoukiData(s);
       setLastUpdated(lu);
+      setTaxFiles(tf);
     } catch (err) {
       console.error("Forest data fetch error:", err);
     }
@@ -200,6 +213,7 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
       periods,
       shinkouki: shinkoukiData,
       lastUpdated,
+      taxFiles,
       unlock,
       lockAndLogout: lockAndLogoutFn,
       refreshData,
@@ -208,7 +222,8 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
     [
       loading, isAuthenticated, hasPermission, isUnlocked,
       userEmail, forestUser, companies, periods, shinkoukiData,
-      lastUpdated, unlock, lockAndLogoutFn, refreshData, refreshAuth,
+      lastUpdated, taxFiles,
+      unlock, lockAndLogoutFn, refreshData, refreshAuth,
     ],
   );
 

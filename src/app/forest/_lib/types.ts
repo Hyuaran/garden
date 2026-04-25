@@ -80,3 +80,36 @@ export type LastUpdatedAt = {
   /** 採用された updated_at（両テーブル空なら epoch 0） */
   at: Date;
 };
+
+/* =====================================================================
+ * T-F5: 税理士連携ファイル（forest_tax_files テーブル + Storage）
+ * ===================================================================== */
+
+/** 税理士連携ファイルのステータス。zanntei = 暫定 / kakutei = 確定。
+ *  ※ 'zanntei' は DB ENUM の表記に合わせて温存（DB との整合優先）。 */
+export type TaxFileStatus = "zanntei" | "kakutei";
+
+/** `forest_tax_files` テーブル行型。 */
+export type TaxFile = {
+  id: string;
+  company_id: string;
+  /** 表示用ドキュメント名（例: '2024年度 確定申告書'） */
+  doc_name: string;
+  /** 元ファイル名（Storage パスとは別）*/
+  file_name: string;
+  /** Supabase Storage 内のパス（例: 'hyuaran/2024_kakutei_20260424.pdf'） */
+  storage_path: string;
+  status: TaxFileStatus;
+  /** 書類基準日（年次=期末日 等）。連携日 (uploaded_at) とは別 */
+  doc_date: string | null;
+  /** Storage 連携日 */
+  uploaded_at: string;
+  /** uploaded_by: auth.users.id */
+  uploaded_by: string | null;
+  /** 備考（'※訂正版あり' 等） */
+  note: string | null;
+  mime_type: string;
+  file_size_bytes: number;
+  created_at: string;
+  updated_at: string;
+};

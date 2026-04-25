@@ -15,6 +15,7 @@ import { MacroChart } from "../_components/MacroChart";
 import { MicroGrid } from "../_components/MicroGrid";
 import { ShinkoukiEditModal } from "../_components/ShinkoukiEditModal";
 import { SummaryCards } from "../_components/SummaryCards";
+import { TaxFilesList } from "../_components/TaxFilesList";
 import { FOREST_THEME } from "../_constants/theme";
 import { isForestAdmin } from "../_lib/permissions";
 import { useForestState } from "../_state/ForestStateContext";
@@ -29,6 +30,7 @@ export default function ForestDashboardPage() {
     companies,
     periods,
     shinkouki,
+    taxFiles,
     forestUser,
     refreshData,
   } = useForestState();
@@ -86,6 +88,7 @@ export default function ForestDashboardPage() {
   return (
     <>
       <SummaryCards companies={companies} periods={periods} />
+      <TaxFilesList companies={companies} taxFiles={taxFiles} />
       <MacroChart companies={companies} periods={periods} />
       <MicroGrid
         companies={companies}
