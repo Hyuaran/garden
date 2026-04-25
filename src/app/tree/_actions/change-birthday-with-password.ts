@@ -88,5 +88,15 @@ export async function changeBirthdayWithPassword(
   }).format(new Date());
   if (input.newBirthday > todayJst) return fail("INVALID_FORMAT");
 
+  const admin = getSupabaseAdmin();
+  const { data: employee, error: empError } = await admin
+    .from("root_employees")
+    .select("birthday, employee_number")
+    .eq("user_id", userData.user.id)
+    .maybeSingle();
+  if (empError || !employee) return fail("UNAUTHENTICATED");
+
+  if (employee.birthday === input.newBirthday) return fail("SAME_AS_CURRENT");
+
   return fail("UNKNOWN");
 }
