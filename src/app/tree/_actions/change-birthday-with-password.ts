@@ -77,5 +77,10 @@ export async function changeBirthdayWithPassword(
     await verifyClient.auth.getUser(input.accessToken);
   if (userError || !userData?.user) return fail("UNAUTHENTICATED");
 
+  const dateMatch = input.newBirthday.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!dateMatch) return fail("INVALID_FORMAT");
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (input.newBirthday > todayStr) return fail("INVALID_FORMAT");
+
   return fail("UNKNOWN");
 }

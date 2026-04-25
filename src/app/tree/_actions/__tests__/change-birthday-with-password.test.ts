@@ -72,3 +72,41 @@ describe("changeBirthdayWithPassword - UNAUTHENTICATED", () => {
     }
   });
 });
+
+describe("changeBirthdayWithPassword - INVALID_FORMAT", () => {
+  function setupAuthenticated() {
+    const anon = buildAnonClient();
+    anon.auth.getUser.mockResolvedValue({
+      data: { user: { id: "user-123", email: "emp1324@garden.internal" } },
+      error: null,
+    });
+    mockedCreateClient.mockReturnValue(anon as never);
+    mockedGetSupabaseAdmin.mockReturnValue(buildAdminClient() as never);
+    return anon;
+  }
+
+  it("YYYY-MM-DD 形式以外なら INVALID_FORMAT", async () => {
+    setupAuthenticated();
+    const result = await changeBirthdayWithPassword({
+      newBirthday: "1990/05/07",
+      currentPassword: "0507",
+      accessToken: "ok-token",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.errorCode).toBe("INVALID_FORMAT");
+  });
+
+  it("未来日付なら INVALID_FORMAT", async () => {
+    setupAuthenticated();
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const result = await changeBirthdayWithPassword({
+      newBirthday: future,
+      currentPassword: "0507",
+      accessToken: "ok-token",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.errorCode).toBe("INVALID_FORMAT");
+  });
+});
