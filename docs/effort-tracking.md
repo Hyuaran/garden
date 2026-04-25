@@ -35,6 +35,14 @@
 | Root | Phase 2: 他アプリからの参照ルール整備 | 0.5 | — | — | a-root (A) | 2026-04-23 | | Bud/Leaf 未実装のため「Root 側で提供する API 契約書・共有クエリヘルパー・RLS 前提条件ドキュメント」に絞る方針。**2026-04-24 a-main 判断：Phase 2 は保留。Bud/Leaf 連携開始時に精緻化する。** |
 | Root | Phase A-1: 7マスタ UI 一括仕上げ（validators / FileMaker風UX / 全マスタ適用） | 3.5 | 1.0 | -2.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 当初 T1〜T7 を個別 0.5d×7 の予定だったが、Phase 1 時点で CRUD UI は既に実装済と判明。スコープを「既存実装の仕上げ」に読み替え圧縮。validators.ts / useMasterShortcuts / FormField(error)/ Modal(onSubmit)/ DataTable(activeIndex) を追加し 7 マスタに適用。PR #14。§16 7種テストは東海林さん別途実施予定。 |
 | Root | Phase A-2: KoT API 連携（月次勤怠 API 直接取込） | 1.0 | 0.5 | -0.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 案A（CSV手動）→案C（API直行）へ切替。KoT v1.0 /employees + /monthly-workings を Server Action で取得→ employeeKey→code→employee_number→employee_id 解決→ root_attendance に upsert。疎通は IP 制限設定で一度失敗→解消後 200 OK・42名取得確認。/monthly-workings の date は YYYY-MM 形式（YYYY-MM-DD は 400）と実機で判明、修正反映済。PR #15。本番 Vercel IP 対応は別タスク。 |
+| Root | Phase A-3-e: KoT API IP 制限 Issue 起票（4 案 A〜D 整理） | 0.2 | 0.3 | +0.1 | a-root (A) | 2026-04-24 | 2026-04-24 | Issue #30 起票。案 B（Fixie 固定 IP プロキシ）採択済。Vercel 本番デプロイのブロッカー、PR #46 後の本番稼働化までの blocker として可視化。 |
+| Root | Phase A-3-f: 7 マスタ timestamptz 空文字バグ横展開 fix | 0.6 | 0.5 | -0.1 | a-root (A) | 2026-04-24 | 2026-04-24 | sanitize-payload.ts 共通化、7 マスタ全てに適用。known-pitfalls.md §[#1] §2.6 に予防策を蓄積。PR #32。 |
+| Root | Phase A-3-a: root_kot_sync_log migration + 二段階ログ書込 | 0.3 | 0.5 | +0.2 | a-root (A) | 2026-04-24 | 2026-04-24 | preview で running 起票 → commit で success/partial/failure 確定の二段階設計。PR #34。 |
+| Root | Phase A-3-b: /root/kot-sync-history UI + 再実行 Server Action | 0.5 | 0.5 | 0 | a-root (A) | 2026-04-24 | 2026-04-24 | DataTable + Modal 流用、自動 refetch、5分超 stale 警告、admin/super_admin 限定。PR #35。 |
+| Root | Phase A-3-c: Vercel Cron 自動同期基盤（Fixie 前提・crons 無効状態） | 0.6 | 0.6 | 0 | a-root (A) | 2026-04-24 | 2026-04-24 | crons は crons_pending_fixie_root に保留、Fixie 契約後に移動。CRON_SECRET 検証 + orphan running cleanup。PR #39。 |
+| Root | Phase A-3-g: employees 外注拡張 + is_user_active / garden_role_of | 0.5 | 0.4 | -0.1 | a-root (A) | 2026-04-24 | 2026-04-24 | Leaf A-1c の unblocker。GardenRole 8 段階化、共通 SQL 関数 2 つ追加。Vitest 22 件初投入。PR #41。 |
+| Root | Phase A-3-d: KoT /daily-workings 同期 + root_attendance_daily | 0.5 | 0.5 | 0 | a-root (A) | 2026-04-24 | 2026-04-25 | 月次 root_attendance と並存、UNIQUE(employee_id,work_date)。runDailySyncFull + cron-daily 配線。実フィールド名は probe-kot.mjs daily probe で東海林さん手元確認待ち。PR #42。 |
+| Root | Phase A-3-h: employees 給与カラム拡張（kou_otsu / dependents_count / deleted_at） | 0.4 | 0.4 | 0 | a-root (A) | 2026-04-25 | 2026-04-25 | Bud Phase B/C unblocker。Vitest 11 件追加（合計 33 件 pass）。PR #46。 |
 
 ## 運用メモ
 
@@ -68,9 +76,15 @@
   - §10.3 判断結果反映（判1: pgcrypto / 判2: Node ランタイム / 判3: DigestPage 型運用 /
     判4: manager クライアント絞込 / 判5: Bloom ログインは /forest/login リダイレクト）
 
-- **Root Phase A**: 2026-04-24 に Phase A-1 / A-2 を連続で完走（合計実績 1.5 d、当初見積 4.5 d → 圧縮 -3.0 d）。
+- **Root Phase A**: 2026-04-24 〜 2026-04-25 で Phase A-1 / A-2 / A-3 を完走。
+  - 合計実績: 5.2 d、当初見積 8.1 d、圧縮 **-2.9 d**（Phase A-1 -2.5 / A-2 -0.5 / A-3 +0.1）
   - Phase A-1: 既存 CRUD UI の仕上げ（バリデーション・UX・権限判定）
-  - Phase A-2: KoT API 月次勤怠取込（IP 制限ハマり含めて 0.5 d で完走）
-  - 教訓：既存実装の発掘を初手で徹底する / KoT API は IP 制限ありと明示されていなかった / `date` 形式は実機で判明（yyyy-MM 必須）
+  - Phase A-2: KoT API 月次勤怠取込
+  - Phase A-3: 8 spec 完走（A-3-a〜h）
+    - 同期履歴 + 履歴 UI + Cron 基盤 + 日次同期 + 外注対応 + 給与関連カラム + IP 制限 Issue
+    - 横展開資産: `is_user_active()` / `garden_role_of()` / `sanitizeUpsertPayload` / `verifyCronRequest` 等
+    - Vitest 33 件 / known-pitfalls.md 整備
+    - 残作業: Fixie 契約後の本番稼働化（kot-api proxy 配線 + vercel.json crons 移動 + 環境変数登録）
+  - 教訓：(1) 既存実装の発掘を初手で徹底する、(2) KoT API は IP 制限あり（明示されてなかった）、(3) `date` 形式は実機で判明（yyyy-MM 必須）、(4) timestamptz 空文字バグは早期に共通サニタイザで予防、(5) 二段階ロギング（running → commit）は再実行・stale 解消・観測性で効く
 
 - **本ファイルの起源**: 2026-04-22、ルール `feedback_effort_tracking.md` 遵守のため作成。以降の Phase では spec/plan 作成と同時に行追加すること。
