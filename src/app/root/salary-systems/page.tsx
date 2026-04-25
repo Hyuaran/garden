@@ -10,6 +10,16 @@ import { TextField, SelectField, FormGrid, TextareaField } from "../_components/
 import { fetchSalarySystems, upsertSalarySystem, setSalarySystemActive } from "../_lib/queries";
 import type { SalarySystem } from "../_constants/types";
 import { colors } from "../_constants/colors";
+import { useRootState } from "../_state/RootStateContext";
+import { writeAudit } from "../_lib/audit";
+import {
+  validateSalarySystem,
+  hasErrors,
+  VALIDATION_ERROR_BANNER,
+  type FieldErrors,
+} from "../_lib/validators";
+import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
 const EMP_TYPES = ["正社員", "アルバイト", "共通"];
 const BASE_TYPES = ["月給", "時給", "日給"];
@@ -39,11 +49,19 @@ function nextId(existing: SalarySystem[]): string {
 }
 
 export default function SalarySystemsPage() {
+  const { canWrite, rootUser } = useRootState();
   const [systems, setSystems] = useState<SalarySystem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<SalarySystem | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const { activeIndex } = useMasterShortcuts<SalarySystem>({
+    rows: systems,
+    modalOpen: !!editTarget,
+    onEditRow: canWrite ? setEditTarget : undefined,
+  });
 
   async function load() {
     try { setLoading(true); setError(null); setSystems(await fetchSalarySystems()); }
@@ -51,17 +69,72 @@ export default function SalarySystemsPage() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => { if (!editTarget) setErrors({}); }, [editTarget]);
 
   async function handleSave() {
     if (!editTarget) return;
-    try { setSaving(true); await upsertSalarySystem(editTarget); setEditTarget(null); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_salary_systems",
+        payload: { attempted: "save" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    const errs = validateSalarySystem(editTarget);
+    if (hasErrors(errs)) {
+      setErrors(errs);
+      setError(VALIDATION_ERROR_BANNER);
+      return;
+    }
+    try {
+      setSaving(true);
+      setError(null);
+      setErrors({});
+      await upsertSalarySystem(
+        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.salary_systems }) as Partial<SalarySystem> & { salary_system_id: string },
+      );
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_salary_systems",
+        targetId: editTarget.salary_system_id,
+        payload: { value: editTarget },
+      });
+      setEditTarget(null);
+      await load();
+    } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   }
 
   async function handleToggleActive(s: SalarySystem) {
-    try { await setSalarySystemActive(s.salary_system_id, !s.is_active); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_salary_systems",
+        payload: { attempted: "toggle_active" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    try {
+      await setSalarySystemActive(s.salary_system_id, !s.is_active);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_salary_systems",
+        targetId: s.salary_system_id,
+        payload: { toggle_active: !s.is_active },
+      });
+      await load();
+    } catch (e) { setError((e as Error).message); }
   }
 
   const columns: Column<SalarySystem>[] = [
@@ -75,8 +148,8 @@ export default function SalarySystemsPage() {
     { key: "status", header: "状態", render: (s) => <StatusBadge active={s.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (s) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(s)}>編集</Button>
-        <Button variant={s.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(s)}>{s.is_active ? "無効化" : "有効化"}</Button>
+        <Button variant="secondary" onClick={() => setEditTarget(s)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button variant={s.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(s)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{s.is_active ? "無効化" : "有効化"}</Button>
       </div>
     ), width: 170, align: "right" },
   ];
@@ -85,34 +158,34 @@ export default function SalarySystemsPage() {
     <>
       <PageHeader
         title="給与体系マスタ"
-        description="雇用形態別の給与計算ルール。従業員マスタから紐づけて使用。"
-        actions={<Button onClick={() => setEditTarget(emptySystem(nextId(systems)))}>+ 新規追加</Button>}
+        description="雇用形態別の給与計算ルール。従業員マスタから紐づけて使用。Ctrl+↑↓ 行移動・Ctrl+Enter 編集。"
+        actions={<Button onClick={() => setEditTarget(emptySystem(nextId(systems)))} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>}
       />
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
-      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={systems} />}
+      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={systems} activeIndex={activeIndex} onRowClick={canWrite ? setEditTarget : undefined} />}
 
-      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title={editTarget?.created_at ? "給与体系を編集" : "給与体系を追加"} width={720}>
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "給与体系を編集" : "給与体系を追加"} width={720}>
         {editTarget && (
           <div>
             <FormGrid>
-              <TextField label="給与体系ID" required value={editTarget.salary_system_id} onChange={(e) => setEditTarget({ ...editTarget, salary_system_id: e.target.value })} disabled={!!editTarget.created_at} />
-              <TextField label="体系名" required value={editTarget.system_name} onChange={(e) => setEditTarget({ ...editTarget, system_name: e.target.value })} />
-              <SelectField label="対象雇用形態" required value={editTarget.employment_type} onChange={(e) => setEditTarget({ ...editTarget, employment_type: e.target.value })}>
+              <TextField label="給与体系ID" required value={editTarget.salary_system_id} onChange={(e) => setEditTarget({ ...editTarget, salary_system_id: e.target.value })} disabled={!!editTarget.created_at} error={errors.salary_system_id} />
+              <TextField label="体系名" required value={editTarget.system_name} onChange={(e) => setEditTarget({ ...editTarget, system_name: e.target.value })} error={errors.system_name} />
+              <SelectField label="対象雇用形態" required value={editTarget.employment_type} onChange={(e) => setEditTarget({ ...editTarget, employment_type: e.target.value })} error={errors.employment_type}>
                 {EMP_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </SelectField>
-              <SelectField label="基本給計算方法" required value={editTarget.base_salary_type} onChange={(e) => setEditTarget({ ...editTarget, base_salary_type: e.target.value })}>
+              <SelectField label="基本給計算方法" required value={editTarget.base_salary_type} onChange={(e) => setEditTarget({ ...editTarget, base_salary_type: e.target.value })} error={errors.base_salary_type}>
                 {BASE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </SelectField>
-              <TextField label="所定労働時間（日）" type="number" step="0.1" value={editTarget.working_hours_day} onChange={(e) => setEditTarget({ ...editTarget, working_hours_day: Number(e.target.value) })} />
-              <TextField label="所定労働日数（月）" type="number" step="0.1" value={editTarget.working_days_month} onChange={(e) => setEditTarget({ ...editTarget, working_days_month: Number(e.target.value) })} />
-              <TextField label="残業単価倍率（法定外）" type="number" step="0.01" value={editTarget.overtime_rate} onChange={(e) => setEditTarget({ ...editTarget, overtime_rate: Number(e.target.value) })} />
-              <TextField label="残業単価倍率（深夜）" type="number" step="0.01" value={editTarget.night_overtime_rate} onChange={(e) => setEditTarget({ ...editTarget, night_overtime_rate: Number(e.target.value) })} />
-              <TextField label="残業単価倍率（休日）" type="number" step="0.01" value={editTarget.holiday_overtime_rate} onChange={(e) => setEditTarget({ ...editTarget, holiday_overtime_rate: Number(e.target.value) })} />
+              <TextField label="所定労働時間（日）" type="number" step="0.1" min={0} max={24} value={editTarget.working_hours_day} onChange={(e) => setEditTarget({ ...editTarget, working_hours_day: Number(e.target.value) })} error={errors.working_hours_day} />
+              <TextField label="所定労働日数（月）" type="number" step="0.1" min={0} max={31} value={editTarget.working_days_month} onChange={(e) => setEditTarget({ ...editTarget, working_days_month: Number(e.target.value) })} error={errors.working_days_month} />
+              <TextField label="残業単価倍率（法定外）" type="number" step="0.01" min={1} max={3} value={editTarget.overtime_rate} onChange={(e) => setEditTarget({ ...editTarget, overtime_rate: Number(e.target.value) })} error={errors.overtime_rate} />
+              <TextField label="残業単価倍率（深夜）" type="number" step="0.01" min={1} max={3} value={editTarget.night_overtime_rate} onChange={(e) => setEditTarget({ ...editTarget, night_overtime_rate: Number(e.target.value) })} error={errors.night_overtime_rate} />
+              <TextField label="残業単価倍率（休日）" type="number" step="0.01" min={1} max={3} value={editTarget.holiday_overtime_rate} onChange={(e) => setEditTarget({ ...editTarget, holiday_overtime_rate: Number(e.target.value) })} error={errors.holiday_overtime_rate} />
             </FormGrid>
             <TextareaField label="備考" value={editTarget.notes ?? ""} onChange={(e) => setEditTarget({ ...editTarget, notes: e.target.value || null })} />
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}

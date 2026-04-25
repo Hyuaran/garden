@@ -1,105 +1,117 @@
-# Garden シリーズ 工数実績ログ
+# Garden シリーズ 工数トラッキング
 
-各 Phase / タスクの**見積 vs 実績**を全モジュール横断で記録する。見積精度向上・ベロシティ把握・計画立案精度改善が目的。
+> Phase / タスクごとの **見積 (estimated_days)** と **実績 (actual_days)** を蓄積する共有ログ。
+> 東海林アカウント A / B 両セッションで同じファイルに追記する。
+>
+> - 1 日 = 8 時間。動作確認・レビュー対応含む実稼働ベース
+> - Phase 着手時に見積行を追加、完了時に実績・差分・所感を記入
+> - 見積を後から書き換えない（乖離理由は `notes` に記録）
+> - 0.25d 刻みで記録。東海林さん手動作業（SQL 適用・ブラウザ確認・PR レビュー等）も実績に含める
+> - 根拠メモリ: `feedback_effort_tracking.md`
 
-## 記録対象
+## 記録フォーマット
 
-- 各 spec / plan の Phase・タスクで `estimated_days` を定義したもの **すべて**
-- Garden 9 モジュール全般（Soil / Root / Tree / Leaf / Bud / Bloom / Seed / Forest / Rill）
-- 東海林アカウント A / B どちらのセッションでも蓄積する
+| module | phase / task | estimated_days | actual_days | diff | session | started | finished | notes |
+|---|---|---:|---:|---:|---|---|---|---|
 
-## 記録タイミング
+## 履歴
 
-- **Phase 着手時**: 見積を確定したタイミングで行を追加（実績欄は空で pending）
-- **Phase 完了時**: 実績・差分・所感を追記
-- **途中経過**: 大幅に見積超過しそうなら `notes` にアラート追記
+| module | phase / task | estimated_days | actual_days | diff | session | started | finished | notes |
+|---|---|---:|---:|---:|---|---|---|---|
+| Forest | Phase A1: 進行期自動更新 Python スクリプト（PDF → Supabase） | 1.0 | 0.4 | -0.6 | a-forest (A) / b-main (B) | 2026-04-21 | 2026-04-22 | コード・ドキュメント完成、本番 UPDATE 疎通確認済み。4社分PDF で 4/4 件 UPDATE 成功。Task 7 のブラウザ目視確認と日報記録は東海林依頼で残。見積 1.0 d に対し AI 支援で 0.4 d で完了 |
+| Forest | Phase A2/A3: 進行期編集モーダル（PDF自動入力+手動編集+期切り替え） | 2.5 | 0.6 | -1.9 | b-main (B) | 2026-04-22 | 2026-04-23 | ShinkoukiEditModal + PdfUploader + /api/forest/parse-pdf + mutations + RLS パッチ。PDF 解析は pdfjs-dist サーバーサイド、Python 版と同値を確認。subagent-driven-development で Task 1-8 を haiku で実装、Dashboard 統合は inline。admin 動作確認 OK |
+| Forest | fix: ShinkoukiEditModal タブ切替時の高さジャンプ修正 | 0.05 | 0.03 | -0.02 | a-forest (A) | 2026-04-23 | 2026-04-23 | タブコンテンツを minHeight:560 のラッパーで固定。次ビルド/型チェック OK、PR #11 マージ済 (commit 46386c1) |
+| Forest | Phase A 仕上げ: v9 残機能移植 (T-F10/T-F2/T-F3/T-F4/T-F11/T-F7/T-F5 閲覧/T-F6/T-F9/T-F8) | 9.3 | | | a-forest (A) + a-auto | 2026-04-24 | | comparison §6 推奨順で消化。旧 9.8d から F5 アップロード UI (0.5d) を Phase B Storage 統合へ移行で除外し 9.3d に再計算。内訳: T-F10=0.95 / T-F2+F3=0.35 / T-F4+F11=2.2 / T-F7=0.25 / T-F5 閲覧=1.85 / T-F6 (Node ZIP)=2.85 / T-F9+F8=0.85 (a-auto 可)。判1-5 = A/B/B/B/B（暫定確定、次回対話で東海林さん正式同意取得予定）。F6 ZIP は Node ランタイム確定 (Edge 4.5MB 上限のため) |
+| Forest | T-F10 (P08 販管費 + reflected note) | 0.95 | 0.6 | -0.35 | a-forest (A) | 2026-04-25 | 2026-04-25 | Vitest 5 件導入 + 型 + queries + DetailModal セクション + reflected note。PR #33 merged。23 tests green。 |
+| Forest | T-F2-01 (ヘッダー最終更新日) + T-F3-F8 (MacroChart タイトル) | 0.55 | 0.35 | -0.2 | a-forest (A) | 2026-04-25 | 2026-04-25 | fmtDateJP / fetchLastUpdated / ForestShell 表示 + MacroChart タイトル v9 互換化。PR #43 merged。SummaryCards は動的計算維持（auto 判1）。MacroChart 高さ判3 は判断保留のため未変更。 |
+| Tree | fix: mapGardenRoleToTreeRole の outsource 漏れ + exhaustiveness | — | 0.15 | — | a-forest (A) | 2026-04-25 | 2026-04-25 | a-main 経由代行。GardenRole 8 値全網羅 + never チェック追加。outsource → MANAGER 暫定、東海林さん確認待ち。PR #48 merged。 |
+| Forest | T-F7-01 (共通 InfoTooltip) | 0.25 | 0.2 | -0.05 | a-forest (A) | 2026-04-25 | 2026-04-25 | hover/focus/Esc 完備、a11y (role=tooltip, aria-describedby/expanded) 完備。Forest 規約に従いインライン style 採用。15 tests green。PR #49 (Vercel pass、レビュー待ち)。 |
+| Forest | T-F4-02 (Tax Calendar) + T-F11-01 (Tax Detail Modal) | 1.5 | 1.0 | -0.5 | a-forest (A) | 2026-04-25 | 2026-04-25 | Phase 1-4 で types + queries + tax-calendar.ts + TaxPill + TaxDetailModal + TaxCalendar + 統合。64 tests green、累計 157/157。インライン style 規約遵守。判3 高さは判断保留扱い。self-review で overflow-x ラッパー追加 (PR #50 commit f5ff69d)。Vercel pass、レビュー待ち。 |
+| Forest | T-F9-01 (MicroGrid 差分監査) + T-F8-01 (MacroChart 差分検証) | 0.85 | 0.25 | -0.6 | a-forest (A) | 2026-04-25 | 2026-04-25 | 自律実行モード稼働分。spec の 10 点差分主張を全コード照合で検証、12 + 1 (高さ判3) 項目検証で T-F8 はほぼ準拠確認。実装は spec §13 推奨フロー（東海林さん採否合意先行）に従い未着手、audit verification ドキュメントのみ作成 (`docs/forest-audit-t-f9-t-f8-verification-202604251700.md`)。実装時 D2/D4/D8/D10 採用で TDD 込み 0.65d 見込み。 |
+| Forest | F4 反映: MacroChart 高さ 320 → 360 (v9 互換) | 0.05 | 0.05 | 0 | a-forest (A) | 2026-04-25 | 2026-04-25 | T-F3-F8 §12 判3 の判断保留を東海林さん「360 に変更」回答で解消。1 行修正 + 検証テスト 1 件追加。94/94 tests + build OK。PR #59 mini PR 発行（レビュー: a-bloom）。 |
+| Bloom | Phase A-1 Day 1: 基盤（認証・ナビ・レイアウト） | 0.5 | | | a-bloom (A) | 2026-04-25 | | Phase A-1 先行記入（§12）。Forest 認証流用 |
+| Bloom | Phase A-1 Day 1: Supabase migration（bloom_* 8テーブル） | 0.5 | | | a-bloom (A) | 2026-04-25 | | 設計書 §1 SQL。garden-dev Dashboard 手動適用 |
+| Bloom | Phase A-1 Day 2: Workboard 画面（個人可視化） | 0.5 | | | a-bloom (A) | | | ステータス・本日予定・進行中PJ・今週実績・次マイルストーン |
+| Bloom | Phase A-1 Day 2: Roadmap 画面（全体進捗） | 0.5 | | | a-bloom (A) | | | 👥みんな向け / ⚙️開発向け 切替対応 |
+| Bloom | Phase A-1 Day 3: 月次ダイジェスト画面（会議用） | 0.5 | | | a-bloom (A) | | | 毎月15-20日の責任者会議で使用、PDF/画像エクスポート |
+| Bloom | Phase A-1 Day 3: 切替機能・アラート | 0.25 | | | a-bloom (A) | | | localStorage 保存、お知らせバナー |
+| Bloom | Phase A-1 Day 4: Chatwork 連携基盤 | 0.25 | | | a-bloom (A) | | | pgcrypto トークン暗号化（判1）、Garden 開発進捗ルーム |
+| Bloom | Phase A-1 Day 4: 日次・週次・月次 Cron | 1.0 | | | a-bloom (A) | | | Vercel Cron、Node ランタイム（判2） |
+| Bloom | Phase A-1: 他モジュール引っ越し可能な疎結合化 | 0.25 | | | a-bloom (A) | | | bloom_* プレフィックス、components/_lib 分離、将来 Seed 等へ移植可 |
+| Root | Phase 1: 認証・権限管理 | — | 1.0 | — | b-main (B) | 2026-04-22 | 2026-04-23 | retroactive 記録（着手時点で見積未設定）。設計書+プラン+実装14コミット+レビュー修正3件+ハンドオフ。PR #9 マージ済。教訓：Tree Phase A 認証パターン流用で高速化、RLS ポリシーは適用前に pg_policies 確認、root_audit_log の INSERT/SELECT ポリシー欠落を後から追加 |
+| Root | Phase 2: 他アプリからの参照ルール整備 | 0.5 | — | — | a-root (A) | 2026-04-23 | | Bud/Leaf 未実装のため「Root 側で提供する API 契約書・共有クエリヘルパー・RLS 前提条件ドキュメント」に絞る方針。**2026-04-24 a-main 判断：Phase 2 は保留。Bud/Leaf 連携開始時に精緻化する。** |
+| Root | Phase A-1: 7マスタ UI 一括仕上げ（validators / FileMaker風UX / 全マスタ適用） | 3.5 | 1.0 | -2.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 当初 T1〜T7 を個別 0.5d×7 の予定だったが、Phase 1 時点で CRUD UI は既に実装済と判明。スコープを「既存実装の仕上げ」に読み替え圧縮。validators.ts / useMasterShortcuts / FormField(error)/ Modal(onSubmit)/ DataTable(activeIndex) を追加し 7 マスタに適用。PR #14。§16 7種テストは東海林さん別途実施予定。 |
+| Root | Phase A-2: KoT API 連携（月次勤怠 API 直接取込） | 1.0 | 0.5 | -0.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 案A（CSV手動）→案C（API直行）へ切替。KoT v1.0 /employees + /monthly-workings を Server Action で取得→ employeeKey→code→employee_number→employee_id 解決→ root_attendance に upsert。疎通は IP 制限設定で一度失敗→解消後 200 OK・42名取得確認。/monthly-workings の date は YYYY-MM 形式（YYYY-MM-DD は 400）と実機で判明、修正反映済。PR #15。本番 Vercel IP 対応は別タスク。 |
+| Root | Phase 品質向上: テスト拡充 + known-pitfalls 追加（限定 auto モード） | 0.5 | 0.4 | -0.1 | a-root-002 (A) | 2026-04-25 | 2026-04-25 | T1〜T6 を subagent-driven-development で並列実装。validators 6マスタ + primitives + sanitize-payload + KoT API client + garden_role 8x8 マトリックス + known-pitfalls #4-#8 追加。Vitest 33→570 件 (+537) 全 pass。レビュー 1 巡 (4 Important fix) 後 PR 発行。動作変更なし、既存品質向上のみ。 |
 
-## 単位
+| Bud | Phase 1a 全銀協CSVライブラリ | 0.5 | 0.35 | -0.15 | b-main (B) | 2026-04-22 | 2026-04-22 | 実装+テスト 95件すべて緑。subagent-driven で効率実装、最終レビューで致命的3件検出・即修正（sourceAccount検証/padding throw/合計overflow）。 |
+| Bud | Phase 1b.1 振込管理 Foundation | 0.8 | 0.3 | -0.5 | b-main (B) | 2026-04-23 | 2026-04-23 | スキーマv2 + RLS 8ポリシー + 型 + ID生成 + 重複検出 + queries + mutations。125 tests全緑（+30新規）。Supabase SQL適用は東海林さん手動待ち。 |
+| Bud | Phase 1b.2 振込管理 UI（旧プラン Task 1-13）| 1.4 | 0.3 (進捗) | — | a-bud (A) / b-main (B) | 2026-04-23 | (新spec で再構成) | StatusBadge/FilterBar/MonthlySummary + Task 4 一覧画面 + Task 5 バリデーション TDD（9 tests 緑）。Task 6-13 は新 spec A-03/A-04/A-05 で再構成、SUPERSEDED 扱い。 |
+| Bud | 🎯 判断確定節目: Phase A-1 🔴 即時合意 7 件 | — | — | — | a-bud (A) / a-main | 2026-04-25 | 2026-04-25 | マイルストーン: 東海林さん即決完了。7 件中 6 件は a-auto 推奨通り、A-08 判1 のみ修正（楽天ビジネス → オリコ/三井住友/楽天デビット 3 種）。 |
+| Bud | Phase A-1 A-03 振込 6 段階遷移（差分実装） | 0.4-0.6 | 0.4 | -0.0〜-0.2 | a-bud (A) | 2026-04-25 | 2026-04-25 | W1-W4（commit 09c30bc）+ W5 Chatwork 通知。SQL migration / RPC / canTransitionWithRole / TS wrapper / Vitest 37 件 + chatwork-formatter 9 件。super_admin 自起票 reason='自起票' 自動挿入（A-03 判3）。 |
+| Bud | Phase A-1 A-04 振込 新規作成フォーム | 0.5 | 0.4 | -0.1 | a-bud (A) | 2026-04-25 | 2026-04-25 | new-regular / new-cashback 両ページ + 9 コンポーネント + business-day (16 tests) + transfer-create-schema (25 tests)。A-03 SQL FK 修正同時（id uuid → transfer_id text）。 |
+| Bud | Phase A-1 A-05 振込 承認フロー UI | 0.5 | 0.45 | -0.05 | a-bud (A) | 2026-04-25 | 2026-04-25 | 振込詳細画面 (3 タブ) + StatusActionButtons + RejectModal + StatusHistoryTab + 一括操作 (100 件上限) + CSV 出力骨格。A-05 判1 自己承認は警告のみ、判7 100 件上限実装。batch-transitions 11 tests。 |
+| Bud | Phase A-1 A-06 明細管理 + 自動照合（W1-W8） | 0.75 | 0.7 | -0.05 | a-bud (A) | 2026-04-25 | 2026-04-25 | SQL/楽天みずほPayPay CSV パーサ (17 tests)/4 段階照合 (13 tests)/取込 Server Action/一覧/取込モーダル/手動割当 + W7-W8 月次集計 + 取込履歴。282 tests 緑。 |
+| Bud | Phase A-1 A-08 CC 明細 3 種対応（spec のみ） | 0.65 | 0.05 | (spec 修正) | a-bud (A) | 2026-04-25 | (実装は別) | spec 微修正完了（オリコ/三井住友/楽天デビット 3 種拡張、§13 段階的実装計画）。**着手前に必要**: 3 種 CSV サンプル + 引落口座 ID + 5,000 円判定の税込/税抜確認。 |
+| Bud | Phase A-1 A-07 手渡し現金 5 論点（整理のみ） | 0.25 | 0.05 | (整理のみ) | a-bud (A) | 2026-04-25 | (Phase B 着手前合意) | docs/bud-a07-hearing-items.md 作成。5 論点 + 5 未確認事項を表形式で a-main 提示用に整備。Phase B 着手前必須合意。 |
+| Bud | Phase 1c Leaf連携 | 1.0 | — | — | b-main (B) | (pending) | | 共通部品 + 関電への組み込み。将来のLeafアプリでも流用 |
+| Bud | Phase 2a 銀行明細取込（A-06 で部分実装） | 1.35 | — | — | b-main (B) | (pending) | | 楽天/みずほ/PayPay/京都の4銀行。京都銀行は入金のみ。A-06 で楽天/みずほ/PayPay の基盤完了。 |
+| Bud | Phase 2b CC明細取込（A-08 で再設計） | 0.8 | — | — | b-main (B) | (pending) | | オリコ/NTTBiz/三井住友x2 → A-08 で 3 種（オリコ/三井住友/楽天デビット）に再設計。飲食店5000円ルール継承 |
+| Bud | Phase 2c 共通マスタseed | 0.3 | — | — | b-main (B) | (pending) | | v12 Excel（441行）→ root_expense_categories |
+| Bud | Phase 3 支払明細＋照合 | 2.0 | — | — | b-main (B) | (pending) | | A-06 で部分実装（自動照合）、Phase 3 で完成 |
+| Bud | Phase 4a 自動仕訳エンジン | 1.0 | — | — | b-main (B) | (pending) | | 3段階判定・CC 5000円ルール・マスタ編集 |
+| Bud | Phase 4b OCR + 撮影UI + Storage | 3.3 | — | — | b-main (B) | (pending) | | Claude Vision、スマホ連続撮影、Google Drive アーカイブ |
+| Bud | Phase 4c FM レシート Bud化（全件移行） | 2.1 | — | — | b-main (B) | (pending) | | GBU形式へ移行、旧KR番号はRootに保持。川中さんアカウント作成前提 |
+| Bud | Phase 5 コストダッシュボード | 1.5 | — | — | b-main (B) | (pending) | | 添付xlsx の置換 |
+| Bud | Phase 6 給与処理（MF連携＋手渡し現金） | 4.55 | — | — | b-main (B) | (pending) | | MFクラウド給与連携、9段階ステータス、手渡し案C採用、前払・社宅管理追加 |
 
-- **1 日 = 8 時間相当**（動作確認・レビュー対応含む実稼働ベース）
-- 0.25d 刻みで記録
-- 東海林さん手動作業（SQL 適用・ブラウザ動作確認・PR レビュー等）は**実績に含める**
+## 運用メモ
 
-## ログ表
+- **Phase A1 の内訳** (参考):
+  - Task 1: Python 環境セットアップ + `requirements.txt` → ✅ 完了 (2026-04-22, a-forest)
+  - Task 2: スクリプト骨組み + `.env.local` 読み込み → ✅ 完了 (2026-04-22, b-main)
+  - Task 3: PDF 抽出ロジック移植 → ✅ 完了 (2026-04-22, b-main)
+  - Task 4: PDF 走査ループ (dry-run 確認済) → ✅ 完了 (2026-04-22, b-main)
+  - Task 5: Supabase REST API UPDATE → ✅ 完了 (2026-04-22, b-main / 本番 UPDATE 4/4 成功)
+  - Task 6: 運用手順書 README → ✅ 完了 (2026-04-22, b-main / `scripts/README-shinkouki.md`)
+  - Task 7: エンドツーエンド動作確認 → 🟡 一部完了 (バックアップ取得 + dry-run + 本番 UPDATE 経路疎通は Claude 側で完了。Forest ダッシュボードの目視確認 + 日報記録は東海林依頼で残)
 
-| 着手日 | 完了日 | モジュール | Phase/タスク | 見積(d) | 実績(d) | 差分 | セッション | 記録者 | Notes |
-|---|---|---|---|---:|---:|---:|---|---|---|
-| 2026-04-22 | 2026-04-22 | Bud | Phase 1a 全銀協CSVライブラリ | 0.5 | 0.35 | -0.15 | b-main (B) | Claude | 実装+テスト 95件すべて緑。subagent-driven で効率実装、最終レビューで致命的3件検出・即修正（sourceAccount検証/padding throw/合計overflow）。銀行取込確認（Task 13 手順書）は東海林さん側未実施。 |
-| 2026-04-23 | 2026-04-23 | Bud | Phase 1b.1 振込管理 Foundation | 0.8 | 0.3 | -0.5 | b-main (B) | Claude | スキーマv2 + RLS 8ポリシー + 型 + ID生成 + 重複検出 + queries + mutations。125 tests全緑（+30新規）。Supabase SQL適用は東海林さん手動待ち。UIはPhase 1b.2。subagent-driven で 5回ディスパッチで完了、非常に効率的だった。 |
-| 2026-04-23 | (pending) | Bud | Phase 1b.2 振込管理 UI | 1.4 | 0.3 (進捗) | — | a-bud (A) / b-main (B) | Claude | StatusBadge/FilterBar/MonthlySummary/一覧/フォーム2種/Server Actions/詳細/CSV出力/Shell改修/動作確認手順書 の13タスク。**進捗 2026-04-23 22:15 a-bud**: Task 1-3（B側commit済）+ Task 4 振込一覧画面 + Task 5 フォームバリデーション TDD 完了（9 tests 緑）。残 Task 6-13（フォーム2画面/Server Actions/詳細/CSV出力/Shell改修/手順書/実績記録）。 |
-| 2026-04-24 | ~~2026-04-25 supersede~~ | Bud | ~~Phase 1b.2 Task 6-13 完走~~ | 1.1 | — | — | a-bud (A) | Claude | **⚠️ SUPERSEDED 2026-04-25**: 新 spec Batch 5（A-03 / A-04 / A-05 / A-06 / A-08）が上位互換として a-auto 起草、本行は参考。Task 6 相当→A-04、Task 9-10 相当→A-05 で再構成。旧プラン `docs/superpowers/plans/2026-04-23-bud-phase-1b2-ui.md` は参考として残置（実装は新 spec 基準）。 |
-| 2026-04-24 | ~~2026-04-25 supersede~~ | Bud | ~~B案: 振込ステータス6段階仕様書起草~~ | 0.5 | — | — | a-bud (A) | Claude | **⚠️ SUPERSEDED 2026-04-25**: a-auto が Batch 5 で `docs/specs/2026-04-24-bud-a-03-furikomi-6steps.md`（401行）を先行起草。B案の仕様書不在は解消済み。本行の 0.5d は A-03 差分実装工程に合流。 |
-| **2026-04-25** | — | Bud | 🎯 判断確定節目: Phase A-1 🔴 即時合意 7 件 | — | — | — | a-bud (A) / a-main | Claude | **マイルストーン**: 東海林さん即決（A-03 判1/3、A-04 判1/2、A-05 判1、A-06 判1、A-08 判1）完了。7 件中 6 件は a-auto 推奨通り、A-08 判1 のみ修正（楽天ビジネス 1 種 → オリコ/三井住友/楽天デビット 3 種）。以降の実装は `docs/bud-phase-a1-pending-judgments.md` §「東海林判断: 採択結果」を基準とする。 |
-| 2026-04-25 | 2026-04-25 | Bud | Phase A-1 A-03 振込 6 段階遷移（差分実装） | 0.3-0.5 + W5 0.1 | 0.4 | -0.0〜-0.2 | a-bud (A) | Claude | **完了**: W1-W4（commit 09c30bc）+ W5 Chatwork 通知（commit TBD）。SQL migration / RPC / canTransitionWithRole / TS wrapper / Vitest 37 件 + chatwork-formatter 9 件（全 242 件緑）。**A-03 判3** super_admin 自起票 reason='自起票' 自動挿入。**Chatwork**: 4 種フォーマッタ（承認/差戻し/一括承認/一括差戻し）+ Server Action（CHATWORK_API_TOKEN / CHATWORK_BUD_ROOM_ID 環境変数）+ best-effort（失敗時は console.warn のみ）。署名 URL は流通させず Garden ログイン誘導文のみ（案 D）。残: root_audit_log 二重記録（A-03 判1、Phase B）/ 東海林さん SQL 適用 + 環境変数設定 → UI 側動作確認。 |
-| 2026-04-25 | 2026-04-25 | Bud | Phase A-1 A-04 振込 新規作成フォーム | 0.5 | 0.4 | -0.1 | a-bud (A) | Claude | **完了**: new-regular / new-cashback 両ページ + TransferFormRegular / TransferFormCashback / BankPicker / VendorPicker / NewVendorModal / DataSourceSelector / AttachmentUploader / DuplicateWarning / KanaPreview の 9 コンポーネント + business-day (16 tests) + transfer-create-schema (25 tests)。**A-03 バグ修正同時**: SQL migration の FK 型を `id uuid` → `transfer_id text` に訂正（bud_transfers の実 PK が text）。Vitest 41 件追加（全 222 件緑）。東海林さん手動作業: bud-a03-status-history-migration.sql 適用 + root_vendors 追加権限 RLS 確認。 |
-| 2026-04-25 | 2026-04-25 | Bud | Phase A-1 A-05 振込 承認フロー UI | 0.5 | 0.45 | -0.05 | a-bud (A) | Claude | **完了**: 振込詳細画面 `/bud/transfers/[transfer_id]`（3 タブ: 基本/履歴/関連）+ StatusActionButtons（ロール×ステータスのボタン可視性）+ RejectModal（差戻し理由 10-500 字）+ StatusHistoryTab + 一覧画面への一括操作（checkbox + 一括承認/差戻し 100 件上限）+ CSV 出力画面骨格 `/bud/transfers/csv-export`（銀行別サマリ）。batch-transitions 純関数 11 tests 追加（全 233 件緑）。A-05 判1 自己承認は警告のみ、判7 100 件上限実装。Chatwork 通知はモーダル UI に checkbox のみ設置（実送信は A-03 W5 で実装）。|
-| 2026-04-25 | 2026-04-25 | Bud | Phase A-1 A-06 明細管理 + 自動照合 | 0.75 | 0.7 | -0.05 | a-bud (A) | Claude | **完了**: W1-W6 + W7-W8 全完走。W1-W6（commit a945c28）= SQL/パーサ/照合/取込/手動割当。W7-W8（次 commit）= 月次集計画面 `/bud/statements/summary`（aggregator 純関数 10 tests、月選択 + 入金/出金/差引/件数サマリ + 費目別/口座別/日別 breakdown）+ 取込バッチ履歴画面 `/bud/statements/imports`（最新 50 件、口座フィルタ、status バッジ）+ /bud/statements にナビリンク追加。282 tests 緑（+10）。 |
-| 2026-04-25 | (pending、spec 修正のみ完了) | Bud | Phase A-1 A-08 CC 明細 3 種対応 | 0.5 → **0.65** | 0.05 (spec 修正) | +0.15（楽天 1 種 → 3 種拡張） | a-bud (A) | Claude | **spec 微修正完了**: §1 含める / §3 mermaid / §4.1 card_company CHECK / §11 W2 / §12 判1 / §13 段階的実装計画 を追記。3 段階 (Phase A-1.1 オリコ end-to-end / A-1.2 三井住友 / A-1.3 楽天デビット) に分割。**着手前に必要**: 3 種の CSV サンプル取得（東海林さん）+ 引落口座 ID + 5,000 円判定の税込/税抜確認。 |
-| (Phase B) | (pending) | Bud | Phase A-1 A-07 手渡し現金 5 論点 | 0.25 | 0.05 (ヒアリング項目整理) | — | a-bud (A) | Claude | **ヒアリング項目整理完了** (2026-04-25): `docs/bud-a07-hearing-items.md` 作成。5 論点 (識別/bud_transfers/明細配信/現金原資/受領確認) + 5 未確認事項を表形式で a-main 提示用に整備。各論点に a-auto 推奨案 + 東海林さん回答欄あり。**Phase B 着手前に必須合意**。 |
-| 2026-04-22 | (pending) | Bud | Phase 1c Leaf連携 | 1.0 | — | — | b-main (B) | Claude | 共通部品 + 関電への組み込み。将来のLeafアプリでも流用 |
-| 2026-04-22 | (pending) | Bud | Phase 2a 銀行明細取込 | 1.35 | — | — | b-main (B) | Claude | 楽天/みずほ/PayPay/京都の4銀行。京都銀行は入金のみ |
-| 2026-04-22 | (pending) | Bud | Phase 2b CC明細取込 | 0.8 | — | — | b-main (B) | Claude | オリコ/NTTBiz/三井住友x2。飲食店5000円ルール継承 |
-| 2026-04-22 | (pending) | Bud | Phase 2c 共通マスタseed | 0.3 | — | — | b-main (B) | Claude | v12 Excel（441行）→ root_expense_categories |
-| 2026-04-22 | (pending) | Bud | Phase 3 支払明細＋照合 | 2.0 | — | — | b-main (B) | Claude | |
-| 2026-04-22 | (pending) | Bud | Phase 4a 自動仕訳エンジン | 1.0 | — | — | b-main (B) | Claude | 3段階判定・CC 5000円ルール・マスタ編集 |
-| 2026-04-22 | (pending) | Bud | Phase 4b OCR + 撮影UI + Storage | 3.3 | — | — | b-main (B) | Claude | Claude Vision、スマホ連続撮影、Google Drive アーカイブ |
-| 2026-04-22 | (pending) | Bud | Phase 4c FM レシート Bud化（全件移行） | 2.1 | — | — | b-main (B) | Claude | GBU形式へ移行、旧KR番号はRootに保持。川中さんアカウント作成前提 |
-| 2026-04-22 | (pending) | Bud | Phase 5 コストダッシュボード | 1.5 | — | — | b-main (B) | Claude | 添付xlsx の置換 |
-| 2026-04-22 | (pending) | Bud | Phase 6 給与処理（MF連携＋手渡し現金） | 4.55 | — | — | b-main (B) | Claude | MFクラウド給与連携に方針転換、9段階ステータス、手渡し案C採用、前払・社宅管理追加 |
+- **Phase A2 / A3**: 2026-04-22〜23 で統合実装完了（見積 2.5 d → 実績 0.6 d）。
 
-**Bud 合計見積**: 20.35d（Phase 0 完了済、Phase 1a〜6 の合計。Phase 4 は 4a/4b/4c、Phase 2 は 2a/2b/2c に分割）
+- **Forest Phase A 仕上げ (v9 残機能移植)**: 2026-04-24 着手、合計 **9.3 d**（旧 9.8d から F5 アップロード UI 0.5d を Phase B Storage 統合へ移行で除外）。
+  - 順1: T-F10 (P08 HANKANHI 販管費 + reflected note) — **0.95 d**（最優先、依存なし）
+  - 順2: T-F2-01 / T-F3-01 (最終更新日・「壱を除く」注記) — 0.35 d（並列可）
+  - 順3: T-F4 + T-F11 (P09 Tax Calendar + Tax Detail Modal) — 2.2 d
+  - 順4: T-F7-01 (共通 InfoTooltip、F6 で使用のため先行) — 0.25 d
+  - 順5: T-F5 閲覧 (TaxFilesList + Supabase Storage `forest-tax/`) — 1.85 d
+  - 順6: T-F6 (Download Section + ZIP Edge→Node 確定) — 2.85 d
+  - 順7-8: T-F9-01 / T-F8-01 (MicroGrid / MacroChart 差分調査) — 0.85 d（a-auto 並列可）
+  - 判1-5 確定内容：販管費 = A（別テーブル）/ 納税 = B（3 テーブル分割）/ PDF = B（Storage ミラー）/ ZIP = B（Edge Function + Storage、ただしランタイムは Node）/ Tax Files = B（社内代理入力）
+  - F5 アップロード UI と F6 ZIP 本体は Phase B の Storage 統合バッチでまとめ実装する方針（a-main 判断）
 
-## 見積変遷ログ（Bud Phase 1〜6）
+- **Bloom Phase A-1 (Workboard)**: 2026-04-25〜29 予定、合計 4.25 d。
+  - Day 1 (1.25 d): T1 migration + T2 型定義 + T3 認証スケルトン
+  - Day 2 (1.0 d): T4 Workboard 画面 + T5 Roadmap 画面
+  - Day 3 (0.75 d): T6 月次ダイジェスト + T7 切替・アラート
+  - Day 4 (1.25 d): T8 Chatwork 連携 + T9 Cron + T10 疎結合化
+  - §10.3 判断結果反映（判1: pgcrypto / 判2: Node ランタイム / 判3: DigestPage 型運用 /
+    判4: manager クライアント絞込 / 判5: Bloom ログインは /forest/login リダイレクト）
 
-| 時点 | 合計 | 主な変更 |
-|---|---|---|
-| 当初（2026-04-22 午後）| 14.0d | Phase 1a/1b/2/3/4/5/6 の初期見積 |
-| +Leaf 連携（1c 新設）| 15.2d | +1.2d |
-| +CC 取込（2b/2c 追加）| 16.65d | +1.45d |
-| +京都銀行（2a 増）| 16.8d | +0.15d |
-| +FM レシート移行（4c 新設）| 18.9d | +2.1d |
-| +Phase 6 再設計（MF 連携）| 19.5d | +0.6d |
-| +手渡し案C（受領確認テーブル）| 20.1d | +0.6d |
-| +前払・社宅管理（微増）| 20.15d | +0.05d |
-| +Root 追加カラム（MF 識別子等）| 20.25d | +0.1d |
-| **最終**（2026-04-22 夜）| **20.35d** | **+6.35d from initial** |
+- **Root Phase A**: 2026-04-24 に Phase A-1 / A-2 を連続で完走（合計実績 1.5 d、当初見積 4.5 d → 圧縮 -3.0 d）。
+  - Phase A-1: 既存 CRUD UI の仕上げ（バリデーション・UX・権限判定）
+  - Phase A-2: KoT API 月次勤怠取込（IP 制限ハマり含めて 0.5 d で完走）
+  - 教訓：既存実装の発掘を初手で徹底する / KoT API は IP 制限ありと明示されていなかった / `date` 形式は実機で判明（yyyy-MM 必須）
 
-## 運用後の改善候補メモ
+- **Soil 基盤設計 (Batch 16)**: 2026-04-25、a-auto 004 が起草。Garden-Soil 基盤設計 8 件の spec（実装見積合計 ~5.25d）。
+  - #01 リスト本体スキーマ: ~0.5d 実装（253 万件級顧客マスタ、3 補助テーブル）
+  - #02 コール履歴スキーマ: ~1.0d（335 万件、月次パーティション + duration/misdial トリガ）
+  - #03 関電リスト Leaf 連携: ~0.5d（Kintone 74 フィールド振り分け、案件化フロー）
+  - #04 インポート戦略: ~1.0d（Kintone/FileMaker/CSV、staging + マージ提案）
+  - #05 インデックス・パフォーマンス: ~0.5d（253/335 万件で 1 秒以内目標、運用整備）
+  - #06 RLS 設計: ~0.5d（7 ロール、Materialized View 最適化、SECURITY DEFINER）
+  - #07 削除パターン: ~0.25d（横断 Cross History #04 準拠、コール履歴は永続保持）
+  - #08 参照 API 契約: ~1.0d（共有 helper / Server Action / RPC、N+1 防止）
+  - 実装見積合計: ~5.25d / 起草時間: 約 2.5h（a-auto 004）
+  - ブランチ: feature/soil-base-specs-batch16-auto
 
-実際に業務運用してから検討する追加改善項目：
-
-| 対象 Phase | 検討項目 | 検討タイミング |
-|---|---|---|
-| Phase 1b キャッシュバック | 検討中で振込予定日超過時の**通知強化（D案: メール・Chatwork・自動却下）** | 運用3ヶ月後 |
-| Phase 1a | 京都銀行の全銀協CSV**実装**（現状は枠のみ）| 京都銀行から送金が必要になったとき |
-
-## 集計ビュー（完了分のみ反映）
-
-### モジュール別累計
-
-| モジュール | 累計見積(d) | 累計実績(d) | 誤差率(%) | 完了 Phase 数 |
-|---|---:|---:|---:|---:|
-| Soil | 0 | 0 | — | 0 |
-| Root | 0 | 0 | — | 0 |
-| Tree | 0 | 0 | — | 0 |
-| Leaf | 0 | 0 | — | 0 |
-| **Bud** | 0 | 0 | — | 0 |
-| Bloom | 0 | 0 | — | 0 |
-| Seed | 0 | 0 | — | 0 |
-| Forest | 0 | 0 | — | 0 |
-| Rill | 0 | 0 | — | 0 |
-| **全体** | **0** | **0** | **—** | **0** |
-
-### 所感・学び（Phase 完了のタイミングで追記）
-
-| 日付 | Phase | 所感（見積精度・ボトルネック・改善点） |
-|---|---|---|
-| 2026-04-22 | Bud Phase 1a | 見積 0.5d → 実績 0.35d（-0.15d、30% 時短）。subagent-driven-development で機械的な TDD タスクを高速に回せた。**最終レビューで Critical 3 件検出**：ZenginSourceAccount 未検証で SJIS 120 byte 破綻、padding helper のサイレント truncation、合計金額 12 桁 overflow の未検知。すべて即修正し、byte 長検証テスト・padding 専用テストを追加。教訓：(1) レビュー subagent は必ずコード品質的な穴を掘り起こす価値がある（省略不可）、(2) 金融データの固定長バイナリは「文字数 = バイト数」という暗黙前提を単体テストで検証しないと SJIS 環境で破綻する、(3) padding helper はデフォルトで throw する方が安全（silent truncate は長期潜伏バグの温床）。 |
-
-## 運用ルール
-
-1. **spec/plan 作成時**: 工数見積セクションに `estimated_days` を記入し、このファイルにも追加（行追加のみ）
-2. **完了時**: git log から着手日を確認し、完了日を記入。実績を `1 日 = 8 時間` 換算で算出
-3. **合算セクション**: 月次で更新（完了 Phase がない月はスキップ OK）
-4. **A/B 両セッションで更新**: 複数セッション並行でも同じファイルを更新。`git merge` 時に競合起きたら両方保持
-5. **精度が大きくズレた Phase**: `所感` 欄に原因と次回改善点を記録（例：「OCR プロンプトチューニングで 2 日超過。次回は事前に 5 枚でプロトタイプ検証」）
+- **本ファイルの起源**: 2026-04-22、ルール `feedback_effort_tracking.md` 遵守のため作成。以降の Phase では spec/plan 作成と同時に行追加すること。

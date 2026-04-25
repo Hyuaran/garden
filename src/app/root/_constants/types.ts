@@ -97,10 +97,18 @@ export interface Employee {
   name: string;
   name_kana: string;
   company_id: string;
-  employment_type: string;      // 正社員/アルバイト
+  employment_type: string;      // 正社員 / アルバイト / outsource（Phase A-3-g）
   salary_system_id: string;
   hire_date: string;            // YYYY-MM-DD
   termination_date: string | null;
+  /** 外注の契約終了日（employment_type=outsource のときに利用）。Phase A-3-g */
+  contract_end_on?: string | null;
+  /** 年末調整の甲/乙欄区分（kou=甲欄/主な収入、otsu=乙欄/副業、null=未設定）。Phase A-3-h */
+  kou_otsu?: "kou" | "otsu" | null;
+  /** 扶養家族人数（0〜20）。源泉徴収税額表のルックアップに使用。Phase A-3-h */
+  dependents_count?: number;
+  /** 論理削除タイムスタンプ。null=有効、値あり=削除済（is_active とは別軸）。Phase A-3-h */
+  deleted_at?: string | null;
   email: string;
   bank_name: string;
   bank_code: string;
@@ -169,12 +177,13 @@ export interface Attendance {
 // 8. 認証拡張型（root-auth-schema.sql で追加されるフィールド）
 // ============================================================
 
-/** Garden全体ロール（7段階・2026-04-21 改訂） */
+/** Garden全体ロール（8段階・Phase A-3-g で outsource 追加） */
 export type GardenRole =
   | "toss"         // トス（アポインター）
   | "closer"       // クローザー
   | "cs"           // CS（仮）: 前確/後確画面の閲覧権限ここ以上
   | "staff"        // 一般社員（仮）
+  | "outsource"    // 外注（業務委託、Phase A-3-g、staff と manager の間）
   | "manager"      // 責任者（仮）
   | "admin"        // 管理者（仮）
   | "super_admin"; // 全権管理者
@@ -185,17 +194,19 @@ export const GARDEN_ROLE_LABELS: Record<GardenRole, string> = {
   closer:      "クローザー",
   cs:          "CS",
   staff:       "一般社員",
+  outsource:   "外注",
   manager:     "責任者",
   admin:       "管理者",
   super_admin: "全権管理者",
 };
 
-/** ロールの階層順序（昇順） */
+/** ロールの階層順序（昇順）。outsource は staff と manager の間。 */
 export const GARDEN_ROLE_ORDER: GardenRole[] = [
   "toss",
   "closer",
   "cs",
   "staff",
+  "outsource",
   "manager",
   "admin",
   "super_admin",
@@ -232,6 +243,8 @@ export interface MasterMenu {
   title: string;
   description: string;
   icon: string;
+  /** admin 以上のロールに限定表示するメニュー（ナビ非表示 + 直接 URL アクセス時は RootGate が弾く） */
+  adminOnly?: boolean;
 }
 
 export const MASTER_MENUS: MasterMenu[] = [
@@ -242,4 +255,5 @@ export const MASTER_MENUS: MasterMenu[] = [
   { slug: "salary-systems",  title: "給与体系マスタ", description: "雇用形態別の計算ルール",                  icon: "💰" },
   { slug: "insurance",       title: "社会保険マスタ", description: "保険料率、等級テーブル",                  icon: "🛡️" },
   { slug: "attendance",      title: "勤怠データ",     description: "キングオブタイムから取込",                icon: "📅" },
+  { slug: "kot-sync-history", title: "KoT 同期履歴",  description: "KoT 連携の同期ログ閲覧・再実行",          icon: "🔄", adminOnly: true },
 ];

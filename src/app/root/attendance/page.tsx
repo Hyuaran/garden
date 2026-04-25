@@ -9,6 +9,17 @@ import { TextField, SelectField, FormGrid } from "../_components/FormField";
 import { fetchAttendance, upsertAttendance, fetchEmployees } from "../_lib/queries";
 import type { Attendance, Employee } from "../_constants/types";
 import { colors } from "../_constants/colors";
+import { useRootState } from "../_state/RootStateContext";
+import { writeAudit } from "../_lib/audit";
+import {
+  validateAttendance,
+  hasErrors,
+  VALIDATION_ERROR_BANNER,
+  type FieldErrors,
+} from "../_lib/validators";
+import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
+import { KotSyncModal } from "../_components/KotSyncModal";
 
 const STATUSES = ["未取込", "取込済", "エラー"];
 
@@ -42,6 +53,7 @@ function currentMonth(): string {
 }
 
 export default function AttendancePage() {
+  const { canWrite, rootUser } = useRootState();
   const [rows, setRows] = useState<Attendance[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +61,14 @@ export default function AttendancePage() {
   const [editTarget, setEditTarget] = useState<Attendance | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [kotOpen, setKotOpen] = useState<boolean>(false);
+
+  const { activeIndex } = useMasterShortcuts<Attendance>({
+    rows,
+    modalOpen: !!editTarget || kotOpen,
+    onEditRow: canWrite ? setEditTarget : undefined,
+  });
 
   async function load() {
     try {
@@ -59,13 +79,47 @@ export default function AttendancePage() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, [month]);
+  useEffect(() => { if (!editTarget) setErrors({}); }, [editTarget]);
 
   const employeeMap = useMemo(() => new Map(employees.map((e) => [e.employee_id, e])), [employees]);
 
   async function handleSave() {
     if (!editTarget) return;
-    try { setSaving(true); await upsertAttendance(editTarget); setEditTarget(null); await load(); }
-    catch (e) { setError((e as Error).message); }
+    if (!canWrite) {
+      await writeAudit({
+        action: "permission_denied",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_attendance",
+        payload: { attempted: "save" },
+      });
+      setError("編集権限がありません");
+      return;
+    }
+    const errs = validateAttendance(editTarget);
+    if (hasErrors(errs)) {
+      setErrors(errs);
+      setError(VALIDATION_ERROR_BANNER);
+      return;
+    }
+    try {
+      setSaving(true);
+      setError(null);
+      setErrors({});
+      await upsertAttendance(
+        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.attendance }) as Partial<Attendance> & { attendance_id: string },
+      );
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser?.user_id ?? null,
+        actorEmpNum: rootUser?.employee_number ?? null,
+        targetType: "root_attendance",
+        targetId: editTarget.attendance_id,
+        payload: { value: editTarget },
+      });
+      setEditTarget(null);
+      await load();
+    } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   }
 
@@ -83,7 +137,7 @@ export default function AttendancePage() {
     { key: "status", header: "取込", render: (r) => r.import_status, width: 80 },
     { key: "actions", header: "", render: (r) => (
       <div onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(r)}>編集</Button>
+        <Button variant="secondary" onClick={() => setEditTarget(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
       </div>
     ), width: 80, align: "right" },
   ];
@@ -92,49 +146,49 @@ export default function AttendancePage() {
     <>
       <PageHeader
         title="勤怠データ"
-        description="キングオブタイムから取込（月次）。手動編集も可能。"
+        description="キングオブタイムから取込（月次）。手動編集も可能。Ctrl+↑↓ 行移動・Ctrl+Enter 編集。"
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }} />
-            <Button onClick={() => setEditTarget(empty(employees[0]?.employee_id ?? "", month))} disabled={employees.length === 0}>+ 手動追加</Button>
+            <Button variant="primary" onClick={() => setKotOpen(true)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>KoT から月次取込</Button>
+            <Button variant="secondary" onClick={() => setEditTarget(empty(employees[0]?.employee_id ?? "", month))} disabled={employees.length === 0 || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 手動追加</Button>
           </div>
         }
       />
-      <div style={{ background: colors.infoBg, color: colors.info, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 12 }}>
-        キングオブタイムAPI連携は未実装。現在は手動登録/編集のみ対応。
-      </div>
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
-      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={rows} emptyMessage={`${month} の勤怠データがありません`} />}
+      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={rows} activeIndex={activeIndex} onRowClick={canWrite ? setEditTarget : undefined} emptyMessage={`${month} の勤怠データがありません`} />}
 
-      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title={editTarget?.created_at ? "勤怠データを編集" : "勤怠データを追加"} width={760}>
+      <KotSyncModal open={kotOpen} onClose={() => setKotOpen(false)} onCompleted={load} defaultMonth={month} />
+
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "勤怠データを編集" : "勤怠データを追加"} width={760}>
         {editTarget && (
           <div>
             <FormGrid cols={3}>
-              <TextField label="勤怠ID" required value={editTarget.attendance_id} onChange={(e) => setEditTarget({ ...editTarget, attendance_id: e.target.value })} disabled={!!editTarget.created_at} />
-              <SelectField label="従業員" required value={editTarget.employee_id} onChange={(e) => setEditTarget({ ...editTarget, employee_id: e.target.value })}>
+              <TextField label="勤怠ID" required value={editTarget.attendance_id} onChange={(e) => setEditTarget({ ...editTarget, attendance_id: e.target.value })} disabled={!!editTarget.created_at} error={errors.attendance_id} />
+              <SelectField label="従業員" required value={editTarget.employee_id} onChange={(e) => setEditTarget({ ...editTarget, employee_id: e.target.value })} error={errors.employee_id}>
                 {employees.map((emp) => <option key={emp.employee_id} value={emp.employee_id}>{emp.name}</option>)}
               </SelectField>
-              <TextField label="対象月（YYYY-MM）" required value={editTarget.target_month} onChange={(e) => setEditTarget({ ...editTarget, target_month: e.target.value })} />
-              <TextField label="出勤日数" type="number" step="0.5" value={editTarget.working_days} onChange={(e) => setEditTarget({ ...editTarget, working_days: Number(e.target.value) })} />
-              <TextField label="欠勤日数" type="number" step="0.5" value={editTarget.absence_days} onChange={(e) => setEditTarget({ ...editTarget, absence_days: Number(e.target.value) })} />
-              <TextField label="有給取得日数" type="number" step="0.5" value={editTarget.paid_leave_days} onChange={(e) => setEditTarget({ ...editTarget, paid_leave_days: Number(e.target.value) })} />
-              <TextField label="所定労働時間" type="number" step="0.1" value={editTarget.scheduled_hours} onChange={(e) => setEditTarget({ ...editTarget, scheduled_hours: Number(e.target.value) })} />
-              <TextField label="実労働時間" type="number" step="0.1" value={editTarget.actual_hours} onChange={(e) => setEditTarget({ ...editTarget, actual_hours: Number(e.target.value) })} />
-              <TextField label="所定外時間（平日）" type="number" step="0.1" value={editTarget.overtime_hours} onChange={(e) => setEditTarget({ ...editTarget, overtime_hours: Number(e.target.value) })} />
-              <TextField label="法定外時間（平日）" type="number" step="0.1" value={editTarget.legal_overtime_hours} onChange={(e) => setEditTarget({ ...editTarget, legal_overtime_hours: Number(e.target.value) })} />
-              <TextField label="深夜時間" type="number" step="0.1" value={editTarget.night_hours} onChange={(e) => setEditTarget({ ...editTarget, night_hours: Number(e.target.value) })} />
-              <TextField label="休日出勤時間" type="number" step="0.1" value={editTarget.holiday_hours} onChange={(e) => setEditTarget({ ...editTarget, holiday_hours: Number(e.target.value) })} />
-              <TextField label="遅刻時間" type="number" step="0.1" value={editTarget.late_hours} onChange={(e) => setEditTarget({ ...editTarget, late_hours: Number(e.target.value) })} />
-              <TextField label="早退時間" type="number" step="0.1" value={editTarget.early_leave_hours} onChange={(e) => setEditTarget({ ...editTarget, early_leave_hours: Number(e.target.value) })} />
-              <TextField label="研修時間（任意）" type="number" step="0.1" value={editTarget.training_hours ?? ""} onChange={(e) => setEditTarget({ ...editTarget, training_hours: e.target.value === "" ? null : Number(e.target.value) })} />
-              <TextField label="事務時間（任意）" type="number" step="0.1" value={editTarget.office_hours ?? ""} onChange={(e) => setEditTarget({ ...editTarget, office_hours: e.target.value === "" ? null : Number(e.target.value) })} />
-              <SelectField label="取込ステータス" required value={editTarget.import_status} onChange={(e) => setEditTarget({ ...editTarget, import_status: e.target.value })}>
+              <TextField label="対象月（YYYY-MM）" required value={editTarget.target_month} onChange={(e) => setEditTarget({ ...editTarget, target_month: e.target.value })} error={errors.target_month} />
+              <TextField label="出勤日数" type="number" step="0.5" min={0} max={31} value={editTarget.working_days} onChange={(e) => setEditTarget({ ...editTarget, working_days: Number(e.target.value) })} error={errors.working_days} />
+              <TextField label="欠勤日数" type="number" step="0.5" min={0} max={31} value={editTarget.absence_days} onChange={(e) => setEditTarget({ ...editTarget, absence_days: Number(e.target.value) })} error={errors.absence_days} />
+              <TextField label="有給取得日数" type="number" step="0.5" min={0} max={31} value={editTarget.paid_leave_days} onChange={(e) => setEditTarget({ ...editTarget, paid_leave_days: Number(e.target.value) })} error={errors.paid_leave_days} />
+              <TextField label="所定労働時間" type="number" step="0.1" min={0} max={744} value={editTarget.scheduled_hours} onChange={(e) => setEditTarget({ ...editTarget, scheduled_hours: Number(e.target.value) })} error={errors.scheduled_hours} />
+              <TextField label="実労働時間" type="number" step="0.1" min={0} max={744} value={editTarget.actual_hours} onChange={(e) => setEditTarget({ ...editTarget, actual_hours: Number(e.target.value) })} error={errors.actual_hours} />
+              <TextField label="所定外時間（平日）" type="number" step="0.1" min={0} max={744} value={editTarget.overtime_hours} onChange={(e) => setEditTarget({ ...editTarget, overtime_hours: Number(e.target.value) })} error={errors.overtime_hours} />
+              <TextField label="法定外時間（平日）" type="number" step="0.1" min={0} max={744} value={editTarget.legal_overtime_hours} onChange={(e) => setEditTarget({ ...editTarget, legal_overtime_hours: Number(e.target.value) })} error={errors.legal_overtime_hours} />
+              <TextField label="深夜時間" type="number" step="0.1" min={0} max={744} value={editTarget.night_hours} onChange={(e) => setEditTarget({ ...editTarget, night_hours: Number(e.target.value) })} error={errors.night_hours} />
+              <TextField label="休日出勤時間" type="number" step="0.1" min={0} max={744} value={editTarget.holiday_hours} onChange={(e) => setEditTarget({ ...editTarget, holiday_hours: Number(e.target.value) })} error={errors.holiday_hours} />
+              <TextField label="遅刻時間" type="number" step="0.1" min={0} max={744} value={editTarget.late_hours} onChange={(e) => setEditTarget({ ...editTarget, late_hours: Number(e.target.value) })} error={errors.late_hours} />
+              <TextField label="早退時間" type="number" step="0.1" min={0} max={744} value={editTarget.early_leave_hours} onChange={(e) => setEditTarget({ ...editTarget, early_leave_hours: Number(e.target.value) })} error={errors.early_leave_hours} />
+              <TextField label="研修時間（任意）" type="number" step="0.1" min={0} max={744} value={editTarget.training_hours ?? ""} onChange={(e) => setEditTarget({ ...editTarget, training_hours: e.target.value === "" ? null : Number(e.target.value) })} error={errors.training_hours} />
+              <TextField label="事務時間（任意）" type="number" step="0.1" min={0} max={744} value={editTarget.office_hours ?? ""} onChange={(e) => setEditTarget({ ...editTarget, office_hours: e.target.value === "" ? null : Number(e.target.value) })} error={errors.office_hours} />
+              <SelectField label="取込ステータス" required value={editTarget.import_status} onChange={(e) => setEditTarget({ ...editTarget, import_status: e.target.value })} error={errors.import_status}>
                 {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </SelectField>
             </FormGrid>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "保存中..." : "保存"}</Button>
+              <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}
