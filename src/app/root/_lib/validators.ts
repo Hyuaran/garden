@@ -172,6 +172,20 @@ export function validateEmployee(em: Employee): FieldErrors {
   if (!em.account_holder_kana.trim()) e.account_holder_kana = "必須";
   else if (!isKatakana(em.account_holder_kana)) e.account_holder_kana = "全角カタカナのみ";
   if (!em.insurance_type) e.insurance_type = "必須";
+
+  // Phase A-3-h: 給与関連（nullable、値が入っていれば検証）
+  if (em.kou_otsu !== undefined && em.kou_otsu !== null) {
+    if (em.kou_otsu !== "kou" && em.kou_otsu !== "otsu") {
+      e.kou_otsu = "kou（甲欄）または otsu（乙欄）";
+    }
+  }
+  if (em.dependents_count !== undefined && em.dependents_count !== null) {
+    if (!Number.isInteger(em.dependents_count)) {
+      e.dependents_count = "整数で指定（0〜20）";
+    } else if (!isInRange(em.dependents_count, 0, 20)) {
+      e.dependents_count = "0〜20 の範囲";
+    }
+  }
   return e;
 }
 

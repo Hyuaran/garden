@@ -103,6 +103,12 @@ export interface Employee {
   termination_date: string | null;
   /** 外注の契約終了日（employment_type=outsource のときに利用）。Phase A-3-g */
   contract_end_on?: string | null;
+  /** 年末調整の甲/乙欄区分（kou=甲欄/主な収入、otsu=乙欄/副業、null=未設定）。Phase A-3-h */
+  kou_otsu?: "kou" | "otsu" | null;
+  /** 扶養家族人数（0〜20）。源泉徴収税額表のルックアップに使用。Phase A-3-h */
+  dependents_count?: number;
+  /** 論理削除タイムスタンプ。null=有効、値あり=削除済（is_active とは別軸）。Phase A-3-h */
+  deleted_at?: string | null;
   email: string;
   bank_name: string;
   bank_code: string;
