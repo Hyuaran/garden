@@ -13,11 +13,12 @@
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
+  fetchKotDailyWorkings,
   fetchKotEmployees,
   fetchKotMonthlyWorkings,
   KotApiClientError,
 } from "./kot-api";
-import type { KotMonthlyWorking } from "../_types/kot";
+import type { KotDailyWorking, KotMonthlyWorking } from "../_types/kot";
 import type { Attendance } from "../_constants/types";
 import {
   insertSyncLog,
@@ -337,6 +338,229 @@ export async function runMonthlySyncFull(
     return {
       ok: false,
       target_month: targetMonth,
+      log_id: logId,
+      records_fetched: 0,
+      records_inserted: 0,
+      records_updated: 0,
+      records_skipped: 0,
+      upsert_errors: 0,
+      error_code: code,
+      error_message: msg,
+    };
+  }
+}
+
+// ------------------------------------------------------------
+// 日次勤怠フルフロー（Phase A-3-d）
+// ------------------------------------------------------------
+
+export type SyncDailyResult = {
+  ok: boolean;
+  target_date: string;
+  log_id: string | null;
+  records_fetched: number;
+  records_inserted: number;
+  records_updated: number;
+  records_skipped: number;
+  upsert_errors: number;
+  error_code?: string;
+  error_message?: string;
+};
+
+/** KoT 日次 → root_attendance_daily 用 payload */
+function toDailyAttendancePayload(d: KotDailyWorking, employee_id: string) {
+  return {
+    employee_id,
+    work_date: d.date,
+    clock_in_at: d.clockIn ?? null,
+    clock_out_at: d.clockOut ?? null,
+    break_minutes: d.breakMinutes ?? 0,
+    work_minutes: d.workMinutes ?? 0,
+    overtime_minutes: d.overtimeMinutes ?? 0,
+    night_minutes: d.nightMinutes ?? 0,
+    holiday_minutes: d.holidayMinutes ?? 0,
+    late_minutes: d.lateMinutes ?? 0,
+    early_leave_minutes: d.earlyLeaveMinutes ?? 0,
+    leave_type: d.leaveType ?? null,
+    note: d.note ?? null,
+    source: "kot-api-daily" as const,
+    kot_record_id: `kot:dw:${d.date}:${d.employeeKey}`,
+    imported_at: new Date().toISOString(),
+    import_status: "取込済" as const,
+  };
+}
+
+/**
+ * 日次勤怠同期フルフロー：KoT /daily-workings → サーバ側 upsert → log 確定
+ *
+ * @param targetDate   YYYY-MM-DD（例: "2026-04-24"）
+ * @param triggeredBy  'cron' / user_id / 'manual' / 'rerun' 等
+ * @param options      冪等性チェックスキップ等
+ */
+export async function runDailySyncFull(
+  targetDate: string,
+  triggeredBy: string,
+  options: { skipIdempotencyCheck?: boolean } = {},
+): Promise<SyncDailyResult> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(targetDate)) {
+    return {
+      ok: false,
+      target_date: targetDate,
+      log_id: null,
+      records_fetched: 0,
+      records_inserted: 0,
+      records_updated: 0,
+      records_skipped: 0,
+      upsert_errors: 0,
+      error_code: "INVALID_ARG",
+      error_message: `targetDate は YYYY-MM-DD 形式で指定してください（受け取り: "${targetDate}"）`,
+    };
+  }
+
+  // 冪等性ガード（同 target が直近 5 分以内に running / success なら skip）
+  if (!options.skipIdempotencyCheck) {
+    const threshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: dup } = await getSupabaseAdmin()
+      .from("root_kot_sync_log")
+      .select("id")
+      .eq("sync_type", "daily_attendance")
+      .eq("sync_target", targetDate)
+      .in("status", ["running", "success"])
+      .gte("triggered_at", threshold)
+      .limit(1);
+    if ((dup ?? []).length > 0) {
+      return {
+        ok: true,
+        target_date: targetDate,
+        log_id: null,
+        records_fetched: 0,
+        records_inserted: 0,
+        records_updated: 0,
+        records_skipped: 0,
+        upsert_errors: 0,
+        error_code: "SKIPPED_DUPLICATE",
+        error_message: "直近 5 分以内に同 target の同期が running / success のため skip",
+      };
+    }
+  }
+
+  const syncLog = await insertSyncLog({
+    sync_type: "daily_attendance",
+    sync_target: targetDate,
+    triggered_by: triggeredBy,
+    status: "running",
+  });
+  const logId = syncLog?.id ?? null;
+
+  try {
+    // 1. KoT 日次勤怠取得
+    const dailies = await fetchKotDailyWorkings(targetDate);
+
+    // 2. Garden 従業員マスタで employeeKey / employeeCode → employee_id 解決
+    //    （/employees も併用して employeeCode → employee_number 突合）
+    const supa = getSupabaseAdmin();
+    const [kotEmployees, gardenEmpResult] = await Promise.all([
+      fetchKotEmployees({ date: targetDate, includeResigner: true }),
+      supa.from("root_employees").select("employee_id, employee_number, is_active"),
+    ]);
+    if (gardenEmpResult.error) {
+      throw new Error(`Garden 従業員マスタ取得失敗: ${gardenEmpResult.error.message}`);
+    }
+    const codeByKey = new Map<string, string>();
+    for (const e of kotEmployees) {
+      if (e.key && e.code) codeByKey.set(e.key, e.code);
+    }
+    const gardenByNumber = new Map<string, { employee_id: string; is_active: boolean }>();
+    for (const e of gardenEmpResult.data ?? []) {
+      gardenByNumber.set(e.employee_number, { employee_id: e.employee_id, is_active: e.is_active });
+      const padded = e.employee_number.padStart(4, "0");
+      if (padded !== e.employee_number) {
+        gardenByNumber.set(padded, { employee_id: e.employee_id, is_active: e.is_active });
+      }
+    }
+
+    // 3. 解決 + upsert
+    let inserted = 0;
+    let errors = 0;
+    let skipped = 0;
+    for (const d of dailies) {
+      // employeeCode を直接使う（KoT レスポンスに employeeCode が入っている前提）
+      // 無ければ employeeKey → code 変換を試す
+      const code = d.employeeCode ?? codeByKey.get(d.employeeKey);
+      const garden = code
+        ? gardenByNumber.get(code) ?? gardenByNumber.get(code.padStart(4, "0"))
+        : undefined;
+      if (!garden) {
+        skipped++;
+        continue;
+      }
+      const payload = toDailyAttendancePayload(d, garden.employee_id);
+      const { error: upErr } = await supa
+        .from("root_attendance_daily")
+        .upsert(payload, { onConflict: "employee_id,work_date" });
+      if (upErr) {
+        errors++;
+        console.error("[runDailySyncFull/upsert]", upErr.message, {
+          employee_id: garden.employee_id,
+          work_date: d.date,
+        });
+      } else {
+        inserted++;
+      }
+    }
+
+    if (logId) {
+      if (errors > 0 && inserted === 0) {
+        await updateSyncLogFailure(logId, {
+          error_code: "ALL_UPSERT_FAILED",
+          error_message: `全 ${errors} 行 upsert 失敗`,
+          records_fetched: dailies.length,
+        });
+        return {
+          ok: false,
+          target_date: targetDate,
+          log_id: logId,
+          records_fetched: dailies.length,
+          records_inserted: 0,
+          records_updated: 0,
+          records_skipped: skipped,
+          upsert_errors: errors,
+          error_code: "ALL_UPSERT_FAILED",
+          error_message: "全行 upsert 失敗",
+        };
+      }
+      await updateSyncLogComplete(logId, {
+        status: errors > 0 ? "partial" : "success",
+        records_fetched: dailies.length,
+        records_inserted: inserted,
+        records_updated: 0,
+        records_skipped: skipped,
+      });
+    }
+
+    return {
+      ok: errors === 0,
+      target_date: targetDate,
+      log_id: logId,
+      records_fetched: dailies.length,
+      records_inserted: inserted,
+      records_updated: 0,
+      records_skipped: skipped,
+      upsert_errors: errors,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const code = e instanceof KotApiClientError ? String(e.code) : "UNKNOWN";
+    if (logId) {
+      await updateSyncLogFailure(logId, {
+        error_code: code,
+        error_message: msg,
+        error_stack: e instanceof Error ? e.stack ?? null : null,
+      });
+    }
+    return {
+      ok: false,
+      target_date: targetDate,
       log_id: logId,
       records_fetched: 0,
       records_inserted: 0,
