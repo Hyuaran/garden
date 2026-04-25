@@ -38,12 +38,29 @@ export function ChangeBirthdayModal(props: ChangeBirthdayModalProps) {
   const { open, onClose, currentBirthday } = props;
   const [newBirthday, setNewBirthday] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string>("");
 
   if (!open) return null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // 実装は Task 12 で
+    if (submitting || !newBirthday || !currentPassword) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await props.onSubmit({ newBirthday, currentPassword });
+      if (result.success) {
+        props.onSuccess?.();
+        setNewBirthday("");
+        setCurrentPassword("");
+        onClose();
+        return;
+      }
+      setError(result.errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -88,9 +105,9 @@ export function ChangeBirthdayModal(props: ChangeBirthdayModalProps) {
             </button>
             <button
               type="submit"
-              disabled={!newBirthday || !currentPassword}
+              disabled={!newBirthday || !currentPassword || submitting}
             >
-              変更する
+              {submitting ? "変更中..." : "変更する"}
             </button>
           </div>
         </form>
