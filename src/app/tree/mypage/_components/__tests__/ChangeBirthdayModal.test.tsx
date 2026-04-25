@@ -119,6 +119,37 @@ describe("ChangeBirthdayModal - submit 成功", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("WRONG_PASSWORD 時にエラーメッセージが表示される", async () => {
+    const onSubmit = vi.fn().mockResolvedValue({
+      success: false,
+      errorCode: "WRONG_PASSWORD",
+      errorMessage: "現在のパスワードが違います",
+    });
+    render(
+      <ChangeBirthdayModal
+        open
+        onClose={vi.fn()}
+        currentBirthday="1990-05-07"
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("新しい誕生日"), {
+      target: { value: "1985-12-03" },
+    });
+    fireEvent.change(screen.getByLabelText("現在のパスワード"), {
+      target: { value: "wrong" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+
+    expect(
+      await screen.findByText("現在のパスワードが違います"),
+    ).toBeInTheDocument();
+    // モーダルは閉じない
+    expect(screen.getByText("誕生日の変更")).toBeInTheDocument();
+  });
+});
+
+describe("ChangeBirthdayModal - エラー表示", () => {
   it("送信中は『変更中...』表示で disabled", async () => {
     const onSubmit = vi
       .fn()

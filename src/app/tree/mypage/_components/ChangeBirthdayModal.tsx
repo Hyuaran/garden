@@ -99,6 +99,21 @@ export function ChangeBirthdayModal(props: ChangeBirthdayModalProps) {
               ※本人確認のため入力してください
             </p>
           </div>
+          {error && (
+            <div
+              role="alert"
+              style={{
+                marginTop: 12,
+                padding: 8,
+                background: "#fee",
+                color: "#a00",
+                fontSize: 12,
+                borderRadius: 6,
+              }}
+            >
+              {error}
+            </div>
+          )}
           <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button type="button" onClick={onClose}>
               キャンセル
