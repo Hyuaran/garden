@@ -10,6 +10,16 @@
  *   - エラーログには **トークンの有無（!!token）** のみ記録、値は絶対に出さない。
  *
  * 依存: 新規 npm なし（fetch は Next.js 16 / Node 20 標準）
+ *
+ * 🌐 プロキシ対応（Phase A-3-c）:
+ *   KoT API は契約 IP のみ許可のため、Vercel 動的 IP から直接叩くと 403 失敗。
+ *   `FIXIE_URL`（固定 IP プロキシサービス）環境変数が設定されていれば、
+ *   将来そこ経由で叩く実装を追加する。現状は未設定時と同じ直接 fetch 動作で、
+ *   設定時は WARN ログを出して直接 fetch にフォールバック（後述 TODO 参照）。
+ *
+ *   ⚠️ TODO(A-3-c-followup): Fixie 契約確定後、proxy agent を組込む。
+ *   Node.js 標準 `fetch` は HTTP_PROXY を認識しないため、dispatcher 経由で
+ *   差し込むか `undici` / `https-proxy-agent` などの dep を追加（要 a-main 承認）。
  */
 
 import type {
@@ -22,6 +32,9 @@ const BASE_URL = "https://api.kingtime.jp/v1.0";
 
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_BASE_MS = 500; // 500ms → 1s → 2s の指数バックオフ
+
+// FIXIE_URL 設定時に 1 度だけ warn する（リクエスト毎にログ爆発させない）
+let warnedAboutProxy = false;
 
 type FetchOptions = {
   maxRetries?: number;
@@ -46,6 +59,16 @@ async function kotFetch<T>(path: string, opts: FetchOptions = {}): Promise<T> {
 
   const maxRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES;
   const url = `${BASE_URL}${path}`;
+  const proxyUrl = process.env.FIXIE_URL;
+  if (proxyUrl && !warnedAboutProxy) {
+    // 値自体は絶対に出さない（Fixie URL は auth 情報を含む）、存在真偽のみ
+    console.warn(
+      "[kot-api] FIXIE_URL is set but proxy routing is not yet wired. " +
+        "Falling back to direct fetch — this will fail from Vercel dynamic IPs. " +
+        "Complete the Fixie integration (see A-3-c-followup TODO).",
+    );
+    warnedAboutProxy = true;
+  }
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
