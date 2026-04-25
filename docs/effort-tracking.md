@@ -73,4 +73,14 @@
   - Phase A-2: KoT API 月次勤怠取込（IP 制限ハマり含めて 0.5 d で完走）
   - 教訓：既存実装の発掘を初手で徹底する / KoT API は IP 制限ありと明示されていなかった / `date` 形式は実機で判明（yyyy-MM 必須）
 
+- **Cross Ops Specs (Batch 15)**: 2026-04-26、a-auto 003 が起草。Garden 横断 運用設計 6 件の spec（実装見積合計 ~3.0d）。
+  - #01 監視・アラート: ~0.5d 実装（Vercel/Supabase 標準 + Garden 固有 monitoring_events + Chatwork 即時/集約）
+  - #02 バックアップ・リカバリ: ~0.5d（PITR + 日次 pg_dump + Storage 差分 + 月次 R2 + DR 訓練）
+  - #03 インシデント対応: ~0.5d（Sev1/2/3 分類 + プレイブック + ポストモーテム + known-pitfalls 連動）
+  - #04 リリース手順: ~0.5d（α/β/リリース版 + 7 種テスト統合 + ロールバック 5 粒度 + feature_flags）
+  - #05 データ保持・アーカイブ: ~0.5d（法令準拠保持期間 + archive_policies + 仮名化 + privacy_requests）
+  - #06 運用ハンドブック: ~0.5d（日次/週次/月次/四半期/年次の運用作業整理）
+  - 実装見積合計: ~3.0d / 起草時間: 約 1.5h（a-auto 003）
+  - ブランチ: feature/cross-ops-specs-batch15-auto
+
 - **本ファイルの起源**: 2026-04-22、ルール `feedback_effort_tracking.md` 遵守のため作成。以降の Phase では spec/plan 作成と同時に行追加すること。
