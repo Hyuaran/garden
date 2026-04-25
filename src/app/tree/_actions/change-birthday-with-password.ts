@@ -98,5 +98,15 @@ export async function changeBirthdayWithPassword(
 
   if (employee.birthday === input.newBirthday) return fail("SAME_AS_CURRENT");
 
+  const passwordVerifyClient = createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error: signInError } =
+    await passwordVerifyClient.auth.signInWithPassword({
+      email: userData.user.email!,
+      password: input.currentPassword,
+    });
+  if (signInError) return fail("WRONG_PASSWORD");
+
   return fail("UNKNOWN");
 }

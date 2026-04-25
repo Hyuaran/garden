@@ -162,3 +162,42 @@ describe("changeBirthdayWithPassword - SAME_AS_CURRENT", () => {
     if (!result.success) expect(result.errorCode).toBe("SAME_AS_CURRENT");
   });
 });
+
+describe("changeBirthdayWithPassword - WRONG_PASSWORD", () => {
+  it("現パス検証が失敗したら WRONG_PASSWORD", async () => {
+    const anon = buildAnonClient();
+    anon.auth.getUser.mockResolvedValue({
+      data: { user: { id: "user-123", email: "emp1324@garden.internal" } },
+      error: null,
+    });
+    const verifyClient = buildAnonClient();
+    verifyClient.auth.signInWithPassword.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: "Invalid login credentials" },
+    });
+
+    let createClientCalls = 0;
+    mockedCreateClient.mockImplementation(() => {
+      createClientCalls += 1;
+      return (createClientCalls === 1 ? anon : verifyClient) as never;
+    });
+
+    const admin = buildAdminClient();
+    const employeesFrom = buildFrom();
+    employeesFrom.maybeSingle.mockResolvedValue({
+      data: { birthday: "1990-05-07", employee_number: "1324" },
+      error: null,
+    });
+    admin.from.mockImplementation(() => employeesFrom);
+    mockedGetSupabaseAdmin.mockReturnValue(admin as never);
+
+    const result = await changeBirthdayWithPassword({
+      newBirthday: "1985-12-03",
+      currentPassword: "wrong-pass",
+      accessToken: "ok-token",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.errorCode).toBe("WRONG_PASSWORD");
+  });
+});
