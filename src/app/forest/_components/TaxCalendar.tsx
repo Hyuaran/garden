@@ -67,15 +67,18 @@ export function TaxCalendar({ companies, schedules, onPillClick }: Props) {
         納税カレンダー
       </h2>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "130px repeat(12, minmax(0, 1fr))",
-          fontSize: 12,
-          minWidth: 900,
-        }}
-      >
-        {/* 年ラベル行 */}
+      {/* 768px 以下のような狭幅でも grid を保つため、横スクロールでラップ
+          （spec §7 レスポンシブ：overflow-x-auto） */}
+      <div style={{ overflowX: "auto", marginInline: -4, paddingInline: 4 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "130px repeat(12, minmax(0, 1fr))",
+            fontSize: 12,
+            minWidth: 900,
+          }}
+        >
+          {/* 年ラベル行 */}
         <div />
         {yearGroups.map((g) => (
           <YearLabelCell key={`yl-${g.year}`} group={g} />
@@ -110,6 +113,7 @@ export function TaxCalendar({ companies, schedules, onPillClick }: Props) {
             />
           );
         })}
+        </div>
       </div>
 
       {/* Legend */}
