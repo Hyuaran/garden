@@ -45,6 +45,27 @@
 | Root | Phase A-2: KoT API 連携（月次勤怠 API 直接取込） | 1.0 | 0.5 | -0.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 案A（CSV手動）→案C（API直行）へ切替。KoT v1.0 /employees + /monthly-workings を Server Action で取得→ employeeKey→code→employee_number→employee_id 解決→ root_attendance に upsert。疎通は IP 制限設定で一度失敗→解消後 200 OK・42名取得確認。/monthly-workings の date は YYYY-MM 形式（YYYY-MM-DD は 400）と実機で判明、修正反映済。PR #15。本番 Vercel IP 対応は別タスク。 |
 | Root | Phase 品質向上: テスト拡充 + known-pitfalls 追加（限定 auto モード） | 0.5 | 0.4 | -0.1 | a-root-002 (A) | 2026-04-25 | 2026-04-25 | T1〜T6 を subagent-driven-development で並列実装。validators 6マスタ + primitives + sanitize-payload + KoT API client + garden_role 8x8 マトリックス + known-pitfalls #4-#8 追加。Vitest 33→570 件 (+537) 全 pass。レビュー 1 巡 (4 Important fix) 後 PR 発行。動作変更なし、既存品質向上のみ。 |
 
+| Bud | Phase 1a 全銀協CSVライブラリ | 0.5 | 0.35 | -0.15 | b-main (B) | 2026-04-22 | 2026-04-22 | 実装+テスト 95件すべて緑。subagent-driven で効率実装、最終レビューで致命的3件検出・即修正（sourceAccount検証/padding throw/合計overflow）。 |
+| Bud | Phase 1b.1 振込管理 Foundation | 0.8 | 0.3 | -0.5 | b-main (B) | 2026-04-23 | 2026-04-23 | スキーマv2 + RLS 8ポリシー + 型 + ID生成 + 重複検出 + queries + mutations。125 tests全緑（+30新規）。Supabase SQL適用は東海林さん手動待ち。 |
+| Bud | Phase 1b.2 振込管理 UI（旧プラン Task 1-13）| 1.4 | 0.3 (進捗) | — | a-bud (A) / b-main (B) | 2026-04-23 | (新spec で再構成) | StatusBadge/FilterBar/MonthlySummary + Task 4 一覧画面 + Task 5 バリデーション TDD（9 tests 緑）。Task 6-13 は新 spec A-03/A-04/A-05 で再構成、SUPERSEDED 扱い。 |
+| Bud | 🎯 判断確定節目: Phase A-1 🔴 即時合意 7 件 | — | — | — | a-bud (A) / a-main | 2026-04-25 | 2026-04-25 | マイルストーン: 東海林さん即決完了。7 件中 6 件は a-auto 推奨通り、A-08 判1 のみ修正（楽天ビジネス → オリコ/三井住友/楽天デビット 3 種）。 |
+| Bud | Phase A-1 A-03 振込 6 段階遷移（差分実装） | 0.4-0.6 | 0.4 | -0.0〜-0.2 | a-bud (A) | 2026-04-25 | 2026-04-25 | W1-W4（commit 09c30bc）+ W5 Chatwork 通知。SQL migration / RPC / canTransitionWithRole / TS wrapper / Vitest 37 件 + chatwork-formatter 9 件。super_admin 自起票 reason='自起票' 自動挿入（A-03 判3）。 |
+| Bud | Phase A-1 A-04 振込 新規作成フォーム | 0.5 | 0.4 | -0.1 | a-bud (A) | 2026-04-25 | 2026-04-25 | new-regular / new-cashback 両ページ + 9 コンポーネント + business-day (16 tests) + transfer-create-schema (25 tests)。A-03 SQL FK 修正同時（id uuid → transfer_id text）。 |
+| Bud | Phase A-1 A-05 振込 承認フロー UI | 0.5 | 0.45 | -0.05 | a-bud (A) | 2026-04-25 | 2026-04-25 | 振込詳細画面 (3 タブ) + StatusActionButtons + RejectModal + StatusHistoryTab + 一括操作 (100 件上限) + CSV 出力骨格。A-05 判1 自己承認は警告のみ、判7 100 件上限実装。batch-transitions 11 tests。 |
+| Bud | Phase A-1 A-06 明細管理 + 自動照合（W1-W8） | 0.75 | 0.7 | -0.05 | a-bud (A) | 2026-04-25 | 2026-04-25 | SQL/楽天みずほPayPay CSV パーサ (17 tests)/4 段階照合 (13 tests)/取込 Server Action/一覧/取込モーダル/手動割当 + W7-W8 月次集計 + 取込履歴。282 tests 緑。 |
+| Bud | Phase A-1 A-08 CC 明細 3 種対応（spec のみ） | 0.65 | 0.05 | (spec 修正) | a-bud (A) | 2026-04-25 | (実装は別) | spec 微修正完了（オリコ/三井住友/楽天デビット 3 種拡張、§13 段階的実装計画）。**着手前に必要**: 3 種 CSV サンプル + 引落口座 ID + 5,000 円判定の税込/税抜確認。 |
+| Bud | Phase A-1 A-07 手渡し現金 5 論点（整理 + 採択完了） | 0.25 | 0.15 | -0.1 | a-bud (A) | 2026-04-25 | 2026-04-25 | **🎯 採択完了 (2026-04-25)**: 5 論点全採択（4 件推奨通り、論点 3 のみメール配信拡張）。spec を確定版に更新（cash-payment-undecided.md §3/§4）、B-01/B-03/B-04 に反映。論点 3: A 案 + 方式 2 パスワード保護 PDF メール配信（PW=生年月日 4 桁 or 社員番号下 4 桁、実装時最終決定）。U1-U5 は暫定推測で合意、Phase B 着手前まで OK。実装は Phase B（2026-07 想定）で着手。 |
+| Bud | Phase 1c Leaf連携 | 1.0 | — | — | b-main (B) | (pending) | | 共通部品 + 関電への組み込み。将来のLeafアプリでも流用 |
+| Bud | Phase 2a 銀行明細取込（A-06 で部分実装） | 1.35 | — | — | b-main (B) | (pending) | | 楽天/みずほ/PayPay/京都の4銀行。京都銀行は入金のみ。A-06 で楽天/みずほ/PayPay の基盤完了。 |
+| Bud | Phase 2b CC明細取込（A-08 で再設計） | 0.8 | — | — | b-main (B) | (pending) | | オリコ/NTTBiz/三井住友x2 → A-08 で 3 種（オリコ/三井住友/楽天デビット）に再設計。飲食店5000円ルール継承 |
+| Bud | Phase 2c 共通マスタseed | 0.3 | — | — | b-main (B) | (pending) | | v12 Excel（441行）→ root_expense_categories |
+| Bud | Phase 3 支払明細＋照合 | 2.0 | — | — | b-main (B) | (pending) | | A-06 で部分実装（自動照合）、Phase 3 で完成 |
+| Bud | Phase 4a 自動仕訳エンジン | 1.0 | — | — | b-main (B) | (pending) | | 3段階判定・CC 5000円ルール・マスタ編集 |
+| Bud | Phase 4b OCR + 撮影UI + Storage | 3.3 | — | — | b-main (B) | (pending) | | Claude Vision、スマホ連続撮影、Google Drive アーカイブ |
+| Bud | Phase 4c FM レシート Bud化（全件移行） | 2.1 | — | — | b-main (B) | (pending) | | GBU形式へ移行、旧KR番号はRootに保持。川中さんアカウント作成前提 |
+| Bud | Phase 5 コストダッシュボード | 1.5 | — | — | b-main (B) | (pending) | | 添付xlsx の置換 |
+| Bud | Phase 6 給与処理（MF連携＋手渡し現金） | 4.55 | — | — | b-main (B) | (pending) | | MFクラウド給与連携、9段階ステータス、手渡し案C採用、前払・社宅管理追加 |
+
 ## 運用メモ
 
 - **Phase A1 の内訳** (参考):
