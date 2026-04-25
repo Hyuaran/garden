@@ -355,21 +355,65 @@ memory `project_delete_pattern_garden_wide.md` 準拠：
 
 ## 6. LINE Bot 自動応答設計
 
-### 6.1 必要な機能
+### 6.1 LINE 2 アカウント運用（2026-04-26 確定）
+
+東海林さんから提示の現状運用に合わせて、入社前 / 入社後で別アカウントを使い分け：
+
+| 段階 | LINE アカウント名 | 用途 |
+|---|---|---|
+| 入社前（応募 → 内定） | **株式会社ヒュアラン_info** | 採用情報配信、面接予約、ヒアリングシート、入社案内 |
+| 入社後（在職中） | **スタッフ連絡用_official** | スタッフ間業務連絡、給与明細通知（PW 保護 PDF 経路の補足）、退職案内 |
+
+### 6.2 アカウント切替フロー
+
+```
+1. 応募者: ヒュアラン_info に友だち追加
+2. 面接 → 内定 → 入社初日
+3. 入社初日に Garden Sprout から自動で LINE 通知:
+   「ようこそ！スタッフ連絡用_official に友だち追加お願いします → URL」
+4. 応募者がスタッフ連絡用_official に追加
+5. ヒュアラン_info はブロック / 友だち削除を依頼（任意、Sprout から促し）
+6. 入社後の連絡は全て スタッフ連絡用_official 経由
+```
+
+### 6.3 Bot 機能（アカウント別）
+
+#### ヒュアラン_info（入社前）
 
 | 機能 | 内容 |
 |---|---|
-| 友だち追加時 | ウェルカムメッセージ + 面接予約 URL 自動送信 |
-| 「面接予約」キーワード | 予約 URL を再送 |
-| 「採用後」 | Garden アカウント案内 + 初回ログイン手順 |
-| 「退職」 | 退職フロー案内 |
-| その他 | 営業へ転送（手動対応） |
+| 友だち追加時 | ウェルカム + 面接予約 URL 自動送信（ホットペッパー方式、§5.1） |
+| 「面接予約」キーワード | 予約 URL 再送 |
+| 「採用後」キーワード | スタッフ連絡用_official 案内 + 入社初日手順 |
+| その他 | 採用担当者へ転送 |
 
-### 6.2 技術選定
+#### スタッフ連絡用_official（入社後）
 
-- LINE Messaging API（既存公式 LINE で運用可能性確認要）
+| 機能 | 内容 |
+|---|---|
+| 友だち追加時 | ウェルカム + Garden マイページ案内 |
+| 給与日 | 給与明細配信完了通知（PDF 添付ではなくマイページ誘導 + メール経由 PW 保護 PDF 別送） |
+| 「退職」キーワード | 退職フロー案内 |
+| シフト確認 | カレンダー連携、staff 以上のみ |
+| その他 | 業務担当者（営業 / 経理 / 総務）へ転送 |
+
+### 6.4 技術選定
+
+- **LINE Messaging API**（2 アカウント分のチャネルアクセストークン必要）
 - Bot サーバ：Garden 内 API ルート（Next.js Server Actions）
-- メッセージ履歴：sprout_line_messages テーブル
+- メッセージ履歴: `sprout_line_messages`（入社前）/ `root_line_messages`（入社後、または横断テーブル）
+- 配信失敗時のリトライ：1h / 6h / 24h（A-07 採択ロジック踏襲）
+
+### 6.5 環境変数（2 アカウント分）
+
+```
+LINE_CHANNEL_ACCESS_TOKEN_INFO=（ヒュアラン_info 用）
+LINE_CHANNEL_SECRET_INFO=
+LINE_CHANNEL_ACCESS_TOKEN_OFFICIAL=（スタッフ連絡用_official 用）
+LINE_CHANNEL_SECRET_OFFICIAL=
+```
+
+→ Phase B 着手時に東海林さんから取得して `.env.local` 全 10 セッションに保存（Kintone トークンと同パターン）。
 
 ---
 
@@ -421,25 +465,25 @@ memory `project_delete_pattern_garden_wide.md` 準拠：
 
 ## 9. 判断保留・確認事項
 
-### 9.1 東海林さんからの送付待ち
+### 9.1 東海林さんからの送付（2026-04-26 更新）
 
-| # | 項目 | 用途 |
+| # | 項目 | 状態 |
 |---|---|---|
-| 1 | 雇用契約書フォーマット | 入社時同意項目の精緻化 |
-| 2 | 秘密保持誓約書フォーマット | 何を秘匿させるか確認 |
-| 3 | 緊急連絡先届フォーマット | 項目数 / 関係性記入の必要性 |
-| 4 | 退職届フォーマット | 退職理由必須？引継項目？ |
-| 5 | Kintone じぶんフォーム（交通費 / 給与口座）構造 | sprout_pre_employment_data 設計の参考 |
+| 1 | 雇用契約書フォーマット | ✅ 受領済（リンクサポート 2026-04-20 ver.2、§14.1）|
+| 2 | 秘密保持誓約書フォーマット | ✅ 受領済（リンクサポート 2026-04-01 ver.3、§14.2）|
+| 3 | 緊急連絡先届フォーマット | ✅ 受領済（リンクサポート 2026-04-01 ver.1、§14.3）|
+| 4 | 退職届フォーマット | ✅ 受領済（リンクサポート 2026-04-01 ver.1、§14.4）|
+| 5 | Kintone じぶんフォーム（交通費 / 給与口座）構造 | ⏳ 待機（U1-U5 で総合判断）|
 
-### 9.2 業務確認事項
+### 9.2 業務確認事項（2026-04-26 更新）
 
-| # | 項目 | 確認したい |
+| # | 項目 | 状態 |
 |---|---|---|
-| 1 | バイトル API 連携可否 | Sprout 自動取込が可能か |
-| 2 | タイムツリー API 連携可否 | 営業の予定空枠抽出が可能か |
-| 3 | 公式 LINE のアカウント種別 | LINE Messaging API 利用可能なプランか |
-| 4 | iPad 設置数 / 設置場所の現実性 | オリエン会議室前提で OK か |
-| 5 | 既存従業員の Garden 移行戦略 | A / B / C のどれか |
+| 1 | バイトル API 連携可否 | ⏳ 確認待ち |
+| 2 | タイムツリー API 連携可否 | ❌ **API 非対応確定**（2026-04-26）→ Garden 独自カレンダー（B 案）採用、§15 |
+| 3 | 公式 LINE のアカウント種別 | ✅ **2 アカウント運用判明**（入社前: ヒュアラン_info / 入社後: スタッフ連絡用_official）、§6 |
+| 4 | iPad 設置数 / 設置場所の現実性 | ⏳ 確認待ち（オリエン会議室前提で OK 確認済）|
+| 5 | 既存従業員の Garden 移行戦略 | ⏳ Phase B 実装着手前に判断 |
 
 ### 9.3 設計判断保留（Phase B 実装着手前）
 
@@ -458,6 +502,7 @@ memory `project_delete_pattern_garden_wide.md` 準拠：
 | 版 | 日付 | 主な変更 |
 |---|---|---|
 | v0.1 | 2026-04-25 | 初版起草（東海林さん 4 設計点確定 + Sprout モジュール新設提案）|
+| v0.2 | 2026-04-26 | 4 PDF 受領反映 + LINE 2 アカウント反映 + タイムツリー API 非対応 → Garden カレンダー B 案 + Garden Fruit 実体化（法人マスタ）+ 6 法人 Kintone 取込 |
 
 ---
 
@@ -467,8 +512,9 @@ memory `project_delete_pattern_garden_wide.md` 準拠：
 - memory `project_garden_login_office_only.md` — 社内 PC 限定ログイン
 - memory `project_chatwork_bot_ownership.md` — Bot 運用ポリシー
 - memory `project_kintone_tokens_storage.md` — Kintone トークン保存場所
+- memory `project_garden_fruit_module.md` — Fruit モジュール実体化（法人法的実体）
 - spec `docs/specs/2026-04-25-kintone-kanden-integration-analysis.md` — Kintone マッピング分析（PR #52）
-- CLAUDE.md §18 Garden 構築優先順位 — Phase B に Sprout 追加を反映予定
+- CLAUDE.md §18 Garden 構築優先順位 — Phase B に Sprout + Fruit 追加を反映予定
 
 ---
 
@@ -476,13 +522,216 @@ memory `project_delete_pattern_garden_wide.md` 準拠：
 
 | # | 担当 | アクション |
 |---|---|---|
-| 1 | 東海林さん | 4 フォーマット送付（§9.1） |
-| 2 | 東海林さん | バイトル / タイムツリー / LINE API 連携可否確認（§9.2） |
-| 3 | a-main | フォーマット受領後に v0.2 改訂 |
-| 4 | a-auto Batch 18 | Sprout 全 spec 起草（v0.2 ベースで詳細化） |
-| 5 | a-main | CLAUDE.md §18 を更新（Phase B に Sprout 追加） |
+| 1 | 東海林さん | 4 フォーマット送付 ✅（受領済、§14） |
+| 2 | 東海林さん | バイトル / LINE API 連携可否確認（タイムツリーは非対応確定） |
+| 3 | a-main | v0.2 改訂完了 ✅、a-auto Batch 18 投下準備 |
+| 4 | a-auto Batch 18 | Sprout + Fruit + Garden カレンダー spec 一括起草 |
+| 5 | a-main | CLAUDE.md §18 を更新（Phase B に Sprout + Fruit 追加） |
 | 6 | a-bud / a-root / a-bloom | Phase B 実装時の連携ポイント確認 |
 
 ---
 
-— Garden Sprout（仮）+ オンボーディング再設計 v0.1 草稿、東海林さん 4 設計点確定済 —
+## 13. Garden Fruit 連携（v0.2 新規）
+
+Garden Fruit（法人法的実体情報モジュール、memory `project_garden_fruit_module.md` 参照）を Sprout から参照する設計。
+
+### 13.1 Sprout が Fruit を参照する局面
+
+| Sprout 局面 | Fruit から取得する情報 |
+|---|---|
+| 雇用契約書テンプレ生成 | 法人名 / 法人名カナ / 代表者名 / 代表者名カナ / 会社住所 / 法人電話番号 |
+| 秘密保持誓約書テンプレ生成 | 法人名 / 代表者名 |
+| 退職届テンプレ生成 | 法人名 / 代表者名 |
+| 緊急連絡先届テンプレ生成 | 法人名 / 代表者名 |
+| 給与明細生成（D-04 連携） | 法人番号 / インボイス登録番号 |
+| 銀行振込連携（A-04 連携） | 法人金融機関情報（取引銀行） |
+| 採用 → 内定（sprout_offers）| 採用予定法人の company_id 紐付 |
+
+### 13.2 6 法人マスタ取込フロー（Phase B）
+
+```
+1. Kintone 法人名簿（App 28、61 フィールド）から admin が 6 法人レコード一括取込
+2. Fruit テーブル群へマッピング（fruit_companies_legal / _representatives / _documents 等）
+3. Sprout / Bud / Forest / Root から Fruit を参照
+4. 以降の更新は Kintone を引き続き master、Garden Fruit が同期 or 切替（Phase C 判断）
+```
+
+### 13.3 法人選択 UI（Sprout 内）
+
+```
+[内定情報入力]
+配属法人: ▼[法人選択]
+  → クリックで法人ドロップダウン
+  → Fruit から fruit_companies_legal を取得
+  → 6 法人をリスト表示
+  → 選択した company_id を sprout_offers / sprout_pre_employment_data に保存
+  → 雇用契約書テンプレ生成時に Fruit から動的取得
+```
+
+---
+
+## 14. PDF フォーマット 4 件のフィールド構造（v0.2 新規、東海林さん受領済）
+
+ベースは「株式会社リンクサポート」名義。**6 法人対応のため、社名 / 代表者名 / 住所 / 法人番号 / インボイス番号 等は Fruit から動的取得**。
+
+### 14.1 雇用契約書（兼 労働条件通知書、ver.2 / 2026-04-20）
+
+#### Fruit から取得（テンプレ動的部分）
+- 法人名 / 法人名カナ
+- 代表取締役名
+- 本社住所 + 郵便番号
+- 法人電話番号
+- 法人番号
+
+#### 本人入力（Sprout sprout_pre_employment_data）
+- 通知日及び締結日（自動設定 = 入社日）
+- 住所
+- 署名（電子署名 or MFC）
+
+#### 雇用条件（spec 固定 / 業務マスタから）
+- 契約期間（開始 / 終了）
+- 試用期間（最初の 14 日）
+- 就業場所（spec デフォ：本社 or 「甲が指定する場所」）
+- 従事すべき業務：□ 営業職 / □ 事務職 / □ 技術職 / □ その他
+- シフト：A（14:00-21:00 / 休憩 45 分）/ B（9:00-21:00 / 休憩 60 分 + 13:00-14:00 昼休）/ C（9:00-17:00 / 休憩 45 分）
+- 基本賃金：時給 [   ] 円（最低賃金準拠）
+- 営業達成手当（クルー人事制度）
+- 入社時特別保障：累計 120 時間まで時給 1,500 円
+- 通勤交通費：1日500円 or 月額20,000円（少額側適用）
+- 賞与・退職金：なし
+
+### 14.2 秘密保持誓約書（ver.3 / 2026-04-01）
+
+#### Fruit から取得
+- 法人名 / 代表取締役名
+
+#### 本人入力
+- □新規 / □再提出 のチェック（入社時=新規、退職時=再提出）
+- 誓約日（自動設定）
+- 住所
+- 署名
+
+#### 全文同意項目（spec 固定）
+- 第 1 条：秘密情報の定義（6 項目）
+- 第 2 条：秘密情報の帰属
+- 第 3 条：秘密保持義務
+- 第 4 条：秘密情報の返還・消去義務
+- 第 5 条：退職後の競業避止義務（**退職日から 6 ヶ月**）
+- 第 6 条：損害賠償
+
+### 14.3 緊急連絡先届（ver.1 / 2026-04-01）
+
+#### Fruit から取得
+- 法人名 / 代表取締役名
+
+#### 本人入力
+- □新規 / □変更 のチェック
+- 提出日
+- 提出者本人：氏名 / 現住所 / 個人の電話番号
+- 緊急連絡先：氏名 / 本人との続柄 / 住所（同上 OK）/ 電話番号
+- 署名
+
+### 14.4 退職届（ver.1 / 2026-04-01）
+
+#### Fruit から取得
+- 法人名 / 代表取締役名
+
+#### 本人入力
+- 退職日（*日付*）
+- 提出日
+- 住所
+- 署名
+
+#### 確認事項（spec 固定、3 項目）
+1. 秘密保持の再確認（再提出済か）
+2. 私物管理の徹底
+3. 貸与品の返還
+
+---
+
+## 15. Garden カレンダー（v0.2 新規）
+
+### 15.1 背景
+
+タイムツリー API が非対応のため、面接予約自動化 + シフト管理 + 営業予定管理を Garden 独自で実装。CLAUDE.md §18 Phase B / C で実装、Sprout から面接予約として参照。
+
+### 15.2 設計概要
+
+```
+🆕 Garden カレンダー（既存 Sprout / Bloom / Tree から共通利用）
+  ├─ 営業予定（タイムツリーから移行 or リリース時から Garden 専用）
+  ├─ 面接スロット（Sprout sprout_interview_slots と連動）
+  ├─ シフト（Tree 連携、コール現場のシフト）
+  └─ 個人予定（任意、staff 以上のみ）
+```
+
+### 15.3 配置の選択（v0.2 段階で保留、a-auto Batch 18 で詳細化）
+
+| 案 | 内容 | 推奨度 |
+|---|---|---|
+| **A** | Garden カレンダーを **新モジュール（独立）** として構築 | 🥇 推奨：横断利用が多いため独立 |
+| B | Bloom 内のサブモジュールとして統合（Bloom 進捗 UI と一体化） | 🥈 Bloom と密結合する場合 |
+| C | Sprout 内に閉じた面接予約のみ実装（他は対象外） | 🥉 最小スコープ、将来拡張 |
+
+### 15.4 アクセス権限
+
+- **閲覧権限**: **staff 以上**（toss / closer / cs は不可、現場アルバイト系は不要）
+- **入力権限**: 同様に staff 以上
+- **管理権限**: admin（全予定編集、シフト一括設定）
+
+### 15.5 スマホ対応（社内 PC 限定の例外）
+
+通常ロール（toss / closer / cs / staff）は社内 PC ログイン限定だが、**カレンダー閲覧は出先・自宅でも見たいケースがある**。設計案：
+
+| 案 | 内容 | 推奨度 |
+|---|---|---|
+| **A** | staff 以上はスマホ閲覧 OK（既存「社内 PC 限定」の例外設定）| 🥇 推奨：閲覧用の専用権限 |
+| B | カレンダー専用の限定 URL + 一時トークンで閲覧（ログイン不要）| 中庸 |
+| C | 全員社内 PC のみ（変更なし） | 不便すぎる |
+
+→ **A 案推奨**：staff 以上はスマホからカレンダー閲覧 OK、入力は社内 PC のみ（or staff 以上はスマホ入力も OK、admin 判断）。memory `project_garden_login_office_only.md` の補正必要。
+
+### 15.6 テーブル骨格（v0.2 段階）
+
+```sql
+calendar_events (
+  id uuid pk,
+  event_type text check (event_type in ('interview', 'shift', 'sales_meeting', 'personal', 'other')),
+  title text,
+  start_at timestamptz,
+  end_at timestamptz,
+  owner_user_id uuid,           -- 主催者
+  attendee_user_ids uuid[],     -- 参加者
+  location text,
+  notes text,
+  status text check (status in ('confirmed', 'tentative', 'cancelled')),
+  visibility text check (visibility in ('public', 'private', 'restricted')),
+  created_at, updated_at
+);
+
+calendar_event_links (
+  id uuid pk,
+  event_id uuid references calendar_events(id),
+  source text check (source in ('sprout', 'tree', 'bud', 'manual')),
+  source_id text,               -- 連携元レコードの ID
+  ...
+);
+```
+
+→ a-auto Batch 18 で詳細起草。
+
+---
+
+## 16. 関連 PR / ブランチ（v0.2 新規セクション）
+
+| 状態 | PR / ブランチ | 内容 |
+|---|---|---|
+| OPEN | PR #76 | 本 spec v0.1 → v0.2 改訂 |
+| 起草予定 | a-auto Batch 18 | Sprout + Fruit + Garden カレンダー spec 一括起草 |
+| 受領済 | 4 PDF (G:\マイドライブ\01_経理部\) | 雇用契約書 / 秘密保持 / 退職届 / 緊急連絡先届 |
+| 既存 | Kintone App 44 / 45 / 28 | 応募者一覧 / 面接ヒアリング / 法人名簿 |
+| 既存 memory | `project_garden_fruit_module.md` | Fruit 実体化 |
+
+---
+
+— Garden Sprout（仮）+ オンボーディング再設計 v0.2、東海林さん 4 設計点確定 + 4 PDF 受領 + LINE 2 アカウント + タイムツリー API 非対応 + Fruit 実体化 + 6 法人 Kintone 取込 反映済 —
