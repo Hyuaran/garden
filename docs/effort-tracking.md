@@ -73,4 +73,16 @@
   - Phase A-2: KoT API 月次勤怠取込（IP 制限ハマり含めて 0.5 d で完走）
   - 教訓：既存実装の発掘を初手で徹底する / KoT API は IP 制限ありと明示されていなかった / `date` 形式は実機で判明（yyyy-MM 必須）
 
+- **Soil 基盤設計 (Batch 16)**: 2026-04-25、a-auto 004 が起草。Garden-Soil 基盤設計 8 件の spec（実装見積合計 ~5.25d）。
+  - #01 リスト本体スキーマ: ~0.5d 実装（253 万件級顧客マスタ、3 補助テーブル）
+  - #02 コール履歴スキーマ: ~1.0d（335 万件、月次パーティション + duration/misdial トリガ）
+  - #03 関電リスト Leaf 連携: ~0.5d（Kintone 74 フィールド振り分け、案件化フロー）
+  - #04 インポート戦略: ~1.0d（Kintone/FileMaker/CSV、staging + マージ提案）
+  - #05 インデックス・パフォーマンス: ~0.5d（253/335 万件で 1 秒以内目標、運用整備）
+  - #06 RLS 設計: ~0.5d（7 ロール、Materialized View 最適化、SECURITY DEFINER）
+  - #07 削除パターン: ~0.25d（横断 Cross History #04 準拠、コール履歴は永続保持）
+  - #08 参照 API 契約: ~1.0d（共有 helper / Server Action / RPC、N+1 防止）
+  - 実装見積合計: ~5.25d / 起草時間: 約 2.5h（a-auto 004）
+  - ブランチ: feature/soil-base-specs-batch16-auto
+
 - **本ファイルの起源**: 2026-04-22、ルール `feedback_effort_tracking.md` 遵守のため作成。以降の Phase では spec/plan 作成と同時に行追加すること。
