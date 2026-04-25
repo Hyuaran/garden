@@ -12,7 +12,7 @@
 - **Gardenシリーズ**: FileMaker・kintoneの代替となる自社Webアプリケーション
 - **技術スタック**: Next.js (App Router) / Supabase / Vercel / TypeScript / Tailwind CSS
 
-## モジュール構成（9モジュール＋概念1）
+## モジュール構成（12モジュール、2026-04-26 改訂）
 
 | モジュール | 和名 | パス | 役割 |
 |---|---|---|---|
@@ -24,8 +24,10 @@
 | Bloom | 花 | `src/app/bloom/` | 案件一覧・日報・KPI・ダッシュボード |
 | Seed | 種 | `src/app/seed/` | 新商材・新事業の拡張枠 |
 | Forest | 森 | `src/app/forest/` | 全法人の決算資料等 |
-| Rill | 川 | `src/app/rill/` | チャットワークAPIを利用したメッセージアプリ |
-| Fruit | 実 | — | 概念のみ（アプリなし） |
+| Rill | 川 | `src/app/rill/` | Chatwork クローン自社開発（Phase 最後着手） |
+| Fruit | 実 | `src/app/fruit/` | 法人法的実体情報（番号系・許認可・登記簿等）※2026-04-26 概念のみ→実体化 |
+| Sprout（仮） | 新芽 | `src/app/sprout/` | 採用→面接→内定→入社準備（仮名、後日リネーム可能性あり） |
+| Calendar（仮） | 暦 | `src/app/calendar/` | 営業予定・面接スロット・シフト・通知統合（仮名、後日リネーム可能性あり） |
 
 ## データ設計の基本方針
 
