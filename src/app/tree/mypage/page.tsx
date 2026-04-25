@@ -25,6 +25,9 @@ import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
 import { useTreeState } from "../_state/TreeStateContext";
 import { GARDEN_ROLE_LABELS } from "../../root/_constants/types";
+import { ChangeBirthdayModal } from "./_components/ChangeBirthdayModal";
+import { changeBirthdayWithPassword } from "../_actions/change-birthday-with-password";
+import { supabase } from "../_lib/supabase";
 
 /* ---------- デモデータ ---------- */
 
@@ -63,7 +66,7 @@ function InfoRow({ label, value, muted }: { label: string; value: string; muted?
 /* ---------- メインコンポーネント ---------- */
 
 export default function MyPagePage() {
-  const { mypageLocked, unlockMypage, triggerMypageLock, treeUser } = useTreeState();
+  const { mypageLocked, unlockMypage, triggerMypageLock, treeUser, refreshAuth } = useTreeState();
   const [authenticated, setAuthenticated] = useState(false);
   const [pw, setPw] = useState("");
   const todokeRef = useRef<HTMLDivElement>(null);
@@ -82,6 +85,10 @@ export default function MyPagePage() {
       todokeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
   };
+
+  // 誕生日変更モーダル
+  const [modalOpen, setModalOpen] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string>("");
 
   // パスワード変更
   const [showPwChange, setShowPwChange] = useState(false);
@@ -109,6 +116,27 @@ export default function MyPagePage() {
     setPwMsg({ ok: true, text: "パスワードを変更しました" });
     setShowPwChange(false);
     setCurrentPw(""); setNewPw(""); setConfirmPw("");
+  };
+
+  const handleChangeBirthdaySubmit = async (input: {
+    newBirthday: string;
+    currentPassword: string;
+  }) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token ?? "";
+    return await changeBirthdayWithPassword({
+      newBirthday: input.newBirthday,
+      currentPassword: input.currentPassword,
+      accessToken,
+    });
+  };
+
+  const handleChangeBirthdaySuccess = () => {
+    setSuccessMsg(
+      "誕生日を変更しました。次回ログインからは新しい誕生日のパスワードでログインしてください",
+    );
+    setTimeout(() => setSuccessMsg(""), 5000);
+    refreshAuth();
   };
 
   // パスワードゲート
@@ -248,6 +276,23 @@ export default function MyPagePage() {
           <InfoRow label="社員番号" value={displayEmpId} />
           <InfoRow label="雇用形態" value={displayEmploymentType} />
           <InfoRow label="生年月日" value={displayBirthday} />
+          {treeUser?.birthday && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              style={{
+                marginTop: 8,
+                padding: "6px 12px",
+                fontSize: 12,
+                background: "#fff",
+                border: "1px solid #ccc",
+                borderRadius: 6,
+                cursor: "pointer",
+              }}
+            >
+              誕生日を変更する
+            </button>
+          )}
           <InfoRow label="Garden権限" value={displayRoleLabel} />
           <InfoRow label="メール" value={displayEmail} muted />
         </div>
@@ -402,6 +447,33 @@ export default function MyPagePage() {
       <div style={{ marginTop: 16, textAlign: "center", fontSize: 11, color: C.textMuted }}>
         個人情報は暗号化して管理 • 定期確認: 3ヶ月ごと • 届出はマネーフォワード電子契約経由
       </div>
+
+      <ChangeBirthdayModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        currentBirthday={treeUser?.birthday ?? ""}
+        onSubmit={handleChangeBirthdaySubmit}
+        onSuccess={handleChangeBirthdaySuccess}
+      />
+      {successMsg && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            bottom: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
+            padding: "12px 24px",
+            background: "#234d20",
+            color: "#fff",
+            borderRadius: 8,
+            zIndex: 1100,
+            fontSize: 13,
+          }}
+        >
+          {successMsg}
+        </div>
+      )}
     </div>
   );
 }
