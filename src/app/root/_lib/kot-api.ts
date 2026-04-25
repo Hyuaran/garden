@@ -24,6 +24,7 @@
 
 import type {
   KotApiError,
+  KotDailyWorking,
   KotEmployee,
   KotMonthlyWorking,
 } from "../_types/kot";
@@ -170,6 +171,24 @@ export async function fetchKotMonthlyWorkings(yearMonth: string): Promise<KotMon
     });
   }
   return kotFetch<KotMonthlyWorking[]>(`/monthly-workings/${yearMonth}`);
+}
+
+/**
+ * 日別勤怠を取得（Phase A-3-d）。
+ *
+ * @param date  "YYYY-MM-DD" 形式（例: "2026-04-24"）。
+ *              ※ 月次と date 形式が違うため注意（月次は YYYY-MM）。
+ *              実機レスポンス未確認のため、フィールド名ずれがあれば型定義側で吸収する。
+ */
+export async function fetchKotDailyWorkings(date: string): Promise<KotDailyWorking[]> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(date)) {
+    throw new KotApiClientError({
+      code: "INVALID_ARG",
+      httpStatus: 0,
+      message: `date は YYYY-MM-DD 形式で指定してください（受け取り: "${date}"）`,
+    });
+  }
+  return kotFetch<KotDailyWorking[]>(`/daily-workings/${date}`);
 }
 
 // ------------------------------------------------------------
