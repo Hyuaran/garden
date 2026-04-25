@@ -80,3 +80,76 @@ export type LastUpdatedAt = {
   /** 採用された updated_at（両テーブル空なら epoch 0） */
   at: Date;
 };
+
+/* =====================================================================
+ * T-F4-02 / T-F11-01: Nouzei (納税カレンダー / 税詳細モーダル)
+ *
+ * P09 (docs/specs/2026-04-24-forest-nouzei-tables-design.md) で定義された
+ * `forest_nouzei_schedules` / `forest_nouzei_items` / `forest_nouzei_files`
+ * の TypeScript 写像。
+ * ===================================================================== */
+
+/** 納税種別。kakutei=確定 / yotei=予定 / extra=追加 */
+export type NouzeiKind = "kakutei" | "yotei" | "extra";
+
+/** 納付ステータス。pending=未納 / paid=納付済 / postponed=猶予 / deferred=延納 */
+export type NouzeiStatus = "pending" | "paid" | "postponed" | "deferred";
+
+/** 税目内訳行（forest_nouzei_items）。 */
+export type NouzeiItem = {
+  id: string;
+  schedule_id: string;
+  label: string;
+  amount: number;
+  sort_order: number;
+  created_at: string;
+};
+
+/** 添付ファイル行（forest_nouzei_files）。 */
+export type NouzeiFile = {
+  id: string;
+  schedule_id: string;
+  doc_name: string;
+  storage_path: string;
+  uploaded_by: string | null;
+  uploaded_at: string;
+};
+
+/** 納付スケジュール本体（forest_nouzei_schedules）。 */
+export type NouzeiSchedule = {
+  id: string;
+  company_id: string;
+  kind: NouzeiKind;
+  /** '確定' / '予定' / '予定（消費税）' 等の自由文字列 */
+  label: string;
+  year: number;
+  month: number;
+  /** ISO 日付 'YYYY-MM-DD' */
+  due_date: string;
+  total_amount: number | null;
+  status: NouzeiStatus;
+  /** ISO timestamp、null=未納 */
+  paid_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** TaxCalendar 用：schedule + 内訳。 */
+export type NouzeiScheduleWithItems = NouzeiSchedule & {
+  items: NouzeiItem[];
+};
+
+/** TaxDetailModal 用：schedule + 内訳 + 添付。 */
+export type NouzeiScheduleDetail = NouzeiSchedule & {
+  items: NouzeiItem[];
+  files: NouzeiFile[];
+};
+
+/** ステータスの日本語ラベル。 */
+export const NOUZEI_STATUS_LABELS: Record<NouzeiStatus, string> = {
+  pending: "未納",
+  paid: "納付済",
+  postponed: "猶予",
+  deferred: "延納",
+};
