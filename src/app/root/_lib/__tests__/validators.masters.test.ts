@@ -582,7 +582,7 @@ describe("validateInsurance — happy path", () => {
 
 describe("validateInsurance — insurance_id format", () => {
   it("rejects wrong prefix", () => {
-    const errs = validateInsurance(baseInsurance({ insurance_id: "INS-001" }));
+    const errs = validateInsurance(baseInsurance({ insurance_id: "INSUR-2026" }));
     expect(errs.insurance_id).toBeDefined();
     expect(errs.insurance_id).toContain("INS-");
   });

@@ -387,6 +387,23 @@ describe("Retry behavior", () => {
     expect(mock).toHaveBeenCalledTimes(4);
   });
 
+  it("429 × (maxRetries+1) → リトライ全消化後 RATE_LIMITED をスロー", async () => {
+    const mock = mockFetchSequence([
+      ["rate limited", { status: 429 }],
+      ["rate limited", { status: 429 }],
+      ["rate limited", { status: 429 }],
+      ["rate limited", { status: 429 }],
+    ]);
+    const promise = fetchKotMonthlyWorkings("2026-04");
+    const assertion = expect(promise).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+      httpStatus: 429,
+    });
+    await vi.runAllTimersAsync();
+    await assertion;
+    expect(mock).toHaveBeenCalledTimes(4); // initial + 3 retries
+  });
+
   it("401 → リトライせず即スロー（fetch は 1 回のみ）", async () => {
     const mock = mockFetchOnce({ errors: [] }, { status: 401 });
     const promise = fetchKotMonthlyWorkings("2026-04");

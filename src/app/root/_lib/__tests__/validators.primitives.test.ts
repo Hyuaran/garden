@@ -388,6 +388,7 @@ describe("VALIDATION_ERROR_BANNER", () => {
     expect(VALIDATION_ERROR_BANNER).toContain("入力エラー");
   });
 
+  // NOTE: 意図的な guard rail。UX 文言変更時は本テストと同期させること。
   it("matches exact banner text", () => {
     expect(VALIDATION_ERROR_BANNER).toBe(
       "入力エラーがあります。赤枠の項目を確認してください。"

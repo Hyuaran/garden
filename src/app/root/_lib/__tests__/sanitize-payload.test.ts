@@ -281,6 +281,8 @@ describe("NULLABLE_DATE_KEYS — employees の列名確認", () => {
     expect(NULLABLE_DATE_KEYS.employees).toContain("deleted_at");
   });
 
+  // NOTE: 下記の .toHaveLength() は意図的な guard rail。
+  // 新 nullable date 列を追加した際は、本テストと sanitize-payload.ts の両方を同期させるための検出テスト。
   it("employees は 3 要素", () => {
     expect(NULLABLE_DATE_KEYS.employees).toHaveLength(3);
   });
