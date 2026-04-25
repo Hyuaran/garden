@@ -24,3 +24,23 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* T-F9 D4: 進行期セルのゆるやかな glow アニメーション。
+   v9 HTML CSS L759-801 の `.data-cell.shinkouki` を React 用に切り出し。
+   Forest 規約に従いインラインスタイル中心だが、@keyframes は CSS 必須のため
+   ここに定義し、シェル側コンポーネントから className `shinkou-animate` で適用する。 */
+@keyframes shinkou-glow {
+  0%,
+  100% {
+    border-color: rgba(218, 165, 32, 0.35);
+    box-shadow: 0 0 6px rgba(218, 165, 32, 0.15);
+  }
+  50% {
+    border-color: rgba(218, 165, 32, 0.85);
+    box-shadow: 0 0 14px rgba(218, 165, 32, 0.3);
+  }
+}
+
+.shinkou-animate {
+  animation: shinkou-glow 2.5s ease-in-out infinite;
+}
