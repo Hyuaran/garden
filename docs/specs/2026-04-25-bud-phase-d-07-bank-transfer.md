@@ -37,6 +37,18 @@
 - 賞与計算 → D-03
 - 明細配信 → D-04
 
+### 1.4 payment_method による対象判定（A-07 反映）
+
+本 spec の振込連携は **`root_employees.payment_method = 'bank_transfer'`** のみが対象。
+
+| payment_method | 振込連携 | 別途処理 |
+|---|---|---|
+| `bank_transfer` | ✅ 本 spec で処理 | — |
+| `cash` | ❌ 対象外 | `bud_transfers` に `transfer_type='給与(手渡し)'` で登録、CSV/FB 出力対象から除外 |
+| `other` | ❌ 対象外 | admin 個別判断、既存 `bud_furikomi` で個別処理 |
+
+`prepareTransfer` 関数の冒頭で `WHERE payment_method = 'bank_transfer'` フィルタを必ず適用。
+
 ---
 
 ## 2. 振込パターン

@@ -230,6 +230,52 @@ describe('calculateMonthlyInsurance', () => {
 });
 ```
 
+### 3.3.5 D-04 配信エッジケース（A-07 反映、30+ ケース）
+
+```typescript
+describe('Statement Distribution', () => {
+  describe('PDF 生成', () => {
+    it('PW なし版 + PW あり版の二系統生成', ...);
+    it('生成失敗 → bud_salary_notifications.status=failed', ...);
+    it('リトライ後成功で status=sent', ...);
+  });
+
+  describe('PW 規則（生年月日 / 社員番号下 4 桁）', () => {
+    it('生年月日 4 桁（MMDD）で開ける', ...);
+    it('社員番号下 4 桁で開ける', ...);
+    it('PW 不一致で開けない', ...);
+    it('uid に応じて PW 規則切替（実装時最終決定）', ...);
+  });
+
+  describe('メール配信', () => {
+    it('Resend / SendGrid 配信成功で sent_at 記録', ...);
+    it('SMTP エラーで status=pending_retry', ...);
+    it('1h 後の Cron で再試行', ...);
+    it('4 回失敗で admin Chatwork 通知', ...);
+    it('メアド未登録で Tree のみ + 登録促進通知', ...);
+    it('メアド不正フォーマットで送信前チェックで失敗', ...);
+  });
+
+  describe('Tree マイページ統合', () => {
+    it('給与明細セクションが表示', ...);
+    it('過去 5 年分が一覧', ...);
+    it('60 秒 signed URL で DL', ...);
+  });
+
+  describe('現金手渡し（cash）', () => {
+    it('受領確認ボタン表示（cash のみ）', ...);
+    it('押下で cash_receipt_confirmed_at 記録', ...);
+    it('admin が紙受領書 sign で paper_signed=true', ...);
+    it('未受領の警告表示', ...);
+  });
+
+  describe('退職者', () => {
+    it('退職後 30 日まで配信継続', ...);
+    it('退職後 31 日でメアド配信停止', ...);
+  });
+});
+```
+
 ### 3.4 D-07 FB データ生成（50+ ケース）
 
 ```typescript

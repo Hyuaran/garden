@@ -35,6 +35,11 @@
 - 明細 PDF → D-04
 - 振込連携 → D-07
 
+### 1.4 配信ロジック
+
+賞与明細の配信は **D-04 の配信ロジック流用**（A-07 採択 = Tree マイページ + メール PW PDF）。
+`bud_salary_notifications.bonus_record_id` で識別、給与明細と同じ `notification_type` セットを使用。
+
 ---
 
 ## 2. 賞与の特殊性（月給との対比）

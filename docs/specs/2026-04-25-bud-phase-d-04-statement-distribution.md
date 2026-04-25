@@ -1,17 +1,19 @@
-# Bud Phase D #04: 給与明細配信（PDF 生成 + 案 D 準拠）
+# Bud Phase D #04: 給与明細配信（PDF 生成 + Tree マイページ主経路 + メール PW PDF 補助経路）
 
 - 対象: Garden-Bud Phase D 給与明細・賞与明細の PDF 生成と配信
 - 優先度: **🔴 高**（従業員 UX、法定要件）
-- 見積: **1.0d**（PDF テンプレ + 配信フロー + 通知）
-- 担当セッション: a-bud（実装）/ a-rill（Chatwork 通知）/ a-bloom（レビュー）
+- 見積: **1.25d**（PDF テンプレ + Tree マイページ + メール配信 + 配信ステータス管理）
+- 担当セッション: a-bud（実装）/ a-tree（マイページ統合）/ a-rill（Chatwork 通知）/ a-bloom（レビュー）
 - 作成: 2026-04-25（a-auto 005 / Batch 17 Bud Phase D #04）
+- 改訂: 2026-04-25（a-auto 005、A-07 採択結果反映）
 - 前提:
   - **Bud Phase B-03 給与明細 PDF**（設計済、本 spec で実装着手）
   - **Bud Phase D-02 給与計算ロジック**
   - **Bud Phase D-03 賞与計算**
   - **Cross Cutting spec-cross-storage**（Storage バケット運用）
   - **Cross Cutting spec-cross-chatwork**（Bot 通知）
-  - 案 D = **署名 URL 不流通、Garden ログイン誘導**（東海林さん確定済）
+  - **A-07 採択結果**（2026-04-25 a-main 確定、§2 で詳述）
+  - Garden ログインは**社内 PC 限定**（通常ロール）→ メール配信が自宅確認の唯一経路
 
 ---
 
@@ -19,39 +21,68 @@
 
 ### 1.1 目的
 
-確定した給与・賞与のデータを **PDF 明細**として生成し、各従業員に**安全に**届ける。案 D（署名 URL を流通させず、Garden ログイン経由で取得）で個人情報漏洩リスクを最小化する。
+確定した給与・賞与のデータを **PDF 明細**として生成し、各従業員に**安全かつ確実**に届ける。社内 PC 限定の Garden ログイン制約下で、**Tree マイページを主経路、パスワード保護 PDF メールを補助経路**として、自宅でも明細を確認できる動線を提供する。
 
 ### 1.2 含めるもの
 
 - `@react-pdf/renderer` での PDF 生成
 - Storage バケット `bud-salary-statements` への保存
-- 案 D 配信フロー（Chatwork 通知 → Garden ログイン → PDF DL）
+- **主経路: Garden-Tree マイページで全員閲覧（A-07 案 A）**
+- **補助経路: 登録メールアドレス宛にパスワード保護 PDF 添付配信（A-07 方式 2）**
 - 給与明細 / 賞与明細の 2 テンプレート
-- 複数月の一括ダウンロード（自分の過去明細）
+- **配信ステータス管理**（`bud_salary_notifications` テーブル）
+- 自動再送ポリシー（1h / 6h / 24h リトライ）
+- **現金手渡し受給者の特別扱い**（マイページ受領確認）
 - ダウンロード履歴の監査
 
 ### 1.3 含めないもの
 
 - 給与計算自体 → D-02 / D-03
 - 振込連携 → D-07
-- 年末調整書類の配信 → D-06 + Phase C C-03 連携
+- 年末調整書類の配信 → D-06 + Phase C C-03 連携（同配信ロジック流用）
 
 ---
 
-## 2. 案 D の流通方針（再掲）
+## 2. A-07 採択結果（配信戦略の確定）
 
-### 2.1 やらないこと
+### 2.1 主経路: Tree マイページ（A 案）
+
+- Garden-Tree のマイページで**全員が閲覧可**（社内 PC ログイン）
+- 過去 5 年分の給与明細・賞与明細を一覧表示
+- ダウンロードは **Server Action 経由 60 秒 signed URL**
+
+### 2.2 補助経路: メール添付（方式 2 = パスワード保護 PDF）
+
+- マイページに登録されたメールアドレス宛
+- **PDF 自体に PW**、メール本文に PW 規則 hint
+- PW 規則: **生年月日 4 桁（MMDD）or 社員番号下 4 桁**（実装時に最終決定）
+- 自宅 PC・スマホからも確認可能（Garden ログイン不要）
+
+### 2.3 配信戦略の整理
+
+| 動線 | 用途 | アクセス先 |
+|---|---|---|
+| 主経路 | 出社時の明細確認 | Garden-Tree マイページ |
+| 補助経路 | 自宅・外出先での確認 | メール添付 PW PDF |
+| 通知 | 公開告知 | Chatwork（Tree URL 案内）|
+
+### 2.4 やらないこと
 
 - ❌ 署名 URL（presigned URL）を Chatwork や メールで流通
-- ❌ PDF 添付メール
-- ❌ パスワード PDF を流通
+- ❌ Chatwork に PDF 直接添付（Bot 経由でも）
+- ❌ PW なし PDF メール添付
 
-### 2.2 やること
+### 2.5 現金手渡し受給者の扱い（A-07 論点 1-2, 5）
 
-- ✅ Storage に PDF を保存（RLS 同等の制限）
-- ✅ Chatwork で**短い案内**のみ（「明細が公開されました。Garden にログインしてください」）
-- ✅ Garden ログイン後に **/bud/my-statements** で PDF を表示・DL
-- ✅ ダウンロードは **Server Action 経由**（短時間有効な内部署名 URL を 1 リクエスト 1 回限り）
+`root_employees.payment_method` ENUM で識別:
+
+| payment_method | 配信動作 |
+|---|---|
+| `bank_transfer` | 通常通り（Tree マイページ + メール）|
+| `cash` | Tree マイページ + メール **+ マイページ受領確認ボタン** + 紙の受領書 |
+| `other` | admin 個別判断（業務委託等は本来対象外）|
+
+現金手渡し受給者は `bud_transfers` に **`transfer_type='給与(手渡し)'`** で登録、CSV / FB データ出力対象から**除外**（D-07 §10 と整合）。
 
 ---
 
@@ -233,20 +264,24 @@ CREATE POLICY statement_select_admin
 
 ---
 
-## 6. 配信フロー（案 D）
+## 6. 配信フロー（A-07 採択 = Tree マイページ + メール PW PDF）
 
 ### 6.1 全体図
 
 ```
 1. 給与計算完了 → period.status = 'approved'
-2. PDF 一括生成 Cron 起動
-3. 完了後、Chatwork に短文通知
-   「2026年4月分 給与明細を公開しました。
-    Garden にログインして確認してください。
-    https://garden.example.com/bud/my-statements」
-4. 各従業員が Garden ログイン
-5. /bud/my-statements で一覧表示（自分の分のみ）
-6. ダウンロードボタン → Server Action → Storage signed URL（1 分有効） → DL
+2. PDF 一括生成 Cron 起動（PW なし版を Storage に保存）
+3. 配信タスクキュー投入（bud_salary_notifications）
+4. 並行配信:
+   ├─ Chatwork 通知: 「給与明細を公開しました。Garden Tree マイページから確認してください」
+   └─ メール配信: PW 保護版 PDF を添付（PW 規則 hint も本文に記載）
+5. 配信ステータス更新（sent / failed / pending_retry）
+6. 失敗時 1h / 6h / 24h リトライ
+7. 24h 経過してなお失敗 → admin 通知（Chatwork）
+8. 従業員側:
+   - 出社時 → Garden Tree マイページで閲覧（PW なし版）
+   - 自宅 → メール PDF を PW 入力で開く
+   - 現金手渡し → マイページで受領確認ボタン
 ```
 
 ### 6.2 Chatwork 通知の文面
@@ -255,15 +290,69 @@ CREATE POLICY statement_select_admin
 📄 給与明細公開のお知らせ
 
 2026年4月支給分の給与明細を公開しました。
-Garden にログインして確認してください。
+ご登録のメールアドレスにも PDF を送信していますのでご確認ください。
 
-▼ ログイン URL
-https://garden.example.com/bud/my-statements
+▼ Garden Tree マイページ（社内 PC からアクセス）
+https://garden.example.com/tree/my/statements
+
+メール添付 PDF のパスワード:
+〇〇〇〇〇（生年月日 / 社員番号）※詳細はメール本文参照
 
 ご不明点は経理担当までご連絡ください。
 ```
 
-### 6.3 ダウンロード Server Action
+### 6.3 メール配信の文面
+
+件名: `【給与明細】2026年4月支給分（株式会社ヒュアラン）`
+
+本文（プレーンテキスト + HTML 両対応）:
+
+```
+{employee_name} 様
+
+2026年4月支給分の給与明細をお送りします。
+添付 PDF をパスワード保護していますので、下記の規則で開いてください。
+
+▼ パスワード規則
+お客様の生年月日 4 桁（MMDD）です。
+（例: 1985年3月15日生まれ → 0315）
+
+▼ 添付ファイル
+salary-statement-2026-04.pdf
+
+社内 PC からは Garden Tree マイページでも閲覧可能です:
+https://garden.example.com/tree/my/statements
+
+ご不明点は経理担当までお問い合わせください。
+（このメールは自動配信です。返信不可）
+
+───────────────────
+株式会社ヒュアラン 経理部
+```
+
+### 6.4 メール配信の技術選定（実装時に最終決定）
+
+| 候補 | メリット | デメリット |
+|---|---|---|
+| **Resend** | Next.js / Vercel 連携が楽、月 100 通無料 | 信頼性は中堅 |
+| **SendGrid** | 大量配信実績、国内信頼性高 | 初期セットアップ多い |
+| **Amazon SES** | コスト最安、AWS 既存環境前提 | DKIM 設定必須 |
+| **自社 SMTP**（Gmail Workspace 経由）| 既存資産活用 | Gmail 制限（500 通/日）|
+
+**現状推奨**: Resend（Phase B-1 で導入評価、本番で SendGrid に切替検討）
+
+### 6.5 PW 保護 PDF 生成の技術選定
+
+| ライブラリ | 評価 |
+|---|---|
+| **pdf-lib** | アクティブ、Node 系 OK、既存依存に近い |
+| qpdf（CLI 経由）| 強力だが native 依存 |
+| HummusJS | 古い、メンテ停止気味 |
+
+**現状推奨**: `pdf-lib` で `encrypt({ userPassword, ownerPassword, permissions })` を使用。
+※ 新規 npm パッケージ追加が必要 → 東海林さん事前承認。
+
+### 6.6 ダウンロード Server Action
 
 ```typescript
 // src/lib/bud/statements/download.ts
@@ -300,17 +389,43 @@ export async function getStatementDownloadUrl(
 }
 ```
 
-### 6.4 一覧画面 `/bud/my-statements`
+### 6.7 Tree マイページ統合（A-07 主経路）
+
+主経路は **Garden-Tree のマイページに統合**（独立 Bud 画面ではなく）。
+
+```
+/tree/my-page
+├─ プロフィール
+├─ 当月予定
+├─ 架電実績
+└─ 給与明細セクション ← Bud Phase D-04 で追加
+   └─ 直近月（2026-04）/ 過去 5 年（折りたたみ）
+```
+
+#### 受領確認ボタン（cash 受給者のみ）
 
 ```
 ┌─────────────────────────┐
 │  自分の給与明細             │
 ├─────────────────────────┤
 │  2026年4月  給与  📥DL    │
+│  💵 現金受領: [✓ 受領しました] │ ← cash のみ表示
+│                         │
 │  2026年3月  給与  📥DL    │
-│  2026年7月  賞与  📥DL    │
-│  ...                    │
+│  💵 現金受領: ✅ 2026-03-25受領済 │
 └─────────────────────────┘
+```
+
+押下時の動作:
+
+```typescript
+async function confirmCashReceipt(salaryRecordId: string) {
+  await supabase.from('bud_salary_notifications').update({
+    cash_receipt_confirmed_at: new Date().toISOString(),
+  }).eq('salary_record_id', salaryRecordId)
+    .eq('employee_id', myEmployeeId);
+  await logOperation({ action: 'cash_receipt_confirmed', target: salaryRecordId });
+}
 ```
 
 過去 5 年分まで閲覧可。
@@ -336,6 +451,61 @@ export async function getStatementDownloadUrl(
 ---
 
 ## 8. テーブル定義
+
+### 8.0 `bud_salary_notifications`（配信ステータス管理 / A-07 反映）
+
+```sql
+CREATE TABLE public.bud_salary_notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  salary_record_id uuid REFERENCES public.bud_salary_records(id),
+  bonus_record_id uuid REFERENCES public.bud_bonus_records(id),
+  employee_id uuid NOT NULL REFERENCES public.root_employees(id),
+  notification_type text NOT NULL,
+    -- 'tree_mypage' | 'email_attach' | 'chatwork_summary' | 'cash_receipt'
+  status text NOT NULL DEFAULT 'pending',
+    -- 'pending' | 'sent' | 'failed' | 'pending_retry' | 'cancelled'
+  attempt_count int NOT NULL DEFAULT 0,
+  last_attempted_at timestamptz,
+  next_retry_at timestamptz,                  -- 1h / 6h / 24h スケジュール
+  sent_at timestamptz,
+  failed_reason text,
+
+  -- メール固有
+  email_to text,                              -- 配信時点のスナップショット
+  email_provider_message_id text,             -- Resend / SendGrid 等の ID
+  email_pdf_password_hint text,               -- 'birthday-mmdd' | 'employee-no-last4'
+
+  -- 現金手渡し受領確認
+  cash_receipt_confirmed_at timestamptz,
+  cash_receipt_paper_signed boolean NOT NULL DEFAULT false,
+
+  -- メタ
+  created_at timestamptz NOT NULL DEFAULT now(),
+
+  CHECK (
+    (salary_record_id IS NOT NULL AND bonus_record_id IS NULL)
+    OR (salary_record_id IS NULL AND bonus_record_id IS NOT NULL)
+  )
+);
+
+CREATE INDEX idx_notifications_pending_retry
+  ON bud_salary_notifications (next_retry_at)
+  WHERE status = 'pending_retry';
+
+CREATE INDEX idx_notifications_employee
+  ON bud_salary_notifications (employee_id, created_at DESC);
+```
+
+#### 自動再送ポリシー
+
+| attempt | 次回試行 | 失敗時の動作 |
+|---|---|---|
+| 1 回目失敗 | 1h 後 | pending_retry |
+| 2 回目失敗 | 6h 後 | pending_retry |
+| 3 回目失敗 | 24h 後 | pending_retry |
+| 4 回目失敗 | 停止 | admin に Chatwork 通知（手動対応）|
+
+Cron `/api/cron/bud-notification-retry`（10 分粒度）で `next_retry_at <= now()` を拾って再試行。
 
 ### 8.1 `bud_salary_statements`（生成記録）
 
@@ -416,26 +586,33 @@ CREATE POLICY statements_select_admin
 
 ---
 
-## 11. 実装タスク分解
+## 11. 実装タスク分解（A-07 反映後）
 
 | # | タスク | 担当 | 見積 |
 |---|---|---|---|
 | 1 | `bud_salary_statements` migration | a-bud | 0.5h |
-| 2 | Storage バケット `bud-salary-statements` 作成 + RLS | a-bud | 0.5h |
-| 3 | 給与明細 React PDF コンポーネント | a-bud | 2h |
-| 4 | 賞与明細 React PDF コンポーネント | a-bud | 1h |
-| 5 | PDF 生成 API + 一括生成 Cron | a-bud | 1.5h |
-| 6 | Chatwork 通知（a-rill 経由）| a-bud + a-rill | 1h |
-| 7 | `/bud/my-statements` UI | a-bud | 1.5h |
-| 8 | ダウンロード Server Action + 短時間 signed URL | a-bud | 0.5h |
-| 9 | 監査ログ統合 + 異常検知 | a-bud | 0.5h |
-| 10 | 単体・統合テスト | a-bud | 1h |
+| 2 | `bud_salary_notifications` migration（新規）| a-bud | 0.5h |
+| 3 | Storage バケット `bud-salary-statements` 作成 + RLS | a-bud | 0.5h |
+| 4 | 給与明細 React PDF コンポーネント | a-bud | 2h |
+| 5 | 賞与明細 React PDF コンポーネント | a-bud | 1h |
+| 6 | PDF 生成 API + 一括生成 Cron | a-bud | 1.5h |
+| 7 | **PW 保護 PDF 生成（pdf-lib 想定、要 npm 承認）** | a-bud | 1h |
+| 8 | **メール配信（Resend / SendGrid 等）+ HTML/text 両対応** | a-bud | 2h |
+| 9 | 配信ステータス管理 + 再送 Cron（1h/6h/24h）| a-bud | 1.5h |
+| 10 | Chatwork 通知（a-rill 経由）| a-bud + a-rill | 1h |
+| 11 | **Tree マイページ統合（給与明細セクション追加）** | a-bud + a-tree | 1.5h |
+| 12 | **現金受領確認ボタン（cash 受給者のみ）** | a-bud | 0.5h |
+| 13 | ダウンロード Server Action + 短時間 signed URL | a-bud | 0.5h |
+| 14 | 監査ログ統合 + 異常検知 | a-bud | 0.5h |
+| 15 | 単体・統合テスト（配信失敗 / PW 不一致等エッジケース）| a-bud | 1.5h |
 
-合計: 約 10h ≈ **1.0d**（妥当）
+合計: 約 16h ≈ **1.5d**（A-07 反映で +0.5d、当初 1.0d → 1.5d）
+
+※ effort-tracking 上は **1.25d**（並行作業吸収を考慮した妥当値）
 
 ---
 
-## 12. 判断保留事項
+## 12. 判断保留事項（A-07 反映後）
 
 | # | 論点 | a-auto スタンス |
 |---|---|---|
@@ -444,7 +621,12 @@ CREATE POLICY statements_select_admin
 | 判 3 | 紙明細を希望する従業員 | **個別出力可** + 経理が手渡し（運用ルール）|
 | 判 4 | 過去明細の表示期間 | **5 年**（法定通り）、UI フィルタは「全期間」も可 |
 | 判 5 | Chatwork 文面の言語 | 日本語のみ（英語版は Phase E）|
-| 判 6 | 暗号化 PDF | **不採用**（案 D で十分、PW 管理コスト過大）|
+| 判 6 | **PW 規則の確定** | **生年月日 4 桁（MMDD）or 社員番号下 4 桁** どちらかを実装時に最終決定（A-07 反映）|
+| 判 7 | **メール配信プロバイダ** | Resend で開始、本番運用で SendGrid へ切替検討（要新規 npm 承認）|
+| 判 8 | **PW 保護 PDF ライブラリ** | pdf-lib（要新規 npm 承認）|
+| 判 9 | **退職者への配信継続** | 退職後 30 日まで配信継続（最終給与 + 源泉徴収票）|
+| 判 10 | **メアド未登録者の扱い** | Tree マイページのみで配信、メアド登録を促す通知を Chatwork 経由 |
+| 判 11 | **現金手渡しの紙受領書フォーマット** | A4 1 枚、署名欄 + 金額 + 日付（東海林さん要レビュー）|
 
 ---
 
@@ -493,16 +675,22 @@ CREATE POLICY statements_select_admin
 
 ---
 
-## 15. 受入基準（Definition of Done）
+## 15. 受入基準（Definition of Done、A-07 反映後）
 
-- [ ] `bud_salary_statements` migration 適用済
+- [ ] `bud_salary_statements` / `bud_salary_notifications` migration 適用済
 - [ ] Storage バケット作成 + RLS（自分 + admin+）動作
-- [ ] 給与明細 PDF 生成（A4 縦、Noto Sans JP）動作
-- [ ] 賞与明細 PDF 生成 動作
+- [ ] 給与明細 / 賞与明細 PDF 生成（A4 縦、Noto Sans JP）動作
+- [ ] **PW 保護 PDF 生成（pdf-lib）動作**
 - [ ] 一括生成 Cron で 100 名分完走
-- [ ] Chatwork 通知（短文 + Garden URL）到達
-- [ ] `/bud/my-statements` で自分の過去明細閲覧可
+- [ ] **Tree マイページ統合（給与明細セクション）動作**
+- [ ] **メール配信（Resend / SendGrid 等）+ PW PDF 添付 動作**
+- [ ] **配信ステータス管理 + 自動再送（1h/6h/24h）動作**
+- [ ] **24h 経過 4 回失敗時 admin Chatwork 通知**
+- [ ] Chatwork 通知（Tree URL + PW 規則 hint）到達
+- [ ] **現金手渡し受給者の受領確認ボタン動作**
+- [ ] **メアド未登録者の Tree のみ配信 + 登録促進通知動作**
 - [ ] ダウンロード Server Action（60 秒 signed URL）動作
-- [ ] 監査ログ（generated / notified / downloaded）記録
+- [ ] 監査ログ（generated / notified / email_sent / cash_receipt_confirmed / downloaded）記録
 - [ ] 異常 DL 検知が動作
 - [ ] SHA256 改ざん検知が動作
+- [ ] **配信エッジケーステスト（PDF 生成失敗 / メール送信失敗 / PW 不一致 / メアド不正）pass**

@@ -39,6 +39,12 @@
 - 振込連携 → D-07
 - 年末調整 → D-06
 
+### 1.4 A-07 採択結果との関係（payment_method）
+
+`root_employees.payment_method` ENUM（`bank_transfer` / `cash` / `other`）は計算結果に影響しない。
+給与計算は payment_method に**関係なく同じロジック**で実行され、結果（`bud_salary_records`）が出力される。
+配信先（D-04）と振込先（D-07）で payment_method 別に分岐する。
+
 ---
 
 ## 2. 入出力契約
