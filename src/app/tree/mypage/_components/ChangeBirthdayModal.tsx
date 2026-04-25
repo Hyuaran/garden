@@ -52,14 +52,46 @@ export function ChangeBirthdayModal(props: ChangeBirthdayModalProps) {
         <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>誕生日の変更</h2>
         <form onSubmit={handleSubmit}>
           <p>現在の誕生日: {currentBirthday}</p>
-          <p style={{ fontSize: 12, color: "#666" }}>
-            （以後 Task 11 で入力欄を追加）
-          </p>
+          <div style={{ marginTop: 12 }}>
+            <label htmlFor="cbm-new-birthday" style={{ display: "block", fontSize: 12, color: "#666" }}>
+              新しい誕生日
+            </label>
+            <input
+              id="cbm-new-birthday"
+              type="date"
+              value={newBirthday}
+              onChange={(e) => setNewBirthday(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+              required
+              style={{ width: "100%", padding: 10, fontSize: 14, color: "#222", background: "#fff" }}
+            />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <label htmlFor="cbm-current-pw" style={{ display: "block", fontSize: 12, color: "#666" }}>
+              現在のパスワード
+            </label>
+            <input
+              id="cbm-current-pw"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              style={{ width: "100%", padding: 10, fontSize: 14, color: "#222", background: "#fff" }}
+            />
+            <p style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
+              ※本人確認のため入力してください
+            </p>
+          </div>
           <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button type="button" onClick={onClose}>
               キャンセル
             </button>
-            <button type="submit" disabled>変更する</button>
+            <button
+              type="submit"
+              disabled={!newBirthday || !currentPassword}
+            >
+              変更する
+            </button>
           </div>
         </form>
       </div>
