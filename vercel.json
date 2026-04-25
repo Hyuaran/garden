@@ -1,24 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
 
-  "_note_root_crons_disabled": "Root KoT 同期 Cron は Issue #30（KoT API IP 制限、Fixie 固定 IP プロキシ契約）解決前のため、Vercel スケジューラへは登録しない。Fixie 契約完了 + CRON_SECRET / FIXIE_URL 環境変数登録後に、crons_pending_fixie_root の内容を crons 配列へ移動する。",
-
   "crons": [
     { "path": "/api/bloom/cron/daily", "schedule": "0 9 * * *" },
     { "path": "/api/bloom/cron/weekly", "schedule": "0 9 * * 5" },
     { "path": "/api/bloom/cron/monthly", "schedule": "0 9 14 * *" }
-  ],
-
-  "crons_pending_fixie_root": [
-    {
-      "path": "/api/root/kot-sync/cron-daily",
-      "schedule": "0 18 * * *",
-      "_note": "毎日 UTC 18:00 = JST 03:00 / 前日分 /daily-workings 取込"
-    },
-    {
-      "path": "/api/root/kot-sync/cron-monthly",
-      "schedule": "0 18 28-31 * *",
-      "_note": "毎月末候補日 UTC 18:00 / Route 側で翌日=月初判定し、月末 1 回だけ走らせる"
-    }
   ]
 }
