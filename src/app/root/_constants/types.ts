@@ -97,10 +97,12 @@ export interface Employee {
   name: string;
   name_kana: string;
   company_id: string;
-  employment_type: string;      // 正社員/アルバイト
+  employment_type: string;      // 正社員 / アルバイト / outsource（Phase A-3-g）
   salary_system_id: string;
   hire_date: string;            // YYYY-MM-DD
   termination_date: string | null;
+  /** 外注の契約終了日（employment_type=outsource のときに利用）。Phase A-3-g */
+  contract_end_on?: string | null;
   email: string;
   bank_name: string;
   bank_code: string;

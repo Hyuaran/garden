@@ -103,6 +103,29 @@ comment on function public.is_user_active() is
   ' Leaf / Bud / Forest から横断的に参照可能。';
 
 -- ------------------------------------------------------------
+-- 5. 共通 helper: garden_role_of(uid)
+--   指定 user_id に対応する garden_role を返す（is_active のみ対象）。
+--   RLS 内で `garden_role_of(auth.uid()) in (...)` の形で使うことを想定。
+--   未登録・無効化時は null を返す。
+-- ------------------------------------------------------------
+create or replace function public.garden_role_of(uid uuid)
+  returns text
+  language sql
+  security definer
+  stable
+as $$
+  select garden_role
+    from public.root_employees
+    where user_id = uid
+      and is_active = true
+    limit 1;
+$$;
+
+comment on function public.garden_role_of(uuid) is
+  'Phase A-3-g: 指定 user_id の garden_role を返す。未登録 / 無効化時は null。'
+  ' Leaf / Bud / Forest の RLS ポリシーで横断的に利用。';
+
+-- ------------------------------------------------------------
 -- 確認クエリ（手動実行用）
 -- ------------------------------------------------------------
 -- -- 制約確認
@@ -117,8 +140,9 @@ comment on function public.is_user_active() is
 --   WHERE table_name = 'root_employees' AND column_name = 'contract_end_on';
 --
 -- -- 関数確認
--- SELECT proname, pg_get_functiondef(oid)
---   FROM pg_proc WHERE proname = 'is_user_active';
+-- SELECT proname FROM pg_proc
+--   WHERE proname in ('is_user_active', 'garden_role_of');
 --
--- -- 関数動作確認（admin で実行すれば true を返す想定）
+-- -- 動作確認（admin でログインした状態で実行）
 -- SELECT public.is_user_active();
+-- SELECT public.garden_role_of(auth.uid());

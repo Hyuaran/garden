@@ -67,7 +67,7 @@ export const NULLABLE_DATE_KEYS = {
   companies: [] as const,
   bank_accounts: [] as const,
   vendors: [] as const,
-  employees: ["termination_date"] as const,
+  employees: ["termination_date", "contract_end_on"] as const,
   salary_systems: [] as const,
   insurance: ["effective_to"] as const,
   attendance: ["imported_at"] as const,
