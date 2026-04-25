@@ -70,3 +70,16 @@ describe("MacroChart - title (T-F3-F8)", () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe("MacroChart - height (F4: v9 互換 360px)", () => {
+  it("wraps the Line chart in a 360px-tall container (v9 準拠)", () => {
+    render(<MacroChart companies={[hyuaran]} periods={[samplePeriod]} />);
+
+    // Line スタブの直接の親 <div> が height: 360 を持つことを確認
+    const chartContainer =
+      screen.getByTestId("line-chart").parentElement!;
+    const style = chartContainer.getAttribute("style") ?? "";
+    // jsdom は height: 360px のような px 単位文字列にする
+    expect(style).toMatch(/height:\s*360px/);
+  });
+});
