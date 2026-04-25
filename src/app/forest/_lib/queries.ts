@@ -14,7 +14,7 @@ import type {
   Shinkouki,
 } from "../_constants/companies";
 import { supabase } from "./supabase";
-import type { Hankanhi } from "./types";
+import type { Hankanhi, LastUpdatedAt } from "./types";
 
 /**
  * 法人マスタを sort_order 順に全件取得する。
@@ -170,4 +170,57 @@ export async function fetchHankanhiBatch(
   return (data as Hankanhi[]).filter((row) =>
     wantedKey.has(`${row.company_id}:${row.ki}`),
   );
+}
+
+/**
+ * Forest 全体の「最終更新日」を取得する。
+ *
+ * `fiscal_periods` と `shinkouki` の両テーブルから `updated_at` の最新値を
+ * 1 行だけ取り、より新しい方を返す。両テーブルが空の場合は epoch 0 で
+ * フォールバック（UI 側で `―` 表示に変換される想定）。
+ *
+ * @returns source と at を持つ LastUpdatedAt
+ * @throws どちらかのクエリが Supabase エラーを返した場合
+ */
+export async function fetchLastUpdated(): Promise<LastUpdatedAt> {
+  const [fp, sk] = await Promise.all([
+    supabase
+      .from("fiscal_periods")
+      .select("updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("shinkouki")
+      .select("updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (fp.error) {
+    throw new Error(`fetchLastUpdated fiscal_periods: ${fp.error.message}`);
+  }
+  if (sk.error) {
+    throw new Error(`fetchLastUpdated shinkouki: ${sk.error.message}`);
+  }
+
+  const fpAt = fp.data?.updated_at ? new Date(fp.data.updated_at) : null;
+  const skAt = sk.data?.updated_at ? new Date(sk.data.updated_at) : null;
+
+  // 両方空 → epoch 0 フォールバック（UI で `―` 表示）
+  if (!fpAt && !skAt) {
+    return { source: "fiscal_periods", at: new Date(0) };
+  }
+
+  // 片方のみ
+  if (fpAt && !skAt) return { source: "fiscal_periods", at: fpAt };
+  if (!fpAt && skAt) return { source: "shinkouki", at: skAt };
+
+  // 両方あり：同時刻なら both、そうでなければ新しい方
+  const fpTime = fpAt!.getTime();
+  const skTime = skAt!.getTime();
+  if (fpTime === skTime) return { source: "both", at: fpAt! };
+  if (fpTime > skTime) return { source: "fiscal_periods", at: fpAt! };
+  return { source: "shinkouki", at: skAt! };
 }
