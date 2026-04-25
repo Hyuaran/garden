@@ -35,6 +35,11 @@
 | Root | Phase 2: 他アプリからの参照ルール整備 | 0.5 | — | — | a-root (A) | 2026-04-23 | | Bud/Leaf 未実装のため「Root 側で提供する API 契約書・共有クエリヘルパー・RLS 前提条件ドキュメント」に絞る方針。**2026-04-24 a-main 判断：Phase 2 は保留。Bud/Leaf 連携開始時に精緻化する。** |
 | Root | Phase A-1: 7マスタ UI 一括仕上げ（validators / FileMaker風UX / 全マスタ適用） | 3.5 | 1.0 | -2.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 当初 T1〜T7 を個別 0.5d×7 の予定だったが、Phase 1 時点で CRUD UI は既に実装済と判明。スコープを「既存実装の仕上げ」に読み替え圧縮。validators.ts / useMasterShortcuts / FormField(error)/ Modal(onSubmit)/ DataTable(activeIndex) を追加し 7 マスタに適用。PR #14。§16 7種テストは東海林さん別途実施予定。 |
 | Root | Phase A-2: KoT API 連携（月次勤怠 API 直接取込） | 1.0 | 0.5 | -0.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 案A（CSV手動）→案C（API直行）へ切替。KoT v1.0 /employees + /monthly-workings を Server Action で取得→ employeeKey→code→employee_number→employee_id 解決→ root_attendance に upsert。疎通は IP 制限設定で一度失敗→解消後 200 OK・42名取得確認。/monthly-workings の date は YYYY-MM 形式（YYYY-MM-DD は 400）と実機で判明、修正反映済。PR #15。本番 Vercel IP 対応は別タスク。 |
+| Leaf | A-1c-spec/plan v3: spec v3 (1637 行) + plan v3 (4407 行) ブレスト Q3-Q8 + Section 1-3 + 業務レビュー 5 項目 OK | — | 1.5 | — | a-leaf (A) | 2026-04-22 | 2026-04-25 | v1→v2→v3 改訂含む。a-bloom 技術 §2🟢/§4🟢/§7🟡/§8🟢、東海林さん業務 5 項目すべて 🟢 OK。PR #58 発行済、a-bloom レビュー待ち。Subagent-Driven 想定で 34 task / 6.7d |
+| Leaf | A-1c Phase 0: npm パッケージ追加 (heic2any/bcryptjs/msw/happy-dom/user-event 6 個) + 既存 vitest infra 流用確認 | 0.3 | 0.05 | -0.25 | a-leaf (A) | 2026-04-25 | 2026-04-25 | 自律実行モード。npm install は permission deny で package.json 編集のみ、lockfile 同期は東海林さん帰宅後。既存 develop に vitest@4.1.5 等が install 済 (a-bloom or a-tree が先行)、Task 0.3 は新規作業なし |
+| Leaf | A-1c Task D.1: Supabase migration SQL v3 (scripts + supabase/migrations + runbook 3 ファイル) | 0.5 | 0.2 | -0.3 | a-leaf (A) | 2026-04-25 | 2026-04-25 | spec §8 v3 全量 (pgcrypto + history trigger + DL PW RPC + root_settings 新設 + 18 RLS ポリシー)。Dashboard 実行は東海林さん作業 (runbook §1-§5 参照) |
+| Leaf | A-1c Task D.2: src/lib/supabase/client.ts 新設 (横断共通 browser client) | 0.1 | 0.05 | -0.05 | a-leaf (A) | 2026-04-25 | 2026-04-25 | spec-cross-rls-audit §2 パターン A 準拠。既存 admin.ts と対をなす singleton。Leaf 既存 supabase.ts re-export 化は別 task (Leaf merge 後) |
+| Leaf | A-1c Task D.4: kanden-storage-paths.ts (3 定数 + 4 関数) + TDD (12 アサーション) | 0.2 | 0.1 | -0.1 | a-leaf (A) | 2026-04-25 | 2026-04-25 | pure function、JSDoc 完備、@example 付き。string literal type で typo 防止。テスト実行は npm install 後 |
 
 ## 運用メモ
 
