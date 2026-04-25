@@ -66,3 +66,17 @@ export const HANKANHI_LABELS: readonly { key: HankanhiKey; label: string }[] = [
   { key: "chidai", label: "地代家賃" },
   { key: "shiharai", label: "支払報酬料" },
 ] as const;
+
+/**
+ * T-F2-01: Forest 全体の「最終更新日」情報。
+ *
+ * `fiscal_periods.updated_at` と `shinkouki.updated_at` の最大値を
+ * まとめた結果。どちらが勝ったかは `source` で識別する。
+ * 両テーブルが空の場合は `at = new Date(0)` のフォールバック。
+ */
+export type LastUpdatedAt = {
+  /** どちらのテーブル側の updated_at が採用されたか */
+  source: "fiscal_periods" | "shinkouki" | "both";
+  /** 採用された updated_at（両テーブル空なら epoch 0） */
+  at: Date;
+};

@@ -40,6 +40,23 @@ export function fmtYen(v: number | null | undefined): string {
 }
 
 /**
+ * 日付を日本語表記 `YYYY年M月D日` に変換する。
+ *
+ * - `null` または epoch 0（プレースホルダー）: `―`（ダッシュ）
+ * - 月・日は 0 埋めなし（v9 `update-info` と同一フォーマット）
+ *
+ * @param d - Date オブジェクトまたは null
+ * @returns フォーマット済み文字列
+ */
+export function fmtDateJP(d: Date | null): string {
+  if (!d || d.getTime() === 0) return "\u2015";
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${y}年${m}月${day}日`;
+}
+
+/**
  * 円金額を短縮表示文字列に変換する（円単位は省略）。
  *
  * グラフ軸ラベルなど "円" 単位テキストが不要な箇所での使用を想定。

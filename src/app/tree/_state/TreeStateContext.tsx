@@ -138,16 +138,22 @@ const LS_MYPAGE_LAST_CONFIRM = "gardenTree_mypageLastConfirm";
 const MYPAGE_CONFIRM_INTERVAL_DAYS = 90;
 
 /**
- * garden_role (7段階) → Tree UI Role (3段階) マッピング
+ * garden_role (8段階) → Tree UI Role (3段階) マッピング
  *
  * - toss    → SPROUT（架電アポインター画面）
  * - closer  → BRANCH（クロージング画面）
- * - cs/staff/manager/admin/super_admin → MANAGER（モニタリング等）
+ * - cs/staff/outsource/manager/admin/super_admin → MANAGER（モニタリング等）
  *
  * ※ 細粒度の権限チェック（例: 前確画面は CS 以上）は hasRoleAtLeast で
  *    直接 garden_role を判定する。このマッピングはサイドバー・画面表示の大枠用。
+ *
+ * ※ outsource は Phase A-3-g 追加。GARDEN_ROLE_ORDER で staff と manager の
+ *    間（types.ts §198）。両端とも MANAGER 写像のため outsource も MANAGER。
+ *
+ * exhaustiveness: switch 末尾の `_exhaustive: never` で将来 GardenRole 追加時
+ * に TypeScript がここで型エラーを出し、ケース漏れを防ぐ。
  */
-function mapGardenRoleToTreeRole(gr: GardenRole): Role {
+export function mapGardenRoleToTreeRole(gr: GardenRole): Role {
   switch (gr) {
     case "toss":
       return ROLES.SPROUT;
@@ -155,11 +161,17 @@ function mapGardenRoleToTreeRole(gr: GardenRole): Role {
       return ROLES.BRANCH;
     case "cs":
     case "staff":
+    case "outsource":
     case "manager":
     case "admin":
     case "super_admin":
       return ROLES.MANAGER;
   }
+  // すべてのケースが網羅されていれば gr の型は never に narrowing される。
+  // 新しい GardenRole が追加されると下の代入が型エラーになり、
+  // 上の switch にケースを追加するよう促される。
+  const _exhaustive: never = gr;
+  throw new Error(`Unknown GardenRole: ${String(_exhaustive)}`);
 }
 
 function readLocalStorage<T>(key: string, fallback: T): T {

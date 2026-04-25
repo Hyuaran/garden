@@ -33,6 +33,15 @@ const EMP_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
 const ACCOUNT_TYPES = ["普通", "当座"];
 const INS_TYPES = ["加入", "未加入", "一部加入"];
 
+/**
+ * 年末調整の甲/乙欄区分（Phase A-3-h）。DB 値は英語コード、UI は日本語表示。
+ */
+const KOU_OTSU_OPTIONS: Array<{ value: "" | "kou" | "otsu"; label: string }> = [
+  { value: "",    label: "（未設定）" },
+  { value: "kou", label: "甲欄（主な収入）" },
+  { value: "otsu", label: "乙欄（副業）" },
+];
+
 const empty = (nextId: string, companyId: string, salarySystemId: string): Employee => ({
   employee_id: nextId,
   employee_number: "",
@@ -44,6 +53,9 @@ const empty = (nextId: string, companyId: string, salarySystemId: string): Emplo
   hire_date: new Date().toISOString().slice(0, 10),
   termination_date: null,
   contract_end_on: null,
+  kou_otsu: null,
+  dependents_count: 0,
+  deleted_at: null,
   email: "",
   bank_name: "",
   bank_code: "",
@@ -271,6 +283,36 @@ export default function EmployeesPage() {
               <TextField label="口座番号（7桁）" required maxLength={7} inputMode="numeric" value={editTarget.account_number} onChange={(e) => setEditTarget({ ...editTarget, account_number: e.target.value })} error={errors.account_number} />
               <TextField label="口座名義" required value={editTarget.account_holder} onChange={(e) => setEditTarget({ ...editTarget, account_holder: e.target.value })} error={errors.account_holder} />
               <TextField label="口座名義カナ" required value={editTarget.account_holder_kana} onChange={(e) => setEditTarget({ ...editTarget, account_holder_kana: e.target.value })} error={errors.account_holder_kana} />
+            </FormGrid>
+
+            <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>給与・源泉徴収（Phase A-3-h）</h3>
+            <FormGrid>
+              <SelectField
+                label="年末調整 甲/乙欄"
+                value={editTarget.kou_otsu ?? ""}
+                onChange={(e) => setEditTarget({
+                  ...editTarget,
+                  kou_otsu: (e.target.value || null) as "kou" | "otsu" | null,
+                })}
+                error={errors.kou_otsu}
+              >
+                {KOU_OTSU_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </SelectField>
+              <TextField
+                label="扶養家族人数（0〜20）"
+                type="number"
+                min={0}
+                max={20}
+                step={1}
+                value={editTarget.dependents_count ?? 0}
+                onChange={(e) => setEditTarget({
+                  ...editTarget,
+                  dependents_count: e.target.value === "" ? 0 : Number(e.target.value),
+                })}
+                error={errors.dependents_count}
+              />
             </FormGrid>
 
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>外部ID連携</h3>

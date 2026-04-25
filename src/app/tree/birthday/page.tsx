@@ -8,8 +8,8 @@
  *   2. YYYY-MM-DD を入力 → updateBirthday() で Supabase に保存
  *   3. refreshAuth() で treeUser を再取得 → dashboard へ遷移
  *
- * スコープ外（Phase B 後半で別途対応）:
- *   - Supabase Auth パスワードも MMDD に更新（service_role_key が必要なためサーバー側 endpoint 経由）
+ * 副作用:
+ *   - Supabase Auth パスワードも同時に MMDD へ更新する（/api/tree/update-password 経由、service_role_key 必須）
  *
  * /tree/birthday は TreeShell で「bare screen」扱い（サイドバー・KPIヘッダー非表示）。
  */
@@ -26,7 +26,7 @@ import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
 import { TREE_PATHS } from "../_constants/screens";
-import { updateBirthday } from "../_lib/queries";
+import { updateBirthday, updatePasswordFromBirthday } from "../_lib/queries";
 import { useTreeState } from "../_state/TreeStateContext";
 
 const inputStyle: CSSProperties = {
@@ -70,7 +70,16 @@ export default function TreeBirthdayPage() {
       return;
     }
 
-    // treeUser を再取得（新しい birthday が反映される）
+    const pwResult = await updatePasswordFromBirthday(birthday);
+    if (!pwResult.success) {
+      setError(
+        pwResult.error ??
+          "誕生日は保存されましたが、パスワードの更新に失敗しました",
+      );
+      setSaving(false);
+      return;
+    }
+
     const authResult = await refreshAuth();
     if (!authResult.success) {
       setError(authResult.error ?? "情報の更新に失敗しました");

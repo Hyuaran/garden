@@ -1,12 +1,16 @@
 /**
- * Garden Root — validateEmployee の Phase A-3-g 拡張テスト
+ * Garden Root — validateEmployee の Phase A-3-g / A-3-h 拡張テスト
  *
- * 対象:
+ * A-3-g:
  *   - employment_type='outsource' を受理する
  *   - 不正な employment_type を拒否する
  *   - contract_end_on < hire_date を拒否する
  *   - 外注以外で contract_end_on を入れたら拒否する
- *   - 正社員・アルバイトは従来どおり受理する
+ *
+ * A-3-h:
+ *   - kou_otsu は null / 'kou' / 'otsu' のみ受理
+ *   - dependents_count は 0〜20 の整数のみ受理
+ *   - 給与関連フィールドが undefined / null なら検証スキップ
  */
 
 import { describe, it, expect } from "vitest";
@@ -60,6 +64,62 @@ describe("validateEmployee — employment_type", () => {
     const errs = validateEmployee(baseEmployee({ employment_type: "freelancer" }));
     expect(errs.employment_type).toBeDefined();
     expect(errs.employment_type).toContain("外注");
+  });
+});
+
+describe("validateEmployee — kou_otsu (Phase A-3-h)", () => {
+  it("accepts null (未設定)", () => {
+    expect(validateEmployee(baseEmployee({ kou_otsu: null })).kou_otsu).toBeUndefined();
+  });
+
+  it("accepts undefined (フィールド未設定)", () => {
+    expect(validateEmployee(baseEmployee({ kou_otsu: undefined })).kou_otsu).toBeUndefined();
+  });
+
+  it("accepts 'kou' (甲欄)", () => {
+    expect(validateEmployee(baseEmployee({ kou_otsu: "kou" })).kou_otsu).toBeUndefined();
+  });
+
+  it("accepts 'otsu' (乙欄)", () => {
+    expect(validateEmployee(baseEmployee({ kou_otsu: "otsu" })).kou_otsu).toBeUndefined();
+  });
+
+  it("rejects invalid kou_otsu values", () => {
+    // @ts-expect-error runtime invalid value for validator coverage
+    const errs = validateEmployee(baseEmployee({ kou_otsu: "hei" }));
+    expect(errs.kou_otsu).toBeDefined();
+    expect(errs.kou_otsu).toContain("kou");
+  });
+});
+
+describe("validateEmployee — dependents_count (Phase A-3-h)", () => {
+  it("accepts 0 (既定値)", () => {
+    expect(validateEmployee(baseEmployee({ dependents_count: 0 })).dependents_count).toBeUndefined();
+  });
+
+  it("accepts 20 (境界値、最大)", () => {
+    expect(validateEmployee(baseEmployee({ dependents_count: 20 })).dependents_count).toBeUndefined();
+  });
+
+  it("accepts undefined (省略時は検証スキップ)", () => {
+    expect(validateEmployee(baseEmployee({ dependents_count: undefined })).dependents_count).toBeUndefined();
+  });
+
+  it("rejects negative values", () => {
+    const errs = validateEmployee(baseEmployee({ dependents_count: -1 }));
+    expect(errs.dependents_count).toBeDefined();
+  });
+
+  it("rejects > 20", () => {
+    const errs = validateEmployee(baseEmployee({ dependents_count: 21 }));
+    expect(errs.dependents_count).toBeDefined();
+    expect(errs.dependents_count).toContain("0〜20");
+  });
+
+  it("rejects non-integer values", () => {
+    const errs = validateEmployee(baseEmployee({ dependents_count: 2.5 }));
+    expect(errs.dependents_count).toBeDefined();
+    expect(errs.dependents_count).toContain("整数");
   });
 });
 
