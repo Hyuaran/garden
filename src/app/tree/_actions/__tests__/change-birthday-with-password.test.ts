@@ -98,7 +98,8 @@ describe("changeBirthdayWithPassword - INVALID_FORMAT", () => {
 
   it("未来日付なら INVALID_FORMAT", async () => {
     setupAuthenticated();
-    const future = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    // 2 日後（JST/UTC どちらの境界条件でも未来になる確実な値）
+    const future = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
     const result = await changeBirthdayWithPassword({
