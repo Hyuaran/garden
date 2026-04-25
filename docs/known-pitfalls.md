@@ -193,6 +193,263 @@ function handleSubmit(payload: CompanyPayload) {
 
 ---
 
+## [#4] KoT API IP 制限（事務所 IP のみ許可）
+
+### 症状
+- 自宅 / モバイル / Vercel から KoT API を叩くと 403 (HTTP) で `errors[].code = 105`（rate limit と同コードに見えるが原因が違う）
+
+### 根本原因
+- KoT API は契約 IP のみ許可。Vercel は動的 IP のため未登録。自宅 IP も登録外。事務所固定 IP のみ許可登録済（Issue #30 参照）
+
+### 発見経緯
+- PR #15 マージ後、Vercel preview から /api/root/kot-sync/cron-monthly を curl で叩いて 403 を観測。Issue #30 で対策案 A (Vercel IP 範囲) / B (Fixie 固定 IP プロキシ) / C (Supabase Edge Function) を比較し、案 B（Fixie）採択
+- 発見セッション: a-root
+
+### 修正 pattern
+```typescript
+// src/app/root/_lib/kot-api.ts (Fixie 契約後の予定実装)
+import { ProxyAgent } from "undici";
+const proxyUrl = process.env.FIXIE_URL;
+const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
+const res = await fetch(url, { method: "GET", headers, dispatcher } as RequestInit);
+```
+
+### 再発防止チェックリスト
+- [ ] 開発時は事務所 IP からのみ実機 KoT API を叩く（自宅/モバイル禁止）
+- [ ] Vercel デプロイ前に Fixie 固定 IP プロキシ設定を完了させる
+- [ ] CRON_SECRET / FIXIE_URL を Vercel 環境変数に登録（KOT_API_TOKEN は別軸）
+- [ ] `scripts/probe-kot.mjs` での実機確認は事務所 PC からのみ実行
+- [ ] CI / preview 環境の KoT 系 e2e テストはスキップ（mock のみ）
+
+### 関連ファイル / spec
+- Issue #30 (KoT API IP 制限調査)
+- `src/app/root/_lib/kot-api.ts` (TODO(A-3-c-followup) 参照)
+- `scripts/probe-kot.mjs` (実機 probe スクリプト)
+- 影響モジュール: Root のみ（KoT 連携は Root 専管）
+
+---
+
+## [#5] Vercel Cron + Fixie 前提（自宅・モバイル開発時の挙動）
+
+### 症状
+- ローカル `npm run dev` で /api/root/kot-sync/cron-* を叩くと、自宅 IP では 403 で失敗。CRON_SECRET 未設定時は `lib/cron-auth.ts` の verifyCronRequest が拒否
+
+### 根本原因
+- Vercel Cron は本番環境で `vercel.json` の `crons` 配列に登録された path を Vercel インフラ側から自動 POST する仕組み。Cron リクエストの認証は `Authorization: Bearer <CRON_SECRET>` ヘッダで行う
+- 開発時は Vercel Cron がトリガしないため、手動 curl でテストするしかない
+- 自宅 IP からだと KoT API そのものが叩けないため、Cron route 自体は動いても KoT 呼び出しで 403 になる
+- 現状 `vercel.json` では `crons_pending_fixie_root` という未認識キーで保留中（Vercel が無視）。Fixie 契約完了後に `crons` 配列へ移動する
+
+### 発見経緯
+- A-3-c 実装時、Phase A-2 KoT API テストの再利用で発覚。事務所 PC から probe-kot.mjs では成功するが、自宅から同じテストが 403 で失敗
+- 発見セッション: a-root
+
+### 修正 pattern
+```bash
+# 事務所 PC（許可 IP）での Cron 動作確認
+export CRON_SECRET=$(openssl rand -base64 48)
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  http://localhost:3000/api/root/kot-sync/cron-daily
+
+# 自宅 PC では mock を使う（KOT_API_TOKEN を未設定 or fake にする）
+# fetch を vi.stubGlobal で mock するテスト経路のみ実行
+npm run test:run -- src/app/root/_lib/__tests__/kot-api.test.ts
+```
+
+### 再発防止チェックリスト
+- [ ] Cron route の本番動作確認は Vercel Preview デプロイ + 事務所 IP curl で実施
+- [ ] 自宅作業時は実機 KoT 系の e2e は諦め、mock テストで担保
+- [ ] `vercel.json` の `crons_pending_fixie_root` を `crons` に移すのは Fixie 契約完了後
+- [ ] Cron route 実装時、CRON_SECRET 検証を必ず先頭で実施（verifyCronRequest 共通化）
+- [ ] Vercel 環境変数 (CRON_SECRET / FIXIE_URL / KOT_API_TOKEN) のセットを必ず確認
+
+### 関連ファイル / spec
+- `vercel.json` (`crons_pending_fixie_root` 配列、Fixie 契約後に `crons` へ移動)
+- `src/lib/cron-auth.ts` (verifyCronRequest 共通実装)
+- `src/app/api/root/kot-sync/cron-monthly/route.ts`
+- `src/app/api/root/kot-sync/cron-daily/route.ts`
+- 影響モジュール: Root（Cron 利用は Bloom にもあり、Bloom は別パターン）
+
+---
+
+## [#6] garden_role は PostgreSQL ENUM ではなく CHECK 制約
+
+### 症状
+- `garden_role` カラムに新しいロール (例: `outsource`) を追加しようとして `ALTER TYPE ... ADD VALUE` を試みると、そんな型は存在しないと言われる
+
+### 根本原因
+- `garden_role` は `text` カラム + `CHECK (garden_role IN ('toss', 'closer', 'cs', 'staff', 'outsource', 'manager', 'admin', 'super_admin'))` で実装されている（ENUM 型ではない）
+- 設計初期に ENUM ではなく text + CHECK を選択した理由: ENUM の値追加は `ALTER TYPE ADD VALUE` がトランザクション内で使えない PostgreSQL の制約があり、migration 運用が複雑になる。CHECK ならトランザクション内で `ALTER TABLE DROP CONSTRAINT / ADD CONSTRAINT` で原子的に変更可能
+- TypeScript 側は `GardenRole` union 型で同期管理（`src/app/root/_constants/types.ts`）
+
+### 発見経緯
+- A-3-g で outsource ロール追加時、最初 ENUM だと思い込んで ALTER TYPE を書いて失敗。実際は CHECK 制約だった。supabase/migrations/20260425000002_root_employees_outsource_extension.sql で `DROP CONSTRAINT root_employees_garden_role_check` → `ADD CONSTRAINT ... CHECK (garden_role IN (...))` のパターンに修正
+- 発見セッション: a-root
+
+### 修正 pattern
+```sql
+-- supabase/migrations/2026MMDD_add_garden_role_NEWROLE.sql
+BEGIN;
+
+ALTER TABLE root_employees DROP CONSTRAINT IF EXISTS root_employees_garden_role_check;
+
+ALTER TABLE root_employees
+  ADD CONSTRAINT root_employees_garden_role_check
+  CHECK (garden_role IN ('toss', 'closer', 'cs', 'staff', 'outsource', 'newrole', 'manager', 'admin', 'super_admin'));
+
+-- garden_role を参照する関数の更新も忘れずに
+-- 例: garden_role_of() の戻り値型は text のままでよいが、CASE 文で新ロールを処理する関数は更新
+
+COMMIT;
+```
+そして TypeScript 側:
+```typescript
+// src/app/root/_constants/types.ts
+export type GardenRole =
+  | "toss" | "closer" | "cs" | "staff"
+  | "outsource"  // staff と manager の間
+  | "newrole"    // ★追加
+  | "manager" | "admin" | "super_admin";
+
+export const GARDEN_ROLE_ORDER: GardenRole[] = [
+  "toss", "closer", "cs", "staff", "outsource", "newrole", "manager", "admin", "super_admin",
+];
+
+export const GARDEN_ROLE_LABELS: Record<GardenRole, string> = {
+  // ... 既存 ...
+  newrole: "新ロール",
+};
+```
+
+### 再発防止チェックリスト
+- [ ] 新ロール追加時、PostgreSQL 側は CHECK 制約の DROP / ADD で対応（ALTER TYPE は使わない）
+- [ ] 同 migration で `GARDEN_ROLE_ORDER` と `GARDEN_ROLE_LABELS` を TypeScript 側で同時更新
+- [ ] `ROOT_VIEW_ROLES` / `ROOT_WRITE_ROLES` / `TREE_CONFIRM_VIEW_ROLES` も新ロールの位置によって見直し
+- [ ] garden-role.matrix.test.ts の `EXPECTED_HIERARCHY` も更新
+- [ ] `is_user_active()` / `garden_role_of()` 関数で新ロールを参照している箇所がないか確認
+
+### 関連ファイル / spec
+- `supabase/migrations/20260425000002_root_employees_outsource_extension.sql` (CHECK 制約パターン参考)
+- `src/app/root/_constants/types.ts` (GARDEN_ROLE_* 定義)
+- `src/app/root/_constants/__tests__/garden-role.matrix.test.ts` (EXPECTED_HIERARCHY)
+- 影響モジュール: Root（マスタ）/ Tree / Bud / Leaf（権限参照）
+
+---
+
+## [#7] KoT /monthly-workings の date 形式は YYYY-MM 必須（YYYY-MM-DD は HTTP 400）
+
+### 症状
+- `fetch("https://api.kingtime.jp/v1.0/monthly-workings/2026-04-25")` → HTTP 400 + KoT エラーコード 2 (`"date format invalid"` 相当)
+
+### 根本原因
+- `/monthly-workings/{date}` の `{date}` は **`YYYY-MM` (月単位)** を期待する
+- 一方 `/daily-workings/{date}` は **`YYYY-MM-DD` (日単位)** を期待する
+- `/employees?date={date}` も日単位 `YYYY-MM-DD`
+- エンドポイントごとに date 形式が違うため、混同しやすい
+
+### 発見経緯
+- Phase A-2 実機テスト時、月次同期で誤って YYYY-MM-DD を渡して 400 で失敗。`fetchKotMonthlyWorkings("2026-04-25")` がエラーを投げる前に KoT 側で受信されてエラーレスポンス
+- 発見セッション: a-root
+
+### 修正 pattern
+```typescript
+// src/app/root/_lib/kot-api.ts
+export async function fetchKotMonthlyWorkings(yearMonth: string): Promise<KotMonthlyWorking[]> {
+  // ★ クライアント側で先に validation: YYYY-MM のみ受理
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(yearMonth)) {
+    throw new KotApiClientError({
+      code: "INVALID_ARG",
+      httpStatus: 0,
+      message: `yearMonth は YYYY-MM 形式で指定してください（受け取り: "${yearMonth}"）`,
+    });
+  }
+  return kotFetch<KotMonthlyWorking[]>(`/monthly-workings/${yearMonth}`);
+}
+
+// fetchKotDailyWorkings は YYYY-MM-DD でバリデーション
+export async function fetchKotDailyWorkings(date: string): Promise<KotDailyWorking[]> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(date)) {
+    throw new KotApiClientError({ code: "INVALID_ARG", httpStatus: 0, message: `date は YYYY-MM-DD 形式で指定してください（受け取り: "${date}"）` });
+  }
+  return kotFetch<KotDailyWorking[]>(`/daily-workings/${date}`);
+}
+```
+
+### 再発防止チェックリスト
+- [ ] KoT エンドポイント実装時、必ず公式 doc で date 形式を確認（月次/日次/従業員で異なる）
+- [ ] クライアント関数の引数バリデーションを実装（INVALID_ARG エラーで早期検出）
+- [ ] テストで「不正な date 形式 → fetch 呼ばれず INVALID_ARG」を確認（kot-api.test.ts 参照）
+- [ ] スクリプト経由の手動 probe 時も、引数の形式を間違えないよう型 / コメントで明示
+- [ ] 新 KoT エンドポイント追加時は本ピットフォール参照
+
+### 関連ファイル / spec
+- `src/app/root/_lib/kot-api.ts` (fetchKotMonthlyWorkings / fetchKotDailyWorkings / fetchKotEmployees)
+- `src/app/root/_lib/__tests__/kot-api.test.ts` (date format validation テスト)
+- `scripts/probe-kot.mjs` (手動 probe)
+- 影響モジュール: Root のみ
+
+---
+
+## [#8] root_employees.deleted_at は is_active と別軸（中途退職者の年末調整対応）
+
+### 症状
+- 中途退職者の年末調整書類を作成する際、is_active=false にすると一覧から消えて参照できない。逆に is_active=true のまま残すと現役と区別がつかない
+
+### 根本原因
+- Phase A-3-h で `deleted_at timestamptz` を追加（論理削除フラグ）
+- **is_active と deleted_at は別軸**:
+  - `is_active = true / false`: 現在アクティブかどうか（業務での参照対象か）
+  - `deleted_at = null / timestamptz`: レコード自体が論理削除されたか（DB 上の存在）
+- 中途退職者の典型パターン:
+  - `is_active = false` (退職済み、現業務では非対象)
+  - `deleted_at = null` (年末調整・退職金計算等で参照したい)
+  - `termination_date = '2026-MM-DD'` (退職日)
+- 完全削除（個人情報の保管期限切れ等）の場合のみ `deleted_at` に値を入れて、業務クエリから完全に外す
+
+### 発見経緯
+- A-3-h 仕様策定時、Bud Phase B 給与計算 + 年末調整の要件整理で発覚。Bud から「中途退職者を給与計算対象には入れたくないが年末調整対象には残したい」要望。is_active だけでは表現できないため deleted_at を追加
+- 発見セッション: a-root
+
+### 修正 pattern
+```sql
+-- 現業務クエリ（給与計算等）: is_active = true のみ
+SELECT * FROM root_employees
+WHERE is_active = true
+  AND deleted_at IS NULL;
+
+-- 年末調整対象クエリ: is_active 問わず、deleted_at IS NULL のもの
+SELECT * FROM root_employees
+WHERE deleted_at IS NULL
+  AND (is_active = true OR (termination_date IS NOT NULL AND termination_date >= '2026-01-01'));
+
+-- is_user_active() 関数（Phase A-3-g）も deleted_at を考慮
+CREATE OR REPLACE FUNCTION is_user_active() RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM root_employees
+    WHERE user_id = auth.uid()
+      AND is_active = true
+      AND deleted_at IS NULL
+      AND (termination_date IS NULL OR termination_date >= CURRENT_DATE)
+      AND (contract_end_on IS NULL OR contract_end_on >= CURRENT_DATE)
+  )
+$$ LANGUAGE sql STABLE;
+```
+
+### 再発防止チェックリスト
+- [ ] 従業員クエリを書く時、`is_active` と `deleted_at` の両方を意識する
+- [ ] 給与計算 / 業務一覧: `is_active = true AND deleted_at IS NULL`
+- [ ] 年末調整 / 履歴参照: `deleted_at IS NULL`（is_active 問わず）
+- [ ] 完全削除（個人情報保管期限切れ等）のみ `deleted_at` に値を設定
+- [ ] Bud 給与モジュール / 年末調整モジュールで本パターンを必ず採用
+- [ ] RLS ポリシーも `deleted_at IS NULL` を考慮（特に SELECT で論理削除済みを除外）
+
+### 関連ファイル / spec
+- `supabase/migrations/20260425000004_root_employees_payroll_extension.sql` (deleted_at 追加)
+- `src/app/root/_lib/sanitize-payload.ts` の `NULLABLE_DATE_KEYS.employees` に `deleted_at` 含む
+- 影響モジュール: Root（マスタ）/ Bud（給与・年末調整）
+
+---
+
 ## 今後の追加ルール
 
 ### 新しい pitfall 発見時の追記手順
@@ -237,3 +494,4 @@ function handleSubmit(payload: CompanyPayload) {
 | 日付 | 変更者 | 内容 |
 |---|---|---|
 | 2026-04-24 | a-main | 初版作成。#1 timestamptz 空文字、#2 RLS anon 流用、#3 空オブジェクト insert の3件を収録 |
+| 2026-04-25 | a-root | #4 KoT IP制限 / #5 Vercel Cron+Fixie / #6 garden_role CHECK / #7 KoT date形式 / #8 deleted_at vs is_active の Root 知見 5 件追加 |
