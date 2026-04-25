@@ -63,7 +63,19 @@ function fail(
 }
 
 export async function changeBirthdayWithPassword(
-  _input: ChangeBirthdayWithPasswordInput,
+  input: ChangeBirthdayWithPasswordInput,
 ): Promise<ChangeBirthdayWithPasswordResult> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return fail("UNKNOWN");
+
+  const verifyClient = createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { data: userData, error: userError } =
+    await verifyClient.auth.getUser(input.accessToken);
+  if (userError || !userData?.user) return fail("UNAUTHENTICATED");
+
   return fail("UNKNOWN");
 }
