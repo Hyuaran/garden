@@ -132,6 +132,55 @@ export interface KotMonthlyWorking {
 }
 
 // ------------------------------------------------------------
+// 日次勤怠（GET /daily-workings/{date}）[Phase A-3-d]
+// ------------------------------------------------------------
+
+/**
+ * KoT 日次勤怠 1 行（1 社員 1 日）。
+ *
+ * ⚠️ 実機レスポンス未確認の推定フィールド名（spec 通り camelCase / snake_case 混在可能性あり）。
+ *   実機確認は `scripts/probe-kot.mjs` の daily probe（A-3-d で追加）を東海林 PC から
+ *   実行して採取、差分があれば本型を調整する想定。すべての時間系は分 (minutes) 単位。
+ */
+export interface KotDailyWorking {
+  /** 対象日（YYYY-MM-DD） */
+  date: string;
+  /** 社員識別キー（不変） */
+  employeeKey: string;
+  /** 社員コード（4 桁、employee_number と対応） */
+  employeeCode?: string;
+
+  /** 出勤打刻（未打刻は null / undefined） */
+  clockIn?: string | null;
+  /** 退勤打刻 */
+  clockOut?: string | null;
+
+  // --- 分単位の集計 ---
+  /** 休憩合計（分） */
+  breakMinutes?: number;
+  /** 実労働（分） */
+  workMinutes?: number;
+  /** 残業（分、法定外相当） */
+  overtimeMinutes?: number;
+  /** 深夜（分） */
+  nightMinutes?: number;
+  /** 休日勤務（分） */
+  holidayMinutes?: number;
+  /** 遅刻（分） */
+  lateMinutes?: number;
+  /** 早退（分） */
+  earlyLeaveMinutes?: number;
+
+  /** 休暇種別（有休 / 特休 / 欠勤 / null 等） */
+  leaveType?: string | null;
+  /** 自由メモ */
+  note?: string | null;
+
+  /** 打刻履歴（出勤/退勤/休憩の開始/終了 の個別レコード） */
+  timeRecords?: Array<{ type: string; time: string }>;
+}
+
+// ------------------------------------------------------------
 // エラーレスポンス
 // ------------------------------------------------------------
 
@@ -204,6 +253,9 @@ export type KotSyncPreviewResult =
       rows: KotSyncPreviewRow[];
       /** KoT 側で行単位にエラーがあった場合の記述（ヘッダー欠落等） */
       warnings: string[];
+      /** root_kot_sync_log に起票された行の id（クライアントから commit 時に再利用）。
+       *  ログ挿入失敗時は undefined。 */
+      log_id?: string;
     }
   | {
       ok: false;
@@ -215,6 +267,8 @@ export type KotSyncPreviewResult =
       message: string;
       /** 開発時のみ詳細を入れる */
       detail?: unknown;
+      /** 失敗時でも log_id は返す（client がログと紐付けて表示したいため） */
+      log_id?: string;
     };
 
 /**

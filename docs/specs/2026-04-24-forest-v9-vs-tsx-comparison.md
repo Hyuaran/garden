@@ -17,7 +17,7 @@
 | 判1 | 販管費テーブル正規化 | **A 案：別テーブル `forest_hankanhi`** | §4 で HANKANHI 行を提示 |
 | 判2 | 納税スケジュール構造 | **B 案：3 テーブル分割** | §4 で Tax Calendar / Tax Detail Modal 行を提示 |
 | 判3 | 決算書 PDF 格納場所 | **B 案：Supabase Storage にミラー** | §4 F5/F6 の実装指針に反映 |
-| 判4 | ZIP 生成方式 | **B 案：Edge Function + Storage** | §4 F6 の実装指針に反映 |
+| 判4 | ZIP 生成方式 | **A 案：Node Runtime + Storage** | §4 F6 の実装指針に反映（2026-04-24 訂正: 当初 B 案 Edge だったが 4.5MB 上限で決算書 ZIP 不可のため Node へ変更） |
 | 判5 | Tax Files アップロード主体 | **B 案：社内担当者が代理入力** | §4 F5 の RLS 方針に反映 |
 
 ---
@@ -31,7 +31,7 @@
 | F3 Summary Cards | 984-992, 1350-1372 | ✅ 実装 | `SummaryCards.tsx` | 一致 |
 | F4 Tax Calendar | 994-1001, 1573-1677 | ❌ **未実装** | — | 新規作成必須（§4-F4） |
 | F5 Tax Files | 1003-1012, 1682-1757 | ❌ **未実装** | — | Supabase Storage 連携から（§4-F5） |
-| F6 Download | 1014-1077, 1786-1944 | ❌ **未実装** | — | Edge Function + Storage（§4-F6） |
+| F6 Download | 1014-1077, 1786-1944 | ❌ **未実装** | — | Node Runtime + Storage（§4-F6） |
 | F7 Info Tooltip | 434-478 | ❌ **未実装** | — | 共通 Tooltip 新設（§4-F7） |
 | F8 Macro Chart | 1079-1088, 1377-1417 | ✅ 実装 | `MacroChart.tsx` | 一致想定 |
 | F9 Micro Grid | 1090-1102, 1422-1568 | ✅ 実装 | `MicroGrid.tsx` | 細部差分未調査（§5） |
@@ -136,7 +136,7 @@
 |---|---|---|---|
 | 法人チェックボックス | 1044-1053 | `_components/DownloadCompanySelector.tsx` | 6 法人 + 全社 |
 | 期数ラジオ（1/2/3） | 1055-1061 | `_components/DownloadKiRadio.tsx` | — |
-| `downloadDocs()` メイン | 1786-1944 | `/api/forest/download-zip/route.ts`（Edge Function） | 判4 B 案：Storage から ZIP 生成 |
+| `downloadDocs()` メイン | 1786-1944 | `/api/forest/download-zip/route.ts`（Node Runtime） | 判4 A 案：Storage から ZIP 生成（Node 上で JSZip 等使用） |
 | Progress bar | 403-432, 1887-1894 | `_components/DownloadProgress.tsx` | ポーリング or SSE |
 | 単一／複数法人でファイル名分岐 | 1870-1881 | Server 側で生成 | 同ロジック |
 | ローカルモードフォールバック | 1929-1943 | **廃止**（Supabase Auth 前提のため） | — |
@@ -147,8 +147,9 @@
 - **移行期**：Drive URL → PDF fetch → Storage キャッシュ、2 回目以降は Storage 直読み
 - **完了期**：全 PDF を Storage へ移し替え、Drive URL を廃止
 
-**判4 B 案（Edge Function + Storage）反映**:
-- `/api/forest/download-zip/route.ts` が Edge Function（Node ランタイム）で実行
+**判4 A 案（Node Runtime + Storage）反映**:
+- `/api/forest/download-zip/route.ts` が Node Runtime で実行（`export const runtime = "nodejs"`）
+- Edge Function は 4.5MB レスポンス上限のため決算書 ZIP（10-30MB 想定）では不可 → Node を採用
 - Storage から PDF fetch → JSZip で ZIP 化 → Storage `forest-downloads/` にアップロード → signedURL を返却
 
 **作業項目**:
