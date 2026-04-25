@@ -23,8 +23,9 @@ import {
 import type { Company, FiscalPeriod, ForestUser, Shinkouki } from "../_constants/companies";
 import { clearForestUnlock, getSession, isForestUnlocked, signOutForest } from "../_lib/auth";
 import { writeAuditLog } from "../_lib/audit";
-import { fetchCompanies, fetchFiscalPeriods, fetchForestUser, fetchShinkouki } from "../_lib/queries";
+import { fetchCompanies, fetchFiscalPeriods, fetchForestUser, fetchLastUpdated, fetchShinkouki } from "../_lib/queries";
 import { startSessionTimer } from "../_lib/session-timer";
+import type { LastUpdatedAt } from "../_lib/types";
 
 type ForestState = {
   /** ローディング中 */
@@ -42,6 +43,8 @@ type ForestState = {
   companies: Company[];
   periods: FiscalPeriod[];
   shinkouki: Shinkouki[];
+  /** T-F2-01: Forest 全体の最終更新日時 */
+  lastUpdated: LastUpdatedAt | null;
   /** 操作 */
   unlock: () => void;
   lockAndLogout: (reason: "manual" | "timeout") => Promise<void>;
@@ -72,6 +75,7 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [periods, setPeriods] = useState<FiscalPeriod[]>([]);
   const [shinkoukiData, setShinkoukiData] = useState<Shinkouki[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<LastUpdatedAt | null>(null);
 
   // --- Callbacks（useEffect より先に定義） ---
 
@@ -91,18 +95,21 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
     setCompanies([]);
     setPeriods([]);
     setShinkoukiData([]);
+    setLastUpdated(null);
   }, []);
 
   const refreshData = useCallback(async () => {
     try {
-      const [c, p, s] = await Promise.all([
+      const [c, p, s, lu] = await Promise.all([
         fetchCompanies(),
         fetchFiscalPeriods(),
         fetchShinkouki(),
+        fetchLastUpdated(),
       ]);
       setCompanies(c);
       setPeriods(p);
       setShinkoukiData(s);
+      setLastUpdated(lu);
     } catch (err) {
       console.error("Forest data fetch error:", err);
     }
@@ -192,6 +199,7 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
       companies,
       periods,
       shinkouki: shinkoukiData,
+      lastUpdated,
       unlock,
       lockAndLogout: lockAndLogoutFn,
       refreshData,
@@ -200,7 +208,7 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
     [
       loading, isAuthenticated, hasPermission, isUnlocked,
       userEmail, forestUser, companies, periods, shinkoukiData,
-      unlock, lockAndLogoutFn, refreshData, refreshAuth,
+      lastUpdated, unlock, lockAndLogoutFn, refreshData, refreshAuth,
     ],
   );
 
