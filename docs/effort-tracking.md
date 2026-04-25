@@ -44,6 +44,18 @@
 | Root | Phase A-1: 7マスタ UI 一括仕上げ（validators / FileMaker風UX / 全マスタ適用） | 3.5 | 1.0 | -2.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 当初 T1〜T7 を個別 0.5d×7 の予定だったが、Phase 1 時点で CRUD UI は既に実装済と判明。スコープを「既存実装の仕上げ」に読み替え圧縮。validators.ts / useMasterShortcuts / FormField(error)/ Modal(onSubmit)/ DataTable(activeIndex) を追加し 7 マスタに適用。PR #14。§16 7種テストは東海林さん別途実施予定。 |
 | Root | Phase A-2: KoT API 連携（月次勤怠 API 直接取込） | 1.0 | 0.5 | -0.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 案A（CSV手動）→案C（API直行）へ切替。KoT v1.0 /employees + /monthly-workings を Server Action で取得→ employeeKey→code→employee_number→employee_id 解決→ root_attendance に upsert。疎通は IP 制限設定で一度失敗→解消後 200 OK・42名取得確認。/monthly-workings の date は YYYY-MM 形式（YYYY-MM-DD は 400）と実機で判明、修正反映済。PR #15。本番 Vercel IP 対応は別タスク。 |
 | Root | Phase 品質向上: テスト拡充 + known-pitfalls 追加（限定 auto モード） | 0.5 | 0.4 | -0.1 | a-root-002 (A) | 2026-04-25 | 2026-04-25 | T1〜T6 を subagent-driven-development で並列実装。validators 6マスタ + primitives + sanitize-payload + KoT API client + garden_role 8x8 マトリックス + known-pitfalls #4-#8 追加。Vitest 33→570 件 (+537) 全 pass。レビュー 1 巡 (4 Important fix) 後 PR 発行。動作変更なし、既存品質向上のみ。 |
+| Tree | Phase D plan v3 起草（6 spec 統合・実装プラン） | 0.5 | 0.4 | -0.1 | a-tree (A) | 2026-04-25 | 2026-04-25 | docs/superpowers/plans/2026-04-25-tree-phase-d-implementation.md（1832 行・70 タスク）。6 並列 subagent で D-01〜D-06 spec digest 取得 → 統合プラン起草 → self-review。Tree 特例 §17 5段階展開・§16 7種テスト・known-pitfalls 5 件反映・判断保留 38 件集約。実装着手は a-main 判断後。 |
+| Tree | Phase D-01 schema migrations | 0.7 | | | a-tree (A) | (pending) | | spec-tree-phase-d-01 準拠、12 タスク。Soil link 列 + 7 migration + 2 VIEW + audit。 |
+| Tree | Phase D-06 test scaffolding | 0.25 | | | a-tree (A) | (pending) | | Vitest config 分離、85%/75% 閾値、real-DB セットアップ。D-02 着手前に必須。 |
+| Tree | Phase D-02 operator UI | 1.125 | | | a-tree (A) | (pending) | | spec-tree-phase-d-02 準拠、13 タスク。FM 互換 + offline + rollback。 |
+| Tree | Phase D-04 tossup flow | 0.875 | | | a-tree (A) | (pending) | | spec-tree-phase-d-04 準拠、7 タスク。Tree → Leaf 1 トランザクション + 整合性 Cron。 |
+| Tree | Phase D-03 manager UI | 1.0 | | | a-tree (A) | (pending) | | spec-tree-phase-d-03 準拠、8 タスク。30s polling + Chatwork 介入。 |
+| Tree | Phase D-05 KPI dashboard | 0.94 | | | a-tree (A) | (pending) | | spec-tree-phase-d-05 準拠、9 タスク。MV 3 本 + Recharts + CSV/Excel。 |
+| Tree | Phase D-06 E2E + 受入 | 1.0 | | | a-tree (A) | (pending) | | spec-tree-phase-d-06 準拠、8 タスク。Playwright 10 flow + axe + Lighthouse。 |
+| Tree | Phase D §16 7種テスト | 0.5 | | | a-tree (A) | (pending) | | 親CLAUDE.md §16 準拠、α 投入前に全完走必須。 |
+| Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
+| Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
+| Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
 
 ## 運用メモ
 
