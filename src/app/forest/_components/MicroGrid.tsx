@@ -8,7 +8,7 @@
  * v9 の renderMicroGrid() を React 化。
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { CellData, Company, FiscalPeriod, Shinkouki } from "../_constants/companies";
 import { FOREST_THEME } from "../_constants/theme";
@@ -27,6 +27,7 @@ type Props = {
 
 export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Props) {
   const [selectedCell, setSelectedCell] = useState<CellData | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const years = useMemo(() => {
     const allYears = [
@@ -57,6 +58,18 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
       return total;
     });
   }, [years, companies, periods, shinkouki]);
+
+  // T-F9 D8: 初期表示時に最右端（最新年度）へスクロール。
+  // years が確定した後に rAF で scrollLeft = scrollWidth を設定。
+  useEffect(() => {
+    if (years.length === 0) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [years]);
 
   const handleCellClick = (cellData: CellData) => {
     // 進行期セルで admin なら編集モーダル、それ以外は詳細モーダル
@@ -110,6 +123,8 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
 
       {/* メイングリッド */}
       <div
+        ref={scrollRef}
+        data-testid="microgrid-scroll"
         style={{
           background: FOREST_THEME.panelBg,
           backdropFilter: "blur(20px)",
@@ -124,7 +139,20 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: years.length * 130 + 160 }}>
           <thead>
             <tr>
-              <th style={{ width: 160, textAlign: "left", padding: "8px 0", fontSize: 12, color: FOREST_THEME.textMuted }}>
+              {/* T-F9 D2: sticky col-company（ヘッダ） — 横スクロール時も法人列を保持 */}
+              <th
+                style={{
+                  width: 160,
+                  textAlign: "left",
+                  padding: "8px 0",
+                  fontSize: 12,
+                  color: FOREST_THEME.textMuted,
+                  position: "sticky",
+                  left: 0,
+                  zIndex: 4,
+                  background: FOREST_THEME.stickyBg,
+                }}
+              >
                 法人
               </th>
               {years.map((y) => (
@@ -150,7 +178,17 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
 
               return (
                 <tr key={c.id}>
-                  <td style={{ padding: "10px 0", borderTop: "1px solid #f0f0f0" }}>
+                  {/* T-F9 D2: sticky col-company（ボディ） — 横スクロール時も法人列を保持 */}
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      borderTop: "1px solid #f0f0f0",
+                      position: "sticky",
+                      left: 0,
+                      zIndex: 3,
+                      background: FOREST_THEME.stickyBg,
+                    }}
+                  >
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ width: 10, height: 10, borderRadius: "50%", background: c.color, flexShrink: 0 }} />
                       <div>
@@ -176,6 +214,8 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
                     const hasG = src.gaichuhi != null;
                     const hasR = src.rieki != null;
                     const isNeg = hasR && src.rieki! < 0;
+                    // T-F9 D10: 進行期 + zantei フラグの両方が true のとき灰色化
+                    const isZantei = isSK && sk?.zantei === true;
                     const barU = hasU ? Math.round(Math.sqrt(Math.max(0, src.uriage!) / maxVal) * 40) : 0;
                     const barG = hasG ? Math.round(Math.sqrt(Math.max(0, src.gaichuhi!) / maxVal) * 40) : 0;
                     const barR = hasR ? Math.round(Math.sqrt(Math.abs(src.rieki!) / maxVal) * 40) : 0;
@@ -210,11 +250,18 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
                         }}
                       >
                         <div
+                          className={isSK ? "shinkou-animate" : undefined}
                           style={{
-                            background: isSK ? "rgba(184,134,11,0.06)" : "rgba(27,67,50,0.03)",
+                            // T-F9 D4: 進行期セルは v9 と同じ柔らかい黄土系にし、
+                            // className 'shinkou-animate' で globals.css の glow を適用
+                            background: isSK
+                              ? "rgba(255, 248, 230, 0.4)"
+                              : "rgba(27,67,50,0.03)",
                             borderRadius: 10,
                             padding: "8px 10px",
-                            border: isSK ? "1px solid rgba(184,134,11,0.2)" : "1px solid transparent",
+                            border: isSK
+                              ? "2px solid rgba(218, 165, 32, 0.5)"
+                              : "1px solid transparent",
                             transition: "background 0.15s",
                           }}
                         >
@@ -239,31 +286,79 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
                             <div style={{ flex: 1, fontSize: 10, lineHeight: 1.8 }}>
                               <div>
                                 <span style={{ color: FOREST_THEME.textMuted }}>売上 </span>
-                                <span style={{ fontWeight: 600 }}>{hasU ? fmtYen(src.uriage!) : "―"}</span>
+                                {/* T-F9 D10: zantei (進行期かつ暫定) は灰色化 */}
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    color: isZantei ? "#999" : undefined,
+                                  }}
+                                >
+                                  {hasU ? fmtYen(src.uriage!) : "―"}
+                                </span>
                               </div>
                               <div>
                                 <span style={{ color: FOREST_THEME.textMuted }}>外注 </span>
-                                <span style={{ fontWeight: 600 }}>{hasG ? fmtYen(src.gaichuhi!) : "―"}</span>
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    color: isZantei ? "#999" : undefined,
+                                  }}
+                                >
+                                  {hasG ? fmtYen(src.gaichuhi!) : "―"}
+                                </span>
                               </div>
                               <div>
                                 <span style={{ color: FOREST_THEME.textMuted }}>利益 </span>
-                                <span style={{ fontWeight: 600, color: isNeg ? FOREST_THEME.negative : FOREST_THEME.positive }}>
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    color: isZantei
+                                      ? "#999"
+                                      : isNeg
+                                        ? FOREST_THEME.negative
+                                        : FOREST_THEME.positive,
+                                  }}
+                                >
                                   {hasR ? fmtYen(src.rieki!) : "―"}
                                 </span>
                               </div>
                             </div>
 
-                            {/* ミニバー */}
+                            {/* ミニバー: T-F9 D10 で zantei 時は opacity 0.35 */}
                             <div style={{ display: "flex", alignItems: "flex-end", gap: 2 }}>
-                              {hasU && <div style={{ width: 4, height: Math.max(barU, 2), background: C.midGreen, borderRadius: 2 }} />}
-                              {hasG && <div style={{ width: 4, height: Math.max(barG, 2), background: C.paleGreen, borderRadius: 2 }} />}
+                              {hasU && (
+                                <div
+                                  data-testid="microgrid-mini-bar"
+                                  style={{
+                                    width: 4,
+                                    height: Math.max(barU, 2),
+                                    background: C.midGreen,
+                                    borderRadius: 2,
+                                    opacity: isZantei ? 0.35 : 1,
+                                  }}
+                                />
+                              )}
+                              {hasG && (
+                                <div
+                                  data-testid="microgrid-mini-bar"
+                                  style={{
+                                    width: 4,
+                                    height: Math.max(barG, 2),
+                                    background: C.paleGreen,
+                                    borderRadius: 2,
+                                    opacity: isZantei ? 0.35 : 1,
+                                  }}
+                                />
+                              )}
                               {hasR && (
                                 <div
+                                  data-testid="microgrid-mini-bar"
                                   style={{
                                     width: 4,
                                     height: isNeg ? 5 : Math.max(barR, 2),
                                     background: isNeg ? C.red : C.accentGreen,
                                     borderRadius: 2,
+                                    opacity: isZantei ? 0.35 : 1,
                                   }}
                                 />
                               )}

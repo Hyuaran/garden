@@ -44,6 +44,10 @@ export const FOREST_THEME = {
   /** ヘッダーバーのグラデーション（グリーン系横グラデーション） */
   headerBar: `linear-gradient(90deg, ${C.darkGreen} 0%, ${C.midGreen} 100%)`,
 
+  /** sticky 列の背景色（横スクロール時に背後の内容を遮蔽するための不透明色）。
+   *  T-F9 D2 で MicroGrid 法人名列に使用。 */
+  stickyBg: "#f8f5ee",
+
   /** 進行期バッジの背景色（ゴールドダーク） */
   shinkouBadge: C.goldDark,
 
