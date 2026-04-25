@@ -126,6 +126,9 @@ export interface BudTransfer {
   expense_category_id: string | null;
   forest_account_id: string | null;
   duplicate_key: string | null; // GENERATED 列
+  // ===== A-03 で追加（bud-a03-status-history-migration.sql） =====
+  status_changed_at: string | null;
+  status_changed_by: string | null;
 }
 
 // ============================================================

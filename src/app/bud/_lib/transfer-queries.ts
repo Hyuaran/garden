@@ -122,6 +122,61 @@ export async function fetchTransferById(
   return data;
 }
 
+export interface BudTransferStatusHistoryRow {
+  id: string;
+  transfer_id: string;
+  from_status: string | null;
+  to_status: string;
+  changed_at: string;
+  changed_by: string;
+  changed_by_role: string;
+  reason: string | null;
+  created_at: string;
+}
+
+export async function fetchStatusHistory(
+  transferId: string,
+): Promise<BudTransferStatusHistoryRow[]> {
+  const { data, error } = await supabase
+    .from("bud_transfer_status_history")
+    .select(
+      "id, transfer_id, from_status, to_status, changed_at, changed_by, changed_by_role, reason, created_at",
+    )
+    .eq("transfer_id", transferId)
+    .order("changed_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`ステータス履歴取得に失敗: ${error.message}`);
+  }
+
+  return (data ?? []) as BudTransferStatusHistoryRow[];
+}
+
+export async function fetchRelatedTransfersByVendor(
+  vendorId: string,
+  excludeTransferId: string,
+  monthsBack: number = 12,
+): Promise<BudTransfer[]> {
+  const fromDate = new Date();
+  fromDate.setMonth(fromDate.getMonth() - monthsBack);
+  const fromIso = fromDate.toISOString().substring(0, 10);
+
+  const { data, error } = await supabase
+    .from("bud_transfers")
+    .select("*")
+    .eq("vendor_id", vendorId)
+    .neq("transfer_id", excludeTransferId)
+    .gte("scheduled_date", fromIso)
+    .order("scheduled_date", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    throw new Error(`関連振込取得に失敗: ${error.message}`);
+  }
+
+  return (data ?? []) as BudTransfer[];
+}
+
 /**
  * 重複判定キーで既存レコードを検索。
  * UI 側で「重複の可能性あり」警告を出すのに使用。

@@ -280,6 +280,71 @@ export type TransitionResult =
       code: TransitionErrorCode;
     };
 
+import type { BatchTransitionResult } from "./batch-transitions";
+import { validateBatchSize } from "./batch-transitions";
+
+export async function batchApproveTransfers(params: {
+  transferIds: string[];
+}): Promise<BatchTransitionResult> {
+  const sizeCheck = validateBatchSize(params.transferIds);
+  if (!sizeCheck.ok) {
+    return {
+      succeeded: [],
+      failed: params.transferIds.map((id) => ({
+        transferId: id,
+        error: sizeCheck.message,
+        code: "INVALID_TRANSITION" as const,
+      })),
+    };
+  }
+  const succeeded: string[] = [];
+  const failed: BatchTransitionResult["failed"] = [];
+  for (const id of params.transferIds) {
+    const r = await transitionTransferStatus({
+      transferId: id,
+      toStatus: "承認済み",
+    });
+    if (r.success) {
+      succeeded.push(id);
+    } else {
+      failed.push({ transferId: id, error: r.error, code: r.code });
+    }
+  }
+  return { succeeded, failed };
+}
+
+export async function batchRejectTransfers(params: {
+  transferIds: string[];
+  reason: string;
+}): Promise<BatchTransitionResult> {
+  const sizeCheck = validateBatchSize(params.transferIds);
+  if (!sizeCheck.ok) {
+    return {
+      succeeded: [],
+      failed: params.transferIds.map((id) => ({
+        transferId: id,
+        error: sizeCheck.message,
+        code: "INVALID_TRANSITION" as const,
+      })),
+    };
+  }
+  const succeeded: string[] = [];
+  const failed: BatchTransitionResult["failed"] = [];
+  for (const id of params.transferIds) {
+    const r = await transitionTransferStatus({
+      transferId: id,
+      toStatus: "差戻し",
+      reason: params.reason,
+    });
+    if (r.success) {
+      succeeded.push(id);
+    } else {
+      failed.push({ transferId: id, error: r.error, code: r.code });
+    }
+  }
+  return { succeeded, failed };
+}
+
 export async function transitionTransferStatus(
   params: TransitionParams,
 ): Promise<TransitionResult> {
