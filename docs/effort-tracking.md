@@ -1,27 +1,35 @@
 # Garden シリーズ 工数トラッキング
 
-> Phase / タスクごとの **見積 (estimated_days)** と **実績 (actual_days)** を蓄積する共有ログ。
+> Phase / タスクごとの **見積(d)** と **実績(d)** を蓄積する共有ログ。
 > 東海林アカウント A / B 両セッションで同じファイルに追記する。
+> Garden Bloom が進捗 UI 表示時にこのファイルを参照する想定。
 >
 > - 1 日 = 8 時間。動作確認・レビュー対応含む実稼働ベース
 > - Phase 着手時に見積行を追加、完了時に実績・差分・所感を記入
-> - 見積を後から書き換えない（乖離理由は `notes` に記録）
+> - 見積を後から書き換えない（乖離理由は `備考` に記録）
 > - 0.25d 刻みで記録。東海林さん手動作業（SQL 適用・ブラウザ確認・PR レビュー等）も実績に含める
 > - 根拠メモリ: `feedback_effort_tracking.md`
 
 ## 記録フォーマット
 
-| module | phase / task | estimated_days | actual_days | diff | session | started | finished | notes |
+| モジュール | フェーズ / タスク | 見積(d) | 実績(d) | 差分 | 担当セッション | 着手日 | 完了日 | 備考 |
 |---|---|---:|---:|---:|---|---|---|---|
 
 ## 履歴
 
-| module | phase / task | estimated_days | actual_days | diff | session | started | finished | notes |
+| モジュール | フェーズ / タスク | 見積(d) | 実績(d) | 差分 | 担当セッション | 着手日 | 完了日 | 備考 |
 |---|---|---:|---:|---:|---|---|---|---|
 | Forest | Phase A1: 進行期自動更新 Python スクリプト（PDF → Supabase） | 1.0 | 0.4 | -0.6 | a-forest (A) / b-main (B) | 2026-04-21 | 2026-04-22 | コード・ドキュメント完成、本番 UPDATE 疎通確認済み。4社分PDF で 4/4 件 UPDATE 成功。Task 7 のブラウザ目視確認と日報記録は東海林依頼で残。見積 1.0 d に対し AI 支援で 0.4 d で完了 |
 | Forest | Phase A2/A3: 進行期編集モーダル（PDF自動入力+手動編集+期切り替え） | 2.5 | 0.6 | -1.9 | b-main (B) | 2026-04-22 | 2026-04-23 | ShinkoukiEditModal + PdfUploader + /api/forest/parse-pdf + mutations + RLS パッチ。PDF 解析は pdfjs-dist サーバーサイド、Python 版と同値を確認。subagent-driven-development で Task 1-8 を haiku で実装、Dashboard 統合は inline。admin 動作確認 OK |
 | Forest | fix: ShinkoukiEditModal タブ切替時の高さジャンプ修正 | 0.05 | 0.03 | -0.02 | a-forest (A) | 2026-04-23 | 2026-04-23 | タブコンテンツを minHeight:560 のラッパーで固定。次ビルド/型チェック OK、PR #11 マージ済 (commit 46386c1) |
 | Forest | Phase A 仕上げ: v9 残機能移植 (T-F10/T-F2/T-F3/T-F4/T-F11/T-F7/T-F5 閲覧/T-F6/T-F9/T-F8) | 9.3 | | | a-forest (A) + a-auto | 2026-04-24 | | comparison §6 推奨順で消化。旧 9.8d から F5 アップロード UI (0.5d) を Phase B Storage 統合へ移行で除外し 9.3d に再計算。内訳: T-F10=0.95 / T-F2+F3=0.35 / T-F4+F11=2.2 / T-F7=0.25 / T-F5 閲覧=1.85 / T-F6 (Node ZIP)=2.85 / T-F9+F8=0.85 (a-auto 可)。判1-5 = A/B/B/B/B（暫定確定、次回対話で東海林さん正式同意取得予定）。F6 ZIP は Node ランタイム確定 (Edge 4.5MB 上限のため) |
+| Forest | T-F10 (P08 販管費 + reflected note) | 0.95 | 0.6 | -0.35 | a-forest (A) | 2026-04-25 | 2026-04-25 | Vitest 5 件導入 + 型 + queries + DetailModal セクション + reflected note。PR #33 merged。23 tests green。 |
+| Forest | T-F2-01 (ヘッダー最終更新日) + T-F3-F8 (MacroChart タイトル) | 0.55 | 0.35 | -0.2 | a-forest (A) | 2026-04-25 | 2026-04-25 | fmtDateJP / fetchLastUpdated / ForestShell 表示 + MacroChart タイトル v9 互換化。PR #43 merged。SummaryCards は動的計算維持（auto 判1）。MacroChart 高さ判3 は判断保留のため未変更。 |
+| Tree | fix: mapGardenRoleToTreeRole の outsource 漏れ + exhaustiveness | — | 0.15 | — | a-forest (A) | 2026-04-25 | 2026-04-25 | a-main 経由代行。GardenRole 8 値全網羅 + never チェック追加。outsource → MANAGER 暫定、東海林さん確認待ち。PR #48 merged。 |
+| Forest | T-F7-01 (共通 InfoTooltip) | 0.25 | 0.2 | -0.05 | a-forest (A) | 2026-04-25 | 2026-04-25 | hover/focus/Esc 完備、a11y (role=tooltip, aria-describedby/expanded) 完備。Forest 規約に従いインライン style 採用。15 tests green。PR #49 (Vercel pass、レビュー待ち)。 |
+| Forest | T-F4-02 (Tax Calendar) + T-F11-01 (Tax Detail Modal) | 1.5 | 1.0 | -0.5 | a-forest (A) | 2026-04-25 | 2026-04-25 | Phase 1-4 で types + queries + tax-calendar.ts + TaxPill + TaxDetailModal + TaxCalendar + 統合。64 tests green、累計 157/157。インライン style 規約遵守。判3 高さは判断保留扱い。self-review で overflow-x ラッパー追加 (PR #50 commit f5ff69d)。Vercel pass、レビュー待ち。 |
+| Forest | T-F9-01 (MicroGrid 差分監査) + T-F8-01 (MacroChart 差分検証) | 0.85 | 0.25 | -0.6 | a-forest (A) | 2026-04-25 | 2026-04-25 | 自律実行モード稼働分。spec の 10 点差分主張を全コード照合で検証、12 + 1 (高さ判3) 項目検証で T-F8 はほぼ準拠確認。実装は spec §13 推奨フロー（東海林さん採否合意先行）に従い未着手、audit verification ドキュメントのみ作成 (`docs/forest-audit-t-f9-t-f8-verification-202604251700.md`)。実装時 D2/D4/D8/D10 採用で TDD 込み 0.65d 見込み。 |
+| Forest | F4 反映: MacroChart 高さ 320 → 360 (v9 互換) | 0.05 | 0.05 | 0 | a-forest (A) | 2026-04-25 | 2026-04-25 | T-F3-F8 §12 判3 の判断保留を東海林さん「360 に変更」回答で解消。1 行修正 + 検証テスト 1 件追加。94/94 tests + build OK。PR #59 mini PR 発行（レビュー: a-bloom）。 |
 | Bloom | Phase A-1 Day 1: 基盤（認証・ナビ・レイアウト） | 0.5 | | | a-bloom (A) | 2026-04-25 | | Phase A-1 先行記入（§12）。Forest 認証流用 |
 | Bloom | Phase A-1 Day 1: Supabase migration（bloom_* 8テーブル） | 0.5 | | | a-bloom (A) | 2026-04-25 | | 設計書 §1 SQL。garden-dev Dashboard 手動適用 |
 | Bloom | Phase A-1 Day 2: Workboard 画面（個人可視化） | 0.5 | | | a-bloom (A) | | | ステータス・本日予定・進行中PJ・今週実績・次マイルストーン |
@@ -35,6 +43,7 @@
 | Root | Phase 2: 他アプリからの参照ルール整備 | 0.5 | — | — | a-root (A) | 2026-04-23 | | Bud/Leaf 未実装のため「Root 側で提供する API 契約書・共有クエリヘルパー・RLS 前提条件ドキュメント」に絞る方針。**2026-04-24 a-main 判断：Phase 2 は保留。Bud/Leaf 連携開始時に精緻化する。** |
 | Root | Phase A-1: 7マスタ UI 一括仕上げ（validators / FileMaker風UX / 全マスタ適用） | 3.5 | 1.0 | -2.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 当初 T1〜T7 を個別 0.5d×7 の予定だったが、Phase 1 時点で CRUD UI は既に実装済と判明。スコープを「既存実装の仕上げ」に読み替え圧縮。validators.ts / useMasterShortcuts / FormField(error)/ Modal(onSubmit)/ DataTable(activeIndex) を追加し 7 マスタに適用。PR #14。§16 7種テストは東海林さん別途実施予定。 |
 | Root | Phase A-2: KoT API 連携（月次勤怠 API 直接取込） | 1.0 | 0.5 | -0.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 案A（CSV手動）→案C（API直行）へ切替。KoT v1.0 /employees + /monthly-workings を Server Action で取得→ employeeKey→code→employee_number→employee_id 解決→ root_attendance に upsert。疎通は IP 制限設定で一度失敗→解消後 200 OK・42名取得確認。/monthly-workings の date は YYYY-MM 形式（YYYY-MM-DD は 400）と実機で判明、修正反映済。PR #15。本番 Vercel IP 対応は別タスク。 |
+| Root | Phase 品質向上: テスト拡充 + known-pitfalls 追加（限定 auto モード） | 0.5 | 0.4 | -0.1 | a-root-002 (A) | 2026-04-25 | 2026-04-25 | T1〜T6 を subagent-driven-development で並列実装。validators 6マスタ + primitives + sanitize-payload + KoT API client + garden_role 8x8 マトリックス + known-pitfalls #4-#8 追加。Vitest 33→570 件 (+537) 全 pass。レビュー 1 巡 (4 Important fix) 後 PR 発行。動作変更なし、既存品質向上のみ。 |
 
 ## 運用メモ
 
@@ -72,5 +81,17 @@
   - Phase A-1: 既存 CRUD UI の仕上げ（バリデーション・UX・権限判定）
   - Phase A-2: KoT API 月次勤怠取込（IP 制限ハマり含めて 0.5 d で完走）
   - 教訓：既存実装の発掘を初手で徹底する / KoT API は IP 制限ありと明示されていなかった / `date` 形式は実機で判明（yyyy-MM 必須）
+
+- **Soil 基盤設計 (Batch 16)**: 2026-04-25、a-auto 004 が起草。Garden-Soil 基盤設計 8 件の spec（実装見積合計 ~5.25d）。
+  - #01 リスト本体スキーマ: ~0.5d 実装（253 万件級顧客マスタ、3 補助テーブル）
+  - #02 コール履歴スキーマ: ~1.0d（335 万件、月次パーティション + duration/misdial トリガ）
+  - #03 関電リスト Leaf 連携: ~0.5d（Kintone 74 フィールド振り分け、案件化フロー）
+  - #04 インポート戦略: ~1.0d（Kintone/FileMaker/CSV、staging + マージ提案）
+  - #05 インデックス・パフォーマンス: ~0.5d（253/335 万件で 1 秒以内目標、運用整備）
+  - #06 RLS 設計: ~0.5d（7 ロール、Materialized View 最適化、SECURITY DEFINER）
+  - #07 削除パターン: ~0.25d（横断 Cross History #04 準拠、コール履歴は永続保持）
+  - #08 参照 API 契約: ~1.0d（共有 helper / Server Action / RPC、N+1 防止）
+  - 実装見積合計: ~5.25d / 起草時間: 約 2.5h（a-auto 004）
+  - ブランチ: feature/soil-base-specs-batch16-auto
 
 - **本ファイルの起源**: 2026-04-22、ルール `feedback_effort_tracking.md` 遵守のため作成。以降の Phase では spec/plan 作成と同時に行追加すること。
