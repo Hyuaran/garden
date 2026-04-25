@@ -74,3 +74,15 @@
   - 教訓：既存実装の発掘を初手で徹底する / KoT API は IP 制限ありと明示されていなかった / `date` 形式は実機で判明（yyyy-MM 必須）
 
 - **本ファイルの起源**: 2026-04-22、ルール `feedback_effort_tracking.md` 遵守のため作成。以降の Phase では spec/plan 作成と同時に行追加すること。
+
+## Leaf A-1c 添付ファイル機能 v3 実装（自律実行モード）
+
+| module | phase / task | estimated_days | actual_days | diff | session | started | finished | notes |
+|---|---|---:|---:|---:|---|---|---|---|
+| Leaf | A-1c v3 spec/plan 起草（v1→v2→v3 改訂含む） | — | 1.5 | — | a-leaf (A) | 2026-04-22 | 2026-04-25 | spec 1637 行 / plan 4407 行。ブレスト Q3-Q8 + Section 1-3 + 業務レビュー 5 項目 OK。a-bloom 技術 §2🟢/§4🟢/§7🟡/§8🟢 |
+| Leaf | A-1c Phase 0: npm 承認 + install + Vitest 設定 | 0.3 | | | a-leaf (A) | 2026-04-25 | | 自律実行モード開始 17:00。10 パッケージ install 後 Vitest smoke test 通過まで |
+| Leaf | A-1c Phase D: 共通基盤（migration v3 / client / 型 / lib / Worker / mock） | 2.7 | | | a-leaf (A) | | | 14 task。history trigger + DL PW RPC + pgcrypto + root_settings 新設 を migration に集約 |
+| Leaf | A-1c Phase A: Backoffice UI + Root DL PW 設定 UI | 2.3 | | | a-leaf (A) | | | 9 task。A.7 Root マイページ DL PW 設定 UI（v3 新規、bcryptjs + RPC、super_admin 限定）を含む |
+| Leaf | A-1c Phase B: Input UI（モバイル営業向け撮影 + upload） | 1.5 | | | a-leaf (A) | | | 3 task。CategoryPicker + MobileAttachmentUploader + page.tsx |
+| Leaf | A-1c Phase F: 仕上げ（手動 RLS 25 シナリオ + 7 種テスト + handoff） | 0.2 | | | a-leaf (A) | | | F.1-F.5。手動 RLS は東海林さん帰宅後実施 |
+
