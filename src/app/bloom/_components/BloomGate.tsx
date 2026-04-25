@@ -3,37 +3,46 @@
 /**
  * Bloom ログインゲート
  *
- * §10.3 判5: 当面は Bloom 独自ログイン画面を作らず、`/forest/login` へリダイレクトする。
- *   Forest 認証成功後に同じ Supabase Auth セッションで Bloom に戻る想定。
- *
- * 将来 Bloom 固有ブランディングが必要になったら、本ファイルを Forest の ForestGate
- * 相当（社員番号 + パスワードフォーム）に差し替える。signInBloom() は実装済。
- *
  * 動作:
- *   - loading 中      : スピナー
- *   - 未認証 or 未ロック : /forest/login?returnTo=... へリダイレクト
+ *   - /bloom/login : children をそのまま描画（ゲート自体を bypass、ログインフォームを表示）
+ *   - loading 中    : スピナー
+ *   - 未認証 or 未ロック : `/bloom/login?returnTo=<current>` へリダイレクト
  *   - 認証 + ロック解除 : children をそのまま描画
+ *
+ * 設計判断履歴:
+ *   §10.3 判5 当初は /forest/login へのリダイレクト方針だったが、2026-04-26 の
+ *   動作確認で「/bloom 開きたいのに Forest しか開けない」問題（returnTo 無視 + 独立画面欠如）
+ *   が判明。a-main 緊急対応として **Bloom 独立ログイン画面** に方針変更。
  */
 
+import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 import { BLOOM_PATHS } from "../_constants/routes";
 import { useBloomState } from "../_state/BloomStateContext";
 
 export function BloomGate({ children }: { children: ReactNode }) {
+  const pathname = usePathname() || "";
   const { loading, isAuthenticated, hasPermission, isUnlocked } = useBloomState();
 
   const allowed = isAuthenticated && hasPermission && isUnlocked;
+  const onLoginPage = pathname === BLOOM_PATHS.LOGIN;
 
   useEffect(() => {
-    if (loading || allowed) return;
+    if (loading || allowed || onLoginPage) return;
+    // 未認証 → /bloom/login にリダイレクト（returnTo 付き）
     const current =
       typeof window !== "undefined"
         ? window.location.pathname + window.location.search
         : BLOOM_PATHS.HOME;
     const returnTo = encodeURIComponent(current);
-    window.location.replace(`${BLOOM_PATHS.FOREST_LOGIN}?returnTo=${returnTo}`);
-  }, [loading, allowed]);
+    window.location.replace(`${BLOOM_PATHS.LOGIN}?returnTo=${returnTo}`);
+  }, [loading, allowed, onLoginPage]);
+
+  // ログインページは認証不要で children を描画（/bloom/login 用）
+  if (onLoginPage) {
+    return <>{children}</>;
+  }
 
   if (allowed) {
     return <>{children}</>;
@@ -41,6 +50,8 @@ export function BloomGate({ children }: { children: ReactNode }) {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       style={{
         minHeight: "100vh",
         display: "flex",

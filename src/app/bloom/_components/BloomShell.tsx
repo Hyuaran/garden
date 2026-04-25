@@ -26,6 +26,12 @@ export function BloomShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "";
   const { bloomUser, userEmail, lockAndLogout } = useBloomState();
 
+  // ログインページではシェル（ヘッダ + ナビ）を表示しない（Forest と同パターン）
+  const isLoginPage = pathname === BLOOM_PATHS.LOGIN;
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
   return (
     <div
       style={{
