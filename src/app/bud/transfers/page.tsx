@@ -18,6 +18,10 @@ import {
   batchRejectTransfers,
 } from "../_lib/transfer-mutations";
 import { summarizeBatchResult } from "../_lib/batch-transitions";
+import {
+  notifyBatchApproved,
+  notifyBatchRejected,
+} from "../_actions/chatwork-notify";
 import { StatusBadge } from "./_components/StatusBadge";
 import { FilterBar } from "./_components/FilterBar";
 import { MonthlySummary } from "./_components/MonthlySummary";
@@ -128,15 +132,22 @@ function TransfersContent() {
     try {
       const r = await batchApproveTransfers({ transferIds: ids });
       setBatchMessage(summarizeBatchResult(r));
+      if (r.succeeded.length > 0) {
+        void notifyBatchApproved({
+          transferIds: r.succeeded,
+          toStatus: "承認済み",
+          actorName: sessionUser?.name ?? null,
+        }).catch(() => {});
+      }
       clearSelection();
       setReloadKey((n) => n + 1);
     } finally {
       setBatchSubmitting(false);
     }
-  }, [selectedIds, clearSelection]);
+  }, [selectedIds, clearSelection, sessionUser]);
 
   const handleBatchReject = useCallback(
-    async (reason: string) => {
+    async (reason: string, notifyChatwork: boolean) => {
       const ids = Array.from(selectedIds);
       if (ids.length === 0) return;
       setBatchSubmitting(true);
@@ -145,13 +156,21 @@ function TransfersContent() {
       try {
         const r = await batchRejectTransfers({ transferIds: ids, reason });
         setBatchMessage(summarizeBatchResult(r));
+        if (notifyChatwork && r.succeeded.length > 0) {
+          void notifyBatchRejected({
+            transferIds: r.succeeded,
+            toStatus: "差戻し",
+            reason,
+            actorName: sessionUser?.name ?? null,
+          }).catch(() => {});
+        }
         clearSelection();
         setReloadKey((n) => n + 1);
       } finally {
         setBatchSubmitting(false);
       }
     },
-    [selectedIds, clearSelection],
+    [selectedIds, clearSelection, sessionUser],
   );
 
   if (!sessionUser) return null;
@@ -347,8 +366,8 @@ function TransfersContent() {
         transferIds={Array.from(selectedIds)}
         onCancel={() => setRejectOpen(false)}
         submitting={batchSubmitting}
-        onConfirm={(reason) => {
-          void handleBatchReject(reason);
+        onConfirm={(reason, notifyChatwork) => {
+          void handleBatchReject(reason, notifyChatwork);
         }}
       />
     </div>

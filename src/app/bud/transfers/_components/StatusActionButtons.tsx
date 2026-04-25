@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { useBudState } from "../../_state/BudStateContext";
 import { transitionTransferStatus } from "../../_lib/transfer-mutations";
 import type { BudTransfer } from "../../_constants/types";
+import {
+  notifyTransferApproved,
+  notifyTransferRejected,
+} from "../../_actions/chatwork-notify";
 import { RejectModal } from "./RejectModal";
 
 interface Props {
@@ -35,6 +39,7 @@ export function StatusActionButtons({
   const transition = async (
     toStatus: Parameters<typeof transitionTransferStatus>[0]["toStatus"],
     reason?: string,
+    notifyChatwork: boolean = false,
   ) => {
     setSubmitting(true);
     setError(null);
@@ -48,6 +53,30 @@ export function StatusActionButtons({
         setError(`${result.code}: ${result.error}`);
         return;
       }
+
+      // Chatwork 通知（best-effort、失敗してもメイン処理は止めない）
+      if (toStatus === "承認済み") {
+        void notifyTransferApproved({
+          transferId: transfer.transfer_id,
+          payeeName: transfer.payee_name,
+          amount: transfer.amount,
+          fromStatus: transfer.status,
+          toStatus,
+          actorName: sessionUser?.name ?? null,
+        }).catch(() => {});
+      }
+      if (toStatus === "差戻し" && notifyChatwork) {
+        void notifyTransferRejected({
+          transferId: transfer.transfer_id,
+          payeeName: transfer.payee_name,
+          amount: transfer.amount,
+          fromStatus: transfer.status,
+          toStatus,
+          reason: reason ?? null,
+          actorName: sessionUser?.name ?? null,
+        }).catch(() => {});
+      }
+
       onTransitioned();
     } finally {
       setSubmitting(false);
@@ -219,9 +248,9 @@ export function StatusActionButtons({
         transferIds={[transfer.transfer_id]}
         onCancel={() => setRejectOpen(false)}
         submitting={submitting}
-        onConfirm={async (reason) => {
+        onConfirm={async (reason, notifyChatwork) => {
           setRejectOpen(false);
-          await transition("差戻し", reason);
+          await transition("差戻し", reason, notifyChatwork);
         }}
       />
     </div>
