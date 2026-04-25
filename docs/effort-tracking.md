@@ -44,6 +44,14 @@
 | Root | Phase A-1: 7マスタ UI 一括仕上げ（validators / FileMaker風UX / 全マスタ適用） | 3.5 | 1.0 | -2.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 当初 T1〜T7 を個別 0.5d×7 の予定だったが、Phase 1 時点で CRUD UI は既に実装済と判明。スコープを「既存実装の仕上げ」に読み替え圧縮。validators.ts / useMasterShortcuts / FormField(error)/ Modal(onSubmit)/ DataTable(activeIndex) を追加し 7 マスタに適用。PR #14。§16 7種テストは東海林さん別途実施予定。 |
 | Root | Phase A-2: KoT API 連携（月次勤怠 API 直接取込） | 1.0 | 0.5 | -0.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 案A（CSV手動）→案C（API直行）へ切替。KoT v1.0 /employees + /monthly-workings を Server Action で取得→ employeeKey→code→employee_number→employee_id 解決→ root_attendance に upsert。疎通は IP 制限設定で一度失敗→解消後 200 OK・42名取得確認。/monthly-workings の date は YYYY-MM 形式（YYYY-MM-DD は 400）と実機で判明、修正反映済。PR #15。本番 Vercel IP 対応は別タスク。 |
 | Root | Phase 品質向上: テスト拡充 + known-pitfalls 追加（限定 auto モード） | 0.5 | 0.4 | -0.1 | a-root-002 (A) | 2026-04-25 | 2026-04-25 | T1〜T6 を subagent-driven-development で並列実装。validators 6マスタ + primitives + sanitize-payload + KoT API client + garden_role 8x8 マトリックス + known-pitfalls #4-#8 追加。Vitest 33→570 件 (+537) 全 pass。レビュー 1 巡 (4 Important fix) 後 PR 発行。動作変更なし、既存品質向上のみ。 |
+| Bud | Phase D-01: 勤怠取込スキーマ（給与計算インプット） | 0.75 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。bud_payroll_periods + _snapshots + _overrides。Root A-3-d / A-3-h 連携前提。判保留 6 件（期間開始日・法人別差・承認権限・100h 超扱い・有給残・祝日扱い）。 |
+| Bud | Phase D-02: 給与計算ロジック（月額表 / kou_otsu / dependents_count 反映） | 1.5 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。bud_salary_records + 個別手当・控除 + 月額表（甲乙）+ 住民税。判保留 6 件。法令: 労基法 24/37/109、所得税法。単体テスト 100+ ケース予定。 |
+| Bud | Phase D-03: 賞与計算（標準賞与額上限 + 算出率表） | 0.75 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。bud_bonus_records + 賞与算出率表。健保 573 万 / 厚年 150 万上限。介護保険年齢判定。前月給与 0 円特例（6 ヶ月按分）。 |
+| Bud | Phase D-04: 給与明細配信（PDF 生成 + 案 D 準拠） | 1.0 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。@react-pdf/renderer、Storage RLS、署名 URL 不流通、Garden ログイン誘導。SHA256 改ざん検知。労基法 24・電子帳簿保存法準拠。 |
+| Bud | Phase D-05: 社保計算（健保 / 厚年 / 介護 / 雇用 + 月変 / 算定基礎） | 1.0 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。等級表（健保 50 / 厚年 32）+ 都道府県別料率 + 月変判定 + 産休・育休免除。法令: 健保法 40/158、厚年法 21/24-4。 |
+| Bud | Phase D-06: 年末調整連携（Phase C 連動 + マイナンバー暗号化） | 0.75 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。bud_year_end_settlements + root_employees_pii（pgcrypto）。12 月給与で精算。所得税法 190/226、マイナンバー法 27-29 準拠。 |
+| Bud | Phase D-07: 銀行振込連携（A-04 連携 + 全銀協 FB データ） | 1.0 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。bud_payroll_transfer_batches + _items。30 件閾値で個別 / FB 切替。Shift_JIS + 半角カナ。月末 25 日銀行休業日対応。労基法 24。 |
+| Bud | Phase D-08: テスト戦略（Phase A 282 tests 流儀踏襲） | 0.5 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。fixture 50+ + 単体 280+ + 統合 + E2E + 法令テスト。計算系（D-02/03/05）行カバレッジ 100% 強制。CI 統合。 |
 
 ## 運用メモ
 
