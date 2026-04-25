@@ -108,5 +108,16 @@ export async function changeBirthdayWithPassword(
     });
   if (signInError) return fail("WRONG_PASSWORD");
 
+  const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data: rateRow, error: rateError } = await admin
+    .from("root_audit_log")
+    .select("audit_id")
+    .eq("actor_user_id", userData.user.id)
+    .eq("action", "password_change")
+    .gte("created_at", tenMinAgo)
+    .maybeSingle();
+  if (rateError) return fail("UNKNOWN");
+  if (rateRow) return fail("RATE_LIMITED");
+
   return fail("UNKNOWN");
 }

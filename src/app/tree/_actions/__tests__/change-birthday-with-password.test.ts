@@ -201,3 +201,54 @@ describe("changeBirthdayWithPassword - WRONG_PASSWORD", () => {
     if (!result.success) expect(result.errorCode).toBe("WRONG_PASSWORD");
   });
 });
+
+describe("changeBirthdayWithPassword - RATE_LIMITED", () => {
+  function setupSuccessUntilRateCheck() {
+    const anon = buildAnonClient();
+    anon.auth.getUser.mockResolvedValue({
+      data: { user: { id: "user-123", email: "emp1324@garden.internal" } },
+      error: null,
+    });
+    const verifyClient = buildAnonClient();
+    verifyClient.auth.signInWithPassword.mockResolvedValue({
+      data: { user: { id: "user-123" }, session: { access_token: "x" } },
+      error: null,
+    });
+    let calls = 0;
+    mockedCreateClient.mockImplementation(() => {
+      calls += 1;
+      return (calls === 1 ? anon : verifyClient) as never;
+    });
+    return { anon, verifyClient };
+  }
+
+  it("直近 10 分以内に password_change 履歴があれば RATE_LIMITED", async () => {
+    setupSuccessUntilRateCheck();
+    const admin = buildAdminClient();
+    const employeesFrom = buildFrom();
+    employeesFrom.maybeSingle.mockResolvedValue({
+      data: { birthday: "1990-05-07", employee_number: "1324" },
+      error: null,
+    });
+    const auditFrom = buildFrom();
+    auditFrom.maybeSingle.mockResolvedValue({
+      data: { audit_id: 999 },
+      error: null,
+    });
+    admin.from.mockImplementation((table: string) => {
+      if (table === "root_employees") return employeesFrom;
+      if (table === "root_audit_log") return auditFrom;
+      return buildFrom();
+    });
+    mockedGetSupabaseAdmin.mockReturnValue(admin as never);
+
+    const result = await changeBirthdayWithPassword({
+      newBirthday: "1985-12-03",
+      currentPassword: "0507",
+      accessToken: "ok-token",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.errorCode).toBe("RATE_LIMITED");
+  });
+});
