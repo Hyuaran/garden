@@ -1,19 +1,24 @@
 /**
- * Garden Root — KoT 日次勤怠 Cron Route（Phase A-3-c）
+ * Garden Root — KoT 日次勤怠 Cron Route（Phase A-3-c / A-3-d）
  *
- * スケジュール想定: `0 18 * * *`（UTC / JST 03:00）
- *   - 前日分の /daily-workings を取込（実装は A-3-d）
- *   - 現時点（A-3-c）では実装未完のため 501 Not Implemented を返す
+ * スケジュール想定: `0 18 * * *`（UTC 18:00 = JST 03:00）
+ *   - 前日（JST）分の `/daily-workings` を取込
+ *   - A-3-c で 501 スタブ配備、A-3-d で `runDailySyncFull` 実装に差替
  *
  * 認証: `Authorization: Bearer ${CRON_SECRET}`
  *
- * A-3-d 完了後に `runDailySyncFull(targetDate)` を呼ぶ形に差し替える。
- * A-3-c の本 PR では Cron の配線・認証・orphaned cleanup までを提供する。
+ * 前提:
+ *   - KoT API IP 制限（Issue #30）が Fixie で解消されるまで、Vercel 本番
+ *     環境では KoT fetch が 403 になる。失敗ケースは `root_kot_sync_log`
+ *     に failure 行として記録されるので可観測性は保たれる。
  */
 
 import { NextResponse } from "next/server";
 import { verifyCronRequest } from "@/lib/cron-auth";
-import { runOrphanedRunningCleanup } from "@/app/root/_lib/kot-sync-server";
+import {
+  runDailySyncFull,
+  runOrphanedRunningCleanup,
+} from "@/app/root/_lib/kot-sync-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,18 +43,25 @@ export async function GET(req: Request) {
   const now = new Date();
   const targetDate = previousDayJst(now);
 
-  // orphaned cleanup だけは走らせる（running 残留解消）
+  // Step 1: orphaned running cleanup（30 分超の stale running を failure 化）
   const cleanup = await runOrphanedRunningCleanup(30);
 
-  // A-3-d 未実装のためスキップして 501 を返す
+  // Step 2: 前日分の /daily-workings 取込
+  const result = await runDailySyncFull(targetDate, "cron");
+
   return NextResponse.json(
     {
-      ok: false,
-      not_implemented: true,
-      reason: "daily sync is pending A-3-d (/daily-workings 取込)",
-      target_date: targetDate,
+      ok: result.ok,
+      target_date: result.target_date,
+      log_id: result.log_id,
+      records_fetched: result.records_fetched,
+      records_inserted: result.records_inserted,
+      records_skipped: result.records_skipped,
+      upsert_errors: result.upsert_errors,
+      error_code: result.error_code ?? null,
+      error_message: result.error_message ?? null,
       cleanup,
     },
-    { status: 501 },
+    { status: result.ok ? 200 : 500 },
   );
 }

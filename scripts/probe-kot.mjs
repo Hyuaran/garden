@@ -82,6 +82,13 @@ try {
   const d = new Date();
   const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   await probe(`/monthly-workings/${ym}`, `monthly-workings-${ym}`);
+
+  // Phase A-3-d: /daily-workings probe（実機フィールド名確認用）
+  // YYYY-MM-DD 形式で前日を指定。レスポンス shape から実フィールド名を採取し、
+  // `src/app/root/_types/kot.ts` の KotDailyWorking 型の推定値との差分を確認する。
+  const yesterday = new Date(d.getTime() - 24 * 60 * 60 * 1000);
+  const ymd = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  await probe(`/daily-workings/${ymd}`, `daily-workings-${ymd}`);
 } catch (e) {
   console.error("FATAL:", e.message);
   process.exit(1);
