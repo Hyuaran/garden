@@ -52,6 +52,18 @@
 | Root | Phase B-5 実装: 認証セキュリティ強化（パス再発行 / 2FA / セッション / brute force） | 2.5 | | | a-root (A) | | | spec: docs/specs/2026-04-25-root-phase-b-05-auth-security.md。Supabase Auth MFA + root_login_attempts + zxcvbn パスワード強度 + admin force reset。共用 PC（Tree 端末）運用は判断保留。 |
 | Root | Phase B-6 実装: 通知基盤（Chatwork / Email 統合 + 購読 DB 駆動化） | 2.5 | | | a-root (A) | | | spec: docs/specs/2026-04-25-root-phase-b-06-notification-platform.md。3 段階 (B-6.1 Chatwork のみ → B-6.2 購読 DB → B-6.3 Email 統合)。Bloom 既存 Chatwork 基盤の Root 移管含む。 |
 | Root | Phase B-7 実装: 移行ツール（Kintone / FileMaker 取り込みヘルパー） | 4.0 | | | a-root (A) | | | spec: docs/specs/2026-04-25-root-phase-b-07-migration-tools.md。5 段階 (B-7.1 基盤 → B-7.2 Kintone → B-7.3 FileMaker → B-7.4 関電業務委託 Leaf 連携 → B-7.5 営業リスト Soil 大量取込)。最重量 Phase。 |
+| Tree | Phase D plan v3 起草（6 spec 統合・実装プラン） | 0.5 | 0.4 | -0.1 | a-tree (A) | 2026-04-25 | 2026-04-25 | docs/superpowers/plans/2026-04-25-tree-phase-d-implementation.md（1832 行・70 タスク）。6 並列 subagent で D-01〜D-06 spec digest 取得 → 統合プラン起草 → self-review。Tree 特例 §17 5段階展開・§16 7種テスト・known-pitfalls 5 件反映・判断保留 38 件集約。実装着手は a-main 判断後。 |
+| Tree | Phase D-01 schema migrations | 0.7 | | | a-tree (A) | (pending) | | spec-tree-phase-d-01 準拠、12 タスク。Soil link 列 + 7 migration + 2 VIEW + audit。 |
+| Tree | Phase D-06 test scaffolding | 0.25 | | | a-tree (A) | (pending) | | Vitest config 分離、85%/75% 閾値、real-DB セットアップ。D-02 着手前に必須。 |
+| Tree | Phase D-02 operator UI | 1.125 | | | a-tree (A) | (pending) | | spec-tree-phase-d-02 準拠、13 タスク。FM 互換 + offline + rollback。 |
+| Tree | Phase D-04 tossup flow | 0.875 | | | a-tree (A) | (pending) | | spec-tree-phase-d-04 準拠、7 タスク。Tree → Leaf 1 トランザクション + 整合性 Cron。 |
+| Tree | Phase D-03 manager UI | 1.0 | | | a-tree (A) | (pending) | | spec-tree-phase-d-03 準拠、8 タスク。30s polling + Chatwork 介入。 |
+| Tree | Phase D-05 KPI dashboard | 0.94 | | | a-tree (A) | (pending) | | spec-tree-phase-d-05 準拠、9 タスク。MV 3 本 + Recharts + CSV/Excel。 |
+| Tree | Phase D-06 E2E + 受入 | 1.0 | | | a-tree (A) | (pending) | | spec-tree-phase-d-06 準拠、8 タスク。Playwright 10 flow + axe + Lighthouse。 |
+| Tree | Phase D §16 7種テスト | 0.5 | | | a-tree (A) | (pending) | | 親CLAUDE.md §16 準拠、α 投入前に全完走必須。 |
+| Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
+| Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
+| Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
 
 ## 運用メモ
 
