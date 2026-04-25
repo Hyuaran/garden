@@ -252,3 +252,69 @@ describe("changeBirthdayWithPassword - RATE_LIMITED", () => {
     if (!result.success) expect(result.errorCode).toBe("RATE_LIMITED");
   });
 });
+
+describe("changeBirthdayWithPassword - 成功パス", () => {
+  it("birthday UPDATE → Auth password 更新 → audit log INSERT が順に成功すれば success: true", async () => {
+    const anon = buildAnonClient();
+    anon.auth.getUser.mockResolvedValue({
+      data: { user: { id: "user-123", email: "emp1324@garden.internal" } },
+      error: null,
+    });
+    const verifyClient = buildAnonClient();
+    verifyClient.auth.signInWithPassword.mockResolvedValue({
+      data: { user: { id: "user-123" }, session: { access_token: "x" } },
+      error: null,
+    });
+    let calls = 0;
+    mockedCreateClient.mockImplementation(() => {
+      calls += 1;
+      return (calls === 1 ? anon : verifyClient) as never;
+    });
+
+    const admin = buildAdminClient();
+
+    // root_employees: select で現 birthday、update で新 birthday
+    const employeesSelect = buildFrom();
+    employeesSelect.maybeSingle.mockResolvedValue({
+      data: { birthday: "1990-05-07", employee_number: "1324" },
+      error: null,
+    });
+    const employeesUpdate = buildFrom();
+    employeesUpdate.eq.mockResolvedValue({ error: null });
+
+    // root_audit_log: rate-limit 用 select は null、insert は成功
+    const auditSelect = buildFrom();
+    auditSelect.maybeSingle.mockResolvedValue({ data: null, error: null });
+    const auditInsert = buildFrom();
+    auditInsert.insert.mockResolvedValue({ error: null });
+
+    let employeesCalls = 0;
+    let auditCalls = 0;
+    admin.from.mockImplementation((table: string) => {
+      if (table === "root_employees") {
+        employeesCalls += 1;
+        return employeesCalls === 1 ? employeesSelect : employeesUpdate;
+      }
+      if (table === "root_audit_log") {
+        auditCalls += 1;
+        return auditCalls === 1 ? auditSelect : auditInsert;
+      }
+      return buildFrom();
+    });
+    admin.auth.admin.updateUserById.mockResolvedValue({ error: null });
+    mockedGetSupabaseAdmin.mockReturnValue(admin as never);
+
+    const result = await changeBirthdayWithPassword({
+      newBirthday: "1985-12-03",
+      currentPassword: "0507",
+      accessToken: "ok-token",
+    });
+
+    expect(result.success).toBe(true);
+    expect(admin.auth.admin.updateUserById).toHaveBeenCalledWith(
+      "user-123",
+      { password: "1203" },
+    );
+    expect(auditInsert.insert).toHaveBeenCalled();
+  });
+});

@@ -119,5 +119,52 @@ export async function changeBirthdayWithPassword(
   if (rateError) return fail("UNKNOWN");
   if (rateRow) return fail("RATE_LIMITED");
 
-  return fail("UNKNOWN");
+  const newMMDD = `${dateMatch[2]}${dateMatch[3]}`;
+
+  // ① root_employees.birthday を新値で UPDATE
+  const { error: birthdayUpdateError } = await admin
+    .from("root_employees")
+    .update({ birthday: input.newBirthday })
+    .eq("user_id", userData.user.id);
+  if (birthdayUpdateError) return fail("TRANSACTION_FAILED");
+
+  // ② Auth password を新 MMDD に更新
+  const { error: authUpdateError } = await admin.auth.admin.updateUserById(
+    userData.user.id,
+    { password: newMMDD },
+  );
+  if (authUpdateError) {
+    // 補償 UPDATE: birthday を旧値に戻す
+    const { error: rollbackError } = await admin
+      .from("root_employees")
+      .update({ birthday: employee.birthday })
+      .eq("user_id", userData.user.id);
+    if (rollbackError) {
+      console.error(
+        "[changeBirthdayWithPassword] rollback FAILED — birthday=newBirthday, password=oldMMDD のまま",
+        { userId: userData.user.id, attempted: input.newBirthday },
+      );
+    }
+    return fail("TRANSACTION_FAILED");
+  }
+
+  // ③ 監査ログ（best-effort、失敗しても success を返す）
+  const { error: auditInsertError } = await admin
+    .from("root_audit_log")
+    .insert({
+      actor_user_id: userData.user.id,
+      actor_emp_num: employee.employee_number,
+      action: "password_change",
+      target_type: "auth.users",
+      target_id: userData.user.id,
+      payload: { via: "mypage_birthday" },
+    });
+  if (auditInsertError) {
+    console.warn(
+      "[changeBirthdayWithPassword] audit log insert failed (non-fatal)",
+      { userId: userData.user.id, error: auditInsertError.message },
+    );
+  }
+
+  return { success: true };
 }
