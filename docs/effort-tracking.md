@@ -64,6 +64,10 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Cross | タスク C: 8-role 反映 spec 修正（cross-ui + Tree Phase D 2 ブランチ）| 0.25 | 0.15 | -0.1 | a-auto 015 (subagent C worktree) | 2026-04-26 | 2026-04-27 | 2 ブランチに分割（cross-ui-02/06 と tree-phase-d-01/06、base が異なるため）。outsource を staff/manager 間に挿入。スコープ外で 8-role 化が必要な 4 ファイル発見（soil/bud-phase-c/root-phase-b-06/soil-06、別タスク要）。 |
+| Cross | タスク D: cross-ui 矛盾解消 M-1/M-2/M-4 | 0.25 | 0.1 | -0.15 | a-auto 015 (subagent D worktree) | 2026-04-26 | 2026-04-27 | 監査（commit 0950c7b）の重大矛盾 4 件のうち 3 件解消（M-3 はタスク C 担当）。M-1: ヘッダー背景正本を UI-04 集約 / M-2: カスタム画像優先範囲をメニューバー限定 / M-4: Header 寸法 UI-01 §3.2.1/3.2.2 新設 + UI-05 §4.1 重複削除。3 spec / +67 -30 行。 |
+| Bloom | タスク E: bloom-ceo-status migration SQL（ShojiStatusWidget 用）| 0.1 | 0.05 | -0.05 | a-auto 015 (subagent E worktree) | 2026-04-26 | 2026-04-27 | 20260426000001_bloom_ceo_status.sql（85 行）。CREATE TABLE + 2 RLS POLICY + TRIGGER（updated_at 自動 / SECURITY INVOKER）+ super_admin 初期 seed。memory feedback_sql_inline_display 準拠で commit message に SQL 全文 inline 貼付。 |
+| Bloom | タスク F: ShojiStatusWidget regression test 20 ケース | 0.25 | 0.15 | -0.1 | a-auto 015 (subagent F worktree) | 2026-04-26 | 2026-04-27 | 4 ファイル / 597 行 / 20 ケース。route.test.ts (7) + ShojiStatusWidget.test.tsx (3) + CeoStatusEditor.test.tsx (3) + relativeTime.test.ts (7)。@testing-library/user-event 未導入のため CeoStatusEditor は fireEvent ベース（既存 kot-api.test.ts 流儀）。Bloom-002 実装後に import path 最終調整必要。 |
 
 ## 運用メモ
 
