@@ -42,9 +42,17 @@ export function ModuleSlot({ module: m, position }: Props) {
     zIndex: 2,
   };
 
+  // tooltip / aria-label 用ラベル: 「Tree（成長）」「Bud（成果）」等（NotebookLM 4 カテゴリ）
+  const accessibleLabel = `${m.label}（${m.category}）`;
+
   if (!m.enabled) {
     return (
-      <div style={wrapperStyle} aria-disabled="true" title="準備中">
+      <div
+        style={wrapperStyle}
+        aria-disabled="true"
+        aria-label={`${accessibleLabel} — 準備中`}
+        title={`${accessibleLabel} — 準備中`}
+      >
         <div
           style={{
             ...baseSlotStyle,
@@ -63,7 +71,12 @@ export function ModuleSlot({ module: m, position }: Props) {
   }
 
   return (
-    <Link href={m.href} style={wrapperStyle} title={m.label}>
+    <Link
+      href={m.href}
+      style={wrapperStyle}
+      aria-label={accessibleLabel}
+      title={accessibleLabel}
+    >
       <div
         style={{
           ...baseSlotStyle,

@@ -60,7 +60,7 @@ export function BackgroundLayer({
             style={{
               ...baseStyle,
               background: `rgba(0, 0, 0, ${overlayDark})`,
-              zIndex: 1,
+              // zIndex 0 のまま（BackgroundLayer scope 内で完結、BonsaiCenter zIndex 1 と衝突しない）
             }}
           />
         )}

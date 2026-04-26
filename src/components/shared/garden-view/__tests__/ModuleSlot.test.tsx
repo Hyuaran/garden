@@ -4,10 +4,10 @@ import { ModuleSlot } from "../ModuleSlot";
 import type { ModuleDef } from "../_lib/modules";
 
 const enabledModule: ModuleDef = {
-  emoji: "🌳", label: "Forest", href: "/forest", color: "#1F5C3A", enabled: true,
+  emoji: "🌳", label: "Forest", href: "/forest", color: "#1F5C3A", enabled: true, category: "環境",
 };
 const disabledModule: ModuleDef = {
-  emoji: "🌱", label: "Soil", href: "/soil", color: "#8B6F47", enabled: false,
+  emoji: "🌱", label: "Soil", href: "/soil", color: "#8B6F47", enabled: false, category: "基盤",
 };
 const pos = { x: 0, y: 0 };  // 中央基準（cross-ui-06 §3.4）
 
@@ -30,10 +30,12 @@ describe("ModuleSlot disabled", () => {
     render(<ModuleSlot module={disabledModule} position={pos} />);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
-  it("renders with aria-disabled and 準備中 title", () => {
+  it("renders with aria-disabled and category-aware 準備中 title", () => {
     const { container } = render(<ModuleSlot module={disabledModule} position={pos} />);
     const wrapper = container.querySelector('[aria-disabled="true"]');
     expect(wrapper).not.toBeNull();
-    expect(wrapper?.getAttribute("title")).toBe("準備中");
+    // title 例: 「Soil（基盤） — 準備中」
+    expect(wrapper?.getAttribute("title")).toMatch(/Soil.*基盤.*準備中/);
+    expect(wrapper?.getAttribute("aria-label")).toMatch(/Soil.*基盤.*準備中/);
   });
 });
