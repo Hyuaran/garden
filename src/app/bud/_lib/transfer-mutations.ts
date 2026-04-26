@@ -125,9 +125,22 @@ export async function createTransfer(
 }
 
 /**
- * ステータス遷移を実行。
- * - 遷移ルール（transfer-status.ts の canTransition）で事前チェック
- * - 差戻し・却下時は reason 必須
+ * @deprecated 2026-04-25 a-review 指摘 B3（二重実装）対応。
+ *
+ * 本関数は Phase 1b.1 時点の遷移実装で、以下の問題があるため
+ * 新規呼出は **transitionTransferStatus()** を使用すること。
+ *
+ * 1. 監査漏れ: 直接 UPDATE するため bud_transfer_status_history への INSERT がない
+ * 2. V6 自己承認禁止チェックなし（DB の RLS policy 4 で防御されるが TS 層で警告できない）
+ * 3. ロール非依存の canTransition のため super_admin 自起票スキップを判定できない
+ *
+ * 移行手順:
+ *   - 単件遷移: transitionTransferStatus({ transferId, toStatus, fromStatus, createdBy, actorUserId, reason })
+ *   - super_admin 自起票即承認: transitionTransferStatus({ ..., fromStatus: '下書き', toStatus: '承認済み' })
+ *   - 一括遷移: batchApproveTransfers / batchRejectTransfers
+ *
+ * 既存呼出箇所: 現時点で 0 件（src/ 内全文検索で確認済）。
+ * 互換性のため当面残置するが、将来の major upgrade で削除予定。
  */
 export async function updateTransferStatus(params: {
   transfer_id: string;
@@ -193,9 +206,19 @@ export async function updateTransferStatus(params: {
 }
 
 /**
+ * @deprecated 2026-04-25 a-review 指摘 B3（二重実装・監査漏れ）対応。
+ *
  * super_admin による自起票の即承認スキップ。
  * 下書き → 承認済み へ 1 ステップで遷移。
  * RLS の bud_transfers_update_self_approve_super_admin ポリシーで保護。
+ *
+ * **重大な問題**: 本関数は直接 UPDATE するため `bud_transfer_status_history` への
+ * INSERT が走らず、**super_admin の自起票即承認が監査ログに残らない**。
+ * 金融監査の要件として全ステータス遷移が history に記録される必要があるため、
+ * 新規呼出は `transitionTransferStatus({ transferId, toStatus: '承認済み', fromStatus: '下書き' })`
+ * を使用すること。RPC 経由なら自動で history INSERT + reason='自起票' 自動挿入が実行される。
+ *
+ * 既存呼出箇所: 現時点で 0 件（src/ 内全文検索で確認済）。
  */
 export async function selfApproveAsSuperAdmin(
   transferId: string,
