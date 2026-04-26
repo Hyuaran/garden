@@ -36,8 +36,8 @@ const baseSlotStyle = {
 export function ModuleSlot({ module: m, position }: Props) {
   const wrapperStyle = {
     position: "absolute" as const,
-    left: position.left,
-    top: position.top,
+    left: `${50 + position.x}%`,
+    top: `${50 + position.y}%`,
     transform: "translate(-50%, -50%)",
     zIndex: 2,
   };

@@ -39,8 +39,8 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   forest:   { emoji: "🌳", label: "Forest",   href: "/forest",          color: "#1F5C3A", enabled: true  },
   rill:     { emoji: "🌊", label: "Rill",     href: "/rill",            color: "#4FA8C9", enabled: false },
   fruit:    { emoji: "🍎", label: "Fruit",    href: "/fruit",           color: "#D4A340", enabled: false },
-  sprout:   { emoji: "🌿", label: "Sprout",   href: "/sprout",          color: "#A8E6CF", enabled: false },
-  calendar: { emoji: "📅", label: "Calendar", href: "/calendar",        color: "#A0AEC0", enabled: false },
+  sprout:   { emoji: "🌿", label: "Sprout",   href: "/sprout",          color: "#A8D87A", enabled: false },
+  calendar: { emoji: "📅", label: "Calendar", href: "/calendar",        color: "#9B86C9", enabled: false },
 };
 
 export const MODULE_KEYS: ModuleKey[] = [
