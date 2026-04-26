@@ -6,7 +6,7 @@
 - 担当セッション: a-tree
 - 作成: 2026-04-25（a-auto / Batch 9 Tree Phase D #01）
 - 前提:
-  - `root_employees` / `garden_role` 7 階層（Root 既設）
+  - `root_employees` / `garden_role` 8 階層（toss / closer / cs / staff / outsource / manager / admin / super_admin、Root 既設）
   - Soil `soil_call_lists` / `soil_call_histories`（営業リスト 253 万件 / コール履歴 335 万件、Phase C で拡張予定）
   - spec-cross-rls-audit（Batch 7）
   - spec-cross-audit-log（Batch 7）
