@@ -256,3 +256,157 @@ CREATE INDEX idx_baitoru_log_result ON sprout_baitoru_import_log(result);
 - [ ] 取込成功時に SMS or メール送信ジョブが enqueue される
 - [ ] API 経路は仕様判明後に追加 PR で対応（暫定 stub で OK）
 - [ ] 法令対応チェックリスト 5 項目レビュー済
+- [ ] §後述 Kintone 確定 #10 / #30 反映 DoD 全項目
+
+---
+
+## Kintone 確定反映: 決定 #10（App 44/45 取込タイミング）+ 決定 #30（LINK Storage 保存）
+
+> **改訂背景**: a-main 006 確定ログ（`C:\garden\_shared\decisions\decisions-kintone-batch-20260426-a-main-006.md`）#10 / #30 を反映。
+
+### 決定 #10: App 44 / App 45 取込タイミング確定
+
+#### 確定方針
+
+| イベント | 取込先 | タイミング |
+|---|---|---|
+| 応募者からの応募受信（バイトル / 自社サイト）| **App 44**（求人 応募者一覧）相当 = `sprout_applicants` | 応募時に**自動**INSERT |
+| 面接ヒアリングシート提出 | **App 45**（求人 面接ヒアリングシート）相当 = `sprout_interview_sheets` | ヒアリング送信時に**自動**INSERT |
+
+App 45 が詳細マスタ、App 44 は App 45 → 大量コピー（30+ フィールド）構造。Garden ではコピー不要 = JOIN 参照で代替。
+
+#### 取込ジョブ定義
+
+```typescript
+// 1. 応募時の自動 INSERT（バイトル取込 / フォーム送信から）
+async function onApplicationReceived(payload: ApplicationPayload) {
+  // 1a. sprout_applicants へ INSERT（決定 #8 6 タブ UI、current_tab='inbox'）
+  const applicant = await createApplicant({
+    ...payload,
+    current_tab: 'inbox',
+    status: 'active',
+    last_response_at: new Date().toISOString(),
+  });
+
+  // 1b. LINK 系の async copy job 発火（決定 #30）
+  await enqueueAttachmentCopyJob({ applicant_id: applicant.id });
+
+  // 1c. admin / 担当者へ Chatwork 通知
+  await notifyNewApplication(applicant);
+  return applicant;
+}
+
+// 2. 面接ヒアリングシート提出時の自動 INSERT
+async function onInterviewSheetSubmitted(applicantId: string, sheetData: SheetData) {
+  await createInterviewSheet({
+    applicant_id: applicantId,
+    ...sheetData,
+    sheet_status: 'submitted',
+    submitted_at: new Date().toISOString(),
+  });
+  // last_response_at 更新（決定 #9 7 日自動辞退カウンタリセット）
+  await updateApplicantResponseTime(applicantId);
+  // current_tab 自動遷移
+  await advanceApplicantTab(applicantId);
+}
+```
+
+#### dual-write 期間（Kintone 並行運用、Phase B-1 〜 Phase B-2）
+
+| Phase | Kintone | Garden Sprout | 動作 |
+|---|---|---|---|
+| Phase 1 | active（master）| dual-write 受信 | Garden は受け取るが master は Kintone |
+| Phase 2 | read-only | active（master）| Garden が master、Kintone は参照のみ |
+| Phase 3 | 解約 | sole master | Kintone 解約完了 |
+
+#### Kintone 取込ヒストリの追跡
+
+```sql
+ALTER TABLE sprout_applicants
+  ADD COLUMN kintone_app44_record_id text,
+  ADD COLUMN kintone_app44_synced_at timestamptz,
+  ADD COLUMN kintone_app45_record_id text,
+  ADD COLUMN kintone_app45_synced_at timestamptz;
+
+CREATE INDEX idx_sprout_applicants_kintone_app44
+  ON sprout_applicants (kintone_app44_record_id)
+  WHERE kintone_app44_record_id IS NOT NULL;
+```
+
+### 決定 #30: LINK 系 Storage 保存タイミング = 応募者登録時 async copy job
+
+#### 確定方針
+
+応募者が **履歴書 / 職務経歴書 / 写真等の LINK** を含む場合、**応募者登録時に async copy job** で Supabase Storage へコピー（同期コピーは応募体験を遅延させるため不採用）。
+
+#### スキーマは S-01 §14.4 で定義済
+
+`external_link_urls` / `storage_attachments` / `attachment_copy_status` / `attachment_copy_started_at` / `attachment_copy_completed_at` / `attachment_copy_error` 列を S-01 で追加。
+
+#### Cron 実装
+
+```typescript
+// /api/cron/sprout-attachment-copy (5 分粒度)
+export async function GET() {
+  const pending = await supabaseAdmin
+    .from('sprout_applicants')
+    .select('id, external_link_urls, attachment_copy_status, attachment_copy_started_at')
+    .in('attachment_copy_status', ['pending', 'failed'])
+    .order('applied_at', { ascending: true })
+    .limit(50);
+
+  for (const a of pending.data || []) {
+    // retry 制御: failed の場合は backoff（5/30/180 分）
+    if (a.attachment_copy_status === 'failed') {
+      const elapsed = Date.now() - new Date(a.attachment_copy_started_at).getTime();
+      if (elapsed < getBackoff(a)) continue;
+    }
+    await markCopyInProgress(a.id);
+    const results = await copyAttachments(a);
+    await markCopyComplete(a.id, results);
+  }
+  return Response.json({ ok: true, processed: pending.data?.length });
+}
+
+function getBackoff(applicant: any): number {
+  const retryCount = applicant.attachment_copy_retry_count || 0;
+  const minutes = [5, 30, 180][retryCount] ?? Infinity;
+  return minutes * 60 * 1000;
+}
+```
+
+#### copy 対象の URL 種別
+
+```typescript
+type ExternalLinkType =
+  | 'baitoru_resume'      // バイトル履歴書 PDF
+  | 'baitoru_cv'          // バイトル職務経歴書 PDF
+  | 'baitoru_photo'       // バイトル写真
+  | 'self_uploaded'       // フォーム経由アップロード（一時 URL）
+  | 'kintone_drive_link'; // Kintone 移行時の Google Drive リンク
+```
+
+#### dual-write 期間中の特例
+
+Phase 1 期間中、Kintone 側に既に保存済の Google Drive リンクは:
+
+- 即時コピーせず、**初回参照時に lazy copy**
+- 6 ヶ月で全件コピー完了 → Phase 2 移行可
+
+### 判断保留事項追加
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| K-1 | App 44 取込 dual-write 重複時の挙動 | source_record_id 一致で UPSERT、`kintone_app44_synced_at` で確認 |
+| K-2 | バイトル / 自社サイト同時応募の検知 | phone + email 一致で重複候補マーキング、admin レビュー |
+| K-3 | async copy 失敗時の admin 通知 | 4 回目 retry 失敗で Chatwork DM、`failed` 確定 |
+| K-4 | LINK URL の TTL 切れ | バイトル URL は 30 日有効と聞取済、Cron 5 分粒度で実施 |
+
+### DoD 追加
+
+- [ ] App 44 取込 = sprout_applicants 自動 INSERT が応募受信時に動作
+- [ ] App 45 取込 = sprout_interview_sheets 自動 INSERT が提出時に動作
+- [ ] kintone_app44_record_id / kintone_app45_record_id で dual-write 整合性検証
+- [ ] /api/cron/sprout-attachment-copy 5 分粒度稼働
+- [ ] copy retry 5/30/180 分 backoff 実装
+- [ ] Storage バケット `sprout-applicant-files` で適切な RLS 動作

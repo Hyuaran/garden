@@ -285,3 +285,195 @@ OCR 信頼度 < 0.85 は admin に手動確認を要求。
 - [ ] 入社初日チェックリストが正常に動作する
 - [ ] 監査ログが全段階で記録される
 - [ ] 法令対応チェックリスト 7 項目レビュー済
+- [ ] §後述 Kintone 確定 #4 Root 移管インターフェース DoD 全項目
+
+---
+
+## Kintone 確定反映: 決定 #4 配属・異動 採用前 Sprout / 採用後 Root
+
+> **改訂背景**: a-main 006 確定ログ #4 を反映。App 45 サブテーブル「配属・異動」運用 = **採用前 = Sprout / 採用後 = Root** の境界線を明確化。本セクションで **Sprout → Root 移管インターフェース** を定義。
+
+### 配属の境界線
+
+| 段階 | 配属管理者 | 関連列 / テーブル |
+|---|---|---|
+| 採用前（応募 〜 内定）| **Sprout** | sprout_applicants.preferred_* / tentative_assignment_* （S-01 §14.1）|
+| 入社初日（転記時）| Sprout → Root | 本セクションで定義 |
+| 採用後（在籍中の異動）| **Root** | root_employee_assignments（a-root 担当）|
+| 退職時 | Root | a-root 担当 |
+
+### 入社初日の Sprout → Root 移管フロー
+
+```
+[Sprout: pre_employment タブ完了]
+  ↓ admin が「入社確定」ボタン押下（または当日 0:00 自動 by S-01 §13.3 Cron）
+[Server Action] sprout-to-root migration
+  ↓ Trx 内で実行
+[1] sprout_applicants → root_employees 転記（既存仕様）
+[2] sprout_applicants.tentative_assignment_* → root_employee_assignments 転記
+[3] sprout_applicants.current_tab = 'archived' に遷移
+[4] sprout_applicants.status = 'employed'
+[5] root_employees.is_active = true
+  ↓
+[完了] Sprout 側は archived（履歴のみ）/ Root 側が master
+```
+
+### 移管 Server Action 詳細
+
+```typescript
+// src/lib/sprout/account-issuance.ts
+'use server';
+
+export async function migrateSproutToRoot(applicantId: string, options: {
+  scheduled_employment_date: string;
+  performed_by: string;  // admin の auth.uid()
+}): Promise<MigrationResult> {
+  return await supabase.rpc('sprout_to_root_migration', {
+    p_applicant_id: applicantId,
+    p_employment_date: options.scheduled_employment_date,
+    p_performed_by: options.performed_by,
+  });
+}
+```
+
+```sql
+-- DB 関数（SECURITY DEFINER、Trx 内で実行）
+CREATE OR REPLACE FUNCTION sprout_to_root_migration(
+  p_applicant_id uuid,
+  p_employment_date date,
+  p_performed_by uuid
+) RETURNS jsonb
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+  v_applicant sprout_applicants%ROWTYPE;
+  v_new_employee_id uuid;
+BEGIN
+  -- 権限確認
+  IF NOT current_garden_role() IN ('admin', 'super_admin') THEN
+    RAISE EXCEPTION 'Only admin can migrate Sprout to Root'
+      USING ERRCODE = '42501';
+  END IF;
+
+  -- 対象応募者取得
+  SELECT * INTO v_applicant FROM sprout_applicants WHERE id = p_applicant_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Applicant not found: %', p_applicant_id USING ERRCODE = '22023';
+  END IF;
+
+  -- pre_employment タブ完了チェック
+  IF v_applicant.current_tab != 'pre_employment' THEN
+    RAISE EXCEPTION 'Applicant not in pre_employment tab: current=%', v_applicant.current_tab
+      USING ERRCODE = '22023';
+  END IF;
+
+  -- 1. root_employees へ転記
+  INSERT INTO root_employees (
+    name_kanji, name_kana, birthdate, gender,
+    email, phone_primary,
+    employment_type, hire_date,
+    is_active, source_module, source_record_id
+  ) VALUES (
+    v_applicant.name_kanji, v_applicant.name_kana, v_applicant.birthdate, v_applicant.gender,
+    v_applicant.email, v_applicant.phone_primary,
+    'full_time', p_employment_date,
+    true, 'sprout', p_applicant_id::text
+  ) RETURNING id INTO v_new_employee_id;
+
+  -- 2. root_employee_assignments へ配属転記（a-root テーブル前提）
+  IF v_applicant.tentative_assignment_company_id IS NOT NULL THEN
+    INSERT INTO root_employee_assignments (
+      employee_id, company_id, department, position,
+      effective_from, source_type, source_id
+    ) VALUES (
+      v_new_employee_id,
+      v_applicant.tentative_assignment_company_id,
+      v_applicant.tentative_assignment_department,
+      v_applicant.tentative_assignment_position,
+      p_employment_date,
+      'sprout',
+      p_applicant_id::text
+    );
+  END IF;
+
+  -- 3. sprout_applicants 状態更新
+  UPDATE sprout_applicants SET
+    current_tab = 'archived',
+    status = 'employed',
+    tab_changed_at = now(),
+    tab_changed_by = p_performed_by,
+    updated_at = now()
+  WHERE id = p_applicant_id;
+
+  -- 4. tab_changes ログ
+  INSERT INTO sprout_applicant_tab_changes (
+    applicant_id, from_tab, to_tab, changed_by, reason
+  ) VALUES (
+    p_applicant_id, 'pre_employment', 'archived', p_performed_by, 'sprout_to_root_migration'
+  );
+
+  -- 5. 監査ログ
+  INSERT INTO operation_logs (
+    user_id, module, action, target_type, target_id, details
+  ) VALUES (
+    p_performed_by, 'sprout', 'migrate_to_root', 'sprout_applicants', p_applicant_id::text,
+    jsonb_build_object(
+      'new_employee_id', v_new_employee_id,
+      'employment_date', p_employment_date,
+      'company_id', v_applicant.tentative_assignment_company_id
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'new_employee_id', v_new_employee_id,
+    'applicant_id', p_applicant_id
+  );
+END $$;
+
+REVOKE ALL ON FUNCTION sprout_to_root_migration(uuid, date, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION sprout_to_root_migration(uuid, date, uuid) TO authenticated;
+```
+
+### 採用後の異動（Root 領域）
+
+入社後の部署異動 / 役職変更 / 関連法人変更は **Root 担当**:
+
+- a-root 側で `root_employee_assignments` 履歴管理（effective_from / effective_to）
+- a-auto / Sprout は介入しない
+- ただし Sprout 側の `sprout_applicants.tentative_*` は**履歴として保持**
+
+### 整合性検証
+
+- 入社後に Sprout 側の `tentative_assignment_*` を変更しない（変更不可制約）
+- 月次 Cron で双方向整合検証:
+
+```sql
+SELECT s.id, s.name_kanji, e.id AS root_employee_id
+FROM sprout_applicants s
+LEFT JOIN root_employees e
+  ON e.source_module = 'sprout' AND e.source_record_id = s.id::text
+WHERE s.status = 'employed'
+  AND e.id IS NULL;  -- Sprout 側 employed だが Root 未転記の異常
+```
+
+### 判断保留事項追加
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| Mig-1 | 入社確定ボタン vs 自動移管 | **手動 + 自動の両方**（admin 押下 / 入社日 0:00 Cron）|
+| Mig-2 | 移管失敗時のロールバック | Trx で all-or-nothing、失敗時は Sprout 状態を pre_employment に戻す |
+| Mig-3 | 再雇用時の扱い | 別 root_employees レコード作成、過去履歴は source_record_id で逆引き |
+| Mig-4 | Sprout 側 archived データの保管期間 | 7 年（労基法 109 条準拠、Cross Ops #05 連動）|
+
+### DoD 追加
+
+- [ ] sprout_to_root_migration() DB 関数実装、SECURITY DEFINER + search_path 固定
+- [ ] admin の「入社確定」ボタン動作（手動移管）
+- [ ] 入社日 0:00 Cron で自動移管動作
+- [ ] root_employees / root_employee_assignments への正確な転記
+- [ ] 監査ログ + tab_changes ログで全段階追跡可能
+- [ ] 月次整合性検証 Cron で漏れ検出
+- [ ] 再雇用時の正しい挙動を dev で検証

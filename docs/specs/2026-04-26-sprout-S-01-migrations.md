@@ -693,3 +693,335 @@ async function exportAdminCsv(filters: AdminFilters) {
 - [ ] /api/cron/sprout-today-training-flag 動作（00:00 JST 自動付与）
 - [ ] sprout_applicants_admin_view が admin で参照可、staff 以下で 0 件
 - [ ] CSV エクスポート時の監査ログ記録
+- [ ] §14 Kintone 確定残 4 件の DoD 全項目（後述）
+
+---
+
+## 14. Kintone 確定 残 4 件 反映（2026-04-26 a-main 006、決定 #4 / #5 / #11 / #30）
+
+> **改訂背景**: a-main から確定ログ受領（`C:\garden\_shared\decisions\decisions-kintone-batch-20260426-a-main-006.md`）。本 §14 で S-01 関連の 4 件を反映。
+
+### 14.1 決定 #4: 配属・異動 採用前 Sprout / 採用後 Root
+
+#### 方針
+
+App 45（求人 面接ヒアリングシート）サブテーブル「配属・異動」の運用を **採用前 = Sprout / 採用後 = Root** に分割。
+
+#### sprout_applicants への列追加（採用前管理）
+
+```sql
+ALTER TABLE sprout_applicants
+  ADD COLUMN preferred_company_id uuid REFERENCES fruit_companies_legal(id),
+  ADD COLUMN preferred_department text,                    -- 希望部署
+  ADD COLUMN preferred_position text,                      -- 希望ポジション
+  ADD COLUMN preferred_start_date date,                    -- 希望勤務開始日
+  ADD COLUMN preferred_work_location text,                 -- 希望勤務地
+  ADD COLUMN tentative_assignment_company_id uuid REFERENCES fruit_companies_legal(id),
+    -- 内定時に admin が確定する暫定配属法人
+  ADD COLUMN tentative_assignment_department text,
+  ADD COLUMN tentative_assignment_position text,
+  ADD COLUMN tentative_assignment_decided_at timestamptz,
+  ADD COLUMN tentative_assignment_decided_by uuid;
+
+CREATE INDEX idx_sprout_applicants_preferred_company
+  ON sprout_applicants (preferred_company_id);
+CREATE INDEX idx_sprout_applicants_tentative_company
+  ON sprout_applicants (tentative_assignment_company_id);
+```
+
+#### Root 移管インターフェース（S-07 連動）
+
+入社初日（タブ `pre_employment` → `archived` 遷移時）に、**Sprout の暫定配属を Root の正式配属に転記**:
+
+```sql
+-- S-07 §X account-issuance の Server Action 内で実行
+-- a-root 側の root_employee_assignments テーブル（仮）に INSERT
+INSERT INTO root_employee_assignments (
+  employee_id, company_id, department, position,
+  effective_from, source_type, source_id
+) SELECT
+  $new_employee_id,
+  tentative_assignment_company_id,
+  tentative_assignment_department,
+  tentative_assignment_position,
+  scheduled_employment_date,                  -- 入社日 = 配属日
+  'sprout',
+  id::text
+FROM sprout_applicants
+WHERE id = $applicant_id;
+
+-- a-root 側で「採用後の異動」は別フローで管理（Root spec 参照）
+```
+
+詳細は S-07 §X（Root 移管インターフェース）に記載。
+
+### 14.2 決定 #5: ◇マーク = 自動計算列を GENERATED で 1 列統合
+
+#### 方針
+
+Kintone の ◇マーク列（regex 等で他列から自動計算される列）は、Garden では **GENERATED ALWAYS AS ... STORED** または **trigger** で 1 列統合（重複保持不要）。
+
+#### sprout_applicants の自動計算列
+
+```sql
+ALTER TABLE sprout_applicants
+  -- 氏名フルテキスト（漢字 / カナ統合検索用）
+  ADD COLUMN full_name_search tsvector
+    GENERATED ALWAYS AS (
+      to_tsvector('simple',
+        coalesce(name_kanji, '') || ' ' ||
+        coalesce(name_kana, '') || ' ' ||
+        coalesce(name_alias, '')
+      )
+    ) STORED,
+
+  -- 年齢計算（生年月日から自動）
+  ADD COLUMN age_years int
+    GENERATED ALWAYS AS (
+      CASE
+        WHEN birthdate IS NULL THEN NULL
+        ELSE EXTRACT(year FROM age(current_date, birthdate))::int
+      END
+    ) STORED,
+
+  -- 応募経過日数（応募日からの経過日数、Cron 用には不向きだが画面表示用）
+  ADD COLUMN days_since_application int
+    GENERATED ALWAYS AS (
+      (current_date - applied_at::date)::int
+    ) STORED;
+    -- ※ STORED かつ current_date 含むため、Postgres は許容しない
+    -- → 実装では VIEW or trigger で代替（実装時要修正）
+
+CREATE INDEX idx_sprout_applicants_full_name_search
+  ON sprout_applicants USING gin (full_name_search);
+```
+
+#### 実装上の注意
+
+- `current_date` を含む GENERATED 列は Postgres で IMMUTABLE 制約違反
+- 経過日数等は **VIEW 経由で計算**:
+
+```sql
+CREATE OR REPLACE VIEW sprout_applicants_with_calc AS
+SELECT
+  *,
+  (current_date - applied_at::date)::int AS days_since_application,
+  (current_date - tab_changed_at::date)::int AS tab_stay_days
+FROM sprout_applicants;
+```
+
+#### 重複保持不要の根拠
+
+Kintone では同じ計算を **複数フィールドにコピー**して保持していたが、Garden では計算式を 1 箇所定義 → 重複コピーを排除。
+
+### 14.3 決定 #11: enum 値の root_settings 化（4 種類）
+
+#### 方針
+
+Sprout 内の以下 enum 列を Root の `root_settings`（マスタ管理）に外出し:
+
+- `gender`（性別）
+- `prefecture`（都道府県）
+- `education_level`（学歴）
+- `work_experience_type`（職歴種別）
+
+#### スキーマ変更
+
+```sql
+-- 既存 enum 列を text に変更（root_settings 参照、外部キーは持たない柔軟運用）
+-- ※ 既存 enum を text に ALTER COLUMN は要 PostgreSQL 12+
+ALTER TABLE sprout_applicants
+  ALTER COLUMN gender TYPE text,
+  ALTER COLUMN prefecture TYPE text;
+
+-- 新規列も text で受ける
+ALTER TABLE sprout_applicants
+  ADD COLUMN education_level text,         -- 'high_school' | 'vocational' | 'junior_college' | 'university' | 'graduate' | 'doctoral'
+  ADD COLUMN work_experience_type text;    -- 'full_time' | 'part_time' | 'contract' | 'freelance' | 'temp' | 'student'
+
+-- バリデーションは root_settings から動的生成
+```
+
+#### root_settings 連携クエリ例
+
+```sql
+-- 値検証（INSERT/UPDATE トリガで実行）
+CREATE OR REPLACE FUNCTION validate_sprout_applicants_root_settings()
+RETURNS trigger LANGUAGE plpgsql
+  SECURITY INVOKER
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
+BEGIN
+  -- gender
+  IF NEW.gender IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM root_settings
+    WHERE category = 'gender' AND value = NEW.gender AND is_active = true
+  ) THEN
+    RAISE EXCEPTION 'Invalid gender: %', NEW.gender USING ERRCODE = '22023';
+  END IF;
+
+  -- prefecture
+  IF NEW.prefecture IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM root_settings
+    WHERE category = 'prefecture' AND value = NEW.prefecture AND is_active = true
+  ) THEN
+    RAISE EXCEPTION 'Invalid prefecture: %', NEW.prefecture USING ERRCODE = '22023';
+  END IF;
+
+  -- education_level / work_experience_type も同様
+
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER trg_sprout_applicants_validate_settings
+  BEFORE INSERT OR UPDATE OF gender, prefecture, education_level, work_experience_type
+  ON sprout_applicants
+  FOR EACH ROW
+  EXECUTE FUNCTION validate_sprout_applicants_root_settings();
+```
+
+#### root_settings の初期投入（Root B-1 と整合）
+
+```sql
+-- root_settings に初期値投入（a-root 側で実装、Sprout は参照のみ）
+INSERT INTO root_settings (category, value, label, sort_order, is_active) VALUES
+  ('gender', 'male', '男性', 1, true),
+  ('gender', 'female', '女性', 2, true),
+  ('gender', 'other', 'その他', 3, true),
+  ('gender', 'prefer_not_to_say', '回答しない', 99, true),
+  ('prefecture', 'hokkaido', '北海道', 1, true),
+  -- ... 47 都道府県
+  ('education_level', 'high_school', '高等学校', 1, true),
+  ('education_level', 'vocational', '専門学校', 2, true),
+  -- ...
+  ('work_experience_type', 'full_time', '正社員', 1, true);
+  -- ...
+```
+
+#### 利点
+
+- enum 値の追加・変更が **migration 不要**（admin 画面から root_settings 編集）
+- 多言語化への布石（root_settings に label_en 列追加で対応可）
+- 廃止値の `is_active = false` 化で歴史保全
+
+### 14.4 決定 #30: LINK 系 Storage 保存タイミング = 応募者登録時 async copy job
+
+#### 方針
+
+応募者が**履歴書 / 職務経歴書 / 写真等の LINK**（バイトル → Sprout 送付時の URL）を含む場合、**応募者登録時に async copy job** で Supabase Storage にコピー。Kintone 由来の Google Drive リンクも同様。
+
+#### スキーマ追加
+
+```sql
+ALTER TABLE sprout_applicants
+  ADD COLUMN external_link_urls jsonb,     -- 取込時の元 URL（Google Drive 等）
+  ADD COLUMN storage_attachments jsonb;
+    -- {
+    --   "resume": {"path": "sprout/applicants/abc/resume.pdf", "uploaded_at": "...", "size": 12345},
+    --   "cv": {...},
+    --   "photo": {...}
+    -- }
+
+-- async copy job 状態管理
+ALTER TABLE sprout_applicants
+  ADD COLUMN attachment_copy_status text NOT NULL DEFAULT 'pending'
+    CHECK (attachment_copy_status IN ('pending', 'in_progress', 'completed', 'failed', 'partial')),
+  ADD COLUMN attachment_copy_started_at timestamptz,
+  ADD COLUMN attachment_copy_completed_at timestamptz,
+  ADD COLUMN attachment_copy_error text;
+
+CREATE INDEX idx_sprout_applicants_copy_pending
+  ON sprout_applicants (attachment_copy_status, applied_at)
+  WHERE attachment_copy_status IN ('pending', 'failed');
+```
+
+#### async copy job の発火
+
+```typescript
+// src/lib/sprout/applicant-create.ts
+'use server';
+
+export async function createApplicant(input: CreateApplicantInput) {
+  const { data: applicant } = await supabaseAdmin
+    .from('sprout_applicants')
+    .insert({
+      ...input,
+      external_link_urls: input.attachment_urls,
+      attachment_copy_status: 'pending',
+    })
+    .select()
+    .single();
+
+  // 即座には待たない、バックグラウンドジョブを enqueue
+  await enqueueAttachmentCopyJob({ applicant_id: applicant.id });
+
+  return applicant;
+}
+```
+
+#### 実行 Cron（5 分粒度）
+
+```typescript
+// /api/cron/sprout-attachment-copy (5 分ごと)
+const pending = await fetchPendingApplicantsForCopy();
+for (const a of pending) {
+  await copyAttachmentsToStorage(a);
+}
+```
+
+#### Cron 内の動作
+
+```typescript
+async function copyAttachmentsToStorage(applicant: SproutApplicant) {
+  await markCopying(applicant.id);
+  const results: Record<string, AttachmentResult> = {};
+
+  for (const [key, url] of Object.entries(applicant.external_link_urls || {})) {
+    try {
+      const file = await downloadFromUrl(url);
+      const path = `sprout/applicants/${applicant.id}/${key}.${getExt(file.contentType)}`;
+      await supabaseAdmin.storage.from('sprout-applicant-files').upload(path, file.body);
+      results[key] = { path, uploaded_at: new Date().toISOString(), size: file.size };
+    } catch (e) {
+      results[key] = { error: serializeError(e) };
+    }
+  }
+
+  const allOk = Object.values(results).every(r => !r.error);
+  await supabaseAdmin.from('sprout_applicants').update({
+    storage_attachments: results,
+    attachment_copy_status: allOk ? 'completed' : 'partial',
+    attachment_copy_completed_at: new Date().toISOString(),
+  }).eq('id', applicant.id);
+}
+```
+
+#### Storage バケット
+
+`sprout-applicant-files`（新規）+ RLS:
+
+- 本人 + admin は SELECT 可
+- 業務担当（staff+）は本人案件に紐付くものだけ SELECT
+- INSERT は service_role のみ（cron 経由）
+
+### 14.5 §13 受入基準への追加
+
+- [ ] 配属関連 7 列追加（preferred_* / tentative_assignment_*）
+- [ ] full_name_search GIN インデックスで全文検索動作
+- [ ] age_years GENERATED 列が birthdate から自動計算
+- [ ] 経過日数は VIEW 経由（GENERATED 不可のため）
+- [ ] gender / prefecture / education_level / work_experience_type が root_settings 参照に変更
+- [ ] root_settings 検証トリガが INSERT/UPDATE で動作
+- [ ] external_link_urls / storage_attachments / attachment_copy_status 列追加
+- [ ] /api/cron/sprout-attachment-copy が 5 分粒度稼働
+- [ ] Storage バケット `sprout-applicant-files` 作成 + RLS 整合
+
+### 14.6 判断保留事項追加（§13.5 続き）
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| 13 | 配属異動の履歴保持 | tentative_* は Sprout 内のみ、確定後は Root に転記 + Sprout 側はそのまま保持（参照履歴） |
+| 14 | days_since_application の実装 | VIEW 採用、Cron では VIEW から SELECT |
+| 15 | root_settings 不整合時の挙動 | INSERT/UPDATE REJECT（22023）、admin 通知 |
+| 16 | async copy job の retry | 最大 3 回、間隔 5/30/180 分、4 回目で `failed` 確定 |
+| 17 | external_link_urls 元 URL の保管 | コピー成功後も元 URL 保持（再取得 / 監査用、6 ヶ月で物理削除）|
