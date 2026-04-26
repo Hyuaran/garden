@@ -64,6 +64,7 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Tree | Phase D-01 schema migration 実装（up + down 単一 SQL）| 0.7 | 0.5 | -0.2 | a-tree (A) | 2026-04-27 | 2026-04-27 | spec-tree-phase-d-01 §3-§5 + §0 確定事項を全反映。supabase/migrations/20260427000001_tree_phase_d_01.sql（677 行）+ down.sql（135 行）。3 テーブル（tree_calling_sessions / tree_call_records / tree_agent_assignments）+ Soil 連携 3 カラム + 集計/不変ガード/監査ログ Trigger 6 種 + RLS 4 階層 + VIEW 2 種を一括投入。確定 §0 反映: 録音=recording_url のみ（イノベラ継続）/ result_code=CHECK 制約 hard-code 12 種（既存 callButtons.ts 整合）/ assignments=開放型・競争式（営業 INSERT 可、partial unique で重複架電防止）。冪等性=CREATE OR REPLACE / IF NOT EXISTS / DROP IF EXISTS パターンで 54 箇所、再実行可能。前提依存（root_employees / soil_call_lists / audit_logs / cross-rls-audit ヘルパ関数）の存在は冒頭 DO ブロックで NOTICE 出力。Track A α 版開始 + Track B Phase 1 着手の前提条件クリア。ブランチ: feature/tree-phase-d-01-implementation-20260427、ローカル commit のみ（GitHub 復旧後 push）。 |
 
 ## 運用メモ
 
