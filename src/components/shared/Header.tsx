@@ -5,10 +5,19 @@ export type HeaderProps = {
   brandColor?: string;
   userName?: string;
   userRole?: string;
+  /** cross-ui-05 達成演出スロット（中央配置）。未実装フェーズでは未指定で OK。 */
+  achievementSlot?: ReactNode;
   rightActions?: ReactNode;
 };
 
-export function Header({ appName, brandColor = "#3B9B5C", userName, userRole, rightActions }: HeaderProps) {
+export function Header({
+  appName,
+  brandColor = "#3B9B5C",
+  userName,
+  userRole,
+  achievementSlot,
+  rightActions,
+}: HeaderProps) {
   return (
     <header
       style={{
@@ -24,6 +33,8 @@ export function Header({ appName, brandColor = "#3B9B5C", userName, userRole, ri
     >
       <div style={{ fontWeight: 700, fontSize: 18 }}>{appName}</div>
       <div style={{ flex: 1 }} />
+      {achievementSlot}
+      {achievementSlot && <div style={{ flex: 1 }} />}
       {rightActions}
       {userName && (
         <div style={{ fontSize: 14 }}>
