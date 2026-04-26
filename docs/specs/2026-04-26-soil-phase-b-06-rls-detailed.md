@@ -487,3 +487,387 @@ EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM soil_lists WHERE phone_primary = $1;
 - [ ] service_role 利用箇所のリスト + ESLint 制限
 - [ ] spec-cross-rls-audit に Soil 系追記
 - [ ] 192 ケーステストが PR CI で 5 分以内
+- [ ] §17 Kintone 確定反映（Leaf 商材別 + Tree → Leaf ミラー + toss 切替 + 槙さん例外）DoD 全項目
+
+---
+
+## 17. Kintone 確定反映: Leaf 商材別アクセス + Tree → Leaf ミラー + toss 切替 + 槙さん例外
+
+> **改訂背景**: a-main 006 で Soil Phase B-06 確定後、東海林さん追加指示で重要な変更（spec-revision-followups §1.5）。Garden Tree（架電アプリ）と Garden Leaf 各商材で**異なるアクセス権限**が必要、toss の閲覧範囲は root_settings で柔軟切替、槙さんは outsource 例外で関電全件アクセス可。
+
+### 17.1 商材別アクセスマトリックス（再定義）
+
+§3 で定義したロール × テーブル × CRUD は**Soil 自身のテーブル**に対する権限。Leaf 各商材の**追加制約**を商材列で分離して以下に定義。
+
+#### 17.1.1 Garden Tree（架電アプリ）
+
+| ロール | tree_call_records | tree_assignment | tree_kpi |
+|---|---|---|---|
+| super_admin | ✅ 全件 | ✅ 全件 | ✅ |
+| admin | ✅ 全件 | ✅ 全件 | ✅ |
+| manager | ✅ 自部門 | ✅ 自部門 | ✅ |
+| outsource | ✅ 自分のみ + 担当案件 | ✅ 自分のみ | ✅ 自分のみ |
+| **staff** | ✅ 自分のみ + 担当案件 | ✅ 自分のみ | ✅ 自分のみ |
+| **cs** | ✅ 自分のみ + 担当案件 | ✅ 自分のみ | ✅ 自分のみ |
+| **closer** | ✅ 自分のみ + 担当案件 | ✅ 自分のみ | ✅ 自分のみ |
+| **toss** | ✅ root_settings 依存（後述 §17.3）| ✅ 自分のみ | ✅ 自分のみ |
+
+#### 17.1.2 Garden Leaf 関電（業務委託）
+
+| ロール | leaf_kanden_cases SELECT | INSERT/UPDATE | DELETE |
+|---|---|---|---|
+| super_admin | ✅ 全件 | ✅ | ✅ |
+| admin | ✅ 全件 | ✅ | ✅ |
+| manager | ✅ 自部門 | ✅ 自部門 | ❌ |
+| **outsource（槙さん例外）** | ✅ 全件（module_owner_flags='leaf_kanden':true）| ✅ 全件 | ❌ |
+| outsource（一般） | ✅ 自分担当のみ | ✅ メモのみ | ❌ |
+| **staff** | ✅ 自分担当のみ | ✅ メモ・契約進捗 | ❌ |
+| **cs** | ✅ 対応中案件 | ✅ メモ | ❌ |
+| ❌ closer | ❌ | ❌ | ❌ |
+| ❌ toss | ❌ | ❌ | ❌ |
+
+> **closer / toss は Leaf 関電に直接アクセスせず、Tree → Leaf ミラー出し（§17.2）で必要情報を表示**
+
+#### 17.1.3 Garden Leaf その他（光・クレカ・SIM 等）
+
+| ロール | leaf_hikari_cases / leaf_credit_cases / leaf_sim_cases ... |
+|---|---|
+| super_admin / admin | ✅ 全件 |
+| manager | ✅ 自部門 |
+| **staff** | ✅ 自分担当のみ |
+| **cs** | ✅ 対応中案件 |
+| ❌ outsource | ❌（関電以外はアクセス不可）|
+| ❌ closer | ❌ |
+| ❌ toss | ❌ |
+
+### 17.2 §3.0（新設）Tree → Leaf ミラー出しのデータフロー
+
+#### 17.2.1 設計の核心
+
+```
+[toss / closer]
+  ↓ 入力（架電結果 / 顧客情報 / 契約見込）
+[Garden Tree（tree_call_records 等）]
+  ↓ JOIN / View（コピーではなくリアルタイム参照）
+  ↓ read-only ミラー
+[Garden Leaf 関電 / 他商材]
+  ↓ 表示
+[cs / staff（必要情報を確認）]
+```
+
+#### 17.2.2 ミラー出しデータフロー図
+
+```
+┌─────────────────────────────────────────────┐
+│ Garden Tree（架電アプリ）                     │
+│  toss / closer 入力                           │
+│  - 架電結果（result, outcome）                │
+│  - 契約見込（callback_target_at）             │
+│  - 顧客反応メモ（memo）                       │
+│  - 提案商材（next_action_module）             │
+└──────────────┬──────────────────────────────┘
+               │
+               │ View 経由 JOIN（コピーなし）
+               ▼
+┌─────────────────────────────────────────────┐
+│ DB View: leaf_kanden_with_tree_context        │
+│  SELECT lk.*,                                 │
+│         tcr.result AS last_call_result,       │
+│         tcr.callback_target_at,               │
+│         tcr.memo AS tree_memo                 │
+│  FROM leaf_kanden_cases lk                    │
+│  LEFT JOIN soil_call_history tcr              │
+│    ON tcr.list_id = lk.soil_list_id           │
+│    AND tcr.call_datetime = (最新)             │
+└──────────────┬──────────────────────────────┘
+               │
+               │ Leaf 関電 UI で表示
+               ▼
+┌─────────────────────────────────────────────┐
+│ Garden Leaf 関電                              │
+│  cs / staff 確認                              │
+│  - 案件詳細 + Tree からのミラー情報           │
+│  - 編集権は Leaf 側のみ                       │
+└─────────────────────────────────────────────┘
+```
+
+#### 17.2.3 View 定義例
+
+```sql
+CREATE OR REPLACE VIEW leaf_kanden_with_tree_context AS
+SELECT
+  lk.*,
+  -- Tree からのミラー情報
+  tcr_latest.call_datetime AS tree_last_call_at,
+  tcr_latest.result AS tree_last_result,
+  tcr_latest.outcome AS tree_last_outcome,
+  tcr_latest.callback_target_at AS tree_callback_target_at,
+  tcr_latest.memo AS tree_last_memo,
+  tcr_latest.user_id AS tree_last_caller_user_id
+FROM leaf_kanden_cases lk
+LEFT JOIN LATERAL (
+  SELECT *
+  FROM soil_call_history
+  WHERE list_id = lk.soil_list_id
+  ORDER BY call_datetime DESC
+  LIMIT 1
+) tcr_latest ON true
+WHERE lk.deleted_at IS NULL;
+
+GRANT SELECT ON leaf_kanden_with_tree_context TO authenticated;
+-- RLS は元テーブルから継承（leaf_kanden_cases + soil_call_history）
+```
+
+#### 17.2.4 ミラー方針の利点
+
+- **データ重複なし**: コピーしない、JOIN で都度取得
+- **リアルタイム性**: Tree 更新が即座に Leaf 側で見える
+- **権限分離**: Tree 側は toss / closer 入力のみ、Leaf 側は cs / staff 確認 + 編集
+- **トレーサビリティ**: Tree 入力履歴が一切失われない
+
+### 17.3 §5（改訂）toss の閲覧範囲を root_settings 切替可能設計
+
+#### 17.3.1 初期実装と将来拡張
+
+| 段階 | toss_view_scope | 動作 |
+|---|---|---|
+| **初期実装（リリース時）** | `'self_only'` | 自分のトスアップ案件のみ閲覧（既存）|
+| 営業フィードバック後 1 | `'team_all'` | 同部門の toss 全件閲覧（チーム情報共有強化）|
+| 営業フィードバック後 2 | `'all'` | 全社 toss 全件閲覧（最大開放）|
+
+#### 17.3.2 root_settings 列追加（a-root 領域連携）
+
+```sql
+-- Root 側で root_settings に新設（B-06 spec で言及、実装は a-root が後続）
+INSERT INTO root_settings (category, value, label, sort_order, is_active) VALUES
+  ('toss_view_scope', 'self_only', '自分のみ閲覧', 1, true),
+  ('toss_view_scope', 'team_all', '同部門 toss 全件', 2, true),
+  ('toss_view_scope', 'all', '全社 toss 全件', 3, true);
+
+-- 現行値を取得する関数
+CREATE OR REPLACE FUNCTION get_toss_view_scope()
+RETURNS text
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
+  SELECT value FROM root_settings
+  WHERE category = 'toss_view_scope_active'
+    AND is_active = true
+  LIMIT 1;
+$$;
+```
+
+#### 17.3.3 RLS ポリシーの書換
+
+```sql
+-- toss の閲覧範囲を root_settings で切替可能に
+DROP POLICY IF EXISTS soil_call_history_select_toss_self ON soil_call_history;
+
+CREATE POLICY soil_call_history_select_toss_dynamic
+  ON soil_call_history FOR SELECT
+  USING (
+    current_garden_role() = 'toss'
+    AND CASE get_toss_view_scope()
+      WHEN 'self_only' THEN tossed_up_by = auth.uid()
+      WHEN 'team_all' THEN tossed_up_by IN (
+        SELECT user_id FROM root_employees
+        WHERE department_id = (
+          SELECT department_id FROM root_employees WHERE user_id = auth.uid()
+        )
+      )
+      WHEN 'all' THEN true
+      ELSE tossed_up_by = auth.uid()  -- 既定 = self_only
+    END
+  );
+```
+
+#### 17.3.4 admin 設定変更画面
+
+```
+[システム設定] /root/admin/settings
+
+【toss 閲覧範囲】 ▼ [self_only ▼]
+  ・self_only: 自分のみ閲覧（初期実装）
+  ・team_all: 同部門 toss 全件
+  ・all: 全社 toss 全件
+
+[適用] ボタン → 即時反映、再起動なし
+
+注意: 切替後は最大 30 秒以内に全 toss ユーザーに反映
+（current_garden_role() の STABLE キャッシュ更新）
+```
+
+#### 17.3.5 切替の影響範囲
+
+| 対象 | 影響 |
+|---|---|
+| RLS 評価 | 即時切替（次クエリから新ルール）|
+| Materialized View | 不要（ベーステーブルの RLS で評価）|
+| キャッシュ | aggressive 5 分 TTL でも問題なし |
+| 業務影響 | 拡大方向のみ（self → team / all）でデグレなし |
+
+### 17.4 §4（改訂）outsource 槙さん例外設計
+
+#### 17.4.1 module_owner_flags 列の導入
+
+```sql
+-- a-root 領域: root_employees に jsonb 列追加（B-06 spec 言及、実装は a-root 側）
+ALTER TABLE root_employees
+  ADD COLUMN module_owner_flags jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- 槙さんの例: {"leaf_kanden": true, "leaf_breaker": false}
+-- 将来他のモジュール責任者外注も対応可能な構造
+
+-- 効率化用部分インデックス
+CREATE INDEX idx_root_employees_module_owner_kanden
+  ON root_employees ((module_owner_flags->>'leaf_kanden'))
+  WHERE module_owner_flags->>'leaf_kanden' = 'true';
+```
+
+#### 17.4.2 RLS ポリシーで分岐
+
+```sql
+-- Garden Leaf 関電 への outsource アクセス
+CREATE POLICY leaf_kanden_select_outsource_owner
+  ON leaf_kanden_cases FOR SELECT
+  TO authenticated
+  USING (
+    deleted_at IS NULL
+    AND current_garden_role() = 'outsource'
+    AND (
+      -- ケース 1: module_owner（槙さん）→ 全件閲覧
+      EXISTS (
+        SELECT 1 FROM root_employees
+        WHERE user_id = auth.uid()
+          AND module_owner_flags->>'leaf_kanden' = 'true'
+      )
+      OR
+      -- ケース 2: 通常 outsource → 自分担当のみ
+      assigned_to = auth.uid()
+    )
+  );
+
+CREATE POLICY leaf_kanden_update_outsource_owner
+  ON leaf_kanden_cases FOR UPDATE
+  TO authenticated
+  USING (
+    current_garden_role() = 'outsource'
+    AND EXISTS (
+      SELECT 1 FROM root_employees
+      WHERE user_id = auth.uid()
+        AND module_owner_flags->>'leaf_kanden' = 'true'
+    )
+  );
+```
+
+#### 17.4.3 module_owner_flags 構造の柔軟性
+
+将来他のモジュール責任者外注も対応:
+
+```jsonb
+{
+  "leaf_kanden": true,        -- 関電責任者
+  "leaf_hikari": true,        -- 光責任者
+  "tree_supervision": false,  -- Tree 監督者
+  "soil_curation": false      -- Soil キュレーター
+}
+```
+
+#### 17.4.4 設定変更の権限
+
+- module_owner_flags の編集は **super_admin のみ**
+- root_audit_log に設定変更を記録（spec-cross-audit-log 連動）
+- 編集 UI: `/root/admin/employees/[id]/module-owners`
+
+#### 17.4.5 槙さん運用シナリオ
+
+```
+1. 東海林さん（super_admin）が 槙さんの root_employees レコードに
+   module_owner_flags = {"leaf_kanden": true} を設定
+2. 槙さんは outsource ロールで Garden にログイン
+3. Leaf 関電 全件閲覧 + 編集が可能（責任者として）
+4. 他モジュール（Tree / 他 Leaf 商材）は通常 outsource として自分のみ
+5. ログアウト時の audit_log 記録
+6. 退職時は module_owner_flags = {} にリセット + ロール変更
+```
+
+### 17.5 統合テストケース（追加）
+
+```typescript
+describe('Soil B-06 §17 商材別アクセス + Tree → Leaf ミラー + toss 切替 + 槙さん例外', () => {
+
+  it('toss role with self_only setting can only see own tossed_up_by', async () => {
+    await setRootSetting('toss_view_scope', 'self_only');
+    const tossClient = createClientWith(tossUser);
+    const { data } = await tossClient.from('soil_call_history').select('*');
+    expect(data.every(d => d.tossed_up_by === tossUser.id)).toBe(true);
+  });
+
+  it('toss role with team_all setting can see same department', async () => {
+    await setRootSetting('toss_view_scope', 'team_all');
+    const tossClient = createClientWith(tossUserInDeptA);
+    const { data } = await tossClient.from('soil_call_history').select('*');
+    expect(data.some(d => d.tossed_up_by === otherTossInDeptA.id)).toBe(true);
+    expect(data.every(d => d.tossed_up_by !== tossInDeptB.id)).toBe(true);
+  });
+
+  it('outsource maki-san with leaf_kanden owner flag sees all leaf_kanden_cases', async () => {
+    const makiClient = createClientWithModuleOwner('outsource', { leaf_kanden: true });
+    const { data } = await makiClient.from('leaf_kanden_cases').select('*');
+    expect(data.length).toBeGreaterThan(0);
+    expect(data.some(d => d.assigned_to !== makiClient.user.id)).toBe(true);
+  });
+
+  it('outsource without owner flag sees only assigned cases', async () => {
+    const normalOutsourceClient = createClientWith(normalOutsourceUser);
+    const { data } = await normalOutsourceClient.from('leaf_kanden_cases').select('*');
+    expect(data.every(d => d.assigned_to === normalOutsourceUser.id)).toBe(true);
+  });
+
+  it('toss / closer cannot access leaf_kanden_cases directly', async () => {
+    const tossClient = createClientWith(tossUser);
+    const { data } = await tossClient.from('leaf_kanden_cases').select('*');
+    expect(data).toHaveLength(0);
+  });
+
+  it('toss can see Tree → Leaf mirror via leaf_kanden_with_tree_context', async () => {
+    const tossClient = createClientWith(tossUser);
+    const { data } = await tossClient.from('leaf_kanden_with_tree_context').select('tree_last_memo');
+    expect(data).toBeDefined();
+  });
+});
+```
+
+### 17.6 a-root 連携要請（B-06 spec から）
+
+a-root 側で以下のスキーマ変更が必要（B-06 では言及のみ、実装は a-root 領域）:
+
+1. `root_settings` に `toss_view_scope` カテゴリ追加 + 3 値（self_only / team_all / all）
+2. `root_employees` に `module_owner_flags jsonb` 列追加
+3. `get_toss_view_scope()` SECURITY DEFINER STABLE 関数追加
+4. admin 設定変更 UI（`/root/admin/settings` に toss_view_scope セクション）
+5. module_owner_flags 編集 UI（`/root/admin/employees/[id]/module-owners`）
+
+### 17.7 判断保留事項追加
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| 17-1 | toss_view_scope 切替反映時間 | 30 秒以内（current_garden_role() STABLE キャッシュ）|
+| 17-2 | module_owner_flags の他 module 拡張 | 必要時に jsonb キー追加、migration 不要 |
+| 17-3 | 槙さん退職時の flag リセット | super_admin が手動、自動 retry なし |
+| 17-4 | Tree → Leaf View の性能 | LATERAL JOIN で 100ms 以内目標、LIMIT 1 で絞込 |
+| 17-5 | toss_view_scope = 'all' のリスク | 個人情報広範囲アクセスに注意、Chatwork 通知必須 |
+| 17-6 | 商材別アクセス追加時の手順 | 新 Leaf 商材ごとに RLS ポリシー追加、CI でカバレッジ確認 |
+
+### 17.8 DoD 追加
+
+- [ ] §17.1 商材別アクセスマトリックス（Tree / Leaf 関電 / Leaf その他）の RLS 実装
+- [ ] §17.2 leaf_kanden_with_tree_context VIEW 動作 + Mirror データフロー検証
+- [ ] §17.3 toss_view_scope root_settings 連携 + RLS 動的切替動作
+- [ ] §17.4 module_owner_flags + 槙さん例外 RLS 動作
+- [ ] §17.5 統合テスト 6 ケース全 pass
+- [ ] §17.6 a-root 連携項目を a-root 側 spec に追記要請（連絡済）
+- [ ] toss / closer は Leaf 関電 / Leaf その他に直接アクセス不可確認
+- [ ] outsource 一般 vs module_owner で明確に権限差分動作
