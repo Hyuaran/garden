@@ -66,17 +66,23 @@ COMMENT ON TABLE root_settings IS
   'Garden 横断の汎用 KV ストア（Leaf/Tree が共有）。key 規約: <module>.<setting_name>';
 
 -- ===== 4. 事業所属判定関数 =====
-CREATE OR REPLACE FUNCTION leaf_user_in_business(biz_id text)
-RETURNS boolean AS $$
+-- a-review #65 重大指摘修正: SECURITY DEFINER 関数に SET search_path = '' を追加
+CREATE OR REPLACE FUNCTION public.leaf_user_in_business(biz_id text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
   SELECT EXISTS (
-    SELECT 1 FROM leaf_user_businesses
-    WHERE user_id = auth.uid()
+    SELECT 1 FROM public.leaf_user_businesses
+    WHERE user_id = (SELECT auth.uid())
       AND business_id = biz_id
       AND (removed_at IS NULL OR removed_at > now())
-  ) AND is_user_active();
-$$ LANGUAGE SQL STABLE SECURITY DEFINER;
+  ) AND public.is_user_active();
+$$;
 
-COMMENT ON FUNCTION leaf_user_in_business(text) IS
+COMMENT ON FUNCTION public.leaf_user_in_business(text) IS
   'auth.uid() が指定事業に有効所属し、かつ is_user_active() が TRUE を返すかを判定';
 
 -- ===== 5. 3 bucket 作成 =====
@@ -238,8 +244,13 @@ CREATE INDEX IF NOT EXISTS idx_leaf_attachments_history_attachment
 CREATE INDEX IF NOT EXISTS idx_leaf_attachments_history_changed_by
   ON leaf_kanden_attachments_history (changed_by, changed_at DESC);
 
-CREATE OR REPLACE FUNCTION leaf_kanden_attachments_history_trigger()
-RETURNS trigger AS $$
+-- a-review #65 重大指摘修正: SECURITY DEFINER 関数に SET search_path = '' 追加
+CREATE OR REPLACE FUNCTION public.leaf_kanden_attachments_history_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   col_name text;
   tracked_cols text[] := ARRAY[
@@ -252,10 +263,10 @@ DECLARE
   new_val text;
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    INSERT INTO leaf_kanden_attachments_history
+    INSERT INTO public.leaf_kanden_attachments_history
       (attachment_id, operation, changed_field, old_value, new_value, changed_by)
     VALUES (OLD.attachment_id, 'DELETE', NULL,
-            to_jsonb(OLD)::text, NULL, auth.uid());
+            to_jsonb(OLD)::text, NULL, (SELECT auth.uid()));
     RETURN OLD;
   END IF;
 
@@ -264,9 +275,9 @@ BEGIN
       EXECUTE format('SELECT ($1).%I::text, ($2).%I::text', col_name, col_name)
         USING OLD, NEW INTO old_val, new_val;
       IF old_val IS DISTINCT FROM new_val THEN
-        INSERT INTO leaf_kanden_attachments_history
+        INSERT INTO public.leaf_kanden_attachments_history
           (attachment_id, operation, changed_field, old_value, new_value, changed_by)
-        VALUES (NEW.attachment_id, 'UPDATE', col_name, old_val, new_val, auth.uid());
+        VALUES (NEW.attachment_id, 'UPDATE', col_name, old_val, new_val, (SELECT auth.uid()));
       END IF;
     END LOOP;
     RETURN NEW;
@@ -274,12 +285,12 @@ BEGIN
 
   RETURN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
-DROP TRIGGER IF EXISTS trg_leaf_kanden_attachments_history ON leaf_kanden_attachments;
+DROP TRIGGER IF EXISTS trg_leaf_kanden_attachments_history ON public.leaf_kanden_attachments;
 CREATE TRIGGER trg_leaf_kanden_attachments_history
-  AFTER UPDATE OR DELETE ON leaf_kanden_attachments
-  FOR EACH ROW EXECUTE FUNCTION leaf_kanden_attachments_history_trigger();
+  AFTER UPDATE OR DELETE ON public.leaf_kanden_attachments
+  FOR EACH ROW EXECUTE FUNCTION public.leaf_kanden_attachments_history_trigger();
 
 ALTER TABLE leaf_kanden_attachments_history ENABLE ROW LEVEL SECURITY;
 
@@ -299,56 +310,74 @@ CREATE POLICY leaf_history_no_write ON leaf_kanden_attachments_history
   FOR ALL USING (FALSE) WITH CHECK (FALSE);
 
 -- ===== 14. 画像 DL 専用パスワード RPC =====
-CREATE OR REPLACE FUNCTION verify_image_download_password(input_password text)
-RETURNS boolean AS $$
+-- a-review #65 重大指摘修正:
+--   1. SECURITY DEFINER 関数に SET search_path = '' を追加 (schema poisoning 対策)
+--   2. set_image_download_password はクライアントから平文 PW を受取り、サーバ側で bcrypt 化
+--   3. pgcrypto の crypt / gen_salt は extensions schema を明示
+CREATE OR REPLACE FUNCTION public.verify_image_download_password(input_password text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   stored_hash text;
 BEGIN
   SELECT value->>'hash' INTO stored_hash
-  FROM root_settings
+  FROM public.root_settings
   WHERE key = 'leaf.image_download_password_hash';
   IF stored_hash IS NULL THEN
     RETURN FALSE;
   END IF;
-  RETURN stored_hash = crypt(input_password, stored_hash);
+  RETURN stored_hash = extensions.crypt(input_password, stored_hash);
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$;
 
-COMMENT ON FUNCTION verify_image_download_password(text) IS
-  '画像 DL 専用 PW を bcrypt 比較。input_password が一致すれば TRUE';
+COMMENT ON FUNCTION public.verify_image_download_password(text) IS
+  '画像 DL 専用 PW を bcrypt 比較。クライアントから平文 PW を受取り、サーバ側で hash 化済み値と比較。一致で TRUE';
 
-CREATE OR REPLACE FUNCTION set_image_download_password(new_hash text)
-RETURNS void AS $$
+-- 引数変更: new_hash → new_password (a-review #65 重大指摘 2)
+CREATE OR REPLACE FUNCTION public.set_image_download_password(new_password text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  hashed_pw text;
 BEGIN
-  IF garden_role_of(auth.uid()) != 'super_admin' THEN
+  IF public.garden_role_of((SELECT auth.uid())) != 'super_admin' THEN
     RAISE EXCEPTION 'Forbidden: super_admin only';
   END IF;
-  INSERT INTO root_settings (key, value, updated_at, updated_by)
+  hashed_pw := extensions.crypt(new_password, extensions.gen_salt('bf', 12));
+  INSERT INTO public.root_settings (key, value, updated_at, updated_by)
   VALUES (
     'leaf.image_download_password_hash',
-    jsonb_build_object('hash', new_hash),
+    jsonb_build_object('hash', hashed_pw),
     now(),
-    auth.uid()
+    (SELECT auth.uid())
   )
   ON CONFLICT (key) DO UPDATE
     SET value = EXCLUDED.value,
         updated_at = EXCLUDED.updated_at,
         updated_by = EXCLUDED.updated_by;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
-COMMENT ON FUNCTION set_image_download_password(text) IS
-  'super_admin が画像 DL 専用 PW (bcrypt hash) を設定/変更する';
+COMMENT ON FUNCTION public.set_image_download_password(text) IS
+  'super_admin が画像 DL 専用 PW を設定/変更。クライアントから平文 PW を受取り、サーバ内で bcrypt 化保存（任意 hash 送信不可）';
 
 -- ===== 15. 初期データ投入 =====
 INSERT INTO leaf_businesses (business_id, display_name, product_type, flow_type, start_date)
 VALUES ('kanden', '関電業務委託', '電気', '委託', '2020-01-01')
 ON CONFLICT (business_id) DO NOTHING;
 
-INSERT INTO root_settings (key, value, description)
+-- a-review #65 修正: pgcrypto の crypt / gen_salt は extensions schema を明示
+INSERT INTO public.root_settings (key, value, description)
 VALUES (
   'leaf.image_download_password_hash',
-  jsonb_build_object('hash', crypt('change-me-immediately', gen_salt('bf', 12))),
+  jsonb_build_object('hash', extensions.crypt('change-me-immediately', extensions.gen_salt('bf', 12))),
   '画像 DL 専用 PW (bcrypt hash)。super_admin が Root マイページから変更する。仮 PW は即変更必要。'
 )
 ON CONFLICT (key) DO NOTHING;
