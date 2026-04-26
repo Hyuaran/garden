@@ -9,7 +9,7 @@ const enabledModule: ModuleDef = {
 const disabledModule: ModuleDef = {
   emoji: "🌱", label: "Soil", href: "/soil", color: "#8B6F47", enabled: false,
 };
-const pos = { left: "50%", top: "50%" };
+const pos = { x: 0, y: 0 };  // 中央基準（cross-ui-06 §3.4）
 
 describe("ModuleSlot enabled", () => {
   it("renders a Link to module.href", () => {

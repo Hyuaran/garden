@@ -12,15 +12,14 @@ describe("ModuleLayer", () => {
     expect(linksCount + disabledCount).toBe(MODULE_KEYS.length);
     expect(MODULE_KEYS.length).toBe(12);
   });
-  it("uses absolute positioning for each slot via inline style", () => {
+  it("positions Forest slot via center-relative transform (x=35, y=-30 → left:85%, top:20%)", () => {
     const { container } = render(<ModuleLayer />);
-    // Each slot wrapper has position: absolute via inline style
-    // Pick the Forest one (enabled, has href)
     const forestLink = screen.getByRole("link", { name: /Forest/ });
     const wrapper = forestLink as HTMLAnchorElement;
     const style = wrapper.getAttribute("style") ?? "";
     expect(style).toMatch(/position:\s*absolute/);
-    expect(style).toMatch(/left:\s*8%/);
-    expect(style).toMatch(/top:\s*78%/);
+    expect(style).toMatch(/left:\s*85%/);
+    expect(style).toMatch(/top:\s*20%/);
+    expect(style).toMatch(/transform:\s*translate\(-50%,\s*-50%\)/);
   });
 });
