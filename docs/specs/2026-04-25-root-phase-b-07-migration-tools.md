@@ -207,6 +207,28 @@ CREATE INDEX rml_target_idx ON root_migration_log (target_table, target_row_id);
 | App 55 関電業務委託 | `app55-kanden.ts` | `leaf_kanden_cases` |
 | App 104 SIM 在庫 | `app104-sim.ts` | `leaf_kanden_sim_devices` |
 | App 38 取引先 | `app38-partners.ts` | `root_partners` + `root_employees`（訪問営業） |
+| App 56 従業員名簿 ヒュアラングループ | `app56-employees.ts` | `root_employees` (merge 戦略 A、§11.5 参照) + `root_employee_team_history` / `root_employee_subsidies` / `root_employee_leaves` (Phase B-08 spec 参照) |
+
+#### Skip 対象フィールド（migration しないフィールド一覧）
+
+確定ログ `decisions-kintone-batch-20260426-a-main-006.md` #28 より、以下のフィールドは Garden 移行対象から除外する：
+
+| Kintone App | フィールド名 | Skip 理由 | 復活条件 |
+|---|---|---|---|
+| App 56 従業員名簿 | `CW_API トークン` | 用途 = 管理側が従業員代理で通知送信。**現状未運用** （#27）。Phase B-6 通知基盤では代理通知を実装しない方針 | 将来 Sprout / Bud で代理通知の仕組みが必要になった時点で再設計し、新フィールドとして追加 |
+
+field mapping ファイル例（`app56-employees.ts`）には `skip: true` フラグでこれらを明示し、staging 投入時にも除外する：
+
+```typescript
+// packages/migration-kintone/mappings/app56-employees.ts
+export const APP56_FIELD_MAPPING = [
+  { kintone: '従業員番号', garden: 'employee_number', type: 'text', required: true },
+  { kintone: '氏名', garden: 'name', type: 'text', required: true },
+  // ...
+  { kintone: 'CW_API トークン', skip: true, skip_reason: '未運用 (decisions-kintone-batch-20260426 #27/#28)' },
+  // ...
+] as const;
+```
 
 ### 5.2 FileMaker → Garden（CSV ベース）
 
@@ -395,6 +417,131 @@ commit 済みバッチの詳細画面に [ロールバック] ボタンを rollb
 
 ---
 
+## 11.5. App 56 従業員名簿 → root_employees merge 戦略
+
+確定ログ `decisions-kintone-batch-20260426-a-main-006.md` #29 より、App 56（従業員名簿 ヒュアラングループ、105 fields + 4 SUBTABLE）から既存 `root_employees` への取込は **戦略 A: 既存 root_employees 優先** を採用する。
+
+### 戦略 A の定義
+
+- **既存値の保護**: 同じ `employee_number`（社員番号）が既に `root_employees` に存在する場合、**既存値はそのまま保持**
+- **欠損補完のみ**: Kintone 側にあって Garden 側で NULL / 空文字のフィールドだけ Kintone 値で補完
+- **競合時の扱い**: 既存値と Kintone 値が共に存在し異なる場合、**Kintone 値は staging に保管、commit 時は既存優先**（手動でレビュー）
+- **新規レコード**: Kintone にしかない `employee_number` は通常通り INSERT
+
+### staging テーブルでの表現
+
+`root_migration_staging.duplicate_check` 列の値を以下に拡張：
+
+| 値 | 意味 | commit 時の動作 |
+|---|---|---|
+| `unique` | 新規 employee_number | INSERT |
+| `merge_complement` | 既存あり、Garden 側欠損あり | 欠損列のみ UPDATE |
+| `merge_conflict` | 既存あり、Garden 側にも値あり、不一致 | スキップ + admin レビュー要 |
+| `merge_identical` | 既存あり、全フィールド一致 | スキップ |
+
+### 実装パターン
+
+```typescript
+// packages/migration-kintone/mappings/app56-employees.ts
+export async function mergeEmployeeRow(
+  staging: StagingRow<App56Mapping>,
+  existing: RootEmployee | null
+): Promise<MergeResult> {
+  if (!existing) return { action: 'INSERT', payload: staging.transformed_data };
+
+  const complement: Partial<RootEmployee> = {};
+  const conflicts: ConflictField[] = [];
+
+  for (const field of MERGEABLE_FIELDS) {
+    const existingValue = existing[field.garden];
+    const kintoneValue = staging.transformed_data[field.garden];
+
+    if (existingValue == null || existingValue === '') {
+      // Garden 側欠損 → Kintone 値で補完
+      complement[field.garden] = kintoneValue;
+    } else if (kintoneValue != null && kintoneValue !== existingValue) {
+      // 競合 → conflicts に記録、Garden 既存値を優先
+      conflicts.push({ field: field.garden, garden: existingValue, kintone: kintoneValue });
+    }
+  }
+
+  return Object.keys(complement).length > 0
+    ? { action: 'UPDATE_PARTIAL', payload: complement, conflicts }
+    : { action: 'SKIP', conflicts };
+}
+```
+
+### admin UI での conflict レビュー
+
+- staging 一覧に `merge_conflict` フィルタを追加
+- 各 conflict 行で Garden 値 / Kintone 値を並列表示
+- admin が「既存維持 / Kintone 値で上書き / 手動値で更新」を選択可能（Phase B-7.4 で実装）
+
+### Phase B-08 spec との関係
+
+App 56 の SUBTABLE（在籍チーム / 助成金 / 休業履歴 / 配属異動）は本 spec ではなく **Phase B-08 spec** で定義する `root_employee_team_history` / `root_employee_subsidies` / `root_employee_leaves` に取込む。SUBTABLE は merge 戦略 A の対象外（履歴系は重複なしで全行 INSERT）。
+
+---
+
+## 11.6. Kintone 段階的解約フロー
+
+確定ログ `decisions-kintone-batch-20260426-a-main-006.md` #32 より、Kintone は Garden 完全運用が確認できてから解約する **3 段階フロー** で運用する。
+
+### Phase 1: 並行運用（Garden リリース直後 1〜2 ヶ月）
+
+- **dual-write モード**: Garden で発生した変更を Kintone へも書き戻す（差分のみ）
+  - 例: `root_employees` UPDATE → Kintone App 56 へ同期 PATCH（フィールドマッピング逆引き）
+- **Read**: Garden を主、Kintone は参考閲覧のみ
+- **目的**: Garden の安定性確認、想定外データ不整合の早期発見
+- **dual-write の対象**: 関電業務委託 (App 55) / 従業員名簿 (App 56) の変更系操作のみ
+- **dual-write の停止条件**: 任意のタイミングで admin 操作で off（Garden 側のみへ）
+
+### Phase 2: Kintone 読取専用化（1 ヶ月）
+
+- **Kintone API トークン**を read-only に変更（東海林さん手動）
+- **dual-write 停止**: Garden → Kintone の同期は完全停止
+- **Read**: Garden のみ（Kintone は緊急参照用に残す）
+- **目的**: 「Kintone がなくても業務が回る」ことの実証期間
+- **インシデント**: この期間に Garden で問題発生時、Kintone 復活（read-only 解除）→ Phase 1 戻し可能
+
+### Phase 3: Kintone 解約
+
+- Phase 2 が問題なく完走したら、Kintone 契約解約（東海林さん手動）
+- **データ保全**: 解約前に全 App の CSV エクスポートを `_shared/archive/kintone-final-export-YYYYMMDD/` に保存
+- **アクセス記録**: 解約日時を `root_audit_log` に記録（actor_emp_num=admin、action='kintone_decommissioned'）
+- **以降**: Garden が単一の業務システムとなる
+
+### Phase 1〜3 タイムライン目安
+
+```
+Garden リリース日 ──┬─ +0〜2ヶ月 (Phase 1: dual-write 並行)
+                    │
+                    ├─ +2〜3ヶ月 (Phase 2: Kintone 読取専用)
+                    │
+                    └─ +3ヶ月〜  (Phase 3: Kintone 解約)
+```
+
+ただし Phase 2 → 3 移行は **東海林さんの最終承認** が必要（自動移行しない）。
+
+### dual-write 実装の方針
+
+- **対象操作**: UPDATE / DELETE のみ（INSERT は Garden 側からのみ）
+- **失敗時**: Kintone 同期が失敗しても Garden 操作は成功扱い、Chatwork で警告通知
+- **実装場所**: `src/app/root/_lib/dual-write.ts`（Phase B-7.6 で新規作成）
+- **設定**: `root_settings` の (root, dual_write_kintone, *) で ON/OFF 切替可能（Phase B-1 spec 参照）
+
+### B-7 の段階分けへの追加
+
+| Phase | 作業 | 工数 | 備考 |
+|---|---|---|---|
+| B-7.6 | dual-write 基盤 + 関電業務委託 / 従業員名簿の同期 | 1.0d | Phase 1 開始時に必須 |
+| B-7.7 | dual-write 停止 + Kintone 読取専用切替手順書 | 0.25d | Phase 1 → 2 移行時 |
+| B-7.8 | Kintone 最終 CSV export スクリプト + 解約手順書 | 0.25d | Phase 3 直前 |
+
+合計 1.5d 追加（既存 5.0d → 6.5d）。
+
+---
+
 ## 12. 受入基準
 
 1. ✅ `root_migration_batches` / `root_migration_staging` / `root_migration_log` が
@@ -426,10 +573,16 @@ commit 済みバッチの詳細画面に [ロールバック] ボタンを rollb
 | **B-7.4** | staging レビュー画面 + commit / rollback フロー | 0.5d |
 | **B-7.4** | 関電業務委託 dry_run → 本番 commit テスト | 0.25d |
 | **B-7.5** | 営業リスト大量取込（Soil 連携・方式決定後） | 0.5d |
-| 合計 | | **4.0d** |
+| **B-7.6** | dual-write 基盤 + App 55/56 同期（§11.6 段階的解約 Phase 1）| 1.0d |
+| **B-7.7** | dual-write 停止 + Kintone 読取専用切替手順書（Phase 1→2）| 0.25d |
+| **B-7.8** | Kintone 最終 CSV export スクリプト + 解約手順書（Phase 3 直前）| 0.25d |
+| 合計 | | **5.5d** |
 
 > 備考: Kintone API トークン暗号化保管（B-6 依存）が未完了の場合、B-7.2 は B-6 完了後に着手。
 > 大量データ方式（staging vs streaming）が変わると B-7.5 が +0.5〜1.0d 増える可能性がある。
+>
+> **B-7.6〜B-7.8 は §11.6 Kintone 段階的解約フローのために追加（confirmed-32 #29 / #32）**。
+> dual-write は `root_settings` (root, dual_write_kintone, *) で ON/OFF 制御。Phase 2 移行時に OFF。
 
 ---
 

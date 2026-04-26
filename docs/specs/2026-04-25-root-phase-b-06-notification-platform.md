@@ -87,6 +87,18 @@ Phase B-6.2 以降で段階的に移行する方針とし、Phase B-6.1 では *
 | KoT 同期完了・失敗 | 管理者ルーム | Cron 実行後（A-3c 参照）|
 | マスタ変更 critical（社員削除・権限変更） | audit critical ルーム | 操作直後 |
 
+### 2.5 Kintone 既存資産との対比（CW_API トークン用途、参考）
+
+確定ログ `decisions-kintone-batch-20260426-a-main-006.md` #27 / #28 より：
+
+- **Kintone App 56（従業員名簿）には「CW_API トークン」フィールドが各従業員ごとに存在する**
+- **本来の用途**: 管理側が**従業員代理で Chatwork 通知を送信**する仕組み（個人トークンを管理側に預ける運用）
+- **現状**: 設定用途として東海林さんの管理 PC でのみ保管されており、**運用には組み込まれていない（未運用フラグ）**
+- **Garden 移行方針**: Phase B-6.1〜B-6.3 では **本機能を実装しない**。代理通知（"Aさんの代わりに送信"）は Phase B-6.4 以降の Webhook 拡張または別 spec で再設計する
+- **Garden Migration Tools (B-7) での扱い**: CW_API トークンフィールドは **migration 対象から除外**（B-7 spec の §5.1 Skip 対象フィールド参照）
+
+> ⚠️ この判断により、`root_notification_subscriptions.subscriber_user_id` は本人 (= operator) のみを対象とし、**「他者の代理として送信」操作は本 spec 範囲外**となる。将来の拡張（用途 B 復活）時には新 sender_user_id 列を追加する想定。
+
 ---
 
 ## 3. アーキテクチャ概要
