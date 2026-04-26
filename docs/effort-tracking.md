@@ -115,3 +115,6 @@
   - ブランチ: feature/soil-base-specs-batch16-auto
 
 - **本ファイルの起源**: 2026-04-22、ルール `feedback_effort_tracking.md` 遵守のため作成。以降の Phase では spec/plan 作成と同時に行追加すること。
+
+| Bloom | 東海林何してる問題 MVP — spec 起草（spec-shoji-status-visibility v1） | 0.1 | 0.1 | 0 | a-bloom-002 (A) | 2026-04-26 | 2026-04-26 | a-main-007 確定指示（GW 完成絶対）。案 1 採択（手動オンリー）、Q1 修正反映。実装ステップ 7 件 / 4.0h(0.5d) 見込み |
+| Bloom | 東海林何してる問題 MVP — 実装（DB + API + Widget + Editor + 詳細画面） | 0.5 | | | a-bloom-002 (A) | 2026-04-26 | | bloom_ceo_status 1 テーブル / GET 全員 + PUT super_admin / 30s polling / Workboard 配置。共通ホーム配置は cross-ui-01/06 実装後 |
