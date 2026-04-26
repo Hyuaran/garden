@@ -1,16 +1,19 @@
 # Bud Phase D #12: 給与処理スケジュール + リマインダ通知システム
 
-- 対象: 6 段階給与確定フロー（D-10 / D-11）の各 stage の予定日管理 + 自動リマインダ
+- 対象: 7 段階給与確定フロー（D-10 / D-11）の各 stage の予定日管理 + 自動リマインダ
 - 優先度: **🟡 高**（業務継続性、放置防止、エスカレーション）
 - 見積: **1.0d**（テーブル + Cron + Chatwork DM + Garden Toast 通知）
 - 担当セッション: a-bud
 - 作成: 2026-04-26（3 次 follow-up、東海林さん追加要件反映）
+- 改訂:
+  - 3 次 follow-up (2026-04-26): 6 段階フロー前提で新規起草
+  - **4 次 follow-up (2026-04-26)**: **7 段階対応**（visual_double_check stage 追加 = 上田君目視ダブルチェック、Cat 4 #26）
 - 前提:
-  - **D-10 給与計算統合**（6 段階フローの stage 定義）
-  - **D-11 MFC CSV 出力**（exported / confirmed_by_auditor / confirmed_by_sharoshi 同期）
-  - **D-09 口座分離**（`bud.has_payroll_role()` ヘルパー）
+  - **D-10 給与計算統合**（**7 段階**フローの stage 定義、4 次 follow-up）
+  - **D-11 MFC CSV 出力**（exported / confirmed_by_auditor / **visual_double_checked** / confirmed_by_sharoshi 同期）
+  - **D-09 口座分離**（`bud.has_payroll_role()` ヘルパー、5 ロール対応）
   - **D-01 給与期間**（`bud_payroll_periods` + `root_settings`）
-  - 関連 memory: `feedback_check_existing_impl_before_discussion.md`, `project_partners_vs_vendors_distinction.md`
+  - 関連 memory: `feedback_check_existing_impl_before_discussion.md`, `project_partners_vs_vendors_distinction.md`, `project_payslip_distribution_design.md`（4 次反映）
 
 ---
 
@@ -18,8 +21,11 @@
 
 ### 1.1 目的
 
-6 段階給与確定フローは複数日にまたがる業務で、各 stage の担当者が異なる（上田 / 宮永・小泉 / 東海林さん / 社労士）。
+**7 段階**給与確定フローは複数日にまたがる業務で、各 stage の担当者が異なる（上田 / 宮永・小泉 / 東海林さん / 社労士）。
 各 stage の**予定日管理**と**自動リマインダ**を仕組み化し、業務放置 / 期日遅延を防止する。
+
+> 4 次 follow-up（Cat 4 #26）で「上田君目視ダブルチェック工程」が正式に追加され、stage 数は 6 → 7 に増加。
+> 後道さんは Garden 上の確認フローには登場しない。
 
 ### 1.2 含めるもの
 
@@ -39,7 +45,7 @@
 
 ---
 
-## 2. 6 段階フローと予定日の関係
+## 2. 7 段階フローと予定日の関係（4 次 follow-up: visual_double_check 追加）
 
 ### 2.1 stage ↔ 担当者 ↔ Garden ロール の対応表
 
@@ -47,12 +53,13 @@
 |---|---|---|---|---|
 | `calculation` | 上田 | `payroll_calculator` | period_end + 2 営業日 | D-10 ① calculated 達成期限 |
 | `approval` | 宮永・小泉 | `payroll_approver` | calculation + 1 営業日 | D-10 ② approved 達成期限 |
-| `mfc_import` | 上田 | `payroll_disburser` | approval + 1 営業日 | D-11 ③ exported 達成期限 |
+| `mfc_import` | 上田 | `payroll_disburser` | approval + 1 営業日 | D-11 ③ exported 達成期限（Cat 4 #27: 振込ファイル生成と同時）|
 | `audit` | 東海林さん | `payroll_auditor` | mfc_import + 1 営業日 | D-10/11 ④ confirmed_by_auditor 達成期限 |
-| `sharoshi_check` | 東海林さん（依頼）+ 社労士（外部） | `payroll_auditor` + `root_partners` | audit + 3 営業日 | D-10/11 ⑤ confirmed_by_sharoshi 達成期限 |
-| `finalization` | 東海林さん | `payroll_auditor` | sharoshi_check + 1 営業日 | D-10/11 ⑥ finalized 達成期限 |
+| **`visual_double_check`** ⭐ NEW 4 次 | **上田** | **`payroll_visual_checker`** | **audit + 1 営業日** | **D-10/11 ⑤ visual_double_checked 達成期限**（金額・氏名・口座 1 件ずつ目視）|
+| `sharoshi_check` | 東海林さん（依頼）+ 社労士（外部） | `payroll_auditor` + `root_partners` | visual_double_check + 3 営業日 | D-10/11 ⑥ confirmed_by_sharoshi 達成期限 |
+| `finalization` | 東海林さん | `payroll_auditor` | sharoshi_check + 1 営業日 | D-10/11 ⑦ finalized 達成期限（=振込実行）|
 
-合計目安: period_end から **7-9 営業日**で給与確定（D-01 §2.2 「翌月末営業日支払」より逆算で運用）。
+合計目安: period_end から **8-10 営業日**で給与確定（旧 7-9 営業日 + visual_double_check 1 営業日、4 次 follow-up）。
 
 ### 2.2 営業日カウント（既存 Phase 1a `business-day` ライブラリ流用）
 
@@ -75,6 +82,7 @@ CREATE TABLE bud.payroll_schedule (
     'approval',
     'mfc_import',
     'audit',
+    'visual_double_check',   -- ⭐ NEW 4 次 follow-up: 上田君目視ダブルチェック
     'sharoshi_check',
     'finalization'
   )),
@@ -133,12 +141,13 @@ CREATE TABLE bud.payroll_schedule_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id uuid REFERENCES root.companies(id),  -- NULL = 全法人共通、企業別の例外設定可
 
-  -- 各 stage の予定日（period_end からの相対営業日数）
+  -- 各 stage の予定日（period_end からの相対営業日数、4 次 follow-up: visual_double_check 追加）
   calculation_offset_days int NOT NULL DEFAULT 2,
   approval_offset_days int NOT NULL DEFAULT 1,         -- calculation 完了からの相対
   mfc_import_offset_days int NOT NULL DEFAULT 1,       -- approval 完了からの相対
   audit_offset_days int NOT NULL DEFAULT 1,            -- mfc_import 完了からの相対
-  sharoshi_check_offset_days int NOT NULL DEFAULT 3,   -- audit 完了からの相対
+  visual_double_check_offset_days int NOT NULL DEFAULT 1,  -- ⭐ NEW 4 次: audit 完了からの相対
+  sharoshi_check_offset_days int NOT NULL DEFAULT 3,   -- visual_double_check 完了からの相対（4 次で繰下げ）
   finalization_offset_days int NOT NULL DEFAULT 1,     -- sharoshi_check 完了からの相対
 
   -- 担当者デフォルト（変更時のみ NULL 解除して上書き）
@@ -147,6 +156,7 @@ CREATE TABLE bud.payroll_schedule_settings (
     -- 複数の承認者（宮永・小泉、いずれか 1 名で承認 OK）
   default_disburser_id uuid REFERENCES root.employees(id),
   default_auditor_id uuid REFERENCES root.employees(id),
+  default_visual_checker_id uuid REFERENCES root.employees(id),  -- ⭐ NEW 4 次: 通常 = 上田
   default_sharoshi_partner_id uuid REFERENCES root.partners(id),
 
   -- リマインダ閾値
@@ -281,6 +291,12 @@ const REMINDER_TEMPLATES = {
     warning: '目視確認待ちが {hours}h 経過。',
     critical: '🔴 目視確認が {hours}h 遅延。',
   },
+  // ⭐ NEW 4 次 follow-up: 上田君目視ダブルチェック
+  visual_double_check: {
+    info: '本日 {date} は上田君の目視ダブルチェック予定日です。{assignee} さん、金額・氏名・口座を 1 件ずつご確認をお願いします（時間かかってもよいです）。',
+    warning: '目視ダブルチェックが {hours}h 経過しています。{assignee} さん、ご対応をお願いします。',
+    critical: '🔴 目視ダブルチェックが {hours}h 遅延。振込日に影響します。{assignee} さん、最優先でお願いします。',
+  },
   sharoshi_check: {
     info: '社労士確認依頼の予定日です。東海林さん、{partner_name} へ確認依頼をお願いします。',
     warning: '社労士確認依頼から {hours}h 経過しています。{partner_name} への状況確認をご検討ください。',
@@ -405,23 +421,25 @@ CREATE POLICY prl_no_delete ON bud.payroll_reminder_log FOR DELETE USING (false)
 │                                            │
 │ 法人: [ 全法人共通 ▼ ]                      │
 │                                            │
-│ ── 各 stage の予定日（営業日 offset）──     │
+│ ── 各 stage の予定日（営業日 offset、4 次：7 stage）──│
 │                                            │
-│ ① 給与計算（period_end から）   [ 2 ] 営業日 │
-│ ② 承認（calculation から）       [ 1 ] 営業日 │
-│ ③ MFC 取込（approval から）       [ 1 ] 営業日 │
-│ ④ 目視確認（mfc_import から）     [ 1 ] 営業日 │
-│ ⑤ 社労士確認（audit から）       [ 3 ] 営業日 │
-│ ⑥ 確定処理（sharoshi_check から） [ 1 ] 営業日 │
+│ ① 給与計算（period_end から）        [ 2 ] 営業日 │
+│ ② 承認（calculation から）            [ 1 ] 営業日 │
+│ ③ MFC 取込（approval から）           [ 1 ] 営業日 │
+│ ④ 目視確認（mfc_import から）         [ 1 ] 営業日 │
+│ ⑤ 上田目視ダブルチェック（audit から）⭐[ 1 ] 営業日 │
+│ ⑥ 社労士確認（visual_double_check から）[ 3 ] 営業日 │
+│ ⑦ 確定処理（sharoshi_check から）     [ 1 ] 営業日 │
 │                                            │
-│ 累計: period_end + 9 営業日（給与確定まで）  │
+│ 累計: period_end + 10 営業日（給与確定まで）│
 │                                            │
-│ ── 担当者デフォルト ───────────────         │
+│ ── 担当者デフォルト（4 次：5 ロール）─────  │
 │                                            │
 │ 計算者:    [ 上田 基人 ▼ ]                  │
 │ 承認者:    [ ☑ 宮永 ☑ 小泉 ]                │
 │ 出力者:    [ 上田 基人 ▼ ]                  │
-│ 監査:      [ 後道 / 東海林 ▼ ]              │
+│ 監査:      [ 東海林 ▼ ]                    │
+│ 目視 Dチェック:[ 上田 基人 ▼ ] ⭐ NEW 4 次  │
 │ 社労士:    [ ○○社労士事務所 ▼ root_partners] │
 │                                            │
 │ ── リマインダ閾値 ────────────────          │
@@ -441,13 +459,14 @@ CREATE POLICY prl_no_delete ON bud.payroll_reminder_log FOR DELETE USING (false)
 ┌─ 2026年5月給与スケジュール ─────────────────┐
 │ Period: 2026-05-01 〜 2026-05-31           │
 │                                            │
-│ ステージ           予定        実績     状態 │
-│ ① 計算            06-02      06-02   ✅完了 │
-│ ② 承認            06-03      06-03   ✅完了 │
-│ ③ MFC 取込        06-04      —      🟡進行 │
-│ ④ 目視確認        06-05      —      ⏳待機 │
-│ ⑤ 社労士確認      06-10      —      ⏳待機 │
-│ ⑥ 確定処理        06-11      —      ⏳待機 │
+│ ステージ                 予定      実績    状態 │
+│ ① 計算                  06-02    06-02  ✅完了 │
+│ ② 承認                  06-03    06-03  ✅完了 │
+│ ③ MFC 取込              06-04    —     🟡進行 │
+│ ④ 目視確認(東海林)       06-05    —     ⏳待機 │
+│ ⑤ 目視Dチェック(上田)⭐  06-06    —     ⏳待機 │
+│ ⑥ 社労士確認            06-11    —     ⏳待機 │
+│ ⑦ 確定処理(振込実行)     06-12    —     ⏳待機 │
 │                                            │
 │ [ リマインダ手動送信 ] [ 担当者変更 ]       │
 └────────────────────────────────────────────┘
@@ -457,8 +476,8 @@ CREATE POLICY prl_no_delete ON bud.payroll_reminder_log FOR DELETE USING (false)
 
 ## 8. 受入基準
 
-- [ ] `bud_payroll_schedule` / `bud_payroll_schedule_settings` / `bud_payroll_reminder_log` migration 適用済
-- [ ] `generateScheduleForPeriod` で 6 stage 分の schedule が自動生成
+- [ ] `bud_payroll_schedule` / `bud_payroll_schedule_settings` / `bud_payroll_reminder_log` migration 適用済（visual_double_check stage 含む）⭐ 4 次
+- [ ] `generateScheduleForPeriod` で **7 stage** 分の schedule が自動生成 ⭐ 4 次
 - [ ] 営業日 offset 計算が `business-day.ts` の `nextBusinessDay()` と整合
 - [ ] 日次 Cron `/api/cron/bud-payroll-reminder` が 09:00 JST に実行
 - [ ] 重要度判定（info / warning / critical）が `warn_after_hours` / `critical_after_hours` 通り動作
@@ -467,6 +486,8 @@ CREATE POLICY prl_no_delete ON bud.payroll_reminder_log FOR DELETE USING (false)
 - [ ] Garden Toast 通知が KPIHeader 既存通知センターに表示
 - [ ] 社労士への外部通知（Chatwork DM or メール）が動作
 - [ ] `payroll_partner_id` 未登録時は東海林さんへアラート
+- [ ] **visual_double_check stage の上田向けリマインダ**が `default_visual_checker_id`（上田）に届く ⭐ NEW 4 次
+- [ ] **visual_double_check リマインダ文面**が「時間かかってもよい」「金額・氏名・口座を 1 件ずつ」のトーンで届く ⭐ NEW 4 次
 - [ ] admin 設定画面で全項目変更可、新規 period から反映
 - [ ] RLS で payroll_calculator が settings 変更不可
 
@@ -476,13 +497,13 @@ CREATE POLICY prl_no_delete ON bud.payroll_reminder_log FOR DELETE USING (false)
 
 | W# | 作業 | 工数 |
 |---|---|---|
-| W1 | migration（schedule / settings / reminder_log）+ RLS | 0.15d |
-| W2 | `generateScheduleForPeriod` + 営業日 offset 計算 | 0.15d |
-| W3 | リマインダ Cron（重要度判定 + エスカレーション） | 0.25d |
+| W1 | migration（schedule / settings / reminder_log + **visual_double_check stage**）+ RLS | 0.15d |
+| W2 | `generateScheduleForPeriod` + 営業日 offset 計算（**7 stage**） | 0.15d |
+| W3 | リマインダ Cron（重要度判定 + エスカレーション、**7 stage 対応 + visual_double_check 文面**） | 0.3d |
 | W4 | Chatwork DM + Garden Toast 通知連携 | 0.15d |
 | W5 | 社労士外部通知（root_partners 連携、D-04 §6.4 流用） | 0.1d |
-| W6 | admin 設定画面 + 個別期間状況画面 | 0.2d |
-| **合計** | | **1.0d** |
+| W6 | admin 設定画面 + 個別期間状況画面（**7 stage 表示**） | 0.2d |
+| **合計** | | **1.05d**（旧 1.0d + 4 次 0.05d）|
 
 ---
 

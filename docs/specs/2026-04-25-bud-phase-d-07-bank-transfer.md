@@ -1,15 +1,21 @@
-# Bud Phase D #07: 銀行振込連携（Bud A-04 振込フォームへの自動連携）
+# Bud Phase D #07: 銀行振込連携（Bud A-04 振込フォームへの自動連携 + 上田目視ダブルチェック対応）
 
-- 対象: Garden-Bud Phase D 給与・賞与の銀行振込実行（Phase A-04 連携）
+- 対象: Garden-Bud Phase D 給与・賞与の銀行振込実行（Phase A-04 連携）+ 4 次 follow-up Cat 4 #26 / #27 対応
 - 優先度: **🔴 最高**（金銭フロー、ミスは即多額の損害）
-- 見積: **1.0d**（連携 + 振込 FB データ生成 + 承認フロー）
+- 見積: **1.2d**（旧 1.0d + 4 次 follow-up 同時出力 + 上田 visual-check 連携 +0.2d）
 - 担当セッション: a-bud（実装）/ a-bloom（レビュー）
 - 作成: 2026-04-25（a-auto 005 / Batch 17 Bud Phase D #07）
+- 改訂:
+  - 1 次 follow-up (2026-04-26): ハイブリッド振込方式（FB 1 ファイル + 会計レポート CSV）
+  - 2 次 follow-up (2026-04-26): §3.3 8 大区分階層化
+  - **4 次 follow-up (2026-04-26)**: **Cat 4 #26（後道さん不在 / 上田目視ダブルチェック / 東海林さん振込）+ Cat 4 #27（MFC CSV 出力 = 振込ファイル生成と同時、3 経路同時化）**
 - 前提:
   - **Bud Phase A-04 振込作成フォーム**（既存）
   - **Bud Phase A-05 振込承認フロー**（既存）
   - **Bud Phase B-04 給与振込フロー**（設計済、本 spec で実装着手）
   - **Bud Phase D-02 / D-03**（給与・賞与結果）
+  - **Bud Phase D-04 §2.7**（上田君 visual-check UI 要件、本 spec から参照）
+  - **Bud Phase D-10 / D-11**（4 次 follow-up: 7 段階 status enum + 5 ロール）
   - 全銀協フォーマット（FB データ）
 
 ---
@@ -335,29 +341,63 @@ const ACCOUNTING_CATEGORIES_ORDER = [
 
 ## 4. 連携フロー（給与）
 
-### 4.1 全体図（2026-04-26 [a-bud] 2 次 follow-up: 取込責任者を東海林さんに修正）
+### 4.1 全体図（2026-04-26 [a-bud] 4 次 follow-up: Cat 4 #26 + #27 反映、上田目視ダブルチェック追加）
 
-> **2 次改訂**: 旧「後道さんが MFC 会計に取り込む」を**「東海林さん（admin）が MFC 会計に取込、後道さんへ報告書を共有」**に修正。
-> MFC 取込は権限・操作の集約のため admin が実施、後道さんは Garden レポート + MFC 取込結果を確認するのみ。
-> 後道さんへの仕様確認は **UI 完成後**（memory `feedback_ui_first_then_postcheck_with_godo.md` 準拠）。
+> **4 次改訂**: 給与確認フロー全体を Cat 4 #26 / #27 で再構成。
+> - Cat 4 #26: 後道さん不在、上田君目視ダブルチェック + 東海林さん振込
+> - Cat 4 #27: MFC CSV 出力 = 振込ファイル生成と同時（経路 C を経路 A/B と同時実行）
+> 旧「東海林さんが MFC 会計に取込 → 後道さん報告書共有」フローは、上田目視 + sharoshi 確認段階を経由するように再構成。
+> 後道さんへの仕様確認は引き続き UI 完成後（memory `feedback_ui_first_then_postcheck_with_godo.md` 準拠）。
+
+#### Cat 4 #27: 出力タイミング統一（FB / 会計レポート / MFC CSV を同時生成）
+
+| 経路 | 出力 | 用途 | タイミング |
+|---|---|---|---|
+| **経路 A** | 全銀協 FB データ 1 ファイル | 銀行ネットバンキング | **3 経路同時生成** ⭐ Cat 4 #27 |
+| **経路 B** | 勘定項目別レポート CSV（8 大区分階層） | マネーフォワードクラウド会計 | **3 経路同時生成** ⭐ Cat 4 #27 |
+| **経路 C** | MFC 互換 CSV（D-11 §2、72 列 / cp932） | マネーフォワードクラウド給与 | **3 経路同時生成** ⭐ Cat 4 #27 |
+
+> 旧設計では経路 C（MFC CSV）は別工程として後追い実行されていたが、4 次 follow-up で **3 経路同時生成**に統一。1 トランザクションで全ファイル保存 + status='exported' 一括更新。
+
+#### 確認フロー全体（4 次 follow-up: 後道さん不在 / 上田目視ダブルチェック追加）
 
 ```
-1. period.status = 'approved'（給与計算 + 承認完了）
+1. period.status = 'approved'（給与計算 + 承認完了 = D-10 ② approved）
 2. /api/bud/payroll/prepare-transfer 実行
    - bud_payroll_transfer_batches 作成
    - bud_payroll_transfer_items を salary_records から作成
-3. payroll_approver が振込内容確認 → status='approved'
-4. **ハイブリッド出力**（旧 30 件閾値判定は廃止）:
-   - 経路 A: 全銀協 FB データ 1 ファイル生成 → Storage 保存
-   - 経路 B: 勘定項目別レポート CSV 生成（**8 大区分階層構造**）→ bud_payroll_accounting_reports に保存
-5. payroll_disburser（上田）が銀行ネットバンキングへ FB アップロード（経路 A）
-6. **東海林さん（admin）が MFC 会計に CSV 取込**（経路 B）→ imported_to_mf_at 記録
-7. **東海林さんが後道さんへ報告書共有**（Chatwork DM or PDF 化）→ shared_with_godo_at 記録
-8. 振込実行 → status='completed' → salary_records.status='paid'
-9. 後道さんは Garden レポート + MFC 取込結果を確認のみ（書込・操作なし）
+3. payroll_disburser（上田）が振込内容確認 → status='approved'
+4. **3 経路同時出力**（Cat 4 #27）:
+   - 経路 A: 全銀協 FB データ 1 ファイル → Storage 保存（D-07 §4.4）
+   - 経路 B: 勘定項目別レポート CSV（8 大区分階層）→ bud_payroll_accounting_reports（§3.3）
+   - 経路 C: MFC 互換 CSV（D-11、72 列 / cp932）→ bud_mfc_csv_exports
+   - status: D-10/D-11 共に 'exported' へ一括遷移
+5. **東海林さん（payroll_auditor）が目視確認**（D-10/11 ④ confirmed_by_auditor）
+6. **東海林さんが「上田に目視ダブルチェック依頼」ボタン押下**
+   - visual_double_check_requested_at 記録
+   - 上田画面（/bud/payroll/visual-check）に "未チェック" として登録
+7. **上田君（payroll_visual_checker）が金額・氏名・口座を 1 件ずつ目視**（時間かかってもよい、自動 timeout なし）
+   - 全件 OK で「確認 OK」ボタン押下
+   - status='visual_double_checked'（D-10/11 ⑤）⭐ NEW 4 次
+   - **上田君は閲覧 + OK ボタンのみ、編集・実行権限なし**（詳細 D-04 §2.7）
+8. 東海林さんが社労士（root_partners）へ確認依頼（外部経路）
+9. 社労士 OK 受領後、東海林さんが「社労士確認済」マーク（D-10/11 ⑥ confirmed_by_sharoshi）
+10. **東海林さんが「確定処理 / 振込実行」ボタン押下**（D-10 ⑦ finalized）
+    - 銀行ネットバンキングへ FB データアップロード（経路 A）
+    - 振込実行 → batch.status='completed' → salary_records.status='paid'
+11. 東海林さんが MFC 会計に CSV 取込（経路 B、imported_to_mf_at 記録）
+12. 東海林さんが後道さんへ報告書共有（Chatwork DM or PDF 化、shared_with_godo_at 記録）
+    - **後道さんは Garden 上の確認フローには登場しない**（旧運用の「後道さんが目視確認」工程は廃止）
+    - 後道さんは Garden レポート + MFC 取込結果を確認のみ（書込・操作なし、別系統）
 ```
 
-#### 後道さんへの確認タイミング
+> **後道さん不在の整理**（Cat 4 #26 反映）:
+> - `bud_payroll_records` / `bud_mfc_csv_exports` の status 遷移に「後道」関連の stage はない
+> - 上田目視 UI（D-04 §2.7）も「後道」へのアサイン箇所は持たない
+> - 後道さんへの会計レポート共有は別系統（`bud_payroll_accounting_reports.shared_with_godo_at`）で継続
+> - 後道さんへの仕様確認は UI 完成後の事後フィードバック方式（`feedback_ui_first_then_postcheck_with_godo.md` 準拠）
+
+#### 後道さんへの確認タイミング（変更なし）
 
 - **UI 完成前**: spec 段階での「これで OK ですか？」確認は**しない**（`feedback_ui_first_then_postcheck_with_godo.md` 準拠）
 - **UI 完成後**: 実画面で集計レポートを見せて「これでいいですね？」フィードバック受領
@@ -433,9 +473,28 @@ async function linkToFurikomiForm(batchId: string): Promise<void> {
 }
 ```
 
-### 4.4 FB データ生成（30 件以上）
+### 4.4 FB データ生成 + 会計レポート CSV + MFC CSV の **3 経路同時生成**（Cat 4 #27、4 次 follow-up）
 
 ```typescript
+// ⭐ 4 次 follow-up: 3 経路を 1 トランザクションで同時生成（旧 30 件閾値判定は廃止）
+async function exportPayrollBatchHybrid(batchId: string): Promise<{
+  fbDataPath: string;
+  accountingReportId: string;
+  mfcCsvExportId: string;
+}> {
+  const fbDataPath = await generateFbData(batchId);                    // 経路 A
+  const accountingReport = await generateAccountingReport(batchId);    // 経路 B（§3.3）
+  const mfcCsv = await generateMfcCsv({                                // 経路 C（D-11 §5）
+    payPeriod: batch.payroll_period_id,
+    payDate: batch.scheduled_payment_date,
+  });
+
+  // 1 トランザクションで status='exported' 一括更新（D-10 / D-11 / D-07 同期）
+  await supabase.rpc('mark_batch_exported', { batchId, ...{ fbDataPath, accountingReportId, mfcCsvExportId } });
+
+  return { fbDataPath, accountingReportId: accountingReport.id, mfcCsvExportId: mfcCsv.exportId };
+}
+
 async function generateFbData(batchId: string): Promise<string> {
   const batch = await fetchBatchWithItems(batchId);
   const lines: string[] = [];

@@ -5,10 +5,13 @@
 - 見積: **0.75d**（テーブル + 計算 + テスト）
 - 担当セッション: a-bud（実装）/ a-bloom（レビュー）
 - 作成: 2026-04-25（a-auto 005 / Batch 17 Bud Phase D #03）
+- 改訂:
+  - **2026-04-26（a-bud 4 次 follow-up、Cat 4 #28 反映）**: **賞与処理 = admin のみ承認・配信**（給与本体と同じ運用、§X 追加）
 - 前提:
   - **Bud Phase B-05 賞与処理**（設計済、本 spec で実装着手）
   - **Bud Phase D-02 給与計算ロジック**
   - **Bud Phase D-05 社保計算**
+  - **Cat 4 #28 採択結果（2026-04-26 a-main 確定）**: 賞与処理 = admin のみ承認・配信
   - 国税庁「賞与に対する源泉徴収税額の算出率の表」2026 年版
 
 ---
@@ -303,18 +306,44 @@ WHERE employee_id = $1
 
 ---
 
-## 7. RLS
+## 7. RLS（Cat 4 #28 反映、4 次 follow-up: admin 限定の明示）
+
+> **🎯 4 次 follow-up（Cat 4 #28、A 採択）**: 賞与処理の承認・配信は **`admin` 以上のみ**に制限する。給与本体（D-10）と同じ運用。
+> 確定根拠: `decisions-pending-batch-20260426.md` Cat 4 #28
 
 ```sql
--- 自分の賞与は閲覧可
+-- 自分の賞与は閲覧可（D-04 マイページ経由）
 CREATE POLICY bonus_select_own
   ON bud_bonus_records FOR SELECT
   USING (employee_id = (SELECT id FROM root_employees WHERE user_id = auth.uid()));
 
 -- manager+ は自部門
--- admin+ は全件
--- INSERT / UPDATE は admin+ のみ（賞与額は経理が直接入力）
+-- admin+ は全件 SELECT
+-- INSERT / UPDATE / DELETE は admin+ のみ（賞与額は admin が直接入力、Cat 4 #28）
+CREATE POLICY bonus_admin_only_write
+  ON bud_bonus_records FOR INSERT
+  WITH CHECK (is_admin_or_super_admin());
+
+CREATE POLICY bonus_admin_only_update
+  ON bud_bonus_records FOR UPDATE
+  USING (is_admin_or_super_admin())
+  WITH CHECK (is_admin_or_super_admin());
+
+-- 賞与配信（D-04 経由）も admin only
+-- bud_payroll_notifications.bonus_record_id 経由の配信は payroll_disburser ではなく admin が起票
 ```
+
+### 7.1 Cat 4 #28 の運用境界（4 次 follow-up）
+
+| 操作 | 旧運用 | 4 次 follow-up（Cat 4 #28）|
+|---|---|---|
+| 賞与計算（`bud_bonus_records` 起票）| payroll_calculator + admin | **admin / super_admin のみ** |
+| 賞与承認 | payroll_approver | **admin / super_admin のみ**（V6 自起票禁止と同等の自己承認禁止）|
+| 賞与配信（D-04 §3.2 賞与明細 PDF）| payroll_disburser | **admin / super_admin のみ**（給与本体と同じ）|
+| 一般従業員からの閲覧 | 自分の `bud_bonus_records` のみ | 変更なし（D-04 マイページ経由）|
+
+> 賞与は年 2-3 回・金額大・税計算特殊で、**ミスのインパクトが給与より大きい**ため admin 限定運用。
+> 給与本体（D-10）の `payroll_*` 4 ロール + `payroll_visual_checker`（4 次 follow-up）の運用とは別系統で、賞与は admin のみで完結する。
 
 ---
 
