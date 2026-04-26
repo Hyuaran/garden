@@ -39,11 +39,16 @@
 - 振込連携 → D-07
 - 年末調整 → D-06
 
-### 1.4 A-07 採択結果との関係（payment_method）
+### 1.4 A-07 採択結果との関係（payment_method、2026-04-26 改訂）
 
 `root_employees.payment_method` ENUM（`bank_transfer` / `cash` / `other`）は計算結果に影響しない。
 給与計算は payment_method に**関係なく同じロジック**で実行され、結果（`bud_salary_records`）が出力される。
-配信先（D-04）と振込先（D-07）で payment_method 別に分岐する。
+配信先（D-04、**Y 案 + フォールバック** 2026-04-26 改訂）と振込先（D-07）で payment_method 別に分岐する。
+
+**配信ロジック**（A-07 論点 3 改訂採択、詳細は D-04 §2 / §6）:
+- 通常フロー: Tree マイページ + メール DL リンク + LINE Bot 通知
+- 例外フロー: メール DL リンク + PW 保護 PDF（強ランダム 16 文字、フォールバック）
+- 旧採択「方式 2 = MMDD 4 桁 PW」は a-review #1 で破棄
 
 ---
 

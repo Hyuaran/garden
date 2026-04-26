@@ -230,30 +230,52 @@ describe('calculateMonthlyInsurance', () => {
 });
 ```
 
-### 3.3.5 D-04 配信エッジケース（A-07 反映、30+ ケース）
+### 3.3.5 D-04 配信エッジケース（A-07 反映、Y 案 + フォールバック 2026-04-26 改訂、30+ ケース）
 
 ```typescript
 describe('Statement Distribution', () => {
   describe('PDF 生成', () => {
-    it('PW なし版 + PW あり版の二系統生成', ...);
-    it('生成失敗 → bud_salary_notifications.status=failed', ...);
-    it('リトライ後成功で status=sent', ...);
+    it('通常フロー: PW なし PDF（24h ワンタイム DL リンク経由）生成', ...);
+    it('例外フロー: PW 保護 PDF（強ランダム 16 文字）生成', ...);
+    it('生成失敗 → bud_payroll_notifications.overall_status=failed', ...);
+    it('リトライ後成功で overall_status=sent', ...);
   });
 
-  describe('PW 規則（生年月日 / 社員番号下 4 桁）', () => {
-    it('生年月日 4 桁（MMDD）で開ける', ...);
-    it('社員番号下 4 桁で開ける', ...);
-    it('PW 不一致で開けない', ...);
-    it('uid に応じて PW 規則切替（実装時最終決定）', ...);
+  describe('LINE 友だち判定 + 配信方式分岐', () => {
+    it('LINE friend → delivery_method=line_email', ...);
+    it('LINE unfriend → delivery_method=fallback_email_pw に格上げ', ...);
+    it('LINE unknown（API 失敗） → fallback_email_pw に格上げ', ...);
+    it('メアド未登録 → delivery_method=manual（admin 個別対応）', ...);
+  });
+
+  describe('通常フロー: メール DL リンク + LINE Bot', () => {
+    it('メール送信成功で email_status=sent + dl_token 発行', ...);
+    it('LINE Bot 通知成功で line_status=sent', ...);
+    it('DL トークン使用で dl_used_at 記録（ワンタイム消費）', ...);
+    it('同じ DL トークン 2 回目使用で TOKEN_USED エラー', ...);
+    it('24h 経過後の DL トークン使用で TOKEN_EXPIRED エラー', ...);
+    it('rate limit 超過で HTTP 429（無効トークン 5 回連続で IP ブロック）', ...);
+  });
+
+  describe('例外フロー: フォールバック PW 保護 PDF', () => {
+    it('強ランダム 16 文字 PW 生成（crypto.randomBytes ベース）', ...);
+    it('userPassword と ownerPassword は別値', ...);
+    it('PW 不一致で PDF 開けない', ...);
+    it('マイページで PW 表示後 displayed_at 記録', ...);
+    it('表示後 24h で PW 自動マスク', ...);
+    it('fallback_password_hash は bcrypt + ランダムソルト', ...);
+    it('平文 PW は DB / ログに非保存（fallback_password_plain_temp は暗号化）', ...);
   });
 
   describe('メール配信', () => {
-    it('Resend / SendGrid 配信成功で sent_at 記録', ...);
-    it('SMTP エラーで status=pending_retry', ...);
-    it('1h 後の Cron で再試行', ...);
+    it('Resend / SendGrid 配信成功で email_sent_at 記録', ...);
+    it('SMTP エラーで overall_status=pending_retry', ...);
+    it('1h / 6h / 24h Cron で順次再試行', ...);
     it('4 回失敗で admin Chatwork 通知', ...);
     it('メアド未登録で Tree のみ + 登録促進通知', ...);
     it('メアド不正フォーマットで送信前チェックで失敗', ...);
+    it('SPF/DKIM/DMARC 失敗で配信ブロック', ...);
+    it('TLS 1.2 未満接続で配信ブロック', ...);
   });
 
   describe('Tree マイページ統合', () => {

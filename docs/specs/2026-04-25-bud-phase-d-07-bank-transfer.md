@@ -37,7 +37,7 @@
 - 賞与計算 → D-03
 - 明細配信 → D-04
 
-### 1.4 payment_method による対象判定（A-07 反映）
+### 1.4 payment_method による対象判定（A-07 反映、2026-04-26 改訂版で配信は別 spec）
 
 本 spec の振込連携は **`root_employees.payment_method = 'bank_transfer'`** のみが対象。
 
@@ -48,6 +48,11 @@
 | `other` | ❌ 対象外 | admin 個別判断、既存 `bud_furikomi` で個別処理 |
 
 `prepareTransfer` 関数の冒頭で `WHERE payment_method = 'bank_transfer'` フィルタを必ず適用。
+
+**配信ロジックは D-04 へ委譲**（A-07 論点 3 改訂採択 = Y 案 + フォールバック、2026-04-26）:
+- 振込実行 (D-07) と明細配信 (D-04) は独立して動作
+- 配信は通常フロー（メール DL リンク + LINE Bot）/ 例外フロー（メール DL リンク + PW 保護 PDF）で分岐
+- 詳細: `docs/specs/2026-04-25-bud-phase-d-04-statement-distribution.md` §2 / §6
 
 ---
 

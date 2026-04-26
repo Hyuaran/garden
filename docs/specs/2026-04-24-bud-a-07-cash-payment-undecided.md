@@ -250,4 +250,104 @@ CREATE TABLE bud_cash_payment_receipts (
 7. 税務調査時、手渡し給与はどのように説明・証明していますか？
 8. 今後の方針として、手渡しを減らしたい意向はありますか？
 
-— end of A-07 spec —
+---
+
+## 14. ✅ 東海林判断: 採択結果（2026-04-26 改訂版）
+
+### 14.1 5 論点採択結果
+
+> **改訂 2026-04-26**: 論点 3 が「方式 2 = MMDD」→「**方式 2' = Y 案 + フォールバック**」に変更（a-review #1 重大指摘で破棄）。
+> 1/2/4/5 は推奨通り採択（前回確定）。
+
+| # | 論点 | 採択 | 推奨との差異 | 備考 |
+|---|---|---|---|---|
+| 1 | 識別方法 | A 案: `root_employees.payment_method` ENUM | 推奨通り | デフォルト `bank_transfer` |
+| 2 | `bud_transfers` 扱い | B 案: `transfer_type='給与(手渡し)'` | 推奨通り | CSV/FB データから除外 |
+| 3 | 給与明細配信 | **方式 2' = Y 案 + フォールバック**（2026-04-26 改訂） | 旧採択「方式 2 = MMDD 4 桁 PW」を破棄 | 詳細は §14.2 |
+| 4 | 現金原資管理 | A+C 併用 | 推奨通り | — |
+| 5 | 受領確認 | A+B 併用（現金支給者限定） | 推奨通り | — |
+
+### 14.2 論点 3 の改訂採択（方式 2' = Y 案 + フォールバック）
+
+#### 通常フロー（LINE 友だちあり、現状 100% カバー）
+
+1. メール送信: **DL リンクのみ**（24h ワンタイム、PW なし PDF）
+2. LINE Bot 通知: スタッフ連絡用_official から「給与明細届きました」
+3. 従業員: メール → リンククリック → ブラウザで PDF 表示 / DL
+
+#### 例外フロー（LINE 非友だち、現状ゼロ、将来発生時のフォールバック）
+
+1. メール送信: **DL リンク + PW 保護 PDF**（PW = 強ランダム 16 文字）
+2. PW はマイページ（社内 PC ログイン）で確認可能
+3. 従業員: 社内 PC でマイページログイン → PW 確認 → 自宅メールで PDF 開く
+
+#### 旧採択（方式 2 = MMDD 4 桁 PW）破棄理由
+
+a-review #1 指摘で確認された PW 強度問題:
+
+- **MMDD 4 桁** = 366 候補（ブルートフォース秒で解読可能）
+- **社員番号下 4 桁** = 10000 候補（連番運用で予測可）
+- PDF AES-256 暗号化を無効化、GDPR / 個情法上の PII 配信義務違反リスク
+
+→ Y 案 + フォールバックで完全置換、方式 2 は本 spec の旧記述として残置（履歴）。
+
+### 14.3 5 未確認事項（U1-U5）
+
+東海林さんから業務情報追加待ち。緊急性なし、Phase B 着手前（2026-07 頃）まで OK。
+
+| # | 未確認 | 暫定推測（合意済） |
+|---|---|---|
+| U1 | 手渡し受給者数 | 1〜3 名（小規模） |
+| U2 | 法人別人数 | 集中していない |
+| U3 | ATM 引出ルール | 月末経理担当 |
+| U4 | MF クラウド計算対象 | 手渡し正社員は MF 対象 |
+| U5 | 給与日同日 / 別日 | 同日 |
+
+### 14.4 方式 2' 実装ヒント（Phase B 着手時に再相談）
+
+> **2026-04-26 改訂**: 旧「bcryptjs クライアント計算」「PDF パスワード保護」前提を削除、サーバ側完結に統一。
+
+#### 通常フロー（LINE Bot + メール DL リンク）
+
+- LINE Bot SDK: `@line/bot-sdk`（npm 追加要）
+- 環境変数: `LINE_OFFICIAL_CHANNEL_ACCESS_TOKEN` / `LINE_OFFICIAL_CHANNEL_SECRET`
+- DL リンクトークン: `crypto.randomBytes(32).toString('base64url')`（サーバ側生成、bcrypt 不要）
+- ワンタイム消費: `bud_payroll_notifications.dl_used_at` を UPDATE 競合 (`WHERE dl_used_at IS NULL`) で原子的にマーク
+- メール送信: Resend / SendGrid 等（D-04 §6.4 と整合）
+
+#### 例外フロー（フォールバック PW 保護 PDF）
+
+- PDF 暗号化: `pdf-lib`（npm 追加要、フォールバック発動時のみ実装着手）
+- PW 生成: `crypto.randomBytes` で 16 文字 ASCII printable（環境変数 `PAYROLL_PDF_PASSWORD_LENGTH=16`）
+- PW 保管: サーバ側のみ（`fallback_password_hash` = bcrypt + ランダムソルト、`fallback_password_plain_temp` = 24h 暗号化保管）
+- PW 表示: マイページ（本人 RLS）、`fallback_password_displayed_at` で監査
+- **クライアント側で bcryptjs 計算は不要**（サーバ完結で漏洩面を最小化）
+
+#### 削除した旧実装ヒント（参考）
+
+- ~~bcryptjs クライアント計算~~ → サーバ側完結
+- ~~PW = MMDD or 社員番号下 4 桁~~ → 強ランダム 16 文字
+- ~~メール本文に PW 規則 hint~~ → 通常フローでは記載なし、例外フローではマイページ確認の案内のみ
+
+### 14.5 Phase B 着手時の TODO（2026-04-26 改訂）
+
+| # | TODO | 状態 |
+|---|---|---|
+| 1 | U1-U5 業務情報の正式確認（東海林さん） | Phase B 着手前まで OK |
+| 2 | ~~PW タイプの最終決定（生年月日 4 桁 vs 社員番号下 4 桁）~~ | **削除**（PW なしが基本、フォールバック時のみ強ランダム） |
+| 3 | LINE Bot SDK の追加検討（`@line/bot-sdk`、新 npm 承認要） | Phase B 着手時 |
+| 4 | LINE 友だち管理ロジック（`root_employees.line_friend_status` 列追加 + Webhook 連携） | Phase B 着手時 |
+| 5 | メール送信ライブラリ選定（Resend / SendGrid / SES） | Phase B 着手時、Resend 開始推奨 |
+| 6 | PDF パスワード保護ライブラリ追加（`pdf-lib`、フォールバック専用） | フォールバック発動時に実装着手 |
+| 7 | 送信ドメイン認証（SPF/DKIM/DMARC、専用サブドメイン）の DNS 設定 | Phase B 着手前 |
+| 8 | DL リンクの rate limit + log redaction（D-04 §6.5 参照） | Phase B 着手時 |
+
+### 14.6 反映済みファイル（2026-04-26 改訂版）
+
+- ✅ `docs/specs/2026-04-25-bud-phase-d-04-statement-distribution.md` の §2 / §6 / §8 を Y 案 + フォールバックに改訂
+- ✅ 旧 §6.5 PW 保護 PDF 採択 3 案（A/B/C）を §6.7 履歴として残置
+- ✅ `bud_payroll_notifications` テーブル定義を改訂（`delivery_method` ENUM、DL トークン列、フォールバック PW 列）
+- ✅ 環境変数追加（LINE_OFFICIAL_*、PAYROLL_LINK_EXPIRY_HOURS、PAYROLL_PDF_PASSWORD_LENGTH）
+- 🟡 D-02 / D-03 / D-06 / D-07 / D-08 ヘッダーの A-07 反映行を「方式 2 → 方式 2'」に更新（本 commit で実施）
+
+— end of A-07 spec（2026-04-26 改訂版） —

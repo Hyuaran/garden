@@ -52,6 +52,7 @@
 | Bud | Phase D-06: 年末調整連携（Phase C 連動 + マイナンバー暗号化） | 0.75 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。bud_year_end_settlements + root_employees_pii（pgcrypto）。12 月給与で精算。所得税法 190/226、マイナンバー法 27-29 準拠。 |
 | Bud | Phase D-07: 銀行振込連携（A-04 連携 + 全銀協 FB データ） | 1.0 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。bud_payroll_transfer_batches + _items。30 件閾値で個別 / FB 切替。Shift_JIS + 半角カナ。月末 25 日銀行休業日対応。労基法 24。 |
 | Bud | Phase D-08: テスト戦略（Phase A 282 tests 流儀踏襲） | 0.5 | — | — | a-bud / a-auto 005 spec | 2026-04-25 | — | a-auto 005 spec 起草。fixture 50+ + 単体 280+ + 統合 + E2E + 法令テスト。計算系（D-02/03/05）行カバレッジ 100% 強制。CI 統合。 |
+| Bud | PR #74 D-04 給与明細配信 Y 案 + フォールバック確定（A-07 採択結果改訂、local commit） | 0.25 | 0.25 | 0 | a-bud (A) | 2026-04-26 | 2026-04-26 | GitHub suspended のため push 不可、ローカル commit のみ。**東海林さん最終判断**で方式 2 (MMDD) → 方式 2' (Y 案 + フォールバック) に確定。**通常フロー**: メール DL リンク (24h ワンタイム、PW なし PDF) + LINE Bot 通知。**例外フロー**: メール DL リンク + PW 保護 PDF (強ランダム 16 文字、フォールバック)。bud_payroll_notifications テーブル新設 (delivery_method ENUM、DL トークン、フォールバック PW 列)。環境変数 LINE_OFFICIAL_*、PAYROLL_LINK_EXPIRY_HOURS=24、PAYROLL_PDF_PASSWORD_LENGTH=16。D-02/D-03/D-07/D-08 ヘッダー連動更新、A-07 spec §14 採択結果に Y 案 + フォールバック追記。見積 1.5d 維持（旧採択破棄分の工数振替）。 |
 
 ## 運用メモ
 

@@ -37,8 +37,11 @@
 
 ### 1.4 配信ロジック
 
-賞与明細の配信は **D-04 の配信ロジック流用**（A-07 採択 = Tree マイページ + メール PW PDF）。
-`bud_salary_notifications.bonus_record_id` で識別、給与明細と同じ `notification_type` セットを使用。
+賞与明細の配信は **D-04 の配信ロジック流用**（A-07 採択 = **Y 案 + フォールバック**、2026-04-26 改訂）。
+- 通常フロー: Tree マイページ + メール DL リンク（24h ワンタイム、PW なし PDF）+ LINE Bot 通知
+- 例外フロー: メール DL リンク + PW 保護 PDF（強ランダム 16 文字、フォールバック）
+- `bud_payroll_notifications.bonus_record_id` で識別、給与明細と同じ `delivery_method` ENUM を使用
+- 詳細: `docs/specs/2026-04-25-bud-phase-d-04-statement-distribution.md` §2 / §6 / §8
 
 ---
 
