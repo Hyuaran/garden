@@ -13,7 +13,7 @@ BEGIN;
 -- ---------------------------------------------------------------------
 -- 1. ENUM
 -- ---------------------------------------------------------------------
-CREATE TYPE forest_tax_file_status AS ENUM ('zanntei', 'kakutei');
+CREATE TYPE forest_tax_file_status AS ENUM ('zantei', 'kakutei');
 
 -- ---------------------------------------------------------------------
 -- 2. テーブル定義
@@ -24,7 +24,7 @@ CREATE TABLE forest_tax_files (
   doc_name        text NOT NULL,                            -- 表示用ドキュメント名
   file_name       text NOT NULL,                            -- 元ファイル名（Storage パスとは別）
   storage_path    text NOT NULL UNIQUE,                     -- Storage 内パス、一意
-  status          forest_tax_file_status NOT NULL DEFAULT 'zanntei',
+  status          forest_tax_file_status NOT NULL DEFAULT 'zantei',
   doc_date        date,                                     -- 書類基準日（年次=期末日 等）
   uploaded_at     timestamptz NOT NULL DEFAULT now(),
   uploaded_by     uuid REFERENCES auth.users(id),
@@ -38,7 +38,7 @@ CREATE TABLE forest_tax_files (
 COMMENT ON TABLE forest_tax_files IS
   'Forest 税理士連携ファイルのメタデータ。実体は Storage bucket forest-tax/ に格納';
 COMMENT ON COLUMN forest_tax_files.status IS
-  '暫定(zanntei) = 作成中、確定(kakutei) = 税理士確認済';
+  '暫定(zantei) = 作成中、確定(kakutei) = 税理士確認済';
 COMMENT ON COLUMN forest_tax_files.doc_date IS
   '書類の基準日。年次書類なら期末日、月次なら月末日など。連携日 (uploaded_at) とは別';
 

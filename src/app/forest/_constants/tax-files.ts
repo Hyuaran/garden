@@ -14,7 +14,7 @@ export const TAX_FILE_STATUS_LABELS: Record<
   TaxFileStatus,
   { label: string; color: string; fontWeight: number }
 > = {
-  zanntei: { label: "暫定", color: "#7a9a7a", fontWeight: 400 },
+  zantei: { label: "暫定", color: "#7a9a7a", fontWeight: 400 },
   kakutei: { label: "確定", color: "#1b4332", fontWeight: 600 },
 };
 

@@ -15,8 +15,8 @@ describe("TaxFileStatusBadge", () => {
     expect(screen.getByText(/確定/)).toBeInTheDocument();
   });
 
-  it("renders '＜ 暫定 ＞' for zanntei status", () => {
-    render(<TaxFileStatusBadge status="zanntei" />);
+  it("renders '＜ 暫定 ＞' for zantei status", () => {
+    render(<TaxFileStatusBadge status="zantei" />);
     expect(screen.getByText(/暫定/)).toBeInTheDocument();
   });
 

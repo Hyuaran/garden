@@ -85,9 +85,8 @@ export type LastUpdatedAt = {
  * T-F5: 税理士連携ファイル（forest_tax_files テーブル + Storage）
  * ===================================================================== */
 
-/** 税理士連携ファイルのステータス。zanntei = 暫定 / kakutei = 確定。
- *  ※ 'zanntei' は DB ENUM の表記に合わせて温存（DB との整合優先）。 */
-export type TaxFileStatus = "zanntei" | "kakutei";
+/** 税理士連携ファイルのステータス。zantei = 暫定 / kakutei = 確定。 */
+export type TaxFileStatus = "zantei" | "kakutei";
 
 /** `forest_tax_files` テーブル行型。 */
 export type TaxFile = {
