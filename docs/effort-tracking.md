@@ -64,6 +64,7 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Cross | タスク G: 残スコープ外 4 ファイル 8-role 化（soil/bud-phase-c/root-phase-b-06/soil-06）| 0.1 | 0.05 | -0.05 | a-auto 016 inline | 2026-04-27 | 2026-04-27 | タスク C 残課題 4 ファイルを inline 実行で 8-role 化。soil-call-history-partitioning（line 155 CHECK）/ bud-phase-c-06（§3.3 見出し + roles 配列）/ root-phase-b-06（line 189 コメント）/ soil-06-rls（line 13 前提 + line 225 CHECK 2 箇所）。+7 -6 行。これで C-1 + C-2 + G の 3 ブランチ merge 後に Garden 8-role 標準が全 spec で統一。 |
 
 ## 運用メモ
 
