@@ -60,7 +60,7 @@ export function ShojiStatusProvider({ children }: { children: ReactNode }) {
     tick();
     const id = setInterval(tick, POLL_INTERVAL_MS);
     const onVisibility = () => {
-      if (document.visibilityState === "visible") tick();
+      if (typeof document !== "undefined" && document.visibilityState === "visible") tick();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
