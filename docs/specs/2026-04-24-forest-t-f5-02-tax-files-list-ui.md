@@ -59,7 +59,7 @@ export const TAX_FILE_STATUS_LABELS: Record<TaxFileStatus, {
   label: string;
   className: string;   // Tailwind クラス
 }> = {
-  zanntei: { label: '暫定', className: 'text-gray-500' },   // v9 では `<` 暫定 `>` 装飾
+  zantei: { label: '暫定', className: 'text-gray-500' },   // v9 では `<` 暫定 `>` 装飾
   kakutei: { label: '確定', className: 'text-emerald-700 font-medium' },
 };
 

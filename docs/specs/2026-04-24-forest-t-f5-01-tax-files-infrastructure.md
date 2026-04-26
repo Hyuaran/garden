@@ -51,7 +51,7 @@
 
 ```typescript
 // src/app/forest/_lib/types.ts に追加
-export type TaxFileStatus = 'zanntei' | 'kakutei';       // 暫定 / 確定
+export type TaxFileStatus = 'zantei' | 'kakutei';       // 暫定 / 確定
 
 export type TaxFile = {
   id: string;                          // uuid
@@ -80,7 +80,7 @@ export type TaxFile = {
 -- supabase/migrations/20260424_02_forest_tax_files.sql
 BEGIN;
 
-CREATE TYPE forest_tax_file_status AS ENUM ('zanntei', 'kakutei');
+CREATE TYPE forest_tax_file_status AS ENUM ('zantei', 'kakutei');
 
 CREATE TABLE forest_tax_files (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -88,7 +88,7 @@ CREATE TABLE forest_tax_files (
   doc_name        text NOT NULL,
   file_name       text NOT NULL,
   storage_path    text NOT NULL UNIQUE,      -- Storage パスは一意
-  status          forest_tax_file_status NOT NULL DEFAULT 'zanntei',
+  status          forest_tax_file_status NOT NULL DEFAULT 'zantei',
   doc_date        date,                      -- 書類基準日（nullable）
   uploaded_at     timestamptz NOT NULL DEFAULT now(),
   uploaded_by     uuid REFERENCES auth.users(id),
@@ -102,7 +102,7 @@ CREATE TABLE forest_tax_files (
 COMMENT ON TABLE forest_tax_files IS
   'Forest 税理士連携ファイルのメタデータ。実体は Storage bucket forest-tax/ に格納';
 COMMENT ON COLUMN forest_tax_files.status IS
-  '暫定(zanntei) = 作成中、確定(kakutei) = 税理士確認済';
+  '暫定(zantei) = 作成中、確定(kakutei) = 税理士確認済';
 COMMENT ON COLUMN forest_tax_files.doc_date IS
   '書類の基準日。年次書類なら期末日、月次なら月末日など';
 
@@ -228,7 +228,7 @@ SELECT * FROM forest_tax_files LIMIT 0;  -- 列定義の確認のみ
 INSERT INTO forest_tax_files
   (company_id, doc_name, file_name, storage_path, status, mime_type, file_size_bytes)
 VALUES
-  ('hyuaran', 'テストファイル', 'test.pdf', 'test/test.pdf', 'zanntei', 'application/pdf', 12345);
+  ('hyuaran', 'テストファイル', 'test.pdf', 'test/test.pdf', 'zantei', 'application/pdf', 12345);
 SELECT * FROM forest_tax_files;
 DELETE FROM forest_tax_files WHERE doc_name = 'テストファイル';
 ```
