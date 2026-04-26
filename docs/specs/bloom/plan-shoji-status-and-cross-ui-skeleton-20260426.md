@@ -218,14 +218,15 @@ import { cookies } from "next/headers";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function getServerSupabase() {
-  const cookieStore = cookies();
+// Next.js 16: cookies() is async (returns Promise<ReadonlyRequestCookies>)
+async function getServerSupabase() {
+  const cookieStore = await cookies();
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name) { return cookieStore.get(name)?.value; },
+        get(name: string) { return cookieStore.get(name)?.value; },
         set() { /* Route Handler では no-op */ },
         remove() { /* no-op */ },
       },
@@ -234,7 +235,7 @@ function getServerSupabase() {
 }
 
 export async function GET() {
-  const supabase = getServerSupabase();
+  const supabase = await getServerSupabase();
 
   const { data, error } = await supabase
     .from("bloom_ceo_status")
@@ -434,7 +435,7 @@ const VALID_STATUS = new Set(["available", "busy", "focused", "away"] as const);
 type CeoStatusKey = "available" | "busy" | "focused" | "away";
 
 export async function PUT(req: Request) {
-  const supabase = getServerSupabase();
+  const supabase = await getServerSupabase();
 
   // 1. auth check
   const { data: userData } = await supabase.auth.getUser();
