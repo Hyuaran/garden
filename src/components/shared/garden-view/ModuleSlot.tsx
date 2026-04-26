@@ -31,7 +31,8 @@ const baseSlotStyle = {
   height: SLOT_SIZE,
   borderRadius: "50%",
   textDecoration: "none",
-  transition: "transform 0.15s ease-out",
+  // transition は .gv-slot class（globals.css）で定義、ここで inline 指定すると
+  // filter / box-shadow が snap 表示になる（inline > class specificity）。
 };
 
 export function ModuleSlot({ moduleKey, module: m, position }: Props) {
