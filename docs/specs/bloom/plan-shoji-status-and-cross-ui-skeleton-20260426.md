@@ -1057,8 +1057,9 @@ import { ShojiStatusWidget } from "../../../../components/shared/ShojiStatusWidg
 import { CeoStatusEditor } from "../../_components/CeoStatusEditor";
 
 export default function CeoStatusDetailPage() {
-  const { user } = useBloomState();
-  const isSuperAdmin = user?.garden_role === "super_admin";
+  // BloomStateContext は `bloomUser` で公開（プラン v1 の `user` は誤り、実装で確認済み）
+  const { bloomUser } = useBloomState();
+  const isSuperAdmin = bloomUser?.garden_role === "super_admin";
 
   return (
     <main style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
