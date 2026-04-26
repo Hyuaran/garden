@@ -1,3 +1,11 @@
+/**
+ * @deprecated Phase 2-0 (2026-04-26): 9 アイコン平面配置は盆栽ビュー (GardenView) に置き換え。
+ *
+ * このファイルは CLAUDE.md「ファイル削除禁止」ルールにより残置。
+ * 新規利用禁止 — 共通ホームは src/components/shared/garden-view/GardenView.tsx を使用。
+ *
+ * 削除候補：cross-ui-06 改訂版 spec 受領 + 後道さん FB 後の正式判断時に検討。
+ */
 "use client";
 
 import Link from "next/link";
