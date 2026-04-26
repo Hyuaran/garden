@@ -24,8 +24,8 @@
 
 | # | 項目 | 確定内容 |
 |---|---|---|
-| 0-1 | 録音聴取の要否 | **Phase D-1 はイノベラ PBX 画面へのリンク誘導のみ。Garden 内再生は D-2 検討（イノベラ API 仕様待ち）** |
-| 0-2 | モニタリング方式 | **30 秒 polling**（Phase D-2 で WebSocket / Realtime 検討） |
+| 0-1 | 録音聴取の要否 | **Phase D-1 はイノベラ PBX 画面へのリンク誘導のみ。Garden 内再生は D-2 検討（イノベラ API 仕様待ち）** ⚠️ **2026-04-26 a-main 確定 #18 注記**: 将来イノベラ API 採用具合次第で Garden 内録音実装方針へ変更可能性あり |
+| 0-2 | モニタリング方式 | **30 秒 polling（既定）+ 同時 50 名超で WebSocket / Realtime 化**（2026-04-26 a-main 確定 #17 B 採択）。50 名以下では polling 維持で帯域節約、超過時は admin 通知 + WebSocket 自動切替、または `root_settings.tree_monitoring_realtime_threshold` で運用変更可。判 0-2 詳細は §3.x「監視のリアルタイム性」参照 |
 | 0-3 | アラート閾値 | **「有効率（eff）」絶対値ベース**（既存 `/tree/alerts` の指標）：要フォロー = 1% 未満、注意 = 5% 未満、通常 = 5% 以上。閾値は admin が `root_settings.tree_alert_thresholds` で変更可（運用 3 ヶ月で実数値調整） |
 | 0-4 | 指示メッセージのテンプレート化 | **Phase D-1 は手動入力（既存 `/tree/feedback` のまま）/ D-2 でテンプレ化検討** |
 | 0-5 | マネージャー間介入 | **不可（自部署のみ）、admin+ のみ全社横断** |

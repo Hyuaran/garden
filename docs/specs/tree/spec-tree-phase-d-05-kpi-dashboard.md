@@ -22,7 +22,7 @@
 
 | # | 項目 | 確定内容 |
 |---|---|---|
-| 0-1 | KPI 目標設定機能 | **Phase D-2 で実装、まずは実績可視化に集中** |
+| 0-1 | KPI 目標設定機能 | **Phase D-2 で実装、まずは実績可視化に集中**。⚠️ **2026-04-26 a-main 確定 #20 拡張**: KPI 目標は **3 階層管理（個人 + チーム + 会社）** で実装。詳細スキーマは §0.x「KPI 目標 3 階層 DB 設計（#20 拡張）」参照 |
 | 0-2 | アラート（閾値ベース） | **D-03 リアルタイムアラートで対応、KPI 画面は静的分析用** |
 | 0-3 | グラフの期間比較 | **同時表示（折れ線 2 系統）** |
 | 0-4 | PDF 出力 | **Phase D-1 は Excel のみ。PDF は東海林さん判断 → UI 完成後 後道さん FB 受領**（memory `feedback_ui_first_then_postcheck_with_godo.md` 準拠） |
@@ -30,6 +30,95 @@
 | 0-6 | KPI 画面のモバイル対応 | **タブレット対応（横 768px）まで、スマホは Phase D-2** |
 | 0-7 | KPI 目標値のソース | **自社過去 3 ヶ月移動平均をベース、経営判断で補正** |
 | 0-8 | 非稼働日の扱い | **既定は含める、「非稼働日除外」トグル提供** |
+
+### 0.x KPI 目標 3 階層 DB 設計（2026-04-26 a-main 確定 #20 拡張）
+
+KPI 目標管理は **個人 + チーム（任意）+ 会社** の 3 階層で実装する。Phase D-2 着手時に DB スキーマを以下のとおり追加。
+
+#### 階層構造
+
+| 階層 | 必須/任意 | テーブル | 用途 |
+|---|---|---|---|
+| **個人ノルマ** | 必須 | `tree_kpi_personal_targets` | オペレーター 1 人ごとの月次・週次目標（コール数・トス率・成約率） |
+| **チームノルマ** | **任意**（チーム制ない時は省略可、NULL 許容） | `tree_kpi_team_targets` | チーム単位（部署 / 班 / プロジェクト）の合算目標。`team_id NULL` 許容 |
+| **会社ノルマ** | 必須 | `tree_kpi_company_targets` | 全社合算の月次・四半期・年次目標 |
+
+#### スキーマ案（Phase D-2 着手時 migration で追加）
+
+```sql
+-- 個人ノルマ（必須）
+CREATE TABLE IF NOT EXISTS tree_kpi_personal_targets (
+  target_id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_number  text NOT NULL REFERENCES root_employees(employee_number) ON UPDATE CASCADE,
+  period_type      text NOT NULL CHECK (period_type IN ('weekly','monthly','quarterly','yearly')),
+  period_start     date NOT NULL,
+  period_end       date NOT NULL,
+  metric           text NOT NULL CHECK (metric IN ('calls','toss','toss_rate','contract_rate','duration')),
+  target_value     numeric NOT NULL,
+  notes            text,
+  created_by       uuid REFERENCES auth.users(id),
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now(),
+  deleted_at       timestamptz,
+  UNIQUE (employee_number, period_type, period_start, metric)
+);
+
+-- チームノルマ（任意、team_id NULL 許容）
+CREATE TABLE IF NOT EXISTS tree_kpi_team_targets (
+  target_id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id          uuid,                                 -- NULL 許容: チーム制がない場合は本テーブル自体使わない or 全社統合チームとして NULL 行
+  team_name        text,                                  -- 任意の表示名（"営業 1 課" 等）
+  period_type      text NOT NULL CHECK (period_type IN ('weekly','monthly','quarterly','yearly')),
+  period_start     date NOT NULL,
+  period_end       date NOT NULL,
+  metric           text NOT NULL CHECK (metric IN ('calls','toss','toss_rate','contract_rate','duration')),
+  target_value     numeric NOT NULL,
+  notes            text,
+  created_by       uuid REFERENCES auth.users(id),
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now(),
+  deleted_at       timestamptz
+  -- team_id NULL 許容のため UNIQUE 制約は (COALESCE(team_id,'00000000-0000-0000-0000-000000000000'), period_type, period_start, metric) で表現
+);
+
+-- 会社ノルマ（必須、1 行 / 期間 / metric）
+CREATE TABLE IF NOT EXISTS tree_kpi_company_targets (
+  target_id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  period_type      text NOT NULL CHECK (period_type IN ('weekly','monthly','quarterly','yearly')),
+  period_start     date NOT NULL,
+  period_end       date NOT NULL,
+  metric           text NOT NULL CHECK (metric IN ('calls','toss','toss_rate','contract_rate','duration')),
+  target_value     numeric NOT NULL,
+  notes            text,
+  created_by       uuid REFERENCES auth.users(id),
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now(),
+  deleted_at       timestamptz,
+  UNIQUE (period_type, period_start, metric)
+);
+```
+
+#### 表示時の優先順位（KPI 画面）
+
+1. 個人画面では **個人 → チーム → 会社** の順に達成率を表示（個人比較で見やすく）
+2. マネージャー画面では **チーム → 個人内訳 → 会社** の順
+3. 後道さん（社長）画面では **会社 → チーム → 個人** の順
+
+#### 設定権限
+
+| 階層 | 設定者 |
+|---|---|
+| 個人ノルマ | manager+（自部署のみ）/ admin+（全社） |
+| チームノルマ | admin+（チーム制設計時のみ。チーム制がなければ本テーブル不使用） |
+| 会社ノルマ | super_admin（経営判断） |
+
+#### チーム制ない時の運用
+
+- **`tree_kpi_team_targets` テーブルは作成するが、行は空**で運用
+- KPI 画面はチーム階層をスキップ（個人 → 会社の 2 階層表示）
+- 将来チーム制が導入された場合は `team_id` を追加する形でスムーズに対応可能
+
+---
 
 ### 既存実装との整合性（重要）
 
