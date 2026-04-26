@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 
 import { BLOOM_PATHS } from "../_constants/routes";
 import { useBloomState } from "../_state/BloomStateContext";
+import { ShojiStatusWidget } from "../../../components/shared/ShojiStatusWidget";
 import { ViewModeToggle } from "./ViewModeToggle";
 
 const NAV_ITEMS: Array<{ href: string; label: string }> = [
@@ -65,6 +66,9 @@ export function BloomShell({ children }: { children: ReactNode }) {
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ maxWidth: 360, minWidth: 280 }}>
+            <ShojiStatusWidget mode="compact" />
+          </div>
           <ViewModeToggle />
           <span style={{ fontSize: 12, color: "#40916c" }}>
             {bloomUser?.name ?? userEmail ?? ""}
