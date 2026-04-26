@@ -85,6 +85,7 @@
 | Sprout | S-05 拡張: 給与明細配信連携（Y 案 + フォールバック判定 API）| 0.25 | | | a-sprout / a-auto 008 spec | 2026-04-26 | — | a-auto 008 整合 spec 改訂。§16 追記（line_friend_status 列 + Webhook 自動検知 + fetchDistributionTargets() + sendPayslipNotificationViaLine() + 日次補正 Cron）。memory `project_payslip_distribution_design.md` 確定反映。 |
 | Sprout | S-06 拡張: 入社初日 LINE 友だち追加 + Bot 接続確認 | 0.25 | | | a-sprout + admin / a-auto 008 spec | 2026-04-26 | — | a-auto 008 整合 spec 改訂。§14 追記（チェックリスト D-01〜D-05 + QR コード表示 + テストメッセージ送受信 + フォールバック手動マーク + admin 紐付緊急手段）。 |
 | Tree | マイページ給与明細 PW 確認画面（フォールバック専用、社内 PC 限定）| 0.5 | | | a-tree + a-bud / a-auto 008 spec | 2026-04-26 | — | a-auto 008 spec 新規起草（462 行）。bud_payslip_passwords + bud_payslip_password_views + 24h 自動マスク Cron + line_friend_status 表示制御 + admin 監査画面 + 未確認月末リマインダー。Bud D-04 連携。 |
+| Sprout / Fruit | Kintone 確定 8 件 反映（決定 #1/#3/#6/#8/#9/#13/#14/#15）| 0.5 | 0.5 | 0 | a-auto 009 / a-main 006 | 2026-04-26 | 2026-04-26 | a-main 006 で東海林さん即決承認 32 件のうち prompt 明示 8 件を先行反映。Sprout S-01（sprout_applicants 単一 + 6 タブ + status Leaf 関電方式 + 7 日自動辞退 Cron + 本日研修予定 0:00 Cron + admin View）/ S-03（Web 面接 Google Meet 都度発行将来枠）/ S-04（シート待ち = App 45 未提出 + 24/48/72h リマインダー）/ F-01（fruit_company_contracts 統合 + 8 enum + 5 種住所 jsonb）/ F-02（住所重複全保持マッピング + 契約 7 アプリ統合）。残 24 件は確定ログ未受領で pause file 作成（docs/pause-202604261900-a-auto-kintone-batch.md）。 |
 
 ## 運用メモ
 

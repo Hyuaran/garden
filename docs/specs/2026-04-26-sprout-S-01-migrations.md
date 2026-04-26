@@ -411,3 +411,285 @@ FOR EACH ROW EXECUTE FUNCTION sprout_sync_slot_to_calendar();
 - [ ] sprout_interview_slots の INSERT が calendar_events に同期される
 - [ ] テストデータ 10 件投入後、Edge Function から CRUD が動作
 - [ ] 法令対応チェックリストの 5 項目すべてレビュー済
+- [ ] §13 Kintone 確定反映の DoD 全項目（後述）
+
+---
+
+## 13. Kintone 確定反映（2026-04-26 a-main 006、決定 #8 / #9 / #14 / #15）
+
+> **改訂背景**: a-main 006 で東海林さんから 32 件の Kintone 解析判断が即決承認（参照: `docs/decisions-kintone-batch-20260426-a-main-006.md`）。本 §13 で Sprout 側 4 件（#8 / #9 / #14 / #15）を反映。S-03 / S-04 / S-07 にも分散反映。
+
+### 13.1 決定 #8: sprout_applicants 単一テーブル + 6 タブ UI
+
+#### 方針
+
+応募者管理を**1 テーブル + 6 タブ UI** に統一。タブ別テーブルへの分割は行わない（採用フローで応募者と面接者・内定者を行ったり来たりするため、JOIN 多発を回避）。
+
+#### sprout_applicants テーブル拡張
+
+§3 既出のスキーマに以下を追加:
+
+```sql
+ALTER TABLE sprout_applicants
+  ADD COLUMN current_tab text NOT NULL DEFAULT 'inbox'
+    CHECK (current_tab IN (
+      'inbox',          -- 1: 受信箱（バイトル取込直後 / 自社問合せ）
+      'screening',      -- 2: 一次審査（書類確認）
+      'interview',      -- 3: 面接（予約済 + 完了済）
+      'offer',          -- 4: 内定
+      'pre_employment', -- 5: 入社前データ収集
+      'archived'        -- 6: アーカイブ（不採用 / 辞退 / 入社済）
+    )),
+  ADD COLUMN tab_changed_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN tab_changed_by uuid;
+
+-- インデックス: タブ別フィルタ高速化
+CREATE INDEX idx_sprout_applicants_current_tab
+  ON sprout_applicants (current_tab, tab_changed_at DESC)
+  WHERE deleted_at IS NULL;
+```
+
+#### タブ間遷移ルール
+
+```
+inbox → screening: 担当者が手動で「審査開始」ボタン
+screening → interview: 面接スロット予約完了で自動
+interview → offer: 内定通知後の手動操作
+offer → pre_employment: 内定承諾後の手動操作
+pre_employment → archived: 入社初日完了で自動 + ロール変換（root_employees へ転記、S-07）
+
+任意タブ → archived: 不採用 / 辞退 / 7 日無応答自動辞退（決定 #9）
+archived → inbox: admin の操作で復活可能（再応募）
+```
+
+#### tab_change ログ
+
+```sql
+CREATE TABLE sprout_applicant_tab_changes (
+  id bigserial PRIMARY KEY,
+  applicant_id uuid NOT NULL REFERENCES sprout_applicants(id),
+  from_tab text NOT NULL,
+  to_tab text NOT NULL,
+  changed_at timestamptz NOT NULL DEFAULT now(),
+  changed_by uuid,            -- NULL = システム自動
+  reason text                 -- 'manual' | 'auto_decline_7days' | 'interview_booked' | ...
+);
+
+CREATE INDEX idx_sprout_applicant_tab_changes_applicant
+  ON sprout_applicant_tab_changes (applicant_id, changed_at DESC);
+```
+
+### 13.2 決定 #9: Sprout ステータス Leaf 関電方式 + 7 日自動辞退
+
+#### Leaf 関電方式の踏襲
+
+`leaf_kanden_cases.status` enum と同等のシンプル列挙を採用:
+
+```sql
+ALTER TABLE sprout_applicants
+  ADD COLUMN status text NOT NULL DEFAULT 'active'
+    CHECK (status IN (
+      'active',           -- 通常進行中
+      'declined',         -- 本人辞退
+      'rejected',         -- 不採用
+      'auto_declined',    -- 7 日無応答自動辞退（決定 #9）
+      'employed',         -- 入社済
+      'reapplied'         -- 再応募
+    )),
+  ADD COLUMN status_reason text,
+  ADD COLUMN last_response_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN auto_decline_eligible_at timestamptz
+    GENERATED ALWAYS AS (last_response_at + interval '7 days') STORED;
+
+CREATE INDEX idx_sprout_applicants_auto_decline
+  ON sprout_applicants (auto_decline_eligible_at)
+  WHERE status = 'active' AND deleted_at IS NULL;
+```
+
+#### 7 日自動辞退 Cron
+
+```typescript
+// /api/cron/sprout-auto-decline-7days (毎日 06:00 JST)
+const candidates = await supabaseAdmin
+  .from('sprout_applicants')
+  .select('id, current_tab, last_response_at')
+  .eq('status', 'active')
+  .lte('auto_decline_eligible_at', new Date().toISOString())
+  .in('current_tab', ['inbox', 'screening', 'interview', 'offer']);
+  // pre_employment 以降は除外（入社直前は別フロー）
+
+for (const a of candidates) {
+  await supabaseAdmin.from('sprout_applicants').update({
+    status: 'auto_declined',
+    status_reason: '7 日連続無応答',
+    current_tab: 'archived',
+    tab_changed_at: new Date().toISOString(),
+  }).eq('id', a.id);
+
+  await supabaseAdmin.from('sprout_applicant_tab_changes').insert({
+    applicant_id: a.id,
+    from_tab: a.current_tab,
+    to_tab: 'archived',
+    reason: 'auto_decline_7days',
+  });
+}
+```
+
+#### last_response_at の更新タイミング
+
+| イベント | 更新? |
+|---|---|
+| 応募者からのメッセージ受信（LINE / メール）| ✅ |
+| 担当者からの送信 | ❌（応答待ちは続く）|
+| 面接予約完了 | ✅ |
+| 面接実施 | ✅ |
+| 内定通知 | ❌（応答待ちは続く）|
+| 内定承諾 | ✅ |
+
+S-05 LINE Bot の Webhook で受信時に自動更新（次回改訂で詳細化）。
+
+### 13.3 決定 #14: 本日研修予定 = 当日 0:00 自動付与
+
+#### 概要
+
+入社初日（研修日）の朝 0:00 JST に**「本日研修予定」フラグ**を自動付与し、admin / 研修担当者の画面トップに警告表示。
+
+#### スキーマ追加
+
+```sql
+ALTER TABLE sprout_applicants
+  ADD COLUMN scheduled_employment_date date,  -- 入社予定日（pre_employment 着手時に admin 設定）
+  ADD COLUMN today_training_flag boolean NOT NULL DEFAULT false,
+  ADD COLUMN today_training_set_at timestamptz;
+
+CREATE INDEX idx_sprout_applicants_today_training
+  ON sprout_applicants (today_training_flag)
+  WHERE today_training_flag = true;
+```
+
+#### 自動付与 Cron
+
+```typescript
+// /api/cron/sprout-today-training-flag (毎日 00:00 JST)
+const today = new Date().toISOString().slice(0, 10);  // 'YYYY-MM-DD'
+
+// 1. 該当者に flag 付与
+await supabaseAdmin.from('sprout_applicants').update({
+  today_training_flag: true,
+  today_training_set_at: new Date().toISOString(),
+}).eq('scheduled_employment_date', today)
+  .eq('current_tab', 'pre_employment');
+
+// 2. 前日分の flag をクリア
+await supabaseAdmin.from('sprout_applicants').update({
+  today_training_flag: false,
+}).eq('today_training_flag', true)
+  .neq('scheduled_employment_date', today);
+
+// 3. admin / 研修担当に Chatwork 通知
+const todayTrainees = await fetchTodayTrainees();
+if (todayTrainees.length > 0) {
+  await sendChatworkNotification('Garden-Sprout-研修', todayTrainees);
+}
+```
+
+#### UI 表示
+
+admin / 研修担当者が Sprout を開いた最初の画面に:
+
+```
+🌱 本日の研修予定 3 名
+
+- 山田太郎（10:00 開始）
+- 鈴木次郎（13:00 開始）
+- 佐藤花子（15:00 開始）
+
+[全員のチェックリストを開く →]
+```
+
+### 13.4 決定 #15: 管理者絞込ビュー
+
+#### 概要
+
+応募者一覧画面（6 タブ + 全件）で、**管理者専用の絞込条件**を提供。管理者は自分の担当外も含めた全体俯瞰が必要。
+
+#### View 定義
+
+```sql
+CREATE OR REPLACE VIEW sprout_applicants_admin_view AS
+SELECT
+  a.*,
+  -- 進捗ハイライト
+  CASE
+    WHEN a.today_training_flag THEN '本日研修'
+    WHEN a.auto_decline_eligible_at < now() + interval '1 day' THEN '自動辞退間近'
+    WHEN a.auto_decline_eligible_at < now() + interval '3 days' THEN '応答督促'
+    ELSE '通常'
+  END AS highlight,
+
+  -- 担当者名（root_employees JOIN）
+  e.name_kanji AS assignee_name,
+
+  -- タブ滞留時間（タブ移動から経過した日数）
+  EXTRACT(epoch FROM (now() - a.tab_changed_at)) / 86400 AS tab_stay_days
+FROM sprout_applicants a
+LEFT JOIN root_employees e ON a.assigned_to = e.id;
+
+-- admin のみ参照可
+GRANT SELECT ON sprout_applicants_admin_view TO authenticated;
+
+CREATE POLICY admin_view_select_admin
+  ON sprout_applicants_admin_view FOR SELECT
+  USING (current_garden_role() IN ('admin', 'super_admin'));
+```
+
+#### 絞込フィルタ（admin UI）
+
+```
+[管理者ビュー] /sprout/admin/applicants
+
+絞込:
+- ☑ 本日研修フラグあり
+- ☑ 自動辞退間近（24h 以内）
+- ☐ タブ滞留 14 日超
+- ☐ 担当者: [すべて ▼]
+- ☐ 法人: [全 6 法人 ▼]
+- ☐ 入社予定月: [2026-05 ▼]
+- ☐ ステータス: [active / declined / rejected / auto_declined / employed]
+
+[CSV エクスポート]  [Chatwork へサマリ送信]
+```
+
+#### CSV エクスポートと監査
+
+```typescript
+// 個人情報を含む CSV エクスポートは必ず audit
+async function exportAdminCsv(filters: AdminFilters) {
+  const data = await fetchAdminView(filters);
+  await recordOperationLog({
+    action: 'sprout_admin_csv_export',
+    target_type: 'sprout_applicants_admin_view',
+    details: { filters, row_count: data.length },
+  });
+  return data;
+}
+```
+
+### 13.5 §9 判断保留事項への追加
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| 8 | 6 タブの並び順 | 既定: inbox → screening → interview → offer → pre_employment → archived。admin 編集可 |
+| 9 | 自動辞退後の応募者復活 | admin 操作で復活、`status='reapplied'` に変更 + 新タブ inbox に戻る |
+| 10 | 本日研修フラグの粒度 | 日単位、午前 / 午後の区別は scheduled_training_time 別カラムで対応 |
+| 11 | admin View の物理化 | 現状 VIEW、性能要件次第で MV 化検討 |
+| 12 | last_response_at 更新範囲 | LINE 受信 / メール返信 / 面接実施完了 のみ更新 |
+
+### 13.6 §12 受入基準への追加
+
+- [ ] sprout_applicants に current_tab / status / last_response_at / auto_decline_eligible_at / today_training_flag 列追加
+- [ ] sprout_applicant_tab_changes テーブル動作
+- [ ] /api/cron/sprout-auto-decline-7days 動作（dev で 7 日経過レコード検出）
+- [ ] /api/cron/sprout-today-training-flag 動作（00:00 JST 自動付与）
+- [ ] sprout_applicants_admin_view が admin で参照可、staff 以下で 0 件
+- [ ] CSV エクスポート時の監査ログ記録

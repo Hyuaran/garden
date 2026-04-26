@@ -207,3 +207,86 @@ Kintone 上で運用されてきた面接ヒアリングシートの構造を保
 - [ ] 不採用者の記録が staff からは見えず admin のみ閲覧可
 - [ ] PDF 書き出しが生成され Storage に保存される
 - [ ] 法令チェックリスト 5 項目レビュー済
+- [ ] §後述 Kintone 確定反映「シート待ち」DoD 全項目
+
+---
+
+## Kintone 確定反映: 決定 #13「シート待ち」= App 45 未提出待ち
+
+> **改訂背景**: a-main 006 で東海林さんから 32 件の Kintone 解析判断が即決承認（`docs/decisions-kintone-batch-20260426-a-main-006.md`）。本セクションで決定 #13 を反映。
+
+### 「シート待ち」の意味確定
+
+- Kintone App 45 における「シート待ち」ステータス = **面接ヒアリングシート未提出**を待っている状態
+- Garden 移植後も同義: **面接実施済だが sprout_interview_sheets が未確定（draft / submitted 前）**
+
+### sprout_interview_sheets ステータス拡張
+
+```sql
+ALTER TABLE sprout_interview_sheets
+  ADD COLUMN sheet_status text NOT NULL DEFAULT 'pending'
+    CHECK (sheet_status IN (
+      'pending',        -- 面接前 / シート未着手
+      'in_progress',    -- 面接中 / 入力中
+      'submitted',      -- 面接者が確定提出（admin レビュー待ち）
+      'reviewed',       -- admin レビュー済
+      'rejected'        -- 内容不備で再入力依頼
+    )),
+  ADD COLUMN submitted_at timestamptz,
+  ADD COLUMN submitted_by uuid,
+  ADD COLUMN reviewed_at timestamptz,
+  ADD COLUMN reviewed_by uuid;
+
+CREATE INDEX idx_sprout_interview_sheets_pending
+  ON sprout_interview_sheets (sheet_status, scheduled_at)
+  WHERE sheet_status IN ('pending', 'in_progress');
+```
+
+### 「シート待ち」絞込
+
+```sql
+-- 面接実施済（scheduled_at < now()）かつシート未提出
+SELECT
+  s.id,
+  s.applicant_id,
+  a.name_kanji,
+  s.scheduled_at,
+  EXTRACT(epoch FROM (now() - s.scheduled_at)) / 86400 AS days_overdue
+FROM sprout_interview_sheets s
+JOIN sprout_applicants a ON s.applicant_id = a.id
+WHERE s.scheduled_at < now()
+  AND s.sheet_status IN ('pending', 'in_progress')
+ORDER BY s.scheduled_at ASC;
+```
+
+### admin リマインダー Cron
+
+```typescript
+// /api/cron/sprout-sheet-pending-reminder (毎日 18:00 JST)
+const overdue = await fetchOverdueSheets();  // scheduled_at + 24h 経過
+for (const s of overdue) {
+  await sendChatworkDMToInterviewer(s.interviewer_id, {
+    message: `${s.applicant_name} さんの面接ヒアリングシート（${s.scheduled_at}）が未提出です。`,
+  });
+}
+```
+
+### S-01 §13.1 6 タブ UI との関係
+
+- 6 タブ UI で「面接（interview）タブ」内に**シート未提出バッジ**を表示
+- タブ滞留 24h 超の応募者を視覚識別
+
+### 判断保留事項追加
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| Sheet-1 | リマインダー閾値 | 面接終了から **24h** で初回、48h で 2 回目、72h で admin 通知 |
+| Sheet-2 | 面接者退職時のシート移管 | admin が手動で別面接者に再割当可（操作ログ必須）|
+| Sheet-3 | rejected → 再入力依頼の経路 | Chatwork DM + Sprout 内通知 |
+
+### DoD 追加
+
+- [ ] sprout_interview_sheets に sheet_status / submitted_at / reviewed_at 列追加
+- [ ] 「シート待ち」絞込クエリが admin で動作
+- [ ] 24h / 48h / 72h リマインダー Cron 動作
+- [ ] 6 タブ UI のバッジ表示連動

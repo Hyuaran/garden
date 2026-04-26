@@ -218,3 +218,84 @@
 - [ ] キャンセル時に reserved_count が戻る
 - [ ] WAI-ARIA / キーボード操作テスト合格
 - [ ] 法令対応チェックリスト 4 項目レビュー済
+- [ ] §後述 Kintone 確定反映 Web 面接対応の DoD 全項目
+
+---
+
+## Kintone 確定反映: 決定 #6 Web 面接 = Google Meet 都度発行（将来枠）
+
+> **改訂背景**: a-main 006 で東海林さんから 32 件の Kintone 解析判断が即決承認（`docs/decisions-kintone-batch-20260426-a-main-006.md`）。本セクションで決定 #6 を反映。
+
+### 設計方針
+
+- 通常面接は**対面（オフィス）**を既定
+- 遠隔・遠方候補者向けに **Web 面接 = Google Meet 都度発行**を将来枠として設計
+- Phase B 段階では**対面のみ**実装、Web 面接は **Phase C 以降**
+
+### スキーマ追加（S-01 sprout_interview_slots / sprout_interview_reservations 連動）
+
+```sql
+ALTER TABLE sprout_interview_slots
+  ADD COLUMN interview_mode text NOT NULL DEFAULT 'in_person'
+    CHECK (interview_mode IN ('in_person', 'web')),
+  ADD COLUMN web_meeting_url text;          -- Google Meet 都度発行 URL（Phase C 〜）
+
+ALTER TABLE sprout_interview_reservations
+  ADD COLUMN interview_mode text NOT NULL DEFAULT 'in_person'
+    CHECK (interview_mode IN ('in_person', 'web')),
+  ADD COLUMN web_meeting_url text;
+```
+
+### Google Meet URL 発行（Phase C 実装、本 spec 段階では設計のみ）
+
+```typescript
+// 予約確定時に Google Meet URL を生成（Phase C）
+async function reserveSlotWithWebMode(input: { ... }) {
+  const slot = await fetchSlot(input.slot_id);
+  let webUrl: string | null = null;
+  if (slot.interview_mode === 'web') {
+    // Google Calendar API 経由で Meet URL を都度生成
+    webUrl = await createGoogleMeetForInterview({
+      start_at: slot.start_at,
+      end_at: slot.end_at,
+      attendees: [input.applicant_email, input.interviewer_email],
+    });
+  }
+  await insertReservation({ ...input, web_meeting_url: webUrl });
+  // メール / LINE で URL 通知
+}
+```
+
+### UI 表示（応募者画面）
+
+```
+[面接予約]
+
+■ 面接形式
+  ⦿ 対面（弊社オフィス）
+  ○ Web 面接（Google Meet）  *Phase C 〜（将来対応）
+
+[次へ]
+```
+
+### Phase 段階
+
+| Phase | 対応 |
+|---|---|
+| Phase B | `interview_mode = 'in_person'` のみ、UI に Web 面接ラジオは disabled |
+| Phase C | Web 面接実装、Google Calendar API 連携、Google Meet URL 都度発行 |
+| Phase D | Web 面接の自動字幕 / 録画機能（オプション）|
+
+### 判断保留事項追加
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| Web-1 | Google Workspace アカウント | 法人代表メールで発行、運用コスト次第で再評価 |
+| Web-2 | 録画保存場所 | 録画は当面実施しない、Phase D で検討 |
+| Web-3 | 候補者側のアカウント要件 | Google アカウント不要のゲスト参加可で運用 |
+
+### DoD 追加
+
+- [ ] sprout_interview_slots / sprout_interview_reservations に interview_mode / web_meeting_url 列追加
+- [ ] Phase B では in_person のみ受付、Web ラジオは disabled で UI 表示
+- [ ] Phase C 着手時の Google Calendar API 連携契約手続きを admin が事前確認

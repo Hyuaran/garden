@@ -290,3 +290,125 @@ input: "03-1234-5678" / "(03)1234-5678" / "0312345678"
 - [ ] 暗号化対象フィールド（口座番号 / 機微許認可番号）が特定
 - [ ] バリデーションレベル（error / warning）が定義済
 - [ ] レビュー（a-bloom）完了
+- [ ] §後述 Kintone 確定反映 DoD 全項目
+
+---
+
+## Kintone 確定反映: 住所重複 全保持マッピング（決定 #3）+ 契約統合（決定 #1）
+
+> **改訂背景**: a-main 006 で 32 件の Kintone 解析判断が即決承認（`docs/decisions-kintone-batch-20260426-a-main-006.md`）。本セクションで F-02 マッピング側の決定 #1 / #3 を反映。
+
+### 住所マッピング（決定 #3 = 全保持）
+
+#### Kintone 法人名簿の住所フィールド構造
+
+| Kintone フィールド | Fruit jsonb キー（ターゲット）| 補足 |
+|---|---|---|
+| 本店所在地 / 〒 / 都道府県 / 市区町村 / 番地 / ビル名 | `fruit_companies_legal.headquarters_address` | メイン住所 |
+| 登記簿住所（同上の場合あり）| `fruit_companies_legal.registered_address` | **本店と同じでも別保持** |
+| 請求書送付先 | `fruit_companies_legal.billing_address` | |
+| 配送先住所 | `fruit_companies_legal.delivery_address` | |
+| 支店 1 住所 / 支店 2 住所 / ... | `fruit_companies_legal.branch_addresses` (jsonb 配列) | 複数支店 |
+
+#### マッピング変換コード例
+
+```typescript
+function mapAddressFromKintone(record: KintoneRecord): FruitAddresses {
+  return {
+    headquarters_address: extractAddress(record, '本店'),
+    registered_address: extractAddress(record, '登記簿'),
+    billing_address: extractAddress(record, '請求書'),
+    delivery_address: extractAddress(record, '配送'),
+    branch_addresses: extractBranchAddresses(record),  // 配列
+  };
+}
+
+function extractAddress(record: KintoneRecord, prefix: string): AddressJsonb | null {
+  const postalCode = record[`${prefix}_郵便番号`]?.value;
+  if (!postalCode) return null;
+  return {
+    postal_code: postalCode,
+    prefecture: record[`${prefix}_都道府県`]?.value,
+    city: record[`${prefix}_市区町村`]?.value,
+    address_line: record[`${prefix}_番地`]?.value,
+    building: record[`${prefix}_ビル名`]?.value,
+    from_kintone_app: 'app-28',
+    purpose_note: prefix,  // 用途追跡（「登記簿住所」等）
+  };
+}
+```
+
+#### 重複排除しないルール
+
+- 本店 = 登記簿 = 請求書 = 配送 が**全て同じ住所文字列**でも、それぞれ別 jsonb として保持
+- マッピング処理で**重複 dedup を実施しない**（業務上の用途明確化のため）
+- UI 表示時のみグルーピング（実装は F-04 法人選択 UI 側）
+
+#### バリデーション
+
+| 項目 | レベル |
+|---|---|
+| 本店住所 NULL | error |
+| その他住所 NULL | warning（任意項目）|
+| 郵便番号フォーマット不正 | warning |
+| 都道府県と郵便番号の不整合 | warning |
+
+### 契約統合マッピング（決定 #1）
+
+Kintone 側の **複数アプリの契約**を `fruit_company_contracts` 1 テーブルに統合する取込ロジック:
+
+```typescript
+const KINTONE_CONTRACT_APPS = [
+  { app_id: 'employment-contracts', category: 'employment' },
+  { app_id: 'outsourcing-contracts', category: 'outsourcing' },
+  { app_id: 'lease-contracts', category: 'lease' },
+  { app_id: 'service-contracts', category: 'service' },
+  { app_id: 'business-alliance', category: 'business_alliance' },
+  { app_id: 'nda-contracts', category: 'nda' },
+  { app_id: 'license-contracts', category: 'license' },
+];
+
+async function importAllContracts() {
+  for (const src of KINTONE_CONTRACT_APPS) {
+    const records = await fetchKintoneApp(src.app_id);
+    for (const r of records) {
+      await supabaseAdmin.from('fruit_company_contracts').insert({
+        company_id: resolveCompanyId(r),
+        contract_category: src.category,
+        contract_name: r['契約名']?.value,
+        counterparty_name: r['相手方名']?.value,
+        counterparty_type: detectCounterpartyType(r),
+        contract_date: r['契約日']?.value,
+        renewal_date: r['更新日']?.value,
+        renewal_type: r['更新種別']?.value || 'manual',
+        annual_amount: parseInt(r['年額']?.value || '0', 10),
+        external_app_source: `kintone-${src.app_id}`,
+        external_record_id: r['$id']?.value,
+        notes: r['備考']?.value,
+      });
+    }
+  }
+}
+```
+
+### F-03 import-script 連携
+
+- F-03 §（インポートスクリプト）に上記契約取込フローを統合
+- dry-run モードでは `external_record_id` 単位で重複検出
+- manual / scheduled モード共通で対応
+
+### 判断保留事項追加
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| K-1 | 住所が完全に同じ場合の保持判断 | **全保持**（用途違いを尊重）|
+| K-2 | branch_addresses 配列のサイズ上限 | 暫定 50 件、超えたら 案 B 別テーブル化検討 |
+| K-3 | 契約取込の順序 | 業務利用頻度順（雇用 → 業務委託 → 賃貸借 → ...）|
+| K-4 | 旧 contract_type 値の扱い | リネーム時に contract_category に互換マップ |
+
+### DoD 追加
+
+- [ ] 住所マッピングロジック（5 種類）が実装され、dry-run で 6 法人 × 平均 3 住所が正常変換
+- [ ] 契約取込ロジックが Kintone 7 アプリ全てを `fruit_company_contracts` に統合
+- [ ] external_app_source / external_record_id で Kintone 由来が追跡可能
+- [ ] 重複排除を行わない（同一住所文字列でも別 jsonb で保持）が文書化済

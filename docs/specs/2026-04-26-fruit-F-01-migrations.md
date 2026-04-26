@@ -350,3 +350,167 @@ $$ LANGUAGE plpgsql;
 - [ ] pgcrypto 暗号化列が 2 箇所（fruit_banks.account_number_enc / fruit_licenses.license_number_enc）で定義済
 - [ ] レビュー（a-bloom）完了、レビューコメントに対応済
 - [ ] dev seed データで Sprout / Bud / Forest からの参照クエリが動作確認済
+- [ ] §後述 Kintone 確定反映の DoD 全項目
+
+---
+
+## 12. Kintone 確定反映（2026-04-26 a-main 006、決定 #1 / #3）
+
+> **改訂背景**: a-main 006 で東海林さんから 32 件の Kintone 解析判断が即決承認（`docs/decisions-kintone-batch-20260426-a-main-006.md`）。本 §12 で Fruit 側 2 件（#1 / #3）を反映。
+
+### 12.1 決定 #1: fruit_company_contracts 統合
+
+#### 方針
+
+Kintone 側に「契約書」「業務委託契約」「賃貸借契約」等の独立アプリが分散しているが、Garden Fruit では **1 テーブルに統合**（既存 `fruit_contracts` を `fruit_company_contracts` にリネーム + 拡張）。
+
+#### テーブルリネーム + 拡張
+
+§3.6 `fruit_contracts` を `fruit_company_contracts` にリネーム + 統合用列追加:
+
+```sql
+ALTER TABLE fruit_contracts RENAME TO fruit_company_contracts;
+
+-- 統合に伴う列追加
+ALTER TABLE fruit_company_contracts
+  ADD COLUMN contract_category text NOT NULL
+    CHECK (contract_category IN (
+      'employment',         -- 雇用契約
+      'outsourcing',        -- 業務委託
+      'lease',              -- 賃貸借
+      'service',            -- サービス利用契約
+      'business_alliance',  -- 業務提携
+      'nda',                -- 秘密保持
+      'license',            -- ライセンス
+      'other'
+    )),
+  ADD COLUMN counterparty_name text NOT NULL,
+  ADD COLUMN counterparty_type text
+    CHECK (counterparty_type IN ('corporate', 'individual', 'government')),
+  ADD COLUMN renewal_type text
+    CHECK (renewal_type IN ('auto', 'manual', 'fixed_term')),
+  ADD COLUMN auto_renewal_notice_days int,
+  ADD COLUMN annual_amount numeric(15,0),
+  ADD COLUMN parent_contract_id uuid REFERENCES fruit_company_contracts(id),
+  ADD COLUMN external_app_source text,
+  ADD COLUMN external_record_id text;
+
+CREATE INDEX idx_fruit_company_contracts_category
+  ON fruit_company_contracts (company_id, contract_category, status);
+
+CREATE INDEX idx_fruit_company_contracts_renewal
+  ON fruit_company_contracts (renewal_date)
+  WHERE status = 'active' AND renewal_type = 'auto';
+```
+
+#### Kintone アプリ → contract_category 対応
+
+| Kintone アプリ | contract_category |
+|---|---|
+| 雇用契約書 | `employment` |
+| 業務委託契約 | `outsourcing` |
+| 賃貸借契約 | `lease` |
+| Web サービス契約 | `service` |
+| 業務提携契約 | `business_alliance` |
+| NDA | `nda` |
+| ライセンス契約 | `license` |
+
+#### 移行戦略（F-03 連動）
+
+```typescript
+const sources = [
+  { app: 'employment-contracts', category: 'employment' },
+  { app: 'outsourcing-contracts', category: 'outsourcing' },
+  // ...
+];
+for (const src of sources) {
+  const records = await fetchKintoneApp(src.app);
+  for (const r of records) {
+    await supabaseAdmin.from('fruit_company_contracts').insert({
+      contract_category: src.category,
+      external_app_source: `kintone-app-${src.app}`,
+      external_record_id: r.id,
+      ...mapKintoneToFruit(r),
+    });
+  }
+}
+```
+
+### 12.2 決定 #3: 住所重複 全保持
+
+#### 方針
+
+Kintone 法人名簿で**本店 / 支店 / 連絡先 / 配送 等の住所が複数存在**する場合、すべて保持。重複排除は行わない（理由: 業務上「同じ住所だが用途が違う」ケースを正確に再現するため）。
+
+#### 採択: 案 A（jsonb 複数列）+ 必要時に 案 B 拡張
+
+##### 案 A: フラット列で複数住所保持（Phase B 採択）
+
+```sql
+ALTER TABLE fruit_companies_legal
+  ADD COLUMN headquarters_address jsonb,
+  ADD COLUMN registered_address jsonb,
+  ADD COLUMN billing_address jsonb,
+  ADD COLUMN delivery_address jsonb,
+  ADD COLUMN branch_addresses jsonb;        -- 支店住所配列
+
+-- jsonb 構造:
+-- {"postal_code": "5300047", "prefecture": "大阪府", "city": "大阪市北区",
+--  "address_line": "西天満4-3-25", "building": "○○ビル3F",
+--  "from_kintone_app": "...", "purpose_note": "登記簿住所"}
+
+CREATE INDEX idx_fruit_companies_legal_headquarters_postal
+  ON fruit_companies_legal ((headquarters_address->>'postal_code'));
+```
+
+##### 案 B: 別テーブルで 1:N 展開（Phase C 拡張時、後送）
+
+```sql
+CREATE TABLE fruit_company_addresses (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid NOT NULL REFERENCES fruit_companies_legal(id),
+  address_type text NOT NULL
+    CHECK (address_type IN ('headquarters', 'registered', 'billing', 'delivery', 'branch')),
+  postal_code text,
+  prefecture text,
+  city text,
+  address_line text,
+  building text,
+  is_primary boolean NOT NULL DEFAULT false,
+  external_app_source text,
+  external_record_id text,
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_fruit_company_addresses_company
+  ON fruit_company_addresses (company_id, address_type);
+```
+
+#### 重複排除しない理由
+
+```
+ヒュアラン本店 = 大阪市北区西天満4-3-25
+ヒュアラン登記簿 = 大阪市北区西天満4-3-25  ← 同じ住所だが用途別で必要
+ヒュアラン請求書 = 大阪市北区西天満4-3-25
+```
+
+UI 上はグルーピングで重複表示回避、DB レベルでは全保持。
+
+### 12.3 §11 受入基準への追加
+
+- [ ] `fruit_contracts` を `fruit_company_contracts` にリネーム済
+- [ ] contract_category（8 enum 値）/ counterparty_name / renewal_type / parent_contract_id 列追加
+- [ ] external_app_source / external_record_id で Kintone 由来追跡
+- [ ] fruit_companies_legal に 5 種の住所列（jsonb）追加
+- [ ] 住所重複排除しない移行ルールが F-02 に文書化
+- [ ] dev で 6 法人 × 平均 3 種類の住所 = 18 行の住所データ正常保存
+
+### 12.4 判断保留事項追加
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| K-1 | 案 A vs 案 B 移行時期 | **Phase B = 案 A**、Phase C で 案 B 検討 |
+| K-2 | contract_category の追加 | 必要時に enum 追加（migration 経由）|
+| K-3 | parent_contract_id の運用 | 個別契約 / 覚書のみ親子化、通常 NULL |
+| K-4 | 住所表示 UI グルーピング | 同一住所を一覧で 1 行 + 用途バッジ |
