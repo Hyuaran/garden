@@ -1,6 +1,12 @@
 import { GardenView } from "../components/shared/garden-view/GardenView";
+import { getCurrentTimeTheme } from "../components/shared/_lib/timeTheme";
+
+// 時間帯テーマを per-request 算出（cross-ui-04）。
+// SSG キャッシュさせず常に「今の時刻」の theme を反映。
+export const dynamic = "force-dynamic";
 
 export default function GardenHomePage() {
+  const theme = getCurrentTimeTheme();
   return (
     <main
       style={{
@@ -14,7 +20,7 @@ export default function GardenHomePage() {
         <p style={{ color: "#666", marginTop: 8, fontSize: 13 }}>盆栽ビュー</p>
       </header>
 
-      <GardenView />
+      <GardenView theme={theme} />
     </main>
   );
 }
