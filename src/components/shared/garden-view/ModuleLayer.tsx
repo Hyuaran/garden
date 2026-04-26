@@ -17,6 +17,7 @@ export function ModuleLayer() {
       {MODULE_KEYS.map((key) => (
         <ModuleSlot
           key={key}
+          moduleKey={key}
           module={MODULES[key]}
           position={SLOT_POSITIONS[key]}
         />

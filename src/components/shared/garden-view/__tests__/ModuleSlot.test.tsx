@@ -13,13 +13,13 @@ const pos = { x: 0, y: 0 };  // 中央基準（cross-ui-06 §3.4）
 
 describe("ModuleSlot enabled", () => {
   it("renders a Link to module.href", () => {
-    render(<ModuleSlot module={enabledModule} position={pos} />);
+    render(<ModuleSlot moduleKey="forest" module={enabledModule} position={pos} />);
     const link = screen.getByRole("link", { name: /Forest/ });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute("href", "/forest");
   });
   it("renders emoji and label both", () => {
-    render(<ModuleSlot module={enabledModule} position={pos} />);
+    render(<ModuleSlot moduleKey="forest" module={enabledModule} position={pos} />);
     expect(screen.getByText("🌳")).toBeInTheDocument();
     expect(screen.getByText("Forest")).toBeInTheDocument();
   });
@@ -27,15 +27,30 @@ describe("ModuleSlot enabled", () => {
 
 describe("ModuleSlot disabled", () => {
   it("does NOT render as Link (no role=link)", () => {
-    render(<ModuleSlot module={disabledModule} position={pos} />);
+    render(<ModuleSlot moduleKey="soil" module={disabledModule} position={pos} />);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
   it("renders with aria-disabled and layer-aware 準備中 title", () => {
-    const { container } = render(<ModuleSlot module={disabledModule} position={pos} />);
+    const { container } = render(<ModuleSlot moduleKey="soil" module={disabledModule} position={pos} />);
     const wrapper = container.querySelector('[aria-disabled="true"]');
     expect(wrapper).not.toBeNull();
     // title 例: 「Soil（地下） — 準備中」
     expect(wrapper?.getAttribute("title")).toMatch(/Soil.*地下.*準備中/);
     expect(wrapper?.getAttribute("aria-label")).toMatch(/Soil.*地下.*準備中/);
+  });
+});
+
+describe("ModuleSlot hover-effect wiring", () => {
+  it("attaches gv-slot class + data-module-key on enabled inner div", () => {
+    const { container } = render(<ModuleSlot moduleKey="forest" module={enabledModule} position={pos} />);
+    const inner = container.querySelector("a > .gv-slot");
+    expect(inner).not.toBeNull();
+    expect(inner?.getAttribute("data-module-key")).toBe("forest");
+  });
+  it("attaches gv-slot class + data-module-key on disabled inner div", () => {
+    const { container } = render(<ModuleSlot moduleKey="soil" module={disabledModule} position={pos} />);
+    const inner = container.querySelector('[aria-disabled="true"] > .gv-slot');
+    expect(inner).not.toBeNull();
+    expect(inner?.getAttribute("data-module-key")).toBe("soil");
   });
 });

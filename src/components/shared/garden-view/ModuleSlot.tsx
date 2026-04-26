@@ -11,10 +11,11 @@
  */
 
 import Link from "next/link";
-import type { ModuleDef } from "./_lib/modules";
+import type { ModuleDef, ModuleKey } from "./_lib/modules";
 import type { Position } from "./_lib/slot-positions";
 
 type Props = {
+  moduleKey: ModuleKey;
   module: ModuleDef;
   position: Position;
 };
@@ -33,7 +34,7 @@ const baseSlotStyle = {
   transition: "transform 0.15s ease-out",
 };
 
-export function ModuleSlot({ module: m, position }: Props) {
+export function ModuleSlot({ moduleKey, module: m, position }: Props) {
   const wrapperStyle = {
     position: "absolute" as const,
     left: `${50 + position.x}%`,
@@ -54,6 +55,8 @@ export function ModuleSlot({ module: m, position }: Props) {
         title={`${accessibleLabel} — 準備中`}
       >
         <div
+          className="gv-slot"
+          data-module-key={moduleKey}
           style={{
             ...baseSlotStyle,
             background: "rgba(220, 220, 220, 0.55)",
@@ -78,6 +81,8 @@ export function ModuleSlot({ module: m, position }: Props) {
       title={accessibleLabel}
     >
       <div
+        className="gv-slot"
+        data-module-key={moduleKey}
         style={{
           ...baseSlotStyle,
           background: "rgba(255, 255, 255, 0.88)",
