@@ -125,6 +125,57 @@ describe("GET /api/ceo-status", () => {
     const body = await res.json();
     expect(body.error).toBe("db down");
   });
+
+  // ---- edge cases (review feedback) ----
+  it("returns 200 with updated_by_name=null when updated_by is null (no JOIN call)", async () => {
+    fromMock.mockImplementation((table: string) => {
+      if (table === "bloom_ceo_status") {
+        return chainSelectMaybeSingle({
+          data: {
+            status: "available",
+            summary: "初期化",
+            updated_at: "2026-04-26T00:00:00Z",
+            updated_by: null,
+          },
+          error: null,
+        });
+      }
+      throw new Error("unexpected table " + table);
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.updated_by_name).toBeNull();
+    // root_employees に JOIN クエリ発行されない（updated_by=null のため early return）
+    expect(fromMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 200 with updated_by_name=null when employee record not found", async () => {
+    fromMock.mockImplementation((table: string) => {
+      if (table === "bloom_ceo_status") {
+        return chainSelectMaybeSingle({
+          data: {
+            status: "busy",
+            summary: "test",
+            updated_at: "2026-04-26T05:00:00Z",
+            updated_by: "u_missing",
+          },
+          error: null,
+        });
+      }
+      if (table === "root_employees") {
+        // 退職等で root_employees 不在 → name 取得失敗
+        return chainSelectMaybeSingle({ data: null, error: null });
+      }
+      throw new Error("unexpected table " + table);
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.updated_by_name).toBeNull();
+  });
 });
 
 // =============================================================
@@ -250,5 +301,45 @@ describe("PUT /api/ceo-status", () => {
     expect(body.status).toBe("focused");
     expect(body.summary).toBe("updated");
     expect(body.updated_by_name).toBe("東海林");
+  });
+
+  // ---- edge cases (review feedback) ----
+  it("returns 200 when summary field is omitted from PUT body", async () => {
+    authGetUserMock.mockResolvedValue({ data: { user: { id: "u1" } } });
+    fromMock.mockImplementation((table: string) => {
+      if (table === "root_employees") {
+        return chainSelectMaybeSingle({
+          data: { garden_role: "super_admin", name: "東海林" },
+          error: null,
+        });
+      }
+      if (table === "bloom_ceo_status") {
+        return chainSelectMaybeSingle({
+          data: { id: "row1", status: "available", summary: null, updated_at: "2026-04-26T07:00:00Z", updated_by: "u1" },
+          error: null,
+        });
+      }
+      throw new Error("unexpected table " + table);
+    });
+
+    // body に summary なし → null として update に渡る → 200
+    const res = await PUT(makeRequest({ status: "available" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.summary).toBeNull();
+  });
+
+  it("returns 403 when authenticated user has no employee record (orphan)", async () => {
+    authGetUserMock.mockResolvedValue({ data: { user: { id: "u_orphan" } } });
+    fromMock.mockImplementation((table: string) => {
+      if (table === "root_employees") {
+        // 認証は通るが root_employees に行なし（孤立 auth user）→ garden_role 取得不可 → 403
+        return chainSelectMaybeSingle({ data: null, error: null });
+      }
+      throw new Error("unexpected table " + table);
+    });
+
+    const res = await PUT(makeRequest({ status: "busy" }));
+    expect(res.status).toBe(403);
   });
 });
