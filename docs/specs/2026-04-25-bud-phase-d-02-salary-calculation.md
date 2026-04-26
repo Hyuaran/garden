@@ -567,3 +567,45 @@ CREATE POLICY salary_select_own
 - [ ] 警告 / エラーが正しい場面で発生
 - [ ] 冪等性（同入力 → 同出力）テスト pass
 - [ ] RLS（自分 / manager / admin / 削除済）テスト pass
+
+---
+
+## ⚙️ Kintone 解析判断 #18 + #25 反映 (2026-04-26)
+
+> a-main 006 確定の 32 件のうち、本 spec に直接影響する 2 件を末尾追記。
+> 確定ログ: `C:\garden\_shared\decisions\decisions-kintone-batch-20260426-a-main-006.md`
+
+### #18 給与計算権限境界（4 ロール）
+
+本 spec の RLS / role 列挙に以下 4 ロールを追加：
+
+| ロール | 担当 | 主な権限 |
+|---|---|---|
+| `payroll_calculator` | 計算者（上田） | 給与計算実行 / 修正 / インポート |
+| `payroll_approver` | 承認者（宮永・小泉） | 承認 / 差戻し（V6: 自起票承認禁止と同等の自己承認禁止） |
+| `payroll_disburser` | MFC インポート実行（上田） | MFC CSV ダウンロード / 振込 CSV 出力 |
+| `payroll_auditor` | 監査（東海林・admin） | 全件閲覧 / 目視チェック |
+
+実装: `bud.has_payroll_role(roles text[])` ヘルパー関数を **D-09 §4** で定義、本 spec で再利用。
+RLS は role 別に USING / WITH CHECK を分割（Phase A-1 V6 自己承認禁止と同パターン）。
+4 ロールは `root.employee_payroll_roles` テーブル（本 batch では未起票、Root spec で別途定義予定）。
+
+### #25 「東海林頼んだ Excel」フィールド廃止
+
+Kintone App 21（給与一覧）が保持していた **「東海林頼んだ Excel」フィールド**は、
+月次報告資料 Excel への外部参照だった。Garden 移行時：
+
+- 当該フィールドは **migration 対象外**（廃止）
+- `bud_payroll_records`（D-10）が直接 master、月次報告資料 Excel への参照は不要
+- 旧運用フローの「Excel 確認 → 給与確定」は **Bud Phase D 内で完結**（D-10 + D-11）
+- field mapping spec（Kintone → Garden 移行時）に `excluded_fields` として明記
+
+詳細は **D-10（給与計算統合）** + **D-11（MFC CSV 出力）** を参照。
+
+### 影響箇所
+
+本 spec の以下のセクションは上記 2 件を**自動的に継承**:
+
+- §RLS / 役割定義 → 4 ロールヘルパー関数経由
+- §field mapping（該当する場合）→ 「東海林頼んだ Excel」を `excluded_fields` リストに追加
+- §migration 計画（該当する場合）→ Kintone App 21 移行時の field skip ルール
