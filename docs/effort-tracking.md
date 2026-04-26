@@ -64,6 +64,8 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Cross | タスク H: cross-ui-04/06/01 大改訂（盆栽ビュー仕様化、後道さん UX 採用ゲート反映）| 0.5 | 0.25 | -0.25 | a-auto 017 (subagent H worktree) | 2026-04-27 | 2026-04-27 | 3 spec / +929 -396 行。9 アイコングリッド → 盆栽中心 + 12 モジュール立体配置。BackgroundLayer / ModuleLayer 完全分離アーキテクチャ。ShojiStatusWidget 3 案併記。12 ブランドカラー + 12 モジュール固有 hover 演出。GW 中後道さん採用ゲート反映の最重要 dispatch。 |
+| Cross | タスク I: 画像生成プロンプト 11 パターン（盆栽ビュー）| 0.25 | 0.1 | -0.15 | a-auto 017 (subagent I worktree) | 2026-04-27 | 2026-04-27 | 563 行 / 11 パターン（時間帯 4 + 季節 4 + 画風 3）。Midjourney v6 / DALL-E 3 / Stable Diffusion XL 対応。各プロンプトに 4 項目（日本語コンセプト / 英語 / ネガティブ / パラメータ）。後道さんへの提示時メッセージ + NG パターン明示。要件 5+ → 11 達成。 |
 
 ## 運用メモ
 
