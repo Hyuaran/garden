@@ -92,13 +92,25 @@ CREATE POLICY gch_no_delete ON garden_change_history FOR DELETE
 保存期間経過時の物理削除は**専用 SECURITY DEFINER 関数**経由:
 
 ```sql
+-- 2026-04-26 a-review #5 修正: search_path 固定 + 引数バリデーション
 CREATE OR REPLACE FUNCTION admin_purge_old_history(
   p_older_than_days int DEFAULT 2555  -- 7 年
-) RETURNS int AS $$
+) RETURNS int
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
 DECLARE v_deleted int;
 BEGIN
+  -- 引数検証（負数 / 異常値で上限を超えるパージを防止）
+  IF p_older_than_days IS NULL OR p_older_than_days < 365 OR p_older_than_days > 36500 THEN
+    RAISE EXCEPTION 'Invalid retention days: % (allowed: 365-36500)', p_older_than_days
+      USING ERRCODE = '22023';
+  END IF;
+
   IF NOT has_role_at_least('super_admin') THEN
-    RAISE EXCEPTION 'Only super_admin can purge history';
+    RAISE EXCEPTION 'Only super_admin can purge history'
+      USING ERRCODE = '42501';  -- insufficient_privilege
   END IF;
 
   -- 監査記録（自身を audit_logs に残す）
@@ -113,7 +125,7 @@ BEGIN
 
   RETURN v_deleted;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 ```
 
 ---
@@ -127,34 +139,99 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 #### 案 A: ヘルパ関数で動的判定
 
 ```sql
+-- 2026-04-26 a-review #5 修正: search_path 固定 + テーブル名ホワイトリスト + 動的 SQL を public スキーマ強制
+-- 参照: a-leaf #65 search_path 全関数固定パターン
 CREATE OR REPLACE FUNCTION can_user_view_record(
   p_module text, p_table text, p_record_id text
-) RETURNS boolean AS $$
-DECLARE v_can boolean := false;
+) RETURNS boolean
+  LANGUAGE plpgsql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+  v_can boolean := false;
+  v_allowed_tables CONSTANT text[] := ARRAY[
+    -- ホワイトリスト: cross-history 連携対象テーブルのみ受付
+    'bud_transfers', 'bud_payslips', 'bud_attendance',
+    'leaf_kanden_cases', 'leaf_hikari_cases',  -- 他 Leaf 商材は追加必要
+    'soil_lists', 'soil_call_history',
+    'root_employees', 'root_partners', 'root_attendance',
+    'tree_call_records',
+    'forest_fiscal_periods', 'forest_shinkouki', 'forest_hankanhi',
+    'bloom_workboard_items', 'bloom_kpi_snapshots'
+    -- spec 改訂時はここに追加 + テスト追加
+  ];
+  v_allowed_modules CONSTANT text[] := ARRAY[
+    'bud', 'leaf', 'soil', 'root', 'tree', 'forest', 'bloom'
+  ];
 BEGIN
+  -- 引数検証 1: NULL / 空文字を REJECT
+  IF p_module IS NULL OR p_table IS NULL OR p_record_id IS NULL
+     OR length(p_module) = 0 OR length(p_table) = 0 THEN
+    RETURN false;
+  END IF;
+
+  -- 引数検証 2: ホワイトリスト確認（SQL injection / 任意テーブル参照を遮断）
+  IF NOT (p_module = ANY(v_allowed_modules)) THEN
+    RAISE EXCEPTION 'Invalid module: %', p_module
+      USING ERRCODE = '22023';
+  END IF;
+  IF NOT (p_table = ANY(v_allowed_tables)) THEN
+    RAISE EXCEPTION 'Invalid table: %', p_table
+      USING ERRCODE = '22023';
+  END IF;
+
+  -- 引数検証 3: identifier 形式（追加保険）
+  IF p_table !~ '^[a-z][a-z0-9_]{0,62}$' THEN
+    RAISE EXCEPTION 'Invalid table identifier format: %', p_table
+      USING ERRCODE = '22023';
+  END IF;
+
+  -- 引数検証 4: record_id 長さ制限（DoS 緩和）
+  IF length(p_record_id) > 256 THEN
+    RAISE EXCEPTION 'record_id too long: %', length(p_record_id)
+      USING ERRCODE = '22023';
+  END IF;
+
   -- モジュール別に分岐
+  -- 動的 SQL は %I で識別子クオート、$1 でプレースホルダ、public.* で明示
   IF p_module = 'leaf' THEN
-    -- leaf_user_in_business + 案件閲覧権限
     EXECUTE format(
-      'SELECT EXISTS(SELECT 1 FROM %I WHERE id::text = $1)',
+      'SELECT EXISTS(SELECT 1 FROM public.%I WHERE id::text = $1)',
       p_table
     ) INTO v_can USING p_record_id;
   ELSIF p_module = 'bud' THEN
-    -- Bud は本人 / staff+ / admin
     EXECUTE format(
-      'SELECT EXISTS(SELECT 1 FROM %I WHERE id::text = $1)',
+      'SELECT EXISTS(SELECT 1 FROM public.%I WHERE id::text = $1)',
       p_table
     ) INTO v_can USING p_record_id;
-  -- ... 他モジュール
+  -- ... 他モジュール（同パターン）
   END IF;
 
   RETURN v_can;
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$;
+
+-- 関数の実行権限を絞る（authenticated のみ）
+REVOKE ALL ON FUNCTION can_user_view_record(text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION can_user_view_record(text, text, text) TO authenticated;
 
 CREATE POLICY gch_select_with_record_access ON garden_change_history FOR SELECT
   USING (can_user_view_record(module, table_name, record_id));
 ```
+
+#### セキュリティ設計メモ（2026-04-26 a-review #5 反映）
+
+| 観点 | 対策 |
+|---|---|
+| **search_path 攻撃** | `SET search_path = pg_catalog, public, pg_temp` 関数定義時固定 |
+| **任意テーブル参照** | `v_allowed_tables` ホワイトリスト + `^[a-z][a-z0-9_]{0,62}$` 形式チェック + `public.` スキーマ明示 |
+| **任意モジュール指定** | `v_allowed_modules` ホワイトリスト |
+| **DoS 緩和** | `p_record_id` の長さ 256 制限 |
+| **ERRCODE 標準化** | 入力エラーは `22023`（invalid_parameter_value）|
+| **PUBLIC 実行禁止** | `REVOKE ALL ... FROM PUBLIC; GRANT EXECUTE ... TO authenticated` |
+| **SECURITY DEFINER の必要性** | RLS 評価時に元テーブル参照に DB 権限が必要、INVOKER だと回避困難 → DEFINER 維持、ただし search_path 固定で攻撃面縮小 |
 
 #### 案 B: モジュール別の SELECT ポリシー直接定義
 
@@ -257,13 +334,29 @@ END IF;
 ### 6.3 復号権限（admin+ のみ）
 
 ```sql
+-- 2026-04-26 a-review #5 修正: search_path 固定 + 引数バリデーション + 権限失敗ログ
 CREATE OR REPLACE FUNCTION decrypt_history_value(
   p_history_id bigint
-) RETURNS text AS $$
+) RETURNS text
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
 DECLARE v_value text;
 BEGIN
+  -- 引数検証
+  IF p_history_id IS NULL OR p_history_id <= 0 THEN
+    RAISE EXCEPTION 'Invalid history_id: %', p_history_id
+      USING ERRCODE = '22023';
+  END IF;
+
   IF NOT has_role_at_least('admin') THEN
-    RAISE EXCEPTION 'Only admin can decrypt';
+    -- 権限失敗時も監査（不正アクセス追跡）
+    INSERT INTO audit_logs (event_type, actor, data)
+    VALUES ('history.decrypt.denied', auth_employee_number(),
+            jsonb_build_object('history_id', p_history_id, 'reason', 'insufficient_role'));
+    RAISE EXCEPTION 'Only admin can decrypt'
+      USING ERRCODE = '42501';
   END IF;
 
   SELECT pgp_sym_decrypt(new_value::bytea, current_setting('app.history_secret'))
@@ -276,7 +369,10 @@ BEGIN
 
   RETURN v_value;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
+REVOKE ALL ON FUNCTION decrypt_history_value(bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION decrypt_history_value(bigint) TO authenticated;
 ```
 
 ### 6.4 UI 表示時のマスキング

@@ -35,6 +35,7 @@
 | Root | Phase 2: 他アプリからの参照ルール整備 | 0.5 | — | — | a-root (A) | 2026-04-23 | | Bud/Leaf 未実装のため「Root 側で提供する API 契約書・共有クエリヘルパー・RLS 前提条件ドキュメント」に絞る方針。**2026-04-24 a-main 判断：Phase 2 は保留。Bud/Leaf 連携開始時に精緻化する。** |
 | Root | Phase A-1: 7マスタ UI 一括仕上げ（validators / FileMaker風UX / 全マスタ適用） | 3.5 | 1.0 | -2.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 当初 T1〜T7 を個別 0.5d×7 の予定だったが、Phase 1 時点で CRUD UI は既に実装済と判明。スコープを「既存実装の仕上げ」に読み替え圧縮。validators.ts / useMasterShortcuts / FormField(error)/ Modal(onSubmit)/ DataTable(activeIndex) を追加し 7 マスタに適用。PR #14。§16 7種テストは東海林さん別途実施予定。 |
 | Root | Phase A-2: KoT API 連携（月次勤怠 API 直接取込） | 1.0 | 0.5 | -0.5 | a-root (A) | 2026-04-24 | 2026-04-24 | 案A（CSV手動）→案C（API直行）へ切替。KoT v1.0 /employees + /monthly-workings を Server Action で取得→ employeeKey→code→employee_number→employee_id 解決→ root_attendance に upsert。疎通は IP 制限設定で一度失敗→解消後 200 OK・42名取得確認。/monthly-workings の date は YYYY-MM 形式（YYYY-MM-DD は 400）と実機で判明、修正反映済。PR #15。本番 Vercel IP 対応は別タスク。 |
+| Cross History | a-review #5 修正: Trigger / SQL injection 脆弱性パッチ | 0.25 | 0.2 | -0.05 | a-auto / a-leaf 参照 | 2026-04-26 | 2026-04-26 | PR #47 a-review 5 重大指摘の最後の 1 件。trg_record_change_history / admin_purge_old_history / can_user_view_record / decrypt_history_value の 4 関数に search_path 固定 + SECURITY 明示 + ホワイトリスト検証 + 引数バリデーション + REVOKE PUBLIC 適用。test-strategy spec に injection 6 ケース（必須 3 + 推奨 3）追加。a-leaf #65 search_path 全関数固定パターン参照。GitHub suspended のため push 待機中。 |
 
 ## 運用メモ
 

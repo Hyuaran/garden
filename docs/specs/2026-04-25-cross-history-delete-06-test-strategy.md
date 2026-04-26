@@ -562,4 +562,188 @@ Phase 4（大型）→ Bud/Root の統合テスト
 
 ---
 
+## 15. SQL injection / Trigger 脆弱性テスト（2026-04-26 追記、a-review #5 反映）
+
+PR #47 a-review が指摘した 5 重大指摘の最後の 1 件（Trigger / SQL injection）の修正に伴い、SECURITY DEFINER 関数 + 動的 SQL に対する injection ケースを必須テストに追加。
+
+参照修正対象:
+- `docs/specs/2026-04-25-cross-history-delete-01-data-model.md` §4.1 `trg_record_change_history()`
+- `docs/specs/2026-04-25-cross-history-delete-02-rls-policy.md` §3.3 `admin_purge_old_history()` / §4.1 `can_user_view_record()` / §6.3 `decrypt_history_value()`
+
+### 15.1 必須テスト 3 ケース（最低基準）
+
+#### Case 1: `' OR 1=1 --` 系 — RLS バイパス試行
+
+```sql
+-- 想定: can_user_view_record() の p_record_id に injection payload
+-- 期待: identifier クオート + プレースホルダ運用で安全に false を返す
+DO $$
+DECLARE v_result boolean;
+BEGIN
+  SELECT can_user_view_record(
+    'leaf', 'leaf_kanden_cases', '1'' OR 1=1 --'  -- injection 試行
+  ) INTO v_result;
+  ASSERT v_result = false, 'OR 1=1 injection should not bypass RLS';
+END $$;
+
+-- 期待: payload は record_id 文字列としてそのまま $1 にバインドされる
+-- → SELECT EXISTS(... WHERE id::text = '1'' OR 1=1 --') として評価
+-- → id 列に該当する uuid なし → false
+```
+
+#### Case 2: `'; DROP TABLE bud_transfers; --` 系 — 任意 DDL 試行
+
+```sql
+-- 想定: can_user_view_record() の p_table に DDL injection payload
+-- 期待: ホワイトリスト検証で REJECT、ERRCODE 22023
+DO $$
+BEGIN
+  PERFORM can_user_view_record(
+    'leaf',
+    'leaf_kanden_cases''; DROP TABLE bud_transfers; --',  -- injection 試行
+    'any-record-id'
+  );
+  RAISE EXCEPTION 'Test failed: DROP TABLE injection was not rejected';
+EXCEPTION
+  WHEN sqlstate '22023' THEN
+    -- 期待: invalid_parameter_value で REJECT
+    RAISE NOTICE 'OK: DROP TABLE injection rejected with ERRCODE 22023';
+END $$;
+
+-- 検証: bud_transfers テーブルが存在することを確認
+DO $$
+BEGIN
+  ASSERT EXISTS(SELECT 1 FROM pg_tables WHERE tablename = 'bud_transfers'),
+    'bud_transfers should still exist after injection attempt';
+END $$;
+```
+
+#### Case 3: セミコロン連鎖 `; UPDATE / DELETE` 系 — 複文実行試行
+
+```sql
+-- 想定: 複文を 1 引数に流し込む試み
+-- 期待: ホワイトリスト + identifier 形式チェック (^[a-z][a-z0-9_]{0,62}$) で REJECT
+DO $$
+BEGIN
+  PERFORM can_user_view_record(
+    'bud',
+    'bud_transfers; UPDATE bud_transfers SET amount = 0; --',
+    'any-record-id'
+  );
+  RAISE EXCEPTION 'Test failed: semicolon chain injection was not rejected';
+EXCEPTION
+  WHEN sqlstate '22023' THEN
+    RAISE NOTICE 'OK: semicolon chain injection rejected';
+END $$;
+
+-- 検証: bud_transfers のデータが汚染されていない
+-- (CI 環境で fixture と比較)
+```
+
+### 15.2 追加検証ケース（推奨）
+
+#### Case 4: search_path 攻撃シミュレーション
+
+```sql
+-- 同名関数を pg_temp スキーマに定義 → SECURITY DEFINER 関数が騙されるか確認
+-- 期待: SET search_path = pg_catalog, public, pg_temp により pg_temp は最後 → 騙されない
+BEGIN;
+  CREATE FUNCTION pg_temp.has_role_at_least(text) RETURNS boolean AS $$
+    SELECT true;  -- 攻撃者が常に true を返すよう偽装
+  $$ LANGUAGE sql;
+
+  -- admin 権限を持たないユーザーで decrypt_history_value() 呼出
+  SET LOCAL ROLE garden_test_unprivileged;
+  DO $$
+  BEGIN
+    PERFORM decrypt_history_value(1);
+    RAISE EXCEPTION 'Test failed: search_path attack succeeded';
+  EXCEPTION
+    WHEN sqlstate '42501' THEN
+      RAISE NOTICE 'OK: search_path attack neutralized by SET search_path';
+  END $$;
+ROLLBACK;
+```
+
+#### Case 5: NULL / 空文字 / 過大長 — 引数検証
+
+```sql
+-- NULL / 空文字 → false 返却
+SELECT
+  can_user_view_record(NULL, 'leaf_kanden_cases', 'x') = false AS null_module,
+  can_user_view_record('leaf', NULL, 'x') = false AS null_table,
+  can_user_view_record('leaf', '', 'x') = false AS empty_table,
+  can_user_view_record('leaf', 'leaf_kanden_cases', NULL) = false AS null_record;
+
+-- 過大長 record_id (>256) → ERRCODE 22023
+DO $$
+BEGIN
+  PERFORM can_user_view_record('leaf', 'leaf_kanden_cases', repeat('x', 257));
+  RAISE EXCEPTION 'Test failed: oversized record_id was not rejected';
+EXCEPTION
+  WHEN sqlstate '22023' THEN
+    RAISE NOTICE 'OK: oversized record_id rejected';
+END $$;
+```
+
+#### Case 6: trigger TG_ARGV[0] バリデーション
+
+```sql
+-- module 引数に不正値を持つ trigger は REJECT される
+BEGIN;
+  CREATE TABLE test_invalid_module (id uuid PRIMARY KEY);
+  CREATE TRIGGER test_bad_trigger
+    AFTER INSERT ON test_invalid_module
+    FOR EACH ROW EXECUTE FUNCTION trg_record_change_history('invalid module name');
+    -- スペース / 大文字含む → trigger 関数内で REJECT
+
+  DO $$
+  BEGIN
+    INSERT INTO test_invalid_module (id) VALUES (gen_random_uuid());
+    RAISE EXCEPTION 'Test failed: invalid module argument was not rejected';
+  EXCEPTION
+    WHEN sqlstate '22023' THEN
+      RAISE NOTICE 'OK: invalid module rejected';
+  END $$;
+ROLLBACK;
+```
+
+### 15.3 テスト実装場所
+
+```
+tests/
+└─ db/
+   └─ cross-history/
+      ├─ injection-rls-bypass.test.sql          (Case 1)
+      ├─ injection-ddl-rejection.test.sql       (Case 2, 6)
+      ├─ injection-semicolon-chain.test.sql     (Case 3)
+      ├─ search-path-attack.test.sql            (Case 4)
+      └─ argument-validation.test.sql           (Case 5)
+```
+
+### 15.4 CI 統合
+
+- pgTAP or 単純な `psql -f` 実行で全 6 ケースを CI で実行
+- 1 ケースでも失敗したら CI 不合格
+- PR チェックの required check に含める
+- a-review #5 修正の検証ケースとして PR 必須通過
+
+### 15.5 Phase B 拡張時の追加要件
+
+新しい table を `can_user_view_record()` のホワイトリストに追加する PR では:
+
+- [ ] `v_allowed_tables` 配列に table 名追加
+- [ ] 該当 table の RLS が独立に整合していることを確認
+- [ ] Case 1 / 2 / 3 を**新 table 名でも**実行（CI 自動化）
+
+### 15.6 受入基準（DoD）への追加
+
+- [ ] Case 1 〜 6 がすべて PASS（CI 必須）
+- [ ] `bud_transfers` 等の機微テーブルが injection 試行後も無傷
+- [ ] `search_path` 攻撃が SECURITY DEFINER 関数を騙せない
+- [ ] PUBLIC が SECURITY DEFINER 関数を直接 EXECUTE できない（REVOKE 確認）
+- [ ] ERRCODE が標準値（22023 / 42501）で返る
+
+---
+
 — spec-cross-history-06 end —

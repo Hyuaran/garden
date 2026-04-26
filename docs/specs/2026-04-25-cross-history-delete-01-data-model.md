@@ -147,7 +147,13 @@ CREATE INDEX idx_gch_recent ON garden_change_history (changed_at DESC);
 ### 4.1 BEFORE UPDATE Trigger（共通）
 
 ```sql
-CREATE OR REPLACE FUNCTION trg_record_change_history() RETURNS trigger AS $$
+-- 2026-04-26 a-review #5 修正: search_path 固定 + SECURITY INVOKER 明示
+-- 参照: a-leaf #65 search_path 全関数固定パターン
+CREATE OR REPLACE FUNCTION trg_record_change_history() RETURNS trigger
+  LANGUAGE plpgsql
+  SECURITY INVOKER                       -- INVOKER 明示（DEFINER 非推奨）
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
 DECLARE
   v_field_name text;
   v_old_value  text;
@@ -156,11 +162,20 @@ DECLARE
   v_changer    text := current_setting('app.employee_id', true);
   v_module     text := TG_ARGV[0];
 BEGIN
+  -- TG_ARGV[0] は CREATE TRIGGER 時の固定値、外部入力ではない
+  IF v_module IS NULL OR v_module !~ '^[a-z_]{1,32}$' THEN
+    RAISE EXCEPTION 'Invalid module argument: %', v_module
+      USING ERRCODE = '22023';  -- invalid_parameter_value
+  END IF;
+
   IF TG_OP = 'UPDATE' THEN
     -- 各列を比較、変更があれば記録
+    -- v_field_name は information_schema 由来 → 必ず実在する識別子
+    -- format %I で安全にクオート、$1/$2 で OLD/NEW を プレースホルダ渡し
     FOR v_field_name IN
       SELECT column_name FROM information_schema.columns
-      WHERE table_name = TG_TABLE_NAME
+      WHERE table_schema = TG_TABLE_SCHEMA              -- スキーマも明示比較
+        AND table_name = TG_TABLE_NAME
         AND column_name NOT IN ('updated_at', 'created_at')
     LOOP
       EXECUTE format('SELECT ($1).%I::text, ($2).%I::text', v_field_name, v_field_name)
@@ -198,8 +213,18 @@ BEGIN
 
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$;
 ```
+
+### 4.1.1 セキュリティ設計メモ（2026-04-26 a-review #5 反映）
+
+| 観点 | 対策 |
+|---|---|
+| **search_path 攻撃** | `SET search_path = pg_catalog, public, pg_temp` を関数定義時固定。実行時の `SET search_path = ...` 改竄に追従しない |
+| **EXECUTE format インジェクション** | `%I` 修飾子で識別子クオート、`v_field_name` は `information_schema.columns` 由来で実在識別子のみ、$1/$2 は OLD/NEW のプレースホルダ |
+| **TG_ARGV[0] の入力検証** | 起動時 `^[a-z_]{1,32}$` の正規表現で module 名を検証、不正なら ERRCODE `22023` で REJECT |
+| **SECURITY DEFINER 不採用** | trigger は呼出元の権限で実行（INVOKER）、特権昇格を避ける |
+| **table_name 確認** | `TG_TABLE_SCHEMA` も `information_schema` 検索条件に含め、別スキーマの同名テーブル誤認を防止 |
 
 ### 4.2 各テーブルへの適用
 
