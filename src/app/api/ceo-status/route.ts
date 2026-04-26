@@ -124,9 +124,10 @@ export async function PUT(req: Request) {
   }
 
   // 2. role check（Route Handler 側で二重防御。RLS は最終の砦）
+  // 最適化: name も一緒に取得し、Step 6 で再利用（DB ラウンドトリップ削減）
   const { data: emp } = await supabase
     .from("root_employees")
-    .select("garden_role")
+    .select("garden_role, name")
     .eq("user_id", userId)
     .maybeSingle();
   if (emp?.garden_role !== "super_admin") {
@@ -176,17 +177,11 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
 
-  // 6. updated_by_name JOIN
-  const { data: empName } = await supabase
-    .from("root_employees")
-    .select("name")
-    .eq("user_id", userId)
-    .maybeSingle();
-
+  // 6. updated_by_name は Step 2 で取得済の emp.name を再利用（追加 query なし）
   return NextResponse.json({
     status: updated?.status,
     summary: updated?.summary,
     updated_at: updated?.updated_at,
-    updated_by_name: empName?.name ?? null,
+    updated_by_name: emp?.name ?? null,
   });
 }
