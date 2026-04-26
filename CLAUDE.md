@@ -24,7 +24,7 @@
 | Bloom | 花 | `src/app/bloom/` | 案件一覧・日報・KPI・ダッシュボード |
 | Seed | 種 | `src/app/seed/` | 新商材・新事業の拡張枠 |
 | Forest | 森 | `src/app/forest/` | 全法人の決算資料等 |
-| Rill | 川 | `src/app/rill/` | チャットワークAPIを利用したメッセージアプリ |
+| Rill | 川 | `src/app/rill/` | 業務連絡 / メッセージング基盤。v1 = Tree 内当日チャット（Breeze 由来）、v2 = 全社 Chatwork クローン |
 | Fruit | 実 | — | 概念のみ（アプリなし） |
 
 ## データ設計の基本方針

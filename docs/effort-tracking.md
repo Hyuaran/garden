@@ -115,3 +115,78 @@
   - ブランチ: feature/soil-base-specs-batch16-auto
 
 - **本ファイルの起源**: 2026-04-22、ルール `feedback_effort_tracking.md` 遵守のため作成。以降の Phase では spec/plan 作成と同時に行追加すること。
+
+---
+
+## a-main 006 セッション（2026-04-26）
+
+### 主要成果
+
+| 観点 | 値 |
+|---|---|
+| 判断保留消化 | **235 件確定**（220 件目標超過、新規要件込み）|
+| 確定ログ作成 | 3 件（Kintone batch / Tree Phase D / Root Phase B）|
+| spec 改訂 follow-up dispatch | 6 セッション（a-bud x2 / a-auto x3 / a-root / a-tree） |
+| 新規 memory 追加 | 9 件 |
+| 新規 spec 起草成果 | 4 本 / 計 2,602 行（a-tree 770 + a-root 1,832）|
+| ローカル滞留 commit | 約 32+ commits（GitHub 復旧後 push 待機）|
+| GitHub 暫定アカウント | shoji@centerrise.co.jp / ShojiMikoto-B（2FA + PAT 設定済）|
+
+### 確定 235 件 内訳
+
+| カテゴリ | 件数 |
+|---|---|
+| Kintone fruit/sprout 解析 | 10 |
+| Kintone employee/payroll 解析 | 12 |
+| 連動・追加判断 | 10 |
+| Soil Phase B 全 7 spec | 49 |
+| Bud Phase D Batch 17 + Y 案 | 42 |
+| Tree Phase D 全 6 spec + 新規要件 17 | 52 |
+| Root Phase B 全 7 spec | 60 |
+| **計** | **235 件** |
+
+### 各セッション完走 commits
+
+| セッション | 内容 | commits |
+|---|---|---|
+| a-bud（1+2 次）| Bud Phase D 修正 + 新規 D-09/10/11 | 5 |
+| a-auto-002 | Sprout/Fruit/Calendar Batch 18 + Y 案 + Kintone 14 件 | 5 |
+| a-auto | Soil B-XX 修正 + Batch 14/19 fix | 8 |
+| a-root（権限+Help）| 新規 2 spec 起草（1,832 行）| 3 |
+| a-tree | Tree Phase D 確定 + 新規 2 spec（770 行）| 1 |
+| a-leaf | Kintone #22 反映 | 2 |
+| a-forest | Forest #21 反映 | 1 |
+| a-root-002 | Root Phase B 確定 60 件反映（進行中）| 7+ |
+| **計** | | **約 32+ commits** |
+
+### 重要設計判断（業務影響大）
+
+1. 法人マスタ一元化（root_business_entities）+ 役割分離（partner / vendor relationships）→ Lahoud 様等の役割切替企業対応
+2. ソフトフォン Garden 内構築（X-Lite 簡素化版 + マネーフォワード問合せボタン風 UI）
+3. Toast 通知共通コンポーネント（業務中断回避）
+4. 保管期間「永続スタート → 段階的短縮」標準パターン化
+5. ハイブリッドメール（Microsoft + Resend）
+6. 退職日翌日 03:00 切替（業務継続性）
+7. 監査ログ diff 方式（変更フィールドのみ）
+8. アカウント名 + UUID 併用（actor_account_name + actor_employee_id）
+
+### 実績工数（推定）
+
+- a-main 006 稼働：約 6-7h
+- 累計判断消化：235 件 / 6-7h = **約 30-40 件/h**（推奨明示パターン化奏功）
+- 各セッション spec 改訂：合計 4-5d 相当（並列実行で実時間短縮）
+
+### 待機
+
+- 槙さん invite 受諾
+- GitHub Support 復旧（チケット #4325863）
+- a-root-002 完走報告
+- 13+ ブランチ push + PR 発行（GitHub 復旧後）
+
+### 関連 docs
+
+- handoff: `docs/handoff-a-main-006-to-007.md`
+- 確定ログ 3 件: `C:\garden\_shared\decisions\decisions-{kintone-batch / tree-phase-d / root-phase-b}-20260426-a-main-006.md`
+- spec follow-up: `C:\garden\_shared\decisions\spec-revision-followups-20260426.md`
+- FileMaker サマリ: `C:\garden\_shared\decisions\filemaker-schema-summary-20260426.md`
+- push plan: `C:\garden\_shared\decisions\push-plan-20260426-github-recovery.md`
