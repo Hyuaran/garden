@@ -5,8 +5,10 @@
 - 見積: **0.4d**（実装、Tree D-02 と同時進行可能）
 - 担当セッション: a-tree
 - 作成: 2026-04-26（a-tree、a-main 006 確定事項を受けて起草）
+- 改訂: **2026-04-26 v1.1（4 次 follow-up）— 通知センター統合（独立 localStorage 廃止）**
 - 前提:
   - Tree Phase A 認証
+  - **既存 KPIHeader 通知センター**（`src/app/tree/_components/KPIHeader.tsx` + `TreeStateContext` の `notifCenter` / `markRead` / `markAllRead`）— **本 spec の通知履歴は本実装に統合**
   - sonner（既存パッケージ採用想定、未導入なら本 spec で初導入）
   - spec-cross-error-handling（Batch 7、`role="alert"` 統一）
   - memory `project_tree_toss_focus_principle.md`（toss UI のトス完了結果即時反映）
@@ -36,13 +38,30 @@ Tree のオペレーター・マネージャーに対して **業務中断のな
 - 通知集約ロジック（同種 N 件まとめ）
 - クリック時の遷移（詳細画面へ）
 - 音通知の ON/OFF 設定
-- 通知履歴の保持（直近 30 件、localStorage）
+- **既存 KPIHeader 通知センター（`notifCenter` / 既読・未読管理）への統合**（v1.1 改訂）
+  - Toast 表示と同時に `TreeStateContext.addNotif()` 経由で通知センターにも記録
+  - 翌日リセット運用（既存 Tree Breeze（→ Rill v1）の当日限り保持と整合）
 
 ### 1.4 含めない
 
 - Chatwork 通知（spec-cross-chatwork-notification）
 - メール通知（Phase 外）
 - ブラウザネイティブ Notification API（Phase D-2 で検討）
+- **独立 localStorage での通知履歴保管**（v1.1 改訂で廃止、KPIHeader 通知センターに統合）
+
+---
+
+## 1.5 v1.1 改訂サマリ（2026-04-26 4 次 follow-up）
+
+| 項目 | v1.0（旧） | v1.1（新） |
+|---|---|---|
+| 通知履歴保持 | localStorage で 30 件 | **既存 KPIHeader 通知センターと統合**、独立 localStorage 廃止 |
+| 履歴の表示先 | 専用パネル（未実装）| **KPIHeader のベルアイコン → ドロップダウン**（既存実装） |
+| 既読 / 未読管理 | （v1.0 に未定義）| **`TreeStateContext.markRead(id)` / `markAllRead()` を流用** |
+| 履歴保管期間 | デバイス毎 | **当日分全件保管 + 翌日リセット**（Rill v1 と同期） |
+| 「履歴」リンク動作 | （v1.0 に未定義）| **通知センター（KPIHeader ベル）を開く動作** |
+
+**要点**: Toast = 即時表示（5-10 秒で消滅）、通知センター = 当日全件 + 既読/未読 + 履歴閲覧。両者は **役割分離**。
 
 ---
 
@@ -175,11 +194,12 @@ public/sounds/
 
 ## 6. API 設計
 
-### 6.1 useToast Hook
+### 6.1 useToast Hook（v1.1: 通知センター統合）
 
 ```typescript
 // src/app/_components/Toast/useToast.ts
 import { useToast as _useToast } from '@/app/_components/Toast/ToastProvider';
+import { useTreeState } from '@/app/tree/_state/TreeStateContext';
 
 export type ToastType = 'success' | 'prospect' | 'ng' | 'lost' | 'info' | 'warning' | 'error';
 export type ToastOptions = {
@@ -189,21 +209,39 @@ export type ToastOptions = {
   callId?: string;        // クリック時遷移用
   duration?: number;      // ms、省略時は type 別既定
   sound?: boolean;        // ON 強制（既定はユーザー設定）
+  silent?: boolean;       // true なら通知センターに記録のみ、Toast 表示しない（v1.1 追加）
 };
 
 export function useToast() {
   const ctx = _useToast();
+  const { addNotif } = useTreeState(); // KPIHeader 通知センターへの追加 hook
+
+  function emit(opts: ToastOptions) {
+    if (!opts.silent) ctx.show(opts);
+    // v1.1: Toast 表示と同時に通知センターにも記録（既存 KPIHeader 統合）
+    addNotif({
+      type: opts.type,
+      title: opts.title,
+      message: opts.message,
+      callId: opts.callId,
+      timestamp: Date.now(),
+      read: false,
+    });
+  }
+
   return {
-    success: (msg: string, options?: Partial<ToastOptions>) => ctx.show({ type: 'success', title: '🎉 成約', message: msg, ...options }),
-    prospect: (msg: string, options?: Partial<ToastOptions>) => ctx.show({ type: 'prospect', title: '✨ 見込み', message: msg, ...options }),
-    ng: (msg: string, options?: Partial<ToastOptions>) => ctx.show({ type: 'ng', title: '❌ NG', message: msg, ...options }),
-    lost: (msg: string, options?: Partial<ToastOptions>) => ctx.show({ type: 'lost', title: '🚫 失注', message: msg, ...options }),
-    info: (msg: string, options?: Partial<ToastOptions>) => ctx.show({ type: 'info', title: 'ℹ️ お知らせ', message: msg, ...options }),
-    warning: (msg: string, options?: Partial<ToastOptions>) => ctx.show({ type: 'warning', title: '⚠️ 注意', message: msg, ...options }),
-    error: (msg: string, options?: Partial<ToastOptions>) => ctx.show({ type: 'error', title: '🚨 エラー', message: msg, duration: -1, ...options }), // -1 = 持続
+    success: (msg: string, options?: Partial<ToastOptions>) => emit({ type: 'success', title: '🎉 成約', message: msg, ...options }),
+    prospect: (msg: string, options?: Partial<ToastOptions>) => emit({ type: 'prospect', title: '✨ 見込み', message: msg, ...options }),
+    ng: (msg: string, options?: Partial<ToastOptions>) => emit({ type: 'ng', title: '❌ NG', message: msg, ...options }),
+    lost: (msg: string, options?: Partial<ToastOptions>) => emit({ type: 'lost', title: '🚫 失注', message: msg, ...options }),
+    info: (msg: string, options?: Partial<ToastOptions>) => emit({ type: 'info', title: 'ℹ️ お知らせ', message: msg, ...options }),
+    warning: (msg: string, options?: Partial<ToastOptions>) => emit({ type: 'warning', title: '⚠️ 注意', message: msg, ...options }),
+    error: (msg: string, options?: Partial<ToastOptions>) => emit({ type: 'error', title: '🚨 エラー', message: msg, duration: -1, ...options }), // -1 = 持続
   };
 }
 ```
+
+> **v1.1 設計判断**: Toast 表示 = 即時可視化（5-10 秒）、通知センター = 当日履歴 + 既読/未読管理。両者を `useToast()` の単一呼出で同時更新する。`silent: true` で通知センターのみ記録（バックグラウンド通知用）。
 
 ### 6.2 利用例
 
@@ -328,6 +366,44 @@ Batch 7 の cross-cutting spec で `role="alert"` 統一が要求されている
 - エラー / 警告系 = `role="alert"` + `aria-live="assertive"`
 - 成功 / 情報系 = `role="status"` + `aria-live="polite"`
 
+### 9.3 KPIHeader 通知センターとの統合（v1.1 追加）
+
+**既存実装** `src/app/tree/_components/KPIHeader.tsx`：
+- ベルアイコン + ドロップダウンパネル
+- `notifCenter: NotifItem[]`（`TreeStateContext` 経由）
+- 「未読 N 件」「既読 N 件」表示
+- 「既読」（個別）「すべて既読」（一括）ボタン
+- 外部クリックで閉じる
+
+**本 spec の統合方針**：
+- Toast 表示 = `sonner` で即時可視化（5-10 秒で消滅）
+- 通知履歴 = `TreeStateContext.notifCenter` に記録（既読/未読管理 + ベル UI 経由で閲覧）
+- `useToast()` の各メソッド呼出時、内部で `addNotif()`（新規追加 hook）も同時呼出
+- 「履歴」リンク = ベルアイコンクリックで通知センターパネルを開く（既存 `setNotifCenterOpen(true)` 流用）
+- **独立の localStorage 通知履歴は実装しない**（v1.0 → v1.1 の変更点）
+
+#### TreeStateContext 拡張要件（本 spec 由来）
+
+既存 `TreeStateContext` に以下を追加：
+```typescript
+type TreeStateContextType = {
+  // ...既存
+  notifCenter: NotifItem[];              // 既存
+  notifCenterOpen: boolean;              // 既存
+  setNotifCenterOpen: (b: boolean) => void; // 既存
+  markRead: (id: string) => void;        // 既存
+  markAllRead: () => void;               // 既存
+  addNotif: (notif: Omit<NotifItem, 'id'>) => void; // 新規（v1.1）
+  resetNotifsAtMidnight: () => void;     // 新規（v1.1、当日リセット用）
+};
+```
+
+#### 翌日リセット運用
+
+- 既存 Tree Breeze（→ Rill v1）の「当日限り保持」と整合
+- `resetNotifsAtMidnight()` を 24:00 JST に発火（Server Action / Cron / クライアント側 setInterval のいずれか、実装時に判断）
+- リセット時は `notifCenter = []` に戻す
+
 ---
 
 ## 10. 実装ステップと見積
@@ -339,7 +415,7 @@ Batch 7 の cross-cutting spec で `role="alert"` 統一が要求されている
 | 集約ロジック + スタック表示 | 1.0h |
 | クリック遷移 + `/tree/toss-wait` 連携 | 0.5h |
 | 音通知（ON/OFF + 3 ファイル）| 0.5h |
-| 通知履歴 localStorage 保持 | 0.25h |
+| KPIHeader 通知センター統合（addNotif/resetNotifsAtMidnight 追加）| 0.25h |
 | Vitest + RTL + a11y テスト | 0.75h |
 | **合計** | **0.4d**（約 4.5h）|
 
@@ -350,7 +426,7 @@ Batch 7 の cross-cutting spec で `role="alert"` 統一が要求されている
 | # | 項目 | 仮スタンス |
 |---|---|---|
 | 1 | 音ファイルの選定 | CC0 / public domain で 3 ファイル選定、東海林さん承認後決定 |
-| 2 | 通知履歴の保持件数 | 直近 30 件、localStorage（デバイス毎）|
+| 2 | ~~通知履歴の保持件数~~ → **v1.1 で解決**: 既存 KPIHeader 通知センター統合、当日全件保持 + 翌日リセット |
 | 3 | モバイルでの表示位置 | 右上維持 vs 上部全幅 — UI 完成後に後道さん FB |
 | 4 | エラー Toast の自動閉じ | 既定持続 vs 30 秒で消滅 — 持続を推奨（誤閉じ防止）|
 | 5 | 集約タイマー | 5 秒固定 vs 設定可 — 5 秒固定で開始、運用 FB で調整 |
@@ -373,5 +449,6 @@ Batch 7 の cross-cutting spec で `role="alert"` 統一が要求されている
 | 日付 | 版 | 改訂内容 | 担当 |
 |---|---|---|---|
 | 2026-04-26 | v1.0（初版） | 起草。a-main 006 確定事項（§2.2 Toast 通知 9 項目）を仕様化。 | a-tree |
+| 2026-04-26 | v1.1（4 次 follow-up）| **既存 KPIHeader 通知センター統合**：独立 localStorage 廃止、`TreeStateContext.notifCenter` に履歴記録、当日全件保持 + 翌日リセット運用、`addNotif` / `resetNotifsAtMidnight` を新規追加。「履歴」リンク = ベルアイコン押下で通知センターパネルを開く動作。`§1.5 v1.1 改訂サマリ` / `§6.1 useToast Hook（v1.1）` / `§9.3 KPIHeader 通知センター統合` を新設・更新。 | a-tree |
 
 — spec-tree-toast-notification end —

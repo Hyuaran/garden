@@ -5,6 +5,7 @@
 - 見積: **2.0d**（Phase D-2 で実装、PoC 込み）
 - 担当セッション: a-tree（実装）/ 東海林（イノベラ API 仕様調達）
 - 作成: 2026-04-26（a-tree、a-main 006 確定事項を受けて起草）
+- 改訂: **2026-04-26 v1.1（4 次 follow-up）— 判断保留 #3 / #4 / #5 確定**
 - 前提:
   - イノベラ PBX（既存稼働、月 7,000 円）
   - イノベラ API 仕様書（**未受領、要請中**）
@@ -401,13 +402,75 @@ D-06 §3 に準拠：
 
 ## 10. 判断保留事項（Phase D-2 着手前に確定）
 
-| # | 項目 | 仮スタンス |
+> v1.1（2026-04-26 4 次 follow-up）で #3 / #4 / #5 を確定。
+
+| # | 項目 | ステータス |
 |---|---|---|
-| 1 | イノベラ API 仕様書受領時期 | 東海林さんがイノベラに API 仕様書要請中 |
-| 2 | Webhook（着信通知）の認証 | API 仕様書受領時に確定（HMAC 推奨） |
-| 3 | モニタリング機能の通知 | 「通話中、第三者がモニタしている」を被モニタ側に表示するか（プライバシー観点） — **D-2 着手時に東海林さん判断** |
-| 4 | フローティングボタンの色 | マネーフォワード風オレンジ vs Tree 緑 — **UI 完成後 後道さん FB** |
-| 5 | フローティングの位置記憶 | localStorage / `root_employees.softphone_position` jsonb — **D-2 着手時に決定** |
+| 1 | イノベラ API 仕様書受領時期 | **保留**: 東海林さんがイノベラに API 仕様書要請中 |
+| 2 | Webhook（着信通知）の認証 | **保留**: API 仕様書受領時に確定（HMAC 推奨） |
+| 3 | モニタリング機能の被モニタ側通知 | **✅ 確定（v1.1）**: **デフォルト OFF** + `root_settings.softphone_monitor_notify_enabled` で運用切替可能。詳細は §10.3 |
+| 4 | フローティングボタンの色 | **✅ 確定（v1.1）**: **後道さん FB 不要**（架電画面は後道さん非閲覧、東海林さん判断で確定）。詳細は §10.4 |
+| 5 | フローティングの位置記憶 | **✅ 確定（v1.1）**: **`root_employees.softphone_position` jsonb（アカウントごと記憶）**。詳細は §10.5 |
+
+### 10.3 #3 モニタリング機能の被モニタ側通知（確定詳細）
+
+**確定方針**:
+- デフォルト = **OFF**（被モニタ側に通知しない、サイレントモニタリング）
+- `root_settings.softphone_monitor_notify_enabled` で運用中の切替が可能
+  - `true`：被モニタ側にバナー / Toast「モニタリング中です」を表示
+  - `false`（既定）：サイレント（被モニタ側に表示しない）
+- 設定変更権限: **admin+ のみ**（`spec-tree-softphone-design` §4 と整合）
+- 監査ログ: 設定変更時に `root_audit_log` へ記録
+
+**設計判断の根拠**:
+- マネージャー教育目的のモニタリングではサイレントが標準（業務妨害にならない）
+- 一方、プライバシー保護や法令対応で通知が必要なケースもあるため、設定で切替可能
+- `root_settings` 経由で運用変更可能（コード変更なし）
+
+**関連 schema 拡張要件**（Root Phase B 範疇）:
+```sql
+INSERT INTO root_settings (key, value, description) VALUES
+  ('softphone_monitor_notify_enabled', 'false', 'ソフトフォンのモニタリング時、被モニタ側に通知するか（admin で切替可）')
+ON CONFLICT (key) DO NOTHING;
+```
+
+### 10.4 #4 フローティングボタンの色（確定詳細）
+
+**確定方針**:
+- **後道さん FB 不要**
+- 東海林さん判断で確定 = **マネーフォワード風オレンジ系**を採用（実装時に最終的な hex 値を確定）
+
+**設計判断の根拠（架電画面 = 後道さん非閲覧の原則）**:
+- 後道さん（社長）は経営ダッシュボード（Garden Forest 等）のみ閲覧
+- 架電画面（toss / closer 専用）は後道さん非対象 = 後道さん FB を取る必要がない
+- memory `feedback_ui_first_then_postcheck_with_godo.md` の **例外**: 「架電画面（toss / closer 専用）は後道さん FB 不要」を本 spec § 10.4 で確定
+
+**memory への反映予定**:
+- `feedback_ui_first_then_postcheck_with_godo.md` の更新提案 = 「架電画面（toss/closer 専用、Tree D-02/D-03 の sprout/branch/breeze 等）は後道さん FB 不要」を例外として追記
+- → a-main 経由で反映依頼（本 spec の範囲外）
+
+### 10.5 #5 フローティングの位置記憶（確定詳細）
+
+**確定方針**:
+- **`root_employees.softphone_position` jsonb 列にアカウントごと記憶**
+- 旧案（localStorage）は**廃止**（デバイス切替時に位置がリセットされる問題を回避）
+
+**スキーマ拡張**（Root Phase A 互換、本 spec 由来の追加要件）:
+```sql
+ALTER TABLE root_employees
+  ADD COLUMN IF NOT EXISTS softphone_position jsonb DEFAULT NULL;
+-- 例: {"x": 1280, "y": 720, "expanded": false}
+```
+
+**実装方針**:
+- 移動 / 開閉時に `softphone_position` を UPDATE（debounce 500ms）
+- ログイン直後に `softphone_position` を SELECT、初期位置として復元
+- `softphone_position IS NULL` なら既定位置（右下、`{x: window.innerWidth - 80, y: window.innerHeight - 80, expanded: false}`）を使用
+
+**メリット**:
+- ✅ デバイスを変えても自分の好きな位置が再現
+- ✅ 位置を一度決めたら、PC 故障 / 入れ替え時にも引き継がれる
+- ✅ admin が「全員の初期位置を統一する」運用も可能（個人の上書きが優先）
 
 ---
 
@@ -426,5 +489,6 @@ D-06 §3 に準拠：
 | 日付 | 版 | 改訂内容 | 担当 |
 |---|---|---|---|
 | 2026-04-26 | v1.0（初版） | 起草。a-main 006 確定事項（§2.1 ソフトフォン構築 8 項目）を仕様化。 | a-tree |
+| 2026-04-26 | v1.1（4 次 follow-up）| **判断保留 #3 / #4 / #5 確定**: ①モニタリング被モニタ側通知 = デフォルト OFF + `root_settings.softphone_monitor_notify_enabled` で切替可能（§10.3）/ ②フローティングボタン色 = 後道さん FB 不要、東海林さん判断（マネーフォワード風オレンジ採用、§10.4、架電画面後道さん非閲覧原則の例外を明文化）/ ③位置記憶 = `root_employees.softphone_position` jsonb でアカウントごと記憶（§10.5、localStorage 案廃止）。 | a-tree |
 
 — spec-tree-softphone-design end —
