@@ -45,16 +45,45 @@
 - KoT は遡及修正可能（過去月の打刻訂正等）→ 一度 Bud で確定した値は固定
 - 締日確定後の修正は **手動承認**で再計算
 
-### 2.2 期間管理の分離
+### 2.2 期間管理の分離（2026-04-26 [a-bud] 大幅修正）
+
+> **改訂理由**: 元 a-auto 推奨「当月 21 日〜翌月 20 日（KoT 既存運用）」を東海林さん再判断で全面修正。
+> 勤怠締めを月初〜月末に揃え、`root_settings` 化で柔軟な変更可能性を確保（admin が設定変更画面から再起動なしで変更可）。
+> 確定根拠: `decisions-kintone-batch-20260426-a-main-006.md` + `spec-revision-followups-20260426.md` §2 #1
 
 ```
 給与計算期間（bud_payroll_periods）
-  ├─ 開始日: 前月 21 日
-  ├─ 終了日: 当月 20 日
-  ├─ 締日:   当月 20 日 + α 営業日
-  ├─ 支給日: 当月 25 日 or 翌月 5 日 等
-  └─ 状態:   draft / locked / paid
+  ├─ 勤怠締め:    1 日 〜 月末（root_settings.kintai_period_start_day / end_day で可変）
+  ├─ 締日確定:    月末締め後 + α 営業日（運用で決定、目安: 翌月 5-10 日）
+  ├─ 給与支払:    翌月末 最終営業日（root_settings.payment_date_rule）
+  ├─ 明細配信:    20-25 日ごろ（root_settings.statement_publish_target、運用決定次第確定）
+  └─ 状態:        draft / locked / calculated / approved / paid
 ```
+
+#### 期間管理の運用例（2026 年 5 月支給分）
+
+| 工程 | 期間 / 日付 |
+|---|---|
+| 勤怠締め対象 | 2026-04-01 〜 2026-04-30 |
+| 締日確定 | 2026-05-05 〜 2026-05-10 ごろ（運用次第）|
+| 計算実行 | 締日確定後 |
+| 承認 | 計算完了後 |
+| **明細公開（マイページ）** | 2026-05-20 〜 2026-05-25 ごろ |
+| **給与振込** | **2026-05-29（5 月最終営業日）** |
+
+#### `root_settings` で柔軟設定（admin 画面から変更可）
+
+| 設定キー | デフォルト | 説明 |
+|---|---|---|
+| `kintai_period_start_day` | `1` | 勤怠締め対象期間の開始日 |
+| `kintai_period_end_day` | `31` | 同 終了日（`31` = 末日扱い、月により自動調整） |
+| `payment_date_rule` | `'翌月末営業日'` | 支払日の決定ルール（自由文字列、Phase D 実装で enum 化検討） |
+| `statement_publish_target` | `'20-25 日'` | 明細配信目安（Phase E で自動配信化、`'10 日'` 等にも変更可） |
+
+設定変更時の挙動:
+- 新規 `bud_payroll_periods` レコード生成時のみ反映（既存レコードは不変、履歴保護）
+- 変更履歴は `root_settings_history` で追跡（Root Phase B 連携、別 spec）
+- 設定変更は admin 権限必須、`payroll_calculator` のみでは変更不可
 
 ### 2.3 Root との役割分離
 
@@ -77,10 +106,11 @@ CREATE TABLE public.bud_payroll_periods (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL REFERENCES public.root_companies(id),
   period_type text NOT NULL,           -- 'monthly' | 'bonus_summer' | 'bonus_winter' | 'final_settlement'
-  start_date date NOT NULL,            -- 期間開始（例: 2026-03-21）
-  end_date date NOT NULL,              -- 期間終了（例: 2026-04-20）
-  cutoff_date date NOT NULL,           -- 締日確定日（例: 2026-04-23）
-  payment_date date NOT NULL,          -- 支給日（例: 2026-04-25）
+  start_date date NOT NULL,            -- 期間開始（2026-04-26 改訂例: 2026-04-01、root_settings.kintai_period_start_day から計算）
+  end_date date NOT NULL,              -- 期間終了（例: 2026-04-30、月末日、root_settings.kintai_period_end_day から計算）
+  cutoff_date date NOT NULL,           -- 締日確定日（例: 2026-05-08、月末 + α 営業日）
+  payment_date date NOT NULL,          -- 支給日（例: 2026-05-29、翌月末最終営業日、root_settings.payment_date_rule から導出）
+  statement_publish_target_date date,  -- 明細配信目安日（例: 2026-05-22、root_settings.statement_publish_target、NULL = 未設定）
   status text NOT NULL DEFAULT 'draft',
     -- 'draft'   = 期間定義のみ
     -- 'locked'  = 締日確定、勤怠スナップショット完了
@@ -344,14 +374,16 @@ CREATE POLICY snapshot_select_admin
 
 ## 9. 判断保留事項
 
-| # | 論点 | a-auto スタンス |
+| # | 論点 | スタンス |
 |---|---|---|
-| 判 1 | 給与期間の開始日 | **当月 21 日 〜 翌月 20 日**（KoT 既存運用に合わせる、東海林さん要確認）|
-| 判 2 | 法人ごとの期間定義の差 | **法人ごとに自由設定**（`bud_payroll_periods.company_id` で分離）|
-| 判 3 | 締日後修正の承認権限 | **admin+ で最終承認**、manager+ で起票 |
+| 判 1 | 給与期間の開始日 | ~~当月 21 日 〜 翌月 20 日（KoT 既存運用）~~ → **🎯 東海林確定 (2026-04-26)**: 勤怠締め=**1 日 〜 月末** / 給与支払=**翌月末営業日** / 明細配信=**20-25 日**。`root_settings` 化で柔軟設定（admin が再起動なしで変更可、§2.2 参照） |
+| 判 2 | 法人ごとの期間定義の差 | **法人ごとに自由設定**（`bud_payroll_periods.company_id` で分離）。判 1 確定後も法人別 `root_settings` で個別調整可 |
+| 判 3 | 締日後修正の承認権限 | **payroll_approver+ で最終承認**（#18 反映）、`payroll_calculator` で起票 |
 | 判 4 | 月 100h 超残業の取込 | **一時保留 + HR 確認後 unlock**（過労死ライン警戒）|
 | 判 5 | 有給残高の管理場所 | **Bud 側のスナップショットにコピー**、Root 側もマスタ管理 |
 | 判 6 | KoT 不要日の扱い（祝日等）| **scheduled_working_minutes でゼロ化**、所定労働時間は 0 |
+| 判 7 | `root_settings` の変更履歴管理 | **`root_settings_history` で追跡**（Root Phase B 連携、別 spec で起票予定）。Bud 側は read-only |
+| 判 8 | 明細配信目安 20-25 日 → 自動配信化 | Phase D 初期は手動公開（admin が "公開" ボタン押下）、Phase E で `root_settings.statement_publish_target` ベースの自動 Cron 化 |
 
 ---
 

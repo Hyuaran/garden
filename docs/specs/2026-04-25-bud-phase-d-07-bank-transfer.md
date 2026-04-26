@@ -56,26 +56,47 @@
 
 ---
 
-## 2. 振込パターン
+## 2. 振込パターン（2026-04-26 [a-bud] ハイブリッド方式へ全面改訂）
 
-### 2.1 振込種別
+> **改訂理由**: 元 a-auto 推奨「30 件閾値で個別振込 / FB データ切替」を東海林さん再判断で**ハイブリッド方式**に統一。
+> 確定根拠: `decisions-kintone-batch-20260426-a-main-006.md` + `spec-revision-followups-20260426.md` §2 #3
+>
+> **採用理由（東海林さん指示）**:
+> - 銀行手数料節約: 件数によらず 1 ファイル一括 = 銀行は 1 取引として処理
+> - 会計連携の柔軟性: Garden 側で勘定項目別レポートを別途生成 → マネーフォワードクラウド会計に取込
+> - 後道さん（経理・代表）の運用適合: 1 ファイル振込 + 別の会計取込 CSV の二系統で勘定処理
 
-| 種別 | 件数 | 方式 |
+### 2.1 ハイブリッド方式（新採用）
+
+| 経路 | 出力 | 用途 |
 |---|---|---|
-| 給与振込（同一銀行内）| 1-30 件 | 個別振込（手数料安）|
-| 給与振込（他行）| 1-30 件 | 個別振込 or 総合振込 |
-| 給与振込（多人数）| 30+ 件 | **全銀協 FB データ**（総合振込）|
-| 賞与振込 | 同上 | 同上 |
+| **A. 銀行への振込** | **全銀協 FB データ 1 ファイル**（件数によらず一括） | 銀行ネットバンキングへアップロード、手数料 1 取引分 |
+| **B. 会計連携レポート** | **勘定項目別 振込レポート CSV**（Garden 内で生成） | マネーフォワードクラウド会計への取込、後道さんが勘定項目別仕訳 |
 
-### 2.2 銀行口座マスタ
+両者を**同じ振込バッチから同時出力**する：
+- 経路 A: 全件まとめた 1 つの FB データ（全銀協フォーマット、Shift_JIS、半角カナ）
+- 経路 B: 勘定項目別に集計した CSV（給与 / 外注費 / 通勤手当 / 賞与 / 役員報酬 等）
+
+### 2.2 旧設計（30 件閾値）からの移行
+
+| 項目 | 旧（個別振込 / FB 切替） | 新（ハイブリッド統一）|
+|---|---|---|
+| 30 件未満 | 個別振込（A-04 経由） | **FB データ 1 ファイル**（統一）|
+| 30 件以上 | FB データ | 同上 |
+| 会計連携 | 振込履歴ベース | **勘定項目別レポート CSV**（本 spec で新設）|
+| 手数料 | 件数比例（個別時） | **1 取引分**（一括）|
+| MFC 取込 | なし | **CSV 直接取込可**（後道さん運用）|
+
+### 2.3 銀行口座マスタ
 
 ```sql
 -- 既存（Phase A）
 -- bud_company_bank_accounts: 法人の振込元口座
 -- root_employees.bank_account_*: 従業員の振込先口座
+-- D-09 で改訂: employee_bank_accounts + payment_recipients に分離
 ```
 
-D-02 / D-03 完了時点で振込先情報は既に揃っている前提。
+D-02 / D-03 完了 + D-09 口座分離設計（#16）で振込先情報は揃っている前提。
 
 ---
 
@@ -151,21 +172,89 @@ CREATE TABLE public.bud_payroll_transfer_items (
 CREATE INDEX idx_transfer_items_batch ON bud_payroll_transfer_items (batch_id);
 ```
 
+### 3.3 `bud_payroll_accounting_reports`（会計連携レポート、2026-04-26 ハイブリッド方式新設）
+
+```sql
+CREATE TABLE public.bud_payroll_accounting_reports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  batch_id uuid NOT NULL REFERENCES public.bud_payroll_transfer_batches(id) ON DELETE CASCADE,
+
+  -- 出力
+  report_csv_storage_path text NOT NULL,          -- Storage パス（uuid 化）
+  report_csv_filename text NOT NULL,              -- 表示用、e.g. accounting_report_20260531.csv
+  report_csv_size_bytes int NOT NULL,
+  report_csv_checksum text NOT NULL,              -- SHA256
+
+  -- 集計（メタ情報、振込バッチの内訳）
+  total_employees int NOT NULL,
+  total_amount numeric(14, 0) NOT NULL,
+  category_breakdown jsonb NOT NULL,
+    -- {
+    --   "給与":       { count: 25, amount: 7_500_000 },
+    --   "外注費":     { count: 3,  amount: 450_000 },
+    --   "通勤手当":   { count: 25, amount: 350_000 },
+    --   "賞与":       { count: 0,  amount: 0 },
+    --   "役員報酬":   { count: 2,  amount: 800_000 }
+    -- }
+
+  -- ステータス
+  generated_at timestamptz NOT NULL DEFAULT now(),
+  generated_by uuid NOT NULL REFERENCES public.root_employees(id),
+  downloaded_at timestamptz,
+  downloaded_by uuid REFERENCES public.root_employees(id),
+  imported_to_mf_at timestamptz,                  -- 後道さんがマネーフォワード会計取込確認後に手動更新
+  imported_to_mf_by uuid REFERENCES public.root_employees(id),
+
+  notes text,
+
+  CONSTRAINT uq_accounting_report_per_batch
+    UNIQUE (batch_id)
+);
+
+CREATE INDEX idx_accounting_reports_batch
+  ON bud_payroll_accounting_reports (batch_id);
+```
+
+#### 勘定項目分類ルール（初期版、Phase E で粒度調整可能）
+
+| 勘定項目 | 抽出ルール |
+|---|---|
+| 給与 | `salary_record_id IS NOT NULL` AND `transfer_type='salary'` の通常給与 |
+| 外注費 | `transfer_type` が `'gyomu_itaku'` or `salary_record_id IS NULL AND payment_recipients.recipient_type='external_company'` |
+| 通勤手当 | `bud_salary_records.commute_allowance` 部分のみ（給与から分離抽出） |
+| 賞与 | `bonus_record_id IS NOT NULL` |
+| 役員報酬 | 雇用形態が役員（`root_employees.employment_type='executive'`） |
+
+**注**: レポート粒度（上記 5 区分）は後道さんと最終確認、Phase E で運用見ながら調整可能。
+
+### 3.4 CSV フォーマット（マネーフォワードクラウド会計取込形式、暫定）
+
+```
+日付,勘定項目,件数,金額,備考
+2026-05-31,給与,25,7500000,2026年5月分支給
+2026-05-31,外注費,3,450000,2026年5月分外注
+2026-05-31,通勤手当,25,350000,2026年5月分通勤
+2026-05-31,賞与,0,0,
+2026-05-31,役員報酬,2,800000,2026年5月分役員
+```
+
+エンコーディング: **UTF-8 (BOM 付き)** — マネーフォワードクラウド会計の標準受入形式。
+
 ---
 
 ## 4. 連携フロー（給与）
 
-### 4.1 全体図
+### 4.1 全体図（2026-04-26 [a-bud] ハイブリッド方式へ改訂）
 
 ```
 1. period.status = 'approved'（給与計算 + 承認完了）
 2. /api/bud/payroll/prepare-transfer 実行
    - bud_payroll_transfer_batches 作成
    - bud_payroll_transfer_items を salary_records から作成
-3. admin が振込内容確認 → status='approved'
-4. 振込方式判定:
-   - 30 件未満 + 単一銀行 → A-04 個別振込連携
-   - 30+ 件 or 多銀行 → FB データ生成
+3. payroll_approver が振込内容確認 → status='approved'
+4. **ハイブリッド出力**（旧 30 件閾値判定は廃止）:
+   - 経路 A: 全銀協 FB データ 1 ファイル生成 → Storage 保存
+   - 経路 B: 勘定項目別レポート CSV 生成 → bud_payroll_accounting_reports に保存
 5. 振込実行
 6. status='completed'
 7. salary_records.status='paid' 反映 + Chatwork 通知
@@ -456,7 +545,7 @@ WHERE batch_id = $batch_id AND item_status = 'submitted';
 
 | # | 論点 | a-auto スタンス |
 |---|---|---|
-| 判 1 | 個別振込 vs FB データの閾値 | **30 件で切替**、admin 手動指定可 |
+| 判 1 | 個別振込 vs FB データの閾値 | ~~30 件で切替、admin 手動指定可~~ → **🎯 東海林確定 (2026-04-26)**: **ハイブリッド方式**に統一（件数によらず FB データ 1 ファイル + Garden 側で勘定項目別レポート生成、§2 / §3.3 参照）。マネーフォワードクラウド会計連携用の CSV を別途出力。レポート粒度（5 区分）は後道さんと最終確認、Phase E で粒度調整可 |
 | 判 2 | FB データの自動アップロード | **手動アップロード**で開始（ネットバンキングの自動連携は Phase E）|
 | 判 3 | 振込先口座の暗号化 | 当面平文（A-04 既存スキーマと整合）、Phase E で再考 |
 | 判 4 | 月末 25 日が土日 | **前営業日**（労使慣例）|
