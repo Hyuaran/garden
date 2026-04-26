@@ -139,7 +139,8 @@ await replicateToR2(`soil/monthly/${lastMonth}.dump`);
 | Storage | 用途 | 保管期間 |
 |---|---|---|
 | Supabase Storage `backups/soil/` | 1 次保管 | 30 日 |
-| Cloudflare R2 `garden-backup/soil/` | 2 次保管 | 12 ヶ月 |
+| Cloudflare R2 `garden-backup/soil/` | 2 次保管 | **12 ヶ月**（超過分は §5.5 で Google Drive 自動移管）|
+| **Google Drive `Garden-Backup-Archive/`** | **3 次保管 / 永続** | **12 ヶ月超を永続保管** |
 | (オフライン保管)| 重大事故後の最終保険 | 永続（年次のみ）|
 
 ### 5.2 R2 への複製
@@ -161,6 +162,143 @@ async function replicateToR2(srcPath: string) {
 - R2 暗号化キーは Vercel 環境変数 `BACKUP_ENCRYPTION_KEY`
 - 1Password にもバックアップ
 - 年 1 回ローテーション
+
+### 5.4 R2 ライフサイクル（東海林さん指示 2026-04-26）
+
+> **改訂背景**: a-main 006 確定後の東海林さん指示（follow-up §1.4）。R2 12 ヶ月超を削除せず Google Drive へ自動移管、永続保管。容量コスト圧縮 + 永続性両立。
+
+- R2 保管: **12 ヶ月**（既定）
+- 12 ヶ月超: **Google Drive 自動移管**（§5.5）
+- 削除しない（永続保管）
+
+### 5.5 Google Drive 自動移管プロセス（新設）
+
+#### 5.5.1 アーキテクチャ
+
+```
+[R2: 12 ヶ月経過 dump]
+  ↓ 月次 cron で抽出
+[/api/cron/soil-backup-r2-to-gdrive] (毎月 1 日 04:00 JST)
+  ↓ Google Drive API（service account）
+[Google Drive: Garden-Backup-Archive/]
+  ↓ R2 から削除（Drive 移管完了確認後）
+[移管ログ → operation_logs]
+```
+
+#### 5.5.2 Google Drive 構造
+
+```
+Garden-Backup-Archive/
+├─ 2025/
+│  ├─ 01/
+│  │  ├─ soil_call_history_202501.dump.gpg
+│  │  ├─ soil_lists_dump_2025-01-01.dump.gpg
+│  │  └─ ...
+│  └─ ...
+├─ 2024/
+└─ ...
+```
+
+#### 5.5.3 認証と権限
+
+- Google Cloud service account（専用、Garden-Backup-Service-Account）
+- Drive API 権限: 専用フォルダ `Garden-Backup-Archive` のみ書込・削除可
+- service account 鍵は Vercel 環境変数 `GDRIVE_SERVICE_ACCOUNT_KEY`（1Password バックアップ）
+- 年 1 回鍵ローテーション
+
+#### 5.5.4 移管 cron 実装例
+
+```typescript
+// /api/cron/soil-backup-r2-to-gdrive (毎月 1 日 04:00 JST)
+export async function GET() {
+  const candidates = await fetchR2Files({
+    prefix: 'soil/',
+    olderThan: monthsAgo(12),
+  });
+
+  for (const file of candidates) {
+    try {
+      // 1. R2 から Google Drive へ stream copy
+      const stream = await r2.getObject(file.key).createReadStream();
+      const gdriveResult = await gdrive.files.create({
+        requestBody: {
+          name: file.name,
+          parents: [getYearMonthFolder(file.uploadedAt)],
+        },
+        media: {
+          mimeType: 'application/octet-stream',
+          body: stream,
+        },
+      });
+
+      // 2. 整合性確認（SHA256 比較）
+      const r2Hash = await r2.getObjectHash(file.key);
+      const gdriveHash = await gdrive.files.get({ fileId: gdriveResult.data.id, fields: 'md5Checksum' });
+      // ※ Drive は SHA256 提供しないため、別途比較ロジック
+
+      // 3. R2 から削除（移管完了確認後）
+      await r2.deleteObject(file.key);
+
+      // 4. 移管ログ記録
+      await recordMigrationLog({
+        from: 'r2',
+        to: 'gdrive',
+        file_path: file.key,
+        gdrive_file_id: gdriveResult.data.id,
+        size_bytes: file.size,
+      });
+    } catch (e) {
+      await recordMonitoringEvent({
+        severity: 'medium',
+        category: 'gdrive_migration_failure',
+        message: `R2 → GDrive 移管失敗: ${file.key}`,
+        details: { error: serializeError(e) },
+      });
+      // 失敗時は R2 に残す、次回再試行
+    }
+  }
+}
+```
+
+#### 5.5.5 移管ログテーブル
+
+```sql
+CREATE TABLE soil_backup_migration_logs (
+  id bigserial PRIMARY KEY,
+  migrated_at timestamptz NOT NULL DEFAULT now(),
+  from_storage text NOT NULL,    -- 'r2' | 'supabase' | ...
+  to_storage text NOT NULL,      -- 'gdrive' | ...
+  file_path text NOT NULL,
+  size_bytes bigint,
+  source_id text,
+  destination_id text,            -- gdrive file_id 等
+  status text NOT NULL DEFAULT 'completed'
+    CHECK (status IN ('completed', 'failed', 'verifying')),
+  error_message text,
+  performed_by uuid               -- service_role の場合 NULL
+);
+
+CREATE INDEX idx_soil_backup_migration_status_time
+  ON soil_backup_migration_logs (status, migrated_at DESC);
+```
+
+#### 5.5.6 復元時の検索（Drive → ローカル）
+
+過去のバックアップを必要とするケース（年次監査 / インシデント調査）:
+
+1. admin が `/admin/backup-archive-search` から年月指定検索
+2. Drive API で該当ファイル取得
+3. ローカルに一時 download（24h で削除）
+4. 復号 → 検証 → 復元手順（既存 §5）
+
+#### 5.5.7 容量コスト試算
+
+| Storage | 月額単価（参考）| 1 年分の見積 |
+|---|---|---|
+| R2 | $0.015/GB | 60GB（12 ヶ月）= $0.9/月 |
+| Google Drive | プラン内（Workspace）| **追加コストなし** |
+
+Google Drive は Garden 法人 Workspace 契約内のため、**追加コストなしで永続保管**。
 
 ---
 
@@ -196,6 +334,83 @@ async function replicateToR2(srcPath: string) {
 - フィルタ条件（削除日 / 削除者 / source_system）で絞込
 - 100 件 / 1000 件 / 全件 の段階確認
 
+### 6.4 槙さん権限例外（B-06 §17.4 連携、東海林さん指示 2026-04-26）
+
+> **改訂背景**: B-06 §17.4 で定義した module_owner_flags を本 spec のバックアップ復元時にも参照。
+
+#### 復元時の権限境界
+
+| ロール | 復元実行権限 | 対象範囲 |
+|---|---|---|
+| super_admin（東海林さん）| ✅ 全 Garden | 全モジュール |
+| admin | ✅ 全 Garden | 全モジュール |
+| **outsource + module_owner_flags['leaf_kanden']=true（槙さん）** | **✅ Leaf 関電のみ** | leaf_kanden_cases / 関連 storage |
+| outsource（一般）| ❌ | — |
+| その他 | ❌ | — |
+
+#### 槙さん専用復元 UI
+
+```
+[Leaf 関電 復元] /soil/admin/restore-kanden  (槙さんのみ表示)
+
+論理削除 復元:
+  ☑ leaf_kanden_cases の削除済を一括復元
+  ☐ 過去 30 日のみ
+  ☐ 全期間
+  [復元実行]
+
+部分復元（Storage）:
+  対象: 関電案件添付ファイル
+  バケット: bud-furikomi-receipts (関電関連のみ)
+  [Storage 復元 UI へ]
+```
+
+#### RLS で復元クエリにも制約
+
+```sql
+-- 復元 Server Action 内で権限チェック
+CREATE OR REPLACE FUNCTION can_restore_leaf_kanden(p_user_id uuid)
+RETURNS boolean
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
+  SELECT
+    -- super_admin / admin
+    current_garden_role() IN ('admin', 'super_admin')
+    OR
+    -- outsource + module_owner
+    (current_garden_role() = 'outsource'
+     AND EXISTS (
+       SELECT 1 FROM root_employees
+       WHERE user_id = p_user_id
+         AND module_owner_flags->>'leaf_kanden' = 'true'
+     ));
+$$;
+```
+
+#### 監査ログ強化
+
+槙さんの復元実行は **特に詳細監査**:
+
+```sql
+INSERT INTO operation_logs (
+  user_id, module, action, target_type, target_id, details
+) VALUES (
+  $maki_user_id, 'soil', 'leaf_kanden_restore_by_module_owner',
+  'leaf_kanden_cases', $target_id::text,
+  jsonb_build_object(
+    'restore_type', 'logical_delete_undo',
+    'affected_count', $count,
+    'reason', $reason,
+    'super_admin_notified', true  -- 東海林さんへ Chatwork DM 通知済
+  )
+);
+```
+
+槙さんの復元は **super_admin に Chatwork DM で即時通知**（東海林さんが知らない復元実行を防止）。
+
 ---
 
 ## 7. パーティション単位の選択復元
@@ -227,24 +442,51 @@ pg_restore で書き戻し
 
 ---
 
-## 8. リストア演習
+## 8. リストア演習（YAGNI 降格、東海林さん指示 2026-04-26）
 
-### 8.1 年次訓練
+> **改訂背景**: a-main 006 確定後の東海林さん指示（follow-up §1.4 #5）。実作業者が槙さん or 東海林さんの 1-2 名のみのため、年次訓練を**必須化しない**。**手順書整備 + 演習レポート**を主軸に。
 
-| 訓練 | 頻度 | 内容 |
+### 8.1 主軸方針（YAGNI 適用）
+
+- **演習レポート + 手順書更新が最優先**（実訓練より文書化）
+- 訓練頻度は柔軟（実作業者が 1-2 名のみのため、人的余力次第）
+- 年次訓練は推奨だが**必須化しない**
+
+### 8.2 推奨頻度（参考、必須ではない）
+
+| 訓練 | 推奨頻度 | 必須? |
 |---|---|---|
-| パーティション単位復元 | 年 4 回（四半期）| 1 月分を別 DB に restore + 整合性確認 |
-| Soil 全体 PITR 復元 | 年 2 回 | 別プロジェクトに復元 + 切替リハーサル |
-| 外部 R2 からの最終復旧 | 年 1 回 | Supabase 不在を想定、ローカル PG に restore |
+| パーティション単位復元 | 年 1-2 回 | **任意** |
+| Soil 全体 PITR 復元 | 年 1 回 | **任意** |
+| 外部 R2 / Google Drive 最終復旧 | 障害発生時のみ実演 | **任意** |
+| **手順書セルフレビュー** | **年 4 回（四半期）** | **必須**（更新実態確認のみ）|
 
-### 8.2 演習レポート
+### 8.3 訓練実施時のレポート
 
-`docs/dr-soil-drill-YYYYMMDD.md` に:
+実施した場合は `docs/dr-soil-drill-YYYYMMDD.md` に:
 
 - シナリオ
 - 計測 RTO
 - 改善点
 - known-pitfalls 追記
+
+### 8.4 手順書整備の優先順位
+
+実訓練より以下の文書化を優先:
+
+1. 部分復元手順（パーティション単位）→ `docs/runbooks/soil-restore-partition.md`
+2. 全体 PITR 復元手順 → `docs/runbooks/soil-restore-pitr.md`
+3. R2 → ローカル復元手順 → `docs/runbooks/soil-restore-r2.md`
+4. Google Drive → ローカル復元手順 → `docs/runbooks/soil-restore-gdrive.md`
+5. 暗号化キーローテーション手順 → `docs/runbooks/backup-key-rotation.md`
+
+### 8.5 トリガベース演習の代替
+
+形式的な定期訓練の代替として:
+
+- **インシデント発生時の実復旧**を実訓練として記録
+- そのまま `docs/dr-soil-incident-YYYYMMDD.md` として残す
+- ポストモーテム（Cross Ops #03）と兼用
 
 ---
 
@@ -296,15 +538,30 @@ ANALYZE soil_call_history_202401;
 
 - Soil + Forest + Bud + Tree + Leaf 等で約 12-15GB
 
-### 10.3 プラン推奨
+### 10.3 プラン推奨（東海林さん指示 2026-04-26 改訂）
 
-| プラン | 容量 | 月額 | 推奨度 |
+> **改訂背景**: a-main 006 確定後の東海林さん指示（follow-up §1.4 #8）。**当面 Pro 維持**、Team 昇格は将来コスト面で検討。
+
+| プラン | 容量 | 月額 | 採択 |
 |---|---|---|---|
-| Pro | 8GB | $25 | ❌ 不足 |
-| Pro Plus | 50GB | $25 + 容量超過費 | 🟡 経過観察 |
-| Team | 100GB | $599 | 🟢 推奨（PITR 14 日も付帯）|
+| **Pro** | **8GB**（拡張可）| **$25** | **✅ 当面維持**（Phase B 進行中）|
+| Pro Plus | 50GB | $25 + 容量超過費 | 🟡 容量超過時の自動拡張で対応 |
+| Team | 100GB | $599 | 🟡 将来検討（Phase B-1 完了 + 業務影響評価後）|
 
-Phase B-1 段階で **Team 検討必須**。
+#### 採択方針
+
+- **Pro 維持で Phase B 進行**
+- 容量逼迫（Cross Ops #02 §10 監視）80% 超で Pro Plus 自動拡張
+- Team 昇格判断: **Phase B-1 完了後 + 業務影響評価後**
+  - 評価基準: 業務時間帯の DB レイテンシ / Pro Plus 月額の安定性 / PITR 14 日が必要か
+
+### 10.4 Pro での運用上の制約
+
+| 制約 | 影響 | 対策 |
+|---|---|---|
+| PITR 7 日 | 8 日前は遡れない | 月次 dump を R2 / GDrive で永続保管（§5.5） |
+| 同時接続上限 60 | 業務時間帯のピーク制限 | Pooler transaction mode で実効 60 → 数百 |
+| 自動 backup 7 日 | 同上 | 月次 dump で代替 |
 
 ---
 
@@ -312,13 +569,118 @@ Phase B-1 段階で **Team 検討必須**。
 
 ### 11.1 全体停止 vs Soil のみ read-only
 
-| パターン | 業務影響 | 手順 |
-|---|---|---|
-| Soil 全体停止 | 全モジュール影響 | feature flag 経由で全 Garden 停止 |
-| Soil read-only | Tree / Leaf 参照可、INSERT 不可 | RLS で SELECT のみ許可 |
-| パーティション 1 つのみ TRUNCATE | 該当月のクエリのみ空 | 通常運用継続 |
+| パターン | 業務影響 | 手順 | 入力禁止 UX |
+|---|---|---|---|
+| Soil 全体停止 | 全モジュール影響 | feature flag 経由で全 Garden 停止 | **全画面ポップアップ + 全モジュール書込ブロック**（§11.3 詳述）|
+| Soil read-only | Tree / Leaf 参照可、INSERT 不可 | RLS で SELECT のみ許可 | **該当モジュールのみポップアップ + 書込ブロック** |
+| パーティション 1 つのみ TRUNCATE | 該当月のクエリのみ空 | 通常運用継続 | 通知のみ、強制ブロックなし |
 
-### 11.2 Chatwork 通知テンプレ
+### 11.3 復元中の入力禁止 UX（東海林さん指示 2026-04-26、follow-up §1.4 #7 反映）
+
+#### 全画面ポップアップ強制入力禁止
+
+復元中は以下の UX で**強制的に入力禁止**:
+
+```
+┌─────────────────────────────────────────┐
+│  ⚠️ システム復元中                        │
+│                                          │
+│  Garden は現在、データ復元処理を実行中です。 │
+│  業務データの整合性確保のため、              │
+│  入力 / 編集操作を一時停止しています。       │
+│                                          │
+│  ─────────────────────────────────       │
+│  対象モジュール: Soil（コール履歴 2026-03）│
+│  開始時刻: 2026-04-27 14:00:00 JST       │
+│  所要時間（見込み）: 約 30 分              │
+│  復旧予定: 14:30 JST                     │
+│                                          │
+│  ─────────────────────────────────       │
+│  問合せ: 東海林さん（社内 PC: 内線 XXX）  │
+│  Chatwork: Garden-運用-soil ルーム        │
+│                                          │
+│  [画面を閉じる] (閲覧のみ可)              │
+└─────────────────────────────────────────┘
+```
+
+#### DB レベル + UI レベル両方ブロック
+
+| レベル | 実装 |
+|---|---|
+| **DB レベル** | feature_flags / RLS で書込操作 REJECT（22023 / 42501 ERRCODE）|
+| **UI レベル** | アプリ全体で `RestoreInProgressModal` を最前面表示、入力フォームは disabled |
+
+#### feature_flags 連携
+
+```sql
+-- 復元開始時に super_admin が設定
+UPDATE feature_flags
+SET enabled = true,
+    rollout_strategy = 'all',
+    description = 'Soil コール履歴 2026-03 復元中、書込ブロック'
+WHERE module = 'soil'
+  AND flag_name = 'restore_in_progress';
+
+-- RLS ポリシーが flag を参照
+CREATE OR REPLACE FUNCTION is_module_in_restore(p_module text)
+RETURNS boolean
+  LANGUAGE sql
+  STABLE
+  SECURITY DEFINER
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
+  SELECT EXISTS(
+    SELECT 1 FROM feature_flags
+    WHERE module = p_module
+      AND flag_name = 'restore_in_progress'
+      AND enabled = true
+  );
+$$;
+```
+
+#### UI 側のグローバルチェック
+
+```typescript
+// src/components/RestoreInProgressGuard.tsx
+async function RestoreInProgressGuard({ module, children }: Props) {
+  const inRestore = await isModuleInRestore(module);
+  if (inRestore) {
+    return (
+      <FullScreenModal>
+        <RestoreNotification module={module} />
+      </FullScreenModal>
+    );
+  }
+  return <>{children}</>;
+}
+```
+
+主要ページ（dashboard / list / edit）の最上位に配置、復元中は強制ポップアップ。
+
+#### Chatwork 通知テンプレ（§11.4 と統合）
+
+```
+🚨 Garden 復元実行中
+
+時刻: 2026-04-27 14:00 〜 14:30 JST
+影響: Soil コール履歴 2026-03 月分の閲覧不可
+業務: Tree 架電 OK、月次集計のみ一時停止
+完了予定: 14:30 JST
+担当: 東海林さん
+
+復元中は対象モジュールの書込が自動ブロックされます。
+画面に表示される情報をご確認の上、復旧をお待ちください。
+```
+
+#### ロール別の挙動
+
+| ロール | 復元中の動作 |
+|---|---|
+| super_admin（東海林さん）| ポップアップ表示、ただし**復元実行者は閉じれる**（操作必要のため）|
+| admin | ポップアップ表示、閉じれる（モニタリング用）|
+| その他 | ポップアップ表示、**閉じれない**（書込ブロック解除まで）|
+
+### 11.4 Chatwork 通知テンプレ
 
 ```
 🚨 Soil 復元作業のお知らせ

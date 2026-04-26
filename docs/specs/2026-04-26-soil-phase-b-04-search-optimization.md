@@ -239,26 +239,49 @@ CREATE INDEX idx_assignments_user ON soil_lists_assignments (assigned_to);
 
 ---
 
-## 7. MV REFRESH スケジュール
+## 7. MV REFRESH スケジュール（東海林さん指示 2026-04-26 改訂）
 
-### 7.1 戦略
+### 7.1 戦略（業務時間帯運用、夜間停止）
 
-| MV | REFRESH 戦略 | 頻度 |
-|---|---|---|
-| 月次集計 | CONCURRENTLY | 日次 03:00 + on-demand |
-| 業種別集計 | CONCURRENTLY | 4 時間ごと |
-| 担当案件 | トリガ即時 + 補助 Cron | 即時 + 1h Cron |
+> **改訂背景**: a-main 006 確定後の東海林さん指示（follow-up §1.3）。Garden Leaf 関電ダッシュボード用、業務時間帯のみ高頻度 REFRESH、夜間は Soil 投入バッチと棲み分け。
 
-### 7.2 CONCURRENTLY の必須条件
+| MV | REFRESH 戦略 | 頻度 | 時間帯 |
+|---|---|---|---|
+| 月次集計 | CONCURRENTLY | **1 時間ごと** | **08:00 〜 20:00 JST** |
+| 業種別集計 | CONCURRENTLY | **1 時間ごと** | **08:00 〜 20:00 JST** |
+| 担当案件 | トリガ即時 + 補助 Cron | 即時 + 1h | 08:00 〜 20:00 JST |
+| Leaf 関電 KPI 集計 | CONCURRENTLY | **1 時間ごと** | **08:00 〜 20:00 JST** |
+
+#### スケジュール詳細
+
+- **稼働帯**: 朝 8 時 START / 夜 20 時 END（13 回/日: 08:00, 09:00, ..., 20:00）
+- **夜間停止**: 20-翌 8 時は REFRESH 停止
+  - Soil 投入バッチ（B-02 毎日深夜 03:00 開始 + B-03 リスト外取込）と時間帯を棲み分け
+  - 夜間の DB I/O 競合回避
+- **cron スケジュール**: `0 8-20 * * *`
+
+### 7.2 対象 MV（Leaf 関電関連集計を主軸）
+
+```
+- soil_call_history_monthly_summary
+- soil_lists_industry_summary
+- soil_lists_assignments
+- leaf_kanden_kpi_summary（営業件数 / 契約状況 / KPI ダッシュボード）
+- leaf_kanden_revenue_monthly（月次収益、Bloom 連動）
+```
+
+Leaf 関電ダッシュボードが業務時間帯（8-20 時）に頻繁に閲覧されるため、1 時間粒度で最新化。
+
+### 7.3 CONCURRENTLY の必須条件
 
 - 一意インデックスが必須（PK 相当）
 - ロックなしで更新（読み取り中も継続）
 - 時間は 2 倍程度かかる
 
-### 7.3 REFRESH 実装
+### 7.4 REFRESH 実装
 
 ```typescript
-// /api/cron/soil-refresh-mv (毎日 03:00)
+// /api/cron/soil-refresh-mv (cron `0 8-20 * * *`、13 回/日)
 export async function GET() {
   await supabaseAdmin.rpc('refresh_soil_mvs');
   return Response.json({ ok: true });
@@ -267,13 +290,40 @@ export async function GET() {
 
 ```sql
 CREATE OR REPLACE FUNCTION refresh_soil_mvs()
-RETURNS void LANGUAGE plpgsql AS $$
+RETURNS void
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
 BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY soil_call_history_monthly_summary;
   REFRESH MATERIALIZED VIEW CONCURRENTLY soil_lists_industry_summary;
   REFRESH MATERIALIZED VIEW CONCURRENTLY soil_lists_assignments;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY leaf_kanden_kpi_summary;
+  REFRESH MATERIALIZED VIEW CONCURRENTLY leaf_kanden_revenue_monthly;
 END $$;
 ```
+
+### 7.5 vercel.json 設定例
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/soil-refresh-mv",
+      "schedule": "0 8-20 * * *"
+    }
+  ]
+}
+```
+
+### 7.6 夜間 REFRESH 必要時の例外
+
+業務上夜間に MV 最新化が必要な場合（月次レポート出力等）:
+
+- `/api/cron/soil-refresh-mv?force=1` を admin が手動実行
+- 監査ログに記録（誰が / 何のために）
+- Soil 投入バッチと**重複時間帯回避**を確認（03:00-07:00 は実行不可制約）
 
 ---
 
