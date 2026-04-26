@@ -64,6 +64,9 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Tree | Phase D 確定 42 件反映 + 新規 2 spec 起草（spec 改訂のみ） | 0.5 | 0.5 | 0 | a-tree (A) | 2026-04-26 | 2026-04-26 | a-main 006 確定事項を全 6 spec に反映（各 spec §0「2026-04-26 確定事項」セクション追加 + 既存判断保留セクションを「全件確定済」表記に更新）。新規起草: spec-tree-softphone-design.md（X-Lite 簡素化版 + マネーフォワード風 UI、見積 2.0d）/ spec-tree-toast-notification.md（画面右上、成約 10s/見込み 7s/NG 5s、見積 0.4d）。既存実装（/tree/alerts /tree/dashboard /tree/ranking /tree/aporan /tree/toss-wait /tree/calling/sprout /tree/feedback）との整合 spec 内に明記。ブランチ: feature/tree-phase-d-decisions-applied、ローカル commit のみ（push は GitHub 復旧後）。 |
+| Tree | spec-tree-softphone-design 実装（Phase D-2、要イノベラ API 仕様） | 2.0 | | | a-tree (A) | (pending) | | spec-tree-softphone-design.md 準拠。X-Lite 簡素化版 + マネーフォワード風 UI、転送/モニタ manager+ のみ、録音はイノベラ自動。イノベラ API 仕様書受領後に着手。 |
+| Tree | spec-tree-toast-notification 実装（D-02 と同時進行可） | 0.4 | | | a-tree (A) | (pending) | | spec-tree-toast-notification.md 準拠。sonner ベース、7 種別（成約/見込み/NG/失注/情報/警告/エラー）、画面右上、業務中断しない設計。 |
 
 ## 運用メモ
 

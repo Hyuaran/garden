@@ -5,11 +5,88 @@
 - 見積: **0.7d**
 - 担当セッション: a-tree（+ a-leaf 連携）
 - 作成: 2026-04-25（a-auto / Batch 9 Tree Phase D #04）
+- 改訂: **2026-04-26（a-main 006）— 判断保留 7 件すべて確定 + toss 集中原則 + 既存 `/tree/toss-wait` `/tree/calling/sprout` 統合**
 - 前提:
   - D-01（`tree_call_records.tossed_leaf_case_id` 列）
   - D-02（Sprout 画面「トス」ボタン → 本フロー起動）
   - spec-leaf-kanden-phase-c-03-input-ui-enhancement（Leaf 側受信フロー）
   - spec-cross-chatwork-notification（案 D 準拠）
+  - **新規連携**:
+    - `spec-tree-toast-notification.md`（トス完了結果の即時 Toast = toss UI のフィードバック源）
+    - 既存 `/tree/toss-wait`（既設、closer 空き状況 + 1 秒経過タイマー）— **本 spec で正式化**
+    - 既存 `/tree/calling/sprout`（既設、トス時メモ必須）— **本 spec で同意確認 + メモ必須仕様を明文化**
+
+---
+
+## 0. 2026-04-26 確定事項（a-main 006、東海林承認）
+
+| # | 項目 | 確定内容 |
+|---|---|---|
+| 0-1 | 他商材（光・クレカ）対応時期 | **Phase D-1 は関電のみ、他商材は Phase D-2/D-3** |
+| 0-2 | トス後 Tree 側の編集権限 | **不可（原本性保持）。補足は Leaf review_note で追記** |
+| 0-3 | トス取消機能 | **不可。誤トスは Leaf 事務から cancel 依頼** |
+| 0-4 | 同意確認の必須化 | **全商材で必須（景表法・特商法対応）** |
+| 0-5 | キャンペーンごとの事務チーム振り分け | **振り分け、`campaign_code → chatwork_room_id` マッピング管理** |
+| 0-6 | トスアップのピーク負荷 | **1 関数 < 200ms で 1 時間に 18,000 件捌ける、問題なし** |
+| 0-7 | Tree 側状態 poll の頻度 | **closer 状況: 5 分 poll（toss UI から非表示）+ トス完了結果: 即時反映**（Phase D-1: 30 秒 polling、Phase D-2: Supabase Realtime） |
+
+### 業務設計原則（最重要）
+
+#### 🔥 toss は集中させる（memory `project_tree_toss_focus_principle.md` 準拠）
+
+**Garden Tree のトス（toss）役割は「契約見込みあり → トスを上げる」だけに集中**させる業務設計が原則。closer の空き状況・混雑度は **toss UI に表示しない**（変な思考をさせない）。
+
+**禁止事項（NG パターン）**:
+- ❌ `/tree/calling/sprout` 等の toss 架電画面に **closer 空き状況・closer 個別状況を表示しない**
+- ❌ 「closer 全員 busy 中、5 件キュー溜まってます」等の警告を toss UI に表示しない
+- ❌ closer 状況による toss ボタンの活性化制御（busy 時にトス不可等）はしない
+
+**OK パターン**:
+- ✅ toss は架電結果ボタン（受注 / 見込み / トス / NG 等）を押すだけ
+- ✅ トスを押したら即サーバーにキュー追加、closer 空き次第で自動割当
+- ✅ closer 状況の可視化は **`/tree/toss-wait` 画面（マネージャー / 事務向け）にのみ表示**
+- ✅ トス押下時は「ありがとうございます！」等の即時 Toast でモチベーション維持
+- ✅ **トス完了結果（成約 / NG / 見込み 等）は即時反映 → Toast 通知で表示**（Phase D-1: 30 秒 polling、D-2: Supabase Realtime）
+
+#### 役割の責務分離
+
+| 役割 | 集中すべきこと | 見せないこと |
+|---|---|---|
+| **toss** | 架電 + 結果判定 + トス上げ | closer 空き、closer 待ち時間、closer 個別状況 |
+| **closer** | トス受け + クロージング | toss キュー全体、トッサー別件数 |
+| **manager+** | 全体監視 + 介入 | (必要なら全部見える) |
+
+### 既存実装との整合性
+
+#### `/tree/calling/sprout`（既存、toss UI）
+- **既存実装**: 架電結果ボタン（受注 / 見込み / トス / NG / 担当者不在 / 不在 / 拒否 等）+ トス時メモ必須
+- **本 spec で正式化**:
+  - 架電結果ボタンは `tree_call_records.result_code` の CHECK 制約に同期（D-01 §0 判 0-2）
+  - トス時メモ必須: `tree_call_records.memo NOT NULL CHECK (length(memo) > 0)` 相当のフロント検証
+  - **トス押下後の即時 Toast**「ありがとうございます！クローザーへ転送中...」
+  - **closer 状況非表示**（判 0-7 + toss 集中原則）
+  - 同意確認チェックボックス（判 0-4 全商材必須）
+
+#### `/tree/toss-wait`（既存、closer 空き状況 + 1 秒経過タイマー）
+- **既存実装**: closer 待機画面（manager / 事務向け、closer 空き状況の可視化、1 秒経過タイマー）
+- **本 spec で正式化**:
+  - 表示権限: **manager+ のみ**（toss / closer は閲覧不可）
+  - 30 秒 polling で closer 状況更新（D-03 判 0-2 と整合）
+  - トス完了結果は本画面でも閲覧可能だが、toss 用ではなく manager 用
+
+### 商材別事務チーム振り分け（判 0-5）
+
+`campaign_code → chatwork_room_id` のマッピングを `root_settings` で管理：
+
+```sql
+-- 例
+INSERT INTO root_settings (key, value, description) VALUES
+  ('toss_chatwork_routing.kanden', '"ROOM_KANDEN_BACKOFFICE"', '関電商材トス通知先'),
+  ('toss_chatwork_routing.hikari_xxx', '"ROOM_HIKARI_BACKOFFICE"', '光回線商材トス通知先'),
+  ('toss_chatwork_routing.default', '"ROOM_DEFAULT"', '未マッピング商材のフォールバック');
+```
+
+トス成立時、`campaign_code` から該当ルームを引いて Chatwork 通知を送る。
 
 ---
 
@@ -388,29 +465,17 @@ WHERE c.review_note LIKE '[Tree トス]%'
 
 ---
 
-## 12. 判断保留事項
+## 12. 判断保留事項（2026-04-26 全件確定済 — 履歴保持）
 
-- **判1: 他商材（光回線・クレカ）対応時期**
-  - Phase D-1 は関電のみ、他は Phase D-2 / D-3
-  - **推定スタンス**: Phase D-2 で光回線、D-3 でクレカ（商材重要度順）
-- **判2: トス後 Tree 側の編集権限**
-  - トス済コールの `memo` を後から編集可能か
-  - **推定スタンス**: 不可（原本性保持、補足は Leaf review_note で追記）
-- **判3: トス取消機能**
-  - オペレーターがトス送信後に取り消す機能
-  - **推定スタンス**: 不可、誤トスは Leaf 事務から cancel 依頼
-- **判4: 同意確認の必須化**
-  - すべてのトスで同意必須か、一部商材で任意化可能か
-  - **推定スタンス**: 全商材で必須（景表法・特商法対応）
-- **判5: キャンペーンごとの事務チーム振り分け**
-  - 関電チーム・光チーム・クレカチームに Chatwork 通知を分ける
-  - **推定スタンス**: 振り分け、`campaign_code → chatwork_room_id` マッピング管理
-- **判6: トスアップのピーク負荷**
-  - 月末集中日 1 時間に 500 トスが発生した場合の性能
-  - **推定スタンス**: 1 関数 < 200ms なら 1 時間に 18,000 件捌ける、問題なし
-- **判7: Tree 側状態 poll の頻度**
-  - 5 分 / 1 分 / Realtime
-  - **推定スタンス**: Phase D-1 は 5 分固定、D-2 で Realtime 検討
+> 全 7 件の確定内容は §0 を正典とする。
+
+- **判1（確定）: 他商材対応時期** — 確定: D-1 関電のみ、D-2/D-3 で他商材（推定通り）
+- **判2（確定）: トス後 Tree 側の編集権限** — 確定: 不可、補足は Leaf review_note（推定通り）
+- **判3（確定）: トス取消機能** — 確定: 不可、Leaf 事務から cancel 依頼（推定通り）
+- **判4（確定）: 同意確認の必須化** — 確定: 全商材で必須（景表法・特商法対応）（推定通り）
+- **判5（確定）: 商材別事務チーム振り分け** — 確定: `campaign_code → chatwork_room_id` マッピング管理（`root_settings` で運用変更可、§0 参照）
+- **判6（確定）: ピーク負荷** — 確定: 1 関数 < 200ms で 18,000 件/時 OK（推定通り）
+- **判7（確定）: Tree 側状態 poll 頻度** — **確定: closer 状況 = 5 分 poll（toss UI から非表示）+ トス完了結果 = 即時反映** — 当初推定（5 分固定）から **二段階方針へ進化**: closer 状況は toss UI に表示しない（toss 集中原則、§0）。トス完了結果は即時反映で Toast 通知（D-1: 30 秒 polling、D-2: Supabase Realtime）。memory `project_tree_toss_focus_principle.md` 教訓反映
 
 ---
 
