@@ -64,6 +64,13 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Soil | Phase B-01: リストインポート Phase 1（Kintone 30 万件、Phase B-1 着手起点）| 1.5 | | | a-soil + a-leaf / a-auto 007 spec | 2026-04-26 | — | a-auto 007 Batch 19 spec 起草（346 行）。Phase 2/3 後送、staging 経由 + 進捗 UI + マージ提案 + ロールバック。判断保留 7 件。 |
+| Soil | Phase B-02: コール履歴インポート Phase 2（335 万件、月次パーティション）| 2.0 | | | a-soil + a-tree / a-auto 007 spec | 2026-04-26 | — | a-auto 007 spec 起草（447 行）。67 パーティション準備 + 時系列分割 + COPY chunked + INDEX 後付け + 整合性検査。判断保留 7 件。 |
+| Soil | Phase B-03: 関電リスト連携（master 整合運用）| 1.0 | | | a-soil + a-leaf / a-auto 007 spec | 2026-04-26 | — | a-auto 007 spec 起草（493 行）。後付け soil_list_id バッチ 5 ラウンド + orphan 警告 + 月次整合 cron + Kintone 差分同期。判断保留 7 件。 |
+| Soil | Phase B-04: 検索性能最適化（FTS / pg_trgm / MV）| 1.5 | | | a-soil + a-bloom / a-auto 007 spec | 2026-04-26 | — | a-auto 007 spec 起草（545 行）。tsvector + GIN + pg_trgm + MV 3 種 + REFRESH CONCURRENTLY + EXPLAIN ANALYZE 自動計測。判断保留 7 件。 |
+| Soil | Phase B-05: バックアップ・リカバリ（Soil 特化）| 0.75 | | | a-soil + a-main / a-auto 007 spec | 2026-04-26 | — | a-auto 007 spec 起草（435 行）。月次パーティションダンプ + R2 退避 + 論理削除復元 UI + リストア演習。Supabase Team プラン推奨。判断保留 7 件。 |
+| Soil | Phase B-06: RLS 詳細設計（8 ロール × 案件単位）| 1.0 | | | a-soil + a-root / a-auto 007 spec | 2026-04-26 | — | a-auto 007 spec 起草（489 行）。outsource 追加 + soil_lists_assignments 通常テーブル化 + current_garden_role() STABLE + 192 ケーステスト。判断保留 7 件。 |
+| Soil | Phase B-07: 監視・アラート（Soil 特化）| 0.75 | | | a-soil + a-rill / a-auto 007 spec | 2026-04-26 | — | a-auto 007 spec 起草（489 行）。10 カテゴリ拡張 + INSERT 量時間帯別 + 容量段階 + Tree burst + パーティション + MV REFRESH + 月次レポート。判断保留 7 件。 |
 
 ## 運用メモ
 
