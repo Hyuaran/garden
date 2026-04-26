@@ -1,11 +1,13 @@
 # Bud Phase D #04: 給与明細配信（PDF 生成 + Tree マイページ主経路 + メール PW PDF 補助経路）
 
 - 対象: Garden-Bud Phase D 給与明細・賞与明細の PDF 生成と配信
-- 優先度: **🔴 高**（従業員 UX、法定要件）
-- 見積: **1.25d**（PDF テンプレ + Tree マイページ + メール配信 + 配信ステータス管理）
+- 優先度: **🔴 高**（従業員 UX、法定要件、PII 取扱）
+- 見積: **1.5d**（旧 1.25d + a-review セキュリティ改修 +0.25d）
 - 担当セッション: a-bud（実装）/ a-tree（マイページ統合）/ a-rill（Chatwork 通知）/ a-bloom（レビュー）
 - 作成: 2026-04-25（a-auto 005 / Batch 17 Bud Phase D #04）
-- 改訂: 2026-04-25（a-auto 005、A-07 採択結果反映）
+- 改訂:
+  - 2026-04-25（a-auto 005、A-07 採択結果反映）
+  - **2026-04-25（a-bud、a-review 重大指摘 5 件のセキュリティ改修、§16 参照）**
 - 前提:
   - **Bud Phase B-03 給与明細 PDF**（設計済、本 spec で実装着手）
   - **Bud Phase D-02 給与計算ロジック**
@@ -14,6 +16,7 @@
   - **Cross Cutting spec-cross-chatwork**（Bot 通知）
   - **A-07 採択結果**（2026-04-25 a-main 確定、§2 で詳述）
   - Garden ログインは**社内 PC 限定**（通常ロール）→ メール配信が自宅確認の唯一経路
+  - **a-review 重大指摘**（2026-04-25、PR #74）— 配信経路のセキュリティ強化が必須（§16）
 
 ---
 
@@ -313,9 +316,9 @@ https://garden.example.com/tree/my/statements
 2026年4月支給分の給与明細をお送りします。
 添付 PDF をパスワード保護していますので、下記の規則で開いてください。
 
-▼ パスワード規則
-お客様の生年月日 4 桁（MMDD）です。
-（例: 1985年3月15日生まれ → 0315）
+▼ パスワード
+別送した SMS / Chatwork DM をご確認ください。
+（メール本文には PW 規則を記載しません — a-review 指摘 #4 改修 2026-04-25）
 
 ▼ 添付ファイル
 salary-statement-2026-04.pdf
@@ -341,7 +344,27 @@ https://garden.example.com/tree/my/statements
 
 **現状推奨**: Resend（Phase B-1 で導入評価、本番で SendGrid に切替検討）
 
-### 6.5 PW 保護 PDF 生成の技術選定
+#### ⚠️ 6.4.1 送信ドメイン認証（必須、a-review 指摘 #2 改修）
+
+PII（給与情報の PDF 添付）を配信するため、なりすまし対策として以下を**必須**で設定する：
+
+| 認証 | 設定先 | 内容 |
+|---|---|---|
+| **SPF** | 送信ドメインの DNS TXT | `v=spf1 include:_spf.<provider> -all`（hard fail）|
+| **DKIM** | 送信ドメインの DNS TXT | プロバイダ（Resend/SendGrid/SES）発行の公開鍵を 2048bit で登録 |
+| **DMARC** | 送信ドメインの DNS TXT | `v=DMARC1; p=reject; rua=mailto:dmarc@hyuaran.com; sp=reject; adkim=s; aspf=s` |
+
+実装着手前に DNS 反映を確認（`dig TXT _dmarc.<domain>` 等で疎通確認、48 時間反映余裕）。
+専用サブドメイン（例: `payroll@notice.<domain>`）を採用し、メインドメインへの DMARC 失敗の影響を局所化。
+
+#### ⚠️ 6.4.2 SMTP 経路の TLS 強制（必須、a-review 指摘 #3 改修）
+
+- メール送信時は **TLS 1.2 以上必須**（プロバイダ既定で OK だが明示確認）
+- HELO/EHLO 後に STARTTLS、もしくは SMTPS（465）を使用
+- プロバイダ管理画面で「outbound TLS required」相当の設定を ON
+- 中継サーバーでの平文露出を防止
+
+### 6.5 PW 保護 PDF 生成の技術選定（⚠️ a-review 指摘 #1 改修：PW 設計の見直し）
 
 | ライブラリ | 評価 |
 |---|---|
@@ -349,19 +372,57 @@ https://garden.example.com/tree/my/statements
 | qpdf（CLI 経由）| 強力だが native 依存 |
 | HummusJS | 古い、メンテ停止気味 |
 
-**現状推奨**: `pdf-lib` で `encrypt({ userPassword, ownerPassword, permissions })` を使用。
+**ライブラリ推奨**: `pdf-lib` で `encrypt({ userPassword, ownerPassword, permissions })` を使用。
 ※ 新規 npm パッケージ追加が必要 → 東海林さん事前承認。
 
-### 6.6 ダウンロード Server Action
+#### ⚠️ 6.5.1 PW 強度の問題（a-review 指摘 #1）
+
+A-07 採択時の「生年月日 4 桁（MMDD）or 社員番号下 4 桁」案には**ブルートフォース耐性不足**の重大問題:
+
+- **MMDD 4 桁** = 366 候補（オフラインで秒で解読可能）
+- **社員番号下 4 桁** = 10000 候補（連番運用なら数件試行で当たる）
+- PDF の AES-256 暗号化キーは **PW から PBKDF2 で導出**するが、PW 候補空間が極小だと無意味
+
+→ A-07 採択結果のままでは PII 配信として **GDPR / 個情法上のセキュリティ義務違反リスク**。
+
+#### ⚠️ 6.5.2 推奨修正案（東海林さん最終判断要）
+
+| 案 | 内容 | 工数追加 | 強度 |
+|---|---|---|---|
+| **A: 強ランダム PW + 別経路通知**（推奨） | PDF 1 件ごとに 16 文字 ASCII ランダム PW を生成、PDF を暗号化、PW を Chatwork DM（社内 PC 限定）or SMS（自宅可）で別経路通知 | +0.15d | 強（PDF 暗号化の理論強度フル発揮） |
+| **B: 一回限りダウンロードトークン方式** | PDF を Storage に置き、トークン化された signed URL（TTL 5 分・1 回使用後失効）をメールで送る。PDF 自体は暗号化しない | +0.2d（ダウンロード Server Action 拡張） | 強（中継時 PDF 漏洩なし、トークン使い切り） |
+| **C: 現状の MMDD 維持**（非推奨、運用回避策付き） | 採択通り MMDD、ただし「メール配信は社内 PC のみ閲覧」と運用で限定。Garden ログイン社内 PC 限定の前提が崩れたら即 A/B 案へ移行 | +0d | **弱**（攻撃容易、PII 配信不適） |
+
+**a-bud 推奨**: A 案（PDF 暗号化の強度フル発揮 + 別経路通知の運用工数許容）。
+**B 案も有力**（PDF 自体は暗号化不要、Garden 内で完結）。
+C 案は GDPR / 個情法リスク回避のため**非推奨**。
+
+東海林さん最終判断で A/B/C を確定後、本 spec § 6.5 を更新する。
+
+#### 6.5.3 owner password の固定値禁止
+
+- userPassword（開封 PW）と ownerPassword（権限変更 PW）は**別の値**で生成
+- ownerPassword は **Garden サーバー側で生成・破棄せず保管**（Phase D 完了後に対応、現状はランダム生成のみ）
+- 同じ ownerPassword を全 PDF に使う実装は禁止（権限破壊リスク）
+
+### 6.6 ダウンロード Server Action（⚠️ a-review 指摘 #5 改修：rate limit + log 漏洩防止）
 
 ```typescript
 // src/lib/bud/statements/download.ts
 'use server';
 
+import { rateLimitByUser, redactSignedUrl } from '@/lib/_security';
+
 export async function getStatementDownloadUrl(
   salaryRecordId: string
 ): Promise<{ url: string; expiresAt: number }> {
   const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('UNAUTHORIZED');
+
+  // a-review #5: Rate limit（列挙攻撃対策）
+  // ユーザー単位で 10 req / 5 min まで、超過時は HTTP 429 相当でブロック
+  await rateLimitByUser(user.id, 'statement_dl', { window: 300, max: 10 });
 
   // RLS で自動的にフィルタ（自分 or admin+ のみ）
   const { data: record } = await supabase
@@ -376,10 +437,15 @@ export async function getStatementDownloadUrl(
     .from('bud-salary-statements')
     .createSignedUrl(path, 60);  // 60 秒有効
 
-  // ダウンロード履歴
+  // a-review #5: ログ漏洩防止
+  // - Vercel ログ・Supabase ログに signed URL をマスク（クエリパラメータ削除）
+  // - employee_id / salary_record_id は監査用に hash 化して残す
   await logOperation({
     action: 'statement_downloaded',
-    target: salaryRecordId,
+    actor_id: user.id,
+    target_hash: hashSalt(salaryRecordId),  // 平文で残さない
+    storage_path_redacted: redactSignedUrl(signed.signedUrl),
+    user_agent: 'redacted',  // PII 拡散防止
   });
 
   return {
@@ -388,6 +454,26 @@ export async function getStatementDownloadUrl(
   };
 }
 ```
+
+#### 6.6.1 Rate limit 仕様
+
+| ユーザー区分 | 制限 | 超過時の動作 |
+|---|---|---|
+| 一般従業員 | 10 req / 5 min | HTTP 429 + Chatwork 警告（admin 宛）|
+| admin（自身分） | 20 req / 5 min | HTTP 429 + ログ記録 |
+| admin（他人分監査閲覧） | 50 req / 5 min | HTTP 429 + 異常検知（§7.2 強化）|
+
+実装は Supabase の `pg_rate_limit` 拡張 or Vercel KV / Redis ベース（Phase B-1 着手時に決定）。
+
+#### 6.6.2 列挙攻撃対策
+
+- `salaryRecordId` は uuid v4（推測困難）— OK
+- ただし `employee_id + period` ペアの URL パターンが推測可能なため、`storage_path` は **uuid v4 を含むパス**に変更:
+  ```
+  旧: bud-salary-statements/{employee_id}/{YYYY-MM}.pdf
+  新: bud-salary-statements/{employee_id}/{statement_id}.pdf  ← bud_salary_statements.id (uuid)
+  ```
+- 既存 spec §5.2 / §8.1 のパス規則も合わせて更新する（§16.3 参照）
 
 ### 6.7 Tree マイページ統合（A-07 主経路）
 
@@ -694,3 +780,69 @@ CREATE POLICY statements_select_admin
 - [ ] 異常 DL 検知が動作
 - [ ] SHA256 改ざん検知が動作
 - [ ] **配信エッジケーステスト（PDF 生成失敗 / メール送信失敗 / PW 不一致 / メアド不正）pass**
+- [ ] **a-review #1 PW 設計の最終決定**（A 案 強ランダム + 別経路 / B 案 一回限りトークン / C 案 維持、東海林さん判断）
+- [ ] **a-review #2 SPF/DKIM/DMARC DNS 反映確認**（dig コマンドで疎通）
+- [ ] **a-review #3 SMTP TLS 強制設定**確認（プロバイダ管理画面）
+- [ ] **a-review #4 メール本文の PW 規則平文記載なし**（§6.3 確認）
+- [ ] **a-review #5 ダウンロード Server Action の rate limit + log redact 動作**
+
+---
+
+## 16. ⚠️ a-review 重大指摘 5 件と改修計画（2026-04-25）
+
+### 16.0 経緯
+
+PR #74（Bud Phase D spec 8 件）の事前レビューで a-review が**配信経路のセキュリティ重大指摘を 5 件**検出。
+GitHub アカウント suspended のため a-review コメント本文を直接確認できないが、自己分析で 5 件を特定し本 spec へ反映した。
+GitHub 復旧後、a-review コメントとの突き合わせ + 微調整を実施する。
+
+### 16.1 指摘 #1: PDF パスワード脆弱（生年月日 4 桁）
+
+**問題**: A-07 採択時の PW 規則「生年月日 4 桁（MMDD）or 社員番号下 4 桁」は、候補空間が 366 / 10000 と極小でブルートフォース容易。PDF AES-256 暗号化が無意味化する。GDPR / 個情法上の PII 配信で重大リスク。
+
+**改修**: §6.5.1 / 6.5.2 に推奨修正案を追加（A 案 強ランダム + 別経路通知 / B 案 一回限りトークン / C 案 現状維持非推奨）。**東海林さん最終判断要**（A-07 採択結果の見直しに直結）。
+
+### 16.2 指摘 #2: メール SPF/DKIM/DMARC 未定義
+
+**問題**: 旧 §6.4 はプロバイダ選定のみで送信ドメイン認証要件が記載なし。なりすまし配信で PII 漏洩・フィッシング誘導リスク。
+
+**改修**: §6.4.1 で SPF/DKIM/DMARC の DNS 設定を**必須**として明記。専用サブドメイン採用、DMARC は `p=reject` で強制。
+
+### 16.3 指摘 #3: SMTP 経路 TLS 未指定 / Storage パスの uuid 化
+
+**問題**:
+- メール送信時の TLS 強制が未記述 → 中継サーバーでの平文露出リスク
+- Storage パス `{employee_id}/{YYYY-MM}.pdf` は推測可能 → 列挙攻撃で他人の明細パス特定可
+
+**改修**:
+- §6.4.2 で TLS 1.2 以上必須を明記
+- §6.6.2 で Storage パスを uuid v4 (`bud_salary_statements.id`) に変更、§5.2 / §8.1 と整合
+
+### 16.4 指摘 #4: メール本文に PW 規則を平文同送
+
+**問題**: 旧 §6.3 では本文に「PW は生年月日 4 桁（MMDD）です（例: 1985年3月15日 → 0315）」と PW 算出規則を平文で記載。メール傍受 / 転送 / 誤送信時に PDF + PW がセット漏洩。
+
+**改修**: §6.3 メール本文を改訂し PW 規則を削除、別経路（SMS / Chatwork DM）通知に変更。指摘 #1 の A 案採択時に自然に整合。
+
+### 16.5 指摘 #5: ダウンロード Server Action に rate limit / log redaction なし
+
+**問題**: 旧 §6.6 には rate limit 言及なし。攻撃者が `salaryRecordId` を列挙して情報取得試行可。signed URL がログに残る場合、Vercel / Supabase ログから 60 秒以内に再利用される可能性。
+
+**改修**: §6.6.1 で rate limit を明記（一般 10 req / 5 min）、§6.6.2 で log redaction（signed URL 削除 + ID hash 化）を追加。
+
+### 16.6 改修サマリ
+
+| # | 指摘 | 改修箇所 | 状態 |
+|---|---|---|---|
+| 1 | PDF PW 脆弱 | §6.5（推奨案 A/B/C 提示）| 🟡 東海林さん判断待ち |
+| 2 | SPF/DKIM/DMARC 未定義 | §6.4.1 必須設定追加 | ✅ 反映済 |
+| 3 | TLS / Storage パス | §6.4.2 / §6.6.2 | ✅ 反映済 |
+| 4 | メール本文 PW 平文 | §6.3 改訂 | ✅ 反映済 |
+| 5 | rate limit / log redact | §6.6.1 / §6.6.2 | ✅ 反映済 |
+
+### 16.7 GitHub 復旧後のアクション
+
+1. a-review コメント本文を取得し、本 §16 の改修内容と突き合わせ
+2. 認識相違があれば追加 commit で修正
+3. 指摘 #1 PW 設計は東海林さん最終判断 → 確定後に §6.5 を更新
+4. 指摘 #1 確定後、A-07 spec（`docs/specs/2026-04-24-bud-a-07-cash-payment-undecided.md`）も連動修正
