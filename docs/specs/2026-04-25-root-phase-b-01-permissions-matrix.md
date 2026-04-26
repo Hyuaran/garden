@@ -8,6 +8,24 @@
 
 ---
 
+## 0. 確定事項（2026-04-26 a-main 006 東海林承認済）
+
+本 spec は `C:\garden\_shared\decisions\decisions-root-phase-b-20260426-a-main-006.md`（Phase B 全 7 spec 60 件確定ログ、別途作成予定）の **B-1 関連項目** を反映する。
+
+### B-1 で確定した主要事項
+
+| # | 項目 | 確定内容 | 反映先 |
+|---|---|---|---|
+| #4 | 槙さん例外（leaf_kanden_module_owner フラグ） | `root_employees.module_owner_flags` jsonb を活用し、outsource ロールでも `leaf-kanden` モジュールに限り manager+ 相当の権限を持たせる。本 spec の `has_permission_v2()` で override 経由の特例を実現 | §3 / §8 / §9 |
+
+### Phase B 全体方針（B-1 関連の補足）
+
+- Phase B は **設計判断を含むため、東海林さん即決承認後の実装着手** が原則
+- 60 件確定のうち B-1 関連は #4（槙さん例外）が代表項目
+- 詳細は確定ログを参照のこと（GitHub 復旧後に push 予定）
+
+---
+
 ## 1. 目的とスコープ
 
 ### 目的
@@ -133,7 +151,29 @@ CREATE INDEX root_settings_updated_at_idx
   ON root_settings (updated_at DESC);
 ```
 
-### 3.3 汎用 helper 関数
+### 3.3 root_employees.module_owner_flags（既存列の活用）
+
+**槙さん例外（#4 確定）** の実現には、`root_employees` テーブルの `module_owner_flags` jsonb 列を活用する。
+この列は Phase A-3-g 以降の migration で追加済み（または Phase B-1 migration で追加する）。
+
+```sql
+-- root_employees に追加される列（既存 migration or B-1 migration にて）
+-- module_owner_flags  jsonb  DEFAULT '{}'::jsonb
+-- 例: {"leaf-kanden": "owner"} -- 槙さんの場合
+
+COMMENT ON COLUMN root_employees.module_owner_flags IS
+  'モジュール別オーナーフラグ。outsource ロールでも特定モジュールで manager+ 相当の権限を付与する特例用。'
+  '例: {"leaf-kanden": "owner"} → Leaf 関電モジュールの全件閲覧・編集を許可（has_permission_v2 の override 段階で解決）。';
+```
+
+フラグ値の仕様:
+- `"owner"`: そのモジュールに対して manager+ 相当のすべての write 操作を許可
+- 値なし（キー不在）: 通常のロール権限で判定（例外なし）
+- 将来拡張用として `"readonly"` 値も予約するが、Phase B では `"owner"` のみ運用
+
+### 3.4 汎用 helper 関数
+
+#### has_permission()（後方互換維持版）
 
 動作:
 1. root_settings に `(module, feature, current_role)` の行が存在すれば、`permission` を返す（boolean 変換）
@@ -194,8 +234,95 @@ $$;
 
 COMMENT ON FUNCTION has_permission(text, text) IS
   'Phase B-1: 現ログインユーザーが (module, feature) の操作を許可されているか。'
-  'root_settings に登録なければ従来関数で fallback（後方互換）。';
+  'root_settings に登録なければ従来関数で fallback（後方互換）。'
+  '槙さん例外（module_owner_flags）は has_permission_v2() で処理。';
 ```
+
+#### has_permission_v2()（override 対応版）
+
+**§0 #4 確定事項**に対応する拡張 helper 関数。3 段階の解決順序で権限を判定する：
+
+1. **個別 override 段階**: `root_employees.module_owner_flags` に対象モジュールの `"owner"` フラグがあれば、ロールに関わらず allow を返す
+2. **role permissions 段階**: `root_settings` の `(module, feature, role)` で判定
+3. **fallback 段階**: 従来の SQL helper 関数（後方互換）
+
+outsource ロールは本来、leaf-kanden の write 系 operation（`case_edit`、`backoffice_edit` 等）で denied が既定となる（§4.3 マトリックス参照）。しかし `module_owner_flags = '{"leaf-kanden": "owner"}'` を持つユーザー（槙さん）は、override 段階で allow に変換される。
+
+```sql
+CREATE OR REPLACE FUNCTION has_permission_v2(
+  p_module  text,
+  p_feature text
+)
+  RETURNS boolean
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  STABLE
+AS $$
+DECLARE
+  v_uid        uuid;
+  v_role       text;
+  v_flags      jsonb;
+  v_flag_val   text;
+  v_permission text;
+BEGIN
+  -- 1. 現在のユーザーを取得
+  v_uid  := auth.uid();
+  v_role := current_garden_role();
+  IF v_uid IS NULL OR v_role IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- 2. 個別 override 段階: module_owner_flags を確認
+  --    例: {"leaf-kanden": "owner"} のユーザーは leaf-kanden の全 feature を allow
+  SELECT module_owner_flags INTO v_flags
+    FROM root_employees
+    WHERE user_id = v_uid;
+
+  IF v_flags IS NOT NULL THEN
+    v_flag_val := v_flags ->> p_module;
+    IF v_flag_val = 'owner' THEN
+      RETURN true;  -- override: ロール問わず allow
+    END IF;
+  END IF;
+
+  -- 3. role permissions 段階: root_settings を参照
+  SELECT permission INTO v_permission
+    FROM root_settings
+    WHERE module   = p_module
+      AND feature  = p_feature
+      AND role     = v_role;
+
+  IF FOUND THEN
+    RETURN v_permission = 'allowed';
+  END IF;
+
+  -- 4. fallback 段階: 従来の helper 関数
+  RETURN CASE
+    WHEN p_module = 'root' THEN
+      CASE p_feature
+        WHEN 'master_view'   THEN root_can_access()
+        WHEN 'master_edit'   THEN root_can_write()
+        WHEN 'settings_edit' THEN root_is_super_admin()
+        ELSE false
+      END
+    WHEN p_module = 'tree' THEN
+      CASE p_feature
+        WHEN 'call_confirm_view' THEN tree_can_view_confirm()
+        ELSE false
+      END
+    ELSE false
+  END;
+END;
+$$;
+
+COMMENT ON FUNCTION has_permission_v2(text, text) IS
+  'Phase B-1 拡張版: 3 段階解決（個別 override → role permissions → fallback）。'
+  '槙さん例外: outsource + module_owner_flags = {"leaf-kanden": "owner"} の場合、'
+  'leaf-kanden モジュールの全 feature を allow（ロール既定の denied を上書き）。'
+  '新規実装は has_permission_v2() を使用。既存 RLS の段階移行は各モジュール担当。';
+```
+
+**移行方針**: 新規実装では `has_permission_v2()` を標準として使用する。既存 RLS からの移行は各モジュールセッション（a-leaf 等）が対応 spec のタイミングで `has_permission()` → `has_permission_v2()` に切り替える。
 
 ---
 
@@ -406,12 +533,27 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 - **給与改定**: `has_permission('bud', 'salary_revision')` を給与改定 Server Action に組み込む
   - 給与改定は金銭影響大のため、初期値は admin 以上のみ（マトリックス §4.2 参照）
 
-### 7.2 Garden-Leaf との連携（案件登録・トスアップ）
+### 7.2 Garden-Leaf との連携（案件登録・トスアップ・槙さん例外）
 
 - **案件登録（case_edit）**: toss は案件の新規作成（トスアップ）のみ、編集は closer/staff/manager 以上
-  - `has_permission('leaf', 'toss_up')` と `has_permission('leaf', 'case_edit')` を区別
+  - `has_permission_v2('leaf', 'toss_up')` と `has_permission_v2('leaf', 'case_edit')` を区別
 - **Leaf 商材設定変更**: admin 以上に限定（誤操作防止）
-- **Leaf 側への通知**: Leaf RLS を `has_permission()` に移行する際、a-leaf が a-root の B-1 完了を確認してから実施
+- **Leaf 側への通知**: Leaf RLS を `has_permission_v2()` に移行する際、a-leaf が a-root の B-1 完了を確認してから実施
+
+#### 槙さん例外（outsource + leaf-kanden module_owner）の運用方針（§0 #4 確定）
+
+Leaf-kanden モジュールの基本アクセス構造は「cs / staff / manager+ が担当、toss / closer / outsource は通常 deny」。
+しかし槙さん（`garden_role = 'outsource'`）は `module_owner_flags = '{"leaf-kanden": "owner"}'` を付与することで特例を適用する。
+
+| 項目 | 内容 |
+|---|---|
+| 対象者 | 槙さん（outsource ロール、`root_employees.module_owner_flags` に leaf-kanden owner を設定） |
+| 適用範囲 | `leaf-kanden` モジュールのみ（他モジュールは outsource 通常権限） |
+| 許可内容 | 全件閲覧（`case_view`）+ 編集（`case_edit`、`backoffice_view`、`backoffice_edit`）= manager+ 相当 |
+| 実現方法 | `has_permission_v2()` の **override 段階**（§3.4 参照）で解決。root_settings のマトリックス変更なし |
+| フラグ設定方法 | admin UI（`/root/employees/<id>`）から `module_owner_flags` の jsonb を `{"leaf-kanden": "owner"}` に更新 |
+| 変更履歴 | `root_audit_log` に `action = 'module_owner_flags_changed'` で記録（§8 参照） |
+| 解除方法 | `module_owner_flags` から `leaf-kanden` キーを削除（admin UI から操作） |
 
 ### 7.3 Garden-Tree との連携（架電画面の権限統合）
 
@@ -422,8 +564,8 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 
 ### 7.4 横断利用の優先順位
 
-1. **Phase B-1**: `has_permission()` を提供、マトリックス初期データを投入
-2. **Phase B-2 〜 C**: 各モジュールが対応 spec のタイミングで RLS を `has_permission()` に段階移行
+1. **Phase B-1**: `has_permission()` / `has_permission_v2()` を提供、マトリックス初期データを投入
+2. **Phase B-2 〜 C**: 各モジュールが対応 spec のタイミングで RLS を `has_permission_v2()` に段階移行（新規実装は `has_permission_v2()` を標準として使用）
 3. **Phase C 完了後**: ハードコード関数（root_can_access 等）を非推奨化、最終的に削除
 
 ---
@@ -441,7 +583,18 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 - `target_id`: `'<module>/<feature>/<role>'`
 - `payload`: `{ before: { permission, note }, after: { permission, note } }`（変更前後）
 
-### 8.2 B-2 spec との分担
+### 8.2 module_owner_flags の変更記録（槙さん例外用）
+
+`root_employees.module_owner_flags` の更新は権限の実質的変更に相当するため、`root_audit_log` に記録する。
+記録は AFTER trigger（SECURITY DEFINER）で実装する。
+
+記録内容:
+- `action`: `'module_owner_flags_changed'`
+- `target_type`: `'root_employees'`
+- `target_id`: 対象ユーザーの `user_id`（uuid）
+- `payload`: `{ before: { module_owner_flags }, after: { module_owner_flags } }`（変更前後の jsonb 全体）
+
+### 8.3 B-2 spec との分担
 
 - 監査ログの **UI 実装**（`/root/audit`）、検索・エクスポート等は B-2 spec に委ねる
 - B-1 では `root_audit_log` への書き込みのみ保証し、閲覧 UI は対象外
@@ -464,6 +617,9 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 | AC-10 | admin UI のマトリックスエディタで 1 行の permission 変更ができる |
 | AC-11 | 一括更新（bulkUpsertPermissions）が失敗時にロールバックされる |
 | AC-12 | `updated_by` が変更したユーザーの auth.users.id を正しく記録している |
+| AC-13 | `has_permission_v2('leaf-kanden', 'case_edit')` が outsource ロール + `module_owner_flags = '{"leaf-kanden": "owner"}'` のユーザーで true を返す |
+| AC-14 | `has_permission_v2('leaf-kanden', 'case_edit')` が outsource ロール + `module_owner_flags = '{}'` のユーザーで false を返す（deny 既定） |
+| AC-15 | `module_owner_flags` 更新が `root_audit_log` に `action = 'module_owner_flags_changed'` で記録される |
 
 ---
 
@@ -474,10 +630,10 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 | W1 | `root_settings` テーブル + index + RLS + trigger migration | 0.25d |
 | W2 | TypeScript 型定義 + 定数化（`permissions.ts`、FEATURE_DEFINITIONS 含む）| 0.25d |
 | W3 | 8 ロール × 機能マトリックス 初期データ投入（seed SQL）| 0.25d |
-| W4 | `has_permission(module, feature)` helper 関数実装 + 単体テスト | 0.25d |
+| W4 | `has_permission()` / `has_permission_v2()` helper 関数実装 + 単体テスト（module_owner_flags override 含む）| 0.25d |
 | W5 | admin UI（マトリックスエディタ、`/root/settings/permissions`）| 0.5d |
-| W6 | 既存モジュール連携調整（bud/leaf/tree の RLS への `has_permission()` 案内、実移行は各モジュール担当）| 0.5d |
-| W7 | テスト（vitest + RLS pg_tap 相当の SQL テスト）| 0.25d |
+| W6 | 既存モジュール連携調整（bud/leaf/tree の RLS への `has_permission_v2()` 案内、実移行は各モジュール担当）| 0.5d |
+| W7 | テスト（vitest + RLS pg_tap 相当の SQL テスト、槙さん例外 AC-13〜15 含む）| 0.25d |
 | **合計** | | **2.25d** |
 
 ---
@@ -489,7 +645,7 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 | 判1 | `readonly` permission 値の初版運用 | 初版は `allowed` / `denied` の 2 値で運用。`readonly` は DB に定義するが UI 上は「閲覧専用」バッジ表示のみ、機能制御は has_permission が `allowed` 扱い返す。将来 tristate が必要になった時点で sig 変更 |
 | 判2 | `salary_view`（自分の給与のみ）の実現方法 | has_permission は「種別の許可」のみ判定、「自分のレコードのみ」は RLS の WHERE 句で実装（owner check と組み合わせ）。has_permission の責務を超えないよう注意 |
 | 判3 | toss の `call_history_view` = △（readonly）の扱い | toss は自分のコール履歴のみ閲覧可。全体履歴は denied。§4.7 Soil と合わせて「自分のみ」をどこで制限するか決定必要（RLS owner check か feature を分けるか） |
-| 判4 | outsource ロールの Leaf case_edit 権限 | 外注先が案件編集できるか否かは業務フロー依存。初版 allowed にしているが、業務委託の種別によっては denied が適切な場合あり |
+| 判4 | outsource ロールの Leaf case_edit 権限 | **§0 #4 確定（2026-04-26）**: 一般 outsource は denied が既定。槙さんのみ `module_owner_flags = {"leaf-kanden": "owner"}` で leaf-kanden に限り manager+ 相当（allowed）。他の outsource ユーザーが leaf-kanden 編集が必要な場合は、同フラグを付与するか別途ロールを見直すか東海林さんに確認 |
 | 判5 | admin UI での一括リセット（全 module）機能 | 誤操作リスク大。Phase B-1 では実装せず、B-2 以降で操作ログ確認 UI とセットで検討 |
 | 判6 | `has_permission()` のキャッシュ戦略 | RLS 内から呼ぶと毎クエリ実行。STABLE 宣言でトランザクション内はキャッシュされるが、クライアント側の SWR キャッシュ TTL は別途決定必要（推奨: 5 分） |
 | 判7 | 機能識別子（feature_key）の名前体系 | 英小文字スネークケースで統一方針を明記したが、Bud spec 等の既存 feature 名との整合は各モジュール実装時に都度確認 |
