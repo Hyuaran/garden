@@ -106,15 +106,31 @@ CREATE TABLE bud.payroll_records (
   calculation_snapshot jsonb NOT NULL,               -- 入力値・係数・式の全履歴
   calculation_version text NOT NULL,                 -- ロジックバージョン（'v1.0' 等）
 
-  -- ステータス
-  status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'calculated', 'approved', 'finalized', 'exported')),
+  -- ステータス（2026-04-26 [a-bud] 3 次 follow-up: 6 段階フローへ拡張）
+  status text NOT NULL DEFAULT 'draft' CHECK (status IN (
+    'draft',
+    'calculated',              -- ① 上田（payroll_calculator）が計算実行完了
+    'approved',                -- ② 宮永・小泉（payroll_approver）が承認完了
+    'exported',                -- ③ 上田（payroll_disburser）が MFC CSV 生成 + MFC 取込実行
+    'confirmed_by_auditor',    -- ④ 東海林さん（payroll_auditor）が目視確認完了 ⭐ NEW
+    'confirmed_by_sharoshi',   -- ⑤ 社労士（root_partners）OK 返答後、東海林さんがマーク ⭐ NEW
+    'finalized'                -- ⑥ 東海林さん（payroll_auditor）が確定処理
+  )),
   calculated_at timestamptz,
-  calculated_by uuid REFERENCES root.employees(id),  -- payroll_calculator
+  calculated_by uuid REFERENCES root.employees(id),         -- payroll_calculator
   approved_at timestamptz,
-  approved_by uuid REFERENCES root.employees(id),    -- payroll_approver
+  approved_by uuid REFERENCES root.employees(id),           -- payroll_approver
+  exported_at timestamptz,                                   -- MFC CSV 出力時刻
+  exported_to_csv_id uuid REFERENCES bud.mfc_csv_exports(id), -- D-11 連携
+  confirmed_by_auditor_at timestamptz,                       -- ④ 目視確認完了
+  confirmed_by_auditor_by uuid REFERENCES root.employees(id),
+  sharoshi_request_sent_at timestamptz,                      -- 「社労士確認依頼」ボタン押下時刻
+  sharoshi_partner_id uuid REFERENCES root.partners(id),     -- 依頼先の社労士（root_partners）
+  confirmed_by_sharoshi_at timestamptz,                      -- ⑤ 社労士 OK 返答後、東海林さんがマーク
+  confirmed_by_sharoshi_by uuid REFERENCES root.employees(id), -- 通常 = 東海林さん
+  sharoshi_confirmation_note text,                           -- 社労士からの返答内容（メール / Chatwork 引用）
   finalized_at timestamptz,
-  exported_at timestamptz,                            -- MFC CSV 出力時刻
-  exported_to_csv_id uuid REFERENCES bud.mfc_csv_exports(id),  -- D-11 連携
+  finalized_by uuid REFERENCES root.employees(id),           -- ⑥ 確定処理者（通常 = 東海林さん）
 
   -- メタ
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -303,25 +319,146 @@ export async function summarizeTeamForPeriod(
 
 ---
 
-## 6. 計算実行フロー
+## 6. 計算実行フロー（2026-04-26 [a-bud] 3 次 follow-up: 4 段階 → 6 段階に拡張）
 
-### 6.1 4 段階ステータス
+### 6.1 6 段階ステータス（東海林さん指摘の実運用フロー反映）
 
 ```
 draft（仮計算前）
-  ↓ payroll_calculator が "計算実行" ボタン押下
+  ↓ ① payroll_calculator（上田）が "計算実行" ボタン押下
 calculated（仮計算済、編集可）
   ↓ payroll_calculator が "承認依頼" ボタン押下
-  ↓ payroll_approver が "承認" ボタン押下
+  ↓ ② payroll_approver（宮永・小泉）が "承認" ボタン押下
 approved（承認済、修正不可）
-  ↓ payroll_disburser が "MFC CSV 出力" ボタン押下（D-11）
-finalized（CSV 出力済、振込実行待ち）
-  ↓ MFC で給与確定、Garden に "exported" マーク
-exported（最終、変更不可）
+  ↓ ③ payroll_disburser（上田）が "MFC CSV 出力" ボタン押下（D-11）
+exported（CSV 出力済 + MFC 取込実行済）
+  ↓ ④ payroll_auditor（東海林さん）が "目視確認完了" ボタン押下
+confirmed_by_auditor（目視 OK） ⭐ NEW
+  ↓ payroll_auditor が "社労士確認依頼" ボタン押下
+  ↓     → Chatwork DM / メールで社労士（root_partners）へ確認依頼
+  ↓ 社労士から OK 返答（外部経由、Garden ログイン不要）
+  ↓ ⑤ payroll_auditor が Garden 上で "社労士確認済" マーク
+confirmed_by_sharoshi（社労士 OK 受領済） ⭐ NEW
+  ↓ ⑥ payroll_auditor が "確定処理" ボタン押下
+finalized（最終、変更不可、振込実行）
 ```
 
-差戻しは any → draft（再計算可）。
-監査は `bud_payroll_calculation_history` に全アクション記録。
+### 6.2 各段階の責任者（東海林さん指摘の実運用）
+
+| Stage | 担当者 | Garden ロール | 主な操作 |
+|---|---|---|---|
+| ① calculated | 上田 | `payroll_calculator` | 計算実行 / 個別調整 |
+| ② approved | 宮永・小泉 | `payroll_approver` | 承認 / 差戻し（V6 自起票禁止） |
+| ③ exported | 上田 | `payroll_disburser` | MFC CSV 生成 + MFC 取込実行（D-11 連携） |
+| ④ confirmed_by_auditor | 東海林さん | `payroll_auditor` | 目視確認 / 異常検知 |
+| ⑤ confirmed_by_sharoshi | 東海林さん | `payroll_auditor` | 社労士確認依頼 + OK 返答後マーク（社労士は Garden ログイン**不要**）|
+| ⑥ finalized | 東海林さん | `payroll_auditor` | 確定処理（振込実行 GO） |
+
+### 6.3 社労士の Garden 関与設計
+
+**社労士は `root_partners` の外部取引先扱い**（`project_partners_vs_vendors_distinction.md` 整合）:
+
+- Garden ログイン**不要**（外部担当者、root_employees ではない）
+- `root_partners.partner_type='社労士'` で識別
+- コンタクト情報: `root_partners.contact_email` / `contact_chatwork_id` / `contact_phone`
+- Garden 関与のフロー（4-5 段階間）:
+
+```
+④ confirmed_by_auditor 後:
+  - 東海林さんが Garden 上で "社労士確認依頼" ボタン押下
+  - Garden が Chatwork DM or メール送信:
+    "${root_partners.partner_name} 様、2026年5月給与計算の確認をお願いします。
+     詳細レポート添付: <Storage signed URL（社労士向け 7 日有効）>"
+  - sharoshi_request_sent_at + sharoshi_partner_id 記録
+
+外部経由（Garden 外）:
+  - 社労士が PDF / CSV を確認 → OK / NG 返答（Chatwork or メール）
+
+⑤ confirmed_by_sharoshi 遷移:
+  - 東海林さんが返答内容を sharoshi_confirmation_note に記録（任意）
+  - "社労士確認済" ボタン押下 → status='confirmed_by_sharoshi'
+  - confirmed_by_sharoshi_at + confirmed_by_sharoshi_by 記録
+```
+
+### 6.4 差戻し / 巻き戻し
+
+任意 stage から any → `draft`（再計算可）。
+監査は `bud_payroll_calculation_history` に全アクション記録（before/after_snapshot + reason 必須）。
+
+特殊ケース:
+- 社労士から NG 返答 → ④ `confirmed_by_auditor` に巻き戻し（再目視 → 必要なら再計算）
+- 取込ミス → ③ `exported` を取消、再 CSV 生成
+
+### 6.5 Server Action 契約（3 次 follow-up で 6 種に拡張）
+
+```typescript
+// src/lib/bud/payroll/actions.ts
+
+export async function calculatePayrollForPeriod(input: {
+  payPeriod: string;          // YYYY-MM-01
+  payDate: string;
+  employeeIds?: string[];     // 未指定で全従業員
+  dryRun?: boolean;           // true で DB 書込なし
+}): Promise<{
+  successCount: number;
+  failedCount: number;
+  records?: BudPayrollRecord[];
+  errors: Array<{ employeeId: string; error: string; code: string }>;
+}>;
+
+export async function approvePayroll(input: {
+  payrollRecordIds: string[];
+  reason?: string;
+}): Promise<{
+  approvedCount: number;
+  failed: Array<{ id: string; error: string; code: string }>;
+}>;
+
+export async function rejectPayroll(input: {
+  payrollRecordIds: string[];
+  reason: string;             // 必須、10 文字以上
+}): Promise<{
+  rejectedCount: number;
+  failed: Array<{ id: string; error: string; code: string }>;
+}>;
+
+// ⭐ NEW: 3 次 follow-up
+export async function confirmByAuditor(input: {
+  payrollRecordIds: string[];
+  auditNote?: string;
+}): Promise<{
+  confirmedCount: number;
+  failed: Array<{ id: string; error: string; code: string }>;
+}>;
+
+// ⭐ NEW: 社労士確認依頼送信（Chatwork DM or メール）
+export async function requestSharoshiConfirmation(input: {
+  payrollRecordIds: string[];
+  partnerId: string;          // root_partners.id（partner_type='社労士'）
+  channel: 'chatwork' | 'email';
+  message?: string;
+}): Promise<{
+  sentCount: number;
+  failedReason?: string;
+}>;
+
+// ⭐ NEW: 社労士確認済マーク（東海林さんが Garden で押下）
+export async function markSharoshiConfirmed(input: {
+  payrollRecordIds: string[];
+  confirmationNote?: string;
+}): Promise<{
+  markedCount: number;
+  failed: Array<{ id: string; error: string; code: string }>;
+}>;
+
+// ⭐ NEW: 確定処理（最終 finalized へ遷移）
+export async function finalizePayroll(input: {
+  payrollRecordIds: string[];
+}): Promise<{
+  finalizedCount: number;
+  failed: Array<{ id: string; error: string; code: string }>;
+}>;
+```
 
 ### 6.2 Server Action 契約
 
@@ -359,7 +496,7 @@ export async function rejectPayroll(input: {
 
 ---
 
-## 7. RLS（#18 反映）
+## 7. RLS（#18 反映、3 次 follow-up で 6 段階遷移に拡張）
 
 ```sql
 ALTER TABLE bud.payroll_records ENABLE ROW LEVEL SECURITY;
@@ -370,13 +507,12 @@ CREATE POLICY pr_select ON bud.payroll_records FOR SELECT USING (
   OR has_payroll_role()
 );
 
--- INSERT / UPDATE: status 別に role 限定
--- draft → calculated: payroll_calculator
+-- ① draft → calculated: payroll_calculator
 CREATE POLICY pr_calculate ON bud.payroll_records FOR UPDATE
   USING (status IN ('draft', 'calculated') AND has_payroll_role(ARRAY['payroll_calculator']))
   WITH CHECK (status IN ('calculated') AND has_payroll_role(ARRAY['payroll_calculator']));
 
--- calculated → approved: payroll_approver（自起票禁止 = 承認者と計算者は別人必須）
+-- ② calculated → approved: payroll_approver（V6 自起票禁止 = 承認者と計算者は別人必須）
 CREATE POLICY pr_approve ON bud.payroll_records FOR UPDATE
   USING (
     status = 'calculated'
@@ -385,14 +521,62 @@ CREATE POLICY pr_approve ON bud.payroll_records FOR UPDATE
   )
   WITH CHECK (status = 'approved' AND has_payroll_role(ARRAY['payroll_approver']));
 
--- approved → finalized: payroll_disburser
-CREATE POLICY pr_finalize ON bud.payroll_records FOR UPDATE
+-- ③ approved → exported: payroll_disburser
+CREATE POLICY pr_export ON bud.payroll_records FOR UPDATE
   USING (status = 'approved' AND has_payroll_role(ARRAY['payroll_disburser']))
-  WITH CHECK (status = 'finalized' AND has_payroll_role(ARRAY['payroll_disburser']));
+  WITH CHECK (status = 'exported' AND has_payroll_role(ARRAY['payroll_disburser']));
+
+-- ④ exported → confirmed_by_auditor: payroll_auditor（V6 自起票禁止 = 計算者・承認者・出力者と別人推奨だが、東海林さんが自起票してた場合の例外考慮で警告のみ）
+-- ⭐ NEW 3 次 follow-up
+CREATE POLICY pr_audit ON bud.payroll_records FOR UPDATE
+  USING (status = 'exported' AND has_payroll_role(ARRAY['payroll_auditor']))
+  WITH CHECK (status = 'confirmed_by_auditor' AND has_payroll_role(ARRAY['payroll_auditor']));
+
+-- ⑤ confirmed_by_auditor → confirmed_by_sharoshi: payroll_auditor（社労士 OK 返答後のマーク）
+-- ⭐ NEW 3 次 follow-up
+-- 注: 社労士自体は Garden ログイン不要、東海林さんが Garden で代理マーク
+-- sharoshi_partner_id（依頼先）と confirmed_by_sharoshi_at（マーク時刻）が必須
+CREATE POLICY pr_sharoshi ON bud.payroll_records FOR UPDATE
+  USING (status = 'confirmed_by_auditor' AND has_payroll_role(ARRAY['payroll_auditor']))
+  WITH CHECK (
+    status = 'confirmed_by_sharoshi'
+    AND has_payroll_role(ARRAY['payroll_auditor'])
+    AND sharoshi_request_sent_at IS NOT NULL  -- 確認依頼送信済み必須
+    AND sharoshi_partner_id IS NOT NULL        -- 依頼先 root_partners 必須
+  );
+
+-- ⑥ confirmed_by_sharoshi → finalized: payroll_auditor（最終確定）
+-- ⭐ NEW 3 次 follow-up
+CREATE POLICY pr_finalize ON bud.payroll_records FOR UPDATE
+  USING (status = 'confirmed_by_sharoshi' AND has_payroll_role(ARRAY['payroll_auditor']))
+  WITH CHECK (status = 'finalized' AND has_payroll_role(ARRAY['payroll_auditor']));
+
+-- 巻き戻し: 任意 stage → draft（payroll_auditor が承認時のみ、reason 必須）
+-- 実装: bud_payroll_calculation_history に before/after_snapshot + reason 記録
+CREATE POLICY pr_rollback_to_draft ON bud.payroll_records FOR UPDATE
+  USING (
+    status IN ('calculated', 'approved', 'exported', 'confirmed_by_auditor', 'confirmed_by_sharoshi')
+    AND has_payroll_role(ARRAY['payroll_auditor'])
+  )
+  WITH CHECK (status = 'draft' AND has_payroll_role(ARRAY['payroll_auditor']));
 
 -- DELETE: 完全禁止（論理削除も無し、誤計算は status='draft' に戻す運用）
 CREATE POLICY pr_no_delete ON bud.payroll_records FOR DELETE USING (false);
 ```
+
+### 7.1 RLS テスト網羅項目
+
+| テスト | 期待 |
+|---|---|
+| payroll_calculator が calculated → approved 試行 | RLS 拒否 |
+| payroll_approver が calculated → approved（自起票でない） | OK |
+| payroll_approver が calculated → approved（自起票） | RLS 拒否（V6 自己承認禁止） |
+| payroll_auditor が exported → confirmed_by_auditor | OK |
+| payroll_auditor が confirmed_by_auditor → confirmed_by_sharoshi（sharoshi_request_sent_at NULL）| RLS 拒否 |
+| payroll_auditor が confirmed_by_auditor → confirmed_by_sharoshi（依頼送信済み）| OK |
+| payroll_auditor が confirmed_by_sharoshi → finalized | OK |
+| payroll_disburser が exported → finalized 試行（段階飛ばし）| RLS 拒否 |
+| payroll_auditor が approved → draft（巻き戻し） | OK（reason 必須） |
 
 ---
 

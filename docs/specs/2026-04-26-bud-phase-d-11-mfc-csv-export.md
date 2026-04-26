@@ -102,12 +102,27 @@ CREATE TABLE bud.mfc_csv_exports (
   csv_size_bytes int NOT NULL,
   csv_checksum text NOT NULL,                    -- SHA256（改ざん検知）
 
-  -- ステータス（4 段階）
-  status text NOT NULL CHECK (status IN ('draft', 'approved', 'exported', 'imported_to_mfc')),
+  -- ステータス（2026-04-26 [a-bud] 3 次 follow-up: 4 段階 → 6 段階に拡張、D-10 と整合）
+  status text NOT NULL CHECK (status IN (
+    'draft',                   -- CSV 生成済、未承認
+    'approved',                -- payroll_approver 承認済（D-10 ② と同期）
+    'exported',                -- payroll_disburser DL + MFC 取込実行（D-10 ③ と同期）
+    'confirmed_by_auditor',    -- ④ payroll_auditor 目視確認完了 ⭐ NEW
+    'confirmed_by_sharoshi',   -- ⑤ 社労士 OK 受領済 ⭐ NEW
+    'imported_to_mfc'          -- ⑥ MFC 取込最終確認（旧 final、命名は D-11 互換維持）
+  )),
   approved_at timestamptz,
-  approved_by uuid REFERENCES root.employees(id),  -- payroll_approver
-  exported_at timestamptz,                          -- 実際にダウンロードされた時刻
-  imported_at timestamptz,                          -- 東海林さん目視確認後に手動更新
+  approved_by uuid REFERENCES root.employees(id),    -- payroll_approver
+  exported_at timestamptz,                            -- DL + MFC 取込実行時刻
+  exported_by uuid REFERENCES root.employees(id),     -- payroll_disburser
+  confirmed_by_auditor_at timestamptz,                -- ④ 目視確認 ⭐ NEW
+  confirmed_by_auditor_by uuid REFERENCES root.employees(id),
+  sharoshi_request_sent_at timestamptz,               -- ⑤ 社労士確認依頼送信時刻 ⭐ NEW
+  sharoshi_partner_id uuid REFERENCES root.partners(id),  -- 依頼先 root_partners ⭐ NEW
+  confirmed_by_sharoshi_at timestamptz,               -- ⑤ 社労士 OK マーク ⭐ NEW
+  confirmed_by_sharoshi_by uuid REFERENCES root.employees(id),
+  sharoshi_confirmation_note text,                    -- 社労士返答内容
+  imported_at timestamptz,                            -- ⑥ 最終 MFC 取込確認後に手動更新
   imported_by uuid REFERENCES root.employees(id),
 
   -- 監査
@@ -292,23 +307,34 @@ export async function markAsImportedToMfc(input: {
 
 ---
 
-## 6. ステータス遷移
+## 6. ステータス遷移（2026-04-26 [a-bud] 3 次 follow-up: 4 段階 → 6 段階に拡張、D-10 と整合）
 
 ```
 draft（CSV 生成済、未承認）
-  ↓ payroll_approver が "承認" ボタン押下
+  ↓ ① payroll_approver が "承認" ボタン押下（V6 自己承認禁止: generated_by != approver）
 approved（承認済、ダウンロード可）
-  ↓ payroll_disburser が "ダウンロード" 実行
-exported（DL 済、MFC インポート前）
-  ↓ 東海林さん（payroll_auditor）が MFC で確認後 "MFC インポート済" ボタン押下
-imported_to_mfc（最終）
+  ↓ ② payroll_disburser が "ダウンロード" + MFC 取込実行
+exported（DL + MFC 取込実行済）
+  ↓ ③ payroll_auditor（東海林さん）が "目視確認完了" ボタン押下
+confirmed_by_auditor（目視 OK） ⭐ NEW 3 次 follow-up
+  ↓ payroll_auditor が "社労士確認依頼" ボタン押下
+  ↓     → Chatwork DM / メールで社労士（root_partners）へ確認依頼
+  ↓ 社労士から OK 返答（外部経由、Garden ログイン不要）
+  ↓ ④ payroll_auditor が Garden 上で "社労士確認済" マーク
+confirmed_by_sharoshi（社労士 OK 受領済） ⭐ NEW 3 次 follow-up
+  ↓ ⑤ payroll_auditor が "MFC 取込最終確認済" ボタン押下
+imported_to_mfc（最終、変更不可）
 ```
 
-差戻しは any → draft（再生成可、ただし `bud_mfc_csv_export_items` は履歴保持）。
+差戻しは任意 stage → `draft`（再生成可、ただし `bud_mfc_csv_export_items` は履歴保持、reason 必須）。
+
+特殊ケース:
+- 社労士 NG → `confirmed_by_auditor` に巻き戻し（再目視 → 必要なら CSV 再生成 → MFC 再取込）
+- D-10 `bud.payroll_records` と本テーブルは status 同期（同一 batch_id ベースで片方を更新したら他方も更新）
 
 ---
 
-## 7. RLS（#18 反映、4 ロール）
+## 7. RLS（#18 反映、4 ロール、3 次 follow-up で 6 段階に拡張）
 
 ```sql
 ALTER TABLE bud.mfc_csv_exports ENABLE ROW LEVEL SECURITY;
@@ -321,8 +347,7 @@ CREATE POLICY mfc_insert ON bud.mfc_csv_exports FOR INSERT WITH CHECK (
   has_payroll_role(ARRAY['payroll_calculator', 'payroll_disburser'])
 );
 
--- UPDATE status: 役割別
--- draft → approved: payroll_approver（V6 自己承認禁止: generated_by != approver）
+-- ① draft → approved: payroll_approver（V6 自己承認禁止: generated_by != approver）
 CREATE POLICY mfc_approve ON bud.mfc_csv_exports FOR UPDATE
   USING (
     status = 'draft'
@@ -331,15 +356,39 @@ CREATE POLICY mfc_approve ON bud.mfc_csv_exports FOR UPDATE
   )
   WITH CHECK (status = 'approved' AND has_payroll_role(ARRAY['payroll_approver']));
 
--- approved → exported: payroll_disburser（DL アクション）
+-- ② approved → exported: payroll_disburser（DL + MFC 取込実行）
 CREATE POLICY mfc_export ON bud.mfc_csv_exports FOR UPDATE
   USING (status = 'approved' AND has_payroll_role(ARRAY['payroll_disburser']))
   WITH CHECK (status = 'exported' AND has_payroll_role(ARRAY['payroll_disburser']));
 
--- exported → imported_to_mfc: payroll_auditor（東海林さん最終確認）
-CREATE POLICY mfc_import ON bud.mfc_csv_exports FOR UPDATE
+-- ③ exported → confirmed_by_auditor: payroll_auditor（目視確認）⭐ NEW
+CREATE POLICY mfc_audit ON bud.mfc_csv_exports FOR UPDATE
   USING (status = 'exported' AND has_payroll_role(ARRAY['payroll_auditor']))
+  WITH CHECK (status = 'confirmed_by_auditor' AND has_payroll_role(ARRAY['payroll_auditor']));
+
+-- ④ confirmed_by_auditor → confirmed_by_sharoshi: payroll_auditor（社労士 OK 後マーク）⭐ NEW
+-- 注: 社労士は Garden ログイン不要、東海林さんが Garden 上で代理マーク
+CREATE POLICY mfc_sharoshi ON bud.mfc_csv_exports FOR UPDATE
+  USING (status = 'confirmed_by_auditor' AND has_payroll_role(ARRAY['payroll_auditor']))
+  WITH CHECK (
+    status = 'confirmed_by_sharoshi'
+    AND has_payroll_role(ARRAY['payroll_auditor'])
+    AND sharoshi_request_sent_at IS NOT NULL
+    AND sharoshi_partner_id IS NOT NULL
+  );
+
+-- ⑤ confirmed_by_sharoshi → imported_to_mfc: payroll_auditor（最終確認）⭐ NEW
+CREATE POLICY mfc_finalize ON bud.mfc_csv_exports FOR UPDATE
+  USING (status = 'confirmed_by_sharoshi' AND has_payroll_role(ARRAY['payroll_auditor']))
   WITH CHECK (status = 'imported_to_mfc' AND has_payroll_role(ARRAY['payroll_auditor']));
+
+-- 巻き戻し: 任意 stage → draft（payroll_auditor が承認時のみ、reason 必須）
+CREATE POLICY mfc_rollback ON bud.mfc_csv_exports FOR UPDATE
+  USING (
+    status IN ('approved', 'exported', 'confirmed_by_auditor', 'confirmed_by_sharoshi')
+    AND has_payroll_role(ARRAY['payroll_auditor'])
+  )
+  WITH CHECK (status = 'draft' AND has_payroll_role(ARRAY['payroll_auditor']));
 
 -- DELETE: 完全禁止
 CREATE POLICY mfc_no_delete ON bud.mfc_csv_exports FOR DELETE USING (false);
