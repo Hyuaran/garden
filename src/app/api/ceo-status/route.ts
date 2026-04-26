@@ -92,3 +92,101 @@ export async function GET() {
     updated_by_name,
   });
 }
+
+const VALID_STATUS = new Set(["available", "busy", "focused", "away"] as const);
+type CeoStatusKey = "available" | "busy" | "focused" | "away";
+
+/**
+ * PUT /api/ceo-status — 東海林さん（CEO）ステータス更新（super_admin のみ）
+ *
+ * 二重防御:
+ *   Route Handler 側で auth + role チェック → RLS は最終の砦
+ *
+ * バリデーション:
+ *   - status: 必須、VALID_STATUS の 4 値のみ
+ *   - summary: 任意、最大 200 文字
+ *
+ * レスポンス:
+ *   200 OK: { status, summary, updated_at, updated_by_name }
+ *   400 Bad Request: 不正な JSON / status / summary
+ *   401 Unauthorized: 未認証
+ *   403 Forbidden: super_admin 以外
+ *   500 Server Error: 既存 row なし or DB エラー
+ */
+export async function PUT(req: Request) {
+  const supabase = await getServerSupabase();
+
+  // 1. auth check
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData?.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  }
+
+  // 2. role check（Route Handler 側で二重防御。RLS は最終の砦）
+  const { data: emp } = await supabase
+    .from("root_employees")
+    .select("garden_role")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (emp?.garden_role !== "super_admin") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  // 3. body parse + validate
+  let body: { status?: string; summary?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "invalid json" }, { status: 400 });
+  }
+  if (!body.status || !VALID_STATUS.has(body.status as CeoStatusKey)) {
+    return NextResponse.json({ error: "invalid status" }, { status: 400 });
+  }
+  if (body.summary != null && body.summary.length > 200) {
+    return NextResponse.json({ error: "summary too long" }, { status: 400 });
+  }
+
+  // 4. 既存 row 取得（1 行運用）
+  const { data: existing } = await supabase
+    .from("bloom_ceo_status")
+    .select("id")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!existing?.id) {
+    return NextResponse.json({ error: "no row to update (run migration seed)" }, { status: 500 });
+  }
+
+  // 5. update
+  const { data: updated, error: updateErr } = await supabase
+    .from("bloom_ceo_status")
+    .update({
+      status: body.status,
+      summary: body.summary ?? null,
+      updated_by: userId,
+    })
+    .eq("id", existing.id)
+    .select("status, summary, updated_at, updated_by")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (updateErr) {
+    return NextResponse.json({ error: updateErr.message }, { status: 500 });
+  }
+
+  // 6. updated_by_name JOIN
+  const { data: empName } = await supabase
+    .from("root_employees")
+    .select("name")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return NextResponse.json({
+    status: updated?.status,
+    summary: updated?.summary,
+    updated_at: updated?.updated_at,
+    updated_by_name: empName?.name ?? null,
+  });
+}
