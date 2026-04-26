@@ -172,7 +172,13 @@ CREATE TABLE public.bud_payroll_transfer_items (
 CREATE INDEX idx_transfer_items_batch ON bud_payroll_transfer_items (batch_id);
 ```
 
-### 3.3 `bud_payroll_accounting_reports`（会計連携レポート、2026-04-26 ハイブリッド方式新設）
+### 3.3 `bud_payroll_accounting_reports`（会計連携レポート、2026-04-26 [a-bud] 2 次 follow-up で 8 区分階層化）
+
+> **改訂履歴**:
+> - 1 次 (2026-04-26)：5 区分フラット（給与 / 外注費 / 通勤手当 / 賞与 / 役員報酬）で仮置き
+> - **2 次 (2026-04-26)**：東海林さん指示で **8 大区分の階層構造**に変更（実運用 Excel「グループ6社 年間コスト ワンビュー」シート 10 ベース）
+>
+> 参照元: `C:\garden\_shared\attachments\20260426\グループ6社 年間コスト ワンビュー_20260422.xlsx` シート「10_ワンビュー」
 
 ```sql
 CREATE TABLE public.bud_payroll_accounting_reports (
@@ -188,13 +194,33 @@ CREATE TABLE public.bud_payroll_accounting_reports (
   -- 集計（メタ情報、振込バッチの内訳）
   total_employees int NOT NULL,
   total_amount numeric(14, 0) NOT NULL,
-  category_breakdown jsonb NOT NULL,
+
+  -- 階層構造（8 大区分 × 小区分明細、2 次 follow-up）
+  category_hierarchy jsonb NOT NULL,
     -- {
-    --   "給与":       { count: 25, amount: 7_500_000 },
-    --   "外注費":     { count: 3,  amount: 450_000 },
-    --   "通勤手当":   { count: 25, amount: 350_000 },
-    --   "賞与":       { count: 0,  amount: 0 },
-    --   "役員報酬":   { count: 2,  amount: 800_000 }
+    --   "役員報酬": {
+    --     "items": [
+    --       { "name": "役員報酬(後道翔太)", "amount": 500000 },
+    --       { "name": "役員報酬(後道愛美)", "amount": 128000 },
+    --       { "name": "役員出張手当(後道翔太)", "amount": 361000 }
+    --     ],
+    --     "subtotal": 989000,
+    --     "is_future_use": false
+    --   },
+    --   "給与": {
+    --     "items": [
+    --       { "name": "基本給", "amount": 5047577 },
+    --       { "name": "役職手当", "amount": 0 }
+    --     ],
+    --     "subtotal": 5047577,
+    --     "is_future_use": false
+    --   },
+    --   "賞与": { "items": [], "subtotal": 0, "is_future_use": true },
+    --   "交通費": { ... },
+    --   "会社負担社保等": { ... },
+    --   "外注費": { ... },
+    --   "販売促進費": { ... },
+    --   "固定費等": { ... }
     -- }
 
   -- ステータス
@@ -202,8 +228,10 @@ CREATE TABLE public.bud_payroll_accounting_reports (
   generated_by uuid NOT NULL REFERENCES public.root_employees(id),
   downloaded_at timestamptz,
   downloaded_by uuid REFERENCES public.root_employees(id),
-  imported_to_mf_at timestamptz,                  -- 後道さんがマネーフォワード会計取込確認後に手動更新
+  imported_to_mf_at timestamptz,                  -- 東海林さん（admin）が MFC 会計取込確認後に手動更新
   imported_to_mf_by uuid REFERENCES public.root_employees(id),
+  shared_with_godo_at timestamptz,                -- 後道さんへ共有（メッセージ送信 or PDF 化）した時刻
+  shared_with_godo_by uuid REFERENCES public.root_employees(id),
 
   notes text,
 
@@ -215,36 +243,103 @@ CREATE INDEX idx_accounting_reports_batch
   ON bud_payroll_accounting_reports (batch_id);
 ```
 
-#### 勘定項目分類ルール（初期版、Phase E で粒度調整可能）
+#### 8 大区分の固定順序
 
-| 勘定項目 | 抽出ルール |
-|---|---|
-| 給与 | `salary_record_id IS NOT NULL` AND `transfer_type='salary'` の通常給与 |
-| 外注費 | `transfer_type` が `'gyomu_itaku'` or `salary_record_id IS NULL AND payment_recipients.recipient_type='external_company'` |
-| 通勤手当 | `bud_salary_records.commute_allowance` 部分のみ（給与から分離抽出） |
-| 賞与 | `bonus_record_id IS NOT NULL` |
-| 役員報酬 | 雇用形態が役員（`root_employees.employment_type='executive'`） |
+`category_hierarchy` の jsonb キーは順序保持しないため、CSV 出力時は以下の**固定順序**で並べる：
 
-**注**: レポート粒度（上記 5 区分）は後道さんと最終確認、Phase E で運用見ながら調整可能。
-
-### 3.4 CSV フォーマット（マネーフォワードクラウド会計取込形式、暫定）
-
-```
-日付,勘定項目,件数,金額,備考
-2026-05-31,給与,25,7500000,2026年5月分支給
-2026-05-31,外注費,3,450000,2026年5月分外注
-2026-05-31,通勤手当,25,350000,2026年5月分通勤
-2026-05-31,賞与,0,0,
-2026-05-31,役員報酬,2,800000,2026年5月分役員
+```typescript
+const ACCOUNTING_CATEGORIES_ORDER = [
+  '役員報酬',
+  '給与',
+  '賞与',           // is_future_use=true で枠だけ確保
+  '交通費',
+  '会社負担社保等',
+  '外注費',
+  '販売促進費',
+  '固定費等',
+] as const;
 ```
 
-エンコーディング: **UTF-8 (BOM 付き)** — マネーフォワードクラウド会計の標準受入形式。
+#### 8 大区分の抽出ルール（2 次 follow-up、初期版）
+
+| 大区分 | 想定される小区分例 | 抽出ルール |
+|---|---|---|
+| 役員報酬 | 役員報酬(個別)、役員出張手当(個別) | `root_employees.employment_type='executive'` の振込・手当 |
+| 給与 | 基本給 / 役職手当 / 各種手当（役員・賞与除く）| 通常従業員の `bud_salary_records` から細目展開 |
+| 賞与 | 夏季賞与 / 冬季賞与 / 決算賞与（将来枠）| `bud_bonus_records` から細目展開、現状ゼロでも `is_future_use=true` で枠保持 |
+| 交通費 | 通勤手当 / 出張交通費（役員以外）| `bud_salary_records.commute_allowance` + 出張清算（後付け） |
+| 会社負担社保等 | 健保会社負担 / 厚年会社負担 / 雇保会社負担 / 労災 等 | 給与計算結果の会社負担分 |
+| 外注費 | 業務委託 / 紹介料 / 個別フリーランス支払 等 | `payment_recipients.recipient_type IN ('external_company', 'individual_special')` |
+| 販売促進費 | 広告料 / 営業活動費 等（給与とは別経路）| 振込バッチに含まれる該当 transfer_type |
+| 固定費等 | 賃料 / 通信費 / その他継続支払（給与経路以外）| `payment_recipients.applies_month` 周年支払 |
+
+**注**: 上記 8 区分の細目（`items[].name`）は東海林さんの過去報告実績ベース。実運用での粒度調整は Phase D-E で可能（東海林さん運用しながら判断、後道さんへは UI 完成後に「これでいいですね？」フィードバックで確定）。
+
+#### `is_future_use` フラグの扱い
+
+- `true`: 当該月は該当データなしだが、将来発生時の枠として CSV 出力に保持（小区分は空、`subtotal=0` で行表示）
+- `false`: 当該月実績あり、または恒常的に発生する区分
+
+例: 月次給与処理時点で賞与は通常 `is_future_use=true`、夏冬賞与月のみ `false` になる。
+
+### 3.4 CSV フォーマット（マネーフォワードクラウド会計取込形式、2 次 follow-up で階層化）
+
+> **改訂**: 1 次 follow-up のフラット 5 行 → **階層 CSV**（大区分行 + 小区分行 + 小計行）に変更。
+
+#### CSV 構造
+
+```
+大区分,小区分,2026-04
+役員報酬,役員報酬(後道翔太),500000
+役員報酬,役員報酬(後道愛美),128000
+役員報酬,役員出張手当(後道翔太),361000
+役員報酬,小計,989000
+給与,基本給,5047577
+給与,役職手当,0
+給与,小計,5047577
+賞与,(将来発生時),0
+賞与,小計,0
+交通費,通勤手当,350000
+交通費,出張交通費,42000
+交通費,小計,392000
+会社負担社保等,健保会社負担,250000
+会社負担社保等,厚年会社負担,460000
+会社負担社保等,雇保会社負担,30000
+会社負担社保等,労災,15000
+会社負担社保等,小計,755000
+外注費,業務委託(株式会社A),200000
+外注費,紹介料(個人B),50000
+外注費,小計,250000
+販売促進費,広告料(C 社),100000
+販売促進費,小計,100000
+固定費等,賃料(本社),300000
+固定費等,通信費,45000
+固定費等,小計,345000
+総合計,(役員給与系を除く),6889577
+```
+
+#### 設計ポイント
+
+- **行種別 3 種**:
+  - 大区分行は省略（小区分行の 1 列目で大区分を繰り返す）
+  - 小区分行（明細）: `大区分,小区分名,金額`
+  - 小計行: `大区分,小計,subtotal 値`
+- **総合計行**: 各大区分の小計合計から**「役員給与系を除く」**で算出（後道さんへの実務報告に合わせる）
+  - 「役員給与系を除く」= 役員報酬大区分を除外した合計（運用上の慣行）
+- **金額列**: 当月分のみ（複数月の年間ワンビューは Phase E で別レポートとして検討）
+- **エンコーディング**: **UTF-8 (BOM 付き)** — マネーフォワードクラウド会計の標準受入形式
+- **改行**: CRLF（Windows、MFC 互換）
+- **将来枠**: `is_future_use=true` の大区分は「(将来発生時)」と小区分に記載、`amount=0`
 
 ---
 
 ## 4. 連携フロー（給与）
 
-### 4.1 全体図（2026-04-26 [a-bud] ハイブリッド方式へ改訂）
+### 4.1 全体図（2026-04-26 [a-bud] 2 次 follow-up: 取込責任者を東海林さんに修正）
+
+> **2 次改訂**: 旧「後道さんが MFC 会計に取り込む」を**「東海林さん（admin）が MFC 会計に取込、後道さんへ報告書を共有」**に修正。
+> MFC 取込は権限・操作の集約のため admin が実施、後道さんは Garden レポート + MFC 取込結果を確認するのみ。
+> 後道さんへの仕様確認は **UI 完成後**（memory `feedback_ui_first_then_postcheck_with_godo.md` 準拠）。
 
 ```
 1. period.status = 'approved'（給与計算 + 承認完了）
@@ -254,11 +349,19 @@ CREATE INDEX idx_accounting_reports_batch
 3. payroll_approver が振込内容確認 → status='approved'
 4. **ハイブリッド出力**（旧 30 件閾値判定は廃止）:
    - 経路 A: 全銀協 FB データ 1 ファイル生成 → Storage 保存
-   - 経路 B: 勘定項目別レポート CSV 生成 → bud_payroll_accounting_reports に保存
-5. 振込実行
-6. status='completed'
-7. salary_records.status='paid' 反映 + Chatwork 通知
+   - 経路 B: 勘定項目別レポート CSV 生成（**8 大区分階層構造**）→ bud_payroll_accounting_reports に保存
+5. payroll_disburser（上田）が銀行ネットバンキングへ FB アップロード（経路 A）
+6. **東海林さん（admin）が MFC 会計に CSV 取込**（経路 B）→ imported_to_mf_at 記録
+7. **東海林さんが後道さんへ報告書共有**（Chatwork DM or PDF 化）→ shared_with_godo_at 記録
+8. 振込実行 → status='completed' → salary_records.status='paid'
+9. 後道さんは Garden レポート + MFC 取込結果を確認のみ（書込・操作なし）
 ```
+
+#### 後道さんへの確認タイミング
+
+- **UI 完成前**: spec 段階での「これで OK ですか？」確認は**しない**（`feedback_ui_first_then_postcheck_with_godo.md` 準拠）
+- **UI 完成後**: 実画面で集計レポートを見せて「これでいいですね？」フィードバック受領
+- **粒度調整**: Phase D-E で運用しながら、後道さんからのフィードバックで小区分の細目を増減
 
 ### 4.2 prepare-transfer 関数
 
@@ -545,7 +648,7 @@ WHERE batch_id = $batch_id AND item_status = 'submitted';
 
 | # | 論点 | a-auto スタンス |
 |---|---|---|
-| 判 1 | 個別振込 vs FB データの閾値 | ~~30 件で切替、admin 手動指定可~~ → **🎯 東海林確定 (2026-04-26)**: **ハイブリッド方式**に統一（件数によらず FB データ 1 ファイル + Garden 側で勘定項目別レポート生成、§2 / §3.3 参照）。マネーフォワードクラウド会計連携用の CSV を別途出力。レポート粒度（5 区分）は後道さんと最終確認、Phase E で粒度調整可 |
+| 判 1 | 個別振込 vs FB データの閾値 | ~~30 件で切替、admin 手動指定可~~ → **🎯 東海林確定 1 次 (2026-04-26)**: ハイブリッド方式統一 → **🎯 東海林確定 2 次 (2026-04-26)**: 5 区分 → **8 大区分階層化**（実運用 Excel ベース）+ MFC 取込責任者を**東海林さん（admin）に変更**（後道さんは Garden レポート + MFC 取込結果確認のみ）。後道さんへの仕様確認は **UI 完成後** に「これでいいですね？」フィードバック方式で受領（`feedback_ui_first_then_postcheck_with_godo.md` 準拠）。粒度は Phase D-E で運用見ながら調整可 |
 | 判 2 | FB データの自動アップロード | **手動アップロード**で開始（ネットバンキングの自動連携は Phase E）|
 | 判 3 | 振込先口座の暗号化 | 当面平文（A-04 既存スキーマと整合）、Phase E で再考 |
 | 判 4 | 月末 25 日が土日 | **前営業日**（労使慣例）|
