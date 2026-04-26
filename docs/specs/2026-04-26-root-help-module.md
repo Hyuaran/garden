@@ -1,11 +1,47 @@
 # Root Help: Garden ヘルプモジュール 仕様書
 
 - 対象: Garden 内蔵ヘルプシステム（独立 `/help` + モジュール固有 `/<module>/help` ハイブリッド）
-- 見積: **2.5d**（W1〜W8 合計、§14 参照）
+- 見積: **3.0d**（W1〜W9 合計、§14 参照）
 - 担当セッション: a-root
 - 作成: 2026-04-26（a-root / Phase D-E 先行 spec）
 - 根拠: `C:\garden\_shared\decisions\spec-revision-followups-20260426.md` §3.1
 - 前提 spec: `docs/specs/2026-04-25-root-phase-b-06-notification-platform.md`（通知基盤 B-6）
+- **改訂: 2026-04-26** — `decisions-pending-batch-20260426.md` Cat 2 全 7 件反映（#10 編集禁止化・#14 dev-inbox 拡張）
+
+---
+
+## 0. 確定事項（2026-04-26 a-main 007 東海林承認済 - Cat 2 ヘルプモジュール 7 件）
+
+本 spec は `C:\garden\_shared\decisions\decisions-pending-batch-20260426.md` の **Cat 2** 確定事項を反映する。
+
+### Cat 2 確定 7 件（#10 修正 + #14 拡張 + 5 件 OK）
+
+| # | 確定 | 内容 | 反映先 |
+|---|---|---|---|
+| 9 | C | ヘルプ配置 = ハイブリッド（独立 `/help` + 各モジュール `/<module>/help`）| §1 / §5 ルーティング（既存通り） |
+| **10** | **修正** | ヘルプ編集権限 = **誰も直接編集しない**（admin / manager / super_admin 含む）。責任者以上は **コメント追加レベル** のみ。編集は **「開発者依頼ボタン」経由で東海林さんに集約** | §1 / §3 / §6 / §7 / §8 / §13 大幅変更 |
+| 11 | A | 検索 = Postgres FTS（外部サービス不要、Algolia 不採用）| §10 |
+| 12 | A | 動画 = Supabase Storage | §11 |
+| 13 | A | 多言語 = 当面日本語、将来 i18n 構造のみ準備 | §15 判断保留解消（判5） |
+| **14** | **拡張** | 問い合わせ送信先 = Chatwork 通知（休日・離席時用）+ **Garden 内 開発者ページに一覧集約**（消化型） | §12 お問い合わせフロー 拡張 |
+| 15 | A | ヘルプ閲覧 = 権限と完全連動（has_permission_v2 流用、既定維持）| §3 / §8 RLS（既存通り） |
+
+### 重要修正（#10）の趣旨
+
+- 通常運用：ヘルプ記事は **誰も直接編集しない**（admin / manager / super_admin 含む）
+- 責任者以上（manager / admin / super_admin）：**コメント追加** のみ可
+- 改善・修正提案：**「開発者依頼ボタン」をクリック → 東海林さんへ集約**
+- 理由：ヘルプ品質の管理が分散すると東海林さんが追えなくなるのを避ける
+
+### 重要拡張（#14）の趣旨
+
+```
+社員がヘルプから「分からない」「修正してほしい」を送信
+   ↓ ① Chatwork 事務局ルームに通知（休日・離席時用、即時把握）
+   ↓ ② Garden 内 開発者ページに「未消化リスト」として登録
+   ↓
+東海林さんが作業時、開発者ページの一覧で 1 件ずつ消化
+```
 
 ---
 
@@ -25,18 +61,21 @@ Garden 全体に KING OF TIME 風のオンラインヘルプを内蔵し、
 - コンテンツ構造 5 カテゴリ（基本ガイド / 機能別ガイド / FAQ / 最新情報 / お問い合わせ）
 - 権限連動による可視範囲制御（既存 `has_permission_v2` 流用）
 - Postgres FTS（全文検索）+ おすすめキーワード
-- マークダウン + リッチテキスト編集 UI + 公開ワークフロー（draft → published）
+- **コメント追加機能**（責任者以上 = manager / admin / super_admin が記事にコメントを追加可）
+- **「開発者依頼ボタン」**（全ユーザーが記事への修正・追加依頼を東海林さんに送信可）
+- 公開ワークフロー（draft → published）— **東海林さん専任** で実施
 - 動画マニュアル（Supabase Storage、段階的 R2 移行設計）
 - 更新履歴テーブル（誰がいつ何を変えたか）
-- お問い合わせフォーム（Chatwork 連携、B-6 通知基盤経由）
+- お問い合わせフォーム（Chatwork 通知 + Garden 内開発者ページへの 2 経路同時通知）
 
 ### 含めない
 
-- Algolia 等外部全文検索 SaaS（判断保留 §15 参照）
-- 多言語（i18n）対応（Phase F 以降）
+- Algolia 等外部全文検索 SaaS（#11 により Postgres FTS で確定）
+- 多言語（i18n）対応（#13 により当面日本語のみ、将来構造のみ準備）
 - ヘルプチャットボット（AI 回答機能、将来拡張）
 - 外部公開ヘルプサイト（内部専用、外部共有は別途検討）
 - 初期コンテンツの執筆（本 spec 対象外、§16 で確認要）
+- **リッチテキストエディタによる直接編集**（#10 により不採用 — admin / manager 含め誰も直接編集しない）
 
 ---
 
@@ -58,8 +97,8 @@ Phase D 着手時に本 spec を起点に実装計画を策定する。
 
 | 依存テーブル | 用途 |
 |---|---|
-| `auth.users` | 閲覧者・編集者の識別 |
-| `root_employees` | 記事編集者の氏名表示、編集権限チェック |
+| `auth.users` | 閲覧者・コメント者の識別 |
+| `root_employees` | 記事コメント者の氏名表示、権限チェック |
 | `root_roles` / `root_user_roles` | `has_permission_v2` によるアクセス制御 |
 | `root_notification_channels` | お問い合わせ通知先チャネル（B-6 基盤）|
 | `root_notification_subscriptions` | 管理者への inquiry 購読設定 |
@@ -68,7 +107,7 @@ Phase D 着手時に本 spec を起点に実装計画を策定する。
 
 お問い合わせ受信・ステータス変更通知は B-6 (`root_notification_platform`) の  
 `notify()` ヘルパー経由で Chatwork 送信する。  
-専用 `chatwork-help` チャネルを `root_notification_channels` に登録する前提。
+専用 `chatwork-jimukyoku`（事務局ルーム）チャネルを `root_notification_channels` に登録する前提。
 
 ---
 
@@ -136,6 +175,9 @@ CREATE INDEX root_help_articles_category_vis_idx
   WHERE visibility = 'published';
 ```
 
+> **編集権限（#10 確定）**: INSERT / UPDATE / DELETE は **super_admin（東海林さん本人）のみ**。  
+> admin / manager 含め他ロールは直接編集不可。コメント追加（§3.3）・依頼送信（§3.4）のみ可。
+
 ### 3.2 `root_help_articles_logs`（更新履歴）
 
 ```sql
@@ -149,7 +191,7 @@ CREATE TABLE root_help_articles_logs (
   )),
   before_content  jsonb,   -- {title, body_md, visibility, ...} スナップショット
   after_content   jsonb,   -- 同上
-  change_summary  text     -- 「FAQ 追加」「typo 修正」等、編集者入力
+  change_summary  text     -- 「FAQ 追加」「typo 修正」等、東海林さんが入力
 );
 
 CREATE INDEX root_help_articles_logs_article_idx
@@ -162,7 +204,73 @@ CREATE INDEX root_help_articles_logs_article_idx
 `root_help_articles` の INSERT / UPDATE 時に自動 INSERT。  
 `change_type` は `TG_OP` と `NEW.visibility` / `OLD.visibility` の差分で判定。
 
-### 3.3 `root_help_inquiries`（お問い合わせ）
+### 3.3 `root_help_article_comments`（コメント・内部メモ）
+
+**#10 確定により新設**。manager / admin / super_admin が記事に対してコメントを追加できる。  
+直接編集の代替として「改善提案メモ」「内容確認依頼」を記録する用途を想定。
+
+```sql
+CREATE TABLE root_help_article_comments (
+  comment_id      bigserial PRIMARY KEY,
+  article_id      bigint NOT NULL REFERENCES root_help_articles(article_id),
+  commented_by    uuid NOT NULL REFERENCES auth.users(id),
+  body_md         text NOT NULL,
+  is_internal     boolean NOT NULL DEFAULT true,
+    -- true = 編集者向けメモ（東海林さんのみ閲覧）
+    -- false = 公開コメント（visibility に応じたロールが閲覧可）
+  visibility      text NOT NULL DEFAULT 'manager_plus'
+    CHECK (visibility IN ('public', 'manager_plus', 'admin_plus', 'super_admin_only')),
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX root_help_article_comments_article_idx
+  ON root_help_article_comments (article_id, created_at DESC);
+```
+
+### 3.4 `root_help_article_change_requests`（開発者依頼）
+
+**#10 確定により新設**。全ユーザーが「開発者依頼ボタン」経由で東海林さんに修正・追加依頼を送信する。  
+依頼は §12 の 2 経路（Chatwork 通知 + Garden 内開発者ページ）に同時通知される。
+
+```sql
+CREATE TABLE root_help_article_change_requests (
+  request_id      bigserial PRIMARY KEY,
+  article_id      bigint REFERENCES root_help_articles(article_id),
+    -- 既存記事への依頼時に設定。新記事依頼時は NULL
+  target_slug     text,
+    -- 新記事依頼時のパス候補（任意入力）
+  requested_by    uuid NOT NULL REFERENCES auth.users(id),
+  request_type    text NOT NULL CHECK (request_type IN (
+    'typo_fix',       -- 誤字・脱字修正
+    'content_update', -- 内容更新
+    'new_article',    -- 新規記事追加
+    'video_request',  -- 動画追加
+    'other'           -- その他
+  )),
+  summary         text NOT NULL,         -- 依頼概要（1〜2 行）
+  body_md         text,                  -- 詳細説明（任意）
+  priority        text DEFAULT 'normal'
+    CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+  status          text NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'reviewing', 'in_progress', 'completed', 'rejected')),
+  assigned_to     uuid REFERENCES auth.users(id),
+    -- 既定は東海林さん（super_admin）
+  resolution      text,                  -- 完了時・却下時の対応内容メモ
+  completed_at    timestamptz,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX root_help_article_change_requests_status_idx
+  ON root_help_article_change_requests (status, created_at DESC)
+  WHERE status IN ('pending', 'reviewing', 'in_progress');
+
+CREATE INDEX root_help_article_change_requests_article_idx
+  ON root_help_article_change_requests (article_id, created_at DESC);
+```
+
+### 3.5 `root_help_inquiries`（一般お問い合わせ）
 
 ```sql
 CREATE TABLE root_help_inquiries (
@@ -193,7 +301,10 @@ CREATE INDEX root_help_inquiries_status_idx
   WHERE status IN ('pending', 'in_progress');
 ```
 
-### 3.4 `root_help_categories`（カテゴリマスタ・表示順制御）
+> **#14 確定**：問い合わせ送信時は Chatwork 事務局ルームへの通知 + Garden 内開発者ページへの登録を  
+> 同時実施する。詳細は §12 参照。
+
+### 3.6 `root_help_categories`（カテゴリマスタ・表示順制御）
 
 ```sql
 CREATE TABLE root_help_categories (
@@ -215,7 +326,7 @@ INSERT INTO root_help_categories (category_key, label_ja, icon, sort_order) VALU
   ('contact',       'お問い合わせ',   'MessageSquare', 50);
 ```
 
-### 3.5 `root_help_search_keywords`（検索キーワード集計）
+### 3.7 `root_help_search_keywords`（検索キーワード集計）
 
 ```sql
 CREATE TABLE root_help_search_keywords (
@@ -249,36 +360,42 @@ LIMIT 10;
 
 ```mermaid
 flowchart TB
-    subgraph 編集フロー
-        A[admin / manager が記事作成] --> B[visibility = draft]
-        B --> C{承認が必要?}
-        C -->|重大変更| D[visibility = review]
-        D --> E[admin 承認]
-        E --> F[visibility = published]
-        C -->|軽微変更 manager| F
+    subgraph 編集フロー（東海林さん専任）
+        A[東海林さんが記事作成] --> B[visibility = draft]
+        B --> C{公開準備完了?}
+        C -->|作業中| B
+        C -->|公開| F[visibility = published]
         F --> G[published_at 設定]
         G --> H[Trigger: root_help_articles_logs 挿入]
     end
 
+    subgraph コメント・依頼フロー（manager+ / 全員）
+        I[manager+ がコメント追加ボタン] --> J[root_help_article_comments INSERT]
+        K[誰でも：開発者依頼ボタン] --> L[root_help_article_change_requests INSERT]
+        L --> M[① Chatwork 事務局ルームに通知]
+        L --> N[② Garden 内 /admin/dev-inbox に登録]
+    end
+
     subgraph 閲覧フロー
-        I[ユーザーがヘルプ画面表示] --> J{has_permission_v2?}
-        J -->|NG| K[非表示 / 403]
-        J -->|OK| L[root_help_articles SELECT\n module + visibility = published]
-        L --> M[記事一覧 / 詳細表示]
-        M --> N[view_count++ 非同期更新]
+        O[ユーザーがヘルプ画面表示] --> P{has_permission_v2?}
+        P -->|NG| Q[非表示 / 403]
+        P -->|OK| R[root_help_articles SELECT\n module + visibility = published]
+        R --> S[記事一覧 / 詳細表示]
+        S --> T[view_count++ 非同期更新]
     end
 
     subgraph 検索フロー
-        O[キーワード入力] --> P[root_help_search_keywords INSERT]
-        P --> Q[FTS: search_vector @@ plainto_tsquery]
-        Q --> R[検索結果一覧 + おすすめキーワード表示]
+        U[キーワード入力] --> V[root_help_search_keywords INSERT]
+        V --> W[FTS: search_vector @@ plainto_tsquery]
+        W --> X[検索結果一覧 + おすすめキーワード表示]
     end
 
     subgraph お問い合わせフロー
-        S[ユーザーがフォーム送信] --> T[root_help_inquiries INSERT]
-        T --> U[notify() → Chatwork chatwork-help ルーム]
-        U --> V[admin が pending → in_progress → responded]
-        V --> W[response_body 入力 → Chatwork DM 返信]
+        Y[ユーザーがフォーム送信] --> Z[root_help_inquiries INSERT]
+        Z --> AA[notify() → Chatwork chatwork-jimukyoku ルーム]
+        Z --> AB[/admin/dev-inbox に登録]
+        AA --> AC[東海林さんが pending → in_progress → responded]
+        AC --> AD[response_body 入力 → Chatwork DM 返信]
     end
 ```
 
@@ -293,7 +410,6 @@ flowchart TB
 /help/[category]                         カテゴリ別記事一覧
                                           例: /help/basic_guide
 /help/[category]/[slug]                  個別記事詳細
-                                          例: /help/faq/login-failed
 
 --- モジュール固有 ---
 /tree/help                               Tree 専用ヘルプ（module='tree' で絞込）
@@ -309,11 +425,12 @@ flowchart TB
 /forest/help                             Forest 専用ヘルプ
 /forest/help/[slug]
 
---- 管理 ---
-/help/admin                              記事管理一覧（admin / manager）
-/help/admin/new                          新規記事作成
-/help/admin/[article_id]/edit            記事編集
-/help/admin/inquiries                    お問い合わせ管理（admin）
+--- 管理（東海林さん専用） ---
+/admin/help                              記事管理一覧（super_admin のみ）
+/admin/help/new                          新規記事作成（super_admin のみ）
+/admin/help/edit/[article_id]            記事編集（super_admin のみ）
+/admin/help/change-requests              依頼一覧（super_admin のみ。/admin/dev-inbox と連携）
+/admin/dev-inbox                         Garden 内開発者ページ（別 spec 参照）
 ```
 
 **Next.js App Router 対応**
@@ -326,16 +443,19 @@ src/app/
       search/page.tsx           検索結果
       [category]/
         page.tsx                カテゴリ一覧
-        [slug]/page.tsx         記事詳細
-      admin/
-        page.tsx
-        new/page.tsx
-        [article_id]/edit/page.tsx
-        inquiries/page.tsx
+        [slug]/page.tsx         記事詳細（コメント欄 + 依頼ボタン付き）
     [module]/
       help/
         page.tsx                モジュール固有トップ（動的ルート）
         [slug]/page.tsx
+  admin/
+    help/
+      page.tsx                  記事管理（super_admin only）
+      new/page.tsx
+      edit/[article_id]/page.tsx
+      change-requests/page.tsx
+    dev-inbox/
+      page.tsx                  開発者ページ（別 spec 参照）
 ```
 
 ---
@@ -346,7 +466,7 @@ src/app/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  🌿 Garden ヘルプ                        [admin: 記事管理]│
+│  🌿 Garden ヘルプ                [管理: 東海林さん専用]  │
 │                                                           │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │  🔍  キーワードで検索...                             │ │
@@ -367,7 +487,10 @@ src/app/
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 記事詳細ページ
+### 6.2 記事詳細ページ（#10 改訂版）
+
+記事本文下部に **「コメント追加」ボタン**（manager+）と **「修正・追加を依頼」ボタン**（全ユーザー）を配置。  
+**直接編集ボタンは表示しない**（super_admin の編集は /admin/help/edit/[article_id] の専用画面のみ）。
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -384,17 +507,23 @@ src/app/
 │  ─────────────────────────────────────────────────────   │
 │  この記事は役に立ちましたか?  [👍 はい] [👎 いいえ]      │
 │                                                           │
+│  ─────────────────────────────────────────────────────   │
+│  [💬 コメントを追加]（manager 以上のみ表示）             │
+│  [🔧 修正・追加を依頼]（全ユーザーに表示）              │
+│                                                           │
 │  ━━ 関連記事 ━━━━━━━━━━━━━━━━━━━━━━━━━━━                  │
 │  • 初回ログイン手順                                       │
 │  • パスワード変更方法                                     │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 6.3 記事編集 UI（管理者）
+### 6.3 記事編集 UI（東海林さん専用 `/admin/help/edit/[article_id]`）
+
+**super_admin のみアクセス可**。他ロールへの導線は一切表示しない。
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  記事編集                 [draft] → [review] → [publish]│
+│  記事編集（東海林さん専用）       [draft] → [published] │
 │  ─────────────────────────────────────────────────────   │
 │  タイトル: [ログインできない場合の対処              ]    │
 │  カテゴリ: [FAQ ▼]  モジュール: [共通 ▼]               │
@@ -415,7 +544,36 @@ src/app/
 │  └─────────────────────────────────────────────────────┘ │
 │                                                           │
 │  変更サマリ: [typo 修正               ]  [下書き保存]    │
-│                                            [承認申請]    │
+│                                            [公開する]    │
+│  ─────────────────────────────────────────────────────   │
+│  ━━ 受信した依頼コメント ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   │
+│  [鈴木] 2026-04-25: ステップ3 のスクショが古いです       │
+│  [request_id: 42] typo_fix: 「ステップ3」→「ステップ 3」│
+└─────────────────────────────────────────────────────────┘
+```
+
+### 6.4 「修正・追加を依頼」フォーム（モーダル）
+
+全ユーザー向け。送信後 Chatwork + dev-inbox の両方に通知。
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  🔧 修正・追加を依頼                                 ✕  │
+│  ─────────────────────────────────────────────────────   │
+│  対象記事: ログインできない場合の対処（FAQ）             │
+│                                                           │
+│  依頼種別: ○ 誤字・脱字修正   ○ 内容更新   ○ 動画追加   │
+│           ○ 新規記事追加     ● その他                   │
+│                                                           │
+│  概要（必須）: [スクショが 2025 年版で古い             ] │
+│                                                           │
+│  詳細（任意）:                                           │
+│  [ステップ3 の画面が古いバージョンです。                 │
+│   現行バージョンでは「設定」ボタンの位置が...           ]│
+│                                                           │
+│  優先度: ○ 低  ● 通常  ○ 高  ○ 急ぎ                    │
+│                                                           │
+│           [キャンセル]  [依頼を送信]                     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -423,7 +581,7 @@ src/app/
 
 ## 7. API / Server Action 契約
 
-### 7.1 記事 CRUD
+### 7.1 記事 CRUD（super_admin のみ）
 
 ```typescript
 // src/app/(help)/actions/articles.ts
@@ -435,6 +593,7 @@ getHelpArticles(params: { module?: string|null; category?: string;
 getHelpArticleBySlug(params: { slug: string; module?: string })
   → Promise<HelpArticle | null>
 
+// 以下は super_admin のみ実行可（アプリ層 + RLS 二重チェック）
 createHelpArticle(params: { title; body_md; excerpt?; category: HelpCategory;
   module?; tags?; attachments?; visibility?: 'draft'|'review'; sort_order? })
   → Promise<{ article_id: number; slug: string }>
@@ -465,19 +624,61 @@ getRecommendedKeywords(params?: { module?: string; limit?: number })
   → Promise<Array<{ keyword: string; search_count: number }>>
 ```
 
-### 7.3 お問い合わせ送信
+### 7.3 コメント追加（manager+ のみ）
+
+```typescript
+// #10 確定により新設
+addArticleComment(params: {
+  article_id: number;
+  body_md: string;
+  visibility?: 'public' | 'manager_plus' | 'admin_plus' | 'super_admin_only';
+  // default: 'manager_plus'
+})
+  → Promise<{ comment_id: number }>
+
+getArticleComments(params: { article_id: number })
+  → Promise<Array<{ comment_id; commented_by_name; body_md;
+      visibility; is_internal; created_at }>>
+```
+
+### 7.4 開発者依頼送信（全ユーザー）
+
+```typescript
+// #10 確定により新設
+submitChangeRequest(params: {
+  article_id?: number;          // 既存記事への依頼（任意）
+  target_slug?: string;          // 新記事の依頼時のパス候補（任意）
+  request_type: ChangeRequestType;
+  summary: string;
+  body_md?: string;
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+})
+  → Promise<{ request_id: number; message: string }>
+  // 送信後、自動で Chatwork 通知 + dev-inbox 登録を実行
+
+// super_admin（東海林さん）が依頼を消化
+updateChangeRequestStatus(params: {
+  request_id: number;
+  status: 'reviewing' | 'in_progress' | 'completed' | 'rejected';
+  resolution?: string;
+})
+  → Promise<{ updated: boolean }>
+```
+
+### 7.5 お問い合わせ送信
 
 ```typescript
 submitHelpInquiry(params: { module?; category: InquiryCategory;
   subject; body; related_article_id?: number })
   → Promise<{ inquiry_id: number; message: string }>
+  // 送信後、自動で Chatwork 通知 + dev-inbox 登録を実行
 
 respondToInquiry(params: { inquiry_id: number; response_body: string;
   status: 'responded'|'closed' })
   → Promise<{ updated: boolean }>
 ```
 
-### 7.4 更新履歴取得
+### 7.6 更新履歴取得
 
 ```typescript
 getArticleHistory(params: { article_id: number; limit?: number })
@@ -494,55 +695,108 @@ getArticleHistory(params: { article_id: number; limit?: number })
 ```sql
 ALTER TABLE root_help_articles ENABLE ROW LEVEL SECURITY;
 
--- SELECT: published は全認証ユーザー。draft/review は作成者 or admin のみ
+-- SELECT: published は全認証ユーザー。draft/review は作成者 or super_admin のみ
 CREATE POLICY help_articles_select ON root_help_articles FOR SELECT USING (
   auth.uid() IS NOT NULL AND (
     visibility = 'published'
     OR created_by = auth.uid()
-    OR has_permission_v2(auth.uid(), 'help', 'update')
+    OR has_permission_v2(auth.uid(), 'help', 'super_manage')  -- super_admin のみ
   )
 );
--- INSERT / UPDATE: admin or module owner（アプリ層でさらに module チェック）
+
+-- INSERT / UPDATE / DELETE: super_admin（東海林さん）のみ
+-- #10 確定: admin / manager の直接編集を禁止
 CREATE POLICY help_articles_insert ON root_help_articles
-  FOR INSERT WITH CHECK (has_permission_v2(auth.uid(), 'help', 'update'));
+  FOR INSERT WITH CHECK (has_permission_v2(auth.uid(), 'help', 'super_manage'));
 CREATE POLICY help_articles_update ON root_help_articles
-  FOR UPDATE USING (created_by = auth.uid() OR has_permission_v2(auth.uid(), 'help', 'update'))
-  WITH CHECK   (created_by = auth.uid() OR has_permission_v2(auth.uid(), 'help', 'update'));
--- DELETE: admin / super_admin のみ
+  FOR UPDATE USING   (has_permission_v2(auth.uid(), 'help', 'super_manage'))
+  WITH CHECK         (has_permission_v2(auth.uid(), 'help', 'super_manage'));
 CREATE POLICY help_articles_delete ON root_help_articles
-  FOR DELETE USING (has_permission_v2(auth.uid(), 'help', 'delete'));
+  FOR DELETE USING   (has_permission_v2(auth.uid(), 'help', 'super_manage'));
 ```
 
 ### 8.2 `root_help_articles_logs`
 
 ```sql
 ALTER TABLE root_help_articles_logs ENABLE ROW LEVEL SECURITY;
--- SELECT: admin or 自分が変更した行
+-- SELECT: super_admin または自分が変更した行
 CREATE POLICY help_logs_select ON root_help_articles_logs FOR SELECT USING (
-  has_permission_v2(auth.uid(), 'help', 'update') OR changed_by = auth.uid()
+  has_permission_v2(auth.uid(), 'help', 'super_manage') OR changed_by = auth.uid()
 );
 -- INSERT: Trigger（SECURITY DEFINER 関数）のみ。一般ユーザーは禁止
 CREATE POLICY help_logs_insert ON root_help_articles_logs FOR INSERT WITH CHECK (false);
 -- UPDATE / DELETE: 禁止（監査ログ改ざん防止）
 ```
 
-### 8.3 `root_help_inquiries`
+### 8.3 `root_help_article_comments`（#10 新設）
+
+```sql
+ALTER TABLE root_help_article_comments ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: visibility に応じてフィルタ
+CREATE POLICY help_comments_select ON root_help_article_comments FOR SELECT USING (
+  auth.uid() IS NOT NULL AND (
+    has_permission_v2(auth.uid(), 'help', 'super_manage')   -- super_admin: 全件
+    OR (visibility = 'admin_plus'
+        AND has_permission_v2(auth.uid(), 'help', 'admin'))
+    OR (visibility = 'manager_plus'
+        AND has_permission_v2(auth.uid(), 'help', 'manage'))
+    OR (visibility = 'public')
+    OR commented_by = auth.uid()
+  )
+);
+
+-- INSERT: manager 以上
+CREATE POLICY help_comments_insert ON root_help_article_comments
+  FOR INSERT WITH CHECK (has_permission_v2(auth.uid(), 'help', 'manage'));
+
+-- UPDATE / DELETE: 自分のコメントのみ（super_admin は全件）
+CREATE POLICY help_comments_update ON root_help_article_comments
+  FOR UPDATE USING (
+    commented_by = auth.uid()
+    OR has_permission_v2(auth.uid(), 'help', 'super_manage')
+  );
+```
+
+### 8.4 `root_help_article_change_requests`（#10 新設）
+
+```sql
+ALTER TABLE root_help_article_change_requests ENABLE ROW LEVEL SECURITY;
+
+-- INSERT: 全認証ユーザー
+CREATE POLICY help_change_requests_insert ON root_help_article_change_requests
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- SELECT: 自分の依頼 + super_admin（担当者含む）
+CREATE POLICY help_change_requests_select ON root_help_article_change_requests
+  FOR SELECT USING (
+    requested_by = auth.uid()
+    OR assigned_to = auth.uid()
+    OR has_permission_v2(auth.uid(), 'help', 'super_manage')
+  );
+
+-- UPDATE: super_admin（東海林さん）が消化処理
+CREATE POLICY help_change_requests_update ON root_help_article_change_requests
+  FOR UPDATE USING (has_permission_v2(auth.uid(), 'help', 'super_manage'));
+```
+
+### 8.5 `root_help_inquiries`
 
 ```sql
 ALTER TABLE root_help_inquiries ENABLE ROW LEVEL SECURITY;
--- SELECT: 自分の inquiry + admin
+-- SELECT: 自分の inquiry + super_admin
 CREATE POLICY help_inquiries_select ON root_help_inquiries FOR SELECT USING (
-  inquired_by = auth.uid() OR has_permission_v2(auth.uid(), 'help', 'update')
+  inquired_by = auth.uid() OR has_permission_v2(auth.uid(), 'help', 'super_manage')
 );
 -- INSERT: 認証ユーザー全員
 CREATE POLICY help_inquiries_insert ON root_help_inquiries
   FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
--- UPDATE: admin のみ（ステータス変更・回答記入）
+-- UPDATE: super_admin のみ（ステータス変更・回答記入）
 CREATE POLICY help_inquiries_update ON root_help_inquiries
-  FOR UPDATE USING (has_permission_v2(auth.uid(), 'help', 'update'));
+  FOR UPDATE USING (has_permission_v2(auth.uid(), 'help', 'super_manage'));
 ```
 
-### 8.4 モジュール固有権限（アプリ層）
+### 8.6 モジュール固有権限（アプリ層）
 
 DB の RLS ではモジュール列の権限チェックまで行わず、アプリ層で `has_permission_v2` を呼び出す。
 
@@ -556,32 +810,29 @@ export async function canViewModuleHelp(
   return await hasPermissionV2(userId, module, 'view');
 }
 
-export async function canEditHelp(
-  userId: string,
-  module: string | null
-): Promise<boolean> {
-  // admin / super_admin は全モジュール編集可
-  if (await hasPermissionV2(userId, 'help', 'update')) return true;
-  // module owner（例: tree の manager+）は該当モジュールのみ
-  if (module) {
-    return await hasPermissionV2(userId, module, 'manage');
-  }
-  return false;
+// #10 確定: 記事編集は super_admin のみ
+export async function canEditHelp(userId: string): Promise<boolean> {
+  return await hasPermissionV2(userId, 'help', 'super_manage');
+}
+
+// #10 確定: コメント追加は manager 以上
+export async function canCommentHelp(userId: string): Promise<boolean> {
+  return await hasPermissionV2(userId, 'help', 'manage');
 }
 ```
 
-**ロール別可視範囲まとめ**
+**ロール別権限まとめ（#10 確定版）**
 
-| ロール | 共通記事 | 自モジュール記事 | 他モジュール記事 | 編集 |
-|---|---|---|---|---|
-| toss | ✅ | Tree のみ | ❌ | ❌ |
-| closer | ✅ | Tree のみ | ❌ | ❌ |
-| cs | ✅ | Tree / Leaf 等 | ❌（権限外） | ❌ |
-| staff | ✅ | アクセス可モジュール | ❌ | ❌ |
-| manager | ✅ | 全アクセス可 | ❌ | 自管理モジュールのみ |
-| admin | ✅ | 全件 | ✅ | ✅ |
-| super_admin | ✅ | 全件 | ✅ | ✅ |
-| outsource（槙さん）| ✅ | Leaf 関電のみ | ❌ | Leaf 関電のみ |
+| ロール | 共通記事閲覧 | モジュール記事閲覧 | 記事直接編集 | コメント追加 | 依頼送信 |
+|---|---|---|---|---|---|
+| toss | ✅ | Tree のみ | ❌ | ❌ | ✅ |
+| closer | ✅ | Tree のみ | ❌ | ❌ | ✅ |
+| cs | ✅ | Tree / Leaf 等 | ❌ | ❌ | ✅ |
+| staff | ✅ | アクセス可モジュール | ❌ | ❌ | ✅ |
+| manager | ✅ | 全アクセス可 | ❌ | ✅ | ✅ |
+| admin | ✅ | 全件 | ❌ | ✅ | ✅ |
+| super_admin（東海林さん）| ✅ | 全件 | ✅ | ✅ | ✅ |
+| outsource（槙さん）| ✅ | Leaf 関電のみ | ❌ | ❌ | ✅ |
 
 ---
 
@@ -590,19 +841,19 @@ export async function canEditHelp(
 ### a-tree（Garden Tree）
 
 - **ナビに `/tree/help` リンク追加**: Tree ヘッダナビまたはサイドバーに「ヘルプ」リンク
-- **編集権限**: Tree の manager+ は `module='tree'` 記事を編集可
+- **コメント権限**: Tree の manager+ は `module='tree'` 記事にコメント追加可
 - **推奨コンテンツ**: 架電フロー手順 / トスアップ判定 / コールスクリプト基礎
 
 ### a-leaf（Garden Leaf）
 
 - **関電専用**: `/leaf/kanden/help`（`module='leaf-kanden'`）
-- **槙さん（outsource + leaf_kanden_module_owner）**: 関電ヘルプを閲覧・編集可
+- **槙さん（outsource + leaf_kanden_module_owner）**: 関電ヘルプを閲覧・依頼送信可（直接編集不可）
 - **推奨コンテンツ**: 案件登録手順 / 関電業務フロー / 入力規則
 
 ### a-bud（Garden Bud）
 
 - **経理マニュアルの集約先**: `/bud/help` に振込手順 / 給与計算手順 / CC 明細取込手順
-- **admin のみ編集**: 給与・振込は金額影響が大きいため manager 編集不可
+- **編集権限**: super_admin（東海林さん）のみ。金額影響が大きいため manager も編集不可
 - **推奨コンテンツ**: 月次振込フロー / 給与明細の見方 / 年末調整手順
 
 ### a-bloom（Garden Bloom）
@@ -616,10 +867,10 @@ export async function canEditHelp(
 
 ## 10. 検索エンジン詳細（Postgres FTS）
 
-### 基本方針
+### 基本方針（#11 確定）
 
 Garden 規模（記事数: 初期 50 件、安定後 200〜500 件）では  
-**Postgres FTS で十分対応可能**。コスト・運用コストが最小なため本 spec では推奨とする。
+**Postgres FTS で十分対応可能**。コスト・運用コストが最小。Algolia は不採用。
 
 ### FTS クエリ設計
 
@@ -652,7 +903,7 @@ LIMIT $3;
 
 - **短期（Phase D-E 初期）**: `'simple'` 辞書（単語分割なし、前方一致 `like '%xxx%'` を併用）
 - **中期**: `pg_bigm` 拡張 (`2-gram`) を Supabase で有効化し `'pg_bigm'` 辞書に移行
-- **長期**: pgroonga（N-gram + 形態素解析）または Algolia（§15 参照）
+- **長期**: pgroonga（N-gram + 形態素解析）
 
 ### おすすめキーワード生成
 
@@ -667,7 +918,7 @@ MV が不要な規模であれば VIEW 直参照でも可（初期は VIEW、記
 
 ## 11. 動画マニュアル管理
 
-### Supabase Storage バケット
+### Supabase Storage バケット（#12 確定）
 
 ```
 garden-help-videos/
@@ -682,7 +933,7 @@ garden-help-videos/
 
 バケットポリシー:
 - **読取**: 認証ユーザー全員（`storage.authenticated` ポリシー）
-- **書込**: `has_permission_v2(uid, 'help', 'update')` のみ
+- **書込**: `has_permission_v2(uid, 'help', 'super_manage')` のみ（東海林さん専任）
 
 ### 段階的ホスト方針
 
@@ -701,7 +952,7 @@ garden-help-videos/
 
 ### 記事への埋め込み
 
-編集 UI の「動画挿入」ボタンで Storage URL を自動挿入:
+東海林さんの編集 UI（`/admin/help/edit/[article_id]`）の「動画挿入」ボタンで Storage URL を自動挿入:
 
 ```markdown
 <!-- help-video: garden-help-videos/tree/call-flow.mp4 -->
@@ -712,43 +963,85 @@ garden-help-videos/
 
 ---
 
-## 12. お問い合わせフロー
+## 12. お問い合わせ・修正依頼フロー（#14 拡張）
+
+ヘルプの問い合わせ・修正依頼は以下の **2 経路同時通知** で実施する。
+
+### 12.1 経路 ① Chatwork 通知（即時把握用）
+
+- 用途: 休日・離席時に東海林さんが即時把握できるようにする
+- ルーム: `chatwork-jimukyoku`（事務局ルーム、Phase B-6 通知基盤の subscription 経由）
+- 通知タイミング: 質問送信 / 修正依頼送信 と同時
+- メッセージ例（B-6 template_key: `help_change_request_new`）:
+
+```
+[Garden Help 新規依頼] from {user_name}({employee_id})
+種別: {request_type_label}
+対象: {article_slug | '新規記事'}
+概要: {summary}
+
+→ Garden 内開発者ページで詳細確認:
+  https://garden.example.com/admin/dev-inbox/{request_id}
+```
+
+### 12.2 経路 ② Garden 内 開発者ページ（消化型）
+
+- 配置: `/admin/dev-inbox`（別途新規 spec `2026-04-26-root-developer-inbox.md` を起草）
+- 用途: 東海林さんが作業時、未消化の問い合わせ・依頼を 1 件ずつ消化
+- 機能:
+  - 未消化リスト（status='pending' / 'reviewing' / 'in_progress'）
+  - フィルタ（モジュール別、種別別、優先度別、依頼者別、日付範囲）
+  - 詳細ページ（依頼内容、関連 article、添付、コメント追加、ステータス更新）
+  - 消化済みアーカイブ
+- 詳細仕様: 別 spec `2026-04-26-root-developer-inbox.md` 参照
+
+### 12.3 問い合わせの分類と流れ先
+
+旧 `root_help_inquiries` テーブルは段階的に以下に分離:
+
+| 種別 | 内容 | 流れ先テーブル |
+|---|---|---|
+| ヘルプの「修正してほしい」 | 誤字・内容変更・動画追加 等 | `root_help_article_change_requests`（§3.4） |
+| ヘルプの「分からない / 操作問い合わせ」 | 一般的な質問・操作不明 | `root_help_inquiries`（§3.5）|
+| ヘルプ以外の「システム不具合・機能要望」 | バグ報告・機能追加 | `root_developer_inbox_items`（dev-inbox spec で定義）|
+
+### 12.4 消化フロー
+
+```
+社員がヘルプから「分からない」「修正してほしい」を送信
+   ↓ ① Chatwork 事務局ルームに通知（休日・離席時用、即時把握）
+   ↓ ② Garden 内 /admin/dev-inbox に「未消化リスト」として登録
+   ↓
+東海林さんが作業時、開発者ページの一覧で 1 件ずつ消化
+   - status を pending → reviewing → in_progress → completed へ進める
+   - 必要に応じて /admin/help/edit/[article_id] で記事編集
+   - 完了時、依頼者に Chatwork DM で通知
+```
 
 ```mermaid
 sequenceDiagram
     actor U as ユーザー
-    participant F as /help (フォーム)
-    participant DB as root_help_inquiries
+    participant F as /help（依頼フォーム）
+    participant DB as root_help_article_change_requests
     participant N as notify() (B-6)
-    participant CW as Chatwork chatwork-help
-    actor A as admin
+    participant CW as Chatwork jimukyoku
+    participant DI as /admin/dev-inbox
+    actor T as 東海林さん
 
-    U->>F: カテゴリ・件名・本文を入力して送信
-    F->>DB: INSERT inquiry (status=pending)
-    DB-->>F: inquiry_id 返却
-    F->>N: notify('help_inquiry_new', inquiry_id)
-    N->>CW: [お問い合わせ] 件名・カテゴリ・ユーザー名
-    F-->>U: 「受け付けました」完了メッセージ
+    U->>F: 「修正・追加を依頼」ボタン → フォーム送信
+    F->>DB: INSERT change_request (status=pending)
+    DB-->>F: request_id 返却
+    F->>N: notify('help_change_request_new', request_id)
+    N->>CW: ① 依頼内容 + dev-inbox リンク
+    F->>DI: ② dev-inbox に未消化アイテム登録
+    F-->>U: 「依頼を受け付けました」完了メッセージ
 
-    A->>CW: 通知を確認
-    A->>DB: status=in_progress に更新
-    A->>DB: response_body 入力、status=responded
-    N->>CW: (optional) ユーザー DM で回答通知
-    U->>F: マイページ /help/my-inquiries で確認
-```
-
-### Chatwork 通知テンプレート（B-6 template_key: `help_inquiry_new`）
-
-```
-【Garden ヘルプ お問い合わせ】
-カテゴリ: {category_label}
-モジュール: {module | '全般'}
-件名: {subject}
-質問者: {user_name}
----
-{body_excerpt}（最大 200 文字）
----
-対応画面: {admin_url}
+    T->>CW: 通知を確認（休日・離席後）
+    T->>DI: dev-inbox で依頼一覧を確認
+    T->>DB: status=in_progress に更新
+    T->>F: /admin/help/edit/[article_id] で記事編集
+    T->>DB: status=completed, resolution 記録
+    N->>CW: U への完了 DM 通知（任意）
 ```
 
 ---
@@ -762,14 +1055,18 @@ sequenceDiagram
 5. ✅ `root_help_search_keywords` にキーワードが記録される
 6. ✅ おすすめキーワード上位 10 件が検索バー下部に表示される
 7. ✅ `/tree/help` が Tree ユーザーにのみ表示される（toss は Tree のみ、admin は全件）
-8. ✅ Tree の manager が `module='tree'` 記事を編集・公開できる
-9. ✅ admin が全モジュール記事を作成・編集・公開・アーカイブできる
-10. ✅ 記事更新時に `root_help_articles_logs` へ Trigger 経由で履歴が記録される
-11. ✅ 記事詳細ページ下部に「最終更新: YYYY-MM-DD by ○○」が表示される
-12. ✅ 公開後 7 日以内の記事に 🆕 マーカーが表示される
-13. ✅ お問い合わせフォームを送信すると `root_help_inquiries` に INSERT され、Chatwork に通知が届く
-14. ✅ admin が inquiry のステータスを pending → responded に変更できる
-15. ✅ RLS: draft 記事は作成者と admin 以外に SELECT されない
+8. ✅ **【#10 確定】** admin / manager が記事を直接編集しようとしても、編集画面へのアクセスが拒否される（RLS + アプリ層二重チェック）
+9. ✅ **【#10 確定】** super_admin（東海林さん）は `/admin/help/edit/[article_id]` で記事を作成・編集・公開・アーカイブできる
+10. ✅ **【#10 確定】** manager / admin が記事詳細ページで「コメントを追加」ボタンを使い、`root_help_article_comments` に登録できる
+11. ✅ **【#10 確定】** 全ユーザーが「修正・追加を依頼」ボタンからフォームを送信でき、`root_help_article_change_requests` に登録される
+12. ✅ **【#14 確定】** 依頼送信後、Chatwork 事務局ルームに通知が届く
+13. ✅ **【#14 確定】** 依頼送信後、`/admin/dev-inbox` の未消化リストに表示される
+14. ✅ 記事更新時に `root_help_articles_logs` へ Trigger 経由で履歴が記録される
+15. ✅ 記事詳細ページ下部に「最終更新: YYYY-MM-DD by 東海林美琴」が表示される
+16. ✅ 公開後 7 日以内の記事に 🆕 マーカーが表示される
+17. ✅ お問い合わせフォームを送信すると `root_help_inquiries` に INSERT され、Chatwork に通知が届く
+18. ✅ super_admin が inquiry のステータスを pending → responded に変更できる
+19. ✅ **【#10 確定】** RLS: draft 記事は super_admin 以外に SELECT されない
 
 ---
 
@@ -777,31 +1074,36 @@ sequenceDiagram
 
 | # | 作業 | 工数 |
 |---|---|---|
-| W1 | 5 テーブル + index + RLS + FTS GIN migration（§3.1〜3.5 + §8） | 0.25d |
+| W1 | 7 テーブル + index + RLS + FTS GIN migration（§3.1〜3.7 + §8） | 0.25d |
 | W2 | ルーティング + 記事一覧 / 詳細ページ（/help + /[module]/help） | 0.5d |
-| W3 | マークダウンエディタ + プレビュー（@uiw/react-md-editor 等）| 0.5d |
+| W3 | 東海林さん専用編集 UI（/admin/help 系）— super_admin only | 0.5d |
 | W4 | Postgres FTS 検索 UI + おすすめキーワード表示 | 0.25d |
 | W5 | お問い合わせフォーム + Chatwork 通知（B-6 連携）| 0.25d |
 | W6 | 動画 Storage バケット + 埋め込み UI | 0.25d |
 | W7 | 更新履歴 Trigger + 履歴表示 UI | 0.25d |
 | W8 | モジュール固有 `/<module>/help` ルート展開（Tree / Soil / Leaf 等）| 0.25d |
-| **合計** | | **2.5d** |
+| **W9** | **【#10 追加】コメント機能 + 開発者依頼フォーム + dev-inbox 連携** | **0.5d** |
+| **合計** | | **3.0d**（旧 2.5d から +0.5d） |
 
-> W2・W3 が最重量。マークダウンエディタライブラリの選定（§15 判2）で 0.25〜0.5d 変動あり。
+> W3 が最重量。マークダウンエディタライブラリの選定（§15 判2）で 0.25〜0.5d 変動あり。  
+> W9 は dev-inbox spec（別 spec）の実装と並行して進めること。
 
 ---
 
 ## 15. 判断保留
 
-| # | 論点 | 暫定スタンス |
-|---|---|---|
-| 判1 | 検索エンジン最終選定（Postgres FTS vs Algolia） | **Postgres FTS で Go**（Garden 規模、コスト・運用◎）。記事 1000+ 件超になったら Algolia 再評価 |
-| 判2 | マークダウンエディタ選定（@uiw/react-md-editor / Lexical / TipTap） | **@uiw/react-md-editor**（最小依存、Garden 既存 npm 増やさない方針に沿う）。リッチ機能必要なら TipTap |
-| 判3 | 動画ホスト（Supabase Storage 一択 vs YouTube 限定公開併用） | **Phase D-E 初期は YouTube 限定公開**で負荷ゼロ。Storage 移行は Phase 後期 |
-| 判4 | 編集権限の granularity（記事ごと / カテゴリごと / モジュールごと） | **モジュールごと**（B-5 権限設計の粒度に合わせる）。記事ごとの細粒度は Phase F 以降 |
-| 判5 | 多言語対応（i18n） | **Phase F 以降**。現状は日本語のみ |
-| 判6 | FTS 日本語辞書（'simple' / pg_bigm / pgroonga） | **Phase D-E 初期は 'simple'**、pg_bigm は Supabase の拡張有効化を確認後（§10 参照）|
-| 判7 | 閲覧フィードバック（役に立った? ボタン）のデータ活用方法 | デザインは入れるが集計・KPI 活用は Phase F 以降 |
+| # | 論点 | 状態 | 備考 |
+|---|---|---|---|
+| 判1 | 検索エンジン最終選定（Postgres FTS vs Algolia） | **✅ 確定（#11）** | Postgres FTS で確定。Algolia 不採用 |
+| 判2 | マークダウンエディタ選定（@uiw/react-md-editor / Lexical / TipTap） | 保留 | **@uiw/react-md-editor** が暫定推奨。Garden 既存 npm 増やさない方針に沿う |
+| 判3 | 動画ホスト（Supabase Storage 一択 vs YouTube 限定公開併用） | **✅ 確定（#12）** | Phase D-E 初期は YouTube 限定公開で負荷ゼロ。Storage 移行は Phase 後期 |
+| 判4 | 編集権限の granularity（記事ごと / カテゴリごと / モジュールごと） | **✅ 確定（#10）** | 直接編集は super_admin のみ。記事・モジュール粒度は不問（全員不可） |
+| 判5 | 多言語対応（i18n） | **✅ 確定（#13）** | 当面日本語。将来 i18n 構造のみ準備（Phase F 以降に実装） |
+| 判6 | FTS 日本語辞書（'simple' / pg_bigm / pgroonga） | 保留 | **Phase D-E 初期は 'simple'**、pg_bigm は Supabase の拡張有効化を確認後 |
+| 判7 | 閲覧フィードバック（役に立った? ボタン）のデータ活用方法 | 保留 | デザインは入れるが集計・KPI 活用は Phase F 以降 |
+
+> 判断保留 5 件（判1 / 判3 / 判4 / 判5 / 当初保留 `Algolia`）が Cat 2 確定により **全件解消**。  
+> 残保留 3 件（判2 / 判6 / 判7）は次フェーズで個別判断。
 
 ---
 
@@ -813,7 +1115,7 @@ sequenceDiagram
 | U2 | 「お問い合わせ」の対応 SLA（営業時間内 4h 返信等）|
 | U3 | 動画マニュアルの想定本数（Phase D-E 初期、モジュール別でも可）|
 | U4 | 法律基礎知識（労働法等）の出典・更新ポリシー（KoT 参考）|
-| U5 | 「chatwork-help」Chatwork ルーム ID（既存 or 新設？）|
+| U5 | 「chatwork-jimukyoku」Chatwork ルーム ID（既存 or 新設？）|
 | U6 | `pg_bigm` または `pgroonga` の Supabase プロジェクトへの追加可否（FTS 日本語精度に影響）|
 
 ---
@@ -823,6 +1125,7 @@ sequenceDiagram
 - **実装は Phase D-E** で本格着手予定（§18 Garden 構築優先順位参照）
 - **当面は README.md / `docs/operations/` で代替**（§2.1 参照）
 - Phase B 期間中は本 spec のみで先行確定
-- **Phase D 着手時**、本 spec を起点に実装計画（工数内訳 W1〜W8）を策定
+- **Phase D 着手時**、本 spec を起点に実装計画（工数内訳 W1〜W9）を策定
+- **dev-inbox spec**（`2026-04-26-root-developer-inbox.md`）と同時着手推奨
 
 — end of Root Help Module spec —
