@@ -8,6 +8,18 @@
 
 ---
 
+## 0. 確定事項（2026-04-26 a-main 006 東海林承認済）
+
+本 spec は `decisions-root-phase-b-20260426-a-main-006.md` の **B-3 関連項目** を反映する。
+
+### B-3 で確定した主要事項
+
+| # | 項目 | 確定内容 | 反映先 |
+|---|---|---|---|
+| #1 | 退職日翌日 03:00 切替（Vercel Cron） | `termination_date` または `contract_end_on` の翌日 03:00 JST に Vercel Cron で `is_active = false` に自動切替。即時切替や日中切替は業務影響大のため不採用、深夜帯処理で安全運用 | §5 業務クエリ / §9 退職処理フロー / §8 cron 仕様 |
+
+---
+
 ## 1. 目的とスコープ
 
 ### 目的
@@ -24,6 +36,7 @@
 - 退職処理フロー（admin 操作手順）
 - 完全削除フロー（super_admin 操作手順）
 - 新規 helper 関数の仕様
+- Vercel Cron による退職日翌日 03:00 自動切替（§8）
 
 ### 含めない
 
@@ -157,6 +170,34 @@ CREATE OR REPLACE FUNCTION public.get_nencho_targets(target_year int)
 $$;
 ```
 
+### 3.5 cron 用関数: `root_deactivate_terminated_employees()`
+
+Vercel Cron ジョブ（§8）から呼び出す。`termination_date` または `contract_end_on` が当日より前になった `is_active=true` の従業員を一括で `is_active=false` に更新する。
+
+```sql
+CREATE OR REPLACE FUNCTION root_deactivate_terminated_employees() RETURNS jsonb AS $$
+DECLARE
+  deactivated_count int;
+BEGIN
+  UPDATE root_employees
+    SET is_active = false,
+        updated_at = now()
+    WHERE is_active = true
+      AND deleted_at IS NULL
+      AND (
+        (termination_date IS NOT NULL AND termination_date < CURRENT_DATE)
+        OR (contract_end_on IS NOT NULL AND contract_end_on < CURRENT_DATE)
+      );
+  GET DIAGNOSTICS deactivated_count = ROW_COUNT;
+
+  RETURN jsonb_build_object(
+    'deactivated_count', deactivated_count,
+    'executed_at', now()
+  );
+END;
+$$ LANGUAGE plpgsql;
+```
+
 ---
 
 ## 4. 状態定義表
@@ -178,7 +219,7 @@ $$;
 
 | ルール | 内容 |
 |---|---|
-| R1 | `deleted_at` に値を設定するのは super_admin のみ（完全削除フロー §9 参照） |
+| R1 | `deleted_at` に値を設定するのは super_admin のみ（完全削除フロー §10 参照） |
 | R2 | 退職処理時は `termination_date` を設定後、`is_active = false` に変更する（順序重要） |
 | R3 | `contract_end_on` は `employment_type = 'outsource'` のときのみ設定する |
 | R4 | `deleted_at` に値があるレコードは `is_active = false` であるべき（整合性制約）|
@@ -317,9 +358,63 @@ CREATE POLICY root_emp_update ON root_employees FOR UPDATE
 
 ---
 
-## 8. 退職処理フロー（admin が UI から 1 名退職処理する手順）
+## 8. 自動切替 cron（Vercel Cron）
 
-### 8.1 処理ステップ
+### 8.1 cron 配線
+
+```json
+// vercel.json
+{
+  "crons": [
+    {
+      "path": "/api/root/employees/cron-deactivate",
+      "schedule": "0 18 * * *"
+    }
+  ]
+}
+```
+
+`"0 18 * * *"` は 18:00 UTC = 03:00 JST（翌日）。
+
+### 8.2 Route Handler
+
+```typescript
+// src/app/api/root/employees/cron-deactivate/route.ts
+import { verifyCronRequest } from '@/lib/cron-auth';
+
+export async function POST(req: Request) {
+  const authResult = await verifyCronRequest(req);
+  if (!authResult.ok) return new Response('Unauthorized', { status: 401 });
+
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase.rpc('root_deactivate_terminated_employees');
+  if (error) {
+    // root_audit_log に critical で記録、Chatwork 通知
+    return new Response(JSON.stringify({ error }), { status: 500 });
+  }
+
+  return Response.json({ ok: true, ...data });
+}
+```
+
+### 8.3 監査ログ（B-2 連携）
+
+- 自動切替時、各 employee_id に対し `module='root', action='auto_deactivate'` で root_audit_log に記録
+- severity='info'、source='cron'
+
+### 8.4 Chatwork 通知
+
+- 切替件数 > 0 の場合、admin ルームに「2026-MM-DD 03:00 - 退職者 N 名を自動非活性化しました」通知
+- 切替件数 = 0 の場合、通知なし
+- エラー時は critical ルームに即時通知
+
+---
+
+## 9. 退職処理フロー（admin が UI から 1 名退職処理する手順）
+
+> **注**: 通常運用は §8 の cron による自動切替に任せる。admin が手動で `is_active=false` にする選択肢は引き続き残すが、緊急時（即日退職等）のみ手動操作とする。
+
+### 9.1 処理ステップ
 
 ```
 1. admin が従業員マスタ画面で対象従業員を選択
@@ -331,24 +426,26 @@ CREATE POLICY root_emp_update ON root_employees FOR UPDATE
 4. 「確認」ボタンで確定
 5. Server Action が以下をアトミックに実行（トランザクション）:
    a. termination_date を設定
-   b. is_active = false に変更
+   b. termination_date が過去日または当日の場合: is_active = false に即時変更（緊急対応オプション）
+      ※ 通常は翌日 03:00 JST の cron（§8）に任せるため、即時変更は緊急時のみ
    c. root_audit_log にイベントを記録（後述）
    d. Chatwork で経理担当者に通知（後述）
 6. 完了モーダルを表示（「退職処理が完了しました」）
 ```
 
-### 8.2 自動: is_active の変更タイミング
+### 9.2 自動: is_active の変更タイミング
 
-- `termination_date` が**過去日または当日**の場合: 即時 `is_active = false`
-- `termination_date` が**未来日**の場合: 現在は `is_active = true` のまま保持し、Vercel Cron ジョブで退職日当日に `is_active = false` を設定する（判断保留 #5 参照）
+- `termination_date` が**過去日または当日**の場合: §8 の cron により翌日 03:00 JST に自動で `is_active = false` に切替
+- `termination_date` が**未来日**の場合: 退職日の翌日 03:00 JST に cron が自動切替
+- **緊急対応が必要な場合**（即日解雇等）: admin が手動で `is_active = false` に変更することも可能
 
-### 8.3 Chatwork 通知
+### 9.3 Chatwork 通知
 
 経理担当者へ以下の内容で即時送信:
 - 退職者名・employee_id・退職日・処理者名
 - 依頼事項: 当月給与の日割り計算確認、社会保険の資格喪失手続き
 
-### 8.4 監査ログ
+### 9.4 監査ログ
 
 `root_audit_log`（既存テーブル or 新規追加）に記録。フォーマット:
 
@@ -365,9 +462,9 @@ CREATE POLICY root_emp_update ON root_employees FOR UPDATE
 
 ---
 
-## 9. 完全削除フロー（個人情報保管期限切れ等）
+## 10. 完全削除フロー（個人情報保管期限切れ等）
 
-### 9.1 処理ステップ
+### 10.1 処理ステップ
 
 ```
 1. super_admin が従業員マスタ画面（アーカイブ一覧）で対象従業員を選択
@@ -385,7 +482,7 @@ CREATE POLICY root_emp_update ON root_employees FOR UPDATE
 5. 完了通知
 ```
 
-### 9.2 完全削除後の挙動
+### 10.2 完全削除後の挙動
 
 | クエリ | 動作 |
 |---|---|
@@ -395,7 +492,7 @@ CREATE POLICY root_emp_update ON root_employees FOR UPDATE
 | 過去案件の担当者 | Leaf 案件テーブルの `employee_id` は残るが、JOIN で名前は取得不可 |
 | super_admin による管理画面 | 参照・確認可（復元はスコープ外） |
 
-### 9.3 監査ログ
+### 10.3 監査ログ
 
 ```json
 {
@@ -407,7 +504,7 @@ CREATE POLICY root_emp_update ON root_employees FOR UPDATE
 }
 ```
 
-### 9.4 物理削除は行わない
+### 10.4 物理削除は行わない
 
 - 本フローは `deleted_at` にタイムスタンプを設定する**論理削除**である
 - 物理削除（DELETE FROM root_employees）は禁止（`.claude/settings.json` deny ルールで保護済み）
@@ -415,52 +512,54 @@ CREATE POLICY root_emp_update ON root_employees FOR UPDATE
 
 ---
 
-## 10. 受入基準
+## 11. 受入基準
 
 1. `is_user_active()` 関数が `deleted_at IS NULL` を含む条件で動作する（§3.2 の更新案適用済み）
 2. `is_employee_payroll_target()` ヘルパーが正しく動作する（退職月の従業員を含む、前月退職者を除く）
 3. `get_nencho_targets(year)` が中途退職者を含み、完全削除者を除いた件数を返す
-4. 退職処理フロー（§8）が admin ロールで動作し、non-admin では「退職処理」ボタンが非表示
-5. 完全削除フロー（§9）が super_admin のみ実行でき、admin では「完全削除」ボタンが非表示
+4. 退職処理フロー（§9）が admin ロールで動作し、non-admin では「退職処理」ボタンが非表示
+5. 完全削除フロー（§10）が super_admin のみ実行でき、admin では「完全削除」ボタンが非表示
 6. 退職処理後、対象従業員が Tree の担当者セレクトから除外される
 7. 退職処理後、対象従業員が Leaf の案件オーナー候補から除外される
 8. 退職処理後、Chatwork に経理担当者への通知が飛ぶ
 9. 退職処理・完全削除の両フローで `root_audit_log` にイベントが記録される
 10. RLS ポリシーが §6 の定義通りに機能する（manager 以上は `deleted_at IS NULL` の全従業員を見られる）
+11. Vercel Cron 配線後、退職日翌日 03:00 JST で `is_active` が false に自動切替されること（`root_deactivate_terminated_employees()` の実行結果に `deactivated_count > 0` が含まれること）
 
 ---
 
-## 11. 想定工数（内訳）
+## 12. 想定工数（内訳）
 
 | # | 作業 | 工数 |
 |---|---|---|
 | W1 | `is_user_active()` 関数更新（`deleted_at IS NULL` 追加）migration | 0.05d |
-| W2 | `is_employee_payroll_target()` / `get_nencho_targets()` helper 追加 migration | 0.1d |
+| W2 | `is_employee_payroll_target()` / `get_nencho_targets()` / `root_deactivate_terminated_employees()` helper 追加 migration | 0.1d |
 | W3 | RLS ポリシー定義（§6）の migration + テスト | 0.1d |
 | W4 | 退職処理 Server Action（トランザクション + 監査ログ + Chatwork 通知） | 0.1d |
 | W5 | 完全削除 Server Action + モーダル UI | 0.1d |
 | W6 | 従業員マスタ画面に「退職処理」「完全削除」ボタン追加（ロール制御） | 0.05d |
 | W7 | `root_audit_log` テーブルの新規作成 or 既存確認 | 0.05d |
 | W8 | Tree / Leaf / Bud との連携確認（実装はモジュール担当セッション） | 0.05d |
-| **合計** | | **0.5d** |
+| W9 | Vercel Cron 配線（vercel.json + Route Handler `/api/root/employees/cron-deactivate`） | 0.05d |
+| **合計** | | **0.55d** |
 
 ---
 
-## 12. 判断保留
+## 13. 判断保留
 
 | # | 論点 | 現状スタンス |
 |---|---|---|
-| 判1 | `termination_date` が未来日の場合に `is_active` を即時 false にするか、当日に変更するか | 当日変更を推奨（Vercel Cron）。Cron 実装前は即時 false でも業務上問題なし。東海林さんに確認が望ましい |
+| 判1 | `termination_date` が未来日の場合に `is_active` を即時 false にするか、当日に変更するか | **確定（a-main 006 #1）**: 翌日 03:00 JST に Vercel Cron で自動切替。即時切替は不採用 |
 | 判2 | 退職処理の「退職理由」を notes に追記するか、専用フィールドを設けるか | 現状は notes に追記。専用フィールドは Phase C 以降で検討 |
 | 判3 | `root_audit_log` テーブルが既存かどうか不明 | migration で CREATE TABLE IF NOT EXISTS で対応 |
 | 判4 | 物理削除フローの必要性（GDPR 等の完全消去要求への対応） | 現状は論理削除のみ。法的要求が発生したら別途フロー策定 |
-| 判5 | 未来日の `termination_date` 設定時、`is_active` を true のまま保持する Cron ジョブの実装 | Phase B-3 のスコープ外とし、専用タスクで実装 |
+| 判5 | 未来日の `termination_date` 設定時、`is_active` を true のまま保持する Cron ジョブの実装 | **確定（a-main 006 #1）**: §8 の Vercel Cron で実装。本 spec に仕様を記載 |
 | 判6 | 過去架電・案件履歴に紐付く退職者の表示名（「（退職）山田太郎」案）の UI 確定 | a-tree / a-leaf セッションで UI 実装時に決定。本 spec では `（退職）` プレフィックスを提案とする |
 | 判7 | 外注（outsource）の `contract_end_on` 設定なしの場合の扱い（無期限か要確認か） | `is_user_active()` では null = 継続中として扱う。UI で「未設定」を警告表示するか要確認 |
 
 ---
 
-## 13. 未確認事項
+## 14. 未確認事項
 
 | # | 未確認 |
 |---|---|
@@ -469,5 +568,7 @@ CREATE POLICY root_emp_update ON root_employees FOR UPDATE
 | U3 | `root_audit_log` の保管期間と閲覧権限（super_admin のみか、admin も可か） |
 | U4 | 退職処理通知の Chatwork チャンネル（経理担当専用ルームか、全体グループか） |
 | U5 | 外注契約の `contract_end_on` を未来日で登録した従業員が期日前に解約した場合の処理（即時 false vs 日付更新） |
+| U6 | Vercel Cron の `verifyCronRequest` 実装（`CRON_SECRET` 検証）の標準化ライブラリが既存プロジェクトにあるか確認 |
+| U7 | §8.4 の Chatwork 通知先「admin ルーム」「critical ルーム」の具体的なルーム ID |
 
 — end of B-03 spec —
