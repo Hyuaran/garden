@@ -282,3 +282,87 @@ A社 訪問
 - [ ] 連絡先未登録のユーザーは status='skipped' で記録される
 - [ ] LINE は scaffold（API stub）のみ、enabled=false 既定
 - [ ] レビュー（a-rill + a-bloom）承認 + α版で東海林さん受信確認
+
+---
+
+## 11. 将来拡張ポイント（2026-04-26 改訂）
+
+> **改訂背景**: 給与明細配信 Y 案 + フォールバック確定（memory `project_payslip_distribution_design.md`）に伴い、Calendar 連携の将来拡張ポイントを明記。**Phase B 時点では実装不要**、設計の橋頭堡として残す。
+
+### 11.1 給与配信日通知（Phase C 以降）
+
+#### 概要
+
+Bud D-04 給与明細配信日に Calendar イベントを自動生成、本人にリマインダー通知:
+
+```
+event_type: 'payroll_distribution'
+title: '2026 年 4 月分 給与明細 配信'
+start_at: 配信日（既定: 月末 25 日 09:00 JST）
+end_at: 配信日 + 24h（PW 有効期限と同じ）
+attendee_user_ids: [配信対象全員の user_id]
+visibility: 'private'  -- 本人のみ閲覧
+notes: 'メールに DL リンクをお送りしました。LINE 友だちの方は LINE Bot 通知も届きます。'
+```
+
+#### calendar_event_links での連動
+
+```sql
+-- Bud D-04 配信時に link 作成
+INSERT INTO calendar_event_links (
+  event_id, source, source_id
+) VALUES (
+  $calendar_event_id,
+  'bud',
+  $payslip_distribution_id  -- bud_payslip_distributions.id 等
+);
+```
+
+#### 通知タイミング（既定案）
+
+| タイミング | 対象 | チャネル | 内容 |
+|---|---|---|---|
+| 配信 1h 前 | 全員 | Chatwork | 「もうすぐ給与明細を配信します」 |
+| 配信時刻 | 全員 | メール（既存）| 給与明細 DL リンク |
+| 配信時刻 | LINE 友だち | LINE Bot（既存）| 通知メッセージ |
+| 配信 + 24h（マスク）| 未確認者 | Chatwork | 「PW がマスクされます、まだ確認していない方は急いでください」 |
+
+#### Phase B 時点では未実装
+
+理由:
+- Calendar / Bud / Sprout の 3 モジュール統合が必要
+- まずは Phase B で Calendar / Sprout / Bud それぞれの基盤を揃える
+- Phase C 統合フェーズで一括実装
+
+### 11.2 LINE 通知連動の本実装（Phase B 後半）
+
+C-06 §3 で `notification_channel` enum に 'line' は既出だが、実装は scaffold のみ。Phase B 後半で:
+
+- Sprout S-05 §16 の `sendPayslipNotificationViaLine()` を Calendar 通知でも流用
+- カレンダーイベントのリマインダーを LINE 友だちに送信可
+- 設定 UI で「Chatwork / メール / LINE」を本人が選択
+
+### 11.3 給与明細マスクリマインダー
+
+Tree マイページ給与明細 PW 確認画面（`docs/specs/2026-04-26-tree-mypage-payslip-password.md`）と連動:
+
+```typescript
+// /api/cron/payslip-pw-mask-reminder (毎月末 17:00 JST)
+// 当月分 PW を未確認の従業員に Chatwork DM
+const unconfirmed = await fetchUnconfirmedPasswords();
+for (const u of unconfirmed) {
+  await sendChatworkDM(u.user_id,
+    `2026 年 4 月分の給与明細 PW がまだ未確認です。
+     社内 PC で Tree マイページからご確認ください。
+     6 時間後（23:59）にマスクされます。`
+  );
+}
+```
+
+実装は Phase C 以降、本 spec の通知基盤を流用。
+
+### 11.4 関連 spec
+
+- `docs/specs/2026-04-26-tree-mypage-payslip-password.md`（フォールバック画面）
+- `docs/specs/2026-04-26-sprout-S-05-line-bot.md` §16（Y 案 LINE 通知）
+- Bud Phase D-04 spec（給与明細配信本体）

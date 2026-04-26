@@ -235,3 +235,228 @@
 - [ ] 入社時の info → official 切替案内が自動送信される
 - [ ] メッセージ履歴が sprout_line_messages に記録される
 - [ ] 法令対応チェックリスト 5 項目レビュー済
+- [ ] §16 給与明細配信連携の DoD 全項目（後述）
+
+---
+
+## 16. 給与明細配信連携（Y 案 + フォールバック）
+
+> **改訂**: 2026-04-26 a-auto 008（Batch 18 整合）/ memory `project_payslip_distribution_design.md` 確定反映
+
+### 16.1 背景
+
+Bud Phase D-04 給与明細配信は **Y 案 + フォールバック両方実装**で確定。
+
+| フロー | 対象 | PW 必要 | 配信経路 |
+|---|---|---|---|
+| **主要（Y 案）** | LINE 友だち（official）の従業員 | 不要（メール DL リンクのみ）| メール + LINE Bot 通知 |
+| **フォールバック** | LINE 非友だち / 退職者 / Bot 不通者 | **必要**（PW 保護 PDF）| メール + Tree マイページで PW 確認 |
+
+別経路認証: 通常フローはメール + LINE = 完全別経路、フォールバックはメール + 社内 PC マイページ = 物理的隔離。
+
+### 16.2 line_friend_status 列追加（root_employees）
+
+```sql
+ALTER TABLE root_employees
+  ADD COLUMN line_friend_status text NOT NULL DEFAULT 'unknown'
+    CHECK (line_friend_status IN ('unknown', 'friend', 'blocked', 'unfriended', 'no_account')),
+  ADD COLUMN line_friend_user_id text,  -- LINE official アカウントの userId
+  ADD COLUMN line_friend_status_updated_at timestamptz,
+  ADD COLUMN line_last_message_received_at timestamptz;
+
+CREATE INDEX idx_root_employees_line_friend_status
+  ON root_employees (line_friend_status);
+```
+
+| 値 | 意味 | Y 案 / フォールバック |
+|---|---|---|
+| `friend` | 友だち登録中、Bot 通知受信可 | **Y 案** |
+| `blocked` | 友だちだが Bot ブロック中 | **フォールバック** |
+| `unfriended` | 友だち解除（退職など）| **フォールバック** |
+| `no_account` | LINE アカウント自体なし | **フォールバック** |
+| `unknown` | 未確認（入社直後の既定値）| **フォールバック**（安全側）|
+
+### 16.3 Webhook での友だち状態自動検知
+
+S-05 §4 Webhook 設計を拡張。official アカウント（スタッフ連絡用）の Webhook で以下の event 種別を処理:
+
+#### 16.3.1 friend イベント
+
+```typescript
+// LINE Webhook event.type === 'follow'
+async function handleFriend(event: LineEvent) {
+  const lineUserId = event.source.userId;
+  const employeeId = await findEmployeeByLineUserId(lineUserId);
+  if (!employeeId) return;  // 紐付け未完了は §5 紐付フローへ
+
+  await supabaseAdmin.from('root_employees').update({
+    line_friend_status: 'friend',
+    line_friend_user_id: lineUserId,
+    line_friend_status_updated_at: new Date().toISOString(),
+  }).eq('id', employeeId);
+
+  await recordOperationLog({
+    module: 'sprout', action: 'line_friend_added',
+    target_type: 'root_employees', target_id: employeeId,
+  });
+}
+```
+
+#### 16.3.2 unfriend / block イベント
+
+```typescript
+// event.type === 'unfollow'
+async function handleUnfollow(event: LineEvent) {
+  const lineUserId = event.source.userId;
+  const employee = await findEmployeeByLineUserId(lineUserId);
+  if (!employee) return;
+
+  // ブロック / 友だち解除 の区別は LINE API 単独では不可
+  // status は一旦 'unfriended' に、後続の Bot 送信失敗で 'blocked' に細分化
+  await supabaseAdmin.from('root_employees').update({
+    line_friend_status: 'unfriended',
+    line_friend_status_updated_at: new Date().toISOString(),
+  }).eq('id', employee.id);
+
+  // Bud / admin に通知（次回給与配信時にフォールバック必要）
+  await recordMonitoringEvent({
+    module: 'sprout', category: 'line_unfriend',
+    severity: 'low',
+    message: `従業員 ${employee.name} が LINE 友だちを解除`,
+  });
+}
+```
+
+### 16.4 給与明細配信用 API（Bud D-04 から呼び出し）
+
+#### 16.4.1 一括状態取得
+
+```typescript
+// src/lib/sprout/payslip-distribution.ts
+'use server';
+
+export type DistributionTarget = {
+  employee_id: string;
+  email: string;
+  line_friend_status: 'friend' | 'blocked' | 'unfriended' | 'no_account' | 'unknown';
+  line_friend_user_id: string | null;
+  // 配信フロー判定
+  use_y_flow: boolean;  // Y 案（PW なし、LINE Bot 通知併用）
+  use_fallback: boolean;  // フォールバック（PW 保護 PDF + マイページ確認）
+};
+
+export async function fetchDistributionTargets(
+  employeeIds: string[]
+): Promise<DistributionTarget[]> {
+  const { data } = await supabaseAdmin
+    .from('root_employees')
+    .select('id, email, line_friend_status, line_friend_user_id')
+    .in('id', employeeIds)
+    .eq('is_active', true);
+
+  return data.map(e => ({
+    employee_id: e.id,
+    email: e.email,
+    line_friend_status: e.line_friend_status,
+    line_friend_user_id: e.line_friend_user_id,
+    use_y_flow: e.line_friend_status === 'friend',
+    use_fallback: e.line_friend_status !== 'friend',
+  }));
+}
+```
+
+#### 16.4.2 LINE 通知送信（Y 案フロー）
+
+```typescript
+export async function sendPayslipNotificationViaLine(input: {
+  line_friend_user_id: string;
+  payslip_url: string;        // メール DL リンクと同じ
+  year_month: string;
+}): Promise<{ ok: true } | { ok: false; reason: string }> {
+  try {
+    await lineClient.pushMessage(input.line_friend_user_id, {
+      type: 'text',
+      text: `${input.year_month} の給与明細が配信されました。\nメールで送信した DL リンクからご確認ください。\n${input.payslip_url}`,
+    });
+    return { ok: true };
+  } catch (e) {
+    // LINE 送信失敗 → ブロック判定 + フォールバック移行
+    if (isBlockedError(e)) {
+      await markBlocked(input.line_friend_user_id);
+      return { ok: false, reason: 'blocked' };
+    }
+    return { ok: false, reason: 'api_error' };
+  }
+}
+```
+
+### 16.5 LINE 通知失敗時のフォールバック判定ロジック
+
+```typescript
+// Bud D-04 給与明細配信時の流れ
+async function distributePayslip(employeeId: string, payslipPdfUrl: string) {
+  const target = (await fetchDistributionTargets([employeeId]))[0];
+
+  if (target.use_y_flow) {
+    // Y 案: メール（PW なし PDF）+ LINE Bot 通知
+    await sendEmail({ to: target.email, attachment: 'pw_off_pdf' });
+    const lineResult = await sendPayslipNotificationViaLine({
+      line_friend_user_id: target.line_friend_user_id!,
+      payslip_url: payslipPdfUrl,
+      year_month: '2026-04',
+    });
+    if (!lineResult.ok && lineResult.reason === 'blocked') {
+      // ブロック検知 → 次回からフォールバック、本回は緊急 PW 配信切替
+      await switchToFallbackForCurrentMonth(employeeId);
+    }
+  } else {
+    // フォールバック: メール（PW 保護 PDF）+ マイページで PW 確認
+    const password = generatePayslipPassword(employeeId, '2026-04');
+    await sendEmail({ to: target.email, attachment: 'pw_protected_pdf', password });
+    await registerPayslipPassword({ employee_id: employeeId, year_month: '2026-04', password });
+    // PW は Tree マイページで確認可（spec: tree-mypage-payslip-password）
+  }
+}
+```
+
+### 16.6 友だち状態の定期同期（フェイルセーフ）
+
+Webhook 取りこぼし対策で日次 Cron:
+
+```typescript
+// /api/cron/sprout-line-status-sync (毎日 02:00 JST)
+// 直近 24h で送信失敗があった employee を抽出 → status 補正
+const recentFailures = await fetchRecentLineSendFailures();
+for (const f of recentFailures) {
+  if (f.error_code === 'BLOCKED') {
+    await supabaseAdmin.from('root_employees').update({
+      line_friend_status: 'blocked',
+      line_friend_status_updated_at: new Date().toISOString(),
+    }).eq('id', f.employee_id);
+  }
+}
+```
+
+### 16.7 法令対応（追加）
+
+- [ ] **個人情報保護法 第 23 条**: line_friend_user_id の RLS 厳格管理（admin / 本人のみ参照）
+- [ ] **賃金支払 5 原則（労基法 24 条）**: 給与明細到達は memo に「LINE 通知」+「メール送付」両方記録
+- [ ] **GDPR 相当**: line_friend_user_id 削除要請時の対応（退職時 6 ヶ月後物理削除）
+
+### 16.8 §15 受入基準への追加
+
+- [ ] root_employees に line_friend_status / line_friend_user_id 列追加済
+- [ ] Webhook で friend / unfollow を検知し status 自動更新
+- [ ] `fetchDistributionTargets()` が Y 案 / フォールバック判定を返す
+- [ ] LINE 通知失敗時の自動フォールバック切替動作
+- [ ] 日次 Cron で取りこぼし補正動作
+- [ ] Bud D-04 spec から呼び出し可能（公開 API として）
+
+### 16.9 §12 判断保留事項への追加
+
+| # | 論点 | a-auto スタンス |
+|---|---|---|
+| 8 | unknown 既定値 | フォールバック扱い（安全側）|
+| 9 | block 検知のリトライ前 | 1 回送信失敗 → blocked 確定（false positive 許容）|
+| 10 | line_friend_user_id 保管期間 | 退職後 6 ヶ月で物理削除 |
+| 11 | 給与配信時の API レート制限 | LINE push API は 1,000 通/秒、社員 100 名規模で問題なし |

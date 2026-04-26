@@ -82,6 +82,9 @@
 | Calendar | C-04: Tree シフト連携（Tree Phase B 完成後、event_type='shift'）| — | | | a-calendar + a-tree / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（220 行）。Tree → Calendar one-way、Phase D まで保留。 |
 | Calendar | C-05: スマホ閲覧モード（社内 PC 限定の例外、staff 以上）| — | | | a-calendar / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（221 行）。UA + viewport 検知、書込 API は 403、admin（東海林さん）承認待ち。 |
 | Calendar | C-06: 通知統合（Chatwork / Email / LINE、面接前日 + シフト前日）| — | | | a-calendar + a-rill / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（284 行）。3 channel、cron-driven、22:00-7:00 quiet hours、idempotent log。 |
+| Sprout | S-05 拡張: 給与明細配信連携（Y 案 + フォールバック判定 API）| 0.25 | | | a-sprout / a-auto 008 spec | 2026-04-26 | — | a-auto 008 整合 spec 改訂。§16 追記（line_friend_status 列 + Webhook 自動検知 + fetchDistributionTargets() + sendPayslipNotificationViaLine() + 日次補正 Cron）。memory `project_payslip_distribution_design.md` 確定反映。 |
+| Sprout | S-06 拡張: 入社初日 LINE 友だち追加 + Bot 接続確認 | 0.25 | | | a-sprout + admin / a-auto 008 spec | 2026-04-26 | — | a-auto 008 整合 spec 改訂。§14 追記（チェックリスト D-01〜D-05 + QR コード表示 + テストメッセージ送受信 + フォールバック手動マーク + admin 紐付緊急手段）。 |
+| Tree | マイページ給与明細 PW 確認画面（フォールバック専用、社内 PC 限定）| 0.5 | | | a-tree + a-bud / a-auto 008 spec | 2026-04-26 | — | a-auto 008 spec 新規起草（462 行）。bud_payslip_passwords + bud_payslip_password_views + 24h 自動マスク Cron + line_friend_status 表示制御 + admin 監査画面 + 未確認月末リマインダー。Bud D-04 連携。 |
 
 ## 運用メモ
 
