@@ -42,8 +42,8 @@ export function ModuleSlot({ module: m, position }: Props) {
     zIndex: 2,
   };
 
-  // tooltip / aria-label 用ラベル: 「Tree（成長）」「Bud（成果）」等（NotebookLM 4 カテゴリ）
-  const accessibleLabel = `${m.label}（${m.category}）`;
+  // tooltip / aria-label 用ラベル: 「Tree（地上）」「Bloom（樹冠）」等（3 レイヤー）
+  const accessibleLabel = `${m.label}（${m.layer}）`;
 
   if (!m.enabled) {
     return (

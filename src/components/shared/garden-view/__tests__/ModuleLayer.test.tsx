@@ -12,13 +12,13 @@ describe("ModuleLayer", () => {
     expect(linksCount + disabledCount).toBe(MODULE_KEYS.length);
     expect(MODULE_KEYS.length).toBe(12);
   });
-  it("positions Forest slot via center-relative transform (x=35, y=-30 → left:85%, top:20%)", () => {
+  it("positions Forest slot in 樹冠 layer via center-relative transform (x=40, y=-30 → left:90%, top:20%)", () => {
     const { container } = render(<ModuleLayer />);
     const forestLink = screen.getByRole("link", { name: /Forest/ });
     const wrapper = forestLink as HTMLAnchorElement;
     const style = wrapper.getAttribute("style") ?? "";
     expect(style).toMatch(/position:\s*absolute/);
-    expect(style).toMatch(/left:\s*85%/);
+    expect(style).toMatch(/left:\s*90%/);
     expect(style).toMatch(/top:\s*20%/);
     expect(style).toMatch(/transform:\s*translate\(-50%,\s*-50%\)/);
   });
