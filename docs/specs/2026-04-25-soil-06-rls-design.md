@@ -10,7 +10,7 @@
   - `docs/specs/2026-04-25-soil-02-call-history-schema.md`
   - `docs/specs/2026-04-25-soil-03-kanden-list-integration.md`
   - `docs/specs/cross-cutting/spec-cross-rls-audit.md`
-  - Root の `garden_role` 7 段階（toss / closer / cs / staff / manager / admin / super_admin）
+  - Root の `garden_role` 8 段階（toss / closer / cs / staff / outsource / manager / admin / super_admin）
 
 ---
 
@@ -222,7 +222,7 @@ CREATE POLICY soil_call_history_insert_own
   WITH CHECK (
     user_id = auth.uid()
     AND (SELECT garden_role FROM root_employees WHERE user_id = auth.uid())
-        IN ('toss', 'closer', 'cs', 'staff', 'manager', 'admin', 'super_admin')
+        IN ('toss', 'closer', 'cs', 'staff', 'outsource', 'manager', 'admin', 'super_admin')
   );
 ```
 

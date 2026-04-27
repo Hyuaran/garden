@@ -132,11 +132,12 @@ describe('Bud Phase C 金銭エッジケース 🔴', () => {
 });
 ```
 
-### 3.3 権限テスト（7 階層）
+### 3.3 権限テスト（8 階層）
 
 ```typescript
 describe('Bud Phase C 権限テスト', () => {
-  const roles = ['toss', 'closer', 'cs', 'staff', 'manager', 'admin', 'super_admin'];
+  // Garden 8-role 標準: toss / closer / cs / staff / outsource / manager / admin / super_admin
+  const roles = ['toss', 'closer', 'cs', 'staff', 'outsource', 'manager', 'admin', 'super_admin'];
 
   roles.forEach(role => {
     describe(`role: ${role}`, () => {

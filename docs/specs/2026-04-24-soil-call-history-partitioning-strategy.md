@@ -152,7 +152,7 @@ CREATE POLICY sch_insert_staff ON soil_call_history
   FOR INSERT WITH CHECK (
     user_id = auth.uid()
     AND (SELECT garden_role FROM root_employees WHERE user_id = auth.uid())
-        IN ('toss','closer','cs','staff','manager','admin','super_admin')
+        IN ('toss','closer','cs','staff','outsource','manager','admin','super_admin')
   );
 ```
 

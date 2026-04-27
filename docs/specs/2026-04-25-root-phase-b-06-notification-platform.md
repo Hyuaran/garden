@@ -186,7 +186,7 @@ CREATE TABLE root_notification_subscriptions (
   -- 受信者: 個人 OR ロールのいずれか一方（両方 NULL は許容しない）
   subscriber_user_id  uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   subscriber_role     text,
-  -- ロール値: 'toss' / 'closer' / 'cs' / 'staff' / 'manager' / 'admin' / 'super_admin'
+  -- ロール値: 'toss' / 'closer' / 'cs' / 'staff' / 'outsource' / 'manager' / 'admin' / 'super_admin'
 
   -- イベント識別
   event_module    text NOT NULL,
