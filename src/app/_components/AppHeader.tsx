@@ -214,7 +214,13 @@ export function AppHeader({
           data-testid="app-notification-bell"
           aria-label={`通知 ${notificationCount} 件`}
           aria-pressed={activityOpen}
-          onClick={() => setActivityOpen((v) => !v)}
+          onClick={() => {
+            setActivityOpen((v) => !v);
+            // v6 Step 6: TodaysActivity と連動して visible state をトグル
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("garden:activity:toggle"));
+            }
+          }}
           style={{
             position: "relative",
             background: "transparent",

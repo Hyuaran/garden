@@ -2,9 +2,9 @@ import { AppHeader } from "./_components/AppHeader";
 import { Sidebar } from "./_components/Sidebar";
 import { ModuleGrid } from "./_components/ModuleGrid";
 import { KpiCard } from "./_components/KpiCard";
+import { TodaysActivity } from "./_components/TodaysActivity";
 import { getVisibleKpiCards } from "./_lib/kpi-fetchers";
 
-// per-request 算出
 export const dynamic = "force-dynamic";
 
 export default async function GardenHomePage() {
@@ -69,6 +69,8 @@ export default async function GardenHomePage() {
           <ModuleGrid />
         </section>
       </div>
+
+      <TodaysActivity />
     </div>
   );
 }
