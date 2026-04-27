@@ -4,8 +4,14 @@
     {
       "name": "garden-a-bloom-002",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "3003"],
-      "port": 3003
+      "runtimeArgs": ["run", "dev", "--", "--port", "3001"],
+      "port": 3001
+    },
+    {
+      "name": "garden-a-bloom-002-3002",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd /d C:\\garden\\a-bloom-002 && npm run dev -- --port 3002"],
+      "port": 3002
     }
   ]
 }
