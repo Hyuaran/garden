@@ -89,6 +89,9 @@ export function BackgroundCarousel({ initialIndex = 0, initialMode = "manual" }:
 
   return (
     <div
+      // 装飾的（atmosphere images = decorative）+ click はマウスユーザー向けの拡張機能。
+      // キーボードユーザーは ArrowRight/Space/1-6 で同等操作可能なため aria-hidden で OK。
+      aria-hidden
       data-testid="background-carousel"
       data-atmosphere-index={index}
       data-atmosphere-mode={mode}

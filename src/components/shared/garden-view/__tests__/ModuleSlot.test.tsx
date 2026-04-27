@@ -4,10 +4,10 @@ import { ModuleSlot } from "../ModuleSlot";
 import { MODULE_KEYS, MODULES, type ModuleDef } from "../_lib/modules";
 
 const enabledModule: ModuleDef = {
-  emoji: "🌳", label: "Forest", href: "/forest", color: "#1F5C3A", enabled: true, layer: "樹冠",
+  emoji: "🌳", label: "Forest", description: "全法人決算", href: "/forest", color: "#1F5C3A", enabled: true, layer: "樹冠",
 };
 const disabledModule: ModuleDef = {
-  emoji: "🌱", label: "Soil", href: "/soil", color: "#8B6F47", enabled: false, layer: "地下",
+  emoji: "🌱", label: "Soil", description: "DB 本体・大量データ基盤", href: "/soil", color: "#8B6F47", enabled: false, layer: "地下",
 };
 const pos = { x: 0, y: 0 };  // 中央基準（cross-ui-06 §3.4）
 
