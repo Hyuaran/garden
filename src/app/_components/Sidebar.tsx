@@ -37,7 +37,7 @@ const ROLE_RANK: Record<GardenRole, number> = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/",                 icon: "🍃", label: "ホーム",         minRole: "toss" },
+  { href: "/",                 icon: "🍃", label: "ホーム",         minRole: "outsource" },
   { href: "/bloom/workboard",  icon: "📊", label: "ダッシュボード", minRole: "staff" },
   { href: "/bud",              icon: "💼", label: "取引",           minRole: "staff" },
   { href: "/leaf",             icon: "👤", label: "顧客",           minRole: "cs" },
