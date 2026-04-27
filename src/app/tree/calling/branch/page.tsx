@@ -38,6 +38,22 @@ import { useTreeState } from "../../_state/TreeStateContext";
 import { supabase } from "../../_lib/supabase";
 import { insertTreeCallRecord } from "../../_actions/insertTreeCallRecord";
 import { labelToResultCode, resultCodeToGroup } from "../../_lib/resultCodeMapping";
+import { useCallShortcuts } from "../../_hooks/useCallShortcuts";
+import { useCallRollback } from "../../_hooks/useCallRollback";
+
+/** F キー → Branch ボタンラベルのマッピング（spec §4 通り） */
+const BRANCH_BUTTONS_BY_KEY: Record<string, string> = {
+  F1: "受注",
+  F2: "担不",
+  F3: "見込 A",
+  F4: "見込 B",
+  F5: "見込 C",
+  F6: "不通",
+  F7: "NG お断り",
+  F8: "NG クレーム",
+  F9: "NG 契約済",
+  F10: "NG その他",
+};
 
 /** デモ用顧客リストデータ */
 type Customer = {
@@ -129,6 +145,9 @@ export default function CallingBranchPage() {
   const [savingCall, setSavingCall] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // --- Step 6: 巻き戻し hook ---
+  const { armRollback, performRollback, canRollback } = useCallRollback();
+
   const cu = DEMO_CUSTOMERS[selectedCustomer];
 
   // --- フェーズ遷移ハンドラ ---
@@ -214,6 +233,9 @@ export default function CallingBranchPage() {
           setSavingCall(false);
           return;
         }
+
+        // Step 6: INSERT 成功後 5s 間の巻き戻しを有効化
+        armRollback(tcrResult.call_id);
       } else {
         console.warn("[branch] no active session in localStorage, tree_call_records INSERT skipped");
       }
@@ -225,6 +247,25 @@ export default function CallingBranchPage() {
     setTimerKey((k) => k + 1);
     setSavingCall(false);
   };
+
+  // --- Step 5: FM 互換ショートカット ---
+  useCallShortcuts(BRANCH_BUTTONS_BY_KEY, {
+    onResult: (label) => {
+      if (phase === "calling" && (label === "留守" || label === "不通")) {
+        saveAndReset(label);
+      } else if (phase === "inputting") {
+        saveAndReset(label);
+      }
+    },
+    onRollback: () => {
+      if (canRollback) {
+        performRollback().then((res) => {
+          if (!res.success) setSaveError(res.error ?? "巻き戻しに失敗しました");
+          else setSaveError(null);
+        });
+      }
+    },
+  });
 
   return (
     <div
@@ -291,6 +332,44 @@ export default function CallingBranchPage() {
           }}
         >
           ⚠️ 保存に失敗しました: {saveError}
+        </div>
+      )}
+
+      {/* Step 6: 巻き戻しボタン（5s 以内のみ表示） */}
+      {canRollback && (
+        <div
+          style={{
+            marginBottom: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <button
+            onClick={() =>
+              performRollback().then((res) => {
+                if (!res.success) setSaveError(res.error ?? "巻き戻しに失敗しました");
+                else setSaveError(null);
+              })
+            }
+            style={{
+              padding: "8px 18px",
+              border: `1px solid ${C.gold}`,
+              borderRadius: 10,
+              background: "rgba(201,168,76,0.08)",
+              color: C.goldDark ?? C.gold,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "'Noto Sans JP', sans-serif",
+              transition: "all 0.15s ease",
+            }}
+          >
+            ↩ 巻き戻し（Ctrl+Z）
+          </button>
+          <span style={{ fontSize: 11, color: C.textMuted }}>
+            5秒以内のみ有効
+          </span>
         </div>
       )}
 
