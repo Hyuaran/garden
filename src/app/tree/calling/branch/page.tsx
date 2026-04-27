@@ -40,6 +40,8 @@ import { insertTreeCallRecordWithQueue } from "../../_lib/insertTreeCallRecordWi
 import { labelToResultCode, resultCodeToGroup } from "../../_lib/resultCodeMapping";
 import { useCallShortcuts } from "../../_hooks/useCallShortcuts";
 import { useCallRollback } from "../../_hooks/useCallRollback";
+import { useCallGuard } from "../../_hooks/useCallGuard";
+import { useOfflineQueue } from "../../_hooks/useOfflineQueue";
 import { NetworkStatusBadge } from "../../_components/NetworkStatusBadge";
 
 /** F キー → Branch ボタンラベルのマッピング（spec §4 通り） */
@@ -148,6 +150,16 @@ export default function CallingBranchPage() {
 
   // --- Step 6: 巻き戻し hook ---
   const { armRollback, performRollback, canRollback } = useCallRollback();
+
+  // --- Step 7: オフラインキュー ---
+  const { queueSize } = useOfflineQueue();
+
+  // --- Step 8: 画面遷移ガード（beforeunload） ---
+  // 巻き戻しウィンドウ中 or オフラインキューあり = 通話中扱い
+  useCallGuard({
+    isCalling: canRollback,
+    hasOfflineQueue: queueSize > 0,
+  });
 
   const cu = DEMO_CUSTOMERS[selectedCustomer];
 
