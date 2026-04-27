@@ -164,3 +164,39 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
   }
 }
+
+/* ====================================================================
+ * v7-D A 案 hit area hover effect
+ * 透明 hit area on v4 画像 overlay。base transform: translate(-50%, -50%)
+ * を維持しつつ scale + ring を加える。
+ * ==================================================================== */
+
+.v7d-hit {
+  display: block;
+  background: transparent;
+  transition:
+    transform 0.2s ease-out,
+    box-shadow 0.2s ease-out,
+    background 0.2s ease-out;
+}
+
+.v7d-hit:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 0 0 3px rgba(168, 216, 122, 0.6);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.v7d-hit--disabled {
+  /* disabled hit area は hover 演出なし（cursor: not-allowed のみ）*/
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v7d-hit,
+  .v7d-hit:hover {
+    transform: translate(-50%, -50%) !important;
+    transition: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+}
