@@ -101,6 +101,15 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Tree | Track B 責任者ツール spec 起草（社員心象醸成、早期展開）| 0.3 | 0.3 | 0 | a-tree (A) | 2026-04-27 | 2026-04-27 | a-main 006 Track B 早期展開タスク。docs/specs/tree/spec-tree-track-b-supervisor-tools.md 新規起草（~600 行）。F1 実件数報告 .xlsx 自動生成 / F2 営業 FB 集約 / F3 日次・週次・月次サマリ / F4 その他 Excel 自動化候補の 4 機能、優先順位提案（推奨: F1+F3 セット最小版 = 1.5d）+ Phase 2 拡張版（+2.0d）に分離、合計 3.5d。Track A の +2.0d ソフトフォン実装とは別建て。判断保留 7 件 §10 明示（東海林さん業務知識依存: F1 既存 Excel テンプレ提供 / F1+F3 schema 依存方針 / 優先順位最終確定 等）。Dual-Track 戦略 memory 準拠、後道さん FB 不要（営業側、Track A 経営側との分離）。ブランチ: feature/tree-track-b-supervisor-tools-20260427、ローカル commit のみ（push は GitHub 復旧後）。 |
+| Tree | Track B v1.1 改訂（判断保留 #3 確定: D-01 schema 流用 A 案採択）| 0.05 | 0.05 | 0 | a-tree (A) | 2026-04-27 | 2026-04-27 | a-main 判断回答反映。spec §6.1 を A 案採択前提に詳細化（廃案 B/C の理由併記、集計クエリ方針 = `tree_call_records` 生 SELECT、件数増時に D-05 MV 流用検討）。§10 #3 を ✅ 確定マーク、§11.1 で D-01 完成必須明記、§13 リスク #2 を ✅ 解消。Track A α 版開始 = Track B Phase 1 リリース可能の構造を spec 内で固定。判断保留 #1 #2 #4 は東海林さん判断（保留継続）。同ブランチ追加 commit。 |
+| Tree | Track B F1 実件数報告 .xlsx 自動生成（最小版） | 0.6 | | | a-tree (A) | (pending) | | spec §2 準拠。当日 1 営業日分のコール数・トス数・成約数・クレーム数を Excel で生成・ダウンロード可能に。Phase 1 最小版、Track A の D-1 着手と同時 or 数日以内に開始可能。判断保留 #1（東海林さん既存テンプレ提供）解消後に着手。 |
+| Tree | Track B F3 日次・週次・月次サマリ画面（最小版）| 0.8 | | | a-tree (A) | (pending) | | spec §3 準拠。/tree/supervisor/summary、3 タブ（当日/当週/当月）、上位 3 名 + 要フォロー下位 3 名（D-03 有効率閾値流用）、30 秒 polling。Bloom Phase A-1 と役割分担（Bloom = 全社月次、F3 = コールセンター当日速報）。 |
+| Tree | Track B F1+F3 統合 QA + 既存画面整合確認 | 0.1 | | | a-tree (A) | (pending) | | D-03 ダッシュボード / D-05 KPI / aporan / alerts との整合確認、manager+ ロール動作確認。 |
+| Tree | Track B Phase 2 F1 拡張（日次/週次/月次切替・配信先指定・cron）| 1.0 | | | a-tree (A) | (pending) | | spec §2.2 準拠。Phase 1 試用フィードバック反映後着手。 |
+| Tree | Track B Phase 2 F3 拡張（部署フィルタ・要対応タスク・過去比較）| 1.0 | | | a-tree (A) | (pending) | | spec §3.2 準拠。Bloom 連携で 0.5d 短縮可能性あり。 |
+| Tree | Track B Phase 2 F2 営業フィードバック集約画面 | 1.0 | | | a-tree (A) | (pending) | | spec §4 準拠。F1+F3 安定運用後に着手。 |
+| Tree | Track B F4 ヒアリング → 追加 sub-spec 起草 | 別途 | | | a-tree (A) | (pending) | | F1+F3 リリース後の効果測定後にヒアリング、別 spec 起草。本 spec 範囲外。 |
 
 ## 運用メモ
 
