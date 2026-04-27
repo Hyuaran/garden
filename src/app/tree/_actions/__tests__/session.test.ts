@@ -197,7 +197,9 @@ describe("closeSession", () => {
     const result = await closeSession({ session_id: "sess-123", accessToken: "bad-token" });
 
     expect(result.success).toBe(false);
-    expect(result.errorCode).toBe("UNAUTHENTICATED");
+    if (!result.success) {
+      expect(result.errorCode).toBe("UNAUTHENTICATED");
+    }
   });
 
   it("成功 — 認証済み + employee あり + UPDATE 成功で success:true を返す", async () => {
