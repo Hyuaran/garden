@@ -38,6 +38,9 @@ import { SHOW_DEMO_CONTROLS } from "../../_constants/flags";
 import { TREE_PATHS } from "../../_constants/screens";
 import { insertCall } from "../../_lib/queries";
 import { useTreeState } from "../../_state/TreeStateContext";
+import { supabase } from "../../_lib/supabase";
+import { insertTreeCallRecord } from "../../_actions/insertTreeCallRecord";
+import { labelToResultCode, resultCodeToGroup, isMemoRequired } from "../../_lib/resultCodeMapping";
 
 /** デモ用顧客データ */
 const DEMO_CUSTOMER = {
@@ -139,6 +142,53 @@ export default function CallingSproutPage() {
       setSaveError(result.error ?? "保存に失敗しました");
       setSavingCall(false);
       return;
+    }
+
+    // D-02 Step 3: tree_call_records への INSERT（既存 insertCall と並走）
+    const tcrCode = labelToResultCode(selectedResult);
+    if (tcrCode) {
+      // トス時メモ必須（UI 側でも canProceed で担保済みだが念のため確認）
+      if (isMemoRequired(tcrCode) && !callMemo.trim()) {
+        setSaveError("トス時はメモが必須です");
+        setSavingCall(false);
+        return;
+      }
+
+      const sessionId = typeof window !== "undefined"
+        ? window.localStorage.getItem("tree.current_session_id")
+        : null;
+      const campaignCode = typeof window !== "undefined"
+        ? window.localStorage.getItem("tree.current_campaign_code")
+        : null;
+
+      if (sessionId && campaignCode) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token ?? "";
+
+        const durationSec =
+          connectedAt && hangupAt
+            ? Math.round((hangupAt.getTime() - connectedAt.getTime()) / 1000)
+            : null;
+
+        const tcrResult = await insertTreeCallRecord({
+          session_id: sessionId,
+          campaign_code: campaignCode,
+          result_code: tcrCode,
+          result_group: resultCodeToGroup(tcrCode),
+          memo: callMemo || undefined,
+          duration_sec: durationSec,
+          accessToken,
+        });
+
+        if (!tcrResult.success) {
+          console.error("[sprout] insertTreeCallRecord failed:", tcrResult);
+          setSaveError(tcrResult.errorMessage);
+          setSavingCall(false);
+          return;
+        }
+      } else {
+        console.warn("[sprout] no active session in localStorage, tree_call_records INSERT skipped");
+      }
     }
 
     // 保存成功 → 入力リセット・次の架電へ

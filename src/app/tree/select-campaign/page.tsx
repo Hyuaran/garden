@@ -105,6 +105,9 @@ export default function SelectCampaignPage() {
         // 次回のために選択キャンペーンを保存
         if (typeof window !== "undefined") {
           window.localStorage.setItem(LS_LAST_CAMPAIGN, campaignCode);
+          // D-02 Step 3: 結果 INSERT 時に参照できるよう session_id / campaign_code を保存
+          window.localStorage.setItem("tree.current_session_id", result.session_id);
+          window.localStorage.setItem("tree.current_campaign_code", campaignCode);
         }
         // モード別に遷移先を分岐
         const target =
