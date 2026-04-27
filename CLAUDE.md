@@ -12,7 +12,7 @@
 - **Gardenシリーズ**: FileMaker・kintoneの代替となる自社Webアプリケーション
 - **技術スタック**: Next.js (App Router) / Supabase / Vercel / TypeScript / Tailwind CSS
 
-## モジュール構成（9モジュール＋概念1）
+## モジュール構成（12モジュール、2026-04-26 改訂）
 
 | モジュール | 和名 | パス | 役割 |
 |---|---|---|---|
@@ -24,8 +24,10 @@
 | Bloom | 花 | `src/app/bloom/` | 案件一覧・日報・KPI・ダッシュボード |
 | Seed | 種 | `src/app/seed/` | 新商材・新事業の拡張枠 |
 | Forest | 森 | `src/app/forest/` | 全法人の決算資料等 |
-| Rill | 川 | `src/app/rill/` | 業務連絡 / メッセージング基盤。v1 = Tree 内当日チャット（Breeze 由来）、v2 = 全社 Chatwork クローン |
-| Fruit | 実 | — | 概念のみ（アプリなし） |
+| Rill | 川 | `src/app/rill/` | Chatwork クローン自社開発（Phase 最後着手） |
+| Fruit | 実 | `src/app/fruit/` | 法人法的実体情報（番号系・許認可・登記簿等）※2026-04-26 概念のみ→実体化 |
+| Sprout（仮） | 新芽 | `src/app/sprout/` | 採用→面接→内定→入社準備（仮名、後日リネーム可能性あり） |
+| Calendar（仮） | 暦 | `src/app/calendar/` | 営業予定・面接スロット・シフト・通知統合（仮名、後日リネーム可能性あり） |
 
 ## データ設計の基本方針
 
@@ -639,7 +641,7 @@ Tree は FileMaker 稼働中の主力業務のため、**超慎重な展開**：
 
 ---
 
-## 18. Garden 構築優先順位（2026-04-24 確定）
+## 18. Garden 構築優先順位（2026-04-26 改訂、初版 2026-04-24）
 
 ### 目的
 6ヶ月（MAX 年内）でのリリース目標に向けた、**モジュール着手順序を明文化**。
@@ -652,45 +654,73 @@ Tree は FileMaker 稼働中の主力業務のため、**超慎重な展開**：
 
 #### Phase A（1〜2ヶ月）: 経理総務の自動化 🟢 自分用・時間確保目的
 - **Garden-Bud**（経理・振込・明細）
-  - 現在：Phase 1b.2 Task 5/13 完了
-  - 完走 → α版運用開始
+  - ✅ Phase A-1 完結（A-03 / A-04 / A-05 / A-06 / A-08 spec / A-07 整理、919 tests 全緑、PR #55）
+  - Phase B（給与処理）spec 8 件 起草済（PR #74、a-auto Batch 17）
 - **Garden-Forest**（経営ダッシュボード）
-  - 現在：本番稼働中、v9 機能移植 Phase 1-4 残
-  - 納税カレンダー / 決算書ZIP / 派遣資産要件 を追加
+  - 本番稼働中、Phase A 仕上げ 7 タスク中 6 完走
+  - 残: T-F6 (Download + ZIP)
 - **Garden-Root**（従業員マスタ、経理で参照）
-  - 現在：認証Phase A構築中
-  - 7マスタ完成 → Bud と連携
+  - ✅ Phase A-3 完走（A-3-a〜A-3-h 全 8 spec 実装）
+  - Phase B 全 7 spec 起草済（PR #75、a-root-002 並列起草、3,858 行 / 14.75d 見積）
 
 #### Phase B（1〜2ヶ月）: 事務業務の効率化
-- **Garden-Leaf 001_関西電力業務委託**（Phase C完成）
-  - 現在：事務入力UI、Backoffice UI が進行中
-  - 関電業務委託のみ現場投入
+- **Garden-Leaf 001_関西電力業務委託**（Phase D 92.9% 完了）
+  - 8 PR 発行済（#65〜#73）、Phase D 13/14 task 実装、約 3,000 行コード + 62 tests
+  - 残: D.14 カバレッジ確認（merge 後）+ Phase A / B / F
 - **Garden-Bud 給与処理**（勤怠取込・計算・配信）
+  - spec 8 件 起草済（PR #74）、A-07 採択結果反映済、実装は Phase B 着手指示後
+- **🆕 Garden-Sprout（仮）**（採用 → 面接 → 内定 → 入社準備）
+  - spec v0.2 完成（PR #76 merge 済）、a-auto Batch 18 で詳細 spec 7 件起草済（1,850 行）
+  - 4 書面（雇用契約書 / 秘密保持 / 退職届 / 緊急連絡先届）テンプレ反映済
+  - LINE 2 アカウント運用（ヒュアラン_info / スタッフ連絡用_official）対応
+  - 仮アカウント発行 → 入社初日 → 本アカウント化 フロー設計
+- **🆕 Garden-Fruit**（法人法的実体情報）
+  - 実体化（旧: 概念のみ）、Kintone 法人名簿（App 28、61 フィールド）から 6 法人取込
+  - 法人番号 / インボイス / 各種届出番号 / 登記簿等を管理
+  - Sprout / Bud / Forest / Root から共通参照
+  - a-auto Batch 18 で詳細 spec 5 件起草済（1,579 行 / 5.25d）
+- **🆕 Garden-Calendar（仮）**（営業予定・面接スロット・シフト・通知統合）
+  - タイムツリー API 非対応のため Garden 独自実装
+  - staff 以上のみ閲覧 / 入力（toss / closer / cs は対象外）
+  - スマホ閲覧 OK の例外（社内 PC 限定の例外、`project_garden_login_office_only` 補正済）
+  - a-auto Batch 18 で詳細 spec 6 件起草済（1,518 行）
 
 #### Phase C（1〜2ヶ月）: 補完モジュール
 - **Garden-Soil**（DB基盤、リスト253万件・コール履歴335万件）
-- **Garden-Bloom**（日報・KPI・案件一覧）
-- **Garden-Rill**（Chatwork API連携）
+  - spec 8 件 起草済（PR #57 merge 済、a-auto Batch 16）
+- **Garden-Bloom**（案件一覧・日報・KPI・進捗ダッシュボード）
+  - ✅ Phase A-1 完結（Workboard / Roadmap / 月次ダイジェスト / Chatwork 連携 / Cron 3 / PDF export / 疎結合化、54 ファイル）
+  - 後道さんへの可視化主軸、β投入準備中
+  - Phase A-2: 他モジュール統合 KPI ダッシュボード（Tree KPI / Leaf 案件 / Bud 損益 / Forest 経営指標）は β投入後
 - **Garden-Seed**（新事業枠、必要時）
-- **Garden-Leaf 他商材**（光回線・クレカ等、順次）
+- **Garden-Leaf 他商材**（光回線・クレカ等）
+  - skeleton 5 件 起草済（PR #40 merge 済、a-auto Batch 12）
 
-#### Phase D（1〜2ヶ月）: Tree 最終段階 🔴 最慎重
+#### Phase D（最終段階）🔴 最慎重
 - **Garden-Tree**（架電アプリ、コールセンターの要）
-- FileMaker 稼働中のため、**失敗許されない**
-- §16 の7種テスト完走
-- §17 の Tree 特例（1人 → 2-3人 → 半数 → 全員）で慎重展開
-- FileMaker からの移行完了でプロジェクト総仕上げ
+  - FileMaker 稼働中のため、**失敗許されない**
+  - Phase A 認証 / Phase B-α 誕生日同期 / Phase B-β B 経路（マイページ誕生日変更）完成
+  - Phase D plan v3 完成（PR #71 merge 済、70 task / 6.5d + 5 週間、a-tree 起草）
+  - §16 の7種テスト完走 + §17 の Tree 特例（1人 → 2-3人 → 半数 → 全員）で慎重展開
+  - FileMaker からの移行完了でプロジェクト総仕上げ
+- **Garden-Rill**（Chatwork クローン自社開発）
+  - **真のスコープ**: Chatwork API クライアントではなく Chatwork のようなメッセージアプリを自社開発
+  - Phase 最後着手、Chatwork 月額コスト削減 + Garden 内データ連携が狙い
+  - 既存通知（Forest / Bud 等）は引き続き Chatwork API（Garden Bot 経由）で動かし、Rill 完成後に内製移行
+  - memory `project_garden_rill_scope.md` 参照
 
 ### 並列化方針
 
 - **Phase A の対話作業中** → Phase B/C/D の**設計書起草・分析を a-auto に並列投入**
 - §15 の並列自律提案ルールを活用
 - ボトルネックは Leaf の商材量（約30テーブル）→ 早期に a-auto でスケルトン生成
+- **subagent-driven-development** + 並列 sonnet dispatch で大量 spec / 実装を高速化（実績: a-root-002 が 7 spec を 30 分、a-leaf が 13 task を 15 分、a-auto が 18 spec を 7 分で完走）
 
 ### 定期レビュー
 
-- **月次**: 進捗確認（effort-tracking.md で実績 vs 見積比較）
+- **月次**: 進捗確認（`docs/effort-tracking.md` 折衷案フォーマット = 日本語列名で実績 vs 見積比較）
 - 6ヶ月目標の乖離があれば **スコープ調整** or **外部リソース投入**検討
+- Bloom が他モジュールの effort-tracking を進捗 UI で可視化する想定（Phase A-2 で実装）
 ## 複数セッション運用ルール
 
 Claude Code を複数セッション並行で動かす場合、**必ずセッションごとに独立したディレクトリで作業すること**。同じディレクトリを複数セッションで使うと、ブランチが勝手に切り替わる問題が発生する。
@@ -1424,7 +1454,7 @@ Tree は FileMaker 稼働中の主力業務のため、**超慎重な展開**：
 
 ---
 
-## 18. Garden 構築優先順位（2026-04-24 確定）
+## 18. Garden 構築優先順位（2026-04-26 改訂、初版 2026-04-24）
 
 ### 目的
 6ヶ月（MAX 年内）でのリリース目標に向けた、**モジュール着手順序を明文化**。
@@ -1437,42 +1467,70 @@ Tree は FileMaker 稼働中の主力業務のため、**超慎重な展開**：
 
 #### Phase A（1〜2ヶ月）: 経理総務の自動化 🟢 自分用・時間確保目的
 - **Garden-Bud**（経理・振込・明細）
-  - 現在：Phase 1b.2 Task 5/13 完了
-  - 完走 → α版運用開始
+  - ✅ Phase A-1 完結（A-03 / A-04 / A-05 / A-06 / A-08 spec / A-07 整理、919 tests 全緑、PR #55）
+  - Phase B（給与処理）spec 8 件 起草済（PR #74、a-auto Batch 17）
 - **Garden-Forest**（経営ダッシュボード）
-  - 現在：本番稼働中、v9 機能移植 Phase 1-4 残
-  - 納税カレンダー / 決算書ZIP / 派遣資産要件 を追加
+  - 本番稼働中、Phase A 仕上げ 7 タスク中 6 完走
+  - 残: T-F6 (Download + ZIP)
 - **Garden-Root**（従業員マスタ、経理で参照）
-  - 現在：認証Phase A構築中
-  - 7マスタ完成 → Bud と連携
+  - ✅ Phase A-3 完走（A-3-a〜A-3-h 全 8 spec 実装）
+  - Phase B 全 7 spec 起草済（PR #75、a-root-002 並列起草、3,858 行 / 14.75d 見積）
 
 #### Phase B（1〜2ヶ月）: 事務業務の効率化
-- **Garden-Leaf 001_関西電力業務委託**（Phase C完成）
-  - 現在：事務入力UI、Backoffice UI が進行中
-  - 関電業務委託のみ現場投入
+- **Garden-Leaf 001_関西電力業務委託**（Phase D 92.9% 完了）
+  - 8 PR 発行済（#65〜#73）、Phase D 13/14 task 実装、約 3,000 行コード + 62 tests
+  - 残: D.14 カバレッジ確認（merge 後）+ Phase A / B / F
 - **Garden-Bud 給与処理**（勤怠取込・計算・配信）
+  - spec 8 件 起草済（PR #74）、A-07 採択結果反映済、実装は Phase B 着手指示後
+- **🆕 Garden-Sprout（仮）**（採用 → 面接 → 内定 → 入社準備）
+  - spec v0.2 完成（PR #76 merge 済）、a-auto Batch 18 で詳細 spec 7 件起草済（1,850 行）
+  - 4 書面（雇用契約書 / 秘密保持 / 退職届 / 緊急連絡先届）テンプレ反映済
+  - LINE 2 アカウント運用（ヒュアラン_info / スタッフ連絡用_official）対応
+  - 仮アカウント発行 → 入社初日 → 本アカウント化 フロー設計
+- **🆕 Garden-Fruit**（法人法的実体情報）
+  - 実体化（旧: 概念のみ）、Kintone 法人名簿（App 28、61 フィールド）から 6 法人取込
+  - 法人番号 / インボイス / 各種届出番号 / 登記簿等を管理
+  - Sprout / Bud / Forest / Root から共通参照
+  - a-auto Batch 18 で詳細 spec 5 件起草済（1,579 行 / 5.25d）
+- **🆕 Garden-Calendar（仮）**（営業予定・面接スロット・シフト・通知統合）
+  - タイムツリー API 非対応のため Garden 独自実装
+  - staff 以上のみ閲覧 / 入力（toss / closer / cs は対象外）
+  - スマホ閲覧 OK の例外（社内 PC 限定の例外、`project_garden_login_office_only` 補正済）
+  - a-auto Batch 18 で詳細 spec 6 件起草済（1,518 行）
 
 #### Phase C（1〜2ヶ月）: 補完モジュール
 - **Garden-Soil**（DB基盤、リスト253万件・コール履歴335万件）
-- **Garden-Bloom**（日報・KPI・案件一覧）
-- **Garden-Rill**（Chatwork API連携）
+  - spec 8 件 起草済（PR #57 merge 済、a-auto Batch 16）
+- **Garden-Bloom**（案件一覧・日報・KPI・進捗ダッシュボード）
+  - ✅ Phase A-1 完結（Workboard / Roadmap / 月次ダイジェスト / Chatwork 連携 / Cron 3 / PDF export / 疎結合化、54 ファイル）
+  - 後道さんへの可視化主軸、β投入準備中
+  - Phase A-2: 他モジュール統合 KPI ダッシュボード（Tree KPI / Leaf 案件 / Bud 損益 / Forest 経営指標）は β投入後
 - **Garden-Seed**（新事業枠、必要時）
-- **Garden-Leaf 他商材**（光回線・クレカ等、順次）
+- **Garden-Leaf 他商材**（光回線・クレカ等）
+  - skeleton 5 件 起草済（PR #40 merge 済、a-auto Batch 12）
 
-#### Phase D（1〜2ヶ月）: Tree 最終段階 🔴 最慎重
+#### Phase D（最終段階）🔴 最慎重
 - **Garden-Tree**（架電アプリ、コールセンターの要）
-- FileMaker 稼働中のため、**失敗許されない**
-- §16 の7種テスト完走
-- §17 の Tree 特例（1人 → 2-3人 → 半数 → 全員）で慎重展開
-- FileMaker からの移行完了でプロジェクト総仕上げ
+  - FileMaker 稼働中のため、**失敗許されない**
+  - Phase A 認証 / Phase B-α 誕生日同期 / Phase B-β B 経路（マイページ誕生日変更）完成
+  - Phase D plan v3 完成（PR #71 merge 済、70 task / 6.5d + 5 週間、a-tree 起草）
+  - §16 の7種テスト完走 + §17 の Tree 特例（1人 → 2-3人 → 半数 → 全員）で慎重展開
+  - FileMaker からの移行完了でプロジェクト総仕上げ
+- **Garden-Rill**（Chatwork クローン自社開発）
+  - **真のスコープ**: Chatwork API クライアントではなく Chatwork のようなメッセージアプリを自社開発
+  - Phase 最後着手、Chatwork 月額コスト削減 + Garden 内データ連携が狙い
+  - 既存通知（Forest / Bud 等）は引き続き Chatwork API（Garden Bot 経由）で動かし、Rill 完成後に内製移行
+  - memory `project_garden_rill_scope.md` 参照
 
 ### 並列化方針
 
 - **Phase A の対話作業中** → Phase B/C/D の**設計書起草・分析を a-auto に並列投入**
 - §15 の並列自律提案ルールを活用
 - ボトルネックは Leaf の商材量（約30テーブル）→ 早期に a-auto でスケルトン生成
+- **subagent-driven-development** + 並列 sonnet dispatch で大量 spec / 実装を高速化（実績: a-root-002 が 7 spec を 30 分、a-leaf が 13 task を 15 分、a-auto が 18 spec を 7 分で完走）
 
 ### 定期レビュー
 
-- **月次**: 進捗確認（effort-tracking.md で実績 vs 見積比較）
+- **月次**: 進捗確認（`docs/effort-tracking.md` 折衷案フォーマット = 日本語列名で実績 vs 見積比較）
 - 6ヶ月目標の乖離があれば **スコープ調整** or **外部リソース投入**検討
+- Bloom が他モジュールの effort-tracking を進捗 UI で可視化する想定（Phase A-2 で実装）
