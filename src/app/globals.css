@@ -1,28 +1,229 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ====================================================================
+ * Garden Series — Home UI Stylesheet (Next.js 移植版)
+ * v2.8a / 2026-04-27 (originated by ChatGPT prototype)
+ * Step 1: CSS 変数 + フォント基盤
+ *
+ * 既存 v6/v7 の hover keyframes (gv-*, v7d-hit, gv-grid-card) は保持。
+ * v2.8a 仕様の CSS 変数（カラー / レイアウト）+ ダークモード対応 +
+ * @theme inline で Tailwind expose を追加。
+ *
+ * ダークモード切替: <html class="dark"> または [data-theme="dark"]
+ * ==================================================================== */
+
+/* ========== カラーパレット（ライトモード） ========== */
+
+:root,
+[data-theme="light"] {
+  /* === 背景 === */
+  --bg-paper:        #f5f0e1;
+  --bg-paper-soft:   #faf6ec;
+  --bg-card:         rgba(255, 253, 245, 0.70);
+  --bg-card-hover:   rgba(255, 253, 245, 0.90);
+  --bg-card-solid:   #fdfbf3;
+  --bg-sidebar:      rgba(250, 246, 236, 0.65);
+  --bg-activity:     rgba(255, 253, 245, 0.75);
+  --bg-overlay:      rgba(245, 240, 225, 0.18);
+
+  /* === テキスト === */
+  --text-main:       #4a4233;
+  --text-sub:        #8a7f6a;
+  --text-muted:      #b3a98f;
+  --text-accent:     #7a9968;
+  --text-warning:    #c95a4a;
+  --text-success:    #7a9968;
+  --text-info:       #5a8fa8;
+
+  /* === 罫線 === */
+  --border-soft:     rgba(154, 138, 105, 0.22);
+  --border-card:     rgba(154, 138, 105, 0.28);
+
+  /* === アクセントカラー === */
+  --accent-green:    #9bb88a;
+  --accent-green-d:  #7a9968;
+  --accent-gold:     #d4a541;
+  --accent-blue:     #8ab4cc;
+  --accent-pink:     #e8b4b8;
+
+  /* === 影 === */
+  --shadow-soft:      0 4px 20px rgba(120, 100, 70, 0.08);
+  --shadow-card:      0 6px 24px rgba(120, 100, 70, 0.10);
+  --shadow-hover:     0 16px 44px rgba(120, 100, 70, 0.20);
+  --shadow-orb-hover: 0 20px 50px rgba(120, 100, 70, 0.25);
+  --shadow-floating:  0 12px 40px rgba(120, 100, 70, 0.18);
 }
+
+/* ========== カラーパレット（ダークモード） ========== */
+/* class="dark" と [data-theme="dark"] の両方に対応（next-themes 互換） */
+
+.dark,
+[data-theme="dark"] {
+  --bg-paper:        #1f2419;
+  --bg-paper-soft:   #2a302a;
+  --bg-card:         rgba(38, 44, 32, 0.55);
+  --bg-card-hover:   rgba(50, 58, 42, 0.85);
+  --bg-card-solid:   #2c322a;
+  --bg-sidebar:      rgba(30, 36, 24, 0.6);
+  --bg-activity:     rgba(38, 44, 32, 0.7);
+  --bg-overlay:      rgba(25, 30, 20, 0.25);
+
+  --text-main:       #e0d8c5;
+  --text-sub:        #a8a08c;
+  --text-muted:      #7a7460;
+  --text-accent:     #b8d4a8;
+  --text-warning:    #e89888;
+  --text-success:    #b8d4a8;
+  --text-info:       #98c4dc;
+
+  --border-soft:     rgba(212, 200, 165, 0.15);
+  --border-card:     rgba(212, 200, 165, 0.20);
+
+  --accent-green:    #a8c898;
+  --accent-green-d:  #b8d4a8;
+  --accent-gold:     #e4b551;
+  --accent-blue:     #98c4dc;
+  --accent-pink:     #d8a4a8;
+
+  --shadow-soft:      0 4px 20px rgba(0, 0, 0, 0.30);
+  --shadow-card:      0 6px 24px rgba(0, 0, 0, 0.40);
+  --shadow-hover:     0 16px 44px rgba(0, 0, 0, 0.55);
+  --shadow-orb-hover: 0 20px 50px rgba(220, 200, 130, 0.20);
+  --shadow-floating:  0 12px 40px rgba(0, 0, 0, 0.50);
+}
+
+/* ========== レイアウト寸法（v2.8a） ========== */
+
+:root {
+  --radius-card:     20px;
+  --radius-input:    12px;
+  --radius-pill:     999px;
+  --sidebar-w:       210px;
+  --topbar-h:        80px;
+
+  /* === [v2.8a] レイアウト寸法変数 ===
+     左カラム = KPIカード(1段) + margin + ガラス玉(3段) で構成。
+     ガラス玉が4列×3段=12個の前提。
+     Activityパネル高さは top+bottom指定 + JS実測補正方式で対応。
+     --left-column-h は将来の参照用に残置。 */
+  --kpi-card-h:        144px;
+  --kpi-grid-mb:       18px;
+  --orb-card-h:        140px;
+  --orb-grid-rows:     3;
+  --orb-grid-gap:      14px;
+  --left-column-h:     calc(
+                         var(--kpi-card-h)
+                         + var(--kpi-grid-mb)
+                         + var(--orb-card-h) * var(--orb-grid-rows)
+                         + var(--orb-grid-gap) * (var(--orb-grid-rows) - 1)
+                       );
+}
+
+/* ========== Tailwind v4 @theme inline (CSS-based config) ==========
+   v2.8a の CSS 変数を Tailwind の utility class として expose する。
+   例:
+     bg-bg-paper         → background: var(--bg-paper)
+     text-text-main      → color: var(--text-main)
+     border-border-soft  → border-color: var(--border-soft)
+     font-shippori       → font-family: var(--font-shippori), ...
+   ==================================================================== */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* === Garden v2.8a colors === */
+  --color-bg-paper:        var(--bg-paper);
+  --color-bg-paper-soft:   var(--bg-paper-soft);
+  --color-bg-card:         var(--bg-card);
+  --color-bg-card-hover:   var(--bg-card-hover);
+  --color-bg-card-solid:   var(--bg-card-solid);
+  --color-bg-sidebar:      var(--bg-sidebar);
+  --color-bg-activity:     var(--bg-activity);
+  --color-bg-overlay:      var(--bg-overlay);
+
+  --color-text-main:       var(--text-main);
+  --color-text-sub:        var(--text-sub);
+  --color-text-muted:      var(--text-muted);
+  --color-text-accent:     var(--text-accent);
+  --color-text-warning:    var(--text-warning);
+  --color-text-success:    var(--text-success);
+  --color-text-info:       var(--text-info);
+
+  --color-border-soft:     var(--border-soft);
+  --color-border-card:     var(--border-card);
+
+  --color-accent-green:    var(--accent-green);
+  --color-accent-green-d:  var(--accent-green-d);
+  --color-accent-gold:     var(--accent-gold);
+  --color-accent-blue:     var(--accent-blue);
+  --color-accent-pink:     var(--accent-pink);
+
+  /* === Garden v2.8a shadows === */
+  --shadow-garden-soft:      var(--shadow-soft);
+  --shadow-garden-card:      var(--shadow-card);
+  --shadow-garden-hover:     var(--shadow-hover);
+  --shadow-garden-orb-hover: var(--shadow-orb-hover);
+  --shadow-garden-floating:  var(--shadow-floating);
+
+  /* === Garden v2.8a radii === */
+  --radius-garden-card:  var(--radius-card);
+  --radius-garden-input: var(--radius-input);
+  --radius-garden-pill:  var(--radius-pill);
+
+  /* === Fonts (v2.8a + 既存 Geist) === */
+  --font-sans:        var(--font-noto-serif-jp), var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono:        var(--font-geist-mono), monospace;
+  --font-shippori:    var(--font-shippori), var(--font-noto-serif-jp), serif;
+  --font-noto-serif:  var(--font-noto-serif-jp), serif;
+  --font-cormorant:   var(--font-cormorant), var(--font-eb-garamond), serif;
+  --font-eb-garamond: var(--font-eb-garamond), var(--font-cormorant), serif;
+  --font-numeric:     var(--font-eb-garamond), var(--font-cormorant), var(--font-noto-serif-jp), serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ========== 互換: 既存 ShojiStatus / Garden 共通 light CSS 変数 ========== */
+/* 既存コード互換用: --background / --foreground を v2.8a に紐付け */
+
+:root {
+  --background: var(--bg-paper);
+  --foreground: var(--text-main);
 }
+
+.dark,
+[data-theme="dark"] {
+  --background: var(--bg-paper);
+  --foreground: var(--text-main);
+}
+
+/* ========== body 既定 ========== */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-paper);
+  color: var(--text-main);
+  font-family: var(--font-noto-serif-jp), 'Noto Serif JP', 'Shippori Mincho', serif;
+  letter-spacing: 0.02em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.6s ease, color 0.6s ease;
+}
+
+/* ========== 数字専用 utility (v2.8a §2-3) ==========
+   .num-tnum を付けた要素は EB Garamond 優先 + tabular-nums + lining-nums。
+   KPI 値・トレンド・時刻表示・グラフラベル等で使用。
+   ==================================================================== */
+
+.num-tnum {
+  font-family: var(--font-eb-garamond), var(--font-cormorant), 'Noto Serif JP', serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* ========== fadeUp アニメーション (v2.8a §6-1) ========== */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fadeUp {
+  animation: fadeUp 0.6s ease-out both;
 }
 
 /* ====================================================================
@@ -134,6 +335,9 @@ body {
     transition: none !important;
     transform: none !important;
     filter: none !important;
+  }
+  .fadeUp {
+    animation: none !important;
   }
 }
 
