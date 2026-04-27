@@ -5,12 +5,34 @@
 - 見積: **0.9d**
 - 担当セッション: a-tree
 - 作成: 2026-04-25（a-auto / Batch 9 Tree Phase D #01）
+- 改訂: **2026-04-26（a-main 006）— 判断保留 6 件すべて確定 / a-tree 反映済**
 - 前提:
   - `root_employees` / `garden_role` 7 階層（Root 既設）
   - Soil `soil_call_lists` / `soil_call_histories`（営業リスト 253 万件 / コール履歴 335 万件、Phase C で拡張予定）
   - spec-cross-rls-audit（Batch 7）
   - spec-cross-audit-log（Batch 7）
   - spec-leaf-kanden-phase-c-01-schema-migration（列制限 Trigger・論理削除パターン踏襲）
+
+---
+
+## 0. 2026-04-26 確定事項（a-main 006、東海林承認）
+
+> 本セクションは「判断保留 6 件」の確定結果を spec 上部にまとめたもの。詳細仕様は各章で本確定に従って記述する。
+
+| # | 項目 | 確定内容 |
+|---|---|---|
+| 0-1 | **録音ファイル Storage** | **イノベラ（PBX）継続使用、Garden 内に録音保管しない。** 連携はイノベラ API（月 7,000 円コスト、API 仕様書連携待ち）or 手動取込 fallback。本 spec の対象テーブルには `recording_url` 列のみ保持し、ファイル本体は Garden 内に置かない。 ⚠️ **2026-04-26 a-main 確定 #18 注記**: 将来イノベラ API の採用具合（応答性能・カバレッジ・SLA）次第で**Garden 内録音実装方針へ変更可能性あり**。β段階以降の運用評価で再判断。 |
+| 0-2 | **`result_code` の enum 化方針** | **CHECK 制約 hard-code（柔軟性重視）。** 商材追加・営業フロー変更で年 1〜2 回追加見込み。Postgres `enum` 型は使わず、`CHECK (result_code IN ('toss', 'ng', ...))` で柔軟に拡張。 |
+| 0-3 | **リスト割当アルゴリズム** | **開放型・競争式モデル（割当モデルではない）。** リスト 1 万件単位で全員解放、レコードロックで重複架電防止。`tree_agent_assignments` は「誰が今そのリストの何件目を取り組んでいるか」のロック用途であり、事前割当のためのテーブルではない。 |
+| 0-4 | **Soil との整合性チェック** | **日次 23:00 JST、差分 > 0.1% で Chatwork アラート。** Cron で `tree_call_records` と `soil_call_histories` の差分を比較し、閾値超過時は admin に通知。 |
+| 0-5 | **監査ログ保存期間** | **永続スタート → 運用安定後に 10 年 → 7 年と段階的短縮（Garden 全体標準）。** memory `feedback_data_retention_default_pattern.md` 準拠。本 spec の段階で削除・archive バッチは実装せず、将来拡張用 hooks のみ用意。 |
+| 0-6 | **`tree_call_records` パーティショニング** | **初期は単一テーブル、3,000 万件到達時に `called_at` 月次パーティション化（Soil B-02 同パターン）。** Phase D-1 ではパーティション化しない。spec §6.x にて将来拡張点を明記する。 |
+
+### 既存実装との整合（合わせて反映）
+
+- `/tree/calling/sprout` の **架電結果ボタン**は `tree_call_records.result_code` の CHECK 制約値と同期。判 0-2 確定により、新規結果コード追加時は migration 1 件 + フロント定数 1 ヶ所で対応可能。
+- 既存 `/tree/alerts` 画面の有効率（eff）アラートは `tree_call_records` の result_group 集計に依存（D-03 で詳細）。
+- 既存実装の **トス時メモ必須**ロジックは `tree_call_records.memo NOT NULL CHECK (length(memo) > 0)` 相当を D-04 spec で具体化。
 
 ---
 
@@ -35,7 +57,7 @@ FileMaker で稼働中の架電業務（コールセンター中核業務）を 
 - UI 実装（D-02 / D-03）
 - トスアップ連携詳細（D-04、ここではスキーマ接合点のみ）
 - KPI ダッシュボードの集計 VIEW（D-05 で別途定義）
-- 録音ファイル Storage 設計（§判断保留、Phase D-1.5 相当）
+- 録音ファイル Storage 設計（§0 判 0-1 確定: イノベラ継続、Garden 内保管しない）
 
 ---
 
@@ -138,7 +160,7 @@ CREATE TABLE tree_call_records (
   tossed_leaf_case_id  uuid,            -- D-04 トスアップ先 Leaf 案件
   rollback_reason      text,            -- ステータス巻き戻し時の理由
   prev_result_code     text,            -- 直前の result_code（巻き戻し追跡）
-  recording_storage_key text,           -- Storage の録音 Key（§判断保留）
+  recording_url        text,            -- イノベラ PBX 側の録音 URL（イノベラ API 連携 or 手動取込で格納、本テーブルには URL のみ保持。判 0-1 確定）
   created_at           timestamptz NOT NULL DEFAULT now(),
   updated_at           timestamptz NOT NULL DEFAULT now(),
   deleted_at           timestamptz
@@ -407,28 +429,28 @@ WHERE h.source = 'filemaker';  -- Soil 側で source 列を追加、FM 投入時
 
 ---
 
-## 10. 判断保留事項（a-auto では決めない）
+## 10. 判断保留事項（2026-04-26 全件確定済 — 履歴保持）
 
-- **判1: 録音ファイル Storage 設計**
-  - 録音は現状 FM 外部（別 PBX / クラウド PBX）に依存
-  - `tree_call_records.recording_storage_key` を Storage `call-recordings/` に置くか、別ベンダー URL を格納するか
-  - **推定スタンス**: Phase D-1 では PBX URL 格納のみ、Storage 統合は D-1.5 で別途検討
-- **判2: `result_code` の enum 化**
-  - 現在の `_constants/callButtons.ts` は TypeScript constant
-  - DB CHECK 制約で hard-code すべきか、別テーブル `tree_result_codes` で柔軟化すべきか
-  - **推定スタンス**: CHECK 制約で hard-code（営業ロジック変更は年 1-2 回、migration で耐えられる）
-- **判3: リスト割当アルゴリズム**
-  - 現在 FM では手動割当が多い。自動化するか（FIFO / round-robin / skill-based）
-  - **推定スタンス**: Phase D-1 は手動維持、D-2 以降で round-robin を検討
-- **判4: Soil との整合性チェック頻度**
-  - 夜間バッチで整合性確認（Tree 集計 vs Soil 集計）すべきか
-  - **推定スタンス**: 日次 23:00 に整合性 SQL を走らせ、差分 > 0.1% で Chatwork アラート
-- **判5: 監査ログの保存期間**
-  - 架電の法定保存は 3 年（景表法準拠）/ 7 年（税務関連時）
-  - **推定スタンス**: **7 年固定**（Leaf C-01 の「解約後データ永続」方針と統一）
-- **判6: `tree_call_records` パーティショニング**
-  - 月間 50 万件 × 12 = 年 600 万件。2 年で 1,200 万件
-  - **推定スタンス**: 初期は単一テーブル、3,000 万件到達時に `called_at` 月次パーティション化
+> 本セクションは履歴。全 6 件の確定内容は §0「2026-04-26 確定事項」を正典とする。
+
+- **判1（確定）: 録音ファイル Storage 設計**
+  - **確定: イノベラ（PBX）継続使用、Garden 内に録音保管しない。連携はイノベラ API（月 7,000 円）or 手動取込 fallback。**
+  - 当初推定: Phase D-1 では PBX URL 格納のみ、Storage 統合は D-1.5 で別途検討 → 確定方針と整合
+- **判2（確定）: `result_code` の enum 化**
+  - **確定: CHECK 制約 hard-code（柔軟性重視、商材追加・営業フロー変更で年 1-2 回追加）**
+  - 当初推定通り
+- **判3（確定）: リスト割当アルゴリズム**
+  - **確定: 開放型・競争式モデル（割当モデルではない）。リスト 1 万件単位で全員解放、レコードロックで重複架電防止。**
+  - 当初推定（FIFO/round-robin/skill-based）から **モデル自体が変更** — `tree_agent_assignments` の意味づけが「割当」→「ロック」へ。各テーブル定義のコメントを §3 で更新済。
+- **判4（確定）: Soil との整合性チェック頻度**
+  - **確定: 日次 23:00 JST、差分 > 0.1% で Chatwork アラート（admin 宛）**
+  - 当初推定通り
+- **判5（確定）: 監査ログの保存期間**
+  - **確定: 永続スタート → 運用安定後に 10 年 → 7 年と段階的短縮（Garden 全体標準）**
+  - 当初推定（7 年固定）から **永続スタート方針へ変更**（memory `feedback_data_retention_default_pattern.md` 準拠）
+- **判6（確定）: `tree_call_records` パーティショニング**
+  - **確定: 初期は単一テーブル、3,000 万件到達時に `called_at` 月次パーティション化（Soil B-02 同パターン）**
+  - 当初推定通り
 
 ---
 
