@@ -26,6 +26,20 @@ export const ATMOSPHERES: readonly Atmosphere[] = [
   { id: 5, key: "workflow-flow",         shortLabel: "循環",    imagePath: "/themes/atmospheres/06-workflow-flow.webp" },
 ];
 
+/**
+ * V7 dispatch (2026-04-27): 東海林さん指定の本物 v2 画像 6 枚（public/images/atmospheres/01.png〜06.png）
+ * 旧 ATMOSPHERES（digital-terrarium / webp）は test 互換維持で残置。
+ * V7 以降のホーム背景は ATMOSPHERES_V2 を使用。
+ */
+export const ATMOSPHERES_V2: readonly Atmosphere[] = [
+  { id: 0, key: "vivid-canopy",       shortLabel: "Vivid Canopy（鮮やかな樹冠）",      imagePath: "/images/atmospheres/01.png" },
+  { id: 1, key: "aqua-stream",        shortLabel: "Aqua Stream（水流のテラリウム）",   imagePath: "/images/atmospheres/02.png" },
+  { id: 2, key: "digital-sanctuary",  shortLabel: "Digital Sanctuary（デジタル神聖樹）", imagePath: "/images/atmospheres/03.png" },
+  { id: 3, key: "crystal-clear",      shortLabel: "Crystal Clear（結晶ガラス）",        imagePath: "/images/atmospheres/04.png" },
+  { id: 4, key: "golden-light",       shortLabel: "Golden Light（光降る朝）",          imagePath: "/images/atmospheres/05.png" },
+  { id: 5, key: "watercolor-serene",  shortLabel: "Watercolor Serene（静謐水彩）",     imagePath: "/images/atmospheres/06.png" },
+];
+
 export const ATMOSPHERE_COUNT = 6;
 export const AUTO_INTERVAL_MS = 8000;
 export const FADE_TRANSITION_MS = 800;

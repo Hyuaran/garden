@@ -4,6 +4,8 @@ import { ModuleGrid } from "./_components/ModuleGrid";
 import { KpiCard } from "./_components/KpiCard";
 import { TodaysActivity } from "./_components/TodaysActivity";
 import { getVisibleKpiCards } from "./_lib/kpi-fetchers";
+import { BackgroundCarousel } from "../components/shared/garden-view/BackgroundCarousel";
+import { ATMOSPHERES_V2 } from "../components/shared/garden-view/_lib/atmospheres";
 
 export const dynamic = "force-dynamic";
 
@@ -13,64 +15,72 @@ export default async function GardenHomePage() {
   const kpiCards = getVisibleKpiCards(role);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        backgroundImage: "url(/images/garden-home-bg-v2.webp)",
-        backgroundSize: "cover",
-        backgroundPosition: "right center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
-      }}
-    >
-      <Sidebar />
+    <div style={{ position: "relative", minHeight: "100vh" }}>
+      {/* V7 Group A: 6 atmospheres カルーセル背景（fixed full-page） */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 0 }}>
+        <BackgroundCarousel atmospheres={ATMOSPHERES_V2} />
+      </div>
 
       <div
         style={{
-          flex: 1,
-          minWidth: 0,
-          background: "linear-gradient(90deg, rgba(250, 248, 243, 0.92) 0%, rgba(250, 248, 243, 0.85) 60%, rgba(250, 248, 243, 0.0) 100%)",
+          position: "relative",
           display: "flex",
-          flexDirection: "column",
+          minHeight: "100vh",
+          zIndex: 1,
         }}
       >
-        <AppHeader />
+        <Sidebar />
 
-        <section aria-label="挨拶" style={{ padding: "20px 28px 0" }}>
-          <h1 style={{ fontSize: 24, margin: 0, color: "#1F5C3A", fontWeight: 700 }}>
-            東海林さん、おはようございます
-          </h1>
-          <p style={{ fontSize: 13, color: "#5C6E5F", marginTop: 6 }}>
-            今日も素敵な一日を。業務の成長をサポートします。
-          </p>
-        </section>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background:
+              "linear-gradient(90deg, rgba(250, 248, 243, 0.92) 0%, rgba(250, 248, 243, 0.85) 60%, rgba(250, 248, 243, 0.0) 100%)",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <AppHeader />
 
-        {kpiCards.length > 0 && (
-          <section
-            aria-label="KPI ダッシュボード"
-            style={{
-              padding: "16px 28px 0",
-              display: "grid",
-              gridTemplateColumns: `repeat(${Math.min(kpiCards.length, 4)}, 1fr)`,
-              gap: 14,
-              maxWidth: 1080,
-              width: "100%",
-              margin: "0 auto",
-            }}
-          >
-            {kpiCards.map((card) => (
-              <KpiCard key={card.id} card={card} />
-            ))}
+          <section aria-label="挨拶" style={{ padding: "20px 28px 0" }}>
+            <h1 style={{ fontSize: 24, margin: 0, color: "#1F5C3A", fontWeight: 700 }}>
+              東海林さん、おはようございます
+            </h1>
+            <p style={{ fontSize: 13, color: "#5C6E5F", marginTop: 6 }}>
+              今日も素敵な一日を。業務の成長をサポートします。
+            </p>
           </section>
-        )}
 
-        <section aria-label="モジュール一覧" style={{ padding: "16px 28px 32px", flex: 1 }}>
-          <ModuleGrid />
-        </section>
+          {kpiCards.length > 0 && (
+            <section
+              aria-label="KPI ダッシュボード"
+              style={{
+                padding: "16px 28px 0",
+                display: "grid",
+                gridTemplateColumns: `repeat(${Math.min(kpiCards.length, 4)}, 1fr)`,
+                gap: 14,
+                maxWidth: 1080,
+                width: "100%",
+                margin: "0 auto",
+              }}
+            >
+              {kpiCards.map((card) => (
+                <KpiCard key={card.id} card={card} />
+              ))}
+            </section>
+          )}
+
+          <section
+            aria-label="モジュール一覧"
+            style={{ padding: "16px 28px 32px", flex: 1 }}
+          >
+            <ModuleGrid />
+          </section>
+        </div>
+
+        <TodaysActivity />
       </div>
-
-      <TodaysActivity />
     </div>
   );
 }

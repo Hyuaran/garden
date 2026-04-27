@@ -1,7 +1,3 @@
-/**
- * @deprecated v6 dispatch (2026-04-27): page.tsx 直接 background-image に置換、本コンポーネント未使用化。
- * Step 5 完了後に _archive 退避検討。CLAUDE.md「ファイル削除禁止」ルールにより当面残置。
- */
 "use client";
 
 /**
@@ -22,6 +18,7 @@ import {
   ATMOSPHERE_COUNT,
   AUTO_INTERVAL_MS,
   FADE_TRANSITION_MS,
+  type Atmosphere,
   type AtmosphereId,
 } from "./_lib/atmospheres";
 
@@ -32,9 +29,15 @@ type Props = {
   initialIndex?: AtmosphereId;
   /** 初期モード（5/5 デモは manual で開始、A キーで auto に） */
   initialMode?: CarouselMode;
+  /** 表示する atmospheres リスト（未指定時は既存 ATMOSPHERES = digital-terrarium） */
+  atmospheres?: readonly Atmosphere[];
 };
 
-export function BackgroundCarousel({ initialIndex = 0, initialMode = "manual" }: Props) {
+export function BackgroundCarousel({
+  initialIndex = 0,
+  initialMode = "manual",
+  atmospheres = ATMOSPHERES,
+}: Props) {
   const [index, setIndex] = useState<AtmosphereId>(initialIndex);
   const [mode, setMode] = useState<CarouselMode>(initialMode);
 
@@ -107,7 +110,7 @@ export function BackgroundCarousel({ initialIndex = 0, initialMode = "manual" }:
         cursor: "pointer",
       }}
     >
-      {ATMOSPHERES.map((atm, i) => (
+      {atmospheres.map((atm, i) => (
         <div
           key={atm.id}
           data-atmosphere-key={atm.key}
