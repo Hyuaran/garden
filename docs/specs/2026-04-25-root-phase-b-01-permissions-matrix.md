@@ -1,10 +1,35 @@
 # Root B-1: 権限詳細設計（DB 駆動権限マトリックス）仕様書
 
 - 対象: Garden-Root の権限管理基盤（root_settings テーブル + 8 ロール × 機能マトリックス）
-- 見積: **2.25d**（内訳は §10 参照）
+- 見積: **2.5d**（内訳は §10 参照、Cat 1 #8 ワンタイムキー追加 +0.25d）
 - 担当セッション: a-root
 - 作成: 2026-04-25（a-root / Phase B-1）
 - 前提 spec: Phase 1 認証スキーマ（scripts/root-auth-schema.sql）、Phase A-3-g outsource 拡張
+
+---
+
+## 0. 確定事項（2026-04-26 a-main 007 東海林承認済 - Cat 1 Root 権限管理 8 件）
+
+本 spec は `C:\garden\_shared\decisions\decisions-pending-batch-20260426.md` の **Cat 1** 確定事項を反映する。
+
+### 重要：表現統一ルール（memory `project_super_admin_operation.md` 参照）
+
+- 「社長が」表現禁止 → **「東海林さんが」** に統一
+- 理由: super_admin = **東海林さん本人専任**、委託あっても「東海林やっといて」になるのが運用実態
+- spec / 実装 / UI 全てで super_admin の主体は東海林さんであることを明示
+
+### Cat 1 確定 8 件
+
+| # | 確定 | 内容 | 反映先 |
+|---|---|---|---|
+| 1 | A | 権限変更画面の操作権限 = super_admin（東海林さん本人）のみ | §3 / §6 / §7 |
+| 2 | A | 削除ロックの変更も super_admin（東海林さん本人）のみ | §3.X 削除列ロック |
+| 3 | A | 個別 override = 全モジュールで使用可 | §3 root_user_permission_overrides 関連 |
+| 4 | A | 権限変更は即時反映 | §6 / §8 has_permission_v2() |
+| 5 | **B** | outsource Leaf 編集 = **既定 denied、案件単位で個別 override** | §9 連携ポイント / §3 既定権限マトリックス |
+| 6 | A | toss 閲覧 = 自分担当分のみ（運用で拡張判断） | §9 連携ポイント |
+| 7 | A | 申請承認 = **削除系・権限変更のみ承認必須** | §10 申請承認フロー |
+| 8 | A | 緊急時超過権限 = super_admin が手動で **ワンタイムキー発行** | §11 新設サブセクション |
 
 ---
 
@@ -14,7 +39,9 @@
 
 現状の `root_can_access()` / `root_can_write()` 等の**ハードコード型ロール判定**を、
 データベースで管理するマトリックスへ段階的に移行し、**SQL 関数の改修なしで権限を動的変更**できる基盤を整備する。
-これにより admin が管理画面から権限の付与・剥奪を即時反映でき、モジュール横断（Bud・Leaf・Tree 等）の権限チェックを一元化する。
+これにより管理画面から権限の付与・剥奪を即時反映でき、モジュール横断（Bud・Leaf・Tree 等）の権限チェックを一元化する。
+
+**super_admin（東海林さん本人専任）について**: 権限変更・削除ロック変更・ワンタイムキー発行等の最上位操作は、すべて super_admin＝東海林さん本人が行う。委託スタッフが同席しても最終操作は「東海林さんがやっておく」運用が実態であり、この spec の「super_admin が〜する」という記述はすべて東海林さん本人を指す（memory `project_super_admin_operation.md` 参照）。
 
 ### 含める
 
@@ -110,6 +137,10 @@ ALTER TABLE root_settings
 COMMENT ON TABLE root_settings IS
   'Garden 全モジュールの権限マトリックス。(module, feature, role) → permission の三項関係。'
   '登録なし = 従来の SQL 関数（root_can_access 等）で fallback 判定（後方互換）。';
+
+-- Cat 1 #1/#2: 権限変更・削除ロック変更は super_admin（東海林さん本人）のみ
+-- RLS: root_settings の INSERT/UPDATE/DELETE は super_admin に限定（§6 参照）
+-- Cat 1 #4: 変更は即時反映（キャッシュの TTL は §5.1 の getUserPermissions 参照）
 ```
 
 ### 3.2 インデックス
@@ -197,6 +228,64 @@ COMMENT ON FUNCTION has_permission(text, text) IS
   'root_settings に登録なければ従来関数で fallback（後方互換）。';
 ```
 
+### 3.4 個別 override テーブル（Cat 1 #3: 全モジュール対象）
+
+`root_user_permission_overrides` は特定ユーザーへの **ロール非依存の個別権限付与・剥奪** を管理する。
+**対象モジュールに制限はなく、全 Garden モジュール（Tree / Soil / Leaf 各種 / Bud / Bloom / Forest / Rill / Seed 等）で使用可能**（Cat 1 #3 確定）。
+
+```sql
+CREATE TABLE root_user_permission_overrides (
+  override_id   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id       uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  module        text NOT NULL,   -- 全 Garden モジュール対応（制限なし）
+  operation     text NOT NULL,   -- feature_key または 'update' / 'delete' 等の操作識別子
+  scope         jsonb,           -- 適用スコープ（例: {"case_id": "xxx"}、NULL = 全体）
+  permission    text NOT NULL CHECK (permission IN ('allowed', 'denied')),
+  reason        text,            -- 付与理由（監査用）
+  granted_by    uuid NOT NULL REFERENCES auth.users(id), -- super_admin（東海林さん）のみ
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  expires_at    timestamptz,     -- NULL = 無期限
+
+  UNIQUE (user_id, module, operation, scope)
+);
+
+COMMENT ON TABLE root_user_permission_overrides IS
+  'Cat 1 #3: 特定ユーザーへの個別権限 override。全 Garden モジュールで使用可能。'
+  '付与・剥奪とも super_admin（東海林さん本人）のみ操作可。';
+```
+
+**対象モジュール例**: Tree / Soil / Leaf（leaf-kanden 等の個別商材含む）/ Bud / Bloom / Forest / Rill / Seed / root 等すべての Garden モジュール。
+
+#### 3.4.1 outsource ロールの Leaf 編集 override 運用（Cat 1 #5 B）
+
+outsource（外注）ロールは Leaf 案件の編集を**既定 denied** とする。
+必要な案件のみ `root_user_permission_overrides` で **案件単位の個別 override** を付与する設計。
+
+**槙さん例外（旧: `module_owner_flags = {"leaf-kanden": "owner"}` で全件編集可 → 修正）**:
+- 旧設計を廃止し、編集対象は `root_user_permission_overrides` の個別 override で管理
+- `module_owner_flags` フィールドは引き続き「担当商材の識別」に使用できるが、
+  それだけでは編集権限は付与されない（override が必要）
+
+| 槙さんが操作したい案件 | 操作 | 必要な override |
+|---|---|---|
+| leaf-kanden case A の編集 | update | `(user=槙, module=leaf-kanden, operation=update, scope={"case_id":"A"})` |
+| leaf-kanden 全件閲覧 | select | `(user=槙, module=leaf-kanden, operation=select, scope=NULL)` |
+
+**`scope` 列の設計判断**: 既存の `root_user_permission_overrides` が scope を持つ場合はそのまま利用。
+持たない場合は `scope jsonb` 列を追加する（§3.4 のテーブル定義に含める）。
+
+### 3.5 削除ロック（Cat 1 #2）
+
+**削除ロックの設定・解除は super_admin（東海林さん本人）のみ**。
+各モジュールのレコード削除（hard_delete / soft_delete）の権限付与・取消も同様。
+
+```sql
+-- 実装パターン: root_settings で delete 系の feature を super_admin 限定に設定
+-- 例: (module='leaf', feature='case_delete', role='admin') → permission='denied'
+--     (module='leaf', feature='case_delete', role='super_admin') → permission='allowed'
+-- 削除ロックの変更は root_settings の write 権限（super_admin のみ）と同一制御
+```
+
 ---
 
 ## 4. 8 ロール × 機能マトリックス
@@ -236,10 +325,10 @@ COMMENT ON FUNCTION has_permission(text, text) IS
 | feature_key | 機能名 | toss | closer | cs | staff | outsource | manager | admin | super_admin |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | case_view | 案件閲覧 | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ |
-| case_edit | 案件編集 | × | ○ | × | ○ | ○ | ○ | ○ | ○ |
+| case_edit | 案件編集（※outsource は既定 denied、案件単位 override で拡張） | × | ○ | × | ○ | × | ○ | ○ | ○ |
 | toss_up | トスアップ（案件化操作） | ○ | × | × | × | × | × | ○ | ○ |
 | backoffice_view | バックオフィス UI 閲覧 | × | × | × | ○ | ○ | ○ | ○ | ○ |
-| backoffice_edit | バックオフィス UI 編集 | × | × | × | ○ | ○ | ○ | ○ | ○ |
+| backoffice_edit | バックオフィス UI 編集（※outsource は既定 denied、override で拡張） | × | × | × | ○ | × | ○ | ○ | ○ |
 | commodity_settings | 商材設定変更 | × | × | × | × | × | × | ○ | ○ |
 | case_delete | 案件削除 | × | × | × | × | × | × | ○ | ○ |
 
@@ -252,7 +341,7 @@ COMMENT ON FUNCTION has_permission(text, text) IS
 | call_confirm_edit | 前確/後確内容編集 | × | × | ○ | ○ | × | ○ | ○ | ○ |
 | kpi_view | KPI 閲覧（自分） | ○ | ○ | ○ | ○ | × | ○ | ○ | ○ |
 | kpi_all_view | KPI 閲覧（全員） | × | × | × | × | × | ○ | ○ | ○ |
-| call_history_view | コール履歴閲覧 | △ | ○ | ○ | ○ | × | ○ | ○ | ○ |
+| call_history_view | コール履歴閲覧（※toss は自分担当分のみ、全体閲覧は denied） | △ | ○ | ○ | ○ | × | ○ | ○ | ○ |
 | list_import | 架電リスト取込 | × | × | × | ○ | × | ○ | ○ | ○ |
 
 ### 4.5 Bloom モジュール（module = 'bloom'）
@@ -315,7 +404,7 @@ export async function getModulePermissions(module: GardenModule): Promise<Permis
 export async function getUserPermissions(): Promise<UserPermissions>;
 ```
 
-### 5.2 権限変更・admin UI（super_admin 専用）
+### 5.2 権限変更・admin UI（super_admin（東海林さん本人）専用）
 
 ```typescript
 // 1 行 upsert（変更は root_audit_log に自動記録 — §8 参照）
@@ -354,11 +443,16 @@ CREATE POLICY root_settings_select ON root_settings
   USING (root_can_access());
   -- root_can_access() = manager 以上
 
--- INSERT / UPDATE / DELETE: super_admin のみ
+-- INSERT / UPDATE / DELETE: super_admin（東海林さん本人）のみ（Cat 1 #1 / #2）
+-- #1: 権限変更画面の操作権限 = super_admin のみ
+-- #2: 削除ロックの変更も super_admin のみ
 CREATE POLICY root_settings_write ON root_settings
   FOR ALL
   USING (root_is_super_admin())
   WITH CHECK (root_is_super_admin());
+
+-- Cat 1 #4: 変更は即時反映（SECURITY DEFINER 関数のため、commit 後の次クエリから反映）
+-- クライアント側 SWR キャッシュは TTL 5 分推奨（§5.1 参照）、権限変更時は強制 revalidate を推奨
 
 -- NOTE: upsert 時は updated_by を auth.uid() に自動設定するため
 --       BEFORE trigger を実装する（§6.3 参照）
@@ -413,12 +507,33 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 - **Leaf 商材設定変更**: admin 以上に限定（誤操作防止）
 - **Leaf 側への通知**: Leaf RLS を `has_permission()` に移行する際、a-leaf が a-root の B-1 完了を確認してから実施
 
+#### outsource ロールの Leaf 編集（Cat 1 #5 B: 既定 denied + 案件単位 override）
+
+- outsource ロールはマトリックス上 `case_edit` が **denied**（§4.3 参照）
+- 外注スタッフが特定案件を編集する必要がある場合、super_admin（東海林さん本人）が
+  `root_user_permission_overrides` に案件単位の override を追加する
+- `has_permission_v2()` の override 段階（Phase B-1 以降の拡張関数）で判定される
+- 槙さん等の外注担当者も同パターンで管理（`module_owner_flags` だけでは編集権限不可）
+
+**has_permission_v2() での優先順（Cat 1 #3/#4 統合）**:
+1. 個別 override（`root_user_permission_overrides`）
+2. ロール権限（`root_settings`）
+3. `root_settings` 未登録 → fallback 関数
+
 ### 7.3 Garden-Tree との連携（架電画面の権限統合）
 
 - **架電開始**: `has_permission('tree', 'call_start')` — toss / closer に限定
 - **前確/後確**: 現在 `tree_can_view_confirm()` でハードコード → B-1 後は `has_permission('tree', 'call_confirm_view')` で代替可能
   - `tree_can_view_confirm()` は後方互換のため **削除しない**（has_permission のフォールバックとして機能継続）
 - **KPI 閲覧**: 自分のみ vs 全員の 2 段階（`kpi_view` / `kpi_all_view`）
+
+#### toss ロールの閲覧制限（Cat 1 #6: 自分担当分のみ）
+
+- toss ロールは `call_history_view` において **自分担当案件のみ閲覧可**（§4.4 注記参照）
+- 「自分のみ」制限は RLS の owner check で実装（`has_permission()` の責務を超えない）
+- **運用で拡張判断**: 営業フィードバックで全 toss 案件閲覧可へ拡張する場合は
+  `root_settings` の `(tree, call_history_view, toss)` を `allowed` に変更 + RLS を調整
+  （または `root_settings` に `toss_view_scope` 系 feature を追加する設計も可）
 
 ### 7.4 横断利用の優先順位
 
@@ -434,6 +549,7 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 
 `root_settings` の INSERT / UPDATE / DELETE はすべて `root_audit_log` に記録する。
 記録は AFTER trigger（SECURITY DEFINER）で実装し、RLS より後段で確実に動作させる。
+**Cat 1 #4**: 変更は即時反映のため、権限変更が audit_log に記録された時点で新権限が有効になっている。
 
 記録内容:
 - `action`: `permission_created` / `permission_changed` / `permission_deleted`
@@ -464,6 +580,11 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 | AC-10 | admin UI のマトリックスエディタで 1 行の permission 変更ができる |
 | AC-11 | 一括更新（bulkUpsertPermissions）が失敗時にロールバックされる |
 | AC-12 | `updated_by` が変更したユーザーの auth.users.id を正しく記録している |
+| AC-13 | outsource ロールで `has_permission('leaf', 'case_edit')` が false（override なし）を返す |
+| AC-14 | `root_user_permission_overrides` で個別 override 追加後、有効化されている（全モジュール対応） |
+| AC-15 | toss ロールで tree `call_history_view` が自分担当分以外は RLS で除外される |
+| AC-16 | `root_emergency_keys` テーブルが作成され、super_admin（東海林さん）以外が INSERT できない |
+| AC-17 | ワンタイムキー発行後、`has_permission_v2()` の 0 段階でキーが認識される |
 
 ---
 
@@ -478,35 +599,155 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 | W5 | admin UI（マトリックスエディタ、`/root/settings/permissions`）| 0.5d |
 | W6 | 既存モジュール連携調整（bud/leaf/tree の RLS への `has_permission()` 案内、実移行は各モジュール担当）| 0.5d |
 | W7 | テスト（vitest + RLS pg_tap 相当の SQL テスト）| 0.25d |
-| **合計** | | **2.25d** |
+| W8 | 申請承認フロー限定化（Cat 1 #7: 削除系・権限変更のみ対象に絞込）| 0d（既存設計の絞り込みのみ） |
+| W9 | 緊急時ワンタイムキー（Cat 1 #8: `root_emergency_keys` + `has_permission_v2()` 0 段階 + UI）| 0.25d |
+| **合計** | | **2.5d** |
 
 ---
 
-## 11. 判断保留
+## 10.5 申請承認フロー（Cat 1 #7: 削除系・権限変更のみ承認必須）
+
+### 承認必須の対象（Cat 1 #7 確定）
+
+以下の操作のみ申請承認フローを経由する:
+
+| 種別 | 対象操作 | 承認者 |
+|---|---|---|
+| **削除系** | hard_delete / soft_delete 権限の付与・取消 | super_admin（東海林さん本人） |
+| **権限変更（重大）** | super_admin への昇格 | super_admin（東海林さん本人） |
+| **権限変更（重大）** | `garden_role` の変更（ロール変更） | super_admin（東海林さん本人） |
+| **権限変更（重大）** | `module_owner_flags` の変更 | super_admin（東海林さん本人） |
+
+### 承認不要の操作（即時変更可）
+
+| 種別 | 操作者 |
+|---|---|
+| view 拡張（閲覧範囲の拡大） | manager 即時変更可（admin 確認程度） |
+| cs / staff の操作範囲調整 | manager 即時変更可 |
+| 個別 override の付与（view 系） | admin 以上 |
+| 権限マトリックス上の軽微な変更 | admin 即時変更可（super_admin への申請不要） |
+
+### 実装方針
+
+- 承認必須操作は `upsertPermission()` / `bulkUpsertPermissions()` でフラグ判定し、
+  承認待ちキューに投入する（別テーブル `root_permission_requests` で管理、B-2 spec 詳細化）
+- 承認不要操作は即時 upsert（Cat 1 #4 即時反映と整合）
+
+---
+
+## 11. 緊急時超過権限（ワンタイムキー、Cat 1 #8 新規）
+
+通常運用で permitted な範囲を超える緊急対応が必要な場合、super_admin（東海林さん本人）が**手動でワンタイムキーを発行**して一時的に権限を付与する。
+
+### 11.1 ユースケース
+
+- 経理担当者が休暇中、admin 不在で緊急の振込承認が必要
+- システム障害時、対応担当が通常権限外のテーブルにアクセスする必要
+- 監査時、外部監査人に一時的な閲覧権限を付与
+
+### 11.2 データモデル
+
+```sql
+CREATE TABLE root_emergency_keys (
+  key_id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  key_token         text UNIQUE NOT NULL,           -- ワンタイムキー文字列（32 文字以上のランダム）
+  issued_to         uuid NOT NULL REFERENCES auth.users(id),
+  issued_by         uuid NOT NULL REFERENCES auth.users(id), -- super_admin（東海林さん本人）
+  granted_module    text NOT NULL,
+  granted_operation text NOT NULL,
+  scope             jsonb,                           -- 案件 id 等の限定スコープ
+  reason            text NOT NULL,                   -- 発行理由（必須）
+  issued_at         timestamptz NOT NULL DEFAULT now(),
+  expires_at        timestamptz NOT NULL,            -- 有効期限（既定 24h、最大 7d）
+  used_at           timestamptz,                     -- 使用時刻
+  revoked_at        timestamptz,                     -- 取消時刻
+  audit_log_ids     bigint[]                         -- このキーで実行された操作の root_audit_log id
+);
+
+CREATE INDEX root_emergency_keys_active_idx
+  ON root_emergency_keys (issued_to, expires_at)
+  WHERE used_at IS NULL AND revoked_at IS NULL;
+```
+
+### 11.3 has_permission_v2() への統合
+
+3 段階解決の **0 段階目（最優先）** としてワンタイムキー判定を追加:
+
+```sql
+CREATE OR REPLACE FUNCTION has_permission_v2(
+  p_user_id uuid, p_module text, p_operation text
+) RETURNS boolean AS $$
+  -- 0. 緊急ワンタイムキー（Cat 1 #8）
+  -- 1. 個別 override（root_user_permission_overrides）
+  -- 2. role 権限（root_settings）
+  -- 3. root_settings 未登録 → fallback 関数
+  SELECT EXISTS (
+    SELECT 1 FROM root_emergency_keys
+      WHERE issued_to = p_user_id
+        AND granted_module = p_module
+        AND granted_operation = p_operation
+        AND used_at IS NULL  -- 未使用
+        AND revoked_at IS NULL
+        AND expires_at > now()
+  )
+  OR EXISTS (
+    SELECT 1 FROM root_user_permission_overrides
+      WHERE user_id = p_user_id
+        AND module = p_module
+        AND operation = p_operation
+        AND permission = 'allowed'
+        AND (expires_at IS NULL OR expires_at > now())
+  )
+  OR has_permission(p_module, p_operation);
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+```
+
+### 11.4 監査要件
+
+- 発行時: `root_audit_log` に critical 記録 + Chatwork audit ルームに即時通知
+- 使用時: 使用された operation の `root_audit_log` id を `audit_log_ids` 配列に追記
+- 期限切れ・revoke 時: notification 通知
+
+### 11.5 UI
+
+- super_admin（東海林さん本人）専用画面: `/root/permissions/emergency-keys`
+- 発行フォーム（issued_to / module / operation / scope / 理由 / 有効期限）
+- 発行済みキー一覧（active / used / revoked / expired）
+- revoke ボタン
+
+### 11.6 安全性
+
+- ワンタイムキーは **使い切り**（`used_at` 設定後は再使用不可、有効期限内に複数回使う場合は新規発行）
+- 発行は super_admin（東海林さん本人）のみ、UI で 2FA 再認証必須
+- 全ての発行・使用・revoke が監査ログに残る
+
+---
+
+## 12. 判断保留
 
 | # | 論点 | 現時点のスタンス |
 |---|---|---|
 | 判1 | `readonly` permission 値の初版運用 | 初版は `allowed` / `denied` の 2 値で運用。`readonly` は DB に定義するが UI 上は「閲覧専用」バッジ表示のみ、機能制御は has_permission が `allowed` 扱い返す。将来 tristate が必要になった時点で sig 変更 |
 | 判2 | `salary_view`（自分の給与のみ）の実現方法 | has_permission は「種別の許可」のみ判定、「自分のレコードのみ」は RLS の WHERE 句で実装（owner check と組み合わせ）。has_permission の責務を超えないよう注意 |
-| 判3 | toss の `call_history_view` = △（readonly）の扱い | toss は自分のコール履歴のみ閲覧可。全体履歴は denied。§4.7 Soil と合わせて「自分のみ」をどこで制限するか決定必要（RLS owner check か feature を分けるか） |
-| 判4 | outsource ロールの Leaf case_edit 権限 | 外注先が案件編集できるか否かは業務フロー依存。初版 allowed にしているが、業務委託の種別によっては denied が適切な場合あり |
+| 判3 | toss の `call_history_view` 実装方法 | **Cat 1 #6 確定**: toss は自分担当分のみ閲覧可。RLS owner check で実装（§7.3 参照）。feature 分割は不要 |
+| 判4 | outsource ロールの Leaf case_edit 権限 | **Cat 1 #5 B 確定**: 既定 denied、案件単位で個別 override（§3.4.1 参照）。閉じた判断保留 |
 | 判5 | admin UI での一括リセット（全 module）機能 | 誤操作リスク大。Phase B-1 では実装せず、B-2 以降で操作ログ確認 UI とセットで検討 |
 | 判6 | `has_permission()` のキャッシュ戦略 | RLS 内から呼ぶと毎クエリ実行。STABLE 宣言でトランザクション内はキャッシュされるが、クライアント側の SWR キャッシュ TTL は別途決定必要（推奨: 5 分） |
 | 判7 | 機能識別子（feature_key）の名前体系 | 英小文字スネークケースで統一方針を明記したが、Bud spec 等の既存 feature 名との整合は各モジュール実装時に都度確認 |
-| 判8 | `root_is_super_admin()` の有効範囲 | settings_edit は super_admin のみ。admin が settings を変更したい場合は super_admin への昇格依頼フロー or 判断事項として東海林さんに確認 |
+| 判8 | `root_is_super_admin()` の有効範囲 | settings_edit は super_admin（東海林さん本人）のみ。admin が settings を変更したい場合は super_admin（東海林さん）への申請フロー経由（§10.5 承認必須対象参照） |
 
 ---
 
-## 12. 未確認事項（東海林さん要ヒアリング）
+## 13. 未確認事項（東海林さん要ヒアリング）
 
 | # | 未確認事項 |
 |---|---|
-| U1 | outsource（外注）ロールに与える権限の業務的な範囲。現マトリックスは staff に近い設定だが、案件閲覧 / 編集を実際に許可するか確認が必要 |
-| U2 | toss ロールのコール履歴・リスト閲覧の範囲。自分のコール分のみか、チーム全体か |
+| U1 | outsource（外注）ロールの閲覧範囲（case_view）。案件編集は個別 override 運用確定（Cat 1 #5）だが、閲覧の既定値（allowed / denied）は業務フロー確認が必要 |
+| U2 | toss ロールの閲覧は自分担当分のみ確定（Cat 1 #6）。運用開始後にチーム全体閲覧へ拡張するタイミングの判断は東海林さんに委ねる |
 | U3 | 給与改定（`salary_revision`）は admin のみか、manager にも委譲するか |
 | U4 | 振込承認（`transfer_approve`）を manager に開放することへの承認。現状は admin 以上で運用中 |
 | U5 | Forest 決算書の閲覧を manager まで開放する予定か（現マトリックスは manager 以上で ○ としている） |
-| U6 | admin UI（マトリックスエディタ）の操作者を super_admin に限定するか、admin にも開放するか。現設計は super_admin 専用 |
+| U6 | ~~admin UI（マトリックスエディタ）の操作者を super_admin に限定するか、admin にも開放するか~~ → **Cat 1 #1 確定: super_admin（東海林さん本人）専任** |
 
 ---
 
