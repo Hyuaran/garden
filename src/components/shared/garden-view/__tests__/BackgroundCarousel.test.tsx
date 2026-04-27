@@ -175,3 +175,36 @@ describe("BackgroundCarousel — rendering all atmospheres", () => {
     });
   });
 });
+
+describe("BackgroundCarousel — background click (Phase 2-2 候補 8 item 7.5)", () => {
+  it("advances to next atmosphere when background container is clicked", () => {
+    render(<BackgroundCarousel initialIndex={1} />);
+    const carousel = screen.getByTestId("background-carousel");
+    fireEvent.click(carousel);
+    expect(carousel.getAttribute("data-atmosphere-index")).toBe("2");
+  });
+  it("advances when atmosphere image div is clicked (data-atmosphere-key match)", () => {
+    const { container } = render(<BackgroundCarousel initialIndex={0} />);
+    const atmDiv = container.querySelector("[data-atmosphere-key='watercolor-tree']") as HTMLElement;
+    fireEvent.click(atmDiv);
+    expect(screen.getByTestId("background-carousel").getAttribute("data-atmosphere-index")).toBe("1");
+  });
+  it("does NOT advance when a non-carousel child element is clicked (no atmosphere-key, no currentTarget match)", () => {
+    const { container } = render(
+      <div>
+        <button data-testid="ui-button">UI element</button>
+        <BackgroundCarousel initialIndex={2} />
+      </div>,
+    );
+    const button = screen.getByTestId("ui-button");
+    fireEvent.click(button);
+    // Carousel index unchanged
+    expect(screen.getByTestId("background-carousel").getAttribute("data-atmosphere-index")).toBe("2");
+  });
+  it("wraps around at the end via background click", () => {
+    render(<BackgroundCarousel initialIndex={5} />);
+    const carousel = screen.getByTestId("background-carousel");
+    fireEvent.click(carousel);
+    expect(carousel.getAttribute("data-atmosphere-index")).toBe("0");
+  });
+});

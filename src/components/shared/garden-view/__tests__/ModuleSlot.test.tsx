@@ -78,3 +78,34 @@ describe("ModuleSlot icon × hover effect compatibility", () => {
     expect(slot?.querySelector("img")).not.toBeNull();
   });
 });
+
+describe("ModuleSlot — bilingual label (Phase 2-2 候補 8)", () => {
+  it("renders both English label and Japanese description for enabled module", () => {
+    const def: ModuleDef = {
+      emoji: "🌳",
+      label: "Forest",
+      description: "全法人決算",
+      href: "/forest",
+      color: "#1F5C3A",
+      enabled: true,
+      layer: "樹冠",
+    };
+    render(<ModuleSlot moduleKey="forest" module={def} position={pos} />);
+    expect(screen.getByText("Forest")).toBeInTheDocument();
+    expect(screen.getByText("全法人決算")).toBeInTheDocument();
+  });
+  it("renders both labels for disabled module", () => {
+    const def: ModuleDef = {
+      emoji: "🌱",
+      label: "Soil",
+      description: "DB 本体・大量データ基盤",
+      href: "/soil",
+      color: "#8B6F47",
+      enabled: false,
+      layer: "地下",
+    };
+    render(<ModuleSlot moduleKey="soil" module={def} position={pos} />);
+    expect(screen.getByText("Soil")).toBeInTheDocument();
+    expect(screen.getByText(/DB 本体/)).toBeInTheDocument();
+  });
+});
