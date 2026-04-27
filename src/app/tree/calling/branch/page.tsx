@@ -35,6 +35,9 @@ import { SHOW_DEMO_CONTROLS } from "../../_constants/flags";
 import { TREE_PATHS } from "../../_constants/screens";
 import { insertCall } from "../../_lib/queries";
 import { useTreeState } from "../../_state/TreeStateContext";
+import { supabase } from "../../_lib/supabase";
+import { insertTreeCallRecord } from "../../_actions/insertTreeCallRecord";
+import { labelToResultCode, resultCodeToGroup } from "../../_lib/resultCodeMapping";
 
 /** デモ用顧客リストデータ */
 type Customer = {
@@ -175,6 +178,45 @@ export default function CallingBranchPage() {
       setSaveError(result.error ?? "保存に失敗しました");
       setSavingCall(false);
       return;
+    }
+
+    // D-02 Step 4: tree_call_records への INSERT（既存 insertCall と並走）
+    const tcrCode = labelToResultCode(resultCode);
+    if (tcrCode) {
+      const sessionId = typeof window !== "undefined"
+        ? window.localStorage.getItem("tree.current_session_id")
+        : null;
+      const campaignCode = typeof window !== "undefined"
+        ? window.localStorage.getItem("tree.current_campaign_code")
+        : null;
+
+      if (sessionId && campaignCode) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token ?? "";
+
+        const durationSec =
+          connectedAt && hangupAt
+            ? Math.round((hangupAt.getTime() - connectedAt.getTime()) / 1000)
+            : null;
+
+        const tcrResult = await insertTreeCallRecord({
+          session_id: sessionId,
+          campaign_code: campaignCode,
+          result_code: tcrCode,
+          result_group: resultCodeToGroup(tcrCode),
+          duration_sec: durationSec,
+          accessToken,
+        });
+
+        if (!tcrResult.success) {
+          console.error("[branch] insertTreeCallRecord failed:", tcrResult);
+          setSaveError(tcrResult.errorMessage);
+          setSavingCall(false);
+          return;
+        }
+      } else {
+        console.warn("[branch] no active session in localStorage, tree_call_records INSERT skipped");
+      }
     }
 
     setConnectedAt(null);
