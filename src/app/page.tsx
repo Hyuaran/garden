@@ -1,12 +1,17 @@
 import { GardenView } from "../components/shared/garden-view/GardenView";
-import { getCurrentTimeTheme } from "../components/shared/_lib/timeTheme";
+import { resolveAtmosphereParam } from "../components/shared/garden-view/_lib/atmospheres";
 
-// 時間帯テーマを per-request 算出（cross-ui-04）。
-// SSG キャッシュさせず常に「今の時刻」の theme を反映。
+// per-request 算出（URL クエリ ?atmosphere=N を反映するため SSG キャッシュ無効）
 export const dynamic = "force-dynamic";
 
-export default function GardenHomePage() {
-  const theme = getCurrentTimeTheme();
+type Props = {
+  searchParams: Promise<{ atmosphere?: string }>;
+};
+
+export default async function GardenHomePage({ searchParams }: Props) {
+  const params = await searchParams;
+  const initialAtmosphere = resolveAtmosphereParam(params.atmosphere);
+
   return (
     <main
       style={{
@@ -17,10 +22,10 @@ export default function GardenHomePage() {
     >
       <header style={{ textAlign: "center", marginBottom: 16 }}>
         <h1 style={{ fontSize: 32, margin: 0 }}>Garden</h1>
-        <p style={{ color: "#666", marginTop: 8, fontSize: 13 }}>盆栽ビュー</p>
+        <p style={{ color: "#666", marginTop: 8, fontSize: 13 }}>盆栽 / 大樹ビュー</p>
       </header>
 
-      <GardenView theme={theme} />
+      <GardenView initialAtmosphere={initialAtmosphere} />
     </main>
   );
 }

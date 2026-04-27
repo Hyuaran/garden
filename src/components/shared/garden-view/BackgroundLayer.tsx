@@ -1,4 +1,11 @@
 /**
+ * @deprecated Phase 2-2 候補 6 (2026-04-27): BackgroundCarousel に置換。
+ * 6 atmospheres カルーセル + URL クエリ + キーボードショートカット を備えた
+ * BackgroundCarousel.tsx を使用してください。
+ * 本ファイルは CLAUDE.md「ファイル削除禁止」ルールにより残置。
+ */
+
+/**
  * 盆栽ビュー — 背景レイヤー（差し替え可能）
  *
  * cross-ui-06 §3.3 + cross-ui-04 §4.1 準拠。

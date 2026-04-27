@@ -1,28 +1,31 @@
 /**
- * 盆栽ビュー — メインコンテナ（cross-ui-06 §3.2 準拠）
+ * 盆栽 / 大樹ビュー — メインコンテナ
  *
  * 4 layer 重ね合わせ:
- *   1. BackgroundLayer (zIndex 0): 時間帯テーマ gradient / 将来は AI 画像
- *   2. BonsaiCenter   (zIndex 1): 中央 visual centerpiece（盆栽）
+ *   1. BackgroundCarousel (zIndex 0): 6 atmospheres カルーセル（dispatch v3）
+ *   2. BonsaiCenter   (zIndex 1): 中央 visual centerpiece
  *   3. ModuleLayer    (zIndex 2): 12 モジュールの中央基準配置
  *   4. ShojiStatusCloud (zIndex 10): 右上の雲（東海林ステータス）
  *
- * theme は呼び出し元（page.tsx）が getCurrentTimeTheme() で算出して渡す。
- * aspect-ratio 4:3 で desktop 主体。Phase 2-2 以降でモバイル fallback 検討。
+ * Phase 2-2 候補 6 で BackgroundLayer → BackgroundCarousel 置換。
+ * 旧 BackgroundLayer は @deprecated でファイル残置（CLAUDE.md no-deletion rule）。
  */
 
-import { BackgroundLayer } from "./BackgroundLayer";
+import { BackgroundCarousel } from "./BackgroundCarousel";
 import { BonsaiCenter } from "./BonsaiCenter";
 import { ModuleLayer } from "./ModuleLayer";
 import { ShojiStatusCloud } from "./ShojiStatusCloud";
-import type { TimeTheme } from "../_lib/timeTheme";
+import type { AtmosphereId } from "./_lib/atmospheres";
+import type { CarouselMode } from "./BackgroundCarousel";
 
 type Props = {
-  /** 時間帯テーマ（page.tsx で getCurrentTimeTheme() で算出して渡す） */
-  theme?: TimeTheme;
+  /** 初期 atmosphere（URL クエリ ?atmosphere=N から page.tsx で解決） */
+  initialAtmosphere?: AtmosphereId;
+  /** 初期カルーセルモード（5/5 デモは manual 開始、A キーで auto 切替） */
+  initialMode?: CarouselMode;
 };
 
-export function GardenView({ theme = "noon" }: Props) {
+export function GardenView({ initialAtmosphere = 0, initialMode = "manual" }: Props) {
   return (
     <div
       style={{
@@ -37,7 +40,7 @@ export function GardenView({ theme = "noon" }: Props) {
         boxShadow: "0 4px 24px rgba(0, 0, 0, 0.08)",
       }}
     >
-      <BackgroundLayer theme={theme} />
+      <BackgroundCarousel initialIndex={initialAtmosphere} initialMode={initialMode} />
       <BonsaiCenter />
       <ModuleLayer />
       <ShojiStatusCloud />
