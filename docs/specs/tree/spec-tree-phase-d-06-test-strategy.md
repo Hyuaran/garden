@@ -99,11 +99,14 @@ describe('Tree エッジケース 🔴', () => {
 });
 ```
 
-### 3.3 権限テスト（7 階層 × 対象テーブル）
+### 3.3 権限テスト（8 階層 × 対象テーブル）
+
+Garden 8-role 標準（toss / closer / cs / staff / outsource / manager / admin / super_admin）に基づく。
+outsource は staff より広いが manager より狭い権限帯（自分担当のみアクセス、槙さん例外あり）。
 
 ```typescript
 describe('Tree RLS 🔴', () => {
-  const roles = ['toss', 'closer', 'cs', 'staff', 'manager', 'admin', 'super_admin'];
+  const roles = ['toss', 'closer', 'cs', 'staff', 'outsource', 'manager', 'admin', 'super_admin'];
 
   roles.forEach(role => {
     describe(`role: ${role}`, () => {
