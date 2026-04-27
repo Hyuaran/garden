@@ -64,6 +64,29 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Sprout | S-01: migrations（9 テーブル + RLS + pgcrypto + Calendar sync trigger）| — | | | a-sprout / a-auto 006 spec | 2026-04-26 | — | a-auto 006 Batch 18 spec 起草（413 行）。sprout_applicants/_interview_sheets/_interview_slots/_interview_reservations/_interview_records/_offers/_pre_employment_data/_line_users/_line_messages。判断保留 6 件。 |
+| Sprout | S-02: バイトル → Sprout 取込（API 確認待ち、CSV 代替策併記）| — | | | a-sprout / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（258 行）。判断保留 7 件。 |
+| Sprout | S-03: 面接予約 UI（応募者向けログイン不要・ホットペッパー方式）| — | | | a-sprout / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（220 行）。判断保留 7 件。 |
+| Sprout | S-04: 面接ヒアリングシート（Kintone App 45 構造移植、41 フィールド）| — | | | a-sprout / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（209 行）。判断保留 6 件。 |
+| Sprout | S-05: LINE Bot 自動応答（2 アカウント運用 info / official）| — | | | a-sprout + a-rill / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（237 行）。判断保留 7 件。Messaging API 連携、応答シナリオ。 |
+| Sprout | S-06: 入社前データ収集 UI（iPad ガイド枠カメラ + 全項目申請承認）| — | | | a-sprout / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（226 行）。判断保留 7 件。root_change_requests 横断テーブル。 |
+| Sprout | S-07: 仮アカウント発行 → 入社初日 → 本アカウント化（MFC OCR 取込）| — | | | a-sprout + a-root / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（287 行）。判断保留 9 件。pdfjs-dist + Tesseract.js 流用、新規 npm なし。 |
+| Fruit | F-01: migrations（fruit_companies_legal + 7 子テーブル + 9 enum）| 1.50 | | | a-fruit / a-auto 006 spec | 2026-04-26 | — | a-auto 006 Batch 18 spec 起草（352 行）。pgcrypto 暗号化 = banks.account_number_enc / licenses.license_number_enc。 |
+| Fruit | F-02: Kintone App 28（61 フィールド）→ Fruit マッピング | 0.75 | | | a-fruit / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（292 行）。8 セクション分類、enum マッピング 10 種類。 |
+| Fruit | F-03: 取込スクリプト（manual / scheduled / dryrun 3 モード）| 1.25 | | | a-fruit / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（280 行）。Vercel Cron 03:00 JST、import_runs 履歴、削除検知。 |
+| Fruit | F-04: 法人選択 UI（共通セレクター、SWR 5min TTL）| 0.75 | | | a-fruit / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（324 行）。3 バリアント（select / combobox / radio）、4 利用例。 |
+| Fruit | F-05: RLS + 削除パターン（7 ロール × 6 アクション、Cross History #04 準拠）| 1.00 | | | a-fruit / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（331 行）。fruit_audit_log 全アクション記録、子残存時物理削除ブロック。 |
+| Calendar | C-01: migrations（calendar_events / _links / _external_calendars）| — | | | a-calendar / a-auto 006 spec | 2026-04-26 | — | a-auto 006 Batch 18 spec 起草（306 行）。3 テーブル + 4 RLS policy + audit trigger。 |
+| Calendar | C-02: 営業予定 UI（FullCalendar v6、要 npm 承認）| — | | | a-calendar / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（260 行）。4 view（month/week/day/list）+ ドラッグ + Shift+drag 複製。 |
+| Calendar | C-03: 面接スロット双方向同期（Sprout sprout_interview_slots 連携）| — | | | a-calendar + a-sprout / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（227 行）。Sprout = master、夜間 batch reconciler。 |
+| Calendar | C-04: Tree シフト連携（Tree Phase B 完成後、event_type='shift'）| — | | | a-calendar + a-tree / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（220 行）。Tree → Calendar one-way、Phase D まで保留。 |
+| Calendar | C-05: スマホ閲覧モード（社内 PC 限定の例外、staff 以上）| — | | | a-calendar / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（221 行）。UA + viewport 検知、書込 API は 403、admin（東海林さん）承認待ち。 |
+| Calendar | C-06: 通知統合（Chatwork / Email / LINE、面接前日 + シフト前日）| — | | | a-calendar + a-rill / a-auto 006 spec | 2026-04-26 | — | a-auto 006 spec 起草（284 行）。3 channel、cron-driven、22:00-7:00 quiet hours、idempotent log。 |
+| Sprout | S-05 拡張: 給与明細配信連携（Y 案 + フォールバック判定 API）| 0.25 | | | a-sprout / a-auto 008 spec | 2026-04-26 | — | a-auto 008 整合 spec 改訂。§16 追記（line_friend_status 列 + Webhook 自動検知 + fetchDistributionTargets() + sendPayslipNotificationViaLine() + 日次補正 Cron）。memory `project_payslip_distribution_design.md` 確定反映。 |
+| Sprout | S-06 拡張: 入社初日 LINE 友だち追加 + Bot 接続確認 | 0.25 | | | a-sprout + admin / a-auto 008 spec | 2026-04-26 | — | a-auto 008 整合 spec 改訂。§14 追記（チェックリスト D-01〜D-05 + QR コード表示 + テストメッセージ送受信 + フォールバック手動マーク + admin 紐付緊急手段）。 |
+| Tree | マイページ給与明細 PW 確認画面（フォールバック専用、社内 PC 限定）| 0.5 | | | a-tree + a-bud / a-auto 008 spec | 2026-04-26 | — | a-auto 008 spec 新規起草（462 行）。bud_payslip_passwords + bud_payslip_password_views + 24h 自動マスク Cron + line_friend_status 表示制御 + admin 監査画面 + 未確認月末リマインダー。Bud D-04 連携。 |
+| Sprout / Fruit | Kintone 確定 8 件 反映（決定 #1/#3/#6/#8/#9/#13/#14/#15）| 0.5 | 0.5 | 0 | a-auto 009 / a-main 006 | 2026-04-26 | 2026-04-26 | a-main 006 で東海林さん即決承認 32 件のうち prompt 明示 8 件を先行反映。Sprout S-01（sprout_applicants 単一 + 6 タブ + status Leaf 関電方式 + 7 日自動辞退 Cron + 本日研修予定 0:00 Cron + admin View）/ S-03（Web 面接 Google Meet 都度発行将来枠）/ S-04（シート待ち = App 45 未提出 + 24/48/72h リマインダー）/ F-01（fruit_company_contracts 統合 + 8 enum + 5 種住所 jsonb）/ F-02（住所重複全保持マッピング + 契約 7 アプリ統合）。残 24 件は確定ログ未受領で pause file 作成。 |
+| Sprout / Fruit | Kintone 確定 残 6 件 反映（決定 #4/#5/#10/#11/#26/#30）| 0.5 | 0.5 | 0 | a-auto 010 / a-main 006 | 2026-04-26 | 2026-04-26 | a-main から確定ログ受領後、残 6 件（Sprout/Fruit/Calendar スコープ）を反映。S-01（#4 配属列 + #5 GENERATED full_name_search/age_years + #11 root_settings 参照 4 列 + #30 LINK async copy 関連列）/ S-02（#10 App 44/45 取込タイミング + dual-write + #30 async copy Cron 5 分粒度）/ S-06（#26 通勤経路変更 sprout_commute_route_change_requests + LIFF フォーム + admin レビュー画面）/ S-07（#4 sprout_to_root_migration() DB 関数 SECURITY DEFINER + 採用後異動 Root 領域明示）/ F-01（#5 GENERATED corporate_number_normalized / invoice_number_normalized / name_search GIN + 電話/カナ trigger）。pause file 削除済。handoff: docs/handoff-a-auto-202604262000-kintone-batch-complete.md。残 24 件は他セッション担当（a-bud/a-root/a-forest/a-leaf）。 |
 
 ## 運用メモ
 
