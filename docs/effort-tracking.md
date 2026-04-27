@@ -102,6 +102,29 @@
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
 
+| Bud | Phase 1a 全銀協CSVライブラリ | 0.5 | 0.35 | -0.15 | b-main (B) | 2026-04-22 | 2026-04-22 | 実装+テスト 95件すべて緑。subagent-driven で効率実装、最終レビューで致命的3件検出・即修正（sourceAccount検証/padding throw/合計overflow）。 |
+| Bud | Phase 1b.1 振込管理 Foundation | 0.8 | 0.3 | -0.5 | b-main (B) | 2026-04-23 | 2026-04-23 | スキーマv2 + RLS 8ポリシー + 型 + ID生成 + 重複検出 + queries + mutations。125 tests全緑（+30新規）。Supabase SQL適用は東海林さん手動待ち。 |
+| Bud | Phase 1b.2 振込管理 UI（旧プラン Task 1-13）| 1.4 | 0.3 (進捗) | — | a-bud (A) / b-main (B) | 2026-04-23 | (新spec で再構成) | StatusBadge/FilterBar/MonthlySummary + Task 4 一覧画面 + Task 5 バリデーション TDD（9 tests 緑）。Task 6-13 は新 spec A-03/A-04/A-05 で再構成、SUPERSEDED 扱い。 |
+| Bud | 🎯 判断確定節目: Phase A-1 🔴 即時合意 7 件 | — | — | — | a-bud (A) / a-main | 2026-04-25 | 2026-04-25 | マイルストーン: 東海林さん即決完了。7 件中 6 件は a-auto 推奨通り、A-08 判1 のみ修正（楽天ビジネス → オリコ/三井住友/楽天デビット 3 種）。 |
+| Bud | Phase A-1 A-03 振込 6 段階遷移（差分実装） | 0.4-0.6 | 0.4 | -0.0〜-0.2 | a-bud (A) | 2026-04-25 | 2026-04-25 | W1-W4（commit 09c30bc）+ W5 Chatwork 通知。SQL migration / RPC / canTransitionWithRole / TS wrapper / Vitest 37 件 + chatwork-formatter 9 件。super_admin 自起票 reason='自起票' 自動挿入（A-03 判3）。 |
+| Bud | Phase A-1 A-04 振込 新規作成フォーム | 0.5 | 0.4 | -0.1 | a-bud (A) | 2026-04-25 | 2026-04-25 | new-regular / new-cashback 両ページ + 9 コンポーネント + business-day (16 tests) + transfer-create-schema (25 tests)。A-03 SQL FK 修正同時（id uuid → transfer_id text）。 |
+| Bud | Phase A-1 A-05 振込 承認フロー UI | 0.5 | 0.45 | -0.05 | a-bud (A) | 2026-04-25 | 2026-04-25 | 振込詳細画面 (3 タブ) + StatusActionButtons + RejectModal + StatusHistoryTab + 一括操作 (100 件上限) + CSV 出力骨格。A-05 判1 自己承認は警告のみ、判7 100 件上限実装。batch-transitions 11 tests。 |
+| Bud | Phase A-1 A-06 明細管理 + 自動照合（W1-W8） | 0.75 | 0.7 | -0.05 | a-bud (A) | 2026-04-25 | 2026-04-25 | SQL/楽天みずほPayPay CSV パーサ (17 tests)/4 段階照合 (13 tests)/取込 Server Action/一覧/取込モーダル/手動割当 + W7-W8 月次集計 + 取込履歴。282 tests 緑。 |
+| Bud | Phase A-1 A-08 CC 明細 3 種対応（spec のみ） | 0.65 | 0.05 | (spec 修正) | a-bud (A) | 2026-04-25 | (実装は別) | spec 微修正完了（オリコ/三井住友/楽天デビット 3 種拡張、§13 段階的実装計画）。**着手前に必要**: 3 種 CSV サンプル + 引落口座 ID + 5,000 円判定の税込/税抜確認。 |
+| Bud | Phase A-1 A-07 手渡し現金 5 論点（整理 + 採択完了） | 0.25 | 0.15 | -0.1 | a-bud (A) | 2026-04-25 | 2026-04-25 | **🎯 採択完了 (2026-04-25)**: 5 論点全採択（4 件推奨通り、論点 3 のみメール配信拡張）。spec を確定版に更新（cash-payment-undecided.md §3/§4）、B-01/B-03/B-04 に反映。論点 3: A 案 + 方式 2 パスワード保護 PDF メール配信（PW=生年月日 4 桁 or 社員番号下 4 桁、実装時最終決定）。U1-U5 は暫定推測で合意、Phase B 着手前まで OK。実装は Phase B（2026-07 想定）で着手。 |
+| Bud | PR #55 a-review 重大指摘 3 + 関連 1 件 修正（local commit） | 0.2 | 0.2 | 0 | a-bud (A) | 2026-04-26 | 2026-04-26 | GitHub suspended のため push 不可、ローカル commit 81eb0cb のみ。**B1** 起票者本人の下書き→確認済み 自己実施を policy 分割で禁止 / **B2** 確認済み→差戻し RLS 違反を修正（canTransition と整合） / **B3** updateTransferStatus / selfApproveAsSuperAdmin を @deprecated（監査漏れ警告）/ **B4** 振込完了マークを super_admin only → admin+ に緩和（spec §6 役割表準拠）。bud-rls-v3-review-fixes.sql 新規作成。919 tests 緑、tsc 0 エラー（動作非破壊）。 |
+| Bud | PR #74 a-review D-04 配信経路セキュリティ 5 件 修正（local commit） | 0.25 | 0.25 | 0 | a-bud (A) | 2026-04-26 | 2026-04-26 | GitHub suspended のため push 不可、ローカル commit d1483ac のみ（別ブランチ feature/bud-phase-d-specs-batch17-auto-fixes）。**#1** PDF PW 脆弱（MMDD 4 桁）→ A 案強ランダム+別経路 / B 案一回限りトークン / C 案非推奨を提示、東海林さん最終判断要 / **#2** SPF/DKIM/DMARC 必須設定 / **#3** SMTP TLS + Storage パス uuid 化 / **#4** メール本文 PW 平文記載削除 / **#5** rate limit + log redaction。§16 新章で改修サマリ集約。GitHub 復旧後コメント突き合わせ予定。 |
+| Bud | Phase 1c Leaf連携 | 1.0 | — | — | b-main (B) | (pending) | | 共通部品 + 関電への組み込み。将来のLeafアプリでも流用 |
+| Bud | Phase 2a 銀行明細取込（A-06 で部分実装） | 1.35 | — | — | b-main (B) | (pending) | | 楽天/みずほ/PayPay/京都の4銀行。京都銀行は入金のみ。A-06 で楽天/みずほ/PayPay の基盤完了。 |
+| Bud | Phase 2b CC明細取込（A-08 で再設計） | 0.8 | — | — | b-main (B) | (pending) | | オリコ/NTTBiz/三井住友x2 → A-08 で 3 種（オリコ/三井住友/楽天デビット）に再設計。飲食店5000円ルール継承 |
+| Bud | Phase 2c 共通マスタseed | 0.3 | — | — | b-main (B) | (pending) | | v12 Excel（441行）→ root_expense_categories |
+| Bud | Phase 3 支払明細＋照合 | 2.0 | — | — | b-main (B) | (pending) | | A-06 で部分実装（自動照合）、Phase 3 で完成 |
+| Bud | Phase 4a 自動仕訳エンジン | 1.0 | — | — | b-main (B) | (pending) | | 3段階判定・CC 5000円ルール・マスタ編集 |
+| Bud | Phase 4b OCR + 撮影UI + Storage | 3.3 | — | — | b-main (B) | (pending) | | Claude Vision、スマホ連続撮影、Google Drive アーカイブ |
+| Bud | Phase 4c FM レシート Bud化（全件移行） | 2.1 | — | — | b-main (B) | (pending) | | GBU形式へ移行、旧KR番号はRootに保持。川中さんアカウント作成前提 |
+| Bud | Phase 5 コストダッシュボード | 1.5 | — | — | b-main (B) | (pending) | | 添付xlsx の置換 |
+| Bud | Phase 6 給与処理（MF連携＋手渡し現金） | 4.55 | — | — | b-main (B) | (pending) | | MFクラウド給与連携、9段階ステータス、手渡し案C採用、前払・社宅管理追加 |
+
 ## 運用メモ
 
 - **Phase A1 の内訳** (参考):
