@@ -78,16 +78,26 @@ export function BackgroundCarousel({ initialIndex = 0, initialMode = "manual" }:
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // 候補 8 item 7.5: 背景クリックで次の atmosphere（UI 要素は e.target 一致時のみ反応）
+  const handleBackgroundClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // クリックされたのが背景 layer 自体（current target = event target）の場合のみ進行
+    // モジュール / カード / ヘッダー等の上の click は伝播するが、currentTarget !== target なので無視
+    if (e.target === e.currentTarget || (e.target as HTMLElement)?.dataset.atmosphereKey !== undefined) {
+      setIndex((i) => ((i + 1) % ATMOSPHERE_COUNT) as AtmosphereId);
+    }
+  };
+
   return (
     <div
-      aria-hidden
       data-testid="background-carousel"
       data-atmosphere-index={index}
       data-atmosphere-mode={mode}
+      onClick={handleBackgroundClick}
       style={{
         position: "absolute",
         inset: 0,
         zIndex: 0,
+        cursor: "pointer",
       }}
     >
       {ATMOSPHERES.map((atm, i) => (

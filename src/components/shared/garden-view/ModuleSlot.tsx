@@ -20,7 +20,7 @@ type Props = {
   position: Position;
 };
 
-const SLOT_SIZE = 76;
+const SLOT_SIZE = 92;  // 候補 8: 2 行 label に対応するため拡大（76→92）
 
 const baseSlotStyle = {
   display: "flex",
@@ -75,7 +75,8 @@ export function ModuleSlot({ moduleKey, module: m, position }: Props) {
             height={40}
             style={{ display: "block", objectFit: "contain", filter: "grayscale(0.6)" }}
           />
-          <div style={{ fontSize: 10, marginTop: 2 }}>{m.label}</div>
+          <div style={{ fontSize: 10, fontWeight: 600, marginTop: 2, lineHeight: 1.1 }}>{m.label}</div>
+          <div style={{ fontSize: 8, color: "#888", marginTop: 1, lineHeight: 1.1, textAlign: "center" }}>{m.description}</div>
         </div>
       </div>
     );
@@ -107,7 +108,8 @@ export function ModuleSlot({ moduleKey, module: m, position }: Props) {
           height={40}
           style={{ display: "block", objectFit: "contain" }}
         />
-        <div style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>{m.label}</div>
+        <div style={{ fontSize: 10, fontWeight: 600, marginTop: 2, lineHeight: 1.1 }}>{m.label}</div>
+        <div style={{ fontSize: 8, color: "#5C6E5F", marginTop: 1, lineHeight: 1.1, textAlign: "center" }}>{m.description}</div>
       </div>
     </Link>
   );
