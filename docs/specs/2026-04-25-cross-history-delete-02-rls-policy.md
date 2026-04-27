@@ -140,7 +140,30 @@ $$;
 
 ```sql
 -- 2026-04-26 a-review #5 修正: search_path 固定 + テーブル名ホワイトリスト + 動的 SQL を public スキーマ強制
+-- 2026-04-27 a-review #1 修正: PK 列名のハードコード解消（テーブル → PK 列名 マッピング採用）
 -- 参照: a-leaf #65 search_path 全関数固定パターン
+-- 参照: 01-data-model §4.1.2 PK 列名のテーブル別対応
+
+-- 補助関数: テーブル名から PK 列名を解決（A 案 spec の汎用化）
+-- IMMUTABLE で関数 plan キャッシュ可能
+CREATE OR REPLACE FUNCTION get_table_pk_column(p_table text) RETURNS text
+  LANGUAGE plpgsql
+  IMMUTABLE
+  SET search_path = pg_catalog, public, pg_temp
+AS $$
+BEGIN
+  -- 標準 PK 命名は 'id'、非標準のテーブルのみ明示
+  -- 01-data-model §4.1.2 のマッピング表と同期する
+  RETURN CASE p_table
+    WHEN 'bud_transfers'        THEN 'transfer_id'
+    WHEN 'tree_call_records'    THEN 'call_id'        -- 仮、実装時確認
+    WHEN 'forest_fiscal_periods' THEN 'period_id'     -- 仮、実装時確認
+    WHEN 'bloom_workboard_items' THEN 'item_id'       -- 仮、実装時確認
+    ELSE 'id'                                         -- 標準 PK 命名
+  END;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION can_user_view_record(
   p_module text, p_table text, p_record_id text
 ) RETURNS boolean
@@ -151,6 +174,7 @@ CREATE OR REPLACE FUNCTION can_user_view_record(
 AS $$
 DECLARE
   v_can boolean := false;
+  v_pk_column text;                                -- a-review #1 反映: PK 列名動的解決
   v_allowed_tables CONSTANT text[] := ARRAY[
     -- ホワイトリスト: cross-history 連携対象テーブルのみ受付
     'bud_transfers', 'bud_payslips', 'bud_attendance',
@@ -160,7 +184,7 @@ DECLARE
     'tree_call_records',
     'forest_fiscal_periods', 'forest_shinkouki', 'forest_hankanhi',
     'bloom_workboard_items', 'bloom_kpi_snapshots'
-    -- spec 改訂時はここに追加 + テスト追加
+    -- spec 改訂時はここに追加 + テスト追加 + get_table_pk_column も同期
   ];
   v_allowed_modules CONSTANT text[] := ARRAY[
     'bud', 'leaf', 'soil', 'root', 'tree', 'forest', 'bloom'
@@ -194,17 +218,26 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
+  -- a-review #1 反映: PK 列名をテーブル別に解決
+  v_pk_column := get_table_pk_column(p_table);
+  -- 念押しチェック: マッピング欠落時は 'id' に fallback（get_table_pk_column の ELSE）
+  -- ただし不正な識別子なら REJECT
+  IF v_pk_column !~ '^[a-z][a-z0-9_]{0,62}$' THEN
+    RAISE EXCEPTION 'Invalid pk_column derived for table %: %', p_table, v_pk_column
+      USING ERRCODE = '22023';
+  END IF;
+
   -- モジュール別に分岐
-  -- 動的 SQL は %I で識別子クオート、$1 でプレースホルダ、public.* で明示
+  -- 動的 SQL は %I で識別子クオート（テーブル名 + PK 列名）、$1 でプレースホルダ、public.* で明示
   IF p_module = 'leaf' THEN
     EXECUTE format(
-      'SELECT EXISTS(SELECT 1 FROM public.%I WHERE id::text = $1)',
-      p_table
+      'SELECT EXISTS(SELECT 1 FROM public.%I WHERE %I::text = $1)',
+      p_table, v_pk_column
     ) INTO v_can USING p_record_id;
   ELSIF p_module = 'bud' THEN
     EXECUTE format(
-      'SELECT EXISTS(SELECT 1 FROM public.%I WHERE id::text = $1)',
-      p_table
+      'SELECT EXISTS(SELECT 1 FROM public.%I WHERE %I::text = $1)',
+      p_table, v_pk_column
     ) INTO v_can USING p_record_id;
   -- ... 他モジュール（同パターン）
   END IF;
@@ -212,6 +245,10 @@ BEGIN
   RETURN v_can;
 END;
 $$;
+
+-- 補助関数の権限制御（authenticated に EXECUTE 付与）
+REVOKE ALL ON FUNCTION get_table_pk_column(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION get_table_pk_column(text) TO authenticated;
 
 -- 関数の実行権限を絞る（authenticated のみ）
 REVOKE ALL ON FUNCTION can_user_view_record(text, text, text) FROM PUBLIC;
@@ -235,13 +272,20 @@ CREATE POLICY gch_select_with_record_access ON garden_change_history FOR SELECT
 
 #### 案 B: モジュール別の SELECT ポリシー直接定義
 
+> 2026-04-27 a-review #1 反映: 各 EXISTS の WHERE 句で、ハードコード `id::text` ではなく**テーブルの実 PK 列名**を直接記述する（テーブル名が固定だから可能）。
+>
+> - `bud_transfers` の PK は `transfer_id`（標準命名 `id` ではない）
+> - `soil_kanden_cases` の PK は `id`（標準命名）
+>
+> 案 B は spec の実 PK 列名を policy に直接埋め込むため、テーブル別の正しい列名を明示すること。01-data-model §4.1.2 のマッピング表と同期。
+
 ```sql
 CREATE POLICY gch_select_leaf ON garden_change_history FOR SELECT
   USING (
     module = 'leaf'
     AND EXISTS (
       SELECT 1 FROM soil_kanden_cases
-      WHERE id::text = garden_change_history.record_id
+      WHERE id::text = garden_change_history.record_id      -- soil_kanden_cases の PK は 'id'
         AND leaf_user_in_business('kanden')
     )
   );
@@ -251,14 +295,14 @@ CREATE POLICY gch_select_bud ON garden_change_history FOR SELECT
     module = 'bud'
     AND EXISTS (
       SELECT 1 FROM bud_transfers
-      WHERE id::text = garden_change_history.record_id
+      WHERE transfer_id::text = garden_change_history.record_id   -- bud_transfers の PK は 'transfer_id'（a-review #1 反映）
         AND (
           /* Bud RLS と同じ条件 */
         )
     )
   );
 
--- ... 他モジュール
+-- ... 他モジュール（各テーブルの実 PK 列名を 01-data-model §4.1.2 マッピング表で確認して記述）
 ```
 
 ### 4.2 推奨: 案 A（ヘルパ関数）

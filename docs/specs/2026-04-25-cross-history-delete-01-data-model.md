@@ -148,6 +148,7 @@ CREATE INDEX idx_gch_recent ON garden_change_history (changed_at DESC);
 
 ```sql
 -- 2026-04-26 a-review #5 修正: search_path 固定 + SECURITY INVOKER 明示
+-- 2026-04-27 a-review #1 修正: PK 列名のハードコード解消（TG_ARGV[1] + to_jsonb 抽出パターン）
 -- 参照: a-leaf #65 search_path 全関数固定パターン
 CREATE OR REPLACE FUNCTION trg_record_change_history() RETURNS trigger
   LANGUAGE plpgsql
@@ -161,11 +162,30 @@ DECLARE
   v_request_id uuid := COALESCE(current_setting('app.request_id', true)::uuid, gen_random_uuid());
   v_changer    text := current_setting('app.employee_id', true);
   v_module     text := TG_ARGV[0];
+  -- a-review #1 反映: PK 列名を TG_ARGV[1] で受け取り、デフォルト 'id'
+  -- 各テーブルで PK 列名が異なる場合（例: bud_transfers の transfer_id）に CREATE TRIGGER 時に明示
+  v_pk_column  text := COALESCE(TG_ARGV[1], 'id');
+  v_record_id  text;
 BEGIN
   -- TG_ARGV[0] は CREATE TRIGGER 時の固定値、外部入力ではない
   IF v_module IS NULL OR v_module !~ '^[a-z_]{1,32}$' THEN
     RAISE EXCEPTION 'Invalid module argument: %', v_module
       USING ERRCODE = '22023';  -- invalid_parameter_value
+  END IF;
+
+  -- TG_ARGV[1] も CREATE TRIGGER 時の固定値、識別子形式チェック
+  IF v_pk_column !~ '^[a-z][a-z0-9_]{0,62}$' THEN
+    RAISE EXCEPTION 'Invalid pk_column argument: %', v_pk_column
+      USING ERRCODE = '22023';
+  END IF;
+
+  -- a-review #1 反映: NEW/OLD から PK 値を抽出（to_jsonb 経由で列名を文字列キー化）
+  -- NEW.id::text と書くと、id 列がないテーブル（bud_transfers 等）で実行時エラー
+  -- to_jsonb(NEW)->>v_pk_column なら列名を実行時に文字列で参照、列不在は NULL になる
+  v_record_id := to_jsonb(COALESCE(NEW, OLD))->>v_pk_column;
+  IF v_record_id IS NULL THEN
+    RAISE EXCEPTION 'PK column "%" not found in table %.%', v_pk_column, TG_TABLE_SCHEMA, TG_TABLE_NAME
+      USING ERRCODE = '22023';
   END IF;
 
   IF TG_OP = 'UPDATE' THEN
@@ -187,7 +207,7 @@ BEGIN
           field_name, old_value, new_value,
           changed_by, request_id
         ) VALUES (
-          v_module, TG_TABLE_NAME, NEW.id::text, 'UPDATE',
+          v_module, TG_TABLE_NAME, v_record_id, 'UPDATE',
           v_field_name, v_old_value, v_new_value,
           v_changer, v_request_id
         );
@@ -198,7 +218,7 @@ BEGIN
       module, table_name, record_id, operation,
       changed_by, request_id
     ) VALUES (
-      v_module, TG_TABLE_NAME, NEW.id::text, 'INSERT',
+      v_module, TG_TABLE_NAME, v_record_id, 'INSERT',
       v_changer, v_request_id
     );
   ELSIF TG_OP = 'DELETE' THEN
@@ -206,7 +226,7 @@ BEGIN
       module, table_name, record_id, operation,
       changed_by, request_id
     ) VALUES (
-      v_module, TG_TABLE_NAME, OLD.id::text, 'DELETE',
+      v_module, TG_TABLE_NAME, v_record_id, 'DELETE',
       v_changer, v_request_id
     );
   END IF;
@@ -223,21 +243,57 @@ $$;
 | **search_path 攻撃** | `SET search_path = pg_catalog, public, pg_temp` を関数定義時固定。実行時の `SET search_path = ...` 改竄に追従しない |
 | **EXECUTE format インジェクション** | `%I` 修飾子で識別子クオート、`v_field_name` は `information_schema.columns` 由来で実在識別子のみ、$1/$2 は OLD/NEW のプレースホルダ |
 | **TG_ARGV[0] の入力検証** | 起動時 `^[a-z_]{1,32}$` の正規表現で module 名を検証、不正なら ERRCODE `22023` で REJECT |
+| **TG_ARGV[1] の入力検証** | PK 列名を `^[a-z][a-z0-9_]{0,62}$` の識別子形式で検証、不正なら ERRCODE `22023` で REJECT |
 | **SECURITY DEFINER 不採用** | trigger は呼出元の権限で実行（INVOKER）、特権昇格を避ける |
 | **table_name 確認** | `TG_TABLE_SCHEMA` も `information_schema` 検索条件に含め、別スキーマの同名テーブル誤認を防止 |
+
+### 4.1.2 PK 列名のテーブル別対応（2026-04-27 a-review #1 反映）
+
+#### 課題
+
+旧 spec では `NEW.id::text` をハードコードしていたため、PK 列名が `id` 以外のテーブル（例: `bud_transfers` の `transfer_id`）に Trigger を適用すると実行時エラー（`record "new" has no field "id"`）で INSERT 失敗する致命的バグが残存していた。
+
+#### 修正方針（A 案: COALESCE/汎用化パターン採用）
+
+`TG_ARGV[1]` で PK 列名を受け取り、`to_jsonb(NEW)->>v_pk_column` で動的に PK 値を抽出する。
+- **デフォルト**: `'id'`（標準的な PK 命名のテーブル向け、`TG_ARGV[1]` 省略可）
+- **明示指定**: PK 列名が異なるテーブルでは `CREATE TRIGGER` 時に第 2 引数を渡す
+- **B 案不採用理由**: テーブル別関数化はメンテコスト高、A 案で十分汎用化可能
+
+#### PK 列マッピング表（参考）
+
+| テーブル | PK 列 | TG_ARGV[1] |
+|---|---|---|
+| `bud_payslips` / `bud_attendance` / `root_employees` 等（標準命名） | `id` | 省略可 |
+| `bud_transfers` | `transfer_id` | `'transfer_id'` |
+| `tree_call_records` | `call_id`（仮、実装時確認） | `'call_id'` |
+| `forest_fiscal_periods` | `period_id`（仮、実装時確認） | `'period_id'` |
+| `bloom_workboard_items` | `item_id`（仮、実装時確認） | `'item_id'` |
+| 複合キーテーブル | （非対応） | サブテーブル化 or 仮想 PK 列追加で回避 |
+
+→ 実装時、各テーブルの実 PK 列名を確認して `CREATE TRIGGER` 時に渡す。
 
 ### 4.2 各テーブルへの適用
 
 ```sql
--- 例: Bud transfers
+-- 例 1: Bud transfers（PK: transfer_id、TG_ARGV[1] 明示）
 CREATE TRIGGER bud_transfers_history
   AFTER INSERT OR UPDATE OR DELETE ON bud_transfers
-  FOR EACH ROW EXECUTE FUNCTION trg_record_change_history('bud');
+  FOR EACH ROW EXECUTE FUNCTION trg_record_change_history('bud', 'transfer_id');
 
--- 例: Leaf 関電
+-- 例 2: Leaf 関電（PK: id、TG_ARGV[1] 省略可）
 CREATE TRIGGER soil_kanden_cases_history
   AFTER INSERT OR UPDATE OR DELETE ON soil_kanden_cases
   FOR EACH ROW EXECUTE FUNCTION trg_record_change_history('leaf');
+
+-- 例 3: Root employees（PK: id、TG_ARGV[1] 省略可）
+CREATE TRIGGER root_employees_history
+  AFTER INSERT OR UPDATE OR DELETE ON root_employees
+  FOR EACH ROW EXECUTE FUNCTION trg_record_change_history('root');
+
+-- 例 4: 標準 PK が複数または非標準のテーブルは TG_ARGV[1] 必須
+-- CREATE TRIGGER 時に省略すると、Trigger 関数内で PK 列「id」を探し、
+-- 列不在なら ERRCODE 22023 で REJECT される（早期検出）
 ```
 
 ### 4.3 SOFT_DELETE / RESTORE の特別扱い

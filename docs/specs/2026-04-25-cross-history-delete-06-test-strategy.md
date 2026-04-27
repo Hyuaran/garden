@@ -708,6 +708,88 @@ BEGIN;
 ROLLBACK;
 ```
 
+#### Case 7: 非標準 PK 列名テーブルの Trigger 動作（a-review #1 反映）
+
+```sql
+-- bud_transfers 等の PK 列名が 'id' 以外のテーブルで、TG_ARGV[1] 経由で正しく PK 値を抽出できるか
+-- 旧 spec の NEW.id::text ハードコードでは実行時エラーで INSERT 失敗していた問題の回帰防止
+BEGIN;
+  CREATE TABLE test_non_id_pk (
+    transfer_id uuid PRIMARY KEY,
+    amount numeric NOT NULL,
+    deleted_at timestamptz
+  );
+  CREATE TRIGGER test_non_id_pk_history
+    AFTER INSERT OR UPDATE OR DELETE ON test_non_id_pk
+    FOR EACH ROW EXECUTE FUNCTION trg_record_change_history('bud', 'transfer_id');
+    -- TG_ARGV[1] = 'transfer_id' で PK 列名を明示
+
+  DO $$
+  DECLARE
+    v_test_id uuid := gen_random_uuid();
+    v_recorded_record_id text;
+  BEGIN
+    -- INSERT して history が記録されるか確認
+    INSERT INTO test_non_id_pk (transfer_id, amount) VALUES (v_test_id, 1000);
+
+    SELECT record_id INTO v_recorded_record_id
+    FROM garden_change_history
+    WHERE module = 'bud' AND table_name = 'test_non_id_pk' AND operation = 'INSERT'
+    ORDER BY changed_at DESC LIMIT 1;
+
+    ASSERT v_recorded_record_id = v_test_id::text,
+      format('Test failed: expected record_id %s, got %s', v_test_id::text, v_recorded_record_id);
+    RAISE NOTICE 'OK: non-id PK (transfer_id) recorded correctly';
+  END $$;
+ROLLBACK;
+```
+
+#### Case 8: TG_ARGV[1] PK 列名バリデーション（a-review #1 反映）
+
+```sql
+-- TG_ARGV[1] に不正な識別子形式（スペース / 大文字 / 記号）を渡した場合、Trigger 関数が ERRCODE 22023 で REJECT
+BEGIN;
+  CREATE TABLE test_bad_pk_arg (id uuid PRIMARY KEY);
+  CREATE TRIGGER test_bad_pk_arg_trigger
+    AFTER INSERT ON test_bad_pk_arg
+    FOR EACH ROW EXECUTE FUNCTION trg_record_change_history('bud', 'INVALID PK NAME');
+
+  DO $$
+  BEGIN
+    INSERT INTO test_bad_pk_arg (id) VALUES (gen_random_uuid());
+    RAISE EXCEPTION 'Test failed: invalid pk_column argument was not rejected';
+  EXCEPTION
+    WHEN sqlstate '22023' THEN
+      RAISE NOTICE 'OK: invalid pk_column rejected';
+  END $$;
+ROLLBACK;
+```
+
+#### Case 9: PK 列が存在しないテーブルへの Trigger 適用（a-review #1 反映）
+
+```sql
+-- TG_ARGV[1] 省略（デフォルト 'id'）したが、'id' 列が存在しないテーブルでは ERRCODE 22023 で REJECT
+BEGIN;
+  CREATE TABLE test_no_id_col (
+    code text PRIMARY KEY,           -- PK は 'code' 列
+    value numeric
+  );
+  CREATE TRIGGER test_no_id_col_trigger
+    AFTER INSERT ON test_no_id_col
+    FOR EACH ROW EXECUTE FUNCTION trg_record_change_history('bud');
+    -- TG_ARGV[1] 省略 → デフォルト 'id' を探すが列不在
+
+  DO $$
+  BEGIN
+    INSERT INTO test_no_id_col (code, value) VALUES ('TEST-001', 100);
+    RAISE EXCEPTION 'Test failed: missing id column was not detected';
+  EXCEPTION
+    WHEN sqlstate '22023' THEN
+      RAISE NOTICE 'OK: missing PK column detected with ERRCODE 22023';
+  END $$;
+ROLLBACK;
+```
+
 ### 15.3 テスト実装場所
 
 ```
@@ -718,15 +800,17 @@ tests/
       ├─ injection-ddl-rejection.test.sql       (Case 2, 6)
       ├─ injection-semicolon-chain.test.sql     (Case 3)
       ├─ search-path-attack.test.sql            (Case 4)
-      └─ argument-validation.test.sql           (Case 5)
+      ├─ argument-validation.test.sql           (Case 5)
+      └─ pk-column-handling.test.sql            (Case 7, 8, 9)  -- a-review #1 反映
 ```
 
 ### 15.4 CI 統合
 
-- pgTAP or 単純な `psql -f` 実行で全 6 ケースを CI で実行
+- pgTAP or 単純な `psql -f` 実行で全 9 ケースを CI で実行
 - 1 ケースでも失敗したら CI 不合格
 - PR チェックの required check に含める
 - a-review #5 修正の検証ケースとして PR 必須通過
+- a-review #1 修正（PK 列名汎用化）の回帰防止として Case 7-9 追加
 
 ### 15.5 Phase B 拡張時の追加要件
 
@@ -738,10 +822,12 @@ tests/
 
 ### 15.6 受入基準（DoD）への追加
 
-- [ ] Case 1 〜 6 がすべて PASS（CI 必須）
+- [ ] Case 1 〜 9 がすべて PASS（CI 必須）
 - [ ] `bud_transfers` 等の機微テーブルが injection 試行後も無傷
 - [ ] `search_path` 攻撃が SECURITY DEFINER 関数を騙せない
 - [ ] PUBLIC が SECURITY DEFINER 関数を直接 EXECUTE できない（REVOKE 確認）
+- [ ] 非標準 PK 列名（`transfer_id` 等）の Trigger が `record_id` を正しく記録（Case 7）
+- [ ] TG_ARGV[1] / PK 列名の不正値・列不在が ERRCODE 22023 で REJECT（Case 8, 9）
 - [ ] ERRCODE が標準値（22023 / 42501）で返る
 
 ---
