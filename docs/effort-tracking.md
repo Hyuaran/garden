@@ -64,6 +64,7 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Tree | Phase D-02 operator UI Step 1+2+3（途中、Step 4-10 残）| 1.0 | 0.3 | — | a-tree (A) | 2026-04-27 | (in_progress) | spec §12 10 ステップ中 3 完了。Step 1+2: キャンペーン選択画面 `/tree/select-campaign` 新設（既存 `/tree/call` InCallScreen は不変）+ openSession/closeSession Server Action（accessToken パターン、tree_calling_sessions INSERT、既存アクティブセッション自動 close）+ vitest 7/7 PASS（commit bc3bcfa）。Step 3: Sprout 画面 Supabase 連携、resultCodeMapping.ts（label→result_code 12 種マッピング + isMemoRequired）+ insertTreeCallRecord Server Action（CHECK 制約準拠、メモ必須、500 文字 truncate、認証検証）+ 既存 `sprout/page.tsx` に最小追加（既存フェーズ遷移・タイマー保護）+ vitest 24/24 PASS（commit 60fbc7d）。Step 4-10（Branch 同等対応 / FM ショートカット F1-F10 / 巻き戻し / オフラインキュー / 画面遷移ガード / Breeze・Aporan・Confirm-wait 連携 / 結合テスト）は次セッションへ handoff。 |
 
 ## 運用メモ
 
