@@ -51,9 +51,13 @@ export function BackgroundCarousel({ initialIndex = 0, initialMode = "manual" }:
   // keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // 入力フィールド内では無視
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      // 入力フィールド内では無視（INPUT/TEXTAREA/SELECT/contenteditable）
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isContentEditable =
+        target?.isContentEditable ||
+        target?.getAttribute("contenteditable") === "true";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || isContentEditable) return;
 
       if (e.key === "ArrowRight" || e.key === " ") {
         e.preventDefault();
@@ -62,9 +66,11 @@ export function BackgroundCarousel({ initialIndex = 0, initialMode = "manual" }:
         e.preventDefault();
         setIndex((i) => ((i - 1 + ATMOSPHERE_COUNT) % ATMOSPHERE_COUNT) as AtmosphereId);
       } else if (e.key >= "1" && e.key <= "6") {
+        e.preventDefault();
         const n = Number.parseInt(e.key, 10) - 1;
         if (n >= 0 && n < ATMOSPHERE_COUNT) setIndex(n as AtmosphereId);
       } else if (e.key === "a" || e.key === "A") {
+        e.preventDefault();
         setMode((m) => (m === "auto" ? "manual" : "auto"));
       }
     };
