@@ -1,22 +1,23 @@
 /**
- * Garden Series ホーム画面 — v7-D A 案（5/5 後道さんデモ用 画像 overlay モード）
+ * Garden Series ホーム画面 — v7-D-fix2 (5/5 後道さんデモ用 画像 overlay モード)
  *
  * 経緯:
- *   東海林さんが ChatGPT で完璧な理想画面（v4）を生成 → public/images/garden-home-bg-v2.png に
- *   v4 内容で上書き済。dispatch v7-D（2026-04-27）で「全く同じ」を最速実現する A 案採用。
+ *   V7-D で object-fit: cover 全画面表示 → 画面比率により画像 crop で hit area とズレ。
+ *   V7-D-fix2 で aspect-ratio 16:9 固定 container + Image fill object-contain に変更、
+ *   hit area を同 container 内 % 配置で画像と完全連動。
  *
  * 構成:
- *   - 画像全画面（width 100vw / height 100vh / object-fit cover / position fixed）
- *   - 12 モジュール 透明 hit area（画像内位置に absolute 配置、hover で scale + ring）
- *   - 既存 Sidebar / AppHeader / KpiCard / TodaysActivity / ModuleGrid は本ファイルでは未使用
- *     （CLAUDE.md ファイル削除禁止 + B 案で再利用するため component 自体は残置）
+ *   - 外枠: cream 背景 + flex center で container を中央配置
+ *   - container: aspect-[16/9] max-w-[1920px]、内部に画像 + hit area
+ *   - 画像: <Image fill object-contain> で letterbox 維持（crop なし）
+ *   - 12 モジュール 透明 hit area: 同 container 内 absolute %
  *
  * 5/5 デモ後（V7-E、post-5/5 dispatch）:
+ *   - 404 解消（develop merge or Coming Soon ページ）
  *   - B 案として 12 個別アイコン + CSS 個別実装で動的化
- *   - KPI / Today's Activity / Sidebar / AppHeader を画像準拠で CSS 再現
- *   - 動的データ（実 user 名、実 KPI、実通知）反映
  */
 
+import Image from "next/image";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -34,11 +35,11 @@ function isRoleAtLeast(role: GardenRoleLike, min: GardenRoleLike): boolean {
 
 type HitArea = {
   key: string;
-  x: number;        // 画像内 left%（中央基準で transform translate -50%）
-  y: number;        // 画像内 top%（同上）
+  x: number;        // container 内 left%（中央基準で transform translate -50%）
+  y: number;        // container 内 top%（同上）
   href: string;
-  label: string;    // aria-label 用「{Garden 正式名} {役割}」
-  minRole: GardenRoleLike;  // この role 以上で click 可（disabled 概念は削除）
+  label: string;
+  minRole: GardenRoleLike;
 };
 
 // 12 モジュール 透明 hit area 配置（v7-D-fix で再測定: a-main-009 視覚測定）
@@ -63,8 +64,8 @@ const HIT_AREAS: ReadonlyArray<HitArea> = [
   { key: "calendar", x: 64, y: 88, href: "/calendar",        label: "Calendar 時間軸・スケジュール", minRole: "outsource" },
 ];
 
-const HIT_WIDTH = 13;   // %（旧 11、v7-D-fix で拡大）
-const HIT_HEIGHT = 16;  // %（旧 13、v7-D-fix で拡大）
+const HIT_WIDTH = 13;   // %
+const HIT_HEIGHT = 16;  // %
 
 export default function GardenHomePage() {
   // 5/5 デモ用 super_admin 想定（全 12 module 可視 + click 可）。
@@ -74,62 +75,76 @@ export default function GardenHomePage() {
 
   return (
     <main
-      data-testid="home-v7d"
+      data-testid="home-v7d-fix2"
       style={{
         position: "relative",
         width: "100vw",
         minHeight: "100vh",
         margin: 0,
         padding: 0,
+        background: "#FAF8F3",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         overflow: "hidden",
       }}
     >
-      {/* v4 画像 全画面（fixed cover） */}
+      {/* aspect-ratio 16/9 固定 container（画像 + hit area が完全連動） */}
       <div
-        aria-hidden
+        data-testid="v7d-aspect-container"
         style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          backgroundImage: "url(/images/garden-home-bg-v2.png)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      />
-
-      {/* 12 モジュール 透明 hit area（v7-D-fix で全 12 件 Link 化） */}
-      <div
-        data-testid="v4-hit-layer"
-        aria-label="Garden 12 モジュール"
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 1,
-          pointerEvents: "none",
+          position: "relative",
+          width: "100%",
+          maxWidth: 1920,
+          aspectRatio: "16 / 9",
         }}
       >
-        {visibleHitAreas.map((area) => (
-          <Link
-            key={area.key}
-            href={area.href}
-            data-module-key={area.key}
-            data-testid={`v4-hit-${area.key}`}
-            aria-label={area.label}
-            title={area.label}
-            className="v7d-hit"
-            style={{
-              position: "absolute",
-              left: `${area.x}%`,
-              top: `${area.y}%`,
-              width: `${HIT_WIDTH}%`,
-              height: `${HIT_HEIGHT}%`,
-              transform: "translate(-50%, -50%)",
-              borderRadius: 14,
-              pointerEvents: "auto",
-            }}
-          />
-        ))}
+        {/* v4 画像 (object-contain で letterbox 維持、crop なし) */}
+        <Image
+          src="/images/garden-home-bg-v2.png"
+          alt="Garden Series ホーム — 大樹中心の業務 OS ビュー"
+          fill
+          priority
+          sizes="(max-width: 1920px) 100vw, 1920px"
+          style={{
+            objectFit: "contain",
+            objectPosition: "center",
+          }}
+        />
+
+        {/* 12 モジュール 透明 hit area（同 container 内 % 配置で画像と完全連動） */}
+        <div
+          data-testid="v4-hit-layer"
+          aria-label="Garden 12 モジュール"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 1,
+            pointerEvents: "none",
+          }}
+        >
+          {visibleHitAreas.map((area) => (
+            <Link
+              key={area.key}
+              href={area.href}
+              data-module-key={area.key}
+              data-testid={`v4-hit-${area.key}`}
+              aria-label={area.label}
+              title={area.label}
+              className="v7d-hit"
+              style={{
+                position: "absolute",
+                left: `${area.x}%`,
+                top: `${area.y}%`,
+                width: `${HIT_WIDTH}%`,
+                height: `${HIT_HEIGHT}%`,
+                transform: "translate(-50%, -50%)",
+                borderRadius: 14,
+                pointerEvents: "auto",
+              }}
+            />
+          ))}
+        </div>
       </div>
 
       {/* 隠し search input（Ctrl+F focus 用、v6 AppHeader 機能の最小代替）*/}
