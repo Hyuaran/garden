@@ -206,45 +206,57 @@ export async function updateTransferStatus(params: {
 }
 
 /**
- * @deprecated 2026-04-25 a-review 指摘 B3（二重実装・監査漏れ）対応。
+ * @deprecated 2026-04-25 a-review 指摘 B3（二重実装・監査漏れ）+ 2026-04-27 a-review #55 R3（経理事故レベル）対応で実装本体を RPC 経由へ全面置換。
  *
- * super_admin による自起票の即承認スキップ。
- * 下書き → 承認済み へ 1 ステップで遷移。
- * RLS の bud_transfers_update_self_approve_super_admin ポリシーで保護。
+ * super_admin による自起票の即承認スキップ（下書き → 承認済み）。
  *
- * **重大な問題**: 本関数は直接 UPDATE するため `bud_transfer_status_history` への
- * INSERT が走らず、**super_admin の自起票即承認が監査ログに残らない**。
- * 金融監査の要件として全ステータス遷移が history に記録される必要があるため、
- * 新規呼出は `transitionTransferStatus({ transferId, toStatus: '承認済み', fromStatus: '下書き' })`
- * を使用すること。RPC 経由なら自動で history INSERT + reason='自起票' 自動挿入が実行される。
+ * **修正履歴**:
+ * - 2026-04-25 (a-bud): @deprecated マーク + JSDoc 警告追加（実装はそのまま）
+ * - 2026-04-27 (a-bud, #55 R3 修正): 直接 UPDATE 実装を撤去し、`bud_transition_transfer_status` RPC 経由に統一。
+ *   旧実装は status のみ UPDATE して `bud_transfer_status_history` への INSERT が一切発生しないため、
+ *   super_admin 自起票即承認が監査ログに残らず**金融監査の要件を満たせない経理事故レベル**の欠陥だった。
+ *   RPC は SECURITY DEFINER で UPDATE + history INSERT を単一トランザクション、
+ *   かつ `bud_can_transition` で super_admin 自起票特例を判定、reason='自起票' 自動挿入する
+ *   （scripts/bud-a03-status-history-migration.sql §3-§5）。
  *
- * 既存呼出箇所: 現時点で 0 件（src/ 内全文検索で確認済）。
+ * **挙動の設計判断（#55 R4 design decision、design-decision で容認）**:
+ * - `confirmed_by` / `confirmed_at` は NULL のまま（二重チェックをスキップしたという事実の fingerprint、I-2 B 案）
+ * - `approved_by` / `approved_at` も RPC は更新しない（status_changed_by / status_changed_at + status_history で代替監査可能）
+ * - 集約 query で「super_admin スキップ件数」を出す場合は `confirmed_at IS NULL` で抽出可能
+ *
+ * **後続作業**: 呼出箇所ゼロを再確認の上、当関数自体を削除予定（PR #85 merge 後の次フェーズ）。
  */
 export async function selfApproveAsSuperAdmin(
   transferId: string,
-  actorUserId: string,
+  // actorUserId は API 互換のため残置するが、RPC 内部で auth.uid() から取得するため未使用。
+  // 将来削除時に併せて引数撤去予定。
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _actorUserId: string,
 ): Promise<BudTransfer> {
-  const now = new Date().toISOString();
+  // 直接 UPDATE を撤去し、RPC 経由に統一（#55 R3 修正）。
+  // RPC は status + status_changed_* + status_history INSERT を atomic に実行。
+  const transitionResult = await transitionTransferStatus({
+    transferId,
+    toStatus: "承認済み",
+    reason: "自起票（super_admin スキップ）",
+  });
 
-  // super_admin スキップ時は confirmed_by / confirmed_at を NULL のまま残し、
-  // 「二重チェックをスキップした」という事実を明示する（設計判断: I-2 B 案）。
-  // 監査は created_by（起票）と approved_by（承認）の 2 カラムで追跡可能。
+  if (!transitionResult.success) {
+    throw new Error(
+      `自己承認に失敗: ${transitionResult.error ?? "権限不足またはステータス不一致"}`,
+    );
+  }
+
+  // 遷移後のレコードを返却（旧 API 契約互換）
   const { data, error } = await supabase
     .from("bud_transfers")
-    .update({
-      status: "承認済み",
-      approved_by: actorUserId,
-      approved_at: now,
-    })
-    .eq("transfer_id", transferId)
-    .eq("status", "下書き")
-    .eq("created_by", actorUserId)
     .select("*")
+    .eq("transfer_id", transferId)
     .single<BudTransfer>();
 
   if (error || !data) {
     throw new Error(
-      `自己承認に失敗: ${error?.message ?? "権限不足またはステータス不一致"}`,
+      `自己承認後の再取得に失敗: ${error?.message ?? "transfer not found"}`,
     );
   }
 

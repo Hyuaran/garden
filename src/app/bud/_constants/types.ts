@@ -132,11 +132,20 @@ export interface BudTransfer {
 }
 
 // ============================================================
-// bud_statements（入出金明細・Phase 2で使用）
+// bud_statements（入出金明細）
+// 旧 Phase 2 仮置き型は A-06 全面再設計で廃止（a-review #55 R2、2026-04-27 a-bud）。
+// 実装側の正本型は src/app/bud/_lib/statement-queries.ts / statement-import.ts 等の
+// 個別ファイルが Supabase generated types ベースで保持する。
+// 互換用として旧 ENUM は残置（他参照ゼロ確認済、将来削除可）。
 // ============================================================
 export type ReconcileStatus = "未照合" | "照合済み" | "対象外";
 export type TransactionType = "入金" | "出金" | "振替";
 
+/**
+ * @deprecated A-06 で全面再設計（statement_id text PK → id uuid PK、deposit/withdrawal_amount → amount signed bigint 等）。
+ * 本 interface は使用箇所ゼロのため残置のみ。新規利用は禁止、`statement-queries.ts` 等の個別型を使用すること。
+ * 削除タイミング: PR #85 merge 後の型整理 PR（a-review #55 R2 後続作業）。
+ */
 export interface BudStatement {
   statement_id: string;
   company_id: string | null;

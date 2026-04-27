@@ -207,7 +207,10 @@ CREATE POLICY bud_tsh_select_staff_own ON bud_transfer_status_history
   USING (
     EXISTS (
       SELECT 1 FROM bud_transfers bt
-      WHERE bt.id = bud_transfer_status_history.transfer_id
+      -- a-review #55 R1 修正 (2026-04-27 a-bud): bud_transfers の PK は transfer_id (text, FRK-YYYYMMDD-NNNNNN)。
+      -- bt.id 列は存在しないため、staff/closer/cs/toss ロールが status_history を SELECT すると
+      -- SQL ERROR で失敗 → 振込履歴の RLS が機能不全 (admin 以外の正当な参照が一律拒否される) 状態だった。
+      WHERE bt.transfer_id = bud_transfer_status_history.transfer_id
         AND bt.created_by = auth.uid()
     )
   );
