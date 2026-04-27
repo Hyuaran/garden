@@ -39,10 +39,11 @@ import { TREE_PATHS } from "../../_constants/screens";
 import { insertCall } from "../../_lib/queries";
 import { useTreeState } from "../../_state/TreeStateContext";
 import { supabase } from "../../_lib/supabase";
-import { insertTreeCallRecord } from "../../_actions/insertTreeCallRecord";
+import { insertTreeCallRecordWithQueue } from "../../_lib/insertTreeCallRecordWithQueue";
 import { labelToResultCode, resultCodeToGroup, isMemoRequired } from "../../_lib/resultCodeMapping";
 import { useCallShortcuts } from "../../_hooks/useCallShortcuts";
 import { useCallRollback } from "../../_hooks/useCallRollback";
+import { NetworkStatusBadge } from "../../_components/NetworkStatusBadge";
 
 /** F キー → Sprout ボタンラベルのマッピング（spec §4 通り） */
 const SPROUT_BUTTONS_BY_KEY: Record<string, string> = {
@@ -204,7 +205,7 @@ export default function CallingSproutPage() {
             ? Math.round((hangupAt.getTime() - connectedAt.getTime()) / 1000)
             : null;
 
-        const tcrResult = await insertTreeCallRecord({
+        const tcrResult = await insertTreeCallRecordWithQueue({
           session_id: sessionId,
           campaign_code: campaignCode,
           result_code: tcrCode,
@@ -221,8 +222,10 @@ export default function CallingSproutPage() {
           return;
         }
 
-        // Step 6: INSERT 成功後 5s 間の巻き戻しを有効化
-        armRollback(tcrResult.call_id);
+        // Step 6: INSERT 成功後 5s 間の巻き戻しを有効化（オフラインキュー分は対象外）
+        if (!tcrResult.offline) {
+          armRollback(tcrResult.call_id);
+        }
       } else {
         console.warn("[sprout] no active session in localStorage, tree_call_records INSERT skipped");
       }
@@ -251,12 +254,20 @@ export default function CallingSproutPage() {
         margin: "0 auto",
       }}
     >
-      {/* ワイヤーフレームラベル */}
-      <div style={{ position: "relative", marginBottom: 20 }}>
+      {/* ワイヤーフレームラベル + ネットワーク状態バッジ */}
+      <div
+        style={{
+          position: "relative",
+          marginBottom: 20,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <WireframeLabel color={C.lightGreen}>
           画面4: 架電画面（Sprout / Breeze）
         </WireframeLabel>
-        <div style={{ paddingTop: 8 }} />
+        <NetworkStatusBadge />
       </div>
 
       {/* タイマーバー + アクションボタン */}
