@@ -21,40 +21,57 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+type GardenRoleLike =
+  | "outsource" | "toss" | "closer" | "cs" | "staff" | "manager" | "admin" | "super_admin";
+
+const ROLE_RANK: Record<GardenRoleLike, number> = {
+  outsource: 0, toss: 1, closer: 2, cs: 3, staff: 4, manager: 5, admin: 6, super_admin: 7,
+};
+
+function isRoleAtLeast(role: GardenRoleLike, min: GardenRoleLike): boolean {
+  return ROLE_RANK[role] >= ROLE_RANK[min];
+}
+
 type HitArea = {
   key: string;
   x: number;        // 画像内 left%（中央基準で transform translate -50%）
   y: number;        // 画像内 top%（同上）
   href: string;
   label: string;    // aria-label 用「{Garden 正式名} {役割}」
-  enabled: boolean; // 8-role aware: false の場合は disabled 表示（cursor: not-allowed）
+  minRole: GardenRoleLike;  // この role 以上で click 可（disabled 概念は削除）
 };
 
-// 12 モジュール 透明 hit area 配置（dispatch v7-D 概算座標、東海林さん localhost 確認後微調整想定）
-// Row 1 樹冠 y=43 / Row 2 地上 y=58 / Row 3 地下 y=73
-// hit area サイズ: 11% × 13%
+// 12 モジュール 透明 hit area 配置（v7-D-fix で再測定: a-main-009 視覚測定）
+// Row 1 樹冠 y=53 / Row 2 地上 y=71 / Row 3 地下 y=88
+// hit area サイズ: 13% × 16%
+// 全 module を minRole="outsource" でデフォルト全可視（super_admin demo は全 12 件 click 可）
 const HIT_AREAS: ReadonlyArray<HitArea> = [
-  // Row 1 樹冠（y=43%）
-  { key: "bloom",    x: 23, y: 43, href: "/bloom/workboard", label: "Bloom 案件一覧・KPI",          enabled: true },
-  { key: "fruit",    x: 37, y: 43, href: "/fruit",           label: "Fruit 法人実体（番号系・許認可）", enabled: false },
-  { key: "seed",     x: 51, y: 43, href: "/seed",            label: "Seed 新事業",                   enabled: false },
-  { key: "forest",   x: 65, y: 43, href: "/forest",          label: "Forest 全法人決算",             enabled: true  },
-  // Row 2 地上（y=58%）
-  { key: "bud",      x: 23, y: 58, href: "/bud",             label: "Bud 経理・収支",                enabled: false },
-  { key: "leaf",     x: 37, y: 58, href: "/leaf",            label: "Leaf 個別アプリ・トスアップ",    enabled: false },
-  { key: "tree",     x: 51, y: 58, href: "/tree",            label: "Tree 架電アプリ",               enabled: true  },
-  { key: "sprout",   x: 65, y: 58, href: "/sprout",          label: "Sprout 新商材オンボーディング", enabled: false },
-  // Row 3 地下（y=73%）
-  { key: "soil",     x: 23, y: 73, href: "/soil",            label: "Soil DB 本体・大量データ基盤",  enabled: false },
-  { key: "root",     x: 37, y: 73, href: "/root",            label: "Root 組織・マスタデータ",       enabled: true  },
-  { key: "rill",     x: 51, y: 73, href: "/rill",            label: "Rill Chatwork 連携",           enabled: false },
-  { key: "calendar", x: 65, y: 73, href: "/calendar",        label: "Calendar 時間軸・スケジュール", enabled: false },
+  // Row 1 樹冠（y=53%）
+  { key: "bloom",    x: 18, y: 53, href: "/bloom/workboard", label: "Bloom 案件一覧・KPI",          minRole: "outsource" },
+  { key: "fruit",    x: 33, y: 53, href: "/fruit",           label: "Fruit 法人実体（番号系・許認可）", minRole: "outsource" },
+  { key: "seed",     x: 49, y: 53, href: "/seed",            label: "Seed 新事業",                   minRole: "outsource" },
+  { key: "forest",   x: 64, y: 53, href: "/forest",          label: "Forest 全法人決算",             minRole: "outsource" },
+  // Row 2 地上（y=71%）
+  { key: "bud",      x: 18, y: 71, href: "/bud",             label: "Bud 経理・収支",                minRole: "outsource" },
+  { key: "leaf",     x: 33, y: 71, href: "/leaf",            label: "Leaf 個別アプリ・トスアップ",    minRole: "outsource" },
+  { key: "tree",     x: 49, y: 71, href: "/tree",            label: "Tree 架電アプリ",               minRole: "outsource" },
+  { key: "sprout",   x: 64, y: 71, href: "/sprout",          label: "Sprout 新商材オンボーディング", minRole: "outsource" },
+  // Row 3 地下（y=88%）
+  { key: "soil",     x: 18, y: 88, href: "/soil",            label: "Soil DB 本体・大量データ基盤",  minRole: "outsource" },
+  { key: "root",     x: 33, y: 88, href: "/root",            label: "Root 組織・マスタデータ",       minRole: "outsource" },
+  { key: "rill",     x: 49, y: 88, href: "/rill",            label: "Rill Chatwork 連携",           minRole: "outsource" },
+  { key: "calendar", x: 64, y: 88, href: "/calendar",        label: "Calendar 時間軸・スケジュール", minRole: "outsource" },
 ];
 
-const HIT_WIDTH = 11;   // %
-const HIT_HEIGHT = 13;  // %
+const HIT_WIDTH = 13;   // %（旧 11、v7-D-fix で拡大）
+const HIT_HEIGHT = 16;  // %（旧 13、v7-D-fix で拡大）
 
 export default function GardenHomePage() {
+  // 5/5 デモ用 super_admin 想定（全 12 module 可視 + click 可）。
+  // post-5/5 で root_employees から動的取得 + 各 role に応じて filter。
+  const role: GardenRoleLike = "super_admin";
+  const visibleHitAreas = HIT_AREAS.filter((h) => isRoleAtLeast(role, h.minRole));
+
   return (
     <main
       data-testid="home-v7d"
@@ -81,7 +98,7 @@ export default function GardenHomePage() {
         }}
       />
 
-      {/* 12 モジュール 透明 hit area */}
+      {/* 12 モジュール 透明 hit area（v7-D-fix で全 12 件 Link 化） */}
       <div
         data-testid="v4-hit-layer"
         aria-label="Garden 12 モジュール"
@@ -92,43 +109,27 @@ export default function GardenHomePage() {
           pointerEvents: "none",
         }}
       >
-        {HIT_AREAS.map((area) => {
-          const baseStyle: React.CSSProperties = {
-            position: "absolute",
-            left: `${area.x}%`,
-            top: `${area.y}%`,
-            width: `${HIT_WIDTH}%`,
-            height: `${HIT_HEIGHT}%`,
-            transform: "translate(-50%, -50%)",
-            borderRadius: 14,
-            pointerEvents: "auto",
-          };
-          if (!area.enabled) {
-            return (
-              <div
-                key={area.key}
-                data-module-key={area.key}
-                aria-disabled="true"
-                aria-label={`${area.label} — 準備中`}
-                title={`${area.label} — 準備中`}
-                className="v7d-hit v7d-hit--disabled"
-                style={{ ...baseStyle, cursor: "not-allowed" }}
-              />
-            );
-          }
-          return (
-            <Link
-              key={area.key}
-              href={area.href}
-              data-module-key={area.key}
-              data-testid={`v4-hit-${area.key}`}
-              aria-label={area.label}
-              title={area.label}
-              className="v7d-hit"
-              style={baseStyle}
-            />
-          );
-        })}
+        {visibleHitAreas.map((area) => (
+          <Link
+            key={area.key}
+            href={area.href}
+            data-module-key={area.key}
+            data-testid={`v4-hit-${area.key}`}
+            aria-label={area.label}
+            title={area.label}
+            className="v7d-hit"
+            style={{
+              position: "absolute",
+              left: `${area.x}%`,
+              top: `${area.y}%`,
+              width: `${HIT_WIDTH}%`,
+              height: `${HIT_HEIGHT}%`,
+              transform: "translate(-50%, -50%)",
+              borderRadius: 14,
+              pointerEvents: "auto",
+            }}
+          />
+        ))}
       </div>
 
       {/* 隠し search input（Ctrl+F focus 用、v6 AppHeader 機能の最小代替）*/}
