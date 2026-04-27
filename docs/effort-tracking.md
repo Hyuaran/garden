@@ -64,6 +64,8 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Cross | タスク A: 後追い判断保留 33 件 事前下調べ | 0.25 | 0.1 | -0.15 | a-auto 014 (subagent A worktree) | 2026-04-26 | 2026-04-26 | 5 カテゴリ × 33 件、4 列フォーマット（論点 / 選択肢 A/B/C / 推奨 / 要はこういうこと）。推奨 A=26 / B=6 / C=1。subagent 並列 isolation で完走。 |
+| Cross | タスク B: cross-ui 6 spec 整合性監査 | 0.25 | 0.15 | -0.1 | a-auto 014 (subagent B worktree) | 2026-04-26 | 2026-04-26 | 確定度 A=0/B=2/C=4、重大矛盾 4 件（特に M-3 7-role vs 8-role ズレ）、実装ブロッカー高 7 件、既存実装衝突 5 件、ShojiStatusWidget 新規 spec 化推奨。a-bloom GW 着手判断 🟡 一部修正後着手（シナリオ B）。subagent 並列 isolation で完走。 |
 
 ## 運用メモ
 
