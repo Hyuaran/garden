@@ -64,6 +64,7 @@
 | Tree | Phase D α (東海林1人) | — | | | a-tree (A) | (pending) | | 1 週間想定。100 件実コール + spot-check 5 件 + 7種テスト全 ✅。 |
 | Tree | Phase D β1 (1人現場) | — | | | a-tree (A) | (pending) | | 1 週間想定、FM 並行。新旧 ±10% 以内、UX フィードバック ≤5 件。 |
 | Tree | Phase D Full release + FM 切替 | — | | | a-tree (A) | (pending) | | β half (±3%) 0 critical 後。FM 30日並行参照。 |
+| Cross | タスク J: 朝の AI 画像 3 案対比 最終プロンプト Refinement | 0.15 | 0.15 | 0 | a-auto 018 inline | 2026-04-27 | 2026-04-27 | docs/specs/cross-ui-04-image-prompts-3candidates-final-20260427.md（590+ 行）。3 軸対比戦略反映: 凛とした和モダン（🥈 安全策）/ 北欧風テラリウム（🥉 独自性）/ 精緻なボタニカル水彩（🥇 東海林さん最推し、リスク緩和強調）。各案 × 朝で Midjourney v6 + DALL-E 3 自然言語版 + ネガティブ + パラメータ + リスク注意点。生成試行手順 + 後道さんデモ提示シナリオ + 反応別対応 + ファイル管理運用込み。NotebookLM PDF テキスト抽出不可のため指示文 + memory + 既存タスク I を統合。 |
 
 ## 運用メモ
 
