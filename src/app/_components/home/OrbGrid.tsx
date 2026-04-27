@@ -1,5 +1,5 @@
 /**
- * OrbGrid (v2.8a Step 3 — 静的版)
+ * OrbGrid (v2.8a Step 5 — 動的版)
  *
  * DESIGN_SPEC §4-5
  *
@@ -14,7 +14,7 @@
  *   既存 routes に合わせて、未実装モジュールは Coming Soon ページへ
  *   (V7-D-fix と同じ運用)
  *
- * Step 3 では mock の status 値を index.html からそのまま移植。
+ * Step 5: hover/click callback を全 OrbCard に forward (音再生用)
  */
 import OrbCard, { type OrbStatusTone } from "./OrbCard";
 
@@ -149,7 +149,14 @@ const MODULES: ModuleDef[] = [
   },
 ];
 
-export default function OrbGrid() {
+type Props = {
+  /** orb hover 時 callback */
+  onOrbHover?: (moduleKey: string) => void;
+  /** orb click 時 callback */
+  onOrbClick?: (moduleKey: string) => void;
+};
+
+export default function OrbGrid({ onOrbHover, onOrbClick }: Props = {}) {
   return (
     <section className="orb-grid">
       {MODULES.map((m) => (
@@ -163,6 +170,8 @@ export default function OrbGrid() {
           statusValue={m.statusValue}
           statusTone={m.statusTone}
           href={m.href}
+          onMouseEnter={onOrbHover ? () => onOrbHover(m.moduleKey) : undefined}
+          onClick={onOrbClick ? () => onOrbClick(m.moduleKey) : undefined}
         />
       ))}
     </section>

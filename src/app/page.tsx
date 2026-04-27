@@ -1,166 +1,276 @@
+"use client";
+
 /**
- * Garden Series ホーム画面 — v7-D-fix2 (5/5 後道さんデモ用 画像 overlay モード)
+ * Garden Series ホーム画面 — v2.8a Step 5 (5/5 後道さんデモ用 全面組み上げ)
  *
  * 経緯:
- *   V7-D で object-fit: cover 全画面表示 → 画面比率により画像 crop で hit area とズレ。
- *   V7-D-fix2 で aspect-ratio 16:9 固定 container + Image fill object-contain に変更、
- *   hit area を同 container 内 % 配置で画像と完全連動。
+ *   V7-D-fix2 では 1 枚画像 + 透明 hit area で 12 module 配置していたが、
+ *   後道さんの UX 採用ゲート（実物必須・遊び心・世界観）に応えるため、
+ *   v2.8a プロトタイプを React 化する dispatch v2.8a で組み直し。
+ *   旧 page.tsx は page_20260427T172100Z.tsx として保存。
  *
  * 構成:
- *   - 外枠: cream 背景 + flex center で container を中央配置
- *   - container: aspect-[16/9] max-w-[1920px]、内部に画像 + hit area
- *   - 画像: <Image fill object-contain> で letterbox 維持（crop なし）
- *   - 12 モジュール 透明 hit area: 同 container 内 absolute %
+ *   <BackgroundLayer />                (5 light + 1 dark bg、cross-fade、固定全画面)
+ *   <Topbar />                         (上 80px、固定、theme/sound/weather/bell 動的)
+ *   <Sidebar />                        (左 210px、固定)
+ *   <main className="garden-v28a-main">
+ *     <Greeting />                     (時刻ベース 1m 更新)
+ *     <KpiGrid />                      (4 cards)
+ *     <OrbGrid />                      (12 module、hover/click で音、href で遷移)
+ *   </main>
+ *   <ActivityPanel />                  (右側 floating、useActivityHeight で高さ追従)
  *
- * 5/5 デモ後（V7-E、post-5/5 dispatch）:
- *   - 404 解消（develop merge or Coming Soon ページ）
- *   - B 案として 12 個別アイコン + CSS 個別実装で動的化
+ * 動的機能:
+ *   - useTheme() で light/dark 切替（Topbar.themeToggle）
+ *   - useState で sound mute/unmute（Topbar.soundToggle）+ playPon (orb hover/click)
+ *   - useBackgroundCarousel で bg index 管理 (BackgroundLayer.bgClickZone)
+ *   - 1 hour interval で天気更新（getWeatherByHour）
+ *   - 1 minute interval で挨拶更新（時刻ベース）
+ *   - useActivityHeight で activity panel 高さ追従
+ *
+ * 既存 routes 維持（V7-D-fix2 互換）:
+ *   - /bloom/workboard, /tree, /forest, /root, /bud, /leaf
+ *   - /seed, /soil, /sprout, /fruit, /rill, /calendar (Coming Soon ページ)
  */
 
-import Image from "next/image";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export const dynamic = "force-dynamic";
+import BackgroundLayer from "./_components/layout/BackgroundLayer";
+import Topbar from "./_components/layout/Topbar";
+import Sidebar from "./_components/layout/Sidebar";
+import Greeting from "./_components/home/Greeting";
+import KpiGrid from "./_components/home/KpiGrid";
+import OrbGrid from "./_components/home/OrbGrid";
+import ActivityPanel from "./_components/home/ActivityPanel";
 
-type GardenRoleLike =
-  | "outsource" | "toss" | "closer" | "cs" | "staff" | "manager" | "admin" | "super_admin";
+import { useTheme } from "./_lib/theme/ThemeProvider";
+import {
+  ATMOSPHERES_V28_LIGHT,
+  ATMOSPHERE_V28_NIGHT,
+} from "./_lib/background/atmospheres";
+import { useBackgroundCarousel } from "./_hooks/useBackgroundCarousel";
+import { useActivityHeight } from "./_hooks/useActivityHeight";
+import {
+  getWeatherByHour,
+  getWeatherIconPath,
+  WEATHER_LABELS,
+} from "./_lib/weather/getWeather";
+import {
+  getSoundEnabled,
+  setSoundEnabled,
+  playPon,
+  unlockAudio,
+} from "./_lib/sound/playSound";
 
-const ROLE_RANK: Record<GardenRoleLike, number> = {
-  outsource: 0, toss: 1, closer: 2, cs: 3, staff: 4, manager: 5, admin: 6, super_admin: 7,
-};
-
-function isRoleAtLeast(role: GardenRoleLike, min: GardenRoleLike): boolean {
-  return ROLE_RANK[role] >= ROLE_RANK[min];
+// ============================================================================
+// 時刻ベース挨拶
+// ============================================================================
+function getGreetingByHour(hour: number): string {
+  if (hour >= 5 && hour < 10) return "おはようございます";
+  if (hour >= 10 && hour < 17) return "こんにちは";
+  return "お疲れさまです";
 }
 
-type HitArea = {
-  key: string;
-  x: number;        // container 内 left%（中央基準で transform translate -50%）
-  y: number;        // container 内 top%（同上）
-  href: string;
-  label: string;
-  minRole: GardenRoleLike;
-};
+// 日付ラベル（YYYY年M月D日（曜））
+const WEEKDAY_JP = ["日", "月", "火", "水", "木", "金", "土"];
+function formatDateLabel(d: Date): string {
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WEEKDAY_JP[d.getDay()]}）`;
+}
 
-// 12 モジュール 透明 hit area 配置（v7-D-fix で再測定: a-main-009 視覚測定）
-// Row 1 樹冠 y=53 / Row 2 地上 y=71 / Row 3 地下 y=88
-// hit area サイズ: 13% × 16%
-// 全 module を minRole="outsource" でデフォルト全可視（super_admin demo は全 12 件 click 可）
-const HIT_AREAS: ReadonlyArray<HitArea> = [
-  // Row 1 樹冠（y=53%）
-  { key: "bloom",    x: 18, y: 53, href: "/bloom/workboard", label: "Bloom 案件一覧・KPI",          minRole: "outsource" },
-  { key: "fruit",    x: 33, y: 53, href: "/fruit",           label: "Fruit 法人実体（番号系・許認可）", minRole: "outsource" },
-  { key: "seed",     x: 49, y: 53, href: "/seed",            label: "Seed 新事業",                   minRole: "outsource" },
-  { key: "forest",   x: 64, y: 53, href: "/forest",          label: "Forest 全法人決算",             minRole: "outsource" },
-  // Row 2 地上（y=71%）
-  { key: "bud",      x: 18, y: 71, href: "/bud",             label: "Bud 経理・収支",                minRole: "outsource" },
-  { key: "leaf",     x: 33, y: 71, href: "/leaf",            label: "Leaf 個別アプリ・トスアップ",    minRole: "outsource" },
-  { key: "tree",     x: 49, y: 71, href: "/tree",            label: "Tree 架電アプリ",               minRole: "outsource" },
-  { key: "sprout",   x: 64, y: 71, href: "/sprout",          label: "Sprout 新商材オンボーディング", minRole: "outsource" },
-  // Row 3 地下（y=88%）
-  { key: "soil",     x: 18, y: 88, href: "/soil",            label: "Soil DB 本体・大量データ基盤",  minRole: "outsource" },
-  { key: "root",     x: 33, y: 88, href: "/root",            label: "Root 組織・マスタデータ",       minRole: "outsource" },
-  { key: "rill",     x: 49, y: 88, href: "/rill",            label: "Rill Chatwork 連携",           minRole: "outsource" },
-  { key: "calendar", x: 64, y: 88, href: "/calendar",        label: "Calendar 時間軸・スケジュール", minRole: "outsource" },
-];
-
-const HIT_WIDTH = 13;   // %
-const HIT_HEIGHT = 16;  // %
-
+// ============================================================================
+// メインページ
+// ============================================================================
 export default function GardenHomePage() {
-  // 5/5 デモ用 super_admin 想定（全 12 module 可視 + click 可）。
-  // post-5/5 で root_employees から動的取得 + 各 role に応じて filter。
-  const role: GardenRoleLike = "super_admin";
-  const visibleHitAreas = HIT_AREAS.filter((h) => isRoleAtLeast(role, h.minRole));
+  // === Theme (light/dark) ===
+  const { theme, toggleTheme } = useTheme();
+
+  // === Sound (ON/OFF) ===
+  // localStorage 永続化、初回 mount 時に同期
+  const [soundEnabled, setSoundEnabledState] = useState<boolean>(false);
+
+  useEffect(() => {
+    setSoundEnabledState(getSoundEnabled());
+  }, []);
+
+  const handleSoundToggle = useCallback(() => {
+    unlockAudio();
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    setSoundEnabledState(next);
+    if (next) {
+      // 切替直後、ON になった時は 1 度ポンと鳴らす
+      playPon(0.1);
+    }
+  }, [soundEnabled]);
+
+  // === Background carousel (5 light bg) ===
+  const carousel = useBackgroundCarousel({
+    count: ATMOSPHERES_V28_LIGHT.length,
+    initialIndex: 0,
+    mode: "manual",
+  });
+
+  // === Click hint (1.5s 後 4s 表示) ===
+  const [showHint, setShowHint] = useState<boolean>(false);
+  useEffect(() => {
+    let t2: number | undefined;
+    const t1 = window.setTimeout(() => {
+      setShowHint(true);
+      t2 = window.setTimeout(() => setShowHint(false), 4000);
+    }, 1500);
+    return () => {
+      window.clearTimeout(t1);
+      if (t2 !== undefined) window.clearTimeout(t2);
+    };
+  }, []);
+
+  // === BG layer cross-fade state ===
+  // theme: dark なら ATMOSPHERE_V28_NIGHT、light なら carousel.index
+  // 2 layer 交互に active を切り替え
+  const [activeLayer, setActiveLayer] = useState<1 | 2>(1);
+  const [layer1Src, setLayer1Src] = useState<string>(
+    ATMOSPHERES_V28_LIGHT[0]?.path ?? "/images/backgrounds/bg_01_morning.png",
+  );
+  const [layer2Src, setLayer2Src] = useState<string | undefined>(undefined);
+
+  const targetBgUrl = useMemo<string>(() => {
+    if (theme === "dark") return ATMOSPHERE_V28_NIGHT.path;
+    return ATMOSPHERES_V28_LIGHT[carousel.index]?.path ?? ATMOSPHERES_V28_LIGHT[0].path;
+  }, [theme, carousel.index]);
+
+  // 初回 mount 後、targetBgUrl の変化に追従して inactive layer に新 url を設定 + active layer を交替
+  useEffect(() => {
+    // 既に active layer に同じ url が表示されているなら何もしない
+    const current = activeLayer === 1 ? layer1Src : layer2Src;
+    if (current === targetBgUrl) return;
+
+    if (activeLayer === 1) {
+      setLayer2Src(targetBgUrl);
+      setActiveLayer(2);
+    } else {
+      setLayer1Src(targetBgUrl);
+      setActiveLayer(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetBgUrl]);
+
+  // === BG click zone ===
+  // light モード時のみ次の bg、dark 時は無視
+  const handleBgClick = useCallback(() => {
+    unlockAudio();
+    if (theme === "dark") return;
+    carousel.next();
+  }, [theme, carousel]);
+
+  // === Theme button click (音再生 + toggle) ===
+  const handleThemeToggle = useCallback(() => {
+    unlockAudio();
+    toggleTheme();
+    if (soundEnabled) playPon(0.08);
+  }, [toggleTheme, soundEnabled]);
+
+  // === Bell (placeholder) ===
+  const handleBellClick = useCallback(() => {
+    unlockAudio();
+    if (soundEnabled) playPon(0.08);
+  }, [soundEnabled]);
+
+  // === 1m interval: 時刻 (greeting + date) 更新 ===
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setNow(new Date());
+    }, 60_000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  // === 1h interval: 天気更新 (now の hour 変化に連動) ===
+  const [weatherHour, setWeatherHour] = useState<number>(() => new Date().getHours());
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setWeatherHour(new Date().getHours());
+    }, 60 * 60 * 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const weatherKind = useMemo(
+    () => getWeatherByHour(weatherHour),
+    [weatherHour],
+  );
+  const weatherIconSrc = useMemo(
+    () => getWeatherIconPath(weatherKind),
+    [weatherKind],
+  );
+  const weatherLabel = WEATHER_LABELS[weatherKind];
+
+  // === Activity Panel 高さ追従 ===
+  const activityRef = useRef<HTMLElement>(null);
+  useActivityHeight(activityRef, 80, 32);
+
+  // === Orb hover/click (音再生) ===
+  const handleOrbHover = useCallback(() => {
+    if (soundEnabled) playPon(0.08);
+  }, [soundEnabled]);
+
+  const handleOrbClick = useCallback(() => {
+    unlockAudio();
+    if (soundEnabled) playPon(0.13);
+    // 遷移は Link の href が処理するので preventDefault しない
+  }, [soundEnabled]);
+
+  // === User-gesture 後 1 度だけ AudioContext を unlock ===
+  useEffect(() => {
+    function onFirstClick() {
+      unlockAudio();
+      window.removeEventListener("click", onFirstClick);
+    }
+    window.addEventListener("click", onFirstClick, { once: true });
+    return () => window.removeEventListener("click", onFirstClick);
+  }, []);
+
+  // === 派生ラベル ===
+  const greetingText = useMemo(() => getGreetingByHour(now.getHours()), [now]);
+  const dateLabel = useMemo(() => formatDateLabel(now), [now]);
+  const themeIconSrc =
+    theme === "dark"
+      ? "/images/theme_icons/theme_moon.png"
+      : "/images/theme_icons/theme_sun.png";
 
   return (
-    <main
-      data-testid="home-v7d-fix2"
-      style={{
-        position: "relative",
-        width: "100vw",
-        minHeight: "100vh",
-        margin: 0,
-        padding: 0,
-        background: "#FAF8F3",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-      }}
-    >
-      {/* aspect-ratio 16/9 固定 container（画像 + hit area が完全連動） */}
-      <div
-        data-testid="v7d-aspect-container"
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: 1920,
-          aspectRatio: "16 / 9",
-        }}
-      >
-        {/* v4 画像 (object-contain で letterbox 維持、crop なし) */}
-        <Image
-          src="/images/garden-home-bg-v2.png"
-          alt="Garden Series ホーム — 大樹中心の業務 OS ビュー"
-          fill
-          priority
-          sizes="(max-width: 1920px) 100vw, 1920px"
-          style={{
-            objectFit: "contain",
-            objectPosition: "center",
-          }}
-        />
-
-        {/* 12 モジュール 透明 hit area（同 container 内 % 配置で画像と完全連動） */}
-        <div
-          data-testid="v4-hit-layer"
-          aria-label="Garden 12 モジュール"
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 1,
-            pointerEvents: "none",
-          }}
-        >
-          {visibleHitAreas.map((area) => (
-            <Link
-              key={area.key}
-              href={area.href}
-              data-module-key={area.key}
-              data-testid={`v4-hit-${area.key}`}
-              aria-label={area.label}
-              title={area.label}
-              className="v7d-hit"
-              style={{
-                position: "absolute",
-                left: `${area.x}%`,
-                top: `${area.y}%`,
-                width: `${HIT_WIDTH}%`,
-                height: `${HIT_HEIGHT}%`,
-                transform: "translate(-50%, -50%)",
-                borderRadius: 14,
-                pointerEvents: "auto",
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* 隠し search input（Ctrl+F focus 用、v6 AppHeader 機能の最小代替）*/}
-      <input
-        type="text"
-        aria-label="検索（暫定 placeholder、v7-E で再有効化）"
-        data-testid="v7d-hidden-search"
-        style={{
-          position: "fixed",
-          left: -9999,
-          top: -9999,
-          width: 1,
-          height: 1,
-          opacity: 0,
-        }}
+    <>
+      {/* 背景レイヤー (固定全画面、cross-fade) */}
+      <BackgroundLayer
+        layer1Src={layer1Src}
+        layer2Src={layer2Src}
+        activeLayer={activeLayer}
+        onClickZone={handleBgClick}
+        showHint={showHint}
       />
-    </main>
+
+      {/* Topbar (上 80px、固定) */}
+      <Topbar
+        dateLabel={dateLabel}
+        weatherIconSrc={weatherIconSrc}
+        weatherLabel={weatherLabel}
+        soundMuted={!soundEnabled}
+        onSoundToggle={handleSoundToggle}
+        themeIconSrc={themeIconSrc}
+        onThemeToggle={handleThemeToggle}
+        onBellClick={handleBellClick}
+      />
+
+      {/* Sidebar (左 210px、固定) */}
+      <Sidebar />
+
+      {/* Main area */}
+      <main className="garden-v28a-main">
+        <Greeting greeting={greetingText} userName="東海林さん" />
+        <KpiGrid />
+        <OrbGrid onOrbHover={handleOrbHover} onOrbClick={handleOrbClick} />
+      </main>
+
+      {/* Activity Panel (右側 floating、JS で高さ補正) */}
+      <ActivityPanel ref={activityRef} />
+    </>
   );
 }

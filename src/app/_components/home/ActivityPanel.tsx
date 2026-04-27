@@ -1,5 +1,5 @@
 /**
- * ActivityPanel (v2.8a Step 3 — 静的版)
+ * ActivityPanel (v2.8a Step 5 — 動的版)
  *
  * DESIGN_SPEC §4-6
  *
@@ -7,22 +7,23 @@
  *   - 5 件の mock entries (時刻 / アイコン / タイトル / 詳細)
  *   - フッターに「すべて表示」リンク + 通知設定ボタン
  *
- * Step 3 では:
- *   - mock entries は index.html からそのまま移植
- *   - 高さ自動調整（top + bottom 両端固定 + JS 実測補正）は Step 4 で
- *     useActivityHeight フック配線予定。本 Step では CSS の暫定値で OK。
+ * Step 5:
+ *   - panelRef forward — useActivityHeight で高さ自動調整
+ *   - mock entries は依然として default、props で差し替え可能
  */
 
-type ActivityEntry = {
+import { forwardRef, type ReactNode } from "react";
+
+export type ActivityEntry = {
   time: string;
   /** icon 画像 path or 'check' (チェックマーク表示) */
   icon: string | "check";
   title: string;
   /** 詳細本文。<br/> を含む場合あり → React node で */
-  body: React.ReactNode;
+  body: ReactNode;
 };
 
-const ENTRIES: ActivityEntry[] = [
+const DEFAULT_ENTRIES: ActivityEntry[] = [
   {
     time: "09:30",
     icon: "/images/icons/tree.png",
@@ -79,9 +80,16 @@ const ENTRIES: ActivityEntry[] = [
   },
 ];
 
-export default function ActivityPanel() {
+type Props = {
+  entries?: ActivityEntry[];
+};
+
+const ActivityPanel = forwardRef<HTMLElement, Props>(function ActivityPanel(
+  { entries = DEFAULT_ENTRIES },
+  ref,
+) {
   return (
-    <aside className="activity-panel">
+    <aside className="activity-panel" ref={ref}>
       <div className="activity-header">
         <div className="activity-title">
           <h3>Today&apos;s Activity</h3>
@@ -92,7 +100,7 @@ export default function ActivityPanel() {
       </div>
 
       <ul className="activity-list">
-        {ENTRIES.map((entry, idx) => (
+        {entries.map((entry, idx) => (
           <li key={idx} className="activity-item">
             <span className="activity-time">{entry.time}</span>
             {entry.icon === "check" ? (
@@ -117,4 +125,6 @@ export default function ActivityPanel() {
       </button>
     </aside>
   );
-}
+});
+
+export default ActivityPanel;

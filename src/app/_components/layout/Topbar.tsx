@@ -1,17 +1,45 @@
 /**
- * Topbar (v2.8a Step 3 — 静的版)
+ * Topbar (v2.8a Step 5 — 動的版)
  *
  * DESIGN_SPEC §4-1
  *
  * ロゴ（左）+ 検索ボックス（中央）+ 右側情報エリア
  *   - 日付 / 天気 / システム正常 / 音 toggle / theme toggle / ベル / ユーザー
  *
- * Step 3 では:
- *   - 日付・天気は静的表示（仮値）
- *   - 音/theme/ベルは button のみ。onClick は Step 4-5 で配線
- *   - id 属性は v2.8a プロトタイプの DOM 操作と互換のため残置
+ * Step 5: 動的 prop 配線済み
+ *   - weatherIconSrc / weatherLabel : 1h interval で更新（page.tsx で）
+ *   - soundMuted: bool, onSoundToggle: 音 ON/OFF
+ *   - themeIconSrc, onThemeToggle: light/dark 切替
+ *   - onBellClick: 通知 (Step 5 では未使用、ベル押下 callback)
+ *   - dateLabel: 日付表示文字列
  */
-export default function Topbar() {
+type TopbarProps = {
+  /** 日付ラベル（例: "2026年4月27日（月）"） */
+  dateLabel?: string;
+  /** 天気アイコン image path */
+  weatherIconSrc?: string;
+  /** 天気ラベル（例: "晴れ"） */
+  weatherLabel?: string;
+  /** 音 OFF（muted）状態 */
+  soundMuted?: boolean;
+  onSoundToggle?: () => void;
+  /** theme toggle アイコン (sun/moon) image path */
+  themeIconSrc?: string;
+  onThemeToggle?: () => void;
+  /** 通知ベル click（Step 5 では panel toggle 想定） */
+  onBellClick?: () => void;
+};
+
+export default function Topbar({
+  dateLabel = "2026年4月27日（月）",
+  weatherIconSrc = "/images/header_icons/weather_02_partly_cloudy.png",
+  weatherLabel = "晴れ時々曇り",
+  soundMuted = true,
+  onSoundToggle,
+  themeIconSrc = "/images/theme_icons/theme_sun.png",
+  onThemeToggle,
+  onBellClick,
+}: TopbarProps) {
   return (
     <header className="topbar">
       {/* ===== ロゴ + ブランド名 ===== */}
@@ -50,22 +78,18 @@ export default function Topbar() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/header_icons/header_calendar.png" alt="" />
           </span>
-          <span className="info-text">2026年4月27日（月）</span>
+          <span className="info-text">{dateLabel}</span>
         </div>
 
-        {/* 天気（Step 4 で時刻ベース動的化） */}
+        {/* 天気（動的） */}
         <div className="info-item">
           <span className="info-icon">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/header_icons/weather_02_partly_cloudy.png"
-              alt=""
-              id="weatherIcon"
-            />
+            <img src={weatherIconSrc} alt="" id="weatherIcon" />
           </span>
           <div className="info-text">
             <strong id="weatherTemp">25℃</strong>
-            <small id="weatherLabel">晴れ時々曇り</small>
+            <small id="weatherLabel">{weatherLabel}</small>
           </div>
         </div>
 
@@ -75,34 +99,37 @@ export default function Topbar() {
           <span className="info-text">すべてのシステム正常</span>
         </div>
 
-        {/* 音 toggle (Step 4 で音再生配線) */}
+        {/* 音 toggle (動的) */}
         <button
           type="button"
-          className="sound-toggle muted"
+          className={`sound-toggle${soundMuted ? " muted" : ""}`}
           id="soundToggle"
           title="音 ON/OFF"
+          onClick={onSoundToggle}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/header_icons/header_sound.png" alt="" />
         </button>
 
-        {/* theme toggle (Step 4 で dark mode 切替配線) */}
+        {/* theme toggle (動的) */}
         <button
           type="button"
           className="theme-toggle"
           id="themeToggle"
           title="ライト/ダーク切替"
+          onClick={onThemeToggle}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/theme_icons/theme_sun.png"
-            alt=""
-            id="themeToggleIcon"
-          />
+          <img src={themeIconSrc} alt="" id="themeToggleIcon" />
         </button>
 
-        {/* ベル (Step 5 で通知 panel 配線) */}
-        <button type="button" className="bell-btn" title="通知">
+        {/* ベル (動的 click) */}
+        <button
+          type="button"
+          className="bell-btn"
+          title="通知"
+          onClick={onBellClick}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/header_icons/header_bell.png" alt="" />
         </button>

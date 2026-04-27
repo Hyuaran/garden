@@ -1,14 +1,18 @@
 /**
- * OrbCard (v2.8a Step 3 — 静的版)
+ * OrbCard (v2.8a Step 5 — 動的版)
  *
  * DESIGN_SPEC §4-5
  *
  * 1 つのモジュールを表すガラス玉カード。
  * Hover 演出（CSS transform scale + shadow）は v2.8a CSS 側で対応。
  *
- * Step 3 では a タグでリンク先を href prop から渡す。
- * onClick の音再生は Step 4 で配線予定。
+ * Step 5: 動的 prop 配線済み
+ *   - onMouseEnter : hover 時の音再生 hook
+ *   - onClick      : click 時の音再生 hook (Link 遷移は href で実行)
  */
+
+import Link from "next/link";
+
 export type OrbStatusTone = "default" | "alert" | "warn";
 
 type Props = {
@@ -28,6 +32,10 @@ type Props = {
   statusTone?: OrbStatusTone;
   /** 遷移先 href */
   href: string;
+  /** hover 時 callback (音再生用) */
+  onMouseEnter?: () => void;
+  /** click 時 callback (音再生用、Link 遷移は href で実行) */
+  onClick?: () => void;
 };
 
 export default function OrbCard({
@@ -39,6 +47,8 @@ export default function OrbCard({
   statusValue,
   statusTone = "default",
   href,
+  onMouseEnter,
+  onClick,
 }: Props) {
   const valueClass =
     statusTone === "alert"
@@ -48,7 +58,14 @@ export default function OrbCard({
       : "orb-status-value";
 
   return (
-    <a href={href} className="orb-card" data-name={moduleKey}>
+    <Link
+      href={href}
+      className="orb-card"
+      data-name={moduleKey}
+      data-module-key={moduleKey.toLowerCase()}
+      onMouseEnter={onMouseEnter}
+      onClick={onClick}
+    >
       <div className="orb-img">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={iconSrc} alt={label} />
@@ -61,6 +78,6 @@ export default function OrbCard({
         <span className="orb-status-label">{statusLabel}</span>
         <span className={valueClass}>{statusValue}</span>
       </div>
-    </a>
+    </Link>
   );
 }

@@ -9,7 +9,6 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { ShojiStatusProvider } from "../components/shared/ShojiStatusContext";
-import { ThemeProvider } from "./_lib/theme/ThemeProvider";
 
 // === 既存フォント（維持） ===
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -37,7 +36,7 @@ const cormorantGaramond = Cormorant_Garamond({
 // 大見出し（挨拶等） — 第1選択
 const shipporiMincho = Shippori_Mincho({
   variable: "--font-shippori",
-  subsets: ["latin"],
+  subsets: ["latin"], // Noto/Shippori の日本語は subset='latin' でも JP glyph が動的読込される
   weight: ["400", "500", "600"],
   display: "swap",
 });
@@ -66,16 +65,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   ].join(" ");
 
   return (
-    <html lang="ja" className={`${fontVariables} h-full antialiased`} data-theme="light">
+    <html lang="ja" className={`${fontVariables} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        {/*
-          v2.8a Step 5: ThemeProvider で wrap
-          - useTheme() / toggleTheme() を全 page から利用可能に
-          - 既存 ShojiStatusProvider は ThemeProvider 内側で維持
-        */}
-        <ThemeProvider>
-          <ShojiStatusProvider>{children}</ShojiStatusProvider>
-        </ThemeProvider>
+        <ShojiStatusProvider>{children}</ShojiStatusProvider>
       </body>
     </html>
   );

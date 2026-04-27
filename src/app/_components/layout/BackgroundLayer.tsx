@@ -1,11 +1,18 @@
 /**
- * BackgroundLayer (v2.8a Step 3 — 静的版)
+ * BackgroundLayer (v2.8a Step 5 — 動的版)
  *
  * DESIGN_SPEC §4-7
  *
- * 5 種の light 背景 + 1 種の dark 背景を重ねるコンテナ。
- * Step 3 では bg_01_morning.png のみ初期表示。
- * Step 4 で fade transition + click 切替 + theme 連動を配線予定。
+ * prototype のクロスフェード方式を再現:
+ *   - 2 layer (bgLayer1 / bgLayer2) を交互に active
+ *   - active な layer の opacity 1, 非 active は 0
+ *   - layer1Src / layer2Src を切り替え + activeLayer を切り替え
+ *
+ * Step 5: 動的 prop 配線済み
+ *   - layer1Src / layer2Src: 各 layer の現在の url
+ *   - activeLayer: 1 か 2、active 側に opacity 1
+ *   - onClickZone: 背景 click handler（クリックで次の bg）
+ *   - showHint: ヒント表示
  *
  * 背景画像 6 種:
  *   - bg_01_morning.png  朝
@@ -15,23 +22,51 @@
  *   - bg_05_sunlight.png 陽光
  *   - bg_06_night.png    夜（dark theme 用）
  */
-export default function BackgroundLayer() {
+type Props = {
+  layer1Src?: string;
+  layer2Src?: string;
+  activeLayer?: 1 | 2;
+  onClickZone?: () => void;
+  showHint?: boolean;
+};
+
+export default function BackgroundLayer({
+  layer1Src = "/images/backgrounds/bg_01_morning.png",
+  layer2Src,
+  activeLayer = 1,
+  onClickZone,
+  showHint = false,
+}: Props = {}) {
   return (
     <>
-      {/* ===== 背景画像レイヤー ===== */}
+      {/* ===== 背景画像レイヤー (cross-fade) ===== */}
       <div
-        className="bg-layer active"
+        className={`bg-layer${activeLayer === 1 ? " active" : ""}`}
         id="bgLayer1"
-        style={{ backgroundImage: "url('/images/backgrounds/bg_01_morning.png')" }}
+        style={
+          layer1Src ? { backgroundImage: `url('${layer1Src}')` } : undefined
+        }
       />
-      <div className="bg-layer" id="bgLayer2" />
+      <div
+        className={`bg-layer${activeLayer === 2 ? " active" : ""}`}
+        id="bgLayer2"
+        style={
+          layer2Src ? { backgroundImage: `url('${layer2Src}')` } : undefined
+        }
+      />
       <div className="bg-layer-overlay" />
 
-      {/* ===== クリック検知ゾーン (Step 4 で配線) ===== */}
-      <div className="bg-click-zone" id="bgClickZone" />
+      {/* ===== クリック検知ゾーン ===== */}
+      <div
+        className="bg-click-zone"
+        id="bgClickZone"
+        onClick={onClickZone}
+        role={onClickZone ? "button" : undefined}
+        aria-label={onClickZone ? "背景を切り替える" : undefined}
+      />
 
-      {/* ===== クリックヒント (Step 4 で fade-in アニメ配線) ===== */}
-      <div className="bg-hint" id="bgHint">
+      {/* ===== クリックヒント (fade-in アニメ) ===== */}
+      <div className={`bg-hint${showHint ? " show" : ""}`} id="bgHint">
         クリックで背景を切替
       </div>
     </>

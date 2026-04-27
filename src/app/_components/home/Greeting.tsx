@@ -1,5 +1,5 @@
 /**
- * Greeting (v2.8a Step 3 — 静的版)
+ * Greeting (v2.8a Step 5 — 動的版)
  *
  * DESIGN_SPEC §4-3
  *
@@ -8,22 +8,32 @@
  *   昼（10-17）: こんにちは
  *   夜（17-24, 0-5）: お疲れさまです
  *
- * Step 3 では「朝」テキスト固定（東海林さん、おはようございます）。
- * Step 4 で時刻ベースの動的化を予定。
+ * Step 5: 動的 prop 配線済み（page.tsx で 1 分毎更新）
+ *   - greeting: 挨拶テキスト（既定: おはようございます）
+ *   - userName: 表示する名前（既定: 東海林さん）
+ *   - sub: サブテキスト
  */
-export default function Greeting() {
+type Props = {
+  greeting?: string;
+  userName?: string;
+  sub?: string;
+};
+
+export default function Greeting({
+  greeting = "おはようございます",
+  userName = "東海林さん",
+  sub = "今日も素敵な一日を。業務の成長をサポートします。",
+}: Props = {}) {
   return (
     <section className="greeting">
       <h2 className="greeting-title">
-        東海林さん、おはようございます
+        {userName}、{greeting}
         <span className="leaf-icon">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/decor/greeting_sprout.png" alt="" />
         </span>
       </h2>
-      <p className="greeting-sub">
-        今日も素敵な一日を。業務の成長をサポートします。
-      </p>
+      <p className="greeting-sub">{sub}</p>
     </section>
   );
 }
