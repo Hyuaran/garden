@@ -112,19 +112,34 @@ WHERE schemaname = 'public'
 
 ### 4.1 tsvector 列追加
 
+> **【重要】暗号化対象列は tsvector に含めない原則**（2026-04-27 a-review R-1 反映、個人情報保護法 第 23 条「安全管理措置」遵守）
+>
+> - 暗号化対象列（B-03 / Batch 16-soil-02 §3 で定義: `phone_primary`, `phone_secondary`, `email` 等の連絡先 PII）は**いかなる形でも tsvector / GIN 索引・trgm 索引に混入させない**。
+> - 理由: tsvector は GIN 索引内に**平文トークン化された状態で保存**されるため、DB ダンプ / バックアップ漏洩時に暗号化を迂回した個人情報流出経路となる。
+> - 検索 UX 要件: 電話番号検索は admin 以上の頻度低オペレーションのため、暗号化列専用の **B-tree EXACT match INDEX**（§3.2 `idx_soil_lists_phone_primary`）+ Server Action 経由復号で代替。
+> - tsvector 候補に含めてよいのは: `name_kanji` / `name_kana` / `address_line` / `notes`（PII を含まない業務メモのみ）等の**非暗号化列**に限定。
+
 ```sql
+-- ⚠ phone_primary / phone_secondary / email 等の暗号化対象列は除外（上記原則）
 ALTER TABLE soil_lists
   ADD COLUMN search_tsv tsvector
     GENERATED ALWAYS AS (
       setweight(to_tsvector('simple', coalesce(name_kanji, '')), 'A') ||
       setweight(to_tsvector('simple', coalesce(name_kana, '')), 'B') ||
-      setweight(to_tsvector('simple', coalesce(address_line, '')), 'C') ||
-      setweight(to_tsvector('simple', coalesce(phone_primary, '')), 'D')
+      setweight(to_tsvector('simple', coalesce(address_line, '')), 'C')
     ) STORED;
 
 CREATE INDEX idx_soil_lists_search_tsv
   ON soil_lists USING gin (search_tsv);
 ```
+
+**電話番号検索の代替フロー**:
+
+| 検索パターン | 手段 | 備考 |
+|---|---|---|
+| 完全一致（22 桁 supply_point）| §3.2 部分 UNIQUE INDEX | 平文不要、ハッシュ比較で可 |
+| 完全一致（電話番号）| `idx_soil_lists_phone_primary`（B-tree、暗号化前ハッシュ列に対する INDEX）| Server Action で復号せず比較、UI は admin+ 限定 |
+| 部分一致（電話番号）| **非対応**（個人情報保護法観点で禁止）| 全件閲覧アクセス相当となるため運用禁止 |
 
 ### 4.2 検索 API
 
@@ -223,19 +238,26 @@ WHERE deleted_at IS NULL
 GROUP BY 1, 2, 3;
 ```
 
-### 6.3 担当案件 MV（Batch 16 §5.2 の再掲）
+### 6.3 担当案件テーブル（B-06 §5.1 / §6.4 採用方針: 通常テーブル + トリガ）
+
+> **【重要】2026-04-27 a-review R-3 反映**: 旧版では MV 表記だったが、B-06 §6.4 採用方針（通常テーブル + トリガ即時更新）に統一。MV はトリガで部分更新できない Postgres 制約への対応。
 
 ```sql
-CREATE MATERIALIZED VIEW soil_lists_assignments AS
-SELECT soil_list_id, assigned_to, 'leaf_kanden' AS module FROM leaf_kanden_cases WHERE assigned_to IS NOT NULL
-UNION ALL
-SELECT soil_list_id, assigned_to, 'leaf_hikari' AS module FROM leaf_hikari_cases WHERE assigned_to IS NOT NULL
--- ...
-;
+-- B-06 §5.1 / §6.4 と同一定義（再掲、本 spec では構造詳細のみ）
+CREATE TABLE soil_lists_assignments (
+  soil_list_id uuid NOT NULL,
+  assigned_to  uuid NOT NULL,
+  module       text NOT NULL,
+  status       text,
+  updated_at   timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (soil_list_id, assigned_to, module)
+);
 
-CREATE UNIQUE INDEX idx_assignments_unique ON soil_lists_assignments (soil_list_id, assigned_to, module);
 CREATE INDEX idx_assignments_user ON soil_lists_assignments (assigned_to);
+CREATE INDEX idx_assignments_list ON soil_lists_assignments (soil_list_id);
 ```
+
+更新方式: トリガ（B-06 §6.1 `refresh_assignments_on_leaf_change` 等）で各 `leaf_*_cases` の INSERT/UPDATE/DELETE 時に即時反映。本 spec §7 の MV REFRESH cron では **対象外**（フェイルバックは B-06 §6.4 の 1h 全件突合 cron で別途実施）。
 
 ---
 
@@ -245,12 +267,12 @@ CREATE INDEX idx_assignments_user ON soil_lists_assignments (assigned_to);
 
 > **改訂背景**: a-main 006 確定後の東海林さん指示（follow-up §1.3）。Garden Leaf 関電ダッシュボード用、業務時間帯のみ高頻度 REFRESH、夜間は Soil 投入バッチと棲み分け。
 
-| MV | REFRESH 戦略 | 頻度 | 時間帯 |
-|---|---|---|---|
-| 月次集計 | CONCURRENTLY | **1 時間ごと** | **08:00 〜 20:00 JST** |
-| 業種別集計 | CONCURRENTLY | **1 時間ごと** | **08:00 〜 20:00 JST** |
-| 担当案件 | トリガ即時 + 補助 Cron | 即時 + 1h | 08:00 〜 20:00 JST |
-| Leaf 関電 KPI 集計 | CONCURRENTLY | **1 時間ごと** | **08:00 〜 20:00 JST** |
+| 対象 | 種別 | REFRESH / 更新戦略 | 頻度 | 時間帯 |
+|---|---|---|---|---|
+| 月次集計 | MV | CONCURRENTLY | **1 時間ごと** | **08:00 〜 20:00 JST** |
+| 業種別集計 | MV | CONCURRENTLY | **1 時間ごと** | **08:00 〜 20:00 JST** |
+| 担当案件（`soil_lists_assignments`）| **通常テーブル** | **トリガ即時 + 1h fallback cron**（B-06 §6.4）| 即時 + 1h（24h）| 24 時間（cron は §17.6 で別途定義）|
+| Leaf 関電 KPI 集計 | MV | CONCURRENTLY | **1 時間ごと** | **08:00 〜 20:00 JST** |
 
 #### スケジュール詳細
 
@@ -265,12 +287,13 @@ CREATE INDEX idx_assignments_user ON soil_lists_assignments (assigned_to);
 ```
 - soil_call_history_monthly_summary
 - soil_lists_industry_summary
-- soil_lists_assignments
 - leaf_kanden_kpi_summary（営業件数 / 契約状況 / KPI ダッシュボード）
 - leaf_kanden_revenue_monthly（月次収益、Bloom 連動）
 ```
 
 Leaf 関電ダッシュボードが業務時間帯（8-20 時）に頻繁に閲覧されるため、1 時間粒度で最新化。
+
+> **【注】** `soil_lists_assignments` は通常テーブル化済（§6.3 / B-06 §6.4）のため本 REFRESH 対象外。即時トリガで更新、フェイルバック cron は B-06 §6.4 の 1h 全件突合（24h 帯）で別途実施。
 
 ### 7.3 CONCURRENTLY の必須条件
 
@@ -296,9 +319,9 @@ RETURNS void
   SET search_path = pg_catalog, public, pg_temp
 AS $$
 BEGIN
+  -- soil_lists_assignments は通常テーブル化済（§6.3 / B-06 §6.4 採用）のため除外
   REFRESH MATERIALIZED VIEW CONCURRENTLY soil_call_history_monthly_summary;
   REFRESH MATERIALIZED VIEW CONCURRENTLY soil_lists_industry_summary;
-  REFRESH MATERIALIZED VIEW CONCURRENTLY soil_lists_assignments;
   REFRESH MATERIALIZED VIEW CONCURRENTLY leaf_kanden_kpi_summary;
   REFRESH MATERIALIZED VIEW CONCURRENTLY leaf_kanden_revenue_monthly;
 END $$;

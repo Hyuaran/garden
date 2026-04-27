@@ -208,6 +208,13 @@ Garden-Backup-Archive/
 
 #### 5.5.4 移管 cron 実装例
 
+> **【重要】2026-04-27 a-review R-4 反映: ハッシュ算出方式 / verifying 遷移 / 連続失敗エスカレーション**
+>
+> - **ハッシュ算出方式 = MD5 統一**。理由: Google Drive API が `md5Checksum` フィールドのみ提供し、SHA256 を提供しないため。R2 側も S3 互換の `ETag`（マルチパート未使用なら MD5 と一致）または `HeadObject` 結果で MD5 取得する。R2 のオブジェクトが大きく ETag が単純 MD5 でない場合は、R2 → GDrive 転送時に Node.js Stream 経由で **ローカル MD5 を再算出**してから両側比較する。
+> - **状態遷移**: ログ entry を `INSERT ... status='verifying'` で先行記録 → 検証成功で `status='completed' + verified_at` へ更新 → 検証成功後にのみ R2 削除。検証失敗は `status='failed'` で残置、次回 cron で再検証。
+> - **連続失敗エスカレーション**: 同一 file_path で 3 回連続失敗（`status='failed'` が直近 3 回連続）時は `severity='high'` で東海林さんへ通知 + cron 自動再試行を停止し、人手判断に委ねる。
+> - 既知制約: Drive は `md5Checksum` を「アップロード完了直後」には返さない場合がある。`gdrive.files.get` のリトライ（exponential backoff、最大 3 回 / 計 30 秒）を実装。
+
 ```typescript
 // /api/cron/soil-backup-r2-to-gdrive (毎月 1 日 04:00 JST)
 export async function GET() {
@@ -217,9 +224,26 @@ export async function GET() {
   });
 
   for (const file of candidates) {
+    // 直近 3 回連続失敗の file_path はスキップ（人手判断待ち）
+    if (await hasRecentConsecutiveFailures(file.key, 3)) {
+      continue;
+    }
+
+    // 0. ログを先行 INSERT（status='verifying'）
+    const logId = await insertMigrationLog({
+      from_storage: 'r2',
+      to_storage: 'gdrive',
+      file_path: file.key,
+      size_bytes: file.size,
+      status: 'verifying',
+    });
+
     try {
-      // 1. R2 から Google Drive へ stream copy
-      const stream = await r2.getObject(file.key).createReadStream();
+      // 1. R2 から Google Drive へ stream copy（Node.js Stream で MD5 を逐次算出）
+      const sourceStream = await r2.getObject(file.key).createReadStream();
+      const md5Hasher = crypto.createHash('md5');
+      sourceStream.on('data', chunk => md5Hasher.update(chunk));
+
       const gdriveResult = await gdrive.files.create({
         requestBody: {
           name: file.name,
@@ -227,34 +251,44 @@ export async function GET() {
         },
         media: {
           mimeType: 'application/octet-stream',
-          body: stream,
+          body: sourceStream,
         },
       });
+      const localMd5 = md5Hasher.digest('hex');
 
-      // 2. 整合性確認（SHA256 比較）
-      const r2Hash = await r2.getObjectHash(file.key);
-      const gdriveHash = await gdrive.files.get({ fileId: gdriveResult.data.id, fields: 'md5Checksum' });
-      // ※ Drive は SHA256 提供しないため、別途比較ロジック
+      // 2. 整合性確認（MD5 統一比較、Drive 側 md5Checksum は eventually consistent → リトライ）
+      const gdriveMeta = await fetchGdriveMd5WithRetry(gdriveResult.data.id, {
+        retries: 3, backoffMs: 1000,
+      });
+      if (gdriveMeta.md5Checksum !== localMd5) {
+        throw new Error(
+          `MD5 不一致: local=${localMd5} / gdrive=${gdriveMeta.md5Checksum}`,
+        );
+      }
 
-      // 3. R2 から削除（移管完了確認後）
+      // 3. 検証成功 → status='completed' へ更新（verified_at 付与）
+      await updateMigrationLog(logId, {
+        status: 'completed',
+        destination_id: gdriveResult.data.id,
+        verified_at: new Date(),
+        md5_hash: localMd5,
+      });
+
+      // 4. 検証完了後にのみ R2 削除
       await r2.deleteObject(file.key);
-
-      // 4. 移管ログ記録
-      await recordMigrationLog({
-        from: 'r2',
-        to: 'gdrive',
-        file_path: file.key,
-        gdrive_file_id: gdriveResult.data.id,
-        size_bytes: file.size,
-      });
     } catch (e) {
-      await recordMonitoringEvent({
-        severity: 'medium',
-        category: 'gdrive_migration_failure',
-        message: `R2 → GDrive 移管失敗: ${file.key}`,
-        details: { error: serializeError(e) },
+      // 失敗: status='failed'、R2 は残置、次回 cron で再検証
+      await updateMigrationLog(logId, {
+        status: 'failed',
+        error_message: serializeError(e),
       });
-      // 失敗時は R2 に残す、次回再試行
+      const consecutive = await countRecentConsecutiveFailures(file.key);
+      await recordMonitoringEvent({
+        severity: consecutive >= 3 ? 'high' : 'medium',
+        category: 'gdrive_migration_failure',
+        message: `R2 → GDrive 移管失敗 (連続 ${consecutive} 回): ${file.key}`,
+        details: { error: serializeError(e), file_path: file.key, consecutive },
+      });
     }
   }
 }
@@ -266,20 +300,24 @@ export async function GET() {
 CREATE TABLE soil_backup_migration_logs (
   id bigserial PRIMARY KEY,
   migrated_at timestamptz NOT NULL DEFAULT now(),
+  verified_at timestamptz,        -- §5.5.4 R-4: MD5 検証完了時刻、NULL 中は R2 削除禁止
   from_storage text NOT NULL,    -- 'r2' | 'supabase' | ...
   to_storage text NOT NULL,      -- 'gdrive' | ...
   file_path text NOT NULL,
   size_bytes bigint,
   source_id text,
   destination_id text,            -- gdrive file_id 等
-  status text NOT NULL DEFAULT 'completed'
-    CHECK (status IN ('completed', 'failed', 'verifying')),
+  md5_hash text,                  -- §5.5.4 R-4: MD5 統一 (local 算出 = gdrive md5Checksum)
+  status text NOT NULL DEFAULT 'verifying'
+    CHECK (status IN ('verifying', 'completed', 'failed')),
   error_message text,
   performed_by uuid               -- service_role の場合 NULL
 );
 
 CREATE INDEX idx_soil_backup_migration_status_time
   ON soil_backup_migration_logs (status, migrated_at DESC);
+CREATE INDEX idx_soil_backup_migration_filepath_time
+  ON soil_backup_migration_logs (file_path, migrated_at DESC);  -- §5.5.4 連続失敗判定用
 ```
 
 #### 5.5.6 復元時の検索（Drive → ローカル）
