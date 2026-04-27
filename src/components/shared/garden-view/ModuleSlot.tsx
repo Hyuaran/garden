@@ -67,7 +67,14 @@ export function ModuleSlot({ moduleKey, module: m, position }: Props) {
             cursor: "not-allowed",
           }}
         >
-          <div style={{ fontSize: 26 }} aria-hidden>{m.emoji}</div>
+          <img
+            src={`/themes/module-icons/${moduleKey}.webp`}
+            alt=""
+            aria-hidden
+            width={40}
+            height={40}
+            style={{ display: "block", objectFit: "contain", filter: "grayscale(0.6)" }}
+          />
           <div style={{ fontSize: 10, marginTop: 2 }}>{m.label}</div>
         </div>
       </div>
@@ -92,7 +99,14 @@ export function ModuleSlot({ moduleKey, module: m, position }: Props) {
           boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
         }}
       >
-        <div style={{ fontSize: 26 }} aria-hidden>{m.emoji}</div>
+        <img
+          src={`/themes/module-icons/${moduleKey}.webp`}
+          alt=""
+          aria-hidden
+          width={40}
+          height={40}
+          style={{ display: "block", objectFit: "contain" }}
+        />
         <div style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}>{m.label}</div>
       </div>
     </Link>

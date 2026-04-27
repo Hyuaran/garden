@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ModuleSlot } from "../ModuleSlot";
-import type { ModuleDef } from "../_lib/modules";
+import { MODULE_KEYS, MODULES, type ModuleDef } from "../_lib/modules";
 
 const enabledModule: ModuleDef = {
   emoji: "🌳", label: "Forest", href: "/forest", color: "#1F5C3A", enabled: true, layer: "樹冠",
@@ -18,9 +18,11 @@ describe("ModuleSlot enabled", () => {
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute("href", "/forest");
   });
-  it("renders emoji and label both", () => {
-    render(<ModuleSlot moduleKey="forest" module={enabledModule} position={pos} />);
-    expect(screen.getByText("🌳")).toBeInTheDocument();
+  it("renders module icon img + label", () => {
+    const { container } = render(<ModuleSlot moduleKey="forest" module={enabledModule} position={pos} />);
+    const img = container.querySelector('img[src="/themes/module-icons/forest.webp"]');
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute("alt")).toBe("");
     expect(screen.getByText("Forest")).toBeInTheDocument();
   });
 });
@@ -52,5 +54,27 @@ describe("ModuleSlot hover-effect wiring", () => {
     const inner = container.querySelector('[aria-disabled="true"] > .gv-slot');
     expect(inner).not.toBeNull();
     expect(inner?.getAttribute("data-module-key")).toBe("soil");
+  });
+});
+
+describe("ModuleSlot transparent icon mapping", () => {
+  it.each(MODULE_KEYS)("renders /themes/module-icons/%s.webp", (key) => {
+    const def = MODULES[key];
+    const { container } = render(<ModuleSlot moduleKey={key} module={def} position={pos} />);
+    const img = container.querySelector(`img[src="/themes/module-icons/${key}.webp"]`);
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute("alt")).toBe("");
+    expect(img?.getAttribute("aria-hidden")).toBe("true");
+  });
+});
+
+describe("ModuleSlot icon × hover effect compatibility", () => {
+  it.each(MODULE_KEYS)("keeps gv-slot class + data-module-key on %s slot", (key) => {
+    const def = MODULES[key];
+    const { container } = render(<ModuleSlot moduleKey={key} module={def} position={pos} />);
+    // gv-slot div should contain the img
+    const slot = container.querySelector(`.gv-slot[data-module-key="${key}"]`);
+    expect(slot).not.toBeNull();
+    expect(slot?.querySelector("img")).not.toBeNull();
   });
 });
