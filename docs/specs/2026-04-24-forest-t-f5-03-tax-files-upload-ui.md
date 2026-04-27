@@ -198,7 +198,7 @@ type Props = {
 export function TaxFileUploadModal({ companies, defaultCompanyId, onClose, onUploaded }: Props) {
   const [companyId, setCompanyId] = useState(defaultCompanyId ?? companies[0]?.id ?? '');
   const [docName, setDocName] = useState('');
-  const [status, setStatus] = useState<TaxFileStatus>('zanntei');
+  const [status, setStatus] = useState<TaxFileStatus>('zantei');
   const [docDate, setDocDate] = useState<string>('');
   const [note, setNote] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
@@ -267,7 +267,7 @@ export function TaxFileUploadModal({ companies, defaultCompanyId, onClose, onUpl
           <Field label="ステータス">
             <div className="flex gap-4 text-sm">
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="radio" checked={status === 'zanntei'} onChange={() => setStatus('zanntei')} />
+                <input type="radio" checked={status === 'zantei'} onChange={() => setStatus('zantei')} />
                 暫定
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
@@ -393,7 +393,7 @@ const [isUploading, setIsUploading] = useState(false);
       onClick={e => { e.stopPropagation(); onEditStatus(file); }}
       className="text-xs px-2 py-0.5 text-gray-600 hover:text-emerald-700 border border-gray-300 rounded"
     >
-      {file.status === 'zanntei' ? '確定化' : '暫定化'}
+      {file.status === 'zantei' ? '確定化' : '暫定化'}
     </button>
     <button
       type="button"
