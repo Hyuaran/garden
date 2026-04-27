@@ -1,17 +1,22 @@
 import { AppHeader } from "./_components/AppHeader";
 import { Sidebar } from "./_components/Sidebar";
 import { ModuleGrid } from "./_components/ModuleGrid";
+import { KpiCard } from "./_components/KpiCard";
+import { getVisibleKpiCards } from "./_lib/kpi-fetchers";
 
-// per-request 算出（URL クエリ拡張余地あり）
+// per-request 算出
 export const dynamic = "force-dynamic";
 
 export default async function GardenHomePage() {
+  // 5/5 デモ用 super_admin 想定。post-5/5 で root_employees 連携 → 動的 role
+  const role = "super_admin";
+  const kpiCards = getVisibleKpiCards(role);
+
   return (
     <div
       style={{
         display: "flex",
         minHeight: "100vh",
-        // v6 Step 1: 背景画像（v2 placeholder = 02-morning-calm の cp）右側配置 + 左 overlay
         backgroundImage: "url(/images/garden-home-bg-v2.webp)",
         backgroundSize: "cover",
         backgroundPosition: "right center",
@@ -21,7 +26,6 @@ export default async function GardenHomePage() {
     >
       <Sidebar />
 
-      {/* メインエリア（左 overlay でコンテンツの可読性確保） */}
       <div
         style={{
           flex: 1,
@@ -33,10 +37,7 @@ export default async function GardenHomePage() {
       >
         <AppHeader />
 
-        <section
-          aria-label="挨拶"
-          style={{ padding: "20px 28px 0" }}
-        >
+        <section aria-label="挨拶" style={{ padding: "20px 28px 0" }}>
           <h1 style={{ fontSize: 24, margin: 0, color: "#1F5C3A", fontWeight: 700 }}>
             東海林さん、おはようございます
           </h1>
@@ -45,10 +46,26 @@ export default async function GardenHomePage() {
           </p>
         </section>
 
-        <section
-          aria-label="モジュール一覧"
-          style={{ padding: "16px 28px 32px", flex: 1 }}
-        >
+        {kpiCards.length > 0 && (
+          <section
+            aria-label="KPI ダッシュボード"
+            style={{
+              padding: "16px 28px 0",
+              display: "grid",
+              gridTemplateColumns: `repeat(${Math.min(kpiCards.length, 4)}, 1fr)`,
+              gap: 14,
+              maxWidth: 1080,
+              width: "100%",
+              margin: "0 auto",
+            }}
+          >
+            {kpiCards.map((card) => (
+              <KpiCard key={card.id} card={card} />
+            ))}
+          </section>
+        )}
+
+        <section aria-label="モジュール一覧" style={{ padding: "16px 28px 32px", flex: 1 }}>
           <ModuleGrid />
         </section>
       </div>
