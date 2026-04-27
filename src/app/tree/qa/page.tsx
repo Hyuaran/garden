@@ -61,6 +61,7 @@ export default function QASearchPage() {
   useEffect(() => {
     try {
       const s = localStorage.getItem("gl_qa_favs");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (s) setFavs(JSON.parse(s));
     } catch { /* ignore */ }
   }, []);

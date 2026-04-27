@@ -12,6 +12,21 @@
  *
  * - 当日限りのメッセージ保持（業務連絡用）
  * - サイドバー・KPIヘッダーは TreeShell が描画
+ *
+ * --- D-02 Step 9.1: DONE_WITH_CONCERNS ---
+ * spec §3.4 では「Breeze = 呼吸連続架電画面（duration_sec 自動取得）」として
+ * BreezeDualTimer / QuadTimer を使う架電 UI を想定しているが、
+ * 本ファイルは「チームチャット画面」として実装されており構造上の齟齬がある。
+ *
+ * 現状:
+ *  - BreezeDualTimer / 結果ボタン / insertTreeCallRecordWithQueue は本画面に存在しない
+ *  - spec §3.4 想定の「呼吸連続架電」機能は calling/sprout/page.tsx が担う
+ *
+ * 対応方針（D-02 Step 9 スコープ）:
+ *  - 本チャット画面への架電 Supabase 連携追加は「構造不一致」として SKIP
+ *  - D-04 または仕様再確認フェーズで「Breeze 画面の役割定義（チャットか架電か）」を決定すること
+ *  - チャット機能自体は既存実装を維持（変更なし）
+ * ---
  */
 
 import { useRef, useState } from "react";

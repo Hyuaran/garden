@@ -38,6 +38,28 @@ import { SHOW_DEMO_CONTROLS } from "../../_constants/flags";
 import { TREE_PATHS } from "../../_constants/screens";
 import { insertCall } from "../../_lib/queries";
 import { useTreeState } from "../../_state/TreeStateContext";
+import { supabase } from "../../_lib/supabase";
+import { insertTreeCallRecordWithQueue } from "../../_lib/insertTreeCallRecordWithQueue";
+import { labelToResultCode, resultCodeToGroup, isMemoRequired } from "../../_lib/resultCodeMapping";
+import { useCallShortcuts } from "../../_hooks/useCallShortcuts";
+import { useCallRollback } from "../../_hooks/useCallRollback";
+import { useCallGuard } from "../../_hooks/useCallGuard";
+import { useOfflineQueue } from "../../_hooks/useOfflineQueue";
+import { NetworkStatusBadge } from "../../_components/NetworkStatusBadge";
+
+/** F キー → Sprout ボタンラベルのマッピング（spec §4 通り） */
+const SPROUT_BUTTONS_BY_KEY: Record<string, string> = {
+  F1: "トス",
+  F2: "担不",
+  F3: "見込 A",
+  F4: "見込 B",
+  F5: "見込 C",
+  F6: "不通",
+  F7: "NG お断り",
+  F8: "NG クレーム",
+  F9: "NG 契約済",
+  F10: "NG その他",
+};
 
 /** デモ用顧客データ */
 const DEMO_CUSTOMER = {
@@ -74,6 +96,34 @@ export default function CallingSproutPage() {
   // --- 保存中・エラー ---
   const [savingCall, setSavingCall] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // --- Step 6: 巻き戻し hook ---
+  const { armRollback, performRollback, canRollback } = useCallRollback();
+
+  // --- Step 7: オフラインキュー ---
+  const { queueSize } = useOfflineQueue();
+
+  // --- Step 8: 画面遷移ガード（beforeunload） ---
+  // 巻き戻しウィンドウ中 or オフラインキューあり = 通話中扱い
+  useCallGuard({
+    isCalling: canRollback,
+    hasOfflineQueue: queueSize > 0,
+  });
+
+  // --- Step 5: FM 互換ショートカット ---
+  useCallShortcuts(SPROUT_BUTTONS_BY_KEY, {
+    onResult: (label) => setSelectedResult(label),
+    onRollback: () => {
+      if (canRollback) {
+        performRollback().then((res) => {
+          if (!res.success) setSaveError(res.error ?? "巻き戻しに失敗しました");
+          else setSaveError(null);
+        });
+      }
+    },
+    onCancelMemo: () => setCallMemo(""),
+    onConfirmMemo: () => {},
+  });
 
   // --- 派生フラグ ---
   const isProspect =
@@ -141,6 +191,58 @@ export default function CallingSproutPage() {
       return;
     }
 
+    // D-02 Step 3: tree_call_records への INSERT（既存 insertCall と並走）
+    const tcrCode = labelToResultCode(selectedResult);
+    if (tcrCode) {
+      // トス時メモ必須（UI 側でも canProceed で担保済みだが念のため確認）
+      if (isMemoRequired(tcrCode) && !callMemo.trim()) {
+        setSaveError("トス時はメモが必須です");
+        setSavingCall(false);
+        return;
+      }
+
+      const sessionId = typeof window !== "undefined"
+        ? window.localStorage.getItem("tree.current_session_id")
+        : null;
+      const campaignCode = typeof window !== "undefined"
+        ? window.localStorage.getItem("tree.current_campaign_code")
+        : null;
+
+      if (sessionId && campaignCode) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token ?? "";
+
+        const durationSec =
+          connectedAt && hangupAt
+            ? Math.round((hangupAt.getTime() - connectedAt.getTime()) / 1000)
+            : null;
+
+        const tcrResult = await insertTreeCallRecordWithQueue({
+          session_id: sessionId,
+          campaign_code: campaignCode,
+          result_code: tcrCode,
+          result_group: resultCodeToGroup(tcrCode),
+          memo: callMemo || undefined,
+          duration_sec: durationSec,
+          accessToken,
+        });
+
+        if (!tcrResult.success) {
+          console.error("[sprout] insertTreeCallRecord failed:", tcrResult);
+          setSaveError(tcrResult.errorMessage);
+          setSavingCall(false);
+          return;
+        }
+
+        // Step 6: INSERT 成功後 5s 間の巻き戻しを有効化（オフラインキュー分は対象外）
+        if (!tcrResult.offline) {
+          armRollback(tcrResult.call_id);
+        }
+      } else {
+        console.warn("[sprout] no active session in localStorage, tree_call_records INSERT skipped");
+      }
+    }
+
     // 保存成功 → 入力リセット・次の架電へ
     setSelectedResult(null);
     setCallMemo("");
@@ -164,12 +266,20 @@ export default function CallingSproutPage() {
         margin: "0 auto",
       }}
     >
-      {/* ワイヤーフレームラベル */}
-      <div style={{ position: "relative", marginBottom: 20 }}>
+      {/* ワイヤーフレームラベル + ネットワーク状態バッジ */}
+      <div
+        style={{
+          position: "relative",
+          marginBottom: 20,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <WireframeLabel color={C.lightGreen}>
           画面4: 架電画面（Sprout / Breeze）
         </WireframeLabel>
-        <div style={{ paddingTop: 8 }} />
+        <NetworkStatusBadge />
       </div>
 
       {/* タイマーバー + アクションボタン */}
@@ -250,6 +360,44 @@ export default function CallingSproutPage() {
           }}
         >
           ⚠️ 保存に失敗しました: {saveError}
+        </div>
+      )}
+
+      {/* Step 6: 巻き戻しボタン（5s 以内のみ表示） */}
+      {canRollback && (
+        <div
+          style={{
+            marginBottom: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <button
+            onClick={() =>
+              performRollback().then((res) => {
+                if (!res.success) setSaveError(res.error ?? "巻き戻しに失敗しました");
+                else setSaveError(null);
+              })
+            }
+            style={{
+              padding: "8px 18px",
+              border: `1px solid ${C.gold}`,
+              borderRadius: 10,
+              background: "rgba(201,168,76,0.08)",
+              color: C.goldDark ?? C.gold,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "'Noto Sans JP', sans-serif",
+              transition: "all 0.15s ease",
+            }}
+          >
+            ↩ 巻き戻し（Ctrl+Z）
+          </button>
+          <span style={{ fontSize: 11, color: C.textMuted }}>
+            5秒以内のみ有効
+          </span>
         </div>
       )}
 

@@ -14,6 +14,18 @@
  *
  * - 1秒ごと入力中タイマー（useEffect + setInterval）
  * - サイドバー・KPIヘッダーは TreeShell が描画
+ *
+ * --- D-02 Step 9.3: 30分タイマー + 期限超過通知 ---
+ * spec §3.6 要件:
+ *  - 同意確認待ちキューカードに 30 分タイマーを表示
+ *  - 期限（30 分）超過時に inline メッセージ + console.warn で通知
+ *
+ * スコープ外（本 Step 対象外）:
+ *  - 実際の `ng_timeout` INSERT は Vercel Cron で実装（D-02/D-03 別タスク）
+ *  - spec §3.6 の `result_code = 'ng_timeout'` は既存 CHECK 制約に含まれない
+ *    → timeout 時の自動 INSERT は D-2 で 'ng_other' へのマッピングか
+ *       CHECK 制約拡張（'ng_timeout' 追加）かを検討・確定後に実装
+ * ---
  */
 
 import { useEffect, useState } from "react";
@@ -59,8 +71,17 @@ type ConfirmerInfo = {
   color: string;
 };
 
+/* ---------- 定数 ---------- */
+
+/** D-02 Step 9.3: 同意確認タイムアウト閾値（秒） */
+const CONFIRM_TIMEOUT_SEC = 30 * 60; // 30 分
+
 /* ---------- デモデータ ---------- */
 
+/**
+ * D-02 Step 9.3: arrived_at を追加（待ち開始時刻の基準）
+ * デモデータのため固定値。実 Supabase 連携時は tree_call_records.called_at を使用する。
+ */
 const DEMO_QUEUE: ConfirmItem[] = [
   { id: "cw1", type: "前確", customer: "田中工業 様", phone: "06-1234-5678", closer: "萩尾 拓也", confirmer: null, confirmerStatus: "", confirmerSec: 0, time: "10:45", inputSec: 0, status: "待ち" },
   { id: "cw2", type: "前確", customer: "鈴木商事 様", phone: "078-9876-5432", closer: "小泉 翔", confirmer: "辻 舞由子", confirmerStatus: "入力中", confirmerSec: 0, time: "10:38", inputSec: 95, status: "入力中" },
@@ -68,6 +89,18 @@ const DEMO_QUEUE: ConfirmItem[] = [
   { id: "cw4", type: "後確", customer: "中村電機 様", phone: "06-3333-4444", closer: "石原 孝志朗", confirmer: "宮永 ひかり", confirmerStatus: "通話中", confirmerSec: 45, time: "10:20", inputSec: 0, status: "対応中", scheduledTime: "15:30" },
   { id: "cw5", type: "フォローコール", customer: "高橋製作所 様", phone: "06-7777-8888", closer: "小泉 翔", confirmer: null, confirmerStatus: "", confirmerSec: 0, time: "10:15", inputSec: 0, status: "待ち", scheduledTime: "16:00", followInfo: "電力プランA / WEB / 開通4/20" },
 ];
+
+/**
+ * D-02 Step 9.3: デモ用の待ち開始秒数（実運用時は arrived_at から計算）
+ * キー: item.id, 値: 待ち開始からの経過秒（デモのため一部を 1800秒超えに設定）
+ */
+const DEMO_WAIT_INITIAL_SEC: Record<string, number> = {
+  cw1: 900,   // 15 分待ち
+  cw2: 0,     // 入力中なので待ちタイマー不要
+  cw3: 1750,  // 29 分超え（まもなくタイムアウト）
+  cw4: 600,   // 10 分待ち
+  cw5: 1860,  // 31 分超え（タイムアウト済みデモ）
+};
 
 const DEMO_COMPLETED: CompletedConfirm[] = [
   { type: "前確", customer: "山本商店 様", closer: "萩尾 拓也", confirmer: "辻 舞由子", time: "10:10", result: "前確OK", resultColor: C.midGreen },
@@ -113,6 +146,34 @@ export default function ConfirmWaitPage() {
         DEMO_QUEUE.forEach((item) => {
           if (item.status === "入力中") {
             next[item.id] = (next[item.id] ?? item.inputSec) + 1;
+          }
+        });
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // D-02 Step 9.3: 30分タイマー（待ち時間の経過秒）
+  const [waitTimers, setWaitTimers] = useState<Record<string, number>>(DEMO_WAIT_INITIAL_SEC);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setWaitTimers((prev) => {
+        const next = { ...prev };
+        DEMO_QUEUE.forEach((item) => {
+          // 「入力中」「対応中」は待ちタイマー停止（確認者が対応中のため）
+          if (item.status !== "入力中" && item.status !== "対応中") {
+            const prevSec = next[item.id] ?? 0;
+            const nextSec = prevSec + 1;
+            next[item.id] = nextSec;
+            // 30 分超過を初めて検知したタイミングで console.warn
+            if (prevSec < CONFIRM_TIMEOUT_SEC && nextSec >= CONFIRM_TIMEOUT_SEC) {
+              console.warn(
+                `[confirm-wait] タイムアウト検知: ${item.customer} (id=${item.id}) — ` +
+                `30分経過。実際の ng_timeout INSERT は Vercel Cron で実装予定（D-02 Step 9.3）`
+              );
+            }
           }
         });
         return next;
@@ -217,13 +278,18 @@ export default function ConfirmWaitPage() {
       {combined.map((item) => {
         const inputElapsed = inputTimers[item.id] ?? item.inputSec;
         const isInputLong = inputElapsed >= 120;
+        // D-02 Step 9.3: 30分タイマー
+        const waitElapsed = waitTimers[item.id] ?? 0;
+        const isWaitTimeout = waitElapsed >= CONFIRM_TIMEOUT_SEC;
+        const isWaitNearTimeout = !isWaitTimeout && waitElapsed >= CONFIRM_TIMEOUT_SEC - 5 * 60; // 残り 5 分以内
+        const showWaitTimer = item.status !== "入力中" && item.status !== "対応中";
         return (
           <GlassPanel
             key={item.id}
             onClick={() => {/* navigate to call with confirm mode */}}
             style={{
               padding: 16, marginBottom: 12, cursor: "pointer",
-              borderLeft: `4px solid ${typeColor(item.type)}`,
+              borderLeft: `4px solid ${isWaitTimeout ? "#c44a4a" : typeColor(item.type)}`,
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
@@ -252,6 +318,18 @@ export default function ConfirmWaitPage() {
                 <span style={{ color: C.textMuted }}>到着: {item.time}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {/* D-02 Step 9.3: 30分タイマー表示 */}
+                {showWaitTimer && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, fontFamily: "monospace",
+                    color: isWaitTimeout ? "#c44a4a" : isWaitNearTimeout ? "#e67e22" : C.textMuted,
+                    background: isWaitTimeout ? "rgba(196,74,74,0.08)" : isWaitNearTimeout ? "rgba(230,126,34,0.08)" : "transparent",
+                    padding: isWaitTimeout || isWaitNearTimeout ? "2px 8px" : undefined,
+                    borderRadius: isWaitTimeout || isWaitNearTimeout ? 6 : undefined,
+                  }}>
+                    待ち {fmt(waitElapsed)} / 30:00
+                  </span>
+                )}
                 {item.confirmer ? (
                   <>
                     <span style={{ fontSize: 12, color: C.textMuted }}>確認者:</span>
@@ -268,6 +346,19 @@ export default function ConfirmWaitPage() {
                 )}
               </div>
             </div>
+
+            {/* D-02 Step 9.3: 期限超過通知（inline メッセージ） */}
+            {isWaitTimeout && (
+              <div style={{
+                marginTop: 8, padding: "8px 12px",
+                background: "rgba(196,74,74,0.08)", border: "1px solid rgba(196,74,74,0.25)",
+                borderRadius: 8, fontSize: 12, color: "#c44a4a", fontWeight: 600,
+              }}>
+                ⚠️ 同意確認期限（30分）を超過しています。
+                確認者への状況確認、または案件の処理を行ってください。
+                {/* 実際の ng_timeout INSERT は Vercel Cron で実装予定（D-02 Step 9.3 スコープ外） */}
+              </div>
+            )}
           </GlassPanel>
         );
       })}
