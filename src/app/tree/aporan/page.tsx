@@ -13,11 +13,24 @@
  *  4. 更新履歴ツールチップ（MANAGER のみ）
  *  5. サマリーカード（効率 / 実績P / 達成率 / 稼働時間）
  *  6. ランキングテーブル（9列・ソート可=MANAGER のみ）
+ *  7. [D-02 Step 9.2] アポ済リスト（toss 済・未案件化）
  *
  * - サイドバー・KPIヘッダーは TreeShell が描画
+ *
+ * --- D-02 Step 9.2: アポ済リスト（Supabase 連携）---
+ * spec §3.5 要件:
+ *  - tree_call_records で result_code = 'toss' AND tossed_leaf_case_id IS NULL の
+ *    当日分・自分のレコードを SELECT して一覧表示
+ *  - トス完了 / 却下 / 再アプローチボタンは D-04 で本実装（本 Step は placeholder）
+ *
+ * 注意:
+ *  - 本画面は APPOINTER RANKING（月間集計）として既に実装されており、
+ *    spec §3.5 が想定する「アポ保留エリア専用画面」とは役割が異なる
+ *  - 構造変更を最小限に抑えるため、アポ済リストをページ末尾の追加パネルとして実装
+ * ---
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { GlassPanel } from "../_components/GlassPanel";
 import { PointValue } from "../_components/PointValue";
@@ -26,6 +39,7 @@ import { C } from "../_constants/colors";
 import { ROLES } from "../_constants/roles";
 import { USER } from "../_constants/user";
 import { P } from "../_lib/format";
+import { supabase } from "../_lib/supabase";
 import { useTreeState } from "../_state/TreeStateContext";
 
 type RankingRow = {
@@ -40,6 +54,14 @@ type RankingRow = {
   eff: number;
   projH: number;
   projP: number;
+};
+
+/** D-02 Step 9.2: アポ済リスト（toss 済・未案件化）レコード型 */
+type TossedCallRecord = {
+  id: string;
+  called_at: string;
+  memo: string | null;
+  duration_sec: number | null;
 };
 
 type SortKey = "pts" | "hours" | "eff" | "projH" | "projP";
@@ -118,6 +140,44 @@ export default function AporanPage() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedDate, setSelectedDate] = useState(TODAY);
   const [aporanFilter, setAporanFilter] = useState<"all" | "toss" | "closer">("all");
+
+  // D-02 Step 9.2: アポ済リスト（toss 済・未案件化）
+  const [tossList, setTossList] = useState<TossedCallRecord[]>([]);
+  const [tossLoading, setTossLoading] = useState(false);
+  const [tossError, setTossError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchTossList = async () => {
+      setTossLoading(true);
+      setTossError(null);
+
+      // 当日 0:00（日本時間）を UTC に変換してフィルター
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from("tree_call_records")
+        .select("id, called_at, memo, duration_sec")
+        .eq("result_code", "toss")
+        .is("tossed_leaf_case_id", null)
+        .gte("called_at", todayStart.toISOString())
+        .order("called_at", { ascending: false });
+
+      if (cancelled) return;
+
+      if (error) {
+        setTossError("アポ済リストの取得に失敗しました");
+        console.error("[aporan] toss list fetch error:", error);
+      } else {
+        setTossList(data ?? []);
+      }
+      setTossLoading(false);
+    };
+
+    fetchTossList();
+    return () => { cancelled = true; };
+  }, []);
 
   const isToday = selectedDate === TODAY;
   const summary = {
@@ -351,6 +411,72 @@ export default function AporanPage() {
 
       <div style={{ marginTop: 16, textAlign: "center", fontSize: 11, color: C.textMuted }}>
         {selectedDate} {isToday ? "最新（複数更新がある場合は最終更新分を表示）" : "終わり時点"} • データはGarden Treeから自動取得
+      </div>
+
+      {/* D-02 Step 9.2: アポ済リスト（当日・自分・未案件化） */}
+      <div style={{ marginTop: 32 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.goldDark, marginBottom: 12 }}>
+          🏷️ 本日のアポ済リスト（未案件化）
+          <span style={{ fontSize: 11, fontWeight: 400, color: C.textMuted, marginLeft: 8 }}>
+            — result_code = &apos;toss&apos; かつ案件化待ちのレコード
+          </span>
+        </div>
+
+        {tossLoading && (
+          <div style={{ padding: 16, color: C.textMuted, fontSize: 13 }}>読み込み中...</div>
+        )}
+        {tossError && (
+          <div style={{ padding: 12, background: "rgba(196,74,74,0.06)", border: "1px solid rgba(196,74,74,0.2)", borderRadius: 10, color: "#c44a4a", fontSize: 13 }}>
+            ⚠ {tossError}
+          </div>
+        )}
+        {!tossLoading && !tossError && tossList.length === 0 && (
+          <GlassPanel style={{ padding: 20, textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: C.textMuted }}>本日のアポ済（未案件化）はありません</div>
+          </GlassPanel>
+        )}
+        {!tossLoading && !tossError && tossList.length > 0 && (
+          <GlassPanel style={{ padding: 0, overflow: "hidden" }}>
+            <div style={{
+              display: "grid", gridTemplateColumns: "160px 1fr 80px 80px",
+              padding: "10px 16px", background: `linear-gradient(135deg, ${C.goldDark}, ${C.gold})`,
+              color: C.white, fontSize: 11, fontWeight: 700, gap: 8,
+            }}>
+              <div>架電日時</div><div>メモ</div><div>通話時間</div><div>アクション</div>
+            </div>
+            {tossList.map((rec) => (
+              <div key={rec.id} style={{
+                display: "grid", gridTemplateColumns: "160px 1fr 80px 80px",
+                padding: "10px 16px", gap: 8, alignItems: "center",
+                borderBottom: "1px solid rgba(0,0,0,0.04)", fontSize: 12, color: C.textDark,
+              }}>
+                <div style={{ color: C.textMuted, fontSize: 11 }}>
+                  {new Date(rec.called_at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+                </div>
+                <div style={{ color: rec.memo ? C.textDark : C.textMuted, fontStyle: rec.memo ? "normal" : "italic" }}>
+                  {rec.memo ?? "（メモなし）"}
+                </div>
+                <div style={{ color: C.textMuted, textAlign: "right" }}>
+                  {rec.duration_sec !== null ? `${rec.duration_sec}s` : "—"}
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {/* D-04 で本実装: トス完了 / 却下 / 再アプローチ */}
+                  <button disabled style={{
+                    padding: "3px 8px", fontSize: 10, borderRadius: 6,
+                    border: "1px solid #ddd", background: "#f5f5f5", color: "#bbb",
+                    cursor: "not-allowed", fontFamily: "'Noto Sans JP', sans-serif",
+                  }}
+                    title="D-04 で実装予定">
+                    案件化
+                  </button>
+                </div>
+              </div>
+            ))}
+          </GlassPanel>
+        )}
+        <div style={{ marginTop: 8, fontSize: 11, color: C.textMuted }}>
+          ※ トス完了 / 却下 / 再アプローチボタンは D-04（トスアップフロー）で実装予定
+        </div>
       </div>
     </div>
   );
