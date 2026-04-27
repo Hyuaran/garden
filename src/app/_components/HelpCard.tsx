@@ -13,31 +13,25 @@ export function HelpCard() {
       aria-label="ヘルプ"
       data-testid="help-card"
       style={{
-        position: "absolute",
-        left: 16,
-        bottom: 16,
-        zIndex: 5,
-        maxWidth: 280,
-        padding: "14px 16px",
-        background: "rgba(255, 255, 255, 0.92)",
-        borderRadius: 12,
+        padding: "12px 14px",
+        background: "rgba(248, 250, 247, 0.92)",
+        borderRadius: 10,
         border: "1px solid #DEE5DE",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-        backdropFilter: "blur(6px)",
+        boxShadow: "0 2px 6px rgba(0, 0, 0, 0.04)",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
         <span aria-hidden>💡</span>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#1F5C3A" }}>ヘルプ</h3>
+        <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#1F5C3A" }}>ヘルプ</h3>
       </div>
       <p style={{ fontSize: 11, color: "#5C6E5F", lineHeight: 1.5, margin: 0 }}>
-        Garden の使い方が分からない時はこちら。Q&amp;A 検索・操作ガイド・動画解説が揃っています。
+        Garden の使い方が分からない時はこちら。Q&amp;A 検索・操作ガイド・動画解説。
       </p>
       <Link
         href="/help"
         style={{
           display: "inline-block",
-          marginTop: 10,
+          marginTop: 8,
           padding: "5px 12px",
           background: "#3B9B5C",
           color: "#fff",

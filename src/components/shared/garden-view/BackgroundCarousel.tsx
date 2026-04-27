@@ -1,3 +1,7 @@
+/**
+ * @deprecated v6 dispatch (2026-04-27): page.tsx 直接 background-image に置換、本コンポーネント未使用化。
+ * Step 5 完了後に _archive 退避検討。CLAUDE.md「ファイル削除禁止」ルールにより当面残置。
+ */
 "use client";
 
 /**

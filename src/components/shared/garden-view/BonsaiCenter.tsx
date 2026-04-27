@@ -1,4 +1,9 @@
 /**
+ * @deprecated v6 dispatch (2026-04-27): 大樹背景画像 (garden-home-bg-v2.webp) に統合、独立 visual 不要化。
+ * GardenView 内では引き続き render されるが、page.tsx で GardenView を Step 5 で置換完了後は未使用化。
+ */
+
+/**
  * 盆栽ビュー — 中央 visual centerpiece
  *
  * cross-ui-06 §3.2 で BonsaiCenter として 12 モジュールから独立した視覚要素。
