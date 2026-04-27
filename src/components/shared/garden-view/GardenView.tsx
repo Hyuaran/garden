@@ -1,4 +1,10 @@
 /**
+ * @deprecated v6 dispatch (2026-04-27): page.tsx から外され、新 ModuleGrid に置換。
+ * 内部の BackgroundCarousel / BonsaiCenter / ModuleLayer / ShojiStatusCloud も dashboard 化で個別 deprecate or 再配置。
+ * 本ファイルは CLAUDE.md「ファイル削除禁止」ルールにより当面残置（参照: dispatch v6 Step 5）。
+ */
+
+/**
  * 盆栽 / 大樹ビュー — メインコンテナ
  *
  * 4 layer 重ね合わせ:
