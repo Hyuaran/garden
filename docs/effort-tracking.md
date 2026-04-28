@@ -152,3 +152,56 @@
   - ブランチ: feature/soil-base-specs-batch16-auto
 
 - **本ファイルの起源**: 2026-04-22、ルール `feedback_effort_tracking.md` 遵守のため作成。以降の Phase では spec/plan 作成と同時に行追加すること。
+
+- **2026-04-27 GitHub crisis + dispatch v6/v7 大規模対応 (a-main-009 + a-bloom-002)**:
+  - **GitHub crisis 対応** (想定外、約 4h):
+    - A 垢 (ShojiMikoto / shoji@hyuaran.com) は 2025-05-24 から suspended、Support 11 ヶ月未返信
+    - 4/27 朝に B 垢 (ShojiMikoto-B / shoji@centerrise.co.jp) で復旧 → 同日午後再 suspended（50+ PR 連投検出）
+    - C 垢 (shoji-hyuaran / shoji-dev@hyuaran.com) 新設、Hyuaran org に Owner 招待
+    - GitHub Team プラン申請 → 48h billing 調査 block
+    - GitHub Support Ticket #4330372 受理 + Sophia Hayes 質問返信投下
+    - ローカル backup 0.55 GB（C:\garden_backup_20260427-1750\）
+    - memory 5 件追加（project_github_account_crisis / feedback_github_pin_auth_cookie_clear / feedback_dispatch_md_copy_button / feedback_no_godo_script_proposal / feedback_chatgpt_image_workflow）
+  - **dispatch v6 完走** (a-bloom-002): 7 commits、Phase 2 ホーム全面刷新 (V6-A〜F)
+    - V6-A: BG + Sidebar (15fdd31, 7c7478e)
+    - V6-B: AppHeader 拡張 (1f3ca54)
+    - V6-C: 12 module 3×4 grid (66ab155)
+    - V6-D: 4 KPI カード (233b726)
+    - V6-E: Today's Activity (8e0dbe7)
+    - V6-F: 統合テスト (3f8841a)
+  - **dispatch v7 完走** (a-bloom-002): 9 commits、5/5 後道さんデモ準備
+    - V7-A: 6 atmospheres カルーセル復活 (ababd29、push 済)
+    - V7-B: ログイン画面（社員番号またはID）(500538d)
+    - V7-C: 離席中/休憩中 中央レイアウト (353e5d1)
+    - V7-D: A 案 v4 画像 overlay モード (82b7223 + a4fe66a)
+    - V7-D-fix: 座標修正 + 全 12 件 Link (7021195)
+    - V7-D-fix2: aspect-ratio 16/9 container (e2f7570)
+    - V7-E: develop merge + Coming Soon 6 件 (41f51bc + 0ab9aa0)
+  - **ChatGPT 画像生成**: 12 個別水彩アイコン + v4 理想画像
+  - **conflict 解消 push**: 4 PR (#85 / #82 / #87 / #81)、#85 merge 完了 (6c31c4f)
+  - **a-review レビュー依頼 + 結果**: 3 PR (#82 APPROVE 条件付 / #101 APPROVE / #87 disk 保存) + Tree D-01/D-02 (#109/#110) priority 1 投下
+  - **dispatch / 短文起草**: 約 15 件 (a-main-009/docs/)
+  - **5/5 後道さんデモ準備**: 完了水準到達 (V7-D-fix2 で ChatGPT 画像と完全一致 + V7-E で 404 ゼロ)
+  - **次の作業**: GitHub Team 課金 解除待ち (~4/29 夕方) → C 垢で 8 commits 一括 push → PR merge 順次実行 → V7-F (post-5/5 動的化) 着手
+
+- **2026-04-28 朝 GitHub 復旧 + v2.8a 完成 (a-main-009 + a-bloom-002)**:
+  - **GitHub Trade Controls 解除**（4/28 10:29 メール、48h 待たず早期解除）
+  - **Hyuaran org Team プラン課金完了**（月 $8、2 license × $4/license）
+  - **Sophia Hayes Ticket #4330372 続報**: B 垢復旧は別件で継続審査中（Support 待ち）
+  - **C 垢 (shoji-hyuaran) PAT 認証完了** (a-main-009 が代行実行):
+    - gh auth logout × 2（B 垢 + 旧 A 垢）
+    - gh auth login --with-token（C 垢 PAT）
+    - gh auth setup-git
+    - 動作確認: gh api user → shoji-hyuaran
+  - **全 9 worktree git config 統一** (a-main-009 が実行): user.name = "Mikoto Shoji" / user.email = "shoji-dev@hyuaran.com" / global config も統一
+  - **a-bloom-002 dispatch v2.8a 全完走** (5 commits、a-bloom-002):
+    - Step 1 (f5fa07b): CSS 変数 + 4 Google Fonts + ダーク基盤 + 旧 layout 別名 backup
+    - Step 2 (c928c30): 画像アセット 8 カテゴリ 51 ファイル移植
+    - Step 3 (d8454d0): 静的 components 9 件（Topbar / Sidebar / BackgroundLayer / Greeting / KpiGrid / KpiCard / OrbGrid / OrbCard / ActivityPanel）
+    - Step 4 (df8cc24): 動的 lib/hook 6 件（playSound / getWeather / atmospheres / 自家製 ThemeProvider / useBackgroundCarousel / useActivityHeight）
+    - Step 5 (2a00c79): page.tsx 全面組み上げ + ThemeProvider 配線 + globals.css に v2.8a レイアウト CSS ~700 行追加
+  - **a-bloom-002 13 commits 一括 push** (4/28 11:30 頃、ababd29..2a00c79): dispatch v7 (V7-B/V7-C/V7-D/V7-D-fix/V7-D-fix2/V7-E + v4 image + develop merge) + dispatch v2.8a (Step 1-5)
+  - **memory 追加 / 改訂**: feedback_token_management_by_claude.md（4/28 PAT 過剰反応への補正、Garden 関連トークンは Claude が管理、漏洩アラート禁止）
+  - **dispatch / 短文 起草** (4/28 朝): v2.8a migration dispatch / Bloom 画面 UI Claude Chat 引き継ぎ表 / 4 セッション状況通知 / Tree D-01/D-02 セット merge 計画 / post-5/5 V7-G Phase B 計画 / dispatch インデックス / a-review #106 priority 1 依頼 / a-bloom-002 push 完了通知 = 約 8 件
+  - **5/5 後道さんデモ準備**: ✅ 完成形 (v2.8a 仕様 + V7-D 画像 overlay 互換 + 12 module Coming Soon 完備)
+  - **次の作業**: localhost:3002 で東海林さん最終動作確認 → a-review #106 priority 1 依頼投下 → 5/5 デモ前 merge → V7-F (post-5/5 動的化) 着手
