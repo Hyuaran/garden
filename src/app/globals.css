@@ -99,18 +99,18 @@ input { font-family: inherit; }
 [data-theme="dark"] {
   --bg-paper:        #1f2419;
   --bg-paper-soft:   #2a302a;
-  /* === dark alpha 強化 (a-bloom-002 / a-main-009 dispatch 応急処置 c) ===
-     prototype HTML/CSS 版と byte-for-byte 同値 (0.55 / 0.6 / 0.7) で実装したが、
-     localhost:3000 の Next.js 版で「透けすぎ感残る」現象を確認。
-     原因は CSS 変数・backdrop-filter・画像 hash すべて一致のため、
-     ブラウザ描画パイプライン or Tailwind v4 preflight 起因と推定。
-     視覚改善優先で alpha を 0.82-0.88 帯に強化、後段で prototype 側も同調整予定。
-     DESIGN_SPEC §1-2 との divergence: 0.55→0.82, 0.6→0.85, 0.7→0.88 */
-  --bg-card:         rgba(38, 44, 32, 0.82);
-  --bg-card-hover:   rgba(50, 58, 42, 0.92);
+  /* === dark alpha 強化 第 2 弾 (a-bloom-002 / a-main-009 dispatch) ===
+     第 1 弾 (d080e45) で 0.82-0.88 帯に強化したが、依然「少し透ける」報告。
+     第 2 弾でほぼ不透明 (0.94) に統一、業務システムとしての可読性優先。
+     世界観の「ガラス感」は若干薄れるが、grid gap / 余白部分から大樹画像は見える設計。
+     DESIGN_SPEC §1-2 との divergence:
+       第 1 弾: 0.55→0.82, 0.6→0.85, 0.7→0.88
+       第 2 弾: 0.82→0.94, 0.85→0.94, 0.88→0.94 (統一値) */
+  --bg-card:         rgba(38, 44, 32, 0.94);
+  --bg-card-hover:   rgba(50, 58, 42, 0.97);
   --bg-card-solid:   #2c322a;
-  --bg-sidebar:      rgba(30, 36, 24, 0.85);
-  --bg-activity:     rgba(38, 44, 32, 0.88);
+  --bg-sidebar:      rgba(30, 36, 24, 0.94);
+  --bg-activity:     rgba(38, 44, 32, 0.94);
   --bg-overlay:      rgba(25, 30, 20, 0.25);
 
   --text-main:       #e0d8c5;
