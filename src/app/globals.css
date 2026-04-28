@@ -99,11 +99,18 @@ input { font-family: inherit; }
 [data-theme="dark"] {
   --bg-paper:        #1f2419;
   --bg-paper-soft:   #2a302a;
-  --bg-card:         rgba(38, 44, 32, 0.55);
-  --bg-card-hover:   rgba(50, 58, 42, 0.85);
+  /* === dark alpha 強化 (a-bloom-002 / a-main-009 dispatch 応急処置 c) ===
+     prototype HTML/CSS 版と byte-for-byte 同値 (0.55 / 0.6 / 0.7) で実装したが、
+     localhost:3000 の Next.js 版で「透けすぎ感残る」現象を確認。
+     原因は CSS 変数・backdrop-filter・画像 hash すべて一致のため、
+     ブラウザ描画パイプライン or Tailwind v4 preflight 起因と推定。
+     視覚改善優先で alpha を 0.82-0.88 帯に強化、後段で prototype 側も同調整予定。
+     DESIGN_SPEC §1-2 との divergence: 0.55→0.82, 0.6→0.85, 0.7→0.88 */
+  --bg-card:         rgba(38, 44, 32, 0.82);
+  --bg-card-hover:   rgba(50, 58, 42, 0.92);
   --bg-card-solid:   #2c322a;
-  --bg-sidebar:      rgba(30, 36, 24, 0.6);
-  --bg-activity:     rgba(38, 44, 32, 0.7);
+  --bg-sidebar:      rgba(30, 36, 24, 0.85);
+  --bg-activity:     rgba(38, 44, 32, 0.88);
   --bg-overlay:      rgba(25, 30, 20, 0.25);
 
   --text-main:       #e0d8c5;
