@@ -99,18 +99,17 @@ input { font-family: inherit; }
 [data-theme="dark"] {
   --bg-paper:        #1f2419;
   --bg-paper-soft:   #2a302a;
-  /* === dark alpha 強化 第 2 弾 (a-bloom-002 / a-main-009 dispatch) ===
-     第 1 弾 (d080e45) で 0.82-0.88 帯に強化したが、依然「少し透ける」報告。
-     第 2 弾でほぼ不透明 (0.94) に統一、業務システムとしての可読性優先。
-     世界観の「ガラス感」は若干薄れるが、grid gap / 余白部分から大樹画像は見える設計。
-     DESIGN_SPEC §1-2 との divergence:
-       第 1 弾: 0.55→0.82, 0.6→0.85, 0.7→0.88
-       第 2 弾: 0.82→0.94, 0.85→0.94, 0.88→0.94 (統一値) */
-  --bg-card:         rgba(38, 44, 32, 0.94);
-  --bg-card-hover:   rgba(50, 58, 42, 0.97);
+  /* === dark alpha (DESIGN_SPEC §1-2 同値、prototype HTML/CSS と一致) ===
+     第 1 弾 (d080e45 / 0.82) / 第 2 弾 (333ecef / 0.94) で alpha を強化したが、
+     第 3 弾調査で真の原因が判明: .garden-v28a-main の z-index: 1 が
+     stacking context を形成し KPI/Orb cards の backdrop-filter を nullify。
+     z-index 削除（dispatch v2.8a 第 3 弾 A 案）で blur 復活 → alpha は
+     prototype 同値 (0.55 / 0.6 / 0.7) に revert 完了。 */
+  --bg-card:         rgba(38, 44, 32, 0.55);
+  --bg-card-hover:   rgba(50, 58, 42, 0.85);
   --bg-card-solid:   #2c322a;
-  --bg-sidebar:      rgba(30, 36, 24, 0.94);
-  --bg-activity:     rgba(38, 44, 32, 0.94);
+  --bg-sidebar:      rgba(30, 36, 24, 0.6);
+  --bg-activity:     rgba(38, 44, 32, 0.7);
   --bg-overlay:      rgba(25, 30, 20, 0.25);
 
   --text-main:       #e0d8c5;
@@ -256,9 +255,15 @@ input { font-family: inherit; }
 
 /* ========== fadeUp アニメーション (v2.8a §6-1) ========== */
 
+/* fadeUp: dispatch v2.8a 第 3 弾 Step J A 案で transform 削除。
+   "to" の transform: translateY(0) が matrix(1,0,0,1,0,0) として
+   permanent 残存し各 card を compositor layer に昇格させ
+   backdrop-filter を Chrome レンダリングパイプライン上で nullify
+   していたため、opacity のみのフェードに変更。
+   (上下動き演出は失うが、ぼかし復活と引き換え。優先順 1+2 達成、3 のみ妥協) */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .fadeUp {
@@ -505,8 +510,12 @@ input { font-family: inherit; }
   gap: 24px;
   padding: 0 28px;
   background: var(--bg-sidebar);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- prefix を先に書き、
+     標準を後置（Turbopack/Lightning CSS の dedup で標準が削除される
+     現象を回避。Chrome 76+ は標準のみ認識のため、標準が compiled CSS に
+     残ることが必須）。!important は Step I の defense-in-depth として残置。 */
+  -webkit-backdrop-filter: blur(14px) !important;
+  backdrop-filter: blur(14px) !important;
   border-bottom: 1px solid var(--border-soft);
   z-index: 9;
   transition: background 0.6s ease, border-color 0.6s ease;
@@ -786,8 +795,9 @@ input { font-family: inherit; }
   width: var(--sidebar-w);
   height: calc(100vh - var(--topbar-h));
   background: var(--bg-sidebar);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
   border-right: 1px solid var(--border-soft);
   padding: 24px 16px;
   z-index: 8;
@@ -929,7 +939,9 @@ input { font-family: inherit; }
   margin-left: var(--sidebar-w);
   padding: calc(var(--topbar-h) + 24px) 32px 32px;
   position: relative;
-  z-index: 1;
+  /* z-index: 1 を削除 (dispatch v2.8a 第 3 弾 A 案):
+     stacking context を形成し内部 .kpi-card / .orb-card の backdrop-filter を
+     nullify していたため除去。z-index 不要、レイアウト維持確認済。 */
 }
 
 /* ---- Greeting ---- */
@@ -972,8 +984,9 @@ input { font-family: inherit; }
 
 .kpi-card {
   background: var(--bg-card);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
+  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
   border: 1px solid var(--border-card);
   border-radius: var(--radius-card);
   padding: 14px 18px 12px;
@@ -1121,8 +1134,9 @@ input { font-family: inherit; }
   gap: 8px 14px;
   padding: 16px 18px;
   background: var(--bg-card);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
+  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
   border: 1px solid var(--border-card);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-soft);
@@ -1242,8 +1256,9 @@ input { font-family: inherit; }
   bottom: 32px;
   padding: 20px 22px 16px;
   background: var(--bg-activity);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
+  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(16px) !important;
   border: 1px solid var(--border-card);
   border-radius: var(--radius-card);
   display: flex;
