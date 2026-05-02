@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { BloomGate } from "./_components/BloomGate";
-import { BloomShell } from "./_components/BloomShell";
+import { BloomLayoutClient } from "./_components/BloomLayoutClient";
 import { BloomStateProvider } from "./_state/BloomStateContext";
 import { ViewModeProvider } from "./_state/ViewModeContext";
 
@@ -11,11 +11,14 @@ export const metadata = {
 };
 
 export default function BloomLayout({ children }: { children: ReactNode }) {
+  // BloomLayoutClient で pathname により分岐:
+  //   /bloom (Bloom Top) → BloomShell バイパス（v2.8a 統一デザインで直接 render）
+  //   /bloom/* (workboard 等既存実装) → BloomShell で wrap（既存ロジック保護）
   return (
     <BloomStateProvider>
       <ViewModeProvider>
         <BloomGate>
-          <BloomShell>{children}</BloomShell>
+          <BloomLayoutClient>{children}</BloomLayoutClient>
         </BloomGate>
       </ViewModeProvider>
     </BloomStateProvider>

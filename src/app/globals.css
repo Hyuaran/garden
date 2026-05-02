@@ -1490,3 +1490,298 @@ input { font-family: inherit; }
     transition: none !important;
   }
 }
+
+/* ====================================================================
+ * Garden Bloom — Bloom Top 用 Bloom 固有 CSS (v2.8a-bloom Step 1)
+ *
+ * 出典: 015_Gardenシリーズ/000_GardenUI_bloom/02_BloomTop/css/style.css
+ *   - line 1456-1713 (.bloom-leaf-icon / .bloom-nav-* / .bloom-page 系)
+ *   - line 1794-1834 (.page-header / .page-title-* / .page-subtitle)
+ *   - line 4126-4252 (.page-title-row / .page-favorite-btn / .page-favorite-toast)
+ *
+ * 本セクションは Bloom 配下画面 (/bloom, /bloom/* で .bloom-page クラス内)
+ * のみに適用。Garden ホーム (/) は影響なし。
+ *
+ * v2.8a-bloom Step 1 では Bloom Top の最低限スタイル。Phase 2 で nav-apps /
+ * nav-pages (dual sidebar) / activity-toggle (折り畳み) / sakura-bg / peony-bg
+ * 等を追加予定。
+ * ==================================================================== */
+
+/* ---- Bloom 桜花アイコン（Greeting 用、Phase 1 では未使用） ---- */
+.bloom-leaf-icon {
+  width: 32px;
+  height: 32px;
+}
+.bloom-leaf-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Page Header (Bloom Top タイトル部分) ---- */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  position: relative;
+  padding-right: 60px;
+}
+
+.page-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.page-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-title {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 2.2rem;
+  font-weight: 500;
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: color 0.6s ease;
+}
+
+.page-title-jp {
+  font-family: var(--font-shippori), 'Shippori Mincho', serif;
+  font-size: 1.65rem;
+}
+
+.page-title-flower {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  vertical-align: middle;
+}
+.page-title-flower svg { width: 100%; height: 100%; }
+
+.page-subtitle {
+  color: var(--text-sub);
+  font-size: 0.88rem;
+  font-family: var(--font-shippori), 'Shippori Mincho', serif;
+  letter-spacing: 0.05em;
+  transition: color 0.6s ease;
+}
+
+/* ---- Page Favorite Button (右上☆ボタン、Phase 1 では UI のみ) ---- */
+.page-favorite-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 253, 245, 0.5);
+  border: 1px solid var(--border-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  font-size: 1.4rem;
+  color: var(--text-muted);
+}
+
+.page-favorite-btn:hover {
+  background: rgba(255, 253, 245, 0.85);
+  transform: translateY(-1px);
+}
+
+.page-favorite-btn:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+.page-favorite-icon-on { display: none; }
+.page-favorite-icon-off { display: inline-block; }
+
+.page-favorite-btn[aria-pressed="true"] .page-favorite-icon-on {
+  display: inline-block;
+  color: var(--accent-gold);
+}
+.page-favorite-btn[aria-pressed="true"] .page-favorite-icon-off { display: none; }
+
+[data-theme="dark"] .page-favorite-btn { background: rgba(50, 58, 42, 0.5); }
+[data-theme="dark"] .page-favorite-btn:hover { background: rgba(50, 58, 42, 0.95); }
+
+/* ---- Bloom Nav Grid (4 ナビカード、横 2 × 縦 2) ---- */
+.bloom-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.bloom-nav-card {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 8px 16px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.45s cubic-bezier(.2,.8,.3,1.2),
+              box-shadow 0.45s cubic-bezier(.2,.8,.3,1.2),
+              background 0.6s ease,
+              border-color 0.6s ease;
+  position: relative;
+  cursor: pointer;
+  align-items: center;
+  text-decoration: none;
+  overflow: hidden;
+}
+
+.bloom-nav-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), transparent 50%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.bloom-nav-card:hover {
+  /* dark fix 遵守: transform/scale なし、shadow + 背景 のみ */
+  box-shadow: var(--shadow-orb-hover);
+  background: var(--bg-card-hover);
+}
+
+.bloom-nav-card:hover::before { opacity: 1; }
+
+.bloom-nav-img {
+  grid-row: 1 / 3;
+  grid-column: 1;
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 10px rgba(120, 100, 70, 0.15));
+  transition: filter 0.4s ease;
+}
+
+.bloom-nav-card:hover .bloom-nav-img {
+  filter: drop-shadow(0 8px 18px rgba(120, 100, 70, 0.28));
+}
+
+.bloom-nav-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bloom-nav-text {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: end;
+  padding-bottom: 4px;
+}
+
+.bloom-nav-title {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+  line-height: 1.15;
+  transition: color 0.6s ease;
+}
+
+.bloom-nav-sub {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  transition: color 0.6s ease;
+}
+
+.bloom-nav-arrow {
+  position: absolute;
+  bottom: 14px;
+  right: 18px;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.bloom-nav-card:hover .bloom-nav-arrow {
+  transform: translateX(2px);
+  color: var(--accent-gold);
+}
+
+/* ---- Bloom Page 専用 background overlay（花の彩りオーバーレイ） ---- */
+.bloom-page .bg-layer-overlay {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(232, 180, 184, 0.12), transparent 35%),
+    radial-gradient(ellipse at 100% 0%, rgba(242, 213, 126, 0.08), transparent 35%),
+    radial-gradient(ellipse at 0% 100%, rgba(180, 164, 212, 0.08), transparent 35%),
+    radial-gradient(ellipse at 100% 100%, rgba(232, 180, 184, 0.10), transparent 35%),
+    var(--bg-overlay);
+}
+
+[data-theme="dark"] .bloom-page .bg-layer-overlay {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(232, 180, 184, 0.06), transparent 35%),
+    radial-gradient(ellipse at 100% 0%, rgba(242, 213, 126, 0.05), transparent 35%),
+    radial-gradient(ellipse at 0% 100%, rgba(180, 164, 212, 0.05), transparent 35%),
+    radial-gradient(ellipse at 100% 100%, rgba(232, 180, 184, 0.06), transparent 35%),
+    var(--bg-overlay);
+}
+
+/* ---- Bloom Page: kpi/nav-card/activity-panel の背景濃度調整 ---- */
+/* Bloom 専用 bg は花が華やかなので、カードの白濁度を少し強くしてテキスト可読性を担保 */
+.bloom-page .kpi-card,
+.bloom-page .bloom-nav-card {
+  background: rgba(255, 253, 245, 0.82);
+}
+.bloom-page .kpi-card:hover,
+.bloom-page .bloom-nav-card:hover {
+  background: rgba(255, 253, 245, 0.95);
+}
+
+[data-theme="dark"] .bloom-page .kpi-card,
+[data-theme="dark"] .bloom-page .bloom-nav-card {
+  background: rgba(38, 44, 32, 0.70);
+}
+[data-theme="dark"] .bloom-page .kpi-card:hover,
+[data-theme="dark"] .bloom-page .bloom-nav-card:hover {
+  background: rgba(50, 58, 42, 0.90);
+}
+
+.bloom-page .activity-panel {
+  background: rgba(255, 253, 245, 0.85);
+}
+[data-theme="dark"] .bloom-page .activity-panel {
+  background: rgba(38, 44, 32, 0.78);
+}
+
+/* ---- responsive: ~1280px / ~1024px ---- */
+@media (max-width: 1280px) {
+  .bloom-nav-card {
+    grid-template-columns: 96px 1fr;
+    padding: 14px 16px;
+  }
+  .bloom-nav-img { width: 96px; height: 96px; }
+  .bloom-nav-title { font-size: 1.35rem; }
+}
+@media (max-width: 1024px) {
+  .bloom-nav-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 1399px) {
+  .bloom-nav-grid { grid-template-columns: repeat(2, 1fr); }
+}

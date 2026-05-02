@@ -71,3 +71,22 @@ export function getAtmosphereByKey(
 ): AtmosphereV28 | undefined {
   return ATMOSPHERES_V28.find((a) => a.key === key);
 }
+
+/* ========================================================================
+ * Bloom 専用 atmospheres (Bloom Top 等の Bloom 配下画面で使用)
+ * 5/5 デモ向け Phase 1 では light/dark 1 種ずつ、carousel なし。
+ * ======================================================================== */
+
+export const ATMOSPHERE_BLOOM_LIGHT: AtmosphereV28 = {
+  id: 100,
+  key: "bloom-garden-light",
+  name: "Bloom 花咲く庭",
+  path: "/images/backgrounds/bg_bloom_garden_light.png",
+};
+
+export const ATMOSPHERE_BLOOM_DARK: AtmosphereV28 = {
+  id: 101,
+  key: "bloom-garden-dark",
+  name: "Bloom 月夜の庭",
+  path: "/images/backgrounds/bg_bloom_garden_dark.png",
+};
