@@ -39,12 +39,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import BackgroundLayer from "../_components/layout/BackgroundLayer";
 import Topbar from "../_components/layout/Topbar";
-import Sidebar from "../_components/layout/Sidebar";
+// dispatch main- No.15 v2 (2026-05-02): v2.8a Garden Sidebar から Bloom 専用 dual Sidebar に変更
+// （プロト 02_BloomTop の sidebar-dual = nav-apps + nav-pages + toggle ボタン）
 import ActivityPanel from "../_components/home/ActivityPanel";
 
 import BloomPageHeader from "./_components/BloomPageHeader";
 import BloomKpiGrid from "./_components/BloomKpiGrid";
 import BloomNavGrid from "./_components/BloomNavGrid";
+import BloomSidebar from "./_components/BloomSidebar";
 
 import { useTheme } from "../_lib/theme/ThemeProvider";
 import {
@@ -205,7 +207,7 @@ export default function BloomTopPage() {
         onBellClick={handleBellClick}
       />
 
-      <Sidebar />
+      <BloomSidebar />
 
       <main className="garden-v28a-main">
         <BloomPageHeader />

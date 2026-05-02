@@ -1787,9 +1787,348 @@ input { font-family: inherit; }
 }
 
 /* ====================================================================
+ * Bloom 専用 dual Sidebar (dispatch main- No.15 v2 / 2026-05-02)
+ *
+ * プロト 02_BloomTop の sidebar-dual = nav-apps (左 56px、Garden 12 モジュール
+ * icons-only column、hover で 200px 展開) + nav-pages (180px、Bloom サブ
+ * ページ menu) + nav-pages-toggle (14px 矢印ボタン、hover で 22px、
+ * クリックで body.nav-pages-collapsed を切替、localStorage 永続化)
+ *
+ * 既存 v2.8a Garden Sidebar (.sidebar) は /bloom 配下では BloomSidebar で
+ * 置き換え、main の margin-left を dual sidebar 用に変更。
+ * ==================================================================== */
+
+:root {
+  --sidebar-apps-w: 56px;
+  --sidebar-apps-expanded-w: 200px;
+  --sidebar-pages-w: 180px;
+  --sidebar-toggle-w: 14px;
+  --sidebar-toggle-w-hover: 22px;
+  --sidebar-dual-w: calc(var(--sidebar-apps-w) + var(--sidebar-pages-w));
+  --sidebar-dual-collapsed-w: var(--sidebar-apps-w);
+}
+
+/* ---- 1 本目: nav-apps (Garden 12 モジュール icons column) ---- */
+.nav-apps {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-apps-w);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 18px 0 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid var(--border-soft);
+  background: #faf6ec;
+  z-index: 210;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s ease;
+}
+[data-theme="dark"] .nav-apps {
+  background: #1f2419;
+}
+.nav-apps:hover {
+  width: var(--sidebar-apps-expanded-w);
+  box-shadow: 6px 0 24px rgba(120, 100, 70, 0.22);
+}
+[data-theme="dark"] .nav-apps:hover {
+  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.55);
+}
+/* hover 中 toggle ボタンは隠す（重なり回避） */
+body:has(.nav-apps:hover) .nav-pages-toggle {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.nav-apps::-webkit-scrollbar { width: 4px; }
+.nav-apps::-webkit-scrollbar-thumb {
+  background: rgba(154, 138, 105, 0.25);
+  border-radius: 2px;
+}
+
+.nav-app-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 4px 4px 4px 52px;
+  margin: 0 4px;
+  width: calc(100% - 8px);
+  min-height: 48px;
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 0.25s ease;
+  flex-shrink: 0;
+}
+.nav-apps:not(:hover) .nav-app-item { justify-content: center; }
+.nav-app-icon {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: 50%;
+  transition: filter 0.25s ease;
+}
+.nav-app-icon img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(120, 95, 60, 0.25));
+  transition: filter 0.25s ease, opacity 0.25s ease;
+  display: block;
+}
+.nav-app-name {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', 'Shippori Mincho', serif;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.25s ease 0.05s, transform 0.25s ease 0.05s;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.nav-apps:hover .nav-app-name {
+  opacity: 1;
+  transform: translateX(0);
+}
+.nav-app-item:hover { background: rgba(212, 165, 65, 0.12); }
+.nav-app-item:hover .nav-app-icon img { filter: drop-shadow(0 2px 4px rgba(212, 165, 65, 0.45)); }
+.nav-app-item.is-current { background: transparent; }
+.nav-app-item.is-current .nav-app-icon { background: rgba(212, 165, 65, 0.16); }
+[data-theme="dark"] .nav-app-item.is-current .nav-app-icon { background: rgba(228, 181, 81, 0.20); }
+.nav-app-item.is-current .nav-app-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 165, 65, 0.65);
+  box-shadow: 0 0 8px rgba(212, 165, 65, 0.30);
+  pointer-events: none;
+  z-index: 2;
+}
+.nav-app-item[data-status="todo"] .nav-app-icon img { opacity: 0.55; }
+.nav-app-item[data-status="concept"] .nav-app-icon img { opacity: 0.7; }
+.nav-app-item[data-status="dev"] .nav-app-icon img { opacity: 0.92; }
+.nav-app-item[data-status="released"] .nav-app-icon img { opacity: 1; }
+.nav-app-item:hover .nav-app-icon img { opacity: 1; }
+
+/* ---- 2 本目: nav-pages (Bloom サブページ menu) ---- */
+.nav-pages {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-apps-w);
+  bottom: 0;
+  width: var(--sidebar-pages-w);
+  display: flex;
+  flex-direction: column;
+  padding: 30px 0 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 200;
+  background: transparent;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+body.nav-pages-collapsed .nav-pages {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+.nav-pages::-webkit-scrollbar { width: 4px; }
+.nav-pages::-webkit-scrollbar-thumb {
+  background: rgba(154, 138, 105, 0.25);
+  border-radius: 2px;
+}
+
+a.nav-pages-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 10px;
+  font-family: var(--font-cormorant), 'Cormorant Garamond', 'Shippori Mincho', serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-decoration: none;
+  border-radius: 8px;
+  margin: 0 4px 4px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+a.nav-pages-header:hover {
+  background: rgba(212, 165, 65, 0.10);
+  color: var(--accent-gold);
+}
+.nav-pages-app-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-pages-app-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(120, 95, 60, 0.25));
+}
+.nav-pages-app-name { overflow: hidden; text-overflow: ellipsis; }
+
+.nav-pages-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(154, 138, 105, 0.25) 15%, rgba(154, 138, 105, 0.25) 85%, transparent 100%);
+  margin: 4px 12px 8px;
+  flex-shrink: 0;
+}
+
+.nav-page-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin: 1px 8px;
+  border-radius: 10px;
+  font-family: var(--font-noto-serif-jp), 'Noto Serif JP', serif;
+  font-size: 0.80rem;
+  color: var(--text-main);
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.nav-page-item:hover {
+  background: rgba(232, 180, 184, 0.14);
+  padding-left: 16px;
+}
+.nav-page-item.active {
+  background: rgba(212, 165, 65, 0.16);
+  font-weight: 500;
+  position: relative;
+}
+.nav-page-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 3px;
+  background: var(--accent-gold);
+  border-radius: 0 2px 2px 0;
+}
+.nav-page-icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-page-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(120, 95, 60, 0.20));
+}
+.nav-page-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- 3 本目: nav-pages-toggle (折り畳みボタン、Bloom 用は左寄せ) ---- */
+.nav-pages-toggle {
+  position: fixed;
+  top: var(--topbar-h);
+  left: var(--sidebar-dual-w);
+  bottom: 0;
+  width: var(--sidebar-toggle-w);
+  height: auto;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  box-shadow: none;
+  transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s ease, background 0.3s ease;
+  outline: none;
+}
+body.nav-pages-collapsed .nav-pages-toggle {
+  left: var(--sidebar-dual-collapsed-w);
+}
+.nav-pages-toggle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(225deg, rgba(255, 245, 225, 0.9) 0%, rgba(245, 220, 195, 0.9) 100%);
+  border-right: 1px solid rgba(184, 144, 100, 0.3);
+  box-shadow: 2px 0 8px rgba(154, 138, 105, 0.12);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  pointer-events: none;
+}
+[data-theme="dark"] .nav-pages-toggle::before {
+  background: linear-gradient(225deg, rgba(70, 78, 62, 0.95) 0%, rgba(55, 62, 48, 0.95) 100%);
+  border-color: rgba(180, 170, 140, 0.35);
+}
+.nav-pages-toggle:hover { width: var(--sidebar-toggle-w-hover); }
+.nav-pages-toggle:hover::before {
+  background: linear-gradient(225deg, rgba(255, 250, 235, 1) 0%, rgba(250, 225, 200, 1) 100%);
+  box-shadow: 3px 3px 12px rgba(212, 165, 65, 0.35);
+}
+[data-theme="dark"] .nav-pages-toggle:hover::before {
+  background: linear-gradient(225deg, rgba(85, 92, 75, 1) 0%, rgba(70, 78, 62, 1) 100%);
+}
+.nav-pages-toggle-arrow {
+  font-size: 1rem;
+  color: var(--text-main);
+  font-weight: 400;
+  line-height: 1;
+  font-family: var(--font-eb-garamond), 'EB Garamond', 'Cormorant Garamond', serif;
+  opacity: 0.5;
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+  /* 通常 (展開中): 左向き = 折り畳む方向 */
+  transform: rotate(180deg);
+}
+[data-theme="dark"] .nav-pages-toggle-arrow { color: #e8dfc8; }
+.nav-pages-toggle:hover .nav-pages-toggle-arrow { opacity: 1; }
+body.nav-pages-collapsed .nav-pages-toggle-arrow { transform: rotate(0deg); }
+
+/* ---- /bloom 配下の main は dual sidebar 用に margin-left 調整 ---- */
+.bloom-page .garden-v28a-main {
+  margin-left: calc(var(--sidebar-dual-w) + var(--sidebar-toggle-w));
+  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+body.nav-pages-collapsed .bloom-page .garden-v28a-main {
+  margin-left: calc(var(--sidebar-dual-collapsed-w) + var(--sidebar-toggle-w));
+}
+
+/* ====================================================================
  * NG 2 + NG 3 修正 (dispatch main- No.14 / 2026-05-02)
  *
- * NG 1 (Sidebar 削除) は dispatch main- No.15 で巻き戻し → 全差分洗い出し後に判断。
  * NG 2: 未実装画面 (DailyReport / CEOStatus) は Coming Soon Toast 表示
  * NG 3: bg-click-zone / bg-hint を Bloom 配下では非表示
  * ==================================================================== */
