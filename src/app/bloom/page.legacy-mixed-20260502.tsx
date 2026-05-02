@@ -1,44 +1,52 @@
 "use client";
 
 /**
- * Garden Bloom トップ画面 — 試作版 1:1 移植版 (dispatch main- No.16)
+ * Garden Bloom トップ画面 — v2.8a-bloom Step 1 (画面 1 先行実装)
  *
- * dispatch main- No.16 (2026-05-02) の方針転換:
- *   旧: 既存 v2.8a Garden 構成 + Bloom 固有 OrbGrid/KpiGrid/PageHeader/Sidebar の混合
- *   新: プロト 015_Gardenシリーズ/000_GardenUI_bloom/02_BloomTop/index.html (v1.4) を 1:1 移植
+ * dispatch v2.8a-bloom main-7 (2026-05-02 10:04) の Step 1 対応。
  *
- * 旧版は src/app/bloom/page.legacy-mixed-20260502.tsx に保持（削除禁止）。
+ * プロト出典:
+ *   015_Gardenシリーズ/000_GardenUI_bloom/02_BloomTop/index.html (v1.4)
+ *   "ホーム画面 v2.8a の建付けを完全踏襲" (README 明記)
  *
- * 構成:
- *   <div className="bloom-page">
- *     <BackgroundLayer />          -- bg_bloom_garden_light/dark (Bloom 専用 2 種)
- *     <BloomTopbar />              -- Topbar (logo + search + 日付/天気/正常/theme/sound/bell+badge/Help/Favorite/User)
- *     <BloomSidebar />             -- dual sidebar (nav-apps + nav-pages + nav-pages-toggle)
+ * 構成（v2.8a 構成流用）:
+ *   <div className="bloom-page">  -- bloom-page CSS scoping anchor
+ *     <BackgroundLayer />          -- bg_bloom_garden_light/dark cross-fade
+ *     <Topbar />                   -- v2.8a 既存 (Bloom 用ではないが流用、Phase 2 で拡張案)
+ *     <Sidebar />                  -- v2.8a 既存（Phase 2 で dual-style に置換予定）
  *     <main className="garden-v28a-main">
- *       <BloomPageHeader />        -- page-header (page-favorite-btn + 桜花タイトル + subtitle)
- *       <BloomKpiGrid />           -- 4 KPI cards
- *       <BloomNavGrid />           -- 4 nav cards (Workboard live + 3 Coming Soon Toast 既存維持)
+ *       <BloomPageHeader />        -- page-header + page-title + 桜花 SVG + subtitle
+ *       <BloomKpiGrid />           -- 4 KPI カード（日報率/進捗順調/マイルストーン/ステータス）
+ *       <BloomNavGrid />           -- 4 ナビカード（Workboard/DailyReport/MonthlyDigest/CEOStatus）
  *     </main>
- *     <BloomActivityPanel />       -- Bloom 専用 5 entries + activity-toggle button
+ *     <ActivityPanel />            -- v2.8a 既存（Phase 2 で activity-toggle 折り畳み追加予定）
  *   </div>
  *
- * 既存ロジック流用 (試作版にない or 既存の方が優れる):
- *   - playPon (sound toggle、D7 既存維持)
- *   - Coming Soon Toast (BloomNavGrid、D21/D23 main-No.14 で実装済)
- *   - BloomGate dev バイパス (main-No.9 commit 988efa5)
- *   - getWeatherByHour (時刻ベース天気自動更新、既存)
+ * Phase 1 範囲（本 commit）:
+ *   - 視覚確認可能なレベルの基本 layout
+ *   - Bloom 専用 light/dark bg
+ *   - hardcoded mock 値（プロト準拠）
+ *
+ * Phase 2 範囲（後続 commit）:
+ *   - dual sidebar (nav-apps + nav-pages)
+ *   - page-favorite-btn 詳細
+ *   - activity-toggle (panel 折り畳み)
+ *   - sakura-bg / peony-bg overlay
+ *   - お気に入り永続化 / その他細部
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import BackgroundLayer from "../_components/layout/BackgroundLayer";
+import Topbar from "../_components/layout/Topbar";
+// dispatch main- No.15 v2 (2026-05-02): v2.8a Garden Sidebar から Bloom 専用 dual Sidebar に変更
+// （プロト 02_BloomTop の sidebar-dual = nav-apps + nav-pages + toggle ボタン）
+import ActivityPanel from "../_components/home/ActivityPanel";
 
-import BloomTopbar from "./_components/BloomTopbar";
-import BloomSidebar from "./_components/BloomSidebar";
 import BloomPageHeader from "./_components/BloomPageHeader";
 import BloomKpiGrid from "./_components/BloomKpiGrid";
 import BloomNavGrid from "./_components/BloomNavGrid";
-import BloomActivityPanel from "./_components/BloomActivityPanel";
+import BloomSidebar from "./_components/BloomSidebar";
 
 import { useTheme } from "../_lib/theme/ThemeProvider";
 import {
@@ -58,6 +66,7 @@ import {
   unlockAudio,
 } from "../_lib/sound/playSound";
 
+// 日付ラベル
 const WEEKDAY_JP = ["日", "月", "火", "水", "木", "金", "土"];
 function formatDateLabel(d: Date): string {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WEEKDAY_JP[d.getDay()]}）`;
@@ -65,12 +74,6 @@ function formatDateLabel(d: Date): string {
 
 export default function BloomTopPage() {
   const { theme, toggleTheme } = useTheme();
-
-  // === Mounted フラグ (SSR/CSR hydration mismatch 回避) ===
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // === Sound ===
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(false);
@@ -85,13 +88,27 @@ export default function BloomTopPage() {
     if (next) playPon(0.1);
   }, [soundEnabled]);
 
-  // === BG layer cross-fade (Bloom 専用 light/dark 2 種) ===
+  // === bloom-page body class scoping ===
+  // CSS .bloom-page .* 系のスコープが効くよう <html> に attribute 付与
+  // (body class だと SSR/CSR で hydration mismatch しやすいため html data 属性で代用)
+  useEffect(() => {
+    document.documentElement.dataset.page = "bloom";
+    return () => {
+      delete document.documentElement.dataset.page;
+    };
+  }, []);
+
+  // === BG layer cross-fade (Bloom 用は light/dark の 2 種のみ、carousel なし) ===
   const targetBgUrl = useMemo<string>(() => {
-    return theme === "dark" ? ATMOSPHERE_BLOOM_DARK.path : ATMOSPHERE_BLOOM_LIGHT.path;
+    return theme === "dark"
+      ? ATMOSPHERE_BLOOM_DARK.path
+      : ATMOSPHERE_BLOOM_LIGHT.path;
   }, [theme]);
 
   const [activeLayer, setActiveLayer] = useState<1 | 2>(1);
-  const [layer1Src, setLayer1Src] = useState<string>(ATMOSPHERE_BLOOM_LIGHT.path);
+  const [layer1Src, setLayer1Src] = useState<string>(
+    ATMOSPHERE_BLOOM_LIGHT.path,
+  );
   const [layer2Src, setLayer2Src] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -107,6 +124,10 @@ export default function BloomTopPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetBgUrl]);
 
+  // === BG click zone — Bloom Top では light/dark のみ、click 切替なし ===
+  // NG 3 (main- No.14): bg-click-zone を CSS で完全 hide、onClick 不要のため undefined
+  // → bg-click-zone div の cursor: pointer / role="button" も付与されなくなる
+
   // === Theme toggle ===
   const handleThemeToggle = useCallback(() => {
     unlockAudio();
@@ -120,43 +141,29 @@ export default function BloomTopPage() {
     if (soundEnabled) playPon(0.08);
   }, [soundEnabled]);
 
-  // === Logout (D12 — Phase 2 で BloomState の lockAndLogout 等にバインド予定) ===
-  const handleLogout = useCallback(() => {
-    // 暫定: dev バイパス中なので alert で挙動確認、prod では BloomState.lockAndLogout バインド
-    window.alert("ログアウト機能は現在準備中です（dev バイパス中）。");
-  }, []);
-
-  // === 1m: 時刻 / 1h: 天気 (SSR では固定値、mount 後に動的) ===
-  const [now, setNow] = useState<Date | null>(null);
+  // === 1m: 時刻 / 1h: 天気 ===
+  const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
-    setNow(new Date());
     const t = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(t);
   }, []);
 
-  const [weatherHour, setWeatherHour] = useState<number | null>(null);
+  const [weatherHour, setWeatherHour] = useState<number>(() =>
+    new Date().getHours(),
+  );
   useEffect(() => {
-    setWeatherHour(new Date().getHours());
     const t = window.setInterval(() => {
       setWeatherHour(new Date().getHours());
     }, 60 * 60 * 1000);
     return () => window.clearInterval(t);
   }, []);
 
-  // SSR 時は SSR-safe な default (晴れ・22℃)、client mount 後に動的値
-  const weatherKind = useMemo(
-    () => (weatherHour === null ? "sunny" : getWeatherByHour(weatherHour)),
-    [weatherHour],
+  const weatherKind = useMemo(() => getWeatherByHour(weatherHour), [weatherHour]);
+  const weatherIconSrc = useMemo(
+    () => getWeatherIconPath(weatherKind),
+    [weatherKind],
   );
-  const weatherIconSrc = useMemo(() => getWeatherIconPath(weatherKind), [weatherKind]);
   const weatherLabel = WEATHER_LABELS[weatherKind];
-  const weatherTemp = useMemo(() => {
-    if (weatherHour === null) return "22℃";
-    const h = weatherHour;
-    const base = 18;
-    const diurnal = Math.round(7 * Math.sin(((h - 6) * Math.PI) / 12));
-    return `${base + diurnal}℃`;
-  }, [weatherHour]);
 
   // === Activity Panel 高さ追従 ===
   const activityRef = useRef<HTMLElement>(null);
@@ -172,9 +179,7 @@ export default function BloomTopPage() {
     return () => window.removeEventListener("click", onFirstClick);
   }, []);
 
-  // SSR では空、client mount 後に日付表示（hydration mismatch 回避）
-  const dateLabel = useMemo(() => (now === null ? "" : formatDateLabel(now)), [now]);
-  void mounted; // 参照確保（将来の追加 SSR-safe 表示用）
+  const dateLabel = useMemo(() => formatDateLabel(now), [now]);
   const themeIconSrc =
     theme === "dark"
       ? "/images/theme_icons/theme_moon.png"
@@ -187,20 +192,19 @@ export default function BloomTopPage() {
         layer2Src={layer2Src}
         activeLayer={activeLayer}
         showHint={false}
-        /* onClickZone undefined で bg-click-zone は inert (D32/D33 hide も CSS で適用) */
+        /* onClickZone を undefined にすることで bg-click-zone は inert に（NG 3 対応）
+           CSS でも .bloom-page .bg-click-zone を display:none に */
       />
 
-      <BloomTopbar
+      <Topbar
         dateLabel={dateLabel}
         weatherIconSrc={weatherIconSrc}
-        weatherTemp={weatherTemp}
         weatherLabel={weatherLabel}
-        themeIconSrc={themeIconSrc}
-        onThemeToggle={handleThemeToggle}
         soundMuted={!soundEnabled}
         onSoundToggle={handleSoundToggle}
+        themeIconSrc={themeIconSrc}
+        onThemeToggle={handleThemeToggle}
         onBellClick={handleBellClick}
-        onLogout={handleLogout}
       />
 
       <BloomSidebar />
@@ -211,7 +215,7 @@ export default function BloomTopPage() {
         <BloomNavGrid />
       </main>
 
-      <BloomActivityPanel ref={activityRef} />
+      <ActivityPanel ref={activityRef} />
     </div>
   );
 }

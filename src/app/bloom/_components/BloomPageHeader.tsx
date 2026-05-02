@@ -1,34 +1,53 @@
+"use client";
+
 /**
- * BloomPageHeader — Bloom Top のページヘッダー
+ * BloomPageHeader — 試作版 1:1 移植版 ページヘッダー (dispatch main- No.16)
  *
- * プロト 015_Gardenシリーズ/000_GardenUI_bloom/02_BloomTop/index.html line 254-281 移植
- *   - お気に入りボタン（Phase 1 では UI のみ、永続化は Phase 2 で）
- *   - ページタイトル「Bloom — 花咲く業務の庭」+ 桜花 SVG
- *   - サブタイトル「グループの動きを、咲かせる。」
+ * プロト 015_Gardenシリーズ/000_GardenUI_bloom/02_BloomTop/index.html line 254-281 移植。
+ *
+ * 構造:
+ *   - page-favorite-btn (右上 PNG icon ボタン、aria-pressed 切替)
+ *   - page-title-block:
+ *     - page-title-row > page-title (Bloom — 花咲く業務の庭) + 桜花 SVG
+ *   - page-subtitle (グループの動きを、咲かせる。)
+ *
+ * D15 対応: 暫定 ☆/★ 絵文字 → 実 PNG icon (D-01_favorite_simple.png + D-01a_favorite_outline.png)
  */
 
+import { useCallback, useState } from "react";
+
 export default function BloomPageHeader() {
+  const [pressed, setPressed] = useState(false);
+  const toggle = useCallback(() => setPressed((p) => !p), []);
+
   return (
     <div className="page-header">
       <button
-        className="page-favorite-btn"
         type="button"
+        className="page-favorite-btn"
         title="このページをお気に入りに追加"
-        aria-pressed="false"
+        aria-pressed={pressed}
+        onClick={toggle}
       >
-        {/* Phase 1: アイコン画像差し替えは Phase 2、暫定で星絵文字 */}
-        <span className="page-favorite-icon-off" aria-hidden>
-          ☆
-        </span>
-        <span className="page-favorite-icon-on" aria-hidden>
-          ★
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/header_icons/D-01a_favorite_outline.png"
+          alt=""
+          className="page-favorite-icon-off"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/header_icons/D-01_favorite_simple.png"
+          alt=""
+          className="page-favorite-icon-on"
+        />
       </button>
 
       <div className="page-title-block">
         <div className="page-title-row">
           <h1 className="page-title">
-            Bloom <span style={{ color: "var(--text-muted)", fontSize: "1.6rem" }}>—</span>
+            Bloom{" "}
+            <span style={{ color: "var(--text-muted)", fontSize: "1.6rem" }}>—</span>
             <span className="page-title-jp">花咲く業務の庭</span>
             <span className="page-title-flower" aria-hidden>
               <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
