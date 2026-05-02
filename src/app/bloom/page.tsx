@@ -39,7 +39,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import BackgroundLayer from "../_components/layout/BackgroundLayer";
 import Topbar from "../_components/layout/Topbar";
-import Sidebar from "../_components/layout/Sidebar";
+// NG 1 (main- No.14): v2.8a Garden Sidebar を Bloom Top では削除（プロトの D1 推奨「Sidebar 削除」反映）
+// Phase 2 で Bloom 専用 dual sidebar (nav-apps + nav-pages) 実装予定
 import ActivityPanel from "../_components/home/ActivityPanel";
 
 import BloomPageHeader from "./_components/BloomPageHeader";
@@ -123,10 +124,8 @@ export default function BloomTopPage() {
   }, [targetBgUrl]);
 
   // === BG click zone — Bloom Top では light/dark のみ、click 切替なし ===
-  const handleBgClick = useCallback(() => {
-    unlockAudio();
-    /* Bloom Top は背景クリック切替なし */
-  }, []);
+  // NG 3 (main- No.14): bg-click-zone を CSS で完全 hide、onClick 不要のため undefined
+  // → bg-click-zone div の cursor: pointer / role="button" も付与されなくなる
 
   // === Theme toggle ===
   const handleThemeToggle = useCallback(() => {
@@ -191,8 +190,9 @@ export default function BloomTopPage() {
         layer1Src={layer1Src}
         layer2Src={layer2Src}
         activeLayer={activeLayer}
-        onClickZone={handleBgClick}
         showHint={false}
+        /* onClickZone を undefined にすることで bg-click-zone は inert に（NG 3 対応）
+           CSS でも .bloom-page .bg-click-zone を display:none に */
       />
 
       <Topbar
@@ -206,7 +206,8 @@ export default function BloomTopPage() {
         onBellClick={handleBellClick}
       />
 
-      <Sidebar />
+      {/* NG 1 (main- No.14): Sidebar 削除 — プロト D1 推奨「Sidebar 削除」反映、
+          Phase 2 で Bloom 専用 dual sidebar に置換予定 */}
 
       <main className="garden-v28a-main">
         <BloomPageHeader />
