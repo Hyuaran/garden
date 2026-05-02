@@ -1787,28 +1787,12 @@ input { font-family: inherit; }
 }
 
 /* ====================================================================
- * NG 1 + NG 2 + NG 3 修正 (dispatch main- No.14 / 2026-05-02)
+ * NG 2 + NG 3 修正 (dispatch main- No.14 / 2026-05-02)
  *
- * NG 1: Bloom Top では Sidebar 削除（プロト D1 推奨）→ main の left margin を 0 に
+ * NG 1 (Sidebar 削除) は dispatch main- No.15 で巻き戻し → 全差分洗い出し後に判断。
  * NG 2: 未実装画面 (DailyReport / CEOStatus) は Coming Soon Toast 表示
  * NG 3: bg-click-zone / bg-hint を Bloom 配下では非表示
  * ==================================================================== */
-
-/* ---- NG 1: Bloom Top では Sidebar 不在のため main の left margin を 0 に ---- */
-.bloom-page .garden-v28a-main {
-  margin-left: 0;
-  padding-left: 32px;
-  padding-right: 32px;
-}
-
-/* Activity Panel との共存（>=1400px の時のみ右余白確保、既存 CSS と整合） */
-@media (min-width: 1400px) {
-  .bloom-page .bloom-nav-grid,
-  .bloom-page .kpi-grid,
-  .bloom-page .page-header {
-    margin-right: 372px;
-  }
-}
 
 /* ---- NG 2: Coming Soon Toast (画面下部固定、Bloom Top 用) ---- */
 .gs-coming-soon-toast {

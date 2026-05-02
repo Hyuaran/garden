@@ -39,8 +39,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import BackgroundLayer from "../_components/layout/BackgroundLayer";
 import Topbar from "../_components/layout/Topbar";
-// NG 1 (main- No.14): v2.8a Garden Sidebar を Bloom Top では削除（プロトの D1 推奨「Sidebar 削除」反映）
-// Phase 2 で Bloom 専用 dual sidebar (nav-apps + nav-pages) 実装予定
+import Sidebar from "../_components/layout/Sidebar";
 import ActivityPanel from "../_components/home/ActivityPanel";
 
 import BloomPageHeader from "./_components/BloomPageHeader";
@@ -206,8 +205,7 @@ export default function BloomTopPage() {
         onBellClick={handleBellClick}
       />
 
-      {/* NG 1 (main- No.14): Sidebar 削除 — プロト D1 推奨「Sidebar 削除」反映、
-          Phase 2 で Bloom 専用 dual sidebar に置換予定 */}
+      <Sidebar />
 
       <main className="garden-v28a-main">
         <BloomPageHeader />
