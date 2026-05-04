@@ -691,6 +691,143 @@ Tree は FileMaker 稼働中の主力業務のため、**超慎重な展開**：
 
 - **月次**: 進捗確認（effort-tracking.md で実績 vs 見積比較）
 - 6ヶ月目標の乖離があれば **スコープ調整** or **外部リソース投入**検討
+
+---
+
+## 19. トークン削減ルール（2026-05-03 追加、ルール A 最重視）
+
+### 目的
+
+Garden Series リリース速度最大化のため、Claude Code のトークン消費を効率化する。
+東海林さんの 5 時間使用枠を最大活用できるよう、Claude 側の規律でトークン削減を実施。
+
+a-main-011 セッションで実施した代替案検討（`_chat_workspace/chat-design-token-reduction-alternatives-from-main-011-20260503.md`）の §5「即実施推奨アクション」Step 1 として本ルールを CLAUDE.md に明文化。RTK / WSL 導入は Phase A 完走後（5/末〜6/初）に再評価、それまでは本ルール A〜C で **30-50% 削減** を目指す。
+
+### ルール A（最重視）：Read / Grep / Bash 出力削減
+
+#### A-1: Read tool は必ず offset/limit を意識する
+
+- 大ファイル（500 行以上想定）は最初から `limit` 指定で読む
+- 全文確認が必要な場合のみ limit なし
+- 例: spec ファイル参照は `limit: 50` から開始、必要に応じて `offset` で続きを読む
+- ファイル末尾だけ確認したい場合は `wc -l` で行数取得 → `offset` 指定
+
+```
+NG: 1000 行ファイルを全件読み込み → Read("path/to/large.md")
+OK: Read("path/to/large.md", offset=0, limit=50)  # 冒頭のみ
+OK: Read("path/to/large.md", offset=950, limit=50)  # 末尾のみ
+```
+
+#### A-2: Grep tool は output_mode を意識
+
+- `output_mode: "files_with_matches"`（デフォルト）が推奨
+- 内容確認が必要な時のみ `output_mode: "content"` + `head_limit`
+- 「ファイルが多そう」な検索は files_with_matches 一択
+- マッチ数だけ知りたい場合は `output_mode: "count"`
+
+```
+NG: 数千行の content 取得 → Grep(pattern="...", output_mode="content")
+OK: Grep(pattern="...", output_mode="files_with_matches")  # ファイル一覧のみ
+OK: Grep(pattern="...", output_mode="content", head_limit=20)  # 内容必要だが head_limit
+```
+
+#### A-3: Bash 大量出力時はリダイレクト + Read 後追い
+
+- 1000 行超の出力が予想される場合は `> /tmp/output.txt` でリダイレクト
+- 必要部分のみ Read tool で `limit` 指定して読む
+- 例:
+
+```
+NG: git log --oneline -1000  （直接実行で 1000 行受け取る）
+OK: git log --oneline -1000 > /tmp/log.txt && wc -l /tmp/log.txt
+    → Read("/tmp/log.txt", offset=0, limit=50)
+```
+
+#### A-4: 既知の大量出力コマンドは事前にフィルタ
+
+- `git status -uall` 等の冗長オプションは避ける
+- `find` は `-name` で対象限定
+- `cat` は `head` / `tail` で部分取得
+- `ls` は対象ディレクトリを明示（`ls -la *` のような全展開禁止）
+
+### ルール B（補完）：Sub-agent (Agent tool) 活用
+
+集計（2026-05-03）で **428 回呼び出し実績**（main セッションあたり 4.05 回）を確認済。新規導入ではなく **意識的強化**。
+
+以下のタスクで意識的に Agent tool を呼ぶ：
+
+| タスク | 推奨 subagent_type | 理由 |
+|---|---|---|
+| 3+ 件のファイル並列探索 | **Explore** | 並列調査、context 保護 |
+| 複数モジュール横断調査 | **general-purpose** | 開放的調査、summary 返却 |
+| 実装計画の起草 | **Plan** | 構造化された計画 |
+| コードレビュー（独立判定）| **superpowers:code-reviewer** | 独立した第三者視点 |
+
+#### Sub-agent 使い分け原則
+
+- **(A) 並列セッション運用**（a-main → a-bloom-002 等の dispatch）は維持、撤廃しない
+- **(B) Agent tool** は (A) を補完、軽量・調査・並列化可能タスクで併用
+- **議論ベースの設計判断は私が直接対応**（Agent 不向き、対話型 subagent はない）
+- **東海林さん介在不要なタスクは積極的に (B) 化**（東海林さん手間ゼロで進行可）
+
+#### (A) 並列セッション必須のケース
+
+以下は (B) Agent では不可、必ず (A) で：
+- Garden モジュールの長期実装（Bloom 6 画面、Tree 架電 UI 等、数日〜継続）
+- 別 git ブランチ作業（worktree 分離が必要）
+- モジュール固有の深い文脈を持つ作業
+- 翌日以降の続きが必要な作業
+
+### ルール C（追加）：応答文短縮 + memory 最重要セクション優先
+
+#### C-1: 応答文短縮
+
+- 表 + 短文で済ませる徹底（memory `feedback_reporting_style.md` 厳守）
+- 改訂履歴・冗長な解説・繰り返しは最小化
+- 「次アクション 3 択」を毎メッセージに付ける必要なし、自然な提案で OK
+- ファイル化推奨（memory `feedback_dispatch_header_format.md` § 4）
+
+#### C-2: memory 最重要セクション優先
+
+- セッション開始時に MEMORY.md 全件精読は不要
+- 「最重要（毎回必ず参照）」セクション 9 件を優先把握
+- 他は necessity-based で個別 memory を Skill 等で読み込み
+
+### 効果見込み
+
+| 指標 | 値 |
+|---|---|
+| 修正版累積削減（複合適用）| **30-50%**（重複考慮）|
+| 移行コスト | **ゼロ**（私の規律変更のみ）|
+| 東海林さん手間 | **ゼロ** |
+| 即実施可否 | **即可** |
+
+### RTK / WSL との関係
+
+- 本ルール A〜C は RTK / WSL 不要、即実施可
+- A2 WSL 導入は Phase A 完走後（5/末〜6/初）に再評価
+- A1 RTK CLAUDE.md 注入（rtk プレフィックス利用）は本ルールとは別枠、Windows 版 RTK 動作確認後に追加検討
+
+### セルフチェック（応答送信前）
+
+- [ ] Read で必要以上の行数を読んでいないか（offset/limit 指定したか）
+- [ ] Grep で content モードを濫用していないか（files_with_matches で済むか）
+- [ ] Bash で 1000 行超の出力を直接受けていないか（リダイレクト + Read 後追いを検討したか）
+- [ ] 軽量調査タスクを Agent (Explore) で並列化できないか
+- [ ] 応答文に冗長な部分がないか
+
+### 関連 memory
+
+- `feedback_maximize_auto_minimize_user.md` — 東海林さん作業最小化（本ルールの根拠）
+- `feedback_reporting_style.md` — 短く・表形式・推奨明示
+- `feedback_self_visual_check_with_chrome_mcp.md` — Chrome MCP 視覚確認も Agent (Explore) 活用枠
+- `feedback_check_existing_impl_before_discussion.md` — 議論前に既存実装確認
+- `feedback_verify_before_self_critique.md` — 自己批判は客観データで検証
+- `feedback_dont_repeat_proposed_topics.md` — 同じ提案を繰り返さない
+
+### 改訂履歴
+
+- 2026-05-03 12:09 初版（a-main-011、東海林さん「Step 1 着手 OK、ルール A 最重視で」承認後）
 ## 複数セッション運用ルール
 
 Claude Code を複数セッション並行で動かす場合、**必ずセッションごとに独立したディレクトリで作業すること**。同じディレクトリを複数セッションで使うと、ブランチが勝手に切り替わる問題が発生する。
@@ -1476,3 +1613,140 @@ Tree は FileMaker 稼働中の主力業務のため、**超慎重な展開**：
 
 - **月次**: 進捗確認（effort-tracking.md で実績 vs 見積比較）
 - 6ヶ月目標の乖離があれば **スコープ調整** or **外部リソース投入**検討
+
+---
+
+## 19. トークン削減ルール（2026-05-03 追加、ルール A 最重視）
+
+### 目的
+
+Garden Series リリース速度最大化のため、Claude Code のトークン消費を効率化する。
+東海林さんの 5 時間使用枠を最大活用できるよう、Claude 側の規律でトークン削減を実施。
+
+a-main-011 セッションで実施した代替案検討（`_chat_workspace/chat-design-token-reduction-alternatives-from-main-011-20260503.md`）の §5「即実施推奨アクション」Step 1 として本ルールを CLAUDE.md に明文化。RTK / WSL 導入は Phase A 完走後（5/末〜6/初）に再評価、それまでは本ルール A〜C で **30-50% 削減** を目指す。
+
+### ルール A（最重視）：Read / Grep / Bash 出力削減
+
+#### A-1: Read tool は必ず offset/limit を意識する
+
+- 大ファイル（500 行以上想定）は最初から `limit` 指定で読む
+- 全文確認が必要な場合のみ limit なし
+- 例: spec ファイル参照は `limit: 50` から開始、必要に応じて `offset` で続きを読む
+- ファイル末尾だけ確認したい場合は `wc -l` で行数取得 → `offset` 指定
+
+```
+NG: 1000 行ファイルを全件読み込み → Read("path/to/large.md")
+OK: Read("path/to/large.md", offset=0, limit=50)  # 冒頭のみ
+OK: Read("path/to/large.md", offset=950, limit=50)  # 末尾のみ
+```
+
+#### A-2: Grep tool は output_mode を意識
+
+- `output_mode: "files_with_matches"`（デフォルト）が推奨
+- 内容確認が必要な時のみ `output_mode: "content"` + `head_limit`
+- 「ファイルが多そう」な検索は files_with_matches 一択
+- マッチ数だけ知りたい場合は `output_mode: "count"`
+
+```
+NG: 数千行の content 取得 → Grep(pattern="...", output_mode="content")
+OK: Grep(pattern="...", output_mode="files_with_matches")  # ファイル一覧のみ
+OK: Grep(pattern="...", output_mode="content", head_limit=20)  # 内容必要だが head_limit
+```
+
+#### A-3: Bash 大量出力時はリダイレクト + Read 後追い
+
+- 1000 行超の出力が予想される場合は `> /tmp/output.txt` でリダイレクト
+- 必要部分のみ Read tool で `limit` 指定して読む
+- 例:
+
+```
+NG: git log --oneline -1000  （直接実行で 1000 行受け取る）
+OK: git log --oneline -1000 > /tmp/log.txt && wc -l /tmp/log.txt
+    → Read("/tmp/log.txt", offset=0, limit=50)
+```
+
+#### A-4: 既知の大量出力コマンドは事前にフィルタ
+
+- `git status -uall` 等の冗長オプションは避ける
+- `find` は `-name` で対象限定
+- `cat` は `head` / `tail` で部分取得
+- `ls` は対象ディレクトリを明示（`ls -la *` のような全展開禁止）
+
+### ルール B（補完）：Sub-agent (Agent tool) 活用
+
+集計（2026-05-03）で **428 回呼び出し実績**（main セッションあたり 4.05 回）を確認済。新規導入ではなく **意識的強化**。
+
+以下のタスクで意識的に Agent tool を呼ぶ：
+
+| タスク | 推奨 subagent_type | 理由 |
+|---|---|---|
+| 3+ 件のファイル並列探索 | **Explore** | 並列調査、context 保護 |
+| 複数モジュール横断調査 | **general-purpose** | 開放的調査、summary 返却 |
+| 実装計画の起草 | **Plan** | 構造化された計画 |
+| コードレビュー（独立判定）| **superpowers:code-reviewer** | 独立した第三者視点 |
+
+#### Sub-agent 使い分け原則
+
+- **(A) 並列セッション運用**（a-main → a-bloom-002 等の dispatch）は維持、撤廃しない
+- **(B) Agent tool** は (A) を補完、軽量・調査・並列化可能タスクで併用
+- **議論ベースの設計判断は私が直接対応**（Agent 不向き、対話型 subagent はない）
+- **東海林さん介在不要なタスクは積極的に (B) 化**（東海林さん手間ゼロで進行可）
+
+#### (A) 並列セッション必須のケース
+
+以下は (B) Agent では不可、必ず (A) で：
+- Garden モジュールの長期実装（Bloom 6 画面、Tree 架電 UI 等、数日〜継続）
+- 別 git ブランチ作業（worktree 分離が必要）
+- モジュール固有の深い文脈を持つ作業
+- 翌日以降の続きが必要な作業
+
+### ルール C（追加）：応答文短縮 + memory 最重要セクション優先
+
+#### C-1: 応答文短縮
+
+- 表 + 短文で済ませる徹底（memory `feedback_reporting_style.md` 厳守）
+- 改訂履歴・冗長な解説・繰り返しは最小化
+- 「次アクション 3 択」を毎メッセージに付ける必要なし、自然な提案で OK
+- ファイル化推奨（memory `feedback_dispatch_header_format.md` § 4）
+
+#### C-2: memory 最重要セクション優先
+
+- セッション開始時に MEMORY.md 全件精読は不要
+- 「最重要（毎回必ず参照）」セクション 9 件を優先把握
+- 他は necessity-based で個別 memory を Skill 等で読み込み
+
+### 効果見込み
+
+| 指標 | 値 |
+|---|---|
+| 修正版累積削減（複合適用）| **30-50%**（重複考慮）|
+| 移行コスト | **ゼロ**（私の規律変更のみ）|
+| 東海林さん手間 | **ゼロ** |
+| 即実施可否 | **即可** |
+
+### RTK / WSL との関係
+
+- 本ルール A〜C は RTK / WSL 不要、即実施可
+- A2 WSL 導入は Phase A 完走後（5/末〜6/初）に再評価
+- A1 RTK CLAUDE.md 注入（rtk プレフィックス利用）は本ルールとは別枠、Windows 版 RTK 動作確認後に追加検討
+
+### セルフチェック（応答送信前）
+
+- [ ] Read で必要以上の行数を読んでいないか（offset/limit 指定したか）
+- [ ] Grep で content モードを濫用していないか（files_with_matches で済むか）
+- [ ] Bash で 1000 行超の出力を直接受けていないか（リダイレクト + Read 後追いを検討したか）
+- [ ] 軽量調査タスクを Agent (Explore) で並列化できないか
+- [ ] 応答文に冗長な部分がないか
+
+### 関連 memory
+
+- `feedback_maximize_auto_minimize_user.md` — 東海林さん作業最小化（本ルールの根拠）
+- `feedback_reporting_style.md` — 短く・表形式・推奨明示
+- `feedback_self_visual_check_with_chrome_mcp.md` — Chrome MCP 視覚確認も Agent (Explore) 活用枠
+- `feedback_check_existing_impl_before_discussion.md` — 議論前に既存実装確認
+- `feedback_verify_before_self_critique.md` — 自己批判は客観データで検証
+- `feedback_dont_repeat_proposed_topics.md` — 同じ提案を繰り返さない
+
+### 改訂履歴
+
+- 2026-05-03 12:09 初版（a-main-011、東海林さん「Step 1 着手 OK、ルール A 最重視で」承認後）
