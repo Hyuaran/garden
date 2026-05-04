@@ -1313,7 +1313,12 @@ input { font-family: inherit; }
 
 .activity-item {
   display: grid;
-  grid-template-columns: 40px 36px 1fr;
+  /* dispatch main- No.31 #2 修正:
+     旧 40px だと grid 制約が strict のため `.activity-time { min-width }` を
+     上書きし「11:30」が「1:30」に桁削れ。最小幅を 52px に拡張、
+     EB Garamond tabular-nums の "11:30"（5 chars + colon、letter-spacing 0.02em）
+     を確実に格納できる幅に。 */
+  grid-template-columns: 52px 36px 1fr;
   gap: 8px;
   align-items: start;
   padding-bottom: 12px;
@@ -1331,10 +1336,9 @@ input { font-family: inherit; }
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: 'tnum' 1, 'lnum' 1;
   letter-spacing: 0.02em;
-  /* dispatch main- No.19 #2: 「11:30」が「1:30」に桁削れする問題対応
-     white-space: nowrap で改行禁止 + min-width で grid セルの最小幅確保 */
+  /* dispatch main- No.19/31 #2: 桁削れ防止 + grid セル内 overflow 制御 */
   white-space: nowrap;
-  min-width: 44px;
+  overflow: visible;
 }
 
 .activity-icon {
