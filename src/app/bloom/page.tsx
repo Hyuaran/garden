@@ -46,11 +46,8 @@ import {
   ATMOSPHERE_BLOOM_DARK,
 } from "../_lib/background/atmospheres";
 import { useActivityHeight } from "../_hooks/useActivityHeight";
-import {
-  getWeatherByHour,
-  getWeatherIconPath,
-  WEATHER_LABELS,
-} from "../_lib/weather/getWeather";
+// dispatch main- No.19 #4: 天気は固定 mock (22℃ 晴れ) のため getWeather 系 import 不要化
+// Phase 3 で Open-Meteo API 連動時に再 import 予定
 import {
   getSoundEnabled,
   setSoundEnabled,
@@ -126,7 +123,7 @@ export default function BloomTopPage() {
     window.alert("ログアウト機能は現在準備中です（dev バイパス中）。");
   }, []);
 
-  // === 1m: 時刻 / 1h: 天気 (SSR では固定値、mount 後に動的) ===
+  // === 1m: 時刻 (SSR では null、mount 後に動的) ===
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     setNow(new Date());
@@ -134,29 +131,12 @@ export default function BloomTopPage() {
     return () => window.clearInterval(t);
   }, []);
 
-  const [weatherHour, setWeatherHour] = useState<number | null>(null);
-  useEffect(() => {
-    setWeatherHour(new Date().getHours());
-    const t = window.setInterval(() => {
-      setWeatherHour(new Date().getHours());
-    }, 60 * 60 * 1000);
-    return () => window.clearInterval(t);
-  }, []);
-
-  // SSR 時は SSR-safe な default (晴れ・22℃)、client mount 後に動的値
-  const weatherKind = useMemo(
-    () => (weatherHour === null ? "sunny" : getWeatherByHour(weatherHour)),
-    [weatherHour],
-  );
-  const weatherIconSrc = useMemo(() => getWeatherIconPath(weatherKind), [weatherKind]);
-  const weatherLabel = WEATHER_LABELS[weatherKind];
-  const weatherTemp = useMemo(() => {
-    if (weatherHour === null) return "22℃";
-    const h = weatherHour;
-    const base = 18;
-    const diurnal = Math.round(7 * Math.sin(((h - 6) * Math.PI) / 12));
-    return `${base + diurnal}℃`;
-  }, [weatherHour]);
+  // dispatch main- No.19 #4: 天気は プロト準拠で「晴れ」「22℃」固定 mock
+  // (旧 getWeatherByHour ロジックは深夜帯に「雪」「雷」等を返し プロト不一致だったため固定化)
+  // Phase 3 で Open-Meteo API 連動予定
+  const weatherIconSrc = "/images/header_icons/weather_01_sunny.png";
+  const weatherLabel = "晴れ";
+  const weatherTemp = "22℃";
 
   // === Activity Panel 高さ追従 ===
   const activityRef = useRef<HTMLElement>(null);

@@ -1331,6 +1331,10 @@ input { font-family: inherit; }
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: 'tnum' 1, 'lnum' 1;
   letter-spacing: 0.02em;
+  /* dispatch main- No.19 #2: 「11:30」が「1:30」に桁削れする問題対応
+     white-space: nowrap で改行禁止 + min-width で grid セルの最小幅確保 */
+  white-space: nowrap;
+  min-width: 44px;
 }
 
 .activity-icon {
