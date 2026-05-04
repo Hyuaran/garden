@@ -99,16 +99,6 @@ export default function BloomNavGrid() {
             );
           }
 
-          // dispatch main- No.36 #3: /_proto/ 配下は静的ファイル、Next.js Link は内部
-          // routing として処理して 404 を返すため、通常 <a> でフル遷移
-          if (nav.href.startsWith("/_proto/")) {
-            return (
-              <a key={nav.href} href={nav.href} className="bloom-nav-card">
-                {cardInner}
-              </a>
-            );
-          }
-
           return (
             <Link key={nav.href} href={nav.href} className="bloom-nav-card">
               {cardInner}
