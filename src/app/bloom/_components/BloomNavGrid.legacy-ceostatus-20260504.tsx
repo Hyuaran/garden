@@ -49,13 +49,11 @@ const NAVS: BloomNav[] = [
     comingSoon: false,
   },
   {
-    /* dispatch main- No.32 #B: 経営状況プロト (06_CEOStatus) を public/_proto/ceostatus/ に
-       コピー済、Coming Soon 解除して直接遷移。本 PoC 段階では target="_blank" で別タブ表示 */
-    href: "/_proto/ceostatus/index.html",
+    href: "/bloom/ceo-status",
     iconSrc: "/images/icons_bloom/bloom_ceostatus.png",
     title: "経営状況",
     subtitle: "経営の全景を、一望に",
-    comingSoon: false,
+    comingSoon: true,
   },
 ];
 

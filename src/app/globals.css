@@ -543,6 +543,21 @@ input { font-family: inherit; }
   object-fit: contain;
 }
 
+/* dispatch main- No.32 #A 修正: 公式横長ロゴ画像 (木 + Garden Series + tagline) を
+   Topbar 80px に収めるため topbar-brand-img に max-height + width auto + object-fit
+   制約を追加。旧 topbar-brand-logo は v2.8a 旧構造（ロゴ + 別 text）用、本 rule は
+   BloomTopbar の単一画像 class 用。 */
+.topbar-brand {
+  height: var(--topbar-h);
+  overflow: visible;
+}
+.topbar-brand-img {
+  max-height: 60px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
 .topbar-brand-text {
   display: flex;
   flex-direction: column;
