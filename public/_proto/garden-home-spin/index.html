@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garden Series — 遊び心 ver Final</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+JP:wght@300;400;500;600&family=Shippori+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-paper: #f5f0e1;
+  --text-main: #4a4233;
+  --text-sub: #8a7f6a;
+  --text-muted: #b3a98f;
+  --text-faint: rgba(74,66,51,0.55);
+  --accent-gold: #d4a541;
+  --accent-green-d: #7a9968;
+  --accent-blue: #8ab4cc;
+  --border-soft: rgba(154,138,105,0.25);
+  --shadow-soft: 0 4px 20px rgba(120,100,70,0.10);
+
+  --font-display: 'Cormorant Garamond', 'Noto Serif JP', serif;
+  --font-display-jp: 'Shippori Mincho', 'Noto Serif JP', serif;
+  --font-body: 'Noto Serif JP', system-ui, sans-serif;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text-main);
+  background: var(--bg-paper);
+  position: relative;
+  cursor: default;
+}
+
+/* ========================================================
+   背景：完成版モックアップから切り出した夜の庭園（流れ星入り、左右拡張版）
+   ======================================================== */
+.stage-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: url('./images/bg-night-garden-with-stars.png');
+  background-position: center center;
+  /* 拡張版（2003×785）になったので cover に戻す */
+  background-size: cover;
+  background-repeat: no-repeat;
+  /* フォールバック色（万一画像が読めない場合の夜空） */
+  background-color: #1a1a2e;
+  /* トーン調整：淡く明るく（東海林さんイメージの ChatGPT 元画調） */
+  filter: brightness(1.08) contrast(0.92) saturate(0.95);
+}
+
+/* ========================================================
+   メインステージ
+   ======================================================== */
+.scene {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  z-index: 3;
+}
+
+/* === ヘッダー：ロゴ === */
+.brand {
+  position: absolute;
+  top: 26px;
+  left: 36px;
+  z-index: 10;
+  height: 175px;
+}
+.brand-link {
+  display: block;
+  height: 100%;
+  cursor: pointer;
+}
+.brand img {
+  height: 100%;
+  width: auto;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.18)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.4));
+}
+
+/* === ヘッダー右：メニュー === */
+.menu {
+  position: absolute;
+  top: 36px;
+  right: 36px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: #fdfbf3;
+  text-decoration: none;
+  padding: 6px 4px;
+  cursor: pointer;
+  transition: opacity 0.3s var(--ease-out);
+  opacity: 0.95;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.85),
+    0 2px 8px rgba(0, 0, 0, 0.75),
+    0 0 16px rgba(0, 0, 0, 0.6);
+}
+.menu-item:hover { opacity: 1; }
+.menu-icon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: #fdfbf3;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.6));
+}
+.menu-logout {
+  border: 1px solid rgba(253, 251, 243, 0.55);
+  border-radius: 22px;
+  padding: 8px 18px;
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* === フッター左：ヒュアラングループ === */
+.footer-brand {
+  position: absolute;
+  bottom: 22px;
+  left: 36px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display-jp);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: #fdfbf3;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.85),
+    0 2px 8px rgba(0, 0, 0, 0.75),
+    0 0 16px rgba(0, 0, 0, 0.6);
+}
+.footer-brand-mark {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+  position: relative;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+}
+.footer-brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid currentColor;
+}
+
+/* === フッター右：リンク === */
+.footer-links {
+  position: absolute;
+  bottom: 22px;
+  right: 36px;
+  z-index: 10;
+  display: flex;
+  gap: 28px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  color: #fdfbf3;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.85),
+    0 2px 8px rgba(0, 0, 0, 0.75),
+    0 0 16px rgba(0, 0, 0, 0.6);
+}
+.footer-links a {
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.3s var(--ease-out);
+  opacity: 0.9;
+}
+.footer-links a:hover { opacity: 1; }
+
+/* ========================================================
+   円環ステージ（12モジュールが回転する場所）
+   ======================================================== */
+.orbit-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* SVG引出線レイヤー（Phase 2 で利用、骨組みだけ用意） */
+.orbit-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* 円環装飾レイヤー（.orbit-deco）は削除済み。
+   流れ星は背景画像 bg-night-garden-with-stars.png に焼き込まれたため、
+   別レイヤーでの重ね合わせが不要になった。
+   元の .orbit-deco の CSS は (17) を参照。 */
+
+/* === 12個のバブル === */
+.bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  width: 150px;
+  height: 150px;
+  display: block;
+  will-change: transform;
+}
+/* バブル周囲に常時の柔らかなオーラ（きらめき感） */
+.bubble::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255, 245, 200, 0.35) 0%,
+    rgba(255, 230, 170, 0.18) 35%,
+    rgba(255, 230, 170, 0) 70%);
+  pointer-events: none;
+  animation: gentleGlow 4s ease-in-out infinite;
+  z-index: -1;
+}
+@keyframes gentleGlow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+/* バブルごとにオーラのタイミングをずらす */
+.bubble:nth-child(2)  ::before { animation-delay: -0.5s; }
+.bubble:nth-child(3)  ::before { animation-delay: -1.0s; }
+.bubble:nth-child(4)  ::before { animation-delay: -1.5s; }
+.bubble:nth-child(5)  ::before { animation-delay: -2.0s; }
+.bubble:nth-child(6)  ::before { animation-delay: -2.5s; }
+.bubble:nth-child(7)  ::before { animation-delay: -3.0s; }
+.bubble:nth-child(8)  ::before { animation-delay: -3.5s; }
+.bubble:nth-child(9)  ::before { animation-delay: -0.8s; }
+.bubble:nth-child(10) ::before { animation-delay: -1.3s; }
+.bubble:nth-child(11) ::before { animation-delay: -1.8s; }
+.bubble:nth-child(12) ::before { animation-delay: -2.3s; }
+/* バブル本体（ガラス感のあるアイコン） */
+/* ベース：影のみ。saturate/contrast/brightness は 3 トーンクラスで個別調整 */
+.bubble-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  filter:
+    drop-shadow(0 6px 18px rgba(120,100,70,0.28))
+    drop-shadow(0 0 10px rgba(255, 245, 200, 0.25));
+  transition: filter 0.4s var(--ease-out), transform 0.4s var(--ease-out);
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+/* トーン別フィルター（通常時） */
+/* 弱（淡色5個）：bloom / bud / sprout / calendar / leaf */
+.bubble.tone-soft .bubble-img {
+  filter:
+    saturate(1.05)
+    contrast(1.02)
+    drop-shadow(0 6px 18px rgba(120,100,70,0.28))
+    drop-shadow(0 0 10px rgba(255, 245, 200, 0.25));
+}
+/* 中（中濃度4個）：seed / rill / tree / forest */
+.bubble.tone-mid .bubble-img {
+  filter:
+    saturate(1.15)
+    contrast(1.05)
+    drop-shadow(0 6px 18px rgba(120,100,70,0.28))
+    drop-shadow(0 0 10px rgba(255, 245, 200, 0.25));
+}
+/* 強（濃色3個）：fruit / soil / root */
+.bubble.tone-strong .bubble-img {
+  filter:
+    saturate(1.30)
+    contrast(1.08)
+    brightness(1.05)
+    drop-shadow(0 6px 18px rgba(120,100,70,0.28))
+    drop-shadow(0 0 10px rgba(255, 245, 200, 0.25));
+}
+/* ガラスのハイライト（左上の光の反射） */
+.bubble-glass-highlight {
+  position: absolute;
+  top: 8%;
+  left: 12%;
+  width: 38%;
+  height: 30%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 30% 30%,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.12) 40%,
+    rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+  z-index: 2;
+  filter: blur(2px);
+  opacity: 0.75;
+  transition: opacity 0.4s var(--ease-out);
+}
+.bubble:hover .bubble-img {
+  transform: scale(1.12);
+}
+/* ホバー時のトーン別フィルター */
+.bubble.tone-soft:hover .bubble-img {
+  filter:
+    saturate(1.25)
+    brightness(1.06)
+    contrast(1.05)
+    drop-shadow(0 14px 32px rgba(120,100,70,0.45))
+    drop-shadow(0 0 24px rgba(255, 230, 170, 0.7));
+}
+.bubble.tone-mid:hover .bubble-img {
+  filter:
+    saturate(1.35)
+    brightness(1.08)
+    contrast(1.08)
+    drop-shadow(0 14px 32px rgba(120,100,70,0.45))
+    drop-shadow(0 0 24px rgba(255, 230, 170, 0.7));
+}
+.bubble.tone-strong:hover .bubble-img {
+  filter:
+    saturate(1.50)
+    brightness(1.12)
+    contrast(1.10)
+    drop-shadow(0 14px 32px rgba(120,100,70,0.45))
+    drop-shadow(0 0 24px rgba(255, 230, 170, 0.7));
+}
+.bubble:hover .bubble-glass-highlight {
+  opacity: 1;
+}
+
+/* クリック時のきらめき演出（バブル周囲が金色にフラッシュ） */
+.bubble.click-sparkle::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255, 230, 150, 0.9) 0%,
+    rgba(212, 165, 65, 0.5) 35%,
+    rgba(212, 165, 65, 0) 70%);
+  pointer-events: none;
+  animation: sparkleFlash 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  z-index: -1;
+}
+@keyframes sparkleFlash {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  35% {
+    transform: scale(1.0);
+    opacity: 1;
+  }
+  55% {
+    transform: scale(1.25);
+    opacity: 0.75;
+  }
+  75% {
+    transform: scale(1.45);
+    opacity: 0.4;
+  }
+  90% {
+    transform: scale(1.6);
+    opacity: 0.15;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+/* クリック時の演出は ::before のフラッシュのみ。
+   ::after の星粒子（小さい〇6個）は削除済み（東海林さん指示、シンプルにする）*/
+
+/* バブル下のラベル（文字がふわっと光に包まれている感じ） */
+.bubble-label {
+  position: absolute;
+  top: calc(100% - 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+  /* 極薄ふんわり光（フチがわからん霧みたいなもやもや） */
+  background: radial-gradient(ellipse 110% 90% at center,
+    rgba(252, 246, 232, 0.25) 0%,
+    rgba(252, 246, 232, 0.18) 20%,
+    rgba(252, 246, 232, 0.10) 45%,
+    rgba(252, 246, 232, 0.04) 75%,
+    rgba(252, 246, 232, 0) 100%);
+  /* padding を大きめに取って光を文字の周りに広げる */
+  padding: 12px 36px 14px;
+  border-radius: 50%;
+  min-width: 100px;
+  box-shadow: none;
+  border: none;
+}
+.bubble-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: #3a2a1a;
+  line-height: 1;
+  /* 文字グローを強化（光を背負った文字に見える） */
+  text-shadow:
+    0 0 8px rgba(255, 250, 235, 1.0),
+    0 0 14px rgba(255, 250, 235, 0.85),
+    0 0 22px rgba(255, 250, 235, 0.5);
+}
+.bubble-jp {
+  font-family: var(--font-display-jp);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  color: #3a2a1a;
+  margin-top: 3px;
+  text-shadow:
+    0 0 8px rgba(255, 250, 235, 1.0),
+    0 0 14px rgba(255, 250, 235, 0.85),
+    0 0 22px rgba(255, 250, 235, 0.5);
+}
+
+/* ========================================================
+   中央下：説明パネル
+   ======================================================== */
+.info-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 480px;
+  height: 190px;
+  z-index: 7;
+  pointer-events: none;
+  background-image: url('./images/panel-frame-transparent.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 38px;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-out);
+}
+/* パネル本体に半透明な和紙の白を追加して読みやすく */
+.info-panel::before {
+  content: '';
+  position: absolute;
+  inset: 14px;
+  background: rgba(252, 248, 238, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: 6px;
+  z-index: -1;
+  pointer-events: none;
+}
+body.has-active .info-panel {
+  opacity: 1;
+  pointer-events: auto;
+}
+.info-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  color: var(--text-main);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.info-name-en { font-style: italic; }
+.info-name-divider {
+  display: inline-block;
+  width: 20px;
+  height: 1px;
+  background: var(--accent-gold);
+  opacity: 0.6;
+}
+.info-name-jp {
+  font-family: var(--font-display-jp);
+  font-style: normal;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-main);
+}
+.info-desc {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-main);
+  margin-top: 10px;
+  text-align: center;
+  max-width: 360px;
+  letter-spacing: 0.02em;
+}
+.info-button {
+  margin-top: 12px;
+  font-family: var(--font-display-jp);
+  font-size: 11.5px;
+  letter-spacing: 0.16em;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 5px 18px;
+  border: 1px solid var(--accent-gold);
+  border-radius: 22px;
+  background: transparent;
+  transition: background 0.3s var(--ease-out);
+}
+.info-button:hover {
+  background: rgba(212, 165, 65, 0.08);
+}
+.info-button-arrow {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 13px;
+}
+</style>
+</head>
+<body>
+
+<div class="stage-bg"></div>
+
+<div class="scene">
+
+  <!-- ロゴ（クリックでホーム画面に戻る） -->
+  <header class="brand">
+    <a href="./garden-home.html" class="brand-link" aria-label="Garden Series ホームへ">
+      <img src="./images/logo-garden-series.png" alt="Garden Series">
+    </a>
+  </header>
+
+  <!-- ヘッダー右メニュー -->
+  <nav class="menu">
+    <a href="#" class="menu-item">
+      <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 22a2 2 0 0 0 2-2H10a2 2 0 0 0 2 2zm6-6V11a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2z"/></svg>
+      <span>お知らせ</span>
+    </a>
+    <a href="#" class="menu-item">
+      <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 4h16v3H4zM4 10.5h16v3H4zM4 17h16v3H4z"/></svg>
+      <span>ヘルプ</span>
+    </a>
+    <a href="#" class="menu-item menu-logout">
+      <svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 17l5-5-5-5M21 12H9M12 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h7"/></svg>
+      <span>ログアウト</span>
+    </a>
+  </nav>
+
+  <!-- 12モジュールが回転する円環ステージ -->
+  <div class="orbit-stage" id="orbitStage">
+    <!-- SVG引出線（Phase 2で使用） -->
+    <svg class="orbit-lines" id="orbitLines" preserveAspectRatio="none" viewBox="0 0 100 100"></svg>
+
+    <!-- 12モジュール（JSで動的に位置決め） -->
+    <!-- dispatch main- No.33 #4: Bloom クリック → React 本番 /bloom (5/8 デモ用) -->
+    <a href="/bloom" class="bubble tone-soft" data-mod="bloom" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/bloom.png" alt="Bloom">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Bloom</div>
+        <div class="bubble-jp">案件・KPI</div>
+      </div>
+    </a>
+    <a href="./bud.html" class="bubble tone-soft" data-mod="bud" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/bud.png" alt="Bud">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Bud</div>
+        <div class="bubble-jp">経理・収支</div>
+      </div>
+    </a>
+    <a href="./calendar.html" class="bubble tone-soft" data-mod="calendar" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/calendar.png" alt="Calendar">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Calendar</div>
+        <div class="bubble-jp">予定管理</div>
+      </div>
+    </a>
+    <a href="./fruit.html" class="bubble tone-strong" data-mod="fruit" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/fruit.png" alt="Fruit">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Fruit</div>
+        <div class="bubble-jp">法人実体情報</div>
+      </div>
+    </a>
+    <a href="./leaf.html" class="bubble tone-soft" data-mod="leaf" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/leaf.png" alt="Leaf">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Leaf</div>
+        <div class="bubble-jp">個別アプリ</div>
+      </div>
+    </a>
+    <a href="./rill.html" class="bubble tone-mid" data-mod="rill" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/rill.png" alt="Rill">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Rill</div>
+        <div class="bubble-jp">メッセージ</div>
+      </div>
+    </a>
+    <a href="./seed.html" class="bubble tone-mid" data-mod="seed" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/seed.png" alt="Seed">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Seed</div>
+        <div class="bubble-jp">新事業</div>
+      </div>
+    </a>
+    <a href="./soil.html" class="bubble tone-strong" data-mod="soil" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/soil.png" alt="Soil">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Soil</div>
+        <div class="bubble-jp">DB基盤</div>
+      </div>
+    </a>
+    <a href="./sprout.html" class="bubble tone-soft" data-mod="sprout" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/sprout.png" alt="Sprout">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Sprout</div>
+        <div class="bubble-jp">採用</div>
+      </div>
+    </a>
+    <a href="./tree.html" class="bubble tone-mid" data-mod="tree" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/tree.png" alt="Tree">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Tree</div>
+        <div class="bubble-jp">架電</div>
+      </div>
+    </a>
+    <a href="./forest.html" class="bubble tone-mid" data-mod="forest" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/forest.png" alt="Forest">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Forest</div>
+        <div class="bubble-jp">全法人決算</div>
+      </div>
+    </a>
+    <a href="./root.html" class="bubble tone-strong" data-mod="root" style="left: 0; top: 0;">
+      <img class="bubble-img" src="./icons/root.png" alt="Root">
+      <div class="bubble-glass-highlight"></div>
+      <div class="bubble-label">
+        <div class="bubble-name">Root</div>
+        <div class="bubble-jp">組織マスタ</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- 中央下パネル（ホバー時のみ表示） -->
+  <div class="info-panel">
+    <div class="info-name">
+      <span class="info-name-en" id="infoNameEn"></span>
+      <span class="info-name-divider"></span>
+      <span class="info-name-jp" id="infoNameJp"></span>
+    </div>
+    <div class="info-desc" id="infoDesc"></div>
+    <button class="info-button">
+      <span>詳しく見る</span>
+      <span class="info-button-arrow">→</span>
+    </button>
+  </div>
+
+  <!-- フッター -->
+  <div class="footer-brand">
+    <span class="footer-brand-mark"></span>
+    <span>ヒュアラングループ</span>
+  </div>
+  <div class="footer-links">
+    <a href="#">サービスについて</a>
+    <a href="#">サポート</a>
+    <a href="#">会社情報</a>
+    <a href="#">プライバシーポリシー</a>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   モジュール定義（時計回りで12時から、12モジュール）
+   モックアップの並び順に合わせて配置
+   ============================================================ */
+const MODULES = [
+  // 12時開始、時計回り
+  { mod: 'bloom',    name: 'Bloom',    jp: '案件・KPI',     desc: '業務全体の健康状態を花のように咲かせる。案件一覧、日報、KPI、経営ダッシュボードを担う。' },
+  { mod: 'bud',      name: 'Bud',      jp: '経理・収支',    desc: 'これから花開く蕾。明細・振込・損益・給与など、経理と収支のすべてを育てるモジュール。' },
+  { mod: 'calendar', name: 'Calendar', jp: '予定管理',      desc: '日々の流れを整える暦。営業予定、シフト、スケジュール管理を担うモジュール。' },
+  { mod: 'fruit',    name: 'Fruit',    jp: '法人実体情報',  desc: '実った成果。法人番号、登記、許認可、Pマーク等。法人格の実体情報を一元管理するモジュール。' },
+  { mod: 'leaf',     name: 'Leaf',     jp: '個別アプリ',    desc: '商材×商流ごとに独立した葉。光コラボ、新電力、クレジット、法人携帯ほか各事業の業務アプリ。' },
+  { mod: 'rill',     name: 'Rill',     jp: 'メッセージ',    desc: '情報を運ぶ川。Chatworkクローン、社内メッセージ、通知。すべてのモジュールに情報を届ける流れ。' },
+  { mod: 'root',     name: 'Root',     jp: '組織マスタ',    desc: '強く、しなやかな組織をつくる。すべての事業の土台となる基盤を育みます。' },
+  { mod: 'seed',     name: 'Seed',     jp: '新事業',        desc: 'まだ蒔かれていない種。新規事業、新商材、未来の業務領域。森が広がっていくための余白。' },
+  { mod: 'soil',     name: 'Soil',     jp: 'DB基盤',        desc: '森を育てる肥沃な土壌。営業リスト、コール履歴などの大規模データを蓄える、すべての養分の源。' },
+  { mod: 'sprout',   name: 'Sprout',   jp: '採用',          desc: 'これから芽吹く双葉。求人、面接、新人研修、スキル管理。組織の未来を育てるモジュール。' },
+  { mod: 'tree',     name: 'Tree',     jp: '架電',          desc: '木の幹のように業務を支える。架電業務、コール履歴、KPI管理。電話業務の中核を担うモジュール。' },
+  { mod: 'forest',   name: 'Forest',   jp: '全法人決算',    desc: '森のように全法人を見渡す。グループ全社の決算資料・経営ダッシュボードを束ねる、最も俯瞰的なモジュール。' }
+];
+
+/* ============================================================
+   円環レイアウトと回転制御
+   ============================================================ */
+const stage = document.getElementById('orbitStage');
+const bubbles = document.querySelectorAll('.bubble');
+
+// 円環パラメータ（真円配置：vmin 基準で縦横同じ半径）
+const ORBIT_BASE_RADIUS_VMIN = 40;   // 中央からの半径（vmin単位、画面の小さい方の辺基準）
+const CENTER_X_VW = 50;              // 中心のX座標（vw）
+const CENTER_Y_VH = 50;              // 中心のY座標（vh）
+
+// 回転状態
+let currentRotation = 0;             // 現在の回転角（ラジアン）
+let angularVelocity = 0.00001047;    // 角速度（ラジアン/ms） ≒ 600秒/周（10分）
+const BASE_VELOCITY = 0.00001047;    // 基準速度（10分/周）
+const MAX_VELOCITY = 0.0008;         // 最大速度
+const VELOCITY_DECAY = 0.985;        // 減衰率（毎フレーム）
+const VELOCITY_BOOST = 0.0002;       // ホイール1回あたりのブースト
+
+let isPaused = false;                // ホバー時に一時停止
+let lastTime = performance.now();
+
+// 各バブルの基準角度（12時から時計回り、30°刻み）
+bubbles.forEach((bubble, i) => {
+  // 12時を0、時計回りに進む。CSSのleft/topは右下が正なので、Y軸を反転
+  bubble.dataset.baseAngle = (i * (360 / bubbles.length)) - 90; // -90 で12時を0度に合わせる
+  bubble.dataset.index = i;
+});
+
+function updateBubblePositions() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const vmin = Math.min(w, h);
+  const cx = (CENTER_X_VW / 100) * w;
+  const cy = (CENTER_Y_VH / 100) * h;
+  // 真円：縦横同じ半径（vmin 基準で画面の小さい方の辺の N% を半径に）
+  const r = (ORBIT_BASE_RADIUS_VMIN / 100) * vmin;
+  const bubbleHalfSize = 75;  // 150px / 2
+
+  bubbles.forEach(bubble => {
+    const baseAngleDeg = parseFloat(bubble.dataset.baseAngle);
+    const baseAngleRad = baseAngleDeg * Math.PI / 180;
+    const angle = baseAngleRad + currentRotation;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    // transform translate3d を使ってサブピクセル精度 + GPU加速
+    bubble.style.left = '0';
+    bubble.style.top = '0';
+    bubble.style.transform = `translate3d(${x - bubbleHalfSize}px, ${y - bubbleHalfSize}px, 0)`;
+  });
+}
+
+function tick(now) {
+  const dt = now - lastTime;
+  lastTime = now;
+
+  if (!isPaused) {
+    currentRotation += angularVelocity * dt;
+  }
+
+  // 速度減衰：基準速度に向かってゆっくり戻る
+  if (angularVelocity > BASE_VELOCITY) {
+    angularVelocity = BASE_VELOCITY + (angularVelocity - BASE_VELOCITY) * VELOCITY_DECAY;
+    if (angularVelocity - BASE_VELOCITY < 0.000001) angularVelocity = BASE_VELOCITY;
+  } else if (angularVelocity < BASE_VELOCITY) {
+    angularVelocity = BASE_VELOCITY - (BASE_VELOCITY - angularVelocity) * VELOCITY_DECAY;
+    if (BASE_VELOCITY - angularVelocity < 0.000001) angularVelocity = BASE_VELOCITY;
+  }
+
+  updateBubblePositions();
+  requestAnimationFrame(tick);
+}
+
+// ホバー時：回転停止 + パネル表示・内容更新
+const body = document.body;
+const infoNameEn = document.getElementById('infoNameEn');
+const infoNameJp = document.getElementById('infoNameJp');
+const infoDesc   = document.getElementById('infoDesc');
+
+// モジュール定義をmod名でルックアップしやすい形に
+const MODULE_MAP = {};
+MODULES.forEach(m => { MODULE_MAP[m.mod] = m; });
+
+bubbles.forEach(bubble => {
+  bubble.addEventListener('mouseenter', () => {
+    isPaused = true;
+    const m = MODULE_MAP[bubble.dataset.mod];
+    if (m) {
+      infoNameEn.textContent = m.name;
+      infoNameJp.textContent = m.jp;
+      // 「。」の後に改行を入れる（最後の「。」の改行は削除）
+      infoDesc.innerHTML = m.desc
+        .replace(/。/g, '。<br>')
+        .replace(/<br>$/, '');
+    }
+    body.classList.add('has-active');
+  });
+  bubble.addEventListener('mouseleave', () => {
+    isPaused = false;
+    body.classList.remove('has-active');
+  });
+  // クリック時のきらめき演出
+  bubble.addEventListener('click', (e) => {
+    e.preventDefault();
+    // 既存のタイマーをキャンセル（二重発動でアニメが途中で消えるバグ防止）
+    if (bubble._sparkleTimer) {
+      clearTimeout(bubble._sparkleTimer);
+      bubble._sparkleTimer = null;
+    }
+    // 一旦クラスを外して reflow 強制 → 即時付与（クリック直後に発動）
+    bubble.classList.remove('click-sparkle');
+    void bubble.offsetWidth; // リフロー強制でアニメをリセット
+    bubble.classList.add('click-sparkle');
+    // アニメーション終了後にクラス除去（タイマー保存）
+    bubble._sparkleTimer = setTimeout(() => {
+      bubble.classList.remove('click-sparkle');
+      bubble._sparkleTimer = null;
+    }, 1500);
+    // 0.7秒後にアプリ遷移（href が # 以外の場合のみ）
+    const href = bubble.getAttribute('href');
+    if (href && href !== '#') {
+      setTimeout(() => { window.location.href = href; }, 700);
+    }
+  });
+});
+
+// マウスホイールで回転速度を加減速
+window.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  // 下スクロール（deltaY > 0）→ 加速、上スクロール（< 0）→ 減速or逆方向
+  const boost = (e.deltaY > 0 ? 1 : -1) * VELOCITY_BOOST;
+  angularVelocity += boost;
+  // 上限・下限クランプ
+  if (angularVelocity > MAX_VELOCITY) angularVelocity = MAX_VELOCITY;
+  if (angularVelocity < -MAX_VELOCITY) angularVelocity = -MAX_VELOCITY;
+}, { passive: false });
+
+// リサイズ対応
+window.addEventListener('resize', updateBubblePositions);
+
+// 初回配置 + アニメーション開始
+updateBubblePositions();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

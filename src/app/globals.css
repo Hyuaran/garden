@@ -1264,18 +1264,25 @@ input { font-family: inherit; }
 
 /* ---- Activity Panel ---- */
 .activity-panel {
+  /* dispatch main- No.33 #2: フラット化（プロト 02_BloomTop/css/style.css line 1178-1197 準拠）
+     旧: 浮島カード (top 194px, right 32px, width 340px, border-radius 20px, box-shadow あり)
+     新: メニューバー化 (top var(--topbar-h)=80px, right 0, bottom 0, width var(--activity-w)=320px,
+                        border-radius 0, box-shadow none、Topbar 直下から画面下端まで full height) */
   position: fixed;
-  top: 194px;
-  right: 32px;
-  width: 340px;
-  bottom: 32px;
-  padding: 20px 22px 16px;
+  top: var(--topbar-h);
+  right: 0;
+  bottom: 0;
+  width: var(--activity-w);
+  height: calc(100vh - var(--topbar-h));
+  padding: 24px 22px 16px;
   background: var(--bg-activity);
   /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
   -webkit-backdrop-filter: blur(16px) !important;
   backdrop-filter: blur(16px) !important;
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-card);
+  border: none;
+  border-left: 1px solid var(--border-card);
+  border-radius: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   z-index: 5;
@@ -1829,6 +1836,34 @@ input { font-family: inherit; }
   --sidebar-toggle-w-hover: 22px;
   --sidebar-dual-w: calc(var(--sidebar-apps-w) + var(--sidebar-pages-w));
   --sidebar-dual-collapsed-w: var(--sidebar-apps-w);
+  /* dispatch main- No.33 #2: Activity Panel フラット化用 (プロト 320px) */
+  --activity-w: 320px;
+}
+
+/* dispatch main- No.33 #1: <aside class="sidebar sidebar-dual"> 本体 wrapper rule
+   (プロト 02_BloomTop/css/style.css line 4641-4663 準拠)、Topbar 直下から bottom 0 まで
+   width 236px (= apps 56 + pages 180)、collapsed 時 56px */
+.sidebar.sidebar-dual {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0;
+  width: var(--sidebar-dual-w);
+  height: calc(100vh - var(--topbar-h));
+  background: var(--bg-sidebar);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid var(--border-soft);
+  padding: 0;
+  z-index: 8;
+  display: block;
+  transition:
+    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.6s ease,
+    border-color 0.6s ease;
+  overflow: visible;
+}
+body.nav-pages-collapsed .sidebar.sidebar-dual {
+  width: var(--sidebar-dual-collapsed-w);
 }
 
 /* ---- 1 本目: nav-apps (Garden 12 モジュール icons column) ---- */
@@ -2140,13 +2175,18 @@ body.nav-pages-collapsed .nav-pages-toggle {
 .nav-pages-toggle:hover .nav-pages-toggle-arrow { opacity: 1; }
 body.nav-pages-collapsed .nav-pages-toggle-arrow { transform: rotate(0deg); }
 
-/* ---- /bloom 配下の main は dual sidebar 用に margin-left 調整 ---- */
+/* ---- /bloom 配下の main は dual sidebar 用に margin-left 調整、
+        Activity Panel フラット化 (dispatch main- No.33 #2) に伴い margin-right も追加 ---- */
 .bloom-page .garden-v28a-main {
   margin-left: calc(var(--sidebar-dual-w) + var(--sidebar-toggle-w));
-  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-right: var(--activity-w);
+  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin-right 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 }
 body.nav-pages-collapsed .bloom-page .garden-v28a-main {
   margin-left: calc(var(--sidebar-dual-collapsed-w) + var(--sidebar-toggle-w));
+}
+body.activity-collapsed .bloom-page .garden-v28a-main {
+  margin-right: 0;
 }
 
 /* ====================================================================
@@ -2575,7 +2615,7 @@ body.nav-pages-collapsed .bloom-page .garden-v28a-main {
   position: fixed;
   top: var(--topbar-h);
   bottom: 0;
-  right: 340px; /* activity-panel width */
+  right: var(--activity-w); /* dispatch main- No.33 #2: 旧 340px ハードコード → var(--activity-w)=320px */
   width: 14px;
   height: auto;
   border-radius: 0;
