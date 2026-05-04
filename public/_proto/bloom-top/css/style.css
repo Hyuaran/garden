@@ -354,7 +354,7 @@ input { font-family: inherit; }
 
 /* 新: 画像1枚のロゴ(2026/05/01 ロゴ刷新) */
 .topbar-brand-img {
-  height: 64px;
+  height: 60px;
   width: auto;
   object-fit: contain;
   display: block;
