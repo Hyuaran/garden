@@ -17,11 +17,10 @@ import { ShojiStatusWidget } from "../../../components/shared/ShojiStatusWidget"
 import { ViewModeToggle } from "./ViewModeToggle";
 
 const NAV_ITEMS: Array<{ href: string; label: string }> = [
-  { href: BLOOM_PATHS.WORKBOARD, label: "ワークボード" },
+  { href: BLOOM_PATHS.WORKBOARD, label: "Workboard" },
+  { href: BLOOM_PATHS.ROADMAP, label: "ロードマップ" },
+  { href: BLOOM_PATHS.MONTHLY_DIGEST, label: "月次ダイジェスト" },
   { href: BLOOM_PATHS.DAILY_REPORTS, label: "日報" },
-  { href: BLOOM_PATHS.MONTHLY_DIGEST, label: "月次まとめ" },
-  { href: BLOOM_PATHS.CEO_STATUS, label: "経営状況" },
-  { href: BLOOM_PATHS.PROGRESS, label: "開発進捗" },
 ];
 
 export function BloomShell({ children }: { children: ReactNode }) {
