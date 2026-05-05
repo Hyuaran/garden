@@ -1,0 +1,6 @@
+# 弥生 CSV パーサー（A 案：5/7 夜実装）
+# 5/7 夜着手予定:
+# - yayoi-import.ts (弥生インポート CSV → bud_transactions の debit/credit/tax_class UPDATE)
+# - 突合キー: (corp_id, transaction_date, amount, description 先頭ハッシュ)
+# - 不一致は status='pending' に降格
+# 既存 Python: G:\...\001_仕訳帳\5_仕訳帳_弥生変換_v7.py からカラム順を完全反映

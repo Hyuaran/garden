@@ -1,0 +1,8 @@
+# 仕訳帳機能 - コア処理ライブラリ
+# Bud 移行時もそのまま src/lib/shiwakechou/ で流用（forest コア依存ゼロ保証）
+# spec: docs/superpowers/specs/2026-04-26-shiwakechou-bud-migration-design.md §5
+# 5/6 朝着手予定:
+# - classifier.ts (3 段階自動判定)
+# - yayoi-export.ts (弥生 CSV 生成)
+# - master-suggest.ts (未登録パターン提案)
+# - normalize.ts (半角カナ + 全角混在の正規化)
