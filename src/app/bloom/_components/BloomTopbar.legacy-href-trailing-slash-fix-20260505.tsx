@@ -90,7 +90,7 @@ export default function BloomTopbar({
     <header className="topbar">
       {/* ===== ロゴ + ブランド名 ===== */}
       <a
-        href="/_proto/garden-home-spin/index.html"
+        href="/_proto/garden-home-spin/"
         className="topbar-brand"
         title="Garden Series ホームへ"
         style={{ textDecoration: "none" }}
@@ -280,7 +280,7 @@ export default function BloomTopbar({
             </a>
             <div className="user-dropdown-divider" />
             <a
-              href="/_proto/login/index.html"
+              href="/_proto/login/"
               className="user-dropdown-item user-dropdown-item-logout"
               role="menuitem"
               onClick={(e) => {
