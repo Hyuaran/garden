@@ -22,7 +22,7 @@
 
 ---
 
-## 2. 対象モジュール（7 module、Forest / Bud 除外）
+## 2. 対象モジュール（5 module、Forest / Bud / 未開発 5 件 除外）
 
 | Module | セッション | 取りまとめ依頼 |
 |---|---|---|
@@ -31,11 +31,15 @@
 | Leaf | a-leaf | ✅ |
 | Root | a-root-002 | ✅ |
 | Soil | a-soil | ✅ |
-| Sprout | a-sprout | ✅ |
-| Calendar | a-calendar | ✅ |
 | **Forest** | a-forest | ❌ 除外（決算作業集中、5/6-5/16）|
 | **Bud** | （a-forest 兼任）| ❌ 除外（Forest から派生、a-forest が同時に Bud 引き継ぎ資料作成）|
-| Rill / Seed / Fruit | — | ❌ 除外（未着手、プレースホルダーのみ）|
+| **Sprout** | — | ❌ 除外（未開発）|
+| **Calendar** | — | ❌ 除外（未開発）|
+| **Rill** | — | ❌ 除外（未開発）|
+| **Seed** | — | ❌ 除外（未開発）|
+| **Fruit** | — | ❌ 除外（未開発）|
+
+→ **計 5 module 対象、未開発 5 + Forest/Bud 計 7 module はプレースホルダーのみ**。
 
 ---
 
@@ -229,7 +233,7 @@ a-<module>: <module>-NN で完了報告予定
 ご対応お願いします。
 ```
 
-### 5-2. 7 セッション宛先
+### 5-2. 5 セッション宛先
 
 | dispatch | 宛先 | 期待 module 名 |
 |---|---|---|
@@ -238,8 +242,6 @@ a-<module>: <module>-NN で完了報告予定
 | main- No. NN+2 | a-leaf | leaf |
 | main- No. NN+3 | a-root-002 | root |
 | main- No. NN+4 | a-soil | soil |
-| main- No. NN+5 | a-sprout | sprout |
-| main- No. NN+6 | a-calendar | calendar |
 
 → NN は 5/9 時点の dispatch counter から連番採番。
 
@@ -249,10 +251,10 @@ a-<module>: <module>-NN で完了報告予定
 
 | 時期 | 作業 | 担当 |
 |---|---|---|
-| 5/9 朝 | 7 セッション dispatch 投下 | a-main-NNN |
-| 5/9-5/12 | 各セッション取りまとめ（30-45 分 × 7）| 各セッション |
+| 5/9 朝 | 5 セッション dispatch 投下 | a-main-NNN |
+| 5/9-5/12 | 各セッション取りまとめ（30-45 分 × 5）| 各セッション |
 | 5/12-5/13 | a-root-002 が migration + import script 作成 | a-root-002 |
-| 5/13 夕 | 取りまとめ済 7 セッション分を Root に upsert | a-root-002 |
+| 5/13 夕 | 取りまとめ済 5 セッション分を Root に upsert | a-root-002 |
 | 5/14 | a-bloom-003 が /api/bloom/progress-html を拡張（design_status fetch 追加）| a-bloom-003 |
 | 5/15 | Chrome MCP 視覚検証 | a-main-NNN |
 
@@ -272,3 +274,4 @@ a-<module>: <module>-NN で完了報告予定
 ## 8. 改訂履歴
 
 - 2026-05-05 21:08 初版（a-main-012、東海林さん指示「モジュールタブ設計状況に実データ」採用、7 module 対象）
+- 2026-05-05 21:12 改訂（東海林さん指摘「Sprout / Calendar も未開発」反映、5 module 対象に修正）
