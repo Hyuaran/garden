@@ -6,7 +6,7 @@ import { BloomStateProvider } from "./_state/BloomStateContext";
 import { ViewModeProvider } from "./_state/ViewModeContext";
 
 export const metadata = {
-  title: "Bloom — 花咲く業務の庭 | Garden",
+  title: "Garden Bloom — Workboard",
   description: "Garden シリーズ 作業可視化 / ロードマップ / 月次ダイジェスト",
 };
 
