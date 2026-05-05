@@ -14,7 +14,7 @@
 export default function BloomProgressPage() {
   return (
     <iframe
-      src="/api/bloom/progress-html"
+      src="/_proto/bloom-dev-progress/index.html"
       style={{
         width: "100%",
         height: "calc(100vh - 153px)",
