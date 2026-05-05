@@ -67,7 +67,6 @@ const NAV_PAGES: NavPage[] = [
   { href: "/bloom/daily-report",    iconSrc: "/images/icons_bloom/bloom_dailyreport.png",   label: "日報" },
   { href: "/bloom/monthly-digest",  iconSrc: "/images/icons_bloom/bloom_monthlydigest.png", label: "月次まとめ" },
   { href: "/bloom/ceo-status",      iconSrc: "/images/icons_bloom/bloom_ceostatus.png",     label: "経営状況" },
-  { href: "/bloom/progress",        iconSrc: "/images/icons_bloom/bloom_progress.png",      label: "開発進捗" },
 ];
 
 export default function BloomSidebar() {
