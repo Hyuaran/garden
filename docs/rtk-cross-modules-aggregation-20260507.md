@@ -13,31 +13,32 @@
 | 1 | a-soil | 2026-05-07 21:11 | ✅ 適用済 | 0.38.0 | **65.3%** | 486.8K | global scope、799 commands、Top 1: lint eslint 99.6% 削減 / Phase B-01 第 1 弾完走（13 倍速）|
 | 2 | a-forest-002 | 2026-05-07 21:12 | ✅ 適用済 | 0.38.0 | **65.3%** | 486.8K | 同 global、Phase B-min #4 弥生 CSV パーサー着手中、継続作業 |
 | 3 | a-leaf-002 | 2026-05-07 21:55 | ✅ 適用済 | 0.38.0 | **65.3%** | 486.8K | 同 global、本日 6 PR 発行（git commit/push/fetch/branch 多用）= 61% 短縮の主要因実感 |
-| 4 | a-bud | 待機中（5/8 朝に起動 + 確認予定）| — | — | — | — | bud-13 受領済（D-11 完走 + Thursday 夜切り上げ、9 件 / 329 tests / 62% 圧縮）|
-| 5 | a-bloom-004 | 待機中（5/8 朝起動予定）| — | — | — | — | vitest 環境問題 5/8 朝調査と並行 |
-| 6 | a-root-002 | 待機中（5/8 朝起動予定）| — | — | — | — | 認証統一 spec 詳細化と並行 |
-| 7 | a-tree | 待機中（5/8 朝起動予定）| — | — | — | — | Phase D-02 続きと並行 |
-| 8 | a-auto | 休眠中、次回発動時確認 | — | — | — | — | 自律実行モード発動時に確認 |
-| 9 | a-rill / a-seed | 休眠中、次回起動時確認 | — | — | — | — | Phase B/C/D で起動予定 |
-| 10 | b-main | 休眠中、次回起動時確認 | — | — | — | — | バックアップ用 |
+| 4 | a-review | 2026-05-07 21:15 | ✅ 適用済 | 0.38.0 | **65.1%** | 488.1K | global、816 commands、PR レビュー（diff/read/grep/lint）で恩恵特大 |
+| 5 | a-auto-004 | 2026-05-07 21:10 | ✅ 適用済 | 0.38.0 | **65.1%** | 488.2K | global、821 commands、Phase 残 A 50+ PR 操作で hot path 効果最大化 |
+| 6 | a-bud | 待機中（5/8 朝に起動 + 確認予定）| — | — | — | — | bud-13 受領済（D-11 完走 + Thursday 夜切り上げ、9 件 / 329 tests / 62% 圧縮）|
+| 7 | a-bloom-004 | 待機中（5/8 朝起動予定）| — | — | — | — | vitest 環境問題 5/8 朝調査と並行 |
+| 8 | a-root-002 | 待機中（5/8 朝起動予定）| — | — | — | — | 認証統一 spec 詳細化と並行 |
+| 9 | a-tree | 待機中（5/8 朝起動予定）| — | — | — | — | Phase D-02 続きと並行 |
+| 10 | a-rill / a-seed | 休眠中、次回起動時確認 | — | — | — | — | Phase B/C/D で起動予定 |
+| 11 | b-main | 休眠中、次回起動時確認 | — | — | — | — | バックアップ用 |
 
 ---
 
 ## 2. 全体サマリ（応答揃った時点で更新）
 
-### 現時点（2026-05-07 21:57、応答 3/7 active）
+### 現時点（2026-05-07 22:00、応答 5/9 active）
 
-- 応答済: **3 セッション**（a-soil / a-forest-002 / a-leaf-002）
-- 待機中: 4 セッション（a-bud / a-bloom-004 / a-root-002 / a-tree）
-- 平均削減率（暫定）: **65.3%**（n=3、global scope 共有のため全員同値）
-- 最高削減率: 65.3%
-- 最低削減率: 65.3%
+- 応答済: **5 セッション**（a-soil / a-forest-002 / a-leaf-002 / a-review / a-auto-004）
+- 待機中（active）: 4 セッション（a-bud / a-bloom-004 / a-root-002 / a-tree）
+- 休眠中: a-rill / a-seed / b-main
+- 平均削減率: **65.2%**（65.3% × 3 + 65.1% × 2 = 326/5）
 
-### 観察（global scope の特性）
+### 観察（global scope の特性 + 時系列推移）
 
 - rtk gain は **global scope 集約**（C:/Users/shoji/.local/bin/rtk が単一 binary）
-- → 全セッションで同じ削減数値（65.3% / 486.8K / 799 commands）が表示される
-- → セッション固有の数値比較ではなく、**「適用済の事実確認」+「ローカル体感観察」**が集計の意味
+- → 全セッションで同じ削減数値が表示される、ただし**報告タイミングの差で commands 数が増加**
+- → 21:11 時点 799 commands → 21:15 時点 816 commands → 21:10 時点 821 commands（注: タイムスタンプは報告時刻、rtk gain 取得時刻は微差）
+- → 削減率は 65.1-65.3% で安定、CLAUDE.md §19 目標 60% を 5pp 超過
 - 各セッションの観察コメント（continued の体感）を別途集約することで質的価値を取る
 
 ### 期待値（CLAUDE.md §19 目標 + handoff データ）
@@ -85,7 +86,7 @@ a-bud / a-bloom-004 / a-leaf-002 / a-soil 等の高活動セッションでも 6
 
 東海林さんが順次 main- No. 111 を各セッションに投下中。
 
-| 投下済（応答受領）| a-soil / a-forest-002 / a-leaf-002 |
+| 投下済（応答受領）| a-soil / a-forest-002 / a-leaf-002 / a-review / a-auto-004 |
 | 投下中 / 投下予定 | a-bud / a-bloom-004 / a-root-002 / a-tree |
 
 ## 5.1 セッション別 体感コメント（質的観察）
@@ -95,6 +96,8 @@ a-bud / a-bloom-004 / a-leaf-002 / a-soil 等の高活動セッションでも 6
 | a-soil | Phase B-01 第 1 弾 7 migrations / 3 TS / 46 tests を約 13 倍速で完走、RTK が `rtk read` `rtk grep` `rtk git commit` で効いた |
 | a-forest-002 | Phase B-min #4 弥生 CSV パーサー着手中、`rtk vitest run` 99.7% 削減が TDD ループに効く |
 | a-leaf-002 | 本日 6 PR 発行（git commit/push/fetch/branch 多用）= **61% 短縮の主要因実感**、`rtk lint eslint` 99.6% が Phase A UI 実装で更に伸びる見込み |
+| a-review | PR レビュー（git diff / read / grep / lint）の頻出コマンドが上位独占、**RTK 恩恵 特大**セッション |
+| a-auto-004 | Phase 残 A 50+ PR 操作 + spec 修正 + self-review で hot path 効果最大化、ガンガン常態モード継続可能状態 |
 
 ---
 
