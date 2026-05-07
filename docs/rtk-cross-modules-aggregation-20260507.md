@@ -16,11 +16,11 @@
 | 4 | a-review | 2026-05-07 21:15 | ✅ 適用済 | 0.38.0 | **65.1%** | 488.1K | global、816 commands、PR レビュー（diff/read/grep/lint）で恩恵特大 |
 | 5 | a-auto-004 | 2026-05-07 21:10 | ✅ 適用済 | 0.38.0 | **65.1%** | 488.2K | global、821 commands、Phase 残 A 50+ PR 操作で hot path 効果最大化 |
 | 6 | a-root-002 | 2026-05-07 21:12 | ✅ 適用済 | 0.38.0 | **65.1%** | 488.3K | global、824 commands、git/vitest/read/grep/lint 系 RTK 透過処理確認 |
-| 7 | a-bud | 待機中（5/8 朝に起動 + 確認予定）| — | — | — | — | bud-13 受領済（D-11 完走 + Thursday 夜切り上げ、9 件 / 329 tests / 62% 圧縮）|
-| 7 | a-bloom-004 | 待機中（5/8 朝起動予定）| — | — | — | — | vitest 環境問題 5/8 朝調査と並行 |
-| 8 | a-tree | 待機中（5/8 朝起動予定）| — | — | — | — | Phase D-02 続きと並行 |
-| 9 | a-rill / a-seed | 休眠中、次回起動時確認 | — | — | — | — | Phase B/C/D で起動予定 |
-| 10 | b-main | 休眠中、次回起動時確認 | — | — | — | — | バックアップ用 |
+| 7 | a-bud | 2026-05-07 21:12 | ✅ 適用済 | 0.38.0 | **65.3%** | 486.8K | global、799 commands、Phase D 9 件 / 329 tests を rtk vitest run 99.7% 削減で支えた |
+| 8 | a-bloom-004 | 2026-05-07 21:27 | ✅ 適用済 | 0.38.0 | **65.1%** | 488.5K | global、834 commands、★ **vitest passthrough 問題発見**（下記 §6 参照）|
+| 9 | a-tree | 2026-05-07 21:29 | ✅ 適用済 | 0.38.0 | **65.1%** | 488.6K | global、838 commands、PR #128/#129 review 待ち + 5/13 redirect 待機 |
+| 10 | a-rill / a-seed | 休眠中、次回起動時確認 | — | — | — | — | Phase B/C/D で起動予定 |
+| 11 | b-main | 休眠中、次回起動時確認 | — | — | — | — | バックアップ用 |
 
 ---
 
