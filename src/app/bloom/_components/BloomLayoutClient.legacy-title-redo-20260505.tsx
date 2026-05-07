@@ -1,0 +1,54 @@
+"use client";
+
+/**
+ * BloomLayoutClient — Bloom Top と他 Bloom 画面の layout 分岐 + 動的 title 設定
+ *
+ * 経緯:
+ *   - 既存 /bloom/* は BloomShell で wrap（独自 header + nav + green gradient）
+ *   - 5/5 デモ向け Bloom Top (v2.8a 統一デザイン) は BloomShell 不要
+ *     → 既存 workboard / monthly-digest 等は BloomShell 維持（ロジック保護）
+ *     → /bloom (Bloom Top のみ) は BloomShell をバイパス
+ *   - dispatch v2.8a-bloom Step 1 (画面 1) の対応として導入
+ *
+ * dispatch main- No.56 (2026-05-05) 追加:
+ *   全 page.tsx が "use client" のため metadata export 不可。
+ *   代替として pathname に応じて document.title を動的設定。
+ *
+ * 後段 (Phase 2 以降):
+ *   - 全 Bloom 画面を v2.8a 統一デザイン化したら BloomShell 廃止 + 本コンポーネントも整理
+ */
+
+import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import { useEffect } from "react";
+
+import { BloomShell } from "./BloomShell";
+
+const BLOOM_TITLES: Record<string, string> = {
+  "/bloom": "Bloom — 花咲く業務の庭 | Garden",
+  "/bloom/workboard": "ワークボード — Garden Bloom",
+  "/bloom/daily-report": "日報 — Garden Bloom",
+  "/bloom/monthly-digest": "月次ダイジェスト — Garden Bloom",
+  "/bloom/ceo-status": "経営状況 — Garden Bloom",
+  "/bloom/progress": "開発進捗 — Garden Bloom",
+};
+
+export function BloomLayoutClient({ children }: { children: ReactNode }) {
+  const pathname = usePathname() || "";
+
+  useEffect(() => {
+    const normalized = pathname.endsWith("/") && pathname !== "/"
+      ? pathname.slice(0, -1)
+      : pathname;
+    const title = BLOOM_TITLES[normalized] ?? "Garden Bloom";
+    document.title = title;
+  }, [pathname]);
+
+  // /bloom or /bloom/ のみ Bloom Top → BloomShell バイパス
+  const isBloomTop = pathname === "/bloom" || pathname === "/bloom/";
+
+  if (isBloomTop) {
+    return <>{children}</>;
+  }
+  return <BloomShell>{children}</BloomShell>;
+}

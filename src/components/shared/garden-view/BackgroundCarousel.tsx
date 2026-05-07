@@ -1,0 +1,130 @@
+"use client";
+
+/**
+ * 盆栽 / 大樹ビュー — 6 atmospheres カルーセル背景
+ *
+ * dispatch v3 仕様:
+ *   - auto モード: 8 秒ごとに次へ自動切替（fade 800ms）
+ *   - manual モード: 矢印キー / 1-6 / Space で切替
+ *   - A キー: auto / manual トグル
+ *   - prefers-reduced-motion: auto 無効化（manual のみ動作）
+ *
+ * 既存 BackgroundLayer の置換。layer 分離は維持（zIndex 0、aria-hidden）。
+ */
+
+import { useEffect, useState } from "react";
+import {
+  ATMOSPHERES,
+  ATMOSPHERE_COUNT,
+  AUTO_INTERVAL_MS,
+  FADE_TRANSITION_MS,
+  type Atmosphere,
+  type AtmosphereId,
+} from "./_lib/atmospheres";
+
+export type CarouselMode = "auto" | "manual";
+
+type Props = {
+  /** 初期 atmosphere index（URL クエリで指定可） */
+  initialIndex?: AtmosphereId;
+  /** 初期モード（5/5 デモは manual で開始、A キーで auto に） */
+  initialMode?: CarouselMode;
+  /** 表示する atmospheres リスト（未指定時は既存 ATMOSPHERES = digital-terrarium） */
+  atmospheres?: readonly Atmosphere[];
+};
+
+export function BackgroundCarousel({
+  initialIndex = 0,
+  initialMode = "manual",
+  atmospheres = ATMOSPHERES,
+}: Props) {
+  const [index, setIndex] = useState<AtmosphereId>(initialIndex);
+  const [mode, setMode] = useState<CarouselMode>(initialMode);
+
+  // auto cycling — prefers-reduced-motion で無効化
+  useEffect(() => {
+    if (mode !== "auto") return;
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (reduceMotion) return;
+
+    const id = window.setInterval(() => {
+      setIndex((i) => ((i + 1) % ATMOSPHERE_COUNT) as AtmosphereId);
+    }, AUTO_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [mode]);
+
+  // keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // 入力フィールド内では無視（INPUT/TEXTAREA/SELECT/contenteditable）
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isContentEditable =
+        target?.isContentEditable ||
+        target?.getAttribute("contenteditable") === "true";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || isContentEditable) return;
+
+      if (e.key === "ArrowRight" || e.key === " ") {
+        e.preventDefault();
+        setIndex((i) => ((i + 1) % ATMOSPHERE_COUNT) as AtmosphereId);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setIndex((i) => ((i - 1 + ATMOSPHERE_COUNT) % ATMOSPHERE_COUNT) as AtmosphereId);
+      } else if (e.key >= "1" && e.key <= "6") {
+        e.preventDefault();
+        const n = Number.parseInt(e.key, 10) - 1;
+        if (n >= 0 && n < ATMOSPHERE_COUNT) setIndex(n as AtmosphereId);
+      } else if (e.key === "a" || e.key === "A") {
+        e.preventDefault();
+        setMode((m) => (m === "auto" ? "manual" : "auto"));
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // 候補 8 item 7.5: 背景クリックで次の atmosphere（UI 要素は e.target 一致時のみ反応）
+  const handleBackgroundClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // クリックされたのが背景 layer 自体（current target = event target）の場合のみ進行
+    // モジュール / カード / ヘッダー等の上の click は伝播するが、currentTarget !== target なので無視
+    if (e.target === e.currentTarget || (e.target as HTMLElement)?.dataset.atmosphereKey !== undefined) {
+      setIndex((i) => ((i + 1) % ATMOSPHERE_COUNT) as AtmosphereId);
+    }
+  };
+
+  return (
+    <div
+      // 装飾的（atmosphere images = decorative）+ click はマウスユーザー向けの拡張機能。
+      // キーボードユーザーは ArrowRight/Space/1-6 で同等操作可能なため aria-hidden で OK。
+      aria-hidden
+      data-testid="background-carousel"
+      data-atmosphere-index={index}
+      data-atmosphere-mode={mode}
+      onClick={handleBackgroundClick}
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 0,
+        cursor: "pointer",
+      }}
+    >
+      {atmospheres.map((atm, i) => (
+        <div
+          key={atm.id}
+          data-atmosphere-key={atm.key}
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${atm.imagePath})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: i === index ? 1 : 0,
+            transition: `opacity ${FADE_TRANSITION_MS}ms ease-in-out`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}

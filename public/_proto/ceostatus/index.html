@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garden Series - 経営状況</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+JP:wght@300;400;500;600&family=Shippori+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script>
+// ページロード前にlocalStorageからActivity Panel折畳状態を読み込み、bodyクラスに即時反映
+// (JSメイン処理を待つとアニメーションが走ってしまうため、head内で処理する)
+(function() {
+  try {
+    var collapsed = localStorage.getItem('garden_activity_collapsed') === '1';
+    var navPagesCollapsed = localStorage.getItem('garden_nav_pages_collapsed') === '1';
+    document.documentElement.dataset.preActivityCollapsed = collapsed ? '1' : '0';
+    document.documentElement.dataset.preNavPagesCollapsed = navPagesCollapsed ? '1' : '0';
+    // テーマも先読み(チラつき防止)
+    var theme = localStorage.getItem('garden_theme');
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+})();
+</script>
+</head>
+<body class="bloom-page">
+<script>
+// localStorage参照してbodyに初期クラスを即時付与(transition前に実行)
+(function() {
+  try {
+    if (localStorage.getItem('garden_activity_collapsed') === '1') {
+      document.body.classList.add('activity-collapsed');
+    }
+    if (localStorage.getItem('garden_nav_pages_collapsed') === '1') {
+      document.body.classList.add('nav-pages-collapsed');
+    }
+  } catch (e) {}
+})();
+</script>
+
+
+<div class="bg-layer" id="bgLayer1" style="background-image: url('images/backgrounds/bg_bloom_garden_light.png');"></div>
+<div class="bg-layer" id="bgLayer2"></div>
+<div class="bg-layer-overlay"></div>
+<div class="sakura-bg"></div>
+<div class="peony-bg"></div>
+
+<header class="topbar">
+  <a href="/_proto/garden-home-spin/index.html" class="topbar-brand" title="Garden Series ホームへ戻る" style="text-decoration:none;">
+    <img src="images/logo/garden_logo.png" alt="Garden Series" class="topbar-brand-img" id="topbarBrandImg" onerror="if(this.src.indexOf('garden_logo_dark.png')>-1){this.onerror=null;this.src='images/logo/garden_logo_light.png';}">
+  </a>
+
+  <div class="search-box">
+    <span class="search-icon"><img src="images/header_icons/header_search.png" alt=""></span>
+    <input type="text" placeholder="検索(取引先、請求書、タスク、ヘルプなど)">
+    <span class="search-shortcut">Ctrl+F</span>
+  </div>
+
+  <div class="topbar-info">
+    <div class="info-item">
+      <span class="info-icon"><img src="images/header_icons/header_calendar.png" alt=""></span>
+      <span class="info-text">2026年4月28日(火)</span>
+    </div>
+    <div class="info-item">
+      <span class="info-icon"><img src="images/header_icons/weather_01_sunny.png" alt="" id="weatherIcon"></span>
+      <div class="info-text">
+        <strong id="weatherTemp">22℃</strong>
+        <small id="weatherLabel">晴れ</small>
+      </div>
+    </div>
+    <div class="info-item">
+      <span class="status-dot"></span>
+      <span class="info-text">すべてのシステム正常</span>
+    </div>
+
+    <button class="header-tool-btn theme-toggle" id="themeToggle" title="ライト/ダーク切替">
+      <img src="images/theme_icons/theme_sun.png" alt="" id="themeToggleIcon">
+    </button>
+    <button class="header-tool-btn header-notify-btn" id="notifyBtn" title="通知">
+      <img src="images/header_icons/header_bell.png" alt="">
+      <span class="header-tool-badge" id="notifyBadge">3</span>
+    </button>
+    <button class="header-tool-btn help-btn" id="helpBtn" title="ヘルプ・使い方ガイド">
+      <img src="images/header_icons/D-02_help_simple.png" alt="">
+    </button>
+    <div class="header-favorite-wrap" id="headerFavoriteWrap">
+      <button class="header-tool-btn favorite-btn" id="favoriteHeaderBtn" type="button" title="お気に入り" aria-haspopup="true" aria-expanded="false">
+        <img src="images/header_icons/D-01_favorite_simple.png" alt="">
+      </button>
+
+      <div class="favorite-dropdown" id="favoriteDropdown" role="menu" aria-hidden="true">
+        <div class="favorite-dropdown-header">
+          <span class="favorite-dropdown-title">お気に入り</span>
+          <span class="favorite-dropdown-count" id="favoriteDropdownCount">0</span>
+        </div>
+
+        <div class="favorite-dropdown-divider"></div>
+
+        <div class="favorite-dropdown-list" id="favoriteDropdownList">
+        </div>
+
+        <div class="favorite-dropdown-empty" id="favoriteDropdownEmpty">
+          お気に入りはまだありません
+        </div>
+
+        <div class="favorite-dropdown-divider"></div>
+
+        <button class="favorite-dropdown-add" id="favoriteDropdownAdd" type="button">
+          <span class="favorite-dropdown-add-icon">＋</span>
+          <span class="favorite-dropdown-add-label">現在のページを追加</span>
+        </button>
+
+        <span class="favorite-dropdown-toast" id="favoriteDropdownToast" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div class="user-area" id="userArea" tabindex="0">
+      <div class="user-avatar">
+        <img src="images/avatar/avatar_shoji.png" alt="東海林 美琴">
+      </div>
+      <div class="user-info">
+        <strong>東海林 美琴</strong>
+        <small>正社員 / 全権管理者</small>
+      </div>
+      <span class="user-arrow">⌄</span>
+
+      <div class="user-dropdown" id="userDropdown" role="menu" aria-hidden="true">
+        <div class="user-dropdown-header">
+          <div class="user-dropdown-avatar">
+            <img src="images/avatar/avatar_shoji.png" alt="">
+          </div>
+          <div class="user-dropdown-info">
+            <strong>東海林 美琴</strong>
+            <small>shoji@hyualan.co.jp</small>
+            <span class="user-dropdown-role">正社員 / 全権管理者</span>
+          </div>
+        </div>
+
+        <div class="user-dropdown-divider"></div>
+
+        <a href="#" class="user-dropdown-item" role="menuitem">
+          <span class="user-dropdown-icon"><img src="images/header_icons/D-03_mypage_simple.png" alt=""></span>
+          <span class="user-dropdown-label">マイページ</span>
+        </a>
+        <a href="#" class="user-dropdown-item" role="menuitem">
+          <span class="user-dropdown-icon"><img src="images/header_icons/D-04_settings_simple.png" alt=""></span>
+          <span class="user-dropdown-label">ユーザー設定</span>
+        </a>
+
+        <div class="user-dropdown-divider"></div>
+
+        <a href="/_proto/login/index.html" class="user-dropdown-item user-dropdown-item-logout" role="menuitem">
+          <span class="user-dropdown-icon"><img src="images/header_icons/D-05_logout_simple.png" alt=""></span>
+          <span class="user-dropdown-label">ログアウト</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<aside class="sidebar sidebar-dual" id="sidebarDual">
+
+  <nav class="nav-apps" id="navApps" aria-label="Garden Series アプリ一覧">
+    <a href="#" class="nav-app-item" data-app="bloom" data-status="dev" title="Bloom — ダッシュボード">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_bloom.png" alt=""></span>
+      <span class="nav-app-name">Bloom</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="fruit" data-status="concept" title="Fruit — 法人格の実体・登記">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_fruit.png" alt=""></span>
+      <span class="nav-app-name">Fruit</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="seed" data-status="todo" title="Seed — 新事業枠">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_seed.png" alt=""></span>
+      <span class="nav-app-name">Seed</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="forest" data-status="todo" title="Forest — 全法人決算">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_forest.png" alt=""></span>
+      <span class="nav-app-name">Forest</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="bud" data-status="dev" title="Bud — 経理・収支">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_bud.png" alt=""></span>
+      <span class="nav-app-name">Bud</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="leaf" data-status="dev" title="Leaf — 商材・トスアップ">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_leaf.png" alt=""></span>
+      <span class="nav-app-name">Leaf</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="tree" data-status="released" title="Tree — 架電アプリ">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_tree.png" alt=""></span>
+      <span class="nav-app-name">Tree</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="sprout" data-status="todo" title="Sprout — 採用・入社">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_sprout.png" alt=""></span>
+      <span class="nav-app-name">Sprout</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="soil" data-status="released" title="Soil — DB・大量データ">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_soil.png" alt=""></span>
+      <span class="nav-app-name">Soil</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="root" data-status="released" title="Root — 組織・顧客・マスタ">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_root.png" alt=""></span>
+      <span class="nav-app-name">Root</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="rill" data-status="dev" title="Rill — 業務連絡・メッセージング">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_rill.png" alt=""></span>
+      <span class="nav-app-name">Rill</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="calendar" data-status="todo" title="Calendar — 営業予定・シフト">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_calendar.png" alt=""></span>
+      <span class="nav-app-name">Calendar</span>
+    </a>
+  </nav>
+
+  <nav class="nav-pages" id="navPages" aria-label="Bloom メニュー">
+    <a href="/bloom" class="nav-pages-header" title="Bloomホームへ">
+      <span class="nav-pages-app-icon">
+        <img src="images/icons_bloom/orb_bloom.png" alt="">
+      </span>
+      <span class="nav-pages-app-name">Bloom</span>
+    </a>
+
+    <div class="nav-pages-divider"></div>
+
+    <a href="#" class="nav-page-item">
+      <span class="nav-page-icon"><img src="images/icons_bloom/bloom_workboard.png" alt=""></span>
+      <span class="nav-page-label">ワークボード</span>
+    </a>
+    <a href="#" class="nav-page-item">
+      <span class="nav-page-icon"><img src="images/icons_bloom/bloom_dailyreport.png" alt=""></span>
+      <span class="nav-page-label">日報</span>
+    </a>
+    <a href="#" class="nav-page-item">
+      <span class="nav-page-icon"><img src="images/icons_bloom/bloom_monthlydigest.png" alt=""></span>
+      <span class="nav-page-label">月次まとめ</span>
+    </a>
+    <a href="#" class="nav-page-item active">
+      <span class="nav-page-icon"><img src="images/icons_bloom/bloom_ceostatus.png" alt=""></span>
+      <span class="nav-page-label">経営状況</span>
+    </a>
+
+  </nav>
+
+</aside>
+
+<button class="nav-pages-toggle" id="navPagesToggle" type="button" title="メニュー名の表示/非表示" aria-label="メニュー名の表示/非表示" aria-expanded="true">
+  <span class="nav-pages-toggle-arrow" aria-hidden="true">›</span>
+</button>
+
+<main class="main">
+
+  <div class="page-header">
+    <button class="page-favorite-btn" id="pageFavoriteBtn" type="button" title="このページをお気に入りに追加" aria-pressed="false">
+      <img src="images/header_icons/D-01a_favorite_outline.png" alt="" class="page-favorite-icon-off">
+      <img src="images/header_icons/D-01_favorite_simple.png" alt="" class="page-favorite-icon-on">
+      <span class="page-favorite-toast" id="pageFavoriteToast" aria-live="polite"></span>
+    </button>
+    <div class="page-title-block">
+      <div class="page-title-row">
+        <h1 class="page-title">
+          経営状況 <span style="color:var(--text-muted);font-size:1.6rem;">—</span>
+          <span class="page-title-jp">経営の全景を、一望に</span>
+          <span class="page-title-flower">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <g fill="#e8b4b8" opacity="0.85">
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(0 16 16)"/>
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(72 16 16)"/>
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(144 16 16)"/>
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(216 16 16)"/>
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(288 16 16)"/>
+              </g>
+              <circle cx="16" cy="16" r="2.8" fill="#d4a541" opacity="0.9"/>
+            </svg>
+          </span>
+        </h1>
+      </div>
+      <p class="page-subtitle">経営判断のための統合ダッシュボード</p>
+    </div>
+    <span class="access-badge">
+      <span class="access-badge-icon">👑</span>
+      <span>限定公開 admin 3名のみ閲覧可能</span>
+    </span>
+  </div>
+
+  <nav class="tab-nav">
+    <button class="tab-item active" data-tab="overview">
+      <span class="tab-item-jp">全体</span>/ Overview
+    </button>
+    <button class="tab-item" data-tab="performance">
+      <span class="tab-item-jp">業績</span>/ Performance
+    </button>
+    <button class="tab-item" data-tab="decisions">
+      <span class="tab-item-jp">判断・会議</span>/ Decisions
+    </button>
+    <button class="tab-item tab-item-settings" data-tab="settings" title="アプリ設定">
+      <span class="tab-item-jp">設定</span>/ Settings
+    </button>
+  </nav>
+
+  <!-- ===================== 全体タブ ===================== -->
+  <div class="tab-content active" id="tab-overview">
+
+    <div class="shoji-status-bar">
+      <div class="shoji-status-icon">
+        <img src="images/avatar/avatar_shoji.png" alt="東海林">
+      </div>
+      <div class="shoji-status-text">
+        <span class="shoji-status-name"><strong>東海林</strong>:集中業務中</span>
+        <span class="shoji-status-divider">/</span>
+        <span class="shoji-status-task">Garden Bloom実装</span>
+        <span class="shoji-status-divider">/</span>
+        <span class="shoji-status-time">~12:30まで</span>
+      </div>
+      <span class="shoji-status-badge">集中業務中</span>
+    </div>
+
+    <div class="ceo-card garden-progress-card">
+      <div class="garden-progress-header">
+        <span class="garden-progress-title">Garden開発進捗</span>
+        <div class="garden-progress-bar-wrap">
+          <span class="garden-progress-label">全体進捗</span>
+          <span class="garden-progress-value">67%</span>
+          <div class="garden-progress-bar">
+            <div class="garden-progress-fill" style="width: 67%;"></div>
+          </div>
+        </div>
+        <div class="garden-progress-summary">
+          <span class="garden-progress-summary-item"><span class="gp-dot released"></span>リリース済 3</span>
+          <span class="garden-progress-summary-item"><span class="gp-dot developing"></span>開発中 5</span>
+          <span class="garden-progress-summary-item"><span class="gp-dot pending"></span>未着手 2</span>
+        </div>
+      </div>
+      <div class="garden-orbs">
+        <div class="garden-orb released">
+          <div class="garden-orb-img"><img src="images/icons/soil.png" alt=""></div>
+          <span class="garden-orb-name">Soil</span>
+          <span class="garden-orb-status">リリース済</span>
+        </div>
+        <div class="garden-orb released">
+          <div class="garden-orb-img"><img src="images/icons/root.png" alt=""></div>
+          <span class="garden-orb-name">Root</span>
+          <span class="garden-orb-status">リリース済</span>
+        </div>
+        <div class="garden-orb released">
+          <div class="garden-orb-img"><img src="images/icons/tree.png" alt=""></div>
+          <span class="garden-orb-name">Tree</span>
+          <span class="garden-orb-status">リリース済</span>
+        </div>
+        <div class="garden-orb developing">
+          <div class="garden-orb-img"><img src="images/icons/leaf.png" alt=""></div>
+          <span class="garden-orb-name">Leaf</span>
+          <span class="garden-orb-status">開発中</span>
+        </div>
+        <div class="garden-orb developing">
+          <div class="garden-orb-img"><img src="images/icons/bud.png" alt=""></div>
+          <span class="garden-orb-name">Bud</span>
+          <span class="garden-orb-status">開発中</span>
+        </div>
+        <div class="garden-orb developing">
+          <div class="garden-orb-img"><img src="images/icons/bloom.png" alt=""></div>
+          <span class="garden-orb-name">Bloom</span>
+          <span class="garden-orb-status">開発中</span>
+        </div>
+        <div class="garden-orb pending">
+          <div class="garden-orb-img"><img src="images/icons/seed.png" alt=""></div>
+          <span class="garden-orb-name">Seed</span>
+          <span class="garden-orb-status">未着手</span>
+        </div>
+        <div class="garden-orb developing">
+          <div class="garden-orb-img"><img src="images/icons/forest.png" alt=""></div>
+          <span class="garden-orb-name">Forest</span>
+          <span class="garden-orb-status">開発中</span>
+        </div>
+        <div class="garden-orb developing">
+          <div class="garden-orb-img"><img src="images/icons/rill.png" alt=""></div>
+          <span class="garden-orb-name">Rill</span>
+          <span class="garden-orb-status">開発中</span>
+        </div>
+        <div class="garden-orb pending">
+          <div class="garden-orb-img"><img src="images/icons/fruit.png" alt=""></div>
+          <span class="garden-orb-name">Fruit</span>
+          <span class="garden-orb-status">未着手</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ceo-card">
+      <div class="ceo-card-title">
+        6法人サマリ
+        <span class="ceo-card-title-sub">— グループ全体と各社の業績</span>
+      </div>
+      <div class="companies-grid">
+        <div class="company-card">
+          <div class="company-name">ヒュアラン</div>
+          <div class="company-mini-chart">
+            <span style="height:50%"></span><span style="height:60%"></span><span style="height:55%"></span><span style="height:70%"></span><span style="height:75%"></span><span style="height:85%"></span>
+          </div>
+          <div class="company-metrics-grid">
+          <div class="company-metric">利益</div>
+          <div class="company-metric-value">¥12,840,000</div>
+          <div class="company-metric">現預金</div>
+          <div class="company-metric-value">¥83,500,000</div>
+          </div>
+          <div class="company-yoy">
+            <span class="company-yoy-label">前年比</span>
+            <span class="company-yoy-value">+12.3%</span>
+          </div>
+        </div>
+        <div class="company-card">
+          <div class="company-name">センターライズ</div>
+          <div class="company-mini-chart">
+            <span style="height:55%"></span><span style="height:50%"></span><span style="height:65%"></span><span style="height:60%"></span><span style="height:70%"></span><span style="height:75%"></span>
+          </div>
+          <div class="company-metrics-grid">
+          <div class="company-metric">利益</div>
+          <div class="company-metric-value">¥8,230,000</div>
+          <div class="company-metric">現預金</div>
+          <div class="company-metric-value">¥56,200,000</div>
+          </div>
+          <div class="company-yoy">
+            <span class="company-yoy-label">前年比</span>
+            <span class="company-yoy-value">+6.7%</span>
+          </div>
+        </div>
+        <div class="company-card warning">
+          <div class="company-name">リンクサポート</div>
+          <div class="company-mini-chart">
+            <span style="height:75%"></span><span style="height:70%"></span><span style="height:65%"></span><span style="height:55%"></span><span style="height:50%"></span><span style="height:45%"></span>
+          </div>
+          <div class="company-metrics-grid">
+          <div class="company-metric">利益</div>
+          <div class="company-metric-value">¥6,510,000</div>
+          <div class="company-metric">現預金</div>
+          <div class="company-metric-value">¥42,300,000</div>
+          </div>
+          <div class="company-yoy">
+            <span class="company-yoy-label">前年比</span>
+            <span class="company-yoy-value negative">▲-2.4%</span>
+          </div>
+        </div>
+        <div class="company-card">
+          <div class="company-name">ARATA</div>
+          <div class="company-mini-chart">
+            <span style="height:55%"></span><span style="height:65%"></span><span style="height:70%"></span><span style="height:75%"></span><span style="height:85%"></span><span style="height:90%"></span>
+          </div>
+          <div class="company-metrics-grid">
+          <div class="company-metric">利益</div>
+          <div class="company-metric-value">¥15,980,000</div>
+          <div class="company-metric">現預金</div>
+          <div class="company-metric-value">¥92,100,000</div>
+          </div>
+          <div class="company-yoy">
+            <span class="company-yoy-label">前年比</span>
+            <span class="company-yoy-value">+18.9%</span>
+          </div>
+        </div>
+        <div class="company-card">
+          <div class="company-name">たいよう</div>
+          <div class="company-mini-chart">
+            <span style="height:55%"></span><span style="height:60%"></span><span style="height:55%"></span><span style="height:60%"></span><span style="height:65%"></span><span style="height:62%"></span>
+          </div>
+          <div class="company-metrics-grid">
+          <div class="company-metric">利益</div>
+          <div class="company-metric-value">¥4,320,000</div>
+          <div class="company-metric">現預金</div>
+          <div class="company-metric-value">¥31,400,000</div>
+          </div>
+          <div class="company-yoy">
+            <span class="company-yoy-label">前年比</span>
+            <span class="company-yoy-value">+1.2%</span>
+          </div>
+        </div>
+        <div class="company-card">
+          <div class="company-name">壱</div>
+          <div class="company-mini-chart">
+            <span style="height:50%"></span><span style="height:55%"></span><span style="height:60%"></span><span style="height:70%"></span><span style="height:75%"></span><span style="height:80%"></span>
+          </div>
+          <div class="company-metrics-grid">
+          <div class="company-metric">利益</div>
+          <div class="company-metric-value">¥9,870,000</div>
+          <div class="company-metric">現預金</div>
+          <div class="company-metric-value">¥64,700,000</div>
+          </div>
+          <div class="company-yoy">
+            <span class="company-yoy-label">前年比</span>
+            <span class="company-yoy-value">+9.1%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="consolidated-charts">
+        <div class="consolidated-chart-card">
+          <div class="consolidated-chart-title">連結売上推移<small>(直近6ヶ月)</small></div>
+          <svg class="consolidated-chart-svg" viewBox="0 0 200 70" preserveAspectRatio="none">
+            <rect x="10" y="35" width="20" height="22" fill="#9bb88a" opacity="0.85"/>
+            <rect x="40" y="30" width="20" height="27" fill="#9bb88a" opacity="0.85"/>
+            <rect x="70" y="28" width="20" height="29" fill="#9bb88a" opacity="0.85"/>
+            <rect x="100" y="22" width="20" height="35" fill="#7a9968" opacity="0.85"/>
+            <rect x="130" y="18" width="20" height="39" fill="#7a9968" opacity="0.85"/>
+            <rect x="160" y="12" width="20" height="45" fill="#7a9968" opacity="0.85"/>
+            <text x="20" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">11月</text>
+            <text x="50" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">12月</text>
+            <text x="80" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">1月</text>
+            <text x="110" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">2月</text>
+            <text x="140" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">3月</text>
+            <text x="170" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">4月</text>
+          </svg>
+        </div>
+        <div class="consolidated-chart-card">
+          <div class="consolidated-chart-title">連結利益推移<small>(直近6ヶ月)</small></div>
+          <svg class="consolidated-chart-svg" viewBox="0 0 200 70" preserveAspectRatio="none">
+            <rect x="10" y="40" width="20" height="17" fill="#9bb88a" opacity="0.85"/>
+            <rect x="40" y="38" width="20" height="19" fill="#9bb88a" opacity="0.85"/>
+            <rect x="70" y="42" width="20" height="15" fill="#9bb88a" opacity="0.85"/>
+            <rect x="100" y="35" width="20" height="22" fill="#7a9968" opacity="0.85"/>
+            <rect x="130" y="30" width="20" height="27" fill="#7a9968" opacity="0.85"/>
+            <rect x="160" y="25" width="20" height="32" fill="#7a9968" opacity="0.85"/>
+            <text x="20" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">11月</text>
+            <text x="50" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">12月</text>
+            <text x="80" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">1月</text>
+            <text x="110" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">2月</text>
+            <text x="140" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">3月</text>
+            <text x="170" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">4月</text>
+          </svg>
+        </div>
+        <div class="consolidated-chart-card">
+          <div class="consolidated-chart-title">連結キャッシュ推移<small>(直近6ヶ月)</small></div>
+          <svg class="consolidated-chart-svg" viewBox="0 0 200 70" preserveAspectRatio="none">
+            <polyline points="10,40 50,38 90,32 130,28 170,22 195,15"
+              stroke="#7a9968" stroke-width="1.8" fill="none"/>
+            <circle cx="10" cy="40" r="2.5" fill="#7a9968"/>
+            <circle cx="50" cy="38" r="2.5" fill="#7a9968"/>
+            <circle cx="90" cy="32" r="2.5" fill="#7a9968"/>
+            <circle cx="130" cy="28" r="2.5" fill="#7a9968"/>
+            <circle cx="170" cy="22" r="2.5" fill="#7a9968"/>
+            <circle cx="195" cy="15" r="2.5" fill="#7a9968"/>
+            <text x="10" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">11月</text>
+            <text x="50" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">12月</text>
+            <text x="90" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">1月</text>
+            <text x="130" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">2月</text>
+            <text x="170" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">3月</text>
+            <text x="195" y="66" fill="#a89b78" font-size="6" text-anchor="middle" font-family="'Shippori Mincho', serif">4月</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-divider">
+      <span class="action-divider-text">
+        <span class="action-divider-flower">
+          <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+            <g fill="#e8b4b8" opacity="0.85"><circle cx="9" cy="9" r="3"/></g>
+          </svg>
+        </span>
+        Action Items
+        <span class="action-divider-text-jp">判断・報告</span>
+      </span>
+    </div>
+
+    <div class="action-grid action-grid-4col">
+      <div class="action-card" data-jump="decisions">
+        <div class="action-card-header">
+          <span class="action-card-title">経営判断待ち案件</span>
+          <span class="action-card-link">↗</span>
+        </div>
+        <ul class="action-card-list">
+          <li class="action-card-item"><span class="action-card-item-num">1.</span>新規金契約条件の承認(小泉/4/29/重要)</li>
+          <li class="action-card-item"><span class="action-card-item-num">2.</span>採用予算の再配分(金/4/29/高)</li>
+          <li class="action-card-item"><span class="action-card-item-num">3.</span>新規取引先の与信判断(槙/4/30/中)</li>
+          <li class="action-card-item"><span class="action-card-item-num">4.</span>広告投資上限の見直し(宮永/5/1/中)</li>
+          <li class="action-card-item"><span class="action-card-item-num">5.</span>基幹改修の優先順位決定(上田/5/2/中)</li>
+        </ul>
+        <p class="action-card-hint">クリックで詳細タブへ</p>
+      </div>
+
+      <div class="action-card" data-jump="performance">
+        <div class="action-card-header">
+          <span class="action-card-title">業績アラート</span>
+          <span class="action-card-link">↗</span>
+        </div>
+        <ul class="action-card-list">
+          <li class="action-card-item"><span class="action-card-item-num">▲</span>売上進捗 目標比 92%(注視)</li>
+          <li class="action-card-item"><span class="action-card-item-num">!</span>入金遅延 2件(対応要)</li>
+          <li class="action-card-item"><span class="action-card-item-num">!</span>採用充足率 68%(要改善)</li>
+          <li class="action-card-item"><span class="action-card-item-num">▼</span>利益率低下 法人B(注意)</li>
+          <li class="action-card-item"><span class="action-card-item-num">↑</span>案件粗利 改善余地(改善要)</li>
+        </ul>
+        <p class="action-card-hint">クリックで詳細タブへ</p>
+      </div>
+
+      <div class="action-card" data-jump="decisions">
+        <div class="action-card-header">
+          <span class="action-card-title">次回責任者会議 議題プレビュー</span>
+          <span class="action-card-link">↗</span>
+        </div>
+        <ul class="action-card-list">
+          <li class="action-card-item"><span class="action-card-item-num">📅</span>4/30 責任者会議 10:00-11:30</li>
+          <li class="action-card-item"><span class="action-card-item-num">1.</span>4月締め確認</li>
+          <li class="action-card-item"><span class="action-card-item-num">2.</span>採用進捗共有</li>
+          <li class="action-card-item"><span class="action-card-item-num">3.</span>Bloom実装スケジュール</li>
+          <li class="action-card-item"><span class="action-card-item-num">4.</span>広告施策レビュー</li>
+          <li class="action-card-item"><span class="action-card-item-num">5.</span>キャッシュ見通し</li>
+        </ul>
+        <p class="action-card-hint">クリックで詳細タブへ</p>
+      </div>
+
+      <div class="action-card action-card-fuji" data-jump="decisions">
+        <div class="action-card-header">
+          <span class="action-card-title">後道代表への報告事項</span>
+          <span class="action-card-link">↗</span>
+        </div>
+        <ul class="action-card-list">
+          <li class="action-card-item"><span class="action-card-item-num">1.</span>4月売上は前年比+12.3%で着地見込み</li>
+          <li class="action-card-item"><span class="action-card-item-num">2.</span>Bloom導入は5月第2週デモ予定</li>
+          <li class="action-card-item"><span class="action-card-item-num">3.</span>法人Cの採用未充足が継続抵抗</li>
+          <li class="action-card-item"><span class="action-card-item-num">4.</span>大型取引先の更新契約は承認待ち</li>
+        </ul>
+        <p class="action-card-hint">クリックで詳細タブへ</p>
+      </div>
+    </div>
+
+  </div>
+  <!-- ===== /全体タブ ===== -->
+
+  <!-- ===================== 業績タブ ===================== -->
+  <div class="tab-content" id="tab-performance">
+
+    <div class="ceo-card" style="padding:14px 18px;">
+      <div class="ceo-card-title">
+        業績ハイライト
+        <span class="ceo-card-title-sub">Performance Highlights — KPIと推移</span>
+      </div>
+      <div class="kpi-integrated-grid">
+        <div class="kpi-integrated-card">
+          <div class="kpi-integrated-header">
+            <div class="kpi-integrated-icon">📊</div>
+            <div class="kpi-integrated-label">連結売上 <small>(4月実績)</small></div>
+          </div>
+          <div class="kpi-integrated-value">
+            <span class="kpi-integrated-value-yen">¥</span>1,847<span class="kpi-integrated-value-unit">百万</span>
+          </div>
+          <div class="kpi-integrated-yoy">
+            <span class="kpi-integrated-yoy-label">前年比</span>
+            <span class="kpi-integrated-yoy-arrow">↑</span>
+            <span>+12.3%</span>
+          </div>
+          <svg class="kpi-integrated-chart" viewBox="0 0 200 60" preserveAspectRatio="none">
+            <polyline points="5,45 22,42 40,40 58,38 75,36 92,33 110,30 128,27 145,22 163,18 180,14 195,10"
+              stroke="#7a9968" stroke-width="1.8" fill="none"/>
+            <polyline points="5,52 22,50 40,48 58,46 75,44 92,42 110,40 128,38 145,36 163,34 180,32 195,30"
+              stroke="#b3a98f" stroke-width="1" fill="none" stroke-dasharray="3,2"/>
+          </svg>
+        </div>
+
+        <div class="kpi-integrated-card">
+          <div class="kpi-integrated-header">
+            <div class="kpi-integrated-icon">📈</div>
+            <div class="kpi-integrated-label">連結利益 <small>(4月実績)</small></div>
+          </div>
+          <div class="kpi-integrated-value">
+            <span class="kpi-integrated-value-yen">¥</span>247<span class="kpi-integrated-value-unit">百万</span>
+          </div>
+          <div class="kpi-integrated-yoy">
+            <span class="kpi-integrated-yoy-label">前年比</span>
+            <span class="kpi-integrated-yoy-arrow">↑</span>
+            <span>+8.6%</span>
+          </div>
+          <svg class="kpi-integrated-chart" viewBox="0 0 200 60" preserveAspectRatio="none">
+            <polyline points="5,40 22,38 40,42 58,36 75,32 92,30 110,28 128,25 145,22 163,18 180,15 195,12"
+              stroke="#7a9968" stroke-width="1.8" fill="none"/>
+            <polyline points="5,48 22,46 40,48 58,44 75,42 92,40 110,38 128,36 145,34 163,32 180,30 195,28"
+              stroke="#b3a98f" stroke-width="1" fill="none" stroke-dasharray="3,2"/>
+          </svg>
+        </div>
+
+        <div class="kpi-integrated-card">
+          <div class="kpi-integrated-header">
+            <div class="kpi-integrated-icon">🌿</div>
+            <div class="kpi-integrated-label">営業利益率</div>
+          </div>
+          <div class="kpi-integrated-value">
+            13.4<span class="kpi-integrated-value-unit">%</span>
+          </div>
+          <div class="kpi-integrated-yoy">
+            <span class="kpi-integrated-yoy-label">前年比</span>
+            <span class="kpi-integrated-yoy-arrow">↑</span>
+            <span>+0.8pt</span>
+          </div>
+          <svg class="kpi-integrated-chart" viewBox="0 0 200 60" preserveAspectRatio="none">
+            <polyline points="5,40 22,38 40,36 58,34 75,32 92,30 110,28 128,26 145,24 163,22 180,20 195,18"
+              stroke="#7a9968" stroke-width="1.8" fill="none"/>
+          </svg>
+        </div>
+
+        <div class="kpi-integrated-card">
+          <div class="kpi-integrated-header">
+            <div class="kpi-integrated-icon">💰</div>
+            <div class="kpi-integrated-label">連結キャッシュ残高</div>
+          </div>
+          <div class="kpi-integrated-value">
+            <span class="kpi-integrated-value-yen">¥</span>4,253<span class="kpi-integrated-value-unit">百万</span>
+          </div>
+          <div class="kpi-integrated-yoy">
+            <span class="kpi-integrated-yoy-label">前月比</span>
+            <span class="kpi-integrated-yoy-arrow">↑</span>
+            <span>+¥87百万</span>
+          </div>
+          <svg class="kpi-integrated-chart" viewBox="0 0 200 60" preserveAspectRatio="none">
+            <polyline points="5,42 22,40 40,38 58,36 75,32 92,30 110,28 128,25 145,22 163,18 180,14 195,10"
+              stroke="#7a9968" stroke-width="1.8" fill="none"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="divisions-section">
+      <div class="divisions-header">
+        <div class="divisions-title">
+          事業部別売上
+          <span class="divisions-title-sub">— 全社事業ポートフォリオ(マトリクス集計)</span>
+        </div>
+        <div class="scroll-controls">
+          <button class="scroll-btn" id="divLeftBtn">◀</button>
+          <button class="scroll-btn" id="divRightBtn">▶</button>
+        </div>
+      </div>
+      <div class="scroll-wrap">
+        <div class="scroll-area" id="divScrollArea">
+          <div class="divisions-track">
+            <div class="division-card">
+              <div class="division-icon">📞</div>
+              <div class="division-name">コールセンター事業</div>
+              <div class="division-revenue">¥950<span class="division-revenue-unit">百万 / 月</span></div>
+              <div class="division-ratio">比率 51%</div>
+              <div class="division-yoy positive"><span>↑</span> +14.2%</div>
+              <svg class="division-mini-chart" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <polyline points="5,30 40,28 75,26 110,22 145,18 195,12" stroke="#7a9968" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span class="division-status-badge success">順調</span>
+            </div>
+
+            <div class="division-card">
+              <div class="division-icon">⚡</div>
+              <div class="division-name">関電事業</div>
+              <div class="division-revenue">¥380<span class="division-revenue-unit">百万 / 月</span></div>
+              <div class="division-ratio">比率 21%</div>
+              <div class="division-yoy positive"><span>↑</span> +18.5%</div>
+              <svg class="division-mini-chart" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <polyline points="5,32 40,28 75,22 110,18 145,12 195,6" stroke="#7a9968" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span class="division-status-badge fast">急成長</span>
+            </div>
+
+            <div class="division-card">
+              <div class="division-icon">💻</div>
+              <div class="division-name">SES事業</div>
+              <div class="division-revenue">¥280<span class="division-revenue-unit">百万 / 月</span></div>
+              <div class="division-ratio">比率 15%</div>
+              <div class="division-yoy positive"><span>↑</span> +6.8%</div>
+              <svg class="division-mini-chart" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <polyline points="5,28 40,26 75,24 110,22 145,20 195,18" stroke="#7a9968" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span class="division-status-badge success">順調</span>
+            </div>
+
+            <div class="division-card">
+              <div class="division-icon">🔌</div>
+              <div class="division-name">ブレーカー事業</div>
+              <div class="division-revenue">¥167<span class="division-revenue-unit">百万 / 月</span></div>
+              <div class="division-ratio">比率 9%</div>
+              <div class="division-yoy negative"><span>↓</span> -3.2%</div>
+              <svg class="division-mini-chart" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <polyline points="5,15 40,18 75,22 110,25 145,28 195,32" stroke="#c95a4a" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span class="division-status-badge warning">注視</span>
+            </div>
+
+            <div class="division-card">
+              <div class="division-icon">👥</div>
+              <div class="division-name">派遣事業</div>
+              <div class="division-revenue">¥70<span class="division-revenue-unit">百万 / 月</span></div>
+              <div class="division-ratio">比率 4%</div>
+              <div class="division-yoy positive"><span>↑</span> +28.5%</div>
+              <svg class="division-mini-chart" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <polyline points="5,35 40,30 75,25 110,18 145,10 195,4" stroke="#5a8fa8" stroke-width="1.5" fill="none"/>
+              </svg>
+              <span class="division-status-badge new">新規拡大</span>
+            </div>
+
+            <div class="division-card future">
+              <div class="division-icon">🌱</div>
+              <div class="division-name">Garden販売事業</div>
+              <div class="division-revenue" style="color:var(--text-muted);">2026 Q3<span class="division-revenue-unit"> 公開予定</span></div>
+              <div class="division-ratio">売上計画策定中</div>
+              <div class="division-yoy" style="background:rgba(154,138,105,0.15);color:var(--text-muted);"><span>—</span> 開発中</div>
+              <svg class="division-mini-chart" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <line x1="5" y1="20" x2="195" y2="20" stroke="#b3a98f" stroke-width="1" stroke-dasharray="3,2"/>
+              </svg>
+              <span class="division-status-badge future">開発中</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="scroll-slider">
+        <div class="scroll-slider-thumb" id="divSliderThumb"></div>
+      </div>
+    </div>
+
+    <div class="ceo-card" style="padding:14px 18px;">
+      <div class="ceo-card-title">
+        6法人 業績詳細
+        <span class="ceo-card-title-sub">— 各社のKPI比較</span>
+      </div>
+      <div class="companies-detail-grid">
+        <div class="company-detail-card">
+          <div class="company-detail-header">
+            <span class="company-detail-name">ヒュアラン</span>
+            <span class="company-detail-badge ok">順調</span>
+          </div>
+          <div class="company-detail-row"><span class="company-detail-row-label">当月売上</span><span class="company-detail-row-value">¥128,400,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">前年比</span><span class="company-detail-row-value positive">+12.3%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">月利益</span><span class="company-detail-row-value">¥23,500,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">利益率</span><span class="company-detail-row-value positive">18.3%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">現預金</span><span class="company-detail-row-value">¥1,520,000,000</span></div>
+          <svg class="company-detail-mini-chart" viewBox="0 0 200 32" preserveAspectRatio="none">
+            <polyline points="5,22 40,20 75,18 110,15 145,10 195,6" stroke="#7a9968" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+
+        <div class="company-detail-card">
+          <div class="company-detail-header">
+            <span class="company-detail-name">センターライズ</span>
+            <span class="company-detail-badge ok">順調</span>
+          </div>
+          <div class="company-detail-row"><span class="company-detail-row-label">当月売上</span><span class="company-detail-row-value">¥82,300,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">前年比</span><span class="company-detail-row-value positive">+6.7%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">月利益</span><span class="company-detail-row-value">¥12,600,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">利益率</span><span class="company-detail-row-value positive">15.3%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">現預金</span><span class="company-detail-row-value">¥1,210,000,000</span></div>
+          <svg class="company-detail-mini-chart" viewBox="0 0 200 32" preserveAspectRatio="none">
+            <polyline points="5,22 40,20 75,22 110,18 145,15 195,10" stroke="#7a9968" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+
+        <div class="company-detail-card">
+          <div class="company-detail-header">
+            <span class="company-detail-name">リンクサポート</span>
+            <span class="company-detail-badge warn">要改善</span>
+          </div>
+          <div class="company-detail-row"><span class="company-detail-row-label">当月売上</span><span class="company-detail-row-value negative">¥65,100,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">前年比</span><span class="company-detail-row-value negative">▲-2.4%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">月利益</span><span class="company-detail-row-value negative">¥2,300,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">利益率</span><span class="company-detail-row-value negative">3.5%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">現預金</span><span class="company-detail-row-value">¥480,000,000</span></div>
+          <svg class="company-detail-mini-chart" viewBox="0 0 200 32" preserveAspectRatio="none">
+            <polyline points="5,8 40,12 75,16 110,20 145,24 195,28" stroke="#c95a4a" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+
+        <div class="company-detail-card">
+          <div class="company-detail-header">
+            <span class="company-detail-name">ARATA</span>
+            <span class="company-detail-badge ok">順調</span>
+          </div>
+          <div class="company-detail-row"><span class="company-detail-row-label">当月売上</span><span class="company-detail-row-value">¥159,800,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">前年比</span><span class="company-detail-row-value positive">+18.9%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">月利益</span><span class="company-detail-row-value">¥27,100,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">利益率</span><span class="company-detail-row-value positive">17.0%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">現預金</span><span class="company-detail-row-value">¥1,830,000,000</span></div>
+          <svg class="company-detail-mini-chart" viewBox="0 0 200 32" preserveAspectRatio="none">
+            <polyline points="5,28 40,22 75,18 110,12 145,8 195,4" stroke="#7a9968" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+
+        <div class="company-detail-card">
+          <div class="company-detail-header">
+            <span class="company-detail-name">たいよう</span>
+            <span class="company-detail-badge ok">順調</span>
+          </div>
+          <div class="company-detail-row"><span class="company-detail-row-label">当月売上</span><span class="company-detail-row-value">¥43,200,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">前年比</span><span class="company-detail-row-value positive">+1.2%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">月利益</span><span class="company-detail-row-value">¥4,320,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">利益率</span><span class="company-detail-row-value">10.0%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">現預金</span><span class="company-detail-row-value">¥760,000,000</span></div>
+          <svg class="company-detail-mini-chart" viewBox="0 0 200 32" preserveAspectRatio="none">
+            <polyline points="5,20 40,18 75,20 110,18 145,16 195,15" stroke="#7a9968" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+
+        <div class="company-detail-card">
+          <div class="company-detail-header">
+            <span class="company-detail-name">壱</span>
+            <span class="company-detail-badge ok">順調</span>
+          </div>
+          <div class="company-detail-row"><span class="company-detail-row-label">当月売上</span><span class="company-detail-row-value">¥98,700,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">前年比</span><span class="company-detail-row-value positive">+9.1%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">月利益</span><span class="company-detail-row-value">¥9,870,000</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">利益率</span><span class="company-detail-row-value">10.0%</span></div>
+          <div class="company-detail-row"><span class="company-detail-row-label">現預金</span><span class="company-detail-row-value">¥1,830,000,000</span></div>
+          <svg class="company-detail-mini-chart" viewBox="0 0 200 32" preserveAspectRatio="none">
+            <polyline points="5,25 40,22 75,18 110,15 145,12 195,8" stroke="#7a9968" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="ceo-card" style="padding:14px 18px;">
+      <div class="ceo-card-title">
+        業績アラート 全件
+      </div>
+      <div class="alerts-table">
+        <div class="alerts-table-header">
+          <span></span>
+          <span>アラート</span>
+          <span>詳細</span>
+          <span>推奨アクション</span>
+          <span>担当者</span>
+          <span>ステータス</span>
+        </div>
+        <div class="alerts-table-row">
+          <span class="alert-icon-cell">📊</span>
+          <span class="alert-title">売上進捗 目標比 92%</span>
+          <span class="alert-detail">4月累計:目標比-8%</span>
+          <span class="alert-action">5/2責任者会議で議題化</span>
+          <span>後道代表</span>
+          <span><span class="alert-status-badge watch">注視</span></span>
+        </div>
+        <div class="alerts-table-row">
+          <span class="alert-icon-cell">⚠</span>
+          <span class="alert-title">入金遅延 2件</span>
+          <span class="alert-detail">合計¥2,850,000</span>
+          <span class="alert-action">槙俊介に督促依頼済み</span>
+          <span>槙 俊介</span>
+          <span><span class="alert-status-badge respond">対応要</span></span>
+        </div>
+        <div class="alerts-table-row">
+          <span class="alert-icon-cell">👥</span>
+          <span class="alert-title">採用充足率 68%</span>
+          <span class="alert-detail">目標85%に未達</span>
+          <span class="alert-action">採用予算再配分検討中</span>
+          <span>金 亜奈</span>
+          <span><span class="alert-status-badge improve">要改善</span></span>
+        </div>
+        <div class="alerts-table-row">
+          <span class="alert-icon-cell">📉</span>
+          <span class="alert-title">利益率低下 法人B</span>
+          <span class="alert-detail">前月比-3.2pt</span>
+          <span class="alert-action">原価分析実施中</span>
+          <span>上田 基人</span>
+          <span><span class="alert-status-badge note">注意</span></span>
+        </div>
+        <div class="alerts-table-row">
+          <span class="alert-icon-cell">📈</span>
+          <span class="alert-title">案件粗利 改善余地</span>
+          <span class="alert-detail">平均粗利率21.3%</span>
+          <span class="alert-action">営業会議で施策検討</span>
+          <span>宮永 ひかり</span>
+          <span><span class="alert-status-badge fix">改善要</span></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <!-- ===== /業績タブ ===== -->
+
+  <!-- ===================== 判断・会議タブ ===================== -->
+  <div class="tab-content" id="tab-decisions">
+
+    <div class="decisions-section">
+      <div class="decisions-header">
+        <div class="decisions-title">
+          1. 経営判断待ち案件
+          <span class="decisions-title-sub">— 後道代表のご判断をお願いいたします</span>
+        </div>
+        <div class="decisions-controls">
+          <div class="priority-filter">
+            <span class="priority-filter-label">優先度フィルタ:</span>
+            <button class="priority-filter-btn active">全件</button>
+            <button class="priority-filter-btn">重要</button>
+            <button class="priority-filter-btn">高</button>
+            <button class="priority-filter-btn">中</button>
+          </div>
+          <div class="decisions-counter">現在 <strong>8件</strong></div>
+          <div class="scroll-controls">
+            <button class="scroll-btn" id="decLeftBtn">◀</button>
+            <button class="scroll-btn" id="decRightBtn">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="scroll-wrap">
+        <div class="scroll-area" id="decScrollArea">
+          <div class="decisions-track">
+
+            <div class="decision-card hover-demo">
+              <span class="decision-card-arrow">↗</span>
+              <div class="decision-card-header">
+                <span class="priority-badge critical">重要</span>
+                <span class="decision-card-num">01</span>
+                <span class="decision-card-name">新規金契約条件の承認</span>
+              </div>
+              <div class="decision-card-body">
+                <div class="decision-card-row"><span class="decision-card-row-label">背景:</span><span class="decision-card-row-value">大手金融機関との3年契約更新、契約金額¥48百万 / 年</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">担当:</span><span class="decision-card-row-value assignee"><span class="decision-card-avatar"><img src="images/avatar/avatar_koizumi.png" alt=""></span>小泉 翔</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">必要判断:</span><span class="decision-card-row-value">契約条件の最終承認</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">資料:</span><span class="decision-card-row-value">契約書ドラフト v3 / 取引実績</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">期限:</span><span class="decision-card-row-value deadline">2026/04/29(明日)</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">推奨:</span><span class="decision-card-row-value">承認 / 差戻 / 再交渉指示</span></div>
+              </div>
+              <div class="decision-card-actions">
+                <button class="decision-action-btn approve">承認</button>
+                <button class="decision-action-btn reject">差戻</button>
+                <button class="decision-action-btn hold">保留</button>
+              </div>
+            </div>
+
+            <div class="decision-card">
+              <span class="decision-card-arrow">↗</span>
+              <div class="decision-card-header">
+                <span class="priority-badge high">高</span>
+                <span class="decision-card-num">02</span>
+                <span class="decision-card-name">採用予算の再配分</span>
+              </div>
+              <div class="decision-card-body">
+                <div class="decision-card-row"><span class="decision-card-row-label">背景:</span><span class="decision-card-row-value">派遣事業の急成長、当初¥12百万→¥18百万</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">担当:</span><span class="decision-card-row-value assignee"><span class="decision-card-avatar"><img src="images/avatar/avatar_kin.png" alt=""></span>金 亜奈</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">必要判断:</span><span class="decision-card-row-value">予算追加の承認(¥6百万)</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">資料:</span><span class="decision-card-row-value">採用計画書 / 派遣事業成長予測</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">期限:</span><span class="decision-card-row-value deadline">2026/04/29(明日)</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">推奨:</span><span class="decision-card-row-value">承認 / 減額承認 / 差戻</span></div>
+              </div>
+              <div class="decision-card-actions">
+                <button class="decision-action-btn approve">承認</button>
+                <button class="decision-action-btn reject">差戻</button>
+                <button class="decision-action-btn hold">保留</button>
+              </div>
+            </div>
+
+            <div class="decision-card">
+              <span class="decision-card-arrow">↗</span>
+              <div class="decision-card-header">
+                <span class="priority-badge high">高</span>
+                <span class="decision-card-num">03</span>
+                <span class="decision-card-name">法人C 採用未充足の対策承認</span>
+              </div>
+              <div class="decision-card-body">
+                <div class="decision-card-row"><span class="decision-card-row-label">背景:</span><span class="decision-card-row-value">法人Cで3ヶ月連続採用未充足、業務遅延リスク</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">担当:</span><span class="decision-card-row-value assignee"><span class="decision-card-avatar"><img src="images/avatar/avatar_kin.png" alt=""></span>金 亜奈</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">必要判断:</span><span class="decision-card-row-value">外注比率引き上げの承認</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">資料:</span><span class="decision-card-row-value">現状報告 / 外注プラン3案</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">期限:</span><span class="decision-card-row-value deadline">2026/05/03</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">推奨:</span><span class="decision-card-row-value">プランA / B / C 承認</span></div>
+              </div>
+              <div class="decision-card-actions">
+                <button class="decision-action-btn approve">承認</button>
+                <button class="decision-action-btn reject">差戻</button>
+                <button class="decision-action-btn hold">保留</button>
+              </div>
+            </div>
+
+            <div class="decision-card">
+              <span class="decision-card-arrow">↗</span>
+              <div class="decision-card-header">
+                <span class="priority-badge medium">中</span>
+                <span class="decision-card-num">04</span>
+                <span class="decision-card-name">新規取引先の与信判断</span>
+              </div>
+              <div class="decision-card-body">
+                <div class="decision-card-row"><span class="decision-card-row-label">背景:</span><span class="decision-card-row-value">株式会社エクシード(年商¥320百万)、与信枠¥15百万要請</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">担当:</span><span class="decision-card-row-value assignee"><span class="decision-card-avatar"><img src="images/avatar/avatar_maki.png" alt=""></span>槙 俊介</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">必要判断:</span><span class="decision-card-row-value">取引可否+与信枠の決定</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">資料:</span><span class="decision-card-row-value">与信調査レポート / 同業他社比較</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">期限:</span><span class="decision-card-row-value deadline">2026/04/30</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">推奨:</span><span class="decision-card-row-value">全額承認 / 減額承認 / 取引拒否</span></div>
+              </div>
+              <div class="decision-card-actions">
+                <button class="decision-action-btn approve">承認</button>
+                <button class="decision-action-btn reject">差戻</button>
+                <button class="decision-action-btn hold">保留</button>
+              </div>
+            </div>
+
+            <div class="decision-card">
+              <span class="decision-card-arrow">↗</span>
+              <div class="decision-card-header">
+                <span class="priority-badge medium">中</span>
+                <span class="decision-card-num">05</span>
+                <span class="decision-card-name">広告投資上限の見直し</span>
+              </div>
+              <div class="decision-card-body">
+                <div class="decision-card-row"><span class="decision-card-row-label">背景:</span><span class="decision-card-row-value">Q1の広告費¥45百万、目標CV達成つつもCPA上昇</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">担当:</span><span class="decision-card-row-value assignee"><span class="decision-card-avatar"><img src="images/avatar/avatar_miyanaga.png" alt=""></span>宮永 ひかり</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">必要判断:</span><span class="decision-card-row-value">Q2広告予算の上限変更</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">資料:</span><span class="decision-card-row-value">Q1広告効果レポート / Q2予算案</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">期限:</span><span class="decision-card-row-value deadline">2026/05/01</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">推奨:</span><span class="decision-card-row-value">据え置き / 増額 / 減額</span></div>
+              </div>
+              <div class="decision-card-actions">
+                <button class="decision-action-btn approve">承認</button>
+                <button class="decision-action-btn reject">差戻</button>
+                <button class="decision-action-btn hold">保留</button>
+              </div>
+            </div>
+
+            <div class="decision-card">
+              <span class="decision-card-arrow">↗</span>
+              <div class="decision-card-header">
+                <span class="priority-badge medium">中</span>
+                <span class="decision-card-num">06</span>
+                <span class="decision-card-name">基幹改修の優先順位決定</span>
+              </div>
+              <div class="decision-card-body">
+                <div class="decision-card-row"><span class="decision-card-row-label">背景:</span><span class="decision-card-row-value">Garden Bloom実装と並行、基幹改修要望3件発生</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">担当:</span><span class="decision-card-row-value assignee"><span class="decision-card-avatar"><img src="images/avatar/avatar_ueda.png" alt=""></span>上田 基人</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">必要判断:</span><span class="decision-card-row-value">改修順序の確定</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">資料:</span><span class="decision-card-row-value">改修要望リスト / 工数見積</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">期限:</span><span class="decision-card-row-value deadline">2026/05/02</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">推奨:</span><span class="decision-card-row-value">案A優先 / 案B優先 / 案C優先</span></div>
+              </div>
+              <div class="decision-card-actions">
+                <button class="decision-action-btn approve">承認</button>
+                <button class="decision-action-btn reject">差戻</button>
+                <button class="decision-action-btn hold">保留</button>
+              </div>
+            </div>
+
+            <div class="decision-card">
+              <span class="decision-card-arrow">↗</span>
+              <div class="decision-card-header">
+                <span class="priority-badge medium">中</span>
+                <span class="decision-card-num">07</span>
+                <span class="decision-card-name">大型取引先の更新契約</span>
+              </div>
+              <div class="decision-card-body">
+                <div class="decision-card-row"><span class="decision-card-row-label">背景:</span><span class="decision-card-row-value">株式会社グランデ(年¥85百万)との3年契約更新</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">担当:</span><span class="decision-card-row-value assignee"><span class="decision-card-avatar"><img src="images/avatar/avatar_maki.png" alt=""></span>槙 俊介</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">必要判断:</span><span class="decision-card-row-value">契約条件の承認</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">資料:</span><span class="decision-card-row-value">現契約書 / 新契約案 / 取引実績</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">期限:</span><span class="decision-card-row-value deadline">2026/05/05</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">推奨:</span><span class="decision-card-row-value">承認 / 差戻 / 再交渉指示</span></div>
+              </div>
+              <div class="decision-card-actions">
+                <button class="decision-action-btn approve">承認</button>
+                <button class="decision-action-btn reject">差戻</button>
+                <button class="decision-action-btn hold">保留</button>
+              </div>
+            </div>
+
+            <div class="decision-card">
+              <span class="decision-card-arrow">↗</span>
+              <div class="decision-card-header">
+                <span class="priority-badge low">低</span>
+                <span class="decision-card-num">08</span>
+                <span class="decision-card-name">オフィス契約更新</span>
+              </div>
+              <div class="decision-card-body">
+                <div class="decision-card-row"><span class="decision-card-row-label">背景:</span><span class="decision-card-row-value">本社オフィス賃貸契約の更新時期、賃料据え置き</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">担当:</span><span class="decision-card-row-value assignee"><span class="decision-card-avatar"><img src="images/avatar/avatar_shoji.png" alt=""></span>東海林 美琴</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">必要判断:</span><span class="decision-card-row-value">更新承認</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">資料:</span><span class="decision-card-row-value">現契約書 / 更新案</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">期限:</span><span class="decision-card-row-value">2026/05/15</span></div>
+                <div class="decision-card-row"><span class="decision-card-row-label">推奨:</span><span class="decision-card-row-value">承認</span></div>
+              </div>
+              <div class="decision-card-actions">
+                <button class="decision-action-btn approve">承認</button>
+                <button class="decision-action-btn reject">差戻</button>
+                <button class="decision-action-btn hold">保留</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="scroll-slider">
+        <div class="scroll-slider-thumb" id="decSliderThumb"></div>
+      </div>
+    </div>
+
+    <div class="meetings-reports-grid">
+
+      <div class="meetings-card">
+        <div class="meetings-card-title">
+          2. 責任者会議
+          <small>— 議題プレビュー & 過去アーカイブ</small>
+        </div>
+
+        <div class="meeting-next">
+          <div class="meeting-next-header">次回 4/30 責任者会議</div>
+          <div class="meeting-next-info">
+            <span class="meeting-next-info-label">日時:</span>
+            <span class="meeting-next-info-value">2026/04/30(水) 10:00-11:30</span>
+            <span class="meeting-next-info-label">出席予定:</span>
+            <span class="meeting-next-info-value">12名(東海林・後道代表・上田・小泉・宮永・金・槙 +他5名)</span>
+            <span class="meeting-next-info-label">議事進行:</span>
+            <span class="meeting-next-info-value">東海林</span>
+            <span class="meeting-next-info-label">想定所要時間:</span>
+            <span class="meeting-next-info-value">90分</span>
+          </div>
+          <ul class="meeting-agenda-list">
+            <li class="meeting-agenda-item">
+              <span class="meeting-agenda-num">1.</span>
+              <span class="meeting-agenda-name">4月締め確認 <small>(担当:東海林)</small></span>
+              <span class="meeting-agenda-status done">準備完了 / 資料あり</span>
+            </li>
+            <li class="meeting-agenda-item">
+              <span class="meeting-agenda-num">2.</span>
+              <span class="meeting-agenda-name">採用進捗共有 <small>(担当:金)</small></span>
+              <span class="meeting-agenda-status done">準備完了 / 資料あり</span>
+            </li>
+            <li class="meeting-agenda-item">
+              <span class="meeting-agenda-num">3.</span>
+              <span class="meeting-agenda-name">Bloom実装スケジュール <small>(担当:東海林)</small></span>
+              <span class="meeting-agenda-status preparing">準備中 / 資料作成中</span>
+            </li>
+            <li class="meeting-agenda-item">
+              <span class="meeting-agenda-num">4.</span>
+              <span class="meeting-agenda-name">広告施策レビュー <small>(担当:宮永)</small></span>
+              <span class="meeting-agenda-status waiting">資料待ち</span>
+            </li>
+            <li class="meeting-agenda-item">
+              <span class="meeting-agenda-num">5.</span>
+              <span class="meeting-agenda-name">キャッシュ見通し <small>(担当:槙)</small></span>
+              <span class="meeting-agenda-status done">準備完了 / 資料あり</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="meeting-archive-title">過去会議アーカイブ</div>
+        <div class="meeting-archive-list">
+          <div class="meeting-archive-item">
+            <span class="meeting-archive-date">2026/04/16</span>
+            <div class="meeting-archive-content">
+              <strong>第7回責任者会議</strong>
+              <span>Q2広告予算¥45百万承認、新規派遣事業展開承認</span>
+            </div>
+            <a href="#" class="meeting-archive-link">サマリ閲覧</a>
+          </div>
+          <div class="meeting-archive-item">
+            <span class="meeting-archive-date">2026/04/02</span>
+            <div class="meeting-archive-content">
+              <strong>第6回責任者会議</strong>
+              <span>Bloom実装計画承認、基幹改修優先順位決定</span>
+            </div>
+            <a href="#" class="meeting-archive-link">サマリ閲覧</a>
+          </div>
+          <div class="meeting-archive-item">
+            <span class="meeting-archive-date">2026/03/19</span>
+            <div class="meeting-archive-content">
+              <strong>第5回責任者会議</strong>
+              <span>FY2026 Q1総括、新規金契約方針決定</span>
+            </div>
+            <a href="#" class="meeting-archive-link">サマリ閲覧</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="reports-card">
+        <div class="reports-card-header">
+          <div class="reports-card-title">3. 後道代表への報告履歴</div>
+          <div class="reports-filter">
+            <button class="reports-filter-btn active">全て</button>
+            <button class="reports-filter-btn">順調</button>
+            <button class="reports-filter-btn">対応中</button>
+            <button class="reports-filter-btn">要判断</button>
+            <button class="reports-filter-btn">計画通り</button>
+          </div>
+        </div>
+
+        <table class="reports-table">
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th class="col-date">報告日</th>
+              <th class="col-content">報告内容</th>
+              <th class="col-author">担当</th>
+              <th class="col-status">ステータス</th>
+              <th class="col-attach">添付</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-num">1</td>
+              <td class="col-date">2026/04/28 11:20</td>
+              <td class="col-content">4月売上は前年比+12.3%で着地見込み</td>
+              <td class="col-author">小泉 翔</td>
+              <td class="col-status"><span class="report-status-badge smooth">順調</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+            <tr>
+              <td class="col-num">2</td>
+              <td class="col-date">2026/04/28 11:10</td>
+              <td class="col-content">Bloom導入は5月第2週デモ予定</td>
+              <td class="col-author">東海林 美琴</td>
+              <td class="col-status"><span class="report-status-badge plan">計画通り</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+            <tr>
+              <td class="col-num">3</td>
+              <td class="col-date">2026/04/28 10:50</td>
+              <td class="col-content">法人Cの採用未充足が継続</td>
+              <td class="col-author">金 亜奈</td>
+              <td class="col-status"><span class="report-status-badge respond">対応中</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+            <tr>
+              <td class="col-num">4</td>
+              <td class="col-date">2026/04/28 10:30</td>
+              <td class="col-content">大型取引先の更新契約は承認待ち</td>
+              <td class="col-author">槙 俊介</td>
+              <td class="col-status"><span class="report-status-badge judge">要判断</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+            <tr>
+              <td class="col-num">5</td>
+              <td class="col-date">2026/04/26(日)</td>
+              <td class="col-content">Q1業績サマリ報告</td>
+              <td class="col-author">東海林 美琴</td>
+              <td class="col-status"><span class="report-status-badge done">報告完了</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+            <tr>
+              <td class="col-num">6</td>
+              <td class="col-date">2026/04/24(金)</td>
+              <td class="col-content">Garden開発進捗報告</td>
+              <td class="col-author">上田 基人</td>
+              <td class="col-status"><span class="report-status-badge done">報告完了</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+            <tr>
+              <td class="col-num">7</td>
+              <td class="col-date">2026/04/21(火)</td>
+              <td class="col-content">新規事業の企画案+市場調査結果</td>
+              <td class="col-author">宮永 ひかり</td>
+              <td class="col-status"><span class="report-status-badge thinking">検討中</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+            <tr>
+              <td class="col-num">8</td>
+              <td class="col-date">2026/04/18(土)</td>
+              <td class="col-content">組織体制見直し案</td>
+              <td class="col-author">東海林 美琴</td>
+              <td class="col-status"><span class="report-status-badge proposing">提案中</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+            <tr>
+              <td class="col-num">9</td>
+              <td class="col-date">2026/04/15(水)</td>
+              <td class="col-content">重要リスクレポート</td>
+              <td class="col-author">上田 基人</td>
+              <td class="col-status"><span class="report-status-badge done">報告完了</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+            <tr>
+              <td class="col-num">10</td>
+              <td class="col-date">2026/04/12(日)</td>
+              <td class="col-content">採用戦略の中間報告</td>
+              <td class="col-author">金 亜奈</td>
+              <td class="col-status"><span class="report-status-badge progress">進行中</span></td>
+              <td class="col-attach">📎</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </div>
+  <!-- ===== /判断・会議タブ ===== -->
+
+  <!-- ===================== 設定タブ(プレースホルダー) ===================== -->
+  <div class="tab-content" id="tab-settings">
+    <div class="settings-placeholder">
+      <div class="settings-placeholder-icon">
+        <img src="images/header_icons/D-04_settings_simple.png" alt="">
+      </div>
+      <h2 class="settings-placeholder-title">Bloom 設定</h2>
+      <p class="settings-placeholder-text">準備中です</p>
+      <p class="settings-placeholder-sub">テーマ・通知・表示カスタマイズ等を、この画面で一元管理できるようになります。</p>
+    </div>
+  </div>
+  <!-- ===== /設定タブ ===== -->
+
+</main>
+
+<!-- Activity Panel トグルボタン: panel外に独立配置(親の transform/opacity の影響を受けないように) -->
+<button class="activity-toggle" id="activityToggle" type="button" title="Activity Panel 収納/展開" aria-expanded="true">
+  <span class="activity-toggle-arrow" aria-hidden="true">‹</span>
+</button>
+
+<aside class="activity-panel" id="activityPanel">
+  <div class="activity-header">
+    <div class="activity-title">
+      <h3>Today's Activity</h3>
+    </div>
+    <a href="#" class="activity-all">すべて表示</a>
+  </div>
+
+  <ul class="activity-list">
+    <li class="activity-item">
+      <span class="activity-time">11:30</span>
+      <span class="activity-icon"><img src="images/icons_bloom/bloom_workboard.png" alt=""></span>
+      <div class="activity-body">
+        <strong>ステータスを更新しました</strong>
+        <p>集中業務中に設定しました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">10:45</span>
+      <span class="activity-icon-check">✓</span>
+      <div class="activity-body">
+        <strong>本日の予定を完了しました</strong>
+        <p>「10:00 Bloom ワークボード確認」を完了しました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">10:05</span>
+      <span class="activity-icon"><img src="images/icons_bloom/bloom_ceostatus.png" alt=""></span>
+      <div class="activity-body">
+        <strong>プロジェクトが更新されました</strong>
+        <p>「4月施策計画①」の進捗が85%になりました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">09:20</span>
+      <span class="activity-icon"><img src="images/icons_bloom/bloom_dailyreport.png" alt=""></span>
+      <div class="activity-body">
+        <strong>予定が追加されました</strong>
+        <p>「16:00 月次ダイジェスト編集」を追加しました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">08:50</span>
+      <span class="activity-icon"><img src="images/icons_bloom/bloom_monthlydigest.png" alt=""></span>
+      <div class="activity-body">
+        <strong>リアクション</strong>
+        <p>「5/5 後道代表 Garden デモ」にあらわれます。</p>
+      </div>
+    </li>
+  </ul>
+
+  <button class="notify-btn">
+    <span>⚙</span> 通知設定をカスタマイズ
+    <span class="arrow">›</span>
+  </button>
+</aside>
+
+<script src="js/script.js"></script>
+
+</body>
+</html>
