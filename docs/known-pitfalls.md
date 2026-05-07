@@ -450,6 +450,191 @@ $$ LANGUAGE sql STABLE;
 
 ---
 
+## [#9] SECURITY DEFINER 関数で SET search_path = '' 必須（schema poisoning 対策）
+
+### 症状
+- SECURITY DEFINER 関数を `SET search_path = ''` なしで定義すると、攻撃者が public schema を汚染した場合に関数の動作を乗っ取られる
+- a-review がレビューで重大セキュリティ脆弱性として指摘
+- 実例: Leaf A-1c PR #65 の 4 関数（`leaf_user_in_business` / `leaf_kanden_attachments_history_trigger` / `verify_image_download_password` / `set_image_download_password`）
+
+### 根本原因
+- PostgreSQL の SECURITY DEFINER 関数は **関数所有者（通常は postgres）の権限で実行される**
+- search_path 未指定だと、呼出時の search_path（攻撃者制御可能）で名前解決される
+- 攻撃者が public schema に同名の悪意ある関数 / テーブルを作成すると、SECURITY DEFINER 関数の中でそれが呼ばれてしまう
+- 結果: 関数所有者の権限で攻撃者が任意コード実行 / データ書込 / 認証回避が可能
+
+### 発見経緯
+- 2026-04-26、a-review が Leaf PR #65（Task D.1 migration SQL）レビューで重大指摘
+- commit `4247005` で 4 関数すべてに `SET search_path = ''` 追加 + public schema 明示修飾で修正
+- 発見セッション: a-review、修正セッション: a-leaf
+
+### 修正 pattern
+
+```sql
+-- ❌ NG（schema poisoning 脆弱）
+CREATE OR REPLACE FUNCTION leaf_user_in_business(biz_id text)
+RETURNS boolean AS $$
+  SELECT EXISTS (SELECT 1 FROM leaf_user_businesses WHERE user_id = auth.uid() AND business_id = biz_id);
+$$ LANGUAGE SQL STABLE SECURITY DEFINER;
+
+-- ✅ OK（v3.2 修正版）
+CREATE OR REPLACE FUNCTION public.leaf_user_in_business(biz_id text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''                  -- 必須: 空 search_path で schema poisoning 防止
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.leaf_user_businesses          -- public schema 明示修飾
+    WHERE user_id = (SELECT auth.uid())                -- auth.uid() を SELECT で囲む
+      AND business_id = biz_id
+  );
+$$;
+```
+
+### 修正のチェックポイント
+- [ ] 全 SECURITY DEFINER 関数に `SET search_path = ''` を追加
+- [ ] 参照する全テーブル / 関数を schema 明示（`public.X` / `extensions.crypt()` 等）
+- [ ] `auth.uid()` は `(SELECT auth.uid())` で囲む（プランナの最適化のため）
+- [ ] pgcrypto 関数は `extensions.crypt()` / `extensions.gen_salt()` と明示
+- [ ] CREATE EXTENSION も `SCHEMA extensions` 明示推奨（Supabase 標準の配置先）
+
+### 再発防止チェックリスト
+- [ ] 新規 migration で SECURITY DEFINER 関数を作成する際、search_path = '' をテンプレに含める
+- [ ] レビュー時、SECURITY DEFINER + search_path 未指定の組合せを必ずチェック
+- [ ] 既存モジュール（Forest / Bud / Root / Soil 等）の SECURITY DEFINER 関数の監査
+
+### 関連ファイル / spec
+- Leaf: `scripts/leaf-schema-patch-a1c.sql`（commit `4247005`）
+- spec: `docs/superpowers/specs/2026-04-23-leaf-a1c-attachment-design.md` v3.2（PR #130）
+- 影響モジュール: 全モジュール（特に Forest / Soil の SECURITY DEFINER 関数を要監査）
+- 参考: PostgreSQL 公式 - [Writing SECURITY DEFINER Functions Safely](https://www.postgresql.org/docs/current/sql-createfunction.html)
+
+---
+
+## [#10] クライアント側 hash 化は脆弱性、サーバ側 hash 化推奨
+
+### 症状
+- パスワード設定 UI で client が bcryptjs などで hash 化してサーバに送信する設計
+- → 攻撃者が任意の hash を直接 RPC に送信して認証回避可能
+- 実例: Leaf A-1c v3 の `set_image_download_password({ new_hash })` 設計
+
+### 根本原因
+- bcryptjs（client）→ hash 化 → サーバ送信 → DB 保存 のフロー
+- サーバは送信された hash を「正しく hash 化されたもの」として信頼してしまう
+- 攻撃者が任意のテキストを bcrypt 形式に偽装して送信すれば、認証時に偽装 hash が compare 対象になる
+- 結果: 認証回避（事前に偽装 hash を仕込んでおいて compare で TRUE になる入力で通す）
+
+### 発見経緯
+- 2026-04-26、a-review が Leaf PR #65 レビューで重大指摘（#9 と同時）
+- commit `4247005` で `set_image_download_password` 引数を `new_hash text` → `new_password text` に変更、サーバ側で hash 化に修正
+- 発見セッション: a-review、修正セッション: a-leaf
+- spec / plan v3.2 改訂で文書同期（PR #130）
+
+### 修正 pattern
+
+```typescript
+// ❌ NG（クライアント側 hash 化、任意 hash 送信ルート）
+import bcrypt from 'bcryptjs';
+const hash = bcrypt.hashSync(newPassword, 12);
+await supabase.rpc('set_password', { new_hash: hash });
+
+// ✅ OK（サーバ側 hash 化）
+// bcryptjs import 不要、平文を直送
+await supabase.rpc('set_password', { new_password: newPassword });
+```
+
+```sql
+-- ✅ サーバ側 RPC（v3.2 修正版）
+CREATE OR REPLACE FUNCTION public.set_image_download_password(new_password text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''                  -- #9 の修正もセット
+AS $$
+DECLARE
+  new_hash text;
+BEGIN
+  IF public.garden_role_of((SELECT auth.uid())) != 'super_admin' THEN
+    RAISE EXCEPTION 'Forbidden: super_admin only';
+  END IF;
+  -- サーバ側で bcrypt hash 化（任意 hash 送信ルート封殺）
+  new_hash := extensions.crypt(new_password, extensions.gen_salt('bf', 12));
+  INSERT INTO public.root_settings (key, value)
+  VALUES ('xxx.password_hash', jsonb_build_object('hash', new_hash, ...))
+  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+END;
+$$;
+```
+
+### 設計の注意点
+- 平文を HTTPS で送信することは問題ない（HTTPS 経路保護で十分、bcrypt は経路保護とは別目的）
+- bcrypt の本来の目的は「DB 漏洩時の rainbow table 攻撃防止」
+- サーバ側で hash 化することで、任意 hash 送信攻撃を完全封殺
+
+### 再発防止チェックリスト
+- [ ] 新規パスワード設定 UI で **client が hash 化する設計を最初から避ける**
+- [ ] RPC 引数は `new_password` / `password` のように平文受取で命名
+- [ ] サーバ側 RPC 内で `extensions.crypt(pw, extensions.gen_salt('bf', 12))` で hash 化
+- [ ] verify 系 RPC は `input_password` 平文受取で `crypt(input, stored_hash)` 比較（これは元々正しい設計）
+- [ ] 既存モジュール（Root の通常パスワード等）の同様パターン監査
+
+### 関連ファイル / spec
+- Leaf: `scripts/leaf-schema-patch-a1c.sql`（commit `4247005`）
+- spec: PR #130 §3.5.5 / §4.2 / §5 / Task A.7
+- 影響モジュール: 全モジュール（パスワード機能を持つ全機能）
+
+---
+
+## [#11] GitHub GraphQL の ghost PR 衝突（`-pr` サフィックス迂回）
+
+### 症状
+- 過去に発行されて削除（or merge）された PR の branch 名で `gh pr create` すると `GraphQL: A pull request already exists for Hyuaran:<branch>` エラー
+- 一方、`gh pr list --search`、`gh api repos/.../pulls` では該当 PR が見つからない
+- 実例: Leaf `feature/leaf-future-extensions-spec` ブランチで PR 発行不可
+
+### 根本原因
+- GitHub GraphQL の内部状態で、過去に発行された PR の branch 名がキャッシュ / メタデータとして残っている可能性
+- `git fetch --prune` でローカル ref を更新しても解消しない
+- REST API レベルでは見つからないため、UI / API ベースのデバッグが困難
+
+### 発見経緯
+- 2026-05-07、Leaf future-extensions-spec の PR 発行で衝突
+- 過去の同名 branch との関連性は推定段階（明確な再現手順は未確定）
+- 発見セッション: a-leaf-002
+
+### 修正 pattern（迂回策）
+
+```bash
+# 元 branch から同一 commit を新 branch 名で push（-pr サフィックス追加）
+git push origin feature/<old-branch>:feature/<old-branch>-pr
+
+# 新 branch から PR 発行
+gh pr create --base develop --head feature/<old-branch>-pr ...
+```
+
+PR タイトル / body には「ghost PR 衝突回避のため `-pr` サフィックス追加、内容は元 branch と同一の commit」と注記推奨。
+
+### 既存事例
+- Leaf 内部で同パターン採用済（handoff より）:
+  - `feature/leaf-a1c-task-d1-pr`（旧 `feature/leaf-a1c-task-d1-migration` の `git push -f` 不可回避）
+  - `feature/leaf-a1c-task-d2-pr`（旧 `feature/leaf-a1c-task-d2-supabase-client`）
+  - `feature/leaf-a1c-task-d4-pr`（旧 `feature/leaf-a1c-task-d4-storage-paths`）
+  - `feature/leaf-future-extensions-spec-pr`（2026-05-07 新規、本 pitfall の事例）
+
+### 再発防止チェックリスト
+- [ ] 同一目的で複数 branch を push する場合、最初から `-pr` サフィックス採用 or `feature/<task>-v2` のような version 命名
+- [ ] PR 発行で「PR exists」エラー時、即 GitHub UI / API で確認 → 不一致なら ghost PR と判定 → `-pr` 迂回採用
+- [ ] commit 内容は元 branch と同一であることを PR 説明文で明示
+
+### 関連ファイル / spec
+- Leaf: `feature/leaf-future-extensions-spec-pr`（PR #131）
+- 影響: 全モジュール（特に `git push -f` deny 回避で複数 branch を使うパターン）
+- 参考: `.claude/settings.json` の `git push -f` deny rule（§13 自律実行モード制約）
+
+---
+
 ## 今後の追加ルール
 
 ### 新しい pitfall 発見時の追記手順
@@ -495,3 +680,4 @@ $$ LANGUAGE sql STABLE;
 |---|---|---|
 | 2026-04-24 | a-main | 初版作成。#1 timestamptz 空文字、#2 RLS anon 流用、#3 空オブジェクト insert の3件を収録 |
 | 2026-04-25 | a-root | #4 KoT IP制限 / #5 Vercel Cron+Fixie / #6 garden_role CHECK / #7 KoT date形式 / #8 deleted_at vs is_active の Root 知見 5 件追加 |
+| 2026-05-07 | a-leaf-002 | #9 SECURITY DEFINER search_path / #10 クライアント側 hash 化脆弱性 / #11 GitHub ghost PR 衝突 の Leaf 知見 3 件追加（a-review #65 + a-main-013 全前倒し dispatch 由来）|
