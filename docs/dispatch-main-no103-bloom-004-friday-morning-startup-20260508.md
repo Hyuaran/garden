@@ -28,18 +28,36 @@
 
 ## 5/8 金曜本日の優先タスク
 
-### 第一優先: vitest 環境問題 調査・解決（最優先、想定 0.3d）
+### 第一優先: 🔴 RTK vitest passthrough 問題 解決（最優先、想定 0.3d）
 
-bloom-004- No. 50 で苦戦判断:
-- `npx vitest` / `./node_modules/.bin/vitest` が junction-linked node_modules で見つからず
-- `npm run test:run` 出力が見えない
+bloom-004- No. 52 で **vitest 苦戦の真因が RTK passthrough と判明**:
+- `rtk vitest run` 7 回 / 99.7% 削減 = vitest は **実際に RTK 経由で実行されている**
+- `[RTK:PASSTHROUGH] vitest parser: All parsing tiers failed` = RTK parser が vitest 出力を理解できず passthrough
+- → **stdout が caller に届かず結果見えない**仕様の可能性
 
-調査ヒント:
-- a-bud `package.json` / `vitest.config.ts` を参照（D-01〜D-07 で 305 tests 動作中）
-- a-soil `vitest.config.ts` を参照（46 tests 動作中）
+#### 対応アプローチ（推奨順）
+
+1. **a-bud / a-soil の vitest 成功パターン確認**:
+   - a-bud で `feature/bud-phase-d-implementation` ブランチで 329 tests 動作中
+   - a-soil で 46 tests 動作中
+   - a-bud / a-soil は **どうやって結果を見ているか**を確認（スクショ or 出力サンプル取得）
+
+2. **RTK bypass オプション確認**:
+   - `rtk gain --history` で vitest 実行履歴を確認
+   - RTK 担当（東海林さん本人）に「vitest 実行時のみ bypass オプション」可能か確認
+   - 副次発見として a-main-014 から東海林さんに既報告済
+
+3. **直接 vitest 実行**（RTK 経由しない）:
+   - PowerShell で `& ".\node_modules\.bin\vitest.cmd" run` 形式で直接呼び出し
+   - junction-linked node_modules の場合は実体パスを特定
+
+#### 調査ヒント（参考、優先度低）
+
+- a-bud `package.json` / `vitest.config.ts`（D-01〜D-07 で 305 tests 動作中）
+- a-soil `vitest.config.ts`（46 tests 動作中）
 - junction の解消 or 直接実行パス特定
 
-a-main-014 が並列で a-bud / a-soil の vitest 設定差分を Explore で抜粋して別 dispatch 投下する案あり。必要なら bloom-004-N で依頼ください。
+a-main-014 が並列で a-bud / a-soil の vitest 実行成功パターンを Explore で抜粋して別 dispatch 投下する案あり。必要なら bloom-004-N で依頼ください。
 
 ### 第二優先: Phase A-2.1 残 Task（11 以降、想定 0.5d）
 
