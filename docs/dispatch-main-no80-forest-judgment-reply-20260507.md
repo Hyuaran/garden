@@ -17,13 +17,18 @@
 forest-8 受領、B-min foundation 5 commits 完走おめでとうございます。判断保留 2 件への回答を以下に記します。詳細は dispatch ファイル参照:
 [docs/dispatch-main-no80-forest-judgment-reply-20260507.md](docs/dispatch-main-no80-forest-judgment-reply-20260507.md)
 
-## §5.1 npm install: ✅ 東海林さん手動実行で回避
+## §5.1 npm install: ✅ 東海林さん手動実行 完了済（5/7 15:38）
 
 memory `project_npm_install_deny_workaround.md` 通り、Claude Code の deny ルール（Bash(npm install *)）が承認を阻害する既知課題。a-main-013 から代行実行しても同じく deny されます。
 
-回避策（東海林さん作業）:
-- 別 PowerShell 窓で `cd C:\garden\a-forest-002 && npm install`（5/7 中実行希望）
-- 完了通知後、a-forest-002 で 81 test 走行 + dev server 起動 → 5/8 朝の残タスク着手
+**東海林さんが別 PowerShell で実行完了済**:
+- `cd C:\garden\a-forest-002 && npm install` 完了（524 packages 追加 / 約 23 秒、5/7 15:38 確認）
+- 2 moderate severity vulnerabilities あり（audit fix は post-デモで実施推奨、デモ前の依存変更リスク回避）
+
+**a-forest-002 で続けてやってほしいこと**:
+- 81 test 走行（記述済 test cases の実行確認）
+- balance-overview の dev server 起動確認（TypeScript 型エラー検証）
+- 完了したら 5/8 朝の残タスクへ着手
 
 ## §5.2 新規パッケージ追加: ❌ 追加なしで B-min 完走
 
