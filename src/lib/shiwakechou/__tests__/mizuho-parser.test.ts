@@ -14,14 +14,14 @@ function toSjis(s: string): Buffer {
   return iconv.encode(s, "Shift_JIS");
 }
 
-/** みずほ .api の最低ヘッダー (実 .api 検証済 = 30 列) */
+/** みずほ .api の最低ヘッダー (実 .api 検証済 = 30 列, 項目名称/属性情報) */
 const HEADER_LINES = [
-  // line 1: サービス名 (3 列)
-  "サービス名\t0001\t0000",
-  // line 2: 項目名 (col 0 = "項目名", 全 30 列, データ行と整合)
-  "項目名\t月\t日\t時\t分\t依頼人名\t金融機関名\t支店名\t預金番号区分\t預金科目\t口座番号\t代替表示\t出金\t店内番号\t明細区分\t取扱日付月\t取扱日付日\t年戻金月\t年戻金日\t金額\t入支出区分\t摘要\t税法摘要\t税法番号\t業者番号\t金融機関名2\t支店名2\t振込メッセージ\t備考\t番号",
-  // line 3: 項目属性
-  "項目属性\tN\tN\tN\tN\tC\tC\tC\tC\tC\tC\tC\tC\tC\tC\tN\tN\tN\tN\tN\tC\tC\tN\tC\tC\tC\tC\tC\tC\tN",
+  // line 1: サービス情報 (3 列)
+  "サービス情報\t0001\t0000",
+  // line 2: 項目名称 (col 0 = "項目名称", 全 30 列, データ行と整合)
+  "項目名称\t月\t日\t時\t分\t連絡先名\t金融機関名\t支店名\t口座番号区分\t口座種別\t口座番号\t再送表示\t取引名\t取引番号\t明細区分\t取扱日付月\t取扱日付日\t起算日月\t起算日日\t金額\t入支出区分\t摘要\t税法摘要\t税法番号\t業者番号\t金融機関名2\t支店名2\t振込メッセージ\t備考\t番号",
+  // line 3: 属性情報
+  "属性情報\tN\tN\tN\tN\tC\tC\tC\tC\tC\tC\tC\tC\tC\tC\tN\tN\tN\tN\tN\tC\tC\tN\tC\tC\tC\tC\tC\tC\tN",
   // line 4: 項目長
   "項目長\t2\t2\t2\t2\t48\t50\t23\t8\t10\t12\t1\t8\t4\t4\t2\t2\t2\t2\t14\t8\t48\t6\t6\t20\t15\t15\t20\t50\t3",
 ];

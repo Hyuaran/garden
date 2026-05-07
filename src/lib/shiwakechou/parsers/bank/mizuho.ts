@@ -12,32 +12,38 @@
  *   - 4 行目: 項目長 (skip)
  *   - 5 行目以降: データ行 (先頭が "明細")
  *
- * 各データ行の列インデックス (0-based, 実 .api ファイルで確認済 = Python 移植):
+ * 各データ行の列インデックス (0-based, 実 .api ファイル検証済 = Python 移植):
  *   col 0:  type ("明細")
  *   col 1:  月
  *   col 2:  日
  *   col 3:  時
  *   col 4:  分
- *   col 5:  依頼人名 (例: "株式会社ARATA")
+ *   col 5:  連絡先名 (例: "株式会社ARATA")
  *   col 6:  金融機関名 (例: "みずほ銀行")
  *   col 7:  支店名 (例: "四ツ橋支店")
- *   col 8:  預金番号区分
- *   col 9:  預金科目 (例: "普通")
+ *   col 8:  口座番号区分
+ *   col 9:  口座種別 (例: "普通")
  *   col 10: 口座番号 (例: "3026280")
- *   col 11: 代替表示
- *   col 12: 出金 (値は "出金" / "入金" のいずれか, 列名が「出金」なのは format 側の命名)
- *   col 13: 店内番号
+ *   col 11: 再送表示
+ *   col 12: 取引名 (値は "出金" / "入金" のいずれか)
+ *   col 13: 取引番号
  *   col 14: 明細区分
  *   col 15: 取扱日付月
  *   col 16: 取扱日付日
- *   col 17: 年戻金月
- *   col 18: 年戻金日
+ *   col 17: 起算日月
+ *   col 18: 起算日日
  *   col 19: 金額 (符号なし整数, ゼロパディング)
  *   col 20: 入支出区分
  *   col 21: 摘要
- *   col 22: 税法摘要
+ *   col 22: 税法摘要 (空欄が多い)
  *   col 23: 税法番号
  *   col 24: 業者番号
+ *
+ * ヘッダー行 (行 1〜4 のいずれかで検出):
+ *   行 1: "サービス情報\\t0001\\t0000"
+ *   行 2: "項目名称\\t月\\t日\\t..."  ← この行でヘッダー検出 (cols[0] === "項目名称")
+ *   行 3: "属性情報\\t..."
+ *   行 4: "項目長\\t2\\t2\\t..."
  *
  * ⚠️ 年情報はデータ行には無い (年=列はそもそも存在しない)。
  *   ファイル名から start_year / end_year を推論し、
@@ -112,18 +118,18 @@ export function parseMizuhoApi(
   const warnings: ParseWarning[] = [];
   const rows: ParsedBankRow[] = [];
 
-  // ヘッダー行 (項目名) の検出 (cols[0] === "項目名")
+  // ヘッダー行の検出 (cols[0] === "項目名称" — 実 .api 検証済)
   let headerLineNumber = -1;
   for (let i = 0; i < rawLines.length; i++) {
     const cols = rawLines[i].split("\t");
-    if (cols[COL.TYPE] === "項目名") {
+    if (cols[COL.TYPE] === "項目名称") {
       headerLineNumber = i + 1;
       break;
     }
   }
   if (headerLineNumber === -1 && strict) {
     throw new BankParserError(
-      "みずほ .api: 項目名ヘッダー行が見つかりません",
+      "みずほ .api: 項目名称ヘッダー行が見つかりません",
       null,
       rawLines[0] ?? null,
     );
