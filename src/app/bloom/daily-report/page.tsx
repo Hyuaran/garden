@@ -6,7 +6,7 @@ import { useBloomState } from "../_state/BloomStateContext";
 
 export default function DailyReportPage() {
   const { bloomUser } = useBloomState();
-  const userName = bloomUser?.display_name ?? "（未ログイン）";
+  const userName = bloomUser?.name ?? "（未ログイン）";
 
   return (
     <main style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
