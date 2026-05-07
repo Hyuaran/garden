@@ -2,16 +2,18 @@
  * GET /api/bloom/progress-html
  *
  * dispatch main- No.60 (2026-05-05): Bloom 開発進捗 v29 を実データで動的描画。
+ * dispatch main- No.77 (2026-05-07): GET try/catch + DB 列名マッピング + 型ガード bugfix。
  *
  * 動作:
  *   1. public/_proto/bloom-dev-progress/index.html (テンプレート化済) を読込
  *   2. Supabase から root_daily_reports / root_daily_report_logs / root_module_progress を fetch
- *   3. 履歴タブ + モジュールタブの HTML を動的生成し placeholder を replace
- *   4. text/html で返却
+ *   3. DB スキーマ → TS 型のマッピング適用（DB 列名: module/progress_pct/phase/status、TS 型: code/percent/...）
+ *   4. 履歴タブ + モジュールタブの HTML を動的生成し placeholder を replace
+ *   5. text/html で返却
  *
  * フォールバック:
  *   - process.env.MOCK_DATA === "1" or Supabase fetch エラー時は内蔵モックデータを使用
- *   - 槙さん招待後 (5/7 想定) Supabase 接続テスト → 本番データ切替
+ *   - ビルド失敗時 (例外) は GET 関数の catch で mock データに自動切替 (X-Data-Source: mock-fallback)
  */
 
 import { NextResponse } from "next/server";
@@ -32,7 +34,7 @@ type DailyReport = {
 type DailyReportLog = {
   report_date: string;
   category: "work" | "tomorrow" | "special";
-  module: string; // bloom / forest / tree / ...
+  module: string; // bloom / forest / tree / ... (lowercase, 画像 path 用に小文字統一)
   content: string;
   ord?: number | null;
 };
@@ -72,17 +74,33 @@ const MOCK_LOGS: DailyReportLog[] = [
   { report_date: "2026-04-22", category: "tomorrow", module: "tree", content: "誕生日認証の実環境テスト", ord: 1 },
 ];
 
+// 12 モジュールのメタデータマスタ (DB の module/progress_pct/phase/status/summary に code/name/group/release を補完)
+const MODULE_META: Record<string, Pick<ModuleProgress, "code" | "name_jp" | "name_en" | "group" | "release">> = {
+  Bloom:    { code: "bloom",    name_jp: "Bloom",    name_en: "グループ全体の動きと業績を見える化",         group: "樹冠（経営層）", release: "26/08" },
+  Forest:   { code: "forest",   name_jp: "Forest",   name_en: "全法人の決算・税務・経営指標を一元管理",     group: "樹冠（経営層）", release: "稼働中" },
+  Fruit:    { code: "fruit",    name_jp: "Fruit",    name_en: "法人の法的実体情報",                          group: "樹冠（経営層）", release: null },
+  Seed:     { code: "seed",     name_jp: "Seed",     name_en: "新事業・新商材の拡張枠",                      group: "樹冠（経営層）", release: null },
+  Bud:      { code: "bud",      name_jp: "Bud",      name_en: "経理・収支管理",                              group: "地上（業務オペ）", release: "26/06" },
+  Leaf:     { code: "leaf",     name_jp: "Leaf",     name_en: "商材×商流の個別アプリ・トスアップ",           group: "地上（業務オペ）", release: "26/07" },
+  Tree:     { code: "tree",     name_jp: "Tree",     name_en: "架電アプリ（コールセンターの要）",            group: "地上（業務オペ）", release: "26/09" },
+  Sprout:   { code: "sprout",   name_jp: "Sprout",   name_en: "採用→面接→内定→入社準備",                   group: "地上（業務オペ）", release: null },
+  Calendar: { code: "calendar", name_jp: "Calendar", name_en: "営業予定・面接スロット・シフト統合",          group: "地上（業務オペ）", release: null },
+  Soil:     { code: "soil",     name_jp: "Soil",     name_en: "DB 基盤・大量データ",                         group: "地下（基盤）",   release: null },
+  Root:     { code: "root",     name_jp: "Root",     name_en: "組織・従業員・パートナー・マスタ",            group: "地下（基盤）",   release: "稼働中" },
+  Rill:     { code: "rill",     name_jp: "Rill",     name_en: "社内メッセージアプリ",                        group: "地下（基盤）",   release: "26/10" },
+};
+
 const MOCK_MODULES: ModuleProgress[] = [
   { code: "bloom", name_jp: "Bloom", name_en: "グループ全体の動きと業績を見える化", percent: 65, group: "樹冠（経営層）", phase_pills: ["Phase B（進行中）", "Phase C"], phase_active: "Phase B", release: "26/08" },
   { code: "forest", name_jp: "Forest", name_en: "全法人の決算・税務・経営指標を一元管理", percent: 70, group: "樹冠（経営層）", phase_pills: ["Phase A（運用中）"], phase_active: "Phase A", release: "稼働中" },
-  { code: "fruit", name_jp: "Fruit", name_en: "法人の法的実体情報", percent: 0, group: "樹冠（経営層）", phase_pills: ["Phase B（予定）"], phase_active: null as unknown as string, release: null },
-  { code: "seed", name_jp: "Seed", name_en: "新事業・新商材の拡張枠", percent: 0, group: "樹冠（経営層）", phase_pills: ["Phase C（予定）"], phase_active: null as unknown as string, release: null },
+  { code: "fruit", name_jp: "Fruit", name_en: "法人の法的実体情報", percent: 0, group: "樹冠（経営層）", phase_pills: ["Phase B（予定）"], release: null },
+  { code: "seed", name_jp: "Seed", name_en: "新事業・新商材の拡張枠", percent: 0, group: "樹冠（経営層）", phase_pills: ["Phase C（予定）"], release: null },
   { code: "bud", name_jp: "Bud", name_en: "経理・収支管理", percent: 55, group: "地上（業務オペ）", phase_pills: ["Phase A（仕上げ）", "Phase B"], phase_active: "Phase A", release: "26/06" },
   { code: "leaf", name_jp: "Leaf", name_en: "商材×商流の個別アプリ・トスアップ", percent: 60, group: "地上（業務オペ）", phase_pills: ["Phase B（進行中）"], phase_active: "Phase B", release: "26/07" },
   { code: "tree", name_jp: "Tree", name_en: "架電アプリ（コールセンターの要）", percent: 100, group: "地上（業務オペ）", phase_pills: ["Phase D（最終仕上げ）"], phase_active: "Phase D", release: "26/09" },
-  { code: "sprout", name_jp: "Sprout", name_en: "採用→面接→内定→入社準備", percent: 0, group: "地上（業務オペ）", phase_pills: ["Phase B（仕様済）"], phase_active: null as unknown as string, release: null },
-  { code: "calendar", name_jp: "Calendar", name_en: "営業予定・面接スロット・シフト統合", percent: 0, group: "地上（業務オペ）", phase_pills: ["Phase B（仕様済）"], phase_active: null as unknown as string, release: null },
-  { code: "soil", name_jp: "Soil", name_en: "DB 基盤・大量データ", percent: 0, group: "地下（基盤）", phase_pills: ["Phase C（仕様済）"], phase_active: null as unknown as string, release: null },
+  { code: "sprout", name_jp: "Sprout", name_en: "採用→面接→内定→入社準備", percent: 0, group: "地上（業務オペ）", phase_pills: ["Phase B（仕様済）"], release: null },
+  { code: "calendar", name_jp: "Calendar", name_en: "営業予定・面接スロット・シフト統合", percent: 0, group: "地上（業務オペ）", phase_pills: ["Phase B（仕様済）"], release: null },
+  { code: "soil", name_jp: "Soil", name_en: "DB 基盤・大量データ", percent: 0, group: "地下（基盤）", phase_pills: ["Phase C（仕様済）"], release: null },
   { code: "root", name_jp: "Root", name_en: "組織・従業員・パートナー・マスタ", percent: 100, group: "地下（基盤）", phase_pills: ["Phase A（運用中）", "Phase B"], phase_active: "Phase A", release: "稼働中" },
   { code: "rill", name_jp: "Rill", name_en: "社内メッセージアプリ", percent: 35, group: "地下（基盤）", phase_pills: ["Phase B（進行中）"], phase_active: "Phase B", release: "26/10" },
 ];
@@ -96,38 +114,46 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function formatDateSlash(isoDate: string): string {
-  const [y, m, d] = isoDate.split("-");
+// 修正 C: report.date は string も Date も受け入れる型ガード
+function formatDateSlash(isoDate: string | Date): string {
+  const s = typeof isoDate === "string" ? isoDate : isoDate.toISOString().slice(0, 10);
+  const [y, m, d] = s.split("-");
   return `${y}/${m}/${d}`;
 }
 
 const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
-function formatDayJa(isoDate: string): string {
-  const dt = new Date(isoDate + "T00:00:00+09:00");
+function formatDayJa(isoDate: string | Date): string {
+  const s = typeof isoDate === "string" ? isoDate : isoDate.toISOString().slice(0, 10);
+  const dt = new Date(s + "T00:00:00+09:00");
   return `（${DAY_LABELS[dt.getDay()]}）`;
 }
 
-function workstylePill(ws: Workstyle): string {
+function workstylePill(ws: Workstyle | null | undefined): string {
+  // workstyle null fallback → irregular
+  const eff: Workstyle = ws ?? "irregular";
   const icon =
-    ws === "office"
+    eff === "office"
       ? '<img src="images/decor/icon_work_office.png" alt="出社">'
-      : ws === "home"
+      : eff === "home"
         ? '<img src="images/decor/icon_work_home.png" alt="在宅">'
         : '<img src="images/decor/icon_work_irregular.png" alt="イレギュラー">';
-  return `<span class="gpd-work-pill gpd-work-${ws}">${icon}</span>`;
+  return `<span class="gpd-work-pill gpd-work-${eff}">${icon}</span>`;
 }
 
 function moduleNameJa(code: string): string {
+  // code は小文字想定。DB から大文字 "Bloom" 来た場合も小文字化して引く
+  const lower = code.toLowerCase();
   const map: Record<string, string> = {
     bloom: "Bloom", forest: "Forest", fruit: "Fruit", seed: "Seed",
     bud: "Bud", leaf: "Leaf", tree: "Tree", sprout: "Sprout", calendar: "Calendar",
     soil: "Soil", root: "Root", rill: "Rill",
   };
-  return map[code] ?? code;
+  return map[lower] ?? code;
 }
 
 function moduleIconHtml(code: string, alt = ""): string {
-  return `<span class="gpd-mod-icon"><img src="images/icons_bloom/orb_${code}.png" alt="${escapeHtml(alt)}"></span>`;
+  const lower = code.toLowerCase();
+  return `<span class="gpd-mod-icon"><img src="images/icons_bloom/orb_${escapeHtml(lower)}.png" alt="${escapeHtml(alt)}"></span>`;
 }
 
 function buildHistoryHtml(reports: DailyReport[], logs: DailyReportLog[]): string {
@@ -135,24 +161,39 @@ function buildHistoryHtml(reports: DailyReport[], logs: DailyReportLog[]): strin
     return `      <div class="ceo-card gpd-history-card"><div class="gpd-history-body" style="padding:24px;color:#6b8e75">日報データはまだありません</div></div>`;
   }
   const cards = reports.map((report) => {
-    const dayLogs = logs.filter((l) => l.report_date === report.date);
+    // report.date は string でも Date でも比較できるよう正規化
+    const reportDateStr = typeof report.date === "string"
+      ? report.date
+      : (report.date as Date).toISOString().slice(0, 10);
+    const dayLogs = logs.filter((l) => {
+      const ld = typeof l.report_date === "string"
+        ? l.report_date
+        : (l.report_date as unknown as Date).toISOString().slice(0, 10);
+      return ld === reportDateStr;
+    });
     const work = dayLogs.filter((l) => l.category === "work").sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
     const tomorrow = dayLogs.filter((l) => l.category === "tomorrow").sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
+    const special = dayLogs.filter((l) => l.category === "special");
 
     const workItems = work.length === 0
       ? `<li class="gpd-history-empty">記載なし</li>`
       : work.map((l) =>
-          `<li>${moduleIconHtml(l.module)}<span class="gpd-mod-name">${escapeHtml(moduleNameJa(l.module))}</span><span class="gpd-mod-text">${escapeHtml(l.content)}</span></li>`,
+          `<li>${moduleIconHtml(l.module || "")}<span class="gpd-mod-name">${escapeHtml(moduleNameJa(l.module || ""))}</span><span class="gpd-mod-text">${escapeHtml(l.content)}</span></li>`,
         ).join("\n              ");
 
     const tomorrowItems = tomorrow.length === 0
       ? `<li class="gpd-history-empty">記載なし</li>`
       : tomorrow.map((l) =>
-          `<li>${moduleIconHtml(l.module)}<span class="gpd-mod-name">${escapeHtml(moduleNameJa(l.module))}</span><span class="gpd-mod-text">${escapeHtml(l.content)}</span></li>`,
+          `<li>${moduleIconHtml(l.module || "")}<span class="gpd-mod-name">${escapeHtml(moduleNameJa(l.module || ""))}</span><span class="gpd-mod-text">${escapeHtml(l.content)}</span></li>`,
         ).join("\n              ");
 
-    const specialBlock = report.special
-      ? `<div class="gpd-history-special"><h6 class="gpd-history-h">特記事項</h6><ul class="gpd-special-ul"><li>${escapeHtml(report.special)}</li></ul></div>`
+    // special: report.special (column) と logs.category=special を統合
+    const specialContents: string[] = [];
+    if (report.special) specialContents.push(report.special);
+    for (const s of special) specialContents.push(s.content);
+
+    const specialBlock = specialContents.length > 0
+      ? `<div class="gpd-history-special"><h6 class="gpd-history-h">特記事項</h6><ul class="gpd-special-ul">${specialContents.map(c => `<li>${escapeHtml(c)}</li>`).join("")}</ul></div>`
       : `<div class="gpd-history-special gpd-history-special-empty"><h6 class="gpd-history-h">特記事項</h6><ul class="gpd-special-ul"><li class="gpd-history-empty">記載なし</li></ul></div>`;
 
     return `
@@ -235,6 +276,86 @@ function buildModuleDetailHtml(modules: ModuleProgress[]): string {
   return cards.join("\n");
 }
 
+// 修正 B: DB 行 → ModuleProgress マッピング
+type DbModuleRow = {
+  module: string; // "Bloom" / "Forest" 等、頭大文字
+  progress_pct: number;
+  phase: string | null; // "A" / "B" / "C" / "D" / "-"
+  status: string | null; // "進行中" / "完了" / "実装完了" / "Phase待ち" / "未着手"
+  summary: string | null;
+};
+
+function mapDbModule(row: DbModuleRow): ModuleProgress {
+  const meta = MODULE_META[row.module] ?? {
+    code: row.module.toLowerCase(),
+    name_jp: row.module,
+    name_en: row.summary ?? "",
+    group: "地下（基盤）" as const,
+    release: null,
+  };
+  const phasePill = row.phase && row.phase !== "-" && row.status
+    ? [`Phase ${row.phase}（${row.status}）`]
+    : row.phase && row.phase !== "-"
+      ? [`Phase ${row.phase}`]
+      : row.status
+        ? [row.status]
+        : [];
+  return {
+    ...meta,
+    name_en: row.summary || meta.name_en,
+    percent: row.progress_pct,
+    phase_pills: phasePill,
+    phase_active: row.phase && row.phase !== "-" ? `Phase ${row.phase}` : undefined,
+  };
+}
+
+// 修正 B: DB 行 → DailyReportLog マッピング (module の大文字 → 小文字、画像 path 用)
+type DbLogRow = {
+  report_date: string | Date;
+  category: string; // "work" / "tomorrow" / "carryover" / "planned" / "special"
+  module: string | null;
+  content: string;
+  ord: number | null;
+};
+
+function mapDbLog(row: DbLogRow): DailyReportLog | null {
+  // 表示対象は work / tomorrow / special のみ
+  if (!["work", "tomorrow", "special"].includes(row.category)) return null;
+  const reportDate = typeof row.report_date === "string"
+    ? row.report_date
+    : row.report_date.toISOString().slice(0, 10);
+  return {
+    report_date: reportDate,
+    category: row.category as "work" | "tomorrow" | "special",
+    module: (row.module ?? "").toLowerCase(),
+    content: row.content,
+    ord: row.ord,
+  };
+}
+
+type DbReportRow = {
+  date: string | Date;
+  workstyle: string | null;
+  is_irregular?: boolean;
+  irregular_label?: string | null;
+};
+
+function mapDbReport(row: DbReportRow): DailyReport {
+  const dateStr = typeof row.date === "string"
+    ? row.date
+    : row.date.toISOString().slice(0, 10);
+  // workstyle 正規化、null は irregular にフォールバック
+  const ws: Workstyle =
+    row.workstyle === "office" || row.workstyle === "home" || row.workstyle === "irregular"
+      ? row.workstyle
+      : "irregular";
+  return {
+    date: dateStr,
+    workstyle: ws,
+    special: row.irregular_label ?? null,
+  };
+}
+
 async function fetchData(): Promise<{ reports: DailyReport[]; logs: DailyReportLog[]; modules: ModuleProgress[]; source: "mock" | "supabase" }> {
   const useMock = process.env.MOCK_DATA === "1";
   if (useMock) {
@@ -250,54 +371,89 @@ async function fetchData(): Promise<{ reports: DailyReport[]; logs: DailyReportL
   try {
     const sb = createClient(url, serviceKey);
     const [r, l, m] = await Promise.all([
-      sb.from("root_daily_reports").select("*").order("date", { ascending: false }).limit(30),
-      sb.from("root_daily_report_logs").select("*"),
-      sb.from("root_module_progress").select("*"),
+      sb.from("root_daily_reports").select("date, workstyle, is_irregular, irregular_label").order("date", { ascending: false }).limit(30),
+      sb.from("root_daily_report_logs").select("report_date, category, module, content, ord"),
+      sb.from("root_module_progress").select("module, progress_pct, phase, status, summary"),
     ]);
     if (r.error || l.error || m.error) {
-      // テーブル未作成等 → モック使用
       return { reports: MOCK_REPORTS, logs: MOCK_LOGS, modules: MOCK_MODULES, source: "mock" };
     }
-    const reports = (r.data ?? []) as DailyReport[];
-    const logs = (l.data ?? []) as DailyReportLog[];
-    const modules = (m.data ?? []) as ModuleProgress[];
+    const reports = ((r.data ?? []) as DbReportRow[]).map(mapDbReport);
+    const logs = ((l.data ?? []) as DbLogRow[]).map(mapDbLog).filter((x): x is DailyReportLog => x !== null);
+    const modules = ((m.data ?? []) as DbModuleRow[]).map(mapDbModule);
     if (reports.length === 0 && logs.length === 0 && modules.length === 0) {
       return { reports: MOCK_REPORTS, logs: MOCK_LOGS, modules: MOCK_MODULES, source: "mock" };
     }
-    return { reports, logs, modules, source: "supabase" };
+    // モジュールが空でも reports/logs があれば mock のモジュールで補完（部分実データ表示）
+    const finalModules = modules.length > 0 ? modules : MOCK_MODULES;
+    return { reports, logs, modules: finalModules, source: "supabase" };
   } catch {
     return { reports: MOCK_REPORTS, logs: MOCK_LOGS, modules: MOCK_MODULES, source: "mock" };
   }
 }
 
-export async function GET() {
-  const tmplPath = path.join(process.cwd(), "public/_proto/bloom-dev-progress/index.html");
-  let html = await fs.readFile(tmplPath, "utf-8");
-
-  const { reports, logs, modules, source } = await fetchData();
-
+function buildResponseHtml(
+  template: string,
+  reports: DailyReport[],
+  logs: DailyReportLog[],
+  modules: ModuleProgress[],
+): string {
+  let html = template;
   const historyHtml = buildHistoryHtml(reports, logs);
   const tocHtml = buildModuleTocHtml(modules);
   const detailHtml = buildModuleDetailHtml(modules);
+  html = html.replace(/<!-- DATA_HISTORY_LIST_START -->[\s\S]*?<!-- DATA_HISTORY_LIST_END -->/, historyHtml);
+  html = html.replace(/<!-- DATA_MODULE_TOC_START -->[\s\S]*?<!-- DATA_MODULE_TOC_END -->/, tocHtml);
+  html = html.replace(/<!-- DATA_MODULE_DETAIL_START -->[\s\S]*?<!-- DATA_MODULE_DETAIL_END -->/, detailHtml);
+  return html;
+}
 
-  html = html.replace(
-    /<!-- DATA_HISTORY_LIST_START -->[\s\S]*?<!-- DATA_HISTORY_LIST_END -->/,
-    historyHtml,
-  );
-  html = html.replace(
-    /<!-- DATA_MODULE_TOC_START -->[\s\S]*?<!-- DATA_MODULE_TOC_END -->/,
-    tocHtml,
-  );
-  html = html.replace(
-    /<!-- DATA_MODULE_DETAIL_START -->[\s\S]*?<!-- DATA_MODULE_DETAIL_END -->/,
-    detailHtml,
-  );
+// 修正 A: GET 関数全体に try/catch、ビルド失敗時は mock-fallback で 200 維持
+export async function GET() {
+  const tmplPath = path.join(process.cwd(), "public/_proto/bloom-dev-progress/index.html");
+  let template: string;
+  try {
+    template = await fs.readFile(tmplPath, "utf-8");
+  } catch (e) {
+    console.error("[/api/bloom/progress-html] template read error:", e);
+    return new NextResponse(`<!DOCTYPE html><html><body><h1>Template not found</h1></body></html>`, {
+      status: 500,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  }
 
-  return new NextResponse(html, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "X-Data-Source": source,
-      "Cache-Control": "no-store",
-    },
-  });
+  try {
+    const { reports, logs, modules, source } = await fetchData();
+    const html = buildResponseHtml(template, reports, logs, modules);
+    return new NextResponse(html, {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "X-Data-Source": source,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (e) {
+    // ビルド or fetch で例外 → mock データで再構築 (200 維持)
+    console.error("[/api/bloom/progress-html] build error, falling back to mock:", e);
+    try {
+      const html = buildResponseHtml(template, MOCK_REPORTS, MOCK_LOGS, MOCK_MODULES);
+      return new NextResponse(html, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "X-Data-Source": "mock-fallback",
+          "Cache-Control": "no-store",
+        },
+      });
+    } catch (e2) {
+      // mock 構築も失敗 → 最終フォールバック（テンプレートそのまま）
+      console.error("[/api/bloom/progress-html] mock-fallback also failed:", e2);
+      return new NextResponse(template, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "X-Data-Source": "template-only",
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+  }
 }
