@@ -45,6 +45,8 @@
       "Bash(npm run typecheck)",
       "Bash(npm view *)",
       "Bash(npx tsc --noEmit)",
+      "Bash(powershell.exe -Command \"& 'C:/garden/_tools/daily-log.ps1' *\")",
+      "Bash(powershell.exe -Command \"New-Item -ItemType Junction -Path * -Target *\")",
       "Bash(python \"G:/マイドライブ/17_システム構築/07_Claude/01_東海林美琴/006_日報自動配信/send_report.py\" *)",
       "Bash(touch *)",
       "Bash(which *)",

@@ -13,13 +13,15 @@ import type { ReactNode } from "react";
 
 import { BLOOM_PATHS } from "../_constants/routes";
 import { useBloomState } from "../_state/BloomStateContext";
+import { ShojiStatusWidget } from "../../../components/shared/ShojiStatusWidget";
 import { ViewModeToggle } from "./ViewModeToggle";
 
 const NAV_ITEMS: Array<{ href: string; label: string }> = [
-  { href: BLOOM_PATHS.WORKBOARD, label: "Workboard" },
-  { href: BLOOM_PATHS.ROADMAP, label: "ロードマップ" },
-  { href: BLOOM_PATHS.MONTHLY_DIGEST, label: "月次ダイジェスト" },
+  { href: BLOOM_PATHS.WORKBOARD, label: "ワークボード" },
   { href: BLOOM_PATHS.DAILY_REPORTS, label: "日報" },
+  { href: BLOOM_PATHS.MONTHLY_DIGEST, label: "月次まとめ" },
+  { href: BLOOM_PATHS.CEO_STATUS, label: "経営状況" },
+  { href: BLOOM_PATHS.PROGRESS, label: "開発進捗" },
 ];
 
 export function BloomShell({ children }: { children: ReactNode }) {
@@ -65,6 +67,9 @@ export function BloomShell({ children }: { children: ReactNode }) {
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ maxWidth: 360, minWidth: 280 }}>
+            <ShojiStatusWidget mode="compact" />
+          </div>
           <ViewModeToggle />
           <span style={{ fontSize: 12, color: "#40916c" }}>
             {bloomUser?.name ?? userEmail ?? ""}

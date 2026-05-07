@@ -19,6 +19,7 @@ import {
   type FieldErrors,
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
 const ACCOUNT_TYPES = ["普通", "当座"];
 const PURPOSES = ["メイン", "給与", "経費", "その他"];
@@ -99,7 +100,9 @@ export default function BankAccountsPage() {
       setSaving(true);
       setError(null);
       setErrors({});
-      await upsertBankAccount(editTarget);
+      await upsertBankAccount(
+        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.bank_accounts }) as Partial<BankAccount> & { account_id: string },
+      );
       await writeAudit({
         action: "master_update",
         actorUserId: rootUser?.user_id ?? null,

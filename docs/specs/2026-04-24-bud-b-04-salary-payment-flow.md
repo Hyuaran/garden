@@ -5,6 +5,13 @@
 - 担当セッション: a-bud
 - 作成: 2026-04-24（a-auto / Phase A 先行 batch6 #B-04）
 - 前提 spec: B-01（計算）, B-02（控除）, B-03（明細）, A-03（振込 6 段階）, A-04（振込作成）
+- **A-07 採択結果反映 (2026-04-25)**:
+  - 論点 1: `root_employees.payment_method` で識別
+  - 論点 2: `bud_transfers.transfer_type='給与(手渡し)'` で登録、CSV 出力対象から除外
+    - CSV 出力フィルタ: `WHERE transfer_type IS DISTINCT FROM '給与(手渡し)'`
+  - 論点 4: 現金原資管理は A+C 併用（`bud_statements.category='現金原資引出'` + 月初予算化）
+  - 論点 5: 受領確認は `bud_cash_payment_receipts`（A+B 併用、現金支給者限定）
+  - 詳細: `docs/bud-a07-hearing-items.md` §「東海林判断: 採択結果」
 
 ---
 

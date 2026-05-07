@@ -1,16 +1,24 @@
 "use client";
 
 /**
- * Garden-Forest 詳細モーダル（Phase A: 簡易版）
+ * Garden-Forest 詳細モーダル
  *
- * セルクリックで表示。売上/外注/利益 + 純資産/現金/預金 + Drive リンク。
+ * セルクリックで表示する決算情報のポップアップ。
+ *   - 主要 6 項目（売上高/外注費/経常利益/純資産/現金/預金）
+ *   - T-F10-03: 販管費内訳 8 項目（forest_hankanhi）を最低 1 つ non-null のときのみ表示
+ *   - T-F10-04: 進行期のときは reflected note を「進行期」バッジ横に表示
+ *   - Google Drive の決算書リンク
  */
+
+import { useEffect, useState } from "react";
 
 import type { CellData } from "../_constants/companies";
 import { FOREST_THEME } from "../_constants/theme";
 import { C } from "../_constants/colors";
 import { fmtYen } from "../_lib/format";
 import { writeAuditLog } from "../_lib/audit";
+import { fetchHankanhi } from "../_lib/queries";
+import { HANKANHI_LABELS, type Hankanhi } from "../_lib/types";
 
 type Props = {
   data: CellData;
@@ -26,6 +34,28 @@ export function DetailModal({ data, onClose }: Props) {
     { label: "現金", value: fmtYen(data.genkin) },
     { label: "預金", value: fmtYen(data.yokin) },
   ];
+
+  const [hankanhi, setHankanhi] = useState<Hankanhi | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchHankanhi(data.company.id, data.ki)
+      .then((result) => {
+        if (!cancelled) setHankanhi(result);
+      })
+      .catch((err) => {
+        console.error("[DetailModal] fetchHankanhi error:", err);
+        if (!cancelled) setHankanhi(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data.company.id, data.ki]);
+
+  // 8 科目のうち少なくとも 1 つが non-null のときだけセクションを描画
+  const hasAnyHankanhi =
+    hankanhi != null &&
+    HANKANHI_LABELS.some(({ key }) => hankanhi[key] != null);
 
   const handleDriveClick = () => {
     writeAuditLog("click_drive_link", `${data.company.id}_ki${data.ki}`);
@@ -87,11 +117,22 @@ export function DetailModal({ data, onClose }: Props) {
                   進行期
                 </span>
               )}
+              {data.isShinkouki && data.reflected && (
+                <span
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 11,
+                    color: FOREST_THEME.negative,
+                  }}
+                >
+                  {`※${data.reflected}`}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* データ行 */}
+        {/* 主要 6 項目 */}
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <tbody>
             {rows.map((r) => (
@@ -125,6 +166,58 @@ export function DetailModal({ data, onClose }: Props) {
             ))}
           </tbody>
         </table>
+
+        {/* T-F10-03: 販管費内訳（≥1 件 non-null の場合のみ） */}
+        {hasAnyHankanhi && hankanhi && (
+          <>
+            <div
+              style={{
+                borderTop: "1px solid #e0e0e0",
+                margin: "12px 0",
+              }}
+            />
+            <div
+              style={{
+                fontSize: 12,
+                color: FOREST_THEME.textMuted,
+                fontWeight: 600,
+                marginBottom: 6,
+              }}
+            >
+              販管費内訳
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <tbody>
+                {HANKANHI_LABELS.map(({ key, label }) => (
+                  <tr key={key}>
+                    <td
+                      style={{
+                        padding: "6px 0",
+                        fontSize: 13,
+                        color: FOREST_THEME.textSecondary,
+                        borderBottom: "1px solid #f5f5f5",
+                      }}
+                    >
+                      {label}
+                    </td>
+                    <td
+                      style={{
+                        padding: "6px 0",
+                        fontSize: 13,
+                        textAlign: "right",
+                        fontWeight: 500,
+                        color: FOREST_THEME.textPrimary,
+                        borderBottom: "1px solid #f5f5f5",
+                      }}
+                    >
+                      {fmtYen(hankanhi[key])}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
 
         {/* Drive リンク */}
         {data.doc_url && (

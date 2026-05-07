@@ -19,6 +19,7 @@ import {
   type FieldErrors,
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
 const emptyInsurance = (year: string): Insurance => ({
   insurance_id: `INS-${year}`,
@@ -82,7 +83,9 @@ export default function InsurancePage() {
       setSaving(true);
       setError(null);
       setErrors({});
-      await upsertInsurance(editTarget);
+      await upsertInsurance(
+        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.insurance }) as Partial<Insurance> & { insurance_id: string },
+      );
       await writeAudit({
         action: "master_update",
         actorUserId: rootUser?.user_id ?? null,

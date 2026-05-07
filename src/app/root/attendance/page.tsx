@@ -18,6 +18,7 @@ import {
   type FieldErrors,
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 import { KotSyncModal } from "../_components/KotSyncModal";
 
 const STATUSES = ["未取込", "取込済", "エラー"];
@@ -105,7 +106,9 @@ export default function AttendancePage() {
       setSaving(true);
       setError(null);
       setErrors({});
-      await upsertAttendance(editTarget);
+      await upsertAttendance(
+        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.attendance }) as Partial<Attendance> & { attendance_id: string },
+      );
       await writeAudit({
         action: "master_update",
         actorUserId: rootUser?.user_id ?? null,

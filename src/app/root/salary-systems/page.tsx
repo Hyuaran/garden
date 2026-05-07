@@ -19,6 +19,7 @@ import {
   type FieldErrors,
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
+import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
 const EMP_TYPES = ["正社員", "アルバイト", "共通"];
 const BASE_TYPES = ["月給", "時給", "日給"];
@@ -93,7 +94,9 @@ export default function SalarySystemsPage() {
       setSaving(true);
       setError(null);
       setErrors({});
-      await upsertSalarySystem(editTarget);
+      await upsertSalarySystem(
+        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.salary_systems }) as Partial<SalarySystem> & { salary_system_id: string },
+      );
       await writeAudit({
         action: "master_update",
         actorUserId: rootUser?.user_id ?? null,

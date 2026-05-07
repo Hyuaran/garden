@@ -158,9 +158,9 @@ export async function insertCall(
  * @param birthday  YYYY-MM-DD 形式
  * @returns         成否
  *
- * 注: birthday の保存に加えて Supabase Auth のパスワードも MMDD に更新する設計だが、
- *     パスワード変更には service_role_key が必要なためサーバー側エンドポイント経由で実行予定（Phase B）。
- *     Phase A の時点では root_employees.birthday の保存のみ。
+ * 注: 認証ポリシー（親CLAUDE.md §4）で一般社員のパスワード = 誕生日 MMDD。
+ *     このため Supabase Auth 側のパスワード更新は updatePasswordFromBirthday()
+ *     （サーバー側 API 経由）で別途行う必要がある。
  */
 export async function updateBirthday(
   userId: string,
@@ -176,4 +176,48 @@ export async function updateBirthday(
     return { success: false, error: error.message };
   }
   return { success: true };
+}
+
+/**
+ * 誕生日に対応する MMDD をパスワードとして Supabase Auth に反映する
+ *
+ * サーバー側 API `/api/tree/update-password` を経由（service_role_key 必須）。
+ * 呼び出し側の access_token を Authorization ヘッダで送り、サーバー側で検証して
+ * 本人の userId にのみ反映する。
+ *
+ * @param birthday YYYY-MM-DD
+ */
+export async function updatePasswordFromBirthday(
+  birthday: string,
+): Promise<{ success: boolean; error?: string }> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    return { success: false, error: "認証セッションが見つかりません" };
+  }
+
+  try {
+    const res = await fetch("/api/tree/update-password", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ birthday }),
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      success?: boolean;
+      error?: string;
+    };
+    if (!res.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error ?? `パスワード更新に失敗しました (HTTP ${res.status})`,
+      };
+    }
+    return { success: true };
+  } catch (e) {
+    console.error("[updatePasswordFromBirthday] fetch error:", e);
+    return { success: false, error: "通信エラーでパスワードを更新できませんでした" };
+  }
 }

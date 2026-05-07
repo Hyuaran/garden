@@ -21,7 +21,12 @@ import {
   KotApiClientError,
 } from "../_lib/kot-api";
 import type { KotMonthlyWorking, KotSyncPreviewResult, KotSyncPreviewRow } from "../_types/kot";
-import { createClient } from "@supabase/supabase-js";
+import {
+  insertSyncLog,
+  updateSyncLogComplete,
+  updateSyncLogFailure,
+} from "../_lib/kot-sync-log";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 // ------------------------------------------------------------
 // Helpers
@@ -70,20 +75,27 @@ function holidayWorkMinutes(m: KotMonthlyWorking): number {
  * 内部用 Supabase クライアント（service_role）。
  * - root_employees.employee_number と KoT code を突合するため、RLS 越しに
  *   複数従業員を横断取得する必要がある。
- * - Server 実行のみなので service_role を使っても OK（トークン同様、クライアントに漏れない）。
+ * - Phase A-3-a でシェアド `getSupabaseAdmin()`（`@/lib/supabase/admin`）に統一。
  */
 function serviceSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Supabase 環境変数が未設定（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）");
-  return createClient(url, key, { auth: { persistSession: false } });
+  return getSupabaseAdmin();
 }
 
 // ------------------------------------------------------------
 // Public: プレビュー作成
 // ------------------------------------------------------------
 
-export async function previewKotMonthlySync(targetMonth: string): Promise<KotSyncPreviewResult> {
+/**
+ * @param targetMonth  YYYY-MM（例: "2026-04"）
+ * @param triggeredBy  ログ triggered_by に入れる識別子。
+ *                     client から呼ぶ場合は rootUser.user_id、
+ *                     Cron から呼ぶ場合は 'cron' を想定。
+ *                     未指定時は 'unknown' で記録（A-3-b で要 follow）。
+ */
+export async function previewKotMonthlySync(
+  targetMonth: string,
+  triggeredBy?: string,
+): Promise<KotSyncPreviewResult> {
   try {
     assertYearMonth(targetMonth);
   } catch (e) {
@@ -95,6 +107,16 @@ export async function previewKotMonthlySync(targetMonth: string): Promise<KotSyn
       message: (e as Error).message,
     };
   }
+
+  // 同期開始ログ（失敗しても null を返すだけでメイン処理は続行）
+  const syncLog = await insertSyncLog({
+    sync_type: "monthly_attendance",
+    sync_target: targetMonth,
+    triggered_by: triggeredBy ?? "unknown",
+    status: "running",
+  });
+  const logId = syncLog?.id;
+
   // /employees は yyyy-MM-DD、/monthly-workings は yyyy-MM を受理する（実機確認 2026-04-24）
   const employeesDate = firstOfMonth(targetMonth); // yyyy-MM-DD
 
@@ -115,12 +137,19 @@ export async function previewKotMonthlySync(targetMonth: string): Promise<KotSyn
       .from("root_employees")
       .select("employee_id, employee_number, name, is_active");
     if (empErr) {
+      if (logId) {
+        await updateSyncLogFailure(logId, {
+          error_code: "SUPABASE_ERROR",
+          error_message: `Garden 従業員マスタ取得に失敗: ${empErr.message}`,
+        });
+      }
       return {
         ok: false,
         source: "live",
         target_month: targetMonth,
         error_code: "SUPABASE_ERROR",
         message: `Garden 従業員マスタ取得に失敗: ${empErr.message}`,
+        log_id: logId,
       };
     }
     const gardenByNumber = new Map<string, { employee_id: string; name: string; is_active: boolean }>();
@@ -178,15 +207,33 @@ export async function previewKotMonthlySync(targetMonth: string): Promise<KotSyn
       };
     });
 
+    // プレビュー取得成功。ここでは commit 結果（実際の upsert 結果）は分からないため、
+    // 一旦 records_fetched のみ更新して status='running' のまま残し、
+    // クライアント側 commit 後に commitKotSyncResult で status を確定させる。
+    if (logId) {
+      await getSupabaseAdmin()
+        .from("root_kot_sync_log")
+        .update({ records_fetched: rows.length })
+        .eq("id", logId);
+    }
+
     return {
       ok: true,
       source: "live",
       target_month: targetMonth,
       rows,
       warnings: [],
+      log_id: logId,
     };
   } catch (e) {
     if (e instanceof KotApiClientError) {
+      if (logId) {
+        await updateSyncLogFailure(logId, {
+          error_code: String(e.code),
+          error_message: e.message,
+          error_stack: e.stack ?? null,
+        });
+      }
       return {
         ok: false,
         source: "live",
@@ -195,14 +242,88 @@ export async function previewKotMonthlySync(targetMonth: string): Promise<KotSyn
         message: e.message,
         // detail は開発環境のみ返す
         detail: process.env.NODE_ENV === "production" ? undefined : e.detail,
+        log_id: logId,
       };
+    }
+    const err = e as Error;
+    if (logId) {
+      await updateSyncLogFailure(logId, {
+        error_code: "UNKNOWN",
+        error_message: err.message,
+        error_stack: err.stack ?? null,
+      });
     }
     return {
       ok: false,
       source: "live",
       target_month: targetMonth,
       error_code: "UNKNOWN",
-      message: (e as Error).message,
+      message: err.message,
+      log_id: logId,
     };
+  }
+}
+
+// ------------------------------------------------------------
+// Public: クライアント upsert 完了後のログ確定
+// ------------------------------------------------------------
+
+/**
+ * クライアント側の一括 upsert が完了した後に呼ばれる Server Action。
+ * previewKotMonthlySync で status='running' のまま保留したログ行を、
+ * 最終結果（成功 / 部分成功）で締める。
+ *
+ * 失敗が発生した行がある場合は status='partial'、全件成功は status='success'。
+ * 全件失敗や破滅的失敗はクライアント側で判断して `commitKotSyncFailure` を呼ぶ。
+ *
+ * @param logId    previewKotMonthlySync が返した log_id
+ * @param stats    upsert の集計結果
+ */
+export async function commitKotSyncResult(
+  logId: string,
+  stats: {
+    records_fetched: number;
+    records_inserted: number;
+    records_updated: number;
+    records_skipped: number;
+    upsert_errors: number;
+  },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const status: "success" | "partial" = stats.upsert_errors > 0 ? "partial" : "success";
+    await updateSyncLogComplete(logId, {
+      status,
+      records_fetched: stats.records_fetched,
+      records_inserted: stats.records_inserted,
+      records_updated: stats.records_updated,
+      records_skipped: stats.records_skipped,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+}
+
+/**
+ * クライアント側の upsert が完全に破滅した場合に呼ばれる Server Action。
+ * 例: commit 開始直後に Supabase RLS で全件拒否、ネットワーク切断等。
+ */
+export async function commitKotSyncFailure(
+  logId: string,
+  params: {
+    error_code: string;
+    error_message: string;
+    records_fetched?: number;
+  },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    await updateSyncLogFailure(logId, {
+      error_code: params.error_code,
+      error_message: params.error_message,
+      records_fetched: params.records_fetched,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
   }
 }
