@@ -6,9 +6,10 @@
 
 **Architecture:** 3 層構造（UI / ロジック / インフラ）。UI は Backoffice / Input / **Root マイページ DL PW 設定**の 3 画面。ロジックは `src/app/leaf/_lib/` に集約、`attachments.ts` (**v3: 10 関数**) / `image-compression.ts` + Worker / `kanden-storage-paths.ts` / `role-context.tsx`。インフラは Supabase Storage × 3 bucket + Postgres テーブル **4 本**（`leaf_kanden_attachments` 拡張 + `leaf_businesses` + `leaf_user_businesses` + **`leaf_kanden_attachments_history` 新規**）+ **bcrypt RPC 2 本 + history trigger**。spec-cross-rls-audit §2 パターン A に従い `src/lib/supabase/client.ts` を新設。**Root A-3-g + root_settings + pgcrypto** に依存。
 
-**Tech Stack:** Next.js 16 (App Router) / React 19 / TypeScript / Tailwind CSS 4 / Supabase JS 2.103 / heic2any (新規) / **bcryptjs (v3 新規)** / vitest + @testing-library/react + MSW + happy-dom (新規、要承認)
+**Tech Stack:** Next.js 16 (App Router) / React 19 / TypeScript / Tailwind CSS 4 / Supabase JS 2.103 / heic2any (新規) / vitest + @testing-library/react + MSW + happy-dom (新規、要承認)
+※ **v3.2 改訂（2026-05-07）**: bcryptjs（v3 新規予定だった client 側 hash 生成用 npm）は a-review #65 セキュリティ修正で **不要化**（サーバ側 RPC 内で bcrypt hash 化に変更、平文 PW を RPC に直送）
 
-**仕様書**: `docs/superpowers/specs/2026-04-23-leaf-a1c-attachment-design.md`（**v3 2026-04-25 改訂**、東海林さん業務レビュー回答反映）
+**仕様書**: `docs/superpowers/specs/2026-04-23-leaf-a1c-attachment-design.md`（**v3.2 2026-05-07 改訂**、a-review #65 セキュリティ修正反映: search_path 追加 + 平文 PW 直送設計 + extensions schema 明示）
 
 **見積 (v3)**: **6.7d**（Phase 0 = 0.3d / Phase D 共通基盤 = **2.7d** / Phase A Backoffice = **2.3d** / Phase B Input = **1.5d** / Phase F 仕上げ = 0.2d、並行一部あり）※ v2 比 +0.7d
 
@@ -49,7 +50,7 @@
 
 **Root マイページ UI `src/app/root/me/image-download-password/`（v3 新規）:**
 - `page.tsx` — super_admin 限定 DL PW 設定ページ
-- `_components/PasswordSetForm.tsx` — 旧 PW 確認 + 新 PW + 確認再入力 + bcryptjs client hash + `set_image_download_password` RPC 呼出
+- `_components/PasswordSetForm.tsx` — 旧 PW 確認 + 新 PW + 確認再入力 + **v3.2: 平文 PW を `set_image_download_password({ new_password })` RPC に直送（client bcryptjs 廃止、サーバ側 RPC 内で bcrypt 化）**
 
 **Leaf Input UI `src/app/leaf/input/`（新規画面）:**
 - `page.tsx` — 営業向け入力画面（新規）
@@ -75,7 +76,7 @@
 - `AttachmentAdminActions.test.tsx`
 
 **テスト `src/app/root/me/image-download-password/__tests__/`（v3 新規）:**
-- `PasswordSetForm.test.tsx` — super_admin 判定 / 新旧 PW 一致チェック / bcryptjs + RPC 呼出検証
+- `PasswordSetForm.test.tsx` — super_admin 判定 / 新旧 PW 一致チェック / **v3.2: 平文 PW を RPC に直送する呼出検証（bcryptjs mock は廃止）**
 
 **テスト `src/app/leaf/input/_components/__tests__/`:**
 - `MobileAttachmentUploader.test.tsx`
@@ -109,8 +110,8 @@
 | パッケージ | 用途 | バージョン | 承認状況 |
 |---|---|---|---|
 | `heic2any` | HEIC → JPEG 変換 | ^0.0.4 | ✅ 承認済（Q6.1） |
-| `bcryptjs` | DL 専用 PW の client 側 hash 生成（v3 新規）| ^2.4.3 | 🟡 要承認 |
-| `@types/bcryptjs` | bcryptjs の型定義 | ^2.4.6 | 🟡 要承認 |
+| ~~`bcryptjs`~~ | ~~DL 専用 PW の client 側 hash 生成（v3 新規）~~ | ~~^2.4.3~~ | ❌ **v3.2 改訂で不要化**（サーバ側 RPC 内 hash 化に変更、a-review #65 修正反映）|
+| ~~`@types/bcryptjs`~~ | ~~bcryptjs の型定義~~ | ~~^2.4.6~~ | ❌ **v3.2 改訂で不要化**|
 | `vitest` | ユニットテストランナー | ^1.6.0 | 🟡 要承認 |
 | `@vitejs/plugin-react` | React support for Vitest | ^4.3.1 | 🟡 要承認 |
 | `@testing-library/react` | Component testing | ^16.0.0 | 🟡 要承認 |
@@ -3553,9 +3554,9 @@ git commit -m "feat(leaf): Backoffice に AttachmentGrid + Uploader を組込み
 - Create: `src/app/root/me/image-download-password/_components/PasswordSetForm.tsx`
 - Create: `src/app/root/me/image-download-password/_components/__tests__/PasswordSetForm.test.tsx`
 
-**前提**: Task 0.1 で bcryptjs npm パッケージの承認が必要（CLAUDE.md 事前相談ルール、Task 0.2 の install 時に追加）。
+**前提（v3.2 改訂）**: bcryptjs npm パッケージは **不要**（a-review #65 修正でサーバ側 RPC 内 bcrypt 化に変更、平文 PW を直送）。Task 0.1 / 0.2 の npm install 対象から外す。
 
-- [ ] **Step 1: RTL テストを書く**
+- [ ] **Step 1: RTL テストを書く（v3.2 改訂版、bcryptjs mock 廃止 + 平文 PW 直送呼出検証）**
 
 ```typescript
 // src/app/root/me/image-download-password/_components/__tests__/PasswordSetForm.test.tsx
@@ -3568,9 +3569,7 @@ vi.mock('@/app/leaf/_lib/role-context', () => ({
   useGardenRole: vi.fn(() => 'super_admin'),
 }));
 
-vi.mock('bcryptjs', () => ({
-  default: { hashSync: vi.fn(() => 'mock-hash'), genSaltSync: vi.fn(() => 'mock-salt') },
-}));
+// v3.2 改訂: bcryptjs mock は廃止（client では bcrypt を使用しない）
 
 const mockRpc = vi.fn(async () => ({ data: null, error: null }));
 vi.mock('@/lib/supabase/client', () => ({
@@ -3607,7 +3606,7 @@ describe('PasswordSetForm', () => {
     expect(await screen.findByText(/一致しません/)).toBeInTheDocument();
   });
 
-  it('calls set_image_download_password RPC on valid input', async () => {
+  it('calls set_image_download_password RPC with plain new_password (v3.2)', async () => {
     const { useGardenRole } = await import('@/app/leaf/_lib/role-context');
     vi.mocked(useGardenRole).mockReturnValue('super_admin');
     render(<PasswordSetForm />);
@@ -3615,19 +3614,20 @@ describe('PasswordSetForm', () => {
     await userEvent.type(screen.getByLabelText(/確認用再入力/), 'newpass01');
     await userEvent.click(screen.getByRole('button', { name: /設定する/ }));
     await screen.findByText(/設定しました/);
-    expect(mockRpc).toHaveBeenCalledWith('set_image_download_password', { new_hash: 'mock-hash' });
+    // v3.2: 引数は { new_password: <平文> }（旧 v3 の { new_hash: <bcrypt hash> } から変更）
+    expect(mockRpc).toHaveBeenCalledWith('set_image_download_password', { new_password: 'newpass01' });
   });
 });
 ```
 
-- [ ] **Step 2: FAIL → 実装**
+- [ ] **Step 2: FAIL → 実装（v3.2 改訂版、bcryptjs import 廃止 + 平文 PW 直送）**
 
 ```typescript
 // src/app/root/me/image-download-password/_components/PasswordSetForm.tsx
 'use client';
 
 import { useState } from 'react';
-import bcrypt from 'bcryptjs';
+// v3.2 改訂: bcryptjs import 廃止（サーバ側 RPC 内で bcrypt 化）
 import { useGardenRole } from '@/app/leaf/_lib/role-context';
 import { ADMIN_ROLES } from '@/app/leaf/_lib/types';
 import { supabase } from '@/lib/supabase/client';
@@ -3652,8 +3652,9 @@ export function PasswordSetForm() {
 
     setBusy(true);
     try {
-      const hash = bcrypt.hashSync(pw, bcrypt.genSaltSync(12));
-      const { error: rpcErr } = await supabase.rpc('set_image_download_password', { new_hash: hash });
+      // v3.2 改訂: 平文 PW を直接 RPC に送信（サーバ側で bcrypt 化）
+      // a-review #65 修正で任意 hash 送信ルートを封殺、HTTPS 経路保護に依存
+      const { error: rpcErr } = await supabase.rpc('set_image_download_password', { new_password: pw });
       if (rpcErr) throw new Error(rpcErr.message);
       setSuccess('設定しました。次回の変更は 1 ヶ月後目安です。変更時は Chatwork で社内通知してください。');
       setPw('');
@@ -3745,7 +3746,7 @@ npm run build
 
 ```bash
 git add src/app/root/me/image-download-password/
-git commit -m "feat(leaf): A-1c v3 Root マイページ 画像 DL PW 設定 UI (super_admin 限定, bcryptjs + RPC)"
+git commit -m "feat(leaf): A-1c v3.2 Root マイページ 画像 DL PW 設定 UI (super_admin 限定, 平文 PW 直送 RPC, server-side bcrypt)"
 ```
 
 ---
@@ -4341,7 +4342,7 @@ effort-tracking 反映済。β版投入判断をお願いします。
 
 | Task | v3 改訂内容 |
 |---|---|
-| Task 0.1 | npm 承認依頼に bcryptjs / @types/bcryptjs 追加（8 → 10 パッケージ）|
+| Task 0.1 | ~~npm 承認依頼に bcryptjs / @types/bcryptjs 追加（8 → 10 パッケージ）~~ → **v3.2 改訂で bcryptjs / @types/bcryptjs を承認対象から除外**（10 → 8 パッケージに戻す、サーバ側 RPC 内 hash 化に変更）|
 | Task D.1 | migration SQL に pgcrypto / history テーブル + trigger / RPC 2 本 / root_settings 初期値を追加。RLS UPDATE を全員可能に簡略化。ポリシー数 16 → 18 |
 | Task D.3 | 型に `AttachmentHistory` / `ImageDownloadPasswordSetting` 追加 |
 | Task D.8 | `softDeleteAttachment` を Client ガードなしに簡略化（docstring 更新のみ、機能は v2 から同じ）|
@@ -4354,7 +4355,7 @@ effort-tracking 反映済。β版投入判断をお願いします。
 
 | Task | 内容 | 見積 |
 |---|---|---|
-| **Task A.7** | Root マイページ 画像 DL PW 設定 UI（super_admin 限定、bcryptjs + `set_image_download_password` RPC、RTL 4 テスト）| 0.3d |
+| **Task A.7** | Root マイページ 画像 DL PW 設定 UI（super_admin 限定、**v3.2 改訂: 平文 PW を `set_image_download_password({ new_password })` RPC に直送、サーバ側で bcrypt 化**、RTL 4 テスト）| 0.3d |
 
 ### 10. Spec 要件カバレッジ（v3 更新分）
 
@@ -4391,6 +4392,58 @@ v2 の全要件 + v3 追加要件を以下でカバー:
 - **Scope**: 6.7d で単一 plan に適切、9 Task の Phase A が最も大きいが追加 A.7 は独立性高く分割可能 ✅
 
 Self-review pass (v3)。
+
+---
+
+## v3.2 改訂サマリ（2026-05-07、a-review #65 セキュリティ修正反映）
+
+### 改訂理由
+a-review #65 が PR #65 (Task D.1 migration SQL) で検出した 2 件の重大セキュリティ脆弱性をすでに commit `4247005` で修正済（実コード反映済）。本 v3.2 改訂は **spec / plan を実コードに同期** させる文書整合作業。
+
+### 改訂内容
+
+| 領域 | 旧 (v3) | 新 (v3.2) |
+|---|---|---|
+| **SECURITY DEFINER 関数** | search_path 未指定（schema poisoning 脆弱性）| `SET search_path = ''` 追加、public schema は明示修飾、`auth.uid()` は `(SELECT auth.uid())` で囲む |
+| **set_image_download_password 引数** | `new_hash text`（client から bcrypt hash 送信）| `new_password text`（client から平文送信、サーバ内で `extensions.crypt(pw, gen_salt('bf', 12))` で hash 化）|
+| **client 側 hash 生成** | bcryptjs npm で client が hashSync | **廃止**（HTTPS 経路保護に依存、任意 hash 送信ルートを封殺）|
+| **pgcrypto 関数呼出** | `crypt()` / `gen_salt()` を schema 修飾なし | `extensions.crypt()` / `extensions.gen_salt()` schema 明示 |
+| **bcryptjs / @types/bcryptjs npm** | v3 で追加予定 | **v3.2 で除外**（不要化、Task 0.1 npm 承認 10 → 8 個）|
+| **Task A.7 PasswordSetForm** | bcryptjs hashSync → RPC 呼出 | 平文 PW を直接 RPC 送信、コメント追記 |
+
+### 影響範囲
+
+| Phase / Task | 影響度 | 対応 |
+|---|---|---|
+| Task 0.1 (npm 承認) | 削減 | bcryptjs / @types/bcryptjs を承認対象から除外 |
+| Task 0.2 (npm install) | 削減 | bcryptjs install 不要 |
+| Task D.1 (migration SQL) | 既反映 | commit `4247005` で実コード修正済（PR #65 内）|
+| Task D.13 (verifyImageDownloadPassword) | 影響なし | verify 側は元々 input_password 平文受取の正しい設計、search_path 追加のみ |
+| Task A.7 (PasswordSetForm) | 大改訂 | bcryptjs import 廃止、平文 PW 直送、テスト mock 変更 |
+
+### 見積影響
+
+| Phase | v3 | v3.2 | 差分 | 理由 |
+|---|---|---|---|---|
+| Phase 0 | 0.3d | 0.3d | 0 | 承認パッケージ数減少だが同 Task 内で吸収 |
+| Phase D | 2.7d | 2.7d | 0 | 既に commit 済、spec 反映のみ |
+| Phase A | 2.3d | 2.3d | 0 | Task A.7 は実装簡略化（bcryptjs import 削除）と RPC 引数名変更のみ、追加見積なし |
+| Phase B | 1.5d | 1.5d | 0 | 影響なし |
+| Phase F | 0.2d | 0.2d | 0 | 影響なし |
+| **合計** | **6.7d** | **6.7d** | **0** | - |
+
+### 関連ファイル / コミット
+
+- 実コード正本: `scripts/leaf-schema-patch-a1c.sql` + `supabase/migrations/20260425000005_leaf_a1c_attachments.sql`（PR #65 内、commit `4247005` で a-review #65 修正反映済）
+- 本 v3.2 改訂: 本 plan + `docs/superpowers/specs/2026-04-23-leaf-a1c-attachment-design.md`（v3.2 同期）
+- 別 PR で対応予定: `package.json` から bcryptjs / @types/bcryptjs 削除（実コード変更、本 v3.2 では文書のみ）
+
+### 改訂履歴
+
+- 2026-04-23 v1: 初版起草
+- 2026-04-25 v2: ロール × 事業スコープ RLS、history、削除設計
+- 2026-04-25 v3: 業務レビュー反映（論理削除全員可 / DL 専用 PW / history trigger）
+- **2026-05-07 v3.2: a-review #65 セキュリティ修正反映（search_path / 平文 PW 直送 / extensions schema 明示 / bcryptjs 不要化）**
 
 ---
 
