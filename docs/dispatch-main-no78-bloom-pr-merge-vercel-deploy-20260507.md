@@ -1,12 +1,43 @@
 # dispatch main- No. 78 — a-bloom-003 通知（500 修正後 PR マージ + Vercel デプロイ 追加依頼）
 
-発信元: a-main-013
-発信日時: 2026-05-07(木) 14:30
-発信先: a-bloom-003
-件名: main- No. 77 修正完了後の PR マージ + Vercel 自動デプロイ確認（5/8 後道さん別 PC URL アクセス用）
-緊急度: 🔴 高（5/7 中 完了希望、5/8 デモ朝までに Vercel 反映必須）
+> 起草: a-main-013
+> 用途: a-bloom-003 へ「main- No. 77 修正完了後の PR マージ + Vercel 自動デプロイ確認」依頼
+> 番号: main- No. 78
+> 起草時刻: 2026-05-07(木) 14:30
+> 緊急度: 🔴 高（5/7 中 完了希望、5/8 デモ朝までに Vercel 反映必須）
 
 ---
+
+## 投下用短文（東海林さんが a-bloom-003 にコピペ）
+
+~~~
+🔴 main- No. 78
+【a-main-013 から a-bloom-003 への dispatch（PR マージ + Vercel 自動デプロイ確認）】
+発信日時: 2026-05-07(木) 14:30
+
+main- No. 77（500 エラー修正）完了お疲れさまでした。続けて以下お願いします。
+
+5/8 後道さんデモは 2 系統運用です：
+- 当日 対面（東海林さん PC で見せる）= ローカル localhost:3001
+- 後道さん別 PC = Vercel 本番 garden-chi-ochre.vercel.app
+
+Vercel 本番は Apr 24 の main マージ後から更新なし。/bloom/progress 等の 5/5 新機能は未反映なので、5/7 中に Vercel に最新コード反映が必要。
+
+詳細・修正手順・NG 時のフォールバックは以下ファイル参照:
+[docs/dispatch-main-no78-bloom-pr-merge-vercel-deploy-20260507.md](docs/dispatch-main-no78-bloom-pr-merge-vercel-deploy-20260507.md)
+
+要点:
+1. main- No. 77 修正の commit `16fafa5` を含む feature ブランチを develop へ PR → develop へ push → main へ PR → main へ push
+2. Vercel ダッシュボードで GitHub C 垢移行後の自動デプロイ初動確認（build 成功まで視覚確認）
+3. garden-chi-ochre.vercel.app/bloom/progress で 200 + X-Data-Source: supabase 確認
+4. NG 時は Vercel ダッシュボード redeploy → GitHub 連携再設定 → CLI の順でフォールバック
+
+完了時 bloom-003- No. NN（次番号）で a-main-013 に報告お願いします。
+~~~
+
+---
+
+## 1. 追加要件
 
 ## 1. 追加要件
 
