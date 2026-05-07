@@ -8,6 +8,7 @@ export const BLOOM_PATHS = {
   PROGRESS: "/bloom/progress",
   LOGIN: "/bloom/login",
   FOREST_LOGIN: "/forest/login",
+  UNIFIED_LOGIN: "/login",
 } as const;
 
 export type BloomPath = (typeof BLOOM_PATHS)[keyof typeof BLOOM_PATHS];
