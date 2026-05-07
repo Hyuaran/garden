@@ -26,12 +26,13 @@
 
 ## 2. 全体サマリ（応答揃った時点で更新）
 
-### 現時点（2026-05-07 22:13、応答 6/9 active）
+### 最終（2026-05-07 21:30、応答 **9/9 active = 100%**）✅
 
-- 応答済: **6 セッション**（a-soil / a-forest-002 / a-leaf-002 / a-review / a-auto-004 / a-root-002）
-- 待機中（active）: 3 セッション（a-bud / a-bloom-004 / a-tree）
-- 休眠中: a-rill / a-seed / b-main
-- 平均削減率: **65.2%**（65.3% × 3 + 65.1% × 3 = 391.2/6）
+- 応答済: **9 セッション全完走**（a-soil / a-forest-002 / a-leaf-002 / a-review / a-auto-004 / a-root-002 / a-bud / a-bloom-004 / a-tree）
+- 待機中: ゼロ
+- 休眠中: a-rill / a-seed / b-main（次回起動時確認）
+- 平均削減率: **65.2%**（65.3% × 4 + 65.1% × 5 = 586.7/9）
+- **CLAUDE.md §19 目標 60% を 5.2pp 超過、ガンガン常態モード成立確定**
 
 ### 観察（global scope の特性 + 時系列推移）
 
@@ -86,8 +87,8 @@ a-bud / a-bloom-004 / a-leaf-002 / a-soil 等の高活動セッションでも 6
 
 東海林さんが順次 main- No. 111 を各セッションに投下中。
 
-| 投下済（応答受領）| a-soil / a-forest-002 / a-leaf-002 / a-review / a-auto-004 / a-root-002 |
-| 投下中 / 投下予定 | a-bud / a-bloom-004 / a-tree |
+| 投下済（応答受領）| **9/9 全 active セッション完走** ✅ |
+| 投下不要 | 休眠中 a-rill / a-seed / b-main（次回起動時確認）|
 
 ## 5.1 セッション別 体感コメント（質的観察）
 
@@ -99,17 +100,51 @@ a-bud / a-bloom-004 / a-leaf-002 / a-soil 等の高活動セッションでも 6
 | a-review | PR レビュー（git diff / read / grep / lint）の頻出コマンドが上位独占、**RTK 恩恵 特大**セッション |
 | a-auto-004 | Phase 残 A 50+ PR 操作 + spec 修正 + self-review で hot path 効果最大化、ガンガン常態モード継続可能状態 |
 | a-root-002 | git / vitest / read / grep / lint 系がほぼ全て RTK 経由で透過処理されていることを確認、認証統一 plan 1429 行起草に効いた |
+| a-bud | Phase D 9 件 / 累計 27 commits（rtk git commit 64 回 / 95.8%）+ 329 tests（rtk vitest run 99.7%）+ rtk lint eslint 99.6% で **62% 圧縮の基盤** |
+| a-bloom-004 | Phase 1+3+2A+2B 等 8 件 / 6 倍速の主要因実感、★ **vitest passthrough 問題発見**（§6）|
+| a-tree | PR #128/#129 review 待ち、5/8-12 下準備に RTK 適用継続 |
 
 ---
 
-## 6. 集計完了後のアクション
+## 6. ★ 副次発見: vitest passthrough 問題（a-bloom-004 報告）
 
-全セッション応答揃ったら:
+### 6-1. 発見内容
 
-1. 本ファイルの集計表を最終化
-2. 平均削減率 / 最高 / 最低 / 中央値を算出
-3. main- No. NNN として「RTK 全セッション集計サマリ」dispatch 起草（任意）
-4. CLAUDE.md §19 改訂候補（実測値で目標値を 60% → 65% に更新）東海林さんに提案
+a-bloom-004 が bloom-004- No. 52 報告で発見:
+- bloom-004- No. 50「vitest 苦戦判断」の **真因 = RTK passthrough**
+- `rtk vitest run` 7 回 / 99.7% 削減 = vitest は **実際に RTK 経由で実行されている**
+- 5/7 19:18 試行時の `[RTK:PASSTHROUGH] vitest parser: All parsing tiers failed` = RTK parser が vitest 出力を理解できず passthrough、**stdout が caller に届かず結果見えない**仕様の可能性
+
+### 6-2. 影響範囲
+
+- a-bloom-004 単独問題ではなく、**Garden 全モジュールが vitest 動作確認時に同じ問題遭遇可能性**
+- a-bud / a-soil で 305 + 46 = 351 tests 動作中なのは「結果が見える方法を見つけている」のか「passthrough でも動作している」のか要確認
+- bloom-004- No. 50「vitest 環境問題」の 5/8 朝調査タスクを再構成必要
+
+### 6-3. 推奨対応
+
+| # | 対応 | 担当 | 工数 |
+|---|---|---|---|
+| 1 | RTK 担当（東海林さん本人）に「vitest parser 強化」可能か確認 | 東海林さん | 0.05d |
+| 2 | RTK bypass オプション（vitest 実行時のみ）の有無確認 | 東海林さん | 0.05d |
+| 3 | 5/8 朝 a-bloom-004 vitest 調査 dispatch（main- No. 103）を「RTK passthrough 解決優先」に再構成 | a-main-014 | 0.05d |
+| 4 | a-bud / a-soil の vitest 実行方法を a-bloom-004 に共有（成功パターン抽出） | a-bud / a-soil | 0.1d |
+
+### 6-4. 修正済 dispatch（main- No. 103）
+
+5/8 朝の a-bloom-004 起動 dispatch（main- No. 103）に **「RTK vitest passthrough 問題」の調査優先**を追記候補。
+東海林さん判断後、main- No. 103 を改訂 or 別 dispatch（main- No. 113 等）で補強。
+
+---
+
+## 7. 集計完了後のアクション
+
+全セッション応答揃ったら（**完了済 9/9**）:
+
+1. ✅ 本ファイルの集計表を最終化
+2. ✅ 平均削減率 65.2%（n=9）算出
+3. **次**: 副次発見（vitest passthrough）の対応判断 → 東海林さんへ報告（a-main-014 内 chat）
+4. **次**: CLAUDE.md §19 改訂候補（実測値で目標値を 60% → 65% に更新）東海林さんに提案 → 5/14-16 デモ後
 
 ---
 
