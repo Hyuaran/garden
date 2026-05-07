@@ -23,6 +23,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { GardenHomeGate } from "./_components/GardenHomeGate";
 
 type Tone = "soft" | "mid" | "strong";
 
@@ -251,6 +252,7 @@ export default function GardenHomePage() {
   const activeModule = activeMod ? MODULES.find((m) => m.mod === activeMod) : null;
 
   return (
+    <GardenHomeGate>
     <div className={`garden-stage${activeModule ? " has-active" : ""}`}>
       {/* 背景: 完成版モックアップから切り出した夜の庭園 */}
       <div className="stage-bg" aria-hidden />
@@ -819,5 +821,6 @@ export default function GardenHomePage() {
         }
       `}</style>
     </div>
+    </GardenHomeGate>
   );
 }
