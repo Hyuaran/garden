@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
 
+  "ignoreCommand": "if ! git rev-parse HEAD^ > /dev/null 2>&1; then exit 1; fi; ns=$(git diff HEAD^ HEAD --name-only | grep -vE '^(docs/|.*\\.md$|.*\\.txt$|\\.gitignore$|\\.editorconfig$|LICENSE$)' || true); if [ -z \"$ns\" ]; then echo 'docs/md/txt only commit, skipping deploy'; exit 0; else echo 'non-docs change, deploying'; exit 1; fi",
+
   "crons": [
     { "path": "/api/bloom/cron/daily", "schedule": "0 9 * * *" },
     { "path": "/api/bloom/cron/weekly", "schedule": "0 9 * * 5" },
