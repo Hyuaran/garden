@@ -23,7 +23,14 @@ import { useBloomState } from "../_state/BloomStateContext";
 export function BloomGate({ children }: { children: ReactNode }) {
   const { loading, isAuthenticated, hasPermission, isUnlocked } = useBloomState();
 
-  const allowed = isAuthenticated && hasPermission && isUnlocked;
+  // dev 環境では認証バイパス（視覚確認用）
+  // 本番ビルドでは process.env.NODE_ENV !== 'development' のため自動無効
+  // 根本解決（Bloom 認証の Forest 統合再設計）は post-5/5 タスク。
+  // dispatch v2.8a-bloom main-9 (2026-05-02) の対応、memory project_bloom_auth_independence.md 参照。
+  const isDevBypass = process.env.NODE_ENV === "development";
+
+  const allowed =
+    isDevBypass || (isAuthenticated && hasPermission && isUnlocked);
 
   useEffect(() => {
     if (loading || allowed) return;

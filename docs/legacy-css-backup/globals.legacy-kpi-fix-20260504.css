@@ -1,0 +1,2696 @@
+@import "tailwindcss";
+
+/* ====================================================================
+ * Garden Series — Home UI Stylesheet (Next.js 移植版)
+ * v2.8a / 2026-04-27 (originated by ChatGPT prototype)
+ * Step 1: CSS 変数 + フォント基盤
+ * v2.8a-pixel-fix: CSS reset 追加 (4/28) — pixel-perfect 一致のため、
+ *   prototype style.css §リセット (* / html, body) を Next.js 側に移植。
+ *
+ * 既存 v6/v7 の hover keyframes (gv-*, v7d-hit, gv-grid-card) は保持。
+ * v2.8a 仕様の CSS 変数（カラー / レイアウト）+ ダークモード対応 +
+ * @theme inline で Tailwind expose を追加。
+ *
+ * ダークモード切替: <html class="dark"> または [data-theme="dark"]
+ * ==================================================================== */
+
+/* ========== リセット (prototype style.css §リセット 完全移植) ==========
+   browser defaults の margin/padding を消し、box-sizing: border-box で
+   width/height を実際の枠サイズに合わせる。
+   Tailwind preflight も一部 reset するが、box-sizing は明示で効果を保証。
+   ==================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: var(--font-noto-serif-jp), 'Noto Serif JP', 'Shippori Mincho', serif;
+  font-weight: 400;
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.6s ease, color 0.6s ease;
+}
+
+body {
+  background-color: var(--bg-paper);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+ul { list-style: none; }
+input { font-family: inherit; }
+
+/* ========== カラーパレット（ライトモード） ========== */
+
+:root,
+[data-theme="light"] {
+  /* === 背景 === */
+  --bg-paper:        #f5f0e1;
+  --bg-paper-soft:   #faf6ec;
+  --bg-card:         rgba(255, 253, 245, 0.70);
+  --bg-card-hover:   rgba(255, 253, 245, 0.90);
+  --bg-card-solid:   #fdfbf3;
+  --bg-sidebar:      rgba(250, 246, 236, 0.65);
+  --bg-activity:     rgba(255, 253, 245, 0.75);
+  --bg-overlay:      rgba(245, 240, 225, 0.18);
+
+  /* === テキスト === */
+  --text-main:       #4a4233;
+  --text-sub:        #8a7f6a;
+  --text-muted:      #b3a98f;
+  --text-accent:     #7a9968;
+  --text-warning:    #c95a4a;
+  --text-success:    #7a9968;
+  --text-info:       #5a8fa8;
+
+  /* === 罫線 === */
+  --border-soft:     rgba(154, 138, 105, 0.22);
+  --border-card:     rgba(154, 138, 105, 0.28);
+
+  /* === アクセントカラー === */
+  --accent-green:    #9bb88a;
+  --accent-green-d:  #7a9968;
+  --accent-gold:     #d4a541;
+  --accent-blue:     #8ab4cc;
+  --accent-pink:     #e8b4b8;
+
+  /* === 影 === */
+  --shadow-soft:      0 4px 20px rgba(120, 100, 70, 0.08);
+  --shadow-card:      0 6px 24px rgba(120, 100, 70, 0.10);
+  --shadow-hover:     0 16px 44px rgba(120, 100, 70, 0.20);
+  --shadow-orb-hover: 0 20px 50px rgba(120, 100, 70, 0.25);
+  --shadow-floating:  0 12px 40px rgba(120, 100, 70, 0.18);
+}
+
+/* ========== カラーパレット（ダークモード） ========== */
+/* class="dark" と [data-theme="dark"] の両方に対応（next-themes 互換） */
+
+.dark,
+[data-theme="dark"] {
+  --bg-paper:        #1f2419;
+  --bg-paper-soft:   #2a302a;
+  /* === dark alpha (DESIGN_SPEC §1-2 同値、prototype HTML/CSS と一致) ===
+     第 1 弾 (d080e45 / 0.82) / 第 2 弾 (333ecef / 0.94) で alpha を強化したが、
+     第 3 弾調査で真の原因が判明: .garden-v28a-main の z-index: 1 が
+     stacking context を形成し KPI/Orb cards の backdrop-filter を nullify。
+     z-index 削除（dispatch v2.8a 第 3 弾 A 案）で blur 復活 → alpha は
+     prototype 同値 (0.55 / 0.6 / 0.7) に revert 完了。 */
+  --bg-card:         rgba(38, 44, 32, 0.55);
+  --bg-card-hover:   rgba(50, 58, 42, 0.85);
+  --bg-card-solid:   #2c322a;
+  --bg-sidebar:      rgba(30, 36, 24, 0.6);
+  --bg-activity:     rgba(38, 44, 32, 0.7);
+  --bg-overlay:      rgba(25, 30, 20, 0.25);
+
+  --text-main:       #e0d8c5;
+  --text-sub:        #a8a08c;
+  --text-muted:      #7a7460;
+  --text-accent:     #b8d4a8;
+  --text-warning:    #e89888;
+  --text-success:    #b8d4a8;
+  --text-info:       #98c4dc;
+
+  --border-soft:     rgba(212, 200, 165, 0.15);
+  --border-card:     rgba(212, 200, 165, 0.20);
+
+  --accent-green:    #a8c898;
+  --accent-green-d:  #b8d4a8;
+  --accent-gold:     #e4b551;
+  --accent-blue:     #98c4dc;
+  --accent-pink:     #d8a4a8;
+
+  --shadow-soft:      0 4px 20px rgba(0, 0, 0, 0.30);
+  --shadow-card:      0 6px 24px rgba(0, 0, 0, 0.40);
+  --shadow-hover:     0 16px 44px rgba(0, 0, 0, 0.55);
+  --shadow-orb-hover: 0 20px 50px rgba(220, 200, 130, 0.20);
+  --shadow-floating:  0 12px 40px rgba(0, 0, 0, 0.50);
+}
+
+/* ========== レイアウト寸法（v2.8a） ========== */
+
+:root {
+  --radius-card:     20px;
+  --radius-input:    12px;
+  --radius-pill:     999px;
+  --sidebar-w:       210px;
+  --topbar-h:        80px;
+
+  /* === [v2.8a] レイアウト寸法変数 ===
+     左カラム = KPIカード(1段) + margin + ガラス玉(3段) で構成。
+     ガラス玉が4列×3段=12個の前提。
+     Activityパネル高さは top+bottom指定 + JS実測補正方式で対応。
+     --left-column-h は将来の参照用に残置。 */
+  --kpi-card-h:        144px;
+  --kpi-grid-mb:       18px;
+  --orb-card-h:        140px;
+  --orb-grid-rows:     3;
+  --orb-grid-gap:      14px;
+  --left-column-h:     calc(
+                         var(--kpi-card-h)
+                         + var(--kpi-grid-mb)
+                         + var(--orb-card-h) * var(--orb-grid-rows)
+                         + var(--orb-grid-gap) * (var(--orb-grid-rows) - 1)
+                       );
+}
+
+/* ========== Tailwind v4 @theme inline (CSS-based config) ==========
+   v2.8a の CSS 変数を Tailwind の utility class として expose する。
+   例:
+     bg-bg-paper         → background: var(--bg-paper)
+     text-text-main      → color: var(--text-main)
+     border-border-soft  → border-color: var(--border-soft)
+     font-shippori       → font-family: var(--font-shippori), ...
+   ==================================================================== */
+
+@theme inline {
+  /* === Garden v2.8a colors === */
+  --color-bg-paper:        var(--bg-paper);
+  --color-bg-paper-soft:   var(--bg-paper-soft);
+  --color-bg-card:         var(--bg-card);
+  --color-bg-card-hover:   var(--bg-card-hover);
+  --color-bg-card-solid:   var(--bg-card-solid);
+  --color-bg-sidebar:      var(--bg-sidebar);
+  --color-bg-activity:     var(--bg-activity);
+  --color-bg-overlay:      var(--bg-overlay);
+
+  --color-text-main:       var(--text-main);
+  --color-text-sub:        var(--text-sub);
+  --color-text-muted:      var(--text-muted);
+  --color-text-accent:     var(--text-accent);
+  --color-text-warning:    var(--text-warning);
+  --color-text-success:    var(--text-success);
+  --color-text-info:       var(--text-info);
+
+  --color-border-soft:     var(--border-soft);
+  --color-border-card:     var(--border-card);
+
+  --color-accent-green:    var(--accent-green);
+  --color-accent-green-d:  var(--accent-green-d);
+  --color-accent-gold:     var(--accent-gold);
+  --color-accent-blue:     var(--accent-blue);
+  --color-accent-pink:     var(--accent-pink);
+
+  /* === Garden v2.8a shadows === */
+  --shadow-garden-soft:      var(--shadow-soft);
+  --shadow-garden-card:      var(--shadow-card);
+  --shadow-garden-hover:     var(--shadow-hover);
+  --shadow-garden-orb-hover: var(--shadow-orb-hover);
+  --shadow-garden-floating:  var(--shadow-floating);
+
+  /* === Garden v2.8a radii === */
+  --radius-garden-card:  var(--radius-card);
+  --radius-garden-input: var(--radius-input);
+  --radius-garden-pill:  var(--radius-pill);
+
+  /* === Fonts (v2.8a + 既存 Geist) === */
+  --font-sans:        var(--font-noto-serif-jp), var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono:        var(--font-geist-mono), monospace;
+  --font-shippori:    var(--font-shippori), var(--font-noto-serif-jp), serif;
+  --font-noto-serif:  var(--font-noto-serif-jp), serif;
+  --font-cormorant:   var(--font-cormorant), var(--font-eb-garamond), serif;
+  --font-eb-garamond: var(--font-eb-garamond), var(--font-cormorant), serif;
+  --font-numeric:     var(--font-eb-garamond), var(--font-cormorant), var(--font-noto-serif-jp), serif;
+}
+
+/* ========== 互換: 既存 ShojiStatus / Garden 共通 light CSS 変数 ========== */
+/* 既存コード互換用: --background / --foreground を v2.8a に紐付け */
+
+:root {
+  --background: var(--bg-paper);
+  --foreground: var(--text-main);
+}
+
+.dark,
+[data-theme="dark"] {
+  --background: var(--bg-paper);
+  --foreground: var(--text-main);
+}
+
+/* ========== body 既定 (上の reset block で統合済、本 block は下位互換 placeholder) ==========
+   旧 body block を削除すると CLAUDE.md ファイル削除規約に抵触するため、
+   no-op 相当の placeholder として残置。実際の body スタイルは reset block (line ~30) で定義。
+   ==================================================================== */
+/* body { (removed — see reset block above) } */
+
+/* ========== 数字専用 utility (v2.8a §2-3) ==========
+   .num-tnum を付けた要素は EB Garamond 優先 + tabular-nums + lining-nums。
+   KPI 値・トレンド・時刻表示・グラフラベル等で使用。
+   ==================================================================== */
+
+.num-tnum {
+  font-family: var(--font-eb-garamond), var(--font-cormorant), 'Noto Serif JP', serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* ========== fadeUp アニメーション (v2.8a §6-1) ========== */
+
+/* fadeUp: dispatch v2.8a 第 3 弾 Step J A 案で transform 削除。
+   "to" の transform: translateY(0) が matrix(1,0,0,1,0,0) として
+   permanent 残存し各 card を compositor layer に昇格させ
+   backdrop-filter を Chrome レンダリングパイプライン上で nullify
+   していたため、opacity のみのフェードに変更。
+   (上下動き演出は失うが、ぼかし復活と引き換え。優先順 1+2 達成、3 のみ妥協) */
+@keyframes fadeUp {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.fadeUp {
+  animation: fadeUp 0.6s ease-out both;
+}
+
+/* ====================================================================
+ * Garden 3 layer 大樹ビュー — ModuleSlot hover effects (cross-ui-06 §2.5)
+ *
+ * 12 モジュール固有の hover 演出を data-module-key 属性で切り替える。
+ * keyframes は gv-* prefix で名前空間。
+ * prefers-reduced-motion: reduce で全演出を無効化（a11y）。
+ * ==================================================================== */
+
+.gv-slot {
+  transition:
+    transform 0.25s ease-out,
+    filter 0.25s ease-out,
+    box-shadow 0.25s ease-out;
+  will-change: transform, filter;
+}
+
+/* --- Layer 1 地下 --- */
+.gv-slot[data-module-key="soil"]:hover {
+  transform: translateY(-2px);
+}
+.gv-slot[data-module-key="root"]:hover {
+  animation: gv-root-glow 1.6s ease-in-out infinite;
+}
+.gv-slot[data-module-key="rill"]:hover {
+  animation: gv-rill-ripple 1.2s ease-out forwards;
+}
+
+/* --- Layer 2 地上 --- */
+.gv-slot[data-module-key="tree"]:hover {
+  animation: gv-tree-sway 2.4s ease-in-out infinite;
+}
+.gv-slot[data-module-key="bud"]:hover {
+  transform: scale(1.08);
+}
+.gv-slot[data-module-key="leaf"]:hover {
+  animation: gv-leaf-fall 1.5s ease-in-out forwards;
+}
+.gv-slot[data-module-key="sprout"]:hover {
+  transform: scaleY(1.15);
+  transform-origin: center bottom;
+}
+
+/* --- Layer 3 樹冠 --- */
+.gv-slot[data-module-key="bloom"]:hover {
+  animation: gv-bloom-rotate 1.8s ease-in-out forwards;
+}
+.gv-slot[data-module-key="fruit"]:hover {
+  filter: brightness(1.15);
+}
+.gv-slot[data-module-key="seed"]:hover {
+  animation: gv-seed-crack 1.4s ease-out forwards;
+}
+.gv-slot[data-module-key="forest"]:hover {
+  animation: gv-forest-mist 3s ease-in-out infinite;
+}
+.gv-slot[data-module-key="calendar"]:hover {
+  animation: gv-calendar-pulse 2s ease-in-out infinite;
+}
+
+/* --- keyframes --- */
+@keyframes gv-root-glow {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+  50%      { box-shadow: 0 4px 24px rgba(92, 67, 50, 0.5); }
+}
+
+@keyframes gv-rill-ripple {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.12); }
+  100% { transform: scale(1.06); }
+}
+
+@keyframes gv-tree-sway {
+  0%, 100% { transform: translateX(-2px) rotate(-1.2deg); }
+  50%      { transform: translateX(2px)  rotate(1.2deg); }
+}
+
+@keyframes gv-leaf-fall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(8px) rotate(15deg); opacity: 0.85; }
+}
+
+@keyframes gv-bloom-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes gv-seed-crack {
+  0%   { filter: brightness(1); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  100% { filter: brightness(1.4); box-shadow: 0 0 16px rgba(217, 188, 146, 0.6); }
+}
+
+@keyframes gv-forest-mist {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+
+@keyframes gv-calendar-pulse {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  50%      { opacity: 0.65; filter: brightness(1.3); }
+}
+
+/* a11y: reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .gv-slot,
+  .gv-slot:hover {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  .fadeUp {
+    animation: none !important;
+  }
+}
+
+/* ====================================================================
+ * v6 Step 5: ModuleGrid hover effect
+ * 既存 .gv-slot:hover とは別、grid card 用 scale + ring。
+ * ==================================================================== */
+
+.gv-grid-card {
+  display: block;
+  transition: transform 0.2s ease-out;
+}
+.gv-grid-card:hover {
+  transform: scale(1.04);
+}
+.gv-grid-card:hover .gv-grid-card-inner {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 0 0 3px rgba(168, 216, 122, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-grid-card,
+  .gv-grid-card:hover,
+  .gv-grid-card:hover .gv-grid-card-inner {
+    transform: none !important;
+    transition: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  }
+}
+
+/* ====================================================================
+ * v7-D A 案 hit area hover effect
+ * 透明 hit area on v4 画像 overlay。base transform: translate(-50%, -50%)
+ * を維持しつつ scale + ring を加える。
+ * ==================================================================== */
+
+.v7d-hit {
+  display: block;
+  background: transparent;
+  transition:
+    transform 0.2s ease-out,
+    box-shadow 0.2s ease-out,
+    background 0.2s ease-out;
+}
+
+.v7d-hit:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 0 0 3px rgba(168, 216, 122, 0.6);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.v7d-hit--disabled {
+  /* disabled hit area は hover 演出なし（cursor: not-allowed のみ）*/
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v7d-hit,
+  .v7d-hit:hover {
+    transform: translate(-50%, -50%) !important;
+    transition: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+}
+
+/* ====================================================================
+ * v2.8a Step 5: prototype index.html / css/style.css 移植
+ *
+ * 9 components (Topbar / Sidebar / BackgroundLayer / Greeting /
+ * KpiGrid / KpiCard / OrbGrid / OrbCard / ActivityPanel) + click hint。
+ * v2.8a 仕様 1296 行から、CSS 変数 / リセット / @keyframes fadeUp は
+ * 既存セクションと重複するため除外し、レイアウト/コンポーネント部分のみ移植。
+ *
+ * 5/5 後道さんデモ向け。post-5/5 で Tailwind/CSS Module 化検討。
+ * ==================================================================== */
+
+/* ---- a タグ / button / ul リセット (prototype 互換) ---- */
+.topbar a,
+.sidebar a,
+.activity-panel a,
+.orb-card,
+.help-card { text-decoration: none; color: inherit; }
+
+.activity-panel ul { list-style: none; padding: 0; margin: 0; }
+
+/* ---- 背景画像レイヤー (cross-fade) ---- */
+.bg-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center right;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-layer.active { opacity: 1; }
+
+.bg-layer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-overlay);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.6s ease;
+}
+
+/* ---- Topbar ---- */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 28px;
+  background: var(--bg-sidebar);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- prefix を先に書き、
+     標準を後置（Turbopack/Lightning CSS の dedup で標準が削除される
+     現象を回避。Chrome 76+ は標準のみ認識のため、標準が compiled CSS に
+     残ることが必須）。!important は Step I の defense-in-depth として残置。 */
+  -webkit-backdrop-filter: blur(14px) !important;
+  backdrop-filter: blur(14px) !important;
+  border-bottom: 1px solid var(--border-soft);
+  z-index: 9;
+  transition: background 0.6s ease, border-color 0.6s ease;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  width: 260px;
+  padding-right: 12px;
+}
+
+.topbar-brand-logo {
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(120, 100, 70, 0.12));
+}
+
+.topbar-brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* dispatch main- No.32 #A 修正: 公式横長ロゴ画像 (木 + Garden Series + tagline) を
+   Topbar 80px に収めるため topbar-brand-img に max-height + width auto + object-fit
+   制約を追加。旧 topbar-brand-logo は v2.8a 旧構造（ロゴ + 別 text）用、本 rule は
+   BloomTopbar の単一画像 class 用。 */
+.topbar-brand {
+  height: var(--topbar-h);
+  overflow: visible;
+}
+.topbar-brand-img {
+  max-height: 60px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.topbar-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.topbar-brand-name {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+  color: var(--accent-green-d);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: color 0.6s ease;
+}
+
+.topbar-brand-tagline {
+  font-family: var(--font-shippori), 'Shippori Mincho', serif;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  margin-top: 2px;
+  transition: color 0.6s ease;
+}
+
+.topbar-brand-tagline-en {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 420px;
+  flex-shrink: 1;
+  background: rgba(255, 253, 245, 0.6);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-input);
+  padding: 9px 14px;
+  transition: all 0.6s ease;
+}
+[data-theme="dark"] .search-box { background: rgba(50, 58, 42, 0.6); }
+
+.search-box input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+.search-box input::placeholder { color: var(--text-muted); }
+
+.search-icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.search-icon img { width: 100%; height: 100%; object-fit: contain; }
+
+.search-shortcut {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  background: rgba(154, 138, 105, 0.08);
+  padding: 2px 8px;
+  border-radius: 5px;
+  letter-spacing: 0.05em;
+}
+
+.topbar-info {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.info-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.info-icon img { width: 100%; height: 100%; object-fit: contain; }
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  color: var(--text-sub);
+}
+
+.info-item .info-text strong {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  letter-spacing: 0.01em;
+}
+
+.info-item .info-text small {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6db66d;
+  box-shadow: 0 0 8px rgba(109, 182, 109, 0.5);
+}
+
+.theme-toggle,
+.sound-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 253, 245, 0.5);
+  border: 1px solid var(--border-soft);
+  padding: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .theme-toggle,
+[data-theme="dark"] .sound-toggle { background: rgba(50, 58, 42, 0.5); }
+
+.theme-toggle img,
+.sound-toggle img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  transition: transform 0.4s ease, filter 0.4s ease;
+}
+
+.theme-toggle:hover,
+.sound-toggle:hover {
+  background: rgba(255, 253, 245, 0.95);
+  transform: translateY(-1px);
+}
+[data-theme="dark"] .theme-toggle:hover,
+[data-theme="dark"] .sound-toggle:hover { background: rgba(50, 58, 42, 0.95); }
+
+.theme-toggle:hover img { transform: rotate(20deg); }
+.sound-toggle:hover img { transform: scale(1.1); }
+.sound-toggle.muted img { opacity: 0.4; filter: grayscale(0.5); }
+
+.bell-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 6px;
+  border-radius: 50%;
+  background: rgba(255, 253, 245, 0.5);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+[data-theme="dark"] .bell-btn { background: rgba(50, 58, 42, 0.5); }
+
+.bell-btn img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.bell-btn:hover {
+  background: rgba(255, 253, 245, 0.95);
+  transform: translateY(-1px);
+}
+[data-theme="dark"] .bell-btn:hover { background: rgba(50, 58, 42, 0.95); }
+.bell-btn:hover img { transform: rotate(-8deg); }
+
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 14px 5px 5px;
+  border-radius: 12px;
+  background: rgba(255, 253, 245, 0.5);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+[data-theme="dark"] .user-area { background: rgba(50, 58, 42, 0.5); }
+.user-area:hover { background: rgba(255, 253, 245, 0.85); }
+[data-theme="dark"] .user-area:hover { background: rgba(50, 58, 42, 0.85); }
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c9b88a, #9bb88a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 500;
+  font-size: 0.9rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.user-info strong {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+.user-info small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.user-arrow {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+/* ---- Sidebar ---- */
+.sidebar {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0;
+  width: var(--sidebar-w);
+  height: calc(100vh - var(--topbar-h));
+  background: var(--bg-sidebar);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  border-right: 1px solid var(--border-soft);
+  padding: 24px 16px;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  transition: background 0.6s ease, border-color 0.6s ease;
+}
+
+.nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.help-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(155, 184, 138, 0.18), rgba(212, 165, 65, 0.10));
+  border: 1px solid rgba(155, 184, 138, 0.35);
+  border-radius: 12px;
+  color: var(--text-main);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.help-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(212, 165, 65, 0.15), transparent 60%);
+  pointer-events: none;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.help-card:hover {
+  background: linear-gradient(135deg, rgba(155, 184, 138, 0.28), rgba(212, 165, 65, 0.16));
+  border-color: rgba(155, 184, 138, 0.55);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(120, 100, 70, 0.12);
+}
+.help-card:hover::before { opacity: 0.9; }
+
+.help-card-leaf {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-green-d);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+.help-card-leaf svg { width: 100%; height: 100%; }
+
+.help-card-text {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  line-height: 1.2;
+}
+
+.help-card-text strong {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--accent-green-d);
+  letter-spacing: 0.03em;
+  display: block;
+  margin-bottom: 2px;
+  transition: color 0.6s ease;
+}
+
+.help-card-text span {
+  font-size: 0.7rem;
+  color: var(--text-sub);
+  letter-spacing: 0.02em;
+  transition: color 0.6s ease;
+}
+
+.help-card-arrow {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s ease;
+}
+.help-card:hover .help-card-arrow {
+  transform: translateX(2px);
+  color: var(--accent-green-d);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--text-sub);
+  font-size: 0.92rem;
+  transition: all 0.25s ease;
+}
+.nav-item:hover {
+  background: rgba(155, 184, 138, 0.12);
+  color: var(--text-main);
+}
+.nav-item.active {
+  background: linear-gradient(95deg, rgba(155, 184, 138, 0.28), rgba(155, 184, 138, 0.10));
+  color: var(--accent-green-d);
+  font-weight: 500;
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(120, 100, 70, 0.08));
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+.nav-icon img { width: 100%; height: 100%; object-fit: contain; }
+
+.nav-item:hover .nav-icon {
+  transform: scale(1.1) rotate(-2deg);
+  filter: drop-shadow(0 2px 4px rgba(120, 100, 70, 0.15));
+}
+[data-theme="dark"] .nav-icon img { filter: brightness(1.15) contrast(0.95); }
+
+/* ---- Main area ---- */
+.garden-v28a-main {
+  margin-left: var(--sidebar-w);
+  padding: calc(var(--topbar-h) + 24px) 32px 32px;
+  position: relative;
+  /* z-index: 1 を削除 (dispatch v2.8a 第 3 弾 A 案):
+     stacking context を形成し内部 .kpi-card / .orb-card の backdrop-filter を
+     nullify していたため除去。z-index 不要、レイアウト維持確認済。 */
+}
+
+/* ---- Greeting ---- */
+.greeting { margin-bottom: 20px; }
+
+.greeting-title {
+  font-family: var(--font-shippori), 'Shippori Mincho', serif;
+  font-size: 1.85rem;
+  font-weight: 500;
+  color: var(--text-main);
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  transition: color 0.6s ease;
+}
+
+.leaf-icon {
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+  margin-left: 10px;
+  vertical-align: middle;
+  transform: translateY(-4px);
+  filter: drop-shadow(0 2px 4px rgba(120, 100, 70, 0.10));
+}
+.leaf-icon img { width: 100%; height: 100%; object-fit: contain; }
+
+.greeting-sub {
+  color: var(--text-sub);
+  font-size: 0.92rem;
+  transition: color 0.6s ease;
+}
+
+/* ---- KPI grid + cards ---- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
+  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 14px 18px 12px;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  transition: transform 0.3s, box-shadow 0.3s, background 0.6s ease, border-color 0.6s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+.kpi-header { margin-bottom: 8px; }
+
+.kpi-label {
+  font-size: 0.82rem;
+  color: var(--text-sub);
+  letter-spacing: 0.05em;
+  transition: color 0.6s ease;
+}
+
+.kpi-value {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 1.95rem;
+  font-weight: 500;
+  color: var(--text-main);
+  letter-spacing: 0.005em;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  transition: color 0.6s ease;
+}
+
+.kpi-value small {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  margin-left: 3px;
+  color: var(--text-sub);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+.kpi-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--accent-green-d);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  letter-spacing: 0.02em;
+}
+
+.kpi-trend-label { color: var(--text-muted); font-weight: 400; }
+.kpi-trend.up { color: var(--accent-green-d); }
+.kpi-trend.down { color: var(--text-warning); }
+.kpi-trend-arrow { font-size: 0.72rem; }
+
+.kpi-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpi-sub {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  transition: color 0.6s ease;
+}
+
+.kpi-chart { width: 100%; height: 36px; margin-top: 8px; }
+
+.kpi-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 36px;
+  margin-top: 8px;
+}
+.kpi-bars span {
+  flex: 1;
+  background: linear-gradient(to top, #8ab4cc, #b8d4e0);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.85;
+}
+
+.ring-progress { width: 48px; height: 48px; }
+.ring-progress svg { width: 100%; height: 100%; }
+
+.kpi-warning {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-warning);
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  transition: color 0.6s ease;
+}
+
+.kpi-progress {
+  position: relative;
+  height: 6px;
+  background: rgba(154, 138, 105, 0.12);
+  border-radius: 999px;
+  margin-top: 12px;
+}
+.kpi-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #9bb88a, #7a9968);
+  border-radius: 999px;
+}
+.kpi-progress-text {
+  position: absolute;
+  right: 0;
+  top: -20px;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-sub);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* ---- Orb grid + cards ---- */
+.orb-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.orb-card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 8px 14px;
+  padding: 16px 18px;
+  background: var(--bg-card);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
+  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.45s cubic-bezier(.2,.8,.3,1.2),
+              box-shadow 0.45s cubic-bezier(.2,.8,.3,1.2),
+              background 0.6s ease,
+              border-color 0.6s ease;
+  position: relative;
+  cursor: pointer;
+  height: 140px;
+  align-items: center;
+}
+
+.orb-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), transparent 50%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.orb-card:hover {
+  transform: translateY(-6px) scale(1.025);
+  box-shadow: var(--shadow-orb-hover);
+  background: var(--bg-card-hover);
+}
+.orb-card:hover::before { opacity: 1; }
+
+.orb-card:active {
+  transform: translateY(-3px) scale(1.01);
+  transition: transform 0.1s ease;
+}
+
+.orb-img {
+  grid-row: 1 / 3;
+  grid-column: 1;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 10px rgba(120, 100, 70, 0.15));
+  transition: transform 0.5s cubic-bezier(.2,.8,.3,1.2), filter 0.4s ease;
+}
+.orb-card:hover .orb-img {
+  transform: scale(1.08) rotate(-3deg);
+  filter: drop-shadow(0 8px 18px rgba(120, 100, 70, 0.28));
+}
+.orb-img img { width: 100%; height: 100%; object-fit: contain; }
+
+.orb-text { grid-row: 1; grid-column: 2; align-self: center; }
+
+.orb-text h3 {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+  line-height: 1.1;
+  transition: color 0.6s ease;
+}
+
+.orb-text p {
+  font-size: 0.74rem;
+  color: var(--text-sub);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  transition: color 0.6s ease;
+}
+
+.orb-status {
+  grid-row: 2;
+  grid-column: 2;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  transition: border-color 0.6s ease;
+}
+
+.orb-status-label { color: var(--text-muted); letter-spacing: 0.03em; }
+
+.orb-status-value {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.orb-status-value::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+}
+.orb-status-value.alert { color: var(--text-warning); }
+.orb-status-value.alert::after { background: var(--text-warning); }
+.orb-status-value.warn { color: var(--accent-gold); }
+.orb-status-value.warn::after { background: var(--accent-gold); }
+
+/* ---- Activity Panel ---- */
+.activity-panel {
+  /* dispatch main- No.33 #2: フラット化（プロト 02_BloomTop/css/style.css line 1178-1197 準拠）
+     旧: 浮島カード (top 194px, right 32px, width 340px, border-radius 20px, box-shadow あり)
+     新: メニューバー化 (top var(--topbar-h)=80px, right 0, bottom 0, width var(--activity-w)=320px,
+                        border-radius 0, box-shadow none、Topbar 直下から画面下端まで full height) */
+  position: fixed;
+  top: var(--topbar-h);
+  right: 0;
+  bottom: 0;
+  width: var(--activity-w);
+  height: calc(100vh - var(--topbar-h));
+  padding: 24px 22px 16px;
+  background: var(--bg-activity);
+  /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
+  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(16px) !important;
+  border: none;
+  border-left: 1px solid var(--border-card);
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+  /* dispatch main- No.34 #A: 旧 box-shadow: var(--shadow-floating) を削除、
+     box-shadow: none で確定 (前段で記述、後段の二重宣言が原因で「none → floating」
+     上書きされていた問題を解消) */
+  box-shadow: none;
+  transition: background 0.6s ease, border-color 0.6s ease, transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.activity-title { display: flex; align-items: center; gap: 8px; }
+
+.activity-header h3 {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--accent-green-d);
+  letter-spacing: 0.03em;
+  transition: color 0.6s ease;
+}
+
+.activity-all {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  background: rgba(255, 253, 245, 0.7);
+  border: 1px solid var(--border-soft);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  transition: all 0.2s, background 0.6s ease;
+}
+[data-theme="dark"] .activity-all { background: rgba(50, 58, 42, 0.7); }
+.activity-all:hover { background: rgba(255, 253, 245, 1); color: var(--text-main); }
+
+.activity-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 4px;
+}
+.activity-list::-webkit-scrollbar { width: 4px; }
+.activity-list::-webkit-scrollbar-thumb {
+  background: rgba(154, 138, 105, 0.25);
+  border-radius: 999px;
+}
+
+.activity-item {
+  display: grid;
+  /* dispatch main- No.31 #2 修正:
+     旧 40px だと grid 制約が strict のため `.activity-time { min-width }` を
+     上書きし「11:30」が「1:30」に桁削れ。最小幅を 52px に拡張、
+     EB Garamond tabular-nums の "11:30"（5 chars + colon、letter-spacing 0.02em）
+     を確実に格納できる幅に。 */
+  grid-template-columns: 52px 36px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border-soft);
+  transition: border-color 0.6s ease;
+}
+.activity-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+.activity-time {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding-top: 1px;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  letter-spacing: 0.02em;
+  /* dispatch main- No.19/31 #2: 桁削れ防止 + grid セル内 overflow 制御 */
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(120, 100, 70, 0.10));
+}
+.activity-icon img { width: 100%; height: 100%; object-fit: contain; }
+
+.activity-icon-check {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(212, 165, 65, 0.12);
+  border: 1.5px solid var(--accent-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--accent-gold);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.activity-body strong {
+  display: block;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 3px;
+  line-height: 1.4;
+}
+
+.activity-body p {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 0.74rem;
+  color: var(--text-sub);
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+.notify-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 11px 16px;
+  background: rgba(255, 253, 245, 0.75);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-input);
+  font-size: 0.82rem;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.2s, background 0.6s ease;
+}
+[data-theme="dark"] .notify-btn { background: rgba(50, 58, 42, 0.75); }
+.notify-btn:hover {
+  background: rgba(255, 253, 245, 1);
+  color: var(--text-main);
+}
+.notify-btn .arrow {
+  margin-left: auto;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+/* ---- Click hint zone ---- */
+.bg-click-zone {
+  position: fixed;
+  top: var(--topbar-h);
+  left: var(--sidebar-w);
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  cursor: pointer;
+}
+
+.bg-hint {
+  position: fixed;
+  bottom: 20px;
+  left: calc(var(--sidebar-w) + 20px);
+  background: rgba(255, 253, 245, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  z-index: 11;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s ease, transform 0.5s ease, background 0.6s ease;
+  pointer-events: none;
+}
+[data-theme="dark"] .bg-hint { background: rgba(50, 58, 42, 0.85); }
+.bg-hint.show { opacity: 1; transform: translateY(0); }
+
+/* ---- v2.8a fadeUp animation overrides ---- */
+.greeting   { animation: fadeUp 0.7s ease both; }
+.kpi-card   { animation: fadeUp 0.7s ease both; }
+.kpi-card:nth-child(1) { animation-delay: 0.1s; }
+.kpi-card:nth-child(2) { animation-delay: 0.18s; }
+.kpi-card:nth-child(3) { animation-delay: 0.26s; }
+.kpi-card:nth-child(4) { animation-delay: 0.34s; }
+
+.orb-card   { animation: fadeUp 0.6s ease both; }
+.orb-card:nth-child(1)  { animation-delay: 0.40s; }
+.orb-card:nth-child(2)  { animation-delay: 0.45s; }
+.orb-card:nth-child(3)  { animation-delay: 0.50s; }
+.orb-card:nth-child(4)  { animation-delay: 0.55s; }
+.orb-card:nth-child(5)  { animation-delay: 0.58s; }
+.orb-card:nth-child(6)  { animation-delay: 0.61s; }
+.orb-card:nth-child(7)  { animation-delay: 0.64s; }
+.orb-card:nth-child(8)  { animation-delay: 0.67s; }
+.orb-card:nth-child(9)  { animation-delay: 0.70s; }
+.orb-card:nth-child(10) { animation-delay: 0.73s; }
+.orb-card:nth-child(11) { animation-delay: 0.76s; }
+.orb-card:nth-child(12) { animation-delay: 0.79s; }
+
+.activity-panel { animation: fadeUp 0.8s ease both; animation-delay: 0.5s; }
+
+/* ---- Responsive: 1400px breakpoint ---- */
+@media (min-width: 1400px) {
+  .orb-grid    { margin-right: 372px; }
+  .kpi-grid    { margin-right: 372px; }
+  .greeting    { margin-right: 372px; }
+}
+
+@media (max-width: 1399px) {
+  .activity-panel {
+    position: relative;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    margin-top: 24px;
+  }
+  .kpi-grid, .orb-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---- a11y: reduce motion override ---- */
+@media (prefers-reduced-motion: reduce) {
+  .greeting,
+  .kpi-card,
+  .orb-card,
+  .activity-panel,
+  .bg-layer,
+  .bg-hint {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ====================================================================
+ * Garden Bloom — Bloom Top 用 Bloom 固有 CSS (v2.8a-bloom Step 1)
+ *
+ * 出典: 015_Gardenシリーズ/000_GardenUI_bloom/02_BloomTop/css/style.css
+ *   - line 1456-1713 (.bloom-leaf-icon / .bloom-nav-* / .bloom-page 系)
+ *   - line 1794-1834 (.page-header / .page-title-* / .page-subtitle)
+ *   - line 4126-4252 (.page-title-row / .page-favorite-btn / .page-favorite-toast)
+ *
+ * 本セクションは Bloom 配下画面 (/bloom, /bloom/* で .bloom-page クラス内)
+ * のみに適用。Garden ホーム (/) は影響なし。
+ *
+ * v2.8a-bloom Step 1 では Bloom Top の最低限スタイル。Phase 2 で nav-apps /
+ * nav-pages (dual sidebar) / activity-toggle (折り畳み) / sakura-bg / peony-bg
+ * 等を追加予定。
+ * ==================================================================== */
+
+/* ---- Bloom 桜花アイコン（Greeting 用、Phase 1 では未使用） ---- */
+.bloom-leaf-icon {
+  width: 32px;
+  height: 32px;
+}
+.bloom-leaf-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Page Header (Bloom Top タイトル部分) ---- */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  position: relative;
+  padding-right: 60px;
+}
+
+.page-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.page-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-title {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 2.2rem;
+  font-weight: 500;
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: color 0.6s ease;
+}
+
+.page-title-jp {
+  font-family: var(--font-shippori), 'Shippori Mincho', serif;
+  font-size: 1.65rem;
+}
+
+.page-title-flower {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  vertical-align: middle;
+}
+.page-title-flower svg { width: 100%; height: 100%; }
+
+.page-subtitle {
+  color: var(--text-sub);
+  font-size: 0.88rem;
+  font-family: var(--font-shippori), 'Shippori Mincho', serif;
+  letter-spacing: 0.05em;
+  transition: color 0.6s ease;
+}
+
+/* ---- Page Favorite Button (右上☆ボタン、Phase 1 では UI のみ) ---- */
+.page-favorite-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 253, 245, 0.5);
+  border: 1px solid var(--border-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  font-size: 1.4rem;
+  color: var(--text-muted);
+}
+
+.page-favorite-btn:hover {
+  background: rgba(255, 253, 245, 0.85);
+  transform: translateY(-1px);
+}
+
+.page-favorite-btn:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+.page-favorite-icon-on { display: none; }
+.page-favorite-icon-off { display: inline-block; }
+
+.page-favorite-btn[aria-pressed="true"] .page-favorite-icon-on {
+  display: inline-block;
+  color: var(--accent-gold);
+}
+.page-favorite-btn[aria-pressed="true"] .page-favorite-icon-off { display: none; }
+
+[data-theme="dark"] .page-favorite-btn { background: rgba(50, 58, 42, 0.5); }
+[data-theme="dark"] .page-favorite-btn:hover { background: rgba(50, 58, 42, 0.95); }
+
+/* ---- Bloom Nav Grid (4 ナビカード、横 2 × 縦 2) ---- */
+.bloom-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.bloom-nav-card {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 8px 16px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.45s cubic-bezier(.2,.8,.3,1.2),
+              box-shadow 0.45s cubic-bezier(.2,.8,.3,1.2),
+              background 0.6s ease,
+              border-color 0.6s ease;
+  position: relative;
+  cursor: pointer;
+  align-items: center;
+  text-decoration: none;
+  overflow: hidden;
+}
+
+.bloom-nav-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), transparent 50%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.bloom-nav-card:hover {
+  /* dark fix 遵守: transform/scale なし、shadow + 背景 のみ */
+  box-shadow: var(--shadow-orb-hover);
+  background: var(--bg-card-hover);
+}
+
+.bloom-nav-card:hover::before { opacity: 1; }
+
+.bloom-nav-img {
+  grid-row: 1 / 3;
+  grid-column: 1;
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 10px rgba(120, 100, 70, 0.15));
+  transition: filter 0.4s ease;
+}
+
+.bloom-nav-card:hover .bloom-nav-img {
+  filter: drop-shadow(0 8px 18px rgba(120, 100, 70, 0.28));
+}
+
+.bloom-nav-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bloom-nav-text {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: end;
+  padding-bottom: 4px;
+}
+
+.bloom-nav-title {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+  line-height: 1.15;
+  transition: color 0.6s ease;
+}
+
+.bloom-nav-sub {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  transition: color 0.6s ease;
+}
+
+.bloom-nav-arrow {
+  position: absolute;
+  bottom: 14px;
+  right: 18px;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.bloom-nav-card:hover .bloom-nav-arrow {
+  transform: translateX(2px);
+  color: var(--accent-gold);
+}
+
+/* ---- Bloom Page 専用 background overlay（花の彩りオーバーレイ） ---- */
+.bloom-page .bg-layer-overlay {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(232, 180, 184, 0.12), transparent 35%),
+    radial-gradient(ellipse at 100% 0%, rgba(242, 213, 126, 0.08), transparent 35%),
+    radial-gradient(ellipse at 0% 100%, rgba(180, 164, 212, 0.08), transparent 35%),
+    radial-gradient(ellipse at 100% 100%, rgba(232, 180, 184, 0.10), transparent 35%),
+    var(--bg-overlay);
+}
+
+[data-theme="dark"] .bloom-page .bg-layer-overlay {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(232, 180, 184, 0.06), transparent 35%),
+    radial-gradient(ellipse at 100% 0%, rgba(242, 213, 126, 0.05), transparent 35%),
+    radial-gradient(ellipse at 0% 100%, rgba(180, 164, 212, 0.05), transparent 35%),
+    radial-gradient(ellipse at 100% 100%, rgba(232, 180, 184, 0.06), transparent 35%),
+    var(--bg-overlay);
+}
+
+/* ---- Bloom Page: kpi/nav-card/activity-panel の背景濃度調整 ---- */
+/* Bloom 専用 bg は花が華やかなので、カードの白濁度を少し強くしてテキスト可読性を担保 */
+.bloom-page .kpi-card,
+.bloom-page .bloom-nav-card {
+  background: rgba(255, 253, 245, 0.82);
+}
+.bloom-page .kpi-card:hover,
+.bloom-page .bloom-nav-card:hover {
+  background: rgba(255, 253, 245, 0.95);
+}
+
+[data-theme="dark"] .bloom-page .kpi-card,
+[data-theme="dark"] .bloom-page .bloom-nav-card {
+  background: rgba(38, 44, 32, 0.70);
+}
+[data-theme="dark"] .bloom-page .kpi-card:hover,
+[data-theme="dark"] .bloom-page .bloom-nav-card:hover {
+  background: rgba(50, 58, 42, 0.90);
+}
+
+.bloom-page .activity-panel {
+  background: rgba(255, 253, 245, 0.85);
+}
+[data-theme="dark"] .bloom-page .activity-panel {
+  background: rgba(38, 44, 32, 0.78);
+}
+
+/* ---- responsive: ~1280px / ~1024px ---- */
+@media (max-width: 1280px) {
+  .bloom-nav-card {
+    grid-template-columns: 96px 1fr;
+    padding: 14px 16px;
+  }
+  .bloom-nav-img { width: 96px; height: 96px; }
+  .bloom-nav-title { font-size: 1.35rem; }
+}
+@media (max-width: 1024px) {
+  .bloom-nav-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 1399px) {
+  .bloom-nav-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ====================================================================
+ * Bloom 専用 dual Sidebar (dispatch main- No.15 v2 / 2026-05-02)
+ *
+ * プロト 02_BloomTop の sidebar-dual = nav-apps (左 56px、Garden 12 モジュール
+ * icons-only column、hover で 200px 展開) + nav-pages (180px、Bloom サブ
+ * ページ menu) + nav-pages-toggle (14px 矢印ボタン、hover で 22px、
+ * クリックで body.nav-pages-collapsed を切替、localStorage 永続化)
+ *
+ * 既存 v2.8a Garden Sidebar (.sidebar) は /bloom 配下では BloomSidebar で
+ * 置き換え、main の margin-left を dual sidebar 用に変更。
+ * ==================================================================== */
+
+:root {
+  --sidebar-apps-w: 56px;
+  --sidebar-apps-expanded-w: 200px;
+  --sidebar-pages-w: 180px;
+  --sidebar-toggle-w: 14px;
+  --sidebar-toggle-w-hover: 22px;
+  --sidebar-dual-w: calc(var(--sidebar-apps-w) + var(--sidebar-pages-w));
+  --sidebar-dual-collapsed-w: var(--sidebar-apps-w);
+  /* dispatch main- No.33 #2: Activity Panel フラット化用 (プロト 320px) */
+  --activity-w: 320px;
+}
+
+/* dispatch main- No.33 #1: <aside class="sidebar sidebar-dual"> 本体 wrapper rule
+   (プロト 02_BloomTop/css/style.css line 4641-4663 準拠)、Topbar 直下から bottom 0 まで
+   width 236px (= apps 56 + pages 180)、collapsed 時 56px */
+.sidebar.sidebar-dual {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0;
+  width: var(--sidebar-dual-w);
+  height: calc(100vh - var(--topbar-h));
+  background: var(--bg-sidebar);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid var(--border-soft);
+  padding: 0;
+  z-index: 8;
+  display: block;
+  transition:
+    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.6s ease,
+    border-color 0.6s ease;
+  overflow: visible;
+}
+body.nav-pages-collapsed .sidebar.sidebar-dual {
+  width: var(--sidebar-dual-collapsed-w);
+}
+
+/* ---- 1 本目: nav-apps (Garden 12 モジュール icons column) ---- */
+.nav-apps {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-apps-w);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 18px 0 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid var(--border-soft);
+  background: #faf6ec;
+  z-index: 210;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s ease;
+}
+[data-theme="dark"] .nav-apps {
+  background: #1f2419;
+}
+.nav-apps:hover {
+  width: var(--sidebar-apps-expanded-w);
+  box-shadow: 6px 0 24px rgba(120, 100, 70, 0.22);
+}
+[data-theme="dark"] .nav-apps:hover {
+  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.55);
+}
+/* hover 中 toggle ボタンは隠す（重なり回避） */
+body:has(.nav-apps:hover) .nav-pages-toggle {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.nav-apps::-webkit-scrollbar { width: 4px; }
+.nav-apps::-webkit-scrollbar-thumb {
+  background: rgba(154, 138, 105, 0.25);
+  border-radius: 2px;
+}
+
+.nav-app-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 4px 4px 4px 52px;
+  margin: 0 4px;
+  width: calc(100% - 8px);
+  min-height: 48px;
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 0.25s ease;
+  flex-shrink: 0;
+}
+.nav-apps:not(:hover) .nav-app-item { justify-content: center; }
+.nav-app-icon {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: 50%;
+  transition: filter 0.25s ease;
+}
+.nav-app-icon img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(120, 95, 60, 0.25));
+  transition: filter 0.25s ease, opacity 0.25s ease;
+  display: block;
+}
+.nav-app-name {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', 'Shippori Mincho', serif;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.25s ease 0.05s, transform 0.25s ease 0.05s;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.nav-apps:hover .nav-app-name {
+  opacity: 1;
+  transform: translateX(0);
+}
+.nav-app-item:hover { background: rgba(212, 165, 65, 0.12); }
+.nav-app-item:hover .nav-app-icon img { filter: drop-shadow(0 2px 4px rgba(212, 165, 65, 0.45)); }
+.nav-app-item.is-current { background: transparent; }
+.nav-app-item.is-current .nav-app-icon { background: rgba(212, 165, 65, 0.16); }
+[data-theme="dark"] .nav-app-item.is-current .nav-app-icon { background: rgba(228, 181, 81, 0.20); }
+.nav-app-item.is-current .nav-app-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 165, 65, 0.65);
+  box-shadow: 0 0 8px rgba(212, 165, 65, 0.30);
+  pointer-events: none;
+  z-index: 2;
+}
+.nav-app-item[data-status="todo"] .nav-app-icon img { opacity: 0.55; }
+.nav-app-item[data-status="concept"] .nav-app-icon img { opacity: 0.7; }
+.nav-app-item[data-status="dev"] .nav-app-icon img { opacity: 0.92; }
+.nav-app-item[data-status="released"] .nav-app-icon img { opacity: 1; }
+.nav-app-item:hover .nav-app-icon img { opacity: 1; }
+
+/* ---- 2 本目: nav-pages (Bloom サブページ menu) ---- */
+.nav-pages {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-apps-w);
+  bottom: 0;
+  width: var(--sidebar-pages-w);
+  display: flex;
+  flex-direction: column;
+  padding: 30px 0 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 200;
+  background: transparent;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+body.nav-pages-collapsed .nav-pages {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+.nav-pages::-webkit-scrollbar { width: 4px; }
+.nav-pages::-webkit-scrollbar-thumb {
+  background: rgba(154, 138, 105, 0.25);
+  border-radius: 2px;
+}
+
+a.nav-pages-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 10px;
+  font-family: var(--font-cormorant), 'Cormorant Garamond', 'Shippori Mincho', serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-decoration: none;
+  border-radius: 8px;
+  margin: 0 4px 4px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+a.nav-pages-header:hover {
+  background: rgba(212, 165, 65, 0.10);
+  color: var(--accent-gold);
+}
+.nav-pages-app-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-pages-app-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(120, 95, 60, 0.25));
+}
+.nav-pages-app-name { overflow: hidden; text-overflow: ellipsis; }
+
+.nav-pages-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(154, 138, 105, 0.25) 15%, rgba(154, 138, 105, 0.25) 85%, transparent 100%);
+  margin: 4px 12px 8px;
+  flex-shrink: 0;
+}
+
+.nav-page-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin: 1px 8px;
+  border-radius: 10px;
+  font-family: var(--font-noto-serif-jp), 'Noto Serif JP', serif;
+  font-size: 0.80rem;
+  color: var(--text-main);
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.nav-page-item:hover {
+  background: rgba(232, 180, 184, 0.14);
+  padding-left: 16px;
+}
+.nav-page-item.active {
+  background: rgba(212, 165, 65, 0.16);
+  font-weight: 500;
+  position: relative;
+}
+.nav-page-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 3px;
+  background: var(--accent-gold);
+  border-radius: 0 2px 2px 0;
+}
+.nav-page-icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-page-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(120, 95, 60, 0.20));
+}
+.nav-page-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- 3 本目: nav-pages-toggle (折り畳みボタン、Bloom 用は左寄せ) ---- */
+.nav-pages-toggle {
+  position: fixed;
+  top: var(--topbar-h);
+  left: var(--sidebar-dual-w);
+  bottom: 0;
+  width: var(--sidebar-toggle-w);
+  height: auto;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  box-shadow: none;
+  transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s ease, background 0.3s ease;
+  outline: none;
+}
+body.nav-pages-collapsed .nav-pages-toggle {
+  left: var(--sidebar-dual-collapsed-w);
+}
+.nav-pages-toggle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(225deg, rgba(255, 245, 225, 0.9) 0%, rgba(245, 220, 195, 0.9) 100%);
+  border-right: 1px solid rgba(184, 144, 100, 0.3);
+  box-shadow: 2px 0 8px rgba(154, 138, 105, 0.12);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  pointer-events: none;
+}
+[data-theme="dark"] .nav-pages-toggle::before {
+  background: linear-gradient(225deg, rgba(70, 78, 62, 0.95) 0%, rgba(55, 62, 48, 0.95) 100%);
+  border-color: rgba(180, 170, 140, 0.35);
+}
+.nav-pages-toggle:hover { width: var(--sidebar-toggle-w-hover); }
+.nav-pages-toggle:hover::before {
+  background: linear-gradient(225deg, rgba(255, 250, 235, 1) 0%, rgba(250, 225, 200, 1) 100%);
+  box-shadow: 3px 3px 12px rgba(212, 165, 65, 0.35);
+}
+[data-theme="dark"] .nav-pages-toggle:hover::before {
+  background: linear-gradient(225deg, rgba(85, 92, 75, 1) 0%, rgba(70, 78, 62, 1) 100%);
+}
+.nav-pages-toggle-arrow {
+  font-size: 1rem;
+  color: var(--text-main);
+  font-weight: 400;
+  line-height: 1;
+  font-family: var(--font-eb-garamond), 'EB Garamond', 'Cormorant Garamond', serif;
+  opacity: 0.5;
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+  /* 通常 (展開中): 左向き = 折り畳む方向 */
+  transform: rotate(180deg);
+}
+[data-theme="dark"] .nav-pages-toggle-arrow { color: #e8dfc8; }
+.nav-pages-toggle:hover .nav-pages-toggle-arrow { opacity: 1; }
+body.nav-pages-collapsed .nav-pages-toggle-arrow { transform: rotate(0deg); }
+
+/* ---- /bloom 配下の main は dual sidebar 用に margin-left 調整、
+        Activity Panel フラット化 (dispatch main- No.33 #2) に伴い margin-right も追加 ---- */
+.bloom-page .garden-v28a-main {
+  margin-left: calc(var(--sidebar-dual-w) + var(--sidebar-toggle-w));
+  margin-right: var(--activity-w);
+  transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin-right 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+body.nav-pages-collapsed .bloom-page .garden-v28a-main {
+  margin-left: calc(var(--sidebar-dual-collapsed-w) + var(--sidebar-toggle-w));
+}
+body.activity-collapsed .bloom-page .garden-v28a-main {
+  margin-right: 0;
+}
+
+/* ====================================================================
+ * NG 2 + NG 3 修正 (dispatch main- No.14 / 2026-05-02)
+ *
+ * NG 2: 未実装画面 (DailyReport / CEOStatus) は Coming Soon Toast 表示
+ * NG 3: bg-click-zone / bg-hint を Bloom 配下では非表示
+ * ==================================================================== */
+
+/* ---- NG 2: Coming Soon Toast (画面下部固定、Bloom Top 用) ---- */
+.gs-coming-soon-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  padding: 14px 28px;
+  background: rgba(38, 44, 32, 0.92);
+  color: #fdfbf3;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-shippori), 'Shippori Mincho', serif;
+  font-size: 0.92rem;
+  letter-spacing: 0.05em;
+  box-shadow: var(--shadow-floating);
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.gs-coming-soon-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+[data-theme="dark"] .gs-coming-soon-toast {
+  background: rgba(20, 24, 16, 0.92);
+  color: #f0ead8;
+}
+
+/* ---- NG 2: Coming Soon カード (button 化、disabled 見た目) ---- */
+.bloom-nav-card-coming-soon {
+  /* button 要素の reset */
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* disabled 風の半透明 */
+  opacity: 0.78;
+}
+.bloom-nav-card-coming-soon:hover {
+  opacity: 0.92;
+}
+.bloom-nav-card-coming-soon::after {
+  content: 'Coming Soon';
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  background: rgba(255, 253, 245, 0.65);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-soft);
+  pointer-events: none;
+}
+[data-theme="dark"] .bloom-nav-card-coming-soon::after {
+  background: rgba(50, 58, 42, 0.7);
+  color: var(--text-muted);
+}
+
+/* ---- NG 3: Bloom 配下では bg-click-zone / bg-hint を非表示 ---- */
+.bloom-page .bg-click-zone {
+  display: none !important;
+  pointer-events: none !important;
+}
+.bloom-page .bg-hint {
+  display: none !important;
+}
+
+/* ====================================================================
+ * ===== bloom-page v2 (prototype 1:1 port 2026-05-02) =====
+ * dispatch main- No.16: 試作版 1:1 移植版で必要な Topbar buttons /
+ * dropdowns / activity-toggle CSS を追加。
+ *
+ * 出典: 015_Gardenシリーズ/000_GardenUI_bloom/02_BloomTop/css/style.css
+ *   line 3640-3759 (header-tool-btn / header-tool-badge / help-btn /
+ *                   favorite-btn + starPulse keyframe)
+ *   line 3760-3895 (activity-toggle + body.activity-collapsed)
+ *   line 3905-4119 (user-area + user-dropdown 全 rule)
+ *   line 4238-4470 (favorite-dropdown 全 rule)
+ *
+ * legacy section（上で定義済の theme-toggle / bell-btn / user-area 等）は
+ * 削除せずそのまま残置、本 v2 section の rule が後段で上書き勝ち。
+ * ==================================================================== */
+
+/* ---- 共通 header tool button (Topbar 右側 5 種共通基本スタイル) ---- */
+.header-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 6px;
+  border-radius: 50%;
+  background: rgba(255, 250, 235, 0.85);
+  border: 1px solid rgba(184, 144, 100, 0.25);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+[data-theme="dark"] .header-tool-btn {
+  background: rgba(50, 58, 42, 0.7);
+  border-color: rgba(180, 170, 140, 0.3);
+}
+.header-tool-btn:hover {
+  background: rgba(255, 252, 240, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(212, 165, 65, 0.25);
+}
+[data-theme="dark"] .header-tool-btn:hover {
+  background: rgba(60, 68, 52, 1);
+}
+.header-tool-btn img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 1px 2px rgba(120, 95, 60, 0.3));
+}
+.header-tool-btn:hover img {
+  transform: scale(1.08);
+  filter: drop-shadow(0 2px 4px rgba(120, 95, 60, 0.4));
+}
+
+/* ---- bell バッジ「3」---- */
+.header-tool-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: linear-gradient(135deg, #d4665d, #b8403b);
+  color: #fff;
+  border-radius: 9px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(184, 64, 59, 0.4);
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+}
+.header-tool-badge:empty,
+.header-tool-badge[data-count="0"] {
+  display: none;
+}
+
+/* ---- Help / Favorite icon hover アニメ ---- */
+.help-btn img { filter: drop-shadow(0 1px 3px rgba(212, 165, 65, 0.4)); }
+.favorite-btn img { filter: drop-shadow(0 1px 3px rgba(212, 165, 65, 0.5)); }
+.favorite-btn:hover img { animation: starPulse 0.6s ease; }
+@keyframes starPulse {
+  0%   { transform: scale(1) rotate(0deg); }
+  50%  { transform: scale(1.25) rotate(15deg); }
+  100% { transform: scale(1.15) rotate(0deg); }
+}
+
+/* ---- User dropdown ---- */
+.user-area {
+  position: relative;
+  cursor: pointer;
+  outline: none;
+}
+.user-area::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 14px;
+  pointer-events: none;
+  transition: background 0.25s ease;
+}
+.user-area:hover::after {
+  background: rgba(212, 165, 65, 0.06);
+}
+.user-area .user-arrow {
+  transition: transform 0.3s ease;
+  display: inline-block;
+}
+.user-area[aria-expanded="true"] .user-arrow {
+  transform: rotate(180deg);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  min-width: 280px;
+  background: rgba(255, 253, 245, 0.98);
+  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(154, 138, 105, 0.22);
+  padding: 8px 0;
+  z-index: 50;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+}
+[data-theme="dark"] .user-dropdown {
+  background: rgba(50, 58, 42, 0.98);
+  border-color: rgba(180, 170, 140, 0.3);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+.user-dropdown.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.user-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 12px;
+}
+.user-dropdown-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid rgba(212, 165, 65, 0.4);
+  background: rgba(255, 253, 245, 0.5);
+}
+.user-dropdown-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.user-dropdown-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+.user-dropdown-info strong {
+  font-family: var(--font-shippori), 'Shippori Mincho', 'Noto Serif JP', serif;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+.user-dropdown-info small {
+  font-size: 0.72rem;
+  color: var(--text-sub);
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-dropdown-role {
+  font-size: 0.7rem;
+  color: #b8862e;
+  font-weight: 500;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+.user-dropdown-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(154, 138, 105, 0.2) 20%, rgba(154, 138, 105, 0.2) 80%, transparent 100%);
+  margin: 4px 12px;
+}
+.user-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  font-family: var(--font-noto-serif-jp), 'Noto Serif JP', serif;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, padding-left 0.2s ease;
+  position: relative;
+}
+.user-dropdown-item:hover {
+  background: rgba(232, 180, 184, 0.12);
+  padding-left: 20px;
+}
+.user-dropdown-icon {
+  font-size: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.user-dropdown-icon img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(120, 95, 60, 0.25));
+}
+.user-dropdown-label { flex: 1; }
+.user-dropdown-item-logout { color: #b85a52; }
+.user-dropdown-item-logout:hover {
+  background: rgba(184, 90, 82, 0.1);
+}
+[data-theme="dark"] .user-dropdown-item-logout { color: #d4847d; }
+
+/* ---- Favorite dropdown ---- */
+.header-favorite-wrap {
+  position: relative;
+  display: inline-block;
+}
+.favorite-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  min-width: 320px;
+  max-width: 380px;
+  background: rgba(255, 253, 245, 0.98);
+  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(154, 138, 105, 0.22);
+  padding: 6px 0;
+  z-index: 110;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+[data-theme="dark"] .favorite-dropdown {
+  background: rgba(50, 58, 42, 0.98);
+  border-color: rgba(180, 170, 140, 0.3);
+}
+.favorite-dropdown.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.favorite-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 6px;
+}
+.favorite-dropdown-title {
+  font-family: var(--font-shippori), 'Shippori Mincho', 'Noto Serif JP', serif;
+  font-size: 0.92rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+.favorite-dropdown-count {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  background: rgba(212, 165, 65, 0.12);
+  padding: 2px 8px;
+  border-radius: 10px;
+  min-width: 22px;
+  text-align: center;
+}
+.favorite-dropdown-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(154, 138, 105, 0.2) 20%, rgba(154, 138, 105, 0.2) 80%, transparent 100%);
+  margin: 4px 12px;
+}
+.favorite-dropdown-list {
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+.favorite-dropdown-empty {
+  padding: 18px 16px;
+  text-align: center;
+  font-family: var(--font-noto-serif-jp), 'Noto Serif JP', serif;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.favorite-dropdown-add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% - 16px);
+  margin: 4px 8px;
+  padding: 9px 14px;
+  border: 1px dashed rgba(212, 165, 65, 0.45);
+  background: transparent;
+  border-radius: 10px;
+  font-family: var(--font-noto-serif-jp), 'Noto Serif JP', serif;
+  font-size: 0.85rem;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.favorite-dropdown-add:hover {
+  background: rgba(212, 165, 65, 0.08);
+  border-color: rgba(212, 165, 65, 0.7);
+  color: var(--text-main);
+}
+.favorite-dropdown-add-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 1rem;
+}
+.favorite-dropdown-add-label { flex: 1; text-align: left; }
+
+/* ---- activity-toggle (Activity Panel 折り畳みボタン、panel 外配置) ---- */
+.activity-toggle {
+  position: fixed;
+  top: var(--topbar-h);
+  bottom: 0;
+  right: var(--activity-w); /* dispatch main- No.33 #2: 旧 340px ハードコード → var(--activity-w)=320px */
+  width: 14px;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  box-shadow: none;
+  transition: right 0.45s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s ease, background 0.3s ease;
+  padding: 0;
+  outline: none;
+}
+.activity-toggle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 245, 225, 0.9) 0%, rgba(245, 220, 195, 0.9) 100%);
+  border-left: 1px solid rgba(184, 144, 100, 0.3);
+  box-shadow: -2px 0 8px rgba(154, 138, 105, 0.12);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  pointer-events: none;
+}
+[data-theme="dark"] .activity-toggle::before {
+  background: linear-gradient(135deg, rgba(70, 78, 62, 0.95) 0%, rgba(55, 62, 48, 0.95) 100%);
+  border-color: rgba(180, 170, 140, 0.35);
+}
+.activity-toggle:hover { width: 22px; }
+.activity-toggle:hover::before {
+  background: linear-gradient(135deg, rgba(255, 250, 235, 1) 0%, rgba(250, 225, 200, 1) 100%);
+  box-shadow: -3px 3px 12px rgba(212, 165, 65, 0.35);
+}
+[data-theme="dark"] .activity-toggle:hover::before {
+  background: linear-gradient(135deg, rgba(85, 92, 75, 1) 0%, rgba(70, 78, 62, 1) 100%);
+}
+.activity-toggle-arrow {
+  font-size: 1rem;
+  color: var(--text-main);
+  font-weight: 400;
+  line-height: 1;
+  font-family: var(--font-eb-garamond), 'EB Garamond', 'Cormorant Garamond', serif;
+  opacity: 0.5;
+  /* dispatch main- No.34 #C: arrow transition を panel と同期 (0.45s cubic-bezier)、
+     旧 0.4s だと panel スライド (0.45s) と arrow rotate のタイミングずれが発生し、
+     toggle と panel が「別々に閉じ開く」視覚分離の一因に */
+  transition: opacity 0.3s ease, transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+  transform: rotate(180deg);
+}
+[data-theme="dark"] .activity-toggle-arrow { color: #e8dfc8; }
+.activity-toggle:hover .activity-toggle-arrow { opacity: 1; }
+
+/* body.activity-collapsed: panel 折り畳み挙動 */
+body.activity-collapsed .activity-panel {
+  transform: translateX(100%) !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+body.activity-collapsed .activity-toggle {
+  right: 0;
+}
+body.activity-collapsed .activity-toggle .activity-toggle-arrow {
+  transform: rotate(0deg);
+}
+
+/* /bloom 配下では Activity Panel 折り畳み時、main の右余白も解除（>=1400px の時のみ既存 rule あり） */
+@media (min-width: 1400px) {
+  body.activity-collapsed .bloom-page .bloom-nav-grid,
+  body.activity-collapsed .bloom-page .kpi-grid,
+  body.activity-collapsed .bloom-page .page-header {
+    margin-right: 0;
+  }
+}
