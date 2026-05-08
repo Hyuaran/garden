@@ -148,7 +148,11 @@ Sprout とほぼ同構成、結果ボタンが `_constants/callButtons.ts` の B
 
 - 同意確認（第三者コンプライアンス）取得中のリストを保持
 - タイマー: 確認期限（既定 30 分）
-- 期限超過時は自動で `result_code = 'ng_timeout'` に降格（Chatwork Alert 付き）
+- 期限超過時は自動で `result_code = 'ng_other'` に降格（Chatwork Alert 付き）
+  - **降格時の memo に `タイムアウト（30分超過）` を自動記録**（運用識別用）
+  - D-01 schema の `result_code` CHECK 制約は 12 種で `'ng_timeout'` を含まず、`'ng_other'` 集約方式を採択（main- No. 121 案 A 採択、2026-05-08）。
+  - 集計時は `result_code = 'ng_other' AND memo LIKE 'タイムアウト%'` で抽出可能（KPI ダッシュボードで「タイムアウト」を独立カテゴリ表示する場合は VIEW で分岐）。
+  - 自動 INSERT は Vercel Cron で別途実装（D-02/D-03 別タスク）。
 
 ---
 
