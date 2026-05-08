@@ -116,8 +116,28 @@ export const ALL_CORPORATION_IDS: readonly CorporationId[] =
  * Phase A-2.1 fetcher 移行時に使用。旧 mock-corp-1 = ヒュアラン本体、
  * 旧 mock-corp-2 = ヒュアラングループ HD だったが、グループ HD は本マスタには含めず、
  * 「ヒュアラン本体」が HD 役割を兼ねる前提（Forest 連携 spec で確定）。
+ * グループ HD 統合表現が必要な場合は GARDEN_GROUP_HD_META（下記）を使用。
  */
 export const LEGACY_FOREST_MOCK_ID_MAP: Readonly<Record<string, CorporationId>> = {
   "mock-corp-1": "hyuaran",
   "mock-corp-2": "hyuaran", // HD は本体に統合、別行表示時は別途分岐
 };
+
+/** ヒュアラングループ HD 統合アイコン（6 法人花束）
+ *
+ * 起票: 2026-05-09 02:00（dispatch main- No. 158）
+ * シンボル: 6 法人 6 色のアネモネを花束として束ねた統合表現
+ * 用途: Chatwork Bot / Bloom ホーム / Forest overview / 給与明細書ヘッダー
+ *
+ * 注意: GARDEN_CORPORATIONS の 6 法人とは独立。HD 役割を視覚的に表現する場面でのみ使用。
+ * Forest 連携 spec（2026-05-09-forest-corporations-mock-migration.md）の
+ * 「HD は本体に統合、別行表示時は別途分岐」の "別途分岐" 表示で本 META を採用予定。
+ */
+export const GARDEN_GROUP_HD_META = {
+  icon: "/themes/corporate-icons/hyuaran-group-hd.webp",
+  alt: "ヒュアラングループ HD（6 法人花束統合アイコン）",
+  usage: ["chatwork", "bloom-home", "forest-overview", "payslip-header"] as const,
+} as const;
+
+/** GARDEN_GROUP_HD_META.usage の利用先 ID 型 */
+export type GroupHdUsage = (typeof GARDEN_GROUP_HD_META)["usage"][number];
