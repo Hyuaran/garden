@@ -118,29 +118,16 @@ export function ForestGate() {
           boxShadow: "0 12px 48px rgba(0,0,0,0.3)",
         }}
       >
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🌲</div>
         <h2
           style={{
             fontSize: 22,
             fontWeight: 700,
             color: C.darkGreen,
-            marginBottom: 4,
-          }}
-        >
-          Garden Forest
-        </h2>
-        <p
-          style={{
-            fontSize: 12,
-            color: FOREST_THEME.textMuted,
             marginBottom: 28,
-            lineHeight: 1.7,
           }}
         >
-          経営ダッシュボード
-          <br />
-          社員番号とパスワードを入力してください
-        </p>
+          Garden
+        </h2>
 
         <form onSubmit={handleSubmit}>
           {/* 社員番号 */}
@@ -229,7 +216,7 @@ export function ForestGate() {
             lineHeight: 1.6,
           }}
         >
-          ※ 経営データへのアクセスは許可されたユーザーに限定されます
+          ※ 各アプリへのアクセスは許可されたユーザーに限定されます
         </p>
       </div>
     </div>
