@@ -14,6 +14,7 @@
 | 0 | 2026-05-07 21:30 | a-soil / a-forest-002 / a-leaf-002 / a-review / a-auto-004 / a-root-002 / a-bud / a-bloom-004 / a-tree | broadcast 集計（baseline）| 799〜838 | 745K-750K | 260K-263K | 487-489K (65.1〜65.3%) | 205m05s〜205m22s | 9 セッション応答済、global scope |
 | 1 | 2026-05-08 13:13 | a-bud | **🔴 80% 最終引っ越し実行** | **1,155** | 890.5K | 316.1K | **576.5K (64.7%)** | 208m08s | bud-20、a-bud-002 へ引き継ぎ、handoff 27a4ff2 push 済 |
 | 2 | 2026-05-08 13:19 | a-tree-002 | 参考値（引っ越し前、通常モード継続中）| 1,172 | 1.0M | 429.0K | 578.4K (57.5%) | 208m14s | tree-17、参考報告（60% 未到達）|
+| 3 | 2026-05-08 14:00 | a-bud-002 | Phase D 100% 完走時報告 | 1,262 | 1.1M | 487.4K | **650.4K (57.3%)** | 208m51s | bud-21、a-bud → bud-002 累計 14 件 / Phase D 100% / 544 tests |
 | 3 | TBD | TBD | a-main-014 50% アラート | TBD | TBD | TBD | TBD | TBD | 50% 到達時 baseline |
 | 4 | TBD | TBD | a-main-014 引っ越し時 | TBD | TBD | TBD | TBD | TBD | 引っ越し直前、main- No. NNN で報告 |
 
