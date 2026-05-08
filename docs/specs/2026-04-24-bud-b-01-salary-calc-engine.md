@@ -5,6 +5,11 @@
 - 担当セッション: a-bud
 - 作成: 2026-04-24（a-auto / Phase A 先行 batch6 #B-01）
 - 元資料: Bud CLAUDE.md「3. 給与処理」, Root KoT 連携（PR #15）, A-06 明細管理
+- **A-07 採択結果反映 (2026-04-25)**:
+  - 識別: `root_employees.payment_method` ENUM (`bank_transfer` / `cash` / `other`) を入力に使用
+  - 計算ロジックは `payment_method` に依存しない（手渡しでも給与計算は同じ）
+  - 配信ルート（B-03）と振込ルート（B-04）で分岐
+  - 詳細: `docs/bud-a07-hearing-items.md` §「東海林判断: 採択結果」
 
 ---
 
