@@ -7,6 +7,7 @@ import { useBloomState } from "../_state/BloomStateContext";
 import type { DailyLog, PlannedItem } from "../_types/daily-log";
 import type { RoadmapEntry } from "../_types/roadmap-entry";
 import type { WorkerStatus, WorkerStatusKind } from "../_types/worker-status";
+import { ShojiStatusWidget } from "../../../components/shared/ShojiStatusWidget";
 import { NextMilestoneCard } from "./components/NextMilestoneCard";
 import { RunningProjectCard } from "./components/RunningProjectCard";
 import { TodayPlanList } from "./components/TodayPlanList";
@@ -120,6 +121,10 @@ export default function WorkboardPage() {
           {bloomUser?.name ?? ""} さん / {today}
         </p>
       </header>
+
+      <section aria-label="東海林さんステータス" style={{ marginBottom: 16 }}>
+        <ShojiStatusWidget mode="compact" />
+      </section>
 
       {error && (
         <div
