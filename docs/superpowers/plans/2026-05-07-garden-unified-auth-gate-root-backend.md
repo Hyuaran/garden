@@ -1319,3 +1319,194 @@ a-root-002 担当範囲（Task 1-10）は §3 #1 / #3 / #4 を Root 観点で全
 - /login UI 実装 → a-bloom-004
 - /forest/login / /tree/login 等の各モジュール削除 → 各モジュール担当
 - root_employees.last_login_at 等追加 → Phase B-5 認証セキュリティ強化 spec
+
+---
+
+## 5/9 朝 着手用 Subagent Dispatch Prompts（plan 補強、5/8 追加）
+
+5/9 朝 subagent-driven-development で Phase A Task 1-6 を順次 dispatch するための prompt drafts。各 prompt は本 plan の対応 Task をベースに、subagent が独立して実行できる形に整理。
+
+### 共通 context（全 Task で paste）
+
+```
+You are implementing one task from the Garden Unified Auth Gate plan
+(docs/superpowers/plans/2026-05-07-garden-unified-auth-gate-root-backend.md).
+
+Working directory: C:\garden\a-root-002
+Branch: feature/garden-unified-auth-gate-20260509 (作成済、develop ベース)
+
+前提:
+- Next.js 16 / React 19 / Supabase Auth (擬似 email + password)
+- Vitest + jsdom 環境（vitest.config.ts、path alias @/ → src/）
+- 既存 root_employees スキーマ：8 段階 garden_role（A-3-g 反映済）
+- 「東海林さん」表現統一（「社長」表現禁止、main- No. 83 §3 #4 確定）
+- /[module]/login は即削除 OK（main- No. 83 §3 #4 確定）
+
+Implementation discipline:
+- TDD strict: failing test → minimal implementation → passing → commit
+- 各 Step で commit (5 step / 1 task)
+- commit message: feat(auth): / refactor(root): 等、末尾 [a-root] タグ
+- Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+Verification:
+- npm run test:run -- src/lib/auth (or 該当 path)
+- npx tsc --noEmit (新規エラーなし、既存 TreeStateContext.tsx:150 は無視)
+
+Report format:
+- DONE / DONE_WITH_CONCERNS / BLOCKED
+- 追加行数 / 変更行数 / commit SHA / 判断保留事項
+```
+
+### Task 1 prompt: GardenRole 型 + 8 段階定義の共通化
+
+```
+本 plan §"Task 1: GardenRole 型 + 8 段階定義の共通化" を実装してください。
+
+成果物:
+- src/lib/auth/garden-user.ts (GARDEN_ROLES / isGardenRole / roleRank /
+  hasAccess / GardenUser 型 / fetchGardenUser)
+- src/lib/auth/supabase-client.ts (Supabase client 単一インスタンス)
+- src/lib/auth/__tests__/garden-user.test.ts
+
+既存 src/app/root/_constants/types.ts の GARDEN_ROLE_ORDER (8 段階) と整合。
+src/app/bloom/_lib/auth.ts の旧 7 段階定義は本 task では触らない (Task 7 で更新)。
+
+Step 1-6 は plan の Task 1 通りに実行、各 Step で commit。
+```
+
+### Task 2 prompt: synthetic-email helper の共通化
+
+```
+本 plan §"Task 2: synthetic-email helper の共通化" を実装。
+
+成果物:
+- src/lib/auth/synthetic-email.ts (toSyntheticEmail のみ)
+- src/lib/auth/__tests__/synthetic-email.test.ts
+
+既存 4 箇所（root/forest/bloom/tree の _lib/auth.ts）の同一実装の一元化。
+本 task では各モジュールの auth.ts は触らない (Task 5/7-9 で更新)。
+
+Step 1-5 は plan 通り、各 Step で commit。
+```
+
+### Task 3 prompt: resolveLandingPath helper の実装
+
+```
+本 plan §"Task 3: resolveLandingPath helper の実装" を実装。
+
+成果物:
+- src/lib/auth/landing-paths.ts (ROLE_LANDING_MAP + resolveLandingPath +
+  pathRequiresRole + isSafeInternalPath)
+- src/lib/auth/__tests__/landing-paths.test.ts
+
+確定済 振分け表（main- No. 83 §3 #3）:
+  toss/closer/cs/staff → /tree
+  outsource → /leaf/kanden (槙さん例外)
+  manager → /root
+  admin/super_admin → /
+
+returnTo 安全性:
+  - 非 "/" 始まり / "//" 始まり / javascript: / data: / vbscript: 弾き
+  - hasAccess() で role ≥ pathRequiresRole(returnTo) 検証
+
+Step 1-5 plan 通り、各 Step で commit。
+```
+
+### Task 4 prompt: signInGarden 共通 helper + fetchGardenUser テスト追加
+
+```
+本 plan §"Task 4: signInGarden 共通 helper の実装 + fetchGardenUser モックテスト"
+を実装。
+
+成果物:
+- src/lib/auth/sign-in.ts (signInGarden + SignInResult 型)
+- src/lib/auth/__tests__/sign-in.test.ts (5 件)
+- src/lib/auth/__tests__/garden-user.test.ts に fetchGardenUser テスト 5 件追加
+
+セキュリティ:
+- 内部 Supabase エラーメッセージは「社員番号またはパスワードが正しくありません」
+  に正規化（漏洩防止）。
+
+Step 1-8 plan 通り、各 Step で commit。
+```
+
+### Task 5 prompt: signInRoot を共通 helper のラッパーに縮退
+
+```
+本 plan §"Task 5: signInRoot を共通 helper のラッパーに縮退" を実施。
+
+修正:
+- src/app/root/_lib/auth.ts:25-50 (signInRoot を signInGarden ラッパー化)
+- src/app/root/_lib/auth.ts:20-23 (toSyntheticEmail を re-export)
+
+ROOT_UNLOCKED_KEY セッション管理は wrapper に残置（モジュール固有責務）。
+@deprecated コメント付与で将来の直接 signInGarden 呼び出しへ誘導。
+
+Step 1-5 plan 通り、各 Step で commit。
+```
+
+### Task 6 prompt: RootGate redirect 先変更 + /root/login 即削除
+
+```
+本 plan §"Task 6: RootGate redirect 先変更 + /root/login 即削除（legacy 保持）"
+を実施。
+
+修正:
+- src/app/root/_components/RootGate.tsx (redirect 先 /root/login → /login?returnTo=...)
+- src/app/root/login/page.tsx → page.legacy-20260507.tsx (rename、404 化)
+
+注意:
+- isLoginPage 分岐は廃止（/root/login が消滅したため）
+- saveReturnTo は維持（互換性、ROOT_RETURN_TO_KEY セッション）
+- /login UI 本体は a-bloom-004 担当（本 task ではタッチしない）
+
+Step 1-6 plan 通り、各 Step で commit。
+```
+
+### Phase B Task 7-9 prompt drafts（時間あれば 5/11-12）
+
+各 task は plan §Task 7/8/9 通り。共通テンプレ:
+
+```
+本 plan §"Task <N> (Phase B <X>/3): signIn<Module> を共通 helper のラッパーに縮退"
+を実施。
+
+修正:
+- src/app/<module>/_lib/auth.ts (signIn<Module> を signInGarden ラッパー化)
+
+注意 (Task 7 のみ):
+- Bloom 旧 7 段階 GardenRole / roleRank / hasAccess を Task 1 の共通版に置換
+- @/lib/auth/garden-user から re-export
+
+Step 1-5 plan 通り、各 Step で commit。
+```
+
+### Task 10 prompt: 統合確認 + handoff + dispatch
+
+```
+本 plan §"Task 10: 統合確認 + handoff + dispatch" を実施。
+
+成果物:
+- docs/handoff-root-202605120000-unified-auth-backend.md (handoff)
+- docs/dispatches/dispatch-root-002-N-no83-completion-20260512.md (完了報告)
+- docs/dispatch-counter.txt 更新
+
+最終確認:
+- npm run test:run (全テスト pass)
+- npx tsc --noEmit (新規エラーなし)
+- 4 モジュール signIn が signInGarden delegation 確認
+
+Phase A 完走時に Phase B 未着手 / 部分着手の旨を handoff に明示。
+```
+
+### Subagent モデル選定指針
+
+| Task | 推奨モデル | 理由 |
+|---|---|---|
+| Task 1 / 2 / 3 / 4 | sonnet | mechanical TDD task、定型 |
+| Task 5 / 6 | sonnet | 既存ファイル小修正 |
+| Task 7-9 | sonnet | Task 5 同型、繰返し |
+| Task 10 | sonnet | docs 中心 |
+
+opus は本 plan 範囲では不要（spec / plan は 5/7 起草済、設計判断は a-main-013 確定済）。
+
