@@ -93,7 +93,7 @@
 | # | カテゴリ | ファイル | パス | 役割 |
 |---|---|---|---|---|
 | **1** | **現 Garden UI（Bud v2、必須）** | bud-v2-pl-screenshot.png | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-bud\bud-v2-pl-screenshot.png` | **ヘッダー / 左サイドバー / メイン部分の現実装、ChatGPT が世界観・構造を理解する基礎** |
-| **2** | **現 Garden UI（Bloom 理想ホーム、必須）** | home-design-ideal-v4-final.png | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\015_Gardenシリーズ\000_GardenUI_bloom\00_引き継ぎ書\home-design-ideal-v4-final.png` | **ヘッダー / 左サイドバー / メイン中央 / 右サイドバー の完全構造 + 12 モジュール配置 + ガラス容器装飾** |
+| **2** | **現 Garden UI（Bloom Top 実装、必須）** | bloom-v9-top-screenshot.png | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-bloom\bloom-v9-top-screenshot.png` | **Bloom 固有の /bloom ページ実装、ヘッダー + 左デュアルサイドバー（12 モジュール nav-apps + Bloom サブメニュー）+ メイン中央（タイトル + KPI 4 + 機能カード 4 + 桜花背景）+ 右サイドバー Today's Activity** |
 | 3 | 既存 Forest UI（HTML、必須）| garden-forest_v9.html | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\015_Gardenシリーズ\08_Garden-Forest\garden-forest_v9.html` | 既存セクション踏襲対象 |
 | 4 | Forest 背景（必須）| bg-forest-light.png | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-forest\bg-forest-light.png` | 世界観・色調 |
 | 5 | 6 法人アイコン overview（必須）| overview-6corporations.png | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-bloom\bloom-corporate-icons\overview-6corporations.png` | 法人カラー反映 |
@@ -235,3 +235,4 @@ NG 判定 → 修正方向プロンプト発行
 
 - 2026-05-09 01:59 初版（a-main-015、東海林さん指示で起票、メイン部分 ChatGPT デザイン依頼 + 追加提案 7 タブ構成）
 - 2026-05-09 02:02 §3-1 添付ファイル改訂（東海林さん指摘）: 現 Garden UI（Bud v2 PL + Bloom 理想ホーム）を必須化。「現 Garden UI なしで Forest メイン部分のみ生成」は世界観・構造把握不能のため不可
+- 2026-05-09 02:13 §3-1 Bloom スクショ訂正（東海林さん指摘）: home-design-ideal-v4-final.png は Series Home（Bloom 固有ではない）→ /bloom ページ実装の **bloom-v9-top-screenshot.png** に差替（a-main-015 が a-bloom-004 dev server で取得・配置）
