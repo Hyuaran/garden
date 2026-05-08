@@ -15,8 +15,8 @@
 |---|---|---|
 | 1 | bg-forest-light.png | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-forest\bg-forest-light.png` |
 | 2 | bg-forest-dark.png | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-forest\bg-forest-dark.png` |
-| 3 | bg_bloom_garden_light.png | `C:\garden\a-bloom-005\public\images\backgrounds\bg_bloom_garden_light.png` |
-| 4（任意）| bg_bloom_garden_dark.png | `C:\garden\a-bloom-005\public\images\backgrounds\bg_bloom_garden_dark.png` |
+| 3 | bg_bloom_garden_light.png | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-bloom\bg_bloom_garden_light.png` |
+| 4（任意）| bg_bloom_garden_dark.png | `G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-bloom\bg_bloom_garden_dark.png` |
 
 ### プロンプト本文（コピペ用）
 
