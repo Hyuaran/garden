@@ -123,7 +123,15 @@
 
 ### 3-1. 背景画像ファイル一覧
 
-#### Home 画面用（v2.8a 系、Bud / Bloom 共有）
+⚠️ **用途分類（2026-05-09 01:50 東海林さん指摘で訂正）**:
+
+| 画像系統 | 用途 | Forest precedent としての参照可否 |
+|---|---|---|
+| `bg_01_morning.png` 〜 `bg_06_night.png` | **Series Home 画面候補**（v2.8a 系、Garden Series 全体のホーム背景）| ❌ Forest 用とは別系統、参照しない |
+| `bg_bloom_garden_{light,dark}.png` | **Bloom 専用 モジュール固有**（v2.8a-bloom 系）| ✅ Forest 命名・配置パターンの precedent として参照 |
+| `bg_forest_garden_{light,dark}.png` | **Forest 用 モジュール固有**（今回新規生成）| ✅ Bloom 同パターンで命名・配置 |
+
+#### Home 画面用（v2.8a 系、Series 全体ホーム候補、Forest 別系統）
 
 | ファイル | サイズ | モード |
 |---|---|---|
@@ -132,16 +140,18 @@
 | bg_03_glassdisk.png | 1101 KB | ライト |
 | bg_04_crystal.png | 857 KB | ライト |
 | bg_05_sunlight.png | 1460 KB | ライト |
-| bg_06_night.png | 1953 KB | **ダーク専用** |
+| bg_06_night.png | 1953 KB | ダーク専用 |
 
-→ ライト 5 種カルーセル + ダーク 1 種
+→ Series Home 用カルーセル候補（Bud / Bloom 共有）。**Forest precedent としては参照しない**。
 
-#### Bloom 専用
+#### Bloom 専用（モジュール固有、Forest precedent として参照）
 
 | ファイル | サイズ |
 |---|---|
 | bg_bloom_garden_light.png | 256 KB |
 | bg_bloom_garden_dark.png | 269 KB |
+
+→ Bloom モジュール固有。**Forest 命名・配置パターンの precedent**（bg_{module}_garden_{light,dark}.png 規則）。
 
 ### 3-2. ファイル名規則
 
@@ -256,3 +266,4 @@
 ## 7. 改訂履歴
 
 - 2026-05-09 01:42 初版（a-main-015、Explore subagent 3 件並列調査結果集約）
+- 2026-05-09 01:50 §3-1 用途分類訂正（東海林さん指摘）: bg_01-06 = Series Home 画面候補（Forest 別系統）、bg_bloom_garden_*.png のみ Forest precedent として参照可
