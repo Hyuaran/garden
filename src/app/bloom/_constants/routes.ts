@@ -3,7 +3,9 @@ export const BLOOM_PATHS = {
   WORKBOARD: "/bloom/workboard",
   ROADMAP: "/bloom/roadmap",
   MONTHLY_DIGEST: "/bloom/monthly-digest",
-  DAILY_REPORTS: "/bloom/daily-reports",
+  DAILY_REPORTS: "/bloom/daily-report",
+  CEO_STATUS: "/bloom/ceo-status",
+  PROGRESS: "/bloom/progress",
   LOGIN: "/bloom/login",
   FOREST_LOGIN: "/forest/login",
 } as const;

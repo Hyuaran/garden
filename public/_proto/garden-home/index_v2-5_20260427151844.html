@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garden Series - ホーム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+JP:wght@300;400;500;600&family=Shippori+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== 背景画像レイヤー ===== -->
+<div class="bg-layer" id="bgLayer1" style="background-image: url('images/backgrounds/bg_01_morning.png');"></div>
+<div class="bg-layer" id="bgLayer2"></div>
+<div class="bg-layer-overlay"></div>
+
+<!-- ===== クリック検知ゾーン ===== -->
+<div class="bg-click-zone" id="bgClickZone"></div>
+
+<!-- ===== トップバー ===== -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-brand-logo">
+      <img src="images/logo/garden_logo.png" alt="Garden Series">
+    </div>
+    <div class="topbar-brand-text">
+      <span class="topbar-brand-name">Garden Series</span>
+      <span class="topbar-brand-tagline">業務を、育てる。<span class="topbar-brand-tagline-en">/ Grow Your Business.</span></span>
+    </div>
+  </div>
+
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" placeholder="検索（取引先、請求書、タスク、ヘルプなど）">
+    <span class="search-shortcut">Ctrl+F</span>
+  </div>
+
+  <div class="topbar-info">
+    <div class="info-item">
+      <span class="info-icon">📅</span>
+      <span class="info-text">2026年4月27日（月）</span>
+    </div>
+    <div class="info-item">
+      <span class="info-icon">☀</span>
+      <div class="info-text">
+        <strong>25℃</strong>
+        <small>快晴</small>
+      </div>
+    </div>
+    <div class="info-item">
+      <span class="status-dot"></span>
+      <span class="info-text">すべてのシステム正常</span>
+    </div>
+
+    <button class="sound-toggle muted" id="soundToggle" title="音 ON/OFF">🔕</button>
+    <button class="theme-toggle" id="themeToggle" title="ライト/ダーク切替">☀</button>
+    <button class="bell-btn">🔔</button>
+
+    <div class="user-area">
+      <div class="user-avatar">
+        <img src="images/avatar/avatar_shoji.png" alt="東海林 美琴">
+      </div>
+      <div class="user-info">
+        <strong>東海林 美琴</strong>
+        <small>正社員 / 全権管理者</small>
+      </div>
+      <span class="user-arrow">⌄</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===== サイドバー ===== -->
+<aside class="sidebar">
+  <nav class="nav-menu">
+    <a href="#" class="nav-item active">
+      <span class="nav-icon"><img src="images/menu_icons/menu_01_home.png" alt=""></span>
+      <span class="nav-label">ホーム</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon"><img src="images/menu_icons/menu_02_dashboard.png" alt=""></span>
+      <span class="nav-label">ダッシュボード</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon"><img src="images/menu_icons/menu_03_transactions.png" alt=""></span>
+      <span class="nav-label">取引</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon"><img src="images/menu_icons/menu_04_customers.png" alt=""></span>
+      <span class="nav-label">顧客</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon"><img src="images/menu_icons/menu_05_workflow.png" alt=""></span>
+      <span class="nav-label">ワークフロー</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon"><img src="images/menu_icons/menu_06_reports.png" alt=""></span>
+      <span class="nav-label">レポート</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon"><img src="images/menu_icons/menu_07_settings.png" alt=""></span>
+      <span class="nav-label">設定</span>
+    </a>
+  </nav>
+
+  <a href="#" class="help-card" title="Gardenシリーズの使い方">
+    <div class="help-card-leaf">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2 C8 6, 5 10, 6 16 C10 17, 14 14, 17 10 C16 6, 14 3, 12 2 Z" fill="currentColor" opacity="0.85"/>
+        <path d="M12 2 C12 8, 10 13, 6 16" stroke="currentColor" stroke-width="0.5" fill="none" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="help-card-text">
+      <strong>Help &amp; Tips</strong>
+      <span>使い方ガイド</span>
+    </div>
+    <span class="help-card-arrow">›</span>
+  </a>
+</aside>
+
+<!-- ===== メインエリア ===== -->
+<main class="main">
+
+  <section class="greeting">
+    <h2 class="greeting-title">東海林さん、おはようございます<span class="leaf-icon">🌱</span></h2>
+    <p class="greeting-sub">今日も素敵な一日を。業務の成長をサポートします。</p>
+  </section>
+
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">売上（今月）</span>
+        <div class="kpi-icon kpi-icon-sprout"></div>
+      </div>
+      <div class="kpi-value">¥12,680,000</div>
+      <svg class="kpi-chart" viewBox="0 0 200 50" preserveAspectRatio="none">
+        <path d="M0,40 Q20,35 40,30 T80,25 T120,20 T160,15 T200,10" stroke="#7a9968" stroke-width="1.5" fill="none"/>
+        <path d="M0,40 Q20,35 40,30 T80,25 T120,20 T160,15 T200,10 L200,50 L0,50 Z" fill="url(#grad-green)" opacity="0.3"/>
+        <defs>
+          <linearGradient id="grad-green" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#7a9968"/>
+            <stop offset="100%" stop-color="#7a9968" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">入金予定（今月）</span>
+        <div class="kpi-icon kpi-icon-rill"></div>
+      </div>
+      <div class="kpi-value">¥8,450,000</div>
+      <div class="kpi-bars">
+        <span style="height:30%"></span>
+        <span style="height:50%"></span>
+        <span style="height:40%"></span>
+        <span style="height:65%"></span>
+        <span style="height:55%"></span>
+        <span style="height:75%"></span>
+        <span style="height:60%"></span>
+        <span style="height:80%"></span>
+        <span style="height:70%"></span>
+        <span style="height:90%"></span>
+        <span style="height:75%"></span>
+        <span style="height:85%"></span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">架電状況（今日）</span>
+        <div class="kpi-icon kpi-icon-tree"></div>
+      </div>
+      <div class="kpi-value-row">
+        <div class="kpi-value">68<small>%</small></div>
+        <div class="ring-progress">
+          <svg viewBox="0 0 60 60">
+            <circle cx="30" cy="30" r="26" stroke="#f0ead8" stroke-width="6" fill="none"/>
+            <circle cx="30" cy="30" r="26" stroke="#d4a541" stroke-width="6" fill="none"
+              stroke-dasharray="163.4" stroke-dashoffset="52.3"
+              transform="rotate(-90 30 30)" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="kpi-sub">完了 34 / 50 件</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">未処理タスク</span>
+        <div class="kpi-icon kpi-icon-bloom"></div>
+      </div>
+      <div class="kpi-value">24<small>件</small></div>
+      <div class="kpi-warning">期限超過 5 件</div>
+      <div class="kpi-progress">
+        <div class="kpi-progress-fill" style="width:82%"></div>
+        <span class="kpi-progress-text">82%</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="orb-grid">
+    <a href="#" class="orb-card" data-name="Bloom">
+      <div class="orb-img"><img src="images/icons/bloom.png" alt="Bloom"></div>
+      <div class="orb-text">
+        <h3>Bloom</h3>
+        <p>案件一覧・日報・KPI</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">レポート更新</span>
+        <span class="orb-status-value">3 件</span>
+      </div>
+    </a>
+    <a href="#" class="orb-card" data-name="Fruit">
+      <div class="orb-img"><img src="images/icons/fruit.png" alt="Fruit"></div>
+      <div class="orb-text">
+        <h3>Fruit</h3>
+        <p>法人格の実体・登記</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">登記情報</span>
+        <span class="orb-status-value">6 法人</span>
+      </div>
+    </a>
+    <a href="#" class="orb-card" data-name="Seed">
+      <div class="orb-img"><img src="images/icons/seed.png" alt="Seed"></div>
+      <div class="orb-text">
+        <h3>Seed</h3>
+        <p>新事業枠</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">構想中</span>
+        <span class="orb-status-value">2 件</span>
+      </div>
+    </a>
+    <a href="#" class="orb-card" data-name="Forest">
+      <div class="orb-img"><img src="images/icons/forest.png" alt="Forest"></div>
+      <div class="orb-text">
+        <h3>Forest</h3>
+        <p>全法人決算</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">対象期</span>
+        <span class="orb-status-value">FY2026</span>
+      </div>
+    </a>
+
+    <a href="#" class="orb-card" data-name="Bud">
+      <div class="orb-img"><img src="images/icons/bud.png" alt="Bud"></div>
+      <div class="orb-text">
+        <h3>Bud</h3>
+        <p>経理・収支</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">未処理仕訳</span>
+        <span class="orb-status-value alert">12 件</span>
+      </div>
+    </a>
+    <a href="#" class="orb-card" data-name="Leaf">
+      <div class="orb-img"><img src="images/icons/leaf.png" alt="Leaf"></div>
+      <div class="orb-text">
+        <h3>Leaf</h3>
+        <p>商材・トスアップ</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">承認待ち</span>
+        <span class="orb-status-value warn">6 件</span>
+      </div>
+    </a>
+    <a href="#" class="orb-card" data-name="Tree">
+      <div class="orb-img"><img src="images/icons/tree.png" alt="Tree"></div>
+      <div class="orb-text">
+        <h3>Tree</h3>
+        <p>架電アプリ</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">架電予定</span>
+        <span class="orb-status-value">15 件</span>
+      </div>
+    </a>
+    <a href="#" class="orb-card" data-name="Sprout">
+      <div class="orb-img"><img src="images/icons/sprout.png" alt="Sprout"></div>
+      <div class="orb-text">
+        <h3>Sprout</h3>
+        <p>採用・入社</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">選考中</span>
+        <span class="orb-status-value">4 件</span>
+      </div>
+    </a>
+
+    <a href="#" class="orb-card" data-name="Soil">
+      <div class="orb-img"><img src="images/icons/soil.png" alt="Soil"></div>
+      <div class="orb-text">
+        <h3>Soil</h3>
+        <p>DB・大量データ</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">同期最終</span>
+        <span class="orb-status-value">5分前</span>
+      </div>
+    </a>
+    <a href="#" class="orb-card" data-name="Root">
+      <div class="orb-img"><img src="images/icons/root.png" alt="Root"></div>
+      <div class="orb-text">
+        <h3>Root</h3>
+        <p>組織・顧客・マスタ</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">期限超過</span>
+        <span class="orb-status-value alert">3 件</span>
+      </div>
+    </a>
+    <a href="#" class="orb-card" data-name="Rill">
+      <div class="orb-img"><img src="images/icons/rill.png" alt="Rill"></div>
+      <div class="orb-text">
+        <h3>Rill</h3>
+        <p>業務連絡・メッセージング</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">未読</span>
+        <span class="orb-status-value warn">8 件</span>
+      </div>
+    </a>
+    <a href="#" class="orb-card" data-name="Calendar">
+      <div class="orb-img"><img src="images/icons/calendar.png" alt="Calendar"></div>
+      <div class="orb-text">
+        <h3>Calendar</h3>
+        <p>営業予定・シフト</p>
+      </div>
+      <div class="orb-status">
+        <span class="orb-status-label">本日予定</span>
+        <span class="orb-status-value">7 件</span>
+      </div>
+    </a>
+  </section>
+
+</main>
+
+<!-- ===== Activity Panel(浮島カード) ===== -->
+<aside class="activity-panel">
+  <div class="activity-header">
+    <div class="activity-title">
+      <span class="activity-title-leaf">🌿</span>
+      <h3>Today's Activity</h3>
+    </div>
+    <a href="#" class="activity-all">すべて表示</a>
+  </div>
+
+  <ul class="activity-list">
+    <li class="activity-item">
+      <span class="activity-time">09:30</span>
+      <span class="activity-icon"><img src="images/icons/tree.png" alt=""></span>
+      <div class="activity-body">
+        <strong>売上レポートが更新されました</strong>
+        <p>今月の売上が前月比 12.5% 増加しました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">09:15</span>
+      <span class="activity-icon"><img src="images/icons/rill.png" alt=""></span>
+      <div class="activity-body">
+        <strong>入金がありました</strong>
+        <p>株式会社ナチュラルハート様より<br>¥2,150,000 の入金がありました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">08:45</span>
+      <span class="activity-icon"><img src="images/icons/bloom.png" alt=""></span>
+      <div class="activity-body">
+        <strong>新しいタスクが割り当てられました</strong>
+        <p>請求書の送付確認（5件）が<br>割り当てられました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">08:30</span>
+      <span class="activity-icon-check">✓</span>
+      <div class="activity-body">
+        <strong>ワークフロー申請が承認されました</strong>
+        <p>経費精算申請（山田 太郎）が<br>承認されました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">08:00</span>
+      <span class="activity-icon"><img src="images/icons/tree.png" alt=""></span>
+      <div class="activity-body">
+        <strong>システムからのお知らせ</strong>
+        <p>メンテナンスは正常に完了しました。<br>すべてのシステムが利用可能です。</p>
+      </div>
+    </li>
+  </ul>
+
+  <button class="notify-btn">
+    <span>⚙</span> 通知設定をカスタマイズ
+    <span class="arrow">›</span>
+  </button>
+</aside>
+
+<!-- ===== クリックヒント ===== -->
+<div class="bg-hint" id="bgHint">クリックで背景を切替</div>
+
+<!-- ===== JavaScript ===== -->
+<script>
+(function() {
+  const lightBackgrounds = [
+    'images/backgrounds/bg_01_morning.png',
+    'images/backgrounds/bg_02_water.png',
+    'images/backgrounds/bg_03_glassdisk.png',
+    'images/backgrounds/bg_04_crystal.png',
+    'images/backgrounds/bg_05_sunlight.png'
+  ];
+  const darkBackground = 'images/backgrounds/bg_06_night.png';
+
+  const bgLayer1 = document.getElementById('bgLayer1');
+  const bgLayer2 = document.getElementById('bgLayer2');
+  const bgClickZone = document.getElementById('bgClickZone');
+  const bgHint = document.getElementById('bgHint');
+  const themeToggle = document.getElementById('themeToggle');
+  const soundToggle = document.getElementById('soundToggle');
+  const html = document.documentElement;
+
+  let currentBgIndex = 0;
+  let activeLayer = bgLayer1;
+  let inactiveLayer = bgLayer2;
+  let soundEnabled = false;
+  let audioContext = null;
+
+  bgLayer1.classList.add('active');
+
+  function applyBackground(url) {
+    inactiveLayer.style.backgroundImage = `url('${url}')`;
+    inactiveLayer.classList.add('active');
+    activeLayer.classList.remove('active');
+    [activeLayer, inactiveLayer] = [inactiveLayer, activeLayer];
+  }
+
+  function nextLightBackground() {
+    currentBgIndex = (currentBgIndex + 1) % lightBackgrounds.length;
+    applyBackground(lightBackgrounds[currentBgIndex]);
+  }
+
+  function setTheme(theme) {
+    html.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      themeToggle.textContent = '🌙';
+      applyBackground(darkBackground);
+    } else {
+      themeToggle.textContent = '☀';
+      applyBackground(lightBackgrounds[currentBgIndex]);
+    }
+    try {
+      localStorage.setItem('garden_theme', theme);
+    } catch(e) {}
+  }
+
+  function toggleTheme() {
+    const current = html.getAttribute('data-theme');
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  }
+
+  function ensureAudioContext() {
+    if (!audioContext) {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      } catch(e) {
+        return null;
+      }
+    }
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+    return audioContext;
+  }
+
+  function playPon(volume) {
+    if (!soundEnabled) return;
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(680, now);
+    osc.frequency.exponentialRampToValueAtTime(340, now + 0.18);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(2200, now);
+
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(volume, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.22);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.25);
+  }
+
+  function setSound(enabled) {
+    soundEnabled = enabled;
+    soundToggle.classList.toggle('muted', !enabled);
+    soundToggle.textContent = enabled ? '🔔' : '🔕';
+    try {
+      localStorage.setItem('garden_sound', enabled ? '1' : '0');
+    } catch(e) {}
+  }
+
+  function toggleSound() {
+    setSound(!soundEnabled);
+    if (soundEnabled) {
+      ensureAudioContext();
+      playPon(0.10);
+    }
+  }
+
+  try {
+    const savedTheme = localStorage.getItem('garden_theme');
+    if (savedTheme === 'dark') {
+      setTheme('dark');
+    } else {
+      setTheme('light');
+    }
+    const savedSound = localStorage.getItem('garden_sound');
+    if (savedSound === '1') {
+      setSound(true);
+    } else {
+      setSound(false);
+    }
+  } catch(e) {
+    setTheme('light');
+  }
+
+  bgClickZone.addEventListener('click', function(e) {
+    ensureAudioContext();
+    if (html.getAttribute('data-theme') === 'dark') {
+      return;
+    }
+    nextLightBackground();
+  });
+
+  let hintShown = false;
+  setTimeout(function() {
+    if (!hintShown) {
+      bgHint.classList.add('show');
+      setTimeout(function() {
+        bgHint.classList.remove('show');
+      }, 4000);
+      hintShown = true;
+    }
+  }, 1500);
+
+  themeToggle.addEventListener('click', function() {
+    ensureAudioContext();
+    toggleTheme();
+    playPon(0.08);
+  });
+
+  soundToggle.addEventListener('click', function() {
+    ensureAudioContext();
+    toggleSound();
+  });
+
+  const orbCards = document.querySelectorAll('.orb-card');
+  orbCards.forEach(function(card) {
+    card.addEventListener('mouseenter', function() {
+      playPon(0.08);
+    });
+    card.addEventListener('click', function(e) {
+      e.preventDefault();
+      playPon(0.13);
+    });
+  });
+
+  document.body.addEventListener('click', function() {
+    ensureAudioContext();
+  }, { once: true });
+})();
+</script>
+
+</body>
+</html>

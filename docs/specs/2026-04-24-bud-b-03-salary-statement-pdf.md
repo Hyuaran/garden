@@ -5,6 +5,14 @@
 - 担当セッション: a-bud
 - 作成: 2026-04-24（a-auto / Phase A 先行 batch6 #B-03）
 - 前提 spec: B-01（給与計算エンジン）, B-02（社保・源泉）
+- **A-07 採択結果反映 (2026-04-25)**:
+  - 配信は **A 案 + メール送信 拡張採択**: Tree マイページ全員閲覧 **+** メール配信
+  - メール配信方式 = **方式 2 パスワード保護 PDF 添付**
+  - PW = 生年月日 4 桁（MMDD）or 社員番号下 4 桁（実装時に最終決定）
+  - 重要前提: Garden ログイン社内 PC 限定 → メール配信が自宅確認の唯一経路（Root Phase B-5 連携）
+  - 新規テーブル提案: `bud_salary_pdf_deliveries`（A-07 spec §4.5 参照）
+  - 実装ヒント: `@react-pdf/renderer`（既存）+ `bcryptjs`/`pdf-lib`（PW 保護、追加要）+ Resend/SendGrid（メール、要相談）
+  - 詳細: `docs/bud-a07-hearing-items.md` §「東海林判断: 採択結果」§「論点 3 の拡張採択」
 
 ---
 

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garden Series - Bloom Top</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+JP:wght@300;400;500;600&family=Shippori+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script>
+// ページロード前にlocalStorageからActivity Panel折畳状態を読み込み、bodyクラスに即時反映
+// (JSメイン処理を待つとアニメーションが走ってしまうため、head内で処理する)
+(function() {
+  try {
+    var collapsed = localStorage.getItem('garden_activity_collapsed') === '1';
+    var navPagesCollapsed = localStorage.getItem('garden_nav_pages_collapsed') === '1';
+    document.documentElement.dataset.preActivityCollapsed = collapsed ? '1' : '0';
+    document.documentElement.dataset.preNavPagesCollapsed = navPagesCollapsed ? '1' : '0';
+    // テーマも先読み(チラつき防止)
+    var theme = localStorage.getItem('garden_theme');
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+})();
+</script>
+</head>
+<body class="bloom-page">
+<script>
+// localStorage参照してbodyに初期クラスを即時付与(transition前に実行)
+(function() {
+  try {
+    if (localStorage.getItem('garden_activity_collapsed') === '1') {
+      document.body.classList.add('activity-collapsed');
+    }
+    if (localStorage.getItem('garden_nav_pages_collapsed') === '1') {
+      document.body.classList.add('nav-pages-collapsed');
+    }
+  } catch (e) {}
+})();
+</script>
+
+
+<div class="bg-layer" id="bgLayer1" style="background-image: url('images/backgrounds/bg_bloom_garden_light.png');"></div>
+<div class="bg-layer" id="bgLayer2"></div>
+<div class="bg-layer-overlay"></div>
+<div class="sakura-bg"></div>
+<div class="peony-bg"></div>
+
+<header class="topbar">
+  <a href="../../000_GardenUI/index.html" class="topbar-brand" title="Garden Series ホームへ戻る" style="text-decoration:none;">
+    <img src="images/logo/garden_logo.png" alt="Garden Series" class="topbar-brand-img" id="topbarBrandImg" onerror="if(this.src.indexOf('garden_logo_dark.png')>-1){this.onerror=null;this.src='images/logo/garden_logo_light.png';}">
+  </a>
+
+  <div class="search-box">
+    <span class="search-icon"><img src="images/header_icons/header_search.png" alt=""></span>
+    <input type="text" placeholder="検索(取引先、請求書、タスク、ヘルプなど)">
+    <span class="search-shortcut">Ctrl+F</span>
+  </div>
+
+  <div class="topbar-info">
+    <div class="info-item">
+      <span class="info-icon"><img src="images/header_icons/header_calendar.png" alt=""></span>
+      <span class="info-text">2026年4月28日(火)</span>
+    </div>
+    <div class="info-item">
+      <span class="info-icon"><img src="images/header_icons/weather_01_sunny.png" alt="" id="weatherIcon"></span>
+      <div class="info-text">
+        <strong id="weatherTemp">22℃</strong>
+        <small id="weatherLabel">晴れ</small>
+      </div>
+    </div>
+    <div class="info-item">
+      <span class="status-dot"></span>
+      <span class="info-text">すべてのシステム正常</span>
+    </div>
+
+    <button class="header-tool-btn theme-toggle" id="themeToggle" title="ライト/ダーク切替">
+      <img src="images/theme_icons/theme_sun.png" alt="" id="themeToggleIcon">
+    </button>
+    <button class="header-tool-btn header-notify-btn" id="notifyBtn" title="通知">
+      <img src="images/header_icons/header_bell.png" alt="">
+      <span class="header-tool-badge" id="notifyBadge">3</span>
+    </button>
+    <button class="header-tool-btn help-btn" id="helpBtn" title="ヘルプ・使い方ガイド">
+      <img src="images/header_icons/D-02_help_simple.png" alt="">
+    </button>
+    <div class="header-favorite-wrap" id="headerFavoriteWrap">
+      <button class="header-tool-btn favorite-btn" id="favoriteHeaderBtn" type="button" title="お気に入り" aria-haspopup="true" aria-expanded="false">
+        <img src="images/header_icons/D-01_favorite_simple.png" alt="">
+      </button>
+
+      <div class="favorite-dropdown" id="favoriteDropdown" role="menu" aria-hidden="true">
+        <div class="favorite-dropdown-header">
+          <span class="favorite-dropdown-title">お気に入り</span>
+          <span class="favorite-dropdown-count" id="favoriteDropdownCount">0</span>
+        </div>
+
+        <div class="favorite-dropdown-divider"></div>
+
+        <div class="favorite-dropdown-list" id="favoriteDropdownList">
+        </div>
+
+        <div class="favorite-dropdown-empty" id="favoriteDropdownEmpty">
+          お気に入りはまだありません
+        </div>
+
+        <div class="favorite-dropdown-divider"></div>
+
+        <button class="favorite-dropdown-add" id="favoriteDropdownAdd" type="button">
+          <span class="favorite-dropdown-add-icon">＋</span>
+          <span class="favorite-dropdown-add-label">現在のページを追加</span>
+        </button>
+
+        <span class="favorite-dropdown-toast" id="favoriteDropdownToast" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div class="user-area" id="userArea" tabindex="0">
+      <div class="user-avatar">
+        <img src="images/avatar/avatar_shoji.png" alt="東海林 美琴">
+      </div>
+      <div class="user-info">
+        <strong>東海林 美琴</strong>
+        <small>正社員 / 全権管理者</small>
+      </div>
+      <span class="user-arrow">⌄</span>
+
+      <div class="user-dropdown" id="userDropdown" role="menu" aria-hidden="true">
+        <div class="user-dropdown-header">
+          <div class="user-dropdown-avatar">
+            <img src="images/avatar/avatar_shoji.png" alt="">
+          </div>
+          <div class="user-dropdown-info">
+            <strong>東海林 美琴</strong>
+            <small>shoji@hyualan.co.jp</small>
+            <span class="user-dropdown-role">正社員 / 全権管理者</span>
+          </div>
+        </div>
+
+        <div class="user-dropdown-divider"></div>
+
+        <a href="#" class="user-dropdown-item" role="menuitem">
+          <span class="user-dropdown-icon"><img src="images/header_icons/D-03_mypage_simple.png" alt=""></span>
+          <span class="user-dropdown-label">マイページ</span>
+        </a>
+        <a href="#" class="user-dropdown-item" role="menuitem">
+          <span class="user-dropdown-icon"><img src="images/header_icons/D-04_settings_simple.png" alt=""></span>
+          <span class="user-dropdown-label">ユーザー設定</span>
+        </a>
+
+        <div class="user-dropdown-divider"></div>
+
+        <a href="#" class="user-dropdown-item user-dropdown-item-logout" role="menuitem">
+          <span class="user-dropdown-icon"><img src="images/header_icons/D-05_logout_simple.png" alt=""></span>
+          <span class="user-dropdown-label">ログアウト</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<aside class="sidebar sidebar-dual" id="sidebarDual">
+
+  <nav class="nav-apps" id="navApps" aria-label="Garden Series アプリ一覧">
+    <a href="#" class="nav-app-item" data-app="bloom" data-status="dev" title="Bloom — ダッシュボード">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_bloom.png" alt=""></span>
+      <span class="nav-app-name">Bloom</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="fruit" data-status="concept" title="Fruit — 法人格の実体・登記">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_fruit.png" alt=""></span>
+      <span class="nav-app-name">Fruit</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="seed" data-status="todo" title="Seed — 新事業枠">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_seed.png" alt=""></span>
+      <span class="nav-app-name">Seed</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="forest" data-status="todo" title="Forest — 全法人決算">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_forest.png" alt=""></span>
+      <span class="nav-app-name">Forest</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="bud" data-status="dev" title="Bud — 経理・収支">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_bud.png" alt=""></span>
+      <span class="nav-app-name">Bud</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="leaf" data-status="dev" title="Leaf — 商材・トスアップ">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_leaf.png" alt=""></span>
+      <span class="nav-app-name">Leaf</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="tree" data-status="released" title="Tree — 架電アプリ">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_tree.png" alt=""></span>
+      <span class="nav-app-name">Tree</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="sprout" data-status="todo" title="Sprout — 採用・入社">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_sprout.png" alt=""></span>
+      <span class="nav-app-name">Sprout</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="soil" data-status="released" title="Soil — DB・大量データ">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_soil.png" alt=""></span>
+      <span class="nav-app-name">Soil</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="root" data-status="released" title="Root — 組織・顧客・マスタ">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_root.png" alt=""></span>
+      <span class="nav-app-name">Root</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="rill" data-status="dev" title="Rill — 業務連絡・メッセージング">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_rill.png" alt=""></span>
+      <span class="nav-app-name">Rill</span>
+    </a>
+    <a href="#" class="nav-app-item" data-app="calendar" data-status="todo" title="Calendar — 営業予定・シフト">
+      <span class="nav-app-icon"><img src="images/icons_bloom/orb_calendar.png" alt=""></span>
+      <span class="nav-app-name">Calendar</span>
+    </a>
+  </nav>
+
+  <nav class="nav-pages" id="navPages" aria-label="Bloom メニュー">
+    <a href="/bloom" class="nav-pages-header active" title="Bloomホーム">
+      <span class="nav-pages-app-icon">
+        <img src="images/icons_bloom/orb_bloom.png" alt="">
+      </span>
+      <span class="nav-pages-app-name">Bloom</span>
+    </a>
+
+    <div class="nav-pages-divider"></div>
+
+    <a href="../03_Workboard/index.html" class="nav-page-item">
+      <span class="nav-page-icon"><img src="images/icons_bloom/bloom_workboard.png" alt=""></span>
+      <span class="nav-page-label">ワークボード</span>
+    </a>
+    <a href="../04_DailyReport/index.html" class="nav-page-item">
+      <span class="nav-page-icon"><img src="images/icons_bloom/bloom_dailyreport.png" alt=""></span>
+      <span class="nav-page-label">日報</span>
+    </a>
+    <a href="../05_MonthlyDigest/index.html" class="nav-page-item">
+      <span class="nav-page-icon"><img src="images/icons_bloom/bloom_monthlydigest.png" alt=""></span>
+      <span class="nav-page-label">月次まとめ</span>
+    </a>
+    <a href="../06_CEOStatus/index.html" class="nav-page-item">
+      <span class="nav-page-icon"><img src="images/icons_bloom/bloom_ceostatus.png" alt=""></span>
+      <span class="nav-page-label">経営状況</span>
+    </a>
+
+  </nav>
+
+</aside>
+
+<button class="nav-pages-toggle" id="navPagesToggle" type="button" title="メニュー名の表示/非表示" aria-label="メニュー名の表示/非表示" aria-expanded="true">
+  <span class="nav-pages-toggle-arrow" aria-hidden="true">›</span>
+</button>
+
+<main class="main">
+
+  <div class="page-header">
+    <button class="page-favorite-btn" id="pageFavoriteBtn" type="button" title="このページをお気に入りに追加" aria-pressed="false">
+      <img src="images/header_icons/D-01a_favorite_outline.png" alt="" class="page-favorite-icon-off">
+      <img src="images/header_icons/D-01_favorite_simple.png" alt="" class="page-favorite-icon-on">
+      <span class="page-favorite-toast" id="pageFavoriteToast" aria-live="polite"></span>
+    </button>
+    <div class="page-title-block">
+      <div class="page-title-row">
+        <h1 class="page-title">
+          Bloom <span style="color:var(--text-muted);font-size:1.6rem;">—</span>
+          <span class="page-title-jp">花咲く業務の庭</span>
+          <span class="page-title-flower">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <g fill="#e8b4b8" opacity="0.85">
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(0 16 16)"/>
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(72 16 16)"/>
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(144 16 16)"/>
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(216 16 16)"/>
+                <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(288 16 16)"/>
+              </g>
+              <circle cx="16" cy="16" r="2.8" fill="#d4a541" opacity="0.95"/>
+            </svg>
+          </span>
+        </h1>
+      </div>
+      <p class="page-subtitle">グループの動きを、咲かせる。</p>
+    </div>
+  </div>
+
+  <!-- KPIカード(4枚・横並び) -->
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">今月の日報提出率</span>
+      </div>
+      <div class="kpi-value-row">
+        <div class="kpi-value">87<small>%</small></div>
+        <div class="ring-progress">
+          <svg viewBox="0 0 60 60">
+            <circle cx="30" cy="30" r="26" stroke="#f0ead8" stroke-width="6" fill="none"/>
+            <circle cx="30" cy="30" r="26" stroke="#7a9968" stroke-width="6" fill="none"
+              stroke-dasharray="163.4" stroke-dashoffset="21.2"
+              transform="rotate(-90 30 30)" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="kpi-trend up">
+        <span class="kpi-trend-label">前月比</span>
+        <span class="kpi-trend-arrow">↑</span>
+        <span>5%</span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">進捗順調モジュール数</span>
+      </div>
+      <div class="kpi-value">8<small> / 12</small></div>
+      <div class="kpi-bars">
+        <span style="height:90%;background:linear-gradient(180deg,#9bb88a 0%,#7a9968 100%);"></span>
+        <span style="height:85%;background:linear-gradient(180deg,#9bb88a 0%,#7a9968 100%);"></span>
+        <span style="height:80%;background:linear-gradient(180deg,#9bb88a 0%,#7a9968 100%);"></span>
+        <span style="height:75%;background:linear-gradient(180deg,#9bb88a 0%,#7a9968 100%);"></span>
+        <span style="height:70%;background:linear-gradient(180deg,#9bb88a 0%,#7a9968 100%);"></span>
+        <span style="height:65%;background:linear-gradient(180deg,#9bb88a 0%,#7a9968 100%);"></span>
+        <span style="height:60%;background:linear-gradient(180deg,#9bb88a 0%,#7a9968 100%);"></span>
+        <span style="height:55%;background:linear-gradient(180deg,#9bb88a 0%,#7a9968 100%);"></span>
+        <span style="height:30%;background:linear-gradient(180deg,#d4c8a6 0%,#b3a98f 100%);"></span>
+        <span style="height:25%;background:linear-gradient(180deg,#d4c8a6 0%,#b3a98f 100%);"></span>
+        <span style="height:20%;background:linear-gradient(180deg,#d4c8a6 0%,#b3a98f 100%);"></span>
+        <span style="height:15%;background:linear-gradient(180deg,#d4c8a6 0%,#b3a98f 100%);"></span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">今月の達成マイルストーン</span>
+      </div>
+      <div class="kpi-value">4<small>件</small></div>
+      <div class="kpi-trend up">
+        <span class="kpi-trend-label">前月比</span>
+        <span class="kpi-trend-arrow">↑</span>
+        <span>2件</span>
+      </div>
+      <svg class="kpi-chart" viewBox="0 0 200 50" preserveAspectRatio="none">
+        <path d="M0,40 Q20,38 40,35 T80,30 T120,22 T160,15 T200,8" stroke="#d4a541" stroke-width="1.5" fill="none"/>
+        <path d="M0,40 Q20,38 40,35 T80,30 T120,22 T160,15 T200,8 L200,50 L0,50 Z" fill="url(#grad-gold)" opacity="0.3"/>
+        <defs>
+          <linearGradient id="grad-gold" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#d4a541"/>
+            <stop offset="100%" stop-color="#d4a541" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-label">本日のステータス</span>
+      </div>
+      <div class="kpi-value" style="font-family:'Shippori Mincho',serif;font-size:1.55rem;line-height:1.5;">集中業務中</div>
+      <svg class="kpi-chart" viewBox="0 0 200 50" preserveAspectRatio="none">
+        <path d="M0,30 Q15,28 25,25 T45,28 T70,20 T95,18 T120,15 T145,20 T170,18 T200,15"
+              stroke="#8ab4cc" stroke-width="1.5" fill="none"/>
+        <path d="M0,30 Q15,28 25,25 T45,28 T70,20 T95,18 T120,15 T145,20 T170,18 T200,15 L200,50 L0,50 Z" fill="url(#grad-blue)" opacity="0.25"/>
+        <defs>
+          <linearGradient id="grad-blue" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8ab4cc"/>
+            <stop offset="100%" stop-color="#8ab4cc" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ナビカード(4枚・横2×縦2) -->
+  <section class="bloom-nav-grid">
+    <a href="../03_Workboard/index.html" class="bloom-nav-card">
+      <div class="bloom-nav-img">
+        <img src="images/icons_bloom/bloom_workboard.png" alt="ワークボード">
+      </div>
+      <div class="bloom-nav-text">
+        <h3 class="bloom-nav-title">ワークボード</h3>
+        <p class="bloom-nav-sub">本日の作業状況を可視化</p>
+      </div>
+      <span class="bloom-nav-arrow">›</span>
+    </a>
+    <a href="../04_DailyReport/index.html" class="bloom-nav-card">
+      <div class="bloom-nav-img">
+        <img src="images/icons_bloom/bloom_dailyreport.png" alt="日報">
+      </div>
+      <div class="bloom-nav-text">
+        <h3 class="bloom-nav-title">日報</h3>
+        <p class="bloom-nav-sub">今日の積み重ねを綴る</p>
+      </div>
+      <span class="bloom-nav-arrow">›</span>
+    </a>
+    <a href="../05_MonthlyDigest/index.html" class="bloom-nav-card">
+      <div class="bloom-nav-img">
+        <img src="images/icons_bloom/bloom_monthlydigest.png" alt="月次まとめ">
+      </div>
+      <div class="bloom-nav-text">
+        <h3 class="bloom-nav-title">月次まとめ</h3>
+        <p class="bloom-nav-sub">月の歩みを振り返る</p>
+      </div>
+      <span class="bloom-nav-arrow">›</span>
+    </a>
+    <a href="../06_CEOStatus/index.html" class="bloom-nav-card">
+      <div class="bloom-nav-img">
+        <img src="images/icons_bloom/bloom_ceostatus.png" alt="経営状況">
+      </div>
+      <div class="bloom-nav-text">
+        <h3 class="bloom-nav-title">経営状況</h3>
+        <p class="bloom-nav-sub">経営の全景を、一望に</p>
+      </div>
+      <span class="bloom-nav-arrow">›</span>
+    </a>
+  </section>
+
+</main>
+
+<!-- Activity Panel トグルボタン: panel外に独立配置(親の transform/opacity の影響を受けないように) -->
+<button class="activity-toggle" id="activityToggle" type="button" title="Activity Panel 収納/展開" aria-expanded="true">
+  <span class="activity-toggle-arrow" aria-hidden="true">‹</span>
+</button>
+
+<aside class="activity-panel" id="activityPanel">
+  <div class="activity-header">
+    <div class="activity-title">
+      <h3>Today's Activity</h3>
+    </div>
+    <a href="#" class="activity-all">すべて表示</a>
+  </div>
+
+  <ul class="activity-list">
+    <li class="activity-item">
+      <span class="activity-time">11:30</span>
+      <span class="activity-icon"><img src="images/icons_bloom/bloom_workboard.png" alt=""></span>
+      <div class="activity-body">
+        <strong>ステータスを更新しました</strong>
+        <p>集中業務中に設定しました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">10:45</span>
+      <span class="activity-icon-check">✓</span>
+      <div class="activity-body">
+        <strong>本日の予定を完了しました</strong>
+        <p>「10:00 Bloom ワークボード確認」を完了しました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">10:05</span>
+      <span class="activity-icon"><img src="images/icons_bloom/bloom_ceostatus.png" alt=""></span>
+      <div class="activity-body">
+        <strong>プロジェクトが更新されました</strong>
+        <p>「4月施策計画①」の進捗が85%になりました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">09:20</span>
+      <span class="activity-icon"><img src="images/icons_bloom/bloom_dailyreport.png" alt=""></span>
+      <div class="activity-body">
+        <strong>予定が追加されました</strong>
+        <p>「16:00 月次ダイジェスト編集」を追加しました。</p>
+      </div>
+    </li>
+    <li class="activity-item">
+      <span class="activity-time">08:50</span>
+      <span class="activity-icon"><img src="images/icons_bloom/bloom_monthlydigest.png" alt=""></span>
+      <div class="activity-body">
+        <strong>リアクション</strong>
+        <p>「5/5 後道代表 Garden デモ」にあらわれます。</p>
+      </div>
+    </li>
+  </ul>
+
+  <button class="notify-btn">
+    <span>⚙</span> 通知設定をカスタマイズ
+    <span class="arrow">›</span>
+  </button>
+</aside>
+
+<script src="js/script.js"></script>
+
+</body>
+</html>
