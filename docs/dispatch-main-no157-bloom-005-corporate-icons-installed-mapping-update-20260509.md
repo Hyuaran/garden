@@ -19,7 +19,7 @@
 
 # 完了内容（東海林さん作業 + a-main-015 確認）
 
-## 配置済 6 法人アイコン
+## 配置済 6 法人アイコン + グループ HD 統合アイコン
 G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-bloom\bloom-corporate-icons\
 - hyuaran.png（ピンク）1.5M
 - centerrise.png（紫）1.6M
@@ -29,6 +29,7 @@ G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_w
 - ichi.png（赤）1.7M
 - overview-6corporations.png（一覧、cp 配置）2.3M
 - ChatGPT Image 2026年5月9日 01_14_04 (6).png（原本、削除禁止）2.3M
+- **hyuaran-group-hd.png（6 法人花束統合アイコン、グループ HD 用、Chatwork 等のアイコン用）**（5/9 02:00 頃配置）
 
 # ⚠️ 重要: 東海林さん新マッピング採用（KK 案 spec §1-2 から変更）
 
@@ -65,6 +66,7 @@ cwebp -q 90 linksupport.png -o linksupport.webp
 cwebp -q 90 arata.png -o arata.webp
 cwebp -q 90 taiyou.png -o taiyou.webp
 cwebp -q 90 ichi.png -o ichi.webp
+cwebp -q 90 hyuaran-group-hd.png -o hyuaran-group-hd.webp
 ```
 
 配置先:
@@ -75,7 +77,8 @@ C:\garden\a-bloom-005\public\themes\corporate-icons\
 ├─ linksupport.webp
 ├─ arata.webp
 ├─ taiyou.webp
-└─ ichi.webp
+├─ ichi.webp
+└─ hyuaran-group-hd.webp（6 法人花束統合、グループ HD 用）
 ```
 
 注: 元 PNG は削除禁止（feedback_no_delete_keep_legacy 準拠）、_reference 配下は永続保管。
@@ -130,7 +133,19 @@ export const GARDEN_CORPORATIONS = [
 ] as const;
 
 export type CorporationId = (typeof GARDEN_CORPORATIONS)[number]['id'];
+
+// グループ HD 統合アイコン（6 法人花束、Chatwork / Bloom v9 / Forest 全体ビュー用）
+export const GARDEN_GROUP_HD_ICON = '/themes/corporate-icons/hyuaran-group-hd.webp';
 ```
+
+## B-2. グループ HD 統合アイコンの用途
+
+| 用途 | 配置場所 | 備考 |
+|---|---|---|
+| Chatwork グループアイコン | Chatwork UI（東海林さん設定）| 外部 SaaS、Drive PNG 直接 UP |
+| Bloom v9 unified ホーム グループ HD 表示 | `src/app/page.tsx` 等 | 6 法人切替 default state |
+| Forest dashboard グループ全体ビュー | Forest dashboard 上部 | 6 法人横断指標表示時 |
+| 給与明細書ヘッダー（グループ全体扱い）| `src/app/bud/payroll/...` PDF | 印刷用は PNG fallback |
 
 ## C. KK 案 spec §1-2 + §2 の更新
 
