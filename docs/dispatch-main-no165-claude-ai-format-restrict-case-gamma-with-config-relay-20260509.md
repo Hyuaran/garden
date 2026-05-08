@@ -126,41 +126,18 @@ claude.ai が tab-1 で起草した内容（前回会話形式応答から確認
 # 5. 緊急度
 🔴 即実施（dispatch 形式徹底 + 配置 blocker 解消、tab-1 評価のため）
 
-# 6. 期待する次回応答（forest-html-1）
+# 6. 期待する次回応答（forest-html-1）の構造
 
-```
-~~~
-🟢 forest-html-1
-【claude.ai chat（Forest UI 起草担当） から a-main-015 への dispatch（tab-1 起草完了 + HTML 全文転送）】
-発信日時: 2026-05-09(土) HH:MM
+外側を ~~~ でラップ、内容は以下構造:
 
-# 件名
-tab-1-dashboard.html 起草完了、a-main-015 配置代行依頼
-
-# 完了内容
-- 行数: 1,036 行 / 43.9 KB
-- 構造: 案 1（Bloom 外部 CSS 参照）
-- 配置先（代行依頼）: _chat_workspace/garden-forest/html_drafts/tab-1-dashboard.html
-
-# HTML 全文（a-main-015 が Drive に書き込み）
-
-\`\`\`html
-<!DOCTYPE html>
-<html lang="ja" data-theme="light">
-... （全文 1,036 行）...
-</html>
-\`\`\`
-
-# 次の作業
-a-main-015 配置 + 評価待ち
-
-# self-check ✅
-- [x] 冒頭 3 行 完備
-- [x] ~~~ ラップ
-- [x] 会話形式なし
-- [x] HTML を \`\`\`html ~ \`\`\` ブロックで囲み
-~~~
-```
+- 1 行目: 🟢 forest-html-1
+- 2 行目: 【claude.ai chat（Forest UI 起草担当） から a-main-015 への dispatch（tab-1 起草完了 + HTML 全文転送）】
+- 3 行目: 発信日時: 2026-05-09(土) HH:MM
+- 件名: tab-1-dashboard.html 起草完了、a-main-015 配置代行依頼
+- 完了内容: 行数 / サイズ / 構造（案 1）/ 配置先パス
+- HTML 全文: `(```html` から `(```)` までで囲んだコードブロックに HTML 1,036 行全文
+- 次の作業: a-main-015 配置 + 評価待ち
+- self-check: dispatch 形式 4 項目チェック完了印
 ~~~
 
 ---
