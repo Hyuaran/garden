@@ -1,9 +1,10 @@
 # Bud A-08: CC（クレジットカード）明細処理ルール 仕様書
 
 - 対象: Garden-Bud のクレジットカード明細処理・費目自動判定・インボイス管理
-- 見積: **0.5d**（約 4 時間）
+- 見積: **0.5d + α**（約 4 時間 + 3 種拡張分）
 - 担当セッション: a-bud
 - 作成: 2026-04-24（a-auto / Phase A 先行 batch5 #A-08）
+- **改訂 2026-04-25 (a-bud)**: 東海林判断 A-08 判1 修正採択を反映（楽天ビジネス 1 種 → **オリコ + 三井住友 + 楽天デビット 3 種**）。段階的実装計画を §13 に追加。
 - 元資料: Bud CLAUDE.md「CC明細処理ルール」, MEMORY `project_cc_processing`
 
 ---
@@ -15,7 +16,10 @@
 
 ### 含める
 - `bud_cc_statements` テーブル設計（銀行明細 `bud_statements` とは別）
-- カード明細 CSV の取込（個別カード別）
+- カード明細 CSV の取込（**Phase A 対応 3 種: オリコ / 三井住友 / 楽天デビット**）
+  - オリコカード（法人カード）
+  - 三井住友カード（法人カード）
+  - 楽天デビット（楽天銀行連携）
 - 飲食店 5,000 円区切りの費目自動判定（会議費 / 接待交際費）
 - インボイス管理（全 CC = インボイスありの前提）
 - 月次カード引落しとの紐付け（`bud_statements` との照合）
@@ -45,9 +49,9 @@
 
 ```mermaid
 flowchart TB
-    A[楽天カード 月次明細 CSV] --> B[CC 明細取込]
-    A2[JCB 月次明細 CSV] --> B
-    A3[Amex 月次明細 CSV] --> B
+    A[オリコカード 月次明細 CSV] --> B[CC 明細取込]
+    A2[三井住友カード 月次明細 CSV] --> B
+    A3[楽天デビット 月次明細 CSV] --> B
 
     B --> C[bud_cc_statements 行追加]
     C --> D{飲食店か？}
@@ -74,8 +78,8 @@ flowchart TB
 ```sql
 CREATE TABLE bud_cc_cards (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  card_name       text NOT NULL,              -- '楽天ビジネスカード', 'JCB ザ・クラス' 等
-  card_company    text NOT NULL CHECK (card_company IN ('rakuten', 'jcb', 'amex', 'other')),
+  card_name       text NOT NULL,              -- 'オリコ法人カード', '三井住友 ビジネス', '楽天デビット' 等
+  card_company    text NOT NULL CHECK (card_company IN ('orico', 'mitsui_sumitomo', 'rakuten_debit', 'other')),
   company_id      text NOT NULL REFERENCES root_companies(company_id),
   last_four_digits text NOT NULL,             -- 識別子の一部
   holder_name     text,                        -- 名義人（個人カード時）
@@ -376,14 +380,14 @@ pending（取込直後）
 | # | 作業 | 工数 |
 |---|---|---|
 | W1 | `bud_cc_cards` / `bud_cc_statements` / `bud_cc_import_batches` / `bud_restaurant_keywords` migration | 0.1d |
-| W2 | CSV パーサ（楽天ビジネスカード 1 種）| 0.1d |
+| W2 | CSV パーサ（**段階的**: オリコ → 三井住友 → 楽天デビット の 3 種、§13 参照） | 0.25d |
 | W3 | 自動分類ロジック（飲食店判定 + 交通・EC等）| 0.1d |
 | W4 | 取込 Server Action | 0.05d |
 | W5 | CC 明細一覧画面（ `/bud/cc-statements`）| 0.1d |
 | W6 | インボイス登録モーダル + Storage bucket | 0.05d |
 | W7 | 月次引落し紐付け機能 + 不一致検出 | 0.05d |
 | W8 | リマインダ通知（Chatwork）| 0.05d |
-| **合計** | | **0.5d** |
+| **合計** | | **0.65d**（楽天 1 種前提の 0.5d + 3 種拡張で +0.15d） |
 
 ---
 
@@ -391,7 +395,7 @@ pending（取込直後）
 
 | # | 論点 | a-auto スタンス |
 |---|---|---|
-| 判1 | 対応カード種類 | **Phase A は楽天ビジネス 1 種**、JCB・Amex は順次追加 |
+| 判1 | 対応カード種類 | ~~Phase A は楽天ビジネス 1 種~~ → **東海林判断 (2026-04-25): オリコ + 三井住友 + 楽天デビット の 3 種 (§13 段階的実装計画参照)** |
 | 判2 | 5,000 円区切りの税抜/税込 | **税込（明細額）**で判定、Bud CLAUDE.md に従う |
 | 判3 | 飲食店判定の誤判定対策 | 自動分類後、admin が月次レビューで手動修正可 |
 | 判4 | インボイス必須化時期 | 現状は optional、税務ルール変更時に必須化（U2: 要確認）|
@@ -405,10 +409,52 @@ pending（取込直後）
 
 | # | 未確認 |
 |---|---|
-| U1 | 現在利用している法人カードの一覧（楽天以外に何社分）|
+| U1 | ~~現在利用している法人カードの一覧（楽天以外に何社分）~~ → **解決 (2026-04-25)**: オリコ + 三井住友 + 楽天デビット の 3 種 |
 | U2 | インボイス未収集時の運用（都度もらう or 月次でまとめる）|
 | U3 | 5,000 円区切りのルールは税法固定値 or 社内規程独自？ |
 | U4 | 飲食店以外で会議費/接待交際費の区別ルール |
 | U5 | CC 明細の月次集計を誰がレビューするか |
+
+---
+
+## 13. 段階的実装計画（2026-04-25 a-bud 追加）
+
+### 段階的アプローチを採る理由
+- 3 種のカードは CSV フォーマットが異なる（ヘッダー名・列順・文字コード・金額表記）
+- ファイル形式が確定していない（実サンプル取得が必要）
+- 一気に全 3 種実装より、まず 1 種で全体の取込→分類→引落紐付けを動作確認し、残り 2 種は CSV パーサ追加だけで対応可能な構造にする
+
+### Phase A-1.1（最優先、0.4d 想定）
+**1 種目（オリコ法人カード）で end-to-end 動作確認**
+1. W1 マスタ migration（`bud_cc_cards` / `bud_cc_statements` / `bud_cc_import_batches` / `bud_restaurant_keywords`）
+2. W2-1 オリコ CSV パーサ + ヘッダー判定（既存 A-06 の `statement-csv-parser.ts` パターン踏襲）
+3. W3 自動分類（飲食店判定 + 5,000 円区切り）
+4. W4 取込 Server Action
+5. W5 一覧 UI `/bud/cc-statements`
+6. W7 月次引落し紐付け（`bud_statements` の出金行と CC 明細合計を照合）
+
+### Phase A-1.2（追加、0.1d 想定）
+**2 種目（三井住友カード）パーサ追加 + 引落口座マッピング**
+- W2-2 三井住友 CSV パーサ追加（`statement-csv-parser` と同じ `parseGenericCsv(fields)` パターン）
+- カード会社別ヘッダーマッピングテーブル化
+- 既存 UI は変更不要（card_company 列で表示分け）
+
+### Phase A-1.3（追加、0.15d 想定）
+**3 種目（楽天デビット）パーサ追加 + デビット特有ロジック**
+- W2-3 楽天デビット CSV パーサ追加
+- デビットは即時引落しのため、`bud_statements` との照合ロジック簡略化
+- W6 インボイス登録モーダル + W8 Chatwork リマインダ（Phase A 完了の総仕上げ）
+
+### 段階的実装で確認したい挙動
+1. オリコ 1 種で 5,000 円区切り判定が正しく動作（飲食店マスタ初期データで）
+2. オリコ 1 種で月次引落し紐付け（オリコ引落しの記述パターンが `bud_statements` と一致）
+3. 2 種目以降の追加コストが「パーサのみ」で済むこと（Phase A-1.1 の構造設計次第）
+
+### 着手前に東海林さんから受領必要なもの
+- オリコカード 月次明細 CSV のサンプル 1 ファイル（実フォーマット確認）
+- 三井住友カード 月次明細 CSV のサンプル 1 ファイル
+- 楽天デビット 月次明細 CSV のサンプル 1 ファイル
+- 上記 3 種の引落口座 ID（`root_bank_accounts.account_id`）
+- 5,000 円区切り判定の確認（税込で OK か、税抜換算が必要か）
 
 — end of A-08 spec —

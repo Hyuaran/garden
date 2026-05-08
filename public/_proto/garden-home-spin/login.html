@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ログイン — Garden Series</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+JP:wght@400;500;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+
+<!--
+============================================================
+  Garden Series ログイン画面
+  作成: 2026-05-03 / claude.ai (chat-ui-login シリーズ最終版)
+  
+  【設計概要】
+  - 背景画像 bg-login-twilight-with-card.png（1870×841、カード装飾込み）を
+    画面全体に cover 表示
+  - 画像内に既に描かれている入力欄の枠とEnterボタンの位置に、
+    透明な <input> と <button> を JavaScript で正確に重ね合わせる
+  - JavaScript が画像の表示矩形（background-size: cover の結果）を
+    計算し、画像内の要素座標を画面座標に変換して配置
+  - これにより、ウィンドウサイズが変わっても画像内の枠と入力欄が
+    常にぴったり重なる
+  
+  【次工程（Claude Code 引き継ぎ）想定】
+  - このファイルは _chat_workspace/garden-ui-concept/ 配下のドラフト
+  - Claude Code 側で 015_Gardenシリーズ/ 配下の正式ディレクトリに整理移送
+  - 必要なら React/Next.js 化、認証 API 接続、社員マスタ連携等を実装
+  
+  【関連ファイル】
+  - 背景画像: ./images/bg-login-twilight-with-card.png
+  - ロゴ: ./images/logo-garden-series.png
+  - 遷移先（ログイン成功時）: ./garden-home.html（Garden Series ホーム画面）
+  
+  【調整可能な定数（CARD_COORDS）】
+  - 画像内のカード要素の位置を変更したい場合は、下記 CARD_COORDS を編集
+  - ピクセル座標は画像 1870×841 が基準
+============================================================
+-->
+
+<style>
+:root {
+  --font-display: 'Cormorant Garamond', 'Noto Serif JP', serif;
+  --font-body: 'Noto Sans JP', sans-serif;
+  --text-on-dark: #fdfbf3;
+  --accent-gold: #d4a541;
+  --accent-gold-bright: #e8c069;
+  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%;
+  height: 100vh;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-on-dark);
+  overflow: hidden;
+}
+
+/* ========================================================
+   背景：完成版ログイン画面（カード込み、左上ロゴ削除済）
+   ======================================================== */
+.stage-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: url('./images/bg-login-twilight-with-card.png');
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-color: #1a1a2e;
+}
+
+/* ========================================================
+   左上：Garden Series ロゴ（CSS で重ねる）
+   画像内のロゴは ChatGPT 側で削除済み（夜空に置き換え済み）
+   ======================================================== */
+.brand {
+  position: absolute;
+  top: 26px;
+  left: 36px;
+  z-index: 10;
+  height: 175px;
+}
+.brand img {
+  height: 100%;
+  width: auto;
+  display: block;
+  filter:
+    drop-shadow(0 2px 8px rgba(0, 0, 0, 0.18))
+    drop-shadow(0 0 20px rgba(255, 255, 255, 0.4));
+}
+
+/* ========================================================
+   ログインフォーム
+   入力欄とボタンは JS で動的に位置決定するので、
+   ここでは初期スタイルだけ定義（位置は JS が設定）
+   ======================================================== */
+.login-form {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* 入力欄（透明、画像内の枠の上に重なる） */
+.login-field {
+  position: absolute;
+  pointer-events: auto;
+}
+.login-field-input {
+  width: 100%;
+  height: 100%;
+  padding: 0 22px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--text-on-dark);
+  background: transparent;
+  border: none;
+  outline: none;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.login-field-input::placeholder {
+  color: rgba(253, 251, 243, 0.55);
+  font-style: italic;
+}
+.login-field-input:focus {
+  background: rgba(255, 230, 150, 0.08);
+  box-shadow:
+    inset 0 0 16px rgba(232, 192, 105, 0.30),
+    0 0 22px rgba(232, 192, 105, 0.20);
+  border-radius: 12px;
+}
+
+/* Enter ボタン（透明、画像内のボタンの上に重なる） */
+.login-button {
+  position: absolute;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  border-radius: 999px;
+  pointer-events: auto;
+  transition: all 0.4s var(--ease-out);
+}
+.login-button:hover {
+  background: radial-gradient(ellipse at center,
+    rgba(255, 230, 150, 0.20) 0%,
+    rgba(232, 192, 105, 0.08) 60%,
+    transparent 100%);
+  box-shadow: 0 0 28px rgba(232, 192, 105, 0.32);
+}
+
+/* 小画面対応：ロゴサイズだけ調整（入力欄位置は JS が常に画像基準で再計算） */
+@media (max-width: 768px) {
+  .brand { height: 100px; top: 16px; left: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 背景画像 -->
+<div class="stage-bg"></div>
+
+<!-- 左上ロゴ -->
+<header class="brand">
+  <img src="./images/logo-garden-series.png" alt="Garden Series">
+</header>
+
+<!-- ログインフォーム（入力欄とボタンの位置は JS が動的に設定） -->
+<form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
+  <div class="login-field" id="fieldId">
+    <input
+      type="text"
+      class="login-field-input"
+      placeholder="例 12345"
+      autocomplete="username"
+      aria-label="社員番号 / ID"
+      required>
+  </div>
+  <div class="login-field" id="fieldPw">
+    <input
+      type="password"
+      class="login-field-input"
+      placeholder="誕生日 4 桁  例 0801"
+      autocomplete="current-password"
+      aria-label="パスワード"
+      required>
+  </div>
+  <button type="submit" class="login-button" id="btnEnter" aria-label="Enter（庭園に入る）"></button>
+</form>
+
+<script>
+/* ============================================================
+   背景画像基準のフォーム配置システム
+   
+   【動作】
+   1. ウィンドウサイズと画像比率から、cover 表示時の画像の実際の表示矩形を計算
+   2. 画像内のカード要素の座標（CARD_COORDS）を画面座標に変換
+   3. 各 .login-field と .login-button にスタイルを適用
+   4. リサイズ時に再計算
+   
+   【調整方法】
+   画像内の入力欄やボタンの位置がずれている場合は、
+   下記の CARD_COORDS の値を変更してください（画像 1870×841 内のピクセル値）。
+   - top: 上端の Y 座標
+   - left: 左端の X 座標
+   - width: 幅
+   - height: 高さ
+   ============================================================ */
+
+// 背景画像のサイズ（bg-login-twilight-with-card.png）
+const BG_IMAGE_WIDTH = 1870;
+const BG_IMAGE_HEIGHT = 841;
+
+// 画像内のカード要素の座標（ピクセル単位、画像 1870×841 基準）
+// 実機スクショから精密測定した値（v18 → v19 更新：左側を 4px 内側に微戻し）
+const CARD_COORDS = {
+  idInput: {
+    top: 378,
+    left: 766,
+    width: 334,
+    height: 50,
+  },
+  pwInput: {
+    top: 483,
+    left: 766,
+    width: 334,
+    height: 50,
+  },
+  enterButton: {
+    top: 555,
+    left: 815,
+    width: 240,
+    height: 60,
+  },
+};
+
+/**
+ * 背景画像の表示矩形を計算する
+ * background-size: cover の挙動を再現
+ * 
+ * @returns {{scale: number, offsetX: number, offsetY: number}}
+ *   scale: 画像のピクセルから画面のピクセルへの倍率
+ *   offsetX: 画像の左端の画面 X 座標
+ *   offsetY: 画像の上端の画面 Y 座標
+ */
+function calculateBgRect() {
+  const winW = window.innerWidth;
+  const winH = window.innerHeight;
+  const imgRatio = BG_IMAGE_WIDTH / BG_IMAGE_HEIGHT;
+  const winRatio = winW / winH;
+
+  let scale, displayW, displayH, offsetX, offsetY;
+  if (winRatio < imgRatio) {
+    // ウィンドウが画像より縦長：画像の縦をウィンドウの縦に合わせる
+    // → 画像の左右がウィンドウより外にはみ出る
+    scale = winH / BG_IMAGE_HEIGHT;
+    displayW = BG_IMAGE_WIDTH * scale;
+    displayH = winH;
+    offsetX = (winW - displayW) / 2;
+    offsetY = 0;
+  } else {
+    // ウィンドウが画像より横長：画像の横をウィンドウの横に合わせる
+    // → 画像の上下がウィンドウより外にはみ出る
+    scale = winW / BG_IMAGE_WIDTH;
+    displayW = winW;
+    displayH = BG_IMAGE_HEIGHT * scale;
+    offsetX = 0;
+    offsetY = (winH - displayH) / 2;
+  }
+
+  return { scale, offsetX, offsetY };
+}
+
+/**
+ * 画像内のピクセル座標を、画面上の絶対座標（CSS）に変換して要素に適用
+ * 
+ * @param {HTMLElement} el - 対象の DOM 要素
+ * @param {{top, left, width, height}} coords - 画像内の座標（ピクセル）
+ * @param {{scale, offsetX, offsetY}} rect - 背景画像の表示矩形情報
+ */
+function applyCoords(el, coords, rect) {
+  el.style.top = (rect.offsetY + coords.top * rect.scale) + 'px';
+  el.style.left = (rect.offsetX + coords.left * rect.scale) + 'px';
+  el.style.width = (coords.width * rect.scale) + 'px';
+  el.style.height = (coords.height * rect.scale) + 'px';
+}
+
+/**
+ * 全要素の位置を背景画像基準で再計算して適用
+ */
+function updateFormPositions() {
+  const rect = calculateBgRect();
+  applyCoords(document.getElementById('fieldId'), CARD_COORDS.idInput, rect);
+  applyCoords(document.getElementById('fieldPw'), CARD_COORDS.pwInput, rect);
+  applyCoords(document.getElementById('btnEnter'), CARD_COORDS.enterButton, rect);
+}
+
+/**
+ * ログインフォーム送信時の処理
+ * 認証は今回未実装、即 garden-home.html に遷移
+ */
+function handleLogin(e) {
+  e.preventDefault();
+  // 後続実装：API 認証、エラー表示、ローディング演出等
+  window.location.href = './garden-home.html';
+}
+
+// 初期表示時とリサイズ時に位置を更新
+window.addEventListener('load', updateFormPositions);
+window.addEventListener('resize', updateFormPositions);
+// 念のため即時実行（DOM 構築完了後を想定）
+if (document.readyState !== 'loading') {
+  updateFormPositions();
+}
+</script>
+
+</body>
+</html>
