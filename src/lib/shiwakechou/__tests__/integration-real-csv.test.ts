@@ -27,6 +27,7 @@ import {
 } from "../parsers/bank/mizuho";
 import { parsePayPayCsv } from "../parsers/bank/paypay";
 import { parseKyotoCsv } from "../parsers/bank/kyoto";
+import { parseYayoiImportCsv } from "../parsers/yayoi/yayoi-import";
 
 const BASE = path.join(
   "G:\\",
@@ -196,6 +197,44 @@ describe.skipIf(!existsSync(BASE))("実 CSV / .api parsing 検証", () => {
       expect(result.rows.length).toBeGreaterThan(0);
       expect(result.closing_balance).toBe(PAYPAY_FILE.expectedClosingBalance);
     });
+  });
+
+  describe("弥生インポート CSV (ヒュアラン 1 年分)", () => {
+    const YAYOI_FILE = path.join(
+      "G:\\",
+      "マイドライブ",
+      "17_システム構築",
+      "07_Claude",
+      "01_東海林美琴",
+      "001_仕訳帳",
+      "01_株式会社ヒュアラン",
+      "1_銀行",
+      "3_完成データを確認",
+      "20260408_処理済み",
+      "弥生インポート_01_株式会社ヒュアラン_20260408.csv",
+    );
+
+    it.skipIf(!existsSync(YAYOI_FILE))(
+      "ヒュアラン: 1,682 行パース + 期間 2025/4-2026/4",
+      () => {
+        const buf = readFileSync(YAYOI_FILE);
+        const result = parseYayoiImportCsv(buf);
+
+        console.log(
+          `  📊 弥生 ヒュアラン: ${result.row_count} 件 / 期間 ${result.date_range?.from} 〜 ${result.date_range?.to} / warnings ${result.warnings.length}`,
+        );
+
+        expect(result.row_count).toBeGreaterThan(1000); // ~1,682 期待
+        expect(result.warnings.length).toBe(0); // 全行 25 列均一
+        expect(result.date_range).not.toBeNull();
+        expect(result.date_range!.from).toMatch(/^2025-04/);
+
+        // サンプル: 1 行目は 2025/4/1 のみずほ → 楽天 振替 ¥5,000,000 (期初残高設定)
+        const firstRow = result.rows[0];
+        expect(firstRow.transaction_date).toBe("2025-04-01");
+        expect(firstRow.denpyo_no).toBe(1);
+      },
+    );
   });
 
   describe("京都銀行 ヒュアラン", () => {
