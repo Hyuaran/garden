@@ -1,5 +1,85 @@
 # dispatch main- No. 141 — a-bloom-004 へ Bloom 法人アイコン + v2.8a スクショ配置依頼
 
+> 起草: a-main-015
+> 用途: a-bloom-004 への Bloom 法人アイコン集 + v2.8a 主要画面スクショ配置依頼
+> 番号: main- No. 141
+> 起草時刻: 2026-05-08(金) 14:55
+
+---
+
+## 投下用短文（東海林さんが a-bloom-004 にコピペ）
+
+~~~
+🟡 main- No. 141
+【a-main-015 から a-bloom-004 への dispatch】
+発信日時: 2026-05-08(金) 14:55
+
+# 件名
+Bloom 法人アイコン集 + v2.8a 主要画面スクショの `_reference/garden-bloom/` 配置依頼
+
+# 背景
+作業日報セッション（Garden UI 018）から report- No. 15 受領。claude.ai chat 共通参照画像庫を G: ドライブ配下に新設済み。
+
+配置先:
+G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_workspace\_reference\garden-bloom\
+
+# 依頼内容（優先度 A = 即必要）
+
+## A-1. Bloom 法人アイコン集（6 法人分）
+サブフォルダ: _reference/garden-bloom/bloom-corporate-icons/
+
+| 法人 | ファイル名 |
+|---|---|
+| ヒュアラン | hyuaran.svg または .png |
+| センターライズ | centerrise.svg |
+| リンクサポート | linksupport.svg |
+| ARATA | arata.svg |
+| たいよう | taiyou.svg |
+| 壱 | ichi.svg |
+
+取得方法:
+- 既存実装に SVG/PNG があれば抽出（src/app/bloom 配下を Grep / Glob で検索）
+- 不在なら ChatGPT 生成可否を判断保留として a-main-015 へ上げる
+
+用途: Forest v2 で法人 6 色置き換え（各法人アイコン + 法人カラー方針確定）
+
+## A-2. Bloom v2.8a ホームページスクショ
+- bloom-v2.8a-homepage-screenshot.png（タイル UI 全体）
+
+# 依頼内容（優先度 B = あれば便利）
+- bloom-v2.8a-workboard-screenshot.png
+- bloom-v2.8a-monthly-digest-screenshot.png
+- bloom-v2.8a-progress-screenshot.png
+- bloom-v2.8a-daily-report-screenshot.png
+
+# 取得手順
+1. A-1: src/app/bloom 配下を hyuaran|centerrise|linksupport|ARATA|taiyou|壱 で grep
+2. SVG/PNG が見つかった場合 → cp で配置
+3. 見つからなかった場合 → 完走報告に判断保留として記載
+4. A-2: dev server 起動（or Vercel URL 利用）→ Chrome MCP / Snipping Tool でスクショ
+5. _reference/README.md を一読
+6. 完走報告（bloom-004- No. 58）で a-main-015 へ報告
+
+# 注意点
+- 既存 v1/v2.7 等のスクショは削除禁止 → _archive_202605/ に退避
+- 法人アイコンが既存 SVG で見つからない場合は無理に PNG 化せず判断保留として上げる
+- スクショは Bloom 認証通過後の画面で（dev mode で BloomGate バイパス OK、project_bloom_auth_independence.md 準拠）
+
+# 並行 main- No. 139 との関係
+本依頼は main- No. 139（DD/EE/FF プラン GO）と並行進行 OK。アイコン抽出は 30 分目安。
+
+# 完走報告フォーマット
+🟢 bloom-004- No. 58
+【a-bloom-004 から a-main-015 への完走報告】
+発信日時: 2026-05-08(金) HH:MM
+件名: Bloom 法人アイコン + v2.8a スクショ配置完了 / 部分完了 / 判断保留
+配置内容 + 判断保留 を記載
+~~~
+
+---
+
+## 詳細（参考）
+
 発信日時: 2026-05-08(金) 14:55
 発信元: a-main-015
 宛先: a-bloom-004（feature/bloom-6screens-vercel-2026-05 系 / 該当作業ブランチ）
