@@ -42,7 +42,7 @@ G:\マイドライブ\17_システム構築\07_Claude\01_東海林美琴\_chat_w
 - 背景レイヤー + Forest 背景画像パス = 完全同一
 - CSS 変数（gf-* / 6 法人カラー）= 完全同一
 - gfShinkouGlow / gfFadeUp keyframe = 完全同一
-- **テーマ切替時 Forest 背景保持 JS（MutationObserver）** = 完全同一（重要、削除しないこと）
+- **テーマ切替時 Forest 背景保持 JS（MutationObserver、v2 修正版）** = 完全同一（重要、削除しないこと）。**bgLayer1 + bgLayer2 両 layer に Forest 画像を上書き必須**（Bloom の crossfade で active 切替されても Forest が消えない）+ setTimeout 0/100/600ms の 3 段階保険
 
 → 集中起草するのは **`<main>` 内の tab-2 固有セクション** のみ。
 
