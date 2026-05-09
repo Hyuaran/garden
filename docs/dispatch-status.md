@@ -7,7 +7,7 @@
 
 ## 現在の counter
 
-dispatch counter: **211**（次の起草番号、`docs/dispatch-counter.txt` と同期）
+dispatch counter: **212**（次の起草番号、`docs/dispatch-counter.txt` と同期）
 
 ---
 
@@ -15,6 +15,7 @@ dispatch counter: **211**（次の起草番号、`docs/dispatch-counter.txt` と
 
 | # | 番号 | 起草日時 | 投下先 | 状態 | 完了報告 |
 |---|---|---|---|---|---|
+| - | main- No. 211 | 2026-05-10 00:59 | a-audit-001 | 起草済（未投下）（audit-001- No. 5 採否 5 件 GO + No. 6 は 5/11(月) 08:00 以降持ち越し） | ❌ 未投下 |
 | - | main- No. 210 | 2026-05-10 00:49 | a-audit-001 | 起草済（未投下）（判断保留 6 件 GO + audit-001- No. 5 # 1 script 実装着手指示） | ❌ 未投下 |
 | - | main- No. 209 | 2026-05-10 00:34 | a-audit-001 | 起草済（未投下）（緊急訂正 + 検出 protocol 改善依頼 + audit-001- No. 2 全 4 提案採用 GO 通知） | ❌ 未投下 |
 | - | main- No. 208 | 2026-05-10 00:29 | a-audit-001 | 起草済（未投下）（template critique 依頼、§5-1 後段動作確認兼、analysis critique 受領後） | ❌ 未投下 |
@@ -94,6 +95,8 @@ dispatch counter: **211**（次の起草番号、`docs/dispatch-counter.txt` と
 ## 改訂履歴
 
 - 2026-05-09 18:30 初版（a-main-017、ガンガン投下漏れ防止）
+
+
 
 
 
