@@ -50,6 +50,21 @@ No text, no logos, no sharp lines.
 Allow UI elements to be readable on top — keep low saturation in center.
 ```
 
+### 0-4. 全 17 枚共通の添付画像（ChatGPT に世界観を伝えるため）
+
+各プロンプト投下時、以下の **既存 Garden 背景画像をリファレンスとして添付**:
+
+| 添付画像 | パス | 役割 |
+|---|---|---|
+| **Forest ライト**（reference） | `_chat_workspace/_reference/garden-forest/bg-forest-light.png` | ボタニカル水彩トーン基準（朝〜昼） |
+| **Forest ダーク**（reference） | `_chat_workspace/_reference/garden-forest/bg-forest-dark.png` | ボタニカル水彩トーン基準（夜） |
+| **Bloom ライト**（reference） | `_chat_workspace/_reference/garden-bloom/bg_bloom_garden_light.png` | 桜・花トーン基準 |
+| **Bud ライト**（reference） | `_chat_workspace/garden-bud/ui_drafts/bg-bud-common-20260505.png` | 蕾・芽吹きトーン基準 |
+
+→ ChatGPT に「**この 4 枚と同じ世界観・水彩トーン・絵本タッチで、新規モジュール用に [モジュール名] のテーマで生成して**」と指示。
+
+ライト生成時は Forest ライト + Bloom ライト + Bud ライトを参照、ダーク生成時は Forest ダーク + 自モジュールの既存ライト（あれば）を参照、が標準。各モジュール §で個別添付指定あり。
+
 ---
 
 ## 1. Bud ダーク（追加 1 枚）
@@ -59,6 +74,13 @@ Allow UI elements to be readable on top — keep low saturation in center.
 **世界観**: 早朝の芽吹き、若い緑芽、露、繊細な蕾
 
 ### 1-1. Bud ダーク プロンプト（既存ライト `bg-bud-common-20260505.png` の同構図、夜トーン化）
+
+**📋 日本語要約**: 既存の Bud ライト（早朝の芽吹き）と同じ構図のまま、月光下の夜トーンに変える。柔らかな蕾と若芽、月明かりに銀色に光る露、深い紺と銀緑のトーン。経理の積み重ねを夜の静寂で表現。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: `_chat_workspace/garden-bud/ui_drafts/bg-bud-common-20260505.png`（既存ライト、同構図参考）
+- ✅ 推奨: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン水彩の参考）
+- ✅ 推奨: `_chat_workspace/_reference/garden-bloom/bg_bloom_garden_light.png`（ボタニカル水彩の絵本トーン参考）
 
 ```
 Generate a botanical watercolor background image for the "Bud" module (representing accounting and bookkeeping in a business OS).
@@ -99,6 +121,13 @@ Note: This is a "dark mode" companion to an existing "light mode" version (early
 
 ### 2-1. Root ライト プロンプト
 
+**📋 日本語要約**: 肥沃な大地の下、横に広がる根のシステム。上から柔らかい日光、苔と落ち葉の暖色トーン。茶 + 緑 + クリーム色。Garden の認証・マスタデータ基盤の「しっかりした土台」を象徴。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: `_chat_workspace/_reference/garden-forest/bg-forest-light.png`（ボタニカル水彩トーン基準、ライト）
+- ✅ 推奨: `_chat_workspace/garden-bud/ui_drafts/bg-bud-common-20260505.png`（土・芽吹き系参考）
+- ✅ 推奨: `_chat_workspace/_reference/garden-bloom/bg_bloom_garden_light.png`（絵本トーン参考）
+
 ```
 Generate a botanical watercolor background image for the "Root" module (representing authentication and master data foundation in a business OS).
 
@@ -127,6 +156,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 → ファイル名: `bg-root-light.png`
 
 ### 2-2. Root ダーク プロンプト
+
+**📋 日本語要約**: Root ライトと同じ根の構図を、薄暮〜深夜に変える。月光が地表からわずかに差し込み、根や落ち葉に夜露が銀色に光る。深い茶 + 微かな苔色。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: 直前生成した **Root ライト**（同構図維持のため）
+- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン水彩基準）
 
 ```
 Generate a botanical watercolor background image for the "Root" module (representing authentication and master data foundation in a business OS) — DARK MODE companion.
@@ -165,6 +200,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 ### 3-1. Leaf ライト プロンプト
 
+**📋 日本語要約**: 多種多様な葉の天蓋（樫・楓・蔦・羊歯のヒント）が日差しに透かされる。木漏れ日と柔らかい影。商材それぞれの個性を持ちつつ調和する Leaf モジュールの世界観。明るい黄緑 + クリーム。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: `_chat_workspace/_reference/garden-forest/bg-forest-light.png`（葉系・水彩トーン基準）
+- ✅ 推奨: `_chat_workspace/_reference/garden-bloom/bg_bloom_garden_light.png`（絵本トーン参考）
+
 ```
 Generate a botanical watercolor background image for the "Leaf" module (representing individual product/business apps in a business OS).
 
@@ -193,6 +234,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 → ファイル名: `bg-leaf-light.png`
 
 ### 3-2. Leaf ダーク プロンプト
+
+**📋 日本語要約**: Leaf ライトと同じ多種多様な葉の構図を、夕暮れ〜月光に変える。葉のシルエットが柔らかく影で表現、夕焼けの紫青のヒント。深い森緑 + 黄昏青。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: 直前生成した **Leaf ライト**（同構図維持のため）
+- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
 
 ```
 Generate a botanical watercolor background image for the "Leaf" module (representing individual product/business apps in a business OS) — DARK MODE companion.
@@ -231,6 +278,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 ### 4-1. Soil ライト プロンプト
 
+**📋 日本語要約**: 低い視点から見た肥沃な大地。落ち葉、小石、芽吹きの兆し。午後の暖かい光が斜めに差す。データの土壌を象徴する Soil モジュール。暖かい茶 + 苔色 + クリーム。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: `_chat_workspace/_reference/garden-forest/bg-forest-light.png`（水彩自然系基準）
+- ✅ 推奨: `_chat_workspace/garden-bud/ui_drafts/bg-bud-common-20260505.png`（土・芽吹き系参考）
+
 ```
 Generate a botanical watercolor background image for the "Soil" module (representing the database foundation and large data soil of a business OS).
 
@@ -259,6 +312,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 → ファイル名: `bg-soil-light.png`
 
 ### 4-2. Soil ダーク プロンプト
+
+**📋 日本語要約**: Soil ライトと同じ大地を、深夜の月光下で。落ち葉に夜露が銀色に光り、神秘的な深い陰影。深い茶 + 影色オリーブ + クリームの微光。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: 直前生成した **Soil ライト**（同構図維持のため）
+- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
 
 ```
 Generate a botanical watercolor background image for the "Soil" module (database foundation) — DARK MODE companion.
@@ -297,6 +356,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 ### 5-1. Rill ライト プロンプト
 
+**📋 日本語要約**: 草の岸辺を縫うように流れる小川。空の反射、垂れる柳の葉、晴れた午後。水色 + 春草の緑 + クリーム。チャット・メッセージの「流れ」を象徴。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: `_chat_workspace/_reference/garden-forest/bg-forest-light.png`（水彩自然系基準）
+- ✅ 推奨: `_chat_workspace/_reference/garden-bloom/bg_bloom_garden_light.png`（柔らかい絵本トーン参考）
+
 ```
 Generate a botanical watercolor background image for the "Rill" module (representing a chat/messaging tool in a business OS).
 
@@ -325,6 +390,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 → ファイル名: `bg-rill-light.png`
 
 ### 5-2. Rill ダーク プロンプト
+
+**📋 日本語要約**: Rill ライトと同じ小川を、月光下で。水面が銀色にきらめき、岸辺は深い影。深い紺 + 水銀色 + 影緑。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: 直前生成した **Rill ライト**（同構図維持のため）
+- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
 
 ```
 Generate a botanical watercolor background image for the "Rill" module (chat/messaging) — DARK MODE companion.
@@ -363,6 +434,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 ### 6-1. Seed ライト プロンプト
 
+**📋 日本語要約**: 暖かい土に並ぶ種子（どんぐり・向日葵・たんぽぽの綿毛）。金色の殻、朝露、芽吹きのヒント。新事業の「眠れる可能性」を象徴。砂金 + 暖かい土 + クリーム。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: `_chat_workspace/garden-bud/ui_drafts/bg-bud-common-20260505.png`（土・芽吹き系の温度感参考）
+- ✅ 推奨: `_chat_workspace/_reference/garden-forest/bg-forest-light.png`（水彩トーン基準）
+
 ```
 Generate a botanical watercolor background image for the "Seed" module (representing new business / new product expansion slots in a business OS).
 
@@ -391,6 +468,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 → ファイル名: `bg-seed-light.png`
 
 ### 6-2. Seed ダーク プロンプト
+
+**📋 日本語要約**: Seed ライトと同じ種子、深夜の月光。金の殻が銀色にうっすら光る。眠れる可能性、忍耐の静けさ。深い琥珀茶 + 影金 + クリーム微光。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: 直前生成した **Seed ライト**（同構図維持のため）
+- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
 
 ```
 Generate a botanical watercolor background image for the "Seed" module (new business expansion) — DARK MODE companion.
@@ -429,6 +512,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 ### 7-1. Fruit ライト プロンプト
 
+**📋 日本語要約**: 葉の枝々に熟しかけた果実（林檎・李・柔らかい丸果）。午後の光、何も主張せずヒントだけ。法人法的実体の「成熟と確立」を象徴。柔らかな赤・桃・琥珀 + 葉緑。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: `_chat_workspace/_reference/garden-forest/bg-forest-light.png`（水彩自然系基準）
+- ✅ 推奨: `_chat_workspace/_reference/garden-bloom/bg_bloom_garden_light.png`（柔らかい花・果実系参考）
+
 ```
 Generate a botanical watercolor background image for the "Fruit" module (representing legal entity / corporate identity records in a business OS).
 
@@ -457,6 +546,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 → ファイル名: `bg-fruit-light.png`
 
 ### 7-2. Fruit ダーク プロンプト
+
+**📋 日本語要約**: Fruit ライトと同じ果樹園、夕方の光。果実が最後の暖かい光を受けて深い影と輝く。成熟の威厳と静寂。深いワインレッド + 影葉緑 + 黄昏琥珀。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: 直前生成した **Fruit ライト**（同構図維持のため）
+- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
 
 ```
 Generate a botanical watercolor background image for the "Fruit" module (legal entity records) — DARK MODE companion.
@@ -495,6 +590,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 ### 8-1. Sprout ライト プロンプト
 
+**📋 日本語要約**: 柔らかい土から立ち上がる若い双葉と苗。夜明けの優しい光、新しい始まり。オンボーディング・新人育成の「希望ある門出」を象徴。明るい春緑 + 夜明けピンク + クリーム。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: `_chat_workspace/garden-bud/ui_drafts/bg-bud-common-20260505.png`（芽吹き系参考）
+- ✅ 推奨: `_chat_workspace/_reference/garden-forest/bg-forest-light.png`（水彩トーン基準）
+
 ```
 Generate a botanical watercolor background image for the "Sprout" module (representing onboarding / new user guidance in a business OS).
 
@@ -523,6 +624,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 → ファイル名: `bg-sprout-light.png`
 
 ### 8-2. Sprout ダーク プロンプト
+
+**📋 日本語要約**: Sprout ライトと同じ双葉、深夜の月光。若葉が銀色に縁取られ、静寂の中で成長を続ける示唆。新人の「眠れる成長」。深いティール緑 + 影土 + 月光ピンク。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: 直前生成した **Sprout ライト**（同構図維持のため）
+- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
 
 ```
 Generate a botanical watercolor background image for the "Sprout" module (onboarding) — DARK MODE companion.
@@ -561,6 +668,13 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 ### 9-1. Calendar ライト プロンプト
 
+**📋 日本語要約**: 春→夏→秋→冬の四季が左から右へ水彩のグラデーションで流れる。各季節のさりげない花のヒント（桜・葉・紅葉・松）。時の循環、暦の流れ。淡色の春桃 + 夏緑 + 秋琥珀 + 冬白青。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: `_chat_workspace/_reference/garden-forest/bg-forest-light.png`（自然系水彩基準）
+- ✅ 推奨: `_chat_workspace/_reference/garden-bloom/bg_bloom_garden_light.png`（柔らかい絵本トーン参考、桜系）
+- ✅ 推奨: `_chat_workspace/garden-bud/ui_drafts/bg-bud-common-20260505.png`（春芽吹き参考）
+
 ```
 Generate a botanical watercolor background image for the "Calendar" module (representing time / schedule / seasonal cycles in a business OS).
 
@@ -589,6 +703,12 @@ Allow UI elements to be readable on top — keep low saturation in center.
 → ファイル名: `bg-calendar-light.png`
 
 ### 9-2. Calendar ダーク プロンプト
+
+**📋 日本語要約**: Calendar ライトと同じ四季のグラデを、薄暮〜夜の深い色調で。春深紅 + 夏深翠 + 秋深褐 + 冬深紺。時の静かな移ろい。月光の銀色のヒント。
+
+**📎 添付画像**（ChatGPT にアップロード）:
+- ✅ **必須**: 直前生成した **Calendar ライト**（同構図維持のため）
+- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
 
 ```
 Generate a botanical watercolor background image for the "Calendar" module (time / seasonal cycles) — DARK MODE companion.
