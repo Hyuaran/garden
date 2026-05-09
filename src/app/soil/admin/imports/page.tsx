@@ -24,7 +24,7 @@
  *   - Soil ガード（SoilGate / SoilShell）は未実装、次セッションで整備予定。
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "../../_lib/supabase";
 import {
@@ -33,6 +33,7 @@ import {
   resumeImportJob,
   retryImportJob,
   cancelImportJob,
+  createPhase2ImportJob,
 } from "@/lib/db/soil-import-actions";
 
 // ============================================================
@@ -80,6 +81,25 @@ const STATUS_BG: Record<string, string> = {
   cancelled: "bg-gray-200 text-gray-700",
 };
 
+// ソース別フィルタ + 表示用ラベル
+const SOURCE_FILTER_OPTIONS = [
+  { value: "all", label: "すべて" },
+  { value: "kintone-app-55", label: "Kintone 関電（Phase 1）" },
+  { value: "filemaker-list2024", label: "FileMaker（Phase 2）" },
+] as const;
+type SourceFilter = (typeof SOURCE_FILTER_OPTIONS)[number]["value"];
+
+const SOURCE_BADGE: Record<string, string> = {
+  "kintone-app-55": "bg-sky-50 text-sky-700 border border-sky-200",
+  "filemaker-list2024": "bg-violet-50 text-violet-700 border border-violet-200",
+};
+
+function sourceLabel(sourceSystem: string): string {
+  if (sourceSystem === "kintone-app-55") return "Kintone (P1)";
+  if (sourceSystem === "filemaker-list2024") return "FileMaker (P2)";
+  return sourceSystem;
+}
+
 // ============================================================
 // メインコンポーネント
 // ============================================================
@@ -89,6 +109,14 @@ export default function SoilImportsAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+
+  // Phase 2 ジョブ作成フォーム
+  const [showPhase2Form, setShowPhase2Form] = useState(false);
+  const [phase2Label, setPhase2Label] = useState("");
+  const [phase2Notes, setPhase2Notes] = useState("");
+  const [phase2Pending, setPhase2Pending] = useState(false);
+  const [phase2CreatedJobId, setPhase2CreatedJobId] = useState<string | null>(null);
 
   const loadJobs = useCallback(async () => {
     setError(null);
@@ -115,6 +143,38 @@ export default function SoilImportsAdminPage() {
     const interval = setInterval(loadJobs, 5000);
     return () => clearInterval(interval);
   }, [loadJobs]);
+
+  const filteredJobs = useMemo(() => {
+    if (sourceFilter === "all") return jobs;
+    return jobs.filter((j) => j.source_system === sourceFilter);
+  }, [jobs, sourceFilter]);
+
+  const handleCreatePhase2 = useCallback(async () => {
+    setError(null);
+    setPhase2CreatedJobId(null);
+    if (!phase2Label.trim()) {
+      setError("CSV ファイル名（source_label）を入力してください");
+      return;
+    }
+    setPhase2Pending(true);
+    try {
+      const result = await createPhase2ImportJob({
+        supabase,
+        sourceLabel: phase2Label,
+        notes: phase2Notes,
+      });
+      if (!result.ok) {
+        setError(result.error ?? "Phase 2 ジョブ作成に失敗");
+        return;
+      }
+      setPhase2CreatedJobId(result.jobId ?? null);
+      setPhase2Label("");
+      setPhase2Notes("");
+      await loadJobs();
+    } finally {
+      setPhase2Pending(false);
+    }
+  }, [phase2Label, phase2Notes, loadJobs]);
 
   const handleAction = useCallback(
     async (
@@ -172,6 +232,13 @@ export default function SoilImportsAdminPage() {
           </Link>
           <button
             type="button"
+            onClick={() => setShowPhase2Form((s) => !s)}
+            className="rounded bg-violet-600 px-3 py-1 text-white hover:bg-violet-700"
+          >
+            + Phase 2 取込ジョブ作成
+          </button>
+          <button
+            type="button"
             onClick={() => void loadJobs()}
             className="rounded border border-gray-300 bg-white px-3 py-1 text-gray-700 hover:bg-gray-50"
           >
@@ -179,6 +246,106 @@ export default function SoilImportsAdminPage() {
           </button>
         </nav>
       </header>
+
+      {/* Phase 2 ジョブ作成フォーム */}
+      {showPhase2Form ? (
+        <section className="mb-4 rounded-lg border border-violet-200 bg-violet-50 p-4">
+          <h2 className="mb-3 text-sm font-bold text-violet-900">
+            Phase 2 取込ジョブ作成（FileMaker CSV 200 万件）
+          </h2>
+          <div className="grid gap-2 md:grid-cols-2">
+            <label className="block text-xs text-gray-700">
+              CSV ファイル名（source_label）<span className="text-rose-600">*</span>
+              <input
+                type="text"
+                value={phase2Label}
+                onChange={(e) => setPhase2Label(e.target.value)}
+                placeholder="filemaker-list-export-YYYYMMDD-HHMM.csv"
+                className="mt-1 w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm"
+                disabled={phase2Pending}
+              />
+            </label>
+            <label className="block text-xs text-gray-700">
+              メモ（任意）
+              <input
+                type="text"
+                value={phase2Notes}
+                onChange={(e) => setPhase2Notes(e.target.value)}
+                placeholder="α テスト / 本番 200 万件 等"
+                className="mt-1 w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm"
+                disabled={phase2Pending}
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => void handleCreatePhase2()}
+              disabled={phase2Pending || phase2Label.trim() === ""}
+              className="rounded bg-violet-600 px-3 py-1 text-sm text-white hover:bg-violet-700 disabled:opacity-50"
+            >
+              {phase2Pending ? "作成中…" : "ジョブ作成"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowPhase2Form(false);
+                setPhase2CreatedJobId(null);
+              }}
+              className="rounded border border-gray-300 bg-white px-3 py-1 text-sm text-gray-700"
+            >
+              閉じる
+            </button>
+          </div>
+          {phase2CreatedJobId ? (
+            <div className="mt-4 rounded border border-emerald-300 bg-emerald-50 p-3 text-xs">
+              <p className="font-medium text-emerald-800">
+                ✅ ジョブ作成完了。job_status=&quot;queued&quot; で登録されました。
+              </p>
+              <p className="mt-1 text-emerald-700">
+                Job ID: <code className="rounded bg-white px-1 py-0.5">{phase2CreatedJobId}</code>
+              </p>
+              <p className="mt-2 text-emerald-700">
+                以下のコマンドを CLI（PowerShell / bash）で実行して取込開始:
+              </p>
+              <pre className="mt-1 overflow-x-auto rounded bg-gray-900 p-2 text-emerald-100">
+                {`npx tsx scripts/soil-import-csv-phase2.ts \\
+  "<csv-file-path>" \\
+  "${phase2CreatedJobId}" \\
+  10000`}
+              </pre>
+              <p className="mt-2 text-xs text-emerald-700">
+                ※ 取込開始前に admin が SQL Editor で
+                <code className="mx-1 rounded bg-white px-1 py-0.5">
+                  select * from public.soil_phase2_drop_bulk_load_indexes();
+                </code>
+                を実行して INDEX を一時 DROP（spec §6.1）。
+                <br />※ 完了後に scripts/soil-phase2-recreate-indexes.sql を SQL Editor で実行し
+                INDEX を CONCURRENTLY で再構築 + ANALYZE。
+              </p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {/* ソースフィルタ */}
+      <div className="mb-3 flex items-center gap-2 text-xs">
+        <span className="text-gray-500">フィルタ:</span>
+        {SOURCE_FILTER_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setSourceFilter(opt.value)}
+            className={`rounded px-2 py-1 ${
+              sourceFilter === opt.value
+                ? "bg-emerald-600 text-white"
+                : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
       {error ? (
         <div
@@ -207,18 +374,19 @@ export default function SoilImportsAdminPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-gray-900">
-              {jobs.length === 0 ? (
+              {filteredJobs.length === 0 ? (
                 <tr>
                   <td
                     colSpan={8}
                     className="px-3 py-8 text-center text-gray-400"
                   >
-                    インポートジョブがありません（admin 権限が必要、または
-                    soil_list_imports が空）
+                    {sourceFilter === "all"
+                      ? "インポートジョブがありません（admin 権限が必要、または soil_list_imports が空）"
+                      : `${SOURCE_FILTER_OPTIONS.find((o) => o.value === sourceFilter)?.label} のジョブはありません`}
                   </td>
                 </tr>
               ) : (
-                jobs.map((j) => {
+                filteredJobs.map((j) => {
                   const status = j.job_status ?? "queued";
                   const progressPct =
                     j.chunks_total && j.chunks_total > 0
@@ -231,8 +399,15 @@ export default function SoilImportsAdminPage() {
                       <td className="px-3 py-2 text-xs text-gray-700">
                         {new Date(j.imported_at).toLocaleString("ja-JP")}
                       </td>
-                      <td className="px-3 py-2 text-xs text-gray-700">
-                        {j.source_system}
+                      <td className="px-3 py-2">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${
+                            SOURCE_BADGE[j.source_system] ??
+                            "bg-gray-100 text-gray-700 border border-gray-200"
+                          }`}
+                        >
+                          {sourceLabel(j.source_system)}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-xs text-gray-700 truncate max-w-xs">
                         {j.source_label ?? "—"}
@@ -290,7 +465,7 @@ export default function SoilImportsAdminPage() {
       )}
 
       <p className="mt-3 text-xs text-gray-400">
-        {jobs.length} 件表示（最新 50 件、5 秒間隔で自動更新）
+        {filteredJobs.length} / {jobs.length} 件表示（最新 50 件、5 秒間隔で自動更新）
       </p>
     </div>
   );

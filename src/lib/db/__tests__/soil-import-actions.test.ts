@@ -7,6 +7,7 @@ import {
   cancelImportJob,
   markImportJobFailed,
   markImportJobCompleted,
+  createPhase2ImportJob,
 } from "../soil-import-actions";
 
 function setupSupabase() {
@@ -137,5 +138,76 @@ describe("markImportJobCompleted", () => {
     const payload = mocks.update.mock.calls[0]![0]!;
     expect(payload.job_status).toBe("completed");
     expect(typeof payload.completed_at).toBe("string");
+  });
+});
+
+describe("createPhase2ImportJob", () => {
+  function setupInsertMock(returnRow: { id: string } | null = { id: "new-job-uuid" }, error: { message: string } | null = null) {
+    const single = vi.fn().mockResolvedValue({ data: returnRow, error });
+    const select = vi.fn().mockReturnValue({ single });
+    const insert = vi.fn().mockReturnValue({ select });
+    const from = vi.fn().mockReturnValue({ insert });
+    return { from, insert, select, single };
+  }
+
+  it("source_system='filemaker-list2024' で INSERT、jobId 返却", async () => {
+    const mocks = setupInsertMock();
+    const supabase = { from: mocks.from } as never;
+
+    const result = await createPhase2ImportJob({
+      supabase,
+      sourceLabel: "filemaker-list-export-20260513-2200.csv",
+      notes: "α テスト",
+    });
+
+    expect(mocks.from).toHaveBeenCalledWith("soil_list_imports");
+    const payload = mocks.insert.mock.calls[0]![0]!;
+    expect(payload.source_system).toBe("filemaker-list2024");
+    expect(payload.source_label).toBe("filemaker-list-export-20260513-2200.csv");
+    expect(payload.notes).toBe("α テスト");
+    expect(payload.job_status).toBe("queued");
+    expect(result.ok).toBe(true);
+    expect(result.jobId).toBe("new-job-uuid");
+  });
+
+  it("sourceLabel 空 → エラー", async () => {
+    const mocks = setupInsertMock();
+    const supabase = { from: mocks.from } as never;
+
+    const result = await createPhase2ImportJob({
+      supabase,
+      sourceLabel: "  ",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("必須");
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("Supabase error → ok=false", async () => {
+    const mocks = setupInsertMock(null, { message: "rls denied" });
+    const supabase = { from: mocks.from } as never;
+
+    const result = await createPhase2ImportJob({
+      supabase,
+      sourceLabel: "test.csv",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("rls denied");
+  });
+
+  it("notes 空文字 / undefined → null 化", async () => {
+    const mocks = setupInsertMock();
+    const supabase = { from: mocks.from } as never;
+
+    await createPhase2ImportJob({
+      supabase,
+      sourceLabel: "x.csv",
+      notes: "",
+    });
+
+    const payload = mocks.insert.mock.calls[0]![0]!;
+    expect(payload.notes).toBeNull();
   });
 });

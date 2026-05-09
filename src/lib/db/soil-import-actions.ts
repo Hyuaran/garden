@@ -143,3 +143,63 @@ export async function markImportJobCompleted(
     completed_at: new Date().toISOString(),
   });
 }
+
+// ============================================================
+// Phase 2: FileMaker CSV ジョブ作成
+// ============================================================
+
+/**
+ * Phase 2 (FileMaker CSV 200 万件) 用の import job レコードを作成する。
+ *
+ * 動作:
+ *   - soil_list_imports に source_system='filemaker-list2024' で 1 行 INSERT
+ *   - job_status='queued'（admin が後で「開始」ボタンで running に遷移）
+ *   - 返却: 作成された job_id（呼出側で scripts/soil-import-csv-phase2.ts に渡す想定）
+ *
+ * 利用フロー:
+ *   1. admin が UI から「Phase 2 取込ジョブ作成」を押下、CSV ファイル名 + メモ入力
+ *   2. 本 action が job_id を返却
+ *   3. admin が CLI で
+ *      `npx tsx scripts/soil-import-csv-phase2.ts <csv-path> <job-id>`
+ *      を実行（Node.js script が CSV → Transform → Load を完走）
+ *   4. UI 上で進捗ポーリング（5 秒間隔）
+ */
+export async function createPhase2ImportJob(input: {
+  supabase: SupabaseClient;
+  sourceLabel: string;
+  notes?: string;
+  importedBy?: string | null;
+}): Promise<ImportActionResult & { jobId?: string }> {
+  const { supabase, sourceLabel, notes, importedBy } = input;
+
+  if (!sourceLabel || sourceLabel.trim() === "") {
+    return { ok: false, error: "sourceLabel (CSV ファイル名) は必須" };
+  }
+
+  const result = (await supabase
+    .from("soil_list_imports")
+    .insert({
+      source_system: "filemaker-list2024",
+      source_label: sourceLabel.trim(),
+      notes: notes?.trim() || null,
+      imported_by: importedBy ?? null,
+      job_status: "queued",
+      chunks_total: 0,
+      chunks_completed: 0,
+      total_records: 0,
+      inserted_count: 0,
+      updated_count: 0,
+      skipped_duplicate_count: 0,
+      failed_count: 0,
+    })
+    .select("id")
+    .single()) as { data: { id: string } | null; error: { message: string } | null };
+
+  if (result.error) {
+    return { ok: false, error: result.error.message };
+  }
+  if (!result.data) {
+    return { ok: false, error: "INSERT returned no data" };
+  }
+  return { ok: true, jobId: result.data.id };
+}
