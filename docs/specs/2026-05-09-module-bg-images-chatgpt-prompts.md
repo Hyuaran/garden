@@ -311,31 +311,36 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 → ファイル名: `bg-soil-light.png`
 
-### 4-2. Soil ダーク プロンプト
+### 4-2. Soil ダーク プロンプト（v2 再生成、青系夜景に統一）
 
-**📋 日本語要約**: Soil ライトと同じ大地を、深夜の月光下で。落ち葉に夜露が銀色に光り、神秘的な深い陰影。深い茶 + 影色オリーブ + クリームの微光。
+> ⚠️ **再生成理由**: 初回生成版（archive 入り、`0_archive/bg-soil-dark.png`）は**黄色み・赤みが強く**、他モジュールのダーク（青系夜景）と整合しない。**青系夜景**に統一して再生成。
+
+**📋 日本語要約**: Soil ライトと同じ大地構図を、**青系の月夜**で。月光の **silver-blue** が落ち葉に映り、深い紺と森緑の影。**黄色・赤は避ける**、Forest ダークと同じ静かな夜トーン。
 
 **📎 添付画像**（ChatGPT にアップロード）:
-- ✅ **必須**: 直前生成した **Soil ライト**（同構図維持のため）
-- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
+- ✅ **必須**: 既配置 **Soil ライト**（`_chat_workspace/_reference/garden-soil/bg-soil-light.png`、同構図維持）
+- ✅ **必須**: 既配置 **Forest ダーク**（`_chat_workspace/_reference/garden-forest/bg-forest-dark.png`、青系夜景の統一基準）
+- ✅ 推奨: 既配置 **Bud ダーク**（`_chat_workspace/_reference/garden-bud/bg-bud-dark.png`、青系夜景の参考）
 
 ```
-Generate a botanical watercolor background image for the "Soil" module (database foundation) — DARK MODE companion.
+Generate a botanical watercolor background image for the "Soil" module (database foundation) — DARK MODE companion (v2 re-generation).
 
-Theme: The same rich soil seen at deep evening — moonlight catching dew on fallen leaves, mysterious depth.
+CRITICAL: The previous version had too much yellow/orange/red tones. This v2 must use BLUE-NIGHT tones to match the other modules' dark mode (Forest dark, Bud dark, etc.). Avoid warm yellow or red highlights.
 
-Mood: Quiet abundance at rest, slumbering potential.
+Theme: The same rich soil seen at deep evening — moonlight (silver-blue, NOT golden) catching dew on fallen leaves, mysterious depth.
+
+Mood: Quiet abundance at rest, slumbering potential — under a cool blue night sky.
 
 Composition:
 - Same earth layers and leaf motifs as light version
-- Moonlit silver highlights on dewdrops
+- Moonlit SILVER-BLUE highlights on dewdrops (not golden)
 - Deep shadow recesses
-- Edges fade to deep brown-black
+- Edges fade to deep navy-blue night
 
 Color palette:
-- Primary: Deep brown (#2a1c10), shadow olive (#3a4830), soft cream-glow (#a89880)
-- Accent: Faint silver (#a8a0a0), dusk amber (#806040)
-- Avoid: Bright saturated colors
+- Primary: Deep navy-blue (#1a2840), shadow forest-green (#1f3a2a), cool moss-shadow (#2a4030)
+- Accent: Pale silver-blue (#5a7090), faint moonlit mint (#5a7868)
+- AVOID: Yellow, orange, red, golden tones (these were the problem in v1)
 
 Format: 1920x1080 PNG, watercolor style, picture-book feeling.
 Style: Peter Rabbit storybook world (DO NOT draw any rabbits, animals, or creatures).
@@ -467,31 +472,36 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 → ファイル名: `bg-seed-light.png`
 
-### 6-2. Seed ダーク プロンプト
+### 6-2. Seed ダーク プロンプト（v2 再生成、青系夜景に統一）
 
-**📋 日本語要約**: Seed ライトと同じ種子、深夜の月光。金の殻が銀色にうっすら光る。眠れる可能性、忍耐の静けさ。深い琥珀茶 + 影金 + クリーム微光。
+> ⚠️ **再生成理由**: 初回生成版（archive 入り、`0_archive/bg-seed-dark.png`）は**黄色み・赤みが強く**、他モジュールのダーク（青系夜景）と整合しない。**青系夜景**に統一して再生成。
+
+**📋 日本語要約**: Seed ライトと同じ種子構図を、**青系の月夜**で。月光が種子の殻に **silver-blue** で映る。**黄色・赤・金色は控えめに**、Forest ダーク・Bud ダーク と同じ静かな夜トーン。
 
 **📎 添付画像**（ChatGPT にアップロード）:
-- ✅ **必須**: 直前生成した **Seed ライト**（同構図維持のため）
-- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
+- ✅ **必須**: 既配置 **Seed ライト**（`_chat_workspace/_reference/garden-seed/bg-seed-light.png`、同構図維持）
+- ✅ **必須**: 既配置 **Forest ダーク**（`_chat_workspace/_reference/garden-forest/bg-forest-dark.png`、青系夜景の統一基準）
+- ✅ 推奨: 既配置 **Bud ダーク**（`_chat_workspace/_reference/garden-bud/bg-bud-dark.png`、青系夜景の参考）
 
 ```
-Generate a botanical watercolor background image for the "Seed" module (new business expansion) — DARK MODE companion.
+Generate a botanical watercolor background image for the "Seed" module (new business expansion) — DARK MODE companion (v2 re-generation).
 
-Theme: Same seeds in soil, but viewed at deep night with moonlight — golden husks faintly catching silver, suggesting dormant potential.
+CRITICAL: The previous version had too much yellow/orange/red/golden tones. This v2 must use BLUE-NIGHT tones to match the other modules' dark mode (Forest dark, Bud dark, etc.). Golden husks should be very subtle, NOT dominant.
 
-Mood: Patient stillness, hidden promise.
+Theme: Same seeds in soil, but viewed at deep night with cool blue moonlight — husks faintly catching silver-blue (not warm gold), suggesting dormant potential.
+
+Mood: Patient stillness, hidden promise — under a cool blue night sky.
 
 Composition:
 - Same scattered seeds as light version
-- Moonlit silver highlights on golden husks
-- Deep soil shadow below
-- Edges fade to deep umber-night
+- Cool moonlit SILVER-BLUE highlights (NOT golden warmth)
+- Deep blue-shadow soil below
+- Edges fade to deep navy-night
 
 Color palette:
-- Primary: Deep amber-brown (#3a2a18), shadow gold (#806040), faint cream-glow (#a89878)
-- Accent: Pale silver (#a0a8a0), deep rose-shadow (#604848)
-- Avoid: Bright daytime colors
+- Primary: Deep navy (#1a2840), shadow earth-blue (#2a3540), cool gray-cream (#7a8488)
+- Accent: Pale silver-blue (#90a0b0), faint moonlit mint (#5a7868)
+- AVOID: Yellow, orange, red, golden, warm amber tones (these were the problem in v1)
 
 Format: 1920x1080 PNG, watercolor style, picture-book feeling.
 Style: Peter Rabbit storybook world (DO NOT draw any rabbits, animals, or creatures).
@@ -545,31 +555,36 @@ Allow UI elements to be readable on top — keep low saturation in center.
 
 → ファイル名: `bg-fruit-light.png`
 
-### 7-2. Fruit ダーク プロンプト
+### 7-2. Fruit ダーク プロンプト（v2 再生成、青系夜景に統一）
 
-**📋 日本語要約**: Fruit ライトと同じ果樹園、夕方の光。果実が最後の暖かい光を受けて深い影と輝く。成熟の威厳と静寂。深いワインレッド + 影葉緑 + 黄昏琥珀。
+> ⚠️ **再生成理由**: 初回生成版（archive 入り、`0_archive/bg-fruit-dark.png`）は**赤み・黄昏色が強く**、他モジュールのダーク（青系夜景）と整合しない。**青系の深夜**に統一して再生成。
+
+**📋 日本語要約**: Fruit ライトと同じ果樹園構図を、**深夜の青系月光**で。果実は **silver-blue** の輪郭、夕焼けではなく **静かな夜**。**赤み・黄昏色は避ける**、Forest ダーク・Bud ダーク と同じ青系夜トーン。
 
 **📎 添付画像**（ChatGPT にアップロード）:
-- ✅ **必須**: 直前生成した **Fruit ライト**（同構図維持のため）
-- ✅ 必須: `_chat_workspace/_reference/garden-forest/bg-forest-dark.png`（夜トーン基準）
+- ✅ **必須**: 既配置 **Fruit ライト**（`_chat_workspace/_reference/garden-fruit/bg-fruit-light.png`、同構図維持）
+- ✅ **必須**: 既配置 **Forest ダーク**（`_chat_workspace/_reference/garden-forest/bg-forest-dark.png`、青系夜景の統一基準）
+- ✅ 推奨: 既配置 **Bud ダーク**（`_chat_workspace/_reference/garden-bud/bg-bud-dark.png`、青系夜景の参考）
 
 ```
-Generate a botanical watercolor background image for the "Fruit" module (legal entity records) — DARK MODE companion.
+Generate a botanical watercolor background image for the "Fruit" module (legal entity records) — DARK MODE companion (v2 re-generation).
 
-Theme: Same orchard fruits, now in evening light, fruits catching the last warm glow with deep shadows.
+CRITICAL: The previous version had too much red/sunset/warm-amber tones. This v2 must use COOL BLUE NIGHT tones (deep moonlight, NOT sunset) to match the other modules' dark mode (Forest dark, Bud dark, etc.). NOT a warm sunset — a still, cool deep night.
 
-Mood: Mature ripeness at rest, dignity in stillness.
+Theme: Same orchard fruits, but at deep night under cool moonlight — fruits with silver-blue contours, the quiet of midnight rather than evening glow.
+
+Mood: Mature ripeness at rest, dignity in cool deep stillness.
 
 Composition:
 - Same fruit-and-leaf composition as light version
-- Deep evening shadow tones
-- Hints of warm sunset glow on fruit edges
-- Edges fade to deep wine-shadow
+- Deep night-blue shadow tones throughout
+- Cool silver-blue moonlight on fruit edges (NOT warm sunset glow)
+- Edges fade to deep navy-night
 
 Color palette:
-- Primary: Deep wine (#3a1f24), shadow leaf (#1f3a2a), dusk amber (#604030)
-- Accent: Faint plum-glow (#705060), soft moon-cream (#a08878)
-- Avoid: Bright saturated colors
+- Primary: Deep navy (#1a2840), shadow forest (#1f3a2a), cool plum-night (#2a2030)
+- Accent: Pale silver-blue (#5a7090), faint moonlit cream (#909088)
+- AVOID: Red, sunset orange, warm amber, golden tones (these were the problem in v1)
 
 Format: 1920x1080 PNG, watercolor style, picture-book feeling.
 Style: Peter Rabbit storybook world (DO NOT draw any rabbits, animals, or creatures).
@@ -776,3 +791,5 @@ Allow UI elements to be readable on top — keep low saturation in center.
 ## 13. 改訂履歴
 
 - 2026-05-09 12:26 初版（a-main-016、東海林さん「未生成モジュール背景先行生成」要請受領）
+- 2026-05-09 12:33 v1 補強（a-main-016、§0-4 共通添付画像 + 各 §1〜§9 に「📋 日本語要約」+「📎 添付画像」追加）
+- 2026-05-09 17:25 v2 再生成（a-main-016、東海林さん指摘: archive 3 枚 = bg-fruit-dark / bg-seed-dark / bg-soil-dark が黄色み・赤みで他ダーク（青系夜景）と整合しない。§4-2 / §6-2 / §7-2 を **青系夜景に統一** + 既配置自モジュールライト + Forest ダーク + Bud ダーク 添付指示で再生成）
