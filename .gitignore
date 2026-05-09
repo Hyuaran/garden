@@ -48,3 +48,9 @@ next-env.d.ts
 
 # Claude Code local overrides (per-machine / per-user)
 .claude/settings.local.json
+
+# a-audit script test outputs (再生成可能、commit 不要、main- No. 211 GO)
+docs/audit-memory-index-coverage-result-*.json
+docs/audit-memory-baseline-diff-result-*.json
+docs/audit-dispatch-format-check-result-*.json
+docs/audit-snapshot-integrity-result-*.json
