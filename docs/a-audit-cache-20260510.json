@@ -1,0 +1,78 @@
+{
+  "created_at": "2026-05-10 00:25",
+  "session_id": "a-audit-001",
+  "role": "監査・critique 専門（補助 6b 防御層）",
+  "design_doc_version": "v1-20260509",
+  "design_doc_path": "docs/a-memory-role-split-design-v1-20260509.md",
+  "reset_procedure_version": "v1-20260509",
+  "reset_procedure_path": "docs/a-main-020-complete-reset-procedure-20260509.md",
+  "governance_version": "v1-20260509",
+  "governance_path": "docs/governance-rules-v1-20260509.md",
+  "handoff_baseline": {
+    "from_session": "a-main-017",
+    "to_session": "a-main-018",
+    "handoff_path": "docs/handoff-a-main-017-to-018-20260509.md",
+    "section_a_path": "docs/handoff-017-018-section-a-content.md",
+    "section_a_decisions_count": 8,
+    "section_b_path": "docs/handoff-017-018-section-b-content.md",
+    "section_b_violations_count": 5
+  },
+  "snapshot_baseline": {
+    "instructions_version": "v3-20260509",
+    "instructions_path": "docs/claudeai-instructions-snapshot-20260509.md",
+    "procedures_version": "v3-20260509",
+    "procedures_path": "docs/claudeai-procedures-snapshot-20260509.md"
+  },
+  "memory_baseline": {
+    "memory_count_active": 91,
+    "memory_dir": "C:/Users/shoji/.claude/projects/C--garden-a-main/memory/",
+    "memory_index": "MEMORY.md",
+    "memory_index_entries": 92,
+    "memory_index_unique_filenames": 91,
+    "memory_index_correction_log": "audit-001- No. 1 critique 候補 2 で『索引 51 行 vs 実 91 件 = 未収載 40 件』と誤判定。実測（grep '^- \\[' MEMORY.md = 92 行 / unique filename = 91 件）で完全一致 = 索引完全性 OK、未収載 0 件。analysis-001- No. 3（2026-05-10 01:00）機械集計で訂正、incident-pattern-log §3 違反 8 として記録。本フィールドは 2026-05-10 01:30 audit-001 が main- No. 209 受領後に訂正記載。",
+    "memory_index_note": "MEMORY.md は最重要 27 件 + カテゴリ別索引、1 ファイルが複数カテゴリに重複記載あり。索引 92 行（- [ で始まる行）= 91 unique filename = 実ファイル 91 件、完全一致",
+    "type_distribution": {
+      "feedback": 54,
+      "project": 34,
+      "user": 2,
+      "reference": 1
+    },
+    "memory_files_baseline_path": "docs/memory_baseline_91-20260510.json",
+    "memory_files_baseline_note": "全 91 件の name/description/type/summary/filename/size_kb を別 JSON に格納（差分検出用 baseline）"
+  },
+  "audit_responsibilities": [
+    "main / a-analysis 判断との相違確認",
+    "整合性検証 / 矛盾検出 / 違反検出",
+    "事故パターン蓄積（docs/incident-pattern-log.md）",
+    "claude.ai snapshot との整合性 critique",
+    "三点セット同期漏れ検出（CC memory 更新したのに claude.ai 側未更新等）"
+  ],
+  "permission_constraints": [
+    "memory ファイル直接編集 禁止（critique のみ、登録権限は main 常時保持）",
+    "自己参照禁止（自身の事故 log フォーマット変更を自己提案不可、東海林さん + main 二者で判断）",
+    "a-analysis-001 と直接通信禁止（必ず main 経由、衝突回避）"
+  ],
+  "defense_layer_position": "補助 6b（a-memory 役割分割設計書 v1 §5）",
+  "auxiliary_layer_5_relation": "補助 6b が補助 5（東海林さん定期チェック）を支援、人間 + Claude 二重監視",
+  "dispatch_flow_types": {
+    "1_standard": "main → a-analysis（提案起草）→ a-audit（critique）→ main（決裁・登録）",
+    "2_violation_detection": "main → a-audit → main（独立、a-analysis 経由なし）",
+    "3_incident_report": "main → a-audit（即時、義務化）",
+    "4_emergency_bypass": "main 単独編集 + a-audit 報告義務（typo / format / 緊急編集等）",
+    "5_claudeai_management": "a-analysis 起草 + a-audit 整合 critique"
+  },
+  "incident_pattern_log_path": "docs/incident-pattern-log.md",
+  "audit_critique_rejected_log_path": "docs/audit-critique-rejected-log.md",
+  "memory_pending_audit_log_path": "docs/memory-pending-audit-YYYYMMDD.md",
+  "incident_pending_audit_log_path": "docs/incident-pending-audit-YYYYMMDD.md",
+  "communication_format": {
+    "report_to_main": "audit-001- No. NN, dispatch v5 + ~~~ ラップ + 冒頭 3 行（番号 + 元→宛先 + 発信日時）",
+    "no_direct_communication_with_a_analysis": true,
+    "main_routing_required": true
+  },
+  "next_actions": [
+    "020 への初期化完了報告 audit-001- No. 1 起草",
+    "test dispatch 待機（procedure §5-1 後段 + §5-2 違反検出 + §5-3 緊急 bypass）"
+  ],
+  "cache_format_version": "1.0"
+}

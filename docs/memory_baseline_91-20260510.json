@@ -1,0 +1,730 @@
+﻿[
+  {
+    "name": "a-memory セッション連携プロトコル（6 重防御層 6、14 論点）",
+    "description": "memory 判断専門の別 Claude セッション a-memory との連携プロトコル。役割線引き / dispatch flow / on-demand + キャッシュ / 緊急 bypass / 認識ズレエスカレーションを規定。",
+    "type": "feedback",
+    "summary": "a-memory セッション = memory 判断専門の別 Claude セッション。 **main 主体は変わらない**（最終登録は main）が、memory 関連の判断は a-memory に委譲して 2 視点で構造的死角を補完。",
+    "filename": "feedback_a_memory_session_collaboration.md",
+    "size_kb": 5.7
+  },
+  {
+    "name": "必ず次のアクションを提案する / 終了・休憩誘導は禁止",
+    "description": "「次の指示待ち」等の受動的終わり方禁止。常に次の選択肢を 2-3 提示。「休憩」「締めますか？」等の作業終了誘導も全面禁止",
+    "type": "feedback",
+    "summary": "東海林さんへの応答終わりは「次の指示待ち」「待機します」では NG。**常に次に進められる選択肢を 2-3 提示**してから止まる。同時に **「休憩」「締めますか？」等の作業終了誘導は全面禁止**。 **Why:**",
+    "filename": "feedback_always_propose_next_action.md",
+    "size_kb": 6.31
+  },
+  {
+    "name": "a-auto シーンを勝手に決めない",
+    "description": "a-auto 発動プロンプト作成時、就寝前/会議中/外出中などのシーンを勝手に付けない。シーン宣言はユーザーの専権事項",
+    "type": "feedback",
+    "summary": "a-auto 発動プロンプトを作成する際、「就寝前」「会議中」「外出中」などの**シーンを勝手に付与しない**。 **Why:**",
+    "filename": "feedback_auto_scene_not_auto_assigned.md",
+    "size_kb": 1.21
+  },
+  {
+    "name": "auto 自己使用率計算は信頼できない",
+    "description": "a-auto の「5 時間枠 X% 消費」自己申告は実際と大きくズレる、Claude Code デスクトップアプリの公式表示が正",
+    "type": "feedback",
+    "summary": "a-auto セッションが稼働終了時に「5 時間枠の XX% 消費」と自己申告するが、**この数値は信頼できない**。 - Batch 9-12 完走後、auto 自己申告: 5 時間枠 66% 消費",
+    "filename": "feedback_auto_self_usage_estimate_unreliable.md",
+    "size_kb": 2.88
+  },
+  {
+    "name": "claude.ai chat セッション切替時は main 判断仰ぎをデフォルト動作とする",
+    "description": "claude.ai chat セッションが切替/応答不可になった場合、新セッションは前セッションの context が失われている前提で振る舞い、自分で何とかするのではなく a-main へ事情報告 + 代替案提示 + 判断仰ぎを行う",
+    "type": "feedback",
+    "summary": "claude.ai chat の作業セッション（Garden UI / 作業日報 / その他 chat 系）が **切替**または **応答不可** になった場合、新セッションは以下のルールでふるまう。 **Why:**",
+    "filename": "feedback_chat_session_switch_main_first.md",
+    "size_kb": 7.84
+  },
+  {
+    "name": "ChatGPT 画像生成 → Garden UI 実装の workflow 教訓",
+    "description": "4/27 ChatGPT で UI 理想画像生成 + 12 個別アイコン生成 → Next.js 実装に反映する workflow の教訓と再現手順",
+    "type": "feedback",
+    "summary": "ChatGPT で UI 画像（理想画面 + 個別アイコン）を生成、Garden Next.js 実装に反映する workflow を 4/27 に確立。再現手順と注意点。 **Why:**",
+    "filename": "feedback_chatgpt_image_workflow.md",
+    "size_kb": 5.03
+  },
+  {
+    "name": "ChatGPT mock 画像は claude.ai chat に直接添付（Claude Code の text 化を経由しない）",
+    "description": "UI mock 画像 → HTML 化フローで、Claude Code が画像を text 化する工程は不得意で品質劣化を招く。claude.ai が画像を直接読み取って HTML 化する方が正確。",
+    "type": "feedback",
+    "summary": "ChatGPT が生成した UI mock 画像を HTML 化する際、**東海林さんが claude.ai chat に画像を直接アップロード**し、claude.ai が画像を直接見て HTML を起草する。**Claude Code（a-main 等）が画像を Read で text 化して spec を渡す工程は撤廃**。 - 5/9 朝、Forest UI tab-1 で「ChatGPT mock 画像 → Claude Code text 化 spec → claude.ai HTML 化」フローを試行",
+    "filename": "feedback_chatgpt_mock_to_claude_ai_direct_attach.md",
+    "size_kb": 3.61
+  },
+  {
+    "name": "議論前 / 修正前 / 外部依頼前 に既存実装を必ず確認（3 トリガー拡張版）",
+    "description": "既存実装把握ルールを「議論前」のみから「議論前 / 修正前 / 外部依頼前」3 トリガーに拡張。016 期 違反 # 5 (bgLayer1+2 構造把握漏れ) 再発防止。",
+    "type": "feedback",
+    "summary": "以下 **3 トリガー** で既存実装の確認を必ず実施： | トリガー | 確認手順 | 例 |",
+    "filename": "feedback_check_existing_impl_before_discussion.md",
+    "size_kb": 4.38
+  },
+  {
+    "name": "データ保管期間は「永続スタート → 段階的短縮」が Garden 標準",
+    "description": "Garden 全モジュールでデータ保管期間を聞かれたら「永続スタート、運用安定後に 10 年 → 7 年（or 法定最低）へ段階的短縮」が標準。毎回聞かない",
+    "type": "feedback",
+    "summary": "**Garden 全モジュールでデータ保管期間 / 削除タイミングを聞かれたら、デフォルトは「永続スタート、運用安定後に段階的短縮」**で進める。東海林さんに毎回確認しない。 **Why:** 東海林さんから明示指示：「永続でスタート、10 年、7 年と将来段階的に変更対応（ほかの設計同様に対応。**何回も聞かないで**）」。同じパターンを繰り返し確認させるのは時間の無駄。Garden 全体の標準パターンとして固定化する。",
+    "filename": "feedback_data_retention_default_pattern.md",
+    "size_kb": 3.05
+  },
+  {
+    "name": "デモで見せた品質は本番でも必ず達成する（評価劣化防止）",
+    "description": "後道さん等の対外デモで見せた完成度を本番（実装版）でも達成する責任を持つ。デモ後に本番が劣化すると東海林さんの評価が下がる。デモ用プロト（HTML 等）と本番（React 実装）の品質差は最小化、本番完成までデモ品質を維持",
+    "type": "feedback",
+    "summary": "対外デモ（特に後道代表向けデモ）で見せた品質は、**本番（React 実装等）でも必ず達成する責任**を持つ。デモ用プロト（HTML プロト・モックアップ）と本番実装の品質差を最小化、本番完成までデモ品質を維持する。 **Why:**",
+    "filename": "feedback_demo_quality_must_match_production.md",
+    "size_kb": 4.69
+  },
+  {
+    "name": "dispatch / セッション間メッセージ 標準ヘッダー形式 v5（投下情報先頭明示 + コピペ本体は md ファイル側）",
+    "description": "dispatch 提示時、東海林さんが見るべき投下情報（投下先 / ファイル / 添付有無 / 緊急度）を先頭に明示し、コピペ本体は md ファイル経由でコピーする方式。016 期の「コピペテキストだらだら」問題対策。",
+    "type": "feedback",
+    "summary": "dispatch 提示は以下 **v5 形式** を厳守： | 行 | 内容 |",
+    "filename": "feedback_dispatch_header_format.md",
+    "size_kb": 6.98
+  },
+  {
+    "name": "dispatch に画像・素材パスは必ず明記",
+    "description": "「東海林さんが添付する」だけでなく、対象画像のフルパスを毎回 dispatch に明記する。claude.ai が「画像未着」で待機する事故防止。",
+    "type": "feedback",
+    "summary": "claude.ai chat 等の外部セッションに **画像・素材**を投下する際は、**dispatch 短文に画像のフルパスを必ず明記**する。「東海林さんが添付する画像」のような曖昧表現は禁止。 - 5/9 17:49 forest-html-8 で claude.ai が「**mock 画像が添付されていません**」と待機モード応答",
+    "filename": "feedback_dispatch_image_path_required.md",
+    "size_kb": 3.45
+  },
+  {
+    "name": "複数セッション dispatch 投下時 PowerShell rate limit 回避",
+    "description": "東海林さんが PowerShell 経由で複数 Claude Code セッションへ dispatch を一括投下する際、3-5 セッションごとに 30-60 秒間隔を空けることで Claude API rate limit エラー（\"Server is temporarily limiting requests\"）を回避する",
+    "type": "feedback",
+    "summary": "東海林さんが **複数 Claude Code セッション**（a-soil / a-bloom-004 / a-bud-002 / 等、別 PowerShell terminal 起動）へ **dispatch を一括投下** する際、Claude API のサーバー側 rate limit に当たる事象が発生する。 **観測事象:**",
+    "filename": "feedback_dispatch_powershell_rate_limit.md",
+    "size_kb": 4.4
+  },
+  {
+    "name": "一度提案して保留・却下された話題を繰り返し提案しない",
+    "description": "東海林さんに 1 度提案した選択肢・タスク・話題は、明示承認・依頼があるまで再提案しない。3 連続以上同じ選択肢を出すと「うるさい」と感じさせる",
+    "type": "feedback",
+    "summary": "東海林さんに 1 度提案した選択肢・タスク・話題は、**明示承認・依頼があるまで再提案しない**。「次の選択肢」セクションに繰り返し同じ項目を入れるのは禁止。 **Why:**",
+    "filename": "feedback_dont_repeat_proposed_topics.md",
+    "size_kb": 4.19
+  },
+  {
+    "name": "説明スタイル（全体像先行・PCスキルない前提）",
+    "description": "コードや PowerShell を扱う時は丁寧に手順説明、全体像把握→必要データ→回答の順",
+    "type": "feedback",
+    "summary": "東海林さん本人はプログラミング知識がない（非エンジニア）ため、以下を徹底する。 1. **全体像**を最初に把握（何のために何のデータが必要か考慮）",
+    "filename": "feedback_explanation_style.md",
+    "size_kb": 7.18
+  },
+  {
+    "name": "external integration staging",
+    "description": "外部連携（Chatwork / KoT / その他）の本番化は段階的。テスト期間は単独ルーム / 制限スコープ、安定後に関係者追加 / フル展開",
+    "type": "feedback",
+    "summary": "外部サービス連携（Chatwork 通知 / KoT API / 他システム API）の本番化は **必ず段階的**に進める。一気に本番展開しない。 **Why:**",
+    "filename": "feedback_external_integration_staging.md",
+    "size_kb": 1.95
+  },
+  {
+    "name": "ファイル存在確認: Read で「OK」判定する前に ls / Bash で物理存在を必ず検証",
+    "description": "5/9 16xx Forest 背景画像パス誤り事件再発防止。Read tool が成功しても、参照されている画像 / 外部ファイルの物理存在は別途 ls 等で確認必須。",
+    "type": "feedback",
+    "summary": "HTML / CSS / 設定ファイル等で **外部ファイルへの参照（画像 / CSS / JS / フォント等）** を含むコードを Read で確認する際、「OK」判定する前に **物理存在を `ls` / Bash で必ず検証**する。 - 5/9 17:15 a-main-016 で Forest tab-1 HTML の背景画像パス `../_reference/...`（1 階層上の誤りパス）を Read で「OK」判定",
+    "filename": "feedback_file_existence_check_before_ok.md",
+    "size_kb": 3.51
+  },
+  {
+    "name": "ガンガンモード = a-main デフォルト運用（全モジュール並列稼働 + 5h 枠フル + 東海林作業時間無視）",
+    "description": "ガンガンモード本質 = 全モジュールセッションが main 指示で稼働継続、5h 枠フル活用、東海林さんの作業時間長い等は稼働を止める理由にしない。確認過多回避は派生効果。",
+    "type": "feedback",
+    "summary": "a-main セッションのデフォルト動作モード = **ガンガンモード**。本質は以下 3 軸： | 軸 | 内容 |",
+    "filename": "feedback_gangan_mode_default.md",
+    "size_kb": 5.61
+  },
+  {
+    "name": "ガンガンモード一時停止状態の管理（議論モード vs 実行モード切替）",
+    "description": "ガンガンモード = 即実行 と 議論モード = 判断仰ぎ最大限歓迎 の状態切替を明確に管理。一時停止中の勝手な実行禁止。",
+    "type": "feedback",
+    "summary": "a-main セッションの動作モードは以下 2 状態： | 状態 | 内容 |",
+    "filename": "feedback_gangan_pause_state_management.md",
+    "size_kb": 4.81
+  },
+  {
+    "name": "GitHub 新アカウント PIN 認証 cookie クリア必須",
+    "description": "新 GitHub アカウント作成時、通常モード Edge では PIN 認証画面に到達不能。Cookie 完全クリア or プロファイル分離が必須",
+    "type": "feedback",
+    "summary": "新規 GitHub アカウント（A → B、B → C と再現）作成時の **PIN コード認証画面に通常モードで到達できない問題** への対処法。 **Why:**",
+    "filename": "feedback_github_pin_auth_cookie_clear.md",
+    "size_kb": 2.53
+  },
+  {
+    "name": "GitHub PR 一括発行・運用の教訓集（B 垢復旧時、4/27）",
+    "description": "本日 4/27 の GitHub push 復旧 + 50+ PR 一括発行で得た教訓（gh auth setup-git / 幽霊 PR + -v2 workaround / Web UI copy-paste 順番ずれ）。次回大量 PR 発行時に再発防止",
+    "type": "feedback",
+    "summary": "本日 4/27 の B 垢開通 → 50+ PR 一括発行で得た教訓 3 件。次回同様の作業を行う際の再発防止用。 **Why:**",
+    "filename": "feedback_github_pr_operations_lessons.md",
+    "size_kb": 5.82
+  },
+  {
+    "name": "Kintone アプリ参照は ID + 日本語名併記",
+    "description": "Kintone アプリを参照する時は「App N」だけでなく必ず「App N（アプリの日本語名）」と併記する。東海林さんが ID だけで何のアプリか即座にわからないため。",
+    "type": "feedback",
+    "summary": "東海林さんへの報告・spec・memory 等で Kintone アプリを参照する時は、**`App N` だけで終わらせず、必ず `App N（アプリの日本語名）` と併記**する。 **Why:** 東海林さんは複数の Kintone アプリを管理しているため、ID 番号だけでは「どのアプリの話か」を毎回想起する負担が発生する。アプリ名を必ず併記することで認識コストを排除する。",
+    "filename": "feedback_kintone_app_reference_format.md",
+    "size_kb": 2.71
+  },
+  {
+    "name": "main / a-memory 認識ズレエスカレーション手順",
+    "description": "main の memory 判断と a-memory の判断が不合意の場合、東海林さん最終決裁 + 永続ログで解決。誤った判断が memory に登録されるリスクを最小化。",
+    "type": "feedback",
+    "summary": "main / a-memory が memory 関連判断で不合意の場合、以下の 5 ステップで解決: | Step | 動作 |",
+    "filename": "feedback_main_a_memory_disagreement_resolution.md",
+    "size_kb": 3.21
+  },
+  {
+    "name": "a-main セッション引越し基準 = 50-60% 帯（早め先行引越し）",
+    "description": "a-main は modules / auto より早く引越す。50-60% で先行引越し、80% は最終ライン。バッファを常に確保し横断調整セッションが詰まらないようにする。",
+    "type": "feedback",
+    "summary": "a-main セッション（横断調整）は **50-60% 到達時点で先行引越し**を実行する。CLAUDE.md の 80% 強制終了は最終ラインだが、a-main では 50-60% 帯が **標準引越しタイミング**。 | 帯 | a-main 動作 | modules / auto 動作 |",
+    "filename": "feedback_main_session_50_60_handoff.md",
+    "size_kb": 3.52
+  },
+  {
+    "name": "a-main セッション 005 → 006 教訓・再発防止",
+    "description": "a-main 005 で発生した認識違い・確認過剰・記憶漏れを 006 以降で繰り返さないための注意点集",
+    "type": "feedback",
+    "summary": "a-main 005 セッション中に **東海林さんに同じ説明を求めさせる / 認識違いで時間を浪費する** 事例が複数発生。a-main 006 以降は下記注意点を最優先で守る。 **Why:** 東海林さんの時間を浪費しないため。「何度も説明したり確認する時間無駄」の指示を徹底化。記憶漏れによる redundant な確認・誤った推測を排除。",
+    "filename": "feedback_main_session_lessons_005.md",
+    "size_kb": 7.42
+  },
+  {
+    "name": "auto フル使用 / 並列化 / 東海林さん作業最小化 / 手空きゼロ",
+    "description": "auto セッション常時稼働 + 対話と並列稼働 + 東海林さん物理作業（コピペ・GUI）以外は Claude が代行 + 判断 → 即実行 + 軽量タスクは確認なし即実行",
+    "type": "feedback",
+    "summary": "Garden リリース速度最大化のため、**auto フル稼働 + 対話との並列化 + 東海林さん作業最小化** を徹底する。 **Why:**",
+    "filename": "feedback_maximize_auto_minimize_user.md",
+    "size_kb": 5.75
+  },
+  {
+    "name": "モジュール巡回チェック（30 分おき stagnation 検出 + 別タスク投下）",
+    "description": "ガンガンモード本質の「全モジュール並列稼働」を実現するため、main は 30 分おきに各モジュールセッション最終 commit 時刻を確認、停滞検出したら即時別タスク dispatch。",
+    "type": "feedback",
+    "summary": "a-main セッションは作業中、**30 分おき** に以下を実施： | Step | 内容 |",
+    "filename": "feedback_module_round_robin_check.md",
+    "size_kb": 3.41
+  },
+  {
+    "name": "対話セッション auto モード化条件",
+    "description": "不在時に各モジュールセッション（a-forest / a-bud 等）を限定 auto 化する条件と運用",
+    "type": "feedback",
+    "summary": "§13 で a-auto セッション専用とされていた自律実行モードを、**条件付きで対話セッション（a-forest / a-bud 等）にも限定解禁**する。 - 東海林さんが外出・お風呂・就寝・別作業集中中など**不在時間が確定的に長い**時間帯",
+    "filename": "feedback_module_session_auto_mode.md",
+    "size_kb": 4.77
+  },
+  {
+    "name": "私（Claude Code）の不得意分野自覚 + 別経路へ振る原則",
+    "description": "Claude Code が不得意な作業（画像 → text 化 / 視覚評価の自己判定 / パス曖昧記述等）を自覚し、別経路（claude.ai / a-review / 東海林さん）に自動的に振る原則確立。",
+    "type": "feedback",
+    "summary": "私（Claude Code）が不得意な作業を自覚し、**別経路に自動的に振る**。抱え込んで品質劣化させない。 | # | 不得意分野 | 別経路 |",
+    "filename": "feedback_my_weak_areas.md",
+    "size_kb": 3.98
+  },
+  {
+    "name": "コードリプレース時の旧版データ保持ルール（削除禁止）",
+    "description": "既存コード・CSS・component を試作版や新版に置換する際、旧版を *.legacy-YYYYMMDD.tsx 等で併存保持。CSS は LEGACY コメントブロックで囲って残す。削除コマンド禁止。git 履歴だけでなくファイルとして直接参照可能な状態を維持",
+    "type": "feedback",
+    "summary": "Garden 各モジュールでコード・UI 要素を試作版や新版に置換する際、**旧版を削除せず、ファイルとしても保持**する。git 履歴だけでなく、ファイル直接参照可能な状態を維持。 **Why:**",
+    "filename": "feedback_no_delete_keep_legacy.md",
+    "size_kb": 4.1
+  },
+  {
+    "name": "後道さん向け説明文 / 台本 / シナリオの事前起草を提案しない",
+    "description": "後道さんは対面 + 5-10 分 + 直感判断 + 紙資料 NG のため、Claude から「説明文起草しましょうか」「デモシナリオ準備しましょうか」等の提案は禁止",
+    "type": "feedback",
+    "summary": "後道さん（最終決裁者）向けの「説明文」「台本」「シナリオ」「デモ進行表」「資料」等の **事前起草を Claude から提案しない**。 **Why:**",
+    "filename": "feedback_no_godo_script_proposal.md",
+    "size_kb": 1.78
+  },
+  {
+    "name": "日報ルール（非技術者表現・後道さん呼び）",
+    "description": "日報 add/tomorrow の記述ルール、技術用語 NG 一覧、後道さん/社長の呼び分け",
+    "type": "feedback",
+    "summary": "日報は**システム知識のない後道さん（社長）が読む**。`add` する時点から非技術者向けに言い換えて記載する（後で修正ではなく、最初から正しく）。 ```bash",
+    "filename": "feedback_nontechnical_daily_report.md",
+    "size_kb": 4.31
+  },
+  {
+    "name": "「投下OK / 送信OK」は完了報告（再投下不要）",
+    "description": "東海林さんが「投下OK」「送信OK」「投下完了」等と返答した時点で、すでにそのアクションは完了している。再度コピペ用テキストを表示するのは余計",
+    "type": "feedback",
+    "summary": "東海林さんが **「〇〇投下OK」「〇〇送信OK」「OK」「投下完了」** などの短い肯定返答を返した時点で、**そのアクションはすでに完了している**。私（Claude）が再度コピペ用テキストを表示する必要はない。 **Why:** 東海林さんは行動が早く、提案を受けた瞬間に並行で実行しているケースが多い。「投下OK」は「OK、投下した」の意味であり、「OK、これから投下するからテキストください」ではない。再表示は東海林さんの時間を奪う + 既に完了しているのに作業中だと誤認させる。",
+    "filename": "feedback_ok_means_already_done.md",
+    "size_kb": 2.67
+  },
+  {
+    "name": "判断保留バッチの提示形式：「要はこういうこと」列を必須追加",
+    "description": "判断保留事項を東海林さんに提示する時、論点と推奨の間に「要はこういうこと」（非エンジニア向け平易な要約）列を必ず入れる",
+    "type": "feedback",
+    "summary": "**判断保留事項を東海林さんに提示する時の表形式は、`# / 論点 / 要はこういうこと / 推奨` の 4 列**を必ず使う。`要はこういうこと` 列で**非エンジニアでも理解できる平易な要約**を提供する。 **Why:** 東海林さん明示指示：「論点と a-root 推奨の間に、要はこういうこと、という私でも理解できることを簡単に記載して」。技術的な論点名だけでは何の判断か分からないため、要約列で文脈即理解可能にする。",
+    "filename": "feedback_pending_decisions_table_format.md",
+    "size_kb": 3.68
+  },
+  {
+    "name": "東海林さん定期チェックテンプレ（外部観測装置、6 重防御層 5）",
+    "description": "「ガンガン = skip OK」誤解再発を東海林さんからの定期チェックで検出する外部観測装置。私が即答できない / 答えがズレる = 規律 skip 検出。",
+    "type": "feedback",
+    "summary": "東海林さんが任意タイミングで以下のテンプレを a-main に投げて、私の規律状態を検証する。私が即答できない / 答えがズレる = **規律 skip 検出 → 自動一時停止 + §B 違反追記**。 | # | 質問テンプレ | 期待回答 |",
+    "filename": "feedback_periodic_state_check_by_user.md",
+    "size_kb": 4.08
+  },
+  {
+    "name": "PowerShell / dispatch 報告時の絵文字シグナリングルール",
+    "description": "PowerShell 利用 dispatch（東海林さんがコピペ実行する箇所）と通常 dispatch を一目で区別。緊急度も並記して視認性 UP。",
+    "type": "feedback",
+    "summary": "dispatch / 投下短文 / 重要操作の報告時、以下の絵文字を冒頭に必ず併記： | 絵文字 | 用途 |",
+    "filename": "feedback_powershell_emoji_signaling.md",
+    "size_kb": 3.36
+  },
+  {
+    "name": "PR ヘルスチェック自走運用",
+    "description": "a-main セッションで Vercel build 失敗を含む PR エラーを能動的に検知。東海林さん声かけ不要、自走で監視+対処",
+    "type": "feedback",
+    "summary": "a-main セッションでは **Vercel build 失敗を含む PR エラーを自分から能動的に検知**する。東海林さん声かけ不要、自走で監視と対処。 **Why:** Vercel deploy エラーがメールで複数届いてから東海林さん経由で気付く運用は遅い。短時間に並列 PR が発行される Garden の運用では、build-rate-limit 等のエラーが突発する。能動的な監視で即対処したい（2026-04-25 東海林さん指示）。",
+    "filename": "feedback_pr_health_check_proactive.md",
+    "size_kb": 2.05
+  },
+  {
+    "name": "東海林さんへの励まし・ほめる方針",
+    "description": "進捗・成果を具体的な数字で客観的にほめる、感情的表現ではなく事実ベース",
+    "type": "feedback",
+    "summary": "東海林さんは **Garden シリーズをできるだけ早くリリース**したい意思を持っている。 モチベーション維持のため、**具体的な数字で成果をほめる**のを a-main の役割とする。",
+    "filename": "feedback_praise_and_motivation.md",
+    "size_kb": 2.03
+  },
+  {
+    "name": "提案数の上限ルール（2 択標準、3 択は重要岐路のみ）",
+    "description": "「3 択 + 推奨明示」を東海林さんへの提示で多用しすぎる癖を是正。標準は 2 択（推奨 + 代替案）、3 択は方針判断レベルの重要岐路のみ。",
+    "type": "feedback",
+    "summary": "東海林さんへの選択肢提示は以下を標準： | シーン | 標準 | 例外 |",
+    "filename": "feedback_proposal_count_limit.md",
+    "size_kb": 3.25
+  },
+  {
+    "name": "品質最優先 / リリース遅延は許容",
+    "description": "完璧な品質でリリース、不具合で営業から文句出るのを避ける、スピードよりクオリティ",
+    "type": "feedback",
+    "summary": "Garden シリーズの現場投入では **品質最優先**。リリース遅延は許容される。 - **完璧な製品**を作ってからリリース",
+    "filename": "feedback_quality_over_speed_priority.md",
+    "size_kb": 3.06
+  },
+  {
+    "name": "a-main コピペ用 dispatch 形式で毎回返信",
+    "description": "a-bloom 等のモジュールセッションから東海林さんへの返信は、毎回 a-main 投下用 dispatch テキスト（~~~ ラップ + 番号 + 発信日時 + 件名）で構成する",
+    "type": "feedback",
+    "summary": "a-bloom / a-forest / a-tree 等の Garden モジュールセッションから東海林さんへの返信は、**毎回 a-main 投下用 dispatch テキスト**（~~~ ラップ）で構成すること。普通の会話形式の返信は禁止。 **Why:** 東海林さんは複数セッションで並列作業中で、モジュールセッションの返信を a-main-NNN にコピペ転送して横断調整する運用（CLAUDE.md §11 の横断調整セッション運用）。会話形式だと整形ステップが入って東海林さんの作業時間を奪うため、最初から投下用テキストで返すのが整合的。指示は 2026-05-07 a-bloom-004 にて受領、bloom-004- No. 43 以降。",
+    "filename": "feedback_reply_as_main_dispatch.md",
+    "size_kb": 4.18
+  },
+  {
+    "name": "東海林さん向け報告スタイル（短く・表形式・3 択・推奨明示・テーブル統一）",
+    "description": "短く要点のみ + 推奨明示 + 意思決定で停止 + 状況報告は「セッション | 状態」テーブル + 絵文字優先度マーカー",
+    "type": "feedback",
+    "summary": "東海林さんへの報告・提案は以下スタイルを厳守。 **Why:**",
+    "filename": "feedback_reporting_style.md",
+    "size_kb": 4.72
+  },
+  {
+    "name": "VBS / バッチスクリプトの日本語パス + UTF-8 保存禁止",
+    "description": "wscript.exe / cmd.exe で日本語パス（G:\\マイドライブ\\... 等）を扱う VBS / batch ファイルは UTF-8 で保存禁止。ASCII (英数記号のみ) または UTF-16 LE BOM 保存が必須。UTF-8 保存だと文字化けで popup エラー累積、PC 重、Claude Desktop 落ちの事故になる",
+    "type": "feedback",
+    "summary": "Windows の wscript.exe / cmd.exe は、スクリプトファイル内の日本語文字（パス含む）を扱う際、ファイルの保存エンコーディングに敏感。**UTF-8 保存は禁止**。 **Why:**",
+    "filename": "feedback_script_encoding_japanese_path.md",
+    "size_kb": 6.26
+  },
+  {
+    "name": "応答出力前 自己 memory 監査（日常運用中の memory 機能検証）",
+    "description": "応答出力前 / 重要操作前に該当 memory を自分で grep / 確認する習慣化。memory が「機能していない」のを引越し時まで気付かない問題を解消。",
+    "type": "feedback",
+    "summary": "応答テキストを書き始める前に、必ず以下 5 項目を順番に通過： | # | チェック | 不通過時の動作 |",
+    "filename": "feedback_self_memory_audit_in_session.md",
+    "size_kb": 5.53
+  },
+  {
+    "name": "視覚確認は Chrome MCP で Claude 自身が実施 / 東海林さんへの文字判断仰ぎ禁止",
+    "description": "localhost や public URL の視覚一致判定（プロト vs 既存等の客観差分）は Claude が Chrome MCP で自分でスクショ取得 → 比較 → 判定。東海林さんへの視覚確認丸投げ + 文字差分一覧での判断仰ぎ は両方禁止。実物提示 + 最終 OK のみ東海林さん",
+    "type": "feedback",
+    "summary": "UI 視覚確認が必要なタスクで、**Claude 自身が Chrome MCP でスクショ取得 → 比較 → 差分特定**を行う。文字差分一覧・CSS プロパティ説明・構造変更の文字説明では東海林さん判断不能。実物提示が必須、東海林さんへは最終 OK 判定のみ仰ぐ。 **Why:**",
+    "filename": "feedback_self_visual_check_with_chrome_mcp.md",
+    "size_kb": 7.65
+  },
+  {
+    "name": "a-main セッション引越し時 必須チェックリスト",
+    "description": "a-main 引越し時に handoff 起草前に実施する必須チェック（memory 棚卸し / 矛盾検証 / 事故集計 / 厳しい目で再確認 3 ラウンド / 三点セット同期）。016 期の引越し失敗（016→017 handoff 未作成）再発防止。",
+    "type": "feedback",
+    "summary": "本 memory は **2 種類のチェックリスト** を扱う: | 種別 | 対象 | 内容 |",
+    "filename": "feedback_session_handoff_checklist.md",
+    "size_kb": 7.59
+  },
+  {
+    "name": "セッション worktree 増設は a-main が自動実行 / branch 揺れ防止プロトコル",
+    "description": "モジュールセッション 80% 到達等の worktree-N 増設は a-main が確認なし即実行。git worktree + junction で同一ディレクトリ branch 揺れバグを根治",
+    "type": "feedback",
+    "summary": "モジュールセッション（a-bloom / a-leaf / a-forest 等）が **コンテキスト 80% 到達等で worktree 増設が必要**になった時、**a-main が自動でセットアップを実行**する。確認・選択肢提示・手順説明は不要、即実行。 **Why:**",
+    "filename": "feedback_session_worktree_auto_setup.md",
+    "size_kb": 5.65
+  },
+  {
+    "name": "SQL やスクリプトはセッション内に inline 表示",
+    "description": "ファイルパス案内だけでなく、セッション内に直接コピペできる形でコード・SQL を出す",
+    "type": "feedback",
+    "summary": "SQL / スクリプト / コマンドブロックを東海林さんに実行してもらう時、**ファイルパスを案内するだけでなく、セッション内に直接コピペできる形で内容を出力**する。 - 「以下のファイルを開いてコピー: C:\\garden\\...\\xxx.sql」",
+    "filename": "feedback_sql_inline_display.md",
+    "size_kb": 1.69
+  },
+  {
+    "name": "厳しい目で再確認 N ラウンド（焦点別 + 連続 3 ラウンド 0 件で終了 + 東海林さん最終チェック必須）",
+    "description": "重要成果物を東海林さんに提示する前に、ラウンドごとに焦点を変えて点検（対処済 / 質 / メタ / 実装漏れ / 矛盾検出 / 継続）。連続 3 ラウンド抜け 0 件で終了、その後必ず東海林さん最終チェック。説明は非技術者表現。",
+    "type": "feedback",
+    "summary": "以下のタイミングで **「厳しい目で再確認」N ラウンド（焦点別、終了条件あり）** を必ず実施： | タイミング | 対象 |",
+    "filename": "feedback_strict_recheck_iteration.md",
+    "size_kb": 7.75
+  },
+  {
+    "name": "三点セット同期（Claude Code memory + claude.ai 完全版 .md ファイル発行 → 全置換ペースト方式）",
+    "description": "ルール改訂時、追記方式 ❌ → 完全版 .md 発行 → 東海林さん全置換ペースト方式 ✅。snapshot を私が Read することで毎回の共有不要。バージョン管理 + _archive 二重設計。",
+    "type": "feedback",
+    "summary": "memory 新設 / 改訂時、以下 3 つを一括実施： | ステップ | 担当 | 内容 |",
+    "filename": "feedback_three_way_sync_cc_claudeai_procedure.md",
+    "size_kb": 4.47
+  },
+  {
+    "name": "パスワード / トークン管理は Claude 側で実行 / 漏洩アラート禁止",
+    "description": "Garden 関連の GitHub PAT / Kintone API / その他 token は Claude がファイル保存・認証実行を一貫担当、漏洩アラート禁止。他人パスワード・本番トークンは別扱い",
+    "type": "feedback",
+    "summary": "東海林さんから渡された Garden 関連の token / パスワード（GitHub PAT、Kintone API、Supabase キー等）は、**Claude が一貫して保管・認証実行を担当**する。漏洩アラートは禁止。 **Why:**",
+    "filename": "feedback_token_management_by_claude.md",
+    "size_kb": 5.34
+  },
+  {
+    "name": "Turbopack HMR は globals.css 大量追加時に取りこぼす / 再起動 + cache クリア必須",
+    "description": "Next.js Turbopack の HMR が globals.css に大量追加した CSS rules を反映しない事例が複数回発生。globals.css 大量編集時は HMR 信用せず、dev server 再起動 + .next キャッシュクリアを必須化",
+    "type": "feedback",
+    "summary": "Next.js の Turbopack（dev server）は、`globals.css` に大量の CSS rules を追加した際、HMR（Hot Module Replacement）で取りこぼしを起こす。compiled CSS bundle に反映されず、視覚的にデザイン崩壊する。 **Why:**",
+    "filename": "feedback_turbopack_hmr_globals_css_unreliable.md",
+    "size_kb": 3.34
+  },
+  {
+    "name": "後道さんへの確認は UI 先行 + 後道フィードバック後置き",
+    "description": "後道さん（経理）への確認は実画面を見せないと想像できないため、東海林さんと検討・確定 → UI 実装 → 後道さんへ「これでいいですね？」フィードバック受領の流れで統一する",
+    "type": "feedback",
+    "summary": "**後道さんへの仕様確認は「東海林さんと検討・確定 → UI 実装 → 後道さんへフィードバック受領」**の順で進める。Phase 1 で後道さんに仕様文書だけ見せて意見を求めるのは NG。 **Why:** 後道さんは実画面を見ないと運用イメージを想像できない。文章ベースの仕様議論では「どうすればよい」のフィードバックが返ってこない。一方、東海林さんは過去長期間にわたって後道さんの理想的な報告形式を実装してきた実績があり、その判断を信頼するのが効率的。UI 完成後に「これでいいですね？」と確認する形が最もスムーズ。",
+    "filename": "feedback_ui_first_then_postcheck_with_godo.md",
+    "size_kb": 4.93
+  },
+  {
+    "name": "自己批判的発言は客観データで検証してから書く",
+    "description": "「使っていなかった」「できていなかった」「やっていなかった」等の自己批判的発言を主観の印象だけで断定せず、ログ集計や既存実装確認で裏付けてから発言する",
+    "type": "feedback",
+    "summary": "「使っていなかった」「やっていなかった」「できていなかった」等の **自己批判的発言を主観の印象だけで断定しない**。客観データで裏付けてから書く。 **Why:**",
+    "filename": "feedback_verify_before_self_critique.md",
+    "size_kb": 3.78
+  },
+  {
+    "name": "baitoru-auto 既存自動化システム",
+    "description": "バイトル新規応募 → Kintone App 44 自動登録 + ChatWork 通知の Cloud Run 既存稼働システム。Garden Sprout 設計時の上流フローとして要参照",
+    "type": "project",
+    "summary": "**バイトル → Kintone 自動同期システム**（2026-04-14 仕様書化）。Cloud Run で 24/365 稼働中、Garden Sprout（入社前 UI）の **上流フロー**。Sprout 設計・統合検討時に必読。 **Why:** バイトル経由応募者は Kintone App 44 に自動登録され、ChatWork で営業 10 名に通知される。Garden Sprout は応募者を受け取って入社前手続きを担うため、この既存自動化フローと連携 or 統合する設計判断が Phase B 以降で必要。",
+    "filename": "project_baitoru_auto_existing_system.md",
+    "size_kb": 5.88
+  },
+  {
+    "name": "Bloom は Forest と独立認証 / dev 環境では BloomGate バイパス必須",
+    "description": "Bloom は bloom_users テーブル + 独自ロック解除フラグを持つ独立認証モジュール。Forest ログインだけでは通れない。視覚確認時は dev 環境で BloomGate バイパス必須、毎回議論しない",
+    "type": "project",
+    "summary": "Bloom モジュールは **Forest と独立した認証** を持つ。Forest ログインだけでは Bloom にアクセスできない（強制サインアウト → Forest dashboard に戻される）。 **Why:**",
+    "filename": "project_bloom_auth_independence.md",
+    "size_kb": 3.28
+  },
+  {
+    "name": "Chatwork Bot アカウント管理",
+    "description": "「【事務局】システム自動通知」Bot アカウントの管理責任・利用システム・ローテーション手順",
+    "type": "project",
+    "summary": "Garden / Lahoud 等で共用する Chatwork Bot アカウント「【事務局】システム自動通知」の管理情報。 - **管理者**: 東海林美琴（shoji@hyuaran.com）",
+    "filename": "project_chatwork_bot_ownership.md",
+    "size_kb": 2.22
+  },
+  {
+    "name": "claude.ai 新セッションカード式質問問題（後対応 memo）",
+    "description": "claude.ai プロジェクトの新セッション切替時に毎回カード式で質問が出る現象（ルール違反）。本格対応は後日、本 memo は忘れないためのフラグ。",
+    "type": "project",
+    "summary": "claude.ai プロジェクト（Garden UI 020 / 021 等）で新セッション起動時、毎回**カード式で質問が表示される**。これは設定したルールに違反している（東海林さんが「ルール違反」と明言）。 - 5/9 18:00 東海林さん発言: 「claude.ai の新セッション切替時に毎回カード式で質問される（ルール違反）。これも後ほど対応しよう。私が忘れないように記載しておく」",
+    "filename": "project_claude_ai_card_question_violation.md",
+    "size_kb": 2.42
+  },
+  {
+    "name": "claude.ai → Claude Code の Drive コネクタ連携 / _chat_workspace 運用",
+    "description": "2026-05-01 に Google Drive コネクタ経由の Chat→Code 連携稼働確立。MIME 制限と update_file 非搭載という重要制約を踏まえて _chat_workspace\\ で運用。a-main / 他セッションも本パターンを前提に動作",
+    "type": "project",
+    "summary": "claude.ai (Web) と Claude Code セッション間の連携を Google Drive コネクタ経由で確立。専用作業エリア `_chat_workspace\\` を介して Chat→Code のデータ受け渡しを行う。 **Why:**",
+    "filename": "project_claude_chat_drive_connector.md",
+    "size_kb": 10.36
+  },
+  {
+    "name": "権限ポリシー設定変更可能設計パターン",
+    "description": "権限閾値はハードコードではなく設定テーブル経由で admin が変更可能にする",
+    "type": "project",
+    "summary": "権限に関わる閾値（何のロール以上が何の操作可能か）は、**ハードコード禁止**。 代わりに `root_settings` テーブル or 同等の設定管理経由で保持し、**admin が実行時に変更可能**にする。",
+    "filename": "project_configurable_permission_policies.md",
+    "size_kb": 2.9
+  },
+  {
+    "name": "Garden 全モジュール削除パターン（論理全員・物理 admin・バッジ全員可視）",
+    "description": "Kintone 運用からの学びを反映した全モジュール共通の削除仕様",
+    "type": "project",
+    "summary": "Garden シリーズの**全モジュール共通の削除仕様**。Kintone 運用の課題（admin に削除依頼が集中、休日持越し）を解決する設計。 | 操作 | 権限 | 目的 |",
+    "filename": "project_delete_pattern_garden_wide.md",
+    "size_kb": 5.17
+  },
+  {
+    "name": "Forest 関連ファイルの現状（Google ドライブ保管）",
+    "description": "Forest モジュールの決算書 / 税務関連ファイル等は現在 Google ドライブで管理。Phase A-B の Storage 統合時に Supabase Storage への移行戦略が必要",
+    "type": "project",
+    "summary": "Forest モジュールの **決算書 PDF / 税務関連ファイル等は 2026-04-25 時点で Google ドライブに保管中**。Garden への取り込みは未実施。 **Why:** これまでの会計運用が Google ドライブベースで構築されており、Forest 移行時に「どう取り込むか」の段階的計画が必要。判3（PDF を Supabase Storage にミラー）/ 判5（Tax Files 社内代理入力）の決定を踏まえると、**Google ドライブから Supabase Storage への移行 / 二重管理期間の運用** が現実的論点になる。",
+    "filename": "project_forest_files_in_google_drive.md",
+    "size_kb": 1.57
+  },
+  {
+    "name": "Garden 3 レイヤー視覚モデル「The Digital Terrarium」（最終確定版）",
+    "description": "Garden Series の正本ブランドアイデンティティ。3 レイヤー（樹冠/地上/地下）+ Glass Cube テラリウム + 5 Atmospheric Variations + UI Safe Zones の完全規格。盆栽は明示的に NG",
+    "type": "project",
+    "summary": "Garden Series の視覚アイデンティティは **「The Digital Terrarium」** という名のもと、NotebookLM ① + ② で完全規格化された。盆栽ではなく、**Glass Cube テラリウムの中の大樹 + 3 レイヤー + 5 動的環境適応** が正本。 - **「業務を、育てる。」**（コアメッセージ）",
+    "filename": "project_garden_3layer_visual_model.md",
+    "size_kb": 15.75
+  },
+  {
+    "name": "Garden 申請承認パターン（横断標準）",
+    "description": "従業員のマイページからの直接編集は禁止、全項目「申請 → admin 承認」フロー、root_change_requests テーブルで横断管理",
+    "type": "project",
+    "summary": "Garden 全モジュールで **従業員のマイページからの直接編集は禁止**。全項目「変更申請ボタン → モーダル入力 → admin 承認 → 反映」のフローを横断標準とする（Tree マイページの現仕様を全モジュール展開）。 **Why:** 口座変更 / 交通費 / 通勤経路 / 緊急連絡先 等のシビアな情報を本人が直接編集できると誤入力・不正リスク。admin 承認 1 段ガードで業務止まらない範囲で確実性を担保（東海林さん 2026-04-25 方針）。",
+    "filename": "project_garden_change_request_pattern.md",
+    "size_kb": 3.69
+  },
+  {
+    "name": "Garden 内 開発者ページ（問い合わせ・依頼一元管理）",
+    "description": "社員からの問い合わせ・ヘルプ修正依頼・機能改善要望を Chatwork 通知 + Garden 内開発者ページに集約。東海林さん（開発者）が消化型で 1 件ずつ処理",
+    "type": "project",
+    "summary": "Garden 内に **「開発者ページ」** を設置し、社員からの問い合わせ・ヘルプ修正依頼・機能改善要望を一元管理する。 **Why:**",
+    "filename": "project_garden_developer_page.md",
+    "size_kb": 2.87
+  },
+  {
+    "name": "Garden 二重軸ナビゲーション設計（モジュール軸 + 業務ドメイン軸）",
+    "description": "12 モジュール grid（モジュール軸）+ 横断抜粋ビュー（業務ドメイン軸）の権限連動 二重ナビ設計。staff 以上の権限者向けに業務ドメイン軸を提供、各アプリのいいとこどり集約。5/5 後道さんデモ反応で採否確定予定",
+    "type": "project",
+    "summary": "Garden Series ホーム画面のナビゲーションは **モジュール軸 + 業務ドメイン軸の二重ナビ** で構成する設計案。ChatGPT デザインプロンプト（4/27）の出力を見て東海林さんが提案。一般社員以上の権限者にとって、各アプリ（Garden Bud / Garden Tree 等）の主要機能を「業務ドメイン」で集約した抜粋ビューが見やすい。 **Why:** 12 モジュール grid（Soil / Root / ... / Calendar）はモジュール開発単位 = エンジニアリング軸。一方、業務ユーザー（経営者・経理担当・営業マネージャー等）は「取引したい」「顧客見たい」「ワークフロー回したい」「レポート見たい」等の **業務ドメイン軸** で考える。両軸を併設し、権限に応じて見せ方を切替えることで、Garden が「業務 OS」としてのアイデンティティを強化できる。",
+    "filename": "project_garden_dual_axis_navigation.md",
+    "size_kb": 9.86
+  },
+  {
+    "name": "Garden Fruit（実）モジュール実体化",
+    "description": "Fruit はもはや概念のみではなく、法人法的実体情報（番号系・公的書類・許認可）を管理する正式モジュール",
+    "type": "project",
+    "summary": "Garden Fruit（実）は「**概念のみ（アプリなし）**」から「**法人法的実体情報モジュール**」へ実体化（2026-04-26 東海林さん承認）。 **Why:** 雇用契約書 / 給与明細 / 各種法定届出 等で 6 法人の正式情報（法人番号 / インボイス / 代理店届出 / 登記簿 等）を参照する必要がある。Forest companies（UI 表示用）と Root companies（運用用）には番号系が無く、Kintone 法人名簿（App 28、61 フィールド）に集約されている情報を Garden 内に取り込む受け皿が必要。Fruit が「実」=「法的実体・成果」の意味で完全一致。",
+    "filename": "project_garden_fruit_module.md",
+    "size_kb": 4.36
+  },
+  {
+    "name": "Garden ヘルプモジュール（KING OF TIME 風）",
+    "description": "Garden 内に「ヘルプ」セクションを配置、KING OF TIME のオンラインヘルプ風に各機能の使い方・FAQ・動画マニュアルを集約。アクセス権限連動で見える範囲を制御",
+    "type": "project",
+    "summary": "Garden は将来的に **KING OF TIME の「ヘルプ」**のような**オンラインヘルプセクション**を内蔵する。各モジュールの使用方法・基本ガイド・機能別ガイド・FAQ・動画マニュアル等を集約し、ロール × モジュール権限と連動して**アクセス権限のあるアプリのヘルプだけ見える**仕様。 **Why:** Garden は 12 モジュール（Soil / Root / Tree / Leaf / Bud / Bloom / Seed / Forest / Rill / Fruit / Sprout / Calendar）に拡大予定。各モジュールの操作方法を都度東海林さん / 槙さんが個別レクチャーするのは不可能。**全社員がセルフサービスで Garden の使い方を学べる**仕組みが必要。KING OF TIME はこの点で良い参考事例（オンラインヘルプの構造化、検索、カテゴリ別、人気記事等）。",
+    "filename": "project_garden_help_module.md",
+    "size_kb": 6.71
+  },
+  {
+    "name": "Garden ログインは社内 PC のみ（通常アルバイトロール）",
+    "description": "toss / closer / cs / staff など通常ロールの Garden ログインは社内 PC からのみ許可、自宅 PC / 私物端末からは不可。manager 以上は別運用想定",
+    "type": "project",
+    "summary": "Garden（Tree マイページ含む全モジュール）の **ログインは toss / closer / cs / staff など通常アルバイト系ロールは社内 PC からのみ許可** される運用方針。自宅 PC / 私物端末からの Garden ログインは不可。 **Why:** 業務で扱う情報（顧客リスト 253 万件、コール履歴、給与情報、振込情報、税務情報、年末調整情報等）が機密性高く、私物端末からのアクセスは情報漏洩リスクが高い。社内 PC のみという物理的制約で漏洩経路を限定する設計。",
+    "filename": "project_garden_login_office_only.md",
+    "size_kb": 3.3
+  },
+  {
+    "name": "Garden Rill 真の役割（Tree Breeze から進化、最終的に Chatwork クローン）",
+    "description": "Garden Rill は Tree 内の Breeze（当日限り業務連絡チャット、既存実装）からスタートし、将来的に Chatwork クローン全社チャットへ段階的にアップグレード",
+    "type": "project",
+    "summary": "**Garden Rill は段階的進化モデル**： 1. **Phase 初期（リリース時）**：Tree 内の **Breeze**（既存実装、当日限り業務連絡チャット）を **Garden Rill にリネーム**してリリース",
+    "filename": "project_garden_rill_scope.md",
+    "size_kb": 5.03
+  },
+  {
+    "name": "Garden Sprout（仮）と Calendar の役割定義",
+    "description": "Garden 12 モジュールに新規追加された Sprout（入社オンボーディング）と Calendar（全社カレンダー統合）の役割・スコープ・他モジュール連携・Phase 配置",
+    "type": "project",
+    "summary": "2026-04-26 確定：Garden は 9 モジュール + 概念 1（Fruit）から **12 モジュール**に拡張。 - Fruit: 概念 → 実体化（`project_garden_fruit_module.md` 既存 memory）",
+    "filename": "project_garden_sprout_calendar_roles.md",
+    "size_kb": 8.34
+  },
+  {
+    "name": "GitHub 2FA は SMS 採用 + 必要に応じて Authenticator 追加 / Claude からは積極提案しない",
+    "description": "Garden 関連 GitHub アカウント (C 垢 shoji-hyuaran 等) の 2FA は SMS が第一選択、Authenticator (MS / Google 問わず) 追加は東海林さん判断で採用可能。Claude からは Authenticator を積極提案しない（前回の懸念表明を尊重）",
+    "type": "project",
+    "summary": "Garden 関連 GitHub アカウント（特に C 垢 shoji-hyuaran = Hyuaran org Owner）の 2FA は **SMS が第一選択**。Microsoft Authenticator / Google Authenticator 等の追加は **東海林さん判断で採用可能**。 **Why:**",
+    "filename": "project_github_2fa_sms_only_policy.md",
+    "size_kb": 4.21
+  },
+  {
+    "name": "GitHub アカウント停止 連鎖 4/27 全記録 + Team プラン移行",
+    "description": "2026-04-27 に A 垢 + B 垢が同日 ban、C 垢 + Hyuaran org Team プラン化で正規法人運用へ移行した経緯と教訓",
+    "type": "project",
+    "summary": "| 日時 | イベント | |---|---|",
+    "filename": "project_github_account_crisis_20260427.md",
+    "size_kb": 4.89
+  },
+  {
+    "name": "後道さん コミュニケーションスタイル",
+    "description": "後道さん（顧問の経理・税理士パートナー）は紙資料・文書では理解しにくい。対面のみ機能、それも 5-10 分が上限。直感判断重視。デモ・説明はこの制約に合わせて設計",
+    "type": "project",
+    "summary": "- 後道さんは資料を見ることがあまりできない - 事前資料・1 page 説明書・メールでの説明 → **読まれない / 機能しない**",
+    "filename": "project_godo_communication_style.md",
+    "size_kb": 4.31
+  },
+  {
+    "name": "後道さん UX 採用ゲート（実物必須・遊び心・世界観）",
+    "description": "後道さんは visual モックアップでは判断できず、実物の動く UI でしか評価しない。後道さんが気に入らないと Garden が採用されない採用ゲート。5/8 デモ（旧 5/5、2026-05-03 変更）までに「図 2（盆栽中心ビュー）」に近い実物が必須",
+    "type": "project",
+    "summary": "Garden の採用可否は、**後道さん（顧問の経理・税理士パートナー）が UI を実際に見て気に入るかどうか** で決まる。これは Garden プロジェクト全体の **採用ゲート**。 - Figma / 静止画 / spec 文書 / 概念図 → **判断不可**",
+    "filename": "project_godo_ux_adoption_gate.md",
+    "size_kb": 8.29
+  },
+  {
+    "name": "Kintone API トークン保存場所",
+    "description": "Kintone API トークンは各セッションフォルダの .env.local に保存運用、Garden 所有のため漏洩アラート不要",
+    "type": "project",
+    "summary": "Garden で使用する **Kintone API トークンは各セッションフォルダの `.env.local` に保存運用**。Garden が所有・管理するトークンのため、チャット履歴に残っても漏洩アラート対象外（東海林さん方針）。 **Why:** Garden が直接 Kintone と連携する用途（応募者管理 / 面接ヒアリング / 既存従業員データ等）で頻繁に使うため、毎回入力させると非効率。.env.local に保存して各セッションが env var として参照する設計。漏洩アラートは Garden 外（他社・他人）のトークンのみ対象。",
+    "filename": "project_kintone_tokens_storage.md",
+    "size_kb": 2.76
+  },
+  {
+    "name": "マネーフォワードクラウド給与（MFC）CSV 仕様",
+    "description": "給与計算結果を MFC へインポートする CSV の 72 列仕様。Garden Bud Phase D の MFC 互換 CSV 出力 spec の入出力定義",
+    "type": "project",
+    "summary": "**マネーフォワードクラウド給与（MFC）の給与インポート CSV** は **72 列 / cp932 エンコーディング / 9 カテゴリ**で構成される。Garden Bud Phase D の **MFC 互換 CSV 出力**機能は、この仕様を満たす CSV を生成する責務を持つ。 **Why:** Garden で給与計算した結果を MFC にインポートして給与確定 → 配信する運用フロー（東海林さん想定）。MFC 側の CSV 仕様を満たさなければインポートエラーになるため、列数・順序・名称・形式を正確に守る必要がある。",
+    "filename": "project_mfc_payroll_csv_format.md",
+    "size_kb": 7.2
+  },
+  {
+    "name": "npm install deny ルールの回避策",
+    "description": "settings.json の Bash(npm install *) deny が対話セッションの判断承認と衝突する既知課題と回避パターン",
+    "type": "project",
+    "summary": "`.claude/settings.json` の deny ルールに `Bash(npm install *)` が含まれており、これが以下のシーンで衝突する： - 対話セッション（a-forest / a-root 等）で**東海林さん判断承認**を得て npm install を実行しようとした時",
+    "filename": "project_npm_install_deny_workaround.md",
+    "size_kb": 2.91
+  },
+  {
+    "name": "取引先（上位店・partner）と外注先（傘下店・vendor）の業務的区分",
+    "description": "ヒュアラン グループの商流で、上位店（root_partners、商品提供元）と傘下店（root_vendors、業務委託先）は別概念として管理する。Garden 全体の設計に影響",
+    "type": "project",
+    "summary": "**ヒュアラン グループの商流では「取引先（上位店）」と「外注先（傘下店）」は業務的に明確に別物**。Garden 全体で `root_partners` と `root_vendors` を別テーブルとして管理する。 **Why:** 東海林さん明示：「外注先 = 傘下店（パートナーともいう）、取引先 = 上位店のイメージ」。商流の上下関係（ヒュアランより上位の商品提供元と、下位の業務委託先）が明確に異なるため、混同すると業務オペレーションが混乱する。",
+    "filename": "project_partners_vs_vendors_distinction.md",
+    "size_kb": 6.57
+  },
+  {
+    "name": "給与明細配信設計（Y 案 + フォールバック、A-07 採択結果改訂）",
+    "description": "給与明細は Y 案（メール DL リンク + LINE Bot 通知、PW なし）を主、LINE 使えない例外的な人は PDF PW + マイページで PW 確認のフォールバック設計",
+    "type": "project",
+    "summary": "Garden 給与明細配信は **「Y 案 + フォールバック両方実装」** で確定（2026-04-26 東海林さん採択）。A-07 採択結果（方式 2 = 単純な PW 保護 PDF）から **方式 2\u0027 に改訂**。 **Why:** A-07 採択時は「メール添付 PDF + 生年月日 4 桁 PW」だったが、a-review 重大指摘で「セキュリティ義務違反リスク」が判明。B 案（ワンタイム DL リンク）+ LINE Bot 通知で別経路認証を確保しつつ、LINE 使えない例外的な人にも対応する設計が決定。",
+    "filename": "project_payslip_distribution_design.md",
+    "size_kb": 7.56
+  },
+  {
+    "name": "Adobe Photoshop 導入 + 画像処理は JSX スクリプト優先提案",
+    "description": "2026-05-01 Photoshop 単体プラン購入。画像処理タスク発生時は単発=Python / 複雑=JSX で提案、JSX を優先。JSX スクリプト集は 099_Photoshopスクリプト集 に集約",
+    "type": "project",
+    "summary": "東海林さんが 2026-05-01 に Adobe Photoshop 単体プラン（個人版・年間プラン月々払い）を購入。今後の画像処理タスクは JSX スクリプト優先で提案する。 **Why:**",
+    "filename": "project_photoshop_jsx_workflow.md",
+    "size_kb": 5.55
+  },
+  {
+    "name": "post-5/8 タスク管理（5/8 後道さんデモ後に着手するタスク群、旧 post-5/8（旧 post-5/5））",
+    "description": "5/8 デモ前は最小変更原則で温存、デモ後に順次着手するタスクを一元管理。優先度・担当・関連ファイル明記。ファイル名 post_5_5_tasks.md は履歴互換のため維持、内容は 5/8 デモに更新（2026-05-03 改訂）",
+    "type": "project",
+    "summary": "5/8 後道さんデモ（旧 5/5、2026-05-03 変更）前は **「最小変更 + ban 引金回避」** が最優先のため、以下のタスクは **post-5/8（旧 post-5/5）（5/9 以降）** に着手する方針で温存中。 **Why:**",
+    "filename": "project_post_5_5_tasks.md",
+    "size_kb": 6.24
+  },
+  {
+    "name": "Garden RLS server/client audit",
+    "description": "Garden 全 9 モジュールで、ブラウザ用 anon supabase singleton がサーバー側 Route Handler / Server Component から流用されていないか監査が必要（Bloom PDF 事件の再発防止）",
+    "type": "project",
+    "summary": "2026-04-24 に Garden Bloom で、月次ダイジェスト PDF エクスポートが「データあるのに 404 not found」を返すバグが発生（PR #17 で修正済）。 **根本原因**: `src/app/bloom/monthly-digest/[month]/export/route.ts` が Node ランタイムでサーバー実行されるのに、DB 取得で `src/app/bloom/_lib/supabase.ts` のブラウザ用 anon singleton（localStorage セッション前提）を流用していた。サーバーには auth セッションが無いため `auth.uid()` が NULL → RLS `bloom_has_access(\u0027staff\u0027)` が全行ブロック → データ無しと誤認。",
+    "filename": "project_rls_server_client_audit.md",
+    "size_kb": 2.38
+  },
+  {
+    "name": "全セッション共有 添付資料保管庫",
+    "description": "東海林さんが Claude セッションに添付した資料を全セッション横断で参照可能にする共有保管庫の運用ルール。セッション引っ越し・他セッションからもアクセス可能",
+    "type": "project",
+    "summary": "**東海林さんがセッションに添付した資料を、後から他セッション・引っ越し先セッションからも参照できる**よう、`C:\\garden\\_shared\\attachments\\YYYYMMDD\\` に一元保管する運用。 **Why:** 東海林さんがセッションごとに同じファイルを再添付する手間を完全になくす。a-main 006 → 007 等の引っ越し時、または a-bud / a-tree など別セッションが同じ資料を必要とする時、再共有不要で即参照可能にする。",
+    "filename": "project_session_shared_attachments.md",
+    "size_kb": 4.28
+  },
+  {
+    "name": "東海林さん何してる問題（経営者活動可視化機能）",
+    "description": "Garden Bloom 内で東海林さん（社長）の作業状況・スケジュール・詰まり状況をリアルタイム可視化、社員が「東海林さん何してる？」を即答できる UI を実装。GW 期間に完成目標",
+    "type": "project",
+    "summary": "**Garden Bloom 内に「東海林さん何してる問題」解消機能を実装**。経営者の作業状況・月間スケジュール・タスク詰まり・クイックステータスを総合的に可視化し、社員が「東海林さん何してる？」と聞いた時に即答できる UI を提供する。 **Why:** 東海林さん明示（2026-04-26）：「Garden Bloom 内の東海林何してる問題解消、これが一番催促（最重要）すること、GW 期間に完成を目指す」。社長の活動が社員から見えないと業務連携・優先順位判断・進捗共有に支障。Garden 共通 UI 設計と並んで Phase A 最優先。",
+    "filename": "project_shoji_status_visibility.md",
+    "size_kb": 5.24
+  },
+  {
+    "name": "super_admin 操作は東海林さん本人専任",
+    "description": "super_admin（Garden 最上位権限）は東海林さん本人が唯一の操作者。社長や他者が super_admin 操作することはない。委託があっても「東海林やっといて」になる",
+    "type": "project",
+    "summary": "Garden の super_admin（最上位権限ロール）は **東海林さん本人** が唯一の操作者として運用される。 **Why:**",
+    "filename": "project_super_admin_operation.md",
+    "size_kb": 2.52
+  },
+  {
+    "name": "Tree D-1 + D-2 セットリリース戦略",
+    "description": "Tree D-2（自動発信機能）は D-1（基本架電）リリース後 1 ヶ月待ちではなく、D-1 と D-2 をセットで完成させ、テスト稼働で品質確保してから全体展開する",
+    "type": "project",
+    "summary": "Tree Phase D-2（電話番号クリックで自動発信機能）の着手・展開タイミングは、東海林さんの方針として **D-1 + D-2 セットリリース戦略** を採択。 **Why:**",
+    "filename": "project_tree_d2_release_strategy.md",
+    "size_kb": 5.66
+  },
+  {
+    "name": "Tree トス役割は「トスに集中」が業務設計原則",
+    "description": "Garden Tree のトス（toss）役割は「契約見込みあり → トスアップする」だけに集中させる設計。closer の空き状況や混雑度は toss UI に表示しない",
+    "type": "project",
+    "summary": "**Garden Tree のトス（toss）ロールは「契約見込みあり → トスを上げる」だけに集中**させる業務設計が原則。closer の空き状況・混雑度は **toss UI に表示しない**（変な思考をさせない）。 **Why:** 東海林さん明示指示：「トスアップ瞬間に closer の最新空き状況が反映されなくて OK、空いてても空いてなくてもトスを上げさせることが大事、トスは変な思考にならずトスすることだけに注力させたい」。closer 空き表示があると toss が「今 closer 忙しそうだから、もう少し粘って自分で...」等の判断ブレが発生し、業務効率と機会損失リスクが増える。",
+    "filename": "project_tree_toss_focus_principle.md",
+    "size_kb": 4.26
+  },
+  {
+    "name": "個人用 CLAUDE.md の場所と Garden ルールの読込経路",
+    "description": "東海林さん個人設定と Garden シリーズルールがどこに記載されているかのポインタ",
+    "type": "reference",
+    "summary": "- **場所**: `G:\\マイドライブ\\17_システム構築\\07_Claude\\01_東海林美琴\\CLAUDE.md` - **内容**:",
+    "filename": "reference_personal_claude_md.md",
+    "size_kb": 2.71
+  },
+  {
+    "name": "東海林さんのデザイン感性・好み",
+    "description": "東海林さん本人がプロダクトオーナーとして表明したデザイン感性・好み・美的判断軸。Garden プロダクトの最終決定者として、これが採用に大きい影響を与える",
+    "type": "user",
+    "summary": "東海林さんは Garden Series のプロダクトオーナー兼開発者兼経営者であり、**Garden の最終決定者**。本人の感性・好みは Garden プロダクトの方向性に直結する。 | 案 | 評価 |",
+    "filename": "user_shoji_design_preferences.md",
+    "size_kb": 7.48
+  },
+  {
+    "name": "東海林さんのプロフィール",
+    "description": "Garden シリーズ統括者としての役割・技術背景・業務範囲・セッション運用",
+    "type": "user",
+    "summary": "東海林さん（email: shoji@hyuaran.com、自称: 私、他称: 東海林さん）は Garden シリーズ（FileMaker/kintone 代替の自社 Web アプリ群）の**統括者・プロダクトオーナー**。 東海林さんは **Claude Code デスクトップアプリ版**（Windows）で作業している。**PowerShell / CLI を起動して `claude` コマンドを叩く運用はしていない**。",
+    "filename": "user_shoji_profile.md",
+    "size_kb": 3.94
+  }
+]
