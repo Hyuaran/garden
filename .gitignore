@@ -42,3 +42,7 @@ next-env.d.ts
 
 # Claude Code local overrides (per-machine / per-user)
 .claude/settings.local.json
+
+# local-only review/work 保管庫 (a-review main- No. 171, 2026-05-09)
+.review-tmp/
+tmp/
