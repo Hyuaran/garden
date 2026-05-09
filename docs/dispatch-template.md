@@ -132,8 +132,17 @@
 | 3 | 添付画像 ls で存在確認した | memory `feedback_file_existence_check_before_ok` |
 | 4 | 既存実装把握した（外部依頼前トリガー）| memory `feedback_check_existing_impl_before_discussion` |
 | 5 | 緊急度マーク（🟢🟡🔴）付与した | memory `feedback_powershell_emoji_signaling` |
-| 6 | dispatch 完了後、counter +1 した | `echo "NNN+1" > docs/dispatch-counter.txt` |
-| 7 | dispatch-status.md に投下予定として記録 | `docs/dispatch-status.md` |
+| 6 | **投下用短文 ~~~ 内に ` ``` ` コードブロックを入れていない**（最重要、v5.1）| コピペ分断防止、参考例は ~~~ 外へ |
+| 7 | dispatch 完了後、counter +1（dispatch-record.ps1 自動）| `.\scripts\dispatch-record.ps1 -No NNN -Target ...` |
+| 8 | dispatch-status.md に投下予定として記録（自動）| 同上 |
+
+## 投下用短文 ~~~ 内の禁止事項（v5.1、最重要）
+
+- ` ``` ` （バッククォート 3 個のコードブロック）禁止
+- 完走報告フォーマット例 / HTML 例 / コード例は **~~~ 外の「詳細（参考）」セクション** に移動
+- ~~~ 内では箇条書き / インデント / 引用ブロック（`>`）で形式伝達
+
+理由: Markdown レンダラーが ` ``` ` を別ブロック認識 → コピー時にテキスト分断（5/9 20:30 東海林さん指摘）
 
 ---
 

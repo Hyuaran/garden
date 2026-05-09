@@ -7,7 +7,7 @@
 
 ## 現在の counter
 
-dispatch counter: **177**（次の起草番号、`docs/dispatch-counter.txt` と同期）
+dispatch counter: **182**（次の起草番号、`docs/dispatch-counter.txt` と同期）
 
 ---
 
@@ -15,7 +15,14 @@ dispatch counter: **177**（次の起草番号、`docs/dispatch-counter.txt` と
 
 | # | 番号 | 起草日時 | 投下先 | 状態 | 完了報告 |
 |---|---|---|---|---|---|
-| - | main- No. 176 | 2026-05-09 19:16 | a-review | 起草済（未投下） | ❌ 未投下 |
+| - | main- No. 181 | 2026-05-09 20:23 | a-review | 起草済（未投下）（review-9 # 1,# 2 誤判定指摘 + 再評価依頼） | ❌ 未投下 |
+| - | main- No. 180 | 2026-05-09 20:23 | claude.ai chat (Garden UI 021) | 起草済（未投下）（tab-2 修正 v1 mock 基準 6 件） | ❌ 未投下 |
+| - | main- No. 179 | 2026-05-09 20:16 | a-forest-002 | 投下済（東海林さん 5/9 21:00）→ no179-RECEIVED 受領（D 案合意）| ✅ 完了 |
+| - | main- No. 178 | 2026-05-09 20:13 | a-forest-002 | 投下済（東海林さん 5/9 20:55）→ no178-RECEIVED 受領（B 案合意）| ✅ 完了 |
+| - | main- No. 161 | 2026-05-09 — | a-forest-002 | 投下済（東海林さん 5/9 20:35）→ forest-002-no161-CLARIFY 受領 | 🔄 進行中 |
+| - | main- No. 159 | 2026-05-09 — | a-forest-002 | 投下済（東海林さん 5/9 20:45 直接コピペ）| ✅ 投下済 |
+| - | main- No. 177 | 2026-05-09 20:07 | a-review | 投下済（東海林さん 5/9 20:45）| ✅ 投下済 |
+| - | main- No. 176 | 2026-05-09 19:16 | a-review | 投下済（東海林さん 5/9 20:45）→ review-8 で OK 受領済 | ✅ 完了 |
 | 1 | main- No. 175 | 2026-05-09 17:47 | claude.ai chat「Garden UI 021」 | 投下済（forest-html-9 受領 5/9 17:58）| ✅ |
 | 2 | main- No. 174 | 2026-05-09 17:43 | claude.ai chat「Garden UI 021」 | 投下済（forest-html-7 受領）| ✅ |
 | 3 | main- No. 173 | 2026-05-09 17:19 | claude.ai chat「Garden UI 020」 | 投下済（forest-html-6 で完結）| ✅ |
@@ -65,5 +72,15 @@ dispatch counter: **177**（次の起草番号、`docs/dispatch-counter.txt` と
 ## 改訂履歴
 
 - 2026-05-09 18:30 初版（a-main-017、ガンガン投下漏れ防止）
+
+
+
+
+
+
+
+
+
+
 
 
