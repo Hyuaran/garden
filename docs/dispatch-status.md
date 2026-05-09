@@ -1,4 +1,4 @@
-# dispatch 投下状況管理表
+﻿# dispatch 投下状況管理表
 
 > ガンガンモード時の投下漏れ防止用、a-main が起草 → 投下後に状態更新
 > 最新の dispatch 30 件のみ保持、古いものは順次切り出し
@@ -7,7 +7,7 @@
 
 ## 現在の counter
 
-dispatch counter: **176**（次の起草番号、`docs/dispatch-counter.txt` と同期）
+dispatch counter: **177**（次の起草番号、`docs/dispatch-counter.txt` と同期）
 
 ---
 
@@ -15,6 +15,7 @@ dispatch counter: **176**（次の起草番号、`docs/dispatch-counter.txt` と
 
 | # | 番号 | 起草日時 | 投下先 | 状態 | 完了報告 |
 |---|---|---|---|---|---|
+| - | main- No. 176 | 2026-05-09 19:16 | a-review | 起草済（未投下） | ❌ 未投下 |
 | 1 | main- No. 175 | 2026-05-09 17:47 | claude.ai chat「Garden UI 021」 | 投下済（forest-html-9 受領 5/9 17:58）| ✅ |
 | 2 | main- No. 174 | 2026-05-09 17:43 | claude.ai chat「Garden UI 021」 | 投下済（forest-html-7 受領）| ✅ |
 | 3 | main- No. 173 | 2026-05-09 17:19 | claude.ai chat「Garden UI 020」 | 投下済（forest-html-6 で完結）| ✅ |
@@ -64,3 +65,5 @@ dispatch counter: **176**（次の起草番号、`docs/dispatch-counter.txt` と
 ## 改訂履歴
 
 - 2026-05-09 18:30 初版（a-main-017、ガンガン投下漏れ防止）
+
+
