@@ -511,3 +511,12 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 ---
 
 — end of Root B-1 spec —
+
+---
+
+## 追記: super_admin 編集 UI 禁止 (2026-05-11)
+
+garden_role 編集 UI を実装する際は `GARDEN_ROLE_SELECTABLE_OPTIONS` を使用し、
+super_admin を selectable から除外すること。
+DB 側でも `scripts/garden-super-admin-lockdown.sql` で block 済。
+詳細: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md Task 5
