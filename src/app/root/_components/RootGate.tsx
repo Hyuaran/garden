@@ -1,59 +1,32 @@
 "use client";
 
 /**
- * RootGate
+ * Root 認証ゲート — ModuleGate ラッパー (2026-05-11、Task 3)
  *
- * layout.tsx の中で RootShell/children をラップ。
- * - 認証確認中: ローディング表示
- * - 未認証 & /root/login 以外: saveReturnTo で URL 保持 → /root/login へ
- * - /root/login: そのまま表示 (ログイン画面は認証チェック対象外)
- * - 認証済: 子を表示
+ * 旧 RootGate (RootStateContext の isAuthenticated/loading を直接監視) は
+ * RootGate.legacy-20260511.tsx に保管。
  *
- * パターン: Tree の TreeAuthGate を踏襲。
+ * 動作:
+ *   - /root/login: 認証チェック対象外（無限ループ防止）
+ *   - 上記以外: ModuleGate で認証 + minRole=manager 判定
+ *
+ * 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 3 §Step 3-7
  */
 
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
-import { colors } from "../_constants/colors";
-import { saveReturnTo } from "../_lib/auth";
-import { useRootState } from "../_state/RootStateContext";
+import { ModuleGate } from "../../_components/ModuleGate";
 
 export function RootGate({ children }: { children: ReactNode }) {
-  const { isAuthenticated, loading } = useRootState();
   const pathname = usePathname();
-  const router = useRouter();
-
   const isLoginPage = pathname === "/root/login";
-
-  useEffect(() => {
-    if (!loading && !isAuthenticated && !isLoginPage) {
-      if (pathname) saveReturnTo(pathname);
-      router.replace("/root/login");
-    }
-  }, [loading, isAuthenticated, isLoginPage, pathname, router]);
 
   if (isLoginPage) return <>{children}</>;
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: colors.bg,
-          color: colors.textMuted,
-          fontSize: 14,
-        }}
-      >
-        認証確認中...
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) return null;
-
-  return <>{children}</>;
+  return (
+    <ModuleGate module="root" loginPath="/root/login">
+      {children}
+    </ModuleGate>
+  );
 }
