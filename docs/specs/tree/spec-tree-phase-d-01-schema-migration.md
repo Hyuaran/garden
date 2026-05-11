@@ -258,9 +258,14 @@ CREATE POLICY tcs_update_self_open ON tree_calling_sessions FOR UPDATE
   USING (employee_id = auth_employee_number() AND ended_at IS NULL)
   WITH CHECK (employee_id = auth_employee_number());
 
--- マネージャー（manager）: 自部署の全セッション SELECT のみ
+-- マネージャー（manager）: v3.1 改訂で「自分担当 only」に縮退
+-- 旧: USING (has_role_at_least('manager') AND is_same_department(employee_id))
+-- 新: USING (has_role_at_least('manager') AND employee_id = auth_employee_number())
+-- 理由: Batch 7 (root-002-38 / PR #154) で is_same_department が縮退
+--        （root_employees.department_id 列なし + root_departments マスタなし）
+-- 将来の再導入: department 運用ルール確定後に「自部署絞込」へ復帰、本 spec §4.1 を再改訂
 CREATE POLICY tcs_select_manager ON tree_calling_sessions FOR SELECT
-  USING (has_role_at_least('manager') AND is_same_department(employee_id));
+  USING (has_role_at_least('manager') AND employee_id = auth_employee_number());
 
 -- admin / super_admin: 全件 SELECT/UPDATE（削除は super_admin のみ）
 CREATE POLICY tcs_all_admin ON tree_calling_sessions FOR ALL
@@ -268,21 +273,32 @@ CREATE POLICY tcs_all_admin ON tree_calling_sessions FOR ALL
   WITH CHECK (has_role_at_least('admin'));
 ```
 
-- `auth_employee_number()` / `has_role_at_least()` / `is_same_department()` はすべて spec-cross-rls-audit 定義の SQL 関数
-- マネージャーは **自部署のみ**閲覧可（他部署のコール内容は原則非公開）
+- `auth_employee_number()` / `has_role_at_least()` は spec-cross-rls-audit / Batch 7 (PR #154) で実装済
+- `is_same_department()` は **Batch 7 で縮退** （root_employees.department_id 列なし + root_departments マスタなし）。本 spec §4.1 では「マネージャー = 自分担当 only」に縮退対応。
+- 縮退方針確定経緯: main- No. 233（a-main-020 → a-root-002）→ root-002-38（is_same_department Q2 (b) 採用、Batch 7 で省略）→ main- No. 238（a-main-020 → a-tree-002、本 spec 改訂依頼）
+- 将来の再導入条件:
+  - `root_employees.department_id` 列追加（schema 拡張）
+  - `root_departments` マスタテーブル新規作成
+  - department 運用ルール確定（異動 / 複数所属 等）
+- 上記が満たされた段階で `is_same_department()` 再実装 → 本 spec §4.1 を「自分担当 only」→「マネージャー自部署絞込」に再改訂（管理者向け広範囲 SELECT を復活）
+- 現状（縮退中）の管理者横断 SELECT は admin / super_admin のみ可（§4.1 末尾の `tcs_all_admin` ポリシー）
 
 ### 4.2 `tree_call_records`
 
-- SELECT: 自分のコールは全社員、部署コールはマネージャー+、全件は admin+
+- SELECT: 自分のコールのみ（manager+ も同様、is_same_department 縮退中）、全件は admin+
 - INSERT: 自分の session_id に対してのみ
-- UPDATE: **本人は同日分（called_at >= now()::date）のみ**、manager+ は自部署、admin+ は全件
+- UPDATE: **本人は同日分（called_at >= now()::date）のみ**、admin+ は全件（manager+ も縮退中は自分の同日分のみ）
 - DELETE 直接禁止（論理削除のみ、`deleted_at` の UPDATE で実現）
+
+v3.1 縮退注記: is_same_department が Batch 7 で縮退したため、現状は「manager 権限でも自部署横断不可」（自分担当 only）。将来 department 運用確定で再導入時に「マネージャー = 自部署全コール」へ復活。
 
 ### 4.3 `tree_agent_assignments`
 
-- SELECT: 営業は自分の割当のみ、manager+ は自部署全オペレーター、admin+ は全件
+- SELECT: 営業は自分の割当のみ（manager+ も同様、is_same_department 縮退中）、admin+ は全件
 - INSERT/UPDATE: **manager 以上のみ**（営業が自分で割当を引くのは spec-tree-d-02 の pull モードで別途 RLS バイパス経由）
 - DELETE 禁止（論理削除）
+
+v3.1 縮退注記: is_same_department が Batch 7 で縮退したため、現状は「manager 権限でも自部署全オペレーターの割当閲覧不可」（自分の割当 only）。将来 department 運用確定で再導入時に「マネージャー = 自部署全オペレーター」へ復活。
 
 ### 4.4 SELECT ビュー: 通常オペレーター向けサマリ（Soil + Tree 結合）
 
@@ -442,6 +458,15 @@ WHERE h.source = 'filemaker';  -- Soil 側で source 列を追加、FM 投入時
 | Soil 既存構造調査と Tree 側接続点整備 | 1h |
 | migration を dev で 3 往復 + seed データ投入 | 1h |
 | **合計** | **0.9d**（約 9h）|
+
+---
+
+## 12. 改訂履歴
+
+| 日付 | 版 | 改訂内容 | 担当セッション |
+|---|---|---|---|
+| 2026-04-25 | v1.0（初版）| Phase D-01 schema migration spec 起草（テーブル 3 / RLS 4 階層 / Trigger 6 / VIEW 2）| a-auto / Batch 9 |
+| 2026-05-11 | v1.1 | §4.1 / §4.2 / §4.3 RLS ポリシー改訂: `is_same_department()` 縮退対応で「マネージャー = 自部署絞込」を「自分担当 only」に縮退。Batch 7 (PR #154) 採用に伴う措置。将来 department 運用確定で再導入時に「自部署絞込」へ復活予定。確定経緯: main- No. 233（→ a-root-002）→ root-002-38（Batch 7 縮退）→ main- No. 238（→ a-tree-002、本 spec 改訂依頼）| a-tree-002 |
 
 ---
 
