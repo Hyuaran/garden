@@ -82,6 +82,20 @@ Garden Forest の各 tab で表示される数値は、現時点（5/11）では
 | 3. Root への投入 | 抽出データを新規テーブルに投入 |
 | 4. Forest UI 改修 | hardcoded → Root API 経由取得 + ミラー表示 |
 
+##### Root primary 保管対象テーブル例 + 取引先 / 外注先連携例（v1.1 追加、audit-001- No. 12 観点 5 起源）
+
+Root primary 保管対象テーブルと Forest 表示先 + 取引先（root_partners）/ 外注先（root_vendors）連携の具体例:
+
+| Root テーブル | Forest 表示先 | 連携例 |
+|---|---|---|
+| root_financial_kpi | tab-2 KPI ダッシュボード | 全社 KPI（売上 / 利益 / コスト等）|
+| root_bank_balance | tab-3 cashflow | 銀行残高履歴 |
+| root_payable_receivable | tab-3 cashflow | 売掛・買掛残高 |
+| **root_partners 連携**（project_partners_vs_vendors_distinction 参照）| tab-2 / tab-4 | **取引先別 KPI**（取引先別売上 / 損益 / 商流別 ROI / 上位店ランキング）|
+| **root_vendors 連携**（同上）| tab-4 損益管理 | **外注先別損益管理**（外注先別売上原価 / 利益率 / 傘下店ランキング）|
+
+→ Root が取引先 / 外注先マスタを primary 保管している前提で、Forest は集約 KPI 表示 + 取引先 / 外注先別の細分化集計を担当。
+
 #### tab 別状態（5/11 時点、推定込で東海林さん最終確認推奨）
 
 | tab | 内容 | 現状 | 本番方針 |
@@ -92,10 +106,11 @@ Garden Forest の各 tab で表示される数値は、現時点（5/11）では
 | tab-4 | 損益管理 | mock | Root ミラー |
 | tab-5 | 税務カレンダー | 一部実データ | 実データ Root 移行 → ミラー |
 | tab-6 | 派遣資産要件 | mock | Root ミラー |
-| tab-7 | 決算資料 ZIP | 一部実データ | 実データ Root 移行 → ミラー or Storage 移行（project_forest_files_in_google_drive と統合検討）|
+| tab-7-a | 決算資料 PDF / ZIP（ファイル系）| 一部実データ（Google Drive 保管中）| **Storage 移行**（Google Drive → Supabase Storage、project_forest_files_in_google_drive 参照、ファイル系統合検討）|
+| tab-7-b | 決算 KPI / 月次推移（数値系）| 一部実データ（garden-forest_v9.html 内 hardcoded）| **Root 移行 → ミラー**（root_financial_kpi 経由、数値系統合）|
 | tab-8 | 経営ダッシュボード | mock | Root ミラー |
 
-注: tab 一覧 / 状態は a-analysis 推定込、東海林さん最終確認 + a-forest-002 / a-root-002 セッションでの実態確認推奨。
+注: tab 一覧 / 状態 / **実 tab 数（garden-forest_v9.html との整合）** は a-analysis 推定込、東海林さん最終確認 + a-forest-002 / a-root-002 セッションでの実態確認推奨。実 tab 数が garden-forest_v9.html と異なる場合（tab 追加 / 削除 / 名称変更等）、当該行を v1.2 以降で更新（audit-001- No. 12 観点 2 起源）。
 
 #### 本番実装フェーズ
 
@@ -113,7 +128,7 @@ Garden Forest の各 tab で表示される数値は、現時点（5/11）では
 |---|---|
 | a-root-002 | Root 新規テーブル設計 + 実データ投入 |
 | a-forest-002 | Forest UI 改修（hardcoded → Root API ミラー化）|
-| a-bloom-006 / a-bud-002 等 | 同じ Root データの並列参照実装（Forest と独立だが同一ソース）|
+| a-bloom-006 / a-bud-002 等 | 同じ Root データの並列参照実装（Forest と独立だが同一ソース）。**時系列**: Root 新規テーブル投入完了後、Forest UI 改修と並行して並列参照実装着手可（Forest 完了待ちではなく、Root 投入完了で並列開始可能、audit-001- No. 12 観点 4 起源）|
 | a-main-NNN | 横断調整、進捗巡回 |
 | a-analysis-001 / a-audit-001 | 設計妥当性 critique（必要時）|
 
@@ -128,6 +143,7 @@ Garden Forest の各 tab で表示される数値は、現時点（5/11）では
 #### 改訂履歴
 
 - 2026-05-11 11:30 v1 ドラフト初版（a-analysis-001、main- No. 232 起源、東海林さん明示仕様情報）
+- 2026-05-11 12:00 v1.1 軽微改善反映（a-analysis-001、audit-001- No. 12 改善 4 件起源、main- No. 239 GO）: 観点 2 実 tab 数整合確認注記強化 / 観点 4 並列参照実装の時系列明示 / 観点 5 Root primary 保管対象テーブル + 取引先・外注先連携例追加 / audit 独立 tab-7 ファイル系 vs 数値系分離（tab-7-a / tab-7-b）
 
 ---
 
