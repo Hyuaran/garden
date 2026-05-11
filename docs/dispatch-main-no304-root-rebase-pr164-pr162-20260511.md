@@ -1,15 +1,10 @@
 ~~~
-# main- No. 304 → a-root-003
+🔴 main- No. 304
+【a-main-023 から a-root-003 への dispatch（PR #163 merge 完了 + bloom-006 # 18 全採用推奨 + PR #164 / #162 rebase 依頼 + Task 2 着手 GO ルート）】
+発信日時: 2026-05-11(月) 18:50
 
-発信日時: 2026-05-11 09:15
-発信元: a-main-023
-投下先: a-root-003
-緊急度: 🔴 高
-添付: なし（PR URL のみ）
-種別: PR merge 通知 + rebase 依頼 + 再 review 判断 + 設計判断採択
-関連: bloom-006 # 18 batch review / PR #163 merged / PR #164 + #162 CONFLICTING
-
----
+# 件名
+🔴 PR #163 (Task 4 RLS template) 09:00:16Z merge 完了 + bloom-006 # 18 全 3 PR 採用推奨 + PR #164 / #162 CONFLICTING → a-root-003 rebase 依頼 + merge 順序 # 163 ✅ → # 162 → # 164 → Task 2 着手 GO + Task 5 ハードコード採用 + spec 追記 + critical path ③ ログイン統一 5/13 完成見込み維持
 
 ## TL;DR（30 秒で読む）
 

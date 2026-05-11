@@ -19,10 +19,12 @@
 ---
 
 ~~~
+🟡 main- No. 306
+【a-main-023 から a-bud-002 への dispatch（# 47-ack 確認事項 1 件回答 + Phase D-3/4/5 名称確定 = Bank + Shiwakechou 両方並行 + apply 中作業優先度）】
+発信日時: 2026-05-11(月) 18:50
 
-# 【横断セッション(a-main)からの共有】to: a-bud-002
-
-発信日時: 2026-05-11 18:50
+# 件名
+🟡 bud # 47-ack 確認事項 1 件 回答 = Phase D-3/4/5 名称 = 可能性 A (Bank 後続) + 可能性 B (Shiwakechou 後続) 両方並行採択 + apply 中 (18:40-19:30) 作業優先度 = peripheral 即時対応 / spec 詳細化 OK / src + migrations 待機 + apply 完了後 (19:30) 次タスク = Bank + Shiwakechou 後続 spec 詳細化 + 5/14 以降実装スケジュール
 発信元: a-main-023
 dispatch 番号: main- No. 306
 緊急度: 🟡 中

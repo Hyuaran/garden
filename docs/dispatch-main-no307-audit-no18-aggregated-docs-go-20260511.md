@@ -1,14 +1,10 @@
 ~~~
-# main- No. 307 / to: a-audit-001 / 緊急度: 🔴 高
+🔴 main- No. 307
+【a-main-023 から a-audit-001 への dispatch（# 18 採否 4 件 全 GO + 集約 docs commit + push 即実行 + apply 漏れ 87.1% 対応スケジュール確定）】
+発信日時: 2026-05-11(月) 18:40
 
-発信日時: 2026-05-11 18:40
-発信元: a-main-023
-投下先: a-audit-001
-件名: audit # 18 採否 4 件 全 GO + 集約 docs commit + push 即実行 GO + apply 漏れ 87.1% 対応スケジュール確定
-添付: なし (集約 docs は a-audit-001 ローカル `docs/audit-migration-apply-status-all-modules-20260511.md` を参照)
-関連: main- No. 304 (audit # 17 受領) / main- No. 295 (apply 漏れ 80% 報告) / audit # 18 (# 300 全節完走報告)
-
----
+# 件名
+🔴 audit # 18 採否 4 件 全 GO 通知 + 集約 docs commit + push 即実行 GO + apply 漏れ 80% → 87.1% への補正 受領 + 致命 5 件修復順序 採用 + 5/11 中 Bud Phase D 13 件 + soil_call_history rename 先行修復進行中 + 5/12 朝 集約 docs review + Soil/Tree/Leaf/Root 修復戦略議論 + v1.1 拡張 cross-check は中期判断
 
 ## A. audit # 18 採否 4 件 全 GO 通知
 

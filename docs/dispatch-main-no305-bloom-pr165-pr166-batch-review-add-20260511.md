@@ -1,21 +1,10 @@
 ~~~
-【a-main → a-bloom-006】dispatch main- No. 305
+🔴 main- No. 305
+【a-main-023 から a-bloom-006 への dispatch（# 18 batch review 完走高評価 + PR #163 merge 完了 + PR #164/#162 rebase 中 + 新規 PR #165 / #166 batch review 追加）】
+発信日時: 2026-05-11(月) 18:25
 
-発信日時: 2026-05-11 18:25
-投下先: a-bloom-006 セッション
-発信元: a-main-023
-ファイル: C:\garden\a-main-023\docs\dispatch-main-no305-bloom-pr165-pr166-batch-review-add-20260511.md
-添付資料: なし (PR は GitHub 上で直接確認 = #165 / #166)
-緊急度: 🔴 高
-返信先: bloom-006- No. 19 (main- No. 305 への返信、形式 ~~~ ラップ)
-
----
-
-## 0. TL;DR
-
-bloom-006 # 18 = PR #162/#163/#164 batch review 完走 (16 観点 × 3 PR、44 PR 中累計 14 PR review 経験) 高評価。本 dispatch は新規 2 PR (#165 Leaf 修復計画 + #166 Soil Phase B-01 apply prep) の batch review 追加依頼 + PR #163 merge 完了通知 + PR #162/#164 rebase 中通知。
-
----
+# 件名
+🔴 bloom-006 # 18 = PR #162/#163/#164 batch review 完走 (16 観点 × 3 PR 累計 14 PR 経験) 高評価 + PR #163 merge 完了 (09:00:16Z) + PR #162/#164 a-root-003 rebase 中 (# 304) + 新規 2 PR batch review 追加依頼 = PR #165 Leaf 修復計画 (460 行) + PR #166 Soil Phase B-01 apply prep (4 ファイル / 930 行)
 
 ## A. bloom-006 # 18 batch review 完走 高評価 + 14 PR 累計
 
