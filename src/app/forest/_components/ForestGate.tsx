@@ -1,42 +1,27 @@
 "use client";
 
 /**
- * Forest 認証ゲート — redirect-only shell (2026-05-11、Task 1)
+ * Forest 認証ゲート — ModuleGate ラッパー (2026-05-11、Task 3)
  *
- * 旧 ForestGate (社員番号 + パスワードフォーム) は
- * ForestGate.legacy-20260511.tsx に保管。
+ * IN-4 準拠: Task 1 で .legacy-20260511.tsx に rename 済のため本 Task では rename しない。
+ * Task 1 で作成した redirect-only shell から ModuleGate ラッパーへ書き換え。
  *
- * 本ファイルは Garden Series 統一ログイン画面 /login への redirect のみを行う
- * 薄いシェル。Task 3 で ModuleGate ラッパー化される予定。
+ * 旧本格実装は ForestGate.legacy-20260511.tsx に保管。
  *
- * 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 1 §Step 4
+ * 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 3 §Step 3-4
  */
 
-import { useEffect } from "react";
+import type { ReactNode } from "react";
 
-import { FOREST_THEME } from "../_constants/theme";
+import { ModuleGate } from "../../_components/ModuleGate";
 
-export function ForestGate() {
-  useEffect(() => {
-    const current =
-      typeof window !== "undefined"
-        ? window.location.pathname + window.location.search
-        : "/forest/dashboard";
-    window.location.replace(`/login?returnTo=${encodeURIComponent(current)}`);
-  }, []);
-
+export function ForestGate({ children }: { children?: ReactNode }) {
+  // loginPath="/forest/login" stub 経由で /login?returnTo= に到達（ブックマーク互換）
+  // children は optional（legacy file `forest/login/page.legacy-20260511.tsx` が
+  // `<ForestGate />` 形式で呼ぶ後方互換のため）
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: FOREST_THEME.loginBackground,
-        fontFamily: "'Noto Sans JP', sans-serif",
-      }}
-    >
-      <p style={{ color: "#fff" }}>ログインページに移動しています…</p>
-    </div>
+    <ModuleGate module="forest" loginPath="/forest/login">
+      {children}
+    </ModuleGate>
   );
 }
