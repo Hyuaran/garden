@@ -7,7 +7,7 @@
 
 ## 現在の counter
 
-dispatch counter: **224**（次の起草番号、`docs/dispatch-counter.txt` と同期）
+dispatch counter: **242**（次の起草番号、`docs/dispatch-counter.txt` と同期）
 
 ---
 
@@ -15,6 +15,24 @@ dispatch counter: **224**（次の起草番号、`docs/dispatch-counter.txt` と
 
 | # | 番号 | 起草日時 | 投下先 | 状態 | 完了報告 |
 |---|---|---|---|---|---|
+| - | main- No. 241 | 2026-05-11 11:41 | a-bloom-006 | 起草済（未投下）（PR #154 cross-rls-helpers レビュー依頼） | ❌ 未投下 |
+| - | main- No. 240 | 2026-05-11 11:41 | a-audit-001 | 起草済（未投下）（違反 10 再発防止策 5 件 critique 依頼） | ❌ 未投下 |
+| - | main- No. 239 | 2026-05-11 11:41 | a-analysis-001 | 起草済（未投下）（Root → Forest ミラー memory 軽微改善 4 件反映） | ❌ 未投下 |
+| - | main- No. 238 | 2026-05-11 11:41 | a-tree-002 | 起草済（未投下）（Tree D-01 spec §4.1 改訂依頼（is_same_department 縮退）） | ❌ 未投下 |
+| - | main- No. 237 | 2026-05-11 11:41 | claude.ai chat（Garden UI 021） | 起草済（未投下）（forest-html-15 配置完了 + tab-3 起草着手 GO） | ❌ 未投下 |
+| - | main- No. 236 | 2026-05-11 11:36 | claude.ai chat（Garden UI 021） | 起草済（東海林さん直接送信済の追認）（forest-html-14 受領 + GO 正式記録（dispatch 起草怠慢訂正）） | ❌ 未投下 |
+| - | main- No. 235 | 2026-05-11 11:26 | a-audit-001 | 起草済（未投下）（Root → Forest ミラー memory critique 依頼） | ❌ 未投下 |
+| - | main- No. 234 | 2026-05-11 11:26 | a-analysis-001 | 起草済（未投下）（audit 提案 6 件 採用 + memory + governance 改訂案起草） | ❌ 未投下 |
+| - | main- No. 233 | 2026-05-11 11:26 | a-root-002 | 起草済（未投下）（Batch 7 3 関数決裁 + migration 起草指示） | ❌ 未投下 |
+| - | main- No. 232 | 2026-05-11 11:13 | a-analysis-001 | 起草済（未投下）（Root → Forest ミラー仕様 memory 化提案） | ❌ 未投下 |
+| - | main- No. 231 | 2026-05-11 11:06 | claude.ai chat（Garden UI 021） | 起草済（未投下）（tab-3 データバグ修正 パターン B + Root ミラー仕様補足） | ❌ 未投下 |
+| - | main- No. 230 | 2026-05-11 10:56 | a-root-002 + a-soil-002 + a-bud-002 | 起草済（未投下）（Batch 7 関数 横断調査 3 セッション分担） | ❌ 未投下 |
+| - | main- No. 229 | 2026-05-11 10:56 | a-tree-002 | 起草済（未投下）（worktree B 承認 + Batch 7 関数横断調査主導 + plan v3.1 GO） | ❌ 未投下 |
+| - | main- No. 228 | 2026-05-11 10:56 | a-audit-001 | 起草済（未投下）（違反 10 候補 事故報告 + 再発防止策依頼） | ❌ 未投下 |
+| - | main- No. 227 | 2026-05-11 10:56 | a-review | 起草済（未投下）（review-11 訂正評価 + 実描画確認必須） | ❌ 未投下 |
+| - | main- No. 226 | 2026-05-11 10:56 | claude.ai chat（Garden UI 021） | 起草済（未投下）（緊急構造修正 tab-2+tab-3 共通 CSS 不整合） | ❌ 未投下 |
+| - | main- No. 225 | 2026-05-11 10:44 | a-analysis-001 | 起草済（未投下）（v5.2 改善 1 案 A 採用 + 完全版 v4 .md 発行へ移行） | ❌ 未投下 |
+| - | main- No. 224 | 2026-05-11 10:44 | a-review | 起草済（未投下）（tab-3 cashflow forest-html-11 視覚評価依頼） | ❌ 未投下 |
 | - | main- No. 223 | 2026-05-11 10:35 | a-tree-002 | 起草済（未投下）（急務 3 件確定 GO + Phase D 着手前提条件クリア + worktree 増設判断） | ❌ 未投下 |
 | - | main- No. 222 | 2026-05-11 10:27 | a-analysis-001 | 起草済（未投下）（v5.2 軽微改善 3 件反映依頼 + 当事者バイアス警告 + 即時反映） | ❌ 未投下 |
 | - | main- No. 221 | 2026-05-11 10:27 | claude.ai chat（Garden UI 021） | 起草済（未投下）（tab-3 cashflow 起草 + 共通テンプレート抽出計画） | ❌ 未投下 |
@@ -107,6 +125,42 @@ dispatch counter: **224**（次の起草番号、`docs/dispatch-counter.txt` と
 ## 改訂履歴
 
 - 2026-05-09 18:30 初版（a-main-017、ガンガン投下漏れ防止）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
