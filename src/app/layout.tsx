@@ -10,6 +10,7 @@ import {
 import "./globals.css";
 import { ShojiStatusProvider } from "../components/shared/ShojiStatusContext";
 import { ThemeProvider } from "./_lib/theme/ThemeProvider";
+import { AuthProvider } from "./_lib/auth-unified";
 
 // === 既存フォント（維持） ===
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -69,13 +70,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="ja" className={`${fontVariables} h-full antialiased`} data-theme="light">
       <body className="min-h-full flex flex-col">
         {/*
-          v2.8a Step 5: ThemeProvider で wrap
-          - useTheme() / toggleTheme() を全 page から利用可能に
-          - 既存 ShojiStatusProvider は ThemeProvider 内側で維持
+          Provider 階層 (外側 → 内側):
+          - AuthProvider: Garden Series 統一認証（2026-05-11、Task 1）
+          - ThemeProvider: useTheme() / toggleTheme() を全 page から利用可能に
+          - ShojiStatusProvider: 既存
+
+          AuthProvider を最外側に置くことで、ThemeProvider / ShojiStatusProvider
+          内部でも useAuthUnified() が利用可能になる。
         */}
-        <ThemeProvider>
-          <ShojiStatusProvider>{children}</ShojiStatusProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <ShojiStatusProvider>{children}</ShojiStatusProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

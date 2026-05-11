@@ -1,57 +1,66 @@
 "use client";
 
 /**
- * Forest ログインページ (/forest/login)
+ * Forest login redirect stub (2026-05-11、Task 1)
  *
- * 状態に応じて表示を切り替える:
- *  1. loading → スピナー
- *  2. ゲート通過済み → dashboard にリダイレクト
- *  3. 未認証 or ゲート未通過 → ForestGate（ログインフォーム）
+ * 旧 /forest/login (社員番号 + パスワードフォーム) は
+ * page.legacy-20260511.tsx に保管。
  *
- * AccessDenied は「認証成功したが forest_users に登録されていない」
- * 特殊ケース向け。signInForest が権限なしを検出した時点で signOut されるため、
- * 通常はこのページでは表示されない（エラーメッセージで代替）。
+ * 本ファイルは Garden Series 統一ログイン画面 /login への redirect stub。
+ * returnTo は /forest/dashboard を既定とし、既存ブックマーク互換のために残置。
+ *
+ * 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 1 §Step 5
  */
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
-import { ForestGate } from "../_components/ForestGate";
 import { FOREST_THEME } from "../_constants/theme";
-import { useForestState } from "../_state/ForestStateContext";
 
-export default function ForestLoginPage() {
-  const router = useRouter();
-  const { loading, isUnlocked } = useForestState();
+const DEFAULT_RETURN_TO = "/forest/dashboard";
+
+function ForestLoginRedirect() {
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (!loading && isUnlocked) {
-      router.replace("/forest/dashboard");
-    }
-  }, [loading, isUnlocked, router]);
+    const returnTo = searchParams.get("returnTo") ?? DEFAULT_RETURN_TO;
+    const reason = searchParams.get("reason");
+    const qs = new URLSearchParams({ returnTo });
+    if (reason) qs.set("reason", reason);
+    window.location.replace(`/login?${qs.toString()}`);
+  }, [searchParams]);
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: FOREST_THEME.loginBackground,
-          color: "#fff",
-          fontFamily: "'Noto Sans JP', sans-serif",
-          fontSize: 14,
-        }}
-      >
-        読み込み中...
-      </div>
-    );
-  }
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: FOREST_THEME.loginBackground,
+        color: "#fff",
+        fontFamily: "'Noto Sans JP', sans-serif",
+        fontSize: 14,
+      }}
+    >
+      ログインページに移動しています…
+    </div>
+  );
+}
 
-  if (isUnlocked) {
-    return null; // useEffect でリダイレクト中
-  }
-
-  return <ForestGate />;
+export default function ForestLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: "100vh",
+            background: FOREST_THEME.loginBackground,
+          }}
+        />
+      }
+    >
+      <ForestLoginRedirect />
+    </Suspense>
+  );
 }
