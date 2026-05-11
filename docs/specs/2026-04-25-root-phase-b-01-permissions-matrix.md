@@ -511,3 +511,34 @@ BEFORE INSERT OR UPDATE で `NEW.updated_by := auth.uid(); NEW.updated_at := now
 ---
 
 — end of Root B-1 spec —
+
+---
+
+## 追記: super_admin 編集 UI 禁止 + ハードコード採択 (2026-05-11、main- No. 304 §E 採択)
+
+### 設計方針: ハードコード採択
+
+**`super_admin = 東海林さん本人 1 名（employee_number=0008）`を SQL / コード / spec に直書き、UI / root_settings から動的変更不可。**
+
+- garden_role 編集 UI を実装する際は `GARDEN_ROLE_SELECTABLE_OPTIONS`（`src/app/root/_constants/types.ts`）を使用し、super_admin を selectable から除外
+- DB 側でも `scripts/garden-super-admin-lockdown.sql` の trigger 2 件（UPDATE / INSERT block）+ service_role バイパスのみで block
+- root_settings からの動的閾値変更は **本ポリシー対象外**（admin 以下の閾値のみ対象）
+
+### 採択理由
+
+1. memory `project_super_admin_operation.md` で「super_admin 操作 = 東海林さん本人専任」が恒久確定
+2. 可変化は admin → super_admin 昇格事故リスク（B 案では admin が super_admin を作れてしまう）
+3. memory `project_configurable_permission_policies.md`「権限ポリシー設定変更可能設計」は **admin 以下の閾値が対象**、super_admin 自体は別ポリシー
+4. ハードコード化で audit log の明確性向上
+
+### Phase B-1 実装時の遵守事項
+
+- `GARDEN_ROLE_SELECTABLE_OPTIONS` 配列に super_admin を追加しない
+- admin UI からの super_admin 昇格機能を実装しない
+- 既存 super_admin（employee_number=0008）の garden_role を UI から変更可能にしない
+
+### 関連 memory / 詳細
+
+- memory `project_super_admin_operation` - super_admin 操作 = 東海林さん本人専任の恒久ルール
+- memory `project_configurable_permission_policies` - 権限ポリシー設定変更可能設計（admin 以下対象）
+- 詳細: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md Task 5
