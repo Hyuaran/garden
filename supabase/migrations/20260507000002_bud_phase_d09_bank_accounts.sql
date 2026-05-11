@@ -280,7 +280,7 @@ create or replace view public.view_bud_active_employee_accounts as
 select
   e.employee_id,
   e.employee_number,
-  e.last_name || ' ' || e.first_name as full_name,
+  e.name as full_name,
   eba.id as bank_account_id,
   eba.bank_code,
   eba.bank_name,
