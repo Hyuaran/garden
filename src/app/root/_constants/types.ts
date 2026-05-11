@@ -212,6 +212,36 @@ export const GARDEN_ROLE_ORDER: GardenRole[] = [
   "super_admin",
 ];
 
+/**
+ * garden_role 編集 UI で selectable な選択肢（super_admin を除外、7 件）。
+ *
+ * super_admin は東海林さん本人専任のため、UI からの昇格・降格は禁止。
+ * DB 側でも `scripts/garden-super-admin-lockdown.sql` の trigger 2 件で block 済。
+ *
+ * 仕様:
+ *   - memory project_super_admin_operation.md
+ *   - docs/specs/plans/2026-05-11-garden-unified-auth-plan.md Task 5
+ */
+export const GARDEN_ROLE_SELECTABLE_OPTIONS: Array<{ value: GardenRole; label: string }> = [
+  { value: "toss",      label: GARDEN_ROLE_LABELS.toss },
+  { value: "closer",    label: GARDEN_ROLE_LABELS.closer },
+  { value: "cs",        label: GARDEN_ROLE_LABELS.cs },
+  { value: "staff",     label: GARDEN_ROLE_LABELS.staff },
+  { value: "outsource", label: GARDEN_ROLE_LABELS.outsource },
+  { value: "manager",   label: GARDEN_ROLE_LABELS.manager },
+  { value: "admin",     label: GARDEN_ROLE_LABELS.admin },
+  // super_admin は意図的に除外（project_super_admin_operation.md）
+];
+
+/**
+ * super_admin lock が有効か。
+ *
+ * 現在は常時 true。将来 root_settings 経由で override 可能化する余地を残す（Phase B-2）。
+ */
+export function isSuperAdminLockEnabled(): boolean {
+  return true;
+}
+
 /** 指定ロールが基準ロール以上の権限を持つか（階層比較） */
 export function isRoleAtLeast(target: GardenRole, baseline: GardenRole): boolean {
   return GARDEN_ROLE_ORDER.indexOf(target) >= GARDEN_ROLE_ORDER.indexOf(baseline);
