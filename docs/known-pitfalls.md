@@ -495,3 +495,150 @@ $$ LANGUAGE sql STABLE;
 |---|---|---|
 | 2026-04-24 | a-main | 初版作成。#1 timestamptz 空文字、#2 RLS anon 流用、#3 空オブジェクト insert の3件を収録 |
 | 2026-04-25 | a-root | #4 KoT IP制限 / #5 Vercel Cron+Fixie / #6 garden_role CHECK / #7 KoT date形式 / #8 deleted_at vs is_active の Root 知見 5 件追加 |
+| 2026-05-07 | a-main-014 | #9 PR 消失（C 垢移行）/ #10 vitest junction node_modules / #11 Vercel /bloom Forest 表示混乱 / #12 dispatch workspace 散在 / #13 RTK name collision の 5/4-7 知見 5 件追加 |
+
+---
+
+## #9: GitHub アカウント停止連鎖時の PR 消失（C 垢移行で発生）
+
+### 何が起きたか
+
+5/4-5/7 のガンガン作業中、東海林さん A 垢 + B 垢が GitHub から停止された（連鎖 ban）。Hyuaran Team プラン + C 垢に移行したが、移行前に発行済の PR（a-soil #101 / a-tree #109/#110）が **消失**。
+- ブランチは残っているが PR は GitHub UI から完全消失
+- gh pr view では「not found」
+- gh pr list でも非表示
+
+### 教訓
+
+- アカウント停止前に発行した PR は復活不可
+- PR 番号は新規発行で取り直し（飛び番号で運用継続）
+- ブランチが残っていれば内容は保持、PR を **新規発行** で代替
+
+### 予防策
+
+- ⚠️ アカウント停止リスクが見えた時点で:
+  - 既存 PR の URL + 番号を docs/ に backup
+  - PR body 全文を docs/ に backup（GitHub Web UI 順番ずれ防止 memory も参照）
+- 停止後は新 PR 発行前に「-v2」prefix 等で識別（過去事故: 幽霊 PR + -v2 workaround）
+
+### 参考
+
+- PR 消失したファイル: a-soil #101 → 新規 PR #127（A 案、a-soil パターン）
+- a-tree #109/#110 → 新規 PR 発行依頼済（main- No. 90、a-tree A 案承認）
+- memory: `feedback_github_pr_operations_lessons.md`
+- memory: `project_github_account_crisis_20260427.md`
+
+---
+
+## #10: vitest 環境（junction-linked node_modules で見つからず）
+
+### 何が起きたか
+
+a-bloom-004 が junction-linked node_modules（C:\garden\_shared\node_modules → 各セッションへ junction）で:
+- `npx vitest` → command not found
+- `./node_modules/.bin/vitest` → ENOENT
+- `npm run test:run` → 出力が見えない（PowerShell stdout buffering?）
+
+→ tests を実行できず、5/7 木曜の Phase A-2.1 Task 1-10 完走後の検証で苦戦。
+
+### 教訓
+
+- junction-linked node_modules は Windows 特有の罠
+- Vitest binary は junction を経由すると見つけにくい
+- `npm run test:run` の出力が PowerShell で消えるケースがある（buffering）
+
+### 予防策
+
+- a-bud / a-soil の package.json + vitest.config.ts を参考に設定揃える（5/7 時点で 305 + 46 = 351 tests 動作中）
+- junction の解消も検討（直接 node_modules を持つ）
+- PowerShell では `npm run test:run | Out-Host` で強制 stdout flush
+
+### 参考
+
+- a-bloom-004 で苦戦判断（bloom-004- No. 50）→ 5/8 朝に a-bud / a-soil 設定参照で調査予定
+
+---
+
+## #11: Vercel /bloom 全画面が「Garden Forest」表示で混乱（5/8 デモ延期の引き金）
+
+### 何が起きたか
+
+5/7 17:00 頃、東海林さん Vercel `garden-chi-ochre.vercel.app/bloom/*` を確認中、全画面のヘッダーが「Garden Forest」表示になっていた。
+- /bloom/top → Garden Forest 表示
+- /bloom/workboard → Garden Forest 表示
+- /bloom/ceo-status → Garden Forest 表示
+
+→ 後道さんデモで「これ Bloom じゃないの?」となるリスクが顕在化、5/8 → 5/14-16 デモ延期決定。
+
+### 教訓
+
+- 認証統一 + role 別振分けが未実装な状態で、各モジュールの ヘッダー / メタデータ が混在する
+- Vercel preview と本番で同じ問題、共通レイアウトの整備不足
+
+### 予防策
+
+- 認証統一 Phase A（a-root-002 5/9 朝着手 + 5/10 集約役）で /login → role 別振分け → garden-home → 各モジュール完成必須
+- 5/13 統合テストで 12 モジュール × 主要画面の HTTP 200 + 表示確認必須
+- Demo 前 24h は localhost + Vercel 両方で全画面の世界観統一確認
+
+### 参考
+
+- 5/14-16 デモリハ: docs/demo-rehearsal-garden-20260514-16.md
+- 5/13 統合テスト Plan: docs/superpowers/plans/2026-05-13-garden-series-integration-test-plan.md
+
+---
+
+## #12: dispatch ファイルが workspace/a-main-NNN ブランチに散在（root-002-5 指摘）
+
+### 何が起きたか
+
+a-main-NNN は dispatch（`docs/dispatch-main-no*-*.md`）を `workspace/a-main-NNN` ブランチに push。各モジュールセッションは自モジュール用ブランチにいるため、`develop` や `main` から grep で発見できない。
+
+a-root-002 root-002-5 で指摘:
+> docs/dispatch-main-no83-... は origin/develop および全 remote ブランチに未存在
+
+実際には `workspace/a-main-013` に存在していたが、受信側が NNN を知らないと取得困難。
+
+### 教訓
+
+- workspace ブランチは セッション固有 = 共有ベースとして不適
+- dispatch は 共有ブランチ（develop or main）or 専用ブランチ で集約すべき
+
+### 予防策（解決策設計済）
+
+- 短期 W 案: 5/8 朝 dispatch に取得手順明記（即時適用）
+- 中期 X 案: 5/14-16 デモ後 develop マージ運用切替（推奨）
+- 長期 Y 案: Drive `_chat_workspace/garden-dispatches/` 補助配置
+
+### 参考
+
+- docs/dispatch-sharing-problem-solution-design-20260507.md（4 案比較 + 推奨）
+
+---
+
+## #13: RTK name collision（reachingforthejack/rtk = Rust Type Kit）
+
+### 何が起きたか
+
+RTK = Rust Token Killer（global 64.9% 削減）。同名の reachingforthejack/rtk = Rust Type Kit が誤ってインストールされていると、`rtk gain` が「command not found」または別動作になる。
+
+### 教訓
+
+- 同名 binary（特に Rust 製 CLI）は collision 注意
+- `which rtk` でフルパス確認必須
+
+### 予防策
+
+- インストール後に必ず:
+  ```
+  rtk --version  # Token Killer なら "rtk X.Y.Z" 表示
+  rtk gain       # collision あれば動作異常
+  which rtk      # /c/Users/shoji/.local/bin/rtk が正規パス
+  ```
+- RTK.md（ユーザー global）に「Name collision」警告セクション既存
+
+### 参考
+
+- C:/Users/shoji/.claude/RTK.md
+- main- No. 111 RTK 横断 broadcast（5/7 起草）
+- RTK 横断集計: docs/rtk-cross-modules-aggregation-20260507.md（5/7 時点 5/9 セッション応答済、全員 ✅ 適用済 / 65.1-65.3% 削減）
