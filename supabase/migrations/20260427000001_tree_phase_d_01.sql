@@ -32,8 +32,10 @@
 -- 前提:
 --   - root_employees(employee_number text PK) が存在すること（Garden Root Phase A 完了）
 --   - soil_call_lists / soil_call_histories が存在すること（Garden Soil Phase B 投入済 or 既存 FM 流用）
---   - audit_logs テーブル + cross-rls-audit ヘルパ関数（auth_employee_number / has_role_at_least / is_same_department）
---     が既に投入されていること（spec-cross-rls-audit / spec-cross-audit-log 準拠）
+--   - audit_logs テーブル + cross-rls-audit ヘルパ関数（auth_employee_number / has_role_at_least）
+--     が既に投入されていること（spec-cross-rls-audit / spec-cross-audit-log / Batch 7 PR #154 準拠）
+--   - is_same_department は Batch 7 (PR #154 / root-002-38) で縮退（root_employees.department_id 列なし
+--     + root_departments マスタなし）。本 migration の RLS は「自分担当 only」縮退対応で書き直し済（2026-05-11）
 --   - 上記前提が未投入の場合、本 migration 末尾の DO ブロックで警告を出力する
 --
 -- 適用方法:
@@ -346,8 +348,10 @@ CREATE TRIGGER taa_before_update
 -- ============================================================
 -- 7. RLS ポリシー（4 階層）
 -- ============================================================
--- 前提: spec-cross-rls-audit の auth_employee_number() / has_role_at_least(role text) /
---       is_same_department(employee_number text) が定義済み
+-- 前提: spec-cross-rls-audit / Batch 7 (PR #154) の
+--       auth_employee_number() / has_role_at_least(role text) が定義済み
+-- 注: is_same_department は Batch 7 で縮退、本 RLS は「自分担当 only」（2026-05-11 改訂）
+--     → 将来 department 運用確定で再導入時、「マネージャー = 自部署絞込」へ復活予定
 -- 未定義時は本 migration の §0 DO ブロックで NOTICE が出る
 
 -- 7.1 tree_calling_sessions
@@ -368,9 +372,15 @@ CREATE POLICY tcs_update_self_open ON tree_calling_sessions FOR UPDATE
   USING (employee_id = auth_employee_number() AND ended_at IS NULL)
   WITH CHECK (employee_id = auth_employee_number());
 
--- マネージャー: 自部署の全セッション SELECT
+-- マネージャー: 自分担当 only（is_same_department 縮退対応、2026-05-11 改訂）
+-- 旧: USING (has_role_at_least('manager') AND is_same_department(employee_id))
+-- 新: USING (has_role_at_least('manager') AND employee_id = auth_employee_number())
+-- 縮退理由: Batch 7 (PR #154 / root-002-38) で is_same_department 縮退
+--           （root_employees.department_id 列なし + root_departments マスタなし、Q2 (b) 採用）
+-- 将来再導入条件: department_id 列 + マスタ + 運用ルール確定 → 「自部署絞込」へ復活
+-- 現状の管理者横断 SELECT は admin / super_admin のみ可（§7.1 末尾 tcs_all_admin ポリシー、変更なし）
 CREATE POLICY tcs_select_manager ON tree_calling_sessions FOR SELECT
-  USING (has_role_at_least('manager') AND is_same_department(employee_id));
+  USING (has_role_at_least('manager') AND employee_id = auth_employee_number());
 
 -- admin / super_admin: 全件 SELECT/INSERT/UPDATE/DELETE
 CREATE POLICY tcs_all_admin ON tree_calling_sessions FOR ALL
@@ -400,9 +410,12 @@ CREATE POLICY tcr_update_self_today ON tree_call_records FOR UPDATE
          AND (called_at AT TIME ZONE 'Asia/Tokyo')::date = (now() AT TIME ZONE 'Asia/Tokyo')::date)
   WITH CHECK (employee_id = auth_employee_number());
 
--- マネージャー: 自部署 SELECT、自部署メンバーの当日 UPDATE
+-- マネージャー: 自分担当 only（is_same_department 縮退対応、2026-05-11 改訂）
+-- 旧: USING (has_role_at_least('manager') AND is_same_department(employee_id))
+-- 新: USING (has_role_at_least('manager') AND employee_id = auth_employee_number())
+-- 縮退中は manager 権限でも自部署横断不可、将来 department 運用確定で「自部署全コール」へ復活
 CREATE POLICY tcr_select_manager ON tree_call_records FOR SELECT
-  USING (has_role_at_least('manager') AND is_same_department(employee_id));
+  USING (has_role_at_least('manager') AND employee_id = auth_employee_number());
 
 -- admin / super_admin: 全件 ALL（DELETE は次ポリシーで全 role 拒否、admin も except されない =論理削除のみ運用）
 CREATE POLICY tcr_all_admin ON tree_call_records FOR ALL
@@ -439,14 +452,18 @@ CREATE POLICY taa_update_self_release ON tree_agent_assignments FOR UPDATE
   USING (employee_id = auth_employee_number())
   WITH CHECK (employee_id = auth_employee_number());
 
--- マネージャー: 自部署 SELECT/INSERT/UPDATE
+-- マネージャー: 自分担当 only SELECT/INSERT/UPDATE（is_same_department 縮退対応、2026-05-11 改訂）
+-- 旧: ... is_same_department(employee_id)
+-- 新: ... employee_id = auth_employee_number()
+-- 縮退中は manager 権限でも自部署の他オペレーター割当 SELECT/INSERT/UPDATE 不可
+-- 将来 department 運用確定で「自部署全オペレーター」へ復活
 CREATE POLICY taa_select_manager ON tree_agent_assignments FOR SELECT
-  USING (has_role_at_least('manager') AND is_same_department(employee_id));
+  USING (has_role_at_least('manager') AND employee_id = auth_employee_number());
 CREATE POLICY taa_insert_manager ON tree_agent_assignments FOR INSERT
-  WITH CHECK (has_role_at_least('manager') AND is_same_department(employee_id));
+  WITH CHECK (has_role_at_least('manager') AND employee_id = auth_employee_number());
 CREATE POLICY taa_update_manager ON tree_agent_assignments FOR UPDATE
-  USING (has_role_at_least('manager') AND is_same_department(employee_id))
-  WITH CHECK (has_role_at_least('manager') AND is_same_department(employee_id));
+  USING (has_role_at_least('manager') AND employee_id = auth_employee_number())
+  WITH CHECK (has_role_at_least('manager') AND employee_id = auth_employee_number());
 
 -- admin / super_admin: 全件
 CREATE POLICY taa_all_admin ON tree_agent_assignments FOR ALL
