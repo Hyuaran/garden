@@ -219,7 +219,7 @@ drop policy if exists bps_select_own on public.bud_payroll_attendance_snapshots;
 create policy bps_select_own on public.bud_payroll_attendance_snapshots
   for select
   using (
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
   );
 
 drop policy if exists bps_select_manager_dept on public.bud_payroll_attendance_snapshots;

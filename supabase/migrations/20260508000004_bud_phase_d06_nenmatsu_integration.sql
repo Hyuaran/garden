@@ -344,7 +344,7 @@ create policy yes_select_own on public.bud_year_end_settlements
   for select
   using (
     deleted_at is null
-    and employee_id = public.auth_employee_number()
+    and employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
   );
 
 -- 5.2 SELECT: payroll_calculator / payroll_approver / payroll_auditor は全件

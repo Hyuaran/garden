@@ -141,7 +141,7 @@ drop policy if exists br_select on public.bud_bonus_records;
 create policy br_select on public.bud_bonus_records
   for select
   using (
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
     or public.bud_has_payroll_role()
     or public.bud_is_admin_or_super_admin()
   );

@@ -176,7 +176,7 @@ drop policy if exists pn_select on public.bud_payroll_notifications;
 create policy pn_select on public.bud_payroll_notifications
   for select
   using (
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
     or public.bud_has_payroll_role()
     or public.bud_is_admin_or_super_admin()
   );
@@ -209,10 +209,10 @@ drop policy if exists pn_update_cash_receipt_self on public.bud_payroll_notifica
 create policy pn_update_cash_receipt_self on public.bud_payroll_notifications
   for update
   using (
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
   )
   with check (
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
   );
 
 -- DELETE: 完全禁止（5 年保管、労基法 109 条）
@@ -227,7 +227,7 @@ drop policy if exists ss_select on public.bud_salary_statements;
 create policy ss_select on public.bud_salary_statements
   for select
   using (
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
     or public.bud_has_payroll_role()
     or public.bud_is_admin_or_super_admin()
   );
@@ -247,11 +247,11 @@ drop policy if exists ss_update_download_self on public.bud_salary_statements;
 create policy ss_update_download_self on public.bud_salary_statements
   for update
   using (
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
     or public.bud_is_admin_or_super_admin()
   )
   with check (
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
     or public.bud_is_admin_or_super_admin()
   );
 

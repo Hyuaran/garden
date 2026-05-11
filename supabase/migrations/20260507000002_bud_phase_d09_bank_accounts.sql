@@ -83,7 +83,7 @@ create policy repr_select on public.root_employee_payroll_roles
   for select
   using (
     -- 自分のロール
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
     -- または admin+ （main- No. 327 縮退）
     or public.has_role_at_least('admin')
   );
@@ -122,7 +122,7 @@ as $$
   select exists (
     select 1
     from public.root_employee_payroll_roles epr
-    where epr.employee_id = public.auth_employee_number()
+    where epr.employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
       and epr.is_active = true
       and (roles is null or epr.role = any(roles))
   );
@@ -313,7 +313,7 @@ drop policy if exists eba_select on public.bud_employee_bank_accounts;
 create policy eba_select on public.bud_employee_bank_accounts
   for select
   using (
-    employee_id = public.auth_employee_number()
+    employee_id = (select employee_id from public.root_employees where employee_number = public.auth_employee_number() and is_active = true limit 1)
     or public.bud_has_payroll_role()                  -- いずれかの payroll_* ロール
     or public.bud_is_admin_or_super_admin()
   );
