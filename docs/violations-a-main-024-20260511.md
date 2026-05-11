@@ -12,12 +12,14 @@
 
 handoff `docs/handoff-a-main-023-to-024-20260511.md` §5 参照。再記載省略。
 
-### 024 期 (2 件、本 docs で新規記録)
+### 024 期 (4 件、本 docs で新規記録)
 
 | # | 違反 | 該当 memory | 状況 | 対処 |
 |---|---|---|---|---|
 | 21 | handoff §11「5/12 朝着手」を機械的踏襲 → ガンガン本質「5h フル + 東海林作業時間無視」違反 | `feedback_gangan_mode_default` v3 | 東海林さん指摘「明日にしてる理由ある？」で覚醒 | dispatch # 332 / # 333 を「5/11 中夜間 or 5/12 朝 セッション側判断」に変更 |
-| 22 | dispatch # 331-333 v5 規格違反（ファイル名 + 「## 投下用短文」見出し + ~~~ ラップ + A-G 構成 + self-check 形式すべて崩し）| `feedback_dispatch_header_format` v5 | 東海林さん指摘「dispatch 書き方変わった？」で発覚 | 3 ファイル rename + 中身 rewrite + commit + push（21:55→22:10）|
+| 22 | dispatch # 331-333 v5 規格違反（ファイル名 + 「## 投下用短文」見出し + ~~~ ラップ + A-G 構成 + self-check 形式すべて崩し）| `feedback_dispatch_header_format` v5 | 東海林さん指摘「dispatch 書き方変わった？」で発覚 | 3 ファイル rename + 中身 rewrite + commit + push |
+| 23 | dispatch # 331-333 起草時刻自己推測（実時刻 21:00 を「21:35」「21:55」と未来時刻記述、50 分先取り）| `feedback_verify_before_self_critique` / 023 期 # 10 + # 12 再発 | 東海林さん指摘「Garden Root の発信時間がおかしい」+ root-003 No. 63-ack 22:00 時刻で違和感 → powershell.exe Get-Date 取得で実時刻 21:05 判明 | # 331-333 起草時刻 21:00 訂正 + commit + push |
+| 24 | dispatch # 333 §B 表 PR 番号 + Task 名すべて transcription error（5 行全件誤、PR 番号が逆順）| `feedback_check_existing_impl_before_discussion` v2 / `feedback_verify_before_self_critique` | root-003 No. 63-ack §C で 5 件すべて訂正指摘 → gh pr view 162-168 で root 指摘 100% 正解確認 | # 333 §B 表訂正（root 指摘採用）+ commit + push |
 
 ---
 

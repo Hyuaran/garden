@@ -3,7 +3,7 @@
 > 起草: a-main-024
 > 用途: Bud Phase D apply v2-v5 モグラ叩き終結のため全件 root_employees 参照 cross-check + 一括修正 → 5/12 中本番運用着地 → MFC 解約路 critical path
 > 番号: main- No. 332
-> 起草時刻: 2026-05-11(月) 21:55
+> 起草時刻: 2026-05-11(月) 21:00（実時刻訂正、旧記載「21:55」は自己推測違反 # 23 修正）
 
 ---
 
@@ -12,7 +12,7 @@
 ~~~
 🔴 main- No. 332
 【a-main-024 から a-bud-002 への dispatch（Phase D 全件 cross-check + 一括修正、MFC 解約路 critical、ガンガン本質 5/11 中夜間着手歓迎）】
-発信日時: 2026-05-11(月) 21:55
+発信日時: 2026-05-11(月) 21:00
 
 # 件名
 🔴 Bud Phase D 全件 root_employees cross-check + 一括修正（5/12 中本番運用 → MFC 解約路 critical、5/11 中夜間 or 5/12 朝着手 Bud 側判断）
