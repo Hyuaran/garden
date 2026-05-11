@@ -15,8 +15,10 @@ import type { ReactNode } from "react";
 
 import { ModuleGate } from "../../_components/ModuleGate";
 
-export function ForestGate({ children }: { children: ReactNode }) {
+export function ForestGate({ children }: { children?: ReactNode }) {
   // loginPath="/forest/login" stub 経由で /login?returnTo= に到達（ブックマーク互換）
+  // children は optional（legacy file `forest/login/page.legacy-20260511.tsx` が
+  // `<ForestGate />` 形式で呼ぶ後方互換のため）
   return (
     <ModuleGate module="forest" loginPath="/forest/login">
       {children}
