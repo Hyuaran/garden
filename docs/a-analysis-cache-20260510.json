@@ -1,0 +1,649 @@
+{
+  "created_at": "2026-05-10 00:11",
+  "session_id": "a-analysis-001",
+  "design_doc_version": "v1-20260509",
+  "snapshot_version": {
+    "instructions": "v3-20260509",
+    "procedures": "v3-20260509"
+  },
+  "memory_count": 91,
+  "memory_files_read": [
+    {
+      "file": "feedback_a_memory_session_collaboration.md",
+      "name": "a-memory セッション連携プロトコル（6 重防御層 6、14 論点）",
+      "description": "memory 判断専門の別 Claude セッション a-memory との連携プロトコル。役割線引き / dispatch flow / on-demand + キャッシュ / 緊急 bypass / 認識ズレエスカレーションを規定。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_always_propose_next_action.md",
+      "name": "必ず次のアクションを提案する / 終了・休憩誘導は禁止",
+      "description": "「次の指示待ち」等の受動的終わり方禁止。常に次の選択肢を 2-3 提示。「休憩」「締めますか？」等の作業終了誘導も全面禁止",
+      "type": "feedback",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "feedback_auto_scene_not_auto_assigned.md",
+      "name": "a-auto シーンを勝手に決めない",
+      "description": "a-auto 発動プロンプト作成時、就寝前/会議中/外出中などのシーンを勝手に付けない。シーン宣言はユーザーの専権事項",
+      "type": "feedback",
+      "last_modified": "2026-04-24"
+    },
+    {
+      "file": "feedback_auto_self_usage_estimate_unreliable.md",
+      "name": "auto 自己使用率計算は信頼できない",
+      "description": "a-auto の「5 時間枠 X% 消費」自己申告は実際と大きくズレる、Claude Code デスクトップアプリの公式表示が正",
+      "type": "feedback",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "feedback_chat_session_switch_main_first.md",
+      "name": "claude.ai chat セッション切替時は main 判断仰ぎをデフォルト動作とする",
+      "description": "claude.ai chat セッションが切替/応答不可になった場合、新セッションは前セッションの context が失われている前提で振る舞い、自分で何とかするのではなく a-main へ事情報告 + 代替案提示 + 判断仰ぎを行う",
+      "type": "feedback",
+      "last_modified": "2026-05-08"
+    },
+    {
+      "file": "feedback_chatgpt_image_workflow.md",
+      "name": "ChatGPT 画像生成 → Garden UI 実装の workflow 教訓",
+      "description": "4/27 ChatGPT で UI 理想画像生成 + 12 個別アイコン生成 → Next.js 実装に反映する workflow の教訓と再現手順",
+      "type": "feedback",
+      "last_modified": "2026-04-27"
+    },
+    {
+      "file": "feedback_chatgpt_mock_to_claude_ai_direct_attach.md",
+      "name": "ChatGPT mock 画像は claude.ai chat に直接添付（Claude Code の text 化を経由しない）",
+      "description": "UI mock 画像 → HTML 化フローで、Claude Code が画像を text 化する工程は不得意で品質劣化を招く。claude.ai が画像を直接読み取って HTML 化する方が正確。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_check_existing_impl_before_discussion.md",
+      "name": "議論前 / 修正前 / 外部依頼前 に既存実装を必ず確認（3 トリガー拡張版）",
+      "description": "既存実装把握ルールを「議論前」のみから「議論前 / 修正前 / 外部依頼前」3 トリガーに拡張。016 期 違反 # 5 (bgLayer1+2 構造把握漏れ) 再発防止。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_data_retention_default_pattern.md",
+      "name": "データ保管期間は「永続スタート → 段階的短縮」が Garden 標準",
+      "description": "Garden 全モジュールでデータ保管期間を聞かれたら「永続スタート、運用安定後に 10 年 → 7 年（or 法定最低）へ段階的短縮」が標準。毎回聞かない",
+      "type": "feedback",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "feedback_demo_quality_must_match_production.md",
+      "name": "デモで見せた品質は本番でも必ず達成する（評価劣化防止）",
+      "description": "後道さん等の対外デモで見せた完成度を本番（実装版）でも達成する責任を持つ。デモ後に本番が劣化すると東海林さんの評価が下がる。デモ用プロト（HTML 等）と本番（React 実装）の品質差は最小化、本番完成までデモ品質を維持",
+      "type": "feedback",
+      "last_modified": "2026-05-04"
+    },
+    {
+      "file": "feedback_dispatch_header_format.md",
+      "name": "dispatch / セッション間メッセージ 標準ヘッダー形式 v5（投下情報先頭明示 + コピペ本体は md ファイル側）",
+      "description": "dispatch 提示時、東海林さんが見るべき投下情報（投下先 / ファイル / 添付有無 / 緊急度）を先頭に明示し、コピペ本体は md ファイル経由でコピーする方式。016 期の「コピペテキストだらだら」問題対策。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_dispatch_image_path_required.md",
+      "name": "dispatch に画像・素材パスは必ず明記",
+      "description": "「東海林さんが添付する」だけでなく、対象画像のフルパスを毎回 dispatch に明記する。claude.ai が「画像未着」で待機する事故防止。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_dispatch_powershell_rate_limit.md",
+      "name": "複数セッション dispatch 投下時 PowerShell rate limit 回避",
+      "description": "東海林さんが PowerShell 経由で複数 Claude Code セッションへ dispatch を一括投下する際、3-5 セッションごとに 30-60 秒間隔を空けることで Claude API rate limit エラー（\"Server is temporarily limiting requests\"）を回避する",
+      "type": "feedback",
+      "last_modified": "2026-05-08"
+    },
+    {
+      "file": "feedback_dont_repeat_proposed_topics.md",
+      "name": "一度提案して保留・却下された話題を繰り返し提案しない",
+      "description": "東海林さんに 1 度提案した選択肢・タスク・話題は、明示承認・依頼があるまで再提案しない。3 連続以上同じ選択肢を出すと「うるさい」と感じさせる",
+      "type": "feedback",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "feedback_explanation_style.md",
+      "name": "説明スタイル（全体像先行・PCスキルない前提）",
+      "description": "コードや PowerShell を扱う時は丁寧に手順説明、全体像把握→必要データ→回答の順",
+      "type": "feedback",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "feedback_external_integration_staging.md",
+      "name": "external integration staging",
+      "description": "外部連携（Chatwork / KoT / その他）の本番化は段階的。テスト期間は単独ルーム / 制限スコープ、安定後に関係者追加 / フル展開",
+      "type": "feedback",
+      "last_modified": "2026-04-24"
+    },
+    {
+      "file": "feedback_file_existence_check_before_ok.md",
+      "name": "ファイル存在確認: Read で「OK」判定する前に ls / Bash で物理存在を必ず検証",
+      "description": "5/9 16xx Forest 背景画像パス誤り事件再発防止。Read tool が成功しても、参照されている画像 / 外部ファイルの物理存在は別途 ls 等で確認必須。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_gangan_mode_default.md",
+      "name": "ガンガンモード = a-main デフォルト運用（全モジュール並列稼働 + 5h 枠フル + 東海林作業時間無視）",
+      "description": "ガンガンモード本質 = 全モジュールセッションが main 指示で稼働継続、5h 枠フル活用、東海林さんの作業時間長い等は稼働を止める理由にしない。確認過多回避は派生効果。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_gangan_pause_state_management.md",
+      "name": "ガンガンモード一時停止状態の管理（議論モード vs 実行モード切替）",
+      "description": "ガンガンモード = 即実行 と 議論モード = 判断仰ぎ最大限歓迎 の状態切替を明確に管理。一時停止中の勝手な実行禁止。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_github_pin_auth_cookie_clear.md",
+      "name": "GitHub 新アカウント PIN 認証 cookie クリア必須",
+      "description": "新 GitHub アカウント作成時、通常モード Edge では PIN 認証画面に到達不能。Cookie 完全クリア or プロファイル分離が必須",
+      "type": "feedback",
+      "last_modified": "2026-04-27"
+    },
+    {
+      "file": "feedback_github_pr_operations_lessons.md",
+      "name": "GitHub PR 一括発行・運用の教訓集（B 垢復旧時、4/27）",
+      "description": "本日 4/27 の GitHub push 復旧 + 50+ PR 一括発行で得た教訓（gh auth setup-git / 幽霊 PR + -v2 workaround / Web UI copy-paste 順番ずれ）。次回大量 PR 発行時に再発防止",
+      "type": "feedback",
+      "last_modified": "2026-04-27"
+    },
+    {
+      "file": "feedback_kintone_app_reference_format.md",
+      "name": "Kintone アプリ参照は ID + 日本語名併記",
+      "description": "Kintone アプリを参照する時は「App N」だけでなく必ず「App N（アプリの日本語名）」と併記する。東海林さんが ID だけで何のアプリか即座にわからないため。",
+      "type": "feedback",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "feedback_main_a_memory_disagreement_resolution.md",
+      "name": "main / a-memory 認識ズレエスカレーション手順",
+      "description": "main の memory 判断と a-memory の判断が不合意の場合、東海林さん最終決裁 + 永続ログで解決。誤った判断が memory に登録されるリスクを最小化。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_main_session_50_60_handoff.md",
+      "name": "a-main セッション引越し基準 = 50-60% 帯（早め先行引越し）",
+      "description": "a-main は modules / auto より早く引越す。50-60% で先行引越し、80% は最終ライン。バッファを常に確保し横断調整セッションが詰まらないようにする。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_main_session_lessons_005.md",
+      "name": "a-main セッション 005 → 006 教訓・再発防止",
+      "description": "a-main 005 で発生した認識違い・確認過剰・記憶漏れを 006 以降で繰り返さないための注意点集",
+      "type": "feedback",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "feedback_maximize_auto_minimize_user.md",
+      "name": "auto フル使用 / 並列化 / 東海林さん作業最小化 / 手空きゼロ",
+      "description": "auto セッション常時稼働 + 対話と並列稼働 + 東海林さん物理作業（コピペ・GUI）以外は Claude が代行 + 判断 → 即実行 + 軽量タスクは確認なし即実行",
+      "type": "feedback",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "feedback_module_round_robin_check.md",
+      "name": "モジュール巡回チェック（30 分おき stagnation 検出 + 別タスク投下）",
+      "description": "ガンガンモード本質の「全モジュール並列稼働」を実現するため、main は 30 分おきに各モジュールセッション最終 commit 時刻を確認、停滞検出したら即時別タスク dispatch。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_module_session_auto_mode.md",
+      "name": "対話セッション auto モード化条件",
+      "description": "不在時に各モジュールセッション（a-forest / a-bud 等）を限定 auto 化する条件と運用",
+      "type": "feedback",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "feedback_my_weak_areas.md",
+      "name": "私（Claude Code）の不得意分野自覚 + 別経路へ振る原則",
+      "description": "Claude Code が不得意な作業（画像 → text 化 / 視覚評価の自己判定 / パス曖昧記述等）を自覚し、別経路（claude.ai / a-review / 東海林さん）に自動的に振る原則確立。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_no_delete_keep_legacy.md",
+      "name": "コードリプレース時の旧版データ保持ルール（削除禁止）",
+      "description": "既存コード・CSS・component を試作版や新版に置換する際、旧版を *.legacy-YYYYMMDD.tsx 等で併存保持。CSS は LEGACY コメントブロックで囲って残す。削除コマンド禁止。git 履歴だけでなくファイルとして直接参照可能な状態を維持",
+      "type": "feedback",
+      "last_modified": "2026-05-02"
+    },
+    {
+      "file": "feedback_no_godo_script_proposal.md",
+      "name": "後道さん向け説明文 / 台本 / シナリオの事前起草を提案しない",
+      "description": "後道さんは対面 + 5-10 分 + 直感判断 + 紙資料 NG のため、Claude から「説明文起草しましょうか」「デモシナリオ準備しましょうか」等の提案は禁止",
+      "type": "feedback",
+      "last_modified": "2026-04-27"
+    },
+    {
+      "file": "feedback_nontechnical_daily_report.md",
+      "name": "日報ルール（非技術者表現・後道さん呼び）",
+      "description": "日報 add/tomorrow の記述ルール、技術用語 NG 一覧、後道さん/社長の呼び分け",
+      "type": "feedback",
+      "last_modified": "2026-04-24"
+    },
+    {
+      "file": "feedback_ok_means_already_done.md",
+      "name": "「投下OK / 送信OK」は完了報告（再投下不要）",
+      "description": "東海林さんが「投下OK」「送信OK」「投下完了」等と返答した時点で、すでにそのアクションは完了している。再度コピペ用テキストを表示するのは余計",
+      "type": "feedback",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "feedback_pending_decisions_table_format.md",
+      "name": "判断保留バッチの提示形式：「要はこういうこと」列を必須追加",
+      "description": "判断保留事項を東海林さんに提示する時、論点と推奨の間に「要はこういうこと」（非エンジニア向け平易な要約）列を必ず入れる",
+      "type": "feedback",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "feedback_periodic_state_check_by_user.md",
+      "name": "東海林さん定期チェックテンプレ（外部観測装置、6 重防御層 5）",
+      "description": "「ガンガン = skip OK」誤解再発を東海林さんからの定期チェックで検出する外部観測装置。私が即答できない / 答えがズレる = 規律 skip 検出。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_powershell_emoji_signaling.md",
+      "name": "PowerShell / dispatch 報告時の絵文字シグナリングルール",
+      "description": "PowerShell 利用 dispatch（東海林さんがコピペ実行する箇所）と通常 dispatch を一目で区別。緊急度も並記して視認性 UP。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_pr_health_check_proactive.md",
+      "name": "PR ヘルスチェック自走運用",
+      "description": "a-main セッションで Vercel build 失敗を含む PR エラーを能動的に検知。東海林さん声かけ不要、自走で監視+対処",
+      "type": "feedback",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "feedback_praise_and_motivation.md",
+      "name": "東海林さんへの励まし・ほめる方針",
+      "description": "進捗・成果を具体的な数字で客観的にほめる、感情的表現ではなく事実ベース",
+      "type": "feedback",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "feedback_proposal_count_limit.md",
+      "name": "提案数の上限ルール（2 択標準、3 択は重要岐路のみ）",
+      "description": "「3 択 + 推奨明示」を東海林さんへの提示で多用しすぎる癖を是正。標準は 2 択（推奨 + 代替案）、3 択は方針判断レベルの重要岐路のみ。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_quality_over_speed_priority.md",
+      "name": "品質最優先 / リリース遅延は許容",
+      "description": "完璧な品質でリリース、不具合で営業から文句出るのを避ける、スピードよりクオリティ",
+      "type": "feedback",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "feedback_reply_as_main_dispatch.md",
+      "name": "a-main コピペ用 dispatch 形式で毎回返信",
+      "description": "a-bloom 等のモジュールセッションから東海林さんへの返信は、毎回 a-main 投下用 dispatch テキスト（~~~ ラップ + 番号 + 発信日時 + 件名）で構成する",
+      "type": "feedback",
+      "last_modified": "2026-05-08"
+    },
+    {
+      "file": "feedback_reporting_style.md",
+      "name": "東海林さん向け報告スタイル（短く・表形式・3 択・推奨明示・テーブル統一）",
+      "description": "短く要点のみ + 推奨明示 + 意思決定で停止 + 状況報告は「セッション | 状態」テーブル + 絵文字優先度マーカー",
+      "type": "feedback",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "feedback_script_encoding_japanese_path.md",
+      "name": "VBS / バッチスクリプトの日本語パス + UTF-8 保存禁止",
+      "description": "wscript.exe / cmd.exe で日本語パス（G:\\マイドライブ\\... 等）を扱う VBS / batch ファイルは UTF-8 で保存禁止。ASCII (英数記号のみ) または UTF-16 LE BOM 保存が必須。UTF-8 保存だと文字化けで popup エラー累積、PC 重、Claude Desktop 落ちの事故になる",
+      "type": "feedback",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "feedback_self_memory_audit_in_session.md",
+      "name": "応答出力前 自己 memory 監査（日常運用中の memory 機能検証）",
+      "description": "応答出力前 / 重要操作前に該当 memory を自分で grep / 確認する習慣化。memory が「機能していない」のを引越し時まで気付かない問題を解消。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_self_visual_check_with_chrome_mcp.md",
+      "name": "視覚確認は Chrome MCP で Claude 自身が実施 / 東海林さんへの文字判断仰ぎ禁止",
+      "description": "localhost や public URL の視覚一致判定（プロト vs 既存等の客観差分）は Claude が Chrome MCP で自分でスクショ取得 → 比較 → 判定。東海林さんへの視覚確認丸投げ + 文字差分一覧での判断仰ぎ は両方禁止。実物提示 + 最終 OK のみ東海林さん",
+      "type": "feedback",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "feedback_session_handoff_checklist.md",
+      "name": "a-main セッション引越し時 必須チェックリスト",
+      "description": "a-main 引越し時に handoff 起草前に実施する必須チェック（memory 棚卸し / 矛盾検証 / 事故集計 / 厳しい目で再確認 3 ラウンド / 三点セット同期）。016 期の引越し失敗（016→017 handoff 未作成）再発防止。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_session_worktree_auto_setup.md",
+      "name": "セッション worktree 増設は a-main が自動実行 / branch 揺れ防止プロトコル",
+      "description": "モジュールセッション 80% 到達等の worktree-N 増設は a-main が確認なし即実行。git worktree + junction で同一ディレクトリ branch 揺れバグを根治",
+      "type": "feedback",
+      "last_modified": "2026-05-08"
+    },
+    {
+      "file": "feedback_sql_inline_display.md",
+      "name": "SQL やスクリプトはセッション内に inline 表示",
+      "description": "ファイルパス案内だけでなく、セッション内に直接コピペできる形でコード・SQL を出す",
+      "type": "feedback",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "feedback_strict_recheck_iteration.md",
+      "name": "厳しい目で再確認 N ラウンド（焦点別 + 連続 3 ラウンド 0 件で終了 + 東海林さん最終チェック必須）",
+      "description": "重要成果物を東海林さんに提示する前に、ラウンドごとに焦点を変えて点検（対処済 / 質 / メタ / 実装漏れ / 矛盾検出 / 継続）。連続 3 ラウンド抜け 0 件で終了、その後必ず東海林さん最終チェック。説明は非技術者表現。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_three_way_sync_cc_claudeai_procedure.md",
+      "name": "三点セット同期（Claude Code memory + claude.ai 完全版 .md ファイル発行 → 全置換ペースト方式）",
+      "description": "ルール改訂時、追記方式 ❌ → 完全版 .md 発行 → 東海林さん全置換ペースト方式 ✅。snapshot を私が Read することで毎回の共有不要。バージョン管理 + _archive 二重設計。",
+      "type": "feedback",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "feedback_token_management_by_claude.md",
+      "name": "パスワード / トークン管理は Claude 側で実行 / 漏洩アラート禁止",
+      "description": "Garden 関連の GitHub PAT / Kintone API / その他 token は Claude がファイル保存・認証実行を一貫担当、漏洩アラート禁止。他人パスワード・本番トークンは別扱い",
+      "type": "feedback",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "feedback_turbopack_hmr_globals_css_unreliable.md",
+      "name": "Turbopack HMR は globals.css 大量追加時に取りこぼす / 再起動 + cache クリア必須",
+      "description": "Next.js Turbopack の HMR が globals.css に大量追加した CSS rules を反映しない事例が複数回発生。globals.css 大量編集時は HMR 信用せず、dev server 再起動 + .next キャッシュクリアを必須化",
+      "type": "feedback",
+      "last_modified": "2026-05-02"
+    },
+    {
+      "file": "feedback_ui_first_then_postcheck_with_godo.md",
+      "name": "後道さんへの確認は UI 先行 + 後道フィードバック後置き",
+      "description": "後道さん（経理）への確認は実画面を見せないと想像できないため、東海林さんと検討・確定 → UI 実装 → 後道さんへ「これでいいですね？」フィードバック受領の流れで統一する",
+      "type": "feedback",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "feedback_verify_before_self_critique.md",
+      "name": "自己批判的発言は客観データで検証してから書く",
+      "description": "「使っていなかった」「できていなかった」「やっていなかった」等の自己批判的発言を主観の印象だけで断定せず、ログ集計や既存実装確認で裏付けてから発言する",
+      "type": "feedback",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "project_baitoru_auto_existing_system.md",
+      "name": "baitoru-auto 既存自動化システム",
+      "description": "バイトル新規応募 → Kintone App 44 自動登録 + ChatWork 通知の Cloud Run 既存稼働システム。Garden Sprout 設計時の上流フローとして要参照",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_bloom_auth_independence.md",
+      "name": "Bloom は Forest と独立認証 / dev 環境では BloomGate バイパス必須",
+      "description": "Bloom は bloom_users テーブル + 独自ロック解除フラグを持つ独立認証モジュール。Forest ログインだけでは通れない。視覚確認時は dev 環境で BloomGate バイパス必須、毎回議論しない",
+      "type": "project",
+      "last_modified": "2026-05-02"
+    },
+    {
+      "file": "project_chatwork_bot_ownership.md",
+      "name": "Chatwork Bot アカウント管理",
+      "description": "「【事務局】システム自動通知」Bot アカウントの管理責任・利用システム・ローテーション手順",
+      "type": "project",
+      "last_modified": "2026-04-24"
+    },
+    {
+      "file": "project_claude_ai_card_question_violation.md",
+      "name": "claude.ai 新セッションカード式質問問題（後対応 memo）",
+      "description": "claude.ai プロジェクトの新セッション切替時に毎回カード式で質問が出る現象（ルール違反）。本格対応は後日、本 memo は忘れないためのフラグ。",
+      "type": "project",
+      "last_modified": "2026-05-09"
+    },
+    {
+      "file": "project_claude_chat_drive_connector.md",
+      "name": "claude.ai → Claude Code の Drive コネクタ連携 / _chat_workspace 運用",
+      "description": "2026-05-01 に Google Drive コネクタ経由の Chat→Code 連携稼働確立。MIME 制限と update_file 非搭載という重要制約を踏まえて _chat_workspace\\ で運用。a-main / 他セッションも本パターンを前提に動作",
+      "type": "project",
+      "last_modified": "2026-05-02"
+    },
+    {
+      "file": "project_configurable_permission_policies.md",
+      "name": "権限ポリシー設定変更可能設計パターン",
+      "description": "権限閾値はハードコードではなく設定テーブル経由で admin が変更可能にする",
+      "type": "project",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "project_delete_pattern_garden_wide.md",
+      "name": "Garden 全モジュール削除パターン（論理全員・物理 admin・バッジ全員可視）",
+      "description": "Kintone 運用からの学びを反映した全モジュール共通の削除仕様",
+      "type": "project",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "project_forest_files_in_google_drive.md",
+      "name": "Forest 関連ファイルの現状（Google ドライブ保管）",
+      "description": "Forest モジュールの決算書 / 税務関連ファイル等は現在 Google ドライブで管理。Phase A-B の Storage 統合時に Supabase Storage への移行戦略が必要",
+      "type": "project",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "project_garden_3layer_visual_model.md",
+      "name": "Garden 3 レイヤー視覚モデル「The Digital Terrarium」（最終確定版）",
+      "description": "Garden Series の正本ブランドアイデンティティ。3 レイヤー（樹冠/地上/地下）+ Glass Cube テラリウム + 5 Atmospheric Variations + UI Safe Zones の完全規格。盆栽は明示的に NG",
+      "type": "project",
+      "last_modified": "2026-04-27"
+    },
+    {
+      "file": "project_garden_change_request_pattern.md",
+      "name": "Garden 申請承認パターン（横断標準）",
+      "description": "従業員のマイページからの直接編集は禁止、全項目「申請 → admin 承認」フロー、root_change_requests テーブルで横断管理",
+      "type": "project",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "project_garden_developer_page.md",
+      "name": "Garden 内 開発者ページ（問い合わせ・依頼一元管理）",
+      "description": "社員からの問い合わせ・ヘルプ修正依頼・機能改善要望を Chatwork 通知 + Garden 内開発者ページに集約。東海林さん（開発者）が消化型で 1 件ずつ処理",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_garden_dual_axis_navigation.md",
+      "name": "Garden 二重軸ナビゲーション設計（モジュール軸 + 業務ドメイン軸）",
+      "description": "12 モジュール grid（モジュール軸）+ 横断抜粋ビュー（業務ドメイン軸）の権限連動 二重ナビ設計。staff 以上の権限者向けに業務ドメイン軸を提供、各アプリのいいとこどり集約。5/5 後道さんデモ反応で採否確定予定",
+      "type": "project",
+      "last_modified": "2026-04-27"
+    },
+    {
+      "file": "project_garden_fruit_module.md",
+      "name": "Garden Fruit（実）モジュール実体化",
+      "description": "Fruit はもはや概念のみではなく、法人法的実体情報（番号系・公的書類・許認可）を管理する正式モジュール",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_garden_help_module.md",
+      "name": "Garden ヘルプモジュール（KING OF TIME 風）",
+      "description": "Garden 内に「ヘルプ」セクションを配置、KING OF TIME のオンラインヘルプ風に各機能の使い方・FAQ・動画マニュアルを集約。アクセス権限連動で見える範囲を制御",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_garden_login_office_only.md",
+      "name": "Garden ログインは社内 PC のみ（通常アルバイトロール）",
+      "description": "toss / closer / cs / staff など通常ロールの Garden ログインは社内 PC からのみ許可、自宅 PC / 私物端末からは不可。manager 以上は別運用想定",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_garden_rill_scope.md",
+      "name": "Garden Rill 真の役割（Tree Breeze から進化、最終的に Chatwork クローン）",
+      "description": "Garden Rill は Tree 内の Breeze（当日限り業務連絡チャット、既存実装）からスタートし、将来的に Chatwork クローン全社チャットへ段階的にアップグレード",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_garden_sprout_calendar_roles.md",
+      "name": "Garden Sprout（仮）と Calendar の役割定義",
+      "description": "Garden 12 モジュールに新規追加された Sprout（入社オンボーディング）と Calendar（全社カレンダー統合）の役割・スコープ・他モジュール連携・Phase 配置",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_github_2fa_sms_only_policy.md",
+      "name": "GitHub 2FA は SMS 採用 + 必要に応じて Authenticator 追加 / Claude からは積極提案しない",
+      "description": "Garden 関連 GitHub アカウント (C 垢 shoji-hyuaran 等) の 2FA は SMS が第一選択、Authenticator (MS / Google 問わず) 追加は東海林さん判断で採用可能。Claude からは Authenticator を積極提案しない（前回の懸念表明を尊重）",
+      "type": "project",
+      "last_modified": "2026-04-30"
+    },
+    {
+      "file": "project_github_account_crisis_20260427.md",
+      "name": "GitHub アカウント停止 連鎖 4/27 全記録 + Team プラン移行",
+      "description": "2026-04-27 に A 垢 + B 垢が同日 ban、C 垢 + Hyuaran org Team プラン化で正規法人運用へ移行した経緯と教訓",
+      "type": "project",
+      "last_modified": "2026-04-28"
+    },
+    {
+      "file": "project_godo_communication_style.md",
+      "name": "後道さん コミュニケーションスタイル",
+      "description": "後道さん（顧問の経理・税理士パートナー）は紙資料・文書では理解しにくい。対面のみ機能、それも 5-10 分が上限。直感判断重視。デモ・説明はこの制約に合わせて設計",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_godo_ux_adoption_gate.md",
+      "name": "後道さん UX 採用ゲート（実物必須・遊び心・世界観）",
+      "description": "後道さんは visual モックアップでは判断できず、実物の動く UI でしか評価しない。後道さんが気に入らないと Garden が採用されない採用ゲート。5/8 デモ（旧 5/5、2026-05-03 変更）までに「図 2（盆栽中心ビュー）」に近い実物が必須",
+      "type": "project",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "project_kintone_tokens_storage.md",
+      "name": "Kintone API トークン保存場所",
+      "description": "Kintone API トークンは各セッションフォルダの .env.local に保存運用、Garden 所有のため漏洩アラート不要",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_mfc_payroll_csv_format.md",
+      "name": "マネーフォワードクラウド給与（MFC）CSV 仕様",
+      "description": "給与計算結果を MFC へインポートする CSV の 72 列仕様。Garden Bud Phase D の MFC 互換 CSV 出力 spec の入出力定義",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_npm_install_deny_workaround.md",
+      "name": "npm install deny ルールの回避策",
+      "description": "settings.json の Bash(npm install *) deny が対話セッションの判断承認と衝突する既知課題と回避パターン",
+      "type": "project",
+      "last_modified": "2026-04-25"
+    },
+    {
+      "file": "project_partners_vs_vendors_distinction.md",
+      "name": "取引先（上位店・partner）と外注先（傘下店・vendor）の業務的区分",
+      "description": "ヒュアラン グループの商流で、上位店（root_partners、商品提供元）と傘下店（root_vendors、業務委託先）は別概念として管理する。Garden 全体の設計に影響",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_payslip_distribution_design.md",
+      "name": "給与明細配信設計（Y 案 + フォールバック、A-07 採択結果改訂）",
+      "description": "給与明細は Y 案（メール DL リンク + LINE Bot 通知、PW なし）を主、LINE 使えない例外的な人は PDF PW + マイページで PW 確認のフォールバック設計",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_photoshop_jsx_workflow.md",
+      "name": "Adobe Photoshop 導入 + 画像処理は JSX スクリプト優先提案",
+      "description": "2026-05-01 Photoshop 単体プラン購入。画像処理タスク発生時は単発=Python / 複雑=JSX で提案、JSX を優先。JSX スクリプト集は 099_Photoshopスクリプト集 に集約",
+      "type": "project",
+      "last_modified": "2026-05-02"
+    },
+    {
+      "file": "project_post_5_5_tasks.md",
+      "name": "post-5/8 タスク管理（5/8 後道さんデモ後に着手するタスク群、旧 post-5/8（旧 post-5/5））",
+      "description": "5/8 デモ前は最小変更原則で温存、デモ後に順次着手するタスクを一元管理。優先度・担当・関連ファイル明記。ファイル名 post_5_5_tasks.md は履歴互換のため維持、内容は 5/8 デモに更新（2026-05-03 改訂）",
+      "type": "project",
+      "last_modified": "2026-05-03"
+    },
+    {
+      "file": "project_rls_server_client_audit.md",
+      "name": "Garden RLS server/client audit",
+      "description": "Garden 全 9 モジュールで、ブラウザ用 anon supabase singleton がサーバー側 Route Handler / Server Component から流用されていないか監査が必要（Bloom PDF 事件の再発防止）",
+      "type": "project",
+      "last_modified": "2026-04-24"
+    },
+    {
+      "file": "project_session_shared_attachments.md",
+      "name": "全セッション共有 添付資料保管庫",
+      "description": "東海林さんが Claude セッションに添付した資料を全セッション横断で参照可能にする共有保管庫の運用ルール。セッション引っ越し・他セッションからもアクセス可能",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_shoji_status_visibility.md",
+      "name": "東海林さん何してる問題（経営者活動可視化機能）",
+      "description": "Garden Bloom 内で東海林さん（社長）の作業状況・スケジュール・詰まり状況をリアルタイム可視化、社員が「東海林さん何してる？」を即答できる UI を実装。GW 期間に完成目標",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_super_admin_operation.md",
+      "name": "super_admin 操作は東海林さん本人専任",
+      "description": "super_admin（Garden 最上位権限）は東海林さん本人が唯一の操作者。社長や他者が super_admin 操作することはない。委託があっても「東海林やっといて」になる",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_tree_d2_release_strategy.md",
+      "name": "Tree D-1 + D-2 セットリリース戦略",
+      "description": "Tree D-2（自動発信機能）は D-1（基本架電）リリース後 1 ヶ月待ちではなく、D-1 と D-2 をセットで完成させ、テスト稼働で品質確保してから全体展開する",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "project_tree_toss_focus_principle.md",
+      "name": "Tree トス役割は「トスに集中」が業務設計原則",
+      "description": "Garden Tree のトス（toss）役割は「契約見込みあり → トスアップする」だけに集中させる設計。closer の空き状況や混雑度は toss UI に表示しない",
+      "type": "project",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "reference_personal_claude_md.md",
+      "name": "個人用 CLAUDE.md の場所と Garden ルールの読込経路",
+      "description": "東海林さん個人設定と Garden シリーズルールがどこに記載されているかのポインタ",
+      "type": "reference",
+      "last_modified": "2026-04-24"
+    },
+    {
+      "file": "user_shoji_design_preferences.md",
+      "name": "東海林さんのデザイン感性・好み",
+      "description": "東海林さん本人がプロダクトオーナーとして表明したデザイン感性・好み・美的判断軸。Garden プロダクトの最終決定者として、これが採用に大きい影響を与える",
+      "type": "user",
+      "last_modified": "2026-04-26"
+    },
+    {
+      "file": "user_shoji_profile.md",
+      "name": "東海林さんのプロフィール",
+      "description": "Garden シリーズ統括者としての役割・技術背景・業務範囲・セッション運用",
+      "type": "user",
+      "last_modified": "2026-04-26"
+    }
+  ]
+}

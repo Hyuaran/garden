@@ -1,0 +1,72 @@
+# proposal v5.2: memory feedback_self_memory_audit_in_session sentinel # 6 追加
+
+> 起草: a-analysis-001
+> 起草日時: 2026-05-11 (月) 10:40
+> 用途: memory feedback_self_memory_audit_in_session.md の sentinel チェック表に # 6 新設（5 → 6 項目化）
+> 起点: main- No. 217（提案 3 統合起草依頼）
+> 状態: ドラフト、main + a-audit-001 critique + 東海林さん最終決裁後に main が memory ファイル上書き
+
+---
+
+## 差分ターゲット
+
+memory feedback_self_memory_audit_in_session.md「応答出力前 sentinel チェック 5 項目（絶対通過、強制装置）」セクション内のテーブル。
+
+---
+
+## 現行（5 項目）
+
+| # | チェック | 不通過時の動作 |
+|---|---|---|
+| 1 | 状態確認: ガンガン稼働中 or 一時停止中？ + 冒頭明示してる？（必須）| 一時停止中なら即実行禁止、応答冒頭に [一時停止中、議論モード] または [稼働中、ガンガンモード継続] を毎回必ず明示 |
+| 2 | 提案 / 報告？ | YES → 厳しい目で再確認発動（連続 3 ラウンド 0 件 + 盲点リスト宣言）|
+| 3 | dispatch 起草？ + §0 ロック解除されてる？（起動時セッション、レベル 2 強度）| YES → dispatch-template.md 起草前 self-check 7 項目。§0 ロック未解除なら dispatch 起草禁止（起動時 8 項目 ☑ 完了 + 東海林さん最終 GO 受領後のみ解除）|
+| 4 | ファイル参照ある？ | YES → ls で物理存在検証 |
+| 5 | 既存実装関与？ | YES → 議論前 / 修正前 / 外部依頼前 3 トリガー確認 |
+
+---
+
+## 改訂版（6 項目、v5.2 連動）
+
+| # | チェック | 不通過時の動作 |
+|---|---|---|
+| 1 | 状態確認: ガンガン稼働中 or 一時停止中？ + 冒頭明示してる？（必須）| 一時停止中なら即実行禁止、応答冒頭に [一時停止中、議論モード] または [稼働中、ガンガンモード継続] を毎回必ず明示 |
+| 2 | 提案 / 報告？ | YES → 厳しい目で再確認発動（連続 3 ラウンド 0 件 + 盲点リスト宣言）|
+| 3 | dispatch 起草？ + §0 ロック解除されてる？（起動時セッション、レベル 2 強度）| YES → dispatch-template.md 起草前 self-check 7 項目。§0 ロック未解除なら dispatch 起草禁止（起動時 8 項目 ☑ 完了 + 東海林さん最終 GO 受領後のみ解除）|
+| 4 | ファイル参照ある？ | YES → ls で物理存在検証 |
+| 5 | 既存実装関与？ | YES → 議論前 / 修正前 / 外部依頼前 3 トリガー確認 |
+| 6 | **dispatch 起草時、外ラップ ~~~ 内に同記号繰返しブロック（~~~ / バッククォート 3 個）が含まれていないか目視確認 + 冒頭 3 行が ~~~ 内配置になっているか確認**（v5.2、2026-05-11 a-audit-001 提案 3 起源）| YES → 違反 7-b / 9、内側ラップ撤廃 → インデント記法 or 通常 markdown 記述に変更 / 冒頭 3 行を ~~~ 内へ移動 |
+
+---
+
+## # 6 追加の理由
+
+- v5.1 sentinel # 3「dispatch 起草？」は dispatch-template.md self-check 7 項目発動を指示するが、~~~ ネスト + 冒頭 3 行 ~~~ 外配置の構造的検出は明文化されていなかった
+- a-main-018 期 / a-main-020 期初期 dispatch でも違反 7-b / 9 が再発（audit-001- No. 2 検出）
+- sentinel に専用項目を新設し、応答出力前に **目視確認** を強制装置化
+
+---
+
+## 適用範囲
+
+| 適用対象セッション | 内容 |
+|---|---|
+| a-main 系 | 全 dispatch 起草で # 6 通過必須 |
+| a-bloom / a-bud / a-soil / a-leaf / a-forest / a-rill / a-tree / a-seed / a-root | 同上（モジュールセッションが東海林さんへ返信時の dispatch 起草） |
+| a-analysis-001 | 同上（analysis-001- No. NN 起草時） |
+| a-audit-001 | 同上（audit-001- No. NN 起草時） |
+| a-auto | 同上 |
+
+---
+
+## 自己参照禁止 抵触検証
+
+- 全 session 共通 sentinel 改訂 = a-analysis 自身の運用変更ではない（抵触なし）
+- ただし a-analysis 起草分の dispatch / report にも適用 = 当事者性あり → a-audit critique で抵触判断仰ぎ
+- 特に注意: a-audit-001 提案 3 由来 = a-audit 自身も適用対象 = a-audit critique 時に「自分にも適用される sentinel を critique」する構造的循環あり、main 経由で東海林さん最終決裁推奨
+
+---
+
+## 改訂履歴
+
+- 2026-05-11 10:40 ドラフト初版（a-analysis-001、main- No. 217 起源、audit-001- No. 2 提案 3 統合）
