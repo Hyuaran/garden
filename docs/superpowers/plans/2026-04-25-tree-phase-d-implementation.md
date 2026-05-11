@@ -1,4 +1,4 @@
-# Tree Phase D 統合実装プラン v3.1（FileMaker 代替・コールセンター本番投入）
+# Tree Phase D 統合実装プラン v3.2（FileMaker 代替・コールセンター本番投入）
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -265,14 +265,26 @@ git ls-tree -r origin/develop -- docs/specs/tree/ | grep "spec-tree-phase-d" | w
 git log origin/develop --oneline | grep -E "PR #31|PR #46|tree-phase-d|root.*phase.*a.*3.*h" | head -5
 ```
 
-- [ ] **Step 0.2: Batch 7 cross-cutting 関数の存在確認**
+- [ ] **Step 0.2: Batch 7 cross-cutting 関数の存在確認**（v3.2 改訂: is_same_department 縮退対応）
 
 Supabase Dashboard → Database → Functions で以下が存在:
-- `auth_employee_number(uuid)`
-- `has_role_at_least(text)`
-- `is_same_department(uuid)`
+- `auth_employee_number()` ✅ Batch 7 PR #154 で実装済（戻り型 text、SECURITY DEFINER + STABLE）
+- `has_role_at_least(role_min text)` ✅ Batch 7 PR #154 で実装済（8 段階階層判定）
+- ~~`is_same_department(uuid)`~~ ❌ **Batch 7 で縮退**（PR #154 / main- No. 233 Q2 (b) 採択、root_employees.department_id 列なし + root_departments マスタなし）
 
-存在しなければ a-main にエスカレーション（Batch 7 spec 適用 SQL の手動実行が必要）。
+確認 SQL（Supabase studio）:
+```sql
+SELECT proname FROM pg_proc
+WHERE proname IN ('auth_employee_number', 'has_role_at_least');
+-- 期待: 2 行返却
+```
+
+v3.2 縮退対応の根拠:
+- 旧 v3.0/v3.1 では 3 関数確認を想定していたが、is_same_department は Batch 7 で縮退（Tree D-01 spec v1.1 / PR #155 + D-01 SQL §7 PR #156 で「自分担当 only」へ縮退対応済）
+- 将来 department 運用確定で再導入時に本 Step 0.2 を 3 関数確認に再改訂
+- 確定経緯: main- No. 233 → root-002-38 → main- No. 238 → tree-002 PR #155/#156 → main- No. 319 で本 plan §0 改訂 GO
+
+2 関数のいずれかが存在しなければ a-main にエスカレーション（Batch 7 spec 適用 SQL の手動実行が必要）。
 
 - [ ] **Step 0.3: develop ベースから新ブランチ派生**
 
@@ -1843,6 +1855,7 @@ apply 完了後、Phase D §0 Pre-flight Task 0 から順次着手可能。
 |---|---|---|---|
 | 2026-04-25 | v3.0（初版） | 起草。Phase D 6 spec を統合、Tree 特例 §17 段階展開と §16 7 種テストを完備した実装プラン。69 タスク、見積 6.5d + 5 週間検証期間。判断保留 38 件を §6 で網羅。 | a-tree |
 | 2026-05-11 | v3.1 | §6 を §6.1（確定 3 件）+ §6.2（残り 36 件）+ §6.3（推奨アクション）+ §6.4（着手前提条件）に分割。確定 3 件 = 02-判2（オフラインキュー 500 件）/ 04-判4（同意確認全商材必須）/ 06-判6（L3 承認者 dual）、main- No. 223（a-main-020 経由東海林さん GO）。集計訂正: ヘッダー「38 件」は集計ミス、実数 39 件（確定 3 件除いて残り 36 件）。§6.4 で Batch 7 cross-cutting 関数（auth_employee_number / has_role_at_least / is_same_department）未 apply を Phase D 着手最終ブロッカーとして明記、a-main-020 主導 横断調査（main- No. 230）の状態。タイトルを v3 → v3.1 更新。 | a-tree-002 |
+| 2026-05-11 | v3.2 | §0 Pre-flight Task 0 Step 0.2 軽微整合改訂: 「is_same_department(uuid) 関数存在確認」を削除、`auth_employee_number()` + `has_role_at_least(role_min text)` 2 関数のみ確認に縮退。経緯: Batch 7 (PR #154 / main- No. 233 Q2 (b) 採択) で is_same_department が縮退（root_employees.department_id 列なし + root_departments マスタなし）、Tree D-01 spec v1.1 (PR #155 merge 済) + D-01 SQL §7 (PR #156 merge 済) で「自分担当 only」へ縮退対応済、v3.0/v3.1 plan §0 Step 0.2 本文のみが旧記述だった。確認 SQL（`SELECT proname FROM pg_proc WHERE proname IN ('auth_employee_number', 'has_role_at_least');` 期待 2 行返却）も追加。タイトル v3.1 → v3.2 + 末尾「end of plan v3.1」→「end of plan v3.2」。確定経緯: tree-002- No. 31-ack3（軽微整合改訂仰ぎ）→ main- No. 319（GO）→ 本改訂。将来 department 運用確定で再導入時に本 Step 0.2 を 3 関数確認に再改訂。 | a-tree-002 |
 
 ---
 
@@ -1860,4 +1873,4 @@ apply 完了後、Phase D §0 Pre-flight Task 0 から順次着手可能。
 - [ ] effort-tracking 全 11 行に実績入力
 - [ ] handoff-tree-*-phase-d-completion.md で総括
 
-—  end of plan v3.1 —
+—  end of plan v3.2 —
