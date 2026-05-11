@@ -225,9 +225,18 @@ export async function POST(request: Request) {
    - SELECT / INSERT / UPDATE / DELETE を別々に記述
    - USING（読取条件）と WITH CHECK（書込条件）を混同しない
 
-3. **ヘルパー関数の活用**
-   - `bloom_has_access(role_min text)` / `forest_is_admin()` / `bud_is_user()` 等の共通化
-   - 各モジュールで `<module>_has_role(role_min text)` を命名規則統一
+3. **ヘルパー関数の活用**（命名規則 v2、2026-05-11 改訂、dispatch main- No. 233 Q1 候補 A 採用）
+   - **global 名空間採用**: `auth_employee_number()` / `has_role_at_least(role_min text)` /
+     `is_same_department(target_employee_id uuid)` 等の cross-cutting 関数は
+     module prefix なしの global 名空間で実装する
+   - **既存 module 別 helper は維持**: `bloom_has_access` / `forest_is_admin` /
+     `bud_is_user` / `root_can_access` / `root_can_write` 等は破壊的変更を避け維持、
+     段階的置換は別 PR で実施（急務でない）
+   - **実装場所**: `supabase/migrations/20260511000001_cross_rls_helpers.sql`
+     （auth_employee_number / has_role_at_least を実装、is_same_department は縮退）
+   - 旧 命名規則「各モジュールで `<module>_has_role(role_min text)` を統一」は **廃止**
+   - 旧 「Phase C で `garden_has_role` 抽出」予定は **本 migration で前倒し完了**
+     （`has_role_at_least` として実装、`garden_` prefix 不採用）
 
 4. **auth.uid() は必ずチェック**
    ```sql
@@ -342,7 +351,7 @@ export async function POST(req: NextRequest) {
 |---|---|---|
 | 判1 | `server-only` パッケージ導入時期 | **Phase B-1 内で導入**（Bud 給与の Service Role 境界を守るため）|
 | 判2 | Route Handler 認証を middleware で共通化 | **Phase C**（現状は各 Route で JWT 検証でも許容、middleware はボイラープレート減）|
-| 判3 | RLS ヘルパー関数の共通化（`garden_has_role`）| **Phase C**、各モジュール `<module>_*` から抽出 |
+| 判3 | RLS ヘルパー関数の共通化 | **解消（2026-05-11 dispatch main- No. 233 Q1/Q3 確定）**: global 名空間（`auth_employee_number` / `has_role_at_least` / `is_same_department`）採用、`supabase/migrations/20260511000001_cross_rls_helpers.sql` で実装。`is_same_department` は Q2 縮退で本 migration から除外、Phase B-4 / B-08 で department 列追加時に再着手。`garden_*` prefix 案は不採用 |
 | 判4 | Service Role Key のローテーション頻度 | **3 ヶ月毎**推奨、自動化は Phase D |
 | 判5 | Edge Runtime での JWT 検証 | Node 推奨（jsonwebtoken 互換性）|
 | 判6 | Server Component での使用パターン | 原則 B（JWT 転送）、Next.js App Router の cookies() からの取得は別検証 |
