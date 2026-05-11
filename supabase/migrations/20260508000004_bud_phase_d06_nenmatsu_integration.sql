@@ -248,7 +248,7 @@ begin
     pgp_sym_encrypt(p_my_number, p_key, 'cipher-algo=aes256'),
     p_key_id,
     now(),
-    (select id from public.root_employees where user_id = auth.uid()),
+    (select employee_id from public.root_employees where user_id = auth.uid()),
     now()
   )
   on conflict (employee_id) do update set
@@ -277,7 +277,7 @@ as $$
 declare
   v_encrypted bytea;
   v_decrypted text;
-  v_accessor_id uuid;
+  v_accessor_id text;
 begin
   -- super_admin のみ復号可能
   if not public.bud_is_super_admin() then
@@ -307,7 +307,7 @@ begin
   v_decrypted := pgp_sym_decrypt(v_encrypted, p_key);
 
   -- 監査ログ書込
-  v_accessor_id := (select id from public.root_employees where user_id = auth.uid());
+  v_accessor_id := (select employee_id from public.root_employees where user_id = auth.uid());
   insert into public.bud_pii_access_log (
     accessed_by,
     target_employee_id,
@@ -345,7 +345,7 @@ create policy yes_select_own on public.bud_year_end_settlements
   using (
     deleted_at is null
     and employee_id = (
-      select id from public.root_employees
+      select employee_id from public.root_employees
       where user_id = auth.uid()
         and deleted_at is null
     )

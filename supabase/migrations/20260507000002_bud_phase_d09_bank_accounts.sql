@@ -146,7 +146,7 @@ as $$
   select exists (
     select 1
     from public.root_employee_payroll_roles epr
-    join public.root_employees re on re.id = epr.employee_id
+    join public.root_employees re on re.employee_id = epr.employee_id
     where re.user_id = auth.uid()
       and re.deleted_at is null
       and epr.is_active = true

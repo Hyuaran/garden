@@ -190,7 +190,7 @@ create policy bpp_select on public.bud_payroll_periods
     )
     or
     -- 作成者本人
-    created_by = (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    created_by = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
   );
 
 -- INSERT: admin+ のみ（period 作成は管理者業務）
@@ -239,7 +239,7 @@ drop policy if exists bps_select_own on public.bud_payroll_attendance_snapshots;
 create policy bps_select_own on public.bud_payroll_attendance_snapshots
   for select
   using (
-    employee_id = (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
   );
 
 drop policy if exists bps_select_manager_dept on public.bud_payroll_attendance_snapshots;
@@ -323,7 +323,7 @@ create policy bpo_select on public.bud_payroll_attendance_overrides
         and re.deleted_at is null
     )
     or
-    approved_by = (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    approved_by = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
   );
 
 -- INSERT: admin+ のみ（reason 5 文字以上は CHECK 制約で強制）
@@ -337,7 +337,7 @@ create policy bpo_insert_admin on public.bud_payroll_attendance_overrides
         and re.garden_role in ('admin', 'super_admin')
         and re.deleted_at is null
     )
-    and approved_by = (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    and approved_by = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
   );
 
 -- UPDATE / DELETE: 完全禁止（監査履歴は不変）
