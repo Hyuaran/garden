@@ -90,3 +90,37 @@ export const ATMOSPHERE_BLOOM_DARK: AtmosphereV28 = {
   name: "Bloom 月夜の庭",
   path: "/images/backgrounds/bg_bloom_garden_dark.png",
 };
+
+/* ========================================================================
+ * Forest 専用 atmospheres (Forest 配下画面で使用)
+ * 5/14-16 後道さんデモ向け Garden Series 統一世界観の中核素材。
+ * 元素材: ChatGPT 生成 (5/9 01:50, 1920x1080 PNG, _reference/garden-forest/ 永続保管)
+ * WebP 変換: Pillow quality=90, light -85.9% / dark -84.7% 圧縮 (5/9 22:08)
+ * 対応 dispatch: main- No. 161 (5/9 01:51) / No. 188 (5/9 22:00 並列実装 GO)
+ * ======================================================================== */
+
+export const ATMOSPHERE_FOREST_LIGHT: AtmosphereV28 = {
+  id: 102,
+  key: "forest-light",
+  name: "Forest 朝の森",
+  path: "/images/backgrounds/bg-forest-light.webp",
+};
+
+export const ATMOSPHERE_FOREST_DARK: AtmosphereV28 = {
+  id: 103,
+  key: "forest-dark",
+  name: "Forest 月夜の森",
+  path: "/images/backgrounds/bg-forest-dark.webp",
+};
+
+/**
+ * Forest atmospheres オブジェクト (BackgroundLayer 用、Bloom precedent 踏襲)
+ * 使用例 (Forest UI 統一実装後):
+ *   const { theme } = useTheme();
+ *   const targetBg = theme === "dark" ? ATMOSPHERES_FOREST.dark.path : ATMOSPHERES_FOREST.light.path;
+ *   <BackgroundLayer layer1Src={targetBg} ... />
+ */
+export const ATMOSPHERES_FOREST = {
+  light: ATMOSPHERE_FOREST_LIGHT,
+  dark: ATMOSPHERE_FOREST_DARK,
+} as const;
