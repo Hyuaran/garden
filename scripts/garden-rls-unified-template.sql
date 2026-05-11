@@ -1,0 +1,278 @@
+-- ============================================================
+-- Garden — 統一 RLS テンプレート（新規テーブル追加時の雛形）
+-- ============================================================
+-- 作成日: 2026-05-11
+-- 関連 PR: PR #154 (cross_rls_helpers — has_role_at_least / auth_employee_number)
+-- 設計指針: docs/specs/cross-cutting/2026-05-11-garden-rls-design-guide.md
+-- 関連 spec: docs/specs/cross-cutting/spec-cross-rls-audit.md
+--           docs/specs/plans/2026-05-11-garden-unified-auth-plan.md (Task 4)
+--
+-- 本ファイルの位置づけ:
+--   * 新規追加テーブルに RLS を設定する際の **雛形集** （コピペで使う）
+--   * 全 SQL はコメントアウト形式で同梱（実適用は行わない）
+--   * 既存テーブルの実マイグレーションは **別 PR**（plan §Task 4 §Acceptance 4）
+--
+-- 8 段階 garden_role 階層（昇順）:
+--   toss(1) < closer(2) < cs(3) < staff(4) < outsource(5) < manager(6) < admin(7) < super_admin(8)
+--
+-- 利用可能な helper（PR #154 で導入、cross_rls_helpers）:
+--   auth_employee_number()
+--     -> 現ユーザの employee_number (text)。未ログイン / 未登録なら NULL
+--     -> 用途: 「本人 only」「自分担当 only」policy で本人特定に使用
+--
+--   has_role_at_least(role_min text)
+--     -> 現ユーザが role_min 以上か (boolean)
+--     -> 例: has_role_at_least('manager') = manager / admin / super_admin で true
+--     -> 階層は上記 8 段階に従う
+--
+-- 既存互換 helper（root-auth-schema.sql、Phase B-5 で wrapper 化予定）:
+--   root_can_access()      ≈ has_role_at_least('manager')
+--   root_can_write()       ≈ has_role_at_least('admin')
+--   root_is_super_admin()  ≈ has_role_at_least('super_admin')
+--   tree_can_view_confirm() ≈ has_role_at_least('cs')
+--
+-- ============================================================
+-- 適用前チェックリスト（コピペ前に必ず確認）
+-- ============================================================
+--   [ ] <table_name> を実テーブル名に置換したか
+--   [ ] 担当 column（例: employee_number / assignee）の dtype は text か
+--   [ ] WITH CHECK を書き忘れていないか（INSERT / UPDATE 両方に効くか）
+--   [ ] 既存の dev / open policy（*_dev / *_all_open）を DROP したか
+--   [ ] index が effective か（USING 句の helper 関数は STABLE 扱い）
+--   [ ] 適用前に pg_policies で現状確認 + 適用後に差分確認したか
+--
+-- ============================================================
+-- Pattern A: 全員閲覧可 / admin のみ書込
+-- ============================================================
+-- 適用例:
+--   * 法人マスタ（root_companies）
+--   * 給与体系マスタ（root_salary_systems）
+--   * バンクマスタ（root_bank_accounts）
+--   * 取引先 / 外注先マスタ（root_vendors）
+--
+-- 設計意図:
+--   * staff 以上の全員が閲覧して業務上参照する
+--   * 編集は admin のみ（誤更新リスク回避）
+--
+-- ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;
+--
+-- DROP POLICY IF EXISTS <table_name>_select ON <table_name>;
+-- DROP POLICY IF EXISTS <table_name>_write  ON <table_name>;
+--
+-- CREATE POLICY <table_name>_select ON <table_name>
+--   FOR SELECT
+--   USING (has_role_at_least('staff'));
+--
+-- CREATE POLICY <table_name>_write ON <table_name>
+--   FOR ALL
+--   USING      (has_role_at_least('admin'))
+--   WITH CHECK (has_role_at_least('admin'));
+
+-- ============================================================
+-- Pattern B: 本人 only 閲覧 + manager 以上は全件閲覧 + admin のみ書込
+-- ============================================================
+-- 適用例:
+--   * root_employees（従業員マスタ）
+--   * 給与明細（bud_payslips）
+--   * 個人勤怠（root_attendance）
+--
+-- 設計意図:
+--   * 本人は自分の行のみ閲覧可
+--   * manager 以上は管理目的で全件閲覧可
+--   * 編集は admin のみ（昇給・属性変更の慎重さ確保）
+--
+-- 前提:
+--   * テーブルに employee_number (text) 列があること
+--   * employee_number は root_employees の自然キー
+--
+-- ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;
+--
+-- DROP POLICY IF EXISTS <table_name>_select_own     ON <table_name>;
+-- DROP POLICY IF EXISTS <table_name>_select_manager ON <table_name>;
+-- DROP POLICY IF EXISTS <table_name>_write_admin    ON <table_name>;
+--
+-- CREATE POLICY <table_name>_select_own ON <table_name>
+--   FOR SELECT
+--   USING (employee_number = auth_employee_number());
+--
+-- CREATE POLICY <table_name>_select_manager ON <table_name>
+--   FOR SELECT
+--   USING (has_role_at_least('manager'));
+--
+-- CREATE POLICY <table_name>_write_admin ON <table_name>
+--   FOR ALL
+--   USING      (has_role_at_least('admin'))
+--   WITH CHECK (has_role_at_least('admin'));
+
+-- ============================================================
+-- Pattern C: 自分担当 only 閲覧 + manager 全件閲覧 + 自分担当 only 書込
+-- ============================================================
+-- 適用例:
+--   * tree_prospects（架電案件、担当者ベース）
+--   * leaf_cases（Leaf 案件、closer 担当）
+--   * tree_calling_sessions（架電セッション）
+--
+-- 設計意図:
+--   * 営業 / コールセンタースタッフは自分担当の行のみ操作
+--   * manager 以上は全件閲覧で進捗管理（v3.1 改訂で「自分担当 only」に縮退、
+--     詳細: docs/specs/tree/spec-tree-phase-d-01-schema-migration.md §4.1）
+--   * admin は全件編集可（救援操作）
+--
+-- 前提:
+--   * テーブルに assignee 系の列（assignee / employee_id / closer_id 等、text）があること
+--   * 本テンプレでは employee_id (text) を仮使用
+--
+-- ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;
+--
+-- DROP POLICY IF EXISTS <table_name>_select_own_assignment    ON <table_name>;
+-- DROP POLICY IF EXISTS <table_name>_select_manager           ON <table_name>;
+-- DROP POLICY IF EXISTS <table_name>_write_own_assignment     ON <table_name>;
+-- DROP POLICY IF EXISTS <table_name>_write_admin              ON <table_name>;
+--
+-- CREATE POLICY <table_name>_select_own_assignment ON <table_name>
+--   FOR SELECT
+--   USING (employee_id = auth_employee_number());
+--
+-- CREATE POLICY <table_name>_select_manager ON <table_name>
+--   FOR SELECT
+--   USING (has_role_at_least('manager'));
+--
+-- CREATE POLICY <table_name>_write_own_assignment ON <table_name>
+--   FOR ALL
+--   USING      (employee_id = auth_employee_number())
+--   WITH CHECK (employee_id = auth_employee_number());
+--
+-- CREATE POLICY <table_name>_write_admin ON <table_name>
+--   FOR ALL
+--   USING      (has_role_at_least('admin'))
+--   WITH CHECK (has_role_at_least('admin'));
+
+-- ============================================================
+-- Pattern D: admin only（機密マスタ・監査ログ等）
+-- ============================================================
+-- 適用例:
+--   * root_audit_log（監査ログ）
+--   * kot_sync_log（KING OF TIME 同期ログ）
+--   * 申請承認ログ（root_change_requests）
+--
+-- 設計意図:
+--   * 一般スタッフ閲覧不可（誤情報拡散・改ざんリスク回避）
+--   * admin / super_admin のみ閲覧 + 編集
+--
+-- ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;
+--
+-- DROP POLICY IF EXISTS <table_name>_admin ON <table_name>;
+--
+-- CREATE POLICY <table_name>_admin ON <table_name>
+--   FOR ALL
+--   USING      (has_role_at_least('admin'))
+--   WITH CHECK (has_role_at_least('admin'));
+
+-- ============================================================
+-- Pattern E: super_admin only（極秘）
+-- ============================================================
+-- 適用例:
+--   * 役員報酬 / 経営機密データ
+--   * super_admin 権限変更履歴
+--
+-- 設計意図:
+--   * 唯一 super_admin（東海林さん）のみ閲覧 + 編集
+--   * admin であっても拒否
+--
+-- 詳細: scripts/garden-super-admin-lockdown.sql（Task 5、本ファイルとは別 PR）
+--       memory project_super_admin_operation.md
+--
+-- ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;
+--
+-- DROP POLICY IF EXISTS <table_name>_super_admin ON <table_name>;
+--
+-- CREATE POLICY <table_name>_super_admin ON <table_name>
+--   FOR ALL
+--   USING      (has_role_at_least('super_admin'))
+--   WITH CHECK (has_role_at_least('super_admin'));
+
+-- ============================================================
+-- アンチパターン集（やってはいけない RLS）
+-- ============================================================
+-- ❌ ① Route Handler でブラウザ用 anon supabase singleton を流用 → RLS 100% block
+--    詳細: memory project_rls_server_client_audit.md
+--          docs/specs/cross-cutting/spec-cross-rls-audit.md §1.1 (Bloom PDF 事件 PR #17)
+--    根本原因: anon key だけでは auth.uid() = NULL → 全行ブロック
+--    対策: src/lib/supabase/server.ts (createAuthenticatedSupabase) で JWT 転送
+--
+-- ❌ ② INSERT / UPDATE 時に WITH CHECK 書き忘れ → 意図しない INSERT 通過
+--    例（NG）:
+--      CREATE POLICY xxx ON tbl FOR ALL USING (has_role_at_least('admin'));
+--      -- WITH CHECK 無し → INSERT は通る（既存行が無いので USING が評価されない）
+--    対策: FOR ALL / FOR INSERT / FOR UPDATE では WITH CHECK を必ず併記
+--
+-- ❌ ③ 巨大テーブル WHERE で has_role_at_least() を多用 → index lost で seq scan
+--    例: soil_call_history（335万件）で row 単位に has_role_at_least 評価
+--    対策:
+--      * 行レベルに body 適用せず、view 経由で role check を集約
+--      * 大量行の SELECT は materialized view + cron 更新 で代替
+--      * 詳細: docs/specs/2026-04-25-soil-06-rls-design.md
+--
+-- ❌ ④ super_admin への昇格を UI から許可 → 権限固定原則違反
+--    対策: scripts/garden-super-admin-lockdown.sql (Task 5) で UI / DB trigger の二重防御
+--    詳細: memory project_super_admin_operation.md
+--
+-- ❌ ⑤ helper 関数を SECURITY INVOKER で定義 → RLS ポリシー内で再帰ループ
+--    対策: 全 helper は SECURITY DEFINER + STABLE で定義
+--    例: root-auth-schema.sql の current_garden_role / root_can_access
+--
+-- ❌ ⑥ employee_number カラム dtype が int → text の auth_employee_number() と比較不可
+--    対策: 業務キー employee_number は **全テーブル text** で統一（root_employees に倣う）
+--    確認: SELECT column_name, data_type FROM information_schema.columns WHERE column_name = 'employee_number';
+--
+-- ============================================================
+-- 確認クエリ（policy 適用後の検証用）
+-- ============================================================
+-- A. policy 一覧（テーブル別）
+-- SELECT schemaname, tablename, policyname, cmd, qual, with_check
+--   FROM pg_policies
+--   WHERE tablename = '<table_name>'
+--   ORDER BY tablename, cmd;
+--
+-- B. helper 関数の存在確認
+-- SELECT proname, prosecdef, provolatile
+--   FROM pg_proc
+--   WHERE proname IN (
+--     'auth_employee_number',
+--     'has_role_at_least',
+--     'current_garden_role',
+--     'root_can_access',
+--     'root_can_write',
+--     'root_is_super_admin'
+--   );
+--
+-- C. RLS 有効化確認
+-- SELECT schemaname, tablename, rowsecurity
+--   FROM pg_tables
+--   WHERE tablename = '<table_name>';
+--   -- 期待値: rowsecurity = true
+--
+-- D. 8 段階 garden_role の現状値 distribution
+-- SELECT garden_role, COUNT(*)
+--   FROM root_employees
+--   WHERE is_active = true
+--   GROUP BY garden_role
+--   ORDER BY
+--     CASE garden_role
+--       WHEN 'toss'        THEN 1
+--       WHEN 'closer'      THEN 2
+--       WHEN 'cs'          THEN 3
+--       WHEN 'staff'       THEN 4
+--       WHEN 'outsource'   THEN 5
+--       WHEN 'manager'     THEN 6
+--       WHEN 'admin'       THEN 7
+--       WHEN 'super_admin' THEN 8
+--     END;
+
+-- ============================================================
+-- ファイル末尾（本テンプレートには SQL 実体を含まない）
+-- ============================================================
+-- 適用するには: 上記 Pattern A-E から該当パターンをコピー →
+--               <table_name> を実テーブル名に置換 →
+--               module 固有 spec の RLS 章として記述 →
+--               別 PR で個別適用
