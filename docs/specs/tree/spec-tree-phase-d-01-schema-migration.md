@@ -466,7 +466,7 @@ WHERE h.source = 'filemaker';  -- Soil 側で source 列を追加、FM 投入時
 | 日付 | 版 | 改訂内容 | 担当セッション |
 |---|---|---|---|
 | 2026-04-25 | v1.0（初版）| Phase D-01 schema migration spec 起草（テーブル 3 / RLS 4 階層 / Trigger 6 / VIEW 2）| a-auto / Batch 9 |
-| 2026-05-11 | v1.1 | §4.1 / §4.2 / §4.3 RLS ポリシー改訂: `is_same_department()` 縮退対応で「マネージャー = 自部署絞込」を「自分担当 only」に縮退。Batch 7 (PR #154) 採用に伴う措置。将来 department 運用確定で再導入時に「自部署絞込」へ復活予定。確定経緯: main- No. 233（→ a-root-002）→ root-002-38（Batch 7 縮退）→ main- No. 238（→ a-tree-002、本 spec 改訂依頼）| a-tree-002 |
+| 2026-05-11 | v1.1 | §4.1 / §4.2 / §4.3 RLS ポリシー改訂: `is_same_department()` 縮退対応で「マネージャー = 自部署絞込」を「自分担当 only」に縮退。Batch 7 (PR #154) 採用に伴う措置。将来 department 運用確定で再導入時に「自部署絞込」へ復活予定。確定経緯: main- No. 233（→ a-root-002）→ root-002-38（Batch 7 縮退）→ main- No. 238（→ a-tree-002、本 spec 改訂依頼）。**対応する SQL 本体修正は PR #128（feature/tree-phase-d-01-reissue-20260507 ブランチ、commit 45decb4）の追加 push or 後続別 PR で実施予定**（spec 改訂 = §4 縮退 → 対応 SQL = `is_same_department(...)` → `employee_id = auth_employee_number()` 修正、PR #154 merge + apply 後着手）。bloom-006- No. 7 review で 軽微改善 # 1 として trace 追記指摘、main- No. 248 経由で本行追記。 | a-tree-002 |
 
 ---
 
