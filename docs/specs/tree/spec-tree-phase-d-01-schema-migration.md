@@ -7,6 +7,10 @@
 - 作成: 2026-04-25（a-auto / Batch 9 Tree Phase D #01）
 - 前提:
   - `root_employees` / `garden_role` 7 階層（Root 既設）
+  - **`root_employees.employee_number` 列に UNIQUE 制約必須**（別 migration `supabase/migrations/20260511000002_root_employees_employee_number_unique.sql` で先行投入）
+    - 経緯: `scripts/root-schema.sql` L99-100 で `employee_id text PRIMARY KEY` + `employee_number text NOT NULL`（UNIQUE なし）の構造。Tree D-01 schema の FK 参照 3 箇所（`tree_calling_sessions` / `tree_call_records` / `tree_agent_assignments` → `REFERENCES root_employees(employee_number)`）は employee_number 側に UNIQUE / PK 制約が必須（PostgreSQL 仕様、42830 invalid_foreign_key 防止）
+    - 業務意図維持: Garden 全体で「employee_number ベース横断 FK」方針確定（main- No. 269 案 A 採択、東海林さん決裁 2026-05-11 15:30）
+    - 確定経緯: 2026-05-11 14:30 Tree D-01 初回 apply で 42830 エラー検出 → main- No. 269 a-tree-002 提案 + 東海林さん案 A 採択 → a-root-002 が UNIQUE migration 起草（PR #157）→ apply 後 Tree D-01 再 apply 可能
   - Soil `soil_call_lists` / `soil_call_histories`（営業リスト 253 万件 / コール履歴 335 万件、Phase C で拡張予定）
   - spec-cross-rls-audit（Batch 7）
   - spec-cross-audit-log（Batch 7）
@@ -93,6 +97,9 @@ BEGIN;
 
 CREATE TABLE tree_calling_sessions (
   session_id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- FK 前提: root_employees.employee_number 列に UNIQUE 制約必須
+  --   別 migration: supabase/migrations/20260511000002_root_employees_employee_number_unique.sql で先行投入
+  --   経緯: 2026-05-11 初回 apply で 42830 invalid_foreign_key 検出 → main- No. 269 案 A 採択
   employee_id          text NOT NULL REFERENCES root_employees(employee_number),
   campaign_code        text NOT NULL,   -- 関電 / 光回線 / クレカ 等（Soil と同軸）
   mode                 text NOT NULL CHECK (mode IN ('sprout', 'branch', 'breeze', 'aporan', 'confirm')),
@@ -127,6 +134,7 @@ CREATE TABLE tree_call_records (
   call_id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id           uuid NOT NULL REFERENCES tree_calling_sessions(session_id),
   list_id              bigint REFERENCES soil_call_lists(list_id),  -- Soil 連携
+  -- FK 前提: root_employees.employee_number 列に UNIQUE 制約必須（§前提 + 別 migration 参照）
   employee_id          text NOT NULL REFERENCES root_employees(employee_number),
   campaign_code        text NOT NULL,
   result_code          text NOT NULL,   -- 'toss', 'order', 'sight_A', 'sight_B', 'sight_C', 'unreach', 'ng_refuse', 'ng_claim', 'ng_contracted', 'ng_other', 'coin' 等
@@ -160,6 +168,7 @@ CREATE INDEX idx_tcr_toss ON tree_call_records (tossed_leaf_case_id) WHERE tosse
 ```sql
 CREATE TABLE tree_agent_assignments (
   assignment_id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- FK 前提: root_employees.employee_number 列に UNIQUE 制約必須（§前提 + 別 migration 参照）
   employee_id          text NOT NULL REFERENCES root_employees(employee_number),
   campaign_code        text NOT NULL,
   list_id              bigint NOT NULL REFERENCES soil_call_lists(list_id),
@@ -467,6 +476,7 @@ WHERE h.source = 'filemaker';  -- Soil 側で source 列を追加、FM 投入時
 |---|---|---|---|
 | 2026-04-25 | v1.0（初版）| Phase D-01 schema migration spec 起草（テーブル 3 / RLS 4 階層 / Trigger 6 / VIEW 2）| a-auto / Batch 9 |
 | 2026-05-11 | v1.1 | §4.1 / §4.2 / §4.3 RLS ポリシー改訂: `is_same_department()` 縮退対応で「マネージャー = 自部署絞込」を「自分担当 only」に縮退。Batch 7 (PR #154) 採用に伴う措置。将来 department 運用確定で再導入時に「自部署絞込」へ復活予定。確定経緯: main- No. 233（→ a-root-002）→ root-002-38（Batch 7 縮退）→ main- No. 238（→ a-tree-002、本 spec 改訂依頼）。**対応する SQL 本体修正は PR #128（feature/tree-phase-d-01-reissue-20260507 ブランチ、commit 45decb4）の追加 push or 後続別 PR で実施予定**（spec 改訂 = §4 縮退 → 対応 SQL = `is_same_department(...)` → `employee_id = auth_employee_number()` 修正、PR #154 merge + apply 後着手）。bloom-006- No. 7 review で 軽微改善 # 1 として trace 追記指摘、main- No. 248 経由で本行追記。 | a-tree-002 |
+| 2026-05-11 | v1.2 | §「前提:」ブロック + §3.1 / §3.2 / §3.3 SQL FK 参照箇所 3 件に「`root_employees.employee_number` 列に UNIQUE 制約必須」前提を明記。経緯: 2026-05-11 14:30 Tree D-01 初回 apply で 42830 invalid_foreign_key エラー検出（`scripts/root-schema.sql` L99-100 で `employee_id PRIMARY KEY` + `employee_number` UNIQUE なしの構造、a-tree-002 起草時の事実誤認）→ main- No. 269 で a-tree-002 が真因報告 + 案 A 提案（employee_number に UNIQUE 制約追加 = 業務意図維持 + Tree D-01 schema 改訂不要）→ 東海林さん案 A 採択（15:30）→ a-root-002 が別 migration（`supabase/migrations/20260511000002_root_employees_employee_number_unique.sql`）起草 + PR #157 起票（root-002- No. 40）→ apply 後 Tree D-01 再 apply 可能。本 v1.2 は spec 単独読込者の誤認再発防止 + 別 migration ファイル名による trace 強化（候補 3 採用、main- No. 273 GO）。 | a-tree-002 |
 
 ---
 
