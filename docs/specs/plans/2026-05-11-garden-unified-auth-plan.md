@@ -1350,13 +1350,29 @@ Acceptance: 既存 RLS 動作不変、npm test 既存 root テスト群緑
 
 ## Task 5: super_admin 権限固定（東海林さん本人専任）
 
+### 設計方針: ハードコード採択（2026-05-11 確定、bloom-006 # 18 review + main- No. 304 §E 採択）
+
+**ハードコード**: `super_admin = 東海林さん本人 1 名（employee_number=0008）`を SQL / コード / spec に直書きし、UI / root_settings から動的変更不可とする。
+
+| 案 | 内容 | 採否 |
+|---|---|---|
+| A. ハードコード | super_admin = 東海林さん本人 1 名を SQL/コード/spec に直書き | ✅ **採択** |
+| B. root_settings 可変 | admin 画面から super_admin 切替可能 | ❌ 不採択 |
+
+採択理由:
+1. super_admin 操作 = 東海林さん本人専任（memory `project_super_admin_operation.md` で恒久確定）
+2. 可変化は admin → super_admin 昇格事故リスク（B 案では admin が super_admin を作れてしまう）
+3. memory `project_configurable_permission_policies.md`「権限ポリシー設定変更可能設計」は admin 以下の閾値が対象、super_admin 自体は別ポリシー
+4. ハードコード化で audit log の明確性向上
+
 ### Goal
 
-memory `project_super_admin_operation.md` に従い、super_admin 昇格は東海林さん（employee_number=0008）のみ手動 SQL で実施する設計を **DB trigger + UI 制限** の 2 層で固定化。
+memory `project_super_admin_operation.md` に従い、super_admin 昇格は東海林さん（employee_number=0008）のみ手動 SQL で実施する設計を **DB trigger + UI 制限** の 2 層 + **ハードコード方針**で固定化。
 
 - アプリ UI からの `garden_role = 'super_admin'` UPDATE は完全禁止
 - DB trigger で super_admin への変更を block（UI 改ざんバイパス防止）
 - 唯一の昇格経路 = Supabase Dashboard SQL Editor（service_role）で東海林さんが直接実行
+- root_settings からの動的閾値変更は **本ポリシー対象外**（admin 以下の閾値のみ対象）
 
 ### Files
 

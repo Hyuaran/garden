@@ -39,7 +39,10 @@ export function BloomGate({ children }: { children: ReactNode }) {
         ? window.location.pathname + window.location.search
         : BLOOM_PATHS.HOME;
     const returnTo = encodeURIComponent(current);
-    window.location.replace(`${BLOOM_PATHS.FOREST_LOGIN}?returnTo=${returnTo}`);
+    // 2026-05-11 Task 1: FOREST_LOGIN (/forest/login) → GARDEN_LOGIN (/login) に変更
+    // Garden Series 統一ログイン画面へ単一 redirect。
+    // 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 1 §Step 3
+    window.location.replace(`${BLOOM_PATHS.GARDEN_LOGIN}?returnTo=${returnTo}`);
   }, [loading, allowed]);
 
   if (allowed) {
