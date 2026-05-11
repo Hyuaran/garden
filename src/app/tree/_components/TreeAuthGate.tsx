@@ -1,75 +1,53 @@
 "use client";
 
 /**
- * TreeAuthGate
+ * Tree 認証ゲート — ModuleGate + 誕生日 2 段判定ラッパー (2026-05-11、Task 3)
  *
- * layout.tsx の中で TreeShell/children をラップし、以下を実施：
- * - 認証確認中：ローディング表示
- * - 未認証：/tree/login へリダイレクト
- * - 認証済：子コンポーネントを表示
+ * 旧 TreeAuthGate (TreeStateContext の isAuthenticated/treeUser を直接監視) は
+ * TreeAuthGate.legacy-20260511.tsx に保管。
  *
- * /tree/login は認証チェック対象外（無限ループ防止）。
+ * 動作:
+ *   1. /tree/login: 認証チェック対象外（無限ループ防止）
+ *   2. ModuleGate で認証 + minRole=toss 確認（全 garden_role が通過可能）
+ *   3. 認証済かつ誕生日未登録 → /tree/birthday へ強制リダイレクト
+ *   4. 上記以外 → children をそのまま描画
  *
- * 設計:
- *   Forest の ForestGate と同じパターン。TreeStateContext の
- *   isAuthenticated / loading を監視し、useEffect で遷移する。
+ * NOTE: useEffect は早期 return の前に配置（React Rules of Hooks 遵守）。
+ *       plan §Step 3-6 のコード例は順序が逆だが本実装では正しい順序に修正。
+ *
+ * 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 3 §Step 3-6
  */
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
-import { C } from "../_constants/colors";
+import { ModuleGate } from "../../_components/ModuleGate";
 import { TREE_PATHS } from "../_constants/screens";
 import { useTreeState } from "../_state/TreeStateContext";
 
 export function TreeAuthGate({ children }: { children: ReactNode }) {
-  const { isAuthenticated, loading, treeUser } = useTreeState();
   const pathname = usePathname();
   const router = useRouter();
-
+  const { treeUser } = useTreeState();
   const isLoginPage = pathname === TREE_PATHS.LOGIN;
   const isBirthdayPage = pathname === TREE_PATHS.BIRTHDAY;
   const needsBirthday = !!treeUser && treeUser.birthday === null;
 
+  // 認証済だが誕生日未登録 → 誕生日入力画面へ強制遷移
   useEffect(() => {
-    if (loading) return;
-    // 未認証 → ログイン画面へ
-    if (!isAuthenticated && !isLoginPage) {
-      router.replace(TREE_PATHS.LOGIN);
-      return;
-    }
-    // 認証済だが誕生日未登録 → 誕生日入力画面へ
-    if (isAuthenticated && needsBirthday && !isBirthdayPage) {
+    if (!treeUser) return;
+    if (isLoginPage) return;
+    if (needsBirthday && !isBirthdayPage) {
       router.replace(TREE_PATHS.BIRTHDAY);
     }
-  }, [loading, isAuthenticated, isLoginPage, isBirthdayPage, needsBirthday, router]);
+  }, [treeUser, needsBirthday, isBirthdayPage, isLoginPage, router]);
 
-  // ログイン画面は認証状態に関係なく表示
+  // ログイン画面は認証チェック対象外（無限ループ防止）
   if (isLoginPage) return <>{children}</>;
 
-  // 認証確認中：ローディング
-  if (loading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "'Noto Sans JP', sans-serif",
-          color: C.darkGreen,
-          fontSize: 14,
-          background: `linear-gradient(160deg, ${C.bgWarm1} 0%, ${C.bgWarm2} 50%, ${C.bgWarm3} 100%)`,
-        }}
-      >
-        認証確認中...
-      </div>
-    );
-  }
-
-  // 未認証（useEffect のリダイレクト待機中）
-  if (!isAuthenticated) return null;
-
-  // 認証済
-  return <>{children}</>;
+  return (
+    <ModuleGate module="tree" loginPath={TREE_PATHS.LOGIN}>
+      {needsBirthday && !isBirthdayPage ? null : children}
+    </ModuleGate>
+  );
 }
