@@ -45,7 +45,7 @@ create extension if not exists btree_gist;
 -- 正式に owner を移管する想定（テーブル名は public.* で統一済のためスキーマ移動不要）。
 create table if not exists public.root_employee_payroll_roles (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
   role text not null
     check (role in (
       'payroll_calculator',
@@ -56,9 +56,9 @@ create table if not exists public.root_employee_payroll_roles (
     )),
   is_active boolean not null default true,
   granted_at timestamptz not null default now(),
-  granted_by uuid references public.root_employees(id),
+  granted_by text references public.root_employees(employee_id),
   revoked_at timestamptz,
-  revoked_by uuid references public.root_employees(id),
+  revoked_by text references public.root_employees(employee_id),
   notes text,
 
   constraint uq_employee_role_active
@@ -83,7 +83,7 @@ create policy repr_select on public.root_employee_payroll_roles
   for select
   using (
     -- 自分のロール
-    employee_id = (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
     -- または admin+
     or exists (
       select 1 from public.root_employees re
@@ -191,7 +191,7 @@ $$;
 -- ------------------------------------------------------------
 create table if not exists public.bud_employee_bank_accounts (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
 
   -- 口座情報
   bank_code text not null
@@ -216,7 +216,7 @@ create table if not exists public.bud_employee_bank_accounts (
   -- メタ
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id),
+  created_by text references public.root_employees(employee_id),
 
   -- 効果期間の整合性
   constraint chk_eba_dates
@@ -244,7 +244,7 @@ create index if not exists idx_bud_eba_effective
 -- ------------------------------------------------------------
 create table if not exists public.bud_payment_recipients (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid references public.root_employees(id),  -- ★ NULL 可
+  employee_id text references public.root_employees(employee_id),  -- ★ NULL 可
   recipient_type text not null
     check (recipient_type in ('external_company', 'individual_special', 'employee_special')),
 
@@ -279,7 +279,7 @@ create table if not exists public.bud_payment_recipients (
   -- メタ
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id),
+  created_by text references public.root_employees(employee_id),
 
   -- recipient_type と employee_id の整合性
   constraint chk_pr_recipient_type_employee
@@ -312,7 +312,7 @@ create index if not exists idx_bud_pr_type_active
 -- ------------------------------------------------------------
 create or replace view public.view_bud_active_employee_accounts as
 select
-  e.id as employee_id,
+  e.employee_id,
   e.employee_number,
   e.last_name || ' ' || e.first_name as full_name,
   eba.id as bank_account_id,
@@ -325,7 +325,7 @@ select
   eba.account_holder_kana
 from public.root_employees e
 inner join public.bud_employee_bank_accounts eba
-  on eba.employee_id = e.id
+  on eba.employee_id = e.employee_id
   and eba.is_active = true
   and eba.effective_from <= current_date
   and (eba.effective_to is null or eba.effective_to >= current_date)
@@ -347,7 +347,7 @@ drop policy if exists eba_select on public.bud_employee_bank_accounts;
 create policy eba_select on public.bud_employee_bank_accounts
   for select
   using (
-    employee_id = (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
     or public.bud_has_payroll_role()                  -- いずれかの payroll_* ロール
     or public.bud_is_admin_or_super_admin()
   );

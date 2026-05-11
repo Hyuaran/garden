@@ -28,7 +28,7 @@ create table if not exists public.bud_payroll_records (
   id uuid primary key default gen_random_uuid(),
   pay_period date not null,                           -- 支給対象月（月初日）
   pay_date date not null,                             -- 支給日
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
 
   -- D-02 連携（法定計算結果のスナップショット）
   salary_record_id uuid references public.bud_salary_records(id),
@@ -72,24 +72,24 @@ create table if not exists public.bud_payroll_records (
       'finalized'                 -- ⑦ 東海林 確定処理（=振込実行）
     )),
   calculated_at timestamptz,
-  calculated_by uuid references public.root_employees(id),
+  calculated_by text references public.root_employees(employee_id),
   approved_at timestamptz,
-  approved_by uuid references public.root_employees(id),
+  approved_by text references public.root_employees(employee_id),
   exported_at timestamptz,
   exported_to_csv_id uuid,                            -- D-11 bud_mfc_csv_exports(id) 連携
   confirmed_by_auditor_at timestamptz,
-  confirmed_by_auditor_by uuid references public.root_employees(id),
+  confirmed_by_auditor_by text references public.root_employees(employee_id),
   visual_double_check_requested_at timestamptz,       -- ⑤ Cat 4 #26
   visual_double_checked_at timestamptz,
-  visual_double_checked_by uuid references public.root_employees(id),
+  visual_double_checked_by text references public.root_employees(employee_id),
   visual_check_note text,
   sharoshi_request_sent_at timestamptz,
   sharoshi_partner_id uuid,                           -- root.partners(id) FK は Root 移管時に追加
   confirmed_by_sharoshi_at timestamptz,
-  confirmed_by_sharoshi_by uuid references public.root_employees(id),
+  confirmed_by_sharoshi_by text references public.root_employees(employee_id),
   sharoshi_confirmation_note text,
   finalized_at timestamptz,
-  finalized_by uuid references public.root_employees(id),
+  finalized_by text references public.root_employees(employee_id),
 
   -- メタ
   created_at timestamptz not null default now(),
@@ -133,7 +133,7 @@ create table if not exists public.bud_payroll_calculation_history (
       'rolled_back_to_draft'
     )),
   performed_at timestamptz not null default now(),
-  performed_by uuid not null references public.root_employees(id),
+  performed_by text not null references public.root_employees(employee_id),
   performer_role text not null
     check (performer_role in (
       'payroll_calculator',
@@ -179,11 +179,11 @@ create table if not exists public.bud_incentive_rate_tables (
   id uuid primary key default gen_random_uuid(),
   effective_from date not null,
   effective_to date check (effective_to is null or effective_to >= effective_from),
-  company_id uuid references public.root_companies(id),  -- NULL = 全社共通
+  company_id text references public.root_companies(company_id),  -- NULL = 全社共通
   table_data jsonb not null,
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id)
+  created_by text references public.root_employees(employee_id)
 );
 
 comment on table public.bud_incentive_rate_tables is

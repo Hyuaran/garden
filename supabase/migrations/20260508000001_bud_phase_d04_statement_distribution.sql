@@ -34,7 +34,7 @@ create table if not exists public.bud_payroll_notifications (
   id uuid primary key default gen_random_uuid(),
   salary_record_id uuid references public.bud_salary_records(id),
   bonus_record_id uuid references public.bud_bonus_records(id),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
 
   -- 配信方式（Y 案採択で 3 種に確定）
   delivery_method text not null
@@ -132,14 +132,14 @@ create table if not exists public.bud_salary_statements (
   id uuid primary key default gen_random_uuid(),
   salary_record_id uuid references public.bud_salary_records(id),
   bonus_record_id uuid references public.bud_bonus_records(id),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
   statement_type text not null
     check (statement_type in ('salary', 'bonus')),
   storage_path text not null,                         -- bud-salary-statements/{uuid}/{period}.pdf
   file_size_bytes int not null check (file_size_bytes > 0),
   pdf_checksum text not null,                         -- SHA256（改ざん検知）
   generated_at timestamptz not null default now(),
-  generated_by uuid references public.root_employees(id),
+  generated_by text references public.root_employees(employee_id),
   notification_sent_at timestamptz,
   notification_chatwork_message_id text,
   download_count int not null default 0 check (download_count >= 0),
@@ -147,7 +147,7 @@ create table if not exists public.bud_salary_statements (
 
   -- 削除（横断統一）
   deleted_at timestamptz,
-  deleted_by uuid references public.root_employees(id),
+  deleted_by text references public.root_employees(employee_id),
 
   constraint chk_salary_or_bonus_type_consistency
     check (

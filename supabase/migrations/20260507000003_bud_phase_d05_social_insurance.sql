@@ -107,7 +107,7 @@ create index if not exists idx_rates_active
 -- ------------------------------------------------------------
 create table if not exists public.bud_employee_remuneration_history (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
   insurance_type text not null
     check (insurance_type in ('health', 'pension')),
   effective_from date not null,
@@ -122,7 +122,7 @@ create table if not exists public.bud_employee_remuneration_history (
   source_period_id uuid references public.bud_payroll_periods(id),
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id),
+  created_by text references public.root_employees(employee_id),
 
   constraint uq_remuneration_history
     unique (employee_id, insurance_type, effective_from),
@@ -144,13 +144,13 @@ create index if not exists idx_remuneration_history_employee_type
 -- ------------------------------------------------------------
 create table if not exists public.bud_employee_insurance_exemptions (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
   exemption_type text not null
     check (exemption_type in ('maternity', 'childcare')),
     -- maternity=産前産後 (産前 6 週 + 産後 8 週), childcare=育休 (最長 子 2 歳まで)
   start_date date not null,
   end_date date,
-  approved_by uuid references public.root_employees(id),
+  approved_by text references public.root_employees(employee_id),
   approved_at timestamptz,
   notes text,
   created_at timestamptz not null default now(),

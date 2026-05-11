@@ -37,7 +37,7 @@
 -- 設定変更時は新規 period 作成時のみ反映、既存 period は不変（履歴保護）。
 create table if not exists public.bud_payroll_periods (
   id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.root_companies(id),
+  company_id text not null references public.root_companies(company_id),
   period_type text not null
     check (period_type in ('monthly', 'bonus_summer', 'bonus_winter', 'final_settlement')),
   start_date date not null,                    -- 期間開始（例: 2026-04-01）
@@ -48,14 +48,14 @@ create table if not exists public.bud_payroll_periods (
   status text not null default 'draft'
     check (status in ('draft', 'locked', 'calculated', 'approved', 'paid')),
   locked_at timestamptz,
-  locked_by uuid references public.root_employees(id),
+  locked_by text references public.root_employees(employee_id),
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id),
+  created_by text references public.root_employees(employee_id),
   updated_at timestamptz not null default now(),
-  updated_by uuid references public.root_employees(id),
+  updated_by text references public.root_employees(employee_id),
   deleted_at timestamptz,
-  deleted_by uuid references public.root_employees(id),
+  deleted_by text references public.root_employees(employee_id),
 
   constraint uq_bud_payroll_periods_company_type_end
     unique (company_id, period_type, end_date),
@@ -85,7 +85,7 @@ create index if not exists idx_bud_payroll_periods_company_payment
 create table if not exists public.bud_payroll_attendance_snapshots (
   id uuid primary key default gen_random_uuid(),
   payroll_period_id uuid not null references public.bud_payroll_periods(id) on delete cascade,
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
 
   -- 出勤・労働時間（分単位、KoT に合わせる）
   working_days int not null default 0
@@ -157,7 +157,7 @@ create table if not exists public.bud_payroll_attendance_overrides (
   new_value jsonb,
   reason text not null
     check (length(reason) >= 5),                     -- 最低 5 文字（実態を強制）
-  approved_by uuid not null references public.root_employees(id),
+  approved_by text not null references public.root_employees(employee_id),
   approved_at timestamptz not null default now(),
   audit_log_id uuid                                  -- 将来 root_audit_log.id へリンク予定
 );

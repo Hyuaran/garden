@@ -27,7 +27,7 @@
 create table if not exists public.bud_payroll_transfer_batches (
   id uuid primary key default gen_random_uuid(),
   payroll_period_id uuid not null references public.bud_payroll_periods(id),
-  company_id uuid not null references public.root_companies(id),
+  company_id text not null references public.root_companies(company_id),
   source_bank_account_id uuid not null,                -- bud_company_bank_accounts(id) — 既存 Phase A
   transfer_type text not null
     check (transfer_type in ('salary', 'bonus')),
@@ -38,17 +38,17 @@ create table if not exists public.bud_payroll_transfer_batches (
   status text not null default 'draft'
     check (status in ('draft', 'approved', 'fb_generated', 'uploaded_to_bank', 'completed', 'failed')),
   approved_at timestamptz,
-  approved_by uuid references public.root_employees(id),
+  approved_by text references public.root_employees(employee_id),
   fb_generated_at timestamptz,
   bank_uploaded_at timestamptz,
   completed_at timestamptz,
   failed_reason text,
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id),
+  created_by text references public.root_employees(employee_id),
 
   deleted_at timestamptz,
-  deleted_by uuid references public.root_employees(id),
+  deleted_by text references public.root_employees(employee_id),
 
   constraint uq_transfer_batch_per_period_company_type
     unique (payroll_period_id, company_id, transfer_type)
@@ -70,7 +70,7 @@ create table if not exists public.bud_payroll_transfer_items (
   batch_id uuid not null references public.bud_payroll_transfer_batches(id) on delete cascade,
   salary_record_id uuid references public.bud_salary_records(id),
   bonus_record_id uuid references public.bud_bonus_records(id),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
 
   -- 振込情報スナップショット（A-04 連携用、口座変更時の再現性保証）
   recipient_bank_code text not null check (recipient_bank_code ~ '^[0-9]{4}$'),
@@ -140,13 +140,13 @@ create table if not exists public.bud_payroll_accounting_reports (
 
   -- メタ
   generated_at timestamptz not null default now(),
-  generated_by uuid not null references public.root_employees(id),
+  generated_by text not null references public.root_employees(employee_id),
   downloaded_at timestamptz,
-  downloaded_by uuid references public.root_employees(id),
+  downloaded_by text references public.root_employees(employee_id),
   imported_to_mf_at timestamptz,                      -- 東海林さん admin が MFC 会計取込確認後手動更新
-  imported_to_mf_by uuid references public.root_employees(id),
+  imported_to_mf_by text references public.root_employees(employee_id),
   shared_with_godo_at timestamptz,                    -- 後道さんへ共有時刻（参照系、Garden 上の確認フローには不在）
-  shared_with_godo_by uuid references public.root_employees(id),
+  shared_with_godo_by text references public.root_employees(employee_id),
 
   notes text,
 
@@ -207,7 +207,7 @@ drop policy if exists ti_select on public.bud_payroll_transfer_items;
 create policy ti_select on public.bud_payroll_transfer_items
   for select
   using (
-    employee_id = (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
     or public.bud_has_payroll_role()
     or public.bud_is_admin_or_super_admin()
   );

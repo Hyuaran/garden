@@ -32,7 +32,7 @@
 create table if not exists public.bud_salary_records (
   id uuid primary key default gen_random_uuid(),
   payroll_period_id uuid not null references public.bud_payroll_periods(id),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
 
   -- 基本給
   basic_pay numeric(12, 0) not null default 0
@@ -96,14 +96,14 @@ create table if not exists public.bud_salary_records (
 
   -- 監査
   calculated_at timestamptz not null default now(),
-  calculated_by uuid references public.root_employees(id),
+  calculated_by text references public.root_employees(employee_id),
   approved_at timestamptz,
-  approved_by uuid references public.root_employees(id),
+  approved_by text references public.root_employees(employee_id),
   paid_at timestamptz,
 
   -- 削除（横断統一）
   deleted_at timestamptz,
-  deleted_by uuid references public.root_employees(id),
+  deleted_by text references public.root_employees(employee_id),
   deleted_reason text,
 
   constraint uq_salary_records_period_employee
@@ -127,7 +127,7 @@ create index if not exists idx_bud_salary_status
 -- ------------------------------------------------------------
 create table if not exists public.bud_employee_allowances (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
   allowance_type text not null
     check (allowance_type in ('commute', 'housing', 'position', 'family', 'qualification', 'custom')),
   custom_label text,                              -- allowance_type='custom' 時のみ必須
@@ -136,7 +136,7 @@ create table if not exists public.bud_employee_allowances (
   effective_to date check (effective_to is null or effective_to >= effective_from),
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id),
+  created_by text references public.root_employees(employee_id),
 
   constraint chk_custom_label_when_custom
     check (
@@ -156,14 +156,14 @@ create index if not exists idx_bud_emp_allowances_employee
 -- ------------------------------------------------------------
 create table if not exists public.bud_employee_deductions (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
   deduction_label text not null check (length(deduction_label) > 0),
   amount numeric(10, 0) not null check (amount >= 0),
   effective_from date not null,
   effective_to date check (effective_to is null or effective_to >= effective_from),
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id)
+  created_by text references public.root_employees(employee_id)
 );
 
 comment on table public.bud_employee_deductions is
@@ -233,7 +233,7 @@ create index if not exists idx_otsu_lookup
 -- ------------------------------------------------------------
 create table if not exists public.bud_resident_tax_assignments (
   id uuid primary key default gen_random_uuid(),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
   fiscal_year int not null
     check (fiscal_year between 2020 and 2099),         -- 6 月-翌 5 月の年度
   june_amount numeric(10, 0) not null check (june_amount >= 0),

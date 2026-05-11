@@ -29,7 +29,7 @@ create table if not exists public.bud_mfc_csv_exports (
   pay_period date not null,                          -- 支給対象月の 1 日
   pay_date date not null,                             -- 支給日
   generated_at timestamptz not null default now(),
-  generated_by uuid not null references public.root_employees(id),
+  generated_by text not null references public.root_employees(employee_id),
   generator_role text not null
     check (generator_role in ('payroll_calculator', 'payroll_disburser')),
 
@@ -57,27 +57,27 @@ create table if not exists public.bud_mfc_csv_exports (
       'imported_to_mfc'           -- ⑦ MFC 取込最終確認
     )),
   approved_at timestamptz,
-  approved_by uuid references public.root_employees(id),
+  approved_by text references public.root_employees(employee_id),
   exported_at timestamptz,                            -- DL + MFC 取込実行時刻
-  exported_by uuid references public.root_employees(id),
+  exported_by text references public.root_employees(employee_id),
   confirmed_by_auditor_at timestamptz,                -- ④ 東海林目視確認
-  confirmed_by_auditor_by uuid references public.root_employees(id),
+  confirmed_by_auditor_by text references public.root_employees(employee_id),
   visual_double_check_requested_at timestamptz,       -- ⑤ 上田に目視ダブルチェック依頼時刻
   visual_double_checked_at timestamptz,               -- ⑤ 上田が OK 戻した時刻
-  visual_double_checked_by uuid references public.root_employees(id),
+  visual_double_checked_by text references public.root_employees(employee_id),
   visual_check_note text,                             -- ⑤ 上田の特記事項 / NG 内容
   sharoshi_request_sent_at timestamptz,               -- ⑥ 社労士確認依頼送信時刻
   sharoshi_partner_id uuid,                           -- 依頼先 root_partners（D-10 仕様、Root 移管時に FK 追加）
   confirmed_by_sharoshi_at timestamptz,               -- ⑥ 社労士 OK マーク
-  confirmed_by_sharoshi_by uuid references public.root_employees(id),
+  confirmed_by_sharoshi_by text references public.root_employees(employee_id),
   sharoshi_confirmation_note text,                    -- 社労士返答内容
   imported_at timestamptz,                            -- ⑦ 最終 MFC 取込確認後に手動更新
-  imported_by uuid references public.root_employees(id),
+  imported_by text references public.root_employees(employee_id),
 
   -- 監査
   download_count int not null default 0 check (download_count >= 0),
   last_downloaded_at timestamptz,
-  last_downloaded_by uuid references public.root_employees(id),
+  last_downloaded_by text references public.root_employees(employee_id),
 
   -- メタ
   notes text,
@@ -102,7 +102,7 @@ create index if not exists idx_mfc_csv_period
 create table if not exists public.bud_mfc_csv_export_items (
   id uuid primary key default gen_random_uuid(),
   export_id uuid not null references public.bud_mfc_csv_exports(id) on delete cascade,
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
   payroll_record_id uuid not null references public.bud_salary_records(id),
   row_index int not null check (row_index >= 1),     -- CSV 内の行番号（1-based）
   csv_row_data jsonb not null,                       -- 72 列データのスナップショット
@@ -151,7 +151,7 @@ create policy mfc_approve on public.bud_mfc_csv_exports
   using (
     status = 'draft'
     and public.bud_has_payroll_role(array['payroll_approver'])
-    and generated_by <> (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    and generated_by <> (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
   )
   with check (
     status = 'approved'
@@ -240,7 +240,7 @@ drop policy if exists mfc_items_select on public.bud_mfc_csv_export_items;
 create policy mfc_items_select on public.bud_mfc_csv_export_items
   for select
   using (
-    employee_id = (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
     or public.bud_has_payroll_role()
     or public.bud_is_admin_or_super_admin()
   );

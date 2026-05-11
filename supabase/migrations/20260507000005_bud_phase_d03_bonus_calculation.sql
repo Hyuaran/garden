@@ -30,7 +30,7 @@ create table if not exists public.bud_bonus_records (
   payroll_period_id uuid not null references public.bud_payroll_periods(id),
   bonus_label text not null check (length(bonus_label) > 0),
   bonus_payment_date date not null,
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
 
   -- 支給額
   base_bonus numeric(12, 0) not null check (base_bonus >= 0),
@@ -70,14 +70,14 @@ create table if not exists public.bud_bonus_records (
 
   -- 監査
   calculated_at timestamptz not null default now(),
-  calculated_by uuid references public.root_employees(id),
+  calculated_by text references public.root_employees(employee_id),
   approved_at timestamptz,
-  approved_by uuid references public.root_employees(id),
+  approved_by text references public.root_employees(employee_id),
   paid_at timestamptz,
 
   -- 削除（横断統一）
   deleted_at timestamptz,
-  deleted_by uuid references public.root_employees(id),
+  deleted_by text references public.root_employees(employee_id),
   deleted_reason text,
 
   constraint uq_bonus_period_employee
@@ -141,7 +141,7 @@ drop policy if exists br_select on public.bud_bonus_records;
 create policy br_select on public.bud_bonus_records
   for select
   using (
-    employee_id = (select id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
     or public.bud_has_payroll_role()
     or public.bud_is_admin_or_super_admin()
   );

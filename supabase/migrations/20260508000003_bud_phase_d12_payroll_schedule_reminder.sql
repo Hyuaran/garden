@@ -46,7 +46,7 @@ create table if not exists public.bud_payroll_schedule (
   actual_date date,
 
   -- 担当者
-  assigned_to_employee_id uuid references public.root_employees(id),
+  assigned_to_employee_id text references public.root_employees(employee_id),
   assigned_to_partner_id uuid,                     -- root.partners(id) FK は Root 移管時に追加
 
   -- ステータス
@@ -98,7 +98,7 @@ create index if not exists idx_schedule_assigned_employee
 -- ------------------------------------------------------------
 create table if not exists public.bud_payroll_schedule_settings (
   id uuid primary key default gen_random_uuid(),
-  company_id uuid references public.root_companies(id),  -- NULL = 全法人共通
+  company_id text references public.root_companies(company_id),  -- NULL = 全法人共通
 
   -- 各 stage の予定日（前 stage 完了日 / period_end からの相対営業日数）
   calculation_offset_days int not null default 2
@@ -117,11 +117,11 @@ create table if not exists public.bud_payroll_schedule_settings (
     check (finalization_offset_days >= 0),
 
   -- 担当者デフォルト
-  default_calculator_id uuid references public.root_employees(id),
-  default_approver_ids uuid[] not null default array[]::uuid[],
-  default_disburser_id uuid references public.root_employees(id),
-  default_auditor_id uuid references public.root_employees(id),
-  default_visual_checker_id uuid references public.root_employees(id),  -- 4 次 follow-up
+  default_calculator_id text references public.root_employees(employee_id),
+  default_approver_ids text[] not null default array[]::text[],
+  default_disburser_id text references public.root_employees(employee_id),
+  default_auditor_id text references public.root_employees(employee_id),
+  default_visual_checker_id text references public.root_employees(employee_id),  -- 4 次 follow-up
   default_sharoshi_partner_id uuid,                                      -- root.partners(id) FK は Root 移管時
 
   -- リマインダ閾値（spec § 3.2）
@@ -138,7 +138,7 @@ create table if not exists public.bud_payroll_schedule_settings (
   effective_from date not null,
   effective_to date check (effective_to is null or effective_to >= effective_from),
   created_at timestamptz not null default now(),
-  updated_by uuid not null references public.root_employees(id)
+  updated_by text not null references public.root_employees(employee_id)
 );
 
 comment on table public.bud_payroll_schedule_settings is

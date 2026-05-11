@@ -67,10 +67,10 @@ create table if not exists public.bud_bank_accounts (
   -- メタ
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id),
+  created_by text references public.root_employees(employee_id),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  deleted_by uuid references public.root_employees(id),
+  deleted_by text references public.root_employees(employee_id),
 
   unique (corp_code, bank_code, account_number)
 );
@@ -101,13 +101,13 @@ create table if not exists public.bud_bank_balances (
     )),
 
   -- 入力者（manual_input 時必須）
-  input_user_id uuid references public.root_employees(id),
+  input_user_id text references public.root_employees(employee_id),
   source_csv_path text,  -- csv_auto 時のパス記録
 
   -- メタ
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id),
+  created_by text references public.root_employees(employee_id),
 
   -- 1 口座 1 日 1 残高（重複防止）
   unique (bank_account_id, balance_date, source)
@@ -141,7 +141,7 @@ create table if not exists public.bud_bank_transactions (
 
   -- メタ
   imported_at timestamptz not null default now(),
-  imported_by uuid references public.root_employees(id),
+  imported_by text references public.root_employees(employee_id),
 
   -- 監査用、UPDATE / DELETE 禁止
   notes text

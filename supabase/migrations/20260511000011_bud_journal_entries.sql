@@ -51,7 +51,7 @@ create table if not exists public.bud_journal_accounts (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  deleted_by uuid references public.root_employees(id),
+  deleted_by text references public.root_employees(employee_id),
 
   unique (account_code)
 );
@@ -107,21 +107,21 @@ create table if not exists public.bud_journal_entries (
 
   -- 確認 / export メタ
   confirmed_at timestamptz,
-  confirmed_by uuid references public.root_employees(id),
+  confirmed_by text references public.root_employees(employee_id),
   exported_at timestamptz,
   export_log_id uuid,                                  -- bud_journal_export_logs FK（後で追加）
 
   cancelled_at timestamptz,
-  cancelled_by uuid references public.root_employees(id),
+  cancelled_by text references public.root_employees(employee_id),
   cancelled_reason text,
 
   -- メタ
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.root_employees(id),
+  created_by text references public.root_employees(employee_id),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  deleted_by uuid references public.root_employees(id),
+  deleted_by text references public.root_employees(employee_id),
 
   -- 借方 ≠ 貸方
   constraint chk_bje_debit_credit_different
@@ -168,7 +168,7 @@ create table if not exists public.bud_journal_export_logs (
 
   -- export 実行者
   exported_at timestamptz not null default now(),
-  exported_by uuid references public.root_employees(id),
+  exported_by text references public.root_employees(employee_id),
 
   -- メモ
   notes text,

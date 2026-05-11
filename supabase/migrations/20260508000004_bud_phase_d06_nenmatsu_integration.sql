@@ -54,7 +54,7 @@ create table if not exists public.bud_year_end_settlements (
   id uuid primary key default gen_random_uuid(),
   fiscal_year int not null
     check (fiscal_year between 2020 and 2099),
-  employee_id uuid not null references public.root_employees(id),
+  employee_id text not null references public.root_employees(employee_id),
 
   -- Phase C 連動（nenmatsu_chousei_id は Phase C 起票後に有効化、本 migration では nullable）
   -- spec §3.2 では NOT NULL だが Phase C 未起票のため、本 migration では nullable で先行起票。
@@ -94,16 +94,16 @@ create table if not exists public.bud_year_end_settlements (
 
   -- メタ
   calculated_at timestamptz not null default now(),
-  calculated_by uuid references public.root_employees(id),
+  calculated_by text references public.root_employees(employee_id),
   approved_at timestamptz,
-  approved_by uuid references public.root_employees(id),
+  approved_by text references public.root_employees(employee_id),
   reflected_at timestamptz,                          -- 1 月給与計算に反映済の日時
   cancelled_at timestamptz,
-  cancelled_by uuid references public.root_employees(id),
+  cancelled_by text references public.root_employees(employee_id),
 
   notes text,
   deleted_at timestamptz,
-  deleted_by uuid references public.root_employees(id),
+  deleted_by text references public.root_employees(employee_id),
 
   -- 1 名 1 年度 1 件（excluded フラグ含む）
   constraint uq_yes_per_employee_year
@@ -135,7 +135,7 @@ comment on column public.bud_year_end_settlements.settlement_amount is
 -- 暗号化キー: Vercel 環境変数 PII_ENCRYPTION_KEY（32 バイト base64）。
 -- 鍵 ID: encryption_key_id で世代管理（年 1 回ローテーション想定）。
 create table if not exists public.root_employees_pii (
-  employee_id uuid primary key references public.root_employees(id),
+  employee_id text primary key references public.root_employees(employee_id),
 
   -- マイナンバー（pgp_sym_encrypt で AES-256 相当の暗号化）
   my_number_encrypted bytea,                         -- NULL 許容（未登録）
@@ -148,7 +148,7 @@ create table if not exists public.root_employees_pii (
 
   -- メタ
   encrypted_at timestamptz,
-  encrypted_by uuid references public.root_employees(id),
+  encrypted_by text references public.root_employees(employee_id),
 
   -- アクセス監査（spec §6.4）
   last_accessed_at timestamptz,
@@ -178,8 +178,8 @@ comment on column public.root_employees_pii.dependents_pii_encrypted is
 -- マイナンバー復号のたびに INSERT。改ざん検知のため UPDATE / DELETE 不可。
 create table if not exists public.bud_pii_access_log (
   id uuid primary key default gen_random_uuid(),
-  accessed_by uuid not null references public.root_employees(id),
-  target_employee_id uuid not null references public.root_employees(id),
+  accessed_by text not null references public.root_employees(employee_id),
+  target_employee_id text not null references public.root_employees(employee_id),
 
   -- アクセス目的（マイナンバー法 第 25 条: 利用目的の限定）
   purpose text not null
@@ -215,7 +215,7 @@ comment on table public.bud_pii_access_log is
 -- 4.1 マイナンバー暗号化（admin / super_admin が登録時に呼ぶ）
 -- key 引数は呼び出し元（Server Action）が PII_ENCRYPTION_KEY を渡す。
 create or replace function public.bud_encrypt_my_number(
-  p_employee_id uuid,
+  p_employee_id text,
   p_my_number text,
   p_key text,
   p_key_id text default '2026-default'
@@ -260,12 +260,12 @@ begin
 end;
 $$;
 
-comment on function public.bud_encrypt_my_number(uuid, text, text, text) is
+comment on function public.bud_encrypt_my_number(text, text, text, text) is
   'マイナンバー暗号化保管（super_admin only）。AES-256 等価の pgp_sym_encrypt 利用。';
 
 -- 4.2 マイナンバー復号 + 監査ログ INSERT（年末調整 / 法定調書のみ）
 create or replace function public.bud_decrypt_my_number(
-  p_target_employee_id uuid,
+  p_target_employee_id text,
   p_key text,
   p_purpose text
 )
@@ -330,7 +330,7 @@ begin
 end;
 $$;
 
-comment on function public.bud_decrypt_my_number(uuid, text, text) is
+comment on function public.bud_decrypt_my_number(text, text, text) is
   'マイナンバー復号 + 監査ログ INSERT。super_admin only、利用目的限定。';
 
 -- ------------------------------------------------------------
