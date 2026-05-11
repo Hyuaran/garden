@@ -65,6 +65,8 @@ docs/handoff-017-018-section-a-content.md 内「## 決定 4: dispatch 形式 v5.
   - 複数同時発行時はリスト化（# 1, # 2, # 3）+ 末尾「投下完了したら『NNN投下済』で OK」（v5 継承）
 - memory feedback_self_memory_audit_in_session sentinel # 6 新設（v5.2 連動、応答出力前目視確認の強制装置化）
 - governance-rules-v1 §5 改訂版で同期
+- audit-001- No. 2 提案 4 = a-audit が incident-pattern-log §4-2 にシグナル拡張即時反映済（main- No. 209 GO、5/11 当日内反映完了）= 提案 1+2+3+4 4 連動で v5.2 体系完成
+- 当事者バイアス警告（sentinel # 6）: # 6 は a-audit-001 audit-001- No. 2 提案 3 起源 = 提案者バイアスあり / a-audit 自身も # 6 適用対象 = 構造的循環、ただし「自分が提案した装置で自分を縛る」健全な構造、内容妥当性は事実指摘ベース（違反 7 / 7-b / 9 発生実績）で確立
 
 代替案 + 却下理由:
 - 代替案 A: コピペ本文をチャット内に直接表示 → 却下、東海林さん作業混乱（v5 既決）
@@ -103,4 +105,5 @@ docs/handoff-017-018-section-a-content.md 内「## 決定 4: dispatch 形式 v5.
 
 ## 改訂履歴
 
-- 2026-05-11 10:43 ドラフト初版（a-analysis-001、main- No. 217 起源、audit-001- No. 2 提案 1+2+3 統合）
+- 2026-05-11 10:43 v1 ドラフト初版（a-analysis-001、main- No. 217 起源、audit-001- No. 2 提案 1+2+3 統合）
+- 2026-05-11 11:15 v1.1 軽微改善反映（a-analysis-001、audit-001- No. 10 改善 3 起源、main- No. 222 GO）: 改訂版「結果」セクションに 2 件追記（提案 4 既反映の履歴 + sentinel # 6 当事者バイアス警告）
