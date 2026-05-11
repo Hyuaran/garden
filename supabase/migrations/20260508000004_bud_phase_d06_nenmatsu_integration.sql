@@ -248,7 +248,7 @@ begin
     pgp_sym_encrypt(p_my_number, p_key, 'cipher-algo=aes256'),
     p_key_id,
     now(),
-    (select employee_id from public.root_employees where user_id = auth.uid()),
+    public.auth_employee_number(),
     now()
   )
   on conflict (employee_id) do update set
@@ -307,7 +307,7 @@ begin
   v_decrypted := pgp_sym_decrypt(v_encrypted, p_key);
 
   -- 監査ログ書込
-  v_accessor_id := (select employee_id from public.root_employees where user_id = auth.uid());
+  v_accessor_id := public.auth_employee_number();
   insert into public.bud_pii_access_log (
     accessed_by,
     target_employee_id,
@@ -344,11 +344,7 @@ create policy yes_select_own on public.bud_year_end_settlements
   for select
   using (
     deleted_at is null
-    and employee_id = (
-      select employee_id from public.root_employees
-      where user_id = auth.uid()
-        and deleted_at is null
-    )
+    and employee_id = public.auth_employee_number()
   );
 
 -- 5.2 SELECT: payroll_calculator / payroll_approver / payroll_auditor は全件

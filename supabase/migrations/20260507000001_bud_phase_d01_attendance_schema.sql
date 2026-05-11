@@ -182,15 +182,10 @@ create policy bpp_select on public.bud_payroll_periods
   for select
   using (
     -- manager 以上は全件
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('manager', 'admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    public.has_role_at_least('manager')
     or
     -- 作成者本人
-    created_by = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    created_by = public.auth_employee_number()
   );
 
 -- INSERT: admin+ のみ（period 作成は管理者業務）
@@ -198,12 +193,7 @@ drop policy if exists bpp_insert on public.bud_payroll_periods;
 create policy bpp_insert on public.bud_payroll_periods
   for insert
   with check (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    public.has_role_at_least('admin')
   );
 
 -- UPDATE: admin+ のみ
@@ -211,20 +201,10 @@ drop policy if exists bpp_update on public.bud_payroll_periods;
 create policy bpp_update on public.bud_payroll_periods
   for update
   using (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    public.has_role_at_least('admin')
   )
   with check (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    public.has_role_at_least('admin')
   );
 
 -- DELETE: 完全禁止（横断 Cross History #07 準拠、論理削除は deleted_at 列で）
@@ -239,34 +219,21 @@ drop policy if exists bps_select_own on public.bud_payroll_attendance_snapshots;
 create policy bps_select_own on public.bud_payroll_attendance_snapshots
   for select
   using (
-    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    employee_id = public.auth_employee_number()
   );
 
 drop policy if exists bps_select_manager_dept on public.bud_payroll_attendance_snapshots;
 create policy bps_select_manager_dept on public.bud_payroll_attendance_snapshots
   for select
   using (
-    exists (
-      select 1 from public.root_employees viewer
-      join public.root_employees target on target.id = bud_payroll_attendance_snapshots.employee_id
-      where viewer.user_id = auth.uid()
-        and viewer.garden_role = 'manager'
-        and viewer.deleted_at is null
-        and viewer.department_id is not null
-        and viewer.department_id = target.department_id
-    )
+    public.has_role_at_least('manager')
   );
 
 drop policy if exists bps_select_admin on public.bud_payroll_attendance_snapshots;
 create policy bps_select_admin on public.bud_payroll_attendance_snapshots
   for select
   using (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    public.has_role_at_least('admin')
   );
 
 -- INSERT: service_role（Cron 経由）+ admin+ のみ
@@ -275,12 +242,7 @@ drop policy if exists bps_insert_admin on public.bud_payroll_attendance_snapshot
 create policy bps_insert_admin on public.bud_payroll_attendance_snapshots
   for insert
   with check (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    public.has_role_at_least('admin')
   );
 
 -- UPDATE: admin+ のみ（is_locked=true のレコードは override 経由が原則だが、SQL 制御は admin に委ねる）
@@ -288,20 +250,10 @@ drop policy if exists bps_update_admin on public.bud_payroll_attendance_snapshot
 create policy bps_update_admin on public.bud_payroll_attendance_snapshots
   for update
   using (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    public.has_role_at_least('admin')
   )
   with check (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    public.has_role_at_least('admin')
   );
 
 -- DELETE: 完全禁止
@@ -316,14 +268,9 @@ drop policy if exists bpo_select on public.bud_payroll_attendance_overrides;
 create policy bpo_select on public.bud_payroll_attendance_overrides
   for select
   using (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('manager', 'admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    public.has_role_at_least('manager')
     or
-    approved_by = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    approved_by = public.auth_employee_number()
   );
 
 -- INSERT: admin+ のみ（reason 5 文字以上は CHECK 制約で強制）
@@ -331,13 +278,8 @@ drop policy if exists bpo_insert_admin on public.bud_payroll_attendance_override
 create policy bpo_insert_admin on public.bud_payroll_attendance_overrides
   for insert
   with check (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
-    and approved_by = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    public.has_role_at_least('admin')
+    and approved_by = public.auth_employee_number()
   );
 
 -- UPDATE / DELETE: 完全禁止（監査履歴は不変）

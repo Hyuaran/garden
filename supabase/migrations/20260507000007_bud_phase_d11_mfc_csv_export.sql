@@ -151,7 +151,7 @@ create policy mfc_approve on public.bud_mfc_csv_exports
   using (
     status = 'draft'
     and public.bud_has_payroll_role(array['payroll_approver'])
-    and generated_by <> (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    and generated_by <> public.auth_employee_number()
   )
   with check (
     status = 'approved'
@@ -240,7 +240,7 @@ drop policy if exists mfc_items_select on public.bud_mfc_csv_export_items;
 create policy mfc_items_select on public.bud_mfc_csv_export_items
   for select
   using (
-    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    employee_id = public.auth_employee_number()
     or public.bud_has_payroll_role()
     or public.bud_is_admin_or_super_admin()
   );

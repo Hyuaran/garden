@@ -83,47 +83,21 @@ create policy repr_select on public.root_employee_payroll_roles
   for select
   using (
     -- 自分のロール
-    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
-    -- または admin+
-    or exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
+    employee_id = public.auth_employee_number()
+    -- または admin+ （main- No. 327 縮退）
+    or public.has_role_at_least('admin')
   );
 
 drop policy if exists repr_insert_admin on public.root_employee_payroll_roles;
 create policy repr_insert_admin on public.root_employee_payroll_roles
   for insert
-  with check (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
-  );
+  with check (public.has_role_at_least('admin'));
 
 drop policy if exists repr_update_admin on public.root_employee_payroll_roles;
 create policy repr_update_admin on public.root_employee_payroll_roles
   for update
-  using (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
-  )
-  with check (
-    exists (
-      select 1 from public.root_employees re
-      where re.user_id = auth.uid()
-        and re.garden_role in ('admin', 'super_admin')
-        and re.deleted_at is null
-    )
-  );
+  using (public.has_role_at_least('admin'))
+  with check (public.has_role_at_least('admin'));
 
 drop policy if exists repr_no_delete on public.root_employee_payroll_roles;
 create policy repr_no_delete on public.root_employee_payroll_roles
@@ -143,12 +117,12 @@ language sql
 security definer
 set search_path = public
 as $$
+  -- main- No. 327 縮退: root_employees.user_id / deleted_at 不在、
+  -- auth_employee_number() helper で employee_id 解決
   select exists (
     select 1
     from public.root_employee_payroll_roles epr
-    join public.root_employees re on re.employee_id = epr.employee_id
-    where re.user_id = auth.uid()
-      and re.deleted_at is null
+    where epr.employee_id = public.auth_employee_number()
       and epr.is_active = true
       and (roles is null or epr.role = any(roles))
   );
@@ -164,12 +138,8 @@ language sql
 security definer
 set search_path = public
 as $$
-  select exists (
-    select 1 from public.root_employees re
-    where re.user_id = auth.uid()
-      and re.garden_role in ('admin', 'super_admin')
-      and re.deleted_at is null
-  );
+  -- main- No. 327 縮退: has_role_at_least('admin') wrapper（Tree D-01 同パターン）
+  select public.has_role_at_least('admin');
 $$;
 
 create or replace function public.bud_is_super_admin()
@@ -178,12 +148,8 @@ language sql
 security definer
 set search_path = public
 as $$
-  select exists (
-    select 1 from public.root_employees re
-    where re.user_id = auth.uid()
-      and re.garden_role = 'super_admin'
-      and re.deleted_at is null
-  );
+  -- main- No. 327 縮退: has_role_at_least('super_admin') wrapper
+  select public.has_role_at_least('super_admin');
 $$;
 
 -- ------------------------------------------------------------
@@ -347,7 +313,7 @@ drop policy if exists eba_select on public.bud_employee_bank_accounts;
 create policy eba_select on public.bud_employee_bank_accounts
   for select
   using (
-    employee_id = (select employee_id from public.root_employees where user_id = auth.uid() and deleted_at is null)
+    employee_id = public.auth_employee_number()
     or public.bud_has_payroll_role()                  -- いずれかの payroll_* ロール
     or public.bud_is_admin_or_super_admin()
   );
