@@ -656,6 +656,7 @@ export function SidebarNav() {
             >
               {BreakSmallIcon} 休憩
             </button>
+            {/* eslint-disable-next-line react-hooks/refs */}
             {showBreakMenu && (() => {
               const rect = breakRowRef.current
                 ? breakRowRef.current.getBoundingClientRect()
