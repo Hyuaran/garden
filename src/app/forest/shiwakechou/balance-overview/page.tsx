@@ -28,13 +28,13 @@ interface CorpRow {
 
 interface AccountWithBalance {
   id: string;
-  corp_id: string;
-  bank_kind: string;
+  corp_code: string;
+  bank_code: string;
   bank_name: string;
   account_number: string;
-  sub_account_label: string;
+  sub_account_label: string | null;
   manual_balance_20260430: number | null;
-  has_csv: boolean;
+  has_csv_export: boolean;
   notes: string | null;
   latest_balance: number | null;
   latest_balance_source: "transactions" | "manual" | "none";
@@ -161,9 +161,9 @@ export default function BalanceOverviewPage() {
   // 法人ごとに口座をグルーピング
   const accountsByCorp = new Map<string, AccountWithBalance[]>();
   for (const a of data.accounts) {
-    const list = accountsByCorp.get(a.corp_id) ?? [];
+    const list = accountsByCorp.get(a.corp_code) ?? [];
     list.push(a);
-    accountsByCorp.set(a.corp_id, list);
+    accountsByCorp.set(a.corp_code, list);
   }
 
   // 法人別合計 (CSV/手入力/未取得 別)
@@ -171,8 +171,8 @@ export default function BalanceOverviewPage() {
   for (const a of data.accounts) {
     if (a.latest_balance !== null) {
       corpTotals.set(
-        a.corp_id,
-        (corpTotals.get(a.corp_id) ?? 0) + a.latest_balance,
+        a.corp_code,
+        (corpTotals.get(a.corp_code) ?? 0) + a.latest_balance,
       );
     }
   }
@@ -182,8 +182,8 @@ export default function BalanceOverviewPage() {
   for (const a of data.accounts) {
     if (a.latest_balance !== null) {
       bankTotals.set(
-        a.bank_kind,
-        (bankTotals.get(a.bank_kind) ?? 0) + a.latest_balance,
+        a.bank_code,
+        (bankTotals.get(a.bank_code) ?? 0) + a.latest_balance,
       );
     }
   }
@@ -284,7 +284,7 @@ export default function BalanceOverviewPage() {
                   </td>
                   {BANK_ORDER.map((b) => {
                     const acct = corpAccounts.find(
-                      (a) => a.bank_kind === b.kind,
+                      (a) => a.bank_code === b.kind,
                     );
                     if (!acct) {
                       return (
@@ -333,7 +333,7 @@ export default function BalanceOverviewPage() {
                           }}
                         >
                           口座 {acct.account_number}
-                          {!acct.has_csv ? " ⚠️ CSV 無" : ""}
+                          {!acct.has_csv_export ? " ⚠️ CSV 無" : ""}
                         </div>
                       </td>
                     );

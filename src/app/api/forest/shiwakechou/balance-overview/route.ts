@@ -8,7 +8,7 @@
  *
  * 残高ロジック (優先順位):
  *   1. bud_transactions.balance_after の最新値 (有効データあれば)
- *   2. bud_bank_accounts.manual_balance_20260430 (手入力残高)
+ *   2. root_bank_accounts.manual_balance_20260430 (手入力残高)
  *   3. null (データ不足)
  *
  * レスポンス:
@@ -35,13 +35,13 @@ interface CorpRow {
 
 interface AccountRow {
   id: string;
-  corp_id: string;
-  bank_kind: string;
+  corp_code: string;
+  bank_code: string;
   bank_name: string;
   account_number: string;
-  sub_account_label: string;
+  sub_account_label: string | null;
   manual_balance_20260430: number | null;
-  has_csv: boolean;
+  has_csv_export: boolean;
   notes: string | null;
 }
 
@@ -133,11 +133,12 @@ export async function GET(req: NextRequest) {
 
   // 口座マスタ
   const { data: accountsData, error: accountsErr } = await supabase
-    .from("bud_bank_accounts")
+    .from("root_bank_accounts")
     .select(
-      "id,corp_id,bank_kind,bank_name,account_number,sub_account_label,manual_balance_20260430,has_csv,notes",
+      "id,corp_code,bank_code,bank_name,account_number,sub_account_label,manual_balance_20260430,has_csv_export,notes",
     )
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .is("deleted_at", null);
   if (accountsErr) {
     return NextResponse.json(
       { success: false, error: `口座マスタ取得失敗: ${accountsErr.message}` },

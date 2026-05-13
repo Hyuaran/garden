@@ -29,13 +29,13 @@ interface CorpRow {
 
 interface AccountRow {
   id: string;
-  bank_kind: string;
+  bank_code: string;
   bank_name: string;
   branch_name: string | null;
   account_number: string;
-  sub_account_label: string;
+  sub_account_label: string | null;
   manual_balance_20260430: number | null;
-  has_csv: boolean;
+  has_csv_export: boolean;
   notes: string | null;
 }
 
@@ -86,13 +86,14 @@ export default function CorporationDashboardPage() {
               .eq("id", corpId)
               .maybeSingle(),
             supabase
-              .from("bud_bank_accounts")
+              .from("root_bank_accounts")
               .select(
-                "id, bank_kind, bank_name, branch_name, account_number, sub_account_label, manual_balance_20260430, has_csv, notes",
+                "id, bank_code, bank_name, branch_name, account_number, sub_account_label, manual_balance_20260430, has_csv_export, notes",
               )
-              .eq("corp_id", corpId)
+              .eq("corp_code", corpId)
               .eq("is_active", true)
-              .order("bank_kind", { ascending: true }),
+              .is("deleted_at", null)
+              .order("bank_code", { ascending: true }),
           ]);
 
         if (canceled) return;
@@ -216,8 +217,8 @@ export default function CorporationDashboardPage() {
 
 function BankAccountUploadCard(props: { account: AccountRow }) {
   const acct = props.account;
-  const bankLabel = BANK_LABEL[acct.bank_kind] ?? acct.bank_name;
-  const bankColor = BANK_COLOR[acct.bank_kind] ?? "#6b7280";
+  const bankLabel = BANK_LABEL[acct.bank_code] ?? acct.bank_name;
+  const bankColor = BANK_COLOR[acct.bank_code] ?? "#6b7280";
 
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadBkResponse | null>(null);
@@ -225,7 +226,7 @@ function BankAccountUploadCard(props: { account: AccountRow }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const accept =
-    acct.bank_kind === "mizuho"
+    acct.bank_code === "mizuho"
       ? ".api,.csv,.tsv"
       : ".csv";
 
@@ -320,7 +321,7 @@ function BankAccountUploadCard(props: { account: AccountRow }) {
         </div>
       </div>
 
-      {!acct.has_csv ? (
+      {!acct.has_csv_export ? (
         <div
           style={{
             background: "#fef3c7",
@@ -365,7 +366,7 @@ function BankAccountUploadCard(props: { account: AccountRow }) {
             {uploading
               ? "解析中..."
               : `📁 ${bankLabel} ${
-                  acct.bank_kind === "mizuho" ? ".api / .csv" : "CSV"
+                  acct.bank_code === "mizuho" ? ".api / .csv" : "CSV"
                 } をアップロード`}
           </button>
 

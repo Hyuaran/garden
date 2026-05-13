@@ -18,7 +18,7 @@
 --
 -- B-min スコープ (このマイグレーションでカバー):
 --   1. bud_corporations         法人マスタ (6 法人)
---   2. bud_bank_accounts        口座マスタ (12 口座)
+--   2. root_bank_accounts に列 2 件追加 (sub_account_label + manual_balance_20260430、main- No. 347 A 案統合)
 --   3. bud_master_rules         共通仕訳マスタ (旧 1_共通マスタ_v12.xlsx)
 --   4. bud_transactions         取引明細 (中核テーブル, status: pending/ok/excluded)
 --   5. bud_yayoi_exports        弥生 CSV エクスポート履歴
@@ -79,41 +79,23 @@ create index if not exists idx_bud_corporations_sort
 --   ARATA:         みずほ + 楽天 = 2
 --   たいよう:      楽天 = 1
 --   壱:            楽天 = 1
-create table if not exists public.bud_bank_accounts (
-  id                 uuid         primary key default gen_random_uuid(),
-  corp_id            text         not null references public.bud_corporations(id) on delete restrict,
-  bank_name          text         not null,            -- 'みずほ銀行' / 'PayPay銀行' / '楽天銀行' / '京都銀行'
-  bank_kind          text         not null,            -- 'mizuho' / 'paypay' / 'rakuten' / 'kyoto' (parser 切替用)
-  bank_code          text         not null,            -- 4桁金融機関コード
-  branch_code        text,                              -- 3桁支店コード
-  branch_name        text,                              -- 支店名
-  account_type       text         not null default '普通預金', -- '普通預金' / '当座預金'
-  account_number     text         not null,            -- 口座番号
-  sub_account_label  text         not null,            -- 弥生用補助科目 (例: '楽天銀行(株式会社ヒュアラン)')
-  is_active          boolean      not null default true,
-  -- 4/30 期初残高 (B-min 残高検算用, 手入力分はここに入る)
-  manual_balance_20260430 bigint,                      -- みずほ 4 値 + PayPay ヒュアラン (5 値), CSV 自動取得分は null
-  has_csv            boolean      not null default true, -- false = PayPay ヒュアラン (CSV 無しケース)
-  notes              text,                              -- 'システム障害で CSV 出力不可' 等の特記事項
-  created_at         timestamptz  not null default now(),
-  updated_at         timestamptz  not null default now(),
+-- 統合方針 (main- No. 347 A 案承認):
+--   PR #159 (a-bud-002) で同名 bud_bank_accounts 作成済 → PR #171 で root_bank_accounts に rename。
+--   Forest B-min は口座マスタを共用するため、ここで CREATE せず ALTER で必要列 2 件を追加する。
+--   既存列 17 (id / corp_code / bank_code / bank_name / branch_name / branch_code / account_type /
+--           account_number / is_active / has_csv_export / needs_manual_balance / notes /
+--           created_at / created_by / updated_at / deleted_at / deleted_by)
+--   追加列 2 (sub_account_label = 弥生補助科目, manual_balance_20260430 = 4/30 手入力残高)
+alter table public.root_bank_accounts
+  add column if not exists sub_account_label text;
 
-  -- 同一法人内で銀行 × 口座番号は一意
-  constraint uq_bud_bank_accounts_corp_bank_acct
-    unique (corp_id, bank_code, branch_code, account_number)
-);
+alter table public.root_bank_accounts
+  add column if not exists manual_balance_20260430 bigint;
 
-comment on table public.bud_bank_accounts is
-  '仕訳帳機能の口座マスタ (12 口座)。bank_kind は parser 切替に使用。';
-comment on column public.bud_bank_accounts.manual_balance_20260430 is
-  '4/30 残高の手入力値 (円)。みずほ 4 値 + PayPay ヒュアラン 1 値 = 5 値が入る。CSV 自動取得分は null。';
-comment on column public.bud_bank_accounts.has_csv is
-  'CSV / API ファイルが入手可能か。false = PayPay ヒュアラン (システム障害で出力不可)。false の口座は B-min 仕訳化対象外。';
-
-create index if not exists idx_bud_bank_accounts_corp
-  on public.bud_bank_accounts (corp_id, is_active);
-create index if not exists idx_bud_bank_accounts_bank_kind
-  on public.bud_bank_accounts (bank_kind);
+comment on column public.root_bank_accounts.sub_account_label is
+  '弥生用補助科目 (例: みずほ銀行_四ツ橋支店(普通預金)1252992_ヒュアラン)。Forest B-min 仕訳帳で弥生 CSV エクスポート時に使用。';
+comment on column public.root_bank_accounts.manual_balance_20260430 is
+  '4/30 残高の手入力値 (円)。みずほ 4 値 + PayPay ヒュアラン 1 値 = 5 値、CSV 自動取得分は null。Forest B-min 残高検算用。';
 
 -- ============================================================
 -- 3. bud_master_rules  共通仕訳マスタ (旧 1_共通マスタ_v12.xlsx 相当)
@@ -161,7 +143,7 @@ create index if not exists idx_bud_master_rules_lookup
 create table if not exists public.bud_files (
   id                 uuid         primary key default gen_random_uuid(),
   corp_id            text         not null references public.bud_corporations(id) on delete restrict,
-  bank_account_id    uuid         references public.bud_bank_accounts(id) on delete set null,
+  bank_account_id    uuid         references public.root_bank_accounts(id) on delete set null,
   source_kind        text         not null            -- 'bk' / 'mf' / 'cc' / 'cash'
                      check (source_kind in ('bk','mf','cc','cash')),
   bank_kind          text,                            -- 'rakuten' / 'mizuho' / 'paypay' / 'kyoto' (BK のみ)
@@ -196,7 +178,7 @@ create unique index if not exists uq_bud_files_dedup
 create table if not exists public.bud_transactions (
   id                 uuid         primary key default gen_random_uuid(),
   corp_id            text         not null references public.bud_corporations(id) on delete restrict,
-  bank_account_id    uuid         references public.bud_bank_accounts(id) on delete set null,
+  bank_account_id    uuid         references public.root_bank_accounts(id) on delete set null,
   source_file_id     uuid         references public.bud_files(id) on delete set null,
   source_kind        text         not null            -- 'bk' / 'mf' / 'cc' / 'cash'
                      check (source_kind in ('bk','mf','cc','cash')),
@@ -253,7 +235,7 @@ create index if not exists idx_bud_transactions_source_file
 create table if not exists public.bud_yayoi_exports (
   id                  uuid         primary key default gen_random_uuid(),
   corp_id             text         not null references public.bud_corporations(id) on delete restrict,
-  bank_account_id     uuid         references public.bud_bank_accounts(id) on delete set null,
+  bank_account_id     uuid         references public.root_bank_accounts(id) on delete set null,
   source_kind         text         not null
                       check (source_kind in ('bk','mf','cc','cash')),
   period_from         date         not null,
@@ -315,10 +297,8 @@ create trigger trg_bud_corporations_updated_at
   before update on public.bud_corporations
   for each row execute function public.bud_update_updated_at();
 
-drop trigger if exists trg_bud_bank_accounts_updated_at on public.bud_bank_accounts;
-create trigger trg_bud_bank_accounts_updated_at
-  before update on public.bud_bank_accounts
-  for each row execute function public.bud_update_updated_at();
+-- root_bank_accounts は PR #159 で既に updated_at trigger 設定済 (a-bud-002 設計、bba_* policy 自動追従)
+-- B-min 側で追加の trigger 不要
 
 drop trigger if exists trg_bud_master_rules_updated_at on public.bud_master_rules;
 create trigger trg_bud_master_rules_updated_at
@@ -337,7 +317,7 @@ create trigger trg_bud_transactions_updated_at
 -- 'executive' は Q4 後道さん向け balance-overview 閲覧用 (read-only 想定だが B-min では admin と同等)。
 
 alter table public.bud_corporations         enable row level security;
-alter table public.bud_bank_accounts        enable row level security;
+-- root_bank_accounts は PR #159 で既に RLS 設定済 (bba_* policy)、B-min 側で追加不要
 alter table public.bud_master_rules         enable row level security;
 alter table public.bud_files                enable row level security;
 alter table public.bud_transactions         enable row level security;
@@ -369,7 +349,7 @@ declare
 begin
   foreach tbl in array array[
     'bud_corporations',
-    'bud_bank_accounts',
+    -- root_bank_accounts は PR #159 で既に policy 設定済 (bba_* で全員 SELECT + payroll_auditor 以上書込)
     'bud_master_rules',
     'bud_files',
     'bud_transactions',

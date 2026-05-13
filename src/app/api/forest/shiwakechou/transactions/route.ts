@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
       `
       id, bank_account_id, transaction_date, amount, flow, description,
       balance_after, status, debit_account, credit_account, tax_class, applied_rule_id,
-      bud_bank_accounts!inner(bank_kind, account_number, sub_account_label)
+      root_bank_accounts!inner(bank_code, account_number, sub_account_label)
     `,
     )
     .eq("corp_id", corpId)
@@ -168,9 +168,9 @@ export async function GET(req: NextRequest) {
       credit_account: r.credit_account,
       tax_class: r.tax_class,
       applied_rule_id: r.applied_rule_id,
-      bank_kind: r.bud_bank_accounts?.bank_kind ?? null,
-      account_number: r.bud_bank_accounts?.account_number ?? null,
-      sub_account_label: r.bud_bank_accounts?.sub_account_label ?? null,
+      bank_kind: r.root_bank_accounts?.bank_code ?? null,
+      account_number: r.root_bank_accounts?.account_number ?? null,
+      sub_account_label: r.root_bank_accounts?.sub_account_label ?? null,
     }),
   );
 
@@ -208,19 +208,20 @@ async function runConsistencyCheck(
   from: string,
   to: string,
 ): Promise<TransactionListData["consistency_check"]> {
-  // 当該法人の口座一覧
+  // 当該法人の口座一覧 (root_bank_accounts, B-min は corp_code でフィルタ)
   const { data: accts } = await supabase
-    .from("bud_bank_accounts")
-    .select("id, bank_kind, account_number, manual_balance_20260430, has_csv")
-    .eq("corp_id", corpId)
-    .eq("is_active", true);
+    .from("root_bank_accounts")
+    .select("id, bank_code, account_number, manual_balance_20260430, has_csv_export")
+    .eq("corp_code", corpId)
+    .eq("is_active", true)
+    .is("deleted_at", null);
 
   if (!accts) return [];
 
   const checks: TransactionListData["consistency_check"] = [];
 
   for (const acct of accts) {
-    if (!acct.has_csv) continue; // CSV 無し口座は検証対象外
+    if (!acct.has_csv_export) continue; // CSV 無し口座は検証対象外
 
     // 期間内の取引集計
     const { data: txs } = await supabase
@@ -235,7 +236,7 @@ async function runConsistencyCheck(
     if (!txs || txs.length === 0) {
       checks.push({
         bank_account_id: acct.id,
-        bank_kind: acct.bank_kind,
+        bank_kind: acct.bank_code,
         account_number: acct.account_number,
         opening_balance: null,
         transaction_count: 0,
@@ -276,7 +277,7 @@ async function runConsistencyCheck(
 
     checks.push({
       bank_account_id: acct.id,
-      bank_kind: acct.bank_kind,
+      bank_kind: acct.bank_code,
       account_number: acct.account_number,
       opening_balance,
       transaction_count: txs.length,

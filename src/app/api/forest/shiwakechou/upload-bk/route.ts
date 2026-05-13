@@ -139,8 +139,8 @@ export async function POST(req: NextRequest) {
 
   // 4. 口座情報取得 (bank_kind 判定用)
   const { data: account, error: accountErr } = await supabase
-    .from("bud_bank_accounts")
-    .select("id, corp_id, bank_kind, has_csv")
+    .from("root_bank_accounts")
+    .select("id, corp_code, bank_code, has_csv_export")
     .eq("id", bankAccountId)
     .maybeSingle();
   if (accountErr) {
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (!account.has_csv) {
+  if (!account.has_csv_export) {
     return NextResponse.json<UploadBkResponse>(
       {
         success: false,
@@ -170,10 +170,10 @@ export async function POST(req: NextRequest) {
   const arrayBuf = await fileField.arrayBuffer();
   const buf = Buffer.from(arrayBuf);
 
-  // 6. bank_kind 別パース
+  // 6. bank_code (= bank_kind) 別パース
   let parseResult: ParseResult;
   try {
-    switch (account.bank_kind) {
+    switch (account.bank_code) {
       case "rakuten":
         parseResult = parseRakutenCsv(buf);
         break;
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json<UploadBkResponse>(
           {
             success: false,
-            error: `未対応の bank_kind: ${account.bank_kind}`,
+            error: `未対応の bank_kind: ${account.bank_code}`,
           },
           { status: 400 },
         );
@@ -211,8 +211,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json<UploadBkResponse>(
         {
           success: false,
-          error: `${account.bank_kind} parser エラー: ${e.message}`,
-          bank_kind: account.bank_kind,
+          error: `${account.bank_code} parser エラー: ${e.message}`,
+          bank_kind: account.bank_code,
           filename,
         },
         { status: 400 },
@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
   // 7. プレビュー応答 (B-min 最小実装、Storage / DB INSERT は 5/13 以降)
   return NextResponse.json<UploadBkResponse>({
     success: true,
-    bank_kind: account.bank_kind,
+    bank_kind: account.bank_code,
     filename,
     file_size_bytes: buf.length,
     row_count: parseResult.rows.length,
