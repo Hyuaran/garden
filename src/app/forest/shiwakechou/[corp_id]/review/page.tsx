@@ -134,18 +134,30 @@ export default function TransactionReviewPage() {
         確認画面
       </div>
 
-      <h1
+      <div
         style={{
-          fontSize: 22,
-          fontWeight: 600,
-          color: "#1f2937",
-          margin: "0 0 4px 0",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16,
         }}
       >
-        取引確認 ({corpId})
-      </h1>
-      <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>
-        期間: {data.period_from} 〜 {data.period_to} / 合計 {data.total_count} 件
+        <div>
+          <h1
+            style={{
+              fontSize: 22,
+              fontWeight: 600,
+              color: "#1f2937",
+              margin: "0 0 4px 0",
+            }}
+          >
+            取引確認 ({corpId})
+          </h1>
+          <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>
+            期間: {data.period_from} 〜 {data.period_to} / 合計 {data.total_count} 件
+          </div>
+        </div>
+        <ExportYayoiButton corpId={corpId} month="2026-04" />
       </div>
 
       {/* status 別サマリ + フィルタ */}
@@ -416,3 +428,109 @@ const cellTd: React.CSSProperties = {
   borderBottom: "1px solid #f3f4f6",
   color: "#1f2937",
 };
+
+// ----------------------------------------------------------------
+// 弥生 CSV export ボタン (dispatch # 351 ヒュアラン決算救援)
+// ----------------------------------------------------------------
+
+function ExportYayoiButton(props: { corpId: string; month: string }) {
+  const { corpId, month } = props;
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleExport() {
+    setExporting(true);
+    setError(null);
+    try {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true },
+      });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        setError("ログインが必要です");
+        setExporting(false);
+        return;
+      }
+
+      const url = new URL(
+        "/api/forest/shiwakechou/export",
+        window.location.origin,
+      );
+      url.searchParams.set("corp_id", corpId);
+      url.searchParams.set("month", month);
+
+      const res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (!res.ok) {
+        // エラー時は JSON 応答
+        let errMsg = `HTTP ${res.status}`;
+        try {
+          const json = await res.json();
+          errMsg = json.error ?? errMsg;
+        } catch {
+          // ignore
+        }
+        setError(errMsg);
+        setExporting(false);
+        return;
+      }
+
+      // 成功時は CSV bytes をダウンロード
+      const blob = await res.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `${corpId}_${month}_弥生.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(downloadUrl);
+      setExporting(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setExporting(false);
+    }
+  }
+
+  return (
+    <div style={{ textAlign: "right" }}>
+      <button
+        type="button"
+        onClick={handleExport}
+        disabled={exporting}
+        style={{
+          padding: "10px 16px",
+          background: exporting ? "#e5e7eb" : "#166534",
+          color: "#fff",
+          border: "none",
+          borderRadius: 6,
+          fontSize: 13,
+          fontWeight: 500,
+          cursor: exporting ? "not-allowed" : "pointer",
+        }}
+      >
+        {exporting ? "生成中..." : `📤 弥生 CSV export (${month})`}
+      </button>
+      {error && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: 8,
+            background: "#fee2e2",
+            border: "1px solid #fca5a5",
+            borderRadius: 4,
+            fontSize: 12,
+            color: "#991b1b",
+            maxWidth: 360,
+          }}
+        >
+          エラー: {error}
+        </div>
+      )}
+    </div>
+  );
+}
