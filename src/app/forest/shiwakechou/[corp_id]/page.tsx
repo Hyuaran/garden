@@ -406,6 +406,40 @@ function BankAccountUploadCard(props: { account: AccountRow }) {
                 期末 {formatYen(result.closing_balance)} / warnings{" "}
                 {result.warnings_count}
               </div>
+              {result.insert && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    paddingTop: 8,
+                    borderTop: "1px solid #bbf7d0",
+                    color: "#374151",
+                  }}
+                >
+                  <div style={{ fontWeight: 600, color: "#166534" }}>
+                    📥 DB 投入結果
+                  </div>
+                  <div>
+                    INSERT: {result.insert.transactions_inserted} 件 /{" "}
+                    skip (重複): {result.insert.transactions_skipped_duplicate} 件
+                  </div>
+                  <div>
+                    期間別:{" "}
+                    {Object.entries(result.insert.by_month)
+                      .map(([m, n]) => `${m}=${n}`)
+                      .join(" / ")}
+                  </div>
+                  <div>
+                    classifier: 確認済 {result.insert.classifier_result.ok} / 口座移し替え{" "}
+                    {result.insert.classifier_result.internal_transfer} / 要確認{" "}
+                    {result.insert.classifier_result.pending} (自動分類率{" "}
+                    {(result.insert.classifier_result.auto_classify_rate * 100).toFixed(1)}%)
+                  </div>
+                  <div>
+                    期初残高: {formatYen(result.insert.opening_balance_used.value)} (
+                    {result.insert.opening_balance_used.source})
+                  </div>
+                </div>
+              )}
               {result.rows_preview && result.rows_preview.length > 0 && (
                 <details style={{ marginTop: 8 }}>
                   <summary style={{ cursor: "pointer", color: "#166534" }}>
