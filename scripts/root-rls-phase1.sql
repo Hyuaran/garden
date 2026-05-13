@@ -153,22 +153,29 @@ CREATE POLICY root_attendance_write ON root_attendance
 -- (合計 16 行)
 
 -- ============================================================
--- 将来計画 (2026-05-11 追加)
+-- Phase B-5 完了 (2026-05-13、migration 20260513000001)
 -- ============================================================
 -- 本ファイルで使用している helper（root_can_access / root_can_write /
--- root_is_super_admin）は、Phase B-5 で PR #154 の has_role_at_least() を
--- 内部呼出する wrapper に置換予定。
+-- root_is_super_admin）は、Phase B-5 で has_role_at_least() を内部呼出する
+-- wrapper に置換済（PR は本 dispatch main- No. 343 起票分を参照）。
 --
--- 等価関係:
---   root_can_access()     ≈ has_role_at_least('manager')
---   root_can_write()      ≈ has_role_at_least('admin')
---   root_is_super_admin() ≈ has_role_at_least('super_admin')
+-- 置換後の等価関係（migration 20260513000001 で実装）:
+--   root_can_access()     := has_role_at_least('manager')
+--   root_can_write()      := has_role_at_least('admin')
+--   root_is_super_admin() := has_role_at_least('super_admin')
 --
--- wrapper 化後は本ファイル内の policy は **無修正で動作**（内部実装の置換のみ）。
--- 既存 RLS 動作を破壊しないことを Phase B-5 PR の Acceptance に含める。
+-- wrapper 化により本ファイル内の policy は無修正で動作する（内部実装の置換のみ）。
+-- function 名 / signature / RETURN 型 / LANGUAGE sql / SECURITY DEFINER / STABLE は
+-- いずれも維持され、behavior 互換性を担保する。
+--
+-- 注: 本ファイル内に残置されている root_can_access / root_can_write / root_is_super_admin の
+-- 旧定義は scripts/root-auth-schema.sql §3 を参照。Phase B-5 後の正本は
+-- supabase/migrations/20260513000001_root_can_helpers_to_has_role_at_least.sql。
 --
 -- 関連ドキュメント:
 --   scripts/garden-rls-unified-template.sql        … 新規追加テーブル雛形（5 pattern）
 --   docs/specs/cross-cutting/2026-05-11-garden-rls-design-guide.md … 設計ガイド全文
 --   docs/specs/plans/2026-05-11-garden-unified-auth-plan.md (Task 4 + Phase B-5)
+--   supabase/migrations/20260511000001_cross_rls_helpers.sql       … has_role_at_least 定義
+--   supabase/migrations/20260513000001_root_can_helpers_to_has_role_at_least.sql … wrapper 置換
 -- ============================================================
