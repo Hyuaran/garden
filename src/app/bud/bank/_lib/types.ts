@@ -2,7 +2,9 @@
  * Garden-Bud / 03_Bank 銀行口座 + 残高 TypeScript 型定義
  *
  * 対応 dispatch: main- No. 276（5/12 デモ前 alpha = 残高表示のみ）
- * 対応 migration: supabase/migrations/20260511000010_bud_bank_accounts_balances.sql
+ * 対応 migration:
+ *   - supabase/migrations/20260511000010_bud_bank_accounts_balances.sql（初版、旧 bud_bank_*）
+ *   - supabase/migrations/20260513000001_rename_bud_bank_to_root_bank.sql（5/13 root_bank_* へ rename、main- No. 339 §D α 採用）
  */
 
 export const CORP_CODES = [
