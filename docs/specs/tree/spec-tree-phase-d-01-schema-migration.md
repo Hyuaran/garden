@@ -7,7 +7,11 @@
 - 作成: 2026-04-25（a-auto / Batch 9 Tree Phase D #01）
 - 前提:
   - `root_employees` / `garden_role` 7 階層（Root 既設）
-  - Soil `soil_call_lists` / `soil_call_histories`（営業リスト 253 万件 / コール履歴 335 万件、Phase C で拡張予定）
+  - **`root_employees.employee_number` 列に UNIQUE 制約必須**（別 migration `supabase/migrations/20260511000002_root_employees_employee_number_unique.sql` で先行投入）
+    - 経緯: `scripts/root-schema.sql` L99-100 で `employee_id text PRIMARY KEY` + `employee_number text NOT NULL`（UNIQUE なし）の構造。Tree D-01 schema の FK 参照 3 箇所（`tree_calling_sessions` / `tree_call_records` / `tree_agent_assignments` → `REFERENCES root_employees(employee_number)`）は employee_number 側に UNIQUE / PK 制約が必須（PostgreSQL 仕様、42830 invalid_foreign_key 防止）
+    - 業務意図維持: Garden 全体で「employee_number ベース横断 FK」方針確定（main- No. 269 案 A 採択、東海林さん決裁 2026-05-11 15:30）
+    - 確定経緯: 2026-05-11 14:30 Tree D-01 初回 apply で 42830 エラー検出 → main- No. 269 a-tree-002 提案 + 東海林さん案 A 採択 → a-root-002 が UNIQUE migration 起草（PR #157）→ apply 後 Tree D-01 再 apply 可能
+  - Soil `soil_lists` / `soil_call_history`（営業リスト 253 万件 / コール履歴 335 万件、Phase C で拡張予定）
   - spec-cross-rls-audit（Batch 7）
   - spec-cross-audit-log（Batch 7）
   - spec-leaf-kanden-phase-c-01-schema-migration（列制限 Trigger・論理削除パターン踏襲）
@@ -53,20 +57,20 @@ FileMaker で稼働中の架電業務（コールセンター中核業務）を 
 
 ### 2.2 Soil 連携（営業リスト × コール履歴）
 
-既存 Soil テーブル（想定）:
+既存 Soil テーブル（想定、v1.3 改訂で soil_lists / soil_call_history に名称・型修正）:
 
 ```
-soil_call_lists
-  - list_id (pk)
+soil_lists
+  - id (uuid pk)                  ← v1.3 改訂: bigint list_id → uuid id（実 Soil schema 準拠、soil-62 報告踏襲）
   - campaign_code (関電 / 光 / クレカ 等)
   - customer_name, phone, address, ...
   - status (untouched / assigned / in_progress / done / ng / retry)
   - acquired_at / released_at
   - owner_employee_id (割当中オペレーター、未割当は null)
 
-soil_call_histories
-  - history_id (pk)
-  - list_id (fk soil_call_lists)
+soil_call_history
+  - id (uuid pk)                  ← v1.3 改訂: bigint history_id → uuid id
+  - list_id (uuid fk soil_lists.id)   ← v1.3 改訂: bigint → uuid
   - called_at
   - result_code
   - employee_id
@@ -93,6 +97,9 @@ BEGIN;
 
 CREATE TABLE tree_calling_sessions (
   session_id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- FK 前提: root_employees.employee_number 列に UNIQUE 制約必須
+  --   別 migration: supabase/migrations/20260511000002_root_employees_employee_number_unique.sql で先行投入
+  --   経緯: 2026-05-11 初回 apply で 42830 invalid_foreign_key 検出 → main- No. 269 案 A 採択
   employee_id          text NOT NULL REFERENCES root_employees(employee_number),
   campaign_code        text NOT NULL,   -- 関電 / 光回線 / クレカ 等（Soil と同軸）
   mode                 text NOT NULL CHECK (mode IN ('sprout', 'branch', 'breeze', 'aporan', 'confirm')),
@@ -126,7 +133,8 @@ CREATE INDEX idx_tcs_active ON tree_calling_sessions (employee_id) WHERE ended_a
 CREATE TABLE tree_call_records (
   call_id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id           uuid NOT NULL REFERENCES tree_calling_sessions(session_id),
-  list_id              bigint REFERENCES soil_call_lists(list_id),  -- Soil 連携
+  list_id              uuid REFERENCES soil_lists(id),  -- Soil 連携（v1.3: bigint→uuid、list_id→id 列名改訂）
+  -- FK 前提: root_employees.employee_number 列に UNIQUE 制約必須（§前提 + 別 migration 参照）
   employee_id          text NOT NULL REFERENCES root_employees(employee_number),
   campaign_code        text NOT NULL,
   result_code          text NOT NULL,   -- 'toss', 'order', 'sight_A', 'sight_B', 'sight_C', 'unreach', 'ng_refuse', 'ng_claim', 'ng_contracted', 'ng_other', 'coin' 等
@@ -160,9 +168,10 @@ CREATE INDEX idx_tcr_toss ON tree_call_records (tossed_leaf_case_id) WHERE tosse
 ```sql
 CREATE TABLE tree_agent_assignments (
   assignment_id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- FK 前提: root_employees.employee_number 列に UNIQUE 制約必須（§前提 + 別 migration 参照）
   employee_id          text NOT NULL REFERENCES root_employees(employee_number),
   campaign_code        text NOT NULL,
-  list_id              bigint NOT NULL REFERENCES soil_call_lists(list_id),
+  list_id              uuid NOT NULL REFERENCES soil_lists(id),  -- v1.3: bigint→uuid、list_id→id 列名改訂
   assigned_at          timestamptz NOT NULL DEFAULT now(),
   released_at          timestamptz,
   release_reason       text CHECK (release_reason IN ('done', 'passed', 'timeout', 'reassigned', 'manual')),
@@ -184,7 +193,7 @@ CREATE INDEX idx_taa_employee_active ON tree_agent_assignments (employee_id)
 ### 3.4 Soil 側の最小追加列
 
 ```sql
-ALTER TABLE soil_call_lists
+ALTER TABLE soil_lists
   ADD COLUMN IF NOT EXISTS last_tree_session_id uuid REFERENCES tree_calling_sessions(session_id),
   ADD COLUMN IF NOT EXISTS last_tree_call_id    uuid REFERENCES tree_call_records(call_id),
   ADD COLUMN IF NOT EXISTS last_tree_touched_at timestamptz;
@@ -258,9 +267,14 @@ CREATE POLICY tcs_update_self_open ON tree_calling_sessions FOR UPDATE
   USING (employee_id = auth_employee_number() AND ended_at IS NULL)
   WITH CHECK (employee_id = auth_employee_number());
 
--- マネージャー（manager）: 自部署の全セッション SELECT のみ
+-- マネージャー（manager）: v3.1 改訂で「自分担当 only」に縮退
+-- 旧: USING (has_role_at_least('manager') AND is_same_department(employee_id))
+-- 新: USING (has_role_at_least('manager') AND employee_id = auth_employee_number())
+-- 理由: Batch 7 (root-002-38 / PR #154) で is_same_department が縮退
+--        （root_employees.department_id 列なし + root_departments マスタなし）
+-- 将来の再導入: department 運用ルール確定後に「自部署絞込」へ復帰、本 spec §4.1 を再改訂
 CREATE POLICY tcs_select_manager ON tree_calling_sessions FOR SELECT
-  USING (has_role_at_least('manager') AND is_same_department(employee_id));
+  USING (has_role_at_least('manager') AND employee_id = auth_employee_number());
 
 -- admin / super_admin: 全件 SELECT/UPDATE（削除は super_admin のみ）
 CREATE POLICY tcs_all_admin ON tree_calling_sessions FOR ALL
@@ -268,21 +282,32 @@ CREATE POLICY tcs_all_admin ON tree_calling_sessions FOR ALL
   WITH CHECK (has_role_at_least('admin'));
 ```
 
-- `auth_employee_number()` / `has_role_at_least()` / `is_same_department()` はすべて spec-cross-rls-audit 定義の SQL 関数
-- マネージャーは **自部署のみ**閲覧可（他部署のコール内容は原則非公開）
+- `auth_employee_number()` / `has_role_at_least()` は spec-cross-rls-audit / Batch 7 (PR #154) で実装済
+- `is_same_department()` は **Batch 7 で縮退** （root_employees.department_id 列なし + root_departments マスタなし）。本 spec §4.1 では「マネージャー = 自分担当 only」に縮退対応。
+- 縮退方針確定経緯: main- No. 233（a-main-020 → a-root-002）→ root-002-38（is_same_department Q2 (b) 採用、Batch 7 で省略）→ main- No. 238（a-main-020 → a-tree-002、本 spec 改訂依頼）
+- 将来の再導入条件:
+  - `root_employees.department_id` 列追加（schema 拡張）
+  - `root_departments` マスタテーブル新規作成
+  - department 運用ルール確定（異動 / 複数所属 等）
+- 上記が満たされた段階で `is_same_department()` 再実装 → 本 spec §4.1 を「自分担当 only」→「マネージャー自部署絞込」に再改訂（管理者向け広範囲 SELECT を復活）
+- 現状（縮退中）の管理者横断 SELECT は admin / super_admin のみ可（§4.1 末尾の `tcs_all_admin` ポリシー）
 
 ### 4.2 `tree_call_records`
 
-- SELECT: 自分のコールは全社員、部署コールはマネージャー+、全件は admin+
+- SELECT: 自分のコールのみ（manager+ も同様、is_same_department 縮退中）、全件は admin+
 - INSERT: 自分の session_id に対してのみ
-- UPDATE: **本人は同日分（called_at >= now()::date）のみ**、manager+ は自部署、admin+ は全件
+- UPDATE: **本人は同日分（called_at >= now()::date）のみ**、admin+ は全件（manager+ も縮退中は自分の同日分のみ）
 - DELETE 直接禁止（論理削除のみ、`deleted_at` の UPDATE で実現）
+
+v3.1 縮退注記: is_same_department が Batch 7 で縮退したため、現状は「manager 権限でも自部署横断不可」（自分担当 only）。将来 department 運用確定で再導入時に「マネージャー = 自部署全コール」へ復活。
 
 ### 4.3 `tree_agent_assignments`
 
-- SELECT: 営業は自分の割当のみ、manager+ は自部署全オペレーター、admin+ は全件
+- SELECT: 営業は自分の割当のみ（manager+ も同様、is_same_department 縮退中）、admin+ は全件
 - INSERT/UPDATE: **manager 以上のみ**（営業が自分で割当を引くのは spec-tree-d-02 の pull モードで別途 RLS バイパス経由）
 - DELETE 禁止（論理削除）
+
+v3.1 縮退注記: is_same_department が Batch 7 で縮退したため、現状は「manager 権限でも自部署全オペレーターの割当閲覧不可」（自分の割当 only）。将来 department 運用確定で再導入時に「マネージャー = 自部署全オペレーター」へ復活。
 
 ### 4.4 SELECT ビュー: 通常オペレーター向けサマリ（Soil + Tree 結合）
 
@@ -346,7 +371,7 @@ SELECT
   h.result_code   AS legacy_result_code,
   h.employee_id,
   h.memo
-FROM soil_call_histories h
+FROM soil_call_history h
 WHERE h.source = 'filemaker';  -- Soil 側で source 列を追加、FM 投入時に 'filemaker' を入れる
 ```
 
@@ -442,6 +467,17 @@ WHERE h.source = 'filemaker';  -- Soil 側で source 列を追加、FM 投入時
 | Soil 既存構造調査と Tree 側接続点整備 | 1h |
 | migration を dev で 3 往復 + seed データ投入 | 1h |
 | **合計** | **0.9d**（約 9h）|
+
+---
+
+## 12. 改訂履歴
+
+| 日付 | 版 | 改訂内容 | 担当セッション |
+|---|---|---|---|
+| 2026-04-25 | v1.0（初版）| Phase D-01 schema migration spec 起草（テーブル 3 / RLS 4 階層 / Trigger 6 / VIEW 2）| a-auto / Batch 9 |
+| 2026-05-11 | v1.1 | §4.1 / §4.2 / §4.3 RLS ポリシー改訂: `is_same_department()` 縮退対応で「マネージャー = 自部署絞込」を「自分担当 only」に縮退。Batch 7 (PR #154) 採用に伴う措置。将来 department 運用確定で再導入時に「自部署絞込」へ復活予定。確定経緯: main- No. 233（→ a-root-002）→ root-002-38（Batch 7 縮退）→ main- No. 238（→ a-tree-002、本 spec 改訂依頼）。**対応する SQL 本体修正は PR #128（feature/tree-phase-d-01-reissue-20260507 ブランチ、commit 45decb4）の追加 push or 後続別 PR で実施予定**（spec 改訂 = §4 縮退 → 対応 SQL = `is_same_department(...)` → `employee_id = auth_employee_number()` 修正、PR #154 merge + apply 後着手）。bloom-006- No. 7 review で 軽微改善 # 1 として trace 追記指摘、main- No. 248 経由で本行追記。 | a-tree-002 |
+| 2026-05-11 | v1.2 | §「前提:」ブロック + §3.1 / §3.2 / §3.3 SQL FK 参照箇所 3 件に「`root_employees.employee_number` 列に UNIQUE 制約必須」前提を明記。経緯: 2026-05-11 14:30 Tree D-01 初回 apply で 42830 invalid_foreign_key エラー検出（`scripts/root-schema.sql` L99-100 で `employee_id PRIMARY KEY` + `employee_number` UNIQUE なしの構造、a-tree-002 起草時の事実誤認）→ main- No. 269 で a-tree-002 が真因報告 + 案 A 提案（employee_number に UNIQUE 制約追加 = 業務意図維持 + Tree D-01 schema 改訂不要）→ 東海林さん案 A 採択（15:30）→ a-root-002 が別 migration（`supabase/migrations/20260511000002_root_employees_employee_number_unique.sql`）起草 + PR #157 起票（root-002- No. 40）→ apply 後 Tree D-01 再 apply 可能。本 v1.2 は spec 単独読込者の誤認再発防止 + 別 migration ファイル名による trace 強化（候補 3 採用、main- No. 273 GO）。 | a-tree-002 |
+| 2026-05-13 | v1.3 | Soil 連携テーブル参照 修正: `soil_call_lists` → `soil_lists` / `soil_call_histories` → `soil_call_history` / 型 `bigint` → `uuid` / 列名 `list_id` (PK) → `id` (PK)。経緯: 2026-05-11 14:30 Tree D-01 初回 apply で IF EXISTS guard により soil_call_lists 不在を吸収して成功（main- No. 290 §B 「潜在問題: spec D-01 の soil_call_lists が real soil migration に存在せず、real = soil_lists、uuid PK」）→ a-soil-002 が soil-62 で報告 → main- No. 290 §C-3 で a-tree-002 へ中期修正タスクとして委譲 → main- No. 341（5/13 10:15、デモ延期 + 至急モード）で即着手 GO → 本 v1.3 改訂。影響範囲: §2.2 Soil 想定テーブル定義（L60-78）+ §3.2 tree_call_records.list_id（L136）+ §3.3 tree_agent_assignments.list_id（L174）+ §3.4 ALTER TABLE soil_lists（L196、既改訂済）+ §8 v_tree_legacy_history VIEW（L374、既改訂済）+ §「前提:」L14。SQL 本体修正は別 PR（PR #156 既 merge 済の SQL は soil 不在で IF EXISTS guard skip 動作確認済、追加 SQL は次フェーズ §1 D-01 types gen + Vitest 時に必要に応じて投入）。 | a-tree-002 |
 
 ---
 

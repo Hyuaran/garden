@@ -1,34 +1,45 @@
 "use client";
 
 /**
- * Garden Series 共通ログイン画面（v7 Group B 改訂、2026-04-27）
+ * Garden Series 共通ログイン画面（v8、2026-05-11、Task 1）
  *
- * 改訂点:
+ * 改訂点 (v8 / Task 1):
+ *   - signInBloom → signInUnified へ置換（API 互換、内部で 6 モジュール session unlock）
+ *   - useSearchParams() で returnTo クエリ取得、sanitizeReturnTo() 通過後は role redirect より優先
+ *   - 全体を <Suspense> boundary でラップ（useSearchParams を Suspense 内で使うため）
+ *
+ * 既存維持 (v7 Group B):
  *   - 背景: 6 atmospheres カルーセル（home と同じ <BackgroundCarousel atmospheres={ATMOSPHERES_V2} />）
  *   - 入力枠 1: 「社員番号またはID」（パートナーコード対応、暫定 microcopy 付き）
- *   - microcopy 追加: ID 説明 + Secure workspace footer
  *   - ログイン枠: 左側 fixed position 重ね、半透明白カード
  *
- * 認証フロー（既存維持）:
- *   - signInBloom(empId, password) → fetchBloomUser → getPostLoginRedirect → router.push
+ * 認証フロー:
+ *   - signInUnified(empId, password) → fetchBloomUser → returnTo or getPostLoginRedirect → router.push
  *   - 入力値判定（E-/P-）はコメントのみ、実 DB 連携は post-5/5
+ *
+ * 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 1 §Step 2
  */
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { signInBloom, fetchBloomUser } from "../bloom/_lib/auth";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { fetchBloomUser } from "../bloom/_lib/auth";
+import { signInUnified, sanitizeReturnTo } from "../_lib/auth-unified";
 import { getPostLoginRedirect } from "../_lib/auth-redirect";
 import { BackgroundCarousel } from "../../components/shared/garden-view/BackgroundCarousel";
 import { ATMOSPHERES_V2 } from "../../components/shared/garden-view/_lib/atmospheres";
 
-export default function GardenLoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [employeeIdOrPartnerCode, setEmployeeIdOrPartnerCode] = useState("");
   const [password, setPassword] = useState("");
   const [keepLogin, setKeepLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // expired 警告 (bud/login 等から forward された場合)
+  const isExpired = searchParams.get("reason") === "expired";
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,13 +49,12 @@ export default function GardenLoginPage() {
     // v7 Group B: 入力値判定（実 DB 連携は post-5/5）
     //   - "E-" prefix → 社員番号 (root_employees)
     //   - "P-" prefix → パートナーコード (root_partners)
-    //   - その他 → 既存 signInBloom（暫定で社員番号として扱う）
+    //   - その他 → 既存 signInUnified（暫定で社員番号として扱う）
     const trimmed = employeeIdOrPartnerCode.trim();
     // const isPartnerCode = trimmed.toUpperCase().startsWith("P-");
     // const isEmployeeId = trimmed.toUpperCase().startsWith("E-");
-    // 5/5 までは signInBloom にそのまま渡す（社員番号扱い）
 
-    const result = await signInBloom(trimmed, password);
+    const result = await signInUnified(trimmed, password);
     if (!result.success) {
       setSubmitting(false);
       setError(result.error ?? "ログイン失敗");
@@ -52,7 +62,13 @@ export default function GardenLoginPage() {
     }
     try {
       const bloomUser = result.userId ? await fetchBloomUser(result.userId) : null;
-      const target = getPostLoginRedirect(bloomUser?.garden_role);
+      const role = bloomUser?.garden_role;
+
+      // returnTo 優先 (sanitize 通過時のみ)、それ以外は role redirect
+      const returnToRaw = searchParams.get("returnTo");
+      const returnTo = sanitizeReturnTo(returnToRaw);
+      const target = returnTo ?? getPostLoginRedirect(role);
+
       router.push(target);
     } catch (err) {
       setSubmitting(false);
@@ -110,6 +126,24 @@ export default function GardenLoginPage() {
               </div>
             </div>
           </div>
+
+          {/* expired 警告 (bud/login 等から forward された場合) */}
+          {isExpired && (
+            <div
+              role="status"
+              style={{
+                background: "#FFF7E6",
+                border: "1px solid #F5A623",
+                color: "#7A5800",
+                padding: "10px 12px",
+                borderRadius: 6,
+                fontSize: 12,
+                margin: "0 0 16px",
+              }}
+            >
+              セッションが 2 時間で期限切れになりました。再度ログインしてください。
+            </div>
+          )}
 
           <form onSubmit={onSubmit}>
             {/* 社員番号またはID */}
@@ -296,5 +330,19 @@ export default function GardenLoginPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function GardenLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}>
+          <div style={{ position: "fixed", inset: 0, zIndex: 0, background: "#F5F8F2" }} />
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

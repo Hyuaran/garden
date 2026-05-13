@@ -150,16 +150,33 @@ const MODULES: ModuleDef[] = [
 ];
 
 type Props = {
+  /**
+   * 可視 module key の許可リスト（Task 2、plan §Step 2-3）。
+   * 未指定なら従来通り全 12 module を描画（後方互換）。
+   */
+  visibleModules?: readonly string[];
   /** orb hover 時 callback */
   onOrbHover?: (moduleKey: string) => void;
   /** orb click 時 callback */
   onOrbClick?: (moduleKey: string) => void;
 };
 
-export default function OrbGrid({ onOrbHover, onOrbClick }: Props = {}) {
+export default function OrbGrid({
+  visibleModules,
+  onOrbHover,
+  onOrbClick,
+}: Props = {}) {
+  const filtered = visibleModules
+    ? MODULES.filter((m) => visibleModules.includes(m.moduleKey))
+    : MODULES;
+
   return (
-    <section className="orb-grid">
-      {MODULES.map((m) => (
+    <section
+      className="orb-grid"
+      data-visible-count={filtered.length}
+      data-role-filtered={visibleModules ? "true" : "false"}
+    >
+      {filtered.map((m) => (
         <OrbCard
           key={m.moduleKey}
           moduleKey={m.moduleKey}

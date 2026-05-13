@@ -122,6 +122,9 @@ AS $$
 $$;
 
 -- Root 画面閲覧可（manager 以上）
+-- ⚠️ Phase B-5 (2026-05-13) で has_role_at_least('manager') の wrapper に置換済。
+--    本ファイルの定義は歴史的原本として残置。実行時の正本は
+--    supabase/migrations/20260513000001_root_can_helpers_to_has_role_at_least.sql。
 CREATE OR REPLACE FUNCTION root_can_access()
   RETURNS boolean
   LANGUAGE sql
@@ -132,6 +135,9 @@ AS $$
 $$;
 
 -- Root データ編集可（admin 以上）
+-- ⚠️ Phase B-5 (2026-05-13) で has_role_at_least('admin') の wrapper に置換済。
+--    本ファイルの定義は歴史的原本として残置。実行時の正本は
+--    supabase/migrations/20260513000001_root_can_helpers_to_has_role_at_least.sql。
 CREATE OR REPLACE FUNCTION root_can_write()
   RETURNS boolean
   LANGUAGE sql
@@ -142,6 +148,9 @@ AS $$
 $$;
 
 -- 全権管理者か（garden_role 変更・super_admin 専用操作用）
+-- ⚠️ Phase B-5 (2026-05-13) で has_role_at_least('super_admin') の wrapper に置換済。
+--    本ファイルの定義は歴史的原本として残置。実行時の正本は
+--    supabase/migrations/20260513000001_root_can_helpers_to_has_role_at_least.sql。
 CREATE OR REPLACE FUNCTION root_is_super_admin()
   RETURNS boolean
   LANGUAGE sql
