@@ -1,0 +1,73 @@
+-- ============================================================
+-- Garden Bud — bud_master_rules.memo 列 正式 migration 化
+-- ============================================================
+-- 対応 dispatch: main- No. 348 (a-main-026, 2026-05-13 15:13)
+-- 作成: 2026-05-13 a-forest-002
+--
+-- 背景:
+--   5/13 午後に本番 DB へ手動で ALTER TABLE bud_master_rules ADD COLUMN memo text;
+--   が適用されたが、ソースコード (migration) に反映されておらず不整合状態だった。
+--   - seed migration (20260513000005_bud_master_rules_seed.sql) は memo 列に INSERT を実行
+--   - しかし CREATE TABLE 定義 (20260513000003_bud_shiwakechou_b_min.sql) には memo 列なし
+--   → 新規環境構築時に seed が失敗するリスク + ソース/本番の永続的不整合
+--
+-- 採択方針 (B 案 / dispatch §B):
+--   新規 migration で ALTER TABLE ... ADD COLUMN IF NOT EXISTS により冪等的に列追加。
+--   - 本番 (既に列あり): NO-OP (IF NOT EXISTS により skip)
+--   - 新規環境 (列なし): ADD COLUMN 実行
+--   いずれの場合もソース/本番の整合性が回復する。
+--
+-- 適用方法:
+--   Supabase Dashboard > garden-prod > SQL Editor で本ファイルを貼付 → Run。
+--   既に手動で ADD COLUMN 済の本番では何もしない (IF NOT EXISTS で NO-OP)。
+--   garden-dev / 新規環境では列が追加される。
+--
+-- 検証手順 (dispatch §C-6, A-RP-1 §2 準拠):
+--   A. Chrome MCP で Supabase Studio SQL Editor を開く
+--   B. 動作検証 SQL ブロック (末尾コメント参照) を実行
+--   C. 結果を PR comment 5 点フォーマットで報告 (手段 + クエリ + 結果 + 検証者 + screenshot)
+--
+-- 冪等性: add column if not exists により何度実行しても同じ結果になる。
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- 1. bud_master_rules.memo 列 追加 (冪等 ALTER)
+-- ------------------------------------------------------------
+alter table public.bud_master_rules
+  add column if not exists memo text;
+
+-- ------------------------------------------------------------
+-- 2. 列コメント (memo 列の用途を明示)
+-- ------------------------------------------------------------
+comment on column public.bud_master_rules.memo is
+  '判定ルールの補足メモ (任意, 例: 法人名 / 例外条件 / 移管時の経緯)。seed migration で取込時に空文字または法人名を格納。';
+
+-- ============================================================
+-- 動作検証 SQL (Chrome MCP / Supabase Studio で手動実行用)
+-- ============================================================
+-- ✅ 列の物理存在確認 (期待: 1 行返却、data_type='text', is_nullable='YES')
+--    SELECT column_name, data_type, is_nullable, column_default
+--      FROM information_schema.columns
+--      WHERE table_schema = 'public'
+--        AND table_name = 'bud_master_rules'
+--        AND column_name = 'memo';
+--
+-- ✅ 列コメント確認 (期待: 上記の日本語コメント返却)
+--    SELECT col_description('public.bud_master_rules'::regclass,
+--             (SELECT ordinal_position FROM information_schema.columns
+--                WHERE table_schema='public' AND table_name='bud_master_rules' AND column_name='memo')
+--           );
+--
+-- ✅ memo 列の使用状況確認 (seed が INSERT した値の確認、期待: 一定件数の memo 値あり)
+--    SELECT
+--      COUNT(*) AS 総件数,
+--      COUNT(memo) AS memo非null件数,
+--      COUNT(CASE WHEN memo IS NOT NULL AND memo != '' THEN 1 END) AS memo有値件数
+--    FROM public.bud_master_rules;
+--
+-- ✅ 冪等性確認 (2 回目実行で NO-OP、エラーなく完了)
+--    再度本 migration 全体を実行し、エラーなく終了することを確認。
+--
+-- ============================================================
+-- end of migration 20260513000040
+-- ============================================================
