@@ -22,6 +22,7 @@ const NAV_ITEMS: Array<{ href: string; label: string }> = [
   { href: BLOOM_PATHS.MONTHLY_DIGEST, label: "月次まとめ" },
   { href: BLOOM_PATHS.CEO_STATUS, label: "経営状況" },
   { href: BLOOM_PATHS.PROGRESS, label: "開発進捗" },
+  { href: BLOOM_PATHS.KPI, label: "統合 KPI" },
 ];
 
 export function BloomShell({ children }: { children: ReactNode }) {

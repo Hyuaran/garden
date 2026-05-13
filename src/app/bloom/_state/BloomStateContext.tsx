@@ -9,7 +9,12 @@
  * - 2時間セッションタイマー
  *
  * データ（worker-status / daily-log / roadmap 等）の取得は T4 以降で追加する。
- * 現在は認証スケルトンのみ。
+ *
+ * dispatch main- No.79 (2026-05-07):
+ *   dev mode（NODE_ENV === "development" or NEXT_PUBLIC_BLOOM_DEV_MOCK="1"）で
+ *   東海林さんダミーユーザーを即時返却。Workboard / Roadmap 等が認証 pending で
+ *   loading 滞留する問題を解消。BloomGate の dev バイパスと整合（memory
+ *   project_bloom_auth_independence.md 参照）。
  */
 
 import {
@@ -67,13 +72,34 @@ export function useBloomState(): BloomState {
   return ctx;
 }
 
+// dispatch main- No.79: dev mode で即時ダミーユーザー注入 (BloomGate dev バイパスと整合)
+const DEV_MOCK_ENABLED =
+  process.env.NODE_ENV === "development" ||
+  process.env.NEXT_PUBLIC_BLOOM_DEV_MOCK === "1";
+
+const DEV_MOCK_USER: BloomUser = {
+  user_id: "dev-shoji",
+  employee_id: "EMP-DEV",
+  employee_number: "0001",
+  name: "東海林 美琴",
+  garden_role: "super_admin",
+  birthday: null,
+};
+
+const DEV_MOCK_EMAIL = "shoji-dev@hyuaran.com";
+
 export function BloomStateProvider({ children }: { children: ReactNode }) {
-  const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [hasPermission, setHasPermission] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [bloomUser, setBloomUser] = useState<BloomUser | null>(null);
+  // dev mock 有効時は最初から認証済み状態で起動 (loading=false、bloomUser 設定済み)
+  const [loading, setLoading] = useState(!DEV_MOCK_ENABLED);
+  const [isAuthenticated, setIsAuthenticated] = useState(DEV_MOCK_ENABLED);
+  const [hasPermission, setHasPermission] = useState(DEV_MOCK_ENABLED);
+  const [isUnlocked, setIsUnlocked] = useState(DEV_MOCK_ENABLED);
+  const [userEmail, setUserEmail] = useState<string | null>(
+    DEV_MOCK_ENABLED ? DEV_MOCK_EMAIL : null,
+  );
+  const [bloomUser, setBloomUser] = useState<BloomUser | null>(
+    DEV_MOCK_ENABLED ? DEV_MOCK_USER : null,
+  );
 
   const unlock = useCallback(() => {
     setIsUnlocked(true);
@@ -125,6 +151,10 @@ export function BloomStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // dev mock 有効時は refreshAuth をスキップ (Supabase auth 接続不要、即動作)
+    if (DEV_MOCK_ENABLED) {
+      return;
+    }
     (async () => {
       try {
         await refreshAuth();

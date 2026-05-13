@@ -3,15 +3,17 @@
 /**
  * Bloom ログインゲート
  *
- * §10.3 判5: 当面は Bloom 独自ログイン画面を作らず、`/forest/login` へリダイレクトする。
- *   Forest 認証成功後に同じ Supabase Auth セッションで Bloom に戻る想定。
+ * §10.3 判5 (2026-05-02): 当面 Bloom 独自ログイン画面を作らず `/forest/login` へリダイレクトしていた。
  *
- * 将来 Bloom 固有ブランディングが必要になったら、本ファイルを Forest の ForestGate
- * 相当（社員番号 + パスワードフォーム）に差し替える。signInBloom() は実装済。
+ * dispatch main- No. 83 / No. 84 (2026-05-07): Garden 統一認証ゲート稼働により redirect 先を
+ *   `/forest/login` → **統一ログイン `/login`** へ変更。新ログイン画面は claude.ai 起草版ベースの
+ *   Garden Series 共通画面 (src/app/login/page.tsx v8 unified)。Forest セッションも同じ画面を共有。
+ *
+ * 旧版: BloomGate.legacy-forest-redirect-20260507.tsx (削除禁止ルール準拠)
  *
  * 動作:
  *   - loading 中      : スピナー
- *   - 未認証 or 未ロック : /forest/login?returnTo=... へリダイレクト
+ *   - 未認証 or 未ロック : /login?returnTo=... へリダイレクト
  *   - 認証 + ロック解除 : children をそのまま描画
  */
 
@@ -39,7 +41,7 @@ export function BloomGate({ children }: { children: ReactNode }) {
         ? window.location.pathname + window.location.search
         : BLOOM_PATHS.HOME;
     const returnTo = encodeURIComponent(current);
-    window.location.replace(`${BLOOM_PATHS.FOREST_LOGIN}?returnTo=${returnTo}`);
+    window.location.replace(`${BLOOM_PATHS.UNIFIED_LOGIN}?returnTo=${returnTo}`);
   }, [loading, allowed]);
 
   if (allowed) {
