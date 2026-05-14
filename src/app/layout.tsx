@@ -68,6 +68,35 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
   return (
     <html lang="ja" className={`${fontVariables} h-full antialiased`} data-theme="light">
+      <head>
+        {/* GardenShell preflight — body render 前に collapse / theme 状態を先取り → 初回 mount アニメーション抑止 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{
+              var nav=localStorage.getItem('garden_nav_pages_collapsed')==='1';
+              var act=localStorage.getItem('garden_activity_collapsed')==='1';
+              var th=localStorage.getItem('garden.theme');
+              if(th==='dark')document.documentElement.setAttribute('data-theme','dark');
+              document.documentElement.dataset.preNavCollapsed=nav?'1':'0';
+              document.documentElement.dataset.preActivityCollapsed=act?'1':'0';
+              // 初回 transition 抑止 (100ms scoped style)
+              var s=document.createElement('style');
+              s.id='garden-preflight-style';
+              s.textContent='*,*::before,*::after{transition:none!important;animation:none!important;}';
+              document.head.appendChild(s);
+              var apply=function(){
+                if(!document.body)return;
+                document.body.classList.add('bloom-page');
+                if(nav)document.body.classList.add('nav-pages-collapsed');
+                if(act)document.body.classList.add('activity-collapsed');
+              };
+              if(document.body){apply();}else{document.addEventListener('DOMContentLoaded',apply);}
+              // 150ms 後に preflight style を remove (transition 完全復活)
+              setTimeout(function(){var el=document.getElementById('garden-preflight-style');if(el)el.remove();},150);
+            }catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         {/*
           Provider 階層 (外側 → 内側):
