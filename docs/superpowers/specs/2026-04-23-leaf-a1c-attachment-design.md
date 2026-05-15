@@ -3,7 +3,7 @@
 - 優先度: 🔴 高（Phase A 必須、Leaf 関電業務委託の中核機能）
 - 見積: **6.7d**（D 共通基盤 2.7d + A Backoffice 2.3d + B Input 1.5d）※ v3 改訂で +0.7d（論理削除全員化 -0.2d / 画像 DL 専用 PW +0.6d / 履歴 trigger +0.3d）
 - 実装順: **D → A → B**（Q2 採択で確定）
-- 作成: 2026-04-23 起草 / 2026-04-25 初版確定 / 2026-04-25 v2 改訂 / **2026-04-25 v3 改訂**（東海林さん業務レビュー回答で確定）
+- 作成: 2026-04-23 起草 / 2026-04-25 初版確定 / 2026-04-25 v2 改訂 / 2026-04-25 v3 改訂（東海林さん業務レビュー回答で確定）/ **2026-05-07 v3.2 改訂**（a-review #65 セキュリティ脆弱性修正反映：search_path = '' 追加 + クライアント平文 PW 直送設計 + extensions schema 明示）
 - 前提:
   - 親 CLAUDE.md §11〜§18（横断調整・工数蓄積・現場 FB 運用ルール）
   - 横断 spec PR #25（`docs/specs/cross-cutting/` 配下 6 件）
@@ -824,7 +824,7 @@ export function isMobileDevice(): boolean {
   - 現在の hash の `updated_at` / `updated_by` を表示（値は非表示）
   - 「新しいパスワード」「確認用再入力」の 2 欄
   - 最低 8 文字、英数字混在の軽い validation
-  - [設定する] クリック → bcrypt.hashSync(new_password, 12) を client で実行（bcryptjs npm 追加）→ `supabase.rpc('set_image_download_password', { new_hash })` で root_settings UPDATE
+  - [設定する] クリック → 新 PW を **平文のまま** `supabase.rpc('set_image_download_password', { new_password })` に送信 → サーバ側 RPC 内で `extensions.crypt(new_password, extensions.gen_salt('bf', 12))` により bcrypt hash 化して `root_settings` に UPSERT（**v3.2 改訂**: a-review #65 修正でクライアント側 bcryptjs 不要化、HTTPS 経路保護に依存）
   - 成功後、「次回の変更は ◯月◯日目安」（定期ローテ運用を示唆）トースト
 - バリデーション失敗: トースト表示（「確認用と一致しません」等）
 
@@ -837,47 +837,67 @@ export function isMobileDevice(): boolean {
 #### 3.5.5 Supabase 側 RPC 関数（migration で定義、§8 参照）
 
 ```sql
+-- v3.2 改訂: a-review #65 重大指摘修正
+--   1. SECURITY DEFINER 関数に SET search_path = '' を追加（schema poisoning 対策）
+--   2. set_image_download_password はクライアントから平文 PW を受取り、サーバ側で
+--      bcrypt hash 化する（任意 hash 送信による認証回避ルートを封殺）
+--   3. pgcrypto の crypt / gen_salt は extensions schema を明示
+--   4. public schema は明示的に修飾、auth.uid() は (SELECT auth.uid()) で囲む
+
 -- パスワード検証 RPC（bcrypt compare）
-CREATE OR REPLACE FUNCTION verify_image_download_password(input_password text)
-RETURNS boolean AS $$
+CREATE OR REPLACE FUNCTION public.verify_image_download_password(input_password text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   stored_hash text;
 BEGIN
   SELECT value->>'hash' INTO stored_hash
-  FROM root_settings
+  FROM public.root_settings
   WHERE key = 'leaf.image_download_password_hash';
   IF stored_hash IS NULL THEN
     RETURN FALSE;
   END IF;
-  -- pgcrypto の crypt() で bcrypt 互換比較
-  RETURN stored_hash = crypt(input_password, stored_hash);
+  -- pgcrypto の crypt() は extensions schema 配下（Supabase 標準）
+  RETURN stored_hash = extensions.crypt(input_password, stored_hash);
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$;
 
--- パスワード設定 RPC（super_admin のみ）
-CREATE OR REPLACE FUNCTION set_image_download_password(new_hash text)
-RETURNS void AS $$
+-- パスワード設定 RPC（super_admin のみ、v3.2 で平文 PW 受取に変更）
+CREATE OR REPLACE FUNCTION public.set_image_download_password(new_password text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  new_hash text;
 BEGIN
-  IF garden_role_of(auth.uid()) != 'super_admin' THEN
+  IF public.garden_role_of((SELECT auth.uid())) != 'super_admin' THEN
     RAISE EXCEPTION 'Forbidden: super_admin only';
   END IF;
-  INSERT INTO root_settings (key, value)
+  -- サーバ側で bcrypt hash 化（クライアントから平文受取、任意 hash 送信ルート封殺）
+  new_hash := extensions.crypt(new_password, extensions.gen_salt('bf', 12));
+  INSERT INTO public.root_settings (key, value)
   VALUES (
     'leaf.image_download_password_hash',
     jsonb_build_object(
       'hash', new_hash,
       'updated_at', to_jsonb(now()),
-      'updated_by', to_jsonb(auth.uid())
+      'updated_by', to_jsonb((SELECT auth.uid()))
     )
   )
   ON CONFLICT (key) DO UPDATE
     SET value = EXCLUDED.value;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 ```
 
-**前提**: Supabase では `pgcrypto` extension が有効（bcrypt の `crypt()`/`gen_salt('bf', 12)` を使用）。Dashboard で `CREATE EXTENSION IF NOT EXISTS pgcrypto;` を事前実行。
-**代替**: client で bcryptjs（npm）を使って hash を生成し、検証は RPC で `crypt()` 比較する設計を採択。これにより平文が Supabase のログに残らない。
+**前提**: Supabase では `pgcrypto` extension が有効（bcrypt の `crypt()`/`gen_salt('bf', 12)` を `extensions` schema 配下で使用）。Dashboard で `CREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA extensions;` を事前実行。
+**v3.2 設計理由**: クライアントは新 PW を平文のまま RPC に送信し、サーバ側 RPC 内で bcrypt hash 化する。HTTPS による経路保護で平文の漏洩を防ぐ。クライアントから任意の hash を送信して認証を回避するルートを封殺するため、bcryptjs（client npm）は不要。
 
 ### 3.6 変更履歴記録（v3 新規、UI は別 spec）
 
@@ -965,7 +985,7 @@ spec-cross-test-strategy §Leaf 🟡 通常厳格度との接続:
 - **`DownloadButton.tsx`**: PC 判定で即 DL、スマホ判定でパスワードモーダル / **v3: DL 専用 PW を RPC 検証** / 3 回失敗ロック / 成功時 DL
 - **`AttachmentDeleteButton.tsx`**: **v3: ロール判定なし（全員表示）** / 確認ダイアログ文言更新（「管理者の最終確認を経て...」）/ 楽観的更新 + UNDO snackbar 5 秒 / UNDO クリックで復帰 / 5 秒経過で完全消失
 - **`AttachmentAdminActions.tsx`**: 削除済カード上に admin+ 限定「復元」「完全削除」ボタン、強い確認ダイアログ、物理削除後の Storage remove 連動
-- **`ImageDownloadPasswordPage.tsx`**（**v3 新規**、Root マイページ配下）: super_admin のみ表示、新旧 PW 比較入力 / 最低 8 文字 + 英数字混在 / bcryptjs で client hash → `set_image_download_password` RPC 呼出 / 成功トースト
+- **`ImageDownloadPasswordPage.tsx`**（**v3 新規 / v3.2 改訂**、Root マイページ配下）: super_admin のみ表示、新旧 PW 比較入力 / 最低 8 文字 + 英数字混在 / **v3.2: 平文 PW を `set_image_download_password({ new_password })` RPC に直送（bcryptjs client hash は廃止、サーバ側 RPC 内で bcrypt 化）** / 成功トースト
 - **`RoleContext.tsx`**（**v2 新規**）: `garden_role_of(auth.uid())` 結果を React context で全コンポーネント共有
 
 **カバレッジ目標**: UI コンポーネント全体で **70%+**
@@ -1057,7 +1077,7 @@ A-1c 完了後、β版投入前に `docs/pre-release-test-YYYYMMDD-leaf-a1c.md` 
    - `src/app/leaf/_lib/image-compression.ts` + `image-compression.worker.ts`
    - `src/app/leaf/_lib/kanden-storage-paths.ts`
    - `src/app/leaf/_lib/role-context.tsx`（v2、`garden_role_of` を全コンポで共有）
-4. **heic2any** + **bcryptjs**（v3 追加、client 側 hash 生成用）npm 追加 + test 基盤（Task 0.x）
+4. **heic2any** npm 追加 + test 基盤（Task 0.x）※ **v3.2 改訂**: bcryptjs（v3 で追加予定だった client 側 hash 生成用）はサーバ側 RPC 内 hash 化への移行で **不要化**
 5. **test-utils**: § 4.4 の実在確認 → 再利用 or 新設（ロール / 事業所属 / **DL PW RPC** / **history trigger** mock）
 6. **Vitest ユニットテスト** § 4.1 全件実装
 
@@ -1070,7 +1090,7 @@ A-1c 完了後、β版投入前に `docs/pre-release-test-YYYYMMDD-leaf-a1c.md` 
 5. `AttachmentUploader.tsx`（PC 向け drag&drop + file input、並列 3）
 6. `AttachmentDeleteButton.tsx`（**v3: ロール判定なし（全員表示）** / 2 段確認 + UNDO 5 秒 / 文言「管理者の最終確認待ち」）
 7. `AttachmentAdminActions.tsx`（admin+ 限定 復元/物理削除、v2 継続）
-8. **v3 新規**: `src/app/root/me/image-download-password/page.tsx`（super_admin 限定 DL PW 設定 UI、Root マイページ配下、新旧 PW 入力 → bcryptjs hash → `set_image_download_password` RPC）
+8. **v3 新規 / v3.2 改訂**: `src/app/root/me/image-download-password/page.tsx`（super_admin 限定 DL PW 設定 UI、Root マイページ配下、新旧 PW 入力 → **v3.2: 平文 PW を `set_image_download_password({ new_password })` RPC に直送**、サーバ側 RPC 内で bcrypt 化）
 9. `src/app/leaf/backoffice/page.tsx` 組込（既存 A-FMK1 と整合）
 10. **RTL + MSW テスト** § 4.2 全件実装（ロール別 UI テスト + **DL PW 設定 UI テスト** 含む）
 
@@ -1195,16 +1215,24 @@ WHERE o.bucket_id = 'leaf-kanden-photos-recent'
 
 ---
 
-## 8. Migration SQL スケルトン（2026-04-25 v3 改訂）
+## 8. Migration SQL スケルトン（2026-04-25 v3 改訂 / 2026-05-07 v3.2 改訂）
 
 **配置先**: `scripts/leaf-schema-patch-a1c.sql`（Garden 慣習、Supabase Dashboard > SQL Editor で手動実行）
+
+> **v3.2 改訂注記（2026-05-07）**: 以下の SQL 例は仕様参考表現です。**実装の正本は `scripts/leaf-schema-patch-a1c.sql` および `supabase/migrations/20260425000005_leaf_a1c_attachments.sql`（PR #65 内、a-review #65 セキュリティ修正反映済 commit `4247005`）を参照してください**。実コードでは以下の修正が適用されています:
+> 1. SECURITY DEFINER 関数（`leaf_user_in_business` / `leaf_kanden_attachments_history_trigger` / `verify_image_download_password` / `set_image_download_password`）すべてに `SET search_path = ''` を追加（schema poisoning 対策）
+> 2. `set_image_download_password` の引数を `new_hash text` → `new_password text` に変更し、サーバ側で `extensions.crypt(new_password, extensions.gen_salt('bf', 12))` により bcrypt hash 化
+> 3. pgcrypto の `crypt` / `gen_salt` は `extensions` schema を明示
+> 4. public schema は明示的に修飾（`public.leaf_user_businesses` 等）、`auth.uid()` は `(SELECT auth.uid())` で囲む
+>
+> 以下の SQL 例は v3 当時の表現を残しています（理解の便宜のため）。
 
 **前提**: Root A-3-g migration（`scripts/root-schema-patch-a3g.sql`）が先行実行済みで、以下が利用可能:
 - `is_user_active()` / `garden_role_of(uid uuid)` 関数
 - `garden_role` enum に `outsource` 追加済
 - `root_employees.contract_end_on` 列追加済
 - `root_settings (key text PK, value jsonb)` テーブル（未存在なら Root 側で先行作成依頼）
-- `pgcrypto` extension 有効化済 or 本 migration 冒頭で `CREATE EXTENSION IF NOT EXISTS pgcrypto`
+- `pgcrypto` extension 有効化済 or 本 migration 冒頭で `CREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA extensions`（v3.2: extensions schema 明示推奨）
 
 ```sql
 -- File: scripts/leaf-schema-patch-a1c.sql
@@ -1635,3 +1663,50 @@ ON CONFLICT (key) DO NOTHING;
 - BEFORE UPDATE / DELETE trigger で `who/when/field/old/new` を自動記録
 - UI は別 spec（Batch 14 横断履歴 UI）で Kintone 風右側パネル実装
 - 結果: 「誰が削除したか」の追跡、監査ログ、将来の復元判断の根拠に利用可能
+
+---
+
+## v3.2 改訂履歴（2026-05-07、a-review #65 セキュリティ修正反映）
+
+### 改訂理由
+a-review が PR #65（Task D.1 migration SQL）で検出した重大セキュリティ脆弱性 2 件を commit `4247005` で修正済。本 v3.2 改訂は spec を実コードに同期させる文書整合作業。
+
+### 主要変更
+
+| 領域 | 旧 (v3) | 新 (v3.2) |
+|---|---|---|
+| **SECURITY DEFINER 関数 4 種** | search_path 未指定（schema poisoning 脆弱性）| `SET search_path = ''` 追加、public schema は明示修飾、`auth.uid()` は `(SELECT auth.uid())` で囲む |
+| **set_image_download_password** | 引数 `new_hash text`（client が bcrypt hash 化して送信）| 引数 `new_password text`（client は平文送信、サーバ側で `extensions.crypt(pw, gen_salt('bf', 12))` 化）|
+| **client 側 bcryptjs** | bcryptjs npm で client が hashSync 化 | **廃止**（HTTPS 経路保護に依存、任意 hash 送信ルートを封殺）|
+| **pgcrypto 関数呼出** | `crypt()` / `gen_salt()` schema 修飾なし | `extensions.crypt()` / `extensions.gen_salt()` 明示 |
+| **§3.5.3 PW 設定 UI 説明** | bcryptjs hash → RPC | 平文 PW → RPC（サーバ側 hash 化）|
+| **§3.5.5 RPC SQL** | search_path / extensions schema なし | search_path = '' / extensions schema 明示 |
+| **§4.2 ImageDownloadPasswordPage** | bcryptjs client hash | 平文 PW 直送 |
+| **§5.1 Phase D 必須 npm** | heic2any + bcryptjs | heic2any のみ（bcryptjs 不要化） |
+| **§5.2 Task A.7** | bcryptjs hash → RPC | 平文 PW → RPC |
+| **§8 SQL 全体** | v3 SQL 例 | 冒頭に v3.2 改訂注記追加（実装正本は migration ファイル参照、commit `4247005` 反映済）|
+
+### セキュリティ強化の根拠
+
+**脆弱性 1: schema poisoning**
+- SECURITY DEFINER 関数で search_path 未指定の場合、攻撃者が public schema を汚染すると関数の動作を乗っ取れる
+- 修正: 全 SECURITY DEFINER 関数に `SET search_path = ''` を追加、参照テーブル / 関数を明示的に schema 修飾
+
+**脆弱性 2: client から hash 受取**
+- v3 設計では client が bcryptjs で hash 化してサーバに送信していたため、攻撃者が任意の hash を送信して認証を回避するルートが存在
+- 修正: client は平文 PW のみ送信し、サーバ内で bcrypt 化。HTTPS 経路保護で平文の漏洩を防ぐ
+- verify 側は元々 input_password 平文受取の正しい設計のため search_path 追加のみで機能変更なし
+
+### 影響範囲
+
+- 実コード: PR #65 内 commit `4247005` で既反映（migration SQL 正本）
+- spec / plan: 本 v3.2 改訂で同期（文書整合）
+- npm: bcryptjs / @types/bcryptjs 不要化（package.json 削除は別 PR）
+- 見積: 6.7d → 6.7d（変更なし、文書同期のみ）
+
+### 改訂履歴
+
+- 2026-04-23 v1: 初版起草
+- 2026-04-25 v2: ロール × 事業スコープ RLS、history、削除設計
+- 2026-04-25 v3: 業務レビュー反映（論理削除全員可 / DL 専用 PW / history trigger）
+- **2026-05-07 v3.2: a-review #65 セキュリティ修正反映（search_path / 平文 PW 直送 / extensions schema 明示 / bcryptjs 不要化）**
