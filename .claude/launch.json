@@ -12,6 +12,12 @@
       "runtimeExecutable": "cmd",
       "runtimeArgs": ["/c", "cd /d C:\\garden\\a-bloom-002 && npm run dev -- --port 3002"],
       "port": 3002
+    },
+    {
+      "name": "garden-a-soil",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3010"],
+      "port": 3010
     }
   ]
 }
