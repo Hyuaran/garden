@@ -1,0 +1,6 @@
+# 仕訳帳ライブラリ ユニットテスト
+# Vitest + TDD 適用
+# 5/6 朝着手予定:
+# - rakuten.test.ts (5 法人 CSV を fixture に使用)
+# - classifier.test.ts (共通マスタ判定)
+# - yayoi-export.test.ts (Python 出力との fixture 突合)
