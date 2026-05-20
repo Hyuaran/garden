@@ -28,6 +28,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { BLOOM_PATHS } from "../_constants/routes";
+
 // React 版専用 localStorage key (プロトの 'garden_nav_pages_collapsed' とは分離、
 // プロトを別タブで開いて collapsed 設定しても /bloom には影響しない)
 const STORAGE_KEY = "garden_bloom_nav_pages_collapsed";
@@ -63,6 +65,7 @@ type NavPage = {
 };
 
 const NAV_PAGES: NavPage[] = [
+  { href: BLOOM_PATHS.BLUEPRINT,       iconSrc: "/images/icons_bloom/orb_bloom.png",          label: "Garden 設計図" },
   { href: "/bloom/workboard",       iconSrc: "/images/icons_bloom/bloom_workboard.png",     label: "ワークボード" },
   { href: "/bloom/daily-report",    iconSrc: "/images/icons_bloom/bloom_dailyreport.png",   label: "日報" },
   { href: "/bloom/monthly-digest",  iconSrc: "/images/icons_bloom/bloom_monthlydigest.png", label: "月次まとめ" },

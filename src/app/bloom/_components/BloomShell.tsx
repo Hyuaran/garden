@@ -22,6 +22,7 @@ const NAV_ITEMS: Array<{ href: string; label: string }> = [
   { href: BLOOM_PATHS.MONTHLY_DIGEST, label: "月次まとめ" },
   { href: BLOOM_PATHS.CEO_STATUS, label: "経営状況" },
   { href: BLOOM_PATHS.PROGRESS, label: "開発進捗" },
+  { href: BLOOM_PATHS.BLUEPRINT, label: "Garden 設計図" },
 ];
 
 export function BloomShell({ children }: { children: ReactNode }) {
@@ -55,6 +56,8 @@ export function BloomShell({ children }: { children: ReactNode }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 12,
           marginTop: 4,
         }}
       >
@@ -66,8 +69,17 @@ export function BloomShell({ children }: { children: ReactNode }) {
             作業可視化・ロードマップ・月次ダイジェスト
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ maxWidth: 360, minWidth: 280 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+            minWidth: 0,
+            maxWidth: "100%",
+          }}
+        >
+          <div style={{ flex: "1 1 280px", maxWidth: 360, minWidth: 0 }}>
             <ShojiStatusWidget mode="compact" />
           </div>
           <ViewModeToggle />
@@ -97,6 +109,9 @@ export function BloomShell({ children }: { children: ReactNode }) {
         style={{
           display: "flex",
           gap: 4,
+          flexWrap: "wrap",
+          rowGap: 4,
+          overflowX: "hidden",
           padding: "12px 32px 0",
           borderBottom: "1px solid #d8f3dc",
         }}
@@ -116,6 +131,7 @@ export function BloomShell({ children }: { children: ReactNode }) {
                 textDecoration: "none",
                 borderBottom: active ? "2px solid #40916c" : "2px solid transparent",
                 marginBottom: -1,
+                whiteSpace: "normal",
               }}
             >
               {item.label}

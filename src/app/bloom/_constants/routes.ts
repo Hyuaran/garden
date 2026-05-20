@@ -1,5 +1,6 @@
 export const BLOOM_PATHS = {
   HOME: "/bloom",
+  BLUEPRINT: "/bloom/blueprint",
   WORKBOARD: "/bloom/workboard",
   ROADMAP: "/bloom/roadmap",
   MONTHLY_DIGEST: "/bloom/monthly-digest",
