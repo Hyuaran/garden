@@ -1,0 +1,1792 @@
+.page {
+  width: 100%;
+  min-width: 0;
+  padding: 0 0 36px;
+  font-family: "Noto Serif JP", "Shippori Mincho", serif;
+}
+
+.tabNav {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid var(--border-soft);
+  margin: 6px 0 18px;
+  padding: 0 4px;
+  min-width: 0;
+}
+
+.tabItem {
+  padding: 10px 4px 12px;
+  font-family: "Cormorant Garamond", "EB Garamond", serif;
+  font-size: 1rem;
+  color: var(--text-sub);
+  position: relative;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  letter-spacing: 0.02em;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.tabItemJp {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.95rem;
+  margin-right: 6px;
+}
+
+.tabItem:hover {
+  color: var(--text-main);
+}
+
+.tabItemActive {
+  color: var(--text-accent);
+  font-weight: 500;
+}
+
+.tabItemActive::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-green-d);
+  border-radius: 2px;
+}
+
+.tabItemSettings {
+  margin-left: auto;
+}
+
+.tabContent {
+  display: block;
+  animation: fadeUp 0.4s ease both;
+  width: 100%;
+  min-width: 0;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ceoCard,
+.shojiStatusBar,
+.placeholderPanel,
+.permissionPanel {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.ceoCard {
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+
+.ceoCardTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ceoCardTitleSub {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  font-weight: 400;
+  font-family: "Cormorant Garamond", serif;
+}
+
+.shojiStatusBar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  margin-bottom: 10px;
+}
+
+.shojiStatusIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid rgba(212, 165, 65, 0.3);
+}
+
+.shojiStatusIcon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shojiStatusText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: "Shippori Mincho", serif;
+}
+
+.shojiStatusName {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.shojiStatusName strong {
+  font-weight: 600;
+}
+
+.shojiStatusDivider {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.shojiStatusTask {
+  color: var(--text-sub);
+  font-size: 0.85rem;
+}
+
+.shojiStatusTime {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: "EB Garamond", serif;
+}
+
+.shojiStatusBadge {
+  padding: 4px 12px;
+  background: rgba(232, 180, 184, 0.25);
+  border: 1px solid rgba(232, 180, 184, 0.45);
+  border-radius: var(--radius-pill);
+  color: #b87a7e;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: "Shippori Mincho", serif;
+  white-space: nowrap;
+}
+
+.gardenProgressCard {
+  padding: 10px 16px;
+}
+
+.gardenProgressHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.gardenProgressTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-main);
+  flex-shrink: 0;
+}
+
+.gardenProgressBarWrap {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gardenProgressLabel {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  font-family: "EB Garamond", serif;
+  white-space: nowrap;
+}
+
+.gardenProgressValue {
+  font-family: "EB Garamond", serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #b8862e;
+}
+
+.gardenProgressBar {
+  flex: 1;
+  height: var(--gs-progress-h);
+  background: var(--gs-progress-track);
+  border-radius: var(--gs-progress-radius);
+  overflow: hidden;
+  border: 1px solid var(--gs-border-soft);
+}
+
+.gardenProgressFill {
+  height: 100%;
+  background-color: var(--gs-progress-fill);
+  background-image: repeating-linear-gradient(-45deg, var(--gs-progress-stripe) 0, var(--gs-progress-stripe) 6px, transparent 6px, transparent 12px);
+  background-size: 17px 17px;
+  border-radius: var(--gs-progress-radius);
+}
+
+.gardenProgressSummary {
+  display: flex;
+  gap: 14px;
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.gardenProgressSummary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gpDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dotReleased { background: var(--accent-green-d); }
+.dotDeveloping { background: var(--accent-gold); }
+.dotPending { background: var(--text-muted); }
+
+.gardenOrbs {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.gardenOrb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  background: transparent;
+}
+
+.gardenOrbImg {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--bg-card-solid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-soft);
+}
+
+.gardenOrbImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.developing .gardenOrbImg { opacity: 0.65; }
+.pending .gardenOrbImg { filter: grayscale(0.7); opacity: 0.5; }
+
+.gardenOrbName {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 0.7rem;
+  color: var(--text-sub);
+}
+
+.gardenOrbStatus {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.released .gardenOrbStatus { color: var(--accent-green-d); }
+.developing .gardenOrbStatus { color: var(--accent-gold); }
+
+.companiesGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.companyCard {
+  background: rgba(255, 253, 245, 0.55);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 8px 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.companyName {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  font-weight: 500;
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.companyMiniChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 32px;
+  margin-bottom: 6px;
+  justify-content: center;
+}
+
+.companyMiniChart span {
+  display: block;
+  width: 6px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent-green);
+  opacity: 0.85;
+}
+
+.companyWarning .companyMiniChart span {
+  background: var(--accent-pink);
+}
+
+.companyMetricsGrid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+  row-gap: 1px;
+  align-items: baseline;
+}
+
+.companyMetric {
+  font-size: 0.7rem;
+  color: var(--text-sub);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.companyMetricValue {
+  font-family: "EB Garamond", serif;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  font-weight: 500;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.companyYoy {
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.companyYoyLabel {
+  color: var(--text-muted);
+}
+
+.companyYoyValue {
+  font-family: "EB Garamond", serif;
+  color: var(--accent-green-d);
+  font-weight: 500;
+}
+
+.negative {
+  color: var(--text-warning);
+}
+
+.consolidatedCharts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.consolidatedChartCard {
+  background: rgba(255, 253, 245, 0.45);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.consolidatedChartTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+}
+
+.consolidatedChartTitle small {
+  font-family: "Cormorant Garamond", serif;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.consolidatedChartSvg {
+  width: 100%;
+  height: 56px;
+}
+
+.actionDivider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 20px 0 14px;
+}
+
+.actionDivider::before,
+.actionDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+}
+
+.actionDividerText {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1rem;
+  color: var(--accent-gold);
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionDividerTextJp {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.85rem;
+  color: var(--text-sub);
+}
+
+.actionDividerFlower {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.actionCard {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  text-align: left;
+  min-width: 0;
+}
+
+.actionCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+  border-color: rgba(212, 165, 65, 0.45);
+}
+
+.actionCardFuji {
+  background: linear-gradient(135deg, rgba(232, 220, 240, 0.55), rgba(255, 253, 245, 0.55));
+  border-color: rgba(160, 120, 180, 0.3);
+}
+
+.actionCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.actionCardTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.actionCardFuji .actionCardTitle {
+  color: #6a4a82;
+}
+
+.actionCardLink {
+  color: var(--accent-gold);
+  font-size: 0.95rem;
+}
+
+.actionCardList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actionCardItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+
+.actionCardItemNum {
+  font-family: "EB Garamond", serif;
+  color: var(--accent-gold);
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.actionCardHint {
+  display: block;
+  margin-top: 10px;
+  text-align: right;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: "Cormorant Garamond", serif;
+  font-style: italic;
+}
+
+.actionCardHint::after {
+  content: " ->";
+  color: var(--accent-gold);
+}
+
+.placeholderPanel,
+.permissionPanel {
+  min-height: 360px;
+  padding: 72px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  color: var(--text-sub);
+}
+
+.placeholderPanel h2,
+.permissionPanel strong {
+  font-family: "Shippori Mincho", serif;
+  font-size: 1.35rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.placeholderIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(212, 165, 65, 0.35);
+  color: var(--accent-gold);
+  background: rgba(255, 253, 245, 0.58);
+}
+
+.ceoCardLarge {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 14px 18px;
+  margin-bottom: 14px;
+}
+
+.kpiIntegratedGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.kpiIntegratedCard {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-soft);
+  min-width: 0;
+}
+
+.kpiIntegratedHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.kpiIntegratedIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-card-solid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.kpiIntegratedLabel {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.82rem;
+  color: var(--text-sub);
+}
+
+.kpiIntegratedLabel small {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.78em;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.kpiIntegratedValue {
+  font-family: "EB Garamond", serif;
+  font-size: 1.7rem;
+  color: var(--text-main);
+  font-weight: 500;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.kpiIntegratedValueYen {
+  font-size: 1.2rem;
+}
+
+.kpiIntegratedValueUnit {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  font-family: "Shippori Mincho", serif;
+}
+
+.kpiIntegratedYoy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: rgba(154, 184, 138, 0.15);
+  border-radius: var(--radius-pill);
+  font-family: "EB Garamond", serif;
+  font-size: 0.82rem;
+  color: var(--accent-green-d);
+  margin-bottom: 10px;
+}
+
+.kpiIntegratedYoyLabel {
+  font-family: "Shippori Mincho", serif;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.kpiIntegratedYoyArrow {
+  font-weight: 600;
+}
+
+.kpiIntegratedChart {
+  width: 100%;
+  height: 60px;
+}
+
+.divisionsSection,
+.decisionsSection {
+  margin-bottom: 14px;
+  min-width: 0;
+}
+
+.divisionsHeader,
+.decisionsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.divisionsTitle,
+.decisionsTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.divisionsTitleSub,
+.decisionsTitleSub {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  font-weight: 400;
+  font-family: "Cormorant Garamond", serif;
+}
+
+.scrollControls {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.scrollBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+.scrollBtn:hover {
+  background: var(--bg-card-hover);
+  color: var(--accent-green-d);
+}
+
+.scrollWrap {
+  position: relative;
+  min-width: 0;
+}
+
+.scrollArea {
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.divisionsTrack,
+.decisionsTrack {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.divisionCard {
+  flex: 0 0 calc((100% - 60px) / 5);
+  min-width: 200px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  position: relative;
+}
+
+.divisionCard.future {
+  opacity: 0.55;
+  background: rgba(154, 138, 105, 0.05);
+  border-style: dashed;
+}
+
+.divisionIcon {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+}
+
+.divisionName {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.divisionRevenue {
+  font-family: "EB Garamond", serif;
+  font-size: 1.15rem;
+  color: var(--text-main);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.mutedRevenue {
+  color: var(--text-muted);
+}
+
+.divisionRevenueUnit {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  font-family: "Shippori Mincho", serif;
+}
+
+.divisionRatio {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.divisionYoy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-family: "EB Garamond", serif;
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+}
+
+.positive {
+  color: var(--accent-green-d);
+}
+
+.negative {
+  color: var(--text-warning);
+}
+
+.divisionYoy.positive {
+  background: rgba(154, 184, 138, 0.18);
+}
+
+.divisionYoy.negative {
+  background: rgba(232, 180, 184, 0.2);
+}
+
+.futureYoy {
+  background: rgba(154, 138, 105, 0.15);
+  color: var(--text-muted);
+}
+
+.divisionMiniChart,
+.kpiIntegratedChart,
+.companyDetailMiniChart {
+  display: block;
+}
+
+.divisionMiniChart {
+  width: 100%;
+  height: 40px;
+  margin-bottom: 6px;
+}
+
+.divisionStatusBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-family: "Shippori Mincho", serif;
+}
+
+.success {
+  background: rgba(154, 184, 138, 0.18);
+  color: var(--accent-green-d);
+}
+
+.fast {
+  background: rgba(212, 165, 65, 0.18);
+  color: var(--accent-gold);
+}
+
+.warning,
+.respond,
+.improve,
+.fix,
+.progress {
+  background: rgba(232, 180, 184, 0.18);
+  color: var(--text-warning);
+}
+
+.new,
+.done {
+  background: rgba(138, 180, 204, 0.18);
+  color: var(--text-info);
+}
+
+.future,
+.note,
+.thinking,
+.proposing {
+  background: rgba(212, 165, 65, 0.15);
+  color: var(--accent-gold);
+}
+
+.watch,
+.plan,
+.smooth,
+.ok {
+  background: rgba(154, 184, 138, 0.2);
+  color: var(--accent-green-d);
+}
+
+.scrollSlider {
+  width: 100%;
+  margin: 8px 0 0;
+  height: 6px;
+  background: rgba(154, 138, 105, 0.15);
+  border-radius: 3px;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.scrollSliderThumb {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 70%;
+  background: linear-gradient(90deg, #9bb88a, #7a9968);
+  border-radius: 3px;
+  transition: left 0.15s, width 0.15s, background 0.2s;
+  cursor: grab;
+}
+
+.scrollSlider:hover .scrollSliderThumb {
+  background: linear-gradient(90deg, #8eb37c, #6f8f5d);
+}
+
+.companiesDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.companyDetailCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.companyDetailHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.companyDetailName {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.companyDetailBadge {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 0.65rem;
+  font-family: "Shippori Mincho", serif;
+  white-space: nowrap;
+}
+
+.warn,
+.judge {
+  background: rgba(201, 90, 74, 0.18);
+  color: var(--text-warning);
+}
+
+.companyDetailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.7rem;
+  margin-bottom: 2px;
+}
+
+.companyDetailRowLabel {
+  color: var(--text-muted);
+}
+
+.companyDetailRowValue {
+  font-family: "EB Garamond", serif;
+  color: var(--text-main);
+  font-weight: 500;
+  text-align: right;
+}
+
+.companyDetailRowValue.positive {
+  background: transparent;
+  color: var(--accent-green-d);
+}
+
+.companyDetailRowValue.negative {
+  background: transparent;
+  color: var(--text-warning);
+}
+
+.companyDetailMiniChart {
+  width: 100%;
+  height: 32px;
+  margin-top: 6px;
+}
+
+.alertsTable {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-card);
+  padding: 14px 18px;
+  width: 100%;
+  min-width: 0;
+}
+
+.alertsTableHeader,
+.alertsTableRow {
+  display: grid;
+  grid-template-columns: 60px 1.5fr 2fr 2fr 1fr 0.6fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 0.78rem;
+}
+
+.alertsTableHeader {
+  color: var(--text-muted);
+  font-family: "Cormorant Garamond", serif;
+  border-bottom: 1px solid var(--border-soft);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.alertsTableRow {
+  border-bottom: 1px dashed var(--border-soft);
+}
+
+.alertsTableRow:last-child {
+  border-bottom: none;
+}
+
+.alertIconCell {
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.alertTitle {
+  font-family: "Shippori Mincho", serif;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.alertDetail,
+.alertAction {
+  color: var(--text-sub);
+}
+
+.alertStatusBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-family: "Shippori Mincho", serif;
+}
+
+.decisionsControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.priorityFilter {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.priorityFilterLabel {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  margin-right: 4px;
+}
+
+.priorityFilterBtn,
+.reportsFilterBtn {
+  border-radius: var(--radius-pill);
+  font-family: "Shippori Mincho", serif;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.priorityFilterBtn {
+  padding: 4px 12px;
+  font-size: 0.72rem;
+  transition: all 0.2s;
+}
+
+.priorityFilterBtn:hover {
+  border-color: var(--accent-green-d);
+  color: var(--accent-green-d);
+}
+
+.active {
+  background: rgba(154, 184, 138, 0.2);
+  border-color: var(--accent-green-d);
+  color: var(--accent-green-d);
+}
+
+.decisionsCounter {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  font-family: "EB Garamond", serif;
+}
+
+.decisionsCounter strong {
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.decisionsTrack {
+  gap: 14px;
+}
+
+.decisionCard {
+  flex: 0 0 calc((100% - 32px) / 2);
+  min-width: 480px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 14px 18px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+}
+
+.decisionCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+  border-color: rgba(212, 165, 65, 0.55);
+}
+
+.hoverDemo {
+  border-color: rgba(212, 165, 65, 0.55);
+  box-shadow: 0 8px 32px rgba(212, 165, 65, 0.18);
+}
+
+.decisionCardArrow {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  color: var(--accent-gold);
+  font-size: 0.95rem;
+  opacity: 0.6;
+}
+
+.decisionCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.priorityBadge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-family: "Shippori Mincho", serif;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.critical {
+  background: linear-gradient(135deg, #c95a4a, #a14a3a);
+  color: #fff;
+}
+
+.high {
+  background: linear-gradient(135deg, #d4a541, #b8902f);
+  color: #fff;
+}
+
+.medium {
+  background: rgba(212, 165, 65, 0.25);
+  color: #b8902f;
+}
+
+.low {
+  background: rgba(154, 184, 138, 0.25);
+  color: var(--accent-green-d);
+}
+
+.decisionCardNum {
+  font-family: "EB Garamond", serif;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.decisionCardName {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text-main);
+  flex: 1;
+  min-width: 0;
+}
+
+.decisionCardBody {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+  font-size: 0.76rem;
+  margin-bottom: 10px;
+}
+
+.decisionCardRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  line-height: 1.5;
+  min-width: 0;
+}
+
+.decisionCardRowLabel {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-family: "Shippori Mincho", serif;
+}
+
+.decisionCardRowValue {
+  color: var(--text-sub);
+  min-width: 0;
+}
+
+.deadline {
+  color: var(--text-warning);
+  font-weight: 500;
+}
+
+.assignee {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.decisionCardAvatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-card-solid);
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.decisionCardAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.decisionCardActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-soft);
+}
+
+.decisionActionBtn {
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-family: "Shippori Mincho", serif;
+  border: 1px solid;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.approve {
+  border-color: var(--accent-green-d);
+  color: var(--accent-green-d);
+}
+
+.approve:hover {
+  background: rgba(154, 184, 138, 0.15);
+}
+
+.reject {
+  border-color: var(--text-warning);
+  color: var(--text-warning);
+}
+
+.reject:hover {
+  background: rgba(232, 180, 184, 0.15);
+}
+
+.hold {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.hold:hover {
+  background: rgba(212, 165, 65, 0.15);
+}
+
+.meetingsReportsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 14px;
+}
+
+.meetingsCard,
+.reportsCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 16px 20px;
+  min-width: 0;
+}
+
+.meetingsCardTitle,
+.reportsCardTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.meetingsCardTitle {
+  margin-bottom: 12px;
+}
+
+.meetingsCardTitle small {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  font-weight: 400;
+  margin-left: 4px;
+  font-family: "Cormorant Garamond", serif;
+}
+
+.meetingNext {
+  background: rgba(255, 253, 245, 0.55);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.meetingNextHeader {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.meetingNextInfo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  font-size: 0.76rem;
+  margin-bottom: 8px;
+}
+
+.detailPair {
+  display: contents;
+}
+
+.meetingNextInfoLabel {
+  color: var(--text-muted);
+}
+
+.meetingNextInfoValue {
+  color: var(--text-sub);
+}
+
+.meetingAgendaList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.meetingAgendaItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 0.76rem;
+  border-bottom: 1px dashed var(--border-soft);
+}
+
+.meetingAgendaItem:last-child {
+  border-bottom: none;
+}
+
+.meetingAgendaNum {
+  font-family: "EB Garamond", serif;
+  color: var(--accent-gold);
+}
+
+.meetingAgendaName {
+  color: var(--text-sub);
+}
+
+.meetingAgendaName small {
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.meetingAgendaStatus {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-family: "Shippori Mincho", serif;
+  white-space: nowrap;
+}
+
+.preparing {
+  background: rgba(212, 165, 65, 0.18);
+  color: var(--accent-gold);
+}
+
+.waiting {
+  background: rgba(232, 180, 184, 0.18);
+  color: var(--text-warning);
+}
+
+.meetingArchiveTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.meetingArchiveList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.meetingArchiveItem {
+  background: rgba(255, 253, 245, 0.4);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.74rem;
+}
+
+.meetingArchiveDate {
+  font-family: "EB Garamond", serif;
+  color: var(--accent-gold);
+  font-weight: 500;
+}
+
+.meetingArchiveContent strong {
+  font-family: "Shippori Mincho", serif;
+  color: var(--text-main);
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 500;
+}
+
+.meetingArchiveContent span {
+  color: var(--text-sub);
+  font-size: 0.72rem;
+}
+
+.meetingArchiveLink {
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(154, 184, 138, 0.15);
+  color: var(--accent-green-d);
+  font-size: 0.7rem;
+  text-decoration: none;
+  font-family: "Shippori Mincho", serif;
+}
+
+.reportsCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.reportsFilter {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.reportsFilterBtn {
+  padding: 3px 10px;
+  font-size: 0.7rem;
+}
+
+.reportsTableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.reportsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.74rem;
+  min-width: 620px;
+}
+
+.reportsTable thead th {
+  text-align: left;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--text-muted);
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  font-size: 0.72rem;
+}
+
+.reportsTable tbody td {
+  padding: 6px 4px;
+  border-bottom: 1px dashed var(--border-soft);
+  color: var(--text-sub);
+}
+
+.reportsTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.colNum {
+  font-family: "EB Garamond", serif;
+  color: var(--text-muted);
+  width: 28px;
+}
+
+.colDate {
+  font-family: "EB Garamond", serif;
+  color: var(--text-sub);
+  white-space: nowrap;
+  width: 110px;
+}
+
+.colContent {
+  color: var(--text-main);
+  font-family: "Shippori Mincho", serif;
+}
+
+.colAuthor {
+  color: var(--text-sub);
+  white-space: nowrap;
+  width: 90px;
+}
+
+.colStatus {
+  width: 80px;
+}
+
+.colAttach {
+  width: 40px;
+  text-align: center;
+  font-family: "EB Garamond", serif;
+}
+
+.reportStatusBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 0.68rem;
+  font-family: "Shippori Mincho", serif;
+}
+
+.settingsPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 32px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  margin-top: 32px;
+  min-height: 400px;
+}
+
+.settingsPlaceholderIcon {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  opacity: 0.65;
+}
+
+.settingsPlaceholderIcon img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(120, 95, 60, 0.25));
+}
+
+.settingsPlaceholderTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 12px;
+  letter-spacing: 0.04em;
+}
+
+.settingsPlaceholderText {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.1rem;
+  color: var(--accent-gold);
+  margin-bottom: 16px;
+  font-style: italic;
+  letter-spacing: 0.06em;
+}
+
+.settingsPlaceholderSub {
+  font-family: "Noto Serif JP", serif;
+  font-size: 0.88rem;
+  color: var(--text-sub);
+  line-height: 1.7;
+  max-width: 480px;
+}
+
+@media (max-width: 1366px) {
+  .companiesGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .actionGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .companiesDetailGrid,
+  .kpiIntegratedGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .gardenProgressHeader,
+  .shojiStatusText {
+    flex-wrap: wrap;
+  }
+
+  .gardenOrbs {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .consolidatedCharts {
+    grid-template-columns: 1fr;
+  }
+
+  .divisionsHeader,
+  .decisionsHeader,
+  .reportsCardHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .meetingsReportsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .kpiIntegratedGrid,
+  .companiesDetailGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .page { padding-bottom: 24px; }
+
+  .tabNav {
+    overflow-x: auto;
+    gap: 18px;
+    padding-bottom: 1px;
+  }
+
+  .tabItemSettings {
+    margin-left: 0;
+  }
+
+  .shojiStatusBar {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .shojiStatusText {
+    gap: 8px;
+  }
+
+  .shojiStatusBadge {
+    align-self: center;
+  }
+
+  .gardenProgressHeader {
+    align-items: flex-start;
+  }
+
+  .gardenProgressBarWrap,
+  .gardenProgressSummary {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .companiesGrid,
+  .actionGrid,
+  .kpiIntegratedGrid,
+  .companiesDetailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .divisionCard {
+    flex-basis: 82%;
+  }
+
+  .decisionCard {
+    flex-basis: 92%;
+    min-width: 320px;
+  }
+
+  .decisionCardBody {
+    grid-template-columns: 1fr;
+  }
+
+  .alertsTable {
+    overflow-x: auto;
+  }
+
+  .alertsTableHeader,
+  .alertsTableRow {
+    grid-template-columns: 40px 150px 170px 180px 90px 80px;
+    min-width: 710px;
+  }
+
+  .meetingAgendaItem,
+  .meetingArchiveItem {
+    grid-template-columns: 1fr;
+  }
+}

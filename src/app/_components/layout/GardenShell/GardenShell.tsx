@@ -395,8 +395,8 @@ export default function GardenShell({
           margin-left: var(--gs-left-w);
           margin-right: var(--gs-right-w);
           box-sizing: border-box;
-          max-width: calc(100vw - var(--gs-left-w) - var(--gs-right-w));
-          width: calc(100vw - var(--gs-left-w) - var(--gs-right-w));
+          max-width: none;
+          width: auto;
           min-height: calc(100vh - var(--gs-header-h));
           overflow-x: hidden;
           padding: 30px 32px 0 48px;
