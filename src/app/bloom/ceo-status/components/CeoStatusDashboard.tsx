@@ -52,8 +52,17 @@ function moduleStatusLabel(status: string) {
 
 function readPreviewRole(): "admin" | "staff" | null {
   if (typeof window === "undefined" || process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS !== "1") return null;
+  // 1. URL クエリ優先 (起動時 or クエリ付きで明示的に開いたとき): sessionStorage に保存
   const roleParam = new URLSearchParams(window.location.search).get("ceoPreviewRole");
-  if (roleParam === "admin" || roleParam === "staff") return roleParam;
+  if (roleParam === "admin" || roleParam === "staff") {
+    try { window.sessionStorage.setItem("ceoPreviewRole", roleParam); } catch {}
+    return roleParam;
+  }
+  // 2. sessionStorage fallback: サイドバー経由で再訪した時にクエリパラメータが消えても role を維持
+  try {
+    const stored = window.sessionStorage.getItem("ceoPreviewRole");
+    if (stored === "admin" || stored === "staff") return stored;
+  } catch {}
   return null;
 }
 
