@@ -5,13 +5,13 @@
  *
  * プロト 015_Gardenシリーズ/000_GardenUI_bloom/02_BloomTop/index.html line 369-411 移植
  *
- * 実装状態 (2026-05-02):
- *   - Workboard → /bloom/workboard           ✅ 既存実装あり、Link 遷移
- *   - 日報     → /bloom/daily-report        ❌ 未実装、Coming Soon Toast
- *   - 月次まとめ → /bloom/monthly-digest      ✅ 既存実装あり、Link 遷移
- *   - 経営状況  → /bloom/ceo-status         ❌ 未実装、Coming Soon Toast
+ * 実装状態 (2026-05-21 更新):
+ *   - Workboard → /bloom/workboard           ✅ 実装済、Link 遷移
+ *   - 日報     → /bloom/daily-report        ✅ Codex-015 実装済、Link 遷移
+ *   - 月次まとめ → /bloom/monthly-digest      ✅ 実装済、Link 遷移
+ *   - 経営状況  → /bloom/ceo-status         ✅ PR #214 実装済、Link 遷移 (admin 3 名のみ閲覧可能)
  *
- * NG 2 対応 (main- No.14): 未実装画面で 404 を防止、Coming Soon Toast 表示。
+ * NG 2 対応 (main- No.14): 未実装画面では Coming Soon Toast を表示する仕組みは保持。
  */
 
 import Link from "next/link";
@@ -39,7 +39,7 @@ const NAVS: BloomNav[] = [
     iconSrc: "/images/icons_bloom/bloom_dailyreport.png",
     title: "日報",
     subtitle: "今日の積み重ねを綴る",
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     href: "/bloom/monthly-digest",
@@ -49,9 +49,9 @@ const NAVS: BloomNav[] = [
     comingSoon: false,
   },
   {
-    /* dispatch main- No.32 #B: 経営状況プロト (06_CEOStatus) を public/_proto/ceostatus/ に
-       コピー済、Coming Soon 解除して直接遷移。本 PoC 段階では target="_blank" で別タブ表示 */
-    href: "/_proto/ceostatus/index.html",
+    /* PR #214 で /bloom/ceo-status を React 実装、Link 遷移に切替。
+       admin 3 名 (super_admin) のみ閲覧可能、それ以外は「権限がありません」表示 */
+    href: "/bloom/ceo-status",
     iconSrc: "/images/icons_bloom/bloom_ceostatus.png",
     title: "経営状況",
     subtitle: "経営の全景を、一望に",
