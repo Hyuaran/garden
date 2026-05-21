@@ -1,0 +1,582 @@
+.page {
+  color: var(--text-main);
+  min-width: 0;
+}
+
+.page :global(.page-title) {
+  font-size: clamp(1.55rem, 2.45vw, 1.95rem);
+  white-space: nowrap;
+}
+
+.page :global(.page-title-jp) {
+  font-size: clamp(1.18rem, 1.85vw, 1.48rem);
+  white-space: nowrap;
+}
+
+.headerWrap {
+  position: relative;
+}
+
+.headerActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: flex-end;
+  margin: -58px 0 22px auto;
+  position: relative;
+  z-index: 2;
+}
+
+.monthSelect,
+.outlineButton,
+.primaryLink {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 22px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.monthSelect,
+.outlineButton {
+  background: rgba(255, 253, 248, 0.76);
+  border: 1px solid rgba(208, 141, 43, 0.55);
+  color: #7a4b0b;
+}
+
+.primaryLink {
+  background: linear-gradient(135deg, #d49a35, #b97300);
+  border: 1px solid rgba(176, 103, 0, 0.4);
+  box-shadow: 0 7px 18px rgba(185, 115, 0, 0.18);
+  color: #fffdf8;
+}
+
+.tabs {
+  align-items: flex-end;
+  border-bottom: 1px solid rgba(188, 145, 107, 0.32);
+  display: flex;
+  gap: clamp(28px, 4.8vw, 74px);
+  margin: 4px 0 14px;
+  padding: 0 10px;
+}
+
+.tab {
+  background: transparent;
+  border: 0;
+  color: #6f5547;
+  font-family: inherit;
+  font-size: 0.98rem;
+  padding: 0 0 13px;
+  position: relative;
+}
+
+.tabActive {
+  color: #c97900;
+  font-weight: 600;
+}
+
+.tabActive::after {
+  background: linear-gradient(90deg, #d08d1f, #bd6f00);
+  bottom: -1px;
+  content: "";
+  height: 3px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.cover {
+  background:
+    linear-gradient(90deg, rgba(255, 244, 247, 0.68), rgba(255, 253, 249, 0.92) 28%, rgba(255, 253, 249, 0.76) 70%, rgba(255, 244, 247, 0.65)),
+    radial-gradient(circle at 9% 28%, rgba(237, 154, 173, 0.25), transparent 22%),
+    radial-gradient(circle at 85% 30%, rgba(237, 154, 173, 0.18), transparent 22%);
+  border: 1px solid rgba(208, 141, 43, 0.62);
+  border-radius: 8px;
+  box-shadow: 0 9px 26px rgba(112, 73, 51, 0.06);
+  margin-bottom: 14px;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 24px 34px 20px;
+  position: relative;
+  text-align: center;
+}
+
+.cover::before,
+.cover::after {
+  color: rgba(238, 154, 174, 0.72);
+  content: "✿ ✿ ✿";
+  font-size: 2.2rem;
+  letter-spacing: 0;
+  position: absolute;
+  top: 18px;
+}
+
+.cover::before {
+  left: 20px;
+}
+
+.cover::after {
+  right: 20px;
+}
+
+.cover h2 {
+  color: #251817;
+  font-size: clamp(1.85rem, 3.8vw, 2.7rem);
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.1;
+  margin: 0 0 8px;
+}
+
+.cover p {
+  color: #5b3f37;
+  font-size: 1.1rem;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.coverMeta {
+  align-items: center;
+  color: #5d4a42;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
+  gap: 18px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.issued {
+  bottom: 12px;
+  color: #4d3c35;
+  font-size: 0.86rem;
+  position: absolute;
+  right: 24px;
+}
+
+.dashboard {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.card,
+.metricCard {
+  background: rgba(255, 253, 249, 0.74);
+  border: 1px solid rgba(232, 180, 184, 0.62);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(112, 73, 51, 0.07);
+  min-width: 0;
+}
+
+.card {
+  padding: 18px;
+}
+
+.sectionTitle {
+  color: #c97900;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  margin: 0 0 14px;
+}
+
+.overall {
+  grid-column: 1 / -1;
+}
+
+.metricGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.metricCard {
+  align-items: center;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 112px minmax(0, 1fr);
+  min-height: 112px;
+  padding: 18px 24px;
+}
+
+.metricIcon {
+  align-items: center;
+  background: rgba(255, 244, 247, 0.72);
+  border-radius: 999px;
+  color: #e796a6;
+  display: flex;
+  font-size: 3rem;
+  height: 86px;
+  justify-content: center;
+  width: 86px;
+}
+
+.metricLabel {
+  color: #3a2b26;
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.metricValue {
+  color: #1f1715;
+  display: block;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.metricNote {
+  color: #5d4a42;
+  display: block;
+  margin-top: 9px;
+}
+
+.summary {
+  grid-column: 1;
+}
+
+.summaryColumns {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.summaryColumns h3 {
+  color: #4d3c35;
+  font-size: 0.94rem;
+  margin: 0 0 12px;
+}
+
+.leafList,
+.noteList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.leafList li,
+.noteList li {
+  color: #2d211d;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  list-style: none;
+  padding-left: 22px;
+  position: relative;
+}
+
+.leafList li::before {
+  color: #ed9aa8;
+  content: "❧";
+  left: 0;
+  position: absolute;
+}
+
+.noteList li::before {
+  color: #d08d1f;
+  content: "✤";
+  left: 0;
+  position: absolute;
+}
+
+.progress {
+  grid-column: 2;
+}
+
+.progressWrap {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 94px;
+}
+
+.progressChart {
+  height: 172px;
+  width: 100%;
+}
+
+.progressStats {
+  display: grid;
+  gap: 10px;
+}
+
+.progressStats span {
+  color: #7a5c4d;
+  display: block;
+  font-size: 0.8rem;
+}
+
+.progressStats strong {
+  color: #c97900;
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 500;
+}
+
+.progressStats div:nth-child(2) strong {
+  color: #e06476;
+}
+
+.progressStats div:nth-child(3) strong {
+  color: #69934c;
+}
+
+.progressMessage {
+  color: #e06476;
+  font-size: 1rem;
+  margin: 6px 0 0;
+  text-align: center;
+}
+
+.achievements,
+.goals {
+  grid-column: span 1;
+}
+
+.achievementList,
+.goalList {
+  display: grid;
+  gap: 0;
+}
+
+.achievementRow,
+.goalRow {
+  align-items: center;
+  border-bottom: 1px solid rgba(195, 149, 120, 0.24);
+  display: grid;
+  gap: 12px;
+  min-height: 46px;
+}
+
+.achievementRow {
+  grid-template-columns: 54px 38px minmax(0, 1fr) 88px;
+}
+
+.goalRow {
+  grid-template-columns: 34px minmax(0, 1fr) 110px 92px 84px;
+}
+
+.achievementRow:last-child,
+.goalRow:last-child {
+  border-bottom: 0;
+}
+
+.achievementDate,
+.goalDue {
+  color: #5d4a42;
+  font-size: 0.84rem;
+}
+
+.flower,
+.rank {
+  align-items: center;
+  background: rgba(255, 234, 241, 0.7);
+  border-radius: 999px;
+  color: #e58b9d;
+  display: flex;
+  font-size: 1.2rem;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.rank {
+  background: linear-gradient(135deg, #dfb162, #c88720);
+  color: white;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.achievementText strong,
+.goalTitle {
+  color: #2d211d;
+  display: block;
+  font-size: 0.92rem;
+}
+
+.achievementText p {
+  color: #5d4a42;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  margin: 2px 0 0;
+}
+
+.tag,
+.status {
+  border-radius: 7px;
+  font-size: 0.78rem;
+  padding: 4px 11px;
+  text-align: center;
+}
+
+.forest {
+  background: rgba(167, 190, 139, 0.2);
+  border: 1px solid rgba(131, 164, 103, 0.38);
+  color: #597f41;
+}
+
+.bloom {
+  background: rgba(255, 234, 241, 0.72);
+  border: 1px solid rgba(237, 154, 173, 0.42);
+  color: #cf425c;
+}
+
+.bud {
+  background: rgba(232, 238, 213, 0.72);
+  border: 1px solid rgba(151, 174, 98, 0.36);
+  color: #647f3a;
+}
+
+.root {
+  background: rgba(230, 241, 252, 0.7);
+  border: 1px solid rgba(130, 173, 205, 0.34);
+  color: #42719a;
+}
+
+.tree {
+  background: rgba(241, 246, 230, 0.74);
+  border: 1px solid rgba(137, 171, 97, 0.35);
+  color: #608249;
+}
+
+.sprout {
+  background: rgba(255, 241, 229, 0.8);
+  border: 1px solid rgba(229, 154, 99, 0.38);
+  color: #d66a32;
+}
+
+.status {
+  background: rgba(250, 237, 215, 0.8);
+  border: 1px solid rgba(208, 141, 43, 0.28);
+  color: #9d7024;
+}
+
+.ceo {
+  background:
+    linear-gradient(90deg, rgba(255, 244, 247, 0.72), rgba(255, 253, 249, 0.94) 28%, rgba(255, 253, 249, 0.78) 70%, rgba(255, 244, 247, 0.7));
+  border-color: rgba(208, 141, 43, 0.62);
+  grid-column: 1 / -1;
+  padding: 18px 28px;
+}
+
+.ceoText {
+  color: #251817;
+  font-size: clamp(1.18rem, 2.6vw, 1.8rem);
+  letter-spacing: 0;
+  line-height: 1.7;
+  margin: 0;
+  text-align: center;
+}
+
+.signature {
+  color: #5d4a42;
+  font-size: 0.92rem;
+  margin: 14px 0 0;
+  text-align: center;
+}
+
+@media (max-width: 1380px) {
+  .headerActions {
+    justify-content: flex-start;
+    margin-top: 0;
+  }
+
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .summary,
+  .progress,
+  .achievements,
+  .goals {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 980px) {
+  .metricGrid,
+  .summaryColumns {
+    grid-template-columns: 1fr;
+  }
+
+  .progressWrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .headerActions {
+    gap: 8px;
+  }
+
+  .monthSelect,
+  .outlineButton,
+  .primaryLink {
+    min-height: 36px;
+    padding: 8px 14px;
+  }
+
+  .tabs {
+    gap: 22px;
+    overflow-x: auto;
+    padding-bottom: 1px;
+  }
+
+  .tab {
+    flex: none;
+    font-size: 0.9rem;
+  }
+
+  .cover {
+    padding: 22px 16px;
+  }
+
+  .cover::before,
+  .cover::after {
+    display: none;
+  }
+
+  .issued {
+    position: static;
+    display: block;
+    margin-top: 12px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .metricCard {
+    grid-template-columns: 72px minmax(0, 1fr);
+    padding: 14px;
+  }
+
+  .metricIcon {
+    font-size: 2rem;
+    height: 58px;
+    width: 58px;
+  }
+
+  .achievementRow,
+  .goalRow {
+    align-items: start;
+    grid-template-columns: 38px minmax(0, 1fr);
+    padding: 10px 0;
+  }
+
+  .achievementDate,
+  .tag,
+  .goalDue,
+  .status {
+    grid-column: 2;
+  }
+}
