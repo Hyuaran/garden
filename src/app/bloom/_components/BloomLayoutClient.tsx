@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 
 import { BloomShell } from "./BloomShell";
 
-const GARDEN_SHELL_PATHS = new Set(["/bloom", "/bloom/ceo-status"]);
+const GARDEN_SHELL_PATHS = new Set(["/bloom", "/bloom/ceo-status", "/bloom/workboard"]);
 
 export function BloomLayoutClient({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "";
