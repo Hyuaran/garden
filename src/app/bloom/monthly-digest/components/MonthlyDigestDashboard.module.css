@@ -1,10 +1,18 @@
 .page {
   color: var(--text-main);
   min-width: 0;
+  overflow-x: hidden;
+}
+
+.page :global(.page-title)::after {
+  color: #ef9ead;
+  content: "  ✿";
+  font-size: 0.72em;
 }
 
 .page :global(.page-title) {
   font-size: clamp(1.55rem, 2.45vw, 1.95rem);
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.72), 0 14px 30px rgba(139, 75, 62, 0.16);
   white-space: nowrap;
 }
 
@@ -46,15 +54,16 @@
 
 .monthSelect,
 .outlineButton {
-  background: rgba(255, 253, 248, 0.76);
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.96), rgba(255, 239, 244, 0.74));
   border: 1px solid rgba(208, 141, 43, 0.55);
+  box-shadow: 0 10px 24px rgba(196, 121, 54, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   color: #7a4b0b;
 }
 
 .primaryLink {
   background: linear-gradient(135deg, #d49a35, #b97300);
   border: 1px solid rgba(176, 103, 0, 0.4);
-  box-shadow: 0 7px 18px rgba(185, 115, 0, 0.18);
+  box-shadow: 0 12px 28px rgba(185, 115, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.28);
   color: #fffdf8;
 }
 
@@ -83,7 +92,7 @@
 }
 
 .tabActive::after {
-  background: linear-gradient(90deg, #d08d1f, #bd6f00);
+  background: linear-gradient(90deg, #d08d1f, #bd6f00, #f3a8b5);
   bottom: -1px;
   content: "";
   height: 3px;
@@ -94,12 +103,12 @@
 
 .cover {
   background:
-    linear-gradient(90deg, rgba(255, 244, 247, 0.68), rgba(255, 253, 249, 0.92) 28%, rgba(255, 253, 249, 0.76) 70%, rgba(255, 244, 247, 0.65)),
-    radial-gradient(circle at 9% 28%, rgba(237, 154, 173, 0.25), transparent 22%),
-    radial-gradient(circle at 85% 30%, rgba(237, 154, 173, 0.18), transparent 22%);
-  border: 1px solid rgba(208, 141, 43, 0.62);
+    linear-gradient(90deg, rgba(255, 236, 241, 0.82), rgba(255, 253, 249, 0.96) 26%, rgba(255, 253, 249, 0.84) 70%, rgba(255, 236, 241, 0.78)),
+    radial-gradient(circle at 9% 28%, rgba(237, 154, 173, 0.32), transparent 24%),
+    radial-gradient(circle at 85% 30%, rgba(237, 154, 173, 0.25), transparent 24%);
+  border: 1px solid rgba(208, 141, 43, 0.78);
   border-radius: 8px;
-  box-shadow: 0 9px 26px rgba(112, 73, 51, 0.06);
+  box-shadow: 0 18px 42px rgba(132, 77, 55, 0.14), 0 8px 24px rgba(232, 180, 184, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.65);
   margin-bottom: 14px;
   min-height: 126px;
   overflow: hidden;
@@ -108,14 +117,21 @@
   text-align: center;
 }
 
+.cover > * {
+  position: relative;
+  z-index: 1;
+}
+
 .cover::before,
 .cover::after {
   color: rgba(238, 154, 174, 0.72);
-  content: "✿ ✿ ✿";
-  font-size: 2.2rem;
+  content: "✿ ✿ ✿ ✿";
+  font-size: 2.45rem;
   letter-spacing: 0;
+  opacity: 0.58;
   position: absolute;
   top: 18px;
+  z-index: 0;
 }
 
 .cover::before {
@@ -128,11 +144,13 @@
 
 .cover h2 {
   color: #251817;
-  font-size: clamp(1.85rem, 3.8vw, 2.7rem);
+  font-size: clamp(2rem, 3.7vw, 3.1rem);
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1.1;
   margin: 0 0 8px;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.78), 0 12px 28px rgba(139, 75, 62, 0.16);
+  white-space: nowrap;
 }
 
 .cover p {
@@ -169,11 +187,43 @@
 
 .card,
 .metricCard {
-  background: rgba(255, 253, 249, 0.74);
-  border: 1px solid rgba(232, 180, 184, 0.62);
+  background:
+    radial-gradient(circle at 96% 10%, rgba(246, 172, 186, 0.19), transparent 24%),
+    linear-gradient(145deg, rgba(255, 255, 252, 0.92), rgba(255, 244, 248, 0.76) 48%, rgba(255, 253, 247, 0.91));
+  border: 1px solid rgba(215, 145, 78, 0.36);
   border-radius: 8px;
-  box-shadow: 0 10px 28px rgba(112, 73, 51, 0.07);
+  box-shadow: 0 18px 42px rgba(132, 77, 55, 0.13), 0 6px 18px rgba(232, 180, 184, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.88);
   min-width: 0;
+  overflow: hidden;
+  position: relative;
+  transition: box-shadow 0.22s ease, transform 0.22s ease;
+}
+
+.card::before,
+.metricCard::before {
+  color: rgba(239, 158, 173, 0.52);
+  content: "✿";
+  font-size: 2.05rem;
+  line-height: 1;
+  position: absolute;
+  right: 16px;
+  top: 13px;
+}
+
+.card::after {
+  background: linear-gradient(90deg, rgba(208, 141, 43, 0.75), rgba(246, 172, 186, 0.48), transparent);
+  content: "";
+  height: 1px;
+  left: 18px;
+  position: absolute;
+  right: 18px;
+  top: 50px;
+}
+
+.card:hover,
+.metricCard:hover {
+  box-shadow: 0 24px 52px rgba(132, 77, 55, 0.16), 0 10px 24px rgba(232, 180, 184, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  transform: translateY(-2px);
 }
 
 .card {
@@ -182,10 +232,47 @@
 
 .sectionTitle {
   color: #c97900;
-  font-size: 1.05rem;
-  font-weight: 500;
+  font-size: 1.12rem;
+  font-weight: 600;
   letter-spacing: 0;
-  margin: 0 0 14px;
+  margin: 0 0 18px;
+  padding-left: 22px;
+  position: relative;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
+  z-index: 1;
+}
+
+.metricCard.pink .metricIcon {
+  color: #e98998;
+}
+
+.metricCard.gold .metricIcon {
+  color: #cf8a15;
+}
+
+.metricCard.green .metricIcon {
+  color: #86a85c;
+}
+
+.metricCard.pink .metricValue {
+  color: #2a1b1a;
+}
+
+.metricCard.gold .metricValue {
+  color: #241815;
+}
+
+.metricCard.green .metricValue {
+  color: #241815;
+}
+
+.sectionTitle::before {
+  color: #ef9ead;
+  content: "✿";
+  font-size: 0.9rem;
+  left: 0;
+  position: absolute;
+  top: 0.04rem;
 }
 
 .overall {
@@ -201,38 +288,41 @@
 .metricCard {
   align-items: center;
   display: grid;
-  gap: 18px;
-  grid-template-columns: 112px minmax(0, 1fr);
-  min-height: 112px;
-  padding: 18px 24px;
+  gap: 24px;
+  grid-template-columns: 132px minmax(0, 1fr);
+  min-height: 148px;
+  padding: 24px 30px;
 }
 
 .metricIcon {
   align-items: center;
-  background: rgba(255, 244, 247, 0.72);
+  background: radial-gradient(circle, rgba(255, 250, 251, 0.98), rgba(255, 224, 231, 0.78));
   border-radius: 999px;
+  box-shadow: 0 16px 30px rgba(232, 180, 184, 0.3), inset 0 0 0 9px rgba(255, 255, 255, 0.5);
   color: #e796a6;
   display: flex;
-  font-size: 3rem;
-  height: 86px;
+  font-size: 4.25rem;
+  height: 104px;
   justify-content: center;
-  width: 86px;
+  width: 104px;
+  z-index: 1;
 }
 
 .metricLabel {
   color: #3a2b26;
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   margin-bottom: 6px;
 }
 
 .metricValue {
   color: #1f1715;
   display: block;
-  font-size: clamp(2rem, 4vw, 2.9rem);
+  font-size: clamp(3.2rem, 6.2vw, 5.2rem);
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1;
+  text-shadow: 0 7px 22px rgba(208, 141, 43, 0.18);
 }
 
 .metricNote {
@@ -271,13 +361,13 @@
   font-size: 0.9rem;
   line-height: 1.55;
   list-style: none;
-  padding-left: 22px;
+  padding-left: 28px;
   position: relative;
 }
 
 .leafList li::before {
   color: #ed9aa8;
-  content: "❧";
+  content: "✿";
   left: 0;
   position: absolute;
 }
@@ -300,6 +390,7 @@
 }
 
 .progressChart {
+  filter: drop-shadow(0 8px 18px rgba(208, 141, 43, 0.13));
   height: 172px;
   width: 100%;
 }
@@ -318,7 +409,7 @@
 .progressStats strong {
   color: #c97900;
   display: block;
-  font-size: 1.45rem;
+  font-size: 2rem;
   font-weight: 500;
 }
 
@@ -332,7 +423,8 @@
 
 .progressMessage {
   color: #e06476;
-  font-size: 1rem;
+  font-size: 1.18rem;
+  font-weight: 600;
   margin: 6px 0 0;
   text-align: center;
 }
@@ -351,7 +443,7 @@
 .achievementRow,
 .goalRow {
   align-items: center;
-  border-bottom: 1px solid rgba(195, 149, 120, 0.24);
+  border-bottom: 1px solid rgba(195, 149, 120, 0.32);
   display: grid;
   gap: 12px;
   min-height: 46px;
@@ -379,8 +471,9 @@
 .flower,
 .rank {
   align-items: center;
-  background: rgba(255, 234, 241, 0.7);
+  background: radial-gradient(circle, rgba(255, 246, 248, 0.98), rgba(255, 218, 226, 0.78));
   border-radius: 999px;
+  box-shadow: 0 8px 16px rgba(232, 180, 184, 0.22);
   color: #e58b9d;
   display: flex;
   font-size: 1.2rem;
@@ -390,7 +483,7 @@
 }
 
 .rank {
-  background: linear-gradient(135deg, #dfb162, #c88720);
+  background: linear-gradient(135deg, #dfb162, #c88720 65%, #f0a8b4);
   color: white;
   font-size: 0.86rem;
   font-weight: 700;
@@ -400,7 +493,7 @@
 .goalTitle {
   color: #2d211d;
   display: block;
-  font-size: 0.92rem;
+  font-size: 1rem;
 }
 
 .achievementText p {
@@ -462,19 +555,22 @@
 
 .ceo {
   background:
-    linear-gradient(90deg, rgba(255, 244, 247, 0.72), rgba(255, 253, 249, 0.94) 28%, rgba(255, 253, 249, 0.78) 70%, rgba(255, 244, 247, 0.7));
-  border-color: rgba(208, 141, 43, 0.62);
+    radial-gradient(circle at 9% 50%, rgba(246, 172, 186, 0.22), transparent 22%),
+    radial-gradient(circle at 91% 50%, rgba(246, 172, 186, 0.2), transparent 22%),
+    linear-gradient(90deg, rgba(255, 237, 242, 0.82), rgba(255, 253, 249, 0.96) 28%, rgba(255, 253, 249, 0.84) 70%, rgba(255, 237, 242, 0.78));
+  border-color: rgba(208, 141, 43, 0.74);
   grid-column: 1 / -1;
-  padding: 18px 28px;
+  padding: 28px 40px;
 }
 
 .ceoText {
   color: #251817;
-  font-size: clamp(1.18rem, 2.6vw, 1.8rem);
+  font-size: clamp(1.42rem, 3vw, 2.15rem);
   letter-spacing: 0;
   line-height: 1.7;
   margin: 0;
   text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .signature {
@@ -514,15 +610,42 @@
 }
 
 @media (max-width: 760px) {
+  .page :global(.page-title),
+  .page :global(.page-title-jp),
+  .cover h2 {
+    white-space: normal;
+  }
+
+  .page :global(.page-title) {
+    font-size: 1.45rem;
+  }
+
+  .page :global(.page-title-jp) {
+    font-size: 1.08rem;
+  }
+
   .headerActions {
     gap: 8px;
+    justify-content: flex-start;
+    margin: 0 0 16px;
+    width: 100%;
   }
 
   .monthSelect,
   .outlineButton,
   .primaryLink {
     min-height: 36px;
+    max-width: 100%;
     padding: 8px 14px;
+  }
+
+  .monthSelect {
+    flex: 1 1 174px;
+    min-width: 0;
+  }
+
+  .primaryLink {
+    flex: 0 0 auto;
   }
 
   .tabs {
@@ -538,6 +661,11 @@
 
   .cover {
     padding: 22px 16px;
+  }
+
+  .cover h2 {
+    font-size: 1.45rem;
+    line-height: 1.28;
   }
 
   .cover::before,
@@ -564,6 +692,10 @@
     font-size: 2rem;
     height: 58px;
     width: 58px;
+  }
+
+  .metricValue {
+    font-size: 2.35rem;
   }
 
   .achievementRow,

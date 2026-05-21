@@ -60,11 +60,17 @@ function ShellLayoutStyle() {
         z-index: 1;
       }
       @media (max-width: 760px) {
-        .gs-activity-dock { display: none; }
+        .gs-sidebar { overflow: hidden; width: var(--gs-orb-w, 56px) !important; }
+        .gs-orb-col { width: var(--gs-orb-w, 56px) !important; }
+        .gs-nav-col,
+        .nav-pages-toggle,
+        .gs-activity-dock { display: none !important; }
         .gs-main-fixed {
-          margin-left: var(--gs-orb-w, 56px);
-          margin-right: 0;
+          margin-left: var(--gs-orb-w, 56px) !important;
+          margin-right: 0 !important;
           padding: 22px 14px 0 16px;
+          width: calc(100vw - var(--gs-orb-w, 56px)) !important;
+          max-width: calc(100vw - var(--gs-orb-w, 56px)) !important;
         }
       }
     `}</style>
@@ -84,6 +90,17 @@ function WeeklyChart() {
 
   return (
     <svg className={styles.weeklyChart} viewBox="0 0 420 122" aria-hidden="true">
+      <defs>
+        <linearGradient id="dailySakuraHours" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#f5b6c2" />
+          <stop offset="50%" stopColor="#e3a34a" />
+          <stop offset="100%" stopColor="#c97900" />
+        </linearGradient>
+        <linearGradient id="dailyLeafTasks" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#c8d79c" />
+          <stop offset="100%" stopColor="#87a85f" />
+        </linearGradient>
+      </defs>
       <line x1="28" y1="100" x2="398" y2="100" stroke="rgba(118,83,61,.28)" />
       <line x1="28" y1="58" x2="398" y2="58" stroke="rgba(118,83,61,.12)" />
       <line x1="28" y1="18" x2="398" y2="18" stroke="rgba(118,83,61,.12)" />
@@ -93,8 +110,8 @@ function WeeklyChart() {
         const taskHeight = Math.max(4, (day.tasks / maxTasks) * 72);
         return (
           <g key={day.day}>
-            <rect x={x} y={100 - hourHeight} width="16" height={hourHeight} rx="3" fill="#d99a30" opacity=".75" />
-            <rect x={x + 20} y={100 - taskHeight} width="16" height={taskHeight} rx="3" fill="#9daf72" opacity=".82" />
+            <rect x={x} y={100 - hourHeight} width="16" height={hourHeight} rx="3" fill="url(#dailySakuraHours)" opacity=".88" />
+            <rect x={x + 20} y={100 - taskHeight} width="16" height={taskHeight} rx="3" fill="url(#dailyLeafTasks)" opacity=".88" />
             <text x={x + 18} y="117" textAnchor="middle" fontSize="11" fill="#4f4038">{day.day}</text>
           </g>
         );

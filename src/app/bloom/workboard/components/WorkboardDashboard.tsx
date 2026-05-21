@@ -20,6 +20,56 @@ function roleLabel(role: string | null) {
   return "Garden Bloom";
 }
 
+function ShellLayoutStyle() {
+  return (
+    <style>{`
+      .gs-sidebar {
+        display: flex;
+        height: calc(100vh - 80px);
+        left: 0;
+        position: fixed;
+        top: 80px;
+        z-index: 90;
+      }
+      .gs-activity-dock {
+        height: calc(100vh - 80px);
+        pointer-events: none;
+        position: fixed;
+        right: 0;
+        top: 80px;
+        width: calc(var(--gs-right-w, 334px) + 14px);
+        z-index: 95;
+      }
+      .gs-main-fixed {
+        box-sizing: border-box;
+        margin-left: var(--gs-left-w, 236px);
+        margin-right: var(--gs-right-w, 334px);
+        margin-top: 80px;
+        min-height: calc(100vh - 80px);
+        overflow-x: hidden;
+        padding: 30px 32px 0 48px;
+        position: relative;
+        width: auto;
+        z-index: 1;
+      }
+      @media (max-width: 760px) {
+        .gs-sidebar { overflow: hidden; width: var(--gs-orb-w, 56px) !important; }
+        .gs-orb-col { width: var(--gs-orb-w, 56px) !important; }
+        .gs-nav-col,
+        .nav-pages-toggle,
+        .gs-activity-dock { display: none !important; }
+        .gs-main-fixed {
+          margin-left: var(--gs-orb-w, 56px) !important;
+          margin-right: 0 !important;
+          padding: 22px 14px 0 16px;
+          width: calc(100vw - var(--gs-orb-w, 56px)) !important;
+          max-width: calc(100vw - var(--gs-orb-w, 56px)) !important;
+        }
+      }
+    `}</style>
+  );
+}
+
 function WeeklyBarsSvg() {
   const bars = weeklyDays.map((day) => {
     if (day.total === 0) return 0;
@@ -28,13 +78,24 @@ function WeeklyBarsSvg() {
 
   return (
     <svg viewBox="0 0 420 96" width="100%" height="96" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="workboardSakuraBar" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#f5b6c2" />
+          <stop offset="55%" stopColor="#df9c43" />
+          <stop offset="100%" stopColor="#c97900" />
+        </linearGradient>
+        <linearGradient id="workboardLeafBar" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#c8d79c" />
+          <stop offset="100%" stopColor="#87a85f" />
+        </linearGradient>
+      </defs>
       <line x1="18" y1="82" x2="402" y2="82" stroke="rgba(195,149,120,.32)" strokeWidth="1" />
       {bars.map((height, index) => {
         const x = 34 + index * 58;
         const y = 82 - height;
         return (
           <g key={weeklyDays[index].day}>
-            <rect x={x} y={y} width="26" height={height || 3} rx="7" fill={index === 6 ? "#8fb57a" : "#e99aa6"} opacity={height ? 0.8 : 0.25} />
+            <rect x={x} y={y} width="26" height={height || 3} rx="7" fill={index === 6 ? "url(#workboardLeafBar)" : "url(#workboardSakuraBar)"} opacity={height ? 0.9 : 0.28} />
             <text x={x + 13} y="94" textAnchor="middle" fill="#7a5c4d" fontSize="10">{weeklyDays[index].day}</text>
           </g>
         );
@@ -57,6 +118,7 @@ export default function WorkboardDashboard() {
       userRoleLabel={roleLabel(role)}
       onLogout={() => lockAndLogout("manual")}
     >
+      <ShellLayoutStyle />
       <div className={styles.page}>
         <PageHeader
           title="ワークボード"

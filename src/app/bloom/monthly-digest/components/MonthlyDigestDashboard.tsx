@@ -61,11 +61,17 @@ function ShellLayoutStyle() {
         z-index: 1;
       }
       @media (max-width: 760px) {
-        .gs-activity-dock { display: none; }
+        .gs-sidebar { overflow: hidden; width: var(--gs-orb-w, 56px) !important; }
+        .gs-orb-col { width: var(--gs-orb-w, 56px) !important; }
+        .gs-nav-col,
+        .nav-pages-toggle,
+        .gs-activity-dock { display: none !important; }
         .gs-main-fixed {
-          margin-left: var(--gs-orb-w, 56px);
-          margin-right: 0;
+          margin-left: var(--gs-orb-w, 56px) !important;
+          margin-right: 0 !important;
           padding: 22px 14px 0 16px;
+          width: calc(100vw - var(--gs-orb-w, 56px)) !important;
+          max-width: calc(100vw - var(--gs-orb-w, 56px)) !important;
         }
       }
     `}</style>
@@ -88,6 +94,17 @@ function ProgressChart() {
 
   return (
     <svg className={styles.progressChart} viewBox="0 0 450 168" aria-hidden="true">
+      <defs>
+        <linearGradient id="monthlyActualLine" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0%" stopColor="#c97900" />
+          <stop offset="60%" stopColor="#df9c43" />
+          <stop offset="100%" stopColor="#f3a8b5" />
+        </linearGradient>
+        <linearGradient id="monthlyProgressFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="rgba(243,168,181,.24)" />
+          <stop offset="100%" stopColor="rgba(243,168,181,0)" />
+        </linearGradient>
+      </defs>
       {[24, 52, 80, 108, 136].map((y) => (
         <line key={y} x1="28" y1={y} x2="414" y2={y} stroke="rgba(118,83,61,.16)" />
       ))}
@@ -95,10 +112,11 @@ function ProgressChart() {
       <text x="18" y="28" fontSize="10" fill="#5d4a42">120</text>
       <text x="18" y="84" fontSize="10" fill="#5d4a42">60</text>
       <text x="22" y="140" fontSize="10" fill="#5d4a42">0</text>
-      <polyline points={targetPoints} fill="none" stroke="#e98998" strokeWidth="2" strokeDasharray="7 6" />
-      <polyline points={actualPoints} fill="none" stroke="#ce850f" strokeWidth="3" />
+      <polygon points={`34,136 ${actualPoints} ${34 + (progressActual.length - 1) * 23},136`} fill="url(#monthlyProgressFill)" />
+      <polyline points={targetPoints} fill="none" stroke="#e98998" strokeWidth="2.4" strokeDasharray="7 6" />
+      <polyline points={actualPoints} fill="none" stroke="url(#monthlyActualLine)" strokeWidth="4" />
       {progressActual.map((value, index) => (
-        <circle key={`${value}-${index}`} cx={34 + index * 23} cy={136 - (value / 130) * 112} r="3" fill="#ce850f" />
+        <circle key={`${value}-${index}`} cx={34 + index * 23} cy={136 - (value / 130) * 112} r="3.5" fill="#c97900" stroke="#fffaf5" strokeWidth="1.5" />
       ))}
       <text x="32" y="158" fontSize="11" fill="#5d4a42">4/1</text>
       <text x="124" y="158" fontSize="11" fill="#5d4a42">4/8</text>
@@ -162,7 +180,7 @@ export default function MonthlyDigestDashboard() {
             <h2 id="monthly-overall" className={styles.sectionTitle}>OVERALL / 今月の総括</h2>
             <div className={styles.metricGrid}>
               {digestMetrics.map((metric) => (
-                <article key={metric.label} className={styles.metricCard}>
+                <article key={metric.label} className={cx(styles.metricCard, styles[metric.tone])}>
                   <span className={styles.metricIcon}>{metric.icon}</span>
                   <div>
                     <span className={styles.metricLabel}>{metric.label}</span>
