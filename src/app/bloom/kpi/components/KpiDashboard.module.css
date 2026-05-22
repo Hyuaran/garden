@@ -1,0 +1,461 @@
+.page {
+  width: 100%;
+  min-width: 0;
+  padding: 0 0 40px;
+  font-family: "Noto Serif JP", "Shippori Mincho", serif;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 18px 20px;
+  min-width: 0;
+  animation: fadeUp 0.4s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.kicker {
+  margin: 0;
+  font-family: "Cormorant Garamond", "EB Garamond", serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
+.sectionTitle {
+  margin: 2px 0 0;
+  font-family: "Shippori Mincho", serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* ---------- Header ---------- */
+.headerWrap {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.monthPill {
+  margin-top: 6px;
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.8rem;
+  color: var(--text-accent);
+  background: rgba(212, 165, 65, 0.12);
+  border: 1px solid rgba(212, 165, 65, 0.3);
+  border-radius: 999px;
+  padding: 6px 16px;
+  white-space: nowrap;
+}
+
+/* ---------- Tabs ---------- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 2px;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 16px 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -3px;
+  cursor: pointer;
+  color: var(--text-sub);
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab:hover {
+  color: var(--text-main);
+}
+
+.tabActive {
+  color: var(--text-accent);
+  border-bottom-color: #d99a30;
+}
+
+.tabJp {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.tabEn {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* ---------- KPI cards ---------- */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 14px;
+}
+
+.kpiCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 16px 18px 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  animation: fadeUp 0.4s ease both;
+}
+
+.kpiHead {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.kpiLabel {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.kpiSub {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.kpiValue {
+  margin-top: 10px;
+  font-family: "Cormorant Garamond", "EB Garamond", serif;
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+
+.kpiPrefix {
+  font-size: 1.1rem;
+  color: var(--text-sub);
+  margin-right: 2px;
+}
+
+.kpiUnit {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-left: 3px;
+}
+
+.kpiYoy {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  font-family: "EB Garamond", serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #5d8a4f;
+}
+
+.kpiYoyDown {
+  color: #c47b76;
+}
+
+.kpiYoyArrow {
+  font-size: 0.78rem;
+}
+
+.kpiYoyLabel {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.66rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.spark {
+  width: 100%;
+  height: 38px;
+  margin-top: 8px;
+  display: block;
+}
+
+/* ---------- Lower grid (table + dev) ---------- */
+.lowerGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(240px, 0.9fr);
+  gap: 14px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.table thead th {
+  text-align: left;
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-sub);
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.num {
+  text-align: right;
+  font-family: "EB Garamond", serif;
+}
+
+.companyCell {
+  font-family: "Shippori Mincho", serif;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.positive { color: #5d8a4f; }
+.negative { color: #c47b76; }
+
+.statusBadge {
+  display: inline-block;
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.68rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.good { background: #f1f8f4; border-color: #cde8d5; color: #3f7b55; }
+.watch { background: #fff7df; border-color: #ead391; color: #7d651d; }
+.alert { background: rgba(232, 180, 184, 0.18); border-color: rgba(232, 180, 184, 0.5); color: #b87a7e; }
+
+/* ---------- Development gauge ---------- */
+.devCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.devRing {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0 14px;
+}
+
+.devInner {
+  width: 102px;
+  height: 102px;
+  border-radius: 50%;
+  background: var(--bg-card, #fffdf7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.devValue {
+  font-family: "Cormorant Garamond", "EB Garamond", serif;
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1;
+}
+
+.devValue small {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.devStats {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 0.76rem;
+  color: var(--text-sub);
+}
+
+.devStats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.devDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.dotReleased { background: #1b9c6b; }
+.dotDeveloping { background: #d4a541; }
+.dotSeeding { background: #c7b89a; }
+
+.devNote {
+  margin: 12px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ---------- Action items ---------- */
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 12px;
+}
+
+.actionCard {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: start;
+  background: rgba(255, 253, 247, 0.55);
+  border: 1px solid var(--border-soft);
+  border-left-width: 3px;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.action_alert { border-left-color: #d98a86; }
+.action_watch { border-left-color: #d4a541; }
+.action_info { border-left-color: #7a9968; }
+
+.actionIcon {
+  font-family: "EB Garamond", serif;
+  font-size: 1rem;
+  color: var(--text-accent);
+  text-align: center;
+}
+
+.actionBody {
+  min-width: 0;
+}
+
+.actionTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.actionDetail {
+  margin: 4px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.6;
+  color: var(--text-sub);
+}
+
+.actionOwner {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  background: rgba(212, 165, 65, 0.12);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+/* ---------- Trend (company tab) ---------- */
+.trendNote {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.trendGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 14px;
+}
+
+.trendCard {
+  background: rgba(255, 253, 247, 0.55);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.trendHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.trendTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.trendYoy {
+  font-family: "EB Garamond", serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #5d8a4f;
+}
+
+@media (max-width: 980px) {
+  .lowerGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
