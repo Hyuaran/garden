@@ -1,0 +1,372 @@
+.page {
+  width: 100%;
+  min-width: 0;
+  padding: 0 0 40px;
+  font-family: "Noto Serif JP", "Shippori Mincho", serif;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 18px 20px;
+  min-width: 0;
+  animation: fadeUp 0.4s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.kicker {
+  margin: 0;
+  font-family: "Cormorant Garamond", "EB Garamond", serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
+.sectionTitle {
+  margin: 2px 0 0;
+  font-family: "Shippori Mincho", serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* ---------- Top grid: overall + milestones ---------- */
+.topGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.6fr);
+  gap: 14px;
+}
+
+.overallCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.overallBody {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.overallRing {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.overallInner {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: var(--bg-card, #fffdf7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.overallValue {
+  font-family: "Cormorant Garamond", "EB Garamond", serif;
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1;
+}
+
+.overallValue small {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.overallLabel {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.74rem;
+  color: var(--text-sub);
+}
+
+.overallStats {
+  flex: 1;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overallStat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-sub);
+}
+
+.statDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statLabel {
+  flex: 1;
+}
+
+.statValue {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.dotReleased { background: #1b9c6b; }
+.dotDeveloping { background: #d4a541; }
+.dotSeeding { background: #c7b89a; }
+
+.overallCaption {
+  margin: 6px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ---------- Milestones ---------- */
+.milestoneCols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.milestoneColLabel {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-accent);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.milestoneList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.milestoneItem {
+  display: grid;
+  grid-template-columns: 16px auto 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.milestoneMark {
+  color: #c7b89a;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.milestoneDone .milestoneMark {
+  color: #d99a30;
+}
+
+.milestoneDate {
+  font-family: "EB Garamond", serif;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+.milestoneText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.milestoneText strong {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.milestoneText small {
+  font-size: 0.72rem;
+  color: var(--text-sub);
+  line-height: 1.45;
+}
+
+/* ---------- Modules ---------- */
+.moduleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr));
+  gap: 12px;
+}
+
+.moduleCard {
+  background: rgba(255, 253, 247, 0.55);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 14px 12px 12px;
+  text-align: center;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.moduleCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(154, 138, 105, 0.16);
+  border-color: rgba(212, 165, 65, 0.4);
+}
+
+.moduleIcon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moduleIcon img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(120, 95, 60, 0.22));
+}
+
+.moduleName {
+  font-family: "Cormorant Garamond", "EB Garamond", serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+}
+
+.moduleUsage {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.7rem;
+  color: var(--text-sub);
+  margin-top: 1px;
+}
+
+.moduleBarTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border-soft);
+  overflow: hidden;
+  margin: 9px 0 6px;
+}
+
+.moduleBarFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+.moduleMeta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.modulePercent {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.moduleStage {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.62rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+/* ---------- Charts ---------- */
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 14px;
+}
+
+.chartCard {
+  background: rgba(255, 253, 247, 0.55);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.chartHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.chartTitle {
+  font-family: "Shippori Mincho", serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.chartSub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.chartSvg {
+  width: 100%;
+  height: 96px;
+  display: block;
+}
+
+@media (max-width: 980px) {
+  .topGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .milestoneCols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

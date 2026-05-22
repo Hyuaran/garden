@@ -12,6 +12,7 @@ const GARDEN_SHELL_PATHS = new Set([
   "/bloom/daily-report",
   "/bloom/monthly-digest",
   "/bloom/blueprint",
+  "/bloom/progress",
 ]);
 
 export function BloomLayoutClient({ children }: { children: ReactNode }) {
