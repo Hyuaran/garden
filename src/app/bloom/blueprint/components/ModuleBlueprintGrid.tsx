@@ -12,12 +12,12 @@ export function ModuleBlueprintGrid() {
           <h2 style={headingStyle}>12 モジュール早見表</h2>
         </div>
         <p style={summaryStyle}>
-          植物比喩を主軸に、各モジュールの用途・役割・現在の育ち具合を一覧できます。
+          植物比喩を主軸に、各モジュールの役割・概要・保存先を一覧できます。
         </p>
       </div>
       <div style={gridStyle}>
         {moduleBlueprints.map((module) => (
-          <ModuleBlueprintCard key={module.code} module={module} />
+          <ModuleBlueprintCard key={module.id} module={module} />
         ))}
       </div>
     </section>

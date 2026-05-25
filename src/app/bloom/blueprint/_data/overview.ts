@@ -1,3 +1,4 @@
+// 将来 Root（組織マスタ）にデータを集約し、ミラー取得に差し替える前提。現在はデモのため静的データ。
 export const blueprintOverview = {
   eyebrow: "Garden Blueprint",
   title: "Garden 設計図",

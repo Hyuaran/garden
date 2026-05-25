@@ -1,0 +1,161 @@
+.page { font-family: "Noto Serif JP", "Shippori Mincho", serif; min-width: 0; padding: 0 0 36px; width: 100%; }
+.headerWrap { align-items: flex-start; display: block; gap: 20px; justify-content: space-between; width: 100%; }
+.headerWrap :global(.page-header) { box-sizing: border-box; width: 100%; }
+.tabs { border-bottom: 1px solid var(--border-soft); display: flex; gap: 34px; margin: 6px 0 18px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { background: transparent; border: 0; color: var(--text-sub); cursor: pointer; font-family: "Cormorant Garamond", "Shippori Mincho", serif; font-size: 1rem; padding: 10px 2px 12px; position: relative; white-space: nowrap; }
+.tabActive { color: var(--text-accent); }
+.tabActive::after { background: linear-gradient(90deg, #c8891c, #e8b4b8); bottom: -1px; content: ""; height: 2px; left: 0; position: absolute; right: 0; }
+.heroGrid { display: grid; gap: 14px; grid-template-columns: 0.82fr 1.18fr; }
+.panel, .companyCard { background: var(--bg-card); backdrop-filter: blur(10px); border: 1px solid var(--border-card); border-radius: var(--radius-card); box-shadow: var(--shadow-soft); min-width: 0; }
+.panel { margin-bottom: 12px; overflow: hidden; padding: 16px 20px; }
+.sectionTitle { color: #a66c0b; font-family: "Cormorant Garamond", "Shippori Mincho", serif; font-size: 1.1rem; font-weight: 600; letter-spacing: 0.04em; margin: 0 0 6px; }
+.panel p { color: var(--text-sub); font-size: 0.82rem; margin: 0; }
+.overallBody { align-items: center; display: grid; gap: 22px; grid-template-columns: 260px 1fr; margin-top: 10px; }
+.ring {
+  background: url("/themes/garden-shell/images/decorations/flower-ring-around.png") center / contain no-repeat;
+  display: grid;
+  height: 250px;
+  place-items: center;
+  position: relative;
+  width: 250px;
+}
+.ringValue {
+  align-items: baseline;
+  background: radial-gradient(circle, rgba(255, 253, 245, 0.9) 0 42%, rgba(255, 253, 245, 0.62) 58%, transparent 74%);
+  border-radius: 50%;
+  display: flex;
+  flex-wrap: wrap;
+  height: 124px;
+  justify-content: center;
+  padding-top: 26px;
+  position: relative;
+  text-align: center;
+  width: 124px;
+}
+.ringValue strong { color: #c79a3c; font-family: "EB Garamond", serif; font-size: 4.1rem; font-weight: 400; line-height: 0.9; text-shadow: 0 2px 10px rgba(255, 253, 245, 0.85); }
+.ringValue span { color: #c79a3c; font-family: "EB Garamond", serif; font-size: 1.35rem; text-shadow: 0 2px 10px rgba(255, 253, 245, 0.85); }
+.ringValue small { color: var(--text-sub); flex-basis: 100%; font-size: 0.82rem; margin-top: 4px; }
+.legend { color: var(--text-main); display: grid; gap: 12px; }
+.legend span { align-items: center; display: flex; gap: 8px; }
+.legend i { border-radius: 50%; height: 10px; width: 10px; }
+.greenDot { background: #7a9968; }
+.goldDot { background: #d99a30; }
+.grayDot { background: #aaa49a; }
+.milestoneGrid { display: grid; gap: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 14px; }
+.milestoneGrid article { background: rgba(255, 253, 245, 0.62); border: 1px solid var(--border-soft); border-radius: 8px; padding: 14px 18px; }
+.milestoneGrid h3 { color: #6f8f5d; font-family: "Shippori Mincho", serif; font-size: 1rem; margin: 0 0 8px; }
+.milestoneGrid p { border-bottom: 1px dashed rgba(154, 138, 105, 0.2); color: var(--text-main); display: grid; grid-template-columns: 72px 1fr; padding: 5px 0; }
+.milestoneGrid time { color: var(--text-sub); font-family: "EB Garamond", serif; }
+.moduleGrid { display: grid; gap: 10px; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 10px; }
+.moduleCard { background: rgba(255, 253, 245, 0.62); border: 1px solid var(--border-soft); border-radius: 8px; display: grid; gap: 10px; grid-template-columns: 58px 1fr; padding: 10px; }
+.moduleCard img { background: rgba(255, 250, 246, 0.9); border: 1px solid rgba(232, 180, 184, 0.36); border-radius: 50%; }
+.moduleTop { align-items: center; display: flex; gap: 6px; min-width: 0; }
+.moduleTop span { border: 1px solid rgba(212, 165, 65, 0.4); border-radius: 50%; color: #b2780f; display: grid; flex: 0 0 22px; font-family: "EB Garamond", serif; height: 22px; place-items: center; }
+.moduleTop h3 { color: var(--text-main); flex: 1; font-family: "Cormorant Garamond", serif; font-size: 1.05rem; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.moduleTop b { border-radius: var(--radius-pill); font-size: 0.68rem; padding: 2px 8px; white-space: nowrap; }
+.released { background: rgba(122, 153, 104, 0.18); color: #6f8f5d; }
+.developing { background: rgba(217, 154, 48, 0.18); color: #b2780f; }
+.pending { background: rgba(154, 138, 105, 0.16); color: var(--text-muted); }
+.progressTrack { background: rgba(154, 138, 105, 0.16); border-radius: 999px; height: 8px; overflow: hidden; }
+.progressTrack div { background: linear-gradient(90deg, #7a9968, #d99a30); border-radius: inherit; height: 100%; }
+.moduleFoot { align-items: baseline; display: flex; justify-content: space-between; margin-top: 4px; }
+.moduleFoot small { color: var(--text-muted); font-size: 0.72rem; }
+.moduleFoot strong { color: #b2780f; font-family: "EB Garamond", serif; font-size: 1rem; }
+.companyGrid { display: grid; gap: 10px; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-bottom: 12px; }
+.companyCard { padding: 12px; }
+.companyCard h3 { color: var(--text-main); font-family: "Shippori Mincho", serif; font-size: 0.92rem; margin: 0 0 8px; }
+.companyCard dl { margin: 0; }
+.companyCard div { color: var(--text-sub); display: flex; font-size: 0.78rem; gap: 8px; justify-content: space-between; }
+.companyCard dt, .companyCard dd { margin: 0; }
+.companyCard dd { color: var(--text-main); font-family: "EB Garamond", serif; }
+.companyCard dd:not(.negative) { color: #6f8f5d; }
+.negative { color: #c95a4a !important; }
+.bars { align-items: flex-end; display: flex !important; gap: 8px; height: 48px; justify-content: center !important; margin-top: 8px; }
+.bars span { background: linear-gradient(180deg, #efc05e, #d99a30); border-radius: 4px 4px 0 0; width: 16px; }
+.trendGrid { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.chartSvg { display: block; height: 116px; margin-top: 10px; width: 100%; }
+@media (max-width: 1366px) { .moduleGrid, .companyGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1500px) {
+  .heroGrid,
+  .trendGrid { grid-template-columns: 1fr; }
+  .milestoneGrid { grid-template-columns: 1fr; }
+  .milestoneGrid p { grid-template-columns: 74px 1fr; }
+  .moduleGrid,
+  .companyGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 980px) { .heroGrid, .trendGrid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .headerWrap { flex-direction: column; } .overallBody { grid-template-columns: 1fr; justify-items: center; } .milestoneGrid, .moduleGrid, .companyGrid { grid-template-columns: 1fr; } .panel { padding: 14px; } }
+
+.modulesLayout { display: grid; gap: 14px; grid-template-columns: 240px 1fr; }
+.modulesToc { align-self: start; position: sticky; top: 96px; }
+.tocGroup { margin-top: 12px; }
+.tocGroup h3 { color: var(--text-muted); font-family: "Shippori Mincho", serif; font-size: 0.78rem; font-weight: 500; margin: 0 0 8px; }
+.tocGroup a { align-items: center; border-bottom: 1px dashed rgba(154, 138, 105, 0.18); color: var(--text-main); display: grid; gap: 8px; grid-template-columns: 26px 1fr auto; padding: 6px 0; text-decoration: none; }
+.tocGroup b { color: #b2780f; font-family: "EB Garamond", serif; font-weight: 500; }
+.modulesDetail { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.moduleDetailCard { scroll-margin-top: 110px; }
+.moduleDetailHead { align-items: center; display: grid; gap: 14px; grid-template-columns: 58px 1fr auto; }
+.moduleDetailHead img { background: rgba(255, 250, 246, 0.9); border: 1px solid rgba(232, 180, 184, 0.36); border-radius: 50%; }
+.moduleDetailHead h2 { color: var(--text-main); font-family: "Cormorant Garamond", serif; font-size: 1.28rem; margin: 0 0 3px; }
+.moduleDetailHead p { color: var(--text-sub); font-size: 0.82rem; margin: 0; }
+.moduleDetailBody { border-top: 1px dashed rgba(154, 138, 105, 0.2); display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 12px; padding-top: 12px; }
+.moduleDetailBody h3 { color: var(--text-muted); font-family: "Shippori Mincho", serif; font-size: 0.75rem; font-weight: 500; margin: 0 0 8px; }
+.phasePill, .releaseText { border: 1px solid rgba(212, 165, 65, 0.3); border-radius: var(--radius-pill); color: #b2780f; display: inline-block; font-size: 0.74rem; margin: 0 6px 6px 0; padding: 3px 10px; }
+.phaseScale { align-items: center; display: grid; gap: 8px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 14px; }
+.phaseScale span { color: var(--text-muted); display: grid; font-size: 0.72rem; gap: 5px; justify-items: center; min-width: 0; position: relative; text-align: center; }
+.phaseScale span::before { background: rgba(154, 138, 105, 0.18); content: ""; height: 1px; left: -50%; position: absolute; right: 50%; top: 7px; }
+.phaseScale span:first-child::before { display: none; }
+.phaseScale i { background: rgba(255, 253, 245, 0.92); border: 1px solid rgba(212, 165, 65, 0.34); border-radius: 50%; height: 14px; position: relative; width: 14px; z-index: 1; }
+.phaseScale .phaseCurrent { color: #b2780f; font-weight: 600; }
+.phaseScale .phaseCurrent i { background: linear-gradient(135deg, #d99a30, #e8b4b8); border-color: rgba(201, 92, 105, 0.45); box-shadow: 0 0 0 4px rgba(232, 180, 184, 0.18); }
+.evidenceCard { background: rgba(255, 253, 245, 0.56); border: 1px solid var(--border-soft); border-radius: 8px; padding: 12px; }
+.evidenceNow { background: linear-gradient(135deg, rgba(255, 248, 233, 0.8), rgba(255, 235, 239, 0.58)); border-color: rgba(212, 165, 65, 0.4); }
+.evidenceCard p { color: var(--text-main); line-height: 1.75; margin: 0; }
+.historyFilter { align-items: end; display: flex; flex-wrap: wrap; gap: 14px; }
+.historyFilter label { display: grid; gap: 5px; }
+.historyFilter label span { color: #b2780f; font-family: "Shippori Mincho", serif; font-size: 0.78rem; }
+.historyFilter select, .dateRange input { background: rgba(255, 253, 245, 0.92); border: 1px solid var(--border-soft); border-radius: 8px; color: var(--text-main); font-family: "Noto Serif JP", serif; min-width: 160px; padding: 7px 12px; }
+.periodGroup { background: rgba(255, 253, 245, 0.58); border: 1px solid var(--border-soft); border-radius: 999px; display: flex; gap: 4px; padding: 4px; }
+.periodGroup button { background: transparent; border: 0; border-radius: 999px; color: var(--text-sub); cursor: pointer; font-family: "Shippori Mincho", serif; padding: 5px 12px; }
+.periodGroup .periodActive { background: #d99a30; color: #fffaf5; }
+.dateRange { display: flex; gap: 10px; }
+.historyList { display: flex; flex-direction: column; gap: 12px; }
+.emptyHistory p { color: var(--text-sub); line-height: 1.7; margin: 0; }
+.historyCard { margin-bottom: 0; }
+.historyHead { align-items: center; display: flex; gap: 10px; margin-bottom: 12px; }
+.historyHead strong { color: var(--text-main); font-family: "EB Garamond", serif; font-size: 1.05rem; }
+.workPill { border-radius: var(--radius-pill); display: inline-block; font-size: 0.72rem; padding: 3px 10px; }
+.office { background: rgba(122, 153, 104, 0.18); color: #6f8f5d; }
+.home { background: rgba(138, 180, 204, 0.18); color: #4f86a8; }
+.irregular { background: rgba(217, 154, 48, 0.18); color: #b2780f; }
+.historyCols { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.historyCol { background: rgba(255, 253, 245, 0.48); border: 1px solid var(--border-soft); border-radius: 8px; padding: 12px; }
+.historyCol h3, .specialBlock h3 { color: #a66c0b; font-family: "Shippori Mincho", serif; font-size: 0.86rem; margin: 0 0 8px; }
+.historyCol ul { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.historyCol li { display: grid; gap: 8px; grid-template-columns: 26px 58px 1fr; }
+.historyCol li img { border-radius: 50%; }
+.historyCol li strong { color: var(--text-main); font-family: "Cormorant Garamond", serif; font-size: 0.9rem; }
+.historyCol li span { color: var(--text-sub); font-size: 0.78rem; line-height: 1.6; }
+.specialBlock { border-top: 1px dashed rgba(154, 138, 105, 0.2); margin-top: 12px; padding-top: 12px; }
+.specialBlock p { color: var(--text-sub); line-height: 1.7; margin: 0; }
+
+@media (max-width: 1500px) {
+  .modulesLayout { grid-template-columns: 1fr; }
+  .modulesToc { position: static; }
+}
+
+@media (max-width: 760px) {
+  .moduleDetailBody,
+  .historyCols { grid-template-columns: 1fr; }
+  .ring { height: 230px; width: 230px; }
+  .ringValue { height: 112px; padding-top: 24px; width: 112px; }
+  .ringValue strong { font-size: 3.7rem; }
+  .moduleDetailHead { grid-template-columns: 48px 1fr; }
+  .historyCol li { grid-template-columns: 26px 1fr; }
+  .historyCol li span { grid-column: 2; }
+  .dateRange { flex-direction: column; width: 100%; }
+  .dateRange label, .dateRange input { width: 100%; }
+  .phaseScale { grid-template-columns: repeat(5, minmax(54px, 1fr)); overflow-x: auto; padding-bottom: 4px; }
+  .periodGroup { border-radius: 8px; flex-wrap: wrap; }
+}

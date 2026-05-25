@@ -41,18 +41,18 @@ export const sourceLinkGroups: SourceLinkGroup[] = [
     items: [
       {
         label: "Bloom 参考実装",
-        path: "C:\\garden\\a-bloom-006",
-        note: "今回の /bloom/blueprint MVP 実装対象。",
+        path: "C:\\garden\\a-bloom-008",
+        note: "今回の /bloom/blueprint 手直し対象。",
       },
       {
-        label: "推奨作業ブランチ",
-        path: "codex/bloom-blueprint-mvp",
-        note: "PR 作成は別 Dispatch で実施する。",
+        label: "作業ブランチ",
+        path: "codex/bloom-stage2-2c",
+        note: "Codex-023 から継続している Bloom Stage2-2C ブランチ。",
       },
       {
         label: "保護対象",
-        path: "src/app/bloom/progress/",
-        note: "iframe + 静的 HTML 版の Garden 開発進捗。今回一切変更しない。",
+        path: "GardenShell / PageHeader / 他 Bloom ページ",
+        note: "今回の対象は設計図ページのみ。",
       },
     ],
   },
