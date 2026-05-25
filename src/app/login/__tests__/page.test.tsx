@@ -1,92 +1,131 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
-const pushMock = vi.fn();
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock }),
+const mocks = vi.hoisted(() => ({
+  push: vi.fn(),
+  searchParams: "",
+  signInUnified: vi.fn(),
+  fetchBloomUser: vi.fn(),
 }));
 
-const signInBloomMock = vi.fn();
-const fetchBloomUserMock = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mocks.push }),
+  useSearchParams: () => new URLSearchParams(mocks.searchParams),
+}));
+
+vi.mock("../../_lib/auth-unified", () => {
+  const sanitizeReturnTo = (raw: string | null | undefined) => {
+    if (!raw) return null;
+    const decoded = decodeURIComponent(raw);
+    if (!decoded.startsWith("/") || decoded.startsWith("//")) return null;
+    return decoded;
+  };
+
+  return {
+    sanitizeReturnTo,
+    signInUnified: (...args: unknown[]) => mocks.signInUnified(...args),
+  };
+});
+
 vi.mock("../../bloom/_lib/auth", () => ({
-  signInBloom: (...args: unknown[]) => signInBloomMock(...args),
-  fetchBloomUser: (...args: unknown[]) => fetchBloomUserMock(...args),
+  fetchBloomUser: (...args: unknown[]) => mocks.fetchBloomUser(...args),
 }));
 
 import GardenLoginPage from "../page";
 
 beforeEach(() => {
-  pushMock.mockReset();
-  signInBloomMock.mockReset();
-  fetchBloomUserMock.mockReset();
+  mocks.push.mockReset();
+  mocks.signInUnified.mockReset();
+  mocks.fetchBloomUser.mockReset();
+  mocks.searchParams = "";
 });
 
-describe("GardenLoginPage — rendering", () => {
-  it("renders Garden Series logo + 業務を、育てる subtitle", () => {
+describe("GardenLoginPage rendering", () => {
+  it("renders the twilight Garden Series login", () => {
     render(<GardenLoginPage />);
+
+    expect(screen.getByTestId("login-section")).toBeInTheDocument();
     expect(screen.getByAltText("Garden Series")).toBeInTheDocument();
-    expect(screen.getByText("業務を、育てる")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Welcome to the Garden" })).toBeInTheDocument();
+    expect(screen.getByText("夜明け前の庭から、今日の業務へ。")).toBeInTheDocument();
   });
-  it("renders 3 form inputs (empId / password / keepLogin)", () => {
+
+  it("keeps the required form controls and forgot password link", () => {
     render(<GardenLoginPage />);
+
     expect(screen.getByTestId("login-empid")).toBeInTheDocument();
     expect(screen.getByTestId("login-password")).toBeInTheDocument();
     expect(screen.getByTestId("login-keep")).toBeInTheDocument();
-  });
-  it("renders submit button + パスワード忘れ link", () => {
-    render(<GardenLoginPage />);
+    expect(screen.getByTestId("login-password-toggle")).toBeInTheDocument();
     expect(screen.getByTestId("login-submit")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /パスワード/ })).toHaveAttribute(
-      "href",
-      "/login/forgot",
-    );
+    expect(screen.getByRole("link", { name: "パスワードをお忘れですか？" })).toHaveAttribute("href", "/login/forgot");
   });
-  it("renders right-side atmosphere panel", () => {
+
+  it("shows an expired-session warning from the query string", () => {
+    mocks.searchParams = "reason=expired";
     render(<GardenLoginPage />);
-    const atm = screen.getByTestId("login-atmosphere");
-    expect(atm).toBeInTheDocument();
-    const style = atm.getAttribute("style") ?? "";
-    expect(style).toMatch(/02-morning-calm\.webp/);
+
+    expect(screen.getByRole("status")).toHaveTextContent("セッションが期限切れになりました");
   });
-  it("does NOT render excluded v2 elements", () => {
+
+  it("toggles password visibility", () => {
     render(<GardenLoginPage />);
-    // 大見出し
-    expect(screen.queryByText(/やさしく迎える業務 OS/)).toBeNull();
-    // 特徴ハイライト
-    expect(screen.queryByText(/透明感のある操作感/)).toBeNull();
-    expect(screen.queryByText(/12 のモジュール/)).toBeNull();
-    expect(screen.queryByText(/自然と Tech/)).toBeNull();
-    // SSO
-    expect(screen.queryByText(/SSO/)).toBeNull();
+    const password = screen.getByTestId("login-password");
+
+    expect(password).toHaveAttribute("type", "password");
+    fireEvent.click(screen.getByTestId("login-password-toggle"));
+    expect(password).toHaveAttribute("type", "text");
   });
 });
 
-describe("GardenLoginPage — submit flow", () => {
-  it("redirects to /home (i.e., /) for staff role on success", async () => {
-    signInBloomMock.mockResolvedValue({ success: true, userId: "u1" });
-    fetchBloomUserMock.mockResolvedValue({ garden_role: "staff" });
+describe("GardenLoginPage submit flow", () => {
+  it("uses signInUnified and redirects staff users to home", async () => {
+    mocks.signInUnified.mockResolvedValue({ success: true, userId: "u1" });
+    mocks.fetchBloomUser.mockResolvedValue({ garden_role: "staff" });
+
     render(<GardenLoginPage />);
-    fireEvent.change(screen.getByTestId("login-empid"), { target: { value: "8" } });
+    fireEvent.change(screen.getByTestId("login-empid"), { target: { value: " 8 " } });
     fireEvent.change(screen.getByTestId("login-password"), { target: { value: "pw" } });
     fireEvent.click(screen.getByTestId("login-submit"));
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/"));
+
+    await waitFor(() => expect(mocks.signInUnified).toHaveBeenCalledWith("8", "pw"));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/"));
   });
-  it("redirects to /tree for closer role", async () => {
-    signInBloomMock.mockResolvedValue({ success: true, userId: "u2" });
-    fetchBloomUserMock.mockResolvedValue({ garden_role: "closer" });
+
+  it("redirects closer users to /tree", async () => {
+    mocks.signInUnified.mockResolvedValue({ success: true, userId: "u2" });
+    mocks.fetchBloomUser.mockResolvedValue({ garden_role: "closer" });
+
     render(<GardenLoginPage />);
     fireEvent.change(screen.getByTestId("login-empid"), { target: { value: "9" } });
     fireEvent.change(screen.getByTestId("login-password"), { target: { value: "pw" } });
     fireEvent.click(screen.getByTestId("login-submit"));
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/tree"));
+
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/tree"));
   });
-  it("shows error and does not redirect on signInBloom failure", async () => {
-    signInBloomMock.mockResolvedValue({ success: false, error: "wrong password" });
+
+  it("lets a safe returnTo override role redirect", async () => {
+    mocks.searchParams = "returnTo=%2Fbloom%2Fprogress";
+    mocks.signInUnified.mockResolvedValue({ success: true, userId: "u3" });
+    mocks.fetchBloomUser.mockResolvedValue({ garden_role: "staff" });
+
+    render(<GardenLoginPage />);
+    fireEvent.change(screen.getByTestId("login-empid"), { target: { value: "10" } });
+    fireEvent.change(screen.getByTestId("login-password"), { target: { value: "pw" } });
+    fireEvent.click(screen.getByTestId("login-submit"));
+
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/bloom/progress"));
+  });
+
+  it("shows an error and does not redirect on signInUnified failure", async () => {
+    mocks.signInUnified.mockResolvedValue({ success: false, error: "wrong password" });
+
     render(<GardenLoginPage />);
     fireEvent.change(screen.getByTestId("login-empid"), { target: { value: "8" } });
     fireEvent.change(screen.getByTestId("login-password"), { target: { value: "wrong" } });
     fireEvent.click(screen.getByTestId("login-submit"));
-    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
-    expect(pushMock).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("wrong password"));
+    expect(mocks.push).not.toHaveBeenCalled();
   });
 });
