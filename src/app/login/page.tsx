@@ -66,7 +66,6 @@ function LoginForm() {
                 unoptimized
               />
             </div>
-            <p className={styles.seriesName}>Garden Series</p>
             <h1 aria-label="Welcome to the Garden" className={styles.title}>
               <span>Welcome</span>
               <span>to the</span>

@@ -115,8 +115,8 @@
 }
 
 .cardLogo {
-  margin: 0 0 10px;
-  width: 60px;
+  margin: 0 auto 10px;
+  width: 64px;
 }
 
 .cardLogo img {
@@ -132,6 +132,7 @@
   font-size: 0.98rem;
   letter-spacing: 0.14em;
   margin: 0 0 8px;
+  text-align: center;
   text-transform: uppercase;
 }
 
@@ -143,6 +144,7 @@
   letter-spacing: 0;
   line-height: 0.92;
   margin: 0;
+  text-align: center;
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.42), 0 0 24px rgba(232, 192, 105, 0.22);
 }
 
@@ -155,6 +157,7 @@
   font-family: "Noto Serif JP", serif;
   font-size: 0.92rem;
   margin: 12px 0 24px;
+  text-align: center;
 }
 
 .form {
