@@ -26,7 +26,7 @@ export const blueprintNotes: BlueprintNote[] = [
   {
     title: "静的データは第 1 版",
     body:
-      "段階 % と説明文は既存 Bloom 実装・Obsidian ノートから読み取れる範囲で配置した。第 2 版以降で Obsidian Markdown 連携や Supabase 連携を検討する。",
+      "モジュール設計データは既存 Bloom 実装・Obsidian ノートから読み取れる範囲で配置した。第 2 版以降で Root への集約や Obsidian Markdown 連携を検討する。",
     severity: "確認",
   },
   {

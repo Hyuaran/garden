@@ -7,6 +7,7 @@ export const BLOOM_PATHS = {
   DAILY_REPORTS: "/bloom/daily-report",
   CEO_STATUS: "/bloom/ceo-status",
   PROGRESS: "/bloom/progress",
+  KPI: "/bloom/kpi",
   LOGIN: "/bloom/login",
   /**
    * Garden Series 統一ログイン画面 (2026-05-11、Task 1)

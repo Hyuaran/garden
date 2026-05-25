@@ -35,4 +35,9 @@ export const BLOOM_GARDEN_PAGE_MENU: GardenShellPageMenuItem[] = [
     href: BLOOM_PATHS.PROGRESS,
     icon: `${T}/images/icons_bloom/orb_bloom.png`,
   },
+  {
+    label: "統合 KPI",
+    href: BLOOM_PATHS.KPI,
+    icon: `${T}/images/icons_bloom/bloom_ceostatus.png`,
+  },
 ];
