@@ -1,196 +1,144 @@
-/**
- * OrbGrid (v2.8a Step 5 — 動的版)
- *
- * DESIGN_SPEC §4-5
- *
- * 12 ガラス玉モジュール grid (4 列 × 3 行)
- *
- * モジュール並び順 (v2.8a プロトタイプ準拠):
- *   row 1: Bloom / Fruit / Seed / Forest    (樹冠レイヤー)
- *   row 2: Bud / Leaf / Tree / Sprout       (地上レイヤー)
- *   row 3: Soil / Root / Rill / Calendar    (地下レイヤー)
- *
- * href:
- *   既存 routes に合わせて、未実装モジュールは Coming Soon ページへ
- *   (V7-D-fix と同じ運用)
- *
- * Step 5: hover/click callback を全 OrbCard に forward (音再生用)
- */
-import OrbCard, { type OrbStatusTone } from "./OrbCard";
+import type { ModuleKey } from "../../_lib/module-visibility";
+import OrbitStage, { type OrbitModule } from "./OrbitStage";
 
-type ModuleDef = {
-  moduleKey: string;
-  iconSrc: string;
-  label: string;
-  description: string;
-  statusLabel: string;
-  statusValue: string;
-  statusTone?: OrbStatusTone;
-  href: string;
-};
-
-const MODULES: ModuleDef[] = [
-  // ===== row 1: 樹冠レイヤー =====
+const MODULES: OrbitModule[] = [
   {
     moduleKey: "Bloom",
     iconSrc: "/images/icons/bloom.png",
-    label: "Bloom",
-    description: "案件一覧・日報・KPI",
-    statusLabel: "レポート更新",
-    statusValue: "3 件",
+    name: "Bloom",
+    jpName: "案件・KPI",
+    description: "案件一覧、日報、KPI、経営ダッシュボードを扱う中核モジュール。",
+    tone: "soft",
     href: "/bloom/workboard",
   },
   {
     moduleKey: "Fruit",
     iconSrc: "/images/icons/fruit.png",
-    label: "Fruit",
-    description: "法人格の実体・登記",
-    statusLabel: "登記情報",
-    statusValue: "6 法人",
+    name: "Fruit",
+    jpName: "法人実体情報",
+    description: "法人番号、登記、許認可、商標など、法人格の実体情報を管理します。",
+    tone: "strong",
     href: "/fruit",
   },
   {
     moduleKey: "Seed",
     iconSrc: "/images/icons/seed.png",
-    label: "Seed",
-    description: "新事業枠",
-    statusLabel: "構想中",
-    statusValue: "2 件",
+    name: "Seed",
+    jpName: "新事業",
+    description: "新規事業や未来の業務候補を育てるための構想モジュール。",
+    tone: "mid",
     href: "/seed",
   },
   {
     moduleKey: "Forest",
     iconSrc: "/images/icons/forest.png",
-    label: "Forest",
-    description: "全法人決算",
-    statusLabel: "対象期",
-    statusValue: "FY2026",
+    name: "Forest",
+    jpName: "全法人決算",
+    description: "グループ法人全体の決算資料と経営ダッシュボードを束ねます。",
+    tone: "mid",
     href: "/forest",
   },
-
-  // ===== row 2: 地上レイヤー =====
   {
     moduleKey: "Bud",
     iconSrc: "/images/icons/bud.png",
-    label: "Bud",
-    description: "経理・収支",
-    statusLabel: "未処理仕訳",
-    statusValue: "12 件",
-    statusTone: "alert",
+    name: "Bud",
+    jpName: "経理・取引",
+    description: "経費、振込、請求、給与など、経理と取引の流れを扱います。",
+    tone: "soft",
     href: "/bud",
   },
   {
     moduleKey: "Leaf",
     iconSrc: "/images/icons/leaf.png",
-    label: "Leaf",
-    description: "商材・トスアップ",
-    statusLabel: "承認待ち",
-    statusValue: "6 件",
-    statusTone: "warn",
+    name: "Leaf",
+    jpName: "個別アプリ",
+    description: "事業ごとに独立した業務アプリをまとめるモジュール。",
+    tone: "soft",
     href: "/leaf",
   },
   {
     moduleKey: "Tree",
     iconSrc: "/images/icons/tree.png",
-    label: "Tree",
-    description: "架電アプリ",
-    statusLabel: "架電予定",
-    statusValue: "15 件",
+    name: "Tree",
+    jpName: "架電",
+    description: "架電業務、コール履歴、KPI管理など、電話業務の中核を担います。",
+    tone: "mid",
     href: "/tree",
   },
   {
     moduleKey: "Sprout",
     iconSrc: "/images/icons/sprout.png",
-    label: "Sprout",
-    description: "採用・入社",
-    statusLabel: "選考中",
-    statusValue: "4 件",
+    name: "Sprout",
+    jpName: "採用",
+    description: "求人、面接、研修、スキル管理を通じて組織の未来を育てます。",
+    tone: "soft",
     href: "/sprout",
   },
-
-  // ===== row 3: 地下レイヤー =====
   {
     moduleKey: "Soil",
     iconSrc: "/images/icons/soil.png",
-    label: "Soil",
-    description: "DB・大量データ",
-    statusLabel: "同期最終",
-    statusValue: "5分前",
+    name: "Soil",
+    jpName: "DB基盤",
+    description: "業務リストやコール履歴など、大規模データを支える基盤。",
+    tone: "strong",
     href: "/soil",
   },
   {
     moduleKey: "Root",
     iconSrc: "/images/icons/root.png",
-    label: "Root",
-    description: "組織・顧客・マスタ",
-    statusLabel: "期限超過",
-    statusValue: "3 件",
-    statusTone: "alert",
+    name: "Root",
+    jpName: "組織・マスタ",
+    description: "すべての事業の土台となる組織、顧客、権限、設定を管理します。",
+    tone: "strong",
     href: "/root",
   },
   {
     moduleKey: "Rill",
     iconSrc: "/images/icons/rill.png",
-    label: "Rill",
-    description: "業務連絡・メッセージング",
-    statusLabel: "未読",
-    statusValue: "8 件",
-    statusTone: "warn",
+    name: "Rill",
+    jpName: "メッセージ",
+    description: "社内メッセージ、通知、各モジュールへの情報の流れを担います。",
+    tone: "mid",
     href: "/rill",
   },
   {
     moduleKey: "Calendar",
     iconSrc: "/images/icons/calendar.png",
-    label: "Calendar",
-    description: "営業予定・シフト",
-    statusLabel: "本日予定",
-    statusValue: "7 件",
+    name: "Calendar",
+    jpName: "予定管理",
+    description: "営業予定、シフト、スケジュールを整える暦のモジュール。",
+    tone: "soft",
     href: "/calendar",
   },
 ];
 
 type Props = {
-  /**
-   * 可視 module key の許可リスト（Task 2、plan §Step 2-3）。
-   * 未指定なら従来通り全 12 module を描画（後方互換）。
-   */
   visibleModules?: readonly string[];
-  /** orb hover 時 callback */
   onOrbHover?: (moduleKey: string) => void;
-  /** orb click 時 callback */
   onOrbClick?: (moduleKey: string) => void;
 };
+
+function isModuleKey(value: string): value is ModuleKey {
+  return MODULES.some((module) => module.moduleKey === value);
+}
 
 export default function OrbGrid({
   visibleModules,
   onOrbHover,
   onOrbClick,
 }: Props = {}) {
-  const filtered = visibleModules
-    ? MODULES.filter((m) => visibleModules.includes(m.moduleKey))
+  const visibleSet = visibleModules
+    ? new Set(visibleModules.filter(isModuleKey))
+    : null;
+  const filtered = visibleSet
+    ? MODULES.filter((module) => visibleSet.has(module.moduleKey))
     : MODULES;
 
   return (
-    <section
-      className="orb-grid"
-      data-visible-count={filtered.length}
-      data-role-filtered={visibleModules ? "true" : "false"}
-    >
-      {filtered.map((m) => (
-        <OrbCard
-          key={m.moduleKey}
-          moduleKey={m.moduleKey}
-          iconSrc={m.iconSrc}
-          label={m.label}
-          description={m.description}
-          statusLabel={m.statusLabel}
-          statusValue={m.statusValue}
-          statusTone={m.statusTone}
-          href={m.href}
-          onMouseEnter={onOrbHover ? () => onOrbHover(m.moduleKey) : undefined}
-          onClick={onOrbClick ? () => onOrbClick(m.moduleKey) : undefined}
-        />
-      ))}
-    </section>
+    <OrbitStage
+      modules={filtered}
+      onOrbHover={onOrbHover}
+      onOrbClick={onOrbClick}
+    />
   );
 }
