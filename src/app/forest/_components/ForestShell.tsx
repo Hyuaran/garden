@@ -8,6 +8,7 @@
  * ダッシュボードのみヘッダー + ログアウトボタンを表示する。
  */
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -52,6 +53,7 @@ export function ForestShell({ children }: { children: ReactNode }) {
 
       {/* ヘッダー */}
       {isUnlocked && (
+        <>
         <header
           style={{
             padding: "20px 32px 12px",
@@ -114,6 +116,44 @@ export function ForestShell({ children }: { children: ReactNode }) {
             </button>
           </div>
         </header>
+        <nav
+          aria-label="Forest navigation"
+          style={{
+            display: "flex",
+            gap: 8,
+            padding: "0 32px 16px",
+            flexWrap: "wrap",
+          }}
+        >
+          {[
+            { href: "/forest/dashboard", label: "ダッシュボード" },
+            { href: "/forest/shinkouki", label: "進行期の更新" },
+          ].map((item) => {
+            const active =
+              pathname === item.href ||
+              (item.href === "/forest/shinkouki" &&
+                pathname.startsWith("/forest/shinkouki"));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: 999,
+                  border: `1px solid ${active ? C.lightGreen : "rgba(64,145,108,0.18)"}`,
+                  background: active ? "rgba(216,243,220,0.72)" : "rgba(255,255,255,0.45)",
+                  color: active ? C.darkGreen : FOREST_THEME.textSecondary,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+        </>
       )}
 
       {/* 本文 */}
