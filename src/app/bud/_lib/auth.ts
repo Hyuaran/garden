@@ -1,25 +1,21 @@
 /**
- * Garden-Bud — 認証ヘルパー
+ * Garden-Bud auth helpers.
  *
- * - signInBud(empId, password): 社員番号+擬似メールで認証
- * - signOutBud(): Bud セッション終了
- * - isBudUnlocked(): セッション有効性チェック（経理系は厳しめに2時間）
- * - touchBudSession(): 操作ごとに最終操作時刻を更新
- *
- * Tree の auth.ts と同じパターン。セッション長は経理アプリなので
- * Tree の 8時間より短く 2時間にする。
+ * Bud keeps its own two-hour gate, but the unlock timestamp is shared with
+ * unified auth under the common `bud:unlockedAt` session key.
  */
 
+import {
+  clearAuthSession,
+  isAuthSessionUnlocked,
+  touchAuthSession,
+  unlockAuthSession,
+} from "../../_lib/auth-unified";
 import { supabase } from "./supabase";
 
-const BUD_UNLOCKED_KEY = "budUnlockedAt";
-
-/** Bud セッションの有効期間（経理系なので短め） */
-const BUD_SESSION_HOURS = 2;
-
 /**
- * 社員番号 → 擬似メール変換
- * 例: "8" または "0008" → "emp0008@garden.internal"
+ * Convert an employee number to the synthetic auth email used by Garden.
+ * Example: "8" or "0008" -> "emp0008@garden.internal".
  */
 export function toSyntheticEmail(empId: string): string {
   const digits = empId.replace(/\D/g, "").padStart(4, "0");
@@ -27,10 +23,8 @@ export function toSyntheticEmail(empId: string): string {
 }
 
 /**
- * 社員番号 + パスワードで Supabase Auth にサインイン（認証のみ）
- *
- * 権限チェック（garden_role と bud_users の確認）は
- * BudStateContext.refreshAuth で行う。
+ * Sign in to Supabase Auth only. Bud permission checks happen in
+ * BudStateContext.refreshAuth after the auth token is established.
  */
 export async function signInBud(
   empId: string,
@@ -53,46 +47,40 @@ export async function signInBud(
     };
   }
 
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem(BUD_UNLOCKED_KEY, Date.now().toString());
-  }
+  unlockAuthSession("bud");
   return { success: true, userId: data.user.id };
 }
 
-/** Bud セッション + Supabase Auth セッションを終了 */
+/** End the Bud session and the Supabase Auth session. */
 export async function signOutBud(): Promise<void> {
-  if (typeof window !== "undefined") {
-    sessionStorage.removeItem(BUD_UNLOCKED_KEY);
-  }
+  clearBudUnlock();
   await supabase.auth.signOut();
 }
 
-/** Bud セッションが有効か（最終操作から 2時間以内か） */
+/** Whether the Bud two-hour gate is currently unlocked. */
 export function isBudUnlocked(): boolean {
-  if (typeof window === "undefined") return false;
-  const raw = sessionStorage.getItem(BUD_UNLOCKED_KEY);
-  if (!raw) return false;
-  const unlockedAt = parseInt(raw, 10);
-  const TIMEOUT_MS = BUD_SESSION_HOURS * 60 * 60 * 1000;
-  return Date.now() - unlockedAt < TIMEOUT_MS;
+  return isAuthSessionUnlocked("bud");
 }
 
-/** 操作ごとにアクティビティ時刻を更新 */
+/** Refresh the Bud unlock timestamp after activity. */
 export function touchBudSession(): void {
-  if (typeof window === "undefined") return;
-  if (isBudUnlocked()) {
-    sessionStorage.setItem(BUD_UNLOCKED_KEY, Date.now().toString());
-  }
+  touchAuthSession("bud");
 }
 
-/** Bud セッションを強制クリア（権限チェック失敗時など） */
+/** Clear only the Bud unlock key. */
 export function clearBudUnlock(): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(BUD_UNLOCKED_KEY);
+  clearAuthSession("bud");
 }
 
-/** 現在の Supabase Auth セッション取得 */
+/** Return the current Supabase Auth session after forcing user resolution. */
 export async function getSession() {
+  await supabase.auth.getUser();
   const { data } = await supabase.auth.getSession();
   return data.session;
+}
+
+/** Return the current Supabase Auth user. */
+export async function getUser() {
+  const { data } = await supabase.auth.getUser();
+  return data.user;
 }
