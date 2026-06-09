@@ -22,6 +22,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 import { supabase } from "../bloom/_lib/supabase";
 import type { GardenRole } from "../root/_constants/types";
@@ -33,6 +34,11 @@ export type ModuleKey = "bloom" | "forest" | "tree" | "bud" | "root" | "leaf";
 const ALL_MODULES: ModuleKey[] = ["bloom", "forest", "tree", "bud", "root", "leaf"];
 
 const SESSION_KEY = (m: ModuleKey) => `${m}:unlockedAt`;
+
+export function unlockAuthSession(moduleKey: ModuleKey): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(SESSION_KEY(moduleKey), Date.now().toString());
+}
 
 // ============================================================
 // Synthetic Email
@@ -148,7 +154,7 @@ export function isAuthSessionUnlocked(moduleKey: ModuleKey = "bloom"): boolean {
 export function touchAuthSession(moduleKey: ModuleKey): void {
   if (typeof window === "undefined") return;
   if (isAuthSessionUnlocked(moduleKey)) {
-    sessionStorage.setItem(SESSION_KEY(moduleKey), Date.now().toString());
+    unlockAuthSession(moduleKey);
   }
 }
 
@@ -218,7 +224,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mounted) setLoading(false);
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((
+      _event: AuthChangeEvent,
+      session: Session | null,
+    ) => {
       const uid = session?.user.id ?? null;
       setUserId(uid);
       if (uid) {
