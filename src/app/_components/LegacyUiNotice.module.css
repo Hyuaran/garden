@@ -1,0 +1,88 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-left: 10px;
+  padding: 0 10px;
+  border: 1px solid rgba(171, 128, 44, 0.32);
+  border-radius: 999px;
+  background: rgba(255, 248, 224, 0.9);
+  color: #735621;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.toast {
+  position: fixed;
+  z-index: 10000;
+  top: 18px;
+  left: 50%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  width: min(520px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border: 1px solid rgba(171, 128, 44, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 252, 242, 0.96);
+  box-shadow: 0 18px 56px rgba(64, 54, 29, 0.18);
+  color: #463b20;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -12px);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.toastVisible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.toastTitle {
+  margin: 0 0 3px;
+  color: #6f511c;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.toastBody {
+  margin: 0;
+  color: rgba(70, 59, 32, 0.76);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(120, 93, 36, 0.1);
+  color: #6f511c;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.close:hover {
+  background: rgba(120, 93, 36, 0.16);
+}
+
+@media (max-width: 640px) {
+  .badge {
+    margin-left: 0;
+    margin-top: 6px;
+  }
+}

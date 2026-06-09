@@ -166,44 +166,18 @@
   line-height: 1;
 }
 
-.protoBanner {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
-  padding: 16px 18px;
-  border: 1px solid rgba(176, 142, 62, 0.28);
-  border-radius: 12px;
-  background:
-    linear-gradient(135deg, rgba(255, 249, 224, 0.94), rgba(237, 247, 221, 0.86)),
-    rgba(255, 255, 255, 0.74);
-  color: #4d5e2f;
-  box-shadow: 0 16px 42px rgba(84, 86, 45, 0.12);
-}
-
-.protoBannerIcon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  background: rgba(176, 142, 62, 0.16);
-  color: #8a6a2d;
-  font-weight: 800;
-}
-
-.protoBanner strong {
-  display: block;
-  margin-bottom: 4px;
-  color: #6e5524;
-  font-size: 0.96rem;
-}
-
-.protoBanner p {
-  margin: 0;
-  color: rgba(72, 83, 50, 0.76);
+.breadcrumb {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: rgba(49, 70, 45, 0.68);
   font-size: 0.86rem;
-  line-height: 1.65;
+  font-weight: 700;
+}
+
+.breadcrumb strong {
+  color: #31562c;
 }
 
 .protoShell {
@@ -225,32 +199,10 @@
   background: rgba(250, 253, 242, 0.86);
 }
 
-.protoTabs {
-  display: inline-flex;
-  gap: 8px;
-  padding: 4px;
-  border: 1px solid rgba(103, 132, 77, 0.16);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.68);
-}
-
-.protoTab {
-  min-height: 36px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: rgba(49, 70, 45, 0.72);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 700;
-}
-
-.protoTabActive {
-  background: linear-gradient(135deg, #6f8d45, #9ab85d);
-  color: #fffef7;
-  box-shadow: 0 8px 20px rgba(82, 112, 46, 0.22);
+.protoTitle {
+  color: #31562c;
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
 .protoLink {
@@ -316,11 +268,7 @@
     flex-direction: column;
   }
 
-  .protoTabs {
+  .protoTitle {
     width: 100%;
-  }
-
-  .protoTab {
-    flex: 1;
   }
 }
