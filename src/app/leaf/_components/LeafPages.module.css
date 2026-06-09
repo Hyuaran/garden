@@ -1,7 +1,8 @@
 .pageStack {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  /* Forest ダッシュボード(pageStack gap:18px)と見出し下の余白を揃える */
+  gap: 18px;
   padding-bottom: 48px;
 }
 
