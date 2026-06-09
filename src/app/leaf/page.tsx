@@ -1,12 +1,5 @@
-import { ComingSoonPage } from "../_components/ComingSoonPage";
+import LeafOverview from "./_components/LeafOverview";
 
 export default function LeafPage() {
-  return (
-    <ComingSoonPage
-      moduleName="Leaf"
-      nameJa="葉"
-      description="商材×商流ごとの個別アプリ（約 30 テーブル）・トスアップ"
-      phase="Phase B"
-    />
-  );
+  return <LeafOverview />;
 }
