@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MASTER_MENUS } from "./_constants/types";
 import { colors } from "./_constants/colors";
 import { PageHeader } from "./_components/PageHeader";
+import LegacyUiNotice from "@/app/_components/LegacyUiNotice";
 
 export default function RootTopPage() {
   return (
@@ -11,6 +12,13 @@ export default function RootTopPage() {
       <PageHeader
         title="マスタ管理"
         description="Garden シリーズ全モジュールで参照される基礎マスタ。削除は不可、無効化で管理します。"
+        titleAddon={
+          <LegacyUiNotice
+            badgeLabel="旧UI・新UI切替予定"
+            toastTitle="旧UI・新UI切替予定"
+            toastBody="Garden Shell への切替を予定しています。既存機能はそのまま利用できます。"
+          />
+        }
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
