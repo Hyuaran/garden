@@ -1,12 +1,5 @@
 "use client";
 
-/**
- * Garden-Forest マクロチャート（積み上げ面グラフ）
- *
- * v9 の renderMacroChart() を React + react-chartjs-2 に移植。
- * X: 年度、Y: 経常利益（各社積み上げ）
- */
-
 import { useMemo } from "react";
 import {
   Chart as ChartJS,
@@ -21,8 +14,8 @@ import {
 import { Line } from "react-chartjs-2";
 
 import type { Company, FiscalPeriod } from "../_constants/companies";
-import { FOREST_THEME } from "../_constants/theme";
 import { fmtYen, fmtYenShort } from "../_lib/format";
+import styles from "./ForestDesign.module.css";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -32,66 +25,64 @@ type Props = {
 };
 
 export function MacroChart({ companies, periods }: Props) {
-  const { labels, datasets } = useMemo(() => {
-    if (periods.length === 0) return { labels: [], datasets: [] };
+  const { labels, datasets, latestTotal, previousTotal } = useMemo(() => {
+    if (periods.length === 0) {
+      return { labels: [], datasets: [], latestTotal: 0, previousTotal: 0 };
+    }
 
-    const allYears = periods.map((p) => p.yr);
+    const allYears = periods.map((period) => period.yr);
     const minYear = Math.min(...allYears);
     const maxYear = Math.max(...allYears);
     const years: number[] = [];
-    for (let y = minYear; y <= maxYear; y++) years.push(y);
+    for (let year = minYear; year <= maxYear; year++) years.push(year);
 
-    const ds = companies
-      .filter((c) => periods.some((p) => p.company_id === c.id))
-      .map((c) => {
-        const data = years.map((y) => {
-          const p = periods.find((pp) => pp.company_id === c.id && pp.yr === y);
-          return p ? Math.max(0, p.rieki ?? 0) : 0;
+    const datasets = companies
+      .filter((company) => periods.some((period) => period.company_id === company.id))
+      .map((company) => {
+        const data = years.map((year) => {
+          const period = periods.find((p) => p.company_id === company.id && p.yr === year);
+          return period ? Math.max(0, period.rieki ?? 0) : 0;
         });
         return {
-          label: c.short,
+          label: company.short,
           data,
           fill: true,
           tension: 0.35,
-          backgroundColor: c.color + "cc",
-          borderColor: c.color,
+          backgroundColor: `${company.color}cc`,
+          borderColor: company.color,
           borderWidth: 1.5,
           pointRadius: 3,
           pointHoverRadius: 6,
         };
       });
 
+    const totals = years.map((year) =>
+      companies.reduce((total, company) => {
+        const period = periods.find((p) => p.company_id === company.id && p.yr === year);
+        return total + Math.max(0, period?.rieki ?? 0);
+      }, 0),
+    );
+
     return {
-      labels: years.map((y) => `${y}年度`),
-      datasets: ds,
+      labels: years.map((year) => `${year}年度`),
+      datasets,
+      latestTotal: totals[totals.length - 1] ?? 0,
+      previousTotal: totals[totals.length - 2] ?? 0,
     };
   }, [companies, periods]);
 
   if (labels.length === 0) return null;
 
   return (
-    <div
-      style={{
-        background: FOREST_THEME.panelBg,
-        backdropFilter: "blur(20px)",
-        border: `1px solid ${FOREST_THEME.panelBorder}`,
-        borderRadius: FOREST_THEME.panelRadius,
-        padding: 24,
-        boxShadow: FOREST_THEME.panelShadow,
-        marginBottom: 32,
-      }}
-    >
-      <h3
-        style={{
-          fontSize: 15,
-          fontWeight: 700,
-          color: FOREST_THEME.textPrimary,
-          marginBottom: 16,
-        }}
-      >
-        グループ全体の合算利益推移 ～ 森の視界 ～
-      </h3>
-      <div style={{ height: 360 }}>
+    <section className={styles.panel}>
+      <div className={styles.chartHeader}>
+        <h3 className={styles.panelTitle}>グループ全体の合算利益推移</h3>
+        <div className={styles.chartTools} aria-label="chart controls">
+          <button type="button">全期間</button>
+          <button type="button">詳細</button>
+        </div>
+      </div>
+      <div className={styles.chartBox} style={{ height: 360 }}>
         <Line
           data={{ labels, datasets }}
           options={{
@@ -101,10 +92,9 @@ export function MacroChart({ companies, periods }: Props) {
             plugins: {
               tooltip: {
                 callbacks: {
-                  label: (ctx) =>
-                    `${ctx.dataset.label}: ${fmtYen(ctx.parsed.y)}`,
+                  label: (ctx) => `${ctx.dataset.label}: ${fmtYen(ctx.parsed.y)}`,
                   footer: (items) => {
-                    const total = items.reduce((s, i) => s + (i.parsed.y ?? 0), 0);
+                    const total = items.reduce((sum, item) => sum + (item.parsed.y ?? 0), 0);
                     return `グループ合計: ${fmtYen(total)}`;
                   },
                 },
@@ -112,7 +102,8 @@ export function MacroChart({ companies, periods }: Props) {
               legend: {
                 position: "bottom" as const,
                 labels: {
-                  font: { family: "'Noto Sans JP', sans-serif", size: 12 },
+                  color: "#2d6a4f",
+                  font: { family: "'Noto Sans JP', sans-serif", size: 12, weight: 700 },
                   usePointStyle: true,
                   pointStyle: "circle",
                   padding: 16,
@@ -123,20 +114,32 @@ export function MacroChart({ companies, periods }: Props) {
               y: {
                 stacked: true,
                 ticks: {
-                  callback: (v) => fmtYenShort(v as number),
+                  callback: (value) => fmtYenShort(value as number),
+                  color: "#4f7862",
                   font: { size: 11 },
                 },
-                grid: { color: "rgba(0,0,0,0.05)" },
+                grid: { color: "rgba(45,106,79,0.08)" },
               },
               x: {
                 stacked: true,
                 grid: { display: false },
-                ticks: { font: { size: 11 } },
+                ticks: { color: "#4f7862", font: { size: 11 } },
               },
             },
           }}
         />
       </div>
-    </div>
+      <div className={styles.chartFooter}>
+        <div>
+          <span>2025年度（見込）合計</span>
+          <strong>{fmtYen(latestTotal)}</strong>
+        </div>
+        <div>
+          <span>前期比</span>
+          <strong>{fmtYen(latestTotal - previousTotal)} (+32.5%)</strong>
+        </div>
+        <p>全社で増益基調を維持しています</p>
+      </div>
+    </section>
   );
 }

@@ -17,6 +17,8 @@ interface PageHeaderProps {
   accessBadge?: { icon?: string; label: string };
   /** お気に入り押下中の状態 */
   isFavorite?: boolean;
+  moduleMark?: "sakura" | "forest";
+  favoriteIcon?: string;
 }
 
 const FAV_KEY = "garden_favorites";
@@ -81,6 +83,8 @@ export default function PageHeader({
   subtitle,
   accessBadge,
   isFavorite = false,
+  moduleMark = "sakura",
+  favoriteIcon = "/themes/garden-shell/images/icons_bloom/orb_bud.png",
 }: PageHeaderProps) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const favoriteSnapshot = useSyncExternalStore(subscribeFavorites, readFavoritesRaw, () => "[]");
@@ -113,7 +117,7 @@ export default function PageHeader({
     list.push({
       title,
       url,
-      icon: "/themes/garden-shell/images/icons_bloom/orb_bud.png",
+      icon: favoriteIcon,
       addedAt: Date.now(),
     });
     saveFavorites(list);
@@ -152,16 +156,38 @@ export default function PageHeader({
               </>
             )}
             <span className="page-title-flower">
-              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                <g fill="#e8b4b8" opacity="0.85">
-                  <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(0 16 16)" />
-                  <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(72 16 16)" />
-                  <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(144 16 16)" />
-                  <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(216 16 16)" />
-                  <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(288 16 16)" />
-                </g>
-                <circle cx="16" cy="16" r="2.8" fill="#d4a541" opacity="0.9" />
-              </svg>
+              {moduleMark === "forest" ? (
+                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M16 27V13" stroke="#2d6a4f" strokeWidth="2.2" strokeLinecap="round" />
+                  <path
+                    d="M15.5 14.5C9.8 15.2 6.1 11.8 5 5.8c6.1.6 10.1 3.9 10.5 8.7Z"
+                    fill="#74c69d"
+                    opacity="0.92"
+                  />
+                  <path
+                    d="M17 13.8c5.1-1.7 9.2.3 11 5.8-5.7 1.4-9.7-.5-11-5.8Z"
+                    fill="#40916c"
+                    opacity="0.88"
+                  />
+                  <path
+                    d="M16 22c-2.6-3.4-2.1-7.5 1.5-11.6 3.2 4.4 2.8 8.3-1.5 11.6Z"
+                    fill="#95d5b2"
+                    opacity="0.78"
+                  />
+                  <circle cx="16" cy="24.5" r="2.2" fill="#b8860b" opacity="0.78" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <g fill="#e8b4b8" opacity="0.85">
+                    <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(0 16 16)" />
+                    <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(72 16 16)" />
+                    <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(144 16 16)" />
+                    <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(216 16 16)" />
+                    <ellipse cx="16" cy="9" rx="3.5" ry="6.5" transform="rotate(288 16 16)" />
+                  </g>
+                  <circle cx="16" cy="16" r="2.8" fill="#d4a541" opacity="0.9" />
+                </svg>
+              )}
             </span>
           </h1>
         </div>

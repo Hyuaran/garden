@@ -14,9 +14,13 @@
  * 設計ドキュメント: docs/auth/login-implementation-guide.md
  */
 
+import {
+  clearAuthSession,
+  isAuthSessionUnlocked,
+  touchAuthSession,
+  unlockAuthSession,
+} from "../../_lib/auth-unified";
 import { supabase } from "./supabase";
-
-const FOREST_UNLOCKED_KEY = "forestUnlockedAt";
 
 /**
  * 社員番号 → 擬似メールアドレス変換
@@ -60,44 +64,36 @@ export async function signInForest(
   }
 
   // ゲート通過時刻を sessionStorage に記録（refreshAuth の isForestUnlocked 用）
-  sessionStorage.setItem(FOREST_UNLOCKED_KEY, Date.now().toString());
+  unlockAuthSession("forest");
   return { success: true, userId: data.user.id };
 }
 
 /** Forest セッション + Supabase Auth セッションを終了 */
 export async function signOutForest(): Promise<void> {
   if (typeof window !== "undefined") {
-    sessionStorage.removeItem(FOREST_UNLOCKED_KEY);
+    clearForestUnlock();
   }
   await supabase.auth.signOut();
 }
 
 /** Forest ゲートが有効か（2時間以内にパスワード入力済みか） */
 export function isForestUnlocked(): boolean {
-  if (typeof window === "undefined") return false;
-  const raw = sessionStorage.getItem(FOREST_UNLOCKED_KEY);
-  if (!raw) return false;
-  const unlockedAt = parseInt(raw, 10);
-  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-  return Date.now() - unlockedAt < TWO_HOURS_MS;
+  return isAuthSessionUnlocked("forest");
 }
 
 /** Forest ゲートのアクティビティ更新（操作があるたびに呼ぶ） */
 export function touchForestSession(): void {
-  if (typeof window === "undefined") return;
-  if (isForestUnlocked()) {
-    sessionStorage.setItem(FOREST_UNLOCKED_KEY, Date.now().toString());
-  }
+  touchAuthSession("forest");
 }
 
 /** Forest ゲート強制ロック（権限チェック失敗時など） */
 export function clearForestUnlock(): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(FOREST_UNLOCKED_KEY);
+  clearAuthSession("forest");
 }
 
 /** 現在の Garden Auth セッション取得 */
 export async function getSession() {
+  await supabase.auth.getUser();
   const { data } = await supabase.auth.getSession();
   return data.session;
 }

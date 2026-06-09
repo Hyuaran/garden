@@ -81,6 +81,13 @@ export async function fetchShinkouki(): Promise<Shinkouki[]> {
 export async function fetchForestUser(
   userId: string
 ): Promise<ForestUser | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return null;
+  }
+
   const { data, error } = await supabase
     .from("forest_users")
     .select("*")

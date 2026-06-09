@@ -48,12 +48,14 @@ const samplePeriod: FiscalPeriod = {
 };
 
 describe("MacroChart - title (T-F3-F8)", () => {
-  it("renders the v9 branded title with 森の視界", () => {
+  it("renders the dashboard mock title", () => {
     render(<MacroChart companies={[hyuaran]} periods={[samplePeriod]} />);
 
     expect(
-      screen.getByText(/グループ全体の合算利益推移 ～ 森の視界 ～/),
+      screen.getByText(/グループ全体の合算利益推移/),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "全期間" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "詳細" })).toBeInTheDocument();
   });
 
   it("renders the Line chart when periods are non-empty", () => {

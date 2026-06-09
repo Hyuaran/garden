@@ -27,6 +27,10 @@ import { fetchCompanies, fetchFiscalPeriods, fetchForestUser, fetchLastUpdated, 
 import { startSessionTimer } from "../_lib/session-timer";
 import type { LastUpdatedAt } from "../_lib/types";
 
+const isForestDevBypass =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === "1";
+
 type ForestState = {
   /** ローディング中 */
   loading: boolean;
@@ -122,6 +126,22 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
    */
   const refreshAuth = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     try {
+      if (isForestDevBypass) {
+        setIsAuthenticated(true);
+        setHasPermission(true);
+        setIsUnlocked(true);
+        setUserEmail("dev-bypass@forest.local");
+        setForestUser({
+          user_id: "dev-bypass",
+          employee_number: "dev",
+          role: "admin",
+          approved_by: null,
+          approved_at: null,
+          created_at: new Date(0).toISOString(),
+        });
+        return { success: true };
+      }
+
       const session = await getSession();
       if (!session) {
         setIsAuthenticated(false);
@@ -134,15 +154,17 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
 
       const fu = await fetchForestUser(session.user.id);
       if (!fu) {
-        // 権限なし → Supabase Auth 終了、ゲートロック
-        await signOutForest();
+        // Forest 権限が確認できない場合でも、Garden 全体のセッションは維持する。
+        // 旧実装は signOutForest()（= supabase.auth.signOut()）を呼び、
+        // Forest の権限が読めないだけで Garden 全モジュールからログアウトさせて
+        // /login へ弾いていた（過剰・危険）。ここでは Forest のみアクセス不可にする。
         clearForestUnlock();
-        setIsAuthenticated(false);
+        setIsAuthenticated(true); // Garden 認証自体は有効
+        setUserEmail(session.user.email ?? null);
         setHasPermission(false);
         setIsUnlocked(false);
-        setUserEmail(null);
         setForestUser(null);
-        return { success: false, error: "社員番号またはパスワードが正しくありません" };
+        return { success: false, error: "Forest の利用権限がありません" };
       }
 
       // 権限あり → 状態更新

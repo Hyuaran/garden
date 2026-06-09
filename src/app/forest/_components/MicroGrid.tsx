@@ -1,27 +1,19 @@
 "use client";
 
-/**
- * Garden-Forest ミクログリッド
- *
- * 6法人 × 年度 のマトリクス。各セルに売上/外注/利益 + ミニバー。
- * 進行期はゴールドバッジ。クリックで DetailModal。
- * v9 の renderMicroGrid() を React 化。
- */
-
 import { useMemo, useState } from "react";
 
 import type { CellData, Company, FiscalPeriod, Shinkouki } from "../_constants/companies";
-import { FOREST_THEME } from "../_constants/theme";
 import { C } from "../_constants/colors";
-import { fmtYen } from "../_lib/format";
+import { FOREST_THEME } from "../_constants/theme";
 import { writeAuditLog } from "../_lib/audit";
+import { fmtYen } from "../_lib/format";
 import { DetailModal } from "./DetailModal";
+import styles from "./ForestDesign.module.css";
 
 type Props = {
   companies: Company[];
   periods: FiscalPeriod[];
   shinkouki: Shinkouki[];
-  /** 進行期セルクリック時のハンドラ（admin のみ渡す）。undefined なら DetailModal にフォールバック */
   onEditShinkouki?: (companyId: string) => void;
 };
 
@@ -29,10 +21,7 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
   const [selectedCell, setSelectedCell] = useState<CellData | null>(null);
 
   const years = useMemo(() => {
-    const allYears = [
-      ...periods.map((p) => p.yr),
-      ...shinkouki.map((s) => s.yr),
-    ];
+    const allYears = [...periods.map((p) => p.yr), ...shinkouki.map((s) => s.yr)];
     if (allYears.length === 0) return [];
     const min = Math.min(...allYears);
     const max = Math.max(...allYears);
@@ -41,25 +30,20 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
     return result;
   }, [periods, shinkouki]);
 
-  // グループ計
-  const groupTotals = useMemo(() => {
-    return years.map((y) => {
-      let total = 0;
-      companies.forEach((c) => {
-        const p = periods.find((pp) => pp.company_id === c.id && pp.yr === y);
-        if (p) {
-          total += p.uriage ?? 0;
-        } else {
-          const sk = shinkouki.find((s) => s.company_id === c.id && s.yr === y);
-          if (sk?.uriage != null) total += sk.uriage;
-        }
-      });
-      return total;
-    });
-  }, [years, companies, periods, shinkouki]);
+  const groupTotals = useMemo(
+    () =>
+      years.map((year) =>
+        companies.reduce((total, company) => {
+          const period = periods.find((p) => p.company_id === company.id && p.yr === year);
+          if (period) return total + (period.uriage ?? 0);
+          const active = shinkouki.find((s) => s.company_id === company.id && s.yr === year);
+          return total + (active?.uriage ?? 0);
+        }, 0),
+      ),
+    [years, companies, periods, shinkouki],
+  );
 
   const handleCellClick = (cellData: CellData) => {
-    // 進行期セルで admin なら編集モーダル、それ以外は詳細モーダル
     if (cellData.isShinkouki && onEditShinkouki) {
       onEditShinkouki(cellData.company.id);
       return;
@@ -72,215 +56,173 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
 
   return (
     <>
-      {/* グループ計 */}
-      <div
-        style={{
-          background: FOREST_THEME.panelBg,
-          backdropFilter: "blur(20px)",
-          border: `1px solid ${FOREST_THEME.panelBorder}`,
-          borderRadius: FOREST_THEME.panelRadius,
-          padding: "16px 24px",
-          boxShadow: FOREST_THEME.panelShadow,
-          marginBottom: 16,
-          overflowX: "auto",
-        }}
-      >
-        <div style={{ display: "flex", gap: 0, minWidth: years.length * 130 + 160 }}>
-          <div style={{ width: 160, flexShrink: 0, fontWeight: 700, fontSize: 13, padding: "8px 0" }}>
-            グループ計
+      <section className={`${styles.panel} ${styles.matrixWrap}`}>
+        <h3 className={styles.panelTitle}>Group Total</h3>
+        <div style={{ display: "flex", minWidth: years.length * 130 + 170 }}>
+          <div style={{ width: 170, flexShrink: 0, color: "#1b4332", fontWeight: 800 }}>
+            売上合計
           </div>
-          {years.map((y, i) => (
+          {years.map((year, index) => (
             <div
-              key={y}
+              key={year}
               style={{
                 width: 130,
                 flexShrink: 0,
-                textAlign: "center",
-                padding: "8px 4px",
+                color: groupTotals[index] > 0 ? "#1b4332" : "#8aa592",
                 fontSize: 13,
-                fontWeight: 700,
-                color: groupTotals[i] > 0 ? FOREST_THEME.textPrimary : FOREST_THEME.textMuted,
+                fontWeight: 800,
+                textAlign: "center",
               }}
             >
-              {groupTotals[i] > 0 ? fmtYen(groupTotals[i]) : "―"}
+              {groupTotals[index] > 0 ? fmtYen(groupTotals[index]) : "-"}
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* メイングリッド */}
-      <div
-        style={{
-          background: FOREST_THEME.panelBg,
-          backdropFilter: "blur(20px)",
-          border: `1px solid ${FOREST_THEME.panelBorder}`,
-          borderRadius: FOREST_THEME.panelRadius,
-          padding: 24,
-          boxShadow: FOREST_THEME.panelShadow,
-          marginBottom: 32,
-          overflowX: "auto",
-        }}
-      >
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: years.length * 130 + 160 }}>
+      <section className={`${styles.panel} ${styles.matrixWrap}`}>
+        <h3 className={styles.panelTitle}>6法人マトリクス</h3>
+        <table className={styles.matrixTable} style={{ minWidth: years.length * 130 + 170 }}>
           <thead>
             <tr>
-              <th style={{ width: 160, textAlign: "left", padding: "8px 0", fontSize: 12, color: FOREST_THEME.textMuted }}>
-                法人
-              </th>
-              {years.map((y) => (
-                <th key={y} style={{ width: 130, textAlign: "center", padding: "8px 4px", fontSize: 12, color: FOREST_THEME.textMuted }}>
-                  {`${y}年度`}
+              <th style={{ width: 170 }}>法人</th>
+              {years.map((year) => (
+                <th key={year} style={{ width: 130 }}>
+                  {year}年度
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {companies.map((c) => {
-              const sk = shinkouki.find((s) => s.company_id === c.id);
-              const compPeriods = periods.filter((p) => p.company_id === c.id);
+            {companies.map((company) => {
+              const activePeriod = shinkouki.find((s) => s.company_id === company.id);
+              const companyPeriods = periods.filter((p) => p.company_id === company.id);
               const allValues = [
-                ...compPeriods.map((p) => p.uriage ?? 0),
-                ...compPeriods.filter((p) => p.gaichuhi != null).map((p) => p.gaichuhi!),
-                ...compPeriods.map((p) => Math.abs(p.rieki ?? 0)),
+                ...companyPeriods.map((p) => p.uriage ?? 0),
+                ...companyPeriods.filter((p) => p.gaichuhi != null).map((p) => p.gaichuhi!),
+                ...companyPeriods.map((p) => Math.abs(p.rieki ?? 0)),
               ];
-              if (sk?.uriage != null) allValues.push(sk.uriage);
-              if (sk?.gaichuhi != null) allValues.push(sk.gaichuhi);
-              if (sk?.rieki != null) allValues.push(Math.abs(sk.rieki));
+              if (activePeriod?.uriage != null) allValues.push(activePeriod.uriage);
+              if (activePeriod?.gaichuhi != null) allValues.push(activePeriod.gaichuhi);
+              if (activePeriod?.rieki != null) allValues.push(Math.abs(activePeriod.rieki));
               const maxVal = Math.max(...allValues, 1);
 
               return (
-                <tr key={c.id}>
-                  <td style={{ padding: "10px 0", borderTop: "1px solid #f0f0f0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: c.color, flexShrink: 0 }} />
+                <tr key={company.id}>
+                  <td className={styles.matrixCompanyCell}>
+                    <div className={styles.companyLine}>
+                      <span className={styles.companyDot} style={{ background: company.color }} />
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>{c.short}</div>
-                        <div style={{ fontSize: 10, color: FOREST_THEME.textMuted }}>{`${c.kessan}決算`}</div>
+                        <div className={styles.companyName}>{company.short}</div>
+                        <div style={{ color: "#6c8d78", fontSize: 10 }}>{company.kessan}決算</div>
                       </div>
                     </div>
                   </td>
-                  {years.map((y) => {
-                    const p = compPeriods.find((pp) => pp.yr === y);
-                    const isSK = !p && sk?.yr === y;
-                    const src = p ?? (isSK ? sk : null);
+                  {years.map((year) => {
+                    const period = companyPeriods.find((p) => p.yr === year);
+                    const isActive = !period && activePeriod?.yr === year;
+                    const source = period ?? (isActive ? activePeriod : null);
 
-                    if (!src) {
+                    if (!source) {
                       return (
-                        <td key={y} style={{ textAlign: "center", padding: 8, borderTop: "1px solid #f0f0f0", color: "#ccc", fontSize: 12 }}>
-                          ―
+                        <td key={year} className={styles.matrixDataCell}>
+                          <div className={styles.emptyCell}>-</div>
                         </td>
                       );
                     }
 
-                    const hasU = src.uriage != null;
-                    const hasG = src.gaichuhi != null;
-                    const hasR = src.rieki != null;
-                    const isNeg = hasR && src.rieki! < 0;
-                    const barU = hasU ? Math.round(Math.sqrt(Math.max(0, src.uriage!) / maxVal) * 40) : 0;
-                    const barG = hasG ? Math.round(Math.sqrt(Math.max(0, src.gaichuhi!) / maxVal) * 40) : 0;
-                    const barR = hasR ? Math.round(Math.sqrt(Math.abs(src.rieki!) / maxVal) * 40) : 0;
-
+                    const hasSales = source.uriage != null;
+                    const hasOutsource = source.gaichuhi != null;
+                    const hasProfit = source.rieki != null;
+                    const isNegative = hasProfit && source.rieki! < 0;
+                    const barSales = hasSales ? Math.round(Math.sqrt(Math.max(0, source.uriage!) / maxVal) * 40) : 0;
+                    const barOutsource = hasOutsource ? Math.round(Math.sqrt(Math.max(0, source.gaichuhi!) / maxVal) * 40) : 0;
+                    const barProfit = hasProfit ? Math.round(Math.sqrt(Math.abs(source.rieki!) / maxVal) * 40) : 0;
+                    const periodData = period as FiscalPeriod | null;
+                    const activeData = activePeriod as Shinkouki | null;
                     const cellData: CellData = {
-                      company: c,
-                      ki: isSK ? sk!.ki : (p as FiscalPeriod).ki,
-                      yr: y,
-                      period_from: isSK ? sk!.range.split("~")[0] : (p as FiscalPeriod).period_from,
-                      period_to: isSK ? sk!.range.split("~")[1] : (p as FiscalPeriod).period_to,
-                      uriage: src.uriage ?? null,
-                      gaichuhi: src.gaichuhi ?? null,
-                      rieki: src.rieki ?? null,
-                      junshisan: p ? (p as FiscalPeriod).junshisan : null,
-                      genkin: p ? (p as FiscalPeriod).genkin : null,
-                      yokin: p ? (p as FiscalPeriod).yokin : null,
-                      doc_url: p ? (p as FiscalPeriod).doc_url : null,
-                      isShinkouki: !!isSK,
-                      reflected: isSK ? sk!.reflected : null,
-                      zantei: isSK ? sk!.zantei : false,
+                      company,
+                      ki: isActive ? activeData!.ki : periodData!.ki,
+                      yr: year,
+                      period_from: isActive ? activeData!.range.split("~")[0] : periodData!.period_from,
+                      period_to: isActive ? activeData!.range.split("~")[1] : periodData!.period_to,
+                      uriage: source.uriage ?? null,
+                      gaichuhi: source.gaichuhi ?? null,
+                      rieki: source.rieki ?? null,
+                      junshisan: periodData ? periodData.junshisan : null,
+                      genkin: periodData ? periodData.genkin : null,
+                      yokin: periodData ? periodData.yokin : null,
+                      doc_url: periodData ? periodData.doc_url : null,
+                      isShinkouki: !!isActive,
+                      reflected: isActive ? activeData!.reflected : null,
+                      zantei: isActive ? activeData!.zantei : false,
                     };
 
                     return (
-                      <td
-                        key={y}
-                        onClick={() => handleCellClick(cellData)}
-                        style={{
-                          padding: 6,
-                          borderTop: "1px solid #f0f0f0",
-                          cursor: "pointer",
-                          verticalAlign: "top",
-                        }}
-                      >
-                        <div
-                          style={{
-                            background: isSK ? "rgba(184,134,11,0.06)" : "rgba(27,67,50,0.03)",
-                            borderRadius: 10,
-                            padding: "8px 10px",
-                            border: isSK ? "1px solid rgba(184,134,11,0.2)" : "1px solid transparent",
-                            transition: "background 0.15s",
-                          }}
+                      <td key={year} className={styles.matrixDataCell}>
+                        <button
+                          type="button"
+                          className={`${styles.matrixMiniCard} ${isActive ? styles.matrixMiniCardShinkou : ""}`}
+                          onClick={() => handleCellClick(cellData)}
                         >
-                          {/* 期バッジ */}
-                          <div
-                            style={{
-                              display: "inline-block",
-                              padding: "1px 8px",
-                              borderRadius: 4,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              color: "#fff",
-                              background: isSK ? FOREST_THEME.shinkouBadge : c.color,
-                              marginBottom: 6,
-                            }}
+                          <span
+                            className={styles.kiBadge}
+                            style={{ background: isActive ? FOREST_THEME.shinkouBadge : company.color }}
                           >
-                            {`第${cellData.ki}期`}
-                          </div>
-
-                          {/* メトリクス */}
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <div style={{ flex: 1, fontSize: 10, lineHeight: 1.8 }}>
-                              <div>
-                                <span style={{ color: FOREST_THEME.textMuted }}>売上 </span>
-                                <span style={{ fontWeight: 600 }}>{hasU ? fmtYen(src.uriage!) : "―"}</span>
+                            第{cellData.ki}期
+                          </span>
+                          {isActive ? (
+                            <div className={styles.collectingCell}>
+                              <strong>集計中</strong>
+                              <span>進行期データを更新できます</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className={styles.metricLine}>
+                                <span>売上</span>
+                                <span className={styles.metricValue}>{hasSales ? fmtYen(source.uriage!) : "-"}</span>
                               </div>
-                              <div>
-                                <span style={{ color: FOREST_THEME.textMuted }}>外注 </span>
-                                <span style={{ fontWeight: 600 }}>{hasG ? fmtYen(src.gaichuhi!) : "―"}</span>
-                              </div>
-                              <div>
-                                <span style={{ color: FOREST_THEME.textMuted }}>利益 </span>
-                                <span style={{ fontWeight: 600, color: isNeg ? FOREST_THEME.negative : FOREST_THEME.positive }}>
-                                  {hasR ? fmtYen(src.rieki!) : "―"}
+                              <div className={styles.metricLine}>
+                                <span>外注</span>
+                                <span className={styles.metricValue}>
+                                  {hasOutsource ? fmtYen(source.gaichuhi!) : "-"}
                                 </span>
                               </div>
-                            </div>
-
-                            {/* ミニバー */}
-                            <div style={{ display: "flex", alignItems: "flex-end", gap: 2 }}>
-                              {hasU && <div style={{ width: 4, height: Math.max(barU, 2), background: C.midGreen, borderRadius: 2 }} />}
-                              {hasG && <div style={{ width: 4, height: Math.max(barG, 2), background: C.paleGreen, borderRadius: 2 }} />}
-                              {hasR && (
-                                <div
-                                  style={{
-                                    width: 4,
-                                    height: isNeg ? 5 : Math.max(barR, 2),
-                                    background: isNeg ? C.red : C.accentGreen,
-                                    borderRadius: 2,
-                                  }}
-                                />
-                              )}
-                            </div>
-                          </div>
-
-                          {/* 期間表示 */}
-                          <div style={{ fontSize: 9, color: FOREST_THEME.textMuted, marginTop: 4 }}>
-                            {`${cellData.period_from}~${cellData.period_to}`}
-                            {isSK && sk!.reflected && (
+                              <div className={styles.metricLine}>
+                                <span>利益</span>
+                                <span
+                                  className={styles.metricValue}
+                                  style={{ color: isNegative ? FOREST_THEME.negative : FOREST_THEME.positive }}
+                                >
+                                  {hasProfit ? fmtYen(source.rieki!) : "-"}
+                                </span>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, minHeight: 42, marginTop: 8 }}>
+                                {hasSales && <span style={{ width: 5, height: Math.max(barSales, 2), background: C.midGreen, borderRadius: 999 }} />}
+                                {hasOutsource && <span style={{ width: 5, height: Math.max(barOutsource, 2), background: C.paleGreen, borderRadius: 999 }} />}
+                                {hasProfit && (
+                                  <span
+                                    style={{
+                                      width: 5,
+                                      height: isNegative ? 6 : Math.max(barProfit, 2),
+                                      background: isNegative ? C.red : C.accentGreen,
+                                      borderRadius: 999,
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            </>
+                          )}
+                          <div style={{ color: "#6c8d78", fontSize: 9, marginTop: 6 }}>
+                            {cellData.period_from}~{cellData.period_to}
+                            {isActive && activeData!.reflected && (
                               <>
                                 <br />
-                                {sk!.reflected}
+                                {activeData!.reflected}
                               </>
                             )}
                           </div>
-                        </div>
+                        </button>
                       </td>
                     );
                   })}
@@ -289,12 +231,9 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
             })}
           </tbody>
         </table>
-      </div>
+      </section>
 
-      {/* DetailModal */}
-      {selectedCell && (
-        <DetailModal data={selectedCell} onClose={() => setSelectedCell(null)} />
-      )}
+      {selectedCell && <DetailModal data={selectedCell} onClose={() => setSelectedCell(null)} />}
     </>
   );
 }
