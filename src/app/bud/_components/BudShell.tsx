@@ -24,9 +24,10 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/bud/dashboard", label: "ダッシュボード", icon: "📊", phase: 0 },
-  // 振込管理・入出金明細は実装済みのため開放（phase:0=有効）。給与処理(payroll)はページ未実装のため準備中のまま。
-  { href: "/bud/transfers", label: "振込管理",       icon: "💸", phase: 0 },
-  { href: "/bud/statements", label: "入出金明細",     icon: "📋", phase: 0 },
+  // 振込/明細は旧スキーマ前提の実装で本番DB(現行Root: id/corp_code)と不整合のため、
+  // GardenShell 作り直し(bud-01-top〜)で現行スキーマに合わせて再実装するまで「準備中」に戻す。
+  { href: "/bud/transfers", label: "振込管理",       icon: "💸", phase: 1 },
+  { href: "/bud/statements", label: "入出金明細",     icon: "📋", phase: 2 },
   { href: "/bud/payroll",    label: "給与処理",       icon: "💰", phase: 3 },
 ];
 
