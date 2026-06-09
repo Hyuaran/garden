@@ -17,7 +17,7 @@ interface PageHeaderProps {
   accessBadge?: { icon?: string; label: string };
   /** お気に入り押下中の状態 */
   isFavorite?: boolean;
-  moduleMark?: "sakura" | "forest";
+  moduleMark?: "sakura" | "forest" | "leaf";
   favoriteIcon?: string;
 }
 
@@ -175,6 +175,30 @@ export default function PageHeader({
                     opacity="0.78"
                   />
                   <circle cx="16" cy="24.5" r="2.2" fill="#b8860b" opacity="0.78" />
+                </svg>
+              ) : moduleMark === "leaf" ? (
+                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path
+                    d="M7 25c6.6-.7 12.9-5.8 17.8-17.8"
+                    fill="none"
+                    stroke="#557c34"
+                    strokeWidth="2.1"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M10.2 21.6C6.7 15.4 9.4 8.9 18.4 5.1c4.5 7.8 1.1 14.2-8.2 16.5Z"
+                    fill="#a4c46a"
+                    opacity="0.92"
+                  />
+                  <path
+                    d="M13.1 19.4c2.9-3.4 5.4-7.1 7.3-11.2"
+                    fill="none"
+                    stroke="#f7f3cf"
+                    strokeWidth="1.1"
+                    strokeLinecap="round"
+                    opacity="0.76"
+                  />
+                  <circle cx="8.5" cy="24.2" r="2.1" fill="#c19a43" opacity="0.82" />
                 </svg>
               ) : (
                 <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

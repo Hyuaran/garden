@@ -1,0 +1,4054 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>Garden-Leaf 関電業務委託 事務入力 v8</title>
+<style>
+:root {
+  --bg-page: #f5f3ee;
+  --bg-card: #ffffff;
+  --bg-section: #faf8f3;
+  --bg-header: #2c2c2a;
+  --text-primary: #2c2c2a;
+  --text-secondary: #5f5e5a;
+  --text-tertiary: #888780;
+  --border-line: #d3d1c7;
+  --border-soft: #e8e6dd;
+  --accent-teal: #0f6e56;
+  --accent-teal-bg: #e1f5ee;
+  --accent-teal-border: #5dcaa5;
+  --accent-amber: #854f0b;
+  --accent-amber-bg: #faeeda;
+  --accent-amber-border: #ef9f27;
+  --accent-blue: #0c447c;
+  --accent-blue-bg: #e6f1fb;
+  --accent-blue-border: #85b7eb;
+  --accent-red: #791f1f;
+  --accent-red-bg: #fcebeb;
+  --accent-red-border: #f09595;
+  --accent-purple: #3c3489;
+  --accent-purple-bg: #eeedfe;
+  --accent-yellow-bg: #fff5cc;
+  --accent-yellow-border: #e6b800;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --font-sans: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
+  --font-mono: 'SFMono-Regular', 'Consolas', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-page);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  line-height: 1.45;
+  min-width: 1280px;
+  font-size: 12.5px;
+}
+
+.page-header {
+  background: var(--bg-header);
+  color: #f5f3ee;
+  padding: 8px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-header h1 .badge {
+  background: var(--accent-teal);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.urgent-badge {
+  background: #d63a3a;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  animation: pulse 1.5s infinite;
+  box-shadow: 0 0 0 0 rgba(214,58,58,0.6);
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(214,58,58,0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(214,58,58,0); }
+  100% { box-shadow: 0 0 0 0 rgba(214,58,58,0); }
+}
+
+.stagnation-badge {
+  background: #d63a3a;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.header-right {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.record-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #d3d1c7;
+}
+
+.record-nav .counter {
+  font-family: var(--font-mono);
+  background: rgba(255,255,255,0.06);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  color: #f5f3ee;
+  font-size: 12px;
+}
+
+.record-nav .counter.found-mode {
+  background: var(--accent-yellow-bg);
+  color: var(--bg-header);
+  font-weight: 600;
+}
+
+.btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border-line);
+  background: #fff;
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.03em;
+  transition: all 0.12s;
+}
+
+.btn:hover { background: var(--bg-section); border-color: var(--text-tertiary); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-dark {
+  background: rgba(255,255,255,0.08);
+  color: #f5f3ee;
+  border-color: rgba(255,255,255,0.18);
+}
+.btn-dark:hover { background: rgba(255,255,255,0.16); }
+
+.btn-teal { background: var(--accent-teal); color: #fff; border-color: var(--accent-teal); }
+.btn-teal:hover { background: #0d5b48; }
+.btn-amber { background: var(--accent-amber-bg); color: var(--accent-amber); border-color: var(--accent-amber-border); }
+.btn-red { background: var(--accent-red-bg); color: var(--accent-red); border-color: var(--accent-red-border); }
+.btn-blue { background: var(--accent-blue-bg); color: var(--accent-blue); border-color: var(--accent-blue-border); }
+.btn-yellow { background: var(--accent-yellow-bg); color: #6b5500; border-color: var(--accent-yellow-border); }
+.btn-purple { background: var(--accent-purple-bg); color: var(--accent-purple); border-color: #c9c4f0; }
+
+.action-bar {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-line);
+  padding: 6px 20px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  position: sticky;
+  top: 41px;
+  z-index: 49;
+}
+
+.action-bar .spacer { flex: 1; }
+
+/* v4: 営業担当者バナー */
+.sales-banner {
+  background: linear-gradient(to right, var(--accent-purple-bg), var(--bg-card));
+  border-left: 4px solid var(--accent-purple);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  margin: 8px 16px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sales-info { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.sales-label {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.sales-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--accent-purple);
+  line-height: 1;
+}
+.sales-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-left: 4px;
+  font-weight: 400;
+}
+.sales-dept {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.sales-meta {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  text-align: right;
+  line-height: 1.5;
+}
+.sales-meta strong { color: var(--text-primary); font-family: var(--font-mono); }
+
+/* v7: 検索モード時の営業担当バナー入力欄 */
+.sales-banner-search {
+  display: none;
+  background: linear-gradient(to right, var(--accent-yellow-bg), var(--bg-card));
+  border-left: 4px solid var(--accent-yellow-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  margin: 8px 16px 6px;
+  align-items: center;
+  gap: 12px;
+}
+body.search-mode .sales-banner-search { display: flex; }
+.sales-banner-search .sbs-label {
+  font-size: 10.5px;
+  color: #6b5500;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.sales-banner-search .sbs-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sales-banner-search .sbs-field label {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.sales-banner-search input {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 3px 8px;
+  border: 1px solid var(--accent-yellow-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--accent-blue);
+  outline: none;
+  min-width: 180px;
+}
+.sales-banner-search input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(12,68,124,0.18);
+}
+.sales-banner-search input::placeholder {
+  color: #5b88c0;
+  font-style: italic;
+  font-size: 11px;
+}
+
+/* v4: 矢印型ステータスバー */
+.status-bar-v4 {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-line);
+  padding: 8px 16px 8px;
+  position: sticky;
+  top: 74px;
+  z-index: 48;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.status-bar-v4-label {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* v7: 検索モード時のステータスバー (検索版) */
+.status-bar-search {
+  background: linear-gradient(90deg, var(--accent-yellow-bg), #fff5cc 50%, var(--accent-yellow-bg));
+  border-bottom: 2px solid var(--accent-yellow-border);
+  padding: 8px 16px 10px;
+  display: none;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 74px;
+  z-index: 48;
+}
+body.search-mode .status-bar-search { display: flex; }
+.status-bar-search .sbs-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 12px;
+  border-right: 1px solid var(--accent-yellow-border);
+}
+.status-bar-search .sbs-group:last-child { border-right: none; }
+.status-bar-search label {
+  font-size: 11px;
+  color: #6b5500;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.status-bar-search select {
+  font-size: 11.5px;
+  padding: 3px 6px;
+  border: 1px solid var(--accent-yellow-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--accent-blue);
+  font-family: var(--font-sans);
+  min-width: 120px;
+  appearance: none;
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%235f5e5a' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+.status-bar-search input {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 3px 6px;
+  border: 1px solid var(--accent-yellow-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--accent-blue);
+  width: 155px;
+  outline: none;
+}
+.status-bar-search input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(12,68,124,0.18);
+}
+.status-bar-search input::placeholder {
+  color: #5b88c0;
+  font-style: italic;
+  font-size: 10.5px;
+}
+.status-bar-search .sbs-dates {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 4px 10px;
+  flex: 1;
+  min-width: 0;
+}
+.status-bar-search .sbs-date-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+}
+.status-bar-search .sbs-date-row label {
+  font-size: 10.5px;
+  min-width: 50px;
+  color: #6b5500;
+  font-weight: 500;
+}
+.status-bar-search .sbs-date-row input {
+  width: 128px;
+  font-size: 10.5px;
+  padding: 2px 5px;
+}
+
+body.search-mode .status-bar-v4 { display: none; }
+
+.status-arrow-row {
+  display: flex;
+  gap: 0;
+  margin-bottom: 6px;
+  align-items: stretch;
+}
+
+.status-step {
+  flex: 1;
+  min-width: 80px;
+  position: relative;
+  padding: 7px 20px 7px 22px;
+  background: #ffffff;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  border: 1px solid var(--border-line);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%);
+  margin-left: -10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  line-height: 1.2;
+  user-select: none;
+  border-radius: 0;
+  box-shadow: inset -1px 0 0 rgba(0,0,0,0.08);
+}
+.status-step:first-child {
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
+  margin-left: 0;
+  padding-left: 14px;
+}
+.status-step:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%);
+  padding-right: 16px;
+  box-shadow: none;
+}
+.status-step:hover {
+  filter: brightness(0.97);
+}
+.status-step.active {
+  background: var(--accent-teal);
+  color: #fff;
+  font-weight: 600;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 2px rgba(15,110,86,0.2), 0 2px 6px rgba(15,110,86,0.28);
+  z-index: 3;
+}
+.status-step.active.waiting-specs {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 2px rgba(133,79,11,0.2), 0 2px 6px rgba(133,79,11,0.28);
+}
+.status-step.passed {
+  background: var(--accent-teal-bg);
+  color: var(--accent-teal);
+  border-color: var(--accent-teal-border);
+  z-index: 2;
+}
+.status-step.skipped {
+  background: #ece9e0;
+  color: #a5a399;
+  text-decoration: line-through;
+  border-color: #c4c2b8;
+}
+.status-step.selected-step {
+  outline: 2px solid var(--accent-yellow-border);
+  outline-offset: -2px;
+  z-index: 4;
+}
+.status-step-num {
+  display: none;
+}
+.status-step-label {
+  font-size: 11.5px;
+  font-weight: inherit;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.status-step-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  margin-top: 2px;
+  letter-spacing: 0;
+  opacity: 0.95;
+  white-space: nowrap;
+  text-align: center;
+}
+.status-step.active .status-step-date,
+.status-step.passed .status-step-date {
+  opacity: 0.98;
+}
+
+/* v6: ステータスバー内の日付インライン編集 (独立日付グリッドを廃止) */
+.status-step-date-input {
+  width: 100%;
+  max-width: 94px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  border: 1px dashed transparent;
+  background: transparent;
+  color: inherit;
+  padding: 1px 2px;
+  margin-top: 2px;
+  cursor: pointer;
+  border-radius: 3px;
+  outline: none;
+  letter-spacing: 0;
+}
+.status-step-date-input:hover {
+  background: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.35);
+}
+.status-step-date-input:focus {
+  outline: none;
+  border: 1px solid rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.2);
+}
+.status-step:not(.active):not(.passed) .status-step-date-input {
+  color: var(--text-secondary);
+}
+.status-step:not(.active):not(.passed) .status-step-date-input:hover {
+  background: rgba(0,0,0,0.04);
+  border-color: var(--border-line);
+}
+.status-step:not(.active):not(.passed) .status-step-date-input:focus {
+  background: #fff;
+  border-color: var(--accent-teal);
+}
+.status-step.active .status-step-date-input { color: #fff; }
+.status-step.passed .status-step-date-input { color: var(--accent-teal); }
+.status-step.skipped .status-step-date-input { color: #a5a399; cursor: not-allowed; }
+/* input type=date のスピナー・カレンダーアイコンを控えめに */
+.status-step-date-input::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+}
+.status-step.active .status-step-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.85;
+}
+
+.status-date-row {
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: var(--bg-section);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  flex-wrap: wrap;
+  border: 1px solid var(--border-soft);
+}
+
+.status-date-row .date-label {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11.5px;
+}
+
+.status-date-row .date-input {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--text-primary);
+  width: 125px;
+}
+
+.status-date-row .spacer { flex: 1; }
+
+.status-transition-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.related-banner {
+  background: var(--accent-purple-bg);
+  border-bottom: 1px solid #d8d5f3;
+  padding: 5px 20px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--accent-purple);
+}
+
+.related-banner .label { font-weight: 600; }
+
+.related-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid #c9c4f0;
+  color: var(--accent-purple);
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.related-pill:hover { background: var(--accent-purple); color: #fff; }
+
+.search-mode-banner {
+  background: linear-gradient(90deg, var(--accent-yellow-bg), #fff5cc 50%, var(--accent-yellow-bg));
+  border-bottom: 2px solid var(--accent-yellow-border);
+  border-top: 2px solid var(--accent-yellow-border);
+  padding: 8px 20px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  font-size: 12.5px;
+  color: #6b5500;
+  position: sticky;
+  top: 92px;
+  z-index: 48;
+  box-shadow: 0 2px 6px rgba(230,184,0,0.15);
+}
+.search-mode-banner.show { display: flex; }
+
+.search-top-bars {
+  display: none;
+  background: var(--accent-blue-bg);
+  border: 0.5px solid var(--accent-blue-border);
+  padding: 10px 14px;
+  gap: 10px;
+  flex-direction: column;
+  margin: 0 0 8px 0;
+}
+body.search-mode .search-top-bars { display: flex; }
+.stb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.stb-group label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-blue);
+  min-width: 72px;
+}
+.stb-group select,
+.stb-group input {
+  padding: 5px 8px;
+  font-size: 11px;
+  border: 0.5px solid var(--border-line);
+  border-radius: 3px;
+  background: #fff;
+  font-family: var(--font-sans);
+  min-width: 100px;
+}
+.stb-group.stb-dates input {
+  min-width: 140px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+.search-mode-banner .smb-title {
+  font-weight: 700;
+  font-size: 13.5px;
+  letter-spacing: 0.05em;
+}
+.search-mode-banner .smb-hint {
+  color: #8a6c00;
+  font-size: 11px;
+}
+.search-mode-banner .spacer { flex: 1; }
+
+.found-bar {
+  background: #fff8e0;
+  border-bottom: 1px solid var(--accent-yellow-border);
+  padding: 5px 20px;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: #6b5500;
+  position: sticky;
+  top: 92px;
+  z-index: 48;
+}
+.found-bar.show { display: flex; }
+.found-bar .fb-count {
+  font-weight: 700;
+  font-size: 12px;
+}
+.found-bar .fb-conditions {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: #fff;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-yellow-border);
+  color: var(--text-primary);
+  max-width: 540px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.found-bar .spacer { flex: 1; }
+
+.search-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.search-tab {
+  padding: 3px 9px;
+  font-size: 11px;
+  border: 1px solid var(--accent-yellow-border);
+  background: #fff;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.search-tab.active {
+  background: var(--accent-yellow-bg);
+  color: #6b5500;
+  font-weight: 600;
+  border-bottom-color: var(--accent-yellow-bg);
+}
+.search-tab .x-btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.search-tab .x-btn:hover { background: rgba(0,0,0,0.1); color: var(--text-primary); }
+
+.search-add-tab {
+  padding: 3px 9px;
+  font-size: 11px;
+  border: 1px dashed var(--accent-yellow-border);
+  background: transparent;
+  color: var(--accent-amber);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+.search-add-tab:hover { background: var(--accent-yellow-bg); }
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(460px, 1fr) 62px 680px;
+  gap: 10px;
+  padding: 8px 10px;
+  align-items: start;
+}
+
+/* v6: 左パネル = 画像プレビューのみ (タブは独立列へ移動) */
+.left-panel {
+  display: block;
+  position: sticky;
+  top: 174px;
+  max-height: calc(100vh - 184px);
+}
+
+/* v6: 縦タブを独立列に (画像と入力フォームの中間) */
+.vertical-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 174px;
+  max-height: calc(100vh - 184px);
+}
+
+.vertical-tab {
+  padding: 8px 2px 6px;
+  text-align: center;
+  font-size: 18px;
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  line-height: 1;
+}
+.vertical-tab:hover { background: var(--bg-section); border-color: var(--text-tertiary); }
+.vertical-tab.active {
+  background: var(--accent-teal-bg);
+  color: var(--accent-teal);
+  border-color: var(--accent-teal-border);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(15,110,86,0.18);
+}
+.vertical-tab.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: var(--bg-section);
+}
+.vertical-tab.missing {
+  color: #d63a3a;
+  background: rgba(214,58,58,0.06);
+  border-color: var(--accent-red-border);
+  font-weight: 600;
+}
+.vertical-tab-icon {
+  font-size: 18px;
+  line-height: 1.1;
+}
+.vertical-tab-label {
+  font-size: 9.5px;
+  margin-top: 3px;
+  letter-spacing: 0.04em;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.image-pane {
+  background: var(--bg-card);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - 184px);
+}
+
+.image-toolbar {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border-line);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  background: var(--bg-section);
+}
+
+.image-toolbar .zoom-group {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.zoom-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border-line);
+  background: #fff;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.zoom-display {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  min-width: 42px;
+  text-align: center;
+}
+
+.image-canvas {
+  flex: 1;
+  overflow: auto;
+  background: #e6e3da;
+  position: relative;
+  padding: 10px;
+}
+
+.doc-paper {
+  background: #fff;
+  width: 595px;
+  min-height: 842px;
+  margin: 0 auto;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  position: relative;
+  transform-origin: top center;
+  transition: transform 0.2s;
+}
+
+.doc-paper svg { display: block; width: 100%; height: auto; }
+
+.field-highlight {
+  position: absolute;
+  border: 2px solid #d63a3a;
+  background: rgba(214, 58, 58, 0.12);
+  border-radius: 3px;
+  pointer-events: none;
+  transition: all 0.18s;
+  display: none;
+  box-shadow: 0 0 0 2px rgba(214,58,58,0.18);
+}
+
+.form-pane {
+  background: var(--bg-card);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.form-section {
+  border-bottom: 1px solid var(--border-soft);
+}
+.form-section:last-child { border-bottom: none; }
+
+.section-head {
+  background: var(--bg-section);
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+}
+
+.section-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--bg-header);
+  color: #f5f3ee;
+  border-radius: 50%;
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.section-tools { display: flex; gap: 4px; align-items: center; }
+
+.btn-mini {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--border-line);
+  background: #fff;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-mini:hover { background: var(--bg-section); }
+
+/* v4: フォーム本体を横並び1行化しコンパクト */
+.section-body {
+  padding: 4px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.section-body.collapsed { display: none; }
+
+.form-field {
+  display: grid;
+  grid-template-columns: 132px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 2px;
+  min-height: 26px;
+}
+
+.field-label {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.field-label .required { color: var(--accent-red); margin-left: 2px; }
+
+.field-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.field-input {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.12s;
+  min-width: 0;
+}
+
+.field-input:focus {
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 2px rgba(15,110,86,0.15);
+}
+
+.field-input.mono { font-family: var(--font-mono); letter-spacing: 0.03em; }
+
+textarea.field-input { min-height: 40px; }
+
+.fs-match .field-input { background: var(--accent-teal-bg); border-color: var(--accent-teal-border); }
+.fs-ocr_list_diff .field-input { background: var(--accent-amber-bg); border-color: var(--accent-amber-border); }
+.fs-list_actual_diff .field-input { background: var(--accent-red-bg); border-color: var(--accent-red-border); }
+.fs-ocr_empty .field-input { background: #fff; border-style: dashed; border-color: var(--text-tertiary); }
+.fs-new .field-input { background: var(--accent-blue-bg); border-color: var(--accent-blue-border); }
+
+body.search-mode .field-input,
+body.search-mode .fs-match .field-input,
+body.search-mode .fs-ocr_list_diff .field-input,
+body.search-mode .fs-list_actual_diff .field-input,
+body.search-mode .fs-ocr_empty .field-input,
+body.search-mode .fs-new .field-input {
+  background: var(--accent-blue-bg) !important;
+  border-color: var(--accent-blue-border) !important;
+  border-style: solid !important;
+  color: var(--accent-blue);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+body.search-mode .field-input::placeholder {
+  color: #5b88c0;
+  font-style: italic;
+}
+
+body.search-mode .status-icon,
+body.search-mode .btn-copy {
+  display: none;
+}
+
+body.search-mode .field-control::after {
+  content: '🔍';
+  font-size: 11px;
+  color: var(--accent-blue);
+  margin-left: 2px;
+}
+
+body.search-mode .action-bar { display: none; }
+body.search-mode .sales-banner { display: none !important; }
+body.search-mode .related-banner { display: none !important; }
+
+.status-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.1s;
+  flex-shrink: 0;
+}
+.status-icon:hover { transform: scale(1.15); }
+
+.fs-match .status-icon { background: var(--accent-teal); color: #fff; }
+.fs-ocr_list_diff .status-icon { background: var(--accent-amber-border); color: #fff; }
+.fs-list_actual_diff .status-icon { background: var(--accent-red-border); color: #fff; }
+.fs-ocr_empty .status-icon { background: #fff; color: var(--text-tertiary); border-color: var(--border-line); }
+.fs-new .status-icon { background: var(--accent-blue-border); color: #fff; }
+
+.btn-copy {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border-line);
+  background: #fff;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 10.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.btn-copy:hover { background: var(--bg-section); color: var(--text-primary); }
+
+.supply-inline {
+  margin: 2px 0 3px;
+  padding: 5px 10px;
+  background: var(--accent-blue-bg);
+  border: 1px solid var(--accent-blue-border);
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  color: var(--accent-blue);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+.supply-inline .ico { font-size: 13px; }
+.supply-inline .sup-date { font-family: var(--font-mono); font-weight: 700; font-size: 12.5px; color: var(--text-primary); }
+.supply-inline .sup-code { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-secondary); background: #fff; padding: 1px 5px; border-radius: 4px; }
+.supply-inline .sup-tip {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  cursor: help;
+  position: relative;
+}
+.supply-inline .sup-tip:hover .tt {
+  display: block;
+}
+.supply-inline .sup-tip .tt {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-header);
+  color: #f5f3ee;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  white-space: nowrap;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+
+/* v7: 供給開始予定日 2ヶ月分候補リスト表示 */
+.supply-inline-multi {
+  margin: 2px 0 3px;
+  background: var(--accent-blue-bg);
+  border: 1px solid var(--accent-blue-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 11.5px;
+  color: var(--accent-blue);
+}
+.supply-inline-multi .supply-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--accent-blue);
+  margin-bottom: 6px;
+  position: relative;
+}
+.supply-inline-multi .supply-header .ico { font-size: 13px; }
+.supply-inline-multi .supply-header .sup-tip {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  cursor: help;
+  position: relative;
+}
+.supply-inline-multi .supply-header .sup-tip:hover .tt {
+  display: block;
+}
+.supply-inline-multi .supply-header .sup-tip .tt {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-header);
+  color: #f5f3ee;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  white-space: nowrap;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+.supply-inline-multi .supply-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 4px;
+}
+.supply-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #ffffff;
+  border-radius: 3px;
+  border: 0.5px solid var(--border-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  align-items: center;
+}
+.supply-item.primary {
+  background: var(--accent-teal-bg);
+  border-color: var(--accent-teal-border);
+  font-weight: 500;
+}
+.supply-item .supply-code {
+  color: var(--accent-purple);
+  font-weight: 500;
+}
+.supply-item .supply-date {
+  color: var(--text-primary);
+}
+.supply-item .supply-month {
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+.supply-item .supply-tag {
+  font-family: var(--font-sans);
+  font-size: 9px;
+  padding: 1px 6px;
+  background: var(--accent-teal);
+  color: #fff;
+  border-radius: 6px;
+}
+
+.specs-alert {
+  margin: 4px 0 6px;
+  padding: 6px 10px;
+  background: var(--accent-red-bg);
+  border: 1px solid var(--accent-red-border);
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  color: var(--accent-red);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.specs-alert.warn {
+  background: var(--accent-amber-bg);
+  border-color: var(--accent-amber-border);
+  color: var(--accent-amber);
+}
+.specs-alert .ico { font-size: 14px; }
+.specs-alert .label { font-weight: 700; }
+.specs-alert .days { font-family: var(--font-mono); background: #fff; padding: 1px 7px; border-radius: 4px; border: 1px solid currentColor; opacity: 0.9; }
+.specs-alert .spacer { flex: 1; }
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-header);
+  color: #f5f3ee;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  pointer-events: none;
+}
+
+.tooltip-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 12px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.tooltip-grid .lbl { color: #b4b2a9; }
+
+.field-control:hover .tooltip { display: block; }
+body.search-mode .field-control:hover .tooltip { display: none; }
+
+.checkbox-row {
+  display: flex;
+  gap: 20px;
+  padding: 2px 0;
+  grid-column: 1 / -1;
+}
+.cb-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cb-item input { transform: scale(1.1); margin: 0; }
+
+.radio-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.rb-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+select.field-input {
+  appearance: none;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%235f5e5a' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E") right 8px center no-repeat;
+  padding-right: 24px;
+}
+
+.cat-section-denki .section-head { border-left: 4px solid var(--accent-amber-border); }
+.cat-section-douryoku .section-head { border-left: 4px solid var(--accent-blue-border); }
+.cat-section-gas .section-head { border-left: 4px solid var(--accent-red-border); }
+.cat-section-specs .section-head { border-left: 4px solid var(--accent-purple); }
+.cat-section-receipt .section-head { border-left: 4px solid var(--accent-teal-border); }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(44,44,42,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: #fff;
+  border-radius: var(--radius-md);
+  width: 460px;
+  max-width: 90vw;
+  padding: 24px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.24);
+}
+
+.modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.modal-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+  line-height: 1.7;
+}
+
+.modal-body textarea {
+  width: 100%;
+  min-height: 80px;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
+
+.modal-body input[type="date"],
+.modal-body input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.legend {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+.legend-item { display: flex; align-items: center; gap: 3px; }
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+}
+.dot-match { background: var(--accent-teal-border); }
+.dot-amber { background: var(--accent-amber-border); }
+.dot-red { background: var(--accent-red-border); }
+.dot-empty { background: #fff; border: 1.5px dashed var(--text-tertiary); }
+.dot-new { background: var(--accent-blue-border); }
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-header);
+  color: #f5f3ee;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  z-index: 300;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+.cat-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.toggle-arrow {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-right: 3px;
+  transition: transform 0.15s;
+}
+.section-head.collapsed-head .toggle-arrow { transform: rotate(-90deg); }
+
+.consent-list {
+  background: var(--bg-section);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  grid-column: 1 / -1;
+}
+.consent-list label { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 2px; }
+.consent-list input { margin-top: 3px; }
+
+.page-footer {
+  background: var(--bg-section);
+  border-top: 1px solid var(--border-line);
+  padding: 8px 20px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.search-help {
+  background: #fffbea;
+  border: 1px dashed var(--accent-yellow-border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 10.5px;
+  color: #6b5500;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  display: inline-block;
+}
+
+.specs-placeholder {
+  padding: 22px 18px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 12.5px;
+  background: var(--bg-section);
+  border: 1px dashed var(--border-line);
+  border-radius: var(--radius-sm);
+  margin: 10px 14px;
+}
+.specs-placeholder .big { font-size: 24px; opacity: 0.5; margin-bottom: 4px; }
+.specs-placeholder .hint { font-size: 11px; margin-top: 5px; }
+.specs-placeholder .btn-attach {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: var(--accent-purple-bg);
+  border: 1px solid #c9c4f0;
+  color: var(--accent-purple);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.specs-placeholder .btn-attach:hover { background: var(--accent-purple); color: #fff; }
+
+.receipt-preview {
+  padding: 14px 16px;
+  color: var(--text-secondary);
+}
+.receipt-preview .receipt-paper {
+  background: #fff;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  padding: 24px;
+  max-width: 500px;
+  margin: 0 auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.receipt-preview .receipt-paper h3 {
+  margin: 0 0 12px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-line);
+  padding-bottom: 8px;
+}
+.receipt-preview .receipt-paper .row { display: flex; justify-content: space-between; }
+
+/* v6: 画面最下部のエントリーアクションバー */
+.entry-action-bar {
+  position: sticky;
+  bottom: 0;
+  padding: 14px 20px 16px;
+  background: linear-gradient(to top, var(--bg-card) 70%, rgba(255,255,255,0));
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  border-top: 0.5px solid var(--border-line);
+  z-index: 40;
+}
+.btn-entry-next {
+  padding: 14px 40px;
+  font-size: 15px;
+  font-weight: 500;
+  background: var(--accent-teal);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 8px rgba(15,110,86,0.3);
+  transition: all 0.15s;
+}
+.btn-entry-next:hover { background: #0a5643; box-shadow: 0 4px 12px rgba(15,110,86,0.38); }
+.btn-entry-next:active { transform: translateY(1px); }
+.btn-entry-next:disabled {
+  background: var(--border-line);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+body.search-mode .entry-action-bar { display: none; }
+
+/* v6: レコードナビボタン内のキーボードショートカット表記 */
+.nav-btn .kbd-hint,
+.record-nav .btn .kbd-hint {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  opacity: 0.75;
+  margin-left: 6px;
+  letter-spacing: 0.02em;
+}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>
+    Garden-Leaf <span style="opacity:0.5;margin:0 6px;">/</span> 関電業務委託 事務入力<span class="badge">v7 PoC</span>
+    <span id="urgentBadge" class="urgent-badge" style="display:none;">🚨 至急SW (<span id="urgentMonth">-</span>希望)</span>
+    <span id="stagnationBadge" class="stagnation-badge" style="display:none;">🔔 諸元滞留アラート</span>
+  </h1>
+  <div class="header-right">
+    <div class="record-nav">
+      <span id="recLabel">レコード</span>
+      <span class="counter" id="recCounter">1 / 10</span>
+      <button class="btn btn-dark nav-btn nav-prev" id="btnPrev" title="Ctrl+↑">← 前へ<span class="kbd-hint">(Ctrl+↑)</span></button>
+      <button class="btn btn-dark nav-btn nav-next" id="btnNext" title="Ctrl+↓">次へ<span class="kbd-hint">(Ctrl+↓)</span> →</button>
+    </div>
+  </div>
+</div>
+
+<div class="action-bar" id="actionBar">
+  <button class="btn btn-teal" id="btnSave">✅ 確認済に保存</button>
+  <button class="btn btn-amber" id="btnHold">↩ 保留</button>
+  <button class="btn btn-red" id="btnReject">🗑 差し戻し</button>
+  <button class="btn" id="btnCopyAll">📋 リスト全項目転記</button>
+  <button class="btn" id="btnNextDiff">→ 次の要確認 (Enter)</button>
+  <button class="btn btn-yellow" id="btnSearch">🔍 検索 (Ctrl+F)</button>
+  <div class="spacer"></div>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot dot-match"></span>一致</span>
+    <span class="legend-item"><span class="legend-dot dot-amber"></span>OCR≠リスト</span>
+    <span class="legend-item"><span class="legend-dot dot-red"></span>リスト≠申込書</span>
+    <span class="legend-item"><span class="legend-dot dot-empty"></span>OCR空欄</span>
+    <span class="legend-item"><span class="legend-dot dot-new"></span>新規</span>
+  </div>
+</div>
+
+<!-- v4: 営業担当者バナー (最上部に目立つ配置) -->
+<div class="sales-banner" id="salesBanner">
+  <div class="sales-info">
+    <div>
+      <div class="sales-label">獲得営業担当</div>
+      <div class="sales-name" id="salesName">-<span class="sales-code" id="salesCode"></span></div>
+    </div>
+    <div class="sales-dept" id="salesDept">-</div>
+  </div>
+  <div class="sales-meta">
+    <div>申込コード: <strong id="salesApplyCode">-</strong></div>
+    <div>受注日: <strong id="salesOrderDate">-</strong></div>
+  </div>
+</div>
+
+<!-- v7: 検索モード時の営業担当者検索バナー -->
+<div class="sales-banner-search" id="salesBannerSearch">
+  <div class="sbs-label">🔍 営業担当者で絞り込み</div>
+  <div class="sbs-field">
+    <label>営業名:</label>
+    <input type="text" id="searchSalesName" placeholder="例: =鈴木* / ==鈴木 太郎 / !=田中*">
+  </div>
+  <div class="sbs-field">
+    <label>営業番号:</label>
+    <input type="text" id="searchSalesCode" placeholder="例: =0027 / ==0027">
+  </div>
+  <div class="sbs-field">
+    <label>所属:</label>
+    <input type="text" id="searchSalesDept" placeholder="例: =大阪本店*">
+  </div>
+</div>
+
+<!-- v6: 矢印型ステータスバー (日付入力はステップ内にインライン統合) -->
+<div class="status-bar-v4" id="statusBar">
+  <div class="status-bar-v4-label">業務ステータス (各ステップ内の日付欄に入力するとステータスが自動進行します)</div>
+  <div class="status-arrow-row" id="statusArrowRow"></div>
+</div>
+
+<!-- v7: 検索モード時のステータスバー -->
+<div class="status-bar-search" id="statusBarSearch">
+  <div class="sbs-group">
+    <label>🔍 ステータス:</label>
+    <select id="searchStatus">
+      <option value="">全ステータス</option>
+      <option value="ordered">受注</option>
+      <option value="awaiting_specs">諸元待ち</option>
+      <option value="awaiting_entry">エントリー待ち</option>
+      <option value="awaiting_send">送付待ち</option>
+      <option value="awaiting_invoice">請求待ち</option>
+      <option value="awaiting_payment_in">入金待ち</option>
+      <option value="awaiting_payment_out">支払待ち</option>
+      <option value="completed">完了</option>
+    </select>
+  </div>
+  <div class="sbs-dates">
+    <div class="sbs-date-row">
+      <label>受注日:</label>
+      <input type="text" id="searchOrderedAt" placeholder="2026/04/01...2026/04/30">
+    </div>
+    <div class="sbs-date-row">
+      <label>諸元日:</label>
+      <input type="text" id="searchSpecsAt" placeholder=">2026/04/01 / //">
+    </div>
+    <div class="sbs-date-row">
+      <label>エントリ日:</label>
+      <input type="text" id="searchEnteredAt" placeholder="==2026/04/15">
+    </div>
+    <div class="sbs-date-row">
+      <label>送付日:</label>
+      <input type="text" id="searchSentAt" placeholder="<=2026/04/30">
+    </div>
+    <div class="sbs-date-row">
+      <label>請求日:</label>
+      <input type="text" id="searchInvoicedAt" placeholder="2026/04/01...2026/04/30">
+    </div>
+    <div class="sbs-date-row">
+      <label>入金日:</label>
+      <input type="text" id="searchPaymentInAt" placeholder=">2026/04/01">
+    </div>
+    <div class="sbs-date-row">
+      <label>支払日:</label>
+      <input type="text" id="searchPaymentOutAt" placeholder="==2026/04/17">
+    </div>
+    <div class="sbs-date-row">
+      <label>完了日:</label>
+      <input type="text" id="searchCompletedAt" placeholder=">=2026/04/01">
+    </div>
+  </div>
+</div>
+
+<div class="search-mode-banner" id="searchModeBanner">
+  <span class="smb-title">🔍 検索モード</span>
+  <div class="search-tabs" id="searchTabs"></div>
+  <span class="spacer"></span>
+  <span class="search-help">Enter=実行 / Esc=キャンセル / Ctrl+Enter=OR追加 / Ctrl+/=リセット</span>
+  <button class="btn btn-yellow" id="btnRunSearch">🔍 検索実行 (Enter)</button>
+  <button class="btn" id="btnResetSearch">🔄 リセット (Ctrl+/)</button>
+  <button class="btn" id="btnCancelSearch">❌ キャンセル (Esc)</button>
+</div>
+
+<div class="search-top-bars" id="searchTopBars">
+  <div class="stb-group">
+    <label>ステータス:</label>
+    <select id="searchStatus">
+      <option value="">（全て）</option>
+      <option value="ordered">受注</option>
+      <option value="awaiting_specs">諸元待ち</option>
+      <option value="awaiting_entry">エントリー待ち</option>
+      <option value="awaiting_send">送付待ち</option>
+      <option value="awaiting_invoice">請求待ち</option>
+      <option value="awaiting_payment_in">入金待ち</option>
+      <option value="awaiting_payment_out">支払待ち</option>
+      <option value="completed">完了</option>
+    </select>
+  </div>
+  <div class="stb-group">
+    <label>営業担当者:</label>
+    <input type="text" id="searchSalesName" placeholder="例: =鈴木*">
+    <input type="text" id="searchSalesCode" placeholder="社員番号">
+    <input type="text" id="searchSalesDept" placeholder="部署">
+  </div>
+  <div class="stb-group stb-dates">
+    <label>日付:</label>
+    <input type="text" id="searchOrderedAt" placeholder="受注日 例: 2026/04/01...2026/04/30">
+    <input type="text" id="searchSpecsAt" placeholder="諸元日">
+    <input type="text" id="searchEnteredAt" placeholder="エントリー日">
+    <input type="text" id="searchSentAt" placeholder="送付日">
+    <input type="text" id="searchInvoicedAt" placeholder="請求日">
+    <input type="text" id="searchPaymentInAt" placeholder="入金日">
+    <input type="text" id="searchPaymentOutAt" placeholder="支払日">
+    <input type="text" id="searchCompletedAt" placeholder="完了日">
+  </div>
+</div>
+
+<div class="found-bar" id="foundBar">
+  <span class="fb-count" id="fbCount">🔍 検索結果: 0件 / 全0件</span>
+  <span class="fb-conditions" id="fbConditions">[条件: ]</span>
+  <span class="spacer"></span>
+  <button class="btn" id="btnShowAll">🔄 全件に戻る</button>
+  <button class="btn" id="btnConstrainFind">🔍+ 結果をさらに絞り込み</button>
+  <button class="btn" id="btnExtendFind">🔍- 結果を除外</button>
+  <button class="btn btn-yellow" id="btnModifyFind">🔍 条件を修正</button>
+</div>
+
+<div class="related-banner" id="relatedBanner" style="display:none;">
+  <span class="label">🔗 このお客様の関連物件:</span>
+  <div id="relatedList" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+</div>
+
+<div class="layout">
+
+  <!-- v6: 左パネル = 画像プレビューのみ -->
+  <div class="left-panel">
+    <div class="image-pane">
+      <div class="image-toolbar">
+        <span style="color:var(--text-tertiary);font-size:11px;" id="imageToolbarLabel">申込書プレビュー</span>
+        <div style="flex:1;"></div>
+        <div class="zoom-group">
+          <button class="zoom-btn" id="zoomOut">−</button>
+          <span class="zoom-display" id="zoomDisplay">100%</span>
+          <button class="zoom-btn" id="zoomIn">＋</button>
+          <button class="zoom-btn" id="zoomReset" style="width:auto;padding:0 7px;font-size:10px;">100%</button>
+        </div>
+      </div>
+      <div class="image-canvas" id="imageCanvas">
+        <div class="doc-paper" id="docPaper">
+          <div class="field-highlight" id="fieldHighlight"></div>
+          <svg viewBox="0 0 595 842" xmlns="http://www.w3.org/2000/svg" id="docSvg"></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- v6: 縦タブを独立列 (画像と入力フォームの中間) -->
+  <div class="vertical-tabs" id="catTabs">
+    <button class="vertical-tab active" data-cat="denki" title="電灯">
+      <span class="vertical-tab-icon">⚡</span>
+      <span class="vertical-tab-label">電灯</span>
+    </button>
+    <button class="vertical-tab" data-cat="douryoku" title="動力">
+      <span class="vertical-tab-icon">🔌</span>
+      <span class="vertical-tab-label">動力</span>
+    </button>
+    <button class="vertical-tab" data-cat="gas" title="ガス">
+      <span class="vertical-tab-icon">🔥</span>
+      <span class="vertical-tab-label">ガス</span>
+    </button>
+    <button class="vertical-tab" data-cat="specs" title="諸元">
+      <span class="vertical-tab-icon">📋</span>
+      <span class="vertical-tab-label">諸元</span>
+    </button>
+    <button class="vertical-tab" data-cat="receipt" title="受領書">
+      <span class="vertical-tab-icon">📄</span>
+      <span class="vertical-tab-label">受領</span>
+    </button>
+  </div>
+
+  <div class="form-pane" id="formPane"></div>
+
+</div>
+
+<!-- v6: 画面最下部中央のエントリーアクションバー -->
+<div class="entry-action-bar" id="entryActionBar">
+  <button class="btn-entry-next" id="btnEntryNext" onclick="entryAndNext()">✅ エントリーして次へ</button>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 class="modal-title" id="modalTitle">確認</h3>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn" id="modalCancel">キャンセル</button>
+      <button class="btn btn-teal" id="modalConfirm">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="page-footer">
+  Garden-Leaf 関電業務委託 Backoffice v8 — v8: 2026年度 実カレンダー反映（18コード×12ヶ月）・供給開始予定日を実日程で表示
+</div>
+
+<script>
+const STATUS_FLOW = [
+  { key: 'ordered',             label: '受注',        short: '受注',    num: 1, dateField: 'ordered_at',           dateLabel: '受注日 (申込書の申込年月日を自動転記)' },
+  { key: 'awaiting_specs',      label: '諸元待ち',    short: '諸元',    num: 2, dateField: 'specs_collected_at',    dateLabel: '諸元回収日' },
+  { key: 'awaiting_entry',      label: 'エントリー待ち', short: 'エントリ', num: 3, dateField: 'entered_at',         dateLabel: 'エントリー日' },
+  { key: 'awaiting_send',       label: '送付待ち',    short: '送付',    num: 4, dateField: 'sent_at',               dateLabel: '送付日' },
+  { key: 'awaiting_invoice',    label: '請求待ち',    short: '請求',    num: 5, dateField: 'invoiced_at',           dateLabel: '請求日' },
+  { key: 'awaiting_payment_in', label: '入金待ち',    short: '入金',    num: 6, dateField: 'payment_received_at',   dateLabel: '入金予定日' },
+  { key: 'awaiting_payment_out',label: '支払待ち',    short: '支払',    num: 7, dateField: 'payment_sent_at',       dateLabel: '支払予定日' },
+  { key: 'completed',           label: '完了',        short: '完了',    num: 8, dateField: 'completed_at',          dateLabel: '完了日' }
+];
+
+// 2026年度 実カレンダーデータ（検針日程表 PDF より）
+// 有効コード: 01〜05, 08〜12, 15〜19, 22〜24（06,07,13,14,20,21 は存在しない）
+const supplyCalendar = {
+  '01': {'2026-04':'2026-04-01','2026-05':'2026-05-01','2026-06':'2026-06-01','2026-07':'2026-07-01','2026-08':'2026-08-03','2026-09':'2026-09-01','2026-10':'2026-10-01','2026-11':'2026-11-02','2026-12':'2026-12-01','2027-01':'2027-01-04','2027-02':'2027-02-01','2027-03':'2027-03-01'},
+  '02': {'2026-04':'2026-04-02','2026-05':'2026-05-02','2026-06':'2026-06-02','2026-07':'2026-07-02','2026-08':'2026-08-04','2026-09':'2026-09-02','2026-10':'2026-10-02','2026-11':'2026-11-04','2026-12':'2026-12-02','2027-01':'2027-01-05','2027-02':'2027-02-02','2027-03':'2027-03-02'},
+  '03': {'2026-04':'2026-04-03','2026-05':'2026-05-07','2026-06':'2026-06-04','2026-07':'2026-07-03','2026-08':'2026-08-05','2026-09':'2026-09-03','2026-10':'2026-10-05','2026-11':'2026-11-05','2026-12':'2026-12-03','2027-01':'2027-01-06','2027-02':'2027-02-03','2027-03':'2027-03-03'},
+  '04': {'2026-04':'2026-04-06','2026-05':'2026-05-08','2026-06':'2026-06-05','2026-07':'2026-07-06','2026-08':'2026-08-06','2026-09':'2026-09-04','2026-10':'2026-10-06','2026-11':'2026-11-06','2026-12':'2026-12-04','2027-01':'2027-01-07','2027-02':'2027-02-04','2027-03':'2027-03-04'},
+  '05': {'2026-04':'2026-04-07','2026-05':'2026-05-11','2026-06':'2026-06-08','2026-07':'2026-07-07','2026-08':'2026-08-07','2026-09':'2026-09-07','2026-10':'2026-10-07','2026-11':'2026-11-09','2026-12':'2026-12-07','2027-01':'2027-01-08','2027-02':'2027-02-05','2027-03':'2027-03-05'},
+  '08': {'2026-04':'2026-04-08','2026-05':'2026-05-12','2026-06':'2026-06-09','2026-07':'2026-07-08','2026-08':'2026-08-08','2026-09':'2026-09-08','2026-10':'2026-10-08','2026-11':'2026-11-10','2026-12':'2026-12-08','2027-01':'2027-01-09','2027-02':'2027-02-08','2027-03':'2027-03-08'},
+  '09': {'2026-04':'2026-04-09','2026-05':'2026-05-13','2026-06':'2026-06-10','2026-07':'2026-07-09','2026-08':'2026-08-10','2026-09':'2026-09-09','2026-10':'2026-10-09','2026-11':'2026-11-11','2026-12':'2026-12-09','2027-01':'2027-01-12','2027-02':'2027-02-09','2027-03':'2027-03-09'},
+  '10': {'2026-04':'2026-04-10','2026-05':'2026-05-14','2026-06':'2026-06-11','2026-07':'2026-07-10','2026-08':'2026-08-12','2026-09':'2026-09-10','2026-10':'2026-10-13','2026-11':'2026-11-12','2026-12':'2026-12-10','2027-01':'2027-01-13','2027-02':'2027-02-10','2027-03':'2027-03-10'},
+  '11': {'2026-04':'2026-04-13','2026-05':'2026-05-15','2026-06':'2026-06-12','2026-07':'2026-07-13','2026-08':'2026-08-13','2026-09':'2026-09-11','2026-10':'2026-10-14','2026-11':'2026-11-13','2026-12':'2026-12-11','2027-01':'2027-01-14','2027-02':'2027-02-12','2027-03':'2027-03-12'},
+  '12': {'2026-04':'2026-04-14','2026-05':'2026-05-18','2026-06':'2026-06-15','2026-07':'2026-07-14','2026-08':'2026-08-17','2026-09':'2026-09-14','2026-10':'2026-10-15','2026-11':'2026-11-16','2026-12':'2026-12-14','2027-01':'2027-01-15','2027-02':'2027-02-13','2027-03':'2027-03-15'},
+  '15': {'2026-04':'2026-04-15','2026-05':'2026-05-19','2026-06':'2026-06-16','2026-07':'2026-07-15','2026-08':'2026-08-18','2026-09':'2026-09-15','2026-10':'2026-10-16','2026-11':'2026-11-17','2026-12':'2026-12-15','2027-01':'2027-01-18','2027-02':'2027-02-15','2027-03':'2027-03-16'},
+  '16': {'2026-04':'2026-04-16','2026-05':'2026-05-20','2026-06':'2026-06-17','2026-07':'2026-07-16','2026-08':'2026-08-19','2026-09':'2026-09-16','2026-10':'2026-10-19','2026-11':'2026-11-18','2026-12':'2026-12-16','2027-01':'2027-01-19','2027-02':'2027-02-16','2027-03':'2027-03-17'},
+  '17': {'2026-04':'2026-04-17','2026-05':'2026-05-21','2026-06':'2026-06-18','2026-07':'2026-07-17','2026-08':'2026-08-20','2026-09':'2026-09-17','2026-10':'2026-10-20','2026-11':'2026-11-19','2026-12':'2026-12-17','2027-01':'2027-01-20','2027-02':'2027-02-17','2027-03':'2027-03-18'},
+  '18': {'2026-04':'2026-04-20','2026-05':'2026-05-22','2026-06':'2026-06-19','2026-07':'2026-07-21','2026-08':'2026-08-21','2026-09':'2026-09-18','2026-10':'2026-10-21','2026-11':'2026-11-20','2026-12':'2026-12-18','2027-01':'2027-01-21','2027-02':'2027-02-18','2027-03':'2027-03-19'},
+  '19': {'2026-04':'2026-04-21','2026-05':'2026-05-25','2026-06':'2026-06-22','2026-07':'2026-07-22','2026-08':'2026-08-24','2026-09':'2026-09-24','2026-10':'2026-10-22','2026-11':'2026-11-24','2026-12':'2026-12-22','2027-01':'2027-01-22','2027-02':'2027-02-19','2027-03':'2027-03-23'},
+  '22': {'2026-04':'2026-04-22','2026-05':'2026-05-26','2026-06':'2026-06-23','2026-07':'2026-07-23','2026-08':'2026-08-25','2026-09':'2026-09-25','2026-10':'2026-10-23','2026-11':'2026-11-25','2026-12':'2026-12-23','2027-01':'2027-01-25','2027-02':'2027-02-22','2027-03':'2027-03-24'},
+  '23': {'2026-04':'2026-04-23','2026-05':'2026-05-27','2026-06':'2026-06-24','2026-07':'2026-07-24','2026-08':'2026-08-26','2026-09':'2026-09-28','2026-10':'2026-10-26','2026-11':'2026-11-26','2026-12':'2026-12-24','2027-01':'2027-01-26','2027-02':'2027-02-24','2027-03':'2027-03-25'},
+  '24': {'2026-04':'2026-04-24','2026-05':'2026-05-28','2026-06':'2026-06-25','2026-07':'2026-07-27','2026-08':'2026-08-27','2026-09':'2026-09-29','2026-10':'2026-10-27','2026-11':'2026-11-27','2026-12':'2026-12-25','2027-01':'2027-01-27','2027-02':'2027-02-25','2027-03':'2027-03-26'}
+};
+
+function getSupplyDate(supplyPoint22) {
+  if (!supplyPoint22 || supplyPoint22.length < 5) return null;
+  const code = supplyPoint22.slice(3, 5);
+  if (!supplyCalendar[code]) return null;
+  // 今日以降の最も近い供給開始日を返す
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const allDates = Object.values(supplyCalendar[code]).sort();
+  const nearest = allDates.find(d => d >= todayStr) || allDates[allDates.length - 1];
+  return { code: code, date: nearest };
+}
+
+// v8: 当月＋翌月の供給開始日候補を取得（2026年度 実カレンダー版）
+function getUpcomingSupplyDates(codeOrDate, months = 2) {
+  // codeOrDate: schedule_code (2桁) または後方互換のための日付文字列
+  let code = codeOrDate;
+  if (codeOrDate && codeOrDate.length > 2) {
+    for (const [c, mdata] of Object.entries(supplyCalendar)) {
+      if (Object.values(mdata).includes(codeOrDate)) { code = c; break; }
+    }
+  }
+  if (!supplyCalendar[code]) return [];
+  const today = new Date();
+  const results = [];
+  for (let m = 0; m < months; m++) {
+    const t = new Date(today.getFullYear(), today.getMonth() + m, 1);
+    const ym = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0');
+    const d = supplyCalendar[code][ym];
+    if (d) results.push({ code: code, date: d, monthLabel: (t.getMonth() + 1) + '月', primary: m === 0 });
+  }
+  return results;
+}
+
+const RECORDS = [
+  {
+    id: 'R001',
+    customer_name: '山田 太郎',
+    kana: 'ヤマダ タロウ',
+    address: '大阪府大阪市北区梅田1-1-1',
+    tel: '06-1234-5678',
+    customer_number_denki: '12345678901234',
+    supply_point_22_denki: '0600345678901234567890',
+    customer_number_douryoku: '',
+    supply_point_22_douryoku: '',
+    customer_number_gas: '',
+    contract_plan: 'eおとくプラン',
+    usage: '家庭用',
+    capacity: '40A',
+    apply_date: '2026/04/02',
+    apply_code: '0281-30101',
+    sales_name: '鈴木 太郎', sales_code: '0027', sales_dept: '大阪本店・関電業務委託事業部',
+    ocr_confidence: 0.95,
+    has_denki: true, has_douryoku: false, has_gas: false,
+    status: 'completed',
+    ordered_at: '2026-04-02', specs_collected_at: '2026-04-03', entered_at: '2026-04-05',
+    sent_at: '2026-04-07', invoiced_at: '2026-04-10', payment_received_at: '2026-04-15',
+    payment_sent_at: '2026-04-17', completed_at: '2026-04-18',
+    is_urgent_sw: false, sw_target_month: null,
+    is_direct_operation: false,
+    specs_ready_on_submit: true,
+    supply_schedule_code: '12',
+    supply_start_date: '2026-05-18',
+    field_status: {
+      kana: 'match', customer_name: 'match', tel: 'match', address: 'match',
+      contract_plan: 'match', usage: 'match',
+      supply_point_22_denki: 'match', customer_number_denki: 'match', capacity: 'match'
+    },
+    ocr_values: { kana:'ヤマダ タロウ', customer_name:'山田 太郎', tel:'06-1234-5678', address:'大阪府大阪市北区梅田1-1-1', supply_point_22_denki:'0600345678901234567890', customer_number_denki:'12345678901234', capacity:'40A' },
+    list_values: { kana:'ヤマダ タロウ', customer_name:'山田 太郎', tel:'06-1234-5678', address:'大阪府大阪市北区梅田1-1-1', supply_point_22_denki:'0600345678901234567890', customer_number_denki:'12345678901234', capacity:'40A' },
+    related: []
+  },
+  {
+    id: 'R002',
+    customer_name: '佐藤 花子',
+    kana: 'サトウ ハナコ',
+    address: '大阪府大阪市西区江戸堀2-3-4',
+    tel: '06-2345-6789',
+    customer_number_denki: '22334455667788',
+    supply_point_22_denki: '0600334455667788990011',
+    contract_plan: 'eスマート10',
+    usage: '家庭用',
+    capacity: '50A',
+    apply_date: '2026/04/05',
+    apply_code: '0281-30102',
+    sales_name: '田中 花子', sales_code: '0034', sales_dept: '大阪本店・関電業務委託事業部',
+    ocr_confidence: 0.78,
+    has_denki: true, has_douryoku: false, has_gas: false,
+    status: 'awaiting_invoice',
+    ordered_at: '2026-04-05', specs_collected_at: '2026-04-06', entered_at: '2026-04-08',
+    sent_at: '2026-04-10', invoiced_at: null, payment_received_at: null,
+    payment_sent_at: null, completed_at: null,
+    is_urgent_sw: false, sw_target_month: null,
+    is_direct_operation: false,
+    specs_ready_on_submit: true,
+    supply_schedule_code: '22',
+    supply_start_date: null,
+    field_status: {
+      kana: 'ocr_list_diff', customer_name: 'match', tel: 'match', address: 'match',
+      contract_plan: 'match', usage: 'match',
+      supply_point_22_denki: 'ocr_list_diff', customer_number_denki: 'match', capacity: 'match'
+    },
+    ocr_values: { kana:'サトウ ハナ子', customer_name:'佐藤 花子', tel:'06-2345-6789', address:'大阪府大阪市西区江戸堀2-3-4', supply_point_22_denki:'0600334455667788990010', customer_number_denki:'22334455667788', capacity:'50A' },
+    list_values: { kana:'サトウ ハナコ', customer_name:'佐藤 花子', tel:'06-2345-6789', address:'大阪府大阪市西区江戸堀2-3-4', supply_point_22_denki:'0600334455667788990011', customer_number_denki:'22334455667788', capacity:'50A' },
+    related: []
+  },
+  {
+    id: 'R003',
+    customer_name: '鈴木 一郎',
+    kana: 'スズキ イチロウ',
+    address: '大阪府堺市堺区南瓦町3-1',
+    tel: '072-555-1212',
+    customer_number_denki: '33445566778899',
+    supply_point_22_denki: '0601445566778899001122',
+    contract_plan: 'ビジネス電灯',
+    usage: '商業用',
+    capacity: '60A',
+    apply_date: '2026/03/10',
+    apply_code: '0281-30103',
+    sales_name: '松本 賢', sales_code: '0018', sales_dept: '堺支店・関電業務委託事業部',
+    ocr_confidence: 0.88,
+    has_denki: true, has_douryoku: false, has_gas: false,
+    status: 'awaiting_specs',
+    ordered_at: '2026-03-10', specs_collected_at: null, entered_at: null,
+    sent_at: null, invoiced_at: null, payment_received_at: null,
+    payment_sent_at: null, completed_at: null,
+    is_urgent_sw: false, sw_target_month: null,
+    is_direct_operation: false,
+    specs_ready_on_submit: false,
+    supply_schedule_code: '03',
+    supply_start_date: '2026-05-07',
+    field_status: {
+      kana: 'match', customer_name: 'match',
+      tel: 'list_actual_diff',
+      address: 'list_actual_diff',
+      contract_plan: 'match', usage: 'match',
+      supply_point_22_denki: 'match', customer_number_denki: 'match', capacity: 'match'
+    },
+    ocr_values: { kana:'スズキ イチロウ', customer_name:'鈴木 一郎', tel:'072-555-9999', address:'大阪府堺市北区中百舌鳥4-2', supply_point_22_denki:'0601445566778899001122', customer_number_denki:'33445566778899', capacity:'60A' },
+    list_values: { kana:'スズキ イチロウ', customer_name:'鈴木 一郎', tel:'072-555-1111', address:'大阪府堺市北区中百舌鳥4-2', supply_point_22_denki:'0601445566778899001122', customer_number_denki:'33445566778899', capacity:'60A' },
+    related: []
+  },
+  {
+    id: 'R004',
+    customer_name: '高橋 健',
+    kana: 'タカハシ ケン',
+    address: '大阪府吹田市江坂町1-12-5',
+    tel: '06-6386-0000',
+    customer_number_denki: '44556677889900',
+    supply_point_22_denki: '0600556677889900112233',
+    contract_plan: 'eおとくプラン',
+    usage: '家庭用',
+    capacity: '30A',
+    apply_date: '2026/04/18',
+    apply_code: '0281-30104',
+    sales_name: '中田 あゆみ', sales_code: '0041', sales_dept: '北摂支店・関電業務委託事業部',
+    ocr_confidence: 0.42,
+    has_denki: true, has_douryoku: false, has_gas: false,
+    status: 'ordered',
+    ordered_at: '2026-04-18', specs_collected_at: null, entered_at: null,
+    sent_at: null, invoiced_at: null, payment_received_at: null,
+    payment_sent_at: null, completed_at: null,
+    is_urgent_sw: false, sw_target_month: null,
+    is_direct_operation: false,
+    specs_ready_on_submit: false,
+    supply_schedule_code: '04',
+    supply_start_date: '2026-06-05',
+    field_status: {
+      kana: 'ocr_empty', customer_name: 'match', tel: 'ocr_empty', address: 'match',
+      contract_plan: 'match', usage: 'match',
+      supply_point_22_denki: 'ocr_empty', customer_number_denki: 'match', capacity: 'ocr_empty'
+    },
+    ocr_values: { kana:'', customer_name:'高橋 健', tel:'', address:'大阪府吹田市江坂町1-12-5', supply_point_22_denki:'', customer_number_denki:'44556677889900', capacity:'' },
+    list_values: { kana:'タカハシ ケン', customer_name:'高橋 健', tel:'06-6386-0000', address:'大阪府吹田市江坂町1-12-5', supply_point_22_denki:'0600556677889900112233', customer_number_denki:'44556677889900', capacity:'30A' },
+    related: []
+  },
+  {
+    id: 'R005',
+    customer_name: '田中 美咲',
+    kana: 'タナカ ミサキ',
+    address: '兵庫県神戸市中央区三宮町1-1',
+    tel: '078-321-9999',
+    customer_number_denki: '55667788990011',
+    supply_point_22_denki: '0601667788990011223344',
+    contract_plan: 'eスマート10',
+    usage: '家庭用',
+    capacity: '40A',
+    apply_date: '2026/04/12',
+    apply_code: '0281-30105',
+    sales_name: '山本 拓也', sales_code: '0052', sales_dept: '神戸支店・関電業務委託事業部',
+    ocr_confidence: 0.91,
+    has_denki: true, has_douryoku: false, has_gas: false,
+    status: 'awaiting_entry',
+    ordered_at: '2026-04-12', specs_collected_at: '2026-04-12', entered_at: null,
+    sent_at: null, invoiced_at: null, payment_received_at: null,
+    payment_sent_at: null, completed_at: null,
+    is_urgent_sw: false, sw_target_month: null,
+    is_direct_operation: false,
+    specs_ready_on_submit: true,
+    supply_schedule_code: '11',
+    supply_start_date: '2026-05-15',
+    field_status: {
+      kana: 'new', customer_name: 'new', tel: 'new', address: 'new',
+      contract_plan: 'new', usage: 'new',
+      supply_point_22_denki: 'new', customer_number_denki: 'new', capacity: 'new'
+    },
+    ocr_values: { kana:'タナカ ミサキ', customer_name:'田中 美咲', tel:'078-321-9999', address:'兵庫県神戸市中央区三宮町1-1', supply_point_22_denki:'0601667788990011223344', customer_number_denki:'55667788990011', capacity:'40A' },
+    list_values: { kana:'(リスト未登録)', customer_name:'(リスト未登録)', tel:'-', address:'-', supply_point_22_denki:'-', customer_number_denki:'-', capacity:'-' },
+    related: []
+  },
+  {
+    id: 'R006',
+    customer_name: '株式会社オクトパス',
+    kana: 'カブシキガイシャオクトパス',
+    address: '大阪府大阪市淀川区西中島5-14-10',
+    tel: '06-6300-0001',
+    customer_number_denki: '66778899001122',
+    supply_point_22_denki: '0600778899001122334455',
+    customer_number_douryoku: '66778899001133',
+    supply_point_22_douryoku: '0600778899001133445566',
+    contract_plan: 'ビジネス動力',
+    usage: '商業用',
+    capacity: '15kW',
+    apply_date: '2026/04/14',
+    apply_code: '0281-30106',
+    sales_name: '鈴木 太郎', sales_code: '0027', sales_dept: '大阪本店・関電業務委託事業部',
+    ocr_confidence: 0.83,
+    has_denki: true, has_douryoku: true, has_gas: false,
+    status: 'awaiting_entry',
+    ordered_at: '2026-04-14', specs_collected_at: '2026-04-14', entered_at: null,
+    sent_at: null, invoiced_at: null, payment_received_at: null,
+    payment_sent_at: null, completed_at: null,
+    is_urgent_sw: true, sw_target_month: 'S5',
+    is_direct_operation: false,
+    specs_ready_on_submit: true,
+    supply_schedule_code: '04',
+    supply_start_date: '2026-05-08',
+    field_status: {
+      kana: 'match', customer_name: 'match', tel: 'match', address: 'match',
+      contract_plan: 'match', usage: 'match',
+      supply_point_22_denki: 'match', customer_number_denki: 'match', capacity: 'match',
+      supply_point_22_douryoku: 'ocr_list_diff', customer_number_douryoku: 'match', capacity_douryoku: 'match'
+    },
+    ocr_values: { kana:'カブシキガイシャオクトパス', customer_name:'株式会社オクトパス', tel:'06-6300-0001', address:'大阪府大阪市淀川区西中島5-14-10', supply_point_22_denki:'0600778899001122334455', customer_number_denki:'66778899001122', capacity:'15kW', supply_point_22_douryoku:'0600778899001133445567', customer_number_douryoku:'66778899001133', capacity_douryoku:'15kW' },
+    list_values: { kana:'カブシキガイシャオクトパス', customer_name:'株式会社オクトパス', tel:'06-6300-0001', address:'大阪府大阪市淀川区西中島5-14-10', supply_point_22_denki:'0600778899001122334455', customer_number_denki:'66778899001122', capacity:'15kW', supply_point_22_douryoku:'0600778899001133445566', customer_number_douryoku:'66778899001133', capacity_douryoku:'15kW' },
+    related: []
+  },
+  {
+    id: 'R007',
+    customer_name: '伊藤 マンション管理組合',
+    kana: 'イトウマンションカンリクミアイ',
+    address: '大阪府大阪市天王寺区上本町6-3-31',
+    tel: '06-6770-0007',
+    customer_number_denki: '77889900112233',
+    supply_point_22_denki: '0601889900112233445566',
+    contract_plan: 'eおとくプラン',
+    usage: '商業用',
+    capacity: '50A',
+    apply_date: '2026/04/15',
+    apply_code: '0281-30107',
+    sales_name: '斎藤 ゆり', sales_code: '0063', sales_dept: '大阪本店・関電業務委託事業部',
+    ocr_confidence: 0.97,
+    has_denki: true, has_douryoku: false, has_gas: false,
+    status: 'awaiting_send',
+    ordered_at: '2026-04-15', specs_collected_at: '2026-04-15', entered_at: '2026-04-16',
+    sent_at: null, invoiced_at: null, payment_received_at: null,
+    payment_sent_at: null, completed_at: null,
+    is_urgent_sw: false, sw_target_month: null,
+    is_direct_operation: true,
+    specs_ready_on_submit: true,
+    supply_schedule_code: '05',
+    supply_start_date: '2026-06-08',
+    field_status: {
+      kana: 'match', customer_name: 'match', tel: 'match', address: 'match',
+      contract_plan: 'match', usage: 'match',
+      supply_point_22_denki: 'match', customer_number_denki: 'match', capacity: 'match'
+    },
+    ocr_values: { kana:'イトウマンションカンリクミアイ', customer_name:'伊藤 マンション管理組合', tel:'06-6770-0007', address:'大阪府大阪市天王寺区上本町6-3-31', supply_point_22_denki:'0601889900112233445566', customer_number_denki:'77889900112233', capacity:'50A' },
+    list_values: { kana:'イトウマンションカンリクミアイ', customer_name:'伊藤 マンション管理組合', tel:'06-6770-0007', address:'大阪府大阪市天王寺区上本町6-3-31', supply_point_22_denki:'0601889900112233445566', customer_number_denki:'77889900112233', capacity:'50A' },
+    related: [{ id: 'R007B', label: '物件B (動力)', customer_number: '77889900112244' }]
+  },
+  {
+    id: 'R008',
+    customer_name: '株式会社プロデライト',
+    kana: 'カブシキガイシャプロデライト',
+    address: '大阪府大阪市中央区南本町2-1-1',
+    tel: '06-4400-2200',
+    customer_number_denki: '88990011223344',
+    supply_point_22_denki: '0600990011223344556677',
+    contract_plan: 'ビジネス電灯',
+    usage: '商業用',
+    capacity: '60A',
+    apply_date: '2026/03/26',
+    apply_code: '0281-30108',
+    sales_name: '森田 慎一', sales_code: '0079', sales_dept: '大阪本店・関電業務委託事業部',
+    ocr_confidence: 0.89,
+    has_denki: true, has_douryoku: false, has_gas: false,
+    status: 'awaiting_payment_out',
+    ordered_at: '2026-03-26', specs_collected_at: '2026-03-27', entered_at: '2026-03-30',
+    sent_at: '2026-04-02', invoiced_at: '2026-04-08', payment_received_at: '2026-04-16',
+    payment_sent_at: null, completed_at: null,
+    is_urgent_sw: false, sw_target_month: null,
+    is_direct_operation: false,
+    specs_ready_on_submit: true,
+    supply_schedule_code: '08',
+    supply_start_date: '2026-05-12',
+    field_status: {
+      kana: 'list_actual_diff', customer_name: 'list_actual_diff',
+      tel: 'list_actual_diff', address: 'list_actual_diff',
+      contract_plan: 'match', usage: 'match',
+      supply_point_22_denki: 'list_actual_diff', customer_number_denki: 'match', capacity: 'match'
+    },
+    ocr_values: { kana:'カブシキガイシャプロデライト', customer_name:'株式会社プロデライト', tel:'06-4400-2200', address:'大阪府大阪市中央区南本町2-1-1', supply_point_22_denki:'0600990011223344556677', customer_number_denki:'88990011223344', capacity:'60A' },
+    list_values: { kana:'カ）プロデライト', customer_name:'(株)プロデライト', tel:'06-4400-1100', address:'大阪府大阪市中央区南本町1-2-3', supply_point_22_denki:'0600990011223344556699', customer_number_denki:'88990011223344', capacity:'60A' },
+    related: []
+  },
+  {
+    id: 'R009',
+    customer_name: '渡辺 ガス店',
+    kana: 'ワタナベ ガステン',
+    address: '大阪府東大阪市長田中5-3-2',
+    tel: '06-6788-9999',
+    customer_number_gas: '99001122334455',
+    contract_plan: '-',
+    usage: '商業用',
+    capacity: '-',
+    apply_date: '2026/04/01',
+    apply_code: '0281-30109',
+    sales_name: '岡田 真由子', sales_code: '0085', sales_dept: '東大阪支店・関電業務委託事業部',
+    ocr_confidence: 0.93,
+    has_denki: false, has_douryoku: false, has_gas: true,
+    status: 'awaiting_payment_in',
+    ordered_at: '2026-04-01', specs_collected_at: '2026-04-02', entered_at: '2026-04-04',
+    sent_at: '2026-04-07', invoiced_at: '2026-04-12', payment_received_at: null,
+    payment_sent_at: null, completed_at: null,
+    is_urgent_sw: false, sw_target_month: null,
+    is_direct_operation: false,
+    specs_ready_on_submit: true,
+    supply_schedule_code: '19',
+    supply_start_date: '2026-04-21',
+    field_status: {
+      kana: 'match', customer_name: 'match', tel: 'match', address: 'match',
+      usage: 'match',
+      customer_number_gas: 'match'
+    },
+    ocr_values: { kana:'ワタナベ ガステン', customer_name:'渡辺 ガス店', tel:'06-6788-9999', address:'大阪府東大阪市長田中5-3-2', customer_number_gas:'99001122334455' },
+    list_values: { kana:'ワタナベ ガステン', customer_name:'渡辺 ガス店', tel:'06-6788-9999', address:'大阪府東大阪市長田中5-3-2', customer_number_gas:'99001122334455' },
+    related: []
+  },
+  {
+    id: 'R010',
+    customer_name: '中村 工務店',
+    kana: 'ナカムラ コウムテン',
+    address: '大阪府大阪市港区夕凪1-7-21',
+    tel: '06-6573-0000',
+    customer_number_denki: '10112233445566',
+    supply_point_22_denki: '0600112233445566778899',
+    contract_plan: 'eおとくプラン',
+    usage: '工業用',
+    capacity: '50A',
+    apply_date: '2026/03/08',
+    apply_code: '0281-30110',
+    sales_name: '鈴木 太郎', sales_code: '0027', sales_dept: '大阪本店・関電業務委託事業部',
+    ocr_confidence: 0.35,
+    has_denki: true, has_douryoku: false, has_gas: false,
+    status: 'awaiting_specs',
+    ordered_at: '2026-03-08', specs_collected_at: null, entered_at: null,
+    sent_at: null, invoiced_at: null, payment_received_at: null,
+    payment_sent_at: null, completed_at: null,
+    is_urgent_sw: true, sw_target_month: 'S6',
+    is_direct_operation: false,
+    specs_ready_on_submit: false,
+    supply_schedule_code: '22',
+    supply_start_date: '2026-06-23',
+    field_status: {
+      kana: 'ocr_empty', customer_name: 'ocr_list_diff',
+      tel: 'ocr_empty', address: 'ocr_empty',
+      contract_plan: 'match', usage: 'match',
+      supply_point_22_denki: 'ocr_empty', customer_number_denki: 'ocr_list_diff', capacity: 'ocr_empty'
+    },
+    ocr_values: { kana:'', customer_name:'中村工務店', tel:'', address:'', supply_point_22_denki:'', customer_number_denki:'10112233445567', capacity:'' },
+    list_values: { kana:'ナカムラ コウムテン', customer_name:'中村 工務店', tel:'06-6573-0000', address:'大阪府大阪市港区夕凪1-7-21', supply_point_22_denki:'0600112233445566778899', customer_number_denki:'10112233445566', capacity:'50A' },
+    related: []
+  }
+];
+
+const SEARCHABLE_FIELDS = [
+  'kana','customer_name','tel','address',
+  'customer_number_denki','supply_point_22_denki','capacity',
+  'customer_number_douryoku','supply_point_22_douryoku','capacity_douryoku',
+  'customer_number_gas',
+  'contract_plan','usage',
+  'apply_date','ocr_confidence','apply_code',
+  'sales_name','sales_code','sales_dept',
+  'rep_kana','rep_name','pay_address',
+  'applicant_kana','applicant_name','applicant_tel',
+  'prev_provider','prev_kana','prev_name','prev_customer_no','prev_supply_22',
+  'gas_meter_no',
+  'status','sw_target_month','supply_schedule_code','supply_start_date',
+  // v7: 日付フィールド追加
+  'ordered_at','specs_collected_at','entered_at','sent_at',
+  'invoiced_at','payment_received_at','payment_sent_at','completed_at'
+];
+
+const NUMERIC_FIELDS = ['ocr_confidence'];
+const DATE_FIELDS = ['apply_date',
+  'ordered_at','specs_collected_at','entered_at','sent_at',
+  'invoiced_at','payment_received_at','payment_sent_at','completed_at'
+];
+const STAGNATION_THRESHOLD_DAYS = 30;
+const TODAY = new Date('2026-04-19');
+
+// v7: ステータス表示ラベル
+const STATUS_LABEL = {
+  ordered: '受注',
+  awaiting_specs: '諸元待ち',
+  awaiting_entry: 'エントリー待ち',
+  awaiting_send: '送付待ち',
+  awaiting_invoice: '請求待ち',
+  awaiting_payment_in: '入金待ち',
+  awaiting_payment_out: '支払待ち',
+  completed: '完了'
+};
+
+// v7: 検索モード時のトップレベル検索条件 (各 tab ごとに保持)
+// 通常のフォーム検索条件は searchRequests[tab] に入り、
+// トップレベル用の status/日付8/営業3 は searchRequests[tab] の中に同じキーで格納する
+// (recordMatchesRequest と summarizeRequests で共通処理するため)
+
+let currentIdx = 0;
+let currentCat = 'denki';
+let currentZoom = 1;
+
+let searchMode = false;
+let searchRequests = [{}];
+let activeSearchTab = 0;
+let foundSet = null;
+let lastSearchSummary = '';
+
+let selectedStatusKey = null;
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+function showToast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function openModal(title, body, onConfirm, options = {}) {
+  $('#modalTitle').textContent = title;
+  $('#modalBody').innerHTML = body;
+  $('#modalOverlay').classList.add('show');
+  const confirmBtn = $('#modalConfirm');
+  const newBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+  newBtn.textContent = options.confirmText || 'OK';
+  newBtn.addEventListener('click', () => {
+    const res = onConfirm ? onConfirm() : true;
+    if (res !== false) closeModal();
+  });
+}
+
+function closeModal() {
+  $('#modalOverlay').classList.remove('show');
+}
+
+$('#modalCancel').addEventListener('click', closeModal);
+$('#modalOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'modalOverlay') closeModal();
+});
+
+function statusIndex(key) {
+  return STATUS_FLOW.findIndex(s => s.key === key);
+}
+
+function getWaitingDays(rec) {
+  if (rec.status !== 'awaiting_specs' || !rec.ordered_at) return null;
+  const ordered = new Date(rec.ordered_at);
+  const diffMs = TODAY.getTime() - ordered.getTime();
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+function isStagnant(rec) {
+  const d = getWaitingDays(rec);
+  return d != null && d >= STAGNATION_THRESHOLD_DAYS;
+}
+
+function getActiveRecordList() {
+  return foundSet ? foundSet.map(i => RECORDS[i]) : RECORDS;
+}
+
+function getActiveIndices() {
+  return foundSet ? foundSet : RECORDS.map((_, i) => i);
+}
+
+function recordPositionInfo() {
+  const indices = getActiveIndices();
+  const pos = indices.indexOf(currentIdx);
+  return { pos: pos + 1, total: indices.length, isFound: !!foundSet };
+}
+
+function renderHeader() {
+  const info = recordPositionInfo();
+  const counter = $('#recCounter');
+  const label = $('#recLabel');
+  if (info.isFound) {
+    counter.textContent = '結果内 ' + info.pos + ' / ' + info.total + '件';
+    counter.classList.add('found-mode');
+    label.textContent = '🔍 結果セット';
+  } else {
+    counter.textContent = (currentIdx + 1) + ' / ' + RECORDS.length;
+    counter.classList.remove('found-mode');
+    label.textContent = 'レコード';
+  }
+
+  const rec = RECORDS[currentIdx];
+  const urgentBadge = $('#urgentBadge');
+  if (rec.is_urgent_sw) {
+    urgentBadge.style.display = 'inline-flex';
+    $('#urgentMonth').textContent = rec.sw_target_month ? rec.sw_target_month.replace('S', '') + '月' : '?';
+  } else {
+    urgentBadge.style.display = 'none';
+  }
+  const stagnationBadge = $('#stagnationBadge');
+  stagnationBadge.style.display = isStagnant(rec) ? 'inline-flex' : 'none';
+}
+
+// v4: 営業担当者バナー描画
+function renderSalesBanner() {
+  const rec = RECORDS[currentIdx];
+  $('#salesName').innerHTML = (rec.sales_name || '-') + '<span class="sales-code">(' + (rec.sales_code || '-') + ')</span>';
+  $('#salesDept').textContent = rec.sales_dept || '';
+  $('#salesApplyCode').textContent = rec.apply_code || '-';
+  $('#salesOrderDate').textContent = rec.ordered_at ? rec.ordered_at.replace(/-/g, '/') : '-';
+}
+
+// v5: 日付入力キー⇔STATUS_FLOW対応
+const DATE_KEY_TO_DB_FIELD = {
+  'ordered':     'ordered_at',
+  'specs':       'specs_collected_at',
+  'entry':       'entered_at',
+  'send':        'sent_at',
+  'invoice':     'invoiced_at',
+  'payment_in':  'payment_received_at',
+  'payment_out': 'payment_sent_at',
+  'completed':   'completed_at'
+};
+
+// v5: ステータスキー順
+const STATUS_ORDER = STATUS_FLOW.map(s => s.key);
+
+// v5: 日付入力後に進行するステータス
+const DATE_TO_STATUS_ADVANCE = {
+  'ordered':     'awaiting_specs',
+  'specs':       'awaiting_entry',
+  'entry':       'awaiting_send',
+  'send':        'awaiting_invoice',
+  'invoice':     'awaiting_payment_in',
+  'payment_in':  'awaiting_payment_out',
+  'payment_out': 'completed',
+  'completed':   'completed'
+};
+
+// v5: 日付クリア時に戻すステータス
+const DATE_CLEAR_TO_STATUS = {
+  'ordered':     'ordered',
+  'specs':       'awaiting_specs',
+  'entry':       'awaiting_entry',
+  'send':        'awaiting_send',
+  'invoice':     'awaiting_invoice',
+  'payment_in':  'awaiting_payment_in',
+  'payment_out': 'awaiting_payment_out',
+  'completed':   'awaiting_payment_out'
+};
+
+// v5: YY/MM/DD 表記フォーマット
+function formatStatusDate(dateStr) {
+  if (!dateStr) return '—';
+  const normalized = dateStr.includes('-') ? dateStr : dateStr.replace(/\//g, '-');
+  const parts = normalized.split('-');
+  if (parts.length < 3) return dateStr;
+  const yy = String(parts[0]).slice(-2);
+  const mm = String(parts[1]).padStart(2, '0');
+  const dd = String(parts[2]).padStart(2, '0');
+  return yy + '/' + mm + '/' + dd;
+}
+
+// v6: DB フィールド → 日付キーの逆引き
+const DB_FIELD_TO_DATE_KEY = Object.fromEntries(
+  Object.entries(DATE_KEY_TO_DB_FIELD).map(([k, v]) => [v, k])
+);
+
+// v6: 矢印型ステータスバー描画 (日付入力をステップ内にインライン統合)
+function renderStatusBar() {
+  const rec = RECORDS[currentIdx];
+  const row = $('#statusArrowRow');
+  row.innerHTML = '';
+  const currentStatusIdx = statusIndex(rec.status);
+
+  STATUS_FLOW.forEach((s, idx) => {
+    const step = document.createElement('div');
+    step.className = 'status-step';
+    step.dataset.statusKey = s.key;
+
+    const isSkipped = (s.key === 'awaiting_specs' && rec.specs_ready_on_submit) ||
+                      (s.key === 'awaiting_payment_out' && rec.is_direct_operation);
+    const dateVal = rec[s.dateField];
+
+    if (idx < currentStatusIdx) {
+      step.classList.add('passed');
+    } else if (idx === currentStatusIdx) {
+      step.classList.add('active');
+      if (s.key === 'awaiting_specs') step.classList.add('waiting-specs');
+    }
+
+    if (isSkipped && idx !== currentStatusIdx && !dateVal) {
+      step.classList.add('skipped');
+    }
+
+    if (selectedStatusKey === s.key) {
+      step.classList.add('selected-step');
+    }
+
+    // ラベル
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'status-step-label';
+    labelSpan.textContent = s.label;
+
+    // 日付入力 (インライン編集)
+    const dateKey = DB_FIELD_TO_DATE_KEY[s.dateField];
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.className = 'status-step-date-input';
+    dateInput.value = dateVal || '';
+    dateInput.dataset.dateKey = dateKey;
+    dateInput.dataset.statusKey = s.key;
+    dateInput.title = s.label + ' の日付を入力';
+    dateInput.addEventListener('change', (e) => {
+      onStatusDateChange(dateKey, e.target.value);
+    });
+    // ステップ自身のクリックで日付入力にフォーカス (余白クリック時)
+    dateInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectedStatusKey = s.key;
+    });
+    dateInput.addEventListener('focus', () => {
+      selectedStatusKey = s.key;
+    });
+
+    step.appendChild(labelSpan);
+    step.appendChild(dateInput);
+
+    // ステップの空き領域クリックで日付入力にフォーカス
+    step.addEventListener('click', (e) => {
+      if (e.target === step || e.target === labelSpan) {
+        selectedStatusKey = s.key;
+        try { dateInput.focus(); } catch (err) {}
+      }
+    });
+
+    row.appendChild(step);
+  });
+}
+
+// v5: 日付入力 onChange ハンドラ
+function onStatusDateChange(dateKey, value) {
+  const rec = RECORDS[currentIdx];
+  const dbField = DATE_KEY_TO_DB_FIELD[dateKey];
+  if (!dbField) return;
+
+  rec[dbField] = value || null;
+  const labelForToast = (STATUS_FLOW.find(s => s.dateField === dbField) || {}).label || dateKey;
+
+  if (value) {
+    // 次のステータスに自動進行（ただし後退はしない）
+    const nextStatus = DATE_TO_STATUS_ADVANCE[dateKey];
+    const currentIdx2 = STATUS_ORDER.indexOf(rec.status);
+    const nextIdx2 = STATUS_ORDER.indexOf(nextStatus);
+    if (nextIdx2 > currentIdx2) {
+      rec.status = nextStatus;
+    }
+    selectedStatusKey = rec.status;
+    showToast(labelForToast + ' の日付を記録: ' + formatStatusDate(value));
+  } else {
+    // 日付クリア → そのステータスに戻す
+    const targetStatus = DATE_CLEAR_TO_STATUS[dateKey];
+    if (targetStatus) {
+      rec.status = targetStatus;
+      selectedStatusKey = targetStatus;
+    }
+    showToast(labelForToast + ' の日付をクリア');
+  }
+
+  renderStatusBar();
+  // 画面全体（セーブボタンラベル等）も更新
+  renderSaveButton();
+}
+
+// v5: ステータスを1段進める（保存ボタン用・日付なければ本日を自動設定）
+function advanceStatus() {
+  const rec = RECORDS[currentIdx];
+  let curIdx = statusIndex(rec.status);
+  if (curIdx >= STATUS_FLOW.length - 1) {
+    showToast('既に「完了」です');
+    return;
+  }
+  let nextIdx = curIdx + 1;
+  const nextKey = STATUS_FLOW[nextIdx].key;
+  if (nextKey === 'awaiting_specs' && rec.specs_ready_on_submit) {
+    nextIdx++;
+  }
+  if (nextIdx >= STATUS_FLOW.length) nextIdx = STATUS_FLOW.length - 1;
+  const newStatus = STATUS_FLOW[nextIdx];
+  rec.status = newStatus.key;
+  const df = newStatus.dateField;
+  if (!rec[df]) {
+    rec[df] = isoDate(new Date());
+  }
+  selectedStatusKey = newStatus.key;
+  showToast('ステータスを「' + newStatus.label + '」に進めました');
+  renderAll();
+}
+
+function isoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+// v6: 「エントリーして次へ」ボタン — エントリー日を本日にセットして次レコードへ
+function entryAndNext() {
+  const list = getActiveRecordList();
+  const indices = getActiveIndices();
+  const pos = indices.indexOf(currentIdx);
+  const rec = RECORDS[currentIdx];
+  if (!rec) return;
+
+  const today = isoDate(new Date());
+  // エントリー日をセット + 自動ステータス進行 (既存 onStatusDateChange を利用)
+  onStatusDateChange('entry', today);
+  showToast('エントリー日を記録 → 次のレコードへ');
+
+  // 次のレコードに移動
+  if (pos >= 0 && pos < indices.length - 1) {
+    setTimeout(() => {
+      currentIdx = indices[pos + 1];
+      currentCat = pickFirstCat();
+      selectedStatusKey = null;
+      setZoom(1);
+      renderAll();
+    }, 200);
+  } else {
+    showToast(foundSet ? '結果セットの最後のレコードです' : '最後のレコードです');
+  }
+}
+
+function renderRelatedBanner() {
+  const rec = RECORDS[currentIdx];
+  const banner = $('#relatedBanner');
+  const list = $('#relatedList');
+  if (!rec.related || rec.related.length === 0 || searchMode) {
+    banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = 'flex';
+  list.innerHTML = '';
+  rec.related.forEach(r => {
+    const btn = document.createElement('button');
+    btn.className = 'related-pill';
+    btn.innerHTML = '📍 ' + r.label + ' <span style="opacity:0.6;font-family:var(--font-mono);">' + r.customer_number + '</span>';
+    btn.addEventListener('click', () => {
+      showToast('関連物件: ' + r.label + ' へ遷移 (シミュレーション)');
+    });
+    list.appendChild(btn);
+  });
+}
+
+// v4: 縦タブ描画
+function renderCatTabs() {
+  const rec = RECORDS[currentIdx];
+  const tabs = {
+    denki: rec.has_denki,
+    douryoku: rec.has_douryoku,
+    gas: rec.has_gas,
+    specs: true,
+    receipt: true
+  };
+  $$('.vertical-tab').forEach(tab => {
+    const cat = tab.dataset.cat;
+    tab.classList.remove('disabled', 'missing');
+    if (cat === 'specs' && rec.status === 'awaiting_specs') {
+      tab.classList.add('missing');
+    } else if (!tabs[cat]) {
+      tab.classList.add('disabled');
+    }
+    tab.classList.toggle('active', cat === currentCat);
+  });
+  if (!tabs[currentCat]) {
+    const firstAvailable = Object.keys(tabs).find(k => tabs[k]);
+    if (firstAvailable) {
+      currentCat = firstAvailable;
+      $$('.vertical-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === currentCat));
+    }
+  }
+}
+
+function renderDocSvg() {
+  const rec = RECORDS[currentIdx];
+  const svg = $('#docSvg');
+  const canvas = $('#imageCanvas');
+  const toolbarLabel = $('#imageToolbarLabel');
+
+  if (currentCat === 'specs') {
+    if (rec.status === 'awaiting_specs') {
+      toolbarLabel.textContent = '諸元 (未添付)';
+      svg.innerHTML = '';
+      const days = getWaitingDays(rec);
+      canvas.innerHTML = '<div class="specs-placeholder">' +
+        '<div class="big">📋</div>' +
+        '<div><strong>諸元ファイルはまだ添付されていません</strong></div>' +
+        '<div class="hint">待機日数: ' + (days != null ? days + '日' : '-') + (isStagnant(rec) ? ' 🔔 滞留アラート' : '') + '</div>' +
+        '<button class="btn-attach" id="btnAttachSpecsCanvas">📎 諸元を後付けする</button>' +
+        '</div>';
+      const b = document.getElementById('btnAttachSpecsCanvas');
+      if (b) b.addEventListener('click', openAttachSpecsModal);
+    } else {
+      toolbarLabel.textContent = '諸元 (添付済)';
+      canvas.innerHTML = '<div class="doc-paper" id="docPaper" style="transform:scale(' + currentZoom + ');"><div class="field-highlight" id="fieldHighlight"></div>' +
+        '<svg viewBox="0 0 595 842" xmlns="http://www.w3.org/2000/svg" id="docSvg">' +
+        buildSpecsSvg(rec) +
+        '</svg></div>';
+    }
+    return;
+  }
+
+  if (currentCat === 'receipt') {
+    toolbarLabel.textContent = '受領書';
+    canvas.innerHTML = '<div class="doc-paper" id="docPaper" style="transform:scale(' + currentZoom + ');"><div class="field-highlight" id="fieldHighlight"></div>' +
+      '<svg viewBox="0 0 595 842" xmlns="http://www.w3.org/2000/svg" id="docSvg">' +
+      buildReceiptSvg(rec) +
+      '</svg></div>';
+    return;
+  }
+
+  toolbarLabel.textContent = '申込書プレビュー';
+
+  canvas.innerHTML = '<div class="doc-paper" id="docPaper" style="transform:scale(' + currentZoom + ');"><div class="field-highlight" id="fieldHighlight"></div><svg viewBox="0 0 595 842" xmlns="http://www.w3.org/2000/svg" id="docSvg"></svg></div>';
+
+  const svgEl = document.getElementById('docSvg');
+  const titles = {
+    denki: '関西電力 電気のお申込み (電灯)',
+    douryoku: '関西電力 電気のお申込み (動力)',
+    gas: '関西電力ガス お申込み'
+  };
+  const headerColor = currentCat === 'denki' ? '#ef9f27' : currentCat === 'douryoku' ? '#85b7eb' : '#f09595';
+
+  const fields = [
+    { y: 110, label: 'フリガナ', value: rec.ocr_values.kana || '(未読取)' },
+    { y: 138, label: 'ご契約名義', value: rec.ocr_values.customer_name || '(未読取)' },
+    { y: 166, label: '電話番号', value: rec.ocr_values.tel || '(未読取)' },
+    { y: 194, label: 'ご使用場所住所', value: rec.ocr_values.address || '(未読取)' }
+  ];
+
+  if (currentCat === 'denki') {
+    fields.push(
+      { y: 360, label: '供給地点特定番号 (22桁)', value: rec.ocr_values.supply_point_22_denki || '' },
+      { y: 388, label: 'お客様番号 (14桁)', value: rec.ocr_values.customer_number_denki || '' },
+      { y: 416, label: '契約容量', value: rec.ocr_values.capacity || '' }
+    );
+  } else if (currentCat === 'douryoku') {
+    fields.push(
+      { y: 360, label: '供給地点特定番号 (22桁)', value: rec.ocr_values.supply_point_22_douryoku || '' },
+      { y: 388, label: 'お客様番号 (14桁)', value: rec.ocr_values.customer_number_douryoku || '' },
+      { y: 416, label: '契約容量', value: rec.ocr_values.capacity_douryoku || '' }
+    );
+  } else if (currentCat === 'gas') {
+    fields.push(
+      { y: 360, label: 'ガスお客様番号', value: rec.ocr_values.customer_number_gas || '' }
+    );
+  }
+
+  let html = '';
+  html += '<rect x="0" y="0" width="595" height="842" fill="#ffffff"/>';
+  html += '<rect x="0" y="0" width="595" height="60" fill="' + headerColor + '"/>';
+  html += '<text x="32" y="38" font-family="sans-serif" font-size="16" font-weight="700" fill="#fff">' + titles[currentCat] + '</text>';
+  html += '<text x="32" y="78" font-family="sans-serif" font-size="9" fill="#5f5e5a">レコードID: ' + rec.id + ' / 申込日: ' + (rec.apply_date || '-') + '</text>';
+  if (rec.is_urgent_sw) {
+    html += '<rect x="440" y="70" width="125" height="22" fill="#d63a3a" rx="3"/>';
+    html += '<text x="448" y="85" font-family="sans-serif" font-size="10" font-weight="700" fill="#fff">🚨 至急SW ' + (rec.sw_target_month || '') + '</text>';
+  }
+  html += '<line x1="32" y1="92" x2="563" y2="92" stroke="#d3d1c7" stroke-width="0.5"/>';
+
+  fields.forEach((f) => {
+    html += '<text x="32" y="' + f.y + '" font-family="sans-serif" font-size="8" fill="#888780">' + f.label + '</text>';
+    html += '<rect x="32" y="' + (f.y + 4) + '" width="500" height="20" fill="#fafafa" stroke="#d3d1c7" stroke-width="0.5"/>';
+    html += '<text x="40" y="' + (f.y + 18) + '" font-family="monospace" font-size="11" fill="#2c2c2a">' + f.value + '</text>';
+  });
+
+  html += '<text x="32" y="320" font-family="sans-serif" font-size="11" font-weight="700" fill="#2c2c2a">■ 契約情報</text>';
+  html += '<line x1="32" y1="328" x2="563" y2="328" stroke="#888780" stroke-width="0.5"/>';
+  html += '<text x="32" y="280" font-family="sans-serif" font-size="11" font-weight="700" fill="#2c2c2a">■ 基本情報</text>';
+  html += '<line x1="32" y1="288" x2="563" y2="288" stroke="#888780" stroke-width="0.5"/>';
+  html += '<rect x="32" y="500" width="531" height="240" fill="#faf8f3" stroke="#d3d1c7" stroke-width="0.5"/>';
+  html += '<text x="40" y="520" font-family="sans-serif" font-size="9" fill="#888780">同意事項・署名欄 (省略)</text>';
+
+  if (rec.is_urgent_sw) {
+    html += '<rect x="32" y="780" width="140" height="40" fill="#fcebeb" stroke="#d63a3a" stroke-width="1.5" rx="3"/>';
+    html += '<text x="40" y="800" font-family="sans-serif" font-size="10" font-weight="700" fill="#791f1f">S' + (rec.sw_target_month ? rec.sw_target_month.replace('S','') : '?') + '</text>';
+    html += '<text x="40" y="813" font-family="sans-serif" font-size="8" fill="#791f1f">至急SW希望 (OCR検出)</text>';
+  } else {
+    html += '<rect x="32" y="780" width="200" height="40" fill="none" stroke="#888780" stroke-width="0.5" stroke-dasharray="2,2"/>';
+    html += '<text x="38" y="794" font-family="sans-serif" font-size="8" fill="#888780">お客様署名欄</text>';
+  }
+  html += '<rect x="370" y="780" width="180" height="40" fill="none" stroke="#888780" stroke-width="0.5" stroke-dasharray="2,2"/>';
+  html += '<text x="376" y="794" font-family="sans-serif" font-size="8" fill="#888780">スタッフ署名欄</text>';
+
+  svgEl.innerHTML = html;
+}
+
+function buildSpecsSvg(rec) {
+  let html = '';
+  html += '<rect x="0" y="0" width="595" height="842" fill="#ffffff"/>';
+  html += '<rect x="0" y="0" width="595" height="60" fill="#3c3489"/>';
+  html += '<text x="32" y="38" font-family="sans-serif" font-size="16" font-weight="700" fill="#fff">諸元ファイル</text>';
+  html += '<text x="32" y="78" font-family="sans-serif" font-size="9" fill="#5f5e5a">レコードID: ' + rec.id + ' / 諸元回収日: ' + (rec.specs_collected_at || '-') + '</text>';
+  html += '<line x1="32" y1="92" x2="563" y2="92" stroke="#d3d1c7" stroke-width="0.5"/>';
+  html += '<text x="32" y="120" font-family="sans-serif" font-size="11" font-weight="700" fill="#2c2c2a">■ 諸元情報</text>';
+
+  const rows = [
+    ['契約者名', rec.customer_name],
+    ['供給地点番号', rec.supply_point_22_denki || rec.supply_point_22_douryoku || '-'],
+    ['お客様番号', rec.customer_number_denki || rec.customer_number_douryoku || rec.customer_number_gas || '-'],
+    ['契約容量', rec.capacity],
+    ['使用場所', rec.address],
+    ['供給開始予定', rec.supply_start_date || '-'],
+    ['日程コード', rec.supply_schedule_code || '-']
+  ];
+  let y = 160;
+  rows.forEach(r => {
+    html += '<text x="40" y="' + y + '" font-family="sans-serif" font-size="9" fill="#888780">' + r[0] + '</text>';
+    html += '<rect x="160" y="' + (y - 12) + '" width="380" height="18" fill="#faf8f3" stroke="#d3d1c7" stroke-width="0.5"/>';
+    html += '<text x="168" y="' + y + '" font-family="monospace" font-size="10" fill="#2c2c2a">' + (r[1] || '') + '</text>';
+    y += 28;
+  });
+  html += '<text x="32" y="' + (y + 20) + '" font-family="sans-serif" font-size="9" fill="#888780">※ ダミーの諸元サンプル</text>';
+  return html;
+}
+
+function buildReceiptSvg(rec) {
+  let html = '';
+  html += '<rect x="0" y="0" width="595" height="842" fill="#ffffff"/>';
+  html += '<rect x="0" y="0" width="595" height="60" fill="#5dcaa5"/>';
+  html += '<text x="32" y="38" font-family="sans-serif" font-size="16" font-weight="700" fill="#fff">受領書</text>';
+  html += '<text x="32" y="78" font-family="sans-serif" font-size="9" fill="#5f5e5a">レコードID: ' + rec.id + '</text>';
+  html += '<line x1="32" y1="92" x2="563" y2="92" stroke="#d3d1c7" stroke-width="0.5"/>';
+
+  html += '<text x="200" y="140" font-family="sans-serif" font-size="18" font-weight="700" fill="#2c2c2a">受　領　書</text>';
+  html += '<text x="32" y="200" font-family="sans-serif" font-size="11" fill="#2c2c2a">' + (rec.customer_name || '') + ' 様</text>';
+  html += '<line x1="32" y1="206" x2="280" y2="206" stroke="#2c2c2a" stroke-width="0.5"/>';
+  html += '<text x="32" y="250" font-family="sans-serif" font-size="11" fill="#2c2c2a">下記の通り、関西電力の切替手続きに関する書類を受領いたしました。</text>';
+
+  const rows = [
+    ['契約名義', rec.customer_name],
+    ['使用場所住所', rec.address],
+    ['お客様番号', rec.customer_number_denki || rec.customer_number_douryoku || rec.customer_number_gas || '-'],
+    ['契約プラン', rec.contract_plan],
+    ['申込日', rec.apply_date],
+    ['供給開始予定', rec.supply_start_date || '-']
+  ];
+  let y = 300;
+  rows.forEach(r => {
+    html += '<text x="40" y="' + y + '" font-family="sans-serif" font-size="10" fill="#888780">' + r[0] + '</text>';
+    html += '<rect x="160" y="' + (y - 12) + '" width="380" height="18" fill="#faf8f3" stroke="#d3d1c7" stroke-width="0.5"/>';
+    html += '<text x="168" y="' + y + '" font-family="monospace" font-size="10" fill="#2c2c2a">' + (r[1] || '') + '</text>';
+    y += 26;
+  });
+
+  html += '<text x="32" y="' + (y + 30) + '" font-family="sans-serif" font-size="10" fill="#2c2c2a">上記書類に相違ないことを確認の上、本受領書を発行いたします。</text>';
+  html += '<rect x="370" y="' + (y + 60) + '" width="180" height="60" fill="none" stroke="#888780" stroke-width="0.5" stroke-dasharray="2,2"/>';
+  html += '<text x="376" y="' + (y + 78) + '" font-family="sans-serif" font-size="8" fill="#888780">印</text>';
+  return html;
+}
+
+const FIELD_BBOX = {
+  kana: { x: 32, y: 114, w: 500, h: 20 },
+  customer_name: { x: 32, y: 142, w: 500, h: 20 },
+  tel: { x: 32, y: 170, w: 500, h: 20 },
+  address: { x: 32, y: 198, w: 500, h: 20 },
+  supply_point_22_denki: { x: 32, y: 364, w: 500, h: 20 },
+  customer_number_denki: { x: 32, y: 392, w: 500, h: 20 },
+  capacity: { x: 32, y: 420, w: 500, h: 20 },
+  supply_point_22_douryoku: { x: 32, y: 364, w: 500, h: 20 },
+  customer_number_douryoku: { x: 32, y: 392, w: 500, h: 20 },
+  capacity_douryoku: { x: 32, y: 420, w: 500, h: 20 },
+  customer_number_gas: { x: 32, y: 364, w: 500, h: 20 }
+};
+
+function highlightFieldOnDoc(fieldName) {
+  const hi = document.getElementById('fieldHighlight');
+  if (!hi) return;
+  const bbox = FIELD_BBOX[fieldName];
+  if (!bbox || searchMode || currentCat === 'specs' || currentCat === 'receipt') { hi.style.display = 'none'; return; }
+  const paper = document.getElementById('docPaper');
+  if (!paper) return;
+  const w = paper.offsetWidth || 595;
+  const scale = w / 595;
+  hi.style.display = 'block';
+  hi.style.left = (bbox.x * scale) + 'px';
+  hi.style.top = (bbox.y * scale) + 'px';
+  hi.style.width = (bbox.w * scale) + 'px';
+  hi.style.height = (bbox.h * scale) + 'px';
+}
+
+function hideHighlight() {
+  const hi = document.getElementById('fieldHighlight');
+  if (hi) hi.style.display = 'none';
+}
+
+function setZoom(z) {
+  currentZoom = Math.max(0.5, Math.min(2.5, z));
+  const paper = document.getElementById('docPaper');
+  if (paper) paper.style.transform = 'scale(' + currentZoom + ')';
+  $('#zoomDisplay').textContent = Math.round(currentZoom * 100) + '%';
+}
+
+$('#zoomIn').addEventListener('click', () => setZoom(currentZoom + 0.1));
+$('#zoomOut').addEventListener('click', () => setZoom(currentZoom - 0.1));
+$('#zoomReset').addEventListener('click', () => setZoom(1));
+
+// v4: フィールドは .form-field の1行レイアウト
+function buildField(opts) {
+  const { name, label, value, type = 'text', options = [], placeholder = '', mono = false, required = false } = opts;
+  const rec = RECORDS[currentIdx];
+  const status = rec.field_status[name] || 'match';
+  const ocrVal = rec.ocr_values[name] || '';
+  const listVal = rec.list_values[name] || '';
+
+  let displayValue;
+  let searchValue = '';
+  if (searchMode) {
+    const req = searchRequests[activeSearchTab] || {};
+    searchValue = req[name] || '';
+    displayValue = searchValue;
+  } else {
+    displayValue = value;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'form-field';
+
+  const lbl = document.createElement('div');
+  lbl.className = 'field-label';
+  lbl.innerHTML = label + (required && !searchMode ? '<span class="required">*</span>' : '');
+
+  const ctrl = document.createElement('div');
+  ctrl.className = 'field-control fs-' + status;
+  ctrl.dataset.field = name;
+
+  let input;
+  if (type === 'select' && !searchMode) {
+    input = document.createElement('select');
+    input.className = 'field-input';
+    options.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt;
+      o.textContent = opt;
+      if (opt === value) o.selected = true;
+      input.appendChild(o);
+    });
+  } else if (type === 'textarea' && !searchMode) {
+    input = document.createElement('textarea');
+    input.className = 'field-input';
+    input.rows = 2;
+    input.value = value || '';
+  } else {
+    input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'field-input' + (mono || searchMode ? ' mono' : '');
+    input.value = displayValue || '';
+    if (searchMode) {
+      input.placeholder = '検索条件を入力... (例: =' + (placeholder || '値') + ')';
+      input.dataset.searchField = name;
+      input.addEventListener('input', (e) => {
+        if (!searchRequests[activeSearchTab]) searchRequests[activeSearchTab] = {};
+        searchRequests[activeSearchTab][name] = e.target.value;
+      });
+    } else {
+      input.placeholder = placeholder;
+    }
+  }
+  input.dataset.field = name;
+  input.addEventListener('focus', () => highlightFieldOnDoc(name));
+  input.addEventListener('blur', () => hideHighlight());
+
+  const statusIcon = document.createElement('span');
+  statusIcon.className = 'status-icon';
+  const iconMap = { match: '✓', ocr_list_diff: '⚠', list_actual_diff: '🚨', ocr_empty: '？', new: '＋' };
+  statusIcon.textContent = iconMap[status] || '?';
+  statusIcon.title = ({
+    match: 'OCR・リスト・申込書すべて一致',
+    ocr_list_diff: 'OCR≠リスト (営業入力ミス or OCR誤読)',
+    list_actual_diff: 'リスト≠申込書 (Prodelight社へアラート連携)',
+    ocr_empty: 'OCR読取失敗、手入力してください',
+    new: 'リストに存在しない新規顧客'
+  })[status];
+  statusIcon.addEventListener('click', () => {
+    showStatusDetail(name, status, ocrVal, listVal, input.value);
+  });
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn-copy';
+  copyBtn.textContent = '📋';
+  copyBtn.title = 'リスト値を採用';
+  copyBtn.addEventListener('click', () => {
+    if (listVal && listVal !== '-' && listVal !== '(リスト未登録)') {
+      input.value = listVal;
+      ctrl.classList.remove('fs-ocr_list_diff','fs-list_actual_diff','fs-ocr_empty','fs-new');
+      ctrl.classList.add('fs-match');
+      statusIcon.textContent = '✓';
+      rec.field_status[name] = 'match';
+      showToast('リスト値を採用: ' + name);
+    } else {
+      showToast('リスト値が存在しません');
+    }
+  });
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'tooltip';
+  tooltip.innerHTML = '<div class="tooltip-grid">' +
+    '<span class="lbl">OCR</span><span>' + (ocrVal || '(空)') + '</span>' +
+    '<span class="lbl">リスト</span><span>' + (listVal || '(空)') + '</span>' +
+    '<span class="lbl">入力</span><span>' + (value || '(空)') + '</span>' +
+    '</div>';
+
+  ctrl.appendChild(input);
+  ctrl.appendChild(tooltip);
+
+  // アクション列(status-icon + copyBtn)
+  const actions = document.createElement('div');
+  actions.style.display = 'flex';
+  actions.style.gap = '3px';
+  actions.style.alignItems = 'center';
+  actions.appendChild(statusIcon);
+  actions.appendChild(copyBtn);
+
+  wrap.appendChild(lbl);
+  wrap.appendChild(ctrl);
+  wrap.appendChild(actions);
+  return wrap;
+}
+
+// v7: 供給開始予定日 — 当月+翌月の候補リスト表示
+function buildSupplyInline(fieldValue) {
+  const info = getSupplyDate(fieldValue);
+  if (!info) return null;
+
+  const candidates = getUpcomingSupplyDates(info.code, 2);
+  if (candidates.length === 0) {
+    // フォールバック: 従来の単一表示
+    const el = document.createElement('div');
+    el.className = 'supply-inline';
+    el.innerHTML = '<span class="ico">📅</span>' +
+      '<span>供給開始予定:</span>' +
+      '<span class="sup-date">' + info.date + '</span>' +
+      '<span class="sup-code">日程' + info.code + '</span>' +
+      '<span class="sup-tip">❓<div class="tt">関電カレンダー2026年度版から自動算出</div></span>';
+    return el;
+  }
+
+  const el = document.createElement('div');
+  el.className = 'supply-inline-multi';
+  const header = document.createElement('div');
+  header.className = 'supply-header';
+  header.innerHTML = '<span class="ico">📅</span>' +
+    '<span>供給開始予定（日程' + info.code + '基準・当月＋翌月候補）</span>' +
+    '<span class="sup-tip">❓<div class="tt">関電カレンダー2026年度版から自動算出（基準日程の当月・翌月候補）</div></span>';
+
+  const list = document.createElement('div');
+  list.className = 'supply-list';
+  candidates.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'supply-item' + (c.primary ? ' primary' : '');
+    item.innerHTML = '<span class="supply-code">日程' + c.code + '</span>' +
+      '<span class="supply-date">' + c.date + '</span>' +
+      '<span class="supply-month">' + c.monthLabel + '</span>' +
+      (c.primary ? '<span class="supply-tag">本案件</span>' : '');
+    list.appendChild(item);
+  });
+
+  el.appendChild(header);
+  el.appendChild(list);
+  return el;
+}
+
+function buildSpecsAlert(rec) {
+  if (rec.status !== 'awaiting_specs') return null;
+  const stagnant = isStagnant(rec);
+  const days = getWaitingDays(rec);
+  const el = document.createElement('div');
+  el.className = 'specs-alert' + (stagnant ? '' : ' warn');
+  el.innerHTML = '<span class="ico">' + (stagnant ? '🔔' : '⚠') + '</span>' +
+    '<span class="label">諸元未添付</span>' +
+    '<span>待機日数:</span><span class="days">' + (days != null ? days : '-') + '日</span>' +
+    (stagnant ? '<span style="font-weight:700;color:#d63a3a;">滞留アラート (' + STAGNATION_THRESHOLD_DAYS + '日超過)</span>' : '') +
+    '<span class="spacer"></span>' +
+    '<button class="btn btn-purple" data-action="attach-specs">📎 諸元を後付けする</button>';
+  el.querySelector('[data-action="attach-specs"]').addEventListener('click', openAttachSpecsModal);
+  return el;
+}
+
+function openAttachSpecsModal() {
+  const rec = RECORDS[currentIdx];
+  openModal('諸元ファイルの後付け',
+    '<p>諸元ファイルを添付します。添付完了で自動的にステータスが「エントリー待ち」に遷移します。</p>' +
+    '<div style="background:var(--bg-section);padding:10px;border-radius:6px;margin:10px 0;">' +
+    '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">📎 添付ファイル (ダミー):</div>' +
+    '<input type="text" value="諸元_' + rec.id + '_20260419.pdf" readonly>' +
+    '</div>' +
+    '<p style="font-size:11px;color:var(--text-tertiary);">※ PoCのため実際のファイル選択は省略しています</p>',
+    () => {
+      rec.specs_collected_at = isoDate(new Date());
+      rec.status = 'awaiting_entry';
+      selectedStatusKey = 'awaiting_entry';
+      showToast('諸元を添付しました → ステータス: エントリー待ち');
+      renderAll();
+    },
+    { confirmText: '添付する' }
+  );
+}
+
+function showStatusDetail(field, status, ocrVal, listVal, currentVal) {
+  const titles = {
+    match: '一致確認',
+    ocr_list_diff: '差分: OCR ≠ リスト',
+    list_actual_diff: 'Prodelight社アラート: リスト ≠ 申込書',
+    ocr_empty: 'OCR未読取',
+    new: '新規顧客'
+  };
+  const messages = {
+    match: '<p>OCR・リスト・申込書すべて一致しています。</p>',
+    ocr_list_diff: '<p>営業がアプリに入力した値、または画像のOCR値が、Prodelightリストの値と異なります。</p><p>営業入力ミスかOCR誤読の可能性があります。</p>',
+    list_actual_diff: '<p>申込書に書かれた値が、Prodelightリストの値と異なります。お客様情報に変更があった可能性があります。</p><p>このフィールドは月次のProdelight社連携にアラート付きで出力されます。</p>',
+    ocr_empty: '<p>OCRが読み取れなかった、または信頼度が低い項目です。申込書を目視確認して手入力してください。</p>',
+    new: '<p>Prodelightリストに登録のない新規顧客です。月次連携で新規追加候補として出力されます。</p>'
+  };
+  const body = messages[status] +
+    '<div style="background:var(--bg-section);padding:10px;border-radius:6px;margin-top:10px;font-family:var(--font-mono);font-size:11px;">' +
+    '<div>項目: ' + field + '</div>' +
+    '<div style="color:var(--text-tertiary);margin-top:4px;">OCR: ' + (ocrVal || '(空)') + '</div>' +
+    '<div style="color:var(--text-tertiary);">リスト: ' + (listVal || '(空)') + '</div>' +
+    '<div style="color:var(--accent-teal);font-weight:600;">入力: ' + (currentVal || '(空)') + '</div>' +
+    '</div>';
+  openModal(titles[status], body);
+}
+
+function buildSection(opts) {
+  const { num, title, fields, catSection = '', collapsible = false, sectionId, beforeBody = null } = opts;
+  const sec = document.createElement('div');
+  sec.className = 'form-section ' + (catSection ? 'cat-section-' + catSection : '');
+  sec.dataset.sectionId = sectionId;
+
+  const head = document.createElement('div');
+  head.className = 'section-head';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'section-title';
+  titleEl.innerHTML = (collapsible ? '<span class="toggle-arrow">▼</span>' : '') +
+    '<span class="section-num">' + num + '</span>' + title;
+
+  const tools = document.createElement('div');
+  tools.className = 'section-tools';
+  if (!searchMode) {
+    const copySecBtn = document.createElement('button');
+    copySecBtn.className = 'btn-mini';
+    copySecBtn.textContent = '📋 セクション転記';
+    copySecBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      copySectionFromList(sec);
+    });
+    tools.appendChild(copySecBtn);
+  }
+
+  head.appendChild(titleEl);
+  head.appendChild(tools);
+
+  const body = document.createElement('div');
+  body.className = 'section-body';
+
+  if (beforeBody) {
+    beforeBody.forEach(el => { if (el) body.appendChild(el); });
+  }
+
+  fields.forEach(f => {
+    if (f.type === 'checkbox-row') {
+      const row = document.createElement('div');
+      row.className = 'checkbox-row';
+      f.items.forEach(item => {
+        const lbl = document.createElement('label');
+        lbl.className = 'cb-item';
+        lbl.innerHTML = '<input type="checkbox"' + (item.checked ? ' checked' : '') + (searchMode ? ' disabled' : '') + '> ' + item.label;
+        row.appendChild(lbl);
+      });
+      body.appendChild(row);
+    } else if (f.type === 'radio-row') {
+      // 縦スクロール削減: ラジオも form-field 形式で1行に
+      const wrap = document.createElement('div');
+      wrap.className = 'form-field';
+      const lbl = document.createElement('div');
+      lbl.className = 'field-label';
+      lbl.textContent = f.label;
+      const row = document.createElement('div');
+      row.className = 'radio-row';
+      f.items.forEach(item => {
+        const r = document.createElement('label');
+        r.className = 'rb-item';
+        r.innerHTML = '<input type="radio" name="' + f.name + '"' + (item.checked ? ' checked' : '') + (searchMode ? ' disabled' : '') + '> ' + item.label;
+        row.appendChild(r);
+      });
+      const spacer = document.createElement('div');
+      wrap.appendChild(lbl);
+      wrap.appendChild(row);
+      wrap.appendChild(spacer);
+      body.appendChild(wrap);
+    } else if (f.type === 'consent-list') {
+      const list = document.createElement('div');
+      list.className = 'consent-list';
+      f.items.forEach(item => {
+        const lbl = document.createElement('label');
+        lbl.innerHTML = '<input type="checkbox" checked' + (searchMode ? ' disabled' : '') + '> ' + item;
+        list.appendChild(lbl);
+      });
+      body.appendChild(list);
+    } else if (f.type === 'supply-inline') {
+      const el = buildSupplyInline(f.value);
+      if (el) body.appendChild(el);
+    } else {
+      body.appendChild(buildField(f));
+    }
+  });
+
+  if (collapsible) {
+    head.addEventListener('click', () => {
+      head.classList.toggle('collapsed-head');
+      body.classList.toggle('collapsed');
+    });
+  }
+
+  sec.appendChild(head);
+  sec.appendChild(body);
+  return sec;
+}
+
+function copySectionFromList(sec) {
+  const fields = sec.querySelectorAll('.field-control');
+  let count = 0;
+  fields.forEach(ctrl => {
+    const fieldName = ctrl.dataset.field;
+    const rec = RECORDS[currentIdx];
+    const listVal = rec.list_values[fieldName];
+    const input = ctrl.querySelector('.field-input');
+    if (input && listVal && listVal !== '-' && listVal !== '(リスト未登録)') {
+      input.value = listVal;
+      ctrl.classList.remove('fs-ocr_list_diff','fs-list_actual_diff','fs-ocr_empty','fs-new');
+      ctrl.classList.add('fs-match');
+      // actions列のstatus-iconは .form-field > div > .status-icon
+      const formField = ctrl.closest('.form-field');
+      if (formField) {
+        const ic = formField.querySelector('.status-icon');
+        if (ic) ic.textContent = '✓';
+      }
+      rec.field_status[fieldName] = 'match';
+      count++;
+    }
+  });
+  showToast('セクションのリスト転記: ' + count + '項目');
+}
+
+function copyAllFromList() {
+  const rec = RECORDS[currentIdx];
+  let count = 0;
+  $$('.field-control').forEach(ctrl => {
+    const fieldName = ctrl.dataset.field;
+    const listVal = rec.list_values[fieldName];
+    const input = ctrl.querySelector('.field-input');
+    if (input && listVal && listVal !== '-' && listVal !== '(リスト未登録)') {
+      input.value = listVal;
+      ctrl.classList.remove('fs-ocr_list_diff','fs-list_actual_diff','fs-ocr_empty','fs-new');
+      ctrl.classList.add('fs-match');
+      const formField = ctrl.closest('.form-field');
+      if (formField) {
+        const ic = formField.querySelector('.status-icon');
+        if (ic) ic.textContent = '✓';
+      }
+      rec.field_status[fieldName] = 'match';
+      count++;
+    }
+  });
+  showToast('全項目のリスト転記: ' + count + '項目');
+}
+
+function renderForm() {
+  const rec = RECORDS[currentIdx];
+  const pane = $('#formPane');
+  pane.innerHTML = '';
+
+  const specsAlert = buildSpecsAlert(rec);
+
+  pane.appendChild(buildSection({
+    num: 1, title: '関西電力の電気のお申込み情報 (共通)', sectionId: 'sec1',
+    beforeBody: specsAlert ? [specsAlert] : null,
+    fields: [
+      { name: 'kana', label: 'フリガナ', value: rec.ocr_values.kana || '', required: true },
+      { name: 'customer_name', label: 'ご契約名義', value: rec.ocr_values.customer_name || '', required: true },
+      { name: 'rep_kana', label: '代表者フリガナ', value: '' },
+      { name: 'rep_name', label: '代表者名', value: '' },
+      { name: 'tel', label: '電話番号', value: rec.ocr_values.tel || '', mono: true, required: true },
+      { name: 'address', label: 'ご使用場所住所', value: rec.ocr_values.address || '', required: true },
+      { name: 'pay_address', label: 'お支払先住所', value: rec.ocr_values.address || '' },
+      { name: 'apply_date', label: '申込日', value: rec.apply_date || '', mono: true, placeholder: 'YYYY/MM/DD' },
+      { name: 'ocr_confidence', label: 'OCR信頼度', value: rec.ocr_confidence != null ? String(rec.ocr_confidence) : '', mono: true, placeholder: '0.00 - 1.00' },
+      { name: 'contract_plan', label: 'ご希望契約', value: rec.contract_plan, type: 'select',
+        options: ['eおとくプラン','eスマート10','ビジネス電灯','ビジネス動力','-'] },
+      { type: 'radio-row', label: '用途区分', name: 'usage',
+        items: [
+          { label: '家庭用', checked: rec.usage === '家庭用' },
+          { label: '工業用', checked: rec.usage === '工業用' },
+          { label: '商業用', checked: rec.usage === '商業用' },
+          { label: 'その他', checked: rec.usage === 'その他' }
+        ]
+      }
+    ]
+  }));
+
+  pane.appendChild(buildSection({
+    num: 2, title: 'お申込者情報', sectionId: 'sec2',
+    fields: [
+      { name: 'applicant_kana', label: 'フリガナ', value: '' },
+      { name: 'applicant_name', label: '役職名・お名前', value: '' },
+      { name: 'applicant_tel', label: '電話番号', value: '', mono: true }
+    ]
+  }));
+
+  pane.appendChild(buildSection({
+    num: 3, title: '現在の小売電気事業者 (電灯) のご契約情報', sectionId: 'sec3',
+    fields: [
+      { name: 'prev_provider', label: '電気事業者名', value: '関西電力' },
+      { name: 'prev_kana', label: 'フリガナ (名義)', value: rec.ocr_values.kana || '' },
+      { name: 'prev_name', label: '名義', value: rec.ocr_values.customer_name || '' },
+      { name: 'prev_customer_no', label: '電気お客様番号 (14桁)', value: rec.ocr_values.customer_number_denki || '', mono: true, placeholder: '14桁英数字' },
+      { name: 'prev_supply_22', label: '供給地点特定番号 (22桁)', value: rec.ocr_values.supply_point_22_denki || '', mono: true, placeholder: '22桁数字' }
+    ]
+  }));
+
+  pane.appendChild(buildSection({
+    num: 4, title: '請求書・振込用紙のご希望', sectionId: 'sec4',
+    fields: [
+      { type: 'radio-row', label: '請求書送付', name: 'invoice',
+        items: [
+          { label: '紙請求書', checked: true },
+          { label: 'WEB明細', checked: false }
+        ]
+      },
+      { type: 'radio-row', label: '振込用紙', name: 'paper',
+        items: [
+          { label: '希望する', checked: false },
+          { label: '希望しない', checked: true }
+        ]
+      }
+    ]
+  }));
+
+  pane.appendChild(buildSection({
+    num: 5, title: '同意事項', sectionId: 'sec5',
+    fields: [
+      { type: 'consent-list', items: [
+        '関西電力の供給約款に同意します',
+        '個人情報の取扱いに同意します',
+        '解約手続きを当社に委任します'
+      ]}
+    ]
+  }));
+
+  pane.appendChild(buildSection({
+    num: 6, title: '契約種別フラグ', sectionId: 'sec6',
+    fields: [
+      { type: 'checkbox-row', items: [
+        { label: '⚡ 電灯', checked: rec.has_denki },
+        { label: '🔌 動力', checked: rec.has_douryoku },
+        { label: '🔥 ガス', checked: rec.has_gas }
+      ]}
+    ]
+  }));
+
+  if (rec.has_denki || searchMode) {
+    pane.appendChild(buildSection({
+      num: 7, title: '電灯セクション', sectionId: 'sec7', catSection: 'denki', collapsible: true,
+      fields: [
+        { name: 'supply_point_22_denki', label: '供給地点番号 (22桁)', value: rec.ocr_values.supply_point_22_denki || '', mono: true, placeholder: '22桁数字 (自動抽出)', required: true },
+        { type: 'supply-inline', value: rec.ocr_values.supply_point_22_denki || '' },
+        { name: 'customer_number_denki', label: 'お客様番号 (14桁)', value: rec.ocr_values.customer_number_denki || '', mono: true, placeholder: '14桁数字', required: true },
+        { name: 'capacity', label: '契約容量', value: rec.ocr_values.capacity || '', placeholder: '例: 40A, 6kVA' }
+      ]
+    }));
+  }
+
+  if (rec.has_douryoku || searchMode) {
+    pane.appendChild(buildSection({
+      num: 8, title: '動力セクション', sectionId: 'sec8', catSection: 'douryoku', collapsible: true,
+      fields: [
+        { name: 'supply_point_22_douryoku', label: '供給地点番号 (22桁)', value: rec.ocr_values.supply_point_22_douryoku || '', mono: true, required: true },
+        { type: 'supply-inline', value: rec.ocr_values.supply_point_22_douryoku || '' },
+        { name: 'customer_number_douryoku', label: 'お客様番号 (14桁)', value: rec.ocr_values.customer_number_douryoku || '', mono: true, required: true },
+        { name: 'capacity_douryoku', label: '契約容量 (kW)', value: rec.ocr_values.capacity_douryoku || '', placeholder: '例: 15kW' }
+      ]
+    }));
+  }
+
+  if (rec.has_gas || searchMode) {
+    pane.appendChild(buildSection({
+      num: 9, title: 'ガスセクション', sectionId: 'sec9', catSection: 'gas', collapsible: true,
+      fields: [
+        { name: 'customer_number_gas', label: 'ガスお客様番号', value: rec.ocr_values.customer_number_gas || '', mono: true, required: true },
+        { name: 'gas_meter_no', label: 'ガスメーター番号', value: '', mono: true }
+      ]
+    }));
+  }
+}
+
+function renderSearchTabs() {
+  const tabsEl = $('#searchTabs');
+  tabsEl.innerHTML = '';
+  searchRequests.forEach((req, i) => {
+    const tab = document.createElement('button');
+    tab.className = 'search-tab' + (i === activeSearchTab ? ' active' : '');
+    tab.textContent = '検索条件 ' + (i + 1);
+    tab.addEventListener('click', () => {
+      activeSearchTab = i;
+      renderSearchTabs();
+      renderForm();
+      renderSearchTopBars();
+    });
+    if (searchRequests.length > 1) {
+      const x = document.createElement('button');
+      x.className = 'x-btn';
+      x.textContent = '×';
+      x.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchRequests.splice(i, 1);
+        if (activeSearchTab >= searchRequests.length) activeSearchTab = searchRequests.length - 1;
+        renderSearchTabs();
+        renderForm();
+        renderSearchTopBars();
+      });
+      tab.appendChild(x);
+    }
+    tabsEl.appendChild(tab);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'search-add-tab';
+  addBtn.textContent = '➕ 別の検索条件 (OR / Ctrl+Enter)';
+  addBtn.addEventListener('click', () => {
+    addSearchRequest();
+  });
+  tabsEl.appendChild(addBtn);
+}
+
+// v7: 検索モード時のトップバー入力値をアクティブタブに反映
+function renderSearchTopBars() {
+  const req = searchRequests[activeSearchTab] || {};
+  // ステータス
+  const sel = $('#searchStatus');
+  if (sel) sel.value = req.status || '';
+  // 日付8フィールド
+  const dateMap = {
+    'searchOrderedAt': 'ordered_at',
+    'searchSpecsAt': 'specs_collected_at',
+    'searchEnteredAt': 'entered_at',
+    'searchSentAt': 'sent_at',
+    'searchInvoicedAt': 'invoiced_at',
+    'searchPaymentInAt': 'payment_received_at',
+    'searchPaymentOutAt': 'payment_sent_at',
+    'searchCompletedAt': 'completed_at'
+  };
+  Object.entries(dateMap).forEach(([inputId, field]) => {
+    const el = document.getElementById(inputId);
+    if (el) el.value = req[field] || '';
+  });
+  // 営業担当
+  const sMap = {
+    'searchSalesName': 'sales_name',
+    'searchSalesCode': 'sales_code',
+    'searchSalesDept': 'sales_dept'
+  };
+  Object.entries(sMap).forEach(([inputId, field]) => {
+    const el = document.getElementById(inputId);
+    if (el) el.value = req[field] || '';
+  });
+}
+
+// v7: トップバーへの入力を searchRequests[activeSearchTab] に書き戻す
+function bindSearchTopBars() {
+  const sel = $('#searchStatus');
+  if (sel) {
+    sel.addEventListener('change', (e) => {
+      if (!searchRequests[activeSearchTab]) searchRequests[activeSearchTab] = {};
+      if (e.target.value) searchRequests[activeSearchTab].status = e.target.value;
+      else delete searchRequests[activeSearchTab].status;
+    });
+  }
+  const dateMap = {
+    'searchOrderedAt': 'ordered_at',
+    'searchSpecsAt': 'specs_collected_at',
+    'searchEnteredAt': 'entered_at',
+    'searchSentAt': 'sent_at',
+    'searchInvoicedAt': 'invoiced_at',
+    'searchPaymentInAt': 'payment_received_at',
+    'searchPaymentOutAt': 'payment_sent_at',
+    'searchCompletedAt': 'completed_at'
+  };
+  Object.entries(dateMap).forEach(([inputId, field]) => {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    el.addEventListener('input', (e) => {
+      if (!searchRequests[activeSearchTab]) searchRequests[activeSearchTab] = {};
+      if (e.target.value.trim()) searchRequests[activeSearchTab][field] = e.target.value.trim();
+      else delete searchRequests[activeSearchTab][field];
+    });
+  });
+  const sMap = {
+    'searchSalesName': 'sales_name',
+    'searchSalesCode': 'sales_code',
+    'searchSalesDept': 'sales_dept'
+  };
+  Object.entries(sMap).forEach(([inputId, field]) => {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    el.addEventListener('input', (e) => {
+      if (!searchRequests[activeSearchTab]) searchRequests[activeSearchTab] = {};
+      if (e.target.value.trim()) searchRequests[activeSearchTab][field] = e.target.value.trim();
+      else delete searchRequests[activeSearchTab][field];
+    });
+  });
+}
+
+function addSearchRequest() {
+  searchRequests.push({});
+  activeSearchTab = searchRequests.length - 1;
+  renderSearchTabs();
+  renderForm();
+  renderSearchTopBars();
+  showToast('検索条件 ' + searchRequests.length + ' を追加しました (OR条件)');
+}
+
+function renderSaveButton() {
+  const rec = RECORDS[currentIdx];
+  const btn = $('#btnSave');
+  if (!btn) return;
+  if (rec.status === 'completed') {
+    btn.textContent = '🎉 完了処理';
+    btn.className = 'btn btn-purple';
+  } else {
+    btn.textContent = '💾 保存して次のステータスへ';
+    btn.className = 'btn btn-teal';
+  }
+}
+
+function renderAll() {
+  renderHeader();
+  renderSalesBanner();
+  renderRelatedBanner();
+  renderCatTabs();
+  renderDocSvg();
+  renderForm();
+  renderStatusBar();
+  renderSaveButton();
+  if (searchMode) {
+    renderSearchTabs();
+    renderSearchTopBars();
+  }
+  hideHighlight();
+}
+
+function nextRecord() {
+  const indices = getActiveIndices();
+  const pos = indices.indexOf(currentIdx);
+  if (pos < 0) {
+    if (indices.length > 0) currentIdx = indices[0];
+    currentCat = pickFirstCat();
+    selectedStatusKey = null;
+    setZoom(1);
+    renderAll();
+    return;
+  }
+  if (pos < indices.length - 1) {
+    currentIdx = indices[pos + 1];
+    currentCat = pickFirstCat();
+    selectedStatusKey = null;
+    setZoom(1);
+    renderAll();
+  } else {
+    showToast(foundSet ? '結果セットの最後のレコードです' : '最後のレコードです');
+  }
+}
+
+function prevRecord() {
+  const indices = getActiveIndices();
+  const pos = indices.indexOf(currentIdx);
+  if (pos < 0) {
+    if (indices.length > 0) currentIdx = indices[indices.length - 1];
+    currentCat = pickFirstCat();
+    selectedStatusKey = null;
+    setZoom(1);
+    renderAll();
+    return;
+  }
+  if (pos > 0) {
+    currentIdx = indices[pos - 1];
+    currentCat = pickFirstCat();
+    selectedStatusKey = null;
+    setZoom(1);
+    renderAll();
+  } else {
+    showToast(foundSet ? '結果セットの最初のレコードです' : '最初のレコードです');
+  }
+}
+
+function pickFirstCat() {
+  const rec = RECORDS[currentIdx];
+  if (rec.has_denki) return 'denki';
+  if (rec.has_douryoku) return 'douryoku';
+  if (rec.has_gas) return 'gas';
+  return 'denki';
+}
+
+function jumpToNextDiff() {
+  const inputs = $$('.field-control');
+  const focused = document.activeElement;
+  let startIdx = 0;
+  for (let i = 0; i < inputs.length; i++) {
+    if (inputs[i].contains(focused)) { startIdx = i + 1; break; }
+  }
+  for (let i = 0; i < inputs.length; i++) {
+    const idx = (startIdx + i) % inputs.length;
+    if (inputs[idx].classList.contains('fs-ocr_list_diff') ||
+        inputs[idx].classList.contains('fs-list_actual_diff')) {
+      const el = inputs[idx].querySelector('.field-input');
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+  }
+  showToast('要確認フィールドはありません');
+}
+
+function parseSearchOp(input) {
+  if (input == null) return { op: 'empty' };
+  const raw = String(input);
+  const trimmed = raw.trim();
+  if (trimmed === '') return { op: 'empty' };
+  if (trimmed === '//') return { op: 'today' };
+  if (trimmed.startsWith('\\=')) return { op: 'literal', value: trimmed.slice(1) };
+  if (trimmed.startsWith('==')) return { op: 'exact', value: trimmed.slice(2) };
+  if (trimmed.startsWith('>=')) return { op: 'gte', value: trimmed.slice(2) };
+  if (trimmed.startsWith('<=')) return { op: 'lte', value: trimmed.slice(2) };
+  if (trimmed.startsWith('>')) return { op: 'gt', value: trimmed.slice(1) };
+  if (trimmed.startsWith('<')) return { op: 'lt', value: trimmed.slice(1) };
+  if (trimmed.startsWith('!')) {
+    const inner = trimmed.slice(1);
+    return { op: 'exclude', inner: parseSearchOp(inner) };
+  }
+  if (trimmed.includes('...')) {
+    const parts = trimmed.split('...');
+    return { op: 'range', from: parts[0].trim(), to: (parts[1] || '').trim() };
+  }
+  if (trimmed.startsWith('=')) {
+    const v = trimmed.slice(1);
+    if (v.includes('*')) return { op: 'wildcard', pattern: wildcardToRegex(v) };
+    return { op: 'starts', value: v };
+  }
+  if (trimmed.includes('*')) {
+    return { op: 'wildcard', pattern: wildcardToRegex(trimmed) };
+  }
+  return { op: 'starts', value: trimmed };
+}
+
+function wildcardToRegex(s) {
+  return s.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+}
+
+function todayString() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '/' + m + '/' + day;
+}
+
+function normalizeForCompare(field, val) {
+  if (val == null) return '';
+  if (NUMERIC_FIELDS.includes(field)) {
+    const n = parseFloat(val);
+    return isNaN(n) ? null : n;
+  }
+  if (DATE_FIELDS.includes(field)) {
+    return String(val).replace(/-/g, '/').trim();
+  }
+  return String(val);
+}
+
+function compareValue(field, recordVal, opVal) {
+  const rv = normalizeForCompare(field, recordVal);
+  const ov = normalizeForCompare(field, opVal);
+  if (NUMERIC_FIELDS.includes(field)) {
+    return { rv: rv == null ? -Infinity : rv, ov: ov == null ? 0 : ov };
+  }
+  return { rv: String(rv || ''), ov: String(ov || '') };
+}
+
+function matchOp(field, recordVal, parsed) {
+  if (parsed.op === 'empty') return true;
+  const rvStr = String(recordVal == null ? '' : recordVal);
+
+  if (parsed.op === 'exclude') {
+    return !matchOp(field, recordVal, parsed.inner);
+  }
+  if (parsed.op === 'today') {
+    const t = todayString();
+    return rvStr.replace(/-/g, '/').trim() === t;
+  }
+  if (parsed.op === 'literal') {
+    return rvStr.includes(parsed.value);
+  }
+  if (parsed.op === 'exact') {
+    if (NUMERIC_FIELDS.includes(field)) {
+      const n = parseFloat(rvStr);
+      const m = parseFloat(parsed.value);
+      return !isNaN(n) && !isNaN(m) && n === m;
+    }
+    if (DATE_FIELDS.includes(field)) {
+      return rvStr.replace(/-/g, '/').trim() === String(parsed.value).replace(/-/g, '/').trim();
+    }
+    return rvStr === parsed.value;
+  }
+  if (parsed.op === 'starts') {
+    return rvStr.toLowerCase().indexOf(parsed.value.toLowerCase()) === 0;
+  }
+  if (parsed.op === 'wildcard') {
+    try {
+      const re = new RegExp('^' + parsed.pattern + '$', 'i');
+      return re.test(rvStr);
+    } catch (e) { return false; }
+  }
+  if (parsed.op === 'gt' || parsed.op === 'gte' || parsed.op === 'lt' || parsed.op === 'lte') {
+    const c = compareValue(field, recordVal, parsed.value);
+    if (parsed.op === 'gt')  return c.rv >  c.ov;
+    if (parsed.op === 'gte') return c.rv >= c.ov;
+    if (parsed.op === 'lt')  return c.rv <  c.ov;
+    if (parsed.op === 'lte') return c.rv <= c.ov;
+  }
+  if (parsed.op === 'range') {
+    const cF = compareValue(field, recordVal, parsed.from);
+    const cT = compareValue(field, recordVal, parsed.to);
+    return cF.rv >= cF.ov && cT.rv <= cT.ov;
+  }
+  return false;
+}
+
+function flattenRecord(rec) {
+  const flat = {};
+  SEARCHABLE_FIELDS.forEach(f => {
+    // v7: rec 直下を最優先 (status, 日付8, sales_name 等のトップレベルフィールド用)
+    if (rec[f] != null && rec[f] !== '') { flat[f] = rec[f]; return; }
+    if (rec.ocr_values && rec.ocr_values[f] != null && rec.ocr_values[f] !== '') { flat[f] = rec.ocr_values[f]; return; }
+    if (rec.list_values && rec.list_values[f] != null && rec.list_values[f] !== '') { flat[f] = rec.list_values[f]; return; }
+    flat[f] = '';
+  });
+  return flat;
+}
+
+function recordMatchesRequest(rec, req) {
+  const flat = flattenRecord(rec);
+  const fields = Object.keys(req).filter(k => req[k] != null && String(req[k]).trim() !== '');
+  if (fields.length === 0) return false;
+  for (const f of fields) {
+    // v7: status は完全一致で単純比較 (セレクトで選んだ値)
+    if (f === 'status') {
+      if (rec.status !== req[f]) return false;
+      continue;
+    }
+    const parsed = parseSearchOp(req[f]);
+    if (parsed.op === 'empty') continue;
+    if (!matchOp(f, flat[f], parsed)) return false;
+  }
+  return true;
+}
+
+function executeSearch(scope) {
+  const validRequests = searchRequests.filter(r => Object.values(r).some(v => v != null && String(v).trim() !== ''));
+  if (validRequests.length === 0) {
+    showToast('検索条件を入力してください');
+    return;
+  }
+
+  let basePool;
+  if (scope === 'constrain' && foundSet) basePool = foundSet.slice();
+  else if (scope === 'extend' && foundSet) basePool = foundSet.slice();
+  else basePool = RECORDS.map((_, i) => i);
+
+  const matched = [];
+  basePool.forEach(idx => {
+    const rec = RECORDS[idx];
+    const hit = validRequests.some(req => recordMatchesRequest(rec, req));
+    if (scope === 'extend' && foundSet) {
+      if (!hit) matched.push(idx);
+    } else {
+      if (hit) matched.push(idx);
+    }
+  });
+
+  if (matched.length === 0) {
+    openModal('検索結果なし',
+      '<p>条件に一致するレコードはありませんでした。</p><p style="font-size:12px;color:var(--text-secondary);">条件を見直すか、ブラウズに戻ってください。</p>',
+      () => { exitSearchMode(); }, { confirmText: 'ブラウズに戻る' });
+    return;
+  }
+
+  foundSet = matched;
+  currentIdx = matched[0];
+  selectedStatusKey = null;
+  lastSearchSummary = summarizeRequests(validRequests);
+  exitSearchMode(true);
+  $('#foundBar').classList.add('show');
+  $('#fbCount').textContent = '🔍 検索結果: ' + matched.length + '件 / 全' + RECORDS.length + '件';
+  $('#fbConditions').textContent = '[条件: ' + lastSearchSummary + ']';
+  $('#fbConditions').title = lastSearchSummary;
+  showToast('検索結果: ' + matched.length + '件');
+  renderAll();
+}
+
+function summarizeRequests(reqs) {
+  const fieldLabels = {
+    customer_name: '氏名', kana: 'フリガナ', tel: '電話', address: '住所',
+    customer_number_denki: '電灯お客様番号', supply_point_22_denki: '電灯供給地点',
+    customer_number_douryoku: '動力お客様番号', supply_point_22_douryoku: '動力供給地点',
+    customer_number_gas: 'ガスお客様番号',
+    contract_plan: '契約種別', usage: '用途', capacity: '契約容量',
+    apply_date: '申込日', ocr_confidence: 'OCR信頼度',
+    status: 'ステータス', sw_target_month: '至急SW月',
+    sales_name: '営業担当', sales_code: '営業番号', sales_dept: '所属', apply_code: '申込コード',
+    ordered_at: '受注日', specs_collected_at: '諸元日', entered_at: 'エントリ日',
+    sent_at: '送付日', invoiced_at: '請求日', payment_received_at: '入金日',
+    payment_sent_at: '支払日', completed_at: '完了日'
+  };
+  return reqs.map(req => {
+    const parts = Object.entries(req)
+      .filter(([_, v]) => v != null && String(v).trim() !== '')
+      .map(([k, v]) => {
+        const lbl = fieldLabels[k] || k;
+        // v7: statusは日本語ラベル表示
+        if (k === 'status') return lbl + '=' + (STATUS_LABEL[v] || v);
+        return lbl + '=' + String(v).trim();
+      });
+    return '(' + parts.join(' AND ') + ')';
+  }).join(' OR ');
+}
+
+function showAll() {
+  foundSet = null;
+  lastSearchSummary = '';
+  $('#foundBar').classList.remove('show');
+  showToast('全' + RECORDS.length + '件を表示');
+  renderAll();
+}
+
+function enterSearchMode(initialFromCurrent) {
+  searchMode = true;
+  if (initialFromCurrent || searchRequests.length === 0) {
+    searchRequests = [{}];
+  }
+  activeSearchTab = 0;
+  document.body.classList.add('search-mode');
+  $('#searchModeBanner').classList.add('show');
+  $('#foundBar').classList.remove('show');
+  renderAll();
+  renderSearchTabs();
+  renderSearchTopBars();
+  setTimeout(() => {
+    const firstField = $('.field-input[data-search-field]');
+    if (firstField) firstField.focus();
+  }, 50);
+}
+
+function exitSearchMode(silent) {
+  searchMode = false;
+  document.body.classList.remove('search-mode');
+  $('#searchModeBanner').classList.remove('show');
+  if (!silent) showToast('ブラウズモードに戻りました');
+  renderAll();
+}
+
+function modifyFind() {
+  const validRequests = searchRequests.filter(r => Object.values(r).some(v => v != null && String(v).trim() !== ''));
+  if (validRequests.length === 0) searchRequests = [{}];
+  enterSearchMode(false);
+}
+
+function resetSearchInputs() {
+  searchRequests = [{}];
+  activeSearchTab = 0;
+  renderSearchTabs();
+  renderForm();
+  renderSearchTopBars();
+  showToast('検索条件をリセット');
+  setTimeout(() => {
+    const firstField = $('.field-input[data-search-field]');
+    if (firstField) firstField.focus();
+  }, 50);
+}
+
+let pendingSearchScope = 'new';
+
+$('#btnNext').addEventListener('click', nextRecord);
+$('#btnPrev').addEventListener('click', prevRecord);
+$('#btnNextDiff').addEventListener('click', jumpToNextDiff);
+$('#btnCopyAll').addEventListener('click', copyAllFromList);
+$('#btnSearch').addEventListener('click', () => { pendingSearchScope = 'new'; enterSearchMode(true); });
+
+$('#btnRunSearch').addEventListener('click', () => { const s = pendingSearchScope; pendingSearchScope = 'new'; executeSearch(s); });
+$('#btnCancelSearch').addEventListener('click', () => { pendingSearchScope = 'new'; exitSearchMode(); });
+$('#btnResetSearch').addEventListener('click', resetSearchInputs);
+
+$('#btnShowAll').addEventListener('click', showAll);
+$('#btnConstrainFind').addEventListener('click', () => {
+  pendingSearchScope = 'constrain';
+  searchRequests = [{}];
+  activeSearchTab = 0;
+  document.body.classList.add('search-mode');
+  searchMode = true;
+  $('#searchModeBanner').classList.add('show');
+  renderAll();
+  renderSearchTabs();
+  renderSearchTopBars();
+  showToast('現在の' + (foundSet ? foundSet.length : 0) + '件をさらに絞り込み: 条件を入力して検索');
+  setTimeout(() => {
+    const firstField = $('.field-input[data-search-field]');
+    if (firstField) firstField.focus();
+  }, 50);
+});
+$('#btnExtendFind').addEventListener('click', () => {
+  pendingSearchScope = 'extend';
+  searchRequests = [{}];
+  activeSearchTab = 0;
+  document.body.classList.add('search-mode');
+  searchMode = true;
+  $('#searchModeBanner').classList.add('show');
+  renderAll();
+  renderSearchTabs();
+  renderSearchTopBars();
+  showToast('結果から除外する条件を入力して検索');
+  setTimeout(() => {
+    const firstField = $('.field-input[data-search-field]');
+    if (firstField) firstField.focus();
+  }, 50);
+});
+$('#btnModifyFind').addEventListener('click', () => { pendingSearchScope = 'new'; modifyFind(); });
+
+// v6: 日付入力はステータスバー描画時に動的バインド (bindStatusDateInputs は不要化)
+
+$('#btnSave').addEventListener('click', () => {
+  const rec = RECORDS[currentIdx];
+  if (rec.status === 'completed') {
+    openModal('完了処理',
+      '<p>このレコードを完了として確定します。</p>' +
+      '<div style="background:var(--bg-section);padding:10px;border-radius:6px;margin-top:10px;font-size:12px;">' +
+      '<div>入金日: <input type="date" value="' + (rec.payment_received_at || '') + '" id="inDate"></div>' +
+      '<div style="margin-top:8px;">支払日: <input type="date" value="' + (rec.payment_sent_at || '') + '" id="outDate"></div>' +
+      '</div>',
+      () => {
+        const inD = document.getElementById('inDate');
+        const outD = document.getElementById('outDate');
+        if (inD) rec.payment_received_at = inD.value || rec.payment_received_at;
+        if (outD) rec.payment_sent_at = outD.value || rec.payment_sent_at;
+        showToast('完了処理を確定しました');
+        setTimeout(nextRecord, 300);
+      },
+      { confirmText: '🎉 完了確定' }
+    );
+  } else {
+    openModal('保存して次のステータスへ',
+      '<p>このレコードを保存し、次のステータスへ進めます。</p>' +
+      '<p style="color:var(--accent-red);font-size:12px;">リスト≠申込書 の差分は、Prodelight社への月次連携にアラート付きで出力されます。</p>',
+      () => {
+        advanceStatus();
+        showToast('保存して次のステータスへ進めました');
+      },
+      { confirmText: '保存して進める' }
+    );
+  }
+});
+
+$('#btnHold').addEventListener('click', () => {
+  openModal('保留',
+    '<p>このレコードに保留フラグを付けて、次のレコードへ進みます。</p>' +
+    '<p style="color:var(--text-secondary);font-size:12px;">保留中のレコードは後で一覧から再開できます。</p>',
+    () => { showToast('保留しました。次のレコードへ'); setTimeout(nextRecord, 300); },
+    { confirmText: '保留して次へ' }
+  );
+});
+
+$('#btnReject').addEventListener('click', () => {
+  openModal('差し戻し',
+    '<p>営業に差し戻す理由を入力してください。</p>' +
+    '<textarea id="rejectReason" placeholder="例: 申込書の供給地点番号が読めません。再撮影をお願いします。"></textarea>',
+    () => { showToast('差し戻しました'); setTimeout(nextRecord, 300); },
+    { confirmText: '差し戻す' }
+  );
+});
+
+// v4: カテゴリタブは縦タブ
+$('#catTabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.vertical-tab');
+  if (!tab || tab.classList.contains('disabled')) return;
+  $$('.vertical-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  currentCat = tab.dataset.cat;
+  renderDocSvg();
+});
+
+// v7: 検索モードトップバー (ステータス/日付8/営業3) のバインド
+bindSearchTopBars();
+
+document.addEventListener('keydown', (e) => {
+  const ae = document.activeElement;
+  const inEditable = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT');
+
+  if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault();
+    if (searchMode) exitSearchMode();
+    else enterSearchMode(true);
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    if (searchMode) {
+      e.preventDefault();
+      exitSearchMode();
+      return;
+    }
+  }
+
+  if (searchMode && e.ctrlKey && e.key === 'Enter') {
+    e.preventDefault();
+    addSearchRequest();
+    setTimeout(() => {
+      const firstField = $('.field-input[data-search-field]');
+      if (firstField) firstField.focus();
+    }, 50);
+    return;
+  }
+
+  if (searchMode && e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+    e.preventDefault();
+    const s = pendingSearchScope; pendingSearchScope = 'new';
+    executeSearch(s);
+    return;
+  }
+
+  if (e.ctrlKey && e.key === '/') {
+    if (searchMode) {
+      e.preventDefault();
+      resetSearchInputs();
+      return;
+    }
+  }
+
+  if (e.ctrlKey && e.key === 'ArrowDown') { e.preventDefault(); nextRecord(); return; }
+  if (e.ctrlKey && e.key === 'ArrowUp')   { e.preventDefault(); prevRecord(); return; }
+
+  if (!searchMode && e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+    if (ae && ae.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+    jumpToNextDiff();
+  }
+});
+
+renderAll();
+setZoom(1);
+</script>
+
+</body>
+</html>

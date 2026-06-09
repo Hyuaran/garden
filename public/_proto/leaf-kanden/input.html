@@ -1,0 +1,4714 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garden-Leaf 関電業務委託 PoC v10</title>
+<style>
+:root {
+  --bg-page: #f5f3ee;
+  --bg-card: #ffffff;
+  --bg-phone: #ffffff;
+  --bg-section: #faf8f3;
+  --bg-header: #2c2c2a;
+  --text-primary: #2c2c2a;
+  --text-secondary: #5f5e5a;
+  --text-tertiary: #888780;
+  --border-line: #d3d1c7;
+  --border-soft: #e8e6dd;
+  --accent-teal: #0f6e56;
+  --accent-teal-bg: #e1f5ee;
+  --accent-teal-border: #5dcaa5;
+  --accent-teal-dark: #084d3b;
+  --accent-amber: #854f0b;
+  --accent-amber-bg: #faeeda;
+  --accent-amber-border: #ef9f27;
+  --accent-blue: #0c447c;
+  --accent-blue-bg: #e6f1fb;
+  --accent-blue-border: #85b7eb;
+  --accent-blue-dark: #062d52;
+  --accent-red: #791f1f;
+  --accent-red-bg: #fcebeb;
+  --accent-red-border: #f09595;
+  --accent-purple: #3c3489;
+  --accent-purple-bg: #eeedfe;
+  --accent-gray: #6a6863;
+  --accent-gray-bg: #eceae4;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --font-sans: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
+  --font-mono: 'SFMono-Regular', 'Consolas', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-page);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.page-header {
+  background: var(--bg-header);
+  color: #f5f3ee;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-header .v5-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #ef9f27, #854f0b);
+  color: #faf8f3;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.08em;
+}
+
+.page-header .meta {
+  font-size: 11px;
+  color: #b4b2a9;
+  letter-spacing: 0.08em;
+}
+
+.tab-bar {
+  background: #1f1f1d;
+  display: flex;
+  border-bottom: 0.5px solid #3a3a36;
+}
+
+.tab-bar button {
+  flex: 1;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: #b4b2a9;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: background 0.15s, color 0.15s;
+  border-bottom: 3px solid transparent;
+}
+
+.tab-bar button:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #faf8f3;
+}
+
+.tab-bar button.active {
+  color: var(--accent-teal-border);
+  border-bottom-color: var(--accent-teal-border);
+  background: rgba(15, 110, 86, 0.08);
+}
+
+.tab-screen { display: none; }
+.tab-screen.active { display: block; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+.phone-stage {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16px;
+}
+
+.phone {
+  width: 340px;
+  background: var(--bg-phone);
+  border-radius: var(--radius-xl);
+  border: 0.5px solid var(--border-line);
+  overflow: hidden;
+  box-shadow: 0 2px 16px rgba(44, 44, 42, 0.06);
+}
+
+.phone-bar {
+  background: var(--bg-section);
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+  border-bottom: 0.5px solid var(--border-soft);
+}
+
+.phone-bar .app-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.phone-body {
+  padding: 18px;
+}
+
+.mode-switch-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mode-link {
+  font-size: 11px;
+  color: var(--accent-amber);
+  background: var(--accent-amber-bg);
+  border: 0.5px solid var(--accent-amber-border);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.mode-link:hover {
+  background: var(--accent-amber-border);
+  color: #fff;
+}
+
+.mode-banner {
+  background: linear-gradient(135deg, #ef9f27, #ca7e0c);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  display: none;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 8px rgba(133, 79, 11, 0.2);
+}
+
+.mode-banner.show { display: flex; justify-content: space-between; align-items: center; }
+
+.mode-banner .close-mode {
+  background: rgba(255, 255, 255, 0.25);
+  border: none;
+  color: #fff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.postadd-form {
+  display: none;
+  background: var(--accent-amber-bg);
+  border: 0.5px solid var(--accent-amber-border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.postadd-form.show { display: block; }
+
+.postadd-form .pa-label {
+  font-size: 11px;
+  color: var(--accent-amber);
+  font-weight: 500;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
+.postadd-form .pa-input-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.postadd-form .pa-input {
+  flex: 1;
+  padding: 9px 10px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  border: 0.5px solid var(--accent-amber-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--text-primary);
+}
+
+.postadd-form .pa-input:focus {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: -1px;
+}
+
+.postadd-form .pa-qr-btn {
+  padding: 9px 12px;
+  background: var(--accent-amber);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+.postadd-form .pa-qr-btn:hover { background: var(--accent-amber-border); }
+
+.postadd-form .pa-hint {
+  font-size: 10px;
+  color: var(--accent-amber);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.postadd-form .pa-case-found {
+  background: #fff;
+  border: 0.5px solid var(--accent-teal);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  display: none;
+}
+
+.postadd-form .pa-case-found.show { display: block; }
+
+.postadd-form .pa-case-found .pa-found-name {
+  font-weight: 500;
+  color: var(--accent-teal);
+  margin-bottom: 2px;
+}
+
+.postadd-form .pa-case-found .pa-found-meta {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.postadd-form .pa-submit-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--accent-amber);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.postadd-form .pa-submit-btn.ready {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.postadd-form .pa-submit-btn:hover { background: #ca7e0c; }
+
+.step-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
+.pd-input {
+  width: 100%;
+  padding: 11px 12px;
+  font-size: 15px;
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  margin-bottom: 6px;
+}
+
+.pd-input:focus {
+  outline: 2px solid var(--accent-teal-border);
+  outline-offset: -1px;
+  border-color: var(--accent-teal);
+}
+
+.pd-input.cn-valid { border-color: var(--accent-teal); background: var(--accent-teal-bg); }
+.pd-input.cn-invalid { border-color: var(--accent-red); background: var(--accent-red-bg); }
+
+.digit-counter {
+  margin-top: 4px;
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: right;
+  color: var(--text-tertiary);
+  letter-spacing: 0.05em;
+}
+.digit-counter.valid { color: var(--accent-teal); }
+.digit-counter.invalid { color: var(--accent-red); }
+
+.ocr-section {
+  margin-top: 14px;
+  margin-bottom: 14px;
+  padding: 12px;
+  background: var(--accent-purple-bg);
+  border: 0.5px solid var(--accent-purple);
+  border-radius: var(--radius-sm);
+}
+
+.ocr-section .ocr-section-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-purple);
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ocr-progress {
+  font-size: 11px;
+  color: var(--accent-purple);
+  background: rgba(255, 255, 255, 0.6);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  display: none;
+}
+
+.ocr-progress.show { display: block; }
+
+.ocr-progress.processing::before {
+  content: '⏳ ';
+}
+
+.ocr-progress.done::before {
+  content: '✓ ';
+  color: var(--accent-teal);
+}
+
+.urgent-sw-banner {
+  background: linear-gradient(135deg, #b12424, #791f1f);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  display: none;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(121, 31, 31, 0.3);
+  animation: urgentPulse 1.2s ease-in-out 2;
+}
+
+.urgent-sw-banner.show { display: block; }
+
+@keyframes urgentPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); box-shadow: 0 4px 16px rgba(121, 31, 31, 0.5); }
+}
+
+.urgent-sw-banner .usw-title {
+  font-size: 13px;
+  margin-bottom: 4px;
+  letter-spacing: 0.05em;
+}
+
+.urgent-sw-banner .usw-detail {
+  font-size: 11px;
+  opacity: 0.95;
+  line-height: 1.5;
+}
+
+.urgent-sw-toggle {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 0.5px solid var(--accent-red);
+  border-radius: var(--radius-sm);
+  display: none;
+  font-size: 11px;
+  color: var(--accent-red);
+  align-items: center;
+  gap: 8px;
+}
+
+.urgent-sw-toggle.show { display: flex; }
+
+.urgent-sw-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.urgent-sw-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-red);
+  cursor: pointer;
+}
+
+.urgent-sw-toggle select {
+  padding: 4px 6px;
+  font-size: 11px;
+  border: 0.5px solid var(--accent-red);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--accent-red);
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+.status-box {
+  min-height: 140px;
+  margin-top: 12px;
+}
+
+.status-empty {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 28px 0;
+  letter-spacing: 0.05em;
+}
+
+.status-card {
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 8px;
+  border-left: 3px solid;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.status-card.success { background: var(--accent-teal-bg); border-left-color: var(--accent-teal); color: var(--accent-teal); }
+.status-card.warning { background: var(--accent-amber-bg); border-left-color: var(--accent-amber); color: var(--accent-amber); }
+.status-card.info { background: var(--accent-blue-bg); border-left-color: var(--accent-blue); color: var(--accent-blue); }
+.status-card.error { background: var(--accent-red-bg); border-left-color: var(--accent-red); color: var(--accent-red); }
+
+.status-card .title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-card .body { font-size: 11px; line-height: 1.7; }
+.status-card strong { font-weight: 500; }
+
+.status-card button {
+  margin-top: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  width: 100%;
+  background: var(--bg-card);
+  border: 0.5px solid currentColor;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: inherit;
+  font-family: var(--font-sans);
+  text-align: center;
+  transition: background 0.15s;
+}
+
+.status-card button:hover { background: rgba(255, 255, 255, 0.5); }
+
+.status-card .choice-buttons {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.status-card .choice-buttons button {
+  margin-top: 0;
+  flex: 1;
+}
+
+.status-card .radio-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.status-card .radio-choice button {
+  margin-top: 0;
+  text-align: left;
+  padding: 10px 12px;
+  line-height: 1.4;
+}
+
+.status-card .radio-choice button .sub {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+  font-weight: 400;
+  display: block;
+}
+
+.info-card {
+  background: var(--bg-section);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text-primary);
+  line-height: 1.7;
+  border: 0.5px solid var(--border-soft);
+}
+
+.info-card .label {
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 12px;
+  background: var(--text-primary);
+  color: #faf8f3;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity 0.2s, background 0.15s;
+  font-family: var(--font-sans);
+  letter-spacing: 0.05em;
+}
+
+.submit-btn.ready {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.submit-btn:hover { background: var(--accent-teal); }
+
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--border-line);
+  padding: 20px;
+}
+
+.panel-card h2 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 12px 0;
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-card h2::before {
+  content: '';
+  width: 4px;
+  height: 14px;
+  background: var(--accent-teal);
+  border-radius: 2px;
+}
+
+.test-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.test-buttons button {
+  padding: 7px 11px;
+  font-size: 11px;
+  background: var(--bg-section);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  transition: background 0.15s;
+}
+
+.test-buttons button:hover { background: var(--accent-teal-bg); }
+
+.test-buttons button.latest { border-left: 3px solid var(--accent-teal); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.test-buttons button.old { border-left: 3px solid var(--accent-amber); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.test-buttons button.outside { border-left: 3px solid var(--accent-blue); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+
+.legend {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.legend-item {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 10px;
+  align-items: start;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.legend-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.legend-badge.b-latest { background: var(--accent-teal-bg); color: var(--accent-teal); }
+.legend-badge.b-old { background: var(--accent-amber-bg); color: var(--accent-amber); }
+.legend-badge.b-outside { background: var(--accent-blue-bg); color: var(--accent-blue); }
+.legend-badge.b-error { background: var(--accent-red-bg); color: var(--accent-red); }
+
+.legend-item .label { font-weight: 500; color: var(--text-primary); }
+.legend-item .desc { color: var(--text-secondary); font-size: 11px; }
+
+.submitted-log {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-empty {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 20px 0;
+}
+
+.log-item {
+  padding: 10px 12px;
+  background: var(--bg-section);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.log-item.latest { border-left-color: var(--accent-teal); }
+.log-item.replaced { border-left-color: var(--accent-teal); }
+.log-item.makinaoshi { border-left-color: var(--accent-amber); }
+.log-item.outside { border-left-color: var(--accent-blue); }
+.log-item.postadd { border-left-color: var(--accent-amber-border); background: var(--accent-amber-bg); }
+
+.log-item .case-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.log-item .case-meta {
+  color: var(--text-secondary);
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.log-item .tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+}
+
+.log-item.latest .tag { background: var(--accent-teal-bg); color: var(--accent-teal); }
+.log-item.replaced .tag { background: var(--accent-teal-bg); color: var(--accent-teal); }
+.log-item.makinaoshi .tag { background: var(--accent-amber-bg); color: var(--accent-amber); }
+.log-item.outside .tag { background: var(--accent-blue-bg); color: var(--accent-blue); }
+.log-item.postadd .tag { background: var(--accent-amber); color: #fff; }
+
+.log-item .urgent-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  background: var(--accent-red);
+  color: #fff;
+  font-weight: 500;
+  margin-left: 3px;
+  letter-spacing: 0.04em;
+}
+
+.spec-note {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  padding: 10px 12px;
+  background: var(--bg-section);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent-purple);
+}
+
+.spec-note strong { color: var(--text-primary); font-weight: 500; }
+
+.footer {
+  text-align: center;
+  padding: 24px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.05em;
+  border-top: 0.5px solid var(--border-soft);
+  background: var(--bg-section);
+}
+
+.footer .version { color: var(--text-secondary); font-weight: 500; }
+
+.footer .v5-features {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.footer .v5-features strong { color: var(--accent-purple); font-weight: 500; }
+
+.hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.attachment-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.attach-block {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.attach-block.attached {
+  border-color: var(--accent-teal-border);
+  background: var(--accent-teal-bg);
+}
+
+.attach-block.required-empty {
+  border-color: var(--border-line);
+  background: var(--bg-card);
+}
+
+.attach-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.attach-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.attach-label .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-section);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  border: 0.5px solid var(--border-line);
+}
+
+.attach-block.attached .attach-label .num {
+  background: var(--accent-teal);
+  color: #ffffff;
+  border-color: var(--accent-teal);
+}
+
+.attach-status {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+}
+
+.attach-block.attached .attach-status {
+  color: var(--accent-teal);
+  font-weight: 500;
+}
+
+.attach-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.attach-actions button {
+  flex: 1;
+  padding: 8px;
+  font-size: 11px;
+  background: var(--bg-section);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  transition: background 0.15s;
+}
+
+.attach-actions button:hover {
+  background: var(--accent-teal-bg);
+  border-color: var(--accent-teal-border);
+}
+
+.thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.thumbnail {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 0.5px solid var(--border-line);
+}
+
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbnail .remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(44, 44, 42, 0.8);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.thumbnail .remove-btn:hover { background: var(--accent-red); }
+
+.validation-banner {
+  padding: 8px 12px;
+  background: var(--accent-red-bg);
+  border-left: 3px solid var(--accent-red);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--accent-red);
+  line-height: 1.6;
+  margin-bottom: 12px;
+  display: none;
+}
+
+.validation-banner.show { display: block; }
+
+.validation-banner strong { font-weight: 500; }
+
+.customer-number-display {
+  background: var(--accent-purple-bg);
+  border: 0.5px solid var(--accent-purple);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.customer-number-display .cn-label {
+  font-size: 10px;
+  color: var(--accent-purple);
+  letter-spacing: 0.08em;
+  margin-bottom: 3px;
+  font-weight: 500;
+}
+
+.customer-number-display .cn-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.ocr-sim-panel {
+  background: var(--bg-card);
+  border: 0.5px solid var(--accent-purple);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-top: 12px;
+}
+
+.ocr-sim-header {
+  font-size: 11px;
+  color: var(--accent-purple);
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.ocr-sim-select {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.ocr-sim-select button {
+  padding: 6px 10px;
+  font-size: 11px;
+  background: var(--bg-section);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 80px;
+  transition: background 0.15s;
+}
+
+.ocr-sim-select button:hover {
+  background: var(--bg-section);
+}
+
+.ocr-sim-select button.active {
+  background: var(--accent-purple-bg);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+  font-weight: 500;
+}
+
+.ocr-result {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  line-height: 1.6;
+  border-left: 3px solid;
+}
+
+.ocr-result.success {
+  background: var(--accent-teal-bg);
+  border-left-color: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+.ocr-result.warning {
+  background: var(--accent-amber-bg);
+  border-left-color: var(--accent-amber);
+  color: var(--accent-amber);
+}
+
+.ocr-result.error {
+  background: var(--accent-red-bg);
+  border-left-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+.ocr-result .ocr-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.ocr-result .ocr-detail {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 3px;
+  color: var(--text-primary);
+}
+
+.ocr-result .ocr-detail .match { color: var(--accent-teal); }
+.ocr-result .ocr-detail .mismatch { color: var(--accent-red); font-weight: 500; }
+
+.acquisition-picker {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--bg-section);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+}
+
+.acquisition-picker .ap-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.acquisition-picker .ap-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.acquisition-picker .ap-options button {
+  padding: 10px 12px;
+  font-size: 12px;
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  text-align: left;
+  line-height: 1.4;
+  transition: all 0.15s;
+}
+
+.acquisition-picker .ap-options button:hover {
+  background: var(--bg-section);
+}
+
+.acquisition-picker .ap-options button.active {
+  background: var(--accent-teal-bg);
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+  font-weight: 500;
+}
+
+.acquisition-picker .ap-options button .ap-sub {
+  display: block;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+  font-weight: 400;
+}
+
+.acquisition-picker .ap-options button.active .ap-sub {
+  color: var(--accent-teal);
+  opacity: 0.8;
+}
+
+.outside-cn-input {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--accent-blue-bg);
+  border: 0.5px solid var(--accent-blue-border);
+  border-radius: var(--radius-sm);
+}
+
+.outside-cn-input .cn-guide {
+  font-size: 11px;
+  color: var(--accent-blue);
+  margin-bottom: 6px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.outside-cn-input input {
+  width: 100%;
+  padding: 9px 10px;
+  font-size: 14px;
+  border: 0.5px solid var(--accent-blue-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  box-sizing: border-box;
+}
+
+.outside-cn-input input:focus {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -1px;
+}
+
+.outside-cn-input .cn-hint {
+  font-size: 10px;
+  color: var(--accent-blue);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+#confirm-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(44, 44, 42, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+#confirm-modal.show { display: flex; }
+
+#confirm-modal .confirm-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  max-width: 360px;
+  width: calc(100% - 32px);
+  margin: 16px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.15);
+}
+
+#confirm-modal h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+#confirm-modal .confirm-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+#confirm-modal .cn-confirm-box {
+  background: var(--accent-purple-bg);
+  border: 1px solid var(--accent-purple);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin: 0 0 12px 0;
+  text-align: center;
+}
+
+#confirm-modal .cn-confirm-label {
+  font-size: 11px;
+  color: var(--accent-purple);
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+#confirm-modal .cn-confirm-value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+#confirm-modal .cn-confirm-customer {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+  padding-top: 10px;
+  border-top: 0.5px solid rgba(60, 52, 137, 0.2);
+}
+
+#confirm-modal .urgent-confirm-box {
+  background: var(--accent-red-bg);
+  border: 2px solid var(--accent-red);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 16px;
+  text-align: center;
+  color: var(--accent-red);
+  font-size: 14px;
+  font-weight: 500;
+  display: none;
+  animation: urgentPulse 1.2s ease-in-out 2;
+}
+
+#confirm-modal .urgent-confirm-box.show { display: block; }
+
+#confirm-modal .urgent-confirm-box .uc-sub {
+  font-size: 11px;
+  opacity: 0.85;
+  font-weight: 400;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+#confirm-modal .cn-confirm-prompt {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+#confirm-modal .confirm-buttons {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+}
+
+#confirm-modal .confirm-buttons button {
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background 0.15s;
+}
+
+#confirm-modal button.btn-back {
+  background: var(--bg-section);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-line);
+}
+
+#confirm-modal button.btn-back:hover {
+  background: var(--border-soft);
+}
+
+#confirm-modal button.btn-confirm {
+  background: var(--accent-teal);
+  color: #ffffff;
+  border: none;
+}
+
+#confirm-modal button.btn-confirm:hover {
+  background: var(--text-primary);
+}
+
+#guide-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000000;
+  z-index: 300;
+  flex-direction: column;
+}
+
+#guide-modal.show { display: flex; }
+
+#guide-modal .guide-header {
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  z-index: 10;
+}
+
+#guide-modal .guide-close {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+}
+
+#guide-modal .guide-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #1a1a18;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#guide-modal .guide-camera {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0; left: 0;
+}
+
+#guide-modal .guide-placeholder {
+  color: #aaa;
+  font-size: 13px;
+  text-align: center;
+  padding: 20px;
+  line-height: 1.8;
+  max-width: 280px;
+}
+
+#guide-modal .guide-placeholder .ph-icon {
+  font-size: 44px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+#guide-modal .guide-frame-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 82%;
+  aspect-ratio: 1 / 1.414;
+  border: 2px solid rgba(93, 202, 165, 0.9);
+  border-radius: 6px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+#guide-modal .guide-frame-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #5dcaa5;
+}
+#guide-modal .guide-frame-corner.tl { top: -3px; left: -3px; border-right: none; border-bottom: none; }
+#guide-modal .guide-frame-corner.tr { top: -3px; right: -3px; border-left: none; border-bottom: none; }
+#guide-modal .guide-frame-corner.bl { bottom: -3px; left: -3px; border-right: none; border-top: none; }
+#guide-modal .guide-frame-corner.br { bottom: -3px; right: -3px; border-left: none; border-top: none; }
+
+#guide-modal .guide-instructions {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+#guide-modal .guide-footer {
+  background: rgba(0, 0, 0, 0.9);
+  padding: 20px 16px 32px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  z-index: 10;
+}
+
+#guide-modal .guide-shutter {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 4px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.1s;
+}
+
+#guide-modal .guide-shutter:active {
+  transform: scale(0.92);
+}
+
+#guide-modal .guide-target {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+#guide-modal .guide-fallback {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+
+#guide-modal .guide-fallback button {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 0.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+#submit-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(44, 44, 42, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+#submit-modal.show { display: flex; }
+
+#submit-modal .modal-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  max-width: 340px;
+  margin: 16px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.15);
+}
+
+#submit-modal h3 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+#submit-modal .case-num {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 8px 12px;
+  background: var(--bg-section);
+  border-radius: var(--radius-sm);
+  margin: 8px 0 16px;
+  color: var(--accent-teal);
+  font-weight: 500;
+}
+
+#submit-modal .detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.7;
+}
+
+#submit-modal button {
+  width: 100%;
+  padding: 10px;
+  background: var(--text-primary);
+  color: var(--bg-card);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.toast-notification {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  color: #faf8f3;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 500;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  min-width: 260px;
+  text-align: center;
+}
+
+.toast-notification.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-notification.success { background: var(--accent-teal); }
+.toast-notification.warning { background: var(--accent-amber); }
+
+.mypage-stage {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.mypage-phone {
+  width: 340px;
+  background: var(--bg-phone);
+  border-radius: var(--radius-xl);
+  border: 0.5px solid var(--border-line);
+  overflow: hidden;
+  box-shadow: 0 2px 16px rgba(44, 44, 42, 0.06);
+}
+
+.mypage-body {
+  padding: 14px;
+}
+
+.urgent-alert-banner {
+  background: linear-gradient(135deg, #b12424, #791f1f);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(121, 31, 31, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.urgent-alert-banner.show { display: flex; }
+
+.urgent-alert-banner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(121, 31, 31, 0.35);
+}
+
+.urgent-alert-banner .uab-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+.urgent-alert-banner.active-filter {
+  background: linear-gradient(135deg, #6a1818, #4d1010);
+}
+
+.mp-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  background: var(--accent-red);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: 6px;
+}
+
+.mp-filter-chip .clear-x {
+  cursor: pointer;
+  font-weight: 600;
+  margin-left: 2px;
+  opacity: 0.85;
+}
+
+.mp-filter-chip .clear-x:hover { opacity: 1; }
+
+.mp-search {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.mp-search input {
+  width: 100%;
+  padding: 10px 12px 10px 34px;
+  font-size: 13px;
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  background: var(--bg-section);
+  color: var(--text-primary);
+}
+
+.mp-search input:focus {
+  outline: 2px solid var(--accent-teal-border);
+  outline-offset: -1px;
+  background: var(--bg-card);
+}
+
+.mp-search::before {
+  content: '🔍';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.mp-summary {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+  text-align: right;
+}
+
+.mp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mp-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  scroll-margin-top: 80px;
+  position: relative;
+}
+
+.mp-card.highlight {
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px var(--accent-teal-bg);
+}
+
+.mp-card.urgent {
+  border-left: 3px solid var(--accent-red);
+}
+
+.mp-card-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 1px;
+}
+
+.mp-card-kana {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.mp-card-cn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  background: var(--bg-section);
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.mp-card-addr {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.mp-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.mp-status-badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mp-status-badge.ordered { background: var(--accent-blue-bg); color: var(--accent-blue); }
+.mp-status-badge.awaiting-specs { background: var(--accent-amber-bg); color: var(--accent-amber); }
+.mp-status-badge.awaiting-entry { background: var(--accent-teal-bg); color: var(--accent-teal); }
+.mp-status-badge.awaiting-send { background: var(--accent-purple-bg); color: var(--accent-purple); }
+.mp-status-badge.awaiting-invoice { background: #dde4ef; color: var(--accent-blue-dark); }
+.mp-status-badge.awaiting-payment-in { background: var(--accent-gray-bg); color: var(--accent-gray); }
+.mp-status-badge.awaiting-payment-out { background: var(--accent-gray-bg); color: var(--accent-gray); }
+.mp-status-badge.completed { background: #c9e4d1; color: var(--accent-teal-dark); }
+
+.mp-status-badge.urgent-sw {
+  background: var(--accent-red);
+  color: #fff;
+  animation: urgentPulse 1.8s ease-in-out infinite;
+}
+
+.mp-status-badge.specs-stale {
+  background: var(--accent-red-bg);
+  color: var(--accent-red);
+  border: 0.5px solid var(--accent-red);
+}
+
+.mp-status-badge.specs-missing {
+  background: var(--accent-amber);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.mp-status-badge.specs-missing:hover {
+  transform: scale(1.05);
+}
+
+.mp-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.mp-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.mp-badge.denki { background: var(--accent-amber-bg); color: var(--accent-amber); }
+.mp-badge.douryoku { background: var(--accent-blue-bg); color: var(--accent-blue); }
+.mp-badge.gas { background: var(--accent-red-bg); color: var(--accent-red); }
+.mp-badge.juryoushou { background: var(--accent-teal-bg); color: var(--accent-teal); }
+
+.mp-card-meta {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.mp-related-banner {
+  background: var(--accent-purple-bg);
+  border: 0.5px solid var(--accent-purple);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--accent-purple);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.mp-related-banner:hover {
+  background: rgba(60, 52, 137, 0.15);
+}
+
+.mp-related-banner .label {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.mp-related-banner .arrow {
+  font-size: 14px;
+}
+
+.mp-toggle-btn {
+  width: 100%;
+  padding: 8px;
+  background: var(--bg-section);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.15s;
+}
+
+.mp-toggle-btn:hover { background: var(--accent-teal-bg); }
+
+.mp-toggle-btn .toggle-arrow {
+  transition: transform 0.2s;
+}
+
+.mp-toggle-btn.open .toggle-arrow {
+  transform: rotate(180deg);
+}
+
+.mp-cases {
+  display: none;
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--bg-section);
+  border-radius: var(--radius-sm);
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mp-cases.open { display: flex; }
+
+.mp-case-item {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.mp-case-top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.mp-case-info .case-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.mp-case-info .case-cat {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.mp-case-info .case-date {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+}
+
+.mp-case-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.mp-case-status-row .mp-status-badge {
+  font-size: 9px;
+  padding: 1px 6px;
+}
+
+.mp-case-transitions {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  padding: 6px 8px;
+  background: var(--bg-section);
+  border-radius: 4px;
+  border-left: 2px solid var(--border-soft);
+}
+
+.mp-case-transitions .trans-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.mp-case-transitions .trans-label { color: var(--text-tertiary); }
+.mp-case-transitions .trans-val { color: var(--text-secondary); font-weight: 500; }
+.mp-case-transitions .trans-val.pending { color: var(--text-tertiary); font-weight: 400; }
+
+.mp-case-add-specs {
+  width: 100%;
+  padding: 7px;
+  background: var(--accent-amber-bg);
+  border: 0.5px solid var(--accent-amber-border);
+  border-radius: var(--radius-sm);
+  color: var(--accent-amber);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.mp-case-add-specs:hover {
+  background: var(--accent-amber);
+  color: #fff;
+}
+
+.mp-case-add-specs:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mp-case-thumb {
+  width: 44px;
+  height: 44px;
+  background: var(--bg-section);
+  border: 0.5px solid var(--border-line);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--text-tertiary);
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.mp-case-thumb:hover {
+  border-color: var(--accent-teal);
+  transform: scale(1.05);
+}
+
+.mp-photo-link {
+  display: block;
+  text-align: center;
+  padding: 8px;
+  margin-top: 8px;
+  background: var(--bg-section);
+  border: 0.5px dashed var(--border-line);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.mp-photo-link:hover {
+  background: var(--accent-teal-bg);
+  color: var(--accent-teal);
+}
+
+#thumb-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+  padding: 20px;
+}
+
+#thumb-modal.show { display: flex; flex-direction: column; }
+
+#thumb-modal .thumb-preview {
+  max-width: 90vw;
+  max-height: 70vh;
+  background: #fff;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 80px;
+  width: 320px;
+  height: 460px;
+  color: var(--text-tertiary);
+}
+
+#thumb-modal .thumb-caption {
+  color: #fff;
+  margin-top: 14px;
+  font-size: 13px;
+  text-align: center;
+}
+
+#thumb-modal .thumb-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 0.5px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.mp-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.status-legend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  font-size: 11px;
+}
+
+.status-legend-grid .sl-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-legend-grid .mp-status-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+}
+
+.manual-sw-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--accent-red-bg);
+  border: 0.5px solid var(--accent-red-border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--accent-red);
+  cursor: pointer;
+  line-height: 1.45;
+}
+
+.manual-sw-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-red);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#sw-target-month {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  border: 0.5px solid var(--accent-red-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--accent-red);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+#sw-target-month:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--bg-section);
+  color: var(--text-tertiary);
+  border-color: var(--border-line);
+}
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(44, 44, 42, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 250;
+}
+
+.modal-overlay.show { display: flex; }
+
+.modal-overlay .modal-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  max-width: 360px;
+  width: calc(100% - 32px);
+  margin: 16px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.15);
+}
+
+/* ==================== v9: マイページ（プロフィール）================== */
+.myprofile-stage {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.myprofile-phone {
+  width: 340px;
+  background: var(--bg-phone);
+  border-radius: var(--radius-xl);
+  border: 0.5px solid var(--border-line);
+  overflow: hidden;
+  box-shadow: 0 2px 16px rgba(44, 44, 42, 0.06);
+}
+
+.myprofile-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.profile-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid var(--border-soft);
+}
+
+.profile-row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 3px 0;
+}
+
+.profile-row .pr-label {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.profile-row .pr-val {
+  color: var(--text-primary);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.profile-row .pr-val.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+.profile-row .pr-val.name-big {
+  font-size: 14px;
+}
+
+.profile-stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.profile-stat {
+  padding: 10px 12px;
+  background: var(--bg-section);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent-teal);
+  text-align: left;
+}
+
+.profile-stat.amber { border-left-color: var(--accent-amber); }
+.profile-stat.red { border-left-color: var(--accent-red); }
+.profile-stat.blue { border-left-color: var(--accent-blue); }
+
+.profile-stat .ps-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.05em;
+  margin-bottom: 3px;
+}
+
+.profile-stat .ps-value {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.profile-stat .ps-value .ps-unit {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  margin-left: 2px;
+  font-weight: 400;
+}
+
+.profile-stat .ps-value .ps-icon {
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+.profile-setting-btn {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-section);
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-primary);
+  text-align: left;
+  margin-bottom: 6px;
+  transition: background 0.15s;
+}
+
+.profile-setting-btn:hover {
+  background: var(--accent-teal-bg);
+  border-color: var(--accent-teal-border);
+}
+
+.profile-setting-btn.danger {
+  color: var(--accent-red);
+  border-color: var(--accent-red-border);
+  background: var(--accent-red-bg);
+}
+
+.profile-setting-btn.danger:hover {
+  background: var(--accent-red);
+  color: #fff;
+}
+
+.profile-setting-btn:last-child {
+  margin-bottom: 0;
+}
+
+#info-update-modal .modal-card {
+  max-width: 380px;
+}
+
+#info-update-modal textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 10px;
+  font-size: 12px;
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  box-sizing: border-box;
+  resize: vertical;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+#info-update-modal textarea:focus {
+  outline: 2px solid var(--accent-teal-border);
+  outline-offset: -1px;
+  border-color: var(--accent-teal);
+}
+
+/* ==================== v9: ロック画面 ==================== */
+.lock-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(30, 30, 30, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.lock-overlay.show { display: flex; }
+.lock-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 32px 26px;
+  max-width: 320px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.3);
+}
+.lock-icon {
+  font-size: 54px;
+  margin-bottom: 12px;
+  color: var(--accent-amber);
+}
+.lock-card h2 { margin: 0 0 8px 0; font-size: 15px; font-weight: 500; }
+.lock-sub { font-size: 11px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px; }
+.lock-user-name {
+  background: var(--accent-purple-bg);
+  color: var(--accent-purple);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.lock-card input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: 0.2em;
+  border: 0.5px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+.lock-card input:focus {
+  outline: 2px solid var(--accent-teal-border);
+  outline-offset: -1px;
+  border-color: var(--accent-teal);
+}
+.lock-card button {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent-teal);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+}
+.lock-card button:hover { background: #0a5643; }
+.lock-error {
+  font-size: 11px;
+  color: var(--accent-red);
+  margin-top: 8px;
+  display: none;
+}
+.lock-error.show { display: block; }
+.lock-timer {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 14px;
+  font-family: var(--font-mono);
+}
+.lock-btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  background: var(--accent-amber-bg);
+  color: var(--accent-amber);
+  border: 0.5px solid var(--accent-amber);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.lock-btn:hover { background: var(--accent-amber); color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Garden-Leaf / 関西電力業務委託 PoC v10 <span class="v5-badge">🆕 v10</span></h1>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <span class="meta">Phase 1 営業入力＋マイページ</span>
+    <button class="lock-btn" onclick="lockScreen()">🔒 離席</button>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button id="tab-myprofile" onclick="switchTab('myprofile')">👤 マイページ</button>
+  <button id="tab-input" class="active" onclick="switchTab('input')">📷 新規送信</button>
+  <button id="tab-mypage" onclick="switchTab('mypage')">📂 案件一覧</button>
+</div>
+
+<div id="screen-myprofile" class="tab-screen">
+  <div class="myprofile-stage">
+    <div class="myprofile-phone">
+      <div class="phone-bar">
+        <span>9:41</span>
+        <span class="app-name">マイページ</span>
+        <span>📶 100%</span>
+      </div>
+      <div class="myprofile-body">
+
+        <div class="profile-card">
+          <h3>👤 プロフィール</h3>
+          <div class="profile-row">
+            <span class="pr-label">氏名</span>
+            <span class="pr-val name-big">鈴木 太郎</span>
+          </div>
+          <div class="profile-row">
+            <span class="pr-label">ふりがな</span>
+            <span class="pr-val">スズキ タロウ</span>
+          </div>
+          <div class="profile-row">
+            <span class="pr-label">社員番号</span>
+            <span class="pr-val mono">0027</span>
+          </div>
+          <div class="profile-row">
+            <span class="pr-label">所属</span>
+            <span class="pr-val">大阪本店<br>関電業務委託事業部</span>
+          </div>
+          <div class="profile-row">
+            <span class="pr-label">入社日</span>
+            <span class="pr-val">2024年4月1日</span>
+          </div>
+        </div>
+
+        <div class="profile-card">
+          <h3>📞 連絡先</h3>
+          <div class="profile-row">
+            <span class="pr-label">業務端末</span>
+            <span class="pr-val mono">090-1234-5678</span>
+          </div>
+          <div class="profile-row">
+            <span class="pr-label">内線</span>
+            <span class="pr-val mono">1234</span>
+          </div>
+          <div class="profile-row">
+            <span class="pr-label">メール</span>
+            <span class="pr-val mono" style="font-size:11px;">emp0027@garden.internal</span>
+          </div>
+        </div>
+
+        <div class="profile-card">
+          <h3>📋 営業関連</h3>
+          <div class="profile-row">
+            <span class="pr-label">営業許可書</span>
+            <span class="pr-val mono" style="font-size:11px;">第2024-A-0027号</span>
+          </div>
+          <div class="profile-row">
+            <span class="pr-label">申込コード</span>
+            <span class="pr-val mono">0281-30101</span>
+          </div>
+          <div class="profile-row">
+            <span class="pr-label">有効期限</span>
+            <span class="pr-val">2027年3月31日</span>
+          </div>
+        </div>
+
+        <div class="profile-card">
+          <h3>📊 今月の実績</h3>
+          <div class="profile-stat-row">
+            <div class="profile-stat">
+              <div class="ps-label">送信件数</div>
+              <div class="ps-value" id="stat-sent">— <span class="ps-unit">件</span></div>
+            </div>
+            <div class="profile-stat blue">
+              <div class="ps-label">完了件数</div>
+              <div class="ps-value" id="stat-completed">— <span class="ps-unit">件</span></div>
+            </div>
+            <div class="profile-stat amber">
+              <div class="ps-label">諸元待ち</div>
+              <div class="ps-value" id="stat-awaiting">— <span class="ps-unit">件</span><span class="ps-icon">🔔</span></div>
+            </div>
+            <div class="profile-stat red">
+              <div class="ps-label">至急SW</div>
+              <div class="ps-value" id="stat-urgent">— <span class="ps-unit">件</span><span class="ps-icon">🚨</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-card">
+          <h3>⚙️ 設定</h3>
+          <button class="profile-setting-btn" onclick="showToast('🔒 パスワード変更（ダミー）：Garden認証と統合予定', 'success')">🔒 パスワード変更</button>
+          <button class="profile-setting-btn" onclick="openInfoUpdate()">📝 情報更新を申請</button>
+          <button class="profile-setting-btn danger" onclick="showToast('🚪 ログアウト（ダミー）', 'warning')">🚪 ログアウト</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-input" class="tab-screen active">
+
+<div class="layout">
+
+  <div class="phone-stage">
+    <div class="phone">
+      <div class="phone-bar">
+        <span>9:41</span>
+        <span class="app-name">関電業務委託</span>
+        <span>📶 100%</span>
+      </div>
+      <div class="phone-body">
+
+        <div class="mode-switch-bar">
+          <a class="mode-link" id="open-postadd-link" onclick="openPostAddMode()">📎 諸元のみ後付け送信</a>
+        </div>
+
+        <div class="mode-banner" id="postadd-banner">
+          <span>📎 諸元後付けモード</span>
+          <button class="close-mode" onclick="closePostAddMode()" aria-label="通常モードに戻る">×</button>
+        </div>
+
+        <div class="postadd-form" id="postadd-form">
+          <div class="pa-label">対象の既存案件番号</div>
+          <div class="pa-input-row">
+            <input type="text" class="pa-input" id="pa-case-id" placeholder="K-20260401-001" oninput="onPostAddCaseInput(this.value)">
+            <button class="pa-qr-btn" onclick="postAddQRDummy()">📷 QR</button>
+          </div>
+          <div class="pa-hint">マイページの案件カードで案件番号を確認できます。QRボタンでスキャン風のダミー入力ができます。</div>
+          <div class="pa-case-found" id="pa-found">
+            <div class="pa-found-name" id="pa-found-name">—</div>
+            <div class="pa-found-meta" id="pa-found-meta">—</div>
+          </div>
+
+          <div class="pa-label" style="margin-top:6px;">諸元画像を追加（複数可）</div>
+          <div class="attach-block" id="block-pa-shogen" style="margin-bottom:10px;">
+            <div class="attach-head">
+              <div class="attach-label"><span class="num">📎</span>諸元（後付け）</div>
+              <div class="attach-status" id="status-pa-shogen">0 枚</div>
+            </div>
+            <div class="attach-actions">
+              <button onclick="openGuideCapture('pa-shogen')" style="background:var(--accent-amber-bg);color:var(--accent-amber);border-color:var(--accent-amber-border);font-weight:500;">🎯 ガイド枠で撮影</button>
+              <button onclick="document.getElementById('file-pa-shogen-sel').click()">🖼 ファイル選択</button>
+            </div>
+            <div class="thumbnails" id="thumbs-pa-shogen"></div>
+            <input type="file" id="file-pa-shogen-sel" class="hidden-input" accept="image/*" multiple onchange="handleCategoryFile(event, 'pa-shogen', false)">
+          </div>
+
+          <button class="pa-submit-btn" id="pa-submit-btn" onclick="submitPostAdd()">この案件に諸元を追加送信</button>
+        </div>
+
+        <div id="normal-mode-content">
+
+        <div class="step-label">① 獲得種類</div>
+
+        <div class="acquisition-picker">
+          <div class="ap-label">この案件の獲得種類を選択（手数料単価に影響）</div>
+          <div class="ap-options">
+            <button id="acq-kakoi" onclick="setAcquisition('kakoi')">
+              🔁 囲込
+              <span class="ap-sub">関電利用中のプラン変更</span>
+            </button>
+            <button id="acq-dakkan" onclick="setAcquisition('dakkan')">
+              🎯 奪還
+              <span class="ap-sub">他電力→関電へ乗り換え</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="step-label">② 申込書・証憑を撮影・添付</div>
+
+        <div class="validation-banner" id="validation-banner">
+          <strong>⚠ 電灯・動力・ガスのいずれか1枚以上</strong>の添付が必要です
+        </div>
+
+        <div class="attachment-group">
+
+          <div class="attach-block" id="block-juryoushou">
+            <div class="attach-head">
+              <div class="attach-label"><span class="num">1</span>受領書<span style="font-size:10px;color:var(--text-tertiary);font-weight:400;margin-left:4px;">（1枚のみ・任意・OCR対象外）</span></div>
+              <div class="attach-status" id="status-juryoushou">未添付</div>
+            </div>
+            <div class="attach-actions">
+              <button onclick="openGuideCapture('juryoushou')" style="background:var(--accent-teal-bg);color:var(--accent-teal);border-color:var(--accent-teal-border);font-weight:500;">🎯 ガイド枠で撮影</button>
+            </div>
+            <div class="thumbnails" id="thumbs-juryoushou"></div>
+          </div>
+
+          <div class="attach-block required-empty" id="block-denki" data-required="true">
+            <div class="attach-head">
+              <div class="attach-label"><span class="num">2</span>電灯</div>
+              <div class="attach-status" id="status-denki">未添付</div>
+            </div>
+            <div class="attach-actions">
+              <button onclick="openGuideCapture('denki')" style="background:var(--accent-teal-bg);color:var(--accent-teal);border-color:var(--accent-teal-border);font-weight:500;">🎯 ガイド枠で撮影</button>
+            </div>
+            <div class="thumbnails" id="thumbs-denki"></div>
+            <input type="file" id="file-denki-fallback" class="hidden-input" accept="image/*" capture="environment" onchange="handleCategoryFile(event, 'denki', true)">
+          </div>
+
+          <div class="attach-block required-empty" id="block-douryoku" data-required="true">
+            <div class="attach-head">
+              <div class="attach-label"><span class="num">3</span>動力</div>
+              <div class="attach-status" id="status-douryoku">未添付</div>
+            </div>
+            <div class="attach-actions">
+              <button onclick="openGuideCapture('douryoku')" style="background:var(--accent-teal-bg);color:var(--accent-teal);border-color:var(--accent-teal-border);font-weight:500;">🎯 ガイド枠で撮影</button>
+            </div>
+            <div class="thumbnails" id="thumbs-douryoku"></div>
+            <input type="file" id="file-douryoku-fallback" class="hidden-input" accept="image/*" capture="environment" onchange="handleCategoryFile(event, 'douryoku', true)">
+          </div>
+
+          <div class="attach-block required-empty" id="block-gas" data-required="true">
+            <div class="attach-head">
+              <div class="attach-label"><span class="num">4</span>ガス</div>
+              <div class="attach-status" id="status-gas">未添付</div>
+            </div>
+            <div class="attach-actions">
+              <button onclick="openGuideCapture('gas')" style="background:var(--accent-teal-bg);color:var(--accent-teal);border-color:var(--accent-teal-border);font-weight:500;">🎯 ガイド枠で撮影</button>
+            </div>
+            <div class="thumbnails" id="thumbs-gas"></div>
+            <input type="file" id="file-gas-fallback" class="hidden-input" accept="image/*" capture="environment" onchange="handleCategoryFile(event, 'gas', true)">
+          </div>
+
+          <div class="attach-block" id="block-shogen">
+            <div class="attach-head">
+              <div class="attach-label"><span class="num">5</span>諸元<span style="font-size:10px;color:var(--text-tertiary);font-weight:400;margin-left:4px;">（複数可・任意）</span></div>
+              <div class="attach-status" id="status-shogen">0 枚</div>
+            </div>
+            <div class="attach-actions">
+              <button onclick="openGuideCapture('shogen')" style="background:var(--accent-teal-bg);color:var(--accent-teal);border-color:var(--accent-teal-border);font-weight:500;">🎯 ガイド枠で撮影</button>
+              <button onclick="document.getElementById('file-shogen-sel').click()">🖼 ファイル選択</button>
+            </div>
+            <div class="thumbnails" id="thumbs-shogen"></div>
+            <input type="file" id="file-shogen-fallback" class="hidden-input" accept="image/*" capture="environment" onchange="handleCategoryFile(event, 'shogen', false)">
+            <input type="file" id="file-shogen-sel" class="hidden-input" accept="image/*" multiple onchange="handleCategoryFile(event, 'shogen', false)">
+          </div>
+
+        </div>
+
+        <div class="ocr-section">
+          <div class="ocr-section-title">🤖 OCR自動転記（v5新機能）＋ 至急SW判定（v7/v8）</div>
+          <div class="ocr-progress" id="ocr-progress"></div>
+
+          <div class="urgent-sw-banner" id="urgent-sw-banner">
+            <div class="usw-title">🚨 至急SW案件を検出しました</div>
+            <div class="usw-detail" id="urgent-sw-detail">OCRで「S5マーク」を検出。5月希望の至急スイッチング案件です。</div>
+          </div>
+
+          <div class="urgent-sw-toggle" id="urgent-sw-toggle">
+            <label>
+              <input type="checkbox" id="urgent-sw-check" onchange="onUrgentSwToggle(this.checked)">
+              <span>至急SWフラグ：ON（検出）</span>
+            </label>
+            <select id="urgent-sw-month" onchange="onUrgentSwMonthChange(this.value)">
+              <option value="">選択してください</option>
+              <option value="S1">S1（1月希望）</option>
+              <option value="S2">S2（2月希望）</option>
+              <option value="S3">S3（3月希望）</option>
+              <option value="S4">S4（4月希望）</option>
+              <option value="S5" selected>S5（5月希望）</option>
+              <option value="S6">S6（6月希望）</option>
+              <option value="S7">S7（7月希望）</option>
+              <option value="S8">S8（8月希望）</option>
+              <option value="S9">S9（9月希望）</option>
+              <option value="S10">S10（10月希望）</option>
+              <option value="S11">S11（11月希望）</option>
+              <option value="S12">S12（12月希望）</option>
+            </select>
+          </div>
+
+          <label class="manual-sw-checkbox" id="manual-sw-wrap">
+            <input type="checkbox" id="manual-urgent-sw" onchange="toggleManualSW()">
+            <span>営業判断で至急SWフラグを付ける（OCR未検出時の手動指定）</span>
+          </label>
+          <select id="sw-target-month" onchange="onManualSwMonthChange(this.value)" disabled>
+            <option value="">選択してください</option>
+            <option value="S1">S1（1月希望）</option>
+            <option value="S2">S2（2月希望）</option>
+            <option value="S3">S3（3月希望）</option>
+            <option value="S4">S4（4月希望）</option>
+            <option value="S5">S5（5月希望）</option>
+            <option value="S6">S6（6月希望）</option>
+            <option value="S7">S7（7月希望）</option>
+            <option value="S8">S8（8月希望）</option>
+            <option value="S9">S9（9月希望）</option>
+            <option value="S10">S10（10月希望）</option>
+            <option value="S11">S11（11月希望）</option>
+            <option value="S12">S12（12月希望）</option>
+          </select>
+
+          <div class="step-label">OCR抽出 / 手入力（供給地点22桁）</div>
+          <input type="text" id="supply-point-22" class="pd-input" placeholder="撮影でOCR自動入力（22桁）" maxlength="22" inputmode="numeric" oninput="onSupplyPointInput(this.value)">
+          <div class="digit-counter" id="sp22-counter">0 / 22</div>
+
+          <div class="step-label">関電お客様番号（14桁・中央抽出）</div>
+          <input type="text" id="expected-cn" class="pd-input" placeholder="自動抽出" maxlength="14" inputmode="numeric" oninput="onExpectedCnInput(this.value)">
+          <div class="digit-counter" id="cn-counter">0 / 14</div>
+        </div>
+
+        <div class="step-label">③ PD番号を入力</div>
+        <input type="text" id="pd-input" class="pd-input" placeholder="例: PD202504-1001" oninput="checkPD(this.value)" autocomplete="off">
+
+        <div class="status-box" id="status-box">
+          <div class="status-empty">↑ PD番号を入力すると<br>リアルタイム照合します</div>
+        </div>
+
+        <button class="submit-btn" id="submit-btn" onclick="requestSubmitConfirm()">送信する</button>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="side-panel">
+
+    <div class="panel-card">
+      <h2>動作テスト</h2>
+      <div class="spec-note" style="margin-bottom:12px;">
+        下のボタンで各ステートの動作を試せます。マスタは<strong>50件</strong>のお客様データを保持しています。
+      </div>
+      <div class="test-buttons">
+        <button class="latest" onclick="setPD('PD202504-1001')">✓ 最新PD (A)</button>
+        <button class="latest" onclick="setPD('PD202504-1015')">✓ 最新PD (O)</button>
+        <button class="old" onclick="setPD('PD202401-2001')">⚠ 古いPD (A)</button>
+        <button class="old" onclick="setPD('PD202401-2012')">⚠ 古いPD (L)</button>
+        <button class="outside" onclick="setPD('PD202504-9999')">? リスト外</button>
+        <button onclick="setPD('PD123')">✗ 形式不正</button>
+        <button onclick="setPD('')">クリア</button>
+      </div>
+      <div style="margin-top:10px; padding-top:10px; border-top:0.5px solid var(--border-soft);">
+        <div style="font-size:10px; color:var(--text-tertiary); margin-bottom:6px; letter-spacing:0.05em;">OCRシミュレーション（至急SW）</div>
+        <div class="test-buttons">
+          <button onclick="forceOcrRun('normal')" style="font-size:10px;">🎲 OCRランダム実行</button>
+          <button onclick="forceOcrRun('urgent')" style="font-size:10px; border-left:3px solid var(--accent-red); border-radius:0 var(--radius-sm) var(--radius-sm) 0;">🚨 至急SW強制</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <h2>ステータス凡例</h2>
+      <div class="status-legend-grid">
+        <div class="sl-item"><span class="mp-status-badge ordered">🟦 受注</span></div>
+        <div class="sl-item"><span class="mp-status-badge awaiting-specs">🟧 諸元待ち</span></div>
+        <div class="sl-item"><span class="mp-status-badge awaiting-entry">🟨 エントリー待ち</span></div>
+        <div class="sl-item"><span class="mp-status-badge awaiting-send">🟪 送付待ち</span></div>
+        <div class="sl-item"><span class="mp-status-badge awaiting-invoice">🟫 請求待ち</span></div>
+        <div class="sl-item"><span class="mp-status-badge awaiting-payment-in">⚪ 入金待ち</span></div>
+        <div class="sl-item"><span class="mp-status-badge awaiting-payment-out">⚪ 支払待ち</span></div>
+        <div class="sl-item"><span class="mp-status-badge completed">✅ 完了</span></div>
+        <div class="sl-item" style="grid-column:1/3; margin-top:6px; padding-top:6px; border-top:0.5px solid var(--border-soft);"><span class="mp-status-badge urgent-sw">🚨 至急SW</span></div>
+        <div class="sl-item"><span class="mp-status-badge specs-stale">🔔 諸元滞留</span></div>
+        <div class="sl-item"><span class="mp-status-badge specs-missing">📎 諸元未添付</span></div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <h2>判定ステート</h2>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-badge b-latest">✓</div>
+          <div>
+            <div class="label">最新PD一致</div>
+            <div class="desc">そのまま送信可能（通常案件）</div>
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-badge b-old">⚠</div>
+          <div>
+            <div class="label">古いPD検出</div>
+            <div class="desc">「最新に置換」か「まきなおし」を選択</div>
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-badge b-outside">?</div>
+          <div>
+            <div class="label">リストに存在しない</div>
+            <div class="desc">「リスト外ですか？」と営業に確認</div>
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-badge b-error">✗</div>
+          <div>
+            <div class="label">形式不正</div>
+            <div class="desc">桁数・フォーマット不足で再入力促し</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <h2>送信ログ</h2>
+      <div class="submitted-log" id="submitted-log">
+        <div class="log-empty">まだ送信された案件はありません</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<div id="screen-mypage" class="tab-screen">
+  <div class="mypage-stage">
+    <div class="mypage-phone">
+      <div class="phone-bar">
+        <span>9:41</span>
+        <span class="app-name">案件一覧（マイページ）</span>
+        <span>📶 100%</span>
+      </div>
+      <div class="mypage-body">
+
+        <div class="urgent-alert-banner" id="urgent-alert-banner" onclick="toggleUrgentFilter()">
+          <span id="urgent-alert-text">🚨 至急SW案件：— 件（要対応）</span>
+          <span class="uab-right" id="urgent-alert-right">タップでフィルタ →</span>
+        </div>
+
+        <div class="mp-search">
+          <input type="text" id="mp-search-input" placeholder="お客様名・PD番号・住所で検索" oninput="renderMypage(this.value)">
+        </div>
+
+        <div class="mp-summary" id="mp-summary">8 件のお客様</div>
+
+        <div class="mp-list" id="mp-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span class="version">Garden-Leaf 関電業務委託 PoC v10</span>　|　作成日 2026-04-20　|　Phase 1 営業入力＋マイページ
+  <div class="v5-features">
+    <strong>v5：</strong>OCR自動転記（22桁→14桁）＋ 案件一覧タブ　<strong>v6：</strong>受領書カテゴリ追加<br>
+    <strong>v7：</strong>至急SW自動判定（OCRシミュ）＋ 諸元後付け送信＋ ステータスバッジ（8ステート＋3アラート）<br>
+    <strong>v8：</strong>手動至急SWフラグ＋月選択＋諸元確認ダイアログ<br>
+    v9: マイページタブ追加・画面ロック機能（自動5分・手動ボタン）<br>
+    <strong>v10: 奪還デフォルト選択・受領書ラベル絵文字削除・受領書はガイド枠撮影のみ</strong>
+  </div>
+</div>
+
+<div id="submit-modal">
+  <div class="modal-card" style="max-width:400px;">
+    <h3 id="modal-title">送信完了しました</h3>
+    <div class="case-num" id="modal-case-num">K-20260419-001</div>
+    <div class="detail" id="modal-detail"></div>
+
+    <div class="ocr-sim-panel" id="ocr-sim-panel" style="display:none;">
+      <div class="ocr-sim-header">🔬 バックエンドOCR検証シミュレーション</div>
+      <div class="ocr-sim-select">
+        <button onclick="showOcrResult('success')" class="active" id="ocr-btn-success">✓ 成功</button>
+        <button onclick="showOcrResult('warning')" id="ocr-btn-warning">⚠ 不一致</button>
+        <button onclick="showOcrResult('error')" id="ocr-btn-error">✗ 読取不可</button>
+      </div>
+      <div id="ocr-result-box"></div>
+    </div>
+
+    <button onclick="closeModal()" style="margin-top:16px;">OK</button>
+  </div>
+</div>
+
+<div id="shogen-confirm-modal" class="modal-overlay">
+  <div class="modal-card" style="max-width:400px;">
+    <div style="font-size:44px;text-align:center;margin-bottom:12px;">⚠</div>
+    <h3 style="text-align:center;margin:0 0 8px 0;font-size:16px;font-weight:500;">諸元が添付されていません</h3>
+    <p style="color:var(--text-secondary);font-size:13px;line-height:1.8;margin:14px 0 20px;text-align:center;">
+      このまま送信するとステータスは<br>
+      <strong style="color:var(--accent-amber);">「諸元待ち」</strong>として登録されます。<br><br>
+      諸元が後日届いたら<br>「📎 諸元のみ後付け送信」から追加してください。
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <button onclick="confirmShogen(false)" style="padding:12px;background:var(--bg-section);color:var(--text-secondary);border:0.5px solid var(--border-line);border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-sans);font-size:13px;">
+        いいえ、添付します
+      </button>
+      <button onclick="confirmShogen(true)" style="padding:12px;background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-weight:500;font-family:var(--font-sans);font-size:13px;">
+        はい、諸元待ちで送信
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="confirm-modal">
+  <div class="confirm-card">
+    <h3>送信前の最終確認</h3>
+    <div class="confirm-sub" id="confirm-sub">申込書の内容と一致しているか、必ずお客様と照らし合わせてください。</div>
+    <div class="urgent-confirm-box" id="urgent-confirm-box">
+      🚨 至急SW：<span id="urgent-confirm-month">5月希望</span>
+      <div class="uc-sub">通常案件より優先処理されます。営業は確認を怠らないでください。</div>
+    </div>
+    <div class="cn-confirm-box">
+      <div class="cn-confirm-label">関電お客様番号（14桁）</div>
+      <div class="cn-confirm-value" id="confirm-cn-value">—</div>
+      <div class="cn-confirm-customer" id="confirm-customer">—</div>
+    </div>
+    <div class="cn-confirm-prompt">上記のお客様番号で相違ありませんか？</div>
+    <div class="confirm-buttons">
+      <button class="btn-back" onclick="cancelConfirm()">戻る</button>
+      <button class="btn-confirm" onclick="confirmAndSubmit()">間違いありません</button>
+    </div>
+  </div>
+</div>
+
+<div id="guide-modal">
+  <div class="guide-header">
+    <span id="guide-category-label">ガイド枠撮影</span>
+    <button class="guide-close" onclick="closeGuideCapture()">×</button>
+  </div>
+  <div class="guide-viewport" id="guide-viewport">
+    <video class="guide-camera" id="guide-camera" autoplay playsinline style="display:none;"></video>
+    <div class="guide-placeholder" id="guide-placeholder">
+      <div class="ph-icon">📄</div>
+      カメラ権限が必要です<br>
+      スマホで開くと実際にカメラが起動します<br>
+      <br>
+      PCからは下の「ファイルから選択」で<br>
+      動作確認できます
+    </div>
+    <div class="guide-instructions">申込書全体を枠内に収めてください</div>
+    <div class="guide-frame-overlay">
+      <div class="guide-frame-corner tl"></div>
+      <div class="guide-frame-corner tr"></div>
+      <div class="guide-frame-corner bl"></div>
+      <div class="guide-frame-corner br"></div>
+    </div>
+    <div class="guide-fallback">
+      <button onclick="guideSelectFallback()">ファイルから選択（PC動作確認用）</button>
+    </div>
+    <input type="file" id="guide-file-input" class="hidden-input" accept="image/*" onchange="handleGuideFileSelect(event)">
+    <canvas id="guide-canvas" style="display:none;"></canvas>
+  </div>
+  <div class="guide-footer">
+    <div class="guide-target" id="guide-target">添付先：—</div>
+    <button class="guide-shutter" id="guide-shutter" onclick="captureFromGuide()" aria-label="撮影"></button>
+    <div style="width:72px;"></div>
+  </div>
+</div>
+
+<div id="thumb-modal" onclick="closeThumb()">
+  <button class="thumb-close" onclick="closeThumb()">×</button>
+  <div class="thumb-preview" id="thumb-preview">📄</div>
+  <div class="thumb-caption" id="thumb-caption"></div>
+</div>
+
+<div class="toast-notification" id="toast-notification">—</div>
+
+<div id="info-update-modal" class="modal-overlay">
+  <div class="modal-card">
+    <h3 style="margin:0 0 8px 0; font-size:15px; font-weight:500;">📝 情報更新を申請</h3>
+    <p style="color:var(--text-secondary); font-size:12px; line-height:1.7; margin:0 0 12px 0;">
+      名前・電話番号等の更新は管理者への申請が必要です。変更内容を入力してください。
+    </p>
+    <textarea id="info-update-text" placeholder="例：携帯番号を 090-8765-4321 に変更したいです。"></textarea>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+      <button onclick="closeInfoUpdate()" style="padding:10px; background:var(--bg-section); color:var(--text-secondary); border:0.5px solid var(--border-line); border-radius:var(--radius-sm); cursor:pointer; font-family:var(--font-sans); font-size:13px;">キャンセル</button>
+      <button onclick="submitInfoUpdate()" style="padding:10px; background:var(--accent-teal); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-weight:500; font-family:var(--font-sans); font-size:13px;">申請を送信</button>
+    </div>
+  </div>
+</div>
+
+<div id="lock-overlay" class="lock-overlay">
+  <div class="lock-card">
+    <div class="lock-icon">🔒</div>
+    <h2>画面がロックされています</h2>
+    <p class="lock-sub">顧客個人情報保護のため、パスワードを入力して再開してください</p>
+    <div class="lock-user-name">🧑 <span id="lock-user">鈴木 太郎</span></div>
+    <input type="password" id="lock-password" placeholder="パスワード" autocomplete="off">
+    <button onclick="tryUnlock()">🔓 ロック解除</button>
+    <div class="lock-error" id="lock-error">パスワードが違います</div>
+    <div class="lock-timer" id="lock-timer">最終操作: — / 自動ロック: 5分後</div>
+  </div>
+</div>
+
+<script>
+const customerNames = [];
+for (let i = 0; i < 50; i++) {
+  const prefix = String.fromCharCode(65 + Math.floor(i / 26)).replace('A','');
+  const letter = String.fromCharCode(65 + (i % 26));
+  customerNames.push('お客様' + (prefix ? prefix + letter : letter));
+}
+
+const addresses = [
+  '大阪市北区梅田1-2-3', '大阪市中央区本町4-5-6', '大阪市西区新町2-3-4',
+  '大阪市淀川区西中島7-8-9', '大阪市天王寺区上本町3-4-5', '京都市中京区烏丸通四条',
+  '京都市下京区烏丸通七条', '神戸市中央区三宮1-1-1', '神戸市灘区六甲台町2-2',
+  '堺市堺区大小路町3-3-3', '奈良市三条町4-4', '和歌山市七番丁5-5',
+  '姫路市本町1-1', '尼崎市昭和通2-2', '西宮市六湛寺町3-3',
+];
+
+function buildSupplyPoint(customerNumber) {
+  return '060' + customerNumber + '00001';
+}
+
+function formatCustomerNumber(cn) {
+  if (!cn || cn.length !== 14) return cn || '';
+  return cn.replace(/(\d{4})(\d{4})(\d{4})(\d{2})/, '$1-$2-$3-$4');
+}
+
+function formatSupplyPoint(sp) {
+  return sp.slice(0,3) + '-' + sp.slice(3,7) + '-' + sp.slice(7,11) + '-' + sp.slice(11,15) + '-' + sp.slice(15,17) + '-' + sp.slice(17,22);
+}
+
+const masterDB = {};
+
+for (let i = 1; i <= 30; i++) {
+  const customerNumber = String(10000000000000 + i * 13579).slice(0, 14);
+  const supplyPoint = buildSupplyPoint(customerNumber);
+  const customer = customerNames[i-1];
+  const address = addresses[i % addresses.length];
+  const latestPD = 'PD202504-' + String(1000 + i).padStart(4, '0');
+
+  masterDB[latestPD] = {
+    status: 'latest',
+    customerNumber: customerNumber,
+    supplyPoint: supplyPoint,
+    customer: customer,
+    address: address,
+    period: '2025年4期（最新）',
+    pd: latestPD,
+    latestPD: latestPD,
+  };
+}
+
+for (let i = 1; i <= 20; i++) {
+  const customerNumber = String(10000000000000 + i * 13579).slice(0, 14);
+  const supplyPoint = buildSupplyPoint(customerNumber);
+  const customer = customerNames[i-1];
+  const address = addresses[i % addresses.length];
+  const latestPD = 'PD202504-' + String(1000 + i).padStart(4, '0');
+  const oldPD = 'PD202401-' + String(2000 + i).padStart(4, '0');
+
+  masterDB[oldPD] = {
+    status: 'old',
+    customerNumber: customerNumber,
+    supplyPoint: supplyPoint,
+    customer: customer,
+    address: address,
+    period: '2024年1期（旧）',
+    latest: latestPD,
+    latestPD: latestPD,
+    pd: oldPD,
+  };
+}
+
+let currentState = null;
+let submittedCases = [];
+let caseCounter = 0;
+let acquisitionType = 'dakkan';
+let attachments = {
+  denki: [],
+  douryoku: [],
+  gas: [],
+  shogen: [],
+  juryoushou: [],
+  'pa-shogen': []
+};
+
+const categoryLabels = {
+  denki: '電灯',
+  douryoku: '動力',
+  gas: 'ガス',
+  shogen: '諸元',
+  juryoushou: '受領書',
+  'pa-shogen': '諸元（後付け）'
+};
+
+// v7 state
+let urgentSwDetected = false;
+let urgentSwMonth = 'S5';
+let postAddMode = false;
+let postAddTargetCase = null;
+let urgentFilterActive = false;
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast-notification');
+  t.textContent = msg;
+  t.className = 'toast-notification show' + (type ? ' ' + type : '');
+  setTimeout(() => { t.classList.remove('show'); }, 3200);
+}
+
+function switchTab(name) {
+  document.getElementById('tab-myprofile').classList.toggle('active', name === 'myprofile');
+  document.getElementById('tab-input').classList.toggle('active', name === 'input');
+  document.getElementById('tab-mypage').classList.toggle('active', name === 'mypage');
+  document.getElementById('screen-myprofile').classList.toggle('active', name === 'myprofile');
+  document.getElementById('screen-input').classList.toggle('active', name === 'input');
+  document.getElementById('screen-mypage').classList.toggle('active', name === 'mypage');
+  if (name === 'mypage') {
+    renderMypage(document.getElementById('mp-search-input').value);
+  }
+  if (name === 'myprofile') {
+    renderMyProfileStats();
+  }
+}
+
+function setAcquisition(type) {
+  acquisitionType = type;
+  document.getElementById('acq-dakkan').classList.toggle('active', type === 'dakkan');
+  document.getElementById('acq-kakoi').classList.toggle('active', type === 'kakoi');
+  updateSubmitAvailability();
+}
+
+function setPD(val) {
+  const input = document.getElementById('pd-input');
+  input.value = val;
+  checkPD(val);
+}
+
+function onSupplyPointInput(val) {
+  const cleaned = val.replace(/\D/g, '');
+  const sp = document.getElementById('supply-point-22');
+  if (cleaned !== val) sp.value = cleaned;
+
+  const counter = document.getElementById('sp22-counter');
+  counter.textContent = cleaned.length + ' / 22';
+  counter.classList.toggle('valid', cleaned.length === 22);
+  counter.classList.toggle('invalid', cleaned.length > 0 && cleaned.length < 22);
+
+  if (cleaned.length === 22) {
+    const cn = cleaned.slice(3, 17);
+    const cnInput = document.getElementById('expected-cn');
+    cnInput.value = cn;
+    onExpectedCnInput(cn);
+  }
+}
+
+function onExpectedCnInput(val) {
+  const cleaned = val.replace(/\D/g, '');
+  const cn = document.getElementById('expected-cn');
+  if (cleaned !== val) cn.value = cleaned;
+
+  const counter = document.getElementById('cn-counter');
+  counter.textContent = cleaned.length + ' / 14';
+  counter.classList.toggle('valid', cleaned.length === 14);
+  counter.classList.toggle('invalid', cleaned.length > 0 && cleaned.length < 14);
+
+  cn.classList.toggle('cn-valid', cleaned.length === 14);
+  cn.classList.toggle('cn-invalid', cleaned.length > 0 && cleaned.length < 14);
+}
+
+function resetUrgentSw() {
+  urgentSwDetected = false;
+  urgentSwMonth = 'S5';
+  document.getElementById('urgent-sw-banner').classList.remove('show');
+  document.getElementById('urgent-sw-toggle').classList.remove('show');
+  const chk = document.getElementById('urgent-sw-check');
+  if (chk) chk.checked = false;
+  const mon = document.getElementById('urgent-sw-month');
+  if (mon) mon.value = 'S5';
+}
+
+function onUrgentSwToggle(checked) {
+  urgentSwDetected = checked;
+  const banner = document.getElementById('urgent-sw-banner');
+  const toggle = document.getElementById('urgent-sw-toggle');
+  if (checked) {
+    banner.classList.add('show');
+    toggle.classList.add('show');
+    document.getElementById('urgent-sw-detail').textContent = 'OCRで「' + urgentSwMonth + 'マーク」を検出。' + urgentSwMonth.slice(1) + '月希望の至急スイッチング案件です。';
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function onUrgentSwMonthChange(val) {
+  urgentSwMonth = val;
+  document.getElementById('urgent-sw-detail').textContent = 'OCRで「' + val + 'マーク」を検出。' + val.slice(1) + '月希望の至急スイッチング案件です。';
+}
+
+function startOcrAutofill(forceMode) {
+  // forceMode: 'normal' | 'urgent' | undefined
+  const progress = document.getElementById('ocr-progress');
+  progress.classList.add('show', 'processing');
+  progress.classList.remove('done');
+  progress.textContent = 'OCR解析中...';
+
+  setTimeout(function() {
+    let sp22 = '060';
+    for (let i = 0; i < 14; i++) sp22 += String(Math.floor(Math.random() * 10));
+    sp22 += '10000';
+
+    setTimeout(function() {
+      const spInput = document.getElementById('supply-point-22');
+      spInput.value = sp22;
+      onSupplyPointInput(sp22);
+
+      progress.classList.remove('processing');
+      progress.classList.add('done');
+      progress.textContent = '抽出完了：22桁→中央14桁を自動転記しました';
+
+      // v7: 至急SW判定（ランダム20%、強制モード対応）
+      let detectUrgent = false;
+      if (forceMode === 'urgent') {
+        detectUrgent = true;
+      } else if (forceMode === 'normal') {
+        detectUrgent = false;
+      } else {
+        detectUrgent = Math.random() < 0.20;
+      }
+
+      if (detectUrgent) {
+        const months = ['S4', 'S5', 'S6', 'S7'];
+        const picked = months[Math.floor(Math.random() * months.length)];
+        urgentSwDetected = true;
+        urgentSwMonth = picked;
+        document.getElementById('urgent-sw-check').checked = true;
+        document.getElementById('urgent-sw-month').value = picked;
+        document.getElementById('urgent-sw-detail').textContent = 'OCRで「' + picked + 'マーク」を検出。' + picked.slice(1) + '月希望の至急スイッチング案件です。';
+        document.getElementById('urgent-sw-banner').classList.add('show');
+        document.getElementById('urgent-sw-toggle').classList.add('show');
+      }
+    }, 1000);
+  }, 1500);
+}
+
+function toggleManualSW() {
+  const checkbox = document.getElementById('manual-urgent-sw');
+  const select = document.getElementById('sw-target-month');
+  if (checkbox.checked) {
+    urgentSwDetected = true;
+    select.disabled = false;
+    if (!urgentSwMonth) {
+      select.focus();
+    }
+  } else {
+    if (!document.getElementById('urgent-sw-check')?.checked) {
+      urgentSwDetected = false;
+      urgentSwMonth = '';
+    }
+    select.value = '';
+    select.disabled = true;
+  }
+}
+
+function onManualSwMonthChange(value) {
+  urgentSwMonth = value;
+  if (value) {
+    urgentSwDetected = true;
+    document.getElementById('manual-urgent-sw').checked = true;
+  }
+}
+
+function forceOcrRun(mode) {
+  startOcrAutofill(mode);
+}
+
+function handleCategoryFile(event, category, singleOnly) {
+  const files = Array.from(event.target.files);
+  if (files.length === 0) return;
+
+  if (singleOnly) {
+    attachments[category] = [];
+  }
+
+  let processedCount = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      attachments[category].push({
+        name: file.name,
+        size: file.size,
+        data: e.target.result
+      });
+      processedCount++;
+      if (processedCount === files.length) {
+        renderAttachments(category);
+        updateSubmitAvailability();
+        if (category === 'pa-shogen') updatePostAddAvailability();
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+
+  event.target.value = '';
+}
+
+function removeAttachment(category, index) {
+  attachments[category].splice(index, 1);
+  renderAttachments(category);
+  updateSubmitAvailability();
+  if (category === 'pa-shogen') updatePostAddAvailability();
+}
+
+function renderAttachments(category) {
+  const block = document.getElementById('block-' + category);
+  const status = document.getElementById('status-' + category);
+  const thumbs = document.getElementById('thumbs-' + category);
+  const items = attachments[category];
+
+  if (!block || !status || !thumbs) return;
+
+  if (category === 'shogen' || category === 'pa-shogen') {
+    status.textContent = items.length + ' 枚';
+    if (items.length > 0) {
+      block.classList.add('attached');
+      block.classList.remove('required-empty');
+    } else {
+      block.classList.remove('attached');
+    }
+  } else {
+    if (items.length > 0) {
+      status.textContent = '✓ 添付済み';
+      block.classList.add('attached');
+      block.classList.remove('required-empty');
+    } else {
+      status.textContent = '未添付';
+      block.classList.remove('attached');
+      if (category !== 'juryoushou') block.classList.add('required-empty');
+    }
+  }
+
+  thumbs.innerHTML = items.map((item, idx) => `
+    <div class="thumbnail">
+      <img src="${item.data}" alt="${item.name}">
+      <button class="remove-btn" onclick="removeAttachment('${category}', ${idx})" title="削除">×</button>
+    </div>
+  `).join('');
+}
+
+function validateAttachments() {
+  const hasRequired = attachments.denki.length > 0 || attachments.douryoku.length > 0 || attachments.gas.length > 0;
+  return hasRequired;
+}
+
+function updateSubmitAvailability() {
+  const btn = document.getElementById('submit-btn');
+  const banner = document.getElementById('validation-banner');
+  const pdValid = currentState !== null;
+  const attachValid = validateAttachments();
+  const outsideCnValid = !(currentState && currentState.type === 'outside') || (currentState.customerNumber && currentState.customerNumber.length === 14);
+  const acquisitionValid = acquisitionType !== null;
+
+  if (pdValid && attachValid && outsideCnValid && acquisitionValid) {
+    btn.classList.add('ready');
+    banner.classList.remove('show');
+  } else {
+    btn.classList.remove('ready');
+    if (pdValid && !attachValid) {
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+  }
+}
+
+function checkPD(val) {
+  currentState = null;
+  const status = document.getElementById('status-box');
+  const btn = document.getElementById('submit-btn');
+
+  if (!val) {
+    status.innerHTML = '<div class="status-empty">↑ PD番号を入力すると<br>リアルタイム照合します</div>';
+    updateSubmitAvailability();
+    return;
+  }
+
+  const normalized = val.trim().toUpperCase();
+
+  if (normalized.length < 10) {
+    if (normalized.length > 0 && !normalized.match(/^PD[\d-]*$/)) {
+      status.innerHTML = `<div class="status-card error">
+        <div class="title">✗ PD番号の形式が不正です</div>
+        <div class="body">PD番号は「PD」で始まり、数字とハイフンのみで構成されます。<br>例: PD202504-1001</div>
+      </div>`;
+      updateSubmitAvailability();
+      return;
+    }
+    status.innerHTML = '<div class="status-empty">🔍 照合中...</div>';
+    updateSubmitAvailability();
+    return;
+  }
+
+  if (!normalized.match(/^PD\d{6}-\d{4}$/)) {
+    status.innerHTML = `<div class="status-card error">
+      <div class="title">✗ PD番号の形式が不正です</div>
+      <div class="body">正しい形式: <strong>PD + 6桁数字 + ハイフン + 4桁数字</strong><br>例: PD202504-1001</div>
+    </div>`;
+    updateSubmitAvailability();
+    return;
+  }
+
+  const rec = masterDB[normalized];
+
+  if (!rec) {
+    status.innerHTML = `<div class="status-card info">
+      <div class="title">🔍 リストに見つかりません</div>
+      <div class="body">入力されたPD番号「<strong>${normalized}</strong>」は<br>Prodelight最新リストおよび過去履歴に<br>存在しません。</div>
+      <div class="title" style="margin-top:10px;">リスト外の案件ですか？</div>
+      <div class="choice-buttons">
+        <button onclick="confirmOutside(true, '${normalized}')">はい、リスト外</button>
+        <button onclick="confirmOutside(false, '${normalized}')">いいえ、入力ミス</button>
+      </div>
+    </div>`;
+    updateSubmitAvailability();
+    return;
+  }
+
+  if (rec.status === 'old') {
+    status.innerHTML = `<div class="status-card warning">
+      <div class="title">⚠ 古いPD番号を検出</div>
+      <div class="body">入力されたのは「${rec.period}」です。<br>最新は <strong>${rec.latest}</strong></div>
+      <div class="title" style="margin-top:10px;">どちらで送信しますか？</div>
+      <div class="radio-choice">
+        <button onclick="chooseReplace('${rec.latest}', '${rec.pd}')">
+          🔄 最新PDに置換して送信
+          <span class="sub">通常の入力ミス訂正として処理</span>
+        </button>
+        <button onclick="chooseMakinaoshi('${rec.pd}', '${rec.latest}')">
+          🔖 まきなおしとして送信
+          <span class="sub">古PDでの再取得案件として処理</span>
+        </button>
+      </div>
+    </div>
+    <div class="customer-number-display">
+      <div class="cn-label">関電お客様番号（14桁・照合キー）</div>
+      <div class="cn-value">${formatCustomerNumber(rec.customerNumber)}</div>
+    </div>
+    <div class="info-card">
+      <div class="label">参考：同じ供給地点の情報</div>
+      お客様：${rec.customer}<br>
+      住所：${rec.address}<br>
+      供給地点番号（22桁）：<span style="font-family:var(--font-mono);font-size:10px;">${formatSupplyPoint(rec.supplyPoint)}</span>
+    </div>`;
+    updateSubmitAvailability();
+    return;
+  }
+
+  currentState = { type: 'latest', pd: normalized, rec: rec };
+  status.innerHTML = `<div class="status-card success">
+    <div class="title">✓ 最新PDと一致</div>
+    <div class="body">${rec.period}</div>
+  </div>
+  <div class="customer-number-display">
+    <div class="cn-label">関電お客様番号（14桁・照合キー）</div>
+    <div class="cn-value">${formatCustomerNumber(rec.customerNumber)}</div>
+  </div>
+  <div class="info-card">
+    <div class="label">このお客様の情報</div>
+    お客様：${rec.customer}<br>
+    住所：${rec.address}<br>
+    供給地点番号（22桁）：<span style="font-family:var(--font-mono);font-size:10px;">${formatSupplyPoint(rec.supplyPoint)}</span>
+  </div>`;
+  updateSubmitAvailability();
+}
+
+function chooseReplace(latestPD, oldPD) {
+  document.getElementById('pd-input').value = latestPD;
+  const rec = masterDB[latestPD];
+  currentState = { type: 'replaced', pd: latestPD, oldPd: oldPD, rec: rec };
+  const status = document.getElementById('status-box');
+  status.innerHTML = `<div class="status-card success">
+    <div class="title">✓ 最新PDに置換しました</div>
+    <div class="body">${oldPD} → <strong>${latestPD}</strong><br>入力ミス訂正として処理されます。</div>
+  </div>
+  <div class="customer-number-display">
+    <div class="cn-label">関電お客様番号（14桁・照合キー）</div>
+    <div class="cn-value">${formatCustomerNumber(rec.customerNumber)}</div>
+  </div>
+  <div class="info-card">
+    <div class="label">このお客様の情報</div>
+    お客様：${rec.customer}<br>
+    住所：${rec.address}<br>
+    供給地点番号（22桁）：<span style="font-family:var(--font-mono);font-size:10px;">${formatSupplyPoint(rec.supplyPoint)}</span>
+  </div>`;
+  document.getElementById('submit-btn').classList.remove('ready');
+  updateSubmitAvailability();
+}
+
+function chooseMakinaoshi(oldPD, latestPD) {
+  const rec = masterDB[oldPD];
+  currentState = { type: 'makinaoshi', pd: oldPD, latestPd: latestPD, rec: rec };
+  const status = document.getElementById('status-box');
+  status.innerHTML = `<div class="status-card warning">
+    <div class="title">🔖 まきなおし案件として送信</div>
+    <div class="body">
+      古PD：<strong>${oldPD}</strong><br>
+      最新PD：<strong>${latestPD}</strong><br>
+      両方を紐付けて記録します。
+    </div>
+  </div>
+  <div class="customer-number-display">
+    <div class="cn-label">関電お客様番号（14桁・照合キー）</div>
+    <div class="cn-value">${formatCustomerNumber(rec.customerNumber)}</div>
+  </div>
+  <div class="info-card">
+    <div class="label">このお客様の情報</div>
+    お客様：${rec.customer}<br>
+    住所：${rec.address}<br>
+    供給地点番号（22桁）：<span style="font-family:var(--font-mono);font-size:10px;">${formatSupplyPoint(rec.supplyPoint)}</span><br>
+    <span style="color:var(--text-tertiary);font-size:10px;">※ 月末請求は最新PDで実施されます</span>
+  </div>`;
+  document.getElementById('submit-btn').classList.remove('ready');
+  updateSubmitAvailability();
+}
+
+function confirmOutside(isOutside, pd) {
+  const status = document.getElementById('status-box');
+  const btn = document.getElementById('submit-btn');
+  if (isOutside) {
+    currentState = { type: 'outside', pd: pd, customerNumber: null };
+    status.innerHTML = `<div class="status-card success">
+      <div class="title">✓ リスト外案件として受付</div>
+      <div class="body">マスタに無いお客様です。お客様番号を手入力してください。</div>
+    </div>
+    <div class="outside-cn-input">
+      <div class="cn-guide">関電お客様番号（14桁）を入力</div>
+      <input type="text" id="outside-cn" maxlength="14" placeholder="例：10000000013579" oninput="updateOutsideCN(this.value)">
+      <div class="cn-hint">※ 申込書の供給地点番号22桁の中央14桁です</div>
+    </div>
+    <div class="info-card" style="margin-top:8px;">
+      <div class="label">補足情報（任意）</div>
+      <textarea placeholder="お客様名や住所など分かる範囲で記入" style="width:100%;min-height:54px;padding:6px;font-size:11px;border:0.5px solid var(--border-soft);border-radius:4px;box-sizing:border-box;resize:vertical;font-family:var(--font-sans);"></textarea>
+    </div>`;
+    updateSubmitAvailability();
+  } else {
+    currentState = null;
+    status.innerHTML = `<div class="status-card warning">
+      <div class="title">⚠ PD番号を修正してください</div>
+      <div class="body">申込書を再確認し、正しいPD番号を<br>入力し直してください。</div>
+    </div>`;
+    const input = document.getElementById('pd-input');
+    input.focus();
+    input.select();
+    updateSubmitAvailability();
+  }
+}
+
+function updateOutsideCN(val) {
+  const cleaned = val.replace(/\D/g, '');
+  if (currentState && currentState.type === 'outside') {
+    currentState.customerNumber = cleaned.length === 14 ? cleaned : null;
+  }
+  updateSubmitAvailability();
+}
+
+let lastSubmittedCase = null;
+let guideCategory = null;
+let cameraStream = null;
+
+function requestSubmitConfirm() {
+  if (!currentState) return;
+  if (!validateAttachments()) return;
+  if (!acquisitionType) return;
+
+  if (attachments.shogen.length === 0) {
+    showShogenConfirm();
+    return;
+  }
+
+  proceedToFinalConfirm();
+}
+
+function showShogenConfirm() {
+  document.getElementById('shogen-confirm-modal').classList.add('show');
+}
+
+function confirmShogen(shogenWaiting) {
+  document.getElementById('shogen-confirm-modal').classList.remove('show');
+  if (shogenWaiting) {
+    window.__submitStatus = 'awaiting_specs';
+    proceedToFinalConfirm();
+  } else {
+    const shogenBlock = document.getElementById('block-shogen');
+    if (shogenBlock) shogenBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function proceedToFinalConfirm() {
+  const modal = document.getElementById('confirm-modal');
+  const cnValue = document.getElementById('confirm-cn-value');
+  const cnCustomer = document.getElementById('confirm-customer');
+  const sub = document.getElementById('confirm-sub');
+  const urgentBox = document.getElementById('urgent-confirm-box');
+
+  const acqLabel = acquisitionType === 'dakkan' ? '🎯 奪還' : '🔁 囲込';
+  const isMakinaoshi = currentState.type === 'makinaoshi';
+  const makinaoshiNote = isMakinaoshi ? '／🔖 まきなおし' : '';
+
+  if (currentState.type === 'outside') {
+    if (!currentState.customerNumber || currentState.customerNumber.length !== 14) return;
+    cnValue.textContent = formatCustomerNumber(currentState.customerNumber);
+    cnCustomer.innerHTML = 'リスト外案件（新規または既存無効）<br><span style="font-size:12px;color:var(--text-secondary);">' + acqLabel + makinaoshiNote + '</span>';
+    sub.textContent = '入力されたお客様番号で送信します。申込書と照らし合わせてください。';
+  } else if (currentState.rec) {
+    cnValue.textContent = formatCustomerNumber(currentState.rec.customerNumber);
+    cnCustomer.innerHTML = currentState.rec.customer + ' 様<br><span style="font-size:12px;color:var(--text-secondary);">' + acqLabel + makinaoshiNote + '</span>';
+    sub.textContent = '申込書の内容と一致しているか、必ずお客様情報と照らし合わせてください。';
+  }
+
+  // v7: 至急SW表示
+  if (urgentSwDetected) {
+    urgentBox.classList.add('show');
+    document.getElementById('urgent-confirm-month').textContent = urgentSwMonth.slice(1) + '月希望（' + urgentSwMonth + '）';
+  } else {
+    urgentBox.classList.remove('show');
+  }
+
+  modal.classList.add('show');
+}
+
+function cancelConfirm() {
+  document.getElementById('confirm-modal').classList.remove('show');
+}
+
+function confirmAndSubmit() {
+  document.getElementById('confirm-modal').classList.remove('show');
+  submitCase();
+}
+
+function openGuideCapture(category) {
+  guideCategory = category;
+  const catLabel = categoryLabels[category] || category;
+  document.getElementById('guide-category-label').textContent = 'ガイド枠撮影：' + catLabel;
+  document.getElementById('guide-target').textContent = '添付先：' + catLabel;
+
+  const modal = document.getElementById('guide-modal');
+  modal.classList.add('show');
+
+  const video = document.getElementById('guide-camera');
+  const placeholder = document.getElementById('guide-placeholder');
+
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    }).then(stream => {
+      cameraStream = stream;
+      video.srcObject = stream;
+      video.style.display = 'block';
+      placeholder.style.display = 'none';
+    }).catch(err => {
+      video.style.display = 'none';
+      placeholder.style.display = 'block';
+    });
+  }
+}
+
+function closeGuideCapture() {
+  const modal = document.getElementById('guide-modal');
+  modal.classList.remove('show');
+
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  const video = document.getElementById('guide-camera');
+  video.srcObject = null;
+  video.style.display = 'none';
+  document.getElementById('guide-placeholder').style.display = 'block';
+  guideCategory = null;
+}
+
+function captureFromGuide() {
+  if (!guideCategory) return;
+  const video = document.getElementById('guide-camera');
+  const canvas = document.getElementById('guide-canvas');
+
+  if (cameraStream && video.videoWidth > 0) {
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const frameRatio = 1 / 1.414;
+    let cropW, cropH;
+    if (vw / vh > frameRatio) {
+      cropH = vh * 0.82;
+      cropW = cropH * frameRatio;
+    } else {
+      cropW = vw * 0.82;
+      cropH = cropW / frameRatio;
+    }
+    const cropX = (vw - cropW) / 2;
+    const cropY = (vh - cropH) / 2;
+
+    canvas.width = cropW;
+    canvas.height = cropH;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+    canvas.toBlob(blob => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const cat = guideCategory;
+        const singleOnly = (cat !== 'shogen' && cat !== 'pa-shogen');
+        if (singleOnly) attachments[cat] = [];
+        attachments[cat].push({
+          name: 'guide_' + cat + '_' + Date.now() + '.jpg',
+          size: blob.size,
+          data: e.target.result
+        });
+        renderAttachments(cat);
+        updateSubmitAvailability();
+        if (cat === 'pa-shogen') updatePostAddAvailability();
+        closeGuideCapture();
+        if (cat !== 'juryoushou' && cat !== 'pa-shogen') startOcrAutofill();
+      };
+      reader.readAsDataURL(blob);
+    }, 'image/jpeg', 0.9);
+  } else {
+    guideSelectFallback();
+  }
+}
+
+function guideSelectFallback() {
+  document.getElementById('guide-file-input').click();
+}
+
+function handleGuideFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file || !guideCategory) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const cat = guideCategory;
+    const singleOnly = (cat !== 'shogen' && cat !== 'juryoushou' && cat !== 'pa-shogen');
+    if (singleOnly) attachments[cat] = [];
+    attachments[cat].push({
+      name: file.name,
+      size: file.size,
+      data: e.target.result
+    });
+    renderAttachments(cat);
+    updateSubmitAvailability();
+    if (cat === 'pa-shogen') updatePostAddAvailability();
+    closeGuideCapture();
+    if (cat !== 'juryoushou' && cat !== 'pa-shogen') startOcrAutofill();
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function submitCase() {
+  if (!currentState) return;
+  if (!validateAttachments()) return;
+
+  caseCounter++;
+  const now = new Date();
+  const dateStr = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+  const seq = String(caseCounter).padStart(3, '0');
+
+  let prefix, tag, detail;
+  switch (currentState.type) {
+    case 'latest':
+      prefix = 'K-';
+      tag = '通常';
+      detail = `PD番号: ${currentState.pd}<br>お客様: ${currentState.rec.customer}<br>お客様番号: ${formatCustomerNumber(currentState.rec.customerNumber)}<br>処理: 最新PD一致・自動登録`;
+      break;
+    case 'replaced':
+      prefix = 'K-';
+      tag = '訂正';
+      detail = `古PD: ${currentState.oldPd}<br>新PD: ${currentState.pd}<br>お客様番号: ${formatCustomerNumber(currentState.rec.customerNumber)}<br>処理: 置換済み・自動登録`;
+      break;
+    case 'makinaoshi':
+      prefix = 'K-MKN-';
+      tag = 'まきなおし';
+      detail = `古PD: ${currentState.pd}<br>最新PD: ${currentState.latestPd}<br>お客様番号: ${formatCustomerNumber(currentState.rec.customerNumber)}<br>処理: まきなおしフラグで登録`;
+      break;
+    case 'outside':
+      prefix = 'K-EXT-';
+      tag = 'リスト外';
+      detail = `PD番号: ${currentState.pd}<br>手入力お客様番号: ${formatCustomerNumber(currentState.customerNumber)}<br>処理: リスト外案件・要バックオフィス確認`;
+      break;
+  }
+
+  const caseId = prefix + dateStr + '-' + seq;
+
+  const attachSummary = [];
+  if (attachments.denki.length > 0) attachSummary.push('電灯');
+  if (attachments.douryoku.length > 0) attachSummary.push('動力');
+  if (attachments.gas.length > 0) attachSummary.push('ガス');
+  if (attachments.shogen.length > 0) attachSummary.push('諸元×' + attachments.shogen.length);
+  if (attachments.juryoushou.length > 0) attachSummary.push('受領書');
+  const attachText = attachSummary.join('、') || 'なし';
+  const totalCount = attachments.denki.length + attachments.douryoku.length + attachments.gas.length + attachments.shogen.length + attachments.juryoushou.length;
+
+  const expectedCN = currentState.rec ? currentState.rec.customerNumber : currentState.customerNumber;
+  const expectedSP = currentState.rec ? currentState.rec.supplyPoint : null;
+
+  lastSubmittedCase = {
+    caseId: caseId,
+    state: currentState,
+    expectedCustomerNumber: expectedCN,
+    expectedSupplyPoint: expectedSP,
+  };
+
+  // v7: 送信データに至急SWフラグを含める（console出力でシミュ）
+  const submittedPayload = {
+    case_id: caseId,
+    pd: currentState.pd,
+    acquisition: acquisitionType,
+    is_urgent_sw: urgentSwDetected,
+    sw_target_month: urgentSwDetected ? urgentSwMonth : null,
+    attachments: {
+      denki: attachments.denki.length,
+      douryoku: attachments.douryoku.length,
+      gas: attachments.gas.length,
+      shogen: attachments.shogen.length,
+      juryoushou: attachments.juryoushou.length,
+    }
+  };
+  console.log('[Garden-Leaf v7] 送信ペイロード:', submittedPayload);
+
+  submittedCases.unshift({
+    caseId: caseId,
+    type: currentState.type,
+    tag: tag,
+    pd: currentState.pd,
+    customer: currentState.rec ? currentState.rec.customer : '（リスト外）',
+    time: now.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}),
+    attachText: attachText,
+    totalCount: totalCount,
+    acquisition: acquisitionType,
+    isUrgentSw: urgentSwDetected,
+    swMonth: urgentSwDetected ? urgentSwMonth : null,
+  });
+
+  renderLog();
+
+  const acqLabel = acquisitionType === 'dakkan' ? '🎯 奪還' : '🔁 囲込';
+  const isMakinaoshi = currentState.type === 'makinaoshi';
+  const makinaoshiTag = isMakinaoshi ? '<br><span style="color:var(--accent-amber);font-weight:500;">🔖 まきなおし案件（請求時に明示表示）</span>' : '';
+  const urgentTag = urgentSwDetected ? '<br><span style="color:var(--accent-red);font-weight:500;">🚨 至急SW案件（' + urgentSwMonth + '＝' + urgentSwMonth.slice(1) + '月希望）</span>' : '';
+
+  document.getElementById('modal-title').textContent = '送信完了しました';
+  document.getElementById('modal-case-num').textContent = caseId;
+  document.getElementById('modal-detail').innerHTML = detail + '<br>獲得種類: ' + acqLabel + makinaoshiTag + urgentTag + '<br>添付: ' + attachText + '（計 ' + totalCount + ' 枚）';
+
+  const ocrPanel = document.getElementById('ocr-sim-panel');
+  const hasCN = (currentState.rec && currentState.rec.customerNumber) || (currentState.type === 'outside' && currentState.customerNumber);
+  if (hasCN) {
+    ocrPanel.style.display = 'block';
+    showOcrResult('success');
+  } else {
+    ocrPanel.style.display = 'none';
+  }
+
+  document.getElementById('submit-modal').classList.add('show');
+
+  setTimeout(resetForm, 100);
+}
+
+function showOcrResult(mode) {
+  if (!lastSubmittedCase || !lastSubmittedCase.expectedCustomerNumber) return;
+
+  ['success', 'warning', 'error'].forEach(m => {
+    const btn = document.getElementById('ocr-btn-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+
+  const box = document.getElementById('ocr-result-box');
+  const expectedCN = lastSubmittedCase.expectedCustomerNumber;
+  const expectedSP = lastSubmittedCase.expectedSupplyPoint;
+
+  const spDisplay = expectedSP || ('060' + expectedCN + '00001');
+  const isOutside = !expectedSP;
+
+  if (mode === 'success') {
+    box.innerHTML = `<div class="ocr-result success">
+      <div class="ocr-title">✓ OCR検証：一致</div>
+      申込書から読み取った供給地点番号とお客様番号が、${isOutside ? '営業が手入力した客番' : 'PD番号から逆引きした値'}と一致しました。<br>
+      →事務の目視確認は不要。自動で登録処理されます。
+      <div class="ocr-detail">
+        OCR抽出（供給地点22桁）：${formatSupplyPoint(spDisplay)}<br>
+        抽出お客様番号（中央14桁）：<span class="match">${formatCustomerNumber(expectedCN)}</span><br>
+        ${isOutside ? '営業手入力の客番：' : 'マスタお客様番号（逆引き）：'}<span class="match">${formatCustomerNumber(expectedCN)}</span>
+      </div>
+    </div>`;
+  } else if (mode === 'warning') {
+    const mismatchCN = expectedCN.slice(0, 12) + '99';
+    const mismatchSP = '060' + mismatchCN + '00001';
+    box.innerHTML = `<div class="ocr-result warning">
+      <div class="ocr-title">⚠ OCR検証：不一致</div>
+      申込書から読み取ったお客様番号が、${isOutside ? '営業が手入力した客番' : 'PD番号から逆引きした値'}と異なります。<br>
+      →事務に通知。どちらが正しいかを確認する必要があります。
+      <div class="ocr-detail">
+        OCR抽出（供給地点22桁）：${formatSupplyPoint(mismatchSP)}<br>
+        抽出お客様番号（中央14桁）：<span class="mismatch">${formatCustomerNumber(mismatchCN)}</span><br>
+        ${isOutside ? '営業手入力の客番：' : 'マスタお客様番号（逆引き）：'}<span class="match">${formatCustomerNumber(expectedCN)}</span><br>
+        差分：末尾2桁が異なる
+      </div>
+    </div>`;
+  } else {
+    box.innerHTML = `<div class="ocr-result error">
+      <div class="ocr-title">✗ OCR読取不能</div>
+      申込書の画質が低い、または供給地点番号が枠外にあるため読み取れませんでした。<br>
+      →事務に通知。目視で供給地点番号を確認して手動入力する必要があります。
+      <div class="ocr-detail">
+        OCR抽出結果：<span class="mismatch">N/A（信頼度 35%）</span><br>
+        原因候補：画像の歪み・かすれ・撮影範囲外<br>
+        フォールバック：事務による目視確認
+      </div>
+    </div>`;
+  }
+}
+
+function resetForm() {
+  document.getElementById('pd-input').value = '';
+  attachments = { denki: [], douryoku: [], gas: [], shogen: [], juryoushou: [], 'pa-shogen': attachments['pa-shogen'] || [] };
+  ['denki', 'douryoku', 'gas', 'shogen', 'juryoushou'].forEach(cat => renderAttachments(cat));
+  currentState = null;
+  acquisitionType = 'dakkan';
+  document.getElementById('acq-dakkan').classList.remove('active');
+  document.getElementById('acq-kakoi').classList.remove('active');
+  document.getElementById('status-box').innerHTML = '<div class="status-empty">↑ PD番号を入力すると<br>リアルタイム照合します</div>';
+
+  document.getElementById('supply-point-22').value = '';
+  document.getElementById('expected-cn').value = '';
+  onSupplyPointInput('');
+  onExpectedCnInput('');
+  const progress = document.getElementById('ocr-progress');
+  progress.classList.remove('show', 'processing', 'done');
+  progress.textContent = '';
+
+  resetUrgentSw();
+  updateSubmitAvailability();
+}
+
+function closeModal() {
+  document.getElementById('submit-modal').classList.remove('show');
+}
+
+function renderLog() {
+  const log = document.getElementById('submitted-log');
+  if (submittedCases.length === 0) {
+    log.innerHTML = '<div class="log-empty">まだ送信された案件はありません</div>';
+    return;
+  }
+  log.innerHTML = submittedCases.map(c => {
+    if (c.type === 'postadd') {
+      return `
+      <div class="log-item postadd">
+        <span class="tag">📎 諸元後付け</span>
+        <span class="case-id">${c.caseId}</span>
+        <div class="case-meta">${c.customer} / 追加枚数: ${c.addedCount} 枚 / ${c.time}</div>
+      </div>`;
+    }
+    const acqIcon = c.acquisition === 'dakkan' ? '🎯奪還' : (c.acquisition === 'kakoi' ? '🔁囲込' : '');
+    const urgentTag = c.isUrgentSw ? `<span class="urgent-tag">🚨 ${c.swMonth}</span>` : '';
+    return `
+    <div class="log-item ${c.type}">
+      <span class="tag">${c.tag}</span>${urgentTag}
+      <span class="case-id">${c.caseId}</span>
+      <div class="case-meta">${c.customer} / ${acqIcon} / PD: ${c.pd} / ${c.time}</div>
+      <div class="case-meta">📷 ${c.attachText}</div>
+    </div>
+  `;
+  }).join('');
+}
+
+// ==================== v7: 諸元後付けモード ====================
+
+function openPostAddMode() {
+  postAddMode = true;
+  document.getElementById('postadd-banner').classList.add('show');
+  document.getElementById('postadd-form').classList.add('show');
+  document.getElementById('normal-mode-content').style.display = 'none';
+  document.getElementById('open-postadd-link').style.display = 'none';
+  document.getElementById('pa-case-id').value = '';
+  attachments['pa-shogen'] = [];
+  renderAttachments('pa-shogen');
+  postAddTargetCase = null;
+  document.getElementById('pa-found').classList.remove('show');
+  updatePostAddAvailability();
+}
+
+function closePostAddMode() {
+  postAddMode = false;
+  document.getElementById('postadd-banner').classList.remove('show');
+  document.getElementById('postadd-form').classList.remove('show');
+  document.getElementById('normal-mode-content').style.display = 'block';
+  document.getElementById('open-postadd-link').style.display = 'inline-block';
+  attachments['pa-shogen'] = [];
+}
+
+function postAddQRDummy() {
+  // ダミー案件を自動投入
+  const sample = mypageData.find(m => m.cases.some(x => x.status === 'awaiting_specs')) || mypageData[0];
+  const targetCase = sample.cases.find(x => x.status === 'awaiting_specs') || sample.cases[0];
+  document.getElementById('pa-case-id').value = targetCase.case_id;
+  onPostAddCaseInput(targetCase.case_id);
+  showToast('📷 QRスキャン完了：' + targetCase.case_id, 'success');
+}
+
+function onPostAddCaseInput(val) {
+  const trimmed = val.trim().toUpperCase();
+  const found = document.getElementById('pa-found');
+  postAddTargetCase = null;
+
+  if (!trimmed.match(/^K-\d{8}-\d{3}$/) && !trimmed.match(/^K-(MKN|EXT)-\d{8}-\d{3}$/)) {
+    found.classList.remove('show');
+    updatePostAddAvailability();
+    return;
+  }
+
+  // データから検索
+  let customer = null;
+  let matchedCase = null;
+  for (const m of mypageData) {
+    for (const c of m.cases) {
+      if (c.case_id === trimmed) {
+        customer = m;
+        matchedCase = c;
+        break;
+      }
+    }
+    if (matchedCase) break;
+  }
+
+  if (matchedCase && customer) {
+    postAddTargetCase = { customer: customer, caseRef: matchedCase };
+    document.getElementById('pa-found-name').textContent = '✓ ' + customer.customer_name + ' 様';
+    document.getElementById('pa-found-meta').textContent = matchedCase.category + ' / 申込日：' + matchedCase.date + ' / 現ステータス：' + getStatusLabel(matchedCase.status);
+    found.classList.add('show');
+  } else {
+    document.getElementById('pa-found-name').textContent = '？ 案件が見つかりません';
+    document.getElementById('pa-found-meta').textContent = '正しい案件番号を入力してください（例：K-20260401-001）';
+    found.classList.add('show');
+  }
+  updatePostAddAvailability();
+}
+
+function updatePostAddAvailability() {
+  const btn = document.getElementById('pa-submit-btn');
+  const hasTarget = !!postAddTargetCase;
+  const hasSpecs = attachments['pa-shogen'].length > 0;
+  if (hasTarget && hasSpecs) {
+    btn.classList.add('ready');
+  } else {
+    btn.classList.remove('ready');
+  }
+}
+
+function submitPostAdd() {
+  if (!postAddTargetCase) return;
+  if (attachments['pa-shogen'].length === 0) return;
+
+  const addedCount = attachments['pa-shogen'].length;
+  const targetCaseId = postAddTargetCase.caseRef.case_id;
+  const customerName = postAddTargetCase.customer.customer_name;
+
+  // データ更新（シミュレーション）
+  postAddTargetCase.caseRef.specs_added = (postAddTargetCase.caseRef.specs_added || 0) + addedCount;
+  postAddTargetCase.caseRef.specs_collected_at = '2026/4/19';
+  if (postAddTargetCase.caseRef.status === 'awaiting_specs') {
+    postAddTargetCase.caseRef.status = 'awaiting_entry';
+    postAddTargetCase.caseRef.specs_stale_days = 0;
+  }
+
+  // ログ追加
+  const now = new Date();
+  submittedCases.unshift({
+    caseId: targetCaseId,
+    type: 'postadd',
+    tag: '諸元後付け',
+    customer: customerName,
+    time: now.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}),
+    addedCount: addedCount,
+  });
+  renderLog();
+
+  // コンソール出力
+  console.log('[Garden-Leaf v7] 諸元後付け送信:', {
+    target_case_id: targetCaseId,
+    added_specs_count: addedCount,
+    customer: customerName,
+  });
+
+  showToast('✓ 案件 ' + targetCaseId + ' に諸元' + addedCount + '枚を追加送信しました', 'success');
+
+  // リセット
+  attachments['pa-shogen'] = [];
+  renderAttachments('pa-shogen');
+  postAddTargetCase = null;
+  document.getElementById('pa-case-id').value = '';
+  document.getElementById('pa-found').classList.remove('show');
+  updatePostAddAvailability();
+
+  // 少し待って通常モードへ
+  setTimeout(() => {
+    closePostAddMode();
+  }, 1800);
+}
+
+// ==================== v7: ステータス管理 ====================
+
+const STATUS_LABELS = {
+  ordered: '🟦 受注',
+  awaiting_specs: '🟧 諸元待ち',
+  awaiting_entry: '🟨 エントリー待ち',
+  awaiting_send: '🟪 送付待ち',
+  awaiting_invoice: '🟫 請求待ち',
+  awaiting_payment_in: '⚪ 入金待ち',
+  awaiting_payment_out: '⚪ 支払待ち',
+  completed: '✅ 完了',
+};
+
+const STATUS_CLASS = {
+  ordered: 'ordered',
+  awaiting_specs: 'awaiting-specs',
+  awaiting_entry: 'awaiting-entry',
+  awaiting_send: 'awaiting-send',
+  awaiting_invoice: 'awaiting-invoice',
+  awaiting_payment_in: 'awaiting-payment-in',
+  awaiting_payment_out: 'awaiting-payment-out',
+  completed: 'completed',
+};
+
+function getStatusLabel(status) {
+  return STATUS_LABELS[status] || '（不明）';
+}
+
+function getStatusClass(status) {
+  return STATUS_CLASS[status] || '';
+}
+
+const mypageData = [
+  {
+    customer_name: '山田 太郎',
+    kana: 'ヤマダ タロウ',
+    customer_number: '15515538803220',
+    address: '大阪市北区梅田1-2-3 梅田スカイビル801',
+    has_denki: true, has_douryoku: true, has_gas: false, has_juryoushou: true,
+    overall_status: 'completed',
+    cases: [
+      {
+        case_id: 'K-20260401-001', category: '電灯', date: '2026/4/1',
+        status: 'completed', contract_type: '電灯',
+        ordered_at: '2026/4/1', specs_collected_at: '2026/4/3', entered_at: '2026/4/5', completed_at: '2026/4/15',
+        has_specs: true, is_urgent_sw: false
+      },
+      {
+        case_id: 'K-20260405-003', category: '動力', date: '2026/4/5',
+        status: 'completed', contract_type: '動力',
+        ordered_at: '2026/4/5', specs_collected_at: '2026/4/7', entered_at: '2026/4/9', completed_at: '2026/4/18',
+        has_specs: true, is_urgent_sw: false
+      },
+    ],
+    last_updated: '2026/4/18',
+    related: [{ customer_number: '18517527030600', address: '大阪市北区梅田3-4-5', types: ['電灯'] }],
+  },
+  {
+    customer_name: '鈴木 花子',
+    kana: 'スズキ ハナコ',
+    customer_number: '20305060708090',
+    address: '大阪市中央区本町4-5-6 本町ビル302',
+    has_denki: true, has_douryoku: false, has_gas: true,
+    overall_status: 'awaiting_specs',
+    cases: [
+      {
+        case_id: 'K-20260403-002', category: '電灯', date: '2026/4/3',
+        status: 'awaiting_specs', contract_type: '電灯',
+        ordered_at: '2026/4/3', specs_collected_at: null, entered_at: null, completed_at: null,
+        has_specs: false, is_urgent_sw: true, sw_target_month: 'S5',
+        specs_stale_days: 16
+      },
+      {
+        case_id: 'K-20260410-005', category: 'ガス', date: '2026/4/10',
+        status: 'awaiting_specs', contract_type: 'ガス',
+        ordered_at: '2026/4/10', specs_collected_at: null, entered_at: null, completed_at: null,
+        has_specs: false, is_urgent_sw: true, sw_target_month: 'S5',
+        specs_stale_days: 9
+      },
+    ],
+    last_updated: '2026/4/10',
+    related: [],
+  },
+  {
+    customer_name: '佐藤 健一',
+    kana: 'サトウ ケンイチ',
+    customer_number: '11223344556677',
+    address: '京都市中京区烏丸通四条西入',
+    has_denki: true, has_douryoku: true, has_gas: true, has_juryoushou: true,
+    overall_status: 'awaiting_entry',
+    cases: [
+      {
+        case_id: 'K-20260308-004', category: '電灯', date: '2026/3/8',
+        status: 'awaiting_entry', contract_type: '電灯',
+        ordered_at: '2026/3/8', specs_collected_at: '2026/3/10', entered_at: null, completed_at: null,
+        has_specs: true, is_urgent_sw: false,
+        specs_stale_days: 40
+      },
+      {
+        case_id: 'K-20260412-007', category: '動力', date: '2026/4/12',
+        status: 'awaiting_send', contract_type: '動力',
+        ordered_at: '2026/4/12', specs_collected_at: '2026/4/14', entered_at: '2026/4/16', completed_at: null,
+        has_specs: true, is_urgent_sw: false
+      },
+      {
+        case_id: 'K-20260415-009', category: 'ガス', date: '2026/4/15',
+        status: 'awaiting_invoice', contract_type: 'ガス',
+        ordered_at: '2026/4/15', specs_collected_at: '2026/4/16', entered_at: '2026/4/17', completed_at: null,
+        has_specs: true, is_urgent_sw: false
+      },
+    ],
+    last_updated: '2026/4/17',
+    related: [],
+  },
+  {
+    customer_name: '田中 美咲',
+    kana: 'タナカ ミサキ',
+    customer_number: '99887766554433',
+    address: '神戸市中央区三宮1-1-1 三宮プラザ',
+    has_denki: true, has_douryoku: false, has_gas: false,
+    overall_status: 'ordered',
+    cases: [
+      {
+        case_id: 'K-20260419-006', category: '電灯', date: '2026/4/19',
+        status: 'ordered', contract_type: '電灯',
+        ordered_at: '2026/4/19', specs_collected_at: null, entered_at: null, completed_at: null,
+        has_specs: false, is_urgent_sw: false,
+        specs_stale_days: 0
+      },
+    ],
+    last_updated: '2026/4/19',
+    related: [],
+  },
+  {
+    customer_name: '高橋 大輝',
+    kana: 'タカハシ ダイキ',
+    customer_number: '33445566778899',
+    address: '大阪市淀川区西中島7-8-9',
+    has_denki: false, has_douryoku: true, has_gas: false,
+    overall_status: 'awaiting_payment_in',
+    cases: [
+      {
+        case_id: 'K-20260311-008', category: '動力', date: '2026/3/11',
+        status: 'awaiting_payment_in', contract_type: '動力',
+        ordered_at: '2026/3/11', specs_collected_at: '2026/3/13', entered_at: '2026/3/15', completed_at: null,
+        has_specs: true, is_urgent_sw: false
+      },
+    ],
+    last_updated: '2026/4/11',
+    related: [{ customer_number: '33445566778800', address: '大阪市淀川区西中島10-1', types: ['動力'] }],
+  },
+  {
+    customer_name: '渡辺 さくら',
+    kana: 'ワタナベ サクラ',
+    customer_number: '77889911223344',
+    address: '堺市堺区大小路町3-3-3',
+    has_denki: true, has_douryoku: false, has_gas: true, has_juryoushou: true,
+    overall_status: 'awaiting_send',
+    cases: [
+      {
+        case_id: 'K-20260413-010', category: '電灯', date: '2026/4/13',
+        status: 'awaiting_send', contract_type: '電灯',
+        ordered_at: '2026/4/13', specs_collected_at: '2026/4/15', entered_at: '2026/4/17', completed_at: null,
+        has_specs: true, is_urgent_sw: true, sw_target_month: 'S5'
+      },
+      {
+        case_id: 'K-20260416-012', category: 'ガス', date: '2026/4/16',
+        status: 'awaiting_invoice', contract_type: 'ガス',
+        ordered_at: '2026/4/16', specs_collected_at: '2026/4/17', entered_at: '2026/4/18', completed_at: null,
+        has_specs: true, is_urgent_sw: false
+      },
+    ],
+    last_updated: '2026/4/18',
+    related: [],
+  },
+  {
+    customer_name: '伊藤 健太',
+    kana: 'イトウ ケンタ',
+    customer_number: '55667788990011',
+    address: '奈良市三条町4-4 三条マンション205',
+    has_denki: true, has_douryoku: true, has_gas: false,
+    overall_status: 'awaiting_specs',
+    cases: [
+      {
+        case_id: 'K-20260414-011', category: '電灯', date: '2026/4/14',
+        status: 'awaiting_specs', contract_type: '電灯',
+        ordered_at: '2026/4/14', specs_collected_at: null, entered_at: null, completed_at: null,
+        has_specs: false, is_urgent_sw: false,
+        specs_stale_days: 5
+      },
+      {
+        case_id: 'K-20260417-013', category: '動力', date: '2026/4/17',
+        status: 'awaiting_entry', contract_type: '動力',
+        ordered_at: '2026/4/17', specs_collected_at: '2026/4/18', entered_at: null, completed_at: null,
+        has_specs: true, is_urgent_sw: false
+      },
+    ],
+    last_updated: '2026/4/18',
+    related: [],
+  },
+  {
+    customer_name: '中村 結衣',
+    kana: 'ナカムラ ユイ',
+    customer_number: '12345678901234',
+    address: '尼崎市昭和通2-2-2 昭和ハイツ',
+    has_denki: true, has_douryoku: false, has_gas: true,
+    overall_status: 'awaiting_payment_out',
+    cases: [
+      {
+        case_id: 'K-20260318-014', category: '電灯', date: '2026/3/18',
+        status: 'awaiting_payment_out', contract_type: '電灯',
+        ordered_at: '2026/3/18', specs_collected_at: '2026/3/20', entered_at: '2026/3/22', completed_at: null,
+        has_specs: true, is_urgent_sw: false
+      },
+      {
+        case_id: 'K-20260418-015', category: 'ガス', date: '2026/4/18',
+        status: 'awaiting_invoice', contract_type: 'ガス',
+        ordered_at: '2026/4/18', specs_collected_at: '2026/4/19', entered_at: '2026/4/19', completed_at: null,
+        has_specs: true, is_urgent_sw: false
+      },
+    ],
+    last_updated: '2026/4/19',
+    related: [],
+  },
+];
+
+function isCustomerUrgent(c) {
+  return c.cases.some(x => x.is_urgent_sw);
+}
+
+function isCustomerSpecsStale(c) {
+  return c.cases.some(x => x.specs_stale_days && x.specs_stale_days >= 30);
+}
+
+function countUrgent() {
+  return mypageData.filter(isCustomerUrgent).length;
+}
+
+function updateUrgentAlertBanner() {
+  const count = countUrgent();
+  const banner = document.getElementById('urgent-alert-banner');
+  const text = document.getElementById('urgent-alert-text');
+  const right = document.getElementById('urgent-alert-right');
+
+  if (count > 0) {
+    banner.classList.add('show');
+    text.textContent = '🚨 至急SW案件：' + count + ' 件（要対応）';
+    if (urgentFilterActive) {
+      banner.classList.add('active-filter');
+      right.innerHTML = '<span class="mp-filter-chip">絞込中 <span class="clear-x" onclick="event.stopPropagation(); clearUrgentFilter();">×</span></span>';
+    } else {
+      banner.classList.remove('active-filter');
+      right.textContent = 'タップでフィルタ →';
+    }
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function toggleUrgentFilter() {
+  urgentFilterActive = !urgentFilterActive;
+  renderMypage(document.getElementById('mp-search-input').value);
+}
+
+function clearUrgentFilter() {
+  urgentFilterActive = false;
+  renderMypage(document.getElementById('mp-search-input').value);
+}
+
+function renderMypage(query) {
+  query = (query || '').trim().toLowerCase();
+  const list = document.getElementById('mp-list');
+  const summary = document.getElementById('mp-summary');
+
+  let filtered = mypageData.filter(c => {
+    if (!query) return true;
+    if (c.customer_name.toLowerCase().includes(query)) return true;
+    if (c.kana.toLowerCase().includes(query)) return true;
+    if (c.customer_number.includes(query)) return true;
+    if (c.address.toLowerCase().includes(query)) return true;
+    if (c.cases.some(x => x.case_id.toLowerCase().includes(query))) return true;
+    return false;
+  });
+
+  if (urgentFilterActive) {
+    filtered = filtered.filter(isCustomerUrgent);
+  }
+
+  const filterLabel = urgentFilterActive ? '（至急SWのみ）' : (query ? '（検索：' + query + '）' : '');
+  summary.textContent = filtered.length + ' 件のお客様' + filterLabel;
+
+  updateUrgentAlertBanner();
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="mp-empty">条件に一致するお客様がいません<br>検索ワードを変更してください</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(c => {
+    const cnFormatted = formatCustomerNumber(c.customer_number);
+    const badges = [];
+    if (c.has_denki) badges.push('<span class="mp-badge denki">⚡ 電灯</span>');
+    if (c.has_douryoku) badges.push('<span class="mp-badge douryoku">🔌 動力</span>');
+    if (c.has_gas) badges.push('<span class="mp-badge gas">🔥 ガス</span>');
+    if (c.has_juryoushou) badges.push('<span class="mp-badge juryoushou">📄 受領書</span>');
+
+    // v7: ステータスバッジ
+    const statusBadges = [];
+    const overallStatus = c.overall_status || c.cases[0].status;
+    statusBadges.push('<span class="mp-status-badge ' + getStatusClass(overallStatus) + '">' + getStatusLabel(overallStatus) + '</span>');
+
+    const urgentCase = c.cases.find(x => x.is_urgent_sw);
+    if (urgentCase) {
+      statusBadges.push('<span class="mp-status-badge urgent-sw">🚨 至急SW ' + (urgentCase.sw_target_month || '') + '</span>');
+    }
+
+    if (isCustomerSpecsStale(c)) {
+      const staleCase = c.cases.find(x => x.specs_stale_days && x.specs_stale_days >= 30);
+      statusBadges.push('<span class="mp-status-badge specs-stale">🔔 諸元滞留 ' + staleCase.specs_stale_days + '日</span>');
+    }
+
+    const missingSpecs = c.cases.find(x => !x.has_specs && (x.status === 'awaiting_specs' || x.status === 'ordered'));
+    if (missingSpecs) {
+      statusBadges.push('<span class="mp-status-badge specs-missing" onclick="jumpToPostAdd(\'' + missingSpecs.case_id + '\')" title="クリックで諸元後付けモードへ">📎 諸元未添付</span>');
+    }
+
+    let related = '';
+    if (c.related && c.related.length > 0) {
+      const r = c.related[0];
+      related = `<div class="mp-related-banner" onclick="jumpToCustomer('${r.customer_number}')">
+        <span class="label">📍 このお客様の関連物件（同名義）</span>
+        <span class="arrow">→</span>
+      </div>`;
+    }
+
+    const cases = c.cases.map((x, i) => {
+      const caseStatusBadges = [];
+      caseStatusBadges.push('<span class="mp-status-badge ' + getStatusClass(x.status) + '">' + getStatusLabel(x.status) + '</span>');
+      if (x.is_urgent_sw) caseStatusBadges.push('<span class="mp-status-badge urgent-sw">🚨 ' + (x.sw_target_month || '') + '</span>');
+      if (x.specs_stale_days && x.specs_stale_days >= 30) caseStatusBadges.push('<span class="mp-status-badge specs-stale">🔔 ' + x.specs_stale_days + '日</span>');
+
+      const transitions = `
+        <div class="mp-case-transitions">
+          <div class="trans-row"><span class="trans-label">受注日</span><span class="trans-val">${x.ordered_at || '—'}</span></div>
+          <div class="trans-row"><span class="trans-label">諸元回収日</span><span class="trans-val ${x.specs_collected_at ? '' : 'pending'}">${x.specs_collected_at || '未回収'}</span></div>
+          <div class="trans-row"><span class="trans-label">エントリー日</span><span class="trans-val ${x.entered_at ? '' : 'pending'}">${x.entered_at || '未実施'}</span></div>
+          ${x.completed_at ? '<div class="trans-row"><span class="trans-label">完了日</span><span class="trans-val">' + x.completed_at + '</span></div>' : ''}
+        </div>`;
+
+      const canAddSpecs = (x.status === 'awaiting_specs' || x.status === 'ordered') && !x.has_specs;
+      const addSpecsBtn = `<button class="mp-case-add-specs" onclick="jumpToPostAdd('${x.case_id}')" ${canAddSpecs ? '' : 'disabled'}>📎 諸元を後から添付${canAddSpecs ? '' : '（不要）'}</button>`;
+
+      return `
+      <div class="mp-case-item">
+        <div class="mp-case-top">
+          <div class="mp-case-info">
+            <div class="case-id">${x.case_id}</div>
+            <div class="case-cat">${x.contract_type || x.category}</div>
+            <div class="case-date">申込日：${x.date}</div>
+          </div>
+          <div class="mp-case-thumb" onclick="openThumb('${x.case_id}', '${x.category}')" title="サムネイル拡大">📄</div>
+        </div>
+        <div class="mp-case-status-row">${caseStatusBadges.join('')}</div>
+        ${transitions}
+        ${addSpecsBtn}
+      </div>
+    `;
+    }).join('');
+
+    const isUrgent = c.cases.some(x => x.is_urgent_sw);
+    return `
+      <div class="mp-card ${isUrgent ? 'urgent' : ''}" id="mp-card-${c.customer_number}">
+        <div class="mp-card-name">${c.customer_name}</div>
+        <div class="mp-card-kana">${c.kana}</div>
+        <div class="mp-card-cn">${cnFormatted}</div>
+        <div class="mp-card-addr">${c.address}</div>
+        <div class="mp-badges">${badges.join('')}</div>
+        <div class="mp-status-row">${statusBadges.join('')}</div>
+        <div class="mp-card-meta">
+          <span>案件 ${c.cases.length} 件</span>
+          <span>最終更新：${c.last_updated}</span>
+        </div>
+        ${related}
+        <button class="mp-toggle-btn" onclick="toggleCases(this)">
+          <span>個別案件を表示</span>
+          <span class="toggle-arrow">▽</span>
+        </button>
+        <div class="mp-cases">
+          ${cases}
+        </div>
+        <a class="mp-photo-link" onclick="alert('🔒 撮影画像ギャラリー（パスワード保護想定）\\n本実装ではここにマイページ専用の閲覧画面を表示します。')">📷 撮影画像をすべて見る</a>
+      </div>
+    `;
+  }).join('');
+}
+
+function jumpToPostAdd(caseId) {
+  switchTab('input');
+  setTimeout(() => {
+    openPostAddMode();
+    document.getElementById('pa-case-id').value = caseId;
+    onPostAddCaseInput(caseId);
+    showToast('📎 諸元後付けモード：' + caseId, 'success');
+  }, 100);
+}
+
+function toggleCases(btn) {
+  btn.classList.toggle('open');
+  const cases = btn.nextElementSibling;
+  cases.classList.toggle('open');
+  const labelSpan = btn.querySelector('span');
+  labelSpan.textContent = cases.classList.contains('open') ? '個別案件を閉じる' : '個別案件を表示';
+}
+
+function jumpToCustomer(customerNumber) {
+  const target = document.getElementById('mp-card-' + customerNumber);
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('highlight');
+    setTimeout(() => target.classList.remove('highlight'), 2000);
+  } else {
+    alert('該当のお客様カードは現在のリストに表示されていません。\nお客様番号: ' + formatCustomerNumber(customerNumber));
+  }
+}
+
+function openThumb(caseId, category) {
+  const modal = document.getElementById('thumb-modal');
+  document.getElementById('thumb-caption').textContent = caseId + '（' + category + '・申込書サムネ）';
+  modal.classList.add('show');
+}
+
+function closeThumb() {
+  document.getElementById('thumb-modal').classList.remove('show');
+}
+
+// ==================== v9: マイページ（プロフィール）統計 ====================
+function renderMyProfileStats() {
+  // 今月の実績を mypageData から集計（すべての案件を対象に今月分でシミュレート）
+  let sentCount = 0;
+  let completedCount = 0;
+  let awaitingSpecsCount = 0;
+  let urgentSwCount = 0;
+
+  for (const m of mypageData) {
+    for (const cs of m.cases) {
+      sentCount++;
+      if (cs.status === 'completed') completedCount++;
+      if (cs.status === 'awaiting_specs') awaitingSpecsCount++;
+      if (cs.is_urgent_sw) urgentSwCount++;
+    }
+  }
+  // 送信済みログも加算
+  sentCount += submittedCases.length;
+
+  const elSent = document.getElementById('stat-sent');
+  const elComp = document.getElementById('stat-completed');
+  const elAwait = document.getElementById('stat-awaiting');
+  const elUrg = document.getElementById('stat-urgent');
+  if (elSent) elSent.innerHTML = sentCount + ' <span class="ps-unit">件</span>';
+  if (elComp) elComp.innerHTML = completedCount + ' <span class="ps-unit">件</span>';
+  if (elAwait) elAwait.innerHTML = awaitingSpecsCount + ' <span class="ps-unit">件</span><span class="ps-icon">🔔</span>';
+  if (elUrg) elUrg.innerHTML = urgentSwCount + ' <span class="ps-unit">件</span><span class="ps-icon">🚨</span>';
+}
+
+function openInfoUpdate() {
+  const modal = document.getElementById('info-update-modal');
+  if (modal) {
+    document.getElementById('info-update-text').value = '';
+    modal.classList.add('show');
+  }
+}
+
+function closeInfoUpdate() {
+  const modal = document.getElementById('info-update-modal');
+  if (modal) modal.classList.remove('show');
+}
+
+function submitInfoUpdate() {
+  const val = document.getElementById('info-update-text').value.trim();
+  if (!val) {
+    showToast('変更内容を入力してください', 'warning');
+    return;
+  }
+  console.log('[Garden-Leaf v9] 情報更新申請:', val);
+  closeInfoUpdate();
+  showToast('📝 情報更新の申請を送信しました（ダミー）', 'success');
+}
+
+// ==================== v9: 画面ロック機能 ====================
+let inactivityTimer = null;
+let lastActivity = Date.now();
+const INACTIVITY_LIMIT_MS = 5 * 60 * 1000;  // 5分
+
+function resetInactivityTimer() {
+  lastActivity = Date.now();
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    lockScreen();
+  }, INACTIVITY_LIMIT_MS);
+  updateLockTimerDisplay();
+}
+
+function updateLockTimerDisplay() {
+  const el = document.getElementById('lock-timer');
+  if (!el) return;
+  const d = new Date(lastActivity);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  el.textContent = '最終操作: ' + hh + ':' + mm + ':' + ss + ' / 自動ロック: 5分後';
+}
+
+function lockScreen() {
+  const overlay = document.getElementById('lock-overlay');
+  if (!overlay) return;
+  overlay.classList.add('show');
+  const pw = document.getElementById('lock-password');
+  if (pw) pw.value = '';
+  const err = document.getElementById('lock-error');
+  if (err) err.classList.remove('show');
+  updateLockTimerDisplay();
+  setTimeout(() => {
+    const pw2 = document.getElementById('lock-password');
+    if (pw2) pw2.focus();
+  }, 100);
+  clearTimeout(inactivityTimer);
+  console.log('[Garden-Leaf v9] 画面ロック発動（' + new Date().toLocaleTimeString() + '）');
+}
+
+function tryUnlock() {
+  const pwEl = document.getElementById('lock-password');
+  const errEl = document.getElementById('lock-error');
+  if (!pwEl || !errEl) return;
+  const pw = pwEl.value;
+  if (pw === '0417') {
+    document.getElementById('lock-overlay').classList.remove('show');
+    resetInactivityTimer();
+    console.log('[Garden-Leaf v9] ロック解除成功');
+  } else {
+    errEl.classList.add('show');
+    pwEl.value = '';
+    setTimeout(() => errEl.classList.remove('show'), 2500);
+  }
+}
+
+// アクティビティ検知
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(ev => {
+  document.addEventListener(ev, function() {
+    // ロック中はタイマーをリセットしない
+    const ov = document.getElementById('lock-overlay');
+    if (ov && ov.classList.contains('show')) return;
+    resetInactivityTimer();
+  }, { passive: true });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  ['denki', 'douryoku', 'gas', 'shogen', 'juryoushou'].forEach(cat => renderAttachments(cat));
+  renderAttachments('pa-shogen');
+  setAcquisition('dakkan');
+  updateSubmitAvailability();
+  renderMypage('');
+  renderMyProfileStats();
+
+  // Enterキーでロック解除
+  const pw = document.getElementById('lock-password');
+  if (pw) {
+    pw.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') tryUnlock();
+    });
+  }
+  resetInactivityTimer();
+});
+</script>
+
+</body>
+</html>
