@@ -1,15 +1,12 @@
 "use client";
 
 /**
- * Garden-Bud — アプリ全体の共有状態
+ * Garden-Bud shared app state.
  *
- * レイヤー:
- *   1. Supabase Auth（認証情報）
- *   2. root_employees.garden_role + bud_users.bud_role（二段階権限）
- *   3. BudStateContext（Bud 内の共有状態）
- *
- * 各画面・サイドバーは useBudState() で参照する。
- * layout.tsx で最上位に配置する。
+ * Authentication is split into:
+ * 1. Garden/Supabase Auth session
+ * 2. Bud permission, via root_employees + bud_users
+ * 3. Bud two-hour unlock, stored by unified auth as `bud:unlockedAt`
  */
 
 import {
@@ -28,27 +25,44 @@ import {
 } from "../../root/_constants/types";
 import { isBudRoleAtLeast } from "../_constants/roles";
 import type { BudRole, BudSessionUser } from "../_constants/types";
-import { getSession, signOutBud as signOutBudLib } from "../_lib/auth";
+import {
+  clearBudUnlock,
+  getSession,
+  isBudUnlocked,
+  signOutBud as signOutBudLib,
+} from "../_lib/auth";
 import { fetchBudSessionUser } from "../_lib/queries";
 
+const isBudDevBypass =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === "1";
+
+const DEV_SESSION_USER: BudSessionUser = {
+  employee_id: "dev-bypass",
+  employee_number: "dev",
+  name: "Bud Dev Bypass",
+  garden_role: "super_admin",
+  user_id: "dev-bypass",
+  bud_role: "admin",
+  effective_bud_role: "admin",
+};
+
 type BudStateValue = {
-  /** 認証確認中（初回レンダー〜refreshAuth 完了まで true） */
+  /** Authentication check is running. */
   loading: boolean;
-  /** Supabase Auth セッション + Bud アクセス権 OK */
+  /** Garden/Supabase Auth session exists. */
   isAuthenticated: boolean;
-  /** 認証済ユーザーの Bud アクセス情報 */
+  /** The authenticated Garden user may use Bud. */
+  hasPermission: boolean;
+  /** Bud two-hour unlock state. */
+  isUnlocked: boolean;
+  /** Authenticated user's Bud access info. */
   sessionUser: BudSessionUser | null;
-  /** ショートカット: garden_role */
   gardenRole: GardenRole | null;
-  /** ショートカット: 実効 bud_role（明示登録なければ admin 扱い） */
   budRole: BudRole | null;
-  /** ログイン後/セッション復帰時の認証再確認 */
   refreshAuth: () => Promise<{ success: boolean; error?: string }>;
-  /** ログアウト + セッションクリア */
   signOut: () => Promise<void>;
-  /** garden_role 階層比較（Root の isRoleAtLeast ラッパー） */
   hasGardenRoleAtLeast: (baseline: GardenRole) => boolean;
-  /** bud_role 階層比較 */
   hasBudRoleAtLeast: (baseline: BudRole) => boolean;
 };
 
@@ -57,6 +71,8 @@ const BudStateContext = createContext<BudStateValue | null>(null);
 export function BudStateProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [sessionUser, setSessionUser] = useState<BudSessionUser | null>(null);
 
   const refreshAuth = useCallback(async (): Promise<{
@@ -65,24 +81,43 @@ export function BudStateProvider({ children }: { children: ReactNode }) {
   }> => {
     setLoading(true);
     try {
+      if (isBudDevBypass) {
+        setIsAuthenticated(true);
+        setHasPermission(true);
+        setIsUnlocked(true);
+        setSessionUser(DEV_SESSION_USER);
+        return { success: true };
+      }
+
       const session = await getSession();
       if (!session?.user) {
         setIsAuthenticated(false);
+        setHasPermission(false);
+        setIsUnlocked(false);
         setSessionUser(null);
         return { success: false, error: "セッションがありません" };
       }
+
       const user = await fetchBudSessionUser(session.user.id);
       if (!user) {
-        setIsAuthenticated(false);
+        clearBudUnlock();
+        setIsAuthenticated(true);
+        setHasPermission(false);
+        setIsUnlocked(false);
         setSessionUser(null);
         return { success: false, error: "Bud利用権限がありません" };
       }
-      setSessionUser(user);
+
       setIsAuthenticated(true);
+      setHasPermission(true);
+      setIsUnlocked(isBudUnlocked());
+      setSessionUser(user);
       return { success: true };
     } catch (e) {
-      console.error("[refreshAuth]", e);
+      console.error("[bud] refreshAuth", e);
       setIsAuthenticated(false);
+      setHasPermission(false);
+      setIsUnlocked(false);
       setSessionUser(null);
       return { success: false, error: "認証エラーが発生しました" };
     } finally {
@@ -93,6 +128,8 @@ export function BudStateProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await signOutBudLib();
     setIsAuthenticated(false);
+    setHasPermission(false);
+    setIsUnlocked(false);
     setSessionUser(null);
   }, []);
 
@@ -112,7 +149,6 @@ export function BudStateProvider({ children }: { children: ReactNode }) {
     [sessionUser],
   );
 
-  // 初回マウント時に認証確認
   useEffect(() => {
     refreshAuth();
   }, [refreshAuth]);
@@ -121,6 +157,8 @@ export function BudStateProvider({ children }: { children: ReactNode }) {
     () => ({
       loading,
       isAuthenticated,
+      hasPermission,
+      isUnlocked,
       sessionUser,
       gardenRole: sessionUser?.garden_role ?? null,
       budRole: sessionUser?.effective_bud_role ?? null,
@@ -132,6 +170,8 @@ export function BudStateProvider({ children }: { children: ReactNode }) {
     [
       loading,
       isAuthenticated,
+      hasPermission,
+      isUnlocked,
       sessionUser,
       refreshAuth,
       signOut,

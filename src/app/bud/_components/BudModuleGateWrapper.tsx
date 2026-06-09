@@ -17,6 +17,8 @@ import type { ReactNode } from "react";
 
 import { ModuleGate } from "../../_components/ModuleGate";
 
+const allowBudDevBypass = process.env.NODE_ENV !== "production";
+
 export function BudModuleGateWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isLoginPage = pathname === "/bud/login";
@@ -24,7 +26,11 @@ export function BudModuleGateWrapper({ children }: { children: ReactNode }) {
   if (isLoginPage) return <>{children}</>;
 
   return (
-    <ModuleGate module="bud" loginPath="/bud/login">
+    <ModuleGate
+      module="bud"
+      loginPath="/bud/login"
+      allowDevBypass={allowBudDevBypass}
+    >
       {children}
     </ModuleGate>
   );
