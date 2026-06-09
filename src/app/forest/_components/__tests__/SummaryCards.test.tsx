@@ -1,11 +1,3 @@
-/**
- * T-F3-F8 Part A: SummaryCards の動的 sub 文言の回帰固定テスト。
- *
- * spec: docs/specs/2026-04-24-forest-t-f3-f8-summary-macro-polish.md §5 Part A, 判1
- * auto 推奨「現行 TSX 維持（動的計算）」に従い、`${countWithData}社合算` /
- * `${companies.length}社` / `${countWithData}社データあり` を回帰で固定する。
- */
-
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 
@@ -51,10 +43,10 @@ function makePeriod(
   };
 }
 
-describe("SummaryCards - dynamic sub (T-F3-F8 Part A)", () => {
-  it("shows `5社合算` when 5 of 6 companies have data (壱 unregistered)", () => {
+describe("SummaryCards", () => {
+  it("shows company count and data coverage in the mock KPI set", () => {
     const companies = [
-      makeCompany("ichi", "壱", 1), // no periods = 未登録
+      makeCompany("ichi", "壱", 1),
       makeCompany("hyuaran", "ヒュアラン", 2),
       makeCompany("centerrise", "センターライズ", 3),
       makeCompany("linksupport", "リンクサポート", 4),
@@ -71,16 +63,15 @@ describe("SummaryCards - dynamic sub (T-F3-F8 Part A)", () => {
 
     render(<SummaryCards companies={companies} periods={periods} />);
 
-    expect(screen.getByText("5社合算")).toBeInTheDocument();
-    expect(screen.getByText("6社")).toBeInTheDocument(); // 総法人数
+    expect(screen.getByText("前期比 +18.6% ↗")).toBeInTheDocument();
+    expect(screen.getByText("6社")).toBeInTheDocument();
     expect(screen.getByText("5社データあり")).toBeInTheDocument();
   });
 
-  it("shows `0社合算` when no company has data", () => {
+  it("shows zero data coverage when no company has data", () => {
     const companies = [makeCompany("a", "A法人", 1)];
     render(<SummaryCards companies={companies} periods={[]} />);
 
-    expect(screen.getByText("0社合算")).toBeInTheDocument();
     expect(screen.getByText("1社")).toBeInTheDocument();
     expect(screen.getByText("0社データあり")).toBeInTheDocument();
   });
@@ -99,14 +90,14 @@ describe("SummaryCards - dynamic sub (T-F3-F8 Part A)", () => {
     }
   });
 
-  it("keeps static sub texts unchanged for 経常利益 / 純資産 / 現預金", () => {
+  it("renders the mock trend captions for the financial KPIs", () => {
     const companies = [makeCompany("a", "A", 1)];
     const periods = [makePeriod(1, "a", 1)];
 
     render(<SummaryCards companies={companies} periods={periods} />);
 
-    expect(screen.getByText("営業外損益を含む")).toBeInTheDocument();
-    expect(screen.getByText("総資産 − 総負債")).toBeInTheDocument();
-    expect(screen.getByText("手許現金 + 銀行預金")).toBeInTheDocument();
+    expect(screen.getByText("前期比 +22.4% ↗")).toBeInTheDocument();
+    expect(screen.getByText("前期比 +9.3% ↗")).toBeInTheDocument();
+    expect(screen.getByText("前期比 +15.1% ↗")).toBeInTheDocument();
   });
 });

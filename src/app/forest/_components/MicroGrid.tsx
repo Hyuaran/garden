@@ -171,39 +171,48 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
                           >
                             第{cellData.ki}期
                           </span>
-                          <div className={styles.metricLine}>
-                            <span>売上</span>
-                            <span className={styles.metricValue}>{hasSales ? fmtYen(source.uriage!) : "-"}</span>
-                          </div>
-                          <div className={styles.metricLine}>
-                            <span>外注</span>
-                            <span className={styles.metricValue}>
-                              {hasOutsource ? fmtYen(source.gaichuhi!) : "-"}
-                            </span>
-                          </div>
-                          <div className={styles.metricLine}>
-                            <span>利益</span>
-                            <span
-                              className={styles.metricValue}
-                              style={{ color: isNegative ? FOREST_THEME.negative : FOREST_THEME.positive }}
-                            >
-                              {hasProfit ? fmtYen(source.rieki!) : "-"}
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "flex-end", gap: 3, minHeight: 42, marginTop: 8 }}>
-                            {hasSales && <span style={{ width: 5, height: Math.max(barSales, 2), background: C.midGreen, borderRadius: 999 }} />}
-                            {hasOutsource && <span style={{ width: 5, height: Math.max(barOutsource, 2), background: C.paleGreen, borderRadius: 999 }} />}
-                            {hasProfit && (
-                              <span
-                                style={{
-                                  width: 5,
-                                  height: isNegative ? 6 : Math.max(barProfit, 2),
-                                  background: isNegative ? C.red : C.accentGreen,
-                                  borderRadius: 999,
-                                }}
-                              />
-                            )}
-                          </div>
+                          {isActive ? (
+                            <div className={styles.collectingCell}>
+                              <strong>集計中</strong>
+                              <span>進行期データを更新できます</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className={styles.metricLine}>
+                                <span>売上</span>
+                                <span className={styles.metricValue}>{hasSales ? fmtYen(source.uriage!) : "-"}</span>
+                              </div>
+                              <div className={styles.metricLine}>
+                                <span>外注</span>
+                                <span className={styles.metricValue}>
+                                  {hasOutsource ? fmtYen(source.gaichuhi!) : "-"}
+                                </span>
+                              </div>
+                              <div className={styles.metricLine}>
+                                <span>利益</span>
+                                <span
+                                  className={styles.metricValue}
+                                  style={{ color: isNegative ? FOREST_THEME.negative : FOREST_THEME.positive }}
+                                >
+                                  {hasProfit ? fmtYen(source.rieki!) : "-"}
+                                </span>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, minHeight: 42, marginTop: 8 }}>
+                                {hasSales && <span style={{ width: 5, height: Math.max(barSales, 2), background: C.midGreen, borderRadius: 999 }} />}
+                                {hasOutsource && <span style={{ width: 5, height: Math.max(barOutsource, 2), background: C.paleGreen, borderRadius: 999 }} />}
+                                {hasProfit && (
+                                  <span
+                                    style={{
+                                      width: 5,
+                                      height: isNegative ? 6 : Math.max(barProfit, 2),
+                                      background: isNegative ? C.red : C.accentGreen,
+                                      borderRadius: 999,
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            </>
+                          )}
                           <div style={{ color: "#6c8d78", fontSize: 9, marginTop: 6 }}>
                             {cellData.period_from}~{cellData.period_to}
                             {isActive && activeData!.reflected && (

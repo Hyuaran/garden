@@ -16,10 +16,10 @@ import { useForestState } from "../_state/ForestStateContext";
 const FOREST_PAGE_MENU_BASE: GardenShellPageMenuItem[] = [
   { href: "/forest/dashboard", label: "\u30c0\u30c3\u30b7\u30e5\u30dc\u30fc\u30c9", icon: "\ud83d\udcca" },
   { href: "/forest/shinkouki", label: "\u9032\u884c\u671f\u306e\u66f4\u65b0", icon: "\ud83c\udf3f" },
-  { href: "/forest/shiwakechou", label: "\u4ed5\u8a33\u5e33", icon: "\ud83d\udcd2" },
-  { href: "/forest/shiwakechou/balance-overview", label: "\u6b8b\u9ad8\u78ba\u8a8d", icon: "\ud83d\udca7" },
+  { href: "/forest/financial-statements", label: "\u6c7a\u7b97\u66f8", icon: "\ud83d\udcc4" },
+  { href: "/forest/company-overview", label: "\u4f1a\u793e\u6982\u8981", icon: "\ud83c\udfe2" },
   { href: "/forest/reports", label: "\u30ec\u30dd\u30fc\u30c8\u5206\u6790", icon: "\ud83d\udcdd" },
-  { href: "/forest/settings", label: "\u8a2d\u5b9a", icon: "\u2699" },
+  { href: "/forest/registration-change", label: "\u767b\u8a18\u5909\u66f4", icon: "\ud83c\udf31" },
 ];
 
 function isActiveMenu(pathname: string, href: string): boolean {

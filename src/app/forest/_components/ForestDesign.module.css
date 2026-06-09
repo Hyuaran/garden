@@ -168,6 +168,42 @@
   gap: 18px;
 }
 
+.dashboardTabs {
+  display: flex;
+  gap: 0;
+  margin-top: -12px;
+  border-bottom: 1px solid rgba(45, 106, 79, 0.12);
+}
+
+.dashboardTab {
+  min-width: 126px;
+  padding: 13px 20px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #466b56;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.dashboardTabActive {
+  border-bottom-color: #b8860b;
+  color: #1b4332;
+}
+
+.mockDashboardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.9fr);
+  gap: 18px;
+}
+
+.rightColumn {
+  display: grid;
+  gap: 18px;
+}
+
 .panel {
   padding: 22px 24px;
 }
@@ -178,6 +214,71 @@
   font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
   font-size: 18px;
   font-weight: 600;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.chartHeader .panelTitle {
+  margin-bottom: 0;
+}
+
+.chartTools {
+  display: flex;
+  gap: 8px;
+}
+
+.chartTools button {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid rgba(45, 106, 79, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #315a46;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.chartFooter {
+  display: grid;
+  grid-template-columns: 1fr 1fr minmax(220px, 1.35fr);
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(45, 106, 79, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.chartFooter span {
+  display: block;
+  color: #52725f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chartFooter strong {
+  display: block;
+  margin-top: 6px;
+  color: #1b4332;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 21px;
+}
+
+.chartFooter p {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  color: #315a46;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.7;
 }
 
 .chartBox {
@@ -237,6 +338,11 @@
 
 .periodBadgeGlow {
   animation: shinkouGlow 2.8s ease-in-out infinite;
+}
+
+.periodBadgeWarm {
+  background: rgba(255, 186, 73, 0.2);
+  color: #b26b00;
 }
 
 .periodDate {
@@ -303,6 +409,29 @@
 .matrixMiniCardShinkou {
   border-color: rgba(184, 134, 11, 0.3);
   background: linear-gradient(135deg, rgba(255, 248, 223, 0.82), rgba(255, 255, 255, 0.56));
+}
+
+.collectingCell {
+  display: grid;
+  min-height: 72px;
+  align-content: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid rgba(184, 134, 11, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.54);
+  text-align: center;
+}
+
+.collectingCell strong {
+  color: #9a6b0b;
+  font-size: 14px;
+}
+
+.collectingCell span {
+  color: #6f7f70;
+  font-size: 10px;
 }
 
 .kiBadge {
@@ -372,6 +501,119 @@
   color: #1b4332;
 }
 
+.taxPanel {
+  padding-bottom: 18px;
+}
+
+.taxHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.taxHeader .panelTitle {
+  margin-bottom: 0;
+}
+
+.taxMonthNav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #1b4332;
+  font-size: 13px;
+}
+
+.taxList {
+  display: grid;
+}
+
+.taxItem {
+  display: grid;
+  grid-template-columns: 88px 112px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(45, 106, 79, 0.1);
+  font-size: 12px;
+}
+
+.taxDate {
+  color: #2d6a4f;
+  font-weight: 900;
+}
+
+.taxKind {
+  justify-self: start;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(116, 198, 157, 0.22);
+  color: #315a46;
+  font-weight: 800;
+}
+
+.taxLabel {
+  color: #315a46;
+  font-weight: 700;
+}
+
+.taxStatus {
+  color: #d46b08;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.taxMore {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 16px;
+  border: 0;
+  background: transparent;
+  color: #2d6a4f;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.comingSoonPanel {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 54px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 18px 42px rgba(27, 67, 50, 0.1);
+  color: #315a46;
+  text-align: center;
+}
+
+.comingSoonPanel h2 {
+  margin: 0;
+  color: #1b4332;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 26px;
+}
+
+.comingSoonPanel p {
+  max-width: 620px;
+  margin: 0;
+  line-height: 1.8;
+}
+
+.comingSoonMark {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 1px solid rgba(116, 198, 157, 0.45);
+  border-radius: 50%;
+  background: rgba(216, 243, 220, 0.72);
+  font-size: 25px;
+}
+
 @keyframes shinkouGlow {
   0%, 100% {
     box-shadow: 0 0 0 rgba(82, 183, 140, 0);
@@ -387,7 +629,16 @@
   }
 
   .dashboardGrid,
+  .mockDashboardGrid,
   .workspaceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chartFooter {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .taxItem {
     grid-template-columns: minmax(0, 1fr);
   }
 }
