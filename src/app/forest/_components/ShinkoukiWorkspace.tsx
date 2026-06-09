@@ -13,6 +13,7 @@ import { useForestState } from "../_state/ForestStateContext";
 import { AccessDenied } from "./AccessDenied";
 import { NumberUpdateForm } from "./NumberUpdateForm";
 import { PeriodRolloverForm } from "./PeriodRolloverForm";
+import styles from "./ForestDesign.module.css";
 
 type Mode = "overview" | "detail";
 type Tab = "numbers" | "rollover";
@@ -28,11 +29,11 @@ type CompanyPair = {
 };
 
 const panelStyle = {
-  background: FOREST_THEME.panelBg,
+  background: "rgba(255,255,255,0.72)",
   backdropFilter: "blur(20px)",
-  border: `1px solid ${FOREST_THEME.panelBorder}`,
-  borderRadius: FOREST_THEME.panelRadius,
-  boxShadow: FOREST_THEME.panelShadow,
+  border: "1px solid rgba(255,255,255,0.72)",
+  borderRadius: 8,
+  boxShadow: "0 18px 42px rgba(27,67,50,0.1)",
 } as const;
 
 function getRangeParts(shinkouki: Shinkouki | null) {
@@ -332,8 +333,8 @@ export function ShinkoukiWorkspace({ mode, companyId }: Props) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <div style={{ ...panelStyle, padding: "18px 22px" }}>
+    <div className={styles.pageStack}>
+      <section className={styles.pageHero}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
             <div style={{ color: FOREST_THEME.textMuted, fontSize: 12, fontWeight: 700 }}>
@@ -363,7 +364,7 @@ export function ShinkoukiWorkspace({ mode, companyId }: Props) {
             ダッシュボードへ
           </Link>
         </div>
-      </div>
+      </section>
 
       {mode === "detail" && selected && (
         <div style={{ ...panelStyle, padding: "12px 16px", display: "flex", gap: 12, alignItems: "center" }}>

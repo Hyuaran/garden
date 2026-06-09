@@ -10,8 +10,8 @@
 import { useMemo } from "react";
 
 import type { Company, FiscalPeriod } from "../_constants/companies";
-import { FOREST_THEME } from "../_constants/theme";
 import { fmtYen } from "../_lib/format";
+import styles from "./ForestDesign.module.css";
 
 type Props = {
   companies: Company[];
@@ -59,49 +59,19 @@ export function SummaryCards({ companies, periods }: Props) {
   }, [companies, periods]);
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-        gap: 16,
-        marginBottom: 32,
-      }}
-    >
-      {cards.map((card) => (
-        <div
+    <div className={styles.kpiGrid}>
+      {cards.map((card, index) => (
+        <article
           key={card.label}
-          style={{
-            background: FOREST_THEME.panelBg,
-            backdropFilter: "blur(20px)",
-            border: `1px solid ${FOREST_THEME.panelBorder}`,
-            borderRadius: FOREST_THEME.panelRadius,
-            padding: "20px 24px",
-            boxShadow: FOREST_THEME.panelShadow,
-          }}
+          className={styles.kpiCard}
         >
-          <div
-            style={{
-              fontSize: 12,
-              color: FOREST_THEME.textMuted,
-              marginBottom: 4,
-            }}
-          >
-            {card.label}
+          <div className={styles.kpiIcon} aria-hidden="true">
+            {["¥", "↗", "◇", "≈", "6"][index] ?? "•"}
           </div>
-          <div
-            style={{
-              fontSize: 24,
-              fontWeight: 800,
-              color: FOREST_THEME.textPrimary,
-              marginBottom: 4,
-            }}
-          >
-            {card.value}
-          </div>
-          <div style={{ fontSize: 11, color: FOREST_THEME.textSecondary }}>
-            {card.sub}
-          </div>
-        </div>
+          <p className={styles.kpiLabel}>{card.label}</p>
+          <p className={styles.kpiValue}>{card.value}</p>
+          <p className={styles.kpiSub}>{card.sub}</p>
+        </article>
       ))}
     </div>
   );

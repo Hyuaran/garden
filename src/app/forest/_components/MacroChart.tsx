@@ -21,8 +21,8 @@ import {
 import { Line } from "react-chartjs-2";
 
 import type { Company, FiscalPeriod } from "../_constants/companies";
-import { FOREST_THEME } from "../_constants/theme";
 import { fmtYen, fmtYenShort } from "../_lib/format";
+import styles from "./ForestDesign.module.css";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -70,28 +70,11 @@ export function MacroChart({ companies, periods }: Props) {
   if (labels.length === 0) return null;
 
   return (
-    <div
-      style={{
-        background: FOREST_THEME.panelBg,
-        backdropFilter: "blur(20px)",
-        border: `1px solid ${FOREST_THEME.panelBorder}`,
-        borderRadius: FOREST_THEME.panelRadius,
-        padding: 24,
-        boxShadow: FOREST_THEME.panelShadow,
-        marginBottom: 32,
-      }}
-    >
-      <h3
-        style={{
-          fontSize: 15,
-          fontWeight: 700,
-          color: FOREST_THEME.textPrimary,
-          marginBottom: 16,
-        }}
-      >
+    <section className={styles.panel}>
+      <h3 className={styles.panelTitle}>
         グループ全体の合算利益推移 ～ 森の視界 ～
       </h3>
-      <div style={{ height: 360 }}>
+      <div className={styles.chartBox} style={{ height: 360 }}>
         <Line
           data={{ labels, datasets }}
           options={{
@@ -112,7 +95,8 @@ export function MacroChart({ companies, periods }: Props) {
               legend: {
                 position: "bottom" as const,
                 labels: {
-                  font: { family: "'Noto Sans JP', sans-serif", size: 12 },
+                  color: "#2d6a4f",
+                  font: { family: "'Noto Sans JP', sans-serif", size: 12, weight: 700 },
                   usePointStyle: true,
                   pointStyle: "circle",
                   padding: 16,
@@ -124,19 +108,20 @@ export function MacroChart({ companies, periods }: Props) {
                 stacked: true,
                 ticks: {
                   callback: (v) => fmtYenShort(v as number),
+                  color: "#4f7862",
                   font: { size: 11 },
                 },
-                grid: { color: "rgba(0,0,0,0.05)" },
+                grid: { color: "rgba(45,106,79,0.08)" },
               },
               x: {
                 stacked: true,
                 grid: { display: false },
-                ticks: { font: { size: 11 } },
+                ticks: { color: "#4f7862", font: { size: 11 } },
               },
             },
           }}
         />
       </div>
-    </div>
+    </section>
   );
 }

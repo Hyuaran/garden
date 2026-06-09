@@ -1,0 +1,412 @@
+.pageStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.pageHero {
+  position: relative;
+  overflow: hidden;
+  padding: 28px 32px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(237, 248, 241, 0.62)),
+    radial-gradient(circle at 88% 12%, rgba(116, 198, 157, 0.28), transparent 32%);
+  box-shadow: 0 18px 48px rgba(27, 67, 50, 0.12);
+  backdrop-filter: blur(18px);
+}
+
+.pageHero::after {
+  content: "";
+  position: absolute;
+  right: 24px;
+  bottom: -42px;
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  border: 1px solid rgba(82, 183, 140, 0.26);
+  box-shadow: inset 0 0 42px rgba(82, 183, 140, 0.14);
+  pointer-events: none;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #2d6a4f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heroTitle {
+  margin: 0;
+  color: #1b4332;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.heroLead {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: #315a46;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.heroActions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.actionLink,
+.subtleButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.actionLink {
+  border: 1px solid rgba(45, 106, 79, 0.36);
+  background: rgba(255, 255, 255, 0.72);
+  color: #1b4332;
+  box-shadow: 0 10px 28px rgba(27, 67, 50, 0.1);
+}
+
+.subtleButton {
+  border: 1px solid rgba(149, 213, 178, 0.55);
+  background: rgba(255, 255, 255, 0.54);
+  color: #2d6a4f;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.kpiCard,
+.panel {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18px 42px rgba(27, 67, 50, 0.1);
+  backdrop-filter: blur(18px);
+}
+
+.kpiCard {
+  position: relative;
+  overflow: hidden;
+  min-height: 148px;
+  padding: 18px 20px;
+}
+
+.kpiCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(140deg, rgba(149, 213, 178, 0.22), transparent 44%);
+  pointer-events: none;
+}
+
+.kpiIcon {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 14px;
+  place-items: center;
+  border: 1px solid rgba(149, 213, 178, 0.68);
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(216, 243, 220, 0.9), rgba(255, 255, 255, 0.45));
+  color: #1b4332;
+  font-size: 20px;
+}
+
+.kpiLabel {
+  position: relative;
+  margin: 0 0 6px;
+  color: #2d6a4f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.kpiValue {
+  position: relative;
+  margin: 0;
+  color: #1b4332;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.kpiSub {
+  position: relative;
+  margin: 7px 0 0;
+  color: #4f7862;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.42fr) minmax(300px, 0.9fr);
+  gap: 18px;
+}
+
+.panel {
+  padding: 22px 24px;
+}
+
+.panelTitle {
+  margin: 0 0 16px;
+  color: #1b4332;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chartBox {
+  height: 340px;
+}
+
+.periodList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.periodItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(149, 213, 178, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.companyLine {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.companyDot {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.52);
+}
+
+.companyName {
+  color: #1b4332;
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.periodBadge {
+  justify-self: end;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(82, 183, 140, 0.22);
+  color: #1b4332;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.periodBadgeGlow {
+  animation: shinkouGlow 2.8s ease-in-out infinite;
+}
+
+.periodDate {
+  grid-column: 1 / -1;
+  color: #4f7862;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.matrixWrap {
+  overflow-x: auto;
+}
+
+.matrixTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.matrixTable th {
+  padding: 0 8px 6px;
+  color: #4f7862;
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.matrixTable th:first-child {
+  text-align: left;
+}
+
+.matrixCompanyCell {
+  min-width: 158px;
+  padding: 8px 10px;
+}
+
+.matrixDataCell {
+  min-width: 126px;
+  padding: 4px;
+  vertical-align: top;
+}
+
+.matrixMiniCard {
+  display: block;
+  width: 100%;
+  min-height: 118px;
+  border: 1px solid rgba(149, 213, 178, 0.26);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  color: inherit;
+  font: inherit;
+  padding: 9px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.matrixMiniCard:hover {
+  border-color: rgba(82, 183, 140, 0.65);
+  box-shadow: 0 12px 24px rgba(27, 67, 50, 0.12);
+  transform: translateY(-1px);
+}
+
+.matrixMiniCardShinkou {
+  border-color: rgba(184, 134, 11, 0.3);
+  background: linear-gradient(135deg, rgba(255, 248, 223, 0.82), rgba(255, 255, 255, 0.56));
+}
+
+.kiBadge {
+  display: inline-flex;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.metricLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #4f7862;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.metricValue {
+  color: #1f2f29;
+  font-weight: 800;
+  text-align: right;
+}
+
+.emptyCell {
+  display: grid;
+  min-height: 72px;
+  place-items: center;
+  color: rgba(49, 90, 70, 0.35);
+  font-size: 12px;
+}
+
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(360px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.workspaceGridCompact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tabBar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid rgba(149, 213, 178, 0.42);
+}
+
+.tabButton {
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #4f7862;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tabButtonActive {
+  border-bottom-color: #2d6a4f;
+  color: #1b4332;
+}
+
+@keyframes shinkouGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(82, 183, 140, 0);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(82, 183, 140, 0.38);
+  }
+}
+
+@media (max-width: 1180px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboardGrid,
+  .workspaceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .pageHero,
+  .panel {
+    padding: 18px;
+  }
+
+  .heroTitle {
+    font-size: 27px;
+  }
+
+  .kpiGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chartBox {
+    height: 280px;
+  }
+}
