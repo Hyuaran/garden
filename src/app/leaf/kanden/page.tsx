@@ -1,5 +1,5 @@
-import KandenPrototypePage from "../_components/KandenPrototypePage";
+import { redirect } from "next/navigation";
 
-export default function LeafKandenPage() {
-  return <KandenPrototypePage />;
+export default function KandenPage() {
+  redirect("/leaf/kanden/input");
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 /**
@@ -15,6 +16,7 @@ interface PageHeaderProps {
   subtitle?: string;
   /** 限定公開バッジ表示 */
   accessBadge?: { icon?: string; label: string };
+  titleAddon?: ReactNode;
   /** お気に入り押下中の状態 */
   isFavorite?: boolean;
   moduleMark?: "sakura" | "forest" | "leaf";
@@ -82,6 +84,7 @@ export default function PageHeader({
   titleJp,
   subtitle,
   accessBadge,
+  titleAddon,
   isFavorite = false,
   moduleMark = "sakura",
   favoriteIcon = "/themes/garden-shell/images/icons_bloom/orb_bud.png",
@@ -213,6 +216,7 @@ export default function PageHeader({
                 </svg>
               )}
             </span>
+            {titleAddon}
           </h1>
         </div>
         {subtitle && <p className="page-subtitle">{subtitle}</p>}

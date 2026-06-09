@@ -6,6 +6,8 @@
  * ここでは移植進行中であることを示すプレースホルダを表示する。
  */
 
+import LegacyUiNotice from "../_components/LegacyUiNotice";
+
 import { C } from "./_constants/colors";
 
 export default function TreeHomePage() {
@@ -39,6 +41,11 @@ export default function TreeHomePage() {
           }}
         >
           Garden Tree
+          <LegacyUiNotice
+            badgeLabel="旧UI・新UI切替予定"
+            toastTitle="旧UI・新UI切替予定"
+            toastBody="Garden Shell への切替を予定しています。既存機能はそのまま利用できます。"
+          />
         </h1>
         <p style={{ fontSize: 14, color: C.textDark, lineHeight: 1.7 }}>
           架電アプリ — プロトタイプから移植中です。

@@ -16,6 +16,8 @@
 
 import { useCallback, useState } from "react";
 
+import LegacyUiNotice from "@/app/_components/LegacyUiNotice";
+
 export default function BloomPageHeader() {
   const [pressed, setPressed] = useState(false);
   const toggle = useCallback(() => setPressed((p) => !p), []);
@@ -61,6 +63,11 @@ export default function BloomPageHeader() {
                 <circle cx="16" cy="16" r="2.8" fill="#d4a541" opacity="0.95" />
               </svg>
             </span>
+            <LegacyUiNotice
+              badgeLabel="旧UI・新UI切替予定"
+              toastTitle="旧UI・新UI切替予定"
+              toastBody="Garden Shell への切替を予定しています。既存機能はそのまま利用できます。"
+            />
           </h1>
         </div>
         <p className="page-subtitle">グループの動きを、咲かせる。</p>

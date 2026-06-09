@@ -26,7 +26,7 @@ const DIVISIONS: DivisionCard[] = [
     title: "関電（関西電力業務委託）",
     description: "OCR取り込み済みの入力UI・事務UIプロトタイプを閲覧できます。",
     status: "ready",
-    href: "/leaf/kanden",
+    href: "/leaf/kanden/input",
     glyph: "🌿",
   },
   {
