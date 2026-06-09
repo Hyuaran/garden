@@ -11,10 +11,16 @@
  * 設計方針: Tree Phase A (src/app/tree/_lib/auth.ts) を踏襲。
  */
 
+import {
+  clearAuthSession,
+  isAuthSessionUnlocked,
+  touchAuthSession,
+  unlockAuthSession,
+} from "@/app/_lib/auth-unified";
 import { supabase } from "./supabase";
 import { SESSION_TIMEOUT_MS } from "./session-timer";
 
-const ROOT_UNLOCKED_KEY = "rootUnlockedAt";
+const ROOT_UNLOCKED_KEY = "root:unlockedAt";
 const ROOT_RETURN_TO_KEY = "rootReturnTo";
 
 export function toSyntheticEmail(empId: string): string {
@@ -43,31 +49,22 @@ export async function signInRoot(
     };
   }
 
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem(ROOT_UNLOCKED_KEY, Date.now().toString());
-  }
+  unlockAuthSession("root");
   return { success: true, userId: data.user.id };
 }
 
 export async function signOutRoot(): Promise<void> {
-  if (typeof window !== "undefined") {
-    sessionStorage.removeItem(ROOT_UNLOCKED_KEY);
-  }
+  clearRootUnlock();
   await supabase.auth.signOut();
 }
 
 export function isRootUnlocked(): boolean {
-  if (typeof window === "undefined") return false;
-  const raw = sessionStorage.getItem(ROOT_UNLOCKED_KEY);
-  if (!raw) return false;
-  const unlockedAt = parseInt(raw, 10);
-  return Date.now() - unlockedAt < SESSION_TIMEOUT_MS;
+  return isAuthSessionUnlocked("root") && getSessionElapsedMs() < SESSION_TIMEOUT_MS;
 }
 
 export function touchRootSession(): void {
-  if (typeof window === "undefined") return;
   if (isRootUnlocked()) {
-    sessionStorage.setItem(ROOT_UNLOCKED_KEY, Date.now().toString());
+    touchAuthSession("root");
   }
 }
 
@@ -76,12 +73,13 @@ export function getSessionElapsedMs(): number {
   if (typeof window === "undefined") return 0;
   const raw = sessionStorage.getItem(ROOT_UNLOCKED_KEY);
   if (!raw) return 0;
-  return Date.now() - parseInt(raw, 10);
+  const unlockedAt = parseInt(raw, 10);
+  if (!Number.isFinite(unlockedAt)) return 0;
+  return Date.now() - unlockedAt;
 }
 
 export function clearRootUnlock(): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(ROOT_UNLOCKED_KEY);
+  clearAuthSession("root");
 }
 
 /** ログアウト時に開いていた URL を保存 (再ログイン後の復帰用) */
@@ -100,6 +98,7 @@ export function popReturnTo(): string {
 }
 
 export async function getSession() {
+  await supabase.auth.getUser();
   const { data } = await supabase.auth.getSession();
   return data.session;
 }
