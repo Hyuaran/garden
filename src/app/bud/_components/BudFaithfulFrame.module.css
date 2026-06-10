@@ -20,30 +20,35 @@
   font-family: "Shippori Mincho", "Noto Serif JP", serif;
 }
 
+/* タブは bud-01-top (BudDashboard .dashboardTab) と同じ「下線スタイル」に統一。
+   GardenShell テーマの金色ピル(.tab-item)を上書きして全 Bud 画面で揃える。 */
 .htmlPort :global(.tab-nav) {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 34px;
   margin: 0 0 24px;
-  padding: 7px;
-  width: fit-content;
+  padding: 0 4px;
+  width: 100%;
   max-width: 100%;
-  background: rgba(255, 253, 246, 0.68);
-  border: 1px solid rgba(180, 165, 130, 0.22);
-  border-radius: 999px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(153, 128, 65, 0.22);
+  border-radius: 0;
 }
 
 .htmlPort :global(.tab-item) {
+  min-height: 40px;
   border: 0;
-  border-radius: 999px;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   background: transparent;
-  color: var(--text-sub);
+  color: #6f694c;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 0.9rem;
+  font-family: "Noto Serif JP", serif;
+  font-size: 0.96rem;
   letter-spacing: 0.04em;
-  padding: 9px 20px;
-  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  padding: 8px 0 12px;
+  transition: color 0.2s, border-color 0.2s;
   white-space: nowrap;
 }
 
@@ -52,10 +57,11 @@
 }
 
 .htmlPort :global(.tab-item.active) {
-  background: var(--bud-gold);
-  box-shadow: 0 2px 8px rgba(212, 165, 65, 0.3);
-  color: #fff;
-  font-weight: 500;
+  background: transparent;
+  box-shadow: none;
+  border-bottom-color: #d4a541;
+  color: #b47a13;
+  font-weight: 600;
 }
 
 .htmlPort :global(.tab-content) {
@@ -112,12 +118,12 @@
   }
 
   .htmlPort :global(.tab-nav) {
-    border-radius: 18px;
+    gap: 18px;
     width: 100%;
+    overflow-x: auto;
   }
 
   .htmlPort :global(.tab-item) {
-    flex: 1 1 auto;
-    min-width: 120px;
+    flex: 0 0 auto;
   }
 }
