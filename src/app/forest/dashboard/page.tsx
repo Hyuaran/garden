@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
@@ -28,12 +28,10 @@ export default function ForestDashboardPage() {
     shinkouki,
   } = useForestState();
 
-  useEffect(() => {
-    if (loading) return;
-    if (!isAuthenticated || !isUnlocked) {
-      router.replace("/forest/login");
-    }
-  }, [loading, isAuthenticated, isUnlocked, router]);
+  // 認証/権限の関所は layout の ForestGate(ModuleGate) が担う。
+  // ここでページ自身が /forest/login へ先走りリダイレクトすると、セッション再開時に
+  // ForestStateContext の非同期 refresh 完了前に発火してバウンスする（Root には無い挙動）。
+  // 描画側ガード（loading→読込中 / 未権限→AccessDenied / 未解錠→null）で十分なため撤去。
 
   const shinkoukiByCompany = useMemo(
     () =>
