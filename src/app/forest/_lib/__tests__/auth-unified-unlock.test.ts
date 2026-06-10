@@ -22,6 +22,7 @@ vi.mock("@/app/bloom/_lib/supabase", () => ({
 import {
   clearForestUnlock,
   isForestUnlocked,
+  markForestUnlocked,
   touchForestSession,
 } from "../auth";
 import {
@@ -40,6 +41,13 @@ describe("Forest unified unlock session", () => {
     expect(isForestUnlocked()).toBe(true);
     expect(window.sessionStorage.getItem("forest:unlockedAt")).toBeTruthy();
     expect(window.sessionStorage.getItem("forestUnlockedAt")).toBeNull();
+  });
+
+  it("marks forest unlocked on authenticated permission refresh", () => {
+    markForestUnlocked();
+
+    expect(isForestUnlocked()).toBe(true);
+    expect(window.sessionStorage.getItem("forest:unlockedAt")).toBeTruthy();
   });
 
   it("touches and clears only the unified forest unlock", () => {

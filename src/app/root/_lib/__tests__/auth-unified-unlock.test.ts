@@ -26,6 +26,7 @@ import {
   clearRootUnlock,
   getSessionElapsedMs,
   isRootUnlocked,
+  markRootUnlocked,
   touchRootSession,
 } from "../auth";
 import {
@@ -44,6 +45,13 @@ describe("Root unified unlock session", () => {
     expect(isRootUnlocked()).toBe(true);
     expect(sessionStorage.getItem("root:unlockedAt")).toBeTruthy();
     expect(sessionStorage.getItem("rootUnlockedAt")).toBeNull();
+  });
+
+  it("marks root unlocked on authenticated permission refresh", () => {
+    markRootUnlocked();
+
+    expect(isRootUnlocked()).toBe(true);
+    expect(sessionStorage.getItem("root:unlockedAt")).toBeTruthy();
   });
 
   it("ignores the legacy root unlock key", () => {

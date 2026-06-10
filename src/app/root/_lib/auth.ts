@@ -68,6 +68,15 @@ export function touchRootSession(): void {
   }
 }
 
+/**
+ * Mark Root as unlocked for the current authenticated session.
+ * Called after refreshAuth verifies both Garden auth and Root view permission
+ * so a resumed session is not immediately timed out by Root's local timer.
+ */
+export function markRootUnlocked(): void {
+  unlockAuthSession("root");
+}
+
 /** 最終操作からの経過ミリ秒 (タイマー警告用) */
 export function getSessionElapsedMs(): number {
   if (typeof window === "undefined") return 0;
