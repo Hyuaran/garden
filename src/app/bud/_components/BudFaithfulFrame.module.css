@@ -1,0 +1,123 @@
+.pageStack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 0 22px 48px;
+}
+
+.htmlPort {
+  --text-main: #3d3528;
+  --text-sub: #6d6356;
+  --text-muted: #9a8f7d;
+  --bud-gold: #d4a541;
+  --bud-gold-dark: #b3892e;
+  --bud-card: rgba(255, 253, 246, 0.78);
+  --bud-line: rgba(180, 165, 130, 0.24);
+  color: var(--text-main);
+  font-family: "Shippori Mincho", "Noto Serif JP", serif;
+}
+
+.htmlPort :global(.tab-nav) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 7px;
+  width: fit-content;
+  max-width: 100%;
+  background: rgba(255, 253, 246, 0.68);
+  border: 1px solid rgba(180, 165, 130, 0.22);
+  border-radius: 999px;
+}
+
+.htmlPort :global(.tab-item) {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-sub);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  padding: 9px 20px;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.htmlPort :global(.tab-item:hover) {
+  color: var(--text-main);
+}
+
+.htmlPort :global(.tab-item.active) {
+  background: var(--bud-gold);
+  box-shadow: 0 2px 8px rgba(212, 165, 65, 0.3);
+  color: #fff;
+  font-weight: 500;
+}
+
+.htmlPort :global(.tab-content) {
+  display: none;
+}
+
+.htmlPort :global(.tab-content.active) {
+  display: block;
+}
+
+.htmlPort :global(.ceo-card),
+.htmlPort :global(.glass-card),
+.htmlPort :global(.bud-panel),
+.htmlPort :global(.bud-summary-card) {
+  background: var(--bud-card);
+  border: 1px solid var(--bud-line);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(94, 76, 37, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.htmlPort :global(table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.htmlPort :global(th),
+.htmlPort :global(td) {
+  vertical-align: middle;
+}
+
+.htmlPort :global(button),
+.htmlPort :global(input),
+.htmlPort :global(select),
+.htmlPort :global(textarea) {
+  font: inherit;
+}
+
+.htmlPort :global(button) {
+  cursor: pointer;
+}
+
+.htmlPort :global(svg) {
+  max-width: 100%;
+}
+
+.htmlPort :global(.main) {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .pageStack {
+    padding: 0 12px 36px;
+  }
+
+  .htmlPort :global(.tab-nav) {
+    border-radius: 18px;
+    width: 100%;
+  }
+
+  .htmlPort :global(.tab-item) {
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+}
