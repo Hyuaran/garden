@@ -10,11 +10,10 @@ export const companyTabs = [
   "壱",
 ] as const;
 
+// 実務 / 監査 / 設定 は左メニューに独立しているため重複。タブのデザインを残すため
+// 「全体 / Overview」1 タブのみを表示する。
 export const dashboardTabs = [
   { id: "overview", label: "全体 / Overview" },
-  { id: "operations", label: "実務 / Operations" },
-  { id: "audit", label: "監査 / Audit" },
-  { id: "settings", label: "設定 / Settings" },
 ] as const;
 
 export const kpis = [
