@@ -21,7 +21,7 @@ import {
 } from "react";
 
 import type { Company, FiscalPeriod, ForestUser, Shinkouki } from "../_constants/companies";
-import { clearForestUnlock, getSession, isForestUnlocked, signOutForest } from "../_lib/auth";
+import { clearForestUnlock, getSession, markForestUnlocked, signOutForest } from "../_lib/auth";
 import { writeAuditLog } from "../_lib/audit";
 import { fetchCompanies, fetchFiscalPeriods, fetchForestUser, fetchLastUpdated, fetchShinkouki } from "../_lib/queries";
 import { startSessionTimer } from "../_lib/session-timer";
@@ -167,12 +167,14 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Forest の利用権限がありません" };
       }
 
-      // 権限あり → 状態更新
+      // Valid Garden auth + Forest permission restores the Forest unlock for
+      // resumed sessions (reload/new tab/expired sessionStorage key).
+      markForestUnlocked();
       setIsAuthenticated(true);
       setUserEmail(session.user.email ?? null);
       setHasPermission(true);
       setForestUser(fu);
-      setIsUnlocked(isForestUnlocked());
+      setIsUnlocked(true);
       return { success: true };
     } catch (err) {
       console.error("[forest] Refresh auth error:", err);

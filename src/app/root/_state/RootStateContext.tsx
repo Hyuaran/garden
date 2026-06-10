@@ -34,6 +34,7 @@ import {
   getSession,
   getSessionElapsedMs,
   isRootUnlocked,
+  markRootUnlocked,
   signOutRoot as signOutRootLib,
   touchRootSession,
 } from "../_lib/auth";
@@ -106,6 +107,9 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
             "Garden-Root へのアクセス権限がありません。責任者以上の方にお問い合わせください",
         };
       }
+      // Valid Garden auth + Root view permission restores the Root unlock for
+      // resumed sessions before the local timeout watcher starts polling.
+      markRootUnlocked();
       setRootUser(user);
       setIsAuthenticated(true);
       return { success: true };

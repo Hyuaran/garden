@@ -86,6 +86,16 @@ export function touchForestSession(): void {
   touchAuthSession("forest");
 }
 
+/**
+ * Mark Forest as unlocked for the current authenticated session.
+ * Forest currently uses the unified Garden login redirect stub, so a valid
+ * Garden session with Forest permission is sufficient to restore the module
+ * unlock after reload/new tab/session resume.
+ */
+export function markForestUnlocked(): void {
+  unlockAuthSession("forest");
+}
+
 /** Forest ゲート強制ロック（権限チェック失敗時など） */
 export function clearForestUnlock(): void {
   clearAuthSession("forest");
