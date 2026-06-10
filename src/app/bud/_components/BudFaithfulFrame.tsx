@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
@@ -12,6 +12,38 @@ import { getBudGardenPageMenu } from "./bud-garden-menu";
 import styles from "./BudFaithfulFrame.module.css";
 
 const BUD_ICON = "/themes/garden-shell/images/icons_bloom/orb_bud.png";
+const nativeTabRoots = new WeakSet<HTMLElement>();
+
+function activateInjectedTab(root: HTMLElement, eventTarget: EventTarget | null): boolean {
+  const targetElement =
+    eventTarget instanceof Element ? eventTarget : eventTarget instanceof Node ? eventTarget.parentElement : null;
+  const tab = targetElement?.closest<HTMLElement>(".tab-item[data-tab]");
+  if (!tab || !root.contains(tab)) return false;
+
+  const target = tab.dataset.tab;
+  if (!target) return false;
+
+  const tabs = Array.from(root.querySelectorAll<HTMLElement>(".tab-item[data-tab]"));
+  const contents = Array.from(root.querySelectorAll<HTMLElement>(".tab-content[id]"));
+
+  tabs.forEach((item) => {
+    const selected = item === tab;
+    item.classList.toggle("active", selected);
+    item.setAttribute("aria-selected", selected ? "true" : "false");
+  });
+
+  contents.forEach((content) => {
+    content.classList.toggle("active", content.id === `tab-${target}`);
+  });
+
+  return true;
+}
+
+function handleNativeTabClick(event: globalThis.MouseEvent) {
+  if (activateInjectedTab(event.currentTarget as HTMLElement, event.target)) {
+    event.preventDefault();
+  }
+}
 
 function formatRoleLabel(role: string | null): string {
   if (role === "admin") return "全権管理 + 経理担当";
@@ -40,39 +72,17 @@ export function BudFaithfulFrame({
   const { sessionUser, signOut, budRole } = useBudState();
   const userName = sessionUser?.name ?? "東海林 美琴";
 
-  useEffect(() => {
-    const root = document.querySelector<HTMLElement>(`[data-bud-port="${route}"]`);
-    if (!root) return;
+  const bindTabClick = (node: HTMLElement | null) => {
+    if (!node || nativeTabRoots.has(node)) return;
+    node.addEventListener("click", handleNativeTabClick);
+    nativeTabRoots.add(node);
+  };
 
-    const tabs = Array.from(root.querySelectorAll<HTMLElement>(".tab-item[data-tab]"));
-    const contents = Array.from(root.querySelectorAll<HTMLElement>(".tab-content[id]"));
-
-    const handleClick = (event: Event) => {
-      const tab = event.currentTarget as HTMLElement;
-      const target = tab.dataset.tab;
-      if (!target) return;
-
-      tabs.forEach((item) => {
-        item.classList.toggle("active", item === tab);
-        item.setAttribute("aria-selected", item === tab ? "true" : "false");
-      });
-
-      contents.forEach((content) => {
-        content.classList.toggle("active", content.id === `tab-${target}`);
-      });
-    };
-
-    tabs.forEach((tab, index) => {
-      tab.setAttribute("type", "button");
-      tab.setAttribute("role", "tab");
-      tab.setAttribute("aria-selected", tab.classList.contains("active") || index === 0 ? "true" : "false");
-      tab.addEventListener("click", handleClick);
-    });
-
-    return () => {
-      tabs.forEach((tab) => tab.removeEventListener("click", handleClick));
-    };
-  }, [route, sourceHtml]);
+  const handleTabClick = (event: ReactMouseEvent<HTMLElement>) => {
+    if (activateInjectedTab(event.currentTarget, event.target)) {
+      event.preventDefault();
+    }
+  };
 
   return (
     <BudGate>
@@ -96,8 +106,10 @@ export function BudFaithfulFrame({
           />
           <style dangerouslySetInnerHTML={{ __html: sourceCss }} />
           <main
+            ref={bindTabClick}
             className={styles.htmlPort}
             data-bud-port={route}
+            onClick={handleTabClick}
             dangerouslySetInnerHTML={{ __html: sourceHtml }}
           />
         </div>
