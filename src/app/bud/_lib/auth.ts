@@ -67,6 +67,17 @@ export function touchBudSession(): void {
   touchAuthSession("bud");
 }
 
+/**
+ * Mark Bud as unlocked for the current authenticated session.
+ * Bud has no separate password gate beyond the Garden login, so a valid
+ * Garden session with Bud access is sufficient to be "unlocked". Called from
+ * refreshAuth so a resumed cookie session (new tab / reload / >2h) is not
+ * bounced to /bud/login by the BudGate unlock check.
+ */
+export function markBudUnlocked(): void {
+  unlockAuthSession("bud");
+}
+
 /** Clear only the Bud unlock key. */
 export function clearBudUnlock(): void {
   clearAuthSession("bud");
