@@ -55,21 +55,19 @@
   color: var(--text-main);
 }
 
-/* active = bud-01-top と同じオレンジ(金)。テーマ既定は緑(#7a9968)なので上書き。 */
-.htmlPort :global(.tab-item.active) {
+/* active = bud-01-top と同じオレンジ(金)。テーマ既定は緑(#7a9968)。
+   ボタン本体・子要素(/Import 等の直テキスト含む)を確実に上書き(!important)。 */
+.htmlPort :global(.tab-item.active),
+.htmlPort :global(.tab-item.active *) {
   background: transparent;
   box-shadow: none;
-  color: #b47a13;
+  color: #b47a13 !important;
   font-weight: 600;
 }
 
-.htmlPort :global(.tab-item.active .tab-item-jp) {
-  color: #b47a13;
-}
-
 /* 下線は擬似要素 ::after で描かれる。色を緑→金に上書き。 */
-.htmlPort :global(.tab-item.active::after) {
-  background: #d4a541;
+.htmlPort :global(.tab-item.active)::after {
+  background: #d4a541 !important;
 }
 
 .htmlPort :global(.tab-content) {
