@@ -28,7 +28,7 @@ import type { BudRole, BudSessionUser } from "../_constants/types";
 import {
   clearBudUnlock,
   getSession,
-  isBudUnlocked,
+  markBudUnlocked,
   signOutBud as signOutBudLib,
 } from "../_lib/auth";
 import { fetchBudSessionUser } from "../_lib/queries";
@@ -108,9 +108,12 @@ export function BudStateProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Bud利用権限がありません" };
       }
 
+      // 有効な Garden セッション＋Bud権限があれば解錠扱いにする（再開セッション/2h経過でも
+      // BudGate に弾かれないよう、解錠フラグをここで確実に立てる）。
+      markBudUnlocked();
       setIsAuthenticated(true);
       setHasPermission(true);
-      setIsUnlocked(isBudUnlocked());
+      setIsUnlocked(true);
       setSessionUser(user);
       return { success: true };
     } catch (e) {
