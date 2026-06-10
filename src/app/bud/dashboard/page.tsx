@@ -1,105 +1,273 @@
 "use client";
 
-/**
- * Garden-Bud — ダッシュボード
- *
- * Phase 0: ログイン後の起点ページ。
- * Phase 1〜3 で KPI カードに実数値を表示する。
- */
+import {
+  CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Tooltip,
+} from "chart.js";
+import { Line } from "react-chartjs-2";
+
+import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
+import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
 import { BudGate } from "../_components/BudGate";
-import { BudShell } from "../_components/BudShell";
+import { BUD_GARDEN_PAGE_MENU } from "../_components/bud-garden-menu";
 import { useBudState } from "../_state/BudStateContext";
-import { BUD_ROLE_LABELS } from "../_constants/roles";
+import {
+  budActivityItems,
+  companyTabs,
+  dashboardTabs,
+  kpis,
+  mirrorItems,
+  profitTrend,
+  quickActions,
+  waitingItems,
+} from "./mock-data";
+import styles from "./BudDashboard.module.css";
 
-function DashboardContent() {
-  const { sessionUser } = useBudState();
-  if (!sessionUser) return null;
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">ダッシュボード</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {sessionUser.name}（{BUD_ROLE_LABELS[sessionUser.effective_bud_role]}
-          ）でログイン中
-        </p>
-      </div>
+const BUD_ICON = "/themes/garden-shell/images/icons_bloom/orb_bud.png";
 
-      {/* KPI カード（Phase 0: プレースホルダー） */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <KpiCard
-          icon="💸"
-          label="未承認の振込"
-          value="—"
-          description="Phase 1 で表示"
-          disabled
-        />
-        <KpiCard
-          icon="📋"
-          label="未照合の明細"
-          value="—"
-          description="Phase 2 で表示"
-          disabled
-        />
-        <KpiCard
-          icon="💰"
-          label="今月の給与処理"
-          value="—"
-          description="Phase 3 で表示"
-          disabled
-        />
-      </div>
-
-      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-emerald-800 mb-2">
-          🌱 Garden-Bud へようこそ
-        </h2>
-        <p className="text-sm text-emerald-700">
-          Phase 0（認証基盤）が完了しました。
-          <br />
-          次のフェーズで振込管理・入出金明細・給与処理が順次利用可能になります。
-        </p>
-        <ul className="mt-3 space-y-1 text-sm text-emerald-600">
-          <li>✅ Phase 0 — 認証・権限基盤</li>
-          <li className="opacity-50">⬜ Phase 1 — 振込管理</li>
-          <li className="opacity-50">⬜ Phase 2 — 入出金明細</li>
-          <li className="opacity-50">⬜ Phase 3 — 給与処理</li>
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-interface KpiCardProps {
-  icon: string;
-  label: string;
-  value: string;
-  description: string;
-  disabled?: boolean;
-}
-
-function KpiCard({ icon, label, value, description, disabled }: KpiCardProps) {
-  return (
-    <div
-      className={`bg-white rounded-xl border border-gray-200 p-5 ${
-        disabled ? "opacity-50" : ""
-      }`}
-    >
-      <div className="text-2xl mb-3">{icon}</div>
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
-      <div className="text-3xl font-bold text-gray-800">{value}</div>
-      <div className="text-xs text-gray-400 mt-1">{description}</div>
-    </div>
-  );
+function formatRoleLabel(role: string | null): string {
+  if (role === "admin") return "全権管理者 + 経理担当";
+  if (role === "approver") return "承認者 + 経理担当";
+  if (role === "staff") return "経理担当";
+  return "Bud";
 }
 
 export default function DashboardPage() {
+  const { sessionUser, signOut, budRole } = useBudState();
+  const userName = sessionUser?.name ?? "東海林 美琴";
+
   return (
     <BudGate>
-      <BudShell>
-        <DashboardContent />
-      </BudShell>
+      <GardenShell
+        activeModule="bud"
+        pageMenu={BUD_GARDEN_PAGE_MENU}
+        activityItems={budActivityItems}
+        userName={userName}
+        userEmail={sessionUser?.employee_number ? `${sessionUser.employee_number}@garden.local` : null}
+        userRoleLabel={formatRoleLabel(budRole)}
+        onLogout={signOut}
+      >
+        <div className={styles.pageStack}>
+          <PageHeader
+            title="Bud"
+            titleJp="経理の蕾、ひらく前の数字たち"
+            subtitle="経理実務の統合管理"
+            accessBadge={{ icon: "♕", label: formatRoleLabel(budRole) }}
+            moduleMark="bud"
+            favoriteIcon={BUD_ICON}
+          />
+
+          <div className={styles.dashboardTabs} role="tablist" aria-label="Bud dashboard tabs">
+            {dashboardTabs.map((tab, index) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={index === 0}
+                className={`${styles.dashboardTab} ${index === 0 ? styles.dashboardTabActive : ""}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.companyTabs} aria-label="法人別タブ">
+            {companyTabs.map((company, index) => (
+              <button
+                key={company}
+                type="button"
+                className={`${styles.companyTab} ${index === 0 ? styles.companyTabActive : ""}`}
+              >
+                {company}
+              </button>
+            ))}
+          </div>
+
+          <section className={styles.kpiGrid} aria-label="Bud KPI">
+            {kpis.map((kpi) => (
+              <article className={styles.kpiCard} key={kpi.label}>
+                <div className={styles.kpiHead}>
+                  <span className={styles.kpiIcon}>{kpi.icon}</span>
+                  <span className={styles.kpiLabel}>{kpi.label}</span>
+                </div>
+                <p className={styles.kpiValue}>{kpi.value}</p>
+                <p className={styles.kpiNote}>{kpi.note}</p>
+                <Sparkline values={kpi.series} variant={kpi.chart} />
+              </article>
+            ))}
+          </section>
+
+          <section className={styles.mainGrid}>
+            <ProfitTrendChart />
+            <TodayWaitingPanel />
+            <QuickActionsPanel />
+          </section>
+
+          <section className={styles.mirrorPanel}>
+            <div className={styles.sectionHeader}>
+              <h2>Bloom / Forest へのミラー</h2>
+              <span aria-hidden="true">ⓘ</span>
+            </div>
+            <div className={styles.mirrorGrid}>
+              {mirrorItems.map((item) => (
+                <article className={styles.mirrorItem} key={item.title}>
+                  <span className={styles.mirrorIcon}>{item.icon}</span>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p>{item.body}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      </GardenShell>
     </BudGate>
+  );
+}
+
+function Sparkline({ values, variant }: { values: readonly number[]; variant: "bars" | "line" }) {
+  if (variant === "bars") {
+    return (
+      <div className={styles.sparkBars} aria-hidden="true">
+        {values.map((value, index) => (
+          <span key={`${value}-${index}`} style={{ height: `${value}%` }} />
+        ))}
+      </div>
+    );
+  }
+
+  const width = 190;
+  const height = 54;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const points = values.map((value, index) => {
+    const x = (index / Math.max(values.length - 1, 1)) * width;
+    const y = height - ((value - min) / Math.max(max - min, 1)) * (height - 8) - 4;
+    return `${x},${y}`;
+  });
+
+  return (
+    <svg className={styles.sparkLine} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+      <polyline points={points.join(" ")} fill="none" stroke="currentColor" strokeWidth="2.4" />
+      {points.map((point) => {
+        const [cx, cy] = point.split(",");
+        return <circle key={point} cx={cx} cy={cy} r="3" />;
+      })}
+    </svg>
+  );
+}
+
+function ProfitTrendChart() {
+  return (
+    <section className={`${styles.panel} ${styles.chartPanel}`}>
+      <div className={styles.sectionHeader}>
+        <h2>利益推移</h2>
+        <div className={styles.chartTools}>
+          <button type="button">全期間</button>
+          <button type="button">法人別</button>
+        </div>
+      </div>
+      <div className={styles.chartBox}>
+        <Line
+          data={{
+            labels: profitTrend.labels,
+            datasets: profitTrend.datasets.map((dataset) => ({
+              ...dataset,
+              fill: true,
+              tension: 0.38,
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 6,
+              borderColor: dataset.color,
+              backgroundColor: `${dataset.color}33`,
+            })),
+          }}
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index" as const, intersect: false },
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: {
+                  color: "#6e6a45",
+                  usePointStyle: true,
+                  pointStyle: "circle",
+                  padding: 16,
+                  font: { size: 12, weight: 600 },
+                },
+              },
+              tooltip: {
+                callbacks: {
+                  label: (context) => `${context.dataset.label}: ${context.parsed.y}万円`,
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: "#817b55" },
+              },
+              y: {
+                ticks: {
+                  color: "#817b55",
+                  callback: (value) => `${value}万`,
+                },
+                grid: { color: "rgba(159, 140, 83, 0.12)" },
+              },
+            },
+          }}
+        />
+      </div>
+    </section>
+  );
+}
+
+function TodayWaitingPanel() {
+  return (
+    <section className={`${styles.panel} ${styles.waitingPanel}`}>
+      <div className={styles.sectionHeader}>
+        <h2>経理実務</h2>
+        <span>今日の処理待ち</span>
+      </div>
+      <div className={styles.waitingList}>
+        {waitingItems.map((item) => (
+          <div className={styles.waitingItem} key={item.label}>
+            <span className={styles.listIcon}>{item.icon}</span>
+            <span>{item.label}</span>
+            <strong>{item.count}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function QuickActionsPanel() {
+  return (
+    <section className={`${styles.panel} ${styles.actionsPanel}`}>
+      <div className={styles.sectionHeader}>
+        <h2>実務へ、すぐ</h2>
+      </div>
+      <div className={styles.actionGrid}>
+        {quickActions.map((action) => (
+          <button type="button" className={styles.actionButton} key={action.label}>
+            <span className={styles.actionIcon}>{action.icon}</span>
+            <span>{action.label}</span>
+            <span className={styles.actionArrow}>›</span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

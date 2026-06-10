@@ -19,7 +19,7 @@ interface PageHeaderProps {
   titleAddon?: ReactNode;
   /** お気に入り押下中の状態 */
   isFavorite?: boolean;
-  moduleMark?: "sakura" | "forest" | "leaf";
+  moduleMark?: "sakura" | "forest" | "leaf" | "bud";
   favoriteIcon?: string;
 }
 
@@ -178,6 +178,32 @@ export default function PageHeader({
                     opacity="0.78"
                   />
                   <circle cx="16" cy="24.5" r="2.2" fill="#b8860b" opacity="0.78" />
+                </svg>
+              ) : moduleMark === "bud" ? (
+                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path
+                    d="M15.8 25.6c.3-6.7 1.5-11.6 3.7-15.8"
+                    fill="none"
+                    stroke="#7a943d"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M13.8 18.5C8.5 17.3 5.5 13.3 5.6 7.1c6.2.8 9.9 4.6 8.2 11.4Z"
+                    fill="#c7d66b"
+                    opacity="0.92"
+                  />
+                  <path
+                    d="M18 15.2c1-5.8 5.1-9.2 11.3-9.3.3 6.5-3.8 10.6-11.3 9.3Z"
+                    fill="#9fbd4c"
+                    opacity="0.86"
+                  />
+                  <path
+                    d="M16.5 23.7c-2.6-3.1-1.9-6.8 2-10.7 3 4.1 2.5 7.7-2 10.7Z"
+                    fill="#e2d85b"
+                    opacity="0.8"
+                  />
+                  <circle cx="15.9" cy="25.4" r="2" fill="#d2a53b" opacity="0.88" />
                 </svg>
               ) : moduleMark === "leaf" ? (
                 <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
