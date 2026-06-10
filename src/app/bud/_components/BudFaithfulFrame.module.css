@@ -39,7 +39,6 @@
 .htmlPort :global(.tab-item) {
   min-height: 40px;
   border: 0;
-  border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
   color: #6f694c;
@@ -48,7 +47,7 @@
   font-size: 0.96rem;
   letter-spacing: 0.04em;
   padding: 8px 0 12px;
-  transition: color 0.2s, border-color 0.2s;
+  transition: color 0.2s;
   white-space: nowrap;
 }
 
@@ -56,12 +55,21 @@
   color: var(--text-main);
 }
 
+/* active = bud-01-top と同じオレンジ(金)。テーマ既定は緑(#7a9968)なので上書き。 */
 .htmlPort :global(.tab-item.active) {
   background: transparent;
   box-shadow: none;
-  border-bottom-color: #d4a541;
   color: #b47a13;
   font-weight: 600;
+}
+
+.htmlPort :global(.tab-item.active .tab-item-jp) {
+  color: #b47a13;
+}
+
+/* 下線は擬似要素 ::after で描かれる。色を緑→金に上書き。 */
+.htmlPort :global(.tab-item.active::after) {
+  background: #d4a541;
 }
 
 .htmlPort :global(.tab-content) {
