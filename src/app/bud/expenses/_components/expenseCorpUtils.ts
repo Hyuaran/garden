@@ -13,6 +13,7 @@ export const FALLBACK_CORPS: Corp[] = [
   { id: "arata", name_short: "ARATA" },
   { id: "taiyou", name_short: "たいよう" },
   { id: "ichi", name_short: "壱" },
+  { id: "stonebase", name_short: "ストーンベース" },
 ];
 
 const CORP_ORDER = FALLBACK_CORPS.map((corp) => corp.id);
