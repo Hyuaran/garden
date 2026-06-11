@@ -22,6 +22,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
   const [shotN, setShotN] = useState(0); // この起動中に撮った枚数（手応え表示）
+  const [thumbs, setThumbs] = useState<string[]>([]); // 撮った写真のサムネ（直近）
 
   useEffect(() => {
     let active = true;
@@ -67,8 +68,14 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
         if (!blob) return;
         onCapture(blob);
         setShotN((n) => n + 1);
+        setThumbs((t) => [...t, URL.createObjectURL(blob)].slice(-8));
+        try {
+          navigator.vibrate?.(40);
+        } catch {
+          /* 非対応端末は無視 */
+        }
         setFlash(true);
-        setTimeout(() => setFlash(false), 120);
+        setTimeout(() => setFlash(false), 150);
       },
       "image/jpeg",
       0.9,
@@ -133,6 +140,14 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
       {/* シャッター */}
       {!error && (
         <div style={bottomBar}>
+          {thumbs.length > 0 && (
+            <div style={thumbStrip}>
+              {thumbs.map((u, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={`${u}-${i}`} src={u} alt="" style={thumbImg} />
+              ))}
+            </div>
+          )}
           <button
             type="button"
             onClick={shoot}
@@ -142,6 +157,9 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
           >
             <span style={shutterInner} />
           </button>
+          {shotN > 0 && !atMax && (
+            <div style={{ color: "#fff", fontSize: 12, marginTop: 8 }}>✓ {shotN} 枚 撮影しました</div>
+          )}
           {atMax && <div style={{ color: "#fff", fontSize: 12, marginTop: 8 }}>最大{max}枚に達しました</div>}
         </div>
       )}
@@ -205,6 +223,22 @@ const bottomBar: React.CSSProperties = {
   alignItems: "center",
   padding: "14px 0 calc(18px + env(safe-area-inset-bottom))",
   background: "rgba(0,0,0,0.6)",
+};
+const thumbStrip: React.CSSProperties = {
+  display: "flex",
+  gap: 6,
+  marginBottom: 12,
+  maxWidth: "100%",
+  overflowX: "auto",
+  padding: "0 12px",
+};
+const thumbImg: React.CSSProperties = {
+  width: 44,
+  height: 44,
+  objectFit: "cover",
+  borderRadius: 8,
+  border: "2px solid rgba(255,255,255,0.85)",
+  flexShrink: 0,
 };
 const shutter: React.CSSProperties = {
   width: 72,
