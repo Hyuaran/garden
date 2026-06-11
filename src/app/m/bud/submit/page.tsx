@@ -1,17 +1,23 @@
 "use client";
 
-/**
- * Garden モバイル — 経費申請（撮影〜選択〜送信）
- * Phase 2 第1版：枠カメラ（スマホ純正カメラ）で連続撮影 → 選択（全選択/全解除・失敗は選択不可）→ 送信。
- * ※撮影は <input type=file capture> 方式（全機種で確実・高画質）。ライブ枠プレビューは後続で強化。
- * ※送信の実保存(DB/Storage)とOCRは後続フェーズで接続（本版は撮影〜選択UXと送信導線まで）。
- */
-
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 
+import {
+  budBackLink,
+  budCard,
+  budHeader,
+  budLead,
+  budMobile,
+  budNotice,
+  budPage,
+  budPrimaryButton,
+  budSecondaryButton,
+  budSectionTitle,
+  budTitle,
+} from "../../_lib/mobile-theme";
 import { CameraCapture } from "./CameraCapture";
 
 type Shot = {
@@ -20,21 +26,22 @@ type Shot = {
   ts: number;
   selected: boolean;
   failed: boolean;
-  rotation: number; // 0/90/180/270
+  rotation: number;
 };
+
+type ExpenseKind = "individual" | "company";
 
 const MAX_SHOTS = 50;
 
-// 画像を指定角度に回転した Blob を返す
 async function rotateBlob(blob: Blob, deg: number): Promise<Blob> {
   if (!deg) return blob;
   const url = URL.createObjectURL(blob);
   try {
-    const img = await new Promise<HTMLImageElement>((res, rej) => {
-      const im = new Image();
-      im.onload = () => res(im);
-      im.onerror = rej;
-      im.src = url;
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = url;
     });
     const rad = (deg * Math.PI) / 180;
     const swap = deg % 180 !== 0;
@@ -46,16 +53,14 @@ async function rotateBlob(blob: Blob, deg: number): Promise<Blob> {
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(rad);
     ctx.drawImage(img, -img.width / 2, -img.height / 2);
-    return await new Promise<Blob>((res) => canvas.toBlob((b) => res(b ?? blob), "image/jpeg", 0.9));
+    return await new Promise<Blob>((resolve) => canvas.toBlob((next) => resolve(next ?? blob), "image/jpeg", 0.9));
   } finally {
     URL.revokeObjectURL(url);
   }
 }
 
-type ExpenseKind = "individual" | "company";
-
 export default function MobileExpenseSubmit() {
-  const [kind, setKind] = useState<ExpenseKind>("individual"); // 個別経費が多数のため既定
+  const [kind, setKind] = useState<ExpenseKind>("individual");
   const [shots, setShots] = useState<Shot[]>([]);
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -66,6 +71,9 @@ export default function MobileExpenseSubmit() {
   const seq = useRef(0);
   const router = useRouter();
 
+  const selectedCount = shots.filter((shot) => shot.selected && !shot.failed).length;
+  const selectableCount = shots.filter((shot) => !shot.failed).length;
+
   const handleBack = () => {
     if (shots.length > 0) setShowLeaveConfirm(true);
     else router.push("/m/bud");
@@ -73,34 +81,35 @@ export default function MobileExpenseSubmit() {
 
   const addShot = (blob: Blob) => {
     seq.current += 1;
-    const shot: Shot = {
-      id: `s${seq.current}`,
-      url: URL.createObjectURL(blob),
-      ts: Date.now(),
-      selected: true,
-      failed: false,
-      rotation: 0,
-    };
-    setShots((prev) => (prev.length >= MAX_SHOTS ? prev : [...prev, shot]));
+    setShots((prev) =>
+      prev.length >= MAX_SHOTS
+        ? prev
+        : [
+            ...prev,
+            {
+              id: `s${seq.current}`,
+              url: URL.createObjectURL(blob),
+              ts: Date.now(),
+              selected: true,
+              failed: false,
+              rotation: 0,
+            },
+          ],
+    );
     setSent(false);
   };
 
-  const rotateShot = (id: string) =>
-    setShots((prev) => prev.map((s) => (s.id === id && !s.failed ? { ...s, rotation: (s.rotation + 90) % 360 } : s)));
-
   const toggle = (id: string) =>
-    setShots((prev) =>
-      prev.map((s) => (s.id === id && !s.failed ? { ...s, selected: !s.selected } : s)),
-    );
+    setShots((prev) => prev.map((shot) => (shot.id === id && !shot.failed ? { ...shot, selected: !shot.selected } : shot)));
+
+  const rotateShot = (id: string) =>
+    setShots((prev) => prev.map((shot) => (shot.id === id && !shot.failed ? { ...shot, rotation: (shot.rotation + 90) % 360 } : shot)));
 
   const markFailed = (id: string) =>
-    setShots((prev) => prev.map((s) => (s.id === id ? { ...s, failed: true, selected: false } : s)));
+    setShots((prev) => prev.map((shot) => (shot.id === id ? { ...shot, failed: true, selected: false } : shot)));
 
-  const selectableCount = shots.filter((s) => !s.failed).length;
-  const selectedCount = shots.filter((s) => s.selected && !s.failed).length;
-
-  const setAll = (val: boolean) =>
-    setShots((prev) => prev.map((s) => (s.failed ? s : { ...s, selected: val })));
+  const setAll = (selected: boolean) =>
+    setShots((prev) => prev.map((shot) => (shot.failed ? shot : { ...shot, selected })));
 
   const submit = async () => {
     if (selectedCount === 0 || submitting) return;
@@ -108,54 +117,38 @@ export default function MobileExpenseSubmit() {
     setError(null);
     try {
       const supabase = createBrowserClient();
-
-      // ログイン中の本人を auth から特定 → 本人の社員IDだけを取得（管理者でも自分1件に絞る）
       const { data: auth } = await supabase.auth.getUser();
       const authUserId = auth?.user?.id ?? null;
-      if (!authUserId) {
-        setError("ログインが切れています。ログインし直してください。");
-        setSubmitting(false);
-        return;
-      }
+      if (!authUserId) throw new Error("ログインが切れています。もう一度ログインしてください。");
+
       const { data: emp } = await supabase
         .from("root_employees")
         .select("employee_id")
         .eq("user_id", authUserId)
         .maybeSingle<{ employee_id: string }>();
       const empId = emp?.employee_id ?? null;
-      if (!empId) {
-        setError("社員情報が見つかりませんでした（このアカウントに社員データが紐づいていない可能性）。");
-        setSubmitting(false);
-        return;
-      }
+      if (!empId) throw new Error("社員情報が見つかりません。");
 
-      // 現状は会社経費も個別経費と同じフロー（承認待ちから）。
-      // 将来：会社経費は承認済みのため仕訳化へ直行に切替予定。
-      const status = "submitted";
-      const targets = shots.filter((s) => s.selected && !s.failed);
-
-      // Drive 用の人間可読ファイル名: 日付_時刻_社員番号_連番.jpg（例: 20260611_1851_0008_01.jpg）
       const now = new Date();
-      const pad = (n: number, w = 2) => String(n).padStart(w, "0");
+      const pad = (n: number, width = 2) => String(n).padStart(width, "0");
       const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
       const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
       const empNo = empId.replace(/^EMP-/, "");
       let seqNo = 0;
 
+      const targets = shots.filter((shot) => shot.selected && !shot.failed);
       for (const shot of targets) {
         let blob = await (await fetch(shot.url)).blob();
         if (shot.rotation) blob = await rotateBlob(blob, shot.rotation);
         seqNo += 1;
         const driveName = `${ymd}_${hm}_${empNo}_${pad(seqNo)}.jpg`;
-
-        // 1) Supabase Storage（レビュー画面の表示・OCR用の正）
         const path = `${empId}/${shot.ts}-${shot.id}.jpg`;
+
         const up = await supabase.storage
           .from("bud-receipts")
           .upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: false });
         if (up.error) throw up.error;
 
-        // 2) Google Drive（申請者に見せる用ミラー）。失敗しても申請は成立させる
         let driveFileId: string | null = null;
         let driveViewUrl: string | null = null;
         try {
@@ -169,19 +162,20 @@ export default function MobileExpenseSubmit() {
             driveViewUrl = json.viewUrl ?? null;
           }
         } catch {
-          // Drive 側の失敗は黙って続行（Storage に画像はある）
+          // Storageには保存済みなので、Drive側だけ失敗しても申請は続行する。
         }
 
         const ins = await supabase.from("bud_expense_requests").insert({
           applicant_employee_id: empId,
           expense_kind: kind,
-          status,
+          status: "submitted",
           storage_path: up.data?.path ?? path,
           drive_file_id: driveFileId,
           drive_view_url: driveViewUrl,
         });
         if (ins.error) throw ins.error;
       }
+
       setSentCount(targets.length);
       setSent(true);
     } catch (e) {
@@ -192,32 +186,31 @@ export default function MobileExpenseSubmit() {
   };
 
   const resetForm = () => {
-    shots.forEach((s) => URL.revokeObjectURL(s.url));
+    shots.forEach((shot) => URL.revokeObjectURL(shot.url));
     setShots([]);
     setSent(false);
     setSentCount(0);
     setError(null);
   };
 
-  // 送信完了画面（専用ページ）
   if (sent) {
     return (
-      <main style={successMain}>
-        <div style={{ textAlign: "center" }}>
-          <div style={successCheck}>✓</div>
-          <h2 style={{ fontSize: 22, color: "#3d3528", margin: "20px 0 10px", fontWeight: 700 }}>送信しました</h2>
-          <p style={{ color: "#6d6356", fontSize: 14, lineHeight: 1.7 }}>
+      <main style={budPage}>
+        <section style={successCard}>
+          <div style={successMark}>✓</div>
+          <h1 style={{ ...budTitle, textAlign: "center" }}>送信しました</h1>
+          <p style={{ ...budLead, textAlign: "center", marginTop: 10 }}>
             {sentCount}件の領収書を経理へ送りました。
             <br />
-            内容の確認・承認をお待ちください。
+            内容の確認と承認をお待ちください。
           </p>
-        </div>
-        <div style={successBar}>
-          <button type="button" onClick={resetForm} style={successSubBtn}>
+        </section>
+        <div style={successActions}>
+          <button type="button" onClick={resetForm} style={budSecondaryButton}>
             続けて申請する
           </button>
-          <button type="button" onClick={() => router.push("/m/bud")} style={successMainBtn}>
-            Bud トップへ戻る
+          <button type="button" onClick={() => router.push("/m/bud/drive")} style={budPrimaryButton}>
+            申請状況を見る
           </button>
         </div>
       </main>
@@ -225,42 +218,29 @@ export default function MobileExpenseSubmit() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100dvh",
-        background: "#f7f4ec",
-        padding: "16px 14px 120px",
-        maxWidth: 560,
-        margin: "0 auto",
-      }}
-    >
-      <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <button
-          type="button"
-          onClick={handleBack}
-          aria-label="戻る"
-          style={{ background: "none", border: "none", padding: 0, color: "#7b745f", fontSize: 22, lineHeight: 1, cursor: "pointer" }}
-        >
+    <main style={{ ...budPage, paddingBottom: 120 }}>
+      <header style={budHeader}>
+        <button type="button" onClick={handleBack} aria-label="戻る" style={{ ...budBackLink, border: undefined }}>
           ‹
         </button>
-        <div style={{ fontSize: 17, fontWeight: 700, color: "#3d3528" }}>経費申請 — レシート撮影</div>
+        <div>
+          <h1 style={budTitle}>経費申請</h1>
+          <p style={budLead}>領収書を撮って、送る分だけ選びます。</p>
+        </div>
       </header>
 
-      {/* 戻る確認ダイアログ（撮影中の画像がある時） */}
       {showLeaveConfirm && (
         <div style={modalOverlay}>
           <div style={modalCard}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#3d3528", marginBottom: 8 }}>本当に戻りますか？</div>
-            <p style={{ fontSize: 13, color: "#6d6356", lineHeight: 1.6, marginBottom: 18 }}>
-              撮影中の画像が {shots.length} 枚あります。
-              <br />
-              戻ると、この画像は破棄されます。
+            <h2 style={{ ...budSectionTitle, marginBottom: 10 }}>撮影中の画像があります</h2>
+            <p style={{ color: budMobile.colors.sub, fontSize: 13, lineHeight: 1.7, margin: "0 0 16px" }}>
+              戻ると、この画面で撮影した画像は破棄されます。
             </p>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" onClick={() => setShowLeaveConfirm(false)} style={modalCancelBtn}>
-                撮影に戻る
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <button type="button" onClick={() => setShowLeaveConfirm(false)} style={budSecondaryButton}>
+                続ける
               </button>
-              <button type="button" onClick={() => router.push("/m/bud")} style={modalConfirmBtn}>
+              <button type="button" onClick={() => router.push("/m/bud")} style={{ ...budPrimaryButton, background: budMobile.colors.red }}>
                 破棄して戻る
               </button>
             </div>
@@ -268,314 +248,157 @@ export default function MobileExpenseSubmit() {
         </div>
       )}
 
-      {/* 経費区分の選択（1回の送信は片方のみ） */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          {([
-            { v: "individual", label: "個別経費", sub: "これから承認を取る" },
-            { v: "company", label: "会社経費", sub: "承認済み・報告用" },
-          ] as const).map((opt) => {
-            const active = kind === opt.v;
-            return (
-              <button
-                key={opt.v}
-                type="button"
-                onClick={() => setKind(opt.v)}
-                aria-pressed={active}
-                style={{
-                  flex: 1,
-                  padding: "12px 8px",
-                  borderRadius: 12,
-                  border: active ? "2px solid #E07A9B" : "2px solid #d8d4c8",
-                  background: active ? "rgba(224,122,155,0.10)" : "#fff",
-                  color: active ? "#b3406a" : "#6d6356",
-                  fontWeight: active ? 700 : 500,
-                }}
-              >
-                <div style={{ fontSize: 15 }}>{opt.label}</div>
-                <div style={{ fontSize: 10, color: active ? "#b3406a" : "#9a8f7d", marginTop: 2 }}>{opt.sub}</div>
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ fontSize: 11, color: "#9a8f7d", marginTop: 6, textAlign: "center" }}>
-          ※ 1回の送信は{kind === "individual" ? "個別経費" : "会社経費"}のみ。混在させず分けて送ってください。
-        </div>
-      </div>
-
-      {/* ライブカメラ（連写＋ガイド枠） */}
-      {cameraOpen && (
-        <CameraCapture
-          onCapture={addShot}
-          onClose={() => setCameraOpen(false)}
-          count={shots.length}
-          max={MAX_SHOTS}
-        />
-      )}
-
-      {/* 撮影ボタン */}
-      <button
-        type="button"
-        onClick={() => setCameraOpen(true)}
-        disabled={shots.length >= MAX_SHOTS}
-        style={{
-          width: "100%",
-          padding: "16px",
-          fontSize: 16,
-          fontWeight: 700,
-          color: "#fff",
-          background: shots.length >= MAX_SHOTS ? "#bbb" : "#E07A9B",
-          border: "none",
-          borderRadius: 14,
-          boxShadow: "0 3px 10px rgba(224,122,155,0.3)",
-        }}
-      >
-        📸 レシートを撮る（連続OK・最大{MAX_SHOTS}枚）
-      </button>
-
-      {shots.length > 0 && (
-        <>
-          {/* 選択操作バー */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px 0 10px" }}>
-            <span style={{ fontSize: 13, color: "#6d6356", flex: 1 }}>
-              {shots.length}枚（選択 {selectedCount} / {selectableCount}）
-            </span>
-            <button type="button" onClick={() => setAll(true)} style={chip}>全選択</button>
-            <button type="button" onClick={() => setAll(false)} style={chip}>全解除</button>
-          </div>
-
-          {/* サムネイルグリッド */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-            {shots.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => toggle(s.id)}
-                aria-pressed={s.selected}
-                style={{
-                  position: "relative",
-                  padding: 0,
-                  border: s.failed
-                    ? "2px solid #c0392b"
-                    : s.selected
-                    ? "3px solid #E07A9B"
-                    : "2px solid #d8d4c8",
-                  borderRadius: 10,
-                  overflow: "hidden",
-                  aspectRatio: "1 / 1",
-                  background: "#eee",
-                  opacity: s.failed ? 0.5 : 1,
-                }}
-              >
-                <img
-                  src={s.url}
-                  alt=""
-                  onError={() => markFailed(s.id)}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                    transform: `rotate(${s.rotation}deg)`,
-                  }}
-                />
-                {s.selected && !s.failed && (
-                  <span style={badge("#E07A9B")}>✓</span>
-                )}
-                {!s.failed && (
-                  <span
-                    role="button"
-                    aria-label="回転"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      rotateShot(s.id);
-                    }}
-                    style={rotateBtn}
-                  >
-                    ↻
-                  </span>
-                )}
-                {s.failed && <span style={{ ...badge("#c0392b"), borderRadius: 0, inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>失敗</span>}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* 送信バー（下部固定） */}
-      {shots.length > 0 && (
-        <div
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: "12px 14px calc(12px + env(safe-area-inset-bottom))",
-            background: "rgba(247,244,236,0.96)",
-            borderTop: "1px solid #e2ddcf",
-            maxWidth: 560,
-            margin: "0 auto",
-          }}
-        >
-          {error && (
-            <div style={{ color: "#c0392b", fontSize: 12, textAlign: "center", marginBottom: 8 }}>{error}</div>
-          )}
-          <button
-            type="button"
-            onClick={submit}
-            disabled={selectedCount === 0 || submitting}
-            style={{
-              width: "100%",
-              padding: 15,
-              fontSize: 16,
-              fontWeight: 700,
-              color: "#fff",
-              background: selectedCount === 0 || submitting ? "#bbb" : "#5e7d44",
-              border: "none",
-              borderRadius: 14,
-            }}
-          >
-            {submitting ? "送信中…" : `選択した ${selectedCount} 件を送信`}
+      <section style={{ ...budCard, padding: 14, marginBottom: 14 }}>
+        <h2 style={budSectionTitle}>経費の種類</h2>
+        <div style={kindRow}>
+          <button type="button" onClick={() => setKind("individual")} style={kindChip(kind === "individual")}>
+            個別経費
+          </button>
+          <button type="button" onClick={() => setKind("company")} style={kindChip(kind === "company")}>
+            会社経費
           </button>
         </div>
+      </section>
+
+      <section style={{ ...budCard, padding: 14, marginBottom: 14 }}>
+        <div style={shootHead}>
+          <div>
+            <h2 style={{ ...budSectionTitle, marginBottom: 4 }}>領収書</h2>
+            <p style={{ ...budLead, margin: 0 }}>最大{MAX_SHOTS}枚まで撮影できます。</p>
+          </div>
+          <button type="button" onClick={() => setCameraOpen(true)} style={budPrimaryButton}>
+            撮影する
+          </button>
+        </div>
+      </section>
+
+      {cameraOpen && <CameraCapture onCapture={addShot} onClose={() => setCameraOpen(false)} count={shots.length} max={MAX_SHOTS} />}
+
+      {shots.length === 0 ? (
+        <div style={budNotice}>まだ領収書がありません。撮影するボタンから追加してください。</div>
+      ) : (
+        <section>
+          <div style={toolbar}>
+            <span>
+              {selectedCount}/{selectableCount}件を送信
+            </span>
+            <span>
+              <button type="button" style={linkButton} onClick={() => setAll(true)}>
+                全選択
+              </button>
+              <button type="button" style={linkButton} onClick={() => setAll(false)}>
+                全解除
+              </button>
+            </span>
+          </div>
+          <div style={shotGrid}>
+            {shots.map((shot, index) => (
+              <article key={shot.id} style={{ ...shotCard, opacity: shot.failed ? 0.45 : 1 }}>
+                <button type="button" onClick={() => toggle(shot.id)} style={selectButton(shot.selected)}>
+                  {shot.selected ? "✓" : ""}
+                </button>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={shot.url}
+                  alt={`領収書 ${index + 1}`}
+                  style={{ width: "100%", height: 138, objectFit: "cover", transform: `rotate(${shot.rotation}deg)` }}
+                  onError={() => markFailed(shot.id)}
+                />
+                <div style={shotFoot}>
+                  <span>#{index + 1}</span>
+                  <button type="button" style={rotateBtn} onClick={() => rotateShot(shot.id)} disabled={shot.failed}>
+                    回転
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
+
+      {error && <div style={{ ...budNotice, marginTop: 14, color: budMobile.colors.red }}>{error}</div>}
+
+      <div style={submitBar}>
+        <button type="button" disabled={selectedCount === 0 || submitting} onClick={() => void submit()} style={submitButton(selectedCount === 0 || submitting)}>
+          {submitting ? "送信中..." : `${selectedCount}件を送信`}
+        </button>
+      </div>
     </main>
   );
 }
 
-const chip: React.CSSProperties = {
+const kindRow: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 };
+const kindChip = (active: boolean): React.CSSProperties => ({
+  ...budSecondaryButton,
+  background: active ? budMobile.colors.goldStrong : "#fffdf6",
+  color: active ? "#fff" : budMobile.colors.sub,
+  borderColor: active ? budMobile.colors.goldStrong : budMobile.colors.borderStrong,
+});
+const shootHead: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 };
+const toolbar: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 10,
+  color: budMobile.colors.sub,
   fontSize: 12,
-  padding: "6px 12px",
-  borderRadius: 999,
-  border: "1px solid #cdbf9a",
-  background: "#fff",
-  color: "#6d6356",
 };
-
+const linkButton: React.CSSProperties = { border: "none", background: "transparent", color: budMobile.colors.gold, fontFamily: budMobile.font.serif, marginLeft: 8 };
+const shotGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 };
+const shotCard: React.CSSProperties = { ...budCard, position: "relative", overflow: "hidden" };
+const selectButton = (active: boolean): React.CSSProperties => ({
+  position: "absolute",
+  zIndex: 2,
+  top: 8,
+  left: 8,
+  width: 28,
+  height: 28,
+  borderRadius: 999,
+  border: active ? "none" : "1px solid rgba(255,255,255,0.8)",
+  background: active ? budMobile.colors.goldStrong : "rgba(61,53,40,0.38)",
+  color: "#fff",
+  fontWeight: 700,
+});
+const shotFoot: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", color: budMobile.colors.sub, fontSize: 12 };
+const rotateBtn: React.CSSProperties = { border: "none", background: "transparent", color: budMobile.colors.gold, fontFamily: budMobile.font.serif };
+const submitBar: React.CSSProperties = {
+  position: "fixed",
+  left: 0,
+  right: 0,
+  bottom: "calc(70px + env(safe-area-inset-bottom))",
+  padding: "10px 16px",
+  background: "linear-gradient(180deg, rgba(247,244,236,0), rgba(247,244,236,0.96) 30%)",
+  zIndex: 40,
+};
+const submitButton = (disabled: boolean): React.CSSProperties => ({
+  ...budPrimaryButton,
+  width: "min(528px, 100%)",
+  display: "block",
+  margin: "0 auto",
+  opacity: disabled ? 0.55 : 1,
+});
 const modalOverlay: React.CSSProperties = {
   position: "fixed",
   inset: 0,
-  zIndex: 1200,
-  background: "rgba(0,0,0,0.5)",
+  zIndex: 80,
+  background: "rgba(61,53,40,0.42)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   padding: 24,
 };
-const modalCard: React.CSSProperties = {
-  background: "#fff",
-  borderRadius: 16,
-  padding: "22px 20px",
-  maxWidth: 360,
-  width: "100%",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-};
-const modalCancelBtn: React.CSSProperties = {
-  flex: 1,
-  padding: 13,
-  fontSize: 15,
-  fontWeight: 700,
-  color: "#fff",
-  background: "#E07A9B",
-  border: "none",
-  borderRadius: 12,
-};
-const modalConfirmBtn: React.CSSProperties = {
-  flex: 1,
-  padding: 13,
-  fontSize: 15,
-  fontWeight: 600,
-  color: "#6d6356",
-  background: "#fff",
-  border: "1px solid #cdbf9a",
-  borderRadius: 12,
-};
-const rotateBtn: React.CSSProperties = {
-  position: "absolute",
-  left: 4,
-  bottom: 4,
-  width: 26,
-  height: 26,
-  borderRadius: "50%",
-  background: "rgba(0,0,0,0.55)",
-  color: "#fff",
-  fontSize: 15,
-  display: "flex",
+const modalCard: React.CSSProperties = { ...budCard, width: "min(360px, 100%)", padding: 18, background: "#fffdf6" };
+const successCard: React.CSSProperties = { ...budCard, padding: 26, marginTop: 38, textAlign: "center" };
+const successMark: React.CSSProperties = {
+  width: 68,
+  height: 68,
+  borderRadius: 999,
+  display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  cursor: "pointer",
+  background: "rgba(94,125,68,0.14)",
+  color: budMobile.colors.green,
+  fontSize: 34,
+  marginBottom: 18,
 };
-
-const successMain: React.CSSProperties = {
-  minHeight: "100dvh",
-  background: "#f7f4ec",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "24px 20px calc(120px + env(safe-area-inset-bottom))",
-  maxWidth: 560,
-  margin: "0 auto",
-};
-const successCheck: React.CSSProperties = {
-  width: 88,
-  height: 88,
-  borderRadius: "50%",
-  background: "#5e7d44",
-  color: "#fff",
-  fontSize: 48,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  margin: "0 auto",
-  boxShadow: "0 6px 18px rgba(94,125,68,0.35)",
-};
-const successBar: React.CSSProperties = {
-  position: "fixed",
-  left: 0,
-  right: 0,
-  bottom: 0,
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-  padding: "14px 16px calc(16px + env(safe-area-inset-bottom))",
-  background: "rgba(247,244,236,0.96)",
-  borderTop: "1px solid #e2ddcf",
-  maxWidth: 560,
-  margin: "0 auto",
-};
-const successMainBtn: React.CSSProperties = {
-  width: "100%",
-  padding: 15,
-  fontSize: 16,
-  fontWeight: 700,
-  color: "#fff",
-  background: "#E07A9B",
-  border: "none",
-  borderRadius: 14,
-};
-const successSubBtn: React.CSSProperties = {
-  width: "100%",
-  padding: 13,
-  fontSize: 15,
-  fontWeight: 600,
-  color: "#6d6356",
-  background: "#fff",
-  border: "1px solid #cdbf9a",
-  borderRadius: 14,
-};
-
-const badge = (color: string): React.CSSProperties => ({
-  position: "absolute",
-  top: 4,
-  right: 4,
-  width: 20,
-  height: 20,
-  borderRadius: "50%",
-  background: color,
-  color: "#fff",
-  fontSize: 12,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-});
+const successActions: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 };

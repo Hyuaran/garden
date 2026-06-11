@@ -1,85 +1,137 @@
 "use client";
 
-/**
- * Garden モバイル — Bud 画面
- * 「申請」「詳細(Drive)」を選択。Bud 権限ありのアカウントには簡易レビュー(3タブ)入口も表示。
- * ※権限判定の本接続は後続。現状はリンクのみ用意。
- */
-
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-const CARD: React.CSSProperties = {
-  display: "block",
-  textDecoration: "none",
-  background: "rgba(255,255,255,0.92)",
-  border: "2px solid #E07A9B",
-  borderRadius: 18,
-  padding: "20px 18px",
-  boxShadow: "0 3px 10px rgba(0,0,0,0.05)",
-  color: "#2b2b2b",
-};
+import { createBrowserClient } from "@/app/_lib/supabase/browser";
+
+import { budBackLink, budCard, budHeader, budLead, budMobile, budNotice, budPage, budTitle } from "../_lib/mobile-theme";
+
+type AccessState = "loading" | "allowed" | "redirecting";
+
+const MENU = [
+  {
+    href: "/m/bud/submit",
+    mark: "01",
+    title: "申請する",
+    body: "レシートを撮影して、経費申請を送ります。",
+  },
+  {
+    href: "/m/bud/drive",
+    mark: "02",
+    title: "申請状況をみる",
+    body: "Driveと同じフォルダ感覚で、確認待ちや差戻しを見ます。",
+  },
+  {
+    href: "/bud/expenses",
+    mark: "03",
+    title: "レビュー",
+    body: "承認待ち、完了待ち、仕訳化はPC画面で確認します。",
+  },
+];
 
 export default function MobileBudHome() {
+  const router = useRouter();
+  const supabase = useMemo(() => createBrowserClient(), []);
+  const [access, setAccess] = useState<AccessState>("loading");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const { data } = await supabase.rpc("bud_has_access");
+        if (data) {
+          setAccess("allowed");
+          return;
+        }
+        setAccess("redirecting");
+        router.replace("/m/bud/submit");
+      })();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [router, supabase]);
+
+  if (access !== "allowed") {
+    return (
+      <main style={budPage}>
+        <section style={{ ...budNotice, marginTop: 24 }}>
+          {access === "loading" ? "Budの権限を確認しています..." : "申請画面へ移動します..."}
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main
-      style={{
-        minHeight: "100dvh",
-        background: "linear-gradient(180deg, #f7f4ec 0%, #f3e9ee 100%)",
-        padding: "20px 16px 40px",
-        maxWidth: 560,
-        margin: "0 auto",
-      }}
-    >
-      <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-        <Link href="/m" style={{ textDecoration: "none", color: "#7b745f", fontSize: 22, lineHeight: 1 }} aria-label="ホームへ戻る">
+    <main style={budPage}>
+      <header style={budHeader}>
+        <Link href="/m" style={budBackLink} aria-label="ホームへ戻る">
           ‹
         </Link>
-        <img src="/themes/module-icons/bud.webp" alt="" aria-hidden width={32} height={32} style={{ objectFit: "contain" }} />
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#3d3528" }}>Bud — 経理・収支</div>
-          <div style={{ fontSize: 11, color: "#7b745f" }}>経費精算</div>
+          <h1 style={budTitle}>Bud</h1>
+          <p style={budLead}>日々の経費を、庭の帳面へ静かに整えます。</p>
         </div>
       </header>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* 申請 */}
-        <Link href="/m/bud/submit" style={CARD}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{ fontSize: 30 }}>📸</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 17, fontWeight: 700 }}>申請する</div>
-              <div style={{ fontSize: 12, color: "#6d6356", marginTop: 2 }}>レシートを枠カメラで撮って送る</div>
-            </div>
-            <span style={{ color: "#E07A9B", fontSize: 20 }}>›</span>
-          </div>
-        </Link>
+      <section style={hero}>
+        <div style={heroMark}>Bud</div>
+        <div style={heroText}>経理・精算</div>
+      </section>
 
-        {/* 申請状況（アプリ内で自分の申請と状態を見る） */}
-        <Link href="/m/bud/drive" style={{ ...CARD, border: "2px solid #C9A24B" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{ fontSize: 30 }}>🗂</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 17, fontWeight: 700 }}>申請状況をみる</div>
-              <div style={{ fontSize: 12, color: "#6d6356", marginTop: 2 }}>自分の領収書と承認・差戻しの状態</div>
-            </div>
-            <span style={{ color: "#C9A24B", fontSize: 20 }}>›</span>
-          </div>
-        </Link>
-
-        {/* 簡易レビュー（Bud 権限ありのみ・本接続は後続） */}
-        <Link href="/m/bud/review" style={{ ...CARD, border: "2px solid #6f9b70" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{ fontSize: 30 }}>✅</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 17, fontWeight: 700 }}>
-                レビュー <span style={{ fontSize: 10, color: "#6f9b70", fontWeight: 600 }}>（権限者）</span>
-              </div>
-              <div style={{ fontSize: 12, color: "#6d6356", marginTop: 2 }}>承認待ち / 完了待ち / 仕訳化（簡易）</div>
-            </div>
-            <span style={{ color: "#6f9b70", fontSize: 20 }}>›</span>
-          </div>
-        </Link>
+      <div style={menuStack}>
+        {MENU.map((item) => (
+          <Link key={item.href} href={item.href} style={menuCard}>
+            <span style={menuMark}>{item.mark}</span>
+            <span style={{ minWidth: 0, flex: 1 }}>
+              <span style={menuTitle}>{item.title}</span>
+              <span style={menuBody}>{item.body}</span>
+            </span>
+            <span style={arrow}>›</span>
+          </Link>
+        ))}
       </div>
     </main>
   );
 }
+
+const hero: React.CSSProperties = {
+  ...budCard,
+  padding: "18px 20px",
+  marginBottom: 16,
+  background:
+    "linear-gradient(135deg, rgba(255,253,246,0.96), rgba(250,246,236,0.88)), radial-gradient(circle at 90% 10%, rgba(212,165,65,0.22), transparent 40%)",
+};
+const heroMark: React.CSSProperties = {
+  color: budMobile.colors.gold,
+  fontFamily: budMobile.font.number,
+  fontSize: 34,
+  lineHeight: 1,
+  letterSpacing: "0.04em",
+};
+const heroText: React.CSSProperties = { marginTop: 8, color: budMobile.colors.sub, fontSize: 13, letterSpacing: "0.12em" };
+const menuStack: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 12 };
+const menuCard: React.CSSProperties = {
+  ...budCard,
+  display: "flex",
+  alignItems: "center",
+  gap: 14,
+  padding: "16px 15px",
+  color: budMobile.colors.text,
+  textDecoration: "none",
+};
+const menuMark: React.CSSProperties = {
+  width: 42,
+  height: 42,
+  borderRadius: 999,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "rgba(212,165,65,0.14)",
+  color: budMobile.colors.gold,
+  fontFamily: budMobile.font.number,
+  fontSize: 16,
+  flexShrink: 0,
+};
+const menuTitle: React.CSSProperties = { display: "block", fontSize: 16, fontWeight: 700, letterSpacing: "0.04em" };
+const menuBody: React.CSSProperties = { display: "block", marginTop: 4, color: budMobile.colors.sub, fontSize: 12, lineHeight: 1.55 };
+const arrow: React.CSSProperties = { color: budMobile.colors.goldStrong, fontSize: 22, flexShrink: 0 };
