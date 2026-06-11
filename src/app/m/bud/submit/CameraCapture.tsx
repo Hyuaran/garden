@@ -189,7 +189,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
                 bottom: `${(1 - FRAME.bottom) * 100}%`,
                 border: "2px solid rgba(255,255,255,0.9)",
                 borderRadius: 14,
-                boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
+                boxShadow: "0 0 0 9999px rgba(0,0,0,0.78)",
               }}
               aria-hidden
             />
