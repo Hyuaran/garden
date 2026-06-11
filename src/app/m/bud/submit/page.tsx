@@ -8,7 +8,6 @@
  */
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
@@ -63,8 +62,14 @@ export default function MobileExpenseSubmit() {
   const [error, setError] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [sentCount, setSentCount] = useState(0);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const seq = useRef(0);
   const router = useRouter();
+
+  const handleBack = () => {
+    if (shots.length > 0) setShowLeaveConfirm(true);
+    else router.push("/m/bud");
+  };
 
   const addShot = (blob: Blob) => {
     seq.current += 1;
@@ -199,11 +204,38 @@ export default function MobileExpenseSubmit() {
       }}
     >
       <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <Link href="/m/bud" style={{ textDecoration: "none", color: "#7b745f", fontSize: 22, lineHeight: 1 }} aria-label="戻る">
+        <button
+          type="button"
+          onClick={handleBack}
+          aria-label="戻る"
+          style={{ background: "none", border: "none", padding: 0, color: "#7b745f", fontSize: 22, lineHeight: 1, cursor: "pointer" }}
+        >
           ‹
-        </Link>
+        </button>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#3d3528" }}>経費申請 — レシート撮影</div>
       </header>
+
+      {/* 戻る確認ダイアログ（撮影中の画像がある時） */}
+      {showLeaveConfirm && (
+        <div style={modalOverlay}>
+          <div style={modalCard}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#3d3528", marginBottom: 8 }}>本当に戻りますか？</div>
+            <p style={{ fontSize: 13, color: "#6d6356", lineHeight: 1.6, marginBottom: 18 }}>
+              撮影中の画像が {shots.length} 枚あります。
+              <br />
+              戻ると、この画像は破棄されます。
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" onClick={() => setShowLeaveConfirm(false)} style={modalCancelBtn}>
+                撮影に戻る
+              </button>
+              <button type="button" onClick={() => router.push("/m/bud")} style={modalConfirmBtn}>
+                破棄して戻る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 経費区分の選択（1回の送信は片方のみ） */}
       <div style={{ marginBottom: 14 }}>
@@ -389,6 +421,44 @@ const chip: React.CSSProperties = {
   color: "#6d6356",
 };
 
+const modalOverlay: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 1200,
+  background: "rgba(0,0,0,0.5)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 24,
+};
+const modalCard: React.CSSProperties = {
+  background: "#fff",
+  borderRadius: 16,
+  padding: "22px 20px",
+  maxWidth: 360,
+  width: "100%",
+  boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+};
+const modalCancelBtn: React.CSSProperties = {
+  flex: 1,
+  padding: 13,
+  fontSize: 15,
+  fontWeight: 700,
+  color: "#fff",
+  background: "#E07A9B",
+  border: "none",
+  borderRadius: 12,
+};
+const modalConfirmBtn: React.CSSProperties = {
+  flex: 1,
+  padding: 13,
+  fontSize: 15,
+  fontWeight: 600,
+  color: "#6d6356",
+  background: "#fff",
+  border: "1px solid #cdbf9a",
+  borderRadius: 12,
+};
 const rotateBtn: React.CSSProperties = {
   position: "absolute",
   left: 4,
