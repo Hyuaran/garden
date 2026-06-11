@@ -1,5 +1,6 @@
 import { BudFaithfulFrame } from "../_components/BudFaithfulFrame";
 
+import { ExpenseBookingEmbed } from "./_components/ExpenseBookingEmbed";
 import { ExpenseFinalEmbed } from "./_components/ExpenseFinalEmbed";
 import { ExpenseReviewEmbed } from "./_components/ExpenseReviewEmbed";
 
@@ -22,6 +23,7 @@ export default function ExpensesPage() {
       <ExpenseReviewEmbed />
       {/* 完了待ちタブ内 #exp-final-mount へ本物の最終チェックUIを描画 */}
       <ExpenseFinalEmbed />
+      <ExpenseBookingEmbed />
     </>
   );
 }
