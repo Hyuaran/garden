@@ -22,7 +22,13 @@ import {
   type Corp,
   type Employee,
 } from "./expenseCorpUtils";
-import { notifyDriveMove, notifyDriveRename, resolveReceiptStoragePath } from "./expenseReceiptUtils";
+import {
+  notifyDriveContentUpdate,
+  notifyDriveMove,
+  notifyDriveRename,
+  resolveReceiptStoragePath,
+  rotateImageBlob,
+} from "./expenseReceiptUtils";
 
 type Req = {
   id: string;
@@ -85,6 +91,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [idx, setIdx] = useState(0);
   const [form, setForm] = useState<Form | null>(null);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [rotation, setRotation] = useState(0); // 領収書プレビューの回転（90刻み・処理時に保存画像へ反映）
   const [detail, setDetail] = useState<Req | null>(null);
   const [detailImgUrl, setDetailImgUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -275,6 +282,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       return;
     }
     openedAt.current = Date.now();
+    setRotation(0);
     setForm({
       corp_id: current.corp_id ?? effectiveCorpId(current) ?? "",
       receipt_date: current.receipt_date ?? "",
@@ -360,10 +368,35 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         ended_at: nowIso,
         duration_ms: openedAt.current ? Date.now() - openedAt.current : null,
       });
+      // 回転補正があれば保存画像へ反映（Storage を正として上書き＋Drive ミラーも更新）
+      const rot = ((rotation % 360) + 360) % 360;
+      if (rot !== 0 && imgUrl) {
+        try {
+          const blob = await (await fetch(imgUrl)).blob();
+          const rotated = await rotateImageBlob(blob, rot);
+          const path = resolveReceiptStoragePath(current);
+          if (path) {
+            await supabase.storage
+              .from("bud-receipts")
+              .upload(path, rotated, { contentType: "image/jpeg", upsert: true });
+          }
+          void notifyDriveContentUpdate(current.id, rotated);
+        } catch {
+          // 回転反映の失敗は処理を止めない（表示は次回また回せる）
+        }
+      }
+
       // Drive ミラーの自動整理（ベストエフォート）:
-      // 差戻し→0_差戻しへ移動 / 承認→内容確定後の名前（日付_社員番号_店名_金額）へリネーム
-      if (action === "reject") void notifyDriveMove(current.id, "returned");
-      else void notifyDriveRename(current.id);
+      // 差戻し→0_差戻しへ移動 / 承認→リネーム（日付_時刻_社員番号_店名_金額）→1_承認へ移動
+      if (action === "reject") {
+        void notifyDriveMove(current.id, "returned");
+      } else {
+        const id = current.id;
+        void (async () => {
+          await notifyDriveRename(id);
+          await notifyDriveMove(id, "approved");
+        })();
+      }
       await load();
     } catch (e) {
       alert("処理に失敗しました：" + (e instanceof Error ? e.message : String(e)));
@@ -478,10 +511,35 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
               </div>
 
               <div style={panel}>
-                <h2 style={panelTitle}>領収書</h2>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <h2 style={panelTitle}>領収書</h2>
+                  {imgUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setRotation((r) => (r + 90) % 360)}
+                      title="画像を90°回転（承認/差戻し時に保存画像へ反映）"
+                      style={rotateImgBtn}
+                    >
+                      ↻ 回転
+                    </button>
+                  )}
+                </div>
                 {imgUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imgUrl} alt="領収書" style={{ width: "100%", borderRadius: 10, border: "1px solid #e2ddcf" }} />
+                  <div style={{ overflow: "hidden", display: "flex", justifyContent: "center" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imgUrl}
+                      alt="領収書"
+                      style={{
+                        width: rotation % 180 === 0 ? "100%" : "auto",
+                        maxWidth: "100%",
+                        maxHeight: 560,
+                        borderRadius: 10,
+                        border: "1px solid #e2ddcf",
+                        transform: `rotate(${rotation}deg)`,
+                      }}
+                    />
+                  </div>
                 ) : (
                   <div style={{ ...notice, margin: 0 }}>画像なし</div>
                 )}
@@ -888,3 +946,15 @@ const closeBtn: React.CSSProperties = {
   cursor: "pointer",
 };
 const modalGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 18, alignItems: "start" };
+const rotateImgBtn: React.CSSProperties = {
+  padding: "6px 14px",
+  borderRadius: 8,
+  border: "1px solid rgba(179,137,46,0.35)",
+  background: "#fff",
+  color: "#b3892e",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+  flexShrink: 0,
+  marginLeft: 10,
+};
