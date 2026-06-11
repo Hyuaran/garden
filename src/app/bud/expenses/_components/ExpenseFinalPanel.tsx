@@ -13,6 +13,7 @@ import {
   type Corp,
   type Employee,
 } from "./expenseCorpUtils";
+import { notifyDriveMove, resolveReceiptStoragePath } from "./expenseReceiptUtils";
 
 type Req = {
   id: string;
@@ -20,6 +21,7 @@ type Req = {
   applicant_employee_id: string | null;
   expense_kind: string;
   drive_file_id: string | null;
+  storage_path: string | null;
   receipt_date: string | null;
   store_name: string | null;
   amount: number | null;
@@ -44,7 +46,7 @@ type TodayStats = {
 };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at,final_checked_at";
+  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at,final_checked_at";
 const CORP_FILTER_STORAGE_KEY = "bud-expense-final-corp-filter";
 
 function readInitialCorpFilter() {
@@ -270,8 +272,9 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
     setReturnReason(row.return_reason ?? "");
     setDetailImgUrl(null);
     void (async () => {
-      if (!row.drive_file_id) return;
-      const { data } = await supabase.storage.from("bud-receipts").createSignedUrl(row.drive_file_id, 600);
+      const path = resolveReceiptStoragePath(row);
+      if (!path) return;
+      const { data } = await supabase.storage.from("bud-receipts").createSignedUrl(path, 600);
       setDetailImgUrl(data?.signedUrl ?? null);
     })();
   };
@@ -310,6 +313,8 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
         ended_at: nowIso,
         duration_ms: openedAt.current ? Date.now() - openedAt.current : null,
       });
+      // 申請者の Drive ミラーを状態フォルダへ移動（完了→1_承認 / 差戻し→0_差戻し・ベストエフォート）
+      void notifyDriveMove(row.id, action === "approve" ? "approved" : "returned");
       setDetail(null);
       setDetailImgUrl(null);
       await load();

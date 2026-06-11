@@ -22,6 +22,7 @@ import {
   type Corp,
   type Employee,
 } from "./expenseCorpUtils";
+import { notifyDriveMove, resolveReceiptStoragePath } from "./expenseReceiptUtils";
 
 type Req = {
   id: string;
@@ -29,6 +30,7 @@ type Req = {
   applicant_employee_id: string | null;
   expense_kind: string;
   drive_file_id: string | null;
+  storage_path: string | null;
   receipt_date: string | null;
   store_name: string | null;
   amount: number | null;
@@ -55,7 +57,7 @@ type Form = {
 type StatusRow = Req & { rowKind: "pending" | "processed" };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
+  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
 
 const CORP_FILTER_STORAGE_KEY = "bud-expense-review-corp-filter";
 
@@ -283,8 +285,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     });
     let cancelled = false;
     void (async () => {
-      if (current.drive_file_id) {
-        const { data } = await supabase.storage.from("bud-receipts").createSignedUrl(current.drive_file_id, 600);
+      const path = resolveReceiptStoragePath(current);
+      if (path) {
+        const { data } = await supabase.storage.from("bud-receipts").createSignedUrl(path, 600);
         if (!cancelled) setImgUrl(data?.signedUrl ?? null);
       } else {
         setImgUrl(null);
@@ -353,6 +356,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         ended_at: nowIso,
         duration_ms: openedAt.current ? Date.now() - openedAt.current : null,
       });
+      // 差戻し時は申請者の Drive ミラーを 0_差戻し へ移動（ベストエフォート）
+      if (action === "reject") void notifyDriveMove(current.id, "returned");
       await load();
     } catch (e) {
       alert("処理に失敗しました：" + (e instanceof Error ? e.message : String(e)));
@@ -373,8 +378,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setDetail(row);
     setDetailImgUrl(null);
     void (async () => {
-      if (!row.drive_file_id) return;
-      const { data } = await supabase.storage.from("bud-receipts").createSignedUrl(row.drive_file_id, 600);
+      const path = resolveReceiptStoragePath(row);
+      if (!path) return;
+      const { data } = await supabase.storage.from("bud-receipts").createSignedUrl(path, 600);
       setDetailImgUrl(data?.signedUrl ?? null);
     })();
   };
