@@ -134,9 +134,19 @@ export default function MobileExpenseSubmit() {
       const status = "submitted";
       const targets = shots.filter((s) => s.selected && !s.failed);
 
+      // Drive 用の人間可読ファイル名: 日付_時刻_社員番号_連番.jpg（例: 20260611_1851_0008_01.jpg）
+      const now = new Date();
+      const pad = (n: number, w = 2) => String(n).padStart(w, "0");
+      const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+      const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
+      const empNo = empId.replace(/^EMP-/, "");
+      let seqNo = 0;
+
       for (const shot of targets) {
         let blob = await (await fetch(shot.url)).blob();
         if (shot.rotation) blob = await rotateBlob(blob, shot.rotation);
+        seqNo += 1;
+        const driveName = `${ymd}_${hm}_${empNo}_${pad(seqNo)}.jpg`;
 
         // 1) Supabase Storage（レビュー画面の表示・OCR用の正）
         const path = `${empId}/${shot.ts}-${shot.id}.jpg`;
@@ -150,8 +160,8 @@ export default function MobileExpenseSubmit() {
         let driveViewUrl: string | null = null;
         try {
           const fd = new FormData();
-          fd.append("file", blob, `${shot.ts}-${shot.id}.jpg`);
-          fd.append("filename", `${shot.ts}-${shot.id}.jpg`);
+          fd.append("file", blob, driveName);
+          fd.append("filename", driveName);
           const res = await fetch("/api/bud/expense-drive/upload", { method: "POST", body: fd });
           const json = (await res.json()) as { ok: boolean; fileId?: string; viewUrl?: string | null };
           if (json.ok) {
