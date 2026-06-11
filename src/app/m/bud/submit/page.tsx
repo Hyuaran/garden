@@ -19,7 +19,10 @@ type Shot = {
 
 const MAX_SHOTS = 50;
 
+type ExpenseKind = "individual" | "company";
+
 export default function MobileExpenseSubmit() {
+  const [kind, setKind] = useState<ExpenseKind>("individual"); // 個別経費が多数のため既定
   const [shots, setShots] = useState<Shot[]>([]);
   const [sent, setSent] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -78,6 +81,41 @@ export default function MobileExpenseSubmit() {
         </Link>
         <div style={{ fontSize: 17, fontWeight: 700, color: "#3d3528" }}>経費申請 — レシート撮影</div>
       </header>
+
+      {/* 経費区分の選択（1回の送信は片方のみ） */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          {([
+            { v: "individual", label: "個別経費", sub: "これから承認を取る" },
+            { v: "company", label: "会社経費", sub: "承認済み・報告用" },
+          ] as const).map((opt) => {
+            const active = kind === opt.v;
+            return (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setKind(opt.v)}
+                aria-pressed={active}
+                style={{
+                  flex: 1,
+                  padding: "12px 8px",
+                  borderRadius: 12,
+                  border: active ? "2px solid #E07A9B" : "2px solid #d8d4c8",
+                  background: active ? "rgba(224,122,155,0.10)" : "#fff",
+                  color: active ? "#b3406a" : "#6d6356",
+                  fontWeight: active ? 700 : 500,
+                }}
+              >
+                <div style={{ fontSize: 15 }}>{opt.label}</div>
+                <div style={{ fontSize: 10, color: active ? "#b3406a" : "#9a8f7d", marginTop: 2 }}>{opt.sub}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ fontSize: 11, color: "#9a8f7d", marginTop: 6, textAlign: "center" }}>
+          ※ 1回の送信は{kind === "individual" ? "個別経費" : "会社経費"}のみ。混在させず分けて送ってください。
+        </div>
+      </div>
 
       {/* 撮影ボタン */}
       <input
