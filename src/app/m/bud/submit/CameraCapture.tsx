@@ -18,16 +18,8 @@ type Props = {
   max: number;
 };
 
-// ガイド枠の位置（画面％・縦長）。上に寄らないよう少し下げて上下バランスを取る。
-const FRAME = { left: 0.16, right: 0.84, top: 0.18, bottom: 0.92 };
-
-type Corner = { t?: number; b?: number; l?: number; r?: number; bt?: boolean; bb?: boolean; bl?: boolean; br?: boolean };
-const CORNERS: Corner[] = [
-  { t: -2, l: -2, bt: true, bl: true },
-  { t: -2, r: -2, bt: true, br: true },
-  { b: -2, l: -2, bb: true, bl: true },
-  { b: -2, r: -2, bb: true, br: true },
-];
+// ガイド枠の位置（画面％・縦長）。一回り大きめ＋上に寄らないよう少し下げる。
+const FRAME = { left: 0.1, right: 0.9, top: 0.15, bottom: 0.93 };
 
 // ガイド枠の線に合わせて切り取る。画面は object-fit:cover で表示されているため、
 // 表示コンテナ上の枠％を実際の映像ピクセル座標へ変換してから切り出す。
@@ -195,32 +187,12 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
                 right: `${(1 - FRAME.right) * 100}%`,
                 top: `${FRAME.top * 100}%`,
                 bottom: `${(1 - FRAME.bottom) * 100}%`,
-                border: "2px solid rgba(255,255,255,0.85)",
+                border: "2px solid rgba(255,255,255,0.9)",
                 borderRadius: 14,
-                boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)",
+                boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
               }}
               aria-hidden
-            >
-              {CORNERS.map((c, i) => (
-                <span
-                  key={i}
-                  style={{
-                    position: "absolute",
-                    width: 22,
-                    height: 22,
-                    top: c.t,
-                    bottom: c.b,
-                    left: c.l,
-                    right: c.r,
-                    borderTop: c.bt ? "3px solid rgba(255,255,255,0.9)" : undefined,
-                    borderBottom: c.bb ? "3px solid rgba(255,255,255,0.9)" : undefined,
-                    borderLeft: c.bl ? "3px solid rgba(255,255,255,0.9)" : undefined,
-                    borderRight: c.br ? "3px solid rgba(255,255,255,0.9)" : undefined,
-                    borderRadius: 6,
-                  }}
-                />
-              ))}
-            </div>
+            />
             <div
               style={{
                 position: "absolute",
