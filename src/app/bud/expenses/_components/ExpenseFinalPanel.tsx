@@ -151,6 +151,22 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
     void load();
   }, [load]);
 
+  // タブがアクティブになった瞬間に最新データを読み直す
+  // （承認待ちタブで承認した直後に切り替えても、ページ更新なしで反映されるように）
+  useEffect(() => {
+    if (!embedded) return;
+    const tab = document.getElementById("tab-approve");
+    if (!tab) return;
+    let wasActive = tab.classList.contains("active");
+    const obs = new MutationObserver(() => {
+      const isActive = tab.classList.contains("active");
+      if (isActive && !wasActive) void load();
+      wasActive = isActive;
+    });
+    obs.observe(tab, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, [embedded, load]);
+
   const effectiveCorpId = useCallback((row: Req) => getEffectiveCorpId(row, employees, companyToCorp), [employees, companyToCorp]);
   const corpMatches = useCallback((row: Req) => corpFilter === "all" || effectiveCorpId(row) === corpFilter, [corpFilter, effectiveCorpId]);
   const list = useMemo(() => pendingAll.filter(corpMatches), [pendingAll, corpMatches]);
