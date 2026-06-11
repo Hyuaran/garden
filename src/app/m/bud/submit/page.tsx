@@ -21,9 +21,37 @@ type Shot = {
   ts: number;
   selected: boolean;
   failed: boolean;
+  rotation: number; // 0/90/180/270
 };
 
 const MAX_SHOTS = 50;
+
+// 画像を指定角度に回転した Blob を返す
+async function rotateBlob(blob: Blob, deg: number): Promise<Blob> {
+  if (!deg) return blob;
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = rej;
+      im.src = url;
+    });
+    const rad = (deg * Math.PI) / 180;
+    const swap = deg % 180 !== 0;
+    const canvas = document.createElement("canvas");
+    canvas.width = swap ? img.height : img.width;
+    canvas.height = swap ? img.width : img.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return blob;
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(rad);
+    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+    return await new Promise<Blob>((res) => canvas.toBlob((b) => res(b ?? blob), "image/jpeg", 0.9));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
 type ExpenseKind = "individual" | "company";
 
@@ -46,10 +74,14 @@ export default function MobileExpenseSubmit() {
       ts: Date.now(),
       selected: true,
       failed: false,
+      rotation: 0,
     };
     setShots((prev) => (prev.length >= MAX_SHOTS ? prev : [...prev, shot]));
     setSent(false);
   };
+
+  const rotateShot = (id: string) =>
+    setShots((prev) => prev.map((s) => (s.id === id && !s.failed ? { ...s, rotation: (s.rotation + 90) % 360 } : s)));
 
   const toggle = (id: string) =>
     setShots((prev) =>
@@ -98,7 +130,8 @@ export default function MobileExpenseSubmit() {
       const targets = shots.filter((s) => s.selected && !s.failed);
 
       for (const shot of targets) {
-        const blob = await (await fetch(shot.url)).blob();
+        let blob = await (await fetch(shot.url)).blob();
+        if (shot.rotation) blob = await rotateBlob(blob, shot.rotation);
         const path = `${empId}/${shot.ts}-${shot.id}.jpg`;
         const up = await supabase.storage
           .from("bud-receipts")
@@ -275,10 +308,29 @@ export default function MobileExpenseSubmit() {
                   src={s.url}
                   alt=""
                   onError={() => markFailed(s.id)}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                    transform: `rotate(${s.rotation}deg)`,
+                  }}
                 />
                 {s.selected && !s.failed && (
                   <span style={badge("#E07A9B")}>✓</span>
+                )}
+                {!s.failed && (
+                  <span
+                    role="button"
+                    aria-label="回転"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      rotateShot(s.id);
+                    }}
+                    style={rotateBtn}
+                  >
+                    ↻
+                  </span>
                 )}
                 {s.failed && <span style={{ ...badge("#c0392b"), borderRadius: 0, inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>失敗</span>}
               </button>
@@ -335,6 +387,22 @@ const chip: React.CSSProperties = {
   border: "1px solid #cdbf9a",
   background: "#fff",
   color: "#6d6356",
+};
+
+const rotateBtn: React.CSSProperties = {
+  position: "absolute",
+  left: 4,
+  bottom: 4,
+  width: 26,
+  height: 26,
+  borderRadius: "50%",
+  background: "rgba(0,0,0,0.55)",
+  color: "#fff",
+  fontSize: 15,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
 };
 
 const successMain: React.CSSProperties = {
