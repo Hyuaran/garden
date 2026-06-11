@@ -137,17 +137,38 @@ export default function MobileExpenseSubmit() {
       for (const shot of targets) {
         let blob = await (await fetch(shot.url)).blob();
         if (shot.rotation) blob = await rotateBlob(blob, shot.rotation);
+
+        // 1) Supabase Storage（レビュー画面の表示・OCR用の正）
         const path = `${empId}/${shot.ts}-${shot.id}.jpg`;
         const up = await supabase.storage
           .from("bud-receipts")
           .upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: false });
         if (up.error) throw up.error;
 
+        // 2) Google Drive（申請者に見せる用ミラー）。失敗しても申請は成立させる
+        let driveFileId: string | null = null;
+        let driveViewUrl: string | null = null;
+        try {
+          const fd = new FormData();
+          fd.append("file", blob, `${shot.ts}-${shot.id}.jpg`);
+          fd.append("filename", `${shot.ts}-${shot.id}.jpg`);
+          const res = await fetch("/api/bud/expense-drive/upload", { method: "POST", body: fd });
+          const json = (await res.json()) as { ok: boolean; fileId?: string; viewUrl?: string | null };
+          if (json.ok) {
+            driveFileId = json.fileId ?? null;
+            driveViewUrl = json.viewUrl ?? null;
+          }
+        } catch {
+          // Drive 側の失敗は黙って続行（Storage に画像はある）
+        }
+
         const ins = await supabase.from("bud_expense_requests").insert({
           applicant_employee_id: empId,
           expense_kind: kind,
           status,
-          drive_file_id: up.data?.path ?? path, // 暫定: Storage パスを保持（Drive連携で置換）
+          storage_path: up.data?.path ?? path,
+          drive_file_id: driveFileId,
+          drive_view_url: driveViewUrl,
         });
         if (ins.error) throw ins.error;
       }
