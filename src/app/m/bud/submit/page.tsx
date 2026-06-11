@@ -9,6 +9,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 
@@ -33,7 +34,9 @@ export default function MobileExpenseSubmit() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [sentCount, setSentCount] = useState(0);
   const seq = useRef(0);
+  const router = useRouter();
 
   const addShot = (blob: Blob) => {
     seq.current += 1;
@@ -110,6 +113,7 @@ export default function MobileExpenseSubmit() {
         });
         if (ins.error) throw ins.error;
       }
+      setSentCount(targets.length);
       setSent(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "送信に失敗しました。");
@@ -117,6 +121,39 @@ export default function MobileExpenseSubmit() {
       setSubmitting(false);
     }
   };
+
+  const resetForm = () => {
+    shots.forEach((s) => URL.revokeObjectURL(s.url));
+    setShots([]);
+    setSent(false);
+    setSentCount(0);
+    setError(null);
+  };
+
+  // 送信完了画面（専用ページ）
+  if (sent) {
+    return (
+      <main style={successMain}>
+        <div style={{ textAlign: "center" }}>
+          <div style={successCheck}>✓</div>
+          <h2 style={{ fontSize: 22, color: "#3d3528", margin: "20px 0 10px", fontWeight: 700 }}>送信しました</h2>
+          <p style={{ color: "#6d6356", fontSize: 14, lineHeight: 1.7 }}>
+            {sentCount}件の領収書を経理へ送りました。
+            <br />
+            内容の確認・承認をお待ちください。
+          </p>
+        </div>
+        <div style={successBar}>
+          <button type="button" onClick={resetForm} style={successSubBtn}>
+            続けて申請する
+          </button>
+          <button type="button" onClick={() => router.push("/m/bud")} style={successMainBtn}>
+            Bud トップへ戻る
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main
@@ -265,34 +302,26 @@ export default function MobileExpenseSubmit() {
             margin: "0 auto",
           }}
         >
-          {sent ? (
-            <div style={{ textAlign: "center", color: "#5e7d44", fontWeight: 700, padding: 8 }}>
-              ✓ {selectedCount}件を送信しました（{kind === "individual" ? "個別経費" : "会社経費"}）
-            </div>
-          ) : (
-            <>
-              {error && (
-                <div style={{ color: "#c0392b", fontSize: 12, textAlign: "center", marginBottom: 8 }}>{error}</div>
-              )}
-              <button
-                type="button"
-                onClick={submit}
-                disabled={selectedCount === 0 || submitting}
-                style={{
-                  width: "100%",
-                  padding: 15,
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#fff",
-                  background: selectedCount === 0 || submitting ? "#bbb" : "#5e7d44",
-                  border: "none",
-                  borderRadius: 14,
-                }}
-              >
-                {submitting ? "送信中…" : `選択した ${selectedCount} 件を送信`}
-              </button>
-            </>
+          {error && (
+            <div style={{ color: "#c0392b", fontSize: 12, textAlign: "center", marginBottom: 8 }}>{error}</div>
           )}
+          <button
+            type="button"
+            onClick={submit}
+            disabled={selectedCount === 0 || submitting}
+            style={{
+              width: "100%",
+              padding: 15,
+              fontSize: 16,
+              fontWeight: 700,
+              color: "#fff",
+              background: selectedCount === 0 || submitting ? "#bbb" : "#5e7d44",
+              border: "none",
+              borderRadius: 14,
+            }}
+          >
+            {submitting ? "送信中…" : `選択した ${selectedCount} 件を送信`}
+          </button>
         </div>
       )}
     </main>
@@ -306,6 +335,65 @@ const chip: React.CSSProperties = {
   border: "1px solid #cdbf9a",
   background: "#fff",
   color: "#6d6356",
+};
+
+const successMain: React.CSSProperties = {
+  minHeight: "100dvh",
+  background: "#f7f4ec",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "24px 20px calc(120px + env(safe-area-inset-bottom))",
+  maxWidth: 560,
+  margin: "0 auto",
+};
+const successCheck: React.CSSProperties = {
+  width: 88,
+  height: 88,
+  borderRadius: "50%",
+  background: "#5e7d44",
+  color: "#fff",
+  fontSize: 48,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  margin: "0 auto",
+  boxShadow: "0 6px 18px rgba(94,125,68,0.35)",
+};
+const successBar: React.CSSProperties = {
+  position: "fixed",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  padding: "14px 16px calc(16px + env(safe-area-inset-bottom))",
+  background: "rgba(247,244,236,0.96)",
+  borderTop: "1px solid #e2ddcf",
+  maxWidth: 560,
+  margin: "0 auto",
+};
+const successMainBtn: React.CSSProperties = {
+  width: "100%",
+  padding: 15,
+  fontSize: 16,
+  fontWeight: 700,
+  color: "#fff",
+  background: "#E07A9B",
+  border: "none",
+  borderRadius: 14,
+};
+const successSubBtn: React.CSSProperties = {
+  width: "100%",
+  padding: 13,
+  fontSize: 15,
+  fontWeight: 600,
+  color: "#6d6356",
+  background: "#fff",
+  border: "1px solid #cdbf9a",
+  borderRadius: 14,
 };
 
 const badge = (color: string): React.CSSProperties => ({
