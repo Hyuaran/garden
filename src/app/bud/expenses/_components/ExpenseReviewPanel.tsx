@@ -76,6 +76,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [cats, setCats] = useState<Cat[]>([]);
   const [corps, setCorps] = useState<Corp[]>([]);
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
+  // root_companies(COMP-00X) → bud_corporations(hyuaran 等) の対応（法人名の部分一致で構築）
+  const [companyToCorp, setCompanyToCorp] = useState<Record<string, string>>({});
   const [corpFilter, setCorpFilterState] = useState(readInitialCorpFilter);
   const [idx, setIdx] = useState(0);
   const [form, setForm] = useState<Form | null>(null);
@@ -111,16 +113,19 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     t.setHours(0, 0, 0, 0);
     const todayIso = t.toISOString();
 
-    const [pendingRes, processedRes, catRes, corpRes] = await Promise.all([
+    const [pendingRes, processedRes, catRes, corpRes, companyRes] = await Promise.all([
       supabase.from("bud_expense_requests").select(REQUEST_SELECT).eq("status", "submitted").order("submitted_at", { ascending: true }),
       supabase
         .from("bud_expense_requests")
         .select(REQUEST_SELECT)
-        .in("status", ["final_pending", "keiri_returned"])
+        // keiri承認後にさらに先の状態(完了待ち処理など)へ進んでも「本日承認」が減らないよう、
+        // keiri_returned 以外の後続ステータスもすべて含める
+        .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
         .gte("keiri_checked_at", todayIso)
         .order("keiri_checked_at", { ascending: false }),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
       supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true }),
+      supabase.from("root_companies").select("company_id,company_name"),
     ]);
 
     const pending = (pendingRes.data as Req[] | null) ?? [];
@@ -128,7 +133,18 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setPendingAll(pending);
     setProcessedToday(processed);
     setCats((catRes.data as Cat[] | null) ?? []);
-    setCorps(corpRes.error ? FALLBACK_CORPS : ((corpRes.data as Corp[] | null) ?? FALLBACK_CORPS));
+    const corpList = corpRes.error ? FALLBACK_CORPS : ((corpRes.data as Corp[] | null) ?? FALLBACK_CORPS);
+    setCorps(corpList);
+
+    // COMP-00X → corp.id 対応表（会社名に name_short が含まれるかで結合）
+    const companies = (companyRes.data as { company_id: string; company_name: string | null }[] | null) ?? [];
+    const c2c: Record<string, string> = {};
+    for (const company of companies) {
+      const name = company.company_name ?? "";
+      const hit = corpList.find((corp) => corp.name_short && name.includes(corp.name_short));
+      if (hit) c2c[company.company_id] = hit.id;
+    }
+    setCompanyToCorp(c2c);
 
     const employeeIds = Array.from(
       new Set([...pending, ...processed].map((row) => row.applicant_employee_id).filter((id): id is string => Boolean(id))),
@@ -153,8 +169,14 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   }, [load]);
 
   const effectiveCorpId = useCallback(
-    (row: Req) => row.corp_id ?? (row.applicant_employee_id ? employees[row.applicant_employee_id]?.company_id ?? null : null),
-    [employees],
+    (row: Req) => {
+      if (row.corp_id) return row.corp_id;
+      const companyId = row.applicant_employee_id ? employees[row.applicant_employee_id]?.company_id ?? null : null;
+      if (!companyId) return null;
+      // 本番は root_employees.company_id=COMP-00X 体系のため対応表で corp.id へ変換
+      return companyToCorp[companyId] ?? companyId;
+    },
+    [employees, companyToCorp],
   );
 
   const corpMatches = useCallback((row: Req) => corpFilter === "all" || effectiveCorpId(row) === corpFilter, [corpFilter, effectiveCorpId]);
@@ -163,7 +185,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const current = list[idx];
 
   const todayStats = useMemo(() => {
-    const approved = processedFiltered.filter((row) => row.status === "final_pending");
+    const approved = processedFiltered.filter((row) => row.status !== "keiri_returned");
     const rejected = processedFiltered.filter((row) => row.status === "keiri_returned");
     return {
       approvedCount: approved.length,
