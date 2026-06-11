@@ -3,8 +3,9 @@
 /**
  * ライブカメラ（iPhone カメラ風 UI・ゆるい縦長ガイド枠）
  * - getUserMedia 背面カメラのライブ映像。連続撮影できる。
- * - ガイド枠は「手ブレ・見切れ防止の目安」。厳密な判定や赤エラーはしない（案A）。
- * - 撮影後、明るいレシート領域をベストエフォートで自動切り抜き（不確実なら全体のまま＝安全側）。
+ * - ガイド枠は「ここを切り取る」範囲。厳密な判定や赤エラーはしない（案A）。
+ * - 撮影後、ガイド枠の線に合わせて切り取って保存（経理が見やすい一定の画角に）。
+ *   object-fit:cover の表示→映像ピクセルへ座標変換して切り出す。
  * - 撮影でフラッシュ＋振動＋左下サムネへ吸い込みアニメ。カメラ不可端末は写真選択にフォールバック。
  */
 
@@ -28,64 +29,41 @@ const CORNERS: Corner[] = [
   { b: -2, r: -2, bb: true, br: true },
 ];
 
-// 明るいレシート領域をベストエフォートで自動切り抜き。不確実なら元のまま返す（安全側）。
-function autoCrop(src: HTMLCanvasElement): HTMLCanvasElement {
-  const w = src.width;
-  const h = src.height;
-  if (!w || !h) return src;
-  const sw = 160;
-  const sh = Math.max(1, Math.round((160 * h) / w));
-  const small = document.createElement("canvas");
-  small.width = sw;
-  small.height = sh;
-  const sctx = small.getContext("2d", { willReadFrequently: true });
-  if (!sctx) return src;
-  sctx.drawImage(src, 0, 0, sw, sh);
-  let data: Uint8ClampedArray;
-  try {
-    data = sctx.getImageData(0, 0, sw, sh).data;
-  } catch {
-    return src;
-  }
-  let sum = 0;
-  for (let i = 0; i < data.length; i += 4) sum += data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-  const mean = sum / (sw * sh);
-  const thr = Math.max(mean * 1.05, 120);
-  let minX = sw;
-  let minY = sh;
-  let maxX = 0;
-  let maxY = 0;
-  let cnt = 0;
-  for (let y = 0; y < sh; y++) {
-    for (let x = 0; x < sw; x++) {
-      const i = (y * sw + x) * 4;
-      const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-      if (lum > thr) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-        cnt++;
-      }
-    }
-  }
-  const frac = cnt / (sw * sh);
-  if (cnt < 80 || frac < 0.06 || frac > 0.92 || maxX <= minX || maxY <= minY) return src; // 不確実→全体
-  const padX = (maxX - minX) * 0.1 + sw * 0.02;
-  const padY = (maxY - minY) * 0.1 + sh * 0.02;
-  const x0 = (Math.max(0, minX - padX) / sw) * w;
-  const y0 = (Math.max(0, minY - padY) / sh) * h;
-  const x1 = (Math.min(sw, maxX + padX) / sw) * w;
-  const y1 = (Math.min(sh, maxY + padY) / sh) * h;
-  const cw = Math.round(x1 - x0);
-  const ch = Math.round(y1 - y0);
-  if (cw < w * 0.2 || ch < h * 0.2) return src;
+// ガイド枠の線に合わせて切り取る。画面は object-fit:cover で表示されているため、
+// 表示コンテナ上の枠％を実際の映像ピクセル座標へ変換してから切り出す。
+function cropVideoToFrame(v: HTMLVideoElement): HTMLCanvasElement {
+  const vw = v.videoWidth;
+  const vh = v.videoHeight;
   const out = document.createElement("canvas");
-  out.width = cw;
-  out.height = ch;
-  const octx = out.getContext("2d");
-  if (!octx) return src;
-  octx.drawImage(src, Math.round(x0), Math.round(y0), cw, ch, 0, 0, cw, ch);
+  const draw = (sx: number, sy: number, sw: number, sh: number) => {
+    out.width = Math.max(1, Math.round(sw));
+    out.height = Math.max(1, Math.round(sh));
+    out.getContext("2d")?.drawImage(v, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  };
+  const cw = v.clientWidth;
+  const ch = v.clientHeight;
+  if (!vw || !vh) {
+    out.width = 1;
+    out.height = 1;
+    return out;
+  }
+  if (!cw || !ch) {
+    // フォールバック：枠％を映像にそのまま適用
+    draw(FRAME.left * vw, FRAME.top * vh, (FRAME.right - FRAME.left) * vw, (FRAME.bottom - FRAME.top) * vh);
+    return out;
+  }
+  const scale = Math.max(cw / vw, ch / vh); // cover
+  const offX = (vw * scale - cw) / 2;
+  const offY = (vh * scale - ch) / 2;
+  const vx0 = (FRAME.left * cw + offX) / scale;
+  const vy0 = (FRAME.top * ch + offY) / scale;
+  const vx1 = (FRAME.right * cw + offX) / scale;
+  const vy1 = (FRAME.bottom * ch + offY) / scale;
+  const sx = Math.max(0, vx0);
+  const sy = Math.max(0, vy0);
+  const sw = Math.min(vw - sx, vx1 - vx0);
+  const sh = Math.min(vh - sy, vy1 - vy0);
+  draw(sx, sy, sw, sh);
   return out;
 }
 
@@ -164,13 +142,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
     if (atMax) return;
     const v = videoRef.current;
     if (!v || !v.videoWidth) return;
-    const full = document.createElement("canvas");
-    full.width = v.videoWidth;
-    full.height = v.videoHeight;
-    const ctx = full.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(v, 0, 0);
-    const cropped = autoCrop(full);
+    const cropped = cropVideoToFrame(v);
     cropped.toBlob(
       (blob) => {
         if (!blob) return;
@@ -223,9 +195,9 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
                 right: `${(1 - FRAME.right) * 100}%`,
                 top: `${FRAME.top * 100}%`,
                 bottom: `${(1 - FRAME.bottom) * 100}%`,
-                border: "1px dashed rgba(255,255,255,0.55)",
+                border: "2px solid rgba(255,255,255,0.85)",
                 borderRadius: 14,
-                boxShadow: "0 0 0 9999px rgba(0,0,0,0.35)",
+                boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)",
               }}
               aria-hidden
             >
@@ -261,7 +233,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
                 textShadow: "0 1px 3px rgba(0,0,0,0.8)",
               }}
             >
-              枠を目安に、レシート全体を撮影
+レシートを枠いっぱいに入れて撮影（枠の中だけ保存されます）
             </div>
           </>
         )}
