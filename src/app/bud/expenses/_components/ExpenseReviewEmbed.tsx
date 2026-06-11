@@ -14,20 +14,17 @@ export function ExpenseReviewEmbed() {
   const [el, setEl] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    let interval: number | undefined;
     const tick = () => {
       const node = document.getElementById("exp-review-mount");
       if (node) {
-        setEl(node);
-        if (interval !== undefined) window.clearInterval(interval);
-        interval = undefined;
+        setEl((current) => (current === node ? current : node));
       }
     };
     const first = window.setTimeout(tick, 0);
-    interval = window.setInterval(tick, 300);
+    const interval = window.setInterval(tick, 300);
     return () => {
       window.clearTimeout(first);
-      if (interval !== undefined) window.clearInterval(interval);
+      window.clearInterval(interval);
     };
   }, []);
 
