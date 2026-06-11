@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * ライブカメラ（iPhone カメラ風 UI・縦長レシート枠・はみ出し警告）
+ * ライブカメラ（iPhone カメラ風 UI・ゆるい縦長ガイド枠）
  * - getUserMedia 背面カメラのライブ映像。連続撮影できる。
- * - ガイド枠はレシートに合わせた縦長。枠からはみ出した（背景と枠内外の明るさが近い）と
- *   推定したら枠を赤くして「枠内に入れてください」を表示（明暗ヒューリスティック・実機で要調整）。
- * - 撮影でフラッシュ＋振動＋左下サムネ更新。カメラ不可端末は写真選択にフォールバック。
+ * - ガイド枠は「手ブレ・見切れ防止の目安」。厳密な判定や赤エラーはしない（案A）。
+ * - 撮影後、明るいレシート領域をベストエフォートで自動切り抜き（不確実なら全体のまま＝安全側）。
+ * - 撮影でフラッシュ＋振動＋左下サムネへ吸い込みアニメ。カメラ不可端末は写真選択にフォールバック。
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -18,7 +18,7 @@ type Props = {
 };
 
 // ガイド枠の位置（画面％・縦長）
-const FRAME = { left: 0.18, right: 0.82, top: 0.12, bottom: 0.86 };
+const FRAME = { left: 0.16, right: 0.84, top: 0.11, bottom: 0.87 };
 
 type Corner = { t?: number; b?: number; l?: number; r?: number; bt?: boolean; bb?: boolean; bl?: boolean; br?: boolean };
 const CORNERS: Corner[] = [
@@ -28,19 +28,105 @@ const CORNERS: Corner[] = [
   { b: -2, r: -2, bb: true, br: true },
 ];
 
+// 明るいレシート領域をベストエフォートで自動切り抜き。不確実なら元のまま返す（安全側）。
+function autoCrop(src: HTMLCanvasElement): HTMLCanvasElement {
+  const w = src.width;
+  const h = src.height;
+  if (!w || !h) return src;
+  const sw = 160;
+  const sh = Math.max(1, Math.round((160 * h) / w));
+  const small = document.createElement("canvas");
+  small.width = sw;
+  small.height = sh;
+  const sctx = small.getContext("2d", { willReadFrequently: true });
+  if (!sctx) return src;
+  sctx.drawImage(src, 0, 0, sw, sh);
+  let data: Uint8ClampedArray;
+  try {
+    data = sctx.getImageData(0, 0, sw, sh).data;
+  } catch {
+    return src;
+  }
+  let sum = 0;
+  for (let i = 0; i < data.length; i += 4) sum += data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+  const mean = sum / (sw * sh);
+  const thr = Math.max(mean * 1.05, 120);
+  let minX = sw;
+  let minY = sh;
+  let maxX = 0;
+  let maxY = 0;
+  let cnt = 0;
+  for (let y = 0; y < sh; y++) {
+    for (let x = 0; x < sw; x++) {
+      const i = (y * sw + x) * 4;
+      const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      if (lum > thr) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        cnt++;
+      }
+    }
+  }
+  const frac = cnt / (sw * sh);
+  if (cnt < 80 || frac < 0.06 || frac > 0.92 || maxX <= minX || maxY <= minY) return src; // 不確実→全体
+  const padX = (maxX - minX) * 0.1 + sw * 0.02;
+  const padY = (maxY - minY) * 0.1 + sh * 0.02;
+  const x0 = (Math.max(0, minX - padX) / sw) * w;
+  const y0 = (Math.max(0, minY - padY) / sh) * h;
+  const x1 = (Math.min(sw, maxX + padX) / sw) * w;
+  const y1 = (Math.min(sh, maxY + padY) / sh) * h;
+  const cw = Math.round(x1 - x0);
+  const ch = Math.round(y1 - y0);
+  if (cw < w * 0.2 || ch < h * 0.2) return src;
+  const out = document.createElement("canvas");
+  out.width = cw;
+  out.height = ch;
+  const octx = out.getContext("2d");
+  if (!octx) return src;
+  octx.drawImage(src, Math.round(x0), Math.round(y0), cw, ch, 0, 0, cw, ch);
+  return out;
+}
+
 export function CameraCapture({ onCapture, onClose, count, max }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const analyzeRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
   const [shotN, setShotN] = useState(0);
   const [lastThumb, setLastThumb] = useState<string | null>(null);
-  const [outOfFrame, setOutOfFrame] = useState(false);
   const thumbSlotRef = useRef<HTMLDivElement>(null);
   const [flying, setFlying] = useState<{ id: string; url: string }[]>([]);
   const flyKey = useRef(0);
   const animatedSet = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
+        if (!active) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => undefined);
+        }
+      } catch {
+        setError("カメラを起動できませんでした。ブラウザのカメラ許可を確認するか、下の「写真を選ぶ」をご利用ください。");
+      }
+    })();
+    return () => {
+      active = false;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
 
   // 撮った写真を左下サムネへ吸い込むアニメ（iPhone スクショ風）
   const animateFly = (el: HTMLImageElement | null, id: string, url: string) => {
@@ -72,107 +158,20 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
     anim.oncancel = remove;
   };
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-          audio: false,
-        });
-        if (!active) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => undefined);
-        }
-      } catch {
-        setError("カメラを起動できませんでした。ブラウザのカメラ許可を確認するか、下の「写真を選ぶ」をご利用ください。");
-      }
-    })();
-    return () => {
-      active = false;
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
-  // はみ出し推定ループ（明暗ヒューリスティック・約5fps）
-  useEffect(() => {
-    if (error) return;
-    let raf = 0;
-    let last = 0;
-    const cv = (analyzeRef.current ||= document.createElement("canvas"));
-    cv.width = 80;
-    cv.height = 140;
-    const ctx = cv.getContext("2d", { willReadFrequently: true });
-
-    const loop = (t: number) => {
-      raf = requestAnimationFrame(loop);
-      if (t - last < 200) return;
-      last = t;
-      const v = videoRef.current;
-      if (!v || !v.videoWidth || !ctx) return;
-      ctx.drawImage(v, 0, 0, cv.width, cv.height);
-      let img: ImageData;
-      try {
-        img = ctx.getImageData(0, 0, cv.width, cv.height);
-      } catch {
-        return;
-      }
-      const lum = (x: number, y: number) => {
-        const i = (y * cv.width + x) * 4;
-        return (img.data[i] * 0.299 + img.data[i + 1] * 0.587 + img.data[i + 2] * 0.114) / 255;
-      };
-      const L = Math.round(FRAME.left * cv.width);
-      const R = Math.round(FRAME.right * cv.width);
-      const T = Math.round(FRAME.top * cv.height);
-      const B = Math.round(FRAME.bottom * cv.height);
-      let inSum = 0;
-      let inN = 0;
-      for (let y = T; y < B; y += 4) {
-        for (let x = L; x < R; x += 4) {
-          inSum += lum(x, y);
-          inN++;
-        }
-      }
-      const band = 5;
-      let outSum = 0;
-      let outN = 0;
-      for (let y = Math.max(0, T - band); y < B + band && y < cv.height; y += 3) {
-        for (let x = Math.max(0, L - band); x < R + band && x < cv.width; x += 3) {
-          const inside = x >= L && x < R && y >= T && y < B;
-          if (!inside) {
-            outSum += lum(x, y);
-            outN++;
-          }
-        }
-      }
-      const inAvg = inN ? inSum / inN : 0;
-      const outAvg = outN ? outSum / outN : 0;
-      // レシート（明るい）が枠外にもはみ出す＝枠外も枠内と同じくらい明るい
-      const spilling = inAvg > 0.45 && outAvg > inAvg * 0.82;
-      setOutOfFrame(spilling);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [error]);
-
   const atMax = count >= max;
 
   const shoot = () => {
     if (atMax) return;
     const v = videoRef.current;
     if (!v || !v.videoWidth) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = v.videoWidth;
-    canvas.height = v.videoHeight;
-    const ctx = canvas.getContext("2d");
+    const full = document.createElement("canvas");
+    full.width = v.videoWidth;
+    full.height = v.videoHeight;
+    const ctx = full.getContext("2d");
     if (!ctx) return;
     ctx.drawImage(v, 0, 0);
-    canvas.toBlob(
+    const cropped = autoCrop(full);
+    cropped.toBlob(
       (blob) => {
         if (!blob) return;
         onCapture(blob);
@@ -197,8 +196,6 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
     );
   };
 
-  const frameColor = outOfFrame ? "#ff3b30" : "rgba(255,255,255,0.95)";
-
   return (
     <div style={overlay}>
       {/* 上部バー */}
@@ -212,7 +209,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
         <span style={{ width: 40 }} />
       </div>
 
-      {/* 映像 + 縦長ガイド枠 */}
+      {/* 映像 + ゆるい縦長ガイド枠 */}
       <div style={{ position: "relative", flex: 1, overflow: "hidden", background: "#000" }}>
         {!error && (
           <video ref={videoRef} playsInline muted autoPlay style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -226,14 +223,12 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
                 right: `${(1 - FRAME.right) * 100}%`,
                 top: `${FRAME.top * 100}%`,
                 bottom: `${(1 - FRAME.bottom) * 100}%`,
-                border: `2px solid ${frameColor}`,
+                border: "1px dashed rgba(255,255,255,0.55)",
                 borderRadius: 14,
-                boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)",
-                transition: "border-color 0.15s",
+                boxShadow: "0 0 0 9999px rgba(0,0,0,0.35)",
               }}
               aria-hidden
             >
-              {/* コーナーブラケット（iPhone風） */}
               {CORNERS.map((c, i) => (
                 <span
                   key={i}
@@ -245,10 +240,10 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
                     bottom: c.b,
                     left: c.l,
                     right: c.r,
-                    borderTop: c.bt ? `4px solid ${frameColor}` : undefined,
-                    borderBottom: c.bb ? `4px solid ${frameColor}` : undefined,
-                    borderLeft: c.bl ? `4px solid ${frameColor}` : undefined,
-                    borderRight: c.br ? `4px solid ${frameColor}` : undefined,
+                    borderTop: c.bt ? "3px solid rgba(255,255,255,0.9)" : undefined,
+                    borderBottom: c.bb ? "3px solid rgba(255,255,255,0.9)" : undefined,
+                    borderLeft: c.bl ? "3px solid rgba(255,255,255,0.9)" : undefined,
+                    borderRight: c.br ? "3px solid rgba(255,255,255,0.9)" : undefined,
                     borderRadius: 6,
                   }}
                 />
@@ -261,13 +256,12 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
                 left: 0,
                 right: 0,
                 textAlign: "center",
-                color: outOfFrame ? "#ff3b30" : "#fff",
-                fontSize: 14,
-                fontWeight: outOfFrame ? 700 : 400,
+                color: "#fff",
+                fontSize: 13,
                 textShadow: "0 1px 3px rgba(0,0,0,0.8)",
               }}
             >
-              {outOfFrame ? "枠内に入れてください" : "枠に合わせて撮影"}
+              枠を目安に、レシート全体を撮影
             </div>
           </>
         )}
@@ -332,20 +326,6 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
   );
 }
 
-const flyStart: React.CSSProperties = {
-  position: "fixed",
-  left: "22vw",
-  top: "28vh",
-  width: "56vw",
-  height: "42vh",
-  objectFit: "cover",
-  borderRadius: 12,
-  border: "2px solid rgba(255,255,255,0.9)",
-  zIndex: 1100,
-  pointerEvents: "none",
-  boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-};
-
 const overlay: React.CSSProperties = {
   position: "fixed",
   inset: 0,
@@ -391,13 +371,7 @@ const shutter: React.CSSProperties = {
   padding: 0,
 };
 const shutterInner: React.CSSProperties = { width: 60, height: 60, borderRadius: "50%", background: "#fff", display: "block" };
-const doneBtn: React.CSSProperties = {
-  background: "transparent",
-  border: "none",
-  color: "#ffd60a",
-  fontSize: 16,
-  fontWeight: 700,
-};
+const doneBtn: React.CSSProperties = { background: "transparent", border: "none", color: "#ffd60a", fontSize: 16, fontWeight: 700 };
 const thumbImg: React.CSSProperties = {
   width: 48,
   height: 48,
@@ -420,6 +394,19 @@ const thumbCount: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+};
+const flyStart: React.CSSProperties = {
+  position: "fixed",
+  left: "22vw",
+  top: "28vh",
+  width: "56vw",
+  height: "42vh",
+  objectFit: "cover",
+  borderRadius: 12,
+  border: "2px solid rgba(255,255,255,0.9)",
+  zIndex: 1100,
+  pointerEvents: "none",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
 };
 const errorBox: React.CSSProperties = {
   position: "absolute",
