@@ -34,7 +34,7 @@ export async function notifyDriveMove(requestId: string, action: "returned" | "a
 }
 
 /**
- * Drive 上のレシートを「レシート日付_社員番号_店名_金額.jpg」へ自動リネーム（経理承認時・ベストエフォート）。
+ * Drive 上のレシートを「レシート日付_時刻_社員番号_店名_金額.jpg」へ自動リネーム（経理承認時・ベストエフォート）。
  */
 export async function notifyDriveRename(requestId: string): Promise<void> {
   try {
@@ -45,5 +45,45 @@ export async function notifyDriveRename(requestId: string): Promise<void> {
     });
   } catch {
     // リネーム失敗は無視（名前が機械的なまま残るだけ）
+  }
+}
+
+/**
+ * Drive 上のレシート画像の中身を差し替え（回転補正の反映・ベストエフォート）。
+ */
+export async function notifyDriveContentUpdate(requestId: string, blob: Blob): Promise<void> {
+  try {
+    const fd = new FormData();
+    fd.append("requestId", requestId);
+    fd.append("file", blob, "rotated.jpg");
+    await fetch("/api/bud/expense-drive/update-content", { method: "POST", body: fd });
+  } catch {
+    // ミラー更新の失敗は無視（Storage 側が正）
+  }
+}
+
+/** 画像 Blob を指定角度（90の倍数）回転して返す */
+export async function rotateImageBlob(blob: Blob, deg: number): Promise<Blob> {
+  if (!deg) return blob;
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = rej;
+      im.src = url;
+    });
+    const swap = deg % 180 !== 0;
+    const canvas = document.createElement("canvas");
+    canvas.width = swap ? img.height : img.width;
+    canvas.height = swap ? img.width : img.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return blob;
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((deg * Math.PI) / 180);
+    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+    return await new Promise<Blob>((res) => canvas.toBlob((b) => res(b ?? blob), "image/jpeg", 0.9));
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
