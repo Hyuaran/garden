@@ -11,6 +11,7 @@ export type MobileExpenseRequest = {
   id: string;
   status: string;
   expense_kind: string;
+  storage_path: string | null;
   drive_file_id: string | null;
   receipt_date: string | null;
   store_name: string | null;
@@ -26,6 +27,9 @@ export type MobileTodoCounts = {
   finalPending: number;
   budAccess: boolean;
 };
+
+export type MobileExpenseAction = "resubmitted" | "not_reimbursable";
+export type MobileExpenseFolderKey = "pending" | "approved" | "completed" | "returned" | "not_reimbursable";
 
 const RETURNED_STATUSES = ["keiri_returned", "final_returned"];
 
@@ -77,7 +81,7 @@ export async function getMobileTodoCounts(supabase: SupabaseClient): Promise<Mob
 export async function getReturnedExpenseRequests(supabase: SupabaseClient, employeeId: string) {
   const { data } = await supabase
     .from("bud_expense_requests")
-    .select("id,status,expense_kind,drive_file_id,receipt_date,store_name,amount,return_reason,submitted_at,description")
+    .select("id,status,expense_kind,storage_path,drive_file_id,receipt_date,store_name,amount,return_reason,submitted_at,description")
     .eq("applicant_employee_id", employeeId)
     .in("status", RETURNED_STATUSES)
     .order("submitted_at", { ascending: false });
@@ -85,15 +89,50 @@ export async function getReturnedExpenseRequests(supabase: SupabaseClient, emplo
   return (data as MobileExpenseRequest[] | null) ?? [];
 }
 
+export async function getMyExpenseRequests(supabase: SupabaseClient, employeeId: string) {
+  const { data } = await supabase
+    .from("bud_expense_requests")
+    .select("id,status,expense_kind,storage_path,drive_file_id,receipt_date,store_name,amount,return_reason,submitted_at,description")
+    .eq("applicant_employee_id", employeeId)
+    .order("submitted_at", { ascending: false })
+    .limit(150);
+
+  return (data as MobileExpenseRequest[] | null) ?? [];
+}
+
 export async function searchMyExpenseRequests(supabase: SupabaseClient, employeeId: string) {
   const { data } = await supabase
     .from("bud_expense_requests")
-    .select("id,status,expense_kind,receipt_date,store_name,amount,submitted_at,description")
+    .select("id,status,expense_kind,storage_path,drive_file_id,receipt_date,store_name,amount,submitted_at,description")
     .eq("applicant_employee_id", employeeId)
     .order("submitted_at", { ascending: false })
     .limit(50);
 
   return (data as MobileExpenseRequest[] | null) ?? [];
+}
+
+export async function updateReturnedExpenseRequest(
+  supabase: SupabaseClient,
+  requestId: string,
+  employeeId: string,
+  action: MobileExpenseAction,
+) {
+  const nextStatus = action === "resubmitted" ? "submitted" : "not_reimbursable";
+  const { error } = await supabase
+    .from("bud_expense_requests")
+    .update({ status: nextStatus })
+    .eq("id", requestId)
+    .eq("applicant_employee_id", employeeId)
+    .in("status", RETURNED_STATUSES);
+  if (error) throw error;
+
+  const moveRes = await fetch("/api/bud/expense-drive/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ requestId, action }),
+  });
+  const moveJson = (await moveRes.json()) as { ok?: boolean; error?: string };
+  if (!moveRes.ok || !moveJson.ok) throw new Error(moveJson.error ?? "Drive移動に失敗しました");
 }
 
 export function formatYen(value: number | null) {
@@ -104,10 +143,19 @@ export function formatYen(value: number | null) {
 export function statusLabel(status: string) {
   if (status === "keiri_returned") return "経理差戻し";
   if (status === "final_returned") return "最終差戻し";
-  if (status === "submitted") return "承認待ち";
-  if (status === "final_pending") return "完了待ち";
-  if (status === "journalize_pending") return "仕訳化待ち";
-  if (status === "journalized") return "完了";
-  if (status === "not_reimbursable") return "精算不可";
+  if (status === "submitted") return "確認待ち";
+  if (status === "final_pending") return "1_承認";
+  if (status === "journalize_pending") return "2_完了待ち";
+  if (status === "journalized") return "2_完了";
+  if (status === "not_reimbursable") return "0_精算不可";
   return status;
+}
+
+export function folderOfStatus(status: string): MobileExpenseFolderKey {
+  if (status === "submitted") return "pending";
+  if (status === "final_pending") return "approved";
+  if (status === "journalize_pending" || status === "journalized") return "completed";
+  if (status === "keiri_returned" || status === "final_returned") return "returned";
+  if (status === "not_reimbursable") return "not_reimbursable";
+  return "pending";
 }

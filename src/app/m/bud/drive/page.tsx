@@ -1,215 +1,306 @@
 "use client";
 
-/**
- * Garden モバイル — 自分の経費申請の状況（案B: アプリ内で閲覧）
- * 台帳（bud_expense_requests）から本人の申請を取得し、状態別に表示する。
- * RLS: ber_select が applicant_employee_id = bud_my_employee_id() を許可。
- * 画像は Supabase Storage（storage_path）の署名URLで表示。
- * Google Drive はアーカイブ用ミラー（ここでは参照しない）。
- */
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 
-type Req = {
-  id: string;
-  status: string;
-  expense_kind: string;
-  storage_path: string | null;
-  drive_file_id: string | null;
-  receipt_date: string | null;
-  store_name: string | null;
-  amount: number | null;
-  return_reason: string | null;
-  submitted_at: string;
-};
+import {
+  folderOfStatus,
+  formatYen,
+  getMyEmployee,
+  getMyExpenseRequests,
+  statusLabel,
+  updateReturnedExpenseRequest,
+  type MobileEmployee,
+  type MobileExpenseAction,
+  type MobileExpenseFolderKey,
+  type MobileExpenseRequest,
+} from "../../_lib/mobile-expenses";
+import {
+  budBackLink,
+  budCard,
+  budHeader,
+  budLead,
+  budMobile,
+  budNotice,
+  budPage,
+  budPrimaryButton,
+  budSecondaryButton,
+  budSectionTitle,
+  budTitle,
+} from "../../_lib/mobile-theme";
 
-type Group = "returned" | "processing" | "approved";
+type ViewKey = "root" | MobileExpenseFolderKey;
+type BusyState = { id: string; action: MobileExpenseAction } | null;
 
-const GROUP_DEF: Record<Group, { label: string; sub: string; color: string; icon: string }> = {
-  returned: { label: "差戻し", sub: "確認して再申請してください", color: "#c0392b", icon: "⚠️" },
-  processing: { label: "処理中", sub: "経理が確認しています", color: "#b3892e", icon: "⏳" },
-  approved: { label: "承認済み", sub: "処理が完了した申請", color: "#5e7d44", icon: "✅" },
-};
-
-function groupOf(status: string): Group {
-  if (status === "keiri_returned" || status === "final_returned") return "returned";
-  if (status === "journalize_pending" || status === "journalized") return "approved";
-  return "processing"; // submitted / final_pending
-}
+const ROOT_FOLDERS: { key: MobileExpenseFolderKey; label: string; sub: string }[] = [
+  { key: "pending", label: "確認待ち", sub: "提出直後の申請" },
+  { key: "approved", label: "1_承認", sub: "経理承認済み" },
+  { key: "completed", label: "2_完了", sub: "仕訳化へ進んだ申請" },
+  { key: "returned", label: "0_差戻し", sub: "再確認が必要な申請" },
+];
 
 export default function MyExpenseStatusPage() {
   const supabase = useMemo(() => createBrowserClient(), []);
-  const [rows, setRows] = useState<Req[]>([]);
+  const [employee, setEmployee] = useState<MobileEmployee | null>(null);
+  const [rows, setRows] = useState<MobileExpenseRequest[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
+  const [view, setView] = useState<ViewKey>("root");
+  const [busy, setBusy] = useState<BusyState>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data: auth } = await supabase.auth.getUser();
-    const uid = auth?.user?.id;
-    if (!uid) {
-      setLoaded(true);
-      return;
-    }
-    const { data: emp } = await supabase
-      .from("root_employees")
-      .select("employee_id")
-      .eq("user_id", uid)
-      .maybeSingle<{ employee_id: string }>();
+    setLoaded(false);
+    const emp = await getMyEmployee(supabase);
+    setEmployee(emp);
     if (!emp) {
+      setRows([]);
       setLoaded(true);
       return;
     }
-    const { data } = await supabase
-      .from("bud_expense_requests")
-      .select("id,status,expense_kind,storage_path,drive_file_id,receipt_date,store_name,amount,return_reason,submitted_at")
-      .eq("applicant_employee_id", emp.employee_id)
-      .order("submitted_at", { ascending: false })
-      .limit(100);
-    const list = (data as Req[] | null) ?? [];
+    const list = await getMyExpenseRequests(supabase, emp.employee_id);
     setRows(list);
     setLoaded(true);
 
-    // サムネイル（署名URL・まとめて取得）
     const paths = list
-      .map((r) => r.storage_path ?? (r.drive_file_id?.startsWith("EMP-") ? r.drive_file_id : null))
-      .filter((p): p is string => Boolean(p));
+      .map((row) => row.storage_path ?? (row.drive_file_id?.startsWith("EMP-") ? row.drive_file_id : null))
+      .filter((path): path is string => Boolean(path));
     if (paths.length > 0) {
       const { data: signed } = await supabase.storage.from("bud-receipts").createSignedUrls(paths, 600);
       const map: Record<string, string> = {};
-      for (const s of signed ?? []) {
-        if (s.signedUrl && s.path) map[s.path] = s.signedUrl;
+      for (const signedRow of signed ?? []) {
+        if (signedRow.signedUrl && signedRow.path) map[signedRow.path] = signedRow.signedUrl;
       }
       setThumbs(map);
+    } else {
+      setThumbs({});
     }
   }, [supabase]);
 
   useEffect(() => {
-    const t = window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       void load();
     }, 0);
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timer);
   }, [load]);
 
   const grouped = useMemo(() => {
-    const g: Record<Group, Req[]> = { returned: [], processing: [], approved: [] };
-    for (const r of rows) g[groupOf(r.status)].push(r);
-    return g;
+    const result: Record<MobileExpenseFolderKey, MobileExpenseRequest[]> = {
+      pending: [],
+      approved: [],
+      completed: [],
+      returned: [],
+      not_reimbursable: [],
+    };
+    for (const row of rows) result[folderOfStatus(row.status)].push(row);
+    return result;
   }, [rows]);
 
-  const thumbOf = (r: Req) => {
-    const p = r.storage_path ?? (r.drive_file_id?.startsWith("EMP-") ? r.drive_file_id : null);
-    return p ? thumbs[p] ?? null : null;
+  const updateRequest = async (row: MobileExpenseRequest, action: MobileExpenseAction) => {
+    if (!employee || busy) return;
+    setBusy({ id: row.id, action });
+    setMessage(null);
+    try {
+      await updateReturnedExpenseRequest(supabase, row.id, employee.employee_id, action);
+      setMessage(action === "resubmitted" ? "再申請しました。" : "0_精算不可へ移動しました。");
+      await load();
+      setView(action === "not_reimbursable" ? "not_reimbursable" : "pending");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "更新に失敗しました。");
+    } finally {
+      setBusy(null);
+    }
   };
 
+  const currentRows = view === "root" ? [] : grouped[view];
+
   return (
-    <main style={page}>
-      <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <Link href="/m/bud" style={{ textDecoration: "none", color: "#7b745f", fontSize: 22, lineHeight: 1 }} aria-label="戻る">
+    <main style={budPage}>
+      <header style={budHeader}>
+        <Link href="/m/bud" style={budBackLink} aria-label="Budへ戻る">
           ‹
         </Link>
         <div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: "#3d3528" }}>申請状況</div>
-          <div style={{ fontSize: 11, color: "#7b745f" }}>自分の経費申請と承認の状態</div>
+          <h1 style={budTitle}>申請状況</h1>
+          <p style={budLead}>Driveと同じ感覚で、自分の経費申請をたどります。</p>
         </div>
       </header>
 
-      {!loaded && <div style={notice}>読み込み中…</div>}
-      {loaded && rows.length === 0 && (
-        <div style={notice}>
-          まだ申請がありません。
-          <br />
-          <Link href="/m/bud/submit" style={{ color: "#b3406a", fontWeight: 700 }}>
-            レシートを撮って申請する ›
-          </Link>
-        </div>
+      {!loaded && <div style={budNotice}>読み込み中...</div>}
+      {message && <div style={{ ...budNotice, padding: 12, marginBottom: 14, color: budMobile.colors.gold }}>{message}</div>}
+
+      {loaded && view === "root" && (
+        <section>
+          <h2 style={budSectionTitle}>フォルダ</h2>
+          <div style={folderGrid}>
+            {ROOT_FOLDERS.map((folder) => (
+              <button key={folder.key} type="button" style={folderTile} onClick={() => setView(folder.key)}>
+                <span style={folderIcon}>▰</span>
+                <span style={folderLabel}>{folder.label}</span>
+                <span style={folderSub}>{folder.sub}</span>
+                <span style={folderCount}>{grouped[folder.key].length}件</span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
-      {(["returned", "processing", "approved"] as Group[]).map((g) => {
-        const items = grouped[g];
-        if (items.length === 0) return null;
-        const def = GROUP_DEF[g];
-        return (
-          <section key={g} style={{ marginBottom: 22 }}>
-            <h2 style={{ fontSize: 14, color: def.color, margin: "0 0 4px" }}>
-              {def.icon} {def.label}（{items.length}件）
-            </h2>
-            <p style={{ fontSize: 11, color: "#9a8f7d", margin: "0 0 10px" }}>{def.sub}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {items.map((r) => {
-                const t = thumbOf(r);
-                return (
-                  <div key={r.id} style={{ ...card, borderLeft: `3px solid ${def.color}` }}>
-                    {t ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={t} alt="" style={cardImg} />
-                    ) : (
-                      <div style={{ ...cardImg, display: "flex", alignItems: "center", justifyContent: "center", color: "#9a8f7d", fontSize: 10 }}>
-                        画像なし
-                      </div>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#3d3528", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {r.store_name ?? "（店名 確認中）"}
-                      </div>
-                      <div style={{ fontSize: 11, color: "#6d6356", marginTop: 2 }}>
-                        {r.receipt_date ?? "日付 確認中"}
-                        {r.amount != null && r.amount > 0 && ` ・ ¥${r.amount.toLocaleString("ja-JP")}`}
-                        {` ・ ${r.expense_kind === "company" ? "会社経費" : "個別経費"}`}
-                      </div>
-                      <div style={{ fontSize: 10, color: "#9a8f7d", marginTop: 2 }}>
-                        申請 {r.submitted_at.slice(0, 10).replaceAll("-", "/")}
-                      </div>
-                      {g === "returned" && r.return_reason && (
-                        <div style={{ fontSize: 11, color: "#c0392b", marginTop: 4, fontWeight: 600 }}>
-                          理由: {r.return_reason}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+      {loaded && view !== "root" && (
+        <section>
+          <div style={crumb}>
+            <button type="button" style={crumbBtn} onClick={() => setView("root")}>
+              フォルダ
+            </button>
+            <span>›</span>
+            <span>{folderTitle(view)}</span>
+          </div>
+
+          {view === "returned" && (
+            <button type="button" style={subFolderTile} onClick={() => setView("not_reimbursable")}>
+              <span style={folderIcon}>▰</span>
+              <span style={{ flex: 1 }}>0_精算不可</span>
+              <span style={folderCount}>{grouped.not_reimbursable.length}件</span>
+            </button>
+          )}
+
+          {currentRows.length === 0 ? (
+            <div style={budNotice}>このフォルダに申請はありません。</div>
+          ) : (
+            <div style={list}>
+              {currentRows.map((row) => (
+                <ExpenseRow
+                  key={row.id}
+                  row={row}
+                  thumb={thumbOf(row, thumbs)}
+                  canAct={view === "returned"}
+                  busy={busy}
+                  onAction={updateRequest}
+                />
+              ))}
             </div>
-          </section>
-        );
-      })}
+          )}
+        </section>
+      )}
     </main>
   );
 }
 
-const page: React.CSSProperties = {
-  minHeight: "100dvh",
-  background: "#f7f4ec",
-  padding: "16px 14px 40px",
-  maxWidth: 560,
-  margin: "0 auto",
-};
-const notice: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #e2ddcf",
-  borderRadius: 14,
-  padding: 24,
-  textAlign: "center",
-  color: "#6d6356",
-  fontSize: 13,
-  lineHeight: 2,
-};
-const card: React.CSSProperties = {
+function ExpenseRow({
+  row,
+  thumb,
+  canAct,
+  busy,
+  onAction,
+}: {
+  row: MobileExpenseRequest;
+  thumb: string | null;
+  canAct: boolean;
+  busy: BusyState;
+  onAction: (row: MobileExpenseRequest, action: MobileExpenseAction) => void;
+}) {
+  const rowBusy = busy?.id === row.id;
+  return (
+    <article style={rowCard}>
+      {thumb ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={thumb} alt="" style={thumbStyle} />
+      ) : (
+        <div style={thumbEmpty}>領収書</div>
+      )}
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={rowHead}>
+          <span style={rowStore}>{row.store_name ?? "店名未入力"}</span>
+          <span style={rowAmount}>{formatYen(row.amount)}</span>
+        </div>
+        <div style={rowMeta}>
+          {row.receipt_date ?? "日付未入力"} / {statusLabel(row.status)}
+        </div>
+        {row.return_reason && <div style={rowReason}>理由: {row.return_reason}</div>}
+        {canAct && (
+          <div style={actions}>
+            <button type="button" style={budPrimaryButton} disabled={rowBusy} onClick={() => onAction(row, "resubmitted")}>
+              {rowBusy && busy?.action === "resubmitted" ? "処理中..." : "再申請する"}
+            </button>
+            <button
+              type="button"
+              style={{ ...budSecondaryButton, color: budMobile.colors.red, borderColor: "rgba(155,58,44,0.35)" }}
+              disabled={rowBusy}
+              onClick={() => onAction(row, "not_reimbursable")}
+            >
+              {rowBusy && busy?.action === "not_reimbursable" ? "処理中..." : "精算不可"}
+            </button>
+          </div>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function folderTitle(view: MobileExpenseFolderKey) {
+  if (view === "pending") return "確認待ち";
+  if (view === "approved") return "1_承認";
+  if (view === "completed") return "2_完了";
+  if (view === "returned") return "0_差戻し";
+  return "0_精算不可";
+}
+
+function thumbOf(row: MobileExpenseRequest, thumbs: Record<string, string>) {
+  const path = row.storage_path ?? (row.drive_file_id?.startsWith("EMP-") ? row.drive_file_id : null);
+  return path ? thumbs[path] ?? null : null;
+}
+
+const folderGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
+const folderTile: React.CSSProperties = {
+  ...budCard,
+  border: `1px solid ${budMobile.colors.border}`,
+  padding: 14,
+  textAlign: "left",
+  minHeight: 132,
   display: "flex",
-  gap: 12,
-  alignItems: "center",
-  background: "#fff",
-  borderRadius: 12,
-  padding: 10,
-  boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: 5,
+  color: budMobile.colors.text,
+  fontFamily: budMobile.font.serif,
 };
-const cardImg: React.CSSProperties = {
-  width: 56,
-  height: 56,
-  objectFit: "cover",
-  borderRadius: 8,
-  background: "#eee",
+const folderIcon: React.CSSProperties = { color: budMobile.colors.goldStrong, fontSize: 25, lineHeight: 1 };
+const folderLabel: React.CSSProperties = { fontSize: 16, fontWeight: 700, letterSpacing: "0.04em" };
+const folderSub: React.CSSProperties = { color: budMobile.colors.sub, fontSize: 11, lineHeight: 1.4, flex: 1 };
+const folderCount: React.CSSProperties = { color: budMobile.colors.gold, fontFamily: budMobile.font.number, fontSize: 20, lineHeight: 1 };
+const crumb: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, color: budMobile.colors.sub, fontSize: 12, marginBottom: 12 };
+const crumbBtn: React.CSSProperties = { border: "none", background: "transparent", color: budMobile.colors.gold, padding: 0, fontFamily: budMobile.font.serif };
+const subFolderTile: React.CSSProperties = {
+  ...budCard,
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: 14,
+  marginBottom: 12,
+  color: budMobile.colors.text,
+  fontFamily: budMobile.font.serif,
+  border: `1px solid ${budMobile.colors.border}`,
+};
+const list: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
+const rowCard: React.CSSProperties = { ...budCard, display: "flex", gap: 12, padding: 12, alignItems: "flex-start" };
+const thumbStyle: React.CSSProperties = { width: 60, height: 60, objectFit: "cover", borderRadius: 10, border: `1px solid ${budMobile.colors.border}`, flexShrink: 0 };
+const thumbEmpty: React.CSSProperties = {
+  width: 60,
+  height: 60,
+  borderRadius: 10,
+  background: "rgba(179,137,46,0.08)",
+  color: budMobile.colors.muted,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: 10,
   flexShrink: 0,
 };
+const rowHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" };
+const rowStore: React.CSSProperties = { minWidth: 0, color: budMobile.colors.text, fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const rowAmount: React.CSSProperties = { color: budMobile.colors.gold, fontFamily: budMobile.font.number, fontSize: 16, flexShrink: 0 };
+const rowMeta: React.CSSProperties = { marginTop: 3, color: budMobile.colors.sub, fontSize: 11 };
+const rowReason: React.CSSProperties = { marginTop: 8, color: budMobile.colors.red, background: "rgba(155,58,44,0.08)", borderRadius: 8, padding: 8, fontSize: 11 };
+const actions: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 };
