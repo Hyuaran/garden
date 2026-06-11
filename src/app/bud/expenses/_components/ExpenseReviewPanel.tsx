@@ -32,6 +32,7 @@ type Req = {
   drive_file_id: string | null;
   storage_path: string | null;
   receipt_date: string | null;
+  receipt_time: string | null;
   store_name: string | null;
   amount: number | null;
   qualified_class: string | null;
@@ -47,6 +48,7 @@ type Cat = { id: string; name: string };
 type Form = {
   corp_id: string;
   receipt_date: string;
+  receipt_time: string;
   store_name: string;
   amount: string;
   qualified_class: string;
@@ -57,7 +59,7 @@ type Form = {
 type StatusRow = Req & { rowKind: "pending" | "processed" };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
+  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
 
 const CORP_FILTER_STORAGE_KEY = "bud-expense-review-corp-filter";
 
@@ -276,6 +278,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setForm({
       corp_id: current.corp_id ?? effectiveCorpId(current) ?? "",
       receipt_date: current.receipt_date ?? "",
+      receipt_time: current.receipt_time ? current.receipt_time.slice(0, 5) : "",
       store_name: current.store_name ?? "",
       amount: current.amount != null ? String(current.amount) : "",
       qualified_class: current.qualified_class ?? "",
@@ -332,6 +335,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         .update({
           corp_id: nextCorpId,
           receipt_date: form.receipt_date || null,
+          receipt_time: form.receipt_time || null,
           store_name: form.store_name || null,
           amount: Number(form.amount) || 0,
           qualified_class: form.qualified_class || null,
@@ -429,6 +433,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 <Row label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</Row>
                 <Field label="レシート日付">
                   <input type="date" value={form.receipt_date} onChange={(e) => setF("receipt_date", e.target.value)} style={input} />
+                </Field>
+                <Field label="レシート時刻（読めない場合は空欄＝9999扱い）">
+                  <input type="time" value={form.receipt_time} onChange={(e) => setF("receipt_time", e.target.value)} style={input} />
                 </Field>
                 <Field label="店名">
                   <input type="text" value={form.store_name} onChange={(e) => setF("store_name", e.target.value)} style={input} />
