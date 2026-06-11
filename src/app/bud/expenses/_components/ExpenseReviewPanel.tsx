@@ -166,6 +166,21 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     void load();
   }, [load]);
 
+  // タブがアクティブになった瞬間に最新データを読み直す（スマホからの新着申請を反映）
+  useEffect(() => {
+    if (!embedded) return;
+    const tab = document.getElementById("tab-submit");
+    if (!tab) return;
+    let wasActive = tab.classList.contains("active");
+    const obs = new MutationObserver(() => {
+      const isActive = tab.classList.contains("active");
+      if (isActive && !wasActive) void load();
+      wasActive = isActive;
+    });
+    obs.observe(tab, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, [embedded, load]);
+
   const effectiveCorpId = useCallback((row: Req) => getEffectiveCorpId(row, employees, companyToCorp), [employees, companyToCorp]);
 
   const corpMatches = useCallback((row: Req) => corpFilter === "all" || effectiveCorpId(row) === corpFilter, [corpFilter, effectiveCorpId]);
