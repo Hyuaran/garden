@@ -21,7 +21,7 @@ export function resolveReceiptStoragePath(row: ReceiptPathRow): string | null {
  * Drive 上のレシートを状態別フォルダへ移動（ベストエフォート）。
  * 失敗しても業務処理は止めない（Drive は申請者向けミラーのため）。
  */
-export async function notifyDriveMove(requestId: string, action: "returned" | "approved"): Promise<void> {
+export async function notifyDriveMove(requestId: string, action: "returned" | "approved" | "completed"): Promise<void> {
   try {
     await fetch("/api/bud/expense-drive/move", {
       method: "POST",

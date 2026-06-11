@@ -313,8 +313,8 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
         ended_at: nowIso,
         duration_ms: openedAt.current ? Date.now() - openedAt.current : null,
       });
-      // 申請者の Drive ミラーを状態フォルダへ移動（完了→1_承認 / 差戻し→0_差戻し・ベストエフォート）
-      void notifyDriveMove(row.id, action === "approve" ? "approved" : "returned");
+      // 申請者の Drive ミラーを状態フォルダへ移動（完了→2_完了 / 差戻し→0_差戻し・ベストエフォート）
+      void notifyDriveMove(row.id, action === "approve" ? "completed" : "returned");
       setDetail(null);
       setDetailImgUrl(null);
       await load();
