@@ -13,6 +13,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 
+import {
+  buildCompanyToCorp,
+  FALLBACK_CORPS,
+  getEffectiveCorpId,
+  sortCorps,
+  type Company,
+  type Corp,
+  type Employee,
+} from "./expenseCorpUtils";
+
 type Req = {
   id: string;
   corp_id: string | null;
@@ -32,8 +42,6 @@ type Req = {
   keiri_checked_at: string | null;
 };
 type Cat = { id: string; name: string };
-type Corp = { id: string; name_short: string | null };
-type Employee = { employee_id: string; company_id: string | null; name: string | null };
 type Form = {
   corp_id: string;
   receipt_date: string;
@@ -49,15 +57,6 @@ type StatusRow = Req & { rowKind: "pending" | "processed" };
 const REQUEST_SELECT =
   "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
 
-const FALLBACK_CORPS: Corp[] = [
-  { id: "hyuaran", name_short: "ヒュアラン" },
-  { id: "centerrise", name_short: "センターライズ" },
-  { id: "linksupport", name_short: "リンクサポート" },
-  { id: "arata", name_short: "ARATA" },
-  { id: "taiyou", name_short: "たいよう" },
-  { id: "ichi", name_short: "壱" },
-];
-const CORP_ORDER = FALLBACK_CORPS.map((corp) => corp.id);
 const CORP_FILTER_STORAGE_KEY = "bud-expense-review-corp-filter";
 
 function readInitialCorpFilter() {
@@ -98,13 +97,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   }, []);
 
   const sortedCorps = useMemo(() => {
-    const source = corps.length > 0 ? corps : FALLBACK_CORPS;
-    return [...source].sort((a, b) => {
-      const ai = CORP_ORDER.indexOf(a.id);
-      const bi = CORP_ORDER.indexOf(b.id);
-      if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-      return (a.name_short ?? a.id).localeCompare(b.name_short ?? b.id, "ja");
-    });
+    return sortCorps(corps);
   }, [corps]);
 
   const load = useCallback(async () => {
@@ -137,14 +130,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setCorps(corpList);
 
     // COMP-00X → corp.id 対応表（会社名に name_short が含まれるかで結合）
-    const companies = (companyRes.data as { company_id: string; company_name: string | null }[] | null) ?? [];
-    const c2c: Record<string, string> = {};
-    for (const company of companies) {
-      const name = company.company_name ?? "";
-      const hit = corpList.find((corp) => corp.name_short && name.includes(corp.name_short));
-      if (hit) c2c[company.company_id] = hit.id;
-    }
-    setCompanyToCorp(c2c);
+    const companies = (companyRes.data as Company[] | null) ?? [];
+    setCompanyToCorp(buildCompanyToCorp(companies, corpList));
 
     const employeeIds = Array.from(
       new Set([...pending, ...processed].map((row) => row.applicant_employee_id).filter((id): id is string => Boolean(id))),
@@ -168,16 +155,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     void load();
   }, [load]);
 
-  const effectiveCorpId = useCallback(
-    (row: Req) => {
-      if (row.corp_id) return row.corp_id;
-      const companyId = row.applicant_employee_id ? employees[row.applicant_employee_id]?.company_id ?? null : null;
-      if (!companyId) return null;
-      // 本番は root_employees.company_id=COMP-00X 体系のため対応表で corp.id へ変換
-      return companyToCorp[companyId] ?? companyId;
-    },
-    [employees, companyToCorp],
-  );
+  const effectiveCorpId = useCallback((row: Req) => getEffectiveCorpId(row, employees, companyToCorp), [employees, companyToCorp]);
 
   const corpMatches = useCallback((row: Req) => corpFilter === "all" || effectiveCorpId(row) === corpFilter, [corpFilter, effectiveCorpId]);
   const list = useMemo(() => pendingAll.filter(corpMatches), [pendingAll, corpMatches]);
