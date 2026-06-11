@@ -12,6 +12,8 @@ import Link from "next/link";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 
+import { CameraCapture } from "./CameraCapture";
+
 type Shot = {
   id: string;
   url: string;
@@ -30,24 +32,19 @@ export default function MobileExpenseSubmit() {
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const seq = useRef(0);
 
-  const addFiles = (files: FileList | null) => {
-    if (!files) return;
-    const next: Shot[] = [];
-    for (const file of Array.from(files)) {
-      if (shots.length + next.length >= MAX_SHOTS) break;
-      seq.current += 1;
-      next.push({
-        id: `s${seq.current}`,
-        url: URL.createObjectURL(file),
-        ts: Date.now(),
-        selected: true,
-        failed: false,
-      });
-    }
-    setShots((prev) => [...prev, ...next]);
+  const addShot = (blob: Blob) => {
+    seq.current += 1;
+    const shot: Shot = {
+      id: `s${seq.current}`,
+      url: URL.createObjectURL(blob),
+      ts: Date.now(),
+      selected: true,
+      failed: false,
+    };
+    setShots((prev) => (prev.length >= MAX_SHOTS ? prev : [...prev, shot]));
     setSent(false);
   };
 
@@ -72,14 +69,22 @@ export default function MobileExpenseSubmit() {
     try {
       const supabase = createBrowserClient();
 
-      // ログインユーザーの社員ID（RLS: 自分の行のみ取得可）
+      // ログイン中の本人を auth から特定 → 本人の社員IDだけを取得（管理者でも自分1件に絞る）
+      const { data: auth } = await supabase.auth.getUser();
+      const authUserId = auth?.user?.id ?? null;
+      if (!authUserId) {
+        setError("ログインが切れています。ログインし直してください。");
+        setSubmitting(false);
+        return;
+      }
       const { data: emp } = await supabase
         .from("root_employees")
         .select("employee_id")
+        .eq("user_id", authUserId)
         .maybeSingle<{ employee_id: string }>();
       const empId = emp?.employee_id ?? null;
       if (!empId) {
-        setError("ログイン情報を確認できませんでした。ログインし直してください。");
+        setError("社員情報が見つかりませんでした（このアカウントに社員データが紐づいていない可能性）。");
         setSubmitting(false);
         return;
       }
@@ -165,22 +170,20 @@ export default function MobileExpenseSubmit() {
         </div>
       </div>
 
+      {/* ライブカメラ（連写＋ガイド枠） */}
+      {cameraOpen && (
+        <CameraCapture
+          onCapture={addShot}
+          onClose={() => setCameraOpen(false)}
+          count={shots.length}
+          max={MAX_SHOTS}
+        />
+      )}
+
       {/* 撮影ボタン */}
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        style={{ display: "none" }}
-        onChange={(e) => {
-          addFiles(e.target.files);
-          e.target.value = "";
-        }}
-      />
       <button
         type="button"
-        onClick={() => fileRef.current?.click()}
+        onClick={() => setCameraOpen(true)}
         disabled={shots.length >= MAX_SHOTS}
         style={{
           width: "100%",
