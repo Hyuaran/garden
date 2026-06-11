@@ -228,17 +228,26 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
                 left: 0,
                 right: 0,
                 textAlign: "center",
-                color: "#ff3b30",
-                fontWeight: 700,
-                fontSize: 13,
-                lineHeight: 1.5,
                 padding: "0 12px",
-                textShadow: "0 1px 3px rgba(0,0,0,0.85)",
               }}
             >
-              枠の中だけが保存されるので、
-              <br />
-              領収書は枠いっぱいに入れて撮影すること
+              <span
+                style={{
+                  display: "inline-block",
+                  background: "rgba(255,255,255,0.94)",
+                  color: "#ff3b30",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+                }}
+              >
+                枠の中だけが保存されるので、
+                <br />
+                領収書は枠いっぱいに入れて撮影すること
+              </span>
             </div>
           </>
         )}
