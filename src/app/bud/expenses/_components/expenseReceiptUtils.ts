@@ -32,3 +32,18 @@ export async function notifyDriveMove(requestId: string, action: "returned" | "a
     // ミラー移動の失敗は無視（後から手動でも直せる）
   }
 }
+
+/**
+ * Drive 上のレシートを「レシート日付_社員番号_店名_金額.jpg」へ自動リネーム（経理承認時・ベストエフォート）。
+ */
+export async function notifyDriveRename(requestId: string): Promise<void> {
+  try {
+    await fetch("/api/bud/expense-drive/rename", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId }),
+    });
+  } catch {
+    // リネーム失敗は無視（名前が機械的なまま残るだけ）
+  }
+}

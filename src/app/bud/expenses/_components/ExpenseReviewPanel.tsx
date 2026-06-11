@@ -22,7 +22,7 @@ import {
   type Corp,
   type Employee,
 } from "./expenseCorpUtils";
-import { notifyDriveMove, resolveReceiptStoragePath } from "./expenseReceiptUtils";
+import { notifyDriveMove, notifyDriveRename, resolveReceiptStoragePath } from "./expenseReceiptUtils";
 
 type Req = {
   id: string;
@@ -356,8 +356,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         ended_at: nowIso,
         duration_ms: openedAt.current ? Date.now() - openedAt.current : null,
       });
-      // 差戻し時は申請者の Drive ミラーを 0_差戻し へ移動（ベストエフォート）
+      // Drive ミラーの自動整理（ベストエフォート）:
+      // 差戻し→0_差戻しへ移動 / 承認→内容確定後の名前（日付_社員番号_店名_金額）へリネーム
       if (action === "reject") void notifyDriveMove(current.id, "returned");
+      else void notifyDriveRename(current.id);
       await load();
     } catch (e) {
       alert("処理に失敗しました：" + (e instanceof Error ? e.message : String(e)));
