@@ -19,6 +19,7 @@ import { findOrCreateSubfolder, moveFile } from "../_lib/drive";
 const SUBFOLDER: Record<string, string> = {
   returned: "0_差戻し",
   approved: "1_承認",
+  completed: "2_完了",
 };
 
 export async function POST(req: Request) {
