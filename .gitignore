@@ -48,3 +48,6 @@ next-env.d.ts
 
 # Claude Code local overrides (per-machine / per-user)
 .claude/settings.local.json
+
+# サービスアカウント鍵など秘匿物（コミット禁止）
+.secrets/
