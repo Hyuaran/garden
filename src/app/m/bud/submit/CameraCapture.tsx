@@ -37,6 +37,40 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
   const [shotN, setShotN] = useState(0);
   const [lastThumb, setLastThumb] = useState<string | null>(null);
   const [outOfFrame, setOutOfFrame] = useState(false);
+  const thumbSlotRef = useRef<HTMLDivElement>(null);
+  const [flying, setFlying] = useState<{ id: string; url: string }[]>([]);
+  const flyKey = useRef(0);
+  const animatedSet = useRef<Set<string>>(new Set());
+
+  // 撮った写真を左下サムネへ吸い込むアニメ（iPhone スクショ風）
+  const animateFly = (el: HTMLImageElement | null, id: string, url: string) => {
+    if (!el || animatedSet.current.has(id)) return;
+    animatedSet.current.add(id);
+    const remove = () => {
+      setFlying((prev) => prev.filter((x) => x.id !== id));
+      animatedSet.current.delete(id);
+      URL.revokeObjectURL(url);
+    };
+    const slot = thumbSlotRef.current?.getBoundingClientRect();
+    const start = el.getBoundingClientRect();
+    if (!slot || !start.width) {
+      remove();
+      return;
+    }
+    const targetSize = 48;
+    const dx = slot.left + slot.width / 2 - (start.left + start.width / 2);
+    const dy = slot.top + slot.height / 2 - (start.top + start.height / 2);
+    const scale = targetSize / start.width;
+    const anim = el.animate(
+      [
+        { transform: "translate(0,0) scale(1)", opacity: 1 },
+        { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 0.4 },
+      ],
+      { duration: 430, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" },
+    );
+    anim.onfinish = remove;
+    anim.oncancel = remove;
+  };
 
   useEffect(() => {
     let active = true;
@@ -147,6 +181,9 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
           if (prev) URL.revokeObjectURL(prev);
           return URL.createObjectURL(blob);
         });
+        flyKey.current += 1;
+        const flyId = `f${flyKey.current}`;
+        setFlying((f) => [...f, { id: flyId, url: URL.createObjectURL(blob) }]);
         try {
           navigator.vibrate?.(40);
         } catch {
@@ -260,7 +297,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
       {/* 下部バー（iPhone 風：左サムネ / 中央シャッター / 右完了） */}
       {!error && (
         <div style={bottomBar}>
-          <div style={sideSlot}>
+          <div style={sideSlot} ref={thumbSlotRef}>
             {lastThumb && (
               <div style={{ position: "relative" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -285,9 +322,29 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
           </div>
         </div>
       )}
+
+      {/* 撮影→左下サムネへ吸い込むアニメ */}
+      {flying.map((f) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={f.id} src={f.url} alt="" style={flyStart} ref={(el) => animateFly(el, f.id, f.url)} />
+      ))}
     </div>
   );
 }
+
+const flyStart: React.CSSProperties = {
+  position: "fixed",
+  left: "22vw",
+  top: "28vh",
+  width: "56vw",
+  height: "42vh",
+  objectFit: "cover",
+  borderRadius: 12,
+  border: "2px solid rgba(255,255,255,0.9)",
+  zIndex: 1100,
+  pointerEvents: "none",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+};
 
 const overlay: React.CSSProperties = {
   position: "fixed",
