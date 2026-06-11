@@ -10,9 +10,12 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 
+import { createBrowserClient } from "@/app/_lib/supabase/browser";
+
 type Shot = {
   id: string;
   url: string;
+  ts: number;
   selected: boolean;
   failed: boolean;
 };
@@ -25,6 +28,8 @@ export default function MobileExpenseSubmit() {
   const [kind, setKind] = useState<ExpenseKind>("individual"); // 個別経費が多数のため既定
   const [shots, setShots] = useState<Shot[]>([]);
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const seq = useRef(0);
 
@@ -37,6 +42,7 @@ export default function MobileExpenseSubmit() {
       next.push({
         id: `s${seq.current}`,
         url: URL.createObjectURL(file),
+        ts: Date.now(),
         selected: true,
         failed: false,
       });
@@ -59,10 +65,51 @@ export default function MobileExpenseSubmit() {
   const setAll = (val: boolean) =>
     setShots((prev) => prev.map((s) => (s.failed ? s : { ...s, selected: val })));
 
-  const submit = () => {
-    if (selectedCount === 0) return;
-    // TODO(Phase2-後続): bud_expense_requests へ INSERT ＋ 画像を Storage/Drive へアップロード。
-    setSent(true);
+  const submit = async () => {
+    if (selectedCount === 0 || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const supabase = createBrowserClient();
+
+      // ログインユーザーの社員ID（RLS: 自分の行のみ取得可）
+      const { data: emp } = await supabase
+        .from("root_employees")
+        .select("employee_id")
+        .maybeSingle<{ employee_id: string }>();
+      const empId = emp?.employee_id ?? null;
+      if (!empId) {
+        setError("ログイン情報を確認できませんでした。ログインし直してください。");
+        setSubmitting(false);
+        return;
+      }
+
+      // 区分により初期ステータスを分岐：個別=承認待ち / 会社=承認済みのため仕訳化へ直行
+      const status = kind === "company" ? "journalize_pending" : "submitted";
+      const targets = shots.filter((s) => s.selected && !s.failed);
+
+      for (const shot of targets) {
+        const blob = await (await fetch(shot.url)).blob();
+        const path = `${empId}/${shot.ts}-${shot.id}.jpg`;
+        const up = await supabase.storage
+          .from("bud-receipts")
+          .upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+        if (up.error) throw up.error;
+
+        const ins = await supabase.from("bud_expense_requests").insert({
+          applicant_employee_id: empId,
+          expense_kind: kind,
+          status,
+          drive_file_id: up.data?.path ?? path, // 暫定: Storage パスを保持（Drive連携で置換）
+        });
+        if (ins.error) throw ins.error;
+      }
+      setSent(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "送信に失敗しました。");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -216,26 +263,31 @@ export default function MobileExpenseSubmit() {
         >
           {sent ? (
             <div style={{ textAlign: "center", color: "#5e7d44", fontWeight: 700, padding: 8 }}>
-              ✓ {selectedCount}件を送信しました（テスト）
+              ✓ {selectedCount}件を送信しました（{kind === "individual" ? "個別経費" : "会社経費"}）
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={submit}
-              disabled={selectedCount === 0}
-              style={{
-                width: "100%",
-                padding: 15,
-                fontSize: 16,
-                fontWeight: 700,
-                color: "#fff",
-                background: selectedCount === 0 ? "#bbb" : "#5e7d44",
-                border: "none",
-                borderRadius: 14,
-              }}
-            >
-              選択した {selectedCount} 件を送信
-            </button>
+            <>
+              {error && (
+                <div style={{ color: "#c0392b", fontSize: 12, textAlign: "center", marginBottom: 8 }}>{error}</div>
+              )}
+              <button
+                type="button"
+                onClick={submit}
+                disabled={selectedCount === 0 || submitting}
+                style={{
+                  width: "100%",
+                  padding: 15,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: "#fff",
+                  background: selectedCount === 0 || submitting ? "#bbb" : "#5e7d44",
+                  border: "none",
+                  borderRadius: 14,
+                }}
+              >
+                {submitting ? "送信中…" : `選択した ${selectedCount} 件を送信`}
+              </button>
+            </>
           )}
         </div>
       )}
