@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * ライブカメラ（連写＋ガイド枠）
- * getUserMedia で背面カメラのライブ映像を表示。枠内にレシートを収めてシャッター。
- * 撮影してもこの画面に留まるので連続撮影できる。「完了」で選択画面へ。
- * カメラ不可の端末は写真選択にフォールバック。
+ * ライブカメラ（iPhone カメラ風 UI・縦長レシート枠・はみ出し警告）
+ * - getUserMedia 背面カメラのライブ映像。連続撮影できる。
+ * - ガイド枠はレシートに合わせた縦長。枠からはみ出した（背景と枠内外の明るさが近い）と
+ *   推定したら枠を赤くして「枠内に入れてください」を表示（明暗ヒューリスティック・実機で要調整）。
+ * - 撮影でフラッシュ＋振動＋左下サムネ更新。カメラ不可端末は写真選択にフォールバック。
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -16,13 +17,26 @@ type Props = {
   max: number;
 };
 
+// ガイド枠の位置（画面％・縦長）
+const FRAME = { left: 0.18, right: 0.82, top: 0.12, bottom: 0.86 };
+
+type Corner = { t?: number; b?: number; l?: number; r?: number; bt?: boolean; bb?: boolean; bl?: boolean; br?: boolean };
+const CORNERS: Corner[] = [
+  { t: -2, l: -2, bt: true, bl: true },
+  { t: -2, r: -2, bt: true, br: true },
+  { b: -2, l: -2, bb: true, bl: true },
+  { b: -2, r: -2, bb: true, br: true },
+];
+
 export function CameraCapture({ onCapture, onClose, count, max }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const analyzeRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
-  const [shotN, setShotN] = useState(0); // この起動中に撮った枚数（手応え表示）
-  const [thumbs, setThumbs] = useState<string[]>([]); // 撮った写真のサムネ（直近）
+  const [shotN, setShotN] = useState(0);
+  const [lastThumb, setLastThumb] = useState<string | null>(null);
+  const [outOfFrame, setOutOfFrame] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -51,6 +65,67 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
     };
   }, []);
 
+  // はみ出し推定ループ（明暗ヒューリスティック・約5fps）
+  useEffect(() => {
+    if (error) return;
+    let raf = 0;
+    let last = 0;
+    const cv = (analyzeRef.current ||= document.createElement("canvas"));
+    cv.width = 80;
+    cv.height = 140;
+    const ctx = cv.getContext("2d", { willReadFrequently: true });
+
+    const loop = (t: number) => {
+      raf = requestAnimationFrame(loop);
+      if (t - last < 200) return;
+      last = t;
+      const v = videoRef.current;
+      if (!v || !v.videoWidth || !ctx) return;
+      ctx.drawImage(v, 0, 0, cv.width, cv.height);
+      let img: ImageData;
+      try {
+        img = ctx.getImageData(0, 0, cv.width, cv.height);
+      } catch {
+        return;
+      }
+      const lum = (x: number, y: number) => {
+        const i = (y * cv.width + x) * 4;
+        return (img.data[i] * 0.299 + img.data[i + 1] * 0.587 + img.data[i + 2] * 0.114) / 255;
+      };
+      const L = Math.round(FRAME.left * cv.width);
+      const R = Math.round(FRAME.right * cv.width);
+      const T = Math.round(FRAME.top * cv.height);
+      const B = Math.round(FRAME.bottom * cv.height);
+      let inSum = 0;
+      let inN = 0;
+      for (let y = T; y < B; y += 4) {
+        for (let x = L; x < R; x += 4) {
+          inSum += lum(x, y);
+          inN++;
+        }
+      }
+      const band = 5;
+      let outSum = 0;
+      let outN = 0;
+      for (let y = Math.max(0, T - band); y < B + band && y < cv.height; y += 3) {
+        for (let x = Math.max(0, L - band); x < R + band && x < cv.width; x += 3) {
+          const inside = x >= L && x < R && y >= T && y < B;
+          if (!inside) {
+            outSum += lum(x, y);
+            outN++;
+          }
+        }
+      }
+      const inAvg = inN ? inSum / inN : 0;
+      const outAvg = outN ? outSum / outN : 0;
+      // レシート（明るい）が枠外にもはみ出す＝枠外も枠内と同じくらい明るい
+      const spilling = inAvg > 0.45 && outAvg > inAvg * 0.82;
+      setOutOfFrame(spilling);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [error]);
+
   const atMax = count >= max;
 
   const shoot = () => {
@@ -68,7 +143,10 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
         if (!blob) return;
         onCapture(blob);
         setShotN((n) => n + 1);
-        setThumbs((t) => [...t, URL.createObjectURL(blob)].slice(-8));
+        setLastThumb((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return URL.createObjectURL(blob);
+        });
         try {
           navigator.vibrate?.(40);
         } catch {
@@ -82,6 +160,8 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
     );
   };
 
+  const frameColor = outOfFrame ? "#ff3b30" : "rgba(255,255,255,0.95)";
+
   return (
     <div style={overlay}>
       {/* 上部バー */}
@@ -89,29 +169,69 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
         <button type="button" onClick={onClose} style={topBtn} aria-label="閉じる">
           ✕
         </button>
-        <span style={{ color: "#fff", fontSize: 13 }}>
-          {count} / {max} 枚{shotN > 0 ? `（今 ${shotN}枚）` : ""}
+        <span style={{ color: "#fff", fontSize: 14, fontVariantNumeric: "tabular-nums" }}>
+          {count} / {max}
         </span>
-        <button type="button" onClick={onClose} style={{ ...topBtn, width: "auto", padding: "0 14px" }}>
-          完了
-        </button>
+        <span style={{ width: 40 }} />
       </div>
 
-      {/* 映像 + ガイド枠 */}
+      {/* 映像 + 縦長ガイド枠 */}
       <div style={{ position: "relative", flex: 1, overflow: "hidden", background: "#000" }}>
         {!error && (
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            autoPlay
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
+          <video ref={videoRef} playsInline muted autoPlay style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         )}
         {!error && (
           <>
-            <div style={guideFrame} aria-hidden />
-            <div style={guideHint}>枠内にレシートを収めて撮影</div>
+            <div
+              style={{
+                position: "absolute",
+                left: `${FRAME.left * 100}%`,
+                right: `${(1 - FRAME.right) * 100}%`,
+                top: `${FRAME.top * 100}%`,
+                bottom: `${(1 - FRAME.bottom) * 100}%`,
+                border: `2px solid ${frameColor}`,
+                borderRadius: 14,
+                boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)",
+                transition: "border-color 0.15s",
+              }}
+              aria-hidden
+            >
+              {/* コーナーブラケット（iPhone風） */}
+              {CORNERS.map((c, i) => (
+                <span
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    width: 22,
+                    height: 22,
+                    top: c.t,
+                    bottom: c.b,
+                    left: c.l,
+                    right: c.r,
+                    borderTop: c.bt ? `4px solid ${frameColor}` : undefined,
+                    borderBottom: c.bb ? `4px solid ${frameColor}` : undefined,
+                    borderLeft: c.bl ? `4px solid ${frameColor}` : undefined,
+                    borderRight: c.br ? `4px solid ${frameColor}` : undefined,
+                    borderRadius: 6,
+                  }}
+                />
+              ))}
+            </div>
+            <div
+              style={{
+                position: "absolute",
+                top: `${FRAME.bottom * 100 + 2}%`,
+                left: 0,
+                right: 0,
+                textAlign: "center",
+                color: outOfFrame ? "#ff3b30" : "#fff",
+                fontSize: 14,
+                fontWeight: outOfFrame ? 700 : 400,
+                textShadow: "0 1px 3px rgba(0,0,0,0.8)",
+              }}
+            >
+              {outOfFrame ? "枠内に入れてください" : "枠に合わせて撮影"}
+            </div>
           </>
         )}
         {flash && <div style={flashStyle} aria-hidden />}
@@ -137,17 +257,18 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
         )}
       </div>
 
-      {/* シャッター */}
+      {/* 下部バー（iPhone 風：左サムネ / 中央シャッター / 右完了） */}
       {!error && (
         <div style={bottomBar}>
-          {thumbs.length > 0 && (
-            <div style={thumbStrip}>
-              {thumbs.map((u, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={`${u}-${i}`} src={u} alt="" style={thumbImg} />
-              ))}
-            </div>
-          )}
+          <div style={sideSlot}>
+            {lastThumb && (
+              <div style={{ position: "relative" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={lastThumb} alt="" style={thumbImg} />
+                {shotN > 0 && <span style={thumbCount}>{shotN}</span>}
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={shoot}
@@ -157,10 +278,11 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
           >
             <span style={shutterInner} />
           </button>
-          {shotN > 0 && !atMax && (
-            <div style={{ color: "#fff", fontSize: 12, marginTop: 8 }}>✓ {shotN} 枚 撮影しました</div>
-          )}
-          {atMax && <div style={{ color: "#fff", fontSize: 12, marginTop: 8 }}>最大{max}枚に達しました</div>}
+          <div style={{ ...sideSlot, justifyContent: "flex-end" }}>
+            <button type="button" onClick={onClose} style={doneBtn}>
+              完了
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -179,8 +301,8 @@ const topBar: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "calc(8px + env(safe-area-inset-top)) 14px 8px",
-  background: "rgba(0,0,0,0.6)",
+  padding: "calc(8px + env(safe-area-inset-top)) 16px 8px",
+  background: "#000",
 };
 const topBtn: React.CSSProperties = {
   width: 40,
@@ -191,71 +313,56 @@ const topBtn: React.CSSProperties = {
   color: "#fff",
   fontSize: 16,
 };
-const guideFrame: React.CSSProperties = {
-  position: "absolute",
-  top: "12%",
-  left: "8%",
-  right: "8%",
-  bottom: "18%",
-  border: "2px solid rgba(255,255,255,0.9)",
-  borderRadius: 12,
-  boxShadow: "0 0 0 9999px rgba(0,0,0,0.25)",
-};
-const guideHint: React.CSSProperties = {
-  position: "absolute",
-  bottom: "10%",
-  left: 0,
-  right: 0,
-  textAlign: "center",
-  color: "#fff",
-  fontSize: 13,
-  textShadow: "0 1px 3px rgba(0,0,0,0.8)",
-};
-const flashStyle: React.CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  background: "#fff",
-  opacity: 0.8,
-};
+const flashStyle: React.CSSProperties = { position: "absolute", inset: 0, background: "#fff", opacity: 0.85 };
 const bottomBar: React.CSSProperties = {
   display: "flex",
-  flexDirection: "column",
   alignItems: "center",
-  padding: "14px 0 calc(18px + env(safe-area-inset-bottom))",
-  background: "rgba(0,0,0,0.6)",
+  justifyContent: "space-between",
+  padding: "18px 24px calc(22px + env(safe-area-inset-bottom))",
+  background: "#000",
 };
-const thumbStrip: React.CSSProperties = {
-  display: "flex",
-  gap: 6,
-  marginBottom: 12,
-  maxWidth: "100%",
-  overflowX: "auto",
-  padding: "0 12px",
-};
-const thumbImg: React.CSSProperties = {
-  width: 44,
-  height: 44,
-  objectFit: "cover",
-  borderRadius: 8,
-  border: "2px solid rgba(255,255,255,0.85)",
-  flexShrink: 0,
-};
+const sideSlot: React.CSSProperties = { width: 64, display: "flex", alignItems: "center" };
 const shutter: React.CSSProperties = {
-  width: 72,
-  height: 72,
+  width: 74,
+  height: 74,
   borderRadius: "50%",
   border: "4px solid #fff",
   background: "transparent",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+  padding: 0,
 };
-const shutterInner: React.CSSProperties = {
-  width: 56,
-  height: 56,
-  borderRadius: "50%",
-  background: "#fff",
-  display: "block",
+const shutterInner: React.CSSProperties = { width: 60, height: 60, borderRadius: "50%", background: "#fff", display: "block" };
+const doneBtn: React.CSSProperties = {
+  background: "transparent",
+  border: "none",
+  color: "#ffd60a",
+  fontSize: 16,
+  fontWeight: 700,
+};
+const thumbImg: React.CSSProperties = {
+  width: 48,
+  height: 48,
+  objectFit: "cover",
+  borderRadius: 8,
+  border: "2px solid rgba(255,255,255,0.85)",
+};
+const thumbCount: React.CSSProperties = {
+  position: "absolute",
+  top: -6,
+  right: -6,
+  minWidth: 18,
+  height: 18,
+  padding: "0 4px",
+  borderRadius: 9,
+  background: "#E07A9B",
+  color: "#fff",
+  fontSize: 11,
+  fontWeight: 700,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 const errorBox: React.CSSProperties = {
   position: "absolute",
