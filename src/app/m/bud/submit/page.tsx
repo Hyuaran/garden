@@ -84,8 +84,9 @@ export default function MobileExpenseSubmit() {
         return;
       }
 
-      // 区分により初期ステータスを分岐：個別=承認待ち / 会社=承認済みのため仕訳化へ直行
-      const status = kind === "company" ? "journalize_pending" : "submitted";
+      // 現状は会社経費も個別経費と同じフロー（承認待ちから）。
+      // 将来：会社経費は承認済みのため仕訳化へ直行に切替予定。
+      const status = "submitted";
       const targets = shots.filter((s) => s.selected && !s.failed);
 
       for (const shot of targets) {
