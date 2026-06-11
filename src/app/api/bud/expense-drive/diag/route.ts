@@ -10,15 +10,50 @@
 
 import { NextResponse } from "next/server";
 
-import { getDriveAccessToken } from "../_lib/drive";
+import { createServerClient } from "@/app/_lib/supabase/server";
 
-export async function GET() {
+import { getDriveAccessToken, uploadToFolder } from "../_lib/drive";
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
   const out: Record<string, boolean | string> = {
     hasEnv: Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
     envParses: false,
     tokenOk: false,
     rootVisible: false,
   };
+
+  // 本人認証の到達確認（ログイン済みブラウザで開くと authed:true になる）
+  try {
+    const supabase = await createServerClient();
+    const { data: auth } = await supabase.auth.getUser();
+    out.authed = Boolean(auth?.user?.id);
+    if (auth?.user?.id) {
+      const { data: emp } = await supabase
+        .from("root_employees")
+        .select("employee_id, expense_drive_folder_id")
+        .eq("user_id", auth.user.id)
+        .maybeSingle<{ employee_id: string; expense_drive_folder_id: string | null }>();
+      out.employeeFound = Boolean(emp);
+      out.folderSet = Boolean(emp?.expense_drive_folder_id);
+      if (url.searchParams.get("write") === "1" && emp?.expense_drive_folder_id) {
+        try {
+          const up = await uploadToFolder(
+            emp.expense_drive_folder_id,
+            `diag-test-${Date.now()}.txt`,
+            Buffer.from("diag"),
+            "text/plain",
+          );
+          out.writeOk = Boolean(up.id);
+        } catch (e) {
+          out.writeOk = false;
+          out.writeError = e instanceof Error ? e.message.slice(0, 160) : "unknown";
+        }
+      }
+    }
+  } catch (e) {
+    out.authProbeError = e instanceof Error ? e.message.slice(0, 120) : "unknown";
+  }
   try {
     if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
       JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
