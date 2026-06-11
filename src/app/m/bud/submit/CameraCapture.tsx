@@ -224,16 +224,21 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
             <div
               style={{
                 position: "absolute",
-                top: `${FRAME.bottom * 100 + 2}%`,
+                bottom: `${(1 - FRAME.top) * 100 + 1}%`,
                 left: 0,
                 right: 0,
                 textAlign: "center",
-                color: "#fff",
+                color: "#ff3b30",
+                fontWeight: 700,
                 fontSize: 13,
-                textShadow: "0 1px 3px rgba(0,0,0,0.8)",
+                lineHeight: 1.5,
+                padding: "0 12px",
+                textShadow: "0 1px 3px rgba(0,0,0,0.85)",
               }}
             >
-レシートを枠いっぱいに入れて撮影（枠の中だけ保存されます）
+              枠の中だけが保存されるので、
+              <br />
+              領収書は枠いっぱいに入れて撮影すること
             </div>
           </>
         )}
