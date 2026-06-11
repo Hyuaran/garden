@@ -18,8 +18,8 @@ type Props = {
   max: number;
 };
 
-// ガイド枠の位置（画面％・縦長）
-const FRAME = { left: 0.16, right: 0.84, top: 0.11, bottom: 0.87 };
+// ガイド枠の位置（画面％・縦長）。上に寄らないよう少し下げて上下バランスを取る。
+const FRAME = { left: 0.16, right: 0.84, top: 0.18, bottom: 0.92 };
 
 type Corner = { t?: number; b?: number; l?: number; r?: number; bt?: boolean; bb?: boolean; bl?: boolean; br?: boolean };
 const CORNERS: Corner[] = [
