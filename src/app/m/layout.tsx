@@ -1,8 +1,11 @@
 import { MobileAuthGate } from "./_components/MobileAuthGate";
+import { MobileBottomNav } from "./_components/MobileBottomNav";
 
-/**
- * /m 配下（Garden モバイル）はログイン必須。
- */
 export default function MobileLayout({ children }: { children: React.ReactNode }) {
-  return <MobileAuthGate>{children}</MobileAuthGate>;
+  return (
+    <MobileAuthGate>
+      <div style={{ minHeight: "100dvh", paddingBottom: "calc(78px + env(safe-area-inset-bottom))" }}>{children}</div>
+      <MobileBottomNav />
+    </MobileAuthGate>
+  );
 }
