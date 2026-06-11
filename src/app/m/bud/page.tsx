@@ -54,13 +54,13 @@ export default function MobileBudHome() {
           </div>
         </Link>
 
-        {/* 詳細(Drive) */}
+        {/* 申請状況（アプリ内で自分の申請と状態を見る） */}
         <Link href="/m/bud/drive" style={{ ...CARD, border: "2px solid #C9A24B" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <span style={{ fontSize: 30 }}>🗂</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 17, fontWeight: 700 }}>詳細をみる</div>
-              <div style={{ fontSize: 12, color: "#6d6356", marginTop: 2 }}>自分の領収書・承認/差戻しの状況（Drive）</div>
+              <div style={{ fontSize: 17, fontWeight: 700 }}>申請状況をみる</div>
+              <div style={{ fontSize: 12, color: "#6d6356", marginTop: 2 }}>自分の領収書と承認・差戻しの状態</div>
             </div>
             <span style={{ color: "#C9A24B", fontSize: 20 }}>›</span>
           </div>
