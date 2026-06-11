@@ -1,60 +1,42 @@
 /**
  * Google Drive サーバー側クライアント（経費レシート用）
  *
- * サービスアカウント鍵で Drive API を呼ぶ。鍵の取得順:
- *   1. 環境変数 GOOGLE_SERVICE_ACCOUNT_JSON（本番 Vercel 用・JSON文字列そのまま）
- *   2. ローカルファイル .secrets/garden-bud-drive.json（開発用・gitignore 済み）
+ * 認証は OAuth（東海林さん本人の一度きりの許可・refresh token 方式）。
+ *   1. 環境変数 GOOGLE_DRIVE_OAUTH_JSON（本番 Vercel 用・{client_id, client_secret, refresh_token}）
+ *   2. ローカルファイル .secrets/garden-bud-oauth-token.json（開発用・gitignore 済み）
+ * スコープは drive.file（このアプリが作成したフォルダ/ファイルのみ操作可）。
+ * ファイルの所有者はユーザー本人になり、本人の保存容量を使う。
+ * ※サービスアカウント方式は「SAは保存容量を持たない」Google仕様により廃止（2026-06-11）。
  *
- * 依存ライブラリなし（node:crypto で RS256 署名、fetch で REST 呼び出し）。
- * トークンはモジュールスコープで約50分キャッシュ。
+ * 依存ライブラリなし（fetch のみ）。トークンはモジュールスコープでキャッシュ。
  */
 
-import { createSign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-type ServiceAccount = { client_email: string; private_key: string };
+type OAuthCreds = { client_id: string; client_secret: string; refresh_token: string };
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
-function loadServiceAccount(): ServiceAccount {
-  const env = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (env) return JSON.parse(env) as ServiceAccount;
-  const path = join(process.cwd(), ".secrets", "garden-bud-drive.json");
-  return JSON.parse(readFileSync(path, "utf-8")) as ServiceAccount;
-}
-
-function b64url(input: Buffer | string): string {
-  return Buffer.from(input).toString("base64url");
+function loadOAuthCreds(): OAuthCreds {
+  const env = process.env.GOOGLE_DRIVE_OAUTH_JSON;
+  if (env) return JSON.parse(env) as OAuthCreds;
+  const path = join(process.cwd(), ".secrets", "garden-bud-oauth-token.json");
+  return JSON.parse(readFileSync(path, "utf-8")) as OAuthCreds;
 }
 
 export async function getDriveAccessToken(): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.token;
 
-  const sa = loadServiceAccount();
-  const now = Math.floor(Date.now() / 1000);
-  const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const payload = b64url(
-    JSON.stringify({
-      iss: sa.client_email,
-      scope: "https://www.googleapis.com/auth/drive",
-      aud: "https://oauth2.googleapis.com/token",
-      iat: now,
-      exp: now + 3600,
-    }),
-  );
-  const signingInput = `${header}.${payload}`;
-  const signer = createSign("RSA-SHA256");
-  signer.update(signingInput);
-  const signature = signer.sign(sa.private_key).toString("base64url");
-  const jwt = `${signingInput}.${signature}`;
-
+  const creds = loadOAuthCreds();
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: jwt,
+      client_id: creds.client_id,
+      client_secret: creds.client_secret,
+      refresh_token: creds.refresh_token,
+      grant_type: "refresh_token",
     }),
   });
   if (!res.ok) throw new Error(`Drive token error: ${res.status} ${await res.text()}`);

@@ -1,10 +1,10 @@
 /**
  * GET /api/bud/expense-drive/diag
  * Drive 連携の診断（一時用）。秘密情報は返さず、各段階の成否ブール値のみ返す。
- *   hasEnv      … GOOGLE_SERVICE_ACCOUNT_JSON が設定されているか
+ *   hasEnv      … GOOGLE_DRIVE_OAUTH_JSON が設定されているか
  *   envParses   … その JSON がパースできるか
  *   tokenOk     … サービスアカウントでトークン取得できたか
- *   rootVisible … 共有フォルダ(20_Garden Series Drive)が見えるか
+ *   rootVisible … アプリ作成フォルダ(Bud_経費精算)が見えるか
  * 動作確認が済んだら削除する。
  */
 
@@ -17,7 +17,7 @@ import { getDriveAccessToken, uploadToFolder } from "../_lib/drive";
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const out: Record<string, boolean | string> = {
-    hasEnv: Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+    hasEnv: Boolean(process.env.GOOGLE_DRIVE_OAUTH_JSON),
     envParses: false,
     tokenOk: false,
     rootVisible: false,
@@ -55,8 +55,8 @@ export async function GET(req: Request) {
     out.authProbeError = e instanceof Error ? e.message.slice(0, 120) : "unknown";
   }
   try {
-    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-      JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    if (process.env.GOOGLE_DRIVE_OAUTH_JSON) {
+      JSON.parse(process.env.GOOGLE_DRIVE_OAUTH_JSON);
       out.envParses = true;
     }
   } catch {
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
     out.tokenOk = Boolean(token);
     const res = await fetch(
       "https://www.googleapis.com/drive/v3/files?q=" +
-        encodeURIComponent("name contains 'Garden Series'") +
+        encodeURIComponent("name contains 'Bud_経費精算'") +
         "&fields=files(id)&pageSize=1",
       { headers: { Authorization: `Bearer ${token}` } },
     );
