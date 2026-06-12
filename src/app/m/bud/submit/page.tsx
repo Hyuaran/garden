@@ -31,7 +31,25 @@ type Shot = {
 
 type ExpenseKind = "individual" | "company";
 
+type ExpenseOcrResult = {
+  receipt_date: string | null;
+  receipt_time: string | null;
+  store_name: string | null;
+  amount: number | null;
+  qualified_number: string | null;
+  qualified_class: "有" | "無";
+  orientation: 0 | 90 | 180 | 270;
+  confidence: "high" | "low";
+};
+
+type OcrProgress = {
+  done: number;
+  total: number;
+};
+
 const MAX_SHOTS = 50;
+const OCR_CONCURRENCY = 2;
+const OCR_TIMEOUT_MS = 45000;
 
 async function rotateBlob(blob: Blob, deg: number): Promise<Blob> {
   if (!deg) return blob;
@@ -59,6 +77,35 @@ async function rotateBlob(blob: Blob, deg: number): Promise<Blob> {
   }
 }
 
+async function readReceiptOcr(blob: Blob): Promise<ExpenseOcrResult | null> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), OCR_TIMEOUT_MS);
+  try {
+    const fd = new FormData();
+    fd.append("file", blob, "receipt.jpg");
+    const res = await fetch("/api/bud/expense-ocr", { method: "POST", body: fd, signal: controller.signal });
+    const json = (await res.json()) as { ok?: boolean; result?: ExpenseOcrResult };
+    if (!res.ok || !json.ok || !json.result) return null;
+    return json.result;
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+async function runLimited<T>(items: T[], limit: number, worker: (item: T, index: number) => Promise<void>) {
+  let next = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      await worker(items[index], index);
+    }
+  });
+  await Promise.all(runners);
+}
+
 export default function MobileExpenseSubmit() {
   const [kind, setKind] = useState<ExpenseKind>("individual");
   const [shots, setShots] = useState<Shot[]>([]);
@@ -68,6 +115,7 @@ export default function MobileExpenseSubmit() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [sentCount, setSentCount] = useState(0);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState<OcrProgress | null>(null);
   const seq = useRef(0);
   const router = useRouter();
 
@@ -134,14 +182,18 @@ export default function MobileExpenseSubmit() {
       const ymd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
       const hm = `${pad(now.getHours())}${pad(now.getMinutes())}`;
       const empNo = empId.replace(/^EMP-/, "");
-      let seqNo = 0;
 
       const targets = shots.filter((shot) => shot.selected && !shot.failed);
-      for (const shot of targets) {
+      setOcrProgress({ done: 0, total: targets.length });
+      await runLimited(targets, OCR_CONCURRENCY, async (shot, index) => {
         let blob = await (await fetch(shot.url)).blob();
         if (shot.rotation) blob = await rotateBlob(blob, shot.rotation);
-        seqNo += 1;
-        const driveName = `${ymd}_${hm}_${empNo}_${pad(seqNo)}.jpg`;
+
+        const ocr = await readReceiptOcr(blob);
+        setOcrProgress((prev) => (prev ? { ...prev, done: Math.min(prev.done + 1, prev.total) } : prev));
+        if (ocr?.orientation) blob = await rotateBlob(blob, ocr.orientation);
+
+        const driveName = `${ymd}_${hm}_${empNo}_${pad(index + 1)}.jpg`;
         const path = `${empId}/${shot.ts}-${shot.id}.jpg`;
 
         const up = await supabase.storage
@@ -169,12 +221,19 @@ export default function MobileExpenseSubmit() {
           applicant_employee_id: empId,
           expense_kind: kind,
           status: "submitted",
+          receipt_date: ocr?.receipt_date ?? null,
+          receipt_time: ocr?.receipt_time ?? null,
+          store_name: ocr?.store_name ?? null,
+          amount: ocr?.amount ?? null,
+          qualified_number: ocr?.qualified_number ?? null,
+          qualified_class: ocr?.qualified_class ?? null,
+          description: ocr?.confidence === "low" ? "OCR要確認" : null,
           storage_path: up.data?.path ?? path,
           drive_file_id: driveFileId,
           drive_view_url: driveViewUrl,
         });
         if (ins.error) throw ins.error;
-      }
+      });
 
       setSentCount(targets.length);
       setSent(true);
@@ -182,6 +241,7 @@ export default function MobileExpenseSubmit() {
       setError(e instanceof Error ? e.message : "送信に失敗しました。");
     } finally {
       setSubmitting(false);
+      setOcrProgress(null);
     }
   };
 
@@ -191,6 +251,7 @@ export default function MobileExpenseSubmit() {
     setSent(false);
     setSentCount(0);
     setError(null);
+    setOcrProgress(null);
   };
 
   if (sent) {
@@ -318,9 +379,18 @@ export default function MobileExpenseSubmit() {
 
       {error && <div style={{ ...budNotice, marginTop: 14, color: budMobile.colors.red }}>{error}</div>}
 
+      {submitting && ocrProgress && (
+        <div style={ocrProgressCard}>
+          <strong>自動読取中...</strong>
+          <span>
+            {ocrProgress.done}/{ocrProgress.total}件
+          </span>
+        </div>
+      )}
+
       <div style={submitBar}>
         <button type="button" disabled={selectedCount === 0 || submitting} onClick={() => void submit()} style={submitButton(selectedCount === 0 || submitting)}>
-          {submitting ? "送信中..." : `${selectedCount}件を送信`}
+          {submitting && ocrProgress ? `自動読取中... ${ocrProgress.done}/${ocrProgress.total}` : submitting ? "送信中..." : `${selectedCount}件を送信`}
         </button>
       </div>
     </main>
@@ -361,6 +431,17 @@ const selectButton = (active: boolean): React.CSSProperties => ({
 });
 const shotFoot: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", color: budMobile.colors.sub, fontSize: 12 };
 const rotateBtn: React.CSSProperties = { border: "none", background: "transparent", color: budMobile.colors.gold, fontFamily: budMobile.font.serif };
+const ocrProgressCard: React.CSSProperties = {
+  ...budCard,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  marginTop: 14,
+  padding: "12px 14px",
+  color: budMobile.colors.sub,
+  fontSize: 13,
+};
 const submitBar: React.CSSProperties = {
   position: "fixed",
   left: 0,
