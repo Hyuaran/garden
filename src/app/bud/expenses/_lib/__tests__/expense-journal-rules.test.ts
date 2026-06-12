@@ -13,6 +13,19 @@ const base = {
 };
 
 describe("expense journal rules", () => {
+  it("maps master categories that share the account name directly", () => {
+    const sozei = classifyExpenseJournal({ ...base, categoryName: "租税公課", storeName: "株式会社カスタマーリレーション", amount: 2900, qualifiedClass: "無" });
+    expect(sozei.ok).toBe(true);
+    expect(sozei.debitAccount).toBe("租税公課");
+    expect(sozei.debitTaxClass).toBe("対象外");
+    expect(sozei.debitTaxAmount).toBe(0);
+
+    const shomohin = classifyExpenseJournal({ ...base, categoryName: "消耗品費", storeName: "コーナン" });
+    expect(shomohin.ok).toBe(true);
+    expect(shomohin.debitAccount).toBe("消耗品費");
+    expect(shomohin.debitTaxClass).toBe("課税仕入 10%");
+  });
+
   it("applies the 5,000 yen rule from meeting expense to entertainment", () => {
     const result = classifyExpenseJournal({ ...base, categoryName: "会議費", amount: 5001 });
     expect(result.ok).toBe(true);

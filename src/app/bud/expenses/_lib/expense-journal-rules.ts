@@ -39,6 +39,13 @@ export const KUBUN_MAP: Record<string, Mapping> = {
   社用車備品交換等: { account: "車両費", taxClass: "課税仕入 10%" },
   社用車罰金: { account: "車両費", taxClass: "対象外" },
   処分費: { account: "雑費", taxClass: "課税仕入 10%" },
+  // 区分マスタに存在する勘定科目名そのままの区分（旧シード由来・経理が直接選択可能）
+  消耗品費: { account: "消耗品費", taxClass: "課税仕入 10%" },
+  通信費: { account: "通信費", taxClass: "課税仕入 10%" },
+  新聞図書費: { account: "新聞図書費", taxClass: "課税仕入 10%" },
+  水道光熱費: { account: "水道光熱費", taxClass: "課税仕入 10%" },
+  租税公課: { account: "租税公課", taxClass: "対象外" },
+  雑費: { account: "雑費", taxClass: "課税仕入 10%" },
 };
 
 export const SONOTA_MAP: Record<string, Mapping> = {
