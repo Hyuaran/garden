@@ -1,6 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
 
@@ -50,10 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "ANTHROPIC_API_KEY が未設定です" }, { status: 500 });
     }
 
-    const ocrBuffer = await sharp(image)
-      .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 82, mozjpeg: true })
-      .toBuffer();
+    const ocrBuffer = await prepareOcrImage(image);
 
     const anthropic = new Anthropic({ apiKey });
     const model = process.env.BUD_OCR_MODEL || "claude-opus-4-8";
@@ -91,6 +87,21 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[bud expense ocr]", error);
     return NextResponse.json({ ok: false, error: "OCRに失敗しました" }, { status: 502 });
+  }
+}
+
+// OCR送信用の縮小（トークン節約）。sharp はネイティブ依存で環境により読み込めないことがあるため
+// 動的importとし、失敗時は原寸のまま送る（読取は遅く・高くなるが機能は維持）
+async function prepareOcrImage(image: Buffer): Promise<Buffer> {
+  try {
+    const sharp = (await import("sharp")).default;
+    return await sharp(image)
+      .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer();
+  } catch (error) {
+    console.error("[bud expense ocr] sharp unavailable; sending original image", error);
+    return image;
   }
 }
 
