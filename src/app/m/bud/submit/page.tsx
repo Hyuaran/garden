@@ -227,7 +227,8 @@ export default function MobileExpenseSubmit() {
           receipt_date: ocr?.receipt_date ?? null,
           receipt_time: ocr?.receipt_time ?? null,
           store_name: ocr?.store_name ?? null,
-          amount: ocr?.amount ?? null,
+          // amount は NOT NULL 列。OCRで読めなかった場合は 0（=未入力扱い・経理が承認待ちで入力）
+          amount: ocr?.amount ?? 0,
           qualified_number: ocr?.qualified_number ?? null,
           qualified_class: ocr?.qualified_class ?? null,
           description: ocr?.confidence === "low" ? "OCR要確認" : null,
