@@ -488,7 +488,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
                   </div>
 
-                  <div style={fieldRow("1.2fr 0.8fr 1.3fr")}>
+                  <div style={fieldRow(FISCAL_COLS)}>
                     <Field label="法人">
                       <select value={form.corp_id} onChange={(e) => setF("corp_id", e.target.value)} style={input}>
                         <option value="">未設定</option>
@@ -508,7 +508,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   </div>
                   {fiscalPeriod?.expired && <div style={fiscalWarning}>⚠ 計上期限超過（期末の翌月末を過ぎています）・要確認</div>}
 
-                  <div style={fieldRow("1fr 1fr")}>
+                  {/* 法人・計上期と同じ列幅に揃える（3列目は空き） */}
+                  <div style={fieldRow(FISCAL_COLS)}>
                     <Field label="レシート日付">
                       <input type="date" value={form.receipt_date} onChange={(e) => setF("receipt_date", e.target.value)} style={input} />
                     </Field>
@@ -517,7 +518,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     </Field>
                   </div>
 
-                  <div style={fieldRow("1fr 1.2fr 0.8fr")}>
+                  <div style={fieldRow("1.1fr 0.8fr 1.3fr")}>
                     <Field label="経費区分">
                       <select value={form.category_id} onChange={(e) => setF("category_id", e.target.value)} style={input}>
                         <option value="">（未選択）</option>
@@ -528,15 +529,6 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         ))}
                       </select>
                     </Field>
-                    <Field label="店名">
-                      <input type="text" value={form.store_name} onChange={(e) => setF("store_name", e.target.value)} style={input} />
-                    </Field>
-                    <Field label="金額">
-                      <input type="number" value={form.amount} onChange={(e) => setF("amount", e.target.value)} style={input} />
-                    </Field>
-                  </div>
-
-                  <div style={fieldRow("1fr 1.4fr")}>
                     <Field label="適格区分">
                       <select value={form.qualified_class} onChange={(e) => setF("qualified_class", e.target.value)} style={input}>
                         <option value="">（未選択）</option>
@@ -547,6 +539,15 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     </Field>
                     <Field label="適格番号(T)">
                       <input type="text" value={form.qualified_number} onChange={(e) => setF("qualified_number", e.target.value)} style={input} />
+                    </Field>
+                  </div>
+
+                  <div style={fieldRow("2fr 1fr")}>
+                    <Field label="店名">
+                      <input type="text" value={form.store_name} onChange={(e) => setF("store_name", e.target.value)} style={input} />
+                    </Field>
+                    <Field label="金額">
+                      <input type="number" value={form.amount} onChange={(e) => setF("amount", e.target.value)} style={input} />
                     </Field>
                   </div>
 
@@ -799,13 +800,14 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 10 }}>
+    <div>
       <label style={{ display: "block", fontSize: 12, color: "#6d6356", marginBottom: 4 }}>{label}</label>
       {children}
     </div>
   );
 }
 
+// 表示専用の値。Field と同じ「ラベル上・箱下」構造＋入力欄と同じ箱の高さにして、行内で枠が揃うようにする
 function InfoValue({
   label,
   children,
@@ -816,11 +818,9 @@ function InfoValue({
   emphasis?: "normal" | "danger";
 }) {
   return (
-    <div style={infoBox(emphasis)}>
+    <div>
       <div style={{ fontSize: 12, color: emphasis === "danger" ? "#9e3f38" : "#6d6356", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 14, color: emphasis === "danger" ? "#b35850" : "#3d3528", fontWeight: emphasis === "danger" ? 700 : 500 }}>
-        {children}
-      </div>
+      <div style={infoBox(emphasis)}>{children}</div>
     </div>
   );
 }
@@ -906,17 +906,26 @@ const railHint: React.CSSProperties = { writingMode: "vertical-rl", fontSize: 11
 const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start", marginBottom: 0 };
 const panel: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
 const panelTitle: React.CSSProperties = { fontSize: 15, color: "#b3892e", margin: "0 0 12px", borderBottom: "1px dashed rgba(179,137,46,0.35)", paddingBottom: 8 };
-const formRows: React.CSSProperties = { display: "grid", gap: 8 };
+// 「法人/計上期/期の範囲」行と「レシート日付/時刻」行で共有する列幅（枠の縦ラインを揃える）
+const FISCAL_COLS = "1.1fr 0.8fr 1.3fr";
+const formRows: React.CSSProperties = { display: "grid", gap: 10 };
 const fieldRow = (columns: string): React.CSSProperties => ({
   display: "grid",
   gridTemplateColumns: columns,
   gap: 10,
   alignItems: "end",
 });
+// 入力欄（input/select）と同じ padding・角丸・文字サイズで、行内の箱の高さが揃うようにする
 const infoBox = (emphasis: "normal" | "danger"): React.CSSProperties => ({
-  minHeight: 60,
   padding: "8px 10px",
-  borderRadius: 8,
+  borderRadius: 6,
+  fontSize: 14,
+  lineHeight: "22px",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  color: emphasis === "danger" ? "#b35850" : "#3d3528",
+  fontWeight: emphasis === "danger" ? 700 : 500,
   border: emphasis === "danger" ? "1px solid rgba(179,88,80,0.35)" : "1px solid rgba(179,137,46,0.16)",
   background: emphasis === "danger" ? "rgba(179,88,80,0.08)" : "rgba(255,253,246,0.72)",
 });
