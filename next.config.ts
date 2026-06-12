@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: "bottom-right",
   },
+  // sharp はネイティブバイナリを含むためバンドルさせない（Vercel の関数ランタイムで
+  // バンドル経由だと読み込みに失敗し、/api/bud/expense-ocr が 500 になる）
+  serverExternalPackages: ["sharp"],
 };
 
 export default nextConfig;
