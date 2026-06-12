@@ -96,6 +96,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [detail, setDetail] = useState<Req | null>(null);
   const [detailImgUrl, setDetailImgUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [amountFocused, setAmountFocused] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const openedAt = useRef<number>(0);
 
@@ -375,9 +376,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           receipt_date: form.receipt_date || null,
           receipt_time: form.receipt_time || null,
           store_name: form.store_name || null,
-          amount: Number(form.amount) || 0,
+          // blur 前に保存ボタンを押された場合に備え、保存時にも正規化（コンマ・全角を除去）
+          amount: Number(normalizeAmountInput(form.amount)) || 0,
           qualified_class: form.qualified_class || null,
-          qualified_number: form.qualified_number || null,
+          qualified_number: normalizeQualifiedNumberInput(form.qualified_number) || null,
           category_id: form.category_id || null,
           description: form.description || null,
           keiri_checked_by: uid,
@@ -555,6 +557,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                               type="text"
                               value={form.qualified_number}
                               onChange={(e) => setF("qualified_number", e.target.value)}
+                              onBlur={(e) => setF("qualified_number", normalizeQualifiedNumberInput(e.target.value))}
                               disabled={numberDisabled}
                               style={{
                                 ...input,
@@ -578,7 +581,19 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       </Field>
                     </div>
                     <Field label="金額">
-                      <input type="number" value={form.amount} onChange={(e) => setF("amount", e.target.value)} style={input} />
+                      {/* 表示はコンマ付き右揃え・編集中は素の数字・保存はコンマ無し（type=text なのでスピナー矢印も出ない） */}
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={amountFocused ? form.amount : formatAmountDisplay(form.amount)}
+                        onFocus={() => setAmountFocused(true)}
+                        onChange={(e) => setF("amount", e.target.value)}
+                        onBlur={(e) => {
+                          setAmountFocused(false);
+                          setF("amount", normalizeAmountInput(e.target.value));
+                        }}
+                        style={{ ...input, textAlign: "right" }}
+                      />
                     </Field>
                   </div>
 
@@ -854,6 +869,27 @@ function InfoValue({
       <div style={infoBox(emphasis)}>{children}</div>
     </div>
   );
+}
+
+// 全角英数字→半角
+function toHalfWidth(value: string) {
+  return value.replace(/[０-９Ａ-Ｚａ-ｚ]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
+}
+
+// 適格番号の確定時正規化: 全角→半角・小文字t→大文字T・空白除去
+function normalizeQualifiedNumberInput(value: string) {
+  return toHalfWidth(value).replace(/[\s　]/g, "").toUpperCase();
+}
+
+// 金額の確定時正規化: 全角→半角・コンマ等を除去して数字のみに
+function normalizeAmountInput(value: string) {
+  return toHalfWidth(value).replace(/[^\d]/g, "");
+}
+
+function formatAmountDisplay(raw: string) {
+  if (!raw) return "";
+  const n = Number(raw);
+  return Number.isFinite(n) ? n.toLocaleString("ja-JP") : raw;
 }
 
 function employeeLabel(row: Req, employees: Record<string, Employee>) {
