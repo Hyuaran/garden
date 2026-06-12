@@ -27,10 +27,9 @@ const OCR_SCHEMA = {
     store_name: { type: ["string", "null"], description: "Merchant/store name, or null when unreadable." },
     amount: { type: ["integer", "null"], description: "Tax-inclusive total amount in JPY, or null when unreadable." },
     qualified_number: { type: ["string", "null"], description: "Japanese qualified invoice number, T followed by 13 digits, or null." },
-    orientation: { enum: [0, 90, 180, 270], description: "Clockwise degrees needed to make the current image upright." },
     confidence: { enum: ["high", "low"], description: "Use low if any major field is uncertain." },
   },
-  required: ["receipt_date", "receipt_time", "store_name", "amount", "qualified_number", "orientation", "confidence"],
+  required: ["receipt_date", "receipt_time", "store_name", "amount", "qualified_number", "confidence"],
 } as const;
 
 export async function POST(req: Request) {
@@ -78,8 +77,8 @@ export async function POST(req: Request) {
               type: "text",
               text:
                 "日本の経費精算用レシート画像から、日付、時刻、店名、税込合計金額、適格請求書発行事業者番号(T番号)を抽出してください。" +
-                "画像が横向き・逆向きなら、現在の画像を正しい向きにするための時計回り回転角も返してください。" +
-                "読み取れない項目はnullにしてください。合計金額は税込合計のみを整数円で返してください。",
+                "画像が横向き・逆さまでも、そのまま文字を読み取ってください。" +
+                "読み取れない項目はnullにしてください。合計金額は税込合計のみを整数円で返してください（お預り・お釣りの金額と混同しないこと）。",
             },
           ],
         },
@@ -133,20 +132,33 @@ function extractJsonFromContent(content: unknown): unknown {
 function normalizeResult(raw: unknown): ReceiptOcrResult {
   const value = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const qualifiedNumber = normalizeQualifiedNumber(value.qualified_number);
+  const receiptDate = normalizeDate(value.receipt_date);
   return {
-    receipt_date: normalizeDate(value.receipt_date),
+    // 日付が疑わしい場合（未来・古すぎ）は値を入れず経理入力に回し、confidence も low に落とす
+    receipt_date: receiptDate.value,
     receipt_time: normalizeTime(value.receipt_time),
     store_name: normalizeString(value.store_name),
     amount: normalizeAmount(value.amount),
     qualified_number: qualifiedNumber,
     qualified_class: qualifiedNumber ? "有" : "無",
-    orientation: normalizeOrientation(value.orientation),
-    confidence: value.confidence === "high" ? "high" : "low",
+    // 自動回転は無効化（モデルの回転方向の解釈が実行ごとに揺れ、誤補正のリスクが読取メリットを上回るため。
+    // 実測: 正立画像を誤回転させた例は無し・横向きでも文字読取は正確。手動↻は申請/承認画面に存在）
+    orientation: 0,
+    confidence: value.confidence === "high" && !receiptDate.suspicious ? "high" : "low",
   };
 }
 
-function normalizeDate(value: unknown): string | null {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+const DATE_PAST_LIMIT_DAYS = 400;
+
+function normalizeDate(value: unknown): { value: string | null; suspicious: boolean } {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return { value: null, suspicious: false };
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return { value: null, suspicious: false };
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = (today - parsed.getTime()) / 86400000;
+  if (diffDays < 0 || diffDays > DATE_PAST_LIMIT_DAYS) return { value: null, suspicious: true };
+  return { value, suspicious: false };
 }
 
 function normalizeTime(value: unknown): string | null {
@@ -173,6 +185,3 @@ function normalizeQualifiedNumber(value: unknown): string | null {
   return /^T\d{13}$/.test(normalized) ? normalized : null;
 }
 
-function normalizeOrientation(value: unknown): 0 | 90 | 180 | 270 {
-  return value === 90 || value === 180 || value === 270 ? value : 0;
-}
