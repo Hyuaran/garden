@@ -198,7 +198,8 @@ export default function MobileExpenseSubmit() {
 
         const up = await supabase.storage
           .from("bud-receipts")
-          .upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+          // upsert: 送信が途中で失敗して再送信したとき、同名ファイルで弾かれないよう上書きを許可
+          .upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: true });
         if (up.error) throw up.error;
 
         let driveFileId: string | null = null;
