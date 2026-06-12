@@ -184,6 +184,9 @@ export default function MobileExpenseSubmit() {
       const empNo = empId.replace(/^EMP-/, "");
 
       const targets = shots.filter((shot) => shot.selected && !shot.failed);
+      // 送信のたびに新しいパスを使う（前回送信が途中失敗していても、既存ファイルとの衝突や
+      // 上書き（Storage に UPDATE ポリシーが無く RLS で拒否される）を踏まないため）
+      const attemptTs = Date.now();
       setOcrProgress({ done: 0, total: targets.length });
       await runLimited(targets, OCR_CONCURRENCY, async (shot, index) => {
         let blob = await (await fetch(shot.url)).blob();
@@ -194,13 +197,12 @@ export default function MobileExpenseSubmit() {
         if (ocr?.orientation) blob = await rotateBlob(blob, ocr.orientation);
 
         const driveName = `${ymd}_${hm}_${empNo}_${pad(index + 1)}.jpg`;
-        const path = `${empId}/${shot.ts}-${shot.id}.jpg`;
+        const path = `${empId}/${attemptTs}-${shot.id}.jpg`;
 
         const up = await supabase.storage
           .from("bud-receipts")
-          // upsert: 送信が途中で失敗して再送信したとき、同名ファイルで弾かれないよう上書きを許可
-          .upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: true });
-        if (up.error) throw up.error;
+          .upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+        if (up.error) throw new Error(`画像の保存に失敗しました: ${up.error.message}`);
 
         let driveFileId: string | null = null;
         let driveViewUrl: string | null = null;
@@ -233,13 +235,26 @@ export default function MobileExpenseSubmit() {
           drive_file_id: driveFileId,
           drive_view_url: driveViewUrl,
         });
-        if (ins.error) throw ins.error;
+        if (ins.error) throw new Error(`申請の登録に失敗しました: ${ins.error.message}`);
       });
 
       setSentCount(targets.length);
       setSent(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "送信に失敗しました。");
+      // Error 以外（DOMException・イベント・プレーンオブジェクト等）でも原因が読めるよう文字列化する
+      const detail =
+        e instanceof Error
+          ? e.message
+          : typeof e === "object" && e !== null
+            ? (() => {
+                try {
+                  return JSON.stringify(e);
+                } catch {
+                  return String(e);
+                }
+              })()
+            : String(e);
+      setError(detail ? `送信に失敗しました: ${detail}` : "送信に失敗しました。");
     } finally {
       setSubmitting(false);
       setOcrProgress(null);
