@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -13,9 +14,31 @@ type ReceiptOcrResult = {
   amount: number | null;
   qualified_number: string | null;
   qualified_class: "有" | "無";
+  category_id: string | null;
+  category_name: string | null;
   orientation: 0 | 90 | 180 | 270;
   confidence: "high" | "low";
 };
+
+// 経費区分の候補（bud_expense_categories の現行マスタと同名。確信が持てない場合は null = 経理が選択）
+const CATEGORY_NAMES = [
+  "会議費",
+  "接待交際費",
+  "旅費交通費",
+  "駐車場",
+  "タクシー",
+  "備品購入",
+  "社用車備品交換等",
+  "社用車罰金",
+  "処分費",
+  "消耗品費",
+  "通信費",
+  "新聞図書費",
+  "水道光熱費",
+  "租税公課",
+  "雑費",
+  "その他",
+] as const;
 
 const OCR_SCHEMA = {
   type: "object",
@@ -26,9 +49,14 @@ const OCR_SCHEMA = {
     store_name: { type: ["string", "null"], description: "Merchant/store name, or null when unreadable." },
     amount: { type: ["integer", "null"], description: "Tax-inclusive total amount in JPY, or null when unreadable." },
     qualified_number: { type: ["string", "null"], description: "Japanese qualified invoice number, T followed by 13 digits, or null." },
+    expense_category: {
+      enum: [...CATEGORY_NAMES, null],
+      description:
+        "Best-fit expense category judged from the receipt contents (e.g. parking lot receipt -> 駐車場, stamp/registration fee -> 租税公課). Use null when not confident.",
+    },
     confidence: { enum: ["high", "low"], description: "Use low if any major field is uncertain." },
   },
-  required: ["receipt_date", "receipt_time", "store_name", "amount", "qualified_number", "confidence"],
+  required: ["receipt_date", "receipt_time", "store_name", "amount", "qualified_number", "expense_category", "confidence"],
 } as const;
 
 export async function POST(req: Request) {
@@ -74,7 +102,8 @@ export async function POST(req: Request) {
               text:
                 "日本の経費精算用レシート画像から、日付、時刻、店名、税込合計金額、適格請求書発行事業者番号(T番号)を抽出してください。" +
                 "画像が横向き・逆さまでも、そのまま文字を読み取ってください。" +
-                "読み取れない項目はnullにしてください。合計金額は税込合計のみを整数円で返してください（お預り・お釣りの金額と混同しないこと）。",
+                "読み取れない項目はnullにしてください。合計金額は税込合計のみを整数円で返してください（お預り・お釣りの金額と混同しないこと）。" +
+                "expense_categoryにはレシートの内容から最も適切な経費区分を1つ選んでください（例: コインパーキング→駐車場、収入印紙・登記手数料→租税公課、飲食(少人数の打合せ)→会議費）。確信が持てなければnullにしてください。",
             },
           ],
         },
@@ -83,6 +112,22 @@ export async function POST(req: Request) {
 
     const raw = (message as { parsed_output?: unknown }).parsed_output ?? extractJsonFromContent(message.content);
     const result = normalizeResult(raw);
+
+    // 区分名 → 区分マスタID。
+    // マスタの SELECT は RLS で Bud 権限者に限定されているため、一般従業員の申請でも引けるよう
+    // service role で読む（読み取るのは区分マスタの id のみ・書き込みなし。認可は冒頭のログイン必須で担保）
+    if (result.category_name) {
+      const admin = getSupabaseAdmin();
+      const { data: cat } = await admin
+        .from("bud_expense_categories")
+        .select("id")
+        .eq("name", result.category_name)
+        .eq("is_active", true)
+        .maybeSingle<{ id: string }>();
+      result.category_id = cat?.id ?? null;
+      if (!result.category_id) result.category_name = null;
+    }
+
     return NextResponse.json({ ok: true, result });
   } catch (error) {
     console.error("[bud expense ocr]", error);
@@ -152,11 +197,17 @@ function normalizeResult(raw: unknown): ReceiptOcrResult {
     amount: normalizeAmount(value.amount),
     qualified_number: qualifiedNumber,
     qualified_class: qualifiedNumber ? "有" : "無",
+    category_id: null, // ルート側で区分マスタを引いて設定する
+    category_name: normalizeCategoryName(value.expense_category),
     // 自動回転は無効化（モデルの回転方向の解釈が実行ごとに揺れ、誤補正のリスクが読取メリットを上回るため。
     // 実測: 正立画像を誤回転させた例は無し・横向きでも文字読取は正確。手動↻は申請/承認画面に存在）
     orientation: 0,
     confidence: value.confidence === "high" && !receiptDate.suspicious ? "high" : "low",
   };
+}
+
+function normalizeCategoryName(value: unknown): string | null {
+  return typeof value === "string" && (CATEGORY_NAMES as readonly string[]).includes(value) ? value : null;
 }
 
 const DATE_PAST_LIMIT_DAYS = 400;
