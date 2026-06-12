@@ -59,6 +59,7 @@ export const SONOTA_MAP: Record<string, Mapping> = {
 };
 
 const UNQUALIFIED_TAX_CLASS = "課対仕入80%控 10%";
+const NON_TAX_CLASS = "非課税";
 
 export function classifyExpenseJournal(input: ExpenseJournalInput): ExpenseJournalResult {
   const amount = normalizeAmount(input.amount);
@@ -99,7 +100,10 @@ export function classifyExpenseJournal(input: ExpenseJournalInput): ExpenseJourn
     notes.push(`店名「${sonotaHit.keyword}」で自動判定`);
   }
 
-  if (input.qualifiedClass === "無" && debitTaxClass !== "対象外") {
+  if (input.qualifiedClass === NON_TAX_CLASS) {
+    debitTaxClass = NON_TAX_CLASS;
+    notes.push("非課税");
+  } else if (input.qualifiedClass === "無" && debitTaxClass !== "対象外") {
     debitTaxClass = UNQUALIFIED_TAX_CLASS;
     notes.push("適格区分なし: 80%控除");
   }

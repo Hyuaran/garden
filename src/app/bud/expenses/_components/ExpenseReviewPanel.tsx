@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { calculateFiscalPeriod, formatFiscalDateRange } from "@/app/bud/expenses/_lib/fiscal-period";
 
 import {
   buildCompanyToCorp,
@@ -128,7 +129,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         .gte("keiri_checked_at", todayIso)
         .order("keiri_checked_at", { ascending: false }),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
-      supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true }),
+      supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("id", { ascending: true }),
       supabase.from("root_companies").select("company_id,company_name"),
     ]);
 
@@ -137,7 +138,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setPendingAll(pending);
     setProcessedToday(processed);
     setCats((catRes.data as Cat[] | null) ?? []);
-    const corpList = corpRes.error ? FALLBACK_CORPS : ((corpRes.data as Corp[] | null) ?? FALLBACK_CORPS);
+    let corpList = ((corpRes.data as Corp[] | null) ?? []).length > 0 ? ((corpRes.data as Corp[] | null) ?? []) : FALLBACK_CORPS;
+    if (corpRes.error) {
+      const fallbackCorpRes = await supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true });
+      corpList = fallbackCorpRes.error ? FALLBACK_CORPS : ((fallbackCorpRes.data as Corp[] | null) ?? FALLBACK_CORPS);
+    }
     setCorps(corpList);
 
     // COMP-00X → corp.id 対応表（会社名に name_short が含まれるかで結合）
@@ -340,6 +345,16 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
   const setF = (k: keyof Form, v: string) => setForm((f) => (f ? { ...f, [k]: v } : f));
 
+  const selectedCorp = useMemo(() => {
+    const corpId = form?.corp_id || (current ? effectiveCorpId(current) : null);
+    return sortedCorps.find((corp) => corp.id === corpId) ?? null;
+  }, [current, effectiveCorpId, form?.corp_id, sortedCorps]);
+
+  const fiscalPeriod = useMemo(() => {
+    if (!form || !selectedCorp) return null;
+    return calculateFiscalPeriod(selectedCorp.established_on, selectedCorp.fiscal_end_month, form.receipt_date);
+  }, [form, selectedCorp]);
+
   const process = async (action: "approve" | "reject") => {
     if (!current || !form || busy) return;
     let reason: string | null = null;
@@ -467,54 +482,78 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
             <div style={twoCol}>
               <div style={panel}>
                 <h2 style={panelTitle}>申請情報</h2>
-                <Row label="申請者">{employeeLabel(current, employees)}</Row>
-                <Field label="法人">
-                  <select value={form.corp_id} onChange={(e) => setF("corp_id", e.target.value)} style={input}>
-                    <option value="">未設定</option>
-                    {sortedCorps.map((corp) => (
-                      <option key={corp.id} value={corp.id}>
-                        {corp.name_short ?? corp.id}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Row label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</Row>
-                <Field label="レシート日付">
-                  <input type="date" value={form.receipt_date} onChange={(e) => setF("receipt_date", e.target.value)} style={input} />
-                </Field>
-                <Field label="レシート時刻（読めない場合は空欄＝9999扱い）">
-                  <input type="time" value={form.receipt_time} onChange={(e) => setF("receipt_time", e.target.value)} style={input} />
-                </Field>
-                <Field label="店名">
-                  <input type="text" value={form.store_name} onChange={(e) => setF("store_name", e.target.value)} style={input} />
-                </Field>
-                <Field label="金額">
-                  <input type="number" value={form.amount} onChange={(e) => setF("amount", e.target.value)} style={input} />
-                </Field>
-                <Field label="経費区分">
-                  <select value={form.category_id} onChange={(e) => setF("category_id", e.target.value)} style={input}>
-                    <option value="">（未選択）</option>
-                    {cats.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="適格区分">
-                  <select value={form.qualified_class} onChange={(e) => setF("qualified_class", e.target.value)} style={input}>
-                    <option value="">（未選択）</option>
-                    <option value="有">有</option>
-                    <option value="無">無</option>
-                  </select>
-                </Field>
-                <Field label="適格番号(T)">
-                  <input type="text" value={form.qualified_number} onChange={(e) => setF("qualified_number", e.target.value)} style={input} />
-                </Field>
-                <Field label="摘要">
-                  <input type="text" value={form.description} onChange={(e) => setF("description", e.target.value)} style={input} />
-                </Field>
+                <div style={formRows}>
+                  <div style={fieldRow("1fr 1fr")}>
+                    <InfoValue label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</InfoValue>
+                    <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
+                  </div>
 
+                  <div style={fieldRow("1.2fr 0.8fr 1.3fr")}>
+                    <Field label="法人">
+                      <select value={form.corp_id} onChange={(e) => setF("corp_id", e.target.value)} style={input}>
+                        <option value="">未設定</option>
+                        {sortedCorps.map((corp) => (
+                          <option key={corp.id} value={corp.id}>
+                            {corp.name_short ?? corp.id}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <InfoValue label="計上期" emphasis={fiscalPeriod?.expired ? "danger" : "normal"}>
+                      {fiscalPeriod ? `第${fiscalPeriod.periodNo}期` : "—"}
+                    </InfoValue>
+                    <InfoValue label="期の範囲" emphasis={fiscalPeriod?.expired ? "danger" : "normal"}>
+                      {fiscalPeriod ? formatFiscalDateRange(fiscalPeriod) : "—"}
+                    </InfoValue>
+                  </div>
+                  {fiscalPeriod?.expired && <div style={fiscalWarning}>⚠ 計上期限超過（期末の翌月末を過ぎています）・要確認</div>}
+
+                  <div style={fieldRow("1fr 1fr")}>
+                    <Field label="レシート日付">
+                      <input type="date" value={form.receipt_date} onChange={(e) => setF("receipt_date", e.target.value)} style={input} />
+                    </Field>
+                    <Field label="レシート時刻">
+                      <input type="time" value={form.receipt_time} onChange={(e) => setF("receipt_time", e.target.value)} style={input} />
+                    </Field>
+                  </div>
+
+                  <div style={fieldRow("1fr 1.2fr 0.8fr")}>
+                    <Field label="経費区分">
+                      <select value={form.category_id} onChange={(e) => setF("category_id", e.target.value)} style={input}>
+                        <option value="">（未選択）</option>
+                        {cats.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="店名">
+                      <input type="text" value={form.store_name} onChange={(e) => setF("store_name", e.target.value)} style={input} />
+                    </Field>
+                    <Field label="金額">
+                      <input type="number" value={form.amount} onChange={(e) => setF("amount", e.target.value)} style={input} />
+                    </Field>
+                  </div>
+
+                  <div style={fieldRow("1fr 1.4fr")}>
+                    <Field label="適格区分">
+                      <select value={form.qualified_class} onChange={(e) => setF("qualified_class", e.target.value)} style={input}>
+                        <option value="">（未選択）</option>
+                        <option value="有">有</option>
+                        <option value="無">無</option>
+                        <option value="非課税">非課税</option>
+                      </select>
+                    </Field>
+                    <Field label="適格番号(T)">
+                      <input type="text" value={form.qualified_number} onChange={(e) => setF("qualified_number", e.target.value)} style={input} />
+                    </Field>
+                  </div>
+
+                  <Field label="摘要">
+                    <input type="text" value={form.description} onChange={(e) => setF("description", e.target.value)} style={input} />
+                  </Field>
+                </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
                   <button type="button" disabled={busy} onClick={() => process("reject")} style={rejectBtn}>
                     差戻し
@@ -767,6 +806,25 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function InfoValue({
+  label,
+  children,
+  emphasis = "normal",
+}: {
+  label: string;
+  children: React.ReactNode;
+  emphasis?: "normal" | "danger";
+}) {
+  return (
+    <div style={infoBox(emphasis)}>
+      <div style={{ fontSize: 12, color: emphasis === "danger" ? "#9e3f38" : "#6d6356", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 14, color: emphasis === "danger" ? "#b35850" : "#3d3528", fontWeight: emphasis === "danger" ? 700 : 500 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function employeeLabel(row: Req, employees: Record<string, Employee>) {
   if (!row.applicant_employee_id) return "—";
   return employees[row.applicant_employee_id]?.name ?? row.applicant_employee_id;
@@ -848,6 +906,29 @@ const railHint: React.CSSProperties = { writingMode: "vertical-rl", fontSize: 11
 const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start", marginBottom: 0 };
 const panel: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
 const panelTitle: React.CSSProperties = { fontSize: 15, color: "#b3892e", margin: "0 0 12px", borderBottom: "1px dashed rgba(179,137,46,0.35)", paddingBottom: 8 };
+const formRows: React.CSSProperties = { display: "grid", gap: 8 };
+const fieldRow = (columns: string): React.CSSProperties => ({
+  display: "grid",
+  gridTemplateColumns: columns,
+  gap: 10,
+  alignItems: "end",
+});
+const infoBox = (emphasis: "normal" | "danger"): React.CSSProperties => ({
+  minHeight: 60,
+  padding: "8px 10px",
+  borderRadius: 8,
+  border: emphasis === "danger" ? "1px solid rgba(179,88,80,0.35)" : "1px solid rgba(179,137,46,0.16)",
+  background: emphasis === "danger" ? "rgba(179,88,80,0.08)" : "rgba(255,253,246,0.72)",
+});
+const fiscalWarning: React.CSSProperties = {
+  padding: "7px 10px",
+  borderRadius: 8,
+  background: "rgba(179,88,80,0.1)",
+  border: "1px solid rgba(179,88,80,0.28)",
+  color: "#9e3f38",
+  fontSize: 12,
+  fontWeight: 700,
+};
 const input: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
