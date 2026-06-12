@@ -1,4 +1,9 @@
-export type Corp = { id: string; name_short: string | null };
+export type Corp = {
+  id: string;
+  name_short: string | null;
+  established_on?: string | null;
+  fiscal_end_month?: number | null;
+};
 export type Employee = { employee_id: string; company_id: string | null; name: string | null };
 export type Company = { company_id: string; company_name: string | null };
 export type ExpenseCorpRow = {

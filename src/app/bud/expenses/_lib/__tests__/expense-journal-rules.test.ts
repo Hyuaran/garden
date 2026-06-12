@@ -58,6 +58,14 @@ describe("expense journal rules", () => {
     expect(result.debitTaxClass).toBe("課対仕入80%控 10%");
   });
 
+  it("replaces only the tax class for non-taxable expenses", () => {
+    const result = classifyExpenseJournal({ ...base, categoryName: "会議費", qualifiedClass: "非課税" });
+    expect(result.ok).toBe(true);
+    expect(result.debitAccount).toBe("会議費");
+    expect(result.debitTaxClass).toBe("非課税");
+    expect(result.debitTaxAmount).toBe(0);
+  });
+
   it("uses SONOTA_MAP for other category by store name", () => {
     const result = classifyExpenseJournal({
       ...base,
