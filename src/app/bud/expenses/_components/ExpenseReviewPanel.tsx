@@ -483,7 +483,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
               <div style={panel}>
                 <h2 style={panelTitle}>申請情報</h2>
                 <div style={formRows}>
-                  <div style={fieldRow("1fr 1fr")}>
+                  <div style={fieldRow(FISCAL_COLS)}>
                     <InfoValue label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</InfoValue>
                     <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
                   </div>
@@ -518,9 +518,14 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     </Field>
                   </div>
 
-                  <div style={fieldRow("1.1fr 0.8fr 1.3fr")}>
+                  <div style={fieldRow(FISCAL_COLS)}>
                     <Field label="経費区分">
-                      <select value={form.category_id} onChange={(e) => setF("category_id", e.target.value)} style={input}>
+                      {/* OCRで判定できなかった場合（未選択）は赤背景・白文字で「人が選ぶ」ことを促す */}
+                      <select
+                        value={form.category_id}
+                        onChange={(e) => setF("category_id", e.target.value)}
+                        style={form.category_id ? input : { ...input, background: "#b35850", color: "#fff", fontWeight: 700 }}
+                      >
                         <option value="">（未選択）</option>
                         {cats.map((c) => (
                           <option key={c.id} value={c.id}>
@@ -538,14 +543,40 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       </select>
                     </Field>
                     <Field label="適格番号(T)">
-                      <input type="text" value={form.qualified_number} onChange={(e) => setF("qualified_number", e.target.value)} style={input} />
+                      {(() => {
+                        // 無・非課税のときは番号入力をグレーアウト（非表示にはしない）
+                        const numberDisabled = form.qualified_class === "無" || form.qualified_class === "非課税";
+                        const tValid = /^T\d{13}$/.test(form.qualified_number.trim());
+                        // 有なのに T+13桁 が拾えていなければ ✖ + 薄赤背景で知らせる
+                        const showInvalid = !numberDisabled && form.qualified_class === "有" && !tValid;
+                        return (
+                          <div style={{ position: "relative" }}>
+                            <input
+                              type="text"
+                              value={form.qualified_number}
+                              onChange={(e) => setF("qualified_number", e.target.value)}
+                              disabled={numberDisabled}
+                              style={{
+                                ...input,
+                                paddingRight: 32,
+                                ...(numberDisabled ? { background: "#eceae3", color: "#9a8f7d" } : {}),
+                                ...(showInvalid ? { background: "rgba(179,88,80,0.12)", borderColor: "rgba(179,88,80,0.45)" } : {}),
+                              }}
+                            />
+                            {!numberDisabled && tValid && <span style={tMarkOk}>✓</span>}
+                            {showInvalid && <span style={tMarkNg}>✕</span>}
+                          </div>
+                        );
+                      })()}
                     </Field>
                   </div>
 
-                  <div style={fieldRow("2fr 1fr")}>
-                    <Field label="店名">
-                      <input type="text" value={form.store_name} onChange={(e) => setF("store_name", e.target.value)} style={input} />
-                    </Field>
+                  <div style={fieldRow(FISCAL_COLS)}>
+                    <div style={{ gridColumn: "1 / 3" }}>
+                      <Field label="店名">
+                        <input type="text" value={form.store_name} onChange={(e) => setF("store_name", e.target.value)} style={input} />
+                      </Field>
+                    </div>
                     <Field label="金額">
                       <input type="number" value={form.amount} onChange={(e) => setF("amount", e.target.value)} style={input} />
                     </Field>
@@ -929,6 +960,24 @@ const infoBox = (emphasis: "normal" | "danger"): React.CSSProperties => ({
   border: emphasis === "danger" ? "1px solid rgba(179,88,80,0.35)" : "1px solid rgba(179,137,46,0.16)",
   background: emphasis === "danger" ? "rgba(179,88,80,0.08)" : "rgba(255,253,246,0.72)",
 });
+// 適格番号の判定マーク（右端に重ねる）
+const tMark: React.CSSProperties = {
+  position: "absolute",
+  right: 9,
+  top: "50%",
+  transform: "translateY(-50%)",
+  width: 18,
+  height: 18,
+  borderRadius: 999,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#fff",
+};
+const tMarkOk: React.CSSProperties = { ...tMark, background: "#5e7d44" };
+const tMarkNg: React.CSSProperties = { ...tMark, background: "#b35850" };
 const fiscalWarning: React.CSSProperties = {
   padding: "7px 10px",
   borderRadius: 8,

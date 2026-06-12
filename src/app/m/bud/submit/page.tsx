@@ -38,6 +38,8 @@ type ExpenseOcrResult = {
   amount: number | null;
   qualified_number: string | null;
   qualified_class: "有" | "無";
+  category_id: string | null;
+  category_name: string | null;
   orientation: 0 | 90 | 180 | 270;
   confidence: "high" | "low";
 };
@@ -231,6 +233,7 @@ export default function MobileExpenseSubmit() {
           amount: ocr?.amount ?? 0,
           qualified_number: ocr?.qualified_number ?? null,
           qualified_class: ocr?.qualified_class ?? null,
+          category_id: ocr?.category_id ?? null,
           description: ocr?.confidence === "low" ? "OCR要確認" : null,
           storage_path: up.data?.path ?? path,
           drive_file_id: driveFileId,
