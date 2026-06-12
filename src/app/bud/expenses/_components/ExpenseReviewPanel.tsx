@@ -537,7 +537,12 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       </select>
                     </Field>
                     <Field label="適格区分">
-                      <select value={form.qualified_class} onChange={(e) => setF("qualified_class", e.target.value)} style={input}>
+                      {/* 経費区分と同じく、未選択のときは赤背景・白文字で人の選択を促す */}
+                      <select
+                        value={form.qualified_class}
+                        onChange={(e) => setF("qualified_class", e.target.value)}
+                        style={form.qualified_class ? input : { ...input, background: "#b35850", color: "#fff", fontWeight: 700 }}
+                      >
                         <option value="">（未選択）</option>
                         <option value="有">有</option>
                         <option value="無">無</option>
