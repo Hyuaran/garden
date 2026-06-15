@@ -496,7 +496,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           {list.length > 0 && current && (
             <div style={navWrap}>
               <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
-                ← 前へ<span style={navHint}>Ctrl+↑</span>
+                <span style={navCircle}>◀</span>前へ<span style={navHint}>Ctrl+↑</span>
               </button>
               {/* 埋め込み時はレコード番号を法人フィルター行の右端に出すのでここでは省略 */}
               {!embedded && (
@@ -511,7 +511,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 disabled={idx >= list.length - 1}
                 onClick={() => setIdx((i) => Math.min(list.length - 1, i + 1))}
               >
-                次へ →<span style={navHint}>Ctrl+↓</span>
+                次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>▶</span>
               </button>
             </div>
           )}
@@ -856,13 +856,14 @@ function DetailModal({
   );
 }
 
-// 「承認待ち 9件 合計 ¥12,868」を1行に収めるコンパクトカード
+// 「承認待ち 9件 合計 ¥12,868」をコンパクト表示。件数・金額は固定列で右揃え＝
+// 桁が増えても位置が動かない（最大「1000件 合計 ¥5,000,000」を基準に列幅を確保）
 function CompactCard({ label, count, amount, color }: { label: string; count: number; amount: number; color: string }) {
   return (
     <div style={{ ...compactCard, borderLeft: `3px solid ${color}` }}>
-      <span style={{ color: "#6d6356" }}>{label}</span>
-      <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums" }}>{count}件</strong>
-      <span style={{ color: "#6d6356" }}>合計 ¥{amount.toLocaleString("ja-JP")}</span>
+      <span style={{ color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+      <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{count}件</strong>
+      <span style={{ color: "#6d6356", fontVariantNumeric: "tabular-nums", textAlign: "right" }}>合計 ¥{amount.toLocaleString("ja-JP")}</span>
     </div>
   );
 }
@@ -975,13 +976,14 @@ const summaryNavBar: React.CSSProperties = {
   marginBottom: 16,
 };
 const compactCard: React.CSSProperties = {
-  // 3カードを同じ幅に固定。最大想定「差戻し（本日）1000件 合計 ¥5,000,000」の
-  // 実フォント実測幅310px + 余白で316px。短い内容のカードは左寄せで右に余白が出る
+  // 3カードを同じ幅に固定。ラベル/件数/金額を固定列にして、桁が増えても
+  // 件数・金額の位置が動かないようにする（最大「差戻し（本日）1000件 合計 ¥5,000,000」基準）
   width: 316,
   boxSizing: "border-box",
-  display: "inline-flex",
+  display: "grid",
+  gridTemplateColumns: "96px 58px 1fr",
   alignItems: "baseline",
-  gap: 10,
+  gap: 8,
   padding: "8px 14px",
   background: "#faf6ec",
   border: "1px solid rgba(179,137,46,0.18)",
@@ -1005,6 +1007,19 @@ const navBtn = (disabled: boolean): React.CSSProperties => ({
   whiteSpace: "nowrap",
 });
 const navHint: React.CSSProperties = { fontSize: 10, color: "#9a8f7d" };
+// ◀/▶ を丸で囲んだ方向アイコン（→と↓の矢印重複を避けて視認性を上げる）
+const navCircle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 17,
+  height: 17,
+  borderRadius: "50%",
+  border: "1.5px solid currentColor",
+  fontSize: 8,
+  lineHeight: 1,
+  flexShrink: 0,
+};
 const navCount: React.CSSProperties = { fontSize: 13, color: "#3d3528", fontVariantNumeric: "tabular-nums", padding: "0 2px" };
 const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start", marginBottom: 0 };
 const panel: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
