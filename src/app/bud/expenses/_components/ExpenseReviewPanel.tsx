@@ -93,6 +93,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [form, setForm] = useState<Form | null>(null);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [rotation, setRotation] = useState(0); // 領収書プレビューの回転（90刻み・処理時に保存画像へ反映）
+  // 領収書表示枠の実寸を測り、回転しても最大サイズ(contain)で表示する
+  const recBoxRef = useRef<HTMLDivElement>(null);
+  const [recBox, setRecBox] = useState({ w: 0, h: 0 });
+  const [natSize, setNatSize] = useState({ w: 0, h: 0 }); // 画像の元サイズ
   const [detail, setDetail] = useState<Req | null>(null);
   const [detailImgUrl, setDetailImgUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -214,6 +218,17 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     ],
     [list, processedFiltered],
   );
+
+  // 領収書表示枠のサイズを監視（回転時の最大表示計算に使う）
+  useEffect(() => {
+    const el = recBoxRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = () => setRecBox({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [loaded, current, imgUrl]);
 
   useEffect(() => {
     setIdx(0);
@@ -659,7 +674,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 </div>
               </div>
 
-              <div style={panel}>
+              <div style={{ ...panel, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <h2 style={panelTitle}>領収書</h2>
                   {imgUrl && (
@@ -674,15 +689,14 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   )}
                 </div>
                 {imgUrl ? (
-                  <div style={{ overflow: "hidden", display: "flex", justifyContent: "center" }}>
+                  <div ref={recBoxRef} style={{ flex: 1, minHeight: 280, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={imgUrl}
                       alt="領収書"
+                      onLoad={(e) => setNatSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
                       style={{
-                        width: rotation % 180 === 0 ? "100%" : "auto",
-                        maxWidth: "100%",
-                        maxHeight: 560,
+                        ...receiptImgSize(rotation, recBox, natSize),
                         borderRadius: 10,
                         border: "1px solid #e2ddcf",
                         transform: `rotate(${rotation}deg)`,
@@ -925,6 +939,22 @@ function formatAmountDisplay(raw: string) {
   if (!raw) return "";
   const n = Number(raw);
   return Number.isFinite(n) ? n.toLocaleString("ja-JP") : raw;
+}
+
+// 領収書画像を枠いっぱい(contain)に表示する寸法を計算。回転90/270でも枠を最大利用するよう
+// 回転後の縦横を考慮して拡大率を求める（元画像が小さくても拡大して埋める）
+function receiptImgSize(
+  rotation: number,
+  box: { w: number; h: number },
+  nat: { w: number; h: number },
+): React.CSSProperties {
+  if (!box.w || !box.h || !nat.w || !nat.h) return { maxWidth: "100%", maxHeight: "100%" };
+  const rotated = rotation % 180 !== 0;
+  // 回転後に枠へ収まる拡大率（rotated 時は枠の縦横を入れ替えて判定）
+  const scale = rotated
+    ? Math.min(box.w / nat.h, box.h / nat.w)
+    : Math.min(box.w / nat.w, box.h / nat.h);
+  return { width: Math.round(nat.w * scale), height: Math.round(nat.h * scale) };
 }
 
 function employeeLabel(row: Req, employees: Record<string, Employee>) {
