@@ -20,6 +20,16 @@
   font-family: "Shippori Mincho", "Noto Serif JP", serif;
 }
 
+/* ダークモード: GardenShell のダークパレットに合わせて Bud 画面の
+   文字・カード変数を上書き（ライト固定だと暗背景で「明るすぎる」ため）。 */
+:global([data-theme="dark"]) .htmlPort {
+  --text-main: #e0d8c5;
+  --text-sub: #a8a08c;
+  --text-muted: #7a7460;
+  --bud-card: rgba(40, 46, 36, 0.62);
+  --bud-line: rgba(212, 200, 165, 0.18);
+}
+
 /* タブは bud-01-top (BudDashboard .dashboardTab) と同じ「下線スタイル」に統一。
    GardenShell テーマの金色ピル(.tab-item)を上書きして全 Bud 画面で揃える。 */
 .htmlPort :global(.tab-nav) {
@@ -68,6 +78,15 @@
 /* 下線は擬似要素 ::after で描かれる。色を緑→金に上書き。 */
 .htmlPort :global(.tab-item.active)::after {
   background: #d4a541 !important;
+}
+
+/* ダークモード: タブ非アクティブは暗背景で読めるよう明るく、アクティブは金を明るめに。 */
+:global([data-theme="dark"]) .htmlPort :global(.tab-item) {
+  color: var(--text-sub);
+}
+:global([data-theme="dark"]) .htmlPort :global(.tab-item.active),
+:global([data-theme="dark"]) .htmlPort :global(.tab-item.active *) {
+  color: #e4b551 !important;
 }
 
 .htmlPort :global(.tab-content) {

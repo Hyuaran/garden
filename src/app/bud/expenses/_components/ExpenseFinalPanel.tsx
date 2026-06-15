@@ -255,7 +255,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
         count.dataset.expRecordCount = "true";
         count.style.marginLeft = "auto";
         count.style.fontSize = "13px";
-        count.style.color = "#6d6356";
+        count.style.color = "var(--text-sub)";
         count.style.fontVariantNumeric = "tabular-nums";
         count.style.whiteSpace = "nowrap";
         wrapper.appendChild(count);
@@ -353,8 +353,8 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
       {!embedded && (
         <>
           <header style={{ marginBottom: 18 }}>
-            <h1 style={{ fontSize: 22, color: "#3d3528", margin: 0 }}>経費精算 — 完了待ち</h1>
-            <p style={{ color: "#7b745f", fontSize: 13, margin: "4px 0 0" }}>
+            <h1 style={{ fontSize: 22, color: "var(--text-main)", margin: 0 }}>経費精算 — 完了待ち</h1>
+            <p style={{ color: "var(--text-sub)", fontSize: 13, margin: "4px 0 0" }}>
               経理承認済みの申請を最終チェックし、仕訳化待ちへ送ります。
             </p>
           </header>
@@ -382,7 +382,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
               {!embedded && (
                 <span style={navCount}>
                   {idx + 1}
-                  <span style={{ color: "#9a8f7d" }}> / {list.length}</span>
+                  <span style={{ color: "var(--text-muted)" }}> / {list.length}</span>
                 </span>
               )}
               <button
@@ -550,7 +550,7 @@ function DetailModal({
             <Row label="登録番号">{row.qualified_number ?? "—"}</Row>
             {mode === "return" && (
               <div style={{ marginTop: 14 }}>
-                <label style={{ display: "block", color: "#6d6356", fontSize: 12, marginBottom: 6 }}>差戻し理由</label>
+                <label style={{ display: "block", color: "var(--text-sub)", fontSize: 12, marginBottom: 6 }}>差戻し理由</label>
                 <textarea value={returnReason} onChange={(event) => onReasonChange(event.target.value)} style={textarea} rows={4} />
                 <button type="button" disabled={busy} style={{ ...returnBtn, width: "100%", marginTop: 10, padding: "11px 14px" }} onClick={onReturn}>
                   {busy ? "処理中…" : "差戻しを確定"}
@@ -561,7 +561,7 @@ function DetailModal({
           <div>
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="領収書" style={{ width: "100%", borderRadius: 10, border: "1px solid #e2ddcf" }} />
+              <img src={imageUrl} alt="領収書" style={{ width: "100%", borderRadius: 10, border: "1px solid var(--border-card)" }} />
             ) : (
               <div style={{ ...notice, margin: 0 }}>領収書画像なし</div>
             )}
@@ -592,9 +592,9 @@ function CompactCard({
       {/* 経理差戻し行は上に、主要部(件数・金額)は下に揃える */}
       <div style={compactCardSub}>{sub ?? ""}</div>
       <div style={compactCardMain}>
-        <span style={{ color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <span style={{ color: "var(--text-sub)", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
         <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{count}件</strong>
-        <span style={{ display: "flex", justifyContent: "space-between", gap: 6, color: "#6d6356", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ display: "flex", justifyContent: "space-between", gap: 6, color: "var(--text-sub)", fontVariantNumeric: "tabular-nums" }}>
           <span>合計</span>
           <span>¥{amount.toLocaleString("ja-JP")}</span>
         </span>
@@ -606,8 +606,8 @@ function CompactCard({
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", gap: 10, padding: "6px 0", fontSize: 14 }}>
-      <span style={{ width: 96, color: "#6d6356", flexShrink: 0 }}>{label}</span>
-      <span style={{ color: "#3d3528" }}>{children}</span>
+      <span style={{ width: 96, color: "var(--text-sub)", flexShrink: 0 }}>{label}</span>
+      <span style={{ color: "var(--text-main)" }}>{children}</span>
     </div>
   );
 }
@@ -642,7 +642,7 @@ const compactCard: React.CSSProperties = {
   flexDirection: "column",
   gap: 3,
   padding: "8px 14px",
-  background: "#faf6ec",
+  background: "var(--bg-paper-soft)",
   border: "1px solid rgba(179,137,46,0.18)",
   borderRadius: 10,
   fontSize: 13,
@@ -650,7 +650,7 @@ const compactCard: React.CSSProperties = {
 };
 const compactCardMain: React.CSSProperties = { marginTop: "auto", display: "grid", gridTemplateColumns: "96px 58px 1fr", alignItems: "baseline", gap: 8 };
 // 経理差戻し行。3枚とも同じ高さ(16px)を確保して縦幅を揃える
-const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fontSize: 11, color: "#9a8f7d", textAlign: "right", fontVariantNumeric: "tabular-nums", overflow: "hidden" };
+const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fontSize: 11, color: "var(--text-muted)", textAlign: "right", fontVariantNumeric: "tabular-nums", overflow: "hidden" };
 const navWrap: React.CSSProperties = { marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 };
 const navBtn = (disabled: boolean): React.CSSProperties => ({
   display: "inline-flex",
@@ -658,15 +658,15 @@ const navBtn = (disabled: boolean): React.CSSProperties => ({
   gap: 6,
   padding: "8px 11px",
   borderRadius: 8,
-  border: "1px solid #cdbf9a",
-  background: "#fff",
-  color: "#6d6356",
+  border: "1px solid var(--border-card)",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-sub)",
   fontSize: 13,
   cursor: disabled ? "not-allowed" : "pointer",
   opacity: disabled ? 0.45 : 1,
   whiteSpace: "nowrap",
 });
-const navHint: React.CSSProperties = { fontSize: 10, color: "#9a8f7d" };
+const navHint: React.CSSProperties = { fontSize: 10, color: "var(--text-muted)" };
 const navCircle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -679,14 +679,14 @@ const navCircle: React.CSSProperties = {
   lineHeight: 1,
   flexShrink: 0,
 };
-const navCount: React.CSSProperties = { fontSize: 13, color: "#3d3528", fontVariantNumeric: "tabular-nums", padding: "0 2px" };
+const navCount: React.CSSProperties = { fontSize: 13, color: "var(--text-main)", fontVariantNumeric: "tabular-nums", padding: "0 2px" };
 const notice: React.CSSProperties = {
-  background: "#faf6ec",
+  background: "var(--bg-paper-soft)",
   border: "1px solid rgba(179,137,46,0.18)",
   borderRadius: 12,
   padding: 24,
   textAlign: "center",
-  color: "#6d6356",
+  color: "var(--text-sub)",
   margin: "12px 0",
 };
 const corpSwitch: React.CSSProperties = {
@@ -694,10 +694,10 @@ const corpSwitch: React.CSSProperties = {
   gap: 4,
   marginBottom: 18,
   padding: 6,
-  background: "rgba(255,253,246,0.55)",
+  background: "var(--bg-card)",
   borderRadius: 999,
   width: "fit-content",
-  border: "1px solid rgba(180,165,130,0.2)",
+  border: "1px solid var(--border-card)",
   flexWrap: "wrap",
 };
 const corpTab = (active: boolean): React.CSSProperties => ({
@@ -705,13 +705,13 @@ const corpTab = (active: boolean): React.CSSProperties => ({
   borderRadius: 999,
   border: "none",
   background: active ? "#d4a541" : "transparent",
-  color: active ? "#fff" : "#6d6356",
+  color: active ? "#fff" : "var(--text-sub)",
   boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none",
   cursor: "pointer",
   fontSize: 13,
 });
 const finalShell: React.CSSProperties = { display: "flex", gap: 12, alignItems: "stretch", marginBottom: 18 };
-const panel: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
+const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
 const panelHead: React.CSSProperties = {
   display: "flex",
   alignItems: "baseline",
@@ -721,18 +721,18 @@ const panelHead: React.CSSProperties = {
   paddingBottom: 8,
   marginBottom: 12,
 };
-const panelTitle: React.CSSProperties = { fontSize: 16, color: "#3d3528", margin: 0, fontWeight: 600 };
-const panelMeta: React.CSSProperties = { fontSize: 12, color: "#9a8f7d" };
+const panelTitle: React.CSSProperties = { fontSize: 16, color: "var(--text-main)", margin: 0, fontWeight: 600 };
+const panelMeta: React.CSSProperties = { fontSize: 12, color: "var(--text-muted)" };
 const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
 const th: React.CSSProperties = {
   textAlign: "left",
-  color: "#6d6356",
+  color: "var(--text-sub)",
   fontWeight: 500,
   padding: "9px 8px",
-  borderBottom: "1px solid rgba(180,165,130,0.25)",
+  borderBottom: "1px solid var(--border-card)",
   whiteSpace: "nowrap",
 };
-const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "#3d3528", verticalAlign: "middle" };
+const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed var(--border-card)", color: "var(--text-main)", verticalAlign: "middle" };
 const tr: React.CSSProperties = { cursor: "pointer" };
 const selectedTr: React.CSSProperties = { ...tr, background: "rgba(212,165,65,0.08)" };
 const actions: React.CSSProperties = { display: "flex", gap: 6, alignItems: "center" };
@@ -750,7 +750,7 @@ const returnBtn: React.CSSProperties = {
   border: "1px solid #b35850",
   borderRadius: 999,
   padding: "7px 14px",
-  background: "#fff",
+  background: "var(--bg-card-solid)",
   color: "#b35850",
   cursor: "pointer",
   whiteSpace: "nowrap",
@@ -771,7 +771,7 @@ const modalCard: React.CSSProperties = {
   width: "min(980px, 92vw)",
   maxHeight: "88vh",
   overflow: "auto",
-  background: "#fffdf6",
+  background: "var(--bg-card-solid)",
   borderRadius: 14,
   border: "1px solid rgba(179,137,46,0.25)",
   boxShadow: "0 18px 48px rgba(40,34,25,0.22)",
@@ -783,8 +783,8 @@ const closeBtn: React.CSSProperties = {
   height: 34,
   borderRadius: 999,
   border: "1px solid rgba(179,137,46,0.25)",
-  background: "#fff",
-  color: "#6d6356",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-sub)",
   fontSize: 20,
   cursor: "pointer",
 };
@@ -794,7 +794,7 @@ const textarea: React.CSSProperties = {
   borderRadius: 8,
   border: "1px solid rgba(179,137,46,0.3)",
   padding: 10,
-  background: "#fff",
-  color: "#3d3528",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-main)",
   resize: "vertical",
 };

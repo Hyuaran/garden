@@ -278,7 +278,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
         <Card label="仕訳化待ち" value={loaded ? rows.length : "-"} meta={`合計 ${yen(queueTotal)}`} color="#b3892e" />
         <Card label="選択中" value={selectedRows.length} meta={`合計 ${yen(selectedTotal)}`} color="#5e7d44" />
         <Card label="要確認" value={errorCount} meta="CSV対象外" color="#b35850" />
-        <Card label="今月仕訳済" value={doneFiltered.length} meta={`合計 ${yen(doneFiltered.reduce((sum, row) => sum + (row.amount ?? 0), 0))}`} color="#6d6356" />
+        <Card label="今月仕訳済" value={doneFiltered.length} meta={`合計 ${yen(doneFiltered.reduce((sum, row) => sum + (row.amount ?? 0), 0))}`} color="var(--text-sub)" />
       </section>
 
       {message && <div style={notice}>{message}</div>}
@@ -386,12 +386,12 @@ function Card({ label, value, meta, color }: { label: string; value: number | st
     <div style={{ ...compactCard, borderLeft: `3px solid ${color}` }}>
       <div style={compactCardSub} />
       <div style={compactCardMain}>
-        <span style={{ color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <span style={{ color: "var(--text-sub)", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
         <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums" }}>
           {value}
           {typeof value === "number" ? "件" : ""}
         </strong>
-        <span style={{ color: "#6d6356", marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</span>
+        <span style={{ color: "var(--text-sub)", marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</span>
       </div>
     </div>
   );
@@ -426,8 +426,8 @@ function parseFilename(header: string | null) {
 }
 
 const shell: React.CSSProperties = { marginBottom: 24 };
-const title: React.CSSProperties = { margin: 0, fontSize: 22, color: "#3d3528", fontFamily: "'Shippori Mincho', serif" };
-const lead: React.CSSProperties = { margin: "4px 0 14px", color: "#6d6356", fontSize: 13 };
+const title: React.CSSProperties = { margin: 0, fontSize: 22, color: "var(--text-main)", fontFamily: "'Shippori Mincho', serif" };
+const lead: React.CSSProperties = { margin: "4px 0 14px", color: "var(--text-sub)", fontSize: 13 };
 const cards: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 16 };
 const compactCard: React.CSSProperties = {
   boxSizing: "border-box",
@@ -435,7 +435,7 @@ const compactCard: React.CSSProperties = {
   flexDirection: "column",
   gap: 3,
   padding: "8px 14px",
-  background: "#faf6ec",
+  background: "var(--bg-paper-soft)",
   border: "1px solid rgba(179,137,46,0.18)",
   borderRadius: 10,
   fontSize: 13,
@@ -444,25 +444,25 @@ const compactCard: React.CSSProperties = {
 // 完了待ちタブの「経理差戻し」行と同じ高さの余白（3タブでカード高さを揃える）
 const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fontSize: 11 };
 const compactCardMain: React.CSSProperties = { marginTop: "auto", display: "flex", alignItems: "baseline", gap: 8 };
-const panel: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
+const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
 const panelHead: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 12 };
-const panelTitle: React.CSSProperties = { margin: 0, fontSize: 17, color: "#3d3528", fontWeight: 600 };
-const panelMeta: React.CSSProperties = { color: "#9a8f7d", fontSize: 12, marginTop: 3 };
+const panelTitle: React.CSSProperties = { margin: 0, fontSize: 17, color: "var(--text-main)", fontWeight: 600 };
+const panelMeta: React.CSSProperties = { color: "var(--text-muted)", fontSize: 12, marginTop: 3 };
 const toolbar: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" };
-const checkAllLabel: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "#6d6356", fontSize: 13 };
+const checkAllLabel: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-sub)", fontSize: 13 };
 const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const th: React.CSSProperties = { textAlign: "left", color: "#6d6356", fontWeight: 500, padding: "9px 8px", borderBottom: "1px solid rgba(180,165,130,0.25)", whiteSpace: "nowrap" };
-const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "#3d3528", verticalAlign: "middle", whiteSpace: "nowrap" };
+const th: React.CSSProperties = { textAlign: "left", color: "var(--text-sub)", fontWeight: 500, padding: "9px 8px", borderBottom: "1px solid rgba(180,165,130,0.25)", whiteSpace: "nowrap" };
+const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "var(--text-main)", verticalAlign: "middle", whiteSpace: "nowrap" };
 const tr: React.CSSProperties = {};
 const checkedTr: React.CSSProperties = { background: "rgba(212,165,65,0.08)" };
 const errorTr: React.CSSProperties = { background: "rgba(179,88,80,0.08)" };
-const empty: React.CSSProperties = { padding: 28, textAlign: "center", color: "#6d6356", background: "#fffdf6", borderRadius: 10 };
+const empty: React.CSSProperties = { padding: 28, textAlign: "center", color: "var(--text-sub)", background: "var(--bg-card-solid)", borderRadius: 10 };
 const notice: React.CSSProperties = { padding: "10px 14px", marginBottom: 12, background: "rgba(94,125,68,0.12)", border: "1px solid rgba(94,125,68,0.25)", borderRadius: 10, color: "#4d6838", fontSize: 13 };
 const warning: React.CSSProperties = { padding: "10px 14px", marginBottom: 12, background: "rgba(212,165,65,0.12)", border: "1px solid rgba(212,165,65,0.25)", borderRadius: 10, color: "#8a6822", fontSize: 13 };
 const okBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 999, background: "rgba(94,125,68,0.14)", color: "#5e7d44", fontSize: 12 };
 const errorBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 999, background: "rgba(179,88,80,0.16)", color: "#8a3a32", fontSize: 12 };
-const corpSwitch: React.CSSProperties = { display: "flex", gap: 4, marginBottom: 18, padding: 6, background: "rgba(255,253,246,0.55)", borderRadius: 999, width: "fit-content", border: "1px solid rgba(180,165,130,0.2)", flexWrap: "wrap" };
-const corpTab = (active: boolean): React.CSSProperties => ({ padding: "8px 20px", borderRadius: 999, border: "none", background: active ? "#d4a541" : "transparent", color: active ? "#fff" : "#6d6356", cursor: "pointer", boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none" });
+const corpSwitch: React.CSSProperties = { display: "flex", gap: 4, marginBottom: 18, padding: 6, background: "var(--bg-card)", borderRadius: 999, width: "fit-content", border: "1px solid rgba(180,165,130,0.2)", flexWrap: "wrap" };
+const corpTab = (active: boolean): React.CSSProperties => ({ padding: "8px 20px", borderRadius: 999, border: "none", background: active ? "#d4a541" : "transparent", color: active ? "#fff" : "var(--text-sub)", cursor: "pointer", boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none" });
 const exportBtn = (active: boolean): React.CSSProperties => ({ border: "none", borderRadius: 999, padding: "10px 18px", background: active ? "#d4a541" : "#d8d0bd", color: "#fff", cursor: active ? "pointer" : "not-allowed", boxShadow: active ? "0 3px 10px rgba(212,165,65,0.25)" : "none" });
 const taxBadge = (taxClass: string): React.CSSProperties => ({
   display: "inline-block",
