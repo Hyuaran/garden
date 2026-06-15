@@ -875,13 +875,17 @@ function DetailModal({
 function CompactCard({ label, count, amount, color }: { label: string; count: number; amount: number; color: string }) {
   return (
     <div style={{ ...compactCard, borderLeft: `3px solid ${color}` }}>
-      <span style={{ color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
-      <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{count}件</strong>
-      {/* 「合計」は左固定・金額は右固定（桁が増えても両方位置が動かない） */}
-      <span style={{ display: "flex", justifyContent: "space-between", gap: 6, color: "#6d6356", fontVariantNumeric: "tabular-nums" }}>
-        <span>合計</span>
-        <span>¥{amount.toLocaleString("ja-JP")}</span>
-      </span>
+      {/* 完了待ちタブ（経理差戻し行あり）とカード高さを揃えるため、上に同じ高さの余白を確保し主要部は下寄せ */}
+      <div style={compactCardSub} />
+      <div style={compactCardMain}>
+        <span style={{ color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{count}件</strong>
+        {/* 「合計」は左固定・金額は右固定（桁が増えても両方位置が動かない） */}
+        <span style={{ display: "flex", justifyContent: "space-between", gap: 6, color: "#6d6356", fontVariantNumeric: "tabular-nums" }}>
+          <span>合計</span>
+          <span>¥{amount.toLocaleString("ja-JP")}</span>
+        </span>
+      </div>
     </div>
   );
 }
@@ -1010,14 +1014,12 @@ const summaryNavBar: React.CSSProperties = {
   marginBottom: 16,
 };
 const compactCard: React.CSSProperties = {
-  // 3カードを同じ幅に固定。ラベル/件数/金額を固定列にして、桁が増えても
-  // 件数・金額の位置が動かないようにする（最大「差戻し（本日）1000件 合計 ¥5,000,000」基準）
+  // 3カードを同じ幅に固定。完了待ちタブとカード高さを揃えるため flex column 構成。
   width: 316,
   boxSizing: "border-box",
-  display: "grid",
-  gridTemplateColumns: "96px 58px 1fr",
-  alignItems: "baseline",
-  gap: 8,
+  display: "flex",
+  flexDirection: "column",
+  gap: 3,
   padding: "8px 14px",
   background: "#faf6ec",
   border: "1px solid rgba(179,137,46,0.18)",
@@ -1025,6 +1027,10 @@ const compactCard: React.CSSProperties = {
   fontSize: 13,
   whiteSpace: "nowrap",
 };
+// 完了待ちタブの「経理差戻し」行と同じ高さ。承認待ちでは中身なしの余白として高さを揃える
+const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fontSize: 11 };
+// ラベル/件数/金額を固定列にして桁が増えても位置が動かない（最大「1000件 合計 ¥5,000,000」基準）
+const compactCardMain: React.CSSProperties = { marginTop: "auto", display: "grid", gridTemplateColumns: "96px 58px 1fr", alignItems: "baseline", gap: 8 };
 const navWrap: React.CSSProperties = { marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 };
 const navBtn = (disabled: boolean): React.CSSProperties => ({
   display: "inline-flex",

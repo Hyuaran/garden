@@ -380,12 +380,19 @@ function CorpFilter({ value, corps, onChange }: { value: string; corps: Corp[]; 
   );
 }
 
+// 完了待ち/承認待ちタブと同じコンパクトカード（上に余白を確保し主要部は下寄せ＝3タブで高さ統一）
 function Card({ label, value, meta, color }: { label: string; value: number | string; meta: string; color: string }) {
   return (
-    <div style={{ ...card, borderTop: `3px solid ${color}` }}>
-      <div style={cardLabel}>{label}</div>
-      <div style={{ ...cardValue, color }}>{value}<span style={cardUnit}>件</span></div>
-      <div style={cardMeta}>{meta}</div>
+    <div style={{ ...compactCard, borderLeft: `3px solid ${color}` }}>
+      <div style={compactCardSub} />
+      <div style={compactCardMain}>
+        <span style={{ color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums" }}>
+          {value}
+          {typeof value === "number" ? "件" : ""}
+        </strong>
+        <span style={{ color: "#6d6356", marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</span>
+      </div>
     </div>
   );
 }
@@ -421,12 +428,22 @@ function parseFilename(header: string | null) {
 const shell: React.CSSProperties = { marginBottom: 24 };
 const title: React.CSSProperties = { margin: 0, fontSize: 22, color: "#3d3528", fontFamily: "'Shippori Mincho', serif" };
 const lead: React.CSSProperties = { margin: "4px 0 14px", color: "#6d6356", fontSize: 13 };
-const cards: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 16 };
-const card: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "14px 16px" };
-const cardLabel: React.CSSProperties = { color: "#6d6356", fontSize: 12, letterSpacing: "0.04em", marginBottom: 6 };
-const cardValue: React.CSSProperties = { fontSize: 28, fontWeight: 700, fontFamily: "'EB Garamond', serif", lineHeight: 1 };
-const cardUnit: React.CSSProperties = { fontSize: 13, marginLeft: 4, color: "#6d6356", fontFamily: "'Shippori Mincho', serif" };
-const cardMeta: React.CSSProperties = { color: "#9a8f7d", fontSize: 12, marginTop: 6 };
+const cards: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 16 };
+const compactCard: React.CSSProperties = {
+  boxSizing: "border-box",
+  display: "flex",
+  flexDirection: "column",
+  gap: 3,
+  padding: "8px 14px",
+  background: "#faf6ec",
+  border: "1px solid rgba(179,137,46,0.18)",
+  borderRadius: 10,
+  fontSize: 13,
+  whiteSpace: "nowrap",
+};
+// 完了待ちタブの「経理差戻し」行と同じ高さの余白（3タブでカード高さを揃える）
+const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fontSize: 11 };
+const compactCardMain: React.CSSProperties = { marginTop: "auto", display: "flex", alignItems: "baseline", gap: 8 };
 const panel: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
 const panelHead: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 12 };
 const panelTitle: React.CSSProperties = { margin: 0, fontSize: 17, color: "#3d3528", fontWeight: 600 };
