@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import Link from "next/link";
 
 import { useTheme } from "@/app/_lib/theme/ThemeProvider";
+import { ShortcutsModal } from "@/app/_components/shortcuts/ShortcutsModal";
 import {
   DEFAULT_GARDEN_ACTIVITY_ITEMS,
   GARDEN_SHELL_MODULES,
@@ -152,6 +153,7 @@ export default function GardenShell({
   }, [favoriteSnapshot]);
   const [favoriteOpen, setFavoriteOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [readActivityIds, setReadActivityIds] = useState<Set<string>>(() => new Set());
   const [dateText, setDateText] = useState(() => formatDateJP(new Date()));
   const [weather, setWeather] = useState({
@@ -202,7 +204,8 @@ export default function GardenShell({
 
   useEffect(() => {
     const handleSearchShortcut = (event: KeyboardEvent) => {
-      if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+      // 正本: 検索ボックスへジャンプ = Ctrl+Shift+G（Ctrl+G は画面内の検索モードに譲る）
+      if (!event.ctrlKey || event.altKey || event.metaKey || !event.shiftKey) return;
       if (event.key.toLowerCase() !== "g") return;
       event.preventDefault();
       searchInputRef.current?.focus();
@@ -835,7 +838,7 @@ export default function GardenShell({
         <div className="search-box">
           <span className="search-icon"><img src={`${T}/images/header_icons/header_search.png`} alt="" /></span>
           <input ref={searchInputRef} type="text" placeholder="検索 (取引先、請求書、タスク、ヘルプなど)" />
-          <span className="search-shortcut">Ctrl+G</span>
+          <span className="search-shortcut">Ctrl+Shift+G</span>
         </div>
         <div className="topbar-info">
           <div className="info-item">
@@ -941,6 +944,19 @@ export default function GardenShell({
                 <span className="user-dropdown-icon"><img src={`${T}/images/header_icons/D-04_settings_simple.png`} alt="" /></span>
                 <span className="user-dropdown-label">ユーザー設定</span>
               </Link>
+              <button
+                className="user-dropdown-item"
+                type="button"
+                role="menuitem"
+                data-testid="open-shortcuts"
+                onClick={() => {
+                  closeHeaderMenus();
+                  setShortcutsOpen(true);
+                }}
+              >
+                <span className="user-dropdown-icon" aria-hidden style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⌨</span>
+                <span className="user-dropdown-label">ショートカット一覧</span>
+              </button>
               <div className="user-dropdown-divider"></div>
               <button className="user-dropdown-item user-dropdown-item-logout" type="button" onClick={handleLogout}>
                 <span className="user-dropdown-icon"><img src={`${T}/images/header_icons/D-05_logout_simple.png`} alt="" /></span>
@@ -1054,6 +1070,8 @@ export default function GardenShell({
         </div>
       </aside>
       </div>
+
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </>
   );
 }

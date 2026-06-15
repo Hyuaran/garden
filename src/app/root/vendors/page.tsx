@@ -176,10 +176,10 @@ export default function VendorsPage() {
     <>
       <PageHeader
         title="取引先マスタ"
-        description="振込先（外注先・仕入先等）の口座情報。Ctrl+F で検索・Ctrl+↑↓ で行移動・Ctrl+Enter で編集。"
+        description="振込先（外注先・仕入先等）の口座情報。Ctrl+Shift+G で検索・Ctrl+↑↓ で行移動・Ctrl+Enter で編集。"
         actions={
           <div style={{ display: "flex", gap: 8 }}>
-            <input ref={searchRef} type="search" placeholder="取引先名・カナ・IDで検索（Ctrl+F）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 240 }} />
+            <input ref={searchRef} type="search" placeholder="取引先名・カナ・IDで検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 240 }} />
             <Button onClick={() => setEditTarget(empty(nextId(vendors)))} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
           </div>
         }

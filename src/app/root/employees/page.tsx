@@ -215,14 +215,14 @@ export default function EmployeesPage() {
     <>
       <PageHeader
         title="従業員マスタ"
-        description="給与処理対象者。退職時は退職日を入力し無効化。業務委託は登録対象外。Ctrl+F 検索・Ctrl+↑↓ 行移動・Ctrl+Enter 編集。"
+        description="給与処理対象者。退職時は退職日を入力し無効化。業務委託は登録対象外。Ctrl+Shift+G 検索・Ctrl+↑↓ 行移動・Ctrl+Enter 編集。"
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }}>
               <option value="">すべての法人</option>
               {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
             </select>
-            <input ref={searchRef} type="search" placeholder="氏名・番号で検索（Ctrl+F）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 200 }} />
+            <input ref={searchRef} type="search" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 200 }} />
             <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
           </div>
         }
