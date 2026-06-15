@@ -589,6 +589,8 @@ function CompactCard({
 }) {
   return (
     <div style={{ ...compactCard, borderLeft: `3px solid ${color}` }}>
+      {/* 経理差戻し行は上に、主要部(件数・金額)は下に揃える */}
+      <div style={compactCardSub}>{sub ?? ""}</div>
       <div style={compactCardMain}>
         <span style={{ color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
         <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{count}件</strong>
@@ -597,7 +599,6 @@ function CompactCard({
           <span>¥{amount.toLocaleString("ja-JP")}</span>
         </span>
       </div>
-      <div style={compactCardSub}>{sub ?? ""}</div>
     </div>
   );
 }
@@ -647,7 +648,7 @@ const compactCard: React.CSSProperties = {
   fontSize: 13,
   whiteSpace: "nowrap",
 };
-const compactCardMain: React.CSSProperties = { display: "grid", gridTemplateColumns: "96px 58px 1fr", alignItems: "baseline", gap: 8 };
+const compactCardMain: React.CSSProperties = { marginTop: "auto", display: "grid", gridTemplateColumns: "96px 58px 1fr", alignItems: "baseline", gap: 8 };
 // 経理差戻し行。3枚とも同じ高さ(16px)を確保して縦幅を揃える
 const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fontSize: 11, color: "#9a8f7d", textAlign: "right", fontVariantNumeric: "tabular-nums", overflow: "hidden" };
 const navWrap: React.CSSProperties = { marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 };
