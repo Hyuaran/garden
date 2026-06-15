@@ -453,15 +453,6 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setIdx(0);
   }, [baseList, buildSearchRecord, searchSheets]);
 
-  const omitCurrentRecord = useCallback(() => {
-    if (!current) return;
-    const sourceIds = foundIds ?? list.map((row) => row.id);
-    const nextIds = sourceIds.filter((id) => id !== current.id);
-    setFoundIds(nextIds);
-    setSearchSummary((summary) => summary || "表示中レコードを除外");
-    setIdx((value) => Math.max(0, Math.min(value, Math.max(0, nextIds.length - 1))));
-  }, [current, foundIds, list]);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key.toLowerCase() === "g") {
@@ -632,7 +623,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           <CompactCard label="承認（本日）" count={todayStats.approvedCount} amount={todayStats.approvedAmount} color="#5e7d44" />
           <CompactCard label="差戻し（本日）" count={todayStats.rejectedCount} amount={todayStats.rejectedAmount} color="#b35850" />
           {list.length > 0 && current && (
-            <div style={searchMode ? { ...navWrap, justifyContent: "center" } : navWrap}>
+            <div style={{ ...navWrap, justifyContent: "center" }}>
               <div style={navButtonRow}>
               <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
                 <span style={navCircle}>◀</span>前へ<span style={navHint}>Ctrl+↑</span>
@@ -653,16 +644,6 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>▶</span>
               </button>
               </div>
-              {!searchMode && (
-                <div style={omitRecordRow}>
-                  <button type="button" style={omitRecordBtn(true)} disabled>
-                    含む
-                  </button>
-                  <button type="button" style={omitRecordBtn(false)} onClick={omitCurrentRecord}>
-                    除外
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -1285,18 +1266,6 @@ const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fo
 const compactCardMain: React.CSSProperties = { marginTop: "auto", display: "grid", gridTemplateColumns: "96px 58px 1fr", alignItems: "baseline", gap: 8 };
 const navWrap: React.CSSProperties = { marginLeft: "auto", height: 61, display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "stretch", gap: 4 };
 const navButtonRow: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, height: 34 };
-const omitRecordRow: React.CSSProperties = { display: "flex", justifyContent: "flex-end", gap: 4, height: 23 };
-const omitRecordBtn = (include: boolean): React.CSSProperties => ({
-  minWidth: 52,
-  padding: "3px 10px",
-  borderRadius: 999,
-  border: include ? "1px solid rgba(94,125,68,0.24)" : "1px solid rgba(179,88,80,0.36)",
-  background: include ? "rgba(94,125,68,0.12)" : "var(--bg-card-solid)",
-  color: include ? "#5e7d44" : "#b35850",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: include ? "default" : "pointer",
-});
 const navBtn = (disabled: boolean): React.CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
