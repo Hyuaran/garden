@@ -946,6 +946,10 @@ const summaryNavBar: React.CSSProperties = {
   marginBottom: 16,
 };
 const compactCard: React.CSSProperties = {
+  // 3カードを同じ幅に固定。最大想定「差戻し（本日）1000件 合計 ¥5,000,000」の
+  // 実フォント実測幅310px + 余白で316px。短い内容のカードは左寄せで右に余白が出る
+  width: 316,
+  boxSizing: "border-box",
   display: "inline-flex",
   alignItems: "baseline",
   gap: 10,
