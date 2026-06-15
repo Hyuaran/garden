@@ -1595,6 +1595,10 @@ input { font-family: inherit; }
   transition: color 0.6s ease;
 }
 
+:is(.dark, [data-theme="dark"]) .gs-main-fixed .page-title {
+  color: var(--text-main);
+}
+
 .page-title-jp {
   font-family: var(--font-shippori), 'Shippori Mincho', serif;
   font-size: 1.65rem;
@@ -1980,6 +1984,10 @@ body:has(.nav-apps:hover) .nav-pages-toggle {
   text-overflow: ellipsis;
   pointer-events: none;
 }
+:is(.dark, [data-theme="dark"]) .gs-orb-col .nav-app-item,
+:is(.dark, [data-theme="dark"]) .gs-orb-col .nav-app-name {
+  color: var(--text-main);
+}
 .nav-apps:hover .nav-app-name {
   opacity: 1;
   transform: translateX(0);
@@ -2094,6 +2102,10 @@ a.nav-pages-header:hover {
   overflow: hidden;
   flex-shrink: 0;
 }
+:is(.dark, [data-theme="dark"]) .gs-nav-col .nav-page-item,
+:is(.dark, [data-theme="dark"]) .gs-nav-col .nav-page-item:hover {
+  color: var(--text-main);
+}
 .nav-page-item:hover {
   background: rgba(232, 180, 184, 0.14);
   padding-left: 16px;
@@ -2102,6 +2114,9 @@ a.nav-pages-header:hover {
   background: rgba(212, 165, 65, 0.16);
   font-weight: 500;
   position: relative;
+}
+:is(.dark, [data-theme="dark"]) .gs-nav-col .nav-page-item.active {
+  color: var(--text-main);
 }
 .nav-page-item.active::before {
   content: '';
