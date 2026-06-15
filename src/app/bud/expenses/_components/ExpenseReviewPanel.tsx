@@ -863,7 +863,11 @@ function CompactCard({ label, count, amount, color }: { label: string; count: nu
     <div style={{ ...compactCard, borderLeft: `3px solid ${color}` }}>
       <span style={{ color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
       <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{count}件</strong>
-      <span style={{ color: "#6d6356", fontVariantNumeric: "tabular-nums", textAlign: "right" }}>合計 ¥{amount.toLocaleString("ja-JP")}</span>
+      {/* 「合計」は左固定・金額は右固定（桁が増えても両方位置が動かない） */}
+      <span style={{ display: "flex", justifyContent: "space-between", gap: 6, color: "#6d6356", fontVariantNumeric: "tabular-nums" }}>
+        <span>合計</span>
+        <span>¥{amount.toLocaleString("ja-JP")}</span>
+      </span>
     </div>
   );
 }
