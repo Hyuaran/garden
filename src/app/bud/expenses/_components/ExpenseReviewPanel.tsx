@@ -632,7 +632,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           <CompactCard label="承認（本日）" count={todayStats.approvedCount} amount={todayStats.approvedAmount} color="#5e7d44" />
           <CompactCard label="差戻し（本日）" count={todayStats.rejectedCount} amount={todayStats.rejectedAmount} color="#b35850" />
           {list.length > 0 && current && (
-            <div style={navWrap}>
+            <div style={searchMode ? { ...navWrap, justifyContent: "center" } : navWrap}>
               <div style={navButtonRow}>
               <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
                 <span style={navCircle}>◀</span>前へ<span style={navHint}>Ctrl+↑</span>
@@ -653,14 +653,16 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>▶</span>
               </button>
               </div>
-              <div style={omitRecordRow}>
-                <button type="button" style={omitRecordBtn(true)} disabled>
-                  含む
-                </button>
-                <button type="button" style={omitRecordBtn(false)} onClick={omitCurrentRecord}>
-                  除外
-                </button>
-              </div>
+              {!searchMode && (
+                <div style={omitRecordRow}>
+                  <button type="button" style={omitRecordBtn(true)} disabled>
+                    含む
+                  </button>
+                  <button type="button" style={omitRecordBtn(false)} onClick={omitCurrentRecord}>
+                    除外
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
