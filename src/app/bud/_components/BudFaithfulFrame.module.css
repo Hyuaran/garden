@@ -30,6 +30,13 @@
   --bud-line: rgba(212, 200, 165, 0.18);
 }
 
+/* 法人フィルター（生HTMLポートの .bud-corp-switch は背景がライト固定のため、
+   ダークでは暗いピルに上書き。アクティブタブの金色はそのまま）。 */
+:global([data-theme="dark"]) .htmlPort :global(.bud-corp-switch) {
+  background: rgba(40, 46, 36, 0.62);
+  border-color: rgba(212, 200, 165, 0.18);
+}
+
 /* タブは bud-01-top (BudDashboard .dashboardTab) と同じ「下線スタイル」に統一。
    GardenShell テーマの金色ピル(.tab-item)を上書きして全 Bud 画面で揃える。 */
 .htmlPort :global(.tab-nav) {
