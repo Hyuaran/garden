@@ -32,6 +32,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ShortcutsModal } from "@/app/_components/shortcuts/ShortcutsModal";
+
 type Props = {
   dateLabel: string;
   weatherIconSrc: string;
@@ -60,6 +62,7 @@ export default function BloomTopbar({
 }: Props) {
   const [favOpen, setFavOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const favRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
@@ -87,6 +90,7 @@ export default function BloomTopbar({
   }, []);
 
   return (
+    <>
     <header className="topbar">
       {/* ===== ロゴ + ブランド名 ===== */}
       <a
@@ -113,7 +117,7 @@ export default function BloomTopbar({
           type="text"
           placeholder="検索（取引先、請求書、タスク、ヘルプなど）"
         />
-        <span className="search-shortcut">Ctrl+F</span>
+        <span className="search-shortcut">Ctrl+Shift+G</span>
       </div>
 
       {/* ===== 右側情報エリア ===== */}
@@ -278,6 +282,20 @@ export default function BloomTopbar({
               </span>
               <span className="user-dropdown-label">ユーザー設定</span>
             </a>
+            <button
+              type="button"
+              className="user-dropdown-item"
+              role="menuitem"
+              data-testid="open-shortcuts"
+              onClick={(e) => {
+                e.stopPropagation();
+                setUserOpen(false);
+                setShortcutsOpen(true);
+              }}
+            >
+              <span className="user-dropdown-icon" aria-hidden style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⌨</span>
+              <span className="user-dropdown-label">ショートカット一覧</span>
+            </button>
             <div className="user-dropdown-divider" />
             <a
               href="/_proto/login/index.html"
@@ -299,5 +317,7 @@ export default function BloomTopbar({
         </div>
       </div>
     </header>
+    <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+    </>
   );
 }
