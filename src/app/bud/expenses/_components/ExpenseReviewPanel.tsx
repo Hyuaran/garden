@@ -337,7 +337,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       count.dataset.expRecordCount = "true";
       count.style.marginLeft = "auto";
       count.style.fontSize = "13px";
-      count.style.color = "#6d6356";
+      count.style.color = "var(--text-sub)";
       count.style.fontVariantNumeric = "tabular-nums";
       count.style.whiteSpace = "nowrap";
       wrapper.appendChild(count);
@@ -616,7 +616,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       {!embedded && (
         <>
           <header style={{ marginBottom: 18 }}>
-            <h1 style={{ fontSize: 22, color: "#3d3528", margin: 0 }}>経費精算 — 承認待ち（経理）</h1>
+            <h1 style={{ fontSize: 22, color: "var(--text-main)", margin: 0 }}>経費精算 — 承認待ち（経理）</h1>
             <p style={{ color: "#7b745f", fontSize: 13, margin: "4px 0 0" }}>
               スマホ申請を確認して承認／差戻し。Ctrl+↓ / Ctrl+↑ で前後に移動。
             </p>
@@ -641,7 +641,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
               {!embedded && (
                 <span style={navCount}>
                   {idx + 1}
-                  <span style={{ color: "#9a8f7d" }}> / {list.length}</span>
+                  <span style={{ color: "var(--text-muted)" }}> / {list.length}</span>
                 </span>
               )}
               <button
@@ -848,7 +848,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                               style={{
                                 ...input,
                                 paddingRight: 32,
-                                ...(numberDisabled ? { background: "#eceae3", color: "#9a8f7d" } : {}),
+                                ...(numberDisabled ? { background: "var(--bg-paper)", color: "var(--text-muted)" } : {}),
                                 ...(showInvalid ? { background: "rgba(179,88,80,0.12)", border: "1px solid rgba(179,88,80,0.45)" } : {}),
                               }}
                             />
@@ -1128,10 +1128,10 @@ function CompactCard({ label, count, amount, color }: { label: string; count: nu
       {/* 完了待ちタブ（経理差戻し行あり）とカード高さを揃えるため、上に同じ高さの余白を確保し主要部は下寄せ */}
       <div style={compactCardSub} />
       <div style={compactCardMain}>
-        <span style={{ color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <span style={{ color: "var(--text-sub)", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
         <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{count}件</strong>
         {/* 「合計」は左固定・金額は右固定（桁が増えても両方位置が動かない） */}
-        <span style={{ display: "flex", justifyContent: "space-between", gap: 6, color: "#6d6356", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ display: "flex", justifyContent: "space-between", gap: 6, color: "var(--text-sub)", fontVariantNumeric: "tabular-nums" }}>
           <span>合計</span>
           <span>¥{amount.toLocaleString("ja-JP")}</span>
         </span>
@@ -1142,15 +1142,15 @@ function CompactCard({ label, count, amount, color }: { label: string; count: nu
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", gap: 10, padding: "6px 0", fontSize: 14 }}>
-      <span style={{ width: 96, color: "#6d6356", flexShrink: 0 }}>{label}</span>
-      <span style={{ color: "#3d3528" }}>{children}</span>
+      <span style={{ width: 96, color: "var(--text-sub)", flexShrink: 0 }}>{label}</span>
+      <span style={{ color: "var(--text-main)" }}>{children}</span>
     </div>
   );
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: "block", fontSize: 12, color: "#6d6356", marginBottom: 4 }}>{label}</label>
+      <label style={{ display: "block", fontSize: 12, color: "var(--text-sub)", marginBottom: 4 }}>{label}</label>
       {children}
     </div>
   );
@@ -1168,7 +1168,7 @@ function InfoValue({
 }) {
   return (
     <div>
-      <div style={{ fontSize: 12, color: emphasis === "danger" ? "#9e3f38" : "#6d6356", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 12, color: emphasis === "danger" ? "var(--text-warning)" : "var(--text-sub)", marginBottom: 4 }}>{label}</div>
       <div style={infoBox(emphasis)}>{children}</div>
     </div>
   );
@@ -1246,12 +1246,12 @@ function statusPill(status: string): React.CSSProperties {
 }
 
 const notice: React.CSSProperties = {
-  background: "#faf6ec",
+  background: "var(--bg-paper-soft)",
   border: "1px solid rgba(179,137,46,0.18)",
   borderRadius: 12,
   padding: 24,
   textAlign: "center",
-  color: "#6d6356",
+  color: "var(--text-sub)",
   margin: "12px 0",
 };
 const reviewShell: React.CSSProperties = { display: "flex", gap: 12, alignItems: "stretch", marginBottom: 18 };
@@ -1271,7 +1271,7 @@ const compactCard: React.CSSProperties = {
   flexDirection: "column",
   gap: 3,
   padding: "8px 14px",
-  background: "#faf6ec",
+  background: "var(--bg-paper-soft)",
   border: "1px solid rgba(179,137,46,0.18)",
   borderRadius: 10,
   fontSize: 13,
@@ -1289,7 +1289,7 @@ const omitRecordBtn = (include: boolean): React.CSSProperties => ({
   padding: "3px 10px",
   borderRadius: 999,
   border: include ? "1px solid rgba(94,125,68,0.24)" : "1px solid rgba(179,88,80,0.36)",
-  background: include ? "rgba(94,125,68,0.12)" : "#fff",
+  background: include ? "rgba(94,125,68,0.12)" : "var(--bg-card-solid)",
   color: include ? "#5e7d44" : "#b35850",
   fontSize: 12,
   fontWeight: 700,
@@ -1301,15 +1301,15 @@ const navBtn = (disabled: boolean): React.CSSProperties => ({
   gap: 6,
   padding: "8px 11px",
   borderRadius: 8,
-  border: "1px solid #cdbf9a",
-  background: "#fff",
-  color: "#6d6356",
+  border: "1px solid var(--border-card)",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-sub)",
   fontSize: 13,
   cursor: disabled ? "not-allowed" : "pointer",
   opacity: disabled ? 0.45 : 1,
   whiteSpace: "nowrap",
 });
-const navHint: React.CSSProperties = { fontSize: 10, color: "#9a8f7d" };
+const navHint: React.CSSProperties = { fontSize: 10, color: "var(--text-muted)" };
 // ◀/▶ を丸で囲んだ方向アイコン（→と↓の矢印重複を避けて視認性を上げる）
 const navCircle: React.CSSProperties = {
   display: "inline-flex",
@@ -1323,10 +1323,10 @@ const navCircle: React.CSSProperties = {
   lineHeight: 1,
   flexShrink: 0,
 };
-const navCount: React.CSSProperties = { fontSize: 13, color: "#3d3528", fontVariantNumeric: "tabular-nums", padding: "0 2px" };
+const navCount: React.CSSProperties = { fontSize: 13, color: "var(--text-main)", fontVariantNumeric: "tabular-nums", padding: "0 2px" };
 // alignItems: stretch で申請情報カードと領収書カードの高さを揃える（高い方に合わせる）
 const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "stretch", marginBottom: 0 };
-const panel: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
+const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
 const panelTitle: React.CSSProperties = { fontSize: 15, color: "#b3892e", margin: "0 0 12px", borderBottom: "1px dashed rgba(179,137,46,0.35)", paddingBottom: 8 };
 // 「法人/計上期/期の範囲」行と「レシート日付/時刻」行で共有する列幅（枠の縦ラインを揃える）
 const FISCAL_COLS = "1.1fr 0.8fr 1.3fr";
@@ -1346,10 +1346,10 @@ const infoBox = (emphasis: "normal" | "danger"): React.CSSProperties => ({
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
-  color: emphasis === "danger" ? "#b35850" : "#3d3528",
+  color: emphasis === "danger" ? "#b35850" : "var(--text-main)",
   fontWeight: emphasis === "danger" ? 700 : 500,
   border: emphasis === "danger" ? "1px solid rgba(179,88,80,0.35)" : "1px solid rgba(179,137,46,0.16)",
-  background: emphasis === "danger" ? "rgba(179,88,80,0.08)" : "rgba(255,253,246,0.72)",
+  background: emphasis === "danger" ? "rgba(179,88,80,0.08)" : "var(--bg-card)",
 });
 // 適格番号の判定マーク（右端に重ねる）
 const tMark: React.CSSProperties = {
@@ -1374,7 +1374,7 @@ const fiscalWarning: React.CSSProperties = {
   borderRadius: 8,
   background: "rgba(179,88,80,0.1)",
   border: "1px solid rgba(179,88,80,0.28)",
-  color: "#9e3f38",
+  color: "var(--text-warning)",
   fontSize: 12,
   fontWeight: 700,
 };
@@ -1384,8 +1384,8 @@ const input: React.CSSProperties = {
   borderRadius: 6,
   border: "1px solid rgba(179,137,46,0.3)",
   fontSize: 14,
-  background: "#fff",
-  color: "#3d362a",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-main)",
 };
 const approveBtn: React.CSSProperties = {
   flex: 1,
@@ -1404,7 +1404,7 @@ const rejectBtn: React.CSSProperties = {
   padding: 13,
   borderRadius: 10,
   border: "1px solid #b35850",
-  background: "#fff",
+  background: "var(--bg-card-solid)",
   color: "#b35850",
   fontSize: 15,
   fontWeight: 700,
@@ -1419,8 +1419,8 @@ const searchBanner: React.CSSProperties = {
   marginBottom: 10,
   borderRadius: 8,
   border: "1px solid rgba(179,137,46,0.28)",
-  background: "#fff7df",
-  color: "#6d4f16",
+  background: "rgba(212,165,65,0.18)",
+  color: "var(--text-main)",
   fontSize: 13,
 };
 const searchSheetBar: React.CSSProperties = {
@@ -1438,19 +1438,19 @@ const searchSheetTab = (active: boolean, omit: boolean): React.CSSProperties => 
   padding: "5px 10px",
   borderRadius: 8,
   border: active ? "1px solid #b3892e" : "1px solid rgba(179,137,46,0.22)",
-  background: omit ? (active ? "rgba(179,88,80,0.18)" : "rgba(179,88,80,0.08)") : active ? "#fff7df" : "#fff",
-  color: omit ? "#b35850" : "#6d6356",
+  background: omit ? (active ? "rgba(179,88,80,0.18)" : "rgba(179,88,80,0.08)") : active ? "rgba(212,165,65,0.18)" : "var(--bg-card-solid)",
+  color: omit ? "#b35850" : "var(--text-sub)",
   fontSize: 13,
   fontWeight: active ? 700 : 500,
   cursor: "pointer",
 });
-const searchSheetClose: React.CSSProperties = { color: "#9a8f7d", fontWeight: 700, paddingLeft: 4 };
+const searchSheetClose: React.CSSProperties = { color: "var(--text-muted)", fontWeight: 700, paddingLeft: 4 };
 const searchSheetAdd: React.CSSProperties = {
   width: 30,
   height: 30,
   borderRadius: 8,
   border: "1px solid rgba(179,137,46,0.25)",
-  background: "#fff",
+  background: "var(--bg-card-solid)",
   color: "#b3892e",
   fontWeight: 700,
   cursor: "pointer",
@@ -1460,7 +1460,7 @@ const searchModeToggle: React.CSSProperties = {
   padding: 3,
   borderRadius: 999,
   border: "1px solid rgba(179,137,46,0.22)",
-  background: "#fff",
+  background: "var(--bg-card-solid)",
   marginLeft: 6,
 };
 const searchModeBtn = (active: boolean): React.CSSProperties => ({
@@ -1468,7 +1468,7 @@ const searchModeBtn = (active: boolean): React.CSSProperties => ({
   borderRadius: 999,
   border: "none",
   background: active ? "#d4a541" : "transparent",
-  color: active ? "#fff" : "#6d6356",
+  color: active ? "#fff" : "var(--text-sub)",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
@@ -1482,15 +1482,15 @@ const foundBar: React.CSSProperties = {
   marginBottom: 12,
   borderRadius: 8,
   border: "1px solid rgba(179,137,46,0.26)",
-  background: "#fffdf6",
-  color: "#3d3528",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-main)",
   fontSize: 13,
 };
-const foundSummaryText: React.CSSProperties = { flex: 1, minWidth: 160, color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const foundSummaryText: React.CSSProperties = { flex: 1, minWidth: 160, color: "var(--text-sub)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const foundClearBtn: React.CSSProperties = {
   border: "1px solid rgba(179,137,46,0.24)",
-  background: "#fff",
-  color: "#6d6356",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-sub)",
   borderRadius: 999,
   padding: "5px 10px",
   cursor: "pointer",
@@ -1501,7 +1501,7 @@ const corpSwitch: React.CSSProperties = {
   gap: 4,
   marginBottom: 18,
   padding: 6,
-  background: "rgba(255,253,246,0.55)",
+  background: "var(--bg-card)",
   borderRadius: 999,
   width: "fit-content",
   border: "1px solid rgba(180,165,130,0.2)",
@@ -1512,13 +1512,13 @@ const corpTab = (active: boolean): React.CSSProperties => ({
   borderRadius: 999,
   border: "none",
   background: active ? "#d4a541" : "transparent",
-  color: active ? "#fff" : "#6d6356",
+  color: active ? "#fff" : "var(--text-sub)",
   boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none",
   cursor: "pointer",
   fontSize: 13,
 });
 const statusPanel: React.CSSProperties = {
-  background: "#faf6ec",
+  background: "var(--bg-paper-soft)",
   border: "1px solid rgba(179,137,46,0.18)",
   borderRadius: 12,
   padding: "18px 20px",
@@ -1533,17 +1533,17 @@ const statusHead: React.CSSProperties = {
   paddingBottom: 8,
   marginBottom: 12,
 };
-const statusTitle: React.CSSProperties = { fontSize: 16, color: "#3d3528", margin: 0, fontWeight: 600 };
-const statusMeta: React.CSSProperties = { fontSize: 12, color: "#9a8f7d" };
+const statusTitle: React.CSSProperties = { fontSize: 16, color: "var(--text-main)", margin: 0, fontWeight: 600 };
+const statusMeta: React.CSSProperties = { fontSize: 12, color: "var(--text-muted)" };
 const statusTable: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
 const th: React.CSSProperties = {
   textAlign: "left",
-  color: "#6d6356",
+  color: "var(--text-sub)",
   fontWeight: 500,
   padding: "9px 8px",
   borderBottom: "1px solid rgba(180,165,130,0.25)",
 };
-const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "#3d3528" };
+const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "var(--text-main)" };
 const tr: React.CSSProperties = { cursor: "pointer" };
 const pill: React.CSSProperties = { display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600 };
 const modalBackdrop: React.CSSProperties = {
@@ -1560,7 +1560,7 @@ const modalCard: React.CSSProperties = {
   width: "min(980px, 92vw)",
   maxHeight: "88vh",
   overflow: "auto",
-  background: "#fffdf6",
+  background: "var(--bg-card-solid)",
   borderRadius: 14,
   border: "1px solid rgba(179,137,46,0.25)",
   boxShadow: "0 18px 48px rgba(40,34,25,0.22)",
@@ -1572,8 +1572,8 @@ const closeBtn: React.CSSProperties = {
   height: 34,
   borderRadius: 999,
   border: "1px solid rgba(179,137,46,0.25)",
-  background: "#fff",
-  color: "#6d6356",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-sub)",
   fontSize: 20,
   cursor: "pointer",
 };
@@ -1582,7 +1582,7 @@ const rotateImgBtn: React.CSSProperties = {
   padding: "6px 14px",
   borderRadius: 8,
   border: "1px solid rgba(179,137,46,0.35)",
-  background: "#fff",
+  background: "var(--bg-card-solid)",
   color: "#b3892e",
   fontSize: 13,
   fontWeight: 600,
