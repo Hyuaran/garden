@@ -266,6 +266,32 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       host.appendChild(button);
     }
 
+    // 法人フィルター(pill)を flex 行でラップし、右端にレコード番号(1/9)を置く。
+    // これによりカード＋前へ次へ行から番号を外せ、中央が狭くても横並びを維持できる。
+    let row = host.parentElement;
+    if (row && row.dataset.expFilterRow !== "true") {
+      const wrapper = document.createElement("div");
+      wrapper.dataset.expFilterRow = "true";
+      wrapper.style.display = "flex";
+      wrapper.style.alignItems = "center";
+      wrapper.style.gap = "12px";
+      wrapper.style.marginBottom = "14px";
+      row.insertBefore(wrapper, host);
+      wrapper.appendChild(host);
+      host.style.marginBottom = "0";
+      const count = document.createElement("span");
+      count.dataset.expRecordCount = "true";
+      count.style.marginLeft = "auto";
+      count.style.fontSize = "13px";
+      count.style.color = "#6d6356";
+      count.style.fontVariantNumeric = "tabular-nums";
+      count.style.whiteSpace = "nowrap";
+      wrapper.appendChild(count);
+      row = wrapper;
+    }
+    const countEl = row?.querySelector<HTMLElement>("[data-exp-record-count]");
+    if (countEl) countEl.textContent = list.length > 0 ? `レコード ${idx + 1} / ${list.length}` : "";
+
     const onClick = (event: MouseEvent) => {
       const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-corp-id]");
       if (!button) return;
@@ -273,7 +299,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     };
     host.addEventListener("click", onClick);
     return () => host.removeEventListener("click", onClick);
-  }, [corpFilter, embedded, loaded, setCorpFilter, sortedCorps]);
+  }, [corpFilter, embedded, loaded, setCorpFilter, sortedCorps, idx, list.length]);
 
   // 埋め込みモードでは、レガシーHTMLの3カード（モック）を隠し、React側のコンパクトカード＋ナビに置き換える
   useEffect(() => {
@@ -472,10 +498,13 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
               <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
                 ← 前へ<span style={navHint}>Ctrl+↑</span>
               </button>
-              <span style={navCount}>
-                {idx + 1}
-                <span style={{ color: "#9a8f7d" }}> / {list.length}</span>
-              </span>
+              {/* 埋め込み時はレコード番号を法人フィルター行の右端に出すのでここでは省略 */}
+              {!embedded && (
+                <span style={navCount}>
+                  {idx + 1}
+                  <span style={{ color: "#9a8f7d" }}> / {list.length}</span>
+                </span>
+              )}
               <button
                 type="button"
                 style={navBtn(idx >= list.length - 1)}
@@ -941,7 +970,7 @@ const reviewShell: React.CSSProperties = { display: "flex", gap: 12, alignItems:
 const summaryNavBar: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 10,
+  gap: 8,
   flexWrap: "wrap",
   marginBottom: 16,
 };
@@ -960,12 +989,12 @@ const compactCard: React.CSSProperties = {
   fontSize: 13,
   whiteSpace: "nowrap",
 };
-const navWrap: React.CSSProperties = { marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 };
+const navWrap: React.CSSProperties = { marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 };
 const navBtn = (disabled: boolean): React.CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
-  gap: 7,
-  padding: "8px 14px",
+  gap: 6,
+  padding: "8px 11px",
   borderRadius: 8,
   border: "1px solid #cdbf9a",
   background: "#fff",
