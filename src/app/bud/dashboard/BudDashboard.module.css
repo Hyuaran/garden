@@ -337,6 +337,55 @@
   line-height: 1.45;
 }
 
+/* ===== ダークモード（GardenShellのテーマ変数に合わせて暗色化） =====
+   ダッシュボードは独自CSSモジュールで色がライト固定のため、ダーク時だけ
+   面・文字をテーマ変数へ寄せる。金色アクセントは明るめに。ライトは不変。 */
+:global([data-theme="dark"]) .companyTabs {
+  background: rgba(40, 46, 36, 0.62);
+  border-color: var(--border-card);
+}
+:global([data-theme="dark"]) .companyTab,
+:global([data-theme="dark"]) .dashboardTab {
+  color: var(--text-sub);
+}
+:global([data-theme="dark"]) .dashboardTabActive {
+  color: #e4b551;
+}
+:global([data-theme="dark"]) .kpiCard,
+:global([data-theme="dark"]) .panel,
+:global([data-theme="dark"]) .mirrorPanel {
+  background: linear-gradient(140deg, rgba(42, 48, 38, 0.78), rgba(34, 40, 30, 0.62));
+  border-color: var(--border-card);
+}
+:global([data-theme="dark"]) .kpiHead,
+:global([data-theme="dark"]) .sectionHeader span,
+:global([data-theme="dark"]) .waitingItem,
+:global([data-theme="dark"]) .mirrorItem p {
+  color: var(--text-sub);
+}
+:global([data-theme="dark"]) .kpiValue,
+:global([data-theme="dark"]) .sectionHeader h2,
+:global([data-theme="dark"]) .actionButton,
+:global([data-theme="dark"]) .mirrorItem strong {
+  color: var(--text-main);
+}
+:global([data-theme="dark"]) .kpiNote,
+:global([data-theme="dark"]) .waitingItem strong {
+  color: #a8c898;
+}
+:global([data-theme="dark"]) .chartTools button {
+  background: rgba(40, 46, 36, 0.6);
+  border-color: var(--border-card);
+  color: #e4b551;
+}
+:global([data-theme="dark"]) .actionButton {
+  background: rgba(40, 46, 36, 0.62);
+  border-color: var(--border-card);
+}
+:global([data-theme="dark"]) .sparkLine circle {
+  stroke: rgba(34, 40, 30, 0.9);
+}
+
 @media (max-width: 1440px) {
   .mainGrid {
     grid-template-columns: minmax(0, 1fr) minmax(340px, 0.85fr);
