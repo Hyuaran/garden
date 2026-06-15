@@ -205,6 +205,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     };
   }, [processedFiltered]);
 
+  const pendingAmount = useMemo(() => list.reduce((sum, row) => sum + (row.amount ?? 0), 0), [list]);
+
   const statusRows: StatusRow[] = useMemo(
     () => [
       ...list.map((row) => ({ ...row, rowKind: "pending" as const })),
@@ -273,28 +275,17 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     return () => host.removeEventListener("click", onClick);
   }, [corpFilter, embedded, loaded, setCorpFilter, sortedCorps]);
 
+  // 埋め込みモードでは、レガシーHTMLの3カード（モック）を隠し、React側のコンパクトカード＋ナビに置き換える
   useEffect(() => {
     if (!embedded || !loaded) return;
     const tab = document.getElementById("tab-submit");
-    if (!tab) return;
-    const cards = tab.querySelectorAll<HTMLElement>(".exp-sub-card");
-    const yen = (n: number) => "¥" + n.toLocaleString("ja-JP");
-    const set = (card: HTMLElement | undefined, count: number, amountText: string) => {
-      if (!card) return;
-      const v = card.querySelector<HTMLElement>(".exp-sub-card-value");
-      if (v) {
-        const unit = v.querySelector(".exp-sub-card-unit");
-        v.textContent = String(count);
-        if (unit) v.appendChild(unit);
-      }
-      const a = card.querySelector<HTMLElement>(".exp-sub-card-amount");
-      if (a) a.textContent = amountText;
+    const summary = tab?.querySelector<HTMLElement>(".exp-sub-summary");
+    if (!summary) return;
+    summary.style.setProperty("display", "none");
+    return () => {
+      summary.style.removeProperty("display");
     };
-    const pendingAmount = list.reduce((s, r) => s + (r.amount ?? 0), 0);
-    set(cards[0], list.length, `合計 ${yen(pendingAmount)}`);
-    set(cards[1], todayStats.approvedCount, `合計 ${yen(todayStats.approvedAmount)}`);
-    set(cards[2], todayStats.rejectedCount, yen(todayStats.rejectedAmount));
-  }, [embedded, list, loaded, todayStats]);
+  }, [embedded, loaded]);
 
   useEffect(() => {
     if (!current) {
@@ -467,12 +458,35 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
             </p>
           </header>
           <CorpFilter value={corpFilter} corps={sortedCorps} onChange={setCorpFilter} />
-          <section style={cards3}>
-            <Card label="承認待ち" value={loaded ? list.length : "—"} color="#b3892e" />
-            <Card label="承認（本日）" value={todayStats.approvedCount} color="#5e7d44" />
-            <Card label="差戻し（本日）" value={todayStats.rejectedCount} color="#b35850" />
-          </section>
         </>
+      )}
+
+      {/* コンパクト3カード＋横並びレコード送りを1行に */}
+      {loaded && (
+        <div style={summaryNavBar}>
+          <CompactCard label="承認待ち" count={list.length} amount={pendingAmount} color="#b3892e" />
+          <CompactCard label="承認（本日）" count={todayStats.approvedCount} amount={todayStats.approvedAmount} color="#5e7d44" />
+          <CompactCard label="差戻し（本日）" count={todayStats.rejectedCount} amount={todayStats.rejectedAmount} color="#b35850" />
+          {list.length > 0 && current && (
+            <div style={navWrap}>
+              <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
+                ← 前へ<span style={navHint}>Ctrl+↑</span>
+              </button>
+              <span style={navCount}>
+                {idx + 1}
+                <span style={{ color: "#9a8f7d" }}> / {list.length}</span>
+              </span>
+              <button
+                type="button"
+                style={navBtn(idx >= list.length - 1)}
+                disabled={idx >= list.length - 1}
+                onClick={() => setIdx((i) => Math.min(list.length - 1, i + 1))}
+              >
+                次へ →<span style={navHint}>Ctrl+↓</span>
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {!loaded && <div style={notice}>読み込み中…</div>}
@@ -653,26 +667,6 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
             </div>
           </div>
 
-          <aside style={recordRail} aria-label="レコード送り">
-            <button type="button" style={railBtn} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
-              ↑
-              <span style={railBtnLabel}>前へ</span>
-            </button>
-            <span style={railCount}>
-              {idx + 1}
-              <span style={{ color: "#9a8f7d" }}> / {list.length}</span>
-            </span>
-            <button
-              type="button"
-              style={railBtn}
-              disabled={idx >= list.length - 1}
-              onClick={() => setIdx((i) => Math.min(list.length - 1, i + 1))}
-            >
-              ↓
-              <span style={railBtnLabel}>次へ</span>
-            </button>
-            <span style={railHint}>Ctrl+↑/↓</span>
-          </aside>
         </div>
       )}
 
@@ -833,11 +827,13 @@ function DetailModal({
   );
 }
 
-function Card({ label, value, color }: { label: string; value: number | string; color: string }) {
+// 「承認待ち 9件 合計 ¥12,868」を1行に収めるコンパクトカード
+function CompactCard({ label, count, amount, color }: { label: string; count: number; amount: number; color: string }) {
   return (
-    <div style={{ ...cardBox, borderLeft: `3px solid ${color}` }}>
-      <div style={{ fontSize: 12, color: "#6d6356" }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 700, color }}>{value}</div>
+    <div style={{ ...compactCard, borderLeft: `3px solid ${color}` }}>
+      <span style={{ color: "#6d6356" }}>{label}</span>
+      <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums" }}>{count}件</strong>
+      <span style={{ color: "#6d6356" }}>合計 ¥{amount.toLocaleString("ja-JP")}</span>
     </div>
   );
 }
@@ -931,8 +927,6 @@ function statusPill(status: string): React.CSSProperties {
   return { ...pill, background: "rgba(94,125,68,0.16)", color: "#5e7d44" };
 }
 
-const cards3: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 };
-const cardBox: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "12px 16px" };
 const notice: React.CSSProperties = {
   background: "#faf6ec",
   border: "1px solid rgba(179,137,46,0.18)",
@@ -943,38 +937,42 @@ const notice: React.CSSProperties = {
   margin: "12px 0",
 };
 const reviewShell: React.CSSProperties = { display: "flex", gap: 12, alignItems: "stretch", marginBottom: 18 };
-const recordRail: React.CSSProperties = {
-  width: 74,
-  flexShrink: 0,
-  alignSelf: "stretch",
+// コンパクト3カード＋横並びレコード送りの1行
+const summaryNavBar: React.CSSProperties = {
   display: "flex",
-  flexDirection: "column",
   alignItems: "center",
-  justifyContent: "center",
   gap: 10,
-  border: "1px solid rgba(179,137,46,0.18)",
-  borderRadius: 12,
-  background: "#fffdf6",
-  padding: "12px 8px",
+  flexWrap: "wrap",
+  marginBottom: 16,
 };
-const railBtn: React.CSSProperties = {
-  width: 48,
-  height: 48,
+const compactCard: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "baseline",
+  gap: 10,
+  padding: "8px 14px",
+  background: "#faf6ec",
+  border: "1px solid rgba(179,137,46,0.18)",
   borderRadius: 10,
+  fontSize: 13,
+  whiteSpace: "nowrap",
+};
+const navWrap: React.CSSProperties = { marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 };
+const navBtn = (disabled: boolean): React.CSSProperties => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 7,
+  padding: "8px 14px",
+  borderRadius: 8,
   border: "1px solid #cdbf9a",
   background: "#fff",
   color: "#6d6356",
-  fontSize: 18,
-  cursor: "pointer",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 1,
-};
-const railBtnLabel: React.CSSProperties = { fontSize: 10, lineHeight: 1, color: "#6d6356" };
-const railCount: React.CSSProperties = { fontSize: 13, color: "#3d3528", fontVariantNumeric: "tabular-nums" };
-const railHint: React.CSSProperties = { writingMode: "vertical-rl", fontSize: 11, color: "#9a8f7d", letterSpacing: "0.08em" };
+  fontSize: 13,
+  cursor: disabled ? "not-allowed" : "pointer",
+  opacity: disabled ? 0.45 : 1,
+  whiteSpace: "nowrap",
+});
+const navHint: React.CSSProperties = { fontSize: 10, color: "#9a8f7d" };
+const navCount: React.CSSProperties = { fontSize: 13, color: "#3d3528", fontVariantNumeric: "tabular-nums", padding: "0 2px" };
 const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start", marginBottom: 0 };
 const panel: React.CSSProperties = { background: "#faf6ec", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
 const panelTitle: React.CSSProperties = { fontSize: 15, color: "#b3892e", margin: "0 0 12px", borderBottom: "1px dashed rgba(179,137,46,0.35)", paddingBottom: 8 };
