@@ -13,6 +13,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { calculateFiscalPeriod, formatFiscalDateRange } from "@/app/bud/expenses/_lib/fiscal-period";
+import {
+  executeFileMakerSearch,
+  hasSearchConditions,
+  type SearchField,
+  type SearchRecord,
+  type SearchSheet,
+} from "@/app/bud/expenses/_lib/filemaker-search";
 
 import {
   buildCompanyToCorp,
@@ -63,12 +70,30 @@ type Form = {
   category_id: string;
   description: string;
 };
+type SearchForm = Record<SearchField, string>;
 type StatusRow = Req & { rowKind: "pending" | "processed" };
 
 const REQUEST_SELECT =
   "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
 
 const CORP_FILTER_STORAGE_KEY = "bud-expense-review-corp-filter";
+
+const EMPTY_SEARCH_FORM: SearchForm = {
+  corp_id: "",
+  category_id: "",
+  qualified_class: "",
+  receipt_date: "",
+  receipt_time: "",
+  amount: "",
+  store_name: "",
+  qualified_number: "",
+  description: "",
+  applicant_employee_id: "",
+};
+
+function createSearchSheet(mode: "include" | "omit" = "include"): SearchSheet {
+  return { ...EMPTY_SEARCH_FORM, mode };
+}
 
 function readInitialCorpFilter() {
   if (typeof window === "undefined") return "all";
@@ -102,6 +127,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [busy, setBusy] = useState(false);
   const [amountFocused, setAmountFocused] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [searchMode, setSearchMode] = useState(false);
+  const [searchSheets, setSearchSheets] = useState<SearchSheet[]>(() => [createSearchSheet()]);
+  const [activeSearchSheet, setActiveSearchSheet] = useState(0);
+  const [foundIds, setFoundIds] = useState<string[] | null>(null);
+  const [searchSummary, setSearchSummary] = useState("");
   const openedAt = useRef<number>(0);
 
   const setCorpFilter = useCallback((next: string) => {
@@ -169,6 +199,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     }
 
     setIdx(0);
+    setFoundIds(null);
+    setSearchSummary("");
     setLoaded(true);
   }, [supabase]);
 
@@ -194,7 +226,12 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const effectiveCorpId = useCallback((row: Req) => getEffectiveCorpId(row, employees, companyToCorp), [employees, companyToCorp]);
 
   const corpMatches = useCallback((row: Req) => corpFilter === "all" || effectiveCorpId(row) === corpFilter, [corpFilter, effectiveCorpId]);
-  const list = useMemo(() => pendingAll.filter(corpMatches), [pendingAll, corpMatches]);
+  const baseList = useMemo(() => pendingAll.filter(corpMatches), [pendingAll, corpMatches]);
+  const list = useMemo(() => {
+    if (!foundIds) return baseList;
+    const idSet = new Set(foundIds);
+    return baseList.filter((row) => idSet.has(row.id));
+  }, [baseList, foundIds]);
   const processedFiltered = useMemo(() => processedToday.filter(corpMatches), [processedToday, corpMatches]);
   const current = list[idx];
 
@@ -232,6 +269,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
   useEffect(() => {
     setIdx(0);
+    setFoundIds(null);
+    setSearchSummary("");
   }, [corpFilter]);
 
   useEffect(() => {
@@ -362,21 +401,105 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     };
   }, [current, effectiveCorpId, supabase]);
 
+  const setSearchField = useCallback((field: SearchField, value: string) => {
+    setSearchSheets((sheets) =>
+      sheets.map((sheet, index) => (index === activeSearchSheet ? { ...sheet, [field]: value } : sheet)),
+    );
+  }, [activeSearchSheet]);
+
+  const clearActiveSearchSheet = useCallback(() => {
+    setSearchSheets((sheets) =>
+      sheets.map((sheet, index) => (index === activeSearchSheet ? createSearchSheet(sheet.mode ?? "include") : sheet)),
+    );
+  }, [activeSearchSheet]);
+
+  const enterSearchMode = useCallback(() => {
+    setSearchMode(true);
+    setSearchSheets((sheets) => (sheets.length > 0 ? sheets : [createSearchSheet()]));
+    setActiveSearchSheet((index) => Math.max(0, Math.min(index, searchSheets.length - 1)));
+  }, [searchSheets.length]);
+
+  const clearFoundSet = useCallback(() => {
+    setFoundIds(null);
+    setSearchSummary("");
+    setIdx(0);
+  }, []);
+
+  const buildSearchRecord = useCallback((row: Req): SearchRecord => ({
+    id: row.id,
+    corp_id: row.corp_id ?? effectiveCorpId(row) ?? "",
+    category_id: row.category_id ?? "",
+    qualified_class: row.qualified_class ?? "",
+    receipt_date: row.receipt_date ?? "",
+    receipt_time: row.receipt_time ? row.receipt_time.slice(0, 5) : "",
+    amount: row.amount,
+    store_name: row.store_name ?? "",
+    qualified_number: row.qualified_number ?? "",
+    description: row.description ?? "",
+    applicant_employee_id: employeeLabel(row, employees),
+  }), [effectiveCorpId, employees]);
+
+  const executeSearch = useCallback(() => {
+    const valid = searchSheets.filter((sheet) => hasSearchConditions(sheet));
+    if (valid.length === 0) {
+      alert("検索条件を入力してください");
+      return;
+    }
+    const searchRecords = baseList.map(buildSearchRecord);
+    const result = executeFileMakerSearch(searchRecords, searchSheets);
+    setFoundIds(result.records.map((record) => record.id));
+    setSearchSummary(result.summary);
+    setSearchMode(false);
+    setIdx(0);
+  }, [baseList, buildSearchRecord, searchSheets]);
+
+  const omitCurrentRecord = useCallback(() => {
+    if (!current) return;
+    const sourceIds = foundIds ?? list.map((row) => row.id);
+    const nextIds = sourceIds.filter((id) => id !== current.id);
+    setFoundIds(nextIds);
+    setSearchSummary((summary) => summary || "表示中レコードを除外");
+    setIdx((value) => Math.max(0, Math.min(value, Math.max(0, nextIds.length - 1))));
+  }, [current, foundIds, list]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "ArrowDown") {
+      if (e.ctrlKey && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        if (searchMode) {
+          setSearchMode(false);
+        } else if (foundIds) {
+          clearFoundSet();
+        } else {
+          enterSearchMode();
+        }
+      } else if (searchMode && e.key === "Escape") {
+        e.preventDefault();
+        setSearchMode(false);
+      } else if (searchMode && e.ctrlKey && e.key === "/") {
+        e.preventDefault();
+        clearActiveSearchSheet();
+      } else if (searchMode && e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+        setSearchSheets((sheets) => [...sheets, createSearchSheet()]);
+        setActiveSearchSheet(searchSheets.length);
+      } else if (searchMode && !e.ctrlKey && !e.metaKey && !e.altKey && e.key === "Enter") {
+        e.preventDefault();
+        executeSearch();
+      } else if (!searchMode && e.ctrlKey && e.key === "ArrowDown") {
         e.preventDefault();
         setIdx((i) => Math.min(i + 1, list.length - 1));
-      } else if (e.ctrlKey && e.key === "ArrowUp") {
+      } else if (!searchMode && e.ctrlKey && e.key === "ArrowUp") {
         e.preventDefault();
         setIdx((i) => Math.max(i - 1, 0));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [list.length]);
+  }, [clearActiveSearchSheet, clearFoundSet, enterSearchMode, executeSearch, foundIds, list.length, searchMode, searchSheets.length]);
 
   const setF = (k: keyof Form, v: string) => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const activeSearch = searchSheets[activeSearchSheet] ?? createSearchSheet();
 
   const selectedCorp = useMemo(() => {
     const corpId = form?.corp_id || (current ? effectiveCorpId(current) : null);
@@ -389,7 +512,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   }, [form, selectedCorp]);
 
   const process = async (action: "approve" | "reject") => {
-    if (!current || !form || busy) return;
+    if (!current || !form || busy || searchMode) return;
     let reason: string | null = null;
     if (action === "reject") {
       reason = window.prompt("差戻し理由を入力してください") ?? "";
@@ -510,6 +633,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           <CompactCard label="差戻し（本日）" count={todayStats.rejectedCount} amount={todayStats.rejectedAmount} color="#b35850" />
           {list.length > 0 && current && (
             <div style={navWrap}>
+              <div style={navButtonRow}>
               <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
                 <span style={navCircle}>◀</span>前へ<span style={navHint}>Ctrl+↑</span>
               </button>
@@ -528,8 +652,88 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
               >
                 次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>▶</span>
               </button>
+              </div>
+              <div style={omitRecordRow}>
+                <button type="button" style={omitRecordBtn(true)} disabled>
+                  含む
+                </button>
+                <button type="button" style={omitRecordBtn(false)} onClick={omitCurrentRecord}>
+                  除外
+                </button>
+              </div>
             </div>
           )}
+        </div>
+      )}
+
+      {searchMode && (
+        <div style={searchBanner}>
+          <strong>検索モード</strong>
+          <span>条件を入力して Enter。Ctrl+EnterでORシート追加、Ctrl+/で条件クリア、Escで解除。</span>
+        </div>
+      )}
+
+      {searchMode && (
+        <div style={searchSheetBar}>
+          {searchSheets.map((sheet, index) => (
+            <button
+              key={index}
+              type="button"
+              style={searchSheetTab(index === activeSearchSheet, sheet.mode === "omit")}
+              onClick={() => setActiveSearchSheet(index)}
+            >
+              {index + 1}
+              {sheet.mode === "omit" ? " 除外" : ""}
+              {searchSheets.length > 1 && (
+                <span
+                  style={searchSheetClose}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSearchSheets((sheets) => sheets.filter((_, i) => i !== index));
+                    setActiveSearchSheet((currentIndex) => Math.max(0, Math.min(currentIndex, searchSheets.length - 2)));
+                  }}
+                >
+                  x
+                </span>
+              )}
+            </button>
+          ))}
+          <button
+            type="button"
+            style={searchSheetAdd}
+            onClick={() => {
+              setSearchSheets((sheets) => [...sheets, createSearchSheet()]);
+              setActiveSearchSheet(searchSheets.length);
+            }}
+          >
+            +
+          </button>
+          <div style={searchModeToggle}>
+            <button
+              type="button"
+              style={searchModeBtn(activeSearch.mode !== "omit")}
+              onClick={() => setSearchSheets((sheets) => sheets.map((sheet, index) => (index === activeSearchSheet ? { ...sheet, mode: "include" } : sheet)))}
+            >
+              含む
+            </button>
+            <button
+              type="button"
+              style={searchModeBtn(activeSearch.mode === "omit")}
+              onClick={() => setSearchSheets((sheets) => sheets.map((sheet, index) => (index === activeSearchSheet ? { ...sheet, mode: "omit" } : sheet)))}
+            >
+              除外
+            </button>
+          </div>
+        </div>
+      )}
+
+      {foundIds && !searchMode && (
+        <div style={foundBar}>
+          <strong>検索結果: {list.length}件 / 全{baseList.length}件</strong>
+          <span style={foundSummaryText}>[{searchSummary}]</span>
+          <button type="button" style={foundClearBtn} onClick={clearFoundSet}>
+            x 解除
+          </button>
         </div>
       )}
 
@@ -550,7 +754,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
                   <div style={fieldRow(FISCAL_COLS)}>
                     <Field label="法人">
-                      <select value={form.corp_id} onChange={(e) => setF("corp_id", e.target.value)} style={input}>
+                      <select
+                        value={searchMode ? activeSearch.corp_id ?? "" : form.corp_id}
+                        onChange={(e) => (searchMode ? setSearchField("corp_id", e.target.value) : setF("corp_id", e.target.value))}
+                        style={input}
+                      >
                         <option value="">未設定</option>
                         {sortedCorps.map((corp) => (
                           <option key={corp.id} value={corp.id}>
@@ -571,10 +779,22 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   {/* 法人・計上期と同じ列幅に揃える（3列目は空き） */}
                   <div style={fieldRow(FISCAL_COLS)}>
                     <Field label="レシート日付">
-                      <input type="date" value={form.receipt_date} onChange={(e) => setF("receipt_date", e.target.value)} style={input} />
+                      <input
+                        type={searchMode ? "text" : "date"}
+                        value={searchMode ? activeSearch.receipt_date ?? "" : form.receipt_date}
+                        onChange={(e) => (searchMode ? setSearchField("receipt_date", e.target.value) : setF("receipt_date", e.target.value))}
+                        placeholder={searchMode ? "//・7/1...7/31" : undefined}
+                        style={input}
+                      />
                     </Field>
                     <Field label="レシート時刻">
-                      <input type="time" value={form.receipt_time} onChange={(e) => setF("receipt_time", e.target.value)} style={input} />
+                      <input
+                        type={searchMode ? "text" : "time"}
+                        value={searchMode ? activeSearch.receipt_time ?? "" : form.receipt_time}
+                        onChange={(e) => (searchMode ? setSearchField("receipt_time", e.target.value) : setF("receipt_time", e.target.value))}
+                        placeholder={searchMode ? "09:00...12:00" : undefined}
+                        style={input}
+                      />
                     </Field>
                   </div>
 
@@ -582,9 +802,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     <Field label="経費区分">
                       {/* OCRで判定できなかった場合（未選択）は赤背景・白文字で「人が選ぶ」ことを促す */}
                       <select
-                        value={form.category_id}
-                        onChange={(e) => setF("category_id", e.target.value)}
-                        style={form.category_id ? input : { ...input, background: "#b35850", color: "#fff", fontWeight: 700 }}
+                        value={searchMode ? activeSearch.category_id ?? "" : form.category_id}
+                        onChange={(e) => (searchMode ? setSearchField("category_id", e.target.value) : setF("category_id", e.target.value))}
+                        style={searchMode || form.category_id ? input : { ...input, background: "#b35850", color: "#fff", fontWeight: 700 }}
                       >
                         <option value="">（未選択）</option>
                         {cats.map((c) => (
@@ -597,9 +817,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     <Field label="適格区分">
                       {/* 経費区分と同じく、未選択のときは赤背景・白文字で人の選択を促す */}
                       <select
-                        value={form.qualified_class}
-                        onChange={(e) => setF("qualified_class", e.target.value)}
-                        style={form.qualified_class ? input : { ...input, background: "#b35850", color: "#fff", fontWeight: 700 }}
+                        value={searchMode ? activeSearch.qualified_class ?? "" : form.qualified_class}
+                        onChange={(e) => (searchMode ? setSearchField("qualified_class", e.target.value) : setF("qualified_class", e.target.value))}
+                        style={searchMode || form.qualified_class ? input : { ...input, background: "#b35850", color: "#fff", fontWeight: 700 }}
                       >
                         <option value="">（未選択）</option>
                         <option value="有">有</option>
@@ -610,23 +830,26 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     <Field label="適格番号(T)">
                       {(() => {
                         // 無・非課税のときは番号入力をグレーアウト（非表示にはしない）
-                        const numberDisabled = form.qualified_class === "無" || form.qualified_class === "非課税";
-                        const tValid = /^T\d{13}$/.test(form.qualified_number.trim());
+                        const numberDisabled = !searchMode && (form.qualified_class === "無" || form.qualified_class === "非課税");
+                        const qualifiedNumberValue = searchMode ? activeSearch.qualified_number ?? "" : form.qualified_number;
+                        const tValid = /^T\d{13}$/.test(qualifiedNumberValue.trim());
                         // 有なのに T+13桁 が拾えていなければ ✖ + 薄赤背景で知らせる
                         const showInvalid = !numberDisabled && form.qualified_class === "有" && !tValid;
                         return (
                           <div style={{ position: "relative" }}>
                             <input
                               type="text"
-                              value={form.qualified_number}
-                              onChange={(e) => setF("qualified_number", e.target.value)}
-                              onBlur={(e) => setF("qualified_number", normalizeQualifiedNumberInput(e.target.value))}
+                              value={qualifiedNumberValue}
+                              onChange={(e) => (searchMode ? setSearchField("qualified_number", e.target.value) : setF("qualified_number", e.target.value))}
+                              onBlur={(e) => {
+                                if (!searchMode) setF("qualified_number", normalizeQualifiedNumberInput(e.target.value));
+                              }}
                               disabled={numberDisabled}
                               style={{
                                 ...input,
                                 paddingRight: 32,
                                 ...(numberDisabled ? { background: "#eceae3", color: "#9a8f7d" } : {}),
-                                ...(showInvalid ? { background: "rgba(179,88,80,0.12)", borderColor: "rgba(179,88,80,0.45)" } : {}),
+                                ...(showInvalid ? { background: "rgba(179,88,80,0.12)", border: "1px solid rgba(179,88,80,0.45)" } : {}),
                               }}
                             />
                             {!numberDisabled && tValid && <span style={tMarkOk}>✓</span>}
@@ -640,35 +863,62 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   <div style={fieldRow(FISCAL_COLS)}>
                     <div style={{ gridColumn: "1 / 3" }}>
                       <Field label="店名">
-                        <input type="text" value={form.store_name} onChange={(e) => setF("store_name", e.target.value)} style={input} />
+                        <input
+                          type="text"
+                          value={searchMode ? activeSearch.store_name ?? "" : form.store_name}
+                          onChange={(e) => (searchMode ? setSearchField("store_name", e.target.value) : setF("store_name", e.target.value))}
+                          placeholder={searchMode ? "部分一致・==完全一致・!除外" : undefined}
+                          style={input}
+                        />
                       </Field>
                     </div>
                     <Field label="金額">
                       {/* 表示はコンマ付き右揃え・編集中は素の数字・保存はコンマ無し（type=text なのでスピナー矢印も出ない） */}
                       <input
                         type="text"
-                        inputMode="numeric"
-                        value={amountFocused ? form.amount : formatAmountDisplay(form.amount)}
-                        onFocus={() => setAmountFocused(true)}
-                        onChange={(e) => setF("amount", e.target.value)}
+                        inputMode={searchMode ? "text" : "numeric"}
+                        value={searchMode ? activeSearch.amount ?? "" : amountFocused ? form.amount : formatAmountDisplay(form.amount)}
+                        onFocus={() => {
+                          if (!searchMode) setAmountFocused(true);
+                        }}
+                        onChange={(e) => (searchMode ? setSearchField("amount", e.target.value) : setF("amount", e.target.value))}
                         onBlur={(e) => {
+                          if (searchMode) return;
                           setAmountFocused(false);
                           setF("amount", normalizeAmountInput(e.target.value));
                         }}
+                        placeholder={searchMode ? ">5000" : undefined}
                         style={{ ...input, textAlign: "right" }}
                       />
                     </Field>
                   </div>
 
                   <Field label="摘要">
-                    <input type="text" value={form.description} onChange={(e) => setF("description", e.target.value)} style={input} />
+                    <input
+                      type="text"
+                      value={searchMode ? activeSearch.description ?? "" : form.description}
+                      onChange={(e) => (searchMode ? setSearchField("description", e.target.value) : setF("description", e.target.value))}
+                      placeholder={searchMode ? "部分一致・*ワイルドカード" : undefined}
+                      style={input}
+                    />
                   </Field>
+                  {searchMode && (
+                    <Field label="申請者">
+                      <input
+                        type="text"
+                        value={activeSearch.applicant_employee_id ?? ""}
+                        onChange={(e) => setSearchField("applicant_employee_id", e.target.value)}
+                        placeholder="氏名で検索"
+                        style={input}
+                      />
+                    </Field>
+                  )}
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-                  <button type="button" disabled={busy} onClick={() => process("reject")} style={rejectBtn}>
+                  <button type="button" disabled={busy || searchMode} onClick={() => process("reject")} style={busy || searchMode ? disabledRejectBtn : rejectBtn}>
                     差戻し
                   </button>
-                  <button type="button" disabled={busy} onClick={() => process("approve")} style={approveBtn}>
+                  <button type="button" disabled={busy || searchMode} onClick={() => process("approve")} style={busy || searchMode ? disabledApproveBtn : approveBtn}>
                     {busy ? "処理中…" : "承認 → 完了待ちへ"}
                   </button>
                 </div>
@@ -1031,7 +1281,20 @@ const compactCard: React.CSSProperties = {
 const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fontSize: 11 };
 // ラベル/件数/金額を固定列にして桁が増えても位置が動かない（最大「1000件 合計 ¥5,000,000」基準）
 const compactCardMain: React.CSSProperties = { marginTop: "auto", display: "grid", gridTemplateColumns: "96px 58px 1fr", alignItems: "baseline", gap: 8 };
-const navWrap: React.CSSProperties = { marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 };
+const navWrap: React.CSSProperties = { marginLeft: "auto", height: 61, display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "stretch", gap: 4 };
+const navButtonRow: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, height: 34 };
+const omitRecordRow: React.CSSProperties = { display: "flex", justifyContent: "flex-end", gap: 4, height: 23 };
+const omitRecordBtn = (include: boolean): React.CSSProperties => ({
+  minWidth: 52,
+  padding: "3px 10px",
+  borderRadius: 999,
+  border: include ? "1px solid rgba(94,125,68,0.24)" : "1px solid rgba(179,88,80,0.36)",
+  background: include ? "rgba(94,125,68,0.12)" : "#fff",
+  color: include ? "#5e7d44" : "#b35850",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: include ? "default" : "pointer",
+});
 const navBtn = (disabled: boolean): React.CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
@@ -1135,6 +1398,7 @@ const approveBtn: React.CSSProperties = {
   fontWeight: 700,
   cursor: "pointer",
 };
+const disabledApproveBtn: React.CSSProperties = { ...approveBtn, opacity: 0.45, cursor: "not-allowed" };
 const rejectBtn: React.CSSProperties = {
   flex: 1,
   padding: 13,
@@ -1145,6 +1409,92 @@ const rejectBtn: React.CSSProperties = {
   fontSize: 15,
   fontWeight: 700,
   cursor: "pointer",
+};
+const disabledRejectBtn: React.CSSProperties = { ...rejectBtn, opacity: 0.45, cursor: "not-allowed" };
+const searchBanner: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "10px 14px",
+  marginBottom: 10,
+  borderRadius: 8,
+  border: "1px solid rgba(179,137,46,0.28)",
+  background: "#fff7df",
+  color: "#6d4f16",
+  fontSize: 13,
+};
+const searchSheetBar: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  flexWrap: "wrap",
+  marginBottom: 12,
+};
+const searchSheetTab = (active: boolean, omit: boolean): React.CSSProperties => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  minHeight: 30,
+  padding: "5px 10px",
+  borderRadius: 8,
+  border: active ? "1px solid #b3892e" : "1px solid rgba(179,137,46,0.22)",
+  background: omit ? (active ? "rgba(179,88,80,0.18)" : "rgba(179,88,80,0.08)") : active ? "#fff7df" : "#fff",
+  color: omit ? "#b35850" : "#6d6356",
+  fontSize: 13,
+  fontWeight: active ? 700 : 500,
+  cursor: "pointer",
+});
+const searchSheetClose: React.CSSProperties = { color: "#9a8f7d", fontWeight: 700, paddingLeft: 4 };
+const searchSheetAdd: React.CSSProperties = {
+  width: 30,
+  height: 30,
+  borderRadius: 8,
+  border: "1px solid rgba(179,137,46,0.25)",
+  background: "#fff",
+  color: "#b3892e",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+const searchModeToggle: React.CSSProperties = {
+  display: "inline-flex",
+  padding: 3,
+  borderRadius: 999,
+  border: "1px solid rgba(179,137,46,0.22)",
+  background: "#fff",
+  marginLeft: 6,
+};
+const searchModeBtn = (active: boolean): React.CSSProperties => ({
+  padding: "5px 12px",
+  borderRadius: 999,
+  border: "none",
+  background: active ? "#d4a541" : "transparent",
+  color: active ? "#fff" : "#6d6356",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+});
+const foundBar: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  flexWrap: "wrap",
+  padding: "9px 12px",
+  marginBottom: 12,
+  borderRadius: 8,
+  border: "1px solid rgba(179,137,46,0.26)",
+  background: "#fffdf6",
+  color: "#3d3528",
+  fontSize: 13,
+};
+const foundSummaryText: React.CSSProperties = { flex: 1, minWidth: 160, color: "#6d6356", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const foundClearBtn: React.CSSProperties = {
+  border: "1px solid rgba(179,137,46,0.24)",
+  background: "#fff",
+  color: "#6d6356",
+  borderRadius: 999,
+  padding: "5px 10px",
+  cursor: "pointer",
+  fontSize: 12,
 };
 const corpSwitch: React.CSSProperties = {
   display: "flex",
