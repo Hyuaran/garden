@@ -1,7 +1,7 @@
 /**
  * Garden Root — マスタ画面共通のキーボードショートカット
  *
- * Ctrl+F: 検索入力へフォーカス
+ * Ctrl+Shift+G: 検索入力へフォーカス（正本）
  * Ctrl+↓: 次の行を選択（activeIndex インクリメント）
  * Ctrl+↑: 前の行を選択
  * Ctrl+Enter: 選択行を編集モーダルで開く
@@ -35,7 +35,8 @@ export function useMasterShortcuts<T>({
       const isCtrl = e.ctrlKey || e.metaKey;
       if (!isCtrl) return;
 
-      if (e.key === "f" || e.key === "F") {
+      // 正本: 検索ボックスへジャンプ = Ctrl+Shift+G（Ctrl+F は廃止）
+      if (e.shiftKey && (e.key === "g" || e.key === "G")) {
         if (searchRef?.current) {
           e.preventDefault();
           searchRef.current.focus();
@@ -43,6 +44,7 @@ export function useMasterShortcuts<T>({
         }
         return;
       }
+      if (e.shiftKey) return;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
