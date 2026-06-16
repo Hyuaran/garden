@@ -14,7 +14,15 @@ import type {
   Shinkouki,
 } from "../_constants/companies";
 import { supabase } from "./supabase";
-import type { Hankanhi, LastUpdatedAt } from "./types";
+import type {
+  Hankanhi,
+  LastUpdatedAt,
+  NouzeiFile,
+  NouzeiItem,
+  NouzeiScheduleDetail,
+  NouzeiScheduleWithItems,
+} from "./types";
+import type { MonthYear } from "./tax-calendar";
 
 /**
  * 法人マスタを sort_order 順に全件取得する。
@@ -223,4 +231,99 @@ export async function fetchLastUpdated(): Promise<LastUpdatedAt> {
   if (fpTime === skTime) return { source: "both", at: fpAt! };
   if (fpTime > skTime) return { source: "fiscal_periods", at: fpAt! };
   return { source: "shinkouki", at: skAt! };
+}
+
+/* =====================================================================
+ * T-F4-02 / T-F11-01: Nouzei queries
+ * ===================================================================== */
+
+/**
+ * 納税カレンダー描画用：指定 (from, to) 月範囲の schedules + items を取得。
+ *
+ * Supabase 側では `gte('year', from.y).lte('year', to.y)` で年範囲を粗取得し、
+ * クライアント側で月単位の (year, month) ペアによる絞り込みを行う。
+ * （Supabase 単体クエリで月境界条件 OR 連結を表現できないため）
+ */
+export async function fetchNouzeiCalendar(
+  from: MonthYear,
+  to: MonthYear,
+): Promise<NouzeiScheduleWithItems[]> {
+  const { data, error } = await supabase
+    .from("forest_nouzei_schedules")
+    .select(`*, items:forest_nouzei_items(*)`)
+    .gte("year", from.y)
+    .lte("year", to.y)
+    .order("year")
+    .order("month")
+    .order("company_id");
+
+  if (error) {
+    throw new Error(`fetchNouzeiCalendar: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as NouzeiScheduleWithItems[];
+  return rows.filter((s) => {
+    const afterFrom = s.year > from.y || (s.year === from.y && s.month >= from.m);
+    const beforeTo = s.year < to.y || (s.year === to.y && s.month <= to.m);
+    return afterFrom && beforeTo;
+  });
+}
+
+/**
+ * 納税モーダル用：1 件の schedule + items + files を取得。
+ *
+ * - items は sort_order 昇順
+ * - files は uploaded_at 降順
+ * - 該当行なしは null（エラーではない）
+ */
+export async function fetchNouzeiDetail(
+  scheduleId: string,
+): Promise<NouzeiScheduleDetail | null> {
+  const { data, error } = await supabase
+    .from("forest_nouzei_schedules")
+    .select(`*, items:forest_nouzei_items(*), files:forest_nouzei_files(*)`)
+    .eq("id", scheduleId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`fetchNouzeiDetail(${scheduleId}): ${error.message}`);
+  }
+  if (!data) return null;
+
+  const raw = data as NouzeiScheduleDetail & {
+    items: NouzeiItem[] | null;
+    files: NouzeiFile[] | null;
+  };
+  return {
+    ...raw,
+    items: [...(raw.items ?? [])].sort(
+      (a, b) => a.sort_order - b.sort_order,
+    ),
+    files: [...(raw.files ?? [])].sort((a, b) =>
+      b.uploaded_at.localeCompare(a.uploaded_at),
+    ),
+  };
+}
+
+/**
+ * 添付ファイルの Supabase Storage 署名 URL を発行する。
+ *
+ * @param storagePath - bucket 'forest-tax' 内の相対パス
+ * @param expiresInSec - 既定 3600 秒（1 時間）
+ */
+export async function createNouzeiFileSignedUrl(
+  storagePath: string,
+  expiresInSec: number = 3600,
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from("forest-tax")
+    .createSignedUrl(storagePath, expiresInSec);
+
+  if (error) {
+    throw new Error(`createNouzeiFileSignedUrl: ${error.message}`);
+  }
+  if (!data?.signedUrl) {
+    throw new Error("createNouzeiFileSignedUrl: empty signedUrl returned");
+  }
+  return data.signedUrl;
 }

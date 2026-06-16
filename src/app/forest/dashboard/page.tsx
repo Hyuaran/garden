@@ -15,6 +15,8 @@ import { MacroChart } from "../_components/MacroChart";
 import { MicroGrid } from "../_components/MicroGrid";
 import { ShinkoukiEditModal } from "../_components/ShinkoukiEditModal";
 import { SummaryCards } from "../_components/SummaryCards";
+import { TaxCalendar } from "../_components/TaxCalendar";
+import { TaxDetailModal } from "../_components/TaxDetailModal";
 import { FOREST_THEME } from "../_constants/theme";
 import { isForestAdmin } from "../_lib/permissions";
 import { useForestState } from "../_state/ForestStateContext";
@@ -29,11 +31,15 @@ export default function ForestDashboardPage() {
     companies,
     periods,
     shinkouki,
+    nouzeiSchedules,
     forestUser,
     refreshData,
   } = useForestState();
 
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
+    null,
+  );
   const isAdmin = isForestAdmin(forestUser);
 
   // 未認証 or ゲート未通過 → login へ
@@ -83,9 +89,22 @@ export default function ForestDashboardPage() {
     }
   }
 
+  // T-F11-01: pill クリック時に選択 schedule とその法人を解決
+  const selectedSchedule = selectedScheduleId
+    ? nouzeiSchedules.find((s) => s.id === selectedScheduleId) ?? null
+    : null;
+  const selectedCompany = selectedSchedule
+    ? companies.find((c) => c.id === selectedSchedule.company_id) ?? null
+    : null;
+
   return (
     <>
       <SummaryCards companies={companies} periods={periods} />
+      <TaxCalendar
+        companies={companies}
+        schedules={nouzeiSchedules}
+        onPillClick={(id) => setSelectedScheduleId(id)}
+      />
       <MacroChart companies={companies} periods={periods} />
       <MicroGrid
         companies={companies}
@@ -102,6 +121,14 @@ export default function ForestDashboardPage() {
           onSaved={refreshData}
           onNavigate={handleNavigate}
           navIndex={{ current: editingIndex, total: companies.length }}
+        />
+      )}
+
+      {selectedScheduleId && selectedCompany && (
+        <TaxDetailModal
+          scheduleId={selectedScheduleId}
+          company={selectedCompany}
+          onClose={() => setSelectedScheduleId(null)}
         />
       )}
     </>

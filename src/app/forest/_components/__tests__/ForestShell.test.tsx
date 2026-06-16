@@ -39,6 +39,7 @@ function setForestState(partial: any) {
     periods: [],
     shinkouki: [],
     lastUpdated: null,
+    nouzeiSchedules: [],
     unlock: vi.fn(),
     lockAndLogout: vi.fn(),
     refreshData: vi.fn(),

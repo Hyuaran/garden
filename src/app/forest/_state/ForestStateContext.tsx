@@ -23,9 +23,19 @@ import {
 import type { Company, FiscalPeriod, ForestUser, Shinkouki } from "../_constants/companies";
 import { clearForestUnlock, getSession, isForestUnlocked, signOutForest } from "../_lib/auth";
 import { writeAuditLog } from "../_lib/audit";
-import { fetchCompanies, fetchFiscalPeriods, fetchForestUser, fetchLastUpdated, fetchShinkouki } from "../_lib/queries";
+import {
+  fetchCompanies,
+  fetchFiscalPeriods,
+  fetchForestUser,
+  fetchLastUpdated,
+  fetchNouzeiCalendar,
+  fetchShinkouki,
+} from "../_lib/queries";
 import { startSessionTimer } from "../_lib/session-timer";
-import type { LastUpdatedAt } from "../_lib/types";
+import type {
+  LastUpdatedAt,
+  NouzeiScheduleWithItems,
+} from "../_lib/types";
 
 type ForestState = {
   /** ローディング中 */
@@ -45,6 +55,8 @@ type ForestState = {
   shinkouki: Shinkouki[];
   /** T-F2-01: Forest 全体の最終更新日時 */
   lastUpdated: LastUpdatedAt | null;
+  /** T-F4-02: ローリング 12 ヶ月の納税スケジュール一覧 */
+  nouzeiSchedules: NouzeiScheduleWithItems[];
   /** 操作 */
   unlock: () => void;
   lockAndLogout: (reason: "manual" | "timeout") => Promise<void>;
@@ -76,6 +88,9 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
   const [periods, setPeriods] = useState<FiscalPeriod[]>([]);
   const [shinkoukiData, setShinkoukiData] = useState<Shinkouki[]>([]);
   const [lastUpdated, setLastUpdated] = useState<LastUpdatedAt | null>(null);
+  const [nouzeiSchedules, setNouzeiSchedules] = useState<
+    NouzeiScheduleWithItems[]
+  >([]);
 
   // --- Callbacks（useEffect より先に定義） ---
 
@@ -96,20 +111,31 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
     setPeriods([]);
     setShinkoukiData([]);
     setLastUpdated(null);
+    setNouzeiSchedules([]);
   }, []);
 
   const refreshData = useCallback(async () => {
     try {
-      const [c, p, s, lu] = await Promise.all([
+      // 納税カレンダーは当月を中心としたローリング 12 ヶ月（前 5 + 後 6）を取得
+      const now = new Date();
+      const fromDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const toDate = new Date(now.getFullYear(), now.getMonth() + 6, 1);
+
+      const [c, p, s, lu, ns] = await Promise.all([
         fetchCompanies(),
         fetchFiscalPeriods(),
         fetchShinkouki(),
         fetchLastUpdated(),
+        fetchNouzeiCalendar(
+          { y: fromDate.getFullYear(), m: fromDate.getMonth() + 1 },
+          { y: toDate.getFullYear(), m: toDate.getMonth() + 1 },
+        ),
       ]);
       setCompanies(c);
       setPeriods(p);
       setShinkoukiData(s);
       setLastUpdated(lu);
+      setNouzeiSchedules(ns);
     } catch (err) {
       console.error("Forest data fetch error:", err);
     }
@@ -200,6 +226,7 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
       periods,
       shinkouki: shinkoukiData,
       lastUpdated,
+      nouzeiSchedules,
       unlock,
       lockAndLogout: lockAndLogoutFn,
       refreshData,
@@ -208,7 +235,8 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
     [
       loading, isAuthenticated, hasPermission, isUnlocked,
       userEmail, forestUser, companies, periods, shinkoukiData,
-      lastUpdated, unlock, lockAndLogoutFn, refreshData, refreshAuth,
+      lastUpdated, nouzeiSchedules,
+      unlock, lockAndLogoutFn, refreshData, refreshAuth,
     ],
   );
 
