@@ -8,6 +8,19 @@
 
 ---
 
+## 0. 確定事項（2026-04-26 a-main 006 東海林承認済）
+
+本 spec は `decisions-root-phase-b-20260426-a-main-006.md`（Phase B 全 7 spec 60 件確定ログ、別途作成予定）の **B-2 関連項目** を反映する。
+
+### B-2 で確定した主要事項
+
+| # | 項目 | 確定内容 | 反映先 |
+|---|---|---|---|
+| #2 | actor 識別の二重化と改名履歴管理 | `actor_account_name`（その時点のアカウント表示名）+ `actor_employee_id`（不変の社員 ID）を**併用記録**。アカウント名変更時は履歴管理し、過去ログ参照時に当時の名前と現在の社員 ID 両方を表示可能にする | §2.1 / §3 schema / §5 writeAudit() |
+| #4 | 全フィールド対応の diff 方式 | `before_state` / `after_state` jsonb に**変更フィールドのみ**ではなく**全フィールド** snapshot を入れる。差分計算はクライアント側 / 表示側で実施。これによりスキーマ進化時の互換性を確保 | §2.1 / §5 / §6 |
+
+---
+
 ## 1. 目的とスコープ
 
 ### 1.1 目的
@@ -76,6 +89,8 @@ CREATE TABLE IF NOT EXISTS root_audit_log (
 - `audit_id` は bigserial のまま維持（UUID 移行は別タスク §12 判1）
 - `actor_emp_num`、`action`、`target_type`、`target_id`、`payload` は既存カラム名を保持
 - 既存コード（`src/app/root/_lib/audit.ts` の `writeAudit()`）は移行完了まで並走
+- **[確定 #2]** 新規 `actor_account_name`（アカウント表示名スナップショット）+ `actor_employee_id`（不変の社員 ID）を §3.1 の ALTER で追加。既存 `actor_emp_num` は温存し並行運用（将来統合）
+- **[確定 #4]** `before_state` / `after_state` は**全フィールドの snapshot** として保存。変更フィールドのみ格納するアプローチは廃止。差分計算はクライアント側で実施（§6 参照）
 
 ### 2.2 既存 _lib/audit.ts ヘルパー
 
@@ -103,10 +118,11 @@ CREATE TABLE IF NOT EXISTS root_audit_log (
 ALTER TABLE root_audit_log
   ADD COLUMN IF NOT EXISTS occurred_at timestamptz NOT NULL DEFAULT now();
 
--- 誰が（ロール・社員ID スナップショット）
+-- 誰が（ロール・社員ID・アカウント名 スナップショット）
 ALTER TABLE root_audit_log
-  ADD COLUMN IF NOT EXISTS actor_role text,           -- 操作時点の garden_role スナップショット
-  ADD COLUMN IF NOT EXISTS actor_employee_id text;    -- root_employees.employee_id（actor_emp_num と別管理）
+  ADD COLUMN IF NOT EXISTS actor_role          text,           -- 操作時点の garden_role スナップショット
+  ADD COLUMN IF NOT EXISTS actor_employee_id   text,           -- root_employees.employee_id（actor_emp_num と別管理、不変の社員 ID）
+  ADD COLUMN IF NOT EXISTS actor_account_name  text;           -- 操作時点のアカウント表示名スナップショット（改名後も当時の名前を保持）
 
 -- 何を（モジュール・エンティティ）
 ALTER TABLE root_audit_log
@@ -125,8 +141,12 @@ ALTER TABLE root_audit_log
 
 -- 何が変わった（差分）
 ALTER TABLE root_audit_log
-  ADD COLUMN IF NOT EXISTS before_state  jsonb,       -- 変更前の主要フィールド（サブセット）
-  ADD COLUMN IF NOT EXISTS after_state   jsonb,       -- 変更後
+  ADD COLUMN IF NOT EXISTS before_state  jsonb,
+    -- 変更前エンティティの全フィールド snapshot（tsvector 等の派生列・updated_at 等の自動列は除外可）
+    -- ※変更フィールドのみ格納するアプローチは禁止（§9 アンチパターン検知対象）
+    -- 差分計算はクライアント側で実施（§6 参照）
+  ADD COLUMN IF NOT EXISTS after_state   jsonb,
+    -- 変更後エンティティの全フィールド snapshot（同上）
   ADD COLUMN IF NOT EXISTS diff_summary  text;        -- 人間可読要約（'金額 ¥10000 → ¥15000' 等）
 
 -- メタ
@@ -136,6 +156,35 @@ ALTER TABLE root_audit_log
   ADD COLUMN IF NOT EXISTS request_id uuid,           -- 同一リクエスト内の複数ログを紐付け
   ADD COLUMN IF NOT EXISTS source     text;           -- 'ui' / 'api' / 'cron' / 'trigger' / 'manual'
 ```
+
+### 3.1b 改名履歴テーブル（新設提案）
+
+`actor_account_name` は書込時点の名前を snapshot 保存するが、**過去ログ参照時に「当時の名前 → 現在の名前」を UI で対照表示**できるよう、アカウント改名の都度履歴を記録する専用テーブルを新設する。
+
+```sql
+-- ============================================================
+-- root_employee_name_history — アカウント表示名 改名履歴
+-- ============================================================
+CREATE TABLE IF NOT EXISTS root_employee_name_history (
+  history_id     bigserial PRIMARY KEY,
+  employee_id    text        NOT NULL,          -- 不変の社員 ID（root_employees.employee_id）
+  previous_name  text        NOT NULL,          -- 変更前のアカウント表示名
+  new_name       text        NOT NULL,          -- 変更後のアカウント表示名
+  changed_at     timestamptz NOT NULL DEFAULT now(),
+  changed_by     uuid        REFERENCES auth.users(id),   -- 変更を実施した管理者
+  reason         text                           -- 改名理由（婚姻 / 字訂正 / 表記統一 等）
+);
+
+-- インデックス
+CREATE INDEX IF NOT EXISTS idx_renh_employee_id
+  ON root_employee_name_history (employee_id, changed_at DESC);
+```
+
+**利用場面**
+- 監査ログ閲覧 UI で `actor_employee_id` を `root_employee_name_history` と突合し、「ログ作成時の名前: 〇〇 → 現在の名前: △△（`changed_at`: YYYY-MM-DD）」を表示（§6 で詳述）
+- 過去ログの actor を改名後の名前で検索する際のサポートテーブルとして機能
+
+---
 
 ### 3.2 追加インデックス
 
@@ -168,8 +217,10 @@ CREATE INDEX IF NOT EXISTS idx_ral_request_id
 
 | 項目 | 方針 |
 |---|---|
-| `before_state` / `after_state` | jsonb でフィールドサブセットのみ保存（主要 10 フィールド目安）。巨大化防止のため全行スナップショットは禁止 |
+| `before_state` / `after_state` | **[確定 #4]** jsonb でエンティティの**全フィールド snapshot** を保存。`tsvector` 等の派生列・`updated_at` 等の自動列は除外可。変更フィールドのみ格納するアプローチは禁止（§9 アンチパターン検知対象）。差分計算はクライアント側で実施（§6 参照） |
 | `diff_summary` | 人間可読テキスト（"金額 ¥10,000 → ¥15,000"、"garden_role: staff → manager" など） |
+| `actor_account_name` | **[確定 #2]** 書込時点のアカウント表示名をスナップショット保存。改名後も当時の名前を参照可能。`root_employee_name_history` と突合することで「当時の名前 → 現在の名前」の対照表示をサポート（§3.1b / §6 参照） |
+| `actor_employee_id` | **[確定 #2]** 不変の社員 ID（既存 `actor_emp_num` と並行運用、将来統合）。改名が発生しても同一人物を追跡できる基幹 ID として機能 |
 | `severity` 4 段階 | debug=開発時トレース / info=通常記録 / warn=手動修正・削除・エラー / critical=権限変更・金銭異常 |
 | `request_id` | Server Action 起動時に `crypto.randomUUID()` で生成。同一リクエスト内の複数 `writeAuditLog()` 呼出を紐付け |
 | `payload` jsonb | 既存カラムを当面残す（互換性）。新コードは `before_state` / `after_state` / `diff_summary` を優先使用 |
@@ -250,10 +301,23 @@ export interface AuditLogInput {
   entityType: string;
   entityId?: string;
   entityLabel?: string;
-  before?: Record<string, unknown>;   // サブセット（最大 10 フィールド目安）
+  /**
+   * [確定 #4] 変更前エンティティの全フィールド snapshot。
+   * tsvector 等の派生列・updated_at 等の自動列は除外可。
+   * 変更フィールドのみを渡すアンチパターンは禁止（§9 で CI 検知）。
+   * 差分計算は表示側でクライアントが実施する（§6 参照）。
+   */
+  before?: Record<string, unknown>;
+  /** [確定 #4] 変更後エンティティの全フィールド snapshot（同上） */
   after?: Record<string, unknown>;
-  diff?: string;                      // "garden_role: staff → manager" 等
+  diff?: string;                      // "garden_role: staff → manager" 等（人間可読要約）
   severity?: AuditSeverity;
+  /**
+   * [確定 #2] 操作時点のアカウント表示名スナップショット。
+   * 省略時は呼出時点の root_employees.name から自動取得する。
+   * 改名後も当時の名前でログを参照できるよう必ず記録すること。
+   */
+  actorAccountName?: string;
   route?: string;
   httpMethod?: string;
   source?: 'ui' | 'api' | 'cron' | 'trigger' | 'manual';
@@ -428,6 +492,64 @@ export async function writeAudit(params: LegacyAuditParams): Promise<void> {
 - 検索クエリは記録しない
 - debug は開発環境のみ
 
+### 6.5 監査 UI における actor 改名対応と差分表示（[確定 #2, #4]）
+
+#### actor 改名の表示
+
+`/root/audit` 画面でログ行を表示する際、以下の優先順で actor 名を表示する：
+
+1. `actor_account_name`（ログ記録時点の名前スナップショット）を常に表示
+2. `actor_employee_id` を使って `root_employee_name_history` を参照し、その後に改名があれば「→ 現在の名前: △△（変更日: YYYY-MM-DD）」を併記
+
+```
+例: 操作者: 田中美咲（ログ記録時）→ 現在の名前: 佐藤美咲（2026-03-15 改名）
+```
+
+実装イメージ（TypeScript）：
+
+```typescript
+// src/app/root/audit/_components/ActorCell.tsx
+async function resolveActorDisplay(actorEmployeeId: string, actorAccountName: string) {
+  const latestHistory = await supabase
+    .from('root_employee_name_history')
+    .select('new_name, changed_at')
+    .eq('employee_id', actorEmployeeId)
+    .order('changed_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (latestHistory.data && latestHistory.data.new_name !== actorAccountName) {
+    return `${actorAccountName}（ログ記録時）→ 現在: ${latestHistory.data.new_name}（${latestHistory.data.changed_at.slice(0, 10)}）`;
+  }
+  return actorAccountName;
+}
+```
+
+#### before / after 差分表示（[確定 #4]）
+
+`before_state` / `after_state` は全フィールド snapshot であるため、クライアント側で差分計算を行い変更フィールドのみを強調表示する。
+
+```typescript
+// src/app/root/audit/_components/DiffViewer.tsx
+import isEqual from 'fast-deep-equal';
+
+function computeDiff(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): { field: string; before: unknown; after: unknown }[] {
+  const allKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  return Array.from(allKeys)
+    .filter((key) => !isEqual(before[key], after[key]))
+    .map((key) => ({ field: key, before: before[key], after: after[key] }));
+}
+```
+
+表示ルール：
+- 変更フィールドのみ赤枠で highlight
+- 変更なしフィールドは折りたたみ（デフォルト非表示）
+- 全フィールドの JSON 表示は「詳細を展開」ボタンで閲覧可（JSON viewer 形式）
+- `diff_summary` がある場合は変更一覧の上部にサマリを表示
+
 ---
 
 ## 7. a-bud / a-leaf / a-tree / a-bloom との連携ポイント
@@ -445,7 +567,8 @@ export async function writeAudit(params: LegacyAuditParams): Promise<void> {
 
 **料率表更新（warn）**
 - `bud_tax_rates` / `bud_social_insurance_rates` の INSERT / UPDATE は Server Action 側で記録
-- `before_state`・`after_state` に更新されたレート値のサブセットを含める
+- `before_state`・`after_state` に該当レコードの**全フィールド snapshot** を含める（[確定 #4]）
+- 差分ハイライトはクライアント側の `computeDiff()` で実施（§6.5 参照）
 
 ### 7.2 a-leaf（商材データ）
 
@@ -602,6 +725,56 @@ console.log('[audit-ci] All required audit calls present.');
 - 例: `// audit-ok: Trigger が代わりに記録するため不要`
 - 除外を追加する場合は PR に理由を必ず記載
 
+### 9.6 アンチパターン検知ルール（[確定 #4]）
+
+`before_state` / `after_state` に変更フィールドのみを渡す実装（full_snapshot でない）を CI で検知する。
+
+**検知対象パターン**
+
+`writeAuditLog()` の呼出で `before:` または `after:` に渡しているオブジェクトが、エンティティの**一部フィールドのみを明示的に列挙したリテラル**である場合を警告する。
+
+具体的には以下のような呼出を禁止パターンとして扱う：
+
+```typescript
+// NG: 変更フィールドのみの部分 snapshot
+await writeAuditLog(supabase, {
+  before: { garden_role: prev.garden_role },   // ← 1フィールドのみ → アンチパターン
+  after:  { garden_role: newRole },
+  ...
+});
+
+// OK: 全フィールドの snapshot（スプレッドや fetchEmployee() 結果を渡す）
+await writeAuditLog(supabase, {
+  before: { ...prevEmployee },   // ← 全フィールド展開
+  after:  { ...updatedEmployee },
+  ...
+});
+```
+
+**CI スクリプト追加（`check-audit-coverage.ts` に統合）**
+
+```typescript
+// 部分 snapshot 検知: { key: value } 形式の1〜2フィールドのみのオブジェクトリテラルを警告
+const PARTIAL_SNAPSHOT_PATTERN = /(?:before|after)\s*:\s*\{\s*\w+\s*:\s*[^,{}]+\s*\}/g;
+
+for (const file of filesToCheck) {
+  const content = readFileSync(file, 'utf-8');
+  const matches = content.match(PARTIAL_SNAPSHOT_PATTERN);
+  if (matches) {
+    console.warn(
+      `[audit-ci] WARNING: possible partial snapshot in ${file}:\n` +
+      matches.map((m) => `  ${m}`).join('\n') +
+      '\n  → before/after には全フィールド snapshot を渡してください（§3.3 / §9.6）'
+    );
+    // warn のみ（exit 1 はしない）。将来的に error 化を検討
+  }
+}
+```
+
+**運用ルール**
+- 初期は `warn` 扱い（CI を落とさない）で導入し、全既存呼出が対応済みになった時点で `error` 化
+- `// snapshot-partial-ok: <reason>` コメントで個別除外可（例: DB Trigger など全フィールド取得が困難な場合）
+
 ---
 
 ## 10. 受入基準
@@ -620,6 +793,12 @@ console.log('[audit-ci] All required audit calls present.');
 | AC10 | RLS: UPDATE / DELETE が全ロールで拒否される | `UPDATE` 試行 → 403 / エラー |
 | AC11 | CI スクリプト `check-audit-coverage.ts` が対象 Server Action ファイルを検出し、`writeAuditLog()` 不在時に exit 1 | ローカル `ts-node` 実行 |
 | AC12 | `/root/audit` 画面で admin ログイン時にログ一覧が表示される（UI は Phase B で実装） | 画面確認 |
+| AC13 | **[確定 #2]** `actor_account_name` カラムが追加され、ロール変更ログに書込時点のアカウント名が記録される | `SELECT actor_account_name FROM root_audit_log LIMIT 5;` |
+| AC14 | **[確定 #2]** `root_employee_name_history` テーブルが作成されている | `\d root_employee_name_history` |
+| AC15 | **[確定 #2]** 監査 UI でアカウント改名後も「当時の名前 → 現在の名前」が正しく表示される | 改名操作後に E2E 確認 |
+| AC16 | **[確定 #4]** `before_state` / `after_state` に全フィールド snapshot が格納されている（部分 snapshot でない） | ロール変更ログを `SELECT before_state FROM root_audit_log WHERE ...` で確認 |
+| AC17 | **[確定 #4]** 監査 UI で変更フィールドのみ赤枠 highlight され、全フィールドが「詳細を展開」で閲覧できる | 画面確認 |
+| AC18 | **[確定 #4]** CI の部分 snapshot 検知スクリプト（§9.6）が既知のアンチパターンを warn で出力する | `ts-node scripts/check-audit-coverage.ts` でサンプルファイルに対して実行 |
 
 ---
 
@@ -627,20 +806,22 @@ console.log('[audit-ci] All required audit calls present.');
 
 | # | 作業 | 工数 |
 |---|---|---|
-| W1 | 既存 `root_audit_log` スキーマ確認 + ALTER SQL 作成・適用 | 0.25d |
+| W1 | 既存 `root_audit_log` スキーマ確認 + ALTER SQL 作成・適用（`actor_account_name` 追加含む [確定 #2]）| 0.25d |
 | W2 | `write_audit_log()` SECURITY DEFINER 関数投入（横断 spec §3.1）| 0.25d |
+| W2b | `root_employee_name_history` テーブル作成・RLS 設定（[確定 #2]）| 0.10d |
 | W3 | RLS ポリシー設定（SELECT/INSERT/UPDATE/DELETE）| 0.10d |
-| W4 | `src/lib/audit/write.ts` 新設（TypeScript 共通クライアント）| 0.25d |
+| W4 | `src/lib/audit/write.ts` 新設（TypeScript 共通クライアント、`actorAccountName` 自動取得ロジック含む）| 0.25d |
 | W5 | Root `_lib/audit.ts` を re-export ラッパーに置換、既存呼出箇所移行 | 0.25d |
 | W6 | DB Trigger 整備（garden_role 変更 / 退社 / bud_transfers ステータス遷移）| 0.25d |
 | W7 | Root 人事 Server Action への `writeAuditLog()` 埋込（入退社・給与体系変更・KoT 取込）| 0.25d |
-| W8 | CI スクリプト `check-audit-coverage.ts` 作成・CI 組み込み | 0.10d |
-| W9 | `/root/audit` 監査 UI 画面（一覧・フィルタ・CSV エクスポート）| 0.25d |
-| **合計** | | **1.75d** |
+| W8 | CI スクリプト `check-audit-coverage.ts` 作成・CI 組み込み（部分 snapshot 検知 §9.6 含む）| 0.15d |
+| W9 | `/root/audit` 監査 UI 画面（一覧・フィルタ・CSV エクスポート・差分表示・actor 改名対応 [確定 #2/#4]）| 0.35d |
+| **合計** | | **2.20d** |
 
 **備考**
 - W6（Trigger）は Bud a-bud チームとの調整が必要。Root 担当は `root_employees` 系 Trigger のみ担当し、`bud_transfers` Trigger は a-bud 担当（横断 spec §3.1 の SQL を共有して実装）
 - W9 の監査 UI は Phase B の最後に配置。他 W が完了後に着手
+- [確定 #2/#4] 反映により工数が 1.75d → 2.20d に増加（+0.45d）。`root_employee_name_history` テーブル・actor 改名対応 UI・部分 snapshot 検知スクリプトが追加要因
 
 ---
 
@@ -650,8 +831,9 @@ console.log('[audit-ci] All required audit calls present.');
 |---|---|---|
 | 判1 | `audit_id` bigserial → uuid 移行 | **別タスク**。既存 FK・アプリコードへの影響が大きい。Phase C 以降で分離して実施 |
 | 判2 | `actor_emp_num` vs `actor_employee_id` の使い分け | `actor_emp_num` は Phase 1 互換で残す。新コードは `actor_employee_id` を使用。双方が揃うまで `actor_emp_num` は NULLABLE で維持 |
+| 判2b | `actor_account_name` の自動取得先 | **[確定 #2]** 呼出時点の `root_employees.name` から自動取得。`writeAuditLog()` の内部実装で `actorAccountName` が未指定の場合は `actor_user_id` で employees を参照して補完する |
 | 判3 | Trigger 内での `auth.uid()` 取得不可問題 | Trigger は `current_setting('request.jwt.claims', true)` から取得 or `session_user` にフォールバック（横断 spec 判7 と同じ。実装時に動作確認必須） |
-| 判4 | `before_state` / `after_state` のフィールド数制限 | 主要 10 フィールドを基準とするが、具体的なフィールドリストはモジュール別 spec で定義 |
+| 判4 | `before_state` / `after_state` の保存方針 | **[確定 #4 / 解消済み]** 全フィールド snapshot に統一。変更フィールドのみ格納は禁止。`tsvector` 等の派生列・`updated_at` 等の自動列は除外可 |
 | 判5 | Tree の Trigger vs Server Action | Tree は FileMaker 並行稼働中のため Server Action が未定。DB Trigger で先行実装を推奨するが、Tree 実装 spec（Phase D）確定後に再確認 |
 | 判6 | Forest `forest_audit_log` の廃止タイミング | Phase C 以降。Forest `_lib/audit.ts` の移行と合わせて実施。本 spec では `root_audit_log` への追記のみ整備 |
 | 判7 | `source: 'trigger'` の扱い | DB Trigger からの INSERT は `source='trigger'` をハードコード。SECURITY DEFINER 関数の引数に追加 |
