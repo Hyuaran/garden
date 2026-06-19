@@ -98,9 +98,21 @@
 ### 3.4 権限制御
 
 - `garden_role` に応じてアクセス権のないアプリはグレーアウト
-  - 例: toss/closer は Tree 以外グレー
   - クリックで「このアプリへのアクセス権限がありません」toast
 - **権限あり = ブランドカラー、権限なし = グレー**で一目瞭然
+
+Garden 8-role 標準（toss / closer / cs / staff / outsource / manager / admin / super_admin）に基づくグレーアウト方針：
+
+| garden_role | アプリ切替メニューでの可視範囲（既定）|
+|---|---|
+| toss | Tree のみ（他はグレー）|
+| closer | Tree のみ（他はグレー）|
+| cs | Tree / Leaf / Bloom（業務範囲のみ）|
+| staff | Bud / Root / Bloom 等の事務系（業務範囲のみ）|
+| outsource | 自分担当のアプリのみ（既定はホーム留まり）。槙さん例外は `module_owner_flags` で個別開放 |
+| manager | 自部署関連の全モジュール（一部 admin 限定除く）|
+| admin | 全モジュール |
+| super_admin | 全モジュール（権限変更を含む全操作）|
 
 ### 3.5 SSR vs CSR
 

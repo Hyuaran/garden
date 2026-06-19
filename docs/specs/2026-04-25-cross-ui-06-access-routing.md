@@ -64,8 +64,9 @@
    │         ↓
    │  Tree ダッシュボード
    │
-   └─ 他の role（cs/staff/manager/admin/super_admin）
+   └─ 他の role（cs / staff / outsource / manager / admin / super_admin）
       ホーム画面のまま、ユーザー操作を待つ
+      （outsource は自分担当アプリのみアクセス、槙さん例外あり）
 ```
 
 ### 2.2 個人設定による分岐
@@ -209,12 +210,15 @@ export function HomeAutoRedirect({ targetApp }: { targetApp: AppKey }) {
 
 ### 4.3 権限別ターゲット
 
+Garden 8-role 標準（toss / closer / cs / staff / outsource / manager / admin / super_admin）に基づき、自動遷移先を以下の通り定義する。
+
 | garden_role | 自動遷移先 | 備考 |
 |---|---|---|
 | toss | `/tree` | アポインター |
 | closer | `/tree` | クローザー |
 | cs | （なし、ホーム留まる）| |
 | staff | （なし）| 事務・バックオフィス |
+| outsource | （なし、ホーム留まる）| 業務委託（自分担当のみアクセス）。槙さん例外は `module_owner_flags` で制御し、該当アプリ直行も可 |
 | manager | （なし）| ホームから選ぶ |
 | admin | （なし）| ホームから選ぶ |
 | super_admin | （なし）| ホームから選ぶ |
