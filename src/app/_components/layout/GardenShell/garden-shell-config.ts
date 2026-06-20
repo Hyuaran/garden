@@ -19,6 +19,7 @@ export type GardenShellPageMenuItem = {
   href: string;
   icon?: string;
   active?: boolean;
+  divider?: boolean;
 };
 
 export type GardenShellActivityItem = {

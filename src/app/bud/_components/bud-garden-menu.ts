@@ -5,12 +5,14 @@ const BUD_ICON = `${T}/images/icons_bloom/orb_bud.png`;
 
 const BUD_GARDEN_PAGE_MENU_BASE: GardenShellPageMenuItem[] = [
   { label: "ダッシュボード", href: "/bud/dashboard", icon: BUD_ICON },
-  { label: "仕訳帳", href: "/bud/journal", icon: BUD_ICON },
-  { label: "振込管理", href: "/bud/transfers", icon: BUD_ICON },
-  { label: "損益管理", href: "/bud/profit", icon: BUD_ICON },
-  { label: "給与管理", href: "/bud/payroll", icon: BUD_ICON },
+  { label: "入金管理", href: "/bud/receivables", icon: BUD_ICON },
   { label: "請求書管理", href: "/bud/invoices", icon: BUD_ICON },
   { label: "経費精算", href: "/bud/expenses", icon: BUD_ICON },
+  { label: "給与管理", href: "/bud/payroll", icon: BUD_ICON },
+  { label: "振込管理", href: "/bud/transfers", icon: BUD_ICON },
+  { label: "仕訳帳", href: "/bud/journal", icon: BUD_ICON },
+  { label: "損益管理", href: "/bud/profit", icon: BUD_ICON },
+  { label: "区切り線", href: "#bud-admin-divider", divider: true },
   { label: "銀行口座管理", href: "/bud/bank", icon: BUD_ICON },
   { label: "マスタ管理", href: "/bud/masters", icon: BUD_ICON },
   { label: "監査ログ", href: "/bud/audit", icon: BUD_ICON },
@@ -18,10 +20,14 @@ const BUD_GARDEN_PAGE_MENU_BASE: GardenShellPageMenuItem[] = [
 ];
 
 export function getBudGardenPageMenu(activeHref: string): GardenShellPageMenuItem[] {
-  return BUD_GARDEN_PAGE_MENU_BASE.map((item) => ({
-    ...item,
-    active: item.href === activeHref,
-  }));
+  return BUD_GARDEN_PAGE_MENU_BASE.map((item) => (
+    item.divider
+      ? item
+      : {
+          ...item,
+          active: item.href === activeHref,
+        }
+  ));
 }
 
 export const BUD_GARDEN_PAGE_MENU: GardenShellPageMenuItem[] = getBudGardenPageMenu("/bud/dashboard");
