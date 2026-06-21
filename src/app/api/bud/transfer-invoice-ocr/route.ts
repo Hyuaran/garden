@@ -28,6 +28,8 @@ type OcrInput =
   | { kind: "image"; mediaType: "image/jpeg" | "image/png"; buffer: Buffer }
   | { kind: "pdf"; mediaType: "application/pdf"; buffer: Buffer };
 
+const STORAGE_BUCKET = "bud-attachments";
+
 const OCR_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -69,7 +71,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "未ログインです" }, { status: 401 });
     }
 
-    const input = await readOcrInput(req);
+    const input = await readOcrInput(req, supabase);
     if (!input) {
       return NextResponse.json({ ok: false, error: "PDF / JPG / PNG の請求書ファイルがありません" }, { status: 400 });
     }
@@ -113,7 +115,10 @@ export async function POST(req: Request) {
   }
 }
 
-async function readOcrInput(req: Request): Promise<OcrInput | null> {
+async function readOcrInput(
+  req: Request,
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+): Promise<OcrInput | null> {
   const contentType = req.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
     const form = await req.formData();
@@ -127,7 +132,26 @@ async function readOcrInput(req: Request): Promise<OcrInput | null> {
   }
 
   if (contentType.includes("application/json")) {
-    const body = (await req.json()) as { imageBase64?: string };
+    const body = (await req.json()) as {
+      imageBase64?: string;
+      storagePath?: string;
+      mimeType?: string;
+    };
+    if (body.storagePath) {
+      if (!isAcceptedMime(body.mimeType ?? "")) return null;
+      const { data, error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .download(body.storagePath);
+      if (error || !data) return null;
+      const buffer = Buffer.from(await data.arrayBuffer());
+      return body.mimeType === "application/pdf"
+        ? { kind: "pdf", mediaType: "application/pdf", buffer }
+        : {
+            kind: "image",
+            mediaType: body.mimeType as "image/jpeg" | "image/png",
+            buffer,
+          };
+    }
     if (!body.imageBase64) return null;
     const parsed = parseImageDataUrl(body.imageBase64);
     if (!parsed) return null;

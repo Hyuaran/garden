@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBudState } from "../../_state/BudStateContext";
 import {
@@ -49,6 +49,27 @@ type TransferInvoiceOcrResponse =
   | { ok: true; result: TransferInvoiceOcrResult }
   | { ok: false; error?: string };
 
+type TransferInboxItem = {
+  id: string;
+  file_name: string;
+  mime_type: "application/pdf" | "image/jpeg" | "image/png";
+  storage_path: string;
+  public_url: string | null;
+  imported_at: string;
+};
+
+type TransferInboxResponse =
+  | { ok: true; item: TransferInboxItem | null }
+  | { ok: false; error?: string };
+
+type TransferInboxAttachment = {
+  id: string;
+  fileName: string;
+  mimeType: "application/pdf" | "image/jpeg" | "image/png";
+  storagePath: string;
+  publicUrl: string | null;
+};
+
 const OCR_ACCOUNT_TYPE_TO_CODE: Record<
   NonNullable<TransferInvoiceOcrResult["payee_account_type"]>,
   string
@@ -64,10 +85,11 @@ function appendInvoiceNoToNotes(current: string, invoiceNo: string) {
   return current.trim() ? `${current.trim()}\n${line}` : line;
 }
 
-export function TransferFormRegular() {
+export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
   const router = useRouter();
   const { sessionUser } = useBudState();
   const invoiceOcrInputRef = useRef<HTMLInputElement>(null);
+  const inboxOcrStartedRef = useRef(false);
 
   const [dataSource, setDataSource] = useState<DataSource>("デジタル入力");
   const [executeCompanyId, setExecuteCompanyId] = useState("");
@@ -79,6 +101,8 @@ export function TransferFormRegular() {
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [inboxAttachment, setInboxAttachment] =
+    useState<TransferInboxAttachment | null>(null);
 
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -117,6 +141,7 @@ export function TransferFormRegular() {
     setOcrBusy(true);
     setOcrMessage(null);
     setServerError(null);
+    setInboxAttachment(null);
     setAttachmentFile(file);
     try {
       const formData = new FormData();
@@ -146,6 +171,72 @@ export function TransferFormRegular() {
       if (invoiceOcrInputRef.current) invoiceOcrInputRef.current.value = "";
     }
   };
+
+  const handleInboxOcr = async (id: string) => {
+    setOcrBusy(true);
+    setOcrMessage("未処理トレイの請求書をOCRしています。");
+    setServerError(null);
+    try {
+      const inboxRes = await fetch(
+        `/api/bud/transfer-inbox?id=${encodeURIComponent(id)}`,
+      );
+      const inboxJson = (await inboxRes.json()) as TransferInboxResponse;
+      if (!inboxRes.ok || !inboxJson.ok || !inboxJson.item) {
+        throw new Error(
+          inboxJson.ok
+            ? "未処理トレイのファイルが見つかりません"
+            : inboxJson.error ?? "未処理トレイの取得に失敗しました",
+        );
+      }
+
+      const item = inboxJson.item;
+      setAttachmentFile(null);
+      setInboxAttachment({
+        id: item.id,
+        fileName: item.file_name,
+        mimeType: item.mime_type,
+        storagePath: item.storage_path,
+        publicUrl: item.public_url,
+      });
+      setDataSource("紙スキャン");
+
+      const ocrRes = await fetch("/api/bud/transfer-invoice-ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storagePath: item.storage_path,
+          mimeType: item.mime_type,
+        }),
+      });
+      const ocrJson = (await ocrRes.json()) as TransferInvoiceOcrResponse;
+      if (!ocrRes.ok || !ocrJson.ok) {
+        throw new Error(
+          ocrJson.ok
+            ? "請求書OCRに失敗しました"
+            : ocrJson.error ?? "請求書OCRに失敗しました",
+        );
+      }
+      applyInvoiceOcrResult(ocrJson.result);
+      setOcrMessage(
+        ocrJson.result.confidence === "low"
+          ? "未処理トレイのOCR結果を反映しました。未読取・低信頼の項目を確認してください。"
+          : "未処理トレイのOCR結果を反映しました。",
+      );
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : String(error));
+      setOcrMessage(null);
+    } finally {
+      setOcrBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!inboxId || inboxOcrStartedRef.current) return;
+    inboxOcrStartedRef.current = true;
+    void handleInboxOcr(inboxId);
+    // The inbox OCR should run exactly once for the initial inbox id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inboxId]);
 
   const applyInvoiceOcrResult = (result: TransferInvoiceOcrResult) => {
     setVendor((current) => ({
@@ -234,7 +325,9 @@ export function TransferFormRegular() {
     setSubmitting(true);
     let uploadedPath: string | null = null;
     try {
-      let attachmentUrl: string | undefined;
+      let attachmentUrl: string | undefined =
+        inboxAttachment?.publicUrl ?? undefined;
+      const attachmentMimeType = attachmentFile?.type ?? inboxAttachment?.mimeType;
       if (attachmentFile) {
         const tempHint = `${executeCompanyId}/${Date.now()}`;
         const up = await uploadAttachment(attachmentFile, tempHint);
@@ -252,14 +345,35 @@ export function TransferFormRegular() {
           data_source: dataSource,
           ...input,
           invoice_pdf_url:
-            attachmentFile?.type === "application/pdf" ? attachmentUrl : null,
+            attachmentMimeType === "application/pdf" ? attachmentUrl : null,
           scan_image_url:
-            attachmentFile && attachmentFile.type !== "application/pdf"
+            attachmentMimeType && attachmentMimeType !== "application/pdf"
               ? attachmentUrl
               : null,
         },
         sessionUser.user_id,
       );
+
+      if (inboxAttachment) {
+        const consumeRes = await fetch("/api/bud/transfer-inbox", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "consume",
+            id: inboxAttachment.id,
+            transferId: transfer.transfer_id,
+          }),
+        });
+        const consumeJson = (await consumeRes.json()) as {
+          ok: boolean;
+          error?: string;
+        };
+        if (!consumeRes.ok || !consumeJson.ok) {
+          throw new Error(
+            consumeJson.error ?? "未処理トレイの消費済み更新に失敗しました",
+          );
+        }
+      }
 
       if (saveAsConfirmed) {
         const transRes = await transitionTransferStatus({
@@ -322,6 +436,11 @@ export function TransferFormRegular() {
         {ocrMessage && (
           <p className="text-xs text-amber-900" role="status">
             {ocrMessage}
+          </p>
+        )}
+        {inboxAttachment && (
+          <p className="text-xs text-amber-800">
+            未処理トレイ添付: {inboxAttachment.fileName}
           </p>
         )}
       </section>
