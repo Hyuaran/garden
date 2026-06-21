@@ -764,12 +764,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 <div style={formRows}>
                   <div style={fieldRow(FISCAL_COLS)}>
                     <InfoValue label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</InfoValue>
-                    <InfoValue label="申請者">
-                      <span style={applicantLine}>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{employeeLabel(current, employees)}</span>
-                        {current.description === OCR_CONFIRM_DESCRIPTION && <span style={ocrBadge}>OCR要確認</span>}
-                      </span>
-                    </InfoValue>
+                    <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
+                    {current.description === OCR_CONFIRM_DESCRIPTION && <div style={ocrBadgeBox}>OCR要確認</div>}
                   </div>
 
                   <div style={fieldRow(FISCAL_COLS)}>
@@ -1455,24 +1451,20 @@ function requiredFieldStyle(searchMode: boolean, value: string): React.CSSProper
 function requiredAmountStyle(searchMode: boolean, value: string): React.CSSProperties {
   return searchMode || normalizeAmountInput(value) ? input : { ...input, ...missingRequiredInput };
 }
-const applicantLine: React.CSSProperties = {
+const ocrBadgeBox: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
-  minWidth: 0,
-};
-const ocrBadge: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  flexShrink: 0,
-  borderRadius: 999,
-  padding: "2px 8px",
+  justifyContent: "center",
+  width: "100%",
+  padding: "8px 10px",
+  lineHeight: "22px",
+  borderRadius: 6,
   background: "rgba(179,88,80,0.14)",
   border: "1px solid rgba(179,88,80,0.34)",
   color: "#b35850",
-  fontSize: 11,
+  fontSize: 12,
   fontWeight: 700,
-  lineHeight: "16px",
+  whiteSpace: "nowrap",
 };
 const layoutToolRow: React.CSSProperties = {
   display: "flex",
