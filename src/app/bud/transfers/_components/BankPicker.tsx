@@ -2,22 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../_lib/supabase";
-
-interface Company {
-  company_id: string;
-  company_name: string;
-}
+import {
+  buildCompanyToCorp,
+  type Company,
+  type Corp,
+} from "../../expenses/_components/expenseCorpUtils";
 
 interface BankAccount {
   id: string;
-  company_id: string;
+  corp_code: string;
   bank_name: string;
-  bank_code: string;
   branch_name: string;
   branch_code: string;
   account_type: string;
   account_number: string;
-  account_holder_kana: string | null;
+  sub_account_label: string | null;
 }
 
 interface Props {
@@ -36,51 +35,85 @@ export function BankPicker({
   disabled,
 }: Props) {
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [corps, setCorps] = useState<Corp[]>([]);
+  const [accountState, setAccountState] = useState<{
+    corpCode: string;
+    rows: BankAccount[];
+  }>({ corpCode: "", rows: [] });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("root_companies")
-        .select("company_id, company_name")
-        .order("company_id");
-      if (!cancelled) setCompanies((data ?? []) as Company[]);
+      const [companyResult, corpResult] = await Promise.all([
+        supabase
+          .from("root_companies")
+          .select("company_id, company_name")
+          .order("company_id"),
+        supabase
+          .from("bud_corporations")
+          .select("id, name_short")
+          .order("id"),
+      ]);
+      if (!cancelled) {
+        setCompanies((companyResult.data ?? []) as Company[]);
+        setCorps((corpResult.data ?? []) as Corp[]);
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const companyToCorp = useMemo(
+    () => buildCompanyToCorp(companies, corps),
+    [companies, corps],
+  );
+
+  const executeCorpCode = useMemo(() => {
+    if (!executeCompanyId) return "";
+    if (companyToCorp[executeCompanyId]) return companyToCorp[executeCompanyId];
+    if (corps.some((corp) => corp.id === executeCompanyId)) return executeCompanyId;
+    return executeCompanyId;
+  }, [companyToCorp, corps, executeCompanyId]);
+
   useEffect(() => {
     if (!executeCompanyId) {
-      setAccounts([]);
       return;
     }
     let cancelled = false;
-    setLoading(true);
     (async () => {
       const { data } = await supabase
         .from("root_bank_accounts")
         .select(
-          "id, company_id, bank_name, bank_code, branch_name, branch_code, account_type, account_number, account_holder_kana",
+          "id, corp_code, bank_name, branch_name, branch_code, account_type, account_number, sub_account_label",
         )
-        .eq("company_id", executeCompanyId)
+        .eq("corp_code", executeCorpCode)
         .order("bank_name");
       if (!cancelled) {
-        setAccounts((data ?? []) as BankAccount[]);
-        setLoading(false);
+        setAccountState({
+          corpCode: executeCorpCode,
+          rows: (data ?? []) as BankAccount[],
+        });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [executeCompanyId]);
+  }, [executeCompanyId, executeCorpCode]);
+
+  const loading =
+    Boolean(executeCompanyId) && accountState.corpCode !== executeCorpCode;
+  const visibleAccounts = useMemo(
+    () =>
+      executeCompanyId && accountState.corpCode === executeCorpCode
+        ? accountState.rows
+        : [],
+    [accountState, executeCompanyId, executeCorpCode],
+  );
 
   const selectedAccount = useMemo(
-    () => accounts.find((a) => a.id === sourceAccountId) ?? null,
-    [accounts, sourceAccountId],
+    () => visibleAccounts.find((a) => a.id === sourceAccountId) ?? null,
+    [visibleAccounts, sourceAccountId],
   );
 
   return (
@@ -112,28 +145,34 @@ export function BankPicker({
         <select
           value={sourceAccountId}
           onChange={(e) => {
-            const acc = accounts.find((a) => a.id === e.target.value) ?? null;
+            const acc =
+              visibleAccounts.find((a) => a.id === e.target.value) ?? null;
             onAccountChange(acc);
           }}
-          disabled={disabled || !executeCompanyId || accounts.length === 0}
+          disabled={disabled || !executeCompanyId || visibleAccounts.length === 0}
           className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 disabled:bg-gray-100"
         >
           <option value="">
             {!executeCompanyId
               ? "先に法人を選択してください"
-              : accounts.length === 0
+              : visibleAccounts.length === 0
                 ? "登録された口座がありません"
                 : "選択してください"}
           </option>
-          {accounts.map((a) => (
+          {visibleAccounts.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.bank_name} {a.branch_name} ({a.account_type}) {a.account_number}
+              {a.bank_name} {a.branch_name} ({a.account_type}){" "}
+              {a.account_number}
+              {a.sub_account_label ? ` / ${a.sub_account_label}` : ""}
             </option>
           ))}
         </select>
         {selectedAccount && (
           <p className="text-xs text-gray-500 mt-1">
-            {selectedAccount.account_holder_kana ?? "（名義カナ未登録）"}
+            corp_code: {selectedAccount.corp_code}
+            {selectedAccount.branch_code
+              ? ` / 支店コード ${selectedAccount.branch_code}`
+              : ""}
           </p>
         )}
       </label>
