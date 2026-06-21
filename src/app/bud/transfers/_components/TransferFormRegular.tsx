@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBudState } from "../../_state/BudStateContext";
 import {
@@ -30,9 +30,44 @@ interface DuplicateHit {
   status: string;
 }
 
+type TransferInvoiceOcrResult = {
+  payee_name: string | null;
+  payee_bank_name: string | null;
+  payee_bank_code: string | null;
+  payee_branch_name: string | null;
+  payee_branch_code: string | null;
+  payee_account_type: "普通" | "当座" | "貯蓄" | null;
+  payee_account_number: string | null;
+  payee_account_holder_kana: string | null;
+  amount: number | null;
+  scheduled_date: string | null;
+  invoice_no: string | null;
+  confidence: "high" | "low";
+};
+
+type TransferInvoiceOcrResponse =
+  | { ok: true; result: TransferInvoiceOcrResult }
+  | { ok: false; error?: string };
+
+const OCR_ACCOUNT_TYPE_TO_CODE: Record<
+  NonNullable<TransferInvoiceOcrResult["payee_account_type"]>,
+  string
+> = {
+  普通: "1",
+  当座: "2",
+  貯蓄: "4",
+};
+
+function appendInvoiceNoToNotes(current: string, invoiceNo: string) {
+  const line = `請求書番号: ${invoiceNo}`;
+  if (current.includes(line)) return current;
+  return current.trim() ? `${current.trim()}\n${line}` : line;
+}
+
 export function TransferFormRegular() {
   const router = useRouter();
   const { sessionUser } = useBudState();
+  const invoiceOcrInputRef = useRef<HTMLInputElement>(null);
 
   const [dataSource, setDataSource] = useState<DataSource>("デジタル入力");
   const [executeCompanyId, setExecuteCompanyId] = useState("");
@@ -47,20 +82,25 @@ export function TransferFormRegular() {
 
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrMessage, setOcrMessage] = useState<string | null>(null);
   const [dupes, setDupes] = useState<DuplicateHit[]>([]);
   const [dupesAcknowledged, setDupesAcknowledged] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
   const today = useMemo(() => new Date(), []);
   const canConfirm = dataSource === "デジタル入力";
+  const busy = submitting || ocrBusy;
 
   const buildInput = () => ({
     request_company_id: executeCompanyId,
     execute_company_id: executeCompanyId,
     source_account_id: sourceAccountId,
-    vendor_id: vendor?.id ?? undefined,
+    vendor_id: vendor?.id || undefined,
     payee_name: vendor?.vendor_name ?? "",
+    payee_bank_name: vendor?.payee_bank_name ?? "",
     payee_bank_code: vendor?.payee_bank_code ?? "",
+    payee_branch_name: vendor?.payee_branch_name ?? "",
     payee_branch_code: vendor?.payee_branch_code ?? "",
     payee_account_type: vendor?.payee_account_type ?? "1",
     payee_account_number: vendor?.payee_account_number ?? "",
@@ -71,6 +111,75 @@ export function TransferFormRegular() {
     description: notes || undefined,
     fee_bearer: feeBearer,
   });
+
+  const handleInvoiceOcrFile = async (file: File | null) => {
+    if (!file) return;
+    setOcrBusy(true);
+    setOcrMessage(null);
+    setServerError(null);
+    setAttachmentFile(file);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/bud/transfer-invoice-ocr", {
+        method: "POST",
+        body: formData,
+      });
+      const json = (await res.json()) as TransferInvoiceOcrResponse;
+      if (!res.ok || !json.ok) {
+        throw new Error(
+          json.ok
+            ? "請求書OCRに失敗しました"
+            : json.error ?? "請求書OCRに失敗しました",
+        );
+      }
+      applyInvoiceOcrResult(json.result);
+      setOcrMessage(
+        json.result.confidence === "low"
+          ? "OCR結果を反映しました。未読取・低信頼の項目を確認してください。"
+          : "OCR結果を反映しました。",
+      );
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setOcrBusy(false);
+      if (invoiceOcrInputRef.current) invoiceOcrInputRef.current.value = "";
+    }
+  };
+
+  const applyInvoiceOcrResult = (result: TransferInvoiceOcrResult) => {
+    setVendor((current) => ({
+      id: current?.id ?? "",
+      vendor_name: result.payee_name ?? current?.vendor_name ?? "",
+      payee_bank_name:
+        result.payee_bank_name ?? current?.payee_bank_name ?? null,
+      payee_bank_code: result.payee_bank_code ?? current?.payee_bank_code ?? "",
+      payee_branch_name:
+        result.payee_branch_name ?? current?.payee_branch_name ?? null,
+      payee_branch_code:
+        result.payee_branch_code ?? current?.payee_branch_code ?? "",
+      payee_account_type:
+        (result.payee_account_type
+          ? OCR_ACCOUNT_TYPE_TO_CODE[result.payee_account_type]
+          : null) ??
+        current?.payee_account_type ??
+        "1",
+      payee_account_number:
+        result.payee_account_number ?? current?.payee_account_number ?? "",
+      payee_account_holder_kana:
+        result.payee_account_holder_kana ??
+        current?.payee_account_holder_kana ??
+        "",
+    }));
+    if (typeof result.amount === "number") setAmount(result.amount);
+    if (result.scheduled_date) setScheduledDate(result.scheduled_date);
+    const invoiceNo = result.invoice_no;
+    if (invoiceNo) {
+      setNotes((current) => appendInvoiceNoToNotes(current, invoiceNo));
+    }
+    setDupes([]);
+    setDupesAcknowledged(false);
+  };
 
   const checkDuplicates = async (): Promise<DuplicateHit[]> => {
     if (!vendor || typeof amount !== "number" || !scheduledDate) return [];
@@ -93,6 +202,7 @@ export function TransferFormRegular() {
 
   const handleSubmit = async (saveAsConfirmed: boolean) => {
     if (!sessionUser) return;
+    if (ocrBusy) return;
     setServerError(null);
 
     const input = buildInput();
@@ -180,10 +290,46 @@ export function TransferFormRegular() {
     <div className="max-w-2xl mx-auto space-y-4">
       <h1 className="text-2xl font-bold text-gray-800">新規振込依頼（通常）</h1>
 
+      <section className="border border-amber-200 rounded-lg p-4 bg-amber-50/70 space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-sm font-medium text-amber-900">
+              請求書OCR自動入力
+            </h2>
+            <p className="text-xs text-amber-800">
+              PDF / JPG / PNG から振込先・金額・振込予定日を読み取り、添付にも設定します。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => invoiceOcrInputRef.current?.click()}
+            disabled={busy}
+            className="shrink-0 rounded bg-amber-700 px-4 py-2 text-sm text-white hover:bg-amber-800 disabled:opacity-50"
+          >
+            {ocrBusy ? "OCR中…" : "請求書を選択"}
+          </button>
+        </div>
+        <input
+          ref={invoiceOcrInputRef}
+          type="file"
+          accept="application/pdf,image/jpeg,image/png"
+          className="hidden"
+          disabled={busy}
+          onChange={(e) =>
+            void handleInvoiceOcrFile(e.target.files?.[0] ?? null)
+          }
+        />
+        {ocrMessage && (
+          <p className="text-xs text-amber-900" role="status">
+            {ocrMessage}
+          </p>
+        )}
+      </section>
+
       <DataSourceSelector
         value={dataSource}
         onChange={setDataSource}
-        disabled={submitting}
+        disabled={busy}
       />
 
       <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
@@ -193,7 +339,7 @@ export function TransferFormRegular() {
           onCompanyChange={setExecuteCompanyId}
           sourceAccountId={sourceAccountId}
           onAccountChange={(acc) => setSourceAccountId(acc?.id ?? "")}
-          disabled={submitting}
+          disabled={busy}
         />
         {errors.execute_company_id && (
           <p className="text-xs text-red-600" role="alert">
@@ -212,8 +358,13 @@ export function TransferFormRegular() {
         <VendorPicker
           selectedVendorId={vendor?.id ?? ""}
           onSelect={setVendor}
-          disabled={submitting}
+          disabled={busy}
         />
+        {vendor && !vendor.id && (
+          <p className="text-xs text-amber-700">
+            OCRで読み取った振込先です。既存取引先を使う場合は選択し直してください。
+          </p>
+        )}
         {errors.payee_name && (
           <p className="text-xs text-red-600" role="alert">
             {errors.payee_name}
@@ -248,7 +399,7 @@ export function TransferFormRegular() {
             onChange={(e) =>
               setAmount(e.target.value === "" ? "" : Number(e.target.value))
             }
-            disabled={submitting}
+            disabled={busy}
             className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
           />
           {errors.amount && (
@@ -271,7 +422,7 @@ export function TransferFormRegular() {
                   value={fb}
                   checked={feeBearer === fb}
                   onChange={() => setFeeBearer(fb)}
-                  disabled={submitting}
+                  disabled={busy}
                   className="accent-emerald-600"
                 />
                 <span className="text-gray-900">{fb}</span>
@@ -289,7 +440,7 @@ export function TransferFormRegular() {
             type="date"
             value={scheduledDate}
             onChange={(e) => setScheduledDate(e.target.value)}
-            disabled={submitting}
+            disabled={busy}
             className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
           />
           {errors.scheduled_date && (
@@ -304,7 +455,7 @@ export function TransferFormRegular() {
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            disabled={submitting}
+            disabled={busy}
             className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
           />
           {errors.due_date && (
@@ -321,14 +472,14 @@ export function TransferFormRegular() {
           file={attachmentFile}
           onChange={setAttachmentFile}
           errorMessage={errors.attachment ?? null}
-          disabled={submitting}
+          disabled={busy}
         />
         <label className="block">
           <span className="text-xs text-gray-600">備考（500 文字以下）</span>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            disabled={submitting}
+            disabled={busy}
             rows={3}
             className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
           />
@@ -361,7 +512,7 @@ export function TransferFormRegular() {
         <button
           type="button"
           onClick={() => router.push("/bud/transfers")}
-          disabled={submitting}
+          disabled={busy}
           className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
         >
           キャンセル
@@ -369,7 +520,7 @@ export function TransferFormRegular() {
         <button
           type="button"
           onClick={() => handleSubmit(false)}
-          disabled={submitting}
+          disabled={busy}
           className="px-4 py-2 text-sm bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-50"
         >
           {submitting ? "送信中…" : "下書き保存"}
@@ -378,7 +529,7 @@ export function TransferFormRegular() {
           <button
             type="button"
             onClick={() => handleSubmit(true)}
-            disabled={submitting}
+            disabled={busy}
             className="px-4 py-2 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
           >
             {submitting ? "送信中…" : "確認済みとして保存"}
