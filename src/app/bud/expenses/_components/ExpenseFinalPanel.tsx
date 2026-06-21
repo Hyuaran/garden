@@ -75,6 +75,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
   const [returnReason, setReturnReason] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const openedAt = useRef<number>(0);
 
   const setCorpFilter = useCallback((next: string) => {
@@ -173,6 +174,8 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
   const finalProcessedFiltered = useMemo(() => finalProcessedToday.filter(corpMatches), [finalProcessedToday, corpMatches]);
   const keiriReturnedFiltered = useMemo(() => keiriReturnedToday.filter(corpMatches), [keiriReturnedToday, corpMatches]);
   const current = list[idx];
+  const selectedRows = useMemo(() => list.filter((row) => selectedIds.has(row.id)), [list, selectedIds]);
+  const allVisibleSelected = list.length > 0 && list.every((row) => selectedIds.has(row.id));
 
   const pendingAmount = useMemo(() => list.reduce((sum, row) => sum + (row.amount ?? 0), 0), [list]);
 
@@ -195,6 +198,14 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
   useEffect(() => {
     setIdx((value) => Math.max(0, Math.min(value, Math.max(0, list.length - 1))));
   }, [list.length]);
+
+  useEffect(() => {
+    setSelectedIds((ids) => {
+      const visibleIds = new Set(list.map((row) => row.id));
+      const next = new Set(Array.from(ids).filter((id) => visibleIds.has(id)));
+      return next.size === ids.size ? ids : next;
+    });
+  }, [list]);
 
   useEffect(() => {
     if (!current) return;
@@ -302,13 +313,19 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
     })();
   };
 
-  const process = async (row: Req, action: "approve" | "return", reason?: string) => {
-    if (busyId) return;
+  const process = async (
+    row: Req,
+    action: "approve" | "return",
+    reason?: string,
+    options: { reload?: boolean; manageBusy?: boolean } = {},
+  ) => {
+    const manageBusy = options.manageBusy !== false;
+    if (manageBusy && busyId) return false;
     if (action === "return" && !reason?.trim()) {
       alert("差戻し理由を入力してください");
-      return;
+      return false;
     }
-    setBusyId(row.id);
+    if (manageBusy) setBusyId(row.id);
     try {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth?.user?.id ?? null;
@@ -340,9 +357,55 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
       void notifyDriveMove(row.id, action === "approve" ? "completed" : "returned");
       setDetail(null);
       setDetailImgUrl(null);
-      await load();
+      if (options.reload !== false) await load();
+      return true;
     } catch (error) {
       alert("処理に失敗しました：" + (error instanceof Error ? error.message : String(error)));
+      return false;
+    } finally {
+      if (manageBusy) setBusyId(null);
+    }
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((ids) => {
+      const next = new Set(ids);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    setSelectedIds((ids) => {
+      if (allVisibleSelected) return new Set();
+      const next = new Set(ids);
+      for (const row of list) next.add(row.id);
+      return next;
+    });
+  };
+
+  const processBulk = async (action: "approve" | "return") => {
+    if (busyId) return;
+    if (selectedRows.length === 0) {
+      alert("対象行を選択してください");
+      return;
+    }
+    const reason = action === "return" ? window.prompt("一括差戻し理由を入力してください") ?? "" : undefined;
+    if (action === "return" && !reason?.trim()) return;
+    setBusyId("bulk");
+    let successCount = 0;
+    try {
+      for (const row of selectedRows) {
+        const ok = await process(row, action, reason, { reload: false, manageBusy: false });
+        if (!ok) break;
+        successCount += 1;
+      }
+      setSelectedIds(new Set());
+      await load();
+      if (successCount > 0) {
+        alert(`${successCount}件を${action === "approve" ? "完了" : "差戻し"}しました`);
+      }
     } finally {
       setBusyId(null);
     }
@@ -411,9 +474,26 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                 <div style={{ ...notice, margin: 0 }}>この法人の完了待ちはありません</div>
               ) : (
                 <div style={{ overflowX: "auto" }}>
+                  <div style={bulkToolbar}>
+                    <span style={bulkMeta}>選択 {selectedRows.length} 件</span>
+                    <button type="button" disabled={busyId !== null || selectedRows.length === 0} style={bulkApproveBtn} onClick={() => void processBulk("approve")}>
+                      一括完了
+                    </button>
+                    <button type="button" disabled={busyId !== null || selectedRows.length === 0} style={bulkReturnBtn} onClick={() => void processBulk("return")}>
+                      一括差戻し
+                    </button>
+                  </div>
                   <table style={table}>
                     <thead>
                       <tr>
+                        <th style={{ ...th, width: 34 }}>
+                          <input
+                            type="checkbox"
+                            checked={allVisibleSelected}
+                            onChange={toggleAllVisible}
+                            aria-label="表示中の完了待ちをすべて選択"
+                          />
+                        </th>
                         <th style={th}>申請日</th>
                         <th style={th}>申請者</th>
                         <th style={th}>日付</th>
@@ -427,6 +507,15 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                     <tbody>
                       {list.map((row, rowIndex) => (
                         <tr key={row.id} style={rowIndex === idx ? selectedTr : tr} onClick={() => setIdx(rowIndex)}>
+                          <td style={td}>
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(row.id)}
+                              onChange={() => toggleSelected(row.id)}
+                              onClick={(event) => event.stopPropagation()}
+                              aria-label={`${employeeLabel(row, employees)} の申請を選択`}
+                            />
+                          </td>
                           <td style={td}>{formatDate(row.submitted_at)}</td>
                           <td style={td}>{employeeLabel(row, employees)}</td>
                           <td style={td}>{formatDate(row.receipt_date)}</td>
@@ -723,6 +812,14 @@ const panelHead: React.CSSProperties = {
 };
 const panelTitle: React.CSSProperties = { fontSize: 16, color: "var(--text-main)", margin: 0, fontWeight: 600 };
 const panelMeta: React.CSSProperties = { fontSize: 12, color: "var(--text-muted)" };
+const bulkToolbar: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: 8,
+  marginBottom: 10,
+};
+const bulkMeta: React.CSSProperties = { marginRight: "auto", color: "var(--text-sub)", fontSize: 12 };
 const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
 const th: React.CSSProperties = {
   textAlign: "left",
@@ -755,6 +852,18 @@ const returnBtn: React.CSSProperties = {
   cursor: "pointer",
   whiteSpace: "nowrap",
   fontSize: 12,
+};
+const bulkApproveBtn: React.CSSProperties = {
+  ...approveBtn,
+  borderRadius: 8,
+  padding: "8px 14px",
+  opacity: 1,
+};
+const bulkReturnBtn: React.CSSProperties = {
+  ...returnBtn,
+  borderRadius: 8,
+  padding: "8px 14px",
+  opacity: 1,
 };
 const iconBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", fontSize: 18, padding: 2 };
 const modalBackdrop: React.CSSProperties = {

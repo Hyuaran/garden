@@ -73,10 +73,12 @@ type Form = {
 type SearchForm = Record<SearchField, string>;
 type StatusRow = Req & { rowKind: "pending" | "processed" };
 
+const OCR_CONFIRM_DESCRIPTION = "OCR要確認";
 const REQUEST_SELECT =
   "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
 
 const CORP_FILTER_STORAGE_KEY = "bud-expense-review-corp-filter";
+const CARD_ORDER_STORAGE_KEY = "bud-expense-review-card-order";
 
 const EMPTY_SEARCH_FORM: SearchForm = {
   corp_id: "",
@@ -102,6 +104,19 @@ function readInitialCorpFilter() {
   } catch {
     return "all";
   }
+}
+
+function readInitialCardReversed() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(CARD_ORDER_STORAGE_KEY) === "receipt-left";
+  } catch {
+    return false;
+  }
+}
+
+function displayDescription(value: string | null) {
+  return value === OCR_CONFIRM_DESCRIPTION ? "" : value ?? "";
 }
 
 export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean }) {
@@ -132,6 +147,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [activeSearchSheet, setActiveSearchSheet] = useState(0);
   const [foundIds, setFoundIds] = useState<string[] | null>(null);
   const [searchSummary, setSearchSummary] = useState("");
+  const [cardsReversed, setCardsReversed] = useState(readInitialCardReversed);
+  const [receiptZoomOpen, setReceiptZoomOpen] = useState(false);
+  const [receiptZoomScale, setReceiptZoomScale] = useState(1.6);
   const openedAt = useRef<number>(0);
 
   const setCorpFilter = useCallback((next: string) => {
@@ -207,6 +225,14 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CARD_ORDER_STORAGE_KEY, cardsReversed ? "receipt-left" : "info-left");
+    } catch {
+      // 表示順の記憶に失敗してもレビュー操作は継続できる。
+    }
+  }, [cardsReversed]);
 
   // タブがアクティブになった瞬間に最新データを読み直す（スマホからの新着申請を反映）
   useEffect(() => {
@@ -384,7 +410,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       qualified_class: current.qualified_class ?? "",
       qualified_number: current.qualified_number ?? "",
       category_id: current.category_id ?? "",
-      description: current.description ?? "",
+      description: displayDescription(current.description),
     });
     let cancelled = false;
     void (async () => {
@@ -435,7 +461,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     amount: row.amount,
     store_name: row.store_name ?? "",
     qualified_number: row.qualified_number ?? "",
-    description: row.description ?? "",
+    description: displayDescription(row.description),
     applicant_employee_id: employeeLabel(row, employees),
   }), [effectiveCorpId, employees]);
 
@@ -515,6 +541,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       const uid = auth?.user?.id ?? null;
       const nowIso = new Date().toISOString();
       const nextCorpId = form.corp_id || effectiveCorpId(current) || null;
+      const nextDescription = displayDescription(form.description).trim() || null;
       const up = await supabase
         .from("bud_expense_requests")
         .update({
@@ -527,7 +554,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           qualified_class: form.qualified_class || null,
           qualified_number: normalizeQualifiedNumberInput(form.qualified_number) || null,
           category_id: form.category_id || null,
-          description: form.description || null,
+          description: nextDescription,
           keiri_checked_by: uid,
           keiri_checked_at: nowIso,
           status: action === "approve" ? "final_pending" : "keiri_returned",
@@ -726,13 +753,23 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       {loaded && current && form && (
         <div style={reviewShell}>
           <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={layoutToolRow}>
+              <button type="button" style={layoutToggleBtn} onClick={() => setCardsReversed((value) => !value)}>
+                ⇄ 左右入替
+              </button>
+            </div>
             <div style={twoCol}>
-              <div style={panel}>
+              <div style={{ ...panel, order: cardsReversed ? 2 : 1 }}>
                 <h2 style={panelTitle}>申請情報</h2>
                 <div style={formRows}>
                   <div style={fieldRow(FISCAL_COLS)}>
                     <InfoValue label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</InfoValue>
-                    <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
+                    <InfoValue label="申請者">
+                      <span style={applicantLine}>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{employeeLabel(current, employees)}</span>
+                        {current.description === OCR_CONFIRM_DESCRIPTION && <span style={ocrBadge}>OCR要確認</span>}
+                      </span>
+                    </InfoValue>
                   </div>
 
                   <div style={fieldRow(FISCAL_COLS)}>
@@ -740,7 +777,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       <select
                         value={searchMode ? activeSearch.corp_id ?? "" : form.corp_id}
                         onChange={(e) => (searchMode ? setSearchField("corp_id", e.target.value) : setF("corp_id", e.target.value))}
-                        style={input}
+                        style={requiredFieldStyle(searchMode, form.corp_id)}
                       >
                         <option value="">未設定</option>
                         {sortedCorps.map((corp) => (
@@ -767,7 +804,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         value={searchMode ? activeSearch.receipt_date ?? "" : form.receipt_date}
                         onChange={(e) => (searchMode ? setSearchField("receipt_date", e.target.value) : setF("receipt_date", e.target.value))}
                         placeholder={searchMode ? "//・7/1...7/31" : undefined}
-                        style={input}
+                        style={requiredFieldStyle(searchMode, form.receipt_date)}
                       />
                     </Field>
                     <Field label="レシート時刻">
@@ -787,7 +824,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       <select
                         value={searchMode ? activeSearch.category_id ?? "" : form.category_id}
                         onChange={(e) => (searchMode ? setSearchField("category_id", e.target.value) : setF("category_id", e.target.value))}
-                        style={searchMode || form.category_id ? input : { ...input, background: "#b35850", color: "#fff", fontWeight: 700 }}
+                        style={requiredFieldStyle(searchMode, form.category_id)}
                       >
                         <option value="">（未選択）</option>
                         {cats.map((c) => (
@@ -802,7 +839,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       <select
                         value={searchMode ? activeSearch.qualified_class ?? "" : form.qualified_class}
                         onChange={(e) => (searchMode ? setSearchField("qualified_class", e.target.value) : setF("qualified_class", e.target.value))}
-                        style={searchMode || form.qualified_class ? input : { ...input, background: "#b35850", color: "#fff", fontWeight: 700 }}
+                        style={requiredFieldStyle(searchMode, form.qualified_class)}
                       >
                         <option value="">（未選択）</option>
                         <option value="有">有</option>
@@ -851,7 +888,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                           value={searchMode ? activeSearch.store_name ?? "" : form.store_name}
                           onChange={(e) => (searchMode ? setSearchField("store_name", e.target.value) : setF("store_name", e.target.value))}
                           placeholder={searchMode ? "部分一致・==完全一致・!除外" : undefined}
-                          style={input}
+                          style={requiredFieldStyle(searchMode, form.store_name)}
                         />
                       </Field>
                     </div>
@@ -871,7 +908,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                           setF("amount", normalizeAmountInput(e.target.value));
                         }}
                         placeholder={searchMode ? ">5000" : undefined}
-                        style={{ ...input, textAlign: "right" }}
+                        style={{ ...requiredAmountStyle(searchMode, form.amount), textAlign: "right" }}
                       />
                     </Field>
                   </div>
@@ -907,7 +944,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 </div>
               </div>
 
-              <div style={{ ...panel, display: "flex", flexDirection: "column" }}>
+              <div style={{ ...panel, display: "flex", flexDirection: "column", order: cardsReversed ? 1 : 2 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <h2 style={panelTitle}>領収書</h2>
                   {imgUrl && (
@@ -928,10 +965,15 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       src={imgUrl}
                       alt="領収書"
                       onLoad={(e) => setNatSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+                      onClick={() => {
+                        setReceiptZoomScale(1.6);
+                        setReceiptZoomOpen(true);
+                      }}
                       style={{
                         ...receiptImgSize(rotation, recBox, natSize),
                         borderRadius: 10,
                         border: "1px solid #e2ddcf",
+                        cursor: "zoom-in",
                         transform: `rotate(${rotation}deg)`,
                       }}
                     />
@@ -954,6 +996,49 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           onPendingClick={jumpToPending}
           onProcessedClick={openDetail}
         />
+      )}
+
+      {receiptZoomOpen && imgUrl && (
+        <div style={zoomBackdrop} role="dialog" aria-modal="true" aria-label="領収書拡大表示">
+          <div style={zoomHead}>
+            <strong>領収書ズーム</strong>
+            <div style={zoomTools}>
+              <button type="button" style={zoomBtn} onClick={() => setReceiptZoomScale((value) => Math.max(0.8, value - 0.25))}>
+                −
+              </button>
+              <span style={zoomScaleText}>{Math.round(receiptZoomScale * 100)}%</span>
+              <button type="button" style={zoomBtn} onClick={() => setReceiptZoomScale((value) => Math.min(4, value + 0.25))}>
+                +
+              </button>
+              <button type="button" style={zoomBtn} onClick={() => setReceiptZoomScale(1.6)}>
+                等倍
+              </button>
+              <button type="button" style={zoomCloseBtn} onClick={() => setReceiptZoomOpen(false)} aria-label="閉じる">
+                ×
+              </button>
+            </div>
+          </div>
+          <div
+            style={zoomCanvas}
+            onWheel={(event) => {
+              event.preventDefault();
+              const delta = event.deltaY > 0 ? -0.18 : 0.18;
+              setReceiptZoomScale((value) => Math.max(0.8, Math.min(4, value + delta)));
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imgUrl}
+              alt="領収書拡大"
+              style={{
+                maxWidth: "none",
+                width: `${receiptZoomScale * 100}%`,
+                transform: `rotate(${rotation}deg)`,
+                transformOrigin: "center center",
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {detail && (
@@ -1086,7 +1171,7 @@ function DetailModal({
             <Row label="区分">{categoryLabel(row.category_id, cats)}</Row>
             <Row label="店名">{row.store_name ?? "—"}</Row>
             <Row label="金額">{yen(row.amount ?? 0)}</Row>
-            <Row label="摘要">{row.description ?? "—"}</Row>
+            <Row label="摘要">{displayDescription(row.description) || "—"}</Row>
             {row.return_reason && <Row label="差戻し">{row.return_reason}</Row>}
           </div>
           <div>
@@ -1358,6 +1443,52 @@ const input: React.CSSProperties = {
   background: "var(--bg-card-solid)",
   color: "var(--text-main)",
 };
+const missingRequiredInput: React.CSSProperties = {
+  background: "#b35850",
+  border: "1px solid rgba(179,88,80,0.72)",
+  color: "#fff",
+  fontWeight: 700,
+};
+function requiredFieldStyle(searchMode: boolean, value: string): React.CSSProperties {
+  return searchMode || value.trim() ? input : { ...input, ...missingRequiredInput };
+}
+function requiredAmountStyle(searchMode: boolean, value: string): React.CSSProperties {
+  return searchMode || normalizeAmountInput(value) ? input : { ...input, ...missingRequiredInput };
+}
+const applicantLine: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  minWidth: 0,
+};
+const ocrBadge: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  flexShrink: 0,
+  borderRadius: 999,
+  padding: "2px 8px",
+  background: "rgba(179,88,80,0.14)",
+  border: "1px solid rgba(179,88,80,0.34)",
+  color: "#b35850",
+  fontSize: 11,
+  fontWeight: 700,
+  lineHeight: "16px",
+};
+const layoutToolRow: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  marginBottom: 8,
+};
+const layoutToggleBtn: React.CSSProperties = {
+  border: "1px solid rgba(179,137,46,0.28)",
+  borderRadius: 999,
+  background: "var(--bg-card-solid)",
+  color: "#b3892e",
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 700,
+  padding: "6px 12px",
+};
 const approveBtn: React.CSSProperties = {
   flex: 1,
   padding: 13,
@@ -1549,6 +1680,51 @@ const closeBtn: React.CSSProperties = {
   cursor: "pointer",
 };
 const modalGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 18, alignItems: "start" };
+const zoomBackdrop: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 1100,
+  background: "rgba(24,20,14,0.78)",
+  display: "flex",
+  flexDirection: "column",
+  padding: 18,
+};
+const zoomHead: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  color: "#fff",
+  marginBottom: 12,
+};
+const zoomTools: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8 };
+const zoomBtn: React.CSSProperties = {
+  border: "1px solid rgba(255,255,255,0.28)",
+  borderRadius: 8,
+  background: "rgba(255,253,245,0.12)",
+  color: "#fff",
+  cursor: "pointer",
+  minWidth: 34,
+  padding: "7px 10px",
+};
+const zoomCloseBtn: React.CSSProperties = {
+  ...zoomBtn,
+  borderRadius: 999,
+  fontSize: 18,
+  lineHeight: 1,
+};
+const zoomScaleText: React.CSSProperties = { minWidth: 52, textAlign: "center", fontVariantNumeric: "tabular-nums" };
+const zoomCanvas: React.CSSProperties = {
+  flex: 1,
+  overflow: "auto",
+  borderRadius: 12,
+  background: "rgba(255,253,245,0.92)",
+  border: "1px solid rgba(255,255,255,0.18)",
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  padding: 24,
+};
 const rotateImgBtn: React.CSSProperties = {
   padding: "6px 14px",
   borderRadius: 8,
