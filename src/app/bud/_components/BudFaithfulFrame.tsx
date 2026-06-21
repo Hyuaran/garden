@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
@@ -59,6 +59,7 @@ type BudFaithfulFrameProps = {
   subtitle: string;
   sourceCss: string;
   sourceHtml: string;
+  children?: ReactNode;
 };
 
 export function BudFaithfulFrame({
@@ -68,6 +69,7 @@ export function BudFaithfulFrame({
   subtitle,
   sourceCss,
   sourceHtml,
+  children,
 }: BudFaithfulFrameProps) {
   const { sessionUser, signOut, budRole } = useBudState();
   const userName = sessionUser?.name ?? "東海林 美琴";
@@ -112,6 +114,7 @@ export function BudFaithfulFrame({
             onClick={handleTabClick}
             dangerouslySetInnerHTML={{ __html: sourceHtml }}
           />
+          {children}
         </div>
       </GardenShell>
     </BudGate>

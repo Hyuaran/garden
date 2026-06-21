@@ -4,7 +4,9 @@
  * 認証は OAuth（東海林さん本人の一度きりの許可・refresh token 方式）。
  *   1. 環境変数 GOOGLE_DRIVE_OAUTH_JSON（本番 Vercel 用・{client_id, client_secret, refresh_token}）
  *   2. ローカルファイル .secrets/garden-bud-oauth-token.json（開発用・gitignore 済み）
- * スコープは drive.file（このアプリが作成したフォルダ/ファイルのみ操作可）。
+ * スコープは既存の画面アップロード用途では drive.file。
+ * 複合機→Drive同期ファイルの取り込みでは、外部作成ファイルを読むため
+ * drive.readonly 以上へ再認証した refresh_token が必要。
  * ファイルの所有者はユーザー本人になり、本人の保存容量を使う。
  * ※サービスアカウント方式は「SAは保存容量を持たない」Google仕様により廃止（2026-06-11）。
  *
@@ -17,6 +19,19 @@ import { join } from "node:path";
 type OAuthCreds = { client_id: string; client_secret: string; refresh_token: string };
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
+
+export type DriveFolderFile = {
+  id: string;
+  name: string;
+  mimeType: "application/pdf" | "image/jpeg" | "image/png";
+  createdTime: string | null;
+};
+
+const TRANSFER_INBOX_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+]);
 
 function loadOAuthCreds(): OAuthCreds {
   const env = process.env.GOOGLE_DRIVE_OAUTH_JSON;
@@ -50,6 +65,64 @@ async function driveFetch(path: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${token}`);
   return fetch(`https://www.googleapis.com${path}`, { ...init, headers });
+}
+
+/** 指定フォルダ直下のPDF/JPG/PNGを列挙する。drive.readonly 以上のscopeが必要。 */
+export async function listFolderFiles(folderId: string): Promise<DriveFolderFile[]> {
+  const q =
+    `'${folderId}' in parents and trashed=false and (` +
+    "mimeType='application/pdf' or mimeType='image/jpeg' or mimeType='image/png')";
+  const fields = "nextPageToken,files(id,name,mimeType,createdTime)";
+  const files: DriveFolderFile[] = [];
+  let pageToken: string | null = null;
+
+  do {
+    const params = new URLSearchParams({
+      q,
+      fields,
+      pageSize: "100",
+      orderBy: "createdTime",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const res = await driveFetch(`/drive/v3/files?${params.toString()}`);
+    if (!res.ok) throw new Error(`Drive list error: ${res.status} ${await res.text()}`);
+    const data = (await res.json()) as {
+      nextPageToken?: string;
+      files?: Array<{
+        id?: string;
+        name?: string;
+        mimeType?: string;
+        createdTime?: string;
+      }>;
+    };
+    for (const file of data.files ?? []) {
+      if (
+        file.id &&
+        file.name &&
+        file.mimeType &&
+        TRANSFER_INBOX_MIME_TYPES.has(file.mimeType)
+      ) {
+        files.push({
+          id: file.id,
+          name: file.name,
+          mimeType: file.mimeType as DriveFolderFile["mimeType"],
+          createdTime: file.createdTime ?? null,
+        });
+      }
+    }
+    pageToken = data.nextPageToken ?? null;
+  } while (pageToken);
+
+  return files;
+}
+
+/** Driveファイル本体をダウンロードする。drive.readonly 以上のscopeが必要。 */
+export async function downloadFile(fileId: string): Promise<Buffer> {
+  const res = await driveFetch(
+    `/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
+  );
+  if (!res.ok) throw new Error(`Drive download error: ${res.status} ${await res.text()}`);
+  return Buffer.from(await res.arrayBuffer());
 }
 
 /** フォルダへ画像をアップロードし {id, webViewLink} を返す */
