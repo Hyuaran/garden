@@ -983,11 +983,15 @@ export default function GardenShell({
             <span className="nav-pages-app-name">{resolvedModuleName}</span>
           </Link>
           <div className="nav-pages-divider" aria-hidden="true" />
-          {pageMenu.map((p) => (
-            <Link key={p.href} href={p.href} className={`nav-page-item${p.active ? " active" : ""}`}>
-              {p.icon && <span className="nav-page-icon"><img src={p.icon} alt="" /></span>}
-              <span className="nav-page-label">{p.label}</span>
-            </Link>
+          {pageMenu.map((p, index) => (
+            p.divider ? (
+              <div key={`divider-${index}`} className="nav-pages-divider" aria-hidden="true" />
+            ) : (
+              <Link key={p.href} href={p.href} className={`nav-page-item${p.active ? " active" : ""}`}>
+                {p.icon && <span className="nav-page-icon"><img src={p.icon} alt="" /></span>}
+                <span className="nav-page-label">{p.label}</span>
+              </Link>
+            )
           ))}
         </div>
       </aside>
