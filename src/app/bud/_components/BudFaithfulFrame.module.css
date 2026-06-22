@@ -8,6 +8,10 @@
   padding: 0 22px 48px;
 }
 
+.topSlot {
+  width: 100%;
+}
+
 .htmlPort {
   --text-main: #3d3528;
   --text-sub: #6d6356;

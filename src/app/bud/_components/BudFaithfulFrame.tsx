@@ -45,7 +45,7 @@ function handleNativeTabClick(event: globalThis.MouseEvent) {
   }
 }
 
-function formatRoleLabel(role: string | null): string {
+export function formatBudRoleLabel(role: string | null): string {
   if (role === "admin") return "全権管理 + 経理担当";
   if (role === "approver") return "承認者 + 経理担当";
   if (role === "staff") return "経理担当";
@@ -59,6 +59,7 @@ type BudFaithfulFrameProps = {
   subtitle: string;
   sourceCss: string;
   sourceHtml: string;
+  topSlot?: ReactNode;
   children?: ReactNode;
 };
 
@@ -69,6 +70,7 @@ export function BudFaithfulFrame({
   subtitle,
   sourceCss,
   sourceHtml,
+  topSlot,
   children,
 }: BudFaithfulFrameProps) {
   const { sessionUser, signOut, budRole } = useBudState();
@@ -94,7 +96,7 @@ export function BudFaithfulFrame({
         activityItems={budActivityItems}
         userName={userName}
         userEmail={sessionUser?.employee_number ? `${sessionUser.employee_number}@garden.local` : null}
-        userRoleLabel={formatRoleLabel(budRole)}
+        userRoleLabel={formatBudRoleLabel(budRole)}
         onLogout={signOut}
       >
         <div className={styles.pageStack}>
@@ -102,10 +104,11 @@ export function BudFaithfulFrame({
             title={title}
             titleJp={titleJp}
             subtitle={subtitle}
-            accessBadge={{ icon: "♕", label: formatRoleLabel(budRole) }}
+            accessBadge={{ icon: "♕", label: formatBudRoleLabel(budRole) }}
             moduleMark="bud"
             favoriteIcon={BUD_ICON}
           />
+          {topSlot ? <div className={styles.topSlot}>{topSlot}</div> : null}
           <style dangerouslySetInnerHTML={{ __html: sourceCss }} />
           <main
             ref={bindTabClick}

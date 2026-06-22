@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { BudFaithfulFrame } from "../_components/BudFaithfulFrame";
 import { TransferInboxTray } from "./_components/TransferInboxTray";
 
@@ -14,6 +16,16 @@ export default function TransfersPage() {
       subtitle="振込予定、承認待ち、実行履歴をカレンダーと一覧で見渡します。"
       sourceCss={SOURCE_CSS}
       sourceHtml={SOURCE_HTML}
+      topSlot={
+        <div className="flex justify-end">
+          <Link
+            href="/bud/transfers/new-regular"
+            className="inline-flex items-center justify-center rounded-full border border-amber-300 bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+          >
+            ＋ 新規作成（請求書アップロード）
+          </Link>
+        </div>
+      }
     >
       <TransferInboxTray />
     </BudFaithfulFrame>

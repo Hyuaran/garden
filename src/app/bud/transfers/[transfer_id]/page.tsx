@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BudGate } from "../../_components/BudGate";
-import { BudShell } from "../../_components/BudShell";
+import { BudGardenFrame } from "../../_components/BudGardenFrame";
 import { fetchTransferById } from "../../_lib/transfer-queries";
 import type { BudTransfer } from "../../_constants/types";
 import { StatusBadge } from "../_components/StatusBadge";
@@ -253,10 +252,13 @@ function Row({
 
 export default function TransferDetailPage() {
   return (
-    <BudGate>
-      <BudShell>
-        <TransferDetailContent />
-      </BudShell>
-    </BudGate>
+    <BudGardenFrame
+      route="/bud/transfers"
+      title="振込 詳細"
+      titleJp="依頼の流れを、ひとつずつ確認する"
+      subtitle="振込依頼の内容、承認状態、履歴を確認します。"
+    >
+      <TransferDetailContent />
+    </BudGardenFrame>
   );
 }
