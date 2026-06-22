@@ -20,6 +20,7 @@ import { DataSourceSelector } from "./DataSourceSelector";
 import { AttachmentUploader } from "./AttachmentUploader";
 import { DuplicateWarning } from "./DuplicateWarning";
 import { KanaPreview } from "./KanaPreview";
+import { transferFormStyles as styles } from "./transferFormStyles";
 
 interface DuplicateHit {
   transfer_id: string;
@@ -193,8 +194,8 @@ export function TransferFormCashback() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      <h1 className="text-2xl font-bold text-gray-800">
+    <div className={styles.shell}>
+      <h1 className={styles.title}>
         新規振込依頼（キャッシュバック）
       </h1>
 
@@ -204,8 +205,8 @@ export function TransferFormCashback() {
         disabled={submitting}
       />
 
-      <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-        <h2 className="text-sm font-medium text-gray-700">販売法人・支払元</h2>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>販売法人・支払元</h2>
         <BankPicker
           executeCompanyId={executeCompanyId}
           onCompanyChange={setExecuteCompanyId}
@@ -215,8 +216,8 @@ export function TransferFormCashback() {
         />
       </section>
 
-      <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-        <h2 className="text-sm font-medium text-gray-700">申込者・商材</h2>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>申込者・商材</h2>
         <TextField
           label="申込者名 *"
           value={applicantName}
@@ -254,8 +255,8 @@ export function TransferFormCashback() {
         />
       </section>
 
-      <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-        <h2 className="text-sm font-medium text-gray-700">振込先口座（手入力）</h2>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>振込先口座（手入力）</h2>
         <div className="grid grid-cols-2 gap-3">
           <TextField
             label="銀行名"
@@ -290,12 +291,12 @@ export function TransferFormCashback() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="text-xs text-gray-600">預金種目 *</span>
+            <span className={styles.label}>預金種目 *</span>
             <select
               value={accountType}
               onChange={(e) => setAccountType(e.target.value)}
               disabled={submitting}
-              className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+              className={styles.field}
             >
               <option value="1">普通</option>
               <option value="2">当座</option>
@@ -321,10 +322,10 @@ export function TransferFormCashback() {
         <KanaPreview input={holderKana} />
       </section>
 
-      <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-        <h2 className="text-sm font-medium text-gray-700">金額・日付</h2>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>金額・日付</h2>
         <label className="block">
-          <span className="text-xs text-gray-600">CB 金額 *（円）</span>
+          <span className={styles.label}>CB 金額 *（円）</span>
           <input
             type="number"
             min="1"
@@ -334,48 +335,48 @@ export function TransferFormCashback() {
               setAmount(e.target.value === "" ? "" : Number(e.target.value))
             }
             disabled={submitting}
-            className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            className={styles.field}
           />
           {errors.amount && (
-            <p className="text-xs text-red-600" role="alert">
+            <p className={styles.error} role="alert">
               {errors.amount}
             </p>
           )}
         </label>
         <label className="block">
-          <span className="text-xs text-gray-600">振込予定日 *（翌営業日以降）</span>
+          <span className={styles.label}>振込予定日 *（翌営業日以降）</span>
           <input
             type="date"
             value={scheduledDate}
             onChange={(e) => setScheduledDate(e.target.value)}
             disabled={submitting}
-            className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            className={styles.field}
           />
           {errors.scheduled_date && (
-            <p className="text-xs text-red-600" role="alert">
+            <p className={styles.error} role="alert">
               {errors.scheduled_date}
             </p>
           )}
         </label>
         <label className="block">
-          <span className="text-xs text-gray-600">支払期日（任意）</span>
+          <span className={styles.label}>支払期日（任意）</span>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             disabled={submitting}
-            className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            className={styles.field}
           />
           {errors.due_date && (
-            <p className="text-xs text-red-600" role="alert">
+            <p className={styles.error} role="alert">
               {errors.due_date}
             </p>
           )}
         </label>
       </section>
 
-      <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-        <h2 className="text-sm font-medium text-gray-700">添付・備考</h2>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>添付・備考</h2>
         <AttachmentUploader
           file={attachmentFile}
           onChange={setAttachmentFile}
@@ -383,16 +384,16 @@ export function TransferFormCashback() {
           disabled={submitting}
         />
         <label className="block">
-          <span className="text-xs text-gray-600">備考（500 文字以下）</span>
+          <span className={styles.label}>備考（500 文字以下）</span>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             disabled={submitting}
             rows={3}
-            className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            className={styles.field}
           />
           {errors.notes && (
-            <p className="text-xs text-red-600" role="alert">
+            <p className={styles.error} role="alert">
               {errors.notes}
             </p>
           )}
@@ -410,7 +411,7 @@ export function TransferFormCashback() {
       {serverError && (
         <div
           role="alert"
-          className="bg-red-50 border border-red-200 text-red-800 text-sm rounded p-3"
+          className={styles.alert}
         >
           {serverError}
         </div>
@@ -421,7 +422,7 @@ export function TransferFormCashback() {
           type="button"
           onClick={() => router.push("/bud/transfers")}
           disabled={submitting}
-          className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
+          className={styles.secondaryButton}
         >
           キャンセル
         </button>
@@ -429,7 +430,7 @@ export function TransferFormCashback() {
           type="button"
           onClick={() => handleSubmit(false)}
           disabled={submitting}
-          className="px-4 py-2 text-sm bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-50"
+          className={styles.mutedButton}
         >
           {submitting ? "送信中…" : "下書き保存"}
         </button>
@@ -438,7 +439,7 @@ export function TransferFormCashback() {
             type="button"
             onClick={() => handleSubmit(true)}
             disabled={submitting}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className={styles.goldButton}
           >
             {submitting ? "送信中…" : "確認済みとして保存"}
           </button>
@@ -460,17 +461,17 @@ interface TextFieldProps {
 function TextField({ label, value, onChange, disabled, maxLength, error }: TextFieldProps) {
   return (
     <label className="block">
-      <span className="text-xs text-gray-600">{label}</span>
+      <span className={styles.label}>{label}</span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         maxLength={maxLength}
-        className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+        className={styles.field}
       />
       {error && (
-        <p className="text-xs text-red-600" role="alert">
+        <p className={styles.error} role="alert">
           {error}
         </p>
       )}

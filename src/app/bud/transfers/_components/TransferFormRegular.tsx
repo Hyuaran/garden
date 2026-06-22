@@ -21,6 +21,7 @@ import { DataSourceSelector } from "./DataSourceSelector";
 import { AttachmentUploader } from "./AttachmentUploader";
 import { DuplicateWarning } from "./DuplicateWarning";
 import { KanaPreview } from "./KanaPreview";
+import { transferFormStyles as styles } from "./transferFormStyles";
 
 interface DuplicateHit {
   transfer_id: string;
@@ -401,16 +402,16 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      <h1 className="text-2xl font-bold text-gray-800">新規振込依頼（通常）</h1>
+    <div className={styles.shell}>
+      <h1 className={styles.title}>新規振込依頼（通常）</h1>
 
-      <section className="border border-amber-200 rounded-lg p-4 bg-amber-50/70 space-y-3">
+      <section className={styles.ocrPanel}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <h2 className="text-sm font-medium text-amber-900">
+            <h2 className={styles.ocrTitle}>
               請求書OCR自動入力
             </h2>
-            <p className="text-xs text-amber-800">
+            <p className={styles.ocrText}>
               PDF / JPG / PNG から振込先・金額・振込予定日を読み取り、添付にも設定します。
             </p>
           </div>
@@ -418,7 +419,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
             type="button"
             onClick={() => invoiceOcrInputRef.current?.click()}
             disabled={busy}
-            className="shrink-0 rounded bg-amber-700 px-4 py-2 text-sm text-white hover:bg-amber-800 disabled:opacity-50"
+            className={`${styles.goldButton} shrink-0`}
           >
             {ocrBusy ? "OCR中…" : "請求書を選択"}
           </button>
@@ -434,12 +435,12 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
           }
         />
         {ocrMessage && (
-          <p className="text-xs text-amber-900" role="status">
+          <p className="text-xs text-[#b3892e]" role="status">
             {ocrMessage}
           </p>
         )}
         {inboxAttachment && (
-          <p className="text-xs text-amber-800">
+          <p className={styles.ocrText}>
             未処理トレイ添付: {inboxAttachment.fileName}
           </p>
         )}
@@ -451,8 +452,8 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
         disabled={busy}
       />
 
-      <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-        <h2 className="text-sm font-medium text-gray-700">基本情報</h2>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>基本情報</h2>
         <BankPicker
           executeCompanyId={executeCompanyId}
           onCompanyChange={setExecuteCompanyId}
@@ -461,36 +462,36 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
           disabled={busy}
         />
         {errors.execute_company_id && (
-          <p className="text-xs text-red-600" role="alert">
+          <p className={styles.error} role="alert">
             {errors.execute_company_id}
           </p>
         )}
         {errors.source_account_id && (
-          <p className="text-xs text-red-600" role="alert">
+          <p className={styles.error} role="alert">
             {errors.source_account_id}
           </p>
         )}
       </section>
 
-      <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-        <h2 className="text-sm font-medium text-gray-700">振込先</h2>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>振込先</h2>
         <VendorPicker
           selectedVendorId={vendor?.id ?? ""}
           onSelect={setVendor}
           disabled={busy}
         />
         {vendor && !vendor.id && (
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-[#b3892e]">
             OCRで読み取った振込先です。既存取引先を使う場合は選択し直してください。
           </p>
         )}
         {errors.payee_name && (
-          <p className="text-xs text-red-600" role="alert">
+          <p className={styles.error} role="alert">
             {errors.payee_name}
           </p>
         )}
         {vendor && (
-          <div className="text-xs text-gray-500 bg-gray-50 rounded p-2 space-y-0.5">
+          <div className={styles.infoCard}>
             <div>
               銀行: {vendor.payee_bank_name ?? "—"}（{vendor.payee_bank_code}）
             </div>
@@ -509,7 +510,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
           </div>
         )}
         <label className="block">
-          <span className="text-xs text-gray-600">振込金額 *（円）</span>
+          <span className={styles.label}>振込金額 *（円）</span>
           <input
             type="number"
             min="1"
@@ -519,21 +520,21 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
               setAmount(e.target.value === "" ? "" : Number(e.target.value))
             }
             disabled={busy}
-            className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            className={styles.field}
           />
           {errors.amount && (
-            <p className="text-xs text-red-600" role="alert">
+            <p className={styles.error} role="alert">
               {errors.amount}
             </p>
           )}
         </label>
         <fieldset>
-          <legend className="text-xs text-gray-600">手数料負担</legend>
+          <legend className={styles.label}>手数料負担</legend>
           <div className="flex gap-4 mt-1">
             {["当方負担", "先方負担"].map((fb) => (
               <label
                 key={fb}
-                className="inline-flex items-center gap-2 text-sm cursor-pointer"
+                className={styles.radioLabel}
               >
                 <input
                   type="radio"
@@ -542,51 +543,51 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                   checked={feeBearer === fb}
                   onChange={() => setFeeBearer(fb)}
                   disabled={busy}
-                  className="accent-emerald-600"
+                  className={styles.radio}
                 />
-                <span className="text-gray-900">{fb}</span>
+                <span>{fb}</span>
               </label>
             ))}
           </div>
         </fieldset>
       </section>
 
-      <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-        <h2 className="text-sm font-medium text-gray-700">日付</h2>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>日付</h2>
         <label className="block">
-          <span className="text-xs text-gray-600">振込予定日 *（翌営業日以降）</span>
+          <span className={styles.label}>振込予定日 *（翌営業日以降）</span>
           <input
             type="date"
             value={scheduledDate}
             onChange={(e) => setScheduledDate(e.target.value)}
             disabled={busy}
-            className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            className={styles.field}
           />
           {errors.scheduled_date && (
-            <p className="text-xs text-red-600" role="alert">
+            <p className={styles.error} role="alert">
               {errors.scheduled_date}
             </p>
           )}
         </label>
         <label className="block">
-          <span className="text-xs text-gray-600">支払期日（任意）</span>
+          <span className={styles.label}>支払期日（任意）</span>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             disabled={busy}
-            className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            className={styles.field}
           />
           {errors.due_date && (
-            <p className="text-xs text-red-600" role="alert">
+            <p className={styles.error} role="alert">
               {errors.due_date}
             </p>
           )}
         </label>
       </section>
 
-      <section className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-        <h2 className="text-sm font-medium text-gray-700">添付・備考</h2>
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>添付・備考</h2>
         <AttachmentUploader
           file={attachmentFile}
           onChange={setAttachmentFile}
@@ -594,16 +595,16 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
           disabled={busy}
         />
         <label className="block">
-          <span className="text-xs text-gray-600">備考（500 文字以下）</span>
+          <span className={styles.label}>備考（500 文字以下）</span>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             disabled={busy}
             rows={3}
-            className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            className={styles.field}
           />
           {errors.notes && (
-            <p className="text-xs text-red-600" role="alert">
+            <p className={styles.error} role="alert">
               {errors.notes}
             </p>
           )}
@@ -621,7 +622,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
       {serverError && (
         <div
           role="alert"
-          className="bg-red-50 border border-red-200 text-red-800 text-sm rounded p-3"
+          className={styles.alert}
         >
           {serverError}
         </div>
@@ -632,7 +633,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
           type="button"
           onClick={() => router.push("/bud/transfers")}
           disabled={busy}
-          className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
+          className={styles.secondaryButton}
         >
           キャンセル
         </button>
@@ -640,7 +641,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
           type="button"
           onClick={() => handleSubmit(false)}
           disabled={busy}
-          className="px-4 py-2 text-sm bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-50"
+          className={styles.mutedButton}
         >
           {submitting ? "送信中…" : "下書き保存"}
         </button>
@@ -649,7 +650,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
             type="button"
             onClick={() => handleSubmit(true)}
             disabled={busy}
-            className="px-4 py-2 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+            className={styles.goldButton}
           >
             {submitting ? "送信中…" : "確認済みとして保存"}
           </button>

@@ -6,6 +6,7 @@ import {
   type AttachmentMeta,
   ATTACHMENT_ALLOWED_MIME_TYPES,
 } from "../_lib/transfer-create-schema";
+import { transferFormStyles as styles } from "./transferFormStyles";
 
 interface Props {
   file: File | null;
@@ -45,36 +46,36 @@ export function AttachmentUploader({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled}
-          className="bg-white border border-gray-300 text-gray-700 text-sm px-3 py-1.5 rounded hover:bg-gray-50 disabled:opacity-50"
+          className={styles.linkButton}
         >
           📎 ファイルを選択
         </button>
         {file ? (
           <>
-            <span className="text-sm text-gray-700 truncate max-w-xs">
+            <span className="max-w-xs truncate text-sm text-text-main">
               {file.name}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className={styles.hint}>
               ({Math.round(file.size / 1024)} KB)
             </span>
             <button
               type="button"
               onClick={() => onChange(null)}
               disabled={disabled}
-              className="text-xs text-red-600 hover:text-red-700 underline"
+              className="text-xs text-text-warning underline transition hover:opacity-80"
             >
               削除
             </button>
           </>
         ) : (
-          <span className="text-xs text-gray-400">未選択</span>
+          <span className={styles.hint}>未選択</span>
         )}
       </div>
-      <p className="text-xs text-gray-500 mt-1">
+      <p className={`${styles.hint} mt-1`}>
         PDF / JPG / PNG、10MB 以下
       </p>
       {displayError && (
-        <p className="text-xs text-red-600 mt-1" role="alert">
+        <p className={`${styles.error} mt-1`} role="alert">
           {displayError}
         </p>
       )}

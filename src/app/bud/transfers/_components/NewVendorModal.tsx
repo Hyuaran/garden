@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "../../_lib/supabase";
+import { transferFormStyles as styles } from "./transferFormStyles";
 
 export interface NewVendorFormInput {
   name: string;
@@ -87,25 +88,25 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-lg font-medium text-gray-900">新規取引先を追加</h2>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[12px] border border-[rgba(179,137,46,0.18)] bg-bg-paper-soft shadow-garden-floating">
+        <div className="flex items-center justify-between border-b border-[rgba(179,137,46,0.18)] px-5 py-4">
+          <h2 className="font-shippori text-lg font-semibold text-text-main">新規取引先を追加</h2>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-text-sub transition hover:text-text-main disabled:opacity-50"
             aria-label="閉じる"
           >
             ✕
           </button>
         </div>
 
-        <div className="p-4 space-y-3">
+        <div className="space-y-3 p-5">
           <Field label="取引先名 *" value={form.name} onChange={(v) => handleChange("name", v)} />
           <div className="grid grid-cols-2 gap-3">
             <Field label="銀行名" value={form.bank_name} onChange={(v) => handleChange("bank_name", v)} />
@@ -117,11 +118,11 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="text-xs text-gray-600">預金種目 *</span>
+              <span className={styles.label}>預金種目 *</span>
               <select
                 value={form.account_type}
                 onChange={(e) => handleChange("account_type", e.target.value)}
-                className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                className={styles.field}
               >
                 <option value="1">普通</option>
                 <option value="2">当座</option>
@@ -133,18 +134,18 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
           <Field label="口座名義カナ" value={form.account_holder_kana} onChange={(v) => handleChange("account_holder_kana", v)} />
 
           {error && (
-            <div role="alert" className="bg-red-50 border border-red-200 text-red-800 text-sm rounded p-2">
+            <div role="alert" className={styles.alert}>
               {error}
             </div>
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t px-4 py-3 bg-gray-50">
+        <div className="flex justify-end gap-2 border-t border-[rgba(179,137,46,0.18)] bg-[rgba(212,165,65,0.08)] px-5 py-4">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded"
+            className={styles.secondaryButton}
           >
             キャンセル
           </button>
@@ -152,7 +153,7 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="px-4 py-1.5 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+            className={styles.goldButton}
           >
             {submitting ? "登録中…" : "登録"}
           </button>
@@ -172,13 +173,13 @@ interface FieldProps {
 function Field({ label, value, onChange, maxLength }: FieldProps) {
   return (
     <label className="block">
-      <span className="text-xs text-gray-600">{label}</span>
+      <span className={styles.label}>{label}</span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={maxLength}
-        className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+        className={styles.field}
       />
     </label>
   );

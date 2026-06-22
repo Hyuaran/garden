@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../_lib/supabase";
 import { NewVendorModal } from "./NewVendorModal";
+import { transferFormStyles as styles } from "./transferFormStyles";
 
 export interface Vendor {
   id: string;
@@ -58,13 +59,13 @@ export function VendorPicker({
   return (
     <div>
       <label className="block">
-        <span className="text-xs text-gray-600">取引先 *</span>
+        <span className={styles.label}>取引先 *</span>
         <div className="flex gap-2 mt-1">
           <select
             value={selectedVendorId}
             onChange={(e) => handleSelect(e.target.value)}
             disabled={disabled}
-            className="flex-1 rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+            className={styles.fieldInline}
           >
             <option value="">選択してください</option>
             {vendors.map((v) => (
@@ -77,7 +78,7 @@ export function VendorPicker({
             type="button"
             onClick={() => setModalOpen(true)}
             disabled={disabled}
-            className="bg-white border border-emerald-600 text-emerald-600 text-sm px-3 py-2 rounded hover:bg-emerald-50"
+            className={styles.linkButton}
           >
             + 新規追加
           </button>
