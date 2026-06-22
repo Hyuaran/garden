@@ -7,6 +7,7 @@ import {
   type Company,
   type Corp,
 } from "../../expenses/_components/expenseCorpUtils";
+import { transferFormStyles as styles } from "./transferFormStyles";
 
 interface BankAccount {
   id: string;
@@ -119,7 +120,7 @@ export function BankPicker({
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="text-xs text-gray-600">起票法人 *</span>
+        <span className={styles.label}>起票法人 *</span>
         <select
           value={executeCompanyId}
           onChange={(e) => {
@@ -127,7 +128,7 @@ export function BankPicker({
             onAccountChange(null);
           }}
           disabled={disabled}
-          className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+          className={styles.field}
         >
           <option value="">選択してください</option>
           {companies.map((c) => (
@@ -139,8 +140,8 @@ export function BankPicker({
       </label>
 
       <label className="block">
-        <span className="text-xs text-gray-600">
-          支払元口座 * {loading && <span className="ml-2 text-gray-400">読み込み中…</span>}
+        <span className={styles.label}>
+          支払元口座 * {loading && <span className="ml-2 text-text-muted">読み込み中…</span>}
         </span>
         <select
           value={sourceAccountId}
@@ -150,7 +151,7 @@ export function BankPicker({
             onAccountChange(acc);
           }}
           disabled={disabled || !executeCompanyId || visibleAccounts.length === 0}
-          className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 disabled:bg-gray-100"
+          className={styles.field}
         >
           <option value="">
             {!executeCompanyId
@@ -168,7 +169,7 @@ export function BankPicker({
           ))}
         </select>
         {selectedAccount && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className={`${styles.hint} mt-1`}>
             corp_code: {selectedAccount.corp_code}
             {selectedAccount.branch_code
               ? ` / 支店コード ${selectedAccount.branch_code}`

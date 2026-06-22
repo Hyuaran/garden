@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { toHalfWidthKana } from "../../../../lib/zengin/kana-converter";
+import { transferFormStyles as styles } from "./transferFormStyles";
 
 interface Props {
   input: string;
@@ -17,11 +18,11 @@ export function KanaPreview({ input, label = "半角カナ変換結果" }: Props
   if (!result) return null;
 
   return (
-    <div className="text-xs text-gray-500 mt-1">
+    <div className={`${styles.hint} mt-1`}>
       <span className="font-medium">{label}:</span>{" "}
-      <span className="font-mono text-gray-700">{result.kana}</span>
+      <span className="font-mono text-text-main">{result.kana}</span>
       {result.warnings.length > 0 && (
-        <span className="ml-2 text-amber-600">（{result.warnings.join(" / ")}）</span>
+        <span className="ml-2 text-[#b3892e]">（{result.warnings.join(" / ")}）</span>
       )}
     </div>
   );

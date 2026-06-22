@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { transferFormStyles as styles } from "./transferFormStyles";
 
 interface DuplicateEntry {
   transfer_id: string;
@@ -26,15 +27,15 @@ export function DuplicateWarning({
   return (
     <div
       role="alert"
-      className="bg-amber-50 border border-amber-300 rounded-lg p-4 my-3"
+      className="my-3 rounded-[12px] border border-[rgba(212,165,65,0.32)] bg-[rgba(212,165,65,0.12)] p-4"
     >
       <div className="flex items-start gap-2">
-        <span className="text-xl">⚠️</span>
+        <span className="text-xl text-accent-gold">!</span>
         <div className="flex-1">
-          <h3 className="font-medium text-amber-900">
+          <h3 className="font-shippori font-semibold text-text-main">
             同条件の振込が {duplicates.length} 件あります
           </h3>
-          <p className="text-xs text-amber-800 mt-1">
+          <p className="mt-1 text-xs text-text-sub">
             振込予定日・銀行・口座・金額が同じ未完了の振込です。重複の可能性があります。
           </p>
           <ul className="mt-2 space-y-1 text-sm">
@@ -42,13 +43,13 @@ export function DuplicateWarning({
               <li key={d.transfer_id}>
                 <Link
                   href={`/bud/transfers/${d.transfer_id}`}
-                  className="text-amber-900 font-mono underline hover:text-amber-700"
+                  className="font-mono text-text-main underline transition hover:text-[#b3892e]"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   {d.transfer_id}
                 </Link>
-                <span className="text-amber-800 ml-2">
+                <span className="ml-2 text-text-sub">
                   {d.payee_name} / ¥{d.amount.toLocaleString()} /{" "}
                   {d.scheduled_date ?? "—"} / {d.status}
                 </span>
@@ -58,7 +59,7 @@ export function DuplicateWarning({
           <button
             type="button"
             onClick={onForceContinue}
-            className="mt-3 text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700"
+            className={`${styles.smallGoldButton} mt-3 text-xs`}
           >
             {continueLabel}
           </button>
