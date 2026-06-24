@@ -1,18 +1,20 @@
 export const transferFormStyles = {
-  shell: "mx-auto max-w-3xl space-y-4 px-1 pb-8 text-text-main",
+  shell: "mx-auto max-w-5xl space-y-7 px-4 pb-10 text-text-main",
   title: "font-shippori text-2xl font-semibold text-text-main",
   panel:
-    "space-y-3 rounded-[12px] border border-[rgba(179,137,46,0.18)] bg-bg-paper-soft px-5 py-[18px] shadow-garden-soft",
+    "space-y-5 rounded-[12px] border border-[rgba(179,137,46,0.18)] bg-bg-card-solid px-6 py-5 shadow-garden-card",
   panelTitle: "font-shippori text-base font-semibold text-text-main",
   ocrPanel:
-    "space-y-3 rounded-[12px] border border-[rgba(212,165,65,0.26)] bg-[rgba(212,165,65,0.12)] px-5 py-[18px] shadow-garden-soft",
+    "space-y-4 rounded-[12px] border border-[rgba(212,165,65,0.26)] bg-bg-card-solid px-6 py-5 shadow-garden-card",
   ocrTitle: "font-shippori text-base font-semibold text-[#b3892e]",
   ocrText: "text-xs text-text-sub",
+  fieldGrid: "grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2",
+  fullSpan: "sm:col-span-2",
   label: "mb-1 block text-xs text-text-sub",
   field:
-    "mt-1 block w-full rounded-garden-input border border-[rgba(179,137,46,0.30)] bg-bg-card-solid px-3 py-2 text-sm text-text-main shadow-sm outline-none transition focus:border-accent-gold focus:ring-2 focus:ring-[rgba(212,165,65,0.18)] disabled:bg-bg-card disabled:text-text-muted",
+    "mt-1 block w-full rounded-garden-input border border-[rgba(179,137,46,0.30)] bg-bg-card-solid px-3 py-2.5 text-sm text-text-main shadow-sm outline-none transition focus:border-accent-gold focus:ring-2 focus:ring-[rgba(212,165,65,0.18)] disabled:bg-bg-card disabled:text-text-muted",
   fieldInline:
-    "flex-1 rounded-garden-input border border-[rgba(179,137,46,0.30)] bg-bg-card-solid px-3 py-2 text-sm text-text-main shadow-sm outline-none transition focus:border-accent-gold focus:ring-2 focus:ring-[rgba(212,165,65,0.18)] disabled:bg-bg-card disabled:text-text-muted",
+    "flex-1 rounded-garden-input border border-[rgba(179,137,46,0.30)] bg-bg-card-solid px-3 py-2.5 text-sm text-text-main shadow-sm outline-none transition focus:border-accent-gold focus:ring-2 focus:ring-[rgba(212,165,65,0.18)] disabled:bg-bg-card disabled:text-text-muted",
   radio: "accent-[var(--accent-gold)]",
   radioLabel:
     "inline-flex cursor-pointer items-center gap-2 text-sm text-text-main",

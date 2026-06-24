@@ -454,161 +454,175 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>基本情報</h2>
-        <BankPicker
-          executeCompanyId={executeCompanyId}
-          onCompanyChange={setExecuteCompanyId}
-          sourceAccountId={sourceAccountId}
-          onAccountChange={(acc) => setSourceAccountId(acc?.id ?? "")}
-          disabled={busy}
-        />
-        {errors.execute_company_id && (
-          <p className={styles.error} role="alert">
-            {errors.execute_company_id}
-          </p>
-        )}
-        {errors.source_account_id && (
-          <p className={styles.error} role="alert">
-            {errors.source_account_id}
-          </p>
-        )}
+        <div className={styles.fieldGrid}>
+          <div className={styles.fullSpan}>
+            <BankPicker
+              executeCompanyId={executeCompanyId}
+              onCompanyChange={setExecuteCompanyId}
+              sourceAccountId={sourceAccountId}
+              onAccountChange={(acc) => setSourceAccountId(acc?.id ?? "")}
+              disabled={busy}
+            />
+          </div>
+          {errors.execute_company_id && (
+            <p className={styles.error} role="alert">
+              {errors.execute_company_id}
+            </p>
+          )}
+          {errors.source_account_id && (
+            <p className={styles.error} role="alert">
+              {errors.source_account_id}
+            </p>
+          )}
+        </div>
       </section>
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>振込先</h2>
-        <VendorPicker
-          selectedVendorId={vendor?.id ?? ""}
-          onSelect={setVendor}
-          disabled={busy}
-        />
-        {vendor && !vendor.id && (
-          <p className="text-xs text-[#b3892e]">
-            OCRで読み取った振込先です。既存取引先を使う場合は選択し直してください。
-          </p>
-        )}
-        {errors.payee_name && (
-          <p className={styles.error} role="alert">
-            {errors.payee_name}
-          </p>
-        )}
-        {vendor && (
-          <div className={styles.infoCard}>
-            <div>
-              銀行: {vendor.payee_bank_name ?? "—"}（{vendor.payee_bank_code}）
-            </div>
-            <div>
-              支店: {vendor.payee_branch_name ?? "—"}（
-              {vendor.payee_branch_code}）
-            </div>
-            <div>口座: {vendor.payee_account_number}</div>
-            <div>
-              名義: {vendor.payee_account_holder_kana ?? "—"}
-              <KanaPreview
-                input={vendor.payee_account_holder_kana ?? ""}
-                label=""
-              />
-            </div>
+        <div className={styles.fieldGrid}>
+          <div className={styles.fullSpan}>
+            <VendorPicker
+              selectedVendorId={vendor?.id ?? ""}
+              onSelect={setVendor}
+              disabled={busy}
+            />
           </div>
-        )}
-        <label className="block">
-          <span className={styles.label}>振込金額 *（円）</span>
-          <input
-            type="number"
-            min="1"
-            max="9999999999"
-            value={amount}
-            onChange={(e) =>
-              setAmount(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            disabled={busy}
-            className={styles.field}
-          />
-          {errors.amount && (
-            <p className={styles.error} role="alert">
-              {errors.amount}
+          {vendor && !vendor.id && (
+            <p className={`${styles.fullSpan} text-xs text-[#b3892e]`}>
+              OCRで読み取った振込先です。既存取引先を使う場合は選択し直してください。
             </p>
           )}
-        </label>
-        <fieldset>
-          <legend className={styles.label}>手数料負担</legend>
-          <div className="flex gap-4 mt-1">
-            {["当方負担", "先方負担"].map((fb) => (
-              <label
-                key={fb}
-                className={styles.radioLabel}
-              >
-                <input
-                  type="radio"
-                  name="fee_bearer"
-                  value={fb}
-                  checked={feeBearer === fb}
-                  onChange={() => setFeeBearer(fb)}
-                  disabled={busy}
-                  className={styles.radio}
+          {errors.payee_name && (
+            <p className={styles.error} role="alert">
+              {errors.payee_name}
+            </p>
+          )}
+          {vendor && (
+            <div className={`${styles.infoCard} ${styles.fullSpan}`}>
+              <div>
+                銀行: {vendor.payee_bank_name ?? "—"}（{vendor.payee_bank_code}）
+              </div>
+              <div>
+                支店: {vendor.payee_branch_name ?? "—"}（
+                {vendor.payee_branch_code}）
+              </div>
+              <div>口座: {vendor.payee_account_number}</div>
+              <div>
+                名義: {vendor.payee_account_holder_kana ?? "—"}
+                <KanaPreview
+                  input={vendor.payee_account_holder_kana ?? ""}
+                  label=""
                 />
-                <span>{fb}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+              </div>
+            </div>
+          )}
+          <label className="block">
+            <span className={styles.label}>振込金額 *（円）</span>
+            <input
+              type="number"
+              min="1"
+              max="9999999999"
+              value={amount}
+              onChange={(e) =>
+                setAmount(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              disabled={busy}
+              className={styles.field}
+            />
+            {errors.amount && (
+              <p className={styles.error} role="alert">
+                {errors.amount}
+              </p>
+            )}
+          </label>
+          <fieldset>
+            <legend className={styles.label}>手数料負担</legend>
+            <div className="mt-2 flex gap-4">
+              {["当方負担", "先方負担"].map((fb) => (
+                <label
+                  key={fb}
+                  className={styles.radioLabel}
+                >
+                  <input
+                    type="radio"
+                    name="fee_bearer"
+                    value={fb}
+                    checked={feeBearer === fb}
+                    onChange={() => setFeeBearer(fb)}
+                    disabled={busy}
+                    className={styles.radio}
+                  />
+                  <span>{fb}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </div>
       </section>
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>日付</h2>
-        <label className="block">
-          <span className={styles.label}>振込予定日 *（翌営業日以降）</span>
-          <input
-            type="date"
-            value={scheduledDate}
-            onChange={(e) => setScheduledDate(e.target.value)}
-            disabled={busy}
-            className={styles.field}
-          />
-          {errors.scheduled_date && (
-            <p className={styles.error} role="alert">
-              {errors.scheduled_date}
-            </p>
-          )}
-        </label>
-        <label className="block">
-          <span className={styles.label}>支払期日（任意）</span>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            disabled={busy}
-            className={styles.field}
-          />
-          {errors.due_date && (
-            <p className={styles.error} role="alert">
-              {errors.due_date}
-            </p>
-          )}
-        </label>
+        <div className={styles.fieldGrid}>
+          <label className="block">
+            <span className={styles.label}>振込予定日 *（翌営業日以降）</span>
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+              disabled={busy}
+              className={styles.field}
+            />
+            {errors.scheduled_date && (
+              <p className={styles.error} role="alert">
+                {errors.scheduled_date}
+              </p>
+            )}
+          </label>
+          <label className="block">
+            <span className={styles.label}>支払期日（任意）</span>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              disabled={busy}
+              className={styles.field}
+            />
+            {errors.due_date && (
+              <p className={styles.error} role="alert">
+                {errors.due_date}
+              </p>
+            )}
+          </label>
+        </div>
       </section>
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>添付・備考</h2>
-        <AttachmentUploader
-          file={attachmentFile}
-          onChange={setAttachmentFile}
-          errorMessage={errors.attachment ?? null}
-          disabled={busy}
-        />
-        <label className="block">
-          <span className={styles.label}>備考（500 文字以下）</span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            disabled={busy}
-            rows={3}
-            className={styles.field}
-          />
-          {errors.notes && (
-            <p className={styles.error} role="alert">
-              {errors.notes}
-            </p>
-          )}
-        </label>
+        <div className={styles.fieldGrid}>
+          <div className={styles.fullSpan}>
+            <AttachmentUploader
+              file={attachmentFile}
+              onChange={setAttachmentFile}
+              errorMessage={errors.attachment ?? null}
+              disabled={busy}
+            />
+          </div>
+          <label className={`${styles.fullSpan} block`}>
+            <span className={styles.label}>備考（500 文字以下）</span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              disabled={busy}
+              rows={4}
+              className={styles.field}
+            />
+            {errors.notes && (
+              <p className={styles.error} role="alert">
+                {errors.notes}
+              </p>
+            )}
+          </label>
+        </div>
       </section>
 
       <DuplicateWarning

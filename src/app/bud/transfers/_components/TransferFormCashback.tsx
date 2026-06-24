@@ -207,57 +207,65 @@ export function TransferFormCashback() {
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>販売法人・支払元</h2>
-        <BankPicker
-          executeCompanyId={executeCompanyId}
-          onCompanyChange={setExecuteCompanyId}
-          sourceAccountId={sourceAccountId}
-          onAccountChange={(acc) => setSourceAccountId(acc?.id ?? "")}
-          disabled={submitting}
-        />
+        <div className={styles.fieldGrid}>
+          <div className={styles.fullSpan}>
+            <BankPicker
+              executeCompanyId={executeCompanyId}
+              onCompanyChange={setExecuteCompanyId}
+              sourceAccountId={sourceAccountId}
+              onAccountChange={(acc) => setSourceAccountId(acc?.id ?? "")}
+              disabled={submitting}
+            />
+          </div>
+        </div>
       </section>
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>申込者・商材</h2>
-        <TextField
-          label="申込者名 *"
-          value={applicantName}
-          onChange={setApplicantName}
-          disabled={submitting}
-          error={errors.cashback_applicant_name}
-        />
-        <TextField
-          label="申込者名カナ *"
-          value={applicantNameKana}
-          onChange={setApplicantNameKana}
-          disabled={submitting}
-          error={errors.cashback_applicant_name_kana}
-        />
-        <KanaPreview input={applicantNameKana} />
-        <TextField
-          label="電話番号（任意）"
-          value={applicantPhone}
-          onChange={setApplicantPhone}
-          disabled={submitting}
-        />
-        <TextField
-          label="商材名 *"
-          value={productName}
-          onChange={setProductName}
-          disabled={submitting}
-          error={errors.cashback_product_name}
-        />
-        <TextField
-          label="商流名 *"
-          value={channelName}
-          onChange={setChannelName}
-          disabled={submitting}
-          error={errors.cashback_channel_name}
-        />
+        <div className={styles.fieldGrid}>
+          <TextField
+            label="申込者名 *"
+            value={applicantName}
+            onChange={setApplicantName}
+            disabled={submitting}
+            error={errors.cashback_applicant_name}
+          />
+          <TextField
+            label="申込者名カナ *"
+            value={applicantNameKana}
+            onChange={setApplicantNameKana}
+            disabled={submitting}
+            error={errors.cashback_applicant_name_kana}
+          />
+          <div className={styles.fullSpan}>
+            <KanaPreview input={applicantNameKana} />
+          </div>
+          <TextField
+            label="電話番号（任意）"
+            value={applicantPhone}
+            onChange={setApplicantPhone}
+            disabled={submitting}
+          />
+          <TextField
+            label="商材名 *"
+            value={productName}
+            onChange={setProductName}
+            disabled={submitting}
+            error={errors.cashback_product_name}
+          />
+          <TextField
+            label="商流名 *"
+            value={channelName}
+            onChange={setChannelName}
+            disabled={submitting}
+            error={errors.cashback_channel_name}
+          />
+        </div>
       </section>
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>振込先口座（手入力）</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className={styles.fieldGrid}>
           <TextField
             label="銀行名"
             value={bankName}
@@ -272,8 +280,6 @@ export function TransferFormCashback() {
             disabled={submitting}
             error={errors.payee_bank_code}
           />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
           <TextField
             label="支店名"
             value={branchName}
@@ -288,8 +294,6 @@ export function TransferFormCashback() {
             disabled={submitting}
             error={errors.payee_branch_code}
           />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className={styles.label}>預金種目 *</span>
             <select
@@ -311,93 +315,101 @@ export function TransferFormCashback() {
             disabled={submitting}
             error={errors.payee_account_number}
           />
+          <div className={styles.fullSpan}>
+            <TextField
+              label="口座名義カナ *"
+              value={holderKana}
+              onChange={setHolderKana}
+              disabled={submitting}
+              error={errors.payee_account_holder_kana}
+            />
+            <KanaPreview input={holderKana} />
+          </div>
         </div>
-        <TextField
-          label="口座名義カナ *"
-          value={holderKana}
-          onChange={setHolderKana}
-          disabled={submitting}
-          error={errors.payee_account_holder_kana}
-        />
-        <KanaPreview input={holderKana} />
       </section>
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>金額・日付</h2>
-        <label className="block">
-          <span className={styles.label}>CB 金額 *（円）</span>
-          <input
-            type="number"
-            min="1"
-            max="9999999999"
-            value={amount}
-            onChange={(e) =>
-              setAmount(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            disabled={submitting}
-            className={styles.field}
-          />
-          {errors.amount && (
-            <p className={styles.error} role="alert">
-              {errors.amount}
-            </p>
-          )}
-        </label>
-        <label className="block">
-          <span className={styles.label}>振込予定日 *（翌営業日以降）</span>
-          <input
-            type="date"
-            value={scheduledDate}
-            onChange={(e) => setScheduledDate(e.target.value)}
-            disabled={submitting}
-            className={styles.field}
-          />
-          {errors.scheduled_date && (
-            <p className={styles.error} role="alert">
-              {errors.scheduled_date}
-            </p>
-          )}
-        </label>
-        <label className="block">
-          <span className={styles.label}>支払期日（任意）</span>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            disabled={submitting}
-            className={styles.field}
-          />
-          {errors.due_date && (
-            <p className={styles.error} role="alert">
-              {errors.due_date}
-            </p>
-          )}
-        </label>
+        <div className={styles.fieldGrid}>
+          <label className="block">
+            <span className={styles.label}>CB 金額 *（円）</span>
+            <input
+              type="number"
+              min="1"
+              max="9999999999"
+              value={amount}
+              onChange={(e) =>
+                setAmount(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              disabled={submitting}
+              className={styles.field}
+            />
+            {errors.amount && (
+              <p className={styles.error} role="alert">
+                {errors.amount}
+              </p>
+            )}
+          </label>
+          <label className="block">
+            <span className={styles.label}>振込予定日 *（翌営業日以降）</span>
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+              disabled={submitting}
+              className={styles.field}
+            />
+            {errors.scheduled_date && (
+              <p className={styles.error} role="alert">
+                {errors.scheduled_date}
+              </p>
+            )}
+          </label>
+          <label className="block">
+            <span className={styles.label}>支払期日（任意）</span>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              disabled={submitting}
+              className={styles.field}
+            />
+            {errors.due_date && (
+              <p className={styles.error} role="alert">
+                {errors.due_date}
+              </p>
+            )}
+          </label>
+        </div>
       </section>
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>添付・備考</h2>
-        <AttachmentUploader
-          file={attachmentFile}
-          onChange={setAttachmentFile}
-          errorMessage={errors.attachment ?? null}
-          disabled={submitting}
-        />
-        <label className="block">
-          <span className={styles.label}>備考（500 文字以下）</span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            disabled={submitting}
-            rows={3}
-            className={styles.field}
-          />
-          {errors.notes && (
-            <p className={styles.error} role="alert">
-              {errors.notes}
-            </p>
-          )}
-        </label>
+        <div className={styles.fieldGrid}>
+          <div className={styles.fullSpan}>
+            <AttachmentUploader
+              file={attachmentFile}
+              onChange={setAttachmentFile}
+              errorMessage={errors.attachment ?? null}
+              disabled={submitting}
+            />
+          </div>
+          <label className={`${styles.fullSpan} block`}>
+            <span className={styles.label}>備考（500 文字以下）</span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              disabled={submitting}
+              rows={4}
+              className={styles.field}
+            />
+            {errors.notes && (
+              <p className={styles.error} role="alert">
+                {errors.notes}
+              </p>
+            )}
+          </label>
+        </div>
       </section>
 
       <DuplicateWarning
