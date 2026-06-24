@@ -118,7 +118,7 @@ export function BankPicker({
   );
 
   return (
-    <div className="space-y-3">
+    <div className={styles.fieldGridTwo}>
       <label className="block">
         <span className={styles.label}>起票法人 *</span>
         <select
