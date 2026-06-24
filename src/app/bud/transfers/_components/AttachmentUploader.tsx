@@ -33,7 +33,7 @@ export function AttachmentUploader({
 
   return (
     <div>
-      <div className="flex items-center gap-3">
+      <div className="grid gap-2">
         <input
           ref={inputRef}
           type="file"
@@ -46,18 +46,19 @@ export function AttachmentUploader({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled}
-          className={styles.linkButton}
+          className={styles.fileBox}
         >
-          📎 ファイルを選択
+          <b className={styles.fileBoxTitle}>
+            {file ? file.name : "PDF / JPG / PNG をここへ添付"}
+          </b>
+          <small className={styles.fileBoxText}>
+            {file
+              ? `${Math.round(file.size / 1024)} KB`
+              : "10MB以下。請求書・見積書などの根拠資料を添付できます。"}
+          </small>
         </button>
         {file ? (
-          <>
-            <span className="max-w-xs truncate text-sm text-text-main">
-              {file.name}
-            </span>
-            <span className={styles.hint}>
-              ({Math.round(file.size / 1024)} KB)
-            </span>
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => onChange(null)}
@@ -66,14 +67,9 @@ export function AttachmentUploader({
             >
               削除
             </button>
-          </>
-        ) : (
-          <span className={styles.hint}>未選択</span>
-        )}
+          </div>
+        ) : null}
       </div>
-      <p className={`${styles.hint} mt-1`}>
-        PDF / JPG / PNG、10MB 以下
-      </p>
       {displayError && (
         <p className={`${styles.error} mt-1`} role="alert">
           {displayError}

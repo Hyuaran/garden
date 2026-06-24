@@ -60,7 +60,7 @@ export function VendorPicker({
     <div>
       <label className="block">
         <span className={styles.label}>取引先 *</span>
-        <div className="flex gap-2 mt-1">
+        <div className={styles.partnerRow}>
           <select
             value={selectedVendorId}
             onChange={(e) => handleSelect(e.target.value)}
