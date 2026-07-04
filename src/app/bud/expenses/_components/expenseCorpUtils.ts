@@ -4,7 +4,7 @@ export type Corp = {
   established_on?: string | null;
   fiscal_end_month?: number | null;
 };
-export type Employee = { employee_id: string; company_id: string | null; name: string | null };
+export type Employee = { employee_id: string; company_id: string | null; name: string | null; expense_default_corp_id?: string | null };
 export type Company = { company_id: string; company_name: string | null };
 export type ExpenseCorpRow = {
   corp_id: string | null;
@@ -49,7 +49,9 @@ export function getEffectiveCorpId(
   companyToCorp: Record<string, string>,
 ) {
   if (row.corp_id) return row.corp_id;
-  const companyId = row.applicant_employee_id ? employees[row.applicant_employee_id]?.company_id ?? null : null;
+  const employee = row.applicant_employee_id ? employees[row.applicant_employee_id] : null;
+  if (employee?.expense_default_corp_id) return employee.expense_default_corp_id;
+  const companyId = employee?.company_id ?? null;
   if (!companyId) return null;
   return companyToCorp[companyId] ?? companyId;
 }

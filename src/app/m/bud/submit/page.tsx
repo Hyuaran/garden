@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
@@ -48,6 +48,9 @@ type OcrProgress = {
   done: number;
   total: number;
 };
+
+type CorpOption = { id: string; name_short: string | null };
+type ApplicantEmployee = { employee_id: string; expense_default_corp_id?: string | null };
 
 const MAX_SHOTS = 50;
 const OCR_CONCURRENCY = 2;
@@ -118,11 +121,53 @@ export default function MobileExpenseSubmit() {
   const [sentCount, setSentCount] = useState(0);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [ocrProgress, setOcrProgress] = useState<OcrProgress | null>(null);
+  const [corpOptions, setCorpOptions] = useState<CorpOption[]>([]);
+  const [selectedCorpId, setSelectedCorpId] = useState("");
+  const [corpLoading, setCorpLoading] = useState(true);
   const seq = useRef(0);
   const router = useRouter();
 
   const selectedCount = shots.filter((shot) => shot.selected && !shot.failed).length;
   const selectableCount = shots.filter((shot) => !shot.failed).length;
+  const selectableCorpOptions =
+    selectedCorpId && !corpOptions.some((corp) => corp.id === selectedCorpId)
+      ? [{ id: selectedCorpId, name_short: selectedCorpId }, ...corpOptions]
+      : corpOptions;
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const supabase = createBrowserClient();
+      setCorpLoading(true);
+      try {
+        const [corpRes, authRes] = await Promise.all([
+          supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true }),
+          supabase.auth.getUser(),
+        ]);
+        if (!cancelled) setCorpOptions((corpRes.data as CorpOption[] | null) ?? []);
+
+        const authUserId = authRes.data?.user?.id ?? null;
+        if (!authUserId) return;
+
+        const empResWithDefault = await supabase
+          .from("root_employees")
+          .select("employee_id,expense_default_corp_id")
+          .eq("user_id", authUserId)
+          .maybeSingle<ApplicantEmployee>();
+        let defaultCorpId = empResWithDefault.data?.expense_default_corp_id ?? "";
+        if (empResWithDefault.error) {
+          const empFallbackRes = await supabase.from("root_employees").select("employee_id").eq("user_id", authUserId).maybeSingle<ApplicantEmployee>();
+          defaultCorpId = empFallbackRes.data?.expense_default_corp_id ?? "";
+        }
+        if (!cancelled) setSelectedCorpId(defaultCorpId);
+      } finally {
+        if (!cancelled) setCorpLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleBack = () => {
     if (shots.length > 0) setShowLeaveConfirm(true);
@@ -225,6 +270,7 @@ export default function MobileExpenseSubmit() {
         const ins = await supabase.from("bud_expense_requests").insert({
           applicant_employee_id: empId,
           expense_kind: kind,
+          corp_id: selectedCorpId || null,
           status: "submitted",
           receipt_date: ocr?.receipt_date ?? null,
           receipt_time: ocr?.receipt_time ?? null,
@@ -342,6 +388,19 @@ export default function MobileExpenseSubmit() {
       </section>
 
       <section style={{ ...budCard, padding: 14, marginBottom: 14 }}>
+        <h2 style={budSectionTitle}>法人</h2>
+        <select value={selectedCorpId} onChange={(e) => setSelectedCorpId(e.target.value)} disabled={corpLoading} style={corpSelect}>
+          <option value="">未設定</option>
+          {selectableCorpOptions.map((corp) => (
+            <option key={corp.id} value={corp.id}>
+              {corp.name_short ?? corp.id}
+            </option>
+          ))}
+        </select>
+        <p style={corpHelp}>通常は既定の法人のまま送信します。</p>
+      </section>
+
+      <section style={{ ...budCard, padding: 14, marginBottom: 14 }}>
         <div style={shootHead}>
           <div>
             <h2 style={{ ...budSectionTitle, marginBottom: 4 }}>領収書</h2>
@@ -424,6 +483,23 @@ const kindChip = (active: boolean): React.CSSProperties => ({
   color: active ? "#fff" : budMobile.colors.sub,
   borderColor: active ? budMobile.colors.goldStrong : budMobile.colors.borderStrong,
 });
+const corpSelect: React.CSSProperties = {
+  width: "100%",
+  border: `1px solid ${budMobile.colors.borderStrong}`,
+  borderRadius: 12,
+  background: "#fffdf6",
+  color: budMobile.colors.text,
+  fontFamily: budMobile.font.serif,
+  fontSize: 15,
+  padding: "11px 12px",
+  outline: "none",
+};
+const corpHelp: React.CSSProperties = {
+  margin: "8px 0 0",
+  color: budMobile.colors.muted,
+  fontSize: 12,
+  lineHeight: 1.6,
+};
 const shootHead: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 };
 const toolbar: React.CSSProperties = {
   display: "flex",
