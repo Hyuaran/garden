@@ -208,9 +208,17 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     if (employeeIds.length === 0) {
       setEmployees({});
     } else {
-      const { data } = await supabase.from("root_employees").select("employee_id,company_id,name").in("employee_id", employeeIds);
+      const employeeResWithDefault = await supabase
+        .from("root_employees")
+        .select("employee_id,company_id,name,expense_default_corp_id")
+        .in("employee_id", employeeIds);
+      let employeeData = (employeeResWithDefault.data as Employee[] | null) ?? [];
+      if (employeeResWithDefault.error) {
+        const employeeFallbackRes = await supabase.from("root_employees").select("employee_id,company_id,name").in("employee_id", employeeIds);
+        employeeData = (employeeFallbackRes.data as Employee[] | null) ?? [];
+      }
       const map: Record<string, Employee> = {};
-      for (const employee of ((data as Employee[] | null) ?? [])) {
+      for (const employee of employeeData) {
         map[employee.employee_id] = employee;
       }
       setEmployees(map);
@@ -523,6 +531,15 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     return sortedCorps.find((corp) => corp.id === corpId) ?? null;
   }, [current, effectiveCorpId, form?.corp_id, sortedCorps]);
 
+  const corpChangeBadge = useMemo(() => {
+    if (!current?.corp_id || !current.applicant_employee_id) return null;
+    const defaultCorpId = employees[current.applicant_employee_id]?.expense_default_corp_id ?? null;
+    if (!defaultCorpId || defaultCorpId === current.corp_id) return null;
+    const defaultName = sortedCorps.find((corp) => corp.id === defaultCorpId)?.name_short ?? defaultCorpId;
+    const selectedName = sortedCorps.find((corp) => corp.id === current.corp_id)?.name_short ?? current.corp_id;
+    return { defaultName, selectedName };
+  }, [current, employees, sortedCorps]);
+
   const fiscalPeriod = useMemo(() => {
     if (!form || !selectedCorp) return null;
     return calculateFiscalPeriod(selectedCorp.established_on, selectedCorp.fiscal_end_month, form.receipt_date);
@@ -765,7 +782,16 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   <div style={fieldRow(FISCAL_COLS)}>
                     <InfoValue label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</InfoValue>
                     <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
-                    {current.description === OCR_CONFIRM_DESCRIPTION && <div style={ocrBadgeBox}>OCR要確認</div>}
+                    {(current.description === OCR_CONFIRM_DESCRIPTION || corpChangeBadge) && (
+                      <div style={badgeStack}>
+                        {current.description === OCR_CONFIRM_DESCRIPTION && <div style={ocrBadgeBox}>OCR要確認</div>}
+                        {corpChangeBadge && (
+                          <div style={corpChangeBadgeBox}>
+                            ⚠ 申請者が法人変更: {corpChangeBadge.defaultName}→{corpChangeBadge.selectedName}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div style={fieldRow(FISCAL_COLS)}>
@@ -1465,6 +1491,20 @@ const ocrBadgeBox: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 700,
   whiteSpace: "nowrap",
+};
+const badgeStack: React.CSSProperties = {
+  display: "grid",
+  gap: 6,
+  alignSelf: "end",
+};
+const corpChangeBadgeBox: React.CSSProperties = {
+  ...ocrBadgeBox,
+  background: "rgba(212,165,65,0.16)",
+  border: "1px solid rgba(179,137,46,0.36)",
+  color: "#8a661f",
+  justifyContent: "flex-start",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
 const layoutToolRow: React.CSSProperties = {
   display: "flex",
