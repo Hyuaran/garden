@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
+import { importTransferInboxFromDrive } from "@/app/api/bud/transfer-inbox/_lib/import-from-drive";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 type InboxActionBody =
   | { action: "discard"; id: string }
   | { action: "consume"; id: string; transferId: string };
+
+type InboxPostBody = { action: "import-now" };
 
 const SELECT_COLUMNS =
   "id,drive_file_id,file_name,mime_type,storage_path,public_url,status,transfer_id,imported_at,consumed_at,discarded_at,created_at,updated_at";
@@ -81,4 +84,34 @@ export async function PATCH(request: Request) {
   }
 
   return NextResponse.json({ ok: true, item: data });
+}
+
+export async function POST(request: Request) {
+  const supabase = await createServerClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user?.id) {
+    return NextResponse.json({ ok: false, error: "未ログインです" }, { status: 401 });
+  }
+
+  const body = (await request.json()) as Partial<InboxPostBody>;
+  if (body.action !== "import-now") {
+    return NextResponse.json({ ok: false, error: "invalid action" }, { status: 400 });
+  }
+
+  const folderId = process.env.BUD_TRANSFER_INBOX_DRIVE_FOLDER_ID;
+  if (!folderId) {
+    return NextResponse.json(
+      { ok: false, error: "BUD_TRANSFER_INBOX_DRIVE_FOLDER_ID is not configured" },
+      { status: 500 },
+    );
+  }
+
+  try {
+    return NextResponse.json(await importTransferInboxFromDrive(folderId));
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    );
+  }
 }
