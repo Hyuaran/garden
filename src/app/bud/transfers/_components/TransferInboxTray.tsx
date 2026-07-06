@@ -11,6 +11,14 @@ type TransferInboxItem = {
   mime_type: "application/pdf" | "image/jpeg" | "image/png";
   public_url: string | null;
   imported_at: string;
+  source?: "drive" | "mail" | null;
+  mail_meta?: {
+    message_id?: string | null;
+    attachment_id?: string | null;
+    from?: string | null;
+    subject?: string | null;
+    received_at?: string | null;
+  } | null;
 };
 
 type InboxListResponse =
@@ -22,8 +30,21 @@ type InboxPatchResponse =
   | { ok: false; error?: string };
 
 type InboxImportResponse =
-  | { ok: true; total: number; imported: number; skipped: number; failed: number }
+  | {
+      ok: true;
+      drive: ImportSummary;
+      mail: ImportSummary | { ok: true; skipped: true; reason: "not configured"; imported: 0; failed: 0; unsupported: 0 };
+    }
   | { ok: false; error?: string };
+
+type ImportSummary = {
+  ok: true;
+  total: number;
+  imported: number;
+  skipped: number;
+  failed: number;
+  unsupported?: number;
+};
 
 export function TransferInboxTray() {
   const router = useRouter();
@@ -96,10 +117,14 @@ export function TransferInboxTray() {
       if (!res.ok || !json.ok) {
         throw new Error(json.ok ? "取り込みに失敗しました" : json.error ?? "取り込みに失敗しました");
       }
-      if (json.imported > 0) {
-        setImportMessage(`${json.imported}件取り込みました`);
-      } else if (json.failed > 0) {
-        setImportMessage(`新規0件、失敗${json.failed}件です`);
+      const mailImported = "reason" in json.mail ? 0 : json.mail.imported;
+      const mailFailed = json.mail.failed;
+      const totalImported = json.drive.imported + mailImported;
+      const totalFailed = json.drive.failed + mailFailed;
+      if (totalImported > 0) {
+        setImportMessage(`${totalImported}件取り込みました（複合機${json.drive.imported}・メール${mailImported}）`);
+      } else if (totalFailed > 0) {
+        setImportMessage(`新規0件、失敗${totalFailed}件です`);
       } else {
         setImportMessage("新しいファイルはありません");
       }
@@ -181,7 +206,19 @@ export function TransferInboxTray() {
                     className={stalled ? "border-t border-red-200 bg-red-50/80" : "border-t border-amber-100"}
                   >
                     <td className="px-4 py-3 text-gray-900">
-                      <div className="font-medium">{item.file_name}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{item.file_name}</span>
+                        {item.source === "mail" && (
+                          <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-800">
+                            ✉ メール
+                          </span>
+                        )}
+                      </div>
+                      {item.source === "mail" && item.mail_meta && (
+                        <div className="mt-1 max-w-md truncate text-xs text-gray-500" title={formatMailMeta(item)}>
+                          {formatMailMeta(item)}
+                        </div>
+                      )}
                       {item.public_url && (
                         <a
                           href={item.public_url}
@@ -239,6 +276,11 @@ function formatMimeType(value: TransferInboxItem["mime_type"]) {
   if (value === "application/pdf") return "PDF";
   if (value === "image/png") return "PNG";
   return "JPEG";
+}
+
+function formatMailMeta(item: TransferInboxItem) {
+  const parts = [item.mail_meta?.from, item.mail_meta?.subject].filter((value): value is string => Boolean(value));
+  return parts.join(" / ");
 }
 
 function formatDateTime(value: string) {

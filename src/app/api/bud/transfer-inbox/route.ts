@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { importTransferInboxFromDrive } from "@/app/api/bud/transfer-inbox/_lib/import-from-drive";
+import { importTransferInboxFromMail } from "@/app/api/bud/transfer-inbox/_lib/import-from-mail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ type InboxActionBody =
 type InboxPostBody = { action: "import-now" };
 
 const SELECT_COLUMNS =
+  "id,drive_file_id,file_name,mime_type,storage_path,public_url,status,transfer_id,imported_at,consumed_at,discarded_at,created_at,updated_at,source,mail_meta";
+const FALLBACK_SELECT_COLUMNS =
   "id,drive_file_id,file_name,mime_type,storage_path,public_url,status,transfer_id,imported_at,consumed_at,discarded_at,created_at,updated_at";
 
 export async function GET(request: Request) {
@@ -34,15 +37,31 @@ export async function GET(request: Request) {
     query = query.eq("id", id).limit(1);
   }
 
-  const { data, error } = await query;
+  const primary = await query;
+  let rows: unknown[] | null = primary.data;
+  let error = primary.error;
+  if (error) {
+    let fallbackQuery = supabase
+      .from("bud_transfer_inbox")
+      .select(FALLBACK_SELECT_COLUMNS)
+      .eq("status", "pending")
+      .order("imported_at", { ascending: false });
+
+    if (id) {
+      fallbackQuery = fallbackQuery.eq("id", id).limit(1);
+    }
+    const fallback = await fallbackQuery;
+    rows = fallback.data;
+    error = fallback.error;
+  }
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
   if (id) {
-    return NextResponse.json({ ok: true, item: data?.[0] ?? null });
+    return NextResponse.json({ ok: true, item: rows?.[0] ?? null });
   }
-  return NextResponse.json({ ok: true, items: data ?? [] });
+  return NextResponse.json({ ok: true, items: rows ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -76,7 +95,7 @@ export async function PATCH(request: Request) {
     .update(updates)
     .eq("id", body.id)
     .eq("status", "pending")
-    .select(SELECT_COLUMNS)
+    .select(FALLBACK_SELECT_COLUMNS)
     .single();
 
   if (error) {
@@ -107,7 +126,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    return NextResponse.json(await importTransferInboxFromDrive(folderId));
+    const drive = await importTransferInboxFromDrive(folderId);
+    const mail = await importTransferInboxFromMail();
+    return NextResponse.json({ ok: true, drive, mail });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : String(error) },
