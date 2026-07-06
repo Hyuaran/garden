@@ -26,6 +26,14 @@ export async function GET(request: Request) {
   }
 
   const drive = await importTransferInboxFromDrive(folderId);
-  const mail = await importTransferInboxFromMail();
+  let mail;
+  try {
+    mail = await importTransferInboxFromMail();
+  } catch (error) {
+    mail = {
+      ok: false as const,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
   return NextResponse.json({ ok: true, drive, mail });
 }

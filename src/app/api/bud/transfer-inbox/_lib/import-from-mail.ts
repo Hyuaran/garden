@@ -12,6 +12,7 @@ type GraphMessage = {
   subject?: string | null;
   from?: { emailAddress?: { address?: string | null; name?: string | null } | null } | null;
   receivedDateTime?: string | null;
+  hasAttachments?: boolean | null;
 };
 type GraphAttachment = {
   "@odata.type"?: string;
@@ -191,15 +192,17 @@ async function getGraphAccessToken(config: NonNullable<ReturnType<typeof readGra
 }
 
 async function listMessages(mailbox: string, token: string) {
+  // NOTE: $filter=hasAttachments と $orderby の併用は Graph が InefficientFilter (400) で拒否する
+  // （2026-07-06 実測）。既定ソートが receivedDateTime desc のため、素の一覧を取得して
+  // hasAttachments はクライアント側で絞る。
   const params = new URLSearchParams({
-    "$filter": "hasAttachments eq true",
     "$top": "25",
-    "$orderby": "receivedDateTime desc",
-    "$select": "id,subject,from,receivedDateTime",
+    "$select": "id,subject,from,receivedDateTime,hasAttachments",
   });
   const res = await graphFetch(`/users/${encodeURIComponent(mailbox)}/messages?${params.toString()}`, token);
   if (!res.ok) throw new Error(`Graph messages error: ${res.status} ${await res.text()}`);
-  return ((await res.json()) as GraphListResponse<GraphMessage>).value ?? [];
+  const messages = ((await res.json()) as GraphListResponse<GraphMessage>).value ?? [];
+  return messages.filter((message) => message.hasAttachments === true);
 }
 
 async function listAttachments(mailbox: string, messageId: string, token: string) {
