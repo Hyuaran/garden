@@ -40,6 +40,11 @@ export interface CreateTransferInput {
   scheduled_date?: string | null;
   due_date?: string | null;
   payee_mismatch_confirmed?: boolean;
+  payment_category?: "transfer" | "payeasy" | "cash" | "registered";
+  registered_method?: "credit_card" | "direct_debit" | "auto_transfer" | null;
+  payeasy_biller_no?: string | null;
+  payeasy_customer_no?: string | null;
+  payeasy_confirm_no?: string | null;
 
   // キャッシュバック時のみ
   cashback_applicant_name_kana?: string | null;
@@ -73,55 +78,79 @@ export async function createTransfer(
       ? buildRegularTransferId(today, sequence)
       : buildCashbackTransferId(today, sequence);
 
-  const { data, error } = await supabase
+  const basePayload = {
+    transfer_id: transferId,
+    status: "下書き" as TransferStatus,
+    data_source: input.data_source ?? "デジタル入力",
+    transfer_category: input.transfer_category,
+    transfer_type: null, // Phase 1b では未使用（Phase 2/6 で給与/外注費分類時に使用）
+    request_date: today.toISOString().substring(0, 10),
+    due_date: input.due_date ?? null,
+    scheduled_date: input.scheduled_date ?? null,
+    company_id: input.execute_company_id, // 後方互換
+    request_company_id: input.request_company_id,
+    execute_company_id: input.execute_company_id,
+    source_account_id: input.source_account_id,
+    vendor_id: input.vendor_id ?? null,
+    payee_name: input.payee_name,
+    payee_bank_name: input.payee_bank_name ?? null,
+    payee_bank_code: input.payee_bank_code,
+    payee_branch_name: input.payee_branch_name ?? null,
+    payee_branch_code: input.payee_branch_code,
+    payee_account_type: input.payee_account_type,
+    payee_account_number: input.payee_account_number,
+    payee_account_holder_kana: input.payee_account_holder_kana,
+    fee_bearer: input.fee_bearer ?? "当方負担",
+    amount: input.amount,
+    description: input.description ?? null,
+    payee_mismatch_confirmed: input.payee_mismatch_confirmed ?? false,
+    cashback_applicant_name_kana: input.cashback_applicant_name_kana ?? null,
+    cashback_applicant_name: input.cashback_applicant_name ?? null,
+    cashback_applicant_phone: input.cashback_applicant_phone ?? null,
+    cashback_customer_id: input.cashback_customer_id ?? null,
+    cashback_order_date: input.cashback_order_date ?? null,
+    cashback_opened_date: input.cashback_opened_date ?? null,
+    cashback_product_name: input.cashback_product_name ?? null,
+    cashback_channel_name: input.cashback_channel_name ?? null,
+    cashback_partner_code: input.cashback_partner_code ?? null,
+    invoice_pdf_url: input.invoice_pdf_url ?? null,
+    scan_image_url: input.scan_image_url ?? null,
+    created_by: currentUserId,
+  };
+  const paymentPayload = {
+    ...basePayload,
+    payment_category: input.payment_category ?? "transfer",
+    registered_method: input.payment_category === "registered" ? input.registered_method ?? null : null,
+    payeasy_biller_no: input.payment_category === "payeasy" ? input.payeasy_biller_no ?? null : null,
+    payeasy_customer_no: input.payment_category === "payeasy" ? input.payeasy_customer_no ?? null : null,
+    payeasy_confirm_no: input.payment_category === "payeasy" ? input.payeasy_confirm_no ?? null : null,
+  };
+
+  let { data, error } = await supabase
     .from("bud_transfers")
-    .insert({
-      transfer_id: transferId,
-      status: "下書き" as TransferStatus,
-      data_source: input.data_source ?? "デジタル入力",
-      transfer_category: input.transfer_category,
-      transfer_type: null, // Phase 1b では未使用（Phase 2/6 で給与/外注費分類時に使用）
-      request_date: today.toISOString().substring(0, 10),
-      due_date: input.due_date ?? null,
-      scheduled_date: input.scheduled_date ?? null,
-      company_id: input.execute_company_id, // 後方互換
-      request_company_id: input.request_company_id,
-      execute_company_id: input.execute_company_id,
-      source_account_id: input.source_account_id,
-      vendor_id: input.vendor_id ?? null,
-      payee_name: input.payee_name,
-      payee_bank_name: input.payee_bank_name ?? null,
-      payee_bank_code: input.payee_bank_code,
-      payee_branch_name: input.payee_branch_name ?? null,
-      payee_branch_code: input.payee_branch_code,
-      payee_account_type: input.payee_account_type,
-      payee_account_number: input.payee_account_number,
-      payee_account_holder_kana: input.payee_account_holder_kana,
-      fee_bearer: input.fee_bearer ?? "当方負担",
-      amount: input.amount,
-      description: input.description ?? null,
-      payee_mismatch_confirmed: input.payee_mismatch_confirmed ?? false,
-      cashback_applicant_name_kana: input.cashback_applicant_name_kana ?? null,
-      cashback_applicant_name: input.cashback_applicant_name ?? null,
-      cashback_applicant_phone: input.cashback_applicant_phone ?? null,
-      cashback_customer_id: input.cashback_customer_id ?? null,
-      cashback_order_date: input.cashback_order_date ?? null,
-      cashback_opened_date: input.cashback_opened_date ?? null,
-      cashback_product_name: input.cashback_product_name ?? null,
-      cashback_channel_name: input.cashback_channel_name ?? null,
-      cashback_partner_code: input.cashback_partner_code ?? null,
-      invoice_pdf_url: input.invoice_pdf_url ?? null,
-      scan_image_url: input.scan_image_url ?? null,
-      created_by: currentUserId,
-    })
+    .insert(paymentPayload)
     .select("*")
     .single<BudTransfer>();
+
+  if (error && isMissingPaymentCategoryColumn(error.message)) {
+    const retry = await supabase
+      .from("bud_transfers")
+      .insert(basePayload)
+      .select("*")
+      .single<BudTransfer>();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error || !data) {
     throw new Error(`振込作成に失敗: ${error?.message ?? "unknown"}`);
   }
 
   return data;
+}
+
+function isMissingPaymentCategoryColumn(message: string) {
+  return /payment_category|registered_method|payeasy_biller_no|payeasy_customer_no|payeasy_confirm_no/.test(message);
 }
 
 /**

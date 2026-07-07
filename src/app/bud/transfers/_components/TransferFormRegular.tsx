@@ -13,6 +13,12 @@ import {
   validateRegularCreate,
   type DataSource,
 } from "../_lib/transfer-create-schema";
+import {
+  hasAnyPayeasyNumber,
+  normalizePayeasyNumber,
+  type PaymentCategory,
+  type RegisteredMethod,
+} from "../_lib/payment-category";
 import type { ValidationErrors } from "../_lib/transfer-form-schema";
 import { uploadAttachment, removeAttachment } from "../_lib/attachment-upload";
 import { BankPicker } from "./BankPicker";
@@ -43,6 +49,9 @@ type TransferInvoiceOcrResult = {
   amount: number | null;
   scheduled_date: string | null;
   invoice_no: string | null;
+  payeasy_biller_no: string | null;
+  payeasy_customer_no: string | null;
+  payeasy_confirm_no: string | null;
   confidence: "high" | "low";
 };
 
@@ -97,6 +106,11 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
   const [sourceAccountId, setSourceAccountId] = useState("");
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [amount, setAmount] = useState<number | "">("");
+  const [paymentCategory, setPaymentCategory] = useState<PaymentCategory>("transfer");
+  const [registeredMethod, setRegisteredMethod] = useState<RegisteredMethod | "">("");
+  const [payeasyBillerNo, setPayeasyBillerNo] = useState("");
+  const [payeasyCustomerNo, setPayeasyCustomerNo] = useState("");
+  const [payeasyConfirmNo, setPayeasyConfirmNo] = useState("");
   const [feeBearer, setFeeBearer] = useState("当方負担");
   const [scheduledDate, setScheduledDate] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -118,6 +132,11 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
   const busy = submitting || ocrBusy;
 
   const buildInput = () => ({
+    payment_category: paymentCategory,
+    registered_method: registeredMethod || null,
+    payeasy_biller_no: normalizePayeasyNumber(payeasyBillerNo) || null,
+    payeasy_customer_no: normalizePayeasyNumber(payeasyCustomerNo) || null,
+    payeasy_confirm_no: normalizePayeasyNumber(payeasyConfirmNo) || null,
     request_company_id: executeCompanyId,
     execute_company_id: executeCompanyId,
     source_account_id: sourceAccountId,
@@ -265,6 +284,17 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
     }));
     if (typeof result.amount === "number") setAmount(result.amount);
     if (result.scheduled_date) setScheduledDate(result.scheduled_date);
+    const nextPayeasy = {
+      payeasy_biller_no: result.payeasy_biller_no,
+      payeasy_customer_no: result.payeasy_customer_no,
+      payeasy_confirm_no: result.payeasy_confirm_no,
+    };
+    if (hasAnyPayeasyNumber(nextPayeasy)) {
+      setPaymentCategory("payeasy");
+      setPayeasyBillerNo(normalizePayeasyNumber(result.payeasy_biller_no));
+      setPayeasyCustomerNo(normalizePayeasyNumber(result.payeasy_customer_no));
+      setPayeasyConfirmNo(normalizePayeasyNumber(result.payeasy_confirm_no));
+    }
     const invoiceNo = result.invoice_no;
     if (invoiceNo) {
       setNotes((current) => appendInvoiceNoToNotes(current, invoiceNo));
@@ -452,6 +482,121 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
             onChange={setDataSource}
             disabled={busy}
           />
+
+          <article className={styles.softPanel}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.panelTitle}>
+                <span className={styles.titleIcon}>区</span>
+                支払区分
+              </h2>
+            </div>
+            <div className={styles.cardBody}>
+              <div className={styles.sourceOptions}>
+                {[
+                  ["transfer", "振込", "銀行振込として全銀CSV対象にします。"],
+                  ["payeasy", "ペイジー", "3番号を控えて銀行画面で支払います。"],
+                  ["cash", "現金", "現金精算として扱います。"],
+                  ["registered", "決済登録済", "クレカ・口座振替など登録済の支払です。"],
+                ].map(([value, title, text]) => (
+                  <label
+                    key={value}
+                    className={`${styles.sourceOption} ${
+                      paymentCategory === value ? styles.sourceOptionActive : ""
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_category"
+                      value={value}
+                      checked={paymentCategory === value}
+                      onChange={() => setPaymentCategory(value as PaymentCategory)}
+                      disabled={busy}
+                      className="sr-only"
+                    />
+                    <span className={styles.sourceOptionTitle}>{title}</span>
+                    <span className={styles.sourceOptionText}>{text}</span>
+                  </label>
+                ))}
+              </div>
+
+              {paymentCategory === "payeasy" && (
+                <div className={`${styles.fieldGrid} mt-4`}>
+                  <div className={styles.fieldGridThree}>
+                    <label className="block">
+                      <span className={styles.label}>収納機関番号 *</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={payeasyBillerNo}
+                        onChange={(e) => setPayeasyBillerNo(normalizePayeasyNumber(e.target.value))}
+                        disabled={busy}
+                        className={styles.field}
+                      />
+                      {errors.payeasy_biller_no && (
+                        <p className={styles.error} role="alert">
+                          {errors.payeasy_biller_no}
+                        </p>
+                      )}
+                    </label>
+                    <label className="block">
+                      <span className={styles.label}>お客様番号 *</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={payeasyCustomerNo}
+                        onChange={(e) => setPayeasyCustomerNo(normalizePayeasyNumber(e.target.value))}
+                        disabled={busy}
+                        className={styles.field}
+                      />
+                      {errors.payeasy_customer_no && (
+                        <p className={styles.error} role="alert">
+                          {errors.payeasy_customer_no}
+                        </p>
+                      )}
+                    </label>
+                    <label className="block">
+                      <span className={styles.label}>確認番号 *</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={payeasyConfirmNo}
+                        onChange={(e) => setPayeasyConfirmNo(normalizePayeasyNumber(e.target.value))}
+                        disabled={busy}
+                        className={styles.field}
+                      />
+                      {errors.payeasy_confirm_no && (
+                        <p className={styles.error} role="alert">
+                          {errors.payeasy_confirm_no}
+                        </p>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {paymentCategory === "registered" && (
+                <label className="mt-4 block">
+                  <span className={styles.label}>決済方法 *</span>
+                  <select
+                    value={registeredMethod}
+                    onChange={(e) => setRegisteredMethod(e.target.value as RegisteredMethod | "")}
+                    disabled={busy}
+                    className={styles.field}
+                  >
+                    <option value="">選択してください</option>
+                    <option value="credit_card">クレカ</option>
+                    <option value="direct_debit">口座振替</option>
+                    <option value="auto_transfer">自動振込</option>
+                  </select>
+                  {errors.registered_method && (
+                    <p className={styles.error} role="alert">
+                      {errors.registered_method}
+                    </p>
+                  )}
+                </label>
+              )}
+            </div>
+          </article>
 
           <article className={styles.softPanel}>
             <div className={styles.cardHeader}>

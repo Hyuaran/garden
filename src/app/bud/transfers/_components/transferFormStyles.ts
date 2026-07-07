@@ -18,6 +18,7 @@ export const transferFormStyles = {
   ocrText: "max-w-[420px] text-sm leading-[1.9] tracking-[0.04em] text-text-sub",
   fieldGrid: "grid grid-cols-1 gap-3.5",
   fieldGridTwo: "grid grid-cols-1 gap-3.5 sm:grid-cols-2",
+  fieldGridThree: "grid grid-cols-1 gap-3.5 sm:grid-cols-3",
   fullSpan: "sm:col-span-2",
   label: "mb-[7px] block text-[13px] tracking-[0.07em] text-text-sub",
   field:
