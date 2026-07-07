@@ -21,6 +21,9 @@ type TransferInvoiceOcrResult = {
   amount: number | null;
   scheduled_date: string | null;
   invoice_no: string | null;
+  payeasy_biller_no: string | null;
+  payeasy_customer_no: string | null;
+  payeasy_confirm_no: string | null;
   confidence: "high" | "low";
 };
 
@@ -45,6 +48,9 @@ const OCR_SCHEMA = {
     amount: { type: ["integer", "null"], description: "税込請求合計額。整数円。読めない場合はnull。" },
     scheduled_date: { type: ["string", "null"], description: "支払期日 YYYY-MM-DD。読めない場合はnull。" },
     invoice_no: { type: ["string", "null"], description: "請求書番号。読めない場合はnull。" },
+    payeasy_biller_no: { type: ["string", "null"], description: "ペイジー払込票の収納機関番号5桁。無い場合はnull。" },
+    payeasy_customer_no: { type: ["string", "null"], description: "ペイジー払込票のお客様番号。無い場合はnull。" },
+    payeasy_confirm_no: { type: ["string", "null"], description: "ペイジー払込票の確認番号。無い場合はnull。" },
     confidence: { enum: ["high", "low"], description: "主要項目に不確実さがある場合はlow。" },
   },
   required: [
@@ -59,6 +65,9 @@ const OCR_SCHEMA = {
     "amount",
     "scheduled_date",
     "invoice_no",
+    "payeasy_biller_no",
+    "payeasy_customer_no",
+    "payeasy_confirm_no",
     "confidence",
   ],
 } as const;
@@ -100,6 +109,7 @@ export async function POST(req: Request) {
                 "請求元の会社名をお支払い先として扱い、振込先口座情報、税込合計金額、支払期日、請求書番号を読んでください。" +
                 "金額は税込合計のみを整数円で返し、税抜金額や消費税額とは混同しないでください。" +
                 "口座番号・銀行コード・支店コードは数字のみ、口座名義はカナ表記を優先してください。" +
+                "ペイジー払込票の場合は収納機関番号（5桁）・お客様番号・確認番号も読み取ってください。" +
                 "読み取れない項目はnullにしてください。",
             },
           ],
@@ -241,6 +251,9 @@ function normalizeResult(raw: unknown): TransferInvoiceOcrResult {
     amount,
     scheduled_date: scheduledDate,
     invoice_no: normalizeString(value.invoice_no),
+    payeasy_biller_no: normalizeFixedDigits(value.payeasy_biller_no, 5),
+    payeasy_customer_no: normalizeDigits(value.payeasy_customer_no, 32),
+    payeasy_confirm_no: normalizeDigits(value.payeasy_confirm_no, 32),
     confidence:
       value.confidence === "high" && bankCode && branchCode && accountNumber && amount && scheduledDate
         ? "high"

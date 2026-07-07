@@ -1,4 +1,9 @@
 export interface RegularFormInput {
+  payment_category?: "transfer" | "payeasy" | "cash" | "registered";
+  registered_method?: "credit_card" | "direct_debit" | "auto_transfer" | null;
+  payeasy_biller_no?: string | null;
+  payeasy_customer_no?: string | null;
+  payeasy_confirm_no?: string | null;
   request_company_id: string;
   execute_company_id: string;
   source_account_id: string;
@@ -41,21 +46,34 @@ export interface FormValidationResult {
 }
 
 function validateShared(input: RegularFormInput, errors: ValidationErrors): void {
+  const paymentCategory = input.payment_category ?? "transfer";
   if (!input.request_company_id) errors.request_company_id = "依頼会社を選択してください";
   if (!input.execute_company_id) errors.execute_company_id = "実行会社を選択してください";
   if (!input.source_account_id) errors.source_account_id = "振込元口座を選択してください";
   if (!input.payee_name || input.payee_name.trim() === "")
     errors.payee_name = "お支払い先を入力してください";
-  if (!/^\d{4}$/.test(input.payee_bank_code))
-    errors.payee_bank_code = "銀行コードは 4 桁数字です";
-  if (!/^\d{3}$/.test(input.payee_branch_code))
-    errors.payee_branch_code = "支店コードは 3 桁数字です";
-  if (!["1", "2", "4"].includes(input.payee_account_type))
-    errors.payee_account_type = "預金種目を選択してください";
-  if (!/^\d{1,7}$/.test(input.payee_account_number))
-    errors.payee_account_number = "口座番号は 1〜7 桁数字です";
-  if (!input.payee_account_holder_kana || input.payee_account_holder_kana.trim() === "")
-    errors.payee_account_holder_kana = "口座名義カナを入力してください";
+  if (paymentCategory === "transfer") {
+    if (!/^\d{4}$/.test(input.payee_bank_code))
+      errors.payee_bank_code = "銀行コードは 4 桁数字です";
+    if (!/^\d{3}$/.test(input.payee_branch_code))
+      errors.payee_branch_code = "支店コードは 3 桁数字です";
+    if (!["1", "2", "4"].includes(input.payee_account_type))
+      errors.payee_account_type = "預金種目を選択してください";
+    if (!/^\d{1,7}$/.test(input.payee_account_number))
+      errors.payee_account_number = "口座番号は 1〜7 桁数字です";
+    if (!input.payee_account_holder_kana || input.payee_account_holder_kana.trim() === "")
+      errors.payee_account_holder_kana = "口座名義カナを入力してください";
+  }
+  if (paymentCategory === "registered" && !input.registered_method)
+    errors.registered_method = "決済登録済の方法を選択してください";
+  if (paymentCategory === "payeasy") {
+    if (!/^\d{5}$/.test(input.payeasy_biller_no ?? ""))
+      errors.payeasy_biller_no = "収納機関番号は5桁数字です";
+    if (!input.payeasy_customer_no)
+      errors.payeasy_customer_no = "お客様番号を入力してください";
+    if (!input.payeasy_confirm_no)
+      errors.payeasy_confirm_no = "確認番号を入力してください";
+  }
   if (!Number.isInteger(input.amount) || input.amount <= 0)
     errors.amount = "金額は 1 円以上の整数です";
   if (input.amount > 9_999_999_999)
