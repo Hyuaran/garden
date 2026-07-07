@@ -68,6 +68,8 @@ export type TransferCategory = "regular" | "cashback";
 export type TransferType = "給与" | "外注費" | "経費精算" | "その他";
 export type DataSource = "紙スキャン" | "デジタル入力" | "CSVインポート";
 export type FeeBearer = "当方負担" | "先方負担";
+export type PaymentCategory = "transfer" | "payeasy" | "cash" | "registered";
+export type RegisteredMethod = "credit_card" | "direct_debit" | "auto_transfer";
 
 export interface BudTransfer {
   transfer_id: string;
@@ -126,6 +128,13 @@ export interface BudTransfer {
   expense_category_id: string | null;
   forest_account_id: string | null;
   duplicate_key: string | null; // GENERATED 列
+  // ===== Codex-099 支払区分 =====
+  payment_category?: PaymentCategory | null;
+  registered_method?: RegisteredMethod | null;
+  manual_paid_at?: string | null;
+  payeasy_biller_no?: string | null;
+  payeasy_customer_no?: string | null;
+  payeasy_confirm_no?: string | null;
   // ===== A-03 で追加（bud-a03-status-history-migration.sql） =====
   status_changed_at: string | null;
   status_changed_by: string | null;
