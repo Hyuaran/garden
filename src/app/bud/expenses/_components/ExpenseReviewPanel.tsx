@@ -781,7 +781,19 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 <div style={formRows}>
                   <div style={fieldRow(FISCAL_COLS)}>
                     <InfoValue label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</InfoValue>
-                    <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
+                    {searchMode ? (
+                      <Field label="申請者">
+                        <input
+                          type="text"
+                          value={activeSearch.applicant_employee_id ?? ""}
+                          onChange={(e) => setSearchField("applicant_employee_id", e.target.value)}
+                          placeholder="氏名で検索"
+                          style={input}
+                        />
+                      </Field>
+                    ) : (
+                      <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
+                    )}
                     {(current.description === OCR_CONFIRM_DESCRIPTION || corpChangeBadge) && (
                       <div style={badgeStack}>
                         {current.description === OCR_CONFIRM_DESCRIPTION && <div style={ocrBadgeBox}>OCR要確認</div>}
@@ -944,17 +956,6 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       style={input}
                     />
                   </Field>
-                  {searchMode && (
-                    <Field label="申請者">
-                      <input
-                        type="text"
-                        value={activeSearch.applicant_employee_id ?? ""}
-                        onChange={(e) => setSearchField("applicant_employee_id", e.target.value)}
-                        placeholder="氏名で検索"
-                        style={input}
-                      />
-                    </Field>
-                  )}
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
                   <button type="button" disabled={busy || searchMode} onClick={() => process("reject")} style={busy || searchMode ? disabledRejectBtn : rejectBtn}>
