@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 
 import { budBackLink, budCard, budHeader, budLead, budMobile, budNotice, budPage, budTitle } from "../_lib/mobile-theme";
 
-type AccessState = "loading" | "allowed" | "redirecting";
+// allowed=Bud権限あり(レビュー可) / employee=一般従業員(申請・申請状況のみ)
+type AccessState = "loading" | "allowed" | "employee";
 
 const MENU = [
   {
@@ -32,7 +32,6 @@ const MENU = [
 ];
 
 export default function MobileBudHome() {
-  const router = useRouter();
   const supabase = useMemo(() => createBrowserClient(), []);
   const [access, setAccess] = useState<AccessState>("loading");
 
@@ -40,26 +39,22 @@ export default function MobileBudHome() {
     const timer = window.setTimeout(() => {
       void (async () => {
         const { data } = await supabase.rpc("bud_has_access");
-        if (data) {
-          setAccess("allowed");
-          return;
-        }
-        setAccess("redirecting");
-        router.replace("/m/bud/submit");
+        setAccess(data ? "allowed" : "employee");
       })();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [router, supabase]);
+  }, [supabase]);
 
-  if (access !== "allowed") {
+  if (access === "loading") {
     return (
       <main style={budPage}>
-        <section style={{ ...budNotice, marginTop: 24 }}>
-          {access === "loading" ? "Budの権限を確認しています..." : "申請画面へ移動します..."}
-        </section>
+        <section style={{ ...budNotice, marginTop: 24 }}>Budの権限を確認しています...</section>
       </main>
     );
   }
+
+  // 一般従業員には申請・申請状況の2つを見せる（レビューはBud権限者のみ）
+  const menu = access === "allowed" ? MENU : MENU.filter((item) => item.href !== "/bud/expenses");
 
   return (
     <main style={budPage}>
@@ -79,7 +74,7 @@ export default function MobileBudHome() {
       </section>
 
       <div style={menuStack}>
-        {MENU.map((item) => (
+        {menu.map((item) => (
           <Link key={item.href} href={item.href} style={menuCard}>
             <span style={menuMark}>{item.mark}</span>
             <span style={{ minWidth: 0, flex: 1 }}>
