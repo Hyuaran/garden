@@ -131,6 +131,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const supabase = useMemo(() => createBrowserClient(), []);
   const [pendingAll, setPendingAll] = useState<Req[]>([]);
   const [processedToday, setProcessedToday] = useState<Req[]>([]);
+  // 一覧タブ用：本日分に限らない全期間の処理済み行（カードの「本日」集計とは別に保持する）
+  const [processedAll, setProcessedAll] = useState<Req[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
   const [corps, setCorps] = useState<Corp[]>([]);
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
@@ -183,7 +185,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     t.setHours(0, 0, 0, 0);
     const todayIso = t.toISOString();
 
-    const [pendingRes, processedRes, catRes, corpRes, companyRes] = await Promise.all([
+    const [pendingRes, processedRes, processedAllRes, catRes, corpRes, companyRes] = await Promise.all([
       supabase.from("bud_expense_requests").select(REQUEST_SELECT).eq("status", "submitted").order("submitted_at", { ascending: true }),
       supabase
         .from("bud_expense_requests")
@@ -193,6 +195,12 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
         .gte("keiri_checked_at", todayIso)
         .order("keiri_checked_at", { ascending: false }),
+      // 一覧タブ用：期間を絞らず処理済みを全件取得する（カードの「本日」集計には使わない）
+      supabase
+        .from("bud_expense_requests")
+        .select(REQUEST_SELECT)
+        .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
+        .order("keiri_checked_at", { ascending: false }),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
       supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("id", { ascending: true }),
       supabase.from("root_companies").select("company_id,company_name"),
@@ -200,8 +208,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
     const pending = (pendingRes.data as Req[] | null) ?? [];
     const processed = (processedRes.data as Req[] | null) ?? [];
+    const processedAllRows = (processedAllRes.data as Req[] | null) ?? [];
     setPendingAll(pending);
     setProcessedToday(processed);
+    setProcessedAll(processedAllRows);
     setCats((catRes.data as Cat[] | null) ?? []);
     let corpList = ((corpRes.data as Corp[] | null) ?? []).length > 0 ? ((corpRes.data as Corp[] | null) ?? []) : FALLBACK_CORPS;
     if (corpRes.error) {
@@ -215,7 +225,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setCompanyToCorp(buildCompanyToCorp(companies, corpList));
 
     const employeeIds = Array.from(
-      new Set([...pending, ...processed].map((row) => row.applicant_employee_id).filter((id): id is string => Boolean(id))),
+      new Set(
+        [...pending, ...processed, ...processedAllRows]
+          .map((row) => row.applicant_employee_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
     );
     if (employeeIds.length === 0) {
       setEmployees({});
@@ -288,6 +302,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     return baseList.filter((row) => idSet.has(row.id));
   }, [baseList, foundIds]);
   const processedFiltered = useMemo(() => processedToday.filter(corpMatches), [processedToday, corpMatches]);
+  // 一覧タブ用：全期間の処理済み（法人フィルターのみ適用）
+  const processedAllFiltered = useMemo(() => processedAll.filter(corpMatches), [processedAll, corpMatches]);
   const current = list[idx];
 
   const todayStats = useMemo(() => {
@@ -303,12 +319,13 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
   const pendingAmount = useMemo(() => list.reduce((sum, row) => sum + (row.amount ?? 0), 0), [list]);
 
+  // 一覧タブ：未処理(承認待ち)＋処理済みを全期間ぶん並べる（本日分に限定しない）
   const statusRows: StatusRow[] = useMemo(
     () => [
       ...list.map((row) => ({ ...row, rowKind: "pending" as const })),
-      ...processedFiltered.map((row) => ({ ...row, rowKind: "processed" as const })),
+      ...processedAllFiltered.map((row) => ({ ...row, rowKind: "processed" as const })),
     ],
-    [list, processedFiltered],
+    [list, processedAllFiltered],
   );
 
   // 領収書表示枠のサイズを監視（回転時の最大表示計算に使う）
@@ -1228,7 +1245,7 @@ function ExpenseListTab({
     <section style={{ ...statusPanel, marginTop: 0 }}>
       <div style={statusHead}>
         <h3 style={statusTitle}>経費一覧</h3>
-        <span style={statusMeta}>承認待ちと本日処理分</span>
+        <span style={statusMeta}>未処理と処理済み（全期間）</span>
       </div>
       <StatusList rows={rows} cats={cats} corps={corps} employees={employees} onPendingClick={onPendingClick} onProcessedClick={onProcessedClick} compact />
     </section>
