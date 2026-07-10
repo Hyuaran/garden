@@ -13,6 +13,10 @@ const filled: OcrConfirmRequiredInput = {
 };
 
 describe("getOcrConfirmBadgeTone", () => {
+  it("hides the badge when all current values are filled", () => {
+    expect(getOcrConfirmBadgeTone(filled)).toBe("hidden");
+  });
+
   it("uses warning when only receipt time is missing", () => {
     expect(getOcrConfirmBadgeTone({ ...filled, receiptTime: "" })).toBe("warning");
   });
@@ -23,10 +27,6 @@ describe("getOcrConfirmBadgeTone", () => {
 
   it("uses danger when a required field other than receipt time is missing", () => {
     expect(getOcrConfirmBadgeTone({ ...filled, storeName: "" })).toBe("danger");
-  });
-
-  it("keeps the badge danger when all required values are filled", () => {
-    expect(getOcrConfirmBadgeTone(filled)).toBe("danger");
   });
 
   it("matches the review form required-field set", () => {

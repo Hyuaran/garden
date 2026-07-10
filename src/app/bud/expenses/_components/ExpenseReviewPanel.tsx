@@ -22,6 +22,7 @@ import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalize
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { isExpenseTabKeyboardScopeActive } from "@/app/bud/expenses/_lib/expense-tab-scope";
 import { getOcrConfirmBadgeTone } from "@/app/bud/expenses/_lib/ocr-confirm-badge";
+import { zoomReceiptInlineIn, zoomReceiptInlineOut } from "@/app/bud/expenses/_lib/receipt-zoom";
 import {
   sortExpenseReviewRows,
   type ExpenseReviewSortDirection,
@@ -733,6 +734,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       qualifiedClass: form.qualified_class,
     });
   }, [form]);
+  const showOcrConfirmBadge = current?.description === OCR_CONFIRM_DESCRIPTION && ocrConfirmTone !== "hidden";
 
   const process = async (action: "approve" | "reject") => {
     if (!current || !form || busy || searchMode) return;
@@ -1043,9 +1045,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     ) : (
                       <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
                     )}
-                    {(current.description === OCR_CONFIRM_DESCRIPTION || corpChangeBadge) && (
+                    {(showOcrConfirmBadge || corpChangeBadge) && (
                       <div style={badgeStack}>
-                        {current.description === OCR_CONFIRM_DESCRIPTION && <div style={ocrBadgeBox(ocrConfirmTone)}>OCR要確認</div>}
+                        {showOcrConfirmBadge && <div style={ocrBadgeBox(ocrConfirmTone)}>OCR要確認</div>}
                         {corpChangeBadge && (
                           <div style={corpChangeBadgeBox}>
                             ⚠ 申請者が法人変更: {corpChangeBadge.defaultName}→{corpChangeBadge.selectedName}
@@ -1225,11 +1227,15 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   {imgUrl && (
                     <div style={receiptToolGroup}>
-                      <button type="button" onClick={() => setReceiptInlineScale((value) => Math.max(1, value - 0.2))} style={rotateImgBtn}>
-                        縮小
-                      </button>
-                      <button type="button" onClick={() => setReceiptInlineScale((value) => Math.min(2.4, value + 0.2))} style={rotateImgBtn}>
-                        ズーム
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReceiptZoomScale(1.6);
+                          setReceiptZoomOpen(true);
+                        }}
+                        style={rotateImgBtn}
+                      >
+                        拡大表示
                       </button>
                     </div>
                   )}
@@ -1252,10 +1258,12 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       src={imgUrl}
                       alt="領収書"
                       onLoad={(e) => setNatSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-                      onClick={() => {
-                        setReceiptZoomScale(1.6);
-                        setReceiptZoomOpen(true);
+                      onClick={() => setReceiptInlineScale(zoomReceiptInlineIn)}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        setReceiptInlineScale(zoomReceiptInlineOut);
                       }}
+                      title="左クリックで拡大 / 右クリックで縮小"
                       style={{
                         ...receiptImgSize(rotation, recBox, natSize),
                         borderRadius: 10,
@@ -2113,7 +2121,7 @@ const ocrBadgeBase: React.CSSProperties = {
   fontWeight: 700,
   whiteSpace: "nowrap",
 };
-function ocrBadgeBox(tone: "danger" | "warning"): React.CSSProperties {
+function ocrBadgeBox(tone: "danger" | "warning" | "hidden"): React.CSSProperties {
   if (tone === "warning") {
     return {
       ...ocrBadgeBase,

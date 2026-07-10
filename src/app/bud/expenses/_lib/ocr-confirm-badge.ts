@@ -1,6 +1,6 @@
 import { isReceiptTimeMissing } from "./receipt-time";
 
-export type OcrConfirmBadgeTone = "danger" | "warning";
+export type OcrConfirmBadgeTone = "danger" | "warning" | "hidden";
 
 export type OcrConfirmRequiredInput = {
   receiptDate: string | null | undefined;
@@ -27,7 +27,8 @@ export function missingOcrConfirmRequiredFields(input: OcrConfirmRequiredInput):
 
 export function getOcrConfirmBadgeTone(input: OcrConfirmRequiredInput): OcrConfirmBadgeTone {
   const missingRequired = missingOcrConfirmRequiredFields(input);
-  return missingRequired.length === 0 && isReceiptTimeMissing(input.receiptTime) ? "warning" : "danger";
+  if (missingRequired.length > 0) return "danger";
+  return isReceiptTimeMissing(input.receiptTime) ? "warning" : "hidden";
 }
 
 function hasText(value: string | null | undefined) {
