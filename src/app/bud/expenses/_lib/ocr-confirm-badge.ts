@@ -36,9 +36,10 @@ function hasText(value: string | null | undefined) {
 }
 
 function hasAmount(value: string | number | null | undefined) {
-  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "number") return Number.isFinite(value) && value > 0;
   const normalized = toHalfWidth(value ?? "").replace(/[^\d]/g, "");
-  return normalized !== "";
+  if (!normalized) return false;
+  return Number(normalized) > 0;
 }
 
 function toHalfWidth(value: string) {

@@ -29,6 +29,16 @@ describe("getOcrConfirmBadgeTone", () => {
     expect(getOcrConfirmBadgeTone({ ...filled, storeName: "" })).toBe("danger");
   });
 
+  it("uses danger when amount is zero", () => {
+    expect(getOcrConfirmBadgeTone({ ...filled, amount: 0 })).toBe("danger");
+    expect(getOcrConfirmBadgeTone({ ...filled, amount: "0" })).toBe("danger");
+  });
+
+  it("depends only on the current values, not on a description marker", () => {
+    const withoutAnyMarker = { ...filled, storeName: "" };
+    expect(getOcrConfirmBadgeTone(withoutAnyMarker)).toBe("danger");
+  });
+
   it("matches the review form required-field set", () => {
     expect(
       missingOcrConfirmRequiredFields({

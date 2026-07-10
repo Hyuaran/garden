@@ -22,7 +22,7 @@ import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalize
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { isExpenseTabKeyboardScopeActive } from "@/app/bud/expenses/_lib/expense-tab-scope";
 import { getOcrConfirmBadgeTone } from "@/app/bud/expenses/_lib/ocr-confirm-badge";
-import { zoomReceiptInlineIn, zoomReceiptInlineOut } from "@/app/bud/expenses/_lib/receipt-zoom";
+import { isReceiptInlineZoomed, receiptScrollFrameSize, scaledReceiptDisplaySize, zoomReceiptInlineIn, zoomReceiptInlineOut } from "@/app/bud/expenses/_lib/receipt-zoom";
 import {
   sortExpenseReviewRows,
   type ExpenseReviewSortDirection,
@@ -734,7 +734,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       qualifiedClass: form.qualified_class,
     });
   }, [form]);
-  const showOcrConfirmBadge = current?.description === OCR_CONFIRM_DESCRIPTION && ocrConfirmTone !== "hidden";
+  const showOcrConfirmBadge = ocrConfirmTone !== "hidden";
 
   const process = async (action: "approve" | "reject") => {
     if (!current || !form || busy || searchMode) return;
@@ -1252,28 +1252,37 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   )}
                 </div>
                 {imgUrl ? (
-                  <div ref={recBoxRef} style={{ flex: 1, minHeight: 280, overflow: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imgUrl}
-                      alt="領収書"
-                      onLoad={(e) => setNatSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-                      onClick={() => setReceiptInlineScale(zoomReceiptInlineIn)}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        setReceiptInlineScale(zoomReceiptInlineOut);
-                      }}
-                      title="左クリックで拡大 / 右クリックで縮小"
-                      style={{
-                        ...receiptImgSize(rotation, recBox, natSize),
-                        borderRadius: 10,
-                        border: "1px solid #e2ddcf",
-                        cursor: "zoom-in",
-                        transform: `rotate(${rotation}deg) scale(${receiptInlineScale})`,
-                        transformOrigin: "center center",
-                      }}
-                    />
-                  </div>
+                  (() => {
+                    const baseSize = receiptImgSize(rotation, recBox, natSize);
+                    const inlineLayout = receiptInlineLayout(baseSize, rotation, receiptInlineScale);
+                    const zoomed = isReceiptInlineZoomed(receiptInlineScale);
+                    return (
+                      <div ref={recBoxRef} style={receiptViewportStyle(zoomed)}>
+                        <div style={inlineLayout.frame}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imgUrl}
+                            alt="領収書"
+                            onLoad={(e) => setNatSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+                            onClick={() => setReceiptInlineScale(zoomReceiptInlineIn)}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              setReceiptInlineScale(zoomReceiptInlineOut);
+                            }}
+                            title="左クリックで拡大 / 右クリックで縮小"
+                            style={{
+                              ...inlineLayout.image,
+                              borderRadius: 10,
+                              border: "1px solid #e2ddcf",
+                              cursor: "zoom-in",
+                              transform: `rotate(${rotation}deg)`,
+                              transformOrigin: "center center",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()
                 ) : (
                   <div style={{ ...notice, margin: 0 }}>画像なし</div>
                 )}
@@ -1902,6 +1911,45 @@ function receiptImgSize(
   return { width: Math.round(nat.w * scale), height: Math.round(nat.h * scale) };
 }
 
+function receiptViewportStyle(zoomed: boolean): React.CSSProperties {
+  return {
+    flex: 1,
+    minHeight: 280,
+    overflow: "auto",
+    display: "flex",
+    alignItems: zoomed ? "flex-start" : "center",
+    justifyContent: zoomed ? "flex-start" : "center",
+  };
+}
+
+function receiptInlineLayout(baseSize: React.CSSProperties, rotation: number, zoom: number) {
+  if (typeof baseSize.width !== "number" || typeof baseSize.height !== "number") {
+    return {
+      frame: { flex: "0 0 auto", display: "inline-flex", alignItems: "center", justifyContent: "center" } satisfies React.CSSProperties,
+      image: baseSize,
+    };
+  }
+  const imageSize = scaledReceiptDisplaySize({ width: baseSize.width, height: baseSize.height }, zoom);
+  const frameSize = receiptScrollFrameSize({ width: baseSize.width, height: baseSize.height }, rotation, zoom);
+  return {
+    frame: {
+      width: frameSize.width,
+      height: frameSize.height,
+      flex: "0 0 auto",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    } satisfies React.CSSProperties,
+    image: {
+      ...baseSize,
+      width: imageSize.width,
+      height: imageSize.height,
+      maxWidth: "none",
+      maxHeight: "none",
+    },
+  };
+}
+
 function employeeLabel(row: Req, employees: Record<string, Employee>) {
   if (!row.applicant_employee_id) return "-";
   return employees[row.applicant_employee_id]?.name ?? row.applicant_employee_id;
@@ -2476,7 +2524,7 @@ const zoomCanvas: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,0.18)",
   display: "flex",
   alignItems: "flex-start",
-  justifyContent: "center",
+  justifyContent: "flex-start",
   padding: 24,
 };
 const receiptToolGroup: React.CSSProperties = {
