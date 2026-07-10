@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { clampReceiptInlineZoom, isReceiptInlineZoomed, receiptScrollFrameSize, scaledReceiptDisplaySize, zoomReceiptInlineIn, zoomReceiptInlineOut } from "../receipt-zoom";
+import {
+  clampReceiptInlineZoom,
+  containedReceiptBaseSize,
+  isReceiptInlineZoomed,
+  receiptScrollFrameSize,
+  scaledReceiptDisplaySize,
+  shouldUpdateReceiptMeasure,
+  zoomReceiptInlineIn,
+  zoomReceiptInlineOut,
+} from "../receipt-zoom";
 
 describe("receipt inline zoom", () => {
   it("zooms in by one step", () => {
@@ -34,5 +43,35 @@ describe("receipt inline zoom", () => {
   it("detects when inline zoom should leave centered layout", () => {
     expect(isReceiptInlineZoomed(1)).toBe(false);
     expect(isReceiptInlineZoomed(1.2)).toBe(true);
+  });
+
+  it("updates the measured receipt box only at actual size", () => {
+    expect(shouldUpdateReceiptMeasure(1)).toBe(true);
+    expect(shouldUpdateReceiptMeasure(1.2)).toBe(false);
+    expect(shouldUpdateReceiptMeasure(2.4)).toBe(false);
+    expect(shouldUpdateReceiptMeasure(Number.NaN)).toBe(true);
+  });
+
+  it("keeps the contained base size independent from zoom", () => {
+    const box = { w: 554, h: 600 };
+    const natural = { w: 384, h: 473 };
+    const base = containedReceiptBaseSize(0, box, natural);
+    expect(base).toEqual(containedReceiptBaseSize(0, box, natural));
+    expect(scaledReceiptDisplaySize(base!, 1)).toEqual(base);
+    expect(scaledReceiptDisplaySize(base!, 1.2)).toEqual({
+      width: Math.round(base!.width * 1.2),
+      height: Math.round(base!.height * 1.2),
+    });
+    expect(scaledReceiptDisplaySize(base!, 1.4)).toEqual({
+      width: Math.round(base!.width * 1.4),
+      height: Math.round(base!.height * 1.4),
+    });
+  });
+
+  it("does not exceed the expected 1.6x width after three clicks", () => {
+    const base = containedReceiptBaseSize(0, { w: 554, h: 600 }, { w: 384, h: 473 });
+    const zoom = zoomReceiptInlineIn(zoomReceiptInlineIn(zoomReceiptInlineIn(1)));
+    expect(zoom).toBe(1.6);
+    expect(scaledReceiptDisplaySize(base!, zoom).width).toBe(Math.round(base!.width * 1.6));
   });
 });

@@ -22,7 +22,7 @@ import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalize
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { isExpenseTabKeyboardScopeActive } from "@/app/bud/expenses/_lib/expense-tab-scope";
 import { getOcrConfirmBadgeTone } from "@/app/bud/expenses/_lib/ocr-confirm-badge";
-import { isReceiptInlineZoomed, receiptScrollFrameSize, scaledReceiptDisplaySize, zoomReceiptInlineIn, zoomReceiptInlineOut } from "@/app/bud/expenses/_lib/receipt-zoom";
+import { containedReceiptBaseSize, isReceiptInlineZoomed, receiptScrollFrameSize, scaledReceiptDisplaySize, shouldUpdateReceiptMeasure, zoomReceiptInlineIn, zoomReceiptInlineOut } from "@/app/bud/expenses/_lib/receipt-zoom";
 import {
   sortExpenseReviewRows,
   type ExpenseReviewSortDirection,
@@ -183,6 +183,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [rotation, setRotation] = useState(0); // 領収書プレビューの回転（90刻み・処理時に保存画像へ反映）
   // 領収書表示枠の実寸を測り、回転しても最大サイズ(contain)で表示する
+  const recMeasureRef = useRef<HTMLDivElement>(null);
   const recBoxRef = useRef<HTMLDivElement>(null);
   const [recBox, setRecBox] = useState({ w: 0, h: 0 });
   const [natSize, setNatSize] = useState({ w: 0, h: 0 }); // 画像の元サイズ
@@ -393,14 +394,17 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
   // 領収書表示枠のサイズを監視（回転時の最大表示計算に使う）
   useEffect(() => {
-    const el = recBoxRef.current;
+    const el = recMeasureRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const update = () => setRecBox({ w: el.clientWidth, h: el.clientHeight });
+    const update = () => {
+      if (!shouldUpdateReceiptMeasure(receiptInlineScale)) return;
+      setRecBox({ w: el.clientWidth, h: el.clientHeight });
+    };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [loaded, current, imgUrl]);
+  }, [loaded, current, imgUrl, receiptInlineScale]);
 
   useEffect(() => {
     setIdx(0);
@@ -1013,7 +1017,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         <div style={reviewShell}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={twoCol}>
-              <div style={{ ...panel, order: cardsReversed ? 2 : 1 }}>
+              <div style={{ ...panel, minWidth: 0, minHeight: 0, order: cardsReversed ? 2 : 1 }}>
                 <h2 style={panelTitle}>申請情報</h2>
                 <div style={formRows}>
                   <div style={fieldRow(FISCAL_COLS)}>
@@ -1223,7 +1227,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 </div>
               </div>
 
-              <div style={{ ...panel, display: "flex", flexDirection: "column", order: cardsReversed ? 1 : 2 }}>
+              <div style={{ ...panel, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", order: cardsReversed ? 1 : 2 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   {imgUrl && (
                     <div style={receiptToolGroup}>
@@ -1257,28 +1261,30 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     const inlineLayout = receiptInlineLayout(baseSize, rotation, receiptInlineScale);
                     const zoomed = isReceiptInlineZoomed(receiptInlineScale);
                     return (
-                      <div ref={recBoxRef} style={receiptViewportStyle(zoomed)}>
-                        <div style={inlineLayout.frame}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={imgUrl}
-                            alt="領収書"
-                            onLoad={(e) => setNatSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-                            onClick={() => setReceiptInlineScale(zoomReceiptInlineIn)}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              setReceiptInlineScale(zoomReceiptInlineOut);
-                            }}
-                            title="左クリックで拡大 / 右クリックで縮小"
-                            style={{
-                              ...inlineLayout.image,
-                              borderRadius: 10,
-                              border: "1px solid #e2ddcf",
-                              cursor: "zoom-in",
-                              transform: `rotate(${rotation}deg)`,
-                              transformOrigin: "center center",
-                            }}
-                          />
+                      <div ref={recMeasureRef} style={receiptMeasureBox}>
+                        <div ref={recBoxRef} style={receiptViewportStyle(zoomed)}>
+                          <div style={inlineLayout.frame}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imgUrl}
+                              alt="領収書"
+                              onLoad={(e) => setNatSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+                              onClick={() => setReceiptInlineScale(zoomReceiptInlineIn)}
+                              onContextMenu={(event) => {
+                                event.preventDefault();
+                                setReceiptInlineScale(zoomReceiptInlineOut);
+                              }}
+                              title="左クリックで拡大 / 右クリックで縮小"
+                              style={{
+                                ...inlineLayout.image,
+                                borderRadius: 10,
+                                border: "1px solid #e2ddcf",
+                                cursor: "zoom-in",
+                                transform: `rotate(${rotation}deg)`,
+                                transformOrigin: "center center",
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     );
@@ -1902,19 +1908,24 @@ function receiptImgSize(
   box: { w: number; h: number },
   nat: { w: number; h: number },
 ): React.CSSProperties {
-  if (!box.w || !box.h || !nat.w || !nat.h) return { maxWidth: "100%", maxHeight: "100%" };
-  const rotated = rotation % 180 !== 0;
-  // 回転後に枠へ収まる拡大率（rotated 時は枠の縦横を入れ替えて判定）
-  const scale = rotated
-    ? Math.min(box.w / nat.h, box.h / nat.w)
-    : Math.min(box.w / nat.w, box.h / nat.h);
-  return { width: Math.round(nat.w * scale), height: Math.round(nat.h * scale) };
+  return containedReceiptBaseSize(rotation, box, nat) ?? { maxWidth: "100%", maxHeight: "100%" };
 }
+
+const receiptMeasureBox: React.CSSProperties = {
+  flex: 1,
+  minHeight: 280,
+  minWidth: 0,
+  overflow: "hidden",
+  display: "flex",
+};
 
 function receiptViewportStyle(zoomed: boolean): React.CSSProperties {
   return {
     flex: 1,
-    minHeight: 280,
+    minWidth: 0,
+    minHeight: 0,
+    width: "100%",
+    maxWidth: "100%",
     overflow: "auto",
     display: "flex",
     alignItems: zoomed ? "flex-start" : "center",
@@ -2080,7 +2091,7 @@ const navCircle: React.CSSProperties = {
 };
 const navCount: React.CSSProperties = { fontSize: 13, color: "var(--text-main)", fontVariantNumeric: "tabular-nums", padding: "0 2px" };
 // alignItems: stretch で申請情報カードと領収書カードの高さを揃える（高い方に合わせる）
-const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "stretch", marginBottom: 0 };
+const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "stretch", marginBottom: 0 };
 const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
 const panelTitle: React.CSSProperties = { fontSize: 15, color: "#b3892e", margin: "0 0 12px", borderBottom: "1px dashed rgba(179,137,46,0.35)", paddingBottom: 8 };
 // 「法人/計上期/期の範囲」行と「レシート日付/時刻」行で共有する列幅（枠の縦ラインを揃える）
