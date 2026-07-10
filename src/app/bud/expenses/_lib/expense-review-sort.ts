@@ -24,7 +24,8 @@ export function sortExpenseReviewRows<T extends ExpenseReviewSortableRow>(
   field: ExpenseReviewSortField,
   direction: ExpenseReviewSortDirection,
 ): T[] {
-  if (field === "default") return rows;
+  // 「送り順」(default) は元の並び。降順を選んだときは元の並びを逆にする。
+  if (field === "default") return direction === "asc" ? rows : [...rows].reverse();
   const multiplier = direction === "asc" ? 1 : -1;
   return rows
     .map((row, index) => ({ row, index }))
