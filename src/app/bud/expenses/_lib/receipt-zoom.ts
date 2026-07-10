@@ -23,6 +23,20 @@ export function scaledReceiptDisplaySize(size: { width: number; height: number }
   };
 }
 
+export function containedReceiptBaseSize(
+  rotation: number,
+  box: { w: number; h: number },
+  natural: { w: number; h: number },
+) {
+  if (!box.w || !box.h || !natural.w || !natural.h) return null;
+  const rotated = Math.abs(rotation) % 180 !== 0;
+  const scale = rotated ? Math.min(box.w / natural.h, box.h / natural.w) : Math.min(box.w / natural.w, box.h / natural.h);
+  return {
+    width: Math.round(natural.w * scale),
+    height: Math.round(natural.h * scale),
+  };
+}
+
 export function receiptScrollFrameSize(size: { width: number; height: number }, rotation: number, zoom: number) {
   const scaled = scaledReceiptDisplaySize(size, zoom);
   const rotated = Math.abs(rotation) % 180 !== 0;
@@ -31,6 +45,10 @@ export function receiptScrollFrameSize(size: { width: number; height: number }, 
 
 export function isReceiptInlineZoomed(zoom: number) {
   return clampReceiptInlineZoom(zoom) > RECEIPT_INLINE_ZOOM_MIN;
+}
+
+export function shouldUpdateReceiptMeasure(zoom: number) {
+  return clampReceiptInlineZoom(zoom) === RECEIPT_INLINE_ZOOM_MIN;
 }
 
 function roundZoom(value: number) {
