@@ -234,14 +234,26 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     if (employeeIds.length === 0) {
       setEmployees({});
     } else {
-      const employeeResWithDefault = await supabase
-        .from("root_employees")
-        .select("employee_id,company_id,name,expense_default_corp_id")
-        .in("employee_id", employeeIds);
-      let employeeData = (employeeResWithDefault.data as Employee[] | null) ?? [];
-      if (employeeResWithDefault.error) {
-        const employeeFallbackRes = await supabase.from("root_employees").select("employee_id,company_id,name").in("employee_id", employeeIds);
-        employeeData = (employeeFallbackRes.data as Employee[] | null) ?? [];
+      // root_employees は RLS で本人の行しか読めない（staff の経理担当だと他人の名前が引けず
+      // 社員番号のまま表示されてしまう）ため、Bud権限を確認する API 経由で取得する。
+      let employeeData: Employee[] = [];
+      try {
+        const res = await fetch("/api/bud/expense-employees", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employeeIds }),
+        });
+        const json = (await res.json()) as { ok?: boolean; employees?: Employee[] };
+        if (res.ok && json.ok && Array.isArray(json.employees)) {
+          employeeData = json.employees;
+        }
+      } catch {
+        employeeData = [];
+      }
+      if (employeeData.length === 0) {
+        // API が使えない場合でも、自分の行だけは RLS 越しに読めるのでフォールバックする
+        const fallbackRes = await supabase.from("root_employees").select("employee_id,company_id,name").in("employee_id", employeeIds);
+        employeeData = (fallbackRes.data as Employee[] | null) ?? [];
       }
       const map: Record<string, Employee> = {};
       for (const employee of employeeData) {
@@ -747,6 +759,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           {list.length > 0 && current && (
             <div style={{ ...navWrap, justifyContent: "center" }}>
               <div style={navButtonRow}>
+              <button type="button" style={layoutToggleBtn} onClick={() => setCardsReversed((value) => !value)} title="申請情報と領収書の左右を入れ替えます">
+                ⇄ 左右入替
+              </button>
               <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
                 <span style={navCircle}>◀</span>前へ<span style={navHint}>Ctrl+↑</span>
               </button>
@@ -862,14 +877,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   type="button"
                   style={layoutToggleBtn}
                   onClick={() => setSortDirection((value) => (value === "asc" ? "desc" : "asc"))}
-                  disabled={sortField === "default"}
+                  title="昇順と降順を切り替えます（送り順のままでも逆順にできます）"
                 >
                   {sortDirection === "asc" ? "昇順" : "降順"}
                 </button>
               </div>
-              <button type="button" style={layoutToggleBtn} onClick={() => setCardsReversed((value) => !value)}>
-                ⇄ 左右入替
-              </button>
             </div>
             <div style={twoCol}>
               <div style={{ ...panel, order: cardsReversed ? 2 : 1 }}>
@@ -1545,12 +1557,16 @@ const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fo
 // ラベル/件数/金額を固定列にして桁が増えても位置が動かない（最大「1000件 合計 ¥5,000,000」基準）
 const compactCardMain: React.CSSProperties = { marginTop: "auto", display: "grid", gridTemplateColumns: "96px 58px 1fr", alignItems: "baseline", gap: 8 };
 const navWrap: React.CSSProperties = { marginLeft: "auto", height: 61, display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "stretch", gap: 4 };
-const navButtonRow: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, height: 34 };
+// 前へ/次へ・左右入替・送り順・昇順降順のコントロールで高さを揃える
+const CONTROL_HEIGHT = 34;
+const navButtonRow: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, height: CONTROL_HEIGHT };
 const navBtn = (disabled: boolean): React.CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  padding: "8px 11px",
+  height: CONTROL_HEIGHT,
+  boxSizing: "border-box",
+  padding: "0 11px",
   borderRadius: 8,
   border: "1px solid var(--border-card)",
   background: "var(--bg-card-solid)",
@@ -1695,10 +1711,16 @@ const sortControlGroup: React.CSSProperties = {
 const sortSelect: React.CSSProperties = {
   ...input,
   width: 136,
-  padding: "6px 10px",
+  height: CONTROL_HEIGHT,
+  boxSizing: "border-box",
+  padding: "0 10px",
   fontSize: 12,
 };
 const layoutToggleBtn: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  height: CONTROL_HEIGHT,
+  boxSizing: "border-box",
   border: "1px solid rgba(179,137,46,0.28)",
   borderRadius: 999,
   background: "var(--bg-card-solid)",
@@ -1706,7 +1728,8 @@ const layoutToggleBtn: React.CSSProperties = {
   cursor: "pointer",
   fontSize: 12,
   fontWeight: 700,
-  padding: "6px 12px",
+  padding: "0 12px",
+  whiteSpace: "nowrap",
 };
 const approveBtn: React.CSSProperties = {
   flex: 1,

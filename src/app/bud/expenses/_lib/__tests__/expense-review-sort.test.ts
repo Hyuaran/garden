@@ -13,6 +13,16 @@ describe("sortExpenseReviewRows", () => {
     expect(sortExpenseReviewRows(rows, "default", "asc").map((row) => row.id)).toEqual(["b", "a", "c"]);
   });
 
+  it("reverses default order when descending", () => {
+    expect(sortExpenseReviewRows(rows, "default", "desc").map((row) => row.id)).toEqual(["c", "a", "b"]);
+  });
+
+  it("does not mutate the input array when reversing default order", () => {
+    const input = [...rows];
+    sortExpenseReviewRows(input, "default", "desc");
+    expect(input.map((row) => row.id)).toEqual(["b", "a", "c"]);
+  });
+
   it("sorts by amount descending with stable ties", () => {
     expect(sortExpenseReviewRows(rows, "amount", "desc").map((row) => row.id)).toEqual(["a", "c", "b"]);
   });
