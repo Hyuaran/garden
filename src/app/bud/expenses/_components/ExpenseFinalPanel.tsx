@@ -4,8 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
-import { buildExpenseDeleteConfirmMessage, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
+import { buildEmployeeMap, fetchExpenseEmployeeLookup, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
+import { filterExpenseListRecords, sumExpenseAmounts } from "@/app/bud/expenses/_lib/expense-list-filter";
+import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
+import { isExpenseTabKeyboardScopeActive } from "@/app/bud/expenses/_lib/expense-tab-scope";
+import type { SearchField, SearchRecord } from "@/app/bud/expenses/_lib/filemaker-search";
 
 import {
   buildCompanyToCorp,
@@ -26,6 +30,7 @@ type Req = {
   drive_file_id: string | null;
   storage_path: string | null;
   receipt_date: string | null;
+  receipt_time: string | null;
   store_name: string | null;
   amount: number | null;
   qualified_class: string | null;
@@ -52,7 +57,7 @@ type TodayStats = {
 };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at,final_checked_at";
+  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at,final_checked_at";
 const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 const CORP_FILTER_STORAGE_KEY = "bud-expense-final-corp-filter";
 
@@ -81,8 +86,8 @@ function readInitialCorpFilter() {
 
 export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createBrowserClient(), []);
-  const { hasGardenRoleAtLeast } = useBudState();
-  const canManageSoftDelete = hasGardenRoleAtLeast("super_admin");
+  const { gardenRole } = useBudState();
+  const canManageSoftDelete = canManageExpenseSoftDelete(gardenRole);
   const [pendingAll, setPendingAll] = useState<Req[]>([]);
   const [finalProcessedToday, setFinalProcessedToday] = useState<Req[]>([]);
   const [keiriReturnedToday, setKeiriReturnedToday] = useState<Req[]>([]);
@@ -99,6 +104,9 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [listSearchField, setListSearchField] = useState<SearchField | "all">("all");
+  const [listSearchValue, setListSearchValue] = useState("");
+  const listSearchInputRef = useRef<HTMLInputElement>(null);
   const openedAt = useRef<number>(0);
 
   const setCorpFilter = useCallback((next: string) => {
@@ -184,12 +192,8 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
     if (employeeIds.length === 0) {
       setEmployees({});
     } else {
-      const { data } = await supabase.from("root_employees").select("employee_id,company_id,name").in("employee_id", employeeIds);
-      const map: Record<string, Employee> = {};
-      for (const employee of ((data as Employee[] | null) ?? [])) {
-        map[employee.employee_id] = employee;
-      }
-      setEmployees(map);
+      const lookup = await fetchExpenseEmployeeLookup({ employeeIds, supabase });
+      setEmployees(buildEmployeeMap(lookup.employees as Array<Employee & ExpenseEmployeeLookupRow>));
     }
 
     setIdx(0);
@@ -218,14 +222,21 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
 
   const effectiveCorpId = useCallback((row: Req) => getEffectiveCorpId(row, employees, companyToCorp), [employees, companyToCorp]);
   const corpMatches = useCallback((row: Req) => corpFilter === "all" || effectiveCorpId(row) === corpFilter, [corpFilter, effectiveCorpId]);
-  const list = useMemo(() => pendingAll.filter(corpMatches), [pendingAll, corpMatches]);
+  const baseList = useMemo(() => pendingAll.filter(corpMatches), [pendingAll, corpMatches]);
+  const searchRecords = useMemo(() => baseList.map((row) => buildFinalSearchRecord(row, cats, employees, effectiveCorpId)), [baseList, cats, effectiveCorpId, employees]);
+  const list = useMemo(() => {
+    if (!listSearchValue.trim()) return baseList;
+    const result = filterExpenseListRecords(searchRecords, listSearchField, listSearchValue);
+    const ids = new Set(result.records.map((record) => record.id));
+    return baseList.filter((row) => ids.has(row.id));
+  }, [baseList, listSearchField, listSearchValue, searchRecords]);
   const finalProcessedFiltered = useMemo(() => finalProcessedToday.filter(corpMatches), [finalProcessedToday, corpMatches]);
   const keiriReturnedFiltered = useMemo(() => keiriReturnedToday.filter(corpMatches), [keiriReturnedToday, corpMatches]);
   const current = list[idx];
   const selectedRows = useMemo(() => list.filter((row) => selectedIds.has(row.id)), [list, selectedIds]);
   const allVisibleSelected = list.length > 0 && list.every((row) => selectedIds.has(row.id));
 
-  const pendingAmount = useMemo(() => list.reduce((sum, row) => sum + (row.amount ?? 0), 0), [list]);
+  const pendingAmount = useMemo(() => sumExpenseAmounts(list), [list]);
 
   const todayStats: TodayStats = useMemo(() => {
     const approved = finalProcessedFiltered.filter((row) => row.status === "journalize_pending" || row.status === "journalized");
@@ -241,7 +252,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
 
   useEffect(() => {
     setIdx(0);
-  }, [corpFilter]);
+  }, [corpFilter, listSearchField, listSearchValue]);
 
   useEffect(() => {
     setIdx((value) => Math.max(0, Math.min(value, Math.max(0, list.length - 1))));
@@ -262,7 +273,15 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === "ArrowDown") {
+      if (!isExpenseTabKeyboardScopeActive(document, "tab-approve")) return;
+      if (event.ctrlKey && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        listSearchInputRef.current?.focus();
+      } else if (event.key === "Escape" && document.activeElement === listSearchInputRef.current) {
+        event.preventDefault();
+        setListSearchValue("");
+        listSearchInputRef.current?.blur();
+      } else if (event.ctrlKey && event.key === "ArrowDown") {
         event.preventDefault();
         setIdx((value) => Math.min(value + 1, list.length - 1));
       } else if (event.ctrlKey && event.key === "ArrowUp") {
@@ -540,7 +559,41 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
             <section style={panel}>
               <div style={panelHead}>
                 <h3 style={panelTitle}>完了待ち一覧</h3>
-                <span style={panelMeta}>final_pending / {list.length} 件</span>
+                <span style={panelMeta}>レコード {list.length.toLocaleString("ja-JP")} / {baseList.length.toLocaleString("ja-JP")}</span>
+              </div>
+              <div style={listToolbar}>
+                <div style={listSearchBox}>
+                  <select value={listSearchField} onChange={(event) => setListSearchField(event.target.value as SearchField | "all")} style={listSearchSelect}>
+                    <option value="all">全項目</option>
+                    <option value="receipt_date">日付</option>
+                    <option value="receipt_time">時刻</option>
+                    <option value="amount">金額</option>
+                    <option value="store_name">店名</option>
+                    <option value="qualified_number">適格番号</option>
+                    <option value="description">摘要</option>
+                    <option value="applicant_employee_id">申請者</option>
+                    <option value="corp_id">法人</option>
+                    <option value="expense_kind">区分</option>
+                    <option value="category_id">経費区分</option>
+                  </select>
+                  <input
+                    ref={listSearchInputRef}
+                    type="search"
+                    value={listSearchValue}
+                    onChange={(event) => setListSearchValue(event.target.value)}
+                    placeholder="完了待ちを検索"
+                    style={listSearchInput}
+                  />
+                  {listSearchValue && (
+                    <button type="button" style={clearSearchBtn} onClick={() => setListSearchValue("")}>
+                      x 解除
+                    </button>
+                  )}
+                </div>
+                <div style={listSummaryPills}>
+                  <span style={listSummaryPill}>レコード {list.length.toLocaleString("ja-JP")} / {baseList.length.toLocaleString("ja-JP")}</span>
+                  <span style={listSummaryPill}>合計 {yen(pendingAmount)}</span>
+                </div>
               </div>
               {list.length === 0 ? (
                 <div style={{ ...notice, margin: 0 }}>この法人の完了待ちはありません</div>
@@ -788,6 +841,28 @@ function categoryLabel(categoryId: string | null, cats: Cat[]) {
   return cats.find((cat) => cat.id === categoryId)?.name ?? categoryId;
 }
 
+function buildFinalSearchRecord(
+  row: Req,
+  cats: Cat[],
+  employees: Record<string, Employee>,
+  effectiveCorpId: (row: Req) => string | null,
+): SearchRecord {
+  return {
+    id: row.id,
+    corp_id: effectiveCorpId(row) ?? row.corp_id ?? "",
+    expense_kind: row.expense_kind,
+    category_id: `${row.category_id ?? ""} ${categoryLabel(row.category_id, cats)}`.trim(),
+    qualified_class: row.qualified_class ?? "",
+    receipt_date: row.receipt_date ?? "",
+    receipt_time: row.receipt_time ? row.receipt_time.slice(0, 5) : "",
+    amount: row.amount,
+    store_name: row.store_name ?? "",
+    qualified_number: row.qualified_number ?? "",
+    description: row.description ?? "",
+    applicant_employee_id: employeeLabel(row, employees),
+  };
+}
+
 function formatDate(value: string | null) {
   if (!value) return "—";
   const date = new Date(value);
@@ -889,6 +964,68 @@ const panelHead: React.CSSProperties = {
 };
 const panelTitle: React.CSSProperties = { fontSize: 16, color: "var(--text-main)", margin: 0, fontWeight: 600 };
 const panelMeta: React.CSSProperties = { fontSize: 12, color: "var(--text-muted)" };
+const listToolbar: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+  marginBottom: 12,
+};
+const listSearchBox: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+  minWidth: 280,
+};
+const listSearchSelect: React.CSSProperties = {
+  width: 132,
+  borderRadius: 8,
+  border: "1px solid rgba(179,137,46,0.3)",
+  padding: "7px 10px",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-main)",
+  fontSize: 13,
+};
+const listSearchInput: React.CSSProperties = {
+  width: 260,
+  borderRadius: 8,
+  border: "1px solid rgba(179,137,46,0.3)",
+  padding: "7px 10px",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-main)",
+  fontSize: 13,
+};
+const clearSearchBtn: React.CSSProperties = {
+  border: "1px solid rgba(179,137,46,0.28)",
+  borderRadius: 8,
+  padding: "7px 10px",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-sub)",
+  cursor: "pointer",
+  fontSize: 12,
+};
+const listSummaryPills: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: 8,
+  flexWrap: "wrap",
+};
+const listSummaryPill: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 30,
+  borderRadius: 999,
+  border: "1px solid rgba(179,137,46,0.24)",
+  background: "rgba(255,255,255,0.58)",
+  color: "var(--text-sub)",
+  padding: "5px 11px",
+  fontSize: 12,
+  fontVariantNumeric: "tabular-nums",
+  whiteSpace: "nowrap",
+};
 const bulkToolbar: React.CSSProperties = {
   display: "flex",
   alignItems: "center",

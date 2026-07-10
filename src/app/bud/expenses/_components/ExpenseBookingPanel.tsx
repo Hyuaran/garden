@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
-import { buildExpenseDeleteConfirmMessage, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
+import { buildEmployeeMap, fetchExpenseEmployeeLookup, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
+import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { classifyExpenseJournal } from "../_lib/expense-journal-rules";
 
@@ -71,8 +72,8 @@ function readInitialCorpFilter() {
 
 export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createBrowserClient(), []);
-  const { hasGardenRoleAtLeast } = useBudState();
-  const canManageSoftDelete = hasGardenRoleAtLeast("super_admin");
+  const { gardenRole } = useBudState();
+  const canManageSoftDelete = canManageExpenseSoftDelete(gardenRole);
   const [queueAll, setQueueAll] = useState<Req[]>([]);
   const [journalizedThisMonth, setJournalizedThisMonth] = useState<Req[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
@@ -156,12 +157,8 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       new Set([...queue, ...done].map((row) => row.applicant_employee_id).filter((id): id is string => Boolean(id))),
     );
     if (employeeIds.length > 0) {
-      const { data } = await supabase.from("root_employees").select("employee_id,company_id,name").in("employee_id", employeeIds);
-      const map: Record<string, Employee> = {};
-      for (const employee of ((data as Employee[] | null) ?? [])) {
-        map[employee.employee_id] = employee;
-      }
-      setEmployees(map);
+      const lookup = await fetchExpenseEmployeeLookup({ employeeIds, supabase });
+      setEmployees(buildEmployeeMap(lookup.employees as Array<Employee & ExpenseEmployeeLookupRow>));
     } else {
       setEmployees({});
     }
