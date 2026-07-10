@@ -18,6 +18,7 @@ export function ExpenseFinalEmbed() {
         const summary = tab.querySelector(".exp-summary-grid");
         summary?.insertAdjacentElement("afterend", node);
       }
+      hideFinalLegacyBlocks(tab);
       if (node) {
         setEl((current) => (current === node ? current : node));
       }
@@ -32,4 +33,10 @@ export function ExpenseFinalEmbed() {
 
   if (!el) return null;
   return createPortal(<ExpenseFinalPanel embedded />, el);
+}
+
+function hideFinalLegacyBlocks(tab: HTMLElement | null) {
+  if (!tab) return;
+  const blocks = tab.querySelectorAll<HTMLElement>(".exp-summary-grid, .exp-main-layout, .exp-flow-card, .bud-mirror-panel");
+  blocks.forEach((block) => block.style.setProperty("display", "none"));
 }

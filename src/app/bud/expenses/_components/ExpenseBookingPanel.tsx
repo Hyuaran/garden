@@ -222,7 +222,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   }, [selectableIds]);
 
   useEffect(() => {
-    if (!embedded || !loaded) return;
+    if (!embedded) return;
     const tab = document.getElementById("tab-booking");
     if (!tab) return;
     const hiddenBlocks = Array.from(
@@ -258,7 +258,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       host.removeEventListener("click", onClick);
       hiddenBlocks.forEach((block) => block.style.removeProperty("display"));
     };
-  }, [corpFilter, embedded, loaded, setCorpFilter, sortedCorps]);
+  }, [corpFilter, embedded, setCorpFilter, sortedCorps]);
 
   const toggle = (id: string, checked: boolean) => {
     setSelectedIds((current) => {
