@@ -14,6 +14,8 @@ import { createPortal } from "react-dom";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { calculateFiscalPeriod, formatFiscalDateRange } from "@/app/bud/expenses/_lib/fiscal-period";
+import { filterExpenseListRecords, sumExpenseAmounts } from "@/app/bud/expenses/_lib/expense-list-filter";
+import { isExpenseTabKeyboardScopeActive } from "@/app/bud/expenses/_lib/expense-tab-scope";
 import {
   sortExpenseReviewRows,
   type ExpenseReviewSortDirection,
@@ -579,6 +581,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!isExpenseTabKeyboardScopeActive(document, "tab-submit")) return;
       if (e.ctrlKey && e.key.toLowerCase() === "g") {
         e.preventDefault();
         if (searchMode) {
@@ -1255,13 +1258,79 @@ function ExpenseListTab({
   onPendingClick: (row: Req) => void;
   onProcessedClick: (row: Req) => void;
 }) {
+  const [listSearchField, setListSearchField] = useState<SearchField | "all">("all");
+  const [listSearchValue, setListSearchValue] = useState("");
+  const listSearchInputRef = useRef<HTMLInputElement>(null);
+  const searchRecords = useMemo(
+    () => rows.map((row) => buildStatusSearchRecord(row, cats, corps, employees)),
+    [cats, corps, employees, rows],
+  );
+  const filteredRows = useMemo(() => {
+    if (!listSearchValue.trim()) return rows;
+    const result = filterExpenseListRecords(searchRecords, listSearchField, listSearchValue);
+    const ids = new Set(result.records.map((record) => record.id));
+    return rows.filter((row) => ids.has(row.id));
+  }, [listSearchField, listSearchValue, rows, searchRecords]);
+  const visibleAmount = useMemo(() => sumExpenseAmounts(filteredRows), [filteredRows]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const tab = document.getElementById("tab-list");
+      if (!tab?.classList.contains("active")) return;
+      if (event.ctrlKey && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        listSearchInputRef.current?.focus();
+      } else if (event.key === "Escape" && document.activeElement === listSearchInputRef.current) {
+        event.preventDefault();
+        setListSearchValue("");
+        listSearchInputRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <section style={{ ...statusPanel, marginTop: 0 }}>
       <div style={statusHead}>
         <h3 style={statusTitle}>経費一覧</h3>
         <span style={statusMeta}>未処理と処理済み（全期間）</span>
       </div>
-      <StatusList rows={rows} cats={cats} corps={corps} employees={employees} onPendingClick={onPendingClick} onProcessedClick={onProcessedClick} compact />
+      <div style={listToolbar}>
+        <div style={listSearchBox}>
+          <select value={listSearchField} onChange={(event) => setListSearchField(event.target.value as SearchField | "all")} style={listSearchSelect}>
+            <option value="all">全項目</option>
+            <option value="receipt_date">日付</option>
+            <option value="receipt_time">時刻</option>
+            <option value="amount">金額</option>
+            <option value="store_name">店名</option>
+            <option value="qualified_number">適格番号</option>
+            <option value="description">摘要</option>
+            <option value="applicant_employee_id">申請者</option>
+            <option value="expense_kind">区分</option>
+            <option value="corp_id">法人</option>
+            <option value="category_id">経費区分</option>
+          </select>
+          <input
+            ref={listSearchInputRef}
+            type="search"
+            value={listSearchValue}
+            onChange={(event) => setListSearchValue(event.target.value)}
+            placeholder="一覧を検索"
+            style={listSearchInput}
+          />
+          {listSearchValue && (
+            <button type="button" style={foundClearBtn} onClick={() => setListSearchValue("")}>
+              x 解除
+            </button>
+          )}
+        </div>
+        <div style={listSummaryPills}>
+          <span style={listSummaryPill}>表示 {filteredRows.length.toLocaleString("ja-JP")} 件</span>
+          <span style={listSummaryPill}>金額 {yen(visibleAmount)}</span>
+        </div>
+      </div>
+      <StatusList rows={filteredRows} cats={cats} corps={corps} employees={employees} onPendingClick={onPendingClick} onProcessedClick={onProcessedClick} compact />
     </section>
   );
 }
@@ -1334,6 +1403,28 @@ function StatusList({
       )}
     </section>
   );
+}
+
+function buildStatusSearchRecord(
+  row: StatusRow,
+  cats: Cat[],
+  corps: Corp[],
+  employees: Record<string, Employee>,
+): SearchRecord & { amount: number | null } {
+  return {
+    id: row.id,
+    corp_id: `${row.corp_id ?? ""} ${corpLabel(row.corp_id, corps)}`.trim(),
+    expense_kind: expenseKindLabel(row.expense_kind),
+    category_id: `${row.category_id ?? ""} ${categoryLabel(row.category_id, cats)}`.trim(),
+    qualified_class: row.qualified_class ?? "",
+    receipt_date: row.receipt_date ?? "",
+    receipt_time: row.receipt_time ? row.receipt_time.slice(0, 5) : "",
+    amount: row.amount,
+    store_name: row.store_name ?? "",
+    qualified_number: row.qualified_number ?? "",
+    description: displayDescription(row.description),
+    applicant_employee_id: employeeLabel(row, employees),
+  };
 }
 
 function DetailModal({
@@ -1839,6 +1930,54 @@ const foundClearBtn: React.CSSProperties = {
   padding: "5px 10px",
   cursor: "pointer",
   fontSize: 12,
+};
+const listToolbar: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+  marginBottom: 12,
+};
+const listSearchBox: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+  minWidth: 280,
+};
+const listSearchSelect: React.CSSProperties = {
+  ...input,
+  width: 132,
+  padding: "7px 10px",
+  fontSize: 13,
+};
+const listSearchInput: React.CSSProperties = {
+  ...input,
+  width: 260,
+  padding: "7px 10px",
+  fontSize: 13,
+};
+const listSummaryPills: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: 8,
+  flexWrap: "wrap",
+};
+const listSummaryPill: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 30,
+  padding: "5px 12px",
+  borderRadius: 999,
+  border: "1px solid rgba(179,137,46,0.22)",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-main)",
+  fontSize: 13,
+  fontWeight: 700,
+  fontVariantNumeric: "tabular-nums",
+  whiteSpace: "nowrap",
 };
 const corpSwitch: React.CSSProperties = {
   display: "flex",
