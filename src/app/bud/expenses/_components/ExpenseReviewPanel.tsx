@@ -15,11 +15,13 @@ import { createPortal } from "react-dom";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
 import { expenseKindLabel } from "@/app/bud/expenses/_lib/expense-kind";
+import { buildEmployeeMap, buildUserNameMap, fetchExpenseEmployeeLookup, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
 import { calculateFiscalPeriod, formatFiscalDateRange } from "@/app/bud/expenses/_lib/fiscal-period";
 import { filterExpenseListRecords, sumExpenseAmounts } from "@/app/bud/expenses/_lib/expense-list-filter";
-import { buildExpenseDeleteConfirmMessage, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
+import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { isExpenseTabKeyboardScopeActive } from "@/app/bud/expenses/_lib/expense-tab-scope";
+import { isReceiptTimeMissing } from "@/app/bud/expenses/_lib/receipt-time";
 import {
   sortExpenseReviewRows,
   type ExpenseReviewSortDirection,
@@ -160,8 +162,8 @@ async function readDeletedExpenseRequests(makeQuery: (select: string) => Promise
 
 export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createBrowserClient(), []);
-  const { hasGardenRoleAtLeast } = useBudState();
-  const canManageSoftDelete = hasGardenRoleAtLeast("super_admin");
+  const { gardenRole } = useBudState();
+  const canManageSoftDelete = canManageExpenseSoftDelete(gardenRole);
   const canEditExpenseKind = canManageSoftDelete;
   const [pendingAll, setPendingAll] = useState<Req[]>([]);
   const [processedToday, setProcessedToday] = useState<Req[]>([]);
@@ -171,6 +173,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [cats, setCats] = useState<Cat[]>([]);
   const [corps, setCorps] = useState<Corp[]>([]);
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
+  const [deletedByNames, setDeletedByNames] = useState<Record<string, string>>({});
   // root_companies(COMP-00X) → bud_corporations(hyuaran 等) の対応（法人名の部分一致で構築）
   const [companyToCorp, setCompanyToCorp] = useState<Record<string, string>>({});
   const [corpFilter, setCorpFilterState] = useState(readInitialCorpFilter);
@@ -299,35 +302,14 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           .filter((id): id is string => Boolean(id)),
       ),
     );
-    if (employeeIds.length === 0) {
+    const deletedByUserIds = Array.from(new Set(deleted.map((row) => row.deleted_by).filter((id): id is string => Boolean(id))));
+    if (employeeIds.length === 0 && deletedByUserIds.length === 0) {
       setEmployees({});
+      setDeletedByNames({});
     } else {
-      // root_employees は RLS で本人の行しか読めない（staff の経理担当だと他人の名前が引けず
-      // 社員番号のまま表示されてしまう）ため、Bud権限を確認する API 経由で取得する。
-      let employeeData: Employee[] = [];
-      try {
-        const res = await fetch("/api/bud/expense-employees", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ employeeIds }),
-        });
-        const json = (await res.json()) as { ok?: boolean; employees?: Employee[] };
-        if (res.ok && json.ok && Array.isArray(json.employees)) {
-          employeeData = json.employees;
-        }
-      } catch {
-        employeeData = [];
-      }
-      if (employeeData.length === 0) {
-        // API が使えない場合でも、自分の行だけは RLS 越しに読めるのでフォールバックする
-        const fallbackRes = await supabase.from("root_employees").select("employee_id,company_id,name").in("employee_id", employeeIds);
-        employeeData = (fallbackRes.data as Employee[] | null) ?? [];
-      }
-      const map: Record<string, Employee> = {};
-      for (const employee of employeeData) {
-        map[employee.employee_id] = employee;
-      }
-      setEmployees(map);
+      const lookup = await fetchExpenseEmployeeLookup({ employeeIds, userIds: deletedByUserIds, supabase });
+      setEmployees(buildEmployeeMap(lookup.employees as Array<Employee & ExpenseEmployeeLookupRow>));
+      setDeletedByNames(buildUserNameMap(lookup.userEmployees));
     }
 
     setIdx(options.preserveIndex ?? 0);
@@ -1101,7 +1083,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         value={searchMode ? activeSearch.receipt_time ?? "" : form.receipt_time}
                         onChange={(e) => (searchMode ? setSearchField("receipt_time", e.target.value) : setF("receipt_time", e.target.value))}
                         placeholder={searchMode ? "09:00...12:00" : undefined}
-                        style={input}
+                        style={receiptTimeFieldStyle(searchMode, form.receipt_time)}
                       />
                     </Field>
                   </div>
@@ -1365,7 +1347,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       {deletedTabHost &&
         canManageSoftDelete &&
         createPortal(
-          <DeletedExpenseTab rows={deletedRows} cats={cats} corps={sortedCorps} employees={employees} onRestoreRows={(rows) => void restoreRows(rows)} />,
+          <DeletedExpenseTab rows={deletedRows} cats={cats} corps={sortedCorps} employees={employees} deletedByNames={deletedByNames} onRestoreRows={(rows) => void restoreRows(rows)} />,
           deletedTabHost,
         )}
     </div>
@@ -1460,8 +1442,7 @@ function ExpenseListTab({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const tab = document.getElementById("tab-list");
-      if (!tab?.classList.contains("active")) return;
+      if (!isExpenseTabKeyboardScopeActive(document, "tab-list")) return;
       if (event.ctrlKey && event.key.toLowerCase() === "g") {
         event.preventDefault();
         listSearchInputRef.current?.focus();
@@ -1669,12 +1650,14 @@ function DeletedExpenseTab({
   cats,
   corps,
   employees,
+  deletedByNames,
   onRestoreRows,
 }: {
   rows: Req[];
   cats: Cat[];
   corps: Corp[];
   employees: Record<string, Employee>;
+  deletedByNames: Record<string, string>;
   onRestoreRows: (rows: Req[]) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -1739,7 +1722,7 @@ function DeletedExpenseTab({
                     />
                   </td>
                   <td style={td}>{formatDateTime(row.deleted_at)}</td>
-                  <td style={td}>{row.deleted_by ?? "-"}</td>
+                  <td style={td}>{deletedByLabel(row.deleted_by, deletedByNames)}</td>
                   <td style={td}>{row.delete_reason ?? "-"}</td>
                   <td style={td}>{formatDate(row.submitted_at)}</td>
                   <td style={td}>{employeeLabel(row, employees)}</td>
@@ -1899,8 +1882,13 @@ function receiptImgSize(
 }
 
 function employeeLabel(row: Req, employees: Record<string, Employee>) {
-  if (!row.applicant_employee_id) return "—";
+  if (!row.applicant_employee_id) return "-";
   return employees[row.applicant_employee_id]?.name ?? row.applicant_employee_id;
+}
+
+function deletedByLabel(userId: string | null | undefined, deletedByNames: Record<string, string>) {
+  if (!userId) return "-";
+  return deletedByNames[userId] ?? "-";
 }
 
 function categoryLabel(categoryId: string | null, cats: Cat[]) {
@@ -2091,11 +2079,20 @@ const missingRequiredInput: React.CSSProperties = {
   color: "#fff",
   fontWeight: 700,
 };
+const missingReceiptTimeInput: React.CSSProperties = {
+  background: "rgba(212,165,65,0.16)",
+  border: "1px solid rgba(212,165,65,0.58)",
+  color: "var(--text-warning)",
+  fontWeight: 700,
+};
 function requiredFieldStyle(searchMode: boolean, value: string): React.CSSProperties {
   return searchMode || value.trim() ? input : { ...input, ...missingRequiredInput };
 }
 function requiredAmountStyle(searchMode: boolean, value: string): React.CSSProperties {
   return searchMode || normalizeAmountInput(value) ? input : { ...input, ...missingRequiredInput };
+}
+function receiptTimeFieldStyle(searchMode: boolean, value: string): React.CSSProperties {
+  return searchMode || !isReceiptTimeMissing(value) ? input : { ...input, ...missingReceiptTimeInput };
 }
 const ocrBadgeBox: React.CSSProperties = {
   display: "flex",
