@@ -369,8 +369,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     document.head.appendChild(style);
   }, [embedded]);
 
+  // 一覧タブは page.tsx の静的HTMLに含めてある（後から生えてくるちらつきを防ぐため）。
+  // 万一見つからない場合のみ、ここで生成してフォールバックする。データ読み込み(loaded)は待たない。
   useEffect(() => {
-    if (!embedded || !loaded) return;
+    if (!embedded) return;
     const main = document.querySelector<HTMLElement>('main[data-bud-port="/bud/expenses"]');
     const nav = main?.querySelector<HTMLElement>(".tab-nav");
     const categoriesTab = nav?.querySelector<HTMLElement>('.tab-item[data-tab="categories"]');
@@ -399,7 +401,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       }
     }
     setListTabHost(host);
-  }, [embedded, loaded]);
+  }, [embedded]);
 
   useEffect(() => {
     if (!embedded || !loaded) return;

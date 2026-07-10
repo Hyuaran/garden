@@ -36,7 +36,7 @@ describe("MODULE_MIN_ROLES", () => {
     ["root", "manager"],
     ["tree", "toss"],
     ["leaf", "staff"],
-    ["bud", "manager"],
+    ["bud", "staff"],
     ["bloom", "staff"],
     ["seed", "staff"],
     ["forest", "manager"],

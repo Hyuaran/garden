@@ -17,7 +17,7 @@
  *   | root      | manager  | マスタ閲覧（manager 以上）              |
  *   | tree      | toss     | 全ロール OK（コールセンター）           |
  *   | leaf      | staff    | 商材データ                              |
- *   | bud       | manager  | 経理（manager 以上）                    |
+ *   | bud       | staff    | 経理（staff可・実際の可否は bud_users）  |
  *   | bloom     | staff    | 業務管理                                |
  *   | seed      | staff    | 新事業枠                                |
  *   | forest    | manager  | 経営ダッシュボード（manager 以上）      |
@@ -50,7 +50,9 @@ export const MODULE_MIN_ROLES: Record<GardenModule, GardenRole> = {
   root: "manager",
   tree: "toss",
   leaf: "staff",
-  bud: "manager",
+  // Bud は二段階権限。ここは入口の最低ロールで、実際の可否は BudGate が bud_users 登録で判定する
+  // （経理担当の staff に開放するため manager → staff。bud_users 未登録の staff は BudGate/RLS で弾かれる）
+  bud: "staff",
   bloom: "staff",
   seed: "staff",
   forest: "manager",
