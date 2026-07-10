@@ -49,7 +49,7 @@ type OcrProgress = {
   total: number;
 };
 
-type CorpOption = { id: string; name_short: string | null };
+type CorpOption = { id: string; name_short: string | null; sort_order?: number | null };
 type ApplicantEmployee = { employee_id: string; expense_default_corp_id?: string | null };
 
 const MAX_SHOTS = 50;
@@ -140,11 +140,9 @@ export default function MobileExpenseSubmit() {
       const supabase = createBrowserClient();
       setCorpLoading(true);
       try {
-        const [corpRes, authRes] = await Promise.all([
-          supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true }),
-          supabase.auth.getUser(),
-        ]);
-        if (!cancelled) setCorpOptions((corpRes.data as CorpOption[] | null) ?? []);
+        const [corpRes, authRes] = await Promise.all([fetch("/api/bud/expense-corporations", { cache: "no-store" }), supabase.auth.getUser()]);
+        const corpJson = (await corpRes.json().catch(() => null)) as { ok?: boolean; corps?: CorpOption[] } | null;
+        if (!cancelled) setCorpOptions(corpJson?.ok ? corpJson.corps ?? [] : []);
 
         const authUserId = authRes.data?.user?.id ?? null;
         if (!authUserId) return;

@@ -10,9 +10,15 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { calculateFiscalPeriod, formatFiscalDateRange } from "@/app/bud/expenses/_lib/fiscal-period";
+import {
+  sortExpenseReviewRows,
+  type ExpenseReviewSortDirection,
+  type ExpenseReviewSortField,
+} from "@/app/bud/expenses/_lib/expense-review-sort";
 import {
   executeFileMakerSearch,
   hasSearchConditions,
@@ -72,6 +78,7 @@ type Form = {
 };
 type SearchForm = Record<SearchField, string>;
 type StatusRow = Req & { rowKind: "pending" | "processed" };
+type LoadOptions = { preserveIndex?: number; resetSearch?: boolean };
 
 const OCR_CONFIRM_DESCRIPTION = "OCR要確認";
 const REQUEST_SELECT =
@@ -82,6 +89,7 @@ const CARD_ORDER_STORAGE_KEY = "bud-expense-review-card-order";
 
 const EMPTY_SEARCH_FORM: SearchForm = {
   corp_id: "",
+  expense_kind: "",
   category_id: "",
   qualified_class: "",
   receipt_date: "",
@@ -123,6 +131,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const supabase = useMemo(() => createBrowserClient(), []);
   const [pendingAll, setPendingAll] = useState<Req[]>([]);
   const [processedToday, setProcessedToday] = useState<Req[]>([]);
+  // 一覧タブ用：本日分に限らない全期間の処理済み行（カードの「本日」集計とは別に保持する）
+  const [processedAll, setProcessedAll] = useState<Req[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
   const [corps, setCorps] = useState<Corp[]>([]);
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
@@ -150,6 +160,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [cardsReversed, setCardsReversed] = useState(readInitialCardReversed);
   const [receiptZoomOpen, setReceiptZoomOpen] = useState(false);
   const [receiptZoomScale, setReceiptZoomScale] = useState(1.6);
+  const [receiptInlineScale, setReceiptInlineScale] = useState(1);
+  const [sortField, setSortField] = useState<ExpenseReviewSortField>("default");
+  const [sortDirection, setSortDirection] = useState<ExpenseReviewSortDirection>("asc");
+  const [listTabHost, setListTabHost] = useState<HTMLElement | null>(null);
   const openedAt = useRef<number>(0);
 
   const setCorpFilter = useCallback((next: string) => {
@@ -165,13 +179,13 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     return sortCorps(corps);
   }, [corps]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options: LoadOptions = {}) => {
     setLoaded(false);
     const t = new Date();
     t.setHours(0, 0, 0, 0);
     const todayIso = t.toISOString();
 
-    const [pendingRes, processedRes, catRes, corpRes, companyRes] = await Promise.all([
+    const [pendingRes, processedRes, processedAllRes, catRes, corpRes, companyRes] = await Promise.all([
       supabase.from("bud_expense_requests").select(REQUEST_SELECT).eq("status", "submitted").order("submitted_at", { ascending: true }),
       supabase
         .from("bud_expense_requests")
@@ -181,6 +195,12 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
         .gte("keiri_checked_at", todayIso)
         .order("keiri_checked_at", { ascending: false }),
+      // 一覧タブ用：期間を絞らず処理済みを全件取得する（カードの「本日」集計には使わない）
+      supabase
+        .from("bud_expense_requests")
+        .select(REQUEST_SELECT)
+        .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
+        .order("keiri_checked_at", { ascending: false }),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
       supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("id", { ascending: true }),
       supabase.from("root_companies").select("company_id,company_name"),
@@ -188,8 +208,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
     const pending = (pendingRes.data as Req[] | null) ?? [];
     const processed = (processedRes.data as Req[] | null) ?? [];
+    const processedAllRows = (processedAllRes.data as Req[] | null) ?? [];
     setPendingAll(pending);
     setProcessedToday(processed);
+    setProcessedAll(processedAllRows);
     setCats((catRes.data as Cat[] | null) ?? []);
     let corpList = ((corpRes.data as Corp[] | null) ?? []).length > 0 ? ((corpRes.data as Corp[] | null) ?? []) : FALLBACK_CORPS;
     if (corpRes.error) {
@@ -203,7 +225,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setCompanyToCorp(buildCompanyToCorp(companies, corpList));
 
     const employeeIds = Array.from(
-      new Set([...pending, ...processed].map((row) => row.applicant_employee_id).filter((id): id is string => Boolean(id))),
+      new Set(
+        [...pending, ...processed, ...processedAllRows]
+          .map((row) => row.applicant_employee_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
     );
     if (employeeIds.length === 0) {
       setEmployees({});
@@ -224,9 +250,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       setEmployees(map);
     }
 
-    setIdx(0);
-    setFoundIds(null);
-    setSearchSummary("");
+    setIdx(options.preserveIndex ?? 0);
+    if (options.resetSearch !== false) {
+      setFoundIds(null);
+      setSearchSummary("");
+    }
     setLoaded(true);
   }, [supabase]);
 
@@ -260,13 +288,22 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const effectiveCorpId = useCallback((row: Req) => getEffectiveCorpId(row, employees, companyToCorp), [employees, companyToCorp]);
 
   const corpMatches = useCallback((row: Req) => corpFilter === "all" || effectiveCorpId(row) === corpFilter, [corpFilter, effectiveCorpId]);
-  const baseList = useMemo(() => pendingAll.filter(corpMatches), [pendingAll, corpMatches]);
+  const baseList = useMemo(() => {
+    const rows = pendingAll.filter(corpMatches).map((row) => ({
+      ...row,
+      applicant_label: employeeLabel(row, employees),
+      effective_corp_id: effectiveCorpId(row),
+    }));
+    return sortExpenseReviewRows(rows, sortField, sortDirection);
+  }, [corpMatches, effectiveCorpId, employees, pendingAll, sortDirection, sortField]);
   const list = useMemo(() => {
     if (!foundIds) return baseList;
     const idSet = new Set(foundIds);
     return baseList.filter((row) => idSet.has(row.id));
   }, [baseList, foundIds]);
   const processedFiltered = useMemo(() => processedToday.filter(corpMatches), [processedToday, corpMatches]);
+  // 一覧タブ用：全期間の処理済み（法人フィルターのみ適用）
+  const processedAllFiltered = useMemo(() => processedAll.filter(corpMatches), [processedAll, corpMatches]);
   const current = list[idx];
 
   const todayStats = useMemo(() => {
@@ -282,12 +319,13 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
   const pendingAmount = useMemo(() => list.reduce((sum, row) => sum + (row.amount ?? 0), 0), [list]);
 
+  // 一覧タブ：未処理(承認待ち)＋処理済みを全期間ぶん並べる（本日分に限定しない）
   const statusRows: StatusRow[] = useMemo(
     () => [
       ...list.map((row) => ({ ...row, rowKind: "pending" as const })),
-      ...processedFiltered.map((row) => ({ ...row, rowKind: "processed" as const })),
+      ...processedAllFiltered.map((row) => ({ ...row, rowKind: "processed" as const })),
     ],
-    [list, processedFiltered],
+    [list, processedAllFiltered],
   );
 
   // 領収書表示枠のサイズを監視（回転時の最大表示計算に使う）
@@ -308,6 +346,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   }, [corpFilter]);
 
   useEffect(() => {
+    setIdx(0);
+  }, [sortDirection, sortField]);
+
+  useEffect(() => {
     setIdx((value) => Math.max(0, Math.min(value, Math.max(0, list.length - 1))));
   }, [list.length]);
 
@@ -326,6 +368,38 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     `;
     document.head.appendChild(style);
   }, [embedded]);
+
+  useEffect(() => {
+    if (!embedded || !loaded) return;
+    const main = document.querySelector<HTMLElement>('main[data-bud-port="/bud/expenses"]');
+    const nav = main?.querySelector<HTMLElement>(".tab-nav");
+    const categoriesTab = nav?.querySelector<HTMLElement>('.tab-item[data-tab="categories"]');
+    if (!main || !nav || !categoriesTab) return;
+
+    let listButton = nav.querySelector<HTMLButtonElement>('.tab-item[data-tab="list"]');
+    if (!listButton) {
+      listButton = document.createElement("button");
+      listButton.type = "button";
+      listButton.className = "tab-item";
+      listButton.dataset.tab = "list";
+      listButton.innerHTML = '<span class="tab-item-jp">一覧</span>/ List';
+      nav.insertBefore(listButton, categoriesTab);
+    }
+
+    let host = document.getElementById("tab-list");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "tab-list";
+      host.className = "tab-content";
+      const categoriesContent = document.getElementById("tab-categories");
+      if (categoriesContent?.parentElement) {
+        categoriesContent.parentElement.insertBefore(host, categoriesContent);
+      } else {
+        main.appendChild(host);
+      }
+    }
+    setListTabHost(host);
+  }, [embedded, loaded]);
 
   useEffect(() => {
     if (!embedded || !loaded) return;
@@ -409,6 +483,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     }
     openedAt.current = Date.now();
     setRotation(0);
+    setReceiptInlineScale(1);
     setForm({
       corp_id: current.corp_id ?? effectiveCorpId(current) ?? "",
       receipt_date: current.receipt_date ?? "",
@@ -462,6 +537,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const buildSearchRecord = useCallback((row: Req): SearchRecord => ({
     id: row.id,
     corp_id: row.corp_id ?? effectiveCorpId(row) ?? "",
+    expense_kind: expenseKindLabel(row.expense_kind),
     category_id: row.category_id ?? "",
     qualified_class: row.qualified_class ?? "",
     receipt_date: row.receipt_date ?? "",
@@ -619,7 +695,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           await notifyDriveMove(id, "approved");
         })();
       }
-      await load();
+      await load({ preserveIndex: idx, resetSearch: false });
     } catch (e) {
       alert("処理に失敗しました：" + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -771,6 +847,24 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         <div style={reviewShell}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={layoutToolRow}>
+              <div style={sortControlGroup}>
+                <select value={sortField} onChange={(event) => setSortField(event.target.value as ExpenseReviewSortField)} style={sortSelect}>
+                  <option value="default">送り順</option>
+                  <option value="receipt_date">日付</option>
+                  <option value="amount">金額</option>
+                  <option value="applicant">申請者</option>
+                  <option value="store_name">店名</option>
+                  <option value="corp_id">法人</option>
+                </select>
+                <button
+                  type="button"
+                  style={layoutToggleBtn}
+                  onClick={() => setSortDirection((value) => (value === "asc" ? "desc" : "asc"))}
+                  disabled={sortField === "default"}
+                >
+                  {sortDirection === "asc" ? "昇順" : "降順"}
+                </button>
+              </div>
               <button type="button" style={layoutToggleBtn} onClick={() => setCardsReversed((value) => !value)}>
                 ⇄ 左右入替
               </button>
@@ -781,6 +875,17 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                 <div style={formRows}>
                   <div style={fieldRow(FISCAL_COLS)}>
                     <InfoValue label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</InfoValue>
+                    {searchMode && (
+                      <Field label="区分">
+                        <select value={activeSearch.expense_kind ?? ""} onChange={(e) => setSearchField("expense_kind", e.target.value)} style={input}>
+                          <option value="">すべて</option>
+                          <option value="会社経費">会社経費</option>
+                          <option value="個人経費">個人経費</option>
+                          <option value="company">company</option>
+                          <option value="personal">personal</option>
+                        </select>
+                      </Field>
+                    )}
                     {searchMode ? (
                       <Field label="申請者">
                         <input
@@ -969,6 +1074,16 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
               <div style={{ ...panel, display: "flex", flexDirection: "column", order: cardsReversed ? 1 : 2 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  {imgUrl && (
+                    <div style={receiptToolGroup}>
+                      <button type="button" onClick={() => setReceiptInlineScale((value) => Math.max(1, value - 0.2))} style={rotateImgBtn}>
+                        縮小
+                      </button>
+                      <button type="button" onClick={() => setReceiptInlineScale((value) => Math.min(2.4, value + 0.2))} style={rotateImgBtn}>
+                        ズーム
+                      </button>
+                    </div>
+                  )}
                   <h2 style={panelTitle}>領収書</h2>
                   {imgUrl && (
                     <button
@@ -982,7 +1097,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   )}
                 </div>
                 {imgUrl ? (
-                  <div ref={recBoxRef} style={{ flex: 1, minHeight: 280, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div ref={recBoxRef} style={{ flex: 1, minHeight: 280, overflow: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={imgUrl}
@@ -997,7 +1112,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         borderRadius: 10,
                         border: "1px solid #e2ddcf",
                         cursor: "zoom-in",
-                        transform: `rotate(${rotation}deg)`,
+                        transform: `rotate(${rotation}deg) scale(${receiptInlineScale})`,
+                        transformOrigin: "center center",
                       }}
                     />
                   </div>
@@ -1015,6 +1131,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         <StatusList
           rows={statusRows}
           cats={cats}
+          corps={sortedCorps}
           employees={employees}
           onPendingClick={jumpToPending}
           onProcessedClick={openDetail}
@@ -1076,6 +1193,12 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           }}
         />
       )}
+
+      {listTabHost &&
+        createPortal(
+          <ExpenseListTab rows={statusRows} cats={cats} corps={sortedCorps} employees={employees} onPendingClick={jumpToPending} onProcessedClick={openDetail} />,
+          listTabHost,
+        )}
     </div>
   );
 }
@@ -1103,25 +1226,57 @@ function CorpFilter({
   );
 }
 
-function StatusList({
+function ExpenseListTab({
   rows,
   cats,
+  corps,
   employees,
   onPendingClick,
   onProcessedClick,
 }: {
   rows: StatusRow[];
   cats: Cat[];
+  corps: Corp[];
   employees: Record<string, Employee>;
   onPendingClick: (row: Req) => void;
   onProcessedClick: (row: Req) => void;
 }) {
   return (
-    <section style={statusPanel} data-exp-status-react="true">
+    <section style={{ ...statusPanel, marginTop: 0 }}>
+      <div style={statusHead}>
+        <h3 style={statusTitle}>経費一覧</h3>
+        <span style={statusMeta}>未処理と処理済み（全期間）</span>
+      </div>
+      <StatusList rows={rows} cats={cats} corps={corps} employees={employees} onPendingClick={onPendingClick} onProcessedClick={onProcessedClick} compact />
+    </section>
+  );
+}
+
+function StatusList({
+  rows,
+  cats,
+  corps,
+  employees,
+  onPendingClick,
+  onProcessedClick,
+  compact = false,
+}: {
+  rows: StatusRow[];
+  cats: Cat[];
+  corps: Corp[];
+  employees: Record<string, Employee>;
+  onPendingClick: (row: Req) => void;
+  onProcessedClick: (row: Req) => void;
+  compact?: boolean;
+}) {
+  return (
+    <section style={compact ? { margin: 0 } : statusPanel} data-exp-status-react="true">
+      {compact ? null : (
       <div style={statusHead}>
         <h3 style={statusTitle}>承認状況一覧</h3>
         <span style={statusMeta}>承認待ち残件 + 本日処理分</span>
       </div>
+      )}
       {rows.length === 0 ? (
         <div style={{ ...notice, margin: 0 }}>表示できる申請はありません</div>
       ) : (
@@ -1132,9 +1287,11 @@ function StatusList({
                 <th style={th}>申請日</th>
                 <th style={th}>申請者</th>
                 <th style={th}>日付</th>
-                <th style={th}>区分</th>
+                <th style={th}>店名</th>
                 <th style={{ ...th, textAlign: "right" }}>金額</th>
                 <th style={th}>状態</th>
+                <th style={th}>法人</th>
+                <th style={th}>区分</th>
               </tr>
             </thead>
             <tbody>
@@ -1148,11 +1305,13 @@ function StatusList({
                   <td style={td}>{formatDate(row.submitted_at)}</td>
                   <td style={td}>{employeeLabel(row, employees)}</td>
                   <td style={td}>{formatDate(row.receipt_date)}</td>
-                  <td style={td}>{categoryLabel(row.category_id, cats)}</td>
+                  <td style={td}>{expenseKindLabel(row.expense_kind) || categoryLabel(row.category_id, cats)}</td>
+                  <td style={td}>{row.store_name ?? "-"}</td>
                   <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
                   <td style={td}>
                     <span style={statusPill(row.status)}>{statusLabel(row.status)}</span>
                   </td>
+                  <td style={td}>{corpLabel(row.corp_id, corps)}</td>
                 </tr>
               ))}
             </tbody>
@@ -1310,6 +1469,17 @@ function employeeLabel(row: Req, employees: Record<string, Employee>) {
 function categoryLabel(categoryId: string | null, cats: Cat[]) {
   if (!categoryId) return "未設定";
   return cats.find((cat) => cat.id === categoryId)?.name ?? categoryId;
+}
+
+function expenseKindLabel(value: string | null) {
+  if (value === "company") return "会社経費";
+  if (value === "personal") return "個人経費";
+  return value ?? "";
+}
+
+function corpLabel(corpId: string | null, corps: Corp[]) {
+  if (!corpId) return "-";
+  return corps.find((corp) => corp.id === corpId)?.name_short ?? corpId;
 }
 
 function formatDate(value: string | null) {
@@ -1509,8 +1679,22 @@ const corpChangeBadgeBox: React.CSSProperties = {
 };
 const layoutToolRow: React.CSSProperties = {
   display: "flex",
-  justifyContent: "flex-end",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
   marginBottom: 8,
+};
+const sortControlGroup: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flexWrap: "wrap",
+};
+const sortSelect: React.CSSProperties = {
+  ...input,
+  width: 136,
+  padding: "6px 10px",
+  fontSize: 12,
 };
 const layoutToggleBtn: React.CSSProperties = {
   border: "1px solid rgba(179,137,46,0.28)",
@@ -1757,6 +1941,12 @@ const zoomCanvas: React.CSSProperties = {
   alignItems: "flex-start",
   justifyContent: "center",
   padding: 24,
+};
+const receiptToolGroup: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  flexWrap: "wrap",
 };
 const rotateImgBtn: React.CSSProperties = {
   padding: "6px 14px",
