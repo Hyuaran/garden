@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
+import { expenseKindLabel } from "@/app/bud/expenses/_lib/expense-kind";
 import { calculateFiscalPeriod, formatFiscalDateRange } from "@/app/bud/expenses/_lib/fiscal-period";
 import { filterExpenseListRecords, sumExpenseAmounts } from "@/app/bud/expenses/_lib/expense-list-filter";
 import { buildExpenseDeleteConfirmMessage, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
@@ -75,6 +76,7 @@ type Req = {
 type Cat = { id: string; name: string };
 type Form = {
   corp_id: string;
+  expense_kind: string;
   receipt_date: string;
   receipt_time: string;
   store_name: string;
@@ -160,6 +162,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const supabase = useMemo(() => createBrowserClient(), []);
   const { hasGardenRoleAtLeast } = useBudState();
   const canManageSoftDelete = hasGardenRoleAtLeast("super_admin");
+  const canEditExpenseKind = canManageSoftDelete;
   const [pendingAll, setPendingAll] = useState<Req[]>([]);
   const [processedToday, setProcessedToday] = useState<Req[]>([]);
   // 一覧タブ用：本日分に限らない全期間の処理済み行（カードの「本日」集計とは別に保持する）
@@ -599,6 +602,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setReceiptInlineScale(1);
     setForm({
       corp_id: current.corp_id ?? effectiveCorpId(current) ?? "",
+      expense_kind: current.expense_kind,
       receipt_date: current.receipt_date ?? "",
       receipt_time: current.receipt_time ? current.receipt_time.slice(0, 5) : "",
       store_name: current.store_name ?? "",
@@ -753,6 +757,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         .from("bud_expense_requests")
         .update({
           corp_id: nextCorpId,
+          expense_kind: canEditExpenseKind ? form.expense_kind : current.expense_kind,
           receipt_date: form.receipt_date || null,
           receipt_time: form.receipt_time || null,
           store_name: form.store_name || null,
@@ -897,29 +902,36 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           <CompactCard label="承認（本日）" count={todayStats.approvedCount} amount={todayStats.approvedAmount} color="#5e7d44" />
           <CompactCard label="差戻し（本日）" count={todayStats.rejectedCount} amount={todayStats.rejectedAmount} color="#b35850" />
           {list.length > 0 && current && (
-            <div style={{ ...navWrap, justifyContent: "center" }}>
+            <div style={reviewControlRow}>
+              <div style={sortControlGroup}>
+                <select value={sortField} onChange={(event) => setSortField(event.target.value as ExpenseReviewSortField)} style={sortSelect}>
+                  <option value="default">送り順</option>
+                  <option value="receipt_date">日付</option>
+                  <option value="amount">金額</option>
+                  <option value="applicant">申請者</option>
+                  <option value="store_name">店名</option>
+                  <option value="corp_id">法人</option>
+                </select>
+                <button type="button" style={layoutToggleBtn} onClick={() => setSortDirection((value) => (value === "asc" ? "desc" : "asc"))} title="昇順と降順を切り替えます">
+                  {sortDirection === "asc" ? "昇順" : "降順"}
+                </button>
+              </div>
               <div style={navButtonRow}>
-              <button type="button" style={layoutToggleBtn} onClick={() => setCardsReversed((value) => !value)} title="申請情報と領収書の左右を入れ替えます">
-                ⇄ 左右入替
-              </button>
-              <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
-                <span style={navCircle}>◀</span>前へ<span style={navHint}>Ctrl+↑</span>
-              </button>
-              {/* 埋め込み時はレコード番号を法人フィルター行の右端に出すのでここでは省略 */}
-              {!embedded && (
-                <span style={navCount}>
-                  {idx + 1}
-                  <span style={{ color: "var(--text-muted)" }}> / {list.length}</span>
-                </span>
-              )}
-              <button
-                type="button"
-                style={navBtn(idx >= list.length - 1)}
-                disabled={idx >= list.length - 1}
-                onClick={() => setIdx((i) => Math.min(list.length - 1, i + 1))}
-              >
-                次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>▶</span>
-              </button>
+                <button type="button" style={layoutToggleBtn} onClick={() => setCardsReversed((value) => !value)} title="申請情報と領収書の左右を入れ替えます">
+                  左右入替
+                </button>
+                <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
+                  <span style={navCircle}>←</span>前へ<span style={navHint}>Ctrl+↑</span>
+                </button>
+                {!embedded && (
+                  <span style={navCount}>
+                    {idx + 1}
+                    <span style={{ color: "var(--text-muted)" }}> / {list.length}</span>
+                  </span>
+                )}
+                <button type="button" style={navBtn(idx >= list.length - 1)} disabled={idx >= list.length - 1} onClick={() => setIdx((i) => Math.min(list.length - 1, i + 1))}>
+                  次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>→</span>
+                </button>
               </div>
             </div>
           )}
@@ -1003,42 +1015,25 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       {loaded && current && form && (
         <div style={reviewShell}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={layoutToolRow}>
-              <div style={sortControlGroup}>
-                <select value={sortField} onChange={(event) => setSortField(event.target.value as ExpenseReviewSortField)} style={sortSelect}>
-                  <option value="default">送り順</option>
-                  <option value="receipt_date">日付</option>
-                  <option value="amount">金額</option>
-                  <option value="applicant">申請者</option>
-                  <option value="store_name">店名</option>
-                  <option value="corp_id">法人</option>
-                </select>
-                <button
-                  type="button"
-                  style={layoutToggleBtn}
-                  onClick={() => setSortDirection((value) => (value === "asc" ? "desc" : "asc"))}
-                  title="昇順と降順を切り替えます（送り順のままでも逆順にできます）"
-                >
-                  {sortDirection === "asc" ? "昇順" : "降順"}
-                </button>
-              </div>
-            </div>
             <div style={twoCol}>
               <div style={{ ...panel, order: cardsReversed ? 2 : 1 }}>
                 <h2 style={panelTitle}>申請情報</h2>
                 <div style={formRows}>
                   <div style={fieldRow(FISCAL_COLS)}>
-                    <InfoValue label="区分">{current.expense_kind === "company" ? "会社経費" : "個人経費"}</InfoValue>
-                    {searchMode && (
+                    {searchMode || canEditExpenseKind ? (
                       <Field label="区分">
-                        <select value={activeSearch.expense_kind ?? ""} onChange={(e) => setSearchField("expense_kind", e.target.value)} style={input}>
+                        <select
+                          value={searchMode ? activeSearch.expense_kind ?? "" : form.expense_kind}
+                          onChange={(e) => (searchMode ? setSearchField("expense_kind", e.target.value) : setF("expense_kind", e.target.value))}
+                          style={input}
+                        >
                           <option value="">すべて</option>
-                          <option value="会社経費">会社経費</option>
-                          <option value="個人経費">個人経費</option>
-                          <option value="company">company</option>
-                          <option value="personal">personal</option>
+                          <option value="individual">個人経費</option>
+                          <option value="company">会社経費</option>
                         </select>
                       </Field>
+                    ) : (
+                      <InfoValue label="区分">{expenseKindLabel(form.expense_kind)}</InfoValue>
                     )}
                     {searchMode ? (
                       <Field label="申請者">
@@ -1516,8 +1511,8 @@ function ExpenseListTab({
           )}
         </div>
         <div style={listSummaryPills}>
-          <span style={listSummaryPill}>Shown {filteredRows.length.toLocaleString("ja-JP")}</span>
-          <span style={listSummaryPill}>Total {yen(visibleAmount)}</span>
+          <span style={listSummaryPill}>レコード {filteredRows.length.toLocaleString("ja-JP")} / {rows.length.toLocaleString("ja-JP")}</span>
+          <span style={listSummaryPill}>合計 {yen(visibleAmount)}</span>
           {canManageSoftDelete && (
             <button
               type="button"
@@ -1528,7 +1523,7 @@ function ExpenseListTab({
                 setSelectedIds(new Set());
               }}
             >
-              Delete {selectedRows.length > 0 ? selectedRows.length : ""}
+              削除 {selectedRows.length > 0 ? selectedRows.length : ""}
             </button>
           )}
         </div>
@@ -1595,7 +1590,7 @@ function StatusList({
               <tr>
                 {canSelect && (
                   <th style={{ ...th, width: 34 }}>
-                    <input type="checkbox" checked={allVisibleSelected} onChange={() => onToggleAllVisible?.()} aria-label="Select all visible expenses" />
+                    <input type="checkbox" checked={allVisibleSelected} onChange={() => onToggleAllVisible?.()} aria-label="表示中の経費申請をすべて選択" />
                   </th>
                 )}
                 <th style={th}>申請日</th>
@@ -1623,20 +1618,20 @@ function StatusList({
                         checked={selectedIds?.has(row.id) ?? false}
                         onClick={(event) => event.stopPropagation()}
                         onChange={() => onToggleSelected?.(row.id)}
-                        aria-label="Select expense"
+                        aria-label="経費申請を選択"
                       />
                     </td>
                   )}
                   <td style={td}>{formatDate(row.submitted_at)}</td>
                   <td style={td}>{employeeLabel(row, employees)}</td>
                   <td style={td}>{formatDate(row.receipt_date)}</td>
-                  <td style={td}>{expenseKindLabel(row.expense_kind) || categoryLabel(row.category_id, cats)}</td>
                   <td style={td}>{row.store_name ?? "-"}</td>
                   <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
                   <td style={td}>
                     <span style={statusPill(row.status)}>{statusLabel(row.status)}</span>
                   </td>
                   <td style={td}>{corpLabel(row.corp_id, corps)}</td>
+                  <td style={td}>{expenseKindLabel(row.expense_kind) || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -1697,16 +1692,16 @@ function DeletedExpenseTab({
   return (
     <section style={{ ...statusPanel, marginTop: 0 }}>
       <div style={statusHead}>
-        <h3 style={statusTitle}>Deleted Expenses</h3>
-        <span style={statusMeta}>{rows.length.toLocaleString("ja-JP")} rows</span>
+        <h3 style={statusTitle}>削除済み経費</h3>
+        <span style={statusMeta}>{rows.length.toLocaleString("ja-JP")} 件</span>
       </div>
       <div style={{ ...listToolbar, justifyContent: "flex-end" }}>
         <button type="button" style={listRestoreBtn} disabled={selectedRows.length === 0} onClick={() => onRestoreRows(selectedRows)}>
-          Restore {selectedRows.length > 0 ? selectedRows.length : ""}
+          復元 {selectedRows.length > 0 ? selectedRows.length : ""}
         </button>
       </div>
       {rows.length === 0 ? (
-        <div style={{ ...notice, margin: 0 }}>No deleted expenses</div>
+        <div style={{ ...notice, margin: 0 }}>削除済みの経費申請はありません</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={statusTable}>
@@ -1715,15 +1710,15 @@ function DeletedExpenseTab({
                 <th style={{ ...th, width: 34 }}>
                   <input type="checkbox" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(rows.map((row) => row.id)))} />
                 </th>
-                <th style={th}>Deleted at</th>
-                <th style={th}>Deleted by</th>
-                <th style={th}>Reason</th>
-                <th style={th}>Submitted</th>
-                <th style={th}>Applicant</th>
-                <th style={th}>Category</th>
-                <th style={{ ...th, textAlign: "right" }}>Amount</th>
-                <th style={th}>Status</th>
-                <th style={th}>Corp</th>
+                <th style={th}>削除日時</th>
+                <th style={th}>削除者</th>
+                <th style={th}>削除理由</th>
+                <th style={th}>申請日</th>
+                <th style={th}>申請者</th>
+                <th style={th}>区分</th>
+                <th style={{ ...th, textAlign: "right" }}>金額</th>
+                <th style={th}>状態</th>
+                <th style={th}>法人</th>
               </tr>
             </thead>
             <tbody>
@@ -1748,7 +1743,7 @@ function DeletedExpenseTab({
                   <td style={td}>{row.delete_reason ?? "-"}</td>
                   <td style={td}>{formatDate(row.submitted_at)}</td>
                   <td style={td}>{employeeLabel(row, employees)}</td>
-                  <td style={td}>{expenseKindLabel(row.expense_kind) || categoryLabel(row.category_id, cats)}</td>
+                  <td style={td}>{expenseKindLabel(row.expense_kind) || "-"}</td>
                   <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
                   <td style={td}>
                     <span style={statusPill(row.status)}>{statusLabel(row.status)}</span>
@@ -1913,12 +1908,6 @@ function categoryLabel(categoryId: string | null, cats: Cat[]) {
   return cats.find((cat) => cat.id === categoryId)?.name ?? categoryId;
 }
 
-function expenseKindLabel(value: string | null) {
-  if (value === "company") return "会社経費";
-  if (value === "personal") return "個人経費";
-  return value ?? "";
-}
-
 function corpLabel(corpId: string | null, corps: Corp[]) {
   if (!corpId) return "-";
   return corps.find((corp) => corp.id === corpId)?.name_short ?? corpId;
@@ -1965,6 +1954,14 @@ const notice: React.CSSProperties = {
 };
 const reviewShell: React.CSSProperties = { display: "flex", gap: 12, alignItems: "stretch", marginBottom: 18 };
 // コンパクト3カード＋横並びレコード送りの1行
+const reviewControlRow: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  flexWrap: "wrap",
+  marginLeft: "auto",
+};
 const summaryNavBar: React.CSSProperties = {
   display: "flex",
   alignItems: "center",

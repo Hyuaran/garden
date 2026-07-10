@@ -376,7 +376,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
             </button>
             {canManageSoftDelete && (
               <button type="button" style={deleteBtn} disabled={busy || selectedRows.length === 0} onClick={() => void softDeleteRows(selectedRows.map((item) => item.row))}>
-                Delete selected
+                選択を削除
               </button>
             )}
           </div>

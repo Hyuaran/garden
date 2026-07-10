@@ -556,7 +556,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                     </button>
                     {canManageSoftDelete && (
                       <button type="button" disabled={busyId !== null || selectedRows.length === 0} style={bulkDeleteBtn} onClick={() => void softDeleteRows(selectedRows)}>
-                        Delete selected
+                        選択を削除
                       </button>
                     )}
                   </div>
