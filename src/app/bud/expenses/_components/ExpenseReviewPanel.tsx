@@ -21,7 +21,7 @@ import { filterExpenseListRecords, sumExpenseAmounts } from "@/app/bud/expenses/
 import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { isExpenseTabKeyboardScopeActive } from "@/app/bud/expenses/_lib/expense-tab-scope";
-import { isReceiptTimeMissing } from "@/app/bud/expenses/_lib/receipt-time";
+import { getOcrConfirmBadgeTone } from "@/app/bud/expenses/_lib/ocr-confirm-badge";
 import {
   sortExpenseReviewRows,
   type ExpenseReviewSortDirection,
@@ -500,7 +500,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   }, [canManageSoftDelete, embedded]);
 
   useEffect(() => {
-    if (!embedded || !loaded) return;
+    if (!embedded) return;
     const tab = document.getElementById("tab-submit");
     if (!tab) return;
 
@@ -559,11 +559,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     };
     host.addEventListener("click", onClick);
     return () => host.removeEventListener("click", onClick);
-  }, [corpFilter, embedded, loaded, setCorpFilter, sortedCorps, idx, list.length]);
+  }, [corpFilter, embedded, setCorpFilter, sortedCorps, idx, list.length]);
 
   // 埋め込みモードでは、レガシーHTMLの3カード（モック）を隠し、React側のコンパクトカード＋ナビに置き換える
   useEffect(() => {
-    if (!embedded || !loaded) return;
+    if (!embedded) return;
     const tab = document.getElementById("tab-submit");
     const summary = tab?.querySelector<HTMLElement>(".exp-sub-summary");
     if (!summary) return;
@@ -571,7 +571,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     return () => {
       summary.style.removeProperty("display");
     };
-  }, [embedded, loaded]);
+  }, [embedded]);
 
   useEffect(() => {
     if (!current) {
@@ -720,6 +720,19 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     if (!form || !selectedCorp) return null;
     return calculateFiscalPeriod(selectedCorp.established_on, selectedCorp.fiscal_end_month, form.receipt_date);
   }, [form, selectedCorp]);
+
+  const ocrConfirmTone = useMemo(() => {
+    if (!form) return "danger";
+    return getOcrConfirmBadgeTone({
+      receiptDate: form.receipt_date,
+      receiptTime: form.receipt_time,
+      storeName: form.store_name,
+      amount: form.amount,
+      corpId: form.corp_id,
+      categoryId: form.category_id,
+      qualifiedClass: form.qualified_class,
+    });
+  }, [form]);
 
   const process = async (action: "approve" | "reject") => {
     if (!current || !form || busy || searchMode) return;
@@ -1032,7 +1045,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     )}
                     {(current.description === OCR_CONFIRM_DESCRIPTION || corpChangeBadge) && (
                       <div style={badgeStack}>
-                        {current.description === OCR_CONFIRM_DESCRIPTION && <div style={ocrBadgeBox}>OCR要確認</div>}
+                        {current.description === OCR_CONFIRM_DESCRIPTION && <div style={ocrBadgeBox(ocrConfirmTone)}>OCR要確認</div>}
                         {corpChangeBadge && (
                           <div style={corpChangeBadgeBox}>
                             ⚠ 申請者が法人変更: {corpChangeBadge.defaultName}→{corpChangeBadge.selectedName}
@@ -1083,7 +1096,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         value={searchMode ? activeSearch.receipt_time ?? "" : form.receipt_time}
                         onChange={(e) => (searchMode ? setSearchField("receipt_time", e.target.value) : setF("receipt_time", e.target.value))}
                         placeholder={searchMode ? "09:00...12:00" : undefined}
-                        style={receiptTimeFieldStyle(searchMode, form.receipt_time)}
+                        style={input}
                       />
                     </Field>
                   </div>
@@ -2079,22 +2092,13 @@ const missingRequiredInput: React.CSSProperties = {
   color: "#fff",
   fontWeight: 700,
 };
-const missingReceiptTimeInput: React.CSSProperties = {
-  background: "rgba(212,165,65,0.16)",
-  border: "1px solid rgba(212,165,65,0.58)",
-  color: "var(--text-warning)",
-  fontWeight: 700,
-};
 function requiredFieldStyle(searchMode: boolean, value: string): React.CSSProperties {
   return searchMode || value.trim() ? input : { ...input, ...missingRequiredInput };
 }
 function requiredAmountStyle(searchMode: boolean, value: string): React.CSSProperties {
   return searchMode || normalizeAmountInput(value) ? input : { ...input, ...missingRequiredInput };
 }
-function receiptTimeFieldStyle(searchMode: boolean, value: string): React.CSSProperties {
-  return searchMode || !isReceiptTimeMissing(value) ? input : { ...input, ...missingReceiptTimeInput };
-}
-const ocrBadgeBox: React.CSSProperties = {
+const ocrBadgeBase: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -2109,13 +2113,24 @@ const ocrBadgeBox: React.CSSProperties = {
   fontWeight: 700,
   whiteSpace: "nowrap",
 };
+function ocrBadgeBox(tone: "danger" | "warning"): React.CSSProperties {
+  if (tone === "warning") {
+    return {
+      ...ocrBadgeBase,
+      background: "rgba(212,165,65,0.16)",
+      border: "1px solid rgba(179,137,46,0.36)",
+      color: "#8a661f",
+    };
+  }
+  return ocrBadgeBase;
+}
 const badgeStack: React.CSSProperties = {
   display: "grid",
   gap: 6,
   alignSelf: "end",
 };
 const corpChangeBadgeBox: React.CSSProperties = {
-  ...ocrBadgeBox,
+  ...ocrBadgeBase,
   background: "rgba(212,165,65,0.16)",
   border: "1px solid rgba(179,137,46,0.36)",
   color: "#8a661f",

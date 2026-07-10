@@ -18,6 +18,7 @@ export function ExpenseBookingEmbed() {
         const switcher = tab.querySelector(".bud-corp-switch");
         switcher?.insertAdjacentElement("afterend", node);
       }
+      hideBookingLegacyBlocks(tab);
       if (node) {
         setEl((current) => (current === node ? current : node));
       }
@@ -32,4 +33,10 @@ export function ExpenseBookingEmbed() {
 
   if (!el) return null;
   return createPortal(<ExpenseBookingPanel embedded />, el);
+}
+
+function hideBookingLegacyBlocks(tab: HTMLElement | null) {
+  if (!tab) return;
+  const blocks = tab.querySelectorAll<HTMLElement>(".exp-bk-view-label, .exp-bk-summary, .exp-bk-main-row, .exp-bk-done-card");
+  blocks.forEach((block) => block.style.setProperty("display", "none"));
 }

@@ -294,7 +294,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
   }, [list.length]);
 
   useEffect(() => {
-    if (!embedded || !loaded) return;
+    if (!embedded) return;
     const tab = document.getElementById("tab-approve");
     if (!tab) return;
     const oldBlocks = Array.from(
@@ -353,11 +353,11 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
         oldBlocks.forEach((block) => block.style.removeProperty("display"));
       };
     }
-  }, [corpFilter, embedded, loaded, setCorpFilter, sortedCorps, idx, list.length]);
+  }, [corpFilter, embedded, setCorpFilter, sortedCorps, idx, list.length]);
 
   // 埋め込みモードでは、レガシーHTMLの3カード（モック）を隠し、React側のコンパクトカード＋ナビに置き換える
   useEffect(() => {
-    if (!embedded || !loaded) return;
+    if (!embedded) return;
     const tab = document.getElementById("tab-approve");
     const summary = tab?.querySelector<HTMLElement>(".exp-summary-grid");
     if (!summary) return;
@@ -365,7 +365,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
     return () => {
       summary.style.removeProperty("display");
     };
-  }, [embedded, loaded]);
+  }, [embedded]);
 
   const openDetail = (row: Req, mode: DetailMode) => {
     setDetail(row);

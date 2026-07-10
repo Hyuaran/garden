@@ -16,6 +16,7 @@ export function ExpenseReviewEmbed() {
   useEffect(() => {
     const tick = () => {
       const node = document.getElementById("exp-review-mount");
+      hideReviewLegacyBlocks(document.getElementById("tab-submit"));
       if (node) {
         setEl((current) => (current === node ? current : node));
       }
@@ -30,4 +31,10 @@ export function ExpenseReviewEmbed() {
 
   if (!el) return null;
   return createPortal(<ExpenseReviewPanel embedded />, el);
+}
+
+function hideReviewLegacyBlocks(tab: HTMLElement | null) {
+  if (!tab) return;
+  const blocks = tab.querySelectorAll<HTMLElement>(".exp-sub-summary, .exp-sub-history-card:not([data-exp-status-react])");
+  blocks.forEach((block) => block.style.setProperty("display", "none"));
 }
