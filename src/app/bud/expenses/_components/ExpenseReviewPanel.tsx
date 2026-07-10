@@ -13,8 +13,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { useBudState } from "@/app/bud/_state/BudStateContext";
 import { calculateFiscalPeriod, formatFiscalDateRange } from "@/app/bud/expenses/_lib/fiscal-period";
 import { filterExpenseListRecords, sumExpenseAmounts } from "@/app/bud/expenses/_lib/expense-list-filter";
+import { buildExpenseDeleteConfirmMessage, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
+import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { isExpenseTabKeyboardScopeActive } from "@/app/bud/expenses/_lib/expense-tab-scope";
 import {
   sortExpenseReviewRows,
@@ -65,6 +68,9 @@ type Req = {
   return_reason: string | null;
   submitted_at: string;
   keiri_checked_at: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+  delete_reason?: string | null;
 };
 type Cat = { id: string; name: string };
 type Form = {
@@ -85,6 +91,7 @@ type LoadOptions = { preserveIndex?: number; resetSearch?: boolean };
 const OCR_CONFIRM_DESCRIPTION = "OCR要確認";
 const REQUEST_SELECT =
   "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
+const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 
 const CORP_FILTER_STORAGE_KEY = "bud-expense-review-corp-filter";
 const CARD_ORDER_STORAGE_KEY = "bud-expense-review-card-order";
@@ -129,12 +136,35 @@ function displayDescription(value: string | null) {
   return value === OCR_CONFIRM_DESCRIPTION ? "" : value ?? "";
 }
 
+type ExpenseQueryResult = {
+  data: unknown[] | null;
+  error: { code?: string | null; message?: string | null; details?: string | null; hint?: string | null } | null;
+};
+
+async function readActiveExpenseRequests(
+  makePrimaryQuery: (select: string) => PromiseLike<ExpenseQueryResult>,
+  makeFallbackQuery: (select: string) => PromiseLike<ExpenseQueryResult>,
+) {
+  const primary = await makePrimaryQuery(REQUEST_SELECT_WITH_SOFT_DELETE);
+  if (!isMissingSoftDeleteColumnError(primary.error)) return primary;
+  return makeFallbackQuery(REQUEST_SELECT);
+}
+
+async function readDeletedExpenseRequests(makeQuery: (select: string) => PromiseLike<ExpenseQueryResult>) {
+  const result = await makeQuery(REQUEST_SELECT_WITH_SOFT_DELETE);
+  if (isMissingSoftDeleteColumnError(result.error)) return { data: [], error: null };
+  return result;
+}
+
 export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createBrowserClient(), []);
+  const { hasGardenRoleAtLeast } = useBudState();
+  const canManageSoftDelete = hasGardenRoleAtLeast("super_admin");
   const [pendingAll, setPendingAll] = useState<Req[]>([]);
   const [processedToday, setProcessedToday] = useState<Req[]>([]);
   // 一覧タブ用：本日分に限らない全期間の処理済み行（カードの「本日」集計とは別に保持する）
   const [processedAll, setProcessedAll] = useState<Req[]>([]);
+  const [deletedRows, setDeletedRows] = useState<Req[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
   const [corps, setCorps] = useState<Corp[]>([]);
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
@@ -166,6 +196,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [sortField, setSortField] = useState<ExpenseReviewSortField>("default");
   const [sortDirection, setSortDirection] = useState<ExpenseReviewSortDirection>("asc");
   const [listTabHost, setListTabHost] = useState<HTMLElement | null>(null);
+  const [deletedTabHost, setDeletedTabHost] = useState<HTMLElement | null>(null);
   const openedAt = useRef<number>(0);
 
   const setCorpFilter = useCallback((next: string) => {
@@ -187,22 +218,52 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     t.setHours(0, 0, 0, 0);
     const todayIso = t.toISOString();
 
-    const [pendingRes, processedRes, processedAllRes, catRes, corpRes, companyRes] = await Promise.all([
-      supabase.from("bud_expense_requests").select(REQUEST_SELECT).eq("status", "submitted").order("submitted_at", { ascending: true }),
-      supabase
-        .from("bud_expense_requests")
-        .select(REQUEST_SELECT)
-        // keiri承認後にさらに先の状態(完了待ち処理など)へ進んでも「本日承認」が減らないよう、
-        // keiri_returned 以外の後続ステータスもすべて含める
-        .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
-        .gte("keiri_checked_at", todayIso)
-        .order("keiri_checked_at", { ascending: false }),
-      // 一覧タブ用：期間を絞らず処理済みを全件取得する（カードの「本日」集計には使わない）
-      supabase
-        .from("bud_expense_requests")
-        .select(REQUEST_SELECT)
-        .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
-        .order("keiri_checked_at", { ascending: false }),
+    const [pendingRes, processedRes, processedAllRes, deletedRes, catRes, corpRes, companyRes] = await Promise.all([
+      readActiveExpenseRequests(
+        (select) => supabase.from("bud_expense_requests").select(select).eq("status", "submitted").is("deleted_at", null).order("submitted_at", { ascending: true }),
+        (select) => supabase.from("bud_expense_requests").select(select).eq("status", "submitted").order("submitted_at", { ascending: true }),
+      ),
+      readActiveExpenseRequests(
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
+            .is("deleted_at", null)
+            .gte("keiri_checked_at", todayIso)
+            .order("keiri_checked_at", { ascending: false }),
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
+            .gte("keiri_checked_at", todayIso)
+            .order("keiri_checked_at", { ascending: false }),
+      ),
+      readActiveExpenseRequests(
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
+            .is("deleted_at", null)
+            .order("keiri_checked_at", { ascending: false }),
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
+            .order("keiri_checked_at", { ascending: false }),
+      ),
+      canManageSoftDelete
+        ? readDeletedExpenseRequests((select) =>
+            supabase
+              .from("bud_expense_requests")
+              .select(select)
+              .not("deleted_at", "is", null)
+              .order("deleted_at", { ascending: false }),
+          )
+        : Promise.resolve({ data: [], error: null }),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
       supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("id", { ascending: true }),
       supabase.from("root_companies").select("company_id,company_name"),
@@ -211,9 +272,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     const pending = (pendingRes.data as Req[] | null) ?? [];
     const processed = (processedRes.data as Req[] | null) ?? [];
     const processedAllRows = (processedAllRes.data as Req[] | null) ?? [];
+    const deleted = (deletedRes.data as Req[] | null) ?? [];
     setPendingAll(pending);
     setProcessedToday(processed);
     setProcessedAll(processedAllRows);
+    setDeletedRows(deleted);
     setCats((catRes.data as Cat[] | null) ?? []);
     let corpList = ((corpRes.data as Corp[] | null) ?? []).length > 0 ? ((corpRes.data as Corp[] | null) ?? []) : FALLBACK_CORPS;
     if (corpRes.error) {
@@ -228,7 +291,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
     const employeeIds = Array.from(
       new Set(
-        [...pending, ...processed, ...processedAllRows]
+        [...pending, ...processed, ...processedAllRows, ...deleted]
           .map((row) => row.applicant_employee_id)
           .filter((id): id is string => Boolean(id)),
       ),
@@ -270,7 +333,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       setSearchSummary("");
     }
     setLoaded(true);
-  }, [supabase]);
+  }, [canManageSoftDelete, supabase]);
 
   useEffect(() => {
     void load();
@@ -416,6 +479,40 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     }
     setListTabHost(host);
   }, [embedded]);
+
+  useEffect(() => {
+    if (!embedded) return;
+    const main = document.querySelector<HTMLElement>('main[data-bud-port="/bud/expenses"]');
+    const nav = main?.querySelector<HTMLElement>(".tab-nav");
+    const categoriesTab = nav?.querySelector<HTMLElement>('.tab-item[data-tab="categories"]');
+    if (!main || !nav || !categoriesTab) return;
+
+    let button = nav.querySelector<HTMLButtonElement>('.tab-item[data-tab="deleted"]');
+    let host = document.getElementById("tab-deleted");
+    if (!canManageSoftDelete) {
+      button?.remove();
+      host?.remove();
+      setDeletedTabHost(null);
+      return;
+    }
+    if (!button) {
+      button = document.createElement("button");
+      button.type = "button";
+      button.className = "tab-item";
+      button.dataset.tab = "deleted";
+      button.innerHTML = '<span class="tab-item-jp">削除済み</span>/ Deleted';
+      nav.insertBefore(button, categoriesTab);
+    }
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "tab-deleted";
+      host.className = "tab-content";
+      const categoriesContent = document.getElementById("tab-categories");
+      if (categoriesContent?.parentElement) categoriesContent.parentElement.insertBefore(host, categoriesContent);
+      else main.appendChild(host);
+    }
+    setDeletedTabHost(host);
+  }, [canManageSoftDelete, embedded]);
 
   useEffect(() => {
     if (!embedded || !loaded) return;
@@ -715,6 +812,46 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       await load({ preserveIndex: idx, resetSearch: false });
     } catch (e) {
       alert("処理に失敗しました：" + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const softDeleteRows = async (rows: ExpenseSoftDeleteRow[]) => {
+    if (!canManageSoftDelete || rows.length === 0 || busy) return;
+    const reason = normalizeDeleteReason(window.prompt("削除理由を入力してください") ?? "");
+    if (!reason) {
+      alert("削除理由は必須です");
+      return;
+    }
+    if (!window.confirm(buildExpenseDeleteConfirmMessage(rows, reason))) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc("bud_expense_soft_delete", {
+        p_ids: rows.map((row) => row.id),
+        p_reason: reason,
+      });
+      if (error) throw error;
+      await load({ preserveIndex: idx, resetSearch: false });
+    } catch (error) {
+      alert("削除済みへの移動に失敗しました: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const restoreRows = async (rows: ExpenseSoftDeleteRow[]) => {
+    if (!canManageSoftDelete || rows.length === 0 || busy) return;
+    if (!window.confirm(`${rows.length}件の経費申請を復元します。実行しますか？`)) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc("bud_expense_restore", {
+        p_ids: rows.map((row) => row.id),
+      });
+      if (error) throw error;
+      await load({ preserveIndex: idx, resetSearch: false });
+    } catch (error) {
+      alert("復元に失敗しました: " + (error instanceof Error ? error.message : String(error)));
     } finally {
       setBusy(false);
     }
@@ -1080,6 +1217,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   </Field>
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                  {canManageSoftDelete && current && (
+                    <button type="button" disabled={busy || searchMode} onClick={() => void softDeleteRows([current])} style={dangerBtn}>
+                      削除済みへ
+                    </button>
+                  )}
                   <button type="button" disabled={busy || searchMode} onClick={() => process("reject")} style={busy || searchMode ? disabledRejectBtn : rejectBtn}>
                     差戻し
                   </button>
@@ -1213,8 +1355,23 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
       {listTabHost &&
         createPortal(
-          <ExpenseListTab rows={statusRows} cats={cats} corps={sortedCorps} employees={employees} onPendingClick={jumpToPending} onProcessedClick={openDetail} />,
+          <ExpenseListTab
+            rows={statusRows}
+            cats={cats}
+            corps={sortedCorps}
+            employees={employees}
+            canManageSoftDelete={canManageSoftDelete}
+            onPendingClick={jumpToPending}
+            onProcessedClick={openDetail}
+            onDeleteRows={(rows) => void softDeleteRows(rows)}
+          />,
           listTabHost,
+        )}
+      {deletedTabHost &&
+        canManageSoftDelete &&
+        createPortal(
+          <DeletedExpenseTab rows={deletedRows} cats={cats} corps={sortedCorps} employees={employees} onRestoreRows={(rows) => void restoreRows(rows)} />,
+          deletedTabHost,
         )}
     </div>
   );
@@ -1248,18 +1405,23 @@ function ExpenseListTab({
   cats,
   corps,
   employees,
+  canManageSoftDelete,
   onPendingClick,
   onProcessedClick,
+  onDeleteRows,
 }: {
   rows: StatusRow[];
   cats: Cat[];
   corps: Corp[];
   employees: Record<string, Employee>;
+  canManageSoftDelete: boolean;
   onPendingClick: (row: Req) => void;
   onProcessedClick: (row: Req) => void;
+  onDeleteRows: (rows: StatusRow[]) => void;
 }) {
   const [listSearchField, setListSearchField] = useState<SearchField | "all">("all");
   const [listSearchValue, setListSearchValue] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const listSearchInputRef = useRef<HTMLInputElement>(null);
   const searchRecords = useMemo(
     () => rows.map((row) => buildStatusSearchRecord(row, cats, corps, employees)),
@@ -1272,6 +1434,34 @@ function ExpenseListTab({
     return rows.filter((row) => ids.has(row.id));
   }, [listSearchField, listSearchValue, rows, searchRecords]);
   const visibleAmount = useMemo(() => sumExpenseAmounts(filteredRows), [filteredRows]);
+  const selectedRows = useMemo(() => filteredRows.filter((row) => selectedIds.has(row.id)), [filteredRows, selectedIds]);
+  const allVisibleSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedIds.has(row.id));
+
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const ids = new Set(rows.map((row) => row.id));
+      const next = new Set(Array.from(current).filter((id) => ids.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [rows]);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    setSelectedIds((current) => {
+      if (allVisibleSelected) return new Set();
+      const next = new Set(current);
+      for (const row of filteredRows) next.add(row.id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -1326,11 +1516,37 @@ function ExpenseListTab({
           )}
         </div>
         <div style={listSummaryPills}>
-          <span style={listSummaryPill}>表示 {filteredRows.length.toLocaleString("ja-JP")} 件</span>
-          <span style={listSummaryPill}>金額 {yen(visibleAmount)}</span>
+          <span style={listSummaryPill}>Shown {filteredRows.length.toLocaleString("ja-JP")}</span>
+          <span style={listSummaryPill}>Total {yen(visibleAmount)}</span>
+          {canManageSoftDelete && (
+            <button
+              type="button"
+              style={listDeleteBtn}
+              disabled={selectedRows.length === 0}
+              onClick={() => {
+                onDeleteRows(selectedRows);
+                setSelectedIds(new Set());
+              }}
+            >
+              Delete {selectedRows.length > 0 ? selectedRows.length : ""}
+            </button>
+          )}
         </div>
       </div>
-      <StatusList rows={filteredRows} cats={cats} corps={corps} employees={employees} onPendingClick={onPendingClick} onProcessedClick={onProcessedClick} compact />
+      <StatusList
+        rows={filteredRows}
+        cats={cats}
+        corps={corps}
+        employees={employees}
+        onPendingClick={onPendingClick}
+        onProcessedClick={onProcessedClick}
+        compact
+        canSelect={canManageSoftDelete}
+        selectedIds={selectedIds}
+        allVisibleSelected={allVisibleSelected}
+        onToggleSelected={toggleSelected}
+        onToggleAllVisible={toggleAllVisible}
+      />
     </section>
   );
 }
@@ -1343,6 +1559,11 @@ function StatusList({
   onPendingClick,
   onProcessedClick,
   compact = false,
+  canSelect = false,
+  selectedIds,
+  allVisibleSelected = false,
+  onToggleSelected,
+  onToggleAllVisible,
 }: {
   rows: StatusRow[];
   cats: Cat[];
@@ -1351,6 +1572,11 @@ function StatusList({
   onPendingClick: (row: Req) => void;
   onProcessedClick: (row: Req) => void;
   compact?: boolean;
+  canSelect?: boolean;
+  selectedIds?: Set<string>;
+  allVisibleSelected?: boolean;
+  onToggleSelected?: (id: string) => void;
+  onToggleAllVisible?: () => void;
 }) {
   return (
     <section style={compact ? { margin: 0 } : statusPanel} data-exp-status-react="true">
@@ -1367,6 +1593,11 @@ function StatusList({
           <table style={statusTable}>
             <thead>
               <tr>
+                {canSelect && (
+                  <th style={{ ...th, width: 34 }}>
+                    <input type="checkbox" checked={allVisibleSelected} onChange={() => onToggleAllVisible?.()} aria-label="Select all visible expenses" />
+                  </th>
+                )}
                 <th style={th}>申請日</th>
                 <th style={th}>申請者</th>
                 <th style={th}>日付</th>
@@ -1385,6 +1616,17 @@ function StatusList({
                   onClick={() => (row.rowKind === "pending" ? onPendingClick(row) : onProcessedClick(row))}
                   title={row.rowKind === "pending" ? "レビューUIで表示" : "申請詳細を表示"}
                 >
+                  {canSelect && (
+                    <td style={td}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds?.has(row.id) ?? false}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={() => onToggleSelected?.(row.id)}
+                        aria-label="Select expense"
+                      />
+                    </td>
+                  )}
                   <td style={td}>{formatDate(row.submitted_at)}</td>
                   <td style={td}>{employeeLabel(row, employees)}</td>
                   <td style={td}>{formatDate(row.receipt_date)}</td>
@@ -1425,6 +1667,101 @@ function buildStatusSearchRecord(
     description: displayDescription(row.description),
     applicant_employee_id: employeeLabel(row, employees),
   };
+}
+
+function DeletedExpenseTab({
+  rows,
+  cats,
+  corps,
+  employees,
+  onRestoreRows,
+}: {
+  rows: Req[];
+  cats: Cat[];
+  corps: Corp[];
+  employees: Record<string, Employee>;
+  onRestoreRows: (rows: Req[]) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const selectedRows = useMemo(() => rows.filter((row) => selectedIds.has(row.id)), [rows, selectedIds]);
+  const allSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.id));
+
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const ids = new Set(rows.map((row) => row.id));
+      const next = new Set(Array.from(current).filter((id) => ids.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [rows]);
+
+  return (
+    <section style={{ ...statusPanel, marginTop: 0 }}>
+      <div style={statusHead}>
+        <h3 style={statusTitle}>Deleted Expenses</h3>
+        <span style={statusMeta}>{rows.length.toLocaleString("ja-JP")} rows</span>
+      </div>
+      <div style={{ ...listToolbar, justifyContent: "flex-end" }}>
+        <button type="button" style={listRestoreBtn} disabled={selectedRows.length === 0} onClick={() => onRestoreRows(selectedRows)}>
+          Restore {selectedRows.length > 0 ? selectedRows.length : ""}
+        </button>
+      </div>
+      {rows.length === 0 ? (
+        <div style={{ ...notice, margin: 0 }}>No deleted expenses</div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={statusTable}>
+            <thead>
+              <tr>
+                <th style={{ ...th, width: 34 }}>
+                  <input type="checkbox" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(rows.map((row) => row.id)))} />
+                </th>
+                <th style={th}>Deleted at</th>
+                <th style={th}>Deleted by</th>
+                <th style={th}>Reason</th>
+                <th style={th}>Submitted</th>
+                <th style={th}>Applicant</th>
+                <th style={th}>Category</th>
+                <th style={{ ...th, textAlign: "right" }}>Amount</th>
+                <th style={th}>Status</th>
+                <th style={th}>Corp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} style={tr}>
+                  <td style={td}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.id)}
+                      onChange={() =>
+                        setSelectedIds((current) => {
+                          const next = new Set(current);
+                          if (next.has(row.id)) next.delete(row.id);
+                          else next.add(row.id);
+                          return next;
+                        })
+                      }
+                    />
+                  </td>
+                  <td style={td}>{formatDateTime(row.deleted_at)}</td>
+                  <td style={td}>{row.deleted_by ?? "-"}</td>
+                  <td style={td}>{row.delete_reason ?? "-"}</td>
+                  <td style={td}>{formatDate(row.submitted_at)}</td>
+                  <td style={td}>{employeeLabel(row, employees)}</td>
+                  <td style={td}>{expenseKindLabel(row.expense_kind) || categoryLabel(row.category_id, cats)}</td>
+                  <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
+                  <td style={td}>
+                    <span style={statusPill(row.status)}>{statusLabel(row.status)}</span>
+                  </td>
+                  <td style={td}>{corpLabel(row.corp_id, corps)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function DetailModal({
@@ -1594,6 +1931,12 @@ function formatDate(value: string | null) {
   return date.toLocaleDateString("ja-JP", { year: "2-digit", month: "2-digit", day: "2-digit" });
 }
 
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("ja-JP", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
 function yen(value: number) {
   return "¥" + value.toLocaleString("ja-JP");
 }
@@ -1846,6 +2189,7 @@ const rejectBtn: React.CSSProperties = {
   cursor: "pointer",
 };
 const disabledRejectBtn: React.CSSProperties = { ...rejectBtn, opacity: 0.45, cursor: "not-allowed" };
+const dangerBtn: React.CSSProperties = { ...rejectBtn, border: "1px solid #8f3b36", background: "rgba(179, 80, 72, 0.08)", color: "#8f3b36" };
 const searchBanner: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -1978,6 +2322,18 @@ const listSummaryPill: React.CSSProperties = {
   fontWeight: 700,
   fontVariantNumeric: "tabular-nums",
   whiteSpace: "nowrap",
+};
+const listDeleteBtn: React.CSSProperties = {
+  ...listSummaryPill,
+  border: "1px solid #8f3b36",
+  color: "#8f3b36",
+  cursor: "pointer",
+};
+const listRestoreBtn: React.CSSProperties = {
+  ...listSummaryPill,
+  border: "1px solid #5e7d44",
+  color: "#4f6f38",
+  cursor: "pointer",
 };
 const corpSwitch: React.CSSProperties = {
   display: "flex",

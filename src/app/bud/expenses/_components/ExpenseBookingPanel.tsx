@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { useBudState } from "@/app/bud/_state/BudStateContext";
+import { buildExpenseDeleteConfirmMessage, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
+import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { classifyExpenseJournal } from "../_lib/expense-journal-rules";
 
 import {
@@ -28,6 +31,9 @@ type Req = {
   status: string;
   submitted_at: string;
   final_checked_at: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+  delete_reason?: string | null;
 };
 
 type Cat = {
@@ -37,7 +43,22 @@ type Cat = {
 
 const REQUEST_SELECT =
   "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,category_id,description,status,submitted_at,final_checked_at";
+const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 const CORP_FILTER_STORAGE_KEY = "bud-expense-booking-corp-filter";
+
+type ExpenseQueryResult = {
+  data: unknown[] | null;
+  error: { code?: string | null; message?: string | null; details?: string | null; hint?: string | null } | null;
+};
+
+async function readActiveExpenseRequests(
+  makePrimaryQuery: (select: string) => PromiseLike<ExpenseQueryResult>,
+  makeFallbackQuery: (select: string) => PromiseLike<ExpenseQueryResult>,
+) {
+  const primary = await makePrimaryQuery(REQUEST_SELECT_WITH_SOFT_DELETE);
+  if (!isMissingSoftDeleteColumnError(primary.error)) return primary;
+  return makeFallbackQuery(REQUEST_SELECT);
+}
 
 function readInitialCorpFilter() {
   if (typeof window === "undefined") return "all";
@@ -50,6 +71,8 @@ function readInitialCorpFilter() {
 
 export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createBrowserClient(), []);
+  const { hasGardenRoleAtLeast } = useBudState();
+  const canManageSoftDelete = hasGardenRoleAtLeast("super_admin");
   const [queueAll, setQueueAll] = useState<Req[]>([]);
   const [journalizedThisMonth, setJournalizedThisMonth] = useState<Req[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
@@ -81,18 +104,40 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
     const [queueRes, journalizedRes, catRes, corpRes, companyRes] = await Promise.all([
-      supabase
-        .from("bud_expense_requests")
-        .select(REQUEST_SELECT)
-        .eq("status", "journalize_pending")
-        .order("receipt_date", { ascending: true, nullsFirst: false })
-        .order("submitted_at", { ascending: true }),
-      supabase
-        .from("bud_expense_requests")
-        .select(REQUEST_SELECT)
-        .eq("status", "journalized")
-        .gte("journalized_at", monthStart)
-        .order("journalized_at", { ascending: false }),
+      readActiveExpenseRequests(
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .eq("status", "journalize_pending")
+            .is("deleted_at", null)
+            .order("receipt_date", { ascending: true, nullsFirst: false })
+            .order("submitted_at", { ascending: true }),
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .eq("status", "journalize_pending")
+            .order("receipt_date", { ascending: true, nullsFirst: false })
+            .order("submitted_at", { ascending: true }),
+      ),
+      readActiveExpenseRequests(
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .eq("status", "journalized")
+            .is("deleted_at", null)
+            .gte("journalized_at", monthStart)
+            .order("journalized_at", { ascending: false }),
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .eq("status", "journalized")
+            .gte("journalized_at", monthStart)
+            .order("journalized_at", { ascending: false }),
+      ),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
       supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true }),
       supabase.from("root_companies").select("company_id,company_name"),
@@ -231,6 +276,32 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     setSelectedIds(checked ? new Set(selectableIds) : new Set());
   };
 
+  const softDeleteRows = async (targetRows: ExpenseSoftDeleteRow[]) => {
+    if (!canManageSoftDelete || targetRows.length === 0 || busy) return;
+    const reason = normalizeDeleteReason(window.prompt("削除理由を入力してください") ?? "");
+    if (!reason) {
+      setMessage("削除理由は必須です");
+      return;
+    }
+    if (!window.confirm(buildExpenseDeleteConfirmMessage(targetRows, reason))) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.rpc("bud_expense_soft_delete", {
+        p_ids: targetRows.map((row) => row.id),
+        p_reason: reason,
+      });
+      if (error) throw error;
+      setSelectedIds(new Set());
+      await load();
+      setMessage(`${targetRows.length}件を削除済みに移動しました`);
+    } catch (error) {
+      setMessage("削除済みへの移動に失敗しました: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const exportCsv = async () => {
     if (!canExport) return;
     setBusy(true);
@@ -303,6 +374,11 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
             <button type="button" style={exportBtn(canExport)} disabled={!canExport} onClick={() => void exportCsv()}>
               {busy ? "書き出し中..." : "弥生CSVを書き出す"}
             </button>
+            {canManageSoftDelete && (
+              <button type="button" style={deleteBtn} disabled={busy || selectedRows.length === 0} onClick={() => void softDeleteRows(selectedRows.map((item) => item.row))}>
+                Delete selected
+              </button>
+            )}
           </div>
         </div>
 
@@ -463,6 +539,7 @@ const okBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9p
 const errorBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 999, background: "rgba(179,88,80,0.16)", color: "#8a3a32", fontSize: 12 };
 const corpSwitch: React.CSSProperties = { display: "flex", gap: 4, marginBottom: 18, padding: 6, background: "var(--bg-card)", borderRadius: 999, width: "fit-content", border: "1px solid rgba(180,165,130,0.2)", flexWrap: "wrap" };
 const corpTab = (active: boolean): React.CSSProperties => ({ padding: "8px 20px", borderRadius: 999, border: "none", background: active ? "#d4a541" : "transparent", color: active ? "#fff" : "var(--text-sub)", cursor: "pointer", boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none" });
+const deleteBtn: React.CSSProperties = { border: "1px solid #8f3b36", borderRadius: 999, padding: "9px 14px", background: "rgba(179,80,72,0.08)", color: "#8f3b36", cursor: "pointer", whiteSpace: "nowrap" };
 const exportBtn = (active: boolean): React.CSSProperties => ({ border: "none", borderRadius: 999, padding: "10px 18px", background: active ? "#d4a541" : "#d8d0bd", color: "#fff", cursor: active ? "pointer" : "not-allowed", boxShadow: active ? "0 3px 10px rgba(212,165,65,0.25)" : "none" });
 const taxBadge = (taxClass: string): React.CSSProperties => ({
   display: "inline-block",
