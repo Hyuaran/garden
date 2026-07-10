@@ -14,6 +14,7 @@ const records: SearchRecord[] = [
   {
     id: "r1",
     corp_id: "corp-a",
+    expense_kind: "company",
     category_id: "cat-travel",
     qualified_class: "yes",
     receipt_date: "2026-07-01",
@@ -27,6 +28,7 @@ const records: SearchRecord[] = [
   {
     id: "r2",
     corp_id: "corp-b",
+    expense_kind: "personal",
     category_id: "cat-food",
     qualified_class: "no",
     receipt_date: "2026-07-20",
@@ -40,6 +42,7 @@ const records: SearchRecord[] = [
   {
     id: "r3",
     corp_id: "corp-a",
+    expense_kind: "company",
     category_id: "cat-supply",
     qualified_class: "yes",
     receipt_date: "2026-08-01",
@@ -81,6 +84,11 @@ describe("filemaker search", () => {
   it("ANDs fields within one sheet", () => {
     const result = executeFileMakerSearch(records, [{ corp_id: "corp-a", amount: ">1000" }], NOW);
     expect(result.records.map((record) => record.id)).toEqual(["r1"]);
+  });
+
+  it("searches by expense kind", () => {
+    const result = executeFileMakerSearch(records, [{ expense_kind: "personal" }], NOW);
+    expect(result.records.map((record) => record.id)).toEqual(["r2"]);
   });
 
   it("ORs multiple include sheets", () => {

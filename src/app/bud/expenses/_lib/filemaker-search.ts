@@ -3,6 +3,7 @@ export const NUMERIC_FIELDS = ["amount"] as const;
 
 export type SearchField =
   | "corp_id"
+  | "expense_kind"
   | "category_id"
   | "qualified_class"
   | "receipt_date"
@@ -19,6 +20,7 @@ export type SearchRecord = Partial<Record<SearchField, string | number | null>> 
 
 const SEARCH_FIELDS: SearchField[] = [
   "corp_id",
+  "expense_kind",
   "category_id",
   "qualified_class",
   "receipt_date",
@@ -206,7 +208,7 @@ export function executeFileMakerSearch<T extends SearchRecord>(records: T[], she
 }
 
 export function summarizeSearchSheets(sheets: SearchSheet[]) {
-  const labels: Record<SearchField, string> = {
+  const labels: Partial<Record<SearchField, string>> = {
     corp_id: "法人",
     category_id: "経費区分",
     qualified_class: "適格区分",
@@ -221,9 +223,9 @@ export function summarizeSearchSheets(sheets: SearchSheet[]) {
 
   return sheets
     .map((sheet) => {
-      const parts = (Object.keys(labels) as SearchField[])
+      const parts = SEARCH_FIELDS
         .filter((field) => sheet[field] != null && String(sheet[field]).trim() !== "")
-        .map((field) => `${labels[field]}=${String(sheet[field]).trim()}`);
+        .map((field) => `${labels[field] ?? field}=${String(sheet[field]).trim()}`);
       return `${sheet.mode === "omit" ? "除外" : "含む"}(${parts.join(" AND ")})`;
     })
     .join(" OR ");
