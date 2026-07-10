@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { useBudState } from "@/app/bud/_state/BudStateContext";
+import { buildExpenseDeleteConfirmMessage, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
+import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 
 import {
   buildCompanyToCorp,
@@ -34,6 +37,9 @@ type Req = {
   submitted_at: string;
   keiri_checked_at: string | null;
   final_checked_at: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+  delete_reason?: string | null;
 };
 type Cat = { id: string; name: string };
 type DetailMode = "detail" | "return";
@@ -47,7 +53,22 @@ type TodayStats = {
 
 const REQUEST_SELECT =
   "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at,final_checked_at";
+const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 const CORP_FILTER_STORAGE_KEY = "bud-expense-final-corp-filter";
+
+type ExpenseQueryResult = {
+  data: unknown[] | null;
+  error: { code?: string | null; message?: string | null; details?: string | null; hint?: string | null } | null;
+};
+
+async function readActiveExpenseRequests(
+  makePrimaryQuery: (select: string) => PromiseLike<ExpenseQueryResult>,
+  makeFallbackQuery: (select: string) => PromiseLike<ExpenseQueryResult>,
+) {
+  const primary = await makePrimaryQuery(REQUEST_SELECT_WITH_SOFT_DELETE);
+  if (!isMissingSoftDeleteColumnError(primary.error)) return primary;
+  return makeFallbackQuery(REQUEST_SELECT);
+}
 
 function readInitialCorpFilter() {
   if (typeof window === "undefined") return "all";
@@ -60,6 +81,8 @@ function readInitialCorpFilter() {
 
 export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createBrowserClient(), []);
+  const { hasGardenRoleAtLeast } = useBudState();
+  const canManageSoftDelete = hasGardenRoleAtLeast("super_admin");
   const [pendingAll, setPendingAll] = useState<Req[]>([]);
   const [finalProcessedToday, setFinalProcessedToday] = useState<Req[]>([]);
   const [keiriReturnedToday, setKeiriReturnedToday] = useState<Req[]>([]);
@@ -96,19 +119,44 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
     const todayIso = today.toISOString();
 
     const [pendingRes, finalProcessedRes, keiriReturnedRes, catRes, corpRes, companyRes] = await Promise.all([
-      supabase.from("bud_expense_requests").select(REQUEST_SELECT).eq("status", "final_pending").order("submitted_at", { ascending: true }),
-      supabase
-        .from("bud_expense_requests")
-        .select(REQUEST_SELECT)
-        .in("status", ["journalize_pending", "journalized", "final_returned"])
-        .gte("final_checked_at", todayIso)
-        .order("final_checked_at", { ascending: false }),
-      supabase
-        .from("bud_expense_requests")
-        .select(REQUEST_SELECT)
-        .eq("status", "keiri_returned")
-        .gte("keiri_checked_at", todayIso)
-        .order("keiri_checked_at", { ascending: false }),
+      readActiveExpenseRequests(
+        (select) => supabase.from("bud_expense_requests").select(select).eq("status", "final_pending").is("deleted_at", null).order("submitted_at", { ascending: true }),
+        (select) => supabase.from("bud_expense_requests").select(select).eq("status", "final_pending").order("submitted_at", { ascending: true }),
+      ),
+      readActiveExpenseRequests(
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .in("status", ["journalize_pending", "journalized", "final_returned"])
+            .is("deleted_at", null)
+            .gte("final_checked_at", todayIso)
+            .order("final_checked_at", { ascending: false }),
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .in("status", ["journalize_pending", "journalized", "final_returned"])
+            .gte("final_checked_at", todayIso)
+            .order("final_checked_at", { ascending: false }),
+      ),
+      readActiveExpenseRequests(
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .eq("status", "keiri_returned")
+            .is("deleted_at", null)
+            .gte("keiri_checked_at", todayIso)
+            .order("keiri_checked_at", { ascending: false }),
+        (select) =>
+          supabase
+            .from("bud_expense_requests")
+            .select(select)
+            .eq("status", "keiri_returned")
+            .gte("keiri_checked_at", todayIso)
+            .order("keiri_checked_at", { ascending: false }),
+      ),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
       supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true }),
       supabase.from("root_companies").select("company_id,company_name"),
@@ -367,6 +415,30 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
     }
   };
 
+  const softDeleteRows = async (rows: ExpenseSoftDeleteRow[]) => {
+    if (!canManageSoftDelete || rows.length === 0 || busyId) return;
+    const reason = normalizeDeleteReason(window.prompt("削除理由を入力してください") ?? "");
+    if (!reason) {
+      alert("削除理由は必須です");
+      return;
+    }
+    if (!window.confirm(buildExpenseDeleteConfirmMessage(rows, reason))) return;
+    setBusyId("soft-delete");
+    try {
+      const { error } = await supabase.rpc("bud_expense_soft_delete", {
+        p_ids: rows.map((row) => row.id),
+        p_reason: reason,
+      });
+      if (error) throw error;
+      setSelectedIds(new Set());
+      await load();
+    } catch (error) {
+      alert("削除済みへの移動に失敗しました: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const toggleSelected = (id: string) => {
     setSelectedIds((ids) => {
       const next = new Set(ids);
@@ -482,6 +554,11 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                     <button type="button" disabled={busyId !== null || selectedRows.length === 0} style={bulkReturnBtn} onClick={() => void processBulk("return")}>
                       一括差戻し
                     </button>
+                    {canManageSoftDelete && (
+                      <button type="button" disabled={busyId !== null || selectedRows.length === 0} style={bulkDeleteBtn} onClick={() => void softDeleteRows(selectedRows)}>
+                        Delete selected
+                      </button>
+                    )}
                   </div>
                   <table style={table}>
                     <thead>
@@ -864,6 +941,11 @@ const bulkReturnBtn: React.CSSProperties = {
   borderRadius: 8,
   padding: "8px 14px",
   opacity: 1,
+};
+const bulkDeleteBtn: React.CSSProperties = {
+  ...bulkReturnBtn,
+  border: "1px solid #8f3b36",
+  color: "#8f3b36",
 };
 const iconBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", fontSize: 18, padding: 2 };
 const modalBackdrop: React.CSSProperties = {
