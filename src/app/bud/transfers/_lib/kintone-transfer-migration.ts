@@ -1,4 +1,4 @@
-export type PaymentCategory = "transfer" | "payeasy" | "cash" | "registered";
+export type PaymentCategory = "transfer" | "payeasy" | "cash" | "deposit" | "registered";
 export type RegisteredMethod = "credit_card" | "direct_debit" | "auto_transfer";
 export type GardenTransferStatus = "承認待ち" | "振込完了";
 

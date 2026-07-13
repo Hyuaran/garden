@@ -496,6 +496,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                   ["transfer", "振込", "銀行振込として全銀CSV対象にします。"],
                   ["payeasy", "ペイジー", "3番号を控えて銀行画面で支払います。"],
                   ["cash", "現金", "現金精算として扱います。"],
+                  ["deposit", "預金", "口座振替など預金口座からの引落として扱います。"],
                   ["registered", "決済登録済", "クレカ・口座振替など登録済の支払です。"],
                 ].map(([value, title, text]) => (
                   <label
@@ -518,6 +519,12 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                   </label>
                 ))}
               </div>
+
+              {paymentCategory === "deposit" && (
+                <p className={`${styles.ocrText} mt-4`}>
+                  支払元口座は必須です。相手の銀行・支店・口座番号・名義カナは未入力で構いません。
+                </p>
+              )}
 
               {paymentCategory === "payeasy" && (
                 <div className={`${styles.fieldGrid} mt-4`}>
