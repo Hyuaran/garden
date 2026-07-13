@@ -9,6 +9,7 @@ import {
   mapRegisteredMethod,
   normalizeBankName,
   resolveExecutedDate,
+  resolveSourceAccountOverride,
   requiredMissingFields,
   type KintoneRecord,
   type TransferInsertPayload,
@@ -53,6 +54,8 @@ const masters = {
   bankAccounts: [
     { id: "bank-1", corp_code: "hyuaran", bank_name: "楽天銀行", branch_name: "第一営業支店" },
     { id: "bank-2", corp_code: "centerrise", bank_name: "PayPay銀行", branch_name: "ビジネス営業部" },
+    { id: "bank-3", corp_code: "centerrise", bank_name: "みずほ銀行", branch_name: "四ツ橋支店", account_number: "3024334" },
+    { id: "bank-4", corp_code: "hyuaran", bank_name: "みずほ銀行", branch_name: "四ツ橋支店", account_number: "1252992" },
   ],
   existingTransferIds: new Set<string>(),
 };
@@ -67,7 +70,7 @@ describe("kintone transfer migration mapping", () => {
   it("maps payment category and registered method", () => {
     expect(mapPaymentCategory("振込")).toBe("transfer");
     expect(mapPaymentCategory("ペイジー")).toBe("payeasy");
-    expect(mapPaymentCategory("現金")).toBe("cash");
+    expect(mapPaymentCategory("現金")).toBe("deposit");
     expect(mapPaymentCategory("決済登録済")).toBe("registered");
     expect(mapRegisteredMethod("クレジットカード")).toBe("credit_card");
     expect(mapRegisteredMethod("口座振替")).toBe("direct_debit");
@@ -92,7 +95,45 @@ describe("kintone transfer migration mapping", () => {
 
   it("normalizes old bank names to current bank names", () => {
     expect(normalizeBankName("ジャパンネット銀行")).toBe("PayPay銀行");
+    expect(normalizeBankName("三菱東京ＵＦＪ銀行")).toBe("三菱UFJ銀行");
     expect(normalizeBankName("楽天銀行")).toBe("楽天銀行");
+  });
+
+  it.each([
+    ["994", "bank-3", "centerrise みずほ銀行 四ツ橋支店 3024334"],
+    ["1018", "bank-3", "centerrise みずほ銀行 四ツ橋支店 3024334"],
+    ["1580", "bank-4", "hyuaran みずほ銀行 四ツ橋支店 1252992"],
+  ])("overrides source account for Kintone record %s", (recordNumber, accountId, label) => {
+    expect(resolveSourceAccountOverride(recordNumber, masters)).toMatchObject({
+      accountId,
+      label,
+      reason: "source_account_id 確定補正",
+      supplemented: true,
+    });
+  });
+
+  it("fails when a source account override is missing from the master", () => {
+    expect(() => resolveSourceAccountOverride("994", { bankAccounts: [] })).toThrow("rec994");
+  });
+
+  it("applies the record override before normal source account resolution", () => {
+    const result = analyzeKintoneTransfers(
+      [
+        record({
+          [f.recordNumber]: "994",
+          [f.requestCompanyName]: "株式会社センターライズ",
+          [f.executeCompanyName]: "株式会社センターライズ",
+          [f.executeBankName]: "楽天銀行",
+        }),
+      ],
+      masters,
+    );
+    expect(result.insertable[0]?.payload.source_account_id).toBe("bank-3");
+    expect(result.sourceAccountSupplements[0]).toMatchObject({
+      recordNumber: "994",
+      reason: "source_account_id 確定補正",
+      value: "centerrise みずほ銀行 四ツ橋支店 3024334",
+    });
   });
 
   it("supplements executed_date from due_date and appends an audit note", () => {

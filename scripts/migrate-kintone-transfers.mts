@@ -39,6 +39,11 @@ async function main() {
   const [records, masters] = await Promise.all([fetchAllKintoneRecords(), loadMasters(supabase)]);
   const beforeCount = await countBudTransfers(supabase);
   const analysis = analyzeKintoneTransfers(records, masters);
+  const paymentCategoryCounts = analysis.insertable.reduce<Record<string, number>>((counts, row) => {
+    const category = row.payload.payment_category;
+    counts[category] = (counts[category] ?? 0) + 1;
+    return counts;
+  }, {});
 
   let inserted = 0;
   let afterCount: number | null = null;
@@ -67,6 +72,7 @@ async function main() {
       missingRequired: analysis.missingRequired.length,
       sourceAccountUnresolved: analysis.sourceAccountUnresolved.length,
     },
+    paymentCategoryCounts,
     skipped: analysis.skipped,
     duplicates: analysis.duplicates,
     missingRequired: analysis.missingRequired,
@@ -210,11 +216,13 @@ function printSummary(report: {
   kintone: { total: number; statusCounts: Record<string, number> };
   garden: { beforeCount: number; afterCount: number | null; inserted: number };
   planned: Record<string, number>;
+  paymentCategoryCounts: Record<string, number>;
 }, outPath: string) {
   console.log(`mode: ${report.mode}`);
   console.log(`kintone total: ${report.kintone.total}`);
   console.log(`status counts: ${JSON.stringify(report.kintone.statusCounts)}`);
   console.log(`planned: ${JSON.stringify(report.planned)}`);
+  console.log(`payment categories: ${JSON.stringify(report.paymentCategoryCounts)}`);
   console.log(`bud_transfers before: ${report.garden.beforeCount}`);
   if (report.garden.afterCount != null) console.log(`bud_transfers after: ${report.garden.afterCount}`);
   console.log(`inserted: ${report.garden.inserted}`);
