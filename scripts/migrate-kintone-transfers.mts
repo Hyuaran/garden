@@ -44,6 +44,10 @@ async function main() {
     counts[category] = (counts[category] ?? 0) + 1;
     return counts;
   }, {});
+  const duplicateFlagged = analysis.insertable
+    .filter((row) => row.payload.duplicate_flag)
+    .map((row) => row.payload.transfer_id)
+    .sort();
 
   let inserted = 0;
   let afterCount: number | null = null;
@@ -71,8 +75,10 @@ async function main() {
       skipped: analysis.skipped.length,
       missingRequired: analysis.missingRequired.length,
       sourceAccountUnresolved: analysis.sourceAccountUnresolved.length,
+      duplicateFlagged: duplicateFlagged.length,
     },
     paymentCategoryCounts,
+    duplicateFlagged,
     skipped: analysis.skipped,
     duplicates: analysis.duplicates,
     missingRequired: analysis.missingRequired,
@@ -157,23 +163,30 @@ function kintoneHost() {
 }
 
 async function loadMasters(supabase: ScriptSupabaseClient) {
-  const [companiesRes, corpsRes, accountsRes, existingRes] = await Promise.all([
+  const [companiesRes, corpsRes, accountsRes, existingRes, existingDuplicateKeysRes] = await Promise.all([
     supabase.from("root_companies").select("company_id,company_name").order("company_id"),
     supabase.from("bud_corporations").select("id,name_short").order("id"),
     supabase.from("root_bank_accounts").select("id,corp_code,bank_name,branch_name,account_number,sub_account_label").order("corp_code"),
     supabase.from("bud_transfers").select("transfer_id"),
+    supabase.from("bud_transfers").select("duplicate_key").eq("duplicate_flag", false).not("duplicate_key", "is", null),
   ]);
 
   if (companiesRes.error) throw new Error(`root_companies fetch failed: ${companiesRes.error.message}`);
   if (corpsRes.error) throw new Error(`bud_corporations fetch failed: ${corpsRes.error.message}`);
   if (accountsRes.error) throw new Error(`root_bank_accounts fetch failed: ${accountsRes.error.message}`);
   if (existingRes.error) throw new Error(`bud_transfers fetch failed: ${existingRes.error.message}`);
+  if (existingDuplicateKeysRes.error) throw new Error(`bud_transfers duplicate_key fetch failed: ${existingDuplicateKeysRes.error.message}`);
 
   return {
     companies: (companiesRes.data ?? []) as CompanyMaster[],
     corps: (corpsRes.data ?? []) as CorpMaster[],
     bankAccounts: (accountsRes.data ?? []) as BankAccountMaster[],
     existingTransferIds: new Set(((existingRes.data ?? []) as Array<{ transfer_id: string }>).map((row) => row.transfer_id)),
+    existingDuplicateKeys: new Set(
+      ((existingDuplicateKeysRes.data ?? []) as Array<{ duplicate_key: string | null }>)
+        .map((row) => row.duplicate_key)
+        .filter((key): key is string => key !== null),
+    ),
   };
 }
 
@@ -217,12 +230,14 @@ function printSummary(report: {
   garden: { beforeCount: number; afterCount: number | null; inserted: number };
   planned: Record<string, number>;
   paymentCategoryCounts: Record<string, number>;
+  duplicateFlagged: string[];
 }, outPath: string) {
   console.log(`mode: ${report.mode}`);
   console.log(`kintone total: ${report.kintone.total}`);
   console.log(`status counts: ${JSON.stringify(report.kintone.statusCounts)}`);
   console.log(`planned: ${JSON.stringify(report.planned)}`);
   console.log(`payment categories: ${JSON.stringify(report.paymentCategoryCounts)}`);
+  console.log(`duplicate flagged: ${JSON.stringify(report.duplicateFlagged)}`);
   console.log(`bud_transfers before: ${report.garden.beforeCount}`);
   if (report.garden.afterCount != null) console.log(`bud_transfers after: ${report.garden.afterCount}`);
   console.log(`inserted: ${report.garden.inserted}`);
