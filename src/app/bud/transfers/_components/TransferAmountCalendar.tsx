@@ -88,33 +88,31 @@ export function TransferAmountCalendar() {
   };
 
   return (
-    <section className="rounded-xl border border-amber-200 bg-[rgba(255,253,246,0.92)] p-5 shadow-sm">
-      <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+    <section className="ceo-card trf-amount-calendar">
+      <div className="trf-calendar-head">
         <div>
-          <h2 className="font-shippori text-xl font-semibold tracking-wide text-amber-950">
-            日別金額カレンダー
-          </h2>
-          <p className="mt-1 text-xs leading-6 text-amber-800">
+          <h2 className="trf-amount-title">日別金額カレンダー</h2>
+          <p className="trf-amount-description">
             振込完了の実績と、承認待ち・下書きの予定を予定日ごとに集計しています。
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800">
+        <div className="trf-amount-summary-row">
+          <span className="trf-amount-summary">
             動いた金額 {monthTotals.completedCount}件・¥
             {monthTotals.completedAmount.toLocaleString("ja-JP")}
           </span>
-          <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 font-medium text-orange-800">
+          <span className="trf-amount-summary trf-amount-summary-planned">
             動く予定 {monthTotals.pendingCount}件・¥
             {monthTotals.pendingAmount.toLocaleString("ja-JP")}
           </span>
         </div>
       </div>
 
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="font-shippori text-lg font-semibold text-amber-950">
+      <div className="trf-calendar-head trf-amount-month-head">
+        <h3 className="trf-amount-month-title">
           {month.getFullYear()}年 {month.getMonth() + 1}月
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="trf-calendar-nav">
           <button
             type="button"
             aria-label="前月"
@@ -124,14 +122,14 @@ export function TransferAmountCalendar() {
                   new Date(current.getFullYear(), current.getMonth() - 1, 1),
               )
             }
-            className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-50"
+            className="trf-cal-btn"
           >
             ‹ 前月
           </button>
           <button
             type="button"
             onClick={goToToday}
-            className="rounded-full bg-amber-500 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-amber-600"
+            className="trf-cal-today"
           >
             今日
           </button>
@@ -144,7 +142,7 @@ export function TransferAmountCalendar() {
                   new Date(current.getFullYear(), current.getMonth() + 1, 1),
               )
             }
-            className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-50"
+            className="trf-cal-btn"
           >
             翌月 ›
           </button>
@@ -152,18 +150,22 @@ export function TransferAmountCalendar() {
       </div>
 
       {error && (
-        <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="trf-amount-message trf-amount-error">
           {error}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-amber-100 bg-white/80">
-        <div className="grid grid-cols-7 border-b border-amber-100 bg-amber-50/80">
+      <div className="trf-calendar">
+        <div className="trf-cal-row trf-cal-head">
           {WEEKDAYS.map((weekday, index) => (
             <div
               key={weekday}
-              className={`px-2 py-2 text-center text-xs font-medium ${
-                index >= 5 ? "text-rose-700" : "text-amber-900"
+              className={`trf-cal-cell ${
+                index === 5
+                  ? "trf-day-sat"
+                  : index === 6
+                    ? "trf-day-sun"
+                    : ""
               }`}
             >
               {weekday}
@@ -171,54 +173,54 @@ export function TransferAmountCalendar() {
           ))}
         </div>
         {loading ? (
-          <div className="p-8 text-center text-sm text-amber-800">
+          <div className="trf-amount-message">
             金額を集計しています…
           </div>
         ) : (
-          <div className="grid grid-cols-7">
+          <div className="trf-amount-day-grid">
             {days.map((date) => {
               const key = formatDateKey(date);
               const amounts = dailyAmounts.get(key);
               const inMonth = date.getMonth() === month.getMonth();
               const isToday = key === formatDateKey(new Date());
+              const isSunday = date.getDay() === 0;
+              const isSaturday = date.getDay() === 6;
               return (
                 <div
                   key={key}
                   data-date={key}
-                  className={`min-h-28 border-b border-r border-amber-100 p-2 ${
-                    inMonth ? "bg-white/70" : "bg-stone-50/60 text-stone-400"
-                  }`}
+                  className={`trf-cal-cell trf-amount-day ${
+                    inMonth ? "" : "trf-cal-other"
+                  } ${isToday ? "trf-cal-today" : ""} ${
+                    isSunday ? "trf-day-sun" : ""
+                  } ${isSaturday ? "trf-day-sat" : ""}`}
                 >
-                  <div className="mb-2 flex items-center justify-between">
-                    <span
-                      className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-sm ${
-                        isToday
-                          ? "bg-amber-500 font-semibold text-white"
-                          : inMonth
-                            ? "text-amber-950"
-                            : "text-stone-400"
-                      }`}
-                    >
-                      {date.getDate()}
-                    </span>
-                  </div>
+                  <span className="trf-amount-day-number">
+                    {date.getDate()}
+                  </span>
                   {amounts && amounts.completedAmount > 0 && (
-                    <div className="mb-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-emerald-900">
-                      <div className="text-[10px] font-medium">動いた金額</div>
-                      <div className="text-sm font-semibold tabular-nums">
+                    <span className="trf-cal-badge trf-amount-badge">
+                      <span className="trf-amount-badge-label">
+                        動いた金額
+                      </span>
+                      <strong className="trf-amount-badge-value">
                         ¥{amounts.completedAmount.toLocaleString("ja-JP")}
-                      </div>
-                      <div className="text-[10px]">{amounts.completedCount}件</div>
-                    </div>
+                      </strong>
+                      <span className="trf-amount-badge-count">
+                        {amounts.completedCount}件
+                      </span>
+                    </span>
                   )}
                   {amounts && amounts.pendingAmount > 0 && (
-                    <div className="rounded-md border border-orange-200 bg-orange-50 px-2 py-1.5 text-orange-900">
-                      <div className="text-[10px] font-medium">動く予定</div>
-                      <div className="text-sm font-semibold tabular-nums">
+                    <span className="trf-cal-badge trf-cal-badge-gold trf-amount-badge">
+                      <span className="trf-amount-badge-label">動く予定</span>
+                      <strong className="trf-amount-badge-value">
                         ¥{amounts.pendingAmount.toLocaleString("ja-JP")}
-                      </div>
-                      <div className="text-[10px]">{amounts.pendingCount}件</div>
-                    </div>
+                      </strong>
+                      <span className="trf-amount-badge-count">
+                        {amounts.pendingCount}件
+                      </span>
+                    </span>
                   )}
                 </div>
               );

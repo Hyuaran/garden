@@ -45,6 +45,183 @@ const REDESIGNED_SOURCE_CSS = `${SOURCE_CSS}
 #trf-overview-calendar-mount {
   margin-bottom: 24px;
 }
+
+/* Codex-123: 実データ金額カレンダーを既存 trf-cal-* の世界観へ統一 */
+.trf-amount-calendar {
+  font-family: 'Shippori Mincho', serif;
+  background: rgba(255, 253, 246, 0.72);
+  border: 1px solid rgba(180, 165, 130, 0.24);
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(94, 75, 42, 0.06);
+}
+.trf-amount-calendar .trf-calendar-head {
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.trf-amount-title {
+  margin: 0;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--text-main, #3d3528);
+  letter-spacing: 0.06em;
+}
+.trf-amount-description {
+  margin-top: 4px;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 0.75rem;
+  line-height: 1.8;
+  color: var(--text-muted, #9a8f7d);
+  letter-spacing: 0.03em;
+}
+.trf-amount-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.trf-amount-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid rgba(180, 165, 130, 0.26);
+  border-radius: 999px;
+  background: rgba(255, 253, 246, 0.72);
+  font-family: 'Shippori Mincho', serif;
+  font-size: 0.7rem;
+  color: var(--text-sub, #6d6356);
+  letter-spacing: 0.03em;
+}
+.trf-amount-summary::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7d8a6b;
+}
+.trf-amount-summary-planned {
+  border-color: rgba(212, 165, 65, 0.34);
+  background: rgba(212, 165, 65, 0.09);
+  color: #8f6b24;
+}
+.trf-amount-summary-planned::before { background: #d4a541; }
+.trf-amount-month-head { margin-bottom: 10px; }
+.trf-amount-month-title {
+  margin: 0;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-main, #3d3528);
+  letter-spacing: 0.06em;
+}
+.trf-amount-calendar .trf-cal-btn,
+.trf-amount-calendar button.trf-cal-today {
+  padding: 6px 11px;
+  font-size: 0.75rem;
+}
+.trf-amount-calendar .trf-calendar { gap: 3px; }
+.trf-amount-calendar .trf-cal-row { gap: 3px; }
+.trf-amount-calendar .trf-cal-head .trf-cal-cell {
+  min-height: auto;
+  background: transparent;
+  cursor: default;
+}
+.trf-amount-day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+.trf-amount-calendar .trf-cal-cell.trf-amount-day {
+  min-height: 112px;
+  padding: 7px;
+  overflow: hidden;
+  cursor: default;
+  background: rgba(255, 253, 246, 0.58);
+  border: 1px solid rgba(180, 165, 130, 0.12);
+  border-radius: 7px;
+}
+.trf-amount-calendar .trf-cal-cell.trf-amount-day:hover {
+  background: rgba(212, 165, 65, 0.07);
+}
+.trf-amount-calendar .trf-cal-cell.trf-cal-other {
+  background: rgba(245, 241, 231, 0.34);
+  opacity: 0.46;
+}
+.trf-amount-calendar .trf-cal-cell.trf-cal-today {
+  background: rgba(212, 165, 65, 0.15);
+  border-color: rgba(212, 165, 65, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(212, 165, 65, 0.08);
+}
+.trf-amount-day-number {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3px;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.trf-amount-calendar .trf-cal-today .trf-amount-day-number {
+  border-radius: 50%;
+  background: #d4a541;
+  color: #fff;
+}
+.trf-amount-badge {
+  display: block;
+  margin-top: 4px;
+  padding: 4px 5px;
+  border: 1px solid rgba(125, 138, 107, 0.22);
+  border-radius: 5px;
+  background: rgba(125, 138, 107, 0.09);
+  color: #627052;
+  text-align: left;
+  line-height: 1.3;
+}
+.trf-amount-calendar .trf-cal-badge-gold.trf-amount-badge {
+  border-color: rgba(212, 165, 65, 0.32);
+  background: rgba(212, 165, 65, 0.13);
+  color: #916d26;
+}
+.trf-amount-badge-label,
+.trf-amount-badge-count {
+  display: block;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.02em;
+}
+.trf-amount-badge-value {
+  display: block;
+  margin: 1px 0;
+  font-family: 'EB Garamond', 'Shippori Mincho', serif;
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+.trf-amount-message {
+  padding: 28px;
+  border-radius: 6px;
+  background: rgba(255, 253, 246, 0.5);
+  font-family: 'Shippori Mincho', serif;
+  font-size: 0.8rem;
+  color: var(--text-sub, #6d6356);
+  text-align: center;
+}
+.trf-amount-error {
+  margin-bottom: 10px;
+  border: 1px solid rgba(179, 88, 80, 0.24);
+  background: rgba(179, 88, 80, 0.07);
+  color: #8a3a32;
+}
+@media (max-width: 768px) {
+  .trf-amount-calendar .trf-cal-cell.trf-amount-day {
+    min-height: 94px;
+    padding: 5px;
+  }
+  .trf-amount-badge-value { font-size: 0.68rem; }
+}
 `;
 
 const REDESIGNED_SOURCE_HTML = redesignTransfersHtml(SOURCE_HTML);
