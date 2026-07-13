@@ -188,13 +188,15 @@ export function analyzeKintoneTransfers(records: KintoneRecord[], masters: Migra
 
     const requestCompanyId = resolveCompanyId(source.requestCompanyName, masters.companies);
     const executeCompanyId = resolveCompanyId(source.effectiveExecuteCompanyName, masters.companies);
-    const sourceAccount = resolveSourceAccountId({
-      status: source.gardenStatus,
-      requestCompanyId,
-      executeCompanyId,
-      executeBankName: source.executeBankName,
-      masters,
-    });
+    const sourceAccount =
+      resolveSourceAccountOverride(source.recordNumber, masters) ??
+      resolveSourceAccountId({
+        status: source.gardenStatus,
+        requestCompanyId,
+        executeCompanyId,
+        executeBankName: source.executeBankName,
+        masters,
+      });
     const executedDate = resolveExecutedDate(source.executedDate, source.dueDate);
     const description = applyExecutedDateSupplementNote(source.description, executedDate.supplemented);
     const payload = buildTransferPayload(source, requestCompanyId, executeCompanyId, sourceAccount.accountId, executedDate.value, description);
@@ -242,7 +244,7 @@ export function mapKintoneStatus(value: string): GardenTransferStatus | null {
 
 export function mapPaymentCategory(value: string): PaymentCategory {
   if (value === "ペイジー") return "payeasy";
-  if (value === "現金") return "cash";
+  if (value === "現金") return "deposit";
   if (value === "決済登録済") return "registered";
   return "transfer";
 }
@@ -267,7 +269,44 @@ export function resolveCompanyId(companyName: string, companies: CompanyMaster[]
 export function normalizeBankName(value: string) {
   const normalized = value.normalize("NFKC").trim();
   if (normalized === "ジャパンネット銀行") return "PayPay銀行";
+  if (normalized === "三菱東京UFJ銀行") return "三菱UFJ銀行";
   return normalized;
+}
+
+const SOURCE_ACCOUNT_OVERRIDES: Record<string, { corpCode: string; bankName: string; branchName: string; accountNumber: string }> = {
+  "994": { corpCode: "centerrise", bankName: "みずほ銀行", branchName: "四ツ橋支店", accountNumber: "3024334" },
+  "1018": { corpCode: "centerrise", bankName: "みずほ銀行", branchName: "四ツ橋支店", accountNumber: "3024334" },
+  "1580": { corpCode: "hyuaran", bankName: "みずほ銀行", branchName: "四ツ橋支店", accountNumber: "1252992" },
+};
+
+export function resolveSourceAccountOverride(
+  recordNumber: string,
+  masters: Pick<MigrationMasters, "bankAccounts">,
+) {
+  const normalizedRecordNumber = recordNumber.replace(/^rec/i, "");
+  const override = SOURCE_ACCOUNT_OVERRIDES[normalizedRecordNumber];
+  if (!override) return null;
+  const bank = normalizeName(normalizeBankName(override.bankName));
+  const branch = normalizeName(override.branchName);
+  const accountNumber = digits(override.accountNumber);
+  const account = masters.bankAccounts.find(
+    (row) =>
+      row.corp_code === override.corpCode &&
+      normalizeName(normalizeBankName(row.bank_name ?? "")) === bank &&
+      normalizeName(row.branch_name ?? "") === branch &&
+      digits(row.account_number ?? "") === accountNumber,
+  );
+  if (!account) {
+    throw new Error(
+      `source_account_id 確定補正の口座がマスタにありません: rec${normalizedRecordNumber} ${override.corpCode} ${override.bankName} ${override.branchName} ${override.accountNumber}`,
+    );
+  }
+  return {
+    accountId: account.id,
+    reason: "source_account_id 確定補正",
+    supplemented: true as const,
+    label: `${override.corpCode} ${override.bankName} ${override.branchName} ${override.accountNumber}`,
+  };
 }
 
 export function resolveExecutedDate(executedDate: string | null | undefined, dueDate: string | null | undefined) {
