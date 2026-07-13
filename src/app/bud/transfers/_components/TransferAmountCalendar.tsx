@@ -199,23 +199,41 @@ export function TransferAmountCalendar() {
                     {date.getDate()}
                   </span>
                   {amounts && amounts.completedAmount > 0 && (
-                    <span className="trf-cal-badge trf-amount-badge">
-                      <strong className="trf-amount-badge-value">
-                        ¥{amounts.completedAmount.toLocaleString("ja-JP")}
-                      </strong>
-                      <span className="trf-amount-badge-count">
+                    <span
+                      className="trf-cal-badge trf-amount-badge"
+                      style={{ display: "flex", alignItems: "baseline", gap: "6px" }}
+                    >
+                      <span
+                        className="trf-amount-badge-count"
+                        style={{ display: "inline-block", flex: "0 0 auto", textAlign: "left" }}
+                      >
                         {amounts.completedCount}件
                       </span>
+                      <strong
+                        className="trf-amount-badge-value"
+                        style={{ display: "block", margin: 0, marginLeft: "auto", textAlign: "right" }}
+                      >
+                        ¥{amounts.completedAmount.toLocaleString("ja-JP")}
+                      </strong>
                     </span>
                   )}
                   {amounts && amounts.pendingAmount > 0 && (
-                    <span className="trf-cal-badge trf-cal-badge-gold trf-amount-badge">
-                      <strong className="trf-amount-badge-value">
-                        ¥{amounts.pendingAmount.toLocaleString("ja-JP")}
-                      </strong>
-                      <span className="trf-amount-badge-count">
+                    <span
+                      className="trf-cal-badge trf-cal-badge-gold trf-amount-badge"
+                      style={{ display: "flex", alignItems: "baseline", gap: "6px" }}
+                    >
+                      <span
+                        className="trf-amount-badge-count"
+                        style={{ display: "inline-block", flex: "0 0 auto", textAlign: "left" }}
+                      >
                         {amounts.pendingCount}件
                       </span>
+                      <strong
+                        className="trf-amount-badge-value"
+                        style={{ display: "block", margin: 0, marginLeft: "auto", textAlign: "right" }}
+                      >
+                        ¥{amounts.pendingAmount.toLocaleString("ja-JP")}
+                      </strong>
                     </span>
                   )}
                 </div>
