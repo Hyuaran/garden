@@ -4,6 +4,7 @@ import {
   KINTONE_TRANSFER_FIELDS,
   applyExecutedDateSupplementNote,
   analyzeKintoneTransfers,
+  computeTransferDuplicateKey,
   mapKintoneStatus,
   mapPaymentCategory,
   mapRegisteredMethod,
@@ -58,6 +59,7 @@ const masters = {
     { id: "bank-4", corp_code: "hyuaran", bank_name: "みずほ銀行", branch_name: "四ツ橋支店", account_number: "1252992" },
   ],
   existingTransferIds: new Set<string>(),
+  existingDuplicateKeys: new Set<string>(),
 };
 
 describe("kintone transfer migration mapping", () => {
@@ -84,6 +86,65 @@ describe("kintone transfer migration mapping", () => {
     });
     expect(result.insertable).toHaveLength(0);
     expect(result.duplicates[0]?.transferId).toBe("FK-20260710-095947");
+  });
+
+  it("computes duplicate_key with PostgreSQL concat_ws null semantics", () => {
+    expect(
+      computeTransferDuplicateKey(
+        payload({
+          scheduled_date: "2026-07-10",
+          payee_bank_code: "0001",
+          payee_branch_code: null,
+          payee_account_number: "1234567",
+          amount: 1200,
+        }),
+      ),
+    ).toBe("20260710,0001,1234567,1200");
+    expect(
+      computeTransferDuplicateKey(
+        payload({
+          scheduled_date: null,
+          payee_bank_code: "",
+          payee_branch_code: null,
+          payee_account_number: null,
+          amount: 1200,
+        }),
+      ),
+    ).toBe(",1200");
+  });
+
+  it("flags only the second transfer_id for the same duplicate_key in stable order", () => {
+    const shared = {
+      [f.scheduledDate]: "2026-07-10",
+      [f.payeeBankCode]: "0001",
+      [f.payeeBranchCode]: "100",
+      [f.payeeAccountNumber]: "1234567",
+    };
+    const result = analyzeKintoneTransfers(
+      [
+        record({ ...shared, [f.transferId]: "FK-002" }),
+        record({ ...shared, [f.transferId]: "FK-001" }),
+        record({ ...shared, [f.transferId]: "FK-003", [f.amount]: "1300" }),
+      ],
+      masters,
+    );
+    const flags = Object.fromEntries(result.insertable.map((row) => [row.transferId, row.payload.duplicate_flag]));
+    expect(flags).toEqual({ "FK-002": true, "FK-001": false, "FK-003": false });
+    expect(result.insertable.find((row) => row.transferId === "FK-002")?.payload.duplicate_confirmed).toBe(true);
+  });
+
+  it("flags a new transfer when its duplicate_key already exists", () => {
+    const input = record({
+      [f.scheduledDate]: "2026-07-10",
+      [f.payeeBankCode]: "0001",
+      [f.payeeBranchCode]: "100",
+      [f.payeeAccountNumber]: "1234567",
+    });
+    const result = analyzeKintoneTransfers([input], {
+      ...masters,
+      existingDuplicateKeys: new Set(["20260710,0001,100,1234567,1200"]),
+    });
+    expect(result.insertable[0]?.payload).toMatchObject({ duplicate_flag: true, duplicate_confirmed: true });
   });
 
   it("requires bank account fields only for transfer payments", () => {

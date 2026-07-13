@@ -29,6 +29,7 @@ export type MigrationMasters = {
   corps: CorpMaster[];
   bankAccounts: BankAccountMaster[];
   existingTransferIds: Set<string>;
+  existingDuplicateKeys: Set<string>;
 };
 
 export type MigrationIssue = {
@@ -85,8 +86,8 @@ export type TransferInsertPayload = {
   executed_by: null;
   rejection_reason: null;
   batch_code: null;
-  duplicate_flag: false;
-  duplicate_confirmed: false;
+  duplicate_flag: boolean;
+  duplicate_confirmed: boolean;
   scan_image_url: null;
   invoice_pdf_url: string | null;
   payee_mismatch_confirmed: false;
@@ -222,6 +223,8 @@ export function analyzeKintoneTransfers(records: KintoneRecord[], masters: Migra
     });
   }
 
+  applyDuplicateFlags(insertable, masters.existingDuplicateKeys);
+
   return {
     total: records.length,
     statusCounts,
@@ -234,6 +237,39 @@ export function analyzeKintoneTransfers(records: KintoneRecord[], masters: Migra
     executedDateSupplements,
     samples: insertable.slice(0, 5).map((row) => row.payload),
   };
+}
+
+export function computeTransferDuplicateKey(
+  payload: Pick<
+    TransferInsertPayload,
+    "scheduled_date" | "payee_bank_code" | "payee_branch_code" | "payee_account_number"
+  > & { amount: number | null },
+) {
+  const scheduledDate = payload.scheduled_date === null ? null : payload.scheduled_date.replace(/-/g, "");
+  const values = [
+    scheduledDate,
+    payload.payee_bank_code,
+    payload.payee_branch_code,
+    payload.payee_account_number,
+    payload.amount === null ? null : String(payload.amount),
+  ];
+  const nonNullValues = values.filter((value): value is string => value !== null);
+  return nonNullValues.length > 0 ? nonNullValues.join(",") : null;
+}
+
+function applyDuplicateFlags(insertable: ConvertedTransfer[], existingDuplicateKeys: Set<string>) {
+  const seen = new Set(existingDuplicateKeys);
+  const sorted = [...insertable].sort((a, b) => a.transferId.localeCompare(b.transferId));
+  for (const row of sorted) {
+    const duplicateKey = computeTransferDuplicateKey(row.payload);
+    if (!duplicateKey) continue;
+    if (seen.has(duplicateKey)) {
+      row.payload.duplicate_flag = true;
+      row.payload.duplicate_confirmed = true;
+    } else {
+      seen.add(duplicateKey);
+    }
+  }
 }
 
 export function mapKintoneStatus(value: string): GardenTransferStatus | null {
