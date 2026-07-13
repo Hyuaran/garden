@@ -257,7 +257,11 @@ function redesignTransfersHtml(html: string) {
   const overviewBlock = scheduleBlock
     .replace(
       '<div class="tab-content active" id="tab-schedule">',
-      '<div class="tab-content active" id="tab-overview">\n    <div id="trf-overview-calendar-mount" class="trf-react-mount"></div>',
+      '<div class="tab-content active" id="tab-overview">',
+    )
+    .replace(
+      /\n    <!-- メイン: カレンダー \+ 振込予定リスト -->[\s\S]*?(?=\n    <!-- FB データ生成ボタン \+ 警告 -->)/,
+      '\n    <div id="trf-overview-calendar-mount" class="trf-react-mount"></div>\n',
     )
     .replaceAll("振込予定タブ", "全体タブ");
   const pendingScheduleBlock = `<div class="tab-content" id="tab-schedule">
@@ -268,10 +272,6 @@ function redesignTransfersHtml(html: string) {
   return html
     .replace(/<nav class="tab-nav">[\s\S]*?<\/nav>/, navigation)
     .replace(scheduleBlock, `${overviewBlock}\n\n  ${pendingScheduleBlock}`)
-    .replace(
-      '<div class="trf-main-layout">',
-      '<div class="trf-main-layout trf-schedule-stack">',
-    )
     .replace(
       '<div class="tab-content" id="tab-approval">',
       '<div class="tab-content" id="tab-approval">\n    <div id="trf-inbox-mount" class="trf-react-mount"></div>',
