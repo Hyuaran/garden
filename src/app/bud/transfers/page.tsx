@@ -254,6 +254,15 @@ function redesignTransfersHtml(html: string) {
   )?.[0];
   if (!scheduleBlock) return html;
 
+  const fbRow = scheduleBlock.match(
+    /\n    <!-- FB データ生成ボタン \+ 警告 -->[\s\S]*?(?=\n    <!-- Bloom \/ Forest ミラー -->)/,
+  )?.[0];
+  if (!fbRow) return html;
+  const renamedFbRow = fbRow.replace(
+    "FB データ生成 + 銀行送信",
+    "総合振込形式エクスポート",
+  );
+
   const overviewBlock = scheduleBlock
     .replace(
       '<div class="tab-content active" id="tab-schedule">',
@@ -263,9 +272,11 @@ function redesignTransfersHtml(html: string) {
       /\n    <!-- メイン: カレンダー \+ 振込予定リスト -->[\s\S]*?(?=\n    <!-- FB データ生成ボタン \+ 警告 -->)/,
       '\n    <div id="trf-overview-calendar-mount" class="trf-react-mount"></div>\n',
     )
+    .replace(fbRow, "")
     .replaceAll("振込予定タブ", "全体タブ");
   const pendingScheduleBlock = `<div class="tab-content" id="tab-schedule">
     <div id="trf-schedule-mount" class="trf-react-mount"></div>
+${renamedFbRow}
   </div>
   <!-- ===================== 振込予定タブ END ===================== -->`;
 
