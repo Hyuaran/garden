@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   clampReceiptInlineZoom,
   containedReceiptBaseSize,
+  receiptCenteredScrollTarget,
+  receiptImageClickRatio,
   isReceiptInlineZoomed,
   receiptScrollFrameSize,
   scaledReceiptDisplaySize,
   shouldUpdateReceiptMeasure,
+  receiptViewportCenterRatio,
   zoomReceiptInlineIn,
   zoomReceiptInlineOut,
 } from "../receipt-zoom";
@@ -73,5 +76,93 @@ describe("receipt inline zoom", () => {
     const zoom = zoomReceiptInlineIn(zoomReceiptInlineIn(zoomReceiptInlineIn(1)));
     expect(zoom).toBe(1.6);
     expect(scaledReceiptDisplaySize(base!, zoom).width).toBe(Math.round(base!.width * 1.6));
+  });
+
+  it("calculates centered scroll targets for a center click without clamping", () => {
+    expect(
+      receiptCenteredScrollTarget({
+        rotation: 0,
+        baseSize: { width: 100, height: 200 },
+        zoom: 2,
+        viewport: { width: 50, height: 60 },
+        pointRatio: { x: 0.5, y: 0.5 },
+      }),
+    ).toMatchObject({
+      scrollLeft: 75,
+      scrollTop: 170,
+      targetPoint: { x: 100, y: 200 },
+    });
+  });
+
+  it("rotates the clicked point before calculating the centered scroll target", () => {
+    expect(
+      receiptCenteredScrollTarget({
+        rotation: 90,
+        baseSize: { width: 100, height: 200 },
+        zoom: 2,
+        viewport: { width: 50, height: 60 },
+        pointRatio: { x: 0, y: 0 },
+      }),
+    ).toMatchObject({
+      scrollLeft: 350,
+      scrollTop: 0,
+      targetPoint: { x: 400, y: 0 },
+      scrollSize: { width: 400, height: 200 },
+    });
+  });
+
+  it("handles a 270 degree rotated edge click with scroll clamping", () => {
+    expect(
+      receiptCenteredScrollTarget({
+        rotation: 270,
+        baseSize: { width: 100, height: 200 },
+        zoom: 2,
+        viewport: { width: 50, height: 60 },
+        pointRatio: { x: 0, y: 0 },
+      }),
+    ).toMatchObject({
+      scrollLeft: 0,
+      scrollTop: 140,
+      targetPoint: { x: 0, y: 200 },
+      scrollSize: { width: 400, height: 200 },
+    });
+  });
+
+  it("clamps edge clicks to the scrollable range", () => {
+    expect(
+      receiptCenteredScrollTarget({
+        rotation: 0,
+        baseSize: { width: 100, height: 100 },
+        zoom: 2,
+        viewport: { width: 80, height: 80 },
+        pointRatio: { x: 1, y: 1 },
+      }),
+    ).toMatchObject({ scrollLeft: 120, scrollTop: 120 });
+  });
+
+  it("preserves the visible center ratio when zooming out", () => {
+    const ratio = receiptViewportCenterRatio({
+      rotation: 180,
+      baseSize: { width: 100, height: 200 },
+      zoom: 2,
+      viewport: { width: 50, height: 60 },
+      scroll: { left: 75, top: 170 },
+    });
+    const target = receiptCenteredScrollTarget({
+      rotation: 180,
+      baseSize: { width: 100, height: 200 },
+      zoom: 1.6,
+      viewport: { width: 50, height: 60 },
+      pointRatio: ratio,
+    });
+
+    expect(ratio).toEqual({ x: 0.5, y: 0.5 });
+    expect(target.scrollLeft).toBe(55);
+    expect(target.scrollTop).toBe(130);
+  });
+
+  it("converts image click offsets to clamped point ratios", () => {
+    expect(receiptImageClickRatio({ x: 25, y: 90 }, { width: 100, height: 200 })).toEqual({ x: 0.25, y: 0.45 });
+    expect(receiptImageClickRatio({ x: 150, y: -20 }, { width: 100, height: 200 })).toEqual({ x: 1, y: 0 });
   });
 });
