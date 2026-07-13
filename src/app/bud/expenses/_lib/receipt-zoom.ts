@@ -17,6 +17,15 @@ export function zoomReceiptInlineOut(value: number) {
   return clampReceiptInlineZoom(value - RECEIPT_INLINE_ZOOM_STEP);
 }
 
+export function normalizeReceiptRotation(value: number | null | undefined) {
+  const normalized = ((Number.isFinite(value) ? Number(value) : 0) % 360 + 360) % 360;
+  return normalized === 90 || normalized === 180 || normalized === 270 ? normalized : 0;
+}
+
+export function nextReceiptRotation(value: number | null | undefined) {
+  return (normalizeReceiptRotation(value) + 90) % 360;
+}
+
 export function clampReceiptInlineZoom(value: number) {
   if (!Number.isFinite(value)) return RECEIPT_INLINE_ZOOM_MIN;
   return roundZoom(Math.min(RECEIPT_INLINE_ZOOM_MAX, Math.max(RECEIPT_INLINE_ZOOM_MIN, value)));

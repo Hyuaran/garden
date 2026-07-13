@@ -7,6 +7,8 @@ import {
   receiptCenteredScrollTarget,
   receiptImageClickRatio,
   isReceiptInlineZoomed,
+  nextReceiptRotation,
+  normalizeReceiptRotation,
   receiptScrollFrameSize,
   scaledReceiptDisplaySize,
   shouldUpdateReceiptMeasure,
@@ -16,6 +18,21 @@ import {
 } from "../receipt-zoom";
 
 describe("receipt inline zoom", () => {
+  it("normalizes persisted receipt rotations to quarter turns", () => {
+    expect(normalizeReceiptRotation(90)).toBe(90);
+    expect(normalizeReceiptRotation(450)).toBe(90);
+    expect(normalizeReceiptRotation(-90)).toBe(270);
+    expect(normalizeReceiptRotation(45)).toBe(0);
+    expect(normalizeReceiptRotation(null)).toBe(0);
+  });
+
+  it("advances receipt rotation through all quarter turns", () => {
+    expect(nextReceiptRotation(0)).toBe(90);
+    expect(nextReceiptRotation(90)).toBe(180);
+    expect(nextReceiptRotation(180)).toBe(270);
+    expect(nextReceiptRotation(270)).toBe(0);
+  });
+
   it("zooms in by one step", () => {
     expect(zoomReceiptInlineIn(1)).toBe(1.2);
   });
