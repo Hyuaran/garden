@@ -91,18 +91,18 @@ export function TransferAmountCalendar() {
     <section className="ceo-card trf-amount-calendar">
       <div className="trf-calendar-head">
         <div>
-          <h2 className="trf-amount-title">日別金額カレンダー</h2>
+          <h2 className="trf-amount-title">振込カレンダー</h2>
           <p className="trf-amount-description">
             振込完了の実績と、承認待ち・下書きの予定を予定日ごとに集計しています。
           </p>
         </div>
         <div className="trf-amount-summary-row">
           <span className="trf-amount-summary">
-            動いた金額 {monthTotals.completedCount}件・¥
+            支払済み {monthTotals.completedCount}件・¥
             {monthTotals.completedAmount.toLocaleString("ja-JP")}
           </span>
           <span className="trf-amount-summary trf-amount-summary-planned">
-            動く予定 {monthTotals.pendingCount}件・¥
+            支払予定 {monthTotals.pendingCount}件・¥
             {monthTotals.pendingAmount.toLocaleString("ja-JP")}
           </span>
         </div>
@@ -200,9 +200,6 @@ export function TransferAmountCalendar() {
                   </span>
                   {amounts && amounts.completedAmount > 0 && (
                     <span className="trf-cal-badge trf-amount-badge">
-                      <span className="trf-amount-badge-label">
-                        動いた金額
-                      </span>
                       <strong className="trf-amount-badge-value">
                         ¥{amounts.completedAmount.toLocaleString("ja-JP")}
                       </strong>
@@ -213,7 +210,6 @@ export function TransferAmountCalendar() {
                   )}
                   {amounts && amounts.pendingAmount > 0 && (
                     <span className="trf-cal-badge trf-cal-badge-gold trf-amount-badge">
-                      <span className="trf-amount-badge-label">動く予定</span>
                       <strong className="trf-amount-badge-value">
                         ¥{amounts.pendingAmount.toLocaleString("ja-JP")}
                       </strong>
