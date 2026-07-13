@@ -46,7 +46,11 @@ type ImportSummary = {
   unsupported?: number;
 };
 
-export function TransferInboxTray() {
+export function TransferInboxTray({
+  onCountChange,
+}: {
+  onCountChange?: (count: number) => void;
+}) {
   const router = useRouter();
   const [items, setItems] = useState<TransferInboxItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +81,10 @@ export function TransferInboxTray() {
   useEffect(() => {
     void loadItems();
   }, []);
+
+  useEffect(() => {
+    onCountChange?.(items.length);
+  }, [items.length, onCountChange]);
 
   const handleCreateTransfer = (item: TransferInboxItem) => {
     router.push(`/bud/transfers/new-regular?inboxId=${encodeURIComponent(item.id)}`);
@@ -137,7 +145,7 @@ export function TransferInboxTray() {
   };
 
   return (
-    <section className="mx-auto mt-6 max-w-6xl rounded-lg border border-amber-200 bg-amber-50/75 p-5 shadow-sm">
+    <section className="mb-6 rounded-xl border border-amber-200 bg-[rgba(255,253,246,0.82)] p-5 shadow-sm">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-amber-950">未処理トレイ</h2>
@@ -183,7 +191,7 @@ export function TransferInboxTray() {
         </div>
       ) : items.length === 0 ? (
         <div className="rounded border border-amber-100 bg-white/70 p-4 text-sm text-amber-800">
-          未処理の請求書はありません。
+          未処理データはありません
         </div>
       ) : (
         <div className="overflow-hidden rounded border border-amber-100 bg-white">
