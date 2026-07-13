@@ -1,5 +1,5 @@
 export interface RegularFormInput {
-  payment_category?: "transfer" | "payeasy" | "cash" | "registered";
+  payment_category?: "transfer" | "payeasy" | "cash" | "deposit" | "registered";
   registered_method?: "credit_card" | "direct_debit" | "auto_transfer" | null;
   payeasy_biller_no?: string | null;
   payeasy_customer_no?: string | null;
@@ -49,7 +49,7 @@ function validateShared(input: RegularFormInput, errors: ValidationErrors): void
   const paymentCategory = input.payment_category ?? "transfer";
   if (!input.request_company_id) errors.request_company_id = "依頼会社を選択してください";
   if (!input.execute_company_id) errors.execute_company_id = "実行会社を選択してください";
-  if (!input.source_account_id) errors.source_account_id = "振込元口座を選択してください";
+  if (!input.source_account_id) errors.source_account_id = "支払元口座を選択してください";
   if (!input.payee_name || input.payee_name.trim() === "")
     errors.payee_name = "お支払い先を入力してください";
   if (paymentCategory === "transfer") {

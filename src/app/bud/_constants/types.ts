@@ -68,7 +68,7 @@ export type TransferCategory = "regular" | "cashback";
 export type TransferType = "給与" | "外注費" | "経費精算" | "その他";
 export type DataSource = "紙スキャン" | "デジタル入力" | "CSVインポート";
 export type FeeBearer = "当方負担" | "先方負担";
-export type PaymentCategory = "transfer" | "payeasy" | "cash" | "registered";
+export type PaymentCategory = "transfer" | "payeasy" | "cash" | "deposit" | "registered";
 export type RegisteredMethod = "credit_card" | "direct_debit" | "auto_transfer";
 
 export interface BudTransfer {

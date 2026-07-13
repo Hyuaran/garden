@@ -107,7 +107,7 @@ export function TransferPaymentCategoryPanel() {
     if (!schemaReady) return;
     const category = normalizePaymentCategory(row.payment_category);
     const paid = Boolean(row.manual_paid_at);
-    const actionLabel = category === "cash" ? "精算済み" : "支払済み";
+    const actionLabel = category === "cash" ? "精算済み" : category === "deposit" ? "引落済み" : "支払済み";
     const next = paid ? null : new Date().toISOString();
     if (!paid && !window.confirm(`${row.payee_name ?? row.transfer_id} を${actionLabel}にします。よろしいですか？`)) return;
     setBusyId(row.transfer_id);
@@ -130,7 +130,7 @@ export function TransferPaymentCategoryPanel() {
         <div>
           <h2 className="font-shippori text-lg font-semibold text-amber-950">支払区分別 一覧</h2>
           <p className="mt-1 text-xs leading-6 text-amber-800">
-            振込・ペイジー・現金・決済登録済を分けて確認します。
+            振込・ペイジー・現金・預金・決済登録済を分けて確認します。
             {!schemaReady && <span className="ml-2 text-red-700">新列未適用のため振込一覧のみ表示しています。</span>}
           </p>
         </div>
@@ -202,17 +202,29 @@ export function TransferPaymentCategoryPanel() {
                       <td className="px-4 py-3 text-gray-700">{formatRegisteredMethod(row.registered_method)}</td>
                     )}
                     <td className="px-4 py-3 text-gray-700">
-                      {paid ? <span className="text-green-700">✓ {activeTab === "cash" ? "精算済み" : "支払済み"}</span> : row.status ?? "—"}
+                      {paid ? (
+                        <span className="text-green-700">
+                          ✓ {activeTab === "cash" ? "精算済み" : activeTab === "deposit" ? "引落済み" : "支払済み"}
+                        </span>
+                      ) : (
+                        row.status ?? "—"
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {(activeTab === "payeasy" || activeTab === "cash") && (
+                      {(activeTab === "payeasy" || activeTab === "cash" || activeTab === "deposit") && (
                         <button
                           type="button"
                           onClick={() => void toggleManualPaid(row)}
                           disabled={busyId === row.transfer_id}
                           className="rounded border border-amber-300 px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-50 disabled:opacity-50"
                         >
-                          {paid ? "取消" : activeTab === "cash" ? "精算済みにする" : "支払済みにする"}
+                          {paid
+                            ? "取消"
+                            : activeTab === "cash"
+                              ? "精算済みにする"
+                              : activeTab === "deposit"
+                                ? "引落済みにする"
+                                : "支払済みにする"}
                         </button>
                       )}
                       {activeTab === "registered" && <span className="text-xs text-gray-500">振込実行なし</span>}

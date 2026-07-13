@@ -1,4 +1,4 @@
-export const PAYMENT_CATEGORY_TABS = ["transfer", "payeasy", "cash", "registered"] as const;
+export const PAYMENT_CATEGORY_TABS = ["transfer", "payeasy", "cash", "deposit", "registered"] as const;
 export type PaymentCategory = (typeof PAYMENT_CATEGORY_TABS)[number];
 
 export const REGISTERED_METHODS = ["credit_card", "direct_debit", "auto_transfer"] as const;
@@ -8,6 +8,7 @@ const PAYMENT_CATEGORY_LABELS: Record<PaymentCategory, string> = {
   transfer: "振込",
   payeasy: "ペイジー",
   cash: "現金",
+  deposit: "預金",
   registered: "決済登録済",
 };
 

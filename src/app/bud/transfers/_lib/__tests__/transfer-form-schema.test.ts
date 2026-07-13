@@ -53,6 +53,34 @@ describe("validateRegularForm", () => {
     expect(r.valid).toBe(false);
     expect(r.errors).toHaveProperty("scheduled_date");
   });
+
+  it("預金は相手口座情報なしでも valid", () => {
+    const r = validateRegularForm({
+      ...makeRegularInput(),
+      payment_category: "deposit",
+      payee_bank_code: "",
+      payee_branch_code: "",
+      payee_account_type: "",
+      payee_account_number: "",
+      payee_account_holder_kana: "",
+    });
+    expect(r.valid).toBe(true);
+    expect(r.errors).not.toHaveProperty("payee_bank_code");
+    expect(r.errors).not.toHaveProperty("payee_branch_code");
+    expect(r.errors).not.toHaveProperty("payee_account_type");
+    expect(r.errors).not.toHaveProperty("payee_account_number");
+    expect(r.errors).not.toHaveProperty("payee_account_holder_kana");
+  });
+
+  it("預金でも支払元口座は必須", () => {
+    const r = validateRegularForm({
+      ...makeRegularInput(),
+      payment_category: "deposit",
+      source_account_id: "",
+    });
+    expect(r.valid).toBe(false);
+    expect(r.errors).toHaveProperty("source_account_id");
+  });
 });
 
 describe("validateCashbackForm", () => {

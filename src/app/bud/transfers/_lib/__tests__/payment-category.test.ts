@@ -14,6 +14,7 @@ describe("payment-category helpers", () => {
     expect(formatPaymentCategory("transfer")).toBe("振込");
     expect(formatPaymentCategory("payeasy")).toBe("ペイジー");
     expect(formatPaymentCategory("cash")).toBe("現金");
+    expect(formatPaymentCategory("deposit")).toBe("預金");
     expect(formatPaymentCategory("registered")).toBe("決済登録済");
   });
 
@@ -34,9 +35,11 @@ describe("payment-category helpers", () => {
       { id: 1, payment_category: "transfer" },
       { id: 2, payment_category: "payeasy" },
       { id: 3, payment_category: null },
+      { id: 4, payment_category: "deposit" },
     ];
     expect(filterByPaymentCategory(rows, "transfer").map((row) => row.id)).toEqual([1, 3]);
     expect(filterByPaymentCategory(rows, "payeasy").map((row) => row.id)).toEqual([2]);
+    expect(filterByPaymentCategory(rows, "deposit").map((row) => row.id)).toEqual([4]);
   });
 
   it("normalizes payeasy numbers", () => {

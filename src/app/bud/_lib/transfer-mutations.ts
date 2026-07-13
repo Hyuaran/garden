@@ -40,7 +40,7 @@ export interface CreateTransferInput {
   scheduled_date?: string | null;
   due_date?: string | null;
   payee_mismatch_confirmed?: boolean;
-  payment_category?: "transfer" | "payeasy" | "cash" | "registered";
+  payment_category?: "transfer" | "payeasy" | "cash" | "deposit" | "registered";
   registered_method?: "credit_card" | "direct_debit" | "auto_transfer" | null;
   payeasy_biller_no?: string | null;
   payeasy_customer_no?: string | null;
