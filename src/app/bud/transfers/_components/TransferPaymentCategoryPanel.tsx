@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { supabase } from "../../_lib/supabase";
 import {
@@ -37,6 +37,150 @@ const PAGE_SIZE = 50;
 const PENDING_STATUSES = new Set(["承認待ち", "下書き"]);
 type PaymentCategoryFilter = "all" | PaymentCategory;
 type TransferPanelScope = "all" | "pending";
+
+const serifFont = "'Shippori Mincho', 'Noto Serif JP', serif";
+const panelStyle: CSSProperties = {
+  background: "var(--bg-paper-soft)",
+  border: "1px solid rgba(179,137,46,0.18)",
+  borderRadius: 12,
+  padding: "18px 20px",
+  fontFamily: serifFont,
+};
+const panelHeadStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  justifyContent: "space-between",
+  gap: 16,
+  borderBottom: "1px dashed rgba(179,137,46,0.35)",
+  paddingBottom: 8,
+  marginBottom: 12,
+  flexWrap: "wrap",
+};
+const panelTitleStyle: CSSProperties = {
+  fontSize: 16,
+  color: "var(--text-main)",
+  margin: 0,
+  fontWeight: 600,
+};
+const panelMetaStyle: CSSProperties = {
+  fontSize: 12,
+  color: "var(--text-muted)",
+};
+const toolbarStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+  marginBottom: 12,
+};
+const searchBoxStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  flex: "1 1 440px",
+  flexWrap: "wrap",
+  minWidth: 280,
+};
+const searchLabelStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  color: "var(--text-sub)",
+  fontSize: 13,
+  fontWeight: 500,
+  whiteSpace: "nowrap",
+};
+const searchControlStyle: CSSProperties = {
+  padding: "7px 10px",
+  borderRadius: 6,
+  border: "1px solid rgba(179,137,46,0.3)",
+  fontFamily: serifFont,
+  fontSize: 13,
+  background: "var(--bg-card-solid)",
+  color: "var(--text-main)",
+};
+const searchInputStyle: CSSProperties = {
+  ...searchControlStyle,
+  width: 260,
+  maxWidth: "100%",
+};
+const summaryPillsStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: 8,
+  flexWrap: "wrap",
+};
+const summaryPillStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 30,
+  padding: "5px 12px",
+  borderRadius: 999,
+  border: "1px solid rgba(179,137,46,0.22)",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-main)",
+  fontSize: 13,
+  fontWeight: 700,
+  fontVariantNumeric: "tabular-nums",
+  whiteSpace: "nowrap",
+};
+const tableStyle: CSSProperties = {
+  width: "100%",
+  minWidth: 1100,
+  borderCollapse: "collapse",
+  fontFamily: serifFont,
+  fontSize: 13,
+};
+const tableHeadStyle: CSSProperties = {
+  textAlign: "left",
+  color: "var(--text-sub)",
+  fontWeight: 500,
+  padding: "9px 8px",
+  borderBottom: "1px solid rgba(180,165,130,0.25)",
+};
+const tableCellStyle: CSSProperties = {
+  padding: "10px 8px",
+  borderBottom: "1px dashed rgba(180,165,130,0.18)",
+  color: "var(--text-main)",
+  verticalAlign: "middle",
+};
+const subtlePillStyle: CSSProperties = {
+  display: "inline-block",
+  padding: "3px 10px",
+  borderRadius: 999,
+  background: "rgba(212,165,65,0.16)",
+  color: "#b3892e",
+  fontSize: 12,
+  fontWeight: 600,
+  whiteSpace: "nowrap",
+};
+const categoryPillStyle: CSSProperties = {
+  ...subtlePillStyle,
+  border: "1px solid rgba(179,137,46,0.2)",
+  background: "rgba(255,253,246,0.64)",
+  color: "var(--text-sub)",
+};
+const actionButtonStyle: CSSProperties = {
+  border: "1px solid rgba(179,137,46,0.28)",
+  borderRadius: 6,
+  padding: "5px 10px",
+  background: "var(--bg-card-solid)",
+  color: "var(--text-sub)",
+  fontFamily: serifFont,
+  fontSize: 12,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+const noticeStyle: CSSProperties = {
+  padding: 14,
+  border: "1px solid rgba(179,137,46,0.18)",
+  borderRadius: 8,
+  background: "var(--bg-card-solid)",
+  color: "var(--text-sub)",
+  fontSize: 13,
+};
 
 async function fetchTransferRows(columns: string) {
   const rows: TransferRow[] = [];
@@ -225,99 +369,112 @@ export function TransferPaymentCategoryPanel({
   };
 
   return (
-    <section className="rounded-xl border border-amber-200 bg-[rgba(255,253,246,0.88)] p-5 shadow-sm">
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 className="font-shippori text-lg font-semibold tracking-wide text-amber-950">
-            {scope === "pending" ? "振込予定" : "振込一覧"}
-          </h2>
-          <p className="mt-1 text-xs leading-6 text-amber-800">
-            {scope === "pending"
-              ? "これから振り込むもの（承認待ち・下書き）"
-              : "未処理と処理済み（全期間）"}
-            {!schemaReady && (
-              <span className="ml-2 text-red-700">
-                新列未適用のため振込データとして表示しています。
-              </span>
-            )}
-          </p>
+    <section style={panelStyle} data-transfer-payment-panel={scope}>
+      <div style={panelHeadStyle}>
+        <h2 style={panelTitleStyle}>
+          {scope === "pending" ? "振込予定" : "振込一覧"}
+        </h2>
+        <span style={panelMetaStyle}>
+          {scope === "pending"
+            ? "これから振り込むもの（承認待ち・下書き）"
+            : "未処理と処理済み（全期間）"}
+          {!schemaReady && (
+            <span style={{ marginLeft: 8, color: "#8f3b36" }}>
+              新列未適用のため振込データとして表示しています。
+            </span>
+          )}
+        </span>
+      </div>
+
+      <div style={toolbarStyle}>
+        <div style={searchBoxStyle}>
+          <label style={searchLabelStyle}>
+            支払区分
+            <select
+              value={activeCategory}
+              onChange={(event) => {
+                setActiveCategory(event.target.value as PaymentCategoryFilter);
+                setPage(1);
+              }}
+              style={{ ...searchControlStyle, width: 176 }}
+            >
+              <option value="all">すべて（{scopedRows.length}）</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {formatPaymentCategory(category)}（{counts[category]}）
+                </option>
+              ))}
+            </select>
+          </label>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setPage(1);
+            }}
+            placeholder="振込先 / 摘要 / ID"
+            style={searchInputStyle}
+          />
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-amber-900">
-          <span className="rounded-full border border-amber-200 bg-white/80 px-3 py-1.5">
+        <div style={summaryPillsStyle}>
+          <span style={summaryPillStyle}>
             レコード {visibleRows.length}/{scopedRows.length}
           </span>
-          <span className="rounded-full bg-amber-500 px-4 py-1.5 font-semibold text-white shadow-sm">
+          <span style={summaryPillStyle}>
             合計 ¥{visibleTotal.toLocaleString("ja-JP")}
           </span>
         </div>
       </div>
 
-      <div className="mb-4 flex flex-col gap-3 rounded-lg border border-amber-100 bg-white/65 p-3 sm:flex-row sm:items-center">
-        <label className="flex items-center gap-2 text-xs font-medium text-amber-950">
-          支払区分
-          <select
-            value={activeCategory}
-            onChange={(event) => {
-              setActiveCategory(event.target.value as PaymentCategoryFilter);
-              setPage(1);
-            }}
-            className="h-10 min-w-44 rounded border border-amber-200 bg-white px-3 text-sm text-gray-800 outline-none focus:border-amber-400"
-          >
-            <option value="all">すべて（{scopedRows.length}）</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {formatPaymentCategory(category)}（{counts[category]}）
-              </option>
-            ))}
-          </select>
-        </label>
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setPage(1);
-          }}
-          placeholder="振込先 / 摘要 / ID"
-          className="h-10 min-w-64 flex-1 rounded border border-amber-200 bg-white px-3 text-sm text-gray-800 outline-none focus:border-amber-400"
-        />
-      </div>
-
       {error && (
-        <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div
+          style={{
+            ...noticeStyle,
+            marginBottom: 12,
+            borderColor: "rgba(143,59,54,0.28)",
+            background: "rgba(143,59,54,0.07)",
+            color: "#8f3b36",
+          }}
+        >
           {error}
         </div>
       )}
       {loading ? (
-        <div className="rounded border border-amber-100 bg-white/70 p-4 text-sm text-amber-800">
-          読み込み中…
-        </div>
+        <div style={noticeStyle}>読み込み中…</div>
       ) : visibleRows.length === 0 ? (
-        <div className="rounded border border-amber-100 bg-white/70 p-4 text-sm text-amber-800">
-          対象の支払はありません。
-        </div>
+        <div style={noticeStyle}>対象の支払はありません。</div>
       ) : (
         <div>
-          <div className="overflow-x-auto rounded-lg border border-amber-100 bg-white">
-            <table className="w-full min-w-[1100px] border-collapse text-sm">
-              <thead className="bg-amber-100/70 text-left text-xs text-amber-950">
+          <div style={{ overflowX: "auto" }}>
+            <table style={tableStyle}>
+              <thead>
                 <tr>
-                  <th className="w-10 px-3 py-3 text-center font-medium">
+                  <th
+                    style={{
+                      ...tableHeadStyle,
+                      width: 40,
+                      textAlign: "center",
+                    }}
+                  >
                     <input
                       type="checkbox"
                       aria-label="このページをすべて選択"
                       checked={allPageRowsSelected}
                       onChange={togglePageSelection}
-                      className="accent-amber-500"
                     />
                   </th>
-                  <th className="px-3 py-3 font-medium">予定日</th>
-                  <th className="px-3 py-3 font-medium">支払先</th>
-                  <th className="px-3 py-3 font-medium">支払区分</th>
-                  <th className="px-3 py-3 text-right font-medium">金額</th>
-                  <th className="px-3 py-3 font-medium">支払情報</th>
-                  <th className="px-3 py-3 font-medium">状態</th>
-                  <th className="px-3 py-3 text-right font-medium">操作</th>
+                  <th style={tableHeadStyle}>予定日</th>
+                  <th style={tableHeadStyle}>支払先</th>
+                  <th style={tableHeadStyle}>支払区分</th>
+                  <th style={{ ...tableHeadStyle, textAlign: "right" }}>
+                    金額
+                  </th>
+                  <th style={tableHeadStyle}>支払情報</th>
+                  <th style={tableHeadStyle}>状態</th>
+                  <th style={{ ...tableHeadStyle, textAlign: "right" }}>
+                    操作
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -330,42 +487,54 @@ export function TransferPaymentCategoryPanel({
                   return (
                     <tr
                       key={row.transfer_id}
-                      className={`border-t border-amber-100 ${
-                        selected || paid ? "bg-amber-50/50" : "hover:bg-amber-50/25"
-                      }`}
+                      style={{
+                        background:
+                          selected || paid
+                            ? "rgba(212,165,65,0.055)"
+                            : "transparent",
+                      }}
                     >
-                      <td className="px-3 py-3 text-center">
+                      <td style={{ ...tableCellStyle, textAlign: "center" }}>
                         <input
                           type="checkbox"
                           aria-label={`${row.payee_name ?? row.transfer_id}を選択`}
                           checked={selected}
                           onChange={() => toggleRowSelection(row.transfer_id)}
-                          className="accent-amber-500"
                         />
                       </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-gray-700">
+                      <td style={{ ...tableCellStyle, whiteSpace: "nowrap" }}>
                         {row.scheduled_date ?? "—"}
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="font-medium text-gray-900">
+                      <td style={tableCellStyle}>
+                        <div style={{ fontWeight: 600 }}>
                           {row.payee_name ?? "—"}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div style={{ color: "var(--text-sub)", fontSize: 12 }}>
                           {row.description || "摘要なし"}
                         </div>
-                        <div className="text-[11px] text-gray-400">
+                        <div
+                          style={{ color: "var(--text-muted)", fontSize: 11 }}
+                        >
                           {row.transfer_id}
                         </div>
                       </td>
-                      <td className="px-3 py-3">
-                        <span className="whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-900">
+                      <td style={tableCellStyle}>
+                        <span style={categoryPillStyle}>
                           {formatPaymentCategory(rowCategory)}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-gray-900">
+                      <td
+                        style={{
+                          ...tableCellStyle,
+                          textAlign: "right",
+                          fontWeight: 600,
+                          fontVariantNumeric: "tabular-nums",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         ¥{(row.amount ?? 0).toLocaleString("ja-JP")}
                       </td>
-                      <td className="px-3 py-3 text-gray-700">
+                      <td style={tableCellStyle}>
                         {rowCategory === "payeasy" ? (
                           <>
                             <PayeasyCopyRow
@@ -396,21 +565,23 @@ export function TransferPaymentCategoryPanel({
                           "—"
                         )}
                       </td>
-                      <td className="px-3 py-3 text-gray-700">
-                        {paid ? (
-                          <span className="whitespace-nowrap text-green-700">
-                            ✓{" "}
-                            {rowCategory === "cash"
-                              ? "精算済み"
-                              : rowCategory === "deposit"
-                                ? "引落済み"
-                                : "支払済み"}
-                          </span>
-                        ) : (
-                          (row.status ?? "—")
-                        )}
+                      <td style={tableCellStyle}>
+                        <span style={subtlePillStyle}>
+                          {paid ? (
+                            <>
+                              ✓{" "}
+                              {rowCategory === "cash"
+                                ? "精算済み"
+                                : rowCategory === "deposit"
+                                  ? "引落済み"
+                                  : "支払済み"}
+                            </>
+                          ) : (
+                            (row.status ?? "—")
+                          )}
+                        </span>
                       </td>
-                      <td className="px-3 py-3 text-right">
+                      <td style={{ ...tableCellStyle, textAlign: "right" }}>
                         {(rowCategory === "payeasy" ||
                           rowCategory === "cash" ||
                           rowCategory === "deposit") && (
@@ -418,7 +589,10 @@ export function TransferPaymentCategoryPanel({
                             type="button"
                             onClick={() => void toggleManualPaid(row)}
                             disabled={busyId === row.transfer_id}
-                            className="whitespace-nowrap rounded border border-amber-300 px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-50 disabled:opacity-50"
+                            style={{
+                              ...actionButtonStyle,
+                              opacity: busyId === row.transfer_id ? 0.5 : 1,
+                            }}
                           >
                             {paid
                               ? "取消"
@@ -430,7 +604,13 @@ export function TransferPaymentCategoryPanel({
                           </button>
                         )}
                         {rowCategory === "registered" && (
-                          <span className="whitespace-nowrap text-xs text-gray-500">
+                          <span
+                            style={{
+                              color: "var(--text-muted)",
+                              fontSize: 12,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
                             振込実行なし
                           </span>
                         )}
@@ -441,16 +621,31 @@ export function TransferPaymentCategoryPanel({
               </tbody>
             </table>
           </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-900">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+              marginTop: 12,
+              color: "var(--text-sub)",
+              fontSize: 13,
+            }}
+          >
             <span>
               {rangeStart}〜{rangeEnd}件 / 全{visibleRows.length}件
             </span>
-            <div className="flex items-center gap-2">
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button
                 type="button"
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 disabled={page === 1}
-                className="rounded border border-amber-300 px-3 py-1.5 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{
+                  ...actionButtonStyle,
+                  cursor: page === 1 ? "not-allowed" : "pointer",
+                  opacity: page === 1 ? 0.4 : 1,
+                }}
               >
                 前へ
               </button>
@@ -463,7 +658,11 @@ export function TransferPaymentCategoryPanel({
                   setPage((current) => Math.min(pageCount, current + 1))
                 }
                 disabled={page === pageCount}
-                className="rounded border border-amber-300 px-3 py-1.5 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                style={{
+                  ...actionButtonStyle,
+                  cursor: page === pageCount ? "not-allowed" : "pointer",
+                  opacity: page === pageCount ? 0.4 : 1,
+                }}
               >
                 次へ
               </button>
@@ -490,16 +689,39 @@ function PayeasyCopyRow({
 }) {
   const key = `${rowId}:${label}`;
   return (
-    <div className="flex items-center gap-2 py-0.5">
-      <span className="w-12 text-xs text-gray-500">{label}</span>
-      <code className="min-w-[96px] rounded bg-amber-50 px-2 py-0.5 text-xs text-gray-800">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "2px 0",
+      }}
+    >
+      <span style={{ width: 48, color: "var(--text-muted)", fontSize: 12 }}>
+        {label}
+      </span>
+      <code
+        style={{
+          minWidth: 96,
+          padding: "2px 8px",
+          borderRadius: 5,
+          background: "rgba(212,165,65,0.08)",
+          color: "var(--text-main)",
+          fontSize: 12,
+        }}
+      >
         {value || "—"}
       </code>
       <button
         type="button"
         onClick={() => void onCopy(key, value)}
         disabled={!value}
-        className="rounded border border-amber-200 px-2 py-0.5 text-xs text-amber-800 hover:bg-amber-50 disabled:opacity-40"
+        style={{
+          ...actionButtonStyle,
+          padding: "2px 8px",
+          cursor: value ? "pointer" : "not-allowed",
+          opacity: value ? 1 : 0.4,
+        }}
       >
         {copiedKey === key ? "コピー済み" : "コピー"}
       </button>
