@@ -25,6 +25,8 @@ import { getOcrConfirmBadgeTone } from "@/app/bud/expenses/_lib/ocr-confirm-badg
 import {
   containedReceiptBaseSize,
   isReceiptInlineZoomed,
+  nextReceiptRotation,
+  normalizeReceiptRotation,
   receiptAxisAlignment,
   receiptCenteredScrollTarget,
   receiptImageClickRatio,
@@ -75,6 +77,7 @@ type Req = {
   storage_path: string | null;
   receipt_date: string | null;
   receipt_time: string | null;
+  receipt_rotation: number | null;
   store_name: string | null;
   amount: number | null;
   qualified_class: string | null;
@@ -108,7 +111,7 @@ type LoadOptions = { preserveIndex?: number; resetSearch?: boolean };
 
 const OCR_CONFIRM_DESCRIPTION = "OCR要確認";
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
+  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,receipt_rotation,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
 const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 
 const CORP_FILTER_STORAGE_KEY = "bud-expense-review-corp-filter";
@@ -215,6 +218,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [receiptZoomScale, setReceiptZoomScale] = useState(1.6);
   const [receiptInlineScale, setReceiptInlineScale] = useState(1);
   const pendingReceiptScrollRef = useRef<{ zoom: number; pointRatio: ReceiptPointRatio } | null>(null);
+  const rotationRef = useRef(0);
+  const receiptRotationCacheRef = useRef<Record<string, number>>({});
+  const rotationSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftSaveSequenceRef = useRef(0);
   const [sortField, setSortField] = useState<ExpenseReviewSortField>("default");
   const [sortDirection, setSortDirection] = useState<ExpenseReviewSortDirection>("asc");
   const [listTabHost, setListTabHost] = useState<HTMLElement | null>(null);
@@ -629,7 +637,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       return;
     }
     openedAt.current = Date.now();
-    setRotation(0);
+    const savedRotation = receiptRotationCacheRef.current[current.id] ?? normalizeReceiptRotation(current.receipt_rotation);
+    rotationRef.current = savedRotation;
+    setRotation(savedRotation);
     setReceiptInlineScale(1);
     setForm({
       corp_id: current.corp_id ?? effectiveCorpId(current) ?? "",
@@ -657,6 +667,12 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       cancelled = true;
     };
   }, [current, effectiveCorpId, supabase]);
+
+  useEffect(() => {
+    return () => {
+      if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+    };
+  }, []);
 
   const setSearchField = useCallback((field: SearchField, value: string) => {
     setSearchSheets((sheets) =>
@@ -748,7 +764,60 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     return () => window.removeEventListener("keydown", onKey);
   }, [clearActiveSearchSheet, clearFoundSet, enterSearchMode, executeSearch, foundIds, list.length, searchMode, searchSheets.length]);
 
-  const setF = (k: keyof Form, v: string) => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const scheduleDraftSave = useCallback(
+    (record: Req, nextForm: Form) => {
+      if (draftSaveTimerRef.current) clearTimeout(draftSaveTimerRef.current);
+      const sequence = ++draftSaveSequenceRef.current;
+      const fallbackCorpId = effectiveCorpId(record);
+      draftSaveTimerRef.current = setTimeout(() => {
+        draftSaveTimerRef.current = null;
+        const update = expenseDraftUpdate(nextForm, record.expense_kind, canEditExpenseKind, fallbackCorpId);
+        void (async () => {
+          const result = await supabase.from("bud_expense_requests").update(update).eq("id", record.id);
+          if (result.error) {
+            alert(`申請情報の即時保存に失敗しました: ${result.error.message}`);
+            return;
+          }
+          if (sequence !== draftSaveSequenceRef.current) return;
+          setPendingAll((rows) => rows.map((row) => (row.id === record.id ? { ...row, ...update } : row)));
+        })();
+      }, 700);
+    },
+    [canEditExpenseKind, effectiveCorpId, supabase],
+  );
+
+  const setF = (k: keyof Form, v: string) =>
+    setForm((currentForm) => {
+      if (!currentForm) return currentForm;
+      const nextForm = { ...currentForm, [k]: v };
+      if (current && !searchMode) scheduleDraftSave(current, nextForm);
+      return nextForm;
+    });
+
+  const rotateReceipt = () => {
+    if (!current || busy || searchMode) return;
+    const recordId = current.id;
+    const previousRotation = rotationRef.current;
+    const nextRotation = nextReceiptRotation(previousRotation);
+    rotationRef.current = nextRotation;
+    receiptRotationCacheRef.current[recordId] = nextRotation;
+    setRotation(nextRotation);
+    rotationSaveQueueRef.current = rotationSaveQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        const result = await supabase.from("bud_expense_requests").update({ receipt_rotation: nextRotation }).eq("id", recordId);
+        if (result.error) {
+          if (receiptRotationCacheRef.current[recordId] === nextRotation) {
+            receiptRotationCacheRef.current[recordId] = previousRotation;
+          }
+          if (rotationRef.current === nextRotation) {
+            rotationRef.current = previousRotation;
+            setRotation(previousRotation);
+          }
+          alert(`領収書の回転保存に失敗しました: ${result.error.message}`);
+        }
+      });
+  };
   const activeSearch = searchSheets[activeSearchSheet] ?? createSearchSheet();
 
   const selectedCorp = useMemo(() => {
@@ -792,6 +861,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       if (!reason) return;
     }
     setBusy(true);
+    if (draftSaveTimerRef.current) {
+      clearTimeout(draftSaveTimerRef.current);
+      draftSaveTimerRef.current = null;
+    }
     try {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth?.user?.id ?? null;
@@ -838,13 +911,22 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           const rotated = await rotateImageBlob(blob, rot);
           const path = resolveReceiptStoragePath(current);
           if (path) {
-            await supabase.storage
+            const upload = await supabase.storage
               .from("bud-receipts")
               .upload(path, rotated, { contentType: "image/jpeg", upsert: true });
+            if (upload.error) throw upload.error;
+            const resetRotation = await supabase
+              .from("bud_expense_requests")
+              .update({ receipt_rotation: 0 })
+              .eq("id", current.id);
+            if (resetRotation.error) throw resetRotation.error;
+            rotationRef.current = 0;
+            receiptRotationCacheRef.current[current.id] = 0;
+            setRotation(0);
           }
           void notifyDriveContentUpdate(current.id, rotated);
-        } catch {
-          // 回転反映の失敗は処理を止めない（表示は次回また回せる）
+        } catch (rotationError) {
+          alert(`領収書画像の回転反映に失敗しました: ${rotationError instanceof Error ? rotationError.message : String(rotationError)}`);
         }
       }
 
@@ -1291,7 +1373,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   {imgUrl && (
                     <button
                       type="button"
-                      onClick={() => setRotation((r) => (r + 90) % 360)}
+                      onClick={rotateReceipt}
                       title="画像を90°回転（承認/差戻し時に保存画像へ反映）"
                       style={rotateImgBtn}
                     >
@@ -1972,6 +2054,21 @@ function normalizeQualifiedNumberInput(value: string) {
 // 金額の確定時正規化: 全角→半角・コンマ等を除去して数字のみに
 function normalizeAmountInput(value: string) {
   return toHalfWidth(value).replace(/[^\d]/g, "");
+}
+
+function expenseDraftUpdate(form: Form, currentExpenseKind: string, canEditExpenseKind: boolean, fallbackCorpId: string | null) {
+  return {
+    corp_id: form.corp_id || fallbackCorpId || null,
+    expense_kind: canEditExpenseKind ? form.expense_kind : currentExpenseKind,
+    receipt_date: form.receipt_date || null,
+    receipt_time: form.receipt_time || null,
+    store_name: form.store_name || null,
+    amount: Number(normalizeAmountInput(form.amount)) || 0,
+    qualified_class: form.qualified_class || null,
+    qualified_number: normalizeQualifiedNumberInput(form.qualified_number) || null,
+    category_id: form.category_id || null,
+    description: displayDescription(form.description).trim() || null,
+  };
 }
 
 function formatAmountDisplay(raw: string) {
