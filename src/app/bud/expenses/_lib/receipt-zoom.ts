@@ -7,6 +7,7 @@ export type ReceiptPoint = { x: number; y: number };
 export type ReceiptPointRatio = { x: number; y: number };
 export type ReceiptViewport = { width: number; height: number };
 export type ReceiptScrollPosition = { left: number; top: number };
+export type ReceiptAxisAlignment = "center" | "start";
 
 export function zoomReceiptInlineIn(value: number) {
   return clampReceiptInlineZoom(value + RECEIPT_INLINE_ZOOM_STEP);
@@ -47,6 +48,16 @@ export function receiptScrollFrameSize(size: { width: number; height: number }, 
   const scaled = scaledReceiptDisplaySize(size, zoom);
   const rotated = Math.abs(rotation) % 180 !== 0;
   return rotated ? { width: scaled.height, height: scaled.width } : scaled;
+}
+
+export function receiptAxisAlignment(input: { frameSize: ReceiptSize; viewport: ReceiptViewport }): {
+  horizontal: ReceiptAxisAlignment;
+  vertical: ReceiptAxisAlignment;
+} {
+  return {
+    horizontal: input.frameSize.width <= input.viewport.width ? "center" : "start",
+    vertical: input.frameSize.height <= input.viewport.height ? "center" : "start",
+  };
 }
 
 export function isReceiptInlineZoomed(zoom: number) {
