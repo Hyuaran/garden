@@ -25,6 +25,7 @@ import { getOcrConfirmBadgeTone } from "@/app/bud/expenses/_lib/ocr-confirm-badg
 import {
   containedReceiptBaseSize,
   isReceiptInlineZoomed,
+  receiptAxisAlignment,
   receiptCenteredScrollTarget,
   receiptImageClickRatio,
   receiptScrollFrameSize,
@@ -1303,9 +1304,13 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     const baseSize = receiptImgSize(rotation, recBox, natSize);
                     const inlineLayout = receiptInlineLayout(baseSize, rotation, receiptInlineScale);
                     const zoomed = isReceiptInlineZoomed(receiptInlineScale);
+                    const frameSize =
+                      typeof baseSize.width === "number" && typeof baseSize.height === "number"
+                        ? receiptScrollFrameSize({ width: baseSize.width, height: baseSize.height }, rotation, receiptInlineScale)
+                        : null;
                     return (
                       <div ref={recMeasureRef} style={receiptMeasureBox}>
-                        <div ref={recBoxRef} style={receiptViewportStyle(zoomed, recBox)}>
+                        <div ref={recBoxRef} style={receiptViewportStyle(zoomed, recBox, frameSize)}>
                           <div style={inlineLayout.frame}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
@@ -1993,10 +1998,18 @@ const receiptMeasureBox: React.CSSProperties = {
   display: "flex",
 };
 
-function receiptViewportStyle(zoomed: boolean, measuredSize: { w: number; h: number }): React.CSSProperties {
+function receiptViewportStyle(
+  zoomed: boolean,
+  measuredSize: { w: number; h: number },
+  frameSize: { width: number; height: number } | null,
+): React.CSSProperties {
   const fixedSize = zoomed && measuredSize.w > 0 && measuredSize.h > 0;
+  const alignment =
+    fixedSize && frameSize
+      ? receiptAxisAlignment({ frameSize, viewport: { width: measuredSize.w, height: measuredSize.h } })
+      : { horizontal: "center" as const, vertical: "center" as const };
   return {
-    flex: fixedSize ? `0 0 ${measuredSize.h}px` : 1,
+    flex: fixedSize ? `0 0 ${measuredSize.w}px` : 1,
     minWidth: 0,
     minHeight: 0,
     width: fixedSize ? measuredSize.w : "100%",
@@ -2004,8 +2017,8 @@ function receiptViewportStyle(zoomed: boolean, measuredSize: { w: number; h: num
     maxWidth: "100%",
     overflow: "auto",
     display: "flex",
-    alignItems: zoomed ? "flex-start" : "center",
-    justifyContent: zoomed ? "flex-start" : "center",
+    alignItems: alignment.vertical === "start" ? "flex-start" : "center",
+    justifyContent: alignment.horizontal === "start" ? "flex-start" : "center",
   };
 }
 

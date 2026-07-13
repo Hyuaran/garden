@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   clampReceiptInlineZoom,
   containedReceiptBaseSize,
+  receiptAxisAlignment,
   receiptCenteredScrollTarget,
   receiptImageClickRatio,
   isReceiptInlineZoomed,
@@ -41,6 +42,42 @@ describe("receipt inline zoom", () => {
 
   it("uses the rotated visual bounds for the scroll frame", () => {
     expect(receiptScrollFrameSize({ width: 320, height: 240 }, 90, 1.5)).toEqual({ width: 360, height: 480 });
+  });
+
+  it("centers each axis that fits inside the viewport", () => {
+    expect(
+      receiptAxisAlignment({
+        frameSize: { width: 390, height: 500 },
+        viewport: { width: 714, height: 600 },
+      }),
+    ).toEqual({ horizontal: "center", vertical: "center" });
+  });
+
+  it("starts only the horizontal axis when the frame is too wide", () => {
+    expect(
+      receiptAxisAlignment({
+        frameSize: { width: 800, height: 500 },
+        viewport: { width: 714, height: 600 },
+      }),
+    ).toEqual({ horizontal: "start", vertical: "center" });
+  });
+
+  it("starts only the vertical axis when the frame is too tall", () => {
+    expect(
+      receiptAxisAlignment({
+        frameSize: { width: 390, height: 700 },
+        viewport: { width: 714, height: 600 },
+      }),
+    ).toEqual({ horizontal: "center", vertical: "start" });
+  });
+
+  it("starts both axes when the frame exceeds the viewport", () => {
+    expect(
+      receiptAxisAlignment({
+        frameSize: { width: 800, height: 700 },
+        viewport: { width: 714, height: 600 },
+      }),
+    ).toEqual({ horizontal: "start", vertical: "start" });
   });
 
   it("detects when inline zoom should leave centered layout", () => {
