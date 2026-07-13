@@ -129,6 +129,9 @@ export default function MobileExpenseSubmit() {
 
   const selectedCount = shots.filter((shot) => shot.selected && !shot.failed).length;
   const selectableCount = shots.filter((shot) => !shot.failed).length;
+  const progressDone = ocrProgress?.done ?? 0;
+  const progressTotal = ocrProgress?.total ?? selectedCount;
+  const progressPercent = progressTotal > 0 ? Math.min(100, Math.max(0, Math.round((progressDone / progressTotal) * 100))) : 0;
   const selectableCorpOptions =
     selectedCorpId && !corpOptions.some((corp) => corp.id === selectedCorpId)
       ? [{ id: selectedCorpId, name_short: selectedCorpId }, ...corpOptions]
@@ -344,6 +347,32 @@ export default function MobileExpenseSubmit() {
 
   return (
     <main style={{ ...budPage, paddingBottom: 120 }}>
+      {submitting && (
+        <div style={submittingOverlay} role="status" aria-live="polite" aria-label={`送信中 ${progressPercent}%`}>
+          <style>{`@keyframes garden-expense-submit-spin { to { transform: rotate(360deg); } }`}</style>
+          <div style={progressRingWrap}>
+            <div style={progressRingTrack} />
+            <div style={progressRingSpinner} />
+            <div style={progressPercentLabel}>{progressPercent}%</div>
+          </div>
+          <h2 style={submittingTitle}>送信中…</h2>
+          <p style={submittingLead}>
+            領収書を読み取って
+            <br />
+            経理へ送っています
+          </p>
+          <div style={progressBarWrap}>
+            <div style={progressBarTrack}>
+              <div style={{ ...progressBarFill, width: `${progressPercent}%` }} />
+            </div>
+          </div>
+          <div style={progressCount}>
+            {progressTotal}件中 {progressDone}件を送信
+          </div>
+          <div style={submittingWait}>このまましばらくお待ちください</div>
+          <div style={doNotCloseNotice}>⚠ この画面を閉じないでください</div>
+        </div>
+      )}
       <header style={budHeader}>
         <button type="button" onClick={handleBack} aria-label="戻る" style={{ ...budBackLink, border: undefined }}>
           ‹
@@ -456,18 +485,9 @@ export default function MobileExpenseSubmit() {
 
       {error && <div style={{ ...budNotice, marginTop: 14, color: budMobile.colors.red }}>{error}</div>}
 
-      {submitting && ocrProgress && (
-        <div style={ocrProgressCard}>
-          <strong>自動読取中...</strong>
-          <span>
-            {ocrProgress.done}/{ocrProgress.total}件
-          </span>
-        </div>
-      )}
-
       <div style={submitBar}>
         <button type="button" disabled={selectedCount === 0 || submitting} onClick={() => void submit()} style={submitButton(selectedCount === 0 || submitting)}>
-          {submitting && ocrProgress ? `自動読取中... ${ocrProgress.done}/${ocrProgress.total}` : submitting ? "送信中..." : `${selectedCount}件を送信`}
+          {selectedCount}件を送信
         </button>
       </div>
     </main>
@@ -525,16 +545,85 @@ const selectButton = (active: boolean): React.CSSProperties => ({
 });
 const shotFoot: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", color: budMobile.colors.sub, fontSize: 12 };
 const rotateBtn: React.CSSProperties = { border: "none", background: "transparent", color: budMobile.colors.gold, fontFamily: budMobile.font.serif };
-const ocrProgressCard: React.CSSProperties = {
-  ...budCard,
+const submittingOverlay: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 1000,
+  background: `radial-gradient(circle at 50% 12%, rgba(212,165,65,0.16), transparent 40%), linear-gradient(180deg, ${budMobile.colors.page} 0%, ${budMobile.colors.paper} 100%)`,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "0 26px",
+  color: budMobile.colors.text,
+};
+const progressRingWrap: React.CSSProperties = { position: "relative", width: 120, height: 120, marginBottom: 34, flexShrink: 0 };
+const progressRingTrack: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  borderRadius: "50%",
+  border: `8px solid color-mix(in srgb, ${budMobile.colors.gold} 16%, transparent)`,
+};
+const progressRingSpinner: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  borderRadius: "50%",
+  border: "8px solid transparent",
+  borderTopColor: budMobile.colors.goldStrong,
+  borderRightColor: budMobile.colors.gold,
+  animation: "garden-expense-submit-spin 0.9s linear infinite",
+};
+const progressPercentLabel: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
-  gap: 10,
-  marginTop: 14,
-  padding: "12px 14px",
+  justifyContent: "center",
+  fontFamily: budMobile.font.serif,
+  fontSize: 26,
+  fontWeight: 500,
+  color: budMobile.colors.text,
+};
+const submittingTitle: React.CSSProperties = {
+  margin: "0 0 8px",
+  fontFamily: budMobile.font.serif,
+  fontSize: 22,
+  fontWeight: 500,
+  color: budMobile.colors.text,
+};
+const submittingLead: React.CSSProperties = {
+  margin: "0 0 26px",
   color: budMobile.colors.sub,
+  fontSize: 14,
+  lineHeight: 1.7,
+  textAlign: "center",
+};
+const progressBarWrap: React.CSSProperties = { width: "100%", maxWidth: 220, marginBottom: 12 };
+const progressBarTrack: React.CSSProperties = {
+  height: 8,
+  borderRadius: 999,
+  background: `color-mix(in srgb, ${budMobile.colors.gold} 16%, transparent)`,
+  overflow: "hidden",
+};
+const progressBarFill: React.CSSProperties = {
+  height: "100%",
+  borderRadius: 999,
+  background: `linear-gradient(90deg, ${budMobile.colors.gold}, ${budMobile.colors.goldStrong})`,
+  transition: "width 180ms ease-out",
+};
+const progressCount: React.CSSProperties = { marginBottom: 22, color: budMobile.colors.green, fontSize: 13, fontWeight: 500 };
+const submittingWait: React.CSSProperties = { marginBottom: 6, color: budMobile.colors.muted, fontSize: 12, textAlign: "center" };
+const doNotCloseNotice: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 14px",
+  borderRadius: 999,
+  color: budMobile.colors.red,
+  background: `color-mix(in srgb, ${budMobile.colors.red} 8%, transparent)`,
+  border: `1px solid color-mix(in srgb, ${budMobile.colors.red} 22%, transparent)`,
   fontSize: 13,
+  fontWeight: 500,
 };
 const submitBar: React.CSSProperties = {
   position: "fixed",
