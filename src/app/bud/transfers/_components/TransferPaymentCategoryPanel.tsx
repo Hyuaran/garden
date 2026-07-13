@@ -34,7 +34,9 @@ const SELECT_FALLBACK =
 const FETCH_RANGE_END = 4_999;
 const FETCH_BATCH_SIZE = 1_000;
 const PAGE_SIZE = 50;
+const PENDING_STATUSES = new Set(["承認待ち", "下書き"]);
 type PaymentCategoryFilter = "all" | PaymentCategory;
+type TransferPanelScope = "all" | "pending";
 
 async function fetchTransferRows(columns: string) {
   const rows: TransferRow[] = [];
@@ -54,7 +56,11 @@ async function fetchTransferRows(columns: string) {
   return { rows, error: null };
 }
 
-export function TransferPaymentCategoryPanel() {
+export function TransferPaymentCategoryPanel({
+  scope = "all",
+}: {
+  scope?: TransferPanelScope;
+}) {
   const [rows, setRows] = useState<TransferRow[]>([]);
   const [schemaReady, setSchemaReady] = useState(true);
   const [activeCategory, setActiveCategory] =
@@ -98,21 +104,28 @@ export function TransferPaymentCategoryPanel() {
   const categories = schemaReady
     ? PAYMENT_CATEGORY_TABS
     : (["transfer"] as const);
+  const scopedRows = useMemo(
+    () =>
+      scope === "pending"
+        ? rows.filter((row) => PENDING_STATUSES.has(row.status ?? ""))
+        : rows,
+    [rows, scope],
+  );
   const counts = useMemo(() => {
     return Object.fromEntries(
       PAYMENT_CATEGORY_TABS.map((category) => [
         category,
-        filterByPaymentCategory(rows, category).length,
+        filterByPaymentCategory(scopedRows, category).length,
       ]),
     ) as Record<PaymentCategory, number>;
-  }, [rows]);
+  }, [scopedRows]);
 
   const visibleRows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const categoryRows =
       activeCategory === "all"
-        ? rows
-        : filterByPaymentCategory(rows, activeCategory);
+        ? scopedRows
+        : filterByPaymentCategory(scopedRows, activeCategory);
     const filtered = categoryRows.filter((row) => {
       if (!q) return true;
       return [row.transfer_id, row.payee_name, row.description].some((value) =>
@@ -125,7 +138,7 @@ export function TransferPaymentCategoryPanel() {
         return a.manual_paid_at ? 1 : -1;
       return (a.scheduled_date ?? "").localeCompare(b.scheduled_date ?? "");
     });
-  }, [activeCategory, query, rows]);
+  }, [activeCategory, query, scopedRows]);
 
   const pageCount = Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE));
   const pageStartIndex = (page - 1) * PAGE_SIZE;
@@ -216,10 +229,12 @@ export function TransferPaymentCategoryPanel() {
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="font-shippori text-lg font-semibold tracking-wide text-amber-950">
-            振込一覧
+            {scope === "pending" ? "振込予定" : "振込一覧"}
           </h2>
           <p className="mt-1 text-xs leading-6 text-amber-800">
-            未処理と処理済み（全期間）
+            {scope === "pending"
+              ? "これから振り込むもの（承認待ち・下書き）"
+              : "未処理と処理済み（全期間）"}
             {!schemaReady && (
               <span className="ml-2 text-red-700">
                 新列未適用のため振込データとして表示しています。
@@ -229,7 +244,7 @@ export function TransferPaymentCategoryPanel() {
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-amber-900">
           <span className="rounded-full border border-amber-200 bg-white/80 px-3 py-1.5">
-            レコード {visibleRows.length}/{rows.length}
+            レコード {visibleRows.length}/{scopedRows.length}
           </span>
           <span className="rounded-full bg-amber-500 px-4 py-1.5 font-semibold text-white shadow-sm">
             合計 ¥{visibleTotal.toLocaleString("ja-JP")}
@@ -248,7 +263,7 @@ export function TransferPaymentCategoryPanel() {
             }}
             className="h-10 min-w-44 rounded border border-amber-200 bg-white px-3 text-sm text-gray-800 outline-none focus:border-amber-400"
           >
-            <option value="all">すべて（{rows.length}）</option>
+            <option value="all">すべて（{scopedRows.length}）</option>
             {categories.map((category) => (
               <option key={category} value={category}>
                 {formatPaymentCategory(category)}（{counts[category]}）

@@ -39,17 +39,26 @@ const REDESIGNED_SOURCE_CSS = `${SOURCE_CSS}
   line-height: 1;
 }
 .trf-tab-count[hidden] { display: none; }
+#tab-overview .trf-calendar-card {
+  display: none !important;
+}
+#trf-overview-calendar-mount {
+  margin-bottom: 24px;
+}
 `;
 
 const REDESIGNED_SOURCE_HTML = redesignTransfersHtml(SOURCE_HTML);
 
 function redesignTransfersHtml(html: string) {
   const navigation = `<nav class="tab-nav">
+    <button class="tab-item active" data-tab="overview">
+      <span class="tab-item-jp">全体</span>/ Overview
+    </button>
     <button class="tab-item" data-tab="approval">
       <span class="tab-item-jp">承認待ち</span>/ Approval
       <span id="trf-inbox-tab-badge" class="trf-tab-count" hidden></span>
     </button>
-    <button class="tab-item active" data-tab="schedule">
+    <button class="tab-item" data-tab="schedule">
       <span class="tab-item-jp">振込予定</span>/ Schedule
     </button>
     <button class="tab-item" data-tab="history">
@@ -63,8 +72,25 @@ function redesignTransfersHtml(html: string) {
     </button>
   </nav>`;
 
+  const scheduleBlock = html.match(
+    /<div class="tab-content active" id="tab-schedule">[\s\S]*?<!-- ===================== 振込予定タブ END ===================== -->/,
+  )?.[0];
+  if (!scheduleBlock) return html;
+
+  const overviewBlock = scheduleBlock
+    .replace(
+      '<div class="tab-content active" id="tab-schedule">',
+      '<div class="tab-content active" id="tab-overview">\n    <div id="trf-overview-calendar-mount" class="trf-react-mount"></div>',
+    )
+    .replaceAll("振込予定タブ", "全体タブ");
+  const pendingScheduleBlock = `<div class="tab-content" id="tab-schedule">
+    <div id="trf-schedule-mount" class="trf-react-mount"></div>
+  </div>
+  <!-- ===================== 振込予定タブ END ===================== -->`;
+
   return html
     .replace(/<nav class="tab-nav">[\s\S]*?<\/nav>/, navigation)
+    .replace(scheduleBlock, `${overviewBlock}\n\n  ${pendingScheduleBlock}`)
     .replace(
       '<div class="trf-main-layout">',
       '<div class="trf-main-layout trf-schedule-stack">',
