@@ -9,7 +9,7 @@
  * - embedded 時は、タブ内の既存3カード(.exp-sub-card)の数字と法人フィルターを実データで更新
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
@@ -22,7 +22,19 @@ import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalize
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { isExpenseTabKeyboardScopeActive } from "@/app/bud/expenses/_lib/expense-tab-scope";
 import { getOcrConfirmBadgeTone } from "@/app/bud/expenses/_lib/ocr-confirm-badge";
-import { containedReceiptBaseSize, isReceiptInlineZoomed, receiptScrollFrameSize, scaledReceiptDisplaySize, shouldUpdateReceiptMeasure, zoomReceiptInlineIn, zoomReceiptInlineOut } from "@/app/bud/expenses/_lib/receipt-zoom";
+import {
+  containedReceiptBaseSize,
+  isReceiptInlineZoomed,
+  receiptCenteredScrollTarget,
+  receiptImageClickRatio,
+  receiptScrollFrameSize,
+  receiptViewportCenterRatio,
+  scaledReceiptDisplaySize,
+  shouldUpdateReceiptMeasure,
+  type ReceiptPointRatio,
+  zoomReceiptInlineIn,
+  zoomReceiptInlineOut,
+} from "@/app/bud/expenses/_lib/receipt-zoom";
 import {
   sortExpenseReviewRows,
   type ExpenseReviewSortDirection,
@@ -201,6 +213,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [receiptZoomOpen, setReceiptZoomOpen] = useState(false);
   const [receiptZoomScale, setReceiptZoomScale] = useState(1.6);
   const [receiptInlineScale, setReceiptInlineScale] = useState(1);
+  const pendingReceiptScrollRef = useRef<{ zoom: number; pointRatio: ReceiptPointRatio } | null>(null);
   const [sortField, setSortField] = useState<ExpenseReviewSortField>("default");
   const [sortDirection, setSortDirection] = useState<ExpenseReviewSortDirection>("asc");
   const [listTabHost, setListTabHost] = useState<HTMLElement | null>(null);
@@ -405,6 +418,36 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     ro.observe(el);
     return () => ro.disconnect();
   }, [loaded, current, imgUrl, receiptInlineScale]);
+
+  useLayoutEffect(() => {
+    const viewport = recBoxRef.current;
+    if (!viewport) return;
+
+    if (receiptInlineScale === 1) {
+      pendingReceiptScrollRef.current = null;
+      viewport.scrollLeft = 0;
+      viewport.scrollTop = 0;
+      return;
+    }
+
+    const pending = pendingReceiptScrollRef.current;
+    if (!pending || pending.zoom !== receiptInlineScale) return;
+
+    const baseSize = receiptImgSize(rotation, recBox, natSize);
+    if (typeof baseSize.width !== "number" || typeof baseSize.height !== "number") return;
+
+    const target = receiptCenteredScrollTarget({
+      rotation,
+      baseSize: { width: baseSize.width, height: baseSize.height },
+      zoom: receiptInlineScale,
+      viewport: { width: viewport.clientWidth, height: viewport.clientHeight },
+      pointRatio: pending.pointRatio,
+    });
+
+    pendingReceiptScrollRef.current = null;
+    viewport.scrollLeft = target.scrollLeft;
+    viewport.scrollTop = target.scrollTop;
+  }, [receiptInlineScale, rotation, recBox, natSize]);
 
   useEffect(() => {
     setIdx(0);
@@ -1262,17 +1305,48 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     const zoomed = isReceiptInlineZoomed(receiptInlineScale);
                     return (
                       <div ref={recMeasureRef} style={receiptMeasureBox}>
-                        <div ref={recBoxRef} style={receiptViewportStyle(zoomed)}>
+                        <div ref={recBoxRef} style={receiptViewportStyle(zoomed, recBox)}>
                           <div style={inlineLayout.frame}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={imgUrl}
                               alt="領収書"
                               onLoad={(e) => setNatSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-                              onClick={() => setReceiptInlineScale(zoomReceiptInlineIn)}
+                              onClick={(event) => {
+                                const nextZoom = zoomReceiptInlineIn(receiptInlineScale);
+                                if (nextZoom === receiptInlineScale) return;
+                                if (typeof baseSize.width === "number" && typeof baseSize.height === "number") {
+                                  const imageSize = scaledReceiptDisplaySize({ width: baseSize.width, height: baseSize.height }, receiptInlineScale);
+                                  pendingReceiptScrollRef.current = {
+                                    zoom: nextZoom,
+                                    pointRatio: receiptImageClickRatio(
+                                      { x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY },
+                                      imageSize,
+                                    ),
+                                  };
+                                }
+                                setReceiptInlineScale(nextZoom);
+                              }}
                               onContextMenu={(event) => {
                                 event.preventDefault();
-                                setReceiptInlineScale(zoomReceiptInlineOut);
+                                const nextZoom = zoomReceiptInlineOut(receiptInlineScale);
+                                if (nextZoom === receiptInlineScale) return;
+                                const viewport = recBoxRef.current;
+                                if (nextZoom > 1 && viewport && typeof baseSize.width === "number" && typeof baseSize.height === "number") {
+                                  pendingReceiptScrollRef.current = {
+                                    zoom: nextZoom,
+                                    pointRatio: receiptViewportCenterRatio({
+                                      rotation,
+                                      baseSize: { width: baseSize.width, height: baseSize.height },
+                                      zoom: receiptInlineScale,
+                                      viewport: { width: viewport.clientWidth, height: viewport.clientHeight },
+                                      scroll: { left: viewport.scrollLeft, top: viewport.scrollTop },
+                                    }),
+                                  };
+                                } else {
+                                  pendingReceiptScrollRef.current = null;
+                                }
+                                setReceiptInlineScale(nextZoom);
                               }}
                               title="左クリックで拡大 / 右クリックで縮小"
                               style={{
@@ -1919,12 +1993,14 @@ const receiptMeasureBox: React.CSSProperties = {
   display: "flex",
 };
 
-function receiptViewportStyle(zoomed: boolean): React.CSSProperties {
+function receiptViewportStyle(zoomed: boolean, measuredSize: { w: number; h: number }): React.CSSProperties {
+  const fixedSize = zoomed && measuredSize.w > 0 && measuredSize.h > 0;
   return {
-    flex: 1,
+    flex: fixedSize ? `0 0 ${measuredSize.h}px` : 1,
     minWidth: 0,
     minHeight: 0,
-    width: "100%",
+    width: fixedSize ? measuredSize.w : "100%",
+    height: fixedSize ? measuredSize.h : undefined,
     maxWidth: "100%",
     overflow: "auto",
     display: "flex",
