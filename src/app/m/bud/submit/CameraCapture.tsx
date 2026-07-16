@@ -215,7 +215,11 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
       return;
     }
     blurRejectCount.current = 0;
-    setBlurMessage(bypassBlur ? "OCR要確認つきで保存します" : null);
+    setBlurMessage(
+      bypassBlur
+        ? "⚠ ピントが甘いまま記録されました。経理のチェック対象になります。次は必ずピントを合わせて撮影してください。"
+        : null,
+    );
     cropped.toBlob(
       (blob) => {
         if (!blob) return;
