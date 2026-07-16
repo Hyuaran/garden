@@ -11,8 +11,14 @@
 
 import { useEffect, useRef, useState } from "react";
 
+export type CameraCaptureMeta = {
+  ocrConfirmRequired?: boolean;
+  blurScore?: number;
+  blurThreshold?: number;
+};
+
 type Props = {
-  onCapture: (blob: Blob) => void;
+  onCapture: (blob: Blob, meta?: CameraCaptureMeta) => void;
   onClose: () => void;
   count: number;
   max: number;
@@ -20,6 +26,12 @@ type Props = {
 
 // ガイド枠の位置（画面％・縦長）。一回り大きめ＋上に寄らないよう少し下げる。
 const FRAME = { left: 0.1, right: 0.9, top: 0.15, bottom: 0.93 };
+const CAMERA_WIDTH_IDEAL = 4096;
+const CAMERA_HEIGHT_IDEAL = 4096;
+const JPEG_QUALITY = 0.92;
+const BLUR_VARIANCE_THRESHOLD = 420;
+const BLUR_ESCAPE_LIMIT = 3;
+const BLUR_SAMPLE_MAX_SIZE = 900;
 
 // ガイド枠の線に合わせて切り取る。画面は object-fit:cover で表示されているため、
 // 表示コンテナ上の枠％を実際の映像ピクセル座標へ変換してから切り出す。
@@ -59,6 +71,40 @@ function cropVideoToFrame(v: HTMLVideoElement): HTMLCanvasElement {
   return out;
 }
 
+function varianceOfLaplacian(source: HTMLCanvasElement): number {
+  const scale = Math.min(1, BLUR_SAMPLE_MAX_SIZE / Math.max(source.width, source.height));
+  const width = Math.max(1, Math.round(source.width * scale));
+  const height = Math.max(1, Math.round(source.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return Number.POSITIVE_INFINITY;
+  ctx.drawImage(source, 0, 0, width, height);
+  const data = ctx.getImageData(0, 0, width, height).data;
+  const gray = new Float32Array(width * height);
+  for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+    gray[p] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+  }
+
+  let sum = 0;
+  let sumSq = 0;
+  let count = 0;
+  for (let y = 1; y < height - 1; y += 1) {
+    const row = y * width;
+    for (let x = 1; x < width - 1; x += 1) {
+      const idx = row + x;
+      const laplacian = gray[idx - width] + gray[idx - 1] - 4 * gray[idx] + gray[idx + 1] + gray[idx + width];
+      sum += laplacian;
+      sumSq += laplacian * laplacian;
+      count += 1;
+    }
+  }
+  if (count === 0) return Number.POSITIVE_INFINITY;
+  const mean = sum / count;
+  return sumSq / count - mean * mean;
+}
+
 export function CameraCapture({ onCapture, onClose, count, max }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -66,9 +112,11 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
   const [flash, setFlash] = useState(false);
   const [shotN, setShotN] = useState(0);
   const [lastThumb, setLastThumb] = useState<string | null>(null);
+  const [blurMessage, setBlurMessage] = useState<string | null>(null);
   const thumbSlotRef = useRef<HTMLDivElement>(null);
   const [flying, setFlying] = useState<{ id: string; url: string }[]>([]);
   const flyKey = useRef(0);
+  const blurRejectCount = useRef(0);
   const animatedSet = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -76,7 +124,11 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: CAMERA_WIDTH_IDEAL },
+            height: { ideal: CAMERA_HEIGHT_IDEAL },
+          },
           audio: false,
         });
         if (!active) {
@@ -84,6 +136,12 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
           return;
         }
         streamRef.current = stream;
+        const settings = stream.getVideoTracks()[0]?.getSettings();
+        console.info("[expense-camera] stream settings", {
+          width: settings?.width,
+          height: settings?.height,
+          facingMode: settings?.facingMode,
+        });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play().catch(() => undefined);
@@ -135,10 +193,37 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
     const v = videoRef.current;
     if (!v || !v.videoWidth) return;
     const cropped = cropVideoToFrame(v);
+    const blurScore = varianceOfLaplacian(cropped);
+    const isBlurred = blurScore < BLUR_VARIANCE_THRESHOLD;
+    const nextBlurRejectCount = isBlurred ? blurRejectCount.current + 1 : 0;
+    const bypassBlur = isBlurred && nextBlurRejectCount >= BLUR_ESCAPE_LIMIT;
+    console.info("[expense-camera] capture quality", {
+      streamWidth: v.videoWidth,
+      streamHeight: v.videoHeight,
+      savedWidth: cropped.width,
+      savedHeight: cropped.height,
+      savedMegaPixels: Number(((cropped.width * cropped.height) / 1_000_000).toFixed(2)),
+      blurScore: Number(blurScore.toFixed(1)),
+      blurThreshold: BLUR_VARIANCE_THRESHOLD,
+      blurRejectCount: nextBlurRejectCount,
+      bypassBlur,
+    });
+    if (isBlurred && !bypassBlur) {
+      blurRejectCount.current = nextBlurRejectCount;
+      setBlurMessage("ピントが甘いです。ちゃんと撮り直してください");
+      navigator.vibrate?.(80);
+      return;
+    }
+    blurRejectCount.current = 0;
+    setBlurMessage(bypassBlur ? "OCR要確認つきで保存します" : null);
     cropped.toBlob(
       (blob) => {
         if (!blob) return;
-        onCapture(blob);
+        onCapture(blob, {
+          ocrConfirmRequired: bypassBlur,
+          blurScore,
+          blurThreshold: BLUR_VARIANCE_THRESHOLD,
+        });
         setShotN((n) => n + 1);
         setLastThumb((prev) => {
           if (prev) URL.revokeObjectURL(prev);
@@ -156,7 +241,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
         setTimeout(() => setFlash(false), 150);
       },
       "image/jpeg",
-      0.9,
+      JPEG_QUALITY,
     );
   };
 
@@ -224,6 +309,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
           </>
         )}
         {flash && <div style={flashStyle} aria-hidden />}
+        {blurMessage && !error && <div style={blurWarningStyle}>{blurMessage}</div>}
         {error && (
           <div style={errorBox}>
             <div style={{ marginBottom: 16 }}>{error}</div>
@@ -309,6 +395,23 @@ const topBtn: React.CSSProperties = {
   fontSize: 16,
 };
 const flashStyle: React.CSSProperties = { position: "absolute", inset: 0, background: "#fff", opacity: 0.85 };
+const blurWarningStyle: React.CSSProperties = {
+  position: "absolute",
+  left: 18,
+  right: 18,
+  bottom: 132,
+  zIndex: 3,
+  border: "1px solid rgba(255,255,255,0.48)",
+  borderRadius: 14,
+  background: "rgba(179,59,54,0.92)",
+  color: "#fff",
+  fontSize: 14,
+  fontWeight: 700,
+  lineHeight: 1.5,
+  padding: "10px 14px",
+  textAlign: "center",
+  boxShadow: "0 8px 22px rgba(0,0,0,0.35)",
+};
 const bottomBar: React.CSSProperties = {
   display: "flex",
   alignItems: "center",

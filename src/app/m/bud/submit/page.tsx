@@ -18,7 +18,7 @@ import {
   budSectionTitle,
   budTitle,
 } from "../../_lib/mobile-theme";
-import { CameraCapture } from "./CameraCapture";
+import { CameraCapture, type CameraCaptureMeta } from "./CameraCapture";
 
 type Shot = {
   id: string;
@@ -27,6 +27,9 @@ type Shot = {
   selected: boolean;
   failed: boolean;
   rotation: number;
+  ocrConfirmRequired: boolean;
+  blurScore?: number;
+  blurThreshold?: number;
 };
 
 type ExpenseKind = "individual" | "company";
@@ -76,7 +79,7 @@ async function rotateBlob(blob: Blob, deg: number): Promise<Blob> {
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(rad);
     ctx.drawImage(img, -img.width / 2, -img.height / 2);
-    return await new Promise<Blob>((resolve) => canvas.toBlob((next) => resolve(next ?? blob), "image/jpeg", 0.9));
+    return await new Promise<Blob>((resolve) => canvas.toBlob((next) => resolve(next ?? blob), "image/jpeg", 0.92));
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -175,7 +178,7 @@ export default function MobileExpenseSubmit() {
     else router.push("/m/bud");
   };
 
-  const addShot = (blob: Blob) => {
+  const addShot = (blob: Blob, meta?: CameraCaptureMeta) => {
     seq.current += 1;
     setShots((prev) =>
       prev.length >= MAX_SHOTS
@@ -189,6 +192,9 @@ export default function MobileExpenseSubmit() {
               selected: true,
               failed: false,
               rotation: 0,
+              ocrConfirmRequired: Boolean(meta?.ocrConfirmRequired),
+              blurScore: meta?.blurScore,
+              blurThreshold: meta?.blurThreshold,
             },
           ],
     );
@@ -281,7 +287,7 @@ export default function MobileExpenseSubmit() {
           qualified_number: ocr?.qualified_number ?? null,
           qualified_class: ocr?.qualified_class ?? null,
           category_id: ocr?.category_id ?? null,
-          description: ocr?.confidence === "low" ? "OCR要確認" : null,
+          description: shot.ocrConfirmRequired || ocr?.confidence === "low" ? "OCR要確認" : null,
           storage_path: up.data?.path ?? path,
           drive_file_id: driveFileId,
           drive_view_url: driveViewUrl,

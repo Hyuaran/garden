@@ -82,7 +82,7 @@ export async function rotateImageBlob(blob: Blob, deg: number): Promise<Blob> {
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate((deg * Math.PI) / 180);
     ctx.drawImage(img, -img.width / 2, -img.height / 2);
-    return await new Promise<Blob>((res) => canvas.toBlob((b) => res(b ?? blob), "image/jpeg", 0.9));
+    return await new Promise<Blob>((res) => canvas.toBlob((b) => res(b ?? blob), "image/jpeg", 0.92));
   } finally {
     URL.revokeObjectURL(url);
   }
