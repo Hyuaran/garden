@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { elapsedBusinessDaysSince } from "@/app/bud/transfers/_lib/business-days";
@@ -166,22 +166,22 @@ export function TransferInboxTray({
   };
 
   return (
-    <section className="mb-5 rounded-[12px] border border-[#b4a582]/30 bg-[rgba(255,253,246,0.72)] p-5 font-serif shadow-[0_4px_18px_rgba(94,75,42,0.05)]">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <section style={panelStyle}>
+      <div style={panelHeadStyle}>
         <div>
-          <h2 className="text-base font-semibold tracking-[0.05em] text-[#3d3528]">
+          <h2 style={panelTitleStyle}>
             未処理トレイ
           </h2>
-          <p className="mt-1 text-xs text-[#6d6356]">
+          <p style={panelMetaStyle}>
             Driveから取り込んだ請求書です。OCRは「振込依頼にする」を押した後だけ実行します。
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+        <div style={actionGroupStyle}>
           <button
             type="button"
             onClick={() => void handleImportNow()}
             disabled={loading || importing || !!busyId}
-            className="rounded-full border border-[#b3892e]/35 bg-[#b3892e] px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[#987224] disabled:opacity-50"
+            style={buttonStyle(primaryButtonStyle, loading || importing || !!busyId)}
           >
             {importing ? "取り込み中…" : "今すぐ取り込み"}
           </button>
@@ -189,7 +189,7 @@ export function TransferInboxTray({
             type="button"
             onClick={() => void loadItems()}
             disabled={loading || importing || !!busyId}
-            className="rounded-full border border-[#b3892e]/30 bg-white/40 px-4 py-1.5 text-xs text-[#6d6356] hover:bg-[#f7efd8]/60 disabled:opacity-50"
+            style={buttonStyle(secondaryButtonStyle, loading || importing || !!busyId)}
           >
             再読み込み
           </button>
@@ -197,34 +197,34 @@ export function TransferInboxTray({
       </div>
 
       {importMessage && (
-        <div className="mb-3 rounded-lg border border-[#b4a582]/25 bg-white/55 p-3 text-sm text-[#6d6356]">
+        <div style={successStyle}>
           {importMessage}
         </div>
       )}
 
       {error && (
-        <div className="mb-3 rounded-lg border border-[#8f3b36]/25 bg-[#8f3b36]/[0.06] p-3 text-sm text-[#8f3b36]">
+        <div style={errorStyle}>
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="rounded-lg border border-[#b4a582]/20 bg-white/45 p-4 text-sm text-[#6d6356]">
+        <div style={noticeStyle}>
           読み込み中…
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-lg border border-[#b4a582]/20 bg-white/45 p-4 text-sm text-[#6d6356]">
+        <div style={noticeStyle}>
           未処理データはありません
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-[#b4a582]/25 bg-white/55">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-[#f7efd8]/55 text-left text-xs text-[#6d6356]">
+        <div style={tableWrapStyle}>
+          <table style={tableStyle}>
+            <thead>
               <tr>
-                <th className="px-4 py-3 font-medium">ファイル</th>
-                <th className="px-4 py-3 font-medium">形式</th>
-                <th className="px-4 py-3 font-medium">取込日時</th>
-                <th className="px-4 py-3 text-right font-medium">操作</th>
+                <th style={thStyle}>ファイル</th>
+                <th style={thStyle}>形式</th>
+                <th style={thStyle}>取込日時</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -234,24 +234,20 @@ export function TransferInboxTray({
                 return (
                   <tr
                     key={item.id}
-                    className={
-                      stalled
-                        ? "border-t border-[#8f3b36]/20 bg-[#8f3b36]/[0.045]"
-                        : "border-t border-[#b4a582]/20"
-                    }
+                    style={stalled ? stalledRowStyle : undefined}
                   >
-                    <td className="px-4 py-3 text-[#3d3528]">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{item.file_name}</span>
+                    <td style={tdStyle}>
+                      <div style={fileNameRowStyle}>
+                        <span style={fileNameStyle}>{item.file_name}</span>
                         {item.source === "mail" && (
-                          <span className="rounded-full border border-[#b3892e]/20 bg-[#d4a541]/10 px-2 py-0.5 text-[11px] font-semibold text-[#8d6923]">
+                          <span style={mailBadgeStyle}>
                             ✉ メール
                           </span>
                         )}
                       </div>
                       {item.source === "mail" && item.mail_meta && (
                         <div
-                          className="mt-1 max-w-md truncate text-xs text-[#9a8f7d]"
+                          style={mailMetaStyle}
                           title={formatMailMeta(item)}
                         >
                           {formatMailMeta(item)}
@@ -262,34 +258,33 @@ export function TransferInboxTray({
                           href={item.public_url}
                           target="_blank"
                           rel="noreferrer"
-                          className={
-                            stalled
-                              ? "mt-1 inline-block text-xs text-[#8f3b36] underline"
-                              : "mt-1 inline-block text-xs text-[#8d6923] underline"
-                          }
+                          style={stalled ? stalledLinkStyle : previewLinkStyle}
                         >
                           プレビュー
                         </a>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-[#6d6356]">
+                    <td style={tdStyle}>
                       {formatMimeType(item.mime_type)}
                     </td>
-                    <td className="px-4 py-3 text-[#6d6356]">
+                    <td style={tdStyle}>
                       <div>{formatDateTime(item.imported_at)}</div>
                       {stalled && (
-                        <span className="mt-1 inline-flex rounded-full border border-[#8f3b36]/25 bg-[#8f3b36]/[0.08] px-2 py-0.5 text-xs font-semibold text-[#8f3b36]">
+                        <span style={stalledBadgeStyle}>
                           ⚠ 滞留{elapsedDays}営業日
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
+                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                      <div style={rowActionStyle}>
                         <button
                           type="button"
                           onClick={() => handleCreateTransfer(item)}
                           disabled={!!busyId || importing}
-                          className="rounded-full border border-[#b3892e]/35 bg-[#b3892e] px-3 py-1.5 text-xs text-white hover:bg-[#987224] disabled:opacity-50"
+                          style={buttonStyle(
+                            primarySmallButtonStyle,
+                            !!busyId || importing,
+                          )}
                         >
                           振込依頼にする
                         </button>
@@ -297,7 +292,10 @@ export function TransferInboxTray({
                           type="button"
                           onClick={() => void handleDiscard(item)}
                           disabled={busyId === item.id || !!busyId || importing}
-                          className="rounded-full border border-[#b4a582]/35 bg-white/35 px-3 py-1.5 text-xs text-[#6d6356] hover:bg-[#f7efd8]/55 disabled:opacity-50"
+                          style={buttonStyle(
+                            secondarySmallButtonStyle,
+                            busyId === item.id || !!busyId || importing,
+                          )}
                         >
                           {busyId === item.id ? "処理中…" : "破棄"}
                         </button>
@@ -312,6 +310,204 @@ export function TransferInboxTray({
       )}
     </section>
   );
+}
+
+const serifFont = "'Shippori Mincho', 'Noto Serif JP', serif";
+const panelStyle: CSSProperties = {
+  marginBottom: 20,
+  padding: "18px 20px",
+  border: "1px solid rgba(180,165,130,0.22)",
+  borderRadius: 12,
+  background: "rgba(255,253,246,0.72)",
+  boxShadow: "0 4px 18px rgba(94,75,42,0.05)",
+  fontFamily: serifFont,
+};
+const panelHeadStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-end",
+  gap: 16,
+  flexWrap: "wrap",
+  paddingBottom: 10,
+  marginBottom: 12,
+  borderBottom: "1px dashed rgba(179,137,46,0.32)",
+};
+const panelTitleStyle: CSSProperties = {
+  margin: 0,
+  color: "var(--text-main)",
+  fontSize: 16,
+  fontWeight: 600,
+  letterSpacing: "0.05em",
+};
+const panelMetaStyle: CSSProperties = {
+  margin: "4px 0 0",
+  color: "var(--text-muted)",
+  fontSize: 12,
+};
+const actionGroupStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+};
+const buttonBaseStyle: CSSProperties = {
+  minHeight: 32,
+  padding: "6px 14px",
+  borderRadius: 999,
+  fontFamily: serifFont,
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+  boxShadow: "0 2px 8px rgba(94,75,42,0.04)",
+};
+const primaryButtonStyle: CSSProperties = {
+  ...buttonBaseStyle,
+  border: "1px solid rgba(179,137,46,0.35)",
+  background: "rgba(179,137,46,0.88)",
+  color: "rgba(255,253,246,0.98)",
+};
+const secondaryButtonStyle: CSSProperties = {
+  ...buttonBaseStyle,
+  border: "1px solid rgba(179,137,46,0.28)",
+  background: "rgba(255,255,255,0.42)",
+  color: "var(--text-sub)",
+};
+const primarySmallButtonStyle: CSSProperties = {
+  ...primaryButtonStyle,
+  minHeight: 30,
+  padding: "5px 12px",
+  fontSize: 11,
+};
+const secondarySmallButtonStyle: CSSProperties = {
+  ...secondaryButtonStyle,
+  minHeight: 30,
+  padding: "5px 12px",
+  fontSize: 11,
+};
+const noticeStyle: CSSProperties = {
+  padding: 20,
+  border: "1px solid rgba(180,165,130,0.18)",
+  borderRadius: 8,
+  background: "rgba(255,255,255,0.42)",
+  color: "var(--text-sub)",
+  textAlign: "center",
+  fontSize: 12,
+};
+const successStyle: CSSProperties = {
+  ...noticeStyle,
+  padding: 10,
+  marginBottom: 10,
+  borderColor: "rgba(108,132,76,0.24)",
+  background: "rgba(108,132,76,0.07)",
+  color: "var(--text-sub)",
+  textAlign: "left",
+};
+const errorStyle: CSSProperties = {
+  ...noticeStyle,
+  padding: 10,
+  marginBottom: 10,
+  borderColor: "rgba(143,59,54,0.25)",
+  background: "rgba(143,59,54,0.07)",
+  color: "rgba(143,59,54,0.96)",
+  textAlign: "left",
+};
+const tableWrapStyle: CSSProperties = {
+  overflowX: "auto",
+  border: "1px solid rgba(180,165,130,0.22)",
+  borderRadius: 8,
+  background: "rgba(255,255,255,0.46)",
+};
+const tableStyle: CSSProperties = {
+  width: "100%",
+  minWidth: 760,
+  borderCollapse: "collapse",
+  fontFamily: serifFont,
+  fontSize: 12,
+};
+const thStyle: CSSProperties = {
+  padding: "9px 12px",
+  borderBottom: "1px solid rgba(180,165,130,0.25)",
+  background: "rgba(247,239,216,0.34)",
+  color: "var(--text-sub)",
+  fontWeight: 500,
+  textAlign: "left",
+  whiteSpace: "nowrap",
+};
+const tdStyle: CSSProperties = {
+  padding: "10px 12px",
+  borderBottom: "1px dashed rgba(180,165,130,0.18)",
+  color: "var(--text-main)",
+  verticalAlign: "middle",
+};
+const stalledRowStyle: CSSProperties = {
+  background: "rgba(143,59,54,0.045)",
+};
+const fileNameRowStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: 8,
+};
+const fileNameStyle: CSSProperties = {
+  fontWeight: 600,
+};
+const mailBadgeStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  border: "1px solid rgba(179,137,46,0.2)",
+  borderRadius: 999,
+  background: "rgba(212,165,65,0.1)",
+  padding: "2px 8px",
+  color: "var(--text-sub)",
+  fontSize: 11,
+  fontWeight: 600,
+};
+const mailMetaStyle: CSSProperties = {
+  marginTop: 4,
+  maxWidth: 448,
+  overflow: "hidden",
+  color: "var(--text-muted)",
+  fontSize: 12,
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+const previewLinkStyle: CSSProperties = {
+  display: "inline-block",
+  marginTop: 4,
+  color: "var(--text-sub)",
+  fontSize: 12,
+  textDecoration: "underline",
+};
+const stalledLinkStyle: CSSProperties = {
+  ...previewLinkStyle,
+  color: "rgba(143,59,54,0.96)",
+};
+const stalledBadgeStyle: CSSProperties = {
+  display: "inline-flex",
+  marginTop: 4,
+  border: "1px solid rgba(143,59,54,0.25)",
+  borderRadius: 999,
+  background: "rgba(143,59,54,0.08)",
+  padding: "2px 8px",
+  color: "rgba(143,59,54,0.96)",
+  fontSize: 12,
+  fontWeight: 600,
+};
+const rowActionStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 8,
+};
+
+function buttonStyle(
+  style: CSSProperties,
+  disabled: boolean,
+): CSSProperties {
+  if (!disabled) return style;
+  return {
+    ...style,
+    cursor: "not-allowed",
+    opacity: 0.5,
+  };
 }
 
 function formatMimeType(value: TransferInboxItem["mime_type"]) {
