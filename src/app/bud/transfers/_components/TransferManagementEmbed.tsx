@@ -3,27 +3,32 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { TransferApprovalPanel } from "./TransferApprovalPanel";
 import { TransferAmountCalendar } from "./TransferAmountCalendar";
-import { TransferInboxTray } from "./TransferInboxTray";
 import { TransferPaymentCategoryPanel } from "./TransferPaymentCategoryPanel";
 
 export function TransferManagementEmbed() {
   const [calendarMount, setCalendarMount] = useState<HTMLElement | null>(null);
+  const [approvalMount, setApprovalMount] = useState<HTMLElement | null>(null);
   const [scheduleMount, setScheduleMount] = useState<HTMLElement | null>(null);
   const [listMount, setListMount] = useState<HTMLElement | null>(null);
-  const [inboxMount, setInboxMount] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     const tick = () => {
       const nextCalendarMount = document.getElementById(
         "trf-overview-calendar-mount",
       );
+      const nextApprovalMount = document.getElementById("trf-approval-mount");
       const nextScheduleMount = document.getElementById("trf-schedule-mount");
       const nextListMount = document.getElementById("trf-list-mount");
-      const nextInboxMount = document.getElementById("trf-inbox-mount");
       if (nextCalendarMount) {
         setCalendarMount((current) =>
           current === nextCalendarMount ? current : nextCalendarMount,
+        );
+      }
+      if (nextApprovalMount) {
+        setApprovalMount((current) =>
+          current === nextApprovalMount ? current : nextApprovalMount,
         );
       }
       if (nextScheduleMount) {
@@ -34,11 +39,6 @@ export function TransferManagementEmbed() {
       if (nextListMount) {
         setListMount((current) =>
           current === nextListMount ? current : nextListMount,
-        );
-      }
-      if (nextInboxMount) {
-        setInboxMount((current) =>
-          current === nextInboxMount ? current : nextInboxMount,
         );
       }
     };
@@ -60,17 +60,17 @@ export function TransferManagementEmbed() {
   return (
     <>
       {calendarMount && createPortal(<TransferAmountCalendar />, calendarMount)}
+      {approvalMount &&
+        createPortal(
+          <TransferApprovalPanel onInboxCountChange={updateInboxCount} />,
+          approvalMount,
+        )}
       {scheduleMount &&
         createPortal(
           <TransferPaymentCategoryPanel scope="pending" />,
           scheduleMount,
         )}
       {listMount && createPortal(<TransferPaymentCategoryPanel />, listMount)}
-      {inboxMount &&
-        createPortal(
-          <TransferInboxTray onCountChange={updateInboxCount} />,
-          inboxMount,
-        )}
     </>
   );
 }

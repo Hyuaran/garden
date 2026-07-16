@@ -22,11 +22,18 @@ const REDESIGNED_SOURCE_CSS = `${SOURCE_CSS}
 .trf-react-mount {
   min-height: 1px;
 }
+.tab-nav .tab-item[data-tab="approval"] {
+  position: relative;
+  overflow: visible;
+}
 .trf-tab-count {
+  position: absolute;
+  top: -7px;
+  right: -8px;
+  z-index: 2;
   display: inline-flex;
   min-width: 20px;
   height: 20px;
-  margin-left: 7px;
   padding: 0 6px;
   align-items: center;
   justify-content: center;
@@ -284,8 +291,8 @@ ${renamedFbRow}
     .replace(/<nav class="tab-nav">[\s\S]*?<\/nav>/, navigation)
     .replace(scheduleBlock, `${overviewBlock}\n\n  ${pendingScheduleBlock}`)
     .replace(
-      '<div class="tab-content" id="tab-approval">',
-      '<div class="tab-content" id="tab-approval">\n    <div id="trf-inbox-mount" class="trf-react-mount"></div>',
+      /<div class="tab-content" id="tab-approval">[\s\S]*?(?=<div class="tab-content" id="tab-history">)/,
+      '<div class="tab-content" id="tab-approval">\n    <div id="trf-approval-mount" class="trf-react-mount"></div>\n  </div>\n\n  ',
     )
     .replace(
       '<div class="tab-content" id="tab-master">',
