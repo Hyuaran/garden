@@ -1180,7 +1180,10 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         {showOcrConfirmBadge && <div style={ocrBadgeBox(ocrConfirmTone)}>OCR要確認</div>}
                         {corpChangeBadge && (
                           <div style={corpChangeBadgeBox}>
-                            ⚠ 申請者が法人変更: {corpChangeBadge.defaultName}→{corpChangeBadge.selectedName}
+                            <span style={corpChangeBadgeLine}>⚠ 申請者が法人変更</span>
+                            <span style={corpChangeBadgeLine}>
+                              {corpChangeBadge.defaultName}→{corpChangeBadge.selectedName}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -2387,9 +2390,20 @@ const corpChangeBadgeBox: React.CSSProperties = {
   background: "rgba(212,165,65,0.16)",
   border: "1px solid rgba(179,137,46,0.36)",
   color: "#8a661f",
-  justifyContent: "flex-start",
+  // 2行（見出し／変更内容）にする。1行時と同じ高さ40pxを保つため
+  // padding 8+8 ＋ 11px×2行 ＋ border 2 = 40px に収まる字送りとサイズにしている
+  flexDirection: "column",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  fontSize: 10,
+  lineHeight: "11px",
+  overflow: "hidden",
+};
+const corpChangeBadgeLine: React.CSSProperties = {
+  maxWidth: "100%",
   overflow: "hidden",
   textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 const layoutToolRow: React.CSSProperties = {
   display: "flex",
