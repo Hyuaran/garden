@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { intakeItemFromPost, intakeMarks, intakeStoragePath, isDuplicateIntakeError, isIntakeKind, type IntakeItem } from "../intake";
+import { intakeButtonLabel, intakeItemFromPost, intakeMarks, intakeStoragePath, isDuplicateIntakeError, isIntakeKind, type IntakeItem } from "../intake";
 
-const item: IntakeItem = { id: "1", kind: "請求", attachment_id: "a1", created_by_name: "東海林", created_at: "2026-07-18T12:00:00Z" };
+const item: IntakeItem = { id: "1", kind: "請求", attachment_id: "a1", created_by_name: "東海林", created_at: "2026-07-18T12:00:00Z", notice_saved: false };
 
 describe("Garden intake helpers", () => {
   it("accepts only the four intake kinds", () => {
@@ -24,5 +24,14 @@ describe("Garden intake helpers", () => {
     const mark = intakeMarks([item]).get("a1");
     expect(mark?.label).toBe("請求 済");
     expect(mark?.title).toContain("東海林");
+  });
+
+  it("marks an unsaved notice incomplete and switches the action label", () => {
+    const incomplete = { ...item, kind: "周知" as const, notice_saved: false };
+    expect(intakeMarks([incomplete]).get("a1")).toMatchObject({ label: "周知 未完", complete: false });
+    expect(intakeButtonLabel(incomplete)).toBe("周知を続ける");
+    const complete = { ...incomplete, notice_saved: true };
+    expect(intakeMarks([complete]).get("a1")).toMatchObject({ label: "周知 済", complete: true });
+    expect(intakeButtonLabel(complete)).toBe("取込済");
   });
 });

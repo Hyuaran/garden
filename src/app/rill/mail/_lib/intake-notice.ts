@@ -6,14 +6,38 @@ export function assertNoticeKind(kind: unknown): asserts kind is "周知" {
   if (kind !== "周知") throw new Error("Only 周知 intake is supported");
 }
 
-export function noticeFallbackText(sender: string, pageCount: number) {
-  return `FAXが届きました。\n送信元：${sender.trim() || "不明"}\n${pageCount}枚\n\n内容をご確認ください。`;
+export function noticeTemplate(pageCount: number, salesPerson = "", projectName = "") {
+  return `FAX${pageCount}枚到着のため、ご確認ください。\n営業担当：${salesPerson}\n案件名：${projectName}`;
 }
 
-export function noticeDraftText(sender: string, pageCount: number, summary?: string | null) {
-  const fallback = noticeFallbackText(sender, pageCount);
-  const cleaned = summary?.trim();
-  return cleaned ? `${fallback}\n\n内容の要点：\n${cleaned}` : fallback;
+export function noticeTemplateFields(value: string) {
+  return {
+    salesPerson: /^営業担当：(.*)$/m.exec(value)?.[1]?.trim() ?? "",
+    projectName: /^案件名：(.*)$/m.exec(value)?.[1]?.trim() ?? "",
+  };
+}
+
+export type NoticeProgress =
+  | { stage: "intake" | "reading" | "saving" }
+  | { stage: "converting"; done: number; total: number }
+  | null;
+
+export type NoticeProgressEvent =
+  | { type: "intake" | "reading" | "saving" }
+  | { type: "converting"; done: number; total: number }
+  | { type: "complete" | "cancel" };
+
+export function reduceNoticeProgress(_current: NoticeProgress, event: NoticeProgressEvent): NoticeProgress {
+  if (event.type === "complete" || event.type === "cancel") return null;
+  if (event.type === "converting") return { stage: event.type, done: event.done, total: event.total };
+  return { stage: event.type };
+}
+
+export function noticeProgressLabel(progress: Exclude<NoticeProgress, null>) {
+  if (progress.stage === "converting") return `画像に変換中… ${progress.done}/${progress.total}枚`;
+  if (progress.stage === "reading") return "内容を読み取り中…";
+  if (progress.stage === "saving") return "保存中…";
+  return "取り込み中…";
 }
 
 export function limitNoticePages(value: unknown) {

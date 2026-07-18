@@ -7,6 +7,7 @@ export type IntakeItem = {
   attachment_id: string;
   created_by_name: string;
   created_at: string;
+  notice_saved: boolean;
 };
 
 export function isIntakeKind(value: unknown): value is IntakeKind {
@@ -34,7 +35,13 @@ export function intakeItemFromPost(status: number, item: IntakeItem | undefined)
 export function intakeMarks(items: IntakeItem[]) {
   return new Map(items.map((item) => [item.attachment_id, {
     kind: item.kind,
-    label: `${item.kind} 済`,
+    complete: item.kind !== "周知" || item.notice_saved,
+    label: item.kind === "周知" && !item.notice_saved ? "周知 未完" : `${item.kind} 済`,
     title: `${item.created_by_name}・${new Date(item.created_at).toLocaleString("ja-JP")}`,
   }]));
+}
+
+export function intakeButtonLabel(item: IntakeItem | undefined) {
+  if (!item) return "Garden取込実行";
+  return item.kind === "周知" && !item.notice_saved ? "周知を続ける" : "取込済";
 }
