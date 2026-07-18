@@ -39,6 +39,7 @@ export function RillMailScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [writing, setWriting] = useState(false);
   const [error, setError] = useState("");
+  const [autoRefreshFailed, setAutoRefreshFailed] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -54,7 +55,7 @@ export function RillMailScreen() {
     setLoading(true); setError("");
     try {
       const data = await readJson<{ boxes: RillMailBox[]; reviewers: string[]; ownName: string | null }>(await fetch("/api/rill/mail/boxes", { cache: "no-store" }));
-      setBoxes(data.boxes); setReviewers(data.reviewers.length ? data.reviewers : FALLBACK_REVIEWERS); setOwnName(data.ownName ?? ""); setConnected(true);
+      setBoxes(data.boxes); setReviewers(data.reviewers.length ? data.reviewers : FALLBACK_REVIEWERS); setOwnName(data.ownName ?? ""); setConnected(true); setAutoRefreshFailed(false);
       await loadMessages(activeBox);
     } catch (cause) {
       if ((cause as { status?: number }).status === 428) setConnected(false);
@@ -63,7 +64,18 @@ export function RillMailScreen() {
   }, [activeBox, loadMessages]);
 
   useEffect(() => { void initialize(); }, [initialize]);
-  useEffect(() => { const timer = window.setInterval(() => { if (connected) void loadMessages(activeBox); }, 60_000); return () => window.clearInterval(timer); }, [activeBox, connected, loadMessages]);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!connected) return;
+      void loadMessages(activeBox)
+        .then(() => setAutoRefreshFailed(false))
+        .catch((cause) => {
+          if ((cause as { status?: number }).status === 428) setConnected(false);
+          else setAutoRefreshFailed(true);
+        });
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [activeBox, connected, loadMessages]);
   useEffect(() => {
     const node = sentinel.current;
     if (!node || !cursor || loadingMore) return;
@@ -167,7 +179,7 @@ export function RillMailScreen() {
     <section className={styles.surface} aria-label="Rill Mail">
       <div className={styles.toolbar}>
         <button className={styles.primaryButton} onClick={() => void initialize()} disabled={loading || writing}>↻ 更新</button>
-        <span className={styles.fresh}>{updatedAt ? `最終更新 ${updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}・60秒ごと` : "未更新"}</span><span className={styles.separator} />
+        <span className={styles.fresh}>{updatedAt ? `最終更新 ${updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}・60秒ごと` : "未更新"}</span>{autoRefreshFailed && <span className={styles.autoWarning}>更新に失敗（自動で再試行します）</span>}<span className={styles.separator} />
         {["新規", "返信", "全員に返信", "転送"].map((label) => <button key={label} className={styles.disabledButton} disabled title="次段階">{label}</button>)}
         <button className={styles.actionButton} disabled={!selected || writing} onClick={() => selected && void writeOne(selected, selected.box.kind === "personal" ? "read" : "confirm", selectedUnread)}>○ {selectedUnread ? "開封済みに" : "未読に戻す"}</button>
         <button className={`${styles.actionButton} ${currentFlagged ? styles.actionOn : ""}`} disabled={!selected || writing} onClick={() => selected && void writeOne(selected, "flag", !currentFlagged)}>⚑ ピン</button>
@@ -190,7 +202,7 @@ export function RillMailScreen() {
             <span className={styles.row}><span className={styles.subject}>{message.hasAttachments && "⌕ "}{message.subject}</span>{status && <span className={`${styles.status} ${styles[`status${status}`]}`}>{status}</span>}</span><span className={styles.row}><span className={styles.preview}>{message.bodyPreview}</span><span className={styles.reviewers}>{initials.map((initial, index) => <i key={`${initial}${index}`}>{initial}</i>)}</span></span>
           </div>; })}<div ref={sentinel} className={styles.sentinel}>{loadingMore ? "続きを読み込み中…" : ""}</div></div>
         </section>
-        <article className={styles.column}>{!selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <div className={styles.emptyDetail}>本文を読み込み中…</div> : <><header className={styles.readerHeader}>
+        <article className={styles.column}>{!selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <><header className={styles.readerHeader}><div className={styles.readerTitle}><h2>{selected.hasAttachments && "⌕ "}{selected.subject}</h2><span className={styles.badge}>{abbreviateBox(selected.box.label)}</span></div><dl><div><dt>差出人</dt><dd>{selected.fromName} &lt;{selected.fromAddress}&gt;</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(selected.receivedDateTime)}</dd></div></dl></header><div className={styles.readerBody}><p className={styles.previewLead}>{selected.bodyPreview || "本文を読み込んでいます…"}</p><div className={styles.skeletonLine} /><div className={`${styles.skeletonLine} ${styles.skeletonShort}`} /></div></> : <><header className={styles.readerHeader}>
           <div className={styles.readerTitle}><h2>{detail.hasAttachments && "⌕ "}{detail.subject}</h2><button className={`${styles.inlineFlag} ${detail.flag.flagStatus === "flagged" ? styles.flag : ""}`} onClick={() => void writeOne(detail, "flag", detail.flag.flagStatus !== "flagged")}>⚑</button><span className={styles.badge}>{abbreviateBox(detail.box.label)}</span></div>
           <dl><div><dt>差出人</dt><dd>{detail.fromName} &lt;{detail.fromAddress}&gt;</dd></div><div><dt>宛先</dt><dd>{detail.to.join(", ")}</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(detail.receivedDateTime)}</dd></div></dl>
           <div className={styles.categoryLine}><span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles.reviewerOn : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{Array.from(name)[0]}</button>)}</span></div>

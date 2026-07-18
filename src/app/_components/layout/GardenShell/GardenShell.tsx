@@ -422,6 +422,9 @@ export default function GardenShell({
           height: calc(100vh - var(--gs-header-h));
           min-height: calc(100vh - var(--gs-header-h));
         }
+        .gs-main-fixed.gs-main-full-bleed.gs-main-full-bleed-nav-open {
+          padding-left: 14px;
+        }
         /* 12 繝｢繧ｸ繝･繝ｼ繝ｫ orb 蛻・*/
         .gs-orb-col .nav-app-item {
           display: flex;
@@ -1016,7 +1019,7 @@ export default function GardenShell({
       </button>
 
       {/* 竭､竭･竭ｨ main (margin 縺ｧ sidebar/activity 縺ｫ霑ｽ蠕・ */}
-      <main className={`gs-main-fixed main garden-shell${contentFullBleed ? " gs-main-full-bleed" : ""}`} data-garden-module={activeModule}>{children}</main>
+      <main className={`gs-main-fixed main garden-shell${contentFullBleed ? " gs-main-full-bleed" : ""}${contentFullBleed && !navCollapsed ? " gs-main-full-bleed-nav-open" : ""}`} data-garden-module={activeModule}>{children}</main>
 
       <div
         className="gs-activity-dock"

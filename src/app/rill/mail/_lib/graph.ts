@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { decryptRefreshToken, encryptRefreshToken } from "./token-crypto";
+import { decryptToken, encryptToken } from "./token-crypto";
+import { isAccessTokenCacheValid, SingleFlight } from "./token-cache";
 import { mergeMessages } from "./format";
 import { RillMailHttpError } from "./server-auth";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "./types";
@@ -8,7 +9,12 @@ import { isMailState, isPersonalMailbox, replaceMailState, toggleOwnConfirmation
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,flag,categories,bodyPreview";
 
-type TokenRow = { refresh_token_enc: string; ms_upn: string | null };
+type TokenRow = {
+  refresh_token_enc: string;
+  access_token_enc: string | null;
+  access_token_expires_at: string | null;
+  ms_upn: string | null;
+};
 type GraphList<T> = { value?: T[]; "@odata.nextLink"?: string };
 type GraphAddress = { emailAddress?: { name?: string; address?: string } };
 type GraphMessage = {
@@ -18,6 +24,13 @@ type GraphMessage = {
   body?: { contentType?: string; content?: string };
 };
 type Cursor = Record<string, string | null>;
+type TokenResponse = { access_token: string; refresh_token?: string; expires_in: number };
+
+class MicrosoftTokenError extends Error {
+  constructor(public code: string | undefined, message: string) { super(message); }
+}
+
+const refreshFlights = new SingleFlight<{ token: string; upn: string | null }>();
 
 function config() {
   const tenantId = process.env.MS_GRAPH_TENANT_ID;
@@ -42,25 +55,65 @@ async function tokenRequest(params: URLSearchParams) {
   params.set("client_id", c.clientId);
   params.set("client_secret", c.clientSecret);
   const response = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(c.tenantId)}/oauth2/v2.0/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params, cache: "no-store" });
-  const json = await response.json() as { access_token?: string; refresh_token?: string; error_description?: string };
-  if (!response.ok || !json.access_token) throw new RillMailHttpError(502, json.error_description ?? "Microsoft token exchange failed");
-  return json as { access_token: string; refresh_token?: string };
+  const json = await response.json() as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string; error_description?: string };
+  if (!response.ok || !json.access_token) throw new MicrosoftTokenError(json.error, json.error_description ?? "Microsoft token exchange failed");
+  return { access_token: json.access_token, refresh_token: json.refresh_token, expires_in: json.expires_in ?? 3600 } satisfies TokenResponse;
 }
 
-export function exchangeCode(code: string, requestUrl: string) {
-  return tokenRequest(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: callbackUrl(requestUrl), scope: "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared" }));
+export async function exchangeCode(code: string, requestUrl: string) {
+  try {
+    return await tokenRequest(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: callbackUrl(requestUrl), scope: "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared" }));
+  } catch (error) {
+    throw new RillMailHttpError(502, error instanceof Error ? error.message : "Microsoft token exchange failed");
+  }
 }
 
 async function accessToken(supabase: SupabaseClient, user: User) {
-  const { data, error } = await supabase.from("rill_mail_tokens").select("refresh_token_enc,ms_upn").eq("user_id", user.id).maybeSingle<TokenRow>();
+  const row = await readTokenRow(supabase, user.id);
+  if (row.access_token_enc && isAccessTokenCacheValid(row.access_token_expires_at)) {
+    try { return { token: decryptToken(row.access_token_enc), upn: row.ms_upn }; }
+    catch { /* refresh below when an old/corrupt cache cannot be decrypted */ }
+  }
+
+  return refreshFlights.run(user.id, async () => {
+    // A request that entered the flight later may find the cache filled by its predecessor.
+    const latest = await readTokenRow(supabase, user.id);
+    if (latest.access_token_enc && isAccessTokenCacheValid(latest.access_token_expires_at)) {
+      try { return { token: decryptToken(latest.access_token_enc), upn: latest.ms_upn }; }
+      catch { /* refresh below */ }
+    }
+
+    try {
+      const tokens = await tokenRequest(new URLSearchParams({ grant_type: "refresh_token", refresh_token: decryptToken(latest.refresh_token_enc), scope: "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared" }));
+      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+      const update = {
+        access_token_enc: encryptToken(tokens.access_token),
+        access_token_expires_at: expiresAt,
+        refresh_token_enc: tokens.refresh_token ? encryptToken(tokens.refresh_token) : latest.refresh_token_enc,
+        updated_at: new Date().toISOString(),
+      };
+      // Cross-instance guard: an older refresh result cannot overwrite a newer expiry/token pair.
+      const { error: updateError } = await supabase.from("rill_mail_tokens").update(update).eq("user_id", user.id).or(`access_token_expires_at.is.null,access_token_expires_at.lt.${expiresAt}`);
+      if (updateError) throw new RillMailHttpError(500, updateError.message);
+      return { token: tokens.access_token, upn: latest.ms_upn };
+    } catch (error) {
+      if (error instanceof MicrosoftTokenError && error.code === "invalid_grant") {
+        // Delete only the refresh token generation that failed. A different serverless
+        // instance may already have persisted a newer rotated token.
+        await supabase.from("rill_mail_tokens").delete().eq("user_id", user.id).eq("refresh_token_enc", latest.refresh_token_enc);
+        throw new RillMailHttpError(428, "Microsoft account must be reconnected");
+      }
+      if (error instanceof RillMailHttpError) throw error;
+      throw new RillMailHttpError(502, error instanceof Error ? error.message : "Microsoft token refresh failed");
+    }
+  });
+}
+
+async function readTokenRow(supabase: SupabaseClient, userId: string) {
+  const { data, error } = await supabase.from("rill_mail_tokens").select("refresh_token_enc,access_token_enc,access_token_expires_at,ms_upn").eq("user_id", userId).maybeSingle<TokenRow>();
   if (error) throw new RillMailHttpError(500, error.message);
   if (!data) throw new RillMailHttpError(428, "Microsoft account is not connected");
-  const tokens = await tokenRequest(new URLSearchParams({ grant_type: "refresh_token", refresh_token: decryptRefreshToken(data.refresh_token_enc), scope: "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared" }));
-  if (tokens.refresh_token) {
-    const { error: updateError } = await supabase.from("rill_mail_tokens").update({ refresh_token_enc: encryptRefreshToken(tokens.refresh_token), updated_at: new Date().toISOString() }).eq("user_id", user.id);
-    if (updateError) throw new RillMailHttpError(500, updateError.message);
-  }
-  return { token: tokens.access_token, upn: data.ms_upn };
+  return data;
 }
 
 async function graphFetch(urlOrPath: string, token: string) {
