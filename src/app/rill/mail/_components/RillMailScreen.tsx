@@ -11,7 +11,7 @@ import { applyLocalMailMutation, detailCacheKey, hasOwnPin, isMessageUnread, MAI
 import { isLikelyNonJapanese, mailBodyText } from "../_lib/translate";
 import { scheduleDelayedSend, validateComposeInput, type ComposeDraft, type ComposeMode } from "../_lib/compose";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
-import { isNearListEnd, NORMAL_AUTO_PAGE_LIMIT, PRIORITY_PAGES_AHEAD } from "../_lib/search";
+import { isNearListEnd, NORMAL_AUTO_PAGE_LIMIT, PRIORITY_PAGES_AHEAD, SerialSearchScheduler, type SearchMessagesResponse } from "../_lib/search";
 import { reconcilePinnedMessage, type PinnedMessagesResponse } from "../_lib/pinned";
 import styles from "./RillMailScreen.module.css";
 
@@ -60,6 +60,7 @@ export function RillMailScreen() {
   const [searchResults, setSearchResults] = useState<RillMailMessage[] | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const [searchTruncated, setSearchTruncated] = useState(false);
   const [priorityPages, setPriorityPages] = useState(0);
   const [pinnedMessages, setPinnedMessages] = useState<RillMailMessage[]>([]);
   const [pinsLoading, setPinsLoading] = useState(false);
@@ -82,7 +83,7 @@ export function RillMailScreen() {
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [composeError, setComposeError] = useState("");
   const [sendToast, setSendToast] = useState<{ tone: "pending" | "success" | "error"; text: string; seconds?: number } | null>(null);
-  const searchGeneration = useRef(0);
+  const autoSearch = useRef<SerialSearchScheduler<{ query: string; box: string }> | null>(null);
   const requestGeneration = useRef(0);
   const pendingWriteKeys = useRef(new Set<string>());
   const automaticPageCount = useRef(0);
@@ -96,6 +97,22 @@ export function RillMailScreen() {
   const draftCounter = useRef(0);
   const delayedSend = useRef<{ cancel: () => boolean; dispose: () => void } | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  if (!autoSearch.current) {
+    autoSearch.current = new SerialSearchScheduler(async ({ query: value, box }, generation) => {
+      setSearchError(""); setPicked(new Set()); setPriorityPages(0);
+      const params = new URLSearchParams({ q: value, box });
+      try {
+        const result = await readJson<SearchMessagesResponse>(await fetch(`/api/rill/mail/search?${params}`, { cache: "no-store" }));
+        if (!autoSearch.current?.isCurrent(generation)) return;
+        setSearchResults(result.messages); setSearchTruncated(result.truncated);
+      } catch (cause) {
+        if (!autoSearch.current?.isCurrent(generation)) return;
+        setSearchResults((current) => current ?? []); setSearchTruncated(false);
+        setSearchError(cause instanceof Error ? cause.message : "全期間検索に失敗しました");
+      }
+    }, setSearchLoading);
+  }
 
   const loadMessages = useCallback(async (box: string, nextCursor?: string | null, mode: "replace" | "append" | "refresh" | "switch" = "replace") => {
     const generation = requestGeneration.current;
@@ -140,6 +157,7 @@ export function RillMailScreen() {
 
   useEffect(() => { void initialize(); }, [initialize]);
   useEffect(() => () => {
+    autoSearch.current?.dispose();
     delayedSend.current?.dispose();
     if (countdownTimer.current) clearInterval(countdownTimer.current);
   }, []);
@@ -428,34 +446,28 @@ export function RillMailScreen() {
 
   const selectBox = (id: string) => {
     requestGeneration.current += 1; automaticPageCount.current = 0;
-    searchGeneration.current += 1;
-    setViewingAttachment(null); setActiveDraftId(null); setActiveBox(id); setSelected(null); setPicked(new Set()); setCursor(null); setError(""); setSearchResults(null); setSearchError(""); setPriorityPages(0);
+    autoSearch.current?.clear();
+    setViewingAttachment(null); setActiveDraftId(null); setActiveBox(id); setSelected(null); setPicked(new Set()); setCursor(null); setError(""); setSearchResults(null); setSearchError(""); setSearchTruncated(false); setPriorityPages(0);
     const request = id === "flagged" ? loadPinnedMessages() : loadMessages(id, null, "switch");
     void request.catch((cause) => setError(cause instanceof Error ? cause.message : "メールを取得できませんでした"));
   };
 
   const exitSearch = () => {
-    searchGeneration.current += 1;
-    setSearchResults(null); setSearchLoading(false); setSearchError(""); setPicked(new Set());
+    autoSearch.current?.clear();
+    setSearchResults(null); setSearchError(""); setSearchTruncated(false); setPicked(new Set());
   };
 
-  const runFullSearch = async () => {
+  const runFullSearch = () => {
     const value = query.trim();
     if (!value) { exitSearch(); return; }
-    const generation = ++searchGeneration.current;
-    setSearchLoading(true); setSearchError(""); setPicked(new Set()); setPriorityPages(0);
-    const params = new URLSearchParams({ q: value, box: activeBox === "flagged" ? "all" : activeBox });
-    try {
-      const result = await readJson<Pick<RillMessagesResponse, "messages">>(await fetch(`/api/rill/mail/search?${params}`, { cache: "no-store" }));
-      if (generation === searchGeneration.current) setSearchResults(result.messages);
-    } catch (cause) {
-      if (generation === searchGeneration.current) { setSearchResults([]); setSearchError(cause instanceof Error ? cause.message : "全期間検索に失敗しました"); }
-    } finally { if (generation === searchGeneration.current) setSearchLoading(false); }
+    autoSearch.current?.schedule({ query: value, box: activeBox === "flagged" ? "all" : activeBox }, true);
   };
 
   const changeQuery = (value: string) => {
     setQuery(value);
-    if (!value.trim()) exitSearch();
+    const normalized = value.trim();
+    if (!normalized) exitSearch();
+    else autoSearch.current?.schedule({ query: normalized, box: activeBox === "flagged" ? "all" : activeBox });
   };
 
   const trackListScroll = (event: React.UIEvent<HTMLDivElement>) => {
@@ -486,7 +498,7 @@ export function RillMailScreen() {
         <button aria-label="ピン" className={`${styles.actionButton} ${currentPinned ? styles.actionOn : ""}`} disabled={!selected || !ownName || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "pin", !currentPinned)}><PinIcon on={currentPinned} />ピン</button>
         <span className={styles.toolbarStates}>{MAIL_STATES.map((state) => <button key={state} className={selected && statusCategory(selected.categories) === state ? styles.actionOn : ""} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "state", statusCategory(selected.categories) === state ? null : state)}>{state}</button>)}</span>
         <button className={styles.moreButton} disabled title="アーカイブ・削除は次段階">…</button>
-        <label className={styles.search}><span><SearchIcon /></span><input value={query} onChange={(event) => changeQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void runFullSearch(); }} placeholder="メールを検索" />{query && <button type="button" className={styles.clearSearch} aria-label="検索を解除" onClick={() => { setQuery(""); exitSearch(); }}>×</button>}<button type="button" className={styles.fullSearch} disabled={searchLoading || !query.trim()} onClick={() => void runFullSearch()}>全期間</button></label>
+        <label className={styles.search}><span><SearchIcon /></span><input value={query} onChange={(event) => changeQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") runFullSearch(); }} placeholder="メールを検索" />{query && <button type="button" className={styles.clearSearch} aria-label="検索を解除" onClick={() => { setQuery(""); exitSearch(); }}>×</button>}</label>
       </div>
       {connected === false ? <div className={styles.connect}><div className={styles.connectOrb}>✉</div><h1>Microsoft メールを接続</h1><p>本人の Microsoft アカウントでサインインすると、許可された受信箱を Garden から閲覧できます。</p><a href="/api/rill/mail/auth/login">Microsoft に接続</a></div> :
       <div className={styles.panes}>
@@ -499,6 +511,7 @@ export function RillMailScreen() {
           {picked.size > 0 && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button aria-label="ピン" onClick={() => void bulkWrite("pin", true)}><PinIcon on />ピン</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
           <div className={styles.scroll} onScroll={trackListScroll}>{((activeBox === "flagged" ? pinsLoading : loading && !messages.length) && searchResults === null) && <div className={styles.notice}>読み込み中…</div>}{error && <div className={styles.error}>{error}</div>}{searchError && <div className={styles.error}>{searchError}</div>}
           {searchResults !== null && !searchLoading && filtered.length === 0 && <div className={styles.searchEmpty}>該当するメールはありません。日本語は単語の一部だけでは見つからない場合があります。</div>}
+          {searchResults !== null && searchTruncated && <div className={styles.importResult}>ヒットが多いため各箱の新しい50件まで表示しています。語を足して絞り込んでください</div>}
           {activeBox === "flagged" && searchResults === null && !pinsLoading && filtered.length === 0 && <div className={styles.importCard}><span className={styles.pinIcon} role="img" aria-label="ピン"><PinIcon on /></span><h2>自分のピンはまだありません</h2><p>Outlookで付けたフラグを、自分だけのピンとして取り込めます。元のフラグは変更しません。</p><button disabled={importingFlags} onClick={() => void importLegacyFlags()}>{importingFlags ? "取り込み中…" : "Outlookのフラグから取り込む"}</button>{importResult && <small>{importResult}</small>}</div>}
           {activeBox === "flagged" && searchResults === null && pinsNotice && <div className={styles.importResult}>{pinsNotice}</div>}
           {activeBox === "flagged" && filtered.length > 0 && importResult && <div className={styles.importResult}>{importResult}</div>}
