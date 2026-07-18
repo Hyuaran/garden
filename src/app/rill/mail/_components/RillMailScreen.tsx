@@ -12,7 +12,7 @@ import { isLikelyNonJapanese, mailBodyText } from "../_lib/translate";
 import { scheduleDelayedSend, validateComposeInput, type ComposeDraft, type ComposeMode } from "../_lib/compose";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import { isNearListEnd, NORMAL_AUTO_PAGE_LIMIT, PRIORITY_PAGES_AHEAD, SerialSearchScheduler, type SearchMessagesResponse } from "../_lib/search";
-import { applyRecentCategoryWrites, RECENT_WRITE_TTL_MS, reconcilePinnedMessage, shouldAddBulkPin, type PinnedMessagesResponse, type RecentCategoryWrite } from "../_lib/pinned";
+import { applyPinOverrides, applyRecentCategoryWrites, loadPinOverrides, RECENT_WRITE_TTL_MS, reconcilePinnedMessage, removePinOverride, savePinOverride, shouldAddBulkPin, type PinOverride, type PinOverrideStorage, type PinnedMessagesResponse, type RecentCategoryWrite } from "../_lib/pinned";
 import { INTAKE_KINDS, intakeItemFromPost, intakeMarks, type IntakeItem, type IntakeKind } from "../_lib/intake";
 import styles from "./RillMailScreen.module.css";
 
@@ -109,18 +109,31 @@ export function RillMailScreen() {
   const delayedSend = useRef<{ cancel: () => boolean; dispose: () => void } | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const recentWrites = useRef(new Map<string, RecentCategoryWrite>());
+  const pinOverrides = useRef(new Map<string, PinOverride>());
+  const pinOverrideStorage = useRef<PinOverrideStorage | null>(null);
+  const gardenUserId = useRef("");
   const intakeCache = useRef(new Map<string, IntakeItem[]>());
   const ownNameRef = useRef(ownName);
   ownNameRef.current = ownName;
 
   const protectServerMessages = useCallback(<T extends RillMailMessage,>(incoming: T[], pinnedView = false) => {
-    const protectedResult = applyRecentCategoryWrites(incoming, recentWrites.current, Date.now(), { pinnedView, ownName: ownNameRef.current });
+    const now = Date.now();
+    const protectedResult = applyRecentCategoryWrites(incoming, recentWrites.current, now);
     recentWrites.current = protectedResult.writes;
-    return protectedResult.messages as T[];
+    pinOverrides.current = loadPinOverrides(pinOverrideStorage.current, gardenUserId.current, now);
+    return applyPinOverrides(protectedResult.messages, pinOverrides.current, ownNameRef.current, { pinnedView, protectedKeys: new Set(protectedResult.writes.keys()) }) as T[];
   }, []);
 
   const rememberWrite = useCallback((message: RillMailMessage) => {
     recentWrites.current.set(keyOf(message), { categories: [...message.categories], isRead: message.isRead, expiresAt: Date.now() + RECENT_WRITE_TTL_MS });
+  }, []);
+
+  const persistPinOverride = useCallback((messageKey: string, ownPinned: boolean) => {
+    pinOverrides.current = savePinOverride(pinOverrideStorage.current, gardenUserId.current, messageKey, ownPinned, Date.now());
+  }, []);
+
+  const forgetPinOverride = useCallback((messageKey: string) => {
+    pinOverrides.current = removePinOverride(pinOverrideStorage.current, gardenUserId.current, messageKey, Date.now());
   }, []);
 
   if (!autoSearch.current) {
@@ -170,8 +183,13 @@ export function RillMailScreen() {
     const generation = ++requestGeneration.current;
     setLoading(true); setError("");
     try {
-      const data = await readJson<{ boxes: RillMailBox[]; reviewers: string[]; ownName: string | null }>(await fetch("/api/rill/mail/boxes", { cache: "no-store" }));
+      const data = await readJson<{ boxes: RillMailBox[]; reviewers: string[]; ownName: string | null; userId: string }>(await fetch("/api/rill/mail/boxes", { cache: "no-store" }));
       if (generation !== requestGeneration.current) return;
+      ownNameRef.current = data.ownName ?? "";
+      gardenUserId.current = data.userId;
+      try { pinOverrideStorage.current = typeof window === "undefined" ? null : window.localStorage; }
+      catch { pinOverrideStorage.current = null; }
+      pinOverrides.current = loadPinOverrides(pinOverrideStorage.current, data.userId, Date.now());
       setBoxes(data.boxes); setReviewers(data.reviewers.length ? data.reviewers : FALLBACK_REVIEWERS); setOwnName(data.ownName ?? ""); setConnected(true); setAutoRefreshFailed(false);
       await loadMessages("all");
     } catch (cause) {
@@ -336,9 +354,10 @@ export function RillMailScreen() {
     try {
       await patchOne(message, op, value);
       rememberWrite(updated);
+      if (op === "pin") persistPinOverride(key, value === true);
       if (!(activeBox === "flagged" && op === "pin")) void refreshAfterWrite(updated).catch(() => setAutoRefreshFailed(true));
     }
-    catch (cause) { recentWrites.current.delete(key); applyLocal(updated, message); setError(cause instanceof Error ? cause.message : "更新できませんでした"); }
+    catch (cause) { recentWrites.current.delete(key); if (op === "pin") forgetPinOverride(key); applyLocal(updated, message); setError(cause instanceof Error ? cause.message : "更新できませんでした"); }
     finally { markPending([key], false); }
   };
 
@@ -397,10 +416,11 @@ export function RillMailScreen() {
       const failures = responses.flatMap((response) => response.results).filter((result) => !result.ok);
       const failedKeys = new Set(failures.map((result) => `${result.boxId}:${result.id}`));
       keys.forEach((key) => {
-        if (failedKeys.has(key)) recentWrites.current.delete(key);
+        if (failedKeys.has(key)) { recentWrites.current.delete(key); if (op === "pin") forgetPinOverride(key); }
         else {
           const updated = optimistic.get(key);
           if (updated) rememberWrite(updated);
+          if (op === "pin") persistPinOverride(key, value === true);
         }
       });
       if (failedKeys.size) {
@@ -414,7 +434,7 @@ export function RillMailScreen() {
       else setPicked(new Set());
       if (!(activeBox === "flagged" && op === "pin")) void refreshAfterWrite(selected ?? undefined).catch(() => setAutoRefreshFailed(true));
     } catch (cause) {
-      keys.forEach((key) => recentWrites.current.delete(key));
+      keys.forEach((key) => { recentWrites.current.delete(key); if (op === "pin") forgetPinOverride(key); });
       setMessages((current) => current.map((message) => snapshots.get(keyOf(message)) ?? message));
       setSearchResults((current) => current?.map((message) => snapshots.get(keyOf(message)) ?? message) ?? null);
       setPinnedMessages((current) => [...snapshots.values()].reduce((result, message) => reconcilePinnedMessage(result, message, ownName), current));
