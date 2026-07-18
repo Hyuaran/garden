@@ -33,18 +33,67 @@ export function mergeMessages(groups: RillMailMessage[][]) {
   return groups.flat().sort((a, b) => Date.parse(b.receivedDateTime) - Date.parse(a.receivedDateTime));
 }
 
-export function abbreviateBox(label: string) {
-  const cleaned = label.replace(/メールボックス|共有|株式会社|合同会社|有限会社|\s/gu, "");
-  if (!cleaned) return "箱";
-  if (/^[a-z0-9_-]+$/iu.test(cleaned)) return cleaned.slice(0, 6).toUpperCase();
-  return Array.from(cleaned).slice(0, 3).join("");
+export function mergeMessagePages(current: RillMailMessage[], incoming: RillMailMessage[]) {
+  const byKey = new Map(current.map((message) => [`${message.box.id}:${message.id}`, message]));
+  incoming.forEach((message) => byKey.set(`${message.box.id}:${message.id}`, message));
+  return [...byKey.values()].sort((a, b) => Date.parse(b.receivedDateTime) - Date.parse(a.receivedDateTime));
+}
+
+export function mergeBoxCursors(current: Record<string, string | null>, incoming: Record<string, string | null>) {
+  return { ...current, ...incoming };
+}
+
+export function abbreviateBox(address: string) {
+  return (address.split("@")[0] || address || "box").trim().toLocaleLowerCase("en-US");
 }
 
 export function reviewerInitials(categories: string[], knownNames: string[]) {
+  return reviewerNames(categories, knownNames).map((category) => Array.from(category)[0] ?? "");
+}
+
+export function reviewerNames(categories: string[], knownNames: string[]) {
   const names = new Set(knownNames);
-  return categories.filter((category) => names.has(category)).map((category) => Array.from(category)[0] ?? "");
+  return categories.filter((category) => names.has(category));
+}
+
+export function reviewerTone(name: string) {
+  const fixed: Record<string, number> = { "東": 0, "上": 1, "簡": 2, "金": 3 };
+  const initial = Array.from(name)[0] ?? "";
+  if (fixed[initial] !== undefined) return fixed[initial];
+  return Array.from(name).reduce((sum, character) => sum + (character.codePointAt(0) ?? 0), 0) % 4;
 }
 
 export function statusCategory(categories: string[]) {
   return ["要対応", "確認中", "処理済"].find((status) => categories.includes(status)) ?? null;
+}
+
+function dateKey(value: string, timeZone = "Asia/Tokyo") {
+  const p = parts(value, timeZone);
+  return p ? `${p.year}-${p.month}-${p.day}` : "";
+}
+
+function priorDateKey(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day - 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+export function mailDayLabel(value: string, now = new Date(), timeZone = "Asia/Tokyo") {
+  const key = dateKey(value, timeZone);
+  const today = dateKey(now.toISOString(), timeZone);
+  if (!key) return "";
+  if (key === today) return "今日";
+  if (key === priorDateKey(today)) return "昨日";
+  const p = parts(value, timeZone);
+  return p ? `${p.month}/${p.day}(${p.weekday})` : "";
+}
+
+export function daySeparatedMessages(messages: RillMailMessage[], now = new Date(), timeZone = "Asia/Tokyo") {
+  let previous = "";
+  return messages.map((message) => {
+    const label = mailDayLabel(message.receivedDateTime, now, timeZone);
+    const showDay = label !== previous;
+    previous = label;
+    return { message, label, showDay };
+  });
 }
