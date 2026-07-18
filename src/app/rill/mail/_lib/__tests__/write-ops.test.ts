@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertOwnConfirmationName, isMessageUnread, isPersonalMailbox, replaceMailState, selectionRange, toggleOwnConfirmation } from "../write-ops";
+import { applyLocalMailMutation, assertOwnConfirmationName, isMessageUnread, isPersonalMailbox, replaceMailState, selectionRange, toggleOwnConfirmation } from "../write-ops";
 import type { RillMailMessage } from "../types";
 
 const baseMessage: RillMailMessage = {
@@ -31,5 +31,11 @@ describe("Rill Mail write rules", () => {
   it("calculates an inclusive Shift selection in either direction", () => {
     expect(selectionRange(["a", "b", "c", "d"], "b", "d")).toEqual(["b", "c", "d"]);
     expect(selectionRange(["a", "b", "c", "d"], "d", "b")).toEqual(["b", "c", "d"]);
+  });
+
+  it("applies immediate local mutations without changing unrelated fields", () => {
+    expect(applyLocalMailMutation(baseMessage, "flag", true, "東海林美琴").flag.flagStatus).toBe("flagged");
+    expect(applyLocalMailMutation({ ...baseMessage, categories: ["東海林美琴", "確認中"] }, "state", "処理済", "東海林美琴").categories).toEqual(["東海林美琴", "処理済"]);
+    expect(applyLocalMailMutation(baseMessage, "confirm", true, "東海林美琴").categories).toEqual(["東海林美琴"]);
   });
 });

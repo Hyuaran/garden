@@ -81,6 +81,7 @@ input { font-family: inherit; }
   --accent-green:    #9bb88a;
   --accent-green-d:  #7a9968;
   --accent-gold:     #d4a541;
+  --accent-gold-d:   #8a661f;
   --accent-blue:     #8ab4cc;
   --accent-pink:     #e8b4b8;
 
@@ -126,6 +127,7 @@ input { font-family: inherit; }
   --accent-green:    #a8c898;
   --accent-green-d:  #b8d4a8;
   --accent-gold:     #e4b551;
+  --accent-gold-d:   #e4b551;
   --accent-blue:     #98c4dc;
   --accent-pink:     #d8a4a8;
 

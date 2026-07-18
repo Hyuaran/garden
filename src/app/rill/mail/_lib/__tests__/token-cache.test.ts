@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isAccessTokenCacheValid, isNewerTokenExpiry, SingleFlight } from "../token-cache";
+import { isAccessTokenCacheValid, isNewerTokenExpiry, SingleFlight, tokenHasScope } from "../token-cache";
 
 describe("Rill Mail access-token cache", () => {
   const now = Date.parse("2026-07-18T04:00:00.000Z");
@@ -33,5 +33,12 @@ describe("Rill Mail access-token cache", () => {
     const grant = vi.fn(async (value: string) => value);
     await Promise.all([flight.run("user-1", () => grant("one")), flight.run("user-2", () => grant("two"))]);
     expect(grant).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a cached token issued before the mailbox settings scope was added", () => {
+    const token = (scope: string) => `header.${Buffer.from(JSON.stringify({ scp: scope })).toString("base64url")}.signature`;
+    expect(tokenHasScope(token("User.Read Mail.ReadWrite MailboxSettings.ReadWrite"), "MailboxSettings.ReadWrite")).toBe(true);
+    expect(tokenHasScope(token("User.Read Mail.ReadWrite"), "MailboxSettings.ReadWrite")).toBe(false);
+    expect(tokenHasScope("opaque-token", "MailboxSettings.ReadWrite")).toBe(false);
   });
 });
