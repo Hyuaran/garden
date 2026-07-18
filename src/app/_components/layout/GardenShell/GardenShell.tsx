@@ -106,6 +106,7 @@ interface GardenShellProps {
   userName?: string;
   userEmail?: string | null;
   userRoleLabel?: string;
+  contentFullBleed?: boolean;
   onLogout?: () => void | Promise<void>;
   children: React.ReactNode;
 }
@@ -121,6 +122,7 @@ export default function GardenShell({
   userName = "東海林 美琴",
   userEmail = "shoji@hyualan.co.jp",
   userRoleLabel = "正社員 / 全権管理者",
+  contentFullBleed = false,
   onLogout,
   children,
 }: GardenShellProps) {
@@ -414,6 +416,11 @@ export default function GardenShell({
         .gs-main-fixed > * {
           max-width: 100%;
           min-width: 0;
+        }
+        .gs-main-fixed.gs-main-full-bleed {
+          padding: 0;
+          height: calc(100vh - var(--gs-header-h));
+          min-height: calc(100vh - var(--gs-header-h));
         }
         /* 12 繝｢繧ｸ繝･繝ｼ繝ｫ orb 蛻・*/
         .gs-orb-col .nav-app-item {
@@ -1009,7 +1016,7 @@ export default function GardenShell({
       </button>
 
       {/* 竭､竭･竭ｨ main (margin 縺ｧ sidebar/activity 縺ｫ霑ｽ蠕・ */}
-      <main className="gs-main-fixed main garden-shell" data-garden-module={activeModule}>{children}</main>
+      <main className={`gs-main-fixed main garden-shell${contentFullBleed ? " gs-main-full-bleed" : ""}`} data-garden-module={activeModule}>{children}</main>
 
       <div
         className="gs-activity-dock"

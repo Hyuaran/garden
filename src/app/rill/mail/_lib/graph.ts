@@ -3,6 +3,7 @@ import { decryptRefreshToken, encryptRefreshToken } from "./token-crypto";
 import { mergeMessages } from "./format";
 import { RillMailHttpError } from "./server-auth";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "./types";
+import { isMailState, isPersonalMailbox, replaceMailState, toggleOwnConfirmation, type MailState, type MailWriteOperation } from "./write-ops";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,flag,categories,bodyPreview";
@@ -68,6 +69,19 @@ async function graphFetch(urlOrPath: string, token: string) {
   const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
   if (!response.ok) throw new RillMailHttpError(response.status === 401 ? 428 : 502, `Microsoft Graph error (${response.status})`);
   return response;
+}
+
+async function graphJson(urlOrPath: string, token: string, init?: RequestInit) {
+  const url = urlOrPath.startsWith("https://") ? urlOrPath : `${GRAPH}${urlOrPath}`;
+  if (!url.startsWith(`${GRAPH}/`)) throw new RillMailHttpError(400, "Invalid Graph URL");
+  const response = await fetch(url, {
+    ...init,
+    headers: { Authorization: `Bearer ${token}`, ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers },
+    cache: "no-store",
+  });
+  if (!response.ok) throw new RillMailHttpError(response.status === 401 ? 428 : 502, `Microsoft Graph error (${response.status})`);
+  if (response.status === 204) return null;
+  return response.json() as Promise<unknown>;
 }
 
 function sharedBoxes() {
@@ -145,4 +159,104 @@ export async function getAttachment(supabase: SupabaseClient, user: User, boxId:
   if (!box) throw new RillMailHttpError(404, "Mailbox not found");
   const response = await graphFetch(`${oneMessagePath(box.id, messageId)}/attachments/${encodeURIComponent(attachmentId)}`, token);
   return response.json() as Promise<{ name?: string; contentType?: string; contentBytes?: string }>;
+}
+
+export type MailMutation = {
+  id: string;
+  boxId: string;
+  op: MailWriteOperation;
+  value: boolean | MailState | null;
+};
+
+export type MailMutationResult = {
+  id: string;
+  boxId: string;
+  ok: boolean;
+  error?: string;
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  "要対応": "preset0",
+  "確認中": "preset7",
+  "処理済": "preset8",
+};
+
+function categoryPath(box: RillMailBox) {
+  return box.id === "me" ? "/me/outlook/masterCategories" : `/users/${encodeURIComponent(box.address)}/outlook/masterCategories`;
+}
+
+async function gardenUserName(supabase: SupabaseClient, user: User) {
+  const { data, error } = await supabase.from("root_employees").select("name").eq("user_id", user.id).maybeSingle<{ name: string | null }>();
+  if (error || !data?.name) throw new RillMailHttpError(403, "Gardenアカウントの氏名を確認できません");
+  return data.name;
+}
+
+async function runWithConcurrency<T>(items: T[], limit: number, task: (item: T) => Promise<void>) {
+  let index = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (index < items.length) {
+      const item = items[index++];
+      await task(item);
+    }
+  });
+  await Promise.all(workers);
+}
+
+export async function mutateMailMessages(supabase: SupabaseClient, user: User, mutations: MailMutation[]): Promise<MailMutationResult[]> {
+  const { token, upn } = await accessToken(supabase, user);
+  const [boxes, ownName] = await Promise.all([visibleBoxesWithToken(token, upn), gardenUserName(supabase, user)]);
+  const results: MailMutationResult[] = [];
+  const categoryCache = new Map<string, Set<string>>();
+  const categoryLocks = new Map<string, Promise<void>>();
+
+  async function ensureCategory(box: RillMailBox, name: string) {
+    const previous = categoryLocks.get(box.id) ?? Promise.resolve();
+    const current = previous.then(async () => {
+      let known = categoryCache.get(box.id);
+      if (!known) {
+        const data = await graphJson(categoryPath(box), token) as GraphList<{ displayName?: string }>;
+        known = new Set((data.value ?? []).map((category) => category.displayName).filter((value): value is string => Boolean(value)));
+        categoryCache.set(box.id, known);
+      }
+      if (known.has(name)) return;
+      await graphJson(categoryPath(box), token, { method: "POST", body: JSON.stringify({ displayName: name, color: CATEGORY_COLORS[name] ?? "preset9" }) });
+      known.add(name);
+    });
+    categoryLocks.set(box.id, current);
+    await current;
+  }
+
+  await runWithConcurrency(mutations, 3, async (mutation) => {
+    try {
+      const box = boxes.find((item) => item.id === mutation.boxId || item.address === mutation.boxId);
+      if (!box) throw new RillMailHttpError(404, "Mailbox not found");
+      const path = oneMessagePath(box.id, mutation.id);
+
+      if (mutation.op === "flag") {
+        if (typeof mutation.value !== "boolean") throw new RillMailHttpError(400, "flag value must be boolean");
+        await graphJson(path, token, { method: "PATCH", body: JSON.stringify({ flag: { flagStatus: mutation.value ? "flagged" : "notFlagged" } }) });
+      } else if (mutation.op === "read") {
+        if (!isPersonalMailbox(box)) throw new RillMailHttpError(400, "共有箱のisReadは変更できません");
+        if (typeof mutation.value !== "boolean") throw new RillMailHttpError(400, "read value must be boolean");
+        await graphJson(path, token, { method: "PATCH", body: JSON.stringify({ isRead: mutation.value }) });
+      } else {
+        const current = await graphJson(`${path}?$select=categories`, token) as { categories?: string[] };
+        let categories: string[];
+        if (mutation.op === "state") {
+          if (mutation.value !== null && !isMailState(mutation.value)) throw new RillMailHttpError(400, "Invalid mail state");
+          if (mutation.value) await ensureCategory(box, mutation.value);
+          categories = replaceMailState(current.categories ?? [], mutation.value as MailState | null);
+        } else {
+          if (typeof mutation.value !== "boolean") throw new RillMailHttpError(400, "confirm value must be boolean");
+          if (mutation.value) await ensureCategory(box, ownName);
+          categories = toggleOwnConfirmation(current.categories ?? [], ownName, mutation.value);
+        }
+        await graphJson(path, token, { method: "PATCH", body: JSON.stringify({ categories }) });
+      }
+      results.push({ id: mutation.id, boxId: box.id, ok: true });
+    } catch (error) {
+      results.push({ id: mutation.id, boxId: mutation.boxId, ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+  return results;
 }
