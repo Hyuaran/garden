@@ -10,7 +10,7 @@ export async function GET() {
     ]);
     const reviewers = [...new Set((employees.data ?? []).map((employee) => employee.name).filter((name): name is string => Boolean(name)))];
     const ownName = employees.data?.find((employee) => employee.user_id === user.id)?.name ?? null;
-    return Response.json({ boxes, reviewers, ownName });
+    return Response.json({ boxes, reviewers, ownName, userId: user.id });
   }
   catch (error) { return errorResponse(error); }
 }

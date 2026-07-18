@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRecentCategoryWrites, mergePinnedMessages, pinnedCategoryFilter, pinnedPagingDecision, reconcilePinnedMessage, shouldAddBulkPin } from "../pinned";
+import { applyPinOverrides, applyRecentCategoryWrites, loadPinOverrides, mergePinnedMessages, PIN_OVERRIDE_TTL_MS, pinnedCategoryFilter, pinnedPagingDecision, reconcilePinnedMessage, removePinOverride, savePinOverride, shouldAddBulkPin } from "../pinned";
 import type { RillMailBox, RillMailMessage } from "../types";
 
 const me: RillMailBox = { id: "me", address: "me@example.com", label: "Me", kind: "personal" };
@@ -12,6 +12,35 @@ const message = (id: string, box = me, date = "2026-01-01T00:00:00Z", categories
 describe("pinned Graph helpers", () => {
   it("escapes apostrophes in the OData category filter", () => {
     expect(pinnedCategoryFilter("O'Neil")).toBe("categories/any(c: c eq 'ピン:O''Neil')");
+  });
+
+  it("saves, reloads, and removes expired per-user overrides", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+    };
+    savePinOverride(storage, "user-1", "me:1", false, 1_000);
+    expect(loadPinOverrides(storage, "user-1", 2_000).get("me:1")?.ownPinned).toBe(false);
+    expect(loadPinOverrides(storage, "user-1", 1_000 + PIN_OVERRIDE_TTL_MS).size).toBe(0);
+    savePinOverride(storage, "user-1", "me:1", true, 3_000);
+    expect(removePinOverride(storage, "user-1", "me:1", 3_001).size).toBe(0);
+  });
+
+  it("applies pin removal or addition while preserving every other category", () => {
+    const pinned = message("1", me, "2026-01-01T00:00:00Z", ["確認中", "ピン:O'Neil", "別の人"]);
+    const removed = applyPinOverrides([pinned], new Map([["me:1", { ownPinned: false, expiresAt: 10_000 }]]), "O'Neil")[0];
+    expect(removed.categories).toEqual(["確認中", "別の人"]);
+    const added = applyPinOverrides([{ ...pinned, categories: ["確認中"] }], new Map([["me:1", { ownPinned: true, expiresAt: 10_000 }]]), "O'Neil")[0];
+    expect(added.categories).toEqual(["確認中", "ピン:O'Neil"]);
+  });
+
+  it("excludes persisted removals from the pinned view but lets memory write-wins take priority", () => {
+    const pinned = message("1");
+    const overrides = new Map([["me:1", { ownPinned: false, expiresAt: 10_000 }]]);
+    expect(applyPinOverrides([pinned], overrides, "O'Neil", { pinnedView: true })).toEqual([]);
+    expect(applyPinOverrides([pinned], overrides, "O'Neil", { pinnedView: true, protectedKeys: new Set(["me:1"]) })).toEqual([pinned]);
   });
 
   it("stops and reports truncation only when a next page remains at the limit", () => {
