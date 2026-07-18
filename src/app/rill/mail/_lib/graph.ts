@@ -6,6 +6,7 @@ import { RillMailHttpError } from "./server-auth";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "./types";
 import { isMailState, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, toggleOwnConfirmation, toggleOwnPin, type LegacyFlagMessage, type MailState, type MailWriteOperation } from "./write-ops";
 import type { ComposeSendInput } from "./compose";
+import { escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes } from "./search";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,categories,bodyPreview";
@@ -172,6 +173,7 @@ export async function listVisibleBoxes(supabase: SupabaseClient, user: User) {
 }
 
 function messagePath(box: RillMailBox) { return box.id === "me" ? "/me/mailFolders/inbox/messages" : `/users/${encodeURIComponent(box.address)}/mailFolders/inbox/messages`; }
+function searchMessagePath(box: RillMailBox) { return box.id === "me" ? "/me/messages" : `/users/${encodeURIComponent(box.address)}/messages`; }
 function oneMessagePath(boxId: string, id: string) { return boxId === "me" ? `/me/messages/${encodeURIComponent(id)}` : `/users/${encodeURIComponent(boxId)}/messages/${encodeURIComponent(id)}`; }
 
 function mapMessage(raw: GraphMessage, box: RillMailBox): RillMailMessage {
@@ -203,6 +205,36 @@ export async function listMessages(supabase: SupabaseClient, user: User, boxId: 
   }));
   const next = Object.fromEntries(selected.map((box, index) => [box.id, groups[index].next]));
   return { messages: mergeMessages(groups.map((group) => group.messages)), cursor: encodeCursor(next), boxIds: selected.map((box) => box.id) };
+}
+
+export async function searchMessages(supabase: SupabaseClient, user: User, queryValue: string | null, boxId: string): Promise<Pick<RillMessagesResponse, "messages">> {
+  let query: string;
+  try { query = normalizeSearchQuery(queryValue); }
+  catch { throw new RillMailHttpError(400, "検索語を入力してください"); }
+
+  const { token, upn } = await accessToken(supabase, user);
+  const boxes = await visibleBoxesWithToken(token, upn);
+  let selected: RillMailBox[];
+  try { selected = selectSearchBoxes(boxes, boxId); }
+  catch { throw new RillMailHttpError(404, "Mailbox not found"); }
+
+  const groups = await Promise.all(selected.map(async (box) => {
+    const params = new URLSearchParams({
+      "$top": String(SEARCH_PAGE_SIZE),
+      "$select": MESSAGE_SELECT,
+      "$search": `"${escapeGraphSearchQuery(query)}"`,
+    });
+    try {
+      const response = await graphFetch(`${searchMessagePath(box)}?${params}`, token);
+      const data = await response.json() as GraphList<GraphMessage>;
+      return (data.value ?? []).map((raw) => mapMessage(raw, box));
+    } catch {
+      // A shared mailbox may reject search independently; keep results from the
+      // remaining visible mailboxes instead of failing the whole request.
+      return [];
+    }
+  }));
+  return { messages: mergeSearchResults(groups) };
 }
 
 export async function getMessage(supabase: SupabaseClient, user: User, boxId: string, id: string): Promise<RillMailDetail> {
