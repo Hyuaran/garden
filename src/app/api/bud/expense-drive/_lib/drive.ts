@@ -67,6 +67,37 @@ async function driveFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`https://www.googleapis.com${path}`, { ...init, headers });
 }
 
+export type DriveFolderMarker = { key: string; value: string };
+
+/**
+ * アプリが作成したルートフォルダを appProperties で再発見する。
+ * Drive 上で別フォルダへ手動移動されても、親パスに依存せず同じ ID を使い続けられる。
+ */
+export async function findOrCreateAppFolder(name: string, marker: DriveFolderMarker): Promise<string> {
+  const escapedKey = marker.key.replace(/'/g, "\\'");
+  const escapedValue = marker.value.replace(/'/g, "\\'");
+  const q = encodeURIComponent(
+    `appProperties has { key='${escapedKey}' and value='${escapedValue}' } and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+  );
+  const res = await driveFetch(`/drive/v3/files?q=${q}&fields=files(id)&pageSize=1`);
+  if (!res.ok) throw new Error(`Drive list error: ${res.status} ${await res.text()}`);
+  const data = (await res.json()) as { files?: Array<{ id?: string }> };
+  const existingId = data.files?.[0]?.id;
+  if (existingId) return existingId;
+
+  const createRes = await driveFetch("/drive/v3/files?fields=id", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+      appProperties: { [marker.key]: marker.value },
+    }),
+  });
+  if (!createRes.ok) throw new Error(`Drive mkdir error: ${createRes.status} ${await createRes.text()}`);
+  return ((await createRes.json()) as { id: string }).id;
+}
+
 /** 指定フォルダ直下のPDF/JPG/PNGを列挙する。drive.readonly 以上のscopeが必要。 */
 export async function listFolderFiles(folderId: string): Promise<DriveFolderFile[]> {
   const q =
