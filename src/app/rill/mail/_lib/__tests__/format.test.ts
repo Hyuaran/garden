@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, mailDayLabel, mergeMessagePages, mergeMessages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../format";
+import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, isViewableAttachment, mailDayLabel, mergeMessagePages, mergeMessages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../format";
 import type { RillMailMessage } from "../types";
 
 const message = (id: string, receivedDateTime: string) => ({ id, receivedDateTime, box: { id: "me", address: "me@example.com", label: "自分", kind: "personal" }, subject: "", fromName: "", fromAddress: "", to: [], hasAttachments: false, isRead: false, categories: [], bodyPreview: "" }) satisfies RillMailMessage;
 
 describe("Rill Mail formatters", () => {
+  it("allows only PDF and supported image attachment MIME types", () => {
+    ["application/pdf", "image/png", "image/jpeg", "image/gif", "image/webp"].forEach((type) => expect(isViewableAttachment(type, "file.bin")).toBe(true));
+    ["application/zip", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/octet-stream", "application/x-msdownload"].forEach((type) => expect(isViewableAttachment(type, "file.pdf")).toBe(false));
+  });
+
+  it("falls back to a case-insensitive extension only when MIME type is missing", () => {
+    ["document.pdf", "photo.png", "photo.jpg", "photo.jpeg", "photo.gif", "photo.webp", "PHOTO.JPEG"].forEach((name) => expect(isViewableAttachment(undefined, name)).toBe(true));
+    ["archive.zip", "sheet.xlsx", "document.docx", "program.exe", "unknown", ""].forEach((name) => expect(isViewableAttachment("", name)).toBe(false));
+  });
   it("formats list and detail dates in Tokyo time", () => {
     expect(formatMailListDate("2026-07-17T08:42:00Z")).toBe("26/07/17(金) 17:42");
     expect(formatMailDetailDate("2026-07-17T08:42:00Z")).toBe("2026/07/17(金) 17:42");
