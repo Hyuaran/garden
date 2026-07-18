@@ -7,6 +7,7 @@ import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, 
 import { isMailState, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, toggleOwnConfirmation, toggleOwnPin, type LegacyFlagMessage, type MailState, type MailWriteOperation } from "./write-ops";
 import type { ComposeSendInput } from "./compose";
 import { escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes } from "./search";
+import { mergePinnedMessages, PINNED_BOX_LIMIT, PINNED_PAGE_SIZE, pinnedCategoryFilter, pinnedPagingDecision, type PinnedMessagesResponse } from "./pinned";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,categories,bodyPreview";
@@ -235,6 +236,40 @@ export async function searchMessages(supabase: SupabaseClient, user: User, query
     }
   }));
   return { messages: mergeSearchResults(groups) };
+}
+
+export async function listPinnedMessages(supabase: SupabaseClient, user: User): Promise<PinnedMessagesResponse> {
+  const { token, upn } = await accessToken(supabase, user);
+  const [boxes, ownName] = await Promise.all([visibleBoxesWithToken(token, upn), gardenUserName(supabase, user)]);
+  const filter = pinnedCategoryFilter(ownName);
+  const groups = await Promise.all(boxes.map(async (box) => {
+    const params = new URLSearchParams({ "$top": String(PINNED_PAGE_SIZE), "$select": MESSAGE_SELECT, "$filter": filter });
+    let next: string | null = `${searchMessagePath(box)}?${params}`;
+    const messages: RillMailMessage[] = [];
+    let truncated = false;
+    try {
+      while (next) {
+        const response = await graphFetch(next, token);
+        const data = await response.json() as GraphList<GraphMessage>;
+        messages.push(...(data.value ?? []).map((raw) => mapMessage(raw, box)));
+        const decision = pinnedPagingDecision(messages.length, Boolean(data["@odata.nextLink"]));
+        truncated = decision.truncated;
+        if (decision.stop) break;
+        next = data["@odata.nextLink"] ?? null;
+      }
+      return { messages: messages.slice(0, PINNED_BOX_LIMIT), truncated };
+    } catch {
+      return { messages: [] as RillMailMessage[], truncated: false };
+    }
+  }));
+  const messages = mergePinnedMessages(groups.map((group) => group.messages));
+  const truncated = groups.some((group) => group.truncated);
+  return {
+    messages,
+    truncated,
+    count: messages.length,
+    ...(truncated ? { notice: `${messages.length}件を表示しています。件数が多いため、必要なメールを絞り込んでください。` } : {}),
+  };
 }
 
 export async function getMessage(supabase: SupabaseClient, user: User, boxId: string, id: string): Promise<RillMailDetail> {
