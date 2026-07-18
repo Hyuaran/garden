@@ -2,7 +2,7 @@ import { mutateMailMessages, type MailMutation } from "@/app/rill/mail/_lib/grap
 import { isMailState, type MailWriteOperation } from "@/app/rill/mail/_lib/write-ops";
 import { errorResponse, requireGardenUser, RillMailHttpError } from "@/app/rill/mail/_lib/server-auth";
 
-const OPS = new Set<MailWriteOperation>(["flag", "state", "confirm", "read"]);
+const OPS = new Set<MailWriteOperation>(["pin", "state", "confirm", "read"]);
 
 export async function POST(request: Request) {
   try {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     if (typeof body.box !== "string" || !body.box) throw new RillMailHttpError(400, "box is required");
     if (typeof body.op !== "string" || !OPS.has(body.op as MailWriteOperation)) throw new RillMailHttpError(400, "Invalid operation");
     const op = body.op as MailWriteOperation;
-    if ((op === "flag" || op === "confirm" || op === "read") && typeof body.value !== "boolean") throw new RillMailHttpError(400, "value must be boolean");
+    if ((op === "pin" || op === "confirm" || op === "read") && typeof body.value !== "boolean") throw new RillMailHttpError(400, "value must be boolean");
     if (op === "state" && body.value !== null && !isMailState(body.value)) throw new RillMailHttpError(400, "Invalid state");
     const ids = [...new Set(body.ids as string[])];
     const mutations: MailMutation[] = ids.map((id) => ({ id, boxId: body.box as string, op, value: body.value as MailMutation["value"] }));

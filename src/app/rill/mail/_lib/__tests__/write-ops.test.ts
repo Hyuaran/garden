@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applyLocalMailMutation, assertOwnConfirmationName, isMessageUnread, isPersonalMailbox, replaceMailState, selectionRange, toggleOwnConfirmation } from "../write-ops";
+import { applyLocalMailMutation, assertOwnConfirmationName, filterOwnPinned, hasOwnPin, isMessageUnread, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, selectionRange, toggleOwnConfirmation, toggleOwnPin } from "../write-ops";
 import type { RillMailMessage } from "../types";
 
 const baseMessage: RillMailMessage = {
   id: "m1", box: { id: "me", address: "me@example.com", label: "自分", kind: "personal" },
   subject: "", fromName: "", fromAddress: "", to: [], receivedDateTime: "", hasAttachments: false,
-  isRead: false, flag: {}, categories: [], bodyPreview: "",
+  isRead: false, categories: [], bodyPreview: "",
 };
 
 describe("Rill Mail write rules", () => {
@@ -34,8 +34,32 @@ describe("Rill Mail write rules", () => {
   });
 
   it("applies immediate local mutations without changing unrelated fields", () => {
-    expect(applyLocalMailMutation(baseMessage, "flag", true, "東海林美琴").flag.flagStatus).toBe("flagged");
+    expect(applyLocalMailMutation(baseMessage, "pin", true, "東海林美琴").categories).toEqual(["ピン:東海林美琴"]);
     expect(applyLocalMailMutation({ ...baseMessage, categories: ["東海林美琴", "確認中"] }, "state", "処理済", "東海林美琴").categories).toEqual(["東海林美琴", "処理済"]);
     expect(applyLocalMailMutation(baseMessage, "confirm", true, "東海林美琴").categories).toEqual(["東海林美琴"]);
+  });
+
+  it("names and toggles only the authenticated user's pin category", () => {
+    expect(pinCategoryName("東海林美琴")).toBe("ピン:東海林美琴");
+    const categories = ["要対応", "ピン:上田花子", "取引先"];
+    expect(toggleOwnPin(categories, "東海林美琴", true)).toEqual([...categories, "ピン:東海林美琴"]);
+    expect(toggleOwnPin([...categories, "ピン:東海林美琴"], "東海林美琴", false)).toEqual(categories);
+  });
+
+  it("displays and filters by the authenticated user's pin only", () => {
+    const mine = { ...baseMessage, id: "mine", categories: ["ピン:東海林美琴"] };
+    const theirs = { ...baseMessage, id: "theirs", categories: ["ピン:上田花子"] };
+    expect(hasOwnPin(mine.categories, "東海林美琴")).toBe(true);
+    expect(hasOwnPin(theirs.categories, "東海林美琴")).toBe(false);
+    expect(filterOwnPinned([mine, theirs], "東海林美琴").map((message) => message.id)).toEqual(["mine"]);
+  });
+
+  it("imports only flagged messages that do not already have the user's pin", () => {
+    const messages = [
+      { id: "new", flag: { flagStatus: "flagged" }, categories: ["ピン:上田花子"] },
+      { id: "duplicate", flag: { flagStatus: "flagged" }, categories: ["ピン:東海林美琴"] },
+      { id: "plain", flag: { flagStatus: "notFlagged" }, categories: [] },
+    ];
+    expect(selectLegacyFlagImportTargets(messages, "東海林美琴").map((message) => message.id)).toEqual(["new"]);
   });
 });
