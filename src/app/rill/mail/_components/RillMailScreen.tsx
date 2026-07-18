@@ -7,6 +7,7 @@ import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import type { GardenShellPageMenuItem } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, isViewableAttachment, mergeMessagePages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../_lib/format";
 import { applyLocalMailMutation, detailCacheKey, hasOwnPin, isMessageUnread, MAIL_STATES, messagesForBox, selectionRange, withCachedDetail, type MailState, type MailWriteOperation } from "../_lib/write-ops";
+import { isLikelyNonJapanese, mailBodyText } from "../_lib/translate";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import styles from "./RillMailScreen.module.css";
 
@@ -62,6 +63,10 @@ export function RillMailScreen() {
   const [importResult, setImportResult] = useState("");
   const [viewingAttachment, setViewingAttachment] = useState<RillMailAttachment | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [translationAvailable, setTranslationAvailable] = useState(false);
+  const [translatingKey, setTranslatingKey] = useState<string | null>(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [translationError, setTranslationError] = useState("");
   const sentinel = useRef<HTMLDivElement>(null);
   const requestGeneration = useRef(0);
   const pendingWriteKeys = useRef(new Set<string>());
@@ -71,6 +76,8 @@ export function RillMailScreen() {
   const selectedKey = useRef<string | null>(null);
   const visibleMessages = useRef<RillMailMessage[]>([]);
   const lastUserInteraction = useRef(Date.now());
+  const translationCache = useRef(new Map<string, string>());
+  const translationSelectionKey = useRef("");
 
   const loadMessages = useCallback(async (box: string, nextCursor?: string | null, mode: "replace" | "append" | "refresh" | "switch" = "replace") => {
     const generation = requestGeneration.current;
@@ -106,6 +113,12 @@ export function RillMailScreen() {
   }, [loadMessages]);
 
   useEffect(() => { void initialize(); }, [initialize]);
+  useEffect(() => {
+    void fetch("/api/rill/mail/translate", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<{ available?: boolean }> : null)
+      .then((value) => setTranslationAvailable(value?.available === true))
+      .catch(() => setTranslationAvailable(false));
+  }, []);
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (!connected) return;
@@ -192,6 +205,13 @@ export function RillMailScreen() {
       if (detailCacheKey(message) !== key) void fetchDetail(message, false).catch(() => undefined);
     });
   }, [fetchDetail, selected]);
+  useEffect(() => {
+    const key = selected ? detailCacheKey(selected) : null;
+    if ((key ?? "") === translationSelectionKey.current) return;
+    translationSelectionKey.current = key ?? "";
+    setShowTranslation(Boolean(key && translationCache.current.has(key)));
+    setTranslationError("");
+  }, [selected]);
 
   const patchOne = useCallback(async (message: RillMailMessage, op: MailWriteOperation, value: boolean | MailState | null) => {
     const field = op === "state" ? "state" : op === "read" ? "read" : "on";
@@ -311,6 +331,26 @@ export function RillMailScreen() {
     } finally { setImportingFlags(false); }
   };
 
+  const translateDetail = async () => {
+    if (!detail) return;
+    const key = detailCacheKey(detail);
+    if (showTranslation) { setShowTranslation(false); return; }
+    if (translationCache.current.has(key)) { setShowTranslation(true); return; }
+    if (translatingKey === key) return;
+    setTranslatingKey(key); setTranslationError("");
+    try {
+      const text = mailBodyText(detail.body.content);
+      const result = await readJson<{ translation: string }>(await fetch("/api/rill/mail/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }));
+      translationCache.current.set(key, result.translation);
+      if (selectedKey.current === key) setShowTranslation(true);
+    } catch (cause) {
+      if ((cause as { status?: number }).status === 501) setTranslationAvailable(false);
+      if (selectedKey.current === key) setTranslationError(cause instanceof Error ? cause.message : "翻訳に失敗しました");
+    } finally {
+      setTranslatingKey((current) => current === key ? null : current);
+    }
+  };
+
   const selectBox = (id: string) => {
     requestGeneration.current += 1; automaticPageCount.current = 0;
     setViewingAttachment(null); setActiveBox(id); setSelected(null); setPicked(new Set()); setCursor(null); setError("");
@@ -320,6 +360,13 @@ export function RillMailScreen() {
   const selectedUnread = Boolean(selected && ownName && isMessageUnread(selected, ownName));
   const attachmentUrl = (item: RillMailDetail["attachments"][number]) => `/api/rill/mail/messages/${encodeURIComponent(detail!.id)}/attachments/${encodeURIComponent(item.id)}?box=${encodeURIComponent(detail!.box.id)}`;
   const viewingUrl = viewingAttachment ? `${attachmentUrl(viewingAttachment)}&view=1` : "";
+  const translationView = (() => {
+    if (!detail) return { key: "", translation: undefined as string | undefined, eligible: false };
+    const key = detailCacheKey(detail);
+    const text = mailBodyText(detail.body.content);
+    const translation = translationCache.current.get(key);
+    return { key, translation, eligible: (translationAvailable || Boolean(translation)) && isLikelyNonJapanese(text) };
+  })();
 
   return <GardenShell activeModule="rill" pageMenu={MENU} activityItems={[]} contentFullBleed>
     <section className={styles.surface} aria-label="Rill Mail">
@@ -353,8 +400,8 @@ export function RillMailScreen() {
         <article className={styles.column}>{!selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <><header className={styles.readerHeader}><div className={styles.readerTitle}><h2>{selected.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{selected.subject}</h2><span className={styles.badge}>{abbreviateBox(selected.box.address)}</span></div><dl><div><dt>差出人</dt><dd>{selected.fromName} &lt;{selected.fromAddress}&gt;</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(selected.receivedDateTime)}</dd></div></dl></header><div className={styles.readerBody}><p className={styles.previewLead}>{selected.bodyPreview || "本文を読み込んでいます…"}</p><div className={styles.skeletonLine} /><div className={`${styles.skeletonLine} ${styles.skeletonShort}`} /></div></> : <><header className={styles.readerHeader}>
           <div className={styles.readerTitle}><h2>{detail.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{detail.subject}</h2><button aria-label="ピン" disabled={!ownName || pendingWrites.has(keyOf(detail))} className={`${styles.inlineFlag} ${ownName && hasOwnPin(detail.categories, ownName) ? styles.flag : ""}`} onClick={() => void writeOne(detail, "pin", !hasOwnPin(detail.categories, ownName))}><PinIcon on={Boolean(ownName && hasOwnPin(detail.categories, ownName))} /></button><span className={styles.badge}>{abbreviateBox(detail.box.address)}</span></div>
           <dl><div><dt>差出人</dt><dd>{detail.fromName} &lt;{detail.fromAddress}&gt;</dd></div><div><dt>宛先</dt><dd>{detail.to.join(", ")}</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(detail.receivedDateTime)}</dd></div></dl>
-          <div className={styles.categoryLine}><span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} disabled={pendingWrites.has(keyOf(detail))} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles[`reviewerTone${reviewerTone(name, reviewers)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName || pendingWrites.has(keyOf(detail))} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{reviewerInitials([name], [name])[0]}</button>)}</span></div>
-        </header><div className={styles.readerBody}>{detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}{!!detail.attachments.length && <section className={styles.attachments}><h3><span className={styles.paperclip} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a><button disabled>Bud の未処理トレイへ</button></div>; })}</section>}</div></>}
+          <div className={styles.categoryLine}>{translationView.eligible && <button className={styles.translateButton} disabled={translatingKey === translationView.key} onClick={() => void translateDetail()}>{translatingKey === translationView.key ? "翻訳中…" : showTranslation ? "原文を表示" : translationView.translation ? "日本語訳を表示" : "日本語に翻訳"}</button>}<span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} disabled={pendingWrites.has(keyOf(detail))} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles[`reviewerTone${reviewerTone(name, reviewers)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName || pendingWrites.has(keyOf(detail))} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{reviewerInitials([name], [name])[0]}</button>)}</span></div>{translationError && <div className={styles.translationError}>{translationError}</div>}
+        </header><div className={styles.readerBody}>{showTranslation && translationView.translation ? <div className={`${styles.textBody} ${styles.translationBody}`}>{translationView.translation}</div> : detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}{!!detail.attachments.length && <section className={styles.attachments}><h3><span className={styles.paperclip} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a><button disabled>Bud の未処理トレイへ</button></div>; })}</section>}</div></>}
         </article>
       </div>}
       {/* GardenShell 側のスタッキング文脈にモーダルが閉じ込められ、ヘッダー(z-index:100)の下に潜るため body 直下へポータル描画する */}
