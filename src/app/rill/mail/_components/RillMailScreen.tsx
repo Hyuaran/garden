@@ -13,6 +13,7 @@ import { scheduleDelayedSend, validateComposeInput, type ComposeDraft, type Comp
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import { isNearListEnd, NORMAL_AUTO_PAGE_LIMIT, PRIORITY_PAGES_AHEAD, SerialSearchScheduler, type SearchMessagesResponse } from "../_lib/search";
 import { applyRecentCategoryWrites, RECENT_WRITE_TTL_MS, reconcilePinnedMessage, shouldAddBulkPin, type PinnedMessagesResponse, type RecentCategoryWrite } from "../_lib/pinned";
+import { INTAKE_KINDS, intakeItemFromPost, intakeMarks, type IntakeItem, type IntakeKind } from "../_lib/intake";
 import styles from "./RillMailScreen.module.css";
 
 const ICON = "/themes/garden-shell/images/icons_bloom/orb_rill.png";
@@ -22,6 +23,12 @@ const MENU: GardenShellPageMenuItem[] = [
 ];
 const FALLBACK_REVIEWERS = ["東海林美琴", "上田", "簡"];
 const keyOf = (message: Pick<RillMailMessage, "id" | "box">) => `${message.box.id}:${message.id}`;
+const INTAKE_DESCRIPTIONS: Record<IntakeKind, string> = {
+  請求: "受領請求書を経理へ",
+  入金: "入金明細を入金管理へ",
+  条件: "条件一覧をRootへ",
+  周知: "FAXをLINE周知の準備へ",
+};
 
 function DownloadIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
@@ -74,6 +81,10 @@ export function RillMailScreen() {
   const [importingFlags, setImportingFlags] = useState(false);
   const [importResult, setImportResult] = useState("");
   const [viewingAttachment, setViewingAttachment] = useState<RillMailAttachment | null>(null);
+  const [intakeTarget, setIntakeTarget] = useState<RillMailAttachment | null>(null);
+  const [intakeItems, setIntakeItems] = useState<IntakeItem[]>([]);
+  const [intakeSubmitting, setIntakeSubmitting] = useState(false);
+  const [intakeError, setIntakeError] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [translationAvailable, setTranslationAvailable] = useState(false);
   const [translatingKey, setTranslatingKey] = useState<string | null>(null);
@@ -98,6 +109,7 @@ export function RillMailScreen() {
   const delayedSend = useRef<{ cancel: () => boolean; dispose: () => void } | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const recentWrites = useRef(new Map<string, RecentCategoryWrite>());
+  const intakeCache = useRef(new Map<string, IntakeItem[]>());
   const ownNameRef = useRef(ownName);
   ownNameRef.current = ownName;
 
@@ -195,11 +207,11 @@ export function RillMailScreen() {
     return () => window.clearInterval(timer);
   }, [activeBox, connected, loadMessages, loadPinnedMessages, searchResults]);
   useEffect(() => {
-    if (!viewingAttachment) return;
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setViewingAttachment(null); };
+    if (!viewingAttachment && !intakeTarget) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") { setViewingAttachment(null); setIntakeTarget(null); } };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [viewingAttachment]);
+  }, [intakeTarget, viewingAttachment]);
   useEffect(() => {
     const recordInteraction = () => { lastUserInteraction.current = Date.now(); };
     const events: Array<keyof WindowEventMap> = ["pointerdown", "wheel", "scroll", "keydown", "input"];
@@ -266,6 +278,19 @@ export function RillMailScreen() {
       if (detailCacheKey(message) !== key) void fetchDetail(message, false).catch(() => undefined);
     });
   }, [fetchDetail, selected]);
+  useEffect(() => {
+    if (!selected) { setIntakeItems([]); return; }
+    const key = detailCacheKey(selected);
+    setIntakeItems(intakeCache.current.get(key) ?? []);
+    const params = new URLSearchParams({ box: selected.box.address, messageId: selected.id });
+    void fetch(`/api/rill/mail/intake?${params}`, { cache: "no-store" })
+      .then((response) => readJson<{ items: IntakeItem[] }>(response))
+      .then((result) => {
+        intakeCache.current.set(key, result.items);
+        if (selectedKey.current === key) setIntakeItems(result.items);
+      })
+      .catch(() => undefined);
+  }, [selected]);
   useEffect(() => {
     const key = selected ? detailCacheKey(selected) : null;
     if ((key ?? "") === translationSelectionKey.current) return;
@@ -498,6 +523,25 @@ export function RillMailScreen() {
     if (searchResults !== null || activeBox === "flagged") return;
     setPriorityPages(isNearListEnd(event.currentTarget) ? PRIORITY_PAGES_AHEAD : 0);
   };
+  const runIntake = async (kind: IntakeKind) => {
+    if (!detail || !intakeTarget || intakeSubmitting) return;
+    setIntakeSubmitting(true); setIntakeError("");
+    try {
+      const response = await fetch("/api/rill/mail/intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ box: detail.box.address, messageId: detail.id, attachmentId: intakeTarget.id, kind }),
+      });
+      const payload = await response.json() as { item?: IntakeItem; error?: string };
+      const item = intakeItemFromPost(response.status, payload.item);
+      if (!item) throw new Error(payload.error ?? "Gardenへ取り込めませんでした");
+      const next = [item, ...intakeItems.filter((current) => current.attachment_id !== item.attachment_id)];
+      intakeCache.current.set(detailCacheKey(detail), next);
+      setIntakeItems(next); setIntakeTarget(null);
+    } catch (cause) {
+      setIntakeError(cause instanceof Error ? cause.message : "Gardenへ取り込めませんでした");
+    } finally { setIntakeSubmitting(false); }
+  };
   const currentPinned = Boolean(selected && ownName && hasOwnPin(selected.categories, ownName));
   const selectedUnread = Boolean(selected && ownName && isMessageUnread(selected, ownName));
   const attachmentUrl = (item: RillMailDetail["attachments"][number]) => `/api/rill/mail/messages/${encodeURIComponent(detail!.id)}/attachments/${encodeURIComponent(item.id)}?box=${encodeURIComponent(detail!.box.id)}`;
@@ -513,6 +557,7 @@ export function RillMailScreen() {
   const suggestionAddresses = useMemo(() => messages.map((message) => message.fromAddress).filter(Boolean), [messages]);
   const pickedMessages = useMemo(() => (searchResults ?? (activeBox === "flagged" ? pinnedMessages : messages)).filter((message) => picked.has(keyOf(message))), [activeBox, messages, picked, pinnedMessages, searchResults]);
   const bulkPinOn = shouldAddBulkPin(pickedMessages, ownName);
+  const intakeByAttachment = useMemo(() => intakeMarks(intakeItems), [intakeItems]);
 
   return <GardenShell activeModule="rill" pageMenu={MENU} activityItems={[]} contentFullBleed>
     <section className={styles.surface} aria-label="Rill Mail">
@@ -550,12 +595,13 @@ export function RillMailScreen() {
           <div className={styles.readerTitle}><h2>{detail.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{detail.subject}</h2><button aria-label="ピン" disabled={!ownName || pendingWrites.has(keyOf(detail))} className={`${styles.inlineFlag} ${ownName && hasOwnPin(detail.categories, ownName) ? styles.flag : ""}`} onClick={() => void writeOne(detail, "pin", !hasOwnPin(detail.categories, ownName))}><PinIcon on={Boolean(ownName && hasOwnPin(detail.categories, ownName))} /></button><span className={styles.badge}>{abbreviateBox(detail.box.address)}</span></div>
           <dl><div><dt>差出人</dt><dd>{detail.fromName} &lt;{detail.fromAddress}&gt;</dd></div><div><dt>宛先</dt><dd>{detail.to.join(", ")}</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(detail.receivedDateTime)}</dd></div></dl>
           <div className={styles.categoryLine}>{translationView.eligible && <button className={styles.translateButton} disabled={translatingKey === translationView.key} onClick={() => void translateDetail()}>{translatingKey === translationView.key ? "翻訳中…" : showTranslation ? "原文を表示" : translationView.translation ? "日本語訳を表示" : "日本語に翻訳"}</button>}<span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} disabled={pendingWrites.has(keyOf(detail))} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles[`reviewerTone${reviewerTone(name, reviewers)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName || pendingWrites.has(keyOf(detail))} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{reviewerInitials([name], [name])[0]}</button>)}</span></div>{translationError && <div className={styles.translationError}>{translationError}</div>}
-        </header><div className={styles.readerBody}>{!!detail.attachments.length && <section className={styles.attachments}><h3><span className={styles.paperclip} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a><button disabled>Bud の未処理トレイへ</button></div>; })}</section>}{showTranslation && translationView.translation ? <div className={`${styles.textBody} ${styles.translationBody}`}>{translationView.translation}</div> : detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}</div></>}
+        </header><div className={styles.readerBody}>{!!detail.attachments.length && <section className={styles.attachments}><h3><span className={styles.paperclip} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); const intakeMark = intakeByAttachment.get(item.id); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a>{intakeMark && <span className={styles.intakeMark} title={intakeMark.title}>{intakeMark.label}</span>}<button disabled={Boolean(intakeMark)} onClick={() => { setIntakeTarget(item); setIntakeError(""); }}>{intakeMark ? "取込済" : "Garden取込実行"}</button></div>; })}</section>}{showTranslation && translationView.translation ? <div className={`${styles.textBody} ${styles.translationBody}`}>{translationView.translation}</div> : detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}</div></>}
         <div className={styles.composeDock}>{[...drafts.values()].filter((draft) => draft.id !== activeDraftId).map((draft) => <div className={styles.composeDockItem} key={draft.id}><button onClick={() => { setActiveDraftId(draft.id); setComposeError(""); }}><span>未送信：{draft.subject || "件名なし"}</span><i>▲</i></button><button aria-label="破棄" onClick={() => discardDraft(draft.id)}>×</button></div>)}</div></article>
       </div>}
       {sendToast && <div className={`${styles.sendToast} ${sendToast.tone === "error" ? styles.sendToastError : ""}`}>{sendToast.text}{sendToast.tone === "pending" && <button onClick={() => delayedSend.current?.cancel()}>取り消す（{sendToast.seconds}秒）</button>}</div>}
       {/* GardenShell 側のスタッキング文脈にモーダルが閉じ込められ、ヘッダー(z-index:100)の下に潜るため body 直下へポータル描画する */}
       {viewingAttachment && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingAttachment(null); }}><section className={styles.attachmentModal} role="dialog" aria-modal="true" aria-label={`${viewingAttachment.name}のプレビュー`}><header><h2>{viewingAttachment.name}</h2><a href={attachmentUrl(viewingAttachment)} aria-label="ダウンロード" title="ダウンロード"><DownloadIcon /></a><button onClick={() => setViewingAttachment(null)} aria-label="閉じる">×</button></header><div className={styles.viewer}>{viewingAttachment.contentType?.split(";", 1)[0].trim().toLowerCase().startsWith("image/") || (!viewingAttachment.contentType && /\.(png|jpe?g|gif|webp)$/i.test(viewingAttachment.name)) ? <img src={viewingUrl} alt={viewingAttachment.name} /> : <iframe src={viewingUrl} title={viewingAttachment.name} />}</div></section></div>, document.body)}
+      {intakeTarget && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !intakeSubmitting) setIntakeTarget(null); }}><section className={styles.intakeModal} role="dialog" aria-modal="true" aria-label="Garden取込分類"><header><div><h2>Garden取込実行</h2><p>{intakeTarget.name}</p></div><button disabled={intakeSubmitting} onClick={() => setIntakeTarget(null)} aria-label="閉じる">×</button></header><div className={styles.intakeChoices}>{INTAKE_KINDS.map((kind) => <button key={kind} disabled={intakeSubmitting} onClick={() => void runIntake(kind)}><b>{kind}</b><span>{INTAKE_DESCRIPTIONS[kind]}</span></button>)}</div>{intakeSubmitting && <div className={styles.intakeProgress}>取り込み中…</div>}{intakeError && <div className={styles.intakeError}>{intakeError}</div>}</section></div>, document.body)}
     </section>
   </GardenShell>;
 }
