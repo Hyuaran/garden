@@ -12,7 +12,7 @@ import { isLikelyNonJapanese, mailBodyText } from "../_lib/translate";
 import { scheduleDelayedSend, validateComposeInput, type ComposeDraft, type ComposeMode } from "../_lib/compose";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import { isNearListEnd, NORMAL_AUTO_PAGE_LIMIT, PRIORITY_PAGES_AHEAD, SerialSearchScheduler, type SearchMessagesResponse } from "../_lib/search";
-import { reconcilePinnedMessage, type PinnedMessagesResponse } from "../_lib/pinned";
+import { applyRecentCategoryWrites, RECENT_WRITE_TTL_MS, reconcilePinnedMessage, shouldAddBulkPin, type PinnedMessagesResponse, type RecentCategoryWrite } from "../_lib/pinned";
 import styles from "./RillMailScreen.module.css";
 
 const ICON = "/themes/garden-shell/images/icons_bloom/orb_rill.png";
@@ -97,6 +97,19 @@ export function RillMailScreen() {
   const draftCounter = useRef(0);
   const delayedSend = useRef<{ cancel: () => boolean; dispose: () => void } | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recentWrites = useRef(new Map<string, RecentCategoryWrite>());
+  const ownNameRef = useRef(ownName);
+  ownNameRef.current = ownName;
+
+  const protectServerMessages = useCallback(<T extends RillMailMessage,>(incoming: T[], pinnedView = false) => {
+    const protectedResult = applyRecentCategoryWrites(incoming, recentWrites.current, Date.now(), { pinnedView, ownName: ownNameRef.current });
+    recentWrites.current = protectedResult.writes;
+    return protectedResult.messages as T[];
+  }, []);
+
+  const rememberWrite = useCallback((message: RillMailMessage) => {
+    recentWrites.current.set(keyOf(message), { categories: [...message.categories], isRead: message.isRead, expiresAt: Date.now() + RECENT_WRITE_TTL_MS });
+  }, []);
 
   if (!autoSearch.current) {
     autoSearch.current = new SerialSearchScheduler(async ({ query: value, box }, generation) => {
@@ -105,7 +118,7 @@ export function RillMailScreen() {
       try {
         const result = await readJson<SearchMessagesResponse>(await fetch(`/api/rill/mail/search?${params}`, { cache: "no-store" }));
         if (!autoSearch.current?.isCurrent(generation)) return;
-        setSearchResults(result.messages); setSearchTruncated(result.truncated);
+        setSearchResults(protectServerMessages(result.messages)); setSearchTruncated(result.truncated);
       } catch (cause) {
         if (!autoSearch.current?.isCurrent(generation)) return;
         setSearchResults((current) => current ?? []); setSearchTruncated(false);
@@ -120,25 +133,26 @@ export function RillMailScreen() {
     if (nextCursor) params.set("cursor", nextCursor);
     const data = await readJson<RillMessagesResponse>(await fetch(`/api/rill/mail/messages?${params}`, { cache: "no-store" }));
     if (generation !== requestGeneration.current) return;
+    const serverMessages = protectServerMessages(data.messages);
     setMessages((current) => {
-      if (mode === "replace") return data.messages;
-      const retained = mode === "refresh" ? pruneToRefreshWindow(current, data.messages, data.boxIds) : current;
-      return mergeMessagePages(mode === "switch" ? pruneToRefreshWindow(current, data.messages, data.boxIds) : retained, data.messages);
+      if (mode === "replace") return serverMessages;
+      const retained = mode === "refresh" ? pruneToRefreshWindow(current, serverMessages, data.boxIds) : current;
+      return mergeMessagePages(mode === "switch" ? pruneToRefreshWindow(current, serverMessages, data.boxIds) : retained, serverMessages);
     });
     if (mode !== "refresh") {
       automaticPageCount.current = mode === "append" ? automaticPageCount.current + 1 : 1;
       setCursor(data.cursor);
     }
     setUpdatedAt(new Date());
-  }, []);
+  }, [protectServerMessages]);
 
   const loadPinnedMessages = useCallback(async () => {
     setPinsLoading(true); setPinsNotice("");
     try {
       const data = await readJson<PinnedMessagesResponse>(await fetch("/api/rill/mail/pins", { cache: "no-store" }));
-      setPinnedMessages(data.messages); setPinsNotice(data.notice ?? ""); setUpdatedAt(new Date());
+      setPinnedMessages(protectServerMessages(data.messages, true)); setPinsNotice(data.notice ?? ""); setUpdatedAt(new Date());
     } finally { setPinsLoading(false); }
-  }, []);
+  }, [protectServerMessages]);
 
   const initialize = useCallback(async () => {
     const generation = ++requestGeneration.current;
@@ -232,13 +246,14 @@ export function RillMailScreen() {
     const request = fetch(`/api/rill/mail/messages/${encodeURIComponent(message.id)}?${params}`, { cache: "no-store" })
       .then((response) => readJson<RillMailDetail>(response))
       .then((value) => {
-        detailCache.current = withCachedDetail(detailCache.current, value);
-        return value;
+        const protectedValue = protectServerMessages([value])[0];
+        detailCache.current = withCachedDetail(detailCache.current, protectedValue);
+        return protectedValue;
       })
       .finally(() => detailRequests.current.delete(key));
     detailRequests.current.set(key, request);
     return request;
-  }, []);
+  }, [protectServerMessages]);
 
   useEffect(() => {
     selectedKey.current = selected ? detailCacheKey(selected) : null;
@@ -295,9 +310,10 @@ export function RillMailScreen() {
     markPending([key], true); setError(""); applyLocal(message, updated);
     try {
       await patchOne(message, op, value);
-      void refreshAfterWrite(updated).catch(() => setAutoRefreshFailed(true));
+      rememberWrite(updated);
+      if (!(activeBox === "flagged" && op === "pin")) void refreshAfterWrite(updated).catch(() => setAutoRefreshFailed(true));
     }
-    catch (cause) { applyLocal(updated, message); setError(cause instanceof Error ? cause.message : "更新できませんでした"); }
+    catch (cause) { recentWrites.current.delete(key); applyLocal(updated, message); setError(cause instanceof Error ? cause.message : "更新できませんでした"); }
     finally { markPending([key], false); }
   };
 
@@ -355,6 +371,13 @@ export function RillMailScreen() {
       }));
       const failures = responses.flatMap((response) => response.results).filter((result) => !result.ok);
       const failedKeys = new Set(failures.map((result) => `${result.boxId}:${result.id}`));
+      keys.forEach((key) => {
+        if (failedKeys.has(key)) recentWrites.current.delete(key);
+        else {
+          const updated = optimistic.get(key);
+          if (updated) rememberWrite(updated);
+        }
+      });
       if (failedKeys.size) {
         setMessages((current) => current.map((message) => failedKeys.has(keyOf(message)) ? snapshots.get(keyOf(message)) ?? message : message));
         setSearchResults((current) => current?.map((message) => failedKeys.has(keyOf(message)) ? snapshots.get(keyOf(message)) ?? message : message) ?? null);
@@ -364,8 +387,9 @@ export function RillMailScreen() {
         setError(`${failedKeys.size}件を更新できませんでした`);
       }
       else setPicked(new Set());
-      void refreshAfterWrite(selected ?? undefined).catch(() => setAutoRefreshFailed(true));
+      if (!(activeBox === "flagged" && op === "pin")) void refreshAfterWrite(selected ?? undefined).catch(() => setAutoRefreshFailed(true));
     } catch (cause) {
+      keys.forEach((key) => recentWrites.current.delete(key));
       setMessages((current) => current.map((message) => snapshots.get(keyOf(message)) ?? message));
       setSearchResults((current) => current?.map((message) => snapshots.get(keyOf(message)) ?? message) ?? null);
       setPinnedMessages((current) => [...snapshots.values()].reduce((result, message) => reconcilePinnedMessage(result, message, ownName), current));
@@ -487,6 +511,8 @@ export function RillMailScreen() {
   })();
   const activeDraft = activeDraftId ? drafts.get(activeDraftId) : undefined;
   const suggestionAddresses = useMemo(() => messages.map((message) => message.fromAddress).filter(Boolean), [messages]);
+  const pickedMessages = useMemo(() => (searchResults ?? (activeBox === "flagged" ? pinnedMessages : messages)).filter((message) => picked.has(keyOf(message))), [activeBox, messages, picked, pinnedMessages, searchResults]);
+  const bulkPinOn = shouldAddBulkPin(pickedMessages, ownName);
 
   return <GardenShell activeModule="rill" pageMenu={MENU} activityItems={[]} contentFullBleed>
     <section className={styles.surface} aria-label="Rill Mail">
@@ -508,7 +534,7 @@ export function RillMailScreen() {
           <div className={styles.group}>共有</div>{boxes.filter((box) => box.kind === "shared").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.sharedDot} />{box.label}</button>)}
         </div><footer className={styles.foot}>メールは Garden に保存せず<br />Microsoft から都度取得します</footer></aside>
         <section className={styles.column}><header className={styles.columnHeader}>{searchLoading ? "全期間を検索中…" : searchResults !== null ? <>全期間から{filtered.length}件 <small>（Outlook検索）</small></> : <>メール一覧 <span>{filtered.length}件</span></>}{activeBox === "flagged" && searchResults === null && filtered.length > 0 && <button className={styles.importAgain} disabled={importingFlags} onClick={() => void importLegacyFlags()}>旧フラグ取込</button>}</header>
-          {picked.size > 0 && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button aria-label="ピン" onClick={() => void bulkWrite("pin", true)}><PinIcon on />ピン</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
+          {picked.size > 0 && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button aria-label={bulkPinOn ? "ピン" : "ピンを外す"} onClick={() => void bulkWrite("pin", bulkPinOn)}><PinIcon on={!bulkPinOn} />{bulkPinOn ? "ピン" : "ピンを外す"}</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
           <div className={styles.scroll} onScroll={trackListScroll}>{((activeBox === "flagged" ? pinsLoading : loading && !messages.length) && searchResults === null) && <div className={styles.notice}>読み込み中…</div>}{error && <div className={styles.error}>{error}</div>}{searchError && <div className={styles.error}>{searchError}</div>}
           {searchResults !== null && !searchLoading && filtered.length === 0 && <div className={styles.searchEmpty}>該当するメールはありません。日本語は単語の一部だけでは見つからない場合があります。</div>}
           {searchResults !== null && searchTruncated && <div className={styles.importResult}>ヒットが多いため各箱の新しい50件まで表示しています。語を足して絞り込んでください</div>}
