@@ -1,4 +1,4 @@
-import type { RillMailBox, RillMailMessage } from "./types";
+import type { RillMailBox, RillMailDetail, RillMailMessage } from "./types";
 
 export const MAIL_STATES = ["要対応", "確認中", "処理済"] as const;
 export type MailState = typeof MAIL_STATES[number];
@@ -18,6 +18,20 @@ export function toggleOwnPin(categories: string[], ownName: string, on: boolean)
 
 export function filterOwnPinned<T extends Pick<RillMailMessage, "categories">>(messages: T[], ownName: string) {
   return messages.filter((message) => hasOwnPin(message.categories, ownName));
+}
+
+export function messagesForBox(messages: RillMailMessage[], boxId: string, ownName: string) {
+  if (boxId === "all") return messages;
+  if (boxId === "flagged") return filterOwnPinned(messages, ownName);
+  return messages.filter((message) => message.box.id === boxId || message.box.address === boxId);
+}
+
+export const detailCacheKey = (message: Pick<RillMailMessage, "id" | "box">) => `${message.box.id}:${message.id}`;
+
+export function withCachedDetail(cache: ReadonlyMap<string, RillMailDetail>, detail: RillMailDetail) {
+  const next = new Map(cache);
+  next.set(detailCacheKey(detail), detail);
+  return next;
 }
 
 export type LegacyFlagMessage = { id: string; categories?: string[]; flag?: { flagStatus?: string } };

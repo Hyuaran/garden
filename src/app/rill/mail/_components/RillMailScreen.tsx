@@ -5,7 +5,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import type { GardenShellPageMenuItem } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, isViewableAttachment, mergeMessagePages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../_lib/format";
-import { applyLocalMailMutation, filterOwnPinned, hasOwnPin, isMessageUnread, MAIL_STATES, selectionRange, type MailState, type MailWriteOperation } from "../_lib/write-ops";
+import { applyLocalMailMutation, detailCacheKey, hasOwnPin, isMessageUnread, MAIL_STATES, messagesForBox, selectionRange, withCachedDetail, type MailState, type MailWriteOperation } from "../_lib/write-ops";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import styles from "./RillMailScreen.module.css";
 
@@ -21,8 +21,16 @@ function DownloadIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
 }
 
-function FileIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v5h5" /></svg>;
+function PaperclipIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8.5 12.5 6.8-6.8a3.2 3.2 0 0 1 4.5 4.5l-9.2 9.2a5 5 0 0 1-7.1-7.1l8.8-8.8m-6.7 11 8.8-8.8" /></svg>;
+}
+
+function PinIcon({ on = false }: { on?: boolean }) {
+  return <svg className={on ? styles.pinOn : undefined} viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3 6 2-1.2 4 3.2 3-4 2-2 6-1.5-5.5-4.5-2.5 3.2-3z" /><path d="m9.5 15.5-4.5 4.5" /></svg>;
+}
+
+function SearchIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>;
 }
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -56,8 +64,13 @@ export function RillMailScreen() {
   const sentinel = useRef<HTMLDivElement>(null);
   const requestGeneration = useRef(0);
   const pendingWriteKeys = useRef(new Set<string>());
+  const automaticPageCount = useRef(0);
+  const detailCache = useRef(new Map<string, RillMailDetail>());
+  const detailRequests = useRef(new Map<string, Promise<RillMailDetail>>());
+  const selectedKey = useRef<string | null>(null);
+  const visibleMessages = useRef<RillMailMessage[]>([]);
 
-  const loadMessages = useCallback(async (box: string, nextCursor?: string | null, mode: "replace" | "append" | "refresh" = "replace") => {
+  const loadMessages = useCallback(async (box: string, nextCursor?: string | null, mode: "replace" | "append" | "refresh" | "switch" = "replace") => {
     const generation = requestGeneration.current;
     const params = new URLSearchParams({ box: box === "flagged" ? "all" : box });
     if (nextCursor) params.set("cursor", nextCursor);
@@ -66,9 +79,12 @@ export function RillMailScreen() {
     setMessages((current) => {
       if (mode === "replace") return data.messages;
       const retained = mode === "refresh" ? pruneToRefreshWindow(current, data.messages, data.boxIds) : current;
-      return mergeMessagePages(retained, data.messages);
+      return mergeMessagePages(mode === "switch" ? pruneToRefreshWindow(current, data.messages, data.boxIds) : retained, data.messages);
     });
-    if (mode !== "refresh") setCursor(data.cursor);
+    if (mode !== "refresh") {
+      automaticPageCount.current = mode === "append" ? automaticPageCount.current + 1 : 1;
+      setCursor(data.cursor);
+    }
     setUpdatedAt(new Date());
   }, []);
 
@@ -79,13 +95,13 @@ export function RillMailScreen() {
       const data = await readJson<{ boxes: RillMailBox[]; reviewers: string[]; ownName: string | null }>(await fetch("/api/rill/mail/boxes", { cache: "no-store" }));
       if (generation !== requestGeneration.current) return;
       setBoxes(data.boxes); setReviewers(data.reviewers.length ? data.reviewers : FALLBACK_REVIEWERS); setOwnName(data.ownName ?? ""); setConnected(true); setAutoRefreshFailed(false);
-      await loadMessages(activeBox);
+      await loadMessages("all");
     } catch (cause) {
       if (generation !== requestGeneration.current) return;
       if ((cause as { status?: number }).status === 428) setConnected(false);
       else setError(cause instanceof Error ? cause.message : "メールを取得できませんでした");
     } finally { if (generation === requestGeneration.current) setLoading(false); }
-  }, [activeBox, loadMessages]);
+  }, [loadMessages]);
 
   useEffect(() => { void initialize(); }, [initialize]);
   useEffect(() => {
@@ -107,8 +123,15 @@ export function RillMailScreen() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [viewingAttachment]);
   useEffect(() => {
+    if (!cursor || loadingMore || automaticPageCount.current >= 30) return;
+    setLoadingMore(true);
+    void loadMessages(activeBox, cursor, "append")
+      .catch((cause) => setError(cause instanceof Error ? cause.message : "続きを取得できませんでした"))
+      .finally(() => setLoadingMore(false));
+  }, [activeBox, cursor, loadMessages, loadingMore]);
+  useEffect(() => {
     const node = sentinel.current;
-    if (!node || !cursor || loadingMore) return;
+    if (!node || !cursor || loadingMore || automaticPageCount.current < 30) return;
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return;
       setLoadingMore(true);
@@ -117,15 +140,34 @@ export function RillMailScreen() {
     observer.observe(node); return () => observer.disconnect();
   }, [activeBox, cursor, loadMessages, loadingMore]);
 
-  const fetchDetail = useCallback(async (message: RillMailMessage) => {
+  const fetchDetail = useCallback((message: RillMailMessage, revalidate = true) => {
+    const key = detailCacheKey(message);
+    const cached = detailCache.current.get(key);
+    if (!revalidate && cached) return Promise.resolve(cached);
+    const existing = detailRequests.current.get(key);
+    if (existing) return existing;
     const params = new URLSearchParams({ box: message.box.id });
-    const value = await readJson<RillMailDetail>(await fetch(`/api/rill/mail/messages/${encodeURIComponent(message.id)}?${params}`, { cache: "no-store" }));
-    setDetail(value);
+    const request = fetch(`/api/rill/mail/messages/${encodeURIComponent(message.id)}?${params}`, { cache: "no-store" })
+      .then((response) => readJson<RillMailDetail>(response))
+      .then((value) => {
+        detailCache.current = withCachedDetail(detailCache.current, value);
+        return value;
+      })
+      .finally(() => detailRequests.current.delete(key));
+    detailRequests.current.set(key, request);
+    return request;
   }, []);
 
   useEffect(() => {
+    selectedKey.current = selected ? detailCacheKey(selected) : null;
     if (!selected) { setDetail(null); return; }
-    setDetail(null); void fetchDetail(selected).catch((cause) => setError(cause instanceof Error ? cause.message : "本文を取得できませんでした"));
+    const key = detailCacheKey(selected);
+    setDetail(detailCache.current.get(key) ?? null);
+    void fetchDetail(selected).then((value) => { if (selectedKey.current === key) setDetail(value); }).catch((cause) => setError(cause instanceof Error ? cause.message : "本文を取得できませんでした"));
+    const index = visibleMessages.current.findIndex((message) => detailCacheKey(message) === key);
+    visibleMessages.current.slice(Math.max(0, index - 2), index + 3).forEach((message) => {
+      if (detailCacheKey(message) !== key) void fetchDetail(message, false).catch(() => undefined);
+    });
   }, [fetchDetail, selected]);
 
   const patchOne = useCallback(async (message: RillMailMessage, op: MailWriteOperation, value: boolean | MailState | null) => {
@@ -136,7 +178,10 @@ export function RillMailScreen() {
 
   const refreshAfterWrite = useCallback(async (message?: RillMailMessage) => {
     await loadMessages(activeBox, null, "refresh");
-    if (message && selected && keyOf(message) === keyOf(selected)) await fetchDetail(message);
+    if (message && selected && keyOf(message) === keyOf(selected)) {
+      const value = await fetchDetail(message);
+      if (selectedKey.current === detailCacheKey(message)) setDetail(value);
+    }
   }, [activeBox, fetchDetail, loadMessages, selected]);
 
   const applyLocal = useCallback((before: RillMailMessage, after: RillMailMessage) => {
@@ -173,9 +218,10 @@ export function RillMailScreen() {
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("ja");
-    const source = activeBox === "flagged" ? filterOwnPinned(messages, ownName) : messages;
+    const source = messagesForBox(messages, activeBox, ownName);
     return needle ? source.filter((item) => [item.fromName, item.fromAddress, item.subject, item.bodyPreview].some((value) => value.toLocaleLowerCase("ja").includes(needle))) : source;
   }, [activeBox, messages, ownName, query]);
+  visibleMessages.current = filtered;
   const filteredKeys = useMemo(() => filtered.map(keyOf), [filtered]);
   const datedMessages = useMemo(() => daySeparatedMessages(filtered), [filtered]);
 
@@ -242,7 +288,11 @@ export function RillMailScreen() {
     } finally { setImportingFlags(false); }
   };
 
-  const selectBox = (id: string) => { requestGeneration.current += 1; setViewingAttachment(null); setActiveBox(id); setMessages([]); setSelected(null); setPicked(new Set()); setCursor(null); };
+  const selectBox = (id: string) => {
+    requestGeneration.current += 1; automaticPageCount.current = 0;
+    setViewingAttachment(null); setActiveBox(id); setSelected(null); setPicked(new Set()); setCursor(null); setError("");
+    void loadMessages(id, null, "switch").catch((cause) => setError(cause instanceof Error ? cause.message : "メールを取得できませんでした"));
+  };
   const currentPinned = Boolean(selected && ownName && hasOwnPin(selected.categories, ownName));
   const selectedUnread = Boolean(selected && ownName && isMessageUnread(selected, ownName));
   const attachmentUrl = (item: RillMailDetail["attachments"][number]) => `/api/rill/mail/messages/${encodeURIComponent(detail!.id)}/attachments/${encodeURIComponent(item.id)}?box=${encodeURIComponent(detail!.box.id)}`;
@@ -255,33 +305,33 @@ export function RillMailScreen() {
         <span className={styles.fresh}>{updatedAt ? `最終更新 ${updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}・60秒ごと` : "未更新"}</span>{autoRefreshFailed && <span className={styles.autoWarning}>更新に失敗（自動で再試行します）</span>}<span className={styles.separator} />
         {["新規", "返信", "全員に返信", "転送"].map((label) => <button key={label} className={styles.disabledButton} disabled title="次段階">{label}</button>)}
         <button className={styles.actionButton} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, selected.box.kind === "personal" ? "read" : "confirm", selectedUnread)}>○ {selectedUnread ? "開封済みに" : "未読に戻す"}</button>
-        <button className={`${styles.actionButton} ${currentPinned ? styles.actionOn : ""}`} disabled={!selected || !ownName || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "pin", !currentPinned)}>⚑ ピン</button>
+        <button aria-label="ピン" className={`${styles.actionButton} ${currentPinned ? styles.actionOn : ""}`} disabled={!selected || !ownName || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "pin", !currentPinned)}><PinIcon on={currentPinned} />ピン</button>
         <span className={styles.toolbarStates}>{MAIL_STATES.map((state) => <button key={state} className={selected && statusCategory(selected.categories) === state ? styles.actionOn : ""} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "state", statusCategory(selected.categories) === state ? null : state)}>{state}</button>)}</span>
         <button className={styles.moreButton} disabled title="アーカイブ・削除は次段階">…</button>
-        <label className={styles.search}><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="メールを検索" /></label>
+        <label className={styles.search}><span><SearchIcon /></span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="メールを検索" /></label>
       </div>
       {connected === false ? <div className={styles.connect}><div className={styles.connectOrb}>✉</div><h1>Microsoft メールを接続</h1><p>本人の Microsoft アカウントでサインインすると、許可された受信箱を Garden から閲覧できます。</p><a href="/api/rill/mail/auth/login">Microsoft に接続</a></div> :
       <div className={styles.panes}>
         <aside className={styles.column}><header className={styles.columnHeader}>受信箱 <span>{messages.length}</span></header><div className={styles.scroll}>
-          <div className={styles.group}>まとめて見る</div><button className={`${styles.box} ${activeBox === "all" ? styles.active : ""}`} onClick={() => selectBox("all")}><span className={styles.dot} />すべての箱</button><button className={`${styles.box} ${activeBox === "flagged" ? styles.active : ""}`} onClick={() => selectBox("flagged")}><span className={styles.flag}>⚑</span>ピン止め</button>
+          <div className={styles.group}>まとめて見る</div><button className={`${styles.box} ${activeBox === "all" ? styles.active : ""}`} onClick={() => selectBox("all")}><span className={styles.dot} />すべての箱</button><button className={`${styles.box} ${activeBox === "flagged" ? styles.active : ""}`} onClick={() => selectBox("flagged")}><span className={styles.pinIcon} role="img" aria-label="ピン"><PinIcon on /></span>ピン止め</button>
           <div className={styles.group}>自分</div>{boxes.filter((box) => box.kind === "personal").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.personalDot} />{box.label}</button>)}
           <div className={styles.group}>共有</div>{boxes.filter((box) => box.kind === "shared").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.sharedDot} />{box.label}</button>)}
         </div><footer className={styles.foot}>メールは Garden に保存せず<br />Microsoft から都度取得します</footer></aside>
         <section className={styles.column}><header className={styles.columnHeader}>メール一覧 <span>{filtered.length}件</span>{activeBox === "flagged" && filtered.length > 0 && <button className={styles.importAgain} disabled={importingFlags} onClick={() => void importLegacyFlags()}>旧フラグ取込</button>}</header>
-          {picked.size > 0 && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button onClick={() => void bulkWrite("pin", true)}>⚑ ピン</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
+          {picked.size > 0 && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button aria-label="ピン" onClick={() => void bulkWrite("pin", true)}><PinIcon on />ピン</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
           <div className={styles.scroll}>{loading && !messages.length && <div className={styles.notice}>読み込み中…</div>}{error && <div className={styles.error}>{error}</div>}
-          {activeBox === "flagged" && !loading && filtered.length === 0 && <div className={styles.importCard}><span>⚑</span><h2>自分のピンはまだありません</h2><p>Outlookで付けたフラグを、自分だけのピンとして取り込めます。元のフラグは変更しません。</p><button disabled={importingFlags} onClick={() => void importLegacyFlags()}>{importingFlags ? "取り込み中…" : "Outlookのフラグから取り込む"}</button>{importResult && <small>{importResult}</small>}</div>}
+          {activeBox === "flagged" && !loading && filtered.length === 0 && <div className={styles.importCard}><span className={styles.pinIcon} role="img" aria-label="ピン"><PinIcon on /></span><h2>自分のピンはまだありません</h2><p>Outlookで付けたフラグを、自分だけのピンとして取り込めます。元のフラグは変更しません。</p><button disabled={importingFlags} onClick={() => void importLegacyFlags()}>{importingFlags ? "取り込み中…" : "Outlookのフラグから取り込む"}</button>{importResult && <small>{importResult}</small>}</div>}
           {activeBox === "flagged" && filtered.length > 0 && importResult && <div className={styles.importResult}>{importResult}</div>}
           {datedMessages.map(({ message, label, showDay }) => { const status = statusCategory(message.categories); const confirmedBy = reviewerNames(message.categories, reviewers); const initials = reviewerInitials(message.categories, reviewers); const key = keyOf(message); const unread = ownName ? isMessageUnread(message, ownName) : !message.isRead; return <Fragment key={key}>{showDay && <div className={styles.daySeparator}>{label}</div>}<div role="button" tabIndex={0} className={`${styles.mail} ${selected && keyOf(selected) === key ? styles.selectedMail : ""} ${unread ? styles.unread : ""} ${picked.has(key) ? styles.picked : ""}`} onClick={(event) => event.ctrlKey || event.metaKey || event.shiftKey ? togglePicked(message, event) : void openMessage(message)} onKeyDown={(event) => { if (event.key === "Enter") void openMessage(message); }}>
-            <span className={styles.row}><button className={`${styles.checkbox} ${picked.has(key) ? styles.checked : ""}`} onClick={(event) => togglePicked(message, event)} aria-label="選択" /><span className={styles.from}>{message.fromName}</span><span className={styles.badge}>{abbreviateBox(message.box.address)}</span><time>{formatMailListDate(message.receivedDateTime)}</time><button disabled={!ownName || pendingWrites.has(key)} className={`${styles.inlineFlag} ${ownName && hasOwnPin(message.categories, ownName) ? styles.flag : ""}`} onClick={(event) => { event.stopPropagation(); void writeOne(message, "pin", !hasOwnPin(message.categories, ownName)); }}>⚑</button></span>
-            <span className={styles.row}><span className={styles.subject}>{message.hasAttachments && "⌕ "}{message.subject}</span>{status && <span className={`${styles.status} ${styles[`status${status}`]}`}>{status}</span>}</span><span className={styles.row}><span className={styles.preview}>{message.bodyPreview}</span><span className={styles.reviewers}>{confirmedBy.map((name, index) => <i key={name} className={styles[`reviewerTone${reviewerTone(name, reviewers)}`]} title={name}>{initials[index]}</i>)}</span></span>
-          </div></Fragment>; })}<div ref={sentinel} className={styles.sentinel}>{loadingMore ? "続きを読み込み中…" : ""}</div></div>
+            <span className={styles.row}><button className={`${styles.checkbox} ${picked.has(key) ? styles.checked : ""}`} onClick={(event) => togglePicked(message, event)} aria-label="選択" /><span className={styles.from}>{message.fromName}</span><span className={styles.badge}>{abbreviateBox(message.box.address)}</span><time>{formatMailListDate(message.receivedDateTime)}</time><button aria-label="ピン" disabled={!ownName || pendingWrites.has(key)} className={`${styles.inlineFlag} ${ownName && hasOwnPin(message.categories, ownName) ? styles.flag : ""}`} onClick={(event) => { event.stopPropagation(); void writeOne(message, "pin", !hasOwnPin(message.categories, ownName)); }}><PinIcon on={Boolean(ownName && hasOwnPin(message.categories, ownName))} /></button></span>
+            <span className={styles.row}><span className={styles.subject}>{message.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{message.subject}</span>{status && <span className={`${styles.status} ${styles[`status${status}`]}`}>{status}</span>}</span><span className={styles.row}><span className={styles.preview}>{message.bodyPreview}</span><span className={styles.reviewers}>{confirmedBy.map((name, index) => <i key={name} className={styles[`reviewerTone${reviewerTone(name, reviewers)}`]} title={name}>{initials[index]}</i>)}</span></span>
+          </div></Fragment>; })}<div ref={sentinel} className={styles.pageTrigger} aria-hidden="true" /></div>
         </section>
-        <article className={styles.column}>{!selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <><header className={styles.readerHeader}><div className={styles.readerTitle}><h2>{selected.hasAttachments && "⌕ "}{selected.subject}</h2><span className={styles.badge}>{abbreviateBox(selected.box.address)}</span></div><dl><div><dt>差出人</dt><dd>{selected.fromName} &lt;{selected.fromAddress}&gt;</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(selected.receivedDateTime)}</dd></div></dl></header><div className={styles.readerBody}><p className={styles.previewLead}>{selected.bodyPreview || "本文を読み込んでいます…"}</p><div className={styles.skeletonLine} /><div className={`${styles.skeletonLine} ${styles.skeletonShort}`} /></div></> : <><header className={styles.readerHeader}>
-          <div className={styles.readerTitle}><h2>{detail.hasAttachments && "⌕ "}{detail.subject}</h2><button disabled={!ownName || pendingWrites.has(keyOf(detail))} className={`${styles.inlineFlag} ${ownName && hasOwnPin(detail.categories, ownName) ? styles.flag : ""}`} onClick={() => void writeOne(detail, "pin", !hasOwnPin(detail.categories, ownName))}>⚑</button><span className={styles.badge}>{abbreviateBox(detail.box.address)}</span></div>
+        <article className={styles.column}>{!selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <><header className={styles.readerHeader}><div className={styles.readerTitle}><h2>{selected.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{selected.subject}</h2><span className={styles.badge}>{abbreviateBox(selected.box.address)}</span></div><dl><div><dt>差出人</dt><dd>{selected.fromName} &lt;{selected.fromAddress}&gt;</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(selected.receivedDateTime)}</dd></div></dl></header><div className={styles.readerBody}><p className={styles.previewLead}>{selected.bodyPreview || "本文を読み込んでいます…"}</p><div className={styles.skeletonLine} /><div className={`${styles.skeletonLine} ${styles.skeletonShort}`} /></div></> : <><header className={styles.readerHeader}>
+          <div className={styles.readerTitle}><h2>{detail.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{detail.subject}</h2><button aria-label="ピン" disabled={!ownName || pendingWrites.has(keyOf(detail))} className={`${styles.inlineFlag} ${ownName && hasOwnPin(detail.categories, ownName) ? styles.flag : ""}`} onClick={() => void writeOne(detail, "pin", !hasOwnPin(detail.categories, ownName))}><PinIcon on={Boolean(ownName && hasOwnPin(detail.categories, ownName))} /></button><span className={styles.badge}>{abbreviateBox(detail.box.address)}</span></div>
           <dl><div><dt>差出人</dt><dd>{detail.fromName} &lt;{detail.fromAddress}&gt;</dd></div><div><dt>宛先</dt><dd>{detail.to.join(", ")}</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(detail.receivedDateTime)}</dd></div></dl>
           <div className={styles.categoryLine}><span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} disabled={pendingWrites.has(keyOf(detail))} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles[`reviewerTone${reviewerTone(name, reviewers)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName || pendingWrites.has(keyOf(detail))} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{reviewerInitials([name], [name])[0]}</button>)}</span></div>
-        </header><div className={styles.readerBody}>{detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}{!!detail.attachments.length && <section className={styles.attachments}><h3>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon}><FileIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a><button disabled>Bud の未処理トレイへ</button></div>; })}</section>}</div></>}
+        </header><div className={styles.readerBody}>{detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}{!!detail.attachments.length && <section className={styles.attachments}><h3><span className={styles.paperclip} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a><button disabled>Bud の未処理トレイへ</button></div>; })}</section>}</div></>}
         </article>
       </div>}
       {viewingAttachment && <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingAttachment(null); }}><section className={styles.attachmentModal} role="dialog" aria-modal="true" aria-label={`${viewingAttachment.name}のプレビュー`}><header><h2>{viewingAttachment.name}</h2><a href={attachmentUrl(viewingAttachment)} aria-label="ダウンロード" title="ダウンロード"><DownloadIcon /></a><button onClick={() => setViewingAttachment(null)} aria-label="閉じる">×</button></header><div className={styles.viewer}>{viewingAttachment.contentType?.split(";", 1)[0].trim().toLowerCase().startsWith("image/") || (!viewingAttachment.contentType && /\.(png|jpe?g|gif|webp)$/i.test(viewingAttachment.name)) ? <img src={viewingUrl} alt={viewingAttachment.name} /> : <iframe src={viewingUrl} title={viewingAttachment.name} />}</div></section></div>}
