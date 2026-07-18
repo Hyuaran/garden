@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages/messages";
-import { assertNoticeKind, limitNoticePages, noticeDraftText, noticeFallbackText } from "@/app/rill/mail/_lib/intake-notice";
+import { assertNoticeKind, limitNoticePages } from "@/app/rill/mail/_lib/intake-notice";
 import { errorResponse, requireGardenUser, RillMailHttpError } from "@/app/rill/mail/_lib/server-auth";
 
 export const runtime = "nodejs";
@@ -22,8 +22,6 @@ export async function POST(request: Request) {
     if (!data) throw new RillMailHttpError(404, "Intake item not found");
     try { assertNoticeKind(data.kind); }
     catch { throw new RillMailHttpError(400, "Only 周知 intake is supported"); }
-    const sender = data.mail_from_name || data.mail_from_address.split("@")[0] || "不明";
-    const fallback = noticeFallbackText(sender, pages.length);
     try {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
@@ -38,10 +36,10 @@ export async function POST(request: Request) {
         messages: [{ role: "user", content: [...images, { type: "text", text: "FAX画像を読み、LINE周知用に内容の要点を日本語2〜4行でまとめてください。読み取れない箇所は断定せず、推測で補わないでください。固定の挨拶や送信元・枚数は不要です。" }] }],
       });
       const summary = message.content.find((block) => block.type === "text")?.text ?? "";
-      return Response.json({ text: noticeDraftText(sender, pages.length, summary), truncated });
+      return Response.json({ memo: summary.trim() || null, truncated });
     } catch (error) {
       console.error("Rill Mail notice draft generation failed", error instanceof Error ? error.message : error);
-      return Response.json({ text: fallback, truncated, fallback: true });
+      return Response.json({ memo: null, truncated, fallback: true });
     }
   } catch (error) { return errorResponse(error); }
 }

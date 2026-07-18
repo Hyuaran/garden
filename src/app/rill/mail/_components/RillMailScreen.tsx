@@ -13,7 +13,8 @@ import { scheduleDelayedSend, validateComposeInput, type ComposeDraft, type Comp
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import { isNearListEnd, NORMAL_AUTO_PAGE_LIMIT, PRIORITY_PAGES_AHEAD, SerialSearchScheduler, type SearchMessagesResponse } from "../_lib/search";
 import { applyPinOverrides, applyRecentCategoryWrites, loadPinOverrides, RECENT_WRITE_TTL_MS, reconcilePinnedMessage, removePinOverride, savePinOverride, shouldAddBulkPin, type PinOverride, type PinOverrideStorage, type PinnedMessagesResponse, type RecentCategoryWrite } from "../_lib/pinned";
-import { INTAKE_KINDS, intakeItemFromPost, intakeMarks, type IntakeItem, type IntakeKind } from "../_lib/intake";
+import { INTAKE_KINDS, intakeButtonLabel, intakeItemFromPost, intakeMarks, type IntakeItem, type IntakeKind } from "../_lib/intake";
+import { noticeProgressLabel, noticeTemplate, noticeTemplateFields, reduceNoticeProgress, type NoticeProgress } from "../_lib/intake-notice";
 import { linkifyBodyText } from "../_lib/linkify";
 import { attachmentToNoticePages, downloadDataUrl, type NoticeClientPage } from "../_lib/notice-pdf";
 import styles from "./RillMailScreen.module.css";
@@ -31,7 +32,7 @@ const INTAKE_DESCRIPTIONS: Record<IntakeKind, string> = {
   条件: "条件一覧をRootへ",
   周知: "FAXをLINE周知の準備へ",
 };
-type NoticeWorkspace = { intakeId: string; pages: NoticeClientPage[]; text: string; truncated: boolean; saved: boolean };
+type NoticeWorkspace = { intakeId: string; pages: NoticeClientPage[]; text: string; salesPerson: string; projectName: string; contentMemo: string; truncated: boolean; saved: boolean };
 
 function DownloadIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
@@ -95,7 +96,7 @@ export function RillMailScreen() {
   const [intakeSubmitting, setIntakeSubmitting] = useState(false);
   const [intakeError, setIntakeError] = useState("");
   const [noticeWorkspace, setNoticeWorkspace] = useState<NoticeWorkspace | null>(null);
-  const [noticeProgress, setNoticeProgress] = useState("");
+  const [noticeProgress, setNoticeProgress] = useState<NoticeProgress>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [translationAvailable, setTranslationAvailable] = useState(false);
   const [translatingKey, setTranslatingKey] = useState<string | null>(null);
@@ -124,6 +125,7 @@ export function RillMailScreen() {
   const pinOverrideStorage = useRef<PinOverrideStorage | null>(null);
   const gardenUserId = useRef("");
   const intakeCache = useRef(new Map<string, IntakeItem[]>());
+  const noticeGeneration = useRef(0);
   const ownNameRef = useRef(ownName);
   ownNameRef.current = ownName;
 
@@ -556,7 +558,8 @@ export function RillMailScreen() {
   };
   const runIntake = async (kind: IntakeKind) => {
     if (!detail || !intakeTarget || intakeSubmitting) return;
-    setIntakeSubmitting(true); setIntakeError("");
+    const generation = ++noticeGeneration.current;
+    setIntakeSubmitting(true); setIntakeError(""); setNoticeProgress({ stage: "intake" });
     try {
       const response = await fetch("/api/rill/mail/intake", {
         method: "POST",
@@ -566,51 +569,69 @@ export function RillMailScreen() {
       const payload = await response.json() as { item?: IntakeItem; error?: string };
       const item = intakeItemFromPost(response.status, payload.item);
       if (!item) throw new Error(payload.error ?? "Gardenへ取り込めませんでした");
+      if (generation !== noticeGeneration.current) return;
       const next = [item, ...intakeItems.filter((current) => current.attachment_id !== item.attachment_id)];
       intakeCache.current.set(detailCacheKey(detail), next);
       setIntakeItems(next);
-      if (kind === "周知") await prepareNotice(item.id, intakeTarget);
+      if (kind === "周知") await prepareNotice(item.id, intakeTarget, generation);
       else setIntakeTarget(null);
     } catch (cause) {
-      setIntakeError(cause instanceof Error ? cause.message : "Gardenへ取り込めませんでした");
-    } finally { setIntakeSubmitting(false); }
+      if (generation === noticeGeneration.current) setIntakeError(cause instanceof Error ? cause.message : "Gardenへ取り込めませんでした");
+    } finally { if (generation === noticeGeneration.current) { setIntakeSubmitting(false); setNoticeProgress(null); } }
   };
-  const prepareNotice = async (intakeId: string, attachment: RillMailAttachment) => {
-    setNoticeProgress("PDFを画像に変換中…");
+  const prepareNotice = async (intakeId: string, attachment: RillMailAttachment, activeGeneration?: number) => {
+    const generation = activeGeneration ?? ++noticeGeneration.current;
+    setNoticeProgress({ stage: "converting", done: 0, total: 1 });
     const source = await fetch(attachmentUrl(attachment));
     if (!source.ok) throw new Error("添付ファイルを取得できませんでした");
-    const converted = await attachmentToNoticePages(await source.blob());
-    setNoticeProgress("周知文を作成中…");
-    const draft = await readJson<{ text: string; truncated: boolean }>(await fetch("/api/rill/mail/intake/notice-draft", {
+    const converted = await attachmentToNoticePages(await source.blob(), (done, total) => {
+      if (generation === noticeGeneration.current) setNoticeProgress({ stage: "converting", done, total });
+    });
+    if (generation !== noticeGeneration.current) return;
+    setNoticeProgress({ stage: "reading" });
+    const draft = await readJson<{ memo: string | null; truncated: boolean }>(await fetch("/api/rill/mail/intake/notice-draft", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ intakeId, pages: converted.pages.map((page) => ({ base64: page.base64 })) }),
     }));
-    setNoticeWorkspace({ intakeId, pages: converted.pages, text: draft.text, truncated: converted.truncated || draft.truncated, saved: false });
-    setNoticeProgress("");
+    if (generation !== noticeGeneration.current) return;
+    setNoticeWorkspace({ intakeId, pages: converted.pages, text: noticeTemplate(converted.pages.length), salesPerson: "", projectName: "", contentMemo: draft.memo ?? "", truncated: converted.truncated || draft.truncated, saved: false });
+    setNoticeProgress(null);
   };
   const openSavedNotice = async (attachment: RillMailAttachment, item: IntakeItem) => {
-    setIntakeTarget(attachment); setIntakeError(""); setNoticeWorkspace(null); setNoticeProgress("保存済みの周知を読み込み中…");
+    const generation = ++noticeGeneration.current;
+    setIntakeTarget(attachment); setIntakeError(""); setNoticeWorkspace(null); setNoticeProgress({ stage: "intake" });
     try {
       const saved = await readJson<{ noticeText: string; images: Array<{ url: string }> }>(await fetch(`/api/rill/mail/intake/notice?id=${encodeURIComponent(item.id)}`, { cache: "no-store" }));
-      if (!saved.images.length) { await prepareNotice(item.id, attachment); return; }
+      if (generation !== noticeGeneration.current) return;
+      if (!saved.images.length) { await prepareNotice(item.id, attachment, generation); return; }
       const pages = await Promise.all(saved.images.map(async ({ url }) => (await attachmentToNoticePages(await (await fetch(url)).blob())).pages[0]));
-      setNoticeWorkspace({ intakeId: item.id, pages, text: saved.noticeText, truncated: false, saved: true });
-    } catch (cause) { setIntakeError(cause instanceof Error ? cause.message : "保存済みの周知を読み込めませんでした"); }
-    finally { setNoticeProgress(""); }
+      if (generation !== noticeGeneration.current) return;
+      const fields = noticeTemplateFields(saved.noticeText);
+      setNoticeWorkspace({ intakeId: item.id, pages, text: saved.noticeText || noticeTemplate(pages.length), ...fields, contentMemo: "", truncated: false, saved: item.notice_saved });
+    } catch (cause) { if (generation === noticeGeneration.current) setIntakeError(cause instanceof Error ? cause.message : "保存済みの周知を読み込めませんでした"); }
+    finally { if (generation === noticeGeneration.current) setNoticeProgress(null); }
   };
   const saveNotice = async () => {
     if (!noticeWorkspace || intakeSubmitting) return;
-    setIntakeSubmitting(true); setIntakeError("");
+    setIntakeSubmitting(true); setIntakeError(""); setNoticeProgress({ stage: "saving" });
     try {
       await readJson(await fetch("/api/rill/mail/intake/notice", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ intakeId: noticeWorkspace.intakeId, noticeText: noticeWorkspace.text, pages: noticeWorkspace.pages.map((page) => ({ base64: page.base64 })) }),
       }));
+      const next = intakeItems.map((item) => item.id === noticeWorkspace.intakeId ? { ...item, notice_saved: true } : item);
+      if (detail) intakeCache.current.set(detailCacheKey(detail), next);
+      setIntakeItems(next);
       closeIntake();
     } catch (cause) { setIntakeError(cause instanceof Error ? cause.message : "周知を保存できませんでした"); }
-    finally { setIntakeSubmitting(false); }
+    finally { setIntakeSubmitting(false); setNoticeProgress(null); }
   };
-  const closeIntake = () => { setIntakeTarget(null); setNoticeWorkspace(null); setNoticeProgress(""); setIntakeError(""); };
+  const updateNoticeField = (field: "salesPerson" | "projectName", value: string) => setNoticeWorkspace((current) => current ? {
+    ...current,
+    [field]: value,
+    text: noticeTemplate(current.pages.length, field === "salesPerson" ? value : current.salesPerson, field === "projectName" ? value : current.projectName),
+  } : current);
+  const closeIntake = () => { noticeGeneration.current += 1; setIntakeSubmitting(false); setIntakeTarget(null); setNoticeWorkspace(null); setNoticeProgress((current) => reduceNoticeProgress(current, { type: "cancel" })); setIntakeError(""); };
   const currentPinned = Boolean(selected && ownName && hasOwnPin(selected.categories, ownName));
   const selectedUnread = Boolean(selected && ownName && isMessageUnread(selected, ownName));
   const attachmentUrl = (item: RillMailDetail["attachments"][number]) => `/api/rill/mail/messages/${encodeURIComponent(detail!.id)}/attachments/${encodeURIComponent(item.id)}?box=${encodeURIComponent(detail!.box.id)}`;
@@ -664,13 +685,13 @@ export function RillMailScreen() {
           <div className={styles.readerTitle}><h2>{detail.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{detail.subject}</h2><button aria-label="ピン" disabled={!ownName || pendingWrites.has(keyOf(detail))} className={`${styles.inlineFlag} ${ownName && hasOwnPin(detail.categories, ownName) ? styles.flag : ""}`} onClick={() => void writeOne(detail, "pin", !hasOwnPin(detail.categories, ownName))}><PinIcon on={Boolean(ownName && hasOwnPin(detail.categories, ownName))} /></button><span className={styles.badge}>{abbreviateBox(detail.box.address)}</span></div>
           <dl><div><dt>差出人</dt><dd>{detail.fromName} &lt;{detail.fromAddress}&gt;</dd></div><div><dt>宛先</dt><dd>{detail.to.join(", ")}</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(detail.receivedDateTime)}</dd></div></dl>
           <div className={styles.categoryLine}>{translationView.eligible && <button className={styles.translateButton} disabled={translatingKey === translationView.key} onClick={() => void translateDetail()}>{translatingKey === translationView.key ? "翻訳中…" : showTranslation ? "原文を表示" : translationView.translation ? "日本語訳を表示" : "日本語に翻訳"}</button>}<span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} disabled={pendingWrites.has(keyOf(detail))} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles[`reviewerTone${reviewerTone(name, reviewers)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName || pendingWrites.has(keyOf(detail))} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{reviewerInitials([name], [name])[0]}</button>)}</span></div>{translationError && <div className={styles.translationError}>{translationError}</div>}
-        </header><div className={styles.readerBody}>{!!detail.attachments.length && <section className={styles.attachments}><h3><span className={styles.paperclip} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); const intakeItem = intakeItems.find((entry) => entry.attachment_id === item.id); const intakeMark = intakeByAttachment.get(item.id); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a>{intakeMark && intakeItem?.kind === "周知" ? <button className={styles.intakeMark} title={intakeMark.title} onClick={() => void openSavedNotice(item, intakeItem)}>{intakeMark.label}</button> : intakeMark && <span className={styles.intakeMark} title={intakeMark.title}>{intakeMark.label}</span>}<button disabled={Boolean(intakeMark)} onClick={() => { setIntakeTarget(item); setNoticeWorkspace(null); setIntakeError(""); }}>{intakeMark ? "取込済" : "Garden取込実行"}</button></div>; })}</section>}{showTranslation && translationView.translation ? <div className={`${styles.textBody} ${styles.translationBody}`}><LinkifiedText>{translationView.translation}</LinkifiedText></div> : detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}><LinkifiedText>{detail.body.content}</LinkifiedText></div>}</div></>}
+        </header><div className={styles.readerBody}>{!!detail.attachments.length && <section className={styles.attachments}><h3><span className={styles.paperclip} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); const intakeItem = intakeItems.find((entry) => entry.attachment_id === item.id); const intakeMark = intakeByAttachment.get(item.id); const buttonLabel = intakeButtonLabel(intakeItem); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a>{intakeMark && intakeItem?.kind === "周知" ? <button className={`${styles.intakeMark} ${!intakeMark.complete ? styles.intakeMarkIncomplete : ""}`} title={intakeMark.title} onClick={() => void openSavedNotice(item, intakeItem)}>{intakeMark.label}</button> : intakeMark && <span className={styles.intakeMark} title={intakeMark.title}>{intakeMark.label}</span>}<button disabled={buttonLabel === "取込済"} onClick={() => { if (intakeItem?.kind === "周知") void openSavedNotice(item, intakeItem); else { setIntakeTarget(item); setNoticeWorkspace(null); setIntakeError(""); } }}>{buttonLabel}</button></div>; })}</section>}{showTranslation && translationView.translation ? <div className={`${styles.textBody} ${styles.translationBody}`}><LinkifiedText>{translationView.translation}</LinkifiedText></div> : detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}><LinkifiedText>{detail.body.content}</LinkifiedText></div>}</div></>}
         <div className={styles.composeDock}>{[...drafts.values()].filter((draft) => draft.id !== activeDraftId).map((draft) => <div className={styles.composeDockItem} key={draft.id}><button onClick={() => { setActiveDraftId(draft.id); setComposeError(""); }}><span>未送信：{draft.subject || "件名なし"}</span><i>▲</i></button><button aria-label="破棄" onClick={() => discardDraft(draft.id)}>×</button></div>)}</div></article>
       </div>}
       {sendToast && <div className={`${styles.sendToast} ${sendToast.tone === "error" ? styles.sendToastError : ""}`}>{sendToast.text}{sendToast.tone === "pending" && <button onClick={() => delayedSend.current?.cancel()}>取り消す（{sendToast.seconds}秒）</button>}</div>}
       {/* GardenShell 側のスタッキング文脈にモーダルが閉じ込められ、ヘッダー(z-index:100)の下に潜るため body 直下へポータル描画する */}
       {viewingAttachment && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingAttachment(null); }}><section className={styles.attachmentModal} role="dialog" aria-modal="true" aria-label={`${viewingAttachment.name}のプレビュー`}><header><h2>{viewingAttachment.name}</h2><a href={attachmentUrl(viewingAttachment)} aria-label="ダウンロード" title="ダウンロード"><DownloadIcon /></a><button onClick={() => setViewingAttachment(null)} aria-label="閉じる">×</button></header><div className={styles.viewer}>{viewingAttachment.contentType?.split(";", 1)[0].trim().toLowerCase().startsWith("image/") || (!viewingAttachment.contentType && /\.(png|jpe?g|gif|webp)$/i.test(viewingAttachment.name)) ? <img src={viewingUrl} alt={viewingAttachment.name} /> : <iframe src={viewingUrl} title={viewingAttachment.name} />}</div></section></div>, document.body)}
-      {intakeTarget && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !intakeSubmitting) closeIntake(); }}><section className={`${styles.intakeModal} ${noticeWorkspace ? styles.noticeModal : ""}`} role="dialog" aria-modal="true" aria-label="Garden取込分類"><header><div><h2>{noticeWorkspace ? "周知の準備" : "Garden取込実行"}</h2><p>{intakeTarget.name}</p></div><button disabled={intakeSubmitting} onClick={closeIntake} aria-label="閉じる">×</button></header>{!noticeWorkspace && !noticeProgress && <div className={styles.intakeChoices}>{INTAKE_KINDS.map((kind) => <button key={kind} disabled={intakeSubmitting} onClick={() => void runIntake(kind)}><b>{kind}</b><span>{INTAKE_DESCRIPTIONS[kind]}</span></button>)}</div>}{(intakeSubmitting || noticeProgress) && <div className={styles.intakeProgress}>{noticeProgress || "取り込み中…"}</div>}{noticeWorkspace && <div className={styles.noticeEditor}>{noticeWorkspace.truncated && <p className={styles.noticeWarning}>20頁を超えたため、先頭20頁まで処理しました。</p>}<div className={styles.noticePages}>{noticeWorkspace.pages.map((page, index) => <figure key={index}><img src={page.url} alt={`周知画像 ${index + 1}ページ`} /><figcaption>{index + 1}ページ <button onClick={() => downloadDataUrl(page.url, `周知_p${index + 1}.png`)}>ダウンロード</button></figcaption></figure>)}</div><label>周知文<textarea value={noticeWorkspace.text} onChange={(event) => setNoticeWorkspace({ ...noticeWorkspace, text: event.target.value })} /></label><div className={styles.noticeActions}><button onClick={() => void navigator.clipboard.writeText(noticeWorkspace.text)}>コピー</button><button disabled={intakeSubmitting || !noticeWorkspace.text.trim()} onClick={() => void saveNotice()}>{noticeWorkspace.saved ? "変更を保存して閉じる" : "保存して閉じる"}</button></div></div>}{intakeError && <div className={styles.intakeError}>{intakeError}</div>}</section></div>, document.body)}
+      {intakeTarget && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) closeIntake(); }}><section className={`${styles.intakeModal} ${noticeWorkspace ? styles.noticeModal : ""}`} role="dialog" aria-modal="true" aria-label="Garden取込分類"><header><div><h2>{noticeWorkspace ? "周知の準備" : "Garden取込実行"}</h2><p>{intakeTarget.name}</p></div><button onClick={closeIntake} aria-label="閉じる">×</button></header>{!noticeWorkspace && !noticeProgress && <div className={styles.intakeChoices}>{INTAKE_KINDS.map((kind) => <button key={kind} disabled={intakeSubmitting} onClick={() => void runIntake(kind)}><b>{kind}</b><span>{INTAKE_DESCRIPTIONS[kind]}</span></button>)}</div>}{noticeProgress && <div className={styles.noticeProcessing} role="status" aria-live="polite"><span className={styles.noticeSpinner} /><b>{noticeProgressLabel(noticeProgress)}</b><small>このまま少しお待ちください</small></div>}{noticeWorkspace && !noticeProgress && <div className={styles.noticeEditor}>{noticeWorkspace.truncated && <p className={styles.noticeWarning}>20頁を超えたため、先頭20頁まで処理しました。</p>}<div className={styles.noticePages}>{noticeWorkspace.pages.map((page, index) => <figure key={index}><img src={page.url} alt={`周知画像 ${index + 1}ページ`} /><figcaption>{index + 1}ページ <button onClick={() => downloadDataUrl(page.url, `周知_p${index + 1}.png`)}>ダウンロード</button></figcaption></figure>)}</div><div className={styles.noticeFields}><label>営業担当<input value={noticeWorkspace.salesPerson} onChange={(event) => updateNoticeField("salesPerson", event.target.value)} /></label><label>案件名<input value={noticeWorkspace.projectName} onChange={(event) => updateNoticeField("projectName", event.target.value)} /></label></div>{noticeWorkspace.contentMemo && <aside className={styles.noticeMemo}><b>内容メモ（参考）</b><p>{noticeWorkspace.contentMemo}</p><small>コピー・LINE送信には含まれません</small></aside>}<label>周知文<textarea value={noticeWorkspace.text} onChange={(event) => setNoticeWorkspace({ ...noticeWorkspace, text: event.target.value })} /></label><div className={styles.noticeActions}><button onClick={() => void navigator.clipboard.writeText(noticeWorkspace.text)}>コピー</button><button disabled={intakeSubmitting || !noticeWorkspace.text.trim()} onClick={() => void saveNotice()}>{noticeWorkspace.saved ? "変更を保存して閉じる" : "保存して閉じる"}</button></div></div>}{intakeError && <div className={styles.intakeError}>{intakeError}</div>}</section></div>, document.body)}
     </section>
   </GardenShell>;
 }

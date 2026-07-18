@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { assertNoticeKind, limitNoticePages, noticeDraftText, noticeDriveNames, noticeFallbackText, noticeStoragePath } from "../intake-notice";
+import { assertNoticeKind, limitNoticePages, noticeDriveNames, noticeProgressLabel, noticeStoragePath, noticeTemplate, noticeTemplateFields, reduceNoticeProgress, type NoticeProgress } from "../intake-notice";
 
 describe("Rill Mail intake notice helpers", () => {
-  it("combines the fixed template and summary, with a useful fallback", () => {
-    expect(noticeDraftText("eFax", 3, "・期限は7月末です。\n・担当者へ提出してください。")).toContain("FAXが届きました。\n送信元：eFax\n3枚");
-    expect(noticeDraftText("eFax", 3, "")).toBe(noticeFallbackText("eFax", 3));
+  it("builds the editable template with manual fields or empty labels", () => {
+    expect(noticeTemplate(3, "東海林", "Garden案件")).toBe("FAX3枚到着のため、ご確認ください。\n営業担当：東海林\n案件名：Garden案件");
+    expect(noticeTemplate(1)).toBe("FAX1枚到着のため、ご確認ください。\n営業担当：\n案件名：");
+    expect(noticeTemplateFields(noticeTemplate(3, "東海林", "Garden案件"))).toEqual({ salesPerson: "東海林", projectName: "Garden案件" });
+  });
+
+  it("transitions conversion progress to reading and clears on complete or cancel", () => {
+    let progress: NoticeProgress = null;
+    progress = reduceNoticeProgress(progress, { type: "converting", done: 2, total: 3 });
+    expect(progress && noticeProgressLabel(progress)).toBe("画像に変換中… 2/3枚");
+    progress = reduceNoticeProgress(progress, { type: "reading" });
+    expect(progress && noticeProgressLabel(progress)).toBe("内容を読み取り中…");
+    expect(reduceNoticeProgress(progress, { type: "complete" })).toBeNull();
+    expect(reduceNoticeProgress({ stage: "intake" }, { type: "cancel" })).toBeNull();
   });
 
   it("caps valid PNG input at 20 pages and reports truncation", () => {

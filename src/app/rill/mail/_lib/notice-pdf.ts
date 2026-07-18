@@ -1,6 +1,6 @@
 export type NoticeClientPage = { base64: string; url: string };
 
-export async function attachmentToNoticePages(blob: Blob): Promise<{ pages: NoticeClientPage[]; truncated: boolean }> {
+export async function attachmentToNoticePages(blob: Blob, onProgress?: (done: number, total: number) => void): Promise<{ pages: NoticeClientPage[]; truncated: boolean }> {
   if (blob.type !== "application/pdf") {
     if (!blob.type.startsWith("image/")) throw new Error("周知に使えるのはPDFまたは画像です");
     const bitmap = await createImageBitmap(blob);
@@ -13,6 +13,7 @@ export async function attachmentToNoticePages(blob: Blob): Promise<{ pages: Noti
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
     const base64 = canvas.toDataURL("image/png");
+    onProgress?.(1, 1);
     return { pages: [{ base64, url: base64 }], truncated: false };
   }
   // pdfjs-dist を webpack が bundle すると "Object.defineProperty called on non-object"
@@ -24,6 +25,7 @@ export async function attachmentToNoticePages(blob: Blob): Promise<{ pages: Noti
   const pdf = await pdfjs.getDocument({ data: await blob.arrayBuffer() }).promise;
   const count = Math.min(pdf.numPages, 20);
   const pages: NoticeClientPage[] = [];
+  onProgress?.(0, count);
   for (let pageNumber = 1; pageNumber <= count; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
     const initial = page.getViewport({ scale: 1 });
@@ -35,6 +37,7 @@ export async function attachmentToNoticePages(blob: Blob): Promise<{ pages: Noti
     await page.render({ canvas, canvasContext: context, viewport }).promise;
     const base64 = canvas.toDataURL("image/png");
     pages.push({ base64, url: base64 });
+    onProgress?.(pageNumber, count);
     page.cleanup();
   }
   await pdf.destroy();
