@@ -6,7 +6,7 @@ import { RillMailHttpError } from "./server-auth";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "./types";
 import { isMailState, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, toggleOwnConfirmation, toggleOwnPin, type LegacyFlagMessage, type MailState, type MailWriteOperation } from "./write-ops";
 import type { ComposeSendInput } from "./compose";
-import { escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes } from "./search";
+import { anySearchTruncated, escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes, type SearchMessagesResponse } from "./search";
 import { mergePinnedMessages, PINNED_BOX_LIMIT, PINNED_PAGE_SIZE, pinnedCategoryFilter, pinnedPagingDecision, type PinnedMessagesResponse } from "./pinned";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
@@ -208,7 +208,7 @@ export async function listMessages(supabase: SupabaseClient, user: User, boxId: 
   return { messages: mergeMessages(groups.map((group) => group.messages)), cursor: encodeCursor(next), boxIds: selected.map((box) => box.id) };
 }
 
-export async function searchMessages(supabase: SupabaseClient, user: User, queryValue: string | null, boxId: string): Promise<Pick<RillMessagesResponse, "messages">> {
+export async function searchMessages(supabase: SupabaseClient, user: User, queryValue: string | null, boxId: string): Promise<SearchMessagesResponse> {
   let query: string;
   try { query = normalizeSearchQuery(queryValue); }
   catch { throw new RillMailHttpError(400, "検索語を入力してください"); }
@@ -228,14 +228,14 @@ export async function searchMessages(supabase: SupabaseClient, user: User, query
     try {
       const response = await graphFetch(`${searchMessagePath(box)}?${params}`, token);
       const data = await response.json() as GraphList<GraphMessage>;
-      return (data.value ?? []).map((raw) => mapMessage(raw, box));
+      return { messages: (data.value ?? []).map((raw) => mapMessage(raw, box)), truncated: Boolean(data["@odata.nextLink"]) };
     } catch {
       // A shared mailbox may reject search independently; keep results from the
       // remaining visible mailboxes instead of failing the whole request.
-      return [];
+      return { messages: [] as RillMailMessage[], truncated: false };
     }
   }));
-  return { messages: mergeSearchResults(groups) };
+  return { messages: mergeSearchResults(groups.map((group) => group.messages)), truncated: anySearchTruncated(groups.map((group) => group.truncated)) };
 }
 
 export async function listPinnedMessages(supabase: SupabaseClient, user: User): Promise<PinnedMessagesResponse> {

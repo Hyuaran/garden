@@ -4,6 +4,82 @@ export const SEARCH_PAGE_SIZE = 50;
 export const PRIORITY_DISTANCE_PX = 2_000;
 export const PRIORITY_PAGES_AHEAD = 5;
 export const NORMAL_AUTO_PAGE_LIMIT = 10;
+export const AUTO_SEARCH_DELAY_MS = 600;
+
+export type SearchMessagesResponse = {
+  messages: RillMailMessage[];
+  truncated: boolean;
+};
+
+export function shouldApplySearchResult(resultGeneration: number, currentGeneration: number) {
+  return resultGeneration === currentGeneration;
+}
+
+export function anySearchTruncated(groups: boolean[]) {
+  return groups.some(Boolean);
+}
+
+export class SerialSearchScheduler<T> {
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private pending: { value: T; generation: number } | null = null;
+  private running = false;
+  private generation = 0;
+
+  constructor(
+    private readonly run: (value: T, generation: number) => Promise<void>,
+    private readonly busy: (value: boolean) => void = () => undefined,
+    private readonly delay = AUTO_SEARCH_DELAY_MS,
+  ) {}
+
+  schedule(value: T, immediate = false) {
+    this.generation += 1;
+    const task = { value, generation: this.generation };
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    if (immediate) {
+      this.pending = task;
+      void this.drain();
+    } else {
+      this.timer = setTimeout(() => {
+        this.timer = null;
+        this.pending = task;
+        void this.drain();
+      }, this.delay);
+    }
+    return task.generation;
+  }
+
+  clear() {
+    this.generation += 1;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.pending = null;
+    this.busy(false);
+  }
+
+  dispose() {
+    this.generation += 1;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.pending = null;
+  }
+
+  isCurrent(generation: number) { return shouldApplySearchResult(generation, this.generation); }
+
+  private async drain() {
+    if (this.running || !this.pending) return;
+    const task = this.pending;
+    this.pending = null;
+    this.running = true;
+    this.busy(true);
+    try { await this.run(task.value, task.generation); }
+    finally {
+      this.running = false;
+      if (this.pending) void this.drain();
+      else this.busy(false);
+    }
+  }
+}
 
 export function normalizeSearchQuery(value: string | null) {
   const query = value?.trim() ?? "";

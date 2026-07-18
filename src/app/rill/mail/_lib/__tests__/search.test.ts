@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { canPrefetchPage, escapeGraphSearchQuery, isNearListEnd, mergeSearchResults, normalizeSearchQuery, selectSearchBoxes } from "../search";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { anySearchTruncated, canPrefetchPage, escapeGraphSearchQuery, isNearListEnd, mergeSearchResults, normalizeSearchQuery, selectSearchBoxes, SerialSearchScheduler, shouldApplySearchResult } from "../search";
 import type { RillMailBox, RillMailMessage } from "../types";
 
 const boxes: RillMailBox[] = [
@@ -33,6 +33,51 @@ describe("Graph mail search helpers", () => {
       [message("same", boxes[0], "2026-01-01T00:00:00Z"), message("same", boxes[1], "2027-01-01T00:00:00Z")],
     ]);
     expect(result.map((item) => `${item.box.id}:${item.id}`)).toEqual(["team@example.com:same", "me:same", "team@example.com:old"]);
+  });
+
+  it("reports truncation when any mailbox has a next page", () => {
+    expect(anySearchTruncated([false, true, false])).toBe(true);
+    expect(anySearchTruncated([false, false])).toBe(false);
+  });
+
+  it("rejects a stale generation", () => {
+    expect(shouldApplySearchResult(2, 3)).toBe(false);
+    expect(shouldApplySearchResult(3, 3)).toBe(true);
+  });
+});
+
+describe("automatic full-period search", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("debounces for 600ms and lets Enter run immediately", async () => {
+    vi.useFakeTimers();
+    const run = vi.fn(async () => undefined);
+    const scheduler = new SerialSearchScheduler(run);
+    scheduler.schedule("auto");
+    await vi.advanceTimersByTimeAsync(599);
+    expect(run).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledWith("auto", 1);
+    scheduler.schedule("enter", true);
+    await vi.runAllTimersAsync();
+    expect(run).toHaveBeenLastCalledWith("enter", 2);
+  });
+
+  it("serializes in-flight work and keeps only the latest queued query", async () => {
+    vi.useFakeTimers();
+    let release!: () => void;
+    const first = new Promise<void>((resolve) => { release = resolve; });
+    const values: string[] = [];
+    const run = vi.fn(async (value: string) => { values.push(value); if (value === "a") await first; });
+    const scheduler = new SerialSearchScheduler(run);
+    scheduler.schedule("a", true);
+    scheduler.schedule("ab", true);
+    scheduler.schedule("abc", true);
+    expect(values).toEqual(["a"]);
+    release();
+    await vi.runAllTimersAsync();
+    expect(values).toEqual(["a", "abc"]);
+    expect(run).toHaveBeenCalledTimes(2);
   });
 });
 
