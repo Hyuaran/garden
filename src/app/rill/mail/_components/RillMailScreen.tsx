@@ -1,11 +1,12 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- authenticated Graph attachment URLs cannot use the Next image optimizer */
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import type { GardenShellPageMenuItem } from "@/app/_components/layout/GardenShell/garden-shell-config";
-import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, mergeMessagePages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../_lib/format";
+import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, isViewableAttachment, mergeMessagePages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../_lib/format";
 import { applyLocalMailMutation, filterOwnPinned, hasOwnPin, isMessageUnread, MAIL_STATES, selectionRange, type MailState, type MailWriteOperation } from "../_lib/write-ops";
-import type { RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
+import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import styles from "./RillMailScreen.module.css";
 
 const ICON = "/themes/garden-shell/images/icons_bloom/orb_rill.png";
@@ -15,6 +16,14 @@ const MENU: GardenShellPageMenuItem[] = [
 ];
 const FALLBACK_REVIEWERS = ["東海林美琴", "上田", "簡"];
 const keyOf = (message: Pick<RillMailMessage, "id" | "box">) => `${message.box.id}:${message.id}`;
+
+function DownloadIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
+}
+
+function FileIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v5h5" /></svg>;
+}
 
 async function readJson<T>(response: Response): Promise<T> {
   const data = await response.json() as T & { error?: string };
@@ -42,6 +51,7 @@ export function RillMailScreen() {
   const [autoRefreshFailed, setAutoRefreshFailed] = useState(false);
   const [importingFlags, setImportingFlags] = useState(false);
   const [importResult, setImportResult] = useState("");
+  const [viewingAttachment, setViewingAttachment] = useState<RillMailAttachment | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const requestGeneration = useRef(0);
@@ -90,6 +100,12 @@ export function RillMailScreen() {
     }, 60_000);
     return () => window.clearInterval(timer);
   }, [activeBox, connected, loadMessages]);
+  useEffect(() => {
+    if (!viewingAttachment) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setViewingAttachment(null); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [viewingAttachment]);
   useEffect(() => {
     const node = sentinel.current;
     if (!node || !cursor || loadingMore) return;
@@ -149,6 +165,7 @@ export function RillMailScreen() {
   };
 
   const openMessage = async (message: RillMailMessage) => {
+    setViewingAttachment(null);
     setSelected(message);
     if (!ownName || !isMessageUnread(message, ownName)) return;
     await writeOne(message, message.box.kind === "personal" ? "read" : "confirm", true);
@@ -225,10 +242,11 @@ export function RillMailScreen() {
     } finally { setImportingFlags(false); }
   };
 
-  const selectBox = (id: string) => { requestGeneration.current += 1; setActiveBox(id); setMessages([]); setSelected(null); setPicked(new Set()); setCursor(null); };
+  const selectBox = (id: string) => { requestGeneration.current += 1; setViewingAttachment(null); setActiveBox(id); setMessages([]); setSelected(null); setPicked(new Set()); setCursor(null); };
   const currentPinned = Boolean(selected && ownName && hasOwnPin(selected.categories, ownName));
   const selectedUnread = Boolean(selected && ownName && isMessageUnread(selected, ownName));
   const attachmentUrl = (item: RillMailDetail["attachments"][number]) => `/api/rill/mail/messages/${encodeURIComponent(detail!.id)}/attachments/${encodeURIComponent(item.id)}?box=${encodeURIComponent(detail!.box.id)}`;
+  const viewingUrl = viewingAttachment ? `${attachmentUrl(viewingAttachment)}&view=1` : "";
 
   return <GardenShell activeModule="rill" pageMenu={MENU} activityItems={[]} contentFullBleed>
     <section className={styles.surface} aria-label="Rill Mail">
@@ -263,9 +281,10 @@ export function RillMailScreen() {
           <div className={styles.readerTitle}><h2>{detail.hasAttachments && "⌕ "}{detail.subject}</h2><button disabled={!ownName || pendingWrites.has(keyOf(detail))} className={`${styles.inlineFlag} ${ownName && hasOwnPin(detail.categories, ownName) ? styles.flag : ""}`} onClick={() => void writeOne(detail, "pin", !hasOwnPin(detail.categories, ownName))}>⚑</button><span className={styles.badge}>{abbreviateBox(detail.box.address)}</span></div>
           <dl><div><dt>差出人</dt><dd>{detail.fromName} &lt;{detail.fromAddress}&gt;</dd></div><div><dt>宛先</dt><dd>{detail.to.join(", ")}</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(detail.receivedDateTime)}</dd></div></dl>
           <div className={styles.categoryLine}><span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} disabled={pendingWrites.has(keyOf(detail))} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles[`reviewerTone${reviewerTone(name, reviewers)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName || pendingWrites.has(keyOf(detail))} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{reviewerInitials([name], [name])[0]}</button>)}</span></div>
-        </header><div className={styles.readerBody}>{detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}{!!detail.attachments.length && <section className={styles.attachments}><h3>添付ファイル</h3>{detail.attachments.map((item) => <div className={styles.attachment} key={item.id}><span>⌕</span><a href={attachmentUrl(item)}>{item.name}</a><small>{Math.max(1, Math.round(item.size / 1024))} KB</small><button disabled>Bud の未処理トレイへ</button></div>)}</section>}</div></>}
+        </header><div className={styles.readerBody}>{detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}{!!detail.attachments.length && <section className={styles.attachments}><h3>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon}><FileIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a><button disabled>Bud の未処理トレイへ</button></div>; })}</section>}</div></>}
         </article>
       </div>}
+      {viewingAttachment && <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingAttachment(null); }}><section className={styles.attachmentModal} role="dialog" aria-modal="true" aria-label={`${viewingAttachment.name}のプレビュー`}><header><h2>{viewingAttachment.name}</h2><a href={attachmentUrl(viewingAttachment)} aria-label="ダウンロード" title="ダウンロード"><DownloadIcon /></a><button onClick={() => setViewingAttachment(null)} aria-label="閉じる">×</button></header><div className={styles.viewer}>{viewingAttachment.contentType?.split(";", 1)[0].trim().toLowerCase().startsWith("image/") || (!viewingAttachment.contentType && /\.(png|jpe?g|gif|webp)$/i.test(viewingAttachment.name)) ? <img src={viewingUrl} alt={viewingAttachment.name} /> : <iframe src={viewingUrl} title={viewingAttachment.name} />}</div></section></div>}
     </section>
   </GardenShell>;
 }

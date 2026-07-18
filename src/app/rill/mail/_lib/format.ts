@@ -2,6 +2,15 @@ import type { RillMailMessage } from "./types";
 import { MAIL_STATES } from "./write-ops";
 
 const FORMATTERS = new Map<string, Intl.DateTimeFormat>();
+const VIEWABLE_ATTACHMENT_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"]);
+const VIEWABLE_ATTACHMENT_EXTENSIONS = new Set(["pdf", "png", "jpg", "jpeg", "gif", "webp"]);
+
+export function isViewableAttachment(contentType: string | null | undefined, name: string) {
+  const normalizedType = contentType?.split(";", 1)[0].trim().toLocaleLowerCase("en-US");
+  if (normalizedType) return VIEWABLE_ATTACHMENT_TYPES.has(normalizedType);
+  const extension = name.trim().split(".").pop()?.toLocaleLowerCase("en-US") ?? "";
+  return name.includes(".") && VIEWABLE_ATTACHMENT_EXTENSIONS.has(extension);
+}
 
 function formatter(timeZone: string) {
   let value = FORMATTERS.get(timeZone);
