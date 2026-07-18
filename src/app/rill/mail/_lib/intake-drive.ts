@@ -38,6 +38,17 @@ const defaultClient: IntakeDriveClient = {
   uploadToFolder,
 };
 
+export async function resolveIntakeDriveFolder(
+  kind: IntakeKind,
+  receivedAt: string,
+  client: IntakeDriveClient = defaultClient,
+) {
+  const path = intakeDriveFolderPath(kind, receivedAt);
+  const rootId = await client.findOrCreateAppFolder(path.root, ROOT_MARKER);
+  const kindId = await client.findOrCreateSubfolder(rootId, path.kind);
+  return client.findOrCreateSubfolder(kindId, path.month);
+}
+
 function validDate(value: string) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) throw new Error("Invalid intake received date");
@@ -75,10 +86,7 @@ export async function mirrorIntakeToDrive(
   input: IntakeDriveMirrorInput,
   client: IntakeDriveClient = defaultClient,
 ) {
-  const path = intakeDriveFolderPath(input.kind, input.receivedAt);
-  const rootId = await client.findOrCreateAppFolder(path.root, ROOT_MARKER);
-  const kindId = await client.findOrCreateSubfolder(rootId, path.kind);
-  const monthId = await client.findOrCreateSubfolder(kindId, path.month);
+  const monthId = await resolveIntakeDriveFolder(input.kind, input.receivedAt, client);
   const uploaded = await client.uploadToFolder(
     monthId,
     intakeDriveFileName(input),
