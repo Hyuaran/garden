@@ -15,8 +15,12 @@ export async function attachmentToNoticePages(blob: Blob): Promise<{ pages: Noti
     const base64 = canvas.toDataURL("image/png");
     return { pages: [{ base64, url: base64 }], truncated: false };
   }
-  const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+  // pdfjs-dist を webpack が bundle すると "Object.defineProperty called on non-object"
+  // で評価に失敗する（モダン/legacy 両ビルドで実機実測・__webpack_require__.r 起点）。
+  // public/vendor に置いた同バージョンのビルドをブラウザのネイティブ import で読む。
+  const specifier = "/vendor/pdfjs/pdf.min.mjs";
+  const pdfjs = (await import(/* webpackIgnore: true */ specifier)) as typeof import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.mjs";
   const pdf = await pdfjs.getDocument({ data: await blob.arrayBuffer() }).promise;
   const count = Math.min(pdf.numPages, 20);
   const pages: NoticeClientPage[] = [];
