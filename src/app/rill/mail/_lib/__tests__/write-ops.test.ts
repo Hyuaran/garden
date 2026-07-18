@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyLocalMailMutation, assertOwnConfirmationName, filterOwnPinned, hasOwnPin, isMessageUnread, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, selectionRange, toggleOwnConfirmation, toggleOwnPin } from "../write-ops";
-import type { RillMailMessage } from "../types";
+import { applyLocalMailMutation, assertOwnConfirmationName, detailCacheKey, filterOwnPinned, hasOwnPin, isMessageUnread, isPersonalMailbox, messagesForBox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, selectionRange, toggleOwnConfirmation, toggleOwnPin, withCachedDetail } from "../write-ops";
+import type { RillMailDetail, RillMailMessage } from "../types";
 
 const baseMessage: RillMailMessage = {
   id: "m1", box: { id: "me", address: "me@example.com", label: "自分", kind: "personal" },
@@ -61,5 +61,25 @@ describe("Rill Mail write rules", () => {
       { id: "plain", flag: { flagStatus: "notFlagged" }, categories: [] },
     ];
     expect(selectLegacyFlagImportTargets(messages, "東海林美琴").map((message) => message.id)).toEqual(["new"]);
+  });
+
+  it("switches boxes immediately from the messages already in memory", () => {
+    const personal = { ...baseMessage, id: "personal" };
+    const shared = { ...baseMessage, id: "shared", box: { id: "keiri@example.com", address: "keiri@example.com", label: "経理", kind: "shared" as const } };
+    const pinned = { ...shared, id: "pinned", categories: ["ピン:東海林美琴"] };
+    expect(messagesForBox([personal, shared, pinned], "all", "東海林美琴").map((message) => message.id)).toEqual(["personal", "shared", "pinned"]);
+    expect(messagesForBox([personal, shared, pinned], "me", "東海林美琴").map((message) => message.id)).toEqual(["personal"]);
+    expect(messagesForBox([personal, shared, pinned], "keiri@example.com", "東海林美琴").map((message) => message.id)).toEqual(["shared", "pinned"]);
+    expect(messagesForBox([personal, shared, pinned], "flagged", "東海林美琴").map((message) => message.id)).toEqual(["pinned"]);
+  });
+
+  it("keys detail cache by box and id and replaces stale detail", () => {
+    const first = { ...baseMessage, body: { contentType: "text" as const, content: "old" }, attachments: [] } satisfies RillMailDetail;
+    const refreshed = { ...first, body: { contentType: "text" as const, content: "new" } };
+    const firstCache = withCachedDetail(new Map(), first);
+    const refreshedCache = withCachedDetail(firstCache, refreshed);
+    expect(detailCacheKey(first)).toBe("me:m1");
+    expect(refreshedCache.get("me:m1")?.body.content).toBe("new");
+    expect(firstCache.get("me:m1")?.body.content).toBe("old");
   });
 });
