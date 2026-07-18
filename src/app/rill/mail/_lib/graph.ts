@@ -5,11 +5,13 @@ import { mergeMessages } from "./format";
 import { RillMailHttpError } from "./server-auth";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "./types";
 import { isMailState, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, toggleOwnConfirmation, toggleOwnPin, type LegacyFlagMessage, type MailState, type MailWriteOperation } from "./write-ops";
+import type { ComposeSendInput } from "./compose";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,categories,bodyPreview";
-const DELEGATED_SCOPES = "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared MailboxSettings.ReadWrite";
+const DELEGATED_SCOPES = "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared MailboxSettings.ReadWrite";
 const REQUIRED_SETTINGS_SCOPE = "MailboxSettings.ReadWrite";
+const REQUIRED_SEND_SCOPE = "Mail.Send";
 
 type TokenRow = {
   refresh_token_enc: string;
@@ -75,7 +77,7 @@ async function accessToken(supabase: SupabaseClient, user: User) {
   if (row.access_token_enc && isAccessTokenCacheValid(row.access_token_expires_at)) {
     try {
       const token = decryptToken(row.access_token_enc);
-      if (tokenHasScope(token, REQUIRED_SETTINGS_SCOPE)) return { token, upn: row.ms_upn };
+      if (tokenHasScope(token, REQUIRED_SETTINGS_SCOPE) && tokenHasScope(token, REQUIRED_SEND_SCOPE)) return { token, upn: row.ms_upn };
     }
     catch { /* refresh below when an old/corrupt cache cannot be decrypted */ }
   }
@@ -86,7 +88,7 @@ async function accessToken(supabase: SupabaseClient, user: User) {
     if (latest.access_token_enc && isAccessTokenCacheValid(latest.access_token_expires_at)) {
       try {
         const token = decryptToken(latest.access_token_enc);
-        if (tokenHasScope(token, REQUIRED_SETTINGS_SCOPE)) return { token, upn: latest.ms_upn };
+        if (tokenHasScope(token, REQUIRED_SETTINGS_SCOPE) && tokenHasScope(token, REQUIRED_SEND_SCOPE)) return { token, upn: latest.ms_upn };
       }
       catch { /* refresh below */ }
     }
@@ -141,7 +143,7 @@ async function graphJson(urlOrPath: string, token: string, init?: RequestInit) {
     cache: "no-store",
   });
   if (!response.ok) throw new RillMailHttpError(response.status === 401 ? 428 : 502, `Microsoft Graph error (${response.status})`);
-  if (response.status === 204) return null;
+  if (response.status === 202 || response.status === 204) return null;
   return response.json() as Promise<unknown>;
 }
 
@@ -372,4 +374,46 @@ export async function importLegacyFlagsAsOwnPins(supabase: SupabaseClient, user:
     } catch { failed += 1; }
   });
   return { imported, alreadyPinned: flagged.length - targets.length, totalFlagged: flagged.length, failed };
+}
+
+const graphRecipients = (addresses: string[]) => addresses.map((address) => ({ emailAddress: { address } }));
+const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+export async function sendComposeMessage(supabase: SupabaseClient, user: User, input: ComposeSendInput) {
+  const { token } = await accessToken(supabase, user);
+  let draftId = "";
+  try {
+    if (input.mode === "new") {
+      const draft = await graphJson("/me/messages", token, {
+        method: "POST",
+        body: JSON.stringify({ subject: input.subject, body: { contentType: "Text", content: input.bodyText }, toRecipients: graphRecipients(input.to), ccRecipients: graphRecipients(input.cc) }),
+      }) as { id?: string };
+      draftId = draft.id ?? "";
+    } else {
+      const action = input.mode === "replyAll" ? "createReplyAll" : input.mode === "forward" ? "createForward" : "createReply";
+      const draft = await graphJson(`/me/messages/${encodeURIComponent(input.sourceMessageId!)}/${action}`, token, {
+        method: "POST",
+        ...(input.mode === "forward" ? { body: JSON.stringify({ comment: "" }) } : {}),
+      }) as { id?: string; body?: { content?: string } };
+      draftId = draft.id ?? "";
+      if (!draftId) throw new RillMailHttpError(502, "Microsoft Graph did not create a draft");
+      if (input.mode === "forward") {
+        const attachments = await graphJson(`/me/messages/${encodeURIComponent(draftId)}/attachments?$select=id`, token) as GraphList<{ id?: string }>;
+        await Promise.all((attachments.value ?? []).filter((item): item is { id: string } => Boolean(item.id)).map((item) => graphJson(`/me/messages/${encodeURIComponent(draftId)}/attachments/${encodeURIComponent(item.id)}`, token, { method: "DELETE" })));
+      }
+      const written = escapeHtml(input.bodyText).replace(/\r?\n/g, "<br>");
+      await graphJson(`/me/messages/${encodeURIComponent(draftId)}`, token, {
+        method: "PATCH",
+        body: JSON.stringify({ subject: input.subject, body: { contentType: "HTML", content: `<div>${written}</div><br>${draft.body?.content ?? ""}` }, toRecipients: graphRecipients(input.to), ccRecipients: graphRecipients(input.cc) }),
+      });
+    }
+    if (!draftId) throw new RillMailHttpError(502, "Microsoft Graph did not create a draft");
+    await graphJson(`/me/messages/${encodeURIComponent(draftId)}/send`, token, { method: "POST" });
+  } catch (error) {
+    if (draftId) {
+      try { await graphJson(`/me/messages/${encodeURIComponent(draftId)}`, token, { method: "DELETE" }); }
+      catch { /* Best-effort cleanup of a failed just-in-time draft. */ }
+    }
+    throw error;
+  }
 }

@@ -4,10 +4,12 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
+import { RillComposePane } from "./RillComposePane";
 import type { GardenShellPageMenuItem } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, isViewableAttachment, mergeMessagePages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../_lib/format";
 import { applyLocalMailMutation, detailCacheKey, hasOwnPin, isMessageUnread, MAIL_STATES, messagesForBox, selectionRange, withCachedDetail, type MailState, type MailWriteOperation } from "../_lib/write-ops";
 import { isLikelyNonJapanese, mailBodyText } from "../_lib/translate";
+import { scheduleDelayedSend, validateComposeInput, type ComposeDraft, type ComposeMode } from "../_lib/compose";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import styles from "./RillMailScreen.module.css";
 
@@ -67,6 +69,10 @@ export function RillMailScreen() {
   const [translatingKey, setTranslatingKey] = useState<string | null>(null);
   const [showTranslation, setShowTranslation] = useState(false);
   const [translationError, setTranslationError] = useState("");
+  const [drafts, setDrafts] = useState<Map<string, ComposeDraft>>(new Map());
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [composeError, setComposeError] = useState("");
+  const [sendToast, setSendToast] = useState<{ tone: "pending" | "success" | "error"; text: string; seconds?: number } | null>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const requestGeneration = useRef(0);
   const pendingWriteKeys = useRef(new Set<string>());
@@ -78,6 +84,9 @@ export function RillMailScreen() {
   const lastUserInteraction = useRef(Date.now());
   const translationCache = useRef(new Map<string, string>());
   const translationSelectionKey = useRef("");
+  const draftCounter = useRef(0);
+  const delayedSend = useRef<{ cancel: () => boolean; dispose: () => void } | null>(null);
+  const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadMessages = useCallback(async (box: string, nextCursor?: string | null, mode: "replace" | "append" | "refresh" | "switch" = "replace") => {
     const generation = requestGeneration.current;
@@ -113,6 +122,10 @@ export function RillMailScreen() {
   }, [loadMessages]);
 
   useEffect(() => { void initialize(); }, [initialize]);
+  useEffect(() => () => {
+    delayedSend.current?.dispose();
+    if (countdownTimer.current) clearInterval(countdownTimer.current);
+  }, []);
   useEffect(() => {
     void fetch("/api/rill/mail/translate", { cache: "no-store" })
       .then((response) => response.ok ? response.json() as Promise<{ available?: boolean }> : null)
@@ -253,6 +266,7 @@ export function RillMailScreen() {
   };
 
   const openMessage = async (message: RillMailMessage) => {
+    setActiveDraftId(null);
     setViewingAttachment(null);
     setSelected(message);
     if (!ownName || !isMessageUnread(message, ownName)) return;
@@ -331,6 +345,41 @@ export function RillMailScreen() {
     } finally { setImportingFlags(false); }
   };
 
+  const openCompose = (mode: ComposeMode) => {
+    if (mode !== "new" && !detail) return;
+    const source = mode === "new" ? null : detail!;
+    const id = source ? `${mode}:${source.box.id}:${source.id}` : `new:${++draftCounter.current}`;
+    const existing = drafts.get(id);
+    if (existing) { setActiveDraftId(id); setComposeError(""); return; }
+    const ownBox = boxes.find((box) => box.id === "me");
+    const prefix = mode === "forward" ? "Fwd: " : mode === "new" ? "" : "Re: ";
+    const subject = source ? (source.subject.startsWith(prefix) ? source.subject : `${prefix}${source.subject}`) : "";
+    const to = source ? mode === "forward" ? [] : [...new Set([source.fromAddress, ...(mode === "replyAll" ? source.to : [])].filter((address) => address && address !== ownBox?.address))] : [];
+    const quote = source ? `差出人: ${source.fromName} <${source.fromAddress}>\n受信: ${formatMailDetailDate(source.receivedDateTime)}\n件名: ${source.subject}\n\n${mailBodyText(source.body.content)}` : "";
+    const draft: ComposeDraft = { id, mode, box: source?.box.id ?? "me", sourceMessageId: source?.id, to, cc: [], subject, bodyText: "", quote, fromLabel: `${ownBox?.label ?? "自分"} <${ownBox?.address ?? "me"}>`, ccVisible: false };
+    setDrafts((current) => new Map(current).set(id, draft)); setActiveDraftId(id); setComposeError("");
+  };
+
+  const updateDraft = (draft: ComposeDraft) => setDrafts((current) => new Map(current).set(draft.id, draft));
+  const discardDraft = (id: string) => { setDrafts((current) => { const next = new Map(current); next.delete(id); return next; }); setActiveDraftId((current) => current === id ? null : current); };
+
+  const queueSend = (draft: ComposeDraft) => {
+    if (sendToast?.tone === "pending") { setComposeError("別のメールが送信待ちです。送信または取り消し後にお試しください"); return; }
+    try { validateComposeInput(draft); }
+    catch (cause) { setComposeError(cause instanceof Error ? cause.message : "宛先・件名を確認してください"); return; }
+    setComposeError(""); setActiveDraftId(null); setDrafts((current) => { const next = new Map(current); next.delete(draft.id); return next; });
+    setSendToast({ tone: "pending", text: "送信しました", seconds: 10 });
+    if (countdownTimer.current) clearInterval(countdownTimer.current);
+    countdownTimer.current = setInterval(() => setSendToast((current) => current?.tone === "pending" ? { ...current, seconds: Math.max(0, (current.seconds ?? 1) - 1) } : current), 1_000);
+    delayedSend.current = scheduleDelayedSend(draft, async (value) => {
+      await readJson(await fetch("/api/rill/mail/compose/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) }));
+    }, {
+      cancelled: (value) => { if (countdownTimer.current) clearInterval(countdownTimer.current); setDrafts((current) => new Map(current).set(value.id, value)); setActiveDraftId(value.id); setSendToast(null); },
+      succeeded: () => { if (countdownTimer.current) clearInterval(countdownTimer.current); setSendToast({ tone: "success", text: "送信しました" }); window.setTimeout(() => setSendToast(null), 3_000); },
+      failed: (value) => { if (countdownTimer.current) clearInterval(countdownTimer.current); setDrafts((current) => new Map(current).set(value.id, value)); setSendToast({ tone: "error", text: "送信できませんでした。未送信に戻しました" }); },
+    });
+  };
+
   const translateDetail = async () => {
     if (!detail) return;
     const key = detailCacheKey(detail);
@@ -353,7 +402,7 @@ export function RillMailScreen() {
 
   const selectBox = (id: string) => {
     requestGeneration.current += 1; automaticPageCount.current = 0;
-    setViewingAttachment(null); setActiveBox(id); setSelected(null); setPicked(new Set()); setCursor(null); setError("");
+    setViewingAttachment(null); setActiveDraftId(null); setActiveBox(id); setSelected(null); setPicked(new Set()); setCursor(null); setError("");
     void loadMessages(id, null, "switch").catch((cause) => setError(cause instanceof Error ? cause.message : "メールを取得できませんでした"));
   };
   const currentPinned = Boolean(selected && ownName && hasOwnPin(selected.categories, ownName));
@@ -367,13 +416,15 @@ export function RillMailScreen() {
     const translation = translationCache.current.get(key);
     return { key, translation, eligible: (translationAvailable || Boolean(translation)) && isLikelyNonJapanese(text) };
   })();
+  const activeDraft = activeDraftId ? drafts.get(activeDraftId) : undefined;
+  const suggestionAddresses = useMemo(() => messages.map((message) => message.fromAddress).filter(Boolean), [messages]);
 
   return <GardenShell activeModule="rill" pageMenu={MENU} activityItems={[]} contentFullBleed>
     <section className={styles.surface} aria-label="Rill Mail">
       <div className={styles.toolbar}>
         <button className={styles.primaryButton} onClick={() => void initialize()} disabled={loading}>↻ 更新</button>
         <span className={styles.fresh}>{updatedAt ? `最終更新 ${updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}・60秒ごと` : "未更新"}</span>{autoRefreshFailed && <span className={styles.autoWarning}>更新に失敗（自動で再試行します）</span>}<span className={styles.separator} />
-        {["新規", "返信", "全員に返信", "転送"].map((label) => <button key={label} className={styles.disabledButton} disabled title="次段階">{label}</button>)}
+        <button className={styles.composeAction} onClick={() => openCompose("new")}>新規</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("reply")}>返信</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("replyAll")}>全員に返信</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("forward")}>転送</button>
         <button className={styles.actionButton} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, selected.box.kind === "personal" ? "read" : "confirm", selectedUnread)}>○ {selectedUnread ? "開封済みに" : "未読に戻す"}</button>
         <button aria-label="ピン" className={`${styles.actionButton} ${currentPinned ? styles.actionOn : ""}`} disabled={!selected || !ownName || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "pin", !currentPinned)}><PinIcon on={currentPinned} />ピン</button>
         <span className={styles.toolbarStates}>{MAIL_STATES.map((state) => <button key={state} className={selected && statusCategory(selected.categories) === state ? styles.actionOn : ""} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "state", statusCategory(selected.categories) === state ? null : state)}>{state}</button>)}</span>
@@ -397,13 +448,14 @@ export function RillMailScreen() {
             <span className={styles.row}><span className={styles.subject}>{message.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{message.subject}</span>{status && <span className={`${styles.status} ${styles[`status${status}`]}`}>{status}</span>}</span><span className={styles.row}><span className={styles.preview}>{message.bodyPreview}</span><span className={styles.reviewers}>{confirmedBy.map((name, index) => <i key={name} className={styles[`reviewerTone${reviewerTone(name, reviewers)}`]} title={name}>{initials[index]}</i>)}</span></span>
           </div></Fragment>; })}<div ref={sentinel} className={styles.pageTrigger} aria-hidden="true" /></div>
         </section>
-        <article className={styles.column}>{!selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <><header className={styles.readerHeader}><div className={styles.readerTitle}><h2>{selected.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{selected.subject}</h2><span className={styles.badge}>{abbreviateBox(selected.box.address)}</span></div><dl><div><dt>差出人</dt><dd>{selected.fromName} &lt;{selected.fromAddress}&gt;</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(selected.receivedDateTime)}</dd></div></dl></header><div className={styles.readerBody}><p className={styles.previewLead}>{selected.bodyPreview || "本文を読み込んでいます…"}</p><div className={styles.skeletonLine} /><div className={`${styles.skeletonLine} ${styles.skeletonShort}`} /></div></> : <><header className={styles.readerHeader}>
+        <article className={`${styles.column} ${styles.composeHost}`}>{activeDraft ? <RillComposePane draft={activeDraft} addresses={suggestionAddresses} error={composeError} onChange={updateDraft} onSend={() => queueSend(activeDraft)} onMinimize={() => setActiveDraftId(null)} onClose={() => setActiveDraftId(null)} onDiscard={() => discardDraft(activeDraft.id)} /> : !selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <><header className={styles.readerHeader}><div className={styles.readerTitle}><h2>{selected.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{selected.subject}</h2><span className={styles.badge}>{abbreviateBox(selected.box.address)}</span></div><dl><div><dt>差出人</dt><dd>{selected.fromName} &lt;{selected.fromAddress}&gt;</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(selected.receivedDateTime)}</dd></div></dl></header><div className={styles.readerBody}><p className={styles.previewLead}>{selected.bodyPreview || "本文を読み込んでいます…"}</p><div className={styles.skeletonLine} /><div className={`${styles.skeletonLine} ${styles.skeletonShort}`} /></div></> : <><header className={styles.readerHeader}>
           <div className={styles.readerTitle}><h2>{detail.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{detail.subject}</h2><button aria-label="ピン" disabled={!ownName || pendingWrites.has(keyOf(detail))} className={`${styles.inlineFlag} ${ownName && hasOwnPin(detail.categories, ownName) ? styles.flag : ""}`} onClick={() => void writeOne(detail, "pin", !hasOwnPin(detail.categories, ownName))}><PinIcon on={Boolean(ownName && hasOwnPin(detail.categories, ownName))} /></button><span className={styles.badge}>{abbreviateBox(detail.box.address)}</span></div>
           <dl><div><dt>差出人</dt><dd>{detail.fromName} &lt;{detail.fromAddress}&gt;</dd></div><div><dt>宛先</dt><dd>{detail.to.join(", ")}</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(detail.receivedDateTime)}</dd></div></dl>
           <div className={styles.categoryLine}>{translationView.eligible && <button className={styles.translateButton} disabled={translatingKey === translationView.key} onClick={() => void translateDetail()}>{translatingKey === translationView.key ? "翻訳中…" : showTranslation ? "原文を表示" : translationView.translation ? "日本語訳を表示" : "日本語に翻訳"}</button>}<span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} disabled={pendingWrites.has(keyOf(detail))} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles[`reviewerTone${reviewerTone(name, reviewers)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName || pendingWrites.has(keyOf(detail))} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{reviewerInitials([name], [name])[0]}</button>)}</span></div>{translationError && <div className={styles.translationError}>{translationError}</div>}
         </header><div className={styles.readerBody}>{showTranslation && translationView.translation ? <div className={`${styles.textBody} ${styles.translationBody}`}>{translationView.translation}</div> : detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}{!!detail.attachments.length && <section className={styles.attachments}><h3><span className={styles.paperclip} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>添付ファイル</h3>{detail.attachments.map((item) => { const viewable = isViewableAttachment(item.contentType, item.name); return <div className={styles.attachment} key={item.id}><span className={styles.fileIcon} role="img" aria-label="添付ファイル"><PaperclipIcon /></span>{viewable ? <button className={styles.attachmentName} onClick={() => setViewingAttachment(item)}>{item.name}</button> : <a href={attachmentUrl(item)}>{item.name}</a>}<small>{Math.max(1, Math.round(item.size / 1024))} KB</small><a className={styles.downloadIcon} href={attachmentUrl(item)} aria-label={`${item.name}をダウンロード`} title="ダウンロード"><DownloadIcon /></a><button disabled>Bud の未処理トレイへ</button></div>; })}</section>}</div></>}
-        </article>
+        <div className={styles.composeDock}>{[...drafts.values()].filter((draft) => draft.id !== activeDraftId).map((draft) => <div className={styles.composeDockItem} key={draft.id}><button onClick={() => { setActiveDraftId(draft.id); setComposeError(""); }}><span>未送信：{draft.subject || "件名なし"}</span><i>▲</i></button><button aria-label="破棄" onClick={() => discardDraft(draft.id)}>×</button></div>)}</div></article>
       </div>}
+      {sendToast && <div className={`${styles.sendToast} ${sendToast.tone === "error" ? styles.sendToastError : ""}`}>{sendToast.text}{sendToast.tone === "pending" && <button onClick={() => delayedSend.current?.cancel()}>取り消す（{sendToast.seconds}秒）</button>}</div>}
       {/* GardenShell 側のスタッキング文脈にモーダルが閉じ込められ、ヘッダー(z-index:100)の下に潜るため body 直下へポータル描画する */}
       {viewingAttachment && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingAttachment(null); }}><section className={styles.attachmentModal} role="dialog" aria-modal="true" aria-label={`${viewingAttachment.name}のプレビュー`}><header><h2>{viewingAttachment.name}</h2><a href={attachmentUrl(viewingAttachment)} aria-label="ダウンロード" title="ダウンロード"><DownloadIcon /></a><button onClick={() => setViewingAttachment(null)} aria-label="閉じる">×</button></header><div className={styles.viewer}>{viewingAttachment.contentType?.split(";", 1)[0].trim().toLowerCase().startsWith("image/") || (!viewingAttachment.contentType && /\.(png|jpe?g|gif|webp)$/i.test(viewingAttachment.name)) ? <img src={viewingUrl} alt={viewingAttachment.name} /> : <iframe src={viewingUrl} title={viewingAttachment.name} />}</div></section></div>, document.body)}
     </section>
