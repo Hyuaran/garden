@@ -297,6 +297,33 @@ export async function getAttachment(supabase: SupabaseClient, user: User, boxId:
   return response.json() as Promise<{ name?: string; contentType?: string; contentBytes?: string }>;
 }
 
+export async function getIntakeSource(supabase: SupabaseClient, user: User, boxId: string, messageId: string, attachmentId: string) {
+  const { token, upn } = await accessToken(supabase, user);
+  const boxes = await visibleBoxesWithToken(token, upn);
+  const box = boxes.find((item) => item.id === boxId || item.address === boxId);
+  if (!box) throw new RillMailHttpError(404, "Mailbox not found");
+  const [messageResponse, attachmentResponse, createdByName] = await Promise.all([
+    graphFetch(`${oneMessagePath(box.id, messageId)}?$select=${MESSAGE_SELECT}`, token),
+    graphFetch(`${oneMessagePath(box.id, messageId)}/attachments/${encodeURIComponent(attachmentId)}`, token),
+    gardenUserName(supabase, user),
+  ]);
+  const rawMessage = await messageResponse.json() as GraphMessage;
+  const attachment = await attachmentResponse.json() as { id?: string; name?: string; contentType?: string; size?: number; contentBytes?: string };
+  if (!attachment.contentBytes || !attachment.name) throw new RillMailHttpError(400, "この添付ファイルは取り込めません");
+  return {
+    boxAddress: box.address,
+    message: mapMessage(rawMessage, box),
+    attachment: {
+      id: attachment.id ?? attachmentId,
+      name: attachment.name,
+      contentType: attachment.contentType ?? "application/octet-stream",
+      size: attachment.size ?? Buffer.from(attachment.contentBytes, "base64").byteLength,
+      bytes: Buffer.from(attachment.contentBytes, "base64"),
+    },
+    createdByName,
+  };
+}
+
 export type MailMutation = {
   id: string;
   boxId: string;
