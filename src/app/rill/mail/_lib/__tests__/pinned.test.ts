@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergePinnedMessages, pinnedCategoryFilter, pinnedPagingDecision, reconcilePinnedMessage } from "../pinned";
+import { applyRecentCategoryWrites, mergePinnedMessages, pinnedCategoryFilter, pinnedPagingDecision, reconcilePinnedMessage, shouldAddBulkPin } from "../pinned";
 import type { RillMailBox, RillMailMessage } from "../types";
 
 const me: RillMailBox = { id: "me", address: "me@example.com", label: "Me", kind: "personal" };
@@ -28,5 +28,27 @@ describe("pinned Graph helpers", () => {
   it("removes a message immediately when its own pin is cleared", () => {
     const pinned = message("1");
     expect(reconcilePinnedMessage([pinned], { ...pinned, categories: [] }, "O'Neil")).toEqual([]);
+  });
+
+  it("prefers recent categories and removes an unpinned item from the pinned view", () => {
+    const pinned = message("1");
+    const writes = new Map([["me:1", { categories: ["処理済"], expiresAt: 61_000 }]]);
+    expect(applyRecentCategoryWrites([pinned], writes, 1_000).messages[0].categories).toEqual(["処理済"]);
+    expect(applyRecentCategoryWrites([pinned], writes, 1_000, { pinnedView: true, ownName: "O'Neil" }).messages).toEqual([]);
+  });
+
+  it("drops expired writes and lets server categories pass through", () => {
+    const pinned = message("1");
+    const result = applyRecentCategoryWrites([pinned], new Map([["me:1", { categories: [], expiresAt: 1_000 }]]), 1_000);
+    expect(result.messages[0].categories).toEqual(["ピン:O'Neil"]);
+    expect(result.writes.size).toBe(0);
+  });
+
+  it("toggles bulk pin off only when every selected item is already pinned", () => {
+    const pinned = message("1");
+    const plain = message("2", me, "2026-01-01T00:00:00Z", []);
+    expect(shouldAddBulkPin([pinned], "O'Neil")).toBe(false);
+    expect(shouldAddBulkPin([pinned, plain], "O'Neil")).toBe(true);
+    expect(shouldAddBulkPin([plain], "O'Neil")).toBe(true);
   });
 });
