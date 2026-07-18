@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, mailDayLabel, mergeMessagePages, mergeMessages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../format";
 import type { RillMailMessage } from "../types";
 
-const message = (id: string, receivedDateTime: string) => ({ id, receivedDateTime, box: { id: "me", address: "me@example.com", label: "自分", kind: "personal" }, subject: "", fromName: "", fromAddress: "", to: [], hasAttachments: false, isRead: false, flag: {}, categories: [], bodyPreview: "" }) satisfies RillMailMessage;
+const message = (id: string, receivedDateTime: string) => ({ id, receivedDateTime, box: { id: "me", address: "me@example.com", label: "自分", kind: "personal" }, subject: "", fromName: "", fromAddress: "", to: [], hasAttachments: false, isRead: false, categories: [], bodyPreview: "" }) satisfies RillMailMessage;
 
 describe("Rill Mail formatters", () => {
   it("formats list and detail dates in Tokyo time", () => {

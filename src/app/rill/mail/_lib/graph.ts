@@ -4,10 +4,10 @@ import { isAccessTokenCacheValid, SingleFlight, tokenHasScope } from "./token-ca
 import { mergeMessages } from "./format";
 import { RillMailHttpError } from "./server-auth";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "./types";
-import { isMailState, isPersonalMailbox, replaceMailState, toggleOwnConfirmation, type MailState, type MailWriteOperation } from "./write-ops";
+import { isMailState, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, toggleOwnConfirmation, toggleOwnPin, type LegacyFlagMessage, type MailState, type MailWriteOperation } from "./write-ops";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
-const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,flag,categories,bodyPreview";
+const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,categories,bodyPreview";
 const DELEGATED_SCOPES = "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared MailboxSettings.ReadWrite";
 const REQUIRED_SETTINGS_SCOPE = "MailboxSettings.ReadWrite";
 
@@ -22,7 +22,7 @@ type GraphAddress = { emailAddress?: { name?: string; address?: string } };
 type GraphMessage = {
   id: string; subject?: string; from?: GraphAddress; toRecipients?: GraphAddress[];
   receivedDateTime?: string; hasAttachments?: boolean; isRead?: boolean;
-  flag?: RillMailMessage["flag"]; categories?: string[]; bodyPreview?: string;
+  categories?: string[]; bodyPreview?: string;
   body?: { contentType?: string; content?: string };
 };
 type Cursor = Record<string, string | null>;
@@ -173,7 +173,7 @@ function messagePath(box: RillMailBox) { return box.id === "me" ? "/me/mailFolde
 function oneMessagePath(boxId: string, id: string) { return boxId === "me" ? `/me/messages/${encodeURIComponent(id)}` : `/users/${encodeURIComponent(boxId)}/messages/${encodeURIComponent(id)}`; }
 
 function mapMessage(raw: GraphMessage, box: RillMailBox): RillMailMessage {
-  return { id: raw.id, box, subject: raw.subject || "（件名なし）", fromName: raw.from?.emailAddress?.name || raw.from?.emailAddress?.address || "（差出人不明）", fromAddress: raw.from?.emailAddress?.address || "", to: (raw.toRecipients ?? []).map((x) => x.emailAddress?.address ?? "").filter(Boolean), receivedDateTime: raw.receivedDateTime || "", hasAttachments: raw.hasAttachments === true, isRead: raw.isRead === true, flag: raw.flag ?? {}, categories: raw.categories ?? [], bodyPreview: raw.bodyPreview ?? "" };
+  return { id: raw.id, box, subject: raw.subject || "（件名なし）", fromName: raw.from?.emailAddress?.name || raw.from?.emailAddress?.address || "（差出人不明）", fromAddress: raw.from?.emailAddress?.address || "", to: (raw.toRecipients ?? []).map((x) => x.emailAddress?.address ?? "").filter(Boolean), receivedDateTime: raw.receivedDateTime || "", hasAttachments: raw.hasAttachments === true, isRead: raw.isRead === true, categories: raw.categories ?? [], bodyPreview: raw.bodyPreview ?? "" };
 }
 
 function encodeCursor(cursor: Cursor) { return Object.values(cursor).some(Boolean) ? Buffer.from(JSON.stringify(cursor)).toString("base64url") : null; }
@@ -305,10 +305,7 @@ export async function mutateMailMessages(supabase: SupabaseClient, user: User, m
       if (!box) throw new RillMailHttpError(404, "Mailbox not found");
       const path = oneMessagePath(box.id, mutation.id);
 
-      if (mutation.op === "flag") {
-        if (typeof mutation.value !== "boolean") throw new RillMailHttpError(400, "flag value must be boolean");
-        await graphJson(path, token, { method: "PATCH", body: JSON.stringify({ flag: { flagStatus: mutation.value ? "flagged" : "notFlagged" } }) });
-      } else if (mutation.op === "read") {
+      if (mutation.op === "read") {
         if (!isPersonalMailbox(box)) throw new RillMailHttpError(400, "共有箱のisReadは変更できません");
         if (typeof mutation.value !== "boolean") throw new RillMailHttpError(400, "read value must be boolean");
         await graphJson(path, token, { method: "PATCH", body: JSON.stringify({ isRead: mutation.value }) });
@@ -319,10 +316,15 @@ export async function mutateMailMessages(supabase: SupabaseClient, user: User, m
           if (mutation.value !== null && !isMailState(mutation.value)) throw new RillMailHttpError(400, "Invalid mail state");
           if (mutation.value) await ensureCategory(box, mutation.value);
           categories = replaceMailState(current.categories ?? [], mutation.value as MailState | null);
-        } else {
+        } else if (mutation.op === "confirm") {
           if (typeof mutation.value !== "boolean") throw new RillMailHttpError(400, "confirm value must be boolean");
           if (mutation.value) await ensureCategory(box, ownName);
           categories = toggleOwnConfirmation(current.categories ?? [], ownName, mutation.value);
+        } else {
+          if (typeof mutation.value !== "boolean") throw new RillMailHttpError(400, "pin value must be boolean");
+          const pin = pinCategoryName(ownName);
+          if (mutation.value) await ensureCategory(box, pin);
+          categories = toggleOwnPin(current.categories ?? [], ownName, mutation.value);
         }
         await graphJson(path, token, { method: "PATCH", body: JSON.stringify({ categories }) });
       }
@@ -332,4 +334,42 @@ export async function mutateMailMessages(supabase: SupabaseClient, user: User, m
     }
   });
   return results;
+}
+
+export type LegacyFlagImportResult = { imported: number; alreadyPinned: number; totalFlagged: number; failed: number };
+
+export async function importLegacyFlagsAsOwnPins(supabase: SupabaseClient, user: User): Promise<LegacyFlagImportResult> {
+  const { token, upn } = await accessToken(supabase, user);
+  const [boxes, ownName] = await Promise.all([visibleBoxesWithToken(token, upn), gardenUserName(supabase, user)]);
+  const pin = pinCategoryName(ownName);
+  const flagged: Array<LegacyFlagMessage & { boxId: string }> = [];
+
+  for (const box of boxes) {
+    const params = new URLSearchParams({ "$top": "50", "$select": "id,categories,flag", "$filter": "flag/flagStatus eq 'flagged'" });
+    let next: string | null = `${messagePath(box)}?${params}`;
+    while (next) {
+      const data = await graphJson(next, token) as GraphList<LegacyFlagMessage>;
+      flagged.push(...(data.value ?? []).map((message) => ({ ...message, boxId: box.id })));
+      next = data["@odata.nextLink"] ?? null;
+    }
+  }
+
+  const targets = selectLegacyFlagImportTargets(flagged, ownName) as Array<LegacyFlagMessage & { boxId: string }>;
+  const boxesWithTargets = new Set(targets.map((message) => message.boxId));
+  await Promise.all(boxes.filter((box) => boxesWithTargets.has(box.id)).map(async (box) => {
+    try {
+      await graphJson(categoryPath(box), token, { method: "POST", body: JSON.stringify({ displayName: pin, color: "preset9" }) });
+    } catch { /* The category may already exist; message category PATCH is authoritative. */ }
+  }));
+
+  let imported = 0;
+  let failed = 0;
+  await runWithConcurrency(targets, 3, async (message) => {
+    try {
+      const categories = toggleOwnPin(message.categories ?? [], ownName, true);
+      await graphJson(oneMessagePath(message.boxId, message.id), token, { method: "PATCH", body: JSON.stringify({ categories }) });
+      imported += 1;
+    } catch { failed += 1; }
+  });
+  return { imported, alreadyPinned: flagged.length - targets.length, totalFlagged: flagged.length, failed };
 }

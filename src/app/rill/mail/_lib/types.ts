@@ -5,8 +5,6 @@ export type RillMailBox = {
   kind: "personal" | "shared";
 };
 
-export type RillMailFlag = { flagStatus?: "notFlagged" | "complete" | "flagged" };
-
 export type RillMailMessage = {
   id: string;
   box: RillMailBox;
@@ -17,7 +15,6 @@ export type RillMailMessage = {
   receivedDateTime: string;
   hasAttachments: boolean;
   isRead: boolean;
-  flag: RillMailFlag;
   categories: string[];
   bodyPreview: string;
 };
