@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, mailDayLabel, mergeBoxCursors, mergeMessagePages, mergeMessages, reviewerInitials, reviewerNames, statusCategory } from "../format";
+import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, mailDayLabel, mergeMessagePages, mergeMessages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../format";
 import type { RillMailMessage } from "../types";
 
 const message = (id: string, receivedDateTime: string) => ({ id, receivedDateTime, box: { id: "me", address: "me@example.com", label: "自分", kind: "personal" }, subject: "", fromName: "", fromAddress: "", to: [], hasAttachments: false, isRead: false, flag: {}, categories: [], bodyPreview: "" }) satisfies RillMailMessage;
@@ -21,7 +21,6 @@ describe("Rill Mail formatters", () => {
     const incoming = [{ ...message("same", "2026-07-18T03:00:00Z"), subject: "updated" }, { ...message("next", "2026-07-16T02:00:00Z"), box: { ...message("next", "").box, id: "shared" } }];
     expect(mergeMessagePages(current, incoming).map((item) => `${item.box.id}:${item.id}`)).toEqual(["me:same", "shared:old", "shared:next"]);
     expect(mergeMessagePages(current, incoming)[0].subject).toBe("updated");
-    expect(mergeBoxCursors({ me: "next-me", shared: "next-shared" }, { me: null })).toEqual({ me: null, shared: "next-shared" });
   });
 
   it("inserts Today, Yesterday and dated bands across a month boundary", () => {
@@ -37,5 +36,30 @@ describe("Rill Mail formatters", () => {
     const categories = ["確認中", "東海林美琴", "取引先"];
     expect(statusCategory(categories)).toBe("確認中");
     expect(reviewerNames(categories, ["東海林美琴", "上田花子"])).toEqual(["東海林美琴"]);
+  });
+
+  it("prunes disappeared messages only inside each refreshed first-page window", () => {
+    const sharedBox = { ...message("x", "").box, id: "shared" };
+    const current = [
+      message("kept", "2026-07-18T03:00:00Z"),
+      message("ghost", "2026-07-18T02:30:00Z"),
+      message("older", "2026-07-17T00:00:00Z"),
+      { ...message("missing-box", "2026-07-18T03:00:00Z"), box: sharedBox },
+    ];
+    const incoming = [message("kept", "2026-07-18T03:00:00Z"), message("window-edge", "2026-07-18T02:00:00Z")];
+    expect(pruneToRefreshWindow(current, incoming, ["me"]).map((item) => item.id)).toEqual(["kept", "older", "missing-box"]);
+    expect(pruneToRefreshWindow(current, [], ["me"]).map((item) => item.id)).toEqual(["missing-box"]);
+  });
+
+  it("assigns reviewer colors by stable employee order", () => {
+    const reviewers = ["東海林美琴", "上田花子", "簡太郎", "金花子", "東海林二郎"];
+    expect(reviewers.map((name) => reviewerTone(name, reviewers))).toEqual([0, 1, 2, 3, 0]);
+  });
+
+  it("sends invalid dates to the end without an empty day separator", () => {
+    const values = mergeMessages([[message("invalid", "not-a-date"), message("valid", "2026-07-18T03:00:00Z")]]);
+    expect(values.map((item) => item.id)).toEqual(["valid", "invalid"]);
+    const separated = daySeparatedMessages(values, new Date("2026-07-18T04:00:00Z"));
+    expect(separated[1]).toMatchObject({ label: "", showDay: false });
   });
 });

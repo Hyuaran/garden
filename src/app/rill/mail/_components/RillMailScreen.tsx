@@ -3,8 +3,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import type { GardenShellPageMenuItem } from "@/app/_components/layout/GardenShell/garden-shell-config";
-import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, mergeMessagePages, reviewerNames, reviewerTone, statusCategory } from "../_lib/format";
-import { isMessageUnread, MAIL_STATES, replaceMailState, selectionRange, toggleOwnConfirmation, type MailState, type MailWriteOperation } from "../_lib/write-ops";
+import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, mergeMessagePages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../_lib/format";
+import { applyLocalMailMutation, isMessageUnread, MAIL_STATES, selectionRange, type MailState, type MailWriteOperation } from "../_lib/write-ops";
 import type { RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import styles from "./RillMailScreen.module.css";
 
@@ -37,31 +37,42 @@ export function RillMailScreen() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [writing, setWriting] = useState(false);
+  const [pendingWrites, setPendingWrites] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [autoRefreshFailed, setAutoRefreshFailed] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const sentinel = useRef<HTMLDivElement>(null);
+  const requestGeneration = useRef(0);
+  const pendingWriteKeys = useRef(new Set<string>());
 
   const loadMessages = useCallback(async (box: string, nextCursor?: string | null, mode: "replace" | "append" | "refresh" = "replace") => {
+    const generation = requestGeneration.current;
     const params = new URLSearchParams({ box: box === "flagged" ? "all" : box });
     if (nextCursor) params.set("cursor", nextCursor);
     const data = await readJson<RillMessagesResponse>(await fetch(`/api/rill/mail/messages?${params}`, { cache: "no-store" }));
-    setMessages((current) => mode === "replace" ? data.messages : mergeMessagePages(current, data.messages));
+    if (generation !== requestGeneration.current) return;
+    setMessages((current) => {
+      if (mode === "replace") return data.messages;
+      const retained = mode === "refresh" ? pruneToRefreshWindow(current, data.messages, data.boxIds) : current;
+      return mergeMessagePages(retained, data.messages);
+    });
     if (mode !== "refresh") setCursor(data.cursor);
     setUpdatedAt(new Date());
   }, []);
 
   const initialize = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     setLoading(true); setError("");
     try {
       const data = await readJson<{ boxes: RillMailBox[]; reviewers: string[]; ownName: string | null }>(await fetch("/api/rill/mail/boxes", { cache: "no-store" }));
+      if (generation !== requestGeneration.current) return;
       setBoxes(data.boxes); setReviewers(data.reviewers.length ? data.reviewers : FALLBACK_REVIEWERS); setOwnName(data.ownName ?? ""); setConnected(true); setAutoRefreshFailed(false);
       await loadMessages(activeBox);
     } catch (cause) {
+      if (generation !== requestGeneration.current) return;
       if ((cause as { status?: number }).status === 428) setConnected(false);
       else setError(cause instanceof Error ? cause.message : "メールを取得できませんでした");
-    } finally { setLoading(false); }
+    } finally { if (generation === requestGeneration.current) setLoading(false); }
   }, [activeBox, loadMessages]);
 
   useEffect(() => { void initialize(); }, [initialize]);
@@ -110,21 +121,29 @@ export function RillMailScreen() {
     if (message && selected && keyOf(message) === keyOf(selected)) await fetchDetail(message);
   }, [activeBox, fetchDetail, loadMessages, selected]);
 
+  const applyLocal = useCallback((before: RillMailMessage, after: RillMailMessage) => {
+    const key = keyOf(before);
+    setMessages((current) => current.map((item) => keyOf(item) === key ? after : item));
+    setSelected((current) => current && keyOf(current) === key ? after : current);
+    setDetail((current) => current && keyOf(current) === key ? { ...current, ...after } : current);
+  }, []);
+
+  const markPending = useCallback((keys: string[], on: boolean) => {
+    keys.forEach((key) => on ? pendingWriteKeys.current.add(key) : pendingWriteKeys.current.delete(key));
+    setPendingWrites(new Set(pendingWriteKeys.current));
+  }, []);
+
   const writeOne = async (message: RillMailMessage, op: MailWriteOperation, value: boolean | MailState | null) => {
-    if (writing) return;
-    setWriting(true); setError("");
+    const key = keyOf(message);
+    if (pendingWriteKeys.current.has(key)) return;
+    const updated = applyLocalMailMutation(message, op, value, ownName);
+    markPending([key], true); setError(""); applyLocal(message, updated);
     try {
       await patchOne(message, op, value);
-      const updated: RillMailMessage = op === "flag" ? { ...message, flag: { flagStatus: value ? "flagged" : "notFlagged" } }
-        : op === "read" ? { ...message, isRead: Boolean(value) }
-        : op === "state" ? { ...message, categories: replaceMailState(message.categories, value as MailState | null) }
-        : { ...message, categories: toggleOwnConfirmation(message.categories, ownName, Boolean(value)) };
-      setSelected((current) => current && keyOf(current) === keyOf(message) ? updated : current);
-      setMessages((current) => current.map((item) => keyOf(item) === keyOf(message) ? updated : item));
-      await refreshAfterWrite(updated);
+      void refreshAfterWrite(updated).catch(() => setAutoRefreshFailed(true));
     }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "更新できませんでした"); }
-    finally { setWriting(false); }
+    catch (cause) { applyLocal(updated, message); setError(cause instanceof Error ? cause.message : "更新できませんでした"); }
+    finally { markPending([key], false); }
   };
 
   const openMessage = async (message: RillMailMessage) => {
@@ -154,25 +173,45 @@ export function RillMailScreen() {
   };
 
   const bulkWrite = async (op: MailWriteOperation, value: boolean | MailState | null) => {
-    const targets = messages.filter((message) => picked.has(keyOf(message)));
-    if (!targets.length || writing) return;
-    setWriting(true); setError("");
+    const targets = messages.filter((message) => picked.has(keyOf(message)) && !pendingWriteKeys.current.has(keyOf(message)));
+    if (!targets.length) return;
+    const snapshots = new Map(targets.map((message) => [keyOf(message), message]));
+    const optimistic = new Map(targets.map((message) => {
+      const actualOp = op === "read" && message.box.kind === "shared" ? "confirm" : op;
+      return [keyOf(message), applyLocalMailMutation(message, actualOp, value, ownName)];
+    }));
+    const keys = [...snapshots.keys()];
+    markPending(keys, true); setError("");
+    setMessages((current) => current.map((message) => optimistic.get(keyOf(message)) ?? message));
+    setSelected((current) => current ? optimistic.get(keyOf(current)) ?? current : current);
+    setDetail((current) => current ? { ...current, ...(optimistic.get(keyOf(current)) ?? {}) } : current);
     try {
       const groups = new Map<string, RillMailMessage[]>();
       targets.forEach((message) => groups.set(message.box.id, [...(groups.get(message.box.id) ?? []), message]));
       const responses = await Promise.all([...groups].map(async ([box, items]) => {
         const actualOp = op === "read" && items[0].box.kind === "shared" ? "confirm" : op;
-        return readJson<{ results: { ok: boolean; error?: string }[] }>(await fetch("/api/rill/mail/messages/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: items.map((item) => item.id), box, op: actualOp, value }) }));
+        return readJson<{ results: { id: string; boxId: string; ok: boolean; error?: string }[] }>(await fetch("/api/rill/mail/messages/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: items.map((item) => item.id), box, op: actualOp, value }) }));
       }));
       const failures = responses.flatMap((response) => response.results).filter((result) => !result.ok);
-      if (failures.length) setError(`${failures.length}件を更新できませんでした`);
+      const failedKeys = new Set(failures.map((result) => `${result.boxId}:${result.id}`));
+      if (failedKeys.size) {
+        setMessages((current) => current.map((message) => failedKeys.has(keyOf(message)) ? snapshots.get(keyOf(message)) ?? message : message));
+        setSelected((current) => current && failedKeys.has(keyOf(current)) ? snapshots.get(keyOf(current)) ?? current : current);
+        setDetail((current) => current && failedKeys.has(keyOf(current)) ? { ...current, ...(snapshots.get(keyOf(current)) ?? {}) } : current);
+        setError(`${failedKeys.size}件を更新できませんでした`);
+      }
       else setPicked(new Set());
-      await refreshAfterWrite(selected ?? undefined);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "一括更新できませんでした"); }
-    finally { setWriting(false); }
+      void refreshAfterWrite(selected ?? undefined).catch(() => setAutoRefreshFailed(true));
+    } catch (cause) {
+      setMessages((current) => current.map((message) => snapshots.get(keyOf(message)) ?? message));
+      setSelected((current) => current ? snapshots.get(keyOf(current)) ?? current : current);
+      setDetail((current) => current ? { ...current, ...(snapshots.get(keyOf(current)) ?? {}) } : current);
+      setError(cause instanceof Error ? cause.message : "一括更新できませんでした");
+    }
+    finally { markPending(keys, false); }
   };
 
-  const selectBox = (id: string) => { setActiveBox(id); setMessages([]); setSelected(null); setPicked(new Set()); setCursor(null); };
+  const selectBox = (id: string) => { requestGeneration.current += 1; setActiveBox(id); setMessages([]); setSelected(null); setPicked(new Set()); setCursor(null); };
   const currentFlagged = selected?.flag.flagStatus === "flagged";
   const selectedUnread = Boolean(selected && ownName && isMessageUnread(selected, ownName));
   const attachmentUrl = (item: RillMailDetail["attachments"][number]) => `/api/rill/mail/messages/${encodeURIComponent(detail!.id)}/attachments/${encodeURIComponent(item.id)}?box=${encodeURIComponent(detail!.box.id)}`;
@@ -180,12 +219,12 @@ export function RillMailScreen() {
   return <GardenShell activeModule="rill" pageMenu={MENU} activityItems={[]} contentFullBleed>
     <section className={styles.surface} aria-label="Rill Mail">
       <div className={styles.toolbar}>
-        <button className={styles.primaryButton} onClick={() => void initialize()} disabled={loading || writing}>↻ 更新</button>
+        <button className={styles.primaryButton} onClick={() => void initialize()} disabled={loading}>↻ 更新</button>
         <span className={styles.fresh}>{updatedAt ? `最終更新 ${updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}・60秒ごと` : "未更新"}</span>{autoRefreshFailed && <span className={styles.autoWarning}>更新に失敗（自動で再試行します）</span>}<span className={styles.separator} />
         {["新規", "返信", "全員に返信", "転送"].map((label) => <button key={label} className={styles.disabledButton} disabled title="次段階">{label}</button>)}
-        <button className={styles.actionButton} disabled={!selected || writing} onClick={() => selected && void writeOne(selected, selected.box.kind === "personal" ? "read" : "confirm", selectedUnread)}>○ {selectedUnread ? "開封済みに" : "未読に戻す"}</button>
-        <button className={`${styles.actionButton} ${currentFlagged ? styles.actionOn : ""}`} disabled={!selected || writing} onClick={() => selected && void writeOne(selected, "flag", !currentFlagged)}>⚑ ピン</button>
-        <span className={styles.toolbarStates}>{MAIL_STATES.map((state) => <button key={state} className={selected && statusCategory(selected.categories) === state ? styles.actionOn : ""} disabled={!selected || writing} onClick={() => selected && void writeOne(selected, "state", statusCategory(selected.categories) === state ? null : state)}>{state}</button>)}</span>
+        <button className={styles.actionButton} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, selected.box.kind === "personal" ? "read" : "confirm", selectedUnread)}>○ {selectedUnread ? "開封済みに" : "未読に戻す"}</button>
+        <button className={`${styles.actionButton} ${currentFlagged ? styles.actionOn : ""}`} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "flag", !currentFlagged)}>⚑ ピン</button>
+        <span className={styles.toolbarStates}>{MAIL_STATES.map((state) => <button key={state} className={selected && statusCategory(selected.categories) === state ? styles.actionOn : ""} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "state", statusCategory(selected.categories) === state ? null : state)}>{state}</button>)}</span>
         <button className={styles.moreButton} disabled title="アーカイブ・削除は次段階">…</button>
         <label className={styles.search}><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="メールを検索" /></label>
       </div>
@@ -199,15 +238,15 @@ export function RillMailScreen() {
         <section className={styles.column}><header className={styles.columnHeader}>メール一覧 <span>{filtered.length}件</span></header>
           {picked.size > 0 && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button onClick={() => void bulkWrite("flag", true)}>⚑ ピン</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
           <div className={styles.scroll}>{loading && !messages.length && <div className={styles.notice}>読み込み中…</div>}{error && <div className={styles.error}>{error}</div>}
-          {datedMessages.map(({ message, label, showDay }) => { const status = statusCategory(message.categories); const confirmedBy = reviewerNames(message.categories, reviewers); const key = keyOf(message); const unread = ownName ? isMessageUnread(message, ownName) : !message.isRead; return <Fragment key={key}>{showDay && <div className={styles.daySeparator}>{label}</div>}<div role="button" tabIndex={0} className={`${styles.mail} ${selected && keyOf(selected) === key ? styles.selectedMail : ""} ${unread ? styles.unread : ""} ${picked.has(key) ? styles.picked : ""}`} onClick={(event) => event.ctrlKey || event.metaKey || event.shiftKey ? togglePicked(message, event) : void openMessage(message)} onKeyDown={(event) => { if (event.key === "Enter") void openMessage(message); }}>
-            <span className={styles.row}><button className={`${styles.checkbox} ${picked.has(key) ? styles.checked : ""}`} onClick={(event) => togglePicked(message, event)} aria-label="選択" /><span className={styles.from}>{message.fromName}</span><span className={styles.badge}>{abbreviateBox(message.box.address)}</span><time>{formatMailListDate(message.receivedDateTime)}</time><button className={`${styles.inlineFlag} ${message.flag.flagStatus === "flagged" ? styles.flag : ""}`} onClick={(event) => { event.stopPropagation(); void writeOne(message, "flag", message.flag.flagStatus !== "flagged"); }}>⚑</button></span>
-            <span className={styles.row}><span className={styles.subject}>{message.hasAttachments && "⌕ "}{message.subject}</span>{status && <span className={`${styles.status} ${styles[`status${status}`]}`}>{status}</span>}</span><span className={styles.row}><span className={styles.preview}>{message.bodyPreview}</span><span className={styles.reviewers}>{confirmedBy.map((name) => <i key={name} className={styles[`reviewerTone${reviewerTone(name)}`]} title={name}>{Array.from(name)[0]}</i>)}</span></span>
+          {datedMessages.map(({ message, label, showDay }) => { const status = statusCategory(message.categories); const confirmedBy = reviewerNames(message.categories, reviewers); const initials = reviewerInitials(message.categories, reviewers); const key = keyOf(message); const unread = ownName ? isMessageUnread(message, ownName) : !message.isRead; return <Fragment key={key}>{showDay && <div className={styles.daySeparator}>{label}</div>}<div role="button" tabIndex={0} className={`${styles.mail} ${selected && keyOf(selected) === key ? styles.selectedMail : ""} ${unread ? styles.unread : ""} ${picked.has(key) ? styles.picked : ""}`} onClick={(event) => event.ctrlKey || event.metaKey || event.shiftKey ? togglePicked(message, event) : void openMessage(message)} onKeyDown={(event) => { if (event.key === "Enter") void openMessage(message); }}>
+            <span className={styles.row}><button className={`${styles.checkbox} ${picked.has(key) ? styles.checked : ""}`} onClick={(event) => togglePicked(message, event)} aria-label="選択" /><span className={styles.from}>{message.fromName}</span><span className={styles.badge}>{abbreviateBox(message.box.address)}</span><time>{formatMailListDate(message.receivedDateTime)}</time><button disabled={pendingWrites.has(key)} className={`${styles.inlineFlag} ${message.flag.flagStatus === "flagged" ? styles.flag : ""}`} onClick={(event) => { event.stopPropagation(); void writeOne(message, "flag", message.flag.flagStatus !== "flagged"); }}>⚑</button></span>
+            <span className={styles.row}><span className={styles.subject}>{message.hasAttachments && "⌕ "}{message.subject}</span>{status && <span className={`${styles.status} ${styles[`status${status}`]}`}>{status}</span>}</span><span className={styles.row}><span className={styles.preview}>{message.bodyPreview}</span><span className={styles.reviewers}>{confirmedBy.map((name, index) => <i key={name} className={styles[`reviewerTone${reviewerTone(name, reviewers)}`]} title={name}>{initials[index]}</i>)}</span></span>
           </div></Fragment>; })}<div ref={sentinel} className={styles.sentinel}>{loadingMore ? "続きを読み込み中…" : ""}</div></div>
         </section>
         <article className={styles.column}>{!selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <><header className={styles.readerHeader}><div className={styles.readerTitle}><h2>{selected.hasAttachments && "⌕ "}{selected.subject}</h2><span className={styles.badge}>{abbreviateBox(selected.box.address)}</span></div><dl><div><dt>差出人</dt><dd>{selected.fromName} &lt;{selected.fromAddress}&gt;</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(selected.receivedDateTime)}</dd></div></dl></header><div className={styles.readerBody}><p className={styles.previewLead}>{selected.bodyPreview || "本文を読み込んでいます…"}</p><div className={styles.skeletonLine} /><div className={`${styles.skeletonLine} ${styles.skeletonShort}`} /></div></> : <><header className={styles.readerHeader}>
-          <div className={styles.readerTitle}><h2>{detail.hasAttachments && "⌕ "}{detail.subject}</h2><button className={`${styles.inlineFlag} ${detail.flag.flagStatus === "flagged" ? styles.flag : ""}`} onClick={() => void writeOne(detail, "flag", detail.flag.flagStatus !== "flagged")}>⚑</button><span className={styles.badge}>{abbreviateBox(detail.box.address)}</span></div>
+          <div className={styles.readerTitle}><h2>{detail.hasAttachments && "⌕ "}{detail.subject}</h2><button disabled={pendingWrites.has(keyOf(detail))} className={`${styles.inlineFlag} ${detail.flag.flagStatus === "flagged" ? styles.flag : ""}`} onClick={() => void writeOne(detail, "flag", detail.flag.flagStatus !== "flagged")}>⚑</button><span className={styles.badge}>{abbreviateBox(detail.box.address)}</span></div>
           <dl><div><dt>差出人</dt><dd>{detail.fromName} &lt;{detail.fromAddress}&gt;</dd></div><div><dt>宛先</dt><dd>{detail.to.join(", ")}</dd></div><div><dt>受信</dt><dd>{formatMailDetailDate(detail.receivedDateTime)}</dd></div></dl>
-          <div className={styles.categoryLine}><span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles[`reviewerTone${reviewerTone(name)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{Array.from(name)[0]}</button>)}</span></div>
+          <div className={styles.categoryLine}><span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} disabled={pendingWrites.has(keyOf(detail))} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName).map((name) => <button key={name} title={name} className={`${detail.categories.includes(name) ? styles[`reviewerTone${reviewerTone(name, reviewers)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName || pendingWrites.has(keyOf(detail))} onClick={() => void writeOne(detail, "confirm", !detail.categories.includes(name))}>{reviewerInitials([name], [name])[0]}</button>)}</span></div>
         </header><div className={styles.readerBody}>{detail.body.contentType === "html" ? <div className={styles.htmlBody} dangerouslySetInnerHTML={{ __html: detail.body.content }} /> : <div className={styles.textBody}>{detail.body.content}</div>}{!!detail.attachments.length && <section className={styles.attachments}><h3>添付ファイル</h3>{detail.attachments.map((item) => <div className={styles.attachment} key={item.id}><span>⌕</span><a href={attachmentUrl(item)}>{item.name}</a><small>{Math.max(1, Math.round(item.size / 1024))} KB</small><button disabled>Bud の未処理トレイへ</button></div>)}</section>}</div></>}
         </article>
       </div>}

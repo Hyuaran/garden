@@ -37,4 +37,5 @@ export type RillMailDetail = RillMailMessage & {
 export type RillMessagesResponse = {
   messages: RillMailMessage[];
   cursor: string | null;
+  boxIds?: string[];
 };

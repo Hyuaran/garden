@@ -6,7 +6,7 @@ export async function GET() {
     const { supabase, user } = await requireGardenUser();
     const [boxes, employees] = await Promise.all([
       listVisibleBoxes(supabase, user),
-      supabase.from("root_employees").select("name,user_id").not("name", "is", null),
+      supabase.from("root_employees").select("name,user_id,employee_number").not("name", "is", null).order("employee_number", { ascending: true, nullsFirst: false }),
     ]);
     const reviewers = [...new Set((employees.data ?? []).map((employee) => employee.name).filter((name): name is string => Boolean(name)))];
     const ownName = employees.data?.find((employee) => employee.user_id === user.id)?.name ?? null;

@@ -1,22 +1,31 @@
 import type { RillMailMessage } from "./types";
+import { MAIL_STATES } from "./write-ops";
 
-const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const FORMATTERS = new Map<string, Intl.DateTimeFormat>();
+
+function formatter(timeZone: string) {
+  let value = FORMATTERS.get(timeZone);
+  if (!value) {
+    value = new Intl.DateTimeFormat("ja-JP", {
+      timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+      weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
+    });
+    FORMATTERS.set(timeZone, value);
+  }
+  return value;
+}
 
 function parts(value: string, timeZone = "Asia/Tokyo") {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  const formatted = new Intl.DateTimeFormat("ja-JP", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
+  const formatted = formatter(timeZone).formatToParts(date);
   const get = (type: Intl.DateTimeFormatPartTypes) => formatted.find((p) => p.type === type)?.value ?? "";
-  const localDate = new Date(date.toLocaleString("en-US", { timeZone }));
-  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute"), weekday: WEEKDAYS[localDate.getDay()] };
+  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute"), weekday: get("weekday") };
+}
+
+function timestamp(message: RillMailMessage) {
+  const value = Date.parse(message.receivedDateTime);
+  return Number.isNaN(value) ? Number.NEGATIVE_INFINITY : value;
 }
 
 export function formatMailListDate(value: string, timeZone?: string) {
@@ -30,17 +39,36 @@ export function formatMailDetailDate(value: string, timeZone?: string) {
 }
 
 export function mergeMessages(groups: RillMailMessage[][]) {
-  return groups.flat().sort((a, b) => Date.parse(b.receivedDateTime) - Date.parse(a.receivedDateTime));
+  return groups.flat().sort((a, b) => timestamp(b) - timestamp(a));
 }
 
 export function mergeMessagePages(current: RillMailMessage[], incoming: RillMailMessage[]) {
   const byKey = new Map(current.map((message) => [`${message.box.id}:${message.id}`, message]));
   incoming.forEach((message) => byKey.set(`${message.box.id}:${message.id}`, message));
-  return [...byKey.values()].sort((a, b) => Date.parse(b.receivedDateTime) - Date.parse(a.receivedDateTime));
+  return [...byKey.values()].sort((a, b) => timestamp(b) - timestamp(a));
 }
 
-export function mergeBoxCursors(current: Record<string, string | null>, incoming: Record<string, string | null>) {
-  return { ...current, ...incoming };
+export function pruneToRefreshWindow(current: RillMailMessage[], incoming: RillMailMessage[], refreshedBoxIds?: string[]) {
+  const included = new Set(refreshedBoxIds ?? incoming.map((message) => message.box.id));
+  const incomingKeys = new Set(incoming.map((message) => `${message.box.id}:${message.id}`));
+  const incomingByBox = new Map<string, RillMailMessage[]>();
+  incoming.forEach((message) => incomingByBox.set(message.box.id, [...(incomingByBox.get(message.box.id) ?? []), message]));
+  const oldestByBox = new Map<string, number>();
+  incomingByBox.forEach((messages, boxId) => {
+    const valid = messages.map(timestamp).filter((value) => Number.isFinite(value));
+    if (valid.length) oldestByBox.set(boxId, Math.min(...valid));
+  });
+
+  return current.filter((message) => {
+    const boxId = message.box.id;
+    if (!included.has(boxId)) return true;
+    const boxIncoming = incomingByBox.get(boxId) ?? [];
+    if (!boxIncoming.length) return false;
+    const oldest = oldestByBox.get(boxId);
+    const currentTime = timestamp(message);
+    if (oldest === undefined || !Number.isFinite(currentTime) || currentTime < oldest) return true;
+    return incomingKeys.has(`${boxId}:${message.id}`);
+  });
 }
 
 export function abbreviateBox(address: string) {
@@ -56,15 +84,13 @@ export function reviewerNames(categories: string[], knownNames: string[]) {
   return categories.filter((category) => names.has(category));
 }
 
-export function reviewerTone(name: string) {
-  const fixed: Record<string, number> = { "東": 0, "上": 1, "簡": 2, "金": 3 };
-  const initial = Array.from(name)[0] ?? "";
-  if (fixed[initial] !== undefined) return fixed[initial];
-  return Array.from(name).reduce((sum, character) => sum + (character.codePointAt(0) ?? 0), 0) % 4;
+export function reviewerTone(name: string, reviewers: string[]) {
+  const index = reviewers.indexOf(name);
+  return (index < 0 ? 0 : index) % 4;
 }
 
 export function statusCategory(categories: string[]) {
-  return ["要対応", "確認中", "処理済"].find((status) => categories.includes(status)) ?? null;
+  return MAIL_STATES.find((status) => categories.includes(status)) ?? null;
 }
 
 function dateKey(value: string, timeZone = "Asia/Tokyo") {
@@ -89,11 +115,15 @@ export function mailDayLabel(value: string, now = new Date(), timeZone = "Asia/T
 }
 
 export function daySeparatedMessages(messages: RillMailMessage[], now = new Date(), timeZone = "Asia/Tokyo") {
+  const today = dateKey(now.toISOString(), timeZone);
+  const yesterday = priorDateKey(today);
   let previous = "";
   return messages.map((message) => {
-    const label = mailDayLabel(message.receivedDateTime, now, timeZone);
-    const showDay = label !== previous;
-    previous = label;
+    const key = dateKey(message.receivedDateTime, timeZone);
+    const p = key ? parts(message.receivedDateTime, timeZone) : null;
+    const label = key === today ? "今日" : key === yesterday ? "昨日" : p ? `${p.month}/${p.day}(${p.weekday})` : "";
+    const showDay = Boolean(label) && label !== previous;
+    if (label) previous = label;
     return { message, label, showDay };
   });
 }

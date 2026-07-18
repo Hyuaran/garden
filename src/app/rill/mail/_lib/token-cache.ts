@@ -12,6 +12,17 @@ export function isNewerTokenExpiry(candidate: string, current: string | null | u
   return Number.isFinite(candidateMs) && candidateMs > currentMs;
 }
 
+export function tokenHasScope(token: string, requiredScope: string) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return false;
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { scp?: unknown };
+    return typeof claims.scp === "string" && claims.scp.split(/\s+/u).includes(requiredScope);
+  } catch {
+    return false;
+  }
+}
+
 export class SingleFlight<T> {
   private readonly inFlight = new Map<string, Promise<T>>();
 

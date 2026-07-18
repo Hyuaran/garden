@@ -1,6 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { decryptToken, encryptToken } from "./token-crypto";
-import { isAccessTokenCacheValid, SingleFlight } from "./token-cache";
+import { isAccessTokenCacheValid, SingleFlight, tokenHasScope } from "./token-cache";
 import { mergeMessages } from "./format";
 import { RillMailHttpError } from "./server-auth";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "./types";
@@ -8,6 +8,8 @@ import { isMailState, isPersonalMailbox, replaceMailState, toggleOwnConfirmation
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,flag,categories,bodyPreview";
+const DELEGATED_SCOPES = "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared MailboxSettings.ReadWrite";
+const REQUIRED_SETTINGS_SCOPE = "MailboxSettings.ReadWrite";
 
 type TokenRow = {
   refresh_token_enc: string;
@@ -46,7 +48,7 @@ function callbackUrl(requestUrl: string) {
 
 export function authorizeUrl(requestUrl: string, state: string) {
   const c = config();
-  const params = new URLSearchParams({ client_id: c.clientId, response_type: "code", redirect_uri: callbackUrl(requestUrl), response_mode: "query", scope: "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared", state });
+  const params = new URLSearchParams({ client_id: c.clientId, response_type: "code", redirect_uri: callbackUrl(requestUrl), response_mode: "query", scope: DELEGATED_SCOPES, state });
   return `https://login.microsoftonline.com/${encodeURIComponent(c.tenantId)}/oauth2/v2.0/authorize?${params}`;
 }
 
@@ -62,7 +64,7 @@ async function tokenRequest(params: URLSearchParams) {
 
 export async function exchangeCode(code: string, requestUrl: string) {
   try {
-    return await tokenRequest(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: callbackUrl(requestUrl), scope: "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared" }));
+    return await tokenRequest(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: callbackUrl(requestUrl), scope: DELEGATED_SCOPES }));
   } catch (error) {
     throw new RillMailHttpError(502, error instanceof Error ? error.message : "Microsoft token exchange failed");
   }
@@ -71,7 +73,10 @@ export async function exchangeCode(code: string, requestUrl: string) {
 async function accessToken(supabase: SupabaseClient, user: User) {
   const row = await readTokenRow(supabase, user.id);
   if (row.access_token_enc && isAccessTokenCacheValid(row.access_token_expires_at)) {
-    try { return { token: decryptToken(row.access_token_enc), upn: row.ms_upn }; }
+    try {
+      const token = decryptToken(row.access_token_enc);
+      if (tokenHasScope(token, REQUIRED_SETTINGS_SCOPE)) return { token, upn: row.ms_upn };
+    }
     catch { /* refresh below when an old/corrupt cache cannot be decrypted */ }
   }
 
@@ -79,12 +84,15 @@ async function accessToken(supabase: SupabaseClient, user: User) {
     // A request that entered the flight later may find the cache filled by its predecessor.
     const latest = await readTokenRow(supabase, user.id);
     if (latest.access_token_enc && isAccessTokenCacheValid(latest.access_token_expires_at)) {
-      try { return { token: decryptToken(latest.access_token_enc), upn: latest.ms_upn }; }
+      try {
+        const token = decryptToken(latest.access_token_enc);
+        if (tokenHasScope(token, REQUIRED_SETTINGS_SCOPE)) return { token, upn: latest.ms_upn };
+      }
       catch { /* refresh below */ }
     }
 
     try {
-      const tokens = await tokenRequest(new URLSearchParams({ grant_type: "refresh_token", refresh_token: decryptToken(latest.refresh_token_enc), scope: "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared" }));
+      const tokens = await tokenRequest(new URLSearchParams({ grant_type: "refresh_token", refresh_token: decryptToken(latest.refresh_token_enc), scope: DELEGATED_SCOPES }));
       const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
       const update = {
         access_token_enc: encryptToken(tokens.access_token),
@@ -171,6 +179,12 @@ function mapMessage(raw: GraphMessage, box: RillMailBox): RillMailMessage {
 function encodeCursor(cursor: Cursor) { return Object.values(cursor).some(Boolean) ? Buffer.from(JSON.stringify(cursor)).toString("base64url") : null; }
 function decodeCursor(value: string | null): Cursor { if (!value) return {}; try { return JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Cursor; } catch { throw new RillMailHttpError(400, "Invalid cursor"); } }
 
+export function resolveBoxPageUrl(cursor: Cursor, boxId: string, initialUrl: string) {
+  if (!Object.prototype.hasOwnProperty.call(cursor, boxId)) return { exhausted: false, url: initialUrl };
+  if (cursor[boxId] === null) return { exhausted: true, url: null };
+  return { exhausted: false, url: cursor[boxId] ?? initialUrl };
+}
+
 export async function listMessages(supabase: SupabaseClient, user: User, boxId: string, cursorValue: string | null): Promise<RillMessagesResponse> {
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
@@ -179,14 +193,14 @@ export async function listMessages(supabase: SupabaseClient, user: User, boxId: 
   const cursor = decodeCursor(cursorValue);
   const groups = await Promise.all(selected.map(async (box) => {
     const params = new URLSearchParams({ "$top": "50", "$select": MESSAGE_SELECT });
-    const url = cursor[box.id] ?? `${messagePath(box)}?${params}`;
-    if (cursorValue && !cursor[box.id]) return { messages: [] as RillMailMessage[], next: null };
-    const response = await graphFetch(url, token);
+    const page = resolveBoxPageUrl(cursor, box.id, `${messagePath(box)}?${params}`);
+    if (page.exhausted || !page.url) return { messages: [] as RillMailMessage[], next: null };
+    const response = await graphFetch(page.url, token);
     const data = await response.json() as GraphList<GraphMessage>;
     return { messages: (data.value ?? []).map((raw) => mapMessage(raw, box)), next: data["@odata.nextLink"] ?? null };
   }));
   const next = Object.fromEntries(selected.map((box, index) => [box.id, groups[index].next]));
-  return { messages: mergeMessages(groups.map((group) => group.messages)), cursor: encodeCursor(next) };
+  return { messages: mergeMessages(groups.map((group) => group.messages)), cursor: encodeCursor(next), boxIds: selected.map((box) => box.id) };
 }
 
 export async function getMessage(supabase: SupabaseClient, user: User, boxId: string, id: string): Promise<RillMailDetail> {
@@ -265,15 +279,21 @@ export async function mutateMailMessages(supabase: SupabaseClient, user: User, m
   async function ensureCategory(box: RillMailBox, name: string) {
     const previous = categoryLocks.get(box.id) ?? Promise.resolve();
     const current = previous.then(async () => {
-      let known = categoryCache.get(box.id);
-      if (!known) {
-        const data = await graphJson(categoryPath(box), token) as GraphList<{ displayName?: string }>;
-        known = new Set((data.value ?? []).map((category) => category.displayName).filter((value): value is string => Boolean(value)));
-        categoryCache.set(box.id, known);
+      try {
+        let known = categoryCache.get(box.id);
+        if (!known) {
+          const data = await graphJson(categoryPath(box), token) as GraphList<{ displayName?: string }>;
+          known = new Set((data.value ?? []).map((category) => category.displayName).filter((value): value is string => Boolean(value)));
+          categoryCache.set(box.id, known);
+        }
+        if (known.has(name)) return;
+        await graphJson(categoryPath(box), token, { method: "POST", body: JSON.stringify({ displayName: name, color: CATEGORY_COLORS[name] ?? "preset9" }) });
+        known.add(name);
+      } catch (error) {
+        // Master category color is optional. The message categories PATCH below is
+        // still valid with Mail.ReadWrite and must not be blocked by this endpoint.
+        console.warn("Rill Mail: master category registration skipped", error instanceof Error ? error.message : error);
       }
-      if (known.has(name)) return;
-      await graphJson(categoryPath(box), token, { method: "POST", body: JSON.stringify({ displayName: name, color: CATEGORY_COLORS[name] ?? "preset9" }) });
-      known.add(name);
     });
     categoryLocks.set(box.id, current);
     await current;

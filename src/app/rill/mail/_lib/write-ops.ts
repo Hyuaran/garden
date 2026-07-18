@@ -36,3 +36,10 @@ export function selectionRange<T>(items: T[], anchor: T, target: T) {
 export function isMailState(value: unknown): value is MailState {
   return typeof value === "string" && MAIL_STATES.includes(value as MailState);
 }
+
+export function applyLocalMailMutation(message: RillMailMessage, op: MailWriteOperation, value: boolean | MailState | null, ownName: string): RillMailMessage {
+  if (op === "flag") return { ...message, flag: { flagStatus: value ? "flagged" : "notFlagged" } };
+  if (op === "read") return { ...message, isRead: Boolean(value) };
+  if (op === "state") return { ...message, categories: replaceMailState(message.categories, value as MailState | null) };
+  return { ...message, categories: toggleOwnConfirmation(message.categories, ownName, Boolean(value)) };
+}
