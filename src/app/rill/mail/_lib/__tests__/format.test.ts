@@ -32,6 +32,20 @@ describe("Rill Mail formatters", () => {
     expect(mergeMessagePages(current, incoming)[0].subject).toBe("updated");
   });
 
+  it("linearly merges sorted pages and preserves unchanged message references", () => {
+    const newest = message("newest", "2026-07-18T04:00:00Z");
+    const unchanged = message("same", "2026-07-18T02:00:00Z");
+    const oldest = message("oldest", "2026-07-18T00:00:00Z");
+    const equivalentCopy = { ...unchanged, box: { ...unchanged.box }, to: [...unchanged.to], categories: [...unchanged.categories] };
+    const inserted = message("inserted", "2026-07-18T01:00:00Z");
+    const result = mergeMessagePages([newest, unchanged, oldest], [equivalentCopy, inserted]);
+    expect(result.map((item) => item.id)).toEqual(["newest", "same", "inserted", "oldest"]);
+    expect(result[0]).toBe(newest);
+    expect(result[1]).toBe(unchanged);
+    expect(result[3]).toBe(oldest);
+    expect(mergeMessagePages(result, [{ ...equivalentCopy }, { ...inserted }])).toBe(result);
+  });
+
   it("inserts Today, Yesterday and dated bands across a month boundary", () => {
     const now = new Date("2026-08-01T03:00:00Z");
     expect(mailDayLabel("2026-08-01T01:00:00Z", now)).toBe("今日");
@@ -58,6 +72,16 @@ describe("Rill Mail formatters", () => {
     const incoming = [message("kept", "2026-07-18T03:00:00Z"), message("window-edge", "2026-07-18T02:00:00Z")];
     expect(pruneToRefreshWindow(current, incoming, ["me"]).map((item) => item.id)).toEqual(["kept", "older", "missing-box"]);
     expect(pruneToRefreshWindow(current, [], ["me"]).map((item) => item.id)).toEqual(["missing-box"]);
+  });
+
+  it("keeps order when refresh pruning and page insertion happen together", () => {
+    const current = [message("keep", "2026-07-18T04:00:00Z"), message("removed", "2026-07-18T03:00:00Z"), message("older", "2026-07-18T01:00:00Z")];
+    const refreshed = [{ ...current[0] }, message("edge", "2026-07-18T02:00:00Z")];
+    const retained = pruneToRefreshWindow(current, refreshed, ["me"]);
+    const result = mergeMessagePages(retained, refreshed);
+    expect(result.map((item) => item.id)).toEqual(["keep", "edge", "older"]);
+    expect(result[0]).toBe(current[0]);
+    expect(result[2]).toBe(current[2]);
   });
 
   it("assigns reviewer colors by stable employee order", () => {

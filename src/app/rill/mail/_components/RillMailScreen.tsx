@@ -69,6 +69,7 @@ export function RillMailScreen() {
   const detailRequests = useRef(new Map<string, Promise<RillMailDetail>>());
   const selectedKey = useRef<string | null>(null);
   const visibleMessages = useRef<RillMailMessage[]>([]);
+  const lastUserInteraction = useRef(Date.now());
 
   const loadMessages = useCallback(async (box: string, nextCursor?: string | null, mode: "replace" | "append" | "refresh" | "switch" = "replace") => {
     const generation = requestGeneration.current;
@@ -123,15 +124,36 @@ export function RillMailScreen() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [viewingAttachment]);
   useEffect(() => {
-    if (!cursor || loadingMore || automaticPageCount.current >= 30) return;
-    setLoadingMore(true);
-    void loadMessages(activeBox, cursor, "append")
-      .catch((cause) => setError(cause instanceof Error ? cause.message : "続きを取得できませんでした"))
-      .finally(() => setLoadingMore(false));
+    const recordInteraction = () => { lastUserInteraction.current = Date.now(); };
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "wheel", "scroll", "keydown", "input"];
+    events.forEach((event) => window.addEventListener(event, recordInteraction, { capture: true, passive: true }));
+    return () => events.forEach((event) => window.removeEventListener(event, recordInteraction, { capture: true }));
+  }, []);
+  useEffect(() => {
+    if (!cursor || loadingMore || automaticPageCount.current >= 10) return;
+    let timer: number | undefined;
+    let idle: number | undefined;
+    const run = () => {
+      const interactionPause = 1_000 - (Date.now() - lastUserInteraction.current);
+      if (interactionPause > 0) { timer = window.setTimeout(queueWhenIdle, interactionPause); return; }
+      setLoadingMore(true);
+      void loadMessages(activeBox, cursor, "append")
+        .catch((cause) => setError(cause instanceof Error ? cause.message : "続きを取得できませんでした"))
+        .finally(() => setLoadingMore(false));
+    };
+    const queueWhenIdle = () => {
+      if ("requestIdleCallback" in window) idle = window.requestIdleCallback(run);
+      else run();
+    };
+    timer = window.setTimeout(queueWhenIdle, 500);
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      if (idle !== undefined && "cancelIdleCallback" in window) window.cancelIdleCallback(idle);
+    };
   }, [activeBox, cursor, loadMessages, loadingMore]);
   useEffect(() => {
     const node = sentinel.current;
-    if (!node || !cursor || loadingMore || automaticPageCount.current < 30) return;
+    if (!node || !cursor || loadingMore || automaticPageCount.current < 10) return;
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return;
       setLoadingMore(true);
