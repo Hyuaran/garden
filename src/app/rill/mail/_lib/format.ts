@@ -2,8 +2,11 @@ import type { RillMailMessage } from "./types";
 import { MAIL_STATES } from "./write-ops";
 
 const FORMATTERS = new Map<string, Intl.DateTimeFormat>();
+type MailDateParts = { year: string; month: string; day: string; hour: string; minute: string; weekday: string };
+const DATE_PARTS = new Map<string, MailDateParts | null>();
 const VIEWABLE_ATTACHMENT_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"]);
 const VIEWABLE_ATTACHMENT_EXTENSIONS = new Set(["pdf", "png", "jpg", "jpeg", "gif", "webp"]);
+const MESSAGE_TIMESTAMPS = new WeakMap<RillMailMessage, number>();
 
 export function isViewableAttachment(contentType: string | null | undefined, name: string) {
   const normalizedType = contentType?.split(";", 1)[0].trim().toLocaleLowerCase("en-US");
@@ -25,16 +28,44 @@ function formatter(timeZone: string) {
 }
 
 function parts(value: string, timeZone = "Asia/Tokyo") {
+  const cacheKey = `${timeZone}:${value}`;
+  if (DATE_PARTS.has(cacheKey)) return DATE_PARTS.get(cacheKey) ?? null;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
+  if (Number.isNaN(date.getTime())) { DATE_PARTS.set(cacheKey, null); return null; }
   const formatted = formatter(timeZone).formatToParts(date);
   const get = (type: Intl.DateTimeFormatPartTypes) => formatted.find((p) => p.type === type)?.value ?? "";
-  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute"), weekday: get("weekday") };
+  const result = { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute"), weekday: get("weekday") };
+  DATE_PARTS.set(cacheKey, result);
+  return result;
 }
 
 function timestamp(message: RillMailMessage) {
+  const cached = MESSAGE_TIMESTAMPS.get(message);
+  if (cached !== undefined) return cached;
   const value = Date.parse(message.receivedDateTime);
-  return Number.isNaN(value) ? Number.NEGATIVE_INFINITY : value;
+  const normalized = Number.isNaN(value) ? Number.NEGATIVE_INFINITY : value;
+  MESSAGE_TIMESTAMPS.set(message, normalized);
+  return normalized;
+}
+
+const messageKey = (message: RillMailMessage) => `${message.box.id}:${message.id}`;
+const sameStrings = (left: string[], right: string[]) => left.length === right.length && left.every((value, index) => value === right[index]);
+
+function sameMessage(left: RillMailMessage, right: RillMailMessage) {
+  return left.id === right.id
+    && left.subject === right.subject
+    && left.fromName === right.fromName
+    && left.fromAddress === right.fromAddress
+    && left.receivedDateTime === right.receivedDateTime
+    && left.hasAttachments === right.hasAttachments
+    && left.isRead === right.isRead
+    && left.bodyPreview === right.bodyPreview
+    && left.box.id === right.box.id
+    && left.box.address === right.box.address
+    && left.box.label === right.box.label
+    && left.box.kind === right.box.kind
+    && sameStrings(left.to, right.to)
+    && sameStrings(left.categories, right.categories);
 }
 
 export function formatMailListDate(value: string, timeZone?: string) {
@@ -52,32 +83,48 @@ export function mergeMessages(groups: RillMailMessage[][]) {
 }
 
 export function mergeMessagePages(current: RillMailMessage[], incoming: RillMailMessage[]) {
-  const byKey = new Map(current.map((message) => [`${message.box.id}:${message.id}`, message]));
-  incoming.forEach((message) => byKey.set(`${message.box.id}:${message.id}`, message));
-  return [...byKey.values()].sort((a, b) => timestamp(b) - timestamp(a));
+  if (!incoming.length) return current;
+  const existing = new Map(current.map((message) => [messageKey(message), message]));
+  const incomingKeys = new Set(incoming.map(messageKey));
+  const normalizedIncoming = incoming.map((message) => {
+    const previous = existing.get(messageKey(message));
+    return previous && sameMessage(previous, message) ? previous : message;
+  });
+  const retained = current.filter((message) => !incomingKeys.has(messageKey(message)));
+  const retainedTimes = retained.map(timestamp);
+  const incomingTimes = normalizedIncoming.map(timestamp);
+  const merged: RillMailMessage[] = [];
+  let left = 0;
+  let right = 0;
+  while (left < retained.length || right < normalizedIncoming.length) {
+    if (right >= normalizedIncoming.length || (left < retained.length && retainedTimes[left] >= incomingTimes[right])) merged.push(retained[left++]);
+    else merged.push(normalizedIncoming[right++]);
+  }
+  return merged.length === current.length && merged.every((message, index) => message === current[index]) ? current : merged;
 }
 
 export function pruneToRefreshWindow(current: RillMailMessage[], incoming: RillMailMessage[], refreshedBoxIds?: string[]) {
   const included = new Set(refreshedBoxIds ?? incoming.map((message) => message.box.id));
   const incomingKeys = new Set(incoming.map((message) => `${message.box.id}:${message.id}`));
-  const incomingByBox = new Map<string, RillMailMessage[]>();
-  incoming.forEach((message) => incomingByBox.set(message.box.id, [...(incomingByBox.get(message.box.id) ?? []), message]));
+  const boxesWithIncoming = new Set<string>();
   const oldestByBox = new Map<string, number>();
-  incomingByBox.forEach((messages, boxId) => {
-    const valid = messages.map(timestamp).filter((value) => Number.isFinite(value));
-    if (valid.length) oldestByBox.set(boxId, Math.min(...valid));
+  incoming.forEach((message) => {
+    const boxId = message.box.id;
+    boxesWithIncoming.add(boxId);
+    const value = timestamp(message);
+    if (Number.isFinite(value)) oldestByBox.set(boxId, Math.min(oldestByBox.get(boxId) ?? value, value));
   });
 
-  return current.filter((message) => {
+  const pruned = current.filter((message) => {
     const boxId = message.box.id;
     if (!included.has(boxId)) return true;
-    const boxIncoming = incomingByBox.get(boxId) ?? [];
-    if (!boxIncoming.length) return false;
+    if (!boxesWithIncoming.has(boxId)) return false;
     const oldest = oldestByBox.get(boxId);
     const currentTime = timestamp(message);
     if (oldest === undefined || !Number.isFinite(currentTime) || currentTime < oldest) return true;
     return incomingKeys.has(`${boxId}:${message.id}`);
   });
+  return pruned.length === current.length ? current : pruned;
 }
 
 export function abbreviateBox(address: string) {
