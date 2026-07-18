@@ -9,8 +9,9 @@ describe("Garden intake helpers", () => {
     expect(isIntakeKind("その他")).toBe(false);
   });
 
-  it("builds a safe classified storage path", () => {
-    expect(intakeStoragePath("周知", new Date("2026-07-18T00:00:00Z"), "uuid", "../FAX/案内.pdf")).toBe("周知/2026/07/uuid_FAX_案内.pdf");
+  it("builds an ASCII-only classified storage path", () => {
+    expect(intakeStoragePath("周知", new Date("2026-07-18T00:00:00Z"), "uuid", "../FAX/案内.PDF")).toBe("shuchi/2026/07/uuid.pdf");
+    expect(intakeStoragePath("請求", new Date("2026-07-18T00:00:00Z"), "uuid", "拡張子なし")).toBe("seikyu/2026/07/uuid");
   });
 
   it("recognizes duplicate inserts and converts 409 to an executed item", () => {
