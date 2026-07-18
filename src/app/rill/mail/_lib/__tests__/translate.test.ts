@@ -9,6 +9,22 @@ describe("Rill Mail translation rules", () => {
     expect(isLikelyNonJapanese("")).toBe(false);
   });
 
+  it("allows foreign-language mail with a small amount of kana", () => {
+    const englishWithJapaneseSignature = `${"Please review the attached document and contact our support team with any questions. ".repeat(5)}よろしくお願いします`;
+    expect(isLikelyNonJapanese(englishWithJapaneseSignature)).toBe(true);
+  });
+
+  it("detects Korean and Chinese without requiring Latin letters", () => {
+    expect(isLikelyNonJapanese("안녕하세요첨부된문서를확인하시고이번주금요일까지답변해주시기바랍니다감사합니다")).toBe(true);
+    expect(isLikelyNonJapanese("您好请确认附件中的最新资料并在本周五之前回复相关负责人非常感谢您的协助")).toBe(true);
+  });
+
+  it("rejects Japanese, short text, and numbers or symbols only", () => {
+    expect(isLikelyNonJapanese("このたびはお問い合わせいただきありがとうございます。添付している資料をご確認いただき、ご不明な点がございましたらお知らせください。")).toBe(false);
+    expect(isLikelyNonJapanese("Short English text")).toBe(false);
+    expect(isLikelyNonJapanese("1234567890-+= 0987654321 !!!")).toBe(false);
+  });
+
   it("removes HTML before language detection", () => {
     const html = "<style>これは日本語です</style><p>Hello <strong>team</strong>, please review this update.</p><script>日本語</script>";
     expect(mailBodyText(html)).toBe("Hello team , please review this update.");

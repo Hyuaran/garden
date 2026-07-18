@@ -23,10 +23,9 @@ export function mailBodyText(value: string) {
 export function isLikelyNonJapanese(value: string) {
   const text = mailBodyText(value);
   const characters = Array.from(text).filter((character) => /[\p{L}\p{N}]/u.test(character));
-  if (!characters.length) return false;
+  if (characters.length < 20 || !characters.some((character) => /\p{L}/u.test(character))) return false;
   const kana = characters.filter((character) => /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(character)).length;
-  const latin = characters.filter((character) => /\p{Script=Latin}/u.test(character)).length;
-  return kana / characters.length < 0.03 && latin / characters.length > 0.5;
+  return kana / characters.length < 0.15;
 }
 
 export function prepareTranslationInput(value: string) {
