@@ -310,6 +310,15 @@ export async function getIntakeSource(supabase: SupabaseClient, user: User, boxI
   const rawMessage = await messageResponse.json() as GraphMessage;
   const attachment = await attachmentResponse.json() as { id?: string; name?: string; contentType?: string; size?: number; contentBytes?: string };
   if (!attachment.contentBytes || !attachment.name) throw new RillMailHttpError(400, "この添付ファイルは取り込めません");
+  let attachmentIndex = 1;
+  try {
+    const attachmentsResponse = await graphFetch(`${oneMessagePath(box.id, messageId)}/attachments?$select=id`, token);
+    const attachments = await attachmentsResponse.json() as GraphList<{ id?: string }>;
+    attachmentIndex = Math.max(1, (attachments.value ?? []).findIndex((item) => item.id === attachmentId) + 1);
+  } catch {
+    // Attachment ordering only affects the Drive mirror filename. The Garden
+    // intake must remain available when this optional metadata lookup fails.
+  }
   return {
     boxAddress: box.address,
     message: mapMessage(rawMessage, box),
@@ -319,6 +328,7 @@ export async function getIntakeSource(supabase: SupabaseClient, user: User, boxI
       contentType: attachment.contentType ?? "application/octet-stream",
       size: attachment.size ?? Buffer.from(attachment.contentBytes, "base64").byteLength,
       bytes: Buffer.from(attachment.contentBytes, "base64"),
+      index: attachmentIndex,
     },
     createdByName,
   };

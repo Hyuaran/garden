@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getIntakeSource } from "@/app/rill/mail/_lib/graph";
 import { intakeStoragePath, isDuplicateIntakeError, isIntakeKind, type IntakeItem } from "@/app/rill/mail/_lib/intake";
+import { bestEffortIntakeDriveMirror } from "@/app/rill/mail/_lib/intake-drive";
 import { errorResponse, requireGardenUser, RillMailHttpError } from "@/app/rill/mail/_lib/server-auth";
 
 const ITEM_SELECT = "id,kind,attachment_id,created_by_name,created_at";
@@ -63,6 +64,28 @@ export async function POST(request: NextRequest) {
         if (duplicate.data) return Response.json({ item: duplicate.data }, { status: 409 });
       }
       throw new RillMailHttpError(500, error.message);
+    }
+    const driveFileId = await bestEffortIntakeDriveMirror({
+      kind: body.kind,
+      receivedAt: source.message.receivedDateTime,
+      fromName: source.message.fromName,
+      fromAddress: source.message.fromAddress,
+      subject: source.message.subject,
+      originalFileName: source.attachment.name,
+      attachmentIndex: source.attachment.index,
+      bytes: source.attachment.bytes,
+      mimeType: source.attachment.contentType,
+    });
+    if (driveFileId) {
+      try {
+        const { error: driveIdError } = await supabase
+          .from("garden_intake_items")
+          .update({ drive_file_id: driveFileId })
+          .eq("id", id);
+        if (driveIdError) console.error("Rill Mail intake drive_file_id update failed", driveIdError.message);
+      } catch (driveIdError) {
+        console.error("Rill Mail intake drive_file_id update failed", driveIdError instanceof Error ? driveIdError.message : driveIdError);
+      }
     }
     return Response.json({ item: data }, { status: 201 });
   } catch (error) { return errorResponse(error); }
