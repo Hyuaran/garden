@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyPinOverrides, applyRecentCategoryWrites, loadPinOverrides, mergePinnedMessages, PIN_OVERRIDE_TTL_MS, pinnedCategoryFilter, pinnedPagingDecision, reconcilePinnedMessage, removePinOverride, savePinOverride, shouldAddBulkPin } from "../pinned";
+import { applyPinOverrides, applyRecentCategoryWrites, loadPinOverrides, mergePinnedMessages, PIN_OVERRIDE_TTL_MS, pinnedCategoryFilter, pinnedPagingDecision, reconcilePinnedMessage, removePinOverride, savePinOverride, shouldAddBulkPin, sortPinnedMessages, toggleVisibleSelection } from "../pinned";
 import type { RillMailBox, RillMailMessage } from "../types";
 
 const me: RillMailBox = { id: "me", address: "me@example.com", label: "Me", kind: "personal" };
@@ -79,5 +79,22 @@ describe("pinned Graph helpers", () => {
     expect(shouldAddBulkPin([pinned], "O'Neil")).toBe(false);
     expect(shouldAddBulkPin([pinned, plain], "O'Neil")).toBe(true);
     expect(shouldAddBulkPin([plain], "O'Neil")).toBe(true);
+  });
+
+  it("sorts pins by received time in both directions and keeps equal times stable", () => {
+    const same = "2026-01-02T00:00:00Z";
+    const input = [message("same-a", me, same), message("old", me, "2026-01-01T00:00:00Z"), message("same-b", me, same)];
+    expect(sortPinnedMessages(input, "newest").map((item) => item.id)).toEqual(["same-a", "same-b", "old"]);
+    expect(sortPinnedMessages(input, "oldest").map((item) => item.id)).toEqual(["old", "same-a", "same-b"]);
+    expect(input.map((item) => item.id)).toEqual(["same-a", "old", "same-b"]);
+  });
+
+  it("selects only visible filtered keys and clears them in one operation", () => {
+    const visible = Array.from({ length: 159 }, (_, index) => `me:${index}`);
+    const selected = toggleVisibleSelection(new Set(["me:hidden"]), visible);
+    expect(selected.size).toBe(159);
+    expect(selected.has("me:hidden")).toBe(false);
+    expect(toggleVisibleSelection(selected, visible).size).toBe(0);
+    expect(toggleVisibleSelection(new Set(), ["me:filtered"])).toEqual(new Set(["me:filtered"]));
   });
 });
