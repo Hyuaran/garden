@@ -17,6 +17,23 @@ export type PinnedMessagesResponse = {
   notice?: string;
 };
 
+export type PinSortOrder = "newest" | "oldest";
+
+export function sortPinnedMessages(messages: RillMailMessage[], order: PinSortOrder) {
+  const direction = order === "newest" ? -1 : 1;
+  return messages.map((message, index) => ({ message, index })).sort((a, b) => {
+    const aTime = Date.parse(a.message.receivedDateTime);
+    const bTime = Date.parse(b.message.receivedDateTime);
+    const dated = (Number.isFinite(aTime) ? aTime : 0) - (Number.isFinite(bTime) ? bTime : 0);
+    return dated === 0 ? a.index - b.index : dated * direction;
+  }).map(({ message }) => message);
+}
+
+export function toggleVisibleSelection(current: ReadonlySet<string>, visibleKeys: string[]) {
+  const allVisibleSelected = visibleKeys.length > 0 && visibleKeys.every((key) => current.has(key));
+  return allVisibleSelected ? new Set<string>() : new Set(visibleKeys);
+}
+
 export function pinnedCategoryFilter(ownName: string) {
   const category = `ピン:${ownName}`.replace(/'/g, "''");
   return `categories/any(c: c eq '${category}')`;

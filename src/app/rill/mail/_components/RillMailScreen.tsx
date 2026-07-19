@@ -12,7 +12,7 @@ import { isLikelyNonJapanese, mailBodyText } from "../_lib/translate";
 import { replyAllRecipients, scheduleDelayedSend, validateComposeInput, type ComposeDraft, type ComposeMode } from "../_lib/compose";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "../_lib/types";
 import { isNearListEnd, NORMAL_AUTO_PAGE_LIMIT, PRIORITY_PAGES_AHEAD, SerialSearchScheduler, type SearchMessagesResponse } from "../_lib/search";
-import { applyPinOverrides, applyRecentCategoryWrites, loadPinOverrides, RECENT_WRITE_TTL_MS, reconcilePinnedMessage, removePinOverride, savePinOverride, shouldAddBulkPin, type PinOverride, type PinOverrideStorage, type PinnedMessagesResponse, type RecentCategoryWrite } from "../_lib/pinned";
+import { applyPinOverrides, applyRecentCategoryWrites, loadPinOverrides, RECENT_WRITE_TTL_MS, reconcilePinnedMessage, removePinOverride, savePinOverride, shouldAddBulkPin, sortPinnedMessages, toggleVisibleSelection, type PinOverride, type PinOverrideStorage, type PinnedMessagesResponse, type PinSortOrder, type RecentCategoryWrite } from "../_lib/pinned";
 import { INTAKE_KINDS, intakeButtonLabel, intakeItemFromPost, intakeMarks, type IntakeItem, type IntakeKind } from "../_lib/intake";
 import { noticeProgressLabel, noticeTemplate, noticeTemplateFields, reduceNoticeProgress, type NoticeProgress } from "../_lib/intake-notice";
 import { linkifyBodyText } from "../_lib/linkify";
@@ -85,6 +85,7 @@ export function RillMailScreen() {
   const [pinnedMessages, setPinnedMessages] = useState<RillMailMessage[]>([]);
   const [pinsLoading, setPinsLoading] = useState(false);
   const [pinsNotice, setPinsNotice] = useState("");
+  const [pinSortOrder, setPinSortOrder] = useState<PinSortOrder>("newest");
   const [connected, setConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -417,10 +418,12 @@ export function RillMailScreen() {
     if (searchResults !== null) return searchResults;
     const needle = query.trim().toLocaleLowerCase("ja");
     const source = activeBox === "flagged" ? pinnedMessages : messagesForBox(messages, activeBox, ownName);
-    return needle ? source.filter((item) => [item.fromName, item.fromAddress, item.subject, item.bodyPreview].some((value) => value.toLocaleLowerCase("ja").includes(needle))) : source;
-  }, [activeBox, messages, ownName, pinnedMessages, query, searchResults]);
+    const matching = needle ? source.filter((item) => [item.fromName, item.fromAddress, item.subject, item.bodyPreview].some((value) => value.toLocaleLowerCase("ja").includes(needle))) : source;
+    return activeBox === "flagged" ? sortPinnedMessages(matching, pinSortOrder) : matching;
+  }, [activeBox, messages, ownName, pinnedMessages, pinSortOrder, query, searchResults]);
   visibleMessages.current = filtered;
   const filteredKeys = useMemo(() => filtered.map(keyOf), [filtered]);
+  const allVisiblePicked = filteredKeys.length > 0 && filteredKeys.every((key) => picked.has(key));
   const datedMessages = useMemo(() => daySeparatedMessages(filtered), [filtered]);
 
   const togglePicked = (message: RillMailMessage, event: React.MouseEvent) => {
@@ -791,7 +794,7 @@ export function RillMailScreen() {
           <div className={styles.group}>自分</div>{boxes.filter((box) => box.kind === "personal").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.personalDot} />{box.label}</button>)}
           <div className={styles.group}>共有</div>{boxes.filter((box) => box.kind === "shared").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.sharedDot} />{box.label}</button>)}
         </div><footer className={styles.foot}>メールは Garden に保存せず<br />Microsoft から都度取得します</footer></aside>
-        <section className={styles.column}><header className={styles.columnHeader}>{searchLoading ? "全期間を検索中…" : searchResults !== null ? <>全期間から{filtered.length}件 <small>（Outlook検索）</small></> : <>メール一覧 <span>{filtered.length}件</span></>}{activeBox === "flagged" && searchResults === null && filtered.length > 0 && <button className={styles.importAgain} disabled={importingFlags} onClick={() => void importLegacyFlags()}>旧フラグ取込</button>}</header>
+        <section className={styles.column}><header className={styles.columnHeader}>{searchLoading ? "全期間を検索中…" : searchResults !== null ? <>全期間から{filtered.length}件 <small>（Outlook検索）</small></> : <>メール一覧 <span>{filtered.length}件</span></>}{activeBox === "flagged" && searchResults === null && <span className={styles.pinReviewControls}><label><input type="checkbox" checked={allVisiblePicked} disabled={!filtered.length} onChange={() => setPicked((current) => toggleVisibleSelection(current, filteredKeys))} />すべて選択</label><button type="button" onClick={() => setPinSortOrder((current) => current === "newest" ? "oldest" : "newest")}>{pinSortOrder === "newest" ? "新しい順" : "古い順"} ⇄</button></span>}{activeBox === "flagged" && searchResults === null && filtered.length > 0 && <button className={styles.importAgain} disabled={importingFlags} onClick={() => void importLegacyFlags()}>旧フラグ取込</button>}</header>
           {picked.size > 0 && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button aria-label={bulkPinOn ? "ピン" : "ピンを外す"} onClick={() => void bulkWrite("pin", bulkPinOn)}><PinIcon on={!bulkPinOn} />{bulkPinOn ? "ピン" : "ピンを外す"}</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button onClick={() => void moveMessages(pickedMessages, "archive")}>アーカイブ</button><button onClick={() => void moveMessages(pickedMessages, "delete")}>削除</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
           <div className={styles.scroll} onScroll={trackListScroll}>{((activeBox === "flagged" ? pinsLoading : loading && !messages.length) && searchResults === null) && <div className={styles.notice}>読み込み中…</div>}{error && <div className={styles.error}>{error}</div>}{searchError && <div className={styles.error}>{searchError}</div>}
           {searchResults !== null && !searchLoading && filtered.length === 0 && <div className={styles.searchEmpty}>該当するメールはありません。日本語は単語の一部だけでは見つからない場合があります。</div>}
