@@ -11,7 +11,27 @@ export type ComposeSendInput = {
   bodyText: string;
 };
 
-export type ComposeDraft = ComposeSendInput & { id: string; quote: string; fromLabel: string; ccVisible: boolean };
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+export const SIMPLE_ATTACHMENT_BYTES = 3 * 1024 * 1024;
+export type ComposeAttachment = { id: string; name: string; size: number; type: string; file: File };
+export type ComposeDraft = ComposeSendInput & { id: string; quote: string; fromLabel: string; ccVisible: boolean; attachments: ComposeAttachment[] };
+
+export function attachmentUploadMethod(size: number) {
+  return size <= SIMPLE_ATTACHMENT_BYTES ? "simple" as const : "session" as const;
+}
+
+export function validateAttachmentSizes(existing: Array<{ size: number }>, incoming: Array<{ size: number }>) {
+  if (incoming.some((file) => file.size > MAX_ATTACHMENT_BYTES)) throw new Error("1ファイルは25MB以下にしてください");
+  const total = [...existing, ...incoming].reduce((sum, file) => sum + file.size, 0);
+  if (total > MAX_ATTACHMENT_BYTES) throw new Error("添付ファイルの合計は25MB以下にしてください");
+}
+
+export function appendAttachments(existing: ComposeAttachment[], files: File[], makeId = () => crypto.randomUUID()) {
+  validateAttachmentSizes(existing, files);
+  return [...existing, ...files.map((file) => ({ id: makeId(), name: file.name, size: file.size, type: file.type || "application/octet-stream", file }))];
+}
+
+export const removeAttachment = (attachments: ComposeAttachment[], id: string) => attachments.filter((attachment) => attachment.id !== id);
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 export const isValidEmailAddress = (value: string) => EMAIL.test(value.trim());
