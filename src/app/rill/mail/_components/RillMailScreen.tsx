@@ -16,6 +16,7 @@ import { applyPinOverrides, applyRecentCategoryWrites, loadPinOverrides, RECENT_
 import { INTAKE_KINDS, intakeButtonLabel, intakeItemFromPost, intakeMarks, type IntakeItem, type IntakeKind } from "../_lib/intake";
 import { noticeProgressLabel, noticeTemplate, noticeTemplateFields, reduceNoticeProgress, type NoticeProgress } from "../_lib/intake-notice";
 import { linkifyBodyText } from "../_lib/linkify";
+import { applyMoveExclusions, loadMoveExclusions, removeMoveExclusions, removeMovedMessages, restoreMovedMessages, saveMoveExclusions, scheduleMoveUndoWindow, type MailMoveOperation, type MoveExclusion, type MoveExclusionStorage } from "../_lib/move-ops";
 import { attachmentToNoticePages, downloadDataUrl, type NoticeClientPage } from "../_lib/notice-pdf";
 import styles from "./RillMailScreen.module.css";
 
@@ -33,6 +34,7 @@ const INTAKE_DESCRIPTIONS: Record<IntakeKind, string> = {
   周知: "FAXをLINE周知の準備へ",
 };
 type NoticeWorkspace = { intakeId: string; pages: NoticeClientPage[]; text: string; salesPerson: string; projectName: string; contentMemo: string; truncated: boolean; saved: boolean };
+type MoveToast = { operation: "archive" | "delete"; entries: Array<{ snapshot: RillMailMessage; movedId: string }>; seconds: number };
 
 function DownloadIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
@@ -106,6 +108,7 @@ export function RillMailScreen() {
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [composeError, setComposeError] = useState("");
   const [sendToast, setSendToast] = useState<{ tone: "pending" | "success" | "error"; text: string; seconds?: number } | null>(null);
+  const [moveToast, setMoveToast] = useState<MoveToast | null>(null);
   const autoSearch = useRef<SerialSearchScheduler<{ query: string; box: string }> | null>(null);
   const requestGeneration = useRef(0);
   const pendingWriteKeys = useRef(new Set<string>());
@@ -120,9 +123,13 @@ export function RillMailScreen() {
   const draftCounter = useRef(0);
   const delayedSend = useRef<{ cancel: () => boolean; dispose: () => void } | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const moveCountdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const moveUndoWindow = useRef<{ undo: () => boolean; dispose: () => void } | null>(null);
   const recentWrites = useRef(new Map<string, RecentCategoryWrite>());
   const pinOverrides = useRef(new Map<string, PinOverride>());
   const pinOverrideStorage = useRef<PinOverrideStorage | null>(null);
+  const moveExclusionStorage = useRef<MoveExclusionStorage | null>(null);
+  const moveExclusions = useRef(new Map<string, MoveExclusion>());
   const gardenUserId = useRef("");
   const intakeCache = useRef(new Map<string, IntakeItem[]>());
   const noticeGeneration = useRef(0);
@@ -134,7 +141,10 @@ export function RillMailScreen() {
     const protectedResult = applyRecentCategoryWrites(incoming, recentWrites.current, now);
     recentWrites.current = protectedResult.writes;
     pinOverrides.current = loadPinOverrides(pinOverrideStorage.current, gardenUserId.current, now);
-    return applyPinOverrides(protectedResult.messages, pinOverrides.current, ownNameRef.current, { pinnedView, protectedKeys: new Set(protectedResult.writes.keys()) }) as T[];
+    const pinned = applyPinOverrides(protectedResult.messages, pinOverrides.current, ownNameRef.current, { pinnedView, protectedKeys: new Set(protectedResult.writes.keys()) }) as T[];
+    const moved = applyMoveExclusions(pinned, moveExclusions.current, now);
+    moveExclusions.current = moved.exclusions;
+    return moved.messages;
   }, []);
 
   const rememberWrite = useCallback((message: RillMailMessage) => {
@@ -200,9 +210,10 @@ export function RillMailScreen() {
       if (generation !== requestGeneration.current) return;
       ownNameRef.current = data.ownName ?? "";
       gardenUserId.current = data.userId;
-      try { pinOverrideStorage.current = typeof window === "undefined" ? null : window.localStorage; }
-      catch { pinOverrideStorage.current = null; }
+      try { pinOverrideStorage.current = typeof window === "undefined" ? null : window.localStorage; moveExclusionStorage.current = pinOverrideStorage.current; }
+      catch { pinOverrideStorage.current = null; moveExclusionStorage.current = null; }
       pinOverrides.current = loadPinOverrides(pinOverrideStorage.current, data.userId, Date.now());
+      moveExclusions.current = loadMoveExclusions(moveExclusionStorage.current, data.userId, Date.now());
       setBoxes(data.boxes); setReviewers(data.reviewers.length ? data.reviewers : FALLBACK_REVIEWERS); setOwnName(data.ownName ?? ""); setConnected(true); setAutoRefreshFailed(false);
       await loadMessages("all");
     } catch (cause) {
@@ -216,7 +227,9 @@ export function RillMailScreen() {
   useEffect(() => () => {
     autoSearch.current?.dispose();
     delayedSend.current?.dispose();
+    moveUndoWindow.current?.dispose();
     if (countdownTimer.current) clearInterval(countdownTimer.current);
+    if (moveCountdownTimer.current) clearInterval(moveCountdownTimer.current);
   }, []);
   useEffect(() => {
     void fetch("/api/rill/mail/translate", { cache: "no-store" })
@@ -458,6 +471,93 @@ export function RillMailScreen() {
     finally { markPending(keys, false); }
   };
 
+  const postMoves = async (moves: Array<{ id: string; boxId: string; operation: MailMoveOperation }>) => readJson<{
+    results: Array<{ id: string; boxId: string; ok: boolean; movedId?: string; error?: string }>;
+  }>(await fetch("/api/rill/mail/messages/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ moves }),
+  }));
+
+  const restoreMessagesLocally = (items: RillMailMessage[]) => {
+    setMessages((current) => restoreMovedMessages(current, items));
+    setSearchResults((current) => current ? restoreMovedMessages(current, items) : null);
+    setPinnedMessages((current) => restoreMovedMessages(current, items.filter((item) => hasOwnPin(item.categories, ownName))));
+  };
+
+  const moveMessages = async (targets: RillMailMessage[], operation: "archive" | "delete") => {
+    const unique = [...new Map(targets.map((message) => [keyOf(message), message])).values()];
+    if (!unique.length) return;
+    moveUndoWindow.current?.dispose();
+    if (moveCountdownTimer.current) clearInterval(moveCountdownTimer.current);
+    setMoveToast(null); setError("");
+    const keys = unique.map(keyOf);
+    const keySet = new Set(keys);
+    moveExclusions.current = saveMoveExclusions(moveExclusionStorage.current, gardenUserId.current, keys, Date.now());
+    setMessages((current) => removeMovedMessages(current, keySet));
+    setSearchResults((current) => current ? removeMovedMessages(current, keySet) : null);
+    setPinnedMessages((current) => removeMovedMessages(current, keySet));
+    setPicked((current) => new Set([...current].filter((key) => !keySet.has(key))));
+    setSelected((current) => current && keySet.has(keyOf(current)) ? null : current);
+    setDetail((current) => current && keySet.has(keyOf(current)) ? null : current);
+
+    try {
+      const response = await postMoves(unique.map((message) => ({ id: message.id, boxId: message.box.id, operation })));
+      const byKey = new Map(unique.map((message) => [keyOf(message), message]));
+      const failedKeys = response.results.filter((result) => !result.ok).map((result) => `${result.boxId}:${result.id}`);
+      const failed = failedKeys.map((key) => byKey.get(key)).filter((message): message is RillMailMessage => Boolean(message));
+      if (failed.length) {
+        moveExclusions.current = removeMoveExclusions(moveExclusionStorage.current, gardenUserId.current, failedKeys, Date.now());
+        restoreMessagesLocally(failed);
+        setError(`${failed.length}件を${operation === "archive" ? "アーカイブ" : "削除"}できませんでした`);
+      }
+      const entries = response.results.flatMap((result) => {
+        const snapshot = byKey.get(`${result.boxId}:${result.id}`);
+        return result.ok && result.movedId && snapshot ? [{ snapshot, movedId: result.movedId }] : [];
+      });
+      if (!entries.length) return;
+      moveExclusions.current = saveMoveExclusions(
+        moveExclusionStorage.current,
+        gardenUserId.current,
+        entries.map((entry) => `${entry.snapshot.box.id}:${entry.movedId}`),
+        Date.now(),
+      );
+      setMoveToast({ operation, entries, seconds: 5 });
+      moveUndoWindow.current = scheduleMoveUndoWindow(() => {
+        setMoveToast(null);
+        if (moveCountdownTimer.current) clearInterval(moveCountdownTimer.current);
+      });
+      moveCountdownTimer.current = setInterval(() => setMoveToast((current) => current ? { ...current, seconds: Math.max(0, current.seconds - 1) } : null), 1_000);
+    } catch (cause) {
+      moveExclusions.current = removeMoveExclusions(moveExclusionStorage.current, gardenUserId.current, keys, Date.now());
+      restoreMessagesLocally(unique);
+      setError(cause instanceof Error ? cause.message : "メールを移動できませんでした");
+    }
+  };
+
+  const undoMove = async () => {
+    const toast = moveToast;
+    if (!toast || !moveUndoWindow.current?.undo()) return;
+    if (moveCountdownTimer.current) clearInterval(moveCountdownTimer.current);
+    setMoveToast(null); setError("");
+    try {
+      const response = await postMoves(toast.entries.map((entry) => ({ id: entry.movedId, boxId: entry.snapshot.box.id, operation: "restore" })));
+      const restored: RillMailMessage[] = [];
+      const clearedKeys: string[] = [];
+      const entriesByMovedId = new Map(toast.entries.map((entry) => [entry.movedId, entry]));
+      response.results.forEach((result) => {
+        const entry = entriesByMovedId.get(result.id);
+        if (entry && result.ok && result.movedId) {
+          restored.push({ ...entry.snapshot, id: result.movedId });
+          clearedKeys.push(keyOf(entry.snapshot), `${entry.snapshot.box.id}:${entry.movedId}`);
+        }
+      });
+      moveExclusions.current = removeMoveExclusions(moveExclusionStorage.current, gardenUserId.current, clearedKeys, Date.now());
+      restoreMessagesLocally(restored);
+      if (restored.length !== toast.entries.length) setError(`${toast.entries.length - restored.length}件を元に戻せませんでした`);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "元に戻せませんでした"); }
+  };
+
   const importLegacyFlags = async () => {
     if (importingFlags) return;
     setImportingFlags(true); setImportResult(""); setError("");
@@ -660,7 +760,7 @@ export function RillMailScreen() {
         <button className={styles.actionButton} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, selected.box.kind === "personal" ? "read" : "confirm", selectedUnread)}>○ {selectedUnread ? "開封済みに" : "未読に戻す"}</button>
         <button aria-label="ピン" className={`${styles.actionButton} ${currentPinned ? styles.actionOn : ""}`} disabled={!selected || !ownName || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "pin", !currentPinned)}><PinIcon on={currentPinned} />ピン</button>
         <span className={styles.toolbarStates}>{MAIL_STATES.map((state) => <button key={state} className={selected && statusCategory(selected.categories) === state ? styles.actionOn : ""} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "state", statusCategory(selected.categories) === state ? null : state)}>{state}</button>)}</span>
-        <button className={styles.moreButton} disabled title="アーカイブ・削除は次段階">…</button>
+        <details className={styles.moreMenu}><summary className={styles.moreButton}>…</summary><div><button disabled={!selected} onClick={() => selected && void moveMessages([selected], "archive")}>アーカイブ</button><button disabled={!selected} onClick={() => selected && void moveMessages([selected], "delete")}>削除</button></div></details>
         <label className={styles.search}><span><SearchIcon /></span><input value={query} onChange={(event) => changeQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") runFullSearch(); }} placeholder="メールを検索" />{query && <button type="button" className={styles.clearSearch} aria-label="検索を解除" onClick={() => { setQuery(""); exitSearch(); }}>×</button>}</label>
       </div>
       {connected === false ? <div className={styles.connect}><div className={styles.connectOrb}>✉</div><h1>Microsoft メールを接続</h1><p>本人の Microsoft アカウントでサインインすると、許可された受信箱を Garden から閲覧できます。</p><a href="/api/rill/mail/auth/login">Microsoft に接続</a></div> :
@@ -671,7 +771,7 @@ export function RillMailScreen() {
           <div className={styles.group}>共有</div>{boxes.filter((box) => box.kind === "shared").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.sharedDot} />{box.label}</button>)}
         </div><footer className={styles.foot}>メールは Garden に保存せず<br />Microsoft から都度取得します</footer></aside>
         <section className={styles.column}><header className={styles.columnHeader}>{searchLoading ? "全期間を検索中…" : searchResults !== null ? <>全期間から{filtered.length}件 <small>（Outlook検索）</small></> : <>メール一覧 <span>{filtered.length}件</span></>}{activeBox === "flagged" && searchResults === null && filtered.length > 0 && <button className={styles.importAgain} disabled={importingFlags} onClick={() => void importLegacyFlags()}>旧フラグ取込</button>}</header>
-          {picked.size > 0 && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button aria-label={bulkPinOn ? "ピン" : "ピンを外す"} onClick={() => void bulkWrite("pin", bulkPinOn)}><PinIcon on={!bulkPinOn} />{bulkPinOn ? "ピン" : "ピンを外す"}</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
+          {picked.size > 0 && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button aria-label={bulkPinOn ? "ピン" : "ピンを外す"} onClick={() => void bulkWrite("pin", bulkPinOn)}><PinIcon on={!bulkPinOn} />{bulkPinOn ? "ピン" : "ピンを外す"}</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button onClick={() => void moveMessages(pickedMessages, "archive")}>アーカイブ</button><button onClick={() => void moveMessages(pickedMessages, "delete")}>削除</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
           <div className={styles.scroll} onScroll={trackListScroll}>{((activeBox === "flagged" ? pinsLoading : loading && !messages.length) && searchResults === null) && <div className={styles.notice}>読み込み中…</div>}{error && <div className={styles.error}>{error}</div>}{searchError && <div className={styles.error}>{searchError}</div>}
           {searchResults !== null && !searchLoading && filtered.length === 0 && <div className={styles.searchEmpty}>該当するメールはありません。日本語は単語の一部だけでは見つからない場合があります。</div>}
           {searchResults !== null && searchTruncated && <div className={styles.importResult}>ヒットが多いため各箱の新しい50件まで表示しています。語を足して絞り込んでください</div>}
@@ -691,6 +791,7 @@ export function RillMailScreen() {
         <div className={styles.composeDock}>{[...drafts.values()].filter((draft) => draft.id !== activeDraftId).map((draft) => <div className={styles.composeDockItem} key={draft.id}><button onClick={() => { setActiveDraftId(draft.id); setComposeError(""); }}><span>未送信：{draft.subject || "件名なし"}</span><i>▲</i></button><button aria-label="破棄" onClick={() => discardDraft(draft.id)}>×</button></div>)}</div></article>
       </div>}
       {sendToast && <div className={`${styles.sendToast} ${sendToast.tone === "error" ? styles.sendToastError : ""}`}>{sendToast.text}{sendToast.tone === "pending" && <button onClick={() => delayedSend.current?.cancel()}>取り消す（{sendToast.seconds}秒）</button>}</div>}
+      {moveToast && <div className={`${styles.sendToast} ${styles.moveToast}`}>{moveToast.operation === "archive" ? "アーカイブしました" : "削除しました"}<button onClick={() => void undoMove()}>元に戻す（{moveToast.seconds}秒）</button></div>}
       {/* GardenShell 側のスタッキング文脈にモーダルが閉じ込められ、ヘッダー(z-index:100)の下に潜るため body 直下へポータル描画する */}
       {viewingAttachment && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingAttachment(null); }}><section className={styles.attachmentModal} role="dialog" aria-modal="true" aria-label={`${viewingAttachment.name}のプレビュー`}><header><h2>{viewingAttachment.name}</h2><a href={attachmentUrl(viewingAttachment)} aria-label="ダウンロード" title="ダウンロード"><DownloadIcon /></a><button onClick={() => setViewingAttachment(null)} aria-label="閉じる">×</button></header><div className={styles.viewer}>{viewingAttachment.contentType?.split(";", 1)[0].trim().toLowerCase().startsWith("image/") || (!viewingAttachment.contentType && /\.(png|jpe?g|gif|webp)$/i.test(viewingAttachment.name)) ? <img src={viewingUrl} alt={viewingAttachment.name} /> : <iframe src={viewingUrl} title={viewingAttachment.name} />}</div></section></div>, document.body)}
       {intakeTarget && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) closeIntake(); }}><section className={`${styles.intakeModal} ${noticeWorkspace ? styles.noticeModal : ""}`} role="dialog" aria-modal="true" aria-label="Garden取込分類"><header><div><h2>{noticeWorkspace ? "周知の準備" : "Garden取込実行"}</h2><p>{intakeTarget.name}</p></div><button onClick={closeIntake} aria-label="閉じる">×</button></header>{!noticeWorkspace && !noticeProgress && <div className={styles.intakeChoices}>{INTAKE_KINDS.map((kind) => <button key={kind} disabled={intakeSubmitting} onClick={() => void runIntake(kind)}><b>{kind}</b><span>{INTAKE_DESCRIPTIONS[kind]}</span></button>)}</div>}{noticeProgress && <div className={styles.noticeProcessing} role="status" aria-live="polite"><span className={styles.noticeSpinner} /><b>{noticeProgressLabel(noticeProgress)}</b><small>このまま少しお待ちください</small></div>}{noticeWorkspace && !noticeProgress && <div className={styles.noticeEditor}>{noticeWorkspace.truncated && <p className={styles.noticeWarning}>20頁を超えたため、先頭20頁まで処理しました。</p>}<div className={styles.noticePages}>{noticeWorkspace.pages.map((page, index) => <figure key={index}><img src={page.url} alt={`周知画像 ${index + 1}ページ`} /><figcaption>{index + 1}ページ <button onClick={() => downloadDataUrl(page.url, `周知_p${index + 1}.png`)}>ダウンロード</button></figcaption></figure>)}</div><div className={styles.noticeFields}><label>営業担当<input value={noticeWorkspace.salesPerson} onChange={(event) => updateNoticeField("salesPerson", event.target.value)} /></label><label>案件名<input value={noticeWorkspace.projectName} onChange={(event) => updateNoticeField("projectName", event.target.value)} /></label></div>{noticeWorkspace.contentMemo && <aside className={styles.noticeMemo}><b>内容メモ（参考）</b><p>{noticeWorkspace.contentMemo}</p><small>コピー・LINE送信には含まれません</small></aside>}<label>周知文<textarea value={noticeWorkspace.text} onChange={(event) => setNoticeWorkspace({ ...noticeWorkspace, text: event.target.value })} /></label><div className={styles.noticeActions}><button onClick={() => void navigator.clipboard.writeText(noticeWorkspace.text)}>コピー</button><button disabled={intakeSubmitting || !noticeWorkspace.text.trim()} onClick={() => void saveNotice()}>{noticeWorkspace.saved ? "変更を保存して閉じる" : "保存して閉じる"}</button></div></div>}{intakeError && <div className={styles.intakeError}>{intakeError}</div>}</section></div>, document.body)}

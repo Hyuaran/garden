@@ -5,6 +5,7 @@ import { mergeMessages } from "./format";
 import { RillMailHttpError } from "./server-auth";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "./types";
 import { detailRecipientAddresses } from "./detail-recipients";
+import { moveDestination, moveMessagePath, type MailMoveOperation } from "./move-ops";
 import { isMailState, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, toggleOwnConfirmation, toggleOwnPin, type LegacyFlagMessage, type MailState, type MailWriteOperation } from "./write-ops";
 import type { ComposeSendInput } from "./compose";
 import { anySearchTruncated, escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes, type SearchMessagesResponse } from "./search";
@@ -357,6 +358,30 @@ export type MailMutationResult = {
   ok: boolean;
   error?: string;
 };
+
+export type MailMove = { id: string; boxId: string; operation: MailMoveOperation };
+export type MailMoveResult = { id: string; boxId: string; ok: boolean; movedId?: string; error?: string };
+
+export async function moveMailMessages(supabase: SupabaseClient, user: User, moves: MailMove[]): Promise<MailMoveResult[]> {
+  const { token, upn } = await accessToken(supabase, user);
+  const boxes = await visibleBoxesWithToken(token, upn);
+  const results: MailMoveResult[] = [];
+  await runWithConcurrency(moves, 3, async (move) => {
+    try {
+      const box = boxes.find((item) => item.id === move.boxId || item.address === move.boxId);
+      if (!box) throw new RillMailHttpError(404, "Mailbox not found");
+      const moved = await graphJson(moveMessagePath(box.id, move.id), token, {
+        method: "POST",
+        body: JSON.stringify({ destinationId: moveDestination(move.operation) }),
+      }) as { id?: string };
+      if (!moved.id) throw new Error("Microsoft Graph did not return the moved message ID");
+      results.push({ id: move.id, boxId: box.id, ok: true, movedId: moved.id });
+    } catch (error) {
+      results.push({ id: move.id, boxId: move.boxId, ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+  return results;
+}
 
 const CATEGORY_COLORS: Record<string, string> = {
   "要対応": "preset0",
