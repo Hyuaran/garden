@@ -27,6 +27,8 @@ export type RillMailAttachment = {
 };
 
 export type RillMailDetail = RillMailMessage & {
+  cc: string[];
+  bcc: string[];
   body: { contentType: "html" | "text"; content: string };
   attachments: RillMailAttachment[];
 };

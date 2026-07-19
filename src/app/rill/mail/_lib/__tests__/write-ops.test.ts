@@ -74,7 +74,7 @@ describe("Rill Mail write rules", () => {
   });
 
   it("keys detail cache by box and id and replaces stale detail", () => {
-    const first = { ...baseMessage, body: { contentType: "text" as const, content: "old" }, attachments: [] } satisfies RillMailDetail;
+    const first = { ...baseMessage, cc: [], bcc: [], body: { contentType: "text" as const, content: "old" }, attachments: [] } satisfies RillMailDetail;
     const refreshed = { ...first, body: { contentType: "text" as const, content: "new" } };
     const firstCache = withCachedDetail(new Map(), first);
     const refreshedCache = withCachedDetail(firstCache, refreshed);

@@ -4,6 +4,7 @@ import { isAccessTokenCacheValid, SingleFlight, tokenHasScope } from "./token-ca
 import { mergeMessages } from "./format";
 import { RillMailHttpError } from "./server-auth";
 import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, RillMessagesResponse } from "./types";
+import { detailRecipientAddresses } from "./detail-recipients";
 import { isMailState, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, toggleOwnConfirmation, toggleOwnPin, type LegacyFlagMessage, type MailState, type MailWriteOperation } from "./write-ops";
 import type { ComposeSendInput } from "./compose";
 import { anySearchTruncated, escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes, type SearchMessagesResponse } from "./search";
@@ -11,6 +12,7 @@ import { mergePinnedMessages, PINNED_BOX_LIMIT, PINNED_PAGE_SIZE, pinnedCategory
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,categories,bodyPreview";
+const MESSAGE_DETAIL_SELECT = `${MESSAGE_SELECT},ccRecipients,bccRecipients,body`;
 const DELEGATED_SCOPES = "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared MailboxSettings.ReadWrite";
 const REQUIRED_SETTINGS_SCOPE = "MailboxSettings.ReadWrite";
 const REQUIRED_SEND_SCOPE = "Mail.Send";
@@ -28,6 +30,8 @@ type GraphMessage = {
   receivedDateTime?: string; hasAttachments?: boolean; isRead?: boolean;
   categories?: string[]; bodyPreview?: string;
   body?: { contentType?: string; content?: string };
+  ccRecipients?: GraphAddress[];
+  bccRecipients?: GraphAddress[];
 };
 type Cursor = Record<string, string | null>;
 type TokenResponse = { access_token: string; refresh_token?: string; expires_in: number };
@@ -277,7 +281,7 @@ export async function getMessage(supabase: SupabaseClient, user: User, boxId: st
   const boxes = await visibleBoxesWithToken(token, upn);
   const box = boxes.find((item) => item.id === boxId || item.address === boxId);
   if (!box) throw new RillMailHttpError(404, "Mailbox not found");
-  const response = await graphFetch(`${oneMessagePath(box.id, id)}?$select=${MESSAGE_SELECT},body`, token);
+  const response = await graphFetch(`${oneMessagePath(box.id, id)}?$select=${MESSAGE_DETAIL_SELECT}`, token);
   const raw = await response.json() as GraphMessage;
   let attachments: RillMailAttachment[] = [];
   if (raw.hasAttachments) {
@@ -285,7 +289,13 @@ export async function getMessage(supabase: SupabaseClient, user: User, boxId: st
     const data = await ares.json() as GraphList<RillMailAttachment>;
     attachments = (data.value ?? []).filter((item) => item.id && item.name);
   }
-  return { ...mapMessage(raw, box), body: { contentType: raw.body?.contentType?.toLowerCase() === "html" ? "html" : "text", content: raw.body?.content ?? "" }, attachments };
+  return {
+    ...mapMessage(raw, box),
+    cc: detailRecipientAddresses(raw.ccRecipients),
+    bcc: detailRecipientAddresses(raw.bccRecipients),
+    body: { contentType: raw.body?.contentType?.toLowerCase() === "html" ? "html" : "text", content: raw.body?.content ?? "" },
+    attachments,
+  };
 }
 
 export async function getAttachment(supabase: SupabaseClient, user: User, boxId: string, messageId: string, attachmentId: string) {

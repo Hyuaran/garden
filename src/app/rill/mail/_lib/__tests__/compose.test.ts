@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isValidEmailAddress, recipientSuggestions, scheduleDelayedSend, validateComposeInput, type ComposeDraft } from "../compose";
+import { isValidEmailAddress, recipientSuggestions, replyAllRecipients, scheduleDelayedSend, validateComposeInput, type ComposeDraft } from "../compose";
 
 const draft = { id: "d1", mode: "new", box: "me", to: ["a@example.com"], cc: [], subject: "Subject", bodyText: "Body", quote: "", fromLabel: "Me", ccVisible: false } satisfies ComposeDraft;
 
@@ -17,6 +17,17 @@ describe("Rill Mail compose rules", () => {
   it("requires a source message for reply, replyAll and forward", () => {
     for (const mode of ["reply", "replyAll", "forward"] as const) expect(() => validateComposeInput({ ...draft, mode, sourceMessageId: undefined })).toThrow("sourceMessageId");
     expect(() => validateComposeInput({ ...draft, mode: "reply", sourceMessageId: "m1" })).not.toThrow();
+  });
+
+  it("keeps Cc on reply-all while excluding self and To duplicates", () => {
+    expect(replyAllRecipients({
+      fromAddress: "sender@example.com",
+      to: ["me@example.com", "to@example.com"],
+      cc: ["cc@example.com", "ME@example.com", "to@example.com", "CC@example.com"],
+    }, "me@example.com")).toEqual({
+      to: ["sender@example.com", "to@example.com"],
+      cc: ["cc@example.com"],
+    });
   });
 
   it("deduplicates sender suggestions case-insensitively and matches prefixes", () => {
