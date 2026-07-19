@@ -27,7 +27,7 @@ const MENU: GardenShellPageMenuItem[] = [
 const FALLBACK_REVIEWERS = ["東海林美琴", "上田", "簡"];
 const keyOf = (message: Pick<RillMailMessage, "id" | "box">) => `${message.box.id}:${message.id}`;
 const INTAKE_DESCRIPTIONS: Record<IntakeKind, string> = {
-  請求: "受領請求書を経理へ",
+  請求: "受領請求書を振込トレイへ",
   入金: "入金明細を入金管理へ",
   条件: "条件一覧をRootへ",
   周知: "FAXをLINE周知の準備へ",

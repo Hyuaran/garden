@@ -2,14 +2,46 @@ import { NextRequest } from "next/server";
 import { getIntakeSource } from "@/app/rill/mail/_lib/graph";
 import { intakeStoragePath, isDuplicateIntakeError, isIntakeKind, type IntakeItem } from "@/app/rill/mail/_lib/intake";
 import { bestEffortIntakeDriveMirror } from "@/app/rill/mail/_lib/intake-drive";
+import { ensureRillTransferInbox, type RillTransferInboxSource } from "@/app/api/bud/transfer-inbox/_lib/import-from-rill";
 import { errorResponse, requireGardenUser, RillMailHttpError } from "@/app/rill/mail/_lib/server-auth";
 
-const ITEM_SELECT = "id,kind,attachment_id,created_by_name,created_at,notice_text";
-type IntakeItemRow = Omit<IntakeItem, "notice_saved"> & { notice_text: string | null };
+const ITEM_SELECT = "id,kind,attachment_id,created_by_name,created_at,notice_text,file_name,mime,storage_path,message_id,mail_subject,mail_from_name,mail_from_address,mail_received_at";
+type IntakeItemRow = Omit<IntakeItem, "notice_saved"> & {
+  notice_text: string | null;
+  file_name: string;
+  mime: string;
+  storage_path: string;
+  message_id: string;
+  mail_subject: string;
+  mail_from_name: string;
+  mail_from_address: string;
+  mail_received_at: string;
+};
 
 function toIntakeItem(row: IntakeItemRow): IntakeItem {
-  const { notice_text, ...item } = row;
-  return { ...item, notice_saved: Boolean(notice_text?.trim()) };
+  return {
+    id: row.id,
+    kind: row.kind,
+    attachment_id: row.attachment_id,
+    created_by_name: row.created_by_name,
+    created_at: row.created_at,
+    notice_saved: Boolean(row.notice_text?.trim()),
+  };
+}
+
+function toTransferSource(row: IntakeItemRow): RillTransferInboxSource {
+  return {
+    intakeId: row.id,
+    fileName: row.file_name,
+    mimeType: row.mime,
+    importedAt: row.mail_received_at,
+    messageId: row.message_id,
+    attachmentId: row.attachment_id,
+    fromName: row.mail_from_name,
+    fromAddress: row.mail_from_address,
+    subject: row.mail_subject,
+    storagePath: row.storage_path,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -37,7 +69,10 @@ export async function POST(request: NextRequest) {
     const existingQuery = () => supabase.from("garden_intake_items").select(ITEM_SELECT).eq("box_address", box).eq("message_id", messageId).eq("attachment_id", attachmentId).maybeSingle<IntakeItemRow>();
     const existing = await existingQuery();
     if (existing.error) throw new RillMailHttpError(500, existing.error.message);
-    if (existing.data) return Response.json({ item: toIntakeItem(existing.data) }, { status: 409 });
+    if (existing.data) {
+      if (existing.data.kind === "請求") await ensureRillTransferInbox(toTransferSource(existing.data));
+      return Response.json({ item: toIntakeItem(existing.data) }, { status: 409 });
+    }
 
     const source = await getIntakeSource(supabase, user, box, messageId, attachmentId);
     const id = crypto.randomUUID();
@@ -67,7 +102,10 @@ export async function POST(request: NextRequest) {
       await supabase.storage.from("garden-intake").remove([storagePath]);
       if (isDuplicateIntakeError(error)) {
         const duplicate = await existingQuery();
-        if (duplicate.data) return Response.json({ item: toIntakeItem(duplicate.data) }, { status: 409 });
+        if (duplicate.data) {
+          if (duplicate.data.kind === "請求") await ensureRillTransferInbox(toTransferSource(duplicate.data));
+          return Response.json({ item: toIntakeItem(duplicate.data) }, { status: 409 });
+        }
       }
       throw new RillMailHttpError(500, error.message);
     }
@@ -93,6 +131,7 @@ export async function POST(request: NextRequest) {
         console.error("Rill Mail intake drive_file_id update failed", driveIdError instanceof Error ? driveIdError.message : driveIdError);
       }
     }
+    if (data.kind === "請求") await ensureRillTransferInbox(toTransferSource(data), source.attachment.bytes);
     return Response.json({ item: toIntakeItem(data) }, { status: 201 });
   } catch (error) { return errorResponse(error); }
 }
