@@ -7,7 +7,7 @@ import type { RillMailAttachment, RillMailBox, RillMailDetail, RillMailMessage, 
 import { detailRecipientAddresses } from "./detail-recipients";
 import { moveDestination, moveMessagePath, type MailMoveOperation } from "./move-ops";
 import { isMailState, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, toggleOwnConfirmation, toggleOwnPin, type LegacyFlagMessage, type MailState, type MailWriteOperation } from "./write-ops";
-import type { ComposeSendInput } from "./compose";
+import { attachmentUploadMethod, type ComposeSendInput } from "./compose";
 import { anySearchTruncated, escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes, type SearchMessagesResponse } from "./search";
 import { mergePinnedMessages, PINNED_BOX_LIMIT, PINNED_PAGE_SIZE, pinnedCategoryFilter, pinnedPagingDecision, type PinnedMessagesResponse } from "./pinned";
 
@@ -518,7 +518,35 @@ export async function importLegacyFlagsAsOwnPins(supabase: SupabaseClient, user:
 const graphRecipients = (addresses: string[]) => addresses.map((address) => ({ emailAddress: { address } }));
 const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export async function sendComposeMessage(supabase: SupabaseClient, user: User, input: ComposeSendInput) {
+export type OutgoingAttachment = { name: string; contentType: string; bytes: Uint8Array };
+
+async function addDraftAttachment(draftId: string, attachment: OutgoingAttachment, token: string) {
+  const path = `/me/messages/${encodeURIComponent(draftId)}/attachments`;
+  if (attachmentUploadMethod(attachment.bytes.byteLength) === "simple") {
+    await graphJson(path, token, { method: "POST", body: JSON.stringify({
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      name: attachment.name,
+      contentType: attachment.contentType,
+      contentBytes: Buffer.from(attachment.bytes).toString("base64"),
+    }) });
+    return;
+  }
+  const session = await graphJson(`${path}/createUploadSession`, token, { method: "POST", body: JSON.stringify({ AttachmentItem: {
+    attachmentType: "file", name: attachment.name, size: attachment.bytes.byteLength, contentType: attachment.contentType,
+  } }) }) as { uploadUrl?: string };
+  if (!session.uploadUrl) throw new RillMailHttpError(502, "Microsoft Graph did not create an attachment upload session");
+  const chunkSize = 10 * 320 * 1024;
+  for (let start = 0; start < attachment.bytes.byteLength; start += chunkSize) {
+    const end = Math.min(start + chunkSize, attachment.bytes.byteLength);
+    const response = await fetch(session.uploadUrl, { method: "PUT", headers: {
+      "Content-Length": String(end - start),
+      "Content-Range": `bytes ${start}-${end - 1}/${attachment.bytes.byteLength}`,
+    }, body: Buffer.from(attachment.bytes.subarray(start, end)) });
+    if (!response.ok) throw new RillMailHttpError(502, `Microsoft Graph attachment upload failed (${response.status})`);
+  }
+}
+
+export async function sendComposeMessage(supabase: SupabaseClient, user: User, input: ComposeSendInput, attachments: OutgoingAttachment[] = []) {
   const { token } = await accessToken(supabase, user);
   let draftId = "";
   try {
@@ -547,6 +575,7 @@ export async function sendComposeMessage(supabase: SupabaseClient, user: User, i
       });
     }
     if (!draftId) throw new RillMailHttpError(502, "Microsoft Graph did not create a draft");
+    for (const attachment of attachments) await addDraftAttachment(draftId, attachment, token);
     await graphJson(`/me/messages/${encodeURIComponent(draftId)}/send`, token, { method: "POST" });
   } catch (error) {
     if (draftId) {

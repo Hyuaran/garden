@@ -584,7 +584,7 @@ export function RillMailScreen() {
     const to = source ? mode === "forward" ? [] : replyAll?.to ?? [source.fromAddress].filter((address) => address && address !== ownBox?.address) : [];
     const cc = replyAll?.cc ?? [];
     const quote = source ? `差出人: ${source.fromName} <${source.fromAddress}>\n受信: ${formatMailDetailDate(source.receivedDateTime)}\n件名: ${source.subject}\n\n${mailBodyText(source.body.content)}` : "";
-    const draft: ComposeDraft = { id, mode, box: source?.box.id ?? "me", sourceMessageId: source?.id, to, cc, subject, bodyText: "", quote, fromLabel: `${ownBox?.label ?? "自分"} <${ownBox?.address ?? "me"}>`, ccVisible: cc.length > 0 };
+    const draft: ComposeDraft = { id, mode, box: source?.box.id ?? "me", sourceMessageId: source?.id, to, cc, subject, bodyText: "", quote, fromLabel: `${ownBox?.label ?? "自分"} <${ownBox?.address ?? "me"}>`, ccVisible: cc.length > 0, attachments: [] };
     setDrafts((current) => new Map(current).set(id, draft)); setActiveDraftId(id); setComposeError("");
   };
 
@@ -600,7 +600,10 @@ export function RillMailScreen() {
     if (countdownTimer.current) clearInterval(countdownTimer.current);
     countdownTimer.current = setInterval(() => setSendToast((current) => current?.tone === "pending" ? { ...current, seconds: Math.max(0, (current.seconds ?? 1) - 1) } : current), 1_000);
     delayedSend.current = scheduleDelayedSend(draft, async (value) => {
-      await readJson(await fetch("/api/rill/mail/compose/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) }));
+      const form = new FormData();
+      form.set("input", JSON.stringify(validateComposeInput(value)));
+      value.attachments.forEach((attachment) => form.append("attachments", attachment.file, attachment.name));
+      await readJson(await fetch("/api/rill/mail/compose/send", { method: "POST", body: form }));
     }, {
       cancelled: (value) => { if (countdownTimer.current) clearInterval(countdownTimer.current); setDrafts((current) => new Map(current).set(value.id, value)); setActiveDraftId(value.id); setSendToast(null); },
       succeeded: () => { if (countdownTimer.current) clearInterval(countdownTimer.current); setSendToast({ tone: "success", text: "送信しました" }); window.setTimeout(() => setSendToast(null), 3_000); },

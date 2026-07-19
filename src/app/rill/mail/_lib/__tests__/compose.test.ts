@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isValidEmailAddress, recipientSuggestions, replyAllRecipients, scheduleDelayedSend, validateComposeInput, type ComposeDraft } from "../compose";
+import { appendAttachments, attachmentUploadMethod, isValidEmailAddress, MAX_ATTACHMENT_BYTES, recipientSuggestions, removeAttachment, replyAllRecipients, scheduleDelayedSend, validateAttachmentSizes, validateComposeInput, type ComposeDraft } from "../compose";
 
-const draft = { id: "d1", mode: "new", box: "me", to: ["a@example.com"], cc: [], subject: "Subject", bodyText: "Body", quote: "", fromLabel: "Me", ccVisible: false } satisfies ComposeDraft;
+const draft = { id: "d1", mode: "new", box: "me", to: ["a@example.com"], cc: [], subject: "Subject", bodyText: "Body", quote: "", fromLabel: "Me", ccVisible: false, attachments: [] } satisfies ComposeDraft;
 
 describe("Rill Mail compose rules", () => {
   afterEach(() => vi.useRealTimers());
@@ -34,6 +34,25 @@ describe("Rill Mail compose rules", () => {
     expect(recipientSuggestions(["Alice@Example.com", "alice@example.com", "bob@example.com", "bad"], "ali")).toEqual(["Alice@Example.com"]);
   });
 
+  it("accepts the 25MB attachment boundary and rejects per-file and total overflow", () => {
+    expect(() => validateAttachmentSizes([], [{ size: MAX_ATTACHMENT_BYTES }])).not.toThrow();
+    expect(() => validateAttachmentSizes([], [{ size: MAX_ATTACHMENT_BYTES + 1 }])).toThrow("1ファイル");
+    expect(() => validateAttachmentSizes([{ size: MAX_ATTACHMENT_BYTES - 1 }], [{ size: 2 }])).toThrow("合計");
+  });
+
+  it("selects simple upload through 3MB and session upload above it", () => {
+    expect(attachmentUploadMethod(3 * 1024 * 1024)).toBe("simple");
+    expect(attachmentUploadMethod(3 * 1024 * 1024 + 1)).toBe("session");
+  });
+
+  it("adds and removes attachments without mutating the draft list", () => {
+    const file = { name: "invoice.pdf", size: 12, type: "application/pdf" } as File;
+    const added = appendAttachments([], [file], () => "a1");
+    expect(added).toMatchObject([{ id: "a1", name: "invoice.pdf", size: 12 }]);
+    expect(removeAttachment(added, "a1")).toEqual([]);
+    expect(added).toHaveLength(1);
+  });
+
   it("restores a scheduled draft when cancelled", () => {
     vi.useFakeTimers();
     const cancelled = vi.fn(); const send = vi.fn(async () => undefined);
@@ -41,6 +60,14 @@ describe("Rill Mail compose rules", () => {
     expect(job.cancel()).toBe(true);
     vi.advanceTimersByTime(10_000);
     expect(cancelled).toHaveBeenCalledWith(draft); expect(send).not.toHaveBeenCalled();
+  });
+
+  it("keeps attachment state while a delayed draft is cancelled", () => {
+    vi.useFakeTimers();
+    const withAttachment = { ...draft, attachments: [{ id: "a1", name: "invoice.pdf", size: 12, type: "application/pdf", file: {} as File }] };
+    const cancelled = vi.fn();
+    scheduleDelayedSend(withAttachment, async () => undefined, { cancelled, succeeded: vi.fn(), failed: vi.fn() }).cancel();
+    expect(cancelled).toHaveBeenCalledWith(withAttachment);
   });
 
   it("fires after the delay and reports success or restores on failure", async () => {
