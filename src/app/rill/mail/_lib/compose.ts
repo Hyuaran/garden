@@ -44,6 +44,23 @@ export function recipientSuggestions(addresses: string[], query: string) {
   return unique.filter((address) => !prefix || address.toLocaleLowerCase("en-US").startsWith(prefix));
 }
 
+export function replyAllRecipients(
+  source: { fromAddress: string; to: string[]; cc: string[] },
+  ownAddress: string | undefined,
+) {
+  const own = ownAddress?.trim().toLocaleLowerCase("en-US") ?? "";
+  const seen = new Set<string>();
+  const unique = (values: string[]) => values.filter((address) => {
+    const normalized = address.trim().toLocaleLowerCase("en-US");
+    if (!normalized || normalized === own || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+  const to = unique([source.fromAddress, ...source.to]);
+  const cc = unique(source.cc);
+  return { to, cc };
+}
+
 export function scheduleDelayedSend(
   draft: ComposeDraft,
   send: (draft: ComposeDraft) => Promise<void>,
