@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { randomBytes } from "node:crypto";
 import { decryptToken, encryptToken } from "./token-crypto";
 import { isAccessTokenCacheValid, SingleFlight, tokenHasScope } from "./token-cache";
 import { mergeMessages } from "./format";
@@ -8,6 +9,7 @@ import { detailRecipientAddresses } from "./detail-recipients";
 import { moveDestination, moveMessagePath, type MailMoveOperation } from "./move-ops";
 import { isMailState, isPersonalMailbox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, toggleOwnConfirmation, toggleOwnPin, type LegacyFlagMessage, type MailState, type MailWriteOperation } from "./write-ops";
 import { attachmentUploadMethod, type ComposeSendInput } from "./compose";
+import { isPublicNotificationOrigin, shouldRenewSubscription } from "./notifications";
 import { anySearchTruncated, escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes, type SearchMessagesResponse } from "./search";
 import { mergePinnedMessages, PINNED_BOX_LIMIT, PINNED_PAGE_SIZE, pinnedCategoryFilter, pinnedPagingDecision, type PinnedMessagesResponse } from "./pinned";
 
@@ -79,7 +81,7 @@ export async function exchangeCode(code: string, requestUrl: string) {
   }
 }
 
-async function accessToken(supabase: SupabaseClient, user: User) {
+async function accessToken(supabase: SupabaseClient, user: Pick<User, "id">) {
   const row = await readTokenRow(supabase, user.id);
   if (row.access_token_enc && isAccessTokenCacheValid(row.access_token_expires_at)) {
     try {
@@ -171,6 +173,53 @@ async function visibleBoxesWithToken(token: string, upn: string | null) {
     catch (error) { if (error instanceof RillMailHttpError && error.status === 502) return null; throw error; }
   }));
   return [own, ...probes.filter((box): box is RillMailBox => box !== null)];
+}
+
+type SubscriptionRow = { box: string; subscription_id: string; expires_at: string; client_state: string };
+
+function subscriptionResource(box: RillMailBox) {
+  return box.id === "me" ? "/me/mailFolders('inbox')/messages" : `/users/${encodeURIComponent(box.address)}/mailFolders('inbox')/messages`;
+}
+
+export async function ensureMailSubscriptions(supabase: SupabaseClient, user: Pick<User, "id">, origin: string) {
+  if (!isPublicNotificationOrigin(origin)) return { skipped: true, renewed: 0 };
+  const { token, upn } = await accessToken(supabase, user);
+  const boxes = await visibleBoxesWithToken(token, upn);
+  const { data, error } = await supabase.from("rill_mail_subscriptions").select("box,subscription_id,expires_at,client_state").eq("user_id", user.id);
+  if (error) throw new RillMailHttpError(500, error.message);
+  const rows = new Map(((data ?? []) as SubscriptionRow[]).map((row) => [row.box, row]));
+  const notificationUrl = new URL("/api/rill/mail/notifications/webhook", origin).toString();
+  let renewed = 0;
+  for (const box of boxes) {
+    const current = rows.get(box.id);
+    if (!shouldRenewSubscription(current?.expires_at)) continue;
+    const expirationDateTime = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+    if (current) {
+      let patched = false;
+      try {
+        await graphJson(`/subscriptions/${encodeURIComponent(current.subscription_id)}`, token, { method: "PATCH", body: JSON.stringify({ expirationDateTime }) });
+        patched = true;
+      } catch { /* Missing or expired Graph subscriptions are recreated below. */ }
+      if (patched) {
+        const { error: updateError } = await supabase.from("rill_mail_subscriptions").update({ expires_at: expirationDateTime, updated_at: new Date().toISOString() }).eq("subscription_id", current.subscription_id);
+        if (updateError) throw new RillMailHttpError(500, updateError.message);
+        renewed += 1;
+        continue;
+      }
+    }
+    const clientState = randomBytes(24).toString("base64url");
+    const created = await graphJson("/subscriptions", token, { method: "POST", body: JSON.stringify({
+      changeType: "created", notificationUrl, resource: subscriptionResource(box), expirationDateTime, clientState,
+    }) }) as { id?: string; expirationDateTime?: string };
+    if (!created.id) throw new RillMailHttpError(502, "Microsoft Graph did not create a mail subscription");
+    const { error: upsertError } = await supabase.from("rill_mail_subscriptions").upsert({
+      user_id: user.id, box: box.id, subscription_id: created.id,
+      expires_at: created.expirationDateTime ?? expirationDateTime, client_state: clientState, updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,box" });
+    if (upsertError) throw new RillMailHttpError(500, upsertError.message);
+    renewed += 1;
+  }
+  return { skipped: false, renewed };
 }
 
 export async function listVisibleBoxes(supabase: SupabaseClient, user: User) {

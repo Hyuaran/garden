@@ -18,6 +18,7 @@ import { noticeProgressLabel, noticeTemplate, noticeTemplateFields, reduceNotice
 import { linkifyBodyText } from "../_lib/linkify";
 import { applyMoveExclusions, loadMoveExclusions, removeMoveExclusions, removeMovedMessages, restoreMovedMessages, saveMoveExclusions, scheduleMoveUndoWindow, type MailMoveOperation, type MoveExclusion, type MoveExclusionStorage } from "../_lib/move-ops";
 import { attachmentToNoticePages, downloadDataUrl, type NoticeClientPage } from "../_lib/notice-pdf";
+import { notificationIsNew } from "../_lib/notifications";
 import styles from "./RillMailScreen.module.css";
 
 const ICON = "/themes/garden-shell/images/icons_bloom/orb_rill.png";
@@ -124,6 +125,7 @@ export function RillMailScreen() {
   const delayedSend = useRef<{ cancel: () => boolean; dispose: () => void } | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const moveCountdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastNotification = useRef<string | null>(null);
   const moveUndoWindow = useRef<{ undo: () => boolean; dispose: () => void } | null>(null);
   const recentWrites = useRef(new Map<string, RecentCategoryWrite>());
   const pinOverrides = useRef(new Map<string, PinOverride>());
@@ -248,6 +250,22 @@ export function RillMailScreen() {
           else setAutoRefreshFailed(true);
         });
     }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [activeBox, connected, loadMessages, loadPinnedMessages, searchResults]);
+  useEffect(() => {
+    const check = async () => {
+      if (!connected || searchResults !== null) return;
+      try {
+        const status = await readJson<{ lastNotifiedAt: string | null }>(await fetch("/api/rill/mail/notifications/status", { cache: "no-store" }));
+        if (!notificationIsNew(lastNotification.current, status.lastNotifiedAt)) return;
+        lastNotification.current = status.lastNotifiedAt;
+        const refresh = activeBox === "flagged" ? loadPinnedMessages() : loadMessages(activeBox, null, "refresh");
+        await refresh;
+        setAutoRefreshFailed(false);
+      } catch { /* The 60-second Graph poll remains the fallback. */ }
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 10_000);
     return () => window.clearInterval(timer);
   }, [activeBox, connected, loadMessages, loadPinnedMessages, searchResults]);
   useEffect(() => {

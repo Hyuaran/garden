@@ -5,6 +5,7 @@
     { "path": "/api/bloom/cron/daily", "schedule": "0 9 * * *" },
     { "path": "/api/bloom/cron/weekly", "schedule": "0 9 * * 5" },
     { "path": "/api/bloom/cron/monthly", "schedule": "0 9 14 * *" },
-    { "path": "/api/bud/cron/transfer-inbox", "schedule": "0 8 * * *" }
+    { "path": "/api/bud/cron/transfer-inbox", "schedule": "0 8 * * *" },
+    { "path": "/api/rill/mail/notifications/renew", "schedule": "0 7 * * *" }
   ]
 }
