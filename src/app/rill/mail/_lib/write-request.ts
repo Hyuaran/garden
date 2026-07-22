@@ -1,5 +1,5 @@
 import { mutateMailMessages, type MailMutation } from "./graph";
-import { assertOwnConfirmationName, isMailState, pinCategoryName, type MailWriteOperation } from "./write-ops";
+import { assertConfirmationAddition, assertOwnConfirmationName, isMailState, pinCategoryName, type MailWriteOperation } from "./write-ops";
 import { errorResponse, requireGardenUser, RillMailHttpError } from "./server-auth";
 
 type Body = { on?: unknown; read?: unknown; state?: unknown; name?: unknown };
@@ -7,6 +7,10 @@ type Body = { on?: unknown; read?: unknown; state?: unknown; name?: unknown };
 function valueFor(op: MailWriteOperation, body: Body) {
   if (op === "pin" || op === "confirm") {
     if (typeof body.on !== "boolean") throw new RillMailHttpError(400, "on must be boolean");
+    if (op === "confirm") {
+      try { assertConfirmationAddition(body.on); }
+      catch { throw new RillMailHttpError(409, "確認印は取り消せません"); }
+    }
     return body.on;
   }
   if (op === "read") {

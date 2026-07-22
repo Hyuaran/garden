@@ -66,6 +66,13 @@ describe("pinned Graph helpers", () => {
     expect(applyRecentCategoryWrites([pinned], writes, 1_000, { pinnedView: true, ownName: "O'Neil" }).messages).toEqual([]);
   });
 
+  it("keeps an optimistic search-result confirmation and state setter over a stale response", () => {
+    const stale = message("search", me, "2026-01-01T00:00:00Z", []);
+    const categories = ["東海林美琴", "要対応", "状態設定:東海林美琴"];
+    const result = applyRecentCategoryWrites([stale], new Map([["me:search", { categories, expiresAt: 61_000 }]]), 1_000);
+    expect(result.messages[0].categories).toEqual(categories);
+  });
+
   it("drops expired writes and lets server categories pass through", () => {
     const pinned = message("1");
     const result = applyRecentCategoryWrites([pinned], new Map([["me:1", { categories: [], expiresAt: 1_000 }]]), 1_000);

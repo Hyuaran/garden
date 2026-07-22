@@ -504,11 +504,15 @@ export async function mutateMailMessages(supabase: SupabaseClient, user: User, m
         let categories: string[];
         if (mutation.op === "state") {
           if (mutation.value !== null && !isMailState(mutation.value)) throw new RillMailHttpError(400, "Invalid mail state");
-          if (mutation.value) await ensureCategory(box, mutation.value);
-          categories = replaceMailState(current.categories ?? [], mutation.value as MailState | null);
+          if (mutation.value) {
+            await ensureCategory(box, mutation.value);
+            await ensureCategory(box, `状態設定:${ownName}`);
+          }
+          categories = replaceMailState(current.categories ?? [], mutation.value as MailState | null, ownName);
         } else if (mutation.op === "confirm") {
           if (typeof mutation.value !== "boolean") throw new RillMailHttpError(400, "confirm value must be boolean");
-          if (mutation.value) await ensureCategory(box, ownName);
+          if (!mutation.value) throw new RillMailHttpError(409, "確認印は取り消せません");
+          await ensureCategory(box, ownName);
           categories = toggleOwnConfirmation(current.categories ?? [], ownName, mutation.value);
         } else {
           if (typeof mutation.value !== "boolean") throw new RillMailHttpError(400, "pin value must be boolean");

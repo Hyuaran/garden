@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyLocalMailMutation, assertOwnConfirmationName, detailCacheKey, filterOwnPinned, hasOwnPin, isMessageUnread, isPersonalMailbox, messagesForBox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, selectionRange, toggleOwnConfirmation, toggleOwnPin, withCachedDetail } from "../write-ops";
+import { applyLocalMailMutation, assertConfirmationAddition, assertOwnConfirmationName, detailCacheKey, filterOwnPinned, hasOwnPin, isMessageUnread, isPersonalMailbox, messagesForBox, pinCategoryName, replaceMailState, selectLegacyFlagImportTargets, selectionRange, stateSetterName, toggleOwnConfirmation, toggleOwnPin, withCachedDetail } from "../write-ops";
 import type { RillMailDetail, RillMailMessage } from "../types";
 
 const baseMessage: RillMailMessage = {
@@ -10,14 +10,17 @@ const baseMessage: RillMailMessage = {
 
 describe("Rill Mail write rules", () => {
   it("replaces the one state while preserving confirmations and unrelated categories", () => {
-    expect(replaceMailState(["要対応", "東海林美琴", "取引先"], "処理済")).toEqual(["東海林美琴", "取引先", "処理済"]);
-    expect(replaceMailState(["確認中", "東海林美琴"], null)).toEqual(["東海林美琴"]);
+    expect(replaceMailState(["要対応", "状態設定:上田花子", "東海林美琴", "取引先"], "処理済", "東海林美琴")).toEqual(["東海林美琴", "取引先", "処理済", "状態設定:東海林美琴"]);
+    expect(replaceMailState(["確認中", "状態設定:東海林美琴", "東海林美琴"], null, "東海林美琴")).toEqual(["東海林美琴"]);
+    expect(stateSetterName(["処理済", "状態設定:東海林美琴"])).toBe("東海林美琴");
   });
 
   it("only permits the authenticated user's confirmation name", () => {
     expect(() => assertOwnConfirmationName("上田花子", "東海林美琴")).toThrow("他の利用者");
     expect(() => assertOwnConfirmationName("東海林美琴", "東海林美琴")).not.toThrow();
     expect(toggleOwnConfirmation(["上田花子"], "東海林美琴", true)).toEqual(["上田花子", "東海林美琴"]);
+    expect(() => assertConfirmationAddition(false)).toThrow("取り消せません");
+    expect(() => toggleOwnConfirmation(["東海林美琴"], "東海林美琴", false)).toThrow("取り消せません");
   });
 
   it("allows isRead only for the /me personal mailbox and uses confirmation for shared unread", () => {
@@ -35,7 +38,7 @@ describe("Rill Mail write rules", () => {
 
   it("applies immediate local mutations without changing unrelated fields", () => {
     expect(applyLocalMailMutation(baseMessage, "pin", true, "東海林美琴").categories).toEqual(["ピン:東海林美琴"]);
-    expect(applyLocalMailMutation({ ...baseMessage, categories: ["東海林美琴", "確認中"] }, "state", "処理済", "東海林美琴").categories).toEqual(["東海林美琴", "処理済"]);
+    expect(applyLocalMailMutation({ ...baseMessage, categories: ["東海林美琴", "確認中"] }, "state", "処理済", "東海林美琴").categories).toEqual(["東海林美琴", "処理済", "状態設定:東海林美琴"]);
     expect(applyLocalMailMutation(baseMessage, "confirm", true, "東海林美琴").categories).toEqual(["東海林美琴"]);
   });
 
