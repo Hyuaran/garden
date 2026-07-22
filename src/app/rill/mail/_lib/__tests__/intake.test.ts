@@ -24,6 +24,7 @@ describe("Garden intake helpers", () => {
     const mark = intakeMarks([item]).get("a1");
     expect(mark?.label).toBe("請求 済");
     expect(mark?.title).toContain("東海林");
+    expect(mark).toMatchObject({ actorName: "東海林", actorInitial: "東" });
   });
 
   it("marks an unsaved notice incomplete and switches the action label", () => {

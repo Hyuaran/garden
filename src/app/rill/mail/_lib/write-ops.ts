@@ -1,6 +1,7 @@
 import type { RillMailBox, RillMailDetail, RillMailMessage } from "./types";
 
 export const MAIL_STATES = ["要対応", "確認中", "処理済"] as const;
+export const STATE_SETTER_PREFIX = "状態設定:";
 export type MailState = typeof MAIL_STATES[number];
 export type MailWriteOperation = "pin" | "state" | "confirm" | "read";
 
@@ -40,18 +41,28 @@ export function selectLegacyFlagImportTargets(messages: LegacyFlagMessage[], own
   return messages.filter((message) => message.flag?.flagStatus === "flagged" && !hasOwnPin(message.categories ?? [], ownName));
 }
 
-export function replaceMailState(categories: string[], state: MailState | null) {
-  const kept = categories.filter((category) => !MAIL_STATES.includes(category as MailState));
-  return state ? [...kept, state] : kept;
+export function stateSetterName(categories: string[]) {
+  const category = categories.find((item) => item.startsWith(STATE_SETTER_PREFIX));
+  return category?.slice(STATE_SETTER_PREFIX.length) || null;
+}
+
+export function replaceMailState(categories: string[], state: MailState | null, setterName?: string) {
+  const kept = categories.filter((category) => !MAIL_STATES.includes(category as MailState) && !category.startsWith(STATE_SETTER_PREFIX));
+  return state ? [...kept, state, ...(setterName ? [`${STATE_SETTER_PREFIX}${setterName}`] : [])] : kept;
 }
 
 export function assertOwnConfirmationName(requestedName: string, ownName: string) {
   if (requestedName !== ownName) throw new Error("他の利用者の確認印は変更できません");
 }
 
+export function assertConfirmationAddition(on: boolean) {
+  if (!on) throw new Error("確認印は取り消せません");
+}
+
 export function toggleOwnConfirmation(categories: string[], ownName: string, on: boolean) {
+  assertConfirmationAddition(on);
   const kept = categories.filter((category) => category !== ownName);
-  return on ? [...kept, ownName] : kept;
+  return [...kept, ownName];
 }
 
 export function isPersonalMailbox(box: Pick<RillMailBox, "id" | "kind">) {
@@ -76,6 +87,6 @@ export function isMailState(value: unknown): value is MailState {
 export function applyLocalMailMutation(message: RillMailMessage, op: MailWriteOperation, value: boolean | MailState | null, ownName: string): RillMailMessage {
   if (op === "pin") return { ...message, categories: toggleOwnPin(message.categories, ownName, Boolean(value)) };
   if (op === "read") return { ...message, isRead: Boolean(value) };
-  if (op === "state") return { ...message, categories: replaceMailState(message.categories, value as MailState | null) };
+  if (op === "state") return { ...message, categories: replaceMailState(message.categories, value as MailState | null, ownName) };
   return { ...message, categories: toggleOwnConfirmation(message.categories, ownName, Boolean(value)) };
 }

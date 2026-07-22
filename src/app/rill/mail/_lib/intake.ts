@@ -37,6 +37,8 @@ export function intakeMarks(items: IntakeItem[]) {
     kind: item.kind,
     complete: item.kind !== "周知" || item.notice_saved,
     label: item.kind === "周知" && !item.notice_saved ? "周知 未完" : `${item.kind} 済`,
+    actorName: item.created_by_name,
+    actorInitial: Array.from(item.created_by_name)[0] ?? "?",
     title: `${item.created_by_name}・${new Date(item.created_at).toLocaleString("ja-JP")}`,
   }]));
 }
