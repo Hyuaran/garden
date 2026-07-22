@@ -27,6 +27,7 @@ describe("Rill Mail intake Drive mirror", () => {
     expect(intakeDriveFolderPath("入金", input.receivedAt).kind).toBe("入金");
     expect(intakeDriveFolderPath("条件", input.receivedAt).kind).toBe("条件");
     expect(intakeDriveFolderPath("周知", input.receivedAt).kind).toBe("周知");
+    expect(intakeDriveFolderPath("契約書", input.receivedAt)).toEqual({ root: "Garden_取込トレイ", kind: "契約書", month: "2026-07" });
     expect(() => intakeDriveFolderPath("その他" as "請求", input.receivedAt)).toThrow("Invalid intake kind");
     expect(() => intakeDriveFolderPath("請求", "not-a-date")).toThrow("Invalid intake received date");
   });

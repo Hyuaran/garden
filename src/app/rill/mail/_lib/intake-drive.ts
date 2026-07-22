@@ -12,6 +12,7 @@ const KIND_FOLDER_NAMES: Record<IntakeKind, string> = {
   入金: "入金",
   条件: "条件",
   周知: "周知",
+  契約書: "契約書",
 };
 
 export type IntakeDriveMirrorInput = {
