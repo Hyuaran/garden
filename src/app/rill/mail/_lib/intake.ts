@@ -1,4 +1,4 @@
-export const INTAKE_KINDS = ["請求", "入金", "条件", "周知"] as const;
+export const INTAKE_KINDS = ["請求", "入金", "条件", "周知", "契約書"] as const;
 export type IntakeKind = typeof INTAKE_KINDS[number];
 
 export type IntakeItem = {
@@ -17,7 +17,7 @@ export function isIntakeKind(value: unknown): value is IntakeKind {
 // Supabase Storage のオブジェクトキーは非ASCII文字（日本語など）を受け付けない
 // （実機で "Invalid key: 周知/..." を実測）。フォルダは英字スラッグ、ファイル名は
 // id+拡張子のみとし、元のファイル名は garden_intake_items.file_name 側に保持する。
-const KIND_SLUGS: Record<IntakeKind, string> = { 請求: "seikyu", 入金: "nyukin", 条件: "joken", 周知: "shuchi" };
+const KIND_SLUGS: Record<IntakeKind, string> = { 請求: "seikyu", 入金: "nyukin", 条件: "joken", 周知: "shuchi", 契約書: "keiyaku" };
 
 export function intakeStoragePath(kind: IntakeKind, date: Date, id: string, fileName: string) {
   const extension = (/\.[A-Za-z0-9]{1,10}$/.exec(fileName)?.[0] ?? "").toLowerCase();

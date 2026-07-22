@@ -12,9 +12,10 @@ import { attachmentUploadMethod, type ComposeSendInput } from "./compose";
 import { isPublicNotificationOrigin, shouldRenewSubscription } from "./notifications";
 import { anySearchTruncated, escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes, type SearchMessagesResponse } from "./search";
 import { mergePinnedMessages, PINNED_BOX_LIMIT, PINNED_PAGE_SIZE, pinnedCategoryFilter, pinnedPagingDecision, type PinnedMessagesResponse } from "./pinned";
+import { boxesForRequest, folderMessagePath, oneMessagePath, searchMessagePath, sentBox } from "./mail-boxes";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
-const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,hasAttachments,isRead,categories,bodyPreview";
+const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,sentDateTime,hasAttachments,isRead,categories,bodyPreview";
 const MESSAGE_DETAIL_SELECT = `${MESSAGE_SELECT},ccRecipients,bccRecipients,body`;
 const DELEGATED_SCOPES = "openid profile offline_access User.Read Mail.ReadWrite Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared MailboxSettings.ReadWrite";
 const REQUIRED_SETTINGS_SCOPE = "MailboxSettings.ReadWrite";
@@ -30,7 +31,7 @@ type GraphList<T> = { value?: T[]; "@odata.nextLink"?: string };
 type GraphAddress = { emailAddress?: { name?: string; address?: string } };
 type GraphMessage = {
   id: string; subject?: string; from?: GraphAddress; toRecipients?: GraphAddress[];
-  receivedDateTime?: string; hasAttachments?: boolean; isRead?: boolean;
+  receivedDateTime?: string; sentDateTime?: string; hasAttachments?: boolean; isRead?: boolean;
   categories?: string[]; bodyPreview?: string;
   body?: { contentType?: string; content?: string };
   ccRecipients?: GraphAddress[];
@@ -224,15 +225,12 @@ export async function ensureMailSubscriptions(supabase: SupabaseClient, user: Pi
 
 export async function listVisibleBoxes(supabase: SupabaseClient, user: User) {
   const { token, upn } = await accessToken(supabase, user);
-  return visibleBoxesWithToken(token, upn);
+  const boxes = await visibleBoxesWithToken(token, upn);
+  return boxes[0] ? [boxes[0], sentBox(boxes[0]), ...boxes.slice(1)] : boxes;
 }
 
-function messagePath(box: RillMailBox) { return box.id === "me" ? "/me/mailFolders/inbox/messages" : `/users/${encodeURIComponent(box.address)}/mailFolders/inbox/messages`; }
-function searchMessagePath(box: RillMailBox) { return box.id === "me" ? "/me/messages" : `/users/${encodeURIComponent(box.address)}/messages`; }
-function oneMessagePath(boxId: string, id: string) { return boxId === "me" ? `/me/messages/${encodeURIComponent(id)}` : `/users/${encodeURIComponent(boxId)}/messages/${encodeURIComponent(id)}`; }
-
 function mapMessage(raw: GraphMessage, box: RillMailBox): RillMailMessage {
-  return { id: raw.id, box, subject: raw.subject || "（件名なし）", fromName: raw.from?.emailAddress?.name || raw.from?.emailAddress?.address || "（差出人不明）", fromAddress: raw.from?.emailAddress?.address || "", to: (raw.toRecipients ?? []).map((x) => x.emailAddress?.address ?? "").filter(Boolean), receivedDateTime: raw.receivedDateTime || "", hasAttachments: raw.hasAttachments === true, isRead: raw.isRead === true, categories: raw.categories ?? [], bodyPreview: raw.bodyPreview ?? "" };
+  return { id: raw.id, box, subject: raw.subject || "（件名なし）", fromName: raw.from?.emailAddress?.name || raw.from?.emailAddress?.address || "（差出人不明）", fromAddress: raw.from?.emailAddress?.address || "", to: (raw.toRecipients ?? []).map((x) => x.emailAddress?.address ?? "").filter(Boolean), receivedDateTime: box.id === "sent" ? raw.sentDateTime || raw.receivedDateTime || "" : raw.receivedDateTime || "", hasAttachments: raw.hasAttachments === true, isRead: raw.isRead === true, categories: raw.categories ?? [], bodyPreview: raw.bodyPreview ?? "" };
 }
 
 function encodeCursor(cursor: Cursor) { return Object.values(cursor).some(Boolean) ? Buffer.from(JSON.stringify(cursor)).toString("base64url") : null; }
@@ -247,12 +245,12 @@ export function resolveBoxPageUrl(cursor: Cursor, boxId: string, initialUrl: str
 export async function listMessages(supabase: SupabaseClient, user: User, boxId: string, cursorValue: string | null): Promise<RillMessagesResponse> {
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
-  const selected = boxId === "all" ? boxes : boxes.filter((box) => box.id === boxId || box.address === boxId);
+  const selected = boxesForRequest(boxes, boxId);
   if (!selected.length) throw new RillMailHttpError(404, "Mailbox not found");
   const cursor = decodeCursor(cursorValue);
   const groups = await Promise.all(selected.map(async (box) => {
-    const params = new URLSearchParams({ "$top": "50", "$select": MESSAGE_SELECT });
-    const page = resolveBoxPageUrl(cursor, box.id, `${messagePath(box)}?${params}`);
+    const params = new URLSearchParams({ "$top": "50", "$select": MESSAGE_SELECT, ...(box.id === "sent" ? { "$orderby": "sentDateTime desc" } : {}) });
+    const page = resolveBoxPageUrl(cursor, box.id, `${folderMessagePath(box)}?${params}`);
     if (page.exhausted || !page.url) return { messages: [] as RillMailMessage[], next: null };
     const response = await graphFetch(page.url, token);
     const data = await response.json() as GraphList<GraphMessage>;
@@ -270,7 +268,7 @@ export async function searchMessages(supabase: SupabaseClient, user: User, query
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
   let selected: RillMailBox[];
-  try { selected = selectSearchBoxes(boxes, boxId); }
+  try { selected = boxId === "sent" ? boxesForRequest(boxes, boxId) : selectSearchBoxes(boxes, boxId); }
   catch { throw new RillMailHttpError(404, "Mailbox not found"); }
 
   const groups = await Promise.all(selected.map(async (box) => {
@@ -329,7 +327,7 @@ export async function listPinnedMessages(supabase: SupabaseClient, user: User): 
 export async function getMessage(supabase: SupabaseClient, user: User, boxId: string, id: string): Promise<RillMailDetail> {
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
-  const box = boxes.find((item) => item.id === boxId || item.address === boxId);
+  const box = boxId === "all" ? undefined : boxesForRequest(boxes, boxId)[0];
   if (!box) throw new RillMailHttpError(404, "Mailbox not found");
   const response = await graphFetch(`${oneMessagePath(box.id, id)}?$select=${MESSAGE_DETAIL_SELECT}`, token);
   const raw = await response.json() as GraphMessage;
@@ -351,7 +349,7 @@ export async function getMessage(supabase: SupabaseClient, user: User, boxId: st
 export async function getAttachment(supabase: SupabaseClient, user: User, boxId: string, messageId: string, attachmentId: string) {
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
-  const box = boxes.find((item) => item.id === boxId || item.address === boxId);
+  const box = boxId === "all" ? undefined : boxesForRequest(boxes, boxId)[0];
   if (!box) throw new RillMailHttpError(404, "Mailbox not found");
   const response = await graphFetch(`${oneMessagePath(box.id, messageId)}/attachments/${encodeURIComponent(attachmentId)}`, token);
   return response.json() as Promise<{ name?: string; contentType?: string; contentBytes?: string }>;
@@ -360,7 +358,7 @@ export async function getAttachment(supabase: SupabaseClient, user: User, boxId:
 export async function getIntakeSource(supabase: SupabaseClient, user: User, boxId: string, messageId: string, attachmentId: string) {
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
-  const box = boxes.find((item) => item.id === boxId || item.address === boxId);
+  const box = boxId === "all" ? undefined : boxesForRequest(boxes, boxId)[0];
   if (!box) throw new RillMailHttpError(404, "Mailbox not found");
   const [messageResponse, attachmentResponse, createdByName] = await Promise.all([
     graphFetch(`${oneMessagePath(box.id, messageId)}?$select=${MESSAGE_SELECT}`, token),
@@ -540,7 +538,7 @@ export async function importLegacyFlagsAsOwnPins(supabase: SupabaseClient, user:
 
   for (const box of boxes) {
     const params = new URLSearchParams({ "$top": "50", "$select": "id,categories,flag", "$filter": "flag/flagStatus eq 'flagged'" });
-    let next: string | null = `${messagePath(box)}?${params}`;
+    let next: string | null = `${folderMessagePath(box)}?${params}`;
     while (next) {
       const data = await graphJson(next, token) as GraphList<LegacyFlagMessage>;
       flagged.push(...(data.value ?? []).map((message) => ({ ...message, boxId: box.id })));
