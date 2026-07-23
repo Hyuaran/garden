@@ -19,6 +19,7 @@ import { linkifyBodyText } from "../_lib/linkify";
 import { applyMoveExclusions, loadMoveExclusions, removeMoveExclusions, removeMovedMessages, restoreMovedMessages, saveMoveExclusions, scheduleMoveUndoWindow, type MailMoveOperation, type MoveExclusion, type MoveExclusionStorage } from "../_lib/move-ops";
 import { attachmentToNoticePages, downloadDataUrl, type NoticeClientPage } from "../_lib/notice-pdf";
 import { notificationIsNew } from "../_lib/notifications";
+import { anomalyStorageKeys, type MailAnomaly, type MailAnomalyResponse } from "../_lib/anomaly";
 import styles from "./RillMailScreen.module.css";
 
 const ICON = "/themes/garden-shell/images/icons_bloom/orb_rill.png";
@@ -52,6 +53,10 @@ function PinIcon({ on = false }: { on?: boolean }) {
 
 function SearchIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>;
+}
+
+function AnomalyIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z" /><path d="M12 9v5m0 3h.01" /></svg>;
 }
 
 function LinkifiedText({ children }: { children: string }) {
@@ -88,6 +93,10 @@ export function RillMailScreen() {
   const [pinsNotice, setPinsNotice] = useState("");
   const [pinSortOrder, setPinSortOrder] = useState<PinSortOrder>("newest");
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [anomalyResult, setAnomalyResult] = useState<MailAnomalyResponse | null>(null);
+  const [anomalyLoading, setAnomalyLoading] = useState(false);
+  const [anomalyError, setAnomalyError] = useState("");
+  const [disableAutomaticAnomaly, setDisableAutomaticAnomaly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pendingWrites, setPendingWrites] = useState<Set<string>>(new Set());
@@ -137,6 +146,7 @@ export function RillMailScreen() {
   const gardenUserId = useRef("");
   const intakeCache = useRef(new Map<string, IntakeItem[]>());
   const noticeGeneration = useRef(0);
+  const automaticAnomalyAttempted = useRef(false);
   const ownNameRef = useRef(ownName);
   ownNameRef.current = ownName;
 
@@ -206,6 +216,27 @@ export function RillMailScreen() {
     } finally { setPinsLoading(false); }
   }, [protectServerMessages]);
 
+  const checkAnomalies = useCallback(async (manual: boolean) => {
+    setAnomalyLoading(true);
+    setAnomalyError("");
+    if (manual) setAnomalyResult(null);
+    try {
+      const result = await readJson<MailAnomalyResponse>(await fetch("/api/rill/mail/anomalies", { cache: "no-store" }));
+      if (manual || result.anomalies.length > 0) {
+        setAnomalyResult(result);
+        const keys = anomalyStorageKeys(gardenUserId.current);
+        if (!manual) window.localStorage.setItem(keys.lastShown, new Date().toLocaleDateString("sv-SE"));
+      }
+    } catch (cause) {
+      if (manual) {
+        setAnomalyResult({ anomalies: [], counts: { "要対応": 0, "確認中": 0, "状態なし": 0 } });
+        setAnomalyError(cause instanceof Error ? cause.message : "異常チェックに失敗しました");
+      }
+    } finally {
+      setAnomalyLoading(false);
+    }
+  }, []);
+
   const initialize = useCallback(async () => {
     const generation = ++requestGeneration.current;
     setLoading(true); setError("");
@@ -228,6 +259,19 @@ export function RillMailScreen() {
   }, [loadMessages]);
 
   useEffect(() => { void initialize(); }, [initialize]);
+  useEffect(() => {
+    if (!connected || !gardenUserId.current || automaticAnomalyAttempted.current) return;
+    automaticAnomalyAttempted.current = true;
+    try {
+      const keys = anomalyStorageKeys(gardenUserId.current);
+      const disabled = window.localStorage.getItem(keys.disabled) === "1";
+      const today = new Date().toLocaleDateString("sv-SE");
+      setDisableAutomaticAnomaly(disabled);
+      if (!disabled && window.localStorage.getItem(keys.lastShown) !== today) void checkAnomalies(false);
+    } catch {
+      void checkAnomalies(false);
+    }
+  }, [checkAnomalies, connected]);
   useEffect(() => () => {
     autoSearch.current?.dispose();
     delayedSend.current?.dispose();
@@ -778,11 +822,26 @@ export function RillMailScreen() {
   const pickedMessages = useMemo(() => (searchResults ?? (activeBox === "flagged" ? pinnedMessages : messages)).filter((message) => picked.has(keyOf(message))), [activeBox, messages, picked, pinnedMessages, searchResults]);
   const bulkPinOn = shouldAddBulkPin(pickedMessages, ownName);
   const intakeByAttachment = useMemo(() => intakeMarks(intakeItems), [intakeItems]);
+  const closeAnomalyModal = useCallback(() => {
+    try {
+      const keys = anomalyStorageKeys(gardenUserId.current);
+      if (disableAutomaticAnomaly) window.localStorage.setItem(keys.disabled, "1");
+      else window.localStorage.removeItem(keys.disabled);
+    } catch { /* The manual check remains available when localStorage is blocked. */ }
+    setAnomalyResult(null);
+    setAnomalyError("");
+  }, [disableAutomaticAnomaly]);
+
+  const openAnomalyMessage = (message: MailAnomaly) => {
+    setAnomalyResult(null);
+    void openMessage(message);
+  };
 
   return <GardenShell activeModule="rill" pageMenu={MENU} activityItems={[]} contentFullBleed>
     <section className={styles.surface} aria-label="Rill Mail">
       <div className={styles.toolbar}>
         <button className={styles.primaryButton} onClick={() => void initialize()} disabled={loading}>↻ 更新</button>
+        <button className={styles.anomalyCheckButton} onClick={() => void checkAnomalies(true)} disabled={anomalyLoading}><AnomalyIcon />{anomalyLoading ? "確認中…" : "異常チェック"}</button>
         <span className={styles.fresh}>{updatedAt ? `最終更新 ${updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}・60秒ごと` : "未更新"}</span>{autoRefreshFailed && <span className={styles.autoWarning}>更新に失敗（自動で再試行します）</span>}<span className={styles.separator} />
         <button className={styles.composeAction} onClick={() => openCompose("new")}>新規</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("reply")}>返信</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("replyAll")}>全員に返信</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("forward")}>転送</button>
         {!sentView && <><button className={styles.actionButton} disabled={!selected || (!selectedPersonal && selectedConfirmed) || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, selectedPersonal ? "read" : "confirm", selectedPersonal ? selectedUnread : true)}>○ {selectedPersonal ? selectedUnread ? "開封済みに" : "未読に戻す" : selectedConfirmed ? "確認済" : "確認"}</button>
@@ -820,6 +879,14 @@ export function RillMailScreen() {
       </div>}
       {sendToast && <div className={`${styles.sendToast} ${sendToast.tone === "error" ? styles.sendToastError : ""}`}>{sendToast.text}{sendToast.tone === "pending" && <button onClick={() => delayedSend.current?.cancel()}>取り消す（{sendToast.seconds}秒）</button>}</div>}
       {moveToast && <div className={`${styles.sendToast} ${styles.moveToast}`}>{moveToast.operation === "archive" ? "アーカイブしました" : "削除しました"}<button onClick={() => void undoMove()}>元に戻す（{moveToast.seconds}秒）</button></div>}
+      {anomalyResult && createPortal(<div className={styles.modalBackdrop}>
+        <section className={styles.anomalyModal} role="dialog" aria-modal="true" aria-labelledby="anomaly-title">
+          <header><span className={styles.anomalySymbol}><AnomalyIcon /></span><div><h2 id="anomaly-title">{anomalyError ? "異常チェックを完了できませんでした" : anomalyResult.anomalies.length ? "対応が止まっているメールがあります" : "異常はありません"}</h2><p>{anomalyError || (anomalyResult.anomalies.length ? "48時間以上、対応状況が更新されていない受信メールです。" : "過去30日間に、48時間以上放置された対象メールはありません。")}</p></div></header>
+          {!anomalyError && anomalyResult.anomalies.length > 0 && <><div className={styles.anomalySummary}><span>要対応 <b>{anomalyResult.counts["要対応"]}件</b></span><span>確認中 <b>{anomalyResult.counts["確認中"]}件</b></span><span>状態なし <b>{anomalyResult.counts["状態なし"]}件</b></span></div>
+          <div className={styles.anomalyList}>{anomalyResult.anomalies.map((message) => <button key={keyOf(message)} onClick={() => openAnomalyMessage(message)}><span className={styles.anomalySubject}>{message.subject}</span><span className={styles.badge}>{abbreviateBox(message.box.address)}</span><time>{formatMailListDate(message.receivedDateTime)}</time><b>{message.elapsedDays}日経過</b></button>)}</div></>}
+          <footer><label><input type="checkbox" checked={disableAutomaticAnomaly} onChange={(event) => setDisableAutomaticAnomaly(event.target.checked)} />今後は自動表示しない</label><button onClick={closeAnomalyModal}>閉じる</button></footer>
+        </section>
+      </div>, document.body)}
       {/* GardenShell 側のスタッキング文脈にモーダルが閉じ込められ、ヘッダー(z-index:100)の下に潜るため body 直下へポータル描画する */}
       {viewingAttachment && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingAttachment(null); }}><section className={styles.attachmentModal} role="dialog" aria-modal="true" aria-label={`${viewingAttachment.name}のプレビュー`}><header><h2>{viewingAttachment.name}</h2><a href={attachmentUrl(viewingAttachment)} aria-label="ダウンロード" title="ダウンロード"><DownloadIcon /></a><button onClick={() => setViewingAttachment(null)} aria-label="閉じる">×</button></header><div className={styles.viewer}>{viewingAttachment.contentType?.split(";", 1)[0].trim().toLowerCase().startsWith("image/") || (!viewingAttachment.contentType && /\.(png|jpe?g|gif|webp)$/i.test(viewingAttachment.name)) ? <img src={viewingUrl} alt={viewingAttachment.name} /> : <iframe src={viewingUrl} title={viewingAttachment.name} />}</div></section></div>, document.body)}
       {intakeTarget && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) closeIntake(); }}><section className={`${styles.intakeModal} ${noticeWorkspace ? styles.noticeModal : ""}`} role="dialog" aria-modal="true" aria-label="Garden取込分類"><header><div><h2>{noticeWorkspace ? "周知の準備" : "Garden取込実行"}</h2><p>{intakeTarget.name}</p></div><button onClick={closeIntake} aria-label="閉じる">×</button></header>{!noticeWorkspace && !noticeProgress && <div className={styles.intakeChoices}>{INTAKE_KINDS.map((kind) => <button key={kind} disabled={intakeSubmitting} onClick={() => void runIntake(kind)}><b>{kind}</b><span>{INTAKE_DESCRIPTIONS[kind]}</span></button>)}</div>}{noticeProgress && <div className={styles.noticeProcessing} role="status" aria-live="polite"><span className={styles.noticeSpinner} /><b>{noticeProgressLabel(noticeProgress)}</b><small>このまま少しお待ちください</small></div>}{noticeWorkspace && !noticeProgress && <div className={styles.noticeEditor}>{noticeWorkspace.truncated && <p className={styles.noticeWarning}>20頁を超えたため、先頭20頁まで処理しました。</p>}<div className={styles.noticePages}>{noticeWorkspace.pages.map((page, index) => <figure key={index}><img src={page.url} alt={`周知画像 ${index + 1}ページ`} /><figcaption>{index + 1}ページ <button onClick={() => downloadDataUrl(page.url, `周知_p${index + 1}.png`)}>ダウンロード</button></figcaption></figure>)}</div><div className={styles.noticeFields}><label>営業担当<input value={noticeWorkspace.salesPerson} onChange={(event) => updateNoticeField("salesPerson", event.target.value)} /></label><label>案件名<input value={noticeWorkspace.projectName} onChange={(event) => updateNoticeField("projectName", event.target.value)} /></label></div>{noticeWorkspace.contentMemo && <aside className={styles.noticeMemo}><b>内容メモ（参考）</b><p>{noticeWorkspace.contentMemo}</p><small>コピー・LINE送信には含まれません</small></aside>}<label>周知文<textarea value={noticeWorkspace.text} onChange={(event) => setNoticeWorkspace({ ...noticeWorkspace, text: event.target.value })} /></label><div className={styles.noticeActions}><button onClick={() => void navigator.clipboard.writeText(noticeWorkspace.text)}>コピー</button><button disabled={intakeSubmitting || !noticeWorkspace.text.trim()} onClick={() => void saveNotice()}>{noticeWorkspace.saved ? "変更を保存して閉じる" : "保存して閉じる"}</button></div></div>}{intakeError && <div className={styles.intakeError}>{intakeError}</div>}</section></div>, document.body)}
