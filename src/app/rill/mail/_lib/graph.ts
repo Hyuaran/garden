@@ -13,6 +13,7 @@ import { isPublicNotificationOrigin, shouldRenewSubscription } from "./notificat
 import { anySearchTruncated, escapeGraphSearchQuery, mergeSearchResults, normalizeSearchQuery, SEARCH_PAGE_SIZE, selectSearchBoxes, type SearchMessagesResponse } from "./search";
 import { mergePinnedMessages, PINNED_BOX_LIMIT, PINNED_PAGE_SIZE, pinnedCategoryFilter, pinnedPagingDecision, type PinnedMessagesResponse } from "./pinned";
 import { boxesForRequest, folderMessagePath, oneMessagePath, searchMessagePath, sentBox } from "./mail-boxes";
+import { ANOMALY_LOOKBACK_DAYS, ANOMALY_THRESHOLD_HOURS, detectMailAnomalies, type MailAnomalyResponse } from "./anomaly";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,sentDateTime,hasAttachments,isRead,categories,bodyPreview";
@@ -258,6 +259,31 @@ export async function listMessages(supabase: SupabaseClient, user: User, boxId: 
   }));
   const next = Object.fromEntries(selected.map((box, index) => [box.id, groups[index].next]));
   return { messages: mergeMessages(groups.map((group) => group.messages)), cursor: encodeCursor(next), boxIds: selected.map((box) => box.id) };
+}
+
+export async function listMailAnomalies(supabase: SupabaseClient, user: User, now = new Date()): Promise<MailAnomalyResponse> {
+  const { token, upn } = await accessToken(supabase, user);
+  const boxes = await visibleBoxesWithToken(token, upn);
+  const cutoff = new Date(now.getTime() - ANOMALY_THRESHOLD_HOURS * 60 * 60 * 1000).toISOString();
+  const oldest = new Date(now.getTime() - ANOMALY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const groups = await Promise.all(boxes.map(async (box) => {
+    const params = new URLSearchParams({
+      "$top": "50",
+      "$select": MESSAGE_SELECT,
+      "$filter": `receivedDateTime ge ${oldest} and receivedDateTime le ${cutoff}`,
+      "$orderby": "receivedDateTime desc",
+    });
+    const messages: RillMailMessage[] = [];
+    let next: string | null = `${folderMessagePath(box)}?${params}`;
+    while (next) {
+      const response = await graphFetch(next, token);
+      const data = await response.json() as GraphList<GraphMessage>;
+      messages.push(...(data.value ?? []).map((raw) => mapMessage(raw, box)));
+      next = data["@odata.nextLink"] ?? null;
+    }
+    return messages;
+  }));
+  return detectMailAnomalies(groups.flat(), now.getTime());
 }
 
 export async function searchMessages(supabase: SupabaseClient, user: User, queryValue: string | null, boxId: string): Promise<SearchMessagesResponse> {
