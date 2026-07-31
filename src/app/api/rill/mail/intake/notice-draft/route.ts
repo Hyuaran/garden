@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     try { assertNoticeKind(data.kind); }
     catch { throw new RillMailHttpError(400, "Only 周知 intake is supported"); }
     try {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
+      const apiKey = process.env.ANTHROPIC_API_KEY_NOTICE_DRAFT || process.env.ANTHROPIC_API_KEY;
       if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
       const images: ContentBlockParam[] = await Promise.all(pages.map(async (page) => ({
         type: "image" as const,

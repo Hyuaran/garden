@@ -8,7 +8,7 @@ export const maxDuration = 60;
 export async function GET() {
   try {
     await requireGardenUser();
-    return Response.json({ available: Boolean(process.env.ANTHROPIC_API_KEY) });
+    return Response.json({ available: Boolean(process.env.ANTHROPIC_API_KEY_TRANSLATE || process.env.ANTHROPIC_API_KEY) });
   } catch (error) {
     return errorResponse(error);
   }
@@ -17,7 +17,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     await requireGardenUser();
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.ANTHROPIC_API_KEY_TRANSLATE || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new RillMailHttpError(501, "翻訳機能は現在利用できません");
     const body = await request.json() as { text?: unknown };
     if (typeof body.text !== "string" || !body.text.trim()) throw new RillMailHttpError(400, "text is required");
