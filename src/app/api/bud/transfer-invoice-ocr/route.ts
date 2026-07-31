@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "PDF / JPG / PNG の請求書ファイルがありません" }, { status: 400 });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.ANTHROPIC_API_KEY_INVOICE_OCR || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ ok: false, error: "ANTHROPIC_API_KEY が未設定です" }, { status: 500 });
     }
