@@ -1,6 +1,6 @@
 import "server-only";
 
-export type KintoneFieldValue = { value: string | string[] | number | null };
+export type KintoneFieldValue = { value: unknown };
 export type KintoneRecord = Record<string, KintoneFieldValue>;
 
 type RecordsResponse = { records: KintoneRecord[]; totalCount?: string | null };

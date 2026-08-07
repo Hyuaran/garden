@@ -33,11 +33,11 @@ export default function TossPortalPage() {
           <p>お客様情報を入力し、新しいトスアップを登録します。</p>
           <span>入力を開始</span>
         </Link>
-        <article>
+        <Link href="/toss/board" className={styles.actionLink}>
           <i>02</i><h2>一覧を見る</h2>
           <p>連携した案件の最新状況を一覧で確認できます。</p>
-          <span>近日公開</span>
-        </article>
+          <span>一覧を開く</span>
+        </Link>
       </section>
       <footer>パートナーコード {partner?.partner_code ?? "-------"}</footer>
     </main>
