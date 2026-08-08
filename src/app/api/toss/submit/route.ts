@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
 
-import { buildTossRecord, validateTossInput } from "@/app/toss/_lib/form";
-import { addRecord } from "@/app/toss/_lib/kintone.server";
-import { requireActiveTossPartner, tossError } from "@/app/toss/_lib/server-auth";
+import { buildTossRecord, resolveSubmissionPartnerCode, validateTossInput } from "@/app/p/toss/_lib/form";
+import { addRecord } from "@/app/p/toss/_lib/kintone.server";
+import { requirePartnerOrStaff, tossError, TossApiError } from "@/app/p/_lib/server-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const partner = await requireActiveTossPartner();
+    const access = await requirePartnerOrStaff();
     const input = validateTossInput(await request.json());
-    const result = await addRecord(process.env.KINTONE_TOSSUP_APP_ID || "", process.env.KINTONE_TOSSUP_TOKEN || "", buildTossRecord(input, partner.partner_code));
+    let partnerCode: string;
+    try { partnerCode = resolveSubmissionPartnerCode(access.kind, access.kind === "partner" ? access.partnerCode : undefined, input.partnerCode); }
+    catch { throw new TossApiError("パートナーコードを入力してください", 400); }
+    const result = await addRecord(process.env.KINTONE_TOSSUP_APP_ID || "", process.env.KINTONE_TOSSUP_TOKEN || "", buildTossRecord(input, partnerCode));
     return NextResponse.json({ ok: true, recordId: result.id, revision: result.revision });
   } catch (error) {
     const result = tossError(error);

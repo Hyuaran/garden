@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { field, type KandenLookup } from "@/app/toss/_lib/form";
-import { getRecords } from "@/app/toss/_lib/kintone.server";
-import { requireActiveTossPartner, tossError } from "@/app/toss/_lib/server-auth";
+import { field, type KandenLookup } from "@/app/p/toss/_lib/form";
+import { getRecords } from "@/app/p/toss/_lib/kintone.server";
+import { requirePartnerOrStaff, tossError } from "@/app/p/_lib/server-auth";
 
 export const runtime = "nodejs";
 
@@ -10,7 +10,7 @@ const escapeQuery = (value: string) => value.replace(/\\/g, "\\\\").replace(/"/g
 
 export async function GET(request: Request) {
   try {
-    await requireActiveTossPartner();
+    await requirePartnerOrStaff();
     const pd = new URL(request.url).searchParams.get("pd")?.trim();
     if (!pd) return NextResponse.json({ ok: false, error: "PD管理番号を入力してください" }, { status: 400 });
     const appId = process.env.KINTONE_KANDEN_LIST_APP_ID || "";

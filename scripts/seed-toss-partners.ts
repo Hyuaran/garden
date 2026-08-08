@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { getSupabaseAdmin } from "../src/lib/supabase/admin";
-import { normalizePartnerCode, toTossEmail } from "../src/app/toss/_lib/identity";
+import { normalizePartnerCode, toTossEmail } from "../src/app/p/_lib/identity";
 
 type PartnerInput = { partnerCode: string; partnerName: string };
 

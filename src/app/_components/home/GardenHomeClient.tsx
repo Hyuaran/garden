@@ -83,6 +83,10 @@ export default function GardenHomeClient({ visibleModules }: Props = {}) {
         </header>
 
         <nav className="home-concept-menu" aria-label="Garden home menu">
+          <Link className="home-concept-menu-item" href="/p/toss/board" onClick={handleMenuClick}>
+            <svg className="home-concept-menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM7 9h10M7 13h10M7 17h6" /></svg>
+            <span>トスアップ一覧</span>
+          </Link>
           <button className="home-concept-menu-item" type="button" onClick={handleMenuClick}>
             <svg className="home-concept-menu-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2z" />

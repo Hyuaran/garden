@@ -2,9 +2,10 @@
 
 import { FormEvent, useState } from "react";
 import type { KandenLookup, TossFormInput } from "../_lib/form";
+import { usePartnerSession } from "../../_components/PartnerGate";
 import styles from "./page.module.css";
 
-const initial: TossFormInput = { email:"",useTossCb:"利用しない",tossCbAmount:"",tossUpItems:[],comment:"",rank:"C",preferredTimes:[],listCategory:"リスト内",pdManagementNumber:"",pd:"",applicantType:"本人",applicantLastName:"",applicantFirstName:"",applicantLastKana:"",applicantFirstKana:"",birthDate:"",addressType:"現住所",postalCode:"",prefecture:"",city:"",town:"",building:"",room:"",contactType:"本人",contactPhone:"",smartphoneCarrier:"その他" };
+const initial: TossFormInput = { partnerCode:"",email:"",useTossCb:"利用しない",tossCbAmount:"",tossUpItems:[],comment:"",rank:"C",preferredTimes:[],listCategory:"リスト内",pdManagementNumber:"",pd:"",applicantType:"本人",applicantLastName:"",applicantFirstName:"",applicantLastKana:"",applicantFirstKana:"",birthDate:"",addressType:"現住所",postalCode:"",prefecture:"",city:"",town:"",building:"",room:"",contactType:"本人",contactPhone:"",smartphoneCarrier:"その他" };
 const selects = { useTossCb:["利用する","利用しない"],rank:["S","A","B","C","D"],listCategory:["リスト内","リスト外"],applicantType:["本人","家族","法人"],addressType:["現住所","転居先","その他"],contactType:["本人","家族","その他"],smartphoneCarrier:["docomo","au","SoftBank","楽天モバイル","その他"] } as const;
 // PD（app63のPD項目・接頭辞付き）はPD管理番号から自動生成する（二重入力させない）。
 const toPd=(managementNumber:string)=>managementNumber.trim()?`PD${managementNumber.trim()}`:"";
@@ -17,6 +18,7 @@ const fields: {key:keyof TossFormInput;label:string;required?:boolean;type?:stri
 ];
 
 export default function TossForm() {
+  const session = usePartnerSession();
   const [form,setForm]=useState(initial); const [lookup,setLookup]=useState<KandenLookup|null>(null); const [message,setMessage]=useState(""); const [busy,setBusy]=useState(false);
   const set=(key:keyof TossFormInput,value:string|string[])=>setForm(current=>({...current,[key]:value}));
   const multi=(key:"tossUpItems"|"preferredTimes",value:string,checked:boolean)=>set(key,checked?[...form[key],value]:form[key].filter(x=>x!==value));
@@ -26,7 +28,7 @@ export default function TossForm() {
   const onField=(key:keyof TossFormInput,value:string)=>key==="pdManagementNumber"?setForm(c=>({...c,pdManagementNumber:value,pd:toPd(value)})):set(key,value);
   const text=(from:number,to?:number)=>fields.slice(from,to).map(f=><label key={f.key}>{f.label}{f.required&&<em>必須</em>}<input type={f.type||"text"} value={String(form[f.key])} required={f.required} onChange={e=>onField(f.key,e.target.value)}/></label>);
   return <form className={styles.form} onSubmit={submit}>{message&&<div className={styles.notice} role="status">{message}</div>}
-    <section><h2>トス情報</h2><div className={styles.grid}><Select label="トスCB有無" value={form.useTossCb} options={selects.useTossCb} change={v=>set("useTossCb",v)}/><Select label="トスランク" value={form.rank} options={selects.rank} change={v=>set("rank",v)}/><Select label="関電リスト区分" value={form.listCategory} options={selects.listCategory} change={v=>set("listCategory",v)}/>{text(0,3)}<Checks label="トスアップ項目" values={form.tossUpItems} options={["電気","ガス","通信","その他"]} change={(v,c)=>multi("tossUpItems",v,c)}/><Checks label="連絡希望時間帯" values={form.preferredTimes} options={["午前","12〜15時","15〜18時","18時以降"]} change={(v,c)=>multi("preferredTimes",v,c)}/><label className={styles.wide}>トス者コメント<textarea rows={4} value={form.comment} onChange={e=>set("comment",e.target.value)}/></label></div></section>
+    <section><h2>トス情報</h2><div className={styles.grid}>{session?.kind==="staff"&&<label>パートナーコード<em>必須</em><input inputMode="numeric" value={form.partnerCode||""} required onChange={e=>set("partnerCode",e.target.value.replace(/\D/g,""))}/></label>}<Select label="トスCB有無" value={form.useTossCb} options={selects.useTossCb} change={v=>set("useTossCb",v)}/><Select label="トスランク" value={form.rank} options={selects.rank} change={v=>set("rank",v)}/><Select label="関電リスト区分" value={form.listCategory} options={selects.listCategory} change={v=>set("listCategory",v)}/>{text(0,3)}<Checks label="トスアップ項目" values={form.tossUpItems} options={["電気","ガス","通信","その他"]} change={(v,c)=>multi("tossUpItems",v,c)}/><Checks label="連絡希望時間帯" values={form.preferredTimes} options={["午前","12〜15時","15〜18時","18時以降"]} change={(v,c)=>multi("preferredTimes",v,c)}/><label className={styles.wide}>トス者コメント<textarea rows={4} value={form.comment} onChange={e=>set("comment",e.target.value)}/></label></div></section>
     <section><h2>関電リスト照合</h2><button type="button" disabled={busy} onClick={lookupPd}>PD管理番号で照合</button>{lookup&&<dl className={styles.result}>{Object.entries(lookup).map(([k,v])=><div key={k}><dt>{LOOKUP_LABELS[k]??k}</dt><dd>{v||"—"}</dd></div>)}</dl>}</section>
     <section><h2>申込者情報</h2><div className={styles.grid}><Select label="申込者区分" value={form.applicantType} options={selects.applicantType} change={v=>set("applicantType",v)}/>{text(3,9)}</div></section>
     <section><h2>住所・連絡先</h2><div className={styles.grid}><Select label="住所区分" value={form.addressType} options={selects.addressType} change={v=>set("addressType",v)}/>{text(9,10)}<button type="button" disabled={busy} onClick={lookupPostal}>住所を検索</button>{text(10)}<Select label="連絡先区分" value={form.contactType} options={selects.contactType} change={v=>set("contactType",v)}/><Select label="スマホキャリア" value={form.smartphoneCarrier} options={selects.smartphoneCarrier} change={v=>set("smartphoneCarrier",v)}/></div></section>

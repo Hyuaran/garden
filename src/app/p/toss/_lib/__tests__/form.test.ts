@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildTossRecord, validateTossInput, type TossFormInput } from "../form";
+import { buildTossRecord, resolveSubmissionPartnerCode, validateTossInput, type TossFormInput } from "../form";
 
 const input: TossFormInput = {
   email: "test@example.com", useTossCb: "利用しない", tossCbAmount: "0", tossUpItems: ["電気"],
@@ -21,5 +21,14 @@ describe("toss form mapping", () => {
 
   it("rejects invalid postal codes", () => {
     expect(() => validateTossInput({ ...input, postalCode: "123" })).toThrow("7桁");
+  });
+
+  it("partner uses the session code and ignores request code", () => {
+    expect(resolveSubmissionPartnerCode("partner", "SESSION-01", "REQUEST-99")).toBe("SESSION-01");
+  });
+
+  it("staff must provide a partner code", () => {
+    expect(resolveSubmissionPartnerCode("staff", undefined, " 7654321 ")).toBe("7654321");
+    expect(() => resolveSubmissionPartnerCode("staff", undefined, "")).toThrow("パートナーコード");
   });
 });
