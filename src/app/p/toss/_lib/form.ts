@@ -11,7 +11,7 @@ export type KandenLookup = {
 
 export type TossFormInput = {
   partnerCode?: string;
-  email: string; useTossCb: string; tossCbAmount: string; tossUpItems: string[];
+  useTossCb: string; tossCbAmount: string; tossUpItems: string[];
   comment: string; rank: string; preferredTimes: string[]; listCategory: string;
   pdManagementNumber: string; pd: string; applicantType: string; applicantLastName: string;
   applicantFirstName: string; applicantLastKana: string; applicantFirstKana: string;
@@ -24,7 +24,7 @@ const v = (value: unknown) => ({ value: value == null ? "" : String(value) });
 
 export function buildTossRecord(input: TossFormInput, partnerCode: string): KintoneRecord {
   return {
-    LINK: v(input.email),
+    LINK: v(""),
     ドロップダウン_2: v(input.useTossCb),
     数値_0: v(input.tossCbAmount),
     チェックボックス: { value: input.tossUpItems },
@@ -63,9 +63,11 @@ export function resolveSubmissionPartnerCode(kind: "partner" | "staff", sessionC
 export function validateTossInput(value: unknown): TossFormInput {
   if (!value || typeof value !== "object") throw new Error("入力内容が不正です");
   const input = value as Partial<TossFormInput>;
-  const required: (keyof TossFormInput)[] = ["email", "useTossCb", "rank", "listCategory", "pdManagementNumber", "pd", "applicantLastName", "applicantFirstName", "applicantLastKana", "applicantFirstKana", "birthDate", "postalCode", "prefecture", "city", "town", "contactPhone"];
+  const required: (keyof TossFormInput)[] = ["useTossCb", "rank", "listCategory", "applicantLastName", "applicantFirstName", "applicantLastKana", "applicantFirstKana", "birthDate", "postalCode", "prefecture", "city", "town", "contactPhone"];
   for (const key of required) if (typeof input[key] !== "string" || !input[key]?.trim()) throw new Error(`${key} は必須です`);
-  if (!/^\S+@\S+\.\S+$/.test(input.email!)) throw new Error("メールアドレスが不正です");
+  if (input.listCategory === "リスト内") {
+    for (const key of ["pdManagementNumber", "pd"] as const) if (typeof input[key] !== "string" || !input[key]?.trim()) throw new Error(`${key} は必須です`);
+  }
   if (!/^\d{7}$/.test(input.postalCode!.replace(/-/g, ""))) throw new Error("郵便番号は7桁で入力してください");
   return { ...input, tossUpItems: Array.isArray(input.tossUpItems) ? input.tossUpItems.map(String) : [], preferredTimes: Array.isArray(input.preferredTimes) ? input.preferredTimes.map(String) : [] } as TossFormInput;
 }
