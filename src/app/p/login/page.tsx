@@ -47,7 +47,7 @@ function TossLoginForm() {
   return (
     <main className={styles.page}>
       <section className={styles.card} aria-labelledby="toss-login-title">
-        <div className={styles.mark}><Image src="/images/logo/garden_logo.png" alt="Garden" width={58} height={58} /></div>
+        <div className={styles.mark}><Image src="/themes/garden-shell/images/login/mark-tree-emblem.png" alt="Garden" width={72} height={72} priority unoptimized /></div>
         <p className={styles.eyebrow}>Garden toss portal</p>
         <h1 id="toss-login-title">関電メンバー トスポータル</h1>
 
