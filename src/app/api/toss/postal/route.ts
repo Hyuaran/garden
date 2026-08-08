@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { requireActiveTossPartner, tossError } from "@/app/toss/_lib/server-auth";
+import { requirePartnerOrStaff, tossError } from "@/app/p/_lib/server-auth";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    await requireActiveTossPartner();
+    await requirePartnerOrStaff();
     const zip = (new URL(request.url).searchParams.get("zip") || "").replace(/\D/g, "");
     if (!/^\d{7}$/.test(zip)) return NextResponse.json({ ok: false, error: "郵便番号は7桁で入力してください" }, { status: 400 });
     const response = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`, { cache: "no-store" });

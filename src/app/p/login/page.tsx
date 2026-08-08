@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, type FormEvent } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { supabase } from "@/app/bloom/_lib/supabase";
@@ -8,7 +9,7 @@ import { toTossEmail } from "../_lib/auth";
 import styles from "./page.module.css";
 
 function safeReturnTo(value: string | null): string {
-  return value && value.startsWith("/toss") && !value.startsWith("//") ? value : "/toss";
+  return value && value.startsWith("/p/") && !value.startsWith("//") ? value : "/p/toss";
 }
 
 function TossLoginForm() {
@@ -46,10 +47,9 @@ function TossLoginForm() {
   return (
     <main className={styles.page}>
       <section className={styles.card} aria-labelledby="toss-login-title">
-        <div className={styles.mark} aria-hidden="true">T</div>
-        <p className={styles.eyebrow}>Garden Toss Portal</p>
-        <h1 id="toss-login-title">トスポータル</h1>
-        <p className={styles.lead}>いつものパートナーコードでログインしてください。</p>
+        <div className={styles.mark}><Image src="/images/logo/garden_logo.png" alt="Garden" width={58} height={58} /></div>
+        <p className={styles.eyebrow}>Garden toss portal</p>
+        <h1 id="toss-login-title">関電メンバー トスポータル</h1>
 
         <form onSubmit={onSubmit} className={styles.form}>
           <label>

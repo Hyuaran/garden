@@ -10,6 +10,7 @@ export type KandenLookup = {
 };
 
 export type TossFormInput = {
+  partnerCode?: string;
   email: string; useTossCb: string; tossCbAmount: string; tossUpItems: string[];
   comment: string; rank: string; preferredTimes: string[]; listCategory: string;
   pdManagementNumber: string; pd: string; applicantType: string; applicantLastName: string;
@@ -51,6 +52,12 @@ export function buildTossRecord(input: TossFormInput, partnerCode: string): Kint
     ドロップダウン_9: v(input.smartphoneCarrier),
     ルックアップ: v(partnerCode),
   };
+}
+
+export function resolveSubmissionPartnerCode(kind: "partner" | "staff", sessionCode: string | undefined, inputCode: string | undefined) {
+  const code = kind === "partner" ? sessionCode : inputCode?.trim();
+  if (!code) throw new Error("パートナーコードを入力してください");
+  return code;
 }
 
 export function validateTossInput(value: unknown): TossFormInput {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizePartnerCode, toTossEmail } from "../identity";
+import { normalizePartnerCode, toTossEmail } from "./identity";
 
 describe("toss partner identity", () => {
   it("7桁コードを専用ドメインの合成メールへ変換する", () => {
