@@ -41,6 +41,7 @@ const shipporiMincho = Shippori_Mincho({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   display: "swap",
+  preload: false,
 });
 
 // 日本語本文 / 大見出し第2選択
@@ -49,6 +50,7 @@ const notoSerifJp = Noto_Serif_JP({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
