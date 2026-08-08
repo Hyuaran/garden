@@ -12,6 +12,8 @@ describe("Board multi filters", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ rows, mine: false, limited: false }) }));
     render(<Board />);
     await waitFor(() => expect(document.querySelector("tbody")?.textContent).toContain("担当1"));
+    expect(document.querySelector("thead th")?.textContent).toContain("申込者名");
+    expect(document.querySelector("tbody tr td")?.textContent).toContain("申込3");
     fireEvent.click(screen.getByLabelText("状況フィルター"));
     fireEvent.click(screen.getByLabelText("連携受付"));
     fireEvent.click(screen.getByLabelText("受注"));
