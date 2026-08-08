@@ -8,8 +8,8 @@ import styles from "./page.module.css";
 
 type ColumnKey = BoardColumnKey;
 const columns: { key: ColumnKey; label: string }[] = [
-  {key:"introducedAt",label:"紹介日"},{key:"partnerName",label:"トス者名"},{key:"products",label:"トスアップ商材"},{key:"rank",label:"トスランク"},
-  {key:"currentContractName",label:"現契約名義"},{key:"applicantName",label:"申込者名"},{key:"area",label:"エリア"},{key:"status",label:"状況"},
+  {key:"applicantName",label:"申込者名"},{key:"introducedAt",label:"紹介日"},{key:"partnerName",label:"トス者名"},{key:"products",label:"トスアップ商材"},
+  {key:"rank",label:"トスランク"},{key:"currentContractName",label:"現契約名義"},{key:"area",label:"エリア"},{key:"status",label:"状況"},
   {key:"latestActivity",label:"最終更新"},{key:"orderedProducts",label:"受注商材"},{key:"cancellationReason",label:"キャンセル理由"},
 ];
 const statusOrder: Record<TossStatus, number> = {連携受付:0,対応中:1,受注:2,キャンセル:3};
