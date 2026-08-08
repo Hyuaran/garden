@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildTossRecord, resolveSubmissionPartnerCode, validateTossInput, type TossFormInput } from "../form";
 
 const input: TossFormInput = {
-  email: "test@example.com", useTossCb: "利用しない", tossCbAmount: "0", tossUpItems: ["電気"],
+  useTossCb: "利用しない", tossCbAmount: "0", tossUpItems: ["電気"],
   comment: "確認用", rank: "A", preferredTimes: ["午前"], listCategory: "リスト内",
   pdManagementNumber: "PD-001", pd: "PD-001", applicantType: "本人", applicantLastName: "庭",
   applicantFirstName: "太郎", applicantLastKana: "ニワ", applicantFirstKana: "タロウ", birthDate: "1990-01-01",
@@ -17,10 +17,16 @@ describe("toss form mapping", () => {
     expect(record.ルックアップ.value).toBe("PARTNER-01");
     expect(record.ルックアップ_0.value).toBe("PD-001");
     expect(record.チェックボックス.value).toEqual(["電気"]);
+    expect(record.LINK.value).toBe("");
   });
 
   it("rejects invalid postal codes", () => {
     expect(() => validateTossInput({ ...input, postalCode: "123" })).toThrow("7桁");
+  });
+
+  it("requires a PD number only for records inside the Kanden list", () => {
+    expect(() => validateTossInput({ ...input, pdManagementNumber: "", pd: "" })).toThrow("pdManagementNumber");
+    expect(validateTossInput({ ...input, listCategory: "リスト外", pdManagementNumber: "", pd: "" }).pdManagementNumber).toBe("");
   });
 
   it("partner uses the session code and ignores request code", () => {
