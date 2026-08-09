@@ -1,5 +1,7 @@
 import "server-only";
 
+import { collectAllRecords } from "./kintone-pagination";
+
 export type KintoneFieldValue = { value: unknown };
 export type KintoneRecord = Record<string, KintoneFieldValue>;
 
@@ -37,6 +39,10 @@ async function request<T>(path: string, token: string, init?: RequestInit): Prom
 export async function getRecords(appId: string, token: string, query: string) {
   const params = new URLSearchParams({ app: appId, query, totalCount: "true" });
   return request<RecordsResponse>(`/k/v1/records.json?${params}`, token);
+}
+
+export async function getAllRecords(appId: string, token: string) {
+  return collectAllRecords(async (query) => (await getRecords(appId, token, query)).records);
 }
 
 export async function addRecord(appId: string, token: string, record: KintoneRecord) {
