@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { supabase } from "@/app/bloom/_lib/supabase";
+import { signInUnified } from "@/app/_lib/auth-unified";
 import { toTossEmail } from "../_lib/auth";
 import styles from "./page.module.css";
 
@@ -24,19 +25,21 @@ function TossLoginForm() {
     event.preventDefault();
     setError("");
 
-    let email: string;
-    try {
-      email = toTossEmail(partnerCode);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "パートナーコードを確認してください");
-      return;
-    }
-
+    const trimmed = partnerCode.trim();
     setSubmitting(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) {
+    try {
+      // 7桁はパートナーコード、1〜6桁は社員番号という運用上の前提で認証経路を分ける。
+      const failed = /^\d{7}$/.test(trimmed)
+        ? Boolean((await supabase.auth.signInWithPassword({ email: toTossEmail(trimmed), password })).error)
+        : !(await signInUnified(trimmed, password)).success;
+      if (failed) {
+        setSubmitting(false);
+        setError("コードまたはパスワードが違います");
+        return;
+      }
+    } catch {
       setSubmitting(false);
-      setError("パートナーコードかパスワードが違います");
+      setError("コードまたはパスワードが違います");
       return;
     }
 
@@ -53,13 +56,13 @@ function TossLoginForm() {
 
         <form onSubmit={onSubmit} className={styles.form}>
           <label>
-            <span>パートナーコード</span>
+            <span>パートナーコード または 社員番号</span>
             <input
               autoComplete="username"
               inputMode="numeric"
               maxLength={7}
               onChange={(event) => setPartnerCode(event.target.value.replace(/[^0-9]/g, ""))}
-              placeholder="1234567"
+              placeholder="7桁のコード / 社員番号"
               required
               value={partnerCode}
             />
