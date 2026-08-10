@@ -22,7 +22,7 @@ export type TossFormInput = {
 
 const v = (value: unknown) => ({ value: value == null ? "" : String(value) });
 
-export function buildTossRecord(input: TossFormInput, partnerCode: string): KintoneRecord {
+export function buildTossRecord(input: TossFormInput, partnerCode: string, tossPersonName = ""): KintoneRecord {
   return {
     LINK: v(""),
     ドロップダウン_2: v(input.useTossCb),
@@ -51,11 +51,12 @@ export function buildTossRecord(input: TossFormInput, partnerCode: string): Kint
     文字列__1行__33: v(input.contactPhone),
     ドロップダウン_9: v(input.smartphoneCarrier),
     ルックアップ: v(partnerCode),
+    文字列__1行__37: v(tossPersonName),
   };
 }
 
 export function resolveSubmissionPartnerCode(kind: "partner" | "staff", sessionCode: string | undefined, inputCode: string | undefined) {
-  const code = kind === "partner" ? sessionCode : inputCode?.trim();
+  const code = sessionCode?.trim() || (kind === "staff" ? inputCode?.trim() : undefined);
   if (!code) throw new Error("パートナーコードを入力してください");
   return code;
 }

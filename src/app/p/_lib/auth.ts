@@ -10,7 +10,7 @@ export type TossPartner = {
 
 export type PartnerSession =
   | { kind: "partner"; partnerCode: string; partnerName: string }
-  | { kind: "staff"; partnerCode?: never; partnerName?: never };
+  | { kind: "staff"; name?: string; tossPartnerCode?: string; partnerCode?: never; partnerName?: never };
 
 export async function fetchTossPartner(userId: string): Promise<TossPartner | null> {
   const { data, error } = await supabase
@@ -26,8 +26,12 @@ export async function fetchTossPartner(userId: string): Promise<TossPartner | nu
 export async function fetchPartnerOrStaff(userId: string): Promise<PartnerSession | null> {
   const partner = await fetchTossPartner(userId);
   if (partner?.is_active) return { kind: "partner", partnerCode: partner.partner_code, partnerName: partner.partner_name };
-  const { data, error } = await supabase.from("root_employees").select("user_id").eq("user_id", userId).maybeSingle<{ user_id: string }>();
+  const { data, error } = await supabase.from("root_employees").select("user_id,name,toss_partner_code").eq("user_id", userId).maybeSingle<{ user_id: string; name: string | null; toss_partner_code: string | null }>();
   if (error) throw error;
-  return data ? { kind: "staff" } : null;
+  return data ? {
+    kind: "staff",
+    ...(data.name ? { name: data.name } : {}),
+    ...(data.toss_partner_code?.trim() ? { tossPartnerCode: data.toss_partner_code.trim() } : {}),
+  } : null;
 }
 

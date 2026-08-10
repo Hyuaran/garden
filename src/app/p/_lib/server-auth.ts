@@ -4,7 +4,7 @@ import type { TossPartner } from "./auth";
 
 export type PartnerOrStaff =
   | { kind: "partner"; partnerCode: string }
-  | { kind: "staff" };
+  | { kind: "staff"; name?: string; tossPartnerCode?: string };
 
 export class TossApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -27,9 +27,13 @@ export async function requirePartnerOrStaff(): Promise<PartnerOrStaff> {
   if (data) return { kind: "partner", partnerCode: data.partner_code };
 
   const { data: staff, error: staffError } = await supabase
-    .from("root_employees").select("user_id").eq("user_id", auth.user.id).maybeSingle<{ user_id: string }>();
+    .from("root_employees").select("user_id,name,toss_partner_code").eq("user_id", auth.user.id).maybeSingle<{ user_id: string; name: string | null; toss_partner_code: string | null }>();
   if (staffError) throw new TossApiError("社員情報を確認できません", 500);
-  if (staff) return { kind: "staff" };
+  if (staff) return {
+    kind: "staff",
+    ...(staff.name ? { name: staff.name } : {}),
+    ...(staff.toss_partner_code?.trim() ? { tossPartnerCode: staff.toss_partner_code.trim() } : {}),
+  };
   throw new TossApiError("外注ポータルを利用できません", 403);
 }
 
