@@ -12,10 +12,12 @@ export async function POST(request: Request) {
     const access = await requirePartnerOrStaff();
     const input = validateTossInput(await request.json());
     let partnerCode: string;
-    try { partnerCode = resolveSubmissionPartnerCode(access.kind, access.kind === "partner" ? access.partnerCode : undefined, input.partnerCode); }
+    const sessionPartnerCode = access.kind === "partner" ? access.partnerCode : access.tossPartnerCode;
+    try { partnerCode = resolveSubmissionPartnerCode(access.kind, sessionPartnerCode, input.partnerCode); }
     catch { throw new TossApiError("パートナーコードを入力してください", 400); }
     if (partnerCode === DEMO_PARTNER_CODE) return NextResponse.json({ ok: true, demo: true, recordId: "DEMO" });
-    const result = await addRecord(process.env.KINTONE_TOSSUP_APP_ID || "", process.env.KINTONE_TOSSUP_TOKEN || "", buildTossRecord(input, partnerCode));
+    const tossPersonName = access.kind === "staff" && access.tossPartnerCode ? access.name || "" : "";
+    const result = await addRecord(process.env.KINTONE_TOSSUP_APP_ID || "", process.env.KINTONE_TOSSUP_TOKEN || "", buildTossRecord(input, partnerCode, tossPersonName));
     return NextResponse.json({ ok: true, recordId: result.id, revision: result.revision });
   } catch (error) {
     const result = tossError(error);

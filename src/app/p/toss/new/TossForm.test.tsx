@@ -1,14 +1,37 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({ session: { kind: "staff" } as { kind: "staff" | "partner"; tossPartnerCode?: string; partnerName?: string } }));
 
 vi.mock("../../_components/PartnerGate", () => ({
-  usePartnerSession: () => ({ kind: "staff" }),
+  usePartnerSession: () => mocks.session,
 }));
 
 import TossForm from "./TossForm";
 
 describe("TossForm conditional UI", () => {
+  beforeEach(() => { mocks.session = { kind: "staff" }; });
   afterEach(() => vi.unstubAllGlobals());
+
+  it("shows a staff toss partner code as read-only", () => {
+    mocks.session = { kind: "staff", tossPartnerCode: "1010003" };
+    render(<TossForm />);
+    expect(screen.getByLabelText("パートナーコード")).toHaveValue("1010003");
+    expect(screen.getByLabelText("パートナーコード")).toHaveAttribute("readonly");
+  });
+
+  it("keeps manual entry for staff without a toss partner code", () => {
+    render(<TossForm />);
+    expect(screen.getByLabelText(/パートナーコード/)).not.toHaveAttribute("readonly");
+    expect(screen.getByLabelText(/パートナーコード/)).toBeRequired();
+  });
+
+  it("keeps the partner name display for partner sessions", () => {
+    mocks.session = { kind: "partner", partnerName: "外注パートナー" };
+    render(<TossForm />);
+    expect(screen.getByText("外注パートナー")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/パートナーコード/)).not.toBeInTheDocument();
+  });
 
   it("hides and clears cashback and PD fields", () => {
     render(<TossForm />);

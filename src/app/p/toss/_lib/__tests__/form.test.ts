@@ -18,6 +18,13 @@ describe("toss form mapping", () => {
     expect(record.ルックアップ_0.value).toBe("PD-001");
     expect(record.チェックボックス.value).toEqual(["電気"]);
     expect(record.LINK.value).toBe("");
+    expect(record.文字列__1行__37.value).toBe("");
+  });
+
+  it("maps the trusted staff account name as the toss person name", () => {
+    const record = buildTossRecord(input, "1010003", "萩尾 拓也");
+    expect(record.ルックアップ.value).toBe("1010003");
+    expect(record.文字列__1行__37.value).toBe("萩尾 拓也");
   });
 
   it("rejects invalid postal codes", () => {
@@ -34,6 +41,7 @@ describe("toss form mapping", () => {
   });
 
   it("staff must provide a partner code", () => {
+    expect(resolveSubmissionPartnerCode("staff", "1010003", "9999999")).toBe("1010003");
     expect(resolveSubmissionPartnerCode("staff", undefined, " 7654321 ")).toBe("7654321");
     expect(() => resolveSubmissionPartnerCode("staff", undefined, "")).toThrow("パートナーコード");
   });
