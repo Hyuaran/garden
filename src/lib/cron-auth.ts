@@ -19,10 +19,10 @@ export type CronAuthResult =
   | { ok: true }
   | { ok: false; status: 401 | 500; reason: string };
 
-export function verifyCronRequest(request: Request): CronAuthResult {
-  const secret = process.env.CRON_SECRET;
+export function verifyBearerRequest(request: Request, secretEnvName: string): CronAuthResult {
+  const secret = process.env[secretEnvName];
   if (!secret) {
-    return { ok: false, status: 500, reason: "CRON_SECRET is not configured" };
+    return { ok: false, status: 500, reason: `${secretEnvName} is not configured` };
   }
 
   const header = request.headers.get("authorization");
@@ -46,4 +46,8 @@ export function verifyCronRequest(request: Request): CronAuthResult {
   }
 
   return { ok: true };
+}
+
+export function verifyCronRequest(request: Request): CronAuthResult {
+  return verifyBearerRequest(request, "CRON_SECRET");
 }

@@ -1,0 +1,13 @@
+{
+  "apiUrl": "https://garden.example.com/api/soil/call-ingest",
+  "batchSize": 500,
+  "overlapDays": 3,
+  "pollSeconds": 300,
+  "runContinuously": true,
+  "stateDirectory": "C:\\ProgramData\\Garden\\CallCenterAgent",
+  "logDirectory": "C:\\ProgramData\\Garden\\CallCenterAgent\\logs",
+  "fmServer": "192.168.1.100",
+  "fmPort": 2399,
+  "fmDatabase": "コール履歴",
+  "fmUser": "Garden"
+}
