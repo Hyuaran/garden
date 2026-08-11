@@ -36,8 +36,9 @@ function Write-AgentLog([string]$Level, [string]$Message, [hashtable]$Data = @{}
 }
 
 function Get-ConnectionString {
-  $escapedPassword = $env:FM_CALL_HISTORY_PASSWORD.Replace("}", "}}")
-  return "Driver={FileMaker ODBC};Server=$($config.fmServer);Port=$($config.fmPort);Database=$($config.fmDatabase);UID=$($config.fmUser);PWD={$escapedPassword}"
+  # FileMaker ODBC treats braces as literal password characters and does not support
+  # brace-based connection-string escaping. Passwords must therefore not contain ';'.
+  return "Driver={FileMaker ODBC};Server=$($config.fmServer);Port=$($config.fmPort);Database=$($config.fmDatabase);UID=$($config.fmUser);PWD=$($env:FM_CALL_HISTORY_PASSWORD)"
 }
 
 function Get-StateDate {
@@ -72,7 +73,7 @@ function Invoke-IngestBatch([guid]$RunId, [int]$BatchIndex, [datetime]$From, [da
     Write-AgentLog "info" "dry-run batch" @{ run_id = $RunId.ToString(); batch_index = $BatchIndex; rows = $Rows.Count }
     return @{ status = "success"; records_rejected = 0 }
   }
-  $payload = @{ run_id = $RunId.ToString(); batch_index = $BatchIndex; range_from = $From.ToString("yyyy-MM-dd"); range_to = $To.ToString("yyyy-MM-dd"); rows = $Rows }
+  $payload = @{ run_id = $RunId.ToString(); batch_index = $BatchIndex; range_from = $From.ToString("yyyy-MM-dd"); range_to = $To.ToString("yyyy-MM-dd"); rows = [object[]]@($Rows) }
   $body = [Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json -Compress -Depth 8))
   $headers = @{ Authorization = "Bearer $env:CALL_INGEST_SECRET" }
   for ($attempt = 1; $attempt -le 4; $attempt++) {
@@ -138,7 +139,11 @@ function Invoke-SyncOnce {
       if ($batch.Count -ge $batchSize -or ($MaxRows -gt 0 -and $totalRows -ge $MaxRows)) {
         $result = Invoke-IngestBatch $runId $batchIndex $from $to $batch.ToArray()
         Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rows = $batch.Count; status = [string]$result.status; rejected = [int]$result.records_rejected }
-        if ([string]$result.status -eq "partial") { $hadPartial = $true }
+        if ([string]$result.status -eq "partial") {
+          $hadPartial = $true
+          $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
+          Write-AgentLog "warning" "batch partially accepted; rejected rows will not block state advancement" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rejected = [int]$result.records_rejected; targets = $rejectedTargets }
+        }
         $batch.Clear(); $batchIndex++
       }
       if ($MaxRows -gt 0 -and $totalRows -ge $MaxRows) { break }
@@ -147,11 +152,15 @@ function Invoke-SyncOnce {
     if ($batch.Count -gt 0) {
       $result = Invoke-IngestBatch $runId $batchIndex $from $to $batch.ToArray()
       Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rows = $batch.Count; status = [string]$result.status; rejected = [int]$result.records_rejected }
-      if ([string]$result.status -eq "partial") { $hadPartial = $true }
+      if ([string]$result.status -eq "partial") {
+        $hadPartial = $true
+        $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
+        Write-AgentLog "warning" "batch partially accepted; rejected rows will not block state advancement" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rejected = [int]$result.records_rejected; targets = $rejectedTargets }
+      }
     }
-    if ($hadPartial) { throw "One or more batches were partial; state was not advanced." }
     if (-not $DryRun -and $maxCallDate) { Save-StateDate $maxCallDate }
-    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd") }
+    $syncStatus = if ($hadPartial) { "partial" } else { "success" }
+    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; status = $syncStatus; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd") }
   } finally { $connection.Dispose() }
 }
 
