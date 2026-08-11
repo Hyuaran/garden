@@ -1,6 +1,6 @@
 # Garden Call Center Agent
 
-FileMaker Server 11の「コール履歴」を32bit ODBCで取得し、Gardenの`POST /api/soil/call-ingest`へ送るWindows常駐エージェントです。
+FileMaker Server 11の「コール履歴」を32bit ODBCで取得し、Gardenの`POST /api/system/call-ingest`へ送るWindows常駐エージェントです。
 
 ## 重要な制約
 
@@ -35,19 +35,20 @@ FileMaker Server 11の「コール履歴」を32bit ODBCで取得し、Gardenの
 
 ## Supabase migration適用手順
 
-GardenではmigrationをSupabase SQL Editorから手動適用します。今回のSQLは新規テーブルだけを作成し、既存テーブルのデータは変更しません。
+GardenではmigrationをSupabase SQL Editorから手動適用します。最初の2本で取込テーブルを作成し、3本目でデータを保持したまま`soil_*`から`system_*`へ改名します。
 
 1. Supabase Dashboardで対象プロジェクトを開き、SQL Editorを開く。
 2. 次を順番どおり貼り付けて実行する。
    1. `supabase/migrations/20260811000001_soil_call_history_ingest.sql`
    2. `supabase/migrations/20260811000002_soil_call_sync_log.sql`
+   3. `supabase/migrations/20260812000001_system_call_rename.sql`
 3. SQL末尾の確認クエリを実行する。
-4. `soil_call_history.external_call_id`のunique制約、`list_name`/`call_date`のindex、両テーブルのRLS有効を確認する。
+4. `system_call_history.external_call_id`のunique制約、`list_name`/`call_date`のindex、両テーブルのRLS有効を確認する。
 5. 疎通後、次でFileMaker主キー由来IDの一意性を確認する。
 
-   `select count(*) as total, count(distinct external_call_id) as unique_ids from public.soil_call_history;`
+   `select count(*) as total, count(distinct external_call_id) as unique_ids from public.system_call_history;`
 
-SQLは`create table if not exists`、`create index if not exists`、`create or replace function`、`drop trigger if exists`を使い、再実行可能にしています。
+`20260812000001_system_call_rename.sql`は改名前の`soil_*`テーブルへ1回だけ実行してください。適用後の再実行はできません。
 
 ## 初回手動疎通（直近1日、10〜50行）
 
@@ -68,17 +69,17 @@ $end = (Get-Date).Date.ToString("yyyy-MM-dd")
 
 ```sql
 select external_call_id, call_date, call_time, employee_name, result_flag, list_name, imported_at
-from public.soil_call_history
+from public.system_call_history
 order by imported_at desc
 limit 50;
 
 select run_id, batch_index, status, records_fetched, records_inserted, records_updated, records_rejected
-from public.soil_call_sync_log
+from public.system_call_sync_log
 order by triggered_at desc
 limit 20;
 ```
 
-同じ日付範囲を再送し、`soil_call_history`の件数が増えず、同期ログの`records_updated`が増えることを確認します。
+同じ日付範囲を再送し、`system_call_history`の件数が増えず、同期ログの`records_updated`が増えることを確認します。
 
 ## ODBC列型と主キー一意性の確認
 

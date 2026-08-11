@@ -15,7 +15,7 @@ const body = (rows: unknown[]) => ({
   run_id: "123e4567-e89b-42d3-a456-426614174000", batch_index: 0,
   range_from: "2026-08-10", range_to: "2026-08-11", rows,
 });
-const request = (rows: unknown[]) => new Request("http://localhost/api/soil/call-ingest", {
+const request = (rows: unknown[]) => new Request("http://localhost/api/system/call-ingest", {
   method: "POST", headers: { authorization: "Bearer test", "content-type": "application/json" },
   body: JSON.stringify(body(rows)),
 });
@@ -27,7 +27,7 @@ function admin(options: { existing?: string[]; upsertError?: string } = {}) {
   return {
     insertedLogs, updatedLogs, upserts,
     from(table: string) {
-      if (table === "soil_call_sync_log") return {
+      if (table === "system_call_sync_log") return {
         insert(payload: unknown) {
           insertedLogs.push(payload);
           return { select: () => ({ single: async () => ({ data: { id: "log-1" }, error: null }) }) };
@@ -37,7 +37,7 @@ function admin(options: { existing?: string[]; upsertError?: string } = {}) {
           return { eq: async () => ({ error: null }) };
         },
       };
-      if (table === "soil_call_history") return {
+      if (table === "system_call_history") return {
         select: () => ({ in: async () => ({ data: (options.existing ?? []).map((external_call_id) => ({ external_call_id })), error: null }) }),
         async upsert(payload: unknown) {
           upserts.push(payload);
@@ -49,7 +49,7 @@ function admin(options: { existing?: string[]; upsertError?: string } = {}) {
   };
 }
 
-describe("POST /api/soil/call-ingest", () => {
+describe("POST /api/system/call-ingest", () => {
   beforeEach(() => {
     mocks.verify.mockReset().mockReturnValue({ ok: true });
     mocks.getAdmin.mockReset();
