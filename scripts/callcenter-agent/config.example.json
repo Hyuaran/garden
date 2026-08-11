@@ -1,5 +1,5 @@
 {
-  "apiUrl": "https://garden.example.com/api/soil/call-ingest",
+  "apiUrl": "https://garden.example.com/api/system/call-ingest",
   "batchSize": 500,
   "overlapDays": 3,
   "pollSeconds": 300,
