@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import CallMetricsClient from "./CallMetricsClient";
 
-export const metadata = { title: "コールセンター リスト別集計 | Garden System" };
+export const metadata = { title: "テレマ コール集計ポータル | Garden call portal" };
 
 const VIEW_ROLES = new Set(["manager", "admin", "super_admin"]);
 
