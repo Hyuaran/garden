@@ -30,6 +30,10 @@ export function aggregateDefinitionFixture(rows: Array<{ listName: string | null
   return grouped;
 }
 
+export function aggregateEmployeeDefinitionFixture(rows: Array<{ employeeName: string | null; resultFlag: string | null }>) {
+  return aggregateDefinitionFixture(rows.map((row) => ({ listName: row.employeeName?.trim() || "氏名なし", resultFlag: row.resultFlag })));
+}
+
 export type CallMetricRow = {
   listName: string;
   callCount: number;
@@ -39,6 +43,8 @@ export type CallMetricRow = {
   acquiredCount: number;
   callOrderRate: number;
 };
+
+export type EmployeeCallMetricRow = Omit<CallMetricRow, "listName"> & { employeeName: string };
 
 export type ResultFlagRow = {
   resultFlag: string;
@@ -52,6 +58,7 @@ export type CallMetricsResponse = {
   to: string;
   diagnosticListName: string | null;
   metrics: CallMetricRow[];
+  employeeMetrics: EmployeeCallMetricRow[];
   resultFlags: ResultFlagRow[];
 };
 
@@ -72,7 +79,9 @@ type RpcFlagRow = {
   is_expected?: unknown;
 };
 
-type RpcPayload = { metrics?: unknown; result_flags?: unknown };
+type RpcEmployeeMetricRow = Omit<RpcMetricRow, "list_name"> & { employee_name?: unknown };
+
+type RpcPayload = { metrics?: unknown; employee_metrics?: unknown; result_flags?: unknown };
 
 function dateOnly(value: string | null) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -82,8 +91,8 @@ function dateOnly(value: string | null) {
 
 export function defaultCallMetricDates(now = new Date()) {
   const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const from = new Date(to); from.setUTCDate(from.getUTCDate() - 29);
-  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+  const today = to.toISOString().slice(0, 10);
+  return { from: today, to: today };
 }
 
 export function parseCallMetricParams(searchParams: URLSearchParams, now = new Date()) {
@@ -109,6 +118,7 @@ export function normalizeCallMetricsRpc(
 ): CallMetricsResponse {
   const payload = (raw && typeof raw === "object" ? raw : {}) as RpcPayload;
   const metrics = Array.isArray(payload.metrics) ? payload.metrics as RpcMetricRow[] : [];
+  const employeeMetrics = Array.isArray(payload.employee_metrics) ? payload.employee_metrics as RpcEmployeeMetricRow[] : [];
   const resultFlags = Array.isArray(payload.result_flags) ? payload.result_flags as RpcFlagRow[] : [];
   return {
     from: range.from,
@@ -116,6 +126,15 @@ export function normalizeCallMetricsRpc(
     diagnosticListName: range.listName,
     metrics: metrics.map((row) => ({
       listName: String(row.list_name ?? "リスト名なし"),
+      callCount: number(row.call_count),
+      effectiveCount: number(row.effective_count),
+      effectiveRate: number(row.effective_rate),
+      orderCount: number(row.order_count),
+      acquiredCount: number(row.acquired_count),
+      callOrderRate: number(row.call_order_rate),
+    })),
+    employeeMetrics: employeeMetrics.map((row) => ({
+      employeeName: String(row.employee_name ?? "氏名なし"),
       callCount: number(row.call_count),
       effectiveCount: number(row.effective_count),
       effectiveRate: number(row.effective_rate),
