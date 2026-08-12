@@ -6,12 +6,17 @@ import { defaultCallMetricDates } from "../_lib/call-metrics";
 import styles from "./call-metrics.module.css";
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
+const FLAG_RULES = [
+  ["留守", "無効"], ["無効", "無効"], ["担不", "有効"], ["見込", "有効"],
+  ["獲得", "有効"], ["トス", "有効"], ["NG", "有効"], ["前確OK", "有効"], ["前確NG", "有効"],
+] as const;
 
 export default function CallMetricsClient() {
   const defaults = defaultCallMetricDates();
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
   const [listName, setListName] = useState("");
+  const [employeeName, setEmployeeName] = useState("");
   const [data, setData] = useState<CallMetricsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +26,7 @@ export default function CallMetricsClient() {
     setLoading(true); setError(null);
     const params = new URLSearchParams({ from, to });
     if (listName.trim()) params.set("listName", listName.trim());
+    if (employeeName.trim()) params.set("employeeName", employeeName.trim());
     try {
       const response = await fetch(`/api/system/call-metrics?${params}`, { cache: "no-store" });
       const result = await response.json();
@@ -45,7 +51,8 @@ export default function CallMetricsClient() {
       <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void load(); }}>
         <label>開始日<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} required /></label>
         <label>終了日<input type="date" value={to} onChange={(event) => setTo(event.target.value)} required /></label>
-        <label>診断対象リスト<input value={listName} onChange={(event) => setListName(event.target.value)} placeholder="空欄なら全体" /></label>
+        <label>リスト名<input value={listName} onChange={(event) => setListName(event.target.value)} placeholder="完全一致・任意" /></label>
+        <label>従業員名<input value={employeeName} onChange={(event) => setEmployeeName(event.target.value)} placeholder="完全一致・任意" /></label>
         <button type="submit" disabled={loading}>{loading ? "集計中…" : "再集計"}</button>
       </form>
 
@@ -89,13 +96,12 @@ export default function CallMetricsClient() {
             <div><dt>コール受注率</dt><dd>受注数 ÷ コール数</dd></div>
             <div><dt>リスト数・回転数・リスト受注率</dt><dd>リストデータ取込後に対応</dd></div>
           </dl>
-          <h2>result_flag 診断{data.diagnosticListName ? `（${data.diagnosticListName}）` : "（全体）"}</h2>
-          <p>想定外の非空値は定義どおり「有効」に含まれます。</p>
-          <div className={styles.tableWrap}><table className={styles.diagnostic}>
-            <thead><tr><th>result_flag</th><th>件数</th><th>有効判定</th><th>値の判定</th></tr></thead>
-            <tbody>{data.resultFlags.length ? data.resultFlags.map((row) => <tr key={row.resultFlag} className={row.isExpected ? undefined : styles.unexpected}>
-              <td>{row.resultFlag}</td><td>{row.count.toLocaleString()}</td><td>{row.isEffective ? "有効" : "無効"}</td><td>{row.isExpected ? "想定内" : "想定外"}</td>
-            </tr>) : <tr><td colSpan={4}>対象データがありません</td></tr>}</tbody>
+          <div className={styles.ruleTable}><table className={styles.diagnostic}>
+            <caption>結果フラグの扱い（分類ルール）</caption>
+            <thead><tr><th>結果フラグ</th><th>扱い</th></tr></thead>
+            <tbody>{FLAG_RULES.map(([flag, handling]) => <tr key={flag}>
+              <td>{flag}</td><td>{handling}</td>
+            </tr>)}</tbody>
           </table></div>
         </section>}
       </>}

@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   catch (error) { return NextResponse.json({ ok: false, error: (error as Error).message }, { status: 400 }); }
 
   const { data, error } = await supabase.rpc("system_call_metrics", {
-    p_from: range.from, p_to: range.to, p_list_name: range.listName,
+    p_from: range.from, p_to: range.to, p_list_name: range.listName, p_employee_name: range.employeeName,
   });
   if (error) {
     console.error("[system/call-metrics] RPC failed", { code: error.code });
