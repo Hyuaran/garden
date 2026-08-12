@@ -56,6 +56,35 @@ export type CallMetricsResponse = {
   lastImportedAt: string | null;
 };
 
+export type CallMetricsSummary = {
+  employeeCount: number;
+  totalCalls: number;
+  totalEffective: number;
+  totalOrders: number;
+  totalAcquired: number;
+  averageCalls: number;
+  effectiveRate: number;
+  orderRate: number;
+};
+
+export function summarizeCallMetrics(data: CallMetricsResponse): CallMetricsSummary {
+  const totalCalls = data.metrics.reduce((sum, row) => sum + row.callCount, 0);
+  const employeeCount = data.employeeMetrics.length;
+  const totalEffective = data.employeeMetrics.reduce((sum, row) => sum + row.effectiveCount, 0);
+  const totalOrders = data.employeeMetrics.reduce((sum, row) => sum + row.orderCount, 0);
+  const totalAcquired = data.employeeMetrics.reduce((sum, row) => sum + row.acquiredCount, 0);
+  return {
+    employeeCount,
+    totalCalls,
+    totalEffective,
+    totalOrders,
+    totalAcquired,
+    averageCalls: employeeCount ? totalCalls / employeeCount : 0,
+    effectiveRate: totalCalls ? totalEffective / totalCalls : 0,
+    orderRate: totalCalls ? totalOrders / totalCalls : 0,
+  };
+}
+
 type RpcMetricRow = {
   list_name?: unknown;
   call_count?: unknown;
