@@ -1,6 +1,7 @@
 {
   "apiUrl": "https://garden.example.com/api/system/call-ingest",
   "batchSize": 500,
+  "includeAggregateFields": false,
   "overlapDays": 3,
   "pollSeconds": 300,
   "runContinuously": true,

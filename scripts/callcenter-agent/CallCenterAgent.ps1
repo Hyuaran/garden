@@ -88,13 +88,11 @@ function Invoke-IngestBatch([guid]$RunId, [int]$BatchIndex, [datetime]$From, [da
   }
 }
 
-$columns = @(
-  "主キー", "作成日", "作成者", "修正日", "修正者", "社員名", "コール日", "コール時間", "続柄", "結果フラグ", "備考",
-  "コールID", "電話番号", "社員ID", "営業ID", "営業回数", "DATA1", "DATA0", "コール終了時間", "新リスト名",
-  "無効コール件数", "無効件数", "d_結果フラグ", "コール数", "トス", "獲得", "無効", "留守", "担当不在", "見込み", "有効",
-  "s_コール数", "s_トス", "s_獲得", "s_無効", "s_留守", "s_担当不在", "s_見込み", "s_有効",
-  "コール時間MAX", "コール時間MIN", "現在稼働時間", "一時間毎のコール数", "旧リスト名"
-)
+$includeAggregateFields = $false
+if ($null -ne $config.includeAggregateFields) {
+  $includeAggregateFields = [bool]$config.includeAggregateFields
+}
+$columns = @(Get-CallFetchColumns $includeAggregateFields)
 
 function Invoke-SyncOnce {
   $runId = [guid]::NewGuid()
@@ -139,6 +137,7 @@ function Invoke-SyncOnce {
       $command = $connection.CreateCommand(); $command.CommandText = $sql; $command.CommandTimeout = 0
       $reader = $null
       try {
+        $batchStartedAt = Get-Date
         $reader = $command.ExecuteReader()
         $batch = New-Object System.Collections.ArrayList
         while ($reader.Read()) {
@@ -153,7 +152,7 @@ function Invoke-SyncOnce {
             $rowsInBatch = $batch.Count
             $result = Invoke-IngestBatch $runId $batchIndex $range.From $range.To $batch.ToArray()
             $rangeSent += $rowsInBatch; $totalSent += $rowsInBatch
-            Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }) }
+            Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); elapsed_seconds = [Math]::Round(((Get-Date) - $batchStartedAt).TotalSeconds, 1) }
             if ([string]$result.status -eq "partial") {
               $hadPartial = $true; $rangeHadPartial = $true
               $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
@@ -161,7 +160,7 @@ function Invoke-SyncOnce {
             } elseif ([string]$result.status -ne "success") {
               throw "API returned a non-success batch status."
             }
-            $batch.Clear(); $batchIndex++
+            $batch.Clear(); $batchIndex++; $batchStartedAt = Get-Date
           }
           if ($MaxRows -gt 0 -and $totalRows -ge $MaxRows) { break }
         }
@@ -169,7 +168,7 @@ function Invoke-SyncOnce {
           $rowsInBatch = $batch.Count
           $result = Invoke-IngestBatch $runId $batchIndex $range.From $range.To $batch.ToArray()
           $rangeSent += $rowsInBatch; $totalSent += $rowsInBatch
-          Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }) }
+          Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); elapsed_seconds = [Math]::Round(((Get-Date) - $batchStartedAt).TotalSeconds, 1) }
           if ([string]$result.status -eq "partial") {
             $hadPartial = $true; $rangeHadPartial = $true
             $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
