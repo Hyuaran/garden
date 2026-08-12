@@ -32,7 +32,11 @@ import {
   type GardenRole,
 } from "../../root/_constants/types";
 import { ROLES, type Role } from "../_constants/roles";
-import { getSession, signOutTree as signOutTreeLib } from "../_lib/auth";
+import {
+  getSession,
+  markTreeUnlocked,
+  signOutTree as signOutTreeLib,
+} from "../_lib/auth";
 import { fetchTreeUser, type TreeUser } from "../_lib/queries";
 
 /** KPI ヘッダーで使う各種統計値（Phase C で Supabase 連携予定、現状はデモ値） */
@@ -223,6 +227,9 @@ export function TreeStateProvider({ children }: { children: ReactNode }) {
         setTreeUser(null);
         return { success: false, error: "Tree利用権限がありません" };
       }
+      // Valid Garden auth + Tree permission restores the local gate for a
+      // resumed session before Tree's gate checks run.
+      markTreeUnlocked();
       setTreeUser(user);
       setRoleState(mapGardenRoleToTreeRole(user.garden_role));
       setIsAuthenticated(true);
@@ -294,7 +301,6 @@ export function TreeStateProvider({ children }: { children: ReactNode }) {
 
   const startBreak = useCallback((type: "lunch" | "short") => {
     // TODO: 打刻 API 連携（Phase B で KoT API 同期）
-    // eslint-disable-next-line no-console
     console.log("[TreeState] startBreak", type);
   }, []);
 

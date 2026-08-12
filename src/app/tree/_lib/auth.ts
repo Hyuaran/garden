@@ -19,12 +19,13 @@
  *   親 CLAUDE.md §4（認証ポリシー）
  */
 
+import {
+  clearAuthSession,
+  isAuthSessionUnlocked,
+  touchAuthSession,
+  unlockAuthSession,
+} from "../../_lib/auth-unified";
 import { supabase } from "./supabase";
-
-const TREE_UNLOCKED_KEY = "treeUnlockedAt";
-
-/** Tree セッションの有効期間（業務アプリなので長め） */
-const TREE_SESSION_HOURS = 8;
 
 /**
  * 社員番号 → 擬似メールアドレス変換
@@ -64,43 +65,37 @@ export async function signInTree(
     };
   }
 
-  // セッション開始時刻を sessionStorage に記録
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem(TREE_UNLOCKED_KEY, Date.now().toString());
-  }
+  unlockAuthSession("tree");
   return { success: true, userId: data.user.id };
 }
 
 /** Tree セッション + Supabase Auth セッションを終了 */
 export async function signOutTree(): Promise<void> {
-  if (typeof window !== "undefined") {
-    sessionStorage.removeItem(TREE_UNLOCKED_KEY);
-  }
+  clearTreeUnlock();
   await supabase.auth.signOut();
 }
 
-/** Tree セッションが有効か（最終操作から8時間以内か） */
+/** Tree セッションが有効か（統一認証の2時間ゲート内か） */
 export function isTreeUnlocked(): boolean {
-  if (typeof window === "undefined") return false;
-  const raw = sessionStorage.getItem(TREE_UNLOCKED_KEY);
-  if (!raw) return false;
-  const unlockedAt = parseInt(raw, 10);
-  const TIMEOUT_MS = TREE_SESSION_HOURS * 60 * 60 * 1000;
-  return Date.now() - unlockedAt < TIMEOUT_MS;
+  return isAuthSessionUnlocked("tree");
 }
 
 /** 操作ごとにアクティビティ時刻を更新 */
 export function touchTreeSession(): void {
-  if (typeof window === "undefined") return;
-  if (isTreeUnlocked()) {
-    sessionStorage.setItem(TREE_UNLOCKED_KEY, Date.now().toString());
-  }
+  touchAuthSession("tree");
+}
+
+/**
+ * Mark Tree as unlocked after Garden auth and Tree permission are verified.
+ * This restores the local gate for resumed cookie sessions.
+ */
+export function markTreeUnlocked(): void {
+  unlockAuthSession("tree");
 }
 
 /** Tree セッションを強制クリア（権限チェック失敗時など） */
 export function clearTreeUnlock(): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(TREE_UNLOCKED_KEY);
+  clearAuthSession("tree");
 }
 
 /** 現在の Supabase Auth セッション取得 */
