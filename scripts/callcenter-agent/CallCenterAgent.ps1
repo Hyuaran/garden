@@ -11,8 +11,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "CallCenterAgent.Core.ps1")
 $hasExplicitStartDate = $PSBoundParameters.ContainsKey("StartDate")
 $hasExplicitEndDate = $PSBoundParameters.ContainsKey("EndDate")
+$isExplicitRange = $hasExplicitStartDate -or $hasExplicitEndDate
 if ([IntPtr]::Size -ne 4) {
   throw "FileMaker ODBC is 32-bit only. Run C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe."
 }
@@ -21,7 +23,7 @@ $config = Get-Content -Raw -Encoding UTF8 -LiteralPath $ConfigPath | ConvertFrom
 if (-not $env:FM_CALL_HISTORY_PASSWORD) { throw "FM_CALL_HISTORY_PASSWORD is not configured." }
 if (-not $DryRun -and -not $env:CALL_INGEST_SECRET) { throw "CALL_INGEST_SECRET is not configured." }
 
-$batchSize = [Math]::Min([Math]::Max([int]$config.batchSize, 1), 500)
+$batchSize = Get-EffectiveBatchSize ([int]$config.batchSize)
 $stateDirectory = [string]$config.stateDirectory
 $logDirectory = [string]$config.logDirectory
 $statePath = Join-Path $stateDirectory "state.json"
@@ -121,46 +123,86 @@ function Invoke-SyncOnce {
       if ($MaxRows -eq 0) { return }
     }
 
-    # Known limitation: this incremental query is based on コール日. Updates older than the
-    # overlap window are not observed. Use StartDate/EndDate or increase overlapDays to rescan.
     $quotedColumns = ($columns | ForEach-Object { '"' + $_.Replace('"', '""') + '"' }) -join ","
-    $nextDay = $to.AddDays(1).ToString("yyyy-MM-dd")
-    $sql = "SELECT $quotedColumns FROM `"コール履歴`" WHERE `"コール日`" >= {d '$($from.ToString("yyyy-MM-dd"))'} AND `"コール日`" < {d '$nextDay'} ORDER BY `"コール日`", `"コール時間`", `"主キー`""
-    $command = $connection.CreateCommand(); $command.CommandText = $sql; $command.CommandTimeout = 0
-    $reader = $command.ExecuteReader()
-    $batch = New-Object System.Collections.ArrayList
-    $batchIndex = 0; $totalRows = 0; $hadPartial = $false; $maxCallDate = $null
-    while ($reader.Read()) {
-      $row = [ordered]@{}
-      for ($i = 0; $i -lt $columns.Count; $i++) { $row[$columns[$i]] = Convert-OdbcValue $reader.GetValue($i) $columns[$i] }
-      [void]$batch.Add($row); $totalRows++
-      $rowDate = [datetime]::ParseExact([string]$row["コール日"], "yyyy-MM-dd", $null)
-      if (-not $maxCallDate -or $rowDate -gt $maxCallDate) { $maxCallDate = $rowDate }
-      if ($batch.Count -ge $batchSize -or ($MaxRows -gt 0 -and $totalRows -ge $MaxRows)) {
-        $result = Invoke-IngestBatch $runId $batchIndex $from $to $batch.ToArray()
-        Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rows = $batch.Count; status = [string]$result.status; rejected = [int]$result.records_rejected }
-        if ([string]$result.status -eq "partial") {
-          $hadPartial = $true
-          $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
-          Write-AgentLog "warning" "batch partially accepted; rejected rows will not block state advancement" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rejected = [int]$result.records_rejected; targets = $rejectedTargets }
-        }
-        $batch.Clear(); $batchIndex++
-      }
+    $ranges = @(Get-CallSyncRanges $from $to $isExplicitRange)
+    $batchIndex = 0; $totalRows = 0; $totalSent = 0; $hadPartial = $false; $maxCallDate = $null
+    $startedAt = Get-Date
+
+    foreach ($range in $ranges) {
       if ($MaxRows -gt 0 -and $totalRows -ge $MaxRows) { break }
-    }
-    $reader.Close()
-    if ($batch.Count -gt 0) {
-      $result = Invoke-IngestBatch $runId $batchIndex $from $to $batch.ToArray()
-      Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rows = $batch.Count; status = [string]$result.status; rejected = [int]$result.records_rejected }
-      if ([string]$result.status -eq "partial") {
-        $hadPartial = $true
-        $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
-        Write-AgentLog "warning" "batch partially accepted; rejected rows will not block state advancement" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rejected = [int]$result.records_rejected; targets = $rejectedTargets }
+      $rangeStartedAt = Get-Date
+      $rangeRows = 0; $rangeSent = 0; $rangeHadPartial = $false; $rangeMaxCallDate = $null
+      Write-AgentLog "info" "month started" @{ run_id = $runId.ToString(); month = $range.Month; range_from = $range.From.ToString("yyyy-MM-dd"); range_to = $range.To.ToString("yyyy-MM-dd"); cumulative_rows = $totalRows }
+
+      $nextDay = $range.To.AddDays(1).ToString("yyyy-MM-dd")
+      $sql = "SELECT $quotedColumns FROM `"コール履歴`" WHERE `"コール日`" >= {d '$($range.From.ToString("yyyy-MM-dd"))'} AND `"コール日`" < {d '$nextDay'} ORDER BY `"コール日`", `"コール時間`", `"主キー`""
+      $command = $connection.CreateCommand(); $command.CommandText = $sql; $command.CommandTimeout = 0
+      $reader = $null
+      try {
+        $reader = $command.ExecuteReader()
+        $batch = New-Object System.Collections.ArrayList
+        while ($reader.Read()) {
+          $row = [ordered]@{}
+          for ($i = 0; $i -lt $columns.Count; $i++) { $row[$columns[$i]] = Convert-OdbcValue $reader.GetValue($i) $columns[$i] }
+          [void]$batch.Add($row); $rangeRows++; $totalRows++
+          $rowDate = [datetime]::ParseExact([string]$row["コール日"], "yyyy-MM-dd", $null)
+          if (-not $rangeMaxCallDate -or $rowDate -gt $rangeMaxCallDate) { $rangeMaxCallDate = $rowDate }
+          if (-not $maxCallDate -or $rowDate -gt $maxCallDate) { $maxCallDate = $rowDate }
+
+          if ($batch.Count -ge $batchSize -or ($MaxRows -gt 0 -and $totalRows -ge $MaxRows)) {
+            $rowsInBatch = $batch.Count
+            $result = Invoke-IngestBatch $runId $batchIndex $range.From $range.To $batch.ToArray()
+            $rangeSent += $rowsInBatch; $totalSent += $rowsInBatch
+            Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }) }
+            if ([string]$result.status -eq "partial") {
+              $hadPartial = $true; $rangeHadPartial = $true
+              $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
+              Write-AgentLog "warning" "batch partially accepted; state will not advance" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rejected = [int]$result.records_rejected; targets = $rejectedTargets }
+            } elseif ([string]$result.status -ne "success") {
+              throw "API returned a non-success batch status."
+            }
+            $batch.Clear(); $batchIndex++
+          }
+          if ($MaxRows -gt 0 -and $totalRows -ge $MaxRows) { break }
+        }
+        if ($batch.Count -gt 0) {
+          $rowsInBatch = $batch.Count
+          $result = Invoke-IngestBatch $runId $batchIndex $range.From $range.To $batch.ToArray()
+          $rangeSent += $rowsInBatch; $totalSent += $rowsInBatch
+          Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }) }
+          if ([string]$result.status -eq "partial") {
+            $hadPartial = $true; $rangeHadPartial = $true
+            $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
+            Write-AgentLog "warning" "batch partially accepted; state will not advance" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rejected = [int]$result.records_rejected; targets = $rejectedTargets }
+          } elseif ([string]$result.status -ne "success") {
+            throw "API returned a non-success batch status."
+          }
+          $batchIndex++
+        }
+      } catch {
+        Write-AgentLog "error" "month failed" @{ run_id = $runId.ToString(); month = $range.Month; rows = $rangeRows; sent = $rangeSent; cumulative_rows = $totalRows; latest_call_date = $(if ($rangeMaxCallDate) { $rangeMaxCallDate.ToString("yyyy-MM-dd") } else { $null }); status = "failed"; elapsed_seconds = [Math]::Round(((Get-Date) - $rangeStartedAt).TotalSeconds, 1); error_type = $_.Exception.GetType().Name }
+        throw
+      } finally {
+        if ($reader) { $reader.Close() }
+        $command.Dispose()
       }
+
+      $monthStatus = if ($rangeHadPartial) { "partial" } else { "success" }
+      Write-AgentLog "info" "month completed" @{ run_id = $runId.ToString(); month = $range.Month; rows = $rangeRows; sent = $rangeSent; cumulative_rows = $totalRows; cumulative_sent = $totalSent; latest_call_date = $(if ($rangeMaxCallDate) { $rangeMaxCallDate.ToString("yyyy-MM-dd") } else { $null }); status = $monthStatus; elapsed_seconds = [Math]::Round(((Get-Date) - $rangeStartedAt).TotalSeconds, 1) }
     }
-    if (-not $DryRun -and $maxCallDate) { Save-StateDate $maxCallDate }
+
+    $completedWithoutPartial = -not $hadPartial
+    $shouldAdvanceState = Test-ShouldAdvanceState $stateDate $maxCallDate $isExplicitRange $completedWithoutPartial
+    $stateAdvanced = $false
+    if (-not $DryRun -and $shouldAdvanceState) {
+      Save-StateDate $maxCallDate
+      $stateAdvanced = $true
+      Write-AgentLog "info" "state advanced" @{ run_id = $runId.ToString(); previous_date = $(if ($stateDate) { $stateDate.ToString("yyyy-MM-dd") } else { $null }); saved_date = $maxCallDate.ToString("yyyy-MM-dd") }
+    } elseif (-not $DryRun -and $maxCallDate) {
+      Write-AgentLog "info" "state unchanged" @{ run_id = $runId.ToString(); existing_date = $(if ($stateDate) { $stateDate.ToString("yyyy-MM-dd") } else { $null }); candidate_date = $maxCallDate.ToString("yyyy-MM-dd"); reason = $(if ($hadPartial) { "partial_run" } elseif ($isExplicitRange) { "candidate_not_newer" } else { "not_eligible" }) }
+    }
     $syncStatus = if ($hadPartial) { "partial" } else { "success" }
-    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; status = $syncStatus; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd") }
+    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; sent = $totalSent; months = $ranges.Count; status = $syncStatus; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd"); latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); state_advanced = $stateAdvanced; elapsed_seconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1) }
   } finally { $connection.Dispose() }
 }
 
