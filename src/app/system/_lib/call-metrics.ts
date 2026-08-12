@@ -46,20 +46,13 @@ export type CallMetricRow = {
 
 export type EmployeeCallMetricRow = Omit<CallMetricRow, "listName"> & { employeeName: string };
 
-export type ResultFlagRow = {
-  resultFlag: string;
-  count: number;
-  isEffective: boolean;
-  isExpected: boolean;
-};
-
 export type CallMetricsResponse = {
   from: string;
   to: string;
-  diagnosticListName: string | null;
+  listName: string | null;
+  employeeName: string | null;
   metrics: CallMetricRow[];
   employeeMetrics: EmployeeCallMetricRow[];
-  resultFlags: ResultFlagRow[];
 };
 
 type RpcMetricRow = {
@@ -72,16 +65,9 @@ type RpcMetricRow = {
   call_order_rate?: unknown;
 };
 
-type RpcFlagRow = {
-  result_flag?: unknown;
-  count?: unknown;
-  is_effective?: unknown;
-  is_expected?: unknown;
-};
-
 type RpcEmployeeMetricRow = Omit<RpcMetricRow, "list_name"> & { employee_name?: unknown };
 
-type RpcPayload = { metrics?: unknown; employee_metrics?: unknown; result_flags?: unknown };
+type RpcPayload = { metrics?: unknown; employee_metrics?: unknown };
 
 function dateOnly(value: string | null) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -106,24 +92,26 @@ export function parseCallMetricParams(searchParams: URLSearchParams, now = new D
   const days = Math.floor((to.getTime() - from.getTime()) / 86_400_000) + 1;
   if (days > CALL_METRICS_MAX_DAYS) throw new Error(`集計期間は最大${CALL_METRICS_MAX_DAYS}日です`);
   const listName = searchParams.get("listName")?.trim() || null;
+  const employeeName = searchParams.get("employeeName")?.trim() || null;
   if (listName && listName.length > 200) throw new Error("リスト名が長すぎます");
-  return { from: fromText, to: toText, listName };
+  if (employeeName && employeeName.length > 200) throw new Error("従業員名が長すぎます");
+  return { from: fromText, to: toText, listName, employeeName };
 }
 
 const number = (value: unknown) => Number(value ?? 0);
 
 export function normalizeCallMetricsRpc(
   raw: unknown,
-  range: { from: string; to: string; listName: string | null },
+  range: { from: string; to: string; listName: string | null; employeeName: string | null },
 ): CallMetricsResponse {
   const payload = (raw && typeof raw === "object" ? raw : {}) as RpcPayload;
   const metrics = Array.isArray(payload.metrics) ? payload.metrics as RpcMetricRow[] : [];
   const employeeMetrics = Array.isArray(payload.employee_metrics) ? payload.employee_metrics as RpcEmployeeMetricRow[] : [];
-  const resultFlags = Array.isArray(payload.result_flags) ? payload.result_flags as RpcFlagRow[] : [];
   return {
     from: range.from,
     to: range.to,
-    diagnosticListName: range.listName,
+    listName: range.listName,
+    employeeName: range.employeeName,
     metrics: metrics.map((row) => ({
       listName: String(row.list_name ?? "リスト名なし"),
       callCount: number(row.call_count),
@@ -141,12 +129,6 @@ export function normalizeCallMetricsRpc(
       orderCount: number(row.order_count),
       acquiredCount: number(row.acquired_count),
       callOrderRate: number(row.call_order_rate),
-    })),
-    resultFlags: resultFlags.map((row) => ({
-      resultFlag: String(row.result_flag ?? "空"),
-      count: number(row.count),
-      isEffective: Boolean(row.is_effective),
-      isExpected: Boolean(row.is_expected),
     })),
   };
 }

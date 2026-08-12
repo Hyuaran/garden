@@ -29,9 +29,9 @@ describe("GET /api/system/call-metrics", () => {
   });
   it.each(["manager", "admin", "super_admin"])("allows %s", async (role) => {
     const supabase = client({ role }); mocks.createServerClient.mockResolvedValue(supabase);
-    const response = await GET(request("from=2026-08-01&to=2026-08-12&listName=A"));
+    const response = await GET(request("from=2026-08-01&to=2026-08-12&listName=A&employeeName=B"));
     expect(response.status).toBe(200);
-    expect(supabase.rpc).toHaveBeenCalledWith("system_call_metrics", { p_from: "2026-08-01", p_to: "2026-08-12", p_list_name: "A" });
+    expect(supabase.rpc).toHaveBeenCalledWith("system_call_metrics", { p_from: "2026-08-01", p_to: "2026-08-12", p_list_name: "A", p_employee_name: "B" });
   });
   it("returns 400 for invalid dates", async () => {
     mocks.createServerClient.mockResolvedValue(client());
