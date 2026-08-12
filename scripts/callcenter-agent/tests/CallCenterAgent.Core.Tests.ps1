@@ -1,6 +1,28 @@
 ﻿$here = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path (Split-Path -Parent $here) "CallCenterAgent.Core.ps1")
 
+Describe "ConvertTo-CallDate" {
+  It "parses an exact yyyy-MM-dd call date" {
+    ConvertTo-CallDate "2026-01-05" | Should Be ([datetime]"2026-01-05")
+  }
+
+  It "returns null for null, empty, or whitespace values" {
+    (ConvertTo-CallDate $null) | Should Be $null
+    (ConvertTo-CallDate "") | Should Be $null
+    (ConvertTo-CallDate "   ") | Should Be $null
+  }
+
+  It "returns null without throwing for non-exact formats" {
+    (ConvertTo-CallDate "2026/01/05") | Should Be $null
+    (ConvertTo-CallDate "2026-01-05T00:00:00") | Should Be $null
+    (ConvertTo-CallDate "abc") | Should Be $null
+  }
+
+  It "returns null for an impossible calendar date" {
+    (ConvertTo-CallDate "2026-02-30") | Should Be $null
+  }
+}
+
 Describe "Get-CallFetchColumns" {
   $storedFields = @(
     "主キー", "作成日", "作成者", "修正日", "修正者", "社員名", "コール日", "コール時間", "続柄", "結果フラグ", "備考",
