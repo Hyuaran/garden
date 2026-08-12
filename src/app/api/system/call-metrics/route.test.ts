@@ -44,4 +44,3 @@ describe("GET /api/system/call-metrics", () => {
     expect(await response.json()).toEqual({ ok: false, error: "集計の取得に失敗しました" });
   });
 });
-

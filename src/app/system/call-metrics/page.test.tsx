@@ -23,4 +23,3 @@ describe("CallMetricsClient", () => {
     await waitFor(() => expect(fetch).toHaveBeenLastCalledWith(expect.stringContaining("listName=%E3%83%AA%E3%82%B9%E3%83%88A"), { cache: "no-store" }));
   });
 });
-

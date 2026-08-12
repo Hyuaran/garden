@@ -32,4 +32,3 @@ export async function GET(request: Request) {
   }
   return NextResponse.json({ ok: true, ...normalizeCallMetricsRpc(data, range) });
 }
-
