@@ -81,6 +81,54 @@ limit 20;
 
 同じ日付範囲を再送し、`system_call_history`の件数が増えず、同期ログの`records_updated`が増えることを確認します。
 
+## 過去データの段階バックフィル
+
+`-StartDate`または`-EndDate`を明示した実行はバックフィルとして扱われ、対象範囲を月単位に分割します。各月は独立したODBC readerで取得され、最大500件ずつAPIへ送信されます。ログの`month started`、`batch completed`、`month completed`、`sync completed`で、月別件数、送信件数、累計件数、直近コール日、所要時間を確認できます。
+
+バックフィル中は二重取得を避けるため、増分タスクを停止したままにします。
+
+```powershell
+Disable-ScheduledTask -TaskName "GardenCallCenterAgent"
+
+$ps32 = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+$agent = "C:\garden\a-bloom-008\scripts\callcenter-agent\CallCenterAgent.ps1"
+$config = "C:\garden\a-bloom-008\scripts\callcenter-agent\config.json"
+```
+
+必ず最初に`-DryRun`で範囲と件数を確認し、その後、同じ引数から`-DryRun`だけを外して本実行します。
+
+### 直近3ヶ月
+
+```powershell
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2026-05-13 -EndDate 2026-08-12 -DryRun -Once
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2026-05-13 -EndDate 2026-08-12 -Once
+```
+
+### 今年分
+
+直近3ヶ月の取込結果、ポータルの体感、Supabase負荷を確認してから広げます。範囲の重複は`external_call_id`のupsertにより安全です。
+
+```powershell
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2026-01-01 -EndDate 2026-08-12 -DryRun -Once
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2026-01-01 -EndDate 2026-08-12 -Once
+```
+
+### 1年ずつ遡る
+
+```powershell
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2025-01-01 -EndDate 2025-12-31 -DryRun -Once
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2025-01-01 -EndDate 2025-12-31 -Once
+```
+
+途中失敗時は、最後に`month completed`となった月の次月、または`month failed`となった月の初日へ`-StartDate`を狭めて再実行します。同じ月を再送してもupsertされるため重複行は作られません。
+
+明示範囲の最大コール日が既存stateより古い、または同日の場合、`state.json`は更新されません。既存stateより新しく、全バッチがsuccessの場合だけ前進します。partial・失敗・DryRunではstateを進めません。バックフィル完了とSupabase側の確認後に増分タスクを再開します。
+
+```powershell
+Enable-ScheduledTask -TaskName "GardenCallCenterAgent"
+Start-ScheduledTask -TaskName "GardenCallCenterAgent"
+```
+
 ## ODBC列型と主キー一意性の確認
 
 ```powershell
@@ -106,6 +154,6 @@ Get-ScheduledTaskInfo -TaskName "GardenCallCenterAgent"
 
 - 状態: `C:\ProgramData\Garden\CallCenterAgent\state.json`
 - ログ: `C:\ProgramData\Garden\CallCenterAgent\logs\agent-YYYYMMDD.jsonl`
-- partialまたは失敗時は状態日付を進めません。次回はオーバーラップ範囲を再送し、APIのupsertで重複を防ぎます。
+- partialまたは失敗時は状態日付を進めません。通常増分は次回オーバーラップ範囲を再送し、バックフィルは失敗月へ範囲を狭めて再実行します。どちらもAPIのupsertで重複を防ぎます。
 - 状態ファイルが壊れた場合、内容を保全して別名へ移動してから`-StartDate`を指定して復旧します。
 - ログにはFMパスワード、Bearer token、電話番号、受信行本文を出しません。
