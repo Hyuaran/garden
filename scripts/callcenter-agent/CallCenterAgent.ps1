@@ -7,7 +7,9 @@ param(
   [switch]$DryRun,
   [switch]$Once,
   [switch]$ShowSchema,
-  [switch]$CheckPrimaryKeyUniqueness
+  [switch]$CheckPrimaryKeyUniqueness,
+  [switch]$Worker,
+  [string]$HeartbeatPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,20 +45,32 @@ function Get-ConnectionString {
   return "Driver={FileMaker ODBC};Server=$($config.fmServer);Port=$($config.fmPort);Database=$($config.fmDatabase);UID=$($config.fmUser);PWD=$($env:FM_CALL_HISTORY_PASSWORD)"
 }
 
-function Get-StateDate {
-  if (-not (Test-Path -LiteralPath $statePath)) { return $null }
+function Get-AgentState {
+  if (-not (Test-Path -LiteralPath $statePath)) { return [pscustomobject]@{ Date = $null; PrimaryKey = $null } }
   try {
     $state = Get-Content -Raw -Encoding UTF8 -LiteralPath $statePath | ConvertFrom-Json
-    if ($state.last_successful_max_call_date) { return [datetime]::ParseExact([string]$state.last_successful_max_call_date, "yyyy-MM-dd", $null) }
+    $date = if ($state.last_successful_max_call_date) { [datetime]::ParseExact([string]$state.last_successful_max_call_date, "yyyy-MM-dd", $null) } else { $null }
+    $pk = ConvertTo-NormalizedPrimaryKey $state.last_max_primary_key
+    if ($state.last_max_primary_key -and $null -eq $pk) { throw 'last_max_primary_key is invalid.' }
+    return [pscustomobject]@{ Date = $date; PrimaryKey = $pk }
   } catch { throw "State file is invalid. Move it aside after inspection: $statePath" }
-  return $null
 }
 
-function Save-StateDate([datetime]$Date) {
+function Save-AgentState([AllowNull()][Nullable[datetime]]$Date, [AllowNull()][string]$PrimaryKey) {
   $temporary = "$statePath.tmp"
-  @{ last_successful_max_call_date = $Date.ToString("yyyy-MM-dd"); updated_at = (Get-Date).ToUniversalTime().ToString("o") } |
+  @{ last_successful_max_call_date = $(if ($Date) { $Date.ToString("yyyy-MM-dd") } else { $null }); last_max_primary_key = $PrimaryKey; updated_at = (Get-Date).ToUniversalTime().ToString("o") } |
     ConvertTo-Json | Set-Content -LiteralPath $temporary -Encoding UTF8
   Move-Item -Force -LiteralPath $temporary -Destination $statePath
+}
+
+$heartbeatIntervalSeconds = if ($config.heartbeatIntervalSeconds) { [Math]::Max([int]$config.heartbeatIntervalSeconds, 1) } else { 5 }
+$script:lastHeartbeatUtc = [datetime]::MinValue
+function Update-Heartbeat([string]$Phase, [switch]$Force) {
+  if (-not $Worker -or -not $HeartbeatPath) { return }
+  $now = (Get-Date).ToUniversalTime()
+  if (-not $Force -and ($now - $script:lastHeartbeatUtc).TotalSeconds -lt $heartbeatIntervalSeconds) { return }
+  @{ updated_at = $now.ToString('o'); phase = $Phase } | ConvertTo-Json -Compress | Set-Content -LiteralPath $HeartbeatPath -Encoding UTF8
+  $script:lastHeartbeatUtc = $now
 }
 
 function Convert-OdbcValue([object]$Value, [string]$ColumnName) {
@@ -71,6 +85,7 @@ function Convert-OdbcValue([object]$Value, [string]$ColumnName) {
 }
 
 function Invoke-IngestBatch([guid]$RunId, [int]$BatchIndex, [datetime]$From, [datetime]$To, [object[]]$Rows) {
+  Update-Heartbeat 'batch' -Force
   if ($DryRun) {
     Write-AgentLog "info" "dry-run batch" @{ run_id = $RunId.ToString(); batch_index = $BatchIndex; rows = $Rows.Count }
     return @{ status = "success"; records_rejected = 0 }
@@ -96,8 +111,9 @@ $columns = @(Get-CallFetchColumns $includeAggregateFields)
 
 function Invoke-SyncOnce {
   $runId = [guid]::NewGuid()
-  $stateDate = Get-StateDate
-  $from = if ($hasExplicitStartDate) { $StartDate.Date } elseif ($stateDate) { $stateDate.AddDays(-[int]$config.overlapDays).Date } else { (Get-Date).Date.AddDays(-1) }
+  $state = Get-AgentState; $stateDate = $state.Date; $statePrimaryKey = $state.PrimaryKey
+  $queryMode = Get-IncrementalQueryMode $isExplicitRange $statePrimaryKey
+  $from = if ($hasExplicitStartDate) { $StartDate.Date } elseif ($stateDate) { $stateDate.AddDays(-[int]$config.overlapDays).Date } else { (Get-Date).Date.AddDays(-[int]$config.overlapDays) }
   $to = if ($hasExplicitEndDate) { $EndDate.Date } else { (Get-Date).Date }
   if ($from -gt $to) { throw "StartDate must be on or before EndDate." }
   $connection = New-Object System.Data.Odbc.OdbcConnection (Get-ConnectionString)
@@ -123,7 +139,7 @@ function Invoke-SyncOnce {
 
     $quotedColumns = ($columns | ForEach-Object { '"' + $_.Replace('"', '""') + '"' }) -join ","
     $ranges = @(Get-CallSyncRanges $from $to $isExplicitRange)
-    $batchIndex = 0; $totalRows = 0; $totalSent = 0; $totalSkippedInvalidDate = 0; $hadPartial = $false; $maxCallDate = $null
+    $batchIndex = 0; $totalRows = 0; $totalSent = 0; $totalSkippedInvalidDate = 0; $hadPartial = $false; $maxCallDate = $null; $maxPrimaryKey = $null
     $startedAt = Get-Date
 
     foreach ($range in $ranges) {
@@ -133,14 +149,20 @@ function Invoke-SyncOnce {
       Write-AgentLog "info" "month started" @{ run_id = $runId.ToString(); month = $range.Month; range_from = $range.From.ToString("yyyy-MM-dd"); range_to = $range.To.ToString("yyyy-MM-dd"); cumulative_rows = $totalRows }
 
       $nextDay = $range.To.AddDays(1).ToString("yyyy-MM-dd")
-      $sql = "SELECT $quotedColumns FROM `"コール履歴`" WHERE `"コール日`" >= {d '$($range.From.ToString("yyyy-MM-dd"))'} AND `"コール日`" < {d '$nextDay'} ORDER BY `"コール日`", `"コール時間`", `"主キー`""
+      if ($queryMode -eq 'primary_key') {
+        $sql = "SELECT $quotedColumns FROM `"コール履歴`" $(Get-PrimaryKeyIncrementalPredicate $statePrimaryKey)"
+      } else {
+        $sql = "SELECT $quotedColumns FROM `"コール履歴`" WHERE `"コール日`" >= {d '$($range.From.ToString("yyyy-MM-dd"))'} AND `"コール日`" < {d '$nextDay'} ORDER BY `"コール日`", `"コール時間`", `"主キー`""
+      }
       $command = $connection.CreateCommand(); $command.CommandText = $sql; $command.CommandTimeout = 0
       $reader = $null
       try {
         $batchStartedAt = Get-Date
         $reader = $command.ExecuteReader()
+        Update-Heartbeat 'reading' -Force
         $batch = New-Object System.Collections.ArrayList
         while ($reader.Read()) {
+          Update-Heartbeat 'reading'
           $row = [ordered]@{}
           for ($i = 0; $i -lt $columns.Count; $i++) { $row[$columns[$i]] = Convert-OdbcValue $reader.GetValue($i) $columns[$i] }
           $rowDate = ConvertTo-CallDate $row["コール日"]
@@ -148,6 +170,8 @@ function Invoke-SyncOnce {
             $rangeSkippedInvalidDate++; $totalSkippedInvalidDate++
             continue
           }
+          $rowPrimaryKey = ConvertTo-NormalizedPrimaryKey $row['主キー']
+          if ($rowPrimaryKey -and ($null -eq $maxPrimaryKey -or (Compare-NormalizedPrimaryKey $rowPrimaryKey $maxPrimaryKey) -gt 0)) { $maxPrimaryKey = $rowPrimaryKey }
           [void]$batch.Add($row); $rangeRows++; $totalRows++
           if (-not $rangeMaxCallDate -or $rowDate -gt $rangeMaxCallDate) { $rangeMaxCallDate = $rowDate }
           if (-not $maxCallDate -or $rowDate -gt $maxCallDate) { $maxCallDate = $rowDate }
@@ -165,6 +189,7 @@ function Invoke-SyncOnce {
               throw "API returned a non-success batch status."
             }
             $batch.Clear(); $batchIndex++; $batchStartedAt = Get-Date
+            Update-Heartbeat 'reading' -Force
           }
           if ($MaxRows -gt 0 -and $totalRows -ge $MaxRows) { break }
         }
@@ -181,6 +206,7 @@ function Invoke-SyncOnce {
             throw "API returned a non-success batch status."
           }
           $batchIndex++
+          Update-Heartbeat 'reading' -Force
         }
       } catch {
         Write-AgentLog "error" "month failed" @{ run_id = $runId.ToString(); month = $range.Month; rows = $rangeRows; sent = $rangeSent; skipped_invalid_date = $rangeSkippedInvalidDate; cumulative_skipped_invalid_date = $totalSkippedInvalidDate; cumulative_rows = $totalRows; latest_call_date = $(if ($rangeMaxCallDate) { $rangeMaxCallDate.ToString("yyyy-MM-dd") } else { $null }); status = "failed"; elapsed_seconds = [Math]::Round(((Get-Date) - $rangeStartedAt).TotalSeconds, 1); error_type = $_.Exception.GetType().Name }
@@ -195,22 +221,50 @@ function Invoke-SyncOnce {
     }
 
     $completedWithoutPartial = -not $hadPartial
-    $shouldAdvanceState = Test-ShouldAdvanceState $stateDate $maxCallDate $isExplicitRange $completedWithoutPartial
+    $shouldAdvanceDate = Test-ShouldAdvanceState $stateDate $maxCallDate $isExplicitRange $completedWithoutPartial
+    $shouldAdvancePrimaryKey = Test-ShouldAdvancePrimaryKey $statePrimaryKey $maxPrimaryKey $completedWithoutPartial $isExplicitRange
     $stateAdvanced = $false
-    if (-not $DryRun -and $shouldAdvanceState) {
-      Save-StateDate $maxCallDate
+    if (-not $DryRun -and ($shouldAdvanceDate -or $shouldAdvancePrimaryKey)) {
+      $savedDate = if ($shouldAdvanceDate) { $maxCallDate } else { $stateDate }
+      $savedPrimaryKey = if ($shouldAdvancePrimaryKey) { $maxPrimaryKey } else { $statePrimaryKey }
+      Save-AgentState $savedDate $savedPrimaryKey
       $stateAdvanced = $true
-      Write-AgentLog "info" "state advanced" @{ run_id = $runId.ToString(); previous_date = $(if ($stateDate) { $stateDate.ToString("yyyy-MM-dd") } else { $null }); saved_date = $maxCallDate.ToString("yyyy-MM-dd") }
+      Write-AgentLog "info" "state advanced" @{ run_id = $runId.ToString(); saved_date = $(if ($savedDate) { $savedDate.ToString('yyyy-MM-dd') } else { $null }); saved_primary_key = $savedPrimaryKey; query_mode = $queryMode }
     } elseif (-not $DryRun -and $maxCallDate) {
       Write-AgentLog "info" "state unchanged" @{ run_id = $runId.ToString(); existing_date = $(if ($stateDate) { $stateDate.ToString("yyyy-MM-dd") } else { $null }); candidate_date = $maxCallDate.ToString("yyyy-MM-dd"); reason = $(if ($hadPartial) { "partial_run" } elseif ($isExplicitRange) { "candidate_not_newer" } else { "not_eligible" }) }
     }
     $syncStatus = if ($hadPartial) { "partial" } else { "success" }
-    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; sent = $totalSent; skipped_invalid_date = $totalSkippedInvalidDate; months = $ranges.Count; status = $syncStatus; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd"); latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); state_advanced = $stateAdvanced; elapsed_seconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1) }
+    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; sent = $totalSent; skipped_invalid_date = $totalSkippedInvalidDate; months = $ranges.Count; status = $syncStatus; query_mode = $queryMode; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd"); latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); latest_primary_key = $maxPrimaryKey; state_advanced = $stateAdvanced; elapsed_seconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1) }
   } finally { $connection.Dispose() }
 }
 
+function Invoke-WorkerProcess {
+  $heartbeat = Join-Path $stateDirectory ("heartbeat-{0}.json" -f [guid]::NewGuid())
+  @{ updated_at = (Get-Date).ToUniversalTime().ToString('o'); phase = 'starting' } | ConvertTo-Json -Compress | Set-Content -LiteralPath $heartbeat -Encoding UTF8
+  $exe = 'C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+  $args = @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"{0}"' -f $PSCommandPath),'-ConfigPath',('"{0}"' -f $ConfigPath),'-Worker','-Once','-HeartbeatPath',('"{0}"' -f $heartbeat))
+  if ($hasExplicitStartDate) { $args += @('-StartDate', $StartDate.ToString('yyyy-MM-dd')) }
+  if ($hasExplicitEndDate) { $args += @('-EndDate', $EndDate.ToString('yyyy-MM-dd')) }
+  if ($MaxRows) { $args += @('-MaxRows', [string]$MaxRows) }; if ($DryRun) { $args += '-DryRun' }; if ($ShowSchema) { $args += '-ShowSchema' }; if ($CheckPrimaryKeyUniqueness) { $args += '-CheckPrimaryKeyUniqueness' }
+  $process = Start-Process -FilePath $exe -ArgumentList $args -PassThru -WindowStyle Hidden
+  $timeout = if ($config.readStallTimeoutSeconds) { [Math]::Max([int]$config.readStallTimeoutSeconds, 1) } else { 300 }
+  try {
+    while (-not $process.HasExited) {
+      Start-Sleep -Seconds 1; $process.Refresh()
+      $lastWrite = (Get-Item -LiteralPath $heartbeat).LastWriteTimeUtc
+      if (Test-IsHeartbeatStalled $lastWrite (Get-Date).ToUniversalTime() $timeout) {
+        Stop-Process -Id $process.Id -Force
+        throw "Worker made no progress within the configured read stall timeout."
+      }
+    }
+    if ($process.ExitCode -ne 0) { throw "Worker exited with code $($process.ExitCode)." }
+  } finally { Remove-Item -LiteralPath $heartbeat -Force -ErrorAction SilentlyContinue }
+}
+
+if ($Worker) { Update-Heartbeat 'starting' -Force; Invoke-SyncOnce; Update-Heartbeat 'completed' -Force; return }
+
 do {
-  try { Invoke-SyncOnce }
+  try { Invoke-WorkerProcess }
   catch { Write-AgentLog "error" "sync failed" @{ error_type = $_.Exception.GetType().Name }; if ($Once -or -not [bool]$config.runContinuously) { throw } }
   if ($Once -or -not [bool]$config.runContinuously) { break }
   Start-Sleep -Seconds ([Math]::Max([int]$config.pollSeconds, 60))
