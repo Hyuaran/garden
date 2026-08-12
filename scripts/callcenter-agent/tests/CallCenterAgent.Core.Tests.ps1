@@ -1,5 +1,37 @@
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+﻿$here = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path (Split-Path -Parent $here) "CallCenterAgent.Core.ps1")
+
+Describe "Get-CallFetchColumns" {
+  $storedFields = @(
+    "主キー", "作成日", "作成者", "修正日", "修正者", "社員名", "コール日", "コール時間", "続柄", "結果フラグ", "備考",
+    "コールID", "電話番号", "社員ID", "営業ID", "営業回数", "コール終了時間", "新リスト名", "旧リスト名"
+  )
+  $aggregateFields = @(
+    "DATA0", "DATA1", "無効コール件数", "無効件数", "d_結果フラグ", "コール数", "トス", "獲得", "無効", "留守", "担当不在", "見込み", "有効",
+    "s_コール数", "s_トス", "s_獲得", "s_無効", "s_留守", "s_担当不在", "s_見込み", "s_有効",
+    "コール時間MAX", "コール時間MIN", "現在稼働時間", "一時間毎のコール数"
+  )
+
+  It "returns exactly the 19 stored fields by default" {
+    $columns = @(Get-CallFetchColumns)
+    $columns.Count | Should Be 19
+    (Compare-Object $storedFields $columns).Count | Should Be 0
+    ($columns -contains "主キー") | Should Be $true
+    ($columns -contains "コール日") | Should Be $true
+  }
+
+  It "excludes all aggregate fields when explicitly disabled" {
+    $columns = @(Get-CallFetchColumns $false)
+    foreach ($field in $aggregateFields) { ($columns -contains $field) | Should Be $false }
+  }
+
+  It "restores all 25 aggregate fields when enabled" {
+    $columns = @(Get-CallFetchColumns $true)
+    $columns.Count | Should Be 44
+    ($columns | Select-Object -Unique).Count | Should Be 44
+    foreach ($field in $aggregateFields) { ($columns -contains $field) | Should Be $true }
+  }
+}
 
 Describe "Get-EffectiveBatchSize" {
   It "keeps the server contract capped at 500 rows" {

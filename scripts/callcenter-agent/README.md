@@ -28,6 +28,7 @@ FileMaker Server 11の「コール履歴」を32bit ODBCで取得し、Gardenの
 `config.example.json`を`config.json`へコピーし、`apiUrl`を実環境へ変更します。秘密値は入れません。
 
 - `batchSize`: 1〜500、既定500
+- `includeAggregateFields`: 既定false。falseでは保存対象19列だけを取得し、FileMakerの計算・集計25列を省いて高速化します。監査調査で必要な場合だけtrueにします。
 - `overlapDays`: 通常3日
 - `pollSeconds`: 常駐時の実行間隔
 - `runContinuously`: タスクスケジューラ常駐時はtrue
@@ -83,6 +84,16 @@ limit 20;
 
 ## 過去データの段階バックフィル
 
+既定の`includeAggregateFields: false`では、Gardenが通常カラムへ保存・集計する19列だけをFileMakerから取得します。計算・集計25列はSELECTしないため、新規取込行の`fm_aggregate_raw`では該当監査値がnullになります。集計RPCはこのJSONを参照しないため、コール集計への影響はありません。従来の監査値も取得する必要がある場合は、`config.json`を一時的に次のように変更します。
+
+```json
+{
+  "includeAggregateFields": true
+}
+```
+
+trueではFileMakerの計算列評価により大幅に遅くなる可能性があります。通常運用とバックフィルではfalseを推奨します。
+
 `-StartDate`または`-EndDate`を明示した実行はバックフィルとして扱われ、対象範囲を月単位に分割します。各月は独立したODBC readerで取得され、最大500件ずつAPIへ送信されます。ログの`month started`、`batch completed`、`month completed`、`sync completed`で、月別件数、送信件数、累計件数、直近コール日、所要時間を確認できます。
 
 バックフィル中は二重取得を避けるため、増分タスクを停止したままにします。
@@ -103,6 +114,8 @@ $config = "C:\garden\a-bloom-008\scripts\callcenter-agent\config.json"
 & $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2026-05-13 -EndDate 2026-08-12 -DryRun -Once
 & $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2026-05-13 -EndDate 2026-08-12 -Once
 ```
+
+性能再計測では、変更前と同じ日付範囲・同じ`batchSize`でDryRunを実行します。ログの`batch completed.elapsed_seconds`で各500件の取得時間を、`month completed.elapsed_seconds`で月全体を比較してください。DryRunはAPIへPOSTしないため、FileMaker ODBC読取性能の比較に使えます。
 
 ### 今年分
 
