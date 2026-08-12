@@ -87,17 +87,20 @@ export default function CallMetricsClient() {
 
         {activeTab === "definitions" && <section role="tabpanel">
           <h2>集計の定義</h2>
-          <dl className={styles.definitions}>
-            <div><dt>コール数</dt><dd>架電回数</dd></div>
-            <div><dt>有効</dt><dd>会話できたコール。留守・無効・空を除きます。</dd></div>
-            <div><dt>有効率</dt><dd>有効数 ÷ コール数</dd></div>
-            <div><dt>受注</dt><dd>結果フラグが「前確OK」のコール</dd></div>
-            <div><dt>獲得</dt><dd>内定として受注とは別にカウント</dd></div>
-            <div><dt>コール受注率</dt><dd>受注数 ÷ コール数</dd></div>
-            <div><dt>リスト数・回転数・リスト受注率</dt><dd>リストデータ取込後に対応</dd></div>
-          </dl>
-          <div className={styles.ruleTable}><table className={styles.diagnostic}>
-            <caption>結果フラグの扱い（分類ルール）</caption>
+          <div className={styles.definitionTable}><table>
+            <thead><tr><th>指標</th><th>定義</th></tr></thead>
+            <tbody>
+              <tr><td>コール数</td><td>架電回数</td></tr>
+              <tr><td>有効</td><td>会話できたコール。留守・無効・空白（無効扱い）を除きます。</td></tr>
+              <tr><td>有効率</td><td>有効数 ÷ コール数</td></tr>
+              <tr><td>受注</td><td>結果フラグが「前確OK」のコール</td></tr>
+              <tr><td>獲得</td><td>内定として受注とは別にカウント</td></tr>
+              <tr><td>コール受注率</td><td>受注数 ÷ コール数</td></tr>
+              <tr><td>リスト数・回転数・リスト受注率</td><td>リストデータ取込後に対応</td></tr>
+            </tbody>
+          </table></div>
+          <h2>結果フラグの扱い（分類ルール）</h2>
+          <div className={styles.definitionTable}><table>
             <thead><tr><th>結果フラグ</th><th>扱い</th></tr></thead>
             <tbody>{FLAG_RULES.map(([flag, handling]) => <tr key={flag}>
               <td>{flag}</td><td>{handling}</td>

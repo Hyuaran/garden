@@ -17,7 +17,9 @@ describe("CallMetricsClient", () => {
     expect(screen.getAllByText("未取得")).toHaveLength(3);
     fireEvent.click(screen.getByRole("tab", { name: "定義方法" }));
     expect(screen.getByText("架電回数")).toBeInTheDocument();
-    expect(screen.getByText("結果フラグの扱い（分類ルール）")).toBeInTheDocument();
+    expect(screen.getByText("会話できたコール。留守・無効・空白（無効扱い）を除きます。")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "結果フラグの扱い（分類ルール）" })).toBeInTheDocument();
+    expect(screen.getAllByRole("table")).toHaveLength(2);
     expect(screen.queryByText(/result_flag 診断/)).not.toBeInTheDocument();
     expect(screen.queryByText("件数")).not.toBeInTheDocument();
     expect(screen.queryByText("想定内")).not.toBeInTheDocument();
