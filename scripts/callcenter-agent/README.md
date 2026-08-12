@@ -1,5 +1,21 @@
 # Garden Call Center Agent
 
+## Incremental primary-key operation and watchdog
+
+- A normal run without `last_max_primary_key` bootstraps from the narrow call-date window (`overlapDays`) and saves the greatest successfully processed primary key. It does not scan the full table to seed state.
+- Later normal runs use `WHERE "主キー" > last_max_primary_key ORDER BY "主キー"`. Explicit date backfills retain call-date/month splitting and never modify primary-key state.
+- The supervisor kills a 32-bit worker after `readStallTimeoutSeconds` without heartbeat progress (default 300). Continuous mode retries; `-Once` exits nonzero.
+- Heartbeats are forced at batch boundaries and otherwise throttled by `heartbeatIntervalSeconds` (default 5); they contain only time and phase.
+- Secrets remain inherited environment variables and are never placed in worker arguments, heartbeat files, or logs.
+
+After copying the scripts/config to the host and adding the new config keys, recreate and start the always-on task:
+
+```powershell
+& "C:\garden\a-bloom-008\scripts\callcenter-agent\Register-CallCenterAgentTask.ps1"
+Start-ScheduledTask -TaskName "GardenCallCenterAgent"
+Get-ScheduledTaskInfo -TaskName "GardenCallCenterAgent"
+```
+
 FileMaker Server 11の「コール履歴」を32bit ODBCで取得し、Gardenの`POST /api/system/call-ingest`へ送るWindows常駐エージェントです。
 
 ## 重要な制約

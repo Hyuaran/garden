@@ -132,8 +132,8 @@ Describe "Test-ShouldAdvanceState" {
     Test-ShouldAdvanceState ([datetime]"2026-08-12") ([datetime]"2026-08-12") $true $true | Should Be $false
   }
 
-  It "preserves normal incremental state behavior" {
-    Test-ShouldAdvanceState ([datetime]"2026-08-12") ([datetime]"2026-08-11") $false $true | Should Be $true
+  It "does not rewind date state during normal incremental processing" {
+    Test-ShouldAdvanceState ([datetime]"2026-08-12") ([datetime]"2026-08-11") $false $true | Should Be $false
   }
 
   It "never advances for a partial run" {
@@ -142,5 +142,38 @@ Describe "Test-ShouldAdvanceState" {
 
   It "never advances without a candidate" {
     Test-ShouldAdvanceState ([datetime]"2026-08-12") $null $true $true | Should Be $false
+  }
+}
+
+Describe "primary-key incremental helpers" {
+  It "normalizes integer-valued DECIMAL keys without numeric narrowing" {
+    ConvertTo-NormalizedPrimaryKey "000123.00" | Should Be "123"
+    ConvertTo-NormalizedPrimaryKey "999999999999999999999999999999" | Should Be "999999999999999999999999999999"
+    (ConvertTo-NormalizedPrimaryKey "12.5") | Should Be $null
+  }
+  It "compares arbitrarily large normalized keys" {
+    (Compare-NormalizedPrimaryKey "100000000000000000000" "99999999999999999999") | Should Be 1
+  }
+  It "selects bootstrap only until a primary-key state exists" {
+    Get-IncrementalQueryMode $false $null | Should Be "bootstrap_date"
+    Get-IncrementalQueryMode $false "123" | Should Be "primary_key"
+    Get-IncrementalQueryMode $true "123" | Should Be "backfill"
+  }
+  It "builds a validated numeric primary-key predicate" {
+    Get-PrimaryKeyIncrementalPredicate "000123.0" | Should Be 'WHERE "主キー" > 123 ORDER BY "主キー"'
+    { Get-PrimaryKeyIncrementalPredicate '1 OR 1=1' } | Should Throw
+  }
+  It "never advances primary-key state for explicit or partial work" {
+    Test-ShouldAdvancePrimaryKey "100" "101" $true $false | Should Be $true
+    Test-ShouldAdvancePrimaryKey "100" "101" $false $false | Should Be $false
+    Test-ShouldAdvancePrimaryKey "100" "101" $true $true | Should Be $false
+  }
+}
+
+Describe "Test-IsHeartbeatStalled" {
+  It "allows fresh progress and detects elapsed timeout" {
+    $now = [datetime]"2026-08-12T00:05:01Z"
+    Test-IsHeartbeatStalled ([datetime]"2026-08-12T00:00:02Z") $now 300 | Should Be $false
+    Test-IsHeartbeatStalled ([datetime]"2026-08-12T00:00:00Z") $now 300 | Should Be $true
   }
 }

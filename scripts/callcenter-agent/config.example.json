@@ -4,6 +4,8 @@
   "includeAggregateFields": false,
   "overlapDays": 3,
   "pollSeconds": 300,
+  "readStallTimeoutSeconds": 300,
+  "heartbeatIntervalSeconds": 5,
   "runContinuously": true,
   "stateDirectory": "C:\\ProgramData\\Garden\\CallCenterAgent",
   "logDirectory": "C:\\ProgramData\\Garden\\CallCenterAgent\\logs",

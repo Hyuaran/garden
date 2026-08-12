@@ -78,7 +78,50 @@ function Test-ShouldAdvanceState {
   )
 
   if (-not $CompletedWithoutPartial -or $null -eq $CandidateDate) { return $false }
-  if (-not $IsExplicitRange) { return $true }
   if ($null -eq $ExistingStateDate) { return $true }
   return $CandidateDate.Date -gt $ExistingStateDate.Date
+}
+
+function ConvertTo-NormalizedPrimaryKey {
+  param([AllowNull()] [object]$Value)
+  if ($null -eq $Value) { return $null }
+  $text = [Convert]::ToString($Value, [Globalization.CultureInfo]::InvariantCulture).Trim()
+  if ($text -notmatch '^\d+(?:\.0+)?$') { return $null }
+  $integer = ($text -split '\.')[0].TrimStart('0')
+  if ($integer.Length -eq 0) { return '0' }
+  return $integer
+}
+
+function Compare-NormalizedPrimaryKey {
+  param([string]$Left, [string]$Right)
+  $a = ConvertTo-NormalizedPrimaryKey $Left; $b = ConvertTo-NormalizedPrimaryKey $Right
+  if ($null -eq $a -or $null -eq $b) { throw 'Primary key must be a non-negative integer-valued DECIMAL.' }
+  if ($a.Length -ne $b.Length) { return [Math]::Sign($a.Length - $b.Length) }
+  return [string]::CompareOrdinal($a, $b)
+}
+
+function Test-ShouldAdvancePrimaryKey {
+  param([AllowNull()][string]$ExistingPrimaryKey, [AllowNull()][string]$CandidatePrimaryKey, [bool]$CompletedWithoutPartial, [bool]$IsExplicitRange)
+  if ($IsExplicitRange -or -not $CompletedWithoutPartial -or $null -eq $CandidatePrimaryKey) { return $false }
+  if ($null -eq $ExistingPrimaryKey) { return $true }
+  return (Compare-NormalizedPrimaryKey $CandidatePrimaryKey $ExistingPrimaryKey) -gt 0
+}
+
+function Get-IncrementalQueryMode {
+  param([bool]$IsExplicitRange, [AllowNull()][string]$LastPrimaryKey)
+  if ($IsExplicitRange) { return 'backfill' }
+  if ($LastPrimaryKey) { return 'primary_key' }
+  return 'bootstrap_date'
+}
+
+function Get-PrimaryKeyIncrementalPredicate {
+  param([Parameter(Mandatory = $true)][string]$LastPrimaryKey)
+  $normalized = ConvertTo-NormalizedPrimaryKey $LastPrimaryKey
+  if ($null -eq $normalized) { throw 'Primary-key state is invalid.' }
+  return 'WHERE "主キー" > ' + $normalized + ' ORDER BY "主キー"'
+}
+
+function Test-IsHeartbeatStalled {
+  param([datetime]$LastWriteUtc, [datetime]$NowUtc, [int]$TimeoutSeconds)
+  return ($NowUtc - $LastWriteUtc).TotalSeconds -gt [Math]::Max($TimeoutSeconds, 1)
 }
