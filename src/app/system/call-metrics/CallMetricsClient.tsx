@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import type { CallMetricsResponse } from "../_lib/call-metrics";
-import { defaultCallMetricDates } from "../_lib/call-metrics";
+import { defaultCallMetricDates, summarizeCallMetrics } from "../_lib/call-metrics";
 import styles from "./call-metrics.module.css";
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
@@ -51,12 +51,8 @@ export default function CallMetricsClient() {
 
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const totalCalls = data?.metrics.reduce((sum, row) => sum + row.callCount, 0) ?? 0;
-  const employeeCount = data?.employeeMetrics.length ?? 0;
-  const totalEffective = data?.employeeMetrics.reduce((sum, row) => sum + row.effectiveCount, 0) ?? 0;
-  const totalOrders = data?.employeeMetrics.reduce((sum, row) => sum + row.orderCount, 0) ?? 0;
-  const totalAcquired = data?.employeeMetrics.reduce((sum, row) => sum + row.acquiredCount, 0) ?? 0;
-  const averageCalls = employeeCount ? totalCalls / employeeCount : 0;
+  const summary = data ? summarizeCallMetrics(data) : null;
+  const totalCalls = summary?.totalCalls ?? 0;
 
   async function logout() {
     await createBrowserClient().auth.signOut();
@@ -84,10 +80,10 @@ export default function CallMetricsClient() {
       {data && <>
         <p className={styles.period}>対象期間: {data.from}〜{data.to} ／ リスト数: {data.metrics.length} ／ コール数: {totalCalls.toLocaleString()}</p>
         <div className={styles.summaryBand} aria-label="対象期間の集計サマリー">
-          <span>従業員数: {employeeCount.toLocaleString()} ／ 総コール数: {totalCalls.toLocaleString()}</span>
-          <span>平均コール数: {averageCalls.toFixed(1)}</span>
-          <span>有効率: {percent(totalCalls ? totalEffective / totalCalls : 0)}</span>
-          <span>受注率: {percent(totalCalls ? totalOrders / totalCalls : 0)}（受注{totalOrders.toLocaleString()}件／獲得{totalAcquired.toLocaleString()}件）</span>
+          <span>従業員数: {(summary?.employeeCount ?? 0).toLocaleString()} ／ 総コール数: {totalCalls.toLocaleString()}</span>
+          <span>平均コール数: {(summary?.averageCalls ?? 0).toFixed(1)}</span>
+          <span>有効率: {percent(summary?.effectiveRate ?? 0)}</span>
+          <span>受注率: {percent(summary?.orderRate ?? 0)}（受注{(summary?.totalOrders ?? 0).toLocaleString()}件／獲得{(summary?.totalAcquired ?? 0).toLocaleString()}件）</span>
           <span>最終更新: {formatJst(data.lastImportedAt)}</span>
         </div>
         <div className={styles.tabs} role="tablist" aria-label="集計表示">

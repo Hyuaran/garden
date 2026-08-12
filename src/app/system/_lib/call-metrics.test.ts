@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateDefinitionFixture, aggregateEmployeeDefinitionFixture, classifyResultFlag, defaultCallMetricDates, normalizeCallMetricsRpc, parseCallMetricParams } from "./call-metrics";
+import { aggregateDefinitionFixture, aggregateEmployeeDefinitionFixture, classifyResultFlag, defaultCallMetricDates, normalizeCallMetricsRpc, parseCallMetricParams, summarizeCallMetrics } from "./call-metrics";
 
 describe("call metrics definitions", () => {
   it("calculates the confirmed definition from raw result_flag values", () => {
@@ -51,5 +51,16 @@ describe("call metrics definitions", () => {
     expect(() => parseCallMetricParams(new URLSearchParams("from=bad&to=2026-08-12"))).toThrow("YYYY-MM-DD");
     expect(() => parseCallMetricParams(new URLSearchParams("from=2026-08-13&to=2026-08-12"))).toThrow("開始日");
     expect(() => parseCallMetricParams(new URLSearchParams("from=2025-01-01&to=2026-08-12"))).toThrow("最大366日");
+  });
+
+  it("summarizes with the same overall definitions as the portal", () => {
+    const data = normalizeCallMetricsRpc({
+      metrics: [{ list_name: "A", call_count: 1517 }],
+      employee_metrics: [
+        { employee_name: "A", call_count: 1000, effective_count: 600, order_count: 30, acquired_count: 20 },
+        { employee_name: "B", call_count: 517, effective_count: 310, order_count: 15, acquired_count: 10 },
+      ],
+    }, { from: "2026-08-12", to: "2026-08-12", listName: null, employeeName: null });
+    expect(summarizeCallMetrics(data)).toEqual({ employeeCount: 2, totalCalls: 1517, totalEffective: 910, totalOrders: 45, totalAcquired: 30, averageCalls: 758.5, effectiveRate: 910 / 1517, orderRate: 45 / 1517 });
   });
 });
