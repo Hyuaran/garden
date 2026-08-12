@@ -1,12 +1,25 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CallMetricsClient from "./CallMetricsClient";
+import styles from "./call-metrics.module.css";
 
 const mocks = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), signOut: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }));
 vi.mock("@/app/_lib/supabase/browser", () => ({ createBrowserClient: () => ({ auth: { signOut: mocks.signOut } }) }));
 
 const response = { ok: true, from: "2026-08-01", to: "2026-08-12", listName: null, employeeName: null, lastImportedAt: "2026-08-12T03:34:00Z", metrics: [{ listName: "リストA", callCount: 10, effectiveCount: 7, effectiveRate: .7, orderCount: 2, acquiredCount: 1, callOrderRate: .2 }], employeeMetrics: [{ employeeName: "社員A", callCount: 10, effectiveCount: 7, effectiveRate: .7, orderCount: 2, acquiredCount: 1, callOrderRate: .2 }] };
+
+const longResponse = {
+  ...response,
+  metrics: Array.from({ length: 16 }, (_, index) => ({
+    ...response.metrics[0],
+    listName: `リスト${index + 1}`,
+  })),
+  employeeMetrics: Array.from({ length: 16 }, (_, index) => ({
+    ...response.employeeMetrics[0],
+    employeeName: `社員${index + 1}`,
+  })),
+};
 
 describe("CallMetricsClient", () => {
   beforeEach(() => {
@@ -19,6 +32,9 @@ describe("CallMetricsClient", () => {
     expect(screen.getByText("Garden call portal")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "テレマ コール集計ポータル" })).toBeInTheDocument();
     expect(screen.getAllByRole("tab")).toHaveLength(3);
+    expect(screen.getByTestId("call-metrics-page-shell")).toHaveClass(styles.pageShell);
+    expect(screen.getByText(/^対象期間:/)).toHaveClass(styles.period);
+    expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveClass(styles.summaryBand);
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("平均コール数: 10.0");
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("有効率: 70.0%");
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("受注率: 20.0%（受注2件／獲得1件）");
@@ -36,6 +52,16 @@ describe("CallMetricsClient", () => {
     expect(screen.queryByText("件数")).not.toBeInTheDocument();
     expect(screen.queryByText("想定内")).not.toBeInTheDocument();
     expect(screen.queryByText("空")).not.toBeInTheDocument();
+  });
+  it("keeps long content inside the page background shell on every tab", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => longResponse } as Response);
+    render(<CallMetricsClient />);
+    const shell = screen.getByTestId("call-metrics-page-shell");
+    expect(shell).toContainElement(await screen.findByText("社員16"));
+    fireEvent.click(screen.getByRole("tab", { name: "リストごと" }));
+    expect(shell).toContainElement(screen.getByText("リスト16"));
+    fireEvent.click(screen.getByRole("tab", { name: "定義方法" }));
+    expect(shell).toContainElement(screen.getByRole("heading", { name: "結果フラグの扱い（分類ルール）" }));
   });
   it("signs out and returns to the shared login", async () => {
     render(<CallMetricsClient />); await screen.findByText("社員A");
