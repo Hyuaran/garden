@@ -96,6 +96,8 @@ trueではFileMakerの計算列評価により大幅に遅くなる可能性が�
 
 `-StartDate`または`-EndDate`を明示した実行はバックフィルとして扱われ、対象範囲を月単位に分割します。各月は独立したODBC readerで取得され、最大500件ずつAPIへ送信されます。ログの`month started`、`batch completed`、`month completed`、`sync completed`で、月別件数、送信件数、累計件数、直近コール日、所要時間を確認できます。
 
+古いFileMakerデータにコール日が空、または`yyyy-MM-dd`として解釈できない行が含まれる場合、その行はAPIへ送らず自動的にスキップします。`month completed.skipped_invalid_date`で月別件数、`sync completed.skipped_invalid_date`で累計件数を確認できます。行本文や電話番号はログへ出しません。不正日付行は受け側でも保存対象外であり、有効な行の集計とstate更新には影響しません。
+
 バックフィル中は二重取得を避けるため、増分タスクを停止したままにします。
 
 ```powershell

@@ -20,6 +20,25 @@ function Get-CallFetchColumns {
   return @($storedFields + $aggregateFields)
 }
 
+function ConvertTo-CallDate {
+  param([AllowNull()] [object]$Value)
+
+  if ($null -eq $Value) { return $null }
+  $text = [string]$Value
+  if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+
+  $parsed = [datetime]::MinValue
+  $success = [datetime]::TryParseExact(
+    $text,
+    "yyyy-MM-dd",
+    [Globalization.CultureInfo]::InvariantCulture,
+    [Globalization.DateTimeStyles]::None,
+    [ref]$parsed
+  )
+  if (-not $success) { return $null }
+  return $parsed.Date
+}
+
 function Get-CallSyncRanges {
   param(
     [Parameter(Mandatory = $true)] [datetime]$From,
