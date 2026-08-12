@@ -53,6 +53,7 @@ export type CallMetricsResponse = {
   employeeName: string | null;
   metrics: CallMetricRow[];
   employeeMetrics: EmployeeCallMetricRow[];
+  lastImportedAt: string | null;
 };
 
 type RpcMetricRow = {
@@ -67,7 +68,7 @@ type RpcMetricRow = {
 
 type RpcEmployeeMetricRow = Omit<RpcMetricRow, "list_name"> & { employee_name?: unknown };
 
-type RpcPayload = { metrics?: unknown; employee_metrics?: unknown };
+type RpcPayload = { metrics?: unknown; employee_metrics?: unknown; last_imported_at?: unknown };
 
 function dateOnly(value: string | null) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -112,6 +113,7 @@ export function normalizeCallMetricsRpc(
     to: range.to,
     listName: range.listName,
     employeeName: range.employeeName,
+    lastImportedAt: payload.last_imported_at ? String(payload.last_imported_at) : null,
     metrics: metrics.map((row) => ({
       listName: String(row.list_name ?? "リスト名なし"),
       callCount: number(row.call_count),
