@@ -1,17 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import type { CallMetricsResponse } from "../_lib/call-metrics";
 import { defaultCallMetricDates } from "../_lib/call-metrics";
 import styles from "./call-metrics.module.css";
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
+const weekday = ["日", "月", "火", "水", "木", "金", "土"];
+function formatJst(value: string | null) {
+  if (!value) return "データなし";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "データなし";
+  const parts = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  const jstDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+  return `${get("year")}/${get("month")}/${get("day")}(${weekday[jstDate.getDay()]}) ${get("hour")}:${get("minute")}`;
+}
 const FLAG_RULES = [
   ["留守", "無効"], ["無効", "無効"], ["担不", "有効"], ["見込", "有効"],
   ["獲得", "有効"], ["トス", "有効"], ["NG", "有効"], ["前確OK", "有効"], ["前確NG", "有効"],
 ] as const;
 
 export default function CallMetricsClient() {
+  const router = useRouter();
   const defaults = defaultCallMetricDates();
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
@@ -39,13 +52,23 @@ export default function CallMetricsClient() {
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalCalls = data?.metrics.reduce((sum, row) => sum + row.callCount, 0) ?? 0;
+  const employeeCount = data?.employeeMetrics.length ?? 0;
+  const totalEffective = data?.employeeMetrics.reduce((sum, row) => sum + row.effectiveCount, 0) ?? 0;
+  const totalOrders = data?.employeeMetrics.reduce((sum, row) => sum + row.orderCount, 0) ?? 0;
+  const totalAcquired = data?.employeeMetrics.reduce((sum, row) => sum + row.acquiredCount, 0) ?? 0;
+  const averageCalls = employeeCount ? totalCalls / employeeCount : 0;
+
+  async function logout() {
+    await createBrowserClient().auth.signOut();
+    router.replace("/login?returnTo=%2Fsystem%2Fcall-metrics");
+    router.refresh();
+  }
 
   return (
     <main className={styles.main}>
-      <header>
-        <p className={styles.eyebrow}>Garden call portal</p>
-        <h1>テレマ コール集計ポータル</h1>
-        <p className={styles.notice}>現在は直近取込分のみの検算画面です。全期間の網羅値はStep2のバックフィル後に確認します。</p>
+      <header className={styles.header}>
+        <div><p className={styles.eyebrow}>Garden call portal</p><h1>テレマ コール集計ポータル</h1></div>
+        <button type="button" className={styles.logout} onClick={() => void logout()}>ログアウト</button>
       </header>
 
       <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void load(); }}>
@@ -59,6 +82,13 @@ export default function CallMetricsClient() {
       {error && <p className={styles.error} role="alert">{error}</p>}
       {data && <>
         <p className={styles.summary}>対象期間: {data.from}〜{data.to} ／ リスト数: {data.metrics.length} ／ コール数: {totalCalls.toLocaleString()}</p>
+        <div className={styles.summary} aria-label="対象期間の集計サマリー">
+          <span>従業員数: {employeeCount.toLocaleString()} ／ 総コール数: {totalCalls.toLocaleString()}</span>
+          <span>平均コール数: {averageCalls.toFixed(1)}</span>
+          <span>有効率: {percent(totalCalls ? totalEffective / totalCalls : 0)}</span>
+          <span>受注率: {percent(totalCalls ? totalOrders / totalCalls : 0)}（受注{totalOrders.toLocaleString()}件／獲得{totalAcquired.toLocaleString()}件）</span>
+          <span>最終更新: {formatJst(data.lastImportedAt)}</span>
+        </div>
         <div className={styles.tabs} role="tablist" aria-label="集計表示">
           <button type="button" role="tab" aria-selected={activeTab === "employees"} onClick={() => setActiveTab("employees")}>従業員ごと</button>
           <button type="button" role="tab" aria-selected={activeTab === "lists"} onClick={() => setActiveTab("lists")}>リストごと</button>
@@ -67,7 +97,7 @@ export default function CallMetricsClient() {
 
         {activeTab === "employees" && <section role="tabpanel">
           <h2>従業員ごとの指標</h2>
-          <div className={styles.tableWrap}><table>
+          <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><table>
             <thead><tr><th>社員名</th><th>コール数</th><th>有効数</th><th>有効率</th><th>受注数</th><th>獲得数</th><th>コール受注率</th></tr></thead>
             <tbody>{data.employeeMetrics.length ? data.employeeMetrics.map((row) => <tr key={row.employeeName}>
               <td>{row.employeeName}</td><td>{row.callCount.toLocaleString()}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td>{row.orderCount.toLocaleString()}</td><td>{row.acquiredCount.toLocaleString()}</td><td>{percent(row.callOrderRate)}</td>
@@ -77,7 +107,7 @@ export default function CallMetricsClient() {
 
         {activeTab === "lists" && <section role="tabpanel">
           <h2>リストごとの指標</h2>
-          <div className={styles.tableWrap}><table>
+          <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><table>
             <thead><tr><th>リスト名</th><th>コール数</th><th>有効数</th><th>有効率</th><th>受注数</th><th>獲得数</th><th>コール受注率</th><th>リスト数</th><th>回転数</th><th>リスト受注率</th></tr></thead>
             <tbody>{data.metrics.length ? data.metrics.map((row) => <tr key={row.listName}>
               <td>{row.listName}</td><td>{row.callCount.toLocaleString()}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td>{row.orderCount.toLocaleString()}</td><td>{row.acquiredCount.toLocaleString()}</td><td>{percent(row.callOrderRate)}</td><td className={styles.pending}>未取得</td><td className={styles.pending}>未取得</td><td className={styles.pending}>未取得</td>

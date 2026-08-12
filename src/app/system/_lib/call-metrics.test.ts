@@ -35,10 +35,11 @@ describe("call metrics definitions", () => {
     const result = normalizeCallMetricsRpc({
       metrics: [{ list_name: "A", call_count: 11, effective_count: 7, effective_rate: "0.636364", order_count: 1, acquired_count: 1, call_order_rate: "0.090909" }],
       employee_metrics: [{ employee_name: "社員A", call_count: 11, effective_count: 7, effective_rate: "0.636364", order_count: 1, acquired_count: 1, call_order_rate: "0.090909" }],
+      last_imported_at: "2026-08-12T03:34:00Z",
     }, { from: "2026-08-01", to: "2026-08-12", listName: "A", employeeName: "社員A" });
     expect(result.metrics[0]).toMatchObject({ callCount: 11, effectiveCount: 7, orderCount: 1, acquiredCount: 1 });
     expect(result.employeeMetrics[0]).toMatchObject({ employeeName: "社員A", callCount: 11, effectiveCount: 7, orderCount: 1, acquiredCount: 1 });
-    expect(result).toMatchObject({ listName: "A", employeeName: "社員A" });
+    expect(result).toMatchObject({ listName: "A", employeeName: "社員A", lastImportedAt: "2026-08-12T03:34:00Z" });
   });
 
   it("uses today for both default dates", () => {
