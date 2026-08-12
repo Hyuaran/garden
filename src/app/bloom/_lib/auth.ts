@@ -15,9 +15,13 @@
  */
 
 import type { ModuleCode } from "../_types/module-progress";
+import {
+  clearAuthSession,
+  isAuthSessionUnlocked,
+  touchAuthSession,
+  unlockAuthSession,
+} from "../../_lib/auth-unified";
 import { supabase } from "./supabase";
-
-const BLOOM_UNLOCKED_KEY = "bloom:unlockedAt";
 
 export type GardenRole =
   | "toss"
@@ -74,40 +78,37 @@ export async function signInBloom(
     };
   }
 
-  sessionStorage.setItem(BLOOM_UNLOCKED_KEY, Date.now().toString());
+  unlockAuthSession("bloom");
   return { success: true, userId: data.user.id };
 }
 
 /** Bloom セッション + Supabase Auth セッションを終了 */
 export async function signOutBloom(): Promise<void> {
-  if (typeof window !== "undefined") {
-    sessionStorage.removeItem(BLOOM_UNLOCKED_KEY);
-  }
+  clearBloomUnlock();
   await supabase.auth.signOut();
 }
 
 /** Bloom ゲートが有効か（2時間以内にパスワード入力済みか） */
 export function isBloomUnlocked(): boolean {
-  if (typeof window === "undefined") return false;
-  const raw = sessionStorage.getItem(BLOOM_UNLOCKED_KEY);
-  if (!raw) return false;
-  const unlockedAt = parseInt(raw, 10);
-  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-  return Date.now() - unlockedAt < TWO_HOURS_MS;
+  return isAuthSessionUnlocked("bloom");
 }
 
 /** Bloom ゲートのアクティビティ更新（操作があるたびに呼ぶ） */
 export function touchBloomSession(): void {
-  if (typeof window === "undefined") return;
-  if (isBloomUnlocked()) {
-    sessionStorage.setItem(BLOOM_UNLOCKED_KEY, Date.now().toString());
-  }
+  touchAuthSession("bloom");
+}
+
+/**
+ * Mark Bloom as unlocked after Garden auth and Bloom permission are verified.
+ * This restores the local gate for resumed cookie sessions.
+ */
+export function markBloomUnlocked(): void {
+  unlockAuthSession("bloom");
 }
 
 /** Bloom ゲート強制ロック（権限チェック失敗時など） */
 export function clearBloomUnlock(): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(BLOOM_UNLOCKED_KEY);
+  clearAuthSession("bloom");
 }
 
 /** 現在の Garden Auth セッション取得 */

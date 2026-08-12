@@ -18,6 +18,13 @@ vi.mock("@/app/tree/_lib/supabase", () => ({
   supabase: { from: vi.fn(), auth: {} },
 }));
 
+vi.mock("@/app/_lib/auth-unified", () => ({
+  clearAuthSession: vi.fn(),
+  isAuthSessionUnlocked: vi.fn(),
+  touchAuthSession: vi.fn(),
+  unlockAuthSession: vi.fn(),
+}));
+
 import { mapGardenRoleToTreeRole } from "@/app/tree/_state/TreeStateContext";
 import { ROLES } from "@/app/tree/_constants/roles";
 import type { GardenRole } from "@/app/root/_constants/types";

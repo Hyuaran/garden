@@ -27,7 +27,7 @@ import {
   fetchBloomUser,
   getSession,
   hasAccess,
-  isBloomUnlocked,
+  markBloomUnlocked,
   signOutBloom,
   type BloomUser,
   type GardenRole,
@@ -79,11 +79,16 @@ export function BloomStateProvider({ children }: { children: ReactNode }) {
     setIsUnlocked(true);
   }, []);
 
-  const lockAndLogoutFn = useCallback(async (_reason: "manual" | "timeout") => {
+  const lockAndLogoutFn = useCallback(async (reason: "manual" | "timeout") => {
+    clearBloomUnlock();
+    setIsUnlocked(false);
+
+    // A local Bloom timeout must not terminate the shared Garden session.
+    if (reason === "timeout") return;
+
     await signOutBloom();
     setIsAuthenticated(false);
     setHasPermission(false);
-    setIsUnlocked(false);
     setUserEmail(null);
     setBloomUser(null);
   }, []);
@@ -102,21 +107,24 @@ export function BloomStateProvider({ children }: { children: ReactNode }) {
 
       const bu = await fetchBloomUser(session.user.id);
       if (!bu) {
-        await signOutBloom();
         clearBloomUnlock();
-        setIsAuthenticated(false);
+        // Bloom permission failure must not terminate the shared Garden session.
+        setIsAuthenticated(true);
         setHasPermission(false);
         setIsUnlocked(false);
-        setUserEmail(null);
+        setUserEmail(session.user.email ?? null);
         setBloomUser(null);
         return { success: false, error: "Bloom 権限が確認できません" };
       }
 
+      // Valid Garden auth + Bloom permission restores the local gate for a
+      // resumed session (reload/new tab/expired sessionStorage key).
+      markBloomUnlocked();
       setIsAuthenticated(true);
       setUserEmail(session.user.email ?? null);
       setHasPermission(true);
       setBloomUser(bu);
-      setIsUnlocked(isBloomUnlocked());
+      setIsUnlocked(true);
       return { success: true };
     } catch (err) {
       console.error("[bloom] Refresh auth error:", err);
