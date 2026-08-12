@@ -65,7 +65,8 @@ export default function CallMetricsClient() {
   }
 
   return (
-    <main className={styles.main}>
+    <div className={styles.pageShell} data-testid="call-metrics-page-shell">
+      <main className={styles.main}>
       <header className={styles.header}>
         <div><p className={styles.eyebrow}>Garden call portal</p><h1>テレマ コール集計ポータル</h1></div>
         <button type="button" className={styles.logout} onClick={() => void logout()}>ログアウト</button>
@@ -81,8 +82,8 @@ export default function CallMetricsClient() {
 
       {error && <p className={styles.error} role="alert">{error}</p>}
       {data && <>
-        <p className={styles.summary}>対象期間: {data.from}〜{data.to} ／ リスト数: {data.metrics.length} ／ コール数: {totalCalls.toLocaleString()}</p>
-        <div className={styles.summary} aria-label="対象期間の集計サマリー">
+        <p className={styles.period}>対象期間: {data.from}〜{data.to} ／ リスト数: {data.metrics.length} ／ コール数: {totalCalls.toLocaleString()}</p>
+        <div className={styles.summaryBand} aria-label="対象期間の集計サマリー">
           <span>従業員数: {employeeCount.toLocaleString()} ／ 総コール数: {totalCalls.toLocaleString()}</span>
           <span>平均コール数: {averageCalls.toFixed(1)}</span>
           <span>有効率: {percent(totalCalls ? totalEffective / totalCalls : 0)}</span>
@@ -138,6 +139,7 @@ export default function CallMetricsClient() {
           </table></div>
         </section>}
       </>}
-    </main>
+      </main>
+    </div>
   );
 }
