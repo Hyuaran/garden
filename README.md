@@ -67,6 +67,8 @@ select * from public.system_call_rollup_refresh(array[date '2026-08-12']);
 
 責任者以上は`/system/attendance/sync-status`で未送信・失敗等の件数と直近200件を確認できます。第1段ではKOTへの実送信は行わないため、新規打刻は`unsent`で保存されます。
 
+責任者以上は同期状況画面から、KOT取込用の4列・ヘッダなし・Shift-JIS CSVを生成できます。生成した打刻は`送信中`になり、KOTへの手動アップロード成功後に「アップロード完了」、エラー時は「取消」して再生成します。未確定のCSVがある間は次のCSVを生成できません。
+
 先に`supabase/migrations/20260813000004_system_attendance_punches.sql`を適用してください。適用前には同ファイル冒頭のSQLで`root_employees.employee_id`が`text`の主キーであることを確認します。ログインユーザーと`root_employees.user_id`をサーバーで照合し、本人の`employee_id`だけを保存します。ブラウザからテーブルを直接操作するRLS policyはありません。
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
