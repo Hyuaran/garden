@@ -50,7 +50,10 @@ export async function POST(request: Request) {
   };
 
   if (parsed.valid.length === 0) {
-    await finishLog({ status: "failure", error_code: "ALL_ROWS_REJECTED", error_message: "全行が入力検証で拒否されました" });
+    await finishLog({
+      status: "failure", error_code: "ALL_ROWS_REJECTED", error_message: "全行が入力検証で拒否されました",
+      rollup_refresh_status: "skipped", rollup_refresh_error: null,
+    });
     return NextResponse.json({
       ok: false, status: "failure", log_id: log.id, records_fetched: parsed.fetched,
       records_inserted: 0, records_updated: 0, records_rejected: parsed.rejected.length,
@@ -61,7 +64,7 @@ export async function POST(request: Request) {
   try {
     const ids = parsed.valid.map((row) => row.external_call_id);
     const { data: existing, error: existingError } = await supabase
-      .from("system_call_history").select("external_call_id").in("external_call_id", ids);
+      .from("system_call_history").select("external_call_id,call_date").in("external_call_id", ids);
     if (existingError) throw new Error(`既存レコード確認失敗: ${existingError.message}`);
     const existingIds = new Set((existing ?? []).map((row) => String(row.external_call_id)));
     const recordsUpdated = parsed.valid.filter((row) => existingIds.has(row.external_call_id)).length;
@@ -70,8 +73,26 @@ export async function POST(request: Request) {
       .upsert(parsed.valid, { onConflict: "external_call_id" });
     if (upsertError) throw new Error(`コール履歴upsert失敗: ${upsertError.message}`);
 
+    const refreshDates = [...new Set([
+      ...parsed.valid.map((row) => row.call_date),
+      ...(existing ?? []).map((row) => String(row.call_date)).filter(Boolean),
+    ])].sort();
+    let rollupRefreshStatus: "success" | "failure" = "success";
+    let rollupRefreshError: string | null = null;
+    const { error: refreshError } = await supabase.rpc("system_call_rollup_refresh", { p_dates: refreshDates });
+    if (refreshError) {
+      rollupRefreshStatus = "failure";
+      rollupRefreshError = "日次ロールアップ更新に失敗しました。手動再構築が必要です";
+      console.warn("[system/call-ingest] rollup refresh failed", {
+        run_id: parsed.metadata.runId, batch_index: parsed.metadata.batchIndex, date_count: refreshDates.length,
+      });
+    }
+
     const status = parsed.rejected.length > 0 ? "partial" : "success";
-    await finishLog({ status, records_inserted: recordsInserted, records_updated: recordsUpdated });
+    await finishLog({
+      status, records_inserted: recordsInserted, records_updated: recordsUpdated,
+      rollup_refresh_status: rollupRefreshStatus, rollup_refresh_error: rollupRefreshError,
+    });
     return NextResponse.json({
       ok: status === "success", status, log_id: log.id, records_fetched: parsed.fetched,
       records_inserted: recordsInserted, records_updated: recordsUpdated,
@@ -79,7 +100,10 @@ export async function POST(request: Request) {
     }, { status: status === "partial" ? 207 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "取込処理に失敗しました";
-    await finishLog({ status: "failure", error_code: "INGEST_FAILED", error_message: message });
+    await finishLog({
+      status: "failure", error_code: "INGEST_FAILED", error_message: message,
+      rollup_refresh_status: "skipped", rollup_refresh_error: null,
+    });
     console.error("[system/call-ingest] batch failed", message, { run_id: parsed.metadata.runId, batch_index: parsed.metadata.batchIndex });
     return NextResponse.json({ ok: false, status: "failure", log_id: log.id, error: "取込処理に失敗しました" }, { status: 500 });
   }

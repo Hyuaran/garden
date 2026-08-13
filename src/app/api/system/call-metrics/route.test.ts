@@ -7,7 +7,7 @@ import { GET } from "./route";
 function client(options: { user?: boolean; role?: string; roleError?: boolean; rpcError?: boolean } = {}) {
   const rpc = vi.fn().mockResolvedValue(options.rpcError
     ? { data: null, error: { code: "XX000", message: "secret db detail" } }
-    : { data: { metrics: [], result_flags: [] }, error: null });
+    : { data: { authorized: true, metrics: [], employee_metrics: [], last_imported_at: null }, error: null });
   return {
     rpc,
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: options.user === false ? null : { id: "user-1" } } }) },
