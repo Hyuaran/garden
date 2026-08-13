@@ -44,6 +44,23 @@ curl https://garden-os.net/api/system/call-report/cron \
 
 祝日は内閣府公表の2026・2027年分を`call-report-schedule.ts`へ埋め込んでいます。実行時fetchはありません。内閣府が翌年分を公表したら日付Setとテストを更新してください。重複発火に対する配信履歴・冪等性制御は未実装です。
 
+### テレマ コール集計の日次ロールアップ
+
+長期間の集計は`system_call_history`を毎回走査せず、正本から再構築可能な`system_call_daily_rollup`を読みます。migrationは次の順でSupabase SQL Editorから適用してください。
+
+1. `20260813000002_system_call_daily_rollup.sql`（表・refresh関数・sync log列・初期構築）
+2. `scripts/call-metrics-rollup-verify.sql`で`differing_cells=0`、`summary_matches=true`を確認
+3. `20260813000003_system_call_metrics_rollup.sql`（本番4引数RPCの読取先切替）
+4. 同じ検算SQLと`EXPLAIN (ANALYZE, BUFFERS)`で数値・速度を確認
+
+取込APIはupsertした行の新旧`call_date`をrefreshします。refresh失敗は正本の取込を失敗させず、`system_call_sync_log.rollup_refresh_status/error`へ記録します。失敗日は次のように手動再構築できます。
+
+```sql
+select * from public.system_call_rollup_refresh(array[date '2026-08-12']);
+```
+
+ロールアップの主キーは`(call_date, employee_name, list_name, result_flag)`です。結果フラグのNULL・空・空白はsentinel `空`、社員名とリスト名の空値はそれぞれ`氏名なし`、`リスト名なし`として正規化します。3引数版`system_call_metrics`はデッドコードのため再作成しません。
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

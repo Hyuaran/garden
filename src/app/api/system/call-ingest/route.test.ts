@@ -20,12 +20,13 @@ const request = (rows: unknown[]) => new Request("http://localhost/api/system/ca
   body: JSON.stringify(body(rows)),
 });
 
-function admin(options: { existing?: string[]; upsertError?: string } = {}) {
+function admin(options: { existing?: Array<string | { id: string; callDate: string }>; upsertError?: string; refreshError?: string } = {}) {
   const insertedLogs: unknown[] = [];
   const updatedLogs: unknown[] = [];
   const upserts: unknown[] = [];
   return {
     insertedLogs, updatedLogs, upserts,
+    rpc: vi.fn().mockResolvedValue({ data: null, error: options.refreshError ? { message: options.refreshError } : null }),
     from(table: string) {
       if (table === "system_call_sync_log") return {
         insert(payload: unknown) {
@@ -38,7 +39,9 @@ function admin(options: { existing?: string[]; upsertError?: string } = {}) {
         },
       };
       if (table === "system_call_history") return {
-        select: () => ({ in: async () => ({ data: (options.existing ?? []).map((external_call_id) => ({ external_call_id })), error: null }) }),
+        select: () => ({ in: async () => ({ data: (options.existing ?? []).map((value) => typeof value === "string"
+          ? { external_call_id: value, call_date: "2026-08-11" }
+          : { external_call_id: value.id, call_date: value.callDate }), error: null }) }),
         async upsert(payload: unknown) {
           upserts.push(payload);
           return { error: options.upsertError ? { message: options.upsertError } : null };
@@ -70,7 +73,29 @@ describe("POST /api/system/call-ingest", () => {
     expect(response.status).toBe(200);
     expect(result).toMatchObject({ status: "success", records_inserted: 1, records_updated: 0, records_rejected: 0 });
     expect(client.upserts[0]).toEqual([expect.objectContaining({ external_call_id: "1001", source: "callcenter-fm-agent" })]);
-    expect(client.updatedLogs.at(-1)).toEqual(expect.objectContaining({ status: "success", records_inserted: 1 }));
+    expect(client.rpc).toHaveBeenCalledWith("system_call_rollup_refresh", { p_dates: ["2026-08-11"] });
+    expect(client.updatedLogs.at(-1)).toEqual(expect.objectContaining({ status: "success", records_inserted: 1, rollup_refresh_status: "success" }));
+  });
+
+  it("refreshes both old and new dates when an upsert moves a call", async () => {
+    const client = admin({ existing: [{ id: "1001", callDate: "2026-08-10" }] });
+    mocks.getAdmin.mockReturnValue(client);
+    const response = await POST(request([validRow]));
+    expect(response.status).toBe(200);
+    expect(client.rpc).toHaveBeenCalledWith("system_call_rollup_refresh", { p_dates: ["2026-08-10", "2026-08-11"] });
+  });
+
+  it("keeps ingest successful and records a warning when rollup refresh fails", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const client = admin({ refreshError: "database detail" });
+    mocks.getAdmin.mockReturnValue(client);
+    const response = await POST(request([validRow]));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: "success", records_inserted: 1 });
+    expect(client.updatedLogs.at(-1)).toEqual(expect.objectContaining({
+      status: "success", rollup_refresh_status: "failure",
+      rollup_refresh_error: "日次ロールアップ更新に失敗しました。手動再構築が必要です",
+    }));
   });
 
   it("stores valid rows and returns 207 for a partial batch", async () => {
