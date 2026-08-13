@@ -61,6 +61,14 @@ select * from public.system_call_rollup_refresh(array[date '2026-08-12']);
 
 ロールアップの主キーは`(call_date, employee_name, list_name, result_flag)`です。結果フラグのNULL・空・空白はsentinel `空`、社員名とリスト名の空値はそれぞれ`氏名なし`、`リスト名なし`として正規化します。3引数版`system_call_metrics`はデッドコードのため再作成しません。
 
+### 勤怠打刻（第1段）
+
+ログイン済みの在籍従業員は`/system/attendance`から出勤・退勤・休憩開始・休憩終了を打刻できます。時刻は端末値ではなくDB時刻をUTC保存し、画面ではJST秒表示します。ブラウザ発行UUIDを一意キーとして再送時の二重保存を防ぎます。
+
+責任者以上は`/system/attendance/sync-status`で未送信・失敗等の件数と直近200件を確認できます。第1段ではKOTへの実送信は行わないため、新規打刻は`unsent`で保存されます。
+
+先に`supabase/migrations/20260813000004_system_attendance_punches.sql`を適用してください。適用前には同ファイル冒頭のSQLで`root_employees.employee_id`が`text`の主キーであることを確認します。ログインユーザーと`root_employees.user_id`をサーバーで照合し、本人の`employee_id`だけを保存します。ブラウザからテーブルを直接操作するRLS policyはありません。
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
