@@ -168,6 +168,12 @@ Describe "primary-key incremental helpers" {
     Test-ShouldAdvancePrimaryKey "100" "101" $false $false | Should Be $false
     Test-ShouldAdvancePrimaryKey "100" "101" $true $true | Should Be $false
   }
+  It "advances on the bootstrap run when no primary-key state exists yet" {
+    # Regression: a $null existing key is coerced to "" by the [string] param; must be treated as no key.
+    Test-ShouldAdvancePrimaryKey $null "3661069" $true $false | Should Be $true
+    Test-ShouldAdvancePrimaryKey "" "3661069" $true $false | Should Be $true
+    Test-ShouldAdvancePrimaryKey $null $null $true $false | Should Be $false
+  }
 }
 
 Describe "Test-IsHeartbeatStalled" {

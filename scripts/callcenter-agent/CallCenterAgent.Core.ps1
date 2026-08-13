@@ -102,8 +102,10 @@ function Compare-NormalizedPrimaryKey {
 
 function Test-ShouldAdvancePrimaryKey {
   param([AllowNull()][string]$ExistingPrimaryKey, [AllowNull()][string]$CandidatePrimaryKey, [bool]$CompletedWithoutPartial, [bool]$IsExplicitRange)
-  if ($IsExplicitRange -or -not $CompletedWithoutPartial -or $null -eq $CandidatePrimaryKey) { return $false }
-  if ($null -eq $ExistingPrimaryKey) { return $true }
+  # PowerShell coerces a $null [string] argument to "", so treat empty as "no key" (e.g. the
+  # bootstrap run before any last_max_primary_key exists) to avoid comparing against a blank.
+  if ($IsExplicitRange -or -not $CompletedWithoutPartial -or [string]::IsNullOrEmpty($CandidatePrimaryKey)) { return $false }
+  if ([string]::IsNullOrEmpty($ExistingPrimaryKey)) { return $true }
   return (Compare-NormalizedPrimaryKey $CandidatePrimaryKey $ExistingPrimaryKey) -gt 0
 }
 
