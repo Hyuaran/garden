@@ -14,7 +14,7 @@
 .sky {
   background:
     linear-gradient(90deg, rgba(9, 11, 32, 0.5), rgba(9, 11, 32, 0.18) 42%, rgba(9, 11, 32, 0) 70%),
-    url("/themes/garden-shell/images/login/bg-login-twilight-desktop.png") center / cover no-repeat;
+    url("/themes/garden-shell/images/login/bg-login-twilight-desktop.webp") center / cover no-repeat;
   inset: 0;
   position: fixed;
   z-index: 0;
@@ -338,7 +338,7 @@
   .sky {
     background:
       linear-gradient(180deg, rgba(9, 11, 32, 0.22), rgba(9, 11, 32, 0.02) 40%, rgba(9, 11, 32, 0.34)),
-      url("/themes/garden-shell/images/login/bg-login-twilight-mobile.png") center / cover no-repeat;
+      url("/themes/garden-shell/images/login/bg-login-twilight-mobile.webp") center / cover no-repeat;
   }
 
   .loginSection {
