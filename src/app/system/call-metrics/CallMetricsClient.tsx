@@ -132,7 +132,7 @@ export default function CallMetricsClient() {
           <h2>コール履歴のフラグ名 → ポータル表示名</h2>
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
             <thead><tr><th>コール履歴</th><th>ポータル表示</th></tr></thead>
-            <tbody><tr><td>獲得</td><td>受注</td></tr><tr><td>前確OK</td><td>前確OK数</td></tr><tr><td>トス</td><td>トス数</td></tr></tbody>
+            <tbody><tr><td>獲得</td><td>受注数</td></tr><tr><td>前確OK</td><td>前確OK数</td></tr><tr><td>トス</td><td>トス数</td></tr></tbody>
           </table></div>
           <h2>結果フラグの扱い（分類ルール）</h2>
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
