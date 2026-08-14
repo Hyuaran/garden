@@ -63,6 +63,10 @@ select * from public.system_call_rollup_refresh(array[date '2026-08-12']);
 
 ポータルではコール履歴の結果フラグ「獲得」を「受注」と表示します。受注率は獲得件数÷コール数、前確OK率は結果フラグ「前確OK」の件数÷コール数です。RPC内部の`acquired_count`（獲得）と`order_count`（前確OK）の意味は変更していません。トス数は結果フラグ「トス」から集計し、従業員タブのシフトは打刻アプリ連携まで「未取得」と表示します。
 
+前確OKは`system_call_history.external_sales_id`（営業ID）が同じ獲得行の担当者・リストへ帰属します。電話番号は照合に使いません。同じ営業IDに獲得が複数ある場合は、前確OK日以前の最新獲得、なければ全期間の最新獲得を選び、同日時は主キーで決定します。営業IDなし・獲得なしは前確OK行自身へフォールバックします。期間内コール0でも前確OKがある担当者・リストは0コール行として残ります。
+
+`20260814000002_system_call_metrics_preconfirm_reattribution.sql`はSupabase SQL Editorへ全文を貼り付けて一度に実行します（冒頭で`statement_timeout`を延長）。2本の部分インデックスは作成時にsystem_call_historyを1回走査し短時間の書き込みロックを取りますが、取込は冪等で再試行するため安全です（可能なら閑散時に）。適用後は`scripts/call-metrics-preconfirm-reattribution-verify.sql`で前確OK総数の一致、孤児件数、実例、ゼロコール行、1年レンジの実行時間を確認します。
+
 ### 勤怠打刻（第1段）
 
 ログイン済みの在籍従業員は`/system/attendance`から出勤・退勤・休憩開始・休憩終了を打刻できます。時刻は端末値ではなくDB時刻をUTC保存し、画面ではJST秒表示します。ブラウザ発行UUIDを一意キーとして再送時の二重保存を防ぎます。
