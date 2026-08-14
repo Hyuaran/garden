@@ -37,23 +37,26 @@ describe("CallMetricsClient", () => {
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveClass(styles.summaryBand);
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("平均コール数: 10.0");
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("有効率: 70.0%");
-    expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("受注率: 10.0%（受注1件）／前確OK率: 20.0%（前確OK 2件）");
+    expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("受注率: 10.0%（受注数 1件）／前確OK率: 20.0%（前確OK数 2件）");
     expect(screen.getByRole("columnheader", { name: "トス数" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "シフト" })).toBeInTheDocument();
     expect(screen.getByText("未取得")).toBeInTheDocument();
     const employeeCells = within(screen.getByText("社員A").closest("tr")!).getAllByRole("cell");
-    expect(employeeCells.map((cell) => cell.textContent)).toEqual(["社員A", "10", "7", "70.0%", "3", "1", "10.0%", "2", "20.0%", "未取得"]);
+    expect(within(screen.getByText("社員A").closest("table")!).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["社員名", "シフト", "コール数", "有効数", "有効率", "トス数", "トス率", "受注数", "受注率", "前確OK数", "前確OK率"]);
+    expect(employeeCells.map((cell) => cell.textContent)).toEqual(["社員A", "未取得", "10", "7", "70.0%", "3", "30.0%", "1", "10.0%", "2", "20.0%"]);
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("最終更新: 2026/08/12(水) 12:34");
     expect(screen.queryByText(/現在は直近取込分のみ/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "リストごと" }));
     expect(screen.getByText("リストA")).toBeInTheDocument();
     expect(screen.getAllByText("未取得")).toHaveLength(3);
     expect(screen.queryByRole("columnheader", { name: "シフト" })).not.toBeInTheDocument();
+    expect(within(screen.getByText("リストA").closest("table")!).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["リスト名", "コール数", "有効数", "有効率", "トス数", "トス率", "受注数", "受注率", "前確OK数", "前確OK率", "リスト数", "回転数", "リスト受注率"]);
     fireEvent.click(screen.getByRole("tab", { name: "定義方法" }));
     expect(screen.getByText("架電回数")).toBeInTheDocument();
     expect(screen.getByText("会話できたコール。留守・無効・空白（無効扱い）を除きます。")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "結果フラグの扱い（分類ルール）" })).toBeInTheDocument();
     expect(screen.getAllByRole("table")).toHaveLength(3);
+    expect(screen.getAllByRole("table")[0].parentElement).toHaveClass(styles.definitionTable, styles.definitionFit);
     expect(screen.queryByText(/result_flag 診断/)).not.toBeInTheDocument();
     expect(screen.queryByText("件数")).not.toBeInTheDocument();
     expect(screen.queryByText("想定内")).not.toBeInTheDocument();
@@ -63,9 +66,16 @@ describe("CallMetricsClient", () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ ...response, metrics: [], employeeMetrics: [] }) } as Response);
     render(<CallMetricsClient />);
     const employeeEmpty = await screen.findByText("対象データがありません");
-    expect(employeeEmpty).toHaveAttribute("colspan", "10");
+    expect(employeeEmpty).toHaveAttribute("colspan", "11");
     fireEvent.click(screen.getByRole("tab", { name: "リストごと" }));
-    expect(screen.getByText("対象データがありません")).toHaveAttribute("colspan", "12");
+    expect(screen.getByText("対象データがありません")).toHaveAttribute("colspan", "13");
+  });
+  it("shows a 0.0% toss rate when call count is zero", async () => {
+    const zero = { ...response.employeeMetrics[0], callCount: 0, tossCount: 0, employeeName: "社員ゼロ" };
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ ...response, metrics: [], employeeMetrics: [zero] }) } as Response);
+    render(<CallMetricsClient />);
+    const cells = within((await screen.findByText("社員ゼロ")).closest("tr")!).getAllByRole("cell");
+    expect(cells[6]).toHaveTextContent("0.0%");
   });
   it("keeps long content inside the page background shell on every tab", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => longResponse } as Response);
