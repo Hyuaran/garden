@@ -1,26 +1,25 @@
 -- Codex-185: attribute 前確OK to the employee/list that acquired the same 営業ID.
 --
 -- Production application (Supabase SQL Editor):
---   1. Run INDEX 1 by itself, without BEGIN/COMMIT.
---   2. After it finishes, run INDEX 2 by itself, without BEGIN/COMMIT.
---   3. Run the CREATE OR REPLACE FUNCTION statement and the following grants/comments.
--- CREATE INDEX CONCURRENTLY cannot run inside a transaction block. Do not select the
--- whole file and wrap it in a transaction. Each index intentionally scans the source
--- table once while allowing the live importer to continue writing.
+--   Paste this entire file and run it once. No special ordering is required.
+-- The two partial indexes each scan system_call_history once and hold a brief write
+-- lock while building. The importer is idempotent and retries, so a short pause is
+-- safe; run during a quiet moment if possible.
+set statement_timeout = '10min';
 
--- INDEX 1 (run this statement alone)
-create index concurrently if not exists idx_system_call_history_preconfirm_date_sales
+-- INDEX 1
+create index if not exists idx_system_call_history_preconfirm_date_sales
   on public.system_call_history (call_date, external_sales_id)
   include (employee_name, list_name, id)
   where result_flag = '前確OK';
 
--- INDEX 2 (run this statement alone)
-create index concurrently if not exists idx_system_call_history_acquired_sales_date
+-- INDEX 2
+create index if not exists idx_system_call_history_acquired_sales_date
   on public.system_call_history (external_sales_id, call_date desc, call_time desc, id desc)
   include (employee_name, list_name)
   where result_flag = '獲得';
 
--- FUNCTION (run from here to the end after both indexes are valid)
+-- FUNCTION
 create or replace function public.system_call_metrics(
   p_from date, p_to date, p_list_name text default null, p_employee_name text default null
 ) returns jsonb language sql stable security definer set search_path = public as $$

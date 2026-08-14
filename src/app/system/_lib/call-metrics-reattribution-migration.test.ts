@@ -30,8 +30,8 @@ describe("Codex-185 call metrics migration", () => {
     expect(sql).toMatch(/coalesce\(round\(preconfirm\.order_count::numeric \/ nullif\(rollup\.call_count, 0\), 6\), 0::numeric\)/);
   });
 
-  it("defines the two required partial concurrent indexes", () => {
-    expect(sql.match(/create index concurrently if not exists/g)).toHaveLength(2);
+  it("defines the two required partial indexes", () => {
+    expect(sql.match(/create index if not exists/g)).toHaveLength(2);
     expect(sql).toContain("where result_flag = '前確OK'");
     expect(sql).toContain("where result_flag = '獲得'");
   });

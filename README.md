@@ -65,7 +65,7 @@ select * from public.system_call_rollup_refresh(array[date '2026-08-12']);
 
 前確OKは`system_call_history.external_sales_id`（営業ID）が同じ獲得行の担当者・リストへ帰属します。電話番号は照合に使いません。同じ営業IDに獲得が複数ある場合は、前確OK日以前の最新獲得、なければ全期間の最新獲得を選び、同日時は主キーで決定します。営業IDなし・獲得なしは前確OK行自身へフォールバックします。期間内コール0でも前確OKがある担当者・リストは0コール行として残ります。
 
-`20260814000002_system_call_metrics_preconfirm_reattribution.sql`はSupabase SQL Editorで手動適用します。2本の`CREATE INDEX CONCURRENTLY`をそれぞれ1文ずつ、トランザクションで囲まず実行し、両方の完了後に同ファイルの`CREATE OR REPLACE FUNCTION`以降を実行してください。適用後は`scripts/call-metrics-preconfirm-reattribution-verify.sql`で前確OK総数の一致、孤児件数、実例、ゼロコール行、1年レンジの実行時間を確認します。
+`20260814000002_system_call_metrics_preconfirm_reattribution.sql`はSupabase SQL Editorへ全文を貼り付けて一度に実行します（冒頭で`statement_timeout`を延長）。2本の部分インデックスは作成時にsystem_call_historyを1回走査し短時間の書き込みロックを取りますが、取込は冪等で再試行するため安全です（可能なら閑散時に）。適用後は`scripts/call-metrics-preconfirm-reattribution-verify.sql`で前確OK総数の一致、孤児件数、実例、ゼロコール行、1年レンジの実行時間を確認します。
 
 ### 勤怠打刻（第1段）
 
