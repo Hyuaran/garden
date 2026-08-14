@@ -83,7 +83,7 @@ export default function CallMetricsClient() {
           <span>従業員数: {(summary?.employeeCount ?? 0).toLocaleString()} ／ 総コール数: {totalCalls.toLocaleString()}</span>
           <span>平均コール数: {(summary?.averageCalls ?? 0).toFixed(1)}</span>
           <span>有効率: {percent(summary?.effectiveRate ?? 0)}</span>
-          <span>受注率: {percent(summary?.acquiredRate ?? 0)}（受注{(summary?.totalAcquired ?? 0).toLocaleString()}件）／前確OK率: {percent(summary?.preconfirmRate ?? 0)}（前確OK {(summary?.totalOrders ?? 0).toLocaleString()}件）</span>
+          <span>受注率: {percent(summary?.acquiredRate ?? 0)}（受注数 {(summary?.totalAcquired ?? 0).toLocaleString()}件）／前確OK率: {percent(summary?.preconfirmRate ?? 0)}（前確OK数 {(summary?.totalOrders ?? 0).toLocaleString()}件）</span>
           <span>最終更新: {formatJst(data.lastImportedAt)}</span>
         </div>
         <div className={styles.tabs} role="tablist" aria-label="集計表示">
@@ -95,26 +95,26 @@ export default function CallMetricsClient() {
         {activeTab === "employees" && <section role="tabpanel">
           <h2>従業員ごとの指標</h2>
           <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><table>
-            <thead><tr><th>社員名</th><th>コール数</th><th>有効数</th><th>有効率</th><th>トス数</th><th>受注数</th><th>受注率</th><th>前確OK</th><th>前確OK率</th><th>シフト</th></tr></thead>
+            <thead><tr><th>社員名</th><th>シフト</th><th>コール数</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>受注率</th><th>前確OK数</th><th>前確OK率</th></tr></thead>
             <tbody>{data.employeeMetrics.length ? data.employeeMetrics.map((row) => <tr key={row.employeeName}>
-              <td>{row.employeeName}</td><td>{row.callCount.toLocaleString()}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td>{row.tossCount.toLocaleString()}</td><td>{row.acquiredCount.toLocaleString()}</td><td>{percent(row.callAcquiredRate)}</td><td>{row.orderCount.toLocaleString()}</td><td>{percent(row.callOrderRate)}</td><td className={styles.pending}>未取得</td>
-            </tr>) : <tr><td colSpan={10}>対象データがありません</td></tr>}</tbody>
+              <td>{row.employeeName}</td><td className={styles.pending}>未取得</td><td>{row.callCount.toLocaleString()}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td>{row.acquiredCount.toLocaleString()}</td><td>{percent(row.callAcquiredRate)}</td><td>{row.orderCount.toLocaleString()}</td><td>{percent(row.callOrderRate)}</td>
+            </tr>) : <tr><td colSpan={11}>対象データがありません</td></tr>}</tbody>
           </table></div>
         </section>}
 
         {activeTab === "lists" && <section role="tabpanel">
           <h2>リストごとの指標</h2>
           <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><table>
-            <thead><tr><th>リスト名</th><th>コール数</th><th>有効数</th><th>有効率</th><th>トス数</th><th>受注数</th><th>受注率</th><th>前確OK</th><th>前確OK率</th><th>リスト数</th><th>回転数</th><th>リスト受注率</th></tr></thead>
+            <thead><tr><th>リスト名</th><th>コール数</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>受注率</th><th>前確OK数</th><th>前確OK率</th><th>リスト数</th><th>回転数</th><th>リスト受注率</th></tr></thead>
             <tbody>{data.metrics.length ? data.metrics.map((row) => <tr key={row.listName}>
-              <td>{row.listName}</td><td>{row.callCount.toLocaleString()}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td>{row.tossCount.toLocaleString()}</td><td>{row.acquiredCount.toLocaleString()}</td><td>{percent(row.callAcquiredRate)}</td><td>{row.orderCount.toLocaleString()}</td><td>{percent(row.callOrderRate)}</td><td className={styles.pending}>未取得</td><td className={styles.pending}>未取得</td><td className={styles.pending}>未取得</td>
-            </tr>) : <tr><td colSpan={12}>対象データがありません</td></tr>}</tbody>
+              <td>{row.listName}</td><td>{row.callCount.toLocaleString()}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td>{row.acquiredCount.toLocaleString()}</td><td>{percent(row.callAcquiredRate)}</td><td>{row.orderCount.toLocaleString()}</td><td>{percent(row.callOrderRate)}</td><td className={styles.pending}>未取得</td><td className={styles.pending}>未取得</td><td className={styles.pending}>未取得</td>
+            </tr>) : <tr><td colSpan={13}>対象データがありません</td></tr>}</tbody>
           </table></div>
         </section>}
 
         {activeTab === "definitions" && <section role="tabpanel">
           <h2>集計の定義</h2>
-          <div className={styles.definitionTable}><table>
+          <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
             <thead><tr><th>指標</th><th>定義</th></tr></thead>
             <tbody>
               <tr><td>コール数</td><td>架電回数</td></tr>
@@ -123,19 +123,19 @@ export default function CallMetricsClient() {
               <tr><td>トス数</td><td>結果フラグが「トス」のコール</td></tr>
               <tr><td>受注数</td><td>結果フラグが「獲得」のコール（コール履歴では「獲得」、ポータルでは「受注」と表示）</td></tr>
               <tr><td>受注率</td><td>受注数 ÷ コール数</td></tr>
-              <tr><td>前確OK</td><td>結果フラグが「前確OK」のコール</td></tr>
-              <tr><td>前確OK率</td><td>前確OK ÷ コール数</td></tr>
+              <tr><td>前確OK数</td><td>結果フラグが「前確OK」のコール</td></tr>
+              <tr><td>前確OK率</td><td>前確OK数 ÷ コール数</td></tr>
               <tr><td>シフト</td><td>予定シフトの時間帯（打刻アプリ連携後に表示）</td></tr>
               <tr><td>リスト数・回転数・リスト受注率</td><td>リストデータ取込後に対応</td></tr>
             </tbody>
           </table></div>
           <h2>コール履歴のフラグ名 → ポータル表示名</h2>
-          <div className={styles.definitionTable}><table>
+          <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
             <thead><tr><th>コール履歴</th><th>ポータル表示</th></tr></thead>
-            <tbody><tr><td>獲得</td><td>受注</td></tr><tr><td>前確OK</td><td>前確OK</td></tr><tr><td>トス</td><td>トス数</td></tr></tbody>
+            <tbody><tr><td>獲得</td><td>受注</td></tr><tr><td>前確OK</td><td>前確OK数</td></tr><tr><td>トス</td><td>トス数</td></tr></tbody>
           </table></div>
           <h2>結果フラグの扱い（分類ルール）</h2>
-          <div className={styles.definitionTable}><table>
+          <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
             <thead><tr><th>結果フラグ</th><th>扱い</th></tr></thead>
             <tbody>{FLAG_RULES.map(([flag, handling]) => <tr key={flag}>
               <td>{flag}</td><td>{handling}</td>
