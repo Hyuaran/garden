@@ -15,6 +15,9 @@ $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$AgentPath`" -ConfigPat
 $action = New-ScheduledTaskAction -Execute $powerShell32 -Argument $arguments
 $trigger = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
-Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Description "Garden FileMaker call history ingest agent (32-bit PowerShell)" -Force
-Write-Host "Registered task: $TaskName"
+# Run as SYSTEM so the agent keeps running when no user is logged on (survives logoff/reboot).
+# Secrets (FM_CALL_HISTORY_PASSWORD / CALL_INGEST_SECRET) are machine-level env vars, which SYSTEM can read.
+$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description "Garden FileMaker call history ingest agent (32-bit PowerShell, runs as SYSTEM)" -Force
+Write-Host "Registered task: $TaskName (runs as SYSTEM)"
 Write-Host "Executable: $powerShell32"
