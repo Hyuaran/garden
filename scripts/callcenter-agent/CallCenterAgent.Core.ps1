@@ -3,6 +3,27 @@
   return [Math]::Min([Math]::Max($ConfiguredBatchSize, 1), 500)
 }
 
+function Get-EffectiveRefreshWindowDays {
+  param([AllowNull()] [object]$ConfiguredDays)
+  if ($null -eq $ConfiguredDays -or [string]::IsNullOrWhiteSpace([string]$ConfiguredDays)) { return 7 }
+  $parsed = 0
+  if (-not [int]::TryParse([string]$ConfiguredDays, [ref]$parsed) -or $parsed -lt 0) {
+    throw 'refreshWindowDays must be a non-negative integer.'
+  }
+  return $parsed
+}
+
+function Get-CallDateRefreshQuery {
+  param(
+    [Parameter(Mandatory = $true)] [string]$QuotedColumns,
+    [Parameter(Mandatory = $true)] [datetime]$Today,
+    [Parameter(Mandatory = $true)] [int]$RefreshWindowDays
+  )
+  if ($RefreshWindowDays -lt 0) { throw 'refreshWindowDays must be non-negative.' }
+  $refreshFrom = $Today.Date.AddDays(-$RefreshWindowDays).ToString('yyyy-MM-dd')
+  return "SELECT $QuotedColumns FROM `"コール履歴`" WHERE `"コール日`" >= {d '$refreshFrom'} ORDER BY `"コール日`", `"コール時間`", `"主キー`""
+}
+
 function Get-CallFetchColumns {
   param([bool]$IncludeAggregateFields = $false)
 

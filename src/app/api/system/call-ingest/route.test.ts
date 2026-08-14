@@ -23,7 +23,7 @@ const request = (rows: unknown[]) => new Request("http://localhost/api/system/ca
 function admin(options: { existing?: Array<string | { id: string; callDate: string }>; upsertError?: string; refreshError?: string } = {}) {
   const insertedLogs: unknown[] = [];
   const updatedLogs: unknown[] = [];
-  const upserts: unknown[] = [];
+  const upserts: Array<{ payload: unknown; options: unknown }> = [];
   return {
     insertedLogs, updatedLogs, upserts,
     rpc: vi.fn().mockResolvedValue({ data: null, error: options.refreshError ? { message: options.refreshError } : null }),
@@ -42,8 +42,8 @@ function admin(options: { existing?: Array<string | { id: string; callDate: stri
         select: () => ({ in: async () => ({ data: (options.existing ?? []).map((value) => typeof value === "string"
           ? { external_call_id: value, call_date: "2026-08-11" }
           : { external_call_id: value.id, call_date: value.callDate }), error: null }) }),
-        async upsert(payload: unknown) {
-          upserts.push(payload);
+        async upsert(payload: unknown, upsertOptions: unknown) {
+          upserts.push({ payload, options: upsertOptions });
           return { error: options.upsertError ? { message: options.upsertError } : null };
         },
       };
@@ -72,9 +72,27 @@ describe("POST /api/system/call-ingest", () => {
     const result = await response.json();
     expect(response.status).toBe(200);
     expect(result).toMatchObject({ status: "success", records_inserted: 1, records_updated: 0, records_rejected: 0 });
-    expect(client.upserts[0]).toEqual([expect.objectContaining({ external_call_id: "1001", source: "callcenter-fm-agent" })]);
+    expect(client.upserts[0]).toEqual({
+      payload: [expect.objectContaining({ external_call_id: "1001", source: "callcenter-fm-agent" })],
+      options: { onConflict: "external_call_id", ignoreDuplicates: false },
+    });
     expect(client.rpc).toHaveBeenCalledWith("system_call_rollup_refresh", { p_dates: ["2026-08-11"] });
     expect(client.updatedLogs.at(-1)).toEqual(expect.objectContaining({ status: "success", records_inserted: 1, rollup_refresh_status: "success" }));
+  });
+
+  it("overwrites mutable fields when a previously imported result is finalized", async () => {
+    const client = admin({ existing: ["1001"] });
+    mocks.getAdmin.mockReturnValue(client);
+    const finalized = { ...validRow, 結果フラグ: "前確OK", 新リスト名: "確定リスト", 社員名: "担当者A" };
+    const response = await POST(request([finalized]));
+    expect(response.status).toBe(200);
+    expect(client.upserts[0]).toEqual({
+      payload: [expect.objectContaining({
+        external_call_id: "1001", result_flag: "前確OK", list_name: "確定リスト", employee_name: "担当者A",
+      })],
+      options: { onConflict: "external_call_id", ignoreDuplicates: false },
+    });
+    expect(await response.json()).toMatchObject({ records_inserted: 0, records_updated: 1 });
   });
 
   it("refreshes both old and new dates when an upsert moves a call", async () => {

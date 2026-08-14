@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     const recordsUpdated = parsed.valid.filter((row) => existingIds.has(row.external_call_id)).length;
     const recordsInserted = parsed.valid.length - recordsUpdated;
     const { error: upsertError } = await supabase.from("system_call_history")
-      .upsert(parsed.valid, { onConflict: "external_call_id" });
+      .upsert(parsed.valid, { onConflict: "external_call_id", ignoreDuplicates: false });
     if (upsertError) throw new Error(`コール履歴upsert失敗: ${upsertError.message}`);
 
     const refreshDates = [...new Set([
