@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CallMetricsClient from "./CallMetricsClient";
 import styles from "./call-metrics.module.css";
@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), signOut: v
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }));
 vi.mock("@/app/_lib/supabase/browser", () => ({ createBrowserClient: () => ({ auth: { signOut: mocks.signOut } }) }));
 
-const response = { ok: true, from: "2026-08-01", to: "2026-08-12", listName: null, employeeName: null, lastImportedAt: "2026-08-12T03:34:00Z", metrics: [{ listName: "リストA", callCount: 10, effectiveCount: 7, effectiveRate: .7, orderCount: 2, acquiredCount: 1, callOrderRate: .2 }], employeeMetrics: [{ employeeName: "社員A", callCount: 10, effectiveCount: 7, effectiveRate: .7, orderCount: 2, acquiredCount: 1, callOrderRate: .2 }] };
+const response = { ok: true, from: "2026-08-01", to: "2026-08-12", listName: null, employeeName: null, lastImportedAt: "2026-08-12T03:34:00Z", metrics: [{ listName: "リストA", callCount: 10, effectiveCount: 7, effectiveRate: .7, tossCount: 3, orderCount: 2, acquiredCount: 1, callOrderRate: .2, callAcquiredRate: .1 }], employeeMetrics: [{ employeeName: "社員A", callCount: 10, effectiveCount: 7, effectiveRate: .7, tossCount: 3, orderCount: 2, acquiredCount: 1, callOrderRate: .2, callAcquiredRate: .1 }] };
 
 const longResponse = {
   ...response,
@@ -37,21 +37,35 @@ describe("CallMetricsClient", () => {
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveClass(styles.summaryBand);
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("平均コール数: 10.0");
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("有効率: 70.0%");
-    expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("受注率: 20.0%（受注2件／獲得1件）");
+    expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("受注率: 10.0%（受注1件）／前確OK率: 20.0%（前確OK 2件）");
+    expect(screen.getByRole("columnheader", { name: "トス数" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "シフト" })).toBeInTheDocument();
+    expect(screen.getByText("未取得")).toBeInTheDocument();
+    const employeeCells = within(screen.getByText("社員A").closest("tr")!).getAllByRole("cell");
+    expect(employeeCells.map((cell) => cell.textContent)).toEqual(["社員A", "10", "7", "70.0%", "3", "1", "10.0%", "2", "20.0%", "未取得"]);
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("最終更新: 2026/08/12(水) 12:34");
     expect(screen.queryByText(/現在は直近取込分のみ/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "リストごと" }));
     expect(screen.getByText("リストA")).toBeInTheDocument();
     expect(screen.getAllByText("未取得")).toHaveLength(3);
+    expect(screen.queryByRole("columnheader", { name: "シフト" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "定義方法" }));
     expect(screen.getByText("架電回数")).toBeInTheDocument();
     expect(screen.getByText("会話できたコール。留守・無効・空白（無効扱い）を除きます。")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "結果フラグの扱い（分類ルール）" })).toBeInTheDocument();
-    expect(screen.getAllByRole("table")).toHaveLength(2);
+    expect(screen.getAllByRole("table")).toHaveLength(3);
     expect(screen.queryByText(/result_flag 診断/)).not.toBeInTheDocument();
     expect(screen.queryByText("件数")).not.toBeInTheDocument();
     expect(screen.queryByText("想定内")).not.toBeInTheDocument();
     expect(screen.queryByText("空")).not.toBeInTheDocument();
+  });
+  it("uses the complete column span for empty employee and list tables", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ ...response, metrics: [], employeeMetrics: [] }) } as Response);
+    render(<CallMetricsClient />);
+    const employeeEmpty = await screen.findByText("対象データがありません");
+    expect(employeeEmpty).toHaveAttribute("colspan", "10");
+    fireEvent.click(screen.getByRole("tab", { name: "リストごと" }));
+    expect(screen.getByText("対象データがありません")).toHaveAttribute("colspan", "12");
   });
   it("keeps long content inside the page background shell on every tab", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => longResponse } as Response);

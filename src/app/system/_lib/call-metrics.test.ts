@@ -5,7 +5,7 @@ describe("call metrics definitions", () => {
   it("calculates the confirmed definition from raw result_flag values", () => {
     const flags = ["留守", "担不", "見込", "無効", "獲得", "トス", "NG", "前確OK", "前確NG", null, "", "想定外"];
     const result = aggregateDefinitionFixture(flags.map((resultFlag) => ({ listName: "A", resultFlag })));
-    expect(result.get("A")).toEqual({ callCount: 12, effectiveCount: 8, orderCount: 1, acquiredCount: 1 });
+    expect(result.get("A")).toEqual({ callCount: 12, effectiveCount: 8, orderCount: 1, acquiredCount: 1, tossCount: 1 });
     expect(classifyResultFlag("想定外")).toMatchObject({ isEffective: true, isExpected: false });
     expect(classifyResultFlag("  ")).toMatchObject({ isEffective: false, isExpected: true });
   });
@@ -27,18 +27,18 @@ describe("call metrics definitions", () => {
       { employeeName: "社員A", resultFlag: "無効" },
       { employeeName: null, resultFlag: "想定外" },
     ]);
-    expect(result.get("社員A")).toEqual({ callCount: 2, effectiveCount: 1, orderCount: 1, acquiredCount: 0 });
-    expect(result.get("氏名なし")).toEqual({ callCount: 1, effectiveCount: 1, orderCount: 0, acquiredCount: 0 });
+    expect(result.get("社員A")).toEqual({ callCount: 2, effectiveCount: 1, orderCount: 1, acquiredCount: 0, tossCount: 0 });
+    expect(result.get("氏名なし")).toEqual({ callCount: 1, effectiveCount: 1, orderCount: 0, acquiredCount: 0, tossCount: 0 });
   });
 
   it("normalizes a definition fixture without mixing orders and acquisitions", () => {
     const result = normalizeCallMetricsRpc({
-      metrics: [{ list_name: "A", call_count: 11, effective_count: 7, effective_rate: "0.636364", order_count: 1, acquired_count: 1, call_order_rate: "0.090909" }],
-      employee_metrics: [{ employee_name: "社員A", call_count: 11, effective_count: 7, effective_rate: "0.636364", order_count: 1, acquired_count: 1, call_order_rate: "0.090909" }],
+      metrics: [{ list_name: "A", call_count: 11, effective_count: 7, effective_rate: "0.636364", toss_count: 2, order_count: 1, acquired_count: 3, call_order_rate: "0.090909", call_acquired_rate: "0.272727" }],
+      employee_metrics: [{ employee_name: "社員A", call_count: 11, effective_count: 7, effective_rate: "0.636364", toss_count: 2, order_count: 1, acquired_count: 3, call_order_rate: "0.090909", call_acquired_rate: "0.272727" }],
       last_imported_at: "2026-08-12T03:34:00Z",
     }, { from: "2026-08-01", to: "2026-08-12", listName: "A", employeeName: "社員A" });
-    expect(result.metrics[0]).toMatchObject({ callCount: 11, effectiveCount: 7, orderCount: 1, acquiredCount: 1 });
-    expect(result.employeeMetrics[0]).toMatchObject({ employeeName: "社員A", callCount: 11, effectiveCount: 7, orderCount: 1, acquiredCount: 1 });
+    expect(result.metrics[0]).toMatchObject({ callCount: 11, effectiveCount: 7, tossCount: 2, orderCount: 1, acquiredCount: 3, callOrderRate: .090909, callAcquiredRate: .272727 });
+    expect(result.employeeMetrics[0]).toMatchObject({ employeeName: "社員A", callCount: 11, effectiveCount: 7, tossCount: 2, orderCount: 1, acquiredCount: 3 });
     expect(result).toMatchObject({ listName: "A", employeeName: "社員A", lastImportedAt: "2026-08-12T03:34:00Z" });
   });
 
@@ -57,10 +57,10 @@ describe("call metrics definitions", () => {
     const data = normalizeCallMetricsRpc({
       metrics: [{ list_name: "A", call_count: 1517 }],
       employee_metrics: [
-        { employee_name: "A", call_count: 1000, effective_count: 600, order_count: 30, acquired_count: 20 },
-        { employee_name: "B", call_count: 517, effective_count: 310, order_count: 15, acquired_count: 10 },
+        { employee_name: "A", call_count: 1000, effective_count: 600, toss_count: 12, order_count: 30, acquired_count: 20 },
+        { employee_name: "B", call_count: 517, effective_count: 310, toss_count: 8, order_count: 15, acquired_count: 10 },
       ],
     }, { from: "2026-08-12", to: "2026-08-12", listName: null, employeeName: null });
-    expect(summarizeCallMetrics(data)).toEqual({ employeeCount: 2, totalCalls: 1517, totalEffective: 910, totalOrders: 45, totalAcquired: 30, averageCalls: 758.5, effectiveRate: 910 / 1517, orderRate: 45 / 1517 });
+    expect(summarizeCallMetrics(data)).toEqual({ employeeCount: 2, totalCalls: 1517, totalEffective: 910, totalOrders: 45, totalAcquired: 30, totalTosses: 20, averageCalls: 758.5, effectiveRate: 910 / 1517, acquiredRate: 30 / 1517, preconfirmRate: 45 / 1517 });
   });
 });
