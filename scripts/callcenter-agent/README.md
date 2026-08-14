@@ -3,7 +3,7 @@
 ## Incremental primary-key operation and watchdog
 
 - A normal run without `last_max_primary_key` bootstraps from the narrow call-date window (`overlapDays`) and saves the greatest successfully processed primary key. It does not scan the full table to seed state.
-- Later normal runs use `WHERE "主キー" > last_max_primary_key ORDER BY "主キー"`. Explicit date backfills retain call-date/month splitting and never modify primary-key state.
+- Later normal runs first use `WHERE "主キー" > last_max_primary_key ORDER BY "主キー"`, then reread the recent `refreshWindowDays` call-date window and upsert mutable values such as `result_flag`. Explicit date backfills retain call-date/month splitting and never modify primary-key state.
 - The supervisor kills a 32-bit worker after `readStallTimeoutSeconds` without heartbeat progress (default 300). Continuous mode retries; `-Once` exits nonzero.
 - Heartbeats are forced at batch boundaries and otherwise throttled by `heartbeatIntervalSeconds` (default 5); they contain only time and phase.
 - Secrets remain inherited environment variables and are never placed in worker arguments, heartbeat files, or logs.
@@ -26,7 +26,7 @@ FileMaker Server 11の「コール履歴」を32bit ODBCで取得し、Gardenの
 
 - 増分判定はDATE型の「コール日」です。SQLは`{d 'YYYY-MM-DD'}`を使用し、`{ts ...}`や`MAX()`は使いません。
 - 「作成日」「修正日」はVARCHARのため増分判定に使いません。
-- コール日を過ぎてから古い行が書き換えられ、設定したオーバーラップ日数より古くなった場合、その変更は通常実行では拾えません。`-StartDate`/`-EndDate`で再走査するか、`overlapDays`を広げてください。
+- primary-key増分では直近`refreshWindowDays`日を毎ポール読み返します。それより古い行が後から書き換えられた場合は、`-StartDate`/`-EndDate`で再走査してください。
 - FileMakerの事前集計列は監査用に保存しますが、Garden側の集計には使用しません。
 
 ## 必要な環境変数
@@ -46,6 +46,7 @@ FileMaker Server 11の「コール履歴」を32bit ODBCで取得し、Gardenの
 - `batchSize`: 1〜500、既定500
 - `includeAggregateFields`: 既定false。falseでは保存対象19列だけを取得し、FileMakerの計算・集計25列を省いて高速化します。監査調査で必要な場合だけtrueにします。
 - `overlapDays`: 通常3日
+- `refreshWindowDays`: primary-key増分後に毎回読み返すコール日ウィンドウ。既定7日。結果が週末後に確定するケースも含めます。
 - `pollSeconds`: 常駐時の実行間隔
 - `runContinuously`: タスクスケジューラ常駐時はtrue
 - 状態とログの既定保存先: `C:\ProgramData\Garden\CallCenterAgent\`
@@ -97,6 +98,31 @@ limit 20;
 ```
 
 同じ日付範囲を再送し、`system_call_history`の件数が増えず、同期ログの`records_updated`が増えることを確認します。
+
+通常運用の`sync completed`ログには`refresh_rows`、`refresh_sent`、`refresh_window_days`、同期全体の`elapsed_seconds`が出ます。各`batch completed`には`query_path`と`elapsed_seconds`が出るため、`query_path=refresh`の500件単位の所要時間を確認できます。refresh行はprimary-key state候補に使用しません。
+
+## 2026-08-10以降の結果フラグ一時修復
+
+ホストへ`CallCenterAgent.ps1`、`CallCenterAgent.Core.ps1`、`config.json`の`refreshWindowDays: 7`を反映後、常駐タスクを止めて明示backfillを1回実行します。まずDryRunし、件数確認後に本送信します。
+
+```powershell
+Disable-ScheduledTask -TaskName "GardenCallCenterAgent"
+Stop-ScheduledTask -TaskName "GardenCallCenterAgent" -ErrorAction SilentlyContinue
+
+$ps32 = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+$agent = "C:\Garden\callcenter-agent\CallCenterAgent.ps1"
+$config = "C:\Garden\callcenter-agent\config.json"
+$end = (Get-Date).Date.ToString("yyyy-MM-dd")
+
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2026-08-10 -EndDate $end -DryRun -Once
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -StartDate 2026-08-10 -EndDate $end -Once
+
+Enable-ScheduledTask -TaskName "GardenCallCenterAgent"
+Start-ScheduledTask -TaskName "GardenCallCenterAgent"
+Get-ScheduledTaskInfo -TaskName "GardenCallCenterAgent"
+```
+
+明示backfillは`last_max_primary_key`を変更しません。実行前後の`state.json`を比較し、対象営業ID 2027231、2026972、2026775、2021484の`result_flag`とポータル集計を確認してください。
 
 ## 過去データの段階バックフィル
 

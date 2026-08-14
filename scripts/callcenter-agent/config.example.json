@@ -3,6 +3,7 @@
   "batchSize": 500,
   "includeAggregateFields": false,
   "overlapDays": 3,
+  "refreshWindowDays": 7,
   "pollSeconds": 300,
   "readStallTimeoutSeconds": 300,
   "heartbeatIntervalSeconds": 5,

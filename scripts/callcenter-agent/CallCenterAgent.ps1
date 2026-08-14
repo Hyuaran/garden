@@ -108,6 +108,7 @@ if ($null -ne $config.includeAggregateFields) {
   $includeAggregateFields = [bool]$config.includeAggregateFields
 }
 $columns = @(Get-CallFetchColumns $includeAggregateFields)
+$refreshWindowDays = Get-EffectiveRefreshWindowDays $config.refreshWindowDays
 
 function Invoke-SyncOnce {
   $runId = [guid]::NewGuid()
@@ -139,21 +140,38 @@ function Invoke-SyncOnce {
 
     $quotedColumns = ($columns | ForEach-Object { '"' + $_.Replace('"', '""') + '"' }) -join ","
     $ranges = @(Get-CallSyncRanges $from $to $isExplicitRange)
-    $batchIndex = 0; $totalRows = 0; $totalSent = 0; $totalSkippedInvalidDate = 0; $hadPartial = $false; $maxCallDate = $null; $maxPrimaryKey = $null
+    $workItems = @()
+    foreach ($range in $ranges) {
+      $nextDay = $range.To.AddDays(1).ToString("yyyy-MM-dd")
+      $sql = if ($queryMode -eq 'primary_key') {
+        "SELECT $quotedColumns FROM `"コール履歴`" $(Get-PrimaryKeyIncrementalPredicate $statePrimaryKey)"
+      } else {
+        "SELECT $quotedColumns FROM `"コール履歴`" WHERE `"コール日`" >= {d '$($range.From.ToString("yyyy-MM-dd"))'} AND `"コール日`" < {d '$nextDay'} ORDER BY `"コール日`", `"コール時間`", `"主キー`""
+      }
+      $workItems += [pscustomobject]@{ Range = $range; Sql = $sql; Path = $queryMode; TracksPrimaryKey = $true }
+    }
+    if ($queryMode -eq 'primary_key') {
+      $refreshToday = (Get-Date).Date
+      $refreshFrom = $refreshToday.AddDays(-$refreshWindowDays)
+      $refreshRange = [pscustomobject]@{ From = $refreshFrom; To = $refreshToday; Month = 'refresh' }
+      $workItems += [pscustomobject]@{
+        Range = $refreshRange
+        Sql = Get-CallDateRefreshQuery $quotedColumns $refreshToday $refreshWindowDays
+        Path = 'refresh'
+        TracksPrimaryKey = $false
+      }
+    }
+    $batchIndex = 0; $totalRows = 0; $totalSent = 0; $totalRefreshRows = 0; $totalRefreshSent = 0; $totalSkippedInvalidDate = 0; $hadPartial = $false; $maxCallDate = $null; $maxPrimaryKey = $null
     $startedAt = Get-Date
 
-    foreach ($range in $ranges) {
+    foreach ($workItem in $workItems) {
       if ($MaxRows -gt 0 -and $totalRows -ge $MaxRows) { break }
+      $range = $workItem.Range
       $rangeStartedAt = Get-Date
       $rangeRows = 0; $rangeSent = 0; $rangeSkippedInvalidDate = 0; $rangeHadPartial = $false; $rangeMaxCallDate = $null
-      Write-AgentLog "info" "month started" @{ run_id = $runId.ToString(); month = $range.Month; range_from = $range.From.ToString("yyyy-MM-dd"); range_to = $range.To.ToString("yyyy-MM-dd"); cumulative_rows = $totalRows }
+      Write-AgentLog "info" "month started" @{ run_id = $runId.ToString(); month = $range.Month; query_path = $workItem.Path; range_from = $range.From.ToString("yyyy-MM-dd"); range_to = $range.To.ToString("yyyy-MM-dd"); cumulative_rows = $totalRows }
 
-      $nextDay = $range.To.AddDays(1).ToString("yyyy-MM-dd")
-      if ($queryMode -eq 'primary_key') {
-        $sql = "SELECT $quotedColumns FROM `"コール履歴`" $(Get-PrimaryKeyIncrementalPredicate $statePrimaryKey)"
-      } else {
-        $sql = "SELECT $quotedColumns FROM `"コール履歴`" WHERE `"コール日`" >= {d '$($range.From.ToString("yyyy-MM-dd"))'} AND `"コール日`" < {d '$nextDay'} ORDER BY `"コール日`", `"コール時間`", `"主キー`""
-      }
+      $sql = $workItem.Sql
       $command = $connection.CreateCommand(); $command.CommandText = $sql; $command.CommandTimeout = 0
       $reader = $null
       try {
@@ -171,8 +189,9 @@ function Invoke-SyncOnce {
             continue
           }
           $rowPrimaryKey = ConvertTo-NormalizedPrimaryKey $row['主キー']
-          if ($rowPrimaryKey -and ($null -eq $maxPrimaryKey -or (Compare-NormalizedPrimaryKey $rowPrimaryKey $maxPrimaryKey) -gt 0)) { $maxPrimaryKey = $rowPrimaryKey }
+          if ($workItem.TracksPrimaryKey -and $rowPrimaryKey -and ($null -eq $maxPrimaryKey -or (Compare-NormalizedPrimaryKey $rowPrimaryKey $maxPrimaryKey) -gt 0)) { $maxPrimaryKey = $rowPrimaryKey }
           [void]$batch.Add($row); $rangeRows++; $totalRows++
+          if ($workItem.Path -eq 'refresh') { $totalRefreshRows++ }
           if (-not $rangeMaxCallDate -or $rowDate -gt $rangeMaxCallDate) { $rangeMaxCallDate = $rowDate }
           if (-not $maxCallDate -or $rowDate -gt $maxCallDate) { $maxCallDate = $rowDate }
 
@@ -180,7 +199,8 @@ function Invoke-SyncOnce {
             $rowsInBatch = $batch.Count
             $result = Invoke-IngestBatch $runId $batchIndex $range.From $range.To $batch.ToArray()
             $rangeSent += $rowsInBatch; $totalSent += $rowsInBatch
-            Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); elapsed_seconds = [Math]::Round(((Get-Date) - $batchStartedAt).TotalSeconds, 1) }
+            if ($workItem.Path -eq 'refresh') { $totalRefreshSent += $rowsInBatch }
+            Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; query_path = $workItem.Path; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); elapsed_seconds = [Math]::Round(((Get-Date) - $batchStartedAt).TotalSeconds, 1) }
             if ([string]$result.status -eq "partial") {
               $hadPartial = $true; $rangeHadPartial = $true
               $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
@@ -197,7 +217,8 @@ function Invoke-SyncOnce {
           $rowsInBatch = $batch.Count
           $result = Invoke-IngestBatch $runId $batchIndex $range.From $range.To $batch.ToArray()
           $rangeSent += $rowsInBatch; $totalSent += $rowsInBatch
-          Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); elapsed_seconds = [Math]::Round(((Get-Date) - $batchStartedAt).TotalSeconds, 1) }
+          if ($workItem.Path -eq 'refresh') { $totalRefreshSent += $rowsInBatch }
+          Write-AgentLog "info" "batch completed" @{ run_id = $runId.ToString(); month = $range.Month; query_path = $workItem.Path; batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); elapsed_seconds = [Math]::Round(((Get-Date) - $batchStartedAt).TotalSeconds, 1) }
           if ([string]$result.status -eq "partial") {
             $hadPartial = $true; $rangeHadPartial = $true
             $rejectedTargets = @($result.rejected | ForEach-Object { @{ index = [int]$_.index; code = [string]$_.code } })
@@ -209,7 +230,7 @@ function Invoke-SyncOnce {
           Update-Heartbeat 'reading' -Force
         }
       } catch {
-        Write-AgentLog "error" "month failed" @{ run_id = $runId.ToString(); month = $range.Month; rows = $rangeRows; sent = $rangeSent; skipped_invalid_date = $rangeSkippedInvalidDate; cumulative_skipped_invalid_date = $totalSkippedInvalidDate; cumulative_rows = $totalRows; latest_call_date = $(if ($rangeMaxCallDate) { $rangeMaxCallDate.ToString("yyyy-MM-dd") } else { $null }); status = "failed"; elapsed_seconds = [Math]::Round(((Get-Date) - $rangeStartedAt).TotalSeconds, 1); error_type = $_.Exception.GetType().Name }
+        Write-AgentLog "error" "month failed" @{ run_id = $runId.ToString(); month = $range.Month; query_path = $workItem.Path; rows = $rangeRows; sent = $rangeSent; skipped_invalid_date = $rangeSkippedInvalidDate; cumulative_skipped_invalid_date = $totalSkippedInvalidDate; cumulative_rows = $totalRows; latest_call_date = $(if ($rangeMaxCallDate) { $rangeMaxCallDate.ToString("yyyy-MM-dd") } else { $null }); status = "failed"; elapsed_seconds = [Math]::Round(((Get-Date) - $rangeStartedAt).TotalSeconds, 1); error_type = $_.Exception.GetType().Name }
         throw
       } finally {
         if ($reader) { $reader.Close() }
@@ -217,7 +238,7 @@ function Invoke-SyncOnce {
       }
 
       $monthStatus = if ($rangeHadPartial) { "partial" } else { "success" }
-      Write-AgentLog "info" "month completed" @{ run_id = $runId.ToString(); month = $range.Month; rows = $rangeRows; sent = $rangeSent; skipped_invalid_date = $rangeSkippedInvalidDate; cumulative_skipped_invalid_date = $totalSkippedInvalidDate; cumulative_rows = $totalRows; cumulative_sent = $totalSent; latest_call_date = $(if ($rangeMaxCallDate) { $rangeMaxCallDate.ToString("yyyy-MM-dd") } else { $null }); status = $monthStatus; elapsed_seconds = [Math]::Round(((Get-Date) - $rangeStartedAt).TotalSeconds, 1) }
+      Write-AgentLog "info" "month completed" @{ run_id = $runId.ToString(); month = $range.Month; query_path = $workItem.Path; rows = $rangeRows; sent = $rangeSent; skipped_invalid_date = $rangeSkippedInvalidDate; cumulative_skipped_invalid_date = $totalSkippedInvalidDate; cumulative_rows = $totalRows; cumulative_sent = $totalSent; latest_call_date = $(if ($rangeMaxCallDate) { $rangeMaxCallDate.ToString("yyyy-MM-dd") } else { $null }); status = $monthStatus; elapsed_seconds = [Math]::Round(((Get-Date) - $rangeStartedAt).TotalSeconds, 1) }
     }
 
     $completedWithoutPartial = -not $hadPartial
@@ -234,7 +255,7 @@ function Invoke-SyncOnce {
       Write-AgentLog "info" "state unchanged" @{ run_id = $runId.ToString(); existing_date = $(if ($stateDate) { $stateDate.ToString("yyyy-MM-dd") } else { $null }); candidate_date = $maxCallDate.ToString("yyyy-MM-dd"); reason = $(if ($hadPartial) { "partial_run" } elseif ($isExplicitRange) { "candidate_not_newer" } else { "not_eligible" }) }
     }
     $syncStatus = if ($hadPartial) { "partial" } else { "success" }
-    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; sent = $totalSent; skipped_invalid_date = $totalSkippedInvalidDate; months = $ranges.Count; status = $syncStatus; query_mode = $queryMode; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd"); latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); latest_primary_key = $maxPrimaryKey; state_advanced = $stateAdvanced; elapsed_seconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1) }
+    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; sent = $totalSent; refresh_rows = $totalRefreshRows; refresh_sent = $totalRefreshSent; refresh_window_days = $(if ($queryMode -eq 'primary_key') { $refreshWindowDays } else { 0 }); skipped_invalid_date = $totalSkippedInvalidDate; months = $ranges.Count; status = $syncStatus; query_mode = $queryMode; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd"); latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); latest_primary_key = $maxPrimaryKey; state_advanced = $stateAdvanced; elapsed_seconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1) }
   } finally { $connection.Dispose() }
 }
 

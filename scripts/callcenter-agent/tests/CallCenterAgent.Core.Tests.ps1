@@ -67,6 +67,42 @@ Describe "Get-EffectiveBatchSize" {
   }
 }
 
+Describe "recent refresh helpers" {
+  It "defaults the refresh window to seven days" {
+    Get-EffectiveRefreshWindowDays $null | Should Be 7
+    Get-EffectiveRefreshWindowDays "" | Should Be 7
+  }
+
+  It "accepts an explicit non-negative refresh window" {
+    Get-EffectiveRefreshWindowDays 3 | Should Be 3
+    Get-EffectiveRefreshWindowDays "7" | Should Be 7
+    { Get-EffectiveRefreshWindowDays -1 } | Should Throw
+    { Get-EffectiveRefreshWindowDays "bad" } | Should Throw
+  }
+
+  It "builds a date refresh query with the supplied lean columns" {
+    $query = Get-CallDateRefreshQuery '"主キー","コール日","結果フラグ"' ([datetime]"2026-08-14") 7
+    $query | Should Be 'SELECT "主キー","コール日","結果フラグ" FROM "コール履歴" WHERE "コール日" >= {d ''2026-08-07''} ORDER BY "コール日", "コール時間", "主キー"'
+    $query | Should Not Match 'DATA0'
+  }
+}
+
+Describe "primary-key refresh orchestration" {
+  $agentSource = Get-Content -Raw -Encoding UTF8 (Join-Path (Split-Path -Parent $here) "CallCenterAgent.ps1")
+
+  It "adds refresh only as a non-primary-key state candidate" {
+    $agentSource | Should Match "Path = 'refresh'"
+    $agentSource | Should Match 'TracksPrimaryKey = \$false'
+    $agentSource | Should Match 'if \(\$workItem.TracksPrimaryKey -and \$rowPrimaryKey'
+  }
+
+  It "logs refresh volume and elapsed batch progress" {
+    $agentSource | Should Match 'refresh_rows = \$totalRefreshRows'
+    $agentSource | Should Match 'query_path = \$workItem.Path'
+    $agentSource | Should Match 'elapsed_seconds = '
+  }
+}
+
 Describe "Get-CallSyncRanges" {
   It "keeps an incremental run as one range" {
     $ranges = @(Get-CallSyncRanges ([datetime]"2026-05-13") ([datetime]"2026-08-12") $false)

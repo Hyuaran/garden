@@ -8,13 +8,18 @@ describe("call report", () => {
   it("formats the confirmed text in JST with Japanese weekday and rounding", () => {
     const result = buildCallReport(summary, new Date("2026-08-12T06:04:00Z"));
     expect(result.skipped).toBe(false);
-    expect(result.text).toContain("2026/08/12(水) 15:04");
+    expect(result.text).toContain("2026/08/12(水) 15:00");
     expect(result.text).toContain("従業員15名／総コール1,517件");
     expect(result.text).toContain("平均コール数：101 件");
     expect(result.text).toContain("有効率：60.0％");
     expect(result.text).toContain("受注率：2.0％（受注30件）");
     expect(result.text).toContain("前確OK率：3.0％（前確OK45件）");
     expect(result.text).not.toContain("獲得");
+  });
+  it("labels the cron delivery slot at the top of the JST hour", () => {
+    const result = buildCallReport(summary, new Date("2026-08-14T09:05:00Z"));
+    expect(result.text).toContain("2026/08/14(金) 18:00");
+    expect(result.text).not.toContain("18:05");
   });
   it("skips zero-call days without text", () => {
     expect(buildCallReport({ ...summary, totalCalls: 0 })).toEqual({ skipped: true, reason: "本日コール0件", text: null });

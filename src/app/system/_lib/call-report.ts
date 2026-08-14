@@ -36,7 +36,7 @@ function formatDeliveryTime(now: Date): string {
   }).formatToParts(now);
   const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
   const date = new Date(`${get("year")}-${get("month")}-${get("day")}T00:00:00Z`);
-  return `${get("year")}/${get("month")}/${get("day")}(${WEEKDAYS[date.getUTCDay()]}) ${get("hour")}:${get("minute")}`;
+  return `${get("year")}/${get("month")}/${get("day")}(${WEEKDAYS[date.getUTCDay()]}) ${get("hour")}:00`;
 }
 
 const rate = (value: number) => `${(value * 100).toFixed(1)}％`;
