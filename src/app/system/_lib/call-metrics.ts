@@ -12,19 +12,21 @@ export function classifyResultFlag(value: string | null | undefined) {
     isExpected: normalized === null || (KNOWN_RESULT_FLAGS as readonly string[]).includes(normalized),
     isOrder: normalized === "前確OK",
     isAcquired: normalized === "獲得",
+    isToss: normalized === "トス",
   };
 }
 
 export function aggregateDefinitionFixture(rows: Array<{ listName: string | null; resultFlag: string | null }>) {
-  const grouped = new Map<string, { callCount: number; effectiveCount: number; orderCount: number; acquiredCount: number }>();
+  const grouped = new Map<string, { callCount: number; effectiveCount: number; orderCount: number; acquiredCount: number; tossCount: number }>();
   for (const row of rows) {
     const listName = row.listName?.trim() || "リスト名なし";
-    const current = grouped.get(listName) ?? { callCount: 0, effectiveCount: 0, orderCount: 0, acquiredCount: 0 };
+    const current = grouped.get(listName) ?? { callCount: 0, effectiveCount: 0, orderCount: 0, acquiredCount: 0, tossCount: 0 };
     const flag = classifyResultFlag(row.resultFlag);
     current.callCount++;
     if (flag.isEffective) current.effectiveCount++;
     if (flag.isOrder) current.orderCount++;
     if (flag.isAcquired) current.acquiredCount++;
+    if (flag.isToss) current.tossCount++;
     grouped.set(listName, current);
   }
   return grouped;
@@ -39,9 +41,11 @@ export type CallMetricRow = {
   callCount: number;
   effectiveCount: number;
   effectiveRate: number;
+  tossCount: number;
   orderCount: number;
   acquiredCount: number;
   callOrderRate: number;
+  callAcquiredRate: number;
 };
 
 export type EmployeeCallMetricRow = Omit<CallMetricRow, "listName"> & { employeeName: string };
@@ -60,11 +64,16 @@ export type CallMetricsSummary = {
   employeeCount: number;
   totalCalls: number;
   totalEffective: number;
+  /** result_flag='前確OK'。ポータル表示は「前確OK」。 */
   totalOrders: number;
+  /** result_flag='獲得'。ポータル表示は「受注」。 */
   totalAcquired: number;
+  /** result_flag='トス'。ポータル表示は「トス数」。 */
+  totalTosses: number;
   averageCalls: number;
   effectiveRate: number;
-  orderRate: number;
+  acquiredRate: number;
+  preconfirmRate: number;
 };
 
 export function summarizeCallMetrics(data: CallMetricsResponse): CallMetricsSummary {
@@ -73,15 +82,18 @@ export function summarizeCallMetrics(data: CallMetricsResponse): CallMetricsSumm
   const totalEffective = data.employeeMetrics.reduce((sum, row) => sum + row.effectiveCount, 0);
   const totalOrders = data.employeeMetrics.reduce((sum, row) => sum + row.orderCount, 0);
   const totalAcquired = data.employeeMetrics.reduce((sum, row) => sum + row.acquiredCount, 0);
+  const totalTosses = data.employeeMetrics.reduce((sum, row) => sum + row.tossCount, 0);
   return {
     employeeCount,
     totalCalls,
     totalEffective,
     totalOrders,
     totalAcquired,
+    totalTosses,
     averageCalls: employeeCount ? totalCalls / employeeCount : 0,
     effectiveRate: totalCalls ? totalEffective / totalCalls : 0,
-    orderRate: totalCalls ? totalOrders / totalCalls : 0,
+    acquiredRate: totalCalls ? totalAcquired / totalCalls : 0,
+    preconfirmRate: totalCalls ? totalOrders / totalCalls : 0,
   };
 }
 
@@ -90,9 +102,11 @@ type RpcMetricRow = {
   call_count?: unknown;
   effective_count?: unknown;
   effective_rate?: unknown;
+  toss_count?: unknown;
   order_count?: unknown;
   acquired_count?: unknown;
   call_order_rate?: unknown;
+  call_acquired_rate?: unknown;
 };
 
 type RpcEmployeeMetricRow = Omit<RpcMetricRow, "list_name"> & { employee_name?: unknown };
@@ -148,18 +162,22 @@ export function normalizeCallMetricsRpc(
       callCount: number(row.call_count),
       effectiveCount: number(row.effective_count),
       effectiveRate: number(row.effective_rate),
+      tossCount: number(row.toss_count),
       orderCount: number(row.order_count),
       acquiredCount: number(row.acquired_count),
       callOrderRate: number(row.call_order_rate),
+      callAcquiredRate: number(row.call_acquired_rate),
     })),
     employeeMetrics: employeeMetrics.map((row) => ({
       employeeName: String(row.employee_name ?? "氏名なし"),
       callCount: number(row.call_count),
       effectiveCount: number(row.effective_count),
       effectiveRate: number(row.effective_rate),
+      tossCount: number(row.toss_count),
       orderCount: number(row.order_count),
       acquiredCount: number(row.acquired_count),
       callOrderRate: number(row.call_order_rate),
+      callAcquiredRate: number(row.call_acquired_rate),
     })),
   };
 }

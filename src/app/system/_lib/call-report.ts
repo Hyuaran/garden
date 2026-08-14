@@ -52,7 +52,8 @@ https://garden-os.net/system/call-metrics
 【本日】従業員${summary.employeeCount.toLocaleString("ja-JP")}名／総コール${summary.totalCalls.toLocaleString("ja-JP")}件
 平均コール数：${Math.round(summary.averageCalls).toLocaleString("ja-JP")} 件
 有効率：${rate(summary.effectiveRate)}
-受注率：${rate(summary.orderRate)}（受注${summary.totalOrders.toLocaleString("ja-JP")}件／獲得${summary.totalAcquired.toLocaleString("ja-JP")}件）
+受注率：${rate(summary.acquiredRate)}（受注${summary.totalAcquired.toLocaleString("ja-JP")}件）
+前確OK率：${rate(summary.preconfirmRate)}（前確OK${summary.totalOrders.toLocaleString("ja-JP")}件）
 [/info]`;
   return { skipped: false as const, text };
 }
