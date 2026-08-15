@@ -9,8 +9,10 @@ export class CallReportChatworkError extends Error {
 
 export async function sendCallReportMessage(text: string, fetchImpl: typeof fetch = fetch) {
   const token = process.env.CHATWORK_API_TOKEN;
-  const roomId = process.env.CHATWORK_DEV_ROOM_ID;
-  if (!token || !roomId) throw new Error("Chatwork開発ルーム設定が不足しています");
+  // CHATWORK_ROOM_KYOUYU_ID（本番＝HRグループ【共有】）があればそれを使い、
+  // 無ければ CHATWORK_DEV_ROOM_ID（開発ルーム・テスト用）へフォールバック。
+  const roomId = process.env.CHATWORK_ROOM_KYOUYU_ID || process.env.CHATWORK_DEV_ROOM_ID;
+  if (!token || !roomId) throw new Error("Chatwork配信ルーム設定が不足しています");
 
   const form = new URLSearchParams({ body: text });
   let response: Response;
