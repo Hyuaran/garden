@@ -3,7 +3,7 @@ import { CallReportChatworkError, sendCallReportMessage } from "./chatwork";
 
 describe("sendCallReportMessage", () => {
   beforeEach(() => { process.env.CHATWORK_API_TOKEN = "test-token"; process.env.CHATWORK_DEV_ROOM_ID = "dev-room"; });
-  afterEach(() => { delete process.env.CHATWORK_API_TOKEN; delete process.env.CHATWORK_DEV_ROOM_ID; });
+  afterEach(() => { delete process.env.CHATWORK_API_TOKEN; delete process.env.CHATWORK_DEV_ROOM_ID; delete process.env.CHATWORK_ROOM_KYOUYU_ID; });
   it("posts form-urlencoded text to the env-selected development room", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
     await sendCallReportMessage("本文 & test", fetchMock);
@@ -12,6 +12,20 @@ describe("sendCallReportMessage", () => {
     expect(init).toMatchObject({ method: "POST", headers: { "X-ChatWorkToken": "test-token", "Content-Type": "application/x-www-form-urlencoded" } });
     expect(init.body).toBeInstanceOf(URLSearchParams);
     expect((init.body as URLSearchParams).get("body")).toBe("本文 & test");
+  });
+  it("prefers the shared production room (CHATWORK_ROOM_KYOUYU_ID) over the dev room", async () => {
+    process.env.CHATWORK_ROOM_KYOUYU_ID = "kyouyu-room";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    await sendCallReportMessage("x", fetchMock);
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.chatwork.com/v2/rooms/kyouyu-room/messages");
+  });
+  it("falls back to the dev room when the production room is empty", async () => {
+    process.env.CHATWORK_ROOM_KYOUYU_ID = "";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    await sendCallReportMessage("x", fetchMock);
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.chatwork.com/v2/rooms/dev-room/messages");
   });
   it("requires both server-side env values", async () => {
     delete process.env.CHATWORK_DEV_ROOM_ID;
