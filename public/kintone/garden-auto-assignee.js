@@ -22,10 +22,16 @@
  *   認証情報・トークン・外に出せないロジックは絶対に書かないこと。
  *
  * 動作ルール（2026-08-18 東海林さん承認）
- *   - 日付が「空 → 値あり」に変わったとき、担当者が空なら本人を入れる
+ *   - 日付が「空 → 値あり」に変わったとき、担当者が空なら本人の名前を入れる
  *   - 担当者に既に誰か入っていれば触らない（他人の記録を上書きしない）
  *   - 日付を消しても担当者は消さない（誰が入れたかの記録を残す）
  *   - 新規作成・編集・一覧のインライン編集／スマホの新規作成・編集で動く
+ *
+ * ★共有アカウント（CSサポート）の扱い
+ *   共有アカウントは「誰が作業したか」が分からないため、自動入力しない。
+ *   日付が入っているのに担当者が空、または担当者が共有アカウント名のままだと
+ *   保存できないようにして、実際に作業した人の氏名の手入力を促す。
+ *   判定は表示名ではなく **ログイン名** で行う（表示名は変わりうるため）。
  */
 (function () {
   'use strict';
@@ -36,6 +42,22 @@
     { date: '開通前FC日', user: '開通前FC者名' },
     { date: '開通後FC日', user: '開通後FC者名' }
   ];
+
+  // 共有アカウント（誰が作業したか特定できないため自動入力しない）
+  var SHARED_CODES = ['ap1@hyuaran.com'];   // CSサポート
+  var SHARED_NAMES = ['CSサポート'];         // 手入力でこの名前を残させないため
+
+  function isSharedAccount(user) {
+    return SHARED_CODES.indexOf(user.code) >= 0;
+  }
+
+  function isSharedName(value) {
+    var s = String(value || '').replace(/[\s　]/g, '');
+    for (var i = 0; i < SHARED_NAMES.length; i++) {
+      if (s === SHARED_NAMES[i].replace(/[\s　]/g, '')) { return true; }
+    }
+    return false;
+  }
 
   // PC：新規作成・編集・一覧のインライン編集／スマホ：新規作成・編集
   var SCREENS = ['app.record.create', 'app.record.edit', 'app.record.index.edit',
@@ -77,9 +99,50 @@
     // 既に誰か入っている場合は上書きしない
     if (userField.value) { return event; }
 
+    var me = kintone.getLoginUser();
+
+    // 共有アカウントは誰が作業したか分からないので入れない（保存時に手入力を促す）
+    if (isSharedAccount(me)) { return event; }
+
     // 担当者欄は「文字列（1行）」。ユーザー選択ではなく名前をそのまま書き込む。
     // 退職してアカウントを削除しても、誰がやったかの記録が残るようにするため。
-    userField.value = kintone.getLoginUser().name;
+    userField.value = me.name;
+
+    return event;
+  });
+
+  // ------------------------------------------------------------------
+  // 保存時のチェック：日付が入っているのに担当者が埋まっていない／
+  // 共有アカウント名のままなら保存させず、手入力を促す
+  // ------------------------------------------------------------------
+  var SUBMITS = ['app.record.create.submit', 'app.record.edit.submit',
+                 'app.record.index.edit.submit',
+                 'mobile.app.record.create.submit', 'mobile.app.record.edit.submit'];
+
+  kintone.events.on(SUBMITS, function (event) {
+    var record = event.record;
+    var messages = [];
+
+    PAIRS.forEach(function (p) {
+      var dateField = record[p.date];
+      var userField = record[p.user];
+
+      // その画面に無い項目は対象外（一覧のインライン編集など）
+      if (!dateField || !userField) { return; }
+      if (!dateField.value) { return; }
+
+      if (!userField.value) {
+        userField.error = p.date + ' を入れた方の氏名を入力してください。';
+        messages.push(p.user);
+      } else if (isSharedName(userField.value)) {
+        userField.error = '共有アカウントのままです。実際に作業した方の氏名を入力してください。';
+        messages.push(p.user);
+      }
+    });
+
+    if (messages.length > 0) {
+      event.error = messages.join('／') + ' を入力してください（共有アカウントのままでは保存できません）。';
+    }
 
     return event;
   });
