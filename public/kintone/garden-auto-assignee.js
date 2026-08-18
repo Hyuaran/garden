@@ -141,7 +141,28 @@
     });
 
     if (messages.length > 0) {
-      event.error = messages.join('／') + ' を入力してください（共有アカウントのままでは保存できません）。';
+      var text = messages.join('／') + ' を入力してください。\n'
+               + '共有アカウント（CSサポート）のままでは保存できません。\n'
+               + '実際に作業した方の氏名を入力してください。';
+
+      event.error = text.replace(/\n/g, ' ');
+
+      // ★この画面では event.error が表示されないことを実測で確認したため（2026-08-18）、
+      //   保存を止めた理由が必ず伝わるようにダイアログでも出す。
+      //   「押しても何も起きない」状態にしないための措置。
+      window.alert(text);
+
+      // 直すべき欄まで移動してカーソルを置く（どこを直せばよいか一目で分かるように）
+      try {
+        var el = kintone.app.record.getFieldElement(messages[0]);
+        if (el) {
+          el.scrollIntoView({ block: 'center' });
+          var box = el.querySelector('input');
+          if (box) { box.focus(); }
+        }
+      } catch (e) {
+        // 一覧のインライン編集・スマホでは要素を取れないことがある。移動できなくても保存は止まる。
+      }
     }
 
     return event;
