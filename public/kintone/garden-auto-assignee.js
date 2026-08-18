@@ -1,5 +1,5 @@
 /**
- * Kintone つなぎカスタマイズ：日付を入れたら担当者に自分が入る
+ * Kintone つなぎカスタマイズ：日付を入れたら担当者欄に自分の名前が入る
  *
  * 配信URL（Kintone の「JavaScript / CSSでカスタマイズ」に URL指定で登録する）
  *   https://garden-os.net/kintone/garden-auto-assignee.js
@@ -9,7 +9,11 @@
  *
  * 目的
  *   ET日・後確OK日・開通前FC日・開通後FC日 を入力したとき、対応する担当者欄に
- *   ログイン中の本人を自動で入れる。日付と担当者の二度打ちをなくす。
+ *   ログイン中の本人の名前を自動で入れる。日付と担当者の二度打ちをなくす。
+ *
+ * ★担当者欄は「ユーザー選択」ではなく「文字列（1行）」。
+ *   退職してアカウントを削除しても、誰がやったかの記録が残るようにするため
+ *   （2026-08-18 東海林さん判断）。表記ゆれは Garden（Leaf）移行時に解決する。
  *
  * ★これは Garden（Leaf）側で進捗更新の画面ができるまでの「つなぎ」。
  *   Garden 側ができたら Kintone のカスタマイズ設定を外す。
@@ -71,10 +75,11 @@
     if (!dateField.value) { return event; }
 
     // 既に誰か入っている場合は上書きしない
-    if (userField.value && userField.value.length > 0) { return event; }
+    if (userField.value) { return event; }
 
-    var me = kintone.getLoginUser();
-    userField.value = [{ code: me.code, name: me.name }];
+    // 担当者欄は「文字列（1行）」。ユーザー選択ではなく名前をそのまま書き込む。
+    // 退職してアカウントを削除しても、誰がやったかの記録が残るようにするため。
+    userField.value = kintone.getLoginUser().name;
 
     return event;
   });
