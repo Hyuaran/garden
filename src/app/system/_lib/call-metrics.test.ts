@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateDefinitionFixture, aggregateEmployeeDefinitionFixture, classifyResultFlag, defaultCallMetricDates, normalizeCallMetricsRpc, parseCallMetricParams, summarizeCallMetrics } from "./call-metrics";
+import { aggregateDefinitionFixture, aggregateEmployeeDefinitionFixture, callsPerWorkHour, classifyResultFlag, defaultCallMetricDates, formatWorkTime, normalizeCallMetricsRpc, parseCallMetricParams, summarizeCallMetrics } from "./call-metrics";
 
 describe("call metrics definitions", () => {
   it("calculates the confirmed definition from raw result_flag values", () => {
@@ -34,12 +34,20 @@ describe("call metrics definitions", () => {
   it("normalizes a definition fixture without mixing orders and acquisitions", () => {
     const result = normalizeCallMetricsRpc({
       metrics: [{ list_name: "A", call_count: 11, effective_count: 7, effective_rate: "0.636364", toss_count: 2, order_count: 1, acquired_count: 3, call_order_rate: "0.090909", call_acquired_rate: "0.272727" }],
-      employee_metrics: [{ employee_name: "社員A", call_count: 11, effective_count: 7, effective_rate: "0.636364", toss_count: 2, order_count: 1, acquired_count: 3, call_order_rate: "0.090909", call_acquired_rate: "0.272727" }],
+      employee_metrics: [{ employee_name: "社員A", call_count: 11, effective_count: 7, effective_rate: "0.636364", toss_count: 2, order_count: 1, acquired_count: 3, call_order_rate: "0.090909", call_acquired_rate: "0.272727", prospect_count: 4, absent_count: 5, away_count: 6, invalid_count: 7, work_seconds: 18856 }],
       last_imported_at: "2026-08-12T03:34:00Z",
     }, { from: "2026-08-01", to: "2026-08-12", listName: "A", employeeName: "社員A" });
     expect(result.metrics[0]).toMatchObject({ callCount: 11, effectiveCount: 7, tossCount: 2, orderCount: 1, acquiredCount: 3, callOrderRate: .090909, callAcquiredRate: .272727 });
-    expect(result.employeeMetrics[0]).toMatchObject({ employeeName: "社員A", callCount: 11, effectiveCount: 7, tossCount: 2, orderCount: 1, acquiredCount: 3 });
+    expect(result.employeeMetrics[0]).toMatchObject({ employeeName: "社員A", callCount: 11, effectiveCount: 7, tossCount: 2, orderCount: 1, acquiredCount: 3, prospectCount: 4, absentCount: 5, awayCount: 6, invalidCount: 7, workSeconds: 18856 });
     expect(result).toMatchObject({ listName: "A", employeeName: "社員A", lastImportedAt: "2026-08-12T03:34:00Z" });
+  });
+
+  it("formats work seconds and calculates calls per work hour safely", () => {
+    expect(formatWorkTime(18856)).toBe("5:14:16");
+    expect(formatWorkTime(0)).toBe("0:00:00");
+    expect(formatWorkTime(-1)).toBe("0:00:00");
+    expect(callsPerWorkHour(171, 18856)).toBeCloseTo(32.6463725);
+    expect(callsPerWorkHour(10, 0)).toBeNull();
   });
 
   it("uses today for both default dates", () => {
