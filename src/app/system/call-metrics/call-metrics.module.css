@@ -33,6 +33,7 @@
 .main th { background: var(--navy); color: #fff; }
 .main tbody tr:last-child td { border-bottom: 0; }
 .main th:first-child, .main td:first-child { text-align: left; }
+.main th.employeeHeader { text-align: center; }
 .stickyFirst th:first-child, .stickyFirst td:first-child { position: sticky; left: 0; z-index: 1; box-shadow: 1px 0 0 var(--line); }
 .stickyFirst th:first-child { z-index: 2; background: var(--navy); color: #fff; }
 .pending, .zeroValue { color: var(--val-zero) !important; }

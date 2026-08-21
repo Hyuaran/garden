@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), sendCallReportMessage: vi.fn() }));
+const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), deliverCallReport: vi.fn() }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
-vi.mock("@/app/system/_lib/chatwork", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/app/system/_lib/chatwork")>()), sendCallReportMessage: mocks.sendCallReportMessage }));
+vi.mock("@/app/system/_lib/call-report-delivery", () => ({ deliverCallReport: mocks.deliverCallReport }));
 import { POST } from "./route";
 
 function client(options: { user?: boolean; role?: string; rpcError?: boolean; calls?: number } = {}) {
@@ -21,7 +21,7 @@ const request = (body: unknown) => new Request("http://localhost/api/system/call
 
 describe("POST /api/system/call-report", () => {
   beforeEach(() => {
-    mocks.createServerClient.mockReset(); mocks.sendCallReportMessage.mockReset().mockResolvedValue({ ok: true });
+    mocks.createServerClient.mockReset(); mocks.deliverCallReport.mockReset().mockResolvedValue({ attached: true });
     vi.spyOn(console, "info").mockImplementation(() => undefined); vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
   it("returns 401 when signed out", async () => {
@@ -37,18 +37,18 @@ describe("POST /api/system/call-report", () => {
     const response = await POST(request({ mode: "preview", date: "2026-08-12" }));
     expect(await response.json()).toMatchObject({ ok: true, skipped: false, summary: { totalCalls: 10 }, aggregateMs: expect.any(Number) });
     expect(supabase.rpc).toHaveBeenCalledWith("system_call_metrics", { p_from: "2026-08-12", p_to: "2026-08-12", p_list_name: null, p_employee_name: null });
-    expect(mocks.sendCallReportMessage).not.toHaveBeenCalled();
+    expect(mocks.deliverCallReport).not.toHaveBeenCalled();
   });
   it("sends only in send mode", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     const response = await POST(request({ mode: "send", date: "2026-08-12" }));
     expect(await response.json()).toMatchObject({ ok: true, sent: true, elapsedMs: { aggregate: expect.any(Number), post: expect.any(Number) } });
-    expect(mocks.sendCallReportMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.deliverCallReport).toHaveBeenCalledTimes(1);
   });
   it("skips zero-call days without sending", async () => {
     mocks.createServerClient.mockResolvedValue(client({ calls: 0 }));
     expect(await (await POST(request({ mode: "send", date: "2026-08-12" }))).json()).toMatchObject({ ok: true, skipped: true, sent: false });
-    expect(mocks.sendCallReportMessage).not.toHaveBeenCalled();
+    expect(mocks.deliverCallReport).not.toHaveBeenCalled();
   });
   it("rejects invalid mode and date", async () => {
     mocks.createServerClient.mockResolvedValue(client());

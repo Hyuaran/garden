@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { normalizeCallMetricsRpc, summarizeCallMetrics } from "@/app/system/_lib/call-metrics";
 import { buildCallReport, parseReportDate } from "@/app/system/_lib/call-report";
-import { CallReportChatworkError, sendCallReportMessage } from "@/app/system/_lib/chatwork";
+import { CallReportChatworkError } from "@/app/system/_lib/chatwork";
+import { deliverCallReport } from "@/app/system/_lib/call-report-delivery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
 
   const postStarted = performance.now();
   try {
-    await sendCallReportMessage(report.text);
+    await deliverCallReport(report.text, metrics);
   } catch (error) {
     const postMs = Math.round(performance.now() - postStarted);
     const chatworkStatus = error instanceof CallReportChatworkError ? error.status : null;

@@ -4,7 +4,8 @@ import { verifyCronRequest } from "@/lib/cron-auth";
 import { normalizeCallMetricsRpc, summarizeCallMetrics } from "@/app/system/_lib/call-metrics";
 import { buildCallReport } from "@/app/system/_lib/call-report";
 import { shouldDeliverAt } from "@/app/system/_lib/call-report-schedule";
-import { CallReportChatworkError, sendCallReportMessage } from "@/app/system/_lib/chatwork";
+import { CallReportChatworkError } from "@/app/system/_lib/chatwork";
+import { deliverCallReport } from "@/app/system/_lib/call-report-delivery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
 
   const postStarted = performance.now();
   try {
-    await sendCallReportMessage(report.text);
+    await deliverCallReport(report.text, metrics, now);
   } catch (error) {
     const postMs = Math.round(performance.now() - postStarted);
     const chatworkStatus = error instanceof CallReportChatworkError ? error.status : null;

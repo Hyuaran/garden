@@ -41,8 +41,12 @@ describe("CallMetricsClient", () => {
     expect(screen.getByRole("columnheader", { name: "トス数" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "シフト" })).not.toBeInTheDocument();
     const employeeCells = within(screen.getByText("社員A").closest("tr")!).getAllByRole("cell");
-    expect(within(screen.getByText("社員A").closest("table")!).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["社員名", "稼働時間", "コール数", "時間ごとコール", "有効数", "有効率", "トス数", "トス率", "受注数", "前確OK数", "見込", "担不", "留守", "無効"]);
-    expect(employeeCells.map((cell) => cell.textContent)).toEqual(["社員A", "1:00:00", "10", "10.00", "7", "70.0%", "3", "30.0%", "1", "2", "4", "5", "6", "7"]);
+    const employeeHeaders = within(screen.getByText("社員A").closest("table")!).getAllByRole("columnheader");
+    expect(employeeHeaders.map((cell) => cell.textContent)).toEqual(["社員名", "稼働時間", "コール数", "コール数/h", "有効数", "有効率", "トス数", "トス率", "受注数", "前確OK数", "見込", "担不", "留守", "無効"]);
+    expect(employeeHeaders[0]).toHaveClass(styles.employeeHeader);
+    expect(employeeCells[0]).not.toHaveClass(styles.employeeHeader);
+    expect(employeeCells.map((cell) => cell.textContent)).toEqual(["社員A", "1:00:00", "10", "10", "7", "70.0%", "3", "30.0%", "1", "2", "4", "5", "6", "7"]);
+    expect(screen.queryByText("時間ごとコール")).not.toBeInTheDocument();
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("最終更新: 2026/08/12(水) 12:34");
     expect(screen.queryByText(/現在は直近取込分のみ/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "リストごと" }));
@@ -52,6 +56,7 @@ describe("CallMetricsClient", () => {
     expect(within(screen.getByText("リストA").closest("table")!).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["リスト名", "コール数", "有効数", "有効率", "トス数", "トス率", "受注数", "受注率", "前確OK数", "前確OK率", "リスト数", "回転数", "リスト受注率"]);
     fireEvent.click(screen.getByRole("tab", { name: "定義方法" }));
     expect(screen.getByText("架電回数")).toBeInTheDocument();
+    expect(screen.getByText("コール数/h")).toBeInTheDocument();
     expect(screen.getByText("会話できたコール。留守・無効・空白（無効扱い）を除きます。")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "結果フラグの扱い（分類ルール）" })).toBeInTheDocument();
     // 集計の定義／休憩時間／フラグ名の対応／結果フラグの扱い の4表
@@ -86,6 +91,16 @@ describe("CallMetricsClient", () => {
     expect(cells[8]).toHaveClass(styles.zeroValue);
     expect(cells[9]).toHaveClass(styles.zeroValue);
     expect(cells[10]).not.toHaveClass(styles.zeroValue);
+  });
+  it("rounds calls per work hour to an integer", async () => {
+    const rows = [
+      { ...response.employeeMetrics[0], employeeName: "切上", callCount: 21, workSeconds: 7200 },
+      { ...response.employeeMetrics[0], employeeName: "切下", callCount: 52, workSeconds: 18000 },
+    ];
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ ...response, employeeMetrics: rows }) } as Response);
+    render(<CallMetricsClient />);
+    expect(within((await screen.findByText("切上")).closest("tr")!).getAllByRole("cell")[3]).toHaveTextContent("11");
+    expect(within(screen.getByText("切下").closest("tr")!).getAllByRole("cell")[3]).toHaveTextContent("10");
   });
   it("keeps long content inside the page background shell on every tab", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => longResponse } as Response);

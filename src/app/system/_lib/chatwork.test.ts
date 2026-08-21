@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CallReportChatworkError, sendCallReportMessage } from "./chatwork";
+import { CallReportChatworkError, sendCallReportMessage, sendCallReportWithAttachment } from "./chatwork";
 
 describe("sendCallReportMessage", () => {
   beforeEach(() => { process.env.CHATWORK_API_TOKEN = "test-token"; process.env.CHATWORK_DEV_ROOM_ID = "dev-room"; });
@@ -37,5 +37,26 @@ describe("sendCallReportMessage", () => {
     expect(error.status).toBe(429);
     expect(error.message).toBe("Chatwork API request failed (429)");
     expect(JSON.stringify(error)).not.toContain("secret response body");
+  });
+});
+
+describe("sendCallReportWithAttachment", () => {
+  beforeEach(() => { process.env.CHATWORK_API_TOKEN = "test-token"; process.env.CHATWORK_DEV_ROOM_ID = "dev-room"; });
+  afterEach(() => { delete process.env.CHATWORK_API_TOKEN; delete process.env.CHATWORK_DEV_ROOM_ID; delete process.env.CHATWORK_ROOM_KYOUYU_ID; });
+
+  it("sends message and PDF together in one multipart request", async () => {
+    process.env.CHATWORK_ROOM_KYOUYU_ID = "shared-room";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    await sendCallReportWithAttachment("本文", new Uint8Array([1, 2, 3]), "集計.pdf", fetchMock);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.chatwork.com/v2/rooms/shared-room/files");
+    expect(init.method).toBe("POST");
+    expect(init.headers).toEqual({ "X-ChatWorkToken": "test-token" });
+    expect(init.body).toBeInstanceOf(FormData);
+    const form = init.body as FormData;
+    expect(form.get("message")).toBe("本文");
+    expect(form.get("file")).toBeInstanceOf(Blob);
+    expect((form.get("file") as File).name).toBe("集計.pdf");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
