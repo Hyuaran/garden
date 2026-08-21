@@ -1,7 +1,7 @@
 .pageShell {
   --navy: #10233f; --heading: #10233f; --ink: #17212e; --sub: #5a6b80;
   --teal: #0ea5a0; --teal-d: #0b7e7a; --blue: #2563eb; --amber: #f59e0b; --red: #e5484d; --green: #16a36a;
-  --bg: #f5f8fc; --card: #ffffff; --line: #e3eaf3;
+  --bg: #f4f5f7; --card: #ffffff; --line: #e3eaf3;
   --shadow: 0 10px 30px rgba(16, 35, 63, .08); --shadow-s: 0 4px 14px rgba(16, 35, 63, .07); --r: 22px;
   --val-strong: #17212e; --val-zero: #98a4b3;
   font-family: "Meiryo", "メイリオ", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
