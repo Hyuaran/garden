@@ -57,6 +57,8 @@ input { font-family: inherit; }
   /* === 背景 === */
   --bg-paper:        #f5f0e1;
   --bg-paper-soft:   #faf6ec;
+  /* 社長スタイル（2026-08-21 後道社長 選定）。ポータルのページの地に使う。 */
+  --bg-shacho:       #f4f5f7;
   --bg-card:         rgba(255, 253, 245, 0.70);
   --bg-card-hover:   rgba(255, 253, 245, 0.90);
   --bg-card-solid:   #fdfbf3;
@@ -100,6 +102,8 @@ input { font-family: inherit; }
 [data-theme="dark"] {
   --bg-paper:        #1f2419;
   --bg-paper-soft:   #2a302a;
+  /* ダークのときは従来どおり（社長スタイルの決定は明るいときの背景色） */
+  --bg-shacho:       #2a302a;
   /* === dark alpha (DESIGN_SPEC §1-2 同値、prototype HTML/CSS と一致) ===
      第 1 弾 (d080e45 / 0.82) / 第 2 弾 (333ecef / 0.94) で alpha を強化したが、
      第 3 弾調査で真の原因が判明: .garden-v28a-main の z-index: 1 が
