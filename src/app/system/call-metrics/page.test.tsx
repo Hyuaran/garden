@@ -56,7 +56,7 @@ describe("CallMetricsClient", () => {
     expect(screen.getByRole("heading", { name: "結果フラグの扱い（分類ルール）" })).toBeInTheDocument();
     // 集計の定義／休憩時間／フラグ名の対応／結果フラグの扱い の4表
     expect(screen.getAllByRole("table")).toHaveLength(4);
-    expect(screen.getByRole("heading", { name: "休憩時間（稼働時間から引く時間）" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "休憩時間割" })).toBeInTheDocument();
     expect(screen.getByText(/休憩の時間帯が変わったときは/)).toBeInTheDocument();
     expect(screen.getAllByRole("table")[0].parentElement).toHaveClass(styles.definitionTable, styles.definitionFit);
     expect(screen.queryByText(/result_flag 診断/)).not.toBeInTheDocument();
