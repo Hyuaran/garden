@@ -144,8 +144,8 @@ export default function CallMetricsClient() {
               <tr><td>リスト数・回転数・リスト受注率</td><td>リストデータ取込後に対応</td></tr>
             </tbody>
           </table></div>
-          <h2>休憩時間（稼働時間から引く時間）</h2>
-          <p className={styles.period}>★ 休憩の時間帯が変わったときは、この表と稼働時間の計算（migration）の両方を直してください。</p>
+          <h2>休憩時間割</h2>
+          <p className={styles.period}>★ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</p>
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
             <thead><tr><th>回</th><th>開始</th><th>終了</th><th>長さ</th></tr></thead>
             <tbody>
