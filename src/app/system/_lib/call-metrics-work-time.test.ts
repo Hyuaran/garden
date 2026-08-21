@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  resolve(process.cwd(), "supabase/migrations/20260820000001_system_call_metrics_employee_work_metrics.sql"),
+  resolve(process.cwd(), "supabase/migrations/20260821000001_system_call_metrics_break_full_deduction.sql"),
   "utf8",
 );
 
@@ -15,8 +15,9 @@ const seconds = (value: string) => {
 const workSeconds = (firstStart: string, lastEnd: string) => {
   const first = seconds(firstStart);
   const last = seconds(lastEnd);
+  // またいで働いていた休憩だけ、その長さを全額引く
   const breakSeconds = breaks.reduce((total, [start, end]) => (
-    total + Math.max(0, Math.min(last, seconds(end)) - Math.max(first, seconds(start)))
+    total + (first <= seconds(start) && seconds(end) <= last ? seconds(end) - seconds(start) : 0)
   ), 0);
   return Math.max(0, last - first - breakSeconds);
 };
@@ -31,6 +32,9 @@ describe("Codex-187 employee work-time SQL contract", () => {
     ["西野　紗良", "18:41:14", "21:00:37", 7763, 79, 36.64],
     ["森　健登", "14:08:26", "21:00:03", 21997, 200, 32.73],
     ["谷本　結那", "14:10:12", "20:59:22", 21850, 292, 48.11],
+    // 休憩枠の途中から働き始めた／途中で終えた日は、その休憩を引かない（回帰）
+    ["石原　孝志朗", "13:44:39", "21:00:30", 23451, 94, 14.43],
+    ["廣門　彩季", "14:09:09", "19:52:27", 18498, 189, 36.78],
   ])("matches the measured fixture for %s", (_employee, first, last, expected, callCount, expectedHourly) => {
     expect(workSeconds(first as string, last as string)).toBe(expected);
     expect(Number((Number(callCount) / (Number(expected) / 3600)).toFixed(2))).toBe(expectedHourly);
@@ -41,6 +45,7 @@ describe("Codex-187 employee work-time SQL contract", () => {
     const endedTime: string | null = null;
     expect(endedTime ?? callTime).toBe("18:42:15");
     expect(migration).toContain("max(coalesce(history.call_ended_time, history.call_time))");
+    expect(migration).toContain("break_time.b_end - break_time.b_start");
   });
 
   it("keeps indexed raw-history access narrow and aggregates daily spans", () => {

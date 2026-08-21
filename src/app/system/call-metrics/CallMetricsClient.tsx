@@ -18,6 +18,16 @@ function formatJst(value: string | null) {
   const jstDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
   return `${get("year")}/${get("month")}/${get("day")}(${weekday[jstDate.getDay()]}) ${get("hour")}:${get("minute")}`;
 }
+// 稼働時間から引く休憩。変更したら supabase/migrations の稼働時間の計算も直すこと。
+const BREAKS = [
+  { start: "11:15", end: "11:30", length: "15分" },
+  { start: "13:00", end: "14:00", length: "60分" },
+  { start: "15:20", end: "15:30", length: "10分" },
+  { start: "16:45", end: "17:00", length: "15分" },
+  { start: "18:20", end: "18:30", length: "10分" },
+  { start: "19:50", end: "20:00", length: "10分" },
+] as const;
+
 const FLAG_RULES = [
   ["留守", "無効"], ["無効", "無効"], ["担不", "有効"], ["見込", "有効"],
   ["獲得", "有効"], ["トス", "有効"], ["NG", "有効"], ["前確OK", "有効"], ["前確NG", "有効"],
@@ -123,7 +133,7 @@ export default function CallMetricsClient() {
               <tr><td>トス数</td><td>結果フラグが「トス」のコール</td></tr>
               <tr><td>受注数</td><td>結果フラグが「獲得」のコール（コール履歴では「獲得」、ポータルでは「受注」と表示）</td></tr>
               <tr><td>前確OK数</td><td>結果フラグが「前確OK」のコール</td></tr>
-              <tr><td>稼働時間</td><td>その日の最初のコールから最後のコールまでの時間から、休憩時間を引いた実働時間です。休憩は 11:15〜11:30／13:00〜14:00／15:20〜15:30／16:45〜17:00／18:20〜18:30／19:50〜20:00 の6回（合計2時間）で、コールをしていた時間帯と重なった分だけ引きます。</td></tr>
+              <tr><td>稼働時間</td><td>その日の最初のコールから最後のコールまでの時間から、休憩時間（下表）を引いた実働時間です。その休憩の時間帯をまたいで働いていた場合に、その休憩の長さをまるごと引きます（休憩中に架電していても、別の時間に同じ長さの休憩を取っているため引きます）。休憩の途中から働き始めた日・途中で終えた日は、その休憩は引きません。</td></tr>
               <tr><td>時間ごとコール</td><td>コール数 ÷ 稼働時間（時間）。1時間あたり何件かけたかです。</td></tr>
               <tr><td>見込</td><td>結果フラグが「見込」のコール</td></tr>
               <tr><td>担不</td><td>結果フラグが「担不」（担当者不在）のコール</td></tr>
@@ -132,6 +142,17 @@ export default function CallMetricsClient() {
               <tr><td>リスト絞り込み時の稼働時間</td><td>リストで絞り込んだ場合、稼働時間はそのリストを架電していた時間の幅になります。</td></tr>
               <tr><td>Excel集計表との差</td><td>※ 従来のExcel集計表は休憩を引いていないため、こちらの方が短く出ます。</td></tr>
               <tr><td>リスト数・回転数・リスト受注率</td><td>リストデータ取込後に対応</td></tr>
+            </tbody>
+          </table></div>
+          <h2>休憩時間（稼働時間から引く時間）</h2>
+          <p className={styles.period}>★ 休憩の時間帯が変わったときは、この表と稼働時間の計算（migration）の両方を直してください。</p>
+          <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
+            <thead><tr><th>回</th><th>開始</th><th>終了</th><th>長さ</th></tr></thead>
+            <tbody>
+              {BREAKS.map((row, index) => <tr key={row.start}>
+                <td>{index + 1}</td><td>{row.start}</td><td>{row.end}</td><td>{row.length}</td>
+              </tr>)}
+              <tr><td colSpan={3}>合計</td><td>2時間</td></tr>
             </tbody>
           </table></div>
           <h2>コール履歴のフラグ名 → ポータル表示名</h2>
