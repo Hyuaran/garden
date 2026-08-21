@@ -1,0 +1,28 @@
+import { redirect } from "next/navigation";
+import { createServerClient } from "@/app/_lib/supabase/server";
+import MyPageClient from "./MyPageClient";
+import type { MyPageProfile, MyPageTab } from "./types";
+
+export const metadata = { title: "マイページ | Garden" };
+const MANAGER_ROLES = new Set(["manager", "admin", "super_admin"]);
+const TABS = new Set<MyPageTab>(["profile", "attendance", "shift", "zenkaku"]);
+
+export default async function MyPagePage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
+  const supabase = await createServerClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Fmypage");
+  const { data: employee } = await supabase.from("root_employees")
+    .select("name,name_kana,employee_number,employment_type,birthday,email,garden_role")
+    .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
+  const rawTab = (await searchParams).tab;
+  const requestedTab = typeof rawTab === "string" && TABS.has(rawTab as MyPageTab) ? rawTab as MyPageTab : "profile";
+  const birthdayRegistered = typeof employee?.birthday === "string" && employee.birthday.length > 0;
+  const initialProfile: MyPageProfile | null = employee && !birthdayRegistered ? {
+    name: String(employee.name ?? "-"), nameKana: String(employee.name_kana ?? "-"),
+    employeeNumber: String(employee.employee_number ?? "-"), employmentType: String(employee.employment_type ?? "-"),
+    birthday: null, email: String(employee.email ?? "-"), gardenRole: String(employee.garden_role ?? "-"),
+  } : null;
+  return <MyPageClient initialTab={requestedTab} registered={Boolean(employee)} employeeName={employee?.name ? String(employee.name) : null}
+    canViewSync={employee ? MANAGER_ROLES.has(String(employee.garden_role)) : false}
+    birthdayRegistered={birthdayRegistered} initialProfile={initialProfile} />;
+}
