@@ -4,6 +4,7 @@
   --bg: #f5f8fc; --card: #ffffff; --line: #e3eaf3;
   --shadow: 0 10px 30px rgba(16, 35, 63, .08); --shadow-s: 0 4px 14px rgba(16, 35, 63, .07); --r: 22px;
   --val-strong: #17212e; --val-zero: #98a4b3;
+  font-family: "Meiryo", "メイリオ", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
   position: relative; width: 100%; min-height: 100%; background: var(--bg);
 }
 .pageShell::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--bg); }
