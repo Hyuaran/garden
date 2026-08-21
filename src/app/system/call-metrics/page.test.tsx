@@ -54,7 +54,10 @@ describe("CallMetricsClient", () => {
     expect(screen.getByText("架電回数")).toBeInTheDocument();
     expect(screen.getByText("会話できたコール。留守・無効・空白（無効扱い）を除きます。")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "結果フラグの扱い（分類ルール）" })).toBeInTheDocument();
-    expect(screen.getAllByRole("table")).toHaveLength(3);
+    // 集計の定義／休憩時間／フラグ名の対応／結果フラグの扱い の4表
+    expect(screen.getAllByRole("table")).toHaveLength(4);
+    expect(screen.getByRole("heading", { name: "休憩時間（稼働時間から引く時間）" })).toBeInTheDocument();
+    expect(screen.getByText(/休憩の時間帯が変わったときは/)).toBeInTheDocument();
     expect(screen.getAllByRole("table")[0].parentElement).toHaveClass(styles.definitionTable, styles.definitionFit);
     expect(screen.queryByText(/result_flag 診断/)).not.toBeInTheDocument();
     expect(screen.queryByText("件数")).not.toBeInTheDocument();
