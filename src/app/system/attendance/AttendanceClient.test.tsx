@@ -16,6 +16,24 @@ describe("AttendanceClient", () => {
     expect(screen.queryByRole("button", { name: "出勤" })).not.toBeInTheDocument();
   });
 
+  it("hides its own title and logout when embedded but keeps identity and sync status", () => {
+    render(<AttendanceClient registered={false} employeeName="社員A" canViewSync embedded/>);
+    expect(screen.queryByRole("heading", { name: "勤怠打刻" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Garden attendance")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "ログアウト" })).not.toBeInTheDocument();
+    expect(screen.getByText("社員Aさん")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "同期状況" })).toBeInTheDocument();
+  });
+
+  it("keeps the standalone header and logout when embedded is omitted", () => {
+    render(<AttendanceClient registered={false} employeeName="社員A" canViewSync/>);
+    expect(screen.getByRole("heading", { name: "勤怠打刻" })).toBeInTheDocument();
+    expect(screen.getByText("Garden attendance")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ログアウト" })).toBeInTheDocument();
+    expect(screen.getByText("社員Aさん")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "同期状況" })).toBeInTheDocument();
+  });
+
   it("opens immediately in saving state and confirms only after the server response", async () => {
     let resolvePunch!: (response: Response) => void;
     const punchPromise = new Promise<Response>((resolve) => { resolvePunch = resolve; });

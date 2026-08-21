@@ -12,8 +12,8 @@ const formatTime = (value: string) => new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
 }).format(new Date(value));
 
-export default function AttendanceClient({ registered, employeeName, canViewSync }: {
-  registered: boolean; employeeName: string | null; canViewSync: boolean;
+export default function AttendanceClient({ registered, employeeName, canViewSync, embedded = false }: {
+  registered: boolean; employeeName: string | null; canViewSync: boolean; embedded?: boolean;
 }) {
   const router = useRouter();
   const [punches, setPunches] = useState<AttendancePunch[]>([]);
@@ -56,11 +56,11 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
     router.refresh();
   }
 
-  return <div className={styles.shell}>
-    <main className={styles.main}>
+  return <div className={`${styles.shell} ${embedded ? styles.shellEmbedded : ""}`}>
+    <main className={`${styles.main} ${embedded ? styles.mainEmbedded : ""}`}>
       <header className={styles.header}>
-        <div><p className={styles.eyebrow}>Garden attendance</p><h1>勤怠打刻</h1>{employeeName && <p>{employeeName}さん</p>}</div>
-        <div className={styles.headerActions}>{canViewSync && <Link className={styles.adminLink} href="/system/attendance/sync-status">同期状況</Link>}<button className={styles.logout} type="button" onClick={() => void logout()}>ログアウト</button></div>
+        <div>{!embedded && <><p className={styles.eyebrow}>Garden attendance</p><h1>勤怠打刻</h1></>}{employeeName && <p className={styles.employeeName}>{employeeName}さん</p>}</div>
+        <div className={styles.headerActions}>{canViewSync && <Link className={styles.adminLink} href="/system/attendance/sync-status">同期状況</Link>}{!embedded && <button className={styles.logout} type="button" onClick={() => void logout()}>ログアウト</button>}</div>
       </header>
       {!registered ? <section className={styles.notice} role="status">
         <h2>打刻できません</h2><p>打刻対象の従業員として登録されていません（管理者にご連絡ください）</p>
