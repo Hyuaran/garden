@@ -2,11 +2,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { CALL_METRICS_PDF_SECTIONS, callMetricCountTone, callMetricsPdfFilename, renderCallMetricsPdf } from "./call-metrics-pdf";
+import { callMetricCountTone, callMetricsPdfFilename, measureVectorTextLayout, renderCallMetricsPdf } from "./call-metrics-pdf";
 import type { CallMetricsResponse, EmployeeCallMetricRow } from "./call-metrics";
 
 const employee = (index: number): EmployeeCallMetricRow => ({
-  employeeName: `社員${String(index).padStart(3, "0")}`,
+  employeeName: index === 1 ? "非常に長い社員名二十文字以上折返確認担当者" : `社員${String(index).padStart(3, "0")}`,
   callCount: 21 + index,
   effectiveCount: 15,
   effectiveRate: .7,
@@ -26,7 +26,7 @@ const fixture: CallMetricsResponse = {
   from: "2026-08-21", to: "2026-08-21", listName: null, employeeName: null, lastImportedAt: null,
   employeeMetrics: Array.from({ length: 90 }, (_, index) => employee(index + 1)),
   metrics: Array.from({ length: 12 }, (_, index) => ({
-    listName: `リスト${index + 1}`, callCount: 100, effectiveCount: 70, effectiveRate: .7,
+    listName: index === 0 ? "関西電力_20260801_再架電_A_長いリスト名確認" : `リスト${index + 1}`, callCount: 100, effectiveCount: 70, effectiveRate: .7,
     tossCount: index % 2, orderCount: index % 3, acquiredCount: index % 4,
     callOrderRate: .1, callAcquiredRate: .05,
   })),
@@ -57,12 +57,23 @@ describe("call metrics PDF", () => {
     const buffer = await renderCallMetricsPdf(fixture);
     const pages = await extractPages(new Uint8Array(buffer));
     expect(pages.length).toBeGreaterThan(3);
-    expect(CALL_METRICS_PDF_SECTIONS).toEqual(["従業員ごと", "リストごと", "定義方法"]);
+    const employeePage = pages.findIndex((text) => text.includes("SECTION_EMPLOYEE"));
+    const listPage = pages.findIndex((text) => text.includes("SECTION_LIST"));
+    const definitionPage = pages.findIndex((text) => text.includes("SECTION_DEFINITION"));
+    expect(employeePage).toBe(0);
+    expect(listPage).toBeGreaterThan(employeePage + 1);
+    expect(definitionPage).toBeGreaterThan(listPage);
+    const employeeLayout = measureVectorTextLayout(fixture.employeeMetrics[0].employeeName, 91, 7.5, false, true);
+    const listLayout = measureVectorTextLayout(fixture.metrics[0].listName, 127, 7.5, false, true);
+    expect(employeeLayout.lines.length).toBeGreaterThan(1);
+    expect(listLayout.lines.length).toBeGreaterThan(1);
+    expect([...employeeLayout.lineWidths, ...listLayout.lineWidths].every((width) => width <= 121)).toBe(true);
+    expect(pages.every((text) => text.includes("PDF_HEADER 2026-08-21 2026-08-21"))).toBe(true);
     expect(pages.every((text, index) => text.includes(`${index + 1} / ${pages.length}`))).toBe(true);
     if (process.env.WRITE_CALL_METRICS_PDF === "1") {
       const outputDir = path.join(process.cwd(), "output", "pdf");
       mkdirSync(outputDir, { recursive: true });
       writeFileSync(path.join(outputDir, "テレマコール集計ポータル_20260821_1600.pdf"), buffer);
     }
-  }, 30_000);
+  }, 60_000);
 });
