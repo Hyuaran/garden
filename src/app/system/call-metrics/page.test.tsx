@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), signOut: v
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }));
 vi.mock("@/app/_lib/supabase/browser", () => ({ createBrowserClient: () => ({ auth: { signOut: mocks.signOut } }) }));
 
-const response = { ok: true, from: "2026-08-01", to: "2026-08-12", listName: null, employeeName: null, lastImportedAt: "2026-08-12T03:34:00Z", metrics: [{ listName: "リストA", callCount: 10, effectiveCount: 7, effectiveRate: .7, tossCount: 3, orderCount: 2, acquiredCount: 1, callOrderRate: .2, callAcquiredRate: .1 }], employeeMetrics: [{ employeeName: "社員A", callCount: 10, effectiveCount: 7, effectiveRate: .7, tossCount: 3, orderCount: 2, acquiredCount: 1, callOrderRate: .2, callAcquiredRate: .1 }] };
+const response = { ok: true, from: "2026-08-01", to: "2026-08-12", listName: null, employeeName: null, lastImportedAt: "2026-08-12T03:34:00Z", metrics: [{ listName: "リストA", callCount: 10, effectiveCount: 7, effectiveRate: .7, tossCount: 3, orderCount: 2, acquiredCount: 1, callOrderRate: .2, callAcquiredRate: .1 }], employeeMetrics: [{ employeeName: "社員A", callCount: 10, effectiveCount: 7, effectiveRate: .7, tossCount: 3, orderCount: 2, acquiredCount: 1, callOrderRate: .2, callAcquiredRate: .1, prospectCount: 4, absentCount: 5, awayCount: 6, invalidCount: 7, workSeconds: 3600 }] };
 
 const longResponse = {
   ...response,
@@ -39,11 +39,10 @@ describe("CallMetricsClient", () => {
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("有効率: 70.0%");
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("受注率: 10.0%（受注数 1件）／前確OK率: 20.0%（前確OK数 2件）");
     expect(screen.getByRole("columnheader", { name: "トス数" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "シフト" })).toBeInTheDocument();
-    expect(screen.getByText("未取得")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "シフト" })).not.toBeInTheDocument();
     const employeeCells = within(screen.getByText("社員A").closest("tr")!).getAllByRole("cell");
-    expect(within(screen.getByText("社員A").closest("table")!).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["社員名", "シフト", "コール数", "有効数", "有効率", "トス数", "トス率", "受注数", "受注率", "前確OK数", "前確OK率"]);
-    expect(employeeCells.map((cell) => cell.textContent)).toEqual(["社員A", "未取得", "10", "7", "70.0%", "3", "30.0%", "1", "10.0%", "2", "20.0%"]);
+    expect(within(screen.getByText("社員A").closest("table")!).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["社員名", "稼働時間", "コール数", "時間ごとコール", "有効数", "有効率", "トス数", "トス率", "受注数", "前確OK数", "見込", "担不", "留守", "無効"]);
+    expect(employeeCells.map((cell) => cell.textContent)).toEqual(["社員A", "1:00:00", "10", "10.00", "7", "70.0%", "3", "30.0%", "1", "2", "4", "5", "6", "7"]);
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("最終更新: 2026/08/12(水) 12:34");
     expect(screen.queryByText(/現在は直近取込分のみ/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "リストごと" }));
@@ -61,21 +60,29 @@ describe("CallMetricsClient", () => {
     expect(screen.queryByText("件数")).not.toBeInTheDocument();
     expect(screen.queryByText("想定内")).not.toBeInTheDocument();
     expect(screen.queryByText("空")).not.toBeInTheDocument();
+    expect(screen.getByText("リストで絞り込んだ場合、稼働時間はそのリストを架電していた時間の幅になります。")).toBeInTheDocument();
+    expect(screen.getByText("※ 従来のExcel集計表は休憩を引いていないため、こちらの方が短く出ます。")).toBeInTheDocument();
   });
   it("uses the complete column span for empty employee and list tables", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ ...response, metrics: [], employeeMetrics: [] }) } as Response);
     render(<CallMetricsClient />);
     const employeeEmpty = await screen.findByText("対象データがありません");
-    expect(employeeEmpty).toHaveAttribute("colspan", "11");
+    expect(employeeEmpty).toHaveAttribute("colspan", "14");
     fireEvent.click(screen.getByRole("tab", { name: "リストごと" }));
     expect(screen.getByText("対象データがありません")).toHaveAttribute("colspan", "13");
   });
-  it("shows a 0.0% toss rate when call count is zero", async () => {
-    const zero = { ...response.employeeMetrics[0], callCount: 0, tossCount: 0, employeeName: "社員ゼロ" };
+  it("shows safe zero-work values and dims only the three selected zero counts", async () => {
+    const zero = { ...response.employeeMetrics[0], callCount: 0, tossCount: 0, acquiredCount: 0, orderCount: 0, prospectCount: 0, absentCount: 0, awayCount: 0, invalidCount: 0, workSeconds: 0, employeeName: "社員ゼロ" };
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ ...response, metrics: [], employeeMetrics: [zero] }) } as Response);
     render(<CallMetricsClient />);
     const cells = within((await screen.findByText("社員ゼロ")).closest("tr")!).getAllByRole("cell");
-    expect(cells[6]).toHaveTextContent("0.0%");
+    expect(cells[1]).toHaveTextContent("0:00:00");
+    expect(cells[3]).toHaveTextContent("-");
+    expect(cells[7]).toHaveTextContent("0.0%");
+    expect(cells[6]).toHaveClass(styles.zeroValue);
+    expect(cells[8]).toHaveClass(styles.zeroValue);
+    expect(cells[9]).toHaveClass(styles.zeroValue);
+    expect(cells[10]).not.toHaveClass(styles.zeroValue);
   });
   it("keeps long content inside the page background shell on every tab", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => longResponse } as Response);

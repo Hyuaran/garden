@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import type { CallMetricsResponse } from "../_lib/call-metrics";
-import { defaultCallMetricDates, summarizeCallMetrics } from "../_lib/call-metrics";
+import { callsPerWorkHour, defaultCallMetricDates, formatWorkTime, summarizeCallMetrics } from "../_lib/call-metrics";
 import styles from "./call-metrics.module.css";
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
@@ -95,10 +95,10 @@ export default function CallMetricsClient() {
         {activeTab === "employees" && <section role="tabpanel">
           <h2>従業員ごとの指標</h2>
           <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><table>
-            <thead><tr><th>社員名</th><th>シフト</th><th>コール数</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>受注率</th><th>前確OK数</th><th>前確OK率</th></tr></thead>
+            <thead><tr><th>社員名</th><th>稼働時間</th><th>コール数</th><th>時間ごとコール</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>前確OK数</th><th>見込</th><th>担不</th><th>留守</th><th>無効</th></tr></thead>
             <tbody>{data.employeeMetrics.length ? data.employeeMetrics.map((row) => <tr key={row.employeeName}>
-              <td>{row.employeeName}</td><td className={styles.pending}>未取得</td><td>{row.callCount.toLocaleString()}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td>{row.acquiredCount.toLocaleString()}</td><td>{percent(row.callAcquiredRate)}</td><td>{row.orderCount.toLocaleString()}</td><td>{percent(row.callOrderRate)}</td>
-            </tr>) : <tr><td colSpan={11}>対象データがありません</td></tr>}</tbody>
+              <td>{row.employeeName}</td><td>{formatWorkTime(row.workSeconds)}</td><td>{row.callCount.toLocaleString()}</td><td>{callsPerWorkHour(row.callCount, row.workSeconds)?.toFixed(2) ?? "-"}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td className={row.tossCount === 0 ? styles.zeroValue : styles.strongValue}>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td className={row.acquiredCount === 0 ? styles.zeroValue : styles.strongValue}>{row.acquiredCount.toLocaleString()}</td><td className={row.orderCount === 0 ? styles.zeroValue : styles.strongValue}>{row.orderCount.toLocaleString()}</td><td>{row.prospectCount.toLocaleString()}</td><td>{row.absentCount.toLocaleString()}</td><td>{row.awayCount.toLocaleString()}</td><td>{row.invalidCount.toLocaleString()}</td>
+            </tr>) : <tr><td colSpan={14}>対象データがありません</td></tr>}</tbody>
           </table></div>
         </section>}
 
@@ -122,10 +122,15 @@ export default function CallMetricsClient() {
               <tr><td>有効率</td><td>有効数 ÷ コール数</td></tr>
               <tr><td>トス数</td><td>結果フラグが「トス」のコール</td></tr>
               <tr><td>受注数</td><td>結果フラグが「獲得」のコール（コール履歴では「獲得」、ポータルでは「受注」と表示）</td></tr>
-              <tr><td>受注率</td><td>受注数 ÷ コール数</td></tr>
               <tr><td>前確OK数</td><td>結果フラグが「前確OK」のコール</td></tr>
-              <tr><td>前確OK率</td><td>前確OK数 ÷ コール数</td></tr>
-              <tr><td>シフト</td><td>予定シフトの時間帯（打刻アプリ連携後に表示）</td></tr>
+              <tr><td>稼働時間</td><td>その日の最初のコールから最後のコールまでの時間から、休憩時間を引いた実働時間です。休憩は 11:15〜11:30／13:00〜14:00／15:20〜15:30／16:45〜17:00／18:20〜18:30／19:50〜20:00 の6回（合計2時間）で、コールをしていた時間帯と重なった分だけ引きます。</td></tr>
+              <tr><td>時間ごとコール</td><td>コール数 ÷ 稼働時間（時間）。1時間あたり何件かけたかです。</td></tr>
+              <tr><td>見込</td><td>結果フラグが「見込」のコール</td></tr>
+              <tr><td>担不</td><td>結果フラグが「担不」（担当者不在）のコール</td></tr>
+              <tr><td>留守</td><td>結果フラグが「留守」のコール</td></tr>
+              <tr><td>無効</td><td>結果フラグが「無効」のコール</td></tr>
+              <tr><td>リスト絞り込み時の稼働時間</td><td>リストで絞り込んだ場合、稼働時間はそのリストを架電していた時間の幅になります。</td></tr>
+              <tr><td>Excel集計表との差</td><td>※ 従来のExcel集計表は休憩を引いていないため、こちらの方が短く出ます。</td></tr>
               <tr><td>リスト数・回転数・リスト受注率</td><td>リストデータ取込後に対応</td></tr>
             </tbody>
           </table></div>

@@ -48,7 +48,14 @@ export type CallMetricRow = {
   callAcquiredRate: number;
 };
 
-export type EmployeeCallMetricRow = Omit<CallMetricRow, "listName"> & { employeeName: string };
+export type EmployeeCallMetricRow = Omit<CallMetricRow, "listName"> & {
+  employeeName: string;
+  prospectCount: number;
+  absentCount: number;
+  awayCount: number;
+  invalidCount: number;
+  workSeconds: number;
+};
 
 export type CallMetricsResponse = {
   from: string;
@@ -109,7 +116,14 @@ type RpcMetricRow = {
   call_acquired_rate?: unknown;
 };
 
-type RpcEmployeeMetricRow = Omit<RpcMetricRow, "list_name"> & { employee_name?: unknown };
+type RpcEmployeeMetricRow = Omit<RpcMetricRow, "list_name"> & {
+  employee_name?: unknown;
+  prospect_count?: unknown;
+  absent_count?: unknown;
+  away_count?: unknown;
+  invalid_count?: unknown;
+  work_seconds?: unknown;
+};
 
 type RpcPayload = { metrics?: unknown; employee_metrics?: unknown; last_imported_at?: unknown };
 
@@ -143,6 +157,18 @@ export function parseCallMetricParams(searchParams: URLSearchParams, now = new D
 }
 
 const number = (value: unknown) => Number(value ?? 0);
+
+export function formatWorkTime(seconds: number) {
+  const safeSeconds = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return `${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+export function callsPerWorkHour(callCount: number, workSeconds: number) {
+  return workSeconds > 0 ? callCount / (workSeconds / 3600) : null;
+}
 
 export function normalizeCallMetricsRpc(
   raw: unknown,
@@ -178,6 +204,11 @@ export function normalizeCallMetricsRpc(
       acquiredCount: number(row.acquired_count),
       callOrderRate: number(row.call_order_rate),
       callAcquiredRate: number(row.call_acquired_rate),
+      prospectCount: number(row.prospect_count),
+      absentCount: number(row.absent_count),
+      awayCount: number(row.away_count),
+      invalidCount: number(row.invalid_count),
+      workSeconds: number(row.work_seconds),
     })),
   };
 }
