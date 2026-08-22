@@ -1,0 +1,24 @@
+{
+  "apiBaseUrl": "https://garden.example.com",
+  "pollSeconds": 3,
+  "logDirectory": "C:\\ProgramData\\Garden\\ZenkakuAgent\\logs",
+  "fmServer": "192.168.1.100",
+  "fmPort": 2399,
+  "fmDatabase": "__実機で営業マスタのデータベース名に変更__",
+  "fmTable": "__実機でテーブル名に変更__",
+  "salesIdColumn": "__実機で営業ID列名に変更__",
+  "fmUser": "Garden",
+  "fieldMap": {
+    "flag":"P_フラグ","mobileNumber":"携帯番号_ハイフンなし","mobileCarrier":"携帯キャリア営業用","mobileDeviceType":"携帯端末タイプ",
+    "productCategory1":"商材名区分1","productCategory2":"商材名区分2","salesCommentLine":"営コメ_回線","applicationCode":"申込コード","applicationPlanName":"申込プラン名","constructionType":"工事種別","applicationIsp":"申込ISP",
+    "wirelessUsage":"無線利用方法","wirelessLanCard":"無線LANカード","phonePlanName":"申込電話プラン名","phoneCallerId":"電話申込OP_発信者番号表示_ND","phoneCallWaiting":"電話申込OP_通話中着信通知_CH","phoneNumberRequest":"電話申込OP_ナンバーリクエスト_NR","phoneNuisanceBlock":"電話申込OP_迷惑電話ブロック","phoneCallForwarding":"電話申込OP_自動転送_VW","phoneAdditionalNumber":"電話申込OP_追加番号","phoneMultipleChannels":"電話申込OP_複数チャネル","phoneIncomingMail":"電話申込OP_着信お知らせメール","phoneFaxMail":"電話申込OP_FAXお知らせメール",
+    "tvApplication":"TV申込","terrestrialTvEnvironment":"地デジ環境","quotedPrice":"案内料金","existingContractInfo":"既契約情報","existingContractContinuation":"既契約継続有無","existingLineType":"既契約回線タイプ","applicantBirthday":"申込者名_生年月日",
+    "thirdPartyLastNameKana":"第三者確認名_姓カナ","thirdPartyFirstNameKana":"第三者確認名_名カナ","thirdPartyLastName":"第三者確認名_姓","thirdPartyFirstName":"第三者確認名_名","thirdPartyBirthday":"第三者確認名_生年月日","thirdPartyAge":"第三者確認名_年齢","thirdPartyGender":"第三者確認名_性別","thirdPartyRelationship":"第三者確認名_続柄","thirdPartyTalkedAt":"第三者と話した日時",
+    "transferApprovalNumber":"転用承諾番号","providerChangeApprovalNumber":"事業者間変更承諾番号","cafNumber":"CAF番号","installationPostalCode":"設置先_郵便番号","installationPrefecture":"設置先_住所_都道府県"
+  },
+  "duplicateFieldMap": {
+    "caseId": "__実機で案件ID列名に変更__",
+    "productName": "__実機で商材名列名に変更__",
+    "registeredDate": "__実機で登録日列名に変更__"
+  }
+}

@@ -61,6 +61,9 @@
 .issueList > li + li { margin-top:12px; }
 .issueList p { margin:0 0 5px; }
 .issueList ul { margin:0; padding-left:1.4rem; }
+.groupedRequired { margin-top:12px; color:var(--ink); }
+.groupedRequired p { margin:0 0 5px; }
+.groupedRequired ul { margin:0; padding-left:2.8rem; }
 .successResult p { color:var(--sub); }
 
 :global(.dark) .pageShell, :global([data-theme="dark"]) .pageShell {
