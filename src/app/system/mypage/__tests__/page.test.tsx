@@ -26,7 +26,7 @@ describe("system mypage", () => {
     fireEvent.click(screen.getByRole("tab",{name:"勤怠打刻"}));
     expect(screen.getByTestId("attendance-client")).toHaveTextContent(JSON.stringify({registered:true,employeeName:"社員A",canViewSync:false,embedded:true}));
     fireEvent.click(screen.getByRole("tab",{name:"シフト"})); expect(screen.getByText(/シフトの提出・確認/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab",{name:"前確依頼"})); expect(screen.getByText(/前確依頼の受付/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab",{name:"前確依頼"})); expect(screen.getByRole("button",{name:"連携チェック"})).toBeInTheDocument();
   });
   it("uses the attendance query tab as the initial tab", () => {
     render(<MyPageClient {...baseProps} initialTab="attendance" canViewSync/>);
