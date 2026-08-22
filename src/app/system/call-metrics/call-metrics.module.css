@@ -30,10 +30,9 @@
 .tableWrap, .definitionTable { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-s); }
 .main table { width: 100%; border-collapse: separate; border-spacing: 0; white-space: nowrap; background: var(--card); color: var(--ink); }
 .main th, .main td { padding: 11px 13px; border-bottom: 1px solid var(--line); text-align: right; background: var(--card); color: var(--ink); }
-.main th { background: var(--navy); color: #fff; }
+.main th { background: var(--navy); color: #fff; text-align: center; }
 .main tbody tr:last-child td { border-bottom: 0; }
-.main th:first-child, .main td:first-child { text-align: left; }
-.main th.employeeHeader { text-align: center; }
+.main td:first-child { text-align: left; }
 .stickyFirst th:first-child, .stickyFirst td:first-child { position: sticky; left: 0; z-index: 1; box-shadow: 1px 0 0 var(--line); }
 .stickyFirst th:first-child { z-index: 2; background: var(--navy); color: #fff; }
 .pending, .zeroValue { color: var(--val-zero) !important; }

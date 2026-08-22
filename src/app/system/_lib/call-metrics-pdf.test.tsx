@@ -24,8 +24,8 @@ const employee = (index: number): EmployeeCallMetricRow => ({
 
 const fixture: CallMetricsResponse = {
   from: "2026-08-21", to: "2026-08-21", listName: null, employeeName: null, lastImportedAt: null,
-  employeeMetrics: Array.from({ length: 90 }, (_, index) => employee(index + 1)),
-  metrics: Array.from({ length: 12 }, (_, index) => ({
+  employeeMetrics: Array.from({ length: 16 }, (_, index) => employee(index + 1)),
+  metrics: Array.from({ length: 54 }, (_, index) => ({
     listName: index === 0 ? "関西電力_20260801_再架電_A_長いリスト名確認" : `リスト${index + 1}`, callCount: 100, effectiveCount: 70, effectiveRate: .7,
     tossCount: index % 2, orderCount: index % 3, acquiredCount: index % 4,
     callOrderRate: .1, callAcquiredRate: .05,
@@ -61,8 +61,8 @@ describe("call metrics PDF", () => {
     const listPage = pages.findIndex((text) => text.includes("SECTION_LIST"));
     const definitionPage = pages.findIndex((text) => text.includes("SECTION_DEFINITION"));
     expect(employeePage).toBe(0);
-    expect(listPage).toBeGreaterThan(employeePage + 1);
-    expect(definitionPage).toBeGreaterThan(listPage);
+    expect(listPage).toBe(employeePage + 1);
+    expect(definitionPage).toBeGreaterThan(listPage + 1);
     const employeeLayout = measureVectorTextLayout(fixture.employeeMetrics[0].employeeName, 91, 7.5, false, true);
     const listLayout = measureVectorTextLayout(fixture.metrics[0].listName, 127, 7.5, false, true);
     expect(employeeLayout.lines.length).toBeGreaterThan(1);

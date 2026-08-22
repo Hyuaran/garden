@@ -105,7 +105,7 @@ export default function CallMetricsClient() {
         {activeTab === "employees" && <section role="tabpanel">
           <h2>従業員ごとの指標</h2>
           <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><table>
-            <thead><tr><th className={styles.employeeHeader}>社員名</th><th>稼働時間</th><th>コール数</th><th>コール数/h</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>前確OK数</th><th>見込</th><th>担不</th><th>留守</th><th>無効</th></tr></thead>
+            <thead><tr><th>社員名</th><th>稼働時間</th><th>コール数</th><th>コール数/h</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>前確OK数</th><th>見込</th><th>担不</th><th>留守</th><th>無効</th></tr></thead>
             <tbody>{data.employeeMetrics.length ? data.employeeMetrics.map((row) => <tr key={row.employeeName}>
               <td>{row.employeeName}</td><td>{formatWorkTime(row.workSeconds)}</td><td>{row.callCount.toLocaleString()}</td><td>{formatCallsPerWorkHour(row.callCount, row.workSeconds)}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td className={row.tossCount === 0 ? styles.zeroValue : styles.strongValue}>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td className={row.acquiredCount === 0 ? styles.zeroValue : styles.strongValue}>{row.acquiredCount.toLocaleString()}</td><td className={row.orderCount === 0 ? styles.zeroValue : styles.strongValue}>{row.orderCount.toLocaleString()}</td><td>{row.prospectCount.toLocaleString()}</td><td>{row.absentCount.toLocaleString()}</td><td>{row.awayCount.toLocaleString()}</td><td>{row.invalidCount.toLocaleString()}</td>
             </tr>) : <tr><td colSpan={14}>対象データがありません</td></tr>}</tbody>
