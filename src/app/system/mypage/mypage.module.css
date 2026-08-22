@@ -47,6 +47,21 @@
 .confirmationActions { display:flex; gap:8px; flex-shrink:0; }
 .confirmationActions .secondaryButton { border:1px solid #b67a00; background:transparent; color:#8a5d00; }
 .unlockedNotice { margin:0; padding:12px 16px; border-radius:10px; background:#e9f7f6; color:var(--teal-d); font-weight:700; }
+.zenkakuContent { display:grid; gap:18px; max-width:920px; margin:0 auto; }
+.zenkakuLead { margin:0 0 18px; color:var(--sub); }
+.checkForm { display:grid; grid-template-columns:minmax(180px,1fr) auto; gap:8px 12px; align-items:end; }
+.checkForm label { grid-column:1/-1; color:var(--ink); font-weight:700; }
+.checkForm input { min-height:44px; box-sizing:border-box; padding:10px 12px; border:2px solid var(--line); border-radius:10px; background:var(--card); color:var(--ink); font-size:1rem; }
+.checkForm button, .successResult button { min-height:44px; padding:0 20px; border:0; border-radius:10px; background:var(--teal-d); color:#fff; font-weight:700; }
+.checkForm button:disabled, .successResult button:disabled { opacity:1; cursor:not-allowed; }
+.checking { margin:14px 0 0; color:var(--sub); font-weight:700; }
+.blockingResult { border-left:4px solid var(--red,#c52e35); }
+.noticeResult, .successResult { border-left:4px solid var(--teal); }
+.issueList { margin:10px 0 0; padding-left:1.4rem; color:var(--ink); }
+.issueList > li + li { margin-top:12px; }
+.issueList p { margin:0 0 5px; }
+.issueList ul { margin:0; padding-left:1.4rem; }
+.successResult p { color:var(--sub); }
 
 :global(.dark) .pageShell, :global([data-theme="dark"]) .pageShell {
   --navy:#193b62; --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4;
@@ -60,8 +75,11 @@
 :global(.dark) .logout, :global([data-theme="dark"]) .logout,
 :global(.dark) .settings button, :global([data-theme="dark"]) .settings button { color:#9ce5e1; border-color:#55bdb7; }
 :global(.dark) .confirmationActions .secondaryButton, :global([data-theme="dark"]) .confirmationActions .secondaryButton { color:#f6c96b; border-color:#d9a83e; }
+:global(.dark) .blockingResult .error, :global([data-theme="dark"]) .blockingResult .error,
+:global(.dark) .zenkakuContent > .card > .error, :global([data-theme="dark"]) .zenkakuContent > .card > .error { color:#ffabb0 !important; }
 
 @media (max-width:720px) {
   .main { padding:18px; } .infoGrid { grid-template-columns:1fr; } .actionGrid { grid-template-columns:1fr; }
   .confirmationBanner { align-items:flex-start; flex-direction:column; } .confirmationActions { width:100%; flex-wrap:wrap; }
+  .checkForm { grid-template-columns:1fr; } .checkForm label { grid-column:auto; }
 }
