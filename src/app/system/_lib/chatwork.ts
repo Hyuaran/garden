@@ -32,3 +32,32 @@ export async function sendCallReportMessage(text: string, fetchImpl: typeof fetc
   if (!response.ok) throw new CallReportChatworkError(response.status);
   return { ok: true as const };
 }
+
+export async function sendCallReportWithAttachment(
+  text: string,
+  pdf: Uint8Array,
+  filename: string,
+  fetchImpl: typeof fetch = fetch,
+) {
+  const token = process.env.CHATWORK_API_TOKEN;
+  const roomId = process.env.CHATWORK_ROOM_KYOUYU_ID || process.env.CHATWORK_DEV_ROOM_ID;
+  if (!token || !roomId) throw new Error("Chatwork配信ルーム設定が不足しています");
+
+  const form = new FormData();
+  form.set("message", text);
+  const pdfBytes = pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.byteLength) as ArrayBuffer;
+  form.set("file", new Blob([pdfBytes], { type: "application/pdf" }), filename);
+  let response: Response;
+  try {
+    response = await fetchImpl(`${CHATWORK_API_BASE}/rooms/${encodeURIComponent(roomId)}/files`, {
+      method: "POST",
+      headers: { "X-ChatWorkToken": token },
+      body: form,
+      cache: "no-store",
+    });
+  } catch {
+    throw new CallReportChatworkError(null);
+  }
+  if (!response.ok) throw new CallReportChatworkError(response.status);
+  return { ok: true as const };
+}

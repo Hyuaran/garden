@@ -170,6 +170,11 @@ export function callsPerWorkHour(callCount: number, workSeconds: number) {
   return workSeconds > 0 ? callCount / (workSeconds / 3600) : null;
 }
 
+export function formatCallsPerWorkHour(callCount: number, workSeconds: number) {
+  const value = callsPerWorkHour(callCount, workSeconds);
+  return value === null ? "-" : Math.round(value).toLocaleString("ja-JP");
+}
+
 export function normalizeCallMetricsRpc(
   raw: unknown,
   range: { from: string; to: string; listName: string | null; employeeName: string | null },

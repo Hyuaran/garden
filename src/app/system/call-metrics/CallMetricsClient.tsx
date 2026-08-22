@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import type { CallMetricsResponse } from "../_lib/call-metrics";
-import { callsPerWorkHour, defaultCallMetricDates, formatWorkTime, summarizeCallMetrics } from "../_lib/call-metrics";
+import { defaultCallMetricDates, formatCallsPerWorkHour, formatWorkTime, summarizeCallMetrics } from "../_lib/call-metrics";
 import styles from "./call-metrics.module.css";
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
@@ -105,9 +105,9 @@ export default function CallMetricsClient() {
         {activeTab === "employees" && <section role="tabpanel">
           <h2>従業員ごとの指標</h2>
           <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><table>
-            <thead><tr><th>社員名</th><th>稼働時間</th><th>コール数</th><th>時間ごとコール</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>前確OK数</th><th>見込</th><th>担不</th><th>留守</th><th>無効</th></tr></thead>
+            <thead><tr><th className={styles.employeeHeader}>社員名</th><th>稼働時間</th><th>コール数</th><th>コール数/h</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>前確OK数</th><th>見込</th><th>担不</th><th>留守</th><th>無効</th></tr></thead>
             <tbody>{data.employeeMetrics.length ? data.employeeMetrics.map((row) => <tr key={row.employeeName}>
-              <td>{row.employeeName}</td><td>{formatWorkTime(row.workSeconds)}</td><td>{row.callCount.toLocaleString()}</td><td>{callsPerWorkHour(row.callCount, row.workSeconds)?.toFixed(2) ?? "-"}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td className={row.tossCount === 0 ? styles.zeroValue : styles.strongValue}>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td className={row.acquiredCount === 0 ? styles.zeroValue : styles.strongValue}>{row.acquiredCount.toLocaleString()}</td><td className={row.orderCount === 0 ? styles.zeroValue : styles.strongValue}>{row.orderCount.toLocaleString()}</td><td>{row.prospectCount.toLocaleString()}</td><td>{row.absentCount.toLocaleString()}</td><td>{row.awayCount.toLocaleString()}</td><td>{row.invalidCount.toLocaleString()}</td>
+              <td>{row.employeeName}</td><td>{formatWorkTime(row.workSeconds)}</td><td>{row.callCount.toLocaleString()}</td><td>{formatCallsPerWorkHour(row.callCount, row.workSeconds)}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td className={row.tossCount === 0 ? styles.zeroValue : styles.strongValue}>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td className={row.acquiredCount === 0 ? styles.zeroValue : styles.strongValue}>{row.acquiredCount.toLocaleString()}</td><td className={row.orderCount === 0 ? styles.zeroValue : styles.strongValue}>{row.orderCount.toLocaleString()}</td><td>{row.prospectCount.toLocaleString()}</td><td>{row.absentCount.toLocaleString()}</td><td>{row.awayCount.toLocaleString()}</td><td>{row.invalidCount.toLocaleString()}</td>
             </tr>) : <tr><td colSpan={14}>対象データがありません</td></tr>}</tbody>
           </table></div>
         </section>}
@@ -134,7 +134,7 @@ export default function CallMetricsClient() {
               <tr><td>受注数</td><td>結果フラグが「獲得」のコール（コール履歴では「獲得」、ポータルでは「受注」と表示）</td></tr>
               <tr><td>前確OK数</td><td>結果フラグが「前確OK」のコール</td></tr>
               <tr><td>稼働時間</td><td>その日の最初のコールから最後のコールまでの時間から、休憩時間（下表）を引いた実働時間です。その休憩の時間帯をまたいで働いていた場合に、その休憩の長さをまるごと引きます（休憩中に架電していても、別の時間に同じ長さの休憩を取っているため引きます）。休憩の途中から働き始めた日・途中で終えた日は、その休憩は引きません。</td></tr>
-              <tr><td>時間ごとコール</td><td>コール数 ÷ 稼働時間（時間）。1時間あたり何件かけたかです。</td></tr>
+              <tr><td>コール数/h</td><td>コール数 ÷ 稼働時間（時間）。1時間あたり何件かけたかです。</td></tr>
               <tr><td>見込</td><td>結果フラグが「見込」のコール</td></tr>
               <tr><td>担不</td><td>結果フラグが「担不」（担当者不在）のコール</td></tr>
               <tr><td>留守</td><td>結果フラグが「留守」のコール</td></tr>
