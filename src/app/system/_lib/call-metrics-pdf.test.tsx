@@ -60,6 +60,7 @@ describe("call metrics PDF", () => {
     const employeePage = pages.findIndex((text) => text.includes("SECTION_EMPLOYEE"));
     const listPage = pages.findIndex((text) => text.includes("SECTION_LIST"));
     const definitionPage = pages.findIndex((text) => text.includes("SECTION_DEFINITION"));
+    expect(pages).toHaveLength(4);
     expect(employeePage).toBe(0);
     expect(listPage).toBe(employeePage + 1);
     expect(definitionPage).toBeGreaterThan(listPage + 1);
@@ -76,5 +77,15 @@ describe("call metrics PDF", () => {
       mkdirSync(outputDir, { recursive: true });
       writeFileSync(path.join(outputDir, "テレマコール集計ポータル_20260821_1600.pdf"), buffer);
     }
+  }, 60_000);
+
+  it("flows expanded definitions naturally and labels continuation pages", async () => {
+    const definitionRows = Array.from({ length: 80 }, (_, index) => [`追加指標${index + 1}`, "項目追加時の自然改ページを確認するための定義文です。"]);
+    const buffer = await renderCallMetricsPdf(fixture, { definitionRows });
+    const pages = await extractPages(new Uint8Array(buffer));
+    const definitionPage = pages.findIndex((text) => text.includes("SECTION_DEFINITION"));
+    expect(definitionPage).toBeGreaterThanOrEqual(0);
+    expect(pages.length).toBeGreaterThan(definitionPage + 1);
+    expect(pages.slice(definitionPage + 1).some((text) => text.includes("CONTINUATION_DEFINITION"))).toBe(true);
   }, 60_000);
 });

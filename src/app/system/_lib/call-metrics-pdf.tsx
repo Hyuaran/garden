@@ -181,16 +181,14 @@ function ContinuationLabel({ label, marker }: { label: string; marker: string })
     <Text fixed style={styles.hiddenMarker} render={({ subPageNumber }) => subPageNumber > 1 ? `CONTINUATION_${marker}` : ""}/>
   </>;
 }
-export function CallMetricsPdfDocument({ data }: { data: CallMetricsResponse }): React.ReactElement<DocumentProps> {
+export function CallMetricsPdfDocument({ data, definitionRows = DEFINITIONS }: { data: CallMetricsResponse; definitionRows?: string[][] }): React.ReactElement<DocumentProps> {
   return <Document title="テレマ コール集計ポータル" author="Garden">
     <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics}/></Page>
     <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
-    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
-      <View style={styles.definitionBlock}><DefinitionTitle>集計の定義</DefinitionTitle><SimpleTable headers={["指標", "定義"]} rows={DEFINITIONS} widths={[155, 580]}/></View>
+    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="定義方法" marker="DEFINITION"/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
+      <View style={styles.definitionBlock}><DefinitionTitle>集計の定義</DefinitionTitle><SimpleTable headers={["指標", "定義"]} rows={definitionRows} widths={[155, 580]}/></View>
       <View style={styles.definitionBlock}><DefinitionTitle>休憩時間割</DefinitionTitle><SimpleTable headers={["回", "開始", "終了", "長さ"]} rows={BREAKS} widths={[100, 170, 170, 170]}/><VectorParagraph width={735}>★ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</VectorParagraph></View>
       <View style={styles.definitionBlock}><DefinitionTitle>コール履歴のフラグ名 → ポータル表示名</DefinitionTitle><SimpleTable headers={["コール履歴", "ポータル表示"]} rows={[["獲得", "受注数"], ["前確OK", "前確OK数"], ["トス", "トス数"]]} widths={[240, 370]}/></View>
-    </Page>
-    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><SectionTitle>定義方法（続き）</SectionTitle>
       <View style={styles.definitionBlock}><DefinitionTitle>結果フラグの扱い（分類ルール）</DefinitionTitle><SimpleTable headers={["結果フラグ", "扱い"]} rows={FLAG_RULES} widths={[240, 370]}/></View>
     </Page>
   </Document>;
@@ -202,6 +200,6 @@ export function callMetricsPdfFilename(now = new Date()) {
   return `テレマコール集計ポータル_${get("year")}${get("month")}${get("day")}_${get("hour")}00.pdf`;
 }
 
-export async function renderCallMetricsPdf(data: CallMetricsResponse) {
-  return renderToBuffer(<CallMetricsPdfDocument data={data}/>);
+export async function renderCallMetricsPdf(data: CallMetricsResponse, options: { definitionRows?: string[][] } = {}) {
+  return renderToBuffer(<CallMetricsPdfDocument data={data} definitionRows={options.definitionRows}/>);
 }
