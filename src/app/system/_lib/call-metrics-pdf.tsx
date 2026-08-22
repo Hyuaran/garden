@@ -92,9 +92,12 @@ const styles = StyleSheet.create({
   definitionBlock: { marginBottom: 16 },
   definitionTitle: { marginBottom: 5, color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   hiddenMarker: { position: "absolute", opacity: 0, fontSize: 1 },
-  continuationLabel: { position: "absolute", top: 48, left: 28, right: 28, height: 13 },
-  continuationCover: { position: "absolute", top: 47, left: 27, right: 27, height: 15 },
-  continuationCoverFill: { width: 737, height: 15, backgroundColor: COLORS.bg },
+  // 高さは VectorText が返す実寸（fontSize + 3 + 4）以上にすること。
+  // 小さいと Svg が縮小されて中央寄せになり、見出しが右にずれる。
+  // ヘッダーの区切り線は y=45〜46。cover はそれより下から始めること（線を塗りつぶさないため）。
+  continuationLabel: { position: "absolute", top: 47, left: 28, right: 28, height: 16 },
+  continuationCover: { position: "absolute", top: 46, left: 27, right: 27, height: 18 },
+  continuationCoverFill: { width: 737, height: 18, backgroundColor: COLORS.bg },
 });
 
 type Column<T> = { label: string; width: number; value: (row: T) => string; align?: "left" | "center"; emphasized?: (row: T) => "zero" | "strong" | null };
@@ -173,7 +176,7 @@ function SectionTitle({ children }: { children: string }) { return <><VectorText
 function DefinitionTitle({ children }: { children: string }) { return <VectorText width={650} height={20} fontSize={11} bold align="left" color={COLORS.navy}>{children}</VectorText>; }
 function ContinuationLabel({ label, marker }: { label: string; marker: string }) {
   return <>
-    <View fixed style={styles.continuationLabel}><VectorText width={735} height={13} fontSize={9} bold align="left" color={COLORS.navy}>{`${label}（続き）`}</VectorText></View>
+    <View fixed style={styles.continuationLabel}><VectorText width={735} height={16} fontSize={9} bold align="left" color={COLORS.navy}>{`${label}（続き）`}</VectorText></View>
     <View fixed style={styles.continuationCover} render={({ subPageNumber }) => subPageNumber === 1 ? <View style={styles.continuationCoverFill}/> : null}/>
     <Text fixed style={styles.hiddenMarker} render={({ subPageNumber }) => subPageNumber > 1 ? `CONTINUATION_${marker}` : ""}/>
   </>;
