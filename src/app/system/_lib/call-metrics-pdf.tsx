@@ -73,14 +73,14 @@ function VectorParagraph({ children, width, fontSize = 7.5, bold = false, color 
 }
 
 const styles = StyleSheet.create({
-  page: { paddingTop: 58, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
+  page: { paddingTop: 66, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
   header: { position: "absolute", top: 20, left: 28, right: 28, paddingBottom: 7, borderBottomWidth: 1, borderBottomColor: COLORS.teal, flexDirection: "row", justifyContent: "space-between" },
   headerTitle: { color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   headerPeriod: { color: COLORS.sub, fontSize: 8 },
   footer: { position: "absolute", bottom: 17, left: 28, right: 28, color: COLORS.sub, fontSize: 7, textAlign: "right" },
   sectionTitle: { marginBottom: 8, color: COLORS.navy, fontSize: 15, fontWeight: 700 },
   accent: { width: 32, height: 3, marginBottom: 12, backgroundColor: COLORS.teal },
-  table: { width: "100%", borderTopWidth: 1, borderLeftWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card },
+  table: { borderTopWidth: 1, borderLeftWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card },
   row: { flexDirection: "row", minHeight: 22 },
   th: { backgroundColor: COLORS.navy, color: "#FFFFFF", borderRightWidth: 1, borderBottomWidth: 1, borderColor: COLORS.line, textAlign: "right", fontWeight: 700 },
   thCenter: { textAlign: "center" },
@@ -92,6 +92,12 @@ const styles = StyleSheet.create({
   definitionBlock: { marginBottom: 16 },
   definitionTitle: { marginBottom: 5, color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   hiddenMarker: { position: "absolute", opacity: 0, fontSize: 1 },
+  // 高さは VectorText が返す実寸（fontSize + 3 + 4）以上にすること。
+  // 小さいと Svg が縮小されて中央寄せになり、見出しが右にずれる。
+  // ヘッダーの区切り線は y=45〜46。cover はそれより下から始めること（線を塗りつぶさないため）。
+  continuationLabel: { position: "absolute", top: 47, left: 28, right: 28, height: 16 },
+  continuationCover: { position: "absolute", top: 46, left: 27, right: 27, height: 18 },
+  continuationCoverFill: { width: 737, height: 18, backgroundColor: COLORS.bg },
 });
 
 type Column<T> = { label: string; width: number; value: (row: T) => string; align?: "left" | "center"; emphasized?: (row: T) => "zero" | "strong" | null };
@@ -146,12 +152,14 @@ const DEFINITIONS = [
 
 function Chrome({ data }: { data: CallMetricsResponse }) {
   const period = `対象期間 ${data.from}〜${data.to}`;
-  return <><View fixed style={styles.header}><VectorText fixed width={350} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText><VectorText fixed width={250} height={18} fontSize={8} align="right" color={COLORS.sub}>{period}</VectorText></View><Text fixed style={styles.hiddenMarker}>{`PDF_HEADER ${data.from} ${data.to}`}</Text><Text fixed style={styles.footer} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} /></>;
+  const header = <><VectorText width={350} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText><VectorText width={250} height={18} fontSize={8} align="right" color={COLORS.sub}>{period}</VectorText></>;
+  return <><View style={styles.header}>{header}</View><View fixed style={styles.header}>{header}</View><Text fixed style={styles.hiddenMarker}>{`PDF_HEADER ${data.from} ${data.to}`}</Text><Text fixed style={styles.footer} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} /></>;
 }
 
-function DataTable<T>({ columns, rows, employeeHeader = false }: { columns: Column<T>[]; rows: T[]; employeeHeader?: boolean }) {
-  return <View style={styles.table}>
-    <View fixed style={styles.row}>{columns.map((column, index) => <View key={column.label} style={[styles.th, { width: column.width }]}><VectorText width={column.width - 1} height={22} bold align={employeeHeader && index === 0 ? "center" : column.align ?? "right"} color="#FFFFFF">{column.label}</VectorText></View>)}</View>
+function DataTable<T>({ columns, rows }: { columns: Column<T>[]; rows: T[] }) {
+  const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+  return <View style={[styles.table, { width: tableWidth }]}>
+    <View fixed style={styles.row}>{columns.map((column) => <View key={column.label} style={[styles.th, { width: column.width }]}><VectorText width={column.width - 1} height={22} bold align="center" color="#FFFFFF">{column.label}</VectorText></View>)}</View>
     {rows.length ? rows.map((row, rowIndex) => <View key={rowIndex} wrap={false} style={styles.row}>{columns.map((column) => {
       const emphasis = column.emphasized?.(row);
       return <View key={column.label} style={[styles.td, { width: column.width }]}><VectorText width={column.width - 1} height={22} wrap={column.align === "left"} bold={emphasis === "strong"} align={column.align ?? "right"} color={emphasis === "zero" ? COLORS.zero : COLORS.ink}>{column.value(row)}</VectorText></View>;
@@ -160,17 +168,23 @@ function DataTable<T>({ columns, rows, employeeHeader = false }: { columns: Colu
 }
 
 function SimpleTable({ headers, rows, widths }: { headers: string[]; rows: string[][]; widths: number[] }) {
-  return <View style={styles.table}><View fixed style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="left" color="#FFFFFF">{h}</VectorText></View>)}</View>{rows.map((row, i) => <View key={i} wrap={false} style={styles.row}>{row.map((cell, j) => <View key={j} style={[styles.td, { width: widths[j] }]}><VectorParagraph width={widths[j] - 1}>{cell}</VectorParagraph></View>)}</View>)}</View>;
+  const tableWidth = widths.reduce((sum, width) => sum + width, 0);
+  return <View style={[styles.table, { width: tableWidth }]}><View fixed style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>{rows.map((row, i) => <View key={i} wrap={false} style={styles.row}>{row.map((cell, j) => <View key={j} style={[styles.td, { width: widths[j] }]}><VectorParagraph width={widths[j] - 1}>{cell}</VectorParagraph></View>)}</View>)}</View>;
 }
 
 function SectionTitle({ children }: { children: string }) { return <><VectorText width={400} height={24} fontSize={15} bold align="left" color={COLORS.navy}>{children}</VectorText><View style={styles.accent} /></>; }
 function DefinitionTitle({ children }: { children: string }) { return <VectorText width={650} height={20} fontSize={11} bold align="left" color={COLORS.navy}>{children}</VectorText>; }
-function chunks<T>(rows: T[], size: number): T[][] { return rows.length ? Array.from({ length: Math.ceil(rows.length / size) }, (_, index) => rows.slice(index * size, (index + 1) * size)) : [[]]; }
-
+function ContinuationLabel({ label, marker }: { label: string; marker: string }) {
+  return <>
+    <View fixed style={styles.continuationLabel}><VectorText width={735} height={16} fontSize={9} bold align="left" color={COLORS.navy}>{`${label}（続き）`}</VectorText></View>
+    <View fixed style={styles.continuationCover} render={({ subPageNumber }) => subPageNumber === 1 ? <View style={styles.continuationCoverFill}/> : null}/>
+    <Text fixed style={styles.hiddenMarker} render={({ subPageNumber }) => subPageNumber > 1 ? `CONTINUATION_${marker}` : ""}/>
+  </>;
+}
 export function CallMetricsPdfDocument({ data }: { data: CallMetricsResponse }): React.ReactElement<DocumentProps> {
   return <Document title="テレマ コール集計ポータル" author="Garden">
-    {chunks(data.employeeMetrics, 40).map((rows, index) => <Page key={`employee-${index}`} size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/>{index === 0 && <Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text>}<SectionTitle>{index === 0 ? "従業員ごと" : "従業員ごと（続き）"}</SectionTitle><DataTable columns={employeeColumns} rows={rows} employeeHeader/></Page>)}
-    {chunks(data.metrics, 30).map((rows, index) => <Page key={`list-${index}`} size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/>{index === 0 && <Text style={styles.hiddenMarker}>SECTION_LIST</Text>}<SectionTitle>{index === 0 ? "リストごと" : "リストごと（続き）"}</SectionTitle><DataTable columns={listColumns} rows={rows}/></Page>)}
+    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics}/></Page>
+    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
     <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
       <View style={styles.definitionBlock}><DefinitionTitle>集計の定義</DefinitionTitle><SimpleTable headers={["指標", "定義"]} rows={DEFINITIONS} widths={[155, 580]}/></View>
       <View style={styles.definitionBlock}><DefinitionTitle>休憩時間割</DefinitionTitle><SimpleTable headers={["回", "開始", "終了", "長さ"]} rows={BREAKS} widths={[100, 170, 170, 170]}/><VectorParagraph width={735}>★ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</VectorParagraph></View>

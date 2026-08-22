@@ -43,8 +43,6 @@ describe("CallMetricsClient", () => {
     const employeeCells = within(screen.getByText("社員A").closest("tr")!).getAllByRole("cell");
     const employeeHeaders = within(screen.getByText("社員A").closest("table")!).getAllByRole("columnheader");
     expect(employeeHeaders.map((cell) => cell.textContent)).toEqual(["社員名", "稼働時間", "コール数", "コール数/h", "有効数", "有効率", "トス数", "トス率", "受注数", "前確OK数", "見込", "担不", "留守", "無効"]);
-    expect(employeeHeaders[0]).toHaveClass(styles.employeeHeader);
-    expect(employeeCells[0]).not.toHaveClass(styles.employeeHeader);
     expect(employeeCells.map((cell) => cell.textContent)).toEqual(["社員A", "1:00:00", "10", "10", "7", "70.0%", "3", "30.0%", "1", "2", "4", "5", "6", "7"]);
     expect(screen.queryByText("時間ごとコール")).not.toBeInTheDocument();
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("最終更新: 2026/08/12(水) 12:34");

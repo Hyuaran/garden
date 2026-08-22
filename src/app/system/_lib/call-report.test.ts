@@ -8,7 +8,8 @@ describe("call report", () => {
   it("formats the confirmed text in JST with Japanese weekday and rounding", () => {
     const result = buildCallReport(summary, new Date("2026-08-12T06:04:00Z"));
     expect(result.skipped).toBe(false);
-    expect(result.text).toContain("2026/08/12(水) 15:00");
+    expect(result.text).toContain("[/title]2026/08/12(水) 15:00\nhttps://garden-os.net/system/call-metrics");
+    expect(result.text).not.toContain("[/title]\n");
     expect(result.text).toContain("従業員15名／総コール1,517件");
     expect(result.text).toContain("平均コール数：101 件");
     expect(result.text).toContain("有効率：60.0％");
