@@ -63,6 +63,7 @@ describe("call metrics PDF", () => {
     expect(employeePage).toBe(0);
     expect(listPage).toBe(employeePage + 1);
     expect(definitionPage).toBeGreaterThan(listPage + 1);
+    expect(pages[listPage + 1]).toContain("CONTINUATION_LIST");
     const employeeLayout = measureVectorTextLayout(fixture.employeeMetrics[0].employeeName, 91, 7.5, false, true);
     const listLayout = measureVectorTextLayout(fixture.metrics[0].listName, 127, 7.5, false, true);
     expect(employeeLayout.lines.length).toBeGreaterThan(1);

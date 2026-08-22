@@ -73,7 +73,7 @@ function VectorParagraph({ children, width, fontSize = 7.5, bold = false, color 
 }
 
 const styles = StyleSheet.create({
-  page: { paddingTop: 58, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
+  page: { paddingTop: 66, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
   header: { position: "absolute", top: 20, left: 28, right: 28, paddingBottom: 7, borderBottomWidth: 1, borderBottomColor: COLORS.teal, flexDirection: "row", justifyContent: "space-between" },
   headerTitle: { color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   headerPeriod: { color: COLORS.sub, fontSize: 8 },
@@ -92,6 +92,9 @@ const styles = StyleSheet.create({
   definitionBlock: { marginBottom: 16 },
   definitionTitle: { marginBottom: 5, color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   hiddenMarker: { position: "absolute", opacity: 0, fontSize: 1 },
+  continuationLabel: { position: "absolute", top: 48, left: 28, right: 28, height: 13 },
+  continuationCover: { position: "absolute", top: 47, left: 27, right: 27, height: 15 },
+  continuationCoverFill: { width: 737, height: 15, backgroundColor: COLORS.bg },
 });
 
 type Column<T> = { label: string; width: number; value: (row: T) => string; align?: "left" | "center"; emphasized?: (row: T) => "zero" | "strong" | null };
@@ -168,10 +171,17 @@ function SimpleTable({ headers, rows, widths }: { headers: string[]; rows: strin
 
 function SectionTitle({ children }: { children: string }) { return <><VectorText width={400} height={24} fontSize={15} bold align="left" color={COLORS.navy}>{children}</VectorText><View style={styles.accent} /></>; }
 function DefinitionTitle({ children }: { children: string }) { return <VectorText width={650} height={20} fontSize={11} bold align="left" color={COLORS.navy}>{children}</VectorText>; }
+function ContinuationLabel({ label, marker }: { label: string; marker: string }) {
+  return <>
+    <View fixed style={styles.continuationLabel}><VectorText width={735} height={13} fontSize={9} bold align="left" color={COLORS.navy}>{`${label}（続き）`}</VectorText></View>
+    <View fixed style={styles.continuationCover} render={({ subPageNumber }) => subPageNumber === 1 ? <View style={styles.continuationCoverFill}/> : null}/>
+    <Text fixed style={styles.hiddenMarker} render={({ subPageNumber }) => subPageNumber > 1 ? `CONTINUATION_${marker}` : ""}/>
+  </>;
+}
 export function CallMetricsPdfDocument({ data }: { data: CallMetricsResponse }): React.ReactElement<DocumentProps> {
   return <Document title="テレマ コール集計ポータル" author="Garden">
-    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics}/></Page>
-    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
+    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics}/></Page>
+    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
     <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
       <View style={styles.definitionBlock}><DefinitionTitle>集計の定義</DefinitionTitle><SimpleTable headers={["指標", "定義"]} rows={DEFINITIONS} widths={[155, 580]}/></View>
       <View style={styles.definitionBlock}><DefinitionTitle>休憩時間割</DefinitionTitle><SimpleTable headers={["回", "開始", "終了", "長さ"]} rows={BREAKS} widths={[100, 170, 170, 170]}/><VectorParagraph width={735}>★ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</VectorParagraph></View>

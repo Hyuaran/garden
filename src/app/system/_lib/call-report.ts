@@ -45,8 +45,7 @@ export function buildCallReport(summary: CallMetricsSummary, now = new Date()) {
   if (summary.totalCalls === 0) {
     return { skipped: true as const, reason: "本日コール0件", text: null };
   }
-  const text = `[info][title]テレマ コール集計ポータル 自動配信[/title]
-${formatDeliveryTime(now)}
+  const text = `[info][title]テレマ コール集計ポータル 自動配信[/title]${formatDeliveryTime(now)}
 https://garden-os.net/system/call-metrics
 
 【本日】従業員${summary.employeeCount.toLocaleString("ja-JP")}名／総コール${summary.totalCalls.toLocaleString("ja-JP")}件

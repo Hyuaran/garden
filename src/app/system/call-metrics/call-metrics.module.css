@@ -40,7 +40,8 @@
 .definitionTable { width: 100%; max-width: 1100px; }
 .definitionTable table { min-width: 620px; }
 .definitionTable th:first-child, .definitionTable td:first-child { width: 310px; white-space: nowrap; }
-.definitionTable th:nth-child(2), .definitionTable td:nth-child(2) { text-align: left; white-space: normal; }
+.definitionTable th:nth-child(2), .definitionTable td:nth-child(2) { white-space: normal; }
+.definitionTable td:nth-child(2) { text-align: left; }
 .main section > .definitionTable + h2 { margin-top: 28px; }
 
 :global(.dark) .pageShell, :global([data-theme="dark"]) .pageShell {
