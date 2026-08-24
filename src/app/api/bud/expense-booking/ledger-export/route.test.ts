@@ -19,5 +19,7 @@ describe("expense ledger export route is read-only", () => {
     expect(source).toContain('.lt("booking_date", body.end)');
     expect(source).toContain('row.booking_corp_id === corpId');
     expect(source).not.toMatch(/\.update\s*\(/);
+    expect(source).toContain("readAllSupabasePages");
+    expect(source).toContain(".range(from, to)");
   });
 });

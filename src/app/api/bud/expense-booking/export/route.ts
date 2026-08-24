@@ -4,6 +4,7 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { exportYayoiCsv } from "@/shared/_lib/bank-csv-parsers/yayoi-csv-exporter";
 import { classifyExpenseJournal, toYayoiRows } from "@/app/bud/expenses/_lib/expense-journal-rules";
 import { resolveExpenseApplicantName } from "@/app/bud/expenses/_lib/expense-employees";
+import { readAllSupabasePages } from "@/app/bud/expenses/_lib/supabase-pagination";
 import {
   FALLBACK_CORPS,
   type Corp,
@@ -72,14 +73,16 @@ export async function POST(req: Request) {
     }
 
     const [reqRes, catRes, corpRes] = await Promise.all([
-      supabase
+      readAllSupabasePages((from, to) => supabase
         .from("bud_expense_requests")
         .select(REQUEST_SELECT)
         .in("id", ids)
         .eq("status", expectedStatus)
         .is("deleted_at", null)
         .order("receipt_date", { ascending: true, nullsFirst: false })
-        .order("submitted_at", { ascending: true }),
+        .order("submitted_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to)),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true),
       supabase.from("bud_corporations").select("id,name_short"),
     ]);
