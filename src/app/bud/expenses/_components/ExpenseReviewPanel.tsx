@@ -15,7 +15,7 @@ import { createPortal } from "react-dom";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
 import { expenseKindLabel } from "@/app/bud/expenses/_lib/expense-kind";
-import { buildEmployeeMap, buildUserNameMap, fetchExpenseEmployeeLookup, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
+import { buildEmployeeMap, buildUserNameMap, fetchExpenseEmployeeLookup, resolveExpenseApplicantName, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
 import { calculateFiscalPeriod, formatFiscalDateRange } from "@/app/bud/expenses/_lib/fiscal-period";
 import { filterExpenseListRecords, sumExpenseAmounts } from "@/app/bud/expenses/_lib/expense-list-filter";
 import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
@@ -72,6 +72,7 @@ type Req = {
   id: string;
   corp_id: string | null;
   applicant_employee_id: string | null;
+  applicant_name_text: string | null;
   expense_kind: string;
   drive_file_id: string | null;
   storage_path: string | null;
@@ -111,7 +112,7 @@ type LoadOptions = { preserveIndex?: number; resetSearch?: boolean };
 
 const OCR_CONFIRM_DESCRIPTION = "OCR要確認";
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,receipt_rotation,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
+  "id,corp_id,applicant_employee_id,applicant_name_text,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,receipt_rotation,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
 const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 
 const CORP_FILTER_STORAGE_KEY = "bud-expense-review-corp-filter";
@@ -1804,7 +1805,7 @@ function StatusList({
                     </td>
                   )}
                   <td style={td}>{formatDate(row.submitted_at)}</td>
-                  <td style={td}>{employeeLabel(row, employees)}</td>
+                  <td style={applicantTd}>{employeeLabel(row, employees)}</td>
                   <td style={td}>{formatDate(row.receipt_date)}</td>
                   <td style={td}>{row.store_name ?? "-"}</td>
                   <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
@@ -1925,7 +1926,7 @@ function DeletedExpenseTab({
                   <td style={td}>{deletedByLabel(row.deleted_by, deletedByNames)}</td>
                   <td style={td}>{row.delete_reason ?? "-"}</td>
                   <td style={td}>{formatDate(row.submitted_at)}</td>
-                  <td style={td}>{employeeLabel(row, employees)}</td>
+                  <td style={applicantTd}>{employeeLabel(row, employees)}</td>
                   <td style={td}>{expenseKindLabel(row.expense_kind) || "-"}</td>
                   <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
                   <td style={td}>
@@ -2151,8 +2152,7 @@ function receiptInlineLayout(baseSize: React.CSSProperties, rotation: number, zo
 }
 
 function employeeLabel(row: Req, employees: Record<string, Employee>) {
-  if (!row.applicant_employee_id) return "-";
-  return employees[row.applicant_employee_id]?.name ?? row.applicant_employee_id;
+  return resolveExpenseApplicantName(row, employees);
 }
 
 function deletedByLabel(userId: string | null | undefined, deletedByNames: Record<string, string>) {
@@ -2661,6 +2661,7 @@ const th: React.CSSProperties = {
   borderBottom: "1px solid rgba(180,165,130,0.25)",
 };
 const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "var(--text-main)" };
+const applicantTd: React.CSSProperties = { ...td, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const tr: React.CSSProperties = { cursor: "pointer" };
 const pill: React.CSSProperties = { display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600 };
 const modalBackdrop: React.CSSProperties = {

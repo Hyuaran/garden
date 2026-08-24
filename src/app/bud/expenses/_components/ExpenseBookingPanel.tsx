@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
-import { buildEmployeeMap, fetchExpenseEmployeeLookup, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
+import { buildEmployeeMap, fetchExpenseEmployeeLookup, resolveExpenseApplicantGroupKey, resolveExpenseApplicantName, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
 import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
 import {
   getGroupSelectionState,
@@ -31,6 +31,7 @@ type Req = {
   id: string;
   corp_id: string | null;
   applicant_employee_id: string | null;
+  applicant_name_text: string | null;
   receipt_date: string | null;
   store_name: string | null;
   amount: number | null;
@@ -54,7 +55,7 @@ type Cat = {
 };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,category_id,description,status,submitted_at,final_checked_at,booking_date,booking_corp_id,fiscal_period";
+  "id,corp_id,applicant_employee_id,applicant_name_text,receipt_date,store_name,amount,qualified_class,category_id,description,status,submitted_at,final_checked_at,booking_date,booking_corp_id,fiscal_period";
 const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 const CORP_FILTER_STORAGE_KEY = "bud-expense-booking-corp-filter";
 
@@ -221,7 +222,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       });
       return {
         id: row.id,
-        applicantKey: row.applicant_employee_id,
+        applicantKey: resolveExpenseApplicantGroupKey(row, employees),
         applicantName: applicant,
         receiptDate: row.receipt_date,
         amount: journal.amount,
@@ -564,7 +565,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                           onChange={(event) => toggle(row.id, event.target.checked)}
                         />
                       </td>
-                      <td style={td}>{applicant}</td>
+                      <td style={applicantTd}>{applicant}</td>
                       <td style={td}>{formatDate(row.receipt_date)}</td>
                       <td style={td}>{row.booking_date ? formatDate(row.booking_date) : <span style={missingBadge}>未入力</span>}</td>
                       <td style={td}>
@@ -637,8 +638,7 @@ function Card({ label, value, meta, color }: { label: string; value: number | st
 }
 
 function employeeLabel(row: Req, employees: Record<string, Employee>) {
-  if (!row.applicant_employee_id) return "未設定";
-  return employees[row.applicant_employee_id]?.name ?? row.applicant_employee_id;
+  return resolveExpenseApplicantName(row, employees);
 }
 
 function categoryLabel(categoryId: string | null, cats: Map<string, string>) {
@@ -699,6 +699,7 @@ const checkAllLabel: React.CSSProperties = { display: "inline-flex", alignItems:
 const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
 const th: React.CSSProperties = { textAlign: "left", color: "var(--text-sub)", fontWeight: 500, padding: "9px 8px", borderBottom: "1px solid rgba(180,165,130,0.25)", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "var(--text-main)", verticalAlign: "middle", whiteSpace: "nowrap" };
+const applicantTd: React.CSSProperties = { ...td, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" };
 const tr: React.CSSProperties = {};
 const checkedTr: React.CSSProperties = { background: "rgba(212,165,65,0.08)" };
 const errorTr: React.CSSProperties = { background: "rgba(179,88,80,0.08)" };

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { exportYayoiCsv } from "@/shared/_lib/bank-csv-parsers/yayoi-csv-exporter";
 import { classifyExpenseJournal, toYayoiRows } from "@/app/bud/expenses/_lib/expense-journal-rules";
+import { resolveExpenseApplicantName } from "@/app/bud/expenses/_lib/expense-employees";
 import {
   FALLBACK_CORPS,
   type Corp,
@@ -22,6 +23,7 @@ type Req = {
   id: string;
   corp_id: string | null;
   applicant_employee_id: string | null;
+  applicant_name_text: string | null;
   receipt_date: string | null;
   store_name: string | null;
   amount: number | null;
@@ -39,7 +41,7 @@ type Cat = {
 };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,category_id,status,submitted_at,booking_date,booking_corp_id";
+  "id,corp_id,applicant_employee_id,applicant_name_text,receipt_date,store_name,amount,qualified_class,category_id,status,submitted_at,booking_date,booking_corp_id";
 
 export async function POST(req: Request) {
   try {
@@ -113,7 +115,7 @@ export async function POST(req: Request) {
     }
 
     const results = rows.map((row) => {
-      const applicantName = row.applicant_employee_id ? employees[row.applicant_employee_id]?.name ?? row.applicant_employee_id : "未設定";
+      const applicantName = resolveExpenseApplicantName(row, employees);
       return classifyExpenseJournal({
         id: row.id,
         receiptDate: row.receipt_date,

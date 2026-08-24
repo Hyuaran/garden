@@ -10,6 +10,7 @@ import {
   type Employee,
 } from "@/app/bud/expenses/_components/expenseCorpUtils";
 import { writeFileMakerLedgerBuffer, type FileMakerLedgerSource } from "@/app/bud/expenses/_lib/filemaker-ledger-export";
+import { resolveExpenseApplicantName } from "@/app/bud/expenses/_lib/expense-employees";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -20,6 +21,7 @@ type RequestRow = {
   id: string;
   corp_id: string | null;
   applicant_employee_id: string | null;
+  applicant_name_text: string | null;
   receipt_date: string | null;
   store_name: string | null;
   amount: number | null;
@@ -39,7 +41,7 @@ type Corporation = Corp & { established_on: string | null; fiscal_end_month: num
 type NamedUser = { user_id: string | null; name: string | null };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,submitted_at,submitted_by,keiri_checked_at,keiri_checked_by,booking_date,booking_corp_id,fiscal_period";
+  "id,corp_id,applicant_employee_id,applicant_name_text,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,submitted_at,submitted_by,keiri_checked_at,keiri_checked_by,booking_date,booking_corp_id,fiscal_period";
 
 export async function POST(request: Request) {
   try {
@@ -107,7 +109,7 @@ export async function POST(request: Request) {
       const bookingCorp = row.booking_corp_id ? corpMap.get(row.booking_corp_id) : undefined;
       return {
         corpName: corp?.name_short ?? effectiveCorpId ?? "",
-        applicantName: row.applicant_employee_id ? employees[row.applicant_employee_id]?.name ?? row.applicant_employee_id : "",
+        applicantName: resolveExpenseApplicantName(row, employees),
         qualifiedClass: row.qualified_class,
         qualifiedNumber: row.qualified_number,
         categoryName: row.category_id ? categories.get(row.category_id) ?? row.category_id : "",

@@ -79,6 +79,27 @@ export function buildUserNameMap(employees: ExpenseEmployeeLookupRow[]) {
   return map;
 }
 
+export function resolveExpenseApplicantName(
+  row: { applicant_employee_id: string | null; applicant_name_text?: string | null },
+  employees: Record<string, { name?: string | null }>,
+) {
+  const employeeName = row.applicant_employee_id ? employees[row.applicant_employee_id]?.name?.trim() : "";
+  if (employeeName) return employeeName;
+  const importedName = row.applicant_name_text?.trim();
+  return importedName || "未設定";
+}
+
+export function resolveExpenseApplicantGroupKey(
+  row: { applicant_employee_id: string | null; applicant_name_text?: string | null },
+  employees: Record<string, { name?: string | null }>,
+) {
+  if (row.applicant_employee_id && employees[row.applicant_employee_id]?.name?.trim()) {
+    return `employee:${row.applicant_employee_id}`;
+  }
+  const importedName = row.applicant_name_text?.trim();
+  return importedName ? `text:${importedName}` : null;
+}
+
 function uniqueNonEmpty(values: string[]) {
   return Array.from(new Set(values.filter((value) => value.trim().length > 0)));
 }
