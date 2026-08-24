@@ -590,7 +590,9 @@ function parseFilename(header: string | null) {
 const shell: React.CSSProperties = { marginBottom: 24 };
 const title: React.CSSProperties = { margin: 0, fontSize: 22, color: "var(--text-main)", fontFamily: "'Shippori Mincho', serif" };
 const lead: React.CSSProperties = { margin: "4px 0 14px", color: "var(--text-sub)", fontSize: 13 };
-const cards: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 16 };
+// 4枚を横一列に固定すると、狭い幅で金額（総額・選択した額）が省略されて読めなくなる。
+// 入りきらない幅では折り返して2列・1列になるようにする。
+const cards: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginBottom: 16 };
 const compactCard: React.CSSProperties = {
   boxSizing: "border-box",
   display: "flex",
