@@ -1,13 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
 import { buildEmployeeMap, fetchExpenseEmployeeLookup, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
 import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
+import {
+  getGroupSelectionState,
+  groupExpenseBookingRows,
+  summarizeExpenseBookingSelection,
+  updateGroupSelection,
+} from "@/app/bud/expenses/_lib/expense-booking-groups";
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { classifyExpenseJournal } from "../_lib/expense-journal-rules";
+import { ExpenseBookingGroupHeader } from "./ExpenseBookingGroupHeader";
 
 import {
   buildCompanyToCorp,
@@ -82,6 +89,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const [companyToCorp, setCompanyToCorp] = useState<Record<string, string>>({});
   const [corpFilter, setCorpFilterState] = useState(readInitialCorpFilter);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ledgerBusy, setLedgerBusy] = useState(false);
@@ -193,28 +201,35 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     return list.map((row) => {
       const applicant = employeeLabel(row, employees);
       const category = categoryLabel(row.category_id, catMap);
+      const journal = classifyExpenseJournal({
+        id: row.id,
+        receiptDate: row.receipt_date,
+        categoryName: category,
+        storeName: row.store_name,
+        amount: row.amount,
+        qualifiedClass: row.qualified_class,
+        applicantName: applicant,
+      });
       return {
+        id: row.id,
+        applicantKey: row.applicant_employee_id,
+        applicantName: applicant,
+        receiptDate: row.receipt_date,
+        amount: journal.amount,
+        selectable: journal.ok,
         row,
         applicant,
         category,
         corpId: effectiveCorpId(row),
-        journal: classifyExpenseJournal({
-          id: row.id,
-          receiptDate: row.receipt_date,
-          categoryName: category,
-          storeName: row.store_name,
-          amount: row.amount,
-          qualifiedClass: row.qualified_class,
-          applicantName: applicant,
-        }),
+        journal,
       };
     });
   }, [catMap, effectiveCorpId, employees, list]);
 
   const selectableIds = useMemo(() => rows.filter((row) => row.journal.ok).map((row) => row.row.id), [rows]);
   const selectedRows = useMemo(() => rows.filter((row) => selectedIds.has(row.row.id) && row.journal.ok), [rows, selectedIds]);
-  const selectedTotal = selectedRows.reduce((sum, row) => sum + row.journal.amount, 0);
-  const queueTotal = rows.reduce((sum, row) => sum + row.journal.amount, 0);
+  const groups = useMemo(() => groupExpenseBookingRows(rows), [rows]);
+  const selectionSummary = useMemo(() => summarizeExpenseBookingSelection(rows, selectedIds), [rows, selectedIds]);
   const errorCount = rows.filter((row) => !row.journal.ok).length;
   const canExport = corpFilter !== "all" && selectedRows.length > 0 && !busy;
 
@@ -272,6 +287,19 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
 
   const toggleAll = (checked: boolean) => {
     setSelectedIds(checked ? new Set(selectableIds) : new Set());
+  };
+
+  const toggleGroup = (groupIds: string[], checked: boolean) => {
+    setSelectedIds((current) => updateGroupSelection(current, groupIds, checked));
+  };
+
+  const toggleCollapsed = (key: string) => {
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
   const softDeleteRows = async (targetRows: ExpenseSoftDeleteRow[]) => {
@@ -377,8 +405,8 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       )}
 
       <section style={cards}>
-        <Card label="仕訳化待ち" value={loaded ? rows.length : "-"} meta={`合計 ${yen(queueTotal)}`} color="#b3892e" />
-        <Card label="選択中" value={selectedRows.length} meta={`合計 ${yen(selectedTotal)}`} color="#5e7d44" />
+        <Card label="仕訳化待ち" value={loaded ? selectionSummary.totalCount : "-"} meta={`総額 ${yen(selectionSummary.totalAmount)}`} color="var(--text-main)" />
+        <Card label="選択中" value={selectionSummary.selectedCount} meta={`選択した額 ${yen(selectionSummary.selectedAmount)}`} color="var(--text-main)" />
         <Card label="要確認" value={errorCount} meta="CSV対象外" color="#b35850" />
         <Card label="今月仕訳済" value={doneFiltered.length} meta={`合計 ${yen(doneFiltered.reduce((sum, row) => sum + (row.amount ?? 0), 0))}`} color="var(--text-sub)" />
       </section>
@@ -445,9 +473,25 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ row, applicant, category, journal }) => {
-                  const checked = selectedIds.has(row.id) && journal.ok;
+                {groups.map((group) => {
+                  const collapsed = collapsedGroups.has(group.key);
+                  const selection = getGroupSelectionState(group.selectableIds, selectedIds);
                   return (
+                    <Fragment key={group.key}>
+                      <ExpenseBookingGroupHeader
+                        applicantName={group.applicantName}
+                        count={group.count}
+                        totalAmount={group.totalAmount}
+                        collapsed={collapsed}
+                        checked={selection.checked}
+                        partial={selection.partial}
+                        disabled={group.selectableIds.length === 0}
+                        onToggleCollapsed={() => toggleCollapsed(group.key)}
+                        onToggleSelection={(checked) => toggleGroup(group.selectableIds, checked)}
+                      />
+                      {!collapsed && group.items.map(({ row, applicant, category, journal }) => {
+                        const checked = selectedIds.has(row.id) && journal.ok;
+                        return (
                     <tr key={row.id} style={journal.ok ? (checked ? checkedTr : tr) : errorTr}>
                       <td style={td}>
                         <input
@@ -469,6 +513,9 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                       <td style={td}>{journal.description}</td>
                       <td style={td}><span style={journal.ok ? okBadge : errorBadge}>{journal.note}</span></td>
                     </tr>
+                        );
+                      })}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -501,12 +548,12 @@ function Card({ label, value, meta, color }: { label: string; value: number | st
     <div style={{ ...compactCard, borderLeft: `3px solid ${color}` }}>
       <div style={compactCardSub} />
       <div style={compactCardMain}>
-        <span style={{ color: "var(--text-sub)", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <span style={{ color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
         <strong style={{ fontSize: 16, color, fontVariantNumeric: "tabular-nums" }}>
           {value}
           {typeof value === "number" ? "件" : ""}
         </strong>
-        <span style={{ color: "var(--text-sub)", marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</span>
+        <span style={{ color: "var(--text-main)", marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis" }}>{meta}</span>
       </div>
     </div>
   );
@@ -543,7 +590,9 @@ function parseFilename(header: string | null) {
 const shell: React.CSSProperties = { marginBottom: 24 };
 const title: React.CSSProperties = { margin: 0, fontSize: 22, color: "var(--text-main)", fontFamily: "'Shippori Mincho', serif" };
 const lead: React.CSSProperties = { margin: "4px 0 14px", color: "var(--text-sub)", fontSize: 13 };
-const cards: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 16 };
+// 4枚を横一列に固定すると、狭い幅で金額（総額・選択した額）が省略されて読めなくなる。
+// 入りきらない幅では折り返して2列・1列になるようにする。
+const cards: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginBottom: 16 };
 const compactCard: React.CSSProperties = {
   boxSizing: "border-box",
   display: "flex",
