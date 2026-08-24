@@ -1,12 +1,30 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateTaxExcludedAmount,
   getGroupSelectionState,
   groupExpenseBookingRows,
   summarizeExpenseBookingSelection,
   updateGroupSelection,
   type ExpenseBookingGroupItem,
 } from "../expense-booking-groups";
+
+describe("calculateTaxExcludedAmount", () => {
+  it("divides the selected and total examples by 1.1 after summing and floors the result", () => {
+    expect(calculateTaxExcludedAmount(13740)).toBe(12490);
+    expect(calculateTaxExcludedAmount(205043)).toBe(186402);
+  });
+
+  it("does not round up and keeps zero at zero", () => {
+    expect(calculateTaxExcludedAmount(13740)).not.toBe(12491);
+    expect(calculateTaxExcludedAmount(205043)).not.toBe(186403);
+    expect(calculateTaxExcludedAmount(0)).toBe(0);
+  });
+
+  it("avoids floating-point underflow on an exactly divisible amount", () => {
+    expect(calculateTaxExcludedAmount(110)).toBe(100);
+  });
+});
 
 const rows: ExpenseBookingGroupItem[] = [
   { id: "m2", applicantKey: "EMP-2", applicantName: "宮永 ひかり", receiptDate: "2026-02-03", amount: 400, selectable: true },

@@ -83,6 +83,10 @@ export function summarizeExpenseBookingSelection<T extends Pick<ExpenseBookingGr
   };
 }
 
+export function calculateTaxExcludedAmount(taxIncludedAmount: number) {
+  return Math.floor((taxIncludedAmount * 10) / 11);
+}
+
 function compareReceiptDate(left: string | null, right: string | null) {
   if (left === right) return 0;
   if (!left) return 1;
