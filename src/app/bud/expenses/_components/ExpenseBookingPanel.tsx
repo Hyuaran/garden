@@ -13,6 +13,9 @@ import {
   updateGroupSelection,
 } from "@/app/bud/expenses/_lib/expense-booking-groups";
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
+import { buildFinalApplicantOptions, filterFinalRowsByApplicant } from "@/app/bud/expenses/_lib/expense-final-applicant-filter";
+import { filterExpenseBookingRows, type ExpenseBookingSearchField } from "@/app/bud/expenses/_lib/expense-booking-filter";
+import { expenseKindLabel } from "@/app/bud/expenses/_lib/expense-kind";
 import { classifyExpenseJournal } from "../_lib/expense-journal-rules";
 import { ExpenseBookingGroupHeader } from "./ExpenseBookingGroupHeader";
 import { ExpenseKindBadge } from "./ExpenseKindBadge";
@@ -100,6 +103,9 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
   const [companyToCorp, setCompanyToCorp] = useState<Record<string, string>>({});
   const [corpFilter, setCorpFilterState] = useState(readInitialCorpFilter);
+  const [applicantFilter, setApplicantFilter] = useState("all");
+  const [listSearchField, setListSearchField] = useState<ExpenseBookingSearchField>("all");
+  const [listSearchValue, setListSearchValue] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
@@ -220,7 +226,22 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const effectiveCorpId = useCallback((row: Req) => getEffectiveCorpId(row, employees, companyToCorp), [employees, companyToCorp]);
   const bookingCorpId = useCallback((row: Req) => row.booking_corp_id ?? effectiveCorpId(row), [effectiveCorpId]);
   const corpMatches = useCallback((row: Req) => corpFilter === "all" || bookingCorpId(row) === corpFilter, [corpFilter, bookingCorpId]);
-  const list = useMemo(() => queueAll.filter(corpMatches), [queueAll, corpMatches]);
+  const corpList = useMemo(() => queueAll.filter(corpMatches), [queueAll, corpMatches]);
+  const applicantOptions = useMemo(() => buildFinalApplicantOptions(corpList, (row) => employeeLabel(row, employees)), [corpList, employees]);
+  const applicantList = useMemo(() => filterFinalRowsByApplicant(corpList, applicantFilter, (row) => employeeLabel(row, employees)), [applicantFilter, corpList, employees]);
+  const listSearchResult = useMemo(() => filterExpenseBookingRows(applicantList, listSearchField, listSearchValue, (row) => ({
+    id: row.id,
+    applicantName: employeeLabel(row, employees),
+    receiptDate: row.receipt_date,
+    bookingDate: row.booking_date,
+    bookingCorpName: corpLabel(row.booking_corp_id ?? effectiveCorpId(row), sortedCorps),
+    fiscalPeriod: row.fiscal_period,
+    expenseKind: expenseKindLabel(row.expense_kind),
+    categoryName: categoryLabel(row.category_id, catMap),
+    storeName: row.store_name,
+    amount: row.amount,
+  })), [applicantList, catMap, effectiveCorpId, employees, listSearchField, listSearchValue, sortedCorps]);
+  const list = listSearchResult.rows;
   const doneFiltered = useMemo(() => journalizedThisMonth.filter(corpMatches), [journalizedThisMonth, corpMatches]);
   const rows = useMemo(() => {
     return list.map((row) => {
@@ -456,6 +477,26 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
             <div style={panelMeta}>status=journalize_pending / {rows.length}件</div>
           </div>
           <div style={toolbar}>
+            <label style={filterControl}>申請者
+              <select aria-label="申請者で絞り込む" value={applicantFilter} style={bookingSelect} onChange={(event) => setApplicantFilter(event.target.value)}>
+                <option value="all">全員</option>
+                {applicantOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
+            <label style={searchControl}>
+              <select aria-label="仕訳待ちの検索項目" value={listSearchField} style={bookingSelect} onChange={(event) => setListSearchField(event.target.value as ExpenseBookingSearchField)}>
+                <option value="all">全項目</option>
+                <option value="applicant_employee_id">申請者</option>
+                <option value="receipt_date">日付</option>
+                <option value="receipt_time">仕分け日</option>
+                <option value="corp_id">仕分け法人名</option>
+                <option value="qualified_class">決算区分</option>
+                <option value="expense_kind">区分（経費区分）</option>
+                <option value="store_name">店名</option>
+                <option value="amount">金額</option>
+              </select>
+              <input aria-label="仕訳待ちを検索" value={listSearchValue} placeholder="仕訳待ちを検索" style={searchInput} onChange={(event) => setListSearchValue(event.target.value)} />
+            </label>
             <label style={checkAllLabel}>
               <input
                 type="checkbox"
@@ -690,6 +731,9 @@ const panelHead: React.CSSProperties = { display: "flex", alignItems: "center", 
 const panelTitle: React.CSSProperties = { margin: 0, fontSize: 17, color: "var(--text-main)", fontWeight: 600 };
 const panelMeta: React.CSSProperties = { color: "var(--text-muted)", fontSize: 12, marginTop: 3 };
 const toolbar: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" };
+const filterControl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, color: "var(--text-sub)", fontSize: 12, whiteSpace: "nowrap" };
+const searchControl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, maxWidth: "100%" };
+const searchInput: React.CSSProperties = { width: 180, maxWidth: "40vw", minWidth: 0, padding: "6px 8px", borderRadius: 7, border: "1px solid #8b6a22", background: "var(--bg-card-solid)", color: "var(--text-main)", textOverflow: "ellipsis" };
 const checkAllLabel: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-sub)", fontSize: 13 };
 const tableScroll: React.CSSProperties = { maxHeight: "min(70vh, 760px)", overflow: "auto", position: "relative", overscrollBehavior: "contain", scrollbarGutter: "stable" };
 const table: React.CSSProperties = { width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13 };
