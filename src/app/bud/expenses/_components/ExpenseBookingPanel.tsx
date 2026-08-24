@@ -388,7 +388,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setMessage(`${exportRows.length}件を書き出し、仕訳済みに更新しました。`);
+      setMessage(`${exportRows.length}件を書き出し、完了に更新しました。`);
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CSV書き出しに失敗しました");
@@ -434,17 +434,17 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     <div style={shell}>
       {!embedded && (
         <header style={{ marginBottom: 18 }}>
-          <h1 style={title}>経費精算 - 仕訳化</h1>
+          <h1 style={title}>経費精算 - 仕訳待ち</h1>
           <p style={lead}>完了済みの経費を弥生インポートCSVへ書き出します。</p>
           <CorpFilter value={corpFilter} corps={sortedCorps} onChange={setCorpFilter} />
         </header>
       )}
 
       <section style={cards}>
-        <Card label="仕訳化待ち" value={loaded ? selectionSummary.totalCount : "-"} meta={`総額 ${yen(selectionSummary.totalAmount)}`} color="var(--text-main)" />
+        <Card label="仕訳待ち" value={loaded ? selectionSummary.totalCount : "-"} meta={`総額 ${yen(selectionSummary.totalAmount)}`} color="var(--text-main)" />
         <Card label="選択中" value={selectionSummary.selectedCount} meta={`選択した額 ${yen(selectionSummary.selectedAmount)}`} color="var(--text-main)" />
         <Card label="要確認" value={errorCount} meta="CSV対象外" color="#b35850" />
-        <Card label="今月仕訳済" value={doneFiltered.length} meta={`合計 ${yen(doneFiltered.reduce((sum, row) => sum + (row.amount ?? 0), 0))}`} color="var(--text-sub)" />
+        <Card label="今月完了" value={doneFiltered.length} meta={`合計 ${yen(doneFiltered.reduce((sum, row) => sum + (row.amount ?? 0), 0))}`} color="var(--text-sub)" />
       </section>
 
       {message && <div style={notice}>{message}</div>}
@@ -508,7 +508,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
         {!loaded ? (
           <div style={empty}>読み込み中...</div>
         ) : rows.length === 0 ? (
-          <div style={empty}>この条件の仕訳化待ちはありません。</div>
+          <div style={empty}>この条件の仕訳待ちはありません。</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={table}>
