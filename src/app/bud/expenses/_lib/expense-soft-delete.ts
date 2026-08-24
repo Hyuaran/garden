@@ -20,7 +20,7 @@ export function containsJournalizedExpense(rows: ExpenseSoftDeleteRow[]) {
 
 export function buildExpenseDeleteConfirmMessage(rows: ExpenseSoftDeleteRow[], reason: string) {
   const warning = containsJournalizedExpense(rows)
-    ? "\n\n仕訳済みレコードが含まれています。関連する仕訳・出力済みCSVの確認が必要です。"
+    ? "\n\n完了レコードが含まれています。関連する仕訳・出力済みCSVの確認が必要です。"
     : "";
   return `${rows.length}件の経費申請を削除済みに移動します。\n\n理由: ${reason}${warning}\n\n実行しますか？`;
 }

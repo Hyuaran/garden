@@ -509,7 +509,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
           <header style={{ marginBottom: 18 }}>
             <h1 style={{ fontSize: 22, color: "var(--text-main)", margin: 0 }}>経費精算 — 完了待ち</h1>
             <p style={{ color: "var(--text-sub)", fontSize: 13, margin: "4px 0 0" }}>
-              経理承認済みの申請を最終チェックし、仕訳化待ちへ送ります。
+              経理承認済みの申請を最終チェックし、仕訳待ちへ送ります。
             </p>
           </header>
           <CorpFilter value={corpFilter} corps={sortedCorps} onChange={setCorpFilter} />

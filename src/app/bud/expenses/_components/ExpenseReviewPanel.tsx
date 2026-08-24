@@ -2191,6 +2191,8 @@ function statusLabel(status: string) {
   if (status === "submitted") return "承認待ち";
   if (status === "final_pending") return "承認済";
   if (status === "keiri_returned") return "差戻し";
+  if (status === "journalize_pending") return "仕訳待ち";
+  if (status === "journalized") return "完了";
   return status;
 }
 

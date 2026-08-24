@@ -22,7 +22,7 @@ describe("expense soft delete helpers", () => {
 
   it("warns for journalized rows", () => {
     expect(containsJournalizedExpense([{ id: "1", status: "journalized" }])).toBe(true);
-    expect(buildExpenseDeleteConfirmMessage([{ id: "1", status: "journalized" }], "test")).toContain("仕訳済み");
+    expect(buildExpenseDeleteConfirmMessage([{ id: "1", status: "journalized" }], "test")).toContain("完了レコード");
   });
 
   it("detects missing soft-delete columns", () => {

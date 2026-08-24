@@ -9,4 +9,13 @@ describe("expense ledger export route is read-only", () => {
     expect(source).not.toMatch(/\.update\s*\(/);
     expect(source).not.toContain('status: "journalized"');
   });
+
+  it("supports a read-only done scope with period and booking-corporation filters", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "src/app/api/bud/expense-booking/ledger-export/route.ts"), "utf8");
+    expect(source).toContain('scope === "done" ? "journalized" : "journalize_pending"');
+    expect(source).toContain('.gte("booking_date", body.start)');
+    expect(source).toContain('.lt("booking_date", body.end)');
+    expect(source).toContain('row.booking_corp_id === corpId');
+    expect(source).not.toMatch(/\.update\s*\(/);
+  });
 });
