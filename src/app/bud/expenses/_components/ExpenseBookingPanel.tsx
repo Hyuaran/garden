@@ -15,6 +15,8 @@ import {
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { classifyExpenseJournal } from "../_lib/expense-journal-rules";
 import { ExpenseBookingGroupHeader } from "./ExpenseBookingGroupHeader";
+import { ExpenseKindBadge } from "./ExpenseKindBadge";
+import { ExpenseProcessingOverlay } from "./ExpenseProcessingOverlay";
 import { bookingFiscalPeriod } from "../_lib/expense-booking-info";
 import { readAllSupabasePages } from "../_lib/supabase-pagination";
 
@@ -33,6 +35,7 @@ type Req = {
   corp_id: string | null;
   applicant_employee_id: string | null;
   applicant_name_text: string | null;
+  expense_kind: string;
   receipt_date: string | null;
   store_name: string | null;
   amount: number | null;
@@ -56,7 +59,7 @@ type Cat = {
 };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,applicant_name_text,receipt_date,store_name,amount,qualified_class,category_id,description,status,submitted_at,final_checked_at,booking_date,booking_corp_id,fiscal_period";
+  "id,corp_id,applicant_employee_id,applicant_name_text,expense_kind,receipt_date,store_name,amount,qualified_class,category_id,description,status,submitted_at,final_checked_at,booking_date,booking_corp_id,fiscal_period";
 const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 const CORP_FILTER_STORAGE_KEY = "bud-expense-booking-corp-filter";
 
@@ -103,6 +106,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const [busy, setBusy] = useState(false);
   const [ledgerBusy, setLedgerBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<{ count: number; action: string } | null>(null);
   const [bookingDateInput, setBookingDateInput] = useState(() => new Date().toISOString().slice(0, 10));
   const [bookingCorpInput, setBookingCorpInput] = useState("");
   const [fiscalPeriodInput, setFiscalPeriodInput] = useState("");
@@ -331,6 +335,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     }
     if (!window.confirm(buildExpenseDeleteConfirmMessage(targetRows, reason))) return;
     setBusy(true);
+    setProcessing({ count: targetRows.length, action: "削除" });
     setMessage(null);
     try {
       const { error } = await supabase.rpc("bud_expense_soft_delete", {
@@ -344,6 +349,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     } catch (error) {
       setMessage("削除済みへの移動に失敗しました: " + (error instanceof Error ? error.message : String(error)));
     } finally {
+      setProcessing(null);
       setBusy(false);
     }
   };
@@ -361,7 +367,10 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       booking_corp_id: corpId,
       ...(corpOnly ? { fiscal_period: fiscalPeriods[row.id] || null } : { booking_date: bookingDate ?? null, fiscal_period: fiscalPeriods[row.id] || null }),
     } : row));
-    if (!corpOnly) setBusy(true);
+    if (!corpOnly) {
+      setBusy(true);
+      setProcessing({ count: targetRows.length, action: "完了に" });
+    }
     try {
       const res = await fetch("/api/bud/expense-booking/booking-info", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -379,7 +388,10 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       setQueueAll(previous);
       setMessage(`保存に失敗したため元に戻しました: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
-      if (!corpOnly) setBusy(false);
+      if (!corpOnly) {
+        setProcessing(null);
+        setBusy(false);
+      }
     }
   };
 
@@ -418,6 +430,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
 
   return (
     <div style={shell}>
+      <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} />
       {!embedded && (
         <header style={{ marginBottom: 18 }}>
           <h1 style={title}>経費精算 - 仕訳待ち</h1>
@@ -547,7 +560,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                           onChange={(event) => toggle(row.id, event.target.checked)}
                         />
                       </td>
-                      <td style={applicantTd}>{applicant}</td>
+                      <td style={applicantTd}><ExpenseKindBadge kind={row.expense_kind} />{applicant}</td>
                       <td style={td}>{formatDate(row.receipt_date)}</td>
                       <td style={td}>{row.booking_date ? formatDate(row.booking_date) : <span style={missingBadge}>未入力</span>}</td>
                       <td style={td}>

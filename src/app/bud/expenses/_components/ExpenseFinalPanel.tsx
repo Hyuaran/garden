@@ -21,6 +21,9 @@ import {
   type Employee,
 } from "./expenseCorpUtils";
 import { notifyDriveMove, resolveReceiptStoragePath } from "./expenseReceiptUtils";
+import { ExpenseKindBadge } from "./ExpenseKindBadge";
+import { ExpenseProcessingOverlay } from "./ExpenseProcessingOverlay";
+import { buildFinalApplicantOptions, filterFinalRowsByApplicant } from "../_lib/expense-final-applicant-filter";
 
 type Req = {
   id: string;
@@ -97,12 +100,14 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
   const [companyToCorp, setCompanyToCorp] = useState<Record<string, string>>({});
   const [corpFilter, setCorpFilterState] = useState(readInitialCorpFilter);
+  const [applicantFilter, setApplicantFilter] = useState("all");
   const [idx, setIdx] = useState(0);
   const [detail, setDetail] = useState<Req | null>(null);
   const [detailMode, setDetailMode] = useState<DetailMode>("detail");
   const [detailImgUrl, setDetailImgUrl] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<{ count: number; action: string; done: number } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [listSearchField, setListSearchField] = useState<SearchField | "all">("all");
@@ -223,7 +228,9 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
 
   const effectiveCorpId = useCallback((row: Req) => getEffectiveCorpId(row, employees, companyToCorp), [employees, companyToCorp]);
   const corpMatches = useCallback((row: Req) => corpFilter === "all" || effectiveCorpId(row) === corpFilter, [corpFilter, effectiveCorpId]);
-  const baseList = useMemo(() => pendingAll.filter(corpMatches), [pendingAll, corpMatches]);
+  const corpList = useMemo(() => pendingAll.filter(corpMatches), [pendingAll, corpMatches]);
+  const applicantOptions = useMemo(() => buildFinalApplicantOptions(corpList, (row) => employeeLabel(row, employees)), [corpList, employees]);
+  const baseList = useMemo(() => filterFinalRowsByApplicant(corpList, applicantFilter, (row) => employeeLabel(row, employees)), [applicantFilter, corpList, employees]);
   const searchRecords = useMemo(() => baseList.map((row) => buildFinalSearchRecord(row, cats, employees, effectiveCorpId)), [baseList, cats, effectiveCorpId, employees]);
   const list = useMemo(() => {
     if (!listSearchValue.trim()) return baseList;
@@ -253,7 +260,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
 
   useEffect(() => {
     setIdx(0);
-  }, [corpFilter, listSearchField, listSearchValue]);
+  }, [applicantFilter, corpFilter, listSearchField, listSearchValue]);
 
   useEffect(() => {
     setIdx((value) => Math.max(0, Math.min(value, Math.max(0, list.length - 1))));
@@ -486,12 +493,14 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
     const reason = action === "return" ? window.prompt("一括差戻し理由を入力してください") ?? "" : undefined;
     if (action === "return" && !reason?.trim()) return;
     setBusyId("bulk");
+    setProcessing({ count: selectedRows.length, action: action === "approve" ? "完了に" : "差戻し", done: 0 });
     let successCount = 0;
     try {
       for (const row of selectedRows) {
         const ok = await process(row, action, reason, { reload: false, manageBusy: false });
         if (!ok) break;
         successCount += 1;
+        setProcessing((current) => current ? { ...current, done: successCount } : null);
       }
       setSelectedIds(new Set());
       await load();
@@ -499,12 +508,14 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
         alert(`${successCount}件を${action === "approve" ? "完了" : "差戻し"}しました`);
       }
     } finally {
+      setProcessing(null);
       setBusyId(null);
     }
   };
 
   return (
     <div>
+      <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} progress={processing ? { done: processing.done, total: processing.count } : null} />
       {!embedded && (
         <>
           <header style={{ marginBottom: 18 }}>
@@ -563,6 +574,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                 <span style={panelMeta}>レコード {list.length.toLocaleString("ja-JP")} / {baseList.length.toLocaleString("ja-JP")}</span>
               </div>
               <div style={listToolbar}>
+                <label style={applicantFilterLabel}>申請者 <select aria-label="申請者で絞り込む" value={applicantFilter} onChange={(event) => setApplicantFilter(event.target.value)} style={listSearchSelect}><option value="all">全員</option>{applicantOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
                 <div style={listSearchBox}>
                   <select value={listSearchField} onChange={(event) => setListSearchField(event.target.value as SearchField | "all")} style={listSearchSelect}>
                     <option value="all">全項目</option>
@@ -648,7 +660,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                             />
                           </td>
                           <td style={td}>{formatDate(row.submitted_at)}</td>
-                          <td style={applicantTd}>{employeeLabel(row, employees)}</td>
+                          <td style={applicantTd}><ExpenseKindBadge kind={row.expense_kind} />{employeeLabel(row, employees)}</td>
                           <td style={td}>{formatDate(row.receipt_date)}</td>
                           <td style={td}>{categoryLabel(row.category_id, cats)}</td>
                           <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
@@ -760,6 +772,7 @@ function DetailModal({
         <div style={modalGrid}>
           <div>
             <Row label="申請者">{employeeLabel(row, employees)}</Row>
+            <Row label="経費種別"><ExpenseKindBadge kind={row.expense_kind} />{row.expense_kind === "company" ? "" : "個人経費"}</Row>
             <Row label="申請日">{formatDate(row.submitted_at)}</Row>
             <Row label="日付">{formatDate(row.receipt_date)}</Row>
             <Row label="区分">{categoryLabel(row.category_id, cats)}</Row>
@@ -972,6 +985,7 @@ const listToolbar: React.CSSProperties = {
   flexWrap: "wrap",
   marginBottom: 12,
 };
+const applicantFilterLabel: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, minWidth: 0, color: "var(--text-main)", fontSize: 12, whiteSpace: "nowrap" };
 const listSearchBox: React.CSSProperties = {
   display: "flex",
   alignItems: "center",

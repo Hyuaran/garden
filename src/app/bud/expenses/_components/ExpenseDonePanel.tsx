@@ -6,12 +6,14 @@ import { buildEmployeeMap, fetchExpenseEmployeeLookup, resolveExpenseApplicantNa
 import { buildReexportConfirmation, DONE_PAGE_SIZE, donePageBounds, donePeriodEnd, donePeriodStart, formatYayoiExportRecord, type DonePeriod } from "../_lib/expense-done";
 import { calculateTaxExcludedAmount } from "../_lib/expense-booking-groups";
 import { FALLBACK_CORPS, sortCorps, type Corp, type Employee } from "./expenseCorpUtils";
+import { ExpenseKindBadge } from "./ExpenseKindBadge";
+import { ExpenseProcessingOverlay } from "./ExpenseProcessingOverlay";
 
-type DoneRow = { id: string; status: string; deleted_at?: string | null; applicant_employee_id: string | null; applicant_name_text: string | null; receipt_date: string | null; category_id: string | null; store_name: string | null; amount: number | null; booking_date: string | null; booking_corp_id: string | null; fiscal_period: string | null; yayoi_exported_at: string | null; yayoi_export_count: number };
+type DoneRow = { id: string; status: string; deleted_at?: string | null; applicant_employee_id: string | null; applicant_name_text: string | null; expense_kind: string; receipt_date: string | null; category_id: string | null; store_name: string | null; amount: number | null; booking_date: string | null; booking_corp_id: string | null; fiscal_period: string | null; yayoi_exported_at: string | null; yayoi_export_count: number };
 type Category = { id: string; name: string };
 type DoneSummary = { count: number; taxIncluded: number; taxExcluded: number };
 type DoneSummaryRpcRow = { total_count: number | string; total_amount: number | string };
-const SELECT = "id,status,applicant_employee_id,applicant_name_text,receipt_date,category_id,store_name,amount,booking_date,booking_corp_id,fiscal_period,deleted_at,yayoi_exported_at,yayoi_export_count";
+const SELECT = "id,status,applicant_employee_id,applicant_name_text,expense_kind,receipt_date,category_id,store_name,amount,booking_date,booking_corp_id,fiscal_period,deleted_at,yayoi_exported_at,yayoi_export_count";
 
 export function ExpenseDonePanel() {
   const supabase = useMemo(() => createBrowserClient(), []);
@@ -29,6 +31,7 @@ export function ExpenseDonePanel() {
   const [page, setPage] = useState(0);
   const [summary, setSummary] = useState<DoneSummary>({ count: 0, taxIncluded: 0, taxExcluded: 0 });
   const [message, setMessage] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<{ count: number; action: string } | null>(null);
   const start = useMemo(() => donePeriodStart(period), [period]);
   const end = useMemo(() => donePeriodEnd(period), [period]);
 
@@ -74,7 +77,7 @@ export function ExpenseDonePanel() {
   }, [visible]);
 
   const exportLedger = async () => {
-    setLedgerBusy(true); setMessage(null);
+    setLedgerBusy(true); setMessage(null); setProcessing({ count: summary.count, action: "台帳形式Excelで書き出" });
     try {
       const response = await fetch("/api/bud/expense-booking/ledger-export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ corpId, scope: "done", start, end }) });
       if (!response.ok) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? "書き出しに失敗しました");
@@ -83,14 +86,14 @@ export function ExpenseDonePanel() {
       const count = Number(response.headers.get("X-Bud-Expense-Ledger-Rows") ?? 0);
       setMessage(`${count.toLocaleString("ja-JP")}件を台帳形式で書き出しました。状態は変更していません。`);
     } catch (error) { setMessage(error instanceof Error ? error.message : "書き出しに失敗しました"); }
-    finally { setLedgerBusy(false); }
+    finally { setProcessing(null); setLedgerBusy(false); }
   };
 
   const exportYayoi = async () => {
     if (corpId === "all" || selectedRows.length === 0) return;
     const confirmation = buildReexportConfirmation(selectedRows);
     if (confirmation && !window.confirm(confirmation)) return;
-    setCsvBusy(true); setMessage(null);
+    setCsvBusy(true); setMessage(null); setProcessing({ count: selectedRows.length, action: "弥生CSVで書き出" });
     try {
       const response = await fetch("/api/bud/expense-booking/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ corpId, ids: selectedRows.map((row) => row.id), mode: "reexport" }) });
       if (!response.ok) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? "書き出しに失敗しました");
@@ -100,10 +103,11 @@ export function ExpenseDonePanel() {
       await load();
       setMessage(`${count}件を弥生CSVで書き出し、出力履歴を更新しました。`);
     } catch (error) { setMessage(error instanceof Error ? error.message : "書き出しに失敗しました"); }
-    finally { setCsvBusy(false); }
+    finally { setProcessing(null); setCsvBusy(false); }
   };
 
   return <section style={panel} data-expense-done-tab="true">
+    <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} />
     <div style={header}><div><h3 style={title}>完了した経費</h3><div style={meta}>仕訳日が新しい順</div></div><div style={actions}><button type="button" style={button} disabled={ledgerBusy || csvBusy} onClick={() => void exportLedger()}>{ledgerBusy ? "書き出し中..." : "台帳形式で書き出す（Excel）"}</button><button type="button" style={{ ...reexportButton, ...((corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy) ? disabledButton : {}) }} disabled={corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy} onClick={() => void exportYayoi()}>{csvBusy ? "書き出し中..." : "弥生CSVを書き出す"}</button></div></div>
     <div style={filters}>
       <label>仕分け法人名 <select value={corpId} onChange={(event) => { setPage(0); setCorpId(event.target.value); }}><option value="all">全法人</option>{sortCorps(corps).map((corp) => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}</select></label>
@@ -111,7 +115,7 @@ export function ExpenseDonePanel() {
     </div>
     <div style={summaryStyle}><strong>{summary.count.toLocaleString("ja-JP")}件</strong><span>税込 {yen(summary.taxIncluded)}</span><span>税抜 {yen(summary.taxExcluded)}</span></div>
     {message && <div style={notice}>{message}</div>}
-    {!loaded ? <div style={empty}>読み込み中...</div> : visible.length === 0 ? <div style={empty}>この条件の完了した経費はありません。</div> : <div style={{ overflowX: "auto" }}><table style={table}><thead><tr><th style={checkCell}><input type="checkbox" aria-label="表示中の経費をすべて選択" checked={allVisibleSelected} onChange={(event) => setSelectedIds(event.target.checked ? new Set(visible.map((row) => row.id)) : new Set())} /></th>{["申請者","レシート日付","区分","店名","金額","仕分け日","仕分け法人名","決算区分","出力"].map((label) => <th key={label} style={th}>{label}</th>)}</tr></thead><tbody>{visible.map((row) => <tr key={row.id}><td style={checkCell}><input type="checkbox" aria-label={`${row.store_name ?? "経費"}を選択`} checked={selectedIds.has(row.id)} onChange={(event) => setSelectedIds((current) => { const next = new Set(current); if (event.target.checked) next.add(row.id); else next.delete(row.id); return next; })} /></td><td style={applicantCell}>{resolveExpenseApplicantName(row, employees)}</td><td style={td}>{date(row.receipt_date)}</td><td style={td}>{row.category_id ? categoryMap.get(row.category_id) ?? row.category_id : "未設定"}</td><td style={ellipsis}>{row.store_name ?? "—"}</td><td style={numberCell}>{yen(row.amount ?? 0)}</td><td style={td}>{date(row.booking_date)}</td><td style={td}>{row.booking_corp_id ? corpMap.get(row.booking_corp_id) ?? row.booking_corp_id : "未設定"}</td><td style={td}>{row.fiscal_period ?? "—"}</td><td style={exportCell}>{formatYayoiExportRecord(row)}</td></tr>)}</tbody></table></div>}
+    {!loaded ? <div style={empty}>読み込み中...</div> : visible.length === 0 ? <div style={empty}>この条件の完了した経費はありません。</div> : <div style={{ overflowX: "auto" }}><table style={table}><thead><tr><th style={checkCell}><input type="checkbox" aria-label="表示中の経費をすべて選択" checked={allVisibleSelected} onChange={(event) => setSelectedIds(event.target.checked ? new Set(visible.map((row) => row.id)) : new Set())} /></th>{["申請者","レシート日付","区分","店名","金額","仕分け日","仕分け法人名","決算区分","出力"].map((label) => <th key={label} style={th}>{label}</th>)}</tr></thead><tbody>{visible.map((row) => <tr key={row.id}><td style={checkCell}><input type="checkbox" aria-label={`${row.store_name ?? "経費"}を選択`} checked={selectedIds.has(row.id)} onChange={(event) => setSelectedIds((current) => { const next = new Set(current); if (event.target.checked) next.add(row.id); else next.delete(row.id); return next; })} /></td><td style={applicantCell}><ExpenseKindBadge kind={row.expense_kind} />{resolveExpenseApplicantName(row, employees)}</td><td style={td}>{date(row.receipt_date)}</td><td style={td}>{row.category_id ? categoryMap.get(row.category_id) ?? row.category_id : "未設定"}</td><td style={ellipsis}>{row.store_name ?? "—"}</td><td style={numberCell}>{yen(row.amount ?? 0)}</td><td style={td}>{date(row.booking_date)}</td><td style={td}>{row.booking_corp_id ? corpMap.get(row.booking_corp_id) ?? row.booking_corp_id : "未設定"}</td><td style={td}>{row.fiscal_period ?? "—"}</td><td style={exportCell}>{formatYayoiExportRecord(row)}</td></tr>)}</tbody></table></div>}
     {loaded && summary.count > 0 && <nav style={pagination} aria-label="完了した経費のページ送り"><button type="button" style={button} disabled={page === 0} onClick={() => { setSelectedIds(new Set()); setPage((current) => Math.max(0, current - 1)); }}>前へ</button><span style={pagePosition}>{pageBounds.label}</span><button type="button" style={button} disabled={page >= pageBounds.lastPage} onClick={() => { setSelectedIds(new Set()); setPage((current) => Math.min(pageBounds.lastPage, current + 1)); }}>次へ</button></nav>}
   </section>;
 }

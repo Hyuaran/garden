@@ -67,6 +67,8 @@ import {
   resolveReceiptStoragePath,
   rotateImageBlob,
 } from "./expenseReceiptUtils";
+import { ExpenseProcessingOverlay } from "./ExpenseProcessingOverlay";
+import { ExpenseKindBadge } from "./ExpenseKindBadge";
 
 type Req = {
   id: string;
@@ -207,6 +209,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   const [detail, setDetail] = useState<Req | null>(null);
   const [detailImgUrl, setDetailImgUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [processing, setProcessing] = useState<{ count: number; action: string } | null>(null);
   const [amountFocused, setAmountFocused] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
@@ -862,6 +865,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       if (!reason) return;
     }
     setBusy(true);
+    setProcessing({ count: 1, action: action === "approve" ? "承認" : "差戻し" });
     if (draftSaveTimerRef.current) {
       clearTimeout(draftSaveTimerRef.current);
       draftSaveTimerRef.current = null;
@@ -946,6 +950,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     } catch (e) {
       alert("処理に失敗しました：" + (e instanceof Error ? e.message : String(e)));
     } finally {
+      setProcessing(null);
       setBusy(false);
     }
   };
@@ -959,6 +964,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     }
     if (!window.confirm(buildExpenseDeleteConfirmMessage(rows, reason))) return;
     setBusy(true);
+    setProcessing({ count: rows.length, action: "削除" });
     try {
       const { error } = await supabase.rpc("bud_expense_soft_delete", {
         p_ids: rows.map((row) => row.id),
@@ -969,6 +975,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     } catch (error) {
       alert("削除済みへの移動に失敗しました: " + (error instanceof Error ? error.message : String(error)));
     } finally {
+      setProcessing(null);
       setBusy(false);
     }
   };
@@ -977,6 +984,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     if (!canManageSoftDelete || rows.length === 0 || busy) return;
     if (!window.confirm(`${rows.length}件の経費申請を復元します。実行しますか？`)) return;
     setBusy(true);
+    setProcessing({ count: rows.length, action: "復元" });
     try {
       const { error } = await supabase.rpc("bud_expense_restore", {
         p_ids: rows.map((row) => row.id),
@@ -986,6 +994,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     } catch (error) {
       alert("復元に失敗しました: " + (error instanceof Error ? error.message : String(error)));
     } finally {
+      setProcessing(null);
       setBusy(false);
     }
   };
@@ -1011,6 +1020,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
 
   return (
     <div>
+      <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} />
       {!embedded && (
         <>
           <header style={{ marginBottom: 18 }}>
@@ -1813,7 +1823,7 @@ function StatusList({
                     <span style={statusPill(row.status)}>{statusLabel(row.status)}</span>
                   </td>
                   <td style={td}>{corpLabel(row.corp_id, corps)}</td>
-                  <td style={td}>{expenseKindLabel(row.expense_kind) || "-"}</td>
+                  <td style={td}><ExpenseKindBadge kind={row.expense_kind} /></td>
                 </tr>
               ))}
             </tbody>
@@ -1927,7 +1937,7 @@ function DeletedExpenseTab({
                   <td style={td}>{row.delete_reason ?? "-"}</td>
                   <td style={td}>{formatDate(row.submitted_at)}</td>
                   <td style={applicantTd}>{employeeLabel(row, employees)}</td>
-                  <td style={td}>{expenseKindLabel(row.expense_kind) || "-"}</td>
+                  <td style={td}><ExpenseKindBadge kind={row.expense_kind} /></td>
                   <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
                   <td style={td}>
                     <span style={statusPill(row.status)}>{statusLabel(row.status)}</span>
