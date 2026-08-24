@@ -31,6 +31,8 @@ type Req = {
   category_id: string | null;
   status: string;
   submitted_at: string;
+  booking_date: string | null;
+  booking_corp_id: string | null;
 };
 
 type Cat = {
@@ -39,7 +41,7 @@ type Cat = {
 };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,category_id,status,submitted_at";
+  "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,category_id,status,submitted_at,booking_date,booking_corp_id";
 
 export async function POST(req: Request) {
   try {
@@ -102,7 +104,11 @@ export async function POST(req: Request) {
       }
     }
 
-    const wrongCorp = rows.find((row) => getEffectiveCorpId(row, employees, companyToCorp) !== corpId);
+    const missingBooking = rows.find((row) => !row.booking_date || !row.booking_corp_id);
+    if (missingBooking) {
+      return NextResponse.json({ ok: false, error: "仕分け情報が未入力の行は書き出せません" }, { status: 400 });
+    }
+    const wrongCorp = rows.find((row) => row.booking_corp_id !== corpId);
     if (wrongCorp) {
       return NextResponse.json({ ok: false, error: "選択法人以外の行が含まれています" }, { status: 400 });
     }

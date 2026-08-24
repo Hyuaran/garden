@@ -21,9 +21,9 @@ const BASE: FileMakerLedgerSource = {
   submittedByName: "入力 太郎",
   keiriCheckedAt: "2026-07-09T06:31:55.000Z",
   keiriCheckedByName: "経理 次郎",
-  journalizedAt: "2026-07-10T01:02:03.000Z",
-  establishedOn: "2018-03-01",
-  fiscalEndMonth: 9,
+  bookingDate: "2026-07-31",
+  bookingCorpName: "ヒュアラン",
+  fiscalPeriod: "第9期",
 };
 
 describe("FileMaker ledger Excel export", () => {
@@ -56,17 +56,17 @@ describe("FileMaker ledger Excel export", () => {
     expect(stripQualifiedNumberPrefix(null)).toBeNull();
   });
 
-  it("changes fiscal period after fiscal month end and leaves missing masters blank", async () => {
+  it("keeps original corporation and writes saved booking values separately", async () => {
     const sheet = (await load([
       BASE,
-      { ...BASE, receiptDate: "2018-10-01" },
-      { ...BASE, establishedOn: null },
-      { ...BASE, fiscalEndMonth: null },
+      { ...BASE, bookingDate: null, bookingCorpName: null, fiscalPeriod: null },
     ])).worksheets[0];
-    expect(sheet.getCell("V2").value).toBe("第1期");
-    expect(sheet.getCell("V3").value).toBe("第2期");
-    expect(sheet.getCell("V4").value).toBeNull();
-    expect(sheet.getCell("V5").value).toBeNull();
+    expect(sheet.getCell("C2").value).toBe("ARATA");
+    expect(sheet.getCell("U2").value).toBe("ヒュアラン");
+    expect(sheet.getCell("V2").value).toBe("第9期");
+    expect(sheet.getCell("T3").value).toBeNull();
+    expect(sheet.getCell("U3").value).toBeNull();
+    expect(sheet.getCell("V3").value).toBeNull();
   });
 
   it("creates a header-only workbook for zero records", async () => {
