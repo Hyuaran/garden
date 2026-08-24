@@ -17,7 +17,8 @@ export function ExpenseDonePanel() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [employees, setEmployees] = useState<Record<string, Employee>>({});
   const [corpId, setCorpId] = useState("all");
-  const [period, setPeriod] = useState<DonePeriod>("month");
+  // 既定は直近12か月（東海林さん指定・2026-08-24）。今月では短すぎる。
+  const [period, setPeriod] = useState<DonePeriod>("year");
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
