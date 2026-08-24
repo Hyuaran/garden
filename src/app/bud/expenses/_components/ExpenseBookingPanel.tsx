@@ -84,6 +84,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [ledgerBusy, setLedgerBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const setCorpFilter = useCallback((next: string) => {
@@ -332,6 +333,39 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     }
   };
 
+  const exportLedger = async () => {
+    if (busy || ledgerBusy) return;
+    setLedgerBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/bud/expense-booking/ledger-export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ corpId: corpFilter }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(json?.error ?? "台帳形式の書き出しに失敗しました");
+      }
+      const blob = await res.blob();
+      const filename = parseFilename(res.headers.get("Content-Disposition")) ?? "領収書-Garden経費.xlsx";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      const count = Number(res.headers.get("X-Bud-Expense-Ledger-Rows") ?? rows.length);
+      setMessage(`${count}件を台帳形式で書き出しました。データの状態は変更していません。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "台帳形式の書き出しに失敗しました");
+    } finally {
+      setLedgerBusy(false);
+    }
+  };
+
   return (
     <div style={shell}>
       {!embedded && (
@@ -370,6 +404,14 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
             </label>
             <button type="button" style={exportBtn(canExport)} disabled={!canExport} onClick={() => void exportCsv()}>
               {busy ? "書き出し中..." : "弥生CSVを書き出す"}
+            </button>
+            <button
+              type="button"
+              style={ledgerExportBtn(!(busy || ledgerBusy))}
+              disabled={busy || ledgerBusy}
+              onClick={() => void exportLedger()}
+            >
+              {ledgerBusy ? "書き出し中..." : "台帳形式で書き出す（Excel）"}
             </button>
             {canManageSoftDelete && (
               <button type="button" style={deleteBtn} disabled={busy || selectedRows.length === 0} onClick={() => void softDeleteRows(selectedRows.map((item) => item.row))}>
@@ -538,6 +580,15 @@ const corpSwitch: React.CSSProperties = { display: "flex", gap: 4, marginBottom:
 const corpTab = (active: boolean): React.CSSProperties => ({ padding: "8px 20px", borderRadius: 999, border: "none", background: active ? "#d4a541" : "transparent", color: active ? "#fff" : "var(--text-sub)", cursor: "pointer", boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none" });
 const deleteBtn: React.CSSProperties = { border: "1px solid #8f3b36", borderRadius: 999, padding: "9px 14px", background: "rgba(179,80,72,0.08)", color: "#8f3b36", cursor: "pointer", whiteSpace: "nowrap" };
 const exportBtn = (active: boolean): React.CSSProperties => ({ border: "none", borderRadius: 999, padding: "10px 18px", background: active ? "#d4a541" : "#d8d0bd", color: "#fff", cursor: active ? "pointer" : "not-allowed", boxShadow: active ? "0 3px 10px rgba(212,165,65,0.25)" : "none" });
+const ledgerExportBtn = (active: boolean): React.CSSProperties => ({
+  border: "1px solid #b3892e",
+  borderRadius: 999,
+  padding: "9px 16px",
+  background: active ? "var(--bg-paper-soft)" : "#d8d0bd",
+  color: active ? "#9b711d" : "#fff",
+  cursor: active ? "pointer" : "not-allowed",
+  whiteSpace: "nowrap",
+});
 const taxBadge = (taxClass: string): React.CSSProperties => ({
   display: "inline-block",
   padding: "3px 8px",
