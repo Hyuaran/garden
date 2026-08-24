@@ -476,12 +476,16 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                 {groups.map((group) => {
                   const collapsed = collapsedGroups.has(group.key);
                   const selection = getGroupSelectionState(group.selectableIds, selectedIds);
+                  const groupSummary = summarizeExpenseBookingSelection(group.items, selectedIds);
                   return (
                     <Fragment key={group.key}>
                       <ExpenseBookingGroupHeader
                         applicantName={group.applicantName}
                         count={group.count}
                         totalAmount={group.totalAmount}
+                        selectedCount={groupSummary.selectedCount}
+                        selectedAmount={groupSummary.selectedAmount}
+                        invalidCount={groupSummary.invalidCount}
                         collapsed={collapsed}
                         checked={selection.checked}
                         partial={selection.partial}
