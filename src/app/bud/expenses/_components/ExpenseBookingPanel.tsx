@@ -15,7 +15,7 @@ import {
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { classifyExpenseJournal } from "../_lib/expense-journal-rules";
 import { ExpenseBookingGroupHeader } from "./ExpenseBookingGroupHeader";
-import { bookingFiscalPeriod, isBookingComplete } from "../_lib/expense-booking-info";
+import { bookingFiscalPeriod } from "../_lib/expense-booking-info";
 import { readAllSupabasePages } from "../_lib/supabase-pagination";
 
 import {
@@ -249,11 +249,9 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
 
   const selectableIds = useMemo(() => rows.filter((row) => row.journal.ok).map((row) => row.row.id), [rows]);
   const selectedRows = useMemo(() => rows.filter((row) => selectedIds.has(row.row.id) && row.journal.ok), [rows, selectedIds]);
-  const exportRows = useMemo(() => selectedRows.filter((item) => isBookingComplete(item.row) && item.row.booking_corp_id === corpFilter), [corpFilter, selectedRows]);
   const groups = useMemo(() => groupExpenseBookingRows(rows), [rows]);
   const selectionSummary = useMemo(() => summarizeExpenseBookingSelection(rows, selectedIds), [rows, selectedIds]);
   const errorCount = rows.filter((row) => !row.journal.ok).length;
-  const canExport = corpFilter !== "all" && exportRows.length > 0 && !busy;
 
   useEffect(() => {
     setSelectedIds(new Set(selectableIds));
@@ -363,49 +361,25 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       booking_corp_id: corpId,
       ...(corpOnly ? { fiscal_period: fiscalPeriods[row.id] || null } : { booking_date: bookingDate ?? null, fiscal_period: fiscalPeriods[row.id] || null }),
     } : row));
+    if (!corpOnly) setBusy(true);
     try {
       const res = await fetch("/api/bud/expense-booking/booking-info", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: targetRows.map((row) => row.id), bookingDate, bookingCorpId: corpId, fiscalPeriods, corpOnly }),
       });
       if (!res.ok) throw new Error(((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? "保存に失敗しました");
-      setMessage(`${targetRows.length}件の仕分け情報を保存しました`);
+      if (corpOnly) {
+        setMessage(`${targetRows.length}件の仕分け情報を保存しました`);
+      } else {
+        setSelectedIds(new Set());
+        await load();
+        setMessage(`${targetRows.length}件の仕分け情報を保存し、完了へ移しました。`);
+      }
     } catch (error) {
       setQueueAll(previous);
       setMessage(`保存に失敗したため元に戻しました: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  };
-
-  const exportCsv = async () => {
-    if (!canExport) return;
-    setBusy(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/bud/expense-booking/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ corpId: corpFilter, ids: exportRows.map((row) => row.row.id) }),
-      });
-      if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(json?.error ?? "CSV書き出しに失敗しました");
-      }
-      const blob = await res.blob();
-      const filename = parseFilename(res.headers.get("Content-Disposition")) ?? `弥生インポート_経費_${corpFilter}.csv`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      setMessage(`${exportRows.length}件を書き出し、完了に更新しました。`);
-      await load();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "CSV書き出しに失敗しました");
     } finally {
-      setBusy(false);
+      if (!corpOnly) setBusy(false);
     }
   };
 
@@ -461,7 +435,6 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
 
       {message && <div style={notice}>{message}</div>}
       {queueAll.length > 2000 && <div style={warning}>件数が多くなっています。表示に時間がかかる場合があります。</div>}
-      {corpFilter === "all" && <div style={warning}>CSV書き出しは法人を1つ選択すると有効になります。</div>}
 
       <section style={panel}>
         <div style={panelHead}>
@@ -499,9 +472,6 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                 const corpId = canReassignBookingCorp ? bookingCorpInput || initial : initial;
                 if (corpId && sortedCorps.some((corp) => corp.id === corpId)) void saveBookingInfo(selectedRows.map((item) => item.row), corpId, false, bookingDateInput, fiscalPeriodInput);
               }}>仕分け情報を入力</button>
-            <button type="button" style={exportBtn(canExport)} disabled={!canExport} onClick={() => void exportCsv()}>
-              {busy ? "書き出し中..." : "弥生CSVを書き出す"}
-            </button>
             <button
               type="button"
               style={ledgerExportBtn(!(busy || ledgerBusy))}
@@ -727,7 +697,6 @@ const reassignedLabel: React.CSSProperties = { marginTop: 4, maxWidth: 190, over
 const corpSwitch: React.CSSProperties = { display: "flex", gap: 4, marginBottom: 18, padding: 6, background: "var(--bg-card)", borderRadius: 999, width: "fit-content", border: "1px solid rgba(180,165,130,0.2)", flexWrap: "wrap" };
 const corpTab = (active: boolean): React.CSSProperties => ({ padding: "8px 20px", borderRadius: 999, border: "none", background: active ? "#d4a541" : "transparent", color: active ? "#fff" : "var(--text-sub)", cursor: "pointer", boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none" });
 const deleteBtn: React.CSSProperties = { border: "1px solid #8f3b36", borderRadius: 999, padding: "9px 14px", background: "rgba(179,80,72,0.08)", color: "#8f3b36", cursor: "pointer", whiteSpace: "nowrap" };
-const exportBtn = (active: boolean): React.CSSProperties => ({ border: "none", borderRadius: 999, padding: "10px 18px", background: active ? "#d4a541" : "#d8d0bd", color: "#fff", cursor: active ? "pointer" : "not-allowed", boxShadow: active ? "0 3px 10px rgba(212,165,65,0.25)" : "none" });
 const ledgerExportBtn = (active: boolean): React.CSSProperties => ({
   border: "1px solid #b3892e",
   borderRadius: 999,
