@@ -80,7 +80,7 @@ function yenWithTaxExcluded(value: number) {
   return `${yen(value)}（${yen(calculateTaxExcludedAmount(value))}）`;
 }
 
-const groupTd: React.CSSProperties = { padding: "10px 8px", background: "var(--bg-card-solid)", borderTop: "1px solid var(--border-card)", borderBottom: "1px solid var(--border-card)", color: "var(--text-main)" };
+const groupTd: React.CSSProperties = { position: "sticky", top: 36, zIndex: 2, padding: "10px 8px", background: "var(--bg-card-solid)", borderTop: "1px solid var(--border-card)", borderBottom: "1px solid var(--border-card)", boxShadow: "0 2px 4px rgba(25,22,16,0.12)", color: "var(--text-main)" };
 const groupHead: React.CSSProperties = { display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px 12px", minHeight: 26, whiteSpace: "normal" };
 const collapseBtn: React.CSSProperties = { width: 24, color: "var(--text-main)", fontSize: 12, lineHeight: 1 };
 const groupName: React.CSSProperties = { color: "var(--text-main)", fontSize: 14, fontWeight: 600, overflowWrap: "anywhere" };

@@ -45,6 +45,26 @@ describe("ExpenseBookingGroupHeader", () => {
     expect(screen.getByText(/選択 0件/)).toHaveStyle({ overflowWrap: "anywhere" });
     expect(screen.getByText(/全5件/)).toHaveStyle({ overflowWrap: "anywhere" });
   });
+
+  it("sticks below the table header with an opaque theme background", () => {
+    const { container } = renderHeader({});
+    expect(container.querySelector("td")).toHaveStyle({
+      position: "sticky",
+      top: "36px",
+      zIndex: "2",
+      background: "var(--bg-card-solid)",
+    });
+  });
+
+  it("keeps collapse and group selection interactive while sticky", () => {
+    const onToggleCollapsed = vi.fn();
+    const onToggleSelection = vi.fn();
+    renderHeader({ onToggleCollapsed, onToggleSelection });
+    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(onToggleCollapsed).toHaveBeenCalledOnce();
+    expect(onToggleSelection).toHaveBeenCalledWith(true);
+  });
 });
 
 function renderHeader(overrides: Partial<React.ComponentProps<typeof ExpenseBookingGroupHeader>>) {

@@ -493,7 +493,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
         ) : rows.length === 0 ? (
           <div style={empty}>この条件の仕訳待ちはありません。</div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div style={tableScroll} role="region" aria-label="仕訳待ち明細" tabIndex={0}>
             <table style={table}>
               <thead>
                 <tr>
@@ -678,8 +678,9 @@ const panelTitle: React.CSSProperties = { margin: 0, fontSize: 17, color: "var(-
 const panelMeta: React.CSSProperties = { color: "var(--text-muted)", fontSize: 12, marginTop: 3 };
 const toolbar: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" };
 const checkAllLabel: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-sub)", fontSize: 13 };
-const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
-const th: React.CSSProperties = { textAlign: "left", color: "var(--text-sub)", fontWeight: 500, padding: "9px 8px", borderBottom: "1px solid rgba(180,165,130,0.25)", whiteSpace: "nowrap" };
+const tableScroll: React.CSSProperties = { maxHeight: "min(70vh, 760px)", overflow: "auto", position: "relative", overscrollBehavior: "contain", scrollbarGutter: "stable" };
+const table: React.CSSProperties = { width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13 };
+const th: React.CSSProperties = { position: "sticky", top: 0, zIndex: 3, height: 36, boxSizing: "border-box", textAlign: "left", color: "var(--text-main)", background: "var(--bg-paper-soft)", fontWeight: 500, padding: "9px 8px", borderBottom: "1px solid rgba(180,165,130,0.25)", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "var(--text-main)", verticalAlign: "middle", whiteSpace: "nowrap" };
 const applicantTd: React.CSSProperties = { ...td, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" };
 const tr: React.CSSProperties = {};
