@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
-import { buildEmployeeMap, fetchExpenseEmployeeLookup, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
+import { buildEmployeeMap, fetchExpenseEmployeeLookup, resolveExpenseApplicantName, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
 import { filterExpenseListRecords, sumExpenseAmounts } from "@/app/bud/expenses/_lib/expense-list-filter";
 import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
@@ -26,6 +26,7 @@ type Req = {
   id: string;
   corp_id: string | null;
   applicant_employee_id: string | null;
+  applicant_name_text: string | null;
   expense_kind: string;
   drive_file_id: string | null;
   storage_path: string | null;
@@ -57,7 +58,7 @@ type TodayStats = {
 };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at,final_checked_at";
+  "id,corp_id,applicant_employee_id,applicant_name_text,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at,final_checked_at";
 const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 const CORP_FILTER_STORAGE_KEY = "bud-expense-final-corp-filter";
 
@@ -647,7 +648,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                             />
                           </td>
                           <td style={td}>{formatDate(row.submitted_at)}</td>
-                          <td style={td}>{employeeLabel(row, employees)}</td>
+                          <td style={applicantTd}>{employeeLabel(row, employees)}</td>
                           <td style={td}>{formatDate(row.receipt_date)}</td>
                           <td style={td}>{categoryLabel(row.category_id, cats)}</td>
                           <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
@@ -832,8 +833,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function employeeLabel(row: Req, employees: Record<string, Employee>) {
-  if (!row.applicant_employee_id) return "—";
-  return employees[row.applicant_employee_id]?.name ?? row.applicant_employee_id;
+  return resolveExpenseApplicantName(row, employees);
 }
 
 function categoryLabel(categoryId: string | null, cats: Cat[]) {
@@ -1044,6 +1044,7 @@ const th: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed var(--border-card)", color: "var(--text-main)", verticalAlign: "middle" };
+const applicantTd: React.CSSProperties = { ...td, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const tr: React.CSSProperties = { cursor: "pointer" };
 const selectedTr: React.CSSProperties = { ...tr, background: "rgba(212,165,65,0.08)" };
 const actions: React.CSSProperties = { display: "flex", gap: 6, alignItems: "center" };
