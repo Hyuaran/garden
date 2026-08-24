@@ -1,7 +1,5 @@
 import ExcelJS from "exceljs";
 
-import { calculateFiscalPeriod } from "./fiscal-period";
-
 export const FILEMAKER_LEDGER_HEADERS = [
   "経理ID",
   "領収書No",
@@ -40,9 +38,9 @@ export type FileMakerLedgerSource = {
   submittedByName: string;
   keiriCheckedAt: string | null;
   keiriCheckedByName: string;
-  journalizedAt: string | null;
-  establishedOn: string | null;
-  fiscalEndMonth: number | null;
+  bookingDate: string | null;
+  bookingCorpName: string | null;
+  fiscalPeriod: string | null;
 };
 
 export function stripQualifiedNumberPrefix(value: string | null | undefined) {
@@ -60,8 +58,6 @@ export function buildFileMakerLedgerWorkbook(rows: FileMakerLedgerSource[]) {
   for (const source of rows) {
     const submitted = splitJstDateTime(source.submittedAt);
     const checked = splitJstDateTime(source.keiriCheckedAt);
-    const journalized = splitJstDateTime(source.journalizedAt);
-    const fiscal = calculateFiscalPeriod(source.establishedOn, source.fiscalEndMonth, source.receiptDate);
     sheet.addRow([
       null,
       null,
@@ -82,9 +78,9 @@ export function buildFileMakerLedgerWorkbook(rows: FileMakerLedgerSource[]) {
       source.keiriCheckedByName,
       checked.time,
       null,
-      journalized.date,
-      source.corpName,
-      fiscal ? `第${fiscal.periodNo}期` : null,
+      toExcelDate(source.bookingDate),
+      source.bookingDate ? source.bookingCorpName : null,
+      source.bookingDate ? source.fiscalPeriod : null,
     ]);
   }
 

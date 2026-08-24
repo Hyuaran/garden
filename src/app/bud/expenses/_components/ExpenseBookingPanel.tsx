@@ -15,6 +15,7 @@ import {
 import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-soft-delete-query";
 import { classifyExpenseJournal } from "../_lib/expense-journal-rules";
 import { ExpenseBookingGroupHeader } from "./ExpenseBookingGroupHeader";
+import { bookingFiscalPeriod, isBookingComplete } from "../_lib/expense-booking-info";
 
 import {
   buildCompanyToCorp,
@@ -39,6 +40,9 @@ type Req = {
   status: string;
   submitted_at: string;
   final_checked_at: string | null;
+  booking_date: string | null;
+  booking_corp_id: string | null;
+  fiscal_period: string | null;
   deleted_at?: string | null;
   deleted_by?: string | null;
   delete_reason?: string | null;
@@ -50,7 +54,7 @@ type Cat = {
 };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,category_id,description,status,submitted_at,final_checked_at";
+  "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,category_id,description,status,submitted_at,final_checked_at,booking_date,booking_corp_id,fiscal_period";
 const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
 const CORP_FILTER_STORAGE_KEY = "bud-expense-booking-corp-filter";
 
@@ -81,6 +85,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const supabase = useMemo(() => createBrowserClient(), []);
   const { gardenRole } = useBudState();
   const canManageSoftDelete = canManageExpenseSoftDelete(gardenRole);
+  const canReassignBookingCorp = gardenRole === "super_admin";
   const [queueAll, setQueueAll] = useState<Req[]>([]);
   const [journalizedThisMonth, setJournalizedThisMonth] = useState<Req[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
@@ -94,6 +99,9 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const [busy, setBusy] = useState(false);
   const [ledgerBusy, setLedgerBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [bookingDateInput, setBookingDateInput] = useState(() => new Date().toISOString().slice(0, 10));
+  const [bookingCorpInput, setBookingCorpInput] = useState("");
+  const [fiscalPeriodInput, setFiscalPeriodInput] = useState("");
 
   const setCorpFilter = useCallback((next: string) => {
     setCorpFilterState(next);
@@ -149,7 +157,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
             .order("journalized_at", { ascending: false }),
       ),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
-      supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true }),
+      supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("id", { ascending: true }),
       supabase.from("root_companies").select("company_id,company_name"),
     ]);
 
@@ -194,7 +202,8 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   }, [embedded, load]);
 
   const effectiveCorpId = useCallback((row: Req) => getEffectiveCorpId(row, employees, companyToCorp), [employees, companyToCorp]);
-  const corpMatches = useCallback((row: Req) => corpFilter === "all" || effectiveCorpId(row) === corpFilter, [corpFilter, effectiveCorpId]);
+  const bookingCorpId = useCallback((row: Req) => row.booking_corp_id ?? effectiveCorpId(row), [effectiveCorpId]);
+  const corpMatches = useCallback((row: Req) => corpFilter === "all" || bookingCorpId(row) === corpFilter, [corpFilter, bookingCorpId]);
   const list = useMemo(() => queueAll.filter(corpMatches), [queueAll, corpMatches]);
   const doneFiltered = useMemo(() => journalizedThisMonth.filter(corpMatches), [journalizedThisMonth, corpMatches]);
   const rows = useMemo(() => {
@@ -228,10 +237,11 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
 
   const selectableIds = useMemo(() => rows.filter((row) => row.journal.ok).map((row) => row.row.id), [rows]);
   const selectedRows = useMemo(() => rows.filter((row) => selectedIds.has(row.row.id) && row.journal.ok), [rows, selectedIds]);
+  const exportRows = useMemo(() => selectedRows.filter((item) => isBookingComplete(item.row) && item.row.booking_corp_id === corpFilter), [corpFilter, selectedRows]);
   const groups = useMemo(() => groupExpenseBookingRows(rows), [rows]);
   const selectionSummary = useMemo(() => summarizeExpenseBookingSelection(rows, selectedIds), [rows, selectedIds]);
   const errorCount = rows.filter((row) => !row.journal.ok).length;
-  const canExport = corpFilter !== "all" && selectedRows.length > 0 && !busy;
+  const canExport = corpFilter !== "all" && exportRows.length > 0 && !busy;
 
   useEffect(() => {
     setSelectedIds(new Set(selectableIds));
@@ -328,6 +338,32 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     }
   };
 
+  const saveBookingInfo = async (targetRows: Req[], corpId: string, corpOnly: boolean, dateInput?: string, fiscalInput?: string) => {
+    if (!targetRows.length) return;
+    const previous = queueAll;
+    const corporation = corps.find((corp) => corp.id === corpId);
+    const bookingDate = corpOnly ? undefined : dateInput;
+    if (!corpOnly && !bookingDate) return;
+    const fiscalOverride = corpOnly ? null : fiscalInput;
+    const fiscalPeriods = Object.fromEntries(targetRows.map((row) => [row.id, fiscalOverride || bookingFiscalPeriod(corporation, row.receipt_date) || ""]));
+    setQueueAll((current) => current.map((row) => targetRows.some((target) => target.id === row.id) ? {
+      ...row,
+      booking_corp_id: corpId,
+      ...(corpOnly ? { fiscal_period: fiscalPeriods[row.id] || null } : { booking_date: bookingDate ?? null, fiscal_period: fiscalPeriods[row.id] || null }),
+    } : row));
+    try {
+      const res = await fetch("/api/bud/expense-booking/booking-info", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: targetRows.map((row) => row.id), bookingDate, bookingCorpId: corpId, fiscalPeriods, corpOnly }),
+      });
+      if (!res.ok) throw new Error(((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? "保存に失敗しました");
+      setMessage(`${targetRows.length}件の仕分け情報を保存しました`);
+    } catch (error) {
+      setQueueAll(previous);
+      setMessage(`保存に失敗したため元に戻しました: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   const exportCsv = async () => {
     if (!canExport) return;
     setBusy(true);
@@ -336,7 +372,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       const res = await fetch("/api/bud/expense-booking/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ corpId: corpFilter, ids: selectedRows.map((row) => row.row.id) }),
+        body: JSON.stringify({ corpId: corpFilter, ids: exportRows.map((row) => row.row.id) }),
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -352,7 +388,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setMessage(`${selectedRows.length}件を書き出し、仕訳済みに更新しました。`);
+      setMessage(`${exportRows.length}件を書き出し、仕訳済みに更新しました。`);
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CSV書き出しに失敗しました");
@@ -430,6 +466,26 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
               />
               全選択
             </label>
+            <input aria-label="仕分け日" type="date" value={bookingDateInput} style={bookingInput}
+              onChange={(event) => setBookingDateInput(event.target.value)} />
+            <select aria-label="一括仕分け法人名" value={bookingCorpInput} style={bookingSelect} disabled={!canReassignBookingCorp}
+              onChange={(event) => setBookingCorpInput(event.target.value)}>
+              <option value="">元法人（選択先）</option>
+              {sortedCorps.map((corp) => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}
+            </select>
+            <input aria-label="決算区分の上書き" value={fiscalPeriodInput} placeholder="決算区分（空欄=自動）" style={bookingInput}
+              onChange={(event) => setFiscalPeriodInput(event.target.value)} />
+            <button type="button" style={ledgerExportBtn(selectedRows.length > 0 && !busy)} disabled={!selectedRows.length || busy}
+              onClick={() => {
+                const selectedCorpIds = Array.from(new Set(selectedRows.map((item) => item.row.booking_corp_id ?? item.corpId).filter(Boolean)));
+                if (!bookingCorpInput && selectedCorpIds.length !== 1) {
+                  setMessage("法人が混在しています。仕分け法人名を選んでください。");
+                  return;
+                }
+                const initial = selectedCorpIds[0];
+                const corpId = canReassignBookingCorp ? bookingCorpInput || initial : initial;
+                if (corpId && sortedCorps.some((corp) => corp.id === corpId)) void saveBookingInfo(selectedRows.map((item) => item.row), corpId, false, bookingDateInput, fiscalPeriodInput);
+              }}>仕分け情報を入力</button>
             <button type="button" style={exportBtn(canExport)} disabled={!canExport} onClick={() => void exportCsv()}>
               {busy ? "書き出し中..." : "弥生CSVを書き出す"}
             </button>
@@ -461,6 +517,9 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                   <th style={th}></th>
                   <th style={th}>申請者</th>
                   <th style={th}>日付</th>
+                  <th style={th}>仕分け日</th>
+                  <th style={th}>仕分け法人名</th>
+                  <th style={th}>決算区分</th>
                   <th style={th}>区分</th>
                   <th style={th}>店名</th>
                   <th style={{ ...th, textAlign: "right" }}>金額</th>
@@ -507,6 +566,20 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                       </td>
                       <td style={td}>{applicant}</td>
                       <td style={td}>{formatDate(row.receipt_date)}</td>
+                      <td style={td}>{row.booking_date ? formatDate(row.booking_date) : <span style={missingBadge}>未入力</span>}</td>
+                      <td style={td}>
+                        {canReassignBookingCorp ? (
+                          <select aria-label={`${applicant}の仕分け法人名`} value={row.booking_corp_id ?? effectiveCorpId(row) ?? ""}
+                            style={bookingSelect}
+                            onChange={(event) => void saveBookingInfo([row], event.target.value, true)}>
+                            {sortedCorps.map((corp) => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}
+                          </select>
+                        ) : corpLabel(row.booking_corp_id ?? effectiveCorpId(row), sortedCorps)}
+                        {row.booking_corp_id && row.booking_corp_id !== effectiveCorpId(row) && (
+                          <div style={reassignedLabel}>{corpLabel(effectiveCorpId(row), sortedCorps)} → {corpLabel(row.booking_corp_id, sortedCorps)}</div>
+                        )}
+                      </td>
+                      <td style={td}>{row.fiscal_period ?? "—"}</td>
                       <td style={td}>{category}</td>
                       <td style={td}>{row.store_name ?? "-"}</td>
                       <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
@@ -573,6 +646,11 @@ function categoryLabel(categoryId: string | null, cats: Map<string, string>) {
   return cats.get(categoryId) ?? categoryId;
 }
 
+function corpLabel(corpId: string | null, corps: Corp[]) {
+  if (!corpId) return "未設定";
+  return corps.find((corp) => corp.id === corpId)?.name_short ?? corpId;
+}
+
 function formatDate(value: string | null) {
   if (!value) return "-";
   const date = new Date(value);
@@ -629,6 +707,10 @@ const notice: React.CSSProperties = { padding: "10px 14px", marginBottom: 12, ba
 const warning: React.CSSProperties = { padding: "10px 14px", marginBottom: 12, background: "rgba(212,165,65,0.12)", border: "1px solid rgba(212,165,65,0.25)", borderRadius: 10, color: "#8a6822", fontSize: 13 };
 const okBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 999, background: "rgba(94,125,68,0.14)", color: "#5e7d44", fontSize: 12 };
 const errorBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 999, background: "rgba(179,88,80,0.16)", color: "#8a3a32", fontSize: 12 };
+const missingBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 999, background: "#7b312d", color: "#fff", fontSize: 12, fontWeight: 600 };
+const bookingSelect: React.CSSProperties = { maxWidth: 150, padding: "6px 8px", borderRadius: 7, border: "1px solid #8b6a22", background: "var(--bg-card-solid)", color: "var(--text-main)" };
+const bookingInput: React.CSSProperties = { maxWidth: 170, padding: "6px 8px", borderRadius: 7, border: "1px solid #8b6a22", background: "var(--bg-card-solid)", color: "var(--text-main)" };
+const reassignedLabel: React.CSSProperties = { marginTop: 4, maxWidth: 190, overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-main)", fontSize: 11, fontWeight: 700 };
 const corpSwitch: React.CSSProperties = { display: "flex", gap: 4, marginBottom: 18, padding: 6, background: "var(--bg-card)", borderRadius: 999, width: "fit-content", border: "1px solid rgba(180,165,130,0.2)", flexWrap: "wrap" };
 const corpTab = (active: boolean): React.CSSProperties => ({ padding: "8px 20px", borderRadius: 999, border: "none", background: active ? "#d4a541" : "transparent", color: active ? "#fff" : "var(--text-sub)", cursor: "pointer", boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none" });
 const deleteBtn: React.CSSProperties = { border: "1px solid #8f3b36", borderRadius: 999, padding: "9px 14px", background: "rgba(179,80,72,0.08)", color: "#8f3b36", cursor: "pointer", whiteSpace: "nowrap" };

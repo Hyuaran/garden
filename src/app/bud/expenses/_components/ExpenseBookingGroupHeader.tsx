@@ -40,7 +40,7 @@ export function ExpenseBookingGroupHeader({
 
   return (
     <tr>
-      <td colSpan={12} style={groupTd}>
+      <td colSpan={15} style={groupTd}>
         <div style={groupHead}>
           <button
             type="button"

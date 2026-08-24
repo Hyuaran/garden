@@ -30,14 +30,16 @@ type RequestRow = {
   submitted_by: string | null;
   keiri_checked_at: string | null;
   keiri_checked_by: string | null;
-  journalized_at: string | null;
+  booking_date: string | null;
+  booking_corp_id: string | null;
+  fiscal_period: string | null;
 };
 type Category = { id: string; name: string };
 type Corporation = Corp & { established_on: string | null; fiscal_end_month: number | null };
 type NamedUser = { user_id: string | null; name: string | null };
 
 const REQUEST_SELECT =
-  "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,submitted_at,submitted_by,keiri_checked_at,keiri_checked_by,journalized_at";
+  "id,corp_id,applicant_employee_id,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,submitted_at,submitted_by,keiri_checked_at,keiri_checked_by,booking_date,booking_corp_id,fiscal_period";
 
 export async function POST(request: Request) {
   try {
@@ -99,6 +101,7 @@ export async function POST(request: Request) {
     const ledgerRows: FileMakerLedgerSource[] = filtered.map((row) => {
       const effectiveCorpId = getEffectiveCorpId(row, employees, companyToCorp);
       const corp = effectiveCorpId ? corpMap.get(effectiveCorpId) : undefined;
+      const bookingCorp = row.booking_corp_id ? corpMap.get(row.booking_corp_id) : undefined;
       return {
         corpName: corp?.name_short ?? effectiveCorpId ?? "",
         applicantName: row.applicant_employee_id ? employees[row.applicant_employee_id]?.name ?? row.applicant_employee_id : "",
@@ -112,9 +115,9 @@ export async function POST(request: Request) {
         submittedByName: row.submitted_by ? userNames.get(row.submitted_by) ?? "" : "",
         keiriCheckedAt: row.keiri_checked_at,
         keiriCheckedByName: row.keiri_checked_by ? userNames.get(row.keiri_checked_by) ?? "" : "",
-        journalizedAt: row.journalized_at,
-        establishedOn: corp?.established_on ?? null,
-        fiscalEndMonth: corp?.fiscal_end_month ?? null,
+        bookingDate: row.booking_date,
+        bookingCorpName: bookingCorp?.name_short ?? null,
+        fiscalPeriod: row.fiscal_period,
       };
     });
 
