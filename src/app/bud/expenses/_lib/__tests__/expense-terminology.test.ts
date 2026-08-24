@@ -34,7 +34,7 @@ describe("expense UI terminology", () => {
     expect(source).toContain('return "承認待ち"');
   });
 
-  it("does not offer Yayoi CSV from the Done tab", () => {
-    expect(read("src/app/bud/expenses/_components/ExpenseDonePanel.tsx")).not.toContain("弥生");
+  it("calls the Done-tab action a reexport", () => {
+    expect(read("src/app/bud/expenses/_components/ExpenseDonePanel.tsx")).toContain("弥生CSVを再出力");
   });
 });

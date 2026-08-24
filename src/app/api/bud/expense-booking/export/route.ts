@@ -4,10 +4,7 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { exportYayoiCsv } from "@/shared/_lib/bank-csv-parsers/yayoi-csv-exporter";
 import { classifyExpenseJournal, toYayoiRows } from "@/app/bud/expenses/_lib/expense-journal-rules";
 import {
-  buildCompanyToCorp,
   FALLBACK_CORPS,
-  getEffectiveCorpId,
-  type Company,
   type Corp,
   type Employee,
 } from "@/app/bud/expenses/_components/expenseCorpUtils";
@@ -18,6 +15,7 @@ export const maxDuration = 60;
 type ExportBody = {
   corpId?: string;
   ids?: string[];
+  mode?: "initial" | "reexport";
 };
 
 type Req = {
@@ -61,6 +59,8 @@ export async function POST(req: Request) {
 
     const body = (await req.json()) as ExportBody;
     const corpId = body.corpId;
+    const reexport = body.mode === "reexport";
+    const expectedStatus = reexport ? "journalized" : "journalize_pending";
     const ids = Array.from(new Set(body.ids ?? []));
     if (!corpId || corpId === "all") {
       return NextResponse.json({ ok: false, error: "法人を1つ選択してください" }, { status: 400 });
@@ -69,17 +69,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "書き出す行が選択されていません" }, { status: 400 });
     }
 
-    const [reqRes, catRes, corpRes, companyRes] = await Promise.all([
+    const [reqRes, catRes, corpRes] = await Promise.all([
       supabase
         .from("bud_expense_requests")
         .select(REQUEST_SELECT)
         .in("id", ids)
-        .eq("status", "journalize_pending")
+        .eq("status", expectedStatus)
+        .is("deleted_at", null)
         .order("receipt_date", { ascending: true, nullsFirst: false })
         .order("submitted_at", { ascending: true }),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true),
       supabase.from("bud_corporations").select("id,name_short"),
-      supabase.from("root_companies").select("company_id,company_name"),
     ]);
 
     if (reqRes.error) {
@@ -93,7 +93,6 @@ export async function POST(req: Request) {
 
     const categoryMap = new Map(((catRes.data as Cat[] | null) ?? []).map((cat) => [cat.id, cat.name]));
     const corpList = (corpRes.data as Corp[] | null) ?? FALLBACK_CORPS;
-    const companyToCorp = buildCompanyToCorp((companyRes.data as Company[] | null) ?? [], corpList);
 
     const employeeIds = Array.from(new Set(rows.map((row) => row.applicant_employee_id).filter((id): id is string => Boolean(id))));
     const employees: Record<string, Employee> = {};
@@ -132,20 +131,12 @@ export async function POST(req: Request) {
 
     const yayoiRows = toYayoiRows(results);
     const csvBuffer = exportYayoiCsv(yayoiRows);
-    const nowIso = new Date().toISOString();
-    const updateRes = await supabase
-      .from("bud_expense_requests")
-      .update({ status: "journalized", journalized_by: auth.user.id, journalized_at: nowIso })
-      .in("id", ids)
-      .eq("status", "journalize_pending")
-      .select("id");
-
-    if (updateRes.error) {
-      return NextResponse.json({ ok: false, error: `仕訳済み更新に失敗しました: ${updateRes.error.message}` }, { status: 500 });
-    }
-    if (((updateRes.data as Array<{ id: string }> | null) ?? []).length !== ids.length) {
-      return NextResponse.json({ ok: false, error: "一部の行を仕訳済みに更新できませんでした" }, { status: 409 });
-    }
+    const { data: affected, error: recordError } = await supabase.rpc("bud_record_expense_yayoi_export", {
+      p_ids: ids,
+      p_reexport: reexport,
+    });
+    if (recordError) return NextResponse.json({ ok: false, error: `出力記録の保存に失敗しました: ${recordError.message}` }, { status: 500 });
+    if (Number(affected) !== ids.length) return NextResponse.json({ ok: false, error: "一部の行の出力記録を保存できませんでした" }, { status: 409 });
 
     const corpName = corpList.find((corp) => corp.id === corpId)?.name_short ?? corpId;
     const today = formatYmd(new Date());
@@ -157,6 +148,7 @@ export async function POST(req: Request) {
         "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
         "X-Bud-Expense-Booking-Rows": String(yayoiRows.length),
         "X-Bud-Expense-Booking-Corp": corpId,
+        "X-Bud-Expense-Export-Mode": reexport ? "reexport" : "initial",
       },
     });
   } catch (error) {
