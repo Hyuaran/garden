@@ -16,6 +16,7 @@ import { isMissingSoftDeleteColumnError } from "@/app/bud/expenses/_lib/expense-
 import { classifyExpenseJournal } from "../_lib/expense-journal-rules";
 import { ExpenseBookingGroupHeader } from "./ExpenseBookingGroupHeader";
 import { bookingFiscalPeriod, isBookingComplete } from "../_lib/expense-booking-info";
+import { readAllSupabasePages } from "../_lib/supabase-pagination";
 
 import {
   buildCompanyToCorp,
@@ -65,12 +66,14 @@ type ExpenseQueryResult = {
 };
 
 async function readActiveExpenseRequests(
-  makePrimaryQuery: (select: string) => PromiseLike<ExpenseQueryResult>,
-  makeFallbackQuery: (select: string) => PromiseLike<ExpenseQueryResult>,
+  makePrimaryQuery: (select: string, from: number, to: number) => PromiseLike<ExpenseQueryResult>,
+  makeFallbackQuery: (select: string, from: number, to: number) => PromiseLike<ExpenseQueryResult>,
 ) {
-  const primary = await makePrimaryQuery(REQUEST_SELECT_WITH_SOFT_DELETE);
-  if (!isMissingSoftDeleteColumnError(primary.error)) return primary;
-  return makeFallbackQuery(REQUEST_SELECT);
+  return readAllSupabasePages(async (from, to) => {
+    const primary = await makePrimaryQuery(REQUEST_SELECT_WITH_SOFT_DELETE, from, to);
+    if (!isMissingSoftDeleteColumnError(primary.error)) return primary;
+    return makeFallbackQuery(REQUEST_SELECT, from, to);
+  });
 }
 
 function readInitialCorpFilter() {
@@ -124,38 +127,46 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
 
     const [queueRes, journalizedRes, catRes, corpRes, companyRes] = await Promise.all([
       readActiveExpenseRequests(
-        (select) =>
+        (select, from, to) =>
           supabase
             .from("bud_expense_requests")
             .select(select)
             .eq("status", "journalize_pending")
             .is("deleted_at", null)
             .order("receipt_date", { ascending: true, nullsFirst: false })
-            .order("submitted_at", { ascending: true }),
-        (select) =>
+            .order("submitted_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
+        (select, from, to) =>
           supabase
             .from("bud_expense_requests")
             .select(select)
             .eq("status", "journalize_pending")
             .order("receipt_date", { ascending: true, nullsFirst: false })
-            .order("submitted_at", { ascending: true }),
+            .order("submitted_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
       ),
       readActiveExpenseRequests(
-        (select) =>
+        (select, from, to) =>
           supabase
             .from("bud_expense_requests")
             .select(select)
             .eq("status", "journalized")
             .is("deleted_at", null)
             .gte("journalized_at", monthStart)
-            .order("journalized_at", { ascending: false }),
-        (select) =>
+            .order("journalized_at", { ascending: false })
+            .order("id", { ascending: true })
+            .range(from, to),
+        (select, from, to) =>
           supabase
             .from("bud_expense_requests")
             .select(select)
             .eq("status", "journalized")
             .gte("journalized_at", monthStart)
-            .order("journalized_at", { ascending: false }),
+            .order("journalized_at", { ascending: false })
+            .order("id", { ascending: true })
+            .range(from, to),
       ),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
       supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("id", { ascending: true }),
@@ -449,6 +460,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       </section>
 
       {message && <div style={notice}>{message}</div>}
+      {queueAll.length > 2000 && <div style={warning}>件数が多くなっています。表示に時間がかかる場合があります。</div>}
       {corpFilter === "all" && <div style={warning}>CSV書き出しは法人を1つ選択すると有効になります。</div>}
 
       <section style={panel}>

@@ -12,6 +12,16 @@ export type ExpenseDoneRow = {
 };
 
 export type DonePeriod = "month" | "three-months" | "year" | "all";
+export const DONE_PAGE_SIZE = 100;
+
+export function donePageBounds(page: number, totalCount: number, pageSize = DONE_PAGE_SIZE) {
+  if (totalCount < 1) return { from: 0, to: 0, label: "0 / 0件", lastPage: 0 };
+  const lastPage = Math.max(0, Math.ceil(totalCount / pageSize) - 1);
+  const safePage = Math.min(Math.max(0, page), lastPage);
+  const from = safePage * pageSize;
+  const to = Math.min(from + pageSize, totalCount);
+  return { from, to: to - 1, label: `${(from + 1).toLocaleString("ja-JP")}〜${to.toLocaleString("ja-JP")} / ${totalCount.toLocaleString("ja-JP")}件`, lastPage };
+}
 
 export function donePeriodStart(period: DonePeriod, now = new Date()) {
   if (period === "all") return null;

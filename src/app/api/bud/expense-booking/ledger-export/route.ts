@@ -11,6 +11,7 @@ import {
 } from "@/app/bud/expenses/_components/expenseCorpUtils";
 import { writeFileMakerLedgerBuffer, type FileMakerLedgerSource } from "@/app/bud/expenses/_lib/filemaker-ledger-export";
 import { resolveExpenseApplicantName } from "@/app/bud/expenses/_lib/expense-employees";
+import { readAllSupabasePages } from "@/app/bud/expenses/_lib/supabase-pagination";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -55,16 +56,21 @@ export async function POST(request: Request) {
     const body = (await request.json()) as ExportBody;
     const corpId = body.corpId ?? "all";
     const scope = body.scope === "done" ? "done" : "pending";
-    let expenseQuery = supabase
-      .from("bud_expense_requests")
-      .select(REQUEST_SELECT)
-      .eq("status", scope === "done" ? "journalized" : "journalize_pending")
-      .is("deleted_at", null);
-    if (scope === "done" && body.start) expenseQuery = expenseQuery.gte("booking_date", body.start);
-    if (scope === "done" && body.end) expenseQuery = expenseQuery.lt("booking_date", body.end);
-    expenseQuery = expenseQuery.order(scope === "done" ? "booking_date" : "receipt_date", { ascending: scope !== "done", nullsFirst: false });
     const [requestRes, categoryRes, corporationRes, companyRes] = await Promise.all([
-      expenseQuery.order("submitted_at", { ascending: true }),
+      readAllSupabasePages((from, to) => {
+        let query = supabase
+          .from("bud_expense_requests")
+          .select(REQUEST_SELECT)
+          .eq("status", scope === "done" ? "journalized" : "journalize_pending")
+          .is("deleted_at", null);
+        if (scope === "done" && body.start) query = query.gte("booking_date", body.start);
+        if (scope === "done" && body.end) query = query.lt("booking_date", body.end);
+        return query
+          .order(scope === "done" ? "booking_date" : "receipt_date", { ascending: scope !== "done", nullsFirst: false })
+          .order("submitted_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to);
+      }),
       supabase.from("bud_expense_categories").select("id,name"),
       supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month"),
       supabase.from("root_companies").select("company_id,company_name"),
