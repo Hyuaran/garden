@@ -79,6 +79,7 @@ export function summarizeExpenseBookingSelection<T extends Pick<ExpenseBookingGr
     totalAmount: rows.reduce((sum, row) => sum + row.amount, 0),
     selectedCount: selected.length,
     selectedAmount: selected.reduce((sum, row) => sum + row.amount, 0),
+    invalidCount: rows.filter((row) => !row.selectable).length,
   };
 }
 

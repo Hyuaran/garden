@@ -5,29 +5,46 @@ import { ExpenseBookingGroupHeader } from "./ExpenseBookingGroupHeader";
 
 describe("ExpenseBookingGroupHeader", () => {
   it("keeps employee count and total visible while collapsed", () => {
-    renderHeader({ collapsed: true });
+    const { container } = renderHeader({ collapsed: true, selectedCount: 0, selectedAmount: 0 });
     expect(screen.getByText("石原 孝志朗")).toBeInTheDocument();
-    expect(screen.getByText("5件")).toBeInTheDocument();
-    expect(screen.getByText("合計 ¥8,700")).toBeInTheDocument();
+    expect(screen.getByText("選択 0件 ¥0")).toBeInTheDocument();
+    expect(screen.getByText("全5件 ¥8,700")).toBeInTheDocument();
     expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "false");
+    expect(container.querySelector("td > div")).toHaveStyle({ flexWrap: "wrap", whiteSpace: "normal" });
   });
 
-  it("shows an indeterminate group checkbox and sends selection changes", () => {
+  it("shows selected count and amount with an indeterminate checkbox", () => {
     const onToggleSelection = vi.fn();
-    renderHeader({ partial: true, onToggleSelection });
+    renderHeader({ partial: true, selectedCount: 2, selectedAmount: 3100, onToggleSelection });
     const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
     expect(checkbox.indeterminate).toBe(true);
-    expect(screen.getByText("一部選択")).toBeInTheDocument();
+    expect(screen.getByText("選択 2件 ¥3,100")).toBeInTheDocument();
     fireEvent.click(checkbox);
     expect(onToggleSelection).toHaveBeenCalledWith(true);
+  });
+
+  it("shows the warning only when the group contains invalid rows", () => {
+    const { rerender } = renderHeader({ invalidCount: 2 });
+    expect(screen.getByText("要確認 2件")).toBeInTheDocument();
+    const props = makeProps({ invalidCount: 0 });
+    rerender(<table><tbody><ExpenseBookingGroupHeader {...props} /></tbody></table>);
+    expect(screen.queryByText(/要確認/)).not.toBeInTheDocument();
   });
 });
 
 function renderHeader(overrides: Partial<React.ComponentProps<typeof ExpenseBookingGroupHeader>>) {
-  const props: React.ComponentProps<typeof ExpenseBookingGroupHeader> = {
+  const props = makeProps(overrides);
+  return render(<table><tbody><ExpenseBookingGroupHeader {...props} /></tbody></table>);
+}
+
+function makeProps(overrides: Partial<React.ComponentProps<typeof ExpenseBookingGroupHeader>>) {
+  return {
     applicantName: "石原 孝志朗",
     count: 5,
     totalAmount: 8700,
+    selectedCount: 0,
+    selectedAmount: 0,
+    invalidCount: 0,
     collapsed: false,
     checked: false,
     partial: false,
@@ -35,6 +52,5 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof ExpenseBook
     onToggleCollapsed: vi.fn(),
     onToggleSelection: vi.fn(),
     ...overrides,
-  };
-  return render(<table><tbody><ExpenseBookingGroupHeader {...props} /></tbody></table>);
+  } satisfies React.ComponentProps<typeof ExpenseBookingGroupHeader>;
 }

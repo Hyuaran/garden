@@ -53,6 +53,23 @@ describe("group selection", () => {
       totalAmount: 1600,
       selectedCount: 2,
       selectedAmount: 500,
+      invalidCount: 1,
     });
+  });
+
+  it("returns selected group totals to zero after clearing selection", () => {
+    const selected = summarizeExpenseBookingSelection(rows.filter((row) => row.applicantKey === "EMP-2"), new Set(["m1"]));
+    const cleared = summarizeExpenseBookingSelection(rows.filter((row) => row.applicantKey === "EMP-2"), new Set());
+    expect(selected).toMatchObject({ selectedCount: 1, selectedAmount: 600 });
+    expect(cleared).toMatchObject({ selectedCount: 0, selectedAmount: 0 });
+  });
+
+  it("makes the sum of every group selected amount equal the top summary", () => {
+    const selectedIds = new Set(["m2", "i2", "unset"]);
+    const groupSelectedAmount = groupExpenseBookingRows(rows).reduce(
+      (sum, group) => sum + summarizeExpenseBookingSelection(group.items, selectedIds).selectedAmount,
+      0,
+    );
+    expect(groupSelectedAmount).toBe(summarizeExpenseBookingSelection(rows, selectedIds).selectedAmount);
   });
 });
