@@ -7,6 +7,8 @@ export type ExpenseDoneRow = {
   booking_date: string | null;
   booking_corp_id: string | null;
   amount: number | null;
+  yayoi_exported_at?: string | null;
+  yayoi_export_count?: number | null;
 };
 
 export type DonePeriod = "month" | "three-months" | "year" | "all";
@@ -16,6 +18,27 @@ export function donePeriodStart(period: DonePeriod, now = new Date()) {
   const monthsBack = period === "month" ? 0 : period === "three-months" ? 2 : 11;
   const start = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
   return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+export function formatYayoiExportRecord(row: Pick<ExpenseDoneRow, "yayoi_export_count" | "yayoi_exported_at">) {
+  const count = row.yayoi_export_count ?? 0;
+  if (count < 1) return "未出力";
+  const date = formatJstDate(row.yayoi_exported_at);
+  return `${count}回（最終 ${date ?? "日時不明"}）`;
+}
+
+export function buildReexportConfirmation(rows: Array<Pick<ExpenseDoneRow, "yayoi_export_count" | "yayoi_exported_at">>) {
+  const exported = rows.filter((row) => (row.yayoi_export_count ?? 0) > 0);
+  if (!exported.length) return null;
+  const latest = exported.map((row) => row.yayoi_exported_at).filter((value): value is string => Boolean(value)).sort().at(-1);
+  return `選択した${rows.length}件のうち${exported.length}件は出力済みです（最終 ${formatJstDate(latest) ?? "日時不明"}）。再出力しますか？`;
+}
+
+function formatJstDate(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
 export function donePeriodEnd(period: DonePeriod, now = new Date()) {

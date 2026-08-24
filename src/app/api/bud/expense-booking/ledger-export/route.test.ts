@@ -8,6 +8,8 @@ describe("expense ledger export route is read-only", () => {
     expect(source).toContain('.is("deleted_at", null)');
     expect(source).not.toMatch(/\.update\s*\(/);
     expect(source).not.toContain('status: "journalized"');
+    expect(source).not.toContain("bud_record_expense_yayoi_export");
+    expect(source).not.toContain("yayoi_export_count");
   });
 
   it("supports a read-only done scope with period and booking-corporation filters", () => {

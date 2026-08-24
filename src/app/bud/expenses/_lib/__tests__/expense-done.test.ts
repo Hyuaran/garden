@@ -1,5 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { donePeriodEnd, donePeriodStart, filterAndSortDoneRows, summarizeDoneRows } from "../expense-done";
+import { buildReexportConfirmation, donePeriodEnd, donePeriodStart, filterAndSortDoneRows, formatYayoiExportRecord, summarizeDoneRows } from "../expense-done";
 
 const rows = [
   { id: "old", status: "journalized", deleted_at: null, booking_date: "2026-07-31", booking_corp_id: "a", amount: 1100 },
@@ -21,5 +23,24 @@ describe("expense done tab", () => {
   it("summarizes displayed rows with tax included and excluded", () => {
     expect(summarizeDoneRows(rows.slice(0, 2))).toEqual({ count: 2, taxIncluded: 3300, taxExcluded: 3000 });
     expect(summarizeDoneRows([])).toEqual({ count: 0, taxIncluded: 0, taxExcluded: 0 });
+  });
+  it("formats missing and recorded Yayoi export history", () => {
+    expect(formatYayoiExportRecord({ yayoi_export_count: 0, yayoi_exported_at: null })).toBe("未出力");
+    expect(formatYayoiExportRecord({ yayoi_export_count: 2, yayoi_exported_at: "2026-08-23T15:00:00.000Z" })).toBe("2回（最終 2026/08/24）");
+  });
+  it("confirms only when the selection contains exported rows", () => {
+    expect(buildReexportConfirmation([{ yayoi_export_count: 0, yayoi_exported_at: null }])).toBeNull();
+    expect(buildReexportConfirmation([
+      { yayoi_export_count: 1, yayoi_exported_at: "2026-08-22T15:00:00.000Z" },
+      { yayoi_export_count: 0, yayoi_exported_at: null },
+      { yayoi_export_count: 2, yayoi_exported_at: "2026-08-23T15:00:00.000Z" },
+    ])).toBe("選択した3件のうち2件は出力済みです（最終 2026/08/24）。再出力しますか？");
+  });
+  it("requires a selected corporation and selected rows and clips long export labels", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "src/app/bud/expenses/_components/ExpenseDonePanel.tsx"), "utf8");
+    expect(source).toContain('disabled={corpId === "all" || selectedRows.length === 0');
+    expect(source).toContain("if (confirmation && !window.confirm(confirmation)) return");
+    expect(source).toContain('body: JSON.stringify({ corpId, ids: selectedRows.map((row) => row.id), mode: "reexport" })');
+    expect(source).toContain('const exportCell: React.CSSProperties = { ...td, maxWidth: 190, overflow: "hidden", textOverflow: "ellipsis" }');
   });
 });
