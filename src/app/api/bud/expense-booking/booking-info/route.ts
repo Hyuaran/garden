@@ -28,19 +28,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "仕分け法人名の付け替えは全権管理者のみ可能です" }, { status: 403 });
   }
 
+  if (!body.corpOnly) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.bookingDate ?? ""))
+      return NextResponse.json({ error: "仕分け日が不正です" }, { status: 400 });
+    if (ids.some((id) => !body.fiscalPeriods?.[id]?.trim()))
+      return NextResponse.json({ error: "決算区分は必須です" }, { status: 400 });
+    const { data: affected, error } = await supabase.rpc("bud_complete_expense_booking", {
+      p_ids: ids,
+      p_booking_date: body.bookingDate,
+      p_booking_corp_id: body.bookingCorpId,
+      p_fiscal_periods: body.fiscalPeriods ?? {},
+    });
+    if (error) return NextResponse.json({ error: `保存に失敗しました: ${error.message}` }, { status: 500 });
+    if (Number(affected) !== ids.length) return NextResponse.json({ error: "対象外または更新済みの行が含まれています" }, { status: 409 });
+    return NextResponse.json({ ok: true, completed: Number(affected) });
+  }
+
   const now = new Date().toISOString();
   for (const id of ids) {
-    const values = body.corpOnly
-      ? { booking_corp_id: body.bookingCorpId, fiscal_period: body.fiscalPeriods?.[id] ?? null, booking_set_at: now, booking_set_by: auth.user.id }
-      : {
-          booking_date: body.bookingDate,
-          booking_corp_id: body.bookingCorpId,
-          fiscal_period: body.fiscalPeriods?.[id] ?? null,
-          booking_set_at: now,
-          booking_set_by: auth.user.id,
-        };
-    if (!body.corpOnly && !/^\d{4}-\d{2}-\d{2}$/.test(body.bookingDate ?? ""))
-      return NextResponse.json({ error: "仕分け日が不正です" }, { status: 400 });
+    const values = { booking_corp_id: body.bookingCorpId, fiscal_period: body.fiscalPeriods?.[id] ?? null, booking_set_at: now, booking_set_by: auth.user.id };
     const { error } = await supabase.from("bud_expense_requests").update(values).eq("id", id).eq("status", "journalize_pending");
     if (error) return NextResponse.json({ error: `保存に失敗しました: ${error.message}` }, { status: 500 });
   }

@@ -17,7 +17,7 @@ export const maxDuration = 60;
 type ExportBody = {
   corpId?: string;
   ids?: string[];
-  mode?: "initial" | "reexport";
+  mode?: "reexport";
 };
 
 type Req = {
@@ -62,8 +62,9 @@ export async function POST(req: Request) {
 
     const body = (await req.json()) as ExportBody;
     const corpId = body.corpId;
-    const reexport = body.mode === "reexport";
-    const expectedStatus = reexport ? "journalized" : "journalize_pending";
+    if (body.mode !== "reexport") {
+      return NextResponse.json({ ok: false, error: "完了タブから書き出してください" }, { status: 400 });
+    }
     const ids = Array.from(new Set(body.ids ?? []));
     if (!corpId || corpId === "all") {
       return NextResponse.json({ ok: false, error: "法人を1つ選択してください" }, { status: 400 });
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
         .from("bud_expense_requests")
         .select(REQUEST_SELECT)
         .in("id", ids)
-        .eq("status", expectedStatus)
+        .eq("status", "journalized")
         .is("deleted_at", null)
         .order("receipt_date", { ascending: true, nullsFirst: false })
         .order("submitted_at", { ascending: true })
@@ -138,7 +139,6 @@ export async function POST(req: Request) {
     const csvBuffer = exportYayoiCsv(yayoiRows);
     const { data: affected, error: recordError } = await supabase.rpc("bud_record_expense_yayoi_export", {
       p_ids: ids,
-      p_reexport: reexport,
     });
     if (recordError) return NextResponse.json({ ok: false, error: `出力記録の保存に失敗しました: ${recordError.message}` }, { status: 500 });
     if (Number(affected) !== ids.length) return NextResponse.json({ ok: false, error: "一部の行の出力記録を保存できませんでした" }, { status: 409 });
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
         "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
         "X-Bud-Expense-Booking-Rows": String(yayoiRows.length),
         "X-Bud-Expense-Booking-Corp": corpId,
-        "X-Bud-Expense-Export-Mode": reexport ? "reexport" : "initial",
+        "X-Bud-Expense-Export-Mode": "reexport",
       },
     });
   } catch (error) {

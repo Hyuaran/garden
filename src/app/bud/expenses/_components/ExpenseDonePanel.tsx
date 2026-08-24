@@ -86,25 +86,25 @@ export function ExpenseDonePanel() {
     finally { setLedgerBusy(false); }
   };
 
-  const reexportYayoi = async () => {
+  const exportYayoi = async () => {
     if (corpId === "all" || selectedRows.length === 0) return;
     const confirmation = buildReexportConfirmation(selectedRows);
     if (confirmation && !window.confirm(confirmation)) return;
     setCsvBusy(true); setMessage(null);
     try {
       const response = await fetch("/api/bud/expense-booking/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ corpId, ids: selectedRows.map((row) => row.id), mode: "reexport" }) });
-      if (!response.ok) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? "再出力に失敗しました");
+      if (!response.ok) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? "書き出しに失敗しました");
       downloadResponse(await response.blob(), response.headers.get("Content-Disposition"), "弥生CSV.csv");
       const count = selectedRows.length;
       setSelectedIds(new Set());
       await load();
-      setMessage(`${count}件を弥生CSVで再出力し、出力履歴を更新しました。`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "再出力に失敗しました"); }
+      setMessage(`${count}件を弥生CSVで書き出し、出力履歴を更新しました。`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "書き出しに失敗しました"); }
     finally { setCsvBusy(false); }
   };
 
   return <section style={panel} data-expense-done-tab="true">
-    <div style={header}><div><h3 style={title}>完了した経費</h3><div style={meta}>仕訳日が新しい順</div></div><div style={actions}><button type="button" style={button} disabled={ledgerBusy || csvBusy} onClick={() => void exportLedger()}>{ledgerBusy ? "書き出し中..." : "台帳形式で書き出す（Excel）"}</button><button type="button" style={{ ...reexportButton, ...((corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy) ? disabledButton : {}) }} disabled={corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy} onClick={() => void reexportYayoi()}>{csvBusy ? "再出力中..." : "弥生CSVを再出力"}</button></div></div>
+    <div style={header}><div><h3 style={title}>完了した経費</h3><div style={meta}>仕訳日が新しい順</div></div><div style={actions}><button type="button" style={button} disabled={ledgerBusy || csvBusy} onClick={() => void exportLedger()}>{ledgerBusy ? "書き出し中..." : "台帳形式で書き出す（Excel）"}</button><button type="button" style={{ ...reexportButton, ...((corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy) ? disabledButton : {}) }} disabled={corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy} onClick={() => void exportYayoi()}>{csvBusy ? "書き出し中..." : "弥生CSVを書き出す"}</button></div></div>
     <div style={filters}>
       <label>仕分け法人名 <select value={corpId} onChange={(event) => { setPage(0); setCorpId(event.target.value); }}><option value="all">全法人</option>{sortCorps(corps).map((corp) => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}</select></label>
       <label>期間 <select value={period} onChange={(event) => { setPage(0); setPeriod(event.target.value as DonePeriod); }}><option value="month">今月</option><option value="three-months">直近3か月</option><option value="year">直近12か月</option><option value="all">全期間</option></select></label>

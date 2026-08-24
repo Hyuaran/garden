@@ -34,7 +34,10 @@ describe("expense UI terminology", () => {
     expect(source).toContain('return "承認待ち"');
   });
 
-  it("calls the Done-tab action a reexport", () => {
-    expect(read("src/app/bud/expenses/_components/ExpenseDonePanel.tsx")).toContain("弥生CSVを再出力");
+  it("offers Yayoi CSV only from the Done tab", () => {
+    expect(read("src/app/bud/expenses/_components/ExpenseDonePanel.tsx")).toContain("弥生CSVを書き出す");
+    const booking = read("src/app/bud/expenses/_components/ExpenseBookingPanel.tsx");
+    expect(booking).not.toContain("弥生CSVを書き出す");
+    expect(booking).not.toContain("CSV書き出しは法人を1つ選択すると有効になります。");
   });
 });
