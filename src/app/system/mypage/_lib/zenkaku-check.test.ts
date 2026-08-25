@@ -62,10 +62,43 @@ describe("Garden check rules", () => {
     expect(result.warnings[0].message).toContain("案件ID L26000123 ／ BIGLOBE光 ／ 2026-07-18");
     expect(evaluateGardenCheck(record, [], checkedAt).warnings).toHaveLength(0);
   });
-  it("keeps all five R2 address rules explicitly deferred without producing a finding", () => {
+  it("keeps only R2-5 deferred without producing a finding when postal data is unavailable", () => {
     const result = evaluate();
-    expect(DEFERRED_ADDRESS_RULE_IDS).toEqual(["R2-1", "R2-2", "R2-3", "R2-4", "R2-5"]);
+    expect(DEFERRED_ADDRESS_RULE_IDS).toEqual(["R2-5"]);
     expect(result.deferredRuleIds).toEqual(DEFERRED_ADDRESS_RULE_IDS); expect(result.notices).toHaveLength(0);
+  });
+  it("R2-1 to R2-3 accept normalized addresses and any matching duplicate candidate", () => {
+    const context = { enabled: true, byPostalCode: { "1000001": [
+      { prefecture: "東京都", city: "千代田区", town: "丸の内", cityKana: "チヨダク", townKana: "マルノウチ", special: false },
+      { prefecture: "東京都", city: "千代田区", town: "千代田", cityKana: "チヨダク", townKana: "チヨダ", special: false },
+    ] } };
+    const record = createValidSalesMasterRecord({ installationPostalCode: "１００－０００１", installationPrefecture: " 東京都 ", installationCity: "千代田区", installationTown: "千 代田", installationCityKana: "チヨダク", installationTownKana: "チヨダ" });
+    expect(evaluateGardenCheck(record, [], checkedAt, context).notices).toHaveLength(0);
+  });
+  it("R2 address mismatches and unknown postal codes are non-blocking notices", () => {
+    const candidate = { prefecture: "東京都", city: "千代田区", town: "千代田", cityKana: "チヨダク", townKana: "チヨダ", special: false };
+    const mismatch = evaluateGardenCheck(createValidSalesMasterRecord({ installationCity: "新宿区", installationTown: "西新宿", installationCityKana: "シンジュクク", installationTownKana: "ニシシンジュク" }), [], checkedAt, { enabled: true, byPostalCode: { "1000001": [candidate] } });
+    expect(mismatch.notices.map((issue) => issue.ruleId)).toEqual(["R2-1", "R2-2", "R2-3"]); expect(mismatch.blocking).toHaveLength(0);
+    expect(evaluateGardenCheck(createValidSalesMasterRecord(), [], checkedAt, { enabled: true, byPostalCode: {} }).notices[0]).toMatchObject({ ruleId: "R2-4", message: "この郵便番号が見つかりません。ご確認ください。" });
+  });
+  it("skips special rows and an empty shipping address", () => {
+    const special = { prefecture: "北海道", city: "札幌市", town: "以下に掲載がない場合", cityKana: "サッポロシ", townKana: "イカニケイサイガナイバアイ", special: true };
+    const result = evaluateGardenCheck(createValidSalesMasterRecord({ shippingPostalCode: null }), [], checkedAt, { enabled: true, byPostalCode: { "1000001": [special] } });
+    expect(result.notices).toHaveLength(0);
+  });
+  it("R2-2 compares the town before a parenthesized range", () => {
+    const candidate = { prefecture: "北海道", city: "札幌市中央区", town: "大通西（１〜１９丁目）", cityKana: "サッポロシチュウオウク", townKana: "オオドオリニシ（１−１９チョウメ）", special: false };
+    const context = { enabled: true, byPostalCode: { "0600042": [candidate] } };
+    const record = createValidSalesMasterRecord({ installationPostalCode: "060-0042", installationPrefecture: "北海道", installationCity: "札幌市中央区", installationCityKana: "サッポロシチュウオウク", installationTownKana: "オオドオリニシ" });
+    for (const installationTown of ["大通西１丁目", "大通西"]) {
+      expect(evaluateGardenCheck({ ...record, installationTown }, [], checkedAt, context).notices.some((issue) => issue.ruleId === "R2-2")).toBe(false);
+    }
+    expect(evaluateGardenCheck({ ...record, installationTown: "別の町" }, [], checkedAt, context).notices.some((issue) => issue.ruleId === "R2-2")).toBe(true);
+  });
+  it("R2-3 compares town kana before a parenthesized range", () => {
+    const candidate = { prefecture: "北海道", city: "札幌市中央区", town: "大通西（１〜１９丁目）", cityKana: "サッポロシチュウオウク", townKana: "オオドオリニシ（１−１９チョウメ）", special: false };
+    const record = createValidSalesMasterRecord({ installationPostalCode: "0600042", installationPrefecture: "北海道", installationCity: "札幌市中央区", installationTown: "大通西", installationCityKana: "サッポロシチュウオウク", installationTownKana: "オオドオリニシ" });
+    expect(evaluateGardenCheck(record, [], checkedAt, { enabled: true, byPostalCode: { "0600042": [candidate] } }).notices.some((issue) => issue.ruleId === "R2-3")).toBe(false);
   });
   it("never exposes FileMaker field names in findings", () => {
     const result = evaluateGardenCheck(createValidSalesMasterRecord({ flag: "見込", mobileNumber: "090", mobileCarrier: null, mobileDeviceType: null, productCategory1: "回線", applicationPlanName: null, installationPostalCode: null }), [], checkedAt);

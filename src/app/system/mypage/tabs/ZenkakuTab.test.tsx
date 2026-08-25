@@ -5,6 +5,12 @@ import { ZenkakuCheckError } from "../_lib/zenkaku-source";
 import ZenkakuTab from "./ZenkakuTab";
 
 describe("ZenkakuTab", () => {
+  it("shows postal data date and a two-month stale warning", () => {
+    const { rerender } = render(<ZenkakuTab postalDataStatus={{ sourceDate: "2026-08-01", importedAt: "2026-08-05T00:00:00Z" }} now={new Date("2026-09-30T00:00:00Z")} />);
+    expect(screen.getByText("郵便番号データ：2026年8月1日 時点")).toBeInTheDocument(); expect(screen.queryByText("郵便番号データが古い可能性があります")).not.toBeInTheDocument();
+    rerender(<ZenkakuTab postalDataStatus={{ sourceDate: "2026-08-01", importedAt: "2026-08-05T00:00:00Z" }} now={new Date("2026-10-01T00:00:00Z")} />);
+    expect(screen.getByText("郵便番号データが古い可能性があります")).toBeInTheDocument();
+  });
   it("checks a sales ID and blocks progress while showing every missing field", async () => {
     const runCheck = vi.fn().mockResolvedValue(evaluateGardenCheck(createValidSalesMasterRecord({ productCategory1: "回線", applicationPlanName: null, applicationIsp: null, constructionType: null }), [], new Date(2026, 7, 22)));
     render(<ZenkakuTab runCheck={runCheck}/>);

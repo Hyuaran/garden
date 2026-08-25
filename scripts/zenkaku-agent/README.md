@@ -19,6 +19,22 @@
 - `fmTable`: ODBCから見える営業マスタのテーブル名
 - `salesIdColumn`: 営業ID検索列
 - `fieldMap`: `SalesMasterRecord`キーと実フィールド名の対応
+
+## 郵便番号データの初回・手動取り込み
+
+先に `supabase/migrations/20260825000001_system_postal_addresses.sql` をSQL Editorで適用します。その後、Vercel production の `CRON_SECRET` をBearerトークンにして次を実行します（初回投入・月次処理の再実行とも同じです）。
+
+```powershell
+Invoke-RestMethod -Method Post -Uri 'https://<Gardenの本番ホスト>/api/system/postal-import' -Headers @{ Authorization = "Bearer $env:CRON_SECRET" }
+```
+
+レスポンスの `ok=true`、`count` が10万件以上であることを確認し、SQL Editorでactive版を確認してからアプリをマージします。
+
+```sql
+select id, source_date, imported_at, row_count, active
+from public.system_postal_datasets
+order by imported_at desc;
+```
 - `duplicateFieldMap`: 重複警告に出す案件ID、商材名、登録日の実フィールド名
 
 FileMaker Proの「外部データソース管理」およびODBCスキーマ表示で綴りを確認してください。列名を直す際はコードではなくconfigだけを変更します。

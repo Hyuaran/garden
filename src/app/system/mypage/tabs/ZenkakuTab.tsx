@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { GardenCheckIssue, GardenCheckResult } from "../_lib/zenkaku-check";
 import { runZenkakuCheck, ZenkakuCheckError } from "../_lib/zenkaku-source";
 import styles from "../mypage.module.css";
+import { formatPostalDatasetDate, isPostalDatasetStale, type PostalDatasetStatus } from "../_lib/postal-data";
 
 function IssueList({ issues }: { issues: GardenCheckIssue[] }) {
   return <ul className={styles.issueList}>{issues.map((issue, index) => <li key={`${issue.ruleId}-${index}`}>
@@ -13,7 +14,7 @@ function IssueList({ issues }: { issues: GardenCheckIssue[] }) {
 
 const SIMPLE_REQUIRED_RULES = new Set(["R6", "R7", "R8", "R9"]);
 
-export default function ZenkakuTab({ runCheck = runZenkakuCheck }: { runCheck?: (salesId: string) => Promise<GardenCheckResult> }) {
+export default function ZenkakuTab({ runCheck = runZenkakuCheck, postalDataStatus = null, now = new Date() }: { runCheck?: (salesId: string) => Promise<GardenCheckResult>; postalDataStatus?: PostalDatasetStatus | null; now?: Date }) {
   const [salesId, setSalesId] = useState("");
   const [checking, setChecking] = useState(false);
   const [inputError, setInputError] = useState("");
@@ -35,6 +36,8 @@ export default function ZenkakuTab({ runCheck = runZenkakuCheck }: { runCheck?: 
   const explainedBlocking = result?.blocking.filter((issue) => !SIMPLE_REQUIRED_RULES.has(issue.ruleId)) ?? [];
   return <section className={styles.zenkakuContent} aria-labelledby="zenkaku-title">
     <div className={styles.card}><h2 id="zenkaku-title">前確依頼</h2><p className={styles.zenkakuLead}>営業IDを入力して、前確依頼に必要な項目を確認します。</p>
+      <p className={styles.postalStatus}>郵便番号データ：{formatPostalDatasetDate(postalDataStatus?.sourceDate ?? null)}</p>
+      {isPostalDatasetStale(postalDataStatus?.sourceDate ?? null, now) ? <p className={styles.postalWarning}>郵便番号データが古い可能性があります</p> : null}
       <div className={styles.checkForm}><label htmlFor="zenkaku-sales-id">営業ID</label><input id="zenkaku-sales-id" value={salesId} onChange={(event) => setSalesId(event.target.value)} disabled={checking}/>
         <button type="button" onClick={() => void check()} disabled={checking}>{checking ? "チェック中…" : "連携チェック"}</button></div>
       {checking ? <p role="status" className={styles.checking}>社内のシステムに確認しています…</p> : null}

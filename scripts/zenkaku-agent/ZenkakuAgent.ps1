@@ -1,9 +1,10 @@
 [CmdletBinding()]
 param(
-  [string]$ConfigPath=(Join-Path $PSScriptRoot 'config.json'), [switch]$Once,
+  [string]$ConfigPath='', [switch]$Once,
   [switch]$Worker, [string]$RequestId, [string]$SalesId
 )
 $ErrorActionPreference='Stop'
+if(-not $ConfigPath){$ConfigPath=Join-Path $PSScriptRoot 'config.json'}
 . (Join-Path (Split-Path $PSScriptRoot -Parent) 'callcenter-agent\CallCenterAgent.Core.ps1')
 . (Join-Path $PSScriptRoot 'ZenkakuAgent.Core.ps1')
 if ([IntPtr]::Size -ne 4) { throw 'FileMaker ODBC requires 32-bit PowerShell 5.1.' }

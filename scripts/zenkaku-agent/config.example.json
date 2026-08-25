@@ -14,7 +14,9 @@
     "wirelessUsage":"無線利用方法","wirelessLanCard":"無線LANカード","phonePlanName":"申込電話プラン名","phoneCallerId":"電話申込OP_発信者番号表示_ND","phoneCallWaiting":"電話申込OP_通話中着信通知_CH","phoneNumberRequest":"電話申込OP_ナンバーリクエスト_NR","phoneNuisanceBlock":"電話申込OP_迷惑電話ブロック","phoneCallForwarding":"電話申込OP_自動転送_VW","phoneAdditionalNumber":"電話申込OP_追加番号","phoneMultipleChannels":"電話申込OP_複数チャネル","phoneIncomingMail":"電話申込OP_着信お知らせメール","phoneFaxMail":"電話申込OP_FAXお知らせメール",
     "tvApplication":"TV申込","terrestrialTvEnvironment":"地デジ環境","quotedPrice":"案内料金","existingContractInfo":"既契約情報","existingContractContinuation":"既契約継続有無","existingLineType":"既契約回線タイプ","applicantBirthday":"申込者名_生年月日",
     "thirdPartyLastNameKana":"第三者確認名_姓カナ","thirdPartyFirstNameKana":"第三者確認名_名カナ","thirdPartyLastName":"第三者確認名_姓","thirdPartyFirstName":"第三者確認名_名","thirdPartyBirthday":"第三者確認名_生年月日","thirdPartyAge":"第三者確認名_年齢","thirdPartyGender":"第三者確認名_性別","thirdPartyRelationship":"第三者確認名_続柄","thirdPartyTalkedAt":"第三者と話した日時",
-    "transferApprovalNumber":"転用承諾番号","providerChangeApprovalNumber":"事業者間変更承諾番号","cafNumber":"CAF番号","installationPostalCode":"設置先_郵便番号","installationPrefecture":"設置先_住所_都道府県"
+    "transferApprovalNumber":"転用承諾番号","providerChangeApprovalNumber":"事業者間変更承諾番号","cafNumber":"CAF番号","installationPostalCode":"設置先_郵便番号","installationPrefecture":"設置先_住所_都道府県",
+    "installationCity":"設置先_住所_市町村","installationTown":"設置先_住所_町域","installationCityKana":"設置先_住所_市町村_カナ","installationTownKana":"設置先_住所_町域_カナ",
+    "shippingPostalCode":"送付先_郵便番号","shippingPrefecture":"送付先_住所_都道府県","shippingCity":"送付先_住所_市町村","shippingTown":"送付先_住所_町域","shippingCityKana":"送付先_住所_市町村_カナ","shippingTownKana":"送付先_住所_町域_カナ"
   },
   "duplicateFieldMap": {
     "caseId": "__実機で案件ID列名に変更__",

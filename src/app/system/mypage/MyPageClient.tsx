@@ -8,6 +8,7 @@ import ProfileTab from "./tabs/ProfileTab";
 import ShiftTab from "./tabs/ShiftTab";
 import ZenkakuTab from "./tabs/ZenkakuTab";
 import type { MyPageProfile, MyPageTab } from "./types";
+import type { PostalDatasetStatus } from "./_lib/postal-data";
 import styles from "./mypage.module.css";
 
 const TABS: Array<{ id: MyPageTab; label: string }> = [
@@ -15,13 +16,14 @@ const TABS: Array<{ id: MyPageTab; label: string }> = [
   { id: "shift", label: "シフト" }, { id: "zenkaku", label: "前確依頼" },
 ];
 
-export default function MyPageClient({ initialTab, registered, employeeName, canViewSync, birthdayRegistered, initialProfile }: {
+export default function MyPageClient({ initialTab, registered, employeeName, canViewSync, birthdayRegistered, initialProfile, postalDataStatus }: {
   initialTab: MyPageTab;
   registered: boolean;
   employeeName: string | null;
   canViewSync: boolean;
   birthdayRegistered: boolean;
   initialProfile: MyPageProfile | null;
+  postalDataStatus?: PostalDatasetStatus | null;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<MyPageTab>(initialTab);
@@ -46,7 +48,7 @@ export default function MyPageClient({ initialTab, registered, employeeName, can
       {activeTab === "profile" && <ProfileTab registered={registered} birthdayRegistered={birthdayRegistered} profile={profile} onUnlocked={setProfile} />}
       {activeTab === "attendance" && <AttendanceTab registered={registered} employeeName={employeeName} canViewSync={canViewSync} />}
       {activeTab === "shift" && <ShiftTab />}
-      {activeTab === "zenkaku" && <ZenkakuTab />}
+      {activeTab === "zenkaku" && <ZenkakuTab postalDataStatus={postalDataStatus} />}
     </div>
   </main></div>;
 }

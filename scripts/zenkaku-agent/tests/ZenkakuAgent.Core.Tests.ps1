@@ -48,3 +48,14 @@ Describe 'ConvertTo-ZenkakuValue' {
     (ConvertTo-ZenkakuValue ([datetime]'2026-08-22'))|Should Be '2026-08-22'
   }
 }
+
+Describe 'PowerShell 5.1 default paths' {
+  It 'resolves script-root paths in the body instead of param defaults' {
+    $agent = Get-Content -Raw (Join-Path (Split-Path -Parent $here) 'ZenkakuAgent.ps1')
+    $register = Get-Content -Raw (Join-Path (Split-Path -Parent $here) 'Register-ZenkakuAgentTask.ps1')
+    $agent | Should Match "\[string\]\`$ConfigPath=''"
+    $agent | Should Match 'if\(-not \$ConfigPath\)\{\$ConfigPath=Join-Path \$PSScriptRoot'
+    $register | Should Match "\[string\]\`$AgentPath=''"
+    $register | Should Match 'if\(-not \$AgentPath\)\{\$AgentPath=Join-Path \$PSScriptRoot'
+  }
+}
