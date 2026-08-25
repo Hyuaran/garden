@@ -14,14 +14,19 @@ export type SalesMasterRecord = {
   thirdPartyLastName: string | null; thirdPartyFirstName: string | null; thirdPartyBirthday: string | null;
   thirdPartyAge: string | number | null; thirdPartyGender: string | null; thirdPartyRelationship: string | null; thirdPartyTalkedAt: string | null;
   transferApprovalNumber: string | null; providerChangeApprovalNumber: string | null; cafNumber: string | null;
-  installationPostalCode: string | null; installationPrefecture: string | null;
+  installationPostalCode: string | null; installationPrefecture: string | null; installationCity: string | null; installationTown: string | null;
+  installationCityKana: string | null; installationTownKana: string | null; shippingPostalCode: string | null; shippingPrefecture: string | null;
+  shippingCity: string | null; shippingTown: string | null; shippingCityKana: string | null; shippingTownKana: string | null;
 };
+
+export type PostalAddressCandidate = { prefecture: string; city: string; town: string; cityKana: string; townKana: string; special: boolean };
+export type PostalCheckContext = { byPostalCode: Record<string, PostalAddressCandidate[]>; sourceDate?: string | null; importedAt?: string | null; enabled?: boolean };
 
 export type DuplicateSalesCase = { caseId: string; productName: string; registeredDate: string };
 export type GardenCheckIssue = { ruleId: GardenCheckRuleId; severity: GardenCheckSeverity; message: string; missingFields?: string[] };
-export type GardenCheckResult = { blocking: GardenCheckIssue[]; notices: GardenCheckIssue[]; warnings: GardenCheckIssue[]; deferredRuleIds: GardenCheckRuleId[] };
+export type GardenCheckResult = { blocking: GardenCheckIssue[]; notices: GardenCheckIssue[]; warnings: GardenCheckIssue[]; deferredRuleIds: GardenCheckRuleId[]; postalData?: { sourceDate: string | null; importedAt: string | null } };
 
-export const DEFERRED_ADDRESS_RULE_IDS: GardenCheckRuleId[] = ["R2-1", "R2-2", "R2-3", "R2-4", "R2-5"];
+export const DEFERRED_ADDRESS_RULE_IDS: GardenCheckRuleId[] = ["R2-5"];
 export const NTT_EAST_PREFECTURES = ["北海道", "青森", "岩手", "宮城", "秋田", "山形", "福島", "茨城", "栃木", "群馬", "埼玉", "千葉", "東京", "神奈川", "新潟", "山梨", "長野"] as const;
 export const NTT_WEST_PREFECTURES = ["富山", "石川", "福井", "岐阜", "静岡", "愛知", "三重", "滋賀", "京都", "大阪", "兵庫", "奈良", "和歌山", "鳥取", "島根", "岡山", "広島", "山口", "徳島", "香川", "愛媛", "高知", "福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"] as const;
 
@@ -43,6 +48,27 @@ const blank = (value: unknown) => value === null || value === undefined || (type
 const normalized = (value: string | null) => (value ?? "").replace(/[\s　]+/g, "");
 const missing = (record: SalesMasterRecord, fields: Array<[keyof SalesMasterRecord, string]>) => fields.filter(([key]) => blank(record[key])).map(([, label]) => label);
 const blocking = (ruleId: GardenCheckRuleId, message: string, missingFields?: string[]): GardenCheckIssue => ({ ruleId, severity: "blocking", message, missingFields });
+const notice = (ruleId: GardenCheckRuleId, message: string): GardenCheckIssue => ({ ruleId, severity: "notice", message });
+export const normalizeAddressText = (value: string | null | undefined) => (value ?? "").normalize("NFKC").replace(/[\s　]+/g, "").replace(/[ヶケヵカ]/g, "ケ").toUpperCase();
+export const normalizePostalCode = (value: string | null | undefined) => (value ?? "").normalize("NFKC").replace(/\D/g, "");
+
+function evaluateAddressSide(record: SalesMasterRecord, prefix: "installation" | "shipping", context: PostalCheckContext, issues: GardenCheckIssue[]) {
+  if (!context.enabled) return;
+  const postal = normalizePostalCode(record[prefix === "installation" ? "installationPostalCode" : "shippingPostalCode"]);
+  if (!postal) return;
+  const candidates = context.byPostalCode[postal] ?? [];
+  if (!candidates.length) { issues.push(notice("R2-4", "この郵便番号が見つかりません。ご確認ください。")); return; }
+  const normal = candidates.filter((candidate) => !candidate.special);
+  if (!normal.length) return;
+  const prefecture = normalizeAddressText(record[prefix === "installation" ? "installationPrefecture" : "shippingPrefecture"]);
+  const city = normalizeAddressText(record[prefix === "installation" ? "installationCity" : "shippingCity"]);
+  const town = normalizeAddressText(record[prefix === "installation" ? "installationTown" : "shippingTown"]);
+  const cityKana = normalizeAddressText(record[prefix === "installation" ? "installationCityKana" : "shippingCityKana"]);
+  const townKana = normalizeAddressText(record[prefix === "installation" ? "installationTownKana" : "shippingTownKana"]);
+  if (!normal.some((candidate) => normalizeAddressText(candidate.prefecture) === prefecture && normalizeAddressText(candidate.city) === city)) issues.push(notice("R2-1", "郵便番号と住所が合っていないようです。ご確認ください。"));
+  if (!normal.some((candidate) => town.includes(normalizeAddressText(candidate.town)))) issues.push(notice("R2-2", "大字が抜けているかもしれません。ご確認ください。"));
+  if (!normal.some((candidate) => normalizeAddressText(candidate.cityKana) === cityKana && townKana.includes(normalizeAddressText(candidate.townKana)))) issues.push(notice("R2-3", "住所のカナをご確認ください。"));
+}
 
 export function ageOnDate(birthday: string | null, checkedAt: Date): number | null {
   if (!birthday || !/^\d{4}-\d{2}-\d{2}$/.test(birthday)) return null;
@@ -63,7 +89,7 @@ export function nttArea(prefecture: string | null): "east" | "west" | null {
   return null;
 }
 
-export function evaluateGardenCheck(record: SalesMasterRecord, duplicates: DuplicateSalesCase[] = [], checkedAt = new Date()): GardenCheckResult {
+export function evaluateGardenCheck(record: SalesMasterRecord, duplicates: DuplicateSalesCase[] = [], checkedAt = new Date(), postalContext: PostalCheckContext = { byPostalCode: {} }): GardenCheckResult {
   const issues: GardenCheckIssue[] = [];
   if (record.flag !== "獲得") issues.push(blocking("R1", "フラグ が「獲得」になっていません。獲得に変更してください。"));
   if (!blank(record.mobileNumber)) {
@@ -89,10 +115,12 @@ export function evaluateGardenCheck(record: SalesMasterRecord, duplicates: Dupli
     issues.push(blocking("R8", "次の項目を入力してください。", ["CAF番号"]));
   }
   if (blank(record.installationPostalCode)) issues.push(blocking("R9", "次の項目を入力してください。", ["郵便番号"]));
+  evaluateAddressSide(record, "installation", postalContext, issues);
+  evaluateAddressSide(record, "shipping", postalContext, issues);
   for (const duplicate of duplicates) issues.push({ ruleId: "R10", severity: "warning", message: `この営業IDは既に登録されています（案件ID ${duplicate.caseId} ／ ${duplicate.productName} ／ ${duplicate.registeredDate}）。別商材の追加契約であれば、そのまま進めてください。` });
   return {
     blocking: issues.filter((issue) => issue.severity === "blocking"), notices: issues.filter((issue) => issue.severity === "notice"),
-    warnings: issues.filter((issue) => issue.severity === "warning"), deferredRuleIds: [...DEFERRED_ADDRESS_RULE_IDS],
+    warnings: issues.filter((issue) => issue.severity === "warning"), deferredRuleIds: [...DEFERRED_ADDRESS_RULE_IDS], postalData: { sourceDate: postalContext.sourceDate ?? null, importedAt: postalContext.importedAt ?? null },
   };
 }
 
@@ -103,7 +131,7 @@ export function createValidSalesMasterRecord(overrides: Partial<SalesMasterRecor
     phoneCallerId: "", phoneCallWaiting: "", phoneNumberRequest: "", phoneNuisanceBlock: "", phoneCallForwarding: "", phoneAdditionalNumber: "", phoneMultipleChannels: "",
     phoneIncomingMail: "", phoneFaxMail: "", tvApplication: "", terrestrialTvEnvironment: "", quotedPrice: "", existingContractInfo: "", existingContractContinuation: "", existingLineType: "",
     applicantBirthday: "", thirdPartyLastNameKana: "", thirdPartyFirstNameKana: "", thirdPartyLastName: "", thirdPartyFirstName: "", thirdPartyBirthday: "", thirdPartyAge: "",
-    thirdPartyGender: "", thirdPartyRelationship: "", thirdPartyTalkedAt: "", transferApprovalNumber: "", providerChangeApprovalNumber: "", cafNumber: "", installationPostalCode: "", installationPrefecture: "",
+    thirdPartyGender: "", thirdPartyRelationship: "", thirdPartyTalkedAt: "", transferApprovalNumber: "", providerChangeApprovalNumber: "", cafNumber: "", installationPostalCode: "", installationPrefecture: "", installationCity: "", installationTown: "", installationCityKana: "", installationTownKana: "", shippingPostalCode: "", shippingPrefecture: "", shippingCity: "", shippingTown: "", shippingCityKana: "", shippingTownKana: "",
   }).map((key) => [key, "入力済み"])) as SalesMasterRecord;
-  return { ...base, salesId: "L26000001", flag: "獲得", mobileNumber: null, productCategory1: "回線以外", productCategory2: "その他", constructionType: "新規", applicantBirthday: "1990-01-01", installationPostalCode: "100-0001", installationPrefecture: "東京", ...overrides };
+  return { ...base, salesId: "L26000001", flag: "獲得", mobileNumber: null, productCategory1: "回線以外", productCategory2: "その他", constructionType: "新規", applicantBirthday: "1990-01-01", installationPostalCode: "100-0001", installationPrefecture: "東京都", installationCity: "千代田区", installationTown: "千代田", installationCityKana: "チヨダク", installationTownKana: "チヨダ", ...overrides };
 }

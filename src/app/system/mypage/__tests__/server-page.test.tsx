@@ -17,7 +17,7 @@ describe("system mypage server page",()=>{
   it("queries the employee once and does not pass a registered birthday before unlock",async()=>{
     const db=client();mocks.createServerClient.mockResolvedValue(db);
     const view=await MyPagePage({searchParams:Promise.resolve({})}) as ReactElement<{initialProfile:unknown;birthdayRegistered:boolean;employeeName:string}>;
-    expect(db.from).toHaveBeenCalledTimes(1);
+    expect(db.from).toHaveBeenCalledTimes(2);
     expect(view.props).toMatchObject({initialProfile:null,birthdayRegistered:true,employeeName:"社員A"});
     expect(JSON.stringify(view.props)).not.toContain("1980-08-13");
   });

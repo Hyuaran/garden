@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { evaluateGardenCheck } from "@/app/system/mypage/_lib/zenkaku-check";
 import type { DuplicateSalesCase, SalesMasterRecord } from "@/app/system/mypage/_lib/zenkaku-check";
+import { normalizePostalCode, type PostalAddressCandidate, type PostalCheckContext } from "@/app/system/mypage/_lib/zenkaku-check";
 import { verifyBearerRequest } from "@/lib/cron-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+async function loadPostalContext(record: SalesMasterRecord): Promise<PostalCheckContext> {
+  const admin = getSupabaseAdmin();
+  const { data: dataset } = await admin.from("system_postal_datasets").select("id,source_date,imported_at").eq("active", true).maybeSingle();
+  if (!dataset) return { byPostalCode: {}, enabled: false };
+  const codes = Array.from(new Set([normalizePostalCode(record.installationPostalCode), normalizePostalCode(record.shippingPostalCode)].filter(Boolean)));
+  const { data: entries } = codes.length ? await admin.from("system_postal_addresses").select("postal_code,prefecture,city,town,city_kana,town_kana,is_special").eq("dataset_id", dataset.id).in("postal_code", codes) : { data: [] };
+  const byPostalCode: Record<string, PostalAddressCandidate[]> = {};
+  for (const entry of entries ?? []) (byPostalCode[entry.postal_code] ??= []).push({ prefecture: entry.prefecture, city: entry.city, town: entry.town, cityKana: entry.city_kana, townKana: entry.town_kana, special: entry.is_special });
+  return { byPostalCode, enabled: true, sourceDate: dataset.source_date, importedAt: dataset.imported_at };
+}
 
 export async function POST(request: Request) {
   const auth = verifyBearerRequest(request, "ZENKAKU_AGENT_SECRET");
@@ -20,7 +32,7 @@ export async function POST(request: Request) {
     const code = typeof body.errorCode === "string" && allowed.has(body.errorCode) ? body.errorCode : "fm_unreachable";
     values = { status: "failed", result: null, error_code: code, updated_at: new Date().toISOString() };
   } else if (body.outcome === "success" && body.record && typeof body.record === "object") {
-    const result = evaluateGardenCheck(body.record, Array.isArray(body.duplicates) ? body.duplicates : [], new Date());
+    const result = evaluateGardenCheck(body.record, Array.isArray(body.duplicates) ? body.duplicates : [], new Date(), await loadPostalContext(body.record));
     values = { status: "done", result, error_code: null, updated_at: new Date().toISOString() };
   } else return NextResponse.json({ ok: false, error: "invalid_payload" }, { status: 400 });
 

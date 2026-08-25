@@ -49,6 +49,8 @@
 .unlockedNotice { margin:0; padding:12px 16px; border-radius:10px; background:#e9f7f6; color:var(--teal-d); font-weight:700; }
 .zenkakuContent { display:grid; gap:18px; max-width:920px; margin:0 auto; }
 .zenkakuLead { margin:0 0 18px; color:var(--sub); }
+.postalStatus { margin:0 0 6px; color:var(--sub); font-size:13px; }
+.postalWarning { margin:0 0 14px; padding:8px 10px; border-radius:8px; background:#fff3cd; color:#624a00; font-weight:700; }
 .checkForm { display:grid; grid-template-columns:minmax(180px,1fr) auto; gap:8px 12px; align-items:end; }
 .checkForm label { grid-column:1/-1; color:var(--ink); font-weight:700; }
 .checkForm input { min-height:44px; box-sizing:border-box; padding:10px 12px; border:2px solid var(--line); border-radius:10px; background:var(--card); color:var(--ink); font-size:1rem; }

@@ -22,7 +22,8 @@ export default async function MyPagePage({ searchParams }: { searchParams: Promi
     employeeNumber: String(employee.employee_number ?? "-"), employmentType: String(employee.employment_type ?? "-"),
     birthday: null, email: String(employee.email ?? "-"), gardenRole: String(employee.garden_role ?? "-"),
   } : null;
+  const postalDataStatus = (await supabase.from("system_postal_datasets").select("source_date,imported_at").eq("active", true).maybeSingle()).data;
   return <MyPageClient initialTab={requestedTab} registered={Boolean(employee)} employeeName={employee?.name ? String(employee.name) : null}
     canViewSync={employee ? MANAGER_ROLES.has(String(employee.garden_role)) : false}
-    birthdayRegistered={birthdayRegistered} initialProfile={initialProfile} />;
+    birthdayRegistered={birthdayRegistered} initialProfile={initialProfile} postalDataStatus={postalDataStatus ? { sourceDate: String(postalDataStatus.source_date), importedAt: String(postalDataStatus.imported_at) } : null} />;
 }
