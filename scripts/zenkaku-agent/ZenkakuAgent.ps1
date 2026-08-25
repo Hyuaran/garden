@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [string]$ConfigPath='', [switch]$Once,
-  [switch]$Worker, [string]$RequestId, [string]$SalesId
+  [switch]$Worker, [string]$RequestId, [string]$SalesId, [string]$Operation='check'
 )
 $ErrorActionPreference='Stop'
 if(-not $ConfigPath){$ConfigPath=Join-Path $PSScriptRoot 'config.json'}
@@ -42,11 +42,12 @@ function Get-FmSource([string]$salesId) {
     return @{record=$rows[0].record;duplicates=$duplicates}
   } finally {$connection.Close();$connection.Dispose()}
 }
-function Post-Failure([string]$id,[string]$code){Invoke-ZenkakuApi 'Post' '/api/system/zenkaku-agent/result' @{id=$id;outcome='failed';errorCode=$code}|Out-Null}
+function Get-ResultPath([string]$operation){if($operation -eq 'submit'){'/api/system/zenkaku-agent/submit-result'}else{'/api/system/zenkaku-agent/result'}}
+function Post-Failure([string]$id,[string]$code,[string]$operation='check'){Invoke-ZenkakuApi 'Post' (Get-ResultPath $operation) @{id=$id;outcome='failed';errorCode=$code}|Out-Null}
 
 if($Worker){
-  try{$source=Get-FmSource $SalesId;if($null -eq $source){$payload=@{id=$RequestId;outcome='not_found'}}else{$payload=@{id=$RequestId;outcome='success';record=$source.record;duplicates=@($source.duplicates)}};Invoke-ZenkakuApi 'Post' '/api/system/zenkaku-agent/result' $payload|Out-Null;exit 0}
-  catch{try{Post-Failure $RequestId 'fm_unreachable'}catch{};exit 1}
+  try{$source=Get-FmSource $SalesId;if($null -eq $source){$payload=@{id=$RequestId;outcome='not_found'}}else{$payload=@{id=$RequestId;outcome='success';record=$source.record;duplicates=@($source.duplicates)}};Invoke-ZenkakuApi 'Post' (Get-ResultPath $Operation) $payload|Out-Null;exit 0}
+  catch{try{Post-Failure $RequestId 'fm_unreachable' $Operation}catch{};exit 1}
 }
 
 do {
@@ -55,10 +56,10 @@ do {
     if($null -ne $next.request){
       $started=Get-Date;Write-ZenkakuLog info 'request started' @{request_id=$next.request.id;sales_id=$next.request.salesId}
       $exe="$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
-      $arguments=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-ConfigPath',$ConfigPath,'-Worker','-RequestId',$next.request.id,'-SalesId',$next.request.salesId)
+      $arguments=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-ConfigPath',$ConfigPath,'-Worker','-RequestId',$next.request.id,'-SalesId',$next.request.salesId,'-Operation',$next.request.operation)
       $process=Start-Process -FilePath $exe -ArgumentList $arguments -PassThru -WindowStyle Hidden
       while(-not $process.HasExited -and -not (Test-IsHeartbeatStalled $started.ToUniversalTime() (Get-Date).ToUniversalTime() 60)){Start-Sleep -Milliseconds 500;$process.Refresh()}
-      if(-not $process.HasExited){$process.Kill();Post-Failure $next.request.id 'timeout';Write-ZenkakuLog error 'request timed out' @{request_id=$next.request.id;sales_id=$next.request.salesId}}
+      if(-not $process.HasExited){$process.Kill();Post-Failure $next.request.id 'timeout' $next.request.operation;Write-ZenkakuLog error 'request timed out' @{request_id=$next.request.id;sales_id=$next.request.salesId}}
       else{Write-ZenkakuLog info 'request completed' @{request_id=$next.request.id;sales_id=$next.request.salesId;exit_code=$process.ExitCode;elapsed_seconds=[Math]::Round(((Get-Date)-$started).TotalSeconds,1)}}
     }
   } catch {Write-ZenkakuLog error 'poll failed' @{error_type=$_.Exception.GetType().Name};if($Once){throw}}

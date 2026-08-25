@@ -25,7 +25,7 @@ describe("ZenkakuTab", () => {
     render(<ZenkakuTab runCheck={async () => evaluateGardenCheck(createValidSalesMasterRecord())}/>);
     fireEvent.change(screen.getByLabelText("営業ID"), { target: { value: "L26000001" } }); fireEvent.click(screen.getByRole("button", { name: "連携チェック" }));
     expect(await screen.findByRole("heading", { name: "確認できました" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /次へ進む/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "前確依頼を出す" })).toBeEnabled();
   });
   it("shows checking state until the source resolves", async () => {
     let resolve!: (value: ReturnType<typeof evaluateGardenCheck>) => void;

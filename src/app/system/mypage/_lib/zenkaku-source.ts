@@ -18,7 +18,7 @@ export async function runZenkakuCheck(salesId: string, options: {
     const response = await fetchImpl(`/api/system/zenkaku-check/${creation.id}`, { cache: "no-store" });
     if (!response.ok) throw new ZenkakuCheckError("unavailable");
     const state = await response.json() as { status?: string; result?: GardenCheckResult; error_code?: string };
-    if (state.status === "done" && state.result) return state.result;
+    if (state.status === "done" && state.result) return { ...state.result, requestId: creation.id, duplicateCount: state.result.warnings?.length ?? 0 };
     if (state.status === "failed") throw new ZenkakuCheckError(state.error_code === "not_found" ? "not_found" : "unavailable");
   }
   throw new ZenkakuCheckError("unavailable");
