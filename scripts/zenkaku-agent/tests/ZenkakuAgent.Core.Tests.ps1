@@ -25,6 +25,23 @@ Describe 'Invoke-ZenkakuCycle' {
   }
 }
 
+Describe 'Get-FmSource field map indexing' {
+  It 'materializes psobject.Properties as arrays so integer indexing works (2026-08-25 production bug)' {
+    # psobject.Properties は整数インデックス不可（$map[0] が null になり、行が見つかったときだけ
+    # "Index operation failed" で落ちる）。@() で配列化していることをソースで担保する。
+    $source = Get-Content -Raw (Join-Path (Split-Path -Parent $here) 'ZenkakuAgent.ps1')
+    $source | Should Match '\$map=@\(\$config\.fieldMap\.psobject\.Properties\)'
+    $source | Should Match '\$duplicateMap=@\(\$config\.duplicateFieldMap\.psobject\.Properties\)'
+  }
+  It 'indexes a materialized property array by integer' {
+    $config = '{"fieldMap":{"flag":"P_フラグ","mobileNumber":"携帯番号"}}' | ConvertFrom-Json
+    $map = @($config.fieldMap.psobject.Properties)
+    $map.Count | Should Be 2
+    $map[0].Name | Should Be 'flag'
+    $map[1].Value | Should Be '携帯番号'
+  }
+}
+
 Describe 'ConvertTo-ZenkakuValue' {
   It 'normalizes null and dates without exposing provider objects' {
     (ConvertTo-ZenkakuValue ([DBNull]::Value))|Should Be $null
