@@ -51,6 +51,7 @@ const blocking = (ruleId: GardenCheckRuleId, message: string, missingFields?: st
 const notice = (ruleId: GardenCheckRuleId, message: string): GardenCheckIssue => ({ ruleId, severity: "notice", message });
 export const normalizeAddressText = (value: string | null | undefined) => (value ?? "").normalize("NFKC").replace(/[\s　]+/g, "").replace(/[ヶケヵカ]/g, "ケ").toUpperCase();
 export const normalizePostalCode = (value: string | null | undefined) => (value ?? "").normalize("NFKC").replace(/\D/g, "");
+export const normalizePostalTownCandidate = (value: string | null | undefined) => normalizeAddressText(value).split("(", 1)[0];
 
 function evaluateAddressSide(record: SalesMasterRecord, prefix: "installation" | "shipping", context: PostalCheckContext, issues: GardenCheckIssue[]) {
   if (!context.enabled) return;
@@ -66,8 +67,10 @@ function evaluateAddressSide(record: SalesMasterRecord, prefix: "installation" |
   const cityKana = normalizeAddressText(record[prefix === "installation" ? "installationCityKana" : "shippingCityKana"]);
   const townKana = normalizeAddressText(record[prefix === "installation" ? "installationTownKana" : "shippingTownKana"]);
   if (!normal.some((candidate) => normalizeAddressText(candidate.prefecture) === prefecture && normalizeAddressText(candidate.city) === city)) issues.push(notice("R2-1", "郵便番号と住所が合っていないようです。ご確認ください。"));
-  if (!normal.some((candidate) => town.includes(normalizeAddressText(candidate.town)))) issues.push(notice("R2-2", "大字が抜けているかもしれません。ご確認ください。"));
-  if (!normal.some((candidate) => normalizeAddressText(candidate.cityKana) === cityKana && townKana.includes(normalizeAddressText(candidate.townKana)))) issues.push(notice("R2-3", "住所のカナをご確認ください。"));
+  const townCandidates = normal.map((candidate) => normalizePostalTownCandidate(candidate.town)).filter(Boolean);
+  if (townCandidates.length && !townCandidates.some((candidate) => town.includes(candidate))) issues.push(notice("R2-2", "大字が抜けているかもしれません。ご確認ください。"));
+  const kanaCandidates = normal.map((candidate) => ({ city: normalizeAddressText(candidate.cityKana), town: normalizePostalTownCandidate(candidate.townKana) })).filter((candidate) => candidate.town);
+  if (kanaCandidates.length && !kanaCandidates.some((candidate) => candidate.city === cityKana && townKana.includes(candidate.town))) issues.push(notice("R2-3", "住所のカナをご確認ください。"));
 }
 
 export function ageOnDate(birthday: string | null, checkedAt: Date): number | null {

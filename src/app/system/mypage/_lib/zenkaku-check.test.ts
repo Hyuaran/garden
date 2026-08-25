@@ -86,6 +86,20 @@ describe("Garden check rules", () => {
     const result = evaluateGardenCheck(createValidSalesMasterRecord({ shippingPostalCode: null }), [], checkedAt, { enabled: true, byPostalCode: { "1000001": [special] } });
     expect(result.notices).toHaveLength(0);
   });
+  it("R2-2 compares the town before a parenthesized range", () => {
+    const candidate = { prefecture: "北海道", city: "札幌市中央区", town: "大通西（１〜１９丁目）", cityKana: "サッポロシチュウオウク", townKana: "オオドオリニシ（１−１９チョウメ）", special: false };
+    const context = { enabled: true, byPostalCode: { "0600042": [candidate] } };
+    const record = createValidSalesMasterRecord({ installationPostalCode: "060-0042", installationPrefecture: "北海道", installationCity: "札幌市中央区", installationCityKana: "サッポロシチュウオウク", installationTownKana: "オオドオリニシ" });
+    for (const installationTown of ["大通西１丁目", "大通西"]) {
+      expect(evaluateGardenCheck({ ...record, installationTown }, [], checkedAt, context).notices.some((issue) => issue.ruleId === "R2-2")).toBe(false);
+    }
+    expect(evaluateGardenCheck({ ...record, installationTown: "別の町" }, [], checkedAt, context).notices.some((issue) => issue.ruleId === "R2-2")).toBe(true);
+  });
+  it("R2-3 compares town kana before a parenthesized range", () => {
+    const candidate = { prefecture: "北海道", city: "札幌市中央区", town: "大通西（１〜１９丁目）", cityKana: "サッポロシチュウオウク", townKana: "オオドオリニシ（１−１９チョウメ）", special: false };
+    const record = createValidSalesMasterRecord({ installationPostalCode: "0600042", installationPrefecture: "北海道", installationCity: "札幌市中央区", installationTown: "大通西", installationCityKana: "サッポロシチュウオウク", installationTownKana: "オオドオリニシ" });
+    expect(evaluateGardenCheck(record, [], checkedAt, { enabled: true, byPostalCode: { "0600042": [candidate] } }).notices.some((issue) => issue.ruleId === "R2-3")).toBe(false);
+  });
   it("never exposes FileMaker field names in findings", () => {
     const result = evaluateGardenCheck(createValidSalesMasterRecord({ flag: "見込", mobileNumber: "090", mobileCarrier: null, mobileDeviceType: null, productCategory1: "回線", applicationPlanName: null, installationPostalCode: null }), [], checkedAt);
     expect(JSON.stringify(result)).not.toMatch(/P_/);

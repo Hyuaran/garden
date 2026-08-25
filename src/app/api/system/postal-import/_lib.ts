@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 
-export const JAPAN_POST_UTF8_URL = "https://www.post.japanpost.jp/zipcode/dl/utf/zip/utf_ken_all.zip";
+export const JAPAN_POST_UTF8_URL = "https://www.post.japanpost.jp/service/search/zipcode/download/utf/zip/utf_ken_all.zip";
 
 export type PostalImportRow = { postal_code: string; prefecture: string; city: string; town: string; prefecture_kana: string; city_kana: string; town_kana: string; is_special: boolean };
 
