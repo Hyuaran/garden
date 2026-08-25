@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server"; import { createServerClient } from "@/app/_lib/supabase/server";
+export const dynamic="force-dynamic";
+export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){const supabase=await createServerClient();const {data:auth}=await supabase.auth.getUser();if(!auth.user)return NextResponse.json({ok:false},{status:401});const {id}=await params;const {data}=await supabase.from("system_zenkaku_submission").select("id,status,candidates,case_id,error_code").eq("id",id).maybeSingle();if(!data)return NextResponse.json({ok:false,error:"依頼が見つかりません"},{status:404});return NextResponse.json({ok:true,...data});}

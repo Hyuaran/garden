@@ -17,6 +17,9 @@ export type SalesMasterRecord = {
   installationPostalCode: string | null; installationPrefecture: string | null; installationCity: string | null; installationTown: string | null;
   installationCityKana: string | null; installationTownKana: string | null; shippingPostalCode: string | null; shippingPrefecture: string | null;
   shippingCity: string | null; shippingTown: string | null; shippingCityKana: string | null; shippingTownKana: string | null;
+  orderDate: string | null; performanceDate: string | null; createdAt: string | null; phoneNumber: string | null; teamName: string | null;
+  applicantLastName: string | null; applicantFirstName: string | null; applicantLastNameKana: string | null; applicantFirstNameKana: string | null;
+  installationStreet: string | null; installationBuilding: string | null; installationRoom: string | null; shippingBuilding: string | null; shippingRoom: string | null;
 };
 
 export type PostalAddressCandidate = { prefecture: string; city: string; town: string; cityKana: string; townKana: string; special: boolean };
@@ -24,7 +27,7 @@ export type PostalCheckContext = { byPostalCode: Record<string, PostalAddressCan
 
 export type DuplicateSalesCase = { caseId: string; productName: string; registeredDate: string };
 export type GardenCheckIssue = { ruleId: GardenCheckRuleId; severity: GardenCheckSeverity; message: string; missingFields?: string[] };
-export type GardenCheckResult = { blocking: GardenCheckIssue[]; notices: GardenCheckIssue[]; warnings: GardenCheckIssue[]; deferredRuleIds: GardenCheckRuleId[]; postalData?: { sourceDate: string | null; importedAt: string | null } };
+export type GardenCheckResult = { requestId?: string; duplicateCount?: number; blocking: GardenCheckIssue[]; notices: GardenCheckIssue[]; warnings: GardenCheckIssue[]; deferredRuleIds: GardenCheckRuleId[]; postalData?: { sourceDate: string | null; importedAt: string | null } };
 
 export const DEFERRED_ADDRESS_RULE_IDS: GardenCheckRuleId[] = ["R2-5"];
 export const NTT_EAST_PREFECTURES = ["北海道", "青森", "岩手", "宮城", "秋田", "山形", "福島", "茨城", "栃木", "群馬", "埼玉", "千葉", "東京", "神奈川", "新潟", "山梨", "長野"] as const;
@@ -134,7 +137,7 @@ export function createValidSalesMasterRecord(overrides: Partial<SalesMasterRecor
     phoneCallerId: "", phoneCallWaiting: "", phoneNumberRequest: "", phoneNuisanceBlock: "", phoneCallForwarding: "", phoneAdditionalNumber: "", phoneMultipleChannels: "",
     phoneIncomingMail: "", phoneFaxMail: "", tvApplication: "", terrestrialTvEnvironment: "", quotedPrice: "", existingContractInfo: "", existingContractContinuation: "", existingLineType: "",
     applicantBirthday: "", thirdPartyLastNameKana: "", thirdPartyFirstNameKana: "", thirdPartyLastName: "", thirdPartyFirstName: "", thirdPartyBirthday: "", thirdPartyAge: "",
-    thirdPartyGender: "", thirdPartyRelationship: "", thirdPartyTalkedAt: "", transferApprovalNumber: "", providerChangeApprovalNumber: "", cafNumber: "", installationPostalCode: "", installationPrefecture: "", installationCity: "", installationTown: "", installationCityKana: "", installationTownKana: "", shippingPostalCode: "", shippingPrefecture: "", shippingCity: "", shippingTown: "", shippingCityKana: "", shippingTownKana: "",
+    thirdPartyGender: "", thirdPartyRelationship: "", thirdPartyTalkedAt: "", transferApprovalNumber: "", providerChangeApprovalNumber: "", cafNumber: "", installationPostalCode: "", installationPrefecture: "", installationCity: "", installationTown: "", installationCityKana: "", installationTownKana: "", shippingPostalCode: "", shippingPrefecture: "", shippingCity: "", shippingTown: "", shippingCityKana: "", shippingTownKana: "", orderDate: "", performanceDate: "", createdAt: "", phoneNumber: "", teamName: "", applicantLastName: "", applicantFirstName: "", applicantLastNameKana: "", applicantFirstNameKana: "", installationStreet: "", installationBuilding: "", installationRoom: "", shippingBuilding: "", shippingRoom: "",
   }).map((key) => [key, "入力済み"])) as SalesMasterRecord;
   return { ...base, salesId: "L26000001", flag: "獲得", mobileNumber: null, productCategory1: "回線以外", productCategory2: "その他", constructionType: "新規", applicantBirthday: "1990-01-01", installationPostalCode: "100-0001", installationPrefecture: "東京都", installationCity: "千代田区", installationTown: "千代田", installationCityKana: "チヨダク", installationTownKana: "チヨダ", ...overrides };
 }

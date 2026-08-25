@@ -13,6 +13,8 @@
 7. 管理者権限で `Register-ZenkakuAgentTask.ps1` を実行します。タスクはSYSTEM・起動時・無期限・多重起動なしで登録されます。
 8. タスクを開始し、`C:\ProgramData\Garden\ZenkakuAgent\logs` のJSONLで依頼ID、営業ID、状態、所要時間だけが出ることを確認します。
 
+前確依頼のKintone投入にはVercel側へ `KINTONE_SUBDOMAIN`、`KINTONE_ZENKEN_APP_ID`（既定233）、`KINTONE_ZENKEN_TOKEN`、`KINTONE_TORITSUGI_APP_ID`（既定234）、`KINTONE_TORITSUGI_TOKEN`、既存の `KINTONE_DIVISION_ROSTER_APP_ID` / `KINTONE_DIVISION_ROSTER_TOKEN` を設定します。2つの投入用トークンは同一Kintoneドメインで利用できるものを指定してください。
+
 ## 実物を見て確定する項目
 
 - `fmDatabase`: 営業マスタを持つFileMakerデータベース名

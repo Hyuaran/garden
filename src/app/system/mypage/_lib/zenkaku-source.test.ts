@@ -8,7 +8,7 @@ const response = (body: unknown, status=200) => new Response(JSON.stringify(body
 describe("runZenkakuCheck", () => {
   it("creates a request and polls until done", async () => {
     const fetchImpl = vi.fn().mockResolvedValueOnce(response({ id:"00000000-0000-0000-0000-000000000001" },201)).mockResolvedValueOnce(response({status:"pending"})).mockResolvedValueOnce(response({status:"done",result}));
-    await expect(runZenkakuCheck("L1", { fetchImpl, sleep:async()=>{}, maxAttempts:3 })).resolves.toEqual(result);
+    await expect(runZenkakuCheck("L1", { fetchImpl, sleep:async()=>{}, maxAttempts:3 })).resolves.toEqual({...result,requestId:"00000000-0000-0000-0000-000000000001",duplicateCount:0});
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
   it("maps not-found and the 30-attempt timeout to safe errors", async () => {
