@@ -24,8 +24,8 @@ function Invoke-ZenkakuApi([string]$method,[string]$path,[AllowNull()][object]$p
   Invoke-RestMethod @args
 }
 function Get-FmSource([string]$salesId) {
-  $map=$config.fieldMap.psobject.Properties
-  $duplicateMap=$config.duplicateFieldMap.psobject.Properties
+  $map=@($config.fieldMap.psobject.Properties)
+  $duplicateMap=@($config.duplicateFieldMap.psobject.Properties)
   $columns=@($map|ForEach-Object{'"'+([string]$_.Value).Replace('"','""')+'"'})+@($duplicateMap|ForEach-Object{'"'+([string]$_.Value).Replace('"','""')+'"'})
   $connectionString="Driver={FileMaker ODBC};Server=$($config.fmServer);Port=$($config.fmPort);Database=$($config.fmDatabase);UID=$($config.fmUser);PWD=$env:FM_ZENKAKU_PASSWORD"
   $connection=New-Object System.Data.Odbc.OdbcConnection $connectionString; $connection.Open()
