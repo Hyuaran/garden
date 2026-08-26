@@ -278,6 +278,7 @@ export interface MasterMenu {
 }
 
 export const MASTER_MENUS: MasterMenu[] = [
+  { slug: "inbox",           title: "届出受信箱",     description: "従業員から届いた申請の確認・対応",          icon: "📥" },
   { slug: "companies",       title: "法人マスタ",     description: "6法人の基本情報、デフォルト振込銀行",   icon: "🏢" },
   { slug: "bank-accounts",   title: "銀行口座マスタ", description: "法人ごとの振込元口座",                    icon: "🏦" },
   { slug: "vendors",         title: "取引先マスタ",   description: "振込先（外注先・仕入先）の口座情報",      icon: "🤝" },
