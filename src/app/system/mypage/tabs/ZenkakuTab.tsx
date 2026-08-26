@@ -12,6 +12,12 @@ function IssueList({ issues }: { issues: GardenCheckIssue[] }) {
   </li>)}</ul>;
 }
 
+function WarningList({ issues }: { issues: GardenCheckIssue[] }) {
+  const duplicates=issues.filter(issue=>issue.ruleId==="R10"&&issue.duplicate);
+  const others=issues.filter(issue=>issue.ruleId!=="R10"||!issue.duplicate);
+  return <>{duplicates.length===1?<IssueList issues={duplicates}/>:duplicates.length>1?<div className={styles.duplicateSummary}><p>この営業IDは既に{duplicates.length}件登録されています。別商材の追加契約であれば、そのまま進めてください。</p><ul>{duplicates.map(({duplicate},index)=><li key={`${duplicate!.caseId}-${index}`}>{duplicate!.caseId} ／ {duplicate!.productName} ／ {duplicate!.registeredDate}</li>)}</ul></div>:null}{others.length?<IssueList issues={others}/>:null}</>;
+}
+
 const SIMPLE_REQUIRED_RULES = new Set(["R6", "R7", "R8", "R9"]);
 type PartnerCandidate = { code:string; label:string };
 
@@ -52,7 +58,7 @@ export default function ZenkakuTab({ runCheck = runZenkakuCheck, postalDataStatu
     {result?.blocking.length ? <section className={`${styles.card} ${styles.blockingResult}`} aria-labelledby="blocking-title"><h2 id="blocking-title">修正が必要です</h2><p className={styles.error}>次の項目を確認してください。修正するまで前確依頼へ進めません。</p><IssueList issues={explainedBlocking}/>
       {simpleRequired.length ? <div className={styles.groupedRequired}><p>次の項目を入力してください。</p><ul>{simpleRequired.map((field) => <li key={field}>{field}</li>)}</ul></div> : null}</section> : null}
     {result?.notices.length ? <section className={`${styles.card} ${styles.noticeResult}`} aria-labelledby="notice-title"><h2 id="notice-title">ご確認ください</h2><IssueList issues={result.notices}/></section> : null}
-    {result?.warnings.length ? <section className={styles.confirmationBanner} aria-labelledby="warning-title"><div><h2 id="warning-title">警告</h2><IssueList issues={result.warnings}/></div></section> : null}
+    {result?.warnings.length ? <section className={styles.confirmationBanner} aria-labelledby="warning-title"><div><h2 id="warning-title">警告</h2><WarningList issues={result.warnings}/></div></section> : null}
     {canProceed ? <section className={`${styles.card} ${styles.successResult}`} aria-labelledby="success-title"><h2 id="success-title">確認できました</h2><p>前確依頼に必要な項目が入力されています。</p>{partnerChoice?<div className={styles.partnerChoice}><fieldset><legend>どちらのチームか選んでください</legend>{partnerChoice.candidates.map(candidate=><label key={candidate.code}><input type="radio" name="zenkaku-partner" value={candidate.code} checked={partnerChoice.selectedCode===candidate.code} onChange={()=>setPartnerChoice({...partnerChoice,selectedCode:candidate.code})}/><span>{candidate.label}<small>コード {candidate.code}</small></span></label>)}</fieldset><div className={styles.partnerChoiceActions}><button type="button" onClick={()=>void continueWithPartner()} disabled={!partnerChoice.selectedCode||submitting}>このチームで出す</button><button type="button" className={styles.secondaryButton} onClick={()=>{setPartnerChoice(null);setSubmitMessage("前確依頼を取りやめました。");}}>取りやめる</button></div></div>:<button type="button" onClick={()=>void submit()} disabled={submitting}>{submitting?"前確依頼を送信中…":"前確依頼を出す"}</button>}{submitMessage?<p role="status">{submitMessage}</p>:null}</section> : null}
   </section>;
 }

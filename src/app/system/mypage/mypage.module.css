@@ -13,6 +13,8 @@
 .header h1 { margin:.25rem 0; font-size:clamp(1.7rem,3vw,2.5rem); }
 .eyebrow { margin:0; color:var(--sub); font-size:.8rem; font-weight:800; letter-spacing:.12em; }
 .logout { padding:9px 16px; border:1px solid var(--teal-d); border-radius:10px; background:var(--card); color:var(--teal-d); font-weight:700; }
+.headerActions { display:flex; align-items:center; gap:10px; }
+.themeToggle { padding:9px 16px; border:1px solid var(--teal-d); border-radius:10px; background:var(--card); color:var(--teal-d); font-weight:700; }
 .tabs { display:flex; gap:8px; margin-top:24px; border-bottom:1px solid var(--line); overflow-x:auto; }
 .tabs button { flex:0 0 auto; padding:11px 20px; border:0; border-radius:10px 10px 0 0; background:#e9f7f6; color:var(--teal-d); font-weight:700; }
 .tabs button[aria-selected="true"] { background:var(--teal); color:#fff; }
@@ -63,6 +65,8 @@
 .issueList > li + li { margin-top:12px; }
 .issueList p { margin:0 0 5px; }
 .issueList ul { margin:0; padding-left:1.4rem; }
+.duplicateSummary > p { margin:0 0 8px; color:var(--ink); font-weight:700; }
+.duplicateSummary ul { margin:0; padding-left:1.4rem; color:var(--ink); }
 .groupedRequired { margin-top:12px; color:var(--ink); }
 .groupedRequired p { margin:0 0 5px; }
 .groupedRequired ul { margin:0; padding-left:2.8rem; }
@@ -86,6 +90,7 @@
 :global(.dark) .confirmationBanner, :global([data-theme="dark"]) .confirmationBanner { background:#302918; }
 :global(.dark) .unlockedNotice, :global([data-theme="dark"]) .unlockedNotice { background:#183b48; color:#9ce5e1; }
 :global(.dark) .logout, :global([data-theme="dark"]) .logout,
+:global(.dark) .themeToggle, :global([data-theme="dark"]) .themeToggle,
 :global(.dark) .settings button, :global([data-theme="dark"]) .settings button { color:#9ce5e1; border-color:#55bdb7; }
 :global(.dark) .confirmationActions .secondaryButton, :global([data-theme="dark"]) .confirmationActions .secondaryButton { color:#f6c96b; border-color:#d9a83e; }
 :global(.dark) .partnerChoice label:has(input:checked), :global([data-theme="dark"]) .partnerChoice label:has(input:checked) { background:#183b48; }
@@ -93,7 +98,7 @@
 :global(.dark) .zenkakuContent > .card > .error, :global([data-theme="dark"]) .zenkakuContent > .card > .error { color:#ffabb0 !important; }
 
 @media (max-width:720px) {
-  .main { padding:18px; } .infoGrid { grid-template-columns:1fr; } .actionGrid { grid-template-columns:1fr; }
+  .main { padding:18px; } .header { align-items:flex-start; } .headerActions { align-items:stretch; flex-direction:column; } .infoGrid { grid-template-columns:1fr; } .actionGrid { grid-template-columns:1fr; }
   .confirmationBanner { align-items:flex-start; flex-direction:column; } .confirmationActions { width:100%; flex-wrap:wrap; }
   .checkForm { grid-template-columns:1fr; } .checkForm label { grid-column:auto; }
 }

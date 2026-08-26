@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { useTheme } from "@/app/_lib/theme/ThemeProvider";
 import AttendanceTab from "./tabs/AttendanceTab";
 import ProfileTab from "./tabs/ProfileTab";
 import ShiftTab from "./tabs/ShiftTab";
@@ -26,6 +27,7 @@ export default function MyPageClient({ initialTab, registered, employeeName, can
   postalDataStatus?: PostalDatasetStatus | null;
 }) {
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<MyPageTab>(initialTab);
   const [profile, setProfile] = useState<MyPageProfile | null>(initialProfile);
   function selectTab(tab: MyPageTab) {
@@ -39,7 +41,8 @@ export default function MyPageClient({ initialTab, registered, employeeName, can
   }
   return <div className={styles.pageShell}><main className={styles.main}>
     <header className={styles.header}><div><p className={styles.eyebrow}>Garden employee portal</p><h1>マイページ</h1></div>
-      <button type="button" className={styles.logout} onClick={() => void logout()}>ログアウト</button></header>
+      <div className={styles.headerActions}><button type="button" className={styles.themeToggle} onClick={toggleTheme}>{theme === "light" ? "🌙 ダークにする" : "☀️ ライトにする"}</button>
+      <button type="button" className={styles.logout} onClick={() => void logout()}>ログアウト</button></div></header>
     <div className={styles.tabs} role="tablist" aria-label="マイページメニュー">
       {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id}
         onClick={() => selectTab(tab.id)}>{tab.label}</button>)}
