@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createValidSalesMasterRecord, evaluateGardenCheck } from "../_lib/zenkaku-check";
 import { ZenkakuCheckError } from "../_lib/zenkaku-source";
@@ -56,4 +56,10 @@ describe("ZenkakuTab", () => {
     render(<ZenkakuTab runCheck={async () => result}/>); fireEvent.change(screen.getByLabelText("営業ID"), { target: { value: "L1" } }); fireEvent.click(screen.getByRole("button", { name: "連携チェック" }));
     await screen.findByText("転用承諾番号"); expect(screen.getAllByText("次の項目を入力してください。")).toHaveLength(1); expect(screen.getByText("郵便番号")).toBeInTheDocument();
   });
+  it("shows multiple team candidates in the page and continues with the selected team", async () => {
+    const result={...evaluateGardenCheck(createValidSalesMasterRecord()),requestId:"check-1"};
+    const fetchMock=vi.spyOn(globalThis,"fetch").mockResolvedValueOnce(new Response(JSON.stringify({id:"submit-1"}),{status:201})).mockResolvedValueOnce(new Response(JSON.stringify({status:"needs_partner",candidates:[{code:"101",label:"訪問A"},{code:"202",label:"訪問B"}]}))).mockResolvedValueOnce(new Response(JSON.stringify({ok:true}))).mockResolvedValueOnce(new Response(JSON.stringify({status:"done",case_id:"L26000001"})));
+    render(<ZenkakuTab runCheck={async()=>result}/>);fireEvent.change(screen.getByLabelText("営業ID"),{target:{value:"L1"}});fireEvent.click(screen.getByRole("button",{name:"連携チェック"}));await screen.findByRole("button",{name:"前確依頼を出す"});fireEvent.click(screen.getByRole("button",{name:"前確依頼を出す"}));await act(async()=>{await new Promise(resolve=>setTimeout(resolve,1100))});expect(screen.getByText("どちらのチームか選んでください")).toBeInTheDocument();fireEvent.click(screen.getByLabelText(/訪問B/));fireEvent.click(screen.getByRole("button",{name:"このチームで出す"}));await act(async()=>{await new Promise(resolve=>setTimeout(resolve,1100))});expect(await screen.findByText(/前確依頼を出しました/)).toBeInTheDocument();expect(String(fetchMock.mock.calls[2][1]?.body)).toContain('"partnerCode":"202"');fetchMock.mockRestore();
+  });
+  it("can cancel the team selection",async()=>{const fetchMock=vi.spyOn(globalThis,"fetch").mockResolvedValueOnce(new Response(JSON.stringify({id:"submit-1"}),{status:201})).mockResolvedValueOnce(new Response(JSON.stringify({status:"needs_partner",candidates:[{code:"101",label:"訪問A"},{code:"202",label:"訪問B"}]})));render(<ZenkakuTab runCheck={async()=>({...evaluateGardenCheck(createValidSalesMasterRecord()),requestId:"check-1"})}/>);fireEvent.change(screen.getByLabelText("営業ID"),{target:{value:"L1"}});fireEvent.click(screen.getByRole("button",{name:"連携チェック"}));await screen.findByRole("button",{name:"前確依頼を出す"});fireEvent.click(screen.getByRole("button",{name:"前確依頼を出す"}));await act(async()=>{await new Promise(resolve=>setTimeout(resolve,1100))});fireEvent.click(screen.getByRole("button",{name:"取りやめる"}));expect(screen.getByRole("status")).toHaveTextContent("前確依頼を取りやめました。");fetchMock.mockRestore();});
 });
