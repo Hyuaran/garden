@@ -73,7 +73,7 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   </section>;
 
   const roleLabel = GARDEN_ROLE_LABELS[profile.gardenRole as GardenRole] ?? profile.gardenRole;
-  const commute=profile.commuteDailyAllowance===null?"未登録":`日額 ${profile.commuteDailyAllowance.toLocaleString("ja-JP")}円（月の上限 ${profile.commuteMonthlyCap===null?"未登録":`${profile.commuteMonthlyCap.toLocaleString("ja-JP")}円`}）`;
+  const commute=profile.commuteDailyAllowance===null?"未登録":`日額 ${profile.commuteDailyAllowance.toLocaleString("ja-JP")}円（${profile.commuteMonthlyCap===null?"上限なし":`月の上限 ${profile.commuteMonthlyCap.toLocaleString("ja-JP")}円`}）`;
   const bank=profile.bankName&&profile.branchName?`${profile.bankName} ${profile.branchName}`:"未登録";
   return <div className={styles.profileContent}>
     {!birthdayRegistered && <p className={styles.unlockedNotice}>生年月日が未登録のため本人確認を省略しています。</p>}
