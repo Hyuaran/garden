@@ -1,17 +1,7 @@
 import { createServerClient } from "@/app/_lib/supabase/server";
-import type { MyPageProfile } from "@/app/system/mypage/types";
+import { buildMyPageProfile } from "@/app/system/mypage/_lib/mypage-profile.server";
 
 type Body = { code?: unknown };
-
-const profileFromRow = (row: Record<string, unknown>): MyPageProfile => ({
-  name: String(row.name ?? "-"),
-  nameKana: String(row.name_kana ?? "-"),
-  employeeNumber: String(row.employee_number ?? "-"),
-  employmentType: String(row.employment_type ?? "-"),
-  birthday: typeof row.birthday === "string" ? row.birthday : null,
-  email: String(row.email ?? "-"),
-  gardenRole: String(row.garden_role ?? "-"),
-});
 
 export async function POST(request: Request) {
   let body: Body;
@@ -26,14 +16,14 @@ export async function POST(request: Request) {
   if (!auth.user) return Response.json({ ok: false }, { status: 401 });
 
   const { data: employee, error } = await supabase.from("root_employees")
-    .select("name,name_kana,employee_number,employment_type,birthday,email,garden_role")
+    .select("id,name,name_kana,employee_number,employment_type,birthday,email,garden_role,commute_daily_allowance,commute_monthly_cap")
     .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
   if (error) return Response.json({ ok: false }, { status: 500 });
   if (!employee) return Response.json({ ok: false }, { status: 409 });
 
   const birthday = typeof employee.birthday === "string" ? employee.birthday : null;
-  if (!birthday) return Response.json({ ok: true, profile: profileFromRow(employee) });
+  if (!birthday) return Response.json({ ok: true, profile: await buildMyPageProfile(employee) });
   const match = /^(?:\d{4})-(\d{2})-(\d{2})$/.exec(birthday);
   if (!match || body.code !== `${match[1]}${match[2]}`) return Response.json({ ok: false });
-  return Response.json({ ok: true, profile: profileFromRow(employee) });
+  return Response.json({ ok: true, profile: await buildMyPageProfile(employee) });
 }
