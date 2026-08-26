@@ -2,7 +2,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { MyPageProfile } from "../types";
 
 export async function buildMyPageProfile(row:Record<string,unknown>):Promise<MyPageProfile>{
-  const employeeId=String(row.id??"");
+  const employeeId=String(row.employee_id??"");
   const admin=getSupabaseAdmin();
   const [bankResult,mynaResult]=employeeId?await Promise.all([
     admin.from("bud_employee_bank_accounts").select("bank_name,branch_name").eq("employee_id",employeeId).eq("is_active",true).order("effective_from",{ascending:false}).limit(1).maybeSingle(),

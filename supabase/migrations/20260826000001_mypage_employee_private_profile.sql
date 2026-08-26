@@ -13,7 +13,7 @@ comment on column public.root_employees.commute_daily_allowance is '申告され
 comment on column public.root_employees.commute_monthly_cap is '従業員ごとの通勤交通費月額上限（円）';
 
 create table if not exists public.root_employee_my_numbers (
-  employee_id uuid primary key references public.root_employees(id) on delete cascade,
+  employee_id text primary key references public.root_employees(employee_id) on delete cascade,
   my_number text not null,
   submitted_at timestamptz not null default now(),
   created_at timestamptz not null default now(),

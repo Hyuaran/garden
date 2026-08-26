@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (!auth.user) return Response.json({ ok: false }, { status: 401 });
 
   const { data: employee, error } = await supabase.from("root_employees")
-    .select("id,name,name_kana,employee_number,employment_type,birthday,email,garden_role,commute_daily_allowance,commute_monthly_cap")
+    .select("employee_id,name,name_kana,employee_number,employment_type,birthday,email,garden_role,commute_daily_allowance,commute_monthly_cap")
     .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
   if (error) return Response.json({ ok: false }, { status: 500 });
   if (!employee) return Response.json({ ok: false }, { status: 409 });

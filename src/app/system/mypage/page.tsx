@@ -13,7 +13,7 @@ export default async function MyPagePage({ searchParams }: { searchParams: Promi
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Fmypage");
   const { data: employee } = await supabase.from("root_employees")
-    .select("id,name,name_kana,employee_number,employment_type,birthday,email,garden_role,commute_daily_allowance,commute_monthly_cap")
+    .select("employee_id,name,name_kana,employee_number,employment_type,birthday,email,garden_role,commute_daily_allowance,commute_monthly_cap")
     .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
   const rawTab = (await searchParams).tab;
   const requestedTab = typeof rawTab === "string" && TABS.has(rawTab as MyPageTab) ? rawTab as MyPageTab : "profile";
