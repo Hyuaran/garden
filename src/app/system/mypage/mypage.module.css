@@ -83,6 +83,9 @@
 .partnerChoice small { display:block; margin-top:2px; color:var(--sub); }
 .partnerChoiceActions { display:flex; gap:10px; flex-wrap:wrap; }
 .successResult .secondaryButton { border:1px solid var(--teal-d); background:transparent; color:var(--teal-d); }
+.modalBackdrop { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:20px; background:rgba(8,20,35,.62); }
+.submissionModal { width:min(620px,100%); max-height:90vh; overflow:auto; box-sizing:border-box; padding:24px; border-radius:18px; background:var(--card); box-shadow:var(--shadow); }
+.submissionModal form,.submissionModal label { display:grid; gap:7px; }.submissionModal form { gap:14px; }.submissionModal input,.submissionModal textarea { box-sizing:border-box; width:100%; padding:11px; border:1px solid var(--line); border-radius:9px; background:var(--card); color:var(--ink); }.submissionModal textarea{min-height:90px}.pledge{margin-bottom:16px;padding:14px;border-radius:10px;background:var(--bg);line-height:1.7}.submissionModal .agree{display:flex;grid-template-columns:auto 1fr;align-items:center}.submissionModal .agree input{width:auto}.modalActions{display:flex;gap:10px;flex-wrap:wrap}.modalActions button,.proposalCard button{padding:10px 16px;border:0;border-radius:9px;background:var(--teal-d);color:#fff;font-weight:700}.modalActions .secondaryButton,.proposalCard .secondaryButton{border:1px solid var(--teal-d);background:transparent;color:var(--teal-d)}.receivedMessage{color:var(--teal-d);font-weight:700}.proposalCard{border-left:4px solid #f59e0b}
 
 :global(.dark) .pageShell, :global([data-theme="dark"]) .pageShell {
   --navy:#193b62; --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4;

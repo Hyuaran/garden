@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { GARDEN_ROLE_LABELS, type GardenRole } from "@/app/root/_constants/types";
 import type { MyPageProfile } from "../types";
 import styles from "../mypage.module.css";
+import SubmissionModal from "../_components/SubmissionModal";
+import type {SubmissionRow,SubmissionType} from "../_lib/submission-types";
 
 const LS_MYPAGE_LAST_CONFIRM = "gardenTree_mypageLastConfirm";
 const MYPAGE_CONFIRM_INTERVAL_DAYS = 90;
@@ -23,6 +25,8 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   const [unlockError, setUnlockError] = useState(false);
   const [mypageLocked, setMypageLocked] = useState(false);
   const submissionsRef = useRef<HTMLElement>(null);
+  const [submissionType,setSubmissionType]=useState<SubmissionType|null>(null);const [submissionMessage,setSubmissionMessage]=useState("");const [submissions,setSubmissions]=useState<SubmissionRow[]>([]);
+  async function loadSubmissions(){try{const response=await fetch("/api/system/mypage/submissions",{cache:"no-store"});if(response.ok)setSubmissions((await response.json()).rows??[])}catch{/* 届出一覧が取得できなくてもプロフィール表示は継続 */}}
 
   useEffect(() => {
     try {
@@ -33,6 +37,7 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
       setMypageLocked(!Number.isFinite(days) || days >= MYPAGE_CONFIRM_INTERVAL_DAYS);
     } catch { setMypageLocked(true); }
   }, []);
+  useEffect(()=>{if(profile)void loadSubmissions()},[profile]);
 
   async function unlock() {
     if (!/^\d{4}$/.test(code)) { setUnlockError(true); return; }
@@ -68,7 +73,7 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   </section>;
 
   const roleLabel = GARDEN_ROLE_LABELS[profile.gardenRole as GardenRole] ?? profile.gardenRole;
-  const commute=profile.commuteDailyAllowance===null?"未登録":`日額 ${profile.commuteDailyAllowance.toLocaleString("ja-JP")}円（月の上限 ${profile.commuteMonthlyCap===null?"未登録":`${profile.commuteMonthlyCap.toLocaleString("ja-JP")}円`}）`;
+  const commute=profile.commuteDailyAllowance===null?"未登録":`日額 ${profile.commuteDailyAllowance.toLocaleString("ja-JP")}円（${profile.commuteMonthlyCap===null?"上限なし":`月の上限 ${profile.commuteMonthlyCap.toLocaleString("ja-JP")}円`}）`;
   const bank=profile.bankName&&profile.branchName?`${profile.bankName} ${profile.branchName}`:"未登録";
   return <div className={styles.profileContent}>
     {!birthdayRegistered && <p className={styles.unlockedNotice}>生年月日が未登録のため本人確認を省略しています。</p>}
@@ -91,9 +96,10 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
     <section className={`${styles.card} ${styles.previewCard}`}><span className={styles.preparingBadge}>準備中</span><h2>パフォーマンス推移</h2><p>架電数・有効率・順位の6ヶ月推移がここで見られるようになります</p></section>
 
     <section className={styles.card} ref={submissionsRef}><h2>提出・登録情報</h2><div className={styles.actionGrid}>
-      {[["📞", "緊急連絡先変更"], ["🚃", "通勤経路変更"], ["📄", "退職届"], ["🔒", "秘密保持誓約書"]].map(([icon, label]) =>
-        <button type="button" key={label}><span aria-hidden="true">{icon}</span>{label}</button>)}
-    </div></section>
+      {[["📞","emergency_contact","緊急連絡先変更"],["🚃","commute_route","通勤経路変更"],["🏦","bank_account","給与受取口座の変更"],["📄","resignation","退職届"],["🔒","nda","秘密保持誓約書"]].map(([icon,type,label])=><button type="button" key={type} onClick={()=>{setSubmissionMessage("");setSubmissionType(type as SubmissionType)}}><span aria-hidden="true">{icon}</span>{label}</button>)}
+    </div>{submissionMessage?<p role="status" className={styles.receivedMessage}>{submissionMessage}</p>:null}</section>
+    {submissions.filter(row=>row.submission_type==="commute_route"&&row.status==="awaiting_employee").map(row=><section className={`${styles.card} ${styles.proposalCard}`} key={row.id}><h2>通勤交通費のご提案</h2><p>日額{((row.proposed_one_way??0)*2).toLocaleString("ja-JP")}円（片道{(row.proposed_one_way??0).toLocaleString("ja-JP")}円）で申請します。よろしいですか？</p><div className={styles.modalActions}><button type="button" onClick={async()=>{await fetch(`/api/system/mypage/submissions/${row.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:"accept"})});await loadSubmissions()}}>この金額でお願いする</button><button type="button" className={styles.secondaryButton} onClick={async()=>{await fetch(`/api/system/mypage/submissions/${row.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:"withdraw"})});await loadSubmissions()}}>取りやめる</button></div></section>)}
+    {submissionType?<SubmissionModal type={submissionType} onClose={()=>setSubmissionType(null)} onSent={()=>{setSubmissionType(null);setSubmissionMessage("受け付けました。事務から連絡します");void loadSubmissions()}}/>:null}
 
   </div>;
 }

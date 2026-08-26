@@ -48,7 +48,7 @@ describe("system mypage", () => {
     fireEvent.click(screen.getByRole("tab",{name:"シフト"}));
     fireEvent.click(screen.getByRole("tab",{name:"マイページ"}));
     expect(screen.getByText("1980-08-13")).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fetch).mock.calls.filter(([url])=>url==="/api/system/mypage/unlock")).toHaveLength(1);
   });
   it("bypasses the gate with an explanation when birthday is missing", () => {
     renderMyPage({...baseProps,birthdayRegistered:false,initialProfile:{...profile,birthday:null}});
