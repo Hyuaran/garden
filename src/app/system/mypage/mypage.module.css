@@ -32,6 +32,10 @@
 .card { padding:24px; background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow-s); }
 .card h2 { margin:0 0 16px; font-size:1.05rem; }
 .pendingNote { color:var(--sub); font-size:.72rem; font-weight:500; }
+.previewCard { position:relative; border-style:dashed; background:color-mix(in srgb,var(--card) 92%,var(--teal) 8%); }
+.previewCard h2 { margin-top:8px; }
+.previewCard p { margin:0; color:var(--sub); }
+.preparingBadge { display:inline-block; padding:4px 9px; border-radius:999px; background:#e9f7f6; color:var(--teal-d); font-size:.75rem; font-weight:800; }
 .infoGrid { display:grid; grid-template-columns:1fr 1fr; gap:0 30px; margin:0; }
 .infoRow { display:grid; grid-template-columns:135px 1fr; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
 .infoRow dt { color:var(--sub); font-size:.8rem; font-weight:700; }
@@ -89,6 +93,7 @@
 :global(.dark) .tabs button[aria-selected="true"], :global([data-theme="dark"]) .tabs button[aria-selected="true"] { background:var(--teal); color:#fff; }
 :global(.dark) .confirmationBanner, :global([data-theme="dark"]) .confirmationBanner { background:#302918; }
 :global(.dark) .unlockedNotice, :global([data-theme="dark"]) .unlockedNotice { background:#183b48; color:#9ce5e1; }
+:global(.dark) .preparingBadge, :global([data-theme="dark"]) .preparingBadge { background:#183b48; color:#9ce5e1; }
 :global(.dark) .logout, :global([data-theme="dark"]) .logout,
 :global(.dark) .themeToggle, :global([data-theme="dark"]) .themeToggle,
 :global(.dark) .settings button, :global([data-theme="dark"]) .settings button { color:#9ce5e1; border-color:#55bdb7; }

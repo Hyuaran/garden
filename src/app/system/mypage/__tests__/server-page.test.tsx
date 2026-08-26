@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(()=>({createServerClient:vi.fn(),redirect:vi.fn()}));
 vi.mock("@/app/_lib/supabase/server",()=>({createServerClient:mocks.createServerClient}));
 vi.mock("next/navigation",()=>({redirect:mocks.redirect}));
+vi.mock("../_lib/mypage-profile.server",()=>({buildMyPageProfile:async(row:Record<string,unknown>)=>({name:row.name,birthday:null,bankName:null,branchName:null,commuteDailyAllowance:null,commuteMonthlyCap:null,mynaSubmitted:false})}));
 import MyPagePage from "../page";
 
-const employee = { name:"社員A",name_kana:"シャインエー",employee_number:"EMP-1",employment_type:"正社員",birthday:"1980-08-13",email:"a@example.com",garden_role:"staff" };
+const employee = { employee_id:"EMP-0009",name:"社員A",name_kana:"シャインエー",employee_number:"EMP-1",employment_type:"正社員",birthday:"1980-08-13",email:"a@example.com",garden_role:"staff" };
 function client(row:typeof employee|null=employee,user:{id:string}|null={id:"user-1"}) {
   const query={select:vi.fn().mockReturnThis(),eq:vi.fn().mockReturnThis(),is:vi.fn().mockReturnThis(),maybeSingle:vi.fn().mockResolvedValue({data:row,error:null})};
   return {query,auth:{getUser:vi.fn().mockResolvedValue({data:{user}})},from:vi.fn(()=>query)};

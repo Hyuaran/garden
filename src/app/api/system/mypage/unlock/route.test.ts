@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn() }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
+vi.mock("@/app/system/mypage/_lib/mypage-profile.server",()=>({buildMyPageProfile:async(row:Record<string,unknown>)=>({name:row.name,nameKana:row.name_kana,employeeNumber:row.employee_number,employmentType:row.employment_type,birthday:row.birthday,email:row.email,gardenRole:row.garden_role,bankName:"みどり銀行",branchName:"庭園支店",commuteDailyAllowance:800,commuteMonthlyCap:20000,mynaSubmitted:true})}));
 import { POST } from "./route";
 
-const employee = { name:"社員A", name_kana:"シャインエー", employee_number:"001", employment_type:"正社員", birthday:"1980-08-13", email:"a@example.com", garden_role:"staff" };
+const employee = { employee_id:"EMP-0009",name:"社員A", name_kana:"シャインエー", employee_number:"001", employment_type:"正社員", birthday:"1980-08-13", email:"a@example.com", garden_role:"staff",commute_daily_allowance:800,commute_monthly_cap:20000 };
 function client(options: { user?: boolean; employee?: typeof employee | null; error?: boolean } = {}) {
   const calls: unknown[][] = [];
-  const query = { select(){return this}, eq(...args:unknown[]){calls.push(args);return this}, is(...args:unknown[]){calls.push(args);return this}, maybeSingle:async()=>({data:options.employee===undefined?employee:options.employee,error:options.error?{message:"private detail"}:null}) };
-  return { calls, auth:{getUser:vi.fn().mockResolvedValue({data:{user:options.user===false?null:{id:"logged-in-user"}}})}, from:vi.fn(()=>query) };
+  const selects:string[]=[];const query = { select(value:string){selects.push(value);return this}, eq(...args:unknown[]){calls.push(args);return this}, is(...args:unknown[]){calls.push(args);return this}, maybeSingle:async()=>({data:options.employee===undefined?employee:options.employee,error:options.error?{message:"private detail"}:null}) };
+  return { calls,selects, auth:{getUser:vi.fn().mockResolvedValue({data:{user:options.user===false?null:{id:"logged-in-user"}}})}, from:vi.fn(()=>query) };
 }
 const request = (body: unknown) => new Request("http://localhost/api/system/mypage/unlock", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body) });
 
@@ -18,8 +19,10 @@ describe("POST /api/system/mypage/unlock", () => {
     const db = client(); mocks.createServerClient.mockResolvedValue(db);
     const response = await POST(request({ code:"0813", employeeId:"OTHER", userId:"OTHER" }));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok:true, profile:{ name:"社員A", nameKana:"シャインエー", employeeNumber:"001", employmentType:"正社員", birthday:"1980-08-13", email:"a@example.com", gardenRole:"staff" } });
+    const payload=await response.json();expect(payload).toEqual({ ok:true, profile:{ name:"社員A", nameKana:"シャインエー", employeeNumber:"001", employmentType:"正社員", birthday:"1980-08-13", email:"a@example.com", gardenRole:"staff",bankName:"みどり銀行",branchName:"庭園支店",commuteDailyAllowance:800,commuteMonthlyCap:20000,mynaSubmitted:true } });
+    expect(JSON.stringify(payload)).not.toMatch(/account_number|account_holder|my_number|123456789012/);
     expect(db.calls).toContainEqual(["user_id", "logged-in-user"]);
+    expect(db.selects[0]).toMatch(/^employee_id,/);expect(db.selects[0]).not.toMatch(/^id,/);
     expect(db.calls).not.toContainEqual(expect.arrayContaining(["OTHER"]));
   });
   it("returns ok false for a wrong MMDD", async () => {

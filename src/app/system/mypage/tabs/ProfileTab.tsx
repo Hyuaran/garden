@@ -12,8 +12,6 @@ function InfoRow({ label, value, pending = false }: { label: string; value: stri
   return <div className={styles.infoRow}><dt>{label}</dt><dd className={pending ? styles.pending : undefined}>{value}</dd></div>;
 }
 
-const PendingLabel = () => <span className={styles.pendingNote}>（準備中：この欄はまだ本物のデータではありません）</span>;
-
 export default function ProfileTab({ birthdayRegistered, profile, registered, onUnlocked }: {
   birthdayRegistered: boolean;
   profile: MyPageProfile | null;
@@ -70,6 +68,8 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   </section>;
 
   const roleLabel = GARDEN_ROLE_LABELS[profile.gardenRole as GardenRole] ?? profile.gardenRole;
+  const commute=profile.commuteDailyAllowance===null?"未登録":`日額 ${profile.commuteDailyAllowance.toLocaleString("ja-JP")}円（月の上限 ${profile.commuteMonthlyCap===null?"未登録":`${profile.commuteMonthlyCap.toLocaleString("ja-JP")}円`}）`;
+  const bank=profile.bankName&&profile.branchName?`${profile.bankName} ${profile.branchName}`:"未登録";
   return <div className={styles.profileContent}>
     {!birthdayRegistered && <p className={styles.unlockedNotice}>生年月日が未登録のため本人確認を省略しています。</p>}
     {mypageLocked && <section className={styles.confirmationBanner} aria-label="個人情報の定期確認">
@@ -81,28 +81,19 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
     <section className={styles.card}><h2>基本情報</h2><dl className={styles.infoGrid}>
       <InfoRow label="氏名" value={profile.name} /><InfoRow label="氏名カナ" value={profile.nameKana} />
       <InfoRow label="社員番号" value={profile.employeeNumber} /><InfoRow label="雇用形態" value={profile.employmentType} />
-      <InfoRow label="生年月日" value={profile.birthday ?? "（未登録）"} /><InfoRow label="Garden権限" value={roleLabel} />
-      <InfoRow label="メール" value={profile.email} /><InfoRow label="マイナンバー" value="準備中" pending />
-      <InfoRow label="交通費" value="準備中" pending /><InfoRow label="給与受取口座" value="準備中" pending />
+      <InfoRow label="生年月日" value={profile.birthday ?? "未登録"} /><InfoRow label="Garden権限" value={roleLabel} />
+      <InfoRow label="メール" value={profile.email||"未登録"} /><InfoRow label="マイナンバー" value={profile.mynaSubmitted?"提出済み":"未提出"} />
+      <InfoRow label="交通費" value={commute} /><InfoRow label="給与受取口座" value={bank} />
     </dl></section>
 
-    <section className={styles.card}><h2>緊急連絡先 <PendingLabel /></h2><dl className={styles.infoGrid}>
-      {["氏名", "続柄", "郵便番号", "住所", "連絡先"].map((label) => <InfoRow key={label} label={label} value="準備中" pending />)}
-    </dl></section>
+    <section className={`${styles.card} ${styles.previewCard}`}><span className={styles.preparingBadge}>準備中</span><h2>緊急連絡先</h2><p>緊急連絡先の登録・確認がマイページでできるようになります</p></section>
 
-    <section className={styles.card}><h2>パフォーマンス推移（6ヶ月） <PendingLabel /></h2>
-      <div className={styles.performancePending}><span>ポイント</span><span>架電数</span><span>有効率</span><span>順位</span></div><p className={styles.pending}>準備中</p>
-    </section>
+    <section className={`${styles.card} ${styles.previewCard}`}><span className={styles.preparingBadge}>準備中</span><h2>パフォーマンス推移</h2><p>架電数・有効率・順位の6ヶ月推移がここで見られるようになります</p></section>
 
     <section className={styles.card} ref={submissionsRef}><h2>提出・登録情報</h2><div className={styles.actionGrid}>
       {[["📞", "緊急連絡先変更"], ["🚃", "通勤経路変更"], ["📄", "退職届"], ["🔒", "秘密保持誓約書"]].map(([icon, label]) =>
         <button type="button" key={label}><span aria-hidden="true">{icon}</span>{label}</button>)}
     </div></section>
 
-    <section className={styles.card}><h2>設定</h2><div className={styles.settings}>
-      <div><strong>パスワード変更</strong><button type="button">変更する</button></div>
-      <div><strong>通知音</strong><span className={styles.pending}>準備中</span></div>
-      <div><strong>音量</strong><span className={styles.pending}>準備中</span></div>
-    </div></section>
   </div>;
 }

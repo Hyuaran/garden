@@ -10,7 +10,7 @@ import MyPageClient from "../MyPageClient";
 import { ThemeProvider } from "@/app/_lib/theme/ThemeProvider";
 import type { MyPageProfile } from "../types";
 
-const profile: MyPageProfile = { name:"社員A", nameKana:"シャインエー", employeeNumber:"001", employmentType:"正社員", birthday:"1980-08-13", email:"a@example.com", gardenRole:"staff" };
+const profile: MyPageProfile = { name:"社員A", nameKana:"シャインエー", employeeNumber:"001", employmentType:"正社員", birthday:"1980-08-13", email:"a@example.com", gardenRole:"staff",bankName:"みどり銀行",branchName:"庭園支店",commuteDailyAllowance:800,commuteMonthlyCap:20000,mynaSubmitted:true };
 const baseProps = { initialTab:"profile" as const, registered:true, employeeName:"社員A", canViewSync:false, birthdayRegistered:true, initialProfile:null };
 const renderMyPage = (props:ComponentProps<typeof MyPageClient>=baseProps) => render(<ThemeProvider><MyPageClient {...props}/></ThemeProvider>);
 
@@ -55,14 +55,17 @@ describe("system mypage", () => {
     expect(screen.queryByLabelText("本人確認")).not.toBeInTheDocument();
     expect(screen.getByText("生年月日が未登録のため本人確認を省略しています。")).toBeInTheDocument();
   });
-  it("marks every dummy area as preparing", () => {
+  it("shows safe profile details and replaces dummy areas with preview cards", () => {
     renderMyPage({...baseProps,birthdayRegistered:false,initialProfile:{...profile,birthday:null}});
-    expect(screen.getByRole("heading",{name:/緊急連絡先/})).toHaveTextContent("準備中");
-    expect(screen.getByRole("heading",{name:/パフォーマンス推移/})).toHaveTextContent("準備中");
+    expect(screen.getByText("緊急連絡先の登録・確認がマイページでできるようになります")).toBeInTheDocument();
+    expect(screen.getByText("架電数・有効率・順位の6ヶ月推移がここで見られるようになります")).toBeInTheDocument();
     const basic = screen.getByRole("heading",{name:"基本情報"}).closest("section")!;
-    expect(within(basic).getByText("交通費").parentElement).toHaveTextContent("準備中");
-    expect(screen.getByText("通知音").parentElement).toHaveTextContent("準備中");
+    expect(within(basic).getByText("交通費").parentElement).toHaveTextContent("日額 800円（月の上限 20,000円）");
+    expect(within(basic).getByText("給与受取口座").parentElement).toHaveTextContent("みどり銀行 庭園支店");
+    expect(within(basic).getByText("マイナンバー").parentElement).toHaveTextContent("提出済み");
+    expect(screen.queryByRole("heading",{name:"設定"})).not.toBeInTheDocument();expect(screen.queryByText("通知音")).not.toBeInTheDocument();expect(screen.queryByText("パスワード変更")).not.toBeInTheDocument();
   });
+  it("uses Japanese fallback labels for unregistered private profile data",()=>{renderMyPage({...baseProps,birthdayRegistered:false,initialProfile:{...profile,birthday:null,bankName:null,branchName:null,commuteDailyAllowance:null,commuteMonthlyCap:null,mynaSubmitted:false}});const basic=screen.getByRole("heading",{name:"基本情報"}).closest("section")!;expect(within(basic).getByText("交通費").parentElement).toHaveTextContent("未登録");expect(within(basic).getByText("給与受取口座").parentElement).toHaveTextContent("未登録");expect(within(basic).getByText("マイナンバー").parentElement).toHaveTextContent("未提出");});
   it("keeps the existing 90-day localStorage confirmation key", async () => {
     renderMyPage({...baseProps,birthdayRegistered:false,initialProfile:{...profile,birthday:null}});
     const button = await screen.findByRole("button",{name:"変更はありません"}); fireEvent.click(button);
