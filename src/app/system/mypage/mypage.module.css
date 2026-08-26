@@ -67,6 +67,14 @@
 .groupedRequired p { margin:0 0 5px; }
 .groupedRequired ul { margin:0; padding-left:2.8rem; }
 .successResult p { color:var(--sub); }
+.partnerChoice { display:grid; gap:16px; }
+.partnerChoice fieldset { display:grid; gap:10px; margin:0; padding:0; border:0; }
+.partnerChoice legend { margin-bottom:10px; color:var(--ink); font-weight:700; }
+.partnerChoice label { display:flex; gap:10px; align-items:center; padding:12px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
+.partnerChoice label:has(input:checked) { border-color:var(--teal); background:#e9f7f6; }
+.partnerChoice small { display:block; margin-top:2px; color:var(--sub); }
+.partnerChoiceActions { display:flex; gap:10px; flex-wrap:wrap; }
+.successResult .secondaryButton { border:1px solid var(--teal-d); background:transparent; color:var(--teal-d); }
 
 :global(.dark) .pageShell, :global([data-theme="dark"]) .pageShell {
   --navy:#193b62; --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4;
@@ -80,6 +88,7 @@
 :global(.dark) .logout, :global([data-theme="dark"]) .logout,
 :global(.dark) .settings button, :global([data-theme="dark"]) .settings button { color:#9ce5e1; border-color:#55bdb7; }
 :global(.dark) .confirmationActions .secondaryButton, :global([data-theme="dark"]) .confirmationActions .secondaryButton { color:#f6c96b; border-color:#d9a83e; }
+:global(.dark) .partnerChoice label:has(input:checked), :global([data-theme="dark"]) .partnerChoice label:has(input:checked) { background:#183b48; }
 :global(.dark) .blockingResult .error, :global([data-theme="dark"]) .blockingResult .error,
 :global(.dark) .zenkakuContent > .card > .error, :global([data-theme="dark"]) .zenkakuContent > .card > .error { color:#ffabb0 !important; }
 
