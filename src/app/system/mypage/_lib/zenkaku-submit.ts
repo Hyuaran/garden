@@ -12,7 +12,7 @@ const DROPDOWN_RECORD_KEYS: Record<string, keyof SalesMasterRecord> = {
 };
 export type DropdownMismatch = { field:string; value:string; message:string };
 export function mappedDropdownValues(record:SalesMasterRecord){return Object.fromEntries(Object.entries(DROPDOWN_RECORD_KEYS).map(([field,key])=>[field,mapZenkakuDropdownValue(field,record[key])])) as Record<string,string>}
-export function validateZenkakuDropdowns(record:SalesMasterRecord):DropdownMismatch[]{const mapped=mappedDropdownValues(record);return Object.entries(mapped).flatMap(([field,current])=>current&&!((ZENKAKU_DROPDOWN_OPTIONS as Record<string,readonly string[]>)[field]??[]).includes(current)?[{field,value:current,message:`${field}『${current}』は取次側の選択肢にありません。管理者へ連絡してください。`}]:[])}
+export function validateZenkakuDropdowns(record:SalesMasterRecord):DropdownMismatch[]{const mapped=mappedDropdownValues(record);const issues=Object.entries(mapped).flatMap(([field,current])=>current&&!((ZENKAKU_DROPDOWN_OPTIONS as Record<string,readonly string[]>)[field]??[]).includes(current)?[{field,value:current,message:`${field}『${current}』は取次側の選択肢にありません。管理者へ連絡してください。`}]:[]);for(const field of ["商材名区分1","商材名区分2"])if(!mapped[field])issues.unshift({field,value:"",message:`${field}が入力されていません。入力してから、もう一度お試しください。`});return issues}
 
 export const halfWidthAddress = (value: string | null | undefined) => (value ?? "").normalize("NFKC").replace(/[‐‑‒–—―−]/g, "-").replace(/(?<=\d)ー(?=\d)/g, "-");
 export function caseYear(record: SalesMasterRecord) { const raw=record.orderDate||record.performanceDate||record.createdAt||""; const match=/^(\d{4})/.exec(raw); return match ? match[1].slice(-2) : "00"; }
