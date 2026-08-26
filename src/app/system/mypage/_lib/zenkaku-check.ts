@@ -26,7 +26,7 @@ export type PostalAddressCandidate = { prefecture: string; city: string; town: s
 export type PostalCheckContext = { byPostalCode: Record<string, PostalAddressCandidate[]>; sourceDate?: string | null; importedAt?: string | null; enabled?: boolean };
 
 export type DuplicateSalesCase = { caseId: string; productName: string; registeredDate: string };
-export type GardenCheckIssue = { ruleId: GardenCheckRuleId; severity: GardenCheckSeverity; message: string; missingFields?: string[] };
+export type GardenCheckIssue = { ruleId: GardenCheckRuleId; severity: GardenCheckSeverity; message: string; missingFields?: string[]; duplicate?: DuplicateSalesCase };
 export type GardenCheckResult = { requestId?: string; duplicateCount?: number; blocking: GardenCheckIssue[]; notices: GardenCheckIssue[]; warnings: GardenCheckIssue[]; deferredRuleIds: GardenCheckRuleId[]; postalData?: { sourceDate: string | null; importedAt: string | null } };
 
 export const DEFERRED_ADDRESS_RULE_IDS: GardenCheckRuleId[] = ["R2-5"];
@@ -123,7 +123,7 @@ export function evaluateGardenCheck(record: SalesMasterRecord, duplicates: Dupli
   if (blank(record.installationPostalCode)) issues.push(blocking("R9", "次の項目を入力してください。", ["郵便番号"]));
   evaluateAddressSide(record, "installation", postalContext, issues);
   evaluateAddressSide(record, "shipping", postalContext, issues);
-  for (const duplicate of duplicates) issues.push({ ruleId: "R10", severity: "warning", message: `この営業IDは既に登録されています（案件ID ${duplicate.caseId} ／ ${duplicate.productName} ／ ${duplicate.registeredDate}）。別商材の追加契約であれば、そのまま進めてください。` });
+  for (const duplicate of duplicates) issues.push({ ruleId: "R10", severity: "warning", message: `この営業IDは既に登録されています（案件ID ${duplicate.caseId} ／ ${duplicate.productName} ／ ${duplicate.registeredDate}）。別商材の追加契約であれば、そのまま進めてください。`, duplicate });
   return {
     blocking: issues.filter((issue) => issue.severity === "blocking"), notices: issues.filter((issue) => issue.severity === "notice"),
     warnings: issues.filter((issue) => issue.severity === "warning"), deferredRuleIds: [...DEFERRED_ADDRESS_RULE_IDS], postalData: { sourceDate: postalContext.sourceDate ?? null, importedAt: postalContext.importedAt ?? null },
