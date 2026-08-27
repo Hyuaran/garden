@@ -12,7 +12,7 @@ import type { DocumentProps } from "@react-pdf/renderer";
 import { NDA_ARTICLES, NDA_CLOSING, NDA_PREAMBLE } from "./nda-content";
 
 let fontsRegistered = false;
-function registerFonts() {
+export function registerFonts() {
   if (fontsRegistered) return;
   const dir = path.join(process.cwd(), "public", "fonts");
   Font.register({
