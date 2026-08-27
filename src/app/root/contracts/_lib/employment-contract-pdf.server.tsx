@@ -25,8 +25,8 @@ export type EmploymentContractPdfData = EmploymentContractPayload & {
 const s = StyleSheet.create({
   page: {
     fontFamily: "NotoSansJP",
-    fontSize: 8.8,
-    lineHeight: 1.5,
+    fontSize: 10.3,
+    lineHeight: 1.7,
     paddingTop: 36,
     paddingHorizontal: 38,
     paddingBottom: 28,
@@ -39,12 +39,12 @@ const s = StyleSheet.create({
     color: "#999",
     fontSize: 7.5,
   },
-  revision: { textAlign: "right", marginBottom: 4 },
+  revision: { textAlign: "right", marginBottom: 8 },
   title: {
     fontSize: 13,
     fontWeight: 700,
     textAlign: "center",
-    marginBottom: 7,
+    marginBottom: 14,
   },
   section: {
     backgroundColor: "#e8e8e8",
@@ -52,12 +52,12 @@ const s = StyleSheet.create({
     borderColor: "#555",
     fontWeight: 700,
     textAlign: "center",
-    padding: 3,
-    marginVertical: 5,
+    padding: 4,
+    marginVertical: 12,
   },
-  para: { marginBottom: 3 },
-  signature: { marginLeft: 230, marginVertical: 5 },
-  sigRow: { flexDirection: "row", marginBottom: 4 },
+  para: { marginBottom: 6.5 },
+  signature: { marginLeft: 230, marginVertical: 16 },
+  sigRow: { flexDirection: "row", marginBottom: 12 },
   sigLabel: { width: 95 },
   sigValue: {
     width: 194,
@@ -66,17 +66,17 @@ const s = StyleSheet.create({
     flexDirection: "row",
   },
   seal: { marginLeft: 10 },
-  company: { marginLeft: 275, marginVertical: 4 },
+  company: { marginLeft: 275, marginVertical: 10 },
   table: { borderTopWidth: 0.6, borderLeftWidth: 0.6, borderColor: "#555" },
   row: { flexDirection: "row", borderBottomWidth: 0.6, borderColor: "#555" },
   label: {
     width: 112,
     borderRightWidth: 0.6,
     borderColor: "#555",
-    padding: 4,
+    padding: 7,
     fontWeight: 700,
   },
-  body: { flex: 1, padding: 4 },
+  body: { flex: 1, padding: 7 },
   shift: {
     marginVertical: 3,
     borderTopWidth: 0.5,
@@ -132,7 +132,7 @@ function Row({
 }) {
   return (
     <View style={s.row} wrap={false}>
-      <Text style={s.label}>{jaWrap(label, 9)}</Text>
+      <Text style={s.label}>{jaWrap(label, 8)}</Text>
       <View style={s.body}>{children}</View>
     </View>
   );
@@ -167,8 +167,8 @@ function Address({ value }: { value: string }) {
   const m = value.trim().match(/^(〒\d{3}-\d{4})\s*(.*)$/);
   return (
     <View style={s.company}>
-      <W>{m?.[1] ?? ""}</W>
-      <W>{m ? m[2] : value}</W>
+      <W units={21}>{m?.[1] ?? ""}</W>
+      <W units={21}>{m ? m[2] : value}</W>
     </View>
   );
 }
@@ -207,18 +207,18 @@ export function EmploymentContractPdfDocument({
         <Text style={s.para}>
           {jaWrap(
             `　${data.companyName}（以下、甲という）と[ ${data.employeeName} ]（以下、乙という）とは、次の通り雇用契約を締結する。`,
-            60,
+            45,
           )}
         </Text>
         {CONTRACT_TEXT.agreement.map((x) => (
           <Text key={x} style={s.para}>
-            {jaWrap(x, 48)}
+            {jaWrap(x, 45)}
           </Text>
         ))}
         <Text style={s.para}>
           {jaWrap(
             "本書に記載の各条項を確認・理解した上で、労働条件を承諾し署名いたします。",
-            48,
+            45,
           )}
         </Text>
         <View style={s.signature}>
@@ -232,7 +232,7 @@ export function EmploymentContractPdfDocument({
             <Text style={s.sigLabel}>{jaWrap("住所：", 20)}</Text>
             <View style={s.sigValue}>
               {data.employeeAddress ? (
-                <W units={28}>{data.employeeAddress}</W>
+                <W units={17}>{data.employeeAddress}</W>
               ) : null}
             </View>
           </View>
@@ -249,7 +249,7 @@ export function EmploymentContractPdfDocument({
         <Text style={s.company}>
           {jaWrap(
             `${data.companyName}　代表取締役　${data.representative}　㊞`,
-            36,
+            21,
           )}
         </Text>
         <Text style={s.para}>
@@ -260,13 +260,13 @@ export function EmploymentContractPdfDocument({
             <W>{`［ ${d(data.contractStart)} ］ ～ ［ ${d(data.contractEnd)} ］`}</W>
           </Row>
           <Row label="契約更新">
-            <W units={37}>{CONTRACT_TEXT.renewal}</W>
+            <W units={34}>{CONTRACT_TEXT.renewal}</W>
           </Row>
           <Row label="契約更新基準">
-            <W units={37}>{CONTRACT_TEXT.renewalCriteria}</W>
+            <W units={34}>{CONTRACT_TEXT.renewalCriteria}</W>
           </Row>
           <Row label="試用期間">
-            <W units={37}>{CONTRACT_TEXT.trial}</W>
+            <W units={34}>{CONTRACT_TEXT.trial}</W>
           </Row>
         </View>
       </Page>
@@ -274,33 +274,33 @@ export function EmploymentContractPdfDocument({
         <Header name={data.companyName} page={2} />
         <View style={s.table}>
           <Row label="就業場所">
-            <W units={37}>{data.workLocation}</W>
+            <W units={34}>{data.workLocation}</W>
           </Row>
           <Row label="従事すべき業務の内容">
-            <W units={37}>{jobLine}</W>
+            <W units={34}>{jobLine}</W>
           </Row>
           <Row label="始業、終業の時刻、休憩時間、休日、所定時間外労働の 有無に関する事項">
             <View>
               {CONTRACT_TEXT.work.slice(0, 1).map((x) => (
-                <W key={x} units={37}>
+                <W key={x} units={34}>
                   {x}
                 </W>
               ))}
               <Shift />
               {CONTRACT_TEXT.work.slice(1).map((x) => (
                 <Text key={x} style={s.para}>
-                  {jaWrap(x, 37)}
+                  {jaWrap(x, 34)}
                 </Text>
               ))}
             </View>
           </Row>
           <Row label="賃金および支払方法">
             <W
-              units={37}
+              units={34}
             >{`1. 基本賃金　時給 ［ ${data.hourlyWage.toLocaleString("ja-JP")} ］ 円（大阪府最低賃金額に準ずる）`}</W>
-            {CONTRACT_TEXT.wage.slice(0, 3).map((x) => (
+            {CONTRACT_TEXT.wage.slice(0, 4).map((x) => (
               <Text key={x} style={s.para}>
-                {jaWrap(x, 37)}
+                {jaWrap(x, 34)}
               </Text>
             ))}
           </Row>
@@ -311,9 +311,9 @@ export function EmploymentContractPdfDocument({
         <View style={s.table}>
           <Row label="">
             <View>
-              {CONTRACT_TEXT.wage.slice(3).map((x) => (
+              {CONTRACT_TEXT.wage.slice(4).map((x) => (
                 <Text key={x} style={s.para}>
-                  {jaWrap(x, 37)}
+                  {jaWrap(x, 34)}
                 </Text>
               ))}
             </View>
@@ -322,7 +322,7 @@ export function EmploymentContractPdfDocument({
             <View>
               {CONTRACT_TEXT.other.map((x) => (
                 <Text key={x} style={s.para}>
-                  {jaWrap(x, 37)}
+                  {jaWrap(x, 34)}
                 </Text>
               ))}
             </View>
