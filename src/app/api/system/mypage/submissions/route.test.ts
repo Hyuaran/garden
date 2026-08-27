@@ -9,7 +9,7 @@ vi.mock("@/app/system/mypage/_lib/submission-server", () => ({
 }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: mocks.admin }));
 vi.mock("@/app/system/mypage/_lib/todoke-generation.server", () => ({
-  generateEmergencyContactPdf: mocks.generate,
+  generateSubmissionPdf: mocks.generate,
 }));
 import { POST } from "./route";
 
@@ -89,4 +89,57 @@ describe("mypage submission PDF flow", () => {
     expect(response.status).toBe(400);
     expect(mocks.admin).not.toHaveBeenCalled();
   });
+  it.each(["generated", "skipped", "failed"] as const)(
+    "stores the NDA PDF result: %s",
+    async (pdfStatus) => {
+      mocks.generate.mockResolvedValueOnce({
+        status: pdfStatus,
+        fileId: pdfStatus === "generated" ? "nda-file" : null,
+        url: pdfStatus === "generated" ? "https://drive/nda" : null,
+        note: pdfStatus === "failed" ? "generation failed" : null,
+      });
+      const ndaPayload = {
+        kind: "new",
+        pledgeDate: "2026-08-27",
+        address: "東京都",
+        signature: "社員A",
+        agreed: true,
+      };
+      const inserted = {
+        id: "nda-1",
+        employee_id: "E1",
+        submission_type: "nda",
+        payload: ndaPayload,
+        status: "received",
+        created_at: "2026-08-27T00:00:00Z",
+      };
+      const query = {
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: inserted, error: null }),
+        update: vi
+          .fn()
+          .mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+      };
+      mocks.admin.mockReturnValue({ from: vi.fn(() => query) });
+      const response = await POST(
+        new Request("http://localhost/api/system/mypage/submissions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ type: "nda", payload: ndaPayload }),
+        }),
+      );
+      expect(response.status).toBe(201);
+      expect(query.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          submission_type: "nda",
+          pdf_status: "skipped",
+          payload: expect.objectContaining({ signedAt: expect.any(String) }),
+        }),
+      );
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({ pdf_status: pdfStatus }),
+      );
+    },
+  );
 });

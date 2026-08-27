@@ -28,19 +28,24 @@ const jstParts = (date: Date) => {
   };
 };
 export function todokeFilename(
+  documentName: "緊急連絡先届" | "秘密保持誓約書",
   now = new Date(),
   withSeconds = false,
 ) {
   const p = jstParts(now);
-  return `緊急連絡先届_${p.date}${withSeconds ? `_${p.time}` : ""}.pdf`;
+  return `${documentName}_${p.date}${withSeconds ? `_${p.time}` : ""}.pdf`;
 }
-export function employeeTodokeFolderName(employeeNumber: string, employeeName: string) {
+export function employeeTodokeFolderName(
+  employeeNumber: string,
+  employeeName: string,
+) {
   return `${employeeNumber}_${employeeName.replace(/[\s　]+/g, "")}`;
 }
 export async function saveTodokePdf(
   buffer: Buffer,
   employeeNumber: string,
   employeeName: string,
+  documentName: "緊急連絡先届" | "秘密保持誓約書",
   now = new Date(),
 ): Promise<DriveResult> {
   const root = process.env.GARDEN_TODOKE_DRIVE_ROOT_FOLDER_ID;
@@ -56,9 +61,9 @@ export async function saveTodokePdf(
       root,
       employeeTodokeFolderName(employeeNumber, employeeName),
     );
-    let filename = todokeFilename(now);
+    let filename = todokeFilename(documentName, now);
     if (await folderHasFile(folder, filename))
-      filename = todokeFilename(now, true);
+      filename = todokeFilename(documentName, now, true);
     const result = await uploadToFolder(
       folder,
       filename,

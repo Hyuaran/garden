@@ -9,6 +9,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import type { DocumentProps } from "@react-pdf/renderer";
+import { NDA_ARTICLES, NDA_CLOSING, NDA_PREAMBLE } from "./nda-content";
 
 let fontsRegistered = false;
 function registerFonts() {
@@ -27,7 +28,8 @@ function registerFonts() {
 
 export const EMERGENCY_CONTACT_CONSENT =
   "私は、入社にあたり、業務時間中の事故・災害、急病その他の緊急事態が発生した際の連絡先として、以下の通り届け出いたします。なお、本届出書に記載した個人情報が、上記の緊急連絡の目的に限り使用されることに同意いたします。また、緊急連絡先として指定した本人に対しても、貴社に連絡先を提出する旨の了解を得ております。";
-const JAPANESE_CHARACTER = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶ]/u;
+const JAPANESE_CHARACTER =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶ]/u;
 const LATIN_OR_NUMBER_RUN = /[\x00-\x7F０-９]+|./gu;
 export function jaWrap(text: string, maxUnits = 40) {
   if (!JAPANESE_CHARACTER.test(text)) return text;
@@ -63,6 +65,14 @@ export type EmergencyContactPdfData = {
   ecAddress: string;
   ecPhone: string;
   submittedAt: Date;
+};
+export type NdaPdfData = {
+  companyName: string;
+  representative: string;
+  kind: "new" | "resubmit";
+  employeeName: string;
+  pledgeDate: string;
+  address: string;
 };
 
 const styles = StyleSheet.create({
@@ -114,6 +124,44 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 9,
   },
+  ndaPage: {
+    fontFamily: "NotoSansJP",
+    fontSize: 8.3,
+    paddingTop: 36,
+    paddingHorizontal: 42,
+    paddingBottom: 30,
+    lineHeight: 1.5,
+    color: "#111",
+  },
+  ndaRevision: { textAlign: "right", fontSize: 8, minHeight: 15 },
+  ndaAddress: { marginBottom: 12 },
+  ndaTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    textAlign: "center",
+    marginBottom: 14,
+  },
+  ndaPreamble: { marginBottom: 10 },
+  ndaCenter: { textAlign: "center", marginBottom: 10 },
+  ndaArticle: { marginBottom: 8 },
+  ndaArticleTitle: { fontSize: 9, fontWeight: 700, marginBottom: 2 },
+  ndaParagraph: { marginBottom: 3 },
+  ndaItem: { flexDirection: "row", paddingLeft: 14, marginBottom: 2 },
+  ndaItemNo: { width: 18 },
+  ndaItemText: { flexGrow: 1 },
+  ndaNote: { paddingLeft: 14, marginTop: 1 },
+  ndaClosing: { textAlign: "center", marginTop: 24, marginBottom: 12 },
+  ndaFooter: { marginLeft: 290 },
+  ndaFooterRow: { flexDirection: "row", marginBottom: 10 },
+  ndaFooterLabel: { width: 48 },
+  ndaFooterValue: {
+    width: 215,
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 0.7,
+    borderBottomColor: "#222",
+    paddingLeft: 5,
+  },
 });
 const jstDate = (date: Date) =>
   new Intl.DateTimeFormat("ja-JP", {
@@ -140,15 +188,21 @@ export function EmergencyContactPdfDocument({
   return (
     <Document title="緊急連絡先届" author="Garden">
       <Page size="A4" style={styles.page}>
-        <Text style={styles.revision}>{jaWrap("2026年 4月 1日　改定　ver.1")}</Text>
+        <Text style={styles.revision}>
+          {jaWrap("2026年 4月 1日　改定　ver.1")}
+        </Text>
         <View style={styles.address}>
           <Text>{jaWrap(data.companyName)}</Text>
           <Text>{jaWrap(`代表取締役　${data.representative}　様`)}</Text>
         </View>
         <Text style={styles.title}>
-          {jaWrap(`緊急連絡先届（ ${data.kind === "new" ? "✓" : "□"}新規　${data.kind === "change" ? "✓" : "□"}変更 ）`)}
+          {jaWrap(
+            `緊急連絡先届（ ${data.kind === "new" ? "✓" : "□"}新規　${data.kind === "change" ? "✓" : "□"}変更 ）`,
+          )}
         </Text>
-        <Text style={styles.consent}>{jaWrap(EMERGENCY_CONTACT_CONSENT, 40)}</Text>
+        <Text style={styles.consent}>
+          {jaWrap(EMERGENCY_CONTACT_CONSENT, 40)}
+        </Text>
         <Text style={styles.section}>{jaWrap("1.　提出者本人")}</Text>
         <Field label="氏名" value={data.employeeName} />
         <Field label="現住所" value={data.selfAddress} />
@@ -161,7 +215,9 @@ export function EmergencyContactPdfDocument({
         <View style={styles.footer}>
           <View style={styles.footerRow} wrap={false}>
             <Text style={styles.footerLabel}>{jaWrap("提出日：")}</Text>
-            <View style={styles.footerValue}><Text>{jaWrap(jstDate(data.submittedAt))}</Text></View>
+            <View style={styles.footerValue}>
+              <Text>{jaWrap(jstDate(data.submittedAt))}</Text>
+            </View>
           </View>
           <View style={styles.footerRow} wrap={false}>
             <Text style={styles.footerLabel}>{jaWrap("署名：")}</Text>
@@ -178,4 +234,98 @@ export function EmergencyContactPdfDocument({
 }
 export async function renderEmergencyContactPdf(data: EmergencyContactPdfData) {
   return renderToBuffer(<EmergencyContactPdfDocument data={data} />);
+}
+
+function NdaArticle({ article }: { article: (typeof NDA_ARTICLES)[number] }) {
+  return (
+    <View style={styles.ndaArticle}>
+      <Text style={styles.ndaArticleTitle} minPresenceAhead={18}>
+        {jaWrap(article.title, 54)}
+      </Text>
+      {article.paragraphs.map((p) => (
+        <Text key={p} style={styles.ndaParagraph}>
+          {jaWrap(p, 54)}
+        </Text>
+      ))}
+      {article.items.map((item, index) => (
+        <View key={item} style={styles.ndaItem}>
+          <Text style={styles.ndaItemNo}>{index + 1}.</Text>
+          <Text style={styles.ndaItemText}>{jaWrap(item, 50)}</Text>
+        </View>
+      ))}
+      {"note" in article && article.note ? (
+        <Text style={styles.ndaNote}>{jaWrap(article.note, 50)}</Text>
+      ) : null}
+    </View>
+  );
+}
+function NdaPageNo({ number }: { number: number }) {
+  return <Text style={styles.pageNo}>{number}</Text>;
+}
+export function NdaPdfDocument({
+  data,
+}: {
+  data: NdaPdfData;
+}): React.ReactElement<DocumentProps> {
+  registerFonts();
+  return (
+    <Document title="秘密保持に関する誓約書" author="Garden">
+      <Page size="A4" style={styles.ndaPage}>
+        <Text style={styles.ndaRevision}>
+          {jaWrap("2026年　4月　1日　改定 ver.3", 60)}
+        </Text>
+        <View style={styles.ndaAddress}>
+          <Text>{jaWrap(data.companyName, 60)}</Text>
+          <Text>{jaWrap(`代表取締役　${data.representative}　様`, 60)}</Text>
+        </View>
+        <Text style={styles.ndaTitle}>
+          {jaWrap(
+            `秘密保持に関する誓約書（ ${data.kind === "new" ? "✓" : "□"}新規　${data.kind === "resubmit" ? "✓" : "□"}再提出 ）`,
+            60,
+          )}
+        </Text>
+        <Text style={styles.ndaPreamble}>{jaWrap(NDA_PREAMBLE, 54)}</Text>
+        <Text style={styles.ndaCenter}>{jaWrap("記")}</Text>
+        {NDA_ARTICLES.slice(0, 3).map((article) => (
+          <NdaArticle key={article.title} article={article} />
+        ))}
+        <NdaPageNo number={1} />
+      </Page>
+      <Page size="A4" style={styles.ndaPage}>
+        {NDA_ARTICLES.slice(3).map((article) => (
+          <NdaArticle key={article.title} article={article} />
+        ))}
+        <Text style={styles.ndaClosing}>{jaWrap(NDA_CLOSING, 54)}</Text>
+        <View style={styles.ndaFooter}>
+          <View style={styles.ndaFooterRow} wrap={false}>
+            <Text style={styles.ndaFooterLabel}>{jaWrap("誓約日：")}</Text>
+            <View style={styles.ndaFooterValue}>
+              <Text>{jaWrap(formatJapaneseDate(data.pledgeDate))}</Text>
+            </View>
+          </View>
+          <View style={styles.ndaFooterRow} wrap={false}>
+            <Text style={styles.ndaFooterLabel}>{jaWrap("住所：")}</Text>
+            <View style={styles.ndaFooterValue}>
+              <Text>{jaWrap(data.address, 24)}</Text>
+            </View>
+          </View>
+          <View style={styles.ndaFooterRow} wrap={false}>
+            <Text style={styles.ndaFooterLabel}>{jaWrap("署名：")}</Text>
+            <View style={styles.ndaFooterValue}>
+              <Text>{jaWrap(data.employeeName, 18)}</Text>
+              <Text style={styles.seal}>㊞</Text>
+            </View>
+          </View>
+        </View>
+        <NdaPageNo number={2} />
+      </Page>
+    </Document>
+  );
+}
+function formatJapaneseDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return year && month && day ? `${year}年${month}月${day}日` : value;
+}
+export async function renderNdaPdf(data: NdaPdfData) {
+  return renderToBuffer(<NdaPdfDocument data={data} />);
 }

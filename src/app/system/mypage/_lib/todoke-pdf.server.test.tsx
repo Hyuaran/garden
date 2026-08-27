@@ -3,6 +3,7 @@ import {
   EMERGENCY_CONTACT_CONSENT,
   jaWrap,
   renderEmergencyContactPdf,
+  renderNdaPdf,
 } from "./todoke-pdf.server";
 import { todokeFilename } from "./todoke-drive.server";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
@@ -53,17 +54,42 @@ describe("emergency contact PDF", () => {
     expect(normalized).not.toContain("本人と同一の場合");
   });
   it("wraps Japanese explicitly without splitting ASCII number runs", () => {
-    expect(jaWrap("東京都渋谷区1-2-3", 6)).toBe(
-      "東京都渋谷区\n1-2-3",
-    );
+    expect(jaWrap("東京都渋谷区1-2-3", 6)).toBe("東京都渋谷区\n1-2-3");
     expect(jaWrap("090-1234-5678")).toBe("090-1234-5678");
   });
   it("uses the JST filing filename without the employee name", () => {
-    expect(todokeFilename(new Date("2026-08-26T15:01:02Z"))).toBe(
-      "緊急連絡先届_20260827.pdf",
-    );
-    expect(todokeFilename(new Date("2026-08-26T15:01:02Z"), true)).toBe(
-      "緊急連絡先届_20260827_000102.pdf",
+    expect(
+      todokeFilename("緊急連絡先届", new Date("2026-08-26T15:01:02Z")),
+    ).toBe("緊急連絡先届_20260827.pdf");
+    expect(
+      todokeFilename("緊急連絡先届", new Date("2026-08-26T15:01:02Z"), true),
+    ).toBe("緊急連絡先届_20260827_000102.pdf");
+  });
+  it("renders the NDA as exactly two pages without inserted hyphens", async () => {
+    const buffer = await renderNdaPdf({
+      companyName: "株式会社ヒュアラン",
+      representative: "後道翔太",
+      kind: "new",
+      employeeName: "社員A",
+      pledgeDate: "2026-08-27",
+      address: "東京都渋谷区神宮前一丁目二番三号",
+    });
+    const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
+    expect(pdf.numPages).toBe(2);
+    let text = "";
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+      const content = await (await pdf.getPage(pageNo)).getTextContent();
+      text += content.items
+        .map((item) => ("str" in item ? item.str : ""))
+        .join("");
+    }
+    expect(text).not.toContain("-");
+    const normalized = text.replace(/[\s\u200B]/gu, "");
+    expect(normalized).toContain("株式会社ヒュアラン");
+    expect(normalized).toContain("代表取締役後道翔太様");
+    expect(normalized).toContain("第6条損害賠償");
+    expect(normalized).toContain(
+      "以上の各条項を確認・理解した上で、本誓約書に署名いたします。",
     );
   });
 });

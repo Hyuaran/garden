@@ -7,7 +7,7 @@ import {
   type SubmissionRow,
   type SubmissionType,
 } from "@/app/system/mypage/_lib/submission-types";
-import { generateEmergencyContactPdf } from "@/app/system/mypage/_lib/todoke-generation.server";
+import { generateSubmissionPdf } from "@/app/system/mypage/_lib/todoke-generation.server";
 
 export async function GET() {
   const employee = await requireEmployee();
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         ? "pending"
         : "not_applicable",
       pdf_status:
-        body.type === "emergency_contact" ? "skipped" : "not_applicable",
+        ["emergency_contact", "nda"].includes(body.type) ? "skipped" : "not_applicable",
     })
     .select("*")
     .single();
@@ -67,8 +67,8 @@ export async function POST(request: Request) {
       { ok: false, error: "送信できませんでした。" },
       { status: 500 },
     );
-  if (body.type === "emergency_contact") {
-    const pdf = await generateEmergencyContactPdf(
+  if (["emergency_contact", "nda"].includes(body.type)) {
+    const pdf = await generateSubmissionPdf(
       data as SubmissionRow,
       {
         name: String(employee.name),

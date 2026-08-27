@@ -27,6 +27,7 @@ describe("todoke Drive save", () => {
         Buffer.from("pdf"),
         "0008",
         "東海林 美琴",
+        "緊急連絡先届",
         new Date("2026-08-26T15:01:02Z"),
       ),
     ).toMatchObject({ status: "generated", fileId: "file" });
@@ -44,23 +45,28 @@ describe("todoke Drive save", () => {
       Buffer.from("pdf"),
       "0008",
       "東海林　美琴",
+      "秘密保持誓約書",
       new Date("2026-08-26T15:01:02Z"),
     );
     expect(mocks.upload).toHaveBeenCalledWith(
       "folder",
-      "緊急連絡先届_20260827_000102.pdf",
+      "秘密保持誓約書_20260827_000102.pdf",
       expect.any(Buffer),
       "application/pdf",
     );
   });
   it("skips without the root folder", async () => {
     delete process.env.GARDEN_TODOKE_DRIVE_ROOT_FOLDER_ID;
-    expect(await saveTodokePdf(Buffer.from("pdf"), "0008", "社員A")).toMatchObject({
+    expect(
+      await saveTodokePdf(Buffer.from("pdf"), "0008", "社員A", "緊急連絡先届"),
+    ).toMatchObject({
       status: "skipped",
     });
     expect(mocks.upload).not.toHaveBeenCalled();
   });
   it("removes half-width and full-width spaces from the employee folder", () => {
-    expect(employeeTodokeFolderName("0008", "東海林 　美琴")).toBe("0008_東海林美琴");
+    expect(employeeTodokeFolderName("0008", "東海林 　美琴")).toBe(
+      "0008_東海林美琴",
+    );
   });
 });
