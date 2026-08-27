@@ -204,6 +204,17 @@ export async function findOrCreateSubfolder(parentId: string, name: string): Pro
   return ((await createRes.json()) as { id: string }).id;
 }
 
+/** 指定フォルダ直下に同名ファイルが存在するか確認する。 */
+export async function folderHasFile(parentId: string, name: string): Promise<boolean> {
+  const q = encodeURIComponent(
+    `'${parentId}' in parents and name='${name.replace(/'/g, "\\'")}' and trashed=false`,
+  );
+  const res = await driveFetch(`/drive/v3/files?q=${q}&fields=files(id)&pageSize=1`);
+  if (!res.ok) throw new Error(`Drive list error: ${res.status} ${await res.text()}`);
+  const data = (await res.json()) as { files?: Array<{ id: string }> };
+  return Boolean(data.files?.length);
+}
+
 /** ファイルを別フォルダへ移動する */
 export async function moveFile(fileId: string, toFolderId: string): Promise<void> {
   // 現在の親を取得
