@@ -12,7 +12,7 @@ import type { DocumentProps } from "@react-pdf/renderer";
 import { NDA_ARTICLES, NDA_CLOSING, NDA_PREAMBLE } from "./nda-content";
 
 let fontsRegistered = false;
-function registerFonts() {
+export function registerFonts() {
   if (fontsRegistered) return;
   const dir = path.join(process.cwd(), "public", "fonts");
   Font.register({
@@ -33,8 +33,14 @@ const JAPANESE_CHARACTER =
 const LATIN_OR_NUMBER_RUN = /[\x00-\x7F０-９]+|./gu;
 const LINE_START_FORBIDDEN = /^[、。，．）」』】〕〉》・：；！？％]/;
 const LINE_END_FORBIDDEN = /[（「『【〔〈《]$/;
-export function jaWrap(text: string, maxUnits = 40) {
+export function jaWrap(text: string, maxUnits = 40): string {
   if (!JAPANESE_CHARACTER.test(text)) return text;
+  // 改行を含むテキストは行ごとに折り返す（行をまたいで幅を数えない）
+  if (text.includes("\n"))
+    return text
+      .split("\n")
+      .map((line) => jaWrap(line, maxUnits))
+      .join("\n");
   const tokens = text.match(LATIN_OR_NUMBER_RUN) ?? [text];
   const lines: string[] = [];
   let line = "";

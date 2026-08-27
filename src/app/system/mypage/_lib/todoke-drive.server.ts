@@ -28,7 +28,7 @@ const jstParts = (date: Date) => {
   };
 };
 export function todokeFilename(
-  documentName: "緊急連絡先届" | "秘密保持誓約書",
+  documentName: "緊急連絡先届" | "秘密保持誓約書" | "雇用契約書",
   now = new Date(),
   withSeconds = false,
 ) {
@@ -45,7 +45,7 @@ export async function saveTodokePdf(
   buffer: Buffer,
   employeeNumber: string,
   employeeName: string,
-  documentName: "緊急連絡先届" | "秘密保持誓約書",
+  documentName: "緊急連絡先届" | "秘密保持誓約書" | "雇用契約書",
   now = new Date(),
 ): Promise<DriveResult> {
   const root = process.env.GARDEN_TODOKE_DRIVE_ROOT_FOLDER_ID;

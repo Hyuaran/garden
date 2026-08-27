@@ -9,7 +9,11 @@ vi.mock("@/app/api/bud/expense-drive/_lib/drive", () => ({
   folderHasFile: mocks.exists,
   uploadToFolder: mocks.upload,
 }));
-import { employeeTodokeFolderName, saveTodokePdf } from "./todoke-drive.server";
+import {
+  employeeTodokeFolderName,
+  saveTodokePdf,
+  todokeFilename,
+} from "./todoke-drive.server";
 describe("todoke Drive save", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,5 +72,13 @@ describe("todoke Drive save", () => {
     expect(employeeTodokeFolderName("0008", "東海林 　美琴")).toBe(
       "0008_東海林美琴",
     );
+  });
+  it("names an employment contract in JST", () => {
+    expect(todokeFilename("雇用契約書", new Date("2026-08-27T15:01:02Z"))).toBe(
+      "雇用契約書_20260828.pdf",
+    );
+    expect(
+      todokeFilename("雇用契約書", new Date("2026-08-27T15:01:02Z"), true),
+    ).toBe("雇用契約書_20260828_000102.pdf");
   });
 });
