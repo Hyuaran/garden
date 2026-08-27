@@ -31,6 +31,8 @@ export const EMERGENCY_CONTACT_CONSENT =
 const JAPANESE_CHARACTER =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶ]/u;
 const LATIN_OR_NUMBER_RUN = /[\x00-\x7F０-９]+|./gu;
+const LINE_START_FORBIDDEN = /^[、。，．）」』】〕〉》・：；！？％]/;
+const LINE_END_FORBIDDEN = /[（「『【〔〈《]$/;
 export function jaWrap(text: string, maxUnits = 40) {
   if (!JAPANESE_CHARACTER.test(text)) return text;
   const tokens = text.match(LATIN_OR_NUMBER_RUN) ?? [text];
@@ -51,7 +53,18 @@ export function jaWrap(text: string, maxUnits = 40) {
     }
   }
   if (line) lines.push(line);
-  return lines.join("\n");
+  // 禁則処理：句読点・閉じ括弧は行頭に置かず前行末へ追い込み、開き括弧は行末に置かず次行頭へ送る
+  for (let i = 1; i < lines.length; i++) {
+    while (lines[i] && LINE_START_FORBIDDEN.test(lines[i])) {
+      lines[i - 1] += lines[i][0];
+      lines[i] = lines[i].slice(1);
+    }
+    while (LINE_END_FORBIDDEN.test(lines[i - 1])) {
+      lines[i] = lines[i - 1].slice(-1) + lines[i];
+      lines[i - 1] = lines[i - 1].slice(0, -1);
+    }
+  }
+  return lines.filter((l) => l !== "").join("\n");
 }
 export type EmergencyContactPdfData = {
   companyName: string;
@@ -126,33 +139,33 @@ const styles = StyleSheet.create({
   },
   ndaPage: {
     fontFamily: "NotoSansJP",
-    fontSize: 8.3,
-    paddingTop: 36,
-    paddingHorizontal: 42,
-    paddingBottom: 30,
-    lineHeight: 1.5,
+    fontSize: 10.2,
+    paddingTop: 44,
+    paddingHorizontal: 48,
+    paddingBottom: 34,
+    lineHeight: 1.7,
     color: "#111",
   },
-  ndaRevision: { textAlign: "right", fontSize: 8, minHeight: 15 },
-  ndaAddress: { marginBottom: 12 },
+  ndaRevision: { textAlign: "right", fontSize: 9, minHeight: 16, marginBottom: 2 },
+  ndaAddress: { marginBottom: 20 },
   ndaTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 700,
     textAlign: "center",
-    marginBottom: 14,
+    marginBottom: 24,
   },
-  ndaPreamble: { marginBottom: 10 },
-  ndaCenter: { textAlign: "center", marginBottom: 10 },
-  ndaArticle: { marginBottom: 8 },
-  ndaArticleTitle: { fontSize: 9, fontWeight: 700, marginBottom: 2 },
-  ndaParagraph: { marginBottom: 3 },
-  ndaItem: { flexDirection: "row", paddingLeft: 14, marginBottom: 2 },
+  ndaPreamble: { marginBottom: 16 },
+  ndaCenter: { textAlign: "center", marginBottom: 16 },
+  ndaArticle: { marginBottom: 18 },
+  ndaArticleTitle: { fontSize: 10.5, fontWeight: 700, marginBottom: 5 },
+  ndaParagraph: { marginBottom: 5 },
+  ndaItem: { flexDirection: "row", paddingLeft: 14, marginBottom: 4 },
   ndaItemNo: { width: 18 },
   ndaItemText: { flexGrow: 1 },
   ndaNote: { paddingLeft: 14, marginTop: 1 },
-  ndaClosing: { textAlign: "center", marginTop: 24, marginBottom: 12 },
-  ndaFooter: { marginLeft: 290 },
-  ndaFooterRow: { flexDirection: "row", marginBottom: 10 },
+  ndaClosing: { textAlign: "center", marginTop: 28, marginBottom: 20 },
+  ndaFooter: { marginLeft: 230 },
+  ndaFooterRow: { flexDirection: "row", marginBottom: 16 },
   ndaFooterLabel: { width: 48 },
   ndaFooterValue: {
     width: 215,
@@ -240,21 +253,21 @@ function NdaArticle({ article }: { article: (typeof NDA_ARTICLES)[number] }) {
   return (
     <View style={styles.ndaArticle}>
       <Text style={styles.ndaArticleTitle} minPresenceAhead={18}>
-        {jaWrap(article.title, 54)}
+        {jaWrap(article.title, 44)}
       </Text>
       {article.paragraphs.map((p) => (
         <Text key={p} style={styles.ndaParagraph}>
-          {jaWrap(p, 54)}
+          {jaWrap(p, 44)}
         </Text>
       ))}
       {article.items.map((item, index) => (
         <View key={item} style={styles.ndaItem}>
           <Text style={styles.ndaItemNo}>{index + 1}.</Text>
-          <Text style={styles.ndaItemText}>{jaWrap(item, 50)}</Text>
+          <Text style={styles.ndaItemText}>{jaWrap(item, 41)}</Text>
         </View>
       ))}
       {"note" in article && article.note ? (
-        <Text style={styles.ndaNote}>{jaWrap(article.note, 50)}</Text>
+        <Text style={styles.ndaNote}>{jaWrap(article.note, 41)}</Text>
       ) : null}
     </View>
   );
@@ -284,7 +297,7 @@ export function NdaPdfDocument({
             60,
           )}
         </Text>
-        <Text style={styles.ndaPreamble}>{jaWrap(NDA_PREAMBLE, 54)}</Text>
+        <Text style={styles.ndaPreamble}>{jaWrap(NDA_PREAMBLE, 44)}</Text>
         <Text style={styles.ndaCenter}>{jaWrap("記")}</Text>
         {NDA_ARTICLES.slice(0, 3).map((article) => (
           <NdaArticle key={article.title} article={article} />
@@ -295,7 +308,7 @@ export function NdaPdfDocument({
         {NDA_ARTICLES.slice(3).map((article) => (
           <NdaArticle key={article.title} article={article} />
         ))}
-        <Text style={styles.ndaClosing}>{jaWrap(NDA_CLOSING, 54)}</Text>
+        <Text style={styles.ndaClosing}>{jaWrap(NDA_CLOSING, 44)}</Text>
         <View style={styles.ndaFooter}>
           <View style={styles.ndaFooterRow} wrap={false}>
             <Text style={styles.ndaFooterLabel}>{jaWrap("誓約日：")}</Text>
@@ -306,7 +319,7 @@ export function NdaPdfDocument({
           <View style={styles.ndaFooterRow} wrap={false}>
             <Text style={styles.ndaFooterLabel}>{jaWrap("住所：")}</Text>
             <View style={styles.ndaFooterValue}>
-              <Text>{jaWrap(data.address, 24)}</Text>
+              <Text>{jaWrap(data.address, 19)}</Text>
             </View>
           </View>
           <View style={styles.ndaFooterRow} wrap={false}>
