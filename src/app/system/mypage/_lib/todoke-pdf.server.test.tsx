@@ -1,2 +1,36 @@
-import {describe,expect,it} from "vitest";import {EMERGENCY_CONTACT_CONSENT,renderEmergencyContactPdf} from "./todoke-pdf.server";import {todokeFilename} from "./todoke-drive.server";
-describe("emergency contact PDF",()=>{it("renders a one-page Japanese PDF using the official consent text",async()=>{const buffer=await renderEmergencyContactPdf({companyName:"株式会社ヒュアラン",representative:"後道翔太",kind:"new",employeeName:"社員A",selfAddress:"東京都",selfPhone:"090",ecName:"家族A",ecRelationship:"母",ecAddress:"同上",ecPhone:"080",submittedAt:new Date("2026-08-27T00:00:00Z")});expect(buffer.subarray(0,4).toString()).toBe("%PDF");expect(buffer.length).toBeGreaterThan(5000);expect(EMERGENCY_CONTACT_CONSENT).toBe("私は、入社にあたり、業務時間中の事故・災害、急病その他の緊急事態が発生した際の連絡先として、以下の通り届け出いたします。なお、本届出書に記載した個人情報が、上記の緊急連絡の目的に限り使用されることに同意いたします。また、緊急連絡先として指定した本人に対しても、貴社に連絡先を提出する旨の了解を得ております。")});it("uses the JST filing filename",()=>{expect(todokeFilename("社員A",new Date("2026-08-26T15:01:02Z"))).toBe("緊急連絡先届_社員A_20260827.pdf");expect(todokeFilename("社員A",new Date("2026-08-26T15:01:02Z"),true)).toBe("緊急連絡先届_社員A_20260827_000102.pdf")})});
+import { describe, expect, it } from "vitest";
+import {
+  EMERGENCY_CONTACT_CONSENT,
+  renderEmergencyContactPdf,
+} from "./todoke-pdf.server";
+import { todokeFilename } from "./todoke-drive.server";
+describe("emergency contact PDF", () => {
+  it("renders a one-page Japanese PDF using the official consent text", async () => {
+    const buffer = await renderEmergencyContactPdf({
+      companyName: "株式会社ヒュアラン",
+      representative: "後道翔太",
+      kind: "new",
+      employeeName: "社員A",
+      selfAddress: "東京都",
+      selfPhone: "090",
+      ecName: "家族A",
+      ecRelationship: "母",
+      ecAddress: "同上",
+      ecPhone: "080",
+      submittedAt: new Date("2026-08-27T00:00:00Z"),
+    });
+    expect(buffer.subarray(0, 4).toString()).toBe("%PDF");
+    expect(buffer.length).toBeGreaterThan(5000);
+    expect(EMERGENCY_CONTACT_CONSENT).toBe(
+      "私は、入社にあたり、業務時間中の事故・災害、急病その他の緊急事態が発生した際の連絡先として、以下の通り届け出いたします。なお、本届出書に記載した個人情報が、上記の緊急連絡の目的に限り使用されることに同意いたします。また、緊急連絡先として指定した本人に対しても、貴社に連絡先を提出する旨の了解を得ております。",
+    );
+  });
+  it("uses the JST filing filename without the employee name", () => {
+    expect(todokeFilename(new Date("2026-08-26T15:01:02Z"))).toBe(
+      "緊急連絡先届_20260827.pdf",
+    );
+    expect(todokeFilename(new Date("2026-08-26T15:01:02Z"), true)).toBe(
+      "緊急連絡先届_20260827_000102.pdf",
+    );
+  });
+});

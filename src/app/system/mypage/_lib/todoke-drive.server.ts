@@ -28,15 +28,18 @@ const jstParts = (date: Date) => {
   };
 };
 export function todokeFilename(
-  employeeName: string,
   now = new Date(),
   withSeconds = false,
 ) {
   const p = jstParts(now);
-  return `緊急連絡先届_${employeeName}_${p.date}${withSeconds ? `_${p.time}` : ""}.pdf`;
+  return `緊急連絡先届_${p.date}${withSeconds ? `_${p.time}` : ""}.pdf`;
+}
+export function employeeTodokeFolderName(employeeNumber: string, employeeName: string) {
+  return `${employeeNumber}_${employeeName.replace(/[\s　]+/g, "")}`;
 }
 export async function saveTodokePdf(
   buffer: Buffer,
+  employeeNumber: string,
   employeeName: string,
   now = new Date(),
 ): Promise<DriveResult> {
@@ -49,10 +52,13 @@ export async function saveTodokePdf(
       note: "届出PDF保存先が未設定のためスキップ",
     };
   try {
-    const folder = await findOrCreateSubfolder(root, "緊急連絡先届");
-    let filename = todokeFilename(employeeName, now);
+    const folder = await findOrCreateSubfolder(
+      root,
+      employeeTodokeFolderName(employeeNumber, employeeName),
+    );
+    let filename = todokeFilename(now);
     if (await folderHasFile(folder, filename))
-      filename = todokeFilename(employeeName, now, true);
+      filename = todokeFilename(now, true);
     const result = await uploadToFolder(
       folder,
       filename,

@@ -8,7 +8,7 @@ import type { SubmissionRow } from "./submission-types";
 
 export async function generateEmergencyContactPdf(
   row: SubmissionRow,
-  employee: { name: string; company_id: string | null },
+  employee: { name: string; employee_number: string; company_id: string | null },
   now = new Date(),
 ) {
   if (row.submission_type !== "emergency_contact")
@@ -47,7 +47,12 @@ export async function generateEmergencyContactPdf(
       submittedAt: now,
     };
     const buffer = await renderEmergencyContactPdf(pdfData);
-    return saveTodokePdf(Buffer.from(buffer), employee.name, now);
+    return saveTodokePdf(
+      Buffer.from(buffer),
+      employee.employee_number,
+      employee.name,
+      now,
+    );
   } catch (error) {
     return {
       status: "failed" as const,

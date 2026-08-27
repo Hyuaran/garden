@@ -72,6 +72,7 @@ export async function POST(request: Request) {
       data as SubmissionRow,
       {
         name: String(employee.name),
+        employee_number: String(employee.employee_number),
         company_id: employee.company_id ? String(employee.company_id) : null,
       },
       new Date(data.created_at),

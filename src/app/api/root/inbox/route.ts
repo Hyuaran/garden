@@ -6,7 +6,7 @@ import { generateEmergencyContactPdf } from "@/app/system/mypage/_lib/todoke-gen
 import type { SubmissionRow } from "@/app/system/mypage/_lib/submission-types";
 
 const EMPLOYEE_FIELDS =
-  "*,root_employees(name,kot_employee_id,commute_monthly_cap,company_id)";
+  "*,root_employees(employee_number,name,kot_employee_id,commute_monthly_cap,company_id)";
 export async function GET(request: Request) {
   if (!(await requireManager()))
     return NextResponse.json({ ok: false }, { status: 403 });
@@ -76,6 +76,7 @@ export async function PATCH(request: Request) {
       data as SubmissionRow,
       {
         name: String(data.root_employees?.name || ""),
+        employee_number: String(data.root_employees?.employee_number || ""),
         company_id: data.root_employees?.company_id
           ? String(data.root_employees.company_id)
           : null,

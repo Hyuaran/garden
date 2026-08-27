@@ -27,6 +27,7 @@ describe("mypage submission PDF flow", () => {
     vi.clearAllMocks();
     mocks.employee.mockResolvedValue({
       employee_id: "E1",
+      employee_number: "0008",
       name: "社員A",
       company_id: "COMP-001",
     });
@@ -64,7 +65,7 @@ describe("mypage submission PDF flow", () => {
     expect(response.status).toBe(201);
     expect(mocks.generate).toHaveBeenCalledWith(
       expect.objectContaining({ id: "sub-1" }),
-      { name: "社員A", company_id: "COMP-001" },
+      { name: "社員A", employee_number: "0008", company_id: "COMP-001" },
       new Date("2026-08-27T00:00:00Z"),
     );
     expect(query.update).toHaveBeenCalledWith({
