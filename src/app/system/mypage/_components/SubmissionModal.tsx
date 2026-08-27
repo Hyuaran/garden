@@ -5,6 +5,15 @@ import {
   type SubmissionType,
 } from "../_lib/submission-types";
 import styles from "../mypage.module.css";
+import { NDA_FULL_TEXT } from "../_lib/nda-content";
+
+const todayJst = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 const definitions: Record<
   SubmissionType,
   Array<[string, string, string, boolean?]>
@@ -34,7 +43,11 @@ const definitions: Record<
     ["desiredDate", "退職希望日", "date"],
     ["reason", "理由（任意）", "textarea", true],
   ],
-  nda: [["signature", "氏名（電子署名）", "text"]],
+  nda: [
+    ["pledgeDate", "誓約日", "date"],
+    ["address", "住所", "text"],
+    ["signature", "氏名（電子署名）", "text"],
+  ],
 };
 export default function SubmissionModal({
   type,
@@ -48,7 +61,11 @@ export default function SubmissionModal({
   onSent: () => void;
 }) {
   const [values, setValues] = useState<Record<string, string | boolean>>(() =>
-    type === "emergency_contact" ? { kind: "new" } : ({} as Record<string, string | boolean>),
+    type === "emergency_contact"
+      ? { kind: "new" }
+      : type === "nda"
+        ? { kind: "new", pledgeDate: todayJst() }
+        : ({} as Record<string, string | boolean>),
   );
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -83,12 +100,10 @@ export default function SubmissionModal({
         <h2 id="submission-title">{SUBMISSION_LABELS[type]}</h2>
         {type === "resignation" ? <p>送信後、事務から連絡します。</p> : null}
         {type === "nda" ? (
-          <div className={styles.pledge}>
-            業務上知り得た秘密および個人情報を、在職中および退職後も第三者へ漏らしません。
-          </div>
+          <div className={styles.pledge}>{NDA_FULL_TEXT}</div>
         ) : null}
         <form onSubmit={submit}>
-          {type === "emergency_contact" ? (
+          {type === "emergency_contact" || type === "nda" ? (
             <>
               <fieldset>
                 <legend>区分</legend>
@@ -108,19 +123,24 @@ export default function SubmissionModal({
                   <input
                     type="radio"
                     name="kind"
-                    value="change"
-                    checked={values.kind === "change"}
+                    value={type === "emergency_contact" ? "change" : "resubmit"}
+                    checked={
+                      values.kind ===
+                      (type === "emergency_contact" ? "change" : "resubmit")
+                    }
                     onChange={(e) =>
                       setValues({ ...values, kind: e.target.value })
                     }
                   />
-                  変更
+                  {type === "emergency_contact" ? "変更" : "再提出"}
                 </label>
               </fieldset>
-              <label>
-                提出者本人の氏名
-                <input value={employeeName} readOnly aria-readonly="true" />
-              </label>
+              {type === "emergency_contact" ? (
+                <label>
+                  提出者本人の氏名
+                  <input value={employeeName} readOnly aria-readonly="true" />
+                </label>
+              ) : null}
             </>
           ) : null}
           {definitions[type].map(([key, label, input, optional]) => (

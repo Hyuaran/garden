@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { syncSubmissionToKintone } from "@/app/system/mypage/_lib/submission-kintone.server";
-import { generateEmergencyContactPdf } from "@/app/system/mypage/_lib/todoke-generation.server";
+import { generateSubmissionPdf } from "@/app/system/mypage/_lib/todoke-generation.server";
 import type { SubmissionRow } from "@/app/system/mypage/_lib/submission-types";
 
 const EMPLOYEE_FIELDS =
@@ -70,9 +70,9 @@ export async function PATCH(request: Request) {
   }
   if (
     body.action === "retry_pdf" &&
-    data.submission_type === "emergency_contact"
+    ["emergency_contact", "nda"].includes(data.submission_type)
   ) {
-    const pdf = await generateEmergencyContactPdf(
+    const pdf = await generateSubmissionPdf(
       data as SubmissionRow,
       {
         name: String(data.root_employees?.name || ""),
