@@ -1,0 +1,62 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({
+  folder: vi.fn(),
+  exists: vi.fn(),
+  upload: vi.fn(),
+}));
+vi.mock("@/app/api/bud/expense-drive/_lib/drive", () => ({
+  findOrCreateSubfolder: mocks.folder,
+  folderHasFile: mocks.exists,
+  uploadToFolder: mocks.upload,
+}));
+import {
+  saveOriginalContract,
+  savePartnerTemplate,
+} from "./contract-drive.server";
+describe("contract Drive", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.GARDEN_CONTRACTS_DRIVE_ROOT_FOLDER_ID = "root";
+    mocks.folder.mockResolvedValueOnce("top").mockResolvedValueOnce("leaf");
+    mocks.exists.mockResolvedValue(false);
+    mocks.upload.mockResolvedValue({ id: "F", webViewLink: "U" });
+  });
+  it("creates the original hierarchy", async () => {
+    expect(
+      await saveOriginalContract(
+        Buffer.from("pdf"),
+        "契約.pdf",
+        "A社",
+        "COMP-001",
+      ),
+    ).toMatchObject({ status: "generated", folderName: "A社_HR" });
+    expect(mocks.folder).toHaveBeenNthCalledWith(
+      1,
+      "root",
+      "01_契約書　上位店",
+    );
+    expect(mocks.folder).toHaveBeenNthCalledWith(2, "top", "A社_HR");
+    expect(mocks.upload).toHaveBeenCalledWith(
+      "leaf",
+      "契約.pdf",
+      expect.any(Buffer),
+      "application/pdf",
+    );
+  });
+  it("creates template product hierarchy", async () => {
+    await savePartnerTemplate(Buffer.from("pdf"), "ひな形.pdf", "関電ガス");
+    expect(mocks.folder).toHaveBeenNthCalledWith(
+      1,
+      "root",
+      "05_パートナー配布用ひな形",
+    );
+    expect(mocks.folder).toHaveBeenNthCalledWith(2, "top", "関電ガス");
+  });
+  it("skips without env", async () => {
+    delete process.env.GARDEN_CONTRACTS_DRIVE_ROOT_FOLDER_ID;
+    expect(
+      await saveOriginalContract(Buffer.from("pdf"), "契約.pdf", "A社", "ALL"),
+    ).toMatchObject({ status: "skipped", folderName: "A社_ALL" });
+    expect(mocks.folder).not.toHaveBeenCalled();
+  });
+});
