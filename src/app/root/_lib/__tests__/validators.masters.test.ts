@@ -176,7 +176,9 @@ describe("validateCompany — happy path", () => {
   });
 
   it("accepts valid corporate_number (13 digits)", () => {
-    const errs = validateCompany(baseCompany({ corporate_number: "1234567890123" }));
+    const errs = validateCompany(
+      baseCompany({ corporate_number: "1234567890123" }),
+    );
     expect(errs.corporate_number).toBeUndefined();
   });
 });
@@ -235,13 +237,17 @@ describe("validateCompany — required fields", () => {
 
 describe("validateCompany — kana / phone / corporate_number format", () => {
   it("rejects hiragana in company_name_kana", () => {
-    const errs = validateCompany(baseCompany({ company_name_kana: "かぶしきがいしゃ" }));
+    const errs = validateCompany(
+      baseCompany({ company_name_kana: "かぶしきがいしゃ" }),
+    );
     expect(errs.company_name_kana).toBeDefined();
     expect(errs.company_name_kana).toContain("カタカナ");
   });
 
   it("rejects romaji in company_name_kana", () => {
-    const errs = validateCompany(baseCompany({ company_name_kana: "Kabushiki" }));
+    const errs = validateCompany(
+      baseCompany({ company_name_kana: "Kabushiki" }),
+    );
     expect(errs.company_name_kana).toBeDefined();
   });
 
@@ -251,14 +257,33 @@ describe("validateCompany — kana / phone / corporate_number format", () => {
   });
 
   it("rejects corporate_number with wrong digit count (12 digits)", () => {
-    const errs = validateCompany(baseCompany({ corporate_number: "123456789012" }));
+    const errs = validateCompany(
+      baseCompany({ corporate_number: "123456789012" }),
+    );
     expect(errs.corporate_number).toBeDefined();
     expect(errs.corporate_number).toContain("13桁");
   });
 
   it("rejects corporate_number with non-digit characters", () => {
-    const errs = validateCompany(baseCompany({ corporate_number: "123456789012X" }));
+    const errs = validateCompany(
+      baseCompany({ corporate_number: "123456789012X" }),
+    );
     expect(errs.corporate_number).toBeDefined();
+  });
+});
+
+describe("validateCompany — fiscal end month", () => {
+  it.each([0, 13])("rejects out-of-range month %s", (month) => {
+    expect(
+      validateCompany(baseCompany({ fiscal_end_month: month }))
+        .fiscal_end_month,
+    ).toContain("1〜12");
+  });
+  it.each([1, 12])("accepts boundary month %s", (month) => {
+    expect(
+      validateCompany(baseCompany({ fiscal_end_month: month }))
+        .fiscal_end_month,
+    ).toBeUndefined();
   });
 });
 
@@ -275,7 +300,9 @@ describe("validateBankAccount — happy path", () => {
 
 describe("validateBankAccount — account_id format", () => {
   it("rejects wrong prefix", () => {
-    const errs = validateBankAccount(baseBankAccount({ account_id: "BANK-001" }));
+    const errs = validateBankAccount(
+      baseBankAccount({ account_id: "BANK-001" }),
+    );
     expect(errs.account_id).toBeDefined();
     expect(errs.account_id).toContain("ACC-");
   });
@@ -286,7 +313,9 @@ describe("validateBankAccount — account_id format", () => {
   });
 
   it("accepts ACC-001 (minimum 3 digits)", () => {
-    const errs = validateBankAccount(baseBankAccount({ account_id: "ACC-001" }));
+    const errs = validateBankAccount(
+      baseBankAccount({ account_id: "ACC-001" }),
+    );
     expect(errs.account_id).toBeUndefined();
   });
 });
@@ -310,13 +339,17 @@ describe("validateBankAccount — digit-length fields", () => {
   });
 
   it("rejects account_number with wrong length (6 digits)", () => {
-    const errs = validateBankAccount(baseBankAccount({ account_number: "123456" }));
+    const errs = validateBankAccount(
+      baseBankAccount({ account_number: "123456" }),
+    );
     expect(errs.account_number).toBeDefined();
     expect(errs.account_number).toContain("7桁");
   });
 
   it("rejects account_number with non-digit characters", () => {
-    const errs = validateBankAccount(baseBankAccount({ account_number: "123456A" }));
+    const errs = validateBankAccount(
+      baseBankAccount({ account_number: "123456A" }),
+    );
     expect(errs.account_number).toBeDefined();
   });
 });
@@ -386,7 +419,9 @@ describe("validateVendor — kana fields", () => {
   });
 
   it("rejects hiragana in vendor_name_kana", () => {
-    const errs = validateVendor(baseVendor({ vendor_name_kana: "さぷらいやー" }));
+    const errs = validateVendor(
+      baseVendor({ vendor_name_kana: "さぷらいやー" }),
+    );
     expect(errs.vendor_name_kana).toBeDefined();
     expect(errs.vendor_name_kana).toContain("カタカナ");
   });
@@ -398,7 +433,9 @@ describe("validateVendor — kana fields", () => {
   });
 
   it("rejects hiragana in account_holder_kana", () => {
-    const errs = validateVendor(baseVendor({ account_holder_kana: "さぷらいやー" }));
+    const errs = validateVendor(
+      baseVendor({ account_holder_kana: "さぷらいやー" }),
+    );
     expect(errs.account_holder_kana).toBeDefined();
     expect(errs.account_holder_kana).toContain("カタカナ");
   });
@@ -454,18 +491,24 @@ describe("validateSalarySystem — happy path", () => {
 
 describe("validateSalarySystem — salary_system_id format", () => {
   it("rejects wrong prefix", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ salary_system_id: "SYS-001" }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ salary_system_id: "SYS-001" }),
+    );
     expect(errs.salary_system_id).toBeDefined();
     expect(errs.salary_system_id).toContain("SAL-SYS-");
   });
 
   it("rejects SAL-SYS- without trailing digits", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ salary_system_id: "SAL-SYS-" }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ salary_system_id: "SAL-SYS-" }),
+    );
     expect(errs.salary_system_id).toBeDefined();
   });
 
   it("accepts SAL-SYS-001", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ salary_system_id: "SAL-SYS-001" }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ salary_system_id: "SAL-SYS-001" }),
+    );
     expect(errs.salary_system_id).toBeUndefined();
   });
 });
@@ -478,35 +521,47 @@ describe("validateSalarySystem — required fields", () => {
   });
 
   it("rejects missing employment_type", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ employment_type: "" }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ employment_type: "" }),
+    );
     expect(errs.employment_type).toBeDefined();
   });
 
   it("rejects missing base_salary_type", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ base_salary_type: "" }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ base_salary_type: "" }),
+    );
     expect(errs.base_salary_type).toBeDefined();
   });
 });
 
 describe("validateSalarySystem — working_hours_day boundary", () => {
   it("accepts 0 (lower boundary)", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ working_hours_day: 0 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ working_hours_day: 0 }),
+    );
     expect(errs.working_hours_day).toBeUndefined();
   });
 
   it("accepts 24 (upper boundary)", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ working_hours_day: 24 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ working_hours_day: 24 }),
+    );
     expect(errs.working_hours_day).toBeUndefined();
   });
 
   it("rejects negative value", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ working_hours_day: -1 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ working_hours_day: -1 }),
+    );
     expect(errs.working_hours_day).toBeDefined();
     expect(errs.working_hours_day).toContain("0〜24");
   });
 
   it("rejects value above 24", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ working_hours_day: 24.1 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ working_hours_day: 24.1 }),
+    );
     expect(errs.working_hours_day).toBeDefined();
   });
 });
@@ -523,43 +578,57 @@ describe("validateSalarySystem — overtime_rate boundary", () => {
   });
 
   it("rejects value below 1 (e.g. 0.99)", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ overtime_rate: 0.99 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ overtime_rate: 0.99 }),
+    );
     expect(errs.overtime_rate).toBeDefined();
     expect(errs.overtime_rate).toContain("1〜3");
   });
 
   it("rejects value above 3", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ overtime_rate: 3.01 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ overtime_rate: 3.01 }),
+    );
     expect(errs.overtime_rate).toBeDefined();
   });
 });
 
 describe("validateSalarySystem — night/holiday overtime rates", () => {
   it("rejects night_overtime_rate below 1", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ night_overtime_rate: 0.5 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ night_overtime_rate: 0.5 }),
+    );
     expect(errs.night_overtime_rate).toBeDefined();
     expect(errs.night_overtime_rate).toContain("1〜3");
   });
 
   it("rejects holiday_overtime_rate above 3", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ holiday_overtime_rate: 4 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ holiday_overtime_rate: 4 }),
+    );
     expect(errs.holiday_overtime_rate).toBeDefined();
   });
 });
 
 describe("validateSalarySystem — working_days_month boundary", () => {
   it("accepts 0 (lower boundary)", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ working_days_month: 0 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ working_days_month: 0 }),
+    );
     expect(errs.working_days_month).toBeUndefined();
   });
 
   it("accepts 31 (upper boundary)", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ working_days_month: 31 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ working_days_month: 31 }),
+    );
     expect(errs.working_days_month).toBeUndefined();
   });
 
   it("rejects value above 31", () => {
-    const errs = validateSalarySystem(baseSalarySystem({ working_days_month: 32 }));
+    const errs = validateSalarySystem(
+      baseSalarySystem({ working_days_month: 32 }),
+    );
     expect(errs.working_days_month).toBeDefined();
   });
 });
@@ -582,7 +651,9 @@ describe("validateInsurance — happy path", () => {
 
 describe("validateInsurance — insurance_id format", () => {
   it("rejects wrong prefix", () => {
-    const errs = validateInsurance(baseInsurance({ insurance_id: "INSUR-2026" }));
+    const errs = validateInsurance(
+      baseInsurance({ insurance_id: "INSUR-2026" }),
+    );
     expect(errs.insurance_id).toBeDefined();
     expect(errs.insurance_id).toContain("INS-");
   });
@@ -626,40 +697,48 @@ describe("validateInsurance — effective_from required", () => {
 
 describe("validateInsurance — effective_to date relationship", () => {
   it("rejects effective_to before effective_from", () => {
-    const errs = validateInsurance(baseInsurance({
-      effective_from: "2026-04-01",
-      effective_to: "2026-03-31",
-    }));
+    const errs = validateInsurance(
+      baseInsurance({
+        effective_from: "2026-04-01",
+        effective_to: "2026-03-31",
+      }),
+    );
     expect(errs.effective_to).toBeDefined();
     expect(errs.effective_to).toContain("開始日");
   });
 
   it("accepts effective_to equal to effective_from", () => {
-    const errs = validateInsurance(baseInsurance({
-      effective_from: "2026-04-01",
-      effective_to: "2026-04-01",
-    }));
+    const errs = validateInsurance(
+      baseInsurance({
+        effective_from: "2026-04-01",
+        effective_to: "2026-04-01",
+      }),
+    );
     expect(errs.effective_to).toBeUndefined();
   });
 
   it("accepts effective_to after effective_from", () => {
-    const errs = validateInsurance(baseInsurance({
-      effective_from: "2026-04-01",
-      effective_to: "2027-03-31",
-    }));
+    const errs = validateInsurance(
+      baseInsurance({
+        effective_from: "2026-04-01",
+        effective_to: "2027-03-31",
+      }),
+    );
     expect(errs.effective_to).toBeUndefined();
   });
 });
 
 describe("validateInsurance — rate boundaries (0〜100)", () => {
   it("accepts all rates at 0 (lower boundary)", () => {
-    const errs = validateInsurance(baseInsurance({
-      health_insurance_rate: 0,
-      nursing_insurance_rate: 0,
-      pension_rate: 0,
-      employment_insurance_rate: 0,
-      child_support_rate: 0,
-    }));
+    const errs = validateInsurance(
+      baseInsurance({
+        health_insurance_rate: 0,
+        nursing_insurance_rate: 0,
+        pension_rate: 0,
+        employment_insurance_rate: 0,
+        child_support_rate: 0,
+      }),
+    );
     expect(errs.health_insurance_rate).toBeUndefined();
     expect(errs.nursing_insurance_rate).toBeUndefined();
     expect(errs.pension_rate).toBeUndefined();
@@ -668,19 +747,23 @@ describe("validateInsurance — rate boundaries (0〜100)", () => {
   });
 
   it("accepts all rates at 100 (upper boundary)", () => {
-    const errs = validateInsurance(baseInsurance({
-      health_insurance_rate: 100,
-      nursing_insurance_rate: 100,
-      pension_rate: 100,
-      employment_insurance_rate: 100,
-      child_support_rate: 100,
-    }));
+    const errs = validateInsurance(
+      baseInsurance({
+        health_insurance_rate: 100,
+        nursing_insurance_rate: 100,
+        pension_rate: 100,
+        employment_insurance_rate: 100,
+        child_support_rate: 100,
+      }),
+    );
     expect(errs.health_insurance_rate).toBeUndefined();
     expect(errs.pension_rate).toBeUndefined();
   });
 
   it("rejects health_insurance_rate above 100", () => {
-    const errs = validateInsurance(baseInsurance({ health_insurance_rate: 101 }));
+    const errs = validateInsurance(
+      baseInsurance({ health_insurance_rate: 101 }),
+    );
     expect(errs.health_insurance_rate).toBeDefined();
     expect(errs.health_insurance_rate).toContain("0〜100");
   });
@@ -691,7 +774,9 @@ describe("validateInsurance — rate boundaries (0〜100)", () => {
   });
 
   it("rejects child_support_rate above 100", () => {
-    const errs = validateInsurance(baseInsurance({ child_support_rate: 100.1 }));
+    const errs = validateInsurance(
+      baseInsurance({ child_support_rate: 100.1 }),
+    );
     expect(errs.child_support_rate).toBeDefined();
   });
 });
@@ -707,7 +792,9 @@ describe("validateAttendance — happy path", () => {
   });
 
   it("accepts null training_hours and office_hours", () => {
-    const errs = validateAttendance(baseAttendance({ training_hours: null, office_hours: null }));
+    const errs = validateAttendance(
+      baseAttendance({ training_hours: null, office_hours: null }),
+    );
     expect(errs.training_hours).toBeUndefined();
     expect(errs.office_hours).toBeUndefined();
   });
@@ -735,23 +822,31 @@ describe("validateAttendance — required fields", () => {
 
 describe("validateAttendance — target_month format", () => {
   it("accepts YYYY-MM format", () => {
-    const errs = validateAttendance(baseAttendance({ target_month: "2026-04" }));
+    const errs = validateAttendance(
+      baseAttendance({ target_month: "2026-04" }),
+    );
     expect(errs.target_month).toBeUndefined();
   });
 
   it("rejects YYYY/MM format", () => {
-    const errs = validateAttendance(baseAttendance({ target_month: "2026/04" }));
+    const errs = validateAttendance(
+      baseAttendance({ target_month: "2026/04" }),
+    );
     expect(errs.target_month).toBeDefined();
     expect(errs.target_month).toContain("YYYY-MM");
   });
 
   it("rejects YYYY-MM-DD (too specific)", () => {
-    const errs = validateAttendance(baseAttendance({ target_month: "2026-04-01" }));
+    const errs = validateAttendance(
+      baseAttendance({ target_month: "2026-04-01" }),
+    );
     expect(errs.target_month).toBeDefined();
   });
 
   it("rejects invalid month 13", () => {
-    const errs = validateAttendance(baseAttendance({ target_month: "2026-13" }));
+    const errs = validateAttendance(
+      baseAttendance({ target_month: "2026-13" }),
+    );
     expect(errs.target_month).toBeDefined();
   });
 });

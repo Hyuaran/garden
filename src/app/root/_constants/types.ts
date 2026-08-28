@@ -9,14 +9,35 @@
 // 1. 法人マスタ
 // ============================================================
 export interface Company {
-  company_id: string;           // COMP-001
+  company_id: string; // COMP-001
   company_name: string;
   company_name_kana: string;
   corporate_number: string | null;
   representative: string;
+  representative_kana?: string | null;
   address: string;
   phone: string | null;
-  default_bank: string;          // 楽天銀行/みずほ銀行/PayPay銀行
+  fax?: string | null;
+  fiscal_end_month?: number | null;
+  invoice_registration_number?: string | null;
+  telecom_notification_number?: string | null;
+  employment_insurance_number?: string | null;
+  labor_insurance_number?: string | null;
+  tax_office?: string | null;
+  agency_notification_number?: string | null;
+  industry_classification?: string | null;
+  domain?: string | null;
+  representative_gender?: string | null;
+  representative_birthday?: string | null;
+  representative_address?: string | null;
+  representative_mobile?: string | null;
+  contact1_name?: string | null;
+  contact1_phone?: string | null;
+  contact2_name?: string | null;
+  contact2_phone?: string | null;
+  established_on?: string | null;
+  website?: string | null;
+  default_bank: string; // 楽天銀行/みずほ銀行/PayPay銀行
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -29,16 +50,16 @@ export type DefaultBank = (typeof DEFAULT_BANKS)[number];
 // 2. 銀行口座マスタ
 // ============================================================
 export interface BankAccount {
-  account_id: string;           // ACC-001
+  account_id: string; // ACC-001
   company_id: string;
   bank_name: string;
-  bank_code: string;            // 4桁
+  bank_code: string; // 4桁
   branch_name: string;
-  branch_code: string;          // 3桁
-  account_type: string;         // 普通/当座
-  account_number: string;       // 7桁
+  branch_code: string; // 3桁
+  account_type: string; // 普通/当座
+  account_number: string; // 7桁
   account_holder: string;
-  purpose: string | null;       // メイン/給与/経費等
+  purpose: string | null; // メイン/給与/経費等
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -48,10 +69,10 @@ export interface BankAccount {
 // 3. 取引先マスタ
 // ============================================================
 export interface Vendor {
-  vendor_id: string;            // VND-001
+  vendor_id: string; // VND-001
   vendor_name: string;
   vendor_name_kana: string;
-  vendor_type: string | null;   // 外注先/仕入先/その他
+  vendor_type: string | null; // 外注先/仕入先/その他
   bank_name: string;
   bank_code: string;
   branch_name: string;
@@ -59,7 +80,7 @@ export interface Vendor {
   account_type: string;
   account_number: string;
   account_holder_kana: string;
-  fee_bearer: string;           // 当方負担/先方負担
+  fee_bearer: string; // 当方負担/先方負担
   company_id: string | null;
   notes: string | null;
   is_active: boolean;
@@ -71,10 +92,10 @@ export interface Vendor {
 // 4. 給与体系マスタ
 // ============================================================
 export interface SalarySystem {
-  salary_system_id: string;     // SAL-SYS-001
+  salary_system_id: string; // SAL-SYS-001
   system_name: string;
-  employment_type: string;      // 正社員/アルバイト/共通
-  base_salary_type: string;     // 月給/時給/日給
+  employment_type: string; // 正社員/アルバイト/共通
+  base_salary_type: string; // 月給/時給/日給
   working_hours_day: number;
   working_days_month: number;
   overtime_rate: number;
@@ -92,14 +113,14 @@ export interface SalarySystem {
 // 5. 従業員マスタ
 // ============================================================
 export interface Employee {
-  employee_id: string;          // EMP-0001
+  employee_id: string; // EMP-0001
   employee_number: string;
   name: string;
   name_kana: string;
   company_id: string;
-  employment_type: string;      // 正社員 / アルバイト / outsource（Phase A-3-g）
+  employment_type: string; // 正社員 / アルバイト / outsource（Phase A-3-g）
   salary_system_id: string;
-  hire_date: string;            // YYYY-MM-DD
+  hire_date: string; // YYYY-MM-DD
   termination_date: string | null;
   /** 外注の契約終了日（employment_type=outsource のときに利用）。Phase A-3-g */
   contract_end_on?: string | null;
@@ -120,7 +141,7 @@ export interface Employee {
   account_holder_kana: string;
   kot_employee_id: string | null;
   mf_employee_id: string | null;
-  insurance_type: string;       // 加入/未加入/一部加入
+  insurance_type: string; // 加入/未加入/一部加入
   is_active: boolean;
   notes: string | null;
   created_at: string;
@@ -131,7 +152,7 @@ export interface Employee {
 // 6. 社会保険マスタ
 // ============================================================
 export interface Insurance {
-  insurance_id: string;         // INS-2026
+  insurance_id: string; // INS-2026
   fiscal_year: string;
   effective_from: string;
   effective_to: string | null;
@@ -150,9 +171,9 @@ export interface Insurance {
 // 7. 勤怠データ
 // ============================================================
 export interface Attendance {
-  attendance_id: string;        // ATT-2026-04-0001
+  attendance_id: string; // ATT-2026-04-0001
   employee_id: string;
-  target_month: string;         // 2026-04
+  target_month: string; // 2026-04
   working_days: number;
   absence_days: number;
   paid_leave_days: number;
@@ -167,7 +188,7 @@ export interface Attendance {
   training_hours: number | null;
   office_hours: number | null;
   imported_at: string | null;
-  import_status: string;        // 未取込/取込済/エラー
+  import_status: string; // 未取込/取込済/エラー
   kot_record_id: string | null;
   created_at: string;
   updated_at: string;
@@ -179,24 +200,24 @@ export interface Attendance {
 
 /** Garden全体ロール（8段階・Phase A-3-g で outsource 追加） */
 export type GardenRole =
-  | "toss"         // トス（アポインター）
-  | "closer"       // クローザー
-  | "cs"           // CS（仮）: 前確/後確画面の閲覧権限ここ以上
-  | "staff"        // 一般社員（仮）
-  | "outsource"    // 外注（業務委託、Phase A-3-g、staff と manager の間）
-  | "manager"      // 責任者（仮）
-  | "admin"        // 管理者（仮）
+  | "toss" // トス（アポインター）
+  | "closer" // クローザー
+  | "cs" // CS（仮）: 前確/後確画面の閲覧権限ここ以上
+  | "staff" // 一般社員（仮）
+  | "outsource" // 外注（業務委託、Phase A-3-g、staff と manager の間）
+  | "manager" // 責任者（仮）
+  | "admin" // 管理者（仮）
   | "super_admin"; // 全権管理者
 
 /** ロール表示ラベル（日本語） */
 export const GARDEN_ROLE_LABELS: Record<GardenRole, string> = {
-  toss:        "トス",
-  closer:      "クローザー",
-  cs:          "CS",
-  staff:       "一般社員",
-  outsource:   "外注",
-  manager:     "責任者",
-  admin:       "管理者",
+  toss: "トス",
+  closer: "クローザー",
+  cs: "CS",
+  staff: "一般社員",
+  outsource: "外注",
+  manager: "責任者",
+  admin: "管理者",
   super_admin: "全権管理者",
 };
 
@@ -222,14 +243,17 @@ export const GARDEN_ROLE_ORDER: GardenRole[] = [
  *   - memory project_super_admin_operation.md
  *   - docs/specs/plans/2026-05-11-garden-unified-auth-plan.md Task 5
  */
-export const GARDEN_ROLE_SELECTABLE_OPTIONS: Array<{ value: GardenRole; label: string }> = [
-  { value: "toss",      label: GARDEN_ROLE_LABELS.toss },
-  { value: "closer",    label: GARDEN_ROLE_LABELS.closer },
-  { value: "cs",        label: GARDEN_ROLE_LABELS.cs },
-  { value: "staff",     label: GARDEN_ROLE_LABELS.staff },
+export const GARDEN_ROLE_SELECTABLE_OPTIONS: Array<{
+  value: GardenRole;
+  label: string;
+}> = [
+  { value: "toss", label: GARDEN_ROLE_LABELS.toss },
+  { value: "closer", label: GARDEN_ROLE_LABELS.closer },
+  { value: "cs", label: GARDEN_ROLE_LABELS.cs },
+  { value: "staff", label: GARDEN_ROLE_LABELS.staff },
   { value: "outsource", label: GARDEN_ROLE_LABELS.outsource },
-  { value: "manager",   label: GARDEN_ROLE_LABELS.manager },
-  { value: "admin",     label: GARDEN_ROLE_LABELS.admin },
+  { value: "manager", label: GARDEN_ROLE_LABELS.manager },
+  { value: "admin", label: GARDEN_ROLE_LABELS.admin },
   // super_admin は意図的に除外（project_super_admin_operation.md）
 ];
 
@@ -243,19 +267,32 @@ export function isSuperAdminLockEnabled(): boolean {
 }
 
 /** 指定ロールが基準ロール以上の権限を持つか（階層比較） */
-export function isRoleAtLeast(target: GardenRole, baseline: GardenRole): boolean {
-  return GARDEN_ROLE_ORDER.indexOf(target) >= GARDEN_ROLE_ORDER.indexOf(baseline);
+export function isRoleAtLeast(
+  target: GardenRole,
+  baseline: GardenRole,
+): boolean {
+  return (
+    GARDEN_ROLE_ORDER.indexOf(target) >= GARDEN_ROLE_ORDER.indexOf(baseline)
+  );
 }
 
 /** Root 画面閲覧可能なロール（manager 以上） */
-export const ROOT_VIEW_ROLES: GardenRole[] = ["manager", "admin", "super_admin"];
+export const ROOT_VIEW_ROLES: GardenRole[] = [
+  "manager",
+  "admin",
+  "super_admin",
+];
 
 /** Root 編集可能なロール（admin 以上） */
 export const ROOT_WRITE_ROLES: GardenRole[] = ["admin", "super_admin"];
 
 /** Tree 前確/後確画面の閲覧可能ロール（cs 以上） */
 export const TREE_CONFIRM_VIEW_ROLES: GardenRole[] = [
-  "cs", "staff", "manager", "admin", "super_admin",
+  "cs",
+  "staff",
+  "manager",
+  "admin",
+  "super_admin",
 ];
 
 /** root_employees テーブルに認証拡張フィールドを含めた型 */
@@ -278,14 +315,65 @@ export interface MasterMenu {
 }
 
 export const MASTER_MENUS: MasterMenu[] = [
-  { slug: "inbox",           title: "届出受信箱",     description: "従業員から届いた申請の確認・対応",          icon: "📥" },
-  { slug: "contracts",       title: "雇用契約書",     description: "クルー向け雇用契約書の発行・履歴",          icon: "📄" },
-  { slug: "companies",       title: "法人マスタ",     description: "6法人の基本情報、デフォルト振込銀行",   icon: "🏢" },
-  { slug: "bank-accounts",   title: "銀行口座マスタ", description: "法人ごとの振込元口座",                    icon: "🏦" },
-  { slug: "vendors",         title: "取引先マスタ",   description: "振込先（外注先・仕入先）の口座情報",      icon: "🤝" },
-  { slug: "employees",       title: "従業員マスタ",   description: "従業員情報、振込口座、給与体系",          icon: "👤" },
-  { slug: "salary-systems",  title: "給与体系マスタ", description: "雇用形態別の計算ルール",                  icon: "💰" },
-  { slug: "insurance",       title: "社会保険マスタ", description: "保険料率、等級テーブル",                  icon: "🛡️" },
-  { slug: "attendance",      title: "勤怠データ",     description: "キングオブタイムから取込",                icon: "📅" },
-  { slug: "kot-sync-history", title: "KoT 同期履歴",  description: "KoT 連携の同期ログ閲覧・再実行",          icon: "🔄", adminOnly: true },
+  {
+    slug: "inbox",
+    title: "届出受信箱",
+    description: "従業員から届いた申請の確認・対応",
+    icon: "📥",
+  },
+  {
+    slug: "contracts",
+    title: "雇用契約書",
+    description: "クルー向け雇用契約書の発行・履歴",
+    icon: "📄",
+  },
+  {
+    slug: "companies",
+    title: "法人マスタ",
+    description: "6法人の基本情報、デフォルト振込銀行",
+    icon: "🏢",
+  },
+  {
+    slug: "bank-accounts",
+    title: "銀行口座マスタ",
+    description: "法人ごとの振込元口座",
+    icon: "🏦",
+  },
+  {
+    slug: "vendors",
+    title: "取引先マスタ",
+    description: "振込先（外注先・仕入先）の口座情報",
+    icon: "🤝",
+  },
+  {
+    slug: "employees",
+    title: "従業員マスタ",
+    description: "従業員情報、振込口座、給与体系",
+    icon: "👤",
+  },
+  {
+    slug: "salary-systems",
+    title: "給与体系マスタ",
+    description: "雇用形態別の計算ルール",
+    icon: "💰",
+  },
+  {
+    slug: "insurance",
+    title: "社会保険マスタ",
+    description: "保険料率、等級テーブル",
+    icon: "🛡️",
+  },
+  {
+    slug: "attendance",
+    title: "勤怠データ",
+    description: "キングオブタイムから取込",
+    icon: "📅",
+  },
+  {
+    slug: "kot-sync-history",
+    title: "KoT 同期履歴",
+    description: "KoT 連携の同期ログ閲覧・再実行",
+    icon: "🔄",
+    adminOnly: true,
+  },
 ];
