@@ -21,7 +21,15 @@ type TextItem = {
   height: number;
 };
 type Mask = { item: number; start: number; length: number };
-function targets(items: TextItem[], phrases: string[], maskMoney: boolean) {
+type CharacterOrigin = { item: number; offset: number };
+function withoutWhitespace(value: string) {
+  return [...value].filter((character) => !/\s/.test(character)).join("");
+}
+export function findMaskTargets(
+  items: TextItem[],
+  phrases: string[],
+  maskMoney: boolean,
+) {
   const wanted = phrases.map((x) => x.trim()).filter(Boolean);
   if (maskMoney) wanted.push(...findMoneyExpressions(items.map((item) => item.str).join("")));
   const masks = new Map<string, Mask>();
@@ -34,23 +42,46 @@ function targets(items: TextItem[], phrases: string[], maskMoney: boolean) {
       ))
         add({ item: i, start: match.index ?? 0, length: match[0].length });
     for (const phrase of wanted) {
-      const within = items[i].str.indexOf(phrase);
+      let within = items[i].str.indexOf(phrase);
       if (within >= 0) {
-        add({ item: i, start: within, length: phrase.length });
+        while (within >= 0) {
+          add({ item: i, start: within, length: phrase.length });
+          within = items[i].str.indexOf(phrase, within + phrase.length);
+        }
         continue;
       }
       let joined = "";
+      const origins: CharacterOrigin[] = [];
       for (
         let j = i;
         j < Math.min(items.length, i + 8) &&
         joined.length <= phrase.length + 20;
         j++
       ) {
-        joined += items[j].str;
-        if (joined.replace(/\s/g, "").includes(phrase.replace(/\s/g, ""))) {
-          for (let k = i; k <= j; k++)
-            add({ item: k, start: 0, length: items[k].str.length });
-          break;
+        for (const [offset, character] of [...items[j].str].entries()) {
+          if (/\s/.test(character)) continue;
+          joined += character;
+          origins.push({ item: j, offset });
+        }
+        const needle = withoutWhitespace(phrase);
+        let matchAt = joined.indexOf(needle);
+        while (needle && matchAt >= 0) {
+          const matchedOrigins = origins.slice(matchAt, matchAt + needle.length);
+          if (matchedOrigins.length === needle.length) {
+            const ranges = new Map<number, { start: number; end: number }>();
+            for (const origin of matchedOrigins) {
+              const range = ranges.get(origin.item);
+              if (range) range.end = origin.offset + 1;
+              else
+                ranges.set(origin.item, {
+                  start: origin.offset,
+                  end: origin.offset + 1,
+                });
+            }
+            for (const [item, range] of ranges)
+              add({ item, start: range.start, length: range.end - range.start });
+          }
+          matchAt = joined.indexOf(needle, matchAt + needle.length);
         }
       }
     }
@@ -76,6 +107,8 @@ export async function generatePartnerTemplate(
         path.join(process.cwd(), "public/fonts/NotoSansJP-Regular.ttf"),
       ),
     ),
+    // pdf-lib/fontkit の subset:true は、実際の生成PDFをPopplerで描画した際に
+    // 日本語の欠字・文字化けが発生したため、配布文書の表示保証を優先する。
     { subset: false },
   );
   const watermarkFont = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -89,7 +122,7 @@ export async function generatePartnerTemplate(
         "str" in i && "transform" in i && "width" in i && "height" in i,
     );
     totalItems += items.length;
-    const masks = targets(items, options.hiddenTerms, options.maskMoney);
+    const masks = findMaskTargets(items, options.hiddenTerms, options.maskMoney);
     for (const mask of masks) {
       const item = items[mask.item],
         unit = item.str.length ? item.width / item.str.length : item.width,

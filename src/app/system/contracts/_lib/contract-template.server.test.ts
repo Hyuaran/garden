@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
   DRAFT_WATERMARK,
+  findMaskTargets,
   findMoneyExpressions,
   generatePartnerTemplate,
 } from "./contract-template.server";
@@ -13,6 +14,53 @@ const issuer = {
   address: "大阪府大阪市",
 };
 describe("partner template", () => {
+  const item = (str: string) => ({
+    str,
+    transform: [1, 0, 0, 1, 0, 0],
+    width: str.length * 10,
+    height: 10,
+  });
+  it("masks only the matched range when money spans text items", () => {
+    expect(
+      findMaskTargets(
+        ["株式会社", "ARATAに対し、金", "42万", "円（税込み）を"].map(item),
+        [],
+        true,
+      ),
+    ).toEqual([
+      { item: 2, start: 0, length: 3 },
+      { item: 3, start: 0, length: 1 },
+    ]);
+  });
+  it("maps whitespace-free positions back to the original item", () => {
+    expect(
+      findMaskTargets(
+        ["前文　株式会社", "　ＩＭＧ　（以下、乙）"].map(item),
+        ["株式会社ＩＭＧ"],
+        false,
+      ),
+    ).toEqual([
+      { item: 0, start: 3, length: 4 },
+      { item: 1, start: 1, length: 3 },
+    ]);
+  });
+  it("masks a phrase within one item without widening the range", () => {
+    expect(
+      findMaskTargets([item("前株式会社ＩＭＧ後")], ["株式会社ＩＭＧ"], false),
+    ).toEqual([{ item: 0, start: 1, length: 7 }]);
+  });
+  it("masks every occurrence of the same phrase", () => {
+    expect(
+      findMaskTargets(
+        [item("株式会社ＩＭＧと株式会社ＩＭＧ")],
+        ["株式会社ＩＭＧ"],
+        false,
+      ),
+    ).toEqual([
+      { item: 0, start: 0, length: 7 },
+      { item: 0, start: 8, length: 7 },
+    ]);
+  });
   it("detects currency but not article numbers", () => {
     expect(
       findMoneyExpressions("単価は1,200円、別料金は¥ 3000。第3条"),
