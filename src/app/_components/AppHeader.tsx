@@ -25,7 +25,14 @@ function formatDateJP(date: Date): string {
 }
 
 type GardenRole =
-  | "toss" | "closer" | "cs" | "staff" | "outsource" | "manager" | "admin" | "super_admin";
+  | "toss"
+  | "closer"
+  | "cs"
+  | "staff"
+  | "outsource"
+  | "manager"
+  | "admin"
+  | "super_admin";
 
 const ROLE_LABEL: Record<GardenRole, string> = {
   super_admin: "全権管理者",
@@ -75,10 +82,20 @@ export function AppHeader({
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       const isContentEditable =
-        target?.isContentEditable || target?.getAttribute("contenteditable") === "true";
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || isContentEditable) return;
+        target?.isContentEditable ||
+        target?.getAttribute("contenteditable") === "true";
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        isContentEditable
+      )
+        return;
 
-      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "f" || e.key.toLowerCase() === "k")) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key.toLowerCase() === "f" || e.key.toLowerCase() === "k")
+      ) {
         e.preventDefault();
         searchRef.current?.focus();
       }
@@ -92,7 +109,8 @@ export function AppHeader({
     if (!userDropdownOpen) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
-      if (!target?.closest('[data-testid="app-user-info"]')) setUserDropdownOpen(false);
+      if (!target?.closest('[data-testid="app-user-info"]'))
+        setUserDropdownOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -129,7 +147,9 @@ export function AppHeader({
             border: "1px solid #DEE5DE",
           }}
         >
-          <span aria-hidden style={{ color: "#7A8B7E" }}>🔍</span>
+          <span aria-hidden style={{ color: "#7A8B7E" }}>
+            🔍
+          </span>
           <input
             ref={searchRef}
             type="text"
@@ -291,12 +311,16 @@ export function AppHeader({
               {userName.charAt(0)}
             </div>
             <div style={{ lineHeight: 1.2, textAlign: "left" }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#2B2B2B" }}>{userName}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#2B2B2B" }}>
+                {userName}
+              </div>
               <div style={{ fontSize: 10, color: "#6B8E75" }}>
                 {organization} / {ROLE_LABEL[role]}
               </div>
             </div>
-            <span aria-hidden style={{ color: "#7A8B7E", fontSize: 10 }}>▼</span>
+            <span aria-hidden style={{ color: "#7A8B7E", fontSize: 10 }}>
+              ▼
+            </span>
           </button>
 
           {userDropdownOpen && (
@@ -319,22 +343,68 @@ export function AppHeader({
               <a
                 href="/root/me"
                 role="menuitem"
-                style={{ display: "block", padding: "8px 12px", fontSize: 13, color: "#2B2B2B", textDecoration: "none", borderRadius: 4 }}
+                style={{
+                  display: "block",
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  color: "#2B2B2B",
+                  textDecoration: "none",
+                  borderRadius: 4,
+                }}
               >
                 マイページ
               </a>
+              {/* 契約書管理は API 側も manager 以上に限定しているため、表示も揃える */}
+              {(role === "manager" ||
+                role === "admin" ||
+                role === "super_admin") && (
+                <a
+                  href="/system/contracts"
+                  role="menuitem"
+                  style={{
+                    display: "block",
+                    padding: "8px 12px",
+                    fontSize: 13,
+                    color: "#2B2B2B",
+                    textDecoration: "none",
+                    borderRadius: 4,
+                  }}
+                >
+                  契約書管理
+                </a>
+              )}
               <a
                 href="/help"
                 role="menuitem"
-                style={{ display: "block", padding: "8px 12px", fontSize: 13, color: "#2B2B2B", textDecoration: "none", borderRadius: 4 }}
+                style={{
+                  display: "block",
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  color: "#2B2B2B",
+                  textDecoration: "none",
+                  borderRadius: 4,
+                }}
               >
                 ヘルプ
               </a>
-              <hr style={{ border: 0, borderTop: "1px solid #E8E5DD", margin: "4px 0" }} />
+              <hr
+                style={{
+                  border: 0,
+                  borderTop: "1px solid #E8E5DD",
+                  margin: "4px 0",
+                }}
+              />
               <a
                 href="/api/logout"
                 role="menuitem"
-                style={{ display: "block", padding: "8px 12px", fontSize: 13, color: "#C1121F", textDecoration: "none", borderRadius: 4 }}
+                style={{
+                  display: "block",
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  color: "#C1121F",
+                  textDecoration: "none",
+                  borderRadius: 4,
+                }}
               >
                 ログアウト
               </a>

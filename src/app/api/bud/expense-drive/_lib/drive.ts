@@ -67,6 +67,32 @@ async function driveFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`https://www.googleapis.com${path}`, { ...init, headers });
 }
 
+export type DriveBrowserEntry = {
+  id: string;
+  name: string;
+  mimeType: string;
+  webViewLink: string | null;
+  modifiedTime: string | null;
+};
+
+/** 契約書管理など、フォルダを含む汎用Drive閲覧用。 */
+export async function listDriveFolderEntries(folderId: string): Promise<DriveBrowserEntry[]> {
+  const params = new URLSearchParams({
+    q: `'${folderId}' in parents and trashed=false`,
+    fields: "files(id,name,mimeType,webViewLink,modifiedTime)",
+    pageSize: "1000",
+    orderBy: "folder,name",
+  });
+  const res = await driveFetch(`/drive/v3/files?${params.toString()}`);
+  if (!res.ok) throw new Error(`Drive list error: ${res.status} ${await res.text()}`);
+  const data = (await res.json()) as { files?: DriveBrowserEntry[] };
+  return (data.files ?? []).map((entry) => ({
+    ...entry,
+    webViewLink: entry.webViewLink ?? null,
+    modifiedTime: entry.modifiedTime ?? null,
+  }));
+}
+
 export type DriveFolderMarker = { key: string; value: string };
 
 /**
