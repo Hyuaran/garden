@@ -354,20 +354,25 @@ export function AppHeader({
               >
                 マイページ
               </a>
-              <a
-                href="/system/contracts"
-                role="menuitem"
-                style={{
-                  display: "block",
-                  padding: "8px 12px",
-                  fontSize: 13,
-                  color: "#2B2B2B",
-                  textDecoration: "none",
-                  borderRadius: 4,
-                }}
-              >
-                契約書管理
-              </a>
+              {/* 契約書管理は API 側も manager 以上に限定しているため、表示も揃える */}
+              {(role === "manager" ||
+                role === "admin" ||
+                role === "super_admin") && (
+                <a
+                  href="/system/contracts"
+                  role="menuitem"
+                  style={{
+                    display: "block",
+                    padding: "8px 12px",
+                    fontSize: 13,
+                    color: "#2B2B2B",
+                    textDecoration: "none",
+                    borderRadius: 4,
+                  }}
+                >
+                  契約書管理
+                </a>
+              )}
               <a
                 href="/help"
                 role="menuitem"

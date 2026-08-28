@@ -16,6 +16,12 @@ import {
   MAX_CONTRACT_SIZE,
   type ContractCompany,
 } from "@/app/system/contracts/_lib/contract-types";
+// pdfjs-dist は Node.js runtime が必須（既存の /api/forest/parse-pdf と同じ）。
+// 宣言が無いと webpack(rsc) 側でバンドルされ
+// "Object.defineProperty called on non-object" で 500 になる（実機で確認）。
+export const runtime = "nodejs";
+// PDF解析とひな形生成に時間がかかるため長めに許容する
+export const maxDuration = 60;
 async function context() {
   const manager = await requireManager();
   if (!manager) return null;
@@ -51,7 +57,9 @@ export async function GET(request: Request) {
   }
   const { data: rows, error } = await c.admin
     .from("system_contracts")
-    .select("*,root_companies(company_id,company_name,representative,address)")
+    // company_id は "ALL"（全社）を取りうるため root_companies へのFKを張っていない。
+    // FKが無いと PostgREST の埋め込み取得はできないので、会社名は companies から画面側で引く。
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(200);
   return error

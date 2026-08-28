@@ -69,9 +69,12 @@ export async function extractContract(
   );
   const ownParty = ownA ? "A" : ownB ? "B" : null;
   const company = ownA ?? ownB ?? own;
-  const heading =
-    (pages[0]?.match(/([^。]{2,40}(?:契約書|覚書|通知書))/g) ?? []).at(-1) ??
-    "";
+  // 見出しは1ページ目の先頭にあるため最初のマッチを採る。
+  // 最後のマッチだと本文中の「〜通知書」等を拾ってしまう（実PDFで確認）。
+  // 先頭に付くページ番号は落とす。
+  const heading = (
+    (pages[0]?.match(/([^。]{2,40}(?:契約書|覚書|通知書))/g) ?? []).at(0) ?? ""
+  ).replace(/^\d+/, "");
   const dates =
     all.match(
       /令和\d+年\d+月\d+日|20\d{2}年\d+月\d+日|20\d{2}\/\d{1,2}\/\d{1,2}/g,
