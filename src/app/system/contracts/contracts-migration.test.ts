@@ -25,4 +25,10 @@ describe("system contracts migration", () => {
       expect(sql).toMatch(new RegExp(`\\b${c}\\b`));
     expect(sql).toContain("enable row level security");
   });
+  it("adds product and editable Word template columns", () => {
+    const extension = readFileSync("supabase/migrations/20260828000004_system_contracts_product.sql", "utf8");
+    expect(extension).toMatch(/add column if not exists product text/);
+    expect(extension).toContain("template_docx_file_id");
+    expect(extension).toContain("template_docx_url");
+  });
 });

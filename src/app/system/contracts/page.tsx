@@ -1,352 +1,106 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
-import type {
-  ContractCompany,
-  ContractDraft,
-  ContractRow,
-} from "./_lib/contract-types";
-const card = {
-  border: "1px solid #dbe5dc",
-  borderRadius: 12,
-  padding: 18,
-  background: "#fff",
-  marginBottom: 18,
-} as const;
-const input = {
-  width: "100%",
-  boxSizing: "border-box" as const,
-  padding: 9,
-  border: "1px solid #b9c9bc",
-  borderRadius: 6,
-};
+import type { ContractCompany, ContractDraft, ContractRow } from "./_lib/contract-types";
+import styles from "./contracts.module.css";
+
+type DriveEntry = { id: string; name: string; mimeType: string; webViewLink: string | null; modifiedTime: string | null };
+const FOLDER = "application/vnd.google-apps.folder";
+
 export default function ContractsPage() {
-  const [companies, setCompanies] = useState<ContractCompany[]>([]),
-    [rows, setRows] = useState<ContractRow[]>([]),
-    [file, setFile] = useState<File | null>(null),
-    [draft, setDraft] = useState<ContractDraft | null>(null),
-    [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false),
-    [template, setTemplate] = useState<ContractRow | null>(null),
-    [issuerId, setIssuerId] = useState(""),
-    [product, setProduct] = useState(""),
-    [hiddenTerms, setHiddenTerms] = useState(""),
-    [maskMoney, setMaskMoney] = useState(true);
-  async function load() {
-    const r = await fetch("/api/system/contracts");
-    if (r.ok) {
-      const j = await r.json();
-      setCompanies(j.companies ?? []);
-      setRows(j.rows ?? []);
-    }
+  const [tab, setTab] = useState<"browse" | "register">("browse");
+  const [companies, setCompanies] = useState<ContractCompany[]>([]);
+  const [rows, setRows] = useState<ContractRow[]>([]);
+  const [entries, setEntries] = useState<DriveEntry[]>([]);
+  const [path, setPath] = useState<{ id: string | null; name: string }[]>([{ id: null, name: "契約書" }]);
+  const [file, setFile] = useState<File | null>(null);
+  const [draft, setDraft] = useState<ContractDraft | null>(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [template, setTemplate] = useState<ContractRow | null>(null);
+  const [issuerId, setIssuerId] = useState("");
+  const [product, setProduct] = useState("");
+  async function loadLedger() {
+    const response = await fetch("/api/system/contracts");
+    if (!response.ok) return setMessage("契約書を読み込めませんでした。時間をおいて再度お試しください。");
+    const json = await response.json(); setCompanies(json.companies ?? []); setRows(json.rows ?? []);
+  }
+  async function browse(folderId: string | null) {
+    setBusy(true);
+    const query = folderId ? `?browse=1&folderId=${encodeURIComponent(folderId)}` : "?browse=1";
+    const response = await fetch(`/api/system/contracts${query}`);
+    const json = await response.json(); setBusy(false);
+    if (!response.ok) return setMessage(json.error ?? "Driveを表示できませんでした。管理者へ連絡してください。");
+    setEntries(json.entries ?? []);
   }
   useEffect(() => {
     // Initial API hydration is intentionally performed once on mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
+    void Promise.all([loadLedger(), browse(null)]);
   }, []);
   async function choose(next: File | null) {
-    setFile(next);
-    setDraft(null);
-    setMessage("");
-    if (!next) return;
-    const form = new FormData();
-    form.set("action", "analyze");
-    form.set("file", next);
-    setBusy(true);
-    const r = await fetch("/api/system/contracts", {
-        method: "POST",
-        body: form,
-      }),
-      j = await r.json();
-    setBusy(false);
-    if (!r.ok) return setMessage(j.error);
-    setDraft(j.draft);
+    setFile(next); setDraft(null); setMessage(""); if (!next) return;
+    const form = new FormData(); form.set("action", "analyze"); form.set("file", next); setBusy(true);
+    const response = await fetch("/api/system/contracts", { method: "POST", body: form });
+    const json = await response.json(); setBusy(false);
+    if (!response.ok) return setMessage(json.error); setDraft(json.draft);
   }
-  async function register(e: FormEvent) {
-    e.preventDefault();
-    if (!file || !draft) return;
-    const form = new FormData();
-    form.set("action", "register");
-    form.set("file", file);
-    for (const [k, v] of Object.entries({
-      counterparty: draft.counterparty,
-      companyId: draft.companyId,
-      contractType: draft.contractType,
-      concludedOn: draft.concludedOn,
-      note: draft.note,
-    }))
-      form.set(k, String(v));
-    setBusy(true);
-    const r = await fetch("/api/system/contracts", {
-        method: "POST",
-        body: form,
-      }),
-      j = await r.json();
-    setBusy(false);
-    if (!r.ok) return setMessage(j.error);
-    setMessage(
-      j.driveStatus === "skipped"
-        ? "台帳へ登録しました。Drive保存は設定後に行ってください。"
-        : "契約書を登録し、Driveへ保存しました。",
-    );
-    setFile(null);
-    setDraft(null);
-    await load();
+  async function register(event: FormEvent) {
+    event.preventDefault(); if (!file || !draft) return;
+    const form = new FormData(); form.set("action", "register"); form.set("file", file);
+    Object.entries({ counterparty: draft.counterparty, companyId: draft.companyId, contractType: draft.contractType,
+      concludedOn: draft.concludedOn, note: draft.note }).forEach(([key, value]) => form.set(key, String(value)));
+    setBusy(true); const response = await fetch("/api/system/contracts", { method: "POST", body: form });
+    const json = await response.json(); setBusy(false);
+    if (!response.ok) return setMessage(json.error ?? "登録できませんでした。入力内容を確認してください。");
+    setMessage(json.driveStatus === "skipped" ? "台帳へ登録しました。Driveの設定は管理者へ確認してください。" : "契約書を登録し、Driveへ保存しました。");
+    setFile(null); setDraft(null); await loadLedger();
   }
+  const companyLabel = (id: string) => id === "ALL" ? "全社" : companies.find((company) => company.company_id === id)?.company_name ?? id;
   function openTemplate(row: ContractRow) {
-    setTemplate(row);
-    setIssuerId(
-      row.company_id === "ALL"
-        ? (companies[0]?.company_id ?? "")
-        : row.company_id,
-    );
-    setProduct(row.contract_type);
-    setHiddenTerms(row.counterparty);
-    setMaskMoney(true);
+    setTemplate(row); setIssuerId(row.company_id === "ALL" ? companies[0]?.company_id ?? "" : row.company_id);
+    setProduct(row.product || row.contract_type);
   }
   async function generate() {
     if (!template) return;
-    const form = new FormData();
-    form.set("action", "template");
-    form.set("id", template.id);
-    form.set("issuerId", issuerId);
-    form.set("product", product);
-    form.set("hiddenTerms", hiddenTerms);
-    form.set("maskMoney", String(maskMoney));
-    setBusy(true);
-    const r = await fetch("/api/system/contracts", {
-      method: "POST",
-      body: form,
-    });
-    setBusy(false);
-    if (!r.ok) {
-      const j = await r.json();
-      return setMessage(j.error);
-    }
-    const blob = await r.blob(),
-      url = URL.createObjectURL(blob),
-      a = document.createElement("a");
-    a.href = url;
-    a.download = `${template.contract_type}_ひな形_DRAFT.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setMessage(
-      r.headers.get("x-contract-scanned") === "true"
-        ? "画像PDFのため自動マスクはできませんでした。透かしと発行元を追加しました。"
-        : "ひな形を生成し、Drive保存とダウンロードを行いました。",
-    );
-    setTemplate(null);
-    await load();
+    const form = new FormData(); form.set("action", "template"); form.set("id", template.id); form.set("issuerId", issuerId); form.set("product", product);
+    setBusy(true); const response = await fetch("/api/system/contracts", { method: "POST", body: form });
+    const json = await response.json(); setBusy(false);
+    if (!response.ok) return setMessage(json.error ?? "ひな形を作成できませんでした。管理者へ連絡してください。");
+    setMessage(json.files?.status === "skipped" ? "ひな形を作成しました。Driveの設定は管理者へ確認してください。" : "WordとPDFのひな形を作成し、Driveへ保存しました。");
+    setTemplate(null); await loadLedger();
   }
-  return (
-    <main
-      style={{
-        maxWidth: 1100,
-        margin: "0 auto",
-        padding: 24,
-        color: "#243329",
-      }}
-    >
-      <h1>契約書の登録＆パートナー配布用ひな形の生成</h1>
-      <p>
-        上位店との契約書を登録し、パートナーへ配布するドラフトを作成します。
-      </p>
-      {message ? (
-        <p role="status" style={{ padding: 10, background: "#eef6ef" }}>
-          {message}
-        </p>
-      ) : null}
-      <section style={card}>
-        <h2>1. 上位店契約の登録</h2>
-        <label>
-          PDFを選ぶ
-          <input
-            type="file"
-            accept="application/pdf,.pdf"
-            onChange={(e) => void choose(e.target.files?.[0] ?? null)}
-          />
-        </label>
-        {busy && !draft ? <p>読み取り中…</p> : null}
-        {draft ? (
-          <form onSubmit={register}>
-            <h3>読み取り結果を確認してください</h3>
-            {draft.scanned ? (
-              <p role="alert">
-                このPDFは画像のため読み取れませんでした。各項目を入力してください。
-              </p>
-            ) : null}
-            {draft.ownPartyWarning ? (
-              <p role="alert" style={{ color: "#a33" }}>
-                自社が甲になっています。甲乙を確認してください。
-              </p>
-            ) : null}
-            <p>
-              甲: {draft.partyA || "読み取れませんでした。入力してください"}
-              <br />
-              乙: {draft.partyB || "読み取れませんでした。入力してください"}
-            </p>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2,minmax(220px,1fr))",
-                gap: 12,
-              }}
-            >
-              <label>
-                相手先
-                <input
-                  required
-                  style={input}
-                  value={draft.counterparty}
-                  onChange={(e) =>
-                    setDraft({ ...draft, counterparty: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                自社法人
-                <select
-                  required
-                  style={input}
-                  value={draft.companyId}
-                  onChange={(e) =>
-                    setDraft({ ...draft, companyId: e.target.value })
-                  }
-                >
-                  <option value="">選択してください</option>
-                  {companies.map((c) => (
-                    <option key={c.company_id} value={c.company_id}>
-                      {c.company_name}
-                    </option>
-                  ))}
-                  <option value="ALL">複数法人（ALL）</option>
-                </select>
-              </label>
-              <label>
-                契約種別
-                <input
-                  required
-                  style={input}
-                  value={draft.contractType}
-                  onChange={(e) =>
-                    setDraft({ ...draft, contractType: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                締結日
-                <input
-                  required
-                  type="date"
-                  style={input}
-                  value={draft.concludedOn}
-                  onChange={(e) =>
-                    setDraft({ ...draft, concludedOn: e.target.value })
-                  }
-                />
-              </label>
-              <label style={{ gridColumn: "1/-1" }}>
-                メモ
-                <textarea
-                  style={input}
-                  value={draft.note}
-                  onChange={(e) => setDraft({ ...draft, note: e.target.value })}
-                />
-              </label>
-            </div>
-            <button
-              disabled={busy}
-              style={{ marginTop: 14, padding: "10px 18px" }}
-            >
-              これで登録する
-            </button>
-          </form>
-        ) : null}
-      </section>
-      <section style={card}>
-        <h2>2. 登録済み契約</h2>
-        {rows.map((row) => (
-          <div
-            key={row.id}
-            style={{ borderTop: "1px solid #ddd", padding: "12px 0" }}
-          >
-            <strong>{row.counterparty}</strong> ／{" "}
-            {row.root_companies?.company_name ?? row.company_id} ／{" "}
-            {row.contract_type} ／ {row.concluded_on}　
-            {row.drive_url ? (
-              <a href={row.drive_url} target="_blank" rel="noreferrer">
-                元PDF
-              </a>
-            ) : (
-              "Drive未保存"
-            )}
-            　
-            {row.template_url ? (
-              <a href={row.template_url} target="_blank" rel="noreferrer">
-                ひな形
-              </a>
-            ) : (
-              <button
-                onClick={() => openTemplate(row)}
-                disabled={!row.drive_file_id}
-              >
-                ひな形を作る
-              </button>
-            )}
-          </div>
-        ))}
-      </section>
-      {template ? (
-        <section role="dialog" aria-modal="true" style={card}>
-          <h2>パートナー配布用ひな形</h2>
-          <label>
-            隠す語句（1行に1つ）
-            <textarea
-              style={{ ...input, minHeight: 100 }}
-              value={hiddenTerms}
-              onChange={(e) => setHiddenTerms(e.target.value)}
-            />
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={maskMoney}
-              onChange={(e) => setMaskMoney(e.target.checked)}
-            />{" "}
-            金額を隠す
-          </label>
-          <label>
-            発行元（ひな形の甲）
-            <select
-              style={input}
-              value={issuerId}
-              onChange={(e) => setIssuerId(e.target.value)}
-            >
-              {companies.map((c) => (
-                <option key={c.company_id} value={c.company_id}>
-                  {c.company_name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            商材
-            <input
-              style={input}
-              value={product}
-              onChange={(e) => setProduct(e.target.value)}
-            />
-          </label>
-          <p>DRAFT透かしは全ページへ自動で入ります。</p>
-          <button
-            onClick={() => void generate()}
-            disabled={busy || !issuerId || !product}
-          >
-            生成してダウンロード
-          </button>{" "}
-          <button onClick={() => setTemplate(null)}>閉じる</button>
-        </section>
-      ) : null}
-    </main>
-  );
+  return <div className={styles.pageShell}><main className={styles.main}>
+    <header className={styles.header}><div><p className={styles.eyebrow}>SYSTEM / CONTRACTS</p><h1>契約書管理</h1><p>契約書の確認、登録、パートナー配布用ひな形の作成を行います。</p></div></header>
+    {message && <p role="status" className={styles.message}>{message}</p>}
+    <div className={styles.tabs} role="tablist">
+      <button role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")}>契約書を見る</button>
+      <button role="tab" aria-selected={tab === "register"} onClick={() => setTab("register")}>契約書を登録する</button>
+    </div>
+    {tab === "browse" ? <section className={styles.card}>
+      <h2>Driveの契約書</h2><nav className={styles.breadcrumbs} aria-label="現在のフォルダ">
+        {path.map((part, index) => <button key={`${part.id}-${index}`} onClick={() => { const next = path.slice(0, index + 1); setPath(next); void browse(part.id); }}>{part.name}</button>)}
+      </nav>
+      {busy ? <p>読み込み中…</p> : <div className={styles.fileGrid}>{entries.map((entry) => entry.mimeType === FOLDER ?
+        <button className={styles.folder} key={entry.id} onClick={() => { setPath([...path, { id: entry.id, name: entry.name }]); void browse(entry.id); }}>📁 <span>{entry.name}</span></button> :
+        <a className={styles.file} key={entry.id} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer">📄 <span>{entry.name}</span></a>)}</div>}
+    </section> : <>
+      <section className={styles.card}><h2>上位店契約を登録する</h2><label className={styles.field}>PDFを選ぶ<input type="file" accept="application/pdf,.pdf" onChange={(event) => void choose(event.target.files?.[0] ?? null)} /></label>
+      {busy && !draft && <p>読み取り中…</p>}{draft && <form onSubmit={register}><h3>読み取り結果を確認してください</h3>
+        {(draft.scanned || !draft.counterparty || !draft.contractType || !draft.concludedOn) && <p role="alert" className={styles.warning}>読み取れませんでした。空欄の項目を入力してください。</p>}
+        {draft.ownPartyWarning && <p role="alert" className={styles.warning}>自社が甲になっています。甲乙を確認してください。</p>}
+        <p>甲: {draft.partyA || "読み取れませんでした。入力してください"}<br/>乙: {draft.partyB || "読み取れませんでした。入力してください"}</p>
+        <div className={styles.formGrid}><label>相手先<input required value={draft.counterparty} onChange={(e) => setDraft({ ...draft, counterparty: e.target.value })}/></label>
+        <label>自社法人<select required value={draft.companyId} onChange={(e) => setDraft({ ...draft, companyId: e.target.value })}><option value="">選択してください</option>{companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}<option value="ALL">複数法人（ALL）</option></select></label>
+        <label>契約種別<input required value={draft.contractType} onChange={(e) => setDraft({ ...draft, contractType: e.target.value })}/></label>
+        <label>締結日<input required type="date" value={draft.concludedOn} onChange={(e) => setDraft({ ...draft, concludedOn: e.target.value })}/></label>
+        <label className={styles.full}>メモ<textarea value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })}/></label></div>
+        <button className={styles.primary} disabled={busy}>これで登録する</button></form>}</section>
+      <section className={styles.card}><h2>登録済み契約</h2><div className={styles.rows}>{rows.map((row) => <article key={row.id}><div><strong>{row.counterparty}</strong><span>{companyLabel(row.company_id)} / {row.contract_type} / {row.concluded_on}</span></div><div className={styles.actions}>{row.drive_url && <a href={row.drive_url} target="_blank" rel="noreferrer">元PDF</a>}{row.template_url && <a href={row.template_url} target="_blank" rel="noreferrer">PDFひな形</a>}{row.template_docx_url && <a href={row.template_docx_url} target="_blank" rel="noreferrer">Wordひな形</a>}<button onClick={() => openTemplate(row)} disabled={!row.drive_file_id}>ひな形を作る</button></div></article>)}</div></section>
+    </>}
+    {template && <div className={styles.overlay}><section role="dialog" aria-modal="true" className={styles.dialog}><h2>パートナー配布用ひな形</h2><p>元PDFの条文を自社書式で組み直し、WordとPDFを作成します。</p>
+      <label>発行元<select value={issuerId} onChange={(e) => setIssuerId(e.target.value)}>{companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}</select></label>
+      <label>商材<input value={product} onChange={(e) => setProduct(e.target.value)}/></label><p>上位店情報、金額、料率、具体的な期間はひな形に入りません。</p>
+      <button className={styles.primary} onClick={() => void generate()} disabled={busy || !issuerId || !product}>WordとPDFを作成する</button><button onClick={() => setTemplate(null)}>閉じる</button>
+    </section></div>}
+  </main></div>;
 }

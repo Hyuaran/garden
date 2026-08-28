@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
-import { downloadFile } from "@/app/api/bud/expense-drive/_lib/drive";
+import {
+  downloadFile,
+  findOrCreateSubfolder,
+  listDriveFolderEntries,
+} from "@/app/api/bud/expense-drive/_lib/drive";
 import { extractContract } from "@/app/system/contracts/_lib/contract-extraction.server";
 import {
   saveOriginalContract,
@@ -23,9 +27,28 @@ async function context() {
     .order("company_id");
   return { manager, admin, companies: (companies ?? []) as ContractCompany[] };
 }
-export async function GET() {
+export async function GET(request: Request) {
   const c = await context();
   if (!c) return NextResponse.json({ ok: false }, { status: 403 });
+  const url = new URL(request.url);
+  if (url.searchParams.has("browse")) {
+    const root = process.env.GARDEN_CONTRACTS_DRIVE_ROOT_FOLDER_ID;
+    if (!root)
+      return NextResponse.json({ ok: false, error: "Driveを表示できません。管理者へ連絡してください。" }, { status: 503 });
+    const folderId = url.searchParams.get("folderId");
+    if (folderId)
+      return NextResponse.json({ ok: true, entries: await listDriveFolderEntries(folderId) });
+    const entries = await Promise.all(
+      ["01_契約書　上位店", "05_パートナー配布用ひな形"].map(async (name) => ({
+        id: await findOrCreateSubfolder(root, name),
+        name,
+        mimeType: "application/vnd.google-apps.folder",
+        webViewLink: null,
+        modifiedTime: null,
+      })),
+    );
+    return NextResponse.json({ ok: true, entries });
+  }
   const { data: rows, error } = await c.admin
     .from("system_contracts")
     .select("*,root_companies(company_id,company_name,representative,address)")
@@ -143,33 +166,31 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     const source = await downloadFile(row.drive_file_id),
-      hiddenTerms = String(form.get("hiddenTerms") ?? "")
-        .split(/\r?\n/)
-        .map((x) => x.trim())
-        .filter(Boolean),
       generated = await generatePartnerTemplate(source, {
-        hiddenTerms,
-        maskMoney: String(form.get("maskMoney")) !== "false",
         issuer,
+        title: row.contract_type,
+        excludedTerms: [row.counterparty, ...c.companies.map((company) => company.company_name)],
       }),
-      filename = `${row.contract_type}_ひな形_DRAFT.pdf`,
-      saved = await savePartnerTemplate(generated.buffer, filename, product);
+      base = `${row.contract_type}_ひな形_DRAFT`,
+      filenames = { pdf: `${base}.pdf`, docx: `${base}.docx` },
+      saved = await savePartnerTemplate(
+        { pdf: generated.pdf, docx: generated.docx },
+        filenames,
+        product,
+        row.counterparty,
+      );
     await c.admin
       .from("system_contracts")
       .update({
-        template_file_id: saved.fileId,
-        template_url: saved.url,
+        product,
+        template_file_id: saved.pdf?.fileId ?? null,
+        template_url: saved.pdf?.url ?? null,
+        template_docx_file_id: saved.docx?.fileId ?? null,
+        template_docx_url: saved.docx?.url ?? null,
         template_generated_at: new Date().toISOString(),
       })
       .eq("id", id);
-    return new Response(new Uint8Array(generated.buffer), {
-      headers: {
-        "content-type": "application/pdf",
-        "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
-        "x-contract-scanned": String(generated.scanned),
-        "x-contract-masked-count": String(generated.maskedCount),
-      },
-    });
+    return NextResponse.json({ ok: true, files: saved, filenames });
   }
   return NextResponse.json(
     { ok: false, error: "操作を確認してください。" },

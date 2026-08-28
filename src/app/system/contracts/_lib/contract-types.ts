@@ -31,6 +31,7 @@ export type ContractRow = {
   counterparty: string;
   company_id: string;
   contract_type: string;
+  product: string | null;
   concluded_on: string;
   note: string | null;
   drive_file_id: string | null;
@@ -38,6 +39,8 @@ export type ContractRow = {
   drive_folder_name: string | null;
   template_file_id: string | null;
   template_url: string | null;
+  template_docx_file_id: string | null;
+  template_docx_url: string | null;
   template_generated_at: string | null;
   created_at: string;
   root_companies?: ContractCompany | null;

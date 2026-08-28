@@ -1,108 +1,37 @@
 import { describe, expect, it } from "vitest";
+import JSZip from "jszip";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import {
-  DRAFT_WATERMARK,
-  findMaskTargets,
-  findMoneyExpressions,
-  generatePartnerTemplate,
-} from "./contract-template.server";
-import { japanesePdf, latinPdf } from "./contract-test-pdf";
-const issuer = {
-  company_id: "COMP-001",
-  company_name: "株式会社ヒュアラン",
-  representative: "後道翔太",
-  address: "大阪府大阪市",
-};
-describe("partner template", () => {
-  const item = (str: string) => ({
-    str,
-    transform: [1, 0, 0, 1, 0, 0],
-    width: str.length * 10,
-    height: 10,
+import { DRAFT_WATERMARK, generatePartnerTemplate, sanitizeContractText } from "./contract-template.server";
+import { japanesePdf } from "./contract-test-pdf";
+const issuer = { company_id: "COMP-001", company_name: "株式会社ヒュアラン", representative: "後道翔太", address: "大阪府大阪市中央区" };
+const forbidden = ["MXモバイリング株式会社", "5,000円", "2026年8月7日", "90％"];
+async function docxParts(buffer: Buffer) {
+  const zip = await JSZip.loadAsync(buffer);
+  const parts = await Promise.all(Object.keys(zip.files).filter((name) => /^word\/(?:document|header\d+)\.xml$/.test(name)).map((name) => zip.file(name)!.async("string")));
+  const xml = parts.join(" ");
+  return { xml, text: xml.replace(/<[^>]+>/g, "") };
+}
+async function pdfPages(buffer: Buffer) {
+  const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
+  return Promise.all(Array.from({ length: pdf.numPages }, async (_, index) => {
+    const content = await (await pdf.getPage(index + 1)).getTextContent();
+    return content.items.map((item) => ("str" in item ? item.str : "")).join("");
+  }));
+}
+describe("template-based partner documents", () => {
+  it("removes upstream identity, money, rates and concrete dates before layout", () => {
+    const result = sanitizeContractText("販売条件通知書\nMXモバイリング株式会社\n対象期間 2026年8月7日から\n単価 5,000円 加入率90％\n第1条 条文は残る", { title: "販売条件通知書", excludedTerms: ["MXモバイリング株式会社"] });
+    const text = result.paragraphs.join(" "); forbidden.forEach((value) => expect(text).not.toContain(value)); expect(text).toContain("第1条 条文は残る");
   });
-  it("masks only the matched range when money spans text items", () => {
-    expect(
-      findMaskTargets(
-        ["株式会社", "ARATAに対し、金", "42万", "円（税込み）を"].map(item),
-        [],
-        true,
-      ),
-    ).toEqual([
-      { item: 2, start: 0, length: 3 },
-      { item: 3, start: 0, length: 1 },
-    ]);
-  });
-  it("maps whitespace-free positions back to the original item", () => {
-    expect(
-      findMaskTargets(
-        ["前文　株式会社", "　ＩＭＧ　（以下、乙）"].map(item),
-        ["株式会社ＩＭＧ"],
-        false,
-      ),
-    ).toEqual([
-      { item: 0, start: 3, length: 4 },
-      { item: 1, start: 1, length: 3 },
-    ]);
-  });
-  it("masks a phrase within one item without widening the range", () => {
-    expect(
-      findMaskTargets([item("前株式会社ＩＭＧ後")], ["株式会社ＩＭＧ"], false),
-    ).toEqual([{ item: 0, start: 1, length: 7 }]);
-  });
-  it("masks every occurrence of the same phrase", () => {
-    expect(
-      findMaskTargets(
-        [item("株式会社ＩＭＧと株式会社ＩＭＧ")],
-        ["株式会社ＩＭＧ"],
-        false,
-      ),
-    ).toEqual([
-      { item: 0, start: 0, length: 7 },
-      { item: 0, start: 8, length: 7 },
-    ]);
-  });
-  it("detects currency but not article numbers", () => {
-    expect(
-      findMoneyExpressions("単価は1,200円、別料金は¥ 3000。第3条"),
-    ).toEqual(["1,200円", "¥ 3000"]);
-  });
-  it("masks terms and money, adds issuer and watermark to every page", async () => {
-    const source = await latinPdf([
-        "A Corp price ¥ 1,200 Article 3",
-        "page two",
-      ]),
-      result = await generatePartnerTemplate(source, {
-        hiddenTerms: ["A Corp"],
-        maskMoney: true,
-        issuer,
-      });
-    expect(result).toMatchObject({ scanned: false });
-    expect(result.maskedCount).toBeGreaterThanOrEqual(2);
-    const pdf = await getDocument({ data: new Uint8Array(result.buffer) })
-      .promise;
-    expect(pdf.numPages).toBe(2);
-    for (let n = 1; n <= 2; n++) {
-      const c = await (await pdf.getPage(n)).getTextContent(),
-        text = c.items.map((i) => ("str" in i ? i.str : "")).join("");
-      expect(text).toContain("DRAFT");
-      if (n === 1) {
-        expect(text.replace(/\s/g, "")).toContain("株式会社ヒュアラン");
-        expect(text.replace(/\s/g, "")).toContain("代表取締役後道翔太");
-      }
-    }
-    expect(DRAFT_WATERMARK).toEqual({
-      degrees: 45,
-      opacity: 0.15,
-      color: 0.65,
-    });
-  });
-  it("flags image-only PDFs but still generates", async () => {
-    const result = await generatePartnerTemplate(await japanesePdf([], 1), {
-      hiddenTerms: ["A社"],
-      maskMoney: true,
-      issuer,
-    });
-    expect(result.scanned).toBe(true);
-    expect(result.buffer.subarray(0, 4).toString()).toBe("%PDF");
-  });
+  it("creates editable Word and newly composed PDF without forbidden values", async () => {
+    const lines = ["販売条件通知書", "MXモバイリング株式会社", "対象期間 2026年8月7日から", "単価 5,000円 加入率90％", ...Array.from({ length: 75 }, (_, index) => `第${index + 1}条 パートナーはサービスの取次条件を遵守するものとします。`)];
+    const result = await generatePartnerTemplate(await japanesePdf([lines.join("\n")], 1), { issuer, title: "販売条件通知書", excludedTerms: ["MXモバイリング株式会社"] });
+    const word = await docxParts(result.docx), pages = await pdfPages(result.pdf), pdf = pages.join(" ");
+    for (const value of forbidden) { expect(word.text).not.toContain(value); expect(pdf).not.toContain(value); }
+    expect(word.text).toContain("株式会社ヒュアラン"); expect(pdf).toContain("株式会社ヒュアラン");
+    expect(word.text).toContain("代表取締役"); expect(pdf).toContain("代表取締役"); expect(word.xml).toContain("DRAFT");
+    expect(pages.length).toBeGreaterThan(1); pages.forEach((page) => expect(page).toContain("DRAFT"));
+    expect(result.docx.subarray(0, 2).toString()).toBe("PK"); expect(result.pdf.subarray(0, 4).toString()).toBe("%PDF");
+    expect(DRAFT_WATERMARK).toEqual({ degrees: 45, opacity: 0.15, color: 0.65 });
+  }, 20_000);
 });

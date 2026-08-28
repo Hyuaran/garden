@@ -44,13 +44,22 @@ describe("contract Drive", () => {
     );
   });
   it("creates template product hierarchy", async () => {
-    await savePartnerTemplate(Buffer.from("pdf"), "ひな形.pdf", "関電ガス");
+    mocks.folder.mockReset().mockResolvedValueOnce("top").mockResolvedValueOnce("product").mockResolvedValueOnce("leaf");
+    await savePartnerTemplate(
+      { pdf: Buffer.from("pdf"), docx: Buffer.from("docx") },
+      { pdf: "ひな形.pdf", docx: "ひな形.docx" },
+      "関電ガス",
+      "A社",
+    );
     expect(mocks.folder).toHaveBeenNthCalledWith(
       1,
       "root",
       "05_パートナー配布用ひな形",
     );
     expect(mocks.folder).toHaveBeenNthCalledWith(2, "top", "関電ガス");
+    expect(mocks.folder).toHaveBeenNthCalledWith(3, "product", "A社");
+    expect(mocks.upload).toHaveBeenCalledWith("leaf", "ひな形.pdf", expect.any(Buffer), "application/pdf");
+    expect(mocks.upload).toHaveBeenCalledWith("leaf", "ひな形.docx", expect.any(Buffer), "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
   });
   it("skips without env", async () => {
     delete process.env.GARDEN_CONTRACTS_DRIVE_ROOT_FOLDER_ID;

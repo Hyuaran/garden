@@ -22,8 +22,8 @@ const suffix = (d: Date) =>
     .join("");
 async function unique(folder: string, name: string, now: Date) {
   if (!(await folderHasFile(folder, name))) return name;
-  const dot = name.toLowerCase().endsWith(".pdf") ? name.slice(0, -4) : name;
-  return `${dot}_${suffix(now)}.pdf`;
+  const match = name.match(/^(.*?)(\.[^.]+)?$/);
+  return `${match?.[1] ?? name}_${suffix(now)}${match?.[2] ?? ""}`;
 }
 export async function saveOriginalContract(
   buffer: Buffer,
@@ -48,20 +48,24 @@ export async function saveOriginalContract(
   };
 }
 export async function savePartnerTemplate(
-  buffer: Buffer,
-  filename: string,
+  files: { pdf: Buffer; docx: Buffer },
+  filenames: { pdf: string; docx: string },
   product: string,
+  counterparty: string,
   now = new Date(),
 ) {
   const root = process.env.GARDEN_CONTRACTS_DRIVE_ROOT_FOLDER_ID;
-  if (!root) return { status: "skipped" as const, fileId: null, url: null };
+  if (!root) return { status: "skipped" as const, pdf: null, docx: null };
   const top = await findOrCreateSubfolder(root, "05_パートナー配布用ひな形"),
-    folder = await findOrCreateSubfolder(top, safe(product)),
-    name = await unique(folder, safe(filename), now),
-    uploaded = await uploadToFolder(folder, name, buffer, "application/pdf");
+    productFolder = await findOrCreateSubfolder(top, safe(product)),
+    folder = await findOrCreateSubfolder(productFolder, safe(counterparty)),
+    pdfName = await unique(folder, safe(filenames.pdf), now),
+    docxName = await unique(folder, safe(filenames.docx), now),
+    pdf = await uploadToFolder(folder, pdfName, files.pdf, "application/pdf"),
+    docx = await uploadToFolder(folder, docxName, files.docx, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
   return {
     status: "generated" as const,
-    fileId: uploaded.id,
-    url: uploaded.webViewLink,
+    pdf: { fileId: pdf.id, url: pdf.webViewLink },
+    docx: { fileId: docx.id, url: docx.webViewLink },
   };
 }

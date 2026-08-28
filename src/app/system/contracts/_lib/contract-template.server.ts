@@ -1,185 +1,125 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import fontkit from "@pdf-lib/fontkit";
+import { AlignmentType, BorderStyle, Document, Header, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import JSZip from "jszip";
 import { degrees, PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { ContractCompany } from "./contract-types";
-export const DRAFT_WATERMARK = {
-  degrees: 45,
-  opacity: 0.15,
-  color: 0.65,
-} as const;
-export const ISSUER_POSITION = { top: 40, right: 42, lineHeight: 15 } as const;
-export const MONEY_PATTERN = /(?:¥|￥)\s*[\d,]+|[\d,]+\s*円/g;
-export function findMoneyExpressions(text: string) {
-  return text.match(MONEY_PATTERN) ?? [];
+
+export const DRAFT_WATERMARK = { degrees: 45, opacity: 0.15, color: 0.65 } as const;
+const MONEY = /(?:[¥￥]\s*)?[\d０-９,，.．]+(?:億|万|千|百)?(?:円|万円|億円|％|%)(?:\s*\/\s*件)?/g;
+const DATE = /(?:令和|平成|昭和)\s*[元\d０-９]+年\s*[\d０-９]+月(?:\s*[\d０-９]+日)?|(?:19|20)\d{2}\s*[年/.\-]\s*\d{1,2}(?:\s*[月/.\-]\s*\d{1,2}\s*日?)?/g;
+const ADDRESS = /(?:〒\s*)?[0-9０-９]{3}[-ー−]?[0-9０-９]{4}|.{0,12}(?:都|道|府|県).{0,40}(?:市|区|町|村).*/g;
+const REPRESENTATIVE = /(?:代表取締役|代表者|取締役)\s*[^\s、。]{2,20}/g;
+const clean = (value: string) => value.replace(/[\u0000-\u001f]/g, "").trim();
+
+export function sanitizeContractText(text: string, options: { excludedTerms: string[]; title?: string }) {
+  const normalized = text.replace(/\r/g, "").replace(/[ \t]+/g, " ");
+  const title = clean(options.title ?? "") || "契約条件通知書";
+  const titleAt = normalized.indexOf(title);
+  const body = titleAt >= 0 ? normalized.slice(titleAt + title.length) : normalized;
+  const terms = options.excludedTerms.map(clean).filter(Boolean).sort((a, b) => b.length - a.length)
+    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const forbidden = terms.length ? new RegExp(terms.join("|"), "g") : /$^/g;
+  const paragraphs = body.split(/\n+/).map((line) => clean(line.replace(forbidden, "").replace(ADDRESS, "")
+    .replace(REPRESENTATIVE, "").replace(MONEY, "＿＿＿＿").replace(DATE, "＿＿年＿＿月＿＿日")))
+    .filter((line) => line && !/^(?:御中|以上|記)$/.test(line));
+  return { title, paragraphs };
 }
-type TextItem = {
-  str: string;
-  transform: number[];
-  width: number;
-  height: number;
-};
-type Mask = { item: number; start: number; length: number };
-type CharacterOrigin = { item: number; offset: number };
-function withoutWhitespace(value: string) {
-  return [...value].filter((character) => !/\s/.test(character)).join("");
-}
-export function findMaskTargets(
-  items: TextItem[],
-  phrases: string[],
-  maskMoney: boolean,
-) {
-  const wanted = phrases.map((x) => x.trim()).filter(Boolean);
-  if (maskMoney) wanted.push(...findMoneyExpressions(items.map((item) => item.str).join("")));
-  const masks = new Map<string, Mask>();
-  const add = (mask: Mask) =>
-    masks.set(`${mask.item}:${mask.start}:${mask.length}`, mask);
-  for (let i = 0; i < items.length; i++) {
-    if (maskMoney)
-      for (const match of items[i].str.matchAll(
-        new RegExp(MONEY_PATTERN.source, "g"),
-      ))
-        add({ item: i, start: match.index ?? 0, length: match[0].length });
-    for (const phrase of wanted) {
-      let within = items[i].str.indexOf(phrase);
-      if (within >= 0) {
-        while (within >= 0) {
-          add({ item: i, start: within, length: phrase.length });
-          within = items[i].str.indexOf(phrase, within + phrase.length);
-        }
-        continue;
-      }
-      let joined = "";
-      const origins: CharacterOrigin[] = [];
-      for (
-        let j = i;
-        j < Math.min(items.length, i + 8) &&
-        joined.length <= phrase.length + 20;
-        j++
-      ) {
-        for (const [offset, character] of [...items[j].str].entries()) {
-          if (/\s/.test(character)) continue;
-          joined += character;
-          origins.push({ item: j, offset });
-        }
-        const needle = withoutWhitespace(phrase);
-        let matchAt = joined.indexOf(needle);
-        while (needle && matchAt >= 0) {
-          const matchedOrigins = origins.slice(matchAt, matchAt + needle.length);
-          if (matchedOrigins.length === needle.length) {
-            const ranges = new Map<number, { start: number; end: number }>();
-            for (const origin of matchedOrigins) {
-              const range = ranges.get(origin.item);
-              if (range) range.end = origin.offset + 1;
-              else
-                ranges.set(origin.item, {
-                  start: origin.offset,
-                  end: origin.offset + 1,
-                });
-            }
-            for (const [item, range] of ranges)
-              add({ item, start: range.start, length: range.end - range.start });
-          }
-          matchAt = joined.indexOf(needle, matchAt + needle.length);
-        }
-      }
-    }
+
+async function extractSourceText(source: Buffer) {
+  const pdf = await getDocument({ data: new Uint8Array(source) }).promise;
+  const pages: string[] = [];
+  for (let index = 1; index <= pdf.numPages; index++) {
+    const content = await (await pdf.getPage(index)).getTextContent();
+    pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join("\n"));
   }
-  return [...masks.values()];
+  return pages.join("\n");
 }
-export async function generatePartnerTemplate(
-  source: Buffer,
-  options: {
-    hiddenTerms: string[];
-    maskMoney: boolean;
-    issuer: ContractCompany;
-  },
-) {
-  const sourceDoc = await getDocument({ data: new Uint8Array(source) }).promise;
-  const pdf = await PDFDocument.load(new Uint8Array(source));
-  pdf.registerFontkit(
-    (fontkit as unknown as { default?: typeof fontkit }).default ?? fontkit,
-  );
-  const font = await pdf.embedFont(
-    new Uint8Array(
-      await readFile(
-        path.join(process.cwd(), "public/fonts/NotoSansJP-Regular.ttf"),
-      ),
-    ),
-    // pdf-lib/fontkit の subset:true は、実際の生成PDFをPopplerで描画した際に
-    // 日本語の欠字・文字化けが発生したため、配布文書の表示保証を優先する。
-    { subset: false },
-  );
+
+const isHeading = (text: string) => /^(?:第?[一二三四五六七八九十\d０-９]+[.．、条項]|[（(][一二三四五六七八九十\d０-９]+[）)])/.test(text);
+function bodyParagraph(text: string) {
+  const heading = isHeading(text);
+  return new Paragraph({ text, heading: heading ? HeadingLevel.HEADING_2 : undefined,
+    indent: heading ? undefined : { firstLine: 220 }, spacing: { line: 360, after: 120 }, keepNext: heading });
+}
+
+async function addWordWatermark(buffer: Buffer) {
+  const zip = await JSZip.loadAsync(buffer);
+  const headerPath = Object.keys(zip.files).find((name) => /^word\/header\d+\.xml$/.test(name));
+  if (!headerPath) return buffer;
+  const xml = await zip.file(headerPath)!.async("string");
+  const watermark = `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:pict><v:shape id="GardenDraftWatermark" type="#_x0000_t136" style="position:absolute;width:460pt;height:110pt;rotation:315;z-index:-251654144;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" fillcolor="#d9d9d9" stroked="f"><v:textpath style="font-family:&quot;Yu Gothic&quot;;font-size:1pt" string="DRAFT"/></v:shape></w:pict></w:r></w:p>`;
+  const updated = xml.replace("<w:hdr ", '<w:hdr xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" ')
+    .replace(/<w:p>[\s\S]*?<w:t[^>]*>DRAFT<\/w:t>[\s\S]*?<\/w:p>/, watermark);
+  zip.file(headerPath, updated);
+  return Buffer.from(await zip.generateAsync({ type: "uint8array" }));
+}
+
+async function buildDocx(content: { title: string; paragraphs: string[] }, issuer: ContractCompany) {
+  const document = new Document({
+    styles: { default: { document: { run: { font: "Yu Gothic", size: 22, color: "111111" }, paragraph: { spacing: { line: 360 } } },
+      heading2: { run: { font: "Yu Gothic", size: 28, bold: true, color: "111111" }, paragraph: { spacing: { before: 220, after: 100 }, keepNext: true } } } },
+    sections: [{
+      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, right: 1134, bottom: 907, left: 1134 } } },
+      headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: "DRAFT", color: "D9D9D9", size: 96 })] })] }) },
+      children: [
+        new Paragraph({ children: [new TextRun("＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　御中")], spacing: { after: 100 } }),
+        ...[issuer.company_name, `代表取締役　${issuer.representative ?? ""}`, issuer.address ?? ""].map((line) =>
+          new Paragraph({ text: line, alignment: AlignmentType.RIGHT, spacing: { line: 280, after: 0 } })),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 300 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: "111111" } },
+          children: [new TextRun({ text: content.title, bold: true, size: 40 })] }),
+        new Paragraph({ text: "記", alignment: AlignmentType.CENTER, spacing: { after: 180 } }),
+        ...content.paragraphs.map(bodyParagraph),
+        new Paragraph({ text: "以上", alignment: AlignmentType.RIGHT, spacing: { before: 280 } }),
+      ],
+    }],
+  });
+  return addWordWatermark(Buffer.from(await Packer.toBuffer(document)));
+}
+
+function wrap(text: string, max = 42) {
+  const lines: string[] = [];
+  for (let index = 0; index < text.length; index += max) lines.push(text.slice(index, index + max));
+  return lines.length ? lines : [""];
+}
+
+async function buildPdf(content: { title: string; paragraphs: string[] }, issuer: ContractCompany) {
+  const pdf = await PDFDocument.create();
+  pdf.registerFontkit((fontkit as unknown as { default?: typeof fontkit }).default ?? fontkit);
+  const font = await pdf.embedFont(new Uint8Array(await readFile(path.join(process.cwd(), "public/fonts/NotoSansJP-Regular.ttf"))),
+    // subset:trueは実レンダリングで日本語の欠字が発生したため使用しない。
+    { subset: false });
   const watermarkFont = await pdf.embedFont(StandardFonts.HelveticaBold);
-  let maskedCount = 0,
-    totalItems = 0;
-  for (let n = 1; n <= sourceDoc.numPages; n++) {
-    const page = pdf.getPage(n - 1),
-      content = await (await sourceDoc.getPage(n)).getTextContent();
-    const items = content.items.filter(
-      (i): i is typeof i & TextItem =>
-        "str" in i && "transform" in i && "width" in i && "height" in i,
-    );
-    totalItems += items.length;
-    const masks = findMaskTargets(items, options.hiddenTerms, options.maskMoney);
-    for (const mask of masks) {
-      const item = items[mask.item],
-        unit = item.str.length ? item.width / item.str.length : item.width,
-        x = item.transform[4] + unit * mask.start,
-        y = item.transform[5],
-        h = Math.max(item.height, Math.abs(item.transform[3]), 8);
-      page.drawRectangle({
-        x: x - 1,
-        y: y - 2,
-        width: Math.max(unit * mask.length + 2, 4),
-        height: h + 4,
-        color: rgb(1, 1, 1),
-      });
-      maskedCount++;
-    }
-    const { width, height } = page.getSize();
-    const size = Math.min(width, height) * 0.18;
-    page.drawText("DRAFT", {
-      x: width * 0.18,
-      y: height * 0.35,
-      size,
-      font: watermarkFont,
-      color: rgb(
-        DRAFT_WATERMARK.color,
-        DRAFT_WATERMARK.color,
-        DRAFT_WATERMARK.color,
-      ),
-      rotate: degrees(DRAFT_WATERMARK.degrees),
-      opacity: DRAFT_WATERMARK.opacity,
-    });
-    if (n === 1) {
-      page.drawRectangle({
-        x: width - ISSUER_POSITION.right - 238,
-        y: height - ISSUER_POSITION.top - ISSUER_POSITION.lineHeight * 2 - 5,
-        width: 238,
-        height: ISSUER_POSITION.lineHeight * 3 + 8,
-        color: rgb(1, 1, 1),
-      });
-      const lines = [
-        options.issuer.company_name,
-        `代表取締役　${options.issuer.representative ?? ""}`,
-        options.issuer.address ?? "",
-      ];
-      lines.forEach((line, index) =>
-        page.drawText(line, {
-          x: width - ISSUER_POSITION.right - 230,
-          y: height - ISSUER_POSITION.top - index * ISSUER_POSITION.lineHeight,
-          size: 9,
-          font,
-          color: rgb(0.08, 0.08, 0.08),
-        }),
-      );
-    }
-  }
-  return {
-    buffer: Buffer.from(await pdf.save()),
-    maskedCount,
-    scanned: totalItems === 0,
+  const width = 595.28, height = 841.89, left = 56, right = 56, bottom = 48;
+  let page = pdf.addPage([width, height]), y = height - 52;
+  const watermark = () => page.drawText("DRAFT", { x: width * 0.18, y: height * 0.35,
+    size: Math.min(width, height) * 0.18, font: watermarkFont,
+    color: rgb(DRAFT_WATERMARK.color, DRAFT_WATERMARK.color, DRAFT_WATERMARK.color),
+    rotate: degrees(DRAFT_WATERMARK.degrees), opacity: DRAFT_WATERMARK.opacity });
+  const nextPage = () => { watermark(); page = pdf.addPage([width, height]); y = height - 52; };
+  const drawLines = (lines: string[], size: number, lineHeight: number, x = left) => {
+    for (const line of lines) { if (y < bottom + lineHeight) nextPage();
+      page.drawText(line, { x, y, size, font, color: rgb(0.07, 0.07, 0.07) }); y -= lineHeight; }
   };
+  drawLines(["＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　御中"], 11, 16);
+  y += 10;
+  for (const line of [issuer.company_name, `代表取締役　${issuer.representative ?? ""}`, issuer.address ?? ""])
+    drawLines([line], 10, 15, width - right - font.widthOfTextAtSize(line, 10));
+  y -= 26;
+  page.drawText(content.title, { x: Math.max(left, (width - font.widthOfTextAtSize(content.title, 20)) / 2), y, size: 20, font });
+  y -= 10; page.drawLine({ start: { x: left, y }, end: { x: width - right, y }, thickness: 0.7, color: rgb(0.1, 0.1, 0.1) }); y -= 34;
+  drawLines(["記"], 11, 22, (width - font.widthOfTextAtSize("記", 11)) / 2);
+  for (const paragraph of content.paragraphs) { const heading = isHeading(paragraph); y -= heading ? 7 : 2;
+    drawLines(wrap(paragraph, heading ? 38 : 42), heading ? 14 : 11, heading ? 22 : 18, heading ? left : left + 12); }
+  y -= 14; drawLines(["以上"], 11, 16, width - right - font.widthOfTextAtSize("以上", 11)); watermark();
+  return Buffer.from(await pdf.save());
+}
+
+export async function generatePartnerTemplate(source: Buffer, options: { issuer: ContractCompany; title: string; excludedTerms: string[] }) {
+  const content = sanitizeContractText(await extractSourceText(source), options);
+  return { docx: await buildDocx(content, options.issuer), pdf: await buildPdf(content, options.issuer), content };
 }
