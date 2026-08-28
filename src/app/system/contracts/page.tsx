@@ -4,8 +4,20 @@ import type { ContractCompany, ContractDraft, ContractRow } from "./_lib/contrac
 import styles from "./contracts.module.css";
 
 type DriveEntry = { id: string; name: string; mimeType: string; webViewLink: string | null; modifiedTime: string | null };
+type ApiResponse = {
+  companies?: ContractCompany[]; rows?: ContractRow[]; entries?: DriveEntry[];
+  error?: string; draft?: ContractDraft; driveStatus?: string; files?: { status?: string };
+};
 const FOLDER = "application/vnd.google-apps.folder";
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+async function responseBody(response: Response) {
+  try {
+    const text = await response.text();
+    return text ? (JSON.parse(text) as ApiResponse) : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function ContractsPage() {
   const [tab, setTab] = useState<"browse" | "register">("browse");
@@ -25,19 +37,21 @@ export default function ContractsPage() {
   const [issuerId, setIssuerId] = useState("");
   const [product, setProduct] = useState("");
   async function loadLedger() {
-    const response = await fetch("/api/system/contracts");
-    if (!response.ok) return setMessage(response.status === 403 ? "この画面を見る権限がありません。管理者へ連絡してください。" : "契約書を読み込めませんでした。時間をおいて再度お試しください。");
-    const json = await response.json(); setCompanies(json.companies ?? []); setRows(json.rows ?? []);
+    try {
+      const response = await fetch("/api/system/contracts"), json = await responseBody(response);
+      if (!response.ok || !json) return setMessage(response.status === 403 ? "この画面を見る権限がありません。管理者へ連絡してください。" : "契約書を読み込めませんでした。時間をおいて再度お試しください。");
+      setCompanies(json.companies ?? []); setRows(json.rows ?? []);
+    } catch { setMessage("契約書を読み込めませんでした。時間をおいて再度お試しください。"); }
   }
   async function browse(folderId: string | null) {
     setLoading("browse");
     try {
       const query = folderId ? `?browse=1&folderId=${encodeURIComponent(folderId)}` : "?browse=1";
       const response = await fetch(`/api/system/contracts${query}`);
-      const json = await response.json();
-      if (!response.ok) return setMessage(response.status === 403 ? "この画面を見る権限がありません。管理者へ連絡してください。" : json.error ?? "Driveを表示できませんでした。管理者へ連絡してください。");
+      const json = await responseBody(response);
+      if (!response.ok || !json) return setMessage(response.status === 403 ? "この画面を見る権限がありません。管理者へ連絡してください。" : json?.error ?? "Driveを表示できませんでした。管理者へ連絡してください。");
       setEntries(json.entries ?? []);
-    } finally { setLoading(null); }
+    } catch { setMessage("Driveを表示できませんでした。管理者へ連絡してください。"); } finally { setLoading(null); }
   }
   useEffect(() => {
     // Initial API hydration is intentionally performed once on mount.
@@ -52,10 +66,11 @@ export default function ContractsPage() {
     try {
       const form = new FormData(); form.set("action", "analyze"); form.set("file", next);
       const response = await fetch("/api/system/contracts", { method: "POST", body: form });
-      const json = await response.json();
-      if (!response.ok) return setFileError(json.error ?? "PDFを読み取れませんでした。もう一度お試しください。");
+      const json = await responseBody(response);
+      if (!response.ok || !json) return setFileError(json?.error ?? "この契約書を読み取れませんでした。ファイルが壊れていないか確認してください。");
+      if (!json.draft) return setFileError("この契約書を読み取れませんでした。ファイルが壊れていないか確認してください。");
       setDraft(json.draft);
-    } finally { setLoading(null); }
+    } catch { setFileError("この契約書を読み取れませんでした。ファイルが壊れていないか確認してください。"); } finally { setLoading(null); }
   }
   function drop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault(); setDragActive(false); void choose(event.dataTransfer.files[0] ?? null);
@@ -69,11 +84,11 @@ export default function ContractsPage() {
     setLoading("register"); setRegistrationMessage("");
     try {
       const response = await fetch("/api/system/contracts", { method: "POST", body: form });
-      const json = await response.json();
-      if (!response.ok) return setRegistrationMessage(json.error ?? "登録できませんでした。入力内容を確認してください。");
+      const json = await responseBody(response);
+      if (!response.ok || !json) return setRegistrationMessage(json?.error ?? "契約書を登録できませんでした。通信状況を確認して、もう一度お試しください。");
       setRegistrationMessage(json.driveStatus === "skipped" ? "台帳へ登録しました。Driveの設定は管理者へ確認してください。" : "契約書を登録し、Driveへ保存しました。");
       await loadLedger();
-    } finally { setLoading(null); }
+    } catch { setRegistrationMessage("契約書を登録できませんでした。通信状況を確認して、もう一度お試しください。"); } finally { setLoading(null); }
   }
   const companyLabel = (id: string) => id === "ALL" ? "全社" : companies.find((company) => company.company_id === id)?.company_name ?? id;
   function openTemplate(row: ContractRow) {
@@ -86,11 +101,11 @@ export default function ContractsPage() {
     setLoading("template");
     try {
       const response = await fetch("/api/system/contracts", { method: "POST", body: form });
-      const json = await response.json();
-      if (!response.ok) return setMessage(json.error ?? "ひな形を作成できませんでした。管理者へ連絡してください。");
+      const json = await responseBody(response);
+      if (!response.ok || !json) return setMessage(json?.error ?? "ひな形を作成できませんでした。管理者へ連絡してください。");
       setMessage(json.files?.status === "skipped" ? "ひな形を作成しました。Driveの設定は管理者へ確認してください。" : "WordとPDFのひな形を作成し、Driveへ保存しました。");
       setTemplate(null); await loadLedger();
-    } finally { setLoading(null); }
+    } catch { setMessage("ひな形を作成できませんでした。管理者へ連絡してください。"); } finally { setLoading(null); }
   }
   return <div className={styles.pageShell}><main className={styles.main}>
     <header className={styles.header}><div><p className={styles.eyebrow}>SYSTEM / CONTRACTS</p><h1>契約書管理</h1><p>契約書の確認、登録、パートナー配布用ひな形の作成を行います。</p></div></header>
@@ -121,7 +136,7 @@ export default function ContractsPage() {
             <button type="button" className={styles.uploadButton} onClick={(event) => { event.stopPropagation(); fileInputRef.current?.click(); }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v4h14v-4"/></svg>PDFをアップロード</button>
           </>}
         </div>
-        {fileError && <p role="alert" className={styles.fileError}>{fileError}</p>}
+        {fileError && !file && <p role="alert" className={styles.fileError}>{fileError}</p>}
         {file && <div className={styles.stepBlock}><div className={styles.stepHeading}><span><small>STEP</small><strong>2</strong></span><h3>読み取り結果を確認</h3></div>
           {loading === "analyze" ? <p className={styles.loading} role="status"><span/>契約書を読み取っています…</p> : draft ? <form onSubmit={register}>
             {draft.scanned && <p role="alert" className={styles.warning}>読み取れませんでした。空欄の項目を入力してください。</p>}
@@ -138,7 +153,7 @@ export default function ContractsPage() {
               <button className={styles.primary} disabled={loading === "register" || Boolean(registrationMessage)}>{loading === "register" ? "登録しています…" : "これで登録する"}</button>
               {registrationMessage && <p role="status" className={styles.registrationResult}>{registrationMessage}</p>}
             </div>
-          </form> : null}
+          </form> : fileError ? <p role="alert" className={styles.warning}>{fileError}</p> : null}
         </div>}
       </section>
       <section className={styles.card}><h2>登録済み契約</h2><div className={styles.rows}>{rows.map((row) => <article key={row.id}><div><strong>{row.counterparty}</strong><span>{companyLabel(row.company_id)} / {row.contract_type} / {row.concluded_on}</span></div><div className={styles.actions}>{row.drive_url && <a href={row.drive_url} target="_blank" rel="noreferrer">元PDF</a>}{row.template_url && <a href={row.template_url} target="_blank" rel="noreferrer">PDFひな形</a>}{row.template_docx_url && <a href={row.template_docx_url} target="_blank" rel="noreferrer">Wordひな形</a>}<button onClick={() => openTemplate(row)} disabled={!row.drive_file_id}>ひな形を作る</button></div></article>)}</div></section>

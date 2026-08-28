@@ -25,6 +25,20 @@ export async function japanesePdf(lines: string[], pages = 1) {
   }
   return Buffer.from(await pdf.save());
 }
+export async function fragmentedJapanesePdf(lines: string[][]) {
+  const pdf = await PDFDocument.create();
+  pdf.registerFontkit((fontkit as unknown as { default?: typeof fontkit }).default ?? fontkit);
+  const font = await pdf.embedFont(new Uint8Array(readFileSync(path.join(process.cwd(), "public/fonts/NotoSansJP-Regular.ttf"))), { subset: false });
+  const page = pdf.addPage([595, 842]);
+  lines.forEach((fragments, lineIndex) => {
+    let x = 45;
+    for (const fragment of fragments) {
+      page.drawText(fragment, { x, y: 780 - lineIndex * 24, size: 12, font });
+      x += font.widthOfTextAtSize(fragment, 12);
+    }
+  });
+  return Buffer.from(await pdf.save());
+}
 export async function latinPdf(lines: string[]) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);

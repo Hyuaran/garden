@@ -71,4 +71,15 @@ describe("contract PDF upload", () => {
     render(<ContractsPage />);
     expect((await screen.findAllByText("この画面を見る権限がありません。管理者へ連絡してください。")).length).toBeGreaterThan(0);
   });
+  it("shows a useful error and clears Loading for a non-JSON analysis response", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST") return new Response("", { status: 500 });
+      if (String(input).includes("browse")) return new Response(JSON.stringify({ ok: true, entries: [] }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, companies: [], rows: [] }), { status: 200 });
+    }));
+    render(<ContractsPage />); const zone = await openRegisterTab();
+    fireEvent.drop(zone, { dataTransfer: { files: [new File(["broken"], "broken.pdf", { type: "application/pdf" })] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("この契約書を読み取れませんでした。ファイルが壊れていないか確認してください。");
+    expect(screen.queryByText("契約書を読み取っています…")).not.toBeInTheDocument();
+  });
 });

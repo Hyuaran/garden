@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { DRAFT_WATERMARK, generatePartnerTemplate, sanitizeContractText } from "./contract-template.server";
-import { japanesePdf } from "./contract-test-pdf";
+import { fragmentedJapanesePdf, japanesePdf } from "./contract-test-pdf";
 const issuer = { company_id: "COMP-001", company_name: "株式会社ヒュアラン", representative: "後道翔太", address: "大阪府大阪市中央区" };
 const forbidden = ["MXモバイリング株式会社", "5,000円", "2026年8月7日", "90％"];
 async function docxParts(buffer: Buffer) {
@@ -22,6 +22,25 @@ describe("template-based partner documents", () => {
   it("removes upstream identity, money, rates and concrete dates before layout", () => {
     const result = sanitizeContractText("販売条件通知書\nMXモバイリング株式会社\n対象期間 2026年8月7日から\n単価 5,000円 加入率90％\n第1条 条文は残る", { title: "販売条件通知書", excludedTerms: ["MXモバイリング株式会社"] });
     const text = result.paragraphs.join(" "); forbidden.forEach((value) => expect(text).not.toContain(value)); expect(text).toContain("第1条 条文は残る");
+    expect(text).toContain("＿＿＿＿＿＿＿＿＿＿");
+    expect(result.includeKi).toBe(false);
+  });
+  it("keeps fragmented article numbers and general year counts together, but removes page numbers", async () => {
+    const source = await fragmentedJapanesePdf([
+      ["サービス取次代理店基本契約書"],
+      ["第", "19", "条（反社会勢力と取引排除）"],
+      ["解除後", "5", "年間は義務を負う。"],
+      ["8"],
+    ]);
+    const result = await generatePartnerTemplate(source, { issuer, title: "サービス取次代理店基本契約書", excludedTerms: [] });
+    const text = result.content.paragraphs.join(" ");
+    expect(text).toContain("第19条（反社会勢力と取引排除）");
+    expect(text).toContain("5年間");
+    expect(result.content.paragraphs).not.toContain("8");
+  });
+  it("includes 記 only when it exists as a standalone source line", () => {
+    expect(sanitizeContractText("通知書\n記\n第1項 内容", { title: "通知書", excludedTerms: [] }).includeKi).toBe(true);
+    expect(sanitizeContractText("契約書\n第1条 内容", { title: "契約書", excludedTerms: [] }).includeKi).toBe(false);
   });
   it("creates editable Word and newly composed PDF without forbidden values", async () => {
     const lines = ["販売条件通知書", "MXモバイリング株式会社", "対象期間 2026年8月7日から", "単価 5,000円 加入率90％", ...Array.from({ length: 75 }, (_, index) => `第${index + 1}条 パートナーはサービスの取次条件を遵守するものとします。`)];
