@@ -67,7 +67,12 @@ const s = StyleSheet.create({
   },
   seal: { marginLeft: 10 },
   company: { marginLeft: 275, marginVertical: 10 },
-  table: { borderTopWidth: 0.6, borderLeftWidth: 0.6, borderColor: "#555" },
+  table: {
+    borderTopWidth: 0.6,
+    borderLeftWidth: 0.6,
+    borderRightWidth: 0.6,
+    borderColor: "#555",
+  },
   row: { flexDirection: "row", borderBottomWidth: 0.6, borderColor: "#555" },
   label: {
     width: 112,
