@@ -45,7 +45,10 @@ export function sanitizeUpsertPayload<T extends object>(
   payload: T,
   options: SanitizeOptions = {},
 ): Partial<T> {
-  const excluded = new Set<string>([...AUTO_MANAGED_KEYS, ...(options.excludeKeys ?? [])]);
+  const excluded = new Set<string>([
+    ...AUTO_MANAGED_KEYS,
+    ...(options.excludeKeys ?? []),
+  ]);
   const nullableDate = new Set<string>(options.nullableDateKeys ?? []);
 
   const result: Record<string, unknown> = {};
@@ -64,7 +67,7 @@ export function sanitizeUpsertPayload<T extends object>(
  * を呼ぶだけで漏れなく対応できる。
  */
 export const NULLABLE_DATE_KEYS = {
-  companies: [] as const,
+  companies: ["established_on", "representative_birthday"] as const,
   bank_accounts: [] as const,
   vendors: [] as const,
   employees: ["termination_date", "contract_end_on", "deleted_at"] as const,

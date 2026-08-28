@@ -18,7 +18,11 @@ import {
 
 describe("sanitizeUpsertPayload — AUTO_MANAGED_KEYS の除外", () => {
   it("created_at が空文字でも常に除外される", () => {
-    const result = sanitizeUpsertPayload({ id: "1", name: "foo", created_at: "" });
+    const result = sanitizeUpsertPayload({
+      id: "1",
+      name: "foo",
+      created_at: "",
+    });
     expect(result).not.toHaveProperty("created_at");
   });
 
@@ -169,7 +173,10 @@ describe("sanitizeUpsertPayload — その他キー・値の保持", () => {
   });
 
   it("空配列 [] と空オブジェクト {} は保持される", () => {
-    const result = sanitizeUpsertPayload({ arr: [] as string[], obj: {} as Record<string, never> });
+    const result = sanitizeUpsertPayload({
+      arr: [] as string[],
+      obj: {} as Record<string, never>,
+    });
     expect(result).toHaveProperty("arr");
     expect(Array.isArray(result.arr)).toBe(true);
     expect(result).toHaveProperty("obj");
@@ -191,7 +198,11 @@ describe("sanitizeUpsertPayload — 型安全性", () => {
   }
 
   it("型パラメータを明示して Partial<T> を受け取れる", () => {
-    const input: Sample = { id: "x", name: "type-test", created_at: "2026-04-25T00:00:00Z" };
+    const input: Sample = {
+      id: "x",
+      name: "type-test",
+      created_at: "2026-04-25T00:00:00Z",
+    };
     const result = sanitizeUpsertPayload<Sample>(input);
     // created_at は除外されているため undefined
     expect(result.id).toBe("x");
@@ -250,9 +261,12 @@ describe("NULLABLE_DATE_KEYS — キー一覧の存在確認", () => {
   });
 });
 
-describe("NULLABLE_DATE_KEYS — 空配列マスタの確認", () => {
-  it("companies は空配列", () => {
-    expect(NULLABLE_DATE_KEYS.companies).toEqual([]);
+describe("NULLABLE_DATE_KEYS — マスタごとの日付列", () => {
+  it("companies は設立日と代表者生年月日", () => {
+    expect(NULLABLE_DATE_KEYS.companies).toEqual([
+      "established_on",
+      "representative_birthday",
+    ]);
   });
 
   it("bank_accounts は空配列", () => {
