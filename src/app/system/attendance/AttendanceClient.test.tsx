@@ -1,7 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }) }));
-vi.mock("@/app/_lib/supabase/browser", () => ({ createBrowserClient: () => ({ auth: { signOut: vi.fn() } }) }));
 import AttendanceClient from "./AttendanceClient";
 
 describe("AttendanceClient", () => {
@@ -25,11 +23,11 @@ describe("AttendanceClient", () => {
     expect(screen.getByRole("link", { name: "同期状況" })).toBeInTheDocument();
   });
 
-  it("keeps the standalone header and logout when embedded is omitted", () => {
+  it("keeps the standalone header without a duplicate logout when embedded is omitted", () => {
     render(<AttendanceClient registered={false} employeeName="社員A" canViewSync/>);
     expect(screen.getByRole("heading", { name: "勤怠打刻" })).toBeInTheDocument();
     expect(screen.getByText("Garden attendance")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "ログアウト" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "ログアウト" })).not.toBeInTheDocument();
     expect(screen.getByText("社員Aさん")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "同期状況" })).toBeInTheDocument();
   });
@@ -49,6 +47,8 @@ describe("AttendanceClient", () => {
     expect(screen.queryByText("出勤を記録しました")).not.toBeInTheDocument();
     resolvePunch(new Response(JSON.stringify({ ok: true, punch: { punched_at: "2026-08-13T01:03:07Z" } }), { status: 201 }));
     await waitFor(() => expect(screen.getByText("出勤を記録しました")).toBeInTheDocument());
+    expect(screen.getByRole("dialog").querySelector("svg")).not.toBeNull();
+    expect(screen.getByRole("dialog")).not.toHaveTextContent("✓");
     expect(screen.getAllByText("10:03:07")).toHaveLength(2);
     await waitFor(() => expect(screen.getByText("未送信")).toBeInTheDocument());
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({

@@ -25,8 +25,8 @@ describe("system mypage server page",()=>{
   });
   it("passes the profile only when birthday is unregistered and selects attendance from the query",async()=>{
     mocks.createServerClient.mockResolvedValue(client({...employee,birthday:null} as unknown as typeof employee));
-    const shell=await MyPagePage({searchParams:Promise.resolve({tab:"attendance"})}) as ReactElement<{children:ReactElement<{initialProfile:{birthday:null};initialTab:string}>}>;
-    expect(shell.props.children.props.initialTab).toBe("attendance"); expect(shell.props.children.props.initialProfile.birthday).toBeNull();
+    const shell=await MyPagePage({searchParams:Promise.resolve({tab:"attendance"})}) as ReactElement<{activePath:string;children:ReactElement<{initialProfile:{birthday:null};initialTab:string}>}>;
+    expect(shell.props.activePath).toBe("/system/attendance"); expect(shell.props.children.props.initialTab).toBe("attendance"); expect(shell.props.children.props.initialProfile.birthday).toBeNull();
   });
   it("redirects unauthenticated users to the new return URL",async()=>{
     mocks.redirect.mockImplementation(()=>{throw new Error("redirected")});
