@@ -20,7 +20,7 @@ import type {
 // ============================================================
 // 共通: トグル is_active
 // ============================================================
-async function setActive<T extends Record<string, unknown>>(
+async function setActive(
   table: string,
   pkColumn: string,
   pkValue: string,
@@ -130,6 +130,17 @@ export async function fetchEmployees(): Promise<Employee[]> {
 export async function upsertEmployee(employee: Partial<Employee> & { employee_id: string }): Promise<void> {
   const { error } = await supabase.from("root_employees").upsert(employee, { onConflict: "employee_id" });
   if (error) throw new Error(`upsertEmployee failed: ${error.message}`);
+}
+
+export async function updateEmployeeGardenRole(
+  employeeId: string,
+  gardenRole: GardenRole,
+): Promise<void> {
+  const { error } = await supabase
+    .from("root_employees")
+    .update({ garden_role: gardenRole })
+    .eq("employee_id", employeeId);
+  if (error) throw new Error(`updateEmployeeGardenRole failed: ${error.message}`);
 }
 
 export const setEmployeeActive = (id: string, active: boolean) =>

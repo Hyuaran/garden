@@ -7,7 +7,7 @@ import { DataTable, Column } from "../_components/DataTable";
 import { StatusBadge } from "../_components/StatusBadge";
 import { Modal } from "../_components/Modal";
 import { TextField, SelectField, FormGrid, TextareaField } from "../_components/FormField";
-import { fetchEmployees, upsertEmployee, setEmployeeActive, fetchCompanies, fetchSalarySystems } from "../_lib/queries";
+import { fetchEmployees, upsertEmployee, updateEmployeeGardenRole, setEmployeeActive, fetchCompanies, fetchSalarySystems } from "../_lib/queries";
 import {
   GARDEN_ROLE_LABELS,
   type Company,
@@ -40,6 +40,7 @@ const EMP_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
 const ACCOUNT_TYPES = ["普通", "当座"];
 const INS_TYPES = ["加入", "未加入", "一部加入"];
 const GARDEN_ROLE_CHANGE_ERROR = "Garden権限を変更できませんでした。全権管理者のアカウントで操作してください。";
+const GARDEN_ROLE_CHANGE_RETRY_ERROR = "Garden権限を変更できませんでした。時間をおいて、もう一度お試しください。";
 
 /**
  * 年末調整の甲/乙欄区分（Phase A-3-h）。DB 値は英語コード、UI は日本語表示。
@@ -85,7 +86,7 @@ const empty = (nextId: string, companyId: string, salarySystemId: string): Emplo
 
 function isGardenRoleChangeError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /P0001|enforce_garden_role_change|garden.?role|Garden権限|現在の権限/i.test(message);
+  return /P0001|enforce_garden_role_change|現在の権限/i.test(message);
 }
 
 function nextId(existing: Employee[]): string {
@@ -235,11 +236,7 @@ export default function EmployeesPage() {
     try {
       setRoleSaving(true);
       setRoleError(null);
-      const payload = {
-        employee_id: roleTarget.employee_id,
-        garden_role: nextGardenRole,
-      };
-      await upsertEmployee(payload);
+      await updateEmployeeGardenRole(roleTarget.employee_id, nextGardenRole);
       setEmployees((current) => current.map((employee) => (
         employee.employee_id === roleTarget.employee_id
           ? { ...employee, garden_role: nextGardenRole }
@@ -257,10 +254,11 @@ export default function EmployeesPage() {
         },
       });
     } catch (changeError) {
+      console.error("[updateEmployeeGardenRole]", changeError);
       setRoleError(
         isGardenRoleChangeError(changeError)
           ? GARDEN_ROLE_CHANGE_ERROR
-          : (changeError as Error).message,
+          : GARDEN_ROLE_CHANGE_RETRY_ERROR,
       );
     } finally {
       setRoleSaving(false);
