@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   fetchCompanies: vi.fn(),
   fetchSalarySystems: vi.fn(),
   upsertEmployee: vi.fn(),
+  updateEmployeeGardenRole: vi.fn(),
   setEmployeeActive: vi.fn(),
   audit: vi.fn(),
 }));
@@ -16,6 +17,7 @@ vi.mock("../_lib/queries", () => ({
   fetchCompanies: mocks.fetchCompanies,
   fetchSalarySystems: mocks.fetchSalarySystems,
   upsertEmployee: mocks.upsertEmployee,
+  updateEmployeeGardenRole: mocks.updateEmployeeGardenRole,
   setEmployeeActive: mocks.setEmployeeActive,
 }));
 vi.mock("../_state/RootStateContext", () => ({
@@ -69,6 +71,17 @@ const employee = {
   garden_role: "staff" as const,
 };
 
+const employeeWithoutBank = {
+  ...employee,
+  bank_name: "",
+  bank_code: "",
+  branch_name: "",
+  branch_code: "",
+  account_number: "",
+  account_holder: "",
+  account_holder_kana: "",
+};
+
 function renderPage() {
   return render(<EmployeesPage />);
 }
@@ -76,6 +89,11 @@ function renderPage() {
 async function openEmployee() {
   fireEvent.click(await screen.findByRole("button", { name: "編集" }));
   return screen.getByLabelText("Garden権限") as HTMLSelectElement;
+}
+
+async function openRoleDialog() {
+  fireEvent.click(await screen.findByRole("button", { name: "権限" }));
+  return screen.getByLabelText("変更後") as HTMLSelectElement;
 }
 
 describe("Garden権限の編集UI", () => {
@@ -90,6 +108,7 @@ describe("Garden権限の編集UI", () => {
       { salary_system_id: "SAL-SYS-001", system_name: "正社員標準" },
     ]);
     mocks.upsertEmployee.mockResolvedValue(undefined);
+    mocks.updateEmployeeGardenRole.mockResolvedValue(undefined);
     mocks.audit.mockResolvedValue(undefined);
   });
 
@@ -167,5 +186,106 @@ describe("Garden権限の編集UI", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/P0001/)).not.toBeInTheDocument();
     expect(screen.queryByText(/enforce_garden_role_change/)).not.toBeInTheDocument();
+  });
+
+  describe("権限だけを変更するダイアログ", () => {
+    it("全権管理者には権限ボタンを有効にする", async () => {
+      renderPage();
+      expect(await screen.findByRole("button", { name: "権限" })).toBeEnabled();
+    });
+
+    it.each(["admin", "manager"] as const)(
+      "%s には権限ボタンを無効化して理由を示す",
+      async (operatorRole) => {
+        mocks.operatorRole = operatorRole;
+        renderPage();
+        const button = await screen.findByRole("button", { name: "権限" });
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute(
+          "title",
+          "Garden権限の変更は全権管理者のみ行えます",
+        );
+      },
+    );
+
+    it("氏名と権限だけを表示し、従業員の他項目を表示しない", async () => {
+      renderPage();
+      await openRoleDialog();
+      const heading = screen.getByRole("heading", { name: "Garden権限の変更" });
+      const panel = heading.parentElement?.parentElement as HTMLElement;
+      const dialog = within(panel);
+
+      expect(dialog.getByText("毛利テスト（社員番号 1404）")).toBeInTheDocument();
+      expect(dialog.getByText("いまの権限")).toBeInTheDocument();
+      expect(dialog.getAllByText("正社員")).toHaveLength(2);
+      expect(dialog.queryByLabelText("銀行名")).not.toBeInTheDocument();
+      expect(dialog.queryByLabelText("給与体系*")).not.toBeInTheDocument();
+      expect(dialog.queryByLabelText("入社日*")).not.toBeInTheDocument();
+    });
+
+    it("口座が空でも専用の更新経路でemployee_idとgarden_roleを渡して一覧へ即時反映する", async () => {
+      mocks.fetchEmployees.mockResolvedValue([employeeWithoutBank]);
+      renderPage();
+      const select = await openRoleDialog();
+      fireEvent.change(select, { target: { value: "closer" } });
+      fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+
+      await waitFor(() => expect(mocks.updateEmployeeGardenRole).toHaveBeenCalledTimes(1));
+      expect(mocks.updateEmployeeGardenRole).toHaveBeenCalledWith("EMP-1404", "closer");
+      expect(mocks.upsertEmployee).not.toHaveBeenCalled();
+      expect(await screen.findByText("クローザー")).toBeInTheDocument();
+    });
+
+    it("現在と同じ権限なら更新せず閉じる", async () => {
+      renderPage();
+      const select = await openRoleDialog();
+      expect(select).toHaveValue("staff");
+      fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole("heading", { name: "Garden権限の変更" })).not.toBeInTheDocument();
+      });
+      expect(mocks.upsertEmployee).not.toHaveBeenCalled();
+      expect(mocks.updateEmployeeGardenRole).not.toHaveBeenCalled();
+    });
+
+    it("権限変更をDBに拒否されたときは開発者向け文字列を表示しない", async () => {
+      mocks.fetchEmployees.mockResolvedValue([employeeWithoutBank]);
+      mocks.updateEmployeeGardenRole.mockRejectedValueOnce(
+        new Error("updateEmployeeGardenRole failed: P0001 enforce_garden_role_change upsertEmployee employee_number not-null constraint"),
+      );
+      vi.spyOn(console, "error").mockImplementationOnce(() => undefined);
+      renderPage();
+      const select = await openRoleDialog();
+      fireEvent.change(select, { target: { value: "closer" } });
+      fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+
+      expect(
+        await screen.findByText(
+          "Garden権限を変更できませんでした。全権管理者のアカウントで操作してください。",
+        ),
+      ).toBeInTheDocument();
+      for (const developerText of ["upsertEmployee", "employee_number", "not-null", "P0001"]) {
+        expect(screen.queryByText(new RegExp(developerText))).not.toBeInTheDocument();
+      }
+    });
+
+    it("その他の更新失敗も再試行を促す日本語だけを表示する", async () => {
+      mocks.updateEmployeeGardenRole.mockRejectedValueOnce(
+        new Error("updateEmployeeGardenRole failed: employee_number not-null constraint"),
+      );
+      vi.spyOn(console, "error").mockImplementationOnce(() => undefined);
+      renderPage();
+      const select = await openRoleDialog();
+      fireEvent.change(select, { target: { value: "closer" } });
+      fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+
+      expect(
+        await screen.findByText(
+          "Garden権限を変更できませんでした。時間をおいて、もう一度お試しください。",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/employee_number|not-null|updateEmployeeGardenRole/)).not.toBeInTheDocument();
+    });
   });
 });

@@ -10,10 +10,12 @@ import {
 const CHANGE_DISABLED_TITLE = "Garden権限の変更は全権管理者のみ行えます";
 
 export function GardenRoleField({
+  label = "Garden権限",
   operatorRole,
   value,
   onChange,
 }: {
+  label?: string;
   operatorRole: GardenRole | null | undefined;
   value: GardenRole;
   onChange: (role: GardenRole) => void;
@@ -21,7 +23,7 @@ export function GardenRoleField({
   if (value === "super_admin") {
     return (
       <TextField
-        label="Garden権限"
+        label={label}
         value={GARDEN_ROLE_LABELS.super_admin}
         disabled
         title="全権管理者のGarden権限は画面から変更できません"
@@ -33,7 +35,7 @@ export function GardenRoleField({
   const canEdit = operatorRole === "super_admin";
   return (
     <SelectField
-      label="Garden権限"
+      label={label}
       value={value}
       onChange={(event) => onChange(event.target.value as GardenRole)}
       disabled={!canEdit}

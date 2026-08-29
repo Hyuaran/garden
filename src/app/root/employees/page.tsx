@@ -7,11 +7,12 @@ import { DataTable, Column } from "../_components/DataTable";
 import { StatusBadge } from "../_components/StatusBadge";
 import { Modal } from "../_components/Modal";
 import { TextField, SelectField, FormGrid, TextareaField } from "../_components/FormField";
-import { fetchEmployees, upsertEmployee, setEmployeeActive, fetchCompanies, fetchSalarySystems } from "../_lib/queries";
+import { fetchEmployees, upsertEmployee, updateEmployeeGardenRole, setEmployeeActive, fetchCompanies, fetchSalarySystems } from "../_lib/queries";
 import {
   GARDEN_ROLE_LABELS,
   type Company,
   type Employee,
+  type GardenRole,
   type SalarySystem,
 } from "../_constants/types";
 import { colors } from "../_constants/colors";
@@ -39,6 +40,7 @@ const EMP_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
 const ACCOUNT_TYPES = ["普通", "当座"];
 const INS_TYPES = ["加入", "未加入", "一部加入"];
 const GARDEN_ROLE_CHANGE_ERROR = "Garden権限を変更できませんでした。全権管理者のアカウントで操作してください。";
+const GARDEN_ROLE_CHANGE_RETRY_ERROR = "Garden権限を変更できませんでした。時間をおいて、もう一度お試しください。";
 
 /**
  * 年末調整の甲/乙欄区分（Phase A-3-h）。DB 値は英語コード、UI は日本語表示。
@@ -84,7 +86,7 @@ const empty = (nextId: string, companyId: string, salarySystemId: string): Emplo
 
 function isGardenRoleChangeError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /P0001|enforce_garden_role_change|garden.?role|Garden権限|現在の権限/i.test(message);
+  return /P0001|enforce_garden_role_change|現在の権限/i.test(message);
 }
 
 function nextId(existing: Employee[]): string {
@@ -103,8 +105,12 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
+  const [roleTarget, setRoleTarget] = useState<Employee | null>(null);
+  const [nextGardenRole, setNextGardenRole] = useState<GardenRole>("staff");
   const [saving, setSaving] = useState(false);
+  const [roleSaving, setRoleSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
 
   async function load() {
@@ -206,6 +212,59 @@ export default function EmployeesPage() {
     } catch (err) { setError((err as Error).message); }
   }
 
+  function openRoleDialog(employee: Employee) {
+    setRoleTarget(employee);
+    setNextGardenRole(employee.garden_role ?? "staff");
+    setRoleError(null);
+  }
+
+  function closeRoleDialog() {
+    if (roleSaving) return;
+    setRoleTarget(null);
+    setRoleError(null);
+  }
+
+  async function handleRoleChange() {
+    if (!roleTarget || rootUser?.garden_role !== "super_admin") return;
+    const currentRole = roleTarget.garden_role ?? "staff";
+    if (currentRole === nextGardenRole) {
+      setRoleTarget(null);
+      setRoleError(null);
+      return;
+    }
+
+    try {
+      setRoleSaving(true);
+      setRoleError(null);
+      await updateEmployeeGardenRole(roleTarget.employee_id, nextGardenRole);
+      setEmployees((current) => current.map((employee) => (
+        employee.employee_id === roleTarget.employee_id
+          ? { ...employee, garden_role: nextGardenRole }
+          : employee
+      )));
+      setRoleTarget(null);
+      await writeAudit({
+        action: "master_update",
+        actorUserId: rootUser.user_id,
+        actorEmpNum: rootUser.employee_number,
+        targetType: "root_employees",
+        targetId: roleTarget.employee_id,
+        payload: {
+          garden_role: { from: currentRole, to: nextGardenRole },
+        },
+      });
+    } catch (changeError) {
+      console.error("[updateEmployeeGardenRole]", changeError);
+      setRoleError(
+        isGardenRoleChangeError(changeError)
+          ? GARDEN_ROLE_CHANGE_ERROR
+          : GARDEN_ROLE_CHANGE_RETRY_ERROR,
+      );
+    } finally {
+      setRoleSaving(false);
+    }
+  }
+
   const columns: Column<Employee>[] = [
     { key: "id", header: "ID", render: (e) => e.employee_id, width: 100 },
     { key: "num", header: "社員番号", render: (e) => e.employee_number, width: 90 },
@@ -220,9 +279,17 @@ export default function EmployeesPage() {
     { key: "actions", header: "", render: (e) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
         <Button variant="secondary" onClick={() => setEditTarget(e)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button
+          variant="secondary"
+          onClick={() => openRoleDialog(e)}
+          disabled={rootUser?.garden_role !== "super_admin" || e.garden_role === "super_admin"}
+          title={rootUser?.garden_role !== "super_admin" ? "Garden権限の変更は全権管理者のみ行えます" : e.garden_role === "super_admin" ? "全権管理者のGarden権限は画面から変更できません" : undefined}
+        >
+          権限
+        </Button>
         <Button variant={e.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(e)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{e.is_active ? "無効化" : "有効化"}</Button>
       </div>
-    ), width: 170, align: "right" },
+    ), width: 230, align: "right" },
   ];
 
   const canAdd = companies.length > 0 && salarySystems.length > 0;
@@ -246,6 +313,48 @@ export default function EmployeesPage() {
       {!canAdd && !loading && <div style={{ background: colors.warningBg, color: colors.warning, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>従業員を追加するには、先に法人マスタと給与体系マスタを登録してください。</div>}
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
       {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={filtered} activeIndex={activeIndex} onRowClick={canWrite ? setEditTarget : undefined} />}
+
+      <Modal
+        open={!!roleTarget}
+        onClose={closeRoleDialog}
+        onSubmit={handleRoleChange}
+        title="Garden権限の変更"
+        width={520}
+      >
+        {roleTarget && (
+          <div>
+            {roleError && (
+              <div role="alert" style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 16, fontSize: 13 }}>
+                {roleError}
+              </div>
+            )}
+            <div style={{ margin: 0, display: "grid", gridTemplateColumns: "110px 1fr", gap: "12px 16px", alignItems: "center" }}>
+              <div style={{ color: colors.textMuted, fontSize: 13 }}>氏名</div>
+              <div style={{ margin: 0, color: colors.text, fontSize: 14 }}>
+                {roleTarget.name}（社員番号 {roleTarget.employee_number}）
+              </div>
+              <div style={{ color: colors.textMuted, fontSize: 13 }}>いまの権限</div>
+              <div style={{ margin: 0, color: colors.text, fontSize: 14, fontWeight: 600 }}>
+                {GARDEN_ROLE_LABELS[roleTarget.garden_role ?? "staff"]}
+              </div>
+              <div style={{ margin: 0, gridColumn: "1 / -1" }}>
+                <GardenRoleField
+                  label="変更後"
+                  operatorRole={rootUser?.garden_role}
+                  value={nextGardenRole}
+                  onChange={setNextGardenRole}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
+              <Button variant="secondary" onClick={closeRoleDialog} disabled={roleSaving}>キャンセル</Button>
+              <Button onClick={handleRoleChange} disabled={roleSaving}>
+                {roleSaving ? "変更中..." : "変更する"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "従業員を編集" : "従業員を追加"} width={860}>
         {editTarget && (
