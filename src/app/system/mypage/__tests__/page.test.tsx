@@ -180,6 +180,8 @@ describe("system mypage", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText("通知音")).not.toBeInTheDocument();
     expect(screen.queryByText("パスワード変更")).not.toBeInTheDocument();
+    for (const label of ["緊急連絡先変更", "通勤経路変更", "給与受取口座の変更", "退職届", "秘密保持誓約書"])
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
   });
   it("uses Japanese fallback labels for unregistered private profile data", () => {
     renderMyPage({
