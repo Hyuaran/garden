@@ -12,6 +12,16 @@ export type SystemMenuItem = {
   upcoming?: boolean;
 };
 
+export const SIDEBAR_HIDDEN_ROLES = new Set<GardenRole>([
+  "closer",
+  "toss",
+  "outsource",
+]);
+
+export function shouldHideSidebar(role: GardenRole) {
+  return SIDEBAR_HIDDEN_ROLES.has(role);
+}
+
 export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "ホーム", description: "社内システムの入口です。", icon: "home", href: "/system" },
   { label: "マイページ", description: "自分の情報の確認と、住所・口座・交通費などの届出を出せます。前確依頼もここから。", icon: "person", href: "/system/mypage" },

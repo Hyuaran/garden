@@ -8,7 +8,7 @@ import { useTheme } from "@/app/_lib/theme/ThemeProvider";
 import { getVisibleModules } from "@/app/_lib/module-visibility";
 import { GARDEN_SHELL_MODULES, type GardenModuleId } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { GARDEN_ROLE_LABELS, type GardenRole } from "@/app/root/_constants/types";
-import { canUseSystemItem, SYSTEM_MENU_ITEMS, type SystemIcon } from "./shacho-shell-config";
+import { canUseSystemItem, shouldHideSidebar, SYSTEM_MENU_ITEMS, type SystemIcon } from "./shacho-shell-config";
 import styles from "./shacho-shell.module.css";
 
 type Props = {
@@ -67,9 +67,10 @@ export default function ShachoShell({ children, activePath, user }: Props) {
   }
   const visible = SYSTEM_MENU_ITEMS.filter((item) => canUseSystemItem(item, user.role));
   const visibleModules = new Set(getVisibleModules(user.role).map((module) => module.toLowerCase()));
+  const hideSidebar = shouldHideSidebar(user.role);
   const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
   return <div className={styles.shell}>
-    <aside className={styles.rail} aria-label="Gardenシリーズ">
+    {!hideSidebar && <><aside className={styles.rail} aria-label="Gardenシリーズ">
       <div className={styles.railInner}>
         <Link href="/system" className={`${styles.app} ${styles.current}`} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 14.4v1.4M17.6 15.6v1.2"/></svg>
@@ -92,8 +93,8 @@ export default function ShachoShell({ children, activePath, user }: Props) {
         </nav>
         <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}>{user.company} ／ {GARDEN_ROLE_LABELS[user.role]}</div></div></div>
       </div>
-    </aside>
-    <main className={styles.main}>
+    </aside></>}
+    <main className={`${styles.main} ${hideSidebar ? styles.mainFull : ""}`}>
       <div className={styles.actions}>
         <span className={styles.accountName}>{user.name}さん</span>
         <button className={styles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>{theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z"/></svg>}<span className={styles.actionTip}>{themeLabel}</span></button>
