@@ -41,13 +41,17 @@ beforeEach(() => {
 });
 
 describe("GardenLoginPage rendering", () => {
-  it("renders the twilight Garden Series login", () => {
+  it("renders the approved split brand and form layout", () => {
     render(<GardenLoginPage />);
 
+    const brand = screen.getByTestId("login-brand-panel");
     expect(screen.getByTestId("login-section")).toBeInTheDocument();
-    expect(screen.getByAltText("Garden Series")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Welcome to the Garden" })).toBeInTheDocument();
-    expect(screen.getByText("夜明け前の庭から、今日の業務へ。")).toBeInTheDocument();
+    expect(brand.querySelector("img")).toHaveAttribute("src", "/themes/garden-shell/images/login/mark-tree-emblem.png");
+    expect(screen.getByRole("heading", { name: "おはようございます" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "ログイン" })).toBeInTheDocument();
+    expect(brand).toHaveTextContent("今日の業務をここから始めましょう。経理・営業・カスタマーサポートの仕事を、ひとつの場所にまとめています。");
+    expect(screen.getByTestId("login-brand-icons").children).toHaveLength(12);
+    expect(screen.queryByText("Enter the Garden")).not.toBeInTheDocument();
   });
 
   it("keeps the required form controls and forgot password link", () => {
@@ -57,7 +61,10 @@ describe("GardenLoginPage rendering", () => {
     expect(screen.getByTestId("login-password")).toBeInTheDocument();
     expect(screen.getByTestId("login-keep")).toBeInTheDocument();
     expect(screen.getByTestId("login-password-toggle")).toBeInTheDocument();
-    expect(screen.getByTestId("login-submit")).toBeInTheDocument();
+    expect(screen.getByTestId("login-submit")).toHaveTextContent("ログイン");
+    expect(screen.getByTestId("login-empid")).toHaveAttribute("name", "employeeIdOrPartnerCode");
+    expect(screen.getByTestId("login-empid")).toHaveAttribute("autocomplete", "username");
+    expect(screen.getByTestId("login-password")).toHaveAttribute("autocomplete", "current-password");
     expect(screen.getByRole("link", { name: "パスワードをお忘れですか？" })).toHaveAttribute("href", "/login/forgot");
   });
 
@@ -71,10 +78,13 @@ describe("GardenLoginPage rendering", () => {
   it("toggles password visibility", () => {
     render(<GardenLoginPage />);
     const password = screen.getByTestId("login-password");
+    const toggle = screen.getByTestId("login-password-toggle");
 
     expect(password).toHaveAttribute("type", "password");
-    fireEvent.click(screen.getByTestId("login-password-toggle"));
+    expect(toggle).toHaveTextContent("表示");
+    fireEvent.click(toggle);
     expect(password).toHaveAttribute("type", "text");
+    expect(toggle).toHaveTextContent("隠す");
   });
 });
 
