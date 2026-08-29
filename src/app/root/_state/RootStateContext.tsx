@@ -6,7 +6,7 @@
  * - Supabase Auth セッション + root_employees 参照結果を保持
  * - canWrite / hasRoleAtLeast ヘルパーを公開
  * - タイマーを駆動し、残り WARNING_OFFSET_MS で警告 state を立てる
- * - 2 時間経過で自動ログアウト
+ * - 2 時間経過で Root だけをロック（Garden の共有ログインは維持）
  *
  * パターン: Tree の TreeStateContext を踏襲。Root は Tree にない
  *   「canWrite」「warningActive」「extendSession」を追加。
@@ -127,16 +127,25 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
     async (reason: LogoutReason = "manual") => {
       const actorUserId = rootUser?.user_id ?? null;
       const actorEmpNum = rootUser?.employee_number ?? null;
-      await writeAudit({
+      const auditPromise = writeAudit({
         action: "logout",
         actorUserId,
         actorEmpNum,
         payload: { reason },
       });
-      await signOutRootLib();
+      clearRootUnlock();
       setIsAuthenticated(false);
       setRootUser(null);
       setWarningActive(false);
+
+      // Root のローカルな無操作期限で Garden 全体のログインを終了させない。
+      // 明示的なログアウト等では、従来どおり共有認証も終了する。
+      if (reason === "timeout") {
+        await auditPromise;
+        return;
+      }
+      // 監査通信の完了待ちでログアウト開始が遅れないよう、両方を同時に開始する。
+      await Promise.all([auditPromise, signOutRootLib()]);
     },
     [rootUser],
   );

@@ -27,15 +27,18 @@ import {
   getSessionElapsedMs,
   isRootUnlocked,
   markRootUnlocked,
+  signOutRoot,
   touchRootSession,
 } from "../auth";
 import {
   clearAuthSession,
   unlockAuthSession,
 } from "@/app/_lib/auth-unified";
+import { supabase as unifiedSupabase } from "@/app/bloom/_lib/supabase";
 
 describe("Root unified unlock session", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     sessionStorage.clear();
   });
 
@@ -85,5 +88,16 @@ describe("Root unified unlock session", () => {
     clearAuthSession("root");
 
     expect(isRootUnlocked()).toBe(false);
+  });
+
+  it("manual sign-out clears every module unlock and ends shared auth", async () => {
+    unlockAuthSession("root");
+    unlockAuthSession("bud");
+
+    await signOutRoot();
+
+    expect(unifiedSupabase.auth.signOut).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem("root:unlockedAt")).toBeNull();
+    expect(sessionStorage.getItem("bud:unlockedAt")).toBeNull();
   });
 });

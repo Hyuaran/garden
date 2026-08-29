@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 残り 10 分 (dev: 10 秒) でセッション切れを警告するモーダル。
+ * 残り 10 分 (dev: 1 分) で Root の利用期限を警告するモーダル。
  *
  * 表示条件: useRootState().warningActive === true
  * 操作:
