@@ -8,7 +8,12 @@ import { StatusBadge } from "../_components/StatusBadge";
 import { Modal } from "../_components/Modal";
 import { TextField, SelectField, FormGrid, TextareaField } from "../_components/FormField";
 import { fetchEmployees, upsertEmployee, setEmployeeActive, fetchCompanies, fetchSalarySystems } from "../_lib/queries";
-import type { Employee, Company, SalarySystem } from "../_constants/types";
+import {
+  GARDEN_ROLE_LABELS,
+  type Company,
+  type Employee,
+  type SalarySystem,
+} from "../_constants/types";
 import { colors } from "../_constants/colors";
 import { useRootState } from "../_state/RootStateContext";
 import { writeAudit } from "../_lib/audit";
@@ -20,6 +25,7 @@ import {
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
+import { GardenRoleField } from "./GardenRoleField";
 
 /**
  * 雇用形態選択肢。DB 値（value）と UI ラベル（label）を分離。
@@ -32,6 +38,7 @@ const EMP_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 const ACCOUNT_TYPES = ["普通", "当座"];
 const INS_TYPES = ["加入", "未加入", "一部加入"];
+const GARDEN_ROLE_CHANGE_ERROR = "Garden権限を変更できませんでした。全権管理者のアカウントで操作してください。";
 
 /**
  * 年末調整の甲/乙欄区分（Phase A-3-h）。DB 値は英語コード、UI は日本語表示。
@@ -72,7 +79,13 @@ const empty = (nextId: string, companyId: string, salarySystemId: string): Emplo
   notes: null,
   created_at: "",
   updated_at: "",
+  garden_role: "staff",
 });
+
+function isGardenRoleChangeError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /P0001|enforce_garden_role_change|garden.?role|Garden権限|現在の権限/i.test(message);
+}
 
 function nextId(existing: Employee[]): string {
   const nums = existing.map((e) => parseInt(e.employee_id.replace("EMP-", ""), 10)).filter((n) => !isNaN(n));
@@ -161,7 +174,9 @@ export default function EmployeesPage() {
       });
       setEditTarget(null);
       await load();
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) {
+      setError(isGardenRoleChangeError(e) ? GARDEN_ROLE_CHANGE_ERROR : (e as Error).message);
+    }
     finally { setSaving(false); }
   }
 
@@ -198,6 +213,7 @@ export default function EmployeesPage() {
     { key: "kana", header: "カナ", render: (e) => e.name_kana, width: 160 },
     { key: "company", header: "法人", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, width: 160 },
     { key: "emp_type", header: "雇用形態", render: (e) => e.employment_type, width: 80 },
+    { key: "garden_role", header: "Garden権限", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], width: 110 },
     { key: "salary", header: "給与体系", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, width: 130 },
     { key: "hire", header: "入社日", render: (e) => e.hire_date, width: 110 },
     { key: "status", header: "状態", render: (e) => <StatusBadge active={e.is_active} />, width: 80, align: "center" },
@@ -258,6 +274,11 @@ export default function EmployeesPage() {
               <SelectField label="社会保険区分" required value={editTarget.insurance_type} onChange={(e) => setEditTarget({ ...editTarget, insurance_type: e.target.value })} error={errors.insurance_type}>
                 {INS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </SelectField>
+              <GardenRoleField
+                operatorRole={rootUser?.garden_role}
+                value={editTarget.garden_role ?? "staff"}
+                onChange={(gardenRole) => setEditTarget({ ...editTarget, garden_role: gardenRole })}
+              />
               <TextField label="入社日" required type="date" value={editTarget.hire_date} onChange={(e) => setEditTarget({ ...editTarget, hire_date: e.target.value })} error={errors.hire_date} />
               <TextField label="退職日" type="date" value={editTarget.termination_date ?? ""} onChange={(e) => setEditTarget({ ...editTarget, termination_date: e.target.value || null })} error={errors.termination_date} />
               {editTarget.employment_type === "outsource" && (

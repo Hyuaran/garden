@@ -146,6 +146,8 @@ export interface Employee {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  /** Garden 全体の画面権限。認証拡張前のデータ互換のため任意。 */
+  garden_role?: GardenRole;
 }
 
 // ============================================================
@@ -214,9 +216,9 @@ export const GARDEN_ROLE_LABELS: Record<GardenRole, string> = {
   toss: "トス",
   closer: "クローザー",
   cs: "CS",
-  staff: "一般社員",
-  outsource: "外注",
-  manager: "責任者",
+  staff: "正社員",
+  outsource: "業務委託",
+  manager: "マネージャー",
   admin: "管理者",
   super_admin: "全権管理者",
 };
@@ -247,13 +249,13 @@ export const GARDEN_ROLE_SELECTABLE_OPTIONS: Array<{
   value: GardenRole;
   label: string;
 }> = [
-  { value: "toss", label: GARDEN_ROLE_LABELS.toss },
-  { value: "closer", label: GARDEN_ROLE_LABELS.closer },
-  { value: "cs", label: GARDEN_ROLE_LABELS.cs },
-  { value: "staff", label: GARDEN_ROLE_LABELS.staff },
-  { value: "outsource", label: GARDEN_ROLE_LABELS.outsource },
-  { value: "manager", label: GARDEN_ROLE_LABELS.manager },
   { value: "admin", label: GARDEN_ROLE_LABELS.admin },
+  { value: "manager", label: GARDEN_ROLE_LABELS.manager },
+  { value: "staff", label: GARDEN_ROLE_LABELS.staff },
+  { value: "cs", label: GARDEN_ROLE_LABELS.cs },
+  { value: "closer", label: GARDEN_ROLE_LABELS.closer },
+  { value: "toss", label: GARDEN_ROLE_LABELS.toss },
+  { value: "outsource", label: GARDEN_ROLE_LABELS.outsource },
   // super_admin は意図的に除外（project_super_admin_operation.md）
 ];
 
