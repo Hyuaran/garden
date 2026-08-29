@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { PUNCH_LABELS, PUNCH_TYPES, SYNC_LABELS, type AttendancePunch, type PunchType } from "../_lib/attendance";
 import styles from "./attendance.module.css";
 
@@ -15,7 +13,6 @@ const formatTime = (value: string) => new Intl.DateTimeFormat("ja-JP", {
 export default function AttendanceClient({ registered, employeeName, canViewSync, embedded = false }: {
   registered: boolean; employeeName: string | null; canViewSync: boolean; embedded?: boolean;
 }) {
-  const router = useRouter();
   const [punches, setPunches] = useState<AttendancePunch[]>([]);
   const [loading, setLoading] = useState(registered);
   const [listError, setListError] = useState<string | null>(null);
@@ -50,17 +47,11 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
     } catch { setModal({ type, clientId, phase: "error" }); }
   }
   function punch(type: PunchType) { void savePunch(type, crypto.randomUUID()); }
-  async function logout() {
-    await createBrowserClient().auth.signOut();
-    router.replace("/login?returnTo=%2Fsystem%2Fattendance");
-    router.refresh();
-  }
-
   return <div className={`${styles.shell} ${embedded ? styles.shellEmbedded : ""}`}>
     <main className={`${styles.main} ${embedded ? styles.mainEmbedded : ""}`}>
       <header className={styles.header}>
         <div>{!embedded && <><p className={styles.eyebrow}>Garden attendance</p><h1>勤怠打刻</h1></>}{employeeName && <p className={styles.employeeName}>{employeeName}さん</p>}</div>
-        <div className={styles.headerActions}>{canViewSync && <Link className={styles.adminLink} href="/system/attendance/sync-status">同期状況</Link>}{!embedded && <button className={styles.logout} type="button" onClick={() => void logout()}>ログアウト</button>}</div>
+        <div className={styles.headerActions}>{canViewSync && <Link className={styles.adminLink} href="/system/attendance/sync-status">同期状況</Link>}</div>
       </header>
       {!registered ? <section className={styles.notice} role="status">
         <h2>打刻できません</h2><p>打刻対象の従業員として登録されていません（管理者にご連絡ください）</p>
@@ -80,7 +71,7 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
     {modal && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && modal.phase !== "saving") setModal(null); }}>
       <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="punch-dialog-title" tabIndex={-1} ref={dialogRef}>
         {modal.phase === "saving" && <><div className={styles.spinner} aria-hidden="true"/><h2 id="punch-dialog-title">{PUNCH_LABELS[modal.type]}を記録しています…</h2><p>保存が完了するまでお待ちください。</p></>}
-        {modal.phase === "success" && <><div className={styles.successMark}>✓</div><h2 id="punch-dialog-title">{PUNCH_LABELS[modal.type]}を記録しました</h2><p className={styles.savedTime}>{formatTime(modal.punchedAt!)}</p><button type="button" onClick={() => setModal(null)}>閉じる</button></>}
+        {modal.phase === "success" && <><div className={styles.successMark}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div><h2 id="punch-dialog-title">{PUNCH_LABELS[modal.type]}を記録しました</h2><p className={styles.savedTime}>{formatTime(modal.punchedAt!)}</p><button type="button" onClick={() => setModal(null)}>閉じる</button></>}
         {modal.phase === "error" && <><h2 id="punch-dialog-title">記録できませんでした</h2><p>記録できませんでした。もう一度押してください。</p><div className={styles.dialogActions}><button type="button" onClick={() => void savePunch(modal.type, modal.clientId)}>再試行</button><button type="button" className={styles.secondary} onClick={() => setModal(null)}>閉じる</button></div></>}
       </div>
     </div>}

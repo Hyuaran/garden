@@ -24,7 +24,8 @@ export default async function MyPagePage({ searchParams }: { searchParams: Promi
   const postalDataStatus = (await supabase.from("system_postal_datasets").select("source_date,imported_at").eq("active", true).maybeSingle()).data;
   const role = employee && GARDEN_ROLE_ORDER.includes(employee.garden_role as GardenRole) ? employee.garden_role as GardenRole : "staff";
   const company = employee?.company_id ? (await supabase.from("root_companies").select("company_name").eq("company_id", employee.company_id).maybeSingle()).data : null;
-  return <ShachoShell activePath="/system/mypage" user={{ name: String(employee?.name ?? "未登録"), company: String(company?.company_name ?? "所属会社未登録"), role }}><MyPageClient initialTab={requestedTab} registered={Boolean(employee)} employeeName={employee?.name ? String(employee.name) : null}
+  const activePath = requestedTab === "attendance" ? "/system/attendance" : "/system/mypage";
+  return <ShachoShell activePath={activePath} user={{ name: String(employee?.name ?? "未登録"), company: String(company?.company_name ?? "所属会社未登録"), role }}><MyPageClient initialTab={requestedTab} registered={Boolean(employee)} employeeName={employee?.name ? String(employee.name) : null}
     canViewSync={employee ? MANAGER_ROLES.has(String(employee.garden_role)) : false}
     birthdayRegistered={birthdayRegistered} initialProfile={initialProfile} postalDataStatus={postalDataStatus ? { sourceDate: String(postalDataStatus.source_date), importedAt: String(postalDataStatus.imported_at) } : null} /></ShachoShell>;
 }
