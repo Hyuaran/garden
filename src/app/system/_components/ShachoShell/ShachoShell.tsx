@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
@@ -25,10 +26,6 @@ const MODULE_META: Record<GardenModuleId, { color: string; role: string }> = {
   soil: { color: "#9aa7b8", role: "データ基盤" }, root: { color: "#5b9dff", role: "組織マスタ" },
   rill: { color: "#38bdf8", role: "メッセージ" }, calendar: { color: "#60a5fa", role: "予定管理" },
 };
-
-function GardenMark() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V9"/><path d="M12 12c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/><path d="M12 15c0-2.8-2.2-5-5-5 0 2.8 2.2 5 5 5z"/></svg>;
-}
 
 function ModuleIcon({ id }: { id: GardenModuleId }) {
   const icons: Record<GardenModuleId, ReactNode> = {
@@ -88,17 +85,17 @@ export default function ShachoShell({ children, activePath, user }: Props) {
   const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
   return <div className={styles.shell}>
     <aside className={styles.rail} aria-label="Gardenシリーズ">
-      <div className={styles.railHome}><GardenMark/></div><div className={styles.separator}/>
-      {GARDEN_SHELL_MODULES.filter((module) => visibleModules.has(module.id)).map((module) => <Link key={module.id} href={`/${module.id}`} className={styles.app} style={{ "--c": MODULE_META[module.id].color } as CSSProperties} aria-label={`${module.name}：${MODULE_META[module.id].role}`}>
-        <ModuleIcon id={module.id}/><span className={styles.railTip}><b>{module.name}</b><span>{MODULE_META[module.id].role}</span></span>
-      </Link>)}
-      <div className={styles.separator}/><Link href="/system" className={`${styles.app} ${styles.current}`} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
+      <Link href="/system" className={`${styles.app} ${styles.current}`} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 14.4v1.4M17.6 15.6v1.2"/></svg>
         <span className={styles.railTip}><b>System</b><span>社内システム</span></span>
       </Link>
+      <div className={styles.separator}/>
+      {GARDEN_SHELL_MODULES.filter((module) => visibleModules.has(module.id)).map((module) => <Link key={module.id} href={`/${module.id}`} className={styles.app} style={{ "--c": MODULE_META[module.id].color } as CSSProperties} aria-label={`${module.name}：${MODULE_META[module.id].role}`}>
+        <ModuleIcon id={module.id}/><span className={styles.railTip}><b>{module.name}</b><span>{MODULE_META[module.id].role}</span></span>
+      </Link>)}
     </aside>
     <aside className={styles.side}>
-      <div className={styles.brand}><div className={styles.brandName}><GardenMark/>Garden</div><div className={styles.moduleName}>SYSTEM ／ 社内システム</div></div>
+      <div className={styles.brand}><Link href="/" className={styles.brandName} aria-label="Garden ホームへ"><Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized/><span>Garden</span></Link><div className={styles.moduleName}>SYSTEM ／ 社内システム</div></div>
       <nav className={styles.nav} aria-label="Systemメニュー">
         <div className={styles.navLabel}>メニュー</div>
         {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined} aria-current={activePath === item.href ? "page" : undefined}><MenuIcon icon={item.icon}/>{item.label}</Link>)}

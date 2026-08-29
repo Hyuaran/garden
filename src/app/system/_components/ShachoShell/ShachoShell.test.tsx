@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import ShachoShell from "./ShachoShell";
+import styles from "./shacho-shell.module.css";
 
 const mocks = vi.hoisted(() => ({ signOut: vi.fn() }));
 vi.mock("@/app/_lib/supabase/browser", () => ({ createBrowserClient: () => ({ auth: { signOut: mocks.signOut } }) }));
@@ -16,12 +17,24 @@ describe("ShachoShell", () => {
     mocks.signOut.mockReset().mockResolvedValue({ error: null });
   });
 
-  it("shows the Garden modules in the shared order followed by System", () => {
+  it("shows System first followed by the Garden modules without a duplicate System link", () => {
     render(<ShachoShell activePath="/system" user={manager}><p>本文</p></ShachoShell>);
     const rail = screen.getByRole("complementary", { name: "Gardenシリーズ" });
     const labels = within(rail).getAllByRole("link").map((link) => link.getAttribute("aria-label"));
     expect(labels).toHaveLength(13);
-    expect(labels.map((label) => label?.split("：")[0])).toEqual([...GARDEN_SHELL_MODULES.map((item) => item.name), "System"]);
+    expect(labels.map((label) => label?.split("：")[0])).toEqual(["System", ...GARDEN_SHELL_MODULES.map((item) => item.name)]);
+    expect(labels.filter((label) => label === "System：社内システム")).toHaveLength(1);
+    expect(within(rail).getAllByRole("link")[0]).toHaveAttribute("href", "/system");
+    expect(within(rail).getAllByRole("link")[0]).toHaveClass(styles.current);
+  });
+
+  it("links the gold tree emblem and Garden wordmark to home without image optimization", () => {
+    render(<ShachoShell activePath="/system" user={manager}><p>本文</p></ShachoShell>);
+    const home = screen.getByRole("link", { name: "Garden ホームへ" });
+    const logo = home.querySelector("img");
+    expect(home).toHaveAttribute("href", "/");
+    expect(logo).toHaveAttribute("src", "/themes/garden-shell/images/login/mark-tree-emblem.png");
+    expect(logo?.getAttribute("src")).not.toContain("/_next/image");
   });
 
   it("toggles and saves the root theme", async () => {
