@@ -85,14 +85,16 @@ export default function ShachoShell({ children, activePath, user }: Props) {
   const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
   return <div className={styles.shell}>
     <aside className={styles.rail} aria-label="Gardenシリーズ">
-      <Link href="/system" className={`${styles.app} ${styles.current}`} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 14.4v1.4M17.6 15.6v1.2"/></svg>
-        <span className={styles.railTip}><b>System</b><span>社内システム</span></span>
-      </Link>
-      <div className={styles.separator}/>
-      {GARDEN_SHELL_MODULES.filter((module) => visibleModules.has(module.id)).map((module) => <Link key={module.id} href={`/${module.id}`} className={styles.app} style={{ "--c": MODULE_META[module.id].color } as CSSProperties} aria-label={`${module.name}：${MODULE_META[module.id].role}`}>
-        <ModuleIcon id={module.id}/><span className={styles.railTip}><b>{module.name}</b><span>{MODULE_META[module.id].role}</span></span>
-      </Link>)}
+      <div className={styles.railInner}>
+        <Link href="/system" className={`${styles.app} ${styles.current}`} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 14.4v1.4M17.6 15.6v1.2"/></svg>
+          <span className={styles.railTip}><b>System</b><span>社内システム</span></span>
+        </Link>
+        <div className={styles.separator}/>
+        {GARDEN_SHELL_MODULES.filter((module) => visibleModules.has(module.id)).map((module) => <Link key={module.id} href={`/${module.id}`} className={styles.app} style={{ "--c": MODULE_META[module.id].color } as CSSProperties} aria-label={`${module.name}：${MODULE_META[module.id].role}`}>
+          <ModuleIcon id={module.id}/><span className={styles.railTip}><b>{module.name}</b><span>{MODULE_META[module.id].role}</span></span>
+        </Link>)}
+      </div>
     </aside>
     <aside className={styles.side}>
       <div className={styles.sideInner}>

@@ -5,21 +5,36 @@ import { describe, expect, it } from "vitest";
 const css = readFileSync(join(process.cwd(), "src/app/system/_components/ShachoShell/shacho-shell.module.css"), "utf8");
 const shellRule = css.match(/\.shell\{([^}]+)\}/)?.[1] ?? "";
 const railRule = css.match(/\.rail\{([^}]+)\}/)?.[1] ?? "";
+const railInnerRule = css.match(/\.railInner\{([^}]+)\}/)?.[1] ?? "";
+const appRule = css.match(/\.app\{([^}]+)\}/)?.[1] ?? "";
 const sideRule = css.match(/\.side\{([^}]+)\}/)?.[1] ?? "";
 const sideInnerRule = css.match(/\.sideInner\{([^}]+)\}/)?.[1] ?? "";
 
 describe("ShachoShell rail layout", () => {
   it("lets tooltips extend beyond the rail without rail scrollbars", () => {
     expect(railRule).toContain("overflow:visible");
+    expect(railInnerRule).toContain("overflow:visible");
     expect(railRule).not.toMatch(/overflow(?:-x|-y)?:auto/);
+    expect(railInnerRule).not.toMatch(/overflow(?:-x|-y)?:(?:auto|scroll)/);
     expect(css).toMatch(/\.railTip\{[^}]*position:absolute[^}]*left:52px/);
   });
 
-  it("uses page scrolling when the complete rail is taller than the viewport", () => {
+  it("keeps the compact rail content sticky without clipping tooltips", () => {
     expect(railRule).toContain("position:relative");
     expect(railRule).toContain("min-height:100vh");
     expect(railRule).toContain("height:auto");
     expect(railRule).not.toContain("position:sticky");
+    expect(railInnerRule).toContain("position:sticky");
+    expect(railInnerRule).toContain("top:0");
+    expect(railInnerRule).toContain("display:flex");
+    expect(railInnerRule).toContain("flex-direction:column");
+    expect(railInnerRule).toContain("align-items:center");
+    expect(railInnerRule).toContain("gap:6px");
+    expect(railInnerRule).toContain("padding:10px 0 12px");
+    expect(appRule).toContain("width:40px");
+    expect(appRule).toContain("height:40px");
+    expect(appRule).toContain("flex:0 0 40px");
+    expect(css).toMatch(/\.app>svg\{[^}]*width:20px[^}]*height:20px/);
   });
 
   it("stretches the shell and both dark columns to long page content", () => {
