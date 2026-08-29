@@ -89,11 +89,19 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
 
   const lockAndLogoutFn = useCallback(async (reason: "manual" | "timeout") => {
     const action = reason === "manual" ? "logout_manual" : "logout_timeout";
-    await writeAuditLog(action);
-    await signOutForest();
+    const auditPromise = writeAuditLog(action);
+    clearForestUnlock();
+    setIsUnlocked(false);
+
+    // Forest のローカルな無操作期限で Garden 全体のログインを終了させない。
+    if (reason === "timeout") {
+      await auditPromise;
+      return;
+    }
+
+    await Promise.all([auditPromise, signOutForest()]);
     setIsAuthenticated(false);
     setHasPermission(false);
-    setIsUnlocked(false);
     setUserEmail(null);
     setForestUser(null);
     setCompanies([]);

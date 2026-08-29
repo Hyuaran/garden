@@ -14,6 +14,7 @@
 import {
   clearAuthSession,
   isAuthSessionUnlocked,
+  signOutUnified,
   touchAuthSession,
   unlockAuthSession,
 } from "@/app/_lib/auth-unified";
@@ -55,7 +56,7 @@ export async function signInRoot(
 
 export async function signOutRoot(): Promise<void> {
   clearRootUnlock();
-  await supabase.auth.signOut();
+  await signOutUnified();
 }
 
 export function isRootUnlocked(): boolean {
