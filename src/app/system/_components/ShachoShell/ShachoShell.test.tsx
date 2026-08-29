@@ -20,7 +20,10 @@ describe("ShachoShell", () => {
   it("shows System first followed by the Garden modules without a duplicate System link", () => {
     render(<ShachoShell activePath="/system" user={manager}><p>本文</p></ShachoShell>);
     const rail = screen.getByRole("complementary", { name: "Gardenシリーズ" });
+    const railInner = within(rail).getByRole("link", { name: "System：社内システム" }).parentElement;
     const labels = within(rail).getAllByRole("link").map((link) => link.getAttribute("aria-label"));
+    expect(railInner).toHaveClass(styles.railInner);
+    expect(railInner?.parentElement).toBe(rail);
     expect(labels).toHaveLength(13);
     expect(labels.map((label) => label?.split("：")[0])).toEqual(["System", ...GARDEN_SHELL_MODULES.map((item) => item.name)]);
     expect(labels.filter((label) => label === "System：社内システム")).toHaveLength(1);
