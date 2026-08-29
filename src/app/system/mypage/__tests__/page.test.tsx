@@ -68,7 +68,11 @@ describe("system mypage", () => {
       "前確依頼",
     ]);
     expect(screen.getByLabelText("個人情報を開く")).toBeInTheDocument();
-    expect(screen.getByLabelText("誕生日の月日4桁")).toHaveAttribute("placeholder", "誕生日を入力　例：12/1の場合1201");
+    const unlockCode = screen.getByLabelText("誕生日の月日4桁");
+    expect(unlockCode).toHaveAttribute("placeholder", "誕生日を入力　例：12/1の場合1201");
+    expect(unlockCode).toHaveAttribute("type", "text");
+    expect(unlockCode).toHaveAttribute("autocomplete", "one-time-code");
+    expect(unlockCode).toHaveAttribute("inputmode", "numeric");
     expect(screen.getByRole("button", { name: "マイページを開く" })).toBeInTheDocument();
     expect(screen.queryByText("本人確認")).not.toBeInTheDocument();
     expect(screen.queryByText("生年月日の月日4桁")).not.toBeInTheDocument();

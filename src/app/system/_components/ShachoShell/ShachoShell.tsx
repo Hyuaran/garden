@@ -95,14 +95,16 @@ export default function ShachoShell({ children, activePath, user }: Props) {
       </Link>)}
     </aside>
     <aside className={styles.side}>
-      <div className={styles.brand}><Link href="/" className={styles.brandName} aria-label="Garden ホームへ"><Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized/><span>Garden</span></Link><div className={styles.moduleName}>SYSTEM ／ 社内システム</div></div>
-      <nav className={styles.nav} aria-label="Systemメニュー">
-        <div className={styles.navLabel}>メニュー</div>
-        {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined} aria-current={activePath === item.href ? "page" : undefined}><MenuIcon icon={item.icon}/>{item.label}</Link>)}
-        <div className={styles.navLabel}>これから</div>
-        {visible.filter((item) => item.upcoming).map((item) => <span key={item.label} className={styles.soon}><MenuIcon icon={item.icon}/>{item.label}<span className={styles.tag}>準備中</span></span>)}
-      </nav>
-      <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}>{user.company} ／ {GARDEN_ROLE_LABELS[user.role]}</div></div></div>
+      <div className={styles.sideInner}>
+        <div className={styles.brand}><Link href="/" className={styles.brandName} aria-label="Garden ホームへ"><Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized/><span>Garden</span></Link><div className={styles.moduleName}>SYSTEM ／ 社内システム</div></div>
+        <nav className={styles.nav} aria-label="Systemメニュー">
+          <div className={styles.navLabel}>メニュー</div>
+          {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined} aria-current={activePath === item.href ? "page" : undefined}><MenuIcon icon={item.icon}/>{item.label}</Link>)}
+          <div className={styles.navLabel}>これから</div>
+          {visible.filter((item) => item.upcoming).map((item) => <span key={item.label} className={styles.soon}><MenuIcon icon={item.icon}/>{item.label}<span className={styles.tag}>準備中</span></span>)}
+        </nav>
+        <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}>{user.company} ／ {GARDEN_ROLE_LABELS[user.role]}</div></div></div>
+      </div>
     </aside>
     <main className={styles.main}>
       <div className={styles.actions}>
