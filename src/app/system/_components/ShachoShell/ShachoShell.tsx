@@ -109,6 +109,7 @@ export default function ShachoShell({ children, activePath, user }: Props) {
     </aside>
     <main className={styles.main}>
       <div className={styles.actions}>
+        <span className={styles.accountName}>{user.name}さん</span>
         <button className={styles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>{theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z"/></svg>}<span className={styles.actionTip}>{themeLabel}</span></button>
         <button className={styles.iconButton} type="button" aria-label="ログアウト" onClick={() => void logout()}><svg viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/></svg><span className={styles.actionTip}>ログアウト</span></button>
       </div>

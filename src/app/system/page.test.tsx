@@ -23,6 +23,7 @@ describe("system home", () => {
   it("links all five manager cards to their configured destinations", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     render(await SystemHomePage());
+    expect(screen.getByText("社員Aさん")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "マイページ" }).closest("a")).toHaveAttribute("href", "/system/mypage");
     expect(screen.getByRole("heading", { name: "勤怠打刻" }).closest("a")).toHaveAttribute("href", "/system/attendance");
     expect(screen.getByRole("heading", { name: "テレマ コール集計" }).closest("a")).toHaveAttribute("href", "/system/call-metrics");

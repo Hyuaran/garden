@@ -33,6 +33,12 @@ describe("ShachoShell", () => {
     expect(screen.getByRole("button", { name: "ライトにする" })).toBeInTheDocument();
   });
 
+  it("shows the signed-in account name beside the shared actions", () => {
+    render(<ShachoShell activePath="/system" user={manager}><p>本文</p></ShachoShell>);
+    expect(screen.getByText("責任者Aさん")).toBeInTheDocument();
+    expect(screen.getByText("責任者Aさん").parentElement).toContainElement(screen.getByRole("button", { name:"ダークにする" }));
+  });
+
   it("restores a saved theme", async () => {
     localStorage.setItem("garden-system-theme", "dark");
     render(<ShachoShell activePath="/system" user={manager}><p>本文</p></ShachoShell>);
