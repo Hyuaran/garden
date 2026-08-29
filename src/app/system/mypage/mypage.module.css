@@ -8,14 +8,16 @@
 .tabs button[aria-selected="true"] { background:var(--teal); color:#fff; }
 .tabPanel { padding-top:24px; }
 .unlockPanel, .comingSoon { max-width:520px; margin:36px auto; padding:36px; text-align:center; background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); }
+.unlockPanel { padding:40px 36px; }
 .unlockPanel p, .comingSoon p { color:var(--sub); }
+.unlockPanel > p { margin:0 0 18px; }
 .unlockPanel label { display:grid; gap:8px; color:var(--ink); font-weight:700; }
 .unlockPanel input { box-sizing:border-box; width:100%; padding:14px; border:2px solid var(--line); border-radius:12px; background:var(--card); color:var(--ink); font-size:1.25rem; text-align:center; letter-spacing:.5em; }
 .unlockPanel input::placeholder { color:#98a4b3; opacity:1; font-size:.88rem; letter-spacing:0; }
 .unlockPanel button, .confirmationActions button { padding:12px 20px; border:0; border-radius:10px; background:var(--teal); color:#fff; font-weight:700; }
-.unlockPanel > button { margin-top:16px; width:100%; }
+.unlockPanel > button { margin-top:20px; width:100%; }
 .unlockPanel button:disabled { opacity:.6; }
-.lockIcon { display:block; width:40px; height:40px; margin:0 auto; color:var(--teal-d); }
+.lockIcon { display:block; width:40px; height:40px; margin:0 auto 20px; color:var(--teal-d); }
 .error { color:#c52e35 !important; font-weight:700; }
 .profileContent { display:grid; gap:18px; max-width:980px; margin:0 auto; }
 .card { padding:24px; background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow-s); }
