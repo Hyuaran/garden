@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import {
-  downloadFile,
   findOrCreateSubfolder,
   listDriveFolderEntries,
 } from "@/app/api/bud/expense-drive/_lib/drive";
@@ -16,9 +15,6 @@ import {
   MAX_CONTRACT_SIZE,
   type ContractCompany,
 } from "@/app/system/contracts/_lib/contract-types";
-// pdfjs-dist は Node.js runtime が必須（既存の /api/forest/parse-pdf と同じ）。
-// 宣言が無いと webpack(rsc) 側でバンドルされ
-// "Object.defineProperty called on non-object" で 500 になる（実機で確認）。
 export const runtime = "nodejs";
 // PDF解析とひな形生成に時間がかかるため長めに許容する
 export const maxDuration = 60;
@@ -32,6 +28,16 @@ async function context() {
     .eq("is_active", true)
     .order("company_id");
   return { manager, admin, companies: (companies ?? []) as ContractCompany[] };
+}
+function extractedPages(value: FormDataEntryValue | null): string[] | null {
+  try {
+    const parsed: unknown = JSON.parse(String(value ?? ""));
+    return Array.isArray(parsed) && parsed.every((page) => typeof page === "string")
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
 }
 export async function GET(request: Request) {
   const c = await context();
@@ -75,28 +81,15 @@ export async function POST(request: Request) {
   const form = await request.formData(),
     action = String(form.get("action") ?? "");
   if (action === "analyze") {
-    const file = form.get("file");
-    if (!(file instanceof File))
+    const pages = extractedPages(form.get("extractedText"));
+    if (!pages)
       return NextResponse.json(
-        { ok: false, error: "PDFを選択してください。" },
-        { status: 400 },
-      );
-    if (file.type !== "application/pdf")
-      return NextResponse.json(
-        { ok: false, error: "PDFファイルを選択してください。" },
-        { status: 400 },
-      );
-    if (file.size > MAX_CONTRACT_SIZE)
-      return NextResponse.json(
-        { ok: false, error: "PDFは20MB以下にしてください。" },
+        { ok: false, error: "契約書の読み取り結果を確認できませんでした。" },
         { status: 400 },
       );
     return NextResponse.json({
       ok: true,
-      draft: await extractContract(
-        Buffer.from(await file.arrayBuffer()),
-        c.companies,
-      ),
+      draft: extractContract(pages, c.companies),
     });
   }
   if (action === "register") {
@@ -104,13 +97,15 @@ export async function POST(request: Request) {
       counterparty = String(form.get("counterparty") ?? "").trim(),
       companyId = String(form.get("companyId") ?? ""),
       contractType = String(form.get("contractType") ?? "").trim(),
-      concludedOn = String(form.get("concludedOn") ?? "");
+      concludedOn = String(form.get("concludedOn") ?? ""),
+      pages = extractedPages(form.get("extractedText"));
     if (
       !(file instanceof File) ||
       !counterparty ||
       !companyId ||
       !contractType ||
-      !concludedOn
+      !concludedOn ||
+      !pages
     )
       return NextResponse.json(
         { ok: false, error: "必須項目を入力してください。" },
@@ -144,6 +139,7 @@ export async function POST(request: Request) {
         drive_file_id: saved.fileId,
         drive_url: saved.url,
         drive_folder_name: saved.folderName,
+        extracted_text: JSON.stringify(pages),
         created_by: c.manager.userId,
       })
       .select("*")
@@ -168,13 +164,23 @@ export async function POST(request: Request) {
       .eq("id", id)
       .maybeSingle();
     const issuer = c.companies.find((x) => x.company_id === issuerId);
-    if (!row?.drive_file_id || !issuer || !product)
+    if (!row || !issuer || !product)
       return NextResponse.json(
         { ok: false, error: "ひな形を生成する条件が不足しています。" },
         { status: 400 },
       );
-    const source = await downloadFile(row.drive_file_id),
-      generated = await generatePartnerTemplate(source, {
+    const pages = (() => {
+      try {
+        const parsed: unknown = JSON.parse(String(row.extracted_text ?? ""));
+        return Array.isArray(parsed) && parsed.every((page) => typeof page === "string") ? parsed : null;
+      } catch { return null; }
+    })();
+    if (!pages || !pages.join("").trim())
+      return NextResponse.json(
+        { ok: false, error: "元の契約書を読み取れていないため、ひな形を作成できません。登録し直してください。" },
+        { status: 400 },
+      );
+    const generated = await generatePartnerTemplate(pages, {
         issuer,
         title: row.contract_type,
         excludedTerms: [row.counterparty, ...c.companies.map((company) => company.company_name)],

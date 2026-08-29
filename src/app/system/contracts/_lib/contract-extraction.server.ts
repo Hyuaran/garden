@@ -1,4 +1,3 @@
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { ContractCompany, ContractDraft } from "./contract-types";
 const normalize = (s: string) =>
   s.replace(/[\s　]+/g, "").replace(/[｢｣]/g, (m) => (m === "｢" ? "「" : "」"));
@@ -26,18 +25,11 @@ function partyBefore(text: string, label: "甲" | "乙") {
       .slice(-30) ?? ""
   );
 }
-export async function extractContract(
-  buffer: Buffer,
+export function extractContract(
+  sourcePages: string[],
   companies: ContractCompany[],
-): Promise<ContractDraft> {
-  const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
-  const pages: string[] = [];
-  for (let n = 1; n <= pdf.numPages; n++) {
-    const c = await (await pdf.getPage(n)).getTextContent();
-    pages.push(
-      normalize(c.items.map((i) => ("str" in i ? i.str : "")).join("")),
-    );
-  }
+): ContractDraft {
+  const pages = sourcePages.map(normalize);
   const all = pages.join("\n");
   if (!all)
     return {

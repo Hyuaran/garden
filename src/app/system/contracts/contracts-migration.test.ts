@@ -31,4 +31,8 @@ describe("system contracts migration", () => {
     expect(extension).toContain("template_docx_file_id");
     expect(extension).toContain("template_docx_url");
   });
+  it("stores text extracted in the browser", () => {
+    const extension = readFileSync("supabase/migrations/20260829000001_system_contracts_extracted_text.sql", "utf8");
+    expect(extension).toMatch(/add column if not exists extracted_text text/);
+  });
 });

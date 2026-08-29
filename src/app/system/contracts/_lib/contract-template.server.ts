@@ -4,7 +4,6 @@ import fontkit from "@pdf-lib/fontkit";
 import { AlignmentType, BorderStyle, Document, Header, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import JSZip from "jszip";
 import { degrees, PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { ContractCompany } from "./contract-types";
 
 export const DRAFT_WATERMARK = { degrees: 45, opacity: 0.15, color: 0.65 } as const;
@@ -54,27 +53,6 @@ export function sanitizeContractText(text: string, options: { excludedTerms: str
     .replace(REPRESENTATIVE, "").replace(MONEY, "＿＿＿＿").replace(DATE, "＿＿年＿＿月＿＿日")))
     .filter((line) => line && !/^(?:御中|以上|記)$/.test(line));
   return { title, paragraphs, includeKi };
-}
-
-async function extractSourceText(source: Buffer) {
-  const pdf = await getDocument({ data: new Uint8Array(source) }).promise;
-  const pages: string[] = [];
-  for (let index = 1; index <= pdf.numPages; index++) {
-    const content = await (await pdf.getPage(index)).getTextContent();
-    const lines: string[] = [];
-    let line = "";
-    for (const item of content.items) {
-      if (!("str" in item)) continue;
-      line += item.str;
-      if ("hasEOL" in item && item.hasEOL) {
-        if (!/^\s*\d{1,3}\s*$/.test(line)) lines.push(line);
-        line = "";
-      }
-    }
-    if (line && !/^\s*\d{1,3}\s*$/.test(line)) lines.push(line);
-    pages.push(lines.join("\n"));
-  }
-  return pages.join("\n");
 }
 
 const isHeading = (text: string) => /^(?:第?[一二三四五六七八九十\d０-９]+[.．、条項]|[（(][一二三四五六七八九十\d０-９]+[）)])/.test(text);
@@ -159,7 +137,7 @@ async function buildPdf(content: TemplateContent, issuer: ContractCompany) {
   return Buffer.from(await pdf.save());
 }
 
-export async function generatePartnerTemplate(source: Buffer, options: { issuer: ContractCompany; title: string; excludedTerms: string[] }) {
-  const content = sanitizeContractText(await extractSourceText(source), options);
+export async function generatePartnerTemplate(sourcePages: string[], options: { issuer: ContractCompany; title: string; excludedTerms: string[] }) {
+  const content = sanitizeContractText(sourcePages.join("\n"), options);
   return { docx: await buildDocx(content, options.issuer), pdf: await buildPdf(content, options.issuer), content };
 }

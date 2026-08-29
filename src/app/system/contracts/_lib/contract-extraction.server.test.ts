@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { extractContract } from "./contract-extraction.server";
-import { japanesePdf } from "./contract-test-pdf";
 const companies = [
   {
     company_id: "COMP-001",
@@ -52,10 +51,7 @@ describe("contract extraction", () => {
       false,
     ],
   ])("extracts party variants", async (text, a, b, id, warning) => {
-    const r = await extractContract(
-      await japanesePdf([`業務委託基本契約書\n${text}\n2026年8月28日`]),
-      companies,
-    );
+    const r = extractContract([`業務委託基本契約書\n${text}\n2026年8月28日`], companies);
     expect(r).toMatchObject({
       partyA: a,
       partyB: b,
@@ -65,12 +61,7 @@ describe("contract extraction", () => {
     });
   });
   it("infers a known second party without an 乙 marker", async () => {
-    const r = await extractContract(
-      await japanesePdf([
-        "取次契約書\n株式会社Crescere（以下「甲」という）と株式会社リンクサポート\n令和8年8月28日",
-      ]),
-      companies,
-    );
+    const r = extractContract(["取次契約書\n株式会社Crescere（以下「甲」という）と株式会社リンクサポート\n令和8年8月28日"], companies);
     expect(r).toMatchObject({
       partyA: "株式会社Crescere",
       partyB: "株式会社リンクサポート",
@@ -78,18 +69,9 @@ describe("contract extraction", () => {
     });
   });
   it("uses the last date and returns a blank scanned fallback", async () => {
-    const r = await extractContract(
-      await japanesePdf(
-        [
-          "覚書\nFado株式会社（以下「甲」という）と株式会社ヒュアラン（以下「乙」という）\n2026/01/01",
-          "2026年8月28日",
-        ],
-        2,
-      ),
-      companies,
-    );
+    const r = extractContract(["覚書\nFado株式会社（以下「甲」という）と株式会社ヒュアラン（以下「乙」という）\n2026/01/01", "2026年8月28日"], companies);
     expect(r.concludedOn).toBe("2026-08-28");
-    const scanned = await extractContract(await japanesePdf([], 1), companies);
+    const scanned = extractContract([""], companies);
     expect(scanned).toMatchObject({
       counterparty: "",
       companyId: "",

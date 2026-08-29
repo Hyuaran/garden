@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { DRAFT_WATERMARK, generatePartnerTemplate, sanitizeContractText } from "./contract-template.server";
-import { fragmentedJapanesePdf, japanesePdf } from "./contract-test-pdf";
 const issuer = { company_id: "COMP-001", company_name: "株式会社ヒュアラン", representative: "後道翔太", address: "大阪府大阪市中央区" };
 const forbidden = ["MXモバイリング株式会社", "5,000円", "2026年8月7日", "90％"];
 async function docxParts(buffer: Buffer) {
@@ -26,13 +25,7 @@ describe("template-based partner documents", () => {
     expect(result.includeKi).toBe(false);
   });
   it("keeps fragmented article numbers and general year counts together, but removes page numbers", async () => {
-    const source = await fragmentedJapanesePdf([
-      ["サービス取次代理店基本契約書"],
-      ["第", "19", "条（反社会勢力と取引排除）"],
-      ["解除後", "5", "年間は義務を負う。"],
-      ["8"],
-    ]);
-    const result = await generatePartnerTemplate(source, { issuer, title: "サービス取次代理店基本契約書", excludedTerms: [] });
+    const result = await generatePartnerTemplate(["サービス取次代理店基本契約書\n第19条（反社会勢力と取引排除）\n解除後5年間は義務を負う。\n8"], { issuer, title: "サービス取次代理店基本契約書", excludedTerms: [] });
     const text = result.content.paragraphs.join(" ");
     expect(text).toContain("第19条（反社会勢力と取引排除）");
     expect(text).toContain("5年間");
@@ -44,7 +37,7 @@ describe("template-based partner documents", () => {
   });
   it("creates editable Word and newly composed PDF without forbidden values", async () => {
     const lines = ["販売条件通知書", "MXモバイリング株式会社", "対象期間 2026年8月7日から", "単価 5,000円 加入率90％", ...Array.from({ length: 75 }, (_, index) => `第${index + 1}条 パートナーはサービスの取次条件を遵守するものとします。`)];
-    const result = await generatePartnerTemplate(await japanesePdf([lines.join("\n")], 1), { issuer, title: "販売条件通知書", excludedTerms: ["MXモバイリング株式会社"] });
+    const result = await generatePartnerTemplate([lines.join("\n")], { issuer, title: "販売条件通知書", excludedTerms: ["MXモバイリング株式会社"] });
     const word = await docxParts(result.docx), pages = await pdfPages(result.pdf), pdf = pages.join(" ");
     for (const value of forbidden) { expect(word.text).not.toContain(value); expect(pdf).not.toContain(value); }
     expect(word.text).toContain("株式会社ヒュアラン"); expect(pdf).toContain("株式会社ヒュアラン");

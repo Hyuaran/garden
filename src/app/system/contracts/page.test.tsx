@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+const pdfMocks = vi.hoisted(() => ({ extract: vi.fn() }));
+vi.mock("./_lib/contract-pdf.client", () => ({ extractContractPdfPages: pdfMocks.extract }));
 import ContractsPage from "./page";
-afterEach(() => vi.unstubAllGlobals());
+pdfMocks.extract.mockResolvedValue(["契約書テキスト"]);
+afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); pdfMocks.extract.mockResolvedValue(["契約書テキスト"]); });
 describe("contracts drive browser", () => {
   it("opens a folder from the browse tab through the Drive API", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

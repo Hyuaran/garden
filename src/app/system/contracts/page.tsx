@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import type { ContractCompany, ContractDraft, ContractRow } from "./_lib/contract-types";
+import { extractContractPdfPages } from "./_lib/contract-pdf.client";
 import styles from "./contracts.module.css";
 
 type DriveEntry = { id: string; name: string; mimeType: string; webViewLink: string | null; modifiedTime: string | null };
@@ -27,6 +28,7 @@ export default function ContractsPage() {
   const [path, setPath] = useState<{ id: string | null; name: string }[]>([{ id: null, name: "契約書" }]);
   const [file, setFile] = useState<File | null>(null);
   const [draft, setDraft] = useState<ContractDraft | null>(null);
+  const [sourcePages, setSourcePages] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [registrationMessage, setRegistrationMessage] = useState("");
   const [fileError, setFileError] = useState("");
@@ -58,13 +60,15 @@ export default function ContractsPage() {
     void Promise.all([loadLedger(), browse(null)]);
   }, []);
   async function choose(next: File | null) {
-    setDraft(null); setFileError(""); setRegistrationMessage("");
+    setDraft(null); setSourcePages([]); setFileError(""); setRegistrationMessage("");
     if (!next) { setFile(null); return; }
     if (next.type !== "application/pdf" && !next.name.toLowerCase().endsWith(".pdf")) { setFile(null); return setFileError("PDFファイルを選んでください。"); }
     if (next.size > MAX_FILE_SIZE) { setFile(null); return setFileError("PDFは20MBまでです。ファイルサイズを確認してください。"); }
     setFile(next); setLoading("analyze");
     try {
-      const form = new FormData(); form.set("action", "analyze"); form.set("file", next);
+      const pages = await extractContractPdfPages(next);
+      setSourcePages(pages);
+      const form = new FormData(); form.set("action", "analyze"); form.set("extractedText", JSON.stringify(pages));
       const response = await fetch("/api/system/contracts", { method: "POST", body: form });
       const json = await responseBody(response);
       if (!response.ok || !json) return setFileError(json?.error ?? "この契約書を読み取れませんでした。ファイルが壊れていないか確認してください。");
@@ -75,10 +79,10 @@ export default function ContractsPage() {
   function drop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault(); setDragActive(false); void choose(event.dataTransfer.files[0] ?? null);
   }
-  function resetFile() { setFile(null); setDraft(null); setFileError(""); setRegistrationMessage(""); if (fileInputRef.current) fileInputRef.current.value = ""; }
+  function resetFile() { setFile(null); setDraft(null); setSourcePages([]); setFileError(""); setRegistrationMessage(""); if (fileInputRef.current) fileInputRef.current.value = ""; }
   async function register(event: FormEvent) {
     event.preventDefault(); if (!file || !draft) return;
-    const form = new FormData(); form.set("action", "register"); form.set("file", file);
+    const form = new FormData(); form.set("action", "register"); form.set("file", file); form.set("extractedText", JSON.stringify(sourcePages));
     Object.entries({ counterparty: draft.counterparty, companyId: draft.companyId, contractType: draft.contractType,
       concludedOn: draft.concludedOn, note: draft.note }).forEach(([key, value]) => form.set(key, String(value)));
     setLoading("register"); setRegistrationMessage("");
