@@ -9,6 +9,7 @@ const railInnerRule = css.match(/\.railInner\{([^}]+)\}/)?.[1] ?? "";
 const appRule = css.match(/\.app\{([^}]+)\}/)?.[1] ?? "";
 const sideRule = css.match(/\.side\{([^}]+)\}/)?.[1] ?? "";
 const sideInnerRule = css.match(/\.sideInner\{([^}]+)\}/)?.[1] ?? "";
+const actionsRule = css.match(/\.actions\{([^}]+)\}/)?.[1] ?? "";
 
 describe("ShachoShell rail layout", () => {
   it("lets tooltips extend beyond the rail without rail scrollbars", () => {
@@ -58,5 +59,10 @@ describe("ShachoShell rail layout", () => {
     expect(sideInnerRule).toContain("flex-direction:column");
     expect(sideInnerRule).toContain("overflow-y:auto");
     expect(railRule).toContain("overflow:visible");
+  });
+
+  it("keeps the shared actions above page headers and below their tooltips", () => {
+    expect(actionsRule).toContain("z-index:10");
+    expect(css).toMatch(/\.actionTip\{[^}]*z-index:30/);
   });
 });

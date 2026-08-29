@@ -50,6 +50,7 @@ import {
 } from "./_lib/background/atmospheres";
 import { useBackgroundCarousel } from "./_hooks/useBackgroundCarousel";
 import { useActivityHeight } from "./_hooks/useActivityHeight";
+import { getGreeting } from "./_lib/greeting";
 import {
   getWeatherByHour,
   getWeatherIconPath,
@@ -61,15 +62,6 @@ import {
   playPon,
   unlockAudio,
 } from "./_lib/sound/playSound";
-
-// ============================================================================
-// 時刻ベース挨拶
-// ============================================================================
-function getGreetingByHour(hour: number): string {
-  if (hour >= 5 && hour < 10) return "おはようございます";
-  if (hour >= 10 && hour < 17) return "こんにちは";
-  return "お疲れさまです";
-}
 
 // 日付ラベル（YYYY年M月D日（曜））
 const WEEKDAY_JP = ["日", "月", "火", "水", "木", "金", "土"];
@@ -229,7 +221,7 @@ export default function GardenHomePage() {
   }, []);
 
   // === 派生ラベル ===
-  const greetingText = useMemo(() => getGreetingByHour(now.getHours()), [now]);
+  const greetingText = useMemo(() => getGreeting(now), [now]);
   const dateLabel = useMemo(() => formatDateLabel(now), [now]);
   const themeIconSrc =
     theme === "dark"

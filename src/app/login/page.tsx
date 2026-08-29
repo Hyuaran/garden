@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { getPostLoginRedirect } from "../_lib/auth-redirect";
 import { sanitizeReturnTo, signInUnified } from "../_lib/auth-unified";
+import { getGreeting } from "../_lib/greeting";
 import { fetchBloomUser } from "../bloom/_lib/auth";
 import styles from "./page.module.css";
 
@@ -37,6 +38,12 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [greeting, setGreeting] = useState("おはようございます");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setGreeting(getGreeting(new Date())), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const isExpired = searchParams.get("reason") === "expired";
 
@@ -78,7 +85,7 @@ function LoginForm() {
           />
           <span>Garden</span>
         </div>
-        <h1>おはようございます</h1>
+        <h1>{greeting}</h1>
         <p>
           今日の業務をここから始めましょう。<br />
           経理・営業・カスタマーサポートの仕事を、<br />
