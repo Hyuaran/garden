@@ -77,7 +77,7 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   if (!profile) return <section className={styles.unlockPanel} aria-label="個人情報を開く">
     <LineIcon icon="lock" className={styles.lockIcon}/>
     <p>個人情報を閲覧するには、キーワードを入力してください。</p>
-    <input aria-label="誕生日の月日4桁" placeholder="誕生日を入力　例：12/1の場合1201" inputMode="numeric" autoComplete="off" type="password"
+    <input className={styles.unlockCode} aria-label="誕生日の月日4桁" placeholder="誕生日を入力　例：12/1の場合1201" inputMode="numeric" autoComplete="one-time-code" type="text"
       value={code} maxLength={4} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))}
       onKeyDown={(event) => { if (event.key === "Enter") void unlock(); }} />
     {unlockError && <p role="alert" className={styles.error}>4桁が一致しません。</p>}
