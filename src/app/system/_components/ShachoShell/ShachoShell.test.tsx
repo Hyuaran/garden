@@ -63,6 +63,11 @@ describe("ShachoShell", () => {
     expect(screen.getByRole("link", { name: "マイページ", current: "page" })).toBeInTheDocument();
   });
 
+  it("marks call metrics as the current System menu item", () => {
+    render(<ShachoShell activePath="/system/call-metrics" user={manager}><p>本文</p></ShachoShell>);
+    expect(screen.getByRole("link", { name: "テレマ コール集計", current: "page" })).toBeInTheDocument();
+  });
+
   it("filters the rail with the shared staff visibility matrix", () => {
     render(<ShachoShell activePath="/system" user={{ ...manager, role: "staff" }}><p>本文</p></ShachoShell>);
     const rail = screen.getByRole("complementary", { name: "Gardenシリーズ" });

@@ -3,10 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import CallMetricsClient from "./CallMetricsClient";
 import styles from "./call-metrics.module.css";
 
-const mocks = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), signOut: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }));
-vi.mock("@/app/_lib/supabase/browser", () => ({ createBrowserClient: () => ({ auth: { signOut: mocks.signOut } }) }));
-
 const response = { ok: true, from: "2026-08-01", to: "2026-08-12", listName: null, employeeName: null, lastImportedAt: "2026-08-12T03:34:00Z", metrics: [{ listName: "リストA", callCount: 10, effectiveCount: 7, effectiveRate: .7, tossCount: 3, orderCount: 2, acquiredCount: 1, callOrderRate: .2, callAcquiredRate: .1 }], employeeMetrics: [{ employeeName: "社員A", callCount: 10, effectiveCount: 7, effectiveRate: .7, tossCount: 3, orderCount: 2, acquiredCount: 1, callOrderRate: .2, callAcquiredRate: .1, prospectCount: 4, absentCount: 5, awayCount: 6, invalidCount: 7, workSeconds: 3600 }] };
 
 const longResponse = {
@@ -24,13 +20,13 @@ const longResponse = {
 describe("CallMetricsClient", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => response }));
-    mocks.replace.mockReset(); mocks.refresh.mockReset(); mocks.signOut.mockReset().mockResolvedValue({ error: null });
   });
   it("renders the portal and switches across all three tabs", async () => {
     render(<CallMetricsClient />);
     expect(await screen.findByText("社員A")).toBeInTheDocument();
-    expect(screen.getByText("Garden call portal")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "テレマ コール集計ポータル" })).toBeInTheDocument();
+    expect(screen.getByText("SYSTEM / CALL METRICS")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "テレマ コール集計" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "ログアウト" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("tab")).toHaveLength(3);
     expect(screen.getByTestId("call-metrics-page-shell")).toHaveClass(styles.pageShell);
     expect(screen.getByText(/^対象期間:/)).toHaveClass(styles.period);
@@ -39,6 +35,7 @@ describe("CallMetricsClient", () => {
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("有効率: 70.0%");
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("受注率: 10.0%（受注数 1件）／前確OK率: 20.0%（前確OK数 2件）");
     expect(screen.getByRole("columnheader", { name: "トス数" })).toBeInTheDocument();
+    expect(screen.getByText("社員A").closest("table")?.parentElement).toHaveClass(styles.tableWrap);
     expect(screen.queryByRole("columnheader", { name: "シフト" })).not.toBeInTheDocument();
     const employeeCells = within(screen.getByText("社員A").closest("tr")!).getAllByRole("cell");
     const employeeHeaders = within(screen.getByText("社員A").closest("table")!).getAllByRole("columnheader");
@@ -60,7 +57,8 @@ describe("CallMetricsClient", () => {
     // 集計の定義／休憩時間／フラグ名の対応／結果フラグの扱い の4表
     expect(screen.getAllByRole("table")).toHaveLength(4);
     expect(screen.getByRole("heading", { name: "休憩時間割" })).toBeInTheDocument();
-    expect(screen.getByText(/休憩の時間帯が変わったときは/)).toBeInTheDocument();
+    expect(screen.getByText(/^※ 休憩の時間帯が変わったときは/)).toBeInTheDocument();
+    expect(screen.queryByText(/^★/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("table")[0].parentElement).toHaveClass(styles.definitionTable, styles.definitionFit);
     expect(screen.queryByText(/result_flag 診断/)).not.toBeInTheDocument();
     expect(screen.queryByText("件数")).not.toBeInTheDocument();
@@ -109,13 +107,6 @@ describe("CallMetricsClient", () => {
     expect(shell).toContainElement(screen.getByText("リスト16"));
     fireEvent.click(screen.getByRole("tab", { name: "定義方法" }));
     expect(shell).toContainElement(screen.getByRole("heading", { name: "結果フラグの扱い（分類ルール）" }));
-  });
-  it("signs out and returns to the shared login", async () => {
-    render(<CallMetricsClient />); await screen.findByText("社員A");
-    fireEvent.click(screen.getByRole("button", { name: "ログアウト" }));
-    await waitFor(() => expect(mocks.signOut).toHaveBeenCalled());
-    expect(mocks.replace).toHaveBeenCalledWith("/login?returnTo=%2Fsystem%2Fcall-metrics");
-    expect(mocks.refresh).toHaveBeenCalled();
   });
   it("requests selected dates with list and employee cross-filters", async () => {
     render(<CallMetricsClient />); await screen.findByText("社員A");

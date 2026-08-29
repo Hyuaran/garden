@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import type { CallMetricsResponse } from "../_lib/call-metrics";
 import { defaultCallMetricDates, formatCallsPerWorkHour, formatWorkTime, summarizeCallMetrics } from "../_lib/call-metrics";
 import styles from "./call-metrics.module.css";
@@ -34,7 +32,6 @@ const FLAG_RULES = [
 ] as const;
 
 export default function CallMetricsClient() {
-  const router = useRouter();
   const defaults = defaultCallMetricDates();
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
@@ -64,18 +61,11 @@ export default function CallMetricsClient() {
   const summary = data ? summarizeCallMetrics(data) : null;
   const totalCalls = summary?.totalCalls ?? 0;
 
-  async function logout() {
-    await createBrowserClient().auth.signOut();
-    router.replace("/login?returnTo=%2Fsystem%2Fcall-metrics");
-    router.refresh();
-  }
-
   return (
     <div className={styles.pageShell} data-testid="call-metrics-page-shell">
-      <main className={styles.main}>
+      <div className={styles.main}>
       <header className={styles.header}>
-        <div><p className={styles.eyebrow}>Garden call portal</p><h1>テレマ コール集計ポータル</h1></div>
-        <button type="button" className={styles.logout} onClick={() => void logout()}>ログアウト</button>
+        <div><p className={styles.eyebrow}>SYSTEM / CALL METRICS</p><h1>テレマ コール集計</h1></div>
       </header>
 
       <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void load(); }}>
@@ -145,7 +135,7 @@ export default function CallMetricsClient() {
             </tbody>
           </table></div>
           <h2>休憩時間割</h2>
-          <p className={styles.period}>★ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</p>
+          <p className={styles.period}>※ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</p>
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
             <thead><tr><th>回</th><th>開始</th><th>終了</th><th>長さ</th></tr></thead>
             <tbody>
@@ -169,7 +159,7 @@ export default function CallMetricsClient() {
           </table></div>
         </section>}
       </>}
-      </main>
+      </div>
     </div>
   );
 }
