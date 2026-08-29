@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
   // pdfjs-dist もバンドルすると "Object.defineProperty called on non-object" で
   // サーバ側の評価に失敗する（/api/system/contracts で実機確認・2026-08-28）
   serverExternalPackages: ["sharp", "pdfjs-dist"],
+  // serverExternalPackages に入れると Vercel の関数バンドルから外れてしまい、
+  // 本番で "Failed to load external module" になる（実機確認・2026-08-29）。
+  // pdfjs-dist を使う関数には実ファイルを同梱する。
+  outputFileTracingIncludes: {
+    "/api/system/contracts": ["./node_modules/pdfjs-dist/legacy/build/**"],
+    "/api/forest/parse-pdf": ["./node_modules/pdfjs-dist/legacy/build/**"],
+  },
 };
 
 export default nextConfig;
