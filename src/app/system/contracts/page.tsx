@@ -11,6 +11,15 @@ type ApiResponse = {
 };
 const FOLDER = "application/vnd.google-apps.folder";
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+
+function DriveFolderIcon() {
+  return <svg className={styles.driveIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3.5 7.5h6l2-2h3l2 2h4v10.5a1.5 1.5 0 0 1-1.5 1.5h-14A1.5 1.5 0 0 1 3.5 18z"/><path d="M3.5 10h17"/></svg>;
+}
+
+function DriveFileIcon() {
+  return <svg className={styles.driveIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 3.5h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v4h4"/><path d="M8.5 12h6M8.5 16h6"/></svg>;
+}
+
 async function responseBody(response: Response) {
   try {
     const text = await response.text();
@@ -111,7 +120,7 @@ export default function ContractsPage() {
       setTemplate(null); await loadLedger();
     } catch { setMessage("ひな形を作成できませんでした。管理者へ連絡してください。"); } finally { setLoading(null); }
   }
-  return <div className={styles.pageShell}><main className={styles.main}>
+  return <div className={styles.pageShell}><div className={styles.main}>
     <header className={styles.header}><div><p className={styles.eyebrow}>SYSTEM / CONTRACTS</p><h1>契約書管理</h1><p>契約書の確認、登録、パートナー配布用ひな形の作成を行います。</p></div></header>
     {message && <p role="status" className={styles.message}>{message}</p>}
     <div className={styles.tabs} role="tablist">
@@ -123,8 +132,8 @@ export default function ContractsPage() {
         {path.map((part, index) => <button key={`${part.id}-${index}`} onClick={() => { const next = path.slice(0, index + 1); setPath(next); void browse(part.id); }}>{part.name}</button>)}
       </nav>
       {loading === "browse" ? <p className={styles.loading}><span/>読み込み中…</p> : <div className={styles.fileGrid}>{entries.map((entry) => entry.mimeType === FOLDER ?
-        <button className={styles.folder} key={entry.id} onClick={() => { setPath([...path, { id: entry.id, name: entry.name }]); void browse(entry.id); }}>📁 <span>{entry.name}</span></button> :
-        <a className={styles.file} key={entry.id} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer">📄 <span>{entry.name}</span></a>)}</div>}
+        <button className={styles.folder} key={entry.id} onClick={() => { setPath([...path, { id: entry.id, name: entry.name }]); void browse(entry.id); }}><DriveFolderIcon/><span>{entry.name}</span></button> :
+        <a className={styles.file} key={entry.id} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer"><DriveFileIcon/><span>{entry.name}</span></a>)}</div>}
     </section> : <>
       <section className={`${styles.card} ${styles.registrationCard}`}><h2>上位店契約を登録する</h2>
         <div className={styles.stepHeading}><span><small>STEP</small><strong>1</strong></span><h3>契約書をアップロード</h3></div>
@@ -167,5 +176,5 @@ export default function ContractsPage() {
       <label>商材<input value={product} onChange={(e) => setProduct(e.target.value)}/></label><p>上位店情報、金額、料率、具体的な期間はひな形に入りません。</p>
       <button className={styles.primary} onClick={() => void generate()} disabled={loading === "template" || !issuerId || !product}>{loading === "template" ? "作成しています…" : "WordとPDFを作成する"}</button><button onClick={() => setTemplate(null)}>閉じる</button>
     </section></div>}
-  </main></div>;
+  </div></div>;
 }

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import styles from "./contracts.module.css";
 const pdfMocks = vi.hoisted(() => ({ extract: vi.fn() }));
 vi.mock("./_lib/contract-pdf.client", () => ({ extractContractPdfPages: pdfMocks.extract }));
 import ContractsPage from "./page";
@@ -14,8 +15,17 @@ describe("contracts drive browser", () => {
       return new Response(JSON.stringify({ ok: true, entries: [{ id: "folder-1", name: "01_契約書　上位店", mimeType: "application/vnd.google-apps.folder", webViewLink: null, modifiedTime: null }] }), { status: 200 });
     });
     vi.stubGlobal("fetch", fetchMock); render(<ContractsPage />);
-    fireEvent.click(await screen.findByRole("button", { name: /01_契約書/ }));
-    expect(await screen.findByRole("link", { name: /契約書.pdf/ })).toHaveAttribute("href", "https://drive.example/pdf");
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+    expect(screen.getByText("SYSTEM / CONTRACTS")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "契約書管理" })).toBeInTheDocument();
+    const folder = await screen.findByRole("button", { name: /01_契約書/ });
+    expect(folder).not.toHaveTextContent("📁");
+    expect(folder.querySelector("svg")).toHaveClass(styles.driveIcon);
+    fireEvent.click(folder);
+    const file = await screen.findByRole("link", { name: /契約書.pdf/ });
+    expect(file).toHaveAttribute("href", "https://drive.example/pdf");
+    expect(file).not.toHaveTextContent("📄");
+    expect(file.querySelector("svg")).toHaveClass(styles.driveIcon);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("folderId=folder-1")));
   });
 });
