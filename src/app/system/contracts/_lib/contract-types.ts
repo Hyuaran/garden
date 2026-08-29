@@ -37,6 +37,7 @@ export type ContractRow = {
   drive_file_id: string | null;
   drive_url: string | null;
   drive_folder_name: string | null;
+  extracted_text: string | null;
   template_file_id: string | null;
   template_url: string | null;
   template_docx_file_id: string | null;
