@@ -10,6 +10,7 @@ const appRule = css.match(/\.app\{([^}]+)\}/)?.[1] ?? "";
 const sideRule = css.match(/\.side\{([^}]+)\}/)?.[1] ?? "";
 const sideInnerRule = css.match(/\.sideInner\{([^}]+)\}/)?.[1] ?? "";
 const actionsRule = css.match(/\.actions\{([^}]+)\}/)?.[1] ?? "";
+const mainFullRule = css.match(/\.mainFull\{([^}]+)\}/)?.[1] ?? "";
 
 describe("ShachoShell rail layout", () => {
   it("lets tooltips extend beyond the rail without rail scrollbars", () => {
@@ -64,5 +65,13 @@ describe("ShachoShell rail layout", () => {
   it("keeps the shared actions above page headers and below their tooltips", () => {
     expect(actionsRule).toContain("z-index:10");
     expect(css).toMatch(/\.actionTip\{[^}]*z-index:30/);
+  });
+
+  it("centers the sidebarless main while retaining the base max width", () => {
+    expect(mainFullRule).toContain("width:100%");
+    expect(mainFullRule).toContain("margin:0 auto");
+    expect(mainFullRule).toContain("box-sizing:border-box");
+    expect(mainFullRule).not.toContain("max-width");
+    expect(css.match(/\.main\{([^}]+)\}/)?.[1]).toContain("max-width:1180px");
   });
 });

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { ThemeProvider } from "@/app/_lib/theme/ThemeProvider";
 import ShachoShell from "./ShachoShell";
+import { shouldHideSidebar } from "./shacho-shell-config";
 import styles from "./shacho-shell.module.css";
 
 const mocks = vi.hoisted(() => ({ signOut: vi.fn() }));
@@ -119,5 +120,34 @@ describe("ShachoShell", () => {
     renderShell("/system", { ...manager, role: "super_admin" });
     const rail = screen.getByRole("complementary", { name: "Gardenシリーズ" });
     expect(within(rail).getAllByRole("link")).toHaveLength(13);
+  });
+
+  it.each(["super_admin", "admin", "manager", "staff", "cs"] as const)(
+    "keeps the rail and sidebar for %s",
+    (role) => {
+      renderShell("/system/mypage", { ...manager, role });
+      expect(screen.getByRole("complementary", { name: "Gardenシリーズ" })).toBeInTheDocument();
+      expect(screen.getByRole("navigation", { name: "Systemメニュー" })).toBeInTheDocument();
+      expect(screen.getByRole("main")).not.toHaveClass(styles.mainFull);
+    },
+  );
+
+  it.each(["closer", "toss", "outsource"] as const)(
+    "hides both sidebars but keeps shared actions for %s",
+    (role) => {
+      renderShell("/system/mypage", { ...manager, role });
+      expect(screen.queryByRole("complementary", { name: "Gardenシリーズ" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("navigation", { name: "Systemメニュー" })).not.toBeInTheDocument();
+      expect(screen.getByRole("main")).toHaveClass(styles.mainFull);
+      expect(screen.getByText("責任者Aさん")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "ダークにする" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "ログアウト" })).toBeInTheDocument();
+    },
+  );
+
+  it("explicitly treats outsource as sidebarless without role-order comparison", () => {
+    expect(shouldHideSidebar("outsource")).toBe(true);
+    expect(shouldHideSidebar("staff")).toBe(false);
+    expect(shouldHideSidebar("manager")).toBe(false);
   });
 });
