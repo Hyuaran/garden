@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
@@ -44,6 +44,12 @@ async function extractPages(bytes: Uint8Array) {
 }
 
 describe("call metrics PDF", () => {
+  it("uses the standard note mark instead of a star", () => {
+    const source = readFileSync(path.join(process.cwd(), "src", "app", "system", "_lib", "call-metrics-pdf.tsx"), "utf8");
+    expect(source).toContain("※ 休憩の時間帯が変わったときは");
+    expect(source).not.toContain("★");
+  });
+
   it("uses the delivery slot in the Japanese filename", () => {
     expect(callMetricsPdfFilename(new Date("2026-08-21T07:37:00Z"))).toBe("テレマコール集計ポータル_20260821_1600.pdf");
   });
