@@ -65,7 +65,7 @@
 }
 
 .shell { min-height: 100vh; background: var(--attendance-bg); color: var(--attendance-ink); }
-.shellEmbedded { --attendance-bg:transparent; --attendance-surface:var(--card); --attendance-border:var(--line); --attendance-row-border:var(--line); --attendance-link-border:var(--btn-line); --attendance-link-ink:var(--btn-ink); min-height:0; background:transparent; color:var(--ink); }
+.shell.shellEmbedded { --attendance-bg:transparent; --attendance-surface:var(--card); --attendance-border:var(--line); --attendance-row-border:var(--line); --attendance-link-border:var(--btn-line); --attendance-link-ink:var(--btn-ink); min-height:0; background:transparent; color:var(--ink); }
 .shellEmbedded .header h1,.shellEmbedded .history h2,.shellEmbedded .notice h2 { color:var(--heading); }
 .shellEmbedded .employeeName { color:var(--ink); }
 .shellEmbedded .eyebrow { color:var(--sub); }
