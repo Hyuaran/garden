@@ -74,21 +74,21 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
     return <section className={styles.comingSoon}><h2>従業員情報がありません</h2><p>従業員情報が登録されていません。管理者にご連絡ください。</p></section>;
   }
 
-  if (!profile) return <section className={styles.unlockPanel} aria-label="本人確認">
-    <LineIcon icon="lock" className={styles.lockIcon}/><h2>本人確認</h2>
-    <p>個人情報を閲覧するには、生年月日の月日4桁を入力してください。</p>
-    <label>生年月日の月日4桁<input aria-label="生年月日の月日4桁" inputMode="numeric" autoComplete="off" type="password"
+  if (!profile) return <section className={styles.unlockPanel} aria-label="個人情報を開く">
+    <LineIcon icon="lock" className={styles.lockIcon}/>
+    <p>個人情報を閲覧するには、キーワードを入力してください。</p>
+    <input aria-label="誕生日の月日4桁" placeholder="誕生日を入力　例：12/1の場合1201" inputMode="numeric" autoComplete="off" type="password"
       value={code} maxLength={4} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))}
-      onKeyDown={(event) => { if (event.key === "Enter") void unlock(); }} /></label>
+      onKeyDown={(event) => { if (event.key === "Enter") void unlock(); }} />
     {unlockError && <p role="alert" className={styles.error}>4桁が一致しません。</p>}
-    <button type="button" disabled={checking} onClick={() => void unlock()}>{checking ? "確認中…" : "認証してマイページを開く"}</button>
+    <button type="button" disabled={checking} onClick={() => void unlock()}>{checking ? "確認中…" : "マイページを開く"}</button>
   </section>;
 
   const roleLabel = GARDEN_ROLE_LABELS[profile.gardenRole as GardenRole] ?? profile.gardenRole;
   const commute=profile.commuteDailyAllowance===null?"未登録":`日額 ${profile.commuteDailyAllowance.toLocaleString("ja-JP")}円（${profile.commuteMonthlyCap===null?"上限なし":`月の上限 ${profile.commuteMonthlyCap.toLocaleString("ja-JP")}円`}）`;
   const bank=profile.bankName&&profile.branchName?`${profile.bankName} ${profile.branchName}`:"未登録";
   return <div className={styles.profileContent}>
-    {!birthdayRegistered && <p className={styles.unlockedNotice}>生年月日が未登録のため本人確認を省略しています。</p>}
+    {!birthdayRegistered && <p className={styles.unlockedNotice}>生年月日が未登録のため確認を省略しています。</p>}
     {mypageLocked && <section className={styles.confirmationBanner} aria-label="個人情報の定期確認">
       <div><h2>個人情報の定期確認中（3ヶ月に1度）</h2><p>登録内容に変更がないかご確認ください。変更がある場合は届出から申請できます。</p></div>
       <div className={styles.confirmationActions}><button type="button" onClick={confirmUnchanged}>変更はありません</button>

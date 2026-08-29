@@ -67,7 +67,12 @@ describe("system mypage", () => {
       "シフト",
       "前確依頼",
     ]);
-    expect(screen.getByLabelText("本人確認")).toBeInTheDocument();
+    expect(screen.getByLabelText("個人情報を開く")).toBeInTheDocument();
+    expect(screen.getByLabelText("誕生日の月日4桁")).toHaveAttribute("placeholder", "誕生日を入力　例：12/1の場合1201");
+    expect(screen.getByRole("button", { name: "マイページを開く" })).toBeInTheDocument();
+    expect(screen.queryByText("本人確認")).not.toBeInTheDocument();
+    expect(screen.queryByText("生年月日の月日4桁")).not.toBeInTheDocument();
+    expect(screen.queryByText("認証してマイページを開く")).not.toBeInTheDocument();
     expect(screen.queryByText("基本情報")).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain("1234");
     expect(document.body.textContent).not.toContain(profile.birthday);
@@ -115,11 +120,11 @@ describe("system mypage", () => {
         ),
     );
     renderMyPage();
-    fireEvent.change(screen.getByLabelText("生年月日の月日4桁"), {
+    fireEvent.change(screen.getByLabelText("誕生日の月日4桁"), {
       target: { value: "0813" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "認証してマイページを開く" }),
+      screen.getByRole("button", { name: "マイページを開く" }),
     );
     expect(await screen.findByText("社員A")).toBeInTheDocument();
     const requestBody = JSON.parse(
@@ -136,15 +141,23 @@ describe("system mypage", () => {
         .mock.calls.filter(([url]) => url === "/api/system/mypage/unlock"),
     ).toHaveLength(1);
   });
+  it("rejects an incorrect four-digit keyword as before", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok:false }), { status:401 })));
+    renderMyPage();
+    fireEvent.change(screen.getByLabelText("誕生日の月日4桁"), { target:{ value:"9999" } });
+    fireEvent.click(screen.getByRole("button", { name:"マイページを開く" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("4桁が一致しません。");
+    expect(screen.queryByText("基本情報")).not.toBeInTheDocument();
+  });
   it("bypasses the gate with an explanation when birthday is missing", () => {
     renderMyPage({
       ...baseProps,
       birthdayRegistered: false,
       initialProfile: { ...profile, birthday: null },
     });
-    expect(screen.queryByLabelText("本人確認")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("個人情報を開く")).not.toBeInTheDocument();
     expect(
-      screen.getByText("生年月日が未登録のため本人確認を省略しています。"),
+      screen.getByText("生年月日が未登録のため確認を省略しています。"),
     ).toBeInTheDocument();
   });
   it("shows safe profile details and replaces dummy areas with preview cards", () => {
