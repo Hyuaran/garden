@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { GARDEN_ROLE_LABELS, type GardenRole } from "@/app/root/_constants/types";
 import type { MyPageProfile } from "../types";
 import styles from "../mypage.module.css";
@@ -9,6 +9,18 @@ import type {SubmissionRow,SubmissionType} from "../_lib/submission-types";
 
 const LS_MYPAGE_LAST_CONFIRM = "gardenTree_mypageLastConfirm";
 const MYPAGE_CONFIRM_INTERVAL_DAYS = 90;
+type ProfileIcon = "lock" | "phone" | "route" | "bank" | "document";
+
+function LineIcon({ icon, className }: { icon: ProfileIcon; className?: string }) {
+  const paths: Record<ProfileIcon, ReactNode> = {
+    lock: <><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></>,
+    phone: <path d="M7.2 3.5l2.4 4-2.1 1.8a15.5 15.5 0 0 0 7.2 7.2l1.8-2.1 4 2.4-1.2 3a2 2 0 0 1-2.2 1.2C9.8 19.8 4.2 14.2 3 6.9a2 2 0 0 1 1.2-2.2z"/>,
+    route: <><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18h2a3 3 0 0 0 3-3v-6a3 3 0 0 1 3-3"/></>,
+    bank: <><path d="M3 9l9-5 9 5M4 20h16M6 9v8M10 9v8M14 9v8M18 9v8"/></>,
+    document: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5"/><path d="M9 13h6M9 17h5"/></>,
+  };
+  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[icon]}</svg>;
+}
 
 function InfoRow({ label, value, pending = false }: { label: string; value: string; pending?: boolean }) {
   return <div className={styles.infoRow}><dt>{label}</dt><dd className={pending ? styles.pending : undefined}>{value}</dd></div>;
@@ -63,7 +75,7 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   }
 
   if (!profile) return <section className={styles.unlockPanel} aria-label="本人確認">
-    <span className={styles.lockIcon} aria-hidden="true">🔒</span><h2>本人確認</h2>
+    <LineIcon icon="lock" className={styles.lockIcon}/><h2>本人確認</h2>
     <p>個人情報を閲覧するには、生年月日の月日4桁を入力してください。</p>
     <label>生年月日の月日4桁<input aria-label="生年月日の月日4桁" inputMode="numeric" autoComplete="off" type="password"
       value={code} maxLength={4} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))}
@@ -96,7 +108,7 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
     <section className={`${styles.card} ${styles.previewCard}`}><span className={styles.preparingBadge}>準備中</span><h2>パフォーマンス推移</h2><p>架電数・有効率・順位の6ヶ月推移がここで見られるようになります</p></section>
 
     <section className={styles.card} ref={submissionsRef}><h2>提出・登録情報</h2><div className={styles.actionGrid}>
-      {[["📞","emergency_contact","緊急連絡先変更"],["🚃","commute_route","通勤経路変更"],["🏦","bank_account","給与受取口座の変更"],["📄","resignation","退職届"],["🔒","nda","秘密保持誓約書"]].map(([icon,type,label])=><button type="button" key={type} onClick={()=>{setSubmissionMessage("");setSubmissionType(type as SubmissionType)}}><span aria-hidden="true">{icon}</span>{label}</button>)}
+      {([ ["phone","emergency_contact","緊急連絡先変更"], ["route","commute_route","通勤経路変更"], ["bank","bank_account","給与受取口座の変更"], ["document","resignation","退職届"], ["lock","nda","秘密保持誓約書"] ] as Array<[ProfileIcon,SubmissionType,string]>).map(([icon,type,label])=><button type="button" key={type} onClick={()=>{setSubmissionMessage("");setSubmissionType(type)}}><LineIcon icon={icon}/>{label}</button>)}
     </div>{submissionMessage?<p role="status" className={styles.receivedMessage}>{submissionMessage}</p>:null}</section>
     {submissions.filter(row=>row.submission_type==="commute_route"&&row.status==="awaiting_employee").map(row=><section className={`${styles.card} ${styles.proposalCard}`} key={row.id}><h2>通勤交通費のご提案</h2><p>日額{((row.proposed_one_way??0)*2).toLocaleString("ja-JP")}円（片道{(row.proposed_one_way??0).toLocaleString("ja-JP")}円）で申請します。よろしいですか？</p><div className={styles.modalActions}><button type="button" onClick={async()=>{await fetch(`/api/system/mypage/submissions/${row.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:"accept"})});await loadSubmissions()}}>この金額でお願いする</button><button type="button" className={styles.secondaryButton} onClick={async()=>{await fetch(`/api/system/mypage/submissions/${row.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:"withdraw"})});await loadSubmissions()}}>取りやめる</button></div></section>)}
     {submissionType?<SubmissionModal type={submissionType} employeeName={profile.name} onClose={()=>setSubmissionType(null)} onSent={()=>{setSubmissionType(null);setSubmissionMessage("受け付けました。事務から連絡します");void loadSubmissions()}}/>:null}
