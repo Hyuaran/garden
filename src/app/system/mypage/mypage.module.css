@@ -1,20 +1,8 @@
-.pageShell {
-  --navy:#10233f; --heading:#10233f; --ink:#17212e; --sub:#5a6b80;
-  --teal:#0ea5a0; --teal-d:#0b7e7a; --blue:#2563eb;
-  --bg:#f4f5f7; --card:#ffffff; --line:#e3eaf3;
-  --shadow:0 10px 30px rgba(16,35,63,.08); --shadow-s:0 4px 14px rgba(16,35,63,.07); --r:22px;
-  min-height:100%; background:var(--bg); color:var(--ink);
-  font-family:"Meiryo","メイリオ","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
-}
-.pageShell::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bg)}
-.main { width:100%; max-width:1200px; box-sizing:border-box; margin:0 auto; padding:32px; }
-.header { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.pageContent { width:100%; color:var(--ink); }
+.header { padding-right:116px; margin-bottom:8px; }
 .header h1, .card h2, .unlockPanel h2, .comingSoon h2, .confirmationBanner h2 { color:var(--heading); }
 .header h1 { margin:.25rem 0; font-size:clamp(1.7rem,3vw,2.5rem); }
 .eyebrow { margin:0; color:var(--sub); font-size:.8rem; font-weight:800; letter-spacing:.12em; }
-.logout { padding:9px 16px; border:1px solid var(--teal-d); border-radius:10px; background:var(--card); color:var(--teal-d); font-weight:700; }
-.headerActions { display:flex; align-items:center; gap:10px; }
-.themeToggle { padding:9px 16px; border:1px solid var(--teal-d); border-radius:10px; background:var(--card); color:var(--teal-d); font-weight:700; }
 .tabs { display:flex; gap:8px; margin-top:24px; border-bottom:1px solid var(--line); overflow-x:auto; }
 .tabs button { flex:0 0 auto; padding:11px 20px; border:0; border-radius:10px 10px 0 0; background:#e9f7f6; color:var(--teal-d); font-weight:700; }
 .tabs button[aria-selected="true"] { background:var(--teal); color:#fff; }
@@ -87,18 +75,11 @@
 .submissionModal { width:min(620px,100%); max-height:90vh; overflow:auto; box-sizing:border-box; padding:24px; border-radius:18px; background:var(--card); box-shadow:var(--shadow); }
 .submissionModal form,.submissionModal label { display:grid; gap:7px; }.submissionModal form { gap:14px; }.submissionModal input,.submissionModal textarea { box-sizing:border-box; width:100%; padding:11px; border:1px solid var(--line); border-radius:9px; background:var(--card); color:var(--ink); }.submissionModal textarea{min-height:90px}.pledge{max-height:240px;overflow:auto;white-space:pre-wrap;margin-bottom:16px;padding:14px;border-radius:10px;background:var(--bg);line-height:1.7}.submissionModal .agree{display:flex;grid-template-columns:auto 1fr;align-items:center}.submissionModal .agree input{width:auto}.modalActions{display:flex;gap:10px;flex-wrap:wrap}.modalActions button,.proposalCard button{padding:10px 16px;border:0;border-radius:9px;background:var(--teal-d);color:#fff;font-weight:700}.modalActions .secondaryButton,.proposalCard .secondaryButton{border:1px solid var(--teal-d);background:transparent;color:var(--teal-d)}.receivedMessage{color:var(--teal-d);font-weight:700}.proposalCard{border-left:4px solid #f59e0b}
 
-:global(.dark) .pageShell, :global([data-theme="dark"]) .pageShell {
-  --navy:#193b62; --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4;
-  --bg:#0c1726; --card:#152438; --line:#31435a;
-  --shadow:0 10px 30px rgba(0,0,0,.28); --shadow-s:0 4px 14px rgba(0,0,0,.22);
-}
 :global(.dark) .tabs button, :global([data-theme="dark"]) .tabs button { background:#183b48; color:#9ce5e1; }
 :global(.dark) .tabs button[aria-selected="true"], :global([data-theme="dark"]) .tabs button[aria-selected="true"] { background:var(--teal); color:#fff; }
 :global(.dark) .confirmationBanner, :global([data-theme="dark"]) .confirmationBanner { background:#302918; }
 :global(.dark) .unlockedNotice, :global([data-theme="dark"]) .unlockedNotice { background:#183b48; color:#9ce5e1; }
 :global(.dark) .preparingBadge, :global([data-theme="dark"]) .preparingBadge { background:#183b48; color:#9ce5e1; }
-:global(.dark) .logout, :global([data-theme="dark"]) .logout,
-:global(.dark) .themeToggle, :global([data-theme="dark"]) .themeToggle,
 :global(.dark) .settings button, :global([data-theme="dark"]) .settings button { color:#9ce5e1; border-color:#55bdb7; }
 :global(.dark) .confirmationActions .secondaryButton, :global([data-theme="dark"]) .confirmationActions .secondaryButton { color:#f6c96b; border-color:#d9a83e; }
 :global(.dark) .partnerChoice label:has(input:checked), :global([data-theme="dark"]) .partnerChoice label:has(input:checked) { background:#183b48; }
@@ -106,7 +87,7 @@
 :global(.dark) .zenkakuContent > .card > .error, :global([data-theme="dark"]) .zenkakuContent > .card > .error { color:#ffabb0 !important; }
 
 @media (max-width:720px) {
-  .main { padding:18px; } .header { align-items:flex-start; } .headerActions { align-items:stretch; flex-direction:column; } .infoGrid { grid-template-columns:1fr; } .actionGrid { grid-template-columns:1fr; }
+  .header { padding-right:100px; } .infoGrid { grid-template-columns:1fr; } .actionGrid { grid-template-columns:1fr; }
   .confirmationBanner { align-items:flex-start; flex-direction:column; } .confirmationActions { width:100%; flex-wrap:wrap; }
   .checkForm { grid-template-columns:1fr; } .checkForm label { grid-column:auto; }
 }

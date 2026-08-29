@@ -16,16 +16,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
 }));
-vi.mock("@/app/_lib/supabase/browser", () => ({
-  createBrowserClient: () => ({ auth: { signOut: mocks.signOut } }),
-}));
 vi.mock("../../attendance/AttendanceClient", () => ({
   default: (props: unknown) => (
     <div data-testid="attendance-client">{JSON.stringify(props)}</div>
   ),
 }));
 import MyPageClient from "../MyPageClient";
-import { ThemeProvider } from "@/app/_lib/theme/ThemeProvider";
 import type { MyPageProfile } from "../types";
 
 const profile: MyPageProfile = {
@@ -51,11 +47,7 @@ const baseProps = {
   initialProfile: null,
 };
 const renderMyPage = (props: ComponentProps<typeof MyPageClient> = baseProps) =>
-  render(
-    <ThemeProvider>
-      <MyPageClient {...props} />
-    </ThemeProvider>,
-  );
+  render(<MyPageClient {...props} />);
 
 describe("system mypage", () => {
   beforeEach(() => {
@@ -67,6 +59,8 @@ describe("system mypage", () => {
   });
   it("renders four tabs in the fixed order and only the gate before unlock", () => {
     renderMyPage();
+    expect(screen.getByText("SYSTEM / MYPAGE")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "マイページ" })).toBeInTheDocument();
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "マイページ",
       "勤怠打刻",
@@ -77,6 +71,11 @@ describe("system mypage", () => {
     expect(screen.queryByText("基本情報")).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain("1234");
     expect(document.body.textContent).not.toContain(profile.birthday);
+  });
+  it("leaves theme switching and logout to ShachoShell", () => {
+    renderMyPage();
+    expect(screen.queryByRole("button", { name: /ダークにする|ライトにする/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "ログアウト" })).not.toBeInTheDocument();
   });
   it("opens tabs 2 to 4 without the four-digit check", () => {
     renderMyPage();
@@ -330,30 +329,5 @@ describe("system mypage", () => {
     expect(
       screen.queryByLabelText("個人情報の定期確認"),
     ).not.toBeInTheDocument();
-  });
-  it("switches light and dark with the header button and restores the saved choice", async () => {
-    const first = renderMyPage();
-    const darkButton = await screen.findByRole("button", {
-      name: "🌙 ダークにする",
-    });
-    fireEvent.click(darkButton);
-    await waitFor(() =>
-      expect(document.documentElement).toHaveAttribute("data-theme", "dark"),
-    );
-    expect(document.documentElement).toHaveClass("dark");
-    expect(
-      screen.getByRole("button", { name: "☀️ ライトにする" }),
-    ).toBeInTheDocument();
-    expect(localStorage.getItem("garden.theme")).toBe("dark");
-    first.unmount();
-    renderMyPage();
-    expect(
-      await screen.findByRole("button", { name: "☀️ ライトにする" }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "☀️ ライトにする" }));
-    await waitFor(() =>
-      expect(document.documentElement).toHaveAttribute("data-theme", "light"),
-    );
-    expect(document.documentElement).not.toHaveClass("dark");
   });
 });

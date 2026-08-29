@@ -51,4 +51,23 @@ describe("ShachoShell", () => {
     render(<ShachoShell activePath="/system" user={{ ...manager, role: "staff" }}><p>本文</p></ShachoShell>);
     expect(screen.queryByRole("link", { name: "契約書管理" })).not.toBeInTheDocument();
   });
+
+  it("marks mypage as the current System menu item", () => {
+    render(<ShachoShell activePath="/system/mypage" user={manager}><p>本文</p></ShachoShell>);
+    expect(screen.getByRole("link", { name: "マイページ", current: "page" })).toBeInTheDocument();
+  });
+
+  it("filters the rail with the shared staff visibility matrix", () => {
+    render(<ShachoShell activePath="/system" user={{ ...manager, role: "staff" }}><p>本文</p></ShachoShell>);
+    const rail = screen.getByRole("complementary", { name: "Gardenシリーズ" });
+    expect(within(rail).queryByRole("link", { name: /^Soil：/ })).not.toBeInTheDocument();
+    expect(within(rail).queryByRole("link", { name: /^Rill：/ })).not.toBeInTheDocument();
+    expect(within(rail).getByRole("link", { name: "System：社内システム" })).toBeInTheDocument();
+  });
+
+  it("keeps all twelve modules for super admins", () => {
+    render(<ShachoShell activePath="/system" user={{ ...manager, role: "super_admin" }}><p>本文</p></ShachoShell>);
+    const rail = screen.getByRole("complementary", { name: "Gardenシリーズ" });
+    expect(within(rail).getAllByRole("link")).toHaveLength(13);
+  });
 });

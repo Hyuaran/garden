@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { getVisibleModules } from "@/app/_lib/module-visibility";
 import { GARDEN_SHELL_MODULES, type GardenModuleId } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { GARDEN_ROLE_LABELS, type GardenRole } from "@/app/root/_constants/types";
 import { canUseSystemItem, SYSTEM_MENU_ITEMS, type SystemIcon } from "./shacho-shell-config";
@@ -83,11 +84,12 @@ export default function ShachoShell({ children, activePath, user }: Props) {
     window.location.assign("/login");
   }
   const visible = SYSTEM_MENU_ITEMS.filter((item) => canUseSystemItem(item, user.role));
+  const visibleModules = new Set(getVisibleModules(user.role).map((module) => module.toLowerCase()));
   const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
   return <div className={styles.shell}>
     <aside className={styles.rail} aria-label="Gardenシリーズ">
       <div className={styles.railHome}><GardenMark/></div><div className={styles.separator}/>
-      {GARDEN_SHELL_MODULES.map((module) => <Link key={module.id} href={`/${module.id}`} className={styles.app} style={{ "--c": MODULE_META[module.id].color } as CSSProperties} aria-label={`${module.name}：${MODULE_META[module.id].role}`}>
+      {GARDEN_SHELL_MODULES.filter((module) => visibleModules.has(module.id)).map((module) => <Link key={module.id} href={`/${module.id}`} className={styles.app} style={{ "--c": MODULE_META[module.id].color } as CSSProperties} aria-label={`${module.name}：${MODULE_META[module.id].role}`}>
         <ModuleIcon id={module.id}/><span className={styles.railTip}><b>{module.name}</b><span>{MODULE_META[module.id].role}</span></span>
       </Link>)}
       <div className={styles.separator}/><Link href="/system" className={`${styles.app} ${styles.current}`} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
@@ -99,7 +101,7 @@ export default function ShachoShell({ children, activePath, user }: Props) {
       <div className={styles.brand}><div className={styles.brandName}><GardenMark/>Garden</div><div className={styles.moduleName}>SYSTEM ／ 社内システム</div></div>
       <nav className={styles.nav} aria-label="Systemメニュー">
         <div className={styles.navLabel}>メニュー</div>
-        {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined}><MenuIcon icon={item.icon}/>{item.label}</Link>)}
+        {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined} aria-current={activePath === item.href ? "page" : undefined}><MenuIcon icon={item.icon}/>{item.label}</Link>)}
         <div className={styles.navLabel}>これから</div>
         {visible.filter((item) => item.upcoming).map((item) => <span key={item.label} className={styles.soon}><MenuIcon icon={item.icon}/>{item.label}<span className={styles.tag}>準備中</span></span>)}
       </nav>

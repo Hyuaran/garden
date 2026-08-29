@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/app/_lib/supabase/browser";
-import { useTheme } from "@/app/_lib/theme/ThemeProvider";
 import AttendanceTab from "./tabs/AttendanceTab";
 import ProfileTab from "./tabs/ProfileTab";
 import ShiftTab from "./tabs/ShiftTab";
@@ -27,22 +25,14 @@ export default function MyPageClient({ initialTab, registered, employeeName, can
   postalDataStatus?: PostalDatasetStatus | null;
 }) {
   const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<MyPageTab>(initialTab);
   const [profile, setProfile] = useState<MyPageProfile | null>(initialProfile);
   function selectTab(tab: MyPageTab) {
     setActiveTab(tab);
     router.replace(tab === "profile" ? "/system/mypage" : `/system/mypage?tab=${tab}`, { scroll: false });
   }
-  async function logout() {
-    await createBrowserClient().auth.signOut();
-    router.replace("/login?returnTo=%2Fsystem%2Fmypage");
-    router.refresh();
-  }
-  return <div className={styles.pageShell}><main className={styles.main}>
-    <header className={styles.header}><div><p className={styles.eyebrow}>Garden employee portal</p><h1>マイページ</h1></div>
-      <div className={styles.headerActions}><button type="button" className={styles.themeToggle} onClick={toggleTheme}>{theme === "light" ? "🌙 ダークにする" : "☀️ ライトにする"}</button>
-      <button type="button" className={styles.logout} onClick={() => void logout()}>ログアウト</button></div></header>
+  return <div className={styles.pageContent}>
+    <header className={styles.header}><p className={styles.eyebrow}>SYSTEM / MYPAGE</p><h1>マイページ</h1></header>
     <div className={styles.tabs} role="tablist" aria-label="マイページメニュー">
       {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id}
         onClick={() => selectTab(tab.id)}>{tab.label}</button>)}
@@ -53,5 +43,5 @@ export default function MyPageClient({ initialTab, registered, employeeName, can
       {activeTab === "shift" && <ShiftTab />}
       {activeTab === "zenkaku" && <ZenkakuTab postalDataStatus={postalDataStatus} />}
     </div>
-  </main></div>;
+  </div>;
 }
