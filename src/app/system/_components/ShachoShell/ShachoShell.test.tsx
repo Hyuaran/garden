@@ -52,6 +52,14 @@ describe("ShachoShell", () => {
     expect(screen.getByText("責任者Aさん").parentElement).toContainElement(screen.getByRole("button", { name:"ダークにする" }));
   });
 
+  it("keeps the sidebar content in the sticky inner wrapper", () => {
+    render(<ShachoShell activePath="/system" user={manager}><p>本文</p></ShachoShell>);
+    const nav = screen.getByRole("navigation", { name: "Systemメニュー" });
+    expect(nav.parentElement).toHaveClass(styles.sideInner);
+    expect(nav.parentElement).toContainElement(screen.getByRole("link", { name: "Garden ホームへ" }));
+    expect(nav.parentElement).toContainElement(screen.getByText("株式会社A ／ 責任者"));
+  });
+
   it("restores a saved theme", async () => {
     localStorage.setItem("garden-system-theme", "dark");
     render(<ShachoShell activePath="/system" user={manager}><p>本文</p></ShachoShell>);
