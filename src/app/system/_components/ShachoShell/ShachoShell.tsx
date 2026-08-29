@@ -2,22 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { useTheme } from "@/app/_lib/theme/ThemeProvider";
 import { getVisibleModules } from "@/app/_lib/module-visibility";
 import { GARDEN_SHELL_MODULES, type GardenModuleId } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { GARDEN_ROLE_LABELS, type GardenRole } from "@/app/root/_constants/types";
 import { canUseSystemItem, SYSTEM_MENU_ITEMS, type SystemIcon } from "./shacho-shell-config";
 import styles from "./shacho-shell.module.css";
 
-type Theme = "light" | "dark";
 type Props = {
   children: ReactNode;
   activePath: string;
   user: { name: string; company: string; role: GardenRole };
 };
 
-const THEME_KEY = "garden-system-theme";
 const MODULE_META: Record<GardenModuleId, { color: string; role: string }> = {
   bloom: { color: "#f472b6", role: "案件KPI" }, fruit: { color: "#fb923c", role: "法人実態情報" },
   seed: { color: "#facc15", role: "新事業" }, forest: { color: "#34d399", role: "全法人決算" },
@@ -61,21 +60,7 @@ export function MenuIcon({ icon }: { icon: SystemIcon }) {
 }
 
 export default function ShachoShell({ children, activePath, user }: Props) {
-  const [theme, setTheme] = useState<Theme | null>(null);
-  useEffect(() => {
-    let saved: string | null = null;
-    try { saved = localStorage.getItem(THEME_KEY); } catch {}
-    const initial: Theme = saved === "dark" || saved === "light" ? saved : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    document.documentElement.dataset.theme = initial;
-    const timer = window.setTimeout(() => setTheme(initial), 0);
-    return () => window.clearTimeout(timer);
-  }, []);
-  function toggleTheme() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem(THEME_KEY, next); } catch {}
-    setTheme(next);
-  }
+  const { theme, toggleTheme } = useTheme();
   async function logout() {
     await createBrowserClient().auth.signOut();
     window.location.assign("/login");
