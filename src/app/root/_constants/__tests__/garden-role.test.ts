@@ -3,7 +3,7 @@
  *
  * 対象:
  *   - GARDEN_ROLE_ORDER に outsource が staff と manager の間にある
- *   - GARDEN_ROLE_LABELS に外注が追加されている
+ *   - GARDEN_ROLE_LABELS に業務用の日本語ラベルが定義されている
  *   - isRoleAtLeast が outsource 追加後も階層比較として正しい
  *   - ROOT_VIEW_ROLES / ROOT_WRITE_ROLES が outsource を含まないこと（= manager 以上のまま）
  */
@@ -39,8 +39,10 @@ describe("GARDEN_ROLE_ORDER (Phase A-3-g outsource insertion)", () => {
 });
 
 describe("GARDEN_ROLE_LABELS", () => {
-  it("provides Japanese label for outsource", () => {
-    expect(GARDEN_ROLE_LABELS.outsource).toBe("外注");
+  it("provides business-facing Japanese labels", () => {
+    expect(GARDEN_ROLE_LABELS.manager).toBe("マネージャー");
+    expect(GARDEN_ROLE_LABELS.staff).toBe("正社員");
+    expect(GARDEN_ROLE_LABELS.outsource).toBe("業務委託");
   });
 
   it("has labels for all 8 roles", () => {
