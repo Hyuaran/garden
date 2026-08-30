@@ -75,21 +75,30 @@ export type DriveBrowserEntry = {
   modifiedTime: string | null;
 };
 
-export type DriveFolderMetadata = {
+export type DriveFileMetadata = {
   id: string;
   name: string;
   mimeType: string;
   parents: string[];
+  webViewLink: string | null;
 };
 
-/** 直リンクされたDriveフォルダのパンくずを復元するためのメタデータを取得する。 */
-export async function getDriveFolderMetadata(folderId: string): Promise<DriveFolderMetadata> {
+/** Drive上のファイルまたはフォルダについて、親と閲覧URLを含むメタデータを取得する。 */
+export async function getDriveFileMetadata(fileId: string): Promise<DriveFileMetadata> {
   const res = await driveFetch(
-    `/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType,parents`,
+    `/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,parents,webViewLink`,
   );
   if (!res.ok) throw new Error(`Drive meta error: ${res.status} ${await res.text()}`);
-  const data = (await res.json()) as Omit<DriveFolderMetadata, "parents"> & { parents?: string[] };
-  return { ...data, parents: data.parents ?? [] };
+  const data = (await res.json()) as Omit<DriveFileMetadata, "parents" | "webViewLink"> & {
+    parents?: string[];
+    webViewLink?: string;
+  };
+  return { ...data, parents: data.parents ?? [], webViewLink: data.webViewLink ?? null };
+}
+
+/** 直リンクされたDriveフォルダのパンくずを復元するためのメタデータを取得する。 */
+export async function getDriveFolderMetadata(folderId: string): Promise<DriveFileMetadata> {
+  return getDriveFileMetadata(folderId);
 }
 
 /** 契約書管理など、フォルダを含む汎用Drive閲覧用。 */

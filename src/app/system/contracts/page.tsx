@@ -73,9 +73,11 @@ export default function ContractsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [companies, setCompanies] = useState<ContractCompany[]>([]);
   const [rows, setRows] = useState<ContractRow[]>([]);
+  const [ledgerLoaded, setLedgerLoaded] = useState(false);
   const [entries, setEntries] = useState<DriveEntry[]>([]);
   const [path, setPath] = useState<DriveBreadcrumb[]>(ROOT_PATH);
   const [file, setFile] = useState<File | null>(null);
+  const [driveSource, setDriveSource] = useState<DriveEntry | null>(null);
   const [draft, setDraft] = useState<ContractDraft | null>(null);
   const [sourcePages, setSourcePages] = useState<string[]>([]);
   const [message, setMessage] = useState("");
@@ -91,7 +93,7 @@ export default function ContractsPage() {
     try {
       const response = await fetch("/api/system/contracts"), json = await responseBody(response);
       if (!response.ok || !json) return setMessage(response.status === 403 ? "この画面を見る権限がありません。管理者へ連絡してください。" : "契約書を読み込めませんでした。時間をおいて再度お試しください。");
-      setCompanies(json.companies ?? []); setRows(json.rows ?? []);
+      setCompanies(json.companies ?? []); setRows(json.rows ?? []); setLedgerLoaded(true);
     } catch { setMessage("契約書を読み込めませんでした。時間をおいて再度お試しください。"); }
   }
   async function browse(folderId: string | null, fallbackPath = ROOT_PATH) {
@@ -130,11 +132,7 @@ export default function ContractsPage() {
     setViewMode(mode);
     storeViewMode(mode);
   }
-  async function choose(next: File | null) {
-    setDraft(null); setSourcePages([]); setFileError(""); setRegistrationMessage("");
-    if (!next) { setFile(null); return; }
-    if (next.type !== "application/pdf" && !next.name.toLowerCase().endsWith(".pdf")) { setFile(null); return setFileError("PDFファイルを選んでください。"); }
-    if (next.size > MAX_FILE_SIZE) { setFile(null); return setFileError("PDFは20MBまでです。ファイルサイズを確認してください。"); }
+  async function analyzeSelectedFile(next: File) {
     setFile(next); setLoading("analyze");
     try {
       const pages = await extractContractPdfPages(next);
@@ -147,13 +145,40 @@ export default function ContractsPage() {
       setDraft(json.draft);
     } catch { setFileError("この契約書を読み取れませんでした。ファイルが壊れていないか確認してください。"); } finally { setLoading(null); }
   }
+  async function choose(next: File | null) {
+    setDriveSource(null); setDraft(null); setSourcePages([]); setFileError(""); setRegistrationMessage("");
+    if (!next) { setFile(null); return; }
+    if (next.type !== "application/pdf" && !next.name.toLowerCase().endsWith(".pdf")) { setFile(null); return setFileError("PDFファイルを選んでください。"); }
+    if (next.size > MAX_FILE_SIZE) { setFile(null); return setFileError("PDFは20MBまでです。ファイルサイズを確認してください。"); }
+    await analyzeSelectedFile(next);
+  }
+  async function chooseDrive(entry: DriveEntry) {
+    setTab("register"); setDriveSource(entry); setFile(null); setDraft(null); setSourcePages([]); setFileError(""); setRegistrationMessage(""); setLoading("analyze");
+    try {
+      const form = new FormData(); form.set("action", "read-drive-file"); form.set("driveFileId", entry.id);
+      const response = await fetch("/api/system/contracts", { method: "POST", body: form });
+      if (!response.ok) {
+        const json = await responseBody(response);
+        return setFileError(json?.error ?? "この契約書を読み取れませんでした。管理者へ連絡してください。");
+      }
+      const next = new File([await response.blob()], entry.name, { type: "application/pdf" });
+      if (next.size > MAX_FILE_SIZE) return setFileError("PDFは20MBまでです。ファイルサイズを確認してください。");
+      await analyzeSelectedFile(next);
+    } catch {
+      setFileError("この契約書を読み取れませんでした。管理者へ連絡してください。");
+    } finally {
+      setLoading(null);
+    }
+  }
   function drop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault(); setDragActive(false); void choose(event.dataTransfer.files[0] ?? null);
   }
-  function resetFile() { setFile(null); setDraft(null); setSourcePages([]); setFileError(""); setRegistrationMessage(""); if (fileInputRef.current) fileInputRef.current.value = ""; }
+  function resetFile() { setDriveSource(null); setFile(null); setDraft(null); setSourcePages([]); setFileError(""); setRegistrationMessage(""); if (fileInputRef.current) fileInputRef.current.value = ""; }
   async function register(event: FormEvent) {
     event.preventDefault(); if (!file || !draft) return;
-    const form = new FormData(); form.set("action", "register"); form.set("file", file); form.set("extractedText", JSON.stringify(sourcePages));
+    const form = new FormData(); form.set("action", driveSource ? "register-drive" : "register");
+    if (driveSource) form.set("driveFileId", driveSource.id); else form.set("file", file);
+    form.set("extractedText", JSON.stringify(sourcePages));
     Object.entries({ counterparty: draft.counterparty, companyId: draft.companyId, contractType: draft.contractType,
       concludedOn: draft.concludedOn, note: draft.note }).forEach(([key, value]) => form.set(key, String(value)));
     setLoading("register"); setRegistrationMessage("");
@@ -161,11 +186,16 @@ export default function ContractsPage() {
       const response = await fetch("/api/system/contracts", { method: "POST", body: form });
       const json = await responseBody(response);
       if (!response.ok || !json) return setRegistrationMessage(json?.error ?? "契約書を登録できませんでした。通信状況を確認して、もう一度お試しください。");
-      setRegistrationMessage(json.driveStatus === "skipped" ? "台帳へ登録しました。Driveの設定は管理者へ確認してください。" : "契約書を登録し、Driveへ保存しました。");
+      setRegistrationMessage(driveSource ? "契約書を登録しました。Driveの元ファイルをそのまま使用しています。" : json.driveStatus === "skipped" ? "台帳へ登録しました。Driveの設定は管理者へ確認してください。" : "契約書を登録し、Driveへ保存しました。");
       await loadLedger();
     } catch { setRegistrationMessage("契約書を登録できませんでした。通信状況を確認して、もう一度お試しください。"); } finally { setLoading(null); }
   }
   const companyLabel = (id: string) => id === "ALL" ? "全社" : companies.find((company) => company.company_id === id)?.company_name ?? id;
+  function driveRegistrationButton(entry: DriveEntry) {
+    if (entry.mimeType !== "application/pdf") return null;
+    const registered = rows.some((row) => row.drive_file_id === entry.id);
+    return <button type="button" className={styles.driveRegister} disabled={!ledgerLoaded || registered} onClick={() => void chooseDrive(entry)}>{registered ? "登録済み" : ledgerLoaded ? "登録する" : "確認中…"}</button>;
+  }
   function openTemplate(row: ContractRow) {
     setTemplate(row); setIssuerId(row.company_id === "ALL" ? companies[0]?.company_id ?? "" : row.company_id);
     setProduct(row.product || row.contract_type);
@@ -199,10 +229,10 @@ export default function ContractsPage() {
       {loading === "browse" ? <p className={styles.loading}><span/>読み込み中…</p> : viewMode === "grid" ?
         <div className={styles.fileGrid} data-testid="contract-grid-view">{entries.map((entry) => entry.mimeType === FOLDER ?
           <button className={styles.folder} key={entry.id} onClick={() => openFolder(entry)}><DriveFolderIcon/><span>{entry.name}</span></button> :
-          <a className={styles.file} key={entry.id} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer"><DriveFileIcon/><span>{entry.name}</span></a>)}</div> :
+          <div className={styles.file} key={entry.id}><a className={styles.fileLink} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer"><DriveFileIcon/><span>{entry.name}</span></a>{driveRegistrationButton(entry)}</div>)}</div> :
         <div className={styles.fileList} data-testid="contract-list-view">{entries.map((entry) => entry.mimeType === FOLDER ?
           <button className={styles.listRow} key={entry.id} onClick={() => openFolder(entry)}><DriveFolderIcon/><span className={styles.listName}>{entry.name}</span><span aria-hidden="true"/></button> :
-          <div className={styles.listRow} key={entry.id}><DriveFileIcon/><span className={styles.listName}>{entry.name}</span><a className={styles.listOpen} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer">開く</a></div>)}</div>}
+          <div className={styles.listRow} key={entry.id}><DriveFileIcon/><span className={styles.listName}>{entry.name}</span><a className={styles.listOpen} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer">開く</a>{driveRegistrationButton(entry)}</div>)}</div>}
     </section> : <>
       <section className={`${styles.card} ${styles.registrationCard}`}><h2>上位店契約を登録する</h2>
         <div className={styles.stepHeading}><span><small>STEP</small><strong>1</strong></span><h3>契約書をアップロード</h3></div>

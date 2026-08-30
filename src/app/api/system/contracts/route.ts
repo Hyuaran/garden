@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import {
+  downloadFile,
   findOrCreateSubfolder,
+  getDriveFileMetadata,
   listDriveFolderEntries,
 } from "@/app/api/bud/expense-drive/_lib/drive";
 import { extractContract } from "@/app/system/contracts/_lib/contract-extraction.server";
@@ -39,6 +41,28 @@ function extractedPages(value: FormDataEntryValue | null): string[] | null {
   } catch {
     return null;
   }
+}
+const PDF_MIME_TYPE = "application/pdf";
+const ALREADY_REGISTERED = "この契約書はすでに登録されています。";
+
+function registrationFields(form: FormData) {
+  return {
+    counterparty: String(form.get("counterparty") ?? "").trim(),
+    companyId: String(form.get("companyId") ?? ""),
+    contractType: String(form.get("contractType") ?? "").trim(),
+    concludedOn: String(form.get("concludedOn") ?? ""),
+    note: String(form.get("note") ?? "") || null,
+    pages: extractedPages(form.get("extractedText")),
+  };
+}
+
+async function resolveContractDrivePdf(fileId: string) {
+  const root = process.env.GARDEN_CONTRACTS_DRIVE_ROOT_FOLDER_ID;
+  if (!root || !fileId) return null;
+  const file = await getDriveFileMetadata(fileId);
+  if (file.mimeType !== PDF_MIME_TYPE || !file.parents[0]) return null;
+  const breadcrumbs = await getContractDriveBreadcrumbs(file.parents[0], root);
+  return { file, folderName: breadcrumbs.at(-1)?.name ?? "契約書" };
 }
 export async function GET(request: Request) {
   const c = await context();
@@ -90,6 +114,23 @@ export async function POST(request: Request) {
   if (!c) return NextResponse.json({ ok: false }, { status: 403 });
   const form = await request.formData(),
     action = String(form.get("action") ?? "");
+  if (action === "read-drive-file") {
+    const driveFile = await resolveContractDrivePdf(String(form.get("driveFileId") ?? ""));
+    if (!driveFile)
+      return NextResponse.json(
+        { ok: false, error: "この契約書を読み取れませんでした。管理者へ連絡してください。" },
+        { status: 400 },
+      );
+    const buffer = await downloadFile(driveFile.file.id);
+    if (buffer.byteLength > MAX_CONTRACT_SIZE)
+      return NextResponse.json(
+        { ok: false, error: "PDFは20MBまでです。ファイルサイズを確認してください。" },
+        { status: 400 },
+      );
+    return new Response(new Uint8Array(buffer), {
+      headers: { "Content-Type": PDF_MIME_TYPE, "Cache-Control": "private, no-store" },
+    });
+  }
   if (action === "analyze") {
     const pages = extractedPages(form.get("extractedText"));
     if (!pages)
@@ -102,20 +143,75 @@ export async function POST(request: Request) {
       draft: extractContract(pages, c.companies),
     });
   }
+  if (action === "register-drive") {
+    const driveFileId = String(form.get("driveFileId") ?? ""),
+      fields = registrationFields(form);
+    if (
+      !driveFileId ||
+      !fields.counterparty ||
+      !fields.companyId ||
+      !fields.contractType ||
+      !fields.concludedOn ||
+      !fields.pages
+    )
+      return NextResponse.json(
+        { ok: false, error: "必須項目を入力してください。" },
+        { status: 400 },
+      );
+    const { data: existing, error: existingError } = await c.admin
+      .from("system_contracts")
+      .select("id")
+      .eq("drive_file_id", driveFileId)
+      .maybeSingle();
+    if (existingError)
+      return NextResponse.json(
+        { ok: false, error: "登録状況を確認できませんでした。時間をおいて再度お試しください。" },
+        { status: 500 },
+      );
+    if (existing)
+      return NextResponse.json({ ok: false, error: ALREADY_REGISTERED }, { status: 409 });
+    const driveFile = await resolveContractDrivePdf(driveFileId);
+    if (!driveFile)
+      return NextResponse.json(
+        { ok: false, error: "この契約書を読み取れませんでした。管理者へ連絡してください。" },
+        { status: 400 },
+      );
+    const { data, error } = await c.admin
+      .from("system_contracts")
+      .insert({
+        counterparty: fields.counterparty,
+        company_id: fields.companyId,
+        contract_type: fields.contractType,
+        concluded_on: fields.concludedOn,
+        note: fields.note,
+        drive_file_id: driveFile.file.id,
+        drive_url: driveFile.file.webViewLink ?? `https://drive.google.com/open?id=${driveFile.file.id}`,
+        drive_folder_name: driveFile.folderName,
+        extracted_text: JSON.stringify(fields.pages),
+        created_by: c.manager.userId,
+      })
+      .select("*")
+      .single();
+    if (error)
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "code" in error && error.code === "23505" ? ALREADY_REGISTERED : "登録できませんでした。",
+        },
+        { status: "code" in error && error.code === "23505" ? 409 : 500 },
+      );
+    return NextResponse.json({ ok: true, row: data, driveStatus: "existing" }, { status: 201 });
+  }
   if (action === "register") {
     const file = form.get("file"),
-      counterparty = String(form.get("counterparty") ?? "").trim(),
-      companyId = String(form.get("companyId") ?? ""),
-      contractType = String(form.get("contractType") ?? "").trim(),
-      concludedOn = String(form.get("concludedOn") ?? ""),
-      pages = extractedPages(form.get("extractedText"));
+      fields = registrationFields(form);
     if (
       !(file instanceof File) ||
-      !counterparty ||
-      !companyId ||
-      !contractType ||
-      !concludedOn ||
-      !pages
+      !fields.counterparty ||
+      !fields.companyId ||
+      !fields.contractType ||
+      !fields.concludedOn ||
+      !fields.pages
     )
       return NextResponse.json(
         { ok: false, error: "必須項目を入力してください。" },
@@ -135,21 +231,21 @@ export async function POST(request: Request) {
     const saved = await saveOriginalContract(
       Buffer.from(await file.arrayBuffer()),
       file.name,
-      counterparty,
-      companyId,
+      fields.counterparty,
+      fields.companyId,
     );
     const { data, error } = await c.admin
       .from("system_contracts")
       .insert({
-        counterparty,
-        company_id: companyId,
-        contract_type: contractType,
-        concluded_on: concludedOn,
-        note: String(form.get("note") ?? "") || null,
+        counterparty: fields.counterparty,
+        company_id: fields.companyId,
+        contract_type: fields.contractType,
+        concluded_on: fields.concludedOn,
+        note: fields.note,
         drive_file_id: saved.fileId,
         drive_url: saved.url,
         drive_folder_name: saved.folderName,
-        extracted_text: JSON.stringify(pages),
+        extracted_text: JSON.stringify(fields.pages),
         created_by: c.manager.userId,
       })
       .select("*")
