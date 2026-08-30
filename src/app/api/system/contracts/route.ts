@@ -7,6 +7,7 @@ import {
 } from "@/app/api/bud/expense-drive/_lib/drive";
 import { extractContract } from "@/app/system/contracts/_lib/contract-extraction.server";
 import {
+  getContractDriveBreadcrumbs,
   saveOriginalContract,
   savePartnerTemplate,
 } from "@/app/system/contracts/_lib/contract-drive.server";
@@ -48,8 +49,13 @@ export async function GET(request: Request) {
     if (!root)
       return NextResponse.json({ ok: false, error: "Driveを表示できません。管理者へ連絡してください。" }, { status: 503 });
     const folderId = url.searchParams.get("folderId");
-    if (folderId)
-      return NextResponse.json({ ok: true, entries: await listDriveFolderEntries(folderId) });
+    if (folderId) {
+      const [entries, breadcrumbs] = await Promise.all([
+        listDriveFolderEntries(folderId),
+        getContractDriveBreadcrumbs(folderId, root),
+      ]);
+      return NextResponse.json({ ok: true, entries, breadcrumbs });
+    }
     const entries = await Promise.all(
       ["01_契約書　上位店", "05_パートナー配布用ひな形"].map(async (name) => ({
         id: await findOrCreateSubfolder(root, name),
@@ -59,7 +65,11 @@ export async function GET(request: Request) {
         modifiedTime: null,
       })),
     );
-    return NextResponse.json({ ok: true, entries });
+    return NextResponse.json({
+      ok: true,
+      entries,
+      breadcrumbs: [{ id: null, name: "契約書" }],
+    });
   }
   const { data: rows, error } = await c.admin
     .from("system_contracts")

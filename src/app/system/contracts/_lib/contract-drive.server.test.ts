@@ -2,14 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   folder: vi.fn(),
   exists: vi.fn(),
+  metadata: vi.fn(),
   upload: vi.fn(),
 }));
 vi.mock("@/app/api/bud/expense-drive/_lib/drive", () => ({
   findOrCreateSubfolder: mocks.folder,
   folderHasFile: mocks.exists,
+  getDriveFolderMetadata: mocks.metadata,
   uploadToFolder: mocks.upload,
 }));
 import {
+  getContractDriveBreadcrumbs,
   saveOriginalContract,
   savePartnerTemplate,
 } from "./contract-drive.server";
@@ -67,5 +70,18 @@ describe("contract Drive", () => {
       await saveOriginalContract(Buffer.from("pdf"), "契約.pdf", "A社", "ALL"),
     ).toMatchObject({ status: "skipped", folderName: "A社_ALL" });
     expect(mocks.folder).not.toHaveBeenCalled();
+  });
+  it("restores breadcrumbs from Drive parent metadata", async () => {
+    mocks.metadata.mockImplementation(async (id: string) => ({
+      id,
+      name: id === "ash" ? "ASH株式会社_ART" : "01_契約書　上位店",
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [id === "ash" ? "top" : "root"],
+    }));
+    await expect(getContractDriveBreadcrumbs("ash", "root")).resolves.toEqual([
+      { id: null, name: "契約書" },
+      { id: "top", name: "01_契約書　上位店" },
+      { id: "ash", name: "ASH株式会社_ART" },
+    ]);
   });
 });
