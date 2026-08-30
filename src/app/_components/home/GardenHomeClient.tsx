@@ -62,7 +62,7 @@ const MODULE_PRESENTATION: Record<GardenModuleId, Omit<HomeModule, "id" | "en" |
     icon: <><path d="M12 21v-7"/><path d="M12 14c-3 0-5-2.4-5-5.5S9 3 12 3s5 2.4 5 5.5S15 14 12 14z"/></>,
   },
   leaf: {
-    jp: "個別アプリ", color: "#4ade80", description: "関西電力など、案件ごとの専用画面。",
+    jp: "案件アプリ", color: "#4ade80", description: "関西電力など、案件ごとの専用画面。",
     icon: <><path d="M5 19c0-8 5-13 14-14 1 9-4 15-12 15-1 0-2 0-2-1z"/><path d="M8 18c2-4 5-7 9-9"/></>,
   },
   tree: {
@@ -74,11 +74,11 @@ const MODULE_PRESENTATION: Record<GardenModuleId, Omit<HomeModule, "id" | "en" |
     icon: <><path d="M12 21v-8"/><path d="M12 13c0-3 2.2-5 5-5 0 3-2.2 5-5 5z"/><path d="M12 15c0-2.6-2-4.5-4.5-4.5 0 2.6 2 4.5 4.5 4.5z"/></>,
   },
   soil: {
-    jp: "データ基盤", color: "#9aa7b8", description: "Garden全体のデータの土台。",
+    jp: "データベース", color: "#9aa7b8", description: "Garden全体のデータの土台。",
     icon: <path d="M3 8h18M3 13h18M3 18h18M7 8v10M17 8v10"/>,
   },
   root: {
-    jp: "組織マスタ", color: "#5b9dff", description: "従業員名簿と法人の情報。",
+    jp: "組織台帳", color: "#5b9dff", description: "従業員名簿と法人の情報。",
     icon: <path d="M12 3v9M12 12c-1.5 2-4 3-5 6M12 12c1.5 2 4 3 5 6M12 12v9"/>,
   },
   rill: {

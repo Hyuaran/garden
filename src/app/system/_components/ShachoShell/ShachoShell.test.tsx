@@ -33,6 +33,9 @@ describe("ShachoShell", () => {
     expect(labels).toHaveLength(13);
     expect(labels.map((label) => label?.split("：")[0])).toEqual(["System", ...GARDEN_SHELL_MODULES.map((item) => item.name)]);
     expect(labels.filter((label) => label === "System：社内システム")).toHaveLength(1);
+    expect(within(rail).getByRole("link", { name: "Leaf：案件アプリ" })).toBeInTheDocument();
+    expect(within(rail).getByRole("link", { name: "Soil：データベース" })).toBeInTheDocument();
+    expect(within(rail).getByRole("link", { name: "Root：組織台帳" })).toBeInTheDocument();
     expect(within(rail).getAllByRole("link")[0]).toHaveAttribute("href", "/system");
     expect(within(rail).getAllByRole("link")[0]).toHaveClass(styles.current);
   });
@@ -44,6 +47,7 @@ describe("ShachoShell", () => {
     expect(home).toHaveAttribute("href", "/");
     expect(logo).toHaveAttribute("src", "/themes/garden-shell/images/login/mark-tree-emblem.png");
     expect(logo?.getAttribute("src")).not.toContain("/_next/image");
+    expect(screen.getByText("System ／ 社内システム")).toBeInTheDocument();
   });
 
   it("toggles and saves the root theme", async () => {
@@ -69,7 +73,7 @@ describe("ShachoShell", () => {
     const nav = screen.getByRole("navigation", { name: "Systemメニュー" });
     expect(nav.parentElement).toHaveClass(styles.sideInner);
     expect(nav.parentElement).toContainElement(screen.getByRole("link", { name: "Garden ホームへ" }));
-    expect(nav.parentElement).toContainElement(screen.getByText("株式会社A ／ 責任者"));
+    expect(nav.parentElement).toContainElement(screen.getByText("株式会社A ／ マネージャー"));
   });
 
   it("restores a saved theme", async () => {

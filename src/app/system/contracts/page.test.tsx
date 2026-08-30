@@ -16,7 +16,7 @@ describe("contracts drive browser", () => {
     });
     vi.stubGlobal("fetch", fetchMock); render(<ContractsPage />);
     expect(screen.getAllByRole("tab")).toHaveLength(2);
-    expect(screen.getByText("SYSTEM / CONTRACTS")).toBeInTheDocument();
+    expect(screen.getByText("System ／ 契約書管理")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "契約書管理" })).toBeInTheDocument();
     const folder = await screen.findByRole("button", { name: /01_契約書/ });
     expect(folder).not.toHaveTextContent("📁");

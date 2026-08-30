@@ -18,7 +18,7 @@ export default async function SystemHomePage() {
   const { data: company } = await supabase.from("root_companies").select("company_name").eq("company_id", employee.company_id).maybeSingle();
   const visible = SYSTEM_MENU_ITEMS.filter((item) => canUseSystemItem(item, role));
   return <ShachoShell activePath="/system" user={{ name: String(employee.name), company: String(company?.company_name ?? "所属会社未登録"), role }}>
-    <header className={styles.header}><div className={styles.eyebrow}>SYSTEM</div><h1>社内システム</h1></header>
+    <header className={styles.header}><div className={styles.eyebrow}>System</div><h1>社内システム</h1></header>
     <p className={styles.lead}>日々の事務作業をまとめた入口です。使いたいものを選んでください。</p>
     <div className={styles.sectionTitle}>使えるもの</div>
     <div className={styles.grid}>{visible.filter((item) => item.href && item.href !== "/system").map((item) => <Link className={styles.card} href={item.href!} key={item.label}><div className={styles.cardHeader}><span className={styles.badge}><MenuIcon icon={item.icon}/></span><h2>{item.label}</h2></div><p>{item.description}</p><div className={styles.meta}>開く →</div></Link>)}</div>

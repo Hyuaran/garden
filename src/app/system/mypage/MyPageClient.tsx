@@ -32,7 +32,7 @@ export default function MyPageClient({ initialTab, registered, employeeName, can
     router.replace(tab === "profile" ? "/system/mypage" : `/system/mypage?tab=${tab}`, { scroll: false });
   }
   return <div className={styles.pageContent}>
-    <header className={styles.header}><p className={styles.eyebrow}>SYSTEM / MYPAGE</p><h1>マイページ</h1></header>
+    <header className={styles.header}><p className={styles.eyebrow}>System ／ マイページ</p><h1>マイページ</h1></header>
     <div className={styles.tabs} role="tablist" aria-label="マイページメニュー">
       {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id}
         onClick={() => selectTab(tab.id)}>{tab.label}</button>)}

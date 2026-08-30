@@ -25,6 +25,8 @@ describe("system home", () => {
     mocks.createServerClient.mockResolvedValue(client());
     render(<ThemeProvider>{await SystemHomePage()}</ThemeProvider>);
     expect(screen.getByText("社員Aさん")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "社内システム" }).previousElementSibling).toHaveTextContent("System");
+    expect(screen.queryByText("SYSTEM")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "マイページ" }).closest("a")).toHaveAttribute("href", "/system/mypage");
     expect(screen.getByRole("heading", { name: "勤怠打刻" }).closest("a")).toHaveAttribute("href", "/system/attendance");
     expect(screen.getByRole("heading", { name: "テレマ コール集計" }).closest("a")).toHaveAttribute("href", "/system/call-metrics");

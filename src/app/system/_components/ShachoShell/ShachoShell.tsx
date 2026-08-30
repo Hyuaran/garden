@@ -20,9 +20,9 @@ type Props = {
 const MODULE_META: Record<GardenModuleId, { color: string; role: string }> = {
   bloom: { color: "#f472b6", role: "案件KPI" }, fruit: { color: "#fb923c", role: "法人実態情報" },
   seed: { color: "#facc15", role: "新事業" }, forest: { color: "#34d399", role: "全法人決算" },
-  bud: { color: "#c084fc", role: "経理・収支" }, leaf: { color: "#4ade80", role: "個別アプリ" },
+  bud: { color: "#c084fc", role: "経理・収支" }, leaf: { color: "#4ade80", role: "案件アプリ" },
   tree: { color: "#a78bfa", role: "架電" }, sprout: { color: "#86efac", role: "採用" },
-  soil: { color: "#9aa7b8", role: "データ基盤" }, root: { color: "#5b9dff", role: "組織マスタ" },
+  soil: { color: "#9aa7b8", role: "データベース" }, root: { color: "#5b9dff", role: "組織台帳" },
   rill: { color: "#38bdf8", role: "メッセージ" }, calendar: { color: "#60a5fa", role: "予定管理" },
 };
 
@@ -84,7 +84,7 @@ export default function ShachoShell({ children, activePath, user }: Props) {
     </aside>
     <aside className={styles.side}>
       <div className={styles.sideInner}>
-        <div className={styles.brand}><Link href="/" className={styles.brandName} aria-label="Garden ホームへ"><Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized/><span>Garden</span></Link><div className={styles.moduleName}>SYSTEM ／ 社内システム</div></div>
+        <div className={styles.brand}><Link href="/" className={styles.brandName} aria-label="Garden ホームへ"><Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized/><span>Garden</span></Link><div className={styles.moduleName}>System ／ 社内システム</div></div>
         <nav className={styles.nav} aria-label="Systemメニュー">
           <div className={styles.navLabel}>メニュー</div>
           {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined} aria-current={activePath === item.href ? "page" : undefined}><MenuIcon icon={item.icon}/>{item.label}</Link>)}

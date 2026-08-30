@@ -121,7 +121,7 @@ export default function ContractsPage() {
     } catch { setMessage("ひな形を作成できませんでした。管理者へ連絡してください。"); } finally { setLoading(null); }
   }
   return <div className={styles.pageShell}><div className={styles.main}>
-    <header className={styles.header}><div><p className={styles.eyebrow}>SYSTEM / CONTRACTS</p><h1>契約書管理</h1><p>契約書の確認、登録、パートナー配布用ひな形の作成を行います。</p></div></header>
+    <header className={styles.header}><div><p className={styles.eyebrow}>System ／ 契約書管理</p><h1>契約書管理</h1><p>契約書の確認、登録、パートナー配布用ひな形の作成を行います。</p></div></header>
     {message && <p role="status" className={styles.message}>{message}</p>}
     <div className={styles.tabs} role="tablist">
       <button role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")}>契約書を見る</button>
