@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import styles from "./contracts.module.css";
 const pdfMocks = vi.hoisted(() => ({ extract: vi.fn() }));
@@ -51,6 +51,59 @@ describe("contracts drive browser", () => {
     expect(screen.getByTestId("contract-grid-view")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "グリッド表示にする" })).toHaveAttribute("aria-pressed", "true");
     expect(localStorage.getItem("garden.contracts.viewMode")).toBe("grid");
+  });
+
+  it("shows registration actions only for PDFs in list and grid views", async () => {
+    const entries = [
+      { id: "folder-1", name: "上位店フォルダ", mimeType: "application/vnd.google-apps.folder", webViewLink: null, modifiedTime: null },
+      { id: "pdf-new", name: "未登録.pdf", mimeType: "application/pdf", webViewLink: "https://drive.example/new", modifiedTime: null },
+      { id: "pdf-done", name: "登録済み.pdf", mimeType: "application/pdf", webViewLink: "https://drive.example/done", modifiedTime: null },
+      { id: "docx-1", name: "ひな形.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", webViewLink: "https://drive.example/docx", modifiedTime: null },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(
+      String(input).includes("browse")
+        ? { ok: true, entries }
+        : { ok: true, companies: [], rows: [{ id: "C1", drive_file_id: "pdf-done" }] },
+    ), { status: 200 })));
+    render(<ContractsPage />);
+
+    const list = await screen.findByTestId("contract-list-view");
+    await waitFor(() => expect(within(list).getByRole("button", { name: "登録する" })).toBeEnabled());
+    expect(within(list).getByRole("button", { name: "登録済み" })).toBeDisabled();
+    expect(screen.getByText("ひな形.docx").parentElement).not.toHaveTextContent("登録する");
+    expect(screen.getByRole("button", { name: "上位店フォルダ" })).not.toHaveTextContent("登録する");
+
+    fireEvent.click(screen.getByRole("button", { name: "グリッド表示にする" }));
+    const grid = screen.getByTestId("contract-grid-view");
+    expect(within(grid).getByRole("button", { name: "登録する" })).toBeEnabled();
+    expect(within(grid).getByRole("button", { name: "登録済み" })).toBeDisabled();
+    expect(screen.getByText("ひな形.docx").closest("div")).not.toHaveTextContent("登録する");
+  });
+
+  it("reads a Drive PDF and opens the existing editable confirmation form", async () => {
+    const draft = { ...emptyDraft, counterparty: "セントリックス株式会社", companyId: "COMP-001", contractType: "獲得業務委託契約書", concludedOn: "2026-08-30" };
+    const company = { company_id: "COMP-001", company_name: "株式会社ヒュアラン", representative: "代表者", address: "大阪府" };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        const action = String((init.body as FormData).get("action"));
+        if (action === "read-drive-file") return new Response("%PDF", { status: 200, headers: { "Content-Type": "application/pdf" } });
+        return new Response(JSON.stringify({ ok: true, draft }), { status: 200 });
+      }
+      if (String(input).includes("browse")) return new Response(JSON.stringify({ ok: true, entries: [
+        { id: "centrix-pdf", name: "【セントリックス株式会社】獲得業務委託契約書.pdf", mimeType: "application/pdf", webViewLink: "https://drive.example/centrix", modifiedTime: null },
+      ] }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, companies: [company], rows: [] }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ContractsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "登録する" }));
+    expect(await screen.findByLabelText("相手先")).toHaveValue("セントリックス株式会社");
+    expect(screen.getByLabelText("自社法人")).toHaveValue("COMP-001");
+    expect(screen.getByLabelText("契約種別")).toHaveValue("獲得業務委託契約書");
+    expect(screen.getByLabelText("締結日")).toHaveValue("2026-08-30");
+    expect(pdfMocks.extract).toHaveBeenCalledWith(expect.objectContaining({ name: "【セントリックス株式会社】獲得業務委託契約書.pdf" }));
+    expect(fetchMock).toHaveBeenCalledWith("/api/system/contracts", expect.objectContaining({ method: "POST" }));
   });
 
   it("restores a saved grid view and persists a switch back to list", async () => {
