@@ -11,6 +11,24 @@ type ApiResponse = {
 };
 const FOLDER = "application/vnd.google-apps.folder";
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const VIEW_MODE_KEY = "garden.contracts.viewMode";
+type ViewMode = "list" | "grid";
+
+function readViewMode(): ViewMode {
+  try {
+    return window.localStorage.getItem(VIEW_MODE_KEY) === "grid" ? "grid" : "list";
+  } catch {
+    return "list";
+  }
+}
+
+function storeViewMode(mode: ViewMode) {
+  try {
+    window.localStorage.setItem(VIEW_MODE_KEY, mode);
+  } catch {
+    // 保存できない環境でも、現在の画面では表示形式を切り替えられるようにする。
+  }
+}
 
 function DriveFolderIcon() {
   return <svg className={styles.driveIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3.5 7.5h6l2-2h3l2 2h4v10.5a1.5 1.5 0 0 1-1.5 1.5h-14A1.5 1.5 0 0 1 3.5 18z"/><path d="M3.5 10h17"/></svg>;
@@ -18,6 +36,14 @@ function DriveFolderIcon() {
 
 function DriveFileIcon() {
   return <svg className={styles.driveIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 3.5h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v4h4"/><path d="M8.5 12h6M8.5 16h6"/></svg>;
+}
+
+function ListViewIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><rect x="4" y="5" width="2" height="2" rx=".5"/><rect x="4" y="11" width="2" height="2" rx=".5"/><rect x="4" y="17" width="2" height="2" rx=".5"/></svg>;
+}
+
+function GridViewIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/></svg>;
 }
 
 async function responseBody(response: Response) {
@@ -31,6 +57,7 @@ async function responseBody(response: Response) {
 
 export default function ContractsPage() {
   const [tab, setTab] = useState<"browse" | "register">("browse");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [companies, setCompanies] = useState<ContractCompany[]>([]);
   const [rows, setRows] = useState<ContractRow[]>([]);
   const [entries, setEntries] = useState<DriveEntry[]>([]);
@@ -66,8 +93,13 @@ export default function ContractsPage() {
   }
   useEffect(() => {
     // Initial API hydration is intentionally performed once on mount.
+    setViewMode(readViewMode());
     void Promise.all([loadLedger(), browse(null)]);
   }, []);
+  function changeViewMode(mode: ViewMode) {
+    setViewMode(mode);
+    storeViewMode(mode);
+  }
   async function choose(next: File | null) {
     setDraft(null); setSourcePages([]); setFileError(""); setRegistrationMessage("");
     if (!next) { setFile(null); return; }
@@ -128,12 +160,19 @@ export default function ContractsPage() {
       <button role="tab" aria-selected={tab === "register"} onClick={() => setTab("register")}>契約書を登録する</button>
     </div>
     {tab === "browse" ? <section className={styles.card}>
-      <h2>Driveの契約書</h2><nav className={styles.breadcrumbs} aria-label="現在のフォルダ">
+      <div className={styles.browseHeading}><h2>Driveの契約書</h2><div className={styles.viewToggle} role="group" aria-label="表示形式">
+        <button type="button" aria-label="リスト表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon/></button>
+        <button type="button" aria-label="グリッド表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon/></button>
+      </div></div><nav className={styles.breadcrumbs} aria-label="現在のフォルダ">
         {path.map((part, index) => <button key={`${part.id}-${index}`} onClick={() => { const next = path.slice(0, index + 1); setPath(next); void browse(part.id); }}>{part.name}</button>)}
       </nav>
-      {loading === "browse" ? <p className={styles.loading}><span/>読み込み中…</p> : <div className={styles.fileGrid}>{entries.map((entry) => entry.mimeType === FOLDER ?
-        <button className={styles.folder} key={entry.id} onClick={() => { setPath([...path, { id: entry.id, name: entry.name }]); void browse(entry.id); }}><DriveFolderIcon/><span>{entry.name}</span></button> :
-        <a className={styles.file} key={entry.id} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer"><DriveFileIcon/><span>{entry.name}</span></a>)}</div>}
+      {loading === "browse" ? <p className={styles.loading}><span/>読み込み中…</p> : viewMode === "grid" ?
+        <div className={styles.fileGrid} data-testid="contract-grid-view">{entries.map((entry) => entry.mimeType === FOLDER ?
+          <button className={styles.folder} key={entry.id} onClick={() => { setPath([...path, { id: entry.id, name: entry.name }]); void browse(entry.id); }}><DriveFolderIcon/><span>{entry.name}</span></button> :
+          <a className={styles.file} key={entry.id} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer"><DriveFileIcon/><span>{entry.name}</span></a>)}</div> :
+        <div className={styles.fileList} data-testid="contract-list-view">{entries.map((entry) => entry.mimeType === FOLDER ?
+          <button className={styles.listRow} key={entry.id} onClick={() => { setPath([...path, { id: entry.id, name: entry.name }]); void browse(entry.id); }}><DriveFolderIcon/><span className={styles.listName}>{entry.name}</span><span aria-hidden="true"/></button> :
+          <div className={styles.listRow} key={entry.id}><DriveFileIcon/><span className={styles.listName}>{entry.name}</span><a className={styles.listOpen} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer">開く</a></div>)}</div>}
     </section> : <>
       <section className={`${styles.card} ${styles.registrationCard}`}><h2>上位店契約を登録する</h2>
         <div className={styles.stepHeading}><span><small>STEP</small><strong>1</strong></span><h3>契約書をアップロード</h3></div>

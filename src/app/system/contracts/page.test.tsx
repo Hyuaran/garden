@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import styles from "./contracts.module.css";
 const pdfMocks = vi.hoisted(() => ({ extract: vi.fn() }));
 vi.mock("./_lib/contract-pdf.client", () => ({ extractContractPdfPages: pdfMocks.extract }));
 import ContractsPage from "./page";
 pdfMocks.extract.mockResolvedValue(["契約書テキスト"]);
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); pdfMocks.extract.mockResolvedValue(["契約書テキスト"]); });
+beforeEach(() => localStorage.clear());
 describe("contracts drive browser", () => {
   it("opens a folder from the browse tab through the Drive API", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -22,11 +23,42 @@ describe("contracts drive browser", () => {
     expect(folder).not.toHaveTextContent("📁");
     expect(folder.querySelector("svg")).toHaveClass(styles.driveIcon);
     fireEvent.click(folder);
-    const file = await screen.findByRole("link", { name: /契約書.pdf/ });
+    const fileName = await screen.findByText("契約書.pdf");
+    const file = screen.getByRole("link", { name: "開く" });
     expect(file).toHaveAttribute("href", "https://drive.example/pdf");
-    expect(file).not.toHaveTextContent("📄");
-    expect(file.querySelector("svg")).toHaveClass(styles.driveIcon);
+    expect(fileName.parentElement).not.toHaveTextContent("📄");
+    expect(fileName.parentElement?.querySelector("svg")).toHaveClass(styles.driveIcon);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("folderId=folder-1")));
+  });
+
+  it("defaults to list view and switches to the existing grid view", async () => {
+    const entries = [
+      { id: "folder-1", name: "01_契約書　上位店", mimeType: "application/vnd.google-apps.folder", webViewLink: null, modifiedTime: null },
+      { id: "pdf-1", name: "250715_金銭消費貸借契約書(ARATA⇔ASH).pdf", mimeType: "application/pdf", webViewLink: "https://drive.example/pdf", modifiedTime: null },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).includes("browse") ? { ok: true, entries } : { ok: true, companies: [], rows: [] }), { status: 200 })));
+    render(<ContractsPage />);
+    expect(await screen.findByTestId("contract-list-view")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "リスト表示にする" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("250715_金銭消費貸借契約書(ARATA⇔ASH).pdf")).toHaveClass(styles.listName);
+    expect(screen.getByRole("link", { name: "開く" })).toHaveAttribute("href", "https://drive.example/pdf");
+
+    fireEvent.click(screen.getByRole("button", { name: "グリッド表示にする" }));
+    expect(screen.getByTestId("contract-grid-view")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "グリッド表示にする" })).toHaveAttribute("aria-pressed", "true");
+    expect(localStorage.getItem("garden.contracts.viewMode")).toBe("grid");
+  });
+
+  it("restores a saved grid view and persists a switch back to list", async () => {
+    localStorage.setItem("garden.contracts.viewMode", "grid");
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).includes("browse") ? { ok: true, entries: [] } : { ok: true, companies: [], rows: [] }), { status: 200 })));
+    render(<ContractsPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "グリッド表示にする" })).toHaveAttribute("aria-pressed", "true"));
+    expect(screen.getByTestId("contract-grid-view")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "リスト表示にする" }));
+    expect(screen.getByTestId("contract-list-view")).toBeInTheDocument();
+    expect(localStorage.getItem("garden.contracts.viewMode")).toBe("list");
   });
 });
 
