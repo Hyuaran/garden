@@ -1,5 +1,0 @@
-:global(:root) .screen {
-  width: 100%;
-  min-height: min(240px, 35vh);
-  background: transparent;
-}

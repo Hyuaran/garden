@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { type CSSProperties, type ReactNode } from "react";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
@@ -61,6 +61,12 @@ export function MenuIcon({ icon }: { icon: SystemIcon }) {
   return <svg className={styles.menuIcon} viewBox="0 0 24 24" aria-hidden="true">{icons[icon]}</svg>;
 }
 
+function NavigationPendingHint() {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return <span className={styles.navigationProgress} data-testid="system-navigation-pending" aria-hidden="true" />;
+}
+
 export function resolveSystemActivePath(pathname: string): string | null {
   const matches = SYSTEM_MENU_ITEMS
     .filter((item) => item.href?.startsWith("/system"))
@@ -101,7 +107,7 @@ export default function ShachoShell({ children, user }: Props) {
         <div className={styles.brand}><Link href="/" className={styles.brandName} aria-label="Garden ホームへ"><Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized/><span>Garden</span></Link><div className={styles.moduleName}>System ／ 社内システム</div></div>
         <nav className={styles.nav} aria-label="Systemメニュー">
           <div className={styles.navLabel}>メニュー</div>
-          {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined} aria-current={activePath === item.href ? "page" : undefined}><MenuIcon icon={item.icon}/>{item.label}</Link>)}
+          {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined} aria-current={activePath === item.href ? "page" : undefined}><MenuIcon icon={item.icon}/>{item.label}<NavigationPendingHint /></Link>)}
           <div className={styles.navLabel}>これから</div>
           {visible.filter((item) => item.upcoming).map((item) => <span key={item.label} className={styles.soon}><MenuIcon icon={item.icon}/>{item.label}<span className={styles.tag}>準備中</span></span>)}
         </nav>
