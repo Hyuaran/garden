@@ -21,14 +21,16 @@ function client(role = "manager") {
 
 describe("system home", () => {
   beforeEach(() => { mocks.createServerClient.mockReset(); mocks.redirect.mockReset(); vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false })); });
-  it("links all five manager cards to their configured destinations", async () => {
+  it("links all seven manager cards to their configured destinations", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     render(<ThemeProvider>{await SystemHomePage()}</ThemeProvider>);
     expect(screen.getByText("社員Aさん")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "社内システム" }).previousElementSibling).toHaveTextContent("System");
     expect(screen.queryByText("SYSTEM")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "マイページ" }).closest("a")).toHaveAttribute("href", "/system/mypage");
+    expect(screen.getByRole("heading", { name: "自分の情報" }).closest("a")).toHaveAttribute("href", "/system/mypage");
     expect(screen.getByRole("heading", { name: "勤怠打刻" }).closest("a")).toHaveAttribute("href", "/system/attendance");
+    expect(screen.getByRole("heading", { name: "シフト" }).closest("a")).toHaveAttribute("href", "/system/shift");
+    expect(screen.getByRole("heading", { name: "前確依頼" }).closest("a")).toHaveAttribute("href", "/system/zenkaku");
     expect(screen.getByRole("heading", { name: "テレマ コール集計" }).closest("a")).toHaveAttribute("href", "/system/call-metrics");
     expect(screen.getByRole("heading", { name: "契約書管理" }).closest("a")).toHaveAttribute("href", "/system/contracts");
     expect(screen.getByRole("heading", { name: "関電トスポータル" }).closest("a")).toHaveAttribute("href", "/p/toss");

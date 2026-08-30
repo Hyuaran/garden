@@ -1,7 +1,7 @@
 import type { GardenRole } from "@/app/root/_constants/types";
 import { isRoleAtLeast } from "@/app/root/_constants/types";
 
-export type SystemIcon = "home" | "person" | "clock" | "chart" | "document" | "folder" | "message" | "report" | "salary" | "portal";
+export type SystemIcon = "home" | "person" | "clock" | "shift" | "zenkaku" | "chart" | "document" | "folder" | "message" | "report" | "salary" | "portal";
 
 export type SystemMenuItem = {
   label: string;
@@ -24,8 +24,10 @@ export function shouldHideSidebar(role: GardenRole) {
 
 export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "ホーム", description: "社内システムの入口です。", icon: "home", href: "/system" },
-  { label: "マイページ", description: "自分の情報の確認と、住所・口座・交通費などの届出を出せます。前確依頼もここから。", icon: "person", href: "/system/mypage" },
+  { label: "自分の情報", description: "自分の登録情報を確認し、住所・口座・交通費などの届出を出せます。", icon: "person", href: "/system/mypage" },
   { label: "勤怠打刻", description: "出勤・退勤の打刻をします。打刻の記録はそのまま勤怠の集計につながります。", icon: "clock", href: "/system/attendance" },
+  { label: "シフト", description: "シフトの提出と勤務予定の確認を行う画面です。", icon: "shift", href: "/system/shift" },
+  { label: "前確依頼", description: "営業IDの登録内容を確認し、取次先へ前確依頼を出します。", icon: "zenkaku", href: "/system/zenkaku" },
   { label: "テレマ コール集計", description: "架電の件数や結果を日ごと・リストごとに見られます。コールセンターへの共有もここから。", icon: "chart", href: "/system/call-metrics" },
   { label: "契約書管理", description: "上位店との契約書を登録して保存漏れを防ぎます。パートナー配布用のひな形もここで作れます。", icon: "document", href: "/system/contracts", minRole: "manager" },
   { label: "関電トスポータル", description: "関西電力のトスアップを受け付けます。入力内容はそのままKintoneへ連携されます。", icon: "folder", href: "/p/toss" },

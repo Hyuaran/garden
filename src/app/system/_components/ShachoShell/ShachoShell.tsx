@@ -49,6 +49,8 @@ export function MenuIcon({ icon }: { icon: SystemIcon }) {
     home: <path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>,
     person: <><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></>,
     clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></>,
+    shift: <><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14l2 2 5-5"/></>,
+    zenkaku: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7M14 3v5h5v3M9 13h4M9 17h2"/><circle cx="17" cy="16" r="3.5"/><path d="M19.5 18.5 22 21"/></>,
     chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>,
     document: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4"/></>,
     folder: <><path d="M4 7h9l3 3h4M4 7v11a1 1 0 0 0 1 1h15a1 1 0 0 0 1-1v-8M9 14h7"/></>,

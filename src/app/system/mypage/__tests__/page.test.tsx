@@ -40,6 +40,7 @@ const profile: MyPageProfile = {
 };
 const baseProps = {
   initialTab: "profile" as const,
+  tabbed: true,
   registered: true,
   employeeName: "社員A",
   canViewSync: false,
@@ -81,6 +82,24 @@ describe("system mypage", () => {
     expect(document.body.textContent).not.toContain("1234");
     expect(document.body.textContent).not.toContain(profile.birthday);
   });
+  it("shows only the requested function in standalone mode", () => {
+    renderMyPage({ ...baseProps, tabbed: false });
+    expect(screen.getByText("System ／ 自分の情報")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "自分の情報" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("誕生日の月日4桁")).toBeInTheDocument();
+  });
+  it.each([
+    ["attendance", "勤怠打刻"],
+    ["shift", "シフト"],
+    ["zenkaku", "前確依頼"],
+  ] as const)("shows standalone %s without profile verification", (initialTab, title) => {
+    renderMyPage({ ...baseProps, initialTab, tabbed: false });
+    expect(screen.getByText(`System ／ ${title}`)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: title, level: 1 })).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("誕生日の月日4桁")).not.toBeInTheDocument();
+  });
   it("leaves theme switching and logout to ShachoShell", () => {
     renderMyPage();
     expect(screen.queryByRole("button", { name: /ダークにする|ライトにする/ })).not.toBeInTheDocument();
@@ -103,8 +122,11 @@ describe("system mypage", () => {
     expect(
       screen.getByRole("button", { name: "連携チェック" }),
     ).toBeInTheDocument();
+    expect(mocks.replace.mock.calls.map(([path]) => path)).toEqual([
+      "/system/attendance", "/system/shift", "/system/zenkaku",
+    ]);
   });
-  it("uses the attendance query tab as the initial tab", () => {
+  it("uses the attendance route as the initial tab", () => {
     renderMyPage({ ...baseProps, initialTab: "attendance", canViewSync: true });
     expect(screen.getByRole("tab", { name: "勤怠打刻" })).toHaveAttribute(
       "aria-selected",
