@@ -65,7 +65,7 @@ export default function CallMetricsClient() {
     <div className={styles.pageShell} data-testid="call-metrics-page-shell">
       <div className={styles.main}>
       <header className={styles.header}>
-        <div><p className={styles.eyebrow}>SYSTEM / CALL METRICS</p><h1>テレマ コール集計</h1></div>
+        <div><p className={styles.eyebrow}>System ／ テレマ コール集計</p><h1>テレマ コール集計</h1></div>
       </header>
 
       <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void load(); }}>

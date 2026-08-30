@@ -59,7 +59,7 @@ describe("system mypage", () => {
   });
   it("renders four tabs in the fixed order and only the gate before unlock", () => {
     renderMyPage();
-    expect(screen.getByText("SYSTEM / MYPAGE")).toBeInTheDocument();
+    expect(screen.getByText("System ／ マイページ")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "マイページ" })).toBeInTheDocument();
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "マイページ",

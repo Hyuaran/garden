@@ -10,7 +10,7 @@
 .pageShell::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--bg); }
 .main { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; margin: 0; color: var(--ink); }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.eyebrow { margin: 0; color: var(--sub); font-size: .8rem; font-weight: 800; letter-spacing: .12em; }
+.eyebrow { margin: 0; color: var(--sub); font-size: .8rem; font-weight: 800; letter-spacing: .08em; }
 .main h1, .main h2 { color: var(--heading); }
 .main h1 { margin: .25rem 0; font-size: clamp(1.6rem, 3vw, 2.4rem); }
 .filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 12px; align-items: end; margin: 24px 0; padding: 18px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-s); }
