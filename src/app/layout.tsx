@@ -58,6 +58,17 @@ export const metadata: Metadata = {
   description: "Garden シリーズ — 社内アプリケーション",
 };
 
+const initialThemeScript = `(() => {
+  let theme = "light";
+  try {
+    const saved = window.localStorage.getItem("garden.theme");
+    if (saved === "dark" || saved === "light") theme = saved;
+  } catch {}
+  const root = document.documentElement;
+  root.setAttribute("data-theme", theme);
+  root.classList.toggle("dark", theme === "dark");
+})();`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const fontVariables = [
     geistSans.variable,
@@ -69,7 +80,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   ].join(" ");
 
   return (
-    <html lang="ja" className={`${fontVariables} h-full antialiased`} data-theme="light">
+    <html lang="ja" className={`${fontVariables} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: initialThemeScript }} />
+      </head>
       <body className="min-h-full flex flex-col">
         {/*
           Provider 階層 (外側 → 内側):

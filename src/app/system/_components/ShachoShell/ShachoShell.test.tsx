@@ -7,12 +7,14 @@ import ShachoShell from "./ShachoShell";
 import { shouldHideSidebar } from "./shacho-shell-config";
 import styles from "./shacho-shell.module.css";
 
-const mocks = vi.hoisted(() => ({ signOut: vi.fn() }));
+const mocks = vi.hoisted(() => ({ signOut: vi.fn(), pathname: "/system" }));
 vi.mock("@/app/_lib/supabase/browser", () => ({ createBrowserClient: () => ({ auth: { signOut: mocks.signOut } }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
 
 const manager = { name: "責任者A", company: "株式会社A", role: "manager" as const };
 function renderShell(activePath = "/system", user: ComponentProps<typeof ShachoShell>["user"] = manager) {
-  return render(<ThemeProvider><ShachoShell activePath={activePath} user={user}><p>本文</p></ShachoShell></ThemeProvider>);
+  mocks.pathname = activePath;
+  return render(<ThemeProvider><ShachoShell user={user}><p>本文</p></ShachoShell></ThemeProvider>);
 }
 
 describe("ShachoShell", () => {
@@ -110,6 +112,24 @@ describe("ShachoShell", () => {
   it("marks contracts as the current System menu item", () => {
     renderShell("/system/contracts");
     expect(screen.getByRole("link", { name: "契約書管理", current: "page" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["/system", "ホーム"],
+    ["/system/mypage", "自分の情報"],
+    ["/system/attendance", "勤怠打刻"],
+    ["/system/shift", "シフト"],
+    ["/system/zenkaku", "前確依頼"],
+    ["/system/call-metrics", "テレマ コール集計"],
+    ["/system/contracts", "契約書管理"],
+  ])("derives the current menu from %s", (pathname, label) => {
+    renderShell(pathname);
+    expect(screen.getByRole("link", { name: label, current: "page" })).toBeInTheDocument();
+  });
+
+  it("keeps the attendance item current on its nested sync page", () => {
+    renderShell("/system/attendance/sync-status");
+    expect(screen.getByRole("link", { name: "勤怠打刻", current: "page" })).toBeInTheDocument();
   });
 
   it("filters the rail with the shared staff visibility matrix", () => {

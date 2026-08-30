@@ -13,15 +13,14 @@ const css = readFileSync(
 );
 
 describe("System transition loading screen", () => {
-  it("uses the Shacho light and dark page backgrounds", () => {
-    expect(css).toMatch(/:global\(:root\) \.screen[^{]*\{[^}]*#f4f5f7/);
-    expect(css).toMatch(/@media \(prefers-color-scheme: dark\)/);
-    expect(css).toMatch(/:root:not\(\[data-theme="light"\]\)[^{]*\.screen[^{]*\{[^}]*#0c1726/);
-    expect(css).toMatch(/:root\[data-theme="dark"\][^{]*\.screen[^{]*\{[^}]*#0c1726/);
-    expect(css).toContain("min-height: 100dvh");
+  it("stays inside the shared shell content area", () => {
+    expect(css).toContain("min-height: min(240px, 35vh)");
+    expect(css).toContain("background: transparent");
+    expect(css).not.toContain("100dvh");
+    expect(css).not.toMatch(/#f4f5f7|#0c1726/);
   });
 
-  it("renders an empty full-screen surface without a spinner", () => {
+  it("renders an empty content placeholder without a spinner", () => {
     const { container } = render(<Loading />);
     expect(screen.getByTestId("shacho-transition-loading")).toBeEmptyDOMElement();
     expect(container.querySelector("[role='progressbar']")).not.toBeInTheDocument();

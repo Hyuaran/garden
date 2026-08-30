@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
-import ShachoShell from "../../_components/ShachoShell/ShachoShell";
 import { shouldHideSidebar } from "../../_components/ShachoShell/shacho-shell-config";
 import { buildMyPageProfile } from "../_lib/mypage-profile.server";
 import MyPageClient from "../MyPageClient";
@@ -23,13 +22,7 @@ export default async function MyPageSectionPage({ section }: { section: MyPageTa
   const tabbed = shouldHideSidebar(role);
   const initialProfile: MyPageProfile | null = employee && !birthdayRegistered && (tabbed || section === "profile") ? await buildMyPageProfile(employee) : null;
   const postalDataStatus = (await supabase.from("system_postal_datasets").select("source_date,imported_at").eq("active", true).maybeSingle()).data;
-  const company = employee?.company_id ? (await supabase.from("root_companies").select("company_name").eq("company_id", employee.company_id).maybeSingle()).data : null;
-
-  return <ShachoShell activePath={MY_PAGE_ROUTES[section]} user={{
-    name: String(employee?.name ?? "未登録"),
-    company: String(company?.company_name ?? "所属会社未登録"),
-    role,
-  }}><MyPageClient
+  return <MyPageClient
     initialTab={section}
     tabbed={tabbed}
     registered={Boolean(employee)}
@@ -41,5 +34,5 @@ export default async function MyPageSectionPage({ section }: { section: MyPageTa
       sourceDate: String(postalDataStatus.source_date),
       importedAt: String(postalDataStatus.imported_at),
     } : null}
-  /></ShachoShell>;
+  />;
 }

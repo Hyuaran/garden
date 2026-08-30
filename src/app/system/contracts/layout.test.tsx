@@ -1,4 +1,3 @@
-import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), redirect: vi.fn() }));
@@ -21,14 +20,9 @@ function client() {
 describe("contracts layout", () => {
   beforeEach(() => { mocks.createServerClient.mockReset(); mocks.redirect.mockReset(); });
 
-  it("renders inside ShachoShell with contracts selected", async () => {
+  it("returns only the authorized contract content", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     const child = <p>契約書本文</p>;
-    const shell = await ContractsLayout({ children: child }) as ReactElement<{ activePath: string; user: { name: string; company: string; role: string }; children: ReactElement }>;
-    expect(shell.props).toMatchObject({
-      activePath: "/system/contracts",
-      user: { name: "責任者A", company: "株式会社A", role: "manager" },
-    });
-    expect(shell.props.children).toBe(child);
+    expect(await ContractsLayout({ children: child })).toBe(child);
   });
 });
