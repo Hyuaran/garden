@@ -40,7 +40,7 @@ export default async function GardenHomePage() {
 
   const { data: emp } = await supabase
     .from("root_employees")
-    .select("garden_role")
+    .select("garden_role,name")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -55,6 +55,6 @@ export default async function GardenHomePage() {
   const visibleModules = getVisibleModules(role);
 
   return (
-    <GardenHomeClient role={role} visibleModules={visibleModules} />
+    <GardenHomeClient role={role} visibleModules={visibleModules} employeeName={emp?.name ?? null} />
   );
 }
