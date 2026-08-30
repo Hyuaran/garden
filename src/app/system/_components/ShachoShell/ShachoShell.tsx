@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { type CSSProperties, type ReactNode } from "react";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useTheme } from "@/app/_lib/theme/ThemeProvider";
@@ -13,7 +14,6 @@ import styles from "./shacho-shell.module.css";
 
 type Props = {
   children: ReactNode;
-  activePath: string;
   user: { name: string; company: string; role: GardenRole };
 };
 
@@ -61,7 +61,19 @@ export function MenuIcon({ icon }: { icon: SystemIcon }) {
   return <svg className={styles.menuIcon} viewBox="0 0 24 24" aria-hidden="true">{icons[icon]}</svg>;
 }
 
-export default function ShachoShell({ children, activePath, user }: Props) {
+export function resolveSystemActivePath(pathname: string): string | null {
+  const matches = SYSTEM_MENU_ITEMS
+    .filter((item) => item.href?.startsWith("/system"))
+    .sort((a, b) => (b.href?.length ?? 0) - (a.href?.length ?? 0));
+  return matches.find((item) => {
+    if (!item.href) return false;
+    return pathname === item.href || (item.href !== "/system" && pathname.startsWith(`${item.href}/`));
+  })?.href ?? null;
+}
+
+export default function ShachoShell({ children, user }: Props) {
+  const pathname = usePathname();
+  const activePath = resolveSystemActivePath(pathname);
   const { theme, toggleTheme } = useTheme();
   async function logout() {
     await createBrowserClient().auth.signOut();

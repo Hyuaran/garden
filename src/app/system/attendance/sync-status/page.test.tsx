@@ -18,10 +18,9 @@ function client() {
 
 describe("attendance sync status page", () => {
   beforeEach(() => { mocks.createServerClient.mockReset(); mocks.redirect.mockReset(); });
-  it("renders inside ShachoShell with attendance selected", async () => {
+  it("returns only the authorized sync status content", async () => {
     mocks.createServerClient.mockResolvedValue(client());
-    const shell = await SyncStatusPage() as ReactElement<{ activePath:string; user:{name:string;company:string;role:string}; children:ReactElement }>;
-    expect(shell.props).toMatchObject({ activePath:"/system/attendance", user:{name:"責任者A",company:"株式会社A",role:"manager"} });
-    expect(shell.props.children.type).toBeTypeOf("function");
+    const page = await SyncStatusPage() as ReactElement;
+    expect(page.type).toBeTypeOf("function");
   });
 });

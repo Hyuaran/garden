@@ -1,16 +1,5 @@
 :global(:root) .screen {
-  --transition-background: #f4f5f7;
   width: 100%;
-  min-height: 100dvh;
-  background: var(--transition-background);
-}
-
-@media (prefers-color-scheme: dark) {
-  :global(:root:not([data-theme="light"])) .screen {
-    --transition-background: #0c1726;
-  }
-}
-
-:global(:root[data-theme="dark"]) .screen {
-  --transition-background: #0c1726;
+  min-height: min(240px, 35vh);
+  background: transparent;
 }
