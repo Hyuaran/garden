@@ -5,14 +5,27 @@ import { extractContractPdfPages } from "./_lib/contract-pdf.client";
 import styles from "./contracts.module.css";
 
 type DriveEntry = { id: string; name: string; mimeType: string; webViewLink: string | null; modifiedTime: string | null };
+type DriveBreadcrumb = { id: string | null; name: string };
 type ApiResponse = {
-  companies?: ContractCompany[]; rows?: ContractRow[]; entries?: DriveEntry[];
+  companies?: ContractCompany[]; rows?: ContractRow[]; entries?: DriveEntry[]; breadcrumbs?: DriveBreadcrumb[];
   error?: string; draft?: ContractDraft; driveStatus?: string; files?: { status?: string };
 };
 const FOLDER = "application/vnd.google-apps.folder";
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const VIEW_MODE_KEY = "garden.contracts.viewMode";
+const ROOT_PATH: DriveBreadcrumb[] = [{ id: null, name: "契約書" }];
 type ViewMode = "list" | "grid";
+
+function currentFolderId() {
+  return new URLSearchParams(window.location.search).get("f");
+}
+
+function pushFolderUrl(folderId: string | null) {
+  const url = new URL(window.location.href);
+  if (folderId) url.searchParams.set("f", folderId);
+  else url.searchParams.delete("f");
+  window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
 
 function readViewMode(): ViewMode {
   try {
@@ -61,7 +74,7 @@ export default function ContractsPage() {
   const [companies, setCompanies] = useState<ContractCompany[]>([]);
   const [rows, setRows] = useState<ContractRow[]>([]);
   const [entries, setEntries] = useState<DriveEntry[]>([]);
-  const [path, setPath] = useState<{ id: string | null; name: string }[]>([{ id: null, name: "契約書" }]);
+  const [path, setPath] = useState<DriveBreadcrumb[]>(ROOT_PATH);
   const [file, setFile] = useState<File | null>(null);
   const [draft, setDraft] = useState<ContractDraft | null>(null);
   const [sourcePages, setSourcePages] = useState<string[]>([]);
@@ -81,7 +94,7 @@ export default function ContractsPage() {
       setCompanies(json.companies ?? []); setRows(json.rows ?? []);
     } catch { setMessage("契約書を読み込めませんでした。時間をおいて再度お試しください。"); }
   }
-  async function browse(folderId: string | null) {
+  async function browse(folderId: string | null, fallbackPath = ROOT_PATH) {
     setLoading("browse");
     try {
       const query = folderId ? `?browse=1&folderId=${encodeURIComponent(folderId)}` : "?browse=1";
@@ -89,13 +102,30 @@ export default function ContractsPage() {
       const json = await responseBody(response);
       if (!response.ok || !json) return setMessage(response.status === 403 ? "この画面を見る権限がありません。管理者へ連絡してください。" : json?.error ?? "Driveを表示できませんでした。管理者へ連絡してください。");
       setEntries(json.entries ?? []);
+      setPath(json.breadcrumbs ?? fallbackPath);
     } catch { setMessage("Driveを表示できませんでした。管理者へ連絡してください。"); } finally { setLoading(null); }
   }
   useEffect(() => {
     // Initial API hydration is intentionally performed once on mount.
     setViewMode(readViewMode());
-    void Promise.all([loadLedger(), browse(null)]);
+    void Promise.all([loadLedger(), browse(currentFolderId())]);
+    const restoreFolderFromUrl = () => void browse(currentFolderId());
+    window.addEventListener("popstate", restoreFolderFromUrl);
+    return () => window.removeEventListener("popstate", restoreFolderFromUrl);
   }, []);
+  function openFolder(entry: DriveEntry) {
+    const nextPath = [...path, { id: entry.id, name: entry.name }];
+    pushFolderUrl(entry.id);
+    setPath(nextPath);
+    void browse(entry.id, nextPath);
+  }
+  function openBreadcrumb(index: number) {
+    const nextPath = path.slice(0, index + 1);
+    const folderId = nextPath.at(-1)?.id ?? null;
+    pushFolderUrl(folderId);
+    setPath(nextPath);
+    void browse(folderId, nextPath);
+  }
   function changeViewMode(mode: ViewMode) {
     setViewMode(mode);
     storeViewMode(mode);
@@ -164,14 +194,14 @@ export default function ContractsPage() {
         <button type="button" aria-label="リスト表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon/></button>
         <button type="button" aria-label="グリッド表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon/></button>
       </div></div><nav className={styles.breadcrumbs} aria-label="現在のフォルダ">
-        {path.map((part, index) => <button key={`${part.id}-${index}`} onClick={() => { const next = path.slice(0, index + 1); setPath(next); void browse(part.id); }}>{part.name}</button>)}
+        {path.map((part, index) => <button key={`${part.id}-${index}`} onClick={() => openBreadcrumb(index)}>{part.name}</button>)}
       </nav>
       {loading === "browse" ? <p className={styles.loading}><span/>読み込み中…</p> : viewMode === "grid" ?
         <div className={styles.fileGrid} data-testid="contract-grid-view">{entries.map((entry) => entry.mimeType === FOLDER ?
-          <button className={styles.folder} key={entry.id} onClick={() => { setPath([...path, { id: entry.id, name: entry.name }]); void browse(entry.id); }}><DriveFolderIcon/><span>{entry.name}</span></button> :
+          <button className={styles.folder} key={entry.id} onClick={() => openFolder(entry)}><DriveFolderIcon/><span>{entry.name}</span></button> :
           <a className={styles.file} key={entry.id} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer"><DriveFileIcon/><span>{entry.name}</span></a>)}</div> :
         <div className={styles.fileList} data-testid="contract-list-view">{entries.map((entry) => entry.mimeType === FOLDER ?
-          <button className={styles.listRow} key={entry.id} onClick={() => { setPath([...path, { id: entry.id, name: entry.name }]); void browse(entry.id); }}><DriveFolderIcon/><span className={styles.listName}>{entry.name}</span><span aria-hidden="true"/></button> :
+          <button className={styles.listRow} key={entry.id} onClick={() => openFolder(entry)}><DriveFolderIcon/><span className={styles.listName}>{entry.name}</span><span aria-hidden="true"/></button> :
           <div className={styles.listRow} key={entry.id}><DriveFileIcon/><span className={styles.listName}>{entry.name}</span><a className={styles.listOpen} href={entry.webViewLink ?? `https://drive.google.com/open?id=${entry.id}`} target="_blank" rel="noreferrer">開く</a></div>)}</div>}
     </section> : <>
       <section className={`${styles.card} ${styles.registrationCard}`}><h2>上位店契約を登録する</h2>

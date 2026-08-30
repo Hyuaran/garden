@@ -1,9 +1,33 @@
 import {
   findOrCreateSubfolder,
   folderHasFile,
+  getDriveFolderMetadata,
   uploadToFolder,
 } from "@/app/api/bud/expense-drive/_lib/drive";
 import { companyAbbreviation } from "./contract-types";
+const DRIVE_FOLDER = "application/vnd.google-apps.folder";
+export type ContractDriveBreadcrumb = { id: string | null; name: string };
+
+export async function getContractDriveBreadcrumbs(
+  folderId: string,
+  rootId: string,
+): Promise<ContractDriveBreadcrumb[]> {
+  const path: ContractDriveBreadcrumb[] = [];
+  const visited = new Set<string>();
+  let currentId = folderId;
+
+  while (currentId !== rootId) {
+    if (visited.has(currentId)) throw new Error("Drive folder hierarchy contains a cycle");
+    visited.add(currentId);
+    const folder = await getDriveFolderMetadata(currentId);
+    if (folder.mimeType !== DRIVE_FOLDER || !folder.parents[0])
+      throw new Error("Drive folder is outside the contracts root");
+    path.unshift({ id: folder.id, name: folder.name });
+    currentId = folder.parents[0];
+  }
+
+  return [{ id: null, name: "契約書" }, ...path];
+}
 const safe = (v: string) => v.replace(/[\\/:*?"<>|]/g, "_").trim();
 const suffix = (d: Date) =>
   new Intl.DateTimeFormat("en-CA", {

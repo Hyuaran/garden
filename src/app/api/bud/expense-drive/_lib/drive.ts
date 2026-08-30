@@ -75,6 +75,23 @@ export type DriveBrowserEntry = {
   modifiedTime: string | null;
 };
 
+export type DriveFolderMetadata = {
+  id: string;
+  name: string;
+  mimeType: string;
+  parents: string[];
+};
+
+/** 直リンクされたDriveフォルダのパンくずを復元するためのメタデータを取得する。 */
+export async function getDriveFolderMetadata(folderId: string): Promise<DriveFolderMetadata> {
+  const res = await driveFetch(
+    `/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType,parents`,
+  );
+  if (!res.ok) throw new Error(`Drive meta error: ${res.status} ${await res.text()}`);
+  const data = (await res.json()) as Omit<DriveFolderMetadata, "parents"> & { parents?: string[] };
+  return { ...data, parents: data.parents ?? [] };
+}
+
 /** 契約書管理など、フォルダを含む汎用Drive閲覧用。 */
 export async function listDriveFolderEntries(folderId: string): Promise<DriveBrowserEntry[]> {
   const params = new URLSearchParams({

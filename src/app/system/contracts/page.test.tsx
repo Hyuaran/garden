@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import styles from "./contracts.module.css";
 const pdfMocks = vi.hoisted(() => ({ extract: vi.fn() }));
@@ -6,7 +6,10 @@ vi.mock("./_lib/contract-pdf.client", () => ({ extractContractPdfPages: pdfMocks
 import ContractsPage from "./page";
 pdfMocks.extract.mockResolvedValue(["契約書テキスト"]);
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks(); pdfMocks.extract.mockResolvedValue(["契約書テキスト"]); });
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  window.history.replaceState(null, "", "/system/contracts");
+});
 describe("contracts drive browser", () => {
   it("opens a folder from the browse tab through the Drive API", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -23,6 +26,7 @@ describe("contracts drive browser", () => {
     expect(folder).not.toHaveTextContent("📁");
     expect(folder.querySelector("svg")).toHaveClass(styles.driveIcon);
     fireEvent.click(folder);
+    expect(window.location.pathname + window.location.search).toBe("/system/contracts?f=folder-1");
     const fileName = await screen.findByText("契約書.pdf");
     const file = screen.getByRole("link", { name: "開く" });
     expect(file).toHaveAttribute("href", "https://drive.example/pdf");
@@ -59,6 +63,56 @@ describe("contracts drive browser", () => {
     fireEvent.click(screen.getByRole("button", { name: "リスト表示にする" }));
     expect(screen.getByTestId("contract-list-view")).toBeInTheDocument();
     expect(localStorage.getItem("garden.contracts.viewMode")).toBe("list");
+  });
+
+  it("restores a direct folder URL and its breadcrumbs", async () => {
+    window.history.replaceState(null, "", "/system/contracts?f=ash");
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (!String(input).includes("browse"))
+        return new Response(JSON.stringify({ ok: true, companies: [], rows: [] }), { status: 200 });
+      return new Response(JSON.stringify({
+        ok: true,
+        entries: [{ id: "pdf-1", name: "契約書.pdf", mimeType: "application/pdf", webViewLink: "https://drive.example/pdf", modifiedTime: null }],
+        breadcrumbs: [
+          { id: null, name: "契約書" },
+          { id: "top", name: "01_契約書　上位店" },
+          { id: "ash", name: "ASH株式会社_ART" },
+        ],
+      }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ContractsPage />);
+
+    expect(await screen.findByText("契約書.pdf")).toBeInTheDocument();
+    const breadcrumbs = screen.getByRole("navigation", { name: "現在のフォルダ" });
+    expect(breadcrumbs).toContainElement(screen.getByRole("button", { name: /^契約書$/ }));
+    expect(breadcrumbs).toContainElement(screen.getByRole("button", { name: /^01_契約書　上位店$/ }));
+    expect(breadcrumbs).toContainElement(screen.getByRole("button", { name: /^ASH株式会社_ART$/ }));
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("folderId=ash"));
+  });
+
+  it("restores the folder represented by browser history", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (!url.includes("browse")) return new Response(JSON.stringify({ ok: true, companies: [], rows: [] }), { status: 200 });
+      if (url.includes("folderId=top")) return new Response(JSON.stringify({
+        ok: true,
+        entries: [{ id: "ash", name: "ASH株式会社_ART", mimeType: "application/vnd.google-apps.folder", webViewLink: null, modifiedTime: null }],
+        breadcrumbs: [{ id: null, name: "契約書" }, { id: "top", name: "01_契約書　上位店" }],
+      }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, entries: [] }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ContractsPage />);
+    await screen.findByTestId("contract-list-view");
+
+    await act(async () => {
+      window.history.replaceState(null, "", "/system/contracts?f=top");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(await screen.findByRole("button", { name: "ASH株式会社_ART" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^01_契約書　上位店$/ })).toBeInTheDocument();
   });
 });
 
