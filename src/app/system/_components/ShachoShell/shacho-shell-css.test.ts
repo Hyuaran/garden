@@ -11,6 +11,7 @@ const sideRule = css.match(/\.side\{([^}]+)\}/)?.[1] ?? "";
 const sideInnerRule = css.match(/\.sideInner\{([^}]+)\}/)?.[1] ?? "";
 const actionsRule = css.match(/\.actions\{([^}]+)\}/)?.[1] ?? "";
 const mainFullRule = css.match(/\.mainFull\{([^}]+)\}/)?.[1] ?? "";
+const navigationProgressRule = css.match(/\.navigationProgress\{([^}]+)\}/)?.[1] ?? "";
 
 describe("ShachoShell rail layout", () => {
   it("lets tooltips extend beyond the rail without rail scrollbars", () => {
@@ -73,5 +74,14 @@ describe("ShachoShell rail layout", () => {
     expect(mainFullRule).toContain("box-sizing:border-box");
     expect(mainFullRule).not.toContain("max-width");
     expect(css.match(/\.main\{([^}]+)\}/)?.[1]).toContain("max-width:1180px");
+  });
+
+  it("shows a thin theme-colored pending bar without covering content", () => {
+    expect(navigationProgressRule).toContain("position:fixed");
+    expect(navigationProgressRule).toContain("height:2px");
+    expect(navigationProgressRule).toContain("background:var(--teal)");
+    expect(navigationProgressRule).toContain("pointer-events:none");
+    expect(navigationProgressRule).not.toMatch(/(?:width|height):100v/);
+    expect(css).toContain("@keyframes systemNavigationProgress");
   });
 });

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -22,5 +22,17 @@ describe("System shell ownership", () => {
     expect(layout).toContain('localStorage.getItem("garden.theme")');
     expect(layout).toContain('root.setAttribute("data-theme", theme)');
     expect(layout).not.toMatch(/<html[^>]*data-theme="light"/);
+  });
+
+  it("keeps the previous page by removing the System loading boundary", () => {
+    expect(existsSync(resolve(process.cwd(), "src/app/system/loading.tsx"))).toBe(false);
+    expect(existsSync(resolve(process.cwd(), "src/app/_components/ShachoTransitionLoading"))).toBe(false);
+  });
+
+  it("uses the link pending state without replacing main content", () => {
+    const shell = source("src/app/system/_components/ShachoShell/ShachoShell.tsx");
+    expect(shell).toContain("useLinkStatus");
+    expect(shell).toContain('data-testid="system-navigation-pending"');
+    expect(shell).not.toContain("router.push");
   });
 });
