@@ -7,6 +7,7 @@
 .tabs button { flex:0 0 auto; padding:11px 20px; border:0; border-radius:10px 10px 0 0; background:#e9f7f6; color:var(--teal-d); font-weight:700; }
 .tabs button[aria-selected="true"] { background:var(--teal); color:#fff; }
 .tabPanel { padding-top:24px; }
+.standalonePanel { padding-top:16px; }
 .unlockPanel, .comingSoon { max-width:520px; margin:36px auto; padding:36px; text-align:center; background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); }
 .unlockPanel { padding:40px 36px; }
 .unlockPanel p, .comingSoon p { color:var(--sub); }

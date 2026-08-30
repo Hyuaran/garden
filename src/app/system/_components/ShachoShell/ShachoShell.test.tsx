@@ -99,7 +99,7 @@ describe("ShachoShell", () => {
 
   it("marks mypage as the current System menu item", () => {
     renderShell("/system/mypage");
-    expect(screen.getByRole("link", { name: "マイページ", current: "page" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "自分の情報", current: "page" })).toBeInTheDocument();
   });
 
   it("marks call metrics as the current System menu item", () => {
@@ -133,8 +133,24 @@ describe("ShachoShell", () => {
       expect(screen.getByRole("complementary", { name: "Gardenシリーズ" })).toBeInTheDocument();
       expect(screen.getByRole("navigation", { name: "Systemメニュー" })).toBeInTheDocument();
       expect(screen.getByRole("main")).not.toHaveClass(styles.mainFull);
+      for (const label of ["自分の情報", "勤怠打刻", "シフト", "前確依頼"])
+        expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     },
   );
+
+  it("keeps the current menu in the specified order and uses SVG-only new icons", () => {
+    renderShell();
+    const nav = screen.getByRole("navigation", { name: "Systemメニュー" });
+    expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "ホーム", "自分の情報", "勤怠打刻", "シフト", "前確依頼",
+      "テレマ コール集計", "契約書管理", "関電トスポータル",
+    ]);
+    for (const label of ["シフト", "前確依頼"]) {
+      const link = within(nav).getByRole("link", { name: label });
+      expect(link.querySelector("svg")).not.toBeNull();
+      expect(link.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+    }
+  });
 
   it.each(["closer", "toss", "outsource"] as const)(
     "hides both sidebars but keeps shared actions for %s",
