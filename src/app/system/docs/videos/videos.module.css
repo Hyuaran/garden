@@ -1,7 +1,8 @@
 .library { display:grid; gap:32px; }
 .library section { min-width:0; }
 .library h2 { margin:0 0 16px; color:var(--heading); }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr)); gap:20px; }
+/* auto-fill にすることで、区分の本数が1本でも列幅が他の区分と揃う。 */
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr)); gap:20px; }
 .card { min-width:0; overflow:hidden; border:1px solid var(--line); border-radius:18px; background:var(--card); box-shadow:var(--shadow); }
 .player { display:block; width:100%; max-width:100%; aspect-ratio:16/9; object-fit:cover; background:#000; }
 .player:focus-visible { outline:3px solid var(--teal-d); outline-offset:-3px; }
