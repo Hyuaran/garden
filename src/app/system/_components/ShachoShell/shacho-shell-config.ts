@@ -25,6 +25,7 @@ export function shouldHideSidebar(role: GardenRole) {
 export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "ホーム", description: "社内システムの入口です。", icon: "home", href: "/system" },
   { label: "資料", description: "会社説明など、社内で読む資料をまとめています。", icon: "book", href: "/system/docs" },
+  { label: "入社手続き", description: "入社時の情報を入力し、提出した内容を確認できます。", icon: "document", href: "/system/onboarding" },
   { label: "自分の情報", description: "自分の登録情報を確認し、住所・口座・交通費などの届出を出せます。", icon: "person", href: "/system/mypage" },
   { label: "勤怠打刻", description: "出勤・退勤の打刻をします。打刻の記録はそのまま勤怠の集計につながります。", icon: "clock", href: "/system/attendance" },
   { label: "シフト", description: "シフトの提出と勤務予定の確認を行う画面です。", icon: "shift", href: "/system/shift" },
