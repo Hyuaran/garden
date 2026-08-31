@@ -3,17 +3,52 @@ import path from "node:path";
 import fontkit from "@pdf-lib/fontkit";
 import { AlignmentType, BorderStyle, Document, Header, HeadingLevel, Packer, Paragraph, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType } from "docx";
 import JSZip from "jszip";
-import { degrees, PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { degrees, PDFDocument, rgb, StandardFonts, type PDFFont } from "pdf-lib";
 import type { ContractCompany } from "./contract-types";
 import { extractContractLayout, type SourceBlock } from "./contract-layout.server";
 
-export const DRAFT_WATERMARK = { degrees: 45, opacity: 0.15, color: 0.65 } as const;
+export const DRAFT_WATERMARK = { diagonalRatio: 0.8, opacity: 0.15, color: 0.65 } as const;
+const WORD_PAGE_SIZE = { width: 11906, height: 16838 };
 // PDF抽出で数値・通貨・単位の間に入る空白/改行も含める。通貨記号だけの金額も対象。
 const MONEY = /(?:[¥￥]\s*[\d０-９][\d０-９,，.．]*(?:\s*(?:億|万|千|百))*(?:\s*円)?|[\d０-９][\d０-９,，.．]*(?:\s*(?:億|万|千|百))*\s*(?:円|％|%|割))(?:\s*[/／]\s*件)?/g;
 const DATE = /(?:令和|平成|昭和)\s*[元\d０-９]+年\s*[\d０-９]+月(?:\s*(?:[\d０-９]+日|末日))?|[\d０-９]{4}\s*年\s*[\d０-９]{1,2}\s*月(?:\s*(?:[\d０-９]{1,2}\s*日|末日))?|(?:19|20)\d{2}\s*[/.-]\s*\d{1,2}(?:\s*[/.-]\s*\d{1,2})?/g;
 const ADDRESS = /(?:〒\s*)?[0-9０-９]{3}[-ー−]?[0-9０-９]{4}|(?:東京都|北海道|大阪府|京都府|[一-龥]{2,3}県)[^\n]{0,40}(?:市|区|町|村)[^\n]*/g;
-const REPRESENTATIVE = /(?:代表取締役|代表社員|代表者|取締役)[ \t　:：]*[^\n、。]{2,60}/g;
 const BLANK_COMPANY = "＿＿＿＿＿＿＿＿＿＿";
+// 会社名は先に伏せられる。署名欄のラベル以外の前置きがある行は対象にしない。
+const SIGNATURE = /^([ \t　]*(?:[（(]?[甲乙丙丁][）)]?[ \t　]*[:：]?[ \t　]*)?(?:[_＿]+[ \t　]*)?(?:代表者(?:名)?[ \t　]*[:：][ \t　]*)?)(?:代表取締役(?:社長)?|代表社員|代表者)[ \t　:：]+([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々ー＿_]+(?:[ \t　]+[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々ー＿_]+)?)[ \t　]*$/u;
+function maskSignatureField(line: string) {
+  const stamp = line.match(/[ \t　]*(?:[（(][ \t　]*印[ \t　]*[）)]|[ \t　]+印)[ \t　]*$/)?.[0] ?? "";
+  const match = SIGNATURE.exec(stamp ? line.slice(0, -stamp.length) : line);
+  if (!match) return line;
+  const name = match[2].replace(/[ \t　]/g, "");
+  // 助詞候補を含む氏名も曖昧として残す。条文を消さないことを優先する。
+  if ([...name].length < 2 || [...name].length > 10 || /[のがはをにと]/.test(name)) return line;
+  return `${match[1]}＿＿＿＿${stamp}`;
+}
+export function maskRepresentativeSignatures(source: string) {
+  return source.replace(/[^\r\n]+/g, (line) => {
+    // 横並びの甲乙署名がPDF抽出で一行になる場合も、両欄が完全一致したときだけ伏せる。
+    const fields = line.split(/(?<=印)([ \t　]+)(?=代表取締役|代表社員|代表者)/u);
+    if (fields.length === 3) {
+      const left = maskSignatureField(fields[0]), right = maskSignatureField(fields[2]);
+      if (left !== fields[0] && right !== fields[2]) return left + fields[1] + right;
+    }
+    return maskSignatureField(line);
+  });
+}
+
+export function draftWatermarkGeometry(width: number, height: number, font: Pick<PDFFont, "widthOfTextAtSize" | "heightAtSize">) {
+  const diagonal = Math.hypot(width, height);
+  const size = diagonal * DRAFT_WATERMARK.diagonalRatio / font.widthOfTextAtSize("DRAFT", 1);
+  const textWidth = font.widthOfTextAtSize("DRAFT", size);
+  // DRAFTは大文字のみ。ディセンダーを含めず、字面の中心を用紙中央に置く。
+  const textHeight = font.heightAtSize(size, { descender: false });
+  // 字高の半分を各辺から引いた領域の対角方向。拡大後も文字の端が切れない。
+  const angle = Math.atan2(Math.max(height - textHeight, 1), Math.max(width - textHeight, 1));
+  return { diagonal, size, textWidth, textHeight, degrees: angle * 180 / Math.PI,
+    x: width / 2 - textWidth / 2 * Math.cos(angle) + textHeight / 2 * Math.sin(angle),
+    y: height / 2 - textWidth / 2 * Math.sin(angle) - textHeight / 2 * Math.cos(angle) };
+}
 const clean = (value: string) => value.replace(/[\u0000-\u001f]/g, "").trim();
 const startsParagraph = (line: string) =>
   /^(?:第[一二三四五六七八九十\d０-９]+条|[一二三四五六七八九十\d０-９]+[.．、]|[（(][一二三四五六七八九十\d０-９]+[）)]|[①-⑳※]|拝啓|敬具)/.test(line);
@@ -55,7 +90,7 @@ function masker(options: MaskOptions) {
     .sort((a, b) => b.length - a.length)
     .map((term) => [...term].map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*"));
   const forbidden = terms.length ? new RegExp(terms.join("|"), "g") : /$^/g;
-  return (source: string) => normalized(source).replace(forbidden, BLANK_COMPANY)
+  return (source: string) => maskRepresentativeSignatures(normalized(source).replace(forbidden, BLANK_COMPANY)
     .replace(/(?:株式会社|有限会社|合同会社)[^\s、。「」（）()]{1,40}|[一-龥ァ-ヶーA-Za-z0-9・]{2,40}(?:株式会社|有限会社|合同会社)/g, BLANK_COMPANY)
     .replace(/[^\n、。:：]{0,25}(?:事業本部|事業部|営業部|営業グループ|営業課|管理部|管理課|担当部署|営業所)/g, "＿＿＿＿")
     .replace(/(?:担当(?:者)?|連絡先)\s*[:：]\s*[^\n、。]+/g, "＿＿＿＿")
@@ -63,7 +98,7 @@ function masker(options: MaskOptions) {
     .replace(/第\s*[\d０-９]+(?:\s*[-‐‑–ー−/]\s*[\d０-９]+)+\s*号|(?:管理番号|文書番号|通知番号)\s*[:：]?\s*[A-Za-z\d０-９\-_/]+/g, "＿＿＿＿")
     .replace(/\b[a-f\d]{32,64}\b/gi, "＿＿＿＿")
     .replace(/(?:住\s*所|所在地)\s*[:：]\s*[^\n]+/g, "住所：＿＿＿＿")
-    .replace(ADDRESS, "").replace(REPRESENTATIVE, "＿＿＿＿")
+    .replace(ADDRESS, ""))
     .replace(MONEY, "＿＿＿＿").replace(DATE, "＿＿年＿＿月＿＿日");
 }
 
@@ -119,9 +154,12 @@ async function addWordWatermark(buffer: Buffer) {
   const headerPath = Object.keys(zip.files).find((name) => /^word\/header\d+\.xml$/.test(name));
   if (!headerPath) return buffer;
   const xml = await zip.file(headerPath)!.async("string");
-  const watermark = `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:pict><v:shape id="GardenDraftWatermark" type="#_x0000_t136" style="position:absolute;width:460pt;height:110pt;rotation:315;z-index:-251654144;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" fillcolor="#d9d9d9" stroked="f"><v:textpath style="font-family:&quot;Yu Gothic&quot;;font-size:1pt" string="DRAFT"/></v:shape></w:pict></w:r></w:p>`;
-  const updated = xml.replace("<w:hdr ", '<w:hdr xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" ')
-    .replace(/<w:p>[\s\S]*?<w:t[^>]*>DRAFT<\/w:t>[\s\S]*?<\/w:p>/, watermark);
+  const metrics = await PDFDocument.create();
+  const geometry = draftWatermarkGeometry(WORD_PAGE_SIZE.width / 20, WORD_PAGE_SIZE.height / 20,
+    await metrics.embedFont(StandardFonts.HelveticaBold));
+  const watermark = `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:pict><v:shape id="GardenDraftWatermark" type="#_x0000_t136" style="position:absolute;width:${geometry.textWidth}pt;height:${geometry.textHeight}pt;rotation:${360 - geometry.degrees};z-index:-251654144;mso-position-horizontal:center;mso-position-horizontal-relative:page;mso-position-vertical:center;mso-position-vertical-relative:page" fillcolor="#d9d9d9" stroked="f"><v:textpath style="font-family:&quot;Yu Gothic&quot;;font-size:1pt" string="DRAFT"/></v:shape></w:pict></w:r></w:p>`;
+  // docxのHeaderにはVML/Officeの名前空間が既にある。重複属性を挿入しない。
+  const updated = xml.replace(/<w:p>[\s\S]*?<w:t[^>]*>DRAFT<\/w:t>[\s\S]*?<\/w:p>/, watermark);
   zip.file(headerPath, updated);
   return Buffer.from(await zip.generateAsync({ type: "uint8array" }));
 }
@@ -160,7 +198,7 @@ async function buildDocx(content: TemplateContent, issuer: ContractCompany) {
     styles: { default: { document: { run: { font: "Yu Gothic", size: 22, color: "111111" }, paragraph: { spacing: { line: 360 } } },
       heading2: { run: { font: "Yu Gothic", size: 28, bold: true, color: "111111" }, paragraph: { spacing: { before: 220, after: 100 }, keepNext: true } } } },
     sections: [{
-      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, right: 1134, bottom: 907, left: 1134 } } },
+      properties: { page: { size: WORD_PAGE_SIZE, margin: { top: 1134, right: 1134, bottom: 907, left: 1134 } } },
       headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.CENTER,
         children: [new TextRun({ text: "DRAFT", color: "D9D9D9", size: 96 })] })] }) },
       children: [
@@ -187,10 +225,11 @@ async function buildPdf(content: TemplateContent, issuer: ContractCompany) {
   const watermarkFont = await pdf.embedFont(StandardFonts.HelveticaBold);
   const width = 595.28, height = 841.89, left = 56, right = 56, bottom = 48;
   let page = pdf.addPage([width, height]), y = height - 52;
-  const watermark = () => page.drawText("DRAFT", { x: width * 0.18, y: height * 0.35,
-    size: Math.min(width, height) * 0.18, font: watermarkFont,
+  const draft = draftWatermarkGeometry(width, height, watermarkFont);
+  const watermark = () => page.drawText("DRAFT", { x: draft.x, y: draft.y,
+    size: draft.size, font: watermarkFont,
     color: rgb(DRAFT_WATERMARK.color, DRAFT_WATERMARK.color, DRAFT_WATERMARK.color),
-    rotate: degrees(DRAFT_WATERMARK.degrees), opacity: DRAFT_WATERMARK.opacity });
+    rotate: degrees(draft.degrees), opacity: DRAFT_WATERMARK.opacity });
   const nextPage = () => { watermark(); page = pdf.addPage([width, height]); y = height - 52; };
   const drawLines = (lines: string[], size: number, lineHeight: number, x = left) => {
     for (const line of lines) { if (y < bottom + lineHeight) nextPage();
