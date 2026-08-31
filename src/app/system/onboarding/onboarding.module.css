@@ -5,7 +5,7 @@
 .header { padding-right:230px; min-height:86px; margin-bottom:20px; }
 .header h1 { margin:4px 0 12px; font-size:30px; }
 .pageShell h1,.pageShell h2,.pageShell h3,.pageShell h4 { color:var(--heading); font-family:inherit; line-height:1.6; font-weight:700; }
-.eyebrow,.hint,.progress { color:var(--sub); }
+.eyebrow,.hint { color:var(--sub); }
 .eyebrow { margin:0; font-size:12px; font-weight:700; }
 .panel { width:100%; max-width:780px; margin:0 auto; padding:28px; border:1px solid var(--line); border-radius:22px; background:var(--card); box-shadow:0 4px 14px rgba(16,35,63,.07); }
 .panel h2 { margin:0 0 12px; font-size:23px; }.panel h2:focus { outline:none; }
@@ -14,7 +14,12 @@
 .field input,.field select { display:block; min-width:0; width:100%; max-width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; color:var(--ink); background:var(--card); font:inherit; font-size:16px; }
 .inputWithButton { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:start; }
 .warning { display:block; padding:10px; color:var(--warning-ink); background:var(--warning-bg); border-radius:8px; font-size:13px; font-weight:400; }
-.hint { font-size:13px; font-weight:400; }.progress { margin:0 0 6px; font-size:13px; }
+.hint { font-size:13px; font-weight:400; }
+.stepProgress { display:grid; align-items:center; gap:5px; width:100%; min-width:0; margin:0 0 10px; }
+.stepProgressCell { display:block; min-width:0; height:6px; border-radius:999px; background:var(--line); }
+.stepProgressCell[data-step-status="passed"],.stepProgressCell[data-step-status="current"] { background:var(--accent); }
+.stepProgressCell[data-step-status="passed"] { opacity:.68; }
+.stepProgressCell[data-step-status="current"] { height:10px; }
 .noticeLines { white-space:pre-wrap; margin:0; }
 .actions { display:flex; flex-wrap:wrap; gap:10px; }
 .pageShell button,.button { display:inline-flex; align-items:center; justify-content:center; max-width:100%; min-height:44px; padding:9px 15px; border:1px solid var(--accent); border-radius:10px; color:var(--accent); background:var(--card); font:inherit; font-weight:700; cursor:pointer; text-decoration:none; }

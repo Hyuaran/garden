@@ -15,6 +15,17 @@ async function next(index: number) {
   fireEvent.click(screen.getByRole("button", { name: "次へ" }));
   await screen.findByRole("heading", { name: STEPS[index] });
 }
+function expectStepProgress(container: HTMLElement, stepIndex: number) {
+  const current = stepIndex + 1;
+  const progress = screen.getByRole("progressbar", { name: `全${STEPS.length}画面のうち ${current}画面目` });
+  expect(progress).toHaveAttribute("aria-valuemin", "1");
+  expect(progress).toHaveAttribute("aria-valuemax", String(STEPS.length));
+  expect(progress).toHaveAttribute("aria-valuenow", String(current));
+  expect(screen.queryByText(new RegExp(`${STEPS.length}のうち`))).toBeNull();
+  const cells = [...container.querySelectorAll("[data-step-status]")];
+  expect(cells).toHaveLength(STEPS.length);
+  expect(cells.map(cell => cell.getAttribute("data-step-status"))).toEqual(STEPS.map((_, index) => index < stepIndex ? "passed" : index === stepIndex ? "current" : "upcoming"));
+}
 
 describe("11画面の入社手続き", () => {
   beforeEach(() => {
@@ -39,11 +50,17 @@ describe("11画面の入社手続き", () => {
     expect(screen.queryByLabelText(/マイナンバー|個人番号/)).toBeNull();
     expect(container.querySelector("[required]")).toBeNull();
   });
+  it("進み具合は画面数から作った横バーで表示し、文字の進捗は出さない", async () => {
+    const { container } = render(<OnboardingClient initial={initial()} />);
+    expectStepProgress(container, 0);
+    for (let index = 1; index <= 5; index++) await next(index);
+    expectStepProgress(container, 5);
+  });
   it("空欄・同意なしでも11画面を順に進んで提出でき、進むたび保存する", async () => {
-    render(<OnboardingClient initial={initial()} />);
+    const { container } = render(<OnboardingClient initial={initial()} />);
     for (let index = 1; index < STEPS.length; index++) await next(index);
     expect(requests).toHaveLength(10); expect(requests.every(r => r.action === "save")).toBe(true);
-    expect(screen.getByText(`${STEPS.length}のうち ${STEPS.length}番目`)).toBeInTheDocument();
+    expectStepProgress(container, STEPS.length - 1);
     expect(screen.getAllByText("未入力").length).toBeGreaterThan(10);
     fireEvent.click(screen.getByRole("button", { name: "提出する" }));
     await screen.findByRole("heading", { name: "入社手続きを提出しました" });

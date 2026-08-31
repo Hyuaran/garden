@@ -12,6 +12,25 @@ type Address = { address: string; addressKana: string };
 type BankChoice = { bankName: string; bankCode: string };
 type BranchChoice = { branchName: string; branchCode: string };
 
+function StepProgress({ step }: { step: number }) {
+  const total = STEPS.length;
+  const current = step + 1;
+  return <div
+    className={styles.stepProgress}
+    style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}
+    role="progressbar"
+    aria-label={`全${total}画面のうち ${current}画面目`}
+    aria-valuemin={1}
+    aria-valuemax={total}
+    aria-valuenow={current}
+  >
+    {Array.from({ length: total }, (_, index) => {
+      const status = index < step ? "passed" : index === step ? "current" : "upcoming";
+      return <span className={styles.stepProgressCell} data-step-status={status} aria-hidden="true" key={STEPS[index]} />;
+    })}
+  </div>;
+}
+
 export default function OnboardingClient({ initial }: { initial: OnboardingRecord }) {
   const router = useRouter();
   const [values, setValues] = useState(initial.values);
@@ -217,7 +236,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   </section>;
 
   return <section className={styles.panel}>
-    <p className={styles.progress}>{STEPS.length}のうち {step + 1}番目</p>
+    <StepProgress step={step} />
     <h2 ref={heading} tabIndex={-1}>{STEPS[step]}</h2>
     <p className={styles.hint}>空欄のままでも進めます。分かる範囲で入力してください。</p>
     <form noValidate onSubmit={event => { event.preventDefault(); void save(step < STEPS.length - 1 ? step + 1 : undefined, step === STEPS.length - 1); }}>
