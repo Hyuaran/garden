@@ -6,10 +6,10 @@ import { parseInput } from "./onboarding";
 import { adminInputFromRow, buildAdminList, initialAdminRecord, parseAdminInput, type AdminInput, type AdminListItem, type AdminOnboardingRecord } from "./onboarding-admin";
 
 const ADMIN_ONBOARDING_COLUMNS = `${ONBOARDING_COLUMNS},office,weekly_hours,health_insurance,pension_insurance,employment_insurance,tax_class,salary_kind,base_salary,allowances,commute_fixed_monthly,commute_cap_monthly,admin_updated_at`;
-const EMPLOYEE_COLUMNS = "employee_id,name,hire_date,birthday";
+const EMPLOYEE_COLUMNS = "employee_id,name,hire_date,birthday,company_id";
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerClient>>;
-type AdminContext = { supabase: SupabaseClient; managerEmployeeId: string };
+export type AdminContext = { supabase: SupabaseClient; managerEmployeeId: string };
 
 export async function onboardingAdminContext(): Promise<AdminContext> {
   const supabase = await createServerClient();
@@ -22,13 +22,13 @@ export async function onboardingAdminContext(): Promise<AdminContext> {
 }
 
 async function readEmployees(supabase: SupabaseClient, employeeIds: string[]) {
-  if (!employeeIds.length) return new Map<string, { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null }>();
+  if (!employeeIds.length) return new Map<string, { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null }>();
   const { data, error } = await supabase.from("root_employees").select(EMPLOYEE_COLUMNS).in("employee_id", employeeIds).is("deleted_at", null);
   if (error) throw databaseError(error);
-  return new Map(((data ?? []) as Array<{ employee_id: string; name: string | null; hire_date: string | null; birthday: string | null }>).map(employee => [employee.employee_id, employee]));
+  return new Map(((data ?? []) as Array<{ employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null }>).map(employee => [employee.employee_id, employee]));
 }
 
-function recordFromRow(row: Record<string, unknown>, employee: { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null }): AdminOnboardingRecord {
+function recordFromRow(row: Record<string, unknown>, employee: { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null }): AdminOnboardingRecord {
   const values = parseInput({ ...row, nda_agreed: Boolean(row.nda_agreed_at) });
   const status = row.status === "submitted" ? "submitted" : "draft";
   const adminUpdatedAt = typeof row.admin_updated_at === "string" ? row.admin_updated_at : null;
@@ -49,7 +49,7 @@ export async function readAdminOnboardingList(context: AdminContext): Promise<Ad
   const employees = await readEmployees(context.supabase, rows.map(row => String(row.employee_id ?? "")).filter(Boolean));
   const records = rows.map(row => {
     const employeeId = String(row.employee_id ?? "");
-    return recordFromRow(row, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null });
+    return recordFromRow(row, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null });
   });
   return buildAdminList(records);
 }
@@ -59,7 +59,7 @@ export async function readAdminOnboardingDetail(context: AdminContext, employeeI
   if (error) throw databaseError(error);
   if (!data) return null;
   const employees = await readEmployees(context.supabase, [employeeId]);
-  return recordFromRow(data as unknown as Record<string, unknown>, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null });
+  return recordFromRow(data as unknown as Record<string, unknown>, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null });
 }
 
 export async function saveAdminOnboarding(context: AdminContext, employeeId: string, input: unknown): Promise<AdminInput> {

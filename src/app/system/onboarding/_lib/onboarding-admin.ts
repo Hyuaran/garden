@@ -23,7 +23,7 @@ export type AdminInput = {
   commute_fixed_monthly: string;
   commute_cap_monthly: string;
 };
-export type AdminEmployee = { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null };
+export type AdminEmployee = { employee_id: string; name: string | null; hire_date: string | null; birthday: string | null; company_id: string | null };
 export type AdminOnboardingRecord = {
   employee: AdminEmployee;
   values: OnboardingInput;
@@ -154,5 +154,5 @@ export function buildAdminList(records: AdminOnboardingRecord[]): AdminListItem[
 }
 
 export function initialAdminRecord(employeeId: string): AdminOnboardingRecord {
-  return { employee: { employee_id: employeeId, name: null, hire_date: null, birthday: null }, values: emptyInput(), status: "draft", submittedAt: null, admin: emptyAdminInput(), adminUpdatedAt: null };
+  return { employee: { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null }, values: emptyInput(), status: "draft", submittedAt: null, admin: emptyAdminInput(), adminUpdatedAt: null };
 }

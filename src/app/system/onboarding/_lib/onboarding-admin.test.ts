@@ -52,8 +52,8 @@ describe("入社手続きの事務画面", () => {
     const values = emptyInput();
     values.name = "吉田 陽菜";
     const rows = buildAdminList([
-      { employee: { employee_id: "EMP-2", name: "小谷 庵", hire_date: "2026-07-01", birthday: null }, values: emptyInput(), status: "draft", submittedAt: null, admin: parseAdminInput({}), adminUpdatedAt: null },
-      { employee: { employee_id: "EMP-1", name: null, hire_date: "2026-09-01", birthday: null }, values, status: "submitted", submittedAt: "2026-08-31T00:00:00Z", admin: parseAdminInput({ health_insurance: "加入", pension_insurance: "加入", employment_insurance: "加入", tax_class: "甲", salary_kind: "月給", base_salary: "200000" }), adminUpdatedAt: null },
+      { employee: { employee_id: "EMP-2", name: "小谷 庵", hire_date: "2026-07-01", birthday: null, company_id: null }, values: emptyInput(), status: "draft", submittedAt: null, admin: parseAdminInput({}), adminUpdatedAt: null },
+      { employee: { employee_id: "EMP-1", name: null, hire_date: "2026-09-01", birthday: null, company_id: null }, values, status: "submitted", submittedAt: "2026-08-31T00:00:00Z", admin: parseAdminInput({ health_insurance: "加入", pension_insurance: "加入", employment_insurance: "加入", tax_class: "甲", salary_kind: "月給", base_salary: "200000" }), adminUpdatedAt: null },
     ]);
     expect(rows.map(row => row.name)).toEqual(["吉田 陽菜", "小谷 庵"]);
     expect(rows[0].adminComplete).toBe(true);

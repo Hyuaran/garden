@@ -14,8 +14,11 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   const router = useRouter();
   const [admin, setAdmin] = useState(record.admin);
   const [busy, setBusy] = useState(false);
+  const [fuyouBusy, setFuyouBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [fuyouNotice, setFuyouNotice] = useState<{ kind: "success" | "error"; message: string; filename?: string; folderLabel?: string } | null>(null);
   const [confirmApply, setConfirmApply] = useState(false);
+  const [confirmFuyou, setConfirmFuyou] = useState(false);
   const missing = missingOnboardingItems(record.values);
 
   function change(key: keyof AdminInput, value: string) {
@@ -55,6 +58,27 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
       setNotice("保存できませんでした。入力内容はこの画面に残っています。もう一度保存してください。");
     } finally {
       setBusy(false);
+    }
+  }
+  async function createFuyouPdf() {
+    setFuyouBusy(true); setFuyouNotice(null);
+    try {
+      const response = await fetch(`/api/system/onboarding/admin/${encodeURIComponent(record.employee.employee_id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fuyou" }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setFuyouNotice({ kind: "error", message: body.error ?? "保存先のフォルダに書き込めませんでした。管理者へお問い合わせください。" });
+        return;
+      }
+      setConfirmFuyou(false);
+      setFuyouNotice({ kind: "success", message: "保存しました。", filename: body.filename, folderLabel: body.folderLabel });
+    } catch {
+      setFuyouNotice({ kind: "error", message: "保存先のフォルダに書き込めませんでした。管理者へお問い合わせください。" });
+    } finally {
+      setFuyouBusy(false);
     }
   }
 
@@ -105,6 +129,29 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
         </fieldset>
       </form>
       <p role="status" className={styles.saveStatus}>{busy ? "保存しています。" : notice}</p>
+    </section>
+
+    <section className={styles.adminSection}>
+      <h2>扶養控除申告書</h2>
+      <p>令和8年分の用紙に、本人が入れた内容を書き込んで、経理のフォルダへ保存します。マイナンバーが入ります。</p>
+      <p className={styles.hint}>税務署名・市区町村名・世帯主・扶養親族の欄は空欄です。手書きで足してください。</p>
+      <div className={styles.actions}>
+        <button className={styles.primary} type="button" disabled={fuyouBusy} onClick={() => { setFuyouNotice(null); setConfirmFuyou(true); }}>扶養控除申告書を作る</button>
+      </div>
+      {confirmFuyou && <div className={styles.inlineConfirm} role="group" aria-label="扶養控除申告書の保存確認">
+        <p>マイナンバーが入った書類を、経理のフォルダに保存します。よろしいですか</p>
+        <div className={styles.actions}>
+          <button className={styles.primary} type="button" disabled={fuyouBusy} onClick={() => void createFuyouPdf()}>{fuyouBusy ? "作っています。" : "作って保存する"}</button>
+          <button type="button" disabled={fuyouBusy} onClick={() => setConfirmFuyou(false)}>やめる</button>
+        </div>
+      </div>}
+      <div role="status" className={fuyouNotice?.kind === "success" ? styles.resultNotice : styles.saveStatus}>
+        {fuyouNotice ? <>
+          <p>{fuyouNotice.message}</p>
+          {fuyouNotice.filename ? <p>{fuyouNotice.filename}</p> : null}
+          {fuyouNotice.folderLabel ? <p>{fuyouNotice.folderLabel} に入っています</p> : null}
+        </> : null}
+      </div>
     </section>
   </div>;
 }
