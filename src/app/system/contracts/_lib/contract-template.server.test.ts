@@ -27,9 +27,10 @@ describe("template-based partner documents", () => {
     const word = await docxParts(result.docx), pdf = (await pdfPages(result.pdf)).join("");
     for (const text of [word.text, pdf]) {
       for (const leak of ["楽天銀行", "第三営業支店", "カ）リンクサポート", "大阪市浪速区立葉一丁目3番1号", "MaisonPartir303", "アメニティ雁道", "1234567"]) expect(text).not.toContain(leak);
-      for (const retained of ["名古屋地方裁判所", "競業関係にある会社の取締役", "甲乙双方の代表者が記名捺印した", "金融機関名", "支店名", "口座名義"]) expect(text).toContain(retained);
+      expect(text).not.toContain("名古屋");
+      for (const retained of ["大阪地方裁判所", "競業関係にある会社の取締役", "甲乙双方の代表者が記名捺印した", "金融機関名", "支店名", "口座名義"]) expect(text).toContain(retained);
     }
-    expect(result.content.paragraphs.slice(-5)).toEqual(["名古屋地方裁判所を合意管轄とする。", closing, "締結日：＿＿年＿＿月＿＿日", "甲：＿＿＿＿", "乙：＿＿＿＿"]);
+    expect(result.content.paragraphs.slice(-5)).toEqual(["大阪地方裁判所を合意管轄とする。", closing, "締結日：＿＿年＿＿月＿＿日", "甲：＿＿＿＿", "乙：＿＿＿＿"]);
   });
   it("keeps a physically wrapped closing statement together", () => {
     const result = sanitizeContractText("本文。\n以上、本契約の成立を証するため、\n本書2通を作成し、\n甲乙記名押印の上各自1通を保有する。\n締結日：2025年3月18日", { excludedTerms: [] });

@@ -7,6 +7,7 @@ import { degrees, PDFDocument, rgb, StandardFonts, type PDFFont } from "pdf-lib"
 import type { ContractCompany } from "./contract-types";
 import { extractContractLayout, type SourceBlock } from "./contract-layout.server";
 import { isClosingStatement, isSigningField, maskAddressFields, maskBankAccountFields, splitTemplateBoundaries } from "./contract-template-fields";
+import { rewriteTemplateCourtNames } from "./contract-template-courts";
 
 export const DRAFT_WATERMARK = { diagonalRatio: 0.8, opacity: 0.15, color: 0.65 } as const;
 const WORD_PAGE_SIZE = { width: 11906, height: 16838 };
@@ -136,7 +137,13 @@ function sanitizeBlocks(source: SourceBlock[], options: MaskOptions) {
     const [block] = blocks.splice(ki, 1);
     blocks.splice(greetingEnd, 0, block);
   }
-  return { title, blocks, paragraphs: blocks.flatMap((b) => b.type === "text" && b.text !== "記" ? [b.text] : []), includeKi: ki >= 0 };
+  // 既存の伏せ字・行結合・表復元を終えてから、PDF/Word共通の本文だけを置換する。
+  const rewritten: SourceBlock[] = blocks.map((block) => block.type === "text"
+    ? { ...block, text: rewriteTemplateCourtNames(block.text) }
+    : { ...block, caption: block.caption ? rewriteTemplateCourtNames(block.caption) : undefined,
+      rows: block.rows.map((row) => row.map(rewriteTemplateCourtNames)) });
+  return { title: rewriteTemplateCourtNames(title), blocks: rewritten,
+    paragraphs: rewritten.flatMap((b) => b.type === "text" && b.text !== "記" ? [b.text] : []), includeKi: ki >= 0 };
 }
 export function sanitizeContractText(text: string, options: MaskOptions) {
   return sanitizeBlocks(text.replace(/\r/g, "").split("\n").map((text) => ({ type: "text", text })), options);
