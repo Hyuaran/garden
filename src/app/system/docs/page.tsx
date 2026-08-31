@@ -17,6 +17,11 @@ export default async function DocsPage() {
     <div className={styles.documentGrid}>{documents.map(document => <Link className={styles.documentCard} href={document.href} key={document.href}>
       <span className={styles.bookBadge}><MenuIcon icon="book" /></span><h2>{document.title}</h2><p>{document.description}</p>
       <p className={styles.updated}>最終更新日 <time dateTime={document.updatedAt}>{formatDocumentDate(document.updatedAt)}</time></p><span className={styles.readLink}>資料を読む →</span>
-    </Link>)}</div>
+    </Link>)}
+      <Link className={styles.documentCard} href="/system/docs/videos">
+        <span className={styles.bookBadge}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /></svg></span>
+        <h2>動画</h2><p>研修や説明の動画をまとめています。</p><span className={styles.readLink}>動画を見る →</span>
+      </Link>
+    </div>
   </div>;
 }
