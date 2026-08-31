@@ -20,11 +20,12 @@ function client(role = "manager") {
 
 describe("system home", () => {
   beforeEach(() => { mocks.createServerClient.mockReset(); mocks.redirect.mockReset(); vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false })); });
-  it("links all seven manager cards to their configured destinations", async () => {
+  it("links all eight manager cards to their configured destinations", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     render(await SystemHomePage());
     expect(screen.getByRole("heading", { name: "社内システム" }).previousElementSibling).toHaveTextContent("System");
     expect(screen.queryByText("SYSTEM")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "資料" }).closest("a")).toHaveAttribute("href", "/system/docs");
     expect(screen.getByRole("heading", { name: "自分の情報" }).closest("a")).toHaveAttribute("href", "/system/mypage");
     expect(screen.getByRole("heading", { name: "勤怠打刻" }).closest("a")).toHaveAttribute("href", "/system/attendance");
     expect(screen.getByRole("heading", { name: "シフト" }).closest("a")).toHaveAttribute("href", "/system/shift");

@@ -47,6 +47,7 @@ function ModuleIcon({ id }: { id: GardenModuleId }) {
 export function MenuIcon({ icon }: { icon: SystemIcon }) {
   const icons: Record<SystemIcon, ReactNode> = {
     home: <path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>,
+    book: <><path d="M12 5C9 3 5 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-6-1-9 1zM12 5v15M6 8h3M6 12h3M15 8h3M15 12h3"/></>,
     person: <><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></>,
     clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></>,
     shift: <><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14l2 2 5-5"/></>,

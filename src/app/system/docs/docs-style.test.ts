@@ -1,0 +1,22 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+const css = readFileSync(resolve(process.cwd(), "src/app/system/docs/docs.module.css"), "utf8");
+describe("資料専用の社長スタイル", () => {
+  it("長い本文でも固定背景とゴシックを維持する", () => {
+    expect(css).toContain('.pageShell::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bg)}');
+    expect(css).toContain('font-family:"Meiryo"');
+    expect(css).toContain("--bg:#f4f5f7");
+    expect(css).not.toContain("--bg-paper-soft");
+  });
+  it("ダークでは濃紺から独立した見出し色・本文・補助色を持つ", () => {
+    expect(css).toContain('--heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4');
+    expect(css).toContain('color:var(--heading)');
+  });
+  it("375px対応は資料の範囲内で行い、共通サイドバーを変更しない", () => {
+    expect(css).toContain("@media (max-width:640px)");
+    expect(css).toContain(":global(main):has(.pageShell) { overflow-x:clip; }");
+    expect(css).not.toContain(".side");
+    expect(css).not.toContain(".rail");
+  });
+});

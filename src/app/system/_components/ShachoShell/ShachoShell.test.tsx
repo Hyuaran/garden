@@ -116,6 +116,8 @@ describe("ShachoShell", () => {
 
   it.each([
     ["/system", "ホーム"],
+    ["/system/docs", "資料"],
+    ["/system/docs/company", "資料"],
     ["/system/mypage", "自分の情報"],
     ["/system/attendance", "勤怠打刻"],
     ["/system/shift", "シフト"],
@@ -162,10 +164,10 @@ describe("ShachoShell", () => {
     renderShell();
     const nav = screen.getByRole("navigation", { name: "Systemメニュー" });
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
-      "ホーム", "自分の情報", "勤怠打刻", "シフト", "前確依頼",
+      "ホーム", "資料", "自分の情報", "勤怠打刻", "シフト", "前確依頼",
       "テレマ コール集計", "契約書管理", "関電トスポータル",
     ]);
-    for (const label of ["シフト", "前確依頼"]) {
+    for (const label of ["資料", "シフト", "前確依頼"]) {
       const link = within(nav).getByRole("link", { name: label });
       expect(link.querySelector("svg")).not.toBeNull();
       expect(link.textContent).not.toMatch(/\p{Extended_Pictographic}/u);

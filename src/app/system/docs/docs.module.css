@@ -1,0 +1,101 @@
+.pageShell {
+  --navy:#10233f; --heading:#10233f; --ink:#17212e; --sub:#5a6b80;
+  --teal:#0ea5a0; --teal-d:#0b7e7a; --bg:#f4f5f7; --card:#fff; --line:#e3eaf3;
+  --tint:#e9f7f6; --shadow:0 4px 14px rgba(16,35,63,.07);
+  font-family:"Meiryo","メイリオ","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+  position:relative; width:100%; min-width:0; min-height:100%; background:var(--bg); color:var(--ink);
+  line-height:1.9; font-size:14px; overflow-wrap:anywhere;
+}
+.pageShell::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bg)}
+/* この資料画面だけ、共通操作ボタンの非表示ツールチップの端数はみ出しを抑える。
+   clipはスクロールコンテナを作らないため、目次のstickyと縦スクロールは維持する。 */
+:global(main):has(.pageShell) { overflow-x:clip; }
+.pageShell *, .pageShell *::before, .pageShell *::after { box-sizing:border-box; }
+.pageShell h1, .pageShell h2, .pageShell h3, .pageShell h4 { color:var(--heading); font-family:inherit; font-weight:700; line-height:1.55; }
+.pageShell h1 { font-size:30px; margin:5px 0 12px; }
+.pageShell h2 { font-size:24px; }
+.pageShell h3 { font-size:19px; margin:0 0 16px; }
+.pageShell h4 { font-size:15px; margin:0 0 10px; }
+.pageShell p { margin:0 0 14px; }
+.pageShell a:focus-visible { outline:3px solid var(--teal-d); outline-offset:4px; border-radius:8px; }
+.header { padding-right:240px; min-height:78px; }
+.eyebrow { color:var(--sub); font-size:11px; font-weight:700; letter-spacing:.08em; }
+.lead, .sub, .updated, .kana { color:var(--sub); }
+.updated { font-size:12px; }
+.documentGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr)); gap:20px; }
+.documentCard { display:flex; flex-direction:column; align-items:flex-start; padding:28px; border:1px solid var(--line); border-radius:22px; background:var(--card); color:var(--ink); box-shadow:var(--shadow); text-decoration:none; }
+.documentCard:hover { border-color:var(--teal-d); }
+.documentCard h2 { margin:18px 0 8px; }
+.bookBadge { width:48px; height:48px; display:grid; place-items:center; border-radius:14px; color:var(--teal-d); background:var(--tint); }
+.readLink { margin-top:auto; color:var(--teal-d); font-weight:700; }
+.hero { padding:40px; border:1px solid var(--line); border-top:5px solid var(--teal); border-radius:22px; background:var(--card); margin:12px 0 32px; }
+.hero .heroTitle { color:var(--heading); font-size:clamp(22px,3vw,34px); font-weight:700; }
+.heroMessage { font-size:18px; }
+.hero .updated { margin:24px 0 0; }
+.readingLayout { display:grid; grid-template-columns:180px minmax(0,1fr); gap:28px; align-items:start; }
+.toc { position:sticky; top:24px; padding:18px 14px; border:1px solid var(--line); border-radius:18px; background:var(--card); }
+.toc > p { font-weight:700; margin:0 0 10px; color:var(--heading); }
+.toc ol { padding:0; margin:0; list-style:none; }
+.toc a { display:flex; gap:10px; padding:9px 0; color:var(--ink); text-decoration:none; font-size:13px; }
+.toc a:hover { color:var(--teal-d); text-decoration:underline; }
+.toc a span { color:var(--teal-d); font-weight:700; }
+.content { min-width:0; }
+.welcome { padding:8px 0 16px; }
+.chapter { scroll-margin-top:24px; padding-top:28px; margin-bottom:36px; border-top:1px solid var(--line); }
+.chapterHeading { display:flex; align-items:baseline; gap:12px; margin:0 0 24px; }
+.chapterHeading > span { flex:none; color:var(--teal-d); font-size:20px; }
+.overview { margin:0; padding:0; border-top:1px solid var(--line); }
+.overview > div { display:grid; grid-template-columns:88px minmax(0,1fr); gap:16px; padding:16px 0; border-bottom:1px solid var(--line); }
+.overview dt, .memberDetails dt { color:var(--sub); font-size:12px; }
+.overview dd, .memberDetails dd { margin:0; white-space:pre-line; }
+.philosophy { padding:26px; margin:28px 0; border-left:3px solid var(--teal); border-radius:0 18px 18px 0; background:var(--card); }
+.philosophy p:last-child, .panel p:last-child { margin-bottom:0; }
+.timeline { list-style:none; margin:0 0 0 6px; padding:0 0 0 24px; border-left:2px solid var(--line); }
+.timeline li { position:relative; padding:0 0 20px; }
+.timeline li::before { content:""; width:10px; height:10px; border-radius:50%; background:var(--teal); position:absolute; left:-30px; top:8px; }
+.timeline strong { color:var(--heading); }
+.timeline p { margin:4px 0 0; }
+.stack { display:grid; gap:18px; }
+.panel { min-width:0; padding:24px; border:1px solid var(--line); border-radius:18px; background:var(--card); }
+.groupGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); gap:14px; }
+.orgTree, .orgTree ul { list-style:none; margin:0; padding:0; }
+.orgTree { margin:24px 0 32px; }
+.orgTree ul { border-left:2px solid var(--line); margin-left:12px; padding-left:18px; }
+.orgNode { padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--card); margin:12px 0; }
+.orgNode strong { color:var(--heading); }
+.orgNode p { font-size:13px; margin:6px 0 0; }
+.numberedList { padding-left:22px; margin:0; }
+.numberedList li { padding-left:4px; margin:14px 0; }
+.numberedList li::marker { color:var(--teal-d); font-weight:700; }
+.memberGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr)); gap:18px; }
+.memberCard { min-width:0; border:1px solid var(--line); border-radius:22px; padding:24px; background:var(--card); }
+.memberPhoto { display:block; width:112px; height:112px; max-width:100%; object-fit:cover; border-radius:18px; margin:0 0 20px; }
+.initial { display:grid; place-items:center; width:72px; height:72px; max-width:100%; aspect-ratio:1; border-radius:50%; margin:0 0 20px; background:var(--tint); color:var(--teal-d); font-size:26px; font-weight:700; }
+.memberCard .kana { font-size:11px; margin:0 0 4px; }
+.memberCard h3 { margin:0 0 16px; }
+.memberDetails { margin:0; }
+.memberDetails > div { margin:10px 0 0; }
+.memberDetails dd { font-size:13px; }
+.closing { border-top:1px solid var(--line); margin-top:32px; padding:24px 0; }
+.representative { margin:24px 0; }
+.representative .memberCard { border-top:3px solid var(--teal); }
+.backToTop { display:inline-block; color:var(--teal-d); padding:14px 0; font-weight:700; }
+:global([data-theme="dark"]) .pageShell {
+  --navy:#193b62; --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4;
+  --bg:#0c1726; --card:#152438; --line:#31435a; --teal-d:#7bdfd5; --tint:#193b48;
+  --shadow:0 4px 14px rgba(0,0,0,.22);
+}
+@media (max-width:1200px) { .readingLayout { grid-template-columns:minmax(0,1fr); } .toc { position:static; } .toc ol { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 16px; } }
+@media (max-width:640px) {
+  .header { padding:58px 0 0; min-height:0; }
+  .pageShell { font-size:13px; }
+  .pageShell h1 { font-size:25px; } .pageShell h2 { font-size:21px; } .pageShell h3 { font-size:17px; }
+  .hero, .documentCard, .panel, .memberCard { padding:16px 12px; }
+  .hero { margin-top:18px; } .heroMessage { font-size:15px; }
+  .toc ol { grid-template-columns:minmax(0,1fr); }
+  .toc { padding:14px 12px; }
+  .overview > div { grid-template-columns:minmax(0,1fr); gap:4px; }
+  .philosophy { padding:18px 12px; }
+  .orgTree ul { margin-left:3px; padding-left:8px; } .orgNode { padding:12px 8px; }
+  .chapterHeading { gap:8px; } .chapter { scroll-margin-top:16px; }
+}
