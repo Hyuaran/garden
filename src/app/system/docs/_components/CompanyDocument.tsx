@@ -1,9 +1,11 @@
+import Link from "next/link";
 import {
   businesses, chapters, companyDocument, formatDocumentDate, getCompanyOverview, groupCompanies,
-  history, organization, organizationNote, results, strengths, type OrganizationNode,
+  history, organization, organizationNote, results, strengths,
 } from "../_data/company-doc";
 import { showsMemberField, visibleMembers, type Member } from "../_data/members";
 import MemberPhoto from "./MemberPhoto";
+import OrganizationChart from "./OrganizationChart";
 import styles from "../docs.module.css";
 
 export function MemberCard({ member, photo }: { member: Member; photo?: string }) {
@@ -25,22 +27,22 @@ export function MemberCard({ member, photo }: { member: Member; photo?: string }
   </article>;
 }
 
-function OrganizationBranch({ node }: { node: OrganizationNode }) {
-  return <li>
-    <div className={styles.orgNode}><strong>{node.label}</strong>{node.people?.map(person => <p key={person}>{person}</p>)}</div>
-    {node.children?.length ? <ul>{node.children.map(child => <OrganizationBranch key={child.label} node={child} />)}</ul> : null}
-  </li>;
-}
-
 function ChapterHeading({ index }: { index: number }) {
   const chapter = chapters[index];
   return <h2 id={`${chapter.id}-heading`} className={styles.chapterHeading}><span>{chapter.number}</span>{chapter.title}</h2>;
 }
 
-export default function CompanyDocument({ members, photos = {} }: { members: Member[]; photos?: Record<string, string> }) {
+export default function CompanyDocument({ members, photos = {}, presentation = false }: { members: Member[]; photos?: Record<string, string>; presentation?: boolean }) {
   const visible = visibleMembers(members);
   return <div className={styles.pageShell} data-company-document>
-    <header className={styles.header}><p className={styles.eyebrow}>System ／ 資料</p><h1>{companyDocument.title}</h1></header>
+    <header className={presentation ? styles.presentationHeader : styles.header}>{!presentation && <p className={styles.eyebrow}>System ／ 資料</p>}<h1>{companyDocument.title}</h1></header>
+    {!presentation && <div className={styles.presentationEntry}>
+      <Link href="/system/docs/company/present" className={styles.presentationButton}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18M5 4v12h14V4M12 16v5M8 21l4-3 4 3"/><path d="m10 8 5 3-5 3z"/></svg>
+        オリエンテーション表示
+      </Link>
+      <p>メニューを隠して、資料だけを大きく映します。</p>
+    </div>}
     <div className={styles.hero}>
       <p className={styles.eyebrow}>{companyDocument.eyebrow}</p>
       <p className={styles.heroTitle}>{companyDocument.companyName}</p>
@@ -68,7 +70,7 @@ export default function CompanyDocument({ members, photos = {} }: { members: Mem
         </section>
         <section id="organization" aria-labelledby="organization-heading" className={styles.chapter}>
           <ChapterHeading index={2} /><p>{organizationNote}</p>
-          <ul className={styles.orgTree} aria-label="組織図"><OrganizationBranch node={organization} /></ul>
+          <OrganizationChart root={organization} />
           <h3>グループ会社</h3><div className={styles.groupGrid}>{groupCompanies.map(company => <article className={styles.panel} key={company.name} data-group-company>
             <h4>{company.name}</h4><dl className={styles.memberDetails}><div><dt>代表者</dt><dd>{company.representative}</dd></div><div><dt>設立</dt><dd>{company.established}</dd></div></dl>
           </article>)}</div>

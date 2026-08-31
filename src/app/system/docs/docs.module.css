@@ -19,6 +19,15 @@
 .pageShell p { margin:0 0 14px; }
 .pageShell a:focus-visible { outline:3px solid var(--teal-d); outline-offset:4px; border-radius:8px; }
 .header { padding-right:240px; min-height:78px; }
+.presentationEntry { margin:12px 0 24px; }
+.presentationButton { display:inline-flex; align-items:center; gap:10px; max-width:100%; padding:10px 16px; border:1px solid var(--teal-d); border-radius:12px; color:var(--teal-d); background:var(--card); font-weight:700; text-decoration:none; }
+.presentationButton:hover { background:var(--tint); }
+.presentationButton svg { width:22px; height:22px; flex:0 0 22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.presentationEntry p { margin:8px 0 0; font-size:12px; color:var(--sub); }
+.presentationShell { max-width:1560px; min-height:100vh; margin:0 auto; padding:48px clamp(20px,4vw,64px) 64px; box-sizing:border-box; }
+.presentationHeader { padding:0; }
+.returnToDocument { position:fixed; top:12px; right:20px; z-index:10; padding:6px 12px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--sub); font-size:12px; text-decoration:none; }
+.returnToDocument:hover { color:var(--heading); text-decoration:underline; }
 .eyebrow { color:var(--sub); font-size:11px; font-weight:700; letter-spacing:.08em; }
 .lead, .sub, .updated, .kana { color:var(--sub); }
 .updated { font-size:12px; }
@@ -58,10 +67,19 @@
 .stack { display:grid; gap:18px; }
 .panel { min-width:0; padding:24px; border:1px solid var(--line); border-radius:18px; background:var(--card); }
 .groupGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); gap:14px; }
-.orgTree, .orgTree ul { list-style:none; margin:0; padding:0; }
-.orgTree { margin:24px 0 32px; }
-.orgTree ul { border-left:2px solid var(--line); margin-left:12px; padding-left:18px; }
-.orgNode { padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--card); margin:12px 0; }
+.orgTree, .orgChildren { list-style:none; margin:0; padding:0; }
+.orgTree { --org-line:var(--sub); margin:24px 0 32px; }
+.orgBranch { position:relative; flex:1 1 0; min-width:0; text-align:center; }
+.orgChildren { display:flex; position:relative; padding-top:24px; }
+.orgChildren::before { content:""; position:absolute; left:50%; top:0; height:24px; border-left:2px solid var(--org-line); }
+.orgChildren > .orgBranch { padding:24px 5px 0; }
+.orgChildren > .orgBranch::before, .orgChildren > .orgBranch::after { content:""; position:absolute; top:0; width:50%; height:24px; border-top:2px solid var(--org-line); }
+.orgChildren > .orgBranch::before { right:50%; }
+.orgChildren > .orgBranch::after { left:50%; border-left:2px solid var(--org-line); }
+.orgChildren > .orgBranch:first-child::before { display:none; }
+.orgChildren > .orgBranch:last-child::after { border-top:0; }
+.orgNode { padding:14px 10px; min-height:100px; border:1px solid var(--line); border-radius:14px; background:var(--card); }
+.orgTree > .orgBranch > .orgNode { width:min(320px,100%); margin:0 auto; min-height:0; border-top:3px solid var(--teal); }
 .orgNode strong { color:var(--heading); }
 .orgNode p { font-size:13px; margin:6px 0 0; }
 .numberedList { padding-left:22px; margin:0; }
@@ -86,6 +104,16 @@
   --shadow:0 4px 14px rgba(0,0,0,.22);
 }
 @media (max-width:1200px) { .readingLayout { grid-template-columns:minmax(0,1fr); } .toc { position:static; } .toc ol { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 16px; } }
+@media (max-width:900px) {
+  .orgChildren { display:block; padding:0 0 0 16px; margin-left:12px; border-left:2px solid var(--org-line); }
+  .orgChildren::before { display:none; }
+  .orgChildren > .orgBranch { padding:16px 0 0; }
+  .orgChildren > .orgBranch::before, .orgChildren > .orgBranch:first-child::before { display:block; left:-16px; right:auto; top:40px; width:16px; height:0; border-top:2px solid var(--org-line); }
+  .orgChildren > .orgBranch::after { display:none; }
+  .orgBranch { text-align:left; }
+  .orgNode { min-height:0; }
+  .orgTree > .orgBranch > .orgNode { width:100%; }
+}
 @media (max-width:640px) {
   .header { padding:58px 0 0; min-height:0; }
   .pageShell { font-size:13px; }
@@ -96,6 +124,7 @@
   .toc { padding:14px 12px; }
   .overview > div { grid-template-columns:minmax(0,1fr); gap:4px; }
   .philosophy { padding:18px 12px; }
-  .orgTree ul { margin-left:3px; padding-left:8px; } .orgNode { padding:12px 8px; }
+  .orgChildren { margin-left:3px; padding-left:8px; } .orgNode { padding:12px 8px; }
+  .orgChildren > .orgBranch::before, .orgChildren > .orgBranch:first-child::before { left:-8px; width:8px; }
   .chapterHeading { gap:8px; } .chapter { scroll-margin-top:16px; }
 }

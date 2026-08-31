@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 import { loadCompanyMembers, requireDocsUser } from "./company-doc.server";
 import DocsPage from "../page";
 import CompanyPage from "../company/page";
+import OrientationPage from "@/app/(orientation)/system/docs/company/present/page";
 
 function client() {
   const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { employee_id: "EMP-0001" }, error: null }) };
@@ -19,10 +20,17 @@ function client() {
 
 describe("資料の認証と非公開写真", () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.redirect.mockImplementation((url: string) => { throw new Error(`redirect:${url}`); }); });
-  it.each([DocsPage, CompanyPage])("未ログインはデータと署名の出力前にリダイレクト", async Page => {
+  it.each([DocsPage, CompanyPage, OrientationPage])("未ログインはデータと署名の出力前にリダイレクト", async Page => {
     const db = client(); db.auth.getUser.mockResolvedValue({ data: { user: null }, error: null }); mocks.createServerClient.mockResolvedValue(db);
     await expect(Page()).rejects.toThrow("redirect:/login?returnTo=%2Fsystem%2Fdocs");
     expect(db.from).not.toHaveBeenCalled(); expect(db.sign).not.toHaveBeenCalled();
+    expect(mocks.getSupabaseAdmin).not.toHaveBeenCalled();
+  });
+  it("オリエンテーション表示は在籍確認を通過するまで署名せず、ログイン後の戻り先を維持する", async () => {
+    const db = client(); db.query.maybeSingle.mockResolvedValue({ data: null, error: null }); mocks.createServerClient.mockResolvedValue(db);
+    await expect(OrientationPage()).rejects.toThrow("redirect:/login?returnTo=%2Fsystem%2Fdocs%2Fcompany%2Fpresent");
+    expect(db.query.eq).toHaveBeenCalledWith("is_active", true);
+    expect(db.query.is).toHaveBeenCalledWith("deleted_at", null);
     expect(mocks.getSupabaseAdmin).not.toHaveBeenCalled();
   });
   it("退職・削除・未登録の利用者は拒否する", async () => {

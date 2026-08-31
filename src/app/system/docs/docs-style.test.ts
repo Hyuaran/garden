@@ -19,4 +19,12 @@ describe("資料専用の社長スタイル", () => {
     expect(css).not.toContain(".side");
     expect(css).not.toContain(".rail");
   });
+  it("組織図はCSSの接続線を持ち900px以下では縦に切り替わる", () => {
+    expect(css).toContain(".orgChildren { display:flex;");
+    expect(css).toContain("border-left:2px solid var(--org-line)");
+    expect(css).toContain("border-top:2px solid var(--org-line)");
+    expect(css).toContain("@media (max-width:900px)");
+    expect(css).toContain(".orgChildren { display:block;");
+    expect(css).toContain("max-width:1560px");
+  });
 });

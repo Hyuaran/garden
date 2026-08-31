@@ -18,8 +18,8 @@ export async function requireDocsUser(returnTo = "/system/docs") {
   return supabase;
 }
 
-export async function loadCompanyMembers() {
-  await requireDocsUser("/system/docs/company");
+export async function loadCompanyMembers(returnTo: "/system/docs/company" | "/system/docs/company/present" = "/system/docs/company") {
+  await requireDocsUser(returnTo);
   const members = visibleMembers();
   const photos: Record<string, string> = {};
   // バケットを公開せず、認証・在籍確認後のサーバーでのみ署名する。
