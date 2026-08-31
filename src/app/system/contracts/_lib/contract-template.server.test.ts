@@ -20,6 +20,25 @@ async function pdfPages(buffer: Buffer) {
   }));
 }
 describe("template-based partner documents", () => {
+  it("removes the six actual remaining leaks while retaining clauses and field labels in PDF/Word", async () => {
+    const closing = "以上、本契約の成立を証するため、本契約書を2通作成し、甲乙記名押印の上各自1通を保有する。";
+    const source = ["顧客紹介契約書", "第4条（支払方法）", "金融機関名：楽天銀行 支 店 名：第三営業支店", "口座種別：普通 当座 口 座 番 号：1234567", "口座名義：株式会社リンクサポート", "口座名義（カナ）：カ）リンクサポート", "第8条（解除）", "乙と競業関係にある会社の取締役（委員会設置会社における執行役等を含む）。", "第14条（契約変更）", "甲乙双方の代表者が記名捺印した書面により変更する。", "第16条（合意管轄裁判所）", `名古屋地方裁判所を合意管轄とする。${closing}締結日：令和7年3月18日甲：大阪市浪速区立葉一丁目3番1号`, "MaisonPartir303号", "株式会社リンクサポート", "代表取締役 山田 太郎", "乙：愛知県名古屋市瑞穂区雁道町1-16", "アメニティ雁道", "合同会社ジャストペイメント", "代表社員 山田 次郎"].join("\n");
+    const result = await generatePartnerTemplate([source], { issuer, title: "顧客紹介契約書", excludedTerms: [] });
+    const word = await docxParts(result.docx), pdf = (await pdfPages(result.pdf)).join("");
+    for (const text of [word.text, pdf]) {
+      for (const leak of ["楽天銀行", "第三営業支店", "カ）リンクサポート", "大阪市浪速区立葉一丁目3番1号", "MaisonPartir303", "アメニティ雁道", "1234567"]) expect(text).not.toContain(leak);
+      for (const retained of ["名古屋地方裁判所", "競業関係にある会社の取締役", "甲乙双方の代表者が記名捺印した", "金融機関名", "支店名", "口座名義"]) expect(text).toContain(retained);
+    }
+    expect(result.content.paragraphs.slice(-5)).toEqual(["名古屋地方裁判所を合意管轄とする。", closing, "締結日：＿＿年＿＿月＿＿日", "甲：＿＿＿＿", "乙：＿＿＿＿"]);
+  });
+  it("keeps a physically wrapped closing statement together", () => {
+    const result = sanitizeContractText("本文。\n以上、本契約の成立を証するため、\n本書2通を作成し、\n甲乙記名押印の上各自1通を保有する。\n締結日：2025年3月18日", { excludedTerms: [] });
+    expect(result.paragraphs).toEqual(["本文。", "以上、本契約の成立を証するため、本書2通を作成し、甲乙記名押印の上各自1通を保有する。", "締結日：＿＿年＿＿月＿＿日"]);
+  });
+  it("also protects a court clause from the existing prefecture-address matcher", () => {
+    const line = "甲及び乙は、大阪府大阪市の大阪地方裁判所を第一審の合意管轄裁判所とする。";
+    expect(sanitizeContractText(line, { excludedTerms: [] }).paragraphs).toEqual([line]);
+  });
   it.each([
     "（４） 代表取締役の変更",
     "⑬ 乙と競業関係にある会社の取締役（委員会設置会社における執行役等、これに準ずるものを含",
