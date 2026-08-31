@@ -20,6 +20,7 @@ import { useRootState } from "../_state/RootStateContext";
 import { writeAudit } from "../_lib/audit";
 import {
   validateEmployee,
+  isEmployeeBankRequired,
   hasErrors,
   VALIDATION_ERROR_BANNER,
   type FieldErrors,
@@ -112,6 +113,7 @@ export default function EmployeesPage() {
   const [error, setError] = useState<string | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const bankRequired = editTarget ? isEmployeeBankRequired(editTarget) : true;
 
   async function load() {
     try {
@@ -275,6 +277,7 @@ export default function EmployeesPage() {
     { key: "garden_role", header: "Garden権限", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], width: 110 },
     { key: "salary", header: "給与体系", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, width: 130 },
     { key: "hire", header: "入社日", render: (e) => e.hire_date, width: 110 },
+    { key: "termination", header: "退職日", render: (e) => e.termination_date ?? "—", width: 110 },
     { key: "status", header: "状態", render: (e) => <StatusBadge active={e.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (e) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
@@ -389,7 +392,16 @@ export default function EmployeesPage() {
                 onChange={(gardenRole) => setEditTarget({ ...editTarget, garden_role: gardenRole })}
               />
               <TextField label="入社日" required type="date" value={editTarget.hire_date} onChange={(e) => setEditTarget({ ...editTarget, hire_date: e.target.value })} error={errors.hire_date} />
-              <TextField label="退職日" type="date" value={editTarget.termination_date ?? ""} onChange={(e) => setEditTarget({ ...editTarget, termination_date: e.target.value || null })} error={errors.termination_date} />
+              <TextField label="退職日" type="date" value={editTarget.termination_date ?? ""} onChange={(e) => {
+                const next = { ...editTarget, termination_date: e.target.value || null };
+                setEditTarget(next);
+                // 保存失敗後に退職日を入力した場合も、不要になった必須エラーを直ちに消す。
+                if (hasErrors(errors)) {
+                  const nextErrors = validateEmployee(next);
+                  setErrors(nextErrors);
+                  if (!hasErrors(nextErrors) && error === VALIDATION_ERROR_BANNER) setError(null);
+                }
+              }} error={errors.termination_date} />
               {editTarget.employment_type === "outsource" && (
                 <TextField
                   label="契約終了日（外注）"
@@ -403,16 +415,16 @@ export default function EmployeesPage() {
 
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>振込先口座</h3>
             <FormGrid cols={3}>
-              <TextField label="銀行名" required value={editTarget.bank_name} onChange={(e) => setEditTarget({ ...editTarget, bank_name: e.target.value })} error={errors.bank_name} />
-              <TextField label="金融機関コード（4桁）" required maxLength={4} inputMode="numeric" value={editTarget.bank_code} onChange={(e) => setEditTarget({ ...editTarget, bank_code: e.target.value })} error={errors.bank_code} />
-              <SelectField label="口座種別" required value={editTarget.account_type} onChange={(e) => setEditTarget({ ...editTarget, account_type: e.target.value })}>
+              <TextField label="銀行名" required={bankRequired} value={editTarget.bank_name} onChange={(e) => setEditTarget({ ...editTarget, bank_name: e.target.value })} error={errors.bank_name} />
+              <TextField label="金融機関コード（4桁）" required={bankRequired} maxLength={4} inputMode="numeric" value={editTarget.bank_code} onChange={(e) => setEditTarget({ ...editTarget, bank_code: e.target.value })} error={errors.bank_code} />
+              <SelectField label="口座種別" required={bankRequired} value={editTarget.account_type} onChange={(e) => setEditTarget({ ...editTarget, account_type: e.target.value })}>
                 {ACCOUNT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </SelectField>
-              <TextField label="支店名" required value={editTarget.branch_name} onChange={(e) => setEditTarget({ ...editTarget, branch_name: e.target.value })} error={errors.branch_name} />
-              <TextField label="支店コード（3桁）" required maxLength={3} inputMode="numeric" value={editTarget.branch_code} onChange={(e) => setEditTarget({ ...editTarget, branch_code: e.target.value })} error={errors.branch_code} />
-              <TextField label="口座番号（7桁）" required maxLength={7} inputMode="numeric" value={editTarget.account_number} onChange={(e) => setEditTarget({ ...editTarget, account_number: e.target.value })} error={errors.account_number} />
-              <TextField label="口座名義" required value={editTarget.account_holder} onChange={(e) => setEditTarget({ ...editTarget, account_holder: e.target.value })} error={errors.account_holder} />
-              <TextField label="口座名義カナ" required value={editTarget.account_holder_kana} onChange={(e) => setEditTarget({ ...editTarget, account_holder_kana: e.target.value })} error={errors.account_holder_kana} />
+              <TextField label="支店名" required={bankRequired} value={editTarget.branch_name} onChange={(e) => setEditTarget({ ...editTarget, branch_name: e.target.value })} error={errors.branch_name} />
+              <TextField label="支店コード（3桁）" required={bankRequired} maxLength={3} inputMode="numeric" value={editTarget.branch_code} onChange={(e) => setEditTarget({ ...editTarget, branch_code: e.target.value })} error={errors.branch_code} />
+              <TextField label="口座番号（7桁）" required={bankRequired} maxLength={7} inputMode="numeric" value={editTarget.account_number} onChange={(e) => setEditTarget({ ...editTarget, account_number: e.target.value })} error={errors.account_number} />
+              <TextField label="口座名義" required={bankRequired} value={editTarget.account_holder} onChange={(e) => setEditTarget({ ...editTarget, account_holder: e.target.value })} error={errors.account_holder} />
+              <TextField label="口座名義カナ" required={bankRequired} value={editTarget.account_holder_kana} onChange={(e) => setEditTarget({ ...editTarget, account_holder_kana: e.target.value })} error={errors.account_holder_kana} />
             </FormGrid>
 
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>給与・源泉徴収（Phase A-3-h）</h3>

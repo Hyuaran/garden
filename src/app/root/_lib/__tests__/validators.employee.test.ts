@@ -159,3 +159,66 @@ describe("validateEmployee — contract_end_on", () => {
     expect(errs.contract_end_on).toBeUndefined();
   });
 });
+
+describe("validateEmployee — 退職時の口座任意化", () => {
+  const blankBank = {
+    bank_name: "", bank_code: "", branch_name: "", branch_code: "",
+    account_number: "", account_holder: "", account_holder_kana: "",
+  };
+  const requiredBankErrors = {
+    bank_name: "必須", bank_code: "半角数字4桁", branch_name: "必須", branch_code: "半角数字3桁",
+    account_number: "半角数字7桁", account_holder: "必須", account_holder_kana: "必須",
+  };
+
+  it("退職日あり・口座7項目すべて空は通る", () => {
+    expect(validateEmployee(baseEmployee({ ...blankBank, termination_date: "2026-06-30" }))).toEqual({});
+  });
+
+  it.each([null, ""])("退職日が空（%s）なら従来どおり7項目がエラー", (termination_date) => {
+    expect(validateEmployee(baseEmployee({ ...blankBank, termination_date }))).toEqual(requiredBankErrors);
+  });
+
+  it.each([
+    ["bank_code", "123", "半角数字4桁"],
+    ["bank_code", "１２３４", "半角数字4桁"],
+    ["bank_code", "1234 ", "半角数字4桁"],
+    ["branch_code", "12", "半角数字3桁"],
+    ["branch_code", "１２３", "半角数字3桁"],
+    ["account_number", "123456", "半角数字7桁"],
+    ["account_number", "１２３４５６７", "半角数字7桁"],
+    ["account_number", "123456A", "半角数字7桁"],
+    ["account_holder_kana", "やまだ", "全角カタカナのみ"],
+  ])("退職日があっても%sの不正値%sを拒否する", (field, value, message) => {
+    expect(validateEmployee(baseEmployee({ ...blankBank, termination_date: "2026-06-30", [field]: value })))
+      .toEqual({ [field]: message });
+  });
+
+  it("退職日あり・正しい口座情報は通る", () => {
+    expect(validateEmployee(baseEmployee({ termination_date: "2026-06-30" }))).toEqual({});
+  });
+
+  it("退職者は口座の一部だけ入力しても、その値が正しければ通る", () => {
+    expect(validateEmployee(baseEmployee({ ...blankBank, termination_date: "2026-06-30", bank_code: "0036" }))).toEqual({});
+  });
+
+  it("退職者の空白だけの口座は空として扱う", () => {
+    const whitespaceBank = Object.fromEntries(Object.keys(blankBank).map(key => [key, "　 "]));
+    expect(validateEmployee(baseEmployee({ ...whitespaceBank, termination_date: "2026-06-30" }))).toEqual({});
+  });
+
+  it("無効化だけでは在籍者の口座必須を解除しない", () => {
+    expect(validateEmployee(baseEmployee({ ...blankBank, is_active: false }))).toEqual(requiredBankErrors);
+  });
+
+  it.each([
+    "employee_id", "employee_number", "company_id", "name", "name_kana", "email",
+    "employment_type", "salary_system_id", "insurance_type", "hire_date",
+  ] as const)("退職日があっても%sの必須検証を維持する", field => {
+    expect(validateEmployee(baseEmployee({ ...blankBank, termination_date: "2026-06-30", [field]: "" }))[field]).toBeDefined();
+  });
+
+  it("入社日より前の退職日は引き続き拒否する", () => {
+    expect(validateEmployee(baseEmployee({ ...blankBank, termination_date: "2025-03-31" })))
+      .toEqual({ termination_date: "入社日より前にはできません" });
+  });
+});

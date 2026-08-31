@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  canWrite: true,
   operatorRole: "super_admin" as "super_admin" | "admin" | "manager",
   fetchEmployees: vi.fn(),
   fetchCompanies: vi.fn(),
@@ -22,7 +23,7 @@ vi.mock("../_lib/queries", () => ({
 }));
 vi.mock("../_state/RootStateContext", () => ({
   useRootState: () => ({
-    canWrite: true,
+    canWrite: mocks.canWrite,
     rootUser: {
       user_id: "USER-001",
       employee_number: "0001",
@@ -37,6 +38,7 @@ vi.mock("../_lib/useMasterShortcuts", () => ({
 
 import EmployeesPage from "./page";
 import { GardenRoleField } from "./GardenRoleField";
+import { VALIDATION_ERROR_BANNER } from "../_lib/validators";
 
 const employee = {
   employee_id: "EMP-1404",
@@ -99,6 +101,7 @@ async function openRoleDialog() {
 describe("Garden権限の編集UI", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.canWrite = true;
     mocks.operatorRole = "super_admin";
     mocks.fetchEmployees.mockResolvedValue([employee]);
     mocks.fetchCompanies.mockResolvedValue([
@@ -186,6 +189,89 @@ describe("Garden権限の編集UI", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/P0001/)).not.toBeInTheDocument();
     expect(screen.queryByText(/enforce_garden_role_change/)).not.toBeInTheDocument();
+  });
+
+  describe("退職日による口座必須の切り替え", () => {
+    const bankLabels = ["銀行名", "金融機関コード（4桁）", "支店名", "支店コード（3桁）", "口座番号（7桁）", "口座名義", "口座名義カナ"];
+    const field = (label: string) => screen.getByLabelText(new RegExp(`^${label.replace(/[()（）]/g, "\\$&")}(?:\\*|$)`));
+    const hasRequiredMark = (label: string) => field(label).closest("label")!.querySelector("span")!.textContent!.includes("*");
+
+    it("在籍者の口座7項目の必須エラーを保持し、退職日入力時には直ちに消す", async () => {
+      mocks.fetchEmployees.mockResolvedValue([employeeWithoutBank]);
+      renderPage();
+      await openEmployee();
+      bankLabels.forEach(label => expect(hasRequiredMark(label)).toBe(true));
+      fireEvent.click(screen.getByRole("button", { name: "保存" }));
+      expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(7);
+      expect(screen.getAllByText("必須")).toHaveLength(4);
+      expect(mocks.upsertEmployee).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByLabelText("退職日"), { target: { value: "2026-06-30" } });
+      bankLabels.forEach(label => expect(hasRequiredMark(label)).toBe(false));
+      expect(hasRequiredMark("口座種別")).toBe(false);
+      expect(screen.queryByText("必須")).not.toBeInTheDocument();
+      expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+      expect(screen.queryByText(VALIDATION_ERROR_BANNER)).not.toBeInTheDocument();
+      for (const label of ["従業員ID", "社員番号", "所属法人", "氏名", "氏名カナ", "メールアドレス", "雇用形態", "給与体系", "社会保険区分", "入社日"]) {
+        expect(screen.getByLabelText(`${label}*`, { exact: true })).toBeInTheDocument();
+      }
+      mocks.fetchEmployees.mockResolvedValue([{ ...employeeWithoutBank, termination_date: "2026-06-30" }]);
+      fireEvent.click(screen.getByRole("button", { name: "保存" }));
+      await waitFor(() => expect(mocks.upsertEmployee).toHaveBeenCalledTimes(1));
+      expect(mocks.upsertEmployee).toHaveBeenCalledWith(expect.objectContaining({
+        employee_id: employee.employee_id, termination_date: "2026-06-30", is_active: true,
+        bank_name: "", bank_code: "", branch_name: "", branch_code: "",
+        account_number: "", account_holder: "", account_holder_kana: "",
+      }));
+      expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({
+        action: "master_update", targetId: employee.employee_id,
+      }));
+      expect(mocks.setEmployeeActive).not.toHaveBeenCalled();
+      expect(await screen.findByRole("columnheader", { name: "退職日" })).toBeInTheDocument();
+      expect(await screen.findByRole("cell", { name: "2026-06-30" })).toBeInTheDocument();
+    });
+
+    it("退職日を再び空にすると口座の必須マークと7件の検証が戻る", async () => {
+      mocks.fetchEmployees.mockResolvedValue([{ ...employeeWithoutBank, termination_date: "2026-06-30" }]);
+      renderPage();
+      await openEmployee();
+      bankLabels.forEach(label => expect(hasRequiredMark(label)).toBe(false));
+      fireEvent.change(screen.getByLabelText("退職日"), { target: { value: "" } });
+      bankLabels.forEach(label => expect(hasRequiredMark(label)).toBe(true));
+      fireEvent.click(screen.getByRole("button", { name: "保存" }));
+      expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(7);
+      expect(mocks.upsertEmployee).not.toHaveBeenCalled();
+    });
+
+    it("退職日があっても入力済みの不正な口座コードはエラーを維持する", async () => {
+      mocks.fetchEmployees.mockResolvedValue([{ ...employeeWithoutBank, bank_code: "123" }]);
+      renderPage();
+      await openEmployee();
+      fireEvent.click(screen.getByRole("button", { name: "保存" }));
+      fireEvent.change(screen.getByLabelText("退職日"), { target: { value: "2026-06-30" } });
+      expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(1);
+      expect(screen.getByText("半角数字4桁")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "保存" }));
+      expect(mocks.upsertEmployee).not.toHaveBeenCalled();
+    });
+
+    it("退職日保存と無効化は従来どおり独立した操作として監査される", async () => {
+      mocks.fetchEmployees.mockResolvedValue([{ ...employeeWithoutBank, termination_date: "2026-06-30" }]);
+      renderPage();
+      fireEvent.click(await screen.findByRole("button", { name: "無効化" }));
+      await waitFor(() => expect(mocks.setEmployeeActive).toHaveBeenCalledWith(employee.employee_id, false));
+      expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "master_update", payload: { toggle_active: false } }));
+      expect(mocks.upsertEmployee).not.toHaveBeenCalled();
+    });
+
+    it("編集権限がなければ退職者の編集・状態切り替えもできない", async () => {
+      mocks.canWrite = false;
+      mocks.fetchEmployees.mockResolvedValue([{ ...employeeWithoutBank, termination_date: "2026-06-30" }]);
+      renderPage();
+      expect(await screen.findByRole("button", { name: "編集" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "無効化" })).toBeDisabled();
+      expect(mocks.upsertEmployee).not.toHaveBeenCalled();
+    });
   });
 
   describe("権限だけを変更するダイアログ", () => {

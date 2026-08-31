@@ -159,6 +159,10 @@ export function validateSalarySystem(s: SalarySystem): FieldErrors {
 // ------------------------------------------------------------
 // 5. 従業員マスタ
 // ------------------------------------------------------------
+export function isEmployeeBankRequired(em: Pick<Employee, "termination_date">): boolean {
+  return !em.termination_date?.trim();
+}
+
 export function validateEmployee(em: Employee): FieldErrors {
   const e: FieldErrors = {};
   if (!/^EMP-\d{4,}$/.test(em.employee_id)) e.employee_id = "EMP-XXXX 形式";
@@ -192,14 +196,15 @@ export function validateEmployee(em: Employee): FieldErrors {
   }
   if (!em.email.trim()) e.email = "必須";
   else if (!isEmail(em.email)) e.email = "メール形式（例: name@example.com）";
-  if (!em.bank_name.trim()) e.bank_name = "必須";
-  if (!isDigits(em.bank_code, 4)) e.bank_code = "半角数字4桁";
-  if (!em.branch_name.trim()) e.branch_name = "必須";
-  if (!isDigits(em.branch_code, 3)) e.branch_code = "半角数字3桁";
-  if (!isDigits(em.account_number, 7)) e.account_number = "半角数字7桁";
-  if (!em.account_holder.trim()) e.account_holder = "必須";
-  if (!em.account_holder_kana.trim()) e.account_holder_kana = "必須";
-  else if (!isKatakana(em.account_holder_kana))
+  const bankRequired = isEmployeeBankRequired(em);
+  if (bankRequired && !em.bank_name.trim()) e.bank_name = "必須";
+  if ((bankRequired || em.bank_code.trim()) && !isDigits(em.bank_code, 4)) e.bank_code = "半角数字4桁";
+  if (bankRequired && !em.branch_name.trim()) e.branch_name = "必須";
+  if ((bankRequired || em.branch_code.trim()) && !isDigits(em.branch_code, 3)) e.branch_code = "半角数字3桁";
+  if ((bankRequired || em.account_number.trim()) && !isDigits(em.account_number, 7)) e.account_number = "半角数字7桁";
+  if (bankRequired && !em.account_holder.trim()) e.account_holder = "必須";
+  if (bankRequired && !em.account_holder_kana.trim()) e.account_holder_kana = "必須";
+  else if (em.account_holder_kana.trim() && !isKatakana(em.account_holder_kana))
     e.account_holder_kana = "全角カタカナのみ";
   if (!em.insurance_type) e.insurance_type = "必須";
 
