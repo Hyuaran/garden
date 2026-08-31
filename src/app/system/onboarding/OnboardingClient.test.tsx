@@ -120,16 +120,17 @@ describe("11画面の入社手続き", () => {
     expect([...container.querySelectorAll("div")].some(node => node.textContent === NDA_FULL_TEXT)).toBe(true);
     expect(screen.getByLabelText("内容を確認しました")).not.toBeChecked();
   });
-  it("交通費と口座の検索で見つからない案内を出し、その後も手入力できる", async () => {
+  it("通勤画面に調べるボタンを出さず、口座画面の調べるは残す", async () => {
     render(<OnboardingClient initial={initial()} />);
     for (let index = 1; index <= 5; index++) await next(index);
-    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ fare: null }) });
+    expect(screen.getByText("金額は、乗換案内などでお調べのうえ入れてください。分かる範囲で大丈夫です。こちらで確認して決めます。")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "調べる" })).toBeNull();
+    expect(screen.queryByText("見つかりませんでした。金額を直接入れてください")).toBeNull();
     fireEvent.change(screen.getByLabelText("乗る駅・停留所"), { target: { value: "空の駅" } });
-    fireEvent.click(screen.getByRole("button", { name: "調べる" }));
-    await screen.findByText("見つかりませんでした。金額を直接入れてください");
     fireEvent.change(screen.getByLabelText("1か月の定期代（円）"), { target: { value: "12000" } });
     expect(screen.getByLabelText("1か月の定期代（円）")).toHaveValue("12000");
     await next(6);
+    expect(screen.getAllByRole("button", { name: "調べる" })).toHaveLength(2);
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ banks: [] }) });
     fireEvent.change(screen.getByLabelText("銀行名"), { target: { value: "ない銀行" } });
     fireEvent.click(screen.getAllByRole("button", { name: "調べる" })[0]);
@@ -137,14 +138,13 @@ describe("11画面の入社手続き", () => {
     fireEvent.change(screen.getByLabelText("金融機関コード（4桁）"), { target: { value: "1234" } });
     expect(screen.getByLabelText("金融機関コード（4桁）")).toHaveValue("1234");
   });
-  it("検索で入った値は手で上書きでき、マイナンバーは確認画面で下4桁だけ表示する", async () => {
+  it("通勤区間は手入力でき、マイナンバーは確認画面で下4桁だけ表示する", async () => {
     render(<OnboardingClient initial={initial()} />);
     for (let index = 1; index <= 5; index++) await next(index);
-    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ fare: { line: "近鉄奈良線", passMonthly: 10000, fareOneway: 500 } }) });
     fireEvent.change(screen.getByLabelText("乗る駅・停留所"), { target: { value: "生駒" } });
-    fireEvent.click(screen.getByRole("button", { name: "調べる" }));
-    await waitFor(() => expect(screen.getByLabelText("1か月の定期代（円）")).toHaveValue("10000"));
+    fireEvent.change(screen.getByLabelText("路線・系統"), { target: { value: "近鉄奈良線" } });
     fireEvent.change(screen.getByLabelText("1か月の定期代（円）"), { target: { value: "11000" } });
+    expect(screen.getByLabelText("路線・系統")).toHaveValue("近鉄奈良線");
     expect(screen.getByLabelText("1か月の定期代（円）")).toHaveValue("11000");
     await next(6);
     await next(7);
@@ -179,7 +179,7 @@ describe("11画面の入社手続き", () => {
     expect(requests.at(-1)?.values.commute_routes).toHaveLength(2);
     expect(requests.at(-1)?.values.commute_routes[1].from_station).toBe("バス停");
   });
-  it("区間ごとの調べるは押した区間だけに反映する", async () => {
+  it("複数の通勤区間にも調べるボタンを出さない", async () => {
     render(<OnboardingClient initial={initial()} />);
     for (let index = 1; index <= 5; index++) await next(index);
     fireEvent.click(screen.getByRole("button", { name: "もう1区間ふやす" }));
@@ -187,11 +187,10 @@ describe("11画面の入社手続き", () => {
     const second = screen.getByRole("group", { name: "2区間目" });
     fireEvent.change(within(first).getByLabelText("路線・系統"), { target: { value: "手入力線" } });
     fireEvent.change(within(second).getByLabelText("乗る駅・停留所"), { target: { value: "生駒" } });
-    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ fare: { line: "近鉄奈良線", passMonthly: 10000, fareOneway: 500 } }) });
-    fireEvent.click(within(second).getByRole("button", { name: "調べる" }));
-    await waitFor(() => expect(within(second).getByLabelText("路線・系統")).toHaveValue("近鉄奈良線"));
+    expect(within(first).queryByRole("button", { name: "調べる" })).toBeNull();
+    expect(within(second).queryByRole("button", { name: "調べる" })).toBeNull();
     expect(within(first).getByLabelText("路線・系統")).toHaveValue("手入力線");
-    expect(within(first).getByLabelText("1か月の定期代（円）")).toHaveValue("");
+    expect(within(second).getByLabelText("乗る駅・停留所")).toHaveValue("生駒");
   });
   it("通勤区間は途中保存して開き直しても数と中身を復元する", async () => {
     const view = render(<OnboardingClient initial={initial()} />);

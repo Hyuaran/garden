@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
-import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, isMaskedMyNumber, LOOKUP_NOT_FOUND, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
+import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
 import OnboardingReview from "./_components/OnboardingReview";
 import styles from "./onboarding.module.css";
 
@@ -24,7 +24,6 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   const [hasFamily, setHasFamily] = useState(initial.values.dependents.length > 0);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [postalNotice, setPostalNotice] = useState("");
-  const [commuteNotices, setCommuteNotices] = useState<string[]>([]);
   const [bankNotice, setBankNotice] = useState("");
   const [branchNotice, setBranchNotice] = useState("");
   const [bankChoices, setBankChoices] = useState<BankChoice[]>([]);
@@ -73,18 +72,6 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         if (!controller.signal.aborted) setPostalNotice("住所を取得できませんでした。住所を直接入れてください。");
       }
     }, 300);
-  }
-  async function lookupCommute(index: number) {
-    setCommuteNotices(previous => previous.map((notice, i) => i === index ? "" : notice));
-    const route = values.commute_routes[index] ?? emptyCommuteRoute();
-    const station = route.from_station.trim();
-    if (!station) { setCommuteNotices(previous => commuteRoutes().map((_, i) => i === index ? LOOKUP_NOT_FOUND : previous[i] ?? "")); return; }
-    try {
-      const response = await fetch(`/api/system/onboarding/lookup/commute?station=${encodeURIComponent(station)}`, { cache: "no-store" });
-      const body = await response.json();
-      if (!response.ok || !body.fare) { setCommuteNotices(previous => commuteRoutes().map((_, i) => i === index ? LOOKUP_NOT_FOUND : previous[i] ?? "")); return; }
-      setValues(previous => ({ ...previous, commute_routes: commuteRoutes(previous.commute_routes).map((entry, i) => i === index ? { ...entry, line: body.fare.line ?? entry.line, pass_monthly: String(body.fare.passMonthly ?? ""), fare_oneway: String(body.fare.fareOneway ?? "") } : entry) }));
-    } catch { setCommuteNotices(previous => commuteRoutes().map((_, i) => i === index ? LOOKUP_NOT_FOUND : previous[i] ?? "")); }
   }
   async function lookupBank() {
     setBankNotice(""); setBankChoices([]);
@@ -139,7 +126,6 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   }
   function removeCommuteRoute(index: number) {
     setValues(previous => ({ ...previous, commute_routes: commuteRoutes(previous.commute_routes).filter((_, i) => i !== index) }));
-    setCommuteNotices(previous => previous.filter((_, i) => i !== index));
   }
   function addCommuteRoute() {
     setValues(previous => ({ ...previous, commute_routes: [...commuteRoutes(previous.commute_routes), emptyCommuteRoute()] }));
@@ -149,9 +135,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
     if (key === "kind") return <select id={id} value={route[key]} onChange={event => changeCommuteRoute(index, key, event.target.value)}>
       <option value="">選んでください</option>{COMMUTE_ROUTE_KIND_OPTIONS.map(label => <option key={label}>{label}</option>)}
     </select>;
-    const input = <input id={id} value={route[key]} maxLength={2000} inputMode={key === "pass_monthly" || key === "fare_oneway" ? "numeric" : undefined} onChange={event => changeCommuteRoute(index, key, event.target.value)} />;
-    if (key !== "from_station") return input;
-    return <div className={styles.inputWithButton}>{input}<button type="button" onClick={() => void lookupCommute(index)}>調べる</button></div>;
+    return <input id={id} value={route[key]} maxLength={2000} inputMode={key === "pass_monthly" || key === "fare_oneway" ? "numeric" : undefined} onChange={event => changeCommuteRoute(index, key, event.target.value)} />;
   }
   function commuteRouteFields() {
     const routes = commuteRoutes();
@@ -160,7 +144,6 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
       {routes.map((route, index) => <fieldset className={styles.dependent} key={index}>
         <legend>{index + 1}区間目</legend>
         {COMMUTE_ROUTE_FIELDS.map(key => <label className={styles.field} key={key} htmlFor={`commute-${index}-${key}`}>{COMMUTE_ROUTE_LABELS[key]}{routeInput(route, index, key)}</label>)}
-        {commuteNotices[index] && <span className={styles.hint} role="status">{commuteNotices[index]}</span>}
         <button type="button" onClick={() => removeCommuteRoute(index)}>{index + 1}区間目を消す</button>
       </fieldset>)}
       <button type="button" disabled={routes.length >= 10} onClick={addCommuteRoute}>もう1区間ふやす</button>
@@ -254,7 +237,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         {step === 5 && commuteRouteFields()}
         {step === 3 && <p>番号が分からないときは、次の画面で前の勤務先を教えてください。こちらで調べます。</p>}
         {step === 4 && <p>雇用保険の番号を調べるために使います。分かる範囲で大丈夫です。</p>}
-        {step === 5 && <p>金額は分かる範囲で大丈夫です。こちらで確認して決めます。</p>}
+        {step === 5 && <p>金額は、乗換案内などでお調べのうえ入れてください。分かる範囲で大丈夫です。こちらで確認して決めます。</p>}
         {step === 6 && <p>お給料の振込先です。通帳やアプリの表示どおりに入れてください。</p>}
         {step === 7 && <p className={styles.noticeLines}>税と社会保険の手続きにだけ使います。{"\n"}それ以外の目的では使いません。{"\n"}入力後は、下4桁だけが表示されます。</p>}
         {step === 8 && <p>災害や急なご病気のときの連絡先です。</p>}
