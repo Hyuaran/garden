@@ -1,6 +1,6 @@
 import "server-only";
 import { createServerClient } from "@/app/_lib/supabase/server";
-import { initialInput, isMaskedMyNumber, maskMyNumber, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type OnboardingRecord } from "./onboarding";
+import { initialInput, isMaskedMyNumber, maskMyNumber, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type Dependent, type OnboardingRecord } from "./onboarding";
 
 type OnboardingEmployee = { employee_id: string; name: string | null; name_kana: string | null; birthday: string | null };
 
@@ -22,12 +22,45 @@ export async function onboardingEmployee() {
 }
 export const ONBOARDING_COLUMNS = [...TEXT_FIELDS, "dependents", "commute_routes", "status", "nda_agreed_at", "submitted_at"].join(",");
 type Context = Awaited<ReturnType<typeof onboardingEmployee>>;
-export async function readOnboarding({ supabase, employee }: Context): Promise<OnboardingRecord> {
+
+async function readOnboardingRow({ supabase, employee }: Context) {
   const { data, error } = await supabase.from("system_onboarding").select(ONBOARDING_COLUMNS).eq("employee_id", employee.employee_id).maybeSingle();
   if (error) throw databaseError(error);
-  if (!data) return { values: initialInput(employee), status: "draft", ndaAgreedAt: null, submittedAt: null };
-  const row = data as unknown as Record<string, unknown>;
-  return { values: parseInput({ ...row, my_number: maskMyNumber(String(row.my_number ?? "")), nda_agreed: Boolean(row.nda_agreed_at) }), status: row.status === "submitted" ? "submitted" : "draft", ndaAgreedAt: typeof row.nda_agreed_at === "string" ? row.nda_agreed_at : null, submittedAt: typeof row.submitted_at === "string" ? row.submitted_at : null };
+  return data ? data as unknown as Record<string, unknown> : null;
+}
+
+function maskDependentMyNumbers(value: unknown) {
+  if (!Array.isArray(value)) return value;
+  return value.map(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+    const row = item as Record<string, unknown>;
+    return { ...row, my_number: maskMyNumber(String(row.my_number ?? "")) };
+  });
+}
+
+function mergeMaskedDependentMyNumbers(dependents: Dependent[], previous: unknown) {
+  const previousRows = Array.isArray(previous) ? previous : [];
+  return dependents.map((dependent, index) => {
+    if (!isMaskedMyNumber(dependent.my_number)) return dependent;
+    const previousMyNumber = previousRows[index] && typeof previousRows[index] === "object" && !Array.isArray(previousRows[index])
+      ? (previousRows[index] as Record<string, unknown>).my_number
+      : undefined;
+    return typeof previousMyNumber === "string" ? { ...dependent, my_number: previousMyNumber } : dependent;
+  });
+}
+
+function onboardingRecord(row: Record<string, unknown> | null, employee: OnboardingEmployee): OnboardingRecord {
+  if (!row) return { values: initialInput(employee), status: "draft", ndaAgreedAt: null, submittedAt: null };
+  return {
+    values: parseInput({ ...row, my_number: maskMyNumber(String(row.my_number ?? "")), dependents: maskDependentMyNumbers(row.dependents), nda_agreed: Boolean(row.nda_agreed_at) }),
+    status: row.status === "submitted" ? "submitted" : "draft",
+    ndaAgreedAt: typeof row.nda_agreed_at === "string" ? row.nda_agreed_at : null,
+    submittedAt: typeof row.submitted_at === "string" ? row.submitted_at : null,
+  };
+}
+
+export async function readOnboarding(context: Context): Promise<OnboardingRecord> {
+  return onboardingRecord(await readOnboardingRow(context), context.employee);
 }
 
 function dateOrNull(value: string) {
@@ -40,12 +73,14 @@ function dateOrNull(value: string) {
 export async function saveOnboarding(context: Context, input: unknown, submit: boolean) {
   let values;
   try { values = parseInput(input); } catch { throw new OnboardingError("入力内容を読み取れませんでした。ページを開き直してください。", 400); }
-  const previous = await readOnboarding(context);
+  const previousRow = await readOnboardingRow(context);
+  const previous = onboardingRecord(previousRow, context.employee);
   // 提出済みは見返すだけ。二重送信も同じ結果を返し、提出時刻を更新しない。
   if (previous.status === "submitted") return previous;
   const now = new Date().toISOString();
   const { nda_agreed, ...fields } = values;
   if (isMaskedMyNumber(fields.my_number)) delete (fields as Partial<typeof fields>).my_number;
+  fields.dependents = mergeMaskedDependentMyNumbers(values.dependents, previousRow?.dependents);
   const { data, error } = await context.supabase.from("system_onboarding").upsert({
     ...fields, employee_id: context.employee.employee_id, status: submit ? "submitted" : "draft",
     birth_date: dateOrNull(values.birth_date), previous_employer_from: dateOrNull(values.previous_employer_from), previous_employer_to: dateOrNull(values.previous_employer_to),

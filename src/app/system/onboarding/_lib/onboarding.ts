@@ -11,13 +11,13 @@ export const STEPS = ["あなたのこと", "住所と連絡先", "ご家族", "
 
 export const TEXT_FIELDS = ["name", "name_kana", "gender", "birth_date", "postal_code", "address", "address_kana", "phone", "pension_number", "employment_insurance_status", "employment_insurance_number", "previous_employer", "previous_employer_from", "previous_employer_to", "commute_method", "bank_name", "bank_code", "branch_name", "branch_code", "account_type", "account_number", "account_holder_kana", "my_number", "emergency_name", "emergency_relation", "emergency_relation_other", "emergency_address", "emergency_phone"] as const;
 export type TextField = typeof TEXT_FIELDS[number];
-export const DEPENDENT_FIELDS = ["name", "name_kana", "relation", "birth_date", "annual_income", "occupation"] as const;
+export const DEPENDENT_FIELDS = ["name", "name_kana", "my_number", "relation", "birth_date", "annual_income", "occupation"] as const;
 export type Dependent = Record<typeof DEPENDENT_FIELDS[number], string>;
 export const COMMUTE_ROUTE_FIELDS = ["kind", "from_station", "to_station", "line", "pass_monthly", "fare_oneway"] as const;
 export type CommuteRoute = Record<typeof COMMUTE_ROUTE_FIELDS[number], string>;
 export type OnboardingInput = Record<TextField, string> & { dependents: Dependent[]; commute_routes: CommuteRoute[]; nda_agreed: boolean };
 export type OnboardingRecord = { values: OnboardingInput; status: "draft" | "submitted"; ndaAgreedAt: string | null; submittedAt: string | null };
-export const emptyDependent = (): Dependent => ({ name: "", name_kana: "", relation: "", birth_date: "", annual_income: "", occupation: "" });
+export const emptyDependent = (): Dependent => ({ name: "", name_kana: "", my_number: "", relation: "", birth_date: "", annual_income: "", occupation: "" });
 export const emptyCommuteRoute = (): CommuteRoute => ({ kind: "", from_station: "", to_station: "", line: "", pass_monthly: "", fare_oneway: "" });
 export function emptyInput(): OnboardingInput {
   return { ...Object.fromEntries(TEXT_FIELDS.map(key => [key, ""])) as Record<TextField, string>, dependents: [], commute_routes: [], nda_agreed: false };
@@ -71,6 +71,11 @@ export function formatWarnings(values: OnboardingInput) {
   return warnings;
 }
 
+export function dependentMyNumberWarning(value: string) {
+  if (!value || isMaskedMyNumber(value) || /^[0-9]{12}$/.test(value)) return "";
+  return "マイナンバーは12桁の数字です。分かる範囲で確認してください。このまま進めます。";
+}
+
 export const FIELD_LABELS: Record<TextField, string> = {
   name: "氏名", name_kana: "フリガナ", gender: "性別", birth_date: "生年月日", postal_code: "郵便番号", address: "住所", address_kana: "住所のフリガナ", phone: "電話番号",
   pension_number: "基礎年金番号", employment_insurance_status: "雇用保険被保険者証", employment_insurance_number: "雇用保険被保険者番号", previous_employer: "会社名", previous_employer_from: "勤務した期間（開始）", previous_employer_to: "勤務した期間（終了）",
@@ -78,7 +83,7 @@ export const FIELD_LABELS: Record<TextField, string> = {
   bank_name: "銀行名", bank_code: "金融機関コード（4桁）", branch_name: "支店名", branch_code: "支店コード（3桁）", account_type: "預金種別", account_number: "口座番号（8桁以内）", account_holder_kana: "口座名義カナ",
   my_number: "マイナンバー（12桁）", emergency_name: "氏名", emergency_relation: "続柄", emergency_relation_other: "続柄（その他）", emergency_address: "住所", emergency_phone: "電話番号",
 };
-export const DEPENDENT_LABELS: Record<typeof DEPENDENT_FIELDS[number], string> = { name: "氏名", name_kana: "フリガナ", relation: "続柄", birth_date: "生年月日", annual_income: "年間収入（円）", occupation: "職業または学校と学年" };
+export const DEPENDENT_LABELS: Record<typeof DEPENDENT_FIELDS[number], string> = { name: "氏名", name_kana: "フリガナ", my_number: "マイナンバー（12桁）", relation: "続柄", birth_date: "生年月日", annual_income: "年間収入（円）", occupation: "職業または学校と学年" };
 export const COMMUTE_ROUTE_LABELS: Record<typeof COMMUTE_ROUTE_FIELDS[number], string> = { kind: "交通機関", from_station: "乗る駅・停留所", to_station: "降りる駅・停留所", line: "路線・系統", pass_monthly: "1か月の定期代（円）", fare_oneway: "片道の運賃（円）" };
 export const STEP_FIELDS: readonly (readonly TextField[])[] = [
   ["name", "name_kana", "gender", "birth_date"], ["postal_code", "address", "address_kana", "phone"], [],
@@ -88,6 +93,10 @@ export const STEP_FIELDS: readonly (readonly TextField[])[] = [
 ];
 export function displayValue(key: TextField, value: string) {
   if (key === "employment_insurance_status") return { yes: "あり", no: "なし", unknown: "わからない" }[value] ?? value;
+  if (key === "my_number") return maskMyNumber(value);
+  return value;
+}
+export function displayDependentValue(key: typeof DEPENDENT_FIELDS[number], value: string) {
   if (key === "my_number") return maskMyNumber(value);
   return value;
 }

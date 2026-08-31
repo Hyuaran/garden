@@ -68,10 +68,34 @@ describe("入社手続きの本人専用保存", () => {
     expect(result.values.name).toBe(""); expect(result.values.birth_date).toBe("");
   });
   it("保存済みマイナンバーは読み出し時に下4桁だけ返す", async () => {
-    const f = fixture(); f.query.maybeSingle.mockResolvedValue({ data: { my_number: "123456789012", status: "draft" }, error: null });
+    const f = fixture(); f.query.maybeSingle.mockResolvedValue({ data: { my_number: "123456789012", dependents: [{ name: "家族", my_number: "111122223333" }], status: "draft" }, error: null });
     const result = await readOnboarding(await onboardingEmployee());
     expect(result.values.my_number).toBe("••••••••9012");
-    expect(JSON.stringify(result)).not.toContain("123456789012");
+    expect(result.values.dependents[0].my_number).toBe("••••••••3333");
+    expect(JSON.stringify(result)).not.toMatch(/123456789012|111122223333/);
+  });
+  it("扶養家族のマスク済みマイナンバーは保存時に既存値を維持し、入れ直した行だけ更新する", async () => {
+    const f = fixture();
+    f.query.maybeSingle.mockResolvedValue({
+      data: {
+        status: "draft",
+        dependents: [
+          { name: "一人目", name_kana: "", my_number: "111122223333", relation: "子", birth_date: "", annual_income: "", occupation: "" },
+          { name: "二人目", name_kana: "", my_number: "444455556666", relation: "子", birth_date: "", annual_income: "", occupation: "" },
+        ],
+      },
+      error: null,
+    });
+    const input = emptyInput();
+    input.dependents = [
+      { name: "一人目", name_kana: "", my_number: "••••••••3333", relation: "子", birth_date: "", annual_income: "", occupation: "" },
+      { name: "二人目", name_kana: "", my_number: "777788889999", relation: "子", birth_date: "", annual_income: "", occupation: "" },
+    ];
+    await saveOnboarding(await onboardingEmployee(), input, false);
+    expect(f.query.upsert.mock.calls[0][0].dependents).toEqual([
+      { name: "一人目", name_kana: "", my_number: "111122223333", relation: "子", birth_date: "", annual_income: "", occupation: "" },
+      { name: "二人目", name_kana: "", my_number: "777788889999", relation: "子", birth_date: "", annual_income: "", occupation: "" },
+    ]);
   });
   it("認証と読み取り成功後に初期値入りフォームを描画する", async () => {
     fixture();

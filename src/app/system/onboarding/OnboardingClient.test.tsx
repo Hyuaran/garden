@@ -110,6 +110,28 @@ describe("11画面の入社手続き", () => {
     expect(screen.getByLabelText("氏名")).toHaveValue("残す家族");
     await next(3); expect(requests.at(-1)?.values.dependents).toHaveLength(1);
   });
+  it("扶養家族ごとにマイナンバーを入力でき、保存済み表示は行ごとに下4桁だけになり入れ直せる", async () => {
+    const record = initial();
+    record.values.dependents = [
+      { name: "一人目", name_kana: "", my_number: "••••••••3333", relation: "子", birth_date: "", annual_income: "", occupation: "" },
+      { name: "二人目", name_kana: "", my_number: "••••••••6666", relation: "子", birth_date: "", annual_income: "", occupation: "" },
+    ];
+    render(<OnboardingClient initial={record} />);
+    await next(1); await next(2);
+    expect(screen.getByText("マイナンバーは、税と社会保険の手続きにだけ使います。", { exact: false })).toBeInTheDocument();
+    const first = screen.getByRole("group", { name: "扶養家族 1人目" });
+    const second = screen.getByRole("group", { name: "扶養家族 2人目" });
+    expect(within(first).getByLabelText("マイナンバー（12桁）")).toHaveValue("••••••••3333");
+    expect(within(second).getByLabelText("マイナンバー（12桁）")).toHaveValue("••••••••6666");
+    fireEvent.click(within(first).getByRole("button", { name: "入れ直す" }));
+    expect(within(first).getByLabelText("マイナンバー（12桁）")).toHaveValue("");
+    expect(within(second).getByLabelText("マイナンバー（12桁）")).toHaveValue("••••••••6666");
+    fireEvent.change(within(first).getByLabelText("マイナンバー（12桁）"), { target: { value: "111122223333" } });
+    fireEvent.change(within(second).getByLabelText("マイナンバー（12桁）"), { target: { value: "12" } });
+    expect(within(second).getByText(/マイナンバーは12桁/)).toBeInTheDocument();
+    await next(3);
+    expect(requests.at(-1)?.values.dependents.map(person => person.my_number)).toEqual(["111122223333", "12"]);
+  });
   it("続柄はプルダウンで、その他を選ぶと自由入力を保存する", async () => {
     render(<OnboardingClient initial={initial()} />); await next(1); await next(2);
     fireEvent.change(screen.getByLabelText("扶養している家族はいますか"), { target: { value: "yes" } });
@@ -169,6 +191,13 @@ describe("11画面の入社手続き", () => {
     await next(8); await next(9); await next(10);
     expect(screen.getByText("••••••••9012")).toBeInTheDocument();
     expect(screen.queryByText("123456789012")).toBeNull();
+  });
+  it("確認画面で扶養家族のマイナンバーは下4桁だけ表示する", async () => {
+    const values = emptyInput();
+    values.dependents = [{ name: "家族", name_kana: "", my_number: "111122223333", relation: "子", birth_date: "", annual_income: "", occupation: "" }];
+    render(<OnboardingReview values={values} />);
+    expect(screen.getByText("••••••••3333")).toBeInTheDocument();
+    expect(screen.queryByText("111122223333")).toBeNull();
   });
   it("通勤区間を3つに増やして真ん中を消せ、合計を表示して保存する", async () => {
     render(<OnboardingClient initial={initial()} />);

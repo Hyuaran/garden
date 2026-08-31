@@ -15,6 +15,20 @@ describe("本人用の保存API", () => {
     expect(json).toEqual({ ok: true, status: "draft", submittedAt: null, ndaAgreedAt: null });
     expect(JSON.stringify(json)).not.toContain("123456789012");
   });
+  it("扶養家族のマイナンバー全桁を保存APIのJSON応答に含めない", async () => {
+    mocks.save.mockResolvedValue({
+      status: "draft",
+      ndaAgreedAt: null,
+      submittedAt: null,
+      values: { dependents: [{ name: "家族", my_number: "111122223333" }] },
+    });
+    const response = await POST(request({ action: "save", values: { dependents: [{ name: "家族", my_number: "111122223333" }] } }));
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toEqual({ ok: true, status: "draft", submittedAt: null, ndaAgreedAt: null });
+    expect(JSON.stringify(json)).not.toMatch(/111122223333|my_number|家族/);
+  });
   it("提出アクションを明示して渡す", async () => {
     mocks.save.mockResolvedValue({ status: "submitted" });
     await POST(request({ action: "submit", values: {} })); expect(mocks.save).toHaveBeenCalledWith(expect.anything(), {}, true);

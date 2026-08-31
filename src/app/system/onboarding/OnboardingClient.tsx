@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
-import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
+import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, dependentMyNumberWarning, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
 import OnboardingReview from "./_components/OnboardingReview";
 import styles from "./onboarding.module.css";
 
@@ -128,6 +128,9 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   function changeDependentRelation(index: number, value: string) {
     setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry, i) => i === index ? { ...entry, relation: value } : entry) }));
   }
+  function changeDependent(index: number, key: keyof Dependent, value: string) {
+    setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry, i) => i === index ? { ...entry, [key]: value } : entry) }));
+  }
   function relationSelectValue(value: string) {
     if (!value) return "";
     return (RELATIONSHIP_OPTIONS as readonly string[]).includes(value) ? value : "その他";
@@ -245,9 +248,19 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         {step === 2 && <>
           <label className={styles.field}>扶養している家族はいますか<select value={hasFamily ? "yes" : "no"} onChange={event => { const yes = event.target.value === "yes"; setHasFamily(yes); setValues(previous => ({ ...previous, dependents: yes ? previous.dependents.length ? previous.dependents : [emptyDependent()] : [] })); }}><option value="no">いいえ</option><option value="yes">はい</option></select></label>
           {hasFamily && <>
+            <p className={styles.noticeLines}>マイナンバーは、税と社会保険の手続きにだけ使います。{"\n"}入力後は、下4桁だけが表示されます。</p>
             {values.dependents.map((person, index) => <fieldset className={styles.dependent} key={index}><legend>扶養家族 {index + 1}人目</legend>
-              {DEPENDENT_FIELDS.map(key => <label className={styles.field} key={key}>{DEPENDENT_LABELS[key]}{key === "relation" ? relationshipSelect(person.relation, value => changeDependentRelation(index, value)) : <input value={person[key]} maxLength={2000} type={key === "birth_date" ? "date" : "text"} inputMode={key === "annual_income" ? "numeric" : undefined}
-                onChange={event => setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry, i) => i === index ? { ...entry, [key]: event.target.value } : entry) }))} />}{key === "relation" && relationSelectValue(person.relation) === "その他" && <input aria-label="続柄（その他）" value={person.relation === "その他" ? "" : person.relation} maxLength={2000} onChange={event => setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry: Dependent, i) => i === index ? { ...entry, relation: event.target.value } : entry) }))} />}</label>)}
+              {DEPENDENT_FIELDS.map(key => {
+                const id = `dependent-${index}-${key}`;
+                const warningId = `dependent-${index}-${key}-warning`;
+                const myNumberWarning = key === "my_number" ? dependentMyNumberWarning(person.my_number) : "";
+                return <label className={styles.field} key={key} htmlFor={id}>{DEPENDENT_LABELS[key]}{key === "relation" ? relationshipSelect(person.relation, value => changeDependentRelation(index, value), id)
+                  : key === "my_number" ? <div className={styles.inputWithButton}><input id={id} value={person.my_number} maxLength={2000} type="text" inputMode="numeric" aria-describedby={myNumberWarning ? warningId : undefined} onChange={event => changeDependent(index, key, event.target.value)} />{isMaskedMyNumber(person.my_number) && <button type="button" onClick={() => changeDependent(index, key, "")}>入れ直す</button>}</div>
+                  : <input id={id} value={person[key]} maxLength={2000} type={key === "birth_date" ? "date" : "text"} inputMode={key === "annual_income" ? "numeric" : undefined} onChange={event => changeDependent(index, key, event.target.value)} />}
+                  {key === "relation" && relationSelectValue(person.relation) === "その他" && <input aria-label="続柄（その他）" value={person.relation === "その他" ? "" : person.relation} maxLength={2000} onChange={event => changeDependent(index, "relation", event.target.value)} />}
+                  {myNumberWarning && <span id={warningId} className={styles.warning}>{myNumberWarning}</span>}
+                </label>;
+              })}
               <button type="button" onClick={() => setValues(previous => ({ ...previous, dependents: previous.dependents.filter((_, i) => i !== index) }))}>{index + 1}人目を消す</button>
             </fieldset>)}
             <button type="button" disabled={values.dependents.length >= 30} onClick={() => setValues(previous => ({ ...previous, dependents: [...previous.dependents, emptyDependent()] }))}>もう1人ふやす</button>
