@@ -35,22 +35,22 @@ describe("会社説明", () => {
   });
 
   it.each([
-    ["kan-taiei", "2025年入社", "ゲーム、アニメ"],
-    ["ishihara-koshiro", "2026年入社", "サッカー観戦"],
-    ["kotani-iori", "2026年入社", "散歩"],
-    ["kirii-daisuke", "2025年入社", null],
-  ])("%sは確認済みの項目だけを出す", (id, joined, hobby) => {
+    ["kan-taiei", "2025年入社", "総務部（バックヤード）", "ゲーム、アニメ"],
+    ["ishihara-koshiro", "2026年入社", "営業部", "サッカー観戦"],
+    ["kotani-iori", "2026年入社", "営業部／総務部（バックヤード）", "散歩"],
+    ["kirii-daisuke", "2025年入社", "訪問営業部", null],
+  ])("%sは確認済みの項目だけを出す", (id, joined, department, hobby) => {
     render(<MemberCard member={member(id!)} />);
     expect(screen.getByRole("heading", { name: member(id!).name })).toBeInTheDocument();
     expect(screen.getByText(joined!)).toBeInTheDocument();
-    expect(screen.queryByText("所属")).not.toBeInTheDocument();
+    expect(screen.getByText(department!)).toBeInTheDocument();
     if (hobby) expect(screen.getByText(hobby)).toBeInTheDocument();
     else expect(screen.queryByText("趣味")).not.toBeInTheDocument();
     expect(screen.queryByText(/^(未設定|-)$/)).not.toBeInTheDocument();
   });
 
   it("空文字の項目はhidden指定がなくても行を出さない", () => {
-    const { container } = render(<MemberCard member={{ ...member("kirii-daisuke"), hidden: [] }} />);
+    const { container } = render(<MemberCard member={{ ...member("kirii-daisuke"), department: "", hidden: [] }} />);
     expect(container.querySelector('[data-field="department"]')).toBeNull();
     expect(container.querySelector('[data-field="hobbies"]')).toBeNull();
   });
