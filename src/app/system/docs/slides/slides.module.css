@@ -1,0 +1,25 @@
+.library { display:grid; gap:32px; margin-top:28px; }
+.library section { min-width:0; }
+.library h2 { margin:0 0 16px; color:var(--heading); }
+.deckList { display:grid; gap:16px; }
+.deckCard { display:grid; grid-template-columns:minmax(120px,220px) minmax(0,1fr) auto auto; align-items:center; gap:18px; min-width:0; padding:18px; border:1px solid var(--line); border-radius:18px; background:var(--card); color:var(--ink); box-shadow:var(--shadow); text-decoration:none; }
+.deckCard:hover { border-color:var(--teal-d); }
+.cover, .coverPlaceholder { display:block; width:100%; aspect-ratio:16/9; border:1px solid var(--line); border-radius:12px; background:var(--bg); }
+.cover { object-fit:cover; }
+.coverPlaceholder { display:grid; place-items:center; padding:8px; color:var(--sub); font-size:12px; text-align:center; }
+.deckDetails { display:grid; gap:6px; min-width:0; }
+.deckTitle { color:var(--heading); font-size:18px; font-weight:700; line-height:1.55; }
+.slideCount { color:var(--heading); font-size:13px; font-weight:700; white-space:nowrap; }
+.arrow { color:var(--teal-d); font-weight:700; }
+.slideStack { display:grid; gap:28px; margin-top:28px; }
+.slideFigure { scroll-margin-top:18px; margin:0; }
+.slideFigure figcaption { margin:0 0 8px; color:var(--sub); font-size:12px; font-weight:700; }
+.slideImage { display:block; width:100%; aspect-ratio:16/9; object-fit:contain; border:1px solid var(--line); border-radius:14px; background:#000; box-shadow:var(--shadow); }
+.slideImage:focus-visible { outline:3px solid var(--teal-d); outline-offset:4px; }
+.notice { color:var(--sub); padding:16px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+@media (max-width:760px) {
+  .deckCard { grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:12px; padding:14px 12px; }
+  .cover, .coverPlaceholder, .deckDetails { grid-column:1 / -1; }
+  .slideCount { grid-column:1; }
+  .arrow { grid-column:2; }
+}

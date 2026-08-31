@@ -62,14 +62,18 @@ describe("資料の認証と非公開写真", () => {
     const result = await loadCompanyMembers();
     expect(result.members).toHaveLength(12); expect(Object.keys(result.photos)).toHaveLength(10);
   });
-  it("資料入口は会社説明を維持し、線画アイコンの動画カードを追加する", async () => {
+  it("資料入口は会社説明を維持し、線画アイコンの動画とスライドカードを表示する", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     render(await DocsPage());
-    const links = screen.getAllByRole("link"); expect(links).toHaveLength(2);
+    const links = screen.getAllByRole("link"); expect(links).toHaveLength(3);
     expect(links[0]).toHaveAttribute("href", "/system/docs/company");
     expect(screen.getByText(/2026年8月31日/)).toBeInTheDocument();
     expect(links[1]).toHaveAttribute("href", "/system/docs/videos");
     expect(links[1].querySelector('svg[fill="none"][stroke="currentColor"]')).not.toBeNull();
     expect(links[1].textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+    expect(links[2]).toHaveAttribute("href", "/system/docs/slides");
+    expect(links[2]).toHaveTextContent("スライドを見る");
+    expect(links[2].querySelector('svg[fill="none"][stroke="currentColor"]')).not.toBeNull();
+    expect(links[2].textContent).not.toMatch(/\p{Extended_Pictographic}/u);
   });
 });

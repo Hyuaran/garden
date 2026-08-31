@@ -22,6 +22,10 @@ export default async function DocsPage() {
         <span className={styles.bookBadge}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /></svg></span>
         <h2>動画</h2><p>研修や説明の動画をまとめています。</p><span className={styles.readLink}>動画を見る →</span>
       </Link>
+      <Link className={styles.documentCard} href="/system/docs/slides">
+        <span className={styles.bookBadge}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="12" rx="1.8" /><path d="M8 21h8M12 17v4M8 9h8M8 13h5" /></svg></span>
+        <h2>スライド</h2><p>研修の内容を、1枚ずつの絵でご覧いただけます。</p><span className={styles.readLink}>スライドを見る →</span>
+      </Link>
     </div>
   </div>;
 }
