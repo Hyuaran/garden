@@ -36,7 +36,19 @@
 .reviewHeading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }.reviewHeading h3 { margin:0; font-size:18px; }
 .review dl { margin:10px 0 0; }.review dl>div { display:grid; grid-template-columns:160px minmax(0,1fr); gap:12px; padding:7px 0; }.review dt { color:var(--sub); font-size:13px; }.review dd { margin:0; white-space:pre-wrap; }
 .empty { color:#6b7280; }.saveStatus { min-height:26px; color:var(--sub); }
+.tableWrap { width:100%; overflow-x:auto; }
+.adminTable { width:100%; min-width:620px; border-collapse:collapse; }
+.adminTable th,.adminTable td { padding:12px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
+.adminTable th { color:var(--sub); font-size:13px; font-weight:700; }
+.adminTable tbody tr:hover { background:rgba(11,126,122,.08); }
+.detailStack { display:grid; gap:18px; width:100%; max-width:1040px; margin:0 auto; }
+.adminSection { min-width:0; padding:24px; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:0 4px 14px rgba(16,35,63,.07); }
+.adminSection h2 { margin:0 0 12px; font-size:20px; }
+.missingList { display:grid; gap:6px; margin:0; padding-left:1.3em; }
+.adminFields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; min-width:0; padding:0; border:0; }
+.allowanceBlock { display:grid; grid-column:1/-1; gap:12px; min-width:0; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--bg); }
+.allowanceRow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,180px) auto; gap:10px; align-items:end; min-width:0; }
 :global([data-theme="dark"]) .pageShell { --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4; --bg:#0c1726; --card:#152438; --line:#31435a; --accent:#7bdfd5; --warning-bg:#302918; --warning-ink:#f6c96b; }
 :global([data-theme="dark"]) .pageShell .primary { color:#10233f; }
 :global([data-theme="dark"]) .empty { color:#a8b2c2; }
-@media(max-width:640px) { .header { padding:58px 0 0; min-height:0; }.header h1 { font-size:25px; }.panel { padding:18px 12px; }.panel h2 { font-size:20px; }.dependent,.pledge { padding:12px 8px; }.review dl>div { grid-template-columns:minmax(0,1fr); gap:3px; }.actions,.inputWithButton { display:grid; grid-template-columns:minmax(0,1fr); }.totals>div { display:grid; gap:3px; }.totals dd { text-align:left; }.field input,.field select { padding:10px 6px; } }
+@media(max-width:640px) { .header { padding:58px 0 0; min-height:0; }.header h1 { font-size:25px; }.panel,.adminSection { padding:18px 12px; }.panel h2,.adminSection h2 { font-size:20px; }.dependent,.pledge { padding:12px 8px; }.review dl>div,.adminFields,.allowanceRow { grid-template-columns:minmax(0,1fr); gap:3px; }.actions,.inputWithButton { display:grid; grid-template-columns:minmax(0,1fr); }.totals>div { display:grid; gap:3px; }.totals dd { text-align:left; }.field input,.field select { padding:10px 6px; } }
