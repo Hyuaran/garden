@@ -64,3 +64,20 @@ export async function needsOnboarding(supabase: Context["supabase"], employeeId:
   if (error) return error.code === "PGRST205" || error.code === "42P01";
   return !data || data.status === "draft";
 }
+
+export async function needsOnboardingForLogin() {
+  try {
+    const supabase = await createServerClient();
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError || !auth.user) return false;
+    const employeeResult = await supabase.from("root_employees").select("employee_id")
+      .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
+    const employeeId = employeeResult.data?.employee_id;
+    if (employeeResult.error || typeof employeeId !== "string" || !employeeId) return false;
+    const { data, error } = await supabase.from("system_onboarding").select("status").eq("employee_id", employeeId).maybeSingle();
+    if (error) return false;
+    return !data || data.status === "draft";
+  } catch {
+    return false;
+  }
+}

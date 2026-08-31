@@ -10,6 +10,22 @@ import { getGreeting } from "../_lib/greeting";
 import { fetchBloomUser } from "../bloom/_lib/auth";
 import styles from "./page.module.css";
 
+const ONBOARDING_REDIRECT_EXCLUDED_ROLES = new Set(["closer", "toss", "outsource"]);
+
+async function fetchNeedsOnboardingAfterLogin() {
+  try {
+    const response = await fetch("/api/system/onboarding/status", {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+    });
+    if (!response.ok) return false;
+    const payload = await response.json();
+    return payload?.needsOnboarding === true;
+  } catch {
+    return false;
+  }
+}
+
 function BrandIcons() {
   return (
     <div className={styles.chips} data-testid="login-brand-icons" aria-hidden="true">
@@ -64,7 +80,13 @@ function LoginForm() {
       const bloomUser = result.userId ? await fetchBloomUser(result.userId) : null;
       const role = bloomUser?.garden_role;
       const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
-      router.push(returnTo ?? getPostLoginRedirect(role));
+      if (returnTo) {
+        router.push(returnTo);
+        return;
+      }
+      const needsOnboarding = !ONBOARDING_REDIRECT_EXCLUDED_ROLES.has(String(role ?? ""))
+        && await fetchNeedsOnboardingAfterLogin();
+      router.push(needsOnboarding ? "/system/onboarding" : getPostLoginRedirect(role));
     } catch (err) {
       setSubmitting(false);
       setError(`ロール取得に失敗しました: ${(err as Error).message}`);

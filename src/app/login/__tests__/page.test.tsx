@@ -38,6 +38,7 @@ beforeEach(() => {
   mocks.signInUnified.mockReset();
   mocks.fetchBloomUser.mockReset();
   mocks.searchParams = "";
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ needsOnboarding: false }), { status: 200 })));
 });
 
 describe("GardenLoginPage rendering", () => {
@@ -100,6 +101,23 @@ describe("GardenLoginPage submit flow", () => {
 
     await waitFor(() => expect(mocks.signInUnified).toHaveBeenCalledWith("8", "pw"));
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/"));
+    expect(fetch).toHaveBeenCalledWith("/api/system/onboarding/status", {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+    });
+  });
+
+  it("redirects employees with draft onboarding to /system/onboarding after login", async () => {
+    mocks.signInUnified.mockResolvedValue({ success: true, userId: "u1" });
+    mocks.fetchBloomUser.mockResolvedValue({ garden_role: "staff" });
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ needsOnboarding: true }), { status: 200 }));
+
+    render(<GardenLoginPage />);
+    fireEvent.change(screen.getByTestId("login-empid"), { target: { value: "8" } });
+    fireEvent.change(screen.getByTestId("login-password"), { target: { value: "pw" } });
+    fireEvent.click(screen.getByTestId("login-submit"));
+
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/system/onboarding"));
   });
 
   it("redirects closer users to /tree", async () => {
@@ -112,6 +130,7 @@ describe("GardenLoginPage submit flow", () => {
     fireEvent.click(screen.getByTestId("login-submit"));
 
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/tree"));
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("lets a safe returnTo override role redirect", async () => {
@@ -125,6 +144,20 @@ describe("GardenLoginPage submit flow", () => {
     fireEvent.click(screen.getByTestId("login-submit"));
 
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/bloom/progress"));
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps role redirect when onboarding status lookup fails", async () => {
+    mocks.signInUnified.mockResolvedValue({ success: true, userId: "u4" });
+    mocks.fetchBloomUser.mockResolvedValue({ garden_role: "staff" });
+    vi.mocked(fetch).mockRejectedValue(new Error("network"));
+
+    render(<GardenLoginPage />);
+    fireEvent.change(screen.getByTestId("login-empid"), { target: { value: "11" } });
+    fireEvent.change(screen.getByTestId("login-password"), { target: { value: "pw" } });
+    fireEvent.click(screen.getByTestId("login-submit"));
+
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/"));
   });
 
   it("shows an error and does not redirect on signInUnified failure", async () => {
