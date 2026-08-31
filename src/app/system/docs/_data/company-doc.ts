@@ -78,19 +78,29 @@ export const businesses = [
   { title: "SES事業", items: [{ text: "システムやソフトウェアの開発・保守・運用といった、クライアント企業が指定した業務に対してエンジニアを派遣。IT技術は業種に関わらず様々な場面で利用されているため、取引先にはシステム開発や通信関連企業だけでなく、製造業や卸売業を行っている企業もある" }] },
 ];
 
-export type OrganizationNode = { label: string; people?: string[]; children?: OrganizationNode[] };
+export type OrganizationMember = { name: string; role?: string };
+export type OrganizationNode = { label: string; members?: OrganizationMember[]; children?: OrganizationNode[] };
 export const organizationNote = "ヒュアラングループの組織は図の通り。";
 export const organization: OrganizationNode = {
-  label: "代表取締役", people: ["後道　翔太"], children: [
-    { label: "SES事業部", people: ["SES事業部長　金　亜奈"], children: [
-      { label: "インフラ課", people: ["インフラSE"] }, { label: "開発課", people: ["開発SE"] },
+  label: "代表取締役", members: [{ name: "後道　翔太" }], children: [
+    { label: "SES事業部", members: [{ role: "SES事業部長", name: "金　亜奈" }], children: [
+      { label: "インフラ課", members: [{ name: "インフラSE" }] }, { label: "開発課", members: [{ name: "開発SE" }] },
     ] },
-    { label: "営業部", people: ["営業部長　上田　基人"], children: [
-      { label: "テレマ課", people: ["チームリーダー　宮永　ひかり／小泉　翔／三好　理央"] },
-      { label: "訪問販売課", people: ["訪問営業課長　萩尾　拓也"] },
+    { label: "営業部", members: [{ role: "営業部長", name: "上田　基人" }], children: [
+      { label: "テレマ課", members: [
+        { role: "チームリーダー", name: "宮永　ひかり" },
+        { role: "チームリーダー", name: "小泉　翔" },
+        { role: "チームリーダー", name: "三好　理央" },
+      ] },
+      { label: "訪問販売課", members: [{ role: "訪問営業課長", name: "萩尾　拓也" }] },
     ] },
     { label: "総務部", children: [
-      { label: "総務課（バックヤード）", people: ["BYリーダー　東海林　美琴", "BY　簡　棣榮", "BY補佐・システム開発　槙　俊介", "BYアルバイト"] },
+      { label: "総務課（バックヤード）", members: [
+        { role: "BYリーダー", name: "東海林　美琴" },
+        { role: "BY", name: "簡　棣榮" },
+        { role: "BY補佐・システム開発", name: "槙　俊介" },
+        { name: "BYアルバイト" },
+      ] },
     ] },
   ],
 };

@@ -27,4 +27,11 @@ describe("資料専用の社長スタイル", () => {
     expect(css).toContain(".orgChildren { display:block;");
     expect(css).toContain("max-width:1560px");
   });
+  it("氏名はnowrapで箱幅に収め、部署と人物の色・枠を区別する", () => {
+    expect(css).toContain("white-space:nowrap");
+    expect(css).toContain("container-type:inline-size");
+    expect(css).toContain("font-size:min(15px,calc(100cqi / var(--org-name-length)))");
+    expect(css).toContain("border:2px solid var(--org-department-line)");
+    expect(css).toContain("background:var(--org-member-bg)");
+  });
 });

@@ -68,20 +68,29 @@
 .panel { min-width:0; padding:24px; border:1px solid var(--line); border-radius:18px; background:var(--card); }
 .groupGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); gap:14px; }
 .orgTree, .orgChildren { list-style:none; margin:0; padding:0; }
-.orgTree { --org-line:var(--sub); margin:24px 0 32px; }
+.orgTree { --org-line:var(--sub); --org-department-bg:#e2ecf7; --org-department-line:#b5c9e0; --org-member-bg:var(--card); margin:24px 0 32px; }
 .orgBranch { position:relative; flex:1 1 0; min-width:0; text-align:center; }
 .orgChildren { display:flex; position:relative; padding-top:24px; }
 .orgChildren::before { content:""; position:absolute; left:50%; top:0; height:24px; border-left:2px solid var(--org-line); }
-.orgChildren > .orgBranch { padding:24px 5px 0; }
+.orgChildren > .orgBranch { padding:24px 3px 0; }
 .orgChildren > .orgBranch::before, .orgChildren > .orgBranch::after { content:""; position:absolute; top:0; width:50%; height:24px; border-top:2px solid var(--org-line); }
 .orgChildren > .orgBranch::before { right:50%; }
 .orgChildren > .orgBranch::after { left:50%; border-left:2px solid var(--org-line); }
 .orgChildren > .orgBranch:first-child::before { display:none; }
 .orgChildren > .orgBranch:last-child::after { border-top:0; }
-.orgNode { padding:14px 10px; min-height:100px; border:1px solid var(--line); border-radius:14px; background:var(--card); }
-.orgTree > .orgBranch > .orgNode { width:min(320px,100%); margin:0 auto; min-height:0; border-top:3px solid var(--teal); }
+.orgUnit { display:flex; flex-direction:column; }
+.orgUnit::after { content:""; flex:1 0 0; align-self:flex-start; margin-left:50%; border-left:2px solid var(--org-line); }
+.orgNode { display:flex; align-items:center; justify-content:center; padding:10px 6px; min-height:50px; border:2px solid var(--org-department-line); border-radius:12px; background:var(--org-department-bg); line-height:1.6; }
+.orgTree > .orgBranch > .orgUnit { width:min(320px,100%); margin:0 auto; }
+.orgTree > .orgBranch > .orgUnit > .orgNode { border-top:3px solid var(--teal); }
+/* 人物0人でも箱を作らず、3部から課へ伸びる接続線の高さは揃える。 */
+.orgTree > .orgBranch > .orgChildren > .orgBranch > .orgUnit { min-height:142px; }
 .orgNode strong { color:var(--heading); }
-.orgNode p { font-size:13px; margin:6px 0 0; }
+.orgMembers { display:grid; gap:8px; margin:8px 2px 0; }
+.orgMember { container-type:inline-size; min-width:0; padding:8px 3px; border:1px solid var(--line); border-radius:10px; background:var(--org-member-bg); }
+.orgMemberRole { display:block; margin-bottom:4px; color:var(--sub); font-size:11px; line-height:1.5; }
+.orgMemberName { display:block; white-space:nowrap; color:var(--ink); font-size:min(15px,calc(100cqi / var(--org-name-length))); font-weight:600; line-height:1.6; }
+:global([data-theme="dark"]) .orgTree { --org-department-bg:#10233f; --org-department-line:#4d7698; --org-member-bg:#1d3047; }
 .numberedList { padding-left:22px; margin:0; }
 .numberedList li { padding-left:4px; margin:14px 0; }
 .numberedList li::marker { color:var(--teal-d); font-weight:700; }
@@ -111,8 +120,10 @@
   .orgChildren > .orgBranch::before, .orgChildren > .orgBranch:first-child::before { display:block; left:-16px; right:auto; top:40px; width:16px; height:0; border-top:2px solid var(--org-line); }
   .orgChildren > .orgBranch::after { display:none; }
   .orgBranch { text-align:left; }
-  .orgNode { min-height:0; }
-  .orgTree > .orgBranch > .orgNode { width:100%; }
+  .orgNode { min-height:0; justify-content:flex-start; }
+  .orgUnit::after { display:none; }
+  .orgTree > .orgBranch > .orgUnit { width:100%; }
+  .orgTree > .orgBranch > .orgChildren > .orgBranch > .orgUnit { min-height:0; }
 }
 @media (max-width:640px) {
   .header { padding:58px 0 0; min-height:0; }
