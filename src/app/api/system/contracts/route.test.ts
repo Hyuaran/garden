@@ -94,14 +94,27 @@ describe("contract registration API", () => {
 describe("contract template API extracted text", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.row = { id: "C1", counterparty: "上位店", contract_type: "契約書", extracted_text: JSON.stringify(["page one", "page two"]) };
+    mocks.row = { id: "C1", drive_file_id: "ORIGINAL", counterparty: "上位店", contract_type: "契約書", extracted_text: JSON.stringify(["page one", "page two"]) };
+    mocks.download.mockResolvedValue(Buffer.from("%PDF"));
     mocks.generate.mockResolvedValue({ pdf: Buffer.from("pdf"), docx: Buffer.from("docx") });
     mocks.save.mockResolvedValue({ status: "generated", pdf: { fileId: "P", url: "PU" }, docx: { fileId: "D", url: "DU" } });
   });
-  it("builds a template from the text saved at registration", async () => {
+  it("downloads the registered original for layout and retains stored text as fallback", async () => {
     const response = await POST(templateRequest());
     expect(response.status).toBe(200);
-    expect(mocks.generate).toHaveBeenCalledWith(["page one", "page two"], expect.objectContaining({ title: "契約書" }));
+    expect(mocks.download).toHaveBeenCalledWith("ORIGINAL");
+    expect(mocks.generate).toHaveBeenCalledWith(["page one", "page two"], expect.objectContaining({ title: "契約書", sourcePdf: Buffer.from("%PDF") }));
+  });
+  it("still generates from stored text when Drive download fails", async () => {
+    mocks.download.mockRejectedValueOnce(new Error("Drive unavailable"));
+    expect((await POST(templateRequest())).status).toBe(200);
+    expect(mocks.generate).toHaveBeenCalledWith(["page one", "page two"], expect.objectContaining({ sourcePdf: undefined }));
+  });
+  it("does not parse an oversized source PDF and falls back without registering anything", async () => {
+    mocks.download.mockResolvedValueOnce(Buffer.alloc(20 * 1024 * 1024 + 1));
+    expect((await POST(templateRequest())).status).toBe(200);
+    expect(mocks.generate).toHaveBeenCalledWith(["page one", "page two"], expect.objectContaining({ sourcePdf: undefined }));
+    expect(mocks.insert).not.toHaveBeenCalled(); expect(mocks.saveOriginal).not.toHaveBeenCalled();
   });
   it("guides the user to re-register an old row without extracted text", async () => {
     mocks.row = { id: "C1", counterparty: "上位店", contract_type: "契約書", extracted_text: null };

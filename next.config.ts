@@ -9,7 +9,11 @@ const nextConfig: NextConfig = {
   },
   // sharp はネイティブバイナリを含むためバンドルさせない（Vercel の関数ランタイムで
   // バンドル経由だと読み込みに失敗し、/api/bud/expense-ocr が 500 になる）
-  serverExternalPackages: ["sharp"],
+  serverExternalPackages: ["sharp", "pdfjs-dist"],
+  // ひな形生成時のNode解析で使うworker/CMapを関数配布物にも含める。
+  outputFileTracingIncludes: {
+    "/api/system/contracts": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs", "./node_modules/pdfjs-dist/cmaps/*.bcmap", "./node_modules/pdfjs-dist/standard_fonts/*"],
+  },
 };
 
 export default nextConfig;

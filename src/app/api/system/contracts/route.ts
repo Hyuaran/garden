@@ -286,7 +286,15 @@ export async function POST(request: Request) {
         { ok: false, error: "元の契約書を読み取れていないため、ひな形を作成できません。登録し直してください。" },
         { status: 400 },
       );
+    let sourcePdf: Buffer | undefined;
+    if (row.drive_file_id) {
+      try {
+        const downloaded = await downloadFile(row.drive_file_id);
+        if (downloaded.byteLength <= MAX_CONTRACT_SIZE) sourcePdf = downloaded;
+      } catch { /* Drive取得失敗時も、登録済みテキストを使ってひな形を作成する。 */ }
+    }
     const generated = await generatePartnerTemplate(pages, {
+        sourcePdf,
         issuer,
         title: row.contract_type,
         excludedTerms: [row.counterparty, ...c.companies.map((company) => company.company_name)],
