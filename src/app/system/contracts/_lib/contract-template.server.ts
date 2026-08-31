@@ -6,6 +6,7 @@ import JSZip from "jszip";
 import { degrees, PDFDocument, rgb, StandardFonts, type PDFFont } from "pdf-lib";
 import type { ContractCompany } from "./contract-types";
 import { extractContractLayout, type SourceBlock } from "./contract-layout.server";
+import { isClosingStatement, isSigningField, maskAddressFields, maskBankAccountFields, splitTemplateBoundaries } from "./contract-template-fields";
 
 export const DRAFT_WATERMARK = { diagonalRatio: 0.8, opacity: 0.15, color: 0.65 } as const;
 const WORD_PAGE_SIZE = { width: 11906, height: 16838 };
@@ -71,7 +72,7 @@ function mergePhysicalLines(lines: string[]) {
       current = "";
       continue;
     }
-    if (current && startsParagraph(line)) {
+    if (current && (startsParagraph(line) || (isClosingStatement(line) && !isClosingStatement(current)) || isSigningField(line))) {
       paragraphs.push(current);
       current = line;
     } else {
@@ -79,7 +80,7 @@ function mergePhysicalLines(lines: string[]) {
     }
   }
   if (current) paragraphs.push(current);
-  return paragraphs;
+  return paragraphs.map((paragraph) => paragraph.replace(/^([甲乙丙][:：])[ \t　]*(?:[_＿][ \t　]*)+$/, "$1＿＿＿＿"));
 }
 
 type MaskOptions = { excludedTerms: string[]; title?: string };
@@ -90,7 +91,7 @@ function masker(options: MaskOptions) {
     .sort((a, b) => b.length - a.length)
     .map((term) => [...term].map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*"));
   const forbidden = terms.length ? new RegExp(terms.join("|"), "g") : /$^/g;
-  return (source: string) => maskRepresentativeSignatures(normalized(source).replace(forbidden, BLANK_COMPANY)
+  return (source: string) => maskRepresentativeSignatures(maskAddressFields(maskBankAccountFields(splitTemplateBoundaries(normalized(source)))).replace(forbidden, BLANK_COMPANY)
     .replace(/(?:株式会社|有限会社|合同会社)[^\s、。「」（）()]{1,40}|[一-龥ァ-ヶーA-Za-z0-9・]{2,40}(?:株式会社|有限会社|合同会社)/g, BLANK_COMPANY)
     .replace(/[^\n、。:：]{0,25}(?:事業本部|事業部|営業部|営業グループ|営業課|管理部|管理課|担当部署|営業所)/g, "＿＿＿＿")
     .replace(/(?:担当(?:者)?|連絡先)\s*[:：]\s*[^\n、。]+/g, "＿＿＿＿")
@@ -98,7 +99,7 @@ function masker(options: MaskOptions) {
     .replace(/第\s*[\d０-９]+(?:\s*[-‐‑–ー−/]\s*[\d０-９]+)+\s*号|(?:管理番号|文書番号|通知番号)\s*[:：]?\s*[A-Za-z\d０-９\-_/]+/g, "＿＿＿＿")
     .replace(/\b[a-f\d]{32,64}\b/gi, "＿＿＿＿")
     .replace(/(?:住\s*所|所在地)\s*[:：]\s*[^\n]+/g, "住所：＿＿＿＿")
-    .replace(ADDRESS, ""))
+    .replace(ADDRESS, (address) => address.includes("裁判所") ? address : ""))
     .replace(MONEY, "＿＿＿＿").replace(DATE, "＿＿年＿＿月＿＿日");
 }
 
@@ -145,6 +146,8 @@ const isHeading = (text: string) => text.length <= 45 && !/[。]/.test(text) &&
   /^(?:第?[一二三四五六七八九十\d０-９]+[.．、条項]|[（(][一二三四五六七八九十\d０-９]+[）)])/.test(text);
 function bodyParagraph(text: string) {
   const heading = isHeading(text);
+  if (isClosingStatement(text) || isSigningField(text)) return new Paragraph({ text,
+    spacing: { line: 360, before: isClosingStatement(text) ? 240 : 0, after: 180 }, keepNext: true });
   return new Paragraph({ text, heading: heading ? HeadingLevel.HEADING_2 : undefined,
     indent: heading ? undefined : { firstLine: 220 }, spacing: { line: 360, after: 120 }, keepNext: heading });
 }
@@ -299,6 +302,16 @@ async function buildPdf(content: TemplateContent, issuer: ContractCompany) {
   for (const block of content.blocks) {
     if (block.type === "table") { drawTable(block); continue; }
     const paragraph = block.text;
+    if (isClosingStatement(paragraph) || isSigningField(paragraph)) {
+      const lines = wrap(paragraph, width - left - right, 11);
+      // 締め文と最低3行分の署名欄を同じページに収める。
+      if (isClosingStatement(paragraph)) {
+        if (y - lines.length * 18 - 3 * 28 - 30 < bottom) nextPage();
+        y -= 12;
+      }
+      drawLines(lines, 11, 18); y -= 10;
+      continue;
+    }
     if (paragraph === "記" || paragraph === "敬具") {
       drawLines([paragraph], 11, 22, paragraph === "記" ? (width - font.widthOfTextAtSize(paragraph, 11)) / 2
         : width - right - font.widthOfTextAtSize(paragraph, 11));
