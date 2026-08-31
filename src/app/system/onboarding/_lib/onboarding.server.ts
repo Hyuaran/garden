@@ -1,6 +1,6 @@
 import "server-only";
 import { createServerClient } from "@/app/_lib/supabase/server";
-import { initialInput, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type OnboardingRecord } from "./onboarding";
+import { initialInput, isMaskedMyNumber, maskMyNumber, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type OnboardingRecord } from "./onboarding";
 
 type OnboardingEmployee = { employee_id: string; name: string | null; name_kana: string | null; birthday: string | null };
 
@@ -27,7 +27,7 @@ export async function readOnboarding({ supabase, employee }: Context): Promise<O
   if (error) throw databaseError(error);
   if (!data) return { values: initialInput(employee), status: "draft", ndaAgreedAt: null, submittedAt: null };
   const row = data as unknown as Record<string, unknown>;
-  return { values: parseInput({ ...row, nda_agreed: Boolean(row.nda_agreed_at) }), status: row.status === "submitted" ? "submitted" : "draft", ndaAgreedAt: typeof row.nda_agreed_at === "string" ? row.nda_agreed_at : null, submittedAt: typeof row.submitted_at === "string" ? row.submitted_at : null };
+  return { values: parseInput({ ...row, my_number: maskMyNumber(String(row.my_number ?? "")), nda_agreed: Boolean(row.nda_agreed_at) }), status: row.status === "submitted" ? "submitted" : "draft", ndaAgreedAt: typeof row.nda_agreed_at === "string" ? row.nda_agreed_at : null, submittedAt: typeof row.submitted_at === "string" ? row.submitted_at : null };
 }
 
 function dateOrNull(value: string) {
@@ -45,6 +45,7 @@ export async function saveOnboarding(context: Context, input: unknown, submit: b
   if (previous.status === "submitted") return previous;
   const now = new Date().toISOString();
   const { nda_agreed, ...fields } = values;
+  if (isMaskedMyNumber(fields.my_number)) delete (fields as Partial<typeof fields>).my_number;
   const { data, error } = await context.supabase.from("system_onboarding").upsert({
     ...fields, employee_id: context.employee.employee_id, status: submit ? "submitted" : "draft",
     birth_date: dateOrNull(values.birth_date), previous_employer_from: dateOrNull(values.previous_employer_from), previous_employer_to: dateOrNull(values.previous_employer_to),

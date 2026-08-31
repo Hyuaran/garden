@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyInput, formatWarnings, initialInput, parseInput, STEPS } from "./onboarding";
+import { emptyInput, formatWarnings, initialInput, maskMyNumber, parseInput, STEPS } from "./onboarding";
 
 describe("入社手続きの入力", () => {
   it("実DBのbirthdayから初期値をつくる", () => {
@@ -19,9 +19,13 @@ describe("入社手続きの入力", () => {
     expect(formatWarnings(parseInput({ postal_code: "5410054", pension_number: "1234567890", employment_insurance_status: "yes", employment_insurance_number: "12345678901", phone: "090-1234-5678" }))).toEqual({});
     expect(formatWarnings(parseInput({ employment_insurance_status: "no", employment_insurance_number: "short" }))).toEqual({});
   });
-  it("社員ID・状態・日時・個人番号などの未定義キーを保存対象から落とす", () => {
+  it("社員ID・状態・日時や扶養家族の個人番号などの未定義キーを保存対象から落とす", () => {
     const result = parseInput({ employee_id: "other", status: "submitted", nda_agreed_at: "fake", my_number: "123456789012", dependents: [{ name: "家族", my_number: "secret" }] });
-    expect(JSON.stringify(result)).not.toMatch(/other|submitted|fake|123456789012|secret|my_number/);
+    expect(JSON.stringify(result.dependents)).not.toMatch(/secret|my_number/);
+    expect(result).not.toHaveProperty("employee_id");
+    expect(result).not.toHaveProperty("status");
+    expect(result).not.toHaveProperty("nda_agreed_at");
+    expect(result.my_number).toBe("123456789012");
     expect(result.dependents[0].name).toBe("家族");
     expect(result.nda_agreed).toBe(false);
   });
@@ -31,7 +35,12 @@ describe("入社手続きの入力", () => {
     expect(() => parseInput({ dependents: [null] })).toThrow();
     expect(() => parseInput({ dependents: new Array(31).fill({}) })).toThrow();
   });
-  it("画面の順番は指定の8テーマ", () => {
-    expect(STEPS).toEqual(["あなたのこと", "住所と連絡先", "ご家族", "年金と雇用保険", "直近の勤務先", "緊急連絡先", "秘密保持の確認", "確認"]);
+  it("画面の順番は指定の11テーマ", () => {
+    expect(STEPS).toEqual(["あなたのこと", "住所と連絡先", "ご家族", "年金と雇用保険", "直近の勤務先", "通勤と交通費", "給与の受取口座", "マイナンバー", "緊急連絡先", "秘密保持の確認", "確認"]);
+  });
+  it("マイナンバーは表示用に下4桁だけへ変換し、形式注意は止めない", () => {
+    expect(maskMyNumber("123456789012")).toBe("••••••••9012");
+    expect(maskMyNumber("12")).toBe("");
+    expect(formatWarnings(parseInput({ my_number: "12", bank_code: "1", branch_code: "12", account_number: "abcdefghi", account_holder_kana: "ABC" })).my_number).toContain("12桁");
   });
 });

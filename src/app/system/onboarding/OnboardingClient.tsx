@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
-import { DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, POSTAL_NOT_FOUND, STEP_FIELDS, STEPS, type OnboardingRecord, type TextField } from "./_lib/onboarding";
+import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, isMaskedMyNumber, LOOKUP_NOT_FOUND, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
 import OnboardingReview from "./_components/OnboardingReview";
 import styles from "./onboarding.module.css";
 
 type Address = { address: string; addressKana: string };
+type BankChoice = { bankName: string; bankCode: string };
+type BranchChoice = { branchName: string; branchCode: string };
 
 export default function OnboardingClient({ initial }: { initial: OnboardingRecord }) {
   const router = useRouter();
@@ -22,6 +24,11 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   const [hasFamily, setHasFamily] = useState(initial.values.dependents.length > 0);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [postalNotice, setPostalNotice] = useState("");
+  const [commuteNotice, setCommuteNotice] = useState("");
+  const [bankNotice, setBankNotice] = useState("");
+  const [branchNotice, setBranchNotice] = useState("");
+  const [bankChoices, setBankChoices] = useState<BankChoice[]>([]);
+  const [branchChoices, setBranchChoices] = useState<BranchChoice[]>([]);
   const addressRevision = useRef(0);
   const postalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const postalRequest = useRef<AbortController | null>(null);
@@ -32,6 +39,8 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
 
   function change(key: TextField, value: string) {
     if (key === "address" || key === "address_kana") addressRevision.current++;
+    if (key === "bank_name" || key === "bank_code") { setBranchChoices([]); setBranchNotice(""); }
+    if (key === "my_number" && isMaskedMyNumber(values.my_number)) value = "";
     setValues(previous => ({ ...previous, [key]: value }));
   }
   function applyAddress(address: Address) {
@@ -65,6 +74,68 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
       }
     }, 300);
   }
+  async function lookupCommute() {
+    setCommuteNotice("");
+    const station = values.commute_station.trim();
+    if (!station) { setCommuteNotice(LOOKUP_NOT_FOUND); return; }
+    try {
+      const response = await fetch(`/api/system/onboarding/lookup/commute?station=${encodeURIComponent(station)}`, { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok || !body.fare) { setCommuteNotice(LOOKUP_NOT_FOUND); return; }
+      setValues(previous => ({ ...previous, commute_line: body.fare.line ?? previous.commute_line, commute_pass_monthly: String(body.fare.passMonthly ?? ""), commute_fare_oneway: String(body.fare.fareOneway ?? "") }));
+    } catch { setCommuteNotice(LOOKUP_NOT_FOUND); }
+  }
+  async function lookupBank() {
+    setBankNotice(""); setBankChoices([]);
+    const bankName = values.bank_name.trim();
+    if (!bankName) { setBankNotice(CODE_LOOKUP_NOT_FOUND); return; }
+    try {
+      const response = await fetch(`/api/system/onboarding/lookup/bank?name=${encodeURIComponent(bankName)}`, { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok || !Array.isArray(body.banks) || body.banks.length === 0) { setBankNotice(CODE_LOOKUP_NOT_FOUND); return; }
+      if (body.banks.length === 1) applyBank(body.banks[0]);
+      else { setBankChoices(body.banks); setBankNotice("候補を選ぶか、コードを直接入れてください。"); }
+    } catch { setBankNotice(CODE_LOOKUP_NOT_FOUND); }
+  }
+  function applyBank(choice: BankChoice) {
+    setValues(previous => ({ ...previous, bank_name: choice.bankName, bank_code: choice.bankCode }));
+    setBankChoices([]); setBankNotice("銀行コードを入れました。");
+  }
+  async function lookupBranch() {
+    setBranchNotice(""); setBranchChoices([]);
+    const branchName = values.branch_name.trim();
+    const bankCode = values.bank_code.trim();
+    if (!branchName || !bankCode) { setBranchNotice(CODE_LOOKUP_NOT_FOUND); return; }
+    try {
+      const response = await fetch(`/api/system/onboarding/lookup/branch?bankCode=${encodeURIComponent(bankCode)}&name=${encodeURIComponent(branchName)}`, { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok || !Array.isArray(body.branches) || body.branches.length === 0) { setBranchNotice(CODE_LOOKUP_NOT_FOUND); return; }
+      if (body.branches.length === 1) applyBranch(body.branches[0]);
+      else { setBranchChoices(body.branches); setBranchNotice("候補を選ぶか、コードを直接入れてください。"); }
+    } catch { setBranchNotice(CODE_LOOKUP_NOT_FOUND); }
+  }
+  function applyBranch(choice: BranchChoice) {
+    setValues(previous => ({ ...previous, branch_name: choice.branchName, branch_code: choice.branchCode }));
+    setBranchChoices([]); setBranchNotice("支店コードを入れました。");
+  }
+  function changeDependentRelation(index: number, value: string) {
+    setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry, i) => i === index ? { ...entry, relation: value } : entry) }));
+  }
+  function relationSelectValue(value: string) {
+    if (!value) return "";
+    return (RELATIONSHIP_OPTIONS as readonly string[]).includes(value) ? value : "その他";
+  }
+  function relationshipSelect(value: string, onSelect: (value: string) => void, id?: string) {
+    return <select id={id} value={relationSelectValue(value)} onChange={event => onSelect(event.target.value)}>
+      <option value="">選んでください</option>{RELATIONSHIP_OPTIONS.map(label => <option key={label}>{label}</option>)}
+    </select>;
+  }
+  function lookupField(key: TextField, button: string, onClick: () => void, disabled = false) {
+    return <div className={styles.inputWithButton}>
+      <input id={`field-${key}`} type="text" inputMode={key.includes("code") || key.includes("fare") || key.includes("pass") ? "numeric" : undefined} maxLength={2000} value={values[key]} onChange={event => change(key, event.target.value)} aria-describedby={warnings[key] ? `warning-${key}` : undefined} />
+      <button type="button" onClick={onClick} disabled={disabled}>{button}</button>
+    </div>;
+  }
 
   async function save(nextStep?: number, submit = false) {
     if (saving.current) return;
@@ -93,6 +164,13 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
     return <div key={key} className={styles.field}><label htmlFor={`field-${key}`}>{FIELD_LABELS[key]}</label>
       {key === "gender" ? <select id={`field-${key}`} value={values[key]} onChange={event => change(key, event.target.value)}><option value="">選んでください</option>{["男性", "女性", "回答しない"].map(label => <option key={label}>{label}</option>)}</select>
         : key === "employment_insurance_status" ? <select id={`field-${key}`} value={values[key]} onChange={event => change(key, event.target.value)}><option value="">選んでください</option><option value="yes">あり</option><option value="no">なし</option><option value="unknown">わからない</option></select>
+        : key === "commute_method" ? <select id={`field-${key}`} value={values[key]} onChange={event => change(key, event.target.value)}><option value="">選んでください</option>{COMMUTE_METHOD_OPTIONS.map(label => <option key={label}>{label}</option>)}</select>
+        : key === "account_type" ? <select id={`field-${key}`} value={values[key]} onChange={event => change(key, event.target.value)}><option value="">選んでください</option>{ACCOUNT_TYPE_OPTIONS.map(label => <option key={label}>{label}</option>)}</select>
+        : key === "emergency_relation" ? relationshipSelect(values[key], value => change(key, value), `field-${key}`)
+        : key === "emergency_relation_other" && relationSelectValue(values.emergency_relation) !== "その他" ? null
+        : key === "commute_station" ? lookupField(key, "調べる", lookupCommute)
+        : key === "bank_name" ? lookupField(key, "調べる", lookupBank)
+        : key === "branch_name" ? lookupField(key, "調べる", lookupBranch, !values.bank_code.trim())
         : <input id={`field-${key}`} type={date ? "date" : "text"} inputMode={key.includes("phone") ? "tel" : key === "postal_code" || key.includes("number") ? "numeric" : undefined} maxLength={2000} value={values[key]}
           onChange={event => key === "postal_code" ? changePostal(event.target.value) : change(key, event.target.value)} aria-describedby={warnings[key] ? `warning-${key}` : undefined} />}
       {warnings[key] && <span id={`warning-${key}`} className={styles.warning}>{warnings[key]}</span>}
@@ -100,6 +178,12 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         {postalNotice && <span className={styles.hint} role="status">{postalNotice}</span>}
         {addresses.length > 0 && <select aria-label="住所の候補" value="" onChange={event => { const address = addresses[Number(event.target.value)]; if (event.target.value && address) applyAddress(address); }}><option value="">住所の候補</option>{addresses.map((address, index) => <option value={String(index)} key={`${address.address}-${index}`}>{address.address}</option>)}</select>}
       </>}
+      {key === "commute_station" && commuteNotice && <span className={styles.hint} role="status">{commuteNotice}</span>}
+      {key === "bank_name" && bankNotice && <span className={styles.hint} role="status">{bankNotice}</span>}
+      {key === "bank_name" && bankChoices.length > 0 && <select aria-label="銀行の候補" value="" onChange={event => { const choice = bankChoices[Number(event.target.value)]; if (event.target.value && choice) applyBank(choice); }}><option value="">銀行の候補</option>{bankChoices.map((choice, index) => <option value={String(index)} key={`${choice.bankCode}-${index}`}>{choice.bankName}（{choice.bankCode}）</option>)}</select>}
+      {key === "branch_name" && branchNotice && <span className={styles.hint} role="status">{branchNotice}</span>}
+      {key === "branch_name" && branchChoices.length > 0 && <select aria-label="支店の候補" value="" onChange={event => { const choice = branchChoices[Number(event.target.value)]; if (event.target.value && choice) applyBranch(choice); }}><option value="">支店の候補</option>{branchChoices.map((choice, index) => <option value={String(index)} key={`${choice.branchCode}-${index}`}>{choice.branchName}（{choice.branchCode}）</option>)}</select>}
+      {key === "my_number" && isMaskedMyNumber(values.my_number) && <button type="button" onClick={() => change("my_number", "")}>入れ直す</button>}
     </div>;
   }
 
@@ -112,18 +196,18 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   </section>;
 
   return <section className={styles.panel}>
-    <p className={styles.progress}>8つのうち {step + 1}番目</p>
+    <p className={styles.progress}>{STEPS.length}のうち {step + 1}番目</p>
     <h2 ref={heading} tabIndex={-1}>{STEPS[step]}</h2>
     <p className={styles.hint}>空欄のままでも進めます。分かる範囲で入力してください。</p>
-    <form noValidate onSubmit={event => { event.preventDefault(); void save(step < 7 ? step + 1 : undefined, step === 7); }}>
+    <form noValidate onSubmit={event => { event.preventDefault(); void save(step < STEPS.length - 1 ? step + 1 : undefined, step === STEPS.length - 1); }}>
       <fieldset disabled={busy} className={styles.fields}>
-        {step !== 2 && step !== 6 && step !== 7 && STEP_FIELDS[step].filter(key => key !== "employment_insurance_number" || values.employment_insurance_status === "yes").map(field)}
+        {step !== 2 && step !== 9 && step !== 10 && STEP_FIELDS[step].filter(key => (key !== "employment_insurance_number" || values.employment_insurance_status === "yes") && (key !== "emergency_relation_other" || relationSelectValue(values.emergency_relation) === "その他")).map(field)}
         {step === 2 && <>
           <label className={styles.field}>扶養している家族はいますか<select value={hasFamily ? "yes" : "no"} onChange={event => { const yes = event.target.value === "yes"; setHasFamily(yes); setValues(previous => ({ ...previous, dependents: yes ? previous.dependents.length ? previous.dependents : [emptyDependent()] : [] })); }}><option value="no">いいえ</option><option value="yes">はい</option></select></label>
           {hasFamily && <>
             {values.dependents.map((person, index) => <fieldset className={styles.dependent} key={index}><legend>扶養家族 {index + 1}人目</legend>
-              {DEPENDENT_FIELDS.map(key => <label className={styles.field} key={key}>{DEPENDENT_LABELS[key]}<input value={person[key]} maxLength={2000} type={key === "birth_date" ? "date" : "text"} inputMode={key === "annual_income" ? "numeric" : undefined}
-                onChange={event => setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry, i) => i === index ? { ...entry, [key]: event.target.value } : entry) }))} /></label>)}
+              {DEPENDENT_FIELDS.map(key => <label className={styles.field} key={key}>{DEPENDENT_LABELS[key]}{key === "relation" ? relationshipSelect(person.relation, value => changeDependentRelation(index, value)) : <input value={person[key]} maxLength={2000} type={key === "birth_date" ? "date" : "text"} inputMode={key === "annual_income" ? "numeric" : undefined}
+                onChange={event => setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry, i) => i === index ? { ...entry, [key]: event.target.value } : entry) }))} />}{key === "relation" && relationSelectValue(person.relation) === "その他" && <input aria-label="続柄（その他）" value={person.relation === "その他" ? "" : person.relation} maxLength={2000} onChange={event => setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry: Dependent, i) => i === index ? { ...entry, relation: event.target.value } : entry) }))} />}</label>)}
               <button type="button" onClick={() => setValues(previous => ({ ...previous, dependents: previous.dependents.filter((_, i) => i !== index) }))}>{index + 1}人目を消す</button>
             </fieldset>)}
             <button type="button" disabled={values.dependents.length >= 30} onClick={() => setValues(previous => ({ ...previous, dependents: [...previous.dependents, emptyDependent()] }))}>もう1人ふやす</button>
@@ -131,13 +215,16 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         </>}
         {step === 3 && <p>番号が分からないときは、次の画面で前の勤務先を教えてください。こちらで調べます。</p>}
         {step === 4 && <p>雇用保険の番号を調べるために使います。分かる範囲で大丈夫です。</p>}
-        {step === 5 && <p>災害や急なご病気のときの連絡先です。</p>}
-        {step === 6 && <><div className={styles.pledge}>{NDA_FULL_TEXT}</div><label className={styles.agree}><input type="checkbox" checked={values.nda_agreed} onChange={event => setValues(previous => ({ ...previous, nda_agreed: event.target.checked }))} />内容を確認しました</label></>}
-        {step === 7 && <OnboardingReview values={values} onEdit={index => void save(index)} />}
+        {step === 5 && <p>金額は分かる範囲で大丈夫です。こちらで確認して決めます。</p>}
+        {step === 6 && <p>お給料の振込先です。通帳やアプリの表示どおりに入れてください。</p>}
+        {step === 7 && <p className={styles.noticeLines}>税と社会保険の手続きにだけ使います。{"\n"}それ以外の目的では使いません。{"\n"}入力後は、下4桁だけが表示されます。</p>}
+        {step === 8 && <p>災害や急なご病気のときの連絡先です。</p>}
+        {step === 9 && <><div className={styles.pledge}>{NDA_FULL_TEXT}</div><label className={styles.agree}><input type="checkbox" checked={values.nda_agreed} onChange={event => setValues(previous => ({ ...previous, nda_agreed: event.target.checked }))} />内容を確認しました</label></>}
+        {step === 10 && <OnboardingReview values={values} onEdit={index => void save(index)} />}
         <div className={styles.actions}>
           {step > 0 && <button type="button" onClick={() => void save(step - 1)}>戻る</button>}
           <button type="button" onClick={() => void save()}>途中保存</button>
-          <button className={styles.primary} type="submit">{step === 7 ? "提出する" : "次へ"}</button>
+          <button className={styles.primary} type="submit">{step === STEPS.length - 1 ? "提出する" : "次へ"}</button>
         </div>
       </fieldset>
       <p role="status" className={styles.saveStatus}>{busy ? "保存しています。" : notice}</p>

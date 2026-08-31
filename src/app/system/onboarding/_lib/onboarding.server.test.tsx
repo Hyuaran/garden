@@ -67,6 +67,12 @@ describe("入社手続きの本人専用保存", () => {
     const result = await readOnboarding(await onboardingEmployee());
     expect(result.values.name).toBe(""); expect(result.values.birth_date).toBe("");
   });
+  it("保存済みマイナンバーは読み出し時に下4桁だけ返す", async () => {
+    const f = fixture(); f.query.maybeSingle.mockResolvedValue({ data: { my_number: "123456789012", status: "draft" }, error: null });
+    const result = await readOnboarding(await onboardingEmployee());
+    expect(result.values.my_number).toBe("••••••••9012");
+    expect(JSON.stringify(result)).not.toContain("123456789012");
+  });
   it("認証と読み取り成功後に初期値入りフォームを描画する", async () => {
     fixture();
     render(await OnboardingPage());
@@ -75,10 +81,10 @@ describe("入社手続きの本人専用保存", () => {
     expect(screen.getByRole("heading", { level: 1, name: "入社手続き" })).toBeInTheDocument();
   });
   it("型の注意があっても空欄でも保存でき、ユーザー指定IDを使わない", async () => {
-    const f = fixture(); await saveOnboarding(await onboardingEmployee(), { ...emptyInput(), postal_code: "123", employee_id: "other", my_number: "secret" }, false);
+    const f = fixture(); await saveOnboarding(await onboardingEmployee(), { ...emptyInput(), postal_code: "123", employee_id: "other", my_number: "123456789012" }, false);
     const [payload, options] = f.query.upsert.mock.calls[0];
-    expect(payload).toMatchObject({ employee_id: f.employee.employee_id, postal_code: "123", birth_date: null, previous_employer_from: null, previous_employer_to: null, status: "draft", nda_agreed_at: null, submitted_at: null });
-    expect(payload).not.toHaveProperty("my_number"); expect(payload).not.toHaveProperty("nda_agreed");
+    expect(payload).toMatchObject({ employee_id: f.employee.employee_id, postal_code: "123", my_number: "123456789012", birth_date: null, previous_employer_from: null, previous_employer_to: null, status: "draft", nda_agreed_at: null, submitted_at: null });
+    expect(payload).not.toHaveProperty("nda_agreed");
     expect(options).toEqual({ onConflict: "employee_id" });
     expect(f.supabase.from.mock.calls.every(([name]) => ["root_employees", "system_onboarding"].includes(name))).toBe(true);
   });

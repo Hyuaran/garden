@@ -8,10 +8,12 @@ const request = (body: unknown, origin = "https://garden.example") => new Reques
 describe("本人用の保存API", () => {
   beforeEach(() => { vi.resetAllMocks(); mocks.employee.mockResolvedValue({ employee: { employee_id: "EMP-9999" } }); mocks.save.mockResolvedValue({ status: "draft", ndaAgreedAt: null, submittedAt: null }); });
   it("本人コンテキストで保存し、個人情報を応答に再添付しない", async () => {
-    const response = await POST(request({ action: "save", values: { name: "private" }, employee_id: "other" }));
+    const response = await POST(request({ action: "save", values: { name: "private", my_number: "123456789012" }, employee_id: "other" }));
     expect(response.status).toBe(200); expect(response.headers.get("cache-control")).toBe("private, no-store");
-    expect(mocks.save).toHaveBeenCalledWith({ employee: { employee_id: "EMP-9999" } }, { name: "private" }, false);
-    expect(await response.json()).toEqual({ ok: true, status: "draft", submittedAt: null, ndaAgreedAt: null });
+    expect(mocks.save).toHaveBeenCalledWith({ employee: { employee_id: "EMP-9999" } }, { name: "private", my_number: "123456789012" }, false);
+    const json = await response.json();
+    expect(json).toEqual({ ok: true, status: "draft", submittedAt: null, ndaAgreedAt: null });
+    expect(JSON.stringify(json)).not.toContain("123456789012");
   });
   it("提出アクションを明示して渡す", async () => {
     mocks.save.mockResolvedValue({ status: "submitted" });
