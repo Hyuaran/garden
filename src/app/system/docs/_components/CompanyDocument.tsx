@@ -41,7 +41,6 @@ export default function CompanyDocument({ members, photos = {}, presentation = f
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18M5 4v12h14V4M12 16v5M8 21l4-3 4 3"/><path d="m10 8 5 3-5 3z"/></svg>
         オリエンテーション表示
       </Link>
-      <p>メニューを隠して、資料だけを大きく映します。</p>
     </div>}
     <div className={styles.hero}>
       <p className={styles.eyebrow}>{companyDocument.eyebrow}</p>
@@ -59,7 +58,7 @@ export default function CompanyDocument({ members, photos = {}, presentation = f
           <ChapterHeading index={0} />
           <dl className={styles.overview}>{getCompanyOverview().map(row => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl>
           <div className={styles.philosophy}><p className={styles.eyebrow}>経営理念</p><h3>{companyDocument.philosophy.title}</h3>{companyDocument.philosophy.paragraphs.map(text => <p key={text}>{text}</p>)}</div>
-          <h3>沿革</h3><ol className={styles.timeline}>{history.map(item => <li key={item.year}><strong>{item.year}</strong><p>{item.text}</p></li>)}</ol>
+          <h3>沿革</h3><ol className={styles.timeline}>{history.map(item => <li key={`${item.year}:${item.text}`}><strong>{item.year}</strong><p>{item.text}</p></li>)}</ol>
         </section>
         <section id="business" aria-labelledby="business-heading" className={styles.chapter}>
           <ChapterHeading index={1} /><div className={styles.stack}>{businesses.map((business, index) => <article className={styles.panel} key={business.title}>
@@ -86,10 +85,9 @@ export default function CompanyDocument({ members, photos = {}, presentation = f
           </article>)}</div>
         </section>
         <section id="members" aria-labelledby="members-heading" className={styles.chapter}>
-          <ChapterHeading index={5} /><div className={styles.memberGrid}>{visible.filter(member => !member.isRepresentative).map(member => <MemberCard key={member.id} member={member} photo={photos[member.id]} />)}</div>
+          <ChapterHeading index={5} /><div className={styles.memberGrid}>{visible.map(member => <MemberCard key={member.id} member={member} photo={photos[member.id]} />)}</div>
         </section>
         <section className={styles.closing} aria-labelledby="closing-heading"><h2 id="closing-heading">さいごに</h2>{companyDocument.closing.map(text => <p key={text}>{text}</p>)}</section>
-        <section className={styles.representative} aria-labelledby="representative-heading"><h2 id="representative-heading">我々の代表紹介</h2>{visible.filter(member => member.isRepresentative).map(member => <MemberCard key={member.id} member={member} photo={photos[member.id]} />)}</section>
         <a className={styles.backToTop} href="#company-top">目次へ戻る ↑</a>
       </div>
     </div>

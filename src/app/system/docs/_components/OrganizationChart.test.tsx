@@ -13,7 +13,7 @@ describe("データから組み立てる組織図", () => {
     expect(departments).toHaveLength(3);
     expect(departments.map(node => node.querySelector(":scope > div > [data-org-label]")?.textContent)).toEqual(["SES事業部", "営業部", "総務部"]);
     expect(departments.map(node => [...node.querySelectorAll(":scope > ul > li > div > [data-org-label]")].map(label => label.textContent))).toEqual([
-      ["インフラ課", "開発課"], ["テレマ課", "訪問販売課"], ["総務課（バックヤード）"],
+      ["SES課"], ["テレマ課", "訪問販売課"], ["総務課（バックヤード）", "企画部"],
     ]);
   });
   it("表示用に部名や人名を固定せずデータ追加に追従する", () => {
@@ -25,14 +25,14 @@ describe("データから組み立てる組織図", () => {
     expect(screen.queryByText("SES事業部")).not.toBeInTheDocument();
   });
 
-  it("部・課の箱には部署名だけを置き、全13人を別の箱にする", () => {
+  it("部・課の箱には部署名だけを置き、全12人を別の箱にする", () => {
     const { container } = render(<OrganizationChart root={organization} />);
     const labels = [...container.querySelectorAll("[data-org-label]")];
     expect(labels.map(label => label.textContent)).toEqual([
-      "代表取締役", "SES事業部", "インフラ課", "開発課", "営業部", "テレマ課", "訪問販売課", "総務部", "総務課（バックヤード）",
+      "代表取締役", "SES事業部", "SES課", "営業部", "テレマ課", "訪問販売課", "総務部", "総務課（バックヤード）", "企画部",
     ]);
     const names = [...container.querySelectorAll("[data-org-name]")];
-    expect(names).toHaveLength(13);
+    expect(names).toHaveLength(12);
     for (const label of labels) {
       expect(label.querySelector("[data-org-member]")).toBeNull();
       for (const name of names) expect(label.textContent).not.toContain(name.textContent);
@@ -43,16 +43,18 @@ describe("データから組み立てる組織図", () => {
     const { container } = render(<OrganizationChart root={organization} />);
     const cards = [...container.querySelectorAll('[data-org-branch="テレマ課"] > div > [data-org-members] > [data-org-member]')];
     expect(cards).toHaveLength(3);
-    expect(cards.map(card => card.querySelector("[data-org-name]")?.textContent)).toEqual(["宮永　ひかり", "小泉　翔", "三好　理央"]);
+    expect(cards.map(card => card.querySelector("[data-org-name]")?.textContent)).toEqual(["宮永　ひかり", "小泉　翔", "石原　孝志朗"]);
     for (const card of cards) expect(card.firstElementChild).toHaveTextContent("チームリーダー");
   });
 
-  it("総務部には人物の箱も空のコンテナも作らず、総務課には4人を表示する", () => {
+  it("総務部長を置き、総務課と企画部に分ける", () => {
     const { container } = render(<OrganizationChart root={organization} />);
     const department = container.querySelector('[data-org-branch="総務部"] > div')!;
-    expect(department.querySelector("[data-org-members]")).toBeNull();
-    expect(department.querySelector("[data-org-member]")).toBeNull();
-    expect(container.querySelectorAll('[data-org-branch="総務課（バックヤード）"] [data-org-member]')).toHaveLength(4);
+    expect(department.querySelector("[data-org-name]")).toHaveTextContent(/東海林\s+美琴/);
+    expect(container.querySelectorAll('[data-org-branch="総務課（バックヤード）"] [data-org-member]')).toHaveLength(2);
+    expect(container.querySelector('[data-org-branch="総務課（バックヤード）"]')?.textContent).toContain("小谷　庵");
+    expect(container.querySelector('[data-org-branch="企画部"]')?.textContent).toContain("槙　俊介");
+    expect(container.textContent).not.toContain("BYアルバイト");
   });
 
   it("membersが空配列でも人物の空箱を作らない", () => {
@@ -72,22 +74,20 @@ describe("データから組み立てる組織図", () => {
     expect(actual).toEqual([
       { label: "代表取締役", members: [{ name: "後道　翔太" }] },
       { label: "SES事業部", members: [{ role: "SES事業部長", name: "金　亜奈" }] },
-      { label: "インフラ課", members: [{ name: "インフラSE" }] },
-      { label: "開発課", members: [{ name: "開発SE" }] },
+      { label: "SES課", members: [] },
       { label: "営業部", members: [{ role: "営業部長", name: "上田　基人" }] },
       { label: "テレマ課", members: [
         { role: "チームリーダー", name: "宮永　ひかり" },
         { role: "チームリーダー", name: "小泉　翔" },
-        { role: "チームリーダー", name: "三好　理央" },
+        { role: "チームリーダー", name: "石原　孝志朗" },
       ] },
-      { label: "訪問販売課", members: [{ role: "訪問営業課長", name: "萩尾　拓也" }] },
-      { label: "総務部", members: [] },
+      { label: "訪問販売課", members: [{ role: "営業", name: "萩尾　拓也" }, { role: "営業", name: "桐井　大輔" }] },
+      { label: "総務部", members: [{ role: "総務部長", name: "東海林　美琴" }] },
       { label: "総務課（バックヤード）", members: [
-        { role: "BYリーダー", name: "東海林　美琴" },
         { role: "BY", name: "簡　棣榮" },
-        { role: "BY補佐・システム開発", name: "槙　俊介" },
-        { name: "BYアルバイト" },
+        { role: "BY", name: "小谷　庵" },
       ] },
+      { label: "企画部", members: [{ role: "BY補佐・システム開発", name: "槙　俊介" }] },
     ]);
   });
 

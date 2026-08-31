@@ -48,6 +48,8 @@
 .adminFields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; min-width:0; padding:0; border:0; }
 .allowanceBlock { display:grid; grid-column:1/-1; gap:12px; min-width:0; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--bg); }
 .allowanceRow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,180px) auto; gap:10px; align-items:end; min-width:0; }
+.inlineConfirm { display:grid; grid-column:1/-1; gap:10px; min-width:0; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--warning-bg); color:var(--warning-ink); }
+.inlineConfirm p { margin:0; font-weight:700; }
 :global([data-theme="dark"]) .pageShell { --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4; --bg:#0c1726; --card:#152438; --line:#31435a; --accent:#7bdfd5; --warning-bg:#302918; --warning-ink:#f6c96b; }
 :global([data-theme="dark"]) .pageShell .primary { color:#10233f; }
 :global([data-theme="dark"]) .empty { color:#a8b2c2; }

@@ -15,21 +15,26 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   const [admin, setAdmin] = useState(record.admin);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [confirmApply, setConfirmApply] = useState(false);
   const missing = missingOnboardingItems(record.values);
 
   function change(key: keyof AdminInput, value: string) {
+    setConfirmApply(false);
     setAdmin(previous => ({ ...previous, [key]: value }));
   }
   function changeAllowance(index: number, key: keyof AdminAllowance, value: string) {
+    setConfirmApply(false);
     setAdmin(previous => {
       const allowances = previous.allowances.length ? previous.allowances : [emptyAllowance()];
       return { ...previous, allowances: allowances.map((allowance, i) => i === index ? { ...allowance, [key]: value } : allowance) };
     });
   }
   function addAllowance() {
+    setConfirmApply(false);
     setAdmin(previous => previous.allowances.length >= ADMIN_ALLOWANCE_LIMIT ? previous : { ...previous, allowances: [...previous.allowances, emptyAllowance()] });
   }
   function removeAllowance(index: number) {
+    setConfirmApply(false);
     setAdmin(previous => ({ ...previous, allowances: previous.allowances.filter((_, i) => i !== index) }));
   }
   async function post(action: "save" | "apply") {
@@ -44,6 +49,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
       const body = await response.json();
       if (!response.ok) { setNotice(body.error ?? "保存できませんでした。もう一度お試しください。"); return; }
       setNotice(action === "apply" ? "従業員台帳に反映しました" : "保存しました。");
+      if (action === "apply") setConfirmApply(false);
       router.refresh();
     } catch {
       setNotice("保存できませんでした。入力内容はこの画面に残っています。もう一度保存してください。");
@@ -87,8 +93,15 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
           <label className={styles.field}>交通費の上限（1か月・円）<input value={admin.commute_cap_monthly} maxLength={2000} inputMode="numeric" onChange={event => change("commute_cap_monthly", event.target.value)} /></label>
           <div className={styles.actions}>
             <button type="submit">保存</button>
-            <button className={styles.primary} type="button" onClick={() => { if (confirm("従業員台帳に反映します。よろしいですか。")) void post("apply"); }}>従業員台帳に反映する</button>
+            <button className={styles.primary} type="button" onClick={() => setConfirmApply(true)}>従業員台帳に反映する</button>
           </div>
+          {confirmApply && <div className={styles.inlineConfirm} role="group" aria-label="従業員台帳への反映確認">
+            <p>従業員台帳に反映します。よろしいですか</p>
+            <div className={styles.actions}>
+              <button className={styles.primary} type="button" onClick={() => void post("apply")}>反映する</button>
+              <button type="button" onClick={() => setConfirmApply(false)}>やめる</button>
+            </div>
+          </div>}
         </fieldset>
       </form>
       <p role="status" className={styles.saveStatus}>{busy ? "保存しています。" : notice}</p>

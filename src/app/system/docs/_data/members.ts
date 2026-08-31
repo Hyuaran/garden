@@ -28,11 +28,11 @@ export const members: Member[] = [
   { order: 7, id: "koizumi-sho", name: "小泉　翔", kana: "こいずみ　しょう", joinedLabel: "2022年入社", department: "営業部", hobbies: "ゴルフ、野球、お酒", visible: true },
   { order: 8, id: "tsuji-mayuko", name: "辻　舞由子", kana: "つじ　まゆこ", joinedLabel: "2022年入社", department: "営業部", hobbies: "お酒、K-POP", visible: false },
   { order: 9, id: "kin-ana", name: "金　亜奈", kana: "きん　あな", joinedLabel: "2023年入社", department: "SES事業部", hobbies: "デザイン、アート、サウナ", title: "SES事業部長", alsoRepresents: "株式会社HALコンサルティングの代表取締役", visible: true },
-  { order: 10, id: "kan-taiei", name: "簡　棣榮", kana: "かん　たいえい", joinedLabel: "2025年入社", department: "総務部（バックヤード）", hobbies: "ゲーム、アニメ", visible: true, hidden: ["photo"] },
-  { order: 11, id: "kirii-daisuke", name: "桐井　大輔", kana: "きりい　だいすけ", joinedLabel: "2025年入社", department: "訪問営業部", hobbies: "", visible: true, hidden: ["photo", "hobbies"] },
-  { order: 12, id: "ishihara-koshiro", name: "石原　孝志朗", kana: "いしはら　こうしろう", joinedLabel: "2026年入社", department: "営業部", hobbies: "サッカー観戦", visible: true, hidden: ["photo"] },
-  { order: 13, id: "kotani-iori", name: "小谷　庵", kana: "こたに　いおり", joinedLabel: "2026年入社", department: "営業部／総務部（バックヤード）", hobbies: "散歩", visible: true, hidden: ["photo"] },
-  { order: 99, id: "goto-shota", name: "後道　翔太", kana: "ごとう　しょうた", joinedLabel: "2016年 会社設立", department: "", hobbies: "ゴルフ、麻雀", title: "代表取締役", isRepresentative: true, visible: true, hidden: ["department"] },
+  { order: 10, id: "kan-taiei", name: "簡　棣榮", kana: "かん　たいえい", joinedLabel: "2025年入社", department: "総務部（バックヤード）", hobbies: "ゲーム、アニメ", visible: true },
+  { order: 11, id: "kirii-daisuke", name: "桐井　大輔", kana: "きりい　だいすけ", joinedLabel: "2025年入社", department: "訪問営業部", hobbies: "", visible: true, hidden: ["hobbies"] },
+  { order: 12, id: "ishihara-koshiro", name: "石原　孝志朗", kana: "いしはら　こうしろう", joinedLabel: "2026年入社", department: "営業部", hobbies: "サッカー観戦", visible: true },
+  { order: 13, id: "kotani-iori", name: "小谷　庵", kana: "こたに　いおり", joinedLabel: "2026年入社", department: "営業部／総務部（バックヤード）", hobbies: "散歩", visible: true },
+  { order: 0, id: "goto-shota", name: "後道　翔太", kana: "ごとう　しょうた", joinedLabel: "2016年 会社設立", department: "", hobbies: "ゴルフ、麻雀", title: "代表取締役", isRepresentative: true, visible: true, hidden: ["department"] },
 ];
 
 export function visibleMembers(source: Member[] = members) {

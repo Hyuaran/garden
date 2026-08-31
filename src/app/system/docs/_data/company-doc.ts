@@ -46,16 +46,14 @@ export const chapters = [
 export function getCompanyOverview() {
   return [
     { label: "社名", value: companyDocument.companyName },
-    { label: "所在地", value: "【大阪本社】〒541-0054　大阪府大阪市中央区南本町2-6-12　サンマリオンタワー地上2階西号室" },
+    { label: "所在地", value: "〒541-0054　大阪府大阪市中央区南本町2-6-12　サンマリオンタワー地上2階西号室" },
     { label: "代表者", value: "後道　翔太" },
     { label: "設立", value: "2016年4月8日" },
-    { label: "資本金", value: "120万円" },
     { label: "事業内容", value: "新規アウトバウンドテレマーケティング事業／訪問販売事業／自社コンテンツ開発事業／SES事業\nその他、NTT東西認定事業者・関西電力業務委託" },
     { label: "従業員数", value: getEmployeeCountLabel() },
   ];
 }
 
-// 年の追加はこの配列に1件足す。2026年の出来事・本社移転年は確認後に追加する。
 export const history = [
   { year: "2016年", text: "代表取締役 後道翔太が会社を設立" },
   { year: "2018年", text: "事業拡大により難波フロントビルに本社を移転" },
@@ -65,13 +63,14 @@ export const history = [
   { year: "2022年", text: "自社コンテンツサービスの提供開始（スマートブレーカー）" },
   { year: "2023年", text: "SES事業の開始／自社コンテンツサービスの提供開始（JUST光）" },
   { year: "2024年", text: "アライアンス事業の開始" },
-  { year: "2025年", text: "健康経営優良法人認定" },
+  { year: "2025年", text: "健康経営優良法人認定／本社をサンマリオンタワーへ移転" },
+  { year: "2026年", text: "自社コンテンツサービスの提供開始（Ichi光）／労働者派遣事業の開始" },
 ];
 
 export const businesses = [
   { title: "アウトテレマーケティング事業", items: [
-    { title: "既存顧客へのCRM事業（toC）", text: "自社サービスをご利用中のお客様へ、現状よりも良いサービスの提案を行う" },
-    { title: "新規顧客へのアポイントメント事業（toB）", text: "弊社独自の検索方法やコミュニケーション技術を駆使し、さまざまなクライアント企業の希望する商品【お客様契約件数】を提供" },
+    { title: "既存顧客へのCRM事業（電話やメールでお客様と関係を作る仕事）／toC（個人のお客様向け）", text: "自社サービスをご利用中のお客様へ、現状よりも良いサービスの提案を行う" },
+    { title: "新規顧客へのアポイントメント事業／toB（会社向け）", text: "弊社独自の検索方法やコミュニケーション技術を駆使し、さまざまなクライアント企業の希望する商品【お客様契約件数】を提供" },
   ] },
   { title: "訪問販売事業", note: "アウトテレマーケティングの派生", items: [{ text: "電話やNETだけでの契約履行に不安を持つお客様に対して、顔を合わせての説明を行う。契約時のみならず、商品の操作方法やご質問等にも訪問し丁寧に対応" }] },
   { title: "自社コンテンツ開発事業", items: [{ text: "「全く同じクオリティを、より安く、より満足していただく」をコンセプトに、大手通信キャリアのバックボーンをそのままエンドユーザー様に提供" }] },
@@ -84,23 +83,22 @@ export const organizationNote = "ヒュアラングループの組織は図の�
 export const organization: OrganizationNode = {
   label: "代表取締役", members: [{ name: "後道　翔太" }], children: [
     { label: "SES事業部", members: [{ role: "SES事業部長", name: "金　亜奈" }], children: [
-      { label: "インフラ課", members: [{ name: "インフラSE" }] }, { label: "開発課", members: [{ name: "開発SE" }] },
+      { label: "SES課" },
     ] },
     { label: "営業部", members: [{ role: "営業部長", name: "上田　基人" }], children: [
       { label: "テレマ課", members: [
         { role: "チームリーダー", name: "宮永　ひかり" },
         { role: "チームリーダー", name: "小泉　翔" },
-        { role: "チームリーダー", name: "三好　理央" },
+        { role: "チームリーダー", name: "石原　孝志朗" },
       ] },
-      { label: "訪問販売課", members: [{ role: "訪問営業課長", name: "萩尾　拓也" }] },
+      { label: "訪問販売課", members: [{ role: "営業", name: "萩尾　拓也" }, { role: "営業", name: "桐井　大輔" }] },
     ] },
-    { label: "総務部", children: [
+    { label: "総務部", members: [{ role: "総務部長", name: "東海林　美琴" }], children: [
       { label: "総務課（バックヤード）", members: [
-        { role: "BYリーダー", name: "東海林　美琴" },
         { role: "BY", name: "簡　棣榮" },
-        { role: "BY補佐・システム開発", name: "槙　俊介" },
-        { name: "BYアルバイト" },
+        { role: "BY", name: "小谷　庵" },
       ] },
+      { label: "企画部", members: [{ role: "BY補佐・システム開発", name: "槙　俊介" }] },
     ] },
   ],
 };
@@ -127,6 +125,6 @@ export const strengths = [
 export const results = [
   { title: "新規アウトテレマ事業", examples: ["NTT東西・KDDI など大手キャリア企業との代理店契約の締結・販売"] },
   { title: "SES事業", examples: ["某大手保険会社様（日本生命様）の現場へ出向し、チームリーダーも任されている（杉山正義）", "某銀行様（滋賀銀行）にてデータを取り扱う業務をしながら、新人教育係もしている（勝田來杜）"] },
-  { title: "自社コンテンツ開発事業", examples: ["大手通信キャリアのバックボーンをそのままエンドユーザー様へ提供／大手メーカーとのOEM共同開発"] },
+  { title: "自社コンテンツ開発事業", examples: ["大手通信キャリアのバックボーンをそのままエンドユーザー様へ提供／大手メーカーとのOEM（他社の名前で商品を作ること）共同開発"] },
   { title: "訪問販売事業", examples: ["関西電力などの地域電力に関する業務委託営業"] },
 ];
