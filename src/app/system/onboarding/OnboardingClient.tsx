@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
-import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, isMaskedMyNumber, LOOKUP_NOT_FOUND, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
+import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, isMaskedMyNumber, LOOKUP_NOT_FOUND, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
 import OnboardingReview from "./_components/OnboardingReview";
 import styles from "./onboarding.module.css";
 
@@ -24,7 +24,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   const [hasFamily, setHasFamily] = useState(initial.values.dependents.length > 0);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [postalNotice, setPostalNotice] = useState("");
-  const [commuteNotice, setCommuteNotice] = useState("");
+  const [commuteNotices, setCommuteNotices] = useState<string[]>([]);
   const [bankNotice, setBankNotice] = useState("");
   const [branchNotice, setBranchNotice] = useState("");
   const [bankChoices, setBankChoices] = useState<BankChoice[]>([]);
@@ -74,16 +74,17 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
       }
     }, 300);
   }
-  async function lookupCommute() {
-    setCommuteNotice("");
-    const station = values.commute_station.trim();
-    if (!station) { setCommuteNotice(LOOKUP_NOT_FOUND); return; }
+  async function lookupCommute(index: number) {
+    setCommuteNotices(previous => previous.map((notice, i) => i === index ? "" : notice));
+    const route = values.commute_routes[index] ?? emptyCommuteRoute();
+    const station = route.from_station.trim();
+    if (!station) { setCommuteNotices(previous => commuteRoutes().map((_, i) => i === index ? LOOKUP_NOT_FOUND : previous[i] ?? "")); return; }
     try {
       const response = await fetch(`/api/system/onboarding/lookup/commute?station=${encodeURIComponent(station)}`, { cache: "no-store" });
       const body = await response.json();
-      if (!response.ok || !body.fare) { setCommuteNotice(LOOKUP_NOT_FOUND); return; }
-      setValues(previous => ({ ...previous, commute_line: body.fare.line ?? previous.commute_line, commute_pass_monthly: String(body.fare.passMonthly ?? ""), commute_fare_oneway: String(body.fare.fareOneway ?? "") }));
-    } catch { setCommuteNotice(LOOKUP_NOT_FOUND); }
+      if (!response.ok || !body.fare) { setCommuteNotices(previous => commuteRoutes().map((_, i) => i === index ? LOOKUP_NOT_FOUND : previous[i] ?? "")); return; }
+      setValues(previous => ({ ...previous, commute_routes: commuteRoutes(previous.commute_routes).map((entry, i) => i === index ? { ...entry, line: body.fare.line ?? entry.line, pass_monthly: String(body.fare.passMonthly ?? ""), fare_oneway: String(body.fare.fareOneway ?? "") } : entry) }));
+    } catch { setCommuteNotices(previous => commuteRoutes().map((_, i) => i === index ? LOOKUP_NOT_FOUND : previous[i] ?? "")); }
   }
   async function lookupBank() {
     setBankNotice(""); setBankChoices([]);
@@ -130,6 +131,45 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
       <option value="">選んでください</option>{RELATIONSHIP_OPTIONS.map(label => <option key={label}>{label}</option>)}
     </select>;
   }
+  function commuteRoutes(routes = values.commute_routes) {
+    return routes.length ? routes : [emptyCommuteRoute()];
+  }
+  function changeCommuteRoute(index: number, key: keyof CommuteRoute, value: string) {
+    setValues(previous => ({ ...previous, commute_routes: commuteRoutes(previous.commute_routes).map((entry, i) => i === index ? { ...entry, [key]: value } : entry) }));
+  }
+  function removeCommuteRoute(index: number) {
+    setValues(previous => ({ ...previous, commute_routes: commuteRoutes(previous.commute_routes).filter((_, i) => i !== index) }));
+    setCommuteNotices(previous => previous.filter((_, i) => i !== index));
+  }
+  function addCommuteRoute() {
+    setValues(previous => ({ ...previous, commute_routes: [...commuteRoutes(previous.commute_routes), emptyCommuteRoute()] }));
+  }
+  function routeInput(route: CommuteRoute, index: number, key: keyof CommuteRoute) {
+    const id = `commute-${index}-${key}`;
+    if (key === "kind") return <select id={id} value={route[key]} onChange={event => changeCommuteRoute(index, key, event.target.value)}>
+      <option value="">選んでください</option>{COMMUTE_ROUTE_KIND_OPTIONS.map(label => <option key={label}>{label}</option>)}
+    </select>;
+    const input = <input id={id} value={route[key]} maxLength={2000} inputMode={key === "pass_monthly" || key === "fare_oneway" ? "numeric" : undefined} onChange={event => changeCommuteRoute(index, key, event.target.value)} />;
+    if (key !== "from_station") return input;
+    return <div className={styles.inputWithButton}>{input}<button type="button" onClick={() => void lookupCommute(index)}>調べる</button></div>;
+  }
+  function commuteRouteFields() {
+    const routes = commuteRoutes();
+    const totals = commuteTotals(routes);
+    return <>
+      {routes.map((route, index) => <fieldset className={styles.dependent} key={index}>
+        <legend>{index + 1}区間目</legend>
+        {COMMUTE_ROUTE_FIELDS.map(key => <label className={styles.field} key={key} htmlFor={`commute-${index}-${key}`}>{COMMUTE_ROUTE_LABELS[key]}{routeInput(route, index, key)}</label>)}
+        {commuteNotices[index] && <span className={styles.hint} role="status">{commuteNotices[index]}</span>}
+        <button type="button" onClick={() => removeCommuteRoute(index)}>{index + 1}区間目を消す</button>
+      </fieldset>)}
+      <button type="button" disabled={routes.length >= 10} onClick={addCommuteRoute}>もう1区間ふやす</button>
+      <dl className={styles.totals}>
+        <div><dt>定期代の合計</dt><dd>{totals.hasAnyAmount ? `${formatYen(totals.passMonthly)} ／ 月` : <span className={styles.empty}>未入力</span>}</dd></div>
+        <div><dt>片道の運賃の合計</dt><dd>{totals.hasAnyAmount ? formatYen(totals.fareOneway) : <span className={styles.empty}>未入力</span>}</dd></div>
+      </dl>
+    </>;
+  }
   function lookupField(key: TextField, button: string, onClick: () => void, disabled = false) {
     return <div className={styles.inputWithButton}>
       <input id={`field-${key}`} type="text" inputMode={key.includes("code") || key.includes("fare") || key.includes("pass") ? "numeric" : undefined} maxLength={2000} value={values[key]} onChange={event => change(key, event.target.value)} aria-describedby={warnings[key] ? `warning-${key}` : undefined} />
@@ -168,7 +208,6 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         : key === "account_type" ? <select id={`field-${key}`} value={values[key]} onChange={event => change(key, event.target.value)}><option value="">選んでください</option>{ACCOUNT_TYPE_OPTIONS.map(label => <option key={label}>{label}</option>)}</select>
         : key === "emergency_relation" ? relationshipSelect(values[key], value => change(key, value), `field-${key}`)
         : key === "emergency_relation_other" && relationSelectValue(values.emergency_relation) !== "その他" ? null
-        : key === "commute_station" ? lookupField(key, "調べる", lookupCommute)
         : key === "bank_name" ? lookupField(key, "調べる", lookupBank)
         : key === "branch_name" ? lookupField(key, "調べる", lookupBranch, !values.bank_code.trim())
         : <input id={`field-${key}`} type={date ? "date" : "text"} inputMode={key.includes("phone") ? "tel" : key === "postal_code" || key.includes("number") ? "numeric" : undefined} maxLength={2000} value={values[key]}
@@ -178,7 +217,6 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         {postalNotice && <span className={styles.hint} role="status">{postalNotice}</span>}
         {addresses.length > 0 && <select aria-label="住所の候補" value="" onChange={event => { const address = addresses[Number(event.target.value)]; if (event.target.value && address) applyAddress(address); }}><option value="">住所の候補</option>{addresses.map((address, index) => <option value={String(index)} key={`${address.address}-${index}`}>{address.address}</option>)}</select>}
       </>}
-      {key === "commute_station" && commuteNotice && <span className={styles.hint} role="status">{commuteNotice}</span>}
       {key === "bank_name" && bankNotice && <span className={styles.hint} role="status">{bankNotice}</span>}
       {key === "bank_name" && bankChoices.length > 0 && <select aria-label="銀行の候補" value="" onChange={event => { const choice = bankChoices[Number(event.target.value)]; if (event.target.value && choice) applyBank(choice); }}><option value="">銀行の候補</option>{bankChoices.map((choice, index) => <option value={String(index)} key={`${choice.bankCode}-${index}`}>{choice.bankName}（{choice.bankCode}）</option>)}</select>}
       {key === "branch_name" && branchNotice && <span className={styles.hint} role="status">{branchNotice}</span>}
@@ -213,6 +251,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
             <button type="button" disabled={values.dependents.length >= 30} onClick={() => setValues(previous => ({ ...previous, dependents: [...previous.dependents, emptyDependent()] }))}>もう1人ふやす</button>
           </>}
         </>}
+        {step === 5 && commuteRouteFields()}
         {step === 3 && <p>番号が分からないときは、次の画面で前の勤務先を教えてください。こちらで調べます。</p>}
         {step === 4 && <p>雇用保険の番号を調べるために使います。分かる範囲で大丈夫です。</p>}
         {step === 5 && <p>金額は分かる範囲で大丈夫です。こちらで確認して決めます。</p>}

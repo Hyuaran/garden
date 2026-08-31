@@ -4,19 +4,23 @@ export const LOOKUP_NOT_FOUND = "見つかりませんでした。金額を直�
 export const CODE_LOOKUP_NOT_FOUND = "見つかりませんでした。コードを直接入れてください";
 export const RELATIONSHIP_OPTIONS = ["配偶者", "子", "父", "母", "祖父", "祖母", "兄弟姉妹", "孫", "その他"] as const;
 export const COMMUTE_METHOD_OPTIONS = ["電車", "バス", "自転車", "徒歩", "自動車", "その他"] as const;
+export const COMMUTE_ROUTE_KIND_OPTIONS = ["電車", "バス", "その他"] as const;
 export const ACCOUNT_TYPE_OPTIONS = ["普通", "当座"] as const;
 export const MASKED_MY_NUMBER_PREFIX = "••••••••";
 export const STEPS = ["あなたのこと", "住所と連絡先", "ご家族", "年金と雇用保険", "直近の勤務先", "通勤と交通費", "給与の受取口座", "マイナンバー", "緊急連絡先", "秘密保持の確認", "確認"] as const;
 
-export const TEXT_FIELDS = ["name", "name_kana", "gender", "birth_date", "postal_code", "address", "address_kana", "phone", "pension_number", "employment_insurance_status", "employment_insurance_number", "previous_employer", "previous_employer_from", "previous_employer_to", "commute_method", "commute_station", "commute_line", "commute_pass_monthly", "commute_fare_oneway", "bank_name", "bank_code", "branch_name", "branch_code", "account_type", "account_number", "account_holder_kana", "my_number", "emergency_name", "emergency_relation", "emergency_relation_other", "emergency_address", "emergency_phone"] as const;
+export const TEXT_FIELDS = ["name", "name_kana", "gender", "birth_date", "postal_code", "address", "address_kana", "phone", "pension_number", "employment_insurance_status", "employment_insurance_number", "previous_employer", "previous_employer_from", "previous_employer_to", "commute_method", "bank_name", "bank_code", "branch_name", "branch_code", "account_type", "account_number", "account_holder_kana", "my_number", "emergency_name", "emergency_relation", "emergency_relation_other", "emergency_address", "emergency_phone"] as const;
 export type TextField = typeof TEXT_FIELDS[number];
 export const DEPENDENT_FIELDS = ["name", "name_kana", "relation", "birth_date", "annual_income", "occupation"] as const;
 export type Dependent = Record<typeof DEPENDENT_FIELDS[number], string>;
-export type OnboardingInput = Record<TextField, string> & { dependents: Dependent[]; nda_agreed: boolean };
+export const COMMUTE_ROUTE_FIELDS = ["kind", "from_station", "to_station", "line", "pass_monthly", "fare_oneway"] as const;
+export type CommuteRoute = Record<typeof COMMUTE_ROUTE_FIELDS[number], string>;
+export type OnboardingInput = Record<TextField, string> & { dependents: Dependent[]; commute_routes: CommuteRoute[]; nda_agreed: boolean };
 export type OnboardingRecord = { values: OnboardingInput; status: "draft" | "submitted"; ndaAgreedAt: string | null; submittedAt: string | null };
 export const emptyDependent = (): Dependent => ({ name: "", name_kana: "", relation: "", birth_date: "", annual_income: "", occupation: "" });
+export const emptyCommuteRoute = (): CommuteRoute => ({ kind: "", from_station: "", to_station: "", line: "", pass_monthly: "", fare_oneway: "" });
 export function emptyInput(): OnboardingInput {
-  return { ...Object.fromEntries(TEXT_FIELDS.map(key => [key, ""])) as Record<TextField, string>, dependents: [], nda_agreed: false };
+  return { ...Object.fromEntries(TEXT_FIELDS.map(key => [key, ""])) as Record<TextField, string>, dependents: [], commute_routes: [], nda_agreed: false };
 }
 
 // 保存対象を明示する。社員ID・状態・日時や任意の追加項目は入力から受け取らない。
@@ -36,6 +40,15 @@ export function parseInput(value: unknown): OnboardingInput {
       if (row[key] != null && (typeof row[key] !== "string" || row[key].length > 2000)) throw new Error("invalid dependent text");
       return [key, typeof row[key] === "string" ? row[key].trim() : ""];
     })) as Dependent;
+  });
+  if (source.commute_routes != null && (!Array.isArray(source.commute_routes) || source.commute_routes.length > 10)) throw new Error("invalid commute routes");
+  result.commute_routes = (source.commute_routes as unknown[] | undefined ?? []).map(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("invalid commute route");
+    const row = item as Record<string, unknown>;
+    return Object.fromEntries(COMMUTE_ROUTE_FIELDS.map(key => {
+      if (row[key] != null && (typeof row[key] !== "string" || row[key].length > 2000)) throw new Error("invalid commute route text");
+      return [key, typeof row[key] === "string" ? row[key].trim() : ""];
+    })) as CommuteRoute;
   });
   result.nda_agreed = source.nda_agreed === true;
   return result;
@@ -61,15 +74,16 @@ export function formatWarnings(values: OnboardingInput) {
 export const FIELD_LABELS: Record<TextField, string> = {
   name: "氏名", name_kana: "フリガナ", gender: "性別", birth_date: "生年月日", postal_code: "郵便番号", address: "住所", address_kana: "住所のフリガナ", phone: "電話番号",
   pension_number: "基礎年金番号", employment_insurance_status: "雇用保険被保険者証", employment_insurance_number: "雇用保険被保険者番号", previous_employer: "会社名", previous_employer_from: "勤務した期間（開始）", previous_employer_to: "勤務した期間（終了）",
-  commute_method: "通勤手段", commute_station: "自宅の最寄り駅・停留所", commute_line: "使う路線", commute_pass_monthly: "1か月の定期代（円）", commute_fare_oneway: "片道の運賃（円）",
+  commute_method: "通勤手段（主なもの）",
   bank_name: "銀行名", bank_code: "金融機関コード（4桁）", branch_name: "支店名", branch_code: "支店コード（3桁）", account_type: "預金種別", account_number: "口座番号（8桁以内）", account_holder_kana: "口座名義カナ",
   my_number: "マイナンバー（12桁）", emergency_name: "氏名", emergency_relation: "続柄", emergency_relation_other: "続柄（その他）", emergency_address: "住所", emergency_phone: "電話番号",
 };
 export const DEPENDENT_LABELS: Record<typeof DEPENDENT_FIELDS[number], string> = { name: "氏名", name_kana: "フリガナ", relation: "続柄", birth_date: "生年月日", annual_income: "年間収入（円）", occupation: "職業または学校と学年" };
+export const COMMUTE_ROUTE_LABELS: Record<typeof COMMUTE_ROUTE_FIELDS[number], string> = { kind: "交通機関", from_station: "乗る駅・停留所", to_station: "降りる駅・停留所", line: "路線・系統", pass_monthly: "1か月の定期代（円）", fare_oneway: "片道の運賃（円）" };
 export const STEP_FIELDS: readonly (readonly TextField[])[] = [
   ["name", "name_kana", "gender", "birth_date"], ["postal_code", "address", "address_kana", "phone"], [],
   ["pension_number", "employment_insurance_status", "employment_insurance_number"], ["previous_employer", "previous_employer_from", "previous_employer_to"],
-  ["commute_method", "commute_station", "commute_line", "commute_pass_monthly", "commute_fare_oneway"], ["bank_name", "bank_code", "branch_name", "branch_code", "account_type", "account_number", "account_holder_kana"], ["my_number"],
+  ["commute_method"], ["bank_name", "bank_code", "branch_name", "branch_code", "account_type", "account_number", "account_holder_kana"], ["my_number"],
   ["emergency_name", "emergency_relation", "emergency_relation_other", "emergency_address", "emergency_phone"], [],
 ];
 export function displayValue(key: TextField, value: string) {
@@ -83,4 +97,19 @@ export function maskMyNumber(value: string) {
 }
 export function isMaskedMyNumber(value: string) {
   return new RegExp(`^${MASKED_MY_NUMBER_PREFIX}[0-9]{4}$`).test(value);
+}
+
+function parseAmount(value: string) {
+  return /^[0-9]+$/.test(value) ? Number(value) : 0;
+}
+export function commuteTotals(routes: CommuteRoute[]) {
+  const hasAnyAmount = routes.some(route => route.pass_monthly.trim() || route.fare_oneway.trim());
+  return {
+    hasAnyAmount,
+    passMonthly: routes.reduce((total, route) => total + parseAmount(route.pass_monthly), 0),
+    fareOneway: routes.reduce((total, route) => total + parseAmount(route.fare_oneway), 0),
+  };
+}
+export function formatYen(value: number) {
+  return `${value.toLocaleString("ja-JP")}円`;
 }

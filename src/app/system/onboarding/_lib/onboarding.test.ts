@@ -20,13 +20,15 @@ describe("入社手続きの入力", () => {
     expect(formatWarnings(parseInput({ employment_insurance_status: "no", employment_insurance_number: "short" }))).toEqual({});
   });
   it("社員ID・状態・日時や扶養家族の個人番号などの未定義キーを保存対象から落とす", () => {
-    const result = parseInput({ employee_id: "other", status: "submitted", nda_agreed_at: "fake", my_number: "123456789012", dependents: [{ name: "家族", my_number: "secret" }] });
+    const result = parseInput({ employee_id: "other", status: "submitted", nda_agreed_at: "fake", my_number: "123456789012", dependents: [{ name: "家族", my_number: "secret" }], commute_routes: [{ kind: "電車", from_station: "新大宮", extra: "drop" }] });
     expect(JSON.stringify(result.dependents)).not.toMatch(/secret|my_number/);
+    expect(JSON.stringify(result.commute_routes)).not.toMatch(/extra|drop/);
     expect(result).not.toHaveProperty("employee_id");
     expect(result).not.toHaveProperty("status");
     expect(result).not.toHaveProperty("nda_agreed_at");
     expect(result.my_number).toBe("123456789012");
     expect(result.dependents[0].name).toBe("家族");
+    expect(result.commute_routes[0]).toMatchObject({ kind: "電車", from_station: "新大宮", to_station: "", line: "", pass_monthly: "", fare_oneway: "" });
     expect(result.nda_agreed).toBe(false);
   });
   it("任意オブジェクトや巨大な入力は拒否する", () => {
@@ -34,6 +36,8 @@ describe("入社手続きの入力", () => {
     expect(() => parseInput({ name: "a".repeat(2001) })).toThrow();
     expect(() => parseInput({ dependents: [null] })).toThrow();
     expect(() => parseInput({ dependents: new Array(31).fill({}) })).toThrow();
+    expect(() => parseInput({ commute_routes: [null] })).toThrow();
+    expect(() => parseInput({ commute_routes: new Array(11).fill({}) })).toThrow();
   });
   it("画面の順番は指定の11テーマ", () => {
     expect(STEPS).toEqual(["あなたのこと", "住所と連絡先", "ご家族", "年金と雇用保険", "直近の勤務先", "通勤と交通費", "給与の受取口座", "マイナンバー", "緊急連絡先", "秘密保持の確認", "確認"]);

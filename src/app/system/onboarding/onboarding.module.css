@@ -22,6 +22,9 @@
 .pageShell a { color:var(--accent); }.pageShell button:disabled { opacity:.65; cursor:wait; }
 .pageShell input:focus-visible,.pageShell select:focus-visible,.pageShell button:focus-visible,.pageShell a:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
 .dependent { display:grid; gap:14px; min-width:0; margin:0; padding:16px; border:1px solid var(--line); border-radius:14px; }.dependent legend { padding:0 6px; font-weight:700; }
+.totals { display:grid; gap:8px; margin:0; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:var(--bg); }
+.totals>div { display:flex; justify-content:space-between; gap:12px; min-width:0; }
+.totals dt { color:var(--sub); font-weight:700; }.totals dd { margin:0; text-align:right; }
 .pledge { white-space:pre-wrap; padding:16px; border:1px solid var(--line); border-radius:12px; background:var(--bg); font-size:13px; }
 .agree { display:flex; align-items:flex-start; gap:10px; }.agree input { flex-shrink:0; width:20px; height:20px; margin-top:7px; }
 .review { display:grid; gap:22px; margin-top:24px; }.review section { min-width:0; padding-bottom:16px; border-bottom:1px solid var(--line); }
@@ -31,4 +34,4 @@
 :global([data-theme="dark"]) .pageShell { --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4; --bg:#0c1726; --card:#152438; --line:#31435a; --accent:#7bdfd5; --warning-bg:#302918; --warning-ink:#f6c96b; }
 :global([data-theme="dark"]) .pageShell .primary { color:#10233f; }
 :global([data-theme="dark"]) .empty { color:#a8b2c2; }
-@media(max-width:640px) { .header { padding:58px 0 0; min-height:0; }.header h1 { font-size:25px; }.panel { padding:18px 12px; }.panel h2 { font-size:20px; }.dependent,.pledge { padding:12px 8px; }.review dl>div { grid-template-columns:minmax(0,1fr); gap:3px; }.actions,.inputWithButton { display:grid; grid-template-columns:minmax(0,1fr); }.field input,.field select { padding:10px 6px; } }
+@media(max-width:640px) { .header { padding:58px 0 0; min-height:0; }.header h1 { font-size:25px; }.panel { padding:18px 12px; }.panel h2 { font-size:20px; }.dependent,.pledge { padding:12px 8px; }.review dl>div { grid-template-columns:minmax(0,1fr); gap:3px; }.actions,.inputWithButton { display:grid; grid-template-columns:minmax(0,1fr); }.totals>div { display:grid; gap:3px; }.totals dd { text-align:left; }.field input,.field select { padding:10px 6px; } }

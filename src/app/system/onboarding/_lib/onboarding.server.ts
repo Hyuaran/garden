@@ -20,7 +20,7 @@ export async function onboardingEmployee() {
   const employee: OnboardingEmployee = employeeResult.data;
   return { supabase, employee };
 }
-export const ONBOARDING_COLUMNS = [...TEXT_FIELDS, "dependents", "status", "nda_agreed_at", "submitted_at"].join(",");
+export const ONBOARDING_COLUMNS = [...TEXT_FIELDS, "dependents", "commute_routes", "status", "nda_agreed_at", "submitted_at"].join(",");
 type Context = Awaited<ReturnType<typeof onboardingEmployee>>;
 export async function readOnboarding({ supabase, employee }: Context): Promise<OnboardingRecord> {
   const { data, error } = await supabase.from("system_onboarding").select(ONBOARDING_COLUMNS).eq("employee_id", employee.employee_id).maybeSingle();

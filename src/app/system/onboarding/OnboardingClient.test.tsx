@@ -124,7 +124,7 @@ describe("11画面の入社手続き", () => {
     render(<OnboardingClient initial={initial()} />);
     for (let index = 1; index <= 5; index++) await next(index);
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ fare: null }) });
-    fireEvent.change(screen.getByLabelText("自宅の最寄り駅・停留所"), { target: { value: "空の駅" } });
+    fireEvent.change(screen.getByLabelText("乗る駅・停留所"), { target: { value: "空の駅" } });
     fireEvent.click(screen.getByRole("button", { name: "調べる" }));
     await screen.findByText("見つかりませんでした。金額を直接入れてください");
     fireEvent.change(screen.getByLabelText("1か月の定期代（円）"), { target: { value: "12000" } });
@@ -141,7 +141,7 @@ describe("11画面の入社手続き", () => {
     render(<OnboardingClient initial={initial()} />);
     for (let index = 1; index <= 5; index++) await next(index);
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ fare: { line: "近鉄奈良線", passMonthly: 10000, fareOneway: 500 } }) });
-    fireEvent.change(screen.getByLabelText("自宅の最寄り駅・停留所"), { target: { value: "生駒" } });
+    fireEvent.change(screen.getByLabelText("乗る駅・停留所"), { target: { value: "生駒" } });
     fireEvent.click(screen.getByRole("button", { name: "調べる" }));
     await waitFor(() => expect(screen.getByLabelText("1か月の定期代（円）")).toHaveValue("10000"));
     fireEvent.change(screen.getByLabelText("1か月の定期代（円）"), { target: { value: "11000" } });
@@ -152,6 +152,64 @@ describe("11画面の入社手続き", () => {
     await next(8); await next(9); await next(10);
     expect(screen.getByText("••••••••9012")).toBeInTheDocument();
     expect(screen.queryByText("123456789012")).toBeNull();
+  });
+  it("通勤区間を3つに増やして真ん中を消せ、合計を表示して保存する", async () => {
+    render(<OnboardingClient initial={initial()} />);
+    for (let index = 1; index <= 5; index++) await next(index);
+    fireEvent.change(screen.getByLabelText("通勤手段（主なもの）"), { target: { value: "電車" } });
+    fireEvent.click(screen.getByRole("button", { name: "もう1区間ふやす" }));
+    fireEvent.click(screen.getByRole("button", { name: "もう1区間ふやす" }));
+    const first = screen.getByRole("group", { name: "1区間目" });
+    const second = screen.getByRole("group", { name: "2区間目" });
+    const third = screen.getByRole("group", { name: "3区間目" });
+    fireEvent.change(within(first).getByLabelText("乗る駅・停留所"), { target: { value: "新大宮" } });
+    fireEvent.change(within(first).getByLabelText("1か月の定期代（円）"), { target: { value: "12345" } });
+    fireEvent.change(within(first).getByLabelText("片道の運賃（円）"), { target: { value: "330" } });
+    fireEvent.change(within(second).getByLabelText("乗る駅・停留所"), { target: { value: "消す駅" } });
+    fireEvent.change(within(second).getByLabelText("1か月の定期代（円）"), { target: { value: "999" } });
+    fireEvent.change(within(third).getByLabelText("乗る駅・停留所"), { target: { value: "バス停" } });
+    fireEvent.change(within(third).getByLabelText("1か月の定期代（円）"), { target: { value: "4000" } });
+    fireEvent.change(within(third).getByLabelText("片道の運賃（円）"), { target: { value: "210" } });
+    expect(screen.getByText("17,344円 ／ 月")).toBeInTheDocument();
+    fireEvent.click(within(second).getByRole("button", { name: "2区間目を消す" }));
+    expect(screen.queryByDisplayValue("消す駅")).toBeNull();
+    expect(screen.getByText("16,345円 ／ 月")).toBeInTheDocument();
+    await next(6);
+    expect(requests.at(-1)?.values.commute_method).toBe("電車");
+    expect(requests.at(-1)?.values.commute_routes).toHaveLength(2);
+    expect(requests.at(-1)?.values.commute_routes[1].from_station).toBe("バス停");
+  });
+  it("区間ごとの調べるは押した区間だけに反映する", async () => {
+    render(<OnboardingClient initial={initial()} />);
+    for (let index = 1; index <= 5; index++) await next(index);
+    fireEvent.click(screen.getByRole("button", { name: "もう1区間ふやす" }));
+    const first = screen.getByRole("group", { name: "1区間目" });
+    const second = screen.getByRole("group", { name: "2区間目" });
+    fireEvent.change(within(first).getByLabelText("路線・系統"), { target: { value: "手入力線" } });
+    fireEvent.change(within(second).getByLabelText("乗る駅・停留所"), { target: { value: "生駒" } });
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ fare: { line: "近鉄奈良線", passMonthly: 10000, fareOneway: 500 } }) });
+    fireEvent.click(within(second).getByRole("button", { name: "調べる" }));
+    await waitFor(() => expect(within(second).getByLabelText("路線・系統")).toHaveValue("近鉄奈良線"));
+    expect(within(first).getByLabelText("路線・系統")).toHaveValue("手入力線");
+    expect(within(first).getByLabelText("1か月の定期代（円）")).toHaveValue("");
+  });
+  it("通勤区間は途中保存して開き直しても数と中身を復元する", async () => {
+    const view = render(<OnboardingClient initial={initial()} />);
+    for (let index = 1; index <= 5; index++) await next(index);
+    fireEvent.click(screen.getByRole("button", { name: "もう1区間ふやす" }));
+    const second = screen.getByRole("group", { name: "2区間目" });
+    fireEvent.change(within(second).getByLabelText("交通機関"), { target: { value: "バス" } });
+    fireEvent.change(within(second).getByLabelText("乗る駅・停留所"), { target: { value: "〇〇前" } });
+    fireEvent.change(within(second).getByLabelText("降りる駅・停留所"), { target: { value: "△△" } });
+    fireEvent.change(within(second).getByLabelText("路線・系統"), { target: { value: "〇〇バス" } });
+    fireEvent.click(screen.getByRole("button", { name: "途中保存" }));
+    await screen.findByText("保存しました。");
+    view.unmount();
+    render(<OnboardingClient initial={{ ...initial(), values: requests.at(-1)?.values ?? initial().values }} />);
+    for (let index = 1; index <= 5; index++) await next(index);
+    expect(screen.getByRole("group", { name: "2区間目" })).toBeInTheDocument();
+    expect(within(screen.getByRole("group", { name: "2区間目" })).getByLabelText("乗る駅・停留所")).toHaveValue("〇〇前");
+    expect(within(screen.getByRole("group", { name: "2区間目" })).getByLabelText("路線・系統")).toHaveValue("〇〇バス");
   });
   it("保存済みマイナンバーは下4桁だけを表示し、入れ直せる", async () => {
     const record = initial(); record.values.my_number = "••••••••9012";
@@ -194,5 +252,18 @@ describe("確認画面", () => {
     expect(screen.getAllByText("未入力").length).toBeGreaterThan(10);
     expect(screen.getByText("扶養家族：0人")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "住所と連絡先を直す" })); expect(edit).toHaveBeenCalledWith(1);
+  });
+  it("通勤区間ごとの内容と合計を表示する", () => {
+    const values = emptyInput();
+    values.commute_method = "電車";
+    values.commute_routes = [
+      { kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄奈良線", pass_monthly: "12345", fare_oneway: "330" },
+      { kind: "バス", from_station: "〇〇前", to_station: "△△", line: "〇〇バス", pass_monthly: "4000", fare_oneway: "210" },
+    ];
+    render(<OnboardingReview values={values} />);
+    expect(screen.getByText("電車／新大宮", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("バス／〇〇前", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("16,345円")).toBeInTheDocument();
+    expect(screen.getByText("540円")).toBeInTheDocument();
   });
 });
