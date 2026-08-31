@@ -6,3 +6,24 @@
 .main{position:relative;flex:1 1 auto;min-width:0;padding:30px 40px 60px;max-width:1180px}.mainFull{width:100%;margin:0 auto;box-sizing:border-box}.actions{position:absolute;right:40px;top:36px;display:flex;align-items:center;gap:10px;z-index:10}.accountName{margin-right:2px;color:var(--sub);font-size:13px;font-weight:400;white-space:nowrap}.iconButton{position:relative;width:42px;height:42px;border-radius:13px;padding:0;display:grid;place-items:center;cursor:pointer;background:var(--btn);border:1px solid var(--btn-line);color:var(--btn-ink);box-shadow:var(--shadow-s);transition:transform .12s,box-shadow .12s,border-color .12s}.iconButton:hover{transform:translateY(-1px);box-shadow:var(--shadow);border-color:var(--teal)}.iconButton:focus-visible{outline:2px solid var(--teal);outline-offset:2px}.iconButton>svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.actionTip{position:absolute;top:50px;left:50%;transform:translateX(-50%) scale(.96);background:var(--side);color:var(--side-ink);border:1px solid var(--side-line);border-radius:9px;padding:5px 10px;font-size:11.5px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s,transform .12s;z-index:30}.iconButton:hover .actionTip{opacity:1;transform:translateX(-50%) scale(1)}
 .navigationProgress{position:fixed;top:0;left:0;z-index:50;width:100%;height:2px;pointer-events:none;background:var(--teal);opacity:.72;transform-origin:left center;animation:systemNavigationProgress .9s ease-out both}@keyframes systemNavigationProgress{from{transform:scaleX(.12)}to{transform:scaleX(.86)}}
 @media(max-width:800px){.side{width:200px;flex-basis:200px}.main{padding:24px 22px 48px}.actions{right:22px;top:28px}}@media(max-width:640px){.rail{display:none}.side{width:168px;flex-basis:168px}.nav a,.soon{font-size:12px;padding:9px 8px}.tag,.accountName{display:none}.who{padding:12px 10px}.userRole{max-width:112px}.main{padding:22px 16px 42px}.actions{right:16px;top:22px}}
+
+/* メニューだけをスクロールさせ、ロゴ・利用者欄と本文の寸法は維持する。 */
+.brand,.who{flex-shrink:0}
+.navFrame{position:relative;display:flex;flex-direction:column;flex:1 1 0;min-height:0}
+.navContent{min-width:0}
+.nav{min-height:0;scrollbar-width:none;scroll-padding-block:20px}
+.sideInner{scrollbar-width:none}
+.nav::-webkit-scrollbar,.sideInner::-webkit-scrollbar{display:none}
+.nav a,.soon{padding-block:8px;scroll-margin-block:20px}
+.navLabel{padding-top:10px}
+.nav:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.nav a:focus-visible,.upcomingToggle:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.upcomingToggle{display:flex;align-items:center;gap:8px;width:100%;margin-top:4px;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--side-sub);font:inherit;font-size:10.5px;line-height:1.5;letter-spacing:.14em;text-align:left;cursor:pointer;scroll-margin-block:20px}
+.upcomingToggle:hover{background:var(--side-line);color:var(--side-ink)}
+.upcomingCount{margin-left:auto;min-width:20px;padding:1px 5px;border-radius:8px;background:var(--side-line);color:var(--side-ink);font-size:10px;letter-spacing:0;text-align:center}
+.upcomingToggle svg{width:14px;height:14px;margin-left:auto;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.upcomingCount+svg{margin-left:0}
+.chevronOpen{transform:rotate(180deg)}
+.scrollFade{position:absolute;left:0;right:0;height:20px;z-index:1;pointer-events:none}
+.scrollFadeTop{top:0;background:linear-gradient(to bottom,var(--side),transparent)}
+.scrollFadeBottom{bottom:0;background:linear-gradient(to top,var(--side),transparent)}

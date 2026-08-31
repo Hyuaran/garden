@@ -10,6 +10,7 @@ import { getVisibleModules } from "@/app/_lib/module-visibility";
 import { GARDEN_SHELL_MODULES, type GardenModuleId } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { GARDEN_ROLE_LABELS, type GardenRole } from "@/app/root/_constants/types";
 import { canUseSystemItem, shouldHideSidebar, SYSTEM_MENU_ITEMS, type SystemIcon } from "./shacho-shell-config";
+import SidebarNavigation from "./SidebarNavigation";
 import styles from "./shacho-shell.module.css";
 
 type Props = {
@@ -87,6 +88,7 @@ export default function ShachoShell({ children, user }: Props) {
     window.location.assign("/login");
   }
   const visible = SYSTEM_MENU_ITEMS.filter((item) => canUseSystemItem(item, user.role));
+  const upcoming = visible.filter(item => item.upcoming);
   const visibleModules = new Set(getVisibleModules(user.role).map((module) => module.toLowerCase()));
   const hideSidebar = shouldHideSidebar(user.role);
   const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
@@ -106,12 +108,9 @@ export default function ShachoShell({ children, user }: Props) {
     <aside className={styles.side}>
       <div className={styles.sideInner}>
         <div className={styles.brand}><Link href="/" className={styles.brandName} aria-label="Garden ホームへ"><Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized/><span>Garden</span></Link><div className={styles.moduleName}>System ／ 社内システム</div></div>
-        <nav className={styles.nav} aria-label="Systemメニュー">
-          <div className={styles.navLabel}>メニュー</div>
+        <SidebarNavigation upcomingCount={upcoming.length} upcoming={upcoming.map((item) => <span key={item.label} className={styles.soon}><MenuIcon icon={item.icon}/>{item.label}<span className={styles.tag}>準備中</span></span>)}>
           {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined} aria-current={activePath === item.href ? "page" : undefined}><MenuIcon icon={item.icon}/>{item.label}<NavigationPendingHint /></Link>)}
-          <div className={styles.navLabel}>これから</div>
-          {visible.filter((item) => item.upcoming).map((item) => <span key={item.label} className={styles.soon}><MenuIcon icon={item.icon}/>{item.label}<span className={styles.tag}>準備中</span></span>)}
-        </nav>
+        </SidebarNavigation>
         <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}>{user.company} ／ {GARDEN_ROLE_LABELS[user.role]}</div></div></div>
       </div>
     </aside></>}

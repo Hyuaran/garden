@@ -84,4 +84,19 @@ describe("ShachoShell rail layout", () => {
     expect(navigationProgressRule).not.toMatch(/(?:width|height):100v/);
     expect(css).toContain("@keyframes systemNavigationProgress");
   });
+
+  it("hides only the scrollbar appearance and keeps native scrolling", () => {
+    expect(css).toMatch(/\.nav\{[^}]*overflow-y:auto/);
+    expect(css).toMatch(/\.nav\{[^}]*scrollbar-width:none/);
+    expect(css).toContain(".nav::-webkit-scrollbar,.sideInner::-webkit-scrollbar{display:none}");
+    expect(css).toContain("scroll-padding-block:20px");
+    expect(css).toContain("scroll-margin-block:20px");
+  });
+
+  it("uses theme-colored non-interactive fade overlays outside the scroll area", () => {
+    expect(css).toMatch(/\.navFrame\{[^}]*position:relative[^}]*min-height:0/);
+    expect(css).toMatch(/\.scrollFade\{[^}]*pointer-events:none/);
+    expect(css).toContain("linear-gradient(to bottom,var(--side),transparent)");
+    expect(css).toContain("linear-gradient(to top,var(--side),transparent)");
+  });
 });
