@@ -132,10 +132,11 @@ describe("写真のフォールバック", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it.each(["ueda-moto"])("%sは写真ではなく丸のイニシャル", id => {
-    const { container } = render(<MemberCard member={member(id)} photo="https://example.com/unused.webp" />);
+  it("写真を出さない設定の人は丸のイニシャル", () => {
+    const noPhoto: Member = { ...member("ueda-moto"), hidden: ["photo"] };
+    const { container } = render(<MemberCard member={noPhoto} photo="https://example.com/unused.webp" />);
     expect(container.querySelector("img")).toBeNull();
-    expect(screen.getByRole("img", { name: /イニシャル/ })).toHaveTextContent(Array.from(member(id).name)[0]);
+    expect(screen.getByRole("img", { name: /イニシャル/ })).toHaveTextContent("上");
   });
   it("署名URLが取得できなければイニシャル", () => {
     render(<MemberPhoto name="東海林　美琴" />);

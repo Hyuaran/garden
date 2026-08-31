@@ -45,22 +45,22 @@ describe("資料の認証と非公開写真", () => {
     const db = client(); db.query.maybeSingle.mockResolvedValue({ data: null, error: { message: "failed" } }); mocks.createServerClient.mockResolvedValue(db);
     await expect(requireDocsUser()).rejects.toThrow("redirect:");
   });
-  it("在籍者の認証後、サーバー側で表示対象11名のみ1時間のURLを発行する", async () => {
+  it("在籍者の認証後、サーバー側で表示対象12名のみ1時間のURLを発行する", async () => {
     const db = client(); mocks.createServerClient.mockResolvedValue(db);
     const result = await loadCompanyMembers();
     expect(result.members).toHaveLength(12);
-    expect(Object.keys(result.photos)).toHaveLength(11);
+    expect(Object.keys(result.photos)).toHaveLength(12);
     expect(db.storage.from).toHaveBeenCalledWith("system-docs");
     expect(db.sign.mock.calls.every(([, seconds]) => seconds === 3600)).toBe(true);
     const paths = db.sign.mock.calls.map(([path]) => path);
     expect(paths).toContain("company/members/goto-shota.webp");
-    for (const id of ["tsuji-mayuko", "matsumoto-minari", "ueda-moto"]) expect(paths.join()).not.toContain(id);
+    for (const id of ["tsuji-mayuko", "matsumoto-minari"]) expect(paths.join()).not.toContain(id);
   });
   it("署名エラーと例外を写真単位で無視し本文を返す", async () => {
     const db = client(); mocks.createServerClient.mockResolvedValue(db);
     db.sign.mockResolvedValueOnce({ data: null, error: { message: "not found" } }).mockRejectedValueOnce(new Error("network"));
     const result = await loadCompanyMembers();
-    expect(result.members).toHaveLength(12); expect(Object.keys(result.photos)).toHaveLength(9);
+    expect(result.members).toHaveLength(12); expect(Object.keys(result.photos)).toHaveLength(10);
   });
   it("資料入口は会社説明を維持し、線画アイコンの動画カードを追加する", async () => {
     mocks.createServerClient.mockResolvedValue(client());

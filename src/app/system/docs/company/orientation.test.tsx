@@ -33,7 +33,7 @@ describe("オリエンテーション表示", () => {
     });
     const normal = render(await CompanyPage());
     const expected = capture(normal.container);
-    expect(expected.chapters).toHaveLength(6); expect(expected.members).toHaveLength(12); expect(expected.photos).toHaveLength(11);
+    expect(expected.chapters).toHaveLength(6); expect(expected.members).toHaveLength(12); expect(expected.photos).toHaveLength(12);
     normal.unmount();
     const presentation = render(<ThemeProvider><OrientationLayout>{await OrientationPage()}</OrientationLayout></ThemeProvider>);
     expect(capture(presentation.container)).toEqual(expected);

@@ -19,7 +19,7 @@ export type Member = {
 // 人の追加は1件追加、非掲載は visible:false。hidden は項目の行ごと非表示にする。
 // 社歴はKintone従業員名簿を正とした承認済みの値。写真は同じidのStorageファイルを参照する。
 export const members: Member[] = [
-  { order: 1, id: "ueda-moto", name: "上田　基人", kana: "うえだ　もと", joinedLabel: "2017年入社", department: "営業部", hobbies: "釣り、サーフィン", title: "営業部長（ちいさな営業部長＾＾）", alsoRepresents: "株式会社たいようの代表取締役", visible: true, hidden: ["photo"] },
+  { order: 1, id: "ueda-moto", name: "上田　基人", kana: "うえだ　もと", joinedLabel: "2017年入社", department: "営業部", hobbies: "釣り、サーフィン", title: "営業部長（ちいさな営業部長＾＾）", alsoRepresents: "株式会社たいようの代表取締役", visible: true },
   { order: 2, id: "shoji-mikoto", name: "東海林　美琴", kana: "しょうじ　みこと", joinedLabel: "2018年入社", department: "総務部（バックヤード）", hobbies: "ジャニーズ箱推し、SixTONES", visible: true },
   { order: 3, id: "hagio-takuya", name: "萩尾　拓也", kana: "はぎお　たくや", joinedLabel: "2018年入社", department: "訪問営業部", hobbies: "旅行、サウナ", alsoRepresents: "株式会社リンクサポートの代表取締役", visible: true },
   { order: 4, id: "matsumoto-minari", name: "松本　美菜里", kana: "まつもと　みなり", joinedLabel: "2019年入社", department: "総務部（バックヤード）", hobbies: "ライブ、カラオケ、ご飯", visible: false },
