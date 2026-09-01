@@ -196,4 +196,45 @@ describe("入社手続きの事務詳細", () => {
     expect(await screen.findByText("保存先のフォルダに書き込めませんでした。管理者へお問い合わせください。")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/Drive API|token|scope/i);
   });
+
+  it("入社連絡表の囲み、確認、やめるを画面内に出し、ブラウザ確認は使わない", () => {
+    const record = initialAdminRecord("EMP-001");
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.getByRole("heading", { name: "入社連絡表（TLCC様提出用）" })).toBeInTheDocument();
+    expect(screen.getByText("扶養家族の欄は空欄です。手書きで足してください。")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "入社連絡表を作る" }));
+
+    expect(confirmMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("group", { name: "入社連絡表の保存確認" })).toBeInTheDocument();
+    expect(screen.getAllByText("マイナンバーが入った書類を、経理のフォルダに保存します。よろしいですか").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "やめる" }));
+    expect(screen.queryByRole("group", { name: "入社連絡表の保存確認" })).toBeNull();
+  });
+
+  it("入社連絡表の保存成功と失敗を画面内に日本語で出す", async () => {
+    const record = initialAdminRecord("EMP-001");
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, xlsxFilename: "01【提出用ヨシダヒナ】TLCC様入社連絡表.xlsx", pdfFilename: "01【提出用ヨシダヒナ】TLCC様入社連絡表.pdf", folderLabel: "経理部 ／ 30_入社連絡票" }) });
+    const { rerender } = render(<OnboardingAdminDetailClient record={record} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "入社連絡表を作る" }));
+    fireEvent.click(screen.getByRole("button", { name: "作って保存する" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ action: "renrakuhyo" });
+    expect(await screen.findByText("保存しました。")).toBeInTheDocument();
+    expect(screen.getByText("01【提出用ヨシダヒナ】TLCC様入社連絡表.xlsx")).toBeInTheDocument();
+    expect(screen.getByText("01【提出用ヨシダヒナ】TLCC様入社連絡表.pdf")).toBeInTheDocument();
+    expect(screen.getByText("経理部 ／ 30_入社連絡票 に入っています")).toBeInTheDocument();
+
+    fetchMock.mockClear();
+    fetchMock.mockResolvedValueOnce({ ok: false, json: async () => ({ error: "保存先のフォルダに書き込めませんでした。" }) });
+    rerender(<OnboardingAdminDetailClient record={record} />);
+    fireEvent.click(screen.getByRole("button", { name: "入社連絡表を作る" }));
+    fireEvent.click(screen.getByRole("button", { name: "作って保存する" }));
+
+    expect(await screen.findByText("保存先のフォルダに書き込めませんでした。")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/Drive API|token|scope/i);
+  });
 });

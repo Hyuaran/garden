@@ -22,10 +22,13 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   const [emailNotice, setEmailNotice] = useState("");
   const [emailError, setEmailError] = useState("");
   const [fuyouBusy, setFuyouBusy] = useState(false);
+  const [renrakuhyoBusy, setRenrakuhyoBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [fuyouNotice, setFuyouNotice] = useState<{ kind: "success" | "error"; message: string; filename?: string; folderLabel?: string } | null>(null);
+  const [renrakuhyoNotice, setRenrakuhyoNotice] = useState<{ kind: "success" | "error"; message: string; xlsxFilename?: string; pdfFilename?: string; folderLabel?: string } | null>(null);
   const [confirmApply, setConfirmApply] = useState(false);
   const [confirmFuyou, setConfirmFuyou] = useState(false);
+  const [confirmRenrakuhyo, setConfirmRenrakuhyo] = useState(false);
   const [revealedMyNumbers, setRevealedMyNumbers] = useState<Record<string, string>>({});
   const [myNumberBusy, setMyNumberBusy] = useState<Record<string, boolean>>({});
   const missing = missingOnboardingItems(record.values);
@@ -153,6 +156,27 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
       setFuyouBusy(false);
     }
   }
+  async function createRenrakuhyo() {
+    setRenrakuhyoBusy(true); setRenrakuhyoNotice(null);
+    try {
+      const response = await fetch(`/api/system/onboarding/admin/${encodeURIComponent(record.employee.employee_id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "renrakuhyo" }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setRenrakuhyoNotice({ kind: "error", message: body.error ?? "保存先のフォルダに書き込めませんでした。" });
+        return;
+      }
+      setConfirmRenrakuhyo(false);
+      setRenrakuhyoNotice({ kind: "success", message: "保存しました。", xlsxFilename: body.xlsxFilename, pdfFilename: body.pdfFilename, folderLabel: body.folderLabel });
+    } catch {
+      setRenrakuhyoNotice({ kind: "error", message: "保存先のフォルダに書き込めませんでした。" });
+    } finally {
+      setRenrakuhyoBusy(false);
+    }
+  }
 
   return <div className={styles.detailStack}>
     <section className={styles.adminSection}>
@@ -240,6 +264,31 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
           <p>{fuyouNotice.message}</p>
           {fuyouNotice.filename ? <p>{fuyouNotice.filename}</p> : null}
           {fuyouNotice.folderLabel ? <p>{fuyouNotice.folderLabel} に入っています</p> : null}
+        </> : null}
+      </div>
+    </section>
+
+    <section className={styles.adminSection}>
+      <h2>入社連絡表（TLCC様提出用）</h2>
+      <p>入社手続きの内容から、TLCC様へ出す連絡表を作ります。</p>
+      <p>ExcelとPDFの両方を、経理のフォルダへ保存します。</p>
+      <p className={styles.hint}>扶養家族の欄は空欄です。手書きで足してください。</p>
+      <div className={styles.actions}>
+        <button className={styles.primary} type="button" disabled={renrakuhyoBusy} onClick={() => { setRenrakuhyoNotice(null); setConfirmRenrakuhyo(true); }}>入社連絡表を作る</button>
+      </div>
+      {confirmRenrakuhyo && <div className={styles.inlineConfirm} role="group" aria-label="入社連絡表の保存確認">
+        <p>マイナンバーが入った書類を、経理のフォルダに保存します。よろしいですか</p>
+        <div className={styles.actions}>
+          <button className={styles.primary} type="button" disabled={renrakuhyoBusy} onClick={() => void createRenrakuhyo()}>{renrakuhyoBusy ? "作っています。" : "作って保存する"}</button>
+          <button type="button" disabled={renrakuhyoBusy} onClick={() => setConfirmRenrakuhyo(false)}>やめる</button>
+        </div>
+      </div>}
+      <div role="status" className={renrakuhyoNotice?.kind === "success" ? styles.resultNotice : styles.saveStatus}>
+        {renrakuhyoNotice ? <>
+          <p>{renrakuhyoNotice.message}</p>
+          {renrakuhyoNotice.xlsxFilename ? <p>{renrakuhyoNotice.xlsxFilename}</p> : null}
+          {renrakuhyoNotice.pdfFilename ? <p>{renrakuhyoNotice.pdfFilename}</p> : null}
+          {renrakuhyoNotice.folderLabel ? <p>{renrakuhyoNotice.folderLabel} に入っています</p> : null}
         </> : null}
       </div>
     </section>

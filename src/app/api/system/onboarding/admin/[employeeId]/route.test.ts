@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ context: vi.fn(), save: vi.fn(), saveEmail: vi.fn(), apply: vi.fn(), readMyNumber: vi.fn(), fuyou: vi.fn(), revalidate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ context: vi.fn(), save: vi.fn(), saveEmail: vi.fn(), apply: vi.fn(), readMyNumber: vi.fn(), fuyou: vi.fn(), renrakuhyo: vi.fn(), revalidate: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 vi.mock("@/app/system/onboarding/_lib/onboarding-admin.server", () => ({
   onboardingAdminContext: mocks.context,
@@ -9,6 +9,7 @@ vi.mock("@/app/system/onboarding/_lib/onboarding-admin.server", () => ({
   readMyNumberForAdmin: mocks.readMyNumber,
 }));
 vi.mock("@/app/system/onboarding/_lib/onboarding-fuyou.server", () => ({ createAndSaveFuyouPdf: mocks.fuyou }));
+vi.mock("@/app/system/onboarding/_lib/renrakuhyo.server", () => ({ createAndSaveRenrakuhyo: mocks.renrakuhyo }));
 vi.mock("@/app/system/onboarding/_lib/onboarding.server", () => ({ OnboardingError: class extends Error { constructor(message: string, public status = 500) { super(message); } } }));
 import { POST } from "./route";
 
@@ -21,6 +22,7 @@ describe("事務用入社手続きAPI", () => {
     mocks.saveEmail.mockResolvedValue({ email: "hy@example.jp" });
     mocks.readMyNumber.mockResolvedValue({ myNumber: "123456785540" });
     mocks.fuyou.mockResolvedValue({ filename: "扶養.pdf", folderLabel: "経理部 ／ 12_扶養控除申告書" });
+    mocks.renrakuhyo.mockResolvedValue({ xlsxFilename: "入社.xlsx", pdfFilename: "入社.pdf", folderLabel: "経理部 ／ 30_入社連絡票" });
   });
 
   it("扶養控除申告書は責任者コンテキストを通して作り、PDFやマイナンバーを応答しない", async () => {
@@ -54,6 +56,29 @@ describe("事務用入社手続きAPI", () => {
     expect(mocks.context).toHaveBeenCalledOnce();
     expect(mocks.readMyNumber).toHaveBeenCalledWith({ managerEmployeeId: "EMP-MANAGER" }, "EMP-1", { kind: "dependent", index: 0 });
     expect(json).toEqual({ ok: true, myNumber: "123456785540" });
+  });
+
+  it("入社連絡表は責任者コンテキストを通して作り、Excel/PDF本体やマイナンバーを応答しない", async () => {
+    const response = await POST(request({ action: "renrakuhyo" }), { params: Promise.resolve({ employeeId: "EMP-1" }) });
+    expect(response.status).toBe(200);
+    expect(mocks.context).toHaveBeenCalledOnce();
+    expect(mocks.renrakuhyo).toHaveBeenCalledWith({ managerEmployeeId: "EMP-MANAGER" }, "EMP-1");
+    expect(mocks.save).not.toHaveBeenCalled();
+    const json = await response.json();
+    expect(json).toEqual({ ok: true, xlsxFilename: "入社.xlsx", pdfFilename: "入社.pdf", folderLabel: "経理部 ／ 30_入社連絡票" });
+    expect(JSON.stringify(json)).not.toMatch(/123456789012|my_number|content|Buffer/);
+  });
+
+  it("入社連絡表は責任者未満では実行できず、Drive失敗は利用者向けの日本語だけを返す", async () => {
+    const OnboardingError = (await import("@/app/system/onboarding/_lib/onboarding.server")).OnboardingError;
+    mocks.context.mockRejectedValueOnce(new OnboardingError("閲覧権限がありません", 403));
+    expect((await POST(request({ action: "renrakuhyo" }), { params: Promise.resolve({ employeeId: "EMP-1" }) })).status).toBe(403);
+    mocks.renrakuhyo.mockRejectedValueOnce(new Error("Drive API token scope leaked"));
+    const response = await POST(request({ action: "renrakuhyo" }), { params: Promise.resolve({ employeeId: "EMP-1" }) });
+    const json = await response.json();
+    expect(response.status).toBe(500);
+    expect(json.error).toBe("保存先のフォルダに書き込めませんでした。");
+    expect(JSON.stringify(json)).not.toMatch(/Drive API|token|scope/i);
   });
 
   it("メールアドレス保存は責任者コンテキストを通し、email以外を保存関数へ渡しても保存させない", async () => {

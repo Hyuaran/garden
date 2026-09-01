@@ -4,6 +4,8 @@ import { OnboardingError } from "@/app/system/onboarding/_lib/onboarding.server"
 import { applyAdminOnboarding, onboardingAdminContext, readMyNumberForAdmin, saveAdminOnboarding, saveAdminOnboardingEmail } from "@/app/system/onboarding/_lib/onboarding-admin.server";
 import { createAndSaveFuyouPdf } from "@/app/system/onboarding/_lib/onboarding-fuyou.server";
 import { safeFuyouErrorMessage } from "@/app/system/onboarding/_lib/fuyou-pdf";
+import { createAndSaveRenrakuhyo } from "@/app/system/onboarding/_lib/renrakuhyo.server";
+import { safeRenrakuhyoErrorMessage } from "@/app/system/onboarding/_lib/renrakuhyo";
 
 function sameOrigin(request: Request) {
   return (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin) || request.headers.get("sec-fetch-site") === "cross-site";
@@ -21,8 +23,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ emp
     if (text.length > 50_000) throw new OnboardingError("入力内容が多すぎます。内容を確認してください。", 400);
     let body;
     try { body = JSON.parse(text); } catch { throw new OnboardingError("入力内容を読み取れませんでした。", 400); }
-    if (!body || !["save", "apply", "fuyou", "myNumber", "email"].includes(body.action)) throw new OnboardingError("保存方法を確認してください。", 400);
+    if (!body || !["save", "apply", "fuyou", "renrakuhyo", "myNumber", "email"].includes(body.action)) throw new OnboardingError("保存方法を確認してください。", 400);
     action = body.action;
+    if (action === "renrakuhyo") {
+      const saved = await createAndSaveRenrakuhyo(context, employeeId);
+      return NextResponse.json({ ok: true, xlsxFilename: saved.xlsxFilename, pdfFilename: saved.pdfFilename, folderLabel: saved.folderLabel }, { headers });
+    }
     if (action === "fuyou") {
       const saved = await createAndSaveFuyouPdf(context, employeeId);
       return NextResponse.json({ ok: true, filename: saved.filename, folderLabel: saved.folderLabel }, { headers });
@@ -44,7 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ emp
     return NextResponse.json({ ok: true }, { headers });
   } catch (error) {
     const status = error instanceof OnboardingError ? error.status : 500;
-    const message = action === "fuyou" ? safeFuyouErrorMessage(status) : error instanceof OnboardingError ? error.message : "保存できませんでした。もう一度お試しください。";
+    const message = action === "renrakuhyo" ? safeRenrakuhyoErrorMessage(status) : action === "fuyou" ? safeFuyouErrorMessage(status) : error instanceof OnboardingError ? error.message : "保存できませんでした。もう一度お試しください。";
     return NextResponse.json({ error: message }, { status, headers });
   }
 }
