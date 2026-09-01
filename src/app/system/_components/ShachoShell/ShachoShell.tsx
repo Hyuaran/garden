@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link, { useLinkStatus } from "next/link";
@@ -18,14 +18,48 @@ type Props = {
   user: { name: string; company: string; role: GardenRole };
 };
 
-const MODULE_META: Record<GardenModuleId, { color: string; role: string }> = {
-  bloom: { color: "#f472b6", role: "案件KPI" }, fruit: { color: "#fb923c", role: "法人実態情報" },
-  seed: { color: "#facc15", role: "新事業" }, forest: { color: "#34d399", role: "全法人決算" },
-  bud: { color: "#c084fc", role: "経理・収支" }, leaf: { color: "#4ade80", role: "案件アプリ" },
-  tree: { color: "#a78bfa", role: "架電" }, sprout: { color: "#86efac", role: "採用" },
-  soil: { color: "#9aa7b8", role: "データベース" }, root: { color: "#5b9dff", role: "組織台帳" },
-  rill: { color: "#38bdf8", role: "メッセージ" }, calendar: { color: "#60a5fa", role: "予定管理" },
+const MODULE_META: Record<GardenModuleId, { color: string; shade: string; role: string }> = {
+  bloom: { color: "#f472b6", shade: "#9c0856", role: "案件KPI" }, fruit: { color: "#fb923c", shade: "#8f4000", role: "法人実績情報" },
+  seed: { color: "#facc15", shade: "#7d6400", role: "新規事業" }, forest: { color: "#34d399", shade: "#146548", role: "全法人決算" },
+  bud: { color: "#c084fc", shade: "#5800b1", role: "経理・取引" }, leaf: { color: "#4ade80", shade: "#137637", role: "案件アプリ" },
+  tree: { color: "#a78bfa", shade: "#2f03b0", role: "架電" }, sprout: { color: "#86efac", shade: "#119b43", role: "採用" },
+  soil: { color: "#9aa7b8", shade: "#404c5c", role: "データベース" }, root: { color: "#5b9dff", shade: "#00409f", role: "組織台帳" },
+  rill: { color: "#38bdf8", shade: "#01608a", role: "メッセージ" }, calendar: { color: "#60a5fa", shade: "#01479e", role: "予定管理" },
 };
+
+function RailIcon({
+  color,
+  shade,
+  children,
+  iconScale = 1.85,
+  iconStrokeWidth = 1.5,
+}: {
+  color: string;
+  shade: string;
+  children: ReactNode;
+  iconScale?: number;
+  iconStrokeWidth?: number;
+}) {
+  const gradientId = `rail-icon-gradient-${color.slice(1)}`;
+  const shineId = `rail-icon-shine-${color.slice(1)}`;
+  return <svg viewBox="0 0 56 56" aria-hidden="true">
+    <defs>
+      <linearGradient id={gradientId} x1="9" y1="4" x2="47" y2="52" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stopColor={color} />
+        <stop offset="1" stopColor={shade} />
+      </linearGradient>
+      <radialGradient id={shineId} cx="0" cy="0" r="1" gradientTransform="translate(28 14) scale(30 14)" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stopColor="#ffffff" stopOpacity=".55" />
+        <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+      </radialGradient>
+    </defs>
+    <rect x="2" y="2" width="52" height="52" rx="14" fill={`url(#${gradientId})`} stroke="#ffffff" strokeOpacity=".35" strokeWidth="1" />
+    <ellipse cx="28" cy="14" rx="30" ry="14" fill={`url(#${shineId})`} />
+    <g transform={`translate(28,28) scale(${iconScale}) translate(-12,-12)`} fill="none" stroke="#ffffff" strokeWidth={iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      {children}
+    </g>
+  </svg>;
+}
 
 function ModuleIcon({ id }: { id: GardenModuleId }) {
   const icons: Record<GardenModuleId, ReactNode> = {
@@ -42,7 +76,8 @@ function ModuleIcon({ id }: { id: GardenModuleId }) {
     rill: <><path d="M3 8c3 0 3 2 6 2s3-2 6-2 3 2 6 2M3 13c3 0 3 2 6 2s3-2 6-2 3 2 6 2M3 18c3 0 3 2 6 2"/></>,
     calendar: <><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></>,
   };
-  return <svg viewBox="0 0 24 24" aria-hidden="true">{icons[id]}</svg>;
+  const meta = MODULE_META[id];
+  return <RailIcon color={meta.color} shade={meta.shade}>{icons[id]}</RailIcon>;
 }
 
 export function MenuIcon({ icon }: { icon: SystemIcon }) {
@@ -96,7 +131,9 @@ export default function ShachoShell({ children, user }: Props) {
     {!hideSidebar && <><aside className={styles.rail} aria-label="Gardenシリーズ">
       <div className={styles.railInner}>
         <Link href="/system" className={`${styles.app} ${styles.current}`} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 14.4v1.4M17.6 15.6v1.2"/></svg>
+          <RailIcon color="#0ea5a0" shade="#054e4b" iconScale={1.85} iconStrokeWidth={1.9}>
+            <path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 13.8v2.2M17.6 15.2V17"/>
+          </RailIcon>
           <span className={styles.railTip}><b>System</b><span>社内システム</span></span>
         </Link>
         <div className={styles.separator}/>

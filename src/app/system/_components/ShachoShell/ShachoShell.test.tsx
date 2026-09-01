@@ -149,6 +149,51 @@ describe("ShachoShell", () => {
     expect(within(rail).getAllByRole("link")).toHaveLength(13);
   });
 
+  it("renders all rail icons as glass SVG plates with the requested gradient colors", () => {
+    renderShell("/system", { ...manager, role: "super_admin" });
+    const rail = document.querySelector(`.${styles.rail}`);
+    const icons = Array.from(rail?.querySelectorAll(`.${styles.app} > svg`) ?? []);
+    const expectedStops = [
+      ["#0ea5a0", "#054e4b"],
+      ["#f472b6", "#9c0856"],
+      ["#fb923c", "#8f4000"],
+      ["#facc15", "#7d6400"],
+      ["#34d399", "#146548"],
+      ["#c084fc", "#5800b1"],
+      ["#4ade80", "#137637"],
+      ["#a78bfa", "#2f03b0"],
+      ["#86efac", "#119b43"],
+      ["#9aa7b8", "#404c5c"],
+      ["#5b9dff", "#00409f"],
+      ["#38bdf8", "#01608a"],
+      ["#60a5fa", "#01479e"],
+    ];
+
+    expect(icons).toHaveLength(13);
+    icons.forEach((icon, index) => {
+      expect(icon).toHaveAttribute("viewBox", "0 0 56 56");
+      expect(icon.querySelector("rect")).toHaveAttribute("x", "2");
+      expect(icon.querySelector("rect")).toHaveAttribute("y", "2");
+      expect(icon.querySelector("rect")).toHaveAttribute("width", "52");
+      expect(icon.querySelector("rect")).toHaveAttribute("height", "52");
+      expect(icon.querySelector("rect")).toHaveAttribute("rx", "14");
+      expect(icon.querySelector("rect")).toHaveAttribute("stroke", "#ffffff");
+      expect(icon.querySelector("ellipse")).toHaveAttribute("cx", "28");
+      expect(icon.querySelector("ellipse")).toHaveAttribute("cy", "14");
+      expect(icon.querySelector("ellipse")).toHaveAttribute("rx", "30");
+      expect(icon.querySelector("ellipse")).toHaveAttribute("ry", "14");
+      expect(icon.querySelector("g")).toHaveAttribute("stroke", "#ffffff");
+      const stops = Array.from(icon.querySelectorAll("stop")).slice(0, 2).map((stop) => stop.getAttribute("stop-color"));
+      expect(stops).toEqual(expectedStops[index]);
+    });
+    expect(icons[0].querySelector("g")).toHaveAttribute("stroke-width", "1.9");
+    expect(icons[0].querySelector("g")).toHaveAttribute("transform", "translate(28,28) scale(1.85) translate(-12,-12)");
+    icons.slice(1).forEach((icon) => {
+      expect(icon.querySelector("g")).toHaveAttribute("stroke-width", "1.5");
+      expect(icon.querySelector("g")).toHaveAttribute("transform", "translate(28,28) scale(1.85) translate(-12,-12)");
+    });
+  });
+
   it.each(["super_admin", "admin", "manager", "staff", "cs"] as const)(
     "keeps the rail and sidebar for %s",
     (role) => {

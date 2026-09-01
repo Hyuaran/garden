@@ -4,9 +4,11 @@ import { describe, expect, it } from "vitest";
 
 const css = readFileSync(join(process.cwd(), "src/app/system/_components/ShachoShell/shacho-shell.module.css"), "utf8");
 const shellRule = css.match(/\.shell\{([^}]+)\}/)?.[1] ?? "";
+const darkShellRule = css.match(/:global\(\[data-theme="dark"\]\) \.shell\{([^}]+)\}/)?.[1] ?? "";
 const railRule = css.match(/\.rail\{([^}]+)\}/)?.[1] ?? "";
 const railInnerRule = css.match(/\.railInner\{([^}]+)\}/)?.[1] ?? "";
 const appRule = css.match(/\.app\{([^}]+)\}/)?.[1] ?? "";
+const currentBarRule = css.match(/\.current::before\{([^}]+)\}/)?.[1] ?? "";
 const sideRule = css.match(/\.side\{([^}]+)\}/)?.[1] ?? "";
 const sideInnerRule = css.match(/\.sideInner\{([^}]+)\}/)?.[1] ?? "";
 const actionsRule = css.match(/\.actions\{([^}]+)\}/)?.[1] ?? "";
@@ -38,6 +40,21 @@ describe("ShachoShell rail layout", () => {
     expect(appRule).toContain("height:40px");
     expect(appRule).toContain("flex:0 0 40px");
     expect(css).toMatch(/\.app>svg\{[^}]*width:20px[^}]*height:20px/);
+  });
+
+  it("keeps the rail backgrounds fixed and leaves glass icons unglowed", () => {
+    expect(shellRule).toContain("--rail:#0a1424");
+    expect(shellRule).toContain("--side:#0f1f36");
+    expect(darkShellRule).toContain("--rail:#0a1424");
+    expect(darkShellRule).toContain("--side:#0f1f36");
+    expect(appRule).toContain("width:40px");
+    expect(appRule).toContain("height:40px");
+    expect(css.match(/\.app>svg\{([^}]+)\}/)?.[1]).not.toContain("drop-shadow");
+    expect(css).toContain(".app:not(.current)>svg{filter:brightness(.78)}");
+    expect(css).toContain(".app:not(.current):hover>svg{filter:brightness(1)}");
+    expect(currentBarRule).toContain("width:4px");
+    expect(currentBarRule).toContain("height:28px");
+    expect(currentBarRule).toContain("background:#fff");
   });
 
   it("stretches the shell and both dark columns to long page content", () => {
