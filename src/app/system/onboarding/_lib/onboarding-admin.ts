@@ -92,6 +92,12 @@ export function parseAdminInput(value: unknown): AdminInput {
   };
 }
 
+export function parseAdminEmailInput(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid email input");
+  const source = value as Record<string, unknown>;
+  return { email: text(source.email) };
+}
+
 export function adminInputFromRow(row: Record<string, unknown> | null, values: OnboardingInput): AdminInput {
   const parsed = parseAdminInput(row ?? {});
   if (!parsed.commute_fixed_monthly && !row?.admin_updated_at) {

@@ -45,8 +45,88 @@ describe("入社手続きの事務詳細", () => {
     record.values.email = "hy@example.jp";
     render(<OnboardingAdminDetailClient record={record} />);
 
+    expect(screen.getByRole("heading", { name: "本人が入れた内容" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "本人が入れた内容（読むだけ）" })).toBeNull();
     expect(screen.getByText("メールアドレス")).toBeInTheDocument();
     expect(screen.getByText("hy@example.jp")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "修正" })).toBeInTheDocument();
+    expect(screen.getByText("事務が入れられます")).toBeInTheDocument();
+  });
+
+  it("メールアドレスをその行だけ修正して保存できる", async () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.email = "before@example.jp";
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, email: "after@example.jp" }) });
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "修正" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "メールアドレス" }), { target: { value: "after@example.jp" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "保存" })[0]);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ action: "email", email: "after@example.jp" });
+    expect(await screen.findByText("保存しました")).toBeInTheDocument();
+    expect(screen.getByText("after@example.jp")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "メールアドレス" })).toBeNull();
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("メールアドレスの修正をやめると押す前の値に戻り保存しない", () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.email = "before@example.jp";
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "修正" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "メールアドレス" }), { target: { value: "changed@example.jp" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "やめる" })[0]);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText("before@example.jp")).toBeInTheDocument();
+    expect(screen.queryByText("changed@example.jp")).toBeNull();
+  });
+
+  it("メールアドレスは空でも保存できる", async () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.email = "before@example.jp";
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, email: "" }) });
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "修正" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "メールアドレス" }), { target: { value: "" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "保存" })[0]);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ action: "email", email: "" });
+    expect(await screen.findByText("保存しました")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "住所と連絡先" })).getAllByText("未入力").length).toBeGreaterThan(0);
+  });
+
+  it("メールアドレスの形がおかしいときは注意を出すが保存は止めない", async () => {
+    const record = initialAdminRecord("EMP-001");
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, email: "hy.example.jp" }) });
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "修正" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "メールアドレス" }), { target: { value: "hy.example.jp" } });
+
+    expect(screen.getByText("メールアドレスの形になっていません")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "保存" })[0]);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ action: "email", email: "hy.example.jp" });
+  });
+
+  it("メールアドレス保存に失敗したら入力中のまま理由を出す", async () => {
+    const record = initialAdminRecord("EMP-001");
+    fetchMock.mockResolvedValueOnce({ ok: false, json: async () => ({ error: "保存できませんでした。" }) });
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "修正" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "メールアドレス" }), { target: { value: "after@example.jp" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "保存" })[0]);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("保存できませんでした。");
+    expect(screen.getByRole("textbox", { name: "メールアドレス" })).toHaveValue("after@example.jp");
   });
 
   it("マイナンバーは初期HTMLに全桁を持たず、見る/隠すで取得表示する", async () => {

@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ context: vi.fn(), save: vi.fn(), apply: vi.fn(), readMyNumber: vi.fn(), fuyou: vi.fn(), revalidate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ context: vi.fn(), save: vi.fn(), saveEmail: vi.fn(), apply: vi.fn(), readMyNumber: vi.fn(), fuyou: vi.fn(), revalidate: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 vi.mock("@/app/system/onboarding/_lib/onboarding-admin.server", () => ({
   onboardingAdminContext: mocks.context,
   saveAdminOnboarding: mocks.save,
+  saveAdminOnboardingEmail: mocks.saveEmail,
   applyAdminOnboarding: mocks.apply,
   readMyNumberForAdmin: mocks.readMyNumber,
 }));
@@ -17,6 +18,7 @@ describe("事務用入社手続きAPI", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.context.mockResolvedValue({ managerEmployeeId: "EMP-MANAGER" });
+    mocks.saveEmail.mockResolvedValue({ email: "hy@example.jp" });
     mocks.readMyNumber.mockResolvedValue({ myNumber: "123456785540" });
     mocks.fuyou.mockResolvedValue({ filename: "扶養.pdf", folderLabel: "経理部 ／ 12_扶養控除申告書" });
   });
@@ -52,5 +54,27 @@ describe("事務用入社手続きAPI", () => {
     expect(mocks.context).toHaveBeenCalledOnce();
     expect(mocks.readMyNumber).toHaveBeenCalledWith({ managerEmployeeId: "EMP-MANAGER" }, "EMP-1", { kind: "dependent", index: 0 });
     expect(json).toEqual({ ok: true, myNumber: "123456785540" });
+  });
+
+  it("メールアドレス保存は責任者コンテキストを通し、email以外を保存関数へ渡しても保存させない", async () => {
+    const response = await POST(request({ action: "email", email: "hy@example.jp", values: { name: "変えない" } }), { params: Promise.resolve({ employeeId: "EMP-1" }) });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.context).toHaveBeenCalledOnce();
+    expect(mocks.saveEmail).toHaveBeenCalledWith({ managerEmployeeId: "EMP-MANAGER" }, "EMP-1", { action: "email", email: "hy@example.jp", values: { name: "変えない" } });
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.apply).not.toHaveBeenCalled();
+    expect(json).toEqual({ ok: true, email: "hy@example.jp" });
+  });
+
+  it("責任者未満はメールアドレス保存を受け付けない", async () => {
+    const OnboardingError = (await import("@/app/system/onboarding/_lib/onboarding.server")).OnboardingError;
+    mocks.context.mockRejectedValueOnce(new OnboardingError("閲覧権限がありません", 403));
+
+    const response = await POST(request({ action: "email", email: "hy@example.jp" }), { params: Promise.resolve({ employeeId: "EMP-1" }) });
+
+    expect(response.status).toBe(403);
+    expect(mocks.saveEmail).not.toHaveBeenCalled();
   });
 });

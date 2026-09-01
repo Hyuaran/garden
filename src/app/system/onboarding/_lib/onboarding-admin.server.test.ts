@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ getSupabaseAdmin: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: mocks.getSupabaseAdmin }));
-import { applyAdminOnboarding, readAdminOnboardingList, readMyNumberForAdmin, type AdminContext } from "./onboarding-admin.server";
+import { applyAdminOnboarding, readAdminOnboardingList, readMyNumberForAdmin, saveAdminOnboardingEmail, type AdminContext } from "./onboarding-admin.server";
 
 function chain(result: unknown) {
   return {
@@ -80,5 +80,19 @@ describe("事務用入社手続きサーバー処理", () => {
       payload: { kind: "dependent", index: 1 },
     });
     expect(JSON.stringify(auditQuery.insert.mock.calls)).not.toMatch(/123456785540|111122223333/);
+  });
+
+  it("メールアドレス保存はemail列だけを更新し、空欄も許容する", async () => {
+    const systemQuery = chain({ error: null });
+    const supabase = { from: vi.fn(() => systemQuery) };
+
+    const filled = await saveAdminOnboardingEmail({ supabase, managerEmployeeId: "EMP-M" } as unknown as AdminContext, "EMP-1", { email: " hy@example.jp ", name: "変えない" });
+    const empty = await saveAdminOnboardingEmail({ supabase, managerEmployeeId: "EMP-M" } as unknown as AdminContext, "EMP-1", { email: "", address: "変えない" });
+
+    expect(filled).toEqual({ email: "hy@example.jp" });
+    expect(empty).toEqual({ email: "" });
+    expect(systemQuery.update).toHaveBeenCalledWith({ email: "hy@example.jp" });
+    expect(systemQuery.update).toHaveBeenCalledWith({ email: "" });
+    expect(JSON.stringify(systemQuery.update.mock.calls)).not.toMatch(/変えない|name|address/);
   });
 });

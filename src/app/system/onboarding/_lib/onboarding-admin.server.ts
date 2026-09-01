@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { MANAGER_ROLES } from "@/app/system/_lib/attendance";
 import { databaseError, OnboardingError, ONBOARDING_COLUMNS } from "./onboarding.server";
 import { maskMyNumber, parseInput, parseNullableAmount } from "./onboarding";
-import { adminInputFromRow, buildAdminList, initialAdminRecord, parseAdminInput, type AdminInput, type AdminListItem, type AdminOnboardingRecord } from "./onboarding-admin";
+import { adminInputFromRow, buildAdminList, initialAdminRecord, parseAdminEmailInput, parseAdminInput, type AdminInput, type AdminListItem, type AdminOnboardingRecord } from "./onboarding-admin";
 
 const ADMIN_ONBOARDING_COLUMNS = `employee_id,${ONBOARDING_COLUMNS},office,weekly_hours,health_insurance,pension_insurance,employment_insurance,tax_class,salary_kind,base_salary,allowances,commute_fixed_monthly,commute_cap_monthly,admin_updated_at`;
 const EMPLOYEE_COLUMNS = "employee_id,name,hire_date,birthday,company_id";
@@ -96,6 +96,17 @@ export async function saveAdminOnboarding(context: AdminContext, employeeId: str
     throw new OnboardingError("保存できませんでした。入力内容はこの画面に残っています。もう一度保存してください。", 503);
   }
   return admin;
+}
+
+export async function saveAdminOnboardingEmail(context: AdminContext, employeeId: string, input: unknown) {
+  let parsed;
+  try { parsed = parseAdminEmailInput(input); } catch { throw new OnboardingError("入力内容を読み取れませんでした。ページを開き直してください。", 400); }
+  const { error } = await context.supabase.from("system_onboarding").update({ email: parsed.email }).eq("employee_id", employeeId);
+  if (error) {
+    if (error.code === "PGRST205" || error.code === "42P01") throw databaseError(error);
+    throw new OnboardingError("保存できませんでした。入力内容はこの画面に残っています。もう一度保存してください。", 503);
+  }
+  return parsed;
 }
 
 function numericText(value: string) {

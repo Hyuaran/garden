@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import OnboardingReview from "../../_components/OnboardingReview";
 import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
+import { formatWarnings } from "../../_lib/onboarding";
 import styles from "../../onboarding.module.css";
 
 function emptyAllowance(): AdminAllowance {
@@ -12,8 +13,14 @@ function emptyAllowance(): AdminAllowance {
 
 export default function OnboardingAdminDetailClient({ record }: { record: AdminOnboardingRecord }) {
   const router = useRouter();
+  const [reviewValues, setReviewValues] = useState(record.values);
   const [admin, setAdmin] = useState(record.admin);
   const [busy, setBusy] = useState(false);
+  const [emailEditing, setEmailEditing] = useState(false);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailDraft, setEmailDraft] = useState(record.values.email);
+  const [emailNotice, setEmailNotice] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [fuyouBusy, setFuyouBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [fuyouNotice, setFuyouNotice] = useState<{ kind: "success" | "error"; message: string; filename?: string; folderLabel?: string } | null>(null);
@@ -91,6 +98,40 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
       setBusy(false);
     }
   }
+  function editEmail() {
+    setEmailDraft(reviewValues.email);
+    setEmailNotice("");
+    setEmailError("");
+    setEmailEditing(true);
+  }
+  function cancelEmailEdit() {
+    setEmailDraft(reviewValues.email);
+    setEmailNotice("");
+    setEmailError("");
+    setEmailEditing(false);
+  }
+  async function saveEmail() {
+    setEmailBusy(true); setEmailNotice(""); setEmailError("");
+    try {
+      const response = await fetch(`/api/system/onboarding/admin/${encodeURIComponent(record.employee.employee_id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "email", email: emailDraft }),
+      });
+      const body = await response.json();
+      if (!response.ok) { setEmailError(body.error ?? "保存できませんでした。もう一度お試しください。"); return; }
+      const savedEmail = typeof body.email === "string" ? body.email : emailDraft.trim();
+      setReviewValues(previous => ({ ...previous, email: savedEmail }));
+      setEmailDraft(savedEmail);
+      setEmailEditing(false);
+      setEmailNotice("保存しました");
+      router.refresh();
+    } catch {
+      setEmailError("保存できませんでした。入力内容はこの画面に残っています。もう一度保存してください。");
+    } finally {
+      setEmailBusy(false);
+    }
+  }
   async function createFuyouPdf() {
     setFuyouBusy(true); setFuyouNotice(null);
     try {
@@ -115,8 +156,21 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
 
   return <div className={styles.detailStack}>
     <section className={styles.adminSection}>
-      <h2>本人が入れた内容（読むだけ）</h2>
-      <OnboardingReview values={record.values} myNumberReveal={{
+      <h2>本人が入れた内容</h2>
+      <OnboardingReview values={reviewValues} emailSlot={<span className={styles.emailReviewValue}>
+        {emailEditing ? <>
+          <input aria-label="メールアドレス" value={emailDraft} maxLength={2000} disabled={emailBusy} onChange={event => { setEmailDraft(event.target.value); setEmailNotice(""); setEmailError(""); }} />
+          <button type="button" disabled={emailBusy} onClick={() => void saveEmail()}>保存</button>
+          <button type="button" disabled={emailBusy} onClick={cancelEmailEdit}>やめる</button>
+        </> : <>
+          {reviewValues.email ? <span>{reviewValues.email}</span> : <span className={styles.empty}>未入力</span>}
+          <button type="button" onClick={editEmail}>修正</button>
+        </>}
+        <span className={styles.hint}>事務が入れられます</span>
+        {formatWarnings({ ...reviewValues, email: emailDraft }).email ? <span className={styles.warning}>{formatWarnings({ ...reviewValues, email: emailDraft }).email}</span> : null}
+        {emailNotice ? <span role="status" className={styles.saveStatus}>{emailNotice}</span> : null}
+        {emailError ? <span role="alert" className={styles.warning}>{emailError}</span> : null}
+      </span>} myNumberReveal={{
         value: (kind, index) => revealedMyNumbers[myNumberKey(kind, index)] ?? "",
         busy: (kind, index) => Boolean(myNumberBusy[myNumberKey(kind, index)]),
         onShow: (kind, index) => void showMyNumber(kind, index),

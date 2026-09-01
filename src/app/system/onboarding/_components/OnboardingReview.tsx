@@ -1,5 +1,6 @@
 import { commuteTotals, DEPENDENT_FIELDS, DEPENDENT_LABELS, displayDependentValue, displayValue, FIELD_LABELS, formatYen, normalizeAmountText, parseAmount, STEP_FIELDS, STEPS, type CommuteRoute, type OnboardingInput } from "../_lib/onboarding";
 import styles from "../onboarding.module.css";
+import type { ReactNode } from "react";
 
 function Value({ value }: { value: string }) { return value ? <>{value}</> : <span className={styles.empty}>未入力</span>; }
 type MyNumberReveal = {
@@ -24,10 +25,10 @@ function MoneyValue({ value }: { value: string }) {
 function RouteSummary({ route }: { route: CommuteRoute }) {
   return <>{route.kind || "未入力"}／{route.from_station || "未入力"} → {route.to_station || "未入力"}／{route.line || "未入力"}／定期代 <MoneyValue value={route.pass_monthly} />／片道 <MoneyValue value={route.fare_oneway} /></>;
 }
-export default function OnboardingReview({ values, onEdit, myNumberReveal }: { values: OnboardingInput; onEdit?: (step: number) => void; myNumberReveal?: MyNumberReveal }) {
+export default function OnboardingReview({ values, onEdit, myNumberReveal, emailSlot }: { values: OnboardingInput; onEdit?: (step: number) => void; myNumberReveal?: MyNumberReveal; emailSlot?: ReactNode }) {
   return <div className={styles.review}>{STEPS.slice(0, -1).map((title, index) => <section key={title} aria-label={title}>
     <div className={styles.reviewHeading}><h3>{title}</h3>{onEdit && <button type="button" onClick={() => onEdit(index)} aria-label={`${title}を直す`}>直す</button>}</div>
-    <dl>{STEP_FIELDS[index].map(key => <div key={key}><dt>{FIELD_LABELS[key]}</dt><dd>{key === "my_number" ? <MyNumberValue masked={displayValue(key, values[key])} kind="self" reveal={myNumberReveal} /> : <Value value={displayValue(key, values[key])} />}</dd></div>)}</dl>
+    <dl>{STEP_FIELDS[index].map(key => <div key={key}><dt>{FIELD_LABELS[key]}</dt><dd>{key === "email" && emailSlot ? emailSlot : key === "my_number" ? <MyNumberValue masked={displayValue(key, values[key])} kind="self" reveal={myNumberReveal} /> : <Value value={displayValue(key, values[key])} />}</dd></div>)}</dl>
     {index === 2 && (values.dependents.length ? values.dependents.map((person, personIndex) => <div key={personIndex}>
       <h4>扶養家族 {personIndex + 1}人目</h4><dl>{DEPENDENT_FIELDS.map(key => <div key={key}><dt>{DEPENDENT_LABELS[key]}</dt><dd>{key === "my_number" ? <MyNumberValue masked={displayDependentValue(key, person[key])} kind="dependent" index={personIndex} reveal={myNumberReveal} /> : <Value value={displayDependentValue(key, person[key])} />}</dd></div>)}</dl>
     </div>) : <p>扶養家族：0人</p>)}

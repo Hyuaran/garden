@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyInput } from "./onboarding";
-import { adminInputFromRow, buildAdminList, missingOnboardingItems, parseAdminInput } from "./onboarding-admin";
+import { adminInputFromRow, buildAdminList, missingOnboardingItems, parseAdminEmailInput, parseAdminInput } from "./onboarding-admin";
 
 describe("入社手続きの事務画面", () => {
   it("事務入力は許可した列だけを読み取り、手当は6組までにする", () => {
@@ -22,6 +22,12 @@ describe("入社手続きの事務画面", () => {
     expect(input.allowances).toEqual([{ name: "扶養", amount: "10000" }]);
     expect(() => parseAdminInput({ allowances: new Array(7).fill({ name: "", amount: "" }) })).toThrow();
     expect(() => parseAdminInput({ allowances: [{ name: "", amount: "", extra: "" }] })).toThrow();
+  });
+
+  it("事務のメール保存はメールアドレスだけを読み取り、空欄も許容する", () => {
+    expect(parseAdminEmailInput({ email: " hy@example.jp ", name: "変えない", address: "変えない" })).toEqual({ email: "hy@example.jp" });
+    expect(parseAdminEmailInput({ email: "" })).toEqual({ email: "" });
+    expect(() => parseAdminEmailInput({ email: "a".repeat(2001) })).toThrow();
   });
 
   it("本人申告の定期代合計を交通費確定額の初期値にする", () => {
