@@ -99,6 +99,15 @@ describe("11画面の入社手続き", () => {
     expect(screen.getByText(/郵便番号は7桁/)).toBeInTheDocument();
     await next(2); expect(requests.at(-1)?.values.postal_code).toBe("12");
   });
+  it("住所と連絡先にメールアドレスを出し、形式注意は保存を止めない", async () => {
+    render(<OnboardingClient initial={initial()} />);
+    await next(1);
+    expect(screen.getByLabelText("メールアドレス")).toHaveAttribute("type", "text");
+    fireEvent.change(screen.getByLabelText("メールアドレス"), { target: { value: "bad address" } });
+    expect(screen.getByText("メールアドレスの形になっていません")).toBeInTheDocument();
+    await next(2);
+    expect(requests.at(-1)?.values.email).toBe("bad address");
+  });
   it("扶養家族を2人に増やして1人消せる", async () => {
     render(<OnboardingClient initial={initial()} />); await next(1); await next(2);
     fireEvent.change(screen.getByLabelText("扶養している家族はいますか"), { target: { value: "yes" } });
@@ -224,6 +233,14 @@ describe("11画面の入社手続き", () => {
     expect(requests.at(-1)?.values.commute_method).toBe("電車");
     expect(requests.at(-1)?.values.commute_routes).toHaveLength(2);
     expect(requests.at(-1)?.values.commute_routes[1].from_station).toBe("バス停");
+  });
+  it("定期代はカンマ付きでも合計に入る", async () => {
+    render(<OnboardingClient initial={initial()} />);
+    for (let index = 1; index <= 5; index++) await next(index);
+    fireEvent.change(screen.getByLabelText("1か月の定期代（円）"), { target: { value: "20,000" } });
+    expect(screen.getByText("20,000円 ／ 月")).toBeInTheDocument();
+    await next(6);
+    expect(requests.at(-1)?.values.commute_routes[0].pass_monthly).toBe("20,000");
   });
   it("複数の通勤区間にも調べるボタンを出さない", async () => {
     render(<OnboardingClient initial={initial()} />);

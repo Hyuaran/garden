@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dependentMyNumberWarning, displayDependentValue, emptyInput, formatWarnings, initialInput, maskMyNumber, parseInput, STEPS } from "./onboarding";
+import { commuteTotals, dependentMyNumberWarning, displayDependentValue, emptyInput, formatWarnings, initialInput, maskMyNumber, parseInput, parseNullableAmount, STEPS } from "./onboarding";
 
 describe("入社手続きの入力", () => {
   it("実DBのbirthdayから初期値をつくる", () => {
@@ -18,6 +18,27 @@ describe("入社手続きの入力", () => {
   it("正しい形式と、なしの場合の保険番号には注意しない", () => {
     expect(formatWarnings(parseInput({ postal_code: "5410054", pension_number: "1234567890", employment_insurance_status: "yes", employment_insurance_number: "12345678901", phone: "090-1234-5678" }))).toEqual({});
     expect(formatWarnings(parseInput({ employment_insurance_status: "no", employment_insurance_number: "short" }))).toEqual({});
+  });
+  it("メールアドレスは空欄で進められ、明らかな形式違いだけ注意する", () => {
+    expect(formatWarnings(parseInput({ email: "" })).email).toBeUndefined();
+    expect(formatWarnings(parseInput({ email: "hy@example.jp" })).email).toBeUndefined();
+    expect(formatWarnings(parseInput({ email: "hy.example.jp" })).email).toBe("メールアドレスの形になっていません");
+    expect(formatWarnings(parseInput({ email: "hy@@example.jp" })).email).toBe("メールアドレスの形になっていません");
+    expect(formatWarnings(parseInput({ email: "hy @example.jp" })).email).toBe("メールアドレスの形になっていません");
+  });
+  it("金額はカンマ・全角数字・空白・単位を除いて計算し、数字がなければ空扱いにする", () => {
+    const routes = [
+      { kind: "電車", from_station: "", to_station: "", line: "", pass_monthly: "20,000", fare_oneway: "２００００" },
+      { kind: "バス", from_station: "", to_station: "", line: "", pass_monthly: "20 000", fare_oneway: "20,000円" },
+      { kind: "徒歩", from_station: "", to_station: "", line: "", pass_monthly: "", fare_oneway: "abc" },
+    ];
+    expect(commuteTotals(routes)).toMatchObject({ passMonthly: 40000, fareOneway: 40000 });
+    expect(parseNullableAmount("20,000")).toBe(20000);
+    expect(parseNullableAmount("２００００")).toBe(20000);
+    expect(parseNullableAmount("20 000")).toBe(20000);
+    expect(parseNullableAmount("20,000円")).toBe(20000);
+    expect(parseNullableAmount("")).toBeNull();
+    expect(parseNullableAmount("abc")).toBeNull();
   });
   it("社員ID・状態・日時や未定義キーを保存対象から落とし、扶養家族のマイナンバーは保存対象にする", () => {
     const result = parseInput({ employee_id: "other", status: "submitted", nda_agreed_at: "fake", my_number: "123456789012", dependents: [{ name: "家族", my_number: "123456789012", extra: "drop" }], commute_routes: [{ kind: "電車", from_station: "新大宮", extra: "drop" }] });
@@ -42,6 +63,7 @@ describe("入社手続きの入力", () => {
   });
   it("画面の順番は指定の11テーマ", () => {
     expect(STEPS).toEqual(["あなたのこと", "住所と連絡先", "ご家族", "年金と雇用保険", "直近の勤務先", "通勤と交通費", "給与の受取口座", "マイナンバー", "緊急連絡先", "秘密保持の確認", "確認"]);
+    expect(parseInput({}).email).toBe("");
   });
   it("マイナンバーは表示用に下4桁だけへ変換し、形式注意は止めない", () => {
     expect(maskMyNumber("123456789012")).toBe("••••••••9012");

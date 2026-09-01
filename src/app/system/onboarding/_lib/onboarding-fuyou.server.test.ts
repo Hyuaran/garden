@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ readDetail: vi.fn(), buildPdf: vi.fn(), savePdf: vi.fn(), adminDownload: vi.fn() }));
-vi.mock("./onboarding-admin.server", () => ({ readAdminOnboardingDetail: mocks.readDetail }));
+vi.mock("./onboarding-admin.server", () => ({ readAdminOnboardingDetailForFuyou: mocks.readDetail }));
 // 用紙は管理者側の接続で読むため、そちらを差し替える。
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => ({ storage: { from: () => ({ download: mocks.adminDownload }) } }) }));
 import { createAndSaveFuyouPdf } from "./onboarding-fuyou.server";

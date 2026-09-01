@@ -19,7 +19,38 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   const [fuyouNotice, setFuyouNotice] = useState<{ kind: "success" | "error"; message: string; filename?: string; folderLabel?: string } | null>(null);
   const [confirmApply, setConfirmApply] = useState(false);
   const [confirmFuyou, setConfirmFuyou] = useState(false);
+  const [revealedMyNumbers, setRevealedMyNumbers] = useState<Record<string, string>>({});
+  const [myNumberBusy, setMyNumberBusy] = useState<Record<string, boolean>>({});
   const missing = missingOnboardingItems(record.values);
+
+  function myNumberKey(kind: "self" | "dependent", index?: number) {
+    return kind === "self" ? "self" : `dependent-${index ?? -1}`;
+  }
+  async function showMyNumber(kind: "self" | "dependent", index?: number) {
+    const key = myNumberKey(kind, index);
+    setMyNumberBusy(previous => ({ ...previous, [key]: true }));
+    try {
+      const response = await fetch(`/api/system/onboarding/admin/${encodeURIComponent(record.employee.employee_id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "myNumber", target: kind === "self" ? { kind } : { kind, index } }),
+      });
+      const body = await response.json();
+      if (response.ok && typeof body.myNumber === "string") setRevealedMyNumbers(previous => ({ ...previous, [key]: body.myNumber }));
+    } catch {
+      // 監査や取得に失敗しても詳細画面はマスク表示のまま維持する。
+    } finally {
+      setMyNumberBusy(previous => ({ ...previous, [key]: false }));
+    }
+  }
+  function hideMyNumber(kind: "self" | "dependent", index?: number) {
+    const key = myNumberKey(kind, index);
+    setRevealedMyNumbers(previous => {
+      const next = { ...previous };
+      delete next[key];
+      return next;
+    });
+  }
 
   function change(key: keyof AdminInput, value: string) {
     setConfirmApply(false);
@@ -85,7 +116,12 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   return <div className={styles.detailStack}>
     <section className={styles.adminSection}>
       <h2>本人が入れた内容（読むだけ）</h2>
-      <OnboardingReview values={record.values} />
+      <OnboardingReview values={record.values} myNumberReveal={{
+        value: (kind, index) => revealedMyNumbers[myNumberKey(kind, index)] ?? "",
+        busy: (kind, index) => Boolean(myNumberBusy[myNumberKey(kind, index)]),
+        onShow: (kind, index) => void showMyNumber(kind, index),
+        onHide: hideMyNumber,
+      }} />
     </section>
 
     <section className={styles.adminSection}>

@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { OnboardingError } from "@/app/system/onboarding/_lib/onboarding.server";
-import { applyAdminOnboarding, onboardingAdminContext, saveAdminOnboarding } from "@/app/system/onboarding/_lib/onboarding-admin.server";
+import { applyAdminOnboarding, onboardingAdminContext, readMyNumberForAdmin, saveAdminOnboarding } from "@/app/system/onboarding/_lib/onboarding-admin.server";
 import { createAndSaveFuyouPdf } from "@/app/system/onboarding/_lib/onboarding-fuyou.server";
 import { safeFuyouErrorMessage } from "@/app/system/onboarding/_lib/fuyou-pdf";
 
@@ -21,11 +21,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ emp
     if (text.length > 50_000) throw new OnboardingError("入力内容が多すぎます。内容を確認してください。", 400);
     let body;
     try { body = JSON.parse(text); } catch { throw new OnboardingError("入力内容を読み取れませんでした。", 400); }
-    if (!body || !["save", "apply", "fuyou"].includes(body.action)) throw new OnboardingError("保存方法を確認してください。", 400);
+    if (!body || !["save", "apply", "fuyou", "myNumber"].includes(body.action)) throw new OnboardingError("保存方法を確認してください。", 400);
     action = body.action;
     if (action === "fuyou") {
       const saved = await createAndSaveFuyouPdf(context, employeeId);
       return NextResponse.json({ ok: true, filename: saved.filename, folderLabel: saved.folderLabel }, { headers });
+    }
+    if (action === "myNumber") {
+      const result = await readMyNumberForAdmin(context, employeeId, body.target);
+      return NextResponse.json({ ok: true, myNumber: result.myNumber }, { headers });
     }
     if (action === "apply") await applyAdminOnboarding(context, employeeId, body.values);
     else await saveAdminOnboarding(context, employeeId, body.values);

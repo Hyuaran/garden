@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import OnboardingAdminDetailClient from "./OnboardingAdminDetailClient";
 import { initialAdminRecord } from "../../_lib/onboarding-admin";
@@ -39,6 +39,44 @@ describe("入社手続きの事務詳細", () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(body.action).toBe("apply");
     expect(confirmMock).not.toHaveBeenCalled();
+  });
+  it("読むだけの詳細にメールアドレスを表示する", () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.email = "hy@example.jp";
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.getByText("メールアドレス")).toBeInTheDocument();
+    expect(screen.getByText("hy@example.jp")).toBeInTheDocument();
+  });
+
+  it("マイナンバーは初期HTMLに全桁を持たず、見る/隠すで取得表示する", async () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.my_number = "••••••••5540";
+    record.values.dependents = [{ name: "家族", name_kana: "", my_number: "••••••••3333", relation: "子", birth_date: "", annual_income: "", occupation: "" }];
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, myNumber: "123456785540" }) });
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(document.body.textContent).toContain("••••••••5540");
+    expect(document.body.textContent).not.toContain("123456785540");
+    fireEvent.click(within(screen.getByRole("region", { name: "マイナンバー" })).getByRole("button", { name: "見る" }));
+
+    expect(await screen.findByText("123456785540")).toBeInTheDocument();
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ action: "myNumber", target: { kind: "self" } });
+    fireEvent.click(screen.getByRole("button", { name: "隠す" }));
+    expect(screen.queryByText("123456785540")).toBeNull();
+    expect(screen.getByText("••••••••5540")).toBeInTheDocument();
+  });
+
+  it("扶養家族のマイナンバーも押したときだけ取得する", async () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.dependents = [{ name: "家族", name_kana: "", my_number: "••••••••3333", relation: "子", birth_date: "", annual_income: "", occupation: "" }];
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, myNumber: "111122223333" }) });
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "見る" }));
+
+    expect(await screen.findByText("111122223333")).toBeInTheDocument();
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ action: "myNumber", target: { kind: "dependent", index: 0 } });
   });
 
   it("扶養控除申告書の確認を画面内に出し、やめるで戻る", () => {

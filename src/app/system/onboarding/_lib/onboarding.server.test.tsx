@@ -103,6 +103,13 @@ describe("入社手続きの本人専用保存", () => {
     expect(screen.getByLabelText("氏名")).toHaveValue("検証 太郎");
     expect(screen.getByLabelText("生年月日")).toHaveValue("2000-01-02");
     expect(screen.getByRole("heading", { level: 1, name: "入社手続き" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "みんなの入社手続きを見る（事務）" })).toBeNull();
+  });
+  it("責任者以上には本人画面から事務一覧への入口を出す", async () => {
+    const f = fixture();
+    (f.employee as Record<string, string>).garden_role = "manager";
+    render(await OnboardingPage());
+    expect(screen.getByRole("link", { name: "みんなの入社手続きを見る（事務）" })).toHaveAttribute("href", "/system/onboarding/admin");
   });
   it("型の注意があっても空欄でも保存でき、ユーザー指定IDを使わない", async () => {
     const f = fixture(); await saveOnboarding(await onboardingEmployee(), { ...emptyInput(), postal_code: "123", employee_id: "other", my_number: "123456789012" }, false);

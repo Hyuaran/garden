@@ -9,7 +9,7 @@ export const ACCOUNT_TYPE_OPTIONS = ["普通", "当座"] as const;
 export const MASKED_MY_NUMBER_PREFIX = "••••••••";
 export const STEPS = ["あなたのこと", "住所と連絡先", "ご家族", "年金と雇用保険", "直近の勤務先", "通勤と交通費", "給与の受取口座", "マイナンバー", "緊急連絡先", "秘密保持の確認", "確認"] as const;
 
-export const TEXT_FIELDS = ["name", "name_kana", "gender", "birth_date", "postal_code", "address", "address_kana", "phone", "pension_number", "employment_insurance_status", "employment_insurance_number", "previous_employer", "previous_employer_from", "previous_employer_to", "commute_method", "bank_name", "bank_code", "branch_name", "branch_code", "account_type", "account_number", "account_holder_kana", "my_number", "emergency_name", "emergency_relation", "emergency_relation_other", "emergency_address", "emergency_phone"] as const;
+export const TEXT_FIELDS = ["name", "name_kana", "gender", "birth_date", "postal_code", "address", "address_kana", "phone", "email", "pension_number", "employment_insurance_status", "employment_insurance_number", "previous_employer", "previous_employer_from", "previous_employer_to", "commute_method", "bank_name", "bank_code", "branch_name", "branch_code", "account_type", "account_number", "account_holder_kana", "my_number", "emergency_name", "emergency_relation", "emergency_relation_other", "emergency_address", "emergency_phone"] as const;
 export type TextField = typeof TEXT_FIELDS[number];
 export const DEPENDENT_FIELDS = ["name", "name_kana", "my_number", "relation", "birth_date", "annual_income", "occupation"] as const;
 export type Dependent = Record<typeof DEPENDENT_FIELDS[number], string>;
@@ -68,6 +68,7 @@ export function formatWarnings(values: OnboardingInput) {
   if (values.account_number && !/^[0-9]{1,8}$/.test(values.account_number)) warnings.account_number = "口座番号は1〜8桁の数字です。分かる範囲で確認してください。このまま進めます。";
   if (values.account_holder_kana && !/^[ァ-ヶー　\s]+$/.test(values.account_holder_kana)) warnings.account_holder_kana = "口座名義（カナ）は全角カタカナで入力してください。このまま進めます。";
   for (const key of ["phone", "emergency_phone"] as const) if (values[key] && !/^[0-9-]+$/.test(values[key])) warnings[key] = "電話番号は数字とハイフンで入力してください。このまま進めます。";
+  if (values.email && (!/^[^\s@]+@[^\s@]+$/.test(values.email) || (values.email.match(/@/g) ?? []).length !== 1)) warnings.email = "メールアドレスの形になっていません";
   return warnings;
 }
 
@@ -77,7 +78,7 @@ export function dependentMyNumberWarning(value: string) {
 }
 
 export const FIELD_LABELS: Record<TextField, string> = {
-  name: "氏名", name_kana: "フリガナ", gender: "性別", birth_date: "生年月日", postal_code: "郵便番号", address: "住所", address_kana: "住所のフリガナ", phone: "電話番号",
+  name: "氏名", name_kana: "フリガナ", gender: "性別", birth_date: "生年月日", postal_code: "郵便番号", address: "住所", address_kana: "住所のフリガナ", phone: "電話番号", email: "メールアドレス",
   pension_number: "基礎年金番号", employment_insurance_status: "雇用保険被保険者証", employment_insurance_number: "雇用保険被保険者番号", previous_employer: "会社名", previous_employer_from: "勤務した期間（開始）", previous_employer_to: "勤務した期間（終了）",
   commute_method: "通勤手段（主なもの）",
   bank_name: "銀行名", bank_code: "金融機関コード（4桁）", branch_name: "支店名", branch_code: "支店コード（3桁）", account_type: "預金種別", account_number: "口座番号（8桁以内）", account_holder_kana: "口座名義カナ",
@@ -86,7 +87,7 @@ export const FIELD_LABELS: Record<TextField, string> = {
 export const DEPENDENT_LABELS: Record<typeof DEPENDENT_FIELDS[number], string> = { name: "氏名", name_kana: "フリガナ", my_number: "マイナンバー（12桁）", relation: "続柄", birth_date: "生年月日", annual_income: "年間収入（円）", occupation: "職業または学校と学年" };
 export const COMMUTE_ROUTE_LABELS: Record<typeof COMMUTE_ROUTE_FIELDS[number], string> = { kind: "交通機関", from_station: "乗る駅・停留所", to_station: "降りる駅・停留所", line: "路線・系統", pass_monthly: "1か月の定期代（円）", fare_oneway: "片道の運賃（円）" };
 export const STEP_FIELDS: readonly (readonly TextField[])[] = [
-  ["name", "name_kana", "gender", "birth_date"], ["postal_code", "address", "address_kana", "phone"], [],
+  ["name", "name_kana", "gender", "birth_date"], ["postal_code", "address", "address_kana", "phone", "email"], [],
   ["pension_number", "employment_insurance_status", "employment_insurance_number"], ["previous_employer", "previous_employer_from", "previous_employer_to"],
   ["commute_method"], ["bank_name", "bank_code", "branch_name", "branch_code", "account_type", "account_number", "account_holder_kana"], ["my_number"],
   ["emergency_name", "emergency_relation", "emergency_relation_other", "emergency_address", "emergency_phone"], [],
@@ -108,8 +109,19 @@ export function isMaskedMyNumber(value: string) {
   return new RegExp(`^${MASKED_MY_NUMBER_PREFIX}[0-9]{4}$`).test(value);
 }
 
-function parseAmount(value: string) {
-  return /^[0-9]+$/.test(value) ? Number(value) : 0;
+export function normalizeAmountText(value: string) {
+  return value
+    .replace(/[０-９]/g, char => String(char.charCodeAt(0) - 0xff10))
+    .replace(/[,\uFF0C\s\u3000]/g, "")
+    .replace(/[^0-9]/g, "");
+}
+export function parseAmount(value: string) {
+  const digits = normalizeAmountText(value);
+  return digits ? Number(digits) : 0;
+}
+export function parseNullableAmount(value: string) {
+  const digits = normalizeAmountText(value);
+  return digits ? Number(digits) : null;
 }
 export function commuteTotals(routes: CommuteRoute[]) {
   const hasAnyAmount = routes.some(route => route.pass_monthly.trim() || route.fare_oneway.trim());

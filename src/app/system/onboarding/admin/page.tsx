@@ -21,6 +21,7 @@ export default async function OnboardingAdminPage() {
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
       : <main className={styles.panel}>
+        <div className={styles.adminTopActions}><Link className={styles.button} href="/system/onboarding">自分の入社手続きへ</Link></div>
         {rows?.length ? <div className={styles.tableWrap}><table className={styles.adminTable}>
           <thead><tr><th>氏名</th><th>入社日</th><th>状態</th><th>未入力</th><th>事務入力</th></tr></thead>
           <tbody>{rows.map(row => <tr key={row.employeeId}>

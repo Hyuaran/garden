@@ -4,7 +4,7 @@ import { fuyouPdfFilename } from "./fuyou-pdf";
 import { buildFuyouPdf, type FuyouCompany } from "./fuyou-pdf.server";
 import { saveFuyouPdfToDrive } from "./fuyou-drive.server";
 import { databaseError, OnboardingError } from "./onboarding.server";
-import { readAdminOnboardingDetail, type AdminContext } from "./onboarding-admin.server";
+import { readAdminOnboardingDetailForFuyou, type AdminContext } from "./onboarding-admin.server";
 
 const FUYOU_TEMPLATE_BUCKET = "system-docs";
 const FUYOU_TEMPLATE_PATH = "forms/reiwa8-fuyou.pdf";
@@ -40,7 +40,7 @@ async function readFuyouTemplate() {
 }
 
 export async function createAndSaveFuyouPdf(context: AdminContext, employeeId: string, deps: FuyouDeps = {}) {
-  const record = await readAdminOnboardingDetail(context, employeeId);
+  const record = await readAdminOnboardingDetailForFuyou(context, employeeId);
   if (!record) throw new OnboardingError("入社手続きの入力が見つかりませんでした。", 404);
   const company = await readFuyouCompany(context, record.employee.company_id);
   const filename = fuyouPdfFilename(record.values.name || record.employee.name || employeeId);
