@@ -237,7 +237,8 @@ describe("入社手続きの事務詳細", () => {
     const record = initialAdminRecord("EMP-001");
     render(<OnboardingAdminDetailClient record={record} />);
 
-    expect(screen.getByText("税務署名・市区町村名・扶養親族の欄は空欄です。手書きで足してください。16歳未満のお子さんの欄は空欄です。")).toBeInTheDocument();
+    expect(screen.getByText("税務署名・市区町村名の欄は空欄です。手書きで足してください。")).toBeInTheDocument();
+    expect(screen.queryByText("16歳未満のお子さんの欄は空欄です。")).toBeNull();
     expect(screen.queryByText(/世帯主・扶養親族の欄/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "扶養控除申告書を作る" }));
 
@@ -301,7 +302,20 @@ describe("入社手続きの事務詳細", () => {
 
     render(<OnboardingAdminDetailClient record={record} />);
 
-    expect(screen.getAllByText("2人分は用紙に入りきらないため手書きで足してください").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1人分は用紙に入りきらないため手書きで足してください").length).toBeGreaterThan(0);
+  });
+
+  it("扶養控除申告書で16歳未満が3人以上ならあふれ分の手書き案内を出す", () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.dependents = [
+      { name: "A", name_kana: "", my_number: "", relation: "子", birth_date: "2011-01-02", annual_income: "", occupation: "" },
+      { name: "B", name_kana: "", my_number: "", relation: "子", birth_date: "2012-01-01", annual_income: "", occupation: "" },
+      { name: "C", name_kana: "", my_number: "", relation: "子", birth_date: "2013-01-01", annual_income: "", occupation: "" },
+    ];
+
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.getAllByText("1人分は用紙に入りきらないため手書きで足してください").length).toBeGreaterThan(0);
   });
 
   it("入社連絡表で扶養家族が5人以上なら手書き案内を出し、4人以内なら出さない", () => {

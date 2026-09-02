@@ -270,7 +270,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
     <section className={styles.adminSection}>
       <h2>扶養控除申告書</h2>
       <p>令和8年分の用紙に、本人が入れた内容を書き込んで、経理のフォルダへ保存します。マイナンバーが入ります。</p>
-      <p className={styles.hint}>税務署名・市区町村名・扶養親族の欄は空欄です。手書きで足してください。16歳未満のお子さんの欄は空欄です。</p>
+      <p className={styles.hint}>税務署名・市区町村名の欄は空欄です。手書きで足してください。</p>
       {fuyouManualNotice ? <p className={styles.hint}>{fuyouManualNotice}</p> : null}
       <div className={styles.actions}>
         <button className={styles.primary} type="button" disabled={fuyouBusy} onClick={() => { setFuyouNotice(null); setConfirmFuyou(true); }}>扶養控除申告書を作る</button>

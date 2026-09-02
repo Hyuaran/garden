@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, type PDFDropdown, type PDFFont, type PDFForm, type PDFTextField } from "pdf-lib";
-import { hasSpouse, splitFuyouDependents, splitPostalCode, toWarekiDate } from "./fuyou-pdf";
+import { UNDER16_DEPENDENT_PDF_FIELDS, hasSpouse, splitFuyouDependents, splitPostalCode, toWarekiDate } from "./fuyou-pdf";
 import type { Dependent, OnboardingInput } from "./onboarding";
 
 export type FuyouCompany = {
@@ -108,6 +108,16 @@ function fillAdultDependent(form: PDFForm, dependent: Dependent, fields: (typeof
   fillAddress(form, fields.address, address, font);
 }
 
+function fillUnder16Dependent(form: PDFForm, dependent: Dependent, fields: (typeof UNDER16_DEPENDENT_PDF_FIELDS)[number], address: string, font: PDFFont) {
+  setOptionalText(form, fields.kana, dependent.name_kana, 7);
+  setOptionalText(form, fields.name, dependent.name, 9);
+  setOptionalText(form, fields.myNumber, digits(dependent.my_number, 12));
+  setOptionalText(form, fields.relation, dependent.relation, 8);
+  fillBirth(form, { era: fields.era, year: fields.year, month: fields.month, day: fields.day }, dependent.birth_date);
+  fillAddress(form, fields.address, address, font);
+  setOptionalText(form, fields.income, digits(dependent.annual_income));
+}
+
 export async function buildFuyouPdf(template: Uint8Array, data: FuyouPdfData) {
   const pdf = await PDFDocument.load(template);
   pdf.registerFontkit((fontkit as unknown as { default?: typeof fontkit }).default ?? fontkit);
@@ -141,6 +151,7 @@ export async function buildFuyouPdf(template: Uint8Array, data: FuyouPdfData) {
   const dependents = splitFuyouDependents(data.values);
   if (dependents.spouse) fillSpouse(form, dependents.spouse, data.values.address, font);
   dependents.adultDependents.forEach((dependent, index) => fillAdultDependent(form, dependent, ADULT_DEPENDENT_FIELDS[index], data.values.address, font));
+  dependents.under16Dependents.forEach((dependent, index) => fillUnder16Dependent(form, dependent, UNDER16_DEPENDENT_PDF_FIELDS[index], data.values.address, font));
   selectOptional(maybeDropdown(form, "Dropdown2"), hasSpouse(data.values) ? "有" : "無");
   form.updateFieldAppearances(font);
   form.flatten();

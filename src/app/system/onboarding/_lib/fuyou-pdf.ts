@@ -7,6 +7,11 @@ export type WarekiDate = {
   day: string;
 };
 
+export const UNDER16_DEPENDENT_PDF_FIELDS = [
+  { kana: "Text90", name: "Text91", myNumber: "Text92", relation: "Text93", era: "Dropdown19", year: "Text94", month: "Text95", day: "Text96", address: "Text97", income: "Text98" },
+  { kana: "Text100", name: "Text101", myNumber: "Text102", relation: "Text103", era: "Dropdown21", year: "Text119", month: "Text104", day: "Text105", address: "Text106", income: "Text107" },
+] as const;
+
 const ERAS = [
   { era: "令" as const, start: "2019-05-01", baseYear: 2019 },
   { era: "平" as const, start: "1989-01-08", baseYear: 1989 },
@@ -68,7 +73,7 @@ export function splitFuyouDependents(values: Pick<OnboardingInput, "dependents">
     spouse: spouses[0] ?? null,
     adultDependents: adultDependents.slice(0, 4),
     under16Dependents: under16Dependents.slice(0, 2),
-    manualAdditionCount: Math.max(0, spouses.length - 1) + Math.max(0, adultDependents.length - 4) + under16Dependents.length,
+    manualAdditionCount: Math.max(0, spouses.length - 1) + Math.max(0, adultDependents.length - 4) + Math.max(0, under16Dependents.length - 2),
   };
 }
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { emptyInput } from "./onboarding";
-import { fuyouManualAdditionNotice, fuyouPdfFilename, hasSpouse, safeFuyouErrorMessage, splitFuyouDependents, splitPostalCode, toWarekiDate } from "./fuyou-pdf";
+import { emptyDependent, emptyInput, type Dependent } from "./onboarding";
+import { UNDER16_DEPENDENT_PDF_FIELDS, fuyouManualAdditionNotice, fuyouPdfFilename, hasSpouse, safeFuyouErrorMessage, splitFuyouDependents, splitPostalCode, toWarekiDate } from "./fuyou-pdf";
+
+function dependent(value: Partial<Dependent>): Dependent {
+  return { ...emptyDependent(), ...value };
+}
 
 describe("扶養控除申告書PDFの値変換", () => {
   it.each([
@@ -28,24 +32,74 @@ describe("扶養控除申告書PDFの値変換", () => {
     expect(hasSpouse(values)).toBe(true);
   });
 
-  it("配偶者をA欄、16歳以上をB欄、16歳未満とあふれを手書き扱いに振り分ける", () => {
+  it("配偶者をA欄、16歳以上をB欄、16歳未満を別欄に振り分ける", () => {
     const values = emptyInput();
     values.dependents = [
-      { name: "配偶者", name_kana: "", my_number: "", relation: "配偶者", birth_date: "1990-01-01", annual_income: "", occupation: "" },
-      { name: "境目でB欄", name_kana: "", my_number: "", relation: "子", birth_date: "2011-01-01", annual_income: "", occupation: "" },
-      { name: "16歳未満", name_kana: "", my_number: "", relation: "子", birth_date: "2011-01-02", annual_income: "", occupation: "" },
-      { name: "B2", name_kana: "", my_number: "", relation: "父", birth_date: "1970-01-01", annual_income: "", occupation: "" },
-      { name: "B3", name_kana: "", my_number: "", relation: "母", birth_date: "1971-01-01", annual_income: "", occupation: "" },
-      { name: "B4", name_kana: "", my_number: "", relation: "祖父", birth_date: "1940-01-01", annual_income: "", occupation: "" },
-      { name: "あふれ", name_kana: "", my_number: "", relation: "祖母", birth_date: "1941-01-01", annual_income: "", occupation: "" },
+      dependent({ name: "配偶者", relation: "配偶者", birth_date: "1990-01-01" }),
+      dependent({ name: "境目でB欄", relation: "子", birth_date: "2011-01-01" }),
+      dependent({ name: "16歳未満1", relation: "子", birth_date: "2011-01-02" }),
+      dependent({ name: "16歳未満2", relation: "子", birth_date: "2012-01-01" }),
+      dependent({ name: "B2", relation: "父", birth_date: "1970-01-01" }),
+      dependent({ name: "B3", relation: "母", birth_date: "1971-01-01" }),
+      dependent({ name: "B4", relation: "祖父", birth_date: "1940-01-01" }),
+      dependent({ name: "あふれ", relation: "祖母", birth_date: "1941-01-01" }),
     ];
 
     const result = splitFuyouDependents(values);
     expect(result.spouse?.name).toBe("配偶者");
     expect(result.adultDependents.map(dependent => dependent.name)).toEqual(["境目でB欄", "B2", "B3", "B4"]);
-    expect(result.under16Dependents.map(dependent => dependent.name)).toEqual(["16歳未満"]);
-    expect(result.manualAdditionCount).toBe(2);
-    expect(fuyouManualAdditionNotice(values)).toBe("2人分は用紙に入りきらないため手書きで足してください");
+    expect(result.under16Dependents.map(dependent => dependent.name)).toEqual(["16歳未満1", "16歳未満2"]);
+    expect(result.manualAdditionCount).toBe(1);
+    expect(fuyouManualAdditionNotice(values)).toBe("1人分は用紙に入りきらないため手書きで足してください");
+  });
+
+  it("16歳未満が0人なら16歳未満欄は空欄扱いにする", () => {
+    const values = emptyInput();
+    values.dependents = [
+      dependent({ name: "境目でB欄", relation: "子", birth_date: "2011-01-01" }),
+      dependent({ name: "親", relation: "母", birth_date: "1971-01-01" }),
+    ];
+
+    const result = splitFuyouDependents(values);
+
+    expect(result.adultDependents.map(dependent => dependent.name)).toEqual(["境目でB欄", "親"]);
+    expect(result.under16Dependents).toEqual([]);
+    expect(fuyouManualAdditionNotice(values)).toBe("");
+  });
+
+  it("16歳未満は上から2人までにし、3人以上はあふれ分だけ手書き案内にする", () => {
+    const values = emptyInput();
+    values.dependents = [
+      dependent({ name: "下1", relation: "子", birth_date: "2011-01-02" }),
+      dependent({ name: "下2", relation: "子", birth_date: "2012-01-01" }),
+      dependent({ name: "下3", relation: "子", birth_date: "2013-01-01" }),
+    ];
+
+    const result = splitFuyouDependents(values);
+
+    expect(result.under16Dependents.map(dependent => dependent.name)).toEqual(["下1", "下2"]);
+    expect(result.manualAdditionCount).toBe(1);
+    expect(fuyouManualAdditionNotice(values)).toBe("1人分は用紙に入りきらないため手書きで足してください");
+  });
+
+  it("配偶者は16歳未満でも16歳未満欄に入れない", () => {
+    const values = emptyInput();
+    values.dependents = [
+      dependent({ name: "若い配偶者", relation: "配偶者", birth_date: "2011-01-02" }),
+      dependent({ name: "子", relation: "子", birth_date: "2012-01-01" }),
+    ];
+
+    const result = splitFuyouDependents(values);
+
+    expect(result.spouse?.name).toBe("若い配偶者");
+    expect(result.under16Dependents.map(dependent => dependent.name)).toEqual(["子"]);
+  });
+
+  it("16歳未満欄の2人目の年はText119に入れる定義にする", () => {
+    expect(UNDER16_DEPENDENT_PDF_FIELDS).toEqual([
+      { kana: "Text90", name: "Text91", myNumber: "Text92", relation: "Text93", era: "Dropdown19", year: "Text94", month: "Text95", day: "Text96", address: "Text97", income: "Text98" },
+      { kana: "Text100", name: "Text101", myNumber: "Text102", relation: "Text103", era: "Dropdown21", year: "Text119", month: "Text104", day: "Text105", address: "Text106", income: "Text107" },
+    ]);
   });
 
   it("ファイル名の氏名からスペースを抜き、失敗理由は利用者向け文言だけにする", () => {
