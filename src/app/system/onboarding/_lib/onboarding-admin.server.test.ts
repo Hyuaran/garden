@@ -37,9 +37,9 @@ describe("事務用入社手続きサーバー処理", () => {
     expect(JSON.stringify(rows)).not.toMatch(/123456785540|111122223333/);
   });
 
-  it("交通費の確定額はカンマ付きでも従業員台帳へ数値反映する", async () => {
+  it("交通費の1日あたりは片道合計の2倍を従業員台帳へ反映する", async () => {
     const systemSave = chain({ error: null });
-    const systemRead = chain({ data: { employee_id: "EMP-1", commute_fixed_monthly: "20,000", commute_cap_monthly: "30,000", status: "submitted" }, error: null });
+    const systemRead = chain({ data: { employee_id: "EMP-1", commute_routes: [{ kind: "電車", from_station: "A", to_station: "B", line: "X", pass_monthly: "20,000", fare_oneway: "530" }], commute_fixed_monthly: "20,000", commute_cap_monthly: "30,000", status: "submitted" }, error: null });
     const rootUpdate = chain({ error: null });
     const userSupabase = {
       from: vi.fn((table: string) => {
@@ -52,7 +52,46 @@ describe("事務用入社手続きサーバー処理", () => {
 
     await applyAdminOnboarding({ supabase: userSupabase, managerEmployeeId: "EMP-M" } as unknown as AdminContext, "EMP-1", { commute_fixed_monthly: "20,000", commute_cap_monthly: "30,000" });
 
-    expect(rootUpdate.update).toHaveBeenCalledWith({ dependents_count: 0, commute_monthly_cap: 30000, commute_daily_allowance: 1000 });
+    expect(rootUpdate.update).toHaveBeenCalledWith({ dependents_count: 0, commute_monthly_cap: 30000, commute_daily_allowance: 1060 });
+  });
+
+  it("乗り換えがある人は区間ごとの片道運賃合計の2倍を反映する", async () => {
+    const systemSave = chain({ error: null });
+    const systemRead = chain({ data: { employee_id: "EMP-1", commute_routes: [
+      { kind: "電車", from_station: "A", to_station: "B", line: "X", pass_monthly: "10,000", fare_oneway: "320" },
+      { kind: "バス", from_station: "B", to_station: "C", line: "Y", pass_monthly: "5,000", fare_oneway: "210" },
+    ], commute_fixed_monthly: "15,000", commute_cap_monthly: "15,000", status: "submitted" }, error: null });
+    const rootUpdate = chain({ error: null });
+    const userSupabase = {
+      from: vi.fn((table: string) => {
+        if (table === "system_onboarding") return userSupabase.from.mock.calls.filter(([name]) => name === "system_onboarding").length === 1 ? systemSave : systemRead;
+        return rootUpdate;
+      }),
+    };
+    const employeeQuery = chain({ data: [{ employee_id: "EMP-1", name: "吉田 陽菜", hire_date: "2026-09-01", birthday: null, company_id: null }], error: null });
+    mocks.getSupabaseAdmin.mockReturnValue({ from: vi.fn(() => employeeQuery) });
+
+    await applyAdminOnboarding({ supabase: userSupabase, managerEmployeeId: "EMP-M" } as unknown as AdminContext, "EMP-1", { commute_fixed_monthly: "15,000", commute_cap_monthly: "15,000" });
+
+    expect(rootUpdate.update).toHaveBeenCalledWith({ dependents_count: 0, commute_monthly_cap: 15000, commute_daily_allowance: 1060 });
+  });
+
+  it("片道運賃が入っていない人は1日あたりを従業員台帳へ書き込まない", async () => {
+    const systemSave = chain({ error: null });
+    const systemRead = chain({ data: { employee_id: "EMP-1", commute_routes: [{ kind: "徒歩", from_station: "", to_station: "", line: "", pass_monthly: "", fare_oneway: "" }], commute_fixed_monthly: "20,000", commute_cap_monthly: "30,000", status: "submitted" }, error: null });
+    const rootUpdate = chain({ error: null });
+    const userSupabase = {
+      from: vi.fn((table: string) => {
+        if (table === "system_onboarding") return userSupabase.from.mock.calls.filter(([name]) => name === "system_onboarding").length === 1 ? systemSave : systemRead;
+        return rootUpdate;
+      }),
+    };
+    const employeeQuery = chain({ data: [{ employee_id: "EMP-1", name: "吉田 陽菜", hire_date: "2026-09-01", birthday: null, company_id: null }], error: null });
+    mocks.getSupabaseAdmin.mockReturnValue({ from: vi.fn(() => employeeQuery) });
+
+    await applyAdminOnboarding({ supabase: userSupabase, managerEmployeeId: "EMP-M" } as unknown as AdminContext, "EMP-1", { commute_fixed_monthly: "20,000", commute_cap_monthly: "30,000" });
+
+    expect(rootUpdate.update).toHaveBeenCalledWith({ dependents_count: 0, commute_monthly_cap: 30000 });
   });
 
   it("見るactionは本人と扶養家族の全桁を返し、監査ログに12桁を入れない", async () => {

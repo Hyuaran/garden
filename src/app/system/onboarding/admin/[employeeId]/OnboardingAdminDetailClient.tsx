@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import OnboardingReview from "../../_components/OnboardingReview";
-import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, commutePaymentMonthly, formatDeclaredCommutePassMonthly, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
+import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, commutePaymentMonthly, formatCommuteDailyAllowance, formatDeclaredCommuteFareOneway, formatDeclaredCommutePassMonthly, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
 import { formatWarnings, HOUSEHOLDER_RELATION_OPTIONS } from "../../_lib/onboarding";
 import { fuyouManualAdditionNotice } from "../../_lib/fuyou-pdf";
 import { renrakuhyoManualAdditionNotice } from "../../_lib/renrakuhyo";
@@ -354,8 +354,10 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
             </div>)}
           </div>
           <div className={styles.field}>本人の申告（1か月定期代）<span>{formatDeclaredCommutePassMonthly(record.values)}</span></div>
+          <div className={styles.field}>本人の申告（片道）<span>{formatDeclaredCommuteFareOneway(record.values)}</span></div>
           <label className={styles.field}>交通費の上限（1か月・円）<input value={admin.commute_cap_monthly} maxLength={2000} inputMode="numeric" onChange={event => change("commute_cap_monthly", event.target.value)} /></label>
           <label className={styles.field}>支給額（1か月・円）<input value={admin.commute_fixed_monthly} maxLength={2000} inputMode="numeric" onChange={event => change("commute_fixed_monthly", event.target.value)} /><span className={styles.hint}>上限以下なら申告額、超えたら上限</span></label>
+          <div className={styles.field}>1日あたり（往復・円）<span>{formatCommuteDailyAllowance(record.values)}</span><span className={styles.hint}>欠勤などで数日だけ出た月と、アルバイトの方は この額 × 出勤日数</span></div>
           <div className={styles.actions}>
             <button type="submit">保存</button>
             <button className={styles.primary} type="button" onClick={() => setConfirmApply(true)}>従業員台帳に反映する</button>

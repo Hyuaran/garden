@@ -22,11 +22,16 @@ describe("入社手続きの事務詳細", () => {
 
   it("交通費は本人申告を読み取り表示し、上限から支給額を自動計算する", () => {
     const record = initialAdminRecord("EMP-001");
-    record.values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "" }];
+    record.values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "530" }];
     render(<OnboardingAdminDetailClient record={record} />);
 
     expect(screen.getByText("本人の申告（1か月定期代）")).toBeInTheDocument();
+    expect(screen.getByText("本人の申告（片道）")).toBeInTheDocument();
     expect(screen.getAllByText("20,000円").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("530円").length).toBeGreaterThan(0);
+    expect(screen.getByText("1日あたり（往復・円）")).toBeInTheDocument();
+    expect(screen.getByText("1,060円")).toBeInTheDocument();
+    expect(screen.getByText("欠勤などで数日だけ出た月と、アルバイトの方は この額 × 出勤日数")).toBeInTheDocument();
     expect(screen.queryByText("交通費の確定額（1か月・円）")).toBeNull();
     expect(screen.getByText("上限以下なら申告額、超えたら上限")).toBeInTheDocument();
 
@@ -62,6 +67,8 @@ describe("入社手続きの事務詳細", () => {
     render(<OnboardingAdminDetailClient record={record} />);
 
     expect(screen.getAllByText("未入力").length).toBeGreaterThan(0);
+    expect(screen.getByText("本人の申告（片道）")).toBeInTheDocument();
+    expect(screen.getByText("1日あたり（往復・円）")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("交通費の上限（1か月・円）"), { target: { value: "15,000" } });
 
     expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("15000");

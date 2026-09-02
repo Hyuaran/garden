@@ -1,4 +1,6 @@
-@import "tailwindcss";
+/* 走査する場所を src/ だけに絞る。
+   絞らないと outputs/ の PDF・PNG まで読みに行き、CSS の組み立てが失敗する。 */
+@import "tailwindcss" source("../");
 
 /* ====================================================================
  * Garden Series — Home UI Stylesheet (Next.js 移植版)

@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { MANAGER_ROLES } from "@/app/system/_lib/attendance";
 import { databaseError, OnboardingError, ONBOARDING_COLUMNS } from "./onboarding.server";
 import { maskMyNumber, parseInput, parseNullableAmount } from "./onboarding";
-import { adminInputFromRow, buildAdminList, initialAdminRecord, parseAdminEmailInput, parseAdminHouseholderInput, parseAdminInput, type AdminInput, type AdminListItem, type AdminOnboardingRecord } from "./onboarding-admin";
+import { adminInputFromRow, buildAdminList, commuteDailyAllowance, initialAdminRecord, parseAdminEmailInput, parseAdminHouseholderInput, parseAdminInput, type AdminInput, type AdminListItem, type AdminOnboardingRecord } from "./onboarding-admin";
 
 const ADMIN_ONBOARDING_COLUMNS = `employee_id,${ONBOARDING_COLUMNS},office,weekly_hours,health_insurance,pension_insurance,employment_insurance,tax_class,salary_kind,base_salary,allowances,commute_fixed_monthly,commute_cap_monthly,admin_updated_at`;
 const EMPLOYEE_COLUMNS = "employee_id,name,hire_date,birthday,company_id";
@@ -147,8 +147,8 @@ export async function applyAdminOnboarding(context: AdminContext, employeeId: st
   if (insurance) update.insurance_type = insurance;
   const cap = numericText(admin.commute_cap_monthly);
   if (cap != null) update.commute_monthly_cap = cap;
-  const fixed = numericText(admin.commute_fixed_monthly);
-  if (fixed != null) update.commute_daily_allowance = Math.round(fixed / 20);
+  const dailyAllowance = commuteDailyAllowance(record.values);
+  if (dailyAllowance != null) update.commute_daily_allowance = dailyAllowance;
   if (!Object.keys(update).length) return;
   const { error } = await context.supabase.from("root_employees").update(update).eq("employee_id", employeeId);
   if (error) throw new OnboardingError("従業員台帳に反映できませんでした。時間をおいて、もう一度お試しください。", 503);

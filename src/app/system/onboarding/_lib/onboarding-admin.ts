@@ -3,7 +3,8 @@ import { commuteTotals, emptyInput, FIELD_LABELS, formatYen, HOUSEHOLDER_RELATIO
 export const ADMIN_SELECT_OPTIONS = {
   insurance: ["加入", "未加入"],
   taxClass: ["甲", "乙"],
-  salaryKind: ["月給", "日給", "時間給"],
+  // 日給は設計していないため選択肢に出さない。日当を新設するときに、交通費・残業・社会保険まで決めてから足す。
+  salaryKind: ["月給", "時間給"],
 } as const;
 
 export const ADMIN_ALLOWANCE_LIMIT = 6;
@@ -126,6 +127,26 @@ export function declaredCommutePassMonthly(values: Pick<OnboardingInput, "commut
 export function formatDeclaredCommutePassMonthly(values: Pick<OnboardingInput, "commute_routes">) {
   const declared = declaredCommutePassMonthly(values);
   return declared == null ? "未入力" : formatYen(declared);
+}
+
+export function declaredCommuteFareOneway(values: Pick<OnboardingInput, "commute_routes">) {
+  const total = commuteTotals(values.commute_routes).fareOneway;
+  return total > 0 ? total : null;
+}
+
+export function formatDeclaredCommuteFareOneway(values: Pick<OnboardingInput, "commute_routes">) {
+  const declared = declaredCommuteFareOneway(values);
+  return declared == null ? "未入力" : formatYen(declared);
+}
+
+export function commuteDailyAllowance(values: Pick<OnboardingInput, "commute_routes">) {
+  const fareOneway = declaredCommuteFareOneway(values);
+  return fareOneway == null ? null : fareOneway * 2;
+}
+
+export function formatCommuteDailyAllowance(values: Pick<OnboardingInput, "commute_routes">) {
+  const daily = commuteDailyAllowance(values);
+  return daily == null ? "未入力" : formatYen(daily);
 }
 
 export function commutePaymentMonthly(values: Pick<OnboardingInput, "commute_routes">, capText: string) {

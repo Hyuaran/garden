@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyInput } from "./onboarding";
-import { adminInputFromRow, buildAdminList, commutePaymentMonthly, missingOnboardingItems, parseAdminEmailInput, parseAdminInput } from "./onboarding-admin";
+import { adminInputFromRow, buildAdminList, commuteDailyAllowance, commutePaymentMonthly, declaredCommuteFareOneway, formatCommuteDailyAllowance, formatDeclaredCommuteFareOneway, missingOnboardingItems, parseAdminEmailInput, parseAdminInput } from "./onboarding-admin";
 
 describe("入社手続きの事務画面", () => {
   it("事務入力は許可した列だけを読み取り、手当は6組までにする", () => {
@@ -53,6 +53,40 @@ describe("入社手続きの事務画面", () => {
 
     values.commute_routes = [];
     expect(commutePaymentMonthly(values, "15,000")).toBe("15000");
+  });
+
+  it("片道運賃から1日あたりの往復交通費を出す", () => {
+    const values = emptyInput();
+    values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "530" }];
+
+    expect(declaredCommuteFareOneway(values)).toBe(530);
+    expect(commuteDailyAllowance(values)).toBe(1060);
+    expect(formatDeclaredCommuteFareOneway(values)).toBe("530円");
+    expect(formatCommuteDailyAllowance(values)).toBe("1,060円");
+  });
+
+  it("乗り換えがある人は区間ごとの片道を足して1日あたりを出す", () => {
+    const values = emptyInput();
+    values.commute_routes = [
+      { kind: "電車", from_station: "A", to_station: "B", line: "X", pass_monthly: "10,000", fare_oneway: "320" },
+      { kind: "バス", from_station: "B", to_station: "C", line: "Y", pass_monthly: "5,000", fare_oneway: "210" },
+    ];
+
+    expect(declaredCommuteFareOneway(values)).toBe(530);
+    expect(commuteDailyAllowance(values)).toBe(1060);
+  });
+
+  it("片道が1円も入っていない人は1日あたりを出さない", () => {
+    const values = emptyInput();
+    values.commute_routes = [
+      { kind: "徒歩", from_station: "", to_station: "", line: "", pass_monthly: "", fare_oneway: "" },
+      { kind: "自転車", from_station: "", to_station: "", line: "", pass_monthly: "", fare_oneway: "0" },
+    ];
+
+    expect(declaredCommuteFareOneway(values)).toBeNull();
+    expect(commuteDailyAllowance(values)).toBeNull();
+    expect(formatDeclaredCommuteFareOneway(values)).toBe("未入力");
+    expect(formatCommuteDailyAllowance(values)).toBe("未入力");
   });
 
   it("未入力の項目名と件数を同じ基準で作る", () => {
