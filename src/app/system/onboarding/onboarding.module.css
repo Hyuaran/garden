@@ -38,7 +38,7 @@
 .review dl { margin:10px 0 0; }.review dl>div { display:grid; grid-template-columns:160px minmax(0,1fr); gap:12px; padding:7px 0; }.review dt { color:var(--sub); font-size:13px; }.review dd { margin:0; white-space:pre-wrap; }
 .myNumberView { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
 .emailReviewValue { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
-.emailReviewValue input { flex:1 1 260px; min-width:160px; max-width:420px; min-height:38px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background:var(--card); font:inherit; }
+.emailReviewValue input,.emailReviewValue select { flex:1 1 260px; min-width:160px; max-width:420px; min-height:38px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background:var(--card); font:inherit; }
 .emailReviewValue button { min-height:34px; padding:6px 12px; }
 .emailReviewValue .hint,.emailReviewValue .warning,.emailReviewValue .saveStatus { flex-basis:100%; }
 .empty { color:#6b7280; }.saveStatus { min-height:26px; color:var(--sub); }

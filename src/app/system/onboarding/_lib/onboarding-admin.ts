@@ -1,4 +1,4 @@
-import { commuteTotals, emptyInput, FIELD_LABELS, formatYen, parseNullableAmount, STEP_FIELDS, type OnboardingInput, type TextField } from "./onboarding";
+import { commuteTotals, emptyInput, FIELD_LABELS, formatYen, HOUSEHOLDER_RELATION_OPTIONS, parseNullableAmount, STEP_FIELDS, type OnboardingInput, type TextField } from "./onboarding";
 
 export const ADMIN_SELECT_OPTIONS = {
   insurance: ["加入", "未加入"],
@@ -66,6 +66,10 @@ function select(value: unknown, options: readonly string[]) {
   return trimmed;
 }
 
+function hasOwn(source: object, key: string) {
+  return Object.prototype.hasOwnProperty.call(source, key);
+}
+
 export function parseAdminInput(value: unknown): AdminInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) return emptyAdminInput();
   const source = value as Record<string, unknown>;
@@ -96,6 +100,16 @@ export function parseAdminEmailInput(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid email input");
   const source = value as Record<string, unknown>;
   return { email: text(source.email) };
+}
+
+export function parseAdminHouseholderInput(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid householder input");
+  const source = value as Record<string, unknown>;
+  const result: { householderName?: string; householderRelation?: string } = {};
+  if (hasOwn(source, "householderName")) result.householderName = text(source.householderName);
+  if (hasOwn(source, "householderRelation")) result.householderRelation = select(source.householderRelation, HOUSEHOLDER_RELATION_OPTIONS);
+  if (!hasOwn(result, "householderName") && !hasOwn(result, "householderRelation")) throw new Error("empty householder input");
+  return result;
 }
 
 export function adminInputFromRow(row: Record<string, unknown> | null, values: OnboardingInput): AdminInput;

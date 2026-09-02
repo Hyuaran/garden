@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import OnboardingReview from "../../_components/OnboardingReview";
 import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, commutePaymentMonthly, formatDeclaredCommutePassMonthly, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
-import { formatWarnings } from "../../_lib/onboarding";
+import { formatWarnings, HOUSEHOLDER_RELATION_OPTIONS } from "../../_lib/onboarding";
 import { fuyouManualAdditionNotice } from "../../_lib/fuyou-pdf";
 import { renrakuhyoManualAdditionNotice } from "../../_lib/renrakuhyo";
 import styles from "../../onboarding.module.css";
@@ -27,6 +27,16 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   const [emailDraft, setEmailDraft] = useState(record.values.email);
   const [emailNotice, setEmailNotice] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [householderNameEditing, setHouseholderNameEditing] = useState(false);
+  const [householderNameBusy, setHouseholderNameBusy] = useState(false);
+  const [householderNameDraft, setHouseholderNameDraft] = useState(record.values.householder_name);
+  const [householderNameNotice, setHouseholderNameNotice] = useState("");
+  const [householderNameError, setHouseholderNameError] = useState("");
+  const [householderRelationEditing, setHouseholderRelationEditing] = useState(false);
+  const [householderRelationBusy, setHouseholderRelationBusy] = useState(false);
+  const [householderRelationDraft, setHouseholderRelationDraft] = useState(record.values.householder_relation);
+  const [householderRelationNotice, setHouseholderRelationNotice] = useState("");
+  const [householderRelationError, setHouseholderRelationError] = useState("");
   const [fuyouBusy, setFuyouBusy] = useState(false);
   const [renrakuhyoBusy, setRenrakuhyoBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -156,6 +166,74 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
       setEmailBusy(false);
     }
   }
+  function editHouseholderName() {
+    setHouseholderNameDraft(reviewValues.householder_name);
+    setHouseholderNameNotice("");
+    setHouseholderNameError("");
+    setHouseholderNameEditing(true);
+  }
+  function cancelHouseholderNameEdit() {
+    setHouseholderNameDraft(reviewValues.householder_name);
+    setHouseholderNameNotice("");
+    setHouseholderNameError("");
+    setHouseholderNameEditing(false);
+  }
+  async function saveHouseholderName() {
+    setHouseholderNameBusy(true); setHouseholderNameNotice(""); setHouseholderNameError("");
+    try {
+      const response = await fetch(`/api/system/onboarding/admin/${encodeURIComponent(record.employee.employee_id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "householder", householderName: householderNameDraft }),
+      });
+      const body = await response.json();
+      if (!response.ok) { setHouseholderNameError(body.error ?? "保存できませんでした。もう一度お試しください。"); return; }
+      const savedName = typeof body.householderName === "string" ? body.householderName : householderNameDraft.trim();
+      setReviewValues(previous => ({ ...previous, householder_name: savedName }));
+      setHouseholderNameDraft(savedName);
+      setHouseholderNameEditing(false);
+      setHouseholderNameNotice("保存しました。");
+      router.refresh();
+    } catch {
+      setHouseholderNameError("保存できませんでした。入力内容はこの画面に残っています。もう一度保存してください。");
+    } finally {
+      setHouseholderNameBusy(false);
+    }
+  }
+  function editHouseholderRelation() {
+    setHouseholderRelationDraft(reviewValues.householder_relation);
+    setHouseholderRelationNotice("");
+    setHouseholderRelationError("");
+    setHouseholderRelationEditing(true);
+  }
+  function cancelHouseholderRelationEdit() {
+    setHouseholderRelationDraft(reviewValues.householder_relation);
+    setHouseholderRelationNotice("");
+    setHouseholderRelationError("");
+    setHouseholderRelationEditing(false);
+  }
+  async function saveHouseholderRelation() {
+    setHouseholderRelationBusy(true); setHouseholderRelationNotice(""); setHouseholderRelationError("");
+    try {
+      const response = await fetch(`/api/system/onboarding/admin/${encodeURIComponent(record.employee.employee_id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "householder", householderRelation: householderRelationDraft }),
+      });
+      const body = await response.json();
+      if (!response.ok) { setHouseholderRelationError(body.error ?? "保存できませんでした。もう一度お試しください。"); return; }
+      const savedRelation = typeof body.householderRelation === "string" ? body.householderRelation : householderRelationDraft.trim();
+      setReviewValues(previous => ({ ...previous, householder_relation: savedRelation }));
+      setHouseholderRelationDraft(savedRelation);
+      setHouseholderRelationEditing(false);
+      setHouseholderRelationNotice("保存しました。");
+      router.refresh();
+    } catch {
+      setHouseholderRelationError("保存できませんでした。入力内容はこの画面に残っています。もう一度保存してください。");
+    } finally {
+      setHouseholderRelationBusy(false);
+    }
+  }
   async function createFuyouPdf() {
     setFuyouBusy(true); setFuyouNotice(null);
     try {
@@ -202,7 +280,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   return <div className={styles.detailStack}>
     <section className={styles.adminSection}>
       <h2>本人が入れた内容</h2>
-      <OnboardingReview values={reviewValues} emailSlot={<span className={styles.emailReviewValue}>
+      <OnboardingReview values={reviewValues} slots={{ email: <span className={styles.emailReviewValue}>
         {emailEditing ? <>
           <input aria-label="メールアドレス" value={emailDraft} maxLength={2000} disabled={emailBusy} onChange={event => { setEmailDraft(event.target.value); setEmailNotice(""); setEmailError(""); }} />
           <button type="button" disabled={emailBusy} onClick={() => void saveEmail()}>保存</button>
@@ -215,7 +293,34 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
         {formatWarnings({ ...reviewValues, email: emailDraft }).email ? <span className={styles.warning}>{formatWarnings({ ...reviewValues, email: emailDraft }).email}</span> : null}
         {emailNotice ? <span role="status" className={styles.saveStatus}>{emailNotice}</span> : null}
         {emailError ? <span role="alert" className={styles.warning}>{emailError}</span> : null}
-      </span>} myNumberReveal={{
+      </span>, householder_name: <span className={styles.emailReviewValue}>
+        {householderNameEditing ? <>
+          <input aria-label="世帯主の氏名" value={householderNameDraft} maxLength={2000} disabled={householderNameBusy} onChange={event => { setHouseholderNameDraft(event.target.value); setHouseholderNameNotice(""); setHouseholderNameError(""); }} />
+          <button type="button" aria-label="世帯主の氏名を保存" disabled={householderNameBusy} onClick={() => void saveHouseholderName()}>保存</button>
+          <button type="button" aria-label="世帯主の氏名の修正をやめる" disabled={householderNameBusy} onClick={cancelHouseholderNameEdit}>やめる</button>
+        </> : <>
+          {reviewValues.householder_name ? <span>{reviewValues.householder_name}</span> : <span className={styles.empty}>未入力</span>}
+          <button type="button" aria-label="世帯主の氏名を修正" onClick={editHouseholderName}>修正</button>
+        </>}
+        <span className={styles.hint}>事務が入れられます</span>
+        {householderNameNotice ? <span role="status" className={styles.saveStatus}>{householderNameNotice}</span> : null}
+        {householderNameError ? <span role="alert" className={styles.warning}>{householderNameError}</span> : null}
+      </span>, householder_relation: <span className={styles.emailReviewValue}>
+        {householderRelationEditing ? <>
+          <select aria-label="世帯主との続柄" value={householderRelationDraft} disabled={householderRelationBusy} onChange={event => { setHouseholderRelationDraft(event.target.value); setHouseholderRelationNotice(""); setHouseholderRelationError(""); }}>
+            <option value="">選んでください</option>
+            {HOUSEHOLDER_RELATION_OPTIONS.map(label => <option key={label}>{label}</option>)}
+          </select>
+          <button type="button" aria-label="世帯主との続柄を保存" disabled={householderRelationBusy} onClick={() => void saveHouseholderRelation()}>保存</button>
+          <button type="button" aria-label="世帯主との続柄の修正をやめる" disabled={householderRelationBusy} onClick={cancelHouseholderRelationEdit}>やめる</button>
+        </> : <>
+          {reviewValues.householder_relation ? <span>{reviewValues.householder_relation}</span> : <span className={styles.empty}>未入力</span>}
+          <button type="button" aria-label="世帯主との続柄を修正" onClick={editHouseholderRelation}>修正</button>
+        </>}
+        <span className={styles.hint}>事務が入れられます</span>
+        {householderRelationNotice ? <span role="status" className={styles.saveStatus}>{householderRelationNotice}</span> : null}
+        {householderRelationError ? <span role="alert" className={styles.warning}>{householderRelationError}</span> : null}
+      </span> }} myNumberReveal={{
         value: (kind, index) => revealedMyNumbers[myNumberKey(kind, index)] ?? "",
         busy: (kind, index) => Boolean(myNumberBusy[myNumberKey(kind, index)]),
         onShow: (kind, index) => void showMyNumber(kind, index),

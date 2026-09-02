@@ -121,10 +121,11 @@ describe("入社手続きの事務詳細", () => {
 
     expect(screen.getByRole("heading", { name: "本人が入れた内容" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "本人が入れた内容（読むだけ）" })).toBeNull();
-    expect(screen.getByText("メールアドレス")).toBeInTheDocument();
-    expect(screen.getByText("hy@example.jp")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "修正" })).toBeInTheDocument();
-    expect(screen.getByText("事務が入れられます")).toBeInTheDocument();
+    // 世帯主にも同じ見せ方が付いたので、メールアドレスの行だけを見る。
+    const emailRow = screen.getByText("メールアドレス").closest("div") as HTMLElement;
+    expect(within(emailRow).getByText("hy@example.jp")).toBeInTheDocument();
+    expect(within(emailRow).getByRole("button", { name: "修正" })).toBeInTheDocument();
+    expect(within(emailRow).getByText("事務が入れられます")).toBeInTheDocument();
   });
 
   it("メールアドレスをその行だけ修正して保存できる", async () => {
