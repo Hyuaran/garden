@@ -118,7 +118,26 @@ export const RENRAKUHYO_EXCEL_CELLS: Record<keyof RenrakuhyoValues, string> = {
   dependent4_occupation: "I26",
 };
 
-export const RENRAKUHYO_PDF_FIELDS: Array<{ key: keyof RenrakuhyoValues; x: number; y: number; align: "left" | "center" }> = [
+export type RenrakuhyoPdfField = { key: keyof RenrakuhyoValues; x: number; y: number; align: "left" | "center"; size?: number };
+
+const DEPENDENT_PDF_ROWS = [
+  { row: 1, kanaY: 273.3, nameY: 288.5, mynumberY: 304.1, relationY: 288.6, birthY: 287.7, incomeY: 288.9, occupationY: 289.0 },
+  { row: 2, kanaY: 314.8, nameY: 330.1, mynumberY: 345.7, relationY: 330.1, birthY: 329.2, incomeY: 330.4, occupationY: 330.5 },
+  { row: 3, kanaY: 356.3, nameY: 371.6, mynumberY: 387.2, relationY: 371.6, birthY: 370.8, incomeY: 371.9, occupationY: 372.1 },
+  { row: 4, kanaY: 397.9, nameY: 413.1, mynumberY: 428.7, relationY: 413.2, birthY: 412.3, incomeY: 413.5, occupationY: 413.6 },
+] as const;
+
+const RENRAKUHYO_DEPENDENT_PDF_FIELDS = DEPENDENT_PDF_ROWS.flatMap(({ row, kanaY, nameY, mynumberY, relationY, birthY, incomeY, occupationY }) => [
+  { key: `dependent${row}_kana` as keyof RenrakuhyoValues, x: 131.2, y: kanaY, align: "left" as const, size: 8 },
+  { key: `dependent${row}_name` as keyof RenrakuhyoValues, x: 184.8, y: nameY, align: "center" as const },
+  { key: `dependent${row}_mynumber` as keyof RenrakuhyoValues, x: 209.5, y: mynumberY, align: "center" as const, size: 7.5 },
+  { key: `dependent${row}_relation` as keyof RenrakuhyoValues, x: 267.4, y: relationY, align: "center" as const },
+  { key: `dependent${row}_birth` as keyof RenrakuhyoValues, x: 296.2, y: birthY, align: "left" as const },
+  { key: `dependent${row}_income` as keyof RenrakuhyoValues, x: 374.6, y: incomeY, align: "left" as const },
+  { key: `dependent${row}_occupation` as keyof RenrakuhyoValues, x: 425.0, y: occupationY, align: "left" as const },
+]);
+
+export const RENRAKUHYO_PDF_FIELDS: RenrakuhyoPdfField[] = [
   { key: "company_name", x: 85.1, y: 100.1, align: "left" },
   { key: "kana", x: 131.3, y: 117.9, align: "left" },
   { key: "gender", x: 374.6, y: 117.4, align: "left" },
@@ -144,6 +163,7 @@ export const RENRAKUHYO_PDF_FIELDS: Array<{ key: keyof RenrakuhyoValues; x: numb
   { key: "commute_round", x: 330.4, y: 708.7, align: "left" },
   { key: "tax", x: 297.6, y: 737.5, align: "center" },
   { key: "weekly", x: 388.5, y: 783.4, align: "center" },
+  ...RENRAKUHYO_DEPENDENT_PDF_FIELDS,
 ];
 
 function digits(value: string) {
@@ -215,6 +235,16 @@ function dependentCommaAmount(value: string) {
 function dependentMyNumber(value: string) {
   const formatted = /^\d{12}$/.test(digits(value)) ? formatMyNumber(value) : "";
   return formatted ? `マイナンバー（ ${formatted} ）` : "";
+}
+
+export function renrakuhyoPdfText(key: keyof RenrakuhyoValues, value: string) {
+  if (/^dependent\d+_mynumber$/.test(key)) return value.match(/\d{4}-\d{4}-\d{4}/)?.[0] ?? "";
+  return value;
+}
+
+export function renrakuhyoManualAdditionNotice(values: Pick<OnboardingInput, "dependents">) {
+  const count = Math.max(0, values.dependents.length - 4);
+  return count ? `${count}人分は用紙に入りきらないため手書きで足してください` : "";
 }
 
 function dependentValues(dependents: Dependent[]) {

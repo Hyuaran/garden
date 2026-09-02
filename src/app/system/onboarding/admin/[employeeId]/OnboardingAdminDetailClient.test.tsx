@@ -277,7 +277,7 @@ describe("入社手続きの事務詳細", () => {
     render(<OnboardingAdminDetailClient record={record} />);
 
     expect(screen.getByRole("heading", { name: "入社連絡表（TLCC様提出用）" })).toBeInTheDocument();
-    expect(screen.getByText("扶養家族の欄はExcelのみ。PDFは空欄です。")).toBeInTheDocument();
+    expect(screen.queryByText("扶養家族の欄はExcelのみ。PDFは空欄です。")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "入社連絡表を作る" }));
 
     expect(confirmMock).not.toHaveBeenCalled();
@@ -291,17 +291,39 @@ describe("入社手続きの事務詳細", () => {
   it("扶養控除申告書で入りきらない扶養家族がいるときは手書き案内を出す", () => {
     const record = initialAdminRecord("EMP-001");
     record.values.dependents = [
-      { name: "A", name_kana: "", my_number: "", relation: "子", birth_date: "2011-01-01", annual_income: "", occupation: "" },
-      { name: "B", name_kana: "", my_number: "", relation: "子", birth_date: "2010-01-01", annual_income: "", occupation: "" },
-      { name: "C", name_kana: "", my_number: "", relation: "子", birth_date: "2009-01-01", annual_income: "", occupation: "" },
-      { name: "D", name_kana: "", my_number: "", relation: "子", birth_date: "2008-01-01", annual_income: "", occupation: "" },
+      { name: "A", name_kana: "", my_number: "", relation: "子", birth_date: "2000-01-01", annual_income: "", occupation: "" },
+      { name: "B", name_kana: "", my_number: "", relation: "子", birth_date: "2000-01-02", annual_income: "", occupation: "" },
+      { name: "C", name_kana: "", my_number: "", relation: "子", birth_date: "2000-01-03", annual_income: "", occupation: "" },
+      { name: "D", name_kana: "", my_number: "", relation: "子", birth_date: "2000-01-04", annual_income: "", occupation: "" },
       { name: "E", name_kana: "", my_number: "", relation: "子", birth_date: "2007-01-01", annual_income: "", occupation: "" },
       { name: "F", name_kana: "", my_number: "", relation: "子", birth_date: "2011-01-02", annual_income: "", occupation: "" },
     ];
 
     render(<OnboardingAdminDetailClient record={record} />);
 
-    expect(screen.getByText("2人分は用紙に入りきらないため手書きで足してください")).toBeInTheDocument();
+    expect(screen.getAllByText("2人分は用紙に入りきらないため手書きで足してください").length).toBeGreaterThan(0);
+  });
+
+  it("入社連絡表で扶養家族が5人以上なら手書き案内を出し、4人以内なら出さない", () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.dependents = [
+      { name: "A", name_kana: "", my_number: "", relation: "子", birth_date: "2011-01-01", annual_income: "", occupation: "" },
+      { name: "B", name_kana: "", my_number: "", relation: "子", birth_date: "2010-01-01", annual_income: "", occupation: "" },
+      { name: "C", name_kana: "", my_number: "", relation: "子", birth_date: "2009-01-01", annual_income: "", occupation: "" },
+      { name: "D", name_kana: "", my_number: "", relation: "子", birth_date: "2008-01-01", annual_income: "", occupation: "" },
+    ];
+    const { rerender } = render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.queryByText(/用紙に入りきらないため手書きで足してください/)).toBeNull();
+
+    record.values.dependents = [
+      ...record.values.dependents,
+      { name: "E", name_kana: "", my_number: "", relation: "子", birth_date: "2000-01-05", annual_income: "", occupation: "" },
+    ];
+    rerender(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.getAllByText("1人分は用紙に入りきらないため手書きで足してください").length).toBeGreaterThan(0);
+    expect(screen.queryByText("扶養家族の欄はExcelのみ。PDFは空欄です。")).toBeNull();
   });
 
   it("入社連絡表の保存成功と失敗を画面内に日本語で出す", async () => {

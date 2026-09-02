@@ -6,6 +6,7 @@ import OnboardingReview from "../../_components/OnboardingReview";
 import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, commutePaymentMonthly, formatDeclaredCommutePassMonthly, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
 import { formatWarnings } from "../../_lib/onboarding";
 import { fuyouManualAdditionNotice } from "../../_lib/fuyou-pdf";
+import { renrakuhyoManualAdditionNotice } from "../../_lib/renrakuhyo";
 import styles from "../../onboarding.module.css";
 
 function emptyAllowance(): AdminAllowance {
@@ -38,6 +39,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   const [myNumberBusy, setMyNumberBusy] = useState<Record<string, boolean>>({});
   const missing = missingOnboardingItems(record.values);
   const fuyouManualNotice = fuyouManualAdditionNotice(reviewValues);
+  const renrakuhyoManualNotice = renrakuhyoManualAdditionNotice(reviewValues);
 
   function myNumberKey(kind: "self" | "dependent", index?: number) {
     return kind === "self" ? "self" : `dependent-${index ?? -1}`;
@@ -293,7 +295,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
       <h2>入社連絡表（TLCC様提出用）</h2>
       <p>入社手続きの内容から、TLCC様へ出す連絡表を作ります。</p>
       <p>ExcelとPDFの両方を、経理のフォルダへ保存します。</p>
-      <p className={styles.hint}>扶養家族の欄はExcelのみ。PDFは空欄です。</p>
+      {renrakuhyoManualNotice ? <p className={styles.hint}>{renrakuhyoManualNotice}</p> : null}
       <div className={styles.actions}>
         <button className={styles.primary} type="button" disabled={renrakuhyoBusy} onClick={() => { setRenrakuhyoNotice(null); setConfirmRenrakuhyo(true); }}>入社連絡表を作る</button>
       </div>

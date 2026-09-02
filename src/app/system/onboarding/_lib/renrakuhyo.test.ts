@@ -10,8 +10,11 @@ import {
   formatPlainJapaneseDate,
   formatPostalCode,
   RENRAKUHYO_EXCEL_CELLS,
+  RENRAKUHYO_PDF_FIELDS,
   formatWarekiHireDate,
   renrakuhyoBaseName,
+  renrakuhyoManualAdditionNotice,
+  renrakuhyoPdfText,
   safeRenrakuhyoErrorMessage,
 } from "./renrakuhyo";
 
@@ -135,6 +138,78 @@ describe("入社連絡表の値変換", () => {
     expect(values).not.toHaveProperty("dependent5_name");
     expect(RENRAKUHYO_EXCEL_CELLS.dependent1_kana).toBe("D17");
     expect(RENRAKUHYO_EXCEL_CELLS.dependent4_occupation).toBe("I26");
+  });
+
+  it("PDF用の扶養家族をExcelと同じ4人分の値から描ける形にする", () => {
+    const base = record();
+    base.values.dependents = [
+      { name: "家族1", name_kana: "カゾク1", my_number: "111122223333", relation: "配偶者", birth_date: "1990-02-03", annual_income: "0", occupation: "会社員" },
+      { name: "家族2", name_kana: "カゾク2", my_number: "444455556666", relation: "子", birth_date: "2011-01-01", annual_income: "1200000", occupation: "高校1年" },
+      { name: "家族3", name_kana: "カゾク3", my_number: "777788889999", relation: "子", birth_date: "2011-01-02", annual_income: "20,000", occupation: "中学3年" },
+      { name: "家族4", name_kana: "カゾク4", my_number: "000011112222", relation: "母", birth_date: "1960-12-31", annual_income: "", occupation: "" },
+    ];
+
+    const values = buildRenrakuhyoValues(base, { company_name: "G" });
+    const pdfKeys = RENRAKUHYO_PDF_FIELDS.map(field => field.key);
+    expect(pdfKeys).toEqual(expect.arrayContaining([
+      "dependent1_kana",
+      "dependent1_name",
+      "dependent1_mynumber",
+      "dependent1_relation",
+      "dependent1_birth",
+      "dependent1_income",
+      "dependent1_occupation",
+      "dependent4_kana",
+      "dependent4_name",
+      "dependent4_mynumber",
+      "dependent4_relation",
+      "dependent4_birth",
+      "dependent4_income",
+      "dependent4_occupation",
+    ]));
+    expect(RENRAKUHYO_PDF_FIELDS.find(field => field.key === "dependent1_kana")).toMatchObject({ x: 131.2, y: 273.3, align: "left", size: 8 });
+    expect(RENRAKUHYO_PDF_FIELDS.find(field => field.key === "dependent1_name")).toMatchObject({ x: 184.8, y: 288.5, align: "center" });
+    expect(RENRAKUHYO_PDF_FIELDS.find(field => field.key === "dependent1_mynumber")).toMatchObject({ x: 209.5, y: 304.1, align: "center", size: 7.5 });
+    expect(RENRAKUHYO_PDF_FIELDS.find(field => field.key === "dependent4_occupation")).toMatchObject({ x: 425.0, y: 413.6, align: "left" });
+    expect(renrakuhyoPdfText("dependent1_name", values.dependent1_name)).toBe(values.dependent1_name);
+    expect(renrakuhyoPdfText("dependent1_mynumber", values.dependent1_mynumber)).toBe("1111-2222-3333");
+    expect(renrakuhyoPdfText("dependent4_mynumber", values.dependent4_mynumber)).toBe("0000-1111-2222");
+    expect(renrakuhyoPdfText("dependent1_mynumber", "")).toBe("");
+    expect(renrakuhyoPdfText("dependent1_mynumber", "マイナンバー（ 123 ）")).toBe("");
+  });
+
+  it("扶養家族が0人ならExcel値もPDF描画値も空欄のままにする", () => {
+    const values = buildRenrakuhyoValues(record(), { company_name: "G" });
+    const dependentFields = RENRAKUHYO_PDF_FIELDS.filter(field => String(field.key).startsWith("dependent"));
+
+    expect(dependentFields.length).toBe(28);
+    for (const field of dependentFields) {
+      expect(values[field.key]).toBe("");
+      expect(renrakuhyoPdfText(field.key, values[field.key])).toBe("");
+    }
+    expect(renrakuhyoManualAdditionNotice({ dependents: [] })).toBe("");
+  });
+
+  it("扶養家族が5人以上でもPDFとExcelは上から4人だけ一致し、手書き案内数を出す", () => {
+    const base = record();
+    base.values.dependents = Array.from({ length: 5 }, (_, index) => ({
+      name: `家族${index + 1}`,
+      name_kana: `カゾク${index + 1}`,
+      my_number: `${index + 1}`.repeat(12),
+      relation: "子",
+      birth_date: `2011-01-0${index + 1}`,
+      annual_income: String((index + 1) * 1000),
+      occupation: `学年${index + 1}`,
+    }));
+
+    const values = buildRenrakuhyoValues(base, { company_name: "G" });
+    for (const row of [1, 2, 3, 4]) {
+      expect(values[`dependent${row}_name` as keyof typeof values]).toBe(`家族${row}`);
+      expect(RENRAKUHYO_PDF_FIELDS.some(field => field.key === `dependent${row}_name`)).toBe(true);
+    }
+    expect(values).not.toHaveProperty("dependent5_name");
+    expect(RENRAKUHYO_PDF_FIELDS.some(field => String(field.key) === "dependent5_name")).toBe(false);
+    expect(renrakuhyoManualAdditionNotice(base.values)).toBe("1人分は用紙に入りきらないため手書きで足してください");
   });
 
   it.each([

@@ -7,7 +7,7 @@ import { PDFDocument, rgb, type PDFFont } from "pdf-lib";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { databaseError, OnboardingError } from "./onboarding.server";
 import { readAdminOnboardingDetailForFuyou, type AdminContext } from "./onboarding-admin.server";
-import { buildRenrakuhyoValues, RENRAKUHYO_EXCEL_CELLS, RENRAKUHYO_PDF_FIELDS, renrakuhyoBaseName, type RenrakuhyoCompany, type RenrakuhyoValues } from "./renrakuhyo";
+import { buildRenrakuhyoValues, RENRAKUHYO_EXCEL_CELLS, RENRAKUHYO_PDF_FIELDS, renrakuhyoBaseName, renrakuhyoPdfText, type RenrakuhyoCompany, type RenrakuhyoValues } from "./renrakuhyo";
 import { saveRenrakuhyoToDrive } from "./renrakuhyo-drive.server";
 
 const TEMPLATE_BUCKET = "system-docs";
@@ -57,11 +57,12 @@ export async function buildRenrakuhyoExcel(template: Uint8Array, values: Renraku
 
 function drawText(page: ReturnType<PDFDocument["getPages"]>[number], font: PDFFont, item: (typeof RENRAKUHYO_PDF_FIELDS)[number], text: string) {
   if (!text) return;
-  const width = font.widthOfTextAtSize(text, PDF_FONT_SIZE);
+  const size = item.size ?? PDF_FONT_SIZE;
+  const width = font.widthOfTextAtSize(text, size);
   page.drawText(text, {
     x: item.align === "center" ? item.x - width / 2 : item.x,
     y: PDF_PAGE_HEIGHT - item.y,
-    size: PDF_FONT_SIZE,
+    size,
     font,
     color: rgb(0, 0, 0),
   });
@@ -76,7 +77,7 @@ export async function buildRenrakuhyoPdf(template: Uint8Array, values: Renrakuhy
   );
   const page = pdf.getPages()[0];
   if (!page) throw new OnboardingError("入社連絡表を作るための情報が不足しています。入力内容を確認してください。", 409);
-  for (const item of RENRAKUHYO_PDF_FIELDS) drawText(page, font, item, values[item.key]);
+  for (const item of RENRAKUHYO_PDF_FIELDS) drawText(page, font, item, renrakuhyoPdfText(item.key, values[item.key]));
   return Buffer.from(await pdf.save());
 }
 
