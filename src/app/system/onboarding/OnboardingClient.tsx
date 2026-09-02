@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
-import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, dependentMyNumberWarning, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, HOUSEHOLDER_RELATION_OPTIONS, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
+import { ACCOUNT_TYPE_OPTIONS, BANK_NAME_LEDGER_HINT, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, dependentMyNumberWarning, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, HOUSEHOLDER_RELATION_OPTIONS, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
 import OnboardingReview from "./_components/OnboardingReview";
 import styles from "./onboarding.module.css";
 
@@ -108,6 +108,16 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
     setValues(previous => ({ ...previous, bank_name: choice.bankName, bank_code: choice.bankCode }));
     setBankChoices([]); setBankNotice("銀行コードを入れました。");
   }
+  async function lookupBankByCode() {
+    const bankCode = values.bank_code.trim();
+    if (!/^[0-9]{4}$/.test(bankCode)) return;
+    try {
+      const response = await fetch(`/api/system/onboarding/lookup/bank?code=${encodeURIComponent(bankCode)}`, { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok || !Array.isArray(body.banks) || body.banks.length === 0) return;
+      applyBank(body.banks[0]);
+    } catch {}
+  }
   async function lookupBranch() {
     setBranchNotice(""); setBranchChoices([]);
     const branchName = values.branch_name.trim();
@@ -124,6 +134,17 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   function applyBranch(choice: BranchChoice) {
     setValues(previous => ({ ...previous, branch_name: choice.branchName, branch_code: choice.branchCode }));
     setBranchChoices([]); setBranchNotice("支店コードを入れました。");
+  }
+  async function lookupBranchByCode() {
+    const bankCode = values.bank_code.trim();
+    const branchCode = values.branch_code.trim();
+    if (!/^[0-9]{4}$/.test(bankCode) || !/^[0-9]{3}$/.test(branchCode)) return;
+    try {
+      const response = await fetch(`/api/system/onboarding/lookup/branch?bankCode=${encodeURIComponent(bankCode)}&code=${encodeURIComponent(branchCode)}`, { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok || !Array.isArray(body.branches) || body.branches.length === 0) return;
+      applyBranch(body.branches[0]);
+    } catch {}
   }
   function changeDependentRelation(index: number, value: string) {
     setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry, i) => i === index ? { ...entry, relation: value } : entry) }));
@@ -219,6 +240,8 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         : key === "emergency_relation_other" && relationSelectValue(values.emergency_relation) !== "その他" ? null
         : key === "bank_name" ? lookupField(key, "調べる", lookupBank)
         : key === "branch_name" ? lookupField(key, "調べる", lookupBranch, !values.bank_code.trim())
+        : key === "bank_code" ? <input id={`field-${key}`} type="text" inputMode="numeric" maxLength={2000} value={values[key]} onChange={event => change(key, event.target.value)} onBlur={() => void lookupBankByCode()} aria-describedby={warnings[key] ? `warning-${key}` : undefined} />
+        : key === "branch_code" ? <input id={`field-${key}`} type="text" inputMode="numeric" maxLength={2000} value={values[key]} onChange={event => change(key, event.target.value)} onBlur={() => void lookupBranchByCode()} aria-describedby={warnings[key] ? `warning-${key}` : undefined} />
         : <input id={`field-${key}`} type={date ? "date" : "text"} inputMode={key.includes("phone") ? "tel" : key === "postal_code" || key.includes("number") ? "numeric" : undefined} maxLength={2000} value={values[key]}
           onChange={event => key === "postal_code" ? changePostal(event.target.value) : change(key, event.target.value)} aria-describedby={warnings[key] ? `warning-${key}` : undefined} />}
       {warnings[key] && <span id={`warning-${key}`} className={styles.warning}>{warnings[key]}</span>}
@@ -228,6 +251,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
       </>}
       {key === "bank_name" && bankNotice && <span className={styles.hint} role="status">{bankNotice}</span>}
       {key === "bank_name" && bankChoices.length > 0 && <select aria-label="銀行の候補" value="" onChange={event => { const choice = bankChoices[Number(event.target.value)]; if (event.target.value && choice) applyBank(choice); }}><option value="">銀行の候補</option>{bankChoices.map((choice, index) => <option value={String(index)} key={`${choice.bankCode}-${index}`}>{choice.bankName}（{choice.bankCode}）</option>)}</select>}
+      {key === "bank_name" && <span className={styles.hint}>{BANK_NAME_LEDGER_HINT}</span>}
       {key === "branch_name" && branchNotice && <span className={styles.hint} role="status">{branchNotice}</span>}
       {key === "branch_name" && branchChoices.length > 0 && <select aria-label="支店の候補" value="" onChange={event => { const choice = branchChoices[Number(event.target.value)]; if (event.target.value && choice) applyBranch(choice); }}><option value="">支店の候補</option>{branchChoices.map((choice, index) => <option value={String(index)} key={`${choice.branchCode}-${index}`}>{choice.branchName}（{choice.branchCode}）</option>)}</select>}
       {key === "my_number" && isMaskedMyNumber(values.my_number) && <button type="button" onClick={() => change("my_number", "")}>入れ直す</button>}

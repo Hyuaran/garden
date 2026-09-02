@@ -1,7 +1,8 @@
 export const PREPARING_MESSAGE = "入社手続きの準備がまだできていません。管理者へお問い合わせください。";
 export const POSTAL_NOT_FOUND = "郵便番号に合う住所が見つかりませんでした。住所を直接入れてください";
 export const LOOKUP_NOT_FOUND = "見つかりませんでした。金額を直接入れてください";
-export const CODE_LOOKUP_NOT_FOUND = "見つかりませんでした。コードを直接入れてください";
+export const CODE_LOOKUP_NOT_FOUND = "見つかりませんでした。名前が変わっている金融機関もあります。コードを直接入れると名前が入ります";
+export const BANK_NAME_LEDGER_HINT = "正式な台帳の書き方のため、「銀行」「信用金庫」は付きません";
 export const RELATIONSHIP_OPTIONS = ["配偶者", "子", "父", "母", "祖父", "祖母", "兄弟姉妹", "孫", "その他"] as const;
 export const COMMUTE_METHOD_OPTIONS = ["電車", "バス", "自転車", "徒歩", "自動車", "その他"] as const;
 export const COMMUTE_ROUTE_KIND_OPTIONS = ["電車", "バス", "その他"] as const;

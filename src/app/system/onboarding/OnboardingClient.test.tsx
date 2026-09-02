@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import OnboardingClient from "./OnboardingClient";
 import OnboardingReview from "./_components/OnboardingReview";
-import { emptyInput, POSTAL_NOT_FOUND, STEPS, type OnboardingRecord } from "./_lib/onboarding";
+import { BANK_NAME_LEDGER_HINT, CODE_LOOKUP_NOT_FOUND, emptyInput, POSTAL_NOT_FOUND, STEPS, type OnboardingRecord } from "./_lib/onboarding";
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
 
 const refresh = vi.hoisted(() => vi.fn());
@@ -197,9 +197,36 @@ describe("11画面の入社手続き", () => {
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ banks: [] }) });
     fireEvent.change(screen.getByLabelText("銀行名"), { target: { value: "ない銀行" } });
     fireEvent.click(screen.getAllByRole("button", { name: "調べる" })[0]);
-    await screen.findByText("見つかりませんでした。コードを直接入れてください");
+    await screen.findByText(CODE_LOOKUP_NOT_FOUND);
+    expect(screen.getByText(BANK_NAME_LEDGER_HINT)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("金融機関コード（4桁）"), { target: { value: "1234" } });
     expect(screen.getByLabelText("金融機関コード（4桁）")).toHaveValue("1234");
+  });
+  it("金融機関コードと支店コードから台帳名を補完し、見つからないときは入力名を残す", async () => {
+    render(<OnboardingClient initial={initial()} />);
+    for (let index = 1; index <= 6; index++) await next(index);
+    expect(screen.getByText(BANK_NAME_LEDGER_HINT)).toBeInTheDocument();
+
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ banks: [{ bankName: "みずほ", bankCode: "0001" }] }) });
+    fireEvent.change(screen.getByLabelText("銀行名"), { target: { value: "古い銀行名" } });
+    fireEvent.change(screen.getByLabelText("金融機関コード（4桁）"), { target: { value: "0001" } });
+    fireEvent.blur(screen.getByLabelText("金融機関コード（4桁）"));
+    await waitFor(() => expect(screen.getByLabelText("銀行名")).toHaveValue("みずほ"));
+    expect(screen.getByLabelText("金融機関コード（4桁）")).toHaveValue("0001");
+
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ branches: [{ branchName: "渋谷", branchCode: "135" }] }) });
+    fireEvent.change(screen.getByLabelText("支店名"), { target: { value: "古い支店名" } });
+    fireEvent.change(screen.getByLabelText("支店コード（3桁）"), { target: { value: "135" } });
+    fireEvent.blur(screen.getByLabelText("支店コード（3桁）"));
+    await waitFor(() => expect(screen.getByLabelText("支店名")).toHaveValue("渋谷"));
+    expect(screen.getByLabelText("支店コード（3桁）")).toHaveValue("135");
+
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ banks: [] }) });
+    fireEvent.change(screen.getByLabelText("銀行名"), { target: { value: "残す銀行名" } });
+    fireEvent.change(screen.getByLabelText("金融機関コード（4桁）"), { target: { value: "9999" } });
+    fireEvent.blur(screen.getByLabelText("金融機関コード（4桁）"));
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith("/api/system/onboarding/lookup/bank?code=9999", { cache: "no-store" }));
+    expect(screen.getByLabelText("銀行名")).toHaveValue("残す銀行名");
   });
   it("通勤区間は手入力でき、マイナンバーは確認画面で下4桁だけ表示する", async () => {
     render(<OnboardingClient initial={initial()} />);
