@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import OnboardingReview from "../../_components/OnboardingReview";
-import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
+import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, commutePaymentMonthly, formatDeclaredCommutePassMonthly, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
 import { formatWarnings } from "../../_lib/onboarding";
 import styles from "../../onboarding.module.css";
 
@@ -14,7 +14,11 @@ function emptyAllowance(): AdminAllowance {
 export default function OnboardingAdminDetailClient({ record }: { record: AdminOnboardingRecord }) {
   const router = useRouter();
   const [reviewValues, setReviewValues] = useState(record.values);
-  const [admin, setAdmin] = useState(record.admin);
+  const [admin, setAdmin] = useState<AdminInput>(() => ({
+    ...record.admin,
+    commute_fixed_monthly: record.admin.commute_fixed_monthly || commutePaymentMonthly(record.values, record.admin.commute_cap_monthly),
+  }));
+  const [commutePaymentEdited, setCommutePaymentEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [emailEditing, setEmailEditing] = useState(false);
   const [emailBusy, setEmailBusy] = useState(false);
@@ -64,6 +68,19 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
 
   function change(key: keyof AdminInput, value: string) {
     setConfirmApply(false);
+    if (key === "commute_fixed_monthly") {
+      setCommutePaymentEdited(true);
+      setAdmin(previous => ({ ...previous, commute_fixed_monthly: value }));
+      return;
+    }
+    if (key === "commute_cap_monthly") {
+      setAdmin(previous => ({
+        ...previous,
+        commute_cap_monthly: value,
+        commute_fixed_monthly: commutePaymentEdited ? previous.commute_fixed_monthly : commutePaymentMonthly(record.values, value),
+      }));
+      return;
+    }
     setAdmin(previous => ({ ...previous, [key]: value }));
   }
   function changeAllowance(index: number, key: keyof AdminAllowance, value: string) {
@@ -227,8 +244,9 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
               <button type="button" onClick={() => removeAllowance(index)}>消す</button>
             </div>)}
           </div>
-          <label className={styles.field}>交通費の確定額（1か月・円）<input value={admin.commute_fixed_monthly} maxLength={2000} inputMode="numeric" onChange={event => change("commute_fixed_monthly", event.target.value)} /></label>
+          <div className={styles.field}>本人の申告（1か月定期代）<span>{formatDeclaredCommutePassMonthly(record.values)}</span></div>
           <label className={styles.field}>交通費の上限（1か月・円）<input value={admin.commute_cap_monthly} maxLength={2000} inputMode="numeric" onChange={event => change("commute_cap_monthly", event.target.value)} /></label>
+          <label className={styles.field}>支給額（1か月・円）<input value={admin.commute_fixed_monthly} maxLength={2000} inputMode="numeric" onChange={event => change("commute_fixed_monthly", event.target.value)} /><span className={styles.hint}>上限以下なら申告額、超えたら上限</span></label>
           <div className={styles.actions}>
             <button type="submit">保存</button>
             <button className={styles.primary} type="button" onClick={() => setConfirmApply(true)}>従業員台帳に反映する</button>

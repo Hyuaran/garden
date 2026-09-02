@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyInput } from "./onboarding";
-import { adminInputFromRow, buildAdminList, missingOnboardingItems, parseAdminEmailInput, parseAdminInput } from "./onboarding-admin";
+import { adminInputFromRow, buildAdminList, commutePaymentMonthly, missingOnboardingItems, parseAdminEmailInput, parseAdminInput } from "./onboarding-admin";
 
 describe("入社手続きの事務画面", () => {
   it("事務入力は許可した列だけを読み取り、手当は6組までにする", () => {
@@ -30,14 +30,29 @@ describe("入社手続きの事務画面", () => {
     expect(() => parseAdminEmailInput({ email: "a".repeat(2001) })).toThrow();
   });
 
-  it("本人申告の定期代合計を交通費確定額の初期値にする", () => {
+  it("未保存でも本人申告の定期代合計を支給額の初期値に入れない", () => {
     const values = emptyInput();
     values.commute_routes = [
       { kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "12345", fare_oneway: "" },
       { kind: "バス", from_station: "本町", to_station: "店舗", line: "市バス", pass_monthly: "3000", fare_oneway: "" },
     ];
-    expect(adminInputFromRow({}, values).commute_fixed_monthly).toBe("15345");
+    expect(adminInputFromRow({}, values).commute_fixed_monthly).toBe("");
     expect(adminInputFromRow({ admin_updated_at: "2026-08-31T00:00:00Z" }, values).commute_fixed_monthly).toBe("");
+  });
+
+  it("本人申告と上限から支給額を決める", () => {
+    const values = emptyInput();
+    values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "" }];
+    expect(commutePaymentMonthly(values, "15,000")).toBe("15000");
+
+    values.commute_routes[0].pass_monthly = "１２ ０００";
+    expect(commutePaymentMonthly(values, "15,000")).toBe("12000");
+
+    values.commute_routes[0].pass_monthly = "20,000";
+    expect(commutePaymentMonthly(values, "")).toBe("");
+
+    values.commute_routes = [];
+    expect(commutePaymentMonthly(values, "15,000")).toBe("15000");
   });
 
   it("未入力の項目名と件数を同じ基準で作る", () => {

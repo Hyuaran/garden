@@ -20,6 +20,80 @@ describe("入社手続きの事務詳細", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  it("交通費は本人申告を読み取り表示し、上限から支給額を自動計算する", () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "" }];
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.getByText("本人の申告（1か月定期代）")).toBeInTheDocument();
+    expect(screen.getAllByText("20,000円").length).toBeGreaterThan(0);
+    expect(screen.queryByText("交通費の確定額（1か月・円）")).toBeNull();
+    expect(screen.getByText("上限以下なら申告額、超えたら上限")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("交通費の上限（1か月・円）"), { target: { value: "15,000" } });
+
+    expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("15000");
+  });
+
+  it("本人申告が上限以下なら申告額を支給額にする", () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "12,000", fare_oneway: "" }];
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    fireEvent.change(screen.getByLabelText("交通費の上限（1か月・円）"), { target: { value: "15,000" } });
+
+    expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("12000");
+  });
+
+  it("上限が空なら支給額も空にする", () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "" }];
+    record.admin.commute_cap_monthly = "15,000";
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("15000");
+    fireEvent.change(screen.getByLabelText("交通費の上限（1か月・円）"), { target: { value: "" } });
+
+    expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("");
+  });
+
+  it("本人申告が無ければ未入力と表示し、上限を支給額にする", () => {
+    const record = initialAdminRecord("EMP-001");
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.getAllByText("未入力").length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("交通費の上限（1か月・円）"), { target: { value: "15,000" } });
+
+    expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("15000");
+  });
+
+  it("支給額を手で書き換えたあとは上限を変えてもそのままにする", () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "" }];
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    fireEvent.change(screen.getByLabelText("交通費の上限（1か月・円）"), { target: { value: "15,000" } });
+    fireEvent.change(screen.getByLabelText(/支給額（1か月・円）/), { target: { value: "14000" } });
+    fireEvent.change(screen.getByLabelText("交通費の上限（1か月・円）"), { target: { value: "10,000" } });
+
+    expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("14000");
+  });
+
+  it("未保存で画面を開いた直後は本人申告額を支給額へ勝手に入れず、空でも保存できる", async () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "" }];
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("");
+    const saveButtons = screen.getAllByRole("button", { name: "保存" });
+    fireEvent.click(saveButtons[saveButtons.length - 1]);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body.action).toBe("save");
+    expect(body.values.commute_fixed_monthly).toBe("");
+  });
+
   it("従業員台帳への反映確認を画面内に出し、ブラウザ確認は使わない", async () => {
     const record = initialAdminRecord("EMP-001");
     render(<OnboardingAdminDetailClient record={record} />);

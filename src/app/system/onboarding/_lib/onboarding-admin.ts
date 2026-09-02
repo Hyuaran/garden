@@ -1,4 +1,4 @@
-import { commuteTotals, emptyInput, FIELD_LABELS, STEP_FIELDS, type OnboardingInput, type TextField } from "./onboarding";
+import { commuteTotals, emptyInput, FIELD_LABELS, formatYen, parseNullableAmount, STEP_FIELDS, type OnboardingInput, type TextField } from "./onboarding";
 
 export const ADMIN_SELECT_OPTIONS = {
   insurance: ["加入", "未加入"],
@@ -98,13 +98,27 @@ export function parseAdminEmailInput(value: unknown) {
   return { email: text(source.email) };
 }
 
-export function adminInputFromRow(row: Record<string, unknown> | null, values: OnboardingInput): AdminInput {
-  const parsed = parseAdminInput(row ?? {});
-  if (!parsed.commute_fixed_monthly && !row?.admin_updated_at) {
-    const total = commuteTotals(values.commute_routes).passMonthly;
-    if (total > 0) parsed.commute_fixed_monthly = String(total);
-  }
-  return parsed;
+export function adminInputFromRow(row: Record<string, unknown> | null, values: OnboardingInput): AdminInput;
+export function adminInputFromRow(row: Record<string, unknown> | null): AdminInput;
+export function adminInputFromRow(row: Record<string, unknown> | null): AdminInput {
+  return parseAdminInput(row ?? {});
+}
+
+export function declaredCommutePassMonthly(values: Pick<OnboardingInput, "commute_routes">) {
+  const total = commuteTotals(values.commute_routes).passMonthly;
+  return total > 0 ? total : null;
+}
+
+export function formatDeclaredCommutePassMonthly(values: Pick<OnboardingInput, "commute_routes">) {
+  const declared = declaredCommutePassMonthly(values);
+  return declared == null ? "未入力" : formatYen(declared);
+}
+
+export function commutePaymentMonthly(values: Pick<OnboardingInput, "commute_routes">, capText: string) {
+  const cap = parseNullableAmount(capText);
+  if (cap == null) return "";
+  const declared = declaredCommutePassMonthly(values);
+  return String(declared == null ? cap : Math.min(declared, cap));
 }
 
 function missingTextFields(values: OnboardingInput) {
