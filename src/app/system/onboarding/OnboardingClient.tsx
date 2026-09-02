@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
-import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, dependentMyNumberWarning, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
+import { ACCOUNT_TYPE_OPTIONS, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, dependentMyNumberWarning, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, HOUSEHOLDER_RELATION_OPTIONS, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
 import OnboardingReview from "./_components/OnboardingReview";
 import styles from "./onboarding.module.css";
 
@@ -131,6 +131,9 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   function changeDependent(index: number, key: keyof Dependent, value: string) {
     setValues(previous => ({ ...previous, dependents: previous.dependents.map((entry, i) => i === index ? { ...entry, [key]: value } : entry) }));
   }
+  function changeHouseholderRelation(value: string) {
+    setValues(previous => ({ ...previous, householder_relation: value, householder_name: value === "本人" ? previous.name : previous.householder_name }));
+  }
   function relationSelectValue(value: string) {
     if (!value) return "";
     return (RELATIONSHIP_OPTIONS as readonly string[]).includes(value) ? value : "その他";
@@ -211,6 +214,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         : key === "employment_insurance_status" ? <select id={`field-${key}`} value={values[key]} onChange={event => change(key, event.target.value)}><option value="">選んでください</option><option value="yes">あり</option><option value="no">なし</option><option value="unknown">わからない</option></select>
         : key === "commute_method" ? <select id={`field-${key}`} value={values[key]} onChange={event => change(key, event.target.value)}><option value="">選んでください</option>{COMMUTE_METHOD_OPTIONS.map(label => <option key={label}>{label}</option>)}</select>
         : key === "account_type" ? <select id={`field-${key}`} value={values[key]} onChange={event => change(key, event.target.value)}><option value="">選んでください</option>{ACCOUNT_TYPE_OPTIONS.map(label => <option key={label}>{label}</option>)}</select>
+        : key === "householder_relation" ? <select id={`field-${key}`} value={values[key]} onChange={event => changeHouseholderRelation(event.target.value)}><option value="">選んでください</option>{HOUSEHOLDER_RELATION_OPTIONS.map(label => <option key={label}>{label}</option>)}</select>
         : key === "emergency_relation" ? relationshipSelect(values[key], value => change(key, value), `field-${key}`)
         : key === "emergency_relation_other" && relationSelectValue(values.emergency_relation) !== "その他" ? null
         : key === "bank_name" ? lookupField(key, "調べる", lookupBank)
@@ -246,6 +250,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
       <fieldset disabled={busy} className={styles.fields}>
         {step !== 2 && step !== 9 && step !== 10 && STEP_FIELDS[step].filter(key => (key !== "employment_insurance_number" || values.employment_insurance_status === "yes") && (key !== "emergency_relation_other" || relationSelectValue(values.emergency_relation) === "その他")).map(field)}
         {step === 2 && <>
+          {STEP_FIELDS[2].map(key => <div key={key}>{field(key)}{key === "householder_relation" ? <span className={styles.hint}>ご本人が世帯主なら「本人」を選んでください</span> : null}</div>)}
           <label className={styles.field}>扶養している家族はいますか<select value={hasFamily ? "yes" : "no"} onChange={event => { const yes = event.target.value === "yes"; setHasFamily(yes); setValues(previous => ({ ...previous, dependents: yes ? previous.dependents.length ? previous.dependents : [emptyDependent()] : [] })); }}><option value="no">いいえ</option><option value="yes">はい</option></select></label>
           {hasFamily && <>
             <p className={styles.noticeLines}>マイナンバーは、税と社会保険の手続きにだけ使います。{"\n"}入力後は、下4桁だけが表示されます。</p>

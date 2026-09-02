@@ -1,4 +1,4 @@
-import type { OnboardingInput } from "./onboarding";
+import type { Dependent, OnboardingInput } from "./onboarding";
 
 export type WarekiDate = {
   era: "明" | "大" | "昭" | "平" | "令";
@@ -38,7 +38,43 @@ export function splitPostalCode(value: string) {
 }
 
 export function hasSpouse(values: Pick<OnboardingInput, "dependents">) {
-  return values.dependents.some((dependent) => dependent.relation.trim() === "配偶者");
+  return values.dependents.some((dependent) => isSpouse(dependent));
+}
+
+export function isSpouse(dependent: Pick<Dependent, "relation">) {
+  return dependent.relation.trim() === "配偶者";
+}
+
+function validBirthDate(value: string) {
+  return validYmd(value);
+}
+
+export function isDependentUnder16ForReiwa8(dependent: Pick<Dependent, "birth_date">) {
+  const birthDate = validBirthDate(dependent.birth_date);
+  return Boolean(birthDate && birthDate >= "2011-01-02");
+}
+
+export function isDependent16OrOlderForReiwa8(dependent: Pick<Dependent, "birth_date">) {
+  const birthDate = validBirthDate(dependent.birth_date);
+  return Boolean(birthDate && birthDate < "2011-01-02");
+}
+
+export function splitFuyouDependents(values: Pick<OnboardingInput, "dependents">) {
+  const spouses = values.dependents.filter(isSpouse);
+  const nonSpouses = values.dependents.filter((dependent) => !isSpouse(dependent));
+  const adultDependents = nonSpouses.filter(isDependent16OrOlderForReiwa8);
+  const under16Dependents = nonSpouses.filter(isDependentUnder16ForReiwa8);
+  return {
+    spouse: spouses[0] ?? null,
+    adultDependents: adultDependents.slice(0, 4),
+    under16Dependents: under16Dependents.slice(0, 2),
+    manualAdditionCount: Math.max(0, spouses.length - 1) + Math.max(0, adultDependents.length - 4) + under16Dependents.length,
+  };
+}
+
+export function fuyouManualAdditionNotice(values: Pick<OnboardingInput, "dependents">) {
+  const count = splitFuyouDependents(values).manualAdditionCount;
+  return count > 0 ? `${count}人分は用紙に入りきらないため手書きで足してください` : "";
 }
 
 export function fuyouPdfFilename(name: string) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyInput } from "./onboarding";
-import { fuyouPdfFilename, hasSpouse, safeFuyouErrorMessage, splitPostalCode, toWarekiDate } from "./fuyou-pdf";
+import { fuyouManualAdditionNotice, fuyouPdfFilename, hasSpouse, safeFuyouErrorMessage, splitFuyouDependents, splitPostalCode, toWarekiDate } from "./fuyou-pdf";
 
 describe("扶養控除申告書PDFの値変換", () => {
   it.each([
@@ -26,6 +26,26 @@ describe("扶養控除申告書PDFの値変換", () => {
     expect(hasSpouse(values)).toBe(false);
     values.dependents = [{ name: "家族", name_kana: "", my_number: "", relation: "配偶者", birth_date: "", annual_income: "", occupation: "" }];
     expect(hasSpouse(values)).toBe(true);
+  });
+
+  it("配偶者をA欄、16歳以上をB欄、16歳未満とあふれを手書き扱いに振り分ける", () => {
+    const values = emptyInput();
+    values.dependents = [
+      { name: "配偶者", name_kana: "", my_number: "", relation: "配偶者", birth_date: "1990-01-01", annual_income: "", occupation: "" },
+      { name: "境目でB欄", name_kana: "", my_number: "", relation: "子", birth_date: "2011-01-01", annual_income: "", occupation: "" },
+      { name: "16歳未満", name_kana: "", my_number: "", relation: "子", birth_date: "2011-01-02", annual_income: "", occupation: "" },
+      { name: "B2", name_kana: "", my_number: "", relation: "父", birth_date: "1970-01-01", annual_income: "", occupation: "" },
+      { name: "B3", name_kana: "", my_number: "", relation: "母", birth_date: "1971-01-01", annual_income: "", occupation: "" },
+      { name: "B4", name_kana: "", my_number: "", relation: "祖父", birth_date: "1940-01-01", annual_income: "", occupation: "" },
+      { name: "あふれ", name_kana: "", my_number: "", relation: "祖母", birth_date: "1941-01-01", annual_income: "", occupation: "" },
+    ];
+
+    const result = splitFuyouDependents(values);
+    expect(result.spouse?.name).toBe("配偶者");
+    expect(result.adultDependents.map(dependent => dependent.name)).toEqual(["境目でB欄", "B2", "B3", "B4"]);
+    expect(result.under16Dependents.map(dependent => dependent.name)).toEqual(["16歳未満"]);
+    expect(result.manualAdditionCount).toBe(2);
+    expect(fuyouManualAdditionNotice(values)).toBe("2人分は用紙に入りきらないため手書きで足してください");
   });
 
   it("ファイル名の氏名からスペースを抜き、失敗理由は利用者向け文言だけにする", () => {

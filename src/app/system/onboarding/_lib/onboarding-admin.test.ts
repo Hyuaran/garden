@@ -63,6 +63,8 @@ describe("入社手続きの事務画面", () => {
     values.nda_agreed = true;
     const missing = missingOnboardingItems(values);
     expect(missing).toContain("性別");
+    expect(missing).toContain("世帯主の氏名");
+    expect(missing).toContain("世帯主との続柄");
     expect(missing).toContain("基礎年金番号");
     expect(missing).toContain("緊急連絡先の電話番号");
     expect(missing).not.toContain("雇用保険被保険者番号");

@@ -1,4 +1,4 @@
-import { commuteTotals, parseAmount, type OnboardingInput } from "./onboarding";
+import { commuteTotals, normalizeAmountText, parseAmount, type Dependent, type OnboardingInput } from "./onboarding";
 import type { AdminInput, AdminOnboardingRecord } from "./onboarding-admin";
 import { toWarekiDate } from "./fuyou-pdf";
 
@@ -32,6 +32,34 @@ export type RenrakuhyoValues = {
   commute_round: string;
   tax: string;
   weekly: string;
+  dependent1_kana: string;
+  dependent1_name: string;
+  dependent1_mynumber: string;
+  dependent1_relation: string;
+  dependent1_birth: string;
+  dependent1_income: string;
+  dependent1_occupation: string;
+  dependent2_kana: string;
+  dependent2_name: string;
+  dependent2_mynumber: string;
+  dependent2_relation: string;
+  dependent2_birth: string;
+  dependent2_income: string;
+  dependent2_occupation: string;
+  dependent3_kana: string;
+  dependent3_name: string;
+  dependent3_mynumber: string;
+  dependent3_relation: string;
+  dependent3_birth: string;
+  dependent3_income: string;
+  dependent3_occupation: string;
+  dependent4_kana: string;
+  dependent4_name: string;
+  dependent4_mynumber: string;
+  dependent4_relation: string;
+  dependent4_birth: string;
+  dependent4_income: string;
+  dependent4_occupation: string;
 };
 
 export const RENRAKUHYO_EXCEL_CELLS: Record<keyof RenrakuhyoValues, string> = {
@@ -60,6 +88,34 @@ export const RENRAKUHYO_EXCEL_CELLS: Record<keyof RenrakuhyoValues, string> = {
   commute_round: "G46",
   tax: "C48",
   weekly: "H51",
+  dependent1_kana: "D17",
+  dependent1_name: "D18",
+  dependent1_mynumber: "D19",
+  dependent1_relation: "F17",
+  dependent1_birth: "G17",
+  dependent1_income: "H17",
+  dependent1_occupation: "I17",
+  dependent2_kana: "D20",
+  dependent2_name: "D21",
+  dependent2_mynumber: "D22",
+  dependent2_relation: "F20",
+  dependent2_birth: "G20",
+  dependent2_income: "H20",
+  dependent2_occupation: "I20",
+  dependent3_kana: "D23",
+  dependent3_name: "D24",
+  dependent3_mynumber: "D25",
+  dependent3_relation: "F23",
+  dependent3_birth: "G23",
+  dependent3_income: "H23",
+  dependent3_occupation: "I23",
+  dependent4_kana: "D26",
+  dependent4_name: "D27",
+  dependent4_mynumber: "D28",
+  dependent4_relation: "F26",
+  dependent4_birth: "G26",
+  dependent4_income: "H26",
+  dependent4_occupation: "I26",
 };
 
 export const RENRAKUHYO_PDF_FIELDS: Array<{ key: keyof RenrakuhyoValues; x: number; y: number; align: "left" | "center" }> = [
@@ -149,6 +205,37 @@ export function formatEmploymentInsuranceNumber(value: string) {
 function commaAmount(value: string) {
   const amount = parseAmount(value);
   return amount > 0 ? amount.toLocaleString("ja-JP") : "";
+}
+
+function dependentCommaAmount(value: string) {
+  const digits = normalizeAmountText(value);
+  return digits ? Number(digits).toLocaleString("ja-JP") : "";
+}
+
+function dependentMyNumber(value: string) {
+  const formatted = /^\d{12}$/.test(digits(value)) ? formatMyNumber(value) : "";
+  return formatted ? `マイナンバー（ ${formatted} ）` : "";
+}
+
+function dependentValues(dependents: Dependent[]) {
+  return Object.fromEntries(Array.from({ length: 4 }, (_, index) => {
+    const dependent = dependents[index];
+    const row = index + 1;
+    return [
+      [`dependent${row}_kana`, dependent?.name_kana ?? ""],
+      [`dependent${row}_name`, dependent?.name ?? ""],
+      [`dependent${row}_mynumber`, dependent ? dependentMyNumber(dependent.my_number) : ""],
+      [`dependent${row}_relation`, dependent?.relation ?? ""],
+      [`dependent${row}_birth`, dependent ? formatPlainJapaneseDate(dependent.birth_date) : ""],
+      [`dependent${row}_income`, dependent ? dependentCommaAmount(dependent.annual_income) : ""],
+      [`dependent${row}_occupation`, dependent?.occupation ?? ""],
+    ];
+  }).flat()) as Pick<RenrakuhyoValues,
+    "dependent1_kana" | "dependent1_name" | "dependent1_mynumber" | "dependent1_relation" | "dependent1_birth" | "dependent1_income" | "dependent1_occupation" |
+    "dependent2_kana" | "dependent2_name" | "dependent2_mynumber" | "dependent2_relation" | "dependent2_birth" | "dependent2_income" | "dependent2_occupation" |
+    "dependent3_kana" | "dependent3_name" | "dependent3_mynumber" | "dependent3_relation" | "dependent3_birth" | "dependent3_income" | "dependent3_occupation" |
+    "dependent4_kana" | "dependent4_name" | "dependent4_mynumber" | "dependent4_relation" | "dependent4_birth" | "dependent4_income" | "dependent4_occupation"
+  >;
 }
 
 function insuranceStatus(admin: AdminInput) {
@@ -241,6 +328,7 @@ export function buildRenrakuhyoValues(record: AdminOnboardingRecord, company: Re
     commute_round: commuteRound(values, admin),
     tax: taxClass(admin.tax_class),
     weekly: admin.weekly_hours,
+    ...dependentValues(values.dependents),
   };
 }
 

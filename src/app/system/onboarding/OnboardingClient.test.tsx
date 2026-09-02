@@ -119,6 +119,21 @@ describe("11画面の入社手続き", () => {
     expect(screen.getByLabelText("氏名")).toHaveValue("残す家族");
     await next(3); expect(requests.at(-1)?.values.dependents).toHaveLength(1);
   });
+  it("世帯主との続柄で本人を選ぶと氏名を自動入力し、あとから直せる", async () => {
+    const record = initial();
+    record.values.name = "吉田 陽菜";
+    render(<OnboardingClient initial={record} />);
+    await next(1); await next(2);
+
+    expect(screen.getByLabelText("世帯主の氏名")).toHaveValue("");
+    fireEvent.change(screen.getByLabelText("世帯主との続柄"), { target: { value: "本人" } });
+    expect(screen.getByLabelText("世帯主の氏名")).toHaveValue("吉田 陽菜");
+
+    fireEvent.change(screen.getByLabelText("世帯主の氏名"), { target: { value: "吉田 修正" } });
+    await next(3);
+    expect(requests.at(-1)?.values.householder_relation).toBe("本人");
+    expect(requests.at(-1)?.values.householder_name).toBe("吉田 修正");
+  });
   it("扶養家族ごとにマイナンバーを入力でき、保存済み表示は行ごとに下4桁だけになり入れ直せる", async () => {
     const record = initial();
     record.values.dependents = [

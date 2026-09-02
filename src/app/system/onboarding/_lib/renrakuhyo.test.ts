@@ -9,6 +9,7 @@ import {
   formatPhone,
   formatPlainJapaneseDate,
   formatPostalCode,
+  RENRAKUHYO_EXCEL_CELLS,
   formatWarekiHireDate,
   renrakuhyoBaseName,
   safeRenrakuhyoErrorMessage,
@@ -79,7 +80,61 @@ describe("入社連絡表の値変換", () => {
       commute_round: "460",
       tax: "税区分　：　甲（扶養控除等異動申告書の提出あり）",
       weekly: "40",
+      dependent1_kana: "",
+      dependent1_name: "",
+      dependent1_mynumber: "",
+      dependent1_relation: "",
+      dependent1_birth: "",
+      dependent1_income: "",
+      dependent1_occupation: "",
+      dependent2_kana: "",
+      dependent2_name: "",
+      dependent2_mynumber: "",
+      dependent2_relation: "",
+      dependent2_birth: "",
+      dependent2_income: "",
+      dependent2_occupation: "",
+      dependent3_kana: "",
+      dependent3_name: "",
+      dependent3_mynumber: "",
+      dependent3_relation: "",
+      dependent3_birth: "",
+      dependent3_income: "",
+      dependent3_occupation: "",
+      dependent4_kana: "",
+      dependent4_name: "",
+      dependent4_mynumber: "",
+      dependent4_relation: "",
+      dependent4_birth: "",
+      dependent4_income: "",
+      dependent4_occupation: "",
     });
+  });
+
+  it("Excel用の扶養家族を上から最大4人分作り、マイナンバーをかっこの中に入れる", () => {
+    const base = record();
+    base.values.dependents = [
+      { name: "家族1", name_kana: "カゾク1", my_number: "111122223333", relation: "配偶者", birth_date: "1990-02-03", annual_income: "0", occupation: "会社員" },
+      { name: "家族2", name_kana: "カゾク2", my_number: "444455556666", relation: "子", birth_date: "2011-01-01", annual_income: "1200000", occupation: "高校1年" },
+      { name: "家族3", name_kana: "カゾク3", my_number: "777788889999", relation: "子", birth_date: "2011-01-02", annual_income: "20,000", occupation: "中学3年" },
+      { name: "家族4", name_kana: "カゾク4", my_number: "000011112222", relation: "母", birth_date: "1960-12-31", annual_income: "", occupation: "" },
+      { name: "家族5", name_kana: "カゾク5", my_number: "333344445555", relation: "父", birth_date: "1959-01-01", annual_income: "999", occupation: "無職" },
+    ];
+
+    const values = buildRenrakuhyoValues(base, { company_name: "G" });
+    expect(values.dependent1_kana).toBe("カゾク1");
+    expect(values.dependent1_name).toBe("家族1");
+    expect(values.dependent1_mynumber).toBe("マイナンバー（ 1111-2222-3333 ）");
+    expect(values.dependent1_relation).toBe("配偶者");
+    expect(values.dependent1_birth).toBe("1990年2月3日");
+    expect(values.dependent1_income).toBe("0");
+    expect(values.dependent1_occupation).toBe("会社員");
+    expect(values.dependent2_income).toBe("1,200,000");
+    expect(values.dependent3_income).toBe("20,000");
+    expect(values.dependent4_mynumber).toBe("マイナンバー（ 0000-1111-2222 ）");
+    expect(values).not.toHaveProperty("dependent5_name");
+    expect(RENRAKUHYO_EXCEL_CELLS.dependent1_kana).toBe("D17");
+    expect(RENRAKUHYO_EXCEL_CELLS.dependent4_occupation).toBe("I26");
   });
 
   it.each([
