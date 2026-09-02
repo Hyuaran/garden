@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import OnboardingAdminDetailClient from "./OnboardingAdminDetailClient";
-import { initialAdminRecord } from "../../_lib/onboarding-admin";
+import { ADMIN_SELECT_OPTIONS, initialAdminRecord } from "../../_lib/onboarding-admin";
 
 const refresh = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
@@ -84,6 +84,29 @@ describe("入社手続きの事務詳細", () => {
     fireEvent.change(screen.getByLabelText("交通費の上限（1か月・円）"), { target: { value: "10,000" } });
 
     expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("14000");
+  });
+
+  it("給与の区分を時間給にすると月額の支給額を空にして、月給に戻すと上限から再計算する", async () => {
+    const record = initialAdminRecord("EMP-001");
+    record.values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "530" }];
+    record.admin.commute_cap_monthly = "15,000";
+    record.admin.commute_fixed_monthly = "14,000";
+    render(<OnboardingAdminDetailClient record={record} />);
+
+    expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("14,000");
+    fireEvent.change(screen.getByLabelText("給与の区分"), { target: { value: ADMIN_SELECT_OPTIONS.salaryKind[1] } });
+
+    expect(screen.queryByLabelText(/支給額（1か月・円）/)).toBeNull();
+    expect(screen.getByLabelText("交通費の上限（1か月・円）")).toHaveValue("15,000");
+    expect(screen.getByText("この額 × 出勤日数 で支給します")).toBeInTheDocument();
+
+    const saveButtons = screen.getAllByRole("button", { name: "保存" });
+    fireEvent.click(saveButtons[saveButtons.length - 1]);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).values.commute_fixed_monthly).toBe("");
+
+    fireEvent.change(screen.getByLabelText("給与の区分"), { target: { value: ADMIN_SELECT_OPTIONS.salaryKind[0] } });
+    expect(screen.getByLabelText(/支給額（1か月・円）/)).toHaveValue("15000");
   });
 
   it("未保存で画面を開いた直後は本人申告額を支給額へ勝手に入れず、空でも保存できる", async () => {

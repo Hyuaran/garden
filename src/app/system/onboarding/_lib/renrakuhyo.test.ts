@@ -271,6 +271,23 @@ describe("入社連絡表の値変換", () => {
     expect(pass("", "")).toBe("");                      // どちらも無ければ空欄
   });
 
+  it("時間給の交通費は定期代欄を空にして往復欄へ片道運賃の2倍を出す", () => {
+    const r = record();
+    r.admin.salary_kind = "時間給";
+    r.admin.commute_fixed_monthly = "15,000";
+    r.admin.commute_cap_monthly = "15,000";
+    r.values.commute_routes = [{ kind: "電車", from_station: "王寺", to_station: "新大宮", line: "近鉄", pass_monthly: "20,000", fare_oneway: "530" }];
+
+    const values = buildRenrakuhyoValues(r, { company_name: "G" });
+    expect(values.commute_pass).toBe("");
+    expect(values.commute_round).toBe("1,060");
+
+    r.values.commute_routes = [{ kind: "徒歩", from_station: "", to_station: "", line: "", pass_monthly: "", fare_oneway: "" }];
+    const emptyFare = buildRenrakuhyoValues(r, { company_name: "G" });
+    expect(emptyFare.commute_pass).toBe("");
+    expect(emptyFare.commute_round).toBe("");
+  });
+
   it("失敗理由は利用者向け日本語だけにする", () => {
     expect(safeRenrakuhyoErrorMessage(500)).toBe("保存先のフォルダに書き込めませんでした。");
     expect(safeRenrakuhyoErrorMessage(500)).not.toMatch(/Drive API|token|scope/i);

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import OnboardingReview from "../../_components/OnboardingReview";
-import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, commutePaymentMonthly, formatCommuteDailyAllowance, formatDeclaredCommuteFareOneway, formatDeclaredCommutePassMonthly, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
+import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, commutePaymentMonthlyForSalaryKind, formatCommuteDailyAllowance, formatDeclaredCommuteFareOneway, formatDeclaredCommutePassMonthly, isHourlySalaryKind, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
 import { formatWarnings, HOUSEHOLDER_RELATION_OPTIONS } from "../../_lib/onboarding";
 import { fuyouManualAdditionNotice } from "../../_lib/fuyou-pdf";
 import { renrakuhyoManualAdditionNotice } from "../../_lib/renrakuhyo";
@@ -18,7 +18,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   const [reviewValues, setReviewValues] = useState(record.values);
   const [admin, setAdmin] = useState<AdminInput>(() => ({
     ...record.admin,
-    commute_fixed_monthly: record.admin.commute_fixed_monthly || commutePaymentMonthly(record.values, record.admin.commute_cap_monthly),
+    commute_fixed_monthly: isHourlySalaryKind(record.admin.salary_kind) ? "" : record.admin.commute_fixed_monthly || commutePaymentMonthlyForSalaryKind(record.values, record.admin.commute_cap_monthly, record.admin.salary_kind),
   }));
   const [commutePaymentEdited, setCommutePaymentEdited] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -50,6 +50,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   const missing = missingOnboardingItems(record.values);
   const fuyouManualNotice = fuyouManualAdditionNotice(reviewValues);
   const renrakuhyoManualNotice = renrakuhyoManualAdditionNotice(reviewValues);
+  const isHourly = isHourlySalaryKind(admin.salary_kind);
 
   function myNumberKey(kind: "self" | "dependent", index?: number) {
     return kind === "self" ? "self" : `dependent-${index ?? -1}`;
@@ -82,6 +83,15 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
 
   function change(key: keyof AdminInput, value: string) {
     setConfirmApply(false);
+    if (key === "salary_kind") {
+      setCommutePaymentEdited(false);
+      setAdmin(previous => ({
+        ...previous,
+        salary_kind: value,
+        commute_fixed_monthly: commutePaymentMonthlyForSalaryKind(record.values, previous.commute_cap_monthly, value),
+      }));
+      return;
+    }
     if (key === "commute_fixed_monthly") {
       setCommutePaymentEdited(true);
       setAdmin(previous => ({ ...previous, commute_fixed_monthly: value }));
@@ -91,7 +101,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
       setAdmin(previous => ({
         ...previous,
         commute_cap_monthly: value,
-        commute_fixed_monthly: commutePaymentEdited ? previous.commute_fixed_monthly : commutePaymentMonthly(record.values, value),
+        commute_fixed_monthly: commutePaymentEdited ? previous.commute_fixed_monthly : commutePaymentMonthlyForSalaryKind(record.values, value, previous.salary_kind),
       }));
       return;
     }
@@ -114,7 +124,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
   }
   async function post(action: "save" | "apply") {
     setBusy(true); setNotice("");
-    const values = { ...admin, allowances: admin.allowances.filter(allowance => allowance.name.trim() || allowance.amount.trim()) };
+    const values = { ...admin, commute_fixed_monthly: isHourly ? "" : admin.commute_fixed_monthly, allowances: admin.allowances.filter(allowance => allowance.name.trim() || allowance.amount.trim()) };
     try {
       const response = await fetch(`/api/system/onboarding/admin/${encodeURIComponent(record.employee.employee_id)}`, {
         method: "POST",
@@ -356,8 +366,8 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
           <div className={styles.field}>本人の申告（1か月定期代）<span>{formatDeclaredCommutePassMonthly(record.values)}</span></div>
           <div className={styles.field}>本人の申告（片道）<span>{formatDeclaredCommuteFareOneway(record.values)}</span></div>
           <label className={styles.field}>交通費の上限（1か月・円）<input value={admin.commute_cap_monthly} maxLength={2000} inputMode="numeric" onChange={event => change("commute_cap_monthly", event.target.value)} /></label>
-          <label className={styles.field}>支給額（1か月・円）<input value={admin.commute_fixed_monthly} maxLength={2000} inputMode="numeric" onChange={event => change("commute_fixed_monthly", event.target.value)} /><span className={styles.hint}>上限以下なら申告額、超えたら上限</span></label>
-          <div className={styles.field}>1日あたり（往復・円）<span>{formatCommuteDailyAllowance(record.values)}</span><span className={styles.hint}>欠勤などで数日だけ出た月と、アルバイトの方は この額 × 出勤日数</span></div>
+          {!isHourly ? <label className={styles.field}>支給額（1か月・円）<input value={admin.commute_fixed_monthly} maxLength={2000} inputMode="numeric" onChange={event => change("commute_fixed_monthly", event.target.value)} /><span className={styles.hint}>上限以下なら申告額、超えたら上限</span></label> : null}
+          <div className={styles.field}>1日あたり（往復・円）<span>{formatCommuteDailyAllowance(record.values)}</span><span className={styles.hint}>{isHourly ? "この額 × 出勤日数 で支給します" : "欠勤などで数日だけ出た月と、アルバイトの方は この額 × 出勤日数"}</span></div>
           <div className={styles.actions}>
             <button type="submit">保存</button>
             <button className={styles.primary} type="button" onClick={() => setConfirmApply(true)}>従業員台帳に反映する</button>

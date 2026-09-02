@@ -1,5 +1,5 @@
 import { commuteTotals, normalizeAmountText, parseAmount, type Dependent, type OnboardingInput } from "./onboarding";
-import type { AdminInput, AdminOnboardingRecord } from "./onboarding-admin";
+import { isHourlySalaryKind, type AdminInput, type AdminOnboardingRecord } from "./onboarding-admin";
 import { toWarekiDate } from "./fuyou-pdf";
 
 export type RenrakuhyoCompany = {
@@ -302,7 +302,8 @@ function totalPay(admin: AdminInput) {
 // 会社が出す1か月の交通費。事務が確定額を入れていればそれ、入れていなければ上限と本人申告の小さいほう。
 // 事務がどちらも入れていないときは空欄にする（本人申告額をそのまま出すと、
 // 上限で減額される場合に違う金額のまま社労士へ渡ってしまうため）。
-function commutePass(values: Pick<OnboardingInput, "commute_routes">, admin: Pick<AdminInput, "commute_fixed_monthly" | "commute_cap_monthly">) {
+function commutePass(values: Pick<OnboardingInput, "commute_routes">, admin: Pick<AdminInput, "salary_kind" | "commute_fixed_monthly" | "commute_cap_monthly">) {
+  if (isHourlySalaryKind(admin.salary_kind)) return "";
   const fixed = parseAmount(admin.commute_fixed_monthly);
   if (fixed > 0) return fixed.toLocaleString("ja-JP");
   const cap = parseAmount(admin.commute_cap_monthly);
@@ -312,7 +313,7 @@ function commutePass(values: Pick<OnboardingInput, "commute_routes">, admin: Pic
   return paid.toLocaleString("ja-JP");
 }
 
-function commuteRound(values: Pick<OnboardingInput, "commute_routes">, admin: Pick<AdminInput, "commute_fixed_monthly" | "commute_cap_monthly">) {
+function commuteRound(values: Pick<OnboardingInput, "commute_routes">, admin: Pick<AdminInput, "salary_kind" | "commute_fixed_monthly" | "commute_cap_monthly">) {
   if (commutePass(values, admin)) return "";
   const total = commuteTotals(values.commute_routes).fareOneway;
   return total > 0 ? (total * 2).toLocaleString("ja-JP") : "";

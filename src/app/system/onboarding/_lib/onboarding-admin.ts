@@ -7,6 +7,10 @@ export const ADMIN_SELECT_OPTIONS = {
   salaryKind: ["月給", "時間給"],
 } as const;
 
+export function isHourlySalaryKind(value: string) {
+  return value === ADMIN_SELECT_OPTIONS.salaryKind[1];
+}
+
 export const ADMIN_ALLOWANCE_LIMIT = 6;
 export const ADMIN_COLUMNS = ["office", "weekly_hours", "health_insurance", "pension_insurance", "employment_insurance", "tax_class", "salary_kind", "base_salary", "allowances", "commute_fixed_monthly", "commute_cap_monthly", "admin_updated_at"] as const;
 
@@ -154,6 +158,10 @@ export function commutePaymentMonthly(values: Pick<OnboardingInput, "commute_rou
   if (cap == null) return "";
   const declared = declaredCommutePassMonthly(values);
   return String(declared == null ? cap : Math.min(declared, cap));
+}
+
+export function commutePaymentMonthlyForSalaryKind(values: Pick<OnboardingInput, "commute_routes">, capText: string, salaryKind: string) {
+  return isHourlySalaryKind(salaryKind) ? "" : commutePaymentMonthly(values, capText);
 }
 
 function missingTextFields(values: OnboardingInput) {

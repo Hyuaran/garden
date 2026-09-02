@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyInput } from "./onboarding";
-import { adminInputFromRow, buildAdminList, commuteDailyAllowance, commutePaymentMonthly, declaredCommuteFareOneway, formatCommuteDailyAllowance, formatDeclaredCommuteFareOneway, missingOnboardingItems, parseAdminEmailInput, parseAdminInput } from "./onboarding-admin";
+import { ADMIN_SELECT_OPTIONS, adminInputFromRow, buildAdminList, commuteDailyAllowance, commutePaymentMonthly, commutePaymentMonthlyForSalaryKind, declaredCommuteFareOneway, formatCommuteDailyAllowance, formatDeclaredCommuteFareOneway, isHourlySalaryKind, missingOnboardingItems, parseAdminEmailInput, parseAdminInput } from "./onboarding-admin";
 
 describe("入社手続きの事務画面", () => {
   it("事務入力は許可した列だけを読み取り、手当は6組までにする", () => {
@@ -44,6 +44,10 @@ describe("入社手続きの事務画面", () => {
     const values = emptyInput();
     values.commute_routes = [{ kind: "電車", from_station: "新大宮", to_station: "本町", line: "近鉄", pass_monthly: "20,000", fare_oneway: "" }];
     expect(commutePaymentMonthly(values, "15,000")).toBe("15000");
+    expect(commutePaymentMonthlyForSalaryKind(values, "15,000", ADMIN_SELECT_OPTIONS.salaryKind[0])).toBe("15000");
+    expect(commutePaymentMonthlyForSalaryKind(values, "15,000", "")).toBe("15000");
+    expect(commutePaymentMonthlyForSalaryKind(values, "15,000", ADMIN_SELECT_OPTIONS.salaryKind[1])).toBe("");
+    expect(isHourlySalaryKind(ADMIN_SELECT_OPTIONS.salaryKind[1])).toBe(true);
 
     values.commute_routes[0].pass_monthly = "１２ ０００";
     expect(commutePaymentMonthly(values, "15,000")).toBe("12000");
