@@ -211,7 +211,7 @@ describe("ShachoShell", () => {
     const nav = screen.getByRole("navigation", { name: "Systemメニュー" });
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
       "ホーム", "資料", "入社手続き", "自分の情報", "勤怠打刻", "シフト", "前確依頼",
-      "テレマ コール集計", "契約書管理", "関電トスポータル",
+      "テレマ コール集計", "契約書管理", "関電トスポータル", "管理表ポータル",
     ]);
     for (const label of ["資料", "シフト", "前確依頼"]) {
       const link = within(nav).getByRole("link", { name: label });

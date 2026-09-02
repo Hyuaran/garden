@@ -51,7 +51,9 @@ describe("system home", () => {
     expect(screen.getByRole("heading", { name: "テレマ コール集計" }).closest("a")).toHaveAttribute("href", "/system/call-metrics");
     expect(screen.getByRole("heading", { name: "契約書管理" }).closest("a")).toHaveAttribute("href", "/system/contracts");
     expect(screen.getByRole("heading", { name: "関電トスポータル" }).closest("a")).toHaveAttribute("href", "/p/toss");
-    expect(screen.getAllByText("準備中")).toHaveLength(4);
+    expect(screen.getByRole("heading", { name: "管理表ポータル" }).closest("a")).toHaveAttribute("href", "/system/kanri");
+    // 管理表ポータルが本物になったので、準備中は 3 つ（コール数配信・テレマ日報・給与試算）
+    expect(screen.getAllByText("準備中")).toHaveLength(3);
   });
   it("does not render the manager-only card for staff", async () => {
     mocks.createServerClient.mockResolvedValue(client("staff"));

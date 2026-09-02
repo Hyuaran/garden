@@ -27,11 +27,11 @@ describe("Systemのサイドバーメニュー", () => {
   });
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-  it("既定ではこれからの4項目を描画せず、件数と線画を表示する", () => {
+  it("既定ではこれからの3項目を描画せず、件数と線画を表示する", () => {
     renderNavigation();
     const button = screen.getByRole("button", { name: /これから/ });
     expect(button).toHaveAttribute("aria-expanded", "false");
-    expect(button).toHaveTextContent("4");
+    expect(button).toHaveTextContent("3");
     expect(button.querySelector("svg path")).not.toBeNull();
     expect(button.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
     for (const item of upcoming) expect(screen.queryByText(item.label)).not.toBeInTheDocument();

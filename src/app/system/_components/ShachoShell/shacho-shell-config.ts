@@ -36,8 +36,9 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "コール数配信", description: "毎日のコール数を決まった時刻に自動でお知らせします。", icon: "message", upcoming: true },
   { label: "テレマ日報", description: "その日の架電の報告をまとめて提出できるようにします。", icon: "report", upcoming: true },
   { label: "給与試算", description: "支給前におおよその金額を確認できるようにします。", icon: "salary", upcoming: true },
-  { label: "管理表ポータル", description: "あちこちに分かれている管理表をひとつの入口にまとめます。", icon: "portal", upcoming: true },
+  { label: "管理表ポータル", description: "毎日の管理表を、手で貼らずに作ります。", icon: "portal", href: "/system/kanri", minRole: "manager" },
 ];
+
 
 export function canUseSystemItem(item: SystemMenuItem, role: GardenRole) {
   return !item.minRole || isRoleAtLeast(role, item.minRole);
