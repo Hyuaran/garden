@@ -39,7 +39,7 @@ export default async function KanriPortalPage() {
   const today = tokyoToday();
   const { yearMonth } = monthRange(today);
   const admin = getSupabaseAdmin();
-  const [runsResult, settingResult] = await Promise.all([
+  const [runsResult, settingResult, pointResult, teamResult] = await Promise.all([
     admin
       .from("system_kanri_run")
       .select("id,target_date,mode,creator_name,status,summary,warnings,started_at,finished_at,created_at")
@@ -50,6 +50,16 @@ export default async function KanriPortalPage() {
       .select("year_month,holidays,updated_at")
       .eq("year_month", yearMonth)
       .maybeSingle(),
+    admin
+      .from("system_kanri_point_master")
+      .select("product,sort_order,active")
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
+    admin
+      .from("system_kanri_team")
+      .select("team,sort_order,active")
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
   ]);
 
   return <KanriPortalClient
@@ -57,5 +67,7 @@ export default async function KanriPortalPage() {
     today={today}
     initialRuns={(runsResult.data ?? []) as KanriRunView[]}
     initialHolidays={(settingResult.data?.holidays ?? []) as string[]}
+    initialProducts={(pointResult.data ?? []).map((item) => String(item.product))}
+    initialTeams={(teamResult.data ?? []).map((item) => String(item.team))}
   />;
 }

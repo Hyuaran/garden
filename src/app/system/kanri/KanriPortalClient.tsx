@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   isMonthEnd,
   monthRange,
@@ -9,6 +9,7 @@ import {
   type KanriWarning,
   weekdayJa,
 } from "./_lib/kanri-core";
+import type { KanriManualInputs, KanriSheetGrid } from "./_lib/calc/kanri-sheet";
 import styles from "./kanri.module.css";
 
 export type KanriRunView = {
@@ -29,6 +30,8 @@ type Props = {
   today: string;
   initialRuns: KanriRunView[];
   initialHolidays: string[];
+  initialProducts: string[];
+  initialTeams: string[];
 };
 
 type RunResponse = {
@@ -40,6 +43,9 @@ type RunResponse = {
   error?: string;
   runs?: KanriRunView[];
   setting?: { holidays?: string[] };
+  inputs?: KanriManualInputs;
+  grid?: KanriSheetGrid;
+  result?: { grid?: KanriSheetGrid };
 };
 
 export function nextModeForDate(targetDate: string, currentMode: KanriMode) {
@@ -80,6 +86,28 @@ function creditBreakdown(summary: KanriSummary) {
   return parts.length ? `（内訳: ${parts.join(" / ")}）` : "";
 }
 
+function emptyInputs(): KanriManualInputs {
+  return { hoursByTeamByDate: {}, openRateByTeamByProduct: {} };
+}
+
+function formatNumber(value: number | null | undefined, digits = 0) {
+  if (value === null || value === undefined) return "—";
+  return new Intl.NumberFormat("ja-JP", { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(value);
+}
+
+function formatRate(value: number | null | undefined) {
+  if (value === null || value === undefined) return "—";
+  return `${formatNumber(value * 100, 1)}%`;
+}
+
+function inputValue(inputs: KanriManualInputs, team: string, date: string) {
+  return inputs.hoursByTeamByDate[team]?.[date] ?? "";
+}
+
+function rateValue(inputs: KanriManualInputs, team: string, product: string) {
+  return inputs.openRateByTeamByProduct[team]?.[product] ?? "";
+}
+
 async function readJson(response: Response): Promise<RunResponse> {
   try {
     return await response.json() as RunResponse;
@@ -88,17 +116,25 @@ async function readJson(response: Response): Promise<RunResponse> {
   }
 }
 
-export default function KanriPortalClient({ creatorName, today, initialRuns, initialHolidays }: Props) {
+export default function KanriPortalClient({ creatorName, today, initialRuns, initialHolidays, initialProducts, initialTeams }: Props) {
   const [targetDate, setTargetDate] = useState(today);
   const [mode, setMode] = useState<KanriMode>(isMonthEnd(today) ? "closing" : "daily");
   const [runs, setRuns] = useState(initialRuns);
   const [latest, setLatest] = useState<KanriRunView | null>(initialRuns[0] ?? null);
   const [holidays, setHolidays] = useState<string[]>(initialHolidays);
   const [message, setMessage] = useState("");
+  const [inputs, setInputs] = useState<KanriManualInputs>(emptyInputs());
+  const [grid, setGrid] = useState<KanriSheetGrid | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [calculating, setCalculating] = useState(false);
   const range = useMemo(() => monthRange(targetDate), [targetDate]);
   const dayCount = Number(range.end.slice(-2));
+  const monthDays = useMemo(() => Array.from({ length: dayCount }, (_, index) => {
+    const day = index + 1;
+    const date = `${range.yearMonth}-${String(day).padStart(2, "0")}`;
+    return { day, date, label: `${Number(range.yearMonth.slice(5))}/${day}（${weekdayJa(date)}）` };
+  }), [dayCount, range.yearMonth]);
 
   async function refreshRuns() {
     const response = await fetch("/api/system/kanri/runs?limit=10");
@@ -116,10 +152,33 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     if (response.ok) setHolidays(json.setting?.holidays ?? []);
   }
 
+  async function loadInputs(nextYearMonth: string) {
+    const response = await fetch(`/api/system/kanri/inputs/${nextYearMonth}`);
+    const json = await readJson(response);
+    if (response.ok) setInputs(json.inputs ?? emptyInputs());
+  }
+
+  async function loadResult(runId: string) {
+    const response = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=kanri`);
+    const json = await readJson(response);
+    if (response.ok && json.result?.grid) setGrid(json.result.grid);
+  }
+
+  useEffect(() => {
+    void loadInputs(range.yearMonth);
+  }, [range.yearMonth]);
+
+  useEffect(() => {
+    if (latest?.id) void loadResult(latest.id);
+  }, [latest?.id]);
+
   function changeDate(nextDate: string) {
     setTargetDate(nextDate);
     setMode((current) => nextModeForDate(nextDate, current));
-    if (monthRange(nextDate).yearMonth !== range.yearMonth) void loadMonthSetting(nextDate);
+    if (monthRange(nextDate).yearMonth !== range.yearMonth) {
+      void loadMonthSetting(nextDate);
+      void loadInputs(monthRange(nextDate).yearMonth);
+    }
   }
 
   async function importData() {
@@ -149,6 +208,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         created_at: new Date().toISOString(),
       });
       await refreshRuns();
+      await loadInputs(range.yearMonth);
     } finally {
       setLoading(false);
     }
@@ -178,6 +238,64 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     }
   }
 
+  function updateHour(team: string, date: string, value: string) {
+    const number = value === "" ? 0 : Number(value);
+    if (!Number.isFinite(number)) return;
+    setInputs((current) => ({
+      ...current,
+      hoursByTeamByDate: {
+        ...current.hoursByTeamByDate,
+        [team]: { ...(current.hoursByTeamByDate[team] ?? {}), [date]: number },
+      },
+    }));
+  }
+
+  function updateRate(team: string, product: string, value: string) {
+    const number = value === "" ? 0 : Number(value);
+    if (!Number.isFinite(number)) return;
+    setInputs((current) => ({
+      ...current,
+      openRateByTeamByProduct: {
+        ...current.openRateByTeamByProduct,
+        [team]: { ...(current.openRateByTeamByProduct[team] ?? {}), [product]: number },
+      },
+    }));
+  }
+
+  async function saveInputs() {
+    setSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/system/kanri/inputs/${range.yearMonth}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inputs }),
+      });
+      const json = await readJson(response);
+      if (!response.ok) setMessage(json.error ?? "入力値を保存できませんでした。");
+      else setInputs(json.inputs ?? inputs);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function calculateSheet() {
+    if (!latest?.id) {
+      setMessage("先にデータを取り込んでください。");
+      return;
+    }
+    setCalculating(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/system/kanri/runs/${latest.id}/calculate`, { method: "POST" });
+      const json = await readJson(response);
+      if (!response.ok || !json.grid) setMessage(json.error ?? "計算できませんでした。");
+      else setGrid(json.grid);
+    } finally {
+      setCalculating(false);
+    }
+  }
+
   const selectedHolidayText = holidays.map((date) => `${Number(date.slice(-2))}日`).join(", ") || "未選択";
 
   return <div className={styles.pageShell}>
@@ -202,6 +320,48 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       </button>
     </section>
 
+    <section className={styles.panel}>
+      <h2>稼働時間と開通率</h2>
+      <div className={styles.monthHeader}>{range.yearMonth.replace("-", "年")}月</div>
+      <div className={styles.inputScroller}>
+        <table className={styles.inputTable}>
+          <thead>
+            <tr>
+              <th>日</th>
+              {initialTeams.map((team) => <th key={team}>{team} h</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {monthDays.map((day) => <tr key={day.date}>
+              <th>{holidays.includes(day.date) ? "定休日" : day.label}</th>
+              {initialTeams.map((team) => <td key={`${team}-${day.date}`}>
+                <input type="number" step="0.1" value={inputValue(inputs, team, day.date)} onChange={(event) => updateHour(team, day.date, event.target.value)} />
+              </td>)}
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+      <div className={styles.inputScroller}>
+        <table className={styles.inputTable}>
+          <thead>
+            <tr>
+              <th>チーム</th>
+              {initialProducts.map((product) => <th key={product}>{product}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {initialTeams.map((team) => <tr key={team}>
+              <th>{team}</th>
+              {initialProducts.map((product) => <td key={`${team}-${product}`}>
+                <input type="number" step="0.01" value={rateValue(inputs, team, product)} onChange={(event) => updateRate(team, product, event.target.value)} />
+              </td>)}
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+      <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>
+    </section>
+
     {message && <p className={styles.message} role="status">{message}</p>}
 
     <section className={styles.panel}>
@@ -224,6 +384,82 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           {(latest.warnings?.length ?? 0) > 0 && <ul>{latest.warnings?.map((warning, index) => <li key={`${warning.code}-${index}`}>{warning.message}</li>)}</ul>}
         </div>
       </> : <p className={styles.empty}>まだ取り込み結果がありません。</p>}
+    </section>
+
+    <section className={styles.panel}>
+      <div className={styles.sectionHeader}>
+        <h2>管理表（計算結果）</h2>
+        <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>
+      </div>
+      <p className={styles.hint}>最新の取り込みをもとに計算します。</p>
+      {grid ? <div className={styles.resultScroller}>
+        <table className={styles.resultTable}>
+          <thead>
+            <tr>
+              <th className={styles.stickyCell}>日</th>
+              <th>全体 h</th>
+              <th>全体 率</th>
+              <th>全体 合計</th>
+              {grid.teams.flatMap((team) => [
+                <th key={`${team}-h`}>{team} h</th>,
+                <th key={`${team}-rate`}>{team} 率</th>,
+                <th key={`${team}-total`}>{team} 合計</th>,
+                ...grid.products.map((product) => <th key={`${team}-${product}`}>{product}</th>),
+              ])}
+            </tr>
+          </thead>
+          <tbody>
+            <tr className={styles.totalRow}>
+              <th className={styles.stickyCell}>実数</th>
+              <td>{formatNumber(grid.totals.all.hours, 1)}</td>
+              <td>{formatRate(grid.totals.all.efficiency)}</td>
+              <td>{formatNumber(grid.totals.all.total)}</td>
+              {grid.teams.flatMap((team) => [
+                <td key={`total-${team}-h`}>{formatNumber(grid.totals.teams[team].hours, 1)}</td>,
+                <td key={`total-${team}-rate`}>{formatRate(grid.totals.teams[team].efficiency)}</td>,
+                <td key={`total-${team}-total`}>{formatNumber(grid.totals.teams[team].total)}</td>,
+                ...grid.products.map((product) => <td key={`total-${team}-${product}`}>{formatNumber(grid.totals.teams[team].products[product])}</td>),
+              ])}
+            </tr>
+            <tr className={styles.totalRow}>
+              <th className={styles.stickyCell}>ポイント</th>
+              <td>—</td>
+              <td>{formatNumber(grid.totals.all.pointEfficiency, 1)}</td>
+              <td>{formatNumber(grid.totals.all.points, 1)}</td>
+              {grid.teams.flatMap((team) => [
+                <td key={`points-${team}-h`}>—</td>,
+                <td key={`points-${team}-rate`}>{formatNumber(grid.totals.teams[team].hours === 0 ? null : grid.totals.teams[team].points / grid.totals.teams[team].hours, 1)}</td>,
+                <td key={`points-${team}-total`}>{formatNumber(grid.totals.teams[team].points, 1)}</td>,
+                ...grid.products.map((product) => <td key={`points-${team}-${product}`}>{formatNumber(grid.totals.teams[team].pointsByProduct[product], 1)}</td>),
+              ])}
+            </tr>
+            <tr className={styles.totalRow}>
+              <th className={styles.stickyCell}>額</th>
+              <td>{formatNumber(grid.totals.all.amountPerHour)}</td>
+              <td>—</td>
+              <td>{formatNumber(grid.totals.all.amount)}</td>
+              {grid.teams.flatMap((team) => [
+                <td key={`amount-${team}-h`}>{formatNumber(grid.totals.teams[team].hours === 0 ? null : grid.totals.teams[team].amount / grid.totals.teams[team].hours)}</td>,
+                <td key={`amount-${team}-rate`}>—</td>,
+                <td key={`amount-${team}-total`}>{formatNumber(grid.totals.teams[team].amount)}</td>,
+                ...grid.products.map((product) => <td key={`amount-${team}-${product}`}>{formatNumber(grid.totals.teams[team].amountByProduct[product])}</td>),
+              ])}
+            </tr>
+            {grid.days.map((day) => <tr key={day.date}>
+              <th className={styles.stickyCell}>{day.day === "定休日" ? "定休日" : `${Number(day.date.slice(5, 7))}/${Number(day.date.slice(8, 10))}（${day.weekday}）`}</th>
+              <td>{formatNumber(day.all.hours, 1)}</td>
+              <td>{formatRate(day.all.efficiency)}</td>
+              <td>{formatNumber(day.all.total)}</td>
+              {grid.teams.flatMap((team) => [
+                <td key={`${day.date}-${team}-h`}>{formatNumber(day.teams[team].hours, 1)}</td>,
+                <td key={`${day.date}-${team}-rate`}>{formatRate(day.teams[team].efficiency)}</td>,
+                <td key={`${day.date}-${team}-total`}>{formatNumber(day.teams[team].total)}</td>,
+                ...grid.products.map((product) => <td key={`${day.date}-${team}-${product}`}>{formatNumber(day.teams[team].products[product])}</td>),
+              ])}
+            </tr>)}
+          </tbody>
+        </table>
+      </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
     </section>
 
     <section className={styles.panel}>
