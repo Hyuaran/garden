@@ -33,3 +33,9 @@ export const TIMER_POLL_INTERVAL_MS = IS_DEV
 
 /** 開発モードバッジ表示判定 */
 export const IS_DEV_MODE = IS_DEV;
+
+export const SESSION_TIMER_EXCLUDED_PATHS = ["/system/kanri/display"];
+
+export function isSessionTimerExcluded(pathname: string) {
+  return SESSION_TIMER_EXCLUDED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}

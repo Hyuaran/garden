@@ -6,6 +6,7 @@ import {
   DEVELOPMENT_WARNING_OFFSET_MS,
   PRODUCTION_SESSION_TIMEOUT_MS,
   PRODUCTION_WARNING_OFFSET_MS,
+  isSessionTimerExcluded,
 } from "./session-timer";
 
 describe("Root session timer constants", () => {
@@ -18,5 +19,10 @@ describe("Root session timer constants", () => {
   it("本番値は2時間・残り10分のまま", () => {
     expect(PRODUCTION_SESSION_TIMEOUT_MS).toBe(2 * 60 * 60 * 1000);
     expect(PRODUCTION_WARNING_OFFSET_MS).toBe(10 * 60 * 1000);
+  });
+
+  it("管理表のモニター表示は無操作タイマーの対象外", () => {
+    expect(isSessionTimerExcluded("/system/kanri/display")).toBe(true);
+    expect(isSessionTimerExcluded("/system/kanri")).toBe(false);
   });
 });

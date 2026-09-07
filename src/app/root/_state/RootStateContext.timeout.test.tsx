@@ -20,6 +20,7 @@ vi.mock("../_lib/session-timer", () => ({
   SESSION_TIMEOUT_MS: 300_000,
   WARNING_OFFSET_MS: 60_000,
   TIMER_POLL_INTERVAL_MS: 1_000,
+  isSessionTimerExcluded: () => false,
 }));
 
 import { RootStateProvider, useRootState } from "./RootStateContext";

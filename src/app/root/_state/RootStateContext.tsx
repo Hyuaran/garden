@@ -41,6 +41,7 @@ import {
 import { writeAudit } from "../_lib/audit";
 import { fetchRootUser, type RootUser } from "../_lib/queries";
 import {
+  isSessionTimerExcluded,
   SESSION_TIMEOUT_MS,
   TIMER_POLL_INTERVAL_MS,
   WARNING_OFFSET_MS,
@@ -179,6 +180,7 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
   // ユーザー操作でタイマー延長
   useEffect(() => {
     if (!isAuthenticated) return;
+    if (isSessionTimerExcluded(window.location.pathname)) return;
     const handler = () => {
       touchRootSession();
       // 警告表示中でも操作があれば閉じる
@@ -204,6 +206,7 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
+    if (isSessionTimerExcluded(window.location.pathname)) return;
     timerRef.current = setInterval(() => {
       const elapsed = getSessionElapsedMs();
       const remaining = SESSION_TIMEOUT_MS - elapsed;

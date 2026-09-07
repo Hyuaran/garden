@@ -7,10 +7,15 @@
 
 import { touchForestSession, isForestUnlocked } from "./auth";
 
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const CHECK_INTERVAL_MS = 60 * 1000; // 1分ごとにチェック
+export const SESSION_TIMER_EXCLUDED_PATHS = ["/system/kanri/display"];
+
+export function isSessionTimerExcluded(pathname: string) {
+  return SESSION_TIMER_EXCLUDED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
 
 export function startSessionTimer(onTimeout: () => void): () => void {
+  if (isSessionTimerExcluded(window.location.pathname)) return () => {};
   const events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
 
   const handleActivity = () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   isMonthEnd,
@@ -651,6 +652,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       <p className={styles.eyebrow}>System / 管理表ポータル</p>
       <h1>管理表ポータル</h1>
     </header>
+    <div className={styles.monitorEntry}>
+      <Link href="/system/kanri/display" target="_blank" rel="noreferrer" className={styles.monitorButton}>モニター表示</Link>
+    </div>
 
     {canWrite && <section className={styles.panel}>
       <p className={styles.greeting}>お疲れ様です。{formatDate(targetDate)}の管理表を {creatorName} が作成します。</p>
