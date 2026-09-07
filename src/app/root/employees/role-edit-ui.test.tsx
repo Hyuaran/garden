@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   canWrite: true,
-  operatorRole: "super_admin" as "super_admin" | "admin" | "manager",
+  operatorRole: "super_admin" as "super_admin" | "admin" | "manager" | "staff",
   fetchEmployees: vi.fn(),
   fetchCompanies: vi.fn(),
   fetchSalarySystems: vi.fn(),
@@ -40,6 +40,8 @@ import EmployeesPage from "./page";
 import { GardenRoleField } from "./GardenRoleField";
 import { VALIDATION_ERROR_BANNER } from "../_lib/validators";
 
+const CHATWORK_TEST_TOKEN = ["01234567", "89abcdef", "01234567", "89abcdef"].join("");
+
 const employee = {
   employee_id: "EMP-1404",
   employee_number: "1404",
@@ -71,6 +73,9 @@ const employee = {
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
   garden_role: "staff" as const,
+  chatwork_api_token_enc: null,
+  chatwork_account_name: null,
+  chatwork_token_updated_at: null,
 };
 
 const employeeWithoutBank = {
@@ -113,6 +118,10 @@ describe("Garden権限の編集UI", () => {
     mocks.upsertEmployee.mockResolvedValue(undefined);
     mocks.updateEmployeeGardenRole.mockResolvedValue(undefined);
     mocks.audit.mockResolvedValue(undefined);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ registered: false, accountName: null, updatedAt: null }),
+    }));
   });
 
   it("全権管理者には指定順の日本語選択肢だけを編集可能で表示する", () => {
@@ -172,6 +181,47 @@ describe("Garden権限の編集UI", () => {
     expect(mocks.upsertEmployee).toHaveBeenCalledWith(
       expect.objectContaining({ employee_id: "EMP-1404", garden_role: "closer" }),
     );
+  });
+
+  it("manager 未満には Chatwork 連携欄を表示しない", async () => {
+    mocks.operatorRole = "staff";
+    renderPage();
+    await openEmployee();
+    expect(screen.queryByText("Chatwork 連携")).not.toBeInTheDocument();
+  });
+
+  it("Chatwork トークン保存後に入力を空にして登録済み状態を表示する", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ registered: false, accountName: null, updatedAt: null }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          ok: true,
+          accountName: "金亜奈",
+          updatedAt: "2026-09-07T10:38:00.000Z",
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderPage();
+    await openEmployee();
+    expect(await screen.findByText("Chatwork 連携")).toBeInTheDocument();
+
+    const tokenInput = screen.getByLabelText("API トークン") as HTMLInputElement;
+    fireEvent.change(tokenInput, { target: { value: CHATWORK_TEST_TOKEN } });
+    fireEvent.click(screen.getByRole("button", { name: "接続を確認して保存" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/root/employees/EMP-1404/chatwork-token",
+      expect.objectContaining({ method: "PUT" }),
+    ));
+    expect(await screen.findByText(/登録済み/)).toBeInTheDocument();
+    expect(screen.getByText(/Chatwork 表示名：金亜奈/)).toBeInTheDocument();
+    expect(tokenInput).toHaveValue("");
+    expect(document.body.textContent).not.toContain(CHATWORK_TEST_TOKEN);
   });
 
   it("DB拒否時は開発者向け文字列を伏せて操作方法を表示する", async () => {
@@ -266,6 +316,7 @@ describe("Garden権限の編集UI", () => {
 
     it("編集権限がなければ退職者の編集・状態切り替えもできない", async () => {
       mocks.canWrite = false;
+      mocks.operatorRole = "staff";
       mocks.fetchEmployees.mockResolvedValue([{ ...employeeWithoutBank, termination_date: "2026-06-30" }]);
       renderPage();
       expect(await screen.findByRole("button", { name: "編集" })).toBeDisabled();

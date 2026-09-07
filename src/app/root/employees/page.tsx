@@ -69,6 +69,18 @@ type ChatworkTokenSyncResult = {
   retired: number;
 };
 
+type ChatworkTokenStatus = {
+  registered: boolean;
+  accountName: string | null;
+  updatedAt: string | null;
+};
+
+const emptyChatworkTokenStatus: ChatworkTokenStatus = {
+  registered: false,
+  accountName: null,
+  updatedAt: null,
+};
+
 const empty = (nextId: string, companyId: string, salarySystemId: string): Employee => ({
   employee_id: nextId,
   employee_number: "",
@@ -137,8 +149,20 @@ export default function EmployeesPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [tokenSyncing, setTokenSyncing] = useState(false);
   const [tokenSyncResult, setTokenSyncResult] = useState<ChatworkTokenSyncResult | null>(null);
+  const [chatworkTokenStatus, setChatworkTokenStatus] = useState<ChatworkTokenStatus>(emptyChatworkTokenStatus);
+  const [chatworkTokenInput, setChatworkTokenInput] = useState("");
+  const [chatworkTokenLoading, setChatworkTokenLoading] = useState(false);
+  const [chatworkTokenSaving, setChatworkTokenSaving] = useState(false);
+  const [chatworkTokenError, setChatworkTokenError] = useState<string | null>(null);
   const bankRequired = editTarget ? isEmployeeBankRequired(editTarget) : true;
   const canSyncChatworkTokens = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "manager") : false;
+  const canManageChatworkToken = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "manager") : false;
+  const canOpenEmployeeModal = canWrite || canManageChatworkToken;
+  const editEmployeeId = editTarget?.employee_id;
+  const editEmployeeCreatedAt = editTarget?.created_at;
+  const editEmployeeTokenRegistered = Boolean(editTarget?.chatwork_api_token_enc);
+  const editEmployeeTokenAccountName = editTarget?.chatwork_account_name ?? null;
+  const editEmployeeTokenUpdatedAt = editTarget?.chatwork_token_updated_at ?? null;
 
   async function load() {
     try {
@@ -150,6 +174,48 @@ export default function EmployeesPage() {
   }
   useEffect(() => { load(); }, []);
   useEffect(() => { if (!editTarget) setErrors({}); }, [editTarget]);
+  useEffect(() => {
+    if (!editEmployeeId) {
+      setChatworkTokenStatus(emptyChatworkTokenStatus);
+      setChatworkTokenInput("");
+      setChatworkTokenError(null);
+      return;
+    }
+    setChatworkTokenStatus({
+      registered: editEmployeeTokenRegistered,
+      accountName: editEmployeeTokenAccountName,
+      updatedAt: editEmployeeTokenUpdatedAt,
+    });
+    setChatworkTokenInput("");
+    setChatworkTokenError(null);
+    if (!canManageChatworkToken || !editEmployeeCreatedAt || !editEmployeeId) return;
+
+    let cancelled = false;
+    setChatworkTokenLoading(true);
+    fetch(`/api/root/employees/${encodeURIComponent(editEmployeeId)}/chatwork-token`)
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "Chatwork 連携の状態を読み込めませんでした");
+        if (!cancelled) setChatworkTokenStatus(body as ChatworkTokenStatus);
+      })
+      .catch((statusError) => {
+        if (!cancelled) {
+          setChatworkTokenError(statusError instanceof Error ? statusError.message : "Chatwork 連携の状態を読み込めませんでした");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setChatworkTokenLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [
+    editEmployeeId,
+    editEmployeeCreatedAt,
+    editEmployeeTokenRegistered,
+    editEmployeeTokenAccountName,
+    editEmployeeTokenUpdatedAt,
+    canManageChatworkToken,
+  ]);
 
   const companyMap = useMemo(() => new Map(companies.map((c) => [c.company_id, c])), [companies]);
   const salaryMap = useMemo(() => new Map(salarySystems.map((s) => [s.salary_system_id, s])), [salarySystems]);
@@ -168,7 +234,7 @@ export default function EmployeesPage() {
     rows: filtered,
     modalOpen: !!editTarget,
     searchRef,
-    onEditRow: canWrite ? setEditTarget : undefined,
+    onEditRow: canOpenEmployeeModal ? setEditTarget : undefined,
   });
 
   async function handleSave() {
@@ -272,6 +338,71 @@ export default function EmployeesPage() {
     }
   }
 
+  function formatChatworkTokenUpdatedAt(value: string | null) {
+    if (!value) return "";
+    return new Date(value).toLocaleString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  async function handleChatworkTokenSave() {
+    if (!editTarget || !canManageChatworkToken) {
+      setChatworkTokenError("責任者以上の権限が必要です");
+      return;
+    }
+    try {
+      setChatworkTokenSaving(true);
+      setChatworkTokenError(null);
+      const response = await fetch(`/api/root/employees/${encodeURIComponent(editTarget.employee_id)}/chatwork-token`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: chatworkTokenInput }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Chatwork 連携を保存できませんでした");
+      setChatworkTokenInput("");
+      setChatworkTokenStatus({
+        registered: true,
+        accountName: body.accountName ?? null,
+        updatedAt: body.updatedAt ?? null,
+      });
+      await load();
+    } catch (saveError) {
+      setChatworkTokenError(saveError instanceof Error ? saveError.message : "Chatwork 連携を保存できませんでした");
+    } finally {
+      setChatworkTokenSaving(false);
+    }
+  }
+
+  async function handleChatworkTokenDelete() {
+    if (!editTarget || !canManageChatworkToken) {
+      setChatworkTokenError("責任者以上の権限が必要です");
+      return;
+    }
+    if (!window.confirm("Chatwork トークンを削除します。よろしいですか。")) return;
+    try {
+      setChatworkTokenSaving(true);
+      setChatworkTokenError(null);
+      const response = await fetch(`/api/root/employees/${encodeURIComponent(editTarget.employee_id)}/chatwork-token`, {
+        method: "DELETE",
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Chatwork 連携を削除できませんでした");
+      setChatworkTokenInput("");
+      setChatworkTokenStatus(emptyChatworkTokenStatus);
+      await load();
+    } catch (deleteError) {
+      setChatworkTokenError(deleteError instanceof Error ? deleteError.message : "Chatwork 連携を削除できませんでした");
+    } finally {
+      setChatworkTokenSaving(false);
+    }
+  }
+
   async function handleRoleChange() {
     if (!roleTarget || rootUser?.garden_role !== "super_admin") return;
     const currentRole = roleTarget.garden_role ?? "staff";
@@ -327,7 +458,7 @@ export default function EmployeesPage() {
     { key: "status", header: "状態", render: (e) => <StatusBadge active={e.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (e) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(e)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button variant="secondary" onClick={() => setEditTarget(e)} disabled={!canOpenEmployeeModal} title={!canOpenEmployeeModal ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
         <Button
           variant="secondary"
           onClick={() => openRoleDialog(e)}
@@ -372,7 +503,7 @@ export default function EmployeesPage() {
         </div>
       )}
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
-      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={filtered} activeIndex={activeIndex} onRowClick={canWrite ? setEditTarget : undefined} />}
+      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={filtered} activeIndex={activeIndex} onRowClick={canOpenEmployeeModal ? setEditTarget : undefined} />}
 
       <Modal
         open={!!roleTarget}
@@ -519,6 +650,50 @@ export default function EmployeesPage() {
               <TextField label="キングオブタイムID" value={editTarget.kot_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, kot_employee_id: e.target.value || null })} />
               <TextField label="MFクラウド給与ID" value={editTarget.mf_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, mf_employee_id: e.target.value || null })} />
             </FormGrid>
+            {canManageChatworkToken && editTarget.created_at && (
+              <section style={{ marginTop: 16, padding: 12, border: `1px solid ${colors.border}`, borderRadius: 6, background: colors.bgPanel }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: colors.textMuted }}>Chatwork 連携</h3>
+                <div style={{ fontSize: 13, color: colors.text, marginBottom: 10 }}>
+                  状態：{chatworkTokenLoading ? "確認中" : chatworkTokenStatus.registered ? (
+                    <>
+                      登録済み
+                      {chatworkTokenStatus.accountName && `（Chatwork 表示名：${chatworkTokenStatus.accountName}${chatworkTokenStatus.updatedAt ? `・${formatChatworkTokenUpdatedAt(chatworkTokenStatus.updatedAt)}` : ""}）`}
+                    </>
+                  ) : "未登録"}
+                  {chatworkTokenStatus.registered && (
+                    <Button
+                      variant="secondary"
+                      onClick={handleChatworkTokenDelete}
+                      disabled={chatworkTokenSaving}
+                      style={{ marginLeft: 12 }}
+                    >
+                      削除
+                    </Button>
+                  )}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "end" }}>
+                  <TextField
+                    label="API トークン"
+                    type="password"
+                    autoComplete="off"
+                    value={chatworkTokenInput}
+                    onChange={(e) => setChatworkTokenInput(e.target.value)}
+                  />
+                  <Button onClick={handleChatworkTokenSave} disabled={chatworkTokenSaving || !chatworkTokenInput.trim()}>
+                    {chatworkTokenSaving ? "確認中..." : "接続を確認して保存"}
+                  </Button>
+                </div>
+                {chatworkTokenError && (
+                  <div role="alert" style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 10px", borderRadius: 4, marginBottom: 8, fontSize: 13 }}>
+                    {chatworkTokenError}
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: colors.textMuted, lineHeight: 1.6 }}>
+                  ※ 本人が Chatwork の「サービス連携 → API Token」で発行したものを貼ります。<br />
+                  Kintone 従業員名簿に登録がある人は名簿からの取り込みが優先されます
+                </div>
+              </section>
+            )}
             <TextareaField label="備考" value={editTarget.notes ?? ""} onChange={(e) => setEditTarget({ ...editTarget, notes: e.target.value || null })} />
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>

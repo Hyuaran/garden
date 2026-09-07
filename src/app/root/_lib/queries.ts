@@ -17,6 +17,41 @@ import type {
   GardenRole,
 } from "../_constants/types";
 
+const ROOT_EMPLOYEE_SELECT_FIELDS = [
+  "employee_id",
+  "employee_number",
+  "name",
+  "name_kana",
+  "company_id",
+  "employment_type",
+  "salary_system_id",
+  "hire_date",
+  "termination_date",
+  "contract_end_on",
+  "kou_otsu",
+  "dependents_count",
+  "deleted_at",
+  "email",
+  "bank_name",
+  "bank_code",
+  "branch_name",
+  "branch_code",
+  "account_type",
+  "account_number",
+  "account_holder",
+  "account_holder_kana",
+  "kot_employee_id",
+  "mf_employee_id",
+  "chatwork_account_name",
+  "chatwork_token_updated_at",
+  "insurance_type",
+  "is_active",
+  "notes",
+  "created_at",
+  "updated_at",
+  "garden_role",
+].join(",");
+
 // ============================================================
 // 共通: トグル is_active
 // ============================================================
@@ -120,11 +155,11 @@ export const setSalarySystemActive = (id: string, active: boolean) =>
 export async function fetchEmployees(): Promise<Employee[]> {
   const { data, error } = await supabase
     .from("root_employees")
-    .select("*")
+    .select(ROOT_EMPLOYEE_SELECT_FIELDS)
     .order("company_id", { ascending: true })
     .order("employee_number", { ascending: true });
   if (error) throw new Error(`fetchEmployees failed: ${error.message}`);
-  return (data ?? []) as Employee[];
+  return (data ?? []) as unknown as Employee[];
 }
 
 export async function upsertEmployee(employee: Partial<Employee> & { employee_id: string }): Promise<void> {
