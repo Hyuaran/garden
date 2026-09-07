@@ -19,8 +19,15 @@ export type KanriSourceSummary = {
   apps?: Record<string, number>;
 };
 
+export type KanriChatworkSummary = {
+  sentAt: string;
+  roomId: string;
+  by: string;
+};
+
 export type KanriSummary = Record<KanriSource, KanriSourceSummary> & {
   total: number;
+  chatwork?: KanriChatworkSummary;
 };
 
 export type KanriSourceRow = {

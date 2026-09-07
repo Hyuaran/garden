@@ -60,6 +60,7 @@ type RunResponse = {
   result?: { grid?: KanriSheetGrid | JissekiSheetGrid | HouhanSheetGrid | AporanSheetGrid | IncentiveSheetGrid | PayrollSheetGrid };
   people?: KanriPerson[];
   kotDaily?: KanriManualInputs["kotDaily"] | null;
+  chatwork?: NonNullable<KanriSummary["chatwork"]>;
 };
 
 export function nextModeForDate(targetDate: string, currentMode: KanriMode) {
@@ -81,6 +82,11 @@ function formatDateTime(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+function chatworkStatusText(summary: KanriSummary | null | undefined) {
+  if (!summary?.chatwork) return "";
+  return `送信済み（${formatDateTime(summary.chatwork.sentAt)}・${summary.chatwork.by}）`;
 }
 
 function statusLabel(status: string) {
@@ -201,6 +207,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const [saving, setSaving] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [excelDownloading, setExcelDownloading] = useState(false);
+  const [chatworkSending, setChatworkSending] = useState(false);
   const [kotFile, setKotFile] = useState<File | null>(null);
   const [kotImporting, setKotImporting] = useState(false);
   const [showKotDetails, setShowKotDetails] = useState(false);
@@ -556,6 +563,34 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     }
   }
 
+  async function sendChatwork() {
+    if (!latest?.id) {
+      setMessage("先にデータを取り込んでください。");
+      return;
+    }
+    if (!canExportExcel) {
+      setMessage("先に「計算する」を押してください");
+      return;
+    }
+    if (latest.summary?.chatwork && !window.confirm("もう一度送りますか")) return;
+
+    setChatworkSending(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/system/kanri/runs/${latest.id}/chatwork`, { method: "POST" });
+      const json = await readJson(response);
+      if (!response.ok || !json.chatwork) {
+        setMessage(json.error ?? "Chatwork に送れませんでした。管理者へ問い合わせてください");
+        return;
+      }
+      const nextSummary = { ...(latest.summary ?? {}), chatwork: json.chatwork } as KanriSummary;
+      setLatest((current) => current ? { ...current, summary: nextSummary } : current);
+      setRuns((current) => current.map((run) => run.id === latest.id ? { ...run, summary: nextSummary } : run));
+    } finally {
+      setChatworkSending(false);
+    }
+  }
+
   async function importKotDaily() {
     if (!latest?.id) {
       setMessage("先にデータを取り込んでください。");
@@ -608,6 +643,8 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const selectedFieldSales = fieldSalesPeople.find((person) => person.name === selectedFieldSalesPerson) ?? fieldSalesPeople[0] ?? null;
   const selectedHouhan = houhan?.people.find((person) => person.personName === selectedFieldSales?.name) ?? houhan?.people[0] ?? null;
   const canExportExcel = Boolean(latest?.id && grid && jisseki && aporan && houhan && incentive && payroll);
+  const chatworkStatus = chatworkStatusText(latest?.summary);
+  const latestImport = latest?.summary?.kintone_customer ? { run: latest, summary: latest.summary } : null;
 
   return <div className={styles.pageShell}>
     <header className={styles.header}>
@@ -636,7 +673,11 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         <button className={styles.secondary} type="button" disabled={excelDownloading || !canExportExcel} onClick={() => void exportExcel()}>
           {excelDownloading ? "書き出しています" : "Excel を書き出す"}
         </button>
+        <button className={styles.secondary} type="button" disabled={chatworkSending || !canExportExcel} onClick={() => void sendChatwork()}>
+          {chatworkSending ? "送っています" : "Chatwork に送る"}
+        </button>
         {!canExportExcel && <span className={styles.actionReason}>計算前は書き出せません</span>}
+        {chatworkStatus && <span className={styles.actionReason}>{chatworkStatus}</span>}
       </div>
     </section>}
 
@@ -742,22 +783,22 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
 
     <section className={styles.panel}>
       <h2>取り込みの結果（最新）</h2>
-      {latest?.summary ? <>
+      {latestImport ? <>
         <div className={styles.resultMeta}>
-          <span>状態: {statusLabel(latest.status)}</span>
-          <span>{formatDateTime(latest.finished_at ?? latest.created_at)}</span>
-          <span>作成者: {latest.creator_name}</span>
+          <span>状態: {statusLabel(latestImport.run.status)}</span>
+          <span>{formatDateTime(latestImport.run.finished_at ?? latestImport.run.created_at)}</span>
+          <span>作成者: {latestImport.run.creator_name}</span>
         </div>
         <dl className={styles.summaryList}>
-          <div><dt>{latest.summary.kintone_customer.label}</dt><dd>{latest.summary.kintone_customer.count}{latest.summary.kintone_customer.unit}</dd></div>
-          <div><dt>{latest.summary.kanden_report.label}</dt><dd>{latest.summary.kanden_report.count}{latest.summary.kanden_report.unit}</dd></div>
-          <div><dt>{latest.summary.credit_card.label}</dt><dd>{latest.summary.credit_card.count}{latest.summary.credit_card.unit}{creditBreakdown(latest.summary)}</dd></div>
-          <div><dt>{latest.summary.roster.label}</dt><dd>{latest.summary.roster.count}{latest.summary.roster.unit}</dd></div>
+          <div><dt>{latestImport.summary.kintone_customer.label}</dt><dd>{latestImport.summary.kintone_customer.count}{latestImport.summary.kintone_customer.unit}</dd></div>
+          <div><dt>{latestImport.summary.kanden_report.label}</dt><dd>{latestImport.summary.kanden_report.count}{latestImport.summary.kanden_report.unit}</dd></div>
+          <div><dt>{latestImport.summary.credit_card.label}</dt><dd>{latestImport.summary.credit_card.count}{latestImport.summary.credit_card.unit}{creditBreakdown(latestImport.summary)}</dd></div>
+          <div><dt>{latestImport.summary.roster.label}</dt><dd>{latestImport.summary.roster.count}{latestImport.summary.roster.unit}</dd></div>
         </dl>
         <div className={styles.warningBlock}>
-          <h3>注意（{latest.warnings?.length ?? 0}件）</h3>
+          <h3>注意（{latestImport.run.warnings?.length ?? 0}件）</h3>
           <p>出せますが、翌日に確認してください</p>
-          {(latest.warnings?.length ?? 0) > 0 && <ul>{latest.warnings?.map((warning, index) => <li key={`${warning.code}-${index}`}>{warning.message}</li>)}</ul>}
+          {(latestImport.run.warnings?.length ?? 0) > 0 && <ul>{latestImport.run.warnings?.map((warning, index) => <li key={`${warning.code}-${index}`}>{warning.message}</li>)}</ul>}
         </div>
       </> : <p className={styles.empty}>まだ取り込み結果がありません。</p>}
     </section>

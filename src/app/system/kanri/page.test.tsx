@@ -33,7 +33,7 @@ describe("KanriPortalPage", () => {
     });
     const { default: Page } = await import("./page");
 
-    render(await Page());
+    render(await Page({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByText("この画面は社員以上が使えます")).toBeInTheDocument();
   });
@@ -66,7 +66,7 @@ describe("KanriPortalPage", () => {
     });
     const { default: Page } = await import("./page");
 
-    render(await Page());
+    render(await Page({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByRole("button", { name: "給与試算" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "管理表" })).not.toBeInTheDocument();

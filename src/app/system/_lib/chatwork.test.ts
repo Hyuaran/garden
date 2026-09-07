@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CallReportChatworkError, sendCallReportMessage, sendCallReportWithAttachment } from "./chatwork";
+import { CallReportChatworkError, sendCallReportMessage, sendCallReportWithAttachment, sendKanriReportMessage } from "./chatwork";
 
 describe("sendCallReportMessage", () => {
   beforeEach(() => { process.env.CHATWORK_API_TOKEN = "test-token"; process.env.CHATWORK_DEV_ROOM_ID = "dev-room"; });
@@ -37,6 +37,32 @@ describe("sendCallReportMessage", () => {
     expect(error.status).toBe(429);
     expect(error.message).toBe("Chatwork API request failed (429)");
     expect(JSON.stringify(error)).not.toContain("secret response body");
+  });
+});
+
+describe("sendKanriReportMessage", () => {
+  beforeEach(() => { process.env.CHATWORK_API_TOKEN = "test-token"; process.env.CHATWORK_DEV_ROOM_ID = "dev-room"; });
+  afterEach(() => { delete process.env.CHATWORK_API_TOKEN; delete process.env.CHATWORK_DEV_ROOM_ID; delete process.env.KANRI_CHATWORK_ROOM_ID; });
+
+  it("prefers the management report room and returns the selected room", async () => {
+    process.env.KANRI_CHATWORK_ROOM_ID = "kanri-room";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const result = await sendKanriReportMessage("管理表", fetchMock);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+
+    expect(url).toBe("https://api.chatwork.com/v2/rooms/kanri-room/messages");
+    expect(init).toMatchObject({ method: "POST", headers: { "X-ChatWorkToken": "test-token", "Content-Type": "application/x-www-form-urlencoded" } });
+    expect((init.body as URLSearchParams).get("body")).toBe("管理表");
+    expect(result.roomId).toBe("kanri-room");
+  });
+
+  it("falls back to the development room", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const result = await sendKanriReportMessage("管理表", fetchMock);
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+
+    expect(url).toBe("https://api.chatwork.com/v2/rooms/dev-room/messages");
+    expect(result.roomId).toBe("dev-room");
   });
 });
 

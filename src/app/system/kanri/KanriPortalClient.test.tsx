@@ -7,6 +7,15 @@ describe("KanriPortalClient", () => {
     vi.unstubAllGlobals();
   });
 
+  const baseSummary = {
+    total: 0,
+    kintone_customer: { label: "光回線（顧客一覧）", count: 0, unit: "件" },
+    kanden_report: { label: "訪販（関電件数報告）", count: 0, unit: "件" },
+    credit_card: { label: "クレジットカード（8アプリ）", count: 0, unit: "件", apps: {} },
+    roster: { label: "従業員名簿（在籍者）", count: 0, unit: "名" },
+    kot_daily: { label: "勤怠（KOT）", count: 0, unit: "行" },
+  };
+
   it("shows actual, point, and amount total rows in the calculated grid", async () => {
     vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
@@ -59,7 +68,7 @@ describe("KanriPortalClient", () => {
         mode: "daily",
         creator_name: "manager",
         status: "fetched",
-        summary: null,
+        summary: baseSummary,
         warnings: null,
         started_at: null,
         finished_at: null,
@@ -95,7 +104,7 @@ describe("KanriPortalClient", () => {
         mode: "daily",
         creator_name: "manager",
         status: "fetched",
-        summary: null,
+        summary: baseSummary,
         warnings: null,
         started_at: null,
         finished_at: null,
@@ -108,7 +117,73 @@ describe("KanriPortalClient", () => {
     />);
 
     expect(screen.getByRole("button", { name: "Excel を書き出す" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Chatwork に送る" })).toBeDisabled();
     expect(screen.getByText("計算前は書き出せません")).toBeInTheDocument();
+  });
+
+  it("sends to Chatwork after calculation and shows sent status", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/calculate")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ok: true,
+          grid: {
+            yearMonth: "2026-09",
+            products: [],
+            teams: [],
+            days: [],
+            totals: { all: { hours: 0, efficiency: null, total: 0, points: 0, amount: 0, pointEfficiency: null, amountPerHour: null }, teams: {} },
+            openRate: {},
+            cellValues: {},
+          },
+          jisseki: { yearMonth: "2026-09", products: [], productColumns: [], rows: [], missingCommuteNames: [], cellValues: {} },
+          houhan: { yearMonth: "2026-09", products: [], people: [], cellValues: {} },
+          aporan: { yearMonth: "2026-09", teamOrder: [], teams: {}, ranking: [], cellValues: {} },
+          incentive: { yearMonth: "2026-09", teamOrder: [], teams: {}, cellValues: {} },
+          payroll: { yearMonth: "2026-09", settings: { baseWage: 1177, trainingWage: 1500 }, period: { start: "2026-09-01", end: "2026-09-30", scheduledPayDate: "2026-10-31" }, rows: [], cellValues: {} },
+        }), { status: 200 }));
+      }
+      if (url.includes("/chatwork")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ok: true,
+          chatwork: { sentAt: "2026-09-07T09:05:00Z", roomId: "room-from-env", by: "manager" },
+        }), { status: 200 }));
+      }
+      if (url.includes("/result")) return Promise.resolve(new Response(JSON.stringify({ ok: false }), { status: 404 }));
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, inputs: { hoursByTeamByDate: {}, openRateByTeamByProduct: {} } }), { status: 200 }));
+    }));
+
+    render(<KanriPortalClient
+      creatorName="manager"
+      today="2026-09-01"
+      initialRuns={[{
+        id: "run-1",
+        target_date: "2026-09-01",
+        mode: "daily",
+        creator_name: "manager",
+        status: "fetched",
+        summary: baseSummary,
+        warnings: null,
+        started_at: null,
+        finished_at: null,
+        created_at: "2026-09-01T00:00:00Z",
+      }]}
+      initialHolidays={[]}
+      initialProducts={[]}
+      initialTeams={[]}
+      initialPeople={[]}
+    />);
+
+    const chatworkButton = screen.getByRole("button", { name: "Chatwork に送る" });
+    expect(chatworkButton).toBeDisabled();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "計算する" })[0]);
+    await waitFor(() => expect(chatworkButton).not.toBeDisabled());
+    fireEvent.click(chatworkButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/送信済み（9\/7 18:05・manager）/)).toBeInTheDocument();
+    });
   });
 
   it("shows jisseki and settings tabs", () => {

@@ -9,7 +9,15 @@ import styles from "./kanri.module.css";
 
 export const metadata = { title: "管理表ポータル | Garden" };
 
-export default async function KanriPortalPage() {
+function validDate(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+export default async function KanriPortalPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string | string[] | undefined }>;
+}) {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Fkanri");
@@ -38,7 +46,9 @@ export default async function KanriPortalPage() {
   }
   const canWrite = isRoleAtLeast(role, "manager");
 
-  const today = tokyoToday();
+  const params = await searchParams;
+  const requestedDate = Array.isArray(params?.date) ? params?.date[0] : params?.date;
+  const today = validDate(requestedDate) ? requestedDate : tokyoToday();
   const { yearMonth } = monthRange(today);
   const admin = getSupabaseAdmin();
   const [runsResult, settingResult, pointResult, teamResult, personResult] = await Promise.all([
