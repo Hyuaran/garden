@@ -36,6 +36,14 @@ describe("KanriPortalClient", () => {
             openRate: { A: { 商品: 0.5 } },
             cellValues: {},
           },
+          jisseki: {
+            yearMonth: "2026-09",
+            products: ["商品"],
+            productColumns: [{ product: "商品", kind: "single", label: "商品" }],
+            rows: [{ personName: "山田　花子", kotName: "山田 花子", wageLabel: "社員", department: "A", team: "A", landingHours: 1, workHours: 2, totalPoints: 3, efficiency: 1.5, workDays: 1, commuteDailyAllowance: 500, missingCommute: false, counts: { "商品:single": 2 } }],
+            missingCommuteNames: [],
+            cellValues: {},
+          },
         }), { status: 200 }));
       }
       if (url.includes("/result")) return Promise.resolve(new Response(JSON.stringify({ ok: false }), { status: 404 }));
@@ -60,6 +68,7 @@ describe("KanriPortalClient", () => {
       initialHolidays={[]}
       initialProducts={["商品"]}
       initialTeams={["A"]}
+      initialPeople={[]}
     />);
 
     const calculateButton = [...screen.getAllByRole("button")].find((button) => button.textContent?.includes("計算"));
@@ -72,5 +81,25 @@ describe("KanriPortalClient", () => {
       expect(screen.getByText("額")).toBeInTheDocument();
       expect(screen.getAllByText("4,000").length).toBeGreaterThan(0);
     });
+  });
+
+  it("shows jisseki and settings tabs", () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ok: true, inputs: { hoursByTeamByDate: {}, openRateByTeamByProduct: {} } }), { status: 200 }))));
+
+    render(<KanriPortalClient
+      creatorName="manager"
+      today="2026-09-01"
+      initialRuns={[]}
+      initialHolidays={[]}
+      initialProducts={["商品"]}
+      initialTeams={["A"]}
+      initialPeople={[{ name: "山田　花子", kot_name: "山田 花子", team: "A", department: "A", employment_kind: "社員", base_wage: null, is_field_sales: false, active: true, sort_order: 10 }]}
+    />);
+
+    fireEvent.click(screen.getByRole("button", { name: "実績管理" }));
+    expect(screen.getByText("人ごとの今月の値")).toBeInTheDocument();
+    expect(screen.getByText((text) => text.replace(/\s/g, "") === "山田花子")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "設定" }));
+    expect(screen.getByText("人の設定")).toBeInTheDocument();
   });
 });

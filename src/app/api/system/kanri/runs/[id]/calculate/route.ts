@@ -3,6 +3,7 @@ import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { monthRange, type KanriSourceRow } from "@/app/system/kanri/_lib/kanri-core";
 import { calculateKanriSheet, type KanriManualInputs, type KanriPointMaster, type KanriTeamMaster } from "@/app/system/kanri/_lib/calc/kanri-sheet";
+import { calculateJissekiSheet, normalizeCommuteMap, type KanriPerson } from "@/app/system/kanri/_lib/calc/jisseki-sheet";
 
 export const runtime = "nodejs";
 
@@ -51,7 +52,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   if (!run) return NextResponse.json({ ok: false, error: "取り込み結果が見つかりません" }, { status: 404 });
 
   const range = monthRange(String(run.target_date));
-  const [sourceResult, settingResult, pointResult, teamResult, inputResult] = await Promise.all([
+  const [sourceResult, settingResult, pointResult, teamResult, inputResult, personResult, employeeResult] = await Promise.all([
     admin
       .from("system_kanri_source_row")
       .select("source,source_app,record_id,payload")
@@ -72,34 +73,53 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       .eq("active", true)
       .order("sort_order", { ascending: true }),
     latestInputsForMonth(range.yearMonth),
+    admin
+      .from("system_kanri_person")
+      .select("id,name,kot_name,team,department,employment_kind,base_wage,is_field_sales,active,sort_order")
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
+    admin
+      .from("root_employees")
+      .select("name,commute_daily_allowance")
+      .eq("is_active", true)
+      .is("deleted_at", null),
   ]);
 
-  if (sourceResult.error || settingResult.error || pointResult.error || teamResult.error || inputResult.error) {
+  if (sourceResult.error || settingResult.error || pointResult.error || teamResult.error || inputResult.error || personResult.error || employeeResult.error) {
     return NextResponse.json({ ok: false, error: "計算に必要な情報を読み込めませんでした" }, { status: 500 });
   }
+  const sourceRows = (sourceResult.data ?? []).map((row) => ({
+    source: row.source,
+    sourceApp: row.source_app,
+    recordId: row.record_id,
+    payload: row.payload,
+  })) as KanriSourceRow[];
+  const points = (pointResult.data ?? []) as KanriPointMaster[];
+  const manualInputs = (inputResult.data?.grid ?? emptyInputs()) as KanriManualInputs;
 
   const grid = calculateKanriSheet({
     yearMonth: range.yearMonth,
     holidays: (settingResult.data?.holidays ?? []) as string[],
-    sourceRows: (sourceResult.data ?? []).map((row) => ({
-      source: row.source,
-      sourceApp: row.source_app,
-      recordId: row.record_id,
-      payload: row.payload,
-    })) as KanriSourceRow[],
-    points: (pointResult.data ?? []) as KanriPointMaster[],
+    sourceRows,
+    points,
     teams: (teamResult.data ?? []) as KanriTeamMaster[],
-    manualInputs: (inputResult.data?.grid ?? emptyInputs()) as KanriManualInputs,
+    manualInputs,
+  });
+  const jisseki = calculateJissekiSheet({
+    yearMonth: range.yearMonth,
+    sourceRows,
+    points,
+    people: (personResult.data ?? []) as KanriPerson[],
+    manualInputs,
+    commuteByName: normalizeCommuteMap((employeeResult.data ?? []) as { name: string | null; commute_daily_allowance: number | string | null }[]),
   });
 
   const { error: saveError } = await admin
     .from("system_kanri_result")
-    .upsert({
-      run_id: id,
-      sheet: "kanri",
-      grid,
-      calculated_at: new Date().toISOString(),
-    });
+    .upsert([
+      { run_id: id, sheet: "kanri", grid, calculated_at: new Date().toISOString() },
+      { run_id: id, sheet: "jisseki", grid: jisseki, calculated_at: new Date().toISOString() },
+    ]);
   if (saveError) return NextResponse.json({ ok: false, error: "計算結果を保存できませんでした" }, { status: 500 });
-  return NextResponse.json({ ok: true, grid });
+  return NextResponse.json({ ok: true, grid, jisseki });
 }

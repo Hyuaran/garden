@@ -115,4 +115,67 @@ describe("system kanri inputs route", () => {
     expect(body.inputs).toEqual(inherited);
     expect(body.run.id).toBe("run-old");
   });
+
+  it("uses previous month settings when the current month has no saved inputs", async () => {
+    mocks.requireManager.mockResolvedValue({ userId: "user-1" });
+    const previousInputs = {
+      hoursByTeamByDate: { team: { "2026-08-01": 7 } },
+      openRateByTeamByProduct: { team: { product: 0.6 } },
+      monthlySettings: { targetPointsByTeam: { 全体: 240 }, incentive: { targetPoints: 300 } },
+    };
+    const calls: string[] = [];
+    mocks.getSupabaseAdmin.mockReturnValue({
+      from: vi.fn((table: string) => {
+        if (table === "system_kanri_run") {
+          return {
+            select: () => ({
+              gte: (_column: string, start: string) => ({
+                lte: () => ({
+                  order: () => ({
+                    limit: () => {
+                      calls.push(start);
+                      return Promise.resolve({
+                        data: start === "2026-09-01"
+                          ? []
+                          : [{ id: "run-aug", target_date: "2026-08-31", created_at: "2026-08-31T00:00:00Z" }],
+                        error: null,
+                      });
+                    },
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => ({
+                order: () => ({
+                  limit: () => ({
+                    maybeSingle: () => Promise.resolve({ data: { run_id: "run-aug", grid: previousInputs, calculated_at: "2026-08-31T01:00:00Z" }, error: null }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }),
+    });
+    const { GET } = await import("./route");
+
+    const response = await GET(new Request("http://localhost/api/system/kanri/inputs/2026-09"), {
+      params: Promise.resolve({ yearMonth: "2026-09" }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(calls).toEqual(["2026-09-01", "2026-08-01"]);
+    expect(body.inputs).toEqual({
+      hoursByTeamByDate: {},
+      openRateByTeamByProduct: {},
+      monthlySettings: previousInputs.monthlySettings,
+    });
+    expect(body.run).toBeNull();
+  });
 });

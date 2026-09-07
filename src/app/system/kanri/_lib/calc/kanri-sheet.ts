@@ -20,6 +20,24 @@ export type KanriManualInputs = {
   hoursByTeamByDate: Record<string, Record<string, number>>;
   openRateByTeamByProduct: Record<string, Record<string, number>>;
   unitPriceByTeamByProduct?: Record<string, Record<string, number>>;
+  personMonthly?: Record<string, KanriPersonMonthlyInput>;
+  monthlySettings?: KanriMonthlySettings;
+};
+
+export type KanriPersonMonthlyInput = {
+  landingHours?: number | string | null;
+  workHours?: number | string | null;
+  workDays?: number | string | null;
+  fieldPoints?: number | string | null;
+};
+
+export type KanriMonthlySettings = {
+  targetPointsByTeam?: Record<string, number | string | null>;
+  incentive?: {
+    targetPoints?: number | string | null;
+    achievementBonusTotal?: number | string | null;
+    teamVictoryBonus?: number | string | null;
+  };
 };
 
 export type KanriDayTeamResult = {

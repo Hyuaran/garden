@@ -83,6 +83,24 @@ describe("system kanri calculate route", () => {
           }),
         };
       }
+      if (table === "system_kanri_person") {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => Promise.resolve({ data: [{ name: "Aさん", kot_name: "A さん", team: "A", department: "A", employment_kind: "社員", base_wage: null, is_field_sales: false, active: true, sort_order: 10 }], error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === "root_employees") {
+        return {
+          select: () => ({
+            eq: () => ({
+              is: () => Promise.resolve({ data: [{ name: "Aさん", commute_daily_allowance: 500 }], error: null }),
+            }),
+          }),
+        };
+      }
       return {
         select: () => ({
           eq: () => ({
@@ -111,6 +129,11 @@ describe("system kanri calculate route", () => {
 
     expect(response.status).toBe(200);
     expect(body.grid.days[0].teams.A.hours).toBe(5);
+    expect(body.jisseki.rows).toHaveLength(1);
     expect(savedRows).toHaveLength(1);
+    expect(savedRows[0]).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sheet: "kanri" }),
+      expect.objectContaining({ sheet: "jisseki" }),
+    ]));
   });
 });

@@ -20,6 +20,12 @@ function validInputs(value: unknown): value is KanriManualInputs {
   return typeof input.hoursByTeamByDate === "object" && typeof input.openRateByTeamByProduct === "object";
 }
 
+function previousYearMonth(yearMonth: string) {
+  const [year, month] = yearMonth.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 2, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 async function latestRunForMonth(yearMonth: string) {
   const { start, end } = monthRange(`${yearMonth}-01`);
   return getSupabaseAdmin()
@@ -67,13 +73,26 @@ async function latestInputsForMonth(yearMonth: string) {
   };
 }
 
+async function inputsWithPreviousSettings(yearMonth: string) {
+  const current = await latestInputsForMonth(yearMonth);
+  if (current.error || current.data) return current;
+  const previous = await latestInputsForMonth(previousYearMonth(yearMonth));
+  if (previous.error) return previous;
+  return {
+    data: previous.data?.inputs.monthlySettings
+      ? { inputs: { ...emptyInputs(), monthlySettings: previous.data.inputs.monthlySettings }, run: null }
+      : null,
+    error: null,
+  };
+}
+
 export async function GET(_request: Request, context: { params: Promise<{ yearMonth: string }> }) {
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const { yearMonth } = await context.params;
   if (!validYearMonth(yearMonth)) return NextResponse.json({ ok: false }, { status: 400 });
 
-  const inputResult = await latestInputsForMonth(yearMonth);
+  const inputResult = await inputsWithPreviousSettings(yearMonth);
   if (inputResult.error) return NextResponse.json({ ok: false, error: "入力値を読み込めませんでした" }, { status: 500 });
   return NextResponse.json({
     ok: true,
