@@ -24,18 +24,19 @@ export default async function KanriPortalPage() {
   if (!employee) redirect("/login?returnTo=%2Fsystem%2Fkanri");
 
   const role = String(employee.garden_role ?? "staff") as GardenRole;
-  if (!isRoleAtLeast(role, "manager")) {
+  if (!isRoleAtLeast(role, "staff")) {
     return <div className={styles.pageShell}>
       <header className={styles.header}>
         <p className={styles.eyebrow}>System / 管理表ポータル</p>
         <h1>管理表ポータル</h1>
       </header>
       <section className={styles.notice}>
-        <h2>この画面は責任者以上が使えます</h2>
+        <h2>この画面は社員以上が使えます</h2>
         <p>必要な場合は責任者に確認してください。</p>
       </section>
     </div>;
   }
+  const canWrite = isRoleAtLeast(role, "manager");
 
   const today = tokyoToday();
   const { yearMonth } = monthRange(today);
@@ -75,5 +76,6 @@ export default async function KanriPortalPage() {
     initialProducts={(pointResult.data ?? []).map((item) => String(item.product))}
     initialTeams={(teamResult.data ?? []).map((item) => String(item.team))}
     initialPeople={(personResult.data ?? []) as KanriPerson[]}
+    canWrite={canWrite}
   />;
 }

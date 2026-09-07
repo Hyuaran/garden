@@ -14,6 +14,7 @@ import type { JissekiSheetGrid, KanriPerson } from "./_lib/calc/jisseki-sheet";
 import { HOUHAN_PRODUCTS, type HouhanSheetGrid } from "./_lib/calc/houhan-sheet";
 import { APORAN_TEAM_LABELS, APORAN_TEAM_ORDER, type AporanSheetGrid, type AporanTeamKey } from "./_lib/calc/aporan-sheet";
 import { INCENTIVE_TEAM_LABELS, INCENTIVE_TEAM_ORDER, type IncentiveSheetGrid } from "./_lib/calc/incentive-sheet";
+import type { PayrollSheetGrid } from "./_lib/calc/payroll-sheet";
 import styles from "./kanri.module.css";
 
 export type KanriRunView = {
@@ -37,6 +38,7 @@ type Props = {
   initialProducts: string[];
   initialTeams: string[];
   initialPeople: KanriPerson[];
+  canWrite?: boolean;
 };
 
 type RunResponse = {
@@ -54,7 +56,8 @@ type RunResponse = {
   houhan?: HouhanSheetGrid;
   aporan?: AporanSheetGrid;
   incentive?: IncentiveSheetGrid;
-  result?: { grid?: KanriSheetGrid | JissekiSheetGrid | HouhanSheetGrid | AporanSheetGrid | IncentiveSheetGrid };
+  payroll?: PayrollSheetGrid;
+  result?: { grid?: KanriSheetGrid | JissekiSheetGrid | HouhanSheetGrid | AporanSheetGrid | IncentiveSheetGrid | PayrollSheetGrid };
   people?: KanriPerson[];
 };
 
@@ -138,6 +141,14 @@ function incentiveValue(inputs: KanriManualInputs, key: "targetPoints" | "achiev
   return inputs.monthlySettings?.incentive?.[key] ?? "";
 }
 
+function payrollSettingValue(inputs: KanriManualInputs, key: "baseWage" | "trainingWage", fallback: number) {
+  return inputs.monthlySettings?.payroll?.[key] ?? fallback;
+}
+
+function payrollPersonValue(inputs: KanriManualInputs, person: string, key: "nextStatus" | "wageAdjustment" | "referralPoints" | "trainingHours" | "hiringBonus" | "talentReferralIncentive" | "dealIncentive") {
+  return inputs.payrollByPerson?.[person]?.[key] ?? "";
+}
+
 async function readJson(response: Response): Promise<RunResponse> {
   try {
     return await response.json() as RunResponse;
@@ -146,8 +157,8 @@ async function readJson(response: Response): Promise<RunResponse> {
   }
 }
 
-export default function KanriPortalClient({ creatorName, today, initialRuns, initialHolidays, initialProducts, initialTeams, initialPeople }: Props) {
-  const [activeTab, setActiveTab] = useState<"kanri" | "jisseki" | "aporan" | "houhan" | "incentive" | "settings">("kanri");
+export default function KanriPortalClient({ creatorName, today, initialRuns, initialHolidays, initialProducts, initialTeams, initialPeople, canWrite = true }: Props) {
+  const [activeTab, setActiveTab] = useState<"kanri" | "jisseki" | "aporan" | "houhan" | "incentive" | "payroll" | "settings">(canWrite ? "kanri" : "payroll");
   const [targetDate, setTargetDate] = useState(today);
   const [mode, setMode] = useState<KanriMode>(isMonthEnd(today) ? "closing" : "daily");
   const [runs, setRuns] = useState(initialRuns);
@@ -161,6 +172,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const [houhan, setHouhan] = useState<HouhanSheetGrid | null>(null);
   const [aporan, setAporan] = useState<AporanSheetGrid | null>(null);
   const [incentive, setIncentive] = useState<IncentiveSheetGrid | null>(null);
+  const [payroll, setPayroll] = useState<PayrollSheetGrid | null>(null);
   const [selectedFieldSalesPerson, setSelectedFieldSalesPerson] = useState(initialPeople.find((person) => person.active !== false && person.is_field_sales)?.name ?? "");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -211,11 +223,14 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     const incentiveResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=incentive`);
     const incentiveJson = await readJson(incentiveResponse) as { result?: { grid?: IncentiveSheetGrid } };
     if (incentiveResponse.ok && incentiveJson.result?.grid) setIncentive(incentiveJson.result.grid);
+    const payrollResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=payroll`);
+    const payrollJson = await readJson(payrollResponse) as { result?: { grid?: PayrollSheetGrid } };
+    if (payrollResponse.ok && payrollJson.result?.grid) setPayroll(payrollJson.result.grid);
   }
 
   useEffect(() => {
-    void loadInputs(range.yearMonth);
-  }, [range.yearMonth]);
+    if (canWrite) void loadInputs(range.yearMonth);
+  }, [canWrite, range.yearMonth]);
 
   useEffect(() => {
     if (latest?.id) void loadResult(latest.id);
@@ -225,8 +240,10 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     setTargetDate(nextDate);
     setMode((current) => nextModeForDate(nextDate, current));
     if (monthRange(nextDate).yearMonth !== range.yearMonth) {
-      void loadMonthSetting(nextDate);
-      void loadInputs(monthRange(nextDate).yearMonth);
+      if (canWrite) {
+        void loadMonthSetting(nextDate);
+        void loadInputs(monthRange(nextDate).yearMonth);
+      }
     }
   }
 
@@ -364,7 +381,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     }));
   }
 
-  function updateMonthlySetting(path: "target" | "aporan" | "incentive", key: string, value: string) {
+  function updateMonthlySetting(path: "target" | "aporan" | "incentive" | "payroll", key: string, value: string) {
     const number = value === "" ? null : Number(value.replace(/,/g, ""));
     if (number !== null && !Number.isFinite(number)) return;
     setInputs((current) => ({
@@ -379,10 +396,27 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
             ...(current.monthlySettings ?? {}),
             aporanTargets: { ...(current.monthlySettings?.aporanTargets ?? {}), [key]: number },
           }
-          : {
+          : path === "incentive"
+            ? {
+              ...(current.monthlySettings ?? {}),
+              incentive: { ...(current.monthlySettings?.incentive ?? {}), [key]: number },
+            }
+            : {
             ...(current.monthlySettings ?? {}),
-            incentive: { ...(current.monthlySettings?.incentive ?? {}), [key]: number },
-          },
+              payroll: { ...(current.monthlySettings?.payroll ?? {}), [key]: number },
+            },
+    }));
+  }
+
+  function updatePayrollPerson(person: string, key: "nextStatus" | "wageAdjustment" | "referralPoints" | "trainingHours" | "hiringBonus" | "talentReferralIncentive" | "dealIncentive", value: string) {
+    const nextValue = key === "nextStatus" ? value : value === "" ? 0 : Number(value.replace(/,/g, ""));
+    if (key !== "nextStatus" && !Number.isFinite(nextValue as number)) return;
+    setInputs((current) => ({
+      ...current,
+      payrollByPerson: {
+        ...(current.payrollByPerson ?? {}),
+        [person]: { ...(current.payrollByPerson?.[person] ?? {}), [key]: nextValue },
+      },
     }));
   }
 
@@ -441,6 +475,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         if (json.jisseki) setJisseki(json.jisseki);
         if (json.aporan) setAporan(json.aporan);
         if (json.incentive) setIncentive(json.incentive);
+        if (json.payroll) setPayroll(json.payroll);
       }
     } finally {
       setCalculating(false);
@@ -475,7 +510,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       <h1>管理表ポータル</h1>
     </header>
 
-    <section className={styles.panel}>
+    {canWrite && <section className={styles.panel}>
       <p className={styles.greeting}>お疲れ様です。{formatDate(targetDate)}の管理表を {creatorName} が作成します。</p>
       <div className={styles.controls}>
         <label>対象日<input type="date" value={targetDate} onChange={(event) => changeDate(event.target.value)} /></label>
@@ -489,15 +524,18 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       <button className={styles.primary} type="button" disabled={loading} onClick={() => void importData()}>
         {loading ? "取り込んでいます" : "データを取り込む"}
       </button>
-    </section>
+    </section>}
 
     <nav className={styles.tabs} aria-label="表示切替">
-      <button type="button" aria-current={activeTab === "kanri" ? "page" : undefined} onClick={() => setActiveTab("kanri")}>管理表</button>
-      <button type="button" aria-current={activeTab === "jisseki" ? "page" : undefined} onClick={() => setActiveTab("jisseki")}>実績管理</button>
-      <button type="button" aria-current={activeTab === "aporan" ? "page" : undefined} onClick={() => setActiveTab("aporan")}>アポラン</button>
-      <button type="button" aria-current={activeTab === "houhan" ? "page" : undefined} onClick={() => setActiveTab("houhan")}>訪問販売</button>
-      <button type="button" aria-current={activeTab === "incentive" ? "page" : undefined} onClick={() => setActiveTab("incentive")}>インセ計算</button>
-      <button type="button" aria-current={activeTab === "settings" ? "page" : undefined} onClick={() => setActiveTab("settings")}>設定</button>
+      {canWrite && <>
+        <button type="button" aria-current={activeTab === "kanri" ? "page" : undefined} onClick={() => setActiveTab("kanri")}>管理表</button>
+        <button type="button" aria-current={activeTab === "jisseki" ? "page" : undefined} onClick={() => setActiveTab("jisseki")}>実績管理</button>
+        <button type="button" aria-current={activeTab === "aporan" ? "page" : undefined} onClick={() => setActiveTab("aporan")}>アポラン</button>
+        <button type="button" aria-current={activeTab === "houhan" ? "page" : undefined} onClick={() => setActiveTab("houhan")}>訪問販売</button>
+        <button type="button" aria-current={activeTab === "incentive" ? "page" : undefined} onClick={() => setActiveTab("incentive")}>インセ計算</button>
+      </>}
+      <button type="button" aria-current={activeTab === "payroll" ? "page" : undefined} onClick={() => setActiveTab("payroll")}>給与試算</button>
+      {canWrite && <button type="button" aria-current={activeTab === "settings" ? "page" : undefined} onClick={() => setActiveTab("settings")}>設定</button>}
     </nav>
 
     {activeTab === "kanri" && <>
@@ -844,6 +882,71 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           <span>達成金合計 {formatNumber(incentive.overall.achievementBonusTotal)}</span>
           <span>1人 {formatNumber(incentive.overall.perPersonAchievementBonus)}</span>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
+      </section>
+    </>}
+
+    {activeTab === "payroll" && <>
+      <section className={styles.panel}>
+        <h2>今月の設定</h2>
+        <div className={styles.compactGrid}>
+          <label>基準時給
+            <input type="number" step="1" value={payrollSettingValue(inputs, "baseWage", payroll?.settings.baseWage ?? 1177)} onChange={(event) => updateMonthlySetting("payroll", "baseWage", event.target.value)} disabled={!canWrite} />
+          </label>
+          <label>研修時給
+            <input type="number" step="1" value={payrollSettingValue(inputs, "trainingWage", payroll?.settings.trainingWage ?? 1500)} onChange={(event) => updateMonthlySetting("payroll", "trainingWage", event.target.value)} disabled={!canWrite} />
+          </label>
+        </div>
+        <div className={styles.resultMeta}>
+          <span>期間 {payroll ? `${payroll.period.start.replaceAll("-", "/")}〜${payroll.period.end.replaceAll("-", "/")}` : `${range.start.replaceAll("-", "/")}〜${range.end.replaceAll("-", "/")}`}</span>
+          <span>支給予定日 {payroll ? payroll.period.scheduledPayDate.replaceAll("-", "/") : "—"}</span>
+        </div>
+        {canWrite && <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>}
+      </section>
+
+      <section className={styles.panel}>
+        <div className={styles.sectionHeader}>
+          <h2>人ごと</h2>
+          {canWrite && <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>}
+        </div>
+        {payroll ? <div className={styles.resultScroller}>
+          <table className={styles.resultTable}>
+            <thead><tr>
+              <th className={styles.stickyCell}>順位</th><th>部署</th><th>氏名</th><th>現ステータス</th><th>効率</th><th>現時給</th>
+              <th>次月ステータス</th><th>査定±</th><th>次月時給</th><th>AP時給</th><th>獲得P</th><th>紹介P</th><th>合計P</th>
+              <th>基本</th><th>APインセン</th><th>研修h</th><th>研修手当</th><th>社長賞</th><th>件数賞</th><th>入社祝い金</th><th>人材紹介</th><th>案件</th><th>支給合計</th><th>所定h</th><th>勤務日数</th><th>交通費往復</th><th>交通費合計</th>
+            </tr></thead>
+            <tbody>{payroll.rows.map((row) => <tr key={`${row.rank}-${row.personName}`}>
+              <th className={styles.stickyCell}>{row.rank}</th>
+              <td>{row.department}</td>
+              <td>{row.personName}</td>
+              <td>{row.currentStatus ?? "—"}</td>
+              <td>{formatNumber(row.timeEfficiency, 2)}</td>
+              <td>{typeof row.currentWage === "number" ? formatNumber(row.currentWage) : row.currentWage}</td>
+              <td>{canWrite ? <input value={payrollPersonValue(inputs, row.personName, "nextStatus")} onChange={(event) => updatePayrollPerson(row.personName, "nextStatus", event.target.value)} /> : (row.nextStatus || "—")}</td>
+              <td>{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "wageAdjustment")} onChange={(event) => updatePayrollPerson(row.personName, "wageAdjustment", event.target.value)} /> : formatNumber(row.wageAdjustment)}</td>
+              <td>{formatNumber(row.nextWage)}</td>
+              <td>{formatNumber(row.apHourlyWage)}</td>
+              <td>{formatNumber(row.acquiredPoints, 1)}</td>
+              <td>{canWrite ? <input type="number" step="0.1" value={payrollPersonValue(inputs, row.personName, "referralPoints")} onChange={(event) => updatePayrollPerson(row.personName, "referralPoints", event.target.value)} /> : formatNumber(row.referralPoints, 1)}</td>
+              <td>{formatNumber(row.totalPoints, 1)}</td>
+              <td>{formatNumber(row.basePay)}</td>
+              <td>{formatNumber(row.apIncentive)}</td>
+              <td>{canWrite ? <input type="number" step="0.1" value={payrollPersonValue(inputs, row.personName, "trainingHours")} onChange={(event) => updatePayrollPerson(row.personName, "trainingHours", event.target.value)} /> : formatNumber(row.trainingHours, 1)}</td>
+              <td>{formatNumber(row.trainingAllowance)}</td>
+              <td>{formatNumber(row.presidentAward)}</td>
+              <td>{formatNumber(row.pointAward)}</td>
+              <td>{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "hiringBonus")} onChange={(event) => updatePayrollPerson(row.personName, "hiringBonus", event.target.value)} /> : formatNumber(row.hiringBonus)}</td>
+              <td>{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "talentReferralIncentive")} onChange={(event) => updatePayrollPerson(row.personName, "talentReferralIncentive", event.target.value)} /> : formatNumber(row.talentReferralIncentive)}</td>
+              <td>{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "dealIncentive")} onChange={(event) => updatePayrollPerson(row.personName, "dealIncentive", event.target.value)} /> : formatNumber(row.dealIncentive)}</td>
+              <td>{formatNumber(row.totalPayout)}</td>
+              <td>{formatNumber(row.scheduledHours, 1)}</td>
+              <td>{formatNumber(row.workDays)}</td>
+              <td>{formatNumber(row.commuteDailyAllowance)}</td>
+              <td>{formatNumber(row.commuteTotal)}</td>
+            </tr>)}</tbody>
+          </table>
+        </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
+        {canWrite && <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>}
       </section>
     </>}
 

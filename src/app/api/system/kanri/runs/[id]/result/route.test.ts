@@ -1,21 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  requireManager: vi.fn(),
+  requireStaff: vi.fn(),
   getSupabaseAdmin: vi.fn(),
 }));
 
-vi.mock("@/app/system/mypage/_lib/submission-server", () => ({ requireManager: mocks.requireManager }));
+vi.mock("@/app/system/mypage/_lib/submission-server", () => ({ requireStaff: mocks.requireStaff }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: mocks.getSupabaseAdmin }));
 
 describe("system kanri result route", () => {
   beforeEach(() => {
-    mocks.requireManager.mockReset();
+    mocks.requireStaff.mockReset();
     mocks.getSupabaseAdmin.mockReset();
   });
 
-  it("rejects users below manager", async () => {
-    mocks.requireManager.mockResolvedValue(null);
+  it("rejects users below staff", async () => {
+    mocks.requireStaff.mockResolvedValue(null);
     const { GET } = await import("./route");
 
     const response = await GET(new Request("http://localhost/api/system/kanri/runs/run-1/result?sheet=kanri"), {
@@ -26,7 +26,7 @@ describe("system kanri result route", () => {
   });
 
   it("returns a saved result", async () => {
-    mocks.requireManager.mockResolvedValue({ userId: "user-1" });
+    mocks.requireStaff.mockResolvedValue({ userId: "user-1" });
     mocks.getSupabaseAdmin.mockReturnValue({
       from: () => ({
         select: () => ({

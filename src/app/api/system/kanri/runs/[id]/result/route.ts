@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireManager } from "@/app/system/mypage/_lib/submission-server";
+import { requireStaff } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
-  const manager = await requireManager();
-  if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
+  const staff = await requireStaff();
+  if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
   const { id } = await context.params;
   const sheet = new URL(request.url).searchParams.get("sheet") ?? "kanri";
   const { data, error } = await getSupabaseAdmin()

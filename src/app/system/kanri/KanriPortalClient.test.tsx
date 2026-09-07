@@ -103,7 +103,89 @@ describe("KanriPortalClient", () => {
     expect(screen.getByText("インセの目標P")).toBeInTheDocument();
     expect(screen.getByText("チーム別")).toBeInTheDocument();
     expect(screen.getByText("テレマ全体")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "給与試算" }));
+    expect(screen.getByText("基準時給")).toBeInTheDocument();
+    expect(screen.getByText("人ごと")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "設定" }));
     expect(screen.getByText("人の設定")).toBeInTheDocument();
+  });
+
+  it("shows only payroll in read-only mode", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("sheet=payroll")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ok: true,
+          result: {
+            grid: {
+              yearMonth: "2026-09",
+              settings: { baseWage: 1177, trainingWage: 1500 },
+              period: { start: "2026-09-01", end: "2026-09-30", scheduledPayDate: "2026-10-31" },
+              rows: [{
+                rank: 1,
+                department: "A",
+                personName: "山田　花子",
+                currentStatus: "ゴールド",
+                timeEfficiency: 0.2,
+                currentWage: 1400,
+                nextStatus: "",
+                wageAdjustment: 0,
+                nextWage: 1400,
+                apHourlyWage: 223,
+                acquiredPoints: 21,
+                referralPoints: 0,
+                totalPoints: 21,
+                basePay: 117700,
+                apIncentive: 22300,
+                trainingHours: 0,
+                trainingAllowance: 0,
+                presidentAward: 50000,
+                pointAward: 5000,
+                hiringBonus: 0,
+                talentReferralIncentive: 0,
+                dealIncentive: 0,
+                totalPayout: 195000,
+                scheduledHours: 100,
+                workDays: 10,
+                commuteDailyAllowance: 300,
+                commuteTotal: 3000,
+                periodStart: "2026-09-01",
+                periodEnd: "2026-09-30",
+                scheduledPayDate: "2026-10-31",
+              }],
+              cellValues: {},
+            },
+          },
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: false }), { status: 404 }));
+    }));
+
+    render(<KanriPortalClient
+      creatorName="staff"
+      today="2026-09-01"
+      initialRuns={[{
+        id: "run-1",
+        target_date: "2026-09-01",
+        mode: "daily",
+        creator_name: "manager",
+        status: "fetched",
+        summary: null,
+        warnings: null,
+        started_at: null,
+        finished_at: null,
+        created_at: "2026-09-01T00:00:00Z",
+      }]}
+      initialHolidays={[]}
+      initialProducts={[]}
+      initialTeams={[]}
+      initialPeople={[]}
+      canWrite={false}
+    />);
+
+    expect(screen.getByRole("button", { name: "給与試算" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "管理表" })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("195,000")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "保存" })).not.toBeInTheDocument();
   });
 });

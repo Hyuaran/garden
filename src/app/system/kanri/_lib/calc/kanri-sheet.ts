@@ -23,6 +23,7 @@ export type KanriManualInputs = {
   personMonthly?: Record<string, KanriPersonMonthlyInput>;
   monthlySettings?: KanriMonthlySettings;
   fieldSales?: KanriFieldSalesInputs;
+  payrollByPerson?: Record<string, KanriPayrollPersonInput>;
 };
 
 export type KanriPersonMonthlyInput = {
@@ -40,7 +41,21 @@ export type KanriMonthlySettings = {
     achievementBonusTotal?: number | string | null;
     teamVictoryBonus?: number | string | null;
   };
+  payroll?: {
+    baseWage?: number | string | null;
+    trainingWage?: number | string | null;
+  };
   fieldSalesWeights?: Record<string, number | string | null>;
+};
+
+export type KanriPayrollPersonInput = {
+  nextStatus?: string | null;
+  wageAdjustment?: number | string | null;
+  referralPoints?: number | string | null;
+  trainingHours?: number | string | null;
+  hiringBonus?: number | string | null;
+  talentReferralIncentive?: number | string | null;
+  dealIncentive?: number | string | null;
 };
 
 export type KanriFieldSalesDayInput = {
