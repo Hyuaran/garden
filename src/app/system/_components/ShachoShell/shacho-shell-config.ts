@@ -37,6 +37,7 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "テレマ日報", description: "その日の架電の報告をまとめて提出できるようにします。", icon: "report", upcoming: true },
   { label: "給与試算", description: "支給前におおよその金額を確認できるようにします。", icon: "salary", upcoming: true },
   { label: "管理表ポータル", description: "毎日の管理表を、手で貼らずに作ります。", icon: "portal", href: "/system/kanri", minRole: "manager" },
+  { label: "リストマスタ", description: "営業リストを条件で絞って件数を見て、.mer に書き出します。", icon: "folder", href: "/system/list", minRole: "manager" },
 ];
 
 

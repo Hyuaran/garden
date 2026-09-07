@@ -38,7 +38,7 @@ describe("Systemのサイドバーメニュー", () => {
     expect(localStorage.getItem(UPCOMING_STORAGE_KEY)).toBeNull();
   });
 
-  it("クリックで開閉し、4項目を元の順で表示して状態を保存する", () => {
+  it("クリックで開閉し、3項目を元の順で表示して状態を保存する", () => {
     renderNavigation();
     const button = screen.getByRole("button", { name: /これから/ });
     fireEvent.click(button);
@@ -64,7 +64,7 @@ describe("Systemのサイドバーメニュー", () => {
   it("保存済みでもサーバーHTMLは閉じた状態とし、hydrationの初期表示を揃える", () => {
     localStorage.setItem(UPCOMING_STORAGE_KEY, "true");
     const read = vi.spyOn(Storage.prototype, "getItem");
-    const html = renderToStaticMarkup(<SidebarNavigation upcomingCount={4} upcoming={<span>準備中の項目</span>}><a href="/system">ホーム</a></SidebarNavigation>);
+    const html = renderToStaticMarkup(<SidebarNavigation upcomingCount={3} upcoming={<span>準備中の項目</span>}><a href="/system">ホーム</a></SidebarNavigation>);
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain("準備中の項目");
     expect(read).not.toHaveBeenCalled();

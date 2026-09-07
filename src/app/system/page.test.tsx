@@ -37,7 +37,7 @@ describe("system home", () => {
     expect(onboardingQuery.eq).toHaveBeenCalledWith("employee_id", "EMP-9999");
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
-  it("links all nine manager cards to their configured destinations", async () => {
+  it("links all manager cards to their configured destinations", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     render(await SystemHomePage());
     expect(screen.getByRole("heading", { name: "社内システム" }).previousElementSibling).toHaveTextContent("System");
@@ -52,6 +52,7 @@ describe("system home", () => {
     expect(screen.getByRole("heading", { name: "契約書管理" }).closest("a")).toHaveAttribute("href", "/system/contracts");
     expect(screen.getByRole("heading", { name: "関電トスポータル" }).closest("a")).toHaveAttribute("href", "/p/toss");
     expect(screen.getByRole("heading", { name: "管理表ポータル" }).closest("a")).toHaveAttribute("href", "/system/kanri");
+    expect(screen.getByRole("heading", { name: "リストマスタ" }).closest("a")).toHaveAttribute("href", "/system/list");
     // 管理表ポータルが本物になったので、準備中は 3 つ（コール数配信・テレマ日報・給与試算）
     expect(screen.getAllByText("準備中")).toHaveLength(3);
   });
@@ -59,6 +60,7 @@ describe("system home", () => {
     mocks.createServerClient.mockResolvedValue(client("staff"));
     render(await SystemHomePage());
     expect(screen.queryByRole("link", { name: /契約書管理/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /リストマスタ/ })).not.toBeInTheDocument();
   });
   it.each([null, "draft"])("%sはホーム上部に任意の入力案内を表示する", async status => {
     mocks.createServerClient.mockResolvedValue(client("staff", status));
