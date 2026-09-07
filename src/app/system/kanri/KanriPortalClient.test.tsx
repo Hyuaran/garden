@@ -71,7 +71,7 @@ describe("KanriPortalClient", () => {
       initialPeople={[]}
     />);
 
-    const calculateButton = screen.getByRole("button", { name: "計算する" });
+    const calculateButton = screen.getAllByRole("button", { name: "計算する" })[0];
     expect(calculateButton).toBeTruthy();
     fireEvent.click(calculateButton);
 
@@ -81,6 +81,34 @@ describe("KanriPortalClient", () => {
       expect(screen.getByText("額")).toBeInTheDocument();
       expect(screen.getAllByText("4,000").length).toBeGreaterThan(0);
     });
+  });
+
+  it("keeps Excel export unavailable before calculation", () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ok: true, inputs: { hoursByTeamByDate: {}, openRateByTeamByProduct: {} } }), { status: 200 }))));
+
+    render(<KanriPortalClient
+      creatorName="manager"
+      today="2026-09-01"
+      initialRuns={[{
+        id: "run-1",
+        target_date: "2026-09-01",
+        mode: "daily",
+        creator_name: "manager",
+        status: "fetched",
+        summary: null,
+        warnings: null,
+        started_at: null,
+        finished_at: null,
+        created_at: "2026-09-01T00:00:00Z",
+      }]}
+      initialHolidays={[]}
+      initialProducts={[]}
+      initialTeams={[]}
+      initialPeople={[]}
+    />);
+
+    expect(screen.getByRole("button", { name: "Excel を書き出す" })).toBeDisabled();
+    expect(screen.getByText("計算前は書き出せません")).toBeInTheDocument();
   });
 
   it("shows jisseki and settings tabs", () => {

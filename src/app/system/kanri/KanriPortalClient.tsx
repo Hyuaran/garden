@@ -200,6 +200,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [calculating, setCalculating] = useState(false);
+  const [excelDownloading, setExcelDownloading] = useState(false);
   const [kotFile, setKotFile] = useState<File | null>(null);
   const [kotImporting, setKotImporting] = useState(false);
   const [showKotDetails, setShowKotDetails] = useState(false);
@@ -234,24 +235,28 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   }
 
   async function loadResult(runId: string) {
-    const response = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=kanri`);
-    const json = await readJson(response) as { result?: { grid?: KanriSheetGrid } };
-    if (response.ok && json.result?.grid) setGrid(json.result.grid);
-    const jissekiResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=jisseki`);
-    const jissekiJson = await readJson(jissekiResponse) as { result?: { grid?: JissekiSheetGrid } };
-    if (jissekiResponse.ok && jissekiJson.result?.grid) setJisseki(jissekiJson.result.grid);
-    const houhanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=houhan`);
-    const houhanJson = await readJson(houhanResponse) as { result?: { grid?: HouhanSheetGrid } };
-    if (houhanResponse.ok && houhanJson.result?.grid) setHouhan(houhanJson.result.grid);
-    const aporanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=aporan`);
-    const aporanJson = await readJson(aporanResponse) as { result?: { grid?: AporanSheetGrid } };
-    if (aporanResponse.ok && aporanJson.result?.grid) setAporan(aporanJson.result.grid);
-    const incentiveResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=incentive`);
-    const incentiveJson = await readJson(incentiveResponse) as { result?: { grid?: IncentiveSheetGrid } };
-    if (incentiveResponse.ok && incentiveJson.result?.grid) setIncentive(incentiveJson.result.grid);
-    const payrollResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=payroll`);
-    const payrollJson = await readJson(payrollResponse) as { result?: { grid?: PayrollSheetGrid } };
-    if (payrollResponse.ok && payrollJson.result?.grid) setPayroll(payrollJson.result.grid);
+    try {
+      const response = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=kanri`);
+      const json = await readJson(response) as { result?: { grid?: KanriSheetGrid } };
+      if (response.ok && json.result?.grid) setGrid(json.result.grid);
+      const jissekiResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=jisseki`);
+      const jissekiJson = await readJson(jissekiResponse) as { result?: { grid?: JissekiSheetGrid } };
+      if (jissekiResponse.ok && jissekiJson.result?.grid) setJisseki(jissekiJson.result.grid);
+      const houhanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=houhan`);
+      const houhanJson = await readJson(houhanResponse) as { result?: { grid?: HouhanSheetGrid } };
+      if (houhanResponse.ok && houhanJson.result?.grid) setHouhan(houhanJson.result.grid);
+      const aporanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=aporan`);
+      const aporanJson = await readJson(aporanResponse) as { result?: { grid?: AporanSheetGrid } };
+      if (aporanResponse.ok && aporanJson.result?.grid) setAporan(aporanJson.result.grid);
+      const incentiveResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=incentive`);
+      const incentiveJson = await readJson(incentiveResponse) as { result?: { grid?: IncentiveSheetGrid } };
+      if (incentiveResponse.ok && incentiveJson.result?.grid) setIncentive(incentiveJson.result.grid);
+      const payrollResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=payroll`);
+      const payrollJson = await readJson(payrollResponse) as { result?: { grid?: PayrollSheetGrid } };
+      if (payrollResponse.ok && payrollJson.result?.grid) setPayroll(payrollJson.result.grid);
+    } catch {
+      return;
+    }
   }
 
   useEffect(() => {
@@ -523,6 +528,34 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     }
   }
 
+  async function exportExcel() {
+    if (!latest?.id) {
+      setMessage("先にデータを取り込んでください。");
+      return;
+    }
+    setExcelDownloading(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/system/kanri/runs/${latest.id}/excel`);
+      if (!response.ok) {
+        const json = await readJson(response);
+        setMessage(json.error ?? "Excel を作成できませんでした。");
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `kanri-report-${latest.target_date.replaceAll("-", "")}.xlsx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExcelDownloading(false);
+    }
+  }
+
   async function importKotDaily() {
     if (!latest?.id) {
       setMessage("先にデータを取り込んでください。");
@@ -574,6 +607,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const fieldSalesPeople = people.filter((person) => person.active !== false && person.is_field_sales);
   const selectedFieldSales = fieldSalesPeople.find((person) => person.name === selectedFieldSalesPerson) ?? fieldSalesPeople[0] ?? null;
   const selectedHouhan = houhan?.people.find((person) => person.personName === selectedFieldSales?.name) ?? houhan?.people[0] ?? null;
+  const canExportExcel = Boolean(latest?.id && grid && jisseki && aporan && houhan && incentive && payroll);
 
   return <div className={styles.pageShell}>
     <header className={styles.header}>
@@ -592,9 +626,18 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         </fieldset>
       </div>
       <p className={styles.hint}>月末日を選ぶと自動で「締めチェック」に切り替わります。</p>
-      <button className={styles.primary} type="button" disabled={loading} onClick={() => void importData()}>
-        {loading ? "取り込んでいます" : "データを取り込む"}
-      </button>
+      <div className={styles.actionRow}>
+        <button className={styles.primary} type="button" disabled={loading} onClick={() => void importData()}>
+          {loading ? "取り込んでいます" : "データを取り込む"}
+        </button>
+        <button className={styles.primary} type="button" disabled={calculating || !latest?.id} onClick={() => void calculateSheet()}>
+          {calculating ? "計算しています" : "計算する"}
+        </button>
+        <button className={styles.secondary} type="button" disabled={excelDownloading || !canExportExcel} onClick={() => void exportExcel()}>
+          {excelDownloading ? "書き出しています" : "Excel を書き出す"}
+        </button>
+        {!canExportExcel && <span className={styles.actionReason}>計算前は書き出せません</span>}
+      </div>
     </section>}
 
     <nav className={styles.tabs} aria-label="表示切替">
