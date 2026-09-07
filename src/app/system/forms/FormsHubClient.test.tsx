@@ -26,7 +26,7 @@ describe("FormsHubClient", () => {
 
     expect(screen.getByTestId("forms-grid-view")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "給与計算連絡" })).toBeInTheDocument();
-    expect(screen.getByText("使える人：社員以上")).toBeInTheDocument();
+    expect(screen.getByText("権限：社員以上")).toBeInTheDocument();
     expect(localStorage.getItem("garden.forms.viewMode")).toBe("grid");
   });
 

@@ -49,24 +49,28 @@ export default function FormsHubClient({ forms }: { forms: SystemFormDefinition[
         <h1>フォーム</h1>
         <p className={styles.lead}>月に一度の連絡や申請を、ここから開いて送ります。</p>
       </div>
+    </header>
+
+    <div className={styles.listHeading}>
+      <h2>フォームの一覧</h2>
       <div className={styles.viewToggle} role="group" aria-label="表示形式">
         <button type="button" aria-label="リスト表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon /></button>
         <button type="button" aria-label="グリッド表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon /></button>
       </div>
-    </header>
+    </div>
 
     {viewMode === "grid" ? (
       <section className={styles.formGrid} data-testid="forms-grid-view" aria-label="フォーム">
         {forms.map((form) => <article className={styles.formCard} key={form.slug}>
           <div className={styles.cardHeading}><span className={styles.iconPlate}><MenuIcon icon={form.icon} /></span><h2>{form.name}</h2></div>
           <p>{form.description}</p>
-          <div className={styles.cardFooter}><span>使える人：{form.roleLabel}</span><Link href={form.href}>開く</Link></div>
+          <div className={styles.cardFooter}><span>権限：{form.roleLabel}</span><Link href={form.href}>開く</Link></div>
         </article>)}
       </section>
     ) : (
       <div className={styles.tableWrap} data-testid="forms-list-view">
         <table>
-          <thead><tr><th>フォーム</th><th>内容</th><th>使える人</th><th></th></tr></thead>
+          <thead><tr><th>フォーム</th><th>内容</th><th>権限</th><th></th></tr></thead>
           <tbody>
             {forms.map((form) => <tr key={form.slug}>
               <td>{form.name}</td>
