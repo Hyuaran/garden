@@ -12,6 +12,7 @@ import {
 import type { KanriManualInputs, KanriSheetGrid } from "./_lib/calc/kanri-sheet";
 import type { JissekiSheetGrid, KanriPerson } from "./_lib/calc/jisseki-sheet";
 import { HOUHAN_PRODUCTS, type HouhanSheetGrid } from "./_lib/calc/houhan-sheet";
+import { APORAN_TEAM_LABELS, APORAN_TEAM_ORDER, type AporanSheetGrid, type AporanTeamKey } from "./_lib/calc/aporan-sheet";
 import styles from "./kanri.module.css";
 
 export type KanriRunView = {
@@ -50,6 +51,7 @@ type RunResponse = {
   grid?: KanriSheetGrid;
   jisseki?: JissekiSheetGrid;
   houhan?: HouhanSheetGrid;
+  aporan?: AporanSheetGrid;
   result?: { grid?: KanriSheetGrid };
   people?: KanriPerson[];
 };
@@ -126,6 +128,10 @@ function fieldSalesWeightValue(inputs: KanriManualInputs, product: string, fallb
   return inputs.fieldSales?.weights?.[product] ?? inputs.monthlySettings?.fieldSalesWeights?.[product] ?? fallback;
 }
 
+function aporanTargetValue(inputs: KanriManualInputs, key: AporanTeamKey) {
+  return inputs.monthlySettings?.aporanTargets?.[key] ?? "";
+}
+
 async function readJson(response: Response): Promise<RunResponse> {
   try {
     return await response.json() as RunResponse;
@@ -135,7 +141,7 @@ async function readJson(response: Response): Promise<RunResponse> {
 }
 
 export default function KanriPortalClient({ creatorName, today, initialRuns, initialHolidays, initialProducts, initialTeams, initialPeople }: Props) {
-  const [activeTab, setActiveTab] = useState<"kanri" | "jisseki" | "houhan" | "settings">("kanri");
+  const [activeTab, setActiveTab] = useState<"kanri" | "jisseki" | "aporan" | "houhan" | "settings">("kanri");
   const [targetDate, setTargetDate] = useState(today);
   const [mode, setMode] = useState<KanriMode>(isMonthEnd(today) ? "closing" : "daily");
   const [runs, setRuns] = useState(initialRuns);
@@ -147,6 +153,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const [grid, setGrid] = useState<KanriSheetGrid | null>(null);
   const [jisseki, setJisseki] = useState<JissekiSheetGrid | null>(null);
   const [houhan, setHouhan] = useState<HouhanSheetGrid | null>(null);
+  const [aporan, setAporan] = useState<AporanSheetGrid | null>(null);
   const [selectedFieldSalesPerson, setSelectedFieldSalesPerson] = useState(initialPeople.find((person) => person.active !== false && person.is_field_sales)?.name ?? "");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -191,6 +198,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     const houhanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=houhan`);
     const houhanJson = await readJson(houhanResponse) as { result?: { grid?: HouhanSheetGrid } };
     if (houhanResponse.ok && houhanJson.result?.grid) setHouhan(houhanJson.result.grid);
+    const aporanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=aporan`);
+    const aporanJson = await readJson(aporanResponse) as { result?: { grid?: AporanSheetGrid } };
+    if (aporanResponse.ok && aporanJson.result?.grid) setAporan(aporanJson.result.grid);
   }
 
   useEffect(() => {
@@ -344,7 +354,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     }));
   }
 
-  function updateMonthlySetting(path: "target" | "incentive", key: string, value: string) {
+  function updateMonthlySetting(path: "target" | "aporan" | "incentive", key: string, value: string) {
     const number = value === "" ? 0 : Number(value.replace(/,/g, ""));
     if (!Number.isFinite(number)) return;
     setInputs((current) => ({
@@ -354,10 +364,15 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           ...(current.monthlySettings ?? {}),
           targetPointsByTeam: { ...(current.monthlySettings?.targetPointsByTeam ?? {}), [key]: number },
         }
-        : {
-          ...(current.monthlySettings ?? {}),
-          incentive: { ...(current.monthlySettings?.incentive ?? {}), [key]: number },
-        },
+        : path === "aporan"
+          ? {
+            ...(current.monthlySettings ?? {}),
+            aporanTargets: { ...(current.monthlySettings?.aporanTargets ?? {}), [key]: number },
+          }
+          : {
+            ...(current.monthlySettings ?? {}),
+            incentive: { ...(current.monthlySettings?.incentive ?? {}), [key]: number },
+          },
     }));
   }
 
@@ -414,6 +429,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         setGrid(json.grid);
         if (json.houhan) setHouhan(json.houhan);
         if (json.jisseki) setJisseki(json.jisseki);
+        if (json.aporan) setAporan(json.aporan);
       }
     } finally {
       setCalculating(false);
@@ -467,6 +483,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     <nav className={styles.tabs} aria-label="表示切替">
       <button type="button" aria-current={activeTab === "kanri" ? "page" : undefined} onClick={() => setActiveTab("kanri")}>管理表</button>
       <button type="button" aria-current={activeTab === "jisseki" ? "page" : undefined} onClick={() => setActiveTab("jisseki")}>実績管理</button>
+      <button type="button" aria-current={activeTab === "aporan" ? "page" : undefined} onClick={() => setActiveTab("aporan")}>アポラン</button>
       <button type="button" aria-current={activeTab === "houhan" ? "page" : undefined} onClick={() => setActiveTab("houhan")}>訪問販売</button>
       <button type="button" aria-current={activeTab === "settings" ? "page" : undefined} onClick={() => setActiveTab("settings")}>設定</button>
     </nav>
@@ -692,6 +709,66 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
                 const suffix = column.kind === "hikari_toss" ? "toss" : column.kind === "hikari_ap" ? "ap" : "single";
                 return <td key={`${row.personName}-${index}`}>{formatNumber(row.counts[`${column.product}:${suffix}`] ?? 0)}</td>;
               })}
+            </tr>)}</tbody>
+          </table>
+        </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
+      </section>
+    </>}
+
+    {activeTab === "aporan" && <>
+      <section className={styles.panel}>
+        <h2>今月の設定</h2>
+        <div className={styles.compactGrid}>
+          {APORAN_TEAM_ORDER.map((key) => <label key={key}>{APORAN_TEAM_LABELS[key]}
+            <input type="number" step="0.1" value={aporanTargetValue(inputs, key)} onChange={(event) => updateMonthlySetting("aporan", key, event.target.value)} />
+          </label>)}
+        </div>
+        <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>
+      </section>
+
+      <section className={styles.panel}>
+        <div className={styles.sectionHeader}>
+          <h2>チーム別</h2>
+          <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>
+        </div>
+        {aporan ? <div className={styles.resultScroller}>
+          <table className={styles.resultTable}>
+            <thead><tr>
+              <th className={styles.stickyCell}></th>
+              {aporan.teamOrder.map((key) => <th key={key}>{aporan.teams[key].label}</th>)}
+            </tr></thead>
+            <tbody>
+              <tr><th className={styles.stickyCell}>効率</th>{aporan.teamOrder.map((key) => <td key={`${key}-efficiency`}>{formatNumber(aporan.teams[key].efficiency, 4)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>実績P</th>{aporan.teamOrder.map((key) => <td key={`${key}-actual`}>{formatNumber(aporan.teams[key].actualPoints, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>目標P</th>{aporan.teamOrder.map((key) => <td key={`${key}-target`}>{formatNumber(aporan.teams[key].targetPoints, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>現時点必要P</th>{aporan.teamOrder.map((key) => <td key={`${key}-current`}>{formatNumber(aporan.teams[key].currentRequiredPoints, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>稼働h</th>{aporan.teamOrder.map((key) => <td key={`${key}-work`}>{formatNumber(aporan.teams[key].workHours, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>着地予想h</th>{aporan.teamOrder.map((key) => <td key={`${key}-landing-hours`}>{formatNumber(aporan.teams[key].landingHours, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>着地予想P</th>{aporan.teamOrder.map((key) => <td key={`${key}-landing-points`}>{formatNumber(aporan.teams[key].landingPoints, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>達成率</th>{aporan.teamOrder.map((key) => <td key={`${key}-achievement`}>{formatRate(aporan.teams[key].achievementRate)}</td>)}</tr>
+            </tbody>
+          </table>
+        </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
+      </section>
+
+      <section className={styles.panel}>
+        <h2>アポインターランキング</h2>
+        {aporan ? <div className={styles.resultScroller}>
+          <table className={styles.resultTable}>
+            <thead><tr>
+              <th className={styles.stickyCell}>順位</th><th>部署</th><th>氏名</th><th>ステータス</th><th>時給</th><th>獲得P</th><th>稼働時間</th><th>効率</th><th>着地時間</th><th>デジタル着地</th>
+            </tr></thead>
+            <tbody>{aporan.ranking.map((row) => <tr key={`${row.rank}-${row.personName}`}>
+              <th className={styles.stickyCell}>{row.rank}</th>
+              <td>{row.department}</td>
+              <td>{row.personName}</td>
+              <td>{row.status ?? "—"}</td>
+              <td>{typeof row.wageLabel === "number" ? formatNumber(row.wageLabel) : row.wageLabel}</td>
+              <td>{formatNumber(row.totalPoints, 1)}</td>
+              <td>{formatNumber(row.workHours, 1)}</td>
+              <td>{formatNumber(row.displayEfficiency, 2)}</td>
+              <td>{formatNumber(row.landingHours, 1)}</td>
+              <td>{formatNumber(row.digitalLanding, 1)}</td>
             </tr>)}</tbody>
           </table>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}

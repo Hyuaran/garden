@@ -34,6 +34,7 @@ export type KanriPersonMonthlyInput = {
 
 export type KanriMonthlySettings = {
   targetPointsByTeam?: Record<string, number | string | null>;
+  aporanTargets?: Record<string, number | string | null>;
   incentive?: {
     targetPoints?: number | string | null;
     achievementBonusTotal?: number | string | null;
