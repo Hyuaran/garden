@@ -129,7 +129,7 @@ export async function PUT(request: Request, context: { params: Promise<{ yearMon
       sheet: "inputs",
       grid: body.inputs,
       calculated_at: new Date().toISOString(),
-    })
+    }, { onConflict: "run_id,sheet" })
     .select("grid,calculated_at")
     .single();
   if (error) return NextResponse.json({ ok: false, error: "入力値を保存できませんでした" }, { status: 500 });

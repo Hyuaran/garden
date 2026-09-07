@@ -154,7 +154,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       { run_id: id, sheet: "aporan", grid: aporan, calculated_at: new Date().toISOString() },
       { run_id: id, sheet: "incentive", grid: incentive, calculated_at: new Date().toISOString() },
       { run_id: id, sheet: "payroll", grid: payroll, calculated_at: new Date().toISOString() },
-    ]);
+    ], { onConflict: "run_id,sheet" });
   if (saveError) return NextResponse.json({ ok: false, error: "計算結果を保存できませんでした" }, { status: 500 });
   return NextResponse.json({ ok: true, grid, houhan, jisseki, aporan, incentive, payroll });
 }

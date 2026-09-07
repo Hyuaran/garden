@@ -169,7 +169,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       sheet: "inputs",
       grid: result.inputs,
       calculated_at: new Date().toISOString(),
-    });
+    }, { onConflict: "run_id,sheet" });
   if (inputSaveError) return NextResponse.json({ ok: false, error: "勤怠を保存できませんでした" }, { status: 500 });
 
   const summary = mergeRunSummary(run.summary, result.summary);
