@@ -1,7 +1,7 @@
 import type { KintoneRecord } from "@/lib/kintone/records";
 
 export type KanriMode = "daily" | "closing";
-export type KanriSource = "kintone_customer" | "kanden_report" | "credit_card" | "roster";
+export type KanriSource = "kintone_customer" | "kanden_report" | "credit_card" | "roster" | "kot_daily";
 export type KanriWarningCode = "staff_not_in_roster" | "source_empty" | "duplicate_record" | "source_failed";
 
 export type KanriWarning = {
@@ -35,6 +35,7 @@ export const SOURCE_LABELS: Record<KanriSource, string> = {
   kanden_report: "訪販",
   credit_card: "クレジットカード",
   roster: "従業員名簿",
+  kot_daily: "勤怠",
 };
 
 export const SOURCE_DETAIL_LABELS: Record<KanriSource, string> = {
@@ -42,6 +43,7 @@ export const SOURCE_DETAIL_LABELS: Record<KanriSource, string> = {
   kanden_report: "関電件数報告",
   credit_card: "8アプリ",
   roster: "在籍者",
+  kot_daily: "KOT",
 };
 
 export const CUSTOMER_FIELDS = [
@@ -220,6 +222,7 @@ export function summarizeRows(rows: KanriSourceRow[]): KanriSummary {
     kanden_report: { label: "訪販（関電件数報告）", count: sourceRows("kanden_report").length, unit: "件" },
     credit_card: { label: "クレジットカード（8アプリ）", count: sourceRows("credit_card").length, unit: "件", apps: creditApps },
     roster: { label: "従業員名簿（在籍者）", count: sourceRows("roster").length, unit: "名" },
+    kot_daily: { label: "勤怠（KOT）", count: sourceRows("kot_daily").length, unit: "行" },
   };
   return { ...summary, total: Object.values(summary).reduce((sum, item) => sum + item.count, 0) };
 }

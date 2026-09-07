@@ -9,7 +9,7 @@ import {
   type KanriWarning,
   weekdayJa,
 } from "./_lib/kanri-core";
-import type { KanriManualInputs, KanriSheetGrid } from "./_lib/calc/kanri-sheet";
+import type { KanriKotDailyIssue, KanriManualInputs, KanriSheetGrid } from "./_lib/calc/kanri-sheet";
 import type { JissekiSheetGrid, KanriPerson } from "./_lib/calc/jisseki-sheet";
 import { HOUHAN_PRODUCTS, type HouhanSheetGrid } from "./_lib/calc/houhan-sheet";
 import { APORAN_TEAM_LABELS, APORAN_TEAM_ORDER, type AporanSheetGrid, type AporanTeamKey } from "./_lib/calc/aporan-sheet";
@@ -59,6 +59,7 @@ type RunResponse = {
   payroll?: PayrollSheetGrid;
   result?: { grid?: KanriSheetGrid | JissekiSheetGrid | HouhanSheetGrid | AporanSheetGrid | IncentiveSheetGrid | PayrollSheetGrid };
   people?: KanriPerson[];
+  kotDaily?: KanriManualInputs["kotDaily"] | null;
 };
 
 export function nextModeForDate(targetDate: string, currentMode: KanriMode) {
@@ -149,6 +150,28 @@ function payrollPersonValue(inputs: KanriManualInputs, person: string, key: "nex
   return inputs.payrollByPerson?.[person]?.[key] ?? "";
 }
 
+function hasKotPersonValue(inputs: KanriManualInputs, person: string, key: "landingHours" | "workHours" | "workDays") {
+  return Boolean(inputs.kotDaily && inputs.personMonthly?.[person]?.[key] !== undefined);
+}
+
+function kotHoursBasis(inputs: KanriManualInputs) {
+  return inputs.monthlySettings?.kot?.hoursBasis ?? "plan";
+}
+
+function kotDispatchNames(inputs: KanriManualInputs) {
+  return (inputs.monthlySettings?.kot?.includeDispatchNames ?? ["梶野 恵園"]).join("、");
+}
+
+function kotIssueSummary(issues: KanriKotDailyIssue[] | undefined) {
+  const counts = {
+    遅刻: issues?.filter((issue) => issue.kind === "遅刻").length ?? 0,
+    早退: issues?.filter((issue) => issue.kind === "早退").length ?? 0,
+    予定なしの出勤: issues?.filter((issue) => issue.kind === "予定なしの出勤").length ?? 0,
+    予定ありで打刻なし: issues?.filter((issue) => issue.kind === "予定ありで打刻なし").length ?? 0,
+  };
+  return `遅刻 ${counts.遅刻} 件・早退 ${counts.早退} 件・予定なしの出勤 ${counts.予定なしの出勤} 件・予定ありで打刻なし ${counts.予定ありで打刻なし} 件`;
+}
+
 async function readJson(response: Response): Promise<RunResponse> {
   try {
     return await response.json() as RunResponse;
@@ -177,6 +200,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [calculating, setCalculating] = useState(false);
+  const [kotFile, setKotFile] = useState<File | null>(null);
+  const [kotImporting, setKotImporting] = useState(false);
+  const [showKotDetails, setShowKotDetails] = useState(false);
   const range = useMemo(() => monthRange(targetDate), [targetDate]);
   const dayCount = Number(range.end.slice(-2));
   const monthDays = useMemo(() => Array.from({ length: dayCount }, (_, index) => {
@@ -408,6 +434,21 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     }));
   }
 
+  function updateKotSetting(key: "hoursBasis" | "includeDispatchNames", value: string) {
+    setInputs((current) => ({
+      ...current,
+      monthlySettings: {
+        ...(current.monthlySettings ?? {}),
+        kot: {
+          ...(current.monthlySettings?.kot ?? {}),
+          [key]: key === "includeDispatchNames"
+            ? value.split(/[、,\n]/).map((name) => name.trim()).filter(Boolean)
+            : value,
+        },
+      },
+    }));
+  }
+
   function updatePayrollPerson(person: string, key: "nextStatus" | "wageAdjustment" | "referralPoints" | "trainingHours" | "hiringBonus" | "talentReferralIncentive" | "dealIncentive", value: string) {
     const nextValue = key === "nextStatus" ? value : value === "" ? 0 : Number(value.replace(/,/g, ""));
     if (key !== "nextStatus" && !Number.isFinite(nextValue as number)) return;
@@ -482,6 +523,36 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     }
   }
 
+  async function importKotDaily() {
+    if (!latest?.id) {
+      setMessage("先にデータを取り込んでください。");
+      return;
+    }
+    if (!kotFile) {
+      setMessage("KOT のファイルを選んでください。");
+      return;
+    }
+    setKotImporting(true);
+    setMessage("");
+    try {
+      const form = new FormData();
+      form.append("file", kotFile);
+      form.append("hoursBasis", kotHoursBasis(inputs));
+      form.append("includeDispatchNames", kotDispatchNames(inputs));
+      const response = await fetch(`/api/system/kanri/runs/${latest.id}/kot`, { method: "POST", body: form });
+      const json = await readJson(response);
+      if (!response.ok || !json.inputs) {
+        setMessage(json.error ?? "勤怠を取り込めませんでした。");
+        return;
+      }
+      setInputs(json.inputs);
+      if (json.summary) setLatest((current) => current ? { ...current, summary: json.summary as KanriSummary } : current);
+      setMessage("勤怠を取り込みました。");
+    } finally {
+      setKotImporting(false);
+    }
+  }
+
   async function savePeople() {
     setSaving(true);
     setMessage("");
@@ -540,7 +611,50 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
 
     {activeTab === "kanri" && <>
     <section className={styles.panel}>
+      <h2>勤怠（KOT）</h2>
+      <p className={styles.hint}>KOT の「日別データ[CSV]」（レイアウト Garden管理表ポータル（日））を選んで取り込みます。</p>
+      <div className={styles.kotUpload}>
+        <input type="file" accept=".csv,text/csv" onChange={(event) => setKotFile(event.target.files?.[0] ?? null)} />
+        <button className={styles.primaryInline} type="button" disabled={kotImporting} onClick={() => void importKotDaily()}>{kotImporting ? "取り込んでいます" : "取り込む"}</button>
+      </div>
+      {inputs.kotDaily?.summary ? <div className={styles.kotResult}>
+        <p>取り込み結果：{inputs.kotDaily.summary.startDate.replace(/-/g, "/")}〜{inputs.kotDaily.summary.endDate.slice(5).replace("-", "/")}・{inputs.kotDaily.summary.peopleCount} 人・{inputs.kotDaily.summary.rowCount.toLocaleString("ja-JP")} 行。稼働時間（{inputs.kotDaily.summary.hoursBasis === "plan" ? "予定" : "実績"}）を {inputs.kotDaily.summary.teamDayCount} マスに入れました。</p>
+        <p>台帳に無い名前 {inputs.kotDaily.summary.missingNames.length} 人 ／ 手入力を上書きしたマス {inputs.kotDaily.summary.overwrittenCells.length}</p>
+        <p>勤怠の確認：{kotIssueSummary(inputs.kotDaily.issues)} <button className={styles.linkButton} type="button" onClick={() => setShowKotDetails((current) => !current)}>{showKotDetails ? "閉じる" : "明細を見る"}</button></p>
+        {showKotDetails && <div className={styles.resultScroller}>
+          <table className={styles.resultTable}>
+            <thead><tr><th className={styles.stickyCell}>日付</th><th>チーム</th><th>氏名</th><th>種類</th><th>予定</th><th>打刻</th><th>差</th></tr></thead>
+            <tbody>{inputs.kotDaily.issues.map((issue, index) => <tr key={`${issue.date}-${issue.name}-${issue.kind}-${index}`}>
+              <th className={styles.stickyCell}>{issue.date.replace(/-/g, "/")}</th>
+              <td>{issue.team || "—"}</td>
+              <td>{issue.name}</td>
+              <td>{issue.kind}</td>
+              <td>{issue.planned || "—"}</td>
+              <td>{issue.punched || "—"}</td>
+              <td>{issue.diffMinutes === null ? "—" : `${issue.diffMinutes} 分`}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>}
+      </div> : <p className={styles.empty}>まだ勤怠の取り込み結果がありません。</p>}
+      <p className={styles.hint}>KOT の打刻は編集後の時刻です。数分の遅れは編集で消えていることがあります。</p>
+    </section>
+
+    <section className={styles.panel}>
+      <h2>今月の設定（勤怠）</h2>
+      <div className={styles.controls}>
+        <fieldset>
+          <legend>稼働時間の元</legend>
+          <label><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "plan"} onChange={() => updateKotSetting("hoursBasis", "plan")} />予定</label>
+          <label><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "actual"} onChange={() => updateKotSetting("hoursBasis", "actual")} />実績</label>
+        </fieldset>
+        <label>チーム時間に入れる派遣<input type="text" value={kotDispatchNames(inputs)} onChange={(event) => updateKotSetting("includeDispatchNames", event.target.value)} /></label>
+      </div>
+      <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>
+    </section>
+
+    <section className={styles.panel}>
       <h2>稼働時間と開通率</h2>
+      <p className={styles.hint}>勤怠を取り込むと稼働時間は上書きされます。取り込み後も手で直せます。</p>
       <div className={styles.monthHeader}>{range.yearMonth.replace("-", "年")}月</div>
       <div className={styles.inputScroller}>
         <table className={styles.inputTable}>
@@ -727,9 +841,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <th>{person.name}</th>
               <td>{person.team}</td>
               <td>{person.employment_kind === "アルバイト" ? formatNumber(Number(person.base_wage ?? 0)) : person.employment_kind}</td>
-              <td><input type="number" step="0.1" value={personInputValue(inputs, person.name, "landingHours")} onChange={(event) => updatePersonMonthly(person.name, "landingHours", event.target.value)} /></td>
-              <td>{person.is_field_sales ? "訪問販売から反映" : <input type="number" step="0.1" value={personInputValue(inputs, person.name, "workHours")} onChange={(event) => updatePersonMonthly(person.name, "workHours", event.target.value)} />}</td>
-              <td><input type="number" step="1" value={personInputValue(inputs, person.name, "workDays")} onChange={(event) => updatePersonMonthly(person.name, "workDays", event.target.value)} /></td>
+              <td><input type="number" step="0.1" value={personInputValue(inputs, person.name, "landingHours")} onChange={(event) => updatePersonMonthly(person.name, "landingHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "landingHours") && <span className={styles.sourceBadge}>KOT から</span>}</td>
+              <td>{person.is_field_sales ? "訪問販売から反映" : <><input type="number" step="0.1" value={personInputValue(inputs, person.name, "workHours")} onChange={(event) => updatePersonMonthly(person.name, "workHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workHours") && <span className={styles.sourceBadge}>KOT から</span>}</>}</td>
+              <td><input type="number" step="1" value={personInputValue(inputs, person.name, "workDays")} onChange={(event) => updatePersonMonthly(person.name, "workDays", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workDays") && <span className={styles.sourceBadge}>KOT から</span>}</td>
               <td>{person.is_field_sales ? "訪問販売から反映" : ""}</td>
             </tr>)}</tbody>
           </table>

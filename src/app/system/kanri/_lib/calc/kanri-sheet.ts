@@ -22,6 +22,7 @@ export type KanriManualInputs = {
   unitPriceByTeamByProduct?: Record<string, Record<string, number>>;
   personMonthly?: Record<string, KanriPersonMonthlyInput>;
   monthlySettings?: KanriMonthlySettings;
+  kotDaily?: KanriKotDailyInputs;
   fieldSales?: KanriFieldSalesInputs;
   payrollByPerson?: Record<string, KanriPayrollPersonInput>;
 };
@@ -46,6 +47,40 @@ export type KanriMonthlySettings = {
     trainingWage?: number | string | null;
   };
   fieldSalesWeights?: Record<string, number | string | null>;
+  kot?: {
+    hoursBasis?: "plan" | "actual";
+    includeDispatchNames?: string[];
+  };
+};
+
+export type KanriKotDailyIssueKind = "遅刻" | "早退" | "予定なしの出勤" | "予定ありで打刻なし";
+
+export type KanriKotDailyIssue = {
+  date: string;
+  team: string;
+  name: string;
+  kind: KanriKotDailyIssueKind;
+  planned: string;
+  punched: string;
+  diffMinutes: number | null;
+};
+
+export type KanriKotDailySummary = {
+  startDate: string;
+  endDate: string;
+  peopleCount: number;
+  rowCount: number;
+  teamDayCount: number;
+  overwrittenCells: { team: string; date: string; previous: number; next: number }[];
+  missingNames: string[];
+  issueCounts: Record<KanriKotDailyIssueKind, number>;
+  hoursBasis: "plan" | "actual";
+};
+
+export type KanriKotDailyInputs = {
+  importedAt: string;
+  summary: KanriKotDailySummary;
+  issues: KanriKotDailyIssue[];
 };
 
 export type KanriPayrollPersonInput = {
