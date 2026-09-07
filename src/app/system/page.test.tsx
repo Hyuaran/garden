@@ -49,6 +49,8 @@ describe("system home", () => {
     expect(screen.getByRole("heading", { name: "シフト" }).closest("a")).toHaveAttribute("href", "/system/shift");
     expect(screen.getByRole("heading", { name: "前確依頼" }).closest("a")).toHaveAttribute("href", "/system/zenkaku");
     expect(screen.getByRole("heading", { name: "テレマ コール集計" }).closest("a")).toHaveAttribute("href", "/system/call-metrics");
+    expect(screen.getByRole("heading", { name: "フォーム" }).closest("a")).toHaveAttribute("href", "/system/forms");
+    expect(screen.queryByRole("heading", { name: "給与計算連絡" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "契約書管理" }).closest("a")).toHaveAttribute("href", "/system/contracts");
     expect(screen.getByRole("heading", { name: "関電トスポータル" }).closest("a")).toHaveAttribute("href", "/p/toss");
     expect(screen.getByRole("heading", { name: "管理表ポータル" }).closest("a")).toHaveAttribute("href", "/system/kanri");

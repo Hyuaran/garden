@@ -110,9 +110,9 @@ describe("ShachoShell", () => {
     expect(screen.getByRole("link", { name: "テレマ コール集計", current: "page" })).toBeInTheDocument();
   });
 
-  it("marks payroll notice as the current System menu item", () => {
-    renderShell("/system/payroll-notice");
-    expect(screen.getByRole("link", { name: "給与計算連絡", current: "page" })).toBeInTheDocument();
+  it("marks forms as the current System menu item", () => {
+    renderShell("/system/forms/payroll-notice");
+    expect(screen.getByRole("link", { name: "フォーム", current: "page" })).toBeInTheDocument();
   });
 
   it("marks contracts as the current System menu item", () => {
@@ -134,7 +134,8 @@ describe("ShachoShell", () => {
     ["/system/shift", "シフト"],
     ["/system/zenkaku", "前確依頼"],
     ["/system/call-metrics", "テレマ コール集計"],
-    ["/system/payroll-notice", "給与計算連絡"],
+    ["/system/forms", "フォーム"],
+    ["/system/forms/payroll-notice", "フォーム"],
     ["/system/contracts", "契約書管理"],
     ["/system/list", "リストマスタ"],
   ])("derives the current menu from %s", (pathname, label) => {
@@ -223,7 +224,7 @@ describe("ShachoShell", () => {
     const nav = screen.getByRole("navigation", { name: "Systemメニュー" });
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
       "ホーム", "資料", "入社手続き", "自分の情報", "勤怠打刻", "シフト", "前確依頼",
-      "テレマ コール集計", "給与計算連絡", "契約書管理", "関電トスポータル", "管理表ポータル", "リストマスタ",
+      "テレマ コール集計", "フォーム", "契約書管理", "関電トスポータル", "管理表ポータル", "リストマスタ",
     ]);
     for (const label of ["資料", "シフト", "前確依頼"]) {
       const link = within(nav).getByRole("link", { name: label });

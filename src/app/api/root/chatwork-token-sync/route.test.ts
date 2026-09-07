@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/app/system/mypage/_lib/submission-server", () => ({ requireManager: mocks.requireManager }));
-vi.mock("@/app/system/payroll-notice/_lib/chatwork-token-sync.server", () => ({ syncChatworkTokens: mocks.syncChatworkTokens }));
+vi.mock("@/app/system/forms/payroll-notice/_lib/chatwork-token-sync.server", () => ({ syncChatworkTokens: mocks.syncChatworkTokens }));
 
 describe("root chatwork token sync route", () => {
   beforeEach(() => {

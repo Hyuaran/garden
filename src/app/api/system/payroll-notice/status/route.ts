@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/app/system/mypage/_lib/submission-server";
-import { getSingleTokenSyncReason, syncChatworkTokens } from "@/app/system/payroll-notice/_lib/chatwork-token-sync.server";
+import { getSingleTokenSyncReason, syncChatworkTokens } from "@/app/system/forms/payroll-notice/_lib/chatwork-token-sync.server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";

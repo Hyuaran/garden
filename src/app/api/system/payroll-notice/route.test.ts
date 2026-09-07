@@ -16,7 +16,7 @@ vi.mock("@/app/system/mypage/_lib/submission-server", () => ({
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: mocks.getSupabaseAdmin }));
 vi.mock("@/app/rill/mail/_lib/token-crypto", () => ({ decryptToken: mocks.decryptToken }));
 vi.mock("@/app/system/_lib/chatwork", () => ({ sendChatworkMessageWithToken: mocks.sendChatworkMessageWithToken }));
-vi.mock("@/app/system/payroll-notice/_lib/chatwork-token-sync.server", () => ({ syncChatworkTokens: mocks.syncChatworkTokens }));
+vi.mock("@/app/system/forms/payroll-notice/_lib/chatwork-token-sync.server", () => ({ syncChatworkTokens: mocks.syncChatworkTokens }));
 
 const validBody = {
   team: "宮永チーム",

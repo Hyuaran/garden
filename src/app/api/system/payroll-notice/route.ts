@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { decryptToken } from "@/app/rill/mail/_lib/token-crypto";
 import { sendChatworkMessageWithToken } from "@/app/system/_lib/chatwork";
 import { requireManager, requireStaff } from "@/app/system/mypage/_lib/submission-server";
-import { syncChatworkTokens } from "@/app/system/payroll-notice/_lib/chatwork-token-sync.server";
+import { syncChatworkTokens } from "@/app/system/forms/payroll-notice/_lib/chatwork-token-sync.server";
 import {
   buildPayrollNoticeMessage,
   normalizePayrollNoticeInput,
   summarizeFlag,
   validatePayrollNotice,
   type PayrollNoticeInput,
-} from "@/app/system/payroll-notice/_lib/payroll-notice";
+} from "@/app/system/forms/payroll-notice/_lib/payroll-notice";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";

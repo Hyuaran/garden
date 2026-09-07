@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
-import { syncChatworkTokens } from "@/app/system/payroll-notice/_lib/chatwork-token-sync.server";
+import { syncChatworkTokens } from "@/app/system/forms/payroll-notice/_lib/chatwork-token-sync.server";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
