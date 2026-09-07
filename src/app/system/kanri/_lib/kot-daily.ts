@@ -294,7 +294,7 @@ export function calculateKotDailyImport(input: {
     };
   });
 
-  const issues = buildIssues(input.rows, byName, endDate);
+  const issues = buildIssues(input.rows, byName, actualThroughDate);
   const summary = {
     startDate,
     endDate,

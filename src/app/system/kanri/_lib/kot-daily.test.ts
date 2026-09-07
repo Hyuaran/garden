@@ -156,6 +156,25 @@ describe("KOT daily import", () => {
       予定ありで打刻なし: 1,
     });
   });
+
+  it("does not count scheduled missing punches after the actual through date", () => {
+    const result = calculateKotDailyImport({
+      rows: [
+        row({ name: "山田 花子", date: "2026-09-01", patternName: "14-21", roundedClockIn: "", roundedClockOut: "", clockIn: "", clockOut: "" }),
+        row({ name: "山田 花子", date: "2026-09-02", patternName: "14-21", roundedClockIn: "", roundedClockOut: "", clockIn: "", clockOut: "" }),
+        row({ name: "山田 花子", date: "2026-09-03", patternName: "14-21", roundedClockIn: "", roundedClockOut: "", clockIn: "", clockOut: "" }),
+      ],
+      people: [person("山田　花子", "Aチーム")],
+      currentInputs: { hoursByTeamByDate: {}, openRateByTeamByProduct: {} },
+      actualThroughDate: "2026-09-01",
+      importedAt: "2026-09-01T00:00:00.000Z",
+    });
+    const missingPunchIssues = result.issues.filter((issue) => issue.kind === "予定ありで打刻なし");
+
+    expect(result.summary.issueCounts.予定ありで打刻なし).toBe(1);
+    expect(missingPunchIssues).toHaveLength(1);
+    expect(missingPunchIssues[0].date).toBe("2026-09-01");
+  });
 });
 
 function fixtureDir() {
