@@ -50,13 +50,15 @@ describe("system home", () => {
     expect(screen.getByRole("heading", { name: "前確依頼" }).closest("a")).toHaveAttribute("href", "/system/zenkaku");
     expect(screen.getByRole("heading", { name: "テレマ コール集計" }).closest("a")).toHaveAttribute("href", "/system/call-metrics");
     expect(screen.getByRole("heading", { name: "フォーム" }).closest("a")).toHaveAttribute("href", "/system/forms");
+    expect(screen.getByRole("heading", { name: "自動配信" }).closest("a")).toHaveAttribute("href", "/system/deliveries");
+    expect(screen.queryByRole("heading", { name: "コール数配信" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "給与計算連絡" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "契約書管理" }).closest("a")).toHaveAttribute("href", "/system/contracts");
     expect(screen.getByRole("heading", { name: "関電トスポータル" }).closest("a")).toHaveAttribute("href", "/p/toss");
     expect(screen.getByRole("heading", { name: "管理表ポータル" }).closest("a")).toHaveAttribute("href", "/system/kanri");
     expect(screen.getByRole("heading", { name: "リストマスタ" }).closest("a")).toHaveAttribute("href", "/system/list");
-    // 管理表ポータルが本物になったので、準備中は 3 つ（コール数配信・テレマ日報・給与試算）
-    expect(screen.getAllByText("準備中")).toHaveLength(3);
+    // コール数配信は自動配信の中に移したので、準備中は 2 つ（テレマ日報・給与試算）
+    expect(screen.getAllByText("準備中")).toHaveLength(2);
   });
   it("does not render the manager-only card for staff", async () => {
     mocks.createServerClient.mockResolvedValue(client("staff"));

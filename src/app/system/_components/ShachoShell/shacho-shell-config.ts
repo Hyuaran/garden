@@ -34,7 +34,7 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "フォーム", description: "月に一度の連絡や申請を、ここから開いて送ります。", icon: "document", href: "/system/forms", minRole: "staff" },
   { label: "契約書管理", description: "上位店との契約書を登録して保存漏れを防ぎます。パートナー配布用のひな形もここで作れます。", icon: "document", href: "/system/contracts", minRole: "manager" },
   { label: "関電トスポータル", description: "関西電力のトスアップを受け付けます。入力内容はそのままKintoneへ連携されます。", icon: "folder", href: "/p/toss" },
-  { label: "コール数配信", description: "毎日のコール数を決まった時刻に自動でお知らせします。", icon: "message", upcoming: true },
+  { label: "自動配信", description: "決まった時刻に Chatwork へ自動で送っている連絡をまとめて見られます。", icon: "message", href: "/system/deliveries", minRole: "staff" },
   { label: "テレマ日報", description: "その日の架電の報告をまとめて提出できるようにします。", icon: "report", upcoming: true },
   { label: "給与試算", description: "支給前におおよその金額を確認できるようにします。", icon: "salary", upcoming: true },
   { label: "管理表ポータル", description: "毎日の管理表を、手で貼らずに作ります。", icon: "portal", href: "/system/kanri", minRole: "manager" },
