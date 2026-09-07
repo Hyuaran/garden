@@ -57,6 +57,59 @@ export async function sendKanriReportMessage(text: string, fetchImpl: typeof fet
   return { ok: true as const, roomId };
 }
 
+export async function sendChatworkMessageWithToken({
+  token,
+  roomId,
+  text,
+  fetchImpl = fetch,
+}: {
+  token: string;
+  roomId: string;
+  text: string;
+  fetchImpl?: typeof fetch;
+}) {
+  if (!token || !roomId) throw new Error("Chatwork配信ルーム設定が不足しています");
+
+  const form = new URLSearchParams({ body: text });
+  let response: Response;
+  try {
+    response = await fetchImpl(`${CHATWORK_API_BASE}/rooms/${encodeURIComponent(roomId)}/messages`, {
+      method: "POST",
+      headers: {
+        "X-ChatWorkToken": token,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: form,
+      cache: "no-store",
+    });
+  } catch {
+    throw new CallReportChatworkError(null);
+  }
+  if (!response.ok) throw new CallReportChatworkError(response.status);
+  const json = await response.json().catch(() => ({})) as { message_id?: string | number };
+  return { ok: true as const, roomId, messageId: json.message_id == null ? null : String(json.message_id) };
+}
+
+export async function getChatworkMe(token: string, fetchImpl: typeof fetch = fetch) {
+  if (!token) throw new Error("Chatwork API トークンがありません");
+  let response: Response;
+  try {
+    response = await fetchImpl(`${CHATWORK_API_BASE}/me`, {
+      method: "GET",
+      headers: { "X-ChatWorkToken": token },
+      cache: "no-store",
+    });
+  } catch {
+    throw new CallReportChatworkError(null);
+  }
+  if (!response.ok) throw new CallReportChatworkError(response.status);
+  const json = await response.json() as { name?: unknown; account_id?: unknown };
+  return {
+    name: String(json.name ?? ""),
+    accountId: json.account_id == null ? null : String(json.account_id),
+  };
+}
+
 export async function sendCallReportWithAttachment(
   text: string,
   pdf: Uint8Array,

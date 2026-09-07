@@ -10,6 +10,7 @@ import { TextField, SelectField, FormGrid, TextareaField } from "../_components/
 import { fetchEmployees, upsertEmployee, updateEmployeeGardenRole, setEmployeeActive, fetchCompanies, fetchSalarySystems } from "../_lib/queries";
 import {
   GARDEN_ROLE_LABELS,
+  isRoleAtLeast,
   type Company,
   type Employee,
   type GardenRole,
@@ -51,6 +52,22 @@ const KOU_OTSU_OPTIONS: Array<{ value: "" | "kou" | "otsu"; label: string }> = [
   { value: "kou", label: "甲欄（主な収入）" },
   { value: "otsu", label: "乙欄（副業）" },
 ];
+
+type ChatworkTokenSyncPerson = {
+  employeeNumber: string;
+  name: string;
+};
+
+type ChatworkTokenSyncResult = {
+  syncedAt: string;
+  imported: number;
+  created: number;
+  unchanged: number;
+  invalidFormat: ChatworkTokenSyncPerson[];
+  rejectedByChatwork: ChatworkTokenSyncPerson[];
+  missingRoot: ChatworkTokenSyncPerson[];
+  retired: number;
+};
 
 const empty = (nextId: string, companyId: string, salarySystemId: string): Employee => ({
   employee_id: nextId,
@@ -96,6 +113,11 @@ function nextId(existing: Employee[]): string {
   return `EMP-${String(max + 1).padStart(4, "0")}`;
 }
 
+function formatSyncPeople(people: ChatworkTokenSyncPerson[]) {
+  if (people.length === 0) return "";
+  return `：${people.map((person) => `${person.employeeNumber} ${person.name}`.trim()).join("、")}`;
+}
+
 export default function EmployeesPage() {
   const { canWrite, rootUser } = useRootState();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -113,7 +135,10 @@ export default function EmployeesPage() {
   const [error, setError] = useState<string | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [tokenSyncing, setTokenSyncing] = useState(false);
+  const [tokenSyncResult, setTokenSyncResult] = useState<ChatworkTokenSyncResult | null>(null);
   const bankRequired = editTarget ? isEmployeeBankRequired(editTarget) : true;
+  const canSyncChatworkTokens = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "manager") : false;
 
   async function load() {
     try {
@@ -226,6 +251,27 @@ export default function EmployeesPage() {
     setRoleError(null);
   }
 
+  async function handleChatworkTokenSync() {
+    if (!canSyncChatworkTokens) {
+      setError("責任者以上の権限が必要です");
+      return;
+    }
+    try {
+      setTokenSyncing(true);
+      setError(null);
+      setTokenSyncResult(null);
+      const response = await fetch("/api/root/chatwork-token-sync", { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Chatwork トークンを取り込めませんでした");
+      setTokenSyncResult(body as ChatworkTokenSyncResult);
+      await load();
+    } catch (syncError) {
+      setError(syncError instanceof Error ? syncError.message : "Chatwork トークンを取り込めませんでした");
+    } finally {
+      setTokenSyncing(false);
+    }
+  }
+
   async function handleRoleChange() {
     if (!roleTarget || rootUser?.garden_role !== "super_admin") return;
     const currentRole = roleTarget.garden_role ?? "staff";
@@ -309,11 +355,22 @@ export default function EmployeesPage() {
               {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
             </select>
             <input ref={searchRef} type="search" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 200 }} />
+            <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
             <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
           </div>
         }
       />
       {!canAdd && !loading && <div style={{ background: colors.warningBg, color: colors.warning, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>従業員を追加するには、先に法人マスタと給与体系マスタを登録してください。</div>}
+      {tokenSyncResult && (
+        <div style={{ background: colors.warningBg, color: colors.warning, padding: "10px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13, lineHeight: 1.7 }}>
+          <div>Kintone 従業員名簿から Chatwork の API トークンを取り込みました（{new Date(tokenSyncResult.syncedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}）</div>
+          <div>取り込み {tokenSyncResult.imported} 人（新規 {tokenSyncResult.created}・変更なし {tokenSyncResult.unchanged}）</div>
+          <div>形式が違うため取り込まず {tokenSyncResult.invalidFormat.length} 人{formatSyncPeople(tokenSyncResult.invalidFormat)}</div>
+          <div>Chatwork が受け付けないため取り込まず {tokenSyncResult.rejectedByChatwork.length} 人{formatSyncPeople(tokenSyncResult.rejectedByChatwork)}</div>
+          <div>Root に該当者がいない {tokenSyncResult.missingRoot.length} 人{formatSyncPeople(tokenSyncResult.missingRoot)}</div>
+          <div>退職済みのため対象外 {tokenSyncResult.retired} 人</div>
+        </div>
+      )}
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
       {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={filtered} activeIndex={activeIndex} onRowClick={canWrite ? setEditTarget : undefined} />}
 
