@@ -34,5 +34,5 @@ export default async function PayrollNoticePage() {
     </div>;
   }
 
-  return <PayrollNoticeClient submitterName={String(employee.name)} canViewHistory={isRoleAtLeast(role, "manager")} />;
+  return <PayrollNoticeClient submitterName={String(employee.name)} canViewHistory={isRoleAtLeast(role, "staff")} />;
 }

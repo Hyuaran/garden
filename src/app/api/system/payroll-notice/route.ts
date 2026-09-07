@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { decryptToken } from "@/app/rill/mail/_lib/token-crypto";
 import { sendChatworkMessageWithToken } from "@/app/system/_lib/chatwork";
-import { requireManager, requireStaff } from "@/app/system/mypage/_lib/submission-server";
+import { requireStaff } from "@/app/system/mypage/_lib/submission-server";
 import { syncChatworkTokens } from "@/app/system/forms/payroll-notice/_lib/chatwork-token-sync.server";
 import {
   buildPayrollNoticeMessage,
@@ -43,8 +43,8 @@ function roomId() {
 }
 
 export async function GET() {
-  const manager = await requireManager();
-  if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
+  const staff = await requireStaff();
+  if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
   const { data, error } = await getSupabaseAdmin()
     .from("root_payroll_notice")
     .select("id,submitted_at,submitter_name,team,commute_flag,commute_people,training_flag,training_people,referral_flag,referral_people,chatwork_message,chatwork_room_id,chatwork_sent_at,chatwork_message_id,chatwork_error")

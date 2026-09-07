@@ -141,8 +141,8 @@ describe("payroll notice route", () => {
     expect(updates[0]).toMatchObject({ chatwork_error: "Chatwork API request failed" });
   });
 
-  it("requires manager for history", async () => {
-    mocks.requireManager.mockResolvedValue(null);
+  it("requires staff for history", async () => {
+    mocks.requireStaff.mockResolvedValue(null);
     const { GET } = await import("./route");
 
     const response = await GET();
