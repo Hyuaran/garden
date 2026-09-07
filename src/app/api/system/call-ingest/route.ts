@@ -73,6 +73,7 @@ export async function POST(request: Request) {
       .upsert(parsed.valid, { onConflict: "external_call_id", ignoreDuplicates: false });
     if (upsertError) throw new Error(`コール履歴upsert失敗: ${upsertError.message}`);
 
+    const callSummaryPhones = [...new Set(parsed.valid.map((row) => row.phone_number).filter((value): value is string => !!value))];
     const refreshDates = [...new Set([
       ...parsed.valid.map((row) => row.call_date),
       ...(existing ?? []).map((row) => String(row.call_date)).filter(Boolean),
@@ -87,11 +88,22 @@ export async function POST(request: Request) {
         run_id: parsed.metadata.runId, batch_index: parsed.metadata.batchIndex, date_count: refreshDates.length,
       });
     }
+    let callSummaryRefreshError: string | null = null;
+    if (callSummaryPhones.length > 0) {
+      const { error: summaryError } = await supabase.rpc("soil_list_refresh_call_summary", { p_phones: callSummaryPhones });
+      if (summaryError) {
+        callSummaryRefreshError = "リストマスタ反映 失敗";
+        console.warn("[system/call-ingest] list call summary refresh failed", {
+          run_id: parsed.metadata.runId, batch_index: parsed.metadata.batchIndex, phone_count: callSummaryPhones.length,
+        });
+      }
+    }
 
     const status = parsed.rejected.length > 0 ? "partial" : "success";
     await finishLog({
       status, records_inserted: recordsInserted, records_updated: recordsUpdated,
       rollup_refresh_status: rollupRefreshStatus, rollup_refresh_error: rollupRefreshError,
+      error_message: callSummaryRefreshError,
     });
     return NextResponse.json({
       ok: status === "success", status, log_id: log.id, records_fetched: parsed.fetched,

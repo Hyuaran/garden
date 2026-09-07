@@ -52,6 +52,37 @@
   line-height: 1.8;
 }
 
+.callSyncStatus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.7;
+  flex-wrap: wrap;
+}
+
+.callSyncStatus button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--teal);
+  color: #ffffff;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.callSyncStatus button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
 .panel,
 .notice {
   box-sizing: border-box;

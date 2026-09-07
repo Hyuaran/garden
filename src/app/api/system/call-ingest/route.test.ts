@@ -20,13 +20,23 @@ const request = (rows: unknown[]) => new Request("http://localhost/api/system/ca
   body: JSON.stringify(body(rows)),
 });
 
-function admin(options: { existing?: Array<string | { id: string; callDate: string }>; upsertError?: string; refreshError?: string } = {}) {
+function admin(options: {
+  existing?: Array<string | { id: string; callDate: string }>;
+  upsertError?: string;
+  refreshError?: string;
+  listRefreshError?: string;
+} = {}) {
   const insertedLogs: unknown[] = [];
   const updatedLogs: unknown[] = [];
   const upserts: Array<{ payload: unknown; options: unknown }> = [];
   return {
     insertedLogs, updatedLogs, upserts,
-    rpc: vi.fn().mockResolvedValue({ data: null, error: options.refreshError ? { message: options.refreshError } : null }),
+    rpc: vi.fn((name: string) => Promise.resolve({
+      data: null,
+      error: name === "soil_list_refresh_call_summary" && options.listRefreshError
+        ? { message: options.listRefreshError }
+        : options.refreshError ? { message: options.refreshError } : null,
+    })),
     from(table: string) {
       if (table === "system_call_sync_log") return {
         insert(payload: unknown) {
@@ -101,6 +111,33 @@ describe("POST /api/system/call-ingest", () => {
     const response = await POST(request([validRow]));
     expect(response.status).toBe(200);
     expect(client.rpc).toHaveBeenCalledWith("system_call_rollup_refresh", { p_dates: ["2026-08-10", "2026-08-11"] });
+  });
+
+  it("refreshes the list call summary for the phone numbers in the batch", async () => {
+    const client = admin();
+    mocks.getAdmin.mockReturnValue(client);
+    const response = await POST(request([
+      { ...validRow, 電話番号: "09011112222" },
+      { ...validRow, 主キー: "1002", 電話番号: "09011112222" },
+      { ...validRow, 主キー: "1003", 電話番号: "08033334444" },
+    ]));
+    expect(response.status).toBe(200);
+    expect(client.rpc).toHaveBeenCalledWith("soil_list_refresh_call_summary", {
+      p_phones: ["09011112222", "08033334444"],
+    });
+  });
+
+  it("keeps ingest successful and records a warning when list summary refresh fails", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const client = admin({ listRefreshError: "database detail" });
+    mocks.getAdmin.mockReturnValue(client);
+    const response = await POST(request([{ ...validRow, 電話番号: "09011112222" }]));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: "success", records_inserted: 1 });
+    expect(client.updatedLogs.at(-1)).toEqual(expect.objectContaining({
+      status: "success",
+      error_message: "リストマスタ反映 失敗",
+    }));
   });
 
   it("keeps ingest successful and records a warning when rollup refresh fails", async () => {

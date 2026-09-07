@@ -45,6 +45,13 @@ type ExportHistory = {
   created_at: string;
 };
 
+type CallSyncState = {
+  syncedThrough: string | null;
+  lastRunAt: string | null;
+  phones: number;
+  callRows: number;
+};
+
 type FilterState = {
   prefecture: string;
   auCallAvailability: string;
@@ -133,11 +140,25 @@ function conditionToFilters(condition: SoilListConditionPayload): FilterState {
 function formatDateTime(value: string): string {
   if (!value) return "";
   return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
     month: "numeric",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatDateShort(value: string): string {
+  if (!value) return "";
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return "";
+  return `${month}/${day}`;
+}
+
+function formatCallSyncStatus(state: CallSyncState | null): string {
+  if (!state?.syncedThrough) return "コール履歴の反映：7/31 まで（FileMaker の書き出し）";
+  const lastRun = state.lastRunAt ? `（最終反映 ${formatDateTime(state.lastRunAt)}）` : "";
+  return `コール履歴の反映：${formatDateShort(state.syncedThrough)} まで${lastRun}`;
 }
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -146,7 +167,7 @@ async function readJson<T>(response: Response): Promise<T> {
   return data;
 }
 
-export function ListMasterClient() {
+export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boolean }) {
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [count, setCount] = useState<number | null>(null);
   const [approximate, setApproximate] = useState(false);
@@ -157,6 +178,8 @@ export function ListMasterClient() {
   const [options, setOptions] = useState<Partial<SoilListOptionsPayload>>({});
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [callSyncState, setCallSyncState] = useState<CallSyncState | null>(null);
+  const [callSyncBusy, setCallSyncBusy] = useState(false);
   const [conditionName, setConditionName] = useState("AU光○ アポ禁なし");
   const [selectedColumns, setSelectedColumns] = useState<SoilListColumnKey[]>(
     SOIL_LIST_EXPORT_COLUMNS.filter((column) => column.defaultChecked).map((column) => column.key),
@@ -182,11 +205,32 @@ export function ListMasterClient() {
     setOptions(data.options);
   }
 
+  async function loadCallSyncState() {
+    const response = await fetch("/api/soil/list/call-sync");
+    const data = await readJson<{ ok: boolean; state: CallSyncState; canSync: boolean }>(response);
+    setCallSyncState(data.state);
+  }
+
   useEffect(() => {
-    Promise.all([loadSaved(), loadOptions()]).catch((error: unknown) =>
+    Promise.all([loadSaved(), loadOptions(), loadCallSyncState()]).catch((error: unknown) =>
       setMessage(error instanceof Error ? error.message : "取得できませんでした"),
     );
   }, []);
+
+  async function handleCallSync() {
+    setCallSyncBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/soil/list/call-sync", { method: "POST" });
+      const data = await readJson<{ ok: boolean; result: { phones: number; callRows: number; syncedThrough: string | null }; state: CallSyncState }>(response);
+      setCallSyncState(data.state);
+      setMessage(`反映しました（対象 ${data.result.phones.toLocaleString("ja-JP")} 番号・${formatDateShort(data.result.syncedThrough ?? "")} まで）`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "反映できませんでした");
+    } finally {
+      setCallSyncBusy(false);
+    }
+  }
 
   async function handleCountAndSearch() {
     setBusy(true);
@@ -322,6 +366,14 @@ export function ListMasterClient() {
         <p className={styles.eyebrow}>System / リストマスタ</p>
         <h1>リストマスタ</h1>
         <p className={styles.lead}>営業リストを条件で絞って件数を見て、.mer に書き出します。</p>
+        <div className={styles.callSyncStatus}>
+          <span>{formatCallSyncStatus(callSyncState)}</span>
+          {canSyncCalls && (
+            <button type="button" onClick={handleCallSync} disabled={callSyncBusy}>
+              コール履歴を反映する
+            </button>
+          )}
+        </div>
       </div>
 
       <section className={styles.panel} aria-labelledby="filter-heading">
