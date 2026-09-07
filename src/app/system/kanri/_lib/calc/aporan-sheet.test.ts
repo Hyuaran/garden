@@ -4,8 +4,9 @@ import type { JissekiSheetGrid } from "./jisseki-sheet";
 import type { KanriDayResult, KanriSheetGrid } from "./kanri-sheet";
 
 function kanriGrid(targetDay: number | "定休日"): KanriSheetGrid {
-  const days: KanriDayResult[] = Array.from({ length: 27 }, (_, index) => ({
-    day: index === 14 ? targetDay : index + 1,
+  // 8/1〜8/29 の 29 日。8/7 と 8/14 が定休日 → 8/15 は 13 日目の稼働、月の稼働日は 27 日
+  const days: KanriDayResult[] = Array.from({ length: 29 }, (_, index) => ({
+    day: index === 14 ? targetDay : (index === 6 || index === 13 ? "定休日" : index + 1),
     date: `2026-08-${String(index + 1).padStart(2, "0")}`,
     weekday: "",
     all: { hours: 0, efficiency: null, total: 0 },

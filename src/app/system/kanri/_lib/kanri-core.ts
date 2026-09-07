@@ -107,8 +107,9 @@ export function isMonthEnd(targetDate: string) {
 }
 
 export function weekdayJa(targetDate: string) {
-  const date = new Date(`${targetDate}T00:00:00+09:00`);
-  return ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+  // 暦日そのものの曜日。サーバーの時間帯（Vercel は UTC）に左右されないよう UTC で求める
+  const date = new Date(`${targetDate}T00:00:00Z`);
+  return ["日", "月", "火", "水", "木", "金", "土"][date.getUTCDay()];
 }
 
 export function buildCustomerCondition(targetDate: string) {

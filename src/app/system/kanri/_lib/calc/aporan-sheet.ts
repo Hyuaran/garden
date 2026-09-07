@@ -99,8 +99,10 @@ function teamNameFor(grid: KanriSheetGrid, key: AporanTeamKey) {
 }
 
 function targetDayNumber(kanriGrid: KanriSheetGrid, targetDate: string) {
-  const day = kanriGrid.days.find((item) => item.date === targetDate);
-  return typeof day?.day === "number" ? day.day : null;
+  // 稼働日番号＝対象日までの稼働日（定休日でない日）の数。B 列の暦日番号ではなく「何日目の稼働か」
+  const index = kanriGrid.days.findIndex((item) => item.date === targetDate);
+  if (index < 0 || typeof kanriGrid.days[index].day !== "number") return null;
+  return kanriGrid.days.slice(0, index + 1).filter((item) => typeof item.day === "number").length;
 }
 
 function workingDayCount(kanriGrid: KanriSheetGrid) {

@@ -107,7 +107,10 @@ describe("kanri display route", () => {
       ],
       system_kanri_result: [
         { data: { run_id: "run-1", sheet: "aporan", grid: aporanGrid(), calculated_at: "2026-09-07T09:05:00Z" }, error: null },
-        { data: { grid: { days: [{ date: "2026-09-06", day: 5 }] } }, error: null },
+        { data: { grid: { days: [
+          { date: "2026-09-01", day: 1 }, { date: "2026-09-02", day: 2 }, { date: "2026-09-03", day: "定休日" },
+          { date: "2026-09-04", day: 4 }, { date: "2026-09-05", day: 5 }, { date: "2026-09-06", day: 6 },
+        ] } }, error: null },
       ],
     }));
     const { GET } = await import("./route");
@@ -116,7 +119,7 @@ describe("kanri display route", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.title).toBe("9月6日(日)時点の成績　5/1稼働");
+    expect(body.title).toBe("9月6日(日)時点の成績　5/5稼働");
     expect(body.rows).toHaveLength(8);
     expect(body.rows[1].values).toEqual(["25.0P", "7.1P", "11.0P", "6.9P"]);
   });

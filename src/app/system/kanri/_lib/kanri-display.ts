@@ -68,8 +68,11 @@ export function kanriDisplayTitle(targetDate: string, dayNumber?: number | null,
 }
 
 export function kanriDisplayDayNumber(kanriGrid: Pick<KanriSheetGrid, "days"> | null | undefined, targetDate: string) {
-  const day = kanriGrid?.days.find((item) => item.date === targetDate);
-  return typeof day?.day === "number" ? day.day : null;
+  // 対象日までの稼働日（定休日でない日）の数
+  const days = kanriGrid?.days ?? [];
+  const index = days.findIndex((item) => item.date === targetDate);
+  if (index < 0 || typeof days[index].day !== "number") return null;
+  return days.slice(0, index + 1).filter((item) => typeof item.day === "number").length;
 }
 
 export function kanriDisplayWorkdayCount(kanriGrid: Pick<KanriSheetGrid, "days"> | null | undefined) {
