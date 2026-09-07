@@ -1,4 +1,4 @@
-export const TRAINING_HOURS_LABEL = "150h";
+export const TRAINING_HOURS_LABEL = "120h";
 
 export const TEAMS = ["宮永チーム", "小泉チーム", "石原チーム"] as const;
 export const FLAGS = ["いる", "いない"] as const;
