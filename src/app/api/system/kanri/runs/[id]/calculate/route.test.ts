@@ -132,12 +132,14 @@ describe("system kanri calculate route", () => {
     expect(body.houhan.people).toHaveLength(0);
     expect(body.jisseki.rows).toHaveLength(1);
     expect(body.aporan.ranking).toHaveLength(1);
+    expect(body.incentive.teamOrder).toEqual(["miyanaga", "koizumi"]);
     expect(savedRows).toHaveLength(1);
     expect(savedRows[0]).toEqual(expect.arrayContaining([
       expect.objectContaining({ sheet: "kanri" }),
       expect.objectContaining({ sheet: "houhan" }),
       expect.objectContaining({ sheet: "jisseki" }),
       expect.objectContaining({ sheet: "aporan" }),
+      expect.objectContaining({ sheet: "incentive" }),
     ]));
   });
 });

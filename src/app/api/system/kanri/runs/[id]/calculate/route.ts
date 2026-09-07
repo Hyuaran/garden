@@ -6,6 +6,7 @@ import { calculateKanriSheet, type KanriManualInputs, type KanriPointMaster, typ
 import { calculateJissekiSheet, normalizeCommuteMap, type KanriPerson } from "@/app/system/kanri/_lib/calc/jisseki-sheet";
 import { calculateHouhanSheet } from "@/app/system/kanri/_lib/calc/houhan-sheet";
 import { calculateAporanSheet } from "@/app/system/kanri/_lib/calc/aporan-sheet";
+import { calculateIncentiveSheet } from "@/app/system/kanri/_lib/calc/incentive-sheet";
 
 export const runtime = "nodejs";
 
@@ -129,6 +130,13 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     jissekiGrid: jisseki,
     manualInputs,
   });
+  const incentive = calculateIncentiveSheet({
+    yearMonth: range.yearMonth,
+    kanriGrid: grid,
+    aporanGrid: aporan,
+    jissekiGrid: jisseki,
+    manualInputs,
+  });
 
   const { error: saveError } = await admin
     .from("system_kanri_result")
@@ -137,7 +145,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       { run_id: id, sheet: "houhan", grid: houhan, calculated_at: new Date().toISOString() },
       { run_id: id, sheet: "jisseki", grid: jisseki, calculated_at: new Date().toISOString() },
       { run_id: id, sheet: "aporan", grid: aporan, calculated_at: new Date().toISOString() },
+      { run_id: id, sheet: "incentive", grid: incentive, calculated_at: new Date().toISOString() },
     ]);
   if (saveError) return NextResponse.json({ ok: false, error: "計算結果を保存できませんでした" }, { status: 500 });
-  return NextResponse.json({ ok: true, grid, houhan, jisseki, aporan });
+  return NextResponse.json({ ok: true, grid, houhan, jisseki, aporan, incentive });
 }

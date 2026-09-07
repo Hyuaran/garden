@@ -13,6 +13,7 @@ import type { KanriManualInputs, KanriSheetGrid } from "./_lib/calc/kanri-sheet"
 import type { JissekiSheetGrid, KanriPerson } from "./_lib/calc/jisseki-sheet";
 import { HOUHAN_PRODUCTS, type HouhanSheetGrid } from "./_lib/calc/houhan-sheet";
 import { APORAN_TEAM_LABELS, APORAN_TEAM_ORDER, type AporanSheetGrid, type AporanTeamKey } from "./_lib/calc/aporan-sheet";
+import { INCENTIVE_TEAM_LABELS, INCENTIVE_TEAM_ORDER, type IncentiveSheetGrid } from "./_lib/calc/incentive-sheet";
 import styles from "./kanri.module.css";
 
 export type KanriRunView = {
@@ -52,7 +53,8 @@ type RunResponse = {
   jisseki?: JissekiSheetGrid;
   houhan?: HouhanSheetGrid;
   aporan?: AporanSheetGrid;
-  result?: { grid?: KanriSheetGrid };
+  incentive?: IncentiveSheetGrid;
+  result?: { grid?: KanriSheetGrid | JissekiSheetGrid | HouhanSheetGrid | AporanSheetGrid | IncentiveSheetGrid };
   people?: KanriPerson[];
 };
 
@@ -132,6 +134,10 @@ function aporanTargetValue(inputs: KanriManualInputs, key: AporanTeamKey) {
   return inputs.monthlySettings?.aporanTargets?.[key] ?? "";
 }
 
+function incentiveValue(inputs: KanriManualInputs, key: "targetPoints" | "achievementBonusTotal" | "teamVictoryBonus") {
+  return inputs.monthlySettings?.incentive?.[key] ?? "";
+}
+
 async function readJson(response: Response): Promise<RunResponse> {
   try {
     return await response.json() as RunResponse;
@@ -141,7 +147,7 @@ async function readJson(response: Response): Promise<RunResponse> {
 }
 
 export default function KanriPortalClient({ creatorName, today, initialRuns, initialHolidays, initialProducts, initialTeams, initialPeople }: Props) {
-  const [activeTab, setActiveTab] = useState<"kanri" | "jisseki" | "aporan" | "houhan" | "settings">("kanri");
+  const [activeTab, setActiveTab] = useState<"kanri" | "jisseki" | "aporan" | "houhan" | "incentive" | "settings">("kanri");
   const [targetDate, setTargetDate] = useState(today);
   const [mode, setMode] = useState<KanriMode>(isMonthEnd(today) ? "closing" : "daily");
   const [runs, setRuns] = useState(initialRuns);
@@ -154,6 +160,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const [jisseki, setJisseki] = useState<JissekiSheetGrid | null>(null);
   const [houhan, setHouhan] = useState<HouhanSheetGrid | null>(null);
   const [aporan, setAporan] = useState<AporanSheetGrid | null>(null);
+  const [incentive, setIncentive] = useState<IncentiveSheetGrid | null>(null);
   const [selectedFieldSalesPerson, setSelectedFieldSalesPerson] = useState(initialPeople.find((person) => person.active !== false && person.is_field_sales)?.name ?? "");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -190,7 +197,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
 
   async function loadResult(runId: string) {
     const response = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=kanri`);
-    const json = await readJson(response);
+    const json = await readJson(response) as { result?: { grid?: KanriSheetGrid } };
     if (response.ok && json.result?.grid) setGrid(json.result.grid);
     const jissekiResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=jisseki`);
     const jissekiJson = await readJson(jissekiResponse) as { result?: { grid?: JissekiSheetGrid } };
@@ -201,6 +208,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     const aporanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=aporan`);
     const aporanJson = await readJson(aporanResponse) as { result?: { grid?: AporanSheetGrid } };
     if (aporanResponse.ok && aporanJson.result?.grid) setAporan(aporanJson.result.grid);
+    const incentiveResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=incentive`);
+    const incentiveJson = await readJson(incentiveResponse) as { result?: { grid?: IncentiveSheetGrid } };
+    if (incentiveResponse.ok && incentiveJson.result?.grid) setIncentive(incentiveJson.result.grid);
   }
 
   useEffect(() => {
@@ -355,8 +365,8 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   }
 
   function updateMonthlySetting(path: "target" | "aporan" | "incentive", key: string, value: string) {
-    const number = value === "" ? 0 : Number(value.replace(/,/g, ""));
-    if (!Number.isFinite(number)) return;
+    const number = value === "" ? null : Number(value.replace(/,/g, ""));
+    if (number !== null && !Number.isFinite(number)) return;
     setInputs((current) => ({
       ...current,
       monthlySettings: path === "target"
@@ -430,6 +440,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         if (json.houhan) setHouhan(json.houhan);
         if (json.jisseki) setJisseki(json.jisseki);
         if (json.aporan) setAporan(json.aporan);
+        if (json.incentive) setIncentive(json.incentive);
       }
     } finally {
       setCalculating(false);
@@ -485,6 +496,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       <button type="button" aria-current={activeTab === "jisseki" ? "page" : undefined} onClick={() => setActiveTab("jisseki")}>実績管理</button>
       <button type="button" aria-current={activeTab === "aporan" ? "page" : undefined} onClick={() => setActiveTab("aporan")}>アポラン</button>
       <button type="button" aria-current={activeTab === "houhan" ? "page" : undefined} onClick={() => setActiveTab("houhan")}>訪問販売</button>
+      <button type="button" aria-current={activeTab === "incentive" ? "page" : undefined} onClick={() => setActiveTab("incentive")}>インセ計算</button>
       <button type="button" aria-current={activeTab === "settings" ? "page" : undefined} onClick={() => setActiveTab("settings")}>設定</button>
     </nav>
 
@@ -771,6 +783,66 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <td>{formatNumber(row.digitalLanding, 1)}</td>
             </tr>)}</tbody>
           </table>
+        </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
+      </section>
+    </>}
+
+    {activeTab === "incentive" && <>
+      <section className={styles.panel}>
+        <h2>今月の設定</h2>
+        <div className={styles.compactGrid}>
+          <label>インセの目標P
+            <input type="number" step="0.1" value={incentiveValue(inputs, "targetPoints")} onChange={(event) => updateMonthlySetting("incentive", "targetPoints", event.target.value)} />
+          </label>
+          <label>達成金合計
+            <input type="number" step="1" value={incentiveValue(inputs, "achievementBonusTotal")} onChange={(event) => updateMonthlySetting("incentive", "achievementBonusTotal", event.target.value)} />
+          </label>
+          <label>チーム勝利金
+            <input type="number" step="1" value={incentiveValue(inputs, "teamVictoryBonus")} onChange={(event) => updateMonthlySetting("incentive", "teamVictoryBonus", event.target.value)} />
+          </label>
+        </div>
+        <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>
+      </section>
+
+      <section className={styles.panel}>
+        <div className={styles.sectionHeader}>
+          <h2>チーム別</h2>
+          <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>
+        </div>
+        {incentive ? <div className={styles.resultScroller}>
+          <table className={styles.resultTable}>
+            <thead><tr>
+              <th className={styles.stickyCell}></th>
+              {INCENTIVE_TEAM_ORDER.map((key) => <th key={key}>{INCENTIVE_TEAM_LABELS[key]}</th>)}
+            </tr></thead>
+            <tbody>
+              <tr><th className={styles.stickyCell}>稼働日数</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-days`}>{formatNumber(incentive.teams[key].workDays)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>稼働時間</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-hours`}>{formatNumber(incentive.teams[key].landingHours, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>目標P</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-target`}>{formatNumber(incentive.teams[key].targetPoints, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>着地P</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-actual`}>{formatNumber(incentive.teams[key].actualPoints, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>達成率</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-rate`}>{formatRate(incentive.teams[key].achievementRate)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>効率</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-efficiency`}>{formatNumber(incentive.teams[key].efficiency, 4)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>個人P（リーダー）</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-leader`}>{formatNumber(incentive.teams[key].leaderPoints, 1)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>個人P比率</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-leader-rate`}>{formatRate(incentive.teams[key].leaderPointRate)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>P達成金</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-achievement-bonus`}>{formatNumber(incentive.teams[key].achievementBonus)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>P達成支給額</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-achievement-payout`}>{formatNumber(incentive.teams[key].achievementPayout)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>チーム勝利支給額</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-victory`}>{formatNumber(incentive.teams[key].teamVictoryBonus)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>目標P超え</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-target-over`}>{formatNumber(incentive.teams[key].targetOverBonus)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>●P達成金</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-point-achievement`}>{formatNumber(incentive.teams[key].pointAchievementBonus)}</td>)}</tr>
+              <tr><th className={styles.stickyCell}>合計インセン</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-total`}>{formatNumber(incentive.teams[key].totalIncentive)}</td>)}</tr>
+            </tbody>
+          </table>
+        </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
+      </section>
+
+      <section className={styles.panel}>
+        <h2>テレマ全体</h2>
+        {incentive ? <div className={styles.resultMeta}>
+          <span>稼働時間 {formatNumber(incentive.overall.landingHours, 1)}</span>
+          <span>時間効率 {formatNumber(incentive.overall.timeEfficiency, 3)}</span>
+          <span>目標P {formatNumber(incentive.overall.targetPoints, 1)}</span>
+          <span>達成金合計 {formatNumber(incentive.overall.achievementBonusTotal)}</span>
+          <span>1人 {formatNumber(incentive.overall.perPersonAchievementBonus)}</span>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
       </section>
     </>}

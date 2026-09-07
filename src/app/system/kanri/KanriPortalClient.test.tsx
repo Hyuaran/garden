@@ -71,9 +71,9 @@ describe("KanriPortalClient", () => {
       initialPeople={[]}
     />);
 
-    const calculateButton = [...screen.getAllByRole("button")].find((button) => button.textContent?.includes("計算"));
+    const calculateButton = screen.getByRole("button", { name: "計算する" });
     expect(calculateButton).toBeTruthy();
-    fireEvent.click(calculateButton as HTMLButtonElement);
+    fireEvent.click(calculateButton);
 
     await waitFor(() => {
       expect(screen.getByText("実数")).toBeInTheDocument();
@@ -99,6 +99,10 @@ describe("KanriPortalClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "実績管理" }));
     expect(screen.getByText("人ごとの今月の値")).toBeInTheDocument();
     expect(screen.getByText((text) => text.replace(/\s/g, "") === "山田花子")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "インセ計算" }));
+    expect(screen.getByText("インセの目標P")).toBeInTheDocument();
+    expect(screen.getByText("チーム別")).toBeInTheDocument();
+    expect(screen.getByText("テレマ全体")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "設定" }));
     expect(screen.getByText("人の設定")).toBeInTheDocument();
   });
