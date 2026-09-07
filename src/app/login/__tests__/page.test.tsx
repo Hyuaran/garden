@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -53,6 +54,14 @@ describe("GardenLoginPage rendering", () => {
     expect(brand).toHaveTextContent("今日の業務をここから始めましょう。経理・営業・カスタマーサポートの仕事を、ひとつの場所にまとめています。");
     expect(screen.getByTestId("login-brand-icons").children).toHaveLength(12);
     expect(screen.queryByText("Enter the Garden")).not.toBeInTheDocument();
+  });
+
+  it("uses the rail module icon order for the brand icons", () => {
+    render(<GardenLoginPage />);
+
+    const moduleIds = Array.from(screen.getByTestId("login-brand-icons").children)
+      .map((chip) => chip.getAttribute("data-module-id"));
+    expect(moduleIds).toEqual(GARDEN_SHELL_MODULES.map((module) => module.id));
   });
 
   it("keeps the required form controls and forgot password link", () => {

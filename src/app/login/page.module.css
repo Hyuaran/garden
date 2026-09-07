@@ -150,12 +150,9 @@
 }
 
 .chips svg {
-  fill: none;
-  height: 20px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.7;
-  width: 20px;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.22));
+  height: 30px;
+  width: 30px;
 }
 
 .formPanel {
