@@ -60,7 +60,9 @@ describe("system mypage", () => {
   });
   it("renders four tabs in the fixed order and only the gate before unlock", () => {
     renderMyPage();
-    expect(screen.getByText("System ／ マイページ")).toBeInTheDocument();
+    const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
+    expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
+    expect(within(breadcrumb).getByText("マイページ")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "マイページ" })).toBeInTheDocument();
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "マイページ",
@@ -84,7 +86,9 @@ describe("system mypage", () => {
   });
   it("shows only the requested function in standalone mode", () => {
     renderMyPage({ ...baseProps, tabbed: false });
-    expect(screen.getByText("System ／ 自分の情報")).toBeInTheDocument();
+    const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
+    expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
+    expect(within(breadcrumb).getByText("自分の情報")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "自分の情報" })).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.getByLabelText("誕生日の月日4桁")).toBeInTheDocument();
@@ -95,7 +99,9 @@ describe("system mypage", () => {
     ["zenkaku", "前確依頼"],
   ] as const)("shows standalone %s without profile verification", (initialTab, title) => {
     renderMyPage({ ...baseProps, initialTab, tabbed: false });
-    expect(screen.getByText(`System ／ ${title}`)).toBeInTheDocument();
+    const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
+    expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
+    expect(within(breadcrumb).getByText(title)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: title, level: 1 })).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("誕生日の月日4桁")).not.toBeInTheDocument();

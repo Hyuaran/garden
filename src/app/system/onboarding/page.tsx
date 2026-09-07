@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { OnboardingError, onboardingEmployee, readOnboarding } from "./_lib/onboarding.server";
 import { onboardingAdminContext } from "./_lib/onboarding-admin.server";
 import OnboardingClient from "./OnboardingClient";
@@ -25,7 +26,7 @@ export default async function OnboardingPage() {
     message = error instanceof OnboardingError ? error.message : "入社手続きを読み込めませんでした。時間をおいて、もう一度お試しください。";
   }
   return <div className={styles.pageShell}>
-    <header className={styles.header}><p className={styles.eyebrow}>System ／ 入社手続き</p><h1>入社手続き</h1></header>
+    <header className={styles.header}><SystemBreadcrumb items={[{ label: "入社手続き" }]} /><h1>入社手続き</h1></header>
     {initial ? <>
       {canViewAdmin && <section className={styles.panel}><Link className={styles.button} href="/system/onboarding/admin">みんなの入社手続きを見る（事務）</Link></section>}
       <OnboardingClient key={`${initial.status}-${initial.submittedAt ?? "draft"}`} initial={initial} />

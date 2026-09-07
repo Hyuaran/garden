@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import {
   buildPayrollNoticeMessage,
   normalizePayrollNoticeInput,
@@ -164,10 +164,7 @@ export default function PayrollNoticeClient({
 
   return <div className={styles.pageShell}>
     <header className={styles.header}>
-      <div className={styles.breadcrumbLine}>
-        <p className={styles.eyebrow}>System / フォーム / 給与計算連絡</p>
-        <Link className={styles.backLink} href="/system/forms">フォーム一覧へ</Link>
-      </div>
+      <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "給与計算連絡" }]} />
       <h1>給与計算に関する連絡</h1>
       <p className={styles.lead}>営業部のみなさま、今月も業務お疲れ様でした！ 入力して送信すると、Chatwork に投稿されます。</p>
       <p className={styles.sender}>送信者：{submitterName}{registered && status.accountName ? `（Chatwork：${status.accountName} で投稿します）` : ""}</p>

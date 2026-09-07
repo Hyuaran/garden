@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import AttendanceTab from "./tabs/AttendanceTab";
 import ProfileTab from "./tabs/ProfileTab";
 import ShiftTab from "./tabs/ShiftTab";
@@ -34,7 +35,7 @@ export default function MyPageClient({ initialTab, tabbed, registered, employeeN
   }
   const title = tabbed ? "マイページ" : MY_PAGE_TITLES[activeTab];
   return <div className={styles.pageContent}>
-    <header className={styles.header}><p className={styles.eyebrow}>System ／ {title}</p><h1>{title}</h1></header>
+    <header className={styles.header}><SystemBreadcrumb items={[{ label: title }]} /><h1>{title}</h1></header>
     {tabbed && <div className={styles.tabs} role="tablist" aria-label="マイページメニュー">
       {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id}
         onClick={() => selectTab(tab.id)}>{tab.label}</button>)}

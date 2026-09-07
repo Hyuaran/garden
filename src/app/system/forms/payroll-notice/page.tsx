@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import { createServerClient } from "@/app/_lib/supabase/server";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import PayrollNoticeClient from "./PayrollNoticeClient";
 import styles from "./payroll-notice.module.css";
 
@@ -24,10 +24,7 @@ export default async function PayrollNoticePage() {
   if (!isRoleAtLeast(role, "staff")) {
     return <div className={styles.pageShell}>
       <header className={styles.header}>
-        <div className={styles.breadcrumbLine}>
-          <p className={styles.eyebrow}>System / フォーム / 給与計算連絡</p>
-          <Link className={styles.backLink} href="/system/forms">フォーム一覧へ</Link>
-        </div>
+        <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "給与計算連絡" }]} />
         <h1>給与計算に関する連絡</h1>
       </header>
       <section className={styles.notice}>

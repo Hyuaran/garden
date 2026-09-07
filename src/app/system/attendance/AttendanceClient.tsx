@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { PUNCH_LABELS, PUNCH_TYPES, SYNC_LABELS, type AttendancePunch, type PunchType } from "../_lib/attendance";
 import styles from "./attendance.module.css";
 
@@ -50,7 +51,7 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
   return <div className={`${styles.shell} ${embedded ? styles.shellEmbedded : ""}`}>
     <main className={`${styles.main} ${embedded ? styles.mainEmbedded : ""}`}>
       <header className={styles.header}>
-        <div>{!embedded && <><p className={styles.eyebrow}>Garden attendance</p><h1>勤怠打刻</h1></>}{employeeName && <p className={styles.employeeName}>{employeeName}さん</p>}</div>
+        <div>{!embedded && <><SystemBreadcrumb items={[{ label: "勤怠打刻" }]} /><h1>勤怠打刻</h1></>}{employeeName && <p className={styles.employeeName}>{employeeName}さん</p>}</div>
         <div className={styles.headerActions}>{canViewSync && <Link className={styles.adminLink} href="/system/attendance/sync-status">同期状況</Link>}</div>
       </header>
       {!registered ? <section className={styles.notice} role="status">

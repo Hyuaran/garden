@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import {
   isMonthEnd,
   monthRange,
@@ -649,7 +650,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
 
   return <div className={styles.pageShell}>
     <header className={styles.header}>
-      <p className={styles.eyebrow}>System / 管理表ポータル</p>
+      <SystemBreadcrumb items={[{ label: "管理表ポータル" }]} />
       <h1>管理表ポータル</h1>
     </header>
     <div className={styles.monitorEntry}>

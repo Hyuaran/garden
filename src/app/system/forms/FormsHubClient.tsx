@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { MenuIcon } from "@/app/system/_components/ShachoShell/ShachoShell";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { SystemFormDefinition } from "./_lib/forms-registry";
 import styles from "./forms.module.css";
 
@@ -45,7 +46,7 @@ export default function FormsHubClient({ forms }: { forms: SystemFormDefinition[
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <div>
-        <p className={styles.eyebrow}>System / フォーム</p>
+        <SystemBreadcrumb items={[{ label: "フォーム" }]} />
         <h1>フォーム</h1>
         <p className={styles.lead}>月に一度の連絡や申請を、ここから開いて送ります。</p>
       </div>

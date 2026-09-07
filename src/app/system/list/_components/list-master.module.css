@@ -31,14 +31,6 @@
   padding-right: 112px;
 }
 
-.eyebrow {
-  margin: 0 0 6px;
-  color: var(--sub);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .08em;
-}
-
 .header h1 {
   margin: 0;
   color: var(--heading);

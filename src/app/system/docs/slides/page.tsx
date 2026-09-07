@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { groupSlideDecks } from "../_data/slides";
 import { loadSlideDecks } from "../_lib/slides.server";
 import styles from "../docs.module.css";
@@ -9,7 +10,7 @@ export const metadata = { title: "スライド | Garden" };
 export default async function SlidesPage() {
   const decks = await loadSlideDecks();
   return <div className={styles.pageShell}>
-    <header className={styles.header}><p className={styles.eyebrow}>System ／ 資料</p><h1>スライド</h1></header>
+    <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "スライド" }]} /><h1>スライド</h1></header>
     <p className={styles.lead}>研修の内容を、1枚ずつの絵でご覧いただけます。</p>
     <div className={slideStyles.library}>{groupSlideDecks(decks).map((group, index) => <section key={group.category} aria-labelledby={`slide-category-${index}`}>
       <h2 id={`slide-category-${index}`}>{group.category}</h2>

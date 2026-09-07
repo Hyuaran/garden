@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { CallMetricsResponse } from "../_lib/call-metrics";
 import { defaultCallMetricDates, formatCallsPerWorkHour, formatWorkTime, summarizeCallMetrics } from "../_lib/call-metrics";
 import styles from "./call-metrics.module.css";
@@ -65,7 +66,7 @@ export default function CallMetricsClient() {
     <div className={styles.pageShell} data-testid="call-metrics-page-shell">
       <div className={styles.main}>
       <header className={styles.header}>
-        <div><p className={styles.eyebrow}>System ／ テレマ コール集計</p><h1>テレマ コール集計</h1></div>
+        <div><SystemBreadcrumb items={[{ label: "テレマ コール集計" }]} /><h1>テレマ コール集計</h1></div>
       </header>
 
       <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void load(); }}>

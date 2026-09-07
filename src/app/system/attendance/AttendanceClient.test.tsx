@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AttendanceClient from "./AttendanceClient";
 
@@ -26,7 +26,9 @@ describe("AttendanceClient", () => {
   it("keeps the standalone header without a duplicate logout when embedded is omitted", () => {
     render(<AttendanceClient registered={false} employeeName="社員A" canViewSync/>);
     expect(screen.getByRole("heading", { name: "勤怠打刻" })).toBeInTheDocument();
-    expect(screen.getByText("Garden attendance")).toBeInTheDocument();
+    const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
+    expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
+    expect(within(breadcrumb).getByText("勤怠打刻")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "ログアウト" })).not.toBeInTheDocument();
     expect(screen.getByText("社員Aさん")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "同期状況" })).toBeInTheDocument();

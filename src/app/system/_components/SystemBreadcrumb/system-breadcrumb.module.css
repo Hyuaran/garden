@@ -1,0 +1,45 @@
+.breadcrumb {
+  margin: 0 0 6px;
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  line-height: 1.5;
+}
+
+.breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breadcrumb li {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.breadcrumb li + li::before {
+  content: "/";
+  margin: 0 .5em;
+  color: currentColor;
+}
+
+.breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.breadcrumb a:focus-visible {
+  outline: 2px solid var(--teal, var(--accent, currentColor));
+  outline-offset: 3px;
+  border-radius: 4px;
+}

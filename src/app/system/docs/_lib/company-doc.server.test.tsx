@@ -65,7 +65,8 @@ describe("資料の認証と非公開写真", () => {
   it("資料入口は会社説明を維持し、線画アイコンの動画とスライドカードを表示する", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     render(await DocsPage());
-    const links = screen.getAllByRole("link"); expect(links).toHaveLength(3);
+    expect(screen.getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
+    const links = screen.getAllByRole("link").filter((link) => link.getAttribute("href") !== "/system"); expect(links).toHaveLength(3);
     expect(links[0]).toHaveAttribute("href", "/system/docs/company");
     expect(screen.getByText(/2026年8月31日/)).toBeInTheDocument();
     expect(links[1]).toHaveAttribute("href", "/system/docs/videos");

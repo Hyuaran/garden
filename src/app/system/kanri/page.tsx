@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { monthRange, tokyoToday } from "./_lib/kanri-core";
 import type { KanriPerson } from "./_lib/calc/jisseki-sheet";
@@ -35,7 +36,7 @@ export default async function KanriPortalPage({
   if (!isRoleAtLeast(role, "staff")) {
     return <div className={styles.pageShell}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>System / 管理表ポータル</p>
+        <SystemBreadcrumb items={[{ label: "管理表ポータル" }]} />
         <h1>管理表ポータル</h1>
       </header>
       <section className={styles.notice}>

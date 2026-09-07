@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import SlideDeck from "../../_components/SlideDeck";
 import { loadSlideDeck } from "../../_lib/slides.server";
 import styles from "../../docs.module.css";
@@ -12,7 +13,7 @@ export default async function SlideDeckPage({ params }: { params: Promise<{ deck
   if (!deck) notFound();
   return <div className={styles.pageShell}>
     <header className={styles.header}>
-      <p className={styles.eyebrow}>System ／ 資料 ／ スライド</p>
+      <SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "スライド", href: "/system/docs/slides" }, { label: deck.title }]} />
       <h1>{deck.title}</h1>
     </header>
     <div className={styles.presentationEntry}>

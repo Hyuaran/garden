@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { ListMasterClient } from "./_components/ListMasterClient";
 import styles from "./_components/list-master.module.css";
 
@@ -26,7 +27,7 @@ export default async function ListMasterPage() {
   if (!isRoleAtLeast(role, "manager")) {
     return <div className={styles.pageShell}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>System / リストマスタ</p>
+        <SystemBreadcrumb items={[{ label: "リストマスタ" }]} />
         <h1>リストマスタ</h1>
       </header>
       <section className={styles.notice}>

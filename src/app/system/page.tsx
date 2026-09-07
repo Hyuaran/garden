@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
 import { MenuIcon } from "./_components/ShachoShell/ShachoShell";
+import SystemBreadcrumb from "./_components/SystemBreadcrumb/SystemBreadcrumb";
 import { canUseSystemItem, SYSTEM_MENU_ITEMS } from "./_components/ShachoShell/shacho-shell-config";
 import styles from "./system-home.module.css";
 import { needsOnboarding } from "./onboarding/_lib/onboarding.server";
@@ -19,7 +20,7 @@ export default async function SystemHomePage() {
   const visible = SYSTEM_MENU_ITEMS.filter((item) => canUseSystemItem(item, role));
   const showOnboarding = await needsOnboarding(supabase, employee.employee_id);
   return <>
-    <header className={styles.header}><div className={styles.eyebrow}>System</div><h1>社内システム</h1></header>
+    <header className={styles.header}><SystemBreadcrumb /><h1>社内システム</h1></header>
     {showOnboarding && <section className={styles.onboardingNotice} aria-label="入社手続きのご案内"><p>入社手続きの入力がまだ終わっていません</p><Link href="/system/onboarding">入力する</Link></section>}
     <p className={styles.lead}>日々の事務作業をまとめた入口です。使いたいものを選んでください。</p>
     <div className={styles.sectionTitle}>使えるもの</div>

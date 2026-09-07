@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
+
 import {
   DEFAULT_EXPORT_LIMIT,
   EMPTY_OPTION_VALUE,
@@ -363,7 +365,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   return (
     <div className={styles.pageShell}>
       <div className={styles.header}>
-        <p className={styles.eyebrow}>System / リストマスタ</p>
+        <SystemBreadcrumb items={[{ label: "リストマスタ" }]} />
         <h1>リストマスタ</h1>
         <p className={styles.lead}>営業リストを条件で絞って件数を見て、.mer に書き出します。</p>
         <div className={styles.callSyncStatus}>

@@ -24,7 +24,9 @@ describe("CallMetricsClient", () => {
   it("renders the portal and switches across all three tabs", async () => {
     render(<CallMetricsClient />);
     expect(await screen.findByText("社員A")).toBeInTheDocument();
-    expect(screen.getByText("System ／ テレマ コール集計")).toBeInTheDocument();
+    const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
+    expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
+    expect(within(breadcrumb).getByText("テレマ コール集計")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "テレマ コール集計" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "ログアウト" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("tab")).toHaveLength(3);

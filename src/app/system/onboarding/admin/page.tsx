@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { OnboardingError } from "../_lib/onboarding.server";
 import { onboardingAdminContext, readAdminOnboardingList } from "../_lib/onboarding-admin.server";
 import styles from "../onboarding.module.css";
@@ -17,7 +18,7 @@ export default async function OnboardingAdminPage() {
     message = error instanceof OnboardingError ? error.message : "入社手続きを読み込めませんでした。時間をおいて、もう一度お試しください。";
   }
   return <div className={styles.pageShell}>
-    <header className={styles.header}><p className={styles.eyebrow}>System ／ 入社手続き（事務）</p><h1>入社手続き（事務）</h1></header>
+    <header className={styles.header}><SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding" }, { label: "入社手続き（事務）" }]} /><h1>入社手続き（事務）</h1></header>
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
       : <main className={styles.panel}>

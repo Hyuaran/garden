@@ -68,7 +68,6 @@
 .shell.shellEmbedded { --attendance-bg:transparent; --attendance-surface:var(--card); --attendance-border:var(--line); --attendance-row-border:var(--line); --attendance-link-border:var(--btn-line); --attendance-link-ink:var(--btn-ink); min-height:0; background:transparent; color:var(--ink); }
 .shellEmbedded .header h1,.shellEmbedded .history h2,.shellEmbedded .notice h2 { color:var(--heading); }
 .shellEmbedded .employeeName { color:var(--ink); }
-.shellEmbedded .eyebrow { color:var(--sub); }
 .main { width: min(760px, 100%); margin: 0 auto; padding: 24px 16px 48px; box-sizing: border-box; }
 .mainEmbedded { width: 100%; padding: 0; }
 .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
@@ -76,7 +75,6 @@
 .header p { margin: 4px 0; }
 .employeeName { color: var(--attendance-ink); font-weight: 700; }
 .headerActions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.eyebrow { color: var(--attendance-muted); font-size: .78rem; font-weight: 800; letter-spacing: .08em; }
 .adminLink { padding:10px 14px; border:1px solid var(--attendance-link-border); border-radius:13px; background:var(--attendance-surface); color:var(--attendance-link-ink); box-shadow:var(--shadow-s); font-weight:700; text-decoration:none; }
 .punchGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .punchGrid button { min-height:112px; border:0; border-radius:22px; color:white; font-size:1.25rem; font-weight:800; box-shadow:var(--shadow-s); touch-action:manipulation; }

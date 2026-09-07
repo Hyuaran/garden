@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import FormsHubClient from "./FormsHubClient";
 import { SYSTEM_FORMS } from "./_lib/forms-registry";
@@ -11,7 +11,9 @@ describe("FormsHubClient", () => {
   it("shows payroll notice in list view by default", () => {
     render(<FormsHubClient forms={SYSTEM_FORMS} />);
 
-    expect(screen.getByText("System / フォーム")).toBeInTheDocument();
+    const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
+    expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
+    expect(within(breadcrumb).getByText("フォーム")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "フォーム" })).toBeInTheDocument();
     expect(screen.getByTestId("forms-list-view")).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "給与計算連絡" })).toBeInTheDocument();
