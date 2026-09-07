@@ -1,4 +1,5 @@
 import { fieldValue, normalizeName, type KanriSourceRow } from "../kanri-core";
+import type { HouhanSheetGrid } from "./houhan-sheet";
 import type { KanriManualInputs, KanriPointMaster } from "./kanri-sheet";
 
 export type KanriPerson = {
@@ -52,6 +53,7 @@ export type JissekiSheetInput = {
   people: KanriPerson[];
   manualInputs: KanriManualInputs;
   commuteByName: Record<string, number | string | null>;
+  houhan?: HouhanSheetGrid | null;
 };
 
 const CUSTOMER_DATE_FIELDS = ["実績日"];
@@ -199,12 +201,14 @@ export function calculateJissekiSheet(input: JissekiSheetInput): JissekiSheetGri
   const counts = sourceCounts(input, points);
   const pointByProduct = new Map(points.map((point, index) => [point.product, { point, index }]));
   const commuteByName = Object.fromEntries(Object.entries(input.commuteByName).map(([name, value]) => [normalizeName(name), value]));
+  const houhanByPerson = new Map((input.houhan?.people ?? []).map((person) => [normalizeName(person.personName), person]));
 
   const rows = sortByOrder(input.people.filter(active)).map((person) => {
     const monthly = input.manualInputs.personMonthly?.[person.name] ?? input.manualInputs.personMonthly?.[person.kot_name ?? ""] ?? {};
+    const houhan = person.is_field_sales ? houhanByPerson.get(normalizeName(person.name)) : undefined;
     const nameKey = normalizeName(person.name);
     const landingHours = toNumber(monthly.landingHours);
-    const workHours = toNumber(monthly.workHours);
+    const workHours = houhan ? houhan.totals.hours : toNumber(monthly.workHours);
     const workDays = toNumber(monthly.workDays);
     const commute = commuteFor(person, commuteByName);
     const commuteDailyAllowance = commute.value;
@@ -223,7 +227,7 @@ export function calculateJissekiSheet(input: JissekiSheetInput): JissekiSheetGri
       else totalPoints += count * coefficient;
     });
 
-    if (person.is_field_sales) totalPoints = toNumber(monthly.fieldPoints);
+    if (person.is_field_sales) totalPoints = houhan ? houhan.totals.points : toNumber(monthly.fieldPoints);
     return {
       personName: person.name,
       kotName: person.kot_name ?? "",

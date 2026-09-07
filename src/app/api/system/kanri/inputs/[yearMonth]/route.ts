@@ -14,6 +14,15 @@ function emptyInputs(): KanriManualInputs {
   return { hoursByTeamByDate: {}, openRateByTeamByProduct: {} };
 }
 
+function previousMonthDefaults(inputs: KanriManualInputs): KanriManualInputs {
+  const fieldSalesWeights = inputs.fieldSales?.weights ?? inputs.monthlySettings?.fieldSalesWeights;
+  return {
+    ...emptyInputs(),
+    monthlySettings: inputs.monthlySettings,
+    fieldSales: fieldSalesWeights ? { weights: fieldSalesWeights } : undefined,
+  };
+}
+
 function validInputs(value: unknown): value is KanriManualInputs {
   if (!value || typeof value !== "object") return false;
   const input = value as Partial<KanriManualInputs>;
@@ -79,8 +88,8 @@ async function inputsWithPreviousSettings(yearMonth: string) {
   const previous = await latestInputsForMonth(previousYearMonth(yearMonth));
   if (previous.error) return previous;
   return {
-    data: previous.data?.inputs.monthlySettings
-      ? { inputs: { ...emptyInputs(), monthlySettings: previous.data.inputs.monthlySettings }, run: null }
+    data: previous.data?.inputs.monthlySettings || previous.data?.inputs.fieldSales?.weights
+      ? { inputs: previousMonthDefaults(previous.data.inputs), run: null }
       : null,
     error: null,
   };

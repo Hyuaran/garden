@@ -22,6 +22,7 @@ export type KanriManualInputs = {
   unitPriceByTeamByProduct?: Record<string, Record<string, number>>;
   personMonthly?: Record<string, KanriPersonMonthlyInput>;
   monthlySettings?: KanriMonthlySettings;
+  fieldSales?: KanriFieldSalesInputs;
 };
 
 export type KanriPersonMonthlyInput = {
@@ -38,6 +39,19 @@ export type KanriMonthlySettings = {
     achievementBonusTotal?: number | string | null;
     teamVictoryBonus?: number | string | null;
   };
+  fieldSalesWeights?: Record<string, number | string | null>;
+};
+
+export type KanriFieldSalesDayInput = {
+  status?: "出勤" | "公休" | "ゼロ" | "" | string | null;
+  hours?: number | string | null;
+  rental?: number | string | null;
+  sales?: number | string | null;
+};
+
+export type KanriFieldSalesInputs = {
+  weights?: Record<string, number | string | null>;
+  byPerson?: Record<string, { days?: Record<string, KanriFieldSalesDayInput> }>;
 };
 
 export type KanriDayTeamResult = {

@@ -11,6 +11,7 @@ import {
 } from "./_lib/kanri-core";
 import type { KanriManualInputs, KanriSheetGrid } from "./_lib/calc/kanri-sheet";
 import type { JissekiSheetGrid, KanriPerson } from "./_lib/calc/jisseki-sheet";
+import { HOUHAN_PRODUCTS, type HouhanSheetGrid } from "./_lib/calc/houhan-sheet";
 import styles from "./kanri.module.css";
 
 export type KanriRunView = {
@@ -48,6 +49,7 @@ type RunResponse = {
   inputs?: KanriManualInputs;
   grid?: KanriSheetGrid;
   jisseki?: JissekiSheetGrid;
+  houhan?: HouhanSheetGrid;
   result?: { grid?: KanriSheetGrid };
   people?: KanriPerson[];
 };
@@ -116,6 +118,14 @@ function personInputValue(inputs: KanriManualInputs, person: string, key: "landi
   return inputs.personMonthly?.[person]?.[key] ?? "";
 }
 
+function fieldSalesDayValue(inputs: KanriManualInputs, person: string, date: string, key: "status" | "hours" | "rental" | "sales") {
+  return inputs.fieldSales?.byPerson?.[person]?.days?.[date]?.[key] ?? "";
+}
+
+function fieldSalesWeightValue(inputs: KanriManualInputs, product: string, fallback: number) {
+  return inputs.fieldSales?.weights?.[product] ?? inputs.monthlySettings?.fieldSalesWeights?.[product] ?? fallback;
+}
+
 async function readJson(response: Response): Promise<RunResponse> {
   try {
     return await response.json() as RunResponse;
@@ -125,7 +135,7 @@ async function readJson(response: Response): Promise<RunResponse> {
 }
 
 export default function KanriPortalClient({ creatorName, today, initialRuns, initialHolidays, initialProducts, initialTeams, initialPeople }: Props) {
-  const [activeTab, setActiveTab] = useState<"kanri" | "jisseki" | "settings">("kanri");
+  const [activeTab, setActiveTab] = useState<"kanri" | "jisseki" | "houhan" | "settings">("kanri");
   const [targetDate, setTargetDate] = useState(today);
   const [mode, setMode] = useState<KanriMode>(isMonthEnd(today) ? "closing" : "daily");
   const [runs, setRuns] = useState(initialRuns);
@@ -136,6 +146,8 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   const [people, setPeople] = useState<KanriPerson[]>(initialPeople);
   const [grid, setGrid] = useState<KanriSheetGrid | null>(null);
   const [jisseki, setJisseki] = useState<JissekiSheetGrid | null>(null);
+  const [houhan, setHouhan] = useState<HouhanSheetGrid | null>(null);
+  const [selectedFieldSalesPerson, setSelectedFieldSalesPerson] = useState(initialPeople.find((person) => person.active !== false && person.is_field_sales)?.name ?? "");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [calculating, setCalculating] = useState(false);
@@ -176,6 +188,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     const jissekiResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=jisseki`);
     const jissekiJson = await readJson(jissekiResponse) as { result?: { grid?: JissekiSheetGrid } };
     if (jissekiResponse.ok && jissekiJson.result?.grid) setJisseki(jissekiJson.result.grid);
+    const houhanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=houhan`);
+    const houhanJson = await readJson(houhanResponse) as { result?: { grid?: HouhanSheetGrid } };
+    if (houhanResponse.ok && houhanJson.result?.grid) setHouhan(houhanJson.result.grid);
   }
 
   useEffect(() => {
@@ -288,6 +303,47 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     }));
   }
 
+  function updateFieldSalesWeight(product: string, value: string) {
+    const number = value === "" ? 0 : Number(value);
+    if (!Number.isFinite(number)) return;
+    setInputs((current) => ({
+      ...current,
+      fieldSales: {
+        ...(current.fieldSales ?? {}),
+        weights: { ...(current.fieldSales?.weights ?? current.monthlySettings?.fieldSalesWeights ?? {}), [product]: number },
+      },
+      monthlySettings: {
+        ...(current.monthlySettings ?? {}),
+        fieldSalesWeights: { ...(current.monthlySettings?.fieldSalesWeights ?? current.fieldSales?.weights ?? {}), [product]: number },
+      },
+    }));
+  }
+
+  function updateFieldSalesDay(person: string, date: string, key: "status" | "hours" | "rental" | "sales", value: string) {
+    const nextValue = key === "status" ? value : value === "" ? 0 : Number(value);
+    if (key !== "status" && !Number.isFinite(nextValue as number)) return;
+    setInputs((current) => ({
+      ...current,
+      fieldSales: {
+        ...(current.fieldSales ?? {}),
+        weights: current.fieldSales?.weights ?? current.monthlySettings?.fieldSalesWeights,
+        byPerson: {
+          ...(current.fieldSales?.byPerson ?? {}),
+          [person]: {
+            ...(current.fieldSales?.byPerson?.[person] ?? {}),
+            days: {
+              ...(current.fieldSales?.byPerson?.[person]?.days ?? {}),
+              [date]: {
+                ...(current.fieldSales?.byPerson?.[person]?.days?.[date] ?? {}),
+                [key]: nextValue,
+              },
+            },
+          },
+        },
+      },
+    }));
+  }
+
   function updateMonthlySetting(path: "target" | "incentive", key: string, value: string) {
     const number = value === "" ? 0 : Number(value.replace(/,/g, ""));
     if (!Number.isFinite(number)) return;
@@ -356,6 +412,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       if (!response.ok || !json.grid) setMessage(json.error ?? "計算できませんでした。");
       else {
         setGrid(json.grid);
+        if (json.houhan) setHouhan(json.houhan);
         if (json.jisseki) setJisseki(json.jisseki);
       }
     } finally {
@@ -381,6 +438,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   }
 
   const selectedHolidayText = holidays.map((date) => `${Number(date.slice(-2))}日`).join(", ") || "未選択";
+  const fieldSalesPeople = people.filter((person) => person.active !== false && person.is_field_sales);
+  const selectedFieldSales = fieldSalesPeople.find((person) => person.name === selectedFieldSalesPerson) ?? fieldSalesPeople[0] ?? null;
+  const selectedHouhan = houhan?.people.find((person) => person.personName === selectedFieldSales?.name) ?? houhan?.people[0] ?? null;
 
   return <div className={styles.pageShell}>
     <header className={styles.header}>
@@ -407,6 +467,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     <nav className={styles.tabs} aria-label="表示切替">
       <button type="button" aria-current={activeTab === "kanri" ? "page" : undefined} onClick={() => setActiveTab("kanri")}>管理表</button>
       <button type="button" aria-current={activeTab === "jisseki" ? "page" : undefined} onClick={() => setActiveTab("jisseki")}>実績管理</button>
+      <button type="button" aria-current={activeTab === "houhan" ? "page" : undefined} onClick={() => setActiveTab("houhan")}>訪問販売</button>
       <button type="button" aria-current={activeTab === "settings" ? "page" : undefined} onClick={() => setActiveTab("settings")}>設定</button>
     </nav>
 
@@ -600,9 +661,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <td>{person.team}</td>
               <td>{person.employment_kind === "アルバイト" ? formatNumber(Number(person.base_wage ?? 0)) : person.employment_kind}</td>
               <td><input type="number" step="0.1" value={personInputValue(inputs, person.name, "landingHours")} onChange={(event) => updatePersonMonthly(person.name, "landingHours", event.target.value)} /></td>
-              <td><input type="number" step="0.1" value={personInputValue(inputs, person.name, "workHours")} onChange={(event) => updatePersonMonthly(person.name, "workHours", event.target.value)} /></td>
+              <td>{person.is_field_sales ? "訪問販売から反映" : <input type="number" step="0.1" value={personInputValue(inputs, person.name, "workHours")} onChange={(event) => updatePersonMonthly(person.name, "workHours", event.target.value)} />}</td>
               <td><input type="number" step="1" value={personInputValue(inputs, person.name, "workDays")} onChange={(event) => updatePersonMonthly(person.name, "workDays", event.target.value)} /></td>
-              <td><input type="number" step="0.1" value={personInputValue(inputs, person.name, "fieldPoints")} onChange={(event) => updatePersonMonthly(person.name, "fieldPoints", event.target.value)} disabled={!person.is_field_sales} /></td>
+              <td>{person.is_field_sales ? "訪問販売から反映" : ""}</td>
             </tr>)}</tbody>
           </table>
         </div>
@@ -634,6 +695,75 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
             </tr>)}</tbody>
           </table>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
+      </section>
+    </>}
+
+    {activeTab === "houhan" && <>
+      <section className={styles.panel}>
+        <h2>今月の設定</h2>
+        <div className={styles.compactGrid}>
+          {HOUHAN_PRODUCTS.map((product) => <label key={product.key}>{product.label}
+            <input type="number" step="0.1" value={fieldSalesWeightValue(inputs, product.key, product.defaultWeight)} onChange={(event) => updateFieldSalesWeight(product.key, event.target.value)} />
+          </label>)}
+        </div>
+        <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>
+      </section>
+
+      <section className={styles.panel}>
+        <div className={styles.sectionHeader}>
+          <h2>訪問販売</h2>
+          <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>
+        </div>
+        {fieldSalesPeople.length > 0 ? <>
+          <div className={styles.personTabs} aria-label="担当者">
+            {fieldSalesPeople.map((person) => <button
+              key={person.name}
+              type="button"
+              aria-current={(selectedFieldSales?.name ?? "") === person.name ? "page" : undefined}
+              onClick={() => setSelectedFieldSalesPerson(person.name)}
+            >{person.name}</button>)}
+          </div>
+          <div className={styles.resultMeta}>
+            <span>合計評価実績 {formatNumber(selectedHouhan?.totals.points, 1)}</span>
+            <span>実数 {formatNumber(selectedHouhan?.totals.actualCount)}</span>
+            <span>稼働h {formatNumber(selectedHouhan?.totals.hours, 1)}</span>
+          </div>
+          <div className={styles.resultScroller}>
+            <table className={styles.resultTable}>
+              <thead><tr>
+                <th className={styles.stickyCell}>日付</th><th>状態</th><th>稼働h</th>
+                {HOUHAN_PRODUCTS.map((product) => <th key={product.key}>{product.label}</th>)}
+                <th>実数</th><th>個人評価</th><th>確認</th>
+              </tr></thead>
+              <tbody>
+                {monthDays.map((day) => {
+                  const calculated = selectedHouhan?.days.find((row) => row.date === day.date);
+                  const personName = selectedFieldSales?.name ?? "";
+                  return <tr key={day.date}>
+                    <th className={styles.stickyCell}>{day.label}</th>
+                    <td><select value={String(fieldSalesDayValue(inputs, personName, day.date, "status"))} onChange={(event) => updateFieldSalesDay(personName, day.date, "status", event.target.value)}><option value=""></option><option value="出勤">出勤</option><option value="公休">公休</option><option value="ゼロ">ゼロ</option></select></td>
+                    <td><input type="number" step="0.1" value={fieldSalesDayValue(inputs, personName, day.date, "hours")} onChange={(event) => updateFieldSalesDay(personName, day.date, "hours", event.target.value)} /></td>
+                    {HOUHAN_PRODUCTS.map((product) => {
+                      const manualKey = product.manualKey;
+                      return manualKey
+                        ? <td key={product.key}><input type="number" step="1" value={fieldSalesDayValue(inputs, personName, day.date, manualKey)} onChange={(event) => updateFieldSalesDay(personName, day.date, manualKey, event.target.value)} /></td>
+                        : <td key={product.key}>{formatNumber(calculated?.products[product.key])}</td>;
+                    })}
+                    <td>{formatNumber(calculated?.actualCount)}</td>
+                    <td>{formatNumber(calculated?.personalPoints, 1)}</td>
+                    <td>{calculated?.missingReport ? "報告なし" : ""}</td>
+                  </tr>;
+                })}
+                {selectedHouhan && <tr className={styles.totalRow}>
+                  <th className={styles.stickyCell}>合計（×係数）</th><td></td><td>{formatNumber(selectedHouhan.totals.hours, 1)}</td>
+                  {HOUHAN_PRODUCTS.map((product) => <td key={product.key}>{formatNumber(selectedHouhan.totals.pointsByProduct[product.key], 1)}</td>)}
+                  <td>{formatNumber(selectedHouhan.totals.actualCount)}</td><td>{formatNumber(selectedHouhan.totals.points, 1)}</td><td></td>
+                </tr>}
+              </tbody>
+            </table>
+          </div>
+          <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>
+        </> : <p className={styles.empty}>訪問販売の担当者が設定されていません。</p>}
       </section>
     </>}
 

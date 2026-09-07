@@ -178,4 +178,61 @@ describe("system kanri inputs route", () => {
     });
     expect(body.run).toBeNull();
   });
+
+  it("uses previous month field sales weights when the current month has no saved inputs", async () => {
+    mocks.requireManager.mockResolvedValue({ userId: "user-1" });
+    const previousInputs = {
+      hoursByTeamByDate: {},
+      openRateByTeamByProduct: {},
+      fieldSales: { weights: { 販売: 10 } },
+    };
+    mocks.getSupabaseAdmin.mockReturnValue({
+      from: vi.fn((table: string) => {
+        if (table === "system_kanri_run") {
+          return {
+            select: () => ({
+              gte: (_column: string, start: string) => ({
+                lte: () => ({
+                  order: () => ({
+                    limit: () => Promise.resolve({
+                      data: start === "2026-09-01"
+                        ? []
+                        : [{ id: "run-aug", target_date: "2026-08-31", created_at: "2026-08-31T00:00:00Z" }],
+                      error: null,
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => ({
+                order: () => ({
+                  limit: () => ({
+                    maybeSingle: () => Promise.resolve({ data: { run_id: "run-aug", grid: previousInputs, calculated_at: "2026-08-31T01:00:00Z" }, error: null }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }),
+    });
+    const { GET } = await import("./route");
+
+    const response = await GET(new Request("http://localhost/api/system/kanri/inputs/2026-09"), {
+      params: Promise.resolve({ yearMonth: "2026-09" }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.inputs).toEqual({
+      hoursByTeamByDate: {},
+      openRateByTeamByProduct: {},
+      fieldSales: { weights: { 販売: 10 } },
+    });
+  });
 });
