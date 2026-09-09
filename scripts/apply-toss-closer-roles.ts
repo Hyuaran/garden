@@ -50,13 +50,21 @@ async function main() {
     .select("employee_id,employee_number,name,garden_role,garden_role_manual,is_active")
     .is("deleted_at", null);
   if (error) throw error;
-  const byName = new Map(employees.map((e) => [normalizeName(e.name), e]));
+  // 同名の履歴行（打刻 ID 無し＝R〜／無効）は対象外。同名が複数残る場合は判断せず飛ばす
+  const byName = new Map<string, typeof employees>();
+  for (const e of employees) {
+    if (String(e.employee_number).startsWith("R") || !e.is_active) continue;
+    const key = normalizeName(e.name);
+    byName.set(key, [...(byName.get(key) ?? []), e]);
+  }
 
   const changes: string[] = [];
   const missing: string[] = [];
   for (const [name, role] of wanted) {
-    const employee = byName.get(name);
-    if (!employee) { missing.push(name); continue; }
+    const candidates = byName.get(name) ?? [];
+    if (candidates.length === 0) { missing.push(name); continue; }
+    if (candidates.length > 1) { console.log(`  同名が複数のため飛ばす: ${name}（${candidates.map((c) => c.employee_number).join("/")}）`); continue; }
+    const employee = candidates[0];
     if (KEEP_ROLES.has(String(employee.garden_role))) { console.log(`  据え置き: ${employee.name}（${employee.garden_role}）`); continue; }
     if (employee.garden_role === role && employee.garden_role_manual) continue;
     changes.push(`${employee.name}: ${employee.garden_role ?? "(なし)"} → ${role}`);
