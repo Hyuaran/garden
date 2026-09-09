@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 
@@ -57,6 +57,46 @@ type CallSyncState = {
   callRows: number;
 };
 
+type ActiveTab = "list" | "upload" | "analysis" | "guide";
+
+type UploadPreview = {
+  format: "A" | "B" | "C";
+  formatLabel: string;
+  rowCount: number;
+  listNames: Array<{ name: string; count: number; listLoadedOn: string | null }>;
+  warnings: { emptyPhoneRows: number; shortPhoneRows: number; unreadableListDateNames: number };
+};
+
+type UploadResult = {
+  assignments: number;
+  assignments_new: number;
+  assignments_updated: number;
+  parent_updated: number;
+  parent_inserted: number;
+  parent_kept: number;
+  skipped: number;
+  warning?: string;
+};
+
+type UploadHistory = {
+  id: string;
+  file_name: string;
+  format: string;
+  row_count: number;
+  result: UploadResult | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+type AnalysisRow = {
+  list_name: string;
+  list_loaded_on: string | null;
+  row_count: number;
+  called_count: number;
+  purchase_history_count: number;
+  last_called_on: string | null;
+};
+
 export type FilterState = {
   prefecture: string[];
   auCallAvailability: string[];
@@ -90,6 +130,41 @@ const initialFilters: FilterState = {
   callCountTo: "",
   purchaseHistory: "",
 };
+
+const ACCEPTED_UPLOAD_EXTENSIONS = [".csv", ".xlsx", ".mer"];
+const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
+const TAB_LABELS: Array<{ key: ActiveTab; label: string; query?: string }> = [
+  { key: "list", label: "リスト" },
+  { key: "upload", label: "アップロード", query: "upload" },
+  { key: "analysis", label: "分析", query: "analysis" },
+  { key: "guide", label: "管理方法", query: "guide" },
+];
+
+const GUIDE_TEXT = [
+  ["親：電話番号台帳", [
+    "電話番号 1 件につき 1 行です（約 267 万件）。同じ番号が別のリストに再び投入されたときは、行を増やさず「リスト名」と「リスト投入日」を新しいものに書き換えます（更新スタイル）。",
+    "氏名・住所・郵便番号・携帯番号は、空欄のときだけ新しい投入の値で埋めます。既に入っている値は残します。",
+    "AU光架電可否・アポ禁・購入状態などの判定は投入では変えません。",
+  ]],
+  ["子：購入履歴", [
+    "購入や開通が起きるたびに 1 行増えます。過去の分もすべて残します（約 242 万件）。",
+  ]],
+  ["子：コール履歴", [
+    "電話番号 × リスト名で 1 行です。7 月末までは FileMaker の書き出し、8 月 1 日からはコールセンターから毎日届く通話記録を Garden が集計して足しています。",
+    "親の「コール回数」「最終コール日」はこの集計から作ります。画面右上の丸い矢印で手動でも反映できます。",
+  ]],
+  ["子：投入履歴（アップロードで増えます）", [
+    "電話番号 × リスト名で 1 行です。取込ファイルの列（申込者・連絡担当者・既契約者・設置先など）をそのまま残します。",
+    "リスト投入日は、リスト名の中の日付（_20260907 の部分）です。",
+  ]],
+  ["そのほかの表", [
+    "保留（桁がおかしい番号など）・携帯のみ・絞り込みの選択肢・保存した条件・書き出しの記録・アップロードの記録・コール履歴の反映状態。",
+  ]],
+  ["リスト名と投入日の決まり", [
+    "リスト名は取込ファイルのものをそのまま使います（例：【光回線】フレッツ_20260907）。",
+    "投入日はリスト名の日付です。末尾の「_2」などは無視します。",
+  ]],
+] as const;
 
 export function filtersToCondition(filters: FilterState): SoilListConditionPayload {
   const result: SoilListFilter[] = [];
@@ -222,6 +297,34 @@ async function readJson<T>(response: Response): Promise<T> {
   return data;
 }
 
+function tabFromLocation(): ActiveTab {
+  if (typeof window === "undefined") return "list";
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  return tab === "upload" || tab === "analysis" || tab === "guide" ? tab : "list";
+}
+
+function fileExtension(name: string): string {
+  const match = /\.([^.]+)$/.exec(name.toLowerCase());
+  return match ? `.${match[1]}` : "";
+}
+
+function formatFileSize(size: number): string {
+  if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(size / 1024)).toLocaleString("ja-JP")} KB`;
+}
+
+function formatPercent(numerator: number, denominator: number): string {
+  return denominator > 0 ? `${((numerator / denominator) * 100).toFixed(1)}%` : "0.0%";
+}
+
+function resultLine(result: UploadResult): string {
+  return `投入履歴 ${result.assignments.toLocaleString("ja-JP")} 件（新規 ${result.assignments_new.toLocaleString("ja-JP")}・更新 ${result.assignments_updated.toLocaleString("ja-JP")}）`;
+}
+
+function parentResultLine(result: UploadResult): string {
+  return `親（電話番号台帳）：更新 ${result.parent_updated.toLocaleString("ja-JP")} 件・新規追加 ${result.parent_inserted.toLocaleString("ja-JP")} 件・投入日が古いので据え置き ${result.parent_kept.toLocaleString("ja-JP")} 件`;
+}
+
 export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boolean }) {
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [count, setCount] = useState<number | null>(null);
@@ -242,6 +345,20 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   );
   const [limit, setLimit] = useState(DEFAULT_EXPORT_LIMIT);
   const [sortKey, setSortKey] = useState<SoilListSortKey>("listLoadedOnAsc");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("list");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const [uploadHistory, setUploadHistory] = useState<UploadHistory[]>([]);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [uploadBusy, setUploadBusy] = useState<"preview" | "import" | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [analysisRows, setAnalysisRows] = useState<AnalysisRow[]>([]);
+  const [analysisFilter, setAnalysisFilter] = useState("");
+  const [analysisSort, setAnalysisSort] = useState("listLoadedOnDesc");
+  const [analysisMessage, setAnalysisMessage] = useState("");
+  const [analysisBusy, setAnalysisBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const condition = useMemo(() => filtersToCondition(filters), [filters]);
 
   async function loadSaved() {
@@ -267,11 +384,37 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setCallSyncState(data.state);
   }
 
+  async function loadUploadHistory() {
+    const response = await fetch("/api/soil/list/uploads");
+    const data = await readJson<{ ok: boolean; uploads: UploadHistory[] }>(response);
+    setUploadHistory(data.uploads);
+  }
+
+  async function loadAnalysis() {
+    setAnalysisBusy(true);
+    setAnalysisMessage("");
+    try {
+      const response = await fetch("/api/soil/list/analysis");
+      const data = await readJson<{ ok: boolean; rows: AnalysisRow[] }>(response);
+      setAnalysisRows(data.rows);
+    } catch (error) {
+      setAnalysisMessage(error instanceof Error ? error.message : "分析を読み込めませんでした");
+    } finally {
+      setAnalysisBusy(false);
+    }
+  }
+
   useEffect(() => {
-    Promise.all([loadSaved(), loadOptions(), loadCallSyncState()]).catch((error: unknown) =>
+    setActiveTab(tabFromLocation());
+    Promise.all([loadSaved(), loadOptions(), loadCallSyncState(), loadUploadHistory()]).catch((error: unknown) =>
       setMessage(error instanceof Error ? error.message : "取得できませんでした"),
     );
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "analysis" || analysisRows.length > 0 || analysisBusy) return;
+    void loadAnalysis();
+  }, [activeTab, analysisRows.length, analysisBusy]);
 
   async function handleCallSync() {
     setCallSyncBusy(true);
@@ -399,6 +542,86 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
+  function changeTab(next: ActiveTab) {
+    setActiveTab(next);
+    const url = new URL(window.location.href);
+    const query = TAB_LABELS.find((tab) => tab.key === next)?.query;
+    if (query) url.searchParams.set("tab", query);
+    else url.searchParams.delete("tab");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  async function previewFile(next: File | null) {
+    setUploadMessage("");
+    setUploadResult(null);
+    setUploadPreview(null);
+    if (!next) {
+      setUploadFile(null);
+      return;
+    }
+    const extension = fileExtension(next.name);
+    if (!ACCEPTED_UPLOAD_EXTENSIONS.includes(extension)) {
+      setUploadFile(null);
+      setUploadMessage("CSV・Excel・.mer のファイルを選んでください");
+      return;
+    }
+    if (next.size > MAX_UPLOAD_SIZE) {
+      setUploadFile(null);
+      setUploadMessage("ファイルは20MBまでです");
+      return;
+    }
+    setUploadFile(next);
+    setUploadBusy("preview");
+    try {
+      const form = new FormData();
+      form.set("file", next);
+      const response = await fetch("/api/soil/list/uploads/preview", { method: "POST", body: form });
+      const data = await readJson<{ ok: boolean; preview: UploadPreview }>(response);
+      setUploadPreview(data.preview);
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : "取り込めませんでした（ファイルを読み取れませんでした）");
+    } finally {
+      setUploadBusy(null);
+    }
+  }
+
+  function dropUpload(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragActive(false);
+    void previewFile(event.dataTransfer.files[0] ?? null);
+  }
+
+  async function handleUploadImport() {
+    if (!uploadFile) return;
+    setUploadBusy("import");
+    setUploadMessage("");
+    setUploadResult(null);
+    try {
+      const form = new FormData();
+      form.set("file", uploadFile);
+      const response = await fetch("/api/soil/list/uploads", { method: "POST", body: form });
+      const data = await readJson<{ ok: boolean; result: UploadResult }>(response);
+      setUploadResult(data.result);
+      await loadUploadHistory();
+      setUploadMessage(data.result.warning ?? "");
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : "取り込めませんでした（保存できませんでした）");
+    } finally {
+      setUploadBusy(null);
+    }
+  }
+
+  const filteredAnalysisRows = useMemo(() => {
+    const keyword = analysisFilter.trim();
+    const source = keyword ? analysisRows.filter((row) => row.list_name.includes(keyword)) : analysisRows;
+    return [...source].sort((a, b) => {
+      if (analysisSort === "rowCountDesc") return b.row_count - a.row_count;
+      if (analysisSort === "calledRateDesc") return (b.called_count / Math.max(1, b.row_count)) - (a.called_count / Math.max(1, a.row_count));
+      if (analysisSort === "purchaseRateDesc") return (b.purchase_history_count / Math.max(1, b.row_count)) - (a.purchase_history_count / Math.max(1, a.row_count));
+      return String(b.list_loaded_on ?? "").localeCompare(String(a.list_loaded_on ?? ""));
+    });
+  }, [analysisFilter, analysisRows, analysisSort]);
+
   function setFilter<K extends keyof FilterState>(key: K, value: FilterState[K]) {
     setFilters((current) => ({ ...current, [key]: value }));
   }
@@ -434,6 +657,16 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         </div>
       </div>
 
+      <div className={styles.tabs} role="tablist" aria-label="リストマスタの表示">
+        {TAB_LABELS.map((tab) => (
+          <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key} onClick={() => changeTab(tab.key)}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "list" && (
+        <>
       <section className={styles.panel} aria-labelledby="filter-heading">
         <div className={styles.panelTitle}>
           <h2 id="filter-heading">絞り込み</h2>
@@ -610,6 +843,179 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           ))}
         </div>
       </section>
+        </>
+      )}
+
+      {activeTab === "upload" && (
+        <>
+          <section className={styles.panel} aria-labelledby="upload-step-1">
+            <div className={styles.stepHeading}>
+              <span><small>STEP</small><strong>1</strong></span>
+              <h2 id="upload-step-1">リストの取込ファイルをアップロード</h2>
+            </div>
+            <input
+              ref={fileInputRef}
+              className={styles.hiddenFileInput}
+              type="file"
+              accept=".csv,.xlsx,.mer"
+              onChange={(event) => void previewFile(event.target.files?.[0] ?? null)}
+            />
+            <div
+              className={`${styles.dropZone} ${dragActive ? styles.dropZoneActive : ""}`}
+              role="button"
+              tabIndex={0}
+              aria-label="リストの取込ファイルをアップロード"
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") fileInputRef.current?.click(); }}
+              onDragEnter={(event) => { event.preventDefault(); setDragActive(true); }}
+              onDragOver={(event) => { event.preventDefault(); setDragActive(true); }}
+              onDragLeave={(event) => { event.preventDefault(); setDragActive(false); }}
+              onDrop={dropUpload}
+            >
+              <svg className={styles.uploadIcon} viewBox="0 0 88 104" aria-hidden="true">
+                <path d="M12 3h43l21 21v77H12z" />
+                <path d="M55 3v22h21" />
+                <path d="M29 60h30M44 45v30m0-30L33 56m11-11 11 11" />
+              </svg>
+              {uploadFile ? (
+                <div className={styles.selectedFile}>
+                  <strong>{uploadFile.name}</strong>
+                  <span>{formatFileSize(uploadFile.size)}</span>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); void previewFile(null); }}>
+                    選び直す
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className={styles.uploadNotes}>
+                    <span>ここにファイルをドラッグ＆ドロップ（CSV／Excel／.mer）</span>
+                    <span>20MB・50,000行まで</span>
+                  </div>
+                  <button type="button" className={styles.uploadButton} onClick={(event) => { event.stopPropagation(); fileInputRef.current?.click(); }}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v4h14v-4" /></svg>
+                    ファイルを選ぶ
+                  </button>
+                </>
+              )}
+            </div>
+            {uploadBusy === "preview" && <p className={styles.loading} role="status"><span />中身を確認しています…</p>}
+            {uploadMessage && <p className={styles.message}>{uploadMessage}</p>}
+          </section>
+
+          {uploadPreview && (
+            <section className={styles.panel} aria-labelledby="upload-step-2">
+              <div className={styles.stepHeading}>
+                <span><small>STEP</small><strong>2</strong></span>
+                <h2 id="upload-step-2">中身の確認</h2>
+              </div>
+              <p className={styles.result}>形式：{uploadPreview.formatLabel}　行数 {uploadPreview.rowCount.toLocaleString("ja-JP")}</p>
+              <div className={styles.summaryList}>
+                {uploadPreview.listNames.slice(0, 8).map((item) => (
+                  <span key={item.name}>{item.name}（{item.listLoadedOn ? formatJstWithWeekday(item.listLoadedOn) : "投入日不明"}） {item.count.toLocaleString("ja-JP")} 件</span>
+                ))}
+              </div>
+              <p className={styles.warningLine}>
+                要確認：電話番号が空 {uploadPreview.warnings.emptyPhoneRows.toLocaleString("ja-JP")} 行／数字でないものを除くと 9 桁未満 {uploadPreview.warnings.shortPhoneRows.toLocaleString("ja-JP")} 行／投入日が読めないリスト名 {uploadPreview.warnings.unreadableListDateNames.toLocaleString("ja-JP")} 件
+              </p>
+              <div className={styles.actions}>
+                <button type="button" onClick={handleUploadImport} disabled={uploadBusy !== null}>
+                  {uploadBusy === "import" ? "取り込んでいます…" : "取り込む"}
+                </button>
+              </div>
+            </section>
+          )}
+
+          {uploadResult && (
+            <section className={styles.panel} aria-labelledby="upload-step-3">
+              <div className={styles.stepHeading}>
+                <span><small>STEP</small><strong>3</strong></span>
+                <h2 id="upload-step-3">結果</h2>
+              </div>
+              <p className={styles.result}>取り込みました：{resultLine(uploadResult)}</p>
+              <p>{parentResultLine(uploadResult)}</p>
+              <p>読めなかった行：{uploadResult.skipped.toLocaleString("ja-JP")} 行</p>
+            </section>
+          )}
+
+          <section className={styles.panel} aria-labelledby="upload-history-heading">
+            <h2 id="upload-history-heading">取り込みの記録（直近 50 件）</h2>
+            <div className={styles.listStack}>
+              {uploadHistory.length === 0 && <p className={styles.empty}>取り込みの記録はありません</p>}
+              {uploadHistory.map((item) => (
+                <div className={styles.savedRow} key={item.id}>
+                  <span>{formatDateTime(item.created_at)} {item.created_by ?? ""} {item.file_name}</span>
+                  <small>{item.row_count.toLocaleString("ja-JP")} 行</small>
+                  <small>{item.result ? `新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}` : "処理中"}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+
+      {activeTab === "analysis" && (
+        <section className={styles.panel} aria-labelledby="analysis-heading">
+          <div className={styles.panelTitle}>
+            <h2 id="analysis-heading">分析</h2>
+            <button type="button" onClick={() => void loadAnalysis()} disabled={analysisBusy}>{analysisBusy ? "読み込み中…" : "再読み込み"}</button>
+          </div>
+          <div className={styles.actions}>
+            <label>
+              リスト名で絞る
+              <input value={analysisFilter} onChange={(event) => setAnalysisFilter(event.target.value)} placeholder="含む" />
+            </label>
+            <label>
+              並び
+              <select value={analysisSort} onChange={(event) => setAnalysisSort(event.target.value)}>
+                <option value="listLoadedOnDesc">投入日が新しい順</option>
+                <option value="rowCountDesc">件数が多い順</option>
+                <option value="calledRateDesc">架電済み率が高い順</option>
+                <option value="purchaseRateDesc">購入あり率が高い順</option>
+              </select>
+            </label>
+          </div>
+          {analysisMessage && <p className={styles.message}>{analysisMessage}</p>}
+          <div className={styles.tableWrap}>
+            <table>
+              <thead><tr><th>リスト名</th><th>投入日</th><th>件数</th><th>架電済み</th><th>架電済み率</th><th>購入履歴あり</th><th>購入あり率</th><th>最終コール日</th></tr></thead>
+              <tbody>
+                {filteredAnalysisRows.map((row) => (
+                  <tr key={row.list_name}>
+                    <td>{row.list_name}</td>
+                    <td>{row.list_loaded_on ?? ""}</td>
+                    <td>{row.row_count.toLocaleString("ja-JP")}</td>
+                    <td>{row.called_count.toLocaleString("ja-JP")}</td>
+                    <td>{formatPercent(row.called_count, row.row_count)}</td>
+                    <td>{row.purchase_history_count.toLocaleString("ja-JP")}</td>
+                    <td>{formatPercent(row.purchase_history_count, row.row_count)}</td>
+                    <td>{row.last_called_on ?? ""}</td>
+                  </tr>
+                ))}
+                {filteredAnalysisRows.length === 0 && <tr><td colSpan={8}>対象データがありません</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div className={styles.guideBlock}>
+            <p>架電済み＝コール回数合計が 1 以上</p>
+            <p>購入履歴あり＝購入履歴あり が真</p>
+            <p>最終コール日＝その番号の最終コール日の最大</p>
+          </div>
+        </section>
+      )}
+
+      {activeTab === "guide" && (
+        <section className={styles.panel} aria-labelledby="guide-heading">
+          <h2 id="guide-heading">リストマスタのデータの持ち方</h2>
+          <div className={styles.guideBlock}>
+            {GUIDE_TEXT.map(([heading, lines]) => (
+              <section key={heading}>
+                <h3>■ {heading}</h3>
+                {lines.map((line) => <p key={line}>・{line}</p>)}
+              </section>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

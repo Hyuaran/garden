@@ -14,6 +14,8 @@ function installFetch() {
     const url = String(input);
     if (url === "/api/soil/list/conditions") return json({ ok: true, conditions: [] });
     if (url === "/api/soil/list/exports") return json({ ok: true, exports: [] });
+    if (url === "/api/soil/list/uploads") return json({ ok: true, uploads: [] });
+    if (url === "/api/soil/list/analysis") return json({ ok: true, rows: [] });
     if (url === "/api/soil/list/options") {
       return json({
         ok: true,
@@ -84,6 +86,25 @@ describe("ListMasterClient call sync status", () => {
       expect(screen.getByText("反映しました（対象 38,335 番号・9/7 まで）")).toBeInTheDocument();
     });
     expect(fetchMock).toHaveBeenCalledWith("/api/soil/list/call-sync", { method: "POST" });
+  });
+});
+
+describe("ListMasterClient tabs", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("switches tabs and follows the tab query without adding history", async () => {
+    installFetch();
+    window.history.replaceState(null, "", "/system/list?tab=guide");
+    render(<ListMasterClient />);
+    expect(await screen.findByRole("tab", { name: "管理方法", selected: true })).toBeInTheDocument();
+    expect(screen.getByText("リストマスタのデータの持ち方")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "アップロード" }));
+    expect(window.location.search).toBe("?tab=upload");
+    expect(screen.getByText("リストの取込ファイルをアップロード")).toBeInTheDocument();
   });
 });
 

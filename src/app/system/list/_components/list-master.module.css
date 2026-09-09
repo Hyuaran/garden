@@ -57,6 +57,42 @@
   flex-wrap: wrap;
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.tabs button {
+  flex: 0 0 auto;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 10px 10px 0 0;
+  background: #e9f7f6;
+  color: var(--tealDark);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--teal);
+  color: #fff;
+}
+
+:global(.dark) .tabs button,
+:global([data-theme="dark"]) .tabs button {
+  background: #183b48;
+  color: #9ce5e1;
+}
+
+:global(.dark) .tabs button[aria-selected="true"],
+:global([data-theme="dark"]) .tabs button[aria-selected="true"] {
+  background: var(--teal);
+  color: #fff;
+}
+
 /* 最終更新の右横の「反映する」アイコン（丸い矢印）。押すと反映・処理中は回る */
 .syncIconButton {
   display: inline-flex;
@@ -371,6 +407,190 @@
   color: var(--amber);
   font-size: 13px;
   font-weight: 800;
+}
+
+.stepHeading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 14px;
+}
+
+.stepHeading > span {
+  display: grid;
+  min-width: 42px;
+  color: var(--heading);
+  line-height: .8;
+}
+
+.stepHeading small {
+  font-size: .62rem;
+  letter-spacing: .12em;
+}
+
+.stepHeading strong {
+  font-size: 2.25rem;
+}
+
+.stepHeading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.hiddenFileInput {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dropZone {
+  display: flex;
+  min-height: 220px;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 22px;
+  border: 2px dashed #aab8c8;
+  border-radius: 18px;
+  background: #f7f8fa;
+  color: var(--ink);
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.dropZone:hover,
+.dropZoneActive {
+  border-color: var(--teal);
+  background: rgba(14, 165, 160, .08);
+  box-shadow: inset 0 0 0 2px rgba(14, 165, 160, .08);
+}
+
+:global(.dark) .dropZone,
+:global([data-theme="dark"]) .dropZone {
+  border-color: #5a6b80;
+  background: #0f1e30;
+}
+
+.uploadIcon {
+  width: 68px;
+  height: 80px;
+  fill: none;
+}
+
+.uploadIcon > path:first-child {
+  fill: var(--card);
+  stroke: #7c8999;
+  stroke-width: 4;
+}
+
+.uploadIcon > path:nth-child(2),
+.uploadIcon > path:nth-child(3) {
+  stroke: #7c8999;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.uploadNotes,
+.selectedFile {
+  display: grid;
+  gap: 5px;
+  color: var(--sub);
+  font-size: 13px;
+  text-align: center;
+}
+
+.selectedFile strong {
+  color: var(--heading);
+  font-size: 15px;
+  word-break: break-all;
+}
+
+.selectedFile button {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--tealDark) !important;
+  text-decoration: underline;
+}
+
+.uploadButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.uploadButton svg {
+  width: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(14, 165, 160, .08);
+  color: var(--tealDark);
+  font-weight: 800;
+}
+
+.loading span {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #b8e3e1;
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: syncSpin .8s linear infinite;
+}
+
+.summaryList {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.warningLine {
+  margin: 12px 0 0;
+  color: var(--amber);
+  font-weight: 800;
+}
+
+.guideBlock {
+  display: grid;
+  gap: 12px;
+  color: var(--ink);
+  line-height: 1.85;
+}
+
+.guideBlock section {
+  display: grid;
+  gap: 5px;
+}
+
+.guideBlock h3 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 15px;
+}
+
+.guideBlock p {
+  margin: 0;
 }
 
 .listStack {

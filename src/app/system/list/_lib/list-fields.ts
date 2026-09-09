@@ -5,6 +5,8 @@ export const SOIL_LIST_TABLES = {
   condition: "soil_list_condition",
   export: "soil_list_export",
   option: "soil_list_option",
+  assignment: "soil_list_assignment",
+  upload: "soil_list_upload",
 } as const;
 
 /** 選択肢に出す値の上限（都道府県の列には 2,700 種類の表記ゆれがあるため、件数の多い順にここまで） */
