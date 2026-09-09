@@ -14,6 +14,7 @@ import { MANUAL_DOCS } from "@/app/system/manuals/_lib/manuals-registry";
 import { SYSTEM_FORMS } from "@/app/system/forms/_lib/forms-registry";
 import { SYSTEM_DELIVERIES } from "@/app/system/deliveries/_lib/deliveries-registry";
 import { MANAGER_VIEW_ROLES } from "@/lib/auth/view-roles";
+import { MANAGER_ROLES } from "@/app/system/_lib/attendance";
 
 // 各入口（page.tsx／layout.tsx／route.ts）は Next の制約で定数を export できないため、
 // 入口と同じ集合を src/lib/auth/view-roles.ts から参照する
@@ -136,6 +137,30 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     source: "src/app/system/list/page.tsx:isRoleAtLeast(role, \"manager\")",
   },
   ...manualDocEntries,
+  {
+    key: "system-attendance-sync-status",
+    label: "勤怠打刻：同期状況（KOT取込CSVの生成・確定・取消）",
+    group: "System",
+    kind: "画面",
+    allows: (role) => MANAGER_ROLES.has(role),
+    source: "src/app/system/attendance/sync-status/page.tsx（src/app/system/_lib/attendance.ts:MANAGER_ROLES）",
+  },
+  {
+    key: "system-onboarding-admin",
+    label: "入社手続き：管理画面（入社者の一覧・事務入力）",
+    group: "System",
+    kind: "画面",
+    allows: (role) => MANAGER_ROLES.has(role),
+    source: "src/app/system/onboarding/_lib/onboarding-admin.server.ts:onboardingAdminContext（MANAGER_ROLES）",
+  },
+  {
+    key: "root-permissions-view",
+    label: "Root 権限一覧（この画面）",
+    group: "Root",
+    kind: "画面",
+    allows: allowsSet(ROOT_VIEW_ROLES),
+    source: "src/app/root/_constants/types.ts:ROOT_VIEW_ROLES（RootGate）",
+  },
   {
     key: "root-employees-view",
     label: "Root 従業員マスタ（閲覧）",
