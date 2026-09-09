@@ -4,6 +4,7 @@ import iconv from "iconv-lite";
 import { describe, expect, it } from "vitest";
 import {
   calculateKotDailyImport,
+  countedActualHours,
   decodeKotDailyCsv,
   normalizeKotName,
   parseKotDailyCsv,
@@ -122,7 +123,7 @@ describe("KOT daily import", () => {
   it("calculates landing hours from actual days plus later planned days", () => {
     const result = calculateKotDailyImport({
       rows: [
-        row({ name: "山田 花子", date: "2026-09-01", actualHours: 6, plannedHours: 7 }),
+        row({ name: "山田 花子", date: "2026-09-01", actualHours: 6, roundedClockOut: "20:00", plannedHours: 7 }),
         row({ name: "山田 花子", date: "2026-09-02", actualHours: 0, plannedHours: 7, roundedClockIn: "", clockIn: "" }),
       ],
       people: [person("山田　花子", "Aチーム")],
@@ -139,8 +140,8 @@ describe("KOT daily import", () => {
   it("uses actual team hours through the target date and planned hours after it by default", () => {
     const result = calculateKotDailyImport({
       rows: [
-        row({ name: "山田 花子", date: "2026-09-01", actualHours: 6, plannedHours: 7 }),
-        row({ name: "山田 花子", date: "2026-09-02", actualHours: 5, plannedHours: 8 }),
+        row({ name: "山田 花子", date: "2026-09-01", actualHours: 6, roundedClockOut: "20:00", plannedHours: 7 }),
+        row({ name: "山田 花子", date: "2026-09-02", actualHours: 5, roundedClockOut: "19:00", plannedHours: 8 }),
       ],
       people: [person("山田　花子", "Aチーム")],
       currentInputs: { hoursByTeamByDate: {}, openRateByTeamByProduct: {} },
@@ -310,5 +311,19 @@ describe.skipIf(!hasFixtures)("KOT daily fixture", () => {
       "2026-08-19 石原チーム",
       "2026-08-23 小泉チーム",
     ]);
+  });
+});
+
+describe("countedActualHours（30 分丸め・平日 14-21／土日祝 10-21 の枠）", () => {
+  it("出勤は次の 30 分へ・退勤は前の 30 分へ、平日は 14:00 より前を数えない", () => {
+    expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "13:26", roundedClockOut: "21:02", breakHours: 0 }))).toBe(7);
+    expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "09:49", roundedClockOut: "21:00", breakHours: 0 }))).toBe(7);
+    expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "15:37", roundedClockOut: "21:03", breakHours: 0 }))).toBe(5);
+    expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "16:56", roundedClockOut: "21:03", breakHours: 0 }))).toBe(4);
+  });
+  it("土日祝は 10:00 から数える・休憩は引く・打刻が無ければ 0", () => {
+    expect(countedActualHours(row({ date: "2026-09-05", roundedClockIn: "09:30", roundedClockOut: "21:10", breakHours: 0 }))).toBe(11);
+    expect(countedActualHours(row({ date: "2026-09-05", roundedClockIn: "09:52", roundedClockOut: "19:11", breakHours: 1 }))).toBe(8);
+    expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "", clockIn: "", roundedClockOut: "", clockOut: "" }))).toBe(0);
   });
 });

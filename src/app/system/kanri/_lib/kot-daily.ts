@@ -146,10 +146,25 @@ function isWeekendOrHoliday(row: KotDailyRow) {
   return ["土", "日"].includes(weekdayJa(row.date));
 }
 
+// テレマの実績時間の数え方（東海林さん決定 2026-09-09）：
+// 出勤は次の 30 分へ、退勤は前の 30 分へ丸め、平日は 14:00〜21:00・土日祝は 10:00〜21:00 の枠の中だけを数える。休憩は引く。
+// 例：13:26〜21:02（平日）→ 14:00〜21:00 ＝ 7.0h、09:49〜21:00（平日）→ 14:00〜21:00 ＝ 7.0h、15:37〜21:03 → 16:00〜21:00 ＝ 5.0h
+export function countedActualHours(row: KotDailyRow) {
+  const clockIn = minuteOfDay(row.roundedClockIn || row.clockIn);
+  const clockOut = minuteOfDay(row.roundedClockOut || row.clockOut);
+  if (clockIn === null || clockOut === null) return 0;
+  const windowStart = (isWeekendOrHoliday(row) ? 10 : 14) * 60;
+  const windowEnd = 21 * 60;
+  const start = Math.max(Math.ceil(clockIn / 30) * 30, windowStart);
+  const end = Math.min(Math.floor(clockOut / 30) * 30, windowEnd);
+  if (end <= start) return 0;
+  return Math.max(0, Math.round((end - start) / 60 * 100) / 100 - row.breakHours);
+}
+
 function teamHours(row: KotDailyRow, hoursBasis: KotDailyHoursBasis, actualThroughDate: string) {
-  if (hoursBasis === "actual") return row.actualHours;
+  if (hoursBasis === "actual") return countedActualHours(row);
   if (hoursBasis === "plan") return row.plannedHours;
-  return row.date <= actualThroughDate ? row.actualHours : row.plannedHours;
+  return row.date <= actualThroughDate ? countedActualHours(row) : row.plannedHours;
 }
 
 function diffMinutes(from: string, to: string) {
@@ -307,7 +322,7 @@ export function calculateKotDailyImport(input: {
     const monthly = personSums.get(person.name);
     if (monthly) {
       if (row.date <= actualThroughDate) {
-        monthly.actual += row.actualHours;
+        monthly.actual += person.is_field_sales ? row.actualHours : countedActualHours(row);
         if (hasPunch(row)) monthly.days.add(row.date);
       } else {
         monthly.futurePlan += row.plannedHours;
