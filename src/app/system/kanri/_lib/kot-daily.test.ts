@@ -321,9 +321,10 @@ describe("countedActualHours（30 分丸め・平日 14-21／土日祝 10-21 の
     expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "15:37", roundedClockOut: "21:03", breakHours: 0 }))).toBe(5);
     expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "16:56", roundedClockOut: "21:03", breakHours: 0 }))).toBe(4);
   });
-  it("土日祝は 10:00 から数える・休憩は引く・打刻が無ければ 0", () => {
-    expect(countedActualHours(row({ date: "2026-09-05", roundedClockIn: "09:30", roundedClockOut: "21:10", breakHours: 0 }))).toBe(11);
+  it("土日祝は 10:00 から数える・13〜14 時を含むときだけ 1 時間引く・打刻が無ければ 0", () => {
+    expect(countedActualHours(row({ date: "2026-09-05", roundedClockIn: "09:30", roundedClockOut: "21:10", breakHours: 0 }))).toBe(10);
     expect(countedActualHours(row({ date: "2026-09-05", roundedClockIn: "09:52", roundedClockOut: "19:11", breakHours: 1 }))).toBe(8);
+    expect(countedActualHours(row({ date: "2026-09-05", roundedClockIn: "13:30", roundedClockOut: "21:00", breakHours: 0 }))).toBe(7.5);
     expect(countedActualHours(row({ date: "2026-09-01", roundedClockIn: "", clockIn: "", roundedClockOut: "", clockOut: "" }))).toBe(0);
   });
 });

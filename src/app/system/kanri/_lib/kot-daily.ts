@@ -158,7 +158,11 @@ export function countedActualHours(row: KotDailyRow) {
   const start = Math.max(Math.ceil(clockIn / 30) * 30, windowStart);
   const end = Math.min(Math.floor(clockOut / 30) * 30, windowEnd);
   if (end <= start) return 0;
-  return Math.max(0, Math.round((end - start) / 60 * 100) / 100 - row.breakHours);
+  // 休憩は KOT の休憩時間でなく「休憩時間割」で引く：13:00〜14:00 の 1 時間を、その時間帯を丸ごと含むときだけ引く（2026-09-07 決定・10〜21＝10h、14〜21＝7h）
+  const lunchStart = 13 * 60;
+  const lunchEnd = 14 * 60;
+  const lunch = start <= lunchStart && end >= lunchEnd ? 60 : 0;
+  return Math.max(0, Math.round((end - start - lunch) / 60 * 100) / 100);
 }
 
 function teamHours(row: KotDailyRow, hoursBasis: KotDailyHoursBasis, actualThroughDate: string) {
