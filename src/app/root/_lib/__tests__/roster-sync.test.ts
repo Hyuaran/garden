@@ -82,3 +82,35 @@ describe("roster employee number key", () => {
   });
 });
 
+describe("roster duplicate punch ids", () => {
+  it("keeps the active (rehired) row when the same punch id appears twice", async () => {
+    const { syncRootRoster } = await import("../roster-sync.server");
+    const records = [
+      record({ $id: "10", 打刻ID: "1354", 従業員名_姓名: "林 佳音", 従業員ステータス: "退職済み", 退職日: "2023-07-31", 入社日: "2021-01-01", 雇用形態: "アルバイト", 生年月日: "2000-01-02" }),
+      record({ $id: "500", 打刻ID: "1354", 従業員名_姓名: "林 佳音", 従業員ステータス: "在籍中", 退職日: "", 入社日: "2026-04-01", 雇用形態: "アルバイト", 生年月日: "2000-01-02" }),
+    ];
+    process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN = "test-token";
+    process.env.KINTONE_SUBDOMAIN = "example";
+    process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID = "56";
+    const inserted: Record<string, unknown>[] = [];
+    const supabase = {
+      from: (table: string) => ({
+        select: () => Promise.resolve({ data: [], error: null }),
+        insert: (row: Record<string, unknown>) => { if (table === "root_employees") inserted.push(row); return Promise.resolve({ error: null }); },
+      }),
+      auth: { admin: { createUser: async () => ({ data: { user: { id: "user-new" } }, error: null }), updateUserById: async () => ({ data: null, error: null }) } },
+    } as never;
+    const fetchStub = () => Promise.resolve(new Response(JSON.stringify({ records }), { status: 200 }));
+    const original = globalThis.fetch;
+    globalThis.fetch = fetchStub as typeof fetch;
+    try {
+      const summary = await syncRootRoster({ dryRun: false, supabase, now: new Date("2026-09-09T03:00:00Z") });
+      expect(summary.created).toBe(1);
+      expect(inserted[0]).toMatchObject({ employee_number: "1354", is_active: true, hire_date: "2026-04-01" });
+      expect(summary.errors.some((e) => e.includes("重複"))).toBe(true);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+

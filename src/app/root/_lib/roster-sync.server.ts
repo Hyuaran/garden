@@ -271,15 +271,21 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
   if (error) throw error;
   const existingByNumber = new Map(((existingRows ?? []) as RootEmployeeRow[]).map((row) => [String(row.employee_number ?? "").padStart(4, "0"), row]));
 
-  const seen = new Set<string>();
+  // 同じ打刻 ID が名簿に複数ある（再入社・業務委託での再加入＝新規レコード）ときは、在籍中の行 → 入社日が新しい行 の順に 1 行だけ採用する
+  const chosen = new Map<string, KintoneRecord>();
+  const duplicates: string[] = [];
   for (const record of records) {
     const employeeNumber = normalizeEmployeeNumber(record);
     if (!employeeNumber) continue;
-    if (seen.has(employeeNumber)) {
-      summary.errors.push(`${text(record, "従業員名_姓名")}: 打刻 ID ${employeeNumber} が名簿で重複（先の行を採用）`);
-      continue;
-    }
-    seen.add(employeeNumber);
+    const current = chosen.get(employeeNumber);
+    if (!current) { chosen.set(employeeNumber, record); continue; }
+    duplicates.push(`${text(record, "従業員名_姓名")}: 打刻 ID ${employeeNumber} が名簿で重複（在籍中・入社日が新しい行を採用）`);
+    const rank = (r: KintoneRecord) => `${text(r, "従業員ステータス") === "在籍中" ? "1" : "0"}${dateText(r, "入社日") ?? "0000-00-00"}`;
+    if (rank(record) > rank(current)) chosen.set(employeeNumber, record);
+  }
+  summary.errors.push(...duplicates);
+
+  for (const [employeeNumber, record] of chosen) {
     const existing = existingByNumber.get(employeeNumber) ?? null;
     const mapped = mapRosterRecordToRoot(record, existing, today);
     const userId = existing?.user_id ?? await createOrReuseAuthUser(admin, mapped, dryRun, summary);
