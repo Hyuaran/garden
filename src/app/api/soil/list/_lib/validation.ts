@@ -11,7 +11,8 @@ import {
   type SoilListSortKey,
 } from "@/app/system/list/_lib/list-fields";
 
-const ALLOWED_OPERATORS: SoilListOperator[] = ["eq", "contains", "gte", "lte", "in", "empty", "notEmpty"];
+const ALLOWED_OPERATORS: SoilListOperator[] = ["eq", "contains", "gte", "lte", "in", "inOrEmpty", "empty", "notEmpty"];
+const MAX_MULTI_SELECT_VALUES = 100;
 
 export class SoilListRequestError extends Error {
   constructor(
@@ -59,12 +60,20 @@ function normalizeFilter(value: unknown): SoilListFilter {
     throw new SoilListRequestError("条件の値が正しくありません");
   }
 
-  const validValue =
-    typeof filterValue === "string" ||
-    typeof filterValue === "number" ||
-    typeof filterValue === "boolean" ||
-    (Array.isArray(filterValue) &&
-      filterValue.every((item) => typeof item === "string" || typeof item === "number"));
+  if (raw.op === "in" || raw.op === "inOrEmpty") {
+    if (!Array.isArray(filterValue) || filterValue.length === 0) {
+      throw new SoilListRequestError("条件の値が正しくありません");
+    }
+    if (filterValue.length > MAX_MULTI_SELECT_VALUES) {
+      throw new SoilListRequestError("選べるのは 100 件までです");
+    }
+    if (!filterValue.every((item) => typeof item === "string")) {
+      throw new SoilListRequestError("条件の値が正しくありません");
+    }
+    return { field, op: raw.op, value: filterValue };
+  }
+
+  const validValue = typeof filterValue === "string" || typeof filterValue === "number" || typeof filterValue === "boolean";
 
   if (!validValue) {
     throw new SoilListRequestError("条件の値が正しくありません");

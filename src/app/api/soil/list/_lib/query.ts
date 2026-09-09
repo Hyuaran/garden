@@ -77,9 +77,18 @@ function applyFilter<T extends FilterQuery<T>>(query: T, filter: SoilListFilter)
         throw new SoilListRequestError("条件の値が正しくありません");
       }
       return query.in(column, filter.value);
+    case "inOrEmpty":
+      if (!Array.isArray(filter.value)) {
+        throw new SoilListRequestError("条件の値が正しくありません");
+      }
+      return query.or(`${column}.in.(${filter.value.map(quotePostgrestValue).join(",")}),${column}.is.null,${column}.eq.`);
     default:
       return query;
   }
+}
+
+function quotePostgrestValue(value: string | number): string {
+  return `"${String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
 
 export function applyParentFilters<T extends FilterQuery<T>>(query: T, filters: SoilListFilter[]): T {

@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ListMasterClient } from "./ListMasterClient";
+import { EMPTY_OPTION_VALUE } from "../_lib/list-fields";
+
+import { ListMasterClient, buildOptionGroups, conditionToFilters, filtersToCondition, type FilterState } from "./ListMasterClient";
 
 function json(data: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), { status }));
@@ -12,7 +14,30 @@ function installFetch() {
     const url = String(input);
     if (url === "/api/soil/list/conditions") return json({ ok: true, conditions: [] });
     if (url === "/api/soil/list/exports") return json({ ok: true, exports: [] });
-    if (url === "/api/soil/list/options") return json({ ok: true, options: {} });
+    if (url === "/api/soil/list/options") {
+      return json({
+        ok: true,
+        options: {
+          prefecture: [
+            { value: "大阪府", label: "大阪府", count: 11165, empty: false },
+            { value: "奈良県", label: "奈良県", count: 709, empty: false },
+            { value: "北海道", label: "北海道", count: 124880, empty: false },
+            { value: "沖縄県", label: "沖縄県", count: 3427, empty: false },
+            { value: "大阪", label: "大阪", count: 12, empty: false },
+            { value: "", label: "（空欄）", count: 724490, empty: true },
+          ],
+          auCallAvailability: [
+            { value: "○", label: "○", count: 1945619, empty: false },
+            { value: "×", label: "×", count: 120, empty: false },
+          ],
+          purchaseStatus: [],
+          appointmentBlocked: [
+            { value: "", label: "（空欄）", count: 1945619, empty: true },
+            { value: "戸建", label: "戸建", count: 500, empty: false },
+          ],
+        },
+      });
+    }
     if (url === "/api/soil/list/call-sync" && init?.method === "POST") {
       return json({
         ok: true,
@@ -60,5 +85,95 @@ describe("ListMasterClient call sync status", () => {
       expect(screen.getByText("反映しました（対象 38,335 番号・9/7 まで）")).toBeInTheDocument();
     });
     expect(fetchMock).toHaveBeenCalledWith("/api/soil/list/call-sync", { method: "POST" });
+  });
+});
+
+describe("ListMasterClient filter condition conversion", () => {
+  it("keeps old single-select condition shapes while adding multi-select shapes", () => {
+    const base: FilterState = {
+      prefecture: ["大阪府"],
+      auCallAvailability: ["○", "×"],
+      purchaseStatus: ["完パケ", "電話番号のみ"],
+      appointmentBlocked: [EMPTY_OPTION_VALUE, "戸建"],
+      listName: "",
+      listLoadedOnFrom: "",
+      listLoadedOnTo: "",
+      recheckedOnFrom: "",
+      recheckedOnTo: "",
+      lastCalledOnFrom: "",
+      lastCalledOnTo: "",
+      callCountFrom: "",
+      callCountTo: "",
+      purchaseHistory: "",
+    };
+
+    expect(filtersToCondition(base)).toEqual({
+      filters: [
+        { field: "prefecture", op: "eq", value: "大阪府" },
+        { field: "auCallAvailability", op: "in", value: ["○", "×"] },
+        { field: "purchaseStatus", op: "in", value: ["完パケ", "電話番号のみ"] },
+        { field: "appointmentBlocked", op: "inOrEmpty", value: ["戸建"] },
+      ],
+    });
+  });
+
+  it("reads old and new saved conditions into the multi-select state", () => {
+    expect(
+      conditionToFilters({
+        filters: [
+          { field: "prefecture", op: "eq", value: "大阪府" },
+          { field: "appointmentBlocked", op: "empty" },
+          { field: "auCallAvailability", op: "in", value: ["○", "×"] },
+          { field: "purchaseStatus", op: "inOrEmpty", value: ["完パケ"] },
+        ],
+      }),
+    ).toMatchObject({
+      prefecture: ["大阪府"],
+      appointmentBlocked: [EMPTY_OPTION_VALUE],
+      auCallAvailability: ["○", "×"],
+      purchaseStatus: ["完パケ", EMPTY_OPTION_VALUE],
+    });
+  });
+
+  it("groups prefectures north to south, then other labels, then empty", () => {
+    const groups = buildOptionGroups("prefecture", [
+      { value: "大阪府", label: "大阪府", count: 11165, empty: false },
+      { value: "北海道", label: "北海道", count: 124880, empty: false },
+      { value: "沖縄県", label: "沖縄県", count: 3427, empty: false },
+      { value: "大阪", label: "大阪", count: 12, empty: false },
+      { value: "", label: "（空欄）", count: 724490, empty: true },
+    ]);
+
+    expect(groups.map((group) => group.label ?? "空欄")).toEqual(["北海道・東北", "近畿", "九州・沖縄", "その他の表記（表記ゆれ・件数の多い順）", "空欄"]);
+    expect(groups.flatMap((group) => group.options.map((option) => option.label))).toEqual(["北海道", "大阪府", "沖縄県", "大阪", "（空欄）"]);
+  });
+});
+
+describe("ListMasterClient multi-select filters", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("opens, checks values, toggles a region, and shows the closed summary", async () => {
+    installFetch();
+    render(<ListMasterClient />);
+
+    const button = await screen.findByRole("button", { name: /都道府県 指定なし/ });
+    fireEvent.click(button);
+    expect(screen.getByRole("button", { name: "近畿" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "大阪府（11,165）" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "奈良県（709）" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "大阪（12）" }));
+    fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
+    expect(screen.getByRole("button", { name: /都道府県 大阪府、奈良県 ほか1（3）/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /都道府県/ }));
+    const groupButton = screen.getByRole("button", { name: "近畿" });
+    const group = groupButton.closest("div");
+    expect(group).not.toBeNull();
+    fireEvent.click(groupButton);
+    expect(within(group as HTMLElement).getByRole("checkbox", { name: "大阪府（11,165）" })).not.toBeChecked();
+    expect(within(group as HTMLElement).getByRole("checkbox", { name: "奈良県（709）" })).not.toBeChecked();
   });
 });

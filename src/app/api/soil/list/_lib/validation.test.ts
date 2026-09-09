@@ -61,6 +61,30 @@ describe("soil list validation", () => {
     });
   });
 
+  it("accepts inOrEmpty with string arrays", () => {
+    expect(
+      normalizeConditionPayload({
+        filters: [{ field: "appointmentBlocked", op: "inOrEmpty", value: ["戸建"] }],
+      }),
+    ).toEqual({
+      filters: [{ field: "appointmentBlocked", op: "inOrEmpty", value: ["戸建"] }],
+    });
+  });
+
+  it("rejects empty and oversized multi-select arrays", () => {
+    expect(() =>
+      normalizeConditionPayload({
+        filters: [{ field: "prefecture", op: "in", value: [] }],
+      }),
+    ).toThrow("条件の値が正しくありません");
+
+    expect(() =>
+      normalizeConditionPayload({
+        filters: [{ field: "prefecture", op: "inOrEmpty", value: Array.from({ length: 101 }, (_, index) => `値${index}`) }],
+      }),
+    ).toThrow("選べるのは 100 件までです");
+  });
+
   it("keeps export columns in the allow list and validates limit", () => {
     expect(normalizeExportColumns(["phoneNumber", "name", "unknown"])).toEqual(["phoneNumber", "name"]);
     expect(normalizeExportLimit(50000)).toBe(50000);

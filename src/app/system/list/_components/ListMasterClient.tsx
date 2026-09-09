@@ -7,6 +7,7 @@ import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBr
 import {
   DEFAULT_EXPORT_LIMIT,
   EMPTY_OPTION_VALUE,
+  PREFECTURE_REGIONS,
   SOIL_LIST_EXPORT_COLUMNS,
   SOIL_LIST_FILTER_DEFINITIONS,
   SOIL_LIST_SORT_OPTIONS,
@@ -14,11 +15,13 @@ import {
   type SoilListConditionPayload,
   type SoilListFilter,
   type SoilListOptionFieldKey,
+  type SoilListOptionItem,
   type SoilListOptionsPayload,
   type SoilListSortKey,
 } from "../_lib/list-fields";
 
 import styles from "./list-master.module.css";
+import MultiSelectFilter, { type MultiSelectOptionGroup } from "./MultiSelectFilter";
 
 type SearchRow = {
   phoneNumber: string;
@@ -54,11 +57,11 @@ type CallSyncState = {
   callRows: number;
 };
 
-type FilterState = {
-  prefecture: string;
-  auCallAvailability: string;
-  purchaseStatus: string;
-  appointmentBlocked: string;
+export type FilterState = {
+  prefecture: string[];
+  auCallAvailability: string[];
+  purchaseStatus: string[];
+  appointmentBlocked: string[];
   listName: string;
   listLoadedOnFrom: string;
   listLoadedOnTo: string;
@@ -72,10 +75,10 @@ type FilterState = {
 };
 
 const initialFilters: FilterState = {
-  prefecture: "",
-  auCallAvailability: "○",
-  purchaseStatus: "",
-  appointmentBlocked: EMPTY_OPTION_VALUE,
+  prefecture: [],
+  auCallAvailability: ["○"],
+  purchaseStatus: [],
+  appointmentBlocked: [EMPTY_OPTION_VALUE],
   listName: "",
   listLoadedOnFrom: "",
   listLoadedOnTo: "",
@@ -88,11 +91,17 @@ const initialFilters: FilterState = {
   purchaseHistory: "",
 };
 
-function filtersToCondition(filters: FilterState): SoilListConditionPayload {
+export function filtersToCondition(filters: FilterState): SoilListConditionPayload {
   const result: SoilListFilter[] = [];
-  const pushSelect = (field: SoilListOptionFieldKey, value: string) => {
-    if (value === EMPTY_OPTION_VALUE) result.push({ field, op: "empty" });
-    else if (value) result.push({ field, op: "eq", value });
+  const pushSelect = (field: SoilListOptionFieldKey, values: string[]) => {
+    const selectedValues = values.filter(Boolean);
+    if (selectedValues.length === 0) return;
+    const hasEmpty = selectedValues.includes(EMPTY_OPTION_VALUE);
+    const actualValues = selectedValues.filter((value) => value !== EMPTY_OPTION_VALUE);
+    if (selectedValues.length === 1 && hasEmpty) result.push({ field, op: "empty" });
+    else if (selectedValues.length === 1) result.push({ field, op: "eq", value: selectedValues[0] });
+    else if (hasEmpty) result.push({ field, op: "inOrEmpty", value: actualValues });
+    else result.push({ field, op: "in", value: actualValues });
   };
   pushSelect("prefecture", filters.prefecture);
   pushSelect("auCallAvailability", filters.auCallAvailability);
@@ -112,17 +121,15 @@ function filtersToCondition(filters: FilterState): SoilListConditionPayload {
   return { filters: result };
 }
 
-function conditionToFilters(condition: SoilListConditionPayload): FilterState {
+export function conditionToFilters(condition: SoilListConditionPayload): FilterState {
   const next = { ...initialFilters, listLoadedOnFrom: "" };
   for (const filter of condition.filters ?? []) {
-    if (filter.field === "prefecture" && filter.op === "eq") next.prefecture = String(filter.value);
-    if (filter.field === "prefecture" && filter.op === "empty") next.prefecture = EMPTY_OPTION_VALUE;
-    if (filter.field === "auCallAvailability" && filter.op === "eq") next.auCallAvailability = String(filter.value);
-    if (filter.field === "auCallAvailability" && filter.op === "empty") next.auCallAvailability = EMPTY_OPTION_VALUE;
-    if (filter.field === "purchaseStatus" && filter.op === "eq") next.purchaseStatus = String(filter.value);
-    if (filter.field === "purchaseStatus" && filter.op === "empty") next.purchaseStatus = EMPTY_OPTION_VALUE;
-    if (filter.field === "appointmentBlocked" && filter.op === "eq") next.appointmentBlocked = String(filter.value);
-    if (filter.field === "appointmentBlocked" && filter.op === "empty") next.appointmentBlocked = EMPTY_OPTION_VALUE;
+    if (isOptionFilterField(filter.field)) {
+      if (filter.op === "eq") next[filter.field] = [String(filter.value)];
+      if (filter.op === "empty") next[filter.field] = [EMPTY_OPTION_VALUE];
+      if (filter.op === "in" && Array.isArray(filter.value)) next[filter.field] = filter.value.map(String);
+      if (filter.op === "inOrEmpty" && Array.isArray(filter.value)) next[filter.field] = [...filter.value.map(String), EMPTY_OPTION_VALUE];
+    }
     if (filter.field === "listName" && filter.op === "contains") next.listName = String(filter.value);
     if (filter.field === "listLoadedOn" && filter.op === "gte") next.listLoadedOnFrom = String(filter.value);
     if (filter.field === "listLoadedOn" && filter.op === "lte") next.listLoadedOnTo = String(filter.value);
@@ -148,6 +155,31 @@ function formatDateTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function isOptionFilterField(field: SoilListColumnKey): field is SoilListOptionFieldKey {
+  return field === "prefecture" || field === "auCallAvailability" || field === "purchaseStatus" || field === "appointmentBlocked";
+}
+
+export function buildOptionGroups(field: SoilListOptionFieldKey, fieldOptions: SoilListOptionItem[] = []): MultiSelectOptionGroup[] {
+  if (field !== "prefecture") {
+    return [{ options: fieldOptions }];
+  }
+
+  const byValue = new Map(fieldOptions.map((option) => [option.value, option]));
+  const officialValues = new Set(PREFECTURE_REGIONS.flatMap((region) => region.prefectures));
+  const groups: MultiSelectOptionGroup[] = PREFECTURE_REGIONS.map((region) => ({
+    label: region.label,
+    options: region.prefectures.flatMap((prefecture) => {
+      const option = byValue.get(prefecture);
+      return option ? [option] : [];
+    }),
+  })).filter((group) => group.options.length > 0);
+  const otherOptions = fieldOptions.filter((option) => !option.empty && !officialValues.has(option.value));
+  const emptyOptions = fieldOptions.filter((option) => option.empty);
+  if (otherOptions.length > 0) groups.push({ label: "その他の表記（表記ゆれ・件数の多い順）", options: otherOptions });
+  if (emptyOptions.length > 0) groups.push({ options: emptyOptions });
+  return groups;
 }
 
 function formatDateShort(value: string): string {
@@ -348,20 +380,6 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setFilters((current) => ({ ...current, [key]: value }));
   }
 
-  function renderOptions(field: SoilListOptionFieldKey) {
-    const dynamicOptions = options[field] ?? [];
-    return (
-      <>
-        <option value="">指定なし</option>
-        {dynamicOptions.map((option) => (
-          <option key={`${field}-${option.empty ? EMPTY_OPTION_VALUE : option.value}`} value={option.empty ? EMPTY_OPTION_VALUE : option.value}>
-            {option.label}（{option.count.toLocaleString("ja-JP")}）
-          </option>
-        ))}
-      </>
-    );
-  }
-
   return (
     <div className={styles.pageShell}>
       <div className={styles.header}>
@@ -384,36 +402,10 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           <span>{SOIL_LIST_FILTER_DEFINITIONS.length} 項目</span>
         </div>
         <div className={styles.filterGrid}>
-          <label>
-            都道府県
-            <select value={filters.prefecture} onChange={(event) => setFilter("prefecture", event.target.value)}>
-              {renderOptions("prefecture")}
-            </select>
-          </label>
-          <label>
-            AU光架電可否
-            <select
-              value={filters.auCallAvailability}
-              onChange={(event) => setFilter("auCallAvailability", event.target.value)}
-            >
-              {renderOptions("auCallAvailability")}
-            </select>
-          </label>
-          <label>
-            購入状態
-            <select value={filters.purchaseStatus} onChange={(event) => setFilter("purchaseStatus", event.target.value)}>
-              {renderOptions("purchaseStatus")}
-            </select>
-          </label>
-          <label>
-            アポ禁
-            <select
-              value={filters.appointmentBlocked}
-              onChange={(event) => setFilter("appointmentBlocked", event.target.value)}
-            >
-              {renderOptions("appointmentBlocked")}
-            </select>
-          </label>
+          <MultiSelectFilter label="都道府県" value={filters.prefecture} groups={buildOptionGroups("prefecture", options.prefecture)} onChange={(value) => setFilter("prefecture", value)} />
+          <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} />
+          <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} />
+          <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} />
           <label className={styles.wide}>
             リスト名
             <input value={filters.listName} onChange={(event) => setFilter("listName", event.target.value)} placeholder="含む" />

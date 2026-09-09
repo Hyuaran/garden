@@ -99,6 +99,17 @@ describe("soil list query helpers", () => {
     ]);
   });
 
+  it("applies in-or-empty conditions with quoted PostgREST values", () => {
+    const query = new QuerySpy();
+    applyParentFilters(query, [
+      { field: "appointmentBlocked", op: "inOrEmpty", value: ["戸建,一部", "録音(アポ禁)", '要"確認\\済'] },
+    ]);
+
+    expect(query.calls).toEqual([
+      `or:${getColumnName("appointmentBlocked")}.in.("戸建,一部","録音(アポ禁)","要\\"確認\\\\済"),${getColumnName("appointmentBlocked")}.is.null,${getColumnName("appointmentBlocked")}.eq.`,
+    ]);
+  });
+
   it("centralizes selected table columns and masks phone values", () => {
     expect(buildSelect(["phoneNumber", "name"])).toBe(`${getColumnName("phoneNumber")},${getColumnName("name")}`);
     expect(maskPhone("0311112222")).toBe("031****22");

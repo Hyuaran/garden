@@ -22,11 +22,11 @@ export function toOptionItems(rows: OptionRow[]): SoilListOptionItem[] {
     });
 }
 
-/** 件数の多い順の上位と「（空欄）」の行を合わせる（同じ値は 1 つに） */
-export function mergeOptionRows(topRows: OptionRow[], emptyRows: OptionRow[]): OptionRow[] {
+/** 件数の多い順の上位と「（空欄）」などの補完行を合わせる（同じ値は 1 つに） */
+export function mergeOptionRows(topRows: OptionRow[], emptyRows: OptionRow[], extraRows: OptionRow[] = []): OptionRow[] {
   const seen = new Set<string>();
   const merged: OptionRow[] = [];
-  [...emptyRows, ...topRows].forEach((row) => {
+  [...emptyRows, ...topRows, ...extraRows].forEach((row) => {
     const key = row.value === null || row.value === undefined ? "" : String(row.value);
     if (seen.has(key)) return;
     seen.add(key);

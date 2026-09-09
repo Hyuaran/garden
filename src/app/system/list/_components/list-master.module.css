@@ -120,7 +120,7 @@
   gap: 12px;
 }
 
-.filterGrid label,
+.filterGrid > label,
 .actions label {
   display: flex;
   flex-direction: column;
@@ -142,7 +142,7 @@
 }
 
 /* 日付・数値の「〜」入力は 2 枠ぶん使う（1 枠だと日付入力がはみ出て隣と重なる） */
-.filterGrid label:has(.range) {
+.filterGrid > label:has(.range) {
   grid-column: span 2;
 }
 
@@ -152,7 +152,8 @@
 }
 
 .panel input,
-.panel select {
+.panel select,
+.multiSelectButton {
   min-height: 36px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -161,6 +162,112 @@
   padding: 7px 9px;
   font-size: 14px;
   letter-spacing: 0;
+}
+
+.multiSelect {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--heading);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.filterLabel {
+  line-height: 1.2;
+}
+
+.multiSelectButton {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--line) !important;
+  background: var(--card) !important;
+  color: var(--ink) !important;
+  padding: 7px 9px !important;
+  text-align: left;
+}
+
+.multiSelectButton span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiSelectPanel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  box-sizing: border-box;
+  width: min(760px, calc(100vw - 48px));
+  max-height: 420px;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: 0 12px 30px rgba(16, 35, 63, .18);
+}
+
+.multiSelectHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.multiSelectHeader span {
+  display: flex;
+  gap: 8px;
+}
+
+.multiSelectOptions {
+  display: grid;
+  gap: 10px;
+}
+
+.optionGroup {
+  display: grid;
+  gap: 7px;
+}
+
+.groupButton {
+  min-height: auto !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--sub) !important;
+  padding: 0 0 5px !important;
+  border-bottom: 1px solid var(--line) !important;
+  text-align: left;
+}
+
+.checkboxGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px 10px;
+}
+
+.checkboxGrid label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.checkboxGrid input {
+  min-height: auto;
 }
 
 .actions {
@@ -286,8 +393,13 @@
   }
 
   .wide,
-  .filterGrid label:has(.range) {
+  .filterGrid > label:has(.range) {
     grid-column: auto;
+  }
+
+  .multiSelectPanel {
+    right: 0;
+    width: 100%;
   }
 
   .savedRow {

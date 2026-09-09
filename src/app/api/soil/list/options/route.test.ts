@@ -20,6 +20,20 @@ describe("soil list options", () => {
     ]);
   });
 
+  it("merges official prefecture rows that are outside the top rows", () => {
+    const merged = mergeOptionRows(
+      [{ value: "大阪", row_count: 12 }],
+      [{ value: "", row_count: 724490 }],
+      [{ value: "奈良県", row_count: 709 }],
+    );
+
+    expect(merged).toEqual([
+      { value: "", row_count: 724490 },
+      { value: "大阪", row_count: 12 },
+      { value: "奈良県", row_count: 709 },
+    ]);
+  });
+
   it("formats actual values with counts and puts empty first", () => {
     const result = toOptionItems([
       { value: "○", row_count: 194 },

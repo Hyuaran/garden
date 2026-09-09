@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   MAX_OPTION_ITEMS,
+  OFFICIAL_PREFECTURES,
   SOIL_LIST_OPTION_FIELDS,
   SOIL_LIST_TABLES,
   getColumnName,
@@ -23,6 +24,7 @@ const CACHE_MS = 60 * 60 * 1000;
 type OptionQueryResult = { data: OptionRow[] | null; error: { message: string } | null };
 type OptionQuery = PromiseLike<OptionQueryResult> & {
   eq(column: string, value: unknown): OptionQuery;
+  in(column: string, values: unknown[]): OptionQuery;
   or(filters: string): OptionQuery;
   order(column: string, options?: { ascending?: boolean }): OptionQuery;
   limit(count: number): OptionQuery;
@@ -39,7 +41,15 @@ async function fetchFieldOptions(db: OptionDb, field: SoilListOptionFieldKey): P
   const column = getColumnName(field);
   // PostgREST は 1 回 1,000 行までしか返さない（都道府県は表記ゆれが 2,700 種類）。
   // 全部を取ってから並べ替えると上位が抜けるので、DB 側で件数の多い順に上限まで取り、「（空欄）」の行は別に取って先頭に置く
-  const [top, empty] = await Promise.all([
+  const officialPrefectures =
+    field === "prefecture"
+      ? db
+          .from(SOIL_LIST_TABLES.option)
+          .select("value,row_count")
+          .eq("column_name", column)
+          .in("value", OFFICIAL_PREFECTURES)
+      : Promise.resolve({ data: [], error: null } satisfies OptionQueryResult);
+  const [top, empty, official] = await Promise.all([
     db
       .from(SOIL_LIST_TABLES.option)
       .select("value,row_count")
@@ -47,13 +57,16 @@ async function fetchFieldOptions(db: OptionDb, field: SoilListOptionFieldKey): P
       .order("row_count", { ascending: false })
       .limit(MAX_OPTION_ITEMS),
     db.from(SOIL_LIST_TABLES.option).select("value,row_count").eq("column_name", column).or("value.is.null,value.eq."),
+    officialPrefectures,
   ]);
   if (top.error) throw new Error(top.error.message);
   if (empty.error) throw new Error(empty.error.message);
+  if (official.error) throw new Error(official.error.message);
   // 1 件しかない値（住所の断片や個別の電話番号つきのメモ）は選択肢に出さない。空欄は残す
-  return toOptionItems(mergeOptionRows(top.data ?? [], empty.data ?? []))
+  const limit = field === "prefecture" ? MAX_OPTION_ITEMS + OFFICIAL_PREFECTURES.length + 1 : MAX_OPTION_ITEMS + 1;
+  return toOptionItems(mergeOptionRows(top.data ?? [], empty.data ?? [], official.data ?? []))
     .filter((item) => item.empty || item.count >= 2)
-    .slice(0, MAX_OPTION_ITEMS + 1);
+    .slice(0, limit);
 }
 
 async function fetchOptions(): Promise<SoilListOptionsPayload> {
