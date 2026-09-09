@@ -2,9 +2,10 @@ import iconv from "iconv-lite";
 import type { PunchType } from "@/app/system/_lib/attendance";
 
 export type KotExportRow = {
-  id: number;
+  id?: number;
   punch_type: PunchType;
   punched_at: string;
+  source_punch_id?: number;
   root_employees: { name?: string | null; kot_employee_id?: string | null } | null;
 };
 

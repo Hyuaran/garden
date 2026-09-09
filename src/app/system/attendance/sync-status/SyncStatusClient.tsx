@@ -6,7 +6,28 @@ import styles from "../attendance.module.css";
 import exportStyles from "./sync-status.module.css";
 
 type Row = { id:number; punch_type:PunchType; punched_at:string; kot_sync_status:string; root_employees:{name?:string;kot_employee_id?:string|null}|null };
-type StatusData = { counts:Record<string,number>; exportSummary:{eligible:number;missingCode:number;missingCodeNames:string[];outOfRange:number}; punches:Row[]; limit:number };
+type PreviewRow = {
+  employeeId:string;
+  name:string;
+  kotEmployeeId:string;
+  attendanceRule:"office"|"sales";
+  note:string|null;
+  date:string;
+  lineCount:number;
+  needsCheck:boolean;
+  issues:string[];
+  clockIn:string|null;
+  clockOut:string|null;
+  breakIncluded:boolean;
+  rawPunches:{id:number;type:PunchType;time:string}[];
+};
+type StatusData = {
+  counts:Record<string,number>;
+  exportSummary:{eligible:number;missingCode:number;missingCodeNames:string[];outOfRange:number;needsCheck?:number};
+  exportPreview?:PreviewRow[];
+  punches:Row[];
+  limit:number;
+};
 
 export default function SyncStatusClient() {
   const [data, setData] = useState<StatusData|null>(null); const [error, setError] = useState<string|null>(null);
@@ -20,6 +41,8 @@ export default function SyncStatusClient() {
     {error&&<p role="alert" className={styles.error}>{error}</p>}{notice&&<p role="status" className={exportStyles.noticeText}>{notice}</p>}{!data&&!error?<p>読み込み中…</p>:data&&<>
     <section className={styles.history}><h2>対象件数</h2><p>{Object.entries(data.counts).map(([key,value])=>`${SYNC_LABELS[key]??key}: ${value}件`).join(" ／ ")}</p></section>
     <section className={styles.history}><h2>KOT取込CSV</h2><p>生成可能: {data.exportSummary.eligible}件（1回最大1000件）</p><p>従業員コード未設定で除外: {data.exportSummary.missingCode}件{data.exportSummary.missingCodeNames.length?`（${data.exportSummary.missingCodeNames.join("、")}）`:""}</p><p>登録範囲外で除外: {data.exportSummary.outOfRange}件</p>
+      {(data.exportSummary.needsCheck??0)>0&&<p>要確認: {data.exportSummary.needsCheck}日</p>}
       {sending>0&&<p className={exportStyles.warning}>生成済み未確定が{sending}件あります。先に「アップロード完了」または「取消」で解消してください。</p>}<div className={exportStyles.exportActions}><button type="button" disabled={busy||sending>0||data.exportSummary.eligible===0} onClick={()=>void generate()}>KOT取込CSVを生成</button>{sending>0&&<><button type="button" disabled={busy} onClick={()=>void transition("confirm")}>アップロード完了にする</button><button type="button" className={exportStyles.secondaryButton} disabled={busy} onClick={()=>void transition("revert")}>取消（未送信に戻す）</button></>}</div><p className={exportStyles.help}>KOT取込でエラー一覧が出た場合は確定せず、「取消」→原因を修正→CSVを再生成してください。</p></section>
+    <section className={styles.history}><h2>加工後の確認</h2>{!data.exportPreview?.length?<p>確認対象の打刻はありません。</p>:<ul className={exportStyles.previewList}>{data.exportPreview.map(row=><li key={`${row.employeeId}-${row.date}`} className={row.needsCheck?exportStyles.previewNeedsCheck:undefined}><div className={exportStyles.previewHeader}><strong>{row.date}　{row.name}</strong><small>{row.needsCheck?"要確認":`${row.lineCount}件`}</small></div><p>{row.clockIn??"--:--"} → {row.clockOut??"--:--"} ／ 休憩{row.breakIncluded?"あり":"なし"}{row.attendanceRule==="office"?" ／ 1分単位":""}{row.note?` ／ ${row.note}`:""}</p>{row.issues.length>0&&<p className={exportStyles.warning}>{row.issues.join("、")}</p>}<small>元の打刻: {row.rawPunches.map((punch)=>`${PUNCH_LABELS[punch.type]} ${punch.time}`).join("、")}</small></li>)}</ul>}</section>
     <section className={styles.history}><h2>未同期一覧（最大{data.limit}件）</h2>{data.punches.length===0?<p>対象の打刻はありません。</p>:<ul>{data.punches.map(row=><li key={row.id}><strong>{new Date(row.punched_at).toLocaleString("ja-JP",{timeZone:"Asia/Tokyo"})}</strong><span>{row.root_employees?.name??"従業員不明"}／{PUNCH_LABELS[row.punch_type]}</span><small>{SYNC_LABELS[row.kot_sync_status]??row.kot_sync_status}</small></li>)}</ul>}</section></>}</div></div>;
 }
