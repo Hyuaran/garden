@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapRosterRecordToRoot, roleFromRoster } from "../roster-sync.server";
+import { mapRosterRecordToRoot, normalizeEmployeeNumber, roleFromRoster } from "../roster-sync.server";
 import type { KintoneRecord } from "@/lib/kintone/records";
 
 function record(values: Record<string, unknown>): KintoneRecord {
@@ -18,7 +18,7 @@ describe("roster sync mapping", () => {
       従業員ステータス: "在籍中",
       雇用形態: "アルバイト",
       基準時給: "1500",
-      打刻ID: "K1530",
+      打刻ID: "1530",
       交通費_片道: "500",
     }), {
       employee_id: "EMP-1530",
@@ -54,7 +54,8 @@ describe("roster sync mapping", () => {
 
   it("uses retirement date in active calculation", () => {
     const mapped = mapRosterRecordToRoot(record({
-      社員番号: "1078",
+      社員番号: "0077",
+      打刻ID: "1078",
       従業員名_姓名: "松本 美菜里",
       退職日: "2026-09-09",
       従業員ステータス: "在籍中",
@@ -69,3 +70,15 @@ describe("roster sync mapping", () => {
     expect(roleFromRoster(record({ 雇用形態: "アルバイト", 基準時給: "1600", チーム名: "バックヤード" }))).toBe("staff");
   });
 });
+
+describe("roster employee number key", () => {
+  it("uses the KOT punch id (same numbering as Root) and never the roster 社員番号", () => {
+    expect(normalizeEmployeeNumber(record({ 社員番号: "0091", 打刻ID: "1165" }))).toBe("1165");
+    expect(normalizeEmployeeNumber(record({ 社員番号: "0091", 打刻ID: "8" }))).toBe("0008");
+  });
+  it("registers rows without a punch id as history keyed by the roster record id", () => {
+    expect(normalizeEmployeeNumber(record({ 社員番号: "0012", 打刻ID: "", $id: "374" }))).toBe("R374");
+    expect(normalizeEmployeeNumber(record({ 社員番号: "0012" }))).toBe("");
+  });
+});
+

@@ -100,10 +100,17 @@ function numberValue(record: KintoneRecord, code: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeEmployeeNumber(record: KintoneRecord): string {
-  const raw = text(record, "社員番号") || text(record, "新社員番号") || text(record, "APID");
-  if (!raw) return "";
-  return raw.replace(/\D/g, "").padStart(4, "0");
+// Root の社員番号（employee_number）は KOT の打刻 ID と同じ採番。名簿の「社員番号（APID）」は別の採番なので照合には使わない（2026-09-09 本番で判明：宮永＝名簿 0091／Root・KOT 1165）
+// 打刻 ID が無い名簿の行（古い退職者）は履歴として R{名簿レコード番号} で登録する（ログインは作らない）
+export function normalizeEmployeeNumber(record: KintoneRecord): string {
+  const kot = text(record, "打刻ID").replace(/\D/g, "");
+  if (kot) return kot.padStart(4, "0");
+  const recordId = text(record, "$id") || text(record, "レコード番号");
+  return recordId ? `R${recordId}` : "";
+}
+
+export function hasKotId(record: KintoneRecord): boolean {
+  return Boolean(text(record, "打刻ID").replace(/\D/g, ""));
 }
 
 function teamNames(record: KintoneRecord): string[] {
@@ -177,6 +184,10 @@ function syntheticEmail(employeeNumber: string) {
 
 async function createOrReuseAuthUser(admin: SupabaseClient, mapped: ReturnType<typeof mapRosterRecordToRoot>, dryRun: boolean, summary: RosterSyncSummary) {
   if (!mapped.is_active) return null;
+  if (mapped.employee_number.startsWith("R")) {
+    summary.errors.push(`${mapped.name}: 打刻 ID が無いためアカウントを作らない（在籍中）`);
+    return null;
+  }
   const email = syntheticEmail(mapped.employee_number);
   const password = initialPassword(mapped.birthday);
   if (!password) {
@@ -260,9 +271,15 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
   if (error) throw error;
   const existingByNumber = new Map(((existingRows ?? []) as RootEmployeeRow[]).map((row) => [String(row.employee_number ?? "").padStart(4, "0"), row]));
 
+  const seen = new Set<string>();
   for (const record of records) {
     const employeeNumber = normalizeEmployeeNumber(record);
     if (!employeeNumber) continue;
+    if (seen.has(employeeNumber)) {
+      summary.errors.push(`${text(record, "従業員名_姓名")}: 打刻 ID ${employeeNumber} が名簿で重複（先の行を採用）`);
+      continue;
+    }
+    seen.add(employeeNumber);
     const existing = existingByNumber.get(employeeNumber) ?? null;
     const mapped = mapRosterRecordToRoot(record, existing, today);
     const userId = existing?.user_id ?? await createOrReuseAuthUser(admin, mapped, dryRun, summary);
