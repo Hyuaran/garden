@@ -31,7 +31,7 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "勤怠打刻", description: "出勤・退勤の打刻をします。打刻の記録はそのまま勤怠の集計につながります。", icon: "clock", href: "/system/attendance" },
   { label: "シフト", description: "シフトの提出と勤務予定の確認を行う画面です。", icon: "shift", href: "/system/shift" },
   { label: "前確依頼", description: "営業IDの登録内容を確認し、取次先へ前確依頼を出します。", icon: "zenkaku", href: "/system/zenkaku" },
-  { label: "テレマ コール集計", description: "架電の件数や結果を日ごと・リストごとに見られます。コールセンターへの共有もここから。", icon: "chart", href: "/system/call-metrics" },
+  { label: "テレマ コール集計", description: "架電の件数や結果を日ごと・リストごとに見られます。コールセンターへの共有もここから。", icon: "chart", href: "/system/call-metrics", minRole: "staff" },
   { label: "フォーム", description: "月に一度の連絡や申請を、ここから開いて送ります。", icon: "document", href: "/system/forms", minRole: "staff" },
   { label: "契約書管理", description: "上位店との契約書を登録して保存漏れを防ぎます。パートナー配布用のひな形もここで作れます。", icon: "document", href: "/system/contracts", minRole: "manager" },
   { label: "関電トスポータル", description: "関西電力のトスアップを受け付けます。入力内容はそのままKintoneへ連携されます。", icon: "folder", href: "/p/toss" },

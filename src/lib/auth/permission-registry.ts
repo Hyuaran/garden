@@ -14,14 +14,14 @@ import {
 import { MANUAL_DOCS } from "@/app/system/manuals/_lib/manuals-registry";
 import { SYSTEM_FORMS } from "@/app/system/forms/_lib/forms-registry";
 import { SYSTEM_DELIVERIES } from "@/app/system/deliveries/_lib/deliveries-registry";
-import { MANAGER_VIEW_ROLES } from "@/lib/auth/view-roles";
+import { MANAGER_VIEW_ROLES, STAFF_VIEW_ROLES } from "@/lib/auth/view-roles";
 import { MANAGER_ROLES } from "@/app/system/_lib/attendance";
 
 // 各入口（page.tsx／layout.tsx／route.ts）は Next の制約で定数を export できないため、
 // 入口と同じ集合を src/lib/auth/view-roles.ts から参照する
-const CALL_METRICS_PAGE_VIEW_ROLES = MANAGER_VIEW_ROLES;
+const CALL_METRICS_PAGE_VIEW_ROLES = STAFF_VIEW_ROLES;
 const CONTRACTS_VIEW_ROLES = MANAGER_VIEW_ROLES;
-const CALL_METRICS_API_VIEW_ROLES = MANAGER_VIEW_ROLES;
+const CALL_METRICS_API_VIEW_ROLES = STAFF_VIEW_ROLES;
 const CALL_REPORT_API_VIEW_ROLES = MANAGER_VIEW_ROLES;
 
 export type PermissionEntry = {
@@ -111,7 +111,7 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     group: "System",
     kind: "画面",
     allows: allowsSet(CALL_METRICS_PAGE_VIEW_ROLES),
-    source: "src/app/system/call-metrics/page.tsx:VIEW_ROLES（=src/lib/auth/view-roles.ts:MANAGER_VIEW_ROLES）",
+    source: "src/app/system/call-metrics/page.tsx:VIEW_ROLES（=src/lib/auth/view-roles.ts:STAFF_VIEW_ROLES）",
   },
   {
     key: "system-contracts-page",
@@ -232,7 +232,7 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     group: "API",
     kind: "API",
     allows: allowsSet(CALL_METRICS_API_VIEW_ROLES),
-    source: "src/app/api/system/call-metrics/route.ts:VIEW_ROLES（=src/lib/auth/view-roles.ts:MANAGER_VIEW_ROLES）",
+    source: "src/app/api/system/call-metrics/route.ts:VIEW_ROLES（=src/lib/auth/view-roles.ts:STAFF_VIEW_ROLES）",
   },
   {
     key: "api-call-report",

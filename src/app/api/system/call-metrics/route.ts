@@ -3,12 +3,12 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { normalizeCallMetricsRpc, parseCallMetricParams } from "@/app/system/_lib/call-metrics";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
 import type { GardenRole } from "@/app/root/_constants/types";
-import { MANAGER_VIEW_ROLES } from "@/lib/auth/view-roles";
+import { STAFF_VIEW_ROLES } from "@/lib/auth/view-roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VIEW_ROLES = MANAGER_VIEW_ROLES;
+const VIEW_ROLES = STAFF_VIEW_ROLES;
 
 export async function GET(request: Request) {
   const supabase = await createServerClient();

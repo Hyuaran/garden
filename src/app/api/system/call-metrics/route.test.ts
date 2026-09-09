@@ -23,11 +23,11 @@ describe("GET /api/system/call-metrics", () => {
     mocks.createServerClient.mockResolvedValue(client({ user: false }));
     expect((await GET(request())).status).toBe(401);
   });
-  it("returns 403 below manager", async () => {
-    mocks.createServerClient.mockResolvedValue(client({ role: "staff" }));
+  it("returns 403 below staff", async () => {
+    mocks.createServerClient.mockResolvedValue(client({ role: "cs" }));
     expect((await GET(request())).status).toBe(403);
   });
-  it.each(["manager", "admin", "super_admin"])("allows %s", async (role) => {
+  it.each(["staff", "outsource", "manager", "admin", "super_admin"])("allows %s", async (role) => {
     const supabase = client({ role }); mocks.createServerClient.mockResolvedValue(supabase);
     const response = await GET(request("from=2026-08-01&to=2026-08-12&listName=A&employeeName=B"));
     expect(response.status).toBe(200);
