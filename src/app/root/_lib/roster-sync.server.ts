@@ -314,7 +314,7 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
           kot_employee_id: row.kot_employee_id,
           email: row.email,
           commute_daily_allowance: existing.commute_daily_allowance ?? row.commute_daily_allowance,
-          garden_role: row.garden_role,
+          // 役職は既存行では変えない（DB のトリガーが全権管理者以外の役職変更を止める。役職は営業部のトス／クローザー区分から Root で決める）
           user_id: row.user_id,
           is_active: row.is_active,
           roster_record_id: row.roster_record_id,
