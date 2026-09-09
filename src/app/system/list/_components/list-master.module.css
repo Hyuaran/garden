@@ -239,6 +239,9 @@
 }
 
 .groupButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-height: auto !important;
   border: 0 !important;
   border-radius: 0 !important;
@@ -247,6 +250,13 @@
   padding: 0 0 5px !important;
   border-bottom: 1px solid var(--line) !important;
   text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.groupButton input {
+  min-height: auto;
 }
 
 .checkboxGrid {

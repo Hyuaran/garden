@@ -62,10 +62,24 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
     onChange(selected.has(nextValue) ? value.filter((item) => item !== nextValue) : [...value, nextValue]);
   }
 
-  function toggleGroup(group: MultiSelectOptionGroup) {
+  function groupState(group: MultiSelectOptionGroup) {
     const groupValues = group.options.map(optionValue);
-    const allSelected = groupValues.every((item) => selected.has(item));
-    onChange(allSelected ? value.filter((item) => !groupValues.includes(item)) : Array.from(new Set([...value, ...groupValues])));
+    const selectedCount = groupValues.filter((item) => selected.has(item)).length;
+    return { groupValues, all: selectedCount === groupValues.length && groupValues.length > 0, some: selectedCount > 0 && selectedCount < groupValues.length };
+  }
+
+  // 地方の見出しのチェック：全部入っていれば全部外す、そうでなければ全部入れる
+  function toggleGroup(group: MultiSelectOptionGroup) {
+    const { groupValues, all } = groupState(group);
+    onChange(all ? value.filter((item) => !groupValues.includes(item)) : Array.from(new Set([...value, ...groupValues])));
+  }
+
+  const allValues = allOptions.map(optionValue);
+  const everythingSelected = allValues.length > 0 && allValues.every((item) => selected.has(item));
+
+  // 右上のボタン：全部入っていれば「すべて外す」、そうでなければ「すべて選ぶ」
+  function toggleAll() {
+    onChange(everythingSelected ? [] : allValues);
   }
 
   return (
@@ -89,8 +103,8 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
           <div className={styles.multiSelectHeader}>
             <strong>{label}</strong>
             <span>
-              <button type="button" className={styles.secondaryButton} onClick={() => onChange([])}>
-                すべて外す
+              <button type="button" className={styles.secondaryButton} onClick={toggleAll}>
+                {everythingSelected ? "すべて外す" : "すべて選ぶ"}
               </button>
               <button type="button" onClick={() => setOpen(false)}>
                 閉じる
@@ -100,11 +114,21 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
           <div className={styles.multiSelectOptions}>
             {groups.map((group, groupIndex) => (
               <div className={styles.optionGroup} key={`${label}-${group.label ?? groupIndex}`}>
-                {group.label && (
-                  <button type="button" className={styles.groupButton} onClick={() => toggleGroup(group)}>
-                    {group.label}
-                  </button>
-                )}
+                {group.label && (() => {
+                  const state = groupState(group);
+                  return (
+                    <label className={styles.groupButton}>
+                      <input
+                        type="checkbox"
+                        checked={state.all}
+                        ref={(element) => { if (element) element.indeterminate = state.some; }}
+                        onChange={() => toggleGroup(group)}
+                        aria-label={`${group.label}をすべて選ぶ`}
+                      />
+                      {group.label}
+                    </label>
+                  );
+                })()}
                 <div className={styles.checkboxGrid}>
                   {group.options.map((option) => {
                     const currentValue = optionValue(option);

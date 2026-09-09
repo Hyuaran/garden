@@ -160,7 +160,8 @@ describe("ListMasterClient multi-select filters", () => {
 
     const button = await screen.findByRole("button", { name: /都道府県 指定なし/ });
     fireEvent.click(button);
-    expect(screen.getByRole("button", { name: "近畿" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "近畿をすべて選ぶ" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "すべて選ぶ" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "大阪府（11,165）" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "奈良県（709）" }));
@@ -169,11 +170,24 @@ describe("ListMasterClient multi-select filters", () => {
     expect(screen.getByRole("button", { name: /都道府県 大阪府、奈良県 ほか1（3）/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /都道府県/ }));
-    const groupButton = screen.getByRole("button", { name: "近畿" });
-    const group = groupButton.closest("div");
+    const groupCheckbox = screen.getByRole("checkbox", { name: "近畿をすべて選ぶ" });
+    const group = groupCheckbox.closest("div");
     expect(group).not.toBeNull();
-    fireEvent.click(groupButton);
+    expect(groupCheckbox).toBeChecked();
+    fireEvent.click(groupCheckbox);
     expect(within(group as HTMLElement).getByRole("checkbox", { name: "大阪府（11,165）" })).not.toBeChecked();
     expect(within(group as HTMLElement).getByRole("checkbox", { name: "奈良県（709）" })).not.toBeChecked();
+    expect(groupCheckbox).not.toBeChecked();
+    fireEvent.click(groupCheckbox);
+    expect(within(group as HTMLElement).getByRole("checkbox", { name: "大阪府（11,165）" })).toBeChecked();
+    expect(within(group as HTMLElement).getByRole("checkbox", { name: "奈良県（709）" })).toBeChecked();
+
+    // 右上のボタンは「すべて選ぶ」⇄「すべて外す」の兼任
+    fireEvent.click(screen.getByRole("button", { name: "すべて選ぶ" }));
+    expect(screen.getByRole("button", { name: "すべて外す" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "北海道（124,880）" })).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "すべて外す" }));
+    expect(screen.getByRole("button", { name: "すべて選ぶ" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "大阪府（11,165）" })).not.toBeChecked();
   });
 });
