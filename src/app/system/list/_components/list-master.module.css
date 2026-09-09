@@ -138,6 +138,17 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
+  min-width: 0;
+}
+
+/* 日付・数値の「〜」入力は 2 枠ぶん使う（1 枠だと日付入力がはみ出て隣と重なる） */
+.filterGrid label:has(.range) {
+  grid-column: span 2;
+}
+
+.range input {
+  min-width: 0;
+  width: 100%;
 }
 
 .panel input,
@@ -274,7 +285,8 @@
     grid-template-columns: 1fr;
   }
 
-  .wide {
+  .wide,
+  .filterGrid label:has(.range) {
     grid-column: auto;
   }
 
