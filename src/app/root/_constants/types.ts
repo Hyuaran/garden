@@ -360,6 +360,12 @@ export const MASTER_MENUS: MasterMenu[] = [
     icon: "👤",
   },
   {
+    slug: "permissions",
+    title: "権限一覧",
+    description: "役職ごとの利用可否と、人ごとの役職を確認",
+    icon: "権",
+  },
+  {
     slug: "salary-systems",
     title: "給与体系マスタ",
     description: "雇用形態別の計算ルール",

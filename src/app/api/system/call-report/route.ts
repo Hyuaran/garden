@@ -5,11 +5,13 @@ import { buildCallReport, parseReportDate } from "@/app/system/_lib/call-report"
 import { CallReportChatworkError } from "@/app/system/_lib/chatwork";
 import { deliverCallReport } from "@/app/system/_lib/call-report-delivery";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
+import type { GardenRole } from "@/app/root/_constants/types";
+import { MANAGER_VIEW_ROLES } from "@/lib/auth/view-roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VIEW_ROLES = new Set(["manager", "admin", "super_admin"]);
+const VIEW_ROLES = MANAGER_VIEW_ROLES;
 
 export async function POST(request: Request) {
   const supabase = await createServerClient();
@@ -19,7 +21,7 @@ export async function POST(request: Request) {
   const { data: employee, error: roleError } = await supabase
     .from("root_employees").select("garden_role,is_active,termination_date,deleted_at").eq("user_id", auth.user.id).eq("is_active", true).maybeSingle();
   if (roleError) return NextResponse.json({ ok: false, error: "権限確認に失敗しました" }, { status: 500 });
-  if (!employee || !isEmployeeActive(employee) || !VIEW_ROLES.has(String(employee.garden_role))) {
+  if (!employee || !isEmployeeActive(employee) || !VIEW_ROLES.has(String(employee.garden_role) as GardenRole)) {
     return NextResponse.json({ ok: false, error: "閲覧権限がありません" }, { status: 403 });
   }
 
