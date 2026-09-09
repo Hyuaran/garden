@@ -135,8 +135,9 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
           <div className={styles.multiSelectOptions}>
             {groups.map((group, groupIndex) => (
               <div className={styles.optionGroup} key={`${label}-${group.label ?? groupIndex}`}>
-                {group.label && (() => {
+                {group.label ? (() => {
                   const state = groupState(group);
+                  const total = group.options.reduce((sum, option) => sum + option.count, 0);
                   return (
                     <label className={styles.groupButton}>
                       <input
@@ -147,9 +148,12 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
                         aria-label={`${group.label}をすべて選ぶ`}
                       />
                       {group.label}
+                      <span className={styles.groupTotal}>合計 {total.toLocaleString("ja-JP")}</span>
                     </label>
                   );
-                })()}
+                })() : (
+                  groupIndex > 0 && <div className={styles.groupDivider} aria-hidden="true" />
+                )}
                 <div className={styles.checkboxGrid}>
                   {group.options.map((option) => {
                     const currentValue = optionValue(option);

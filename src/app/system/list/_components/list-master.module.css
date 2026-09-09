@@ -259,6 +259,19 @@
   min-height: auto;
 }
 
+.groupTotal {
+  margin-left: auto;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--sub);
+}
+
+/* 見出しの無いまとまり（空欄）の前の区切り線 */
+.groupDivider {
+  border-top: 1px solid var(--line);
+  margin: 2px 0 4px;
+}
+
 /* 全地方で列数を固定して縦横を揃える（自動で列数を変えると地方ごとにずれる）。列数はパネルの幅から部品が --cols で渡す */
 .checkboxGrid {
   display: grid;
