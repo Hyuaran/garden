@@ -60,7 +60,10 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     admin
       .from("system_kanri_source_row")
       .select("source,source_app,record_id,payload")
-      .eq("run_id", id),
+      .eq("run_id", id)
+      // KOT の日別行（1,000 行超）は計算に使わない。含めると PostgREST の 1,000 行上限で名簿などの行が落ちる（2026-09-09 本番で判明）
+      .neq("source", "kot_daily")
+      .range(0, 9999),
     admin
       .from("system_kanri_month_setting")
       .select("holidays")
