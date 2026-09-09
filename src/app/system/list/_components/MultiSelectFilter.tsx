@@ -25,7 +25,7 @@ function optionText(option: SoilListOptionItem): string {
 function summarizeSelection(value: string[], options: SoilListOptionItem[]): string {
   if (value.length === 0) return "指定なし";
   const labels = value.map((selected) => options.find((option) => (option.empty ? EMPTY_OPTION_VALUE : option.value) === selected)?.label ?? selected);
-  if (labels.length === 1) return labels[0];
+  if (labels.length <= 2) return labels.join("、");
   const rest = labels.length - 2;
   return `${labels.slice(0, 2).join("、")} ほか${rest}（${labels.length}）`;
 }
