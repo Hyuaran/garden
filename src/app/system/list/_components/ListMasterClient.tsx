@@ -410,8 +410,18 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         <div className={styles.callSyncStatus}>
           <span>{formatCallSyncStatus(callSyncState)}</span>
           {canSyncCalls && (
-            <button type="button" onClick={handleCallSync} disabled={callSyncBusy}>
-              コール履歴を反映する
+            <button
+              type="button"
+              className={`${styles.syncIconButton} ${callSyncBusy ? styles.syncIconBusy : ""}`}
+              onClick={handleCallSync}
+              disabled={callSyncBusy}
+              aria-label="コール履歴を反映する"
+              title={callSyncBusy ? "反映しています…" : "コール履歴を反映する（最新の通話記録を取り込みます）"}
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M19.8 4.6v4.2h-4.2z" fill="currentColor" />
+              </svg>
             </button>
           )}
         </div>

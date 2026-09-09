@@ -47,8 +47,8 @@
 .callSyncStatus {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 10px;
   margin-top: 12px;
   color: var(--sub);
   font-size: 13px;
@@ -57,22 +57,40 @@
   flex-wrap: wrap;
 }
 
-.callSyncStatus button {
-  min-height: 36px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--teal);
-  color: #ffffff;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0;
+/* 最終更新の右横の「反映する」アイコン（丸い矢印）。押すと反映・処理中は回る */
+.syncIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--tealDark);
   cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
 }
 
-.callSyncStatus button:disabled {
-  opacity: .55;
+.syncIconButton:hover {
+  border-color: var(--teal);
+  background: rgba(14, 165, 160, .08);
+}
+
+.syncIconButton:disabled {
   cursor: wait;
+  opacity: .7;
+}
+
+.syncIconBusy svg {
+  animation: syncSpin 1s linear infinite;
+}
+
+@keyframes syncSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .panel,
