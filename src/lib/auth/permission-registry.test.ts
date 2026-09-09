@@ -25,10 +25,24 @@ describe("PERMISSION_ENTRIES", () => {
     expect(allows("名簿と同期", "admin")).toBe(true);
   });
 
+  it("サイドバーが出ない役職（トス・クローザー・業務委託）は minRole の無いメニューも使えない", () => {
+    expect(allows("テレマ コール集計", "toss")).toBe(false);
+    expect(allows("関電トスポータル", "closer")).toBe(false);
+    expect(allows("勤怠打刻", "outsource")).toBe(false);
+    expect(allows("テレマ コール集計", "staff")).toBe(true);
+    expect(allows("勤怠打刻", "cs")).toBe(true);
+  });
+
+  it("準備中（画面の無い）メニューは全員 ×", () => {
+    expect(allows("テレマ日報（準備中・画面はまだ無い）", "super_admin")).toBe(false);
+    expect(allows("給与試算（準備中・画面はまだ無い）", "super_admin")).toBe(false);
+  });
+
   it("System メニューの全項目を表に含める", () => {
     const labels = new Set(PERMISSION_ENTRIES.map((entry) => entry.label));
     for (const item of SYSTEM_MENU_ITEMS) {
-      expect(labels.has(item.label)).toBe(true);
+      const label = item.upcoming ? `${item.label}（準備中・画面はまだ無い）` : item.label;
+      expect(labels.has(label)).toBe(true);
     }
   });
 

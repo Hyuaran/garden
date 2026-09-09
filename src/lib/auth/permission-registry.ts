@@ -44,13 +44,19 @@ function slugifyLabel(label: string) {
   return label.toLowerCase().replace(/\s+/g, "-");
 }
 
+// System のメニュー項目：サイドバーが出ない役職（トス・クローザー・業務委託）はメニュー自体を使えない。
+// minRole の無い項目でも、サイドバーが隠れる役職には ×。まだ画面の無い項目（準備中）は全員 ×
 const systemMenuEntries: PermissionEntry[] = SYSTEM_MENU_ITEMS.map((item) => ({
   key: `system-menu-${item.href ?? item.label}`,
-  label: item.label,
+  label: item.upcoming ? `${item.label}（準備中・画面はまだ無い）` : item.label,
   group: "System",
   kind: "画面",
-  allows: item.minRole ? allowsMinRole(item.minRole) : () => true,
-  source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SYSTEM_MENU_ITEMS",
+  allows: (role) => {
+    if (item.upcoming) return false;
+    if (SIDEBAR_HIDDEN_ROLES.has(role)) return false;
+    return !item.minRole || isRoleAtLeast(role, item.minRole);
+  },
+  source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SYSTEM_MENU_ITEMS＋SIDEBAR_HIDDEN_ROLES",
 }));
 
 const manualDocEntries: PermissionEntry[] = MANUAL_DOCS.map((doc) => ({
@@ -159,7 +165,7 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
   },
   {
     key: "api-require-employee",
-    label: "ログイン中の従業員 API",
+    label: "本人の情報の API（自分の情報・勤怠打刻・届出。ログインした本人だけ）",
     group: "API",
     kind: "API",
     allows: () => true,
