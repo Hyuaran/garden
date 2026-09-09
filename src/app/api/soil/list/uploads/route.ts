@@ -4,7 +4,7 @@ import { SOIL_LIST_TABLES } from "@/app/system/list/_lib/list-fields";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 import { requireSoilListUser } from "../_lib/auth";
-import { IMPORT_COLUMNS, parseUploadFile, SoilListUploadError, type ParsedUploadRow } from "../_lib/upload-parser";
+import { IMPORT_COLUMNS, parseUploadFile, prepareAssignmentRows, SoilListUploadError, type ParsedUploadRow } from "../_lib/upload-parser";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -18,6 +18,7 @@ type UploadResult = {
   parent_inserted: number;
   parent_kept: number;
   skipped: number;
+  duplicate_rows?: number;
   warning?: string;
 };
 
@@ -144,10 +145,17 @@ export async function POST(request: Request) {
     }
     uploadId = upload.id;
 
-    await upsertInChunks(db, parsed.rows, uploadId);
+    // 電話番号が空の行は投入履歴に入れない（主キーが作れず、同じリスト名で衝突する）。同じ番号×リスト名の重複は後の行を残す
+    const prepared = prepareAssignmentRows(parsed.rows);
+    await upsertInChunks(db, prepared.rows, uploadId);
     const { data: applied, error: applyError } = await db.rpc("soil_list_apply_upload", { p_upload_id: uploadId });
     if (applyError) throw new Error(applyError.message);
-    const result = await refreshOptions(db, normalizeApplyResult(applied));
+    const applyResult = normalizeApplyResult(applied);
+    const result = await refreshOptions(db, {
+      ...applyResult,
+      skipped: applyResult.skipped + prepared.emptyPhoneRows,
+      duplicate_rows: prepared.duplicateRows,
+    });
     await db.from(SOIL_LIST_TABLES.upload).update({ result }).eq("id", uploadId);
 
     return NextResponse.json({ ok: true, uploadId, result, preview: { ...parsed, rows: undefined } });

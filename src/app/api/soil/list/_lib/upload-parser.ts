@@ -221,6 +221,23 @@ function summarize(format: SoilListUploadFormat, rows: ParsedUploadRow[]): Uploa
   };
 }
 
+/**
+ * 投入履歴へ送る行を整える：電話番号が空の行は送らない（主キーが作れない）。
+ * 同じ 電話番号×リスト名 が 1 ファイルに 2 回以上あると 1 回の upsert で衝突するので、後の行を残して 1 つにする。
+ */
+export function prepareAssignmentRows(rows: ParsedUploadRow[]): { rows: ParsedUploadRow[]; emptyPhoneRows: number; duplicateRows: number } {
+  const byKey = new Map<string, ParsedUploadRow>();
+  let emptyPhoneRows = 0;
+  let duplicateRows = 0;
+  for (const row of rows) {
+    if (!row.normalizedPhone) { emptyPhoneRows += 1; continue; }
+    const key = `${row.normalizedPhone}\t${row["リスト名"] ?? ""}`;
+    if (byKey.has(key)) duplicateRows += 1;
+    byKey.set(key, row);
+  }
+  return { rows: [...byKey.values()], emptyPhoneRows, duplicateRows };
+}
+
 export async function parseUploadFile(file: File): Promise<ParsedUpload> {
   assertUploadFile(file);
   const rawRows = await readRows(file);

@@ -1,7 +1,7 @@
 import iconv from "iconv-lite";
 import { describe, expect, it } from "vitest";
 
-import { MAX_UPLOAD_FILE_SIZE, extractListLoadedOn, normalizePhone, parseUploadFile } from "./upload-parser";
+import { MAX_UPLOAD_FILE_SIZE, extractListLoadedOn, normalizePhone, parseUploadFile, prepareAssignmentRows } from "./upload-parser";
 
 function file(name: string, body: BlobPart[], type = "text/csv") {
   return new File(body, name, { type });
@@ -10,6 +10,25 @@ function file(name: string, body: BlobPart[], type = "text/csv") {
 function blobPart(buffer: Buffer): BlobPart {
   return new Uint8Array(buffer) as BlobPart;
 }
+
+describe("prepareAssignmentRows", () => {
+  it("drops rows without a phone number and keeps the last row for a duplicated phone×list key", async () => {
+    const header = "リスト名,既契約者名_姓,既契約者名_名,設置先_住所_都道府県,設置先_住所_市町村,設置先_住所_町域,電話番号_ハイフンなし,設置先_郵便番号";
+    const body = [
+      "【クレカ】た_20260817,山田,一,,,,,",
+      "【クレカ】た_20260817,山田,二,,,,,",
+      "【クレカ】た_20260817,鈴木,一,大阪府,大阪市,北区,0612345678,5300001",
+      "【クレカ】た_20260817,鈴木,二,大阪府,大阪市,北区,06-1234-5678,5300001",
+      "【クレカ】た_20260817,佐藤,,,,,0698765432,",
+    ].join("\n");
+    const parsed = await parseUploadFile(file("list.csv", [`${header}\n${body}\n`]));
+    const prepared = prepareAssignmentRows(parsed.rows);
+    expect(prepared.emptyPhoneRows).toBe(2);
+    expect(prepared.duplicateRows).toBe(1);
+    expect(prepared.rows.map((row) => row.normalizedPhone)).toEqual(["0612345678", "0698765432"]);
+    expect(prepared.rows[0]["既契約者名_名"]).toBe("二");
+  });
+});
 
 describe("soil list upload parser", () => {
   it("detects 19-column files by header names even when columns are reordered", async () => {
