@@ -55,9 +55,13 @@ describe("system kanri calculate route", () => {
       if (table === "system_kanri_source_row") {
         return {
           select: () => ({
-            eq: () => Promise.resolve({
-              data: [{ source: "kintone_customer", source_app: null, record_id: "1", payload: { 実績日: "2026-09-01", チーム名: "A", 商材名区分1: "別名" } }],
-              error: null,
+            eq: () => ({
+              neq: () => ({
+                range: () => Promise.resolve({
+                  data: [{ source: "kintone_customer", source_app: null, record_id: "1", payload: { 実績日: "2026-09-01", チーム名: "A", 商材名区分1: "別名" } }],
+                  error: null,
+                }),
+              }),
             }),
           }),
         };
