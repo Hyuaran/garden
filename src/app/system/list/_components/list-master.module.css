@@ -259,10 +259,10 @@
   min-height: auto;
 }
 
-/* 全地方で列数を固定して縦横を揃える（自動で列数を変えると地方ごとにずれる） */
+/* 全地方で列数を固定して縦横を揃える（自動で列数を変えると地方ごとにずれる）。列数はパネルの幅から部品が --cols で渡す */
 .checkboxGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
   gap: 6px 10px;
 }
 
@@ -280,11 +280,6 @@
   text-overflow: ellipsis;
 }
 
-@media (max-width: 1100px) {
-  .checkboxGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 
 .checkboxGrid input {
   min-height: auto;
@@ -420,10 +415,6 @@
   .multiSelectPanel {
     right: 0;
     width: 100%;
-  }
-
-  .checkboxGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .savedRow {

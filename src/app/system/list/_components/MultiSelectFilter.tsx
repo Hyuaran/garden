@@ -50,7 +50,9 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
       const offset = wrapper.getBoundingClientRect().left - parent.getBoundingClientRect().left;
       const width = Math.min(940, parentWidth);
       const left = Math.max(-offset, parentWidth - offset - width);
-      setPanelStyle({ width, left });
+      // 列数はパネルの幅で決める（県名＋件数が 1 行に収まる幅＝約 180px）
+      const columns = width >= 880 ? 5 : width >= 700 ? 4 : width >= 500 ? 3 : 2;
+      setPanelStyle({ width, left, "--cols": columns } as CSSProperties);
     };
     place();
     window.addEventListener("resize", place);
