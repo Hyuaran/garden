@@ -58,7 +58,8 @@ export type JissekiSheetInput = {
 
 const CUSTOMER_DATE_FIELDS = ["実績日"];
 const CUSTOMER_PRODUCT_FIELDS = ["商材名区分2"];
-const CUSTOMER_TOSS_FIELDS = ["トス名", "前確者名", "文字列__1行__46"];
+// トス名は Kintone 顧客一覧では「文字列__1行__46」（ラベル「トス名」）。「前確者名」は前確担当（責任者）なのでトスには使わない（2026-09-09 本番照合で判明）
+const CUSTOMER_TOSS_FIELDS = ["トス名", "文字列__1行__46"];
 const CUSTOMER_AP_FIELDS = ["AP名"];
 const CREDIT_PRODUCT_FIELDS = ["ドロップダウン_12", "商材名区分2"];
 const CREDIT_AP_FIELDS = ["AP名", "文字列__1行__6", "文字列__1行__3"];
