@@ -25,10 +25,15 @@ describe("PERMISSION_ENTRIES", () => {
     expect(allows("名簿と同期", "admin")).toBe(true);
   });
 
-  it("サイドバーが出ない役職（トス・クローザー・業務委託）は minRole の無いメニューも使えない", () => {
+  it("サイドバーが出ない役職（トス・クローザー・業務委託）はマイページのタブ 4 画面だけ使える", () => {
     expect(allows("テレマ コール集計", "toss")).toBe(false);
     expect(allows("関電トスポータル", "closer")).toBe(false);
-    expect(allows("勤怠打刻", "outsource")).toBe(false);
+    expect(allows("資料", "outsource")).toBe(false);
+    expect(allows("ホーム", "toss")).toBe(false);
+    expect(allows("自分の情報", "toss")).toBe(true);
+    expect(allows("勤怠打刻", "closer")).toBe(true);
+    expect(allows("シフト", "outsource")).toBe(true);
+    expect(allows("前確依頼", "toss")).toBe(true);
     expect(allows("テレマ コール集計", "staff")).toBe(true);
     expect(allows("勤怠打刻", "cs")).toBe(true);
   });

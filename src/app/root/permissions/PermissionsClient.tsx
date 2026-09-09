@@ -170,7 +170,7 @@ export default function PermissionsClient({
             <tbody>
               {initialPermissionRows.map((row) => (
                 <tr key={row.key} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                  <td style={{ padding: "10px 12px", color: colors.text, whiteSpace: "nowrap" }}>{row.label}</td>
+                  <td style={{ padding: "10px 12px", color: colors.text }}>{row.label}</td>
                   <td style={{ padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>{row.kind}</td>
                   {GARDEN_ROLE_ORDER.map((role) => {
                     const allowed = row.roles[role];

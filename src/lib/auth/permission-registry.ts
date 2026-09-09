@@ -44,7 +44,12 @@ function slugifyLabel(label: string) {
   return label.toLowerCase().replace(/\s+/g, "-");
 }
 
-// System のメニュー項目：サイドバーが出ない役職（トス・クローザー・業務委託）はメニュー自体を使えない。
+// サイドバーが出ない役職（トス・クローザー・業務委託）がマイページのタブとして使える 4 画面
+// （src/app/system/mypage/MyPageClient.tsx の TABS：マイページ／勤怠打刻／シフト／前確依頼）
+// ＋入社手続き（新しく入った人はログイン直後に案内される。役職の制限なし）
+const SIDEBARLESS_TAB_HREFS = new Set(["/system/mypage", "/system/attendance", "/system/shift", "/system/zenkaku", "/system/onboarding"]);
+
+// System のメニュー項目：サイドバーが出ない役職はメニュー自体を使えず、上の 4 画面だけをタブで使う。
 // minRole の無い項目でも、サイドバーが隠れる役職には ×。まだ画面の無い項目（準備中）は全員 ×
 const systemMenuEntries: PermissionEntry[] = SYSTEM_MENU_ITEMS.map((item) => ({
   key: `system-menu-${item.href ?? item.label}`,
@@ -53,10 +58,10 @@ const systemMenuEntries: PermissionEntry[] = SYSTEM_MENU_ITEMS.map((item) => ({
   kind: "画面",
   allows: (role) => {
     if (item.upcoming) return false;
-    if (SIDEBAR_HIDDEN_ROLES.has(role)) return false;
+    if (SIDEBAR_HIDDEN_ROLES.has(role)) return Boolean(item.href && SIDEBARLESS_TAB_HREFS.has(item.href));
     return !item.minRole || isRoleAtLeast(role, item.minRole);
   },
-  source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SYSTEM_MENU_ITEMS＋SIDEBAR_HIDDEN_ROLES",
+  source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SYSTEM_MENU_ITEMS＋SIDEBAR_HIDDEN_ROLES（タブ 4 画面は mypage/MyPageClient.tsx:TABS）",
 }));
 
 const manualDocEntries: PermissionEntry[] = MANUAL_DOCS.map((doc) => ({
@@ -165,7 +170,7 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
   },
   {
     key: "api-require-employee",
-    label: "本人の情報の API（自分の情報・勤怠打刻・届出。ログインした本人だけ）",
+    label: "本人の情報の API（自分の情報・打刻・届出）",
     group: "API",
     kind: "API",
     allows: () => true,
