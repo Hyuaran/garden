@@ -59,4 +59,29 @@ describe("calculateKanriSheet", () => {
     expect(grid.days[0].all).toEqual({ hours: 0, efficiency: null, total: 0 });
     expect(grid.days[0].teams["宮永チーム"].efficiency).toBeNull();
   });
+
+  it("leaves hours and counts blank after the target date while totals use days through target", () => {
+    const grid = calculateKanriSheet({
+      yearMonth: "2026-08",
+      targetDate: "2026-08-01",
+      holidays: [],
+      points,
+      teams,
+      sourceRows: [
+        source("kintone_customer", { 実績日: "2026-08-01T00:00:00", チーム名: "宮永チーム", 商材名区分2: "BIGLOBE光" }),
+        source("kintone_customer", { 実績日: "2026-08-02T00:00:00", チーム名: "宮永チーム", 商材名区分2: "BIGLOBE光" }),
+      ],
+      manualInputs: {
+        hoursByTeamByDate: { 宮永チーム: { "2026-08-01": 6, "2026-08-02": 7 } },
+        openRateByTeamByProduct: { 宮永チーム: { BIGLOBE光: 0.84 } },
+      },
+    });
+
+    expect(grid.days[0].teams["宮永チーム"].hours).toBe(6);
+    expect(grid.days[1].teams["宮永チーム"].hours).toBeNull();
+    expect(grid.days[1].teams["宮永チーム"].total).toBe(0);
+    expect(grid.days[1].teams["宮永チーム"].efficiency).toBeNull();
+    expect(grid.cellValues.I9).toBeNull();
+    expect(grid.totals.teams["宮永チーム"].hours).toBe(6);
+  });
 });

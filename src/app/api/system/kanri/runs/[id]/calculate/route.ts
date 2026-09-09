@@ -3,7 +3,7 @@ import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { monthRange, type KanriSourceRow } from "@/app/system/kanri/_lib/kanri-core";
 import { calculateKanriSheet, type KanriManualInputs, type KanriPointMaster, type KanriTeamMaster } from "@/app/system/kanri/_lib/calc/kanri-sheet";
-import { calculateJissekiSheet, normalizeCommuteMap, type KanriPerson } from "@/app/system/kanri/_lib/calc/jisseki-sheet";
+import { calculateJissekiSheet, mergeCommuteMaps, normalizeCommuteMap, normalizeRosterCommuteMap, type KanriPerson } from "@/app/system/kanri/_lib/calc/jisseki-sheet";
 import { calculateHouhanSheet } from "@/app/system/kanri/_lib/calc/houhan-sheet";
 import { calculateAporanSheet } from "@/app/system/kanri/_lib/calc/aporan-sheet";
 import { calculateIncentiveSheet } from "@/app/system/kanri/_lib/calc/incentive-sheet";
@@ -103,6 +103,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
 
   const grid = calculateKanriSheet({
     yearMonth: range.yearMonth,
+    targetDate: String(run.target_date),
     holidays: (settingResult.data?.holidays ?? []) as string[],
     sourceRows,
     points,
@@ -121,7 +122,10 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     points,
     people: (personResult.data ?? []) as KanriPerson[],
     manualInputs,
-    commuteByName: normalizeCommuteMap((employeeResult.data ?? []) as { name: string | null; commute_daily_allowance: number | string | null }[]),
+    commuteByName: mergeCommuteMaps(
+      normalizeCommuteMap((employeeResult.data ?? []) as { name: string | null; commute_daily_allowance: number | string | null }[]),
+      normalizeRosterCommuteMap(sourceRows),
+    ),
     houhan,
   });
   const aporan = calculateAporanSheet({

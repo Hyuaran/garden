@@ -46,7 +46,7 @@ function person(name: string, department: string, employmentKind: "社員" | "�
     department,
     employment_kind: employmentKind,
     base_wage: employmentKind === "アルバイト" ? 1400 : null,
-    is_field_sales: false,
+    is_field_sales: department === "関電",
     active: true,
     sort_order: 10,
   };
@@ -111,6 +111,7 @@ describe("KOT daily import", () => {
         person("派遣　二子", "Aチーム", "派遣"),
       ],
       currentInputs: { hoursByTeamByDate: {}, openRateByTeamByProduct: {} },
+      hoursBasis: "plan",
       includeDispatchNames: ["派遣 一子"],
       importedAt: "2026-09-01T00:00:00.000Z",
     });
@@ -133,6 +134,50 @@ describe("KOT daily import", () => {
     expect(result.inputs.personMonthly?.["山田　花子"]?.workHours).toBe(6);
     expect(result.inputs.personMonthly?.["山田　花子"]?.workDays).toBe(1);
     expect(result.inputs.personMonthly?.["山田　花子"]?.landingHours).toBe(13);
+  });
+
+  it("uses actual team hours through the target date and planned hours after it by default", () => {
+    const result = calculateKotDailyImport({
+      rows: [
+        row({ name: "山田 花子", date: "2026-09-01", actualHours: 6, plannedHours: 7 }),
+        row({ name: "山田 花子", date: "2026-09-02", actualHours: 5, plannedHours: 8 }),
+      ],
+      people: [person("山田　花子", "Aチーム")],
+      currentInputs: { hoursByTeamByDate: {}, openRateByTeamByProduct: {} },
+      actualThroughDate: "2026-09-01",
+      importedAt: "2026-09-01T00:00:00.000Z",
+    });
+
+    expect(result.summary.hoursBasis).toBe("auto");
+    expect(result.inputs.hoursByTeamByDate.Aチーム["2026-09-01"]).toBe(6);
+    expect(result.inputs.hoursByTeamByDate.Aチーム["2026-09-02"]).toBe(8);
+  });
+
+  it("fills field sales workdays from KOT without overwriting manual inputs or future days", () => {
+    const result = calculateKotDailyImport({
+      rows: [
+        row({ name: "訪販 太郎", date: "2026-09-04", workdayKind: "平日", patternName: "09-17", actualHours: 7, plannedHours: 7 }),
+        row({ name: "訪販 太郎", date: "2026-09-05", workdayKind: "", patternName: "09-17", actualHours: 11, plannedHours: 11 }),
+        row({ name: "訪販 太郎", date: "2026-09-06", workdayKind: "", patternName: "公休", actualHours: 0, plannedHours: 0 }),
+        row({ name: "訪販 太郎", date: "2026-09-07", workdayKind: "平日", patternName: "09-17", actualHours: 7, plannedHours: 7 }),
+        row({ name: "訪販 太郎", date: "2026-09-08", workdayKind: "平日", patternName: "09-17", actualHours: 0, plannedHours: 7 }),
+      ],
+      people: [person("訪販　太郎", "関電", "社員")],
+      currentInputs: {
+        hoursByTeamByDate: {},
+        openRateByTeamByProduct: {},
+        fieldSales: { byPerson: { "訪販　太郎": { days: { "2026-09-07": { status: "ゼロ", hours: 3 } } } } },
+      },
+      actualThroughDate: "2026-09-07",
+      importedAt: "2026-09-07T00:00:00.000Z",
+    });
+
+    const days = result.inputs.fieldSales?.byPerson?.["訪販　太郎"]?.days;
+    expect(days?.["2026-09-04"]).toEqual({ status: "出勤", hours: 7 });
+    expect(days?.["2026-09-05"]).toEqual({ status: "出勤", hours: 11 });
+    expect(days?.["2026-09-06"]).toBeUndefined();
+    expect(days?.["2026-09-07"]).toEqual({ status: "ゼロ", hours: 3 });
+    expect(days?.["2026-09-08"]).toBeUndefined();
   });
 
   it("finds the four attendance checks", () => {
@@ -227,6 +272,7 @@ describe.skipIf(!hasFixtures)("KOT daily fixture", () => {
       rows,
       people: peopleFromSeed(),
       currentInputs: { hoursByTeamByDate: {}, openRateByTeamByProduct: {} },
+      hoursBasis: "plan",
       actualThroughDate: "2026-08-31",
       importedAt: "2026-09-07T00:00:00.000Z",
     });

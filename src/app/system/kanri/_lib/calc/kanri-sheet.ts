@@ -48,7 +48,7 @@ export type KanriMonthlySettings = {
   };
   fieldSalesWeights?: Record<string, number | string | null>;
   kot?: {
-    hoursBasis?: "plan" | "actual";
+    hoursBasis?: "auto" | "plan" | "actual";
     includeDispatchNames?: string[];
   };
 };
@@ -74,7 +74,7 @@ export type KanriKotDailySummary = {
   overwrittenCells: { team: string; date: string; previous: number; next: number }[];
   missingNames: string[];
   issueCounts: Record<KanriKotDailyIssueKind, number>;
-  hoursBasis: "plan" | "actual";
+  hoursBasis: "auto" | "plan" | "actual";
 };
 
 export type KanriKotDailyInputs = {
@@ -106,7 +106,7 @@ export type KanriFieldSalesInputs = {
 };
 
 export type KanriDayTeamResult = {
-  hours: number;
+  hours: number | null;
   efficiency: number | null;
   total: number;
   products: Record<string, number>;
@@ -116,7 +116,7 @@ export type KanriDayResult = {
   day: number | "定休日";
   date: string;
   weekday: string;
-  all: { hours: number; efficiency: number | null; total: number };
+  all: { hours: number | null; efficiency: number | null; total: number };
   teams: Record<string, KanriDayTeamResult>;
 };
 
@@ -146,6 +146,7 @@ export type KanriSheetGrid = {
 
 export type KanriSheetInput = {
   yearMonth: string;
+  targetDate?: string;
   holidays: string[];
   sourceRows: KanriSourceRow[];
   points: KanriPointMaster[];
@@ -292,28 +293,29 @@ export function calculateKanriSheet(input: KanriSheetInput): KanriSheetGrid {
 
   const days = addDays(input.yearMonth).map(({ day, date, weekday }) => {
     const dayTeams: Record<string, KanriDayTeamResult> = {};
+    const afterTargetDate = Boolean(input.targetDate && date > input.targetDate);
     teams.forEach((team) => {
-      const hours = holidays.has(date) ? 0 : toNumber(input.manualInputs.hoursByTeamByDate[team]?.[date]);
+      const hours = holidays.has(date) ? 0 : afterTargetDate ? null : toNumber(input.manualInputs.hoursByTeamByDate[team]?.[date]);
       const productCounts = makeEmptyProducts(products);
       products.forEach((product) => {
-        productCounts[product] = holidays.has(date) ? 0 : (sourceCounts.get(`${date}\t${team}\t${product}`) ?? 0);
+        productCounts[product] = holidays.has(date) || afterTargetDate ? 0 : (sourceCounts.get(`${date}\t${team}\t${product}`) ?? 0);
       });
       const total = Object.values(productCounts).reduce((sum, value) => sum + value, 0);
-      dayTeams[team] = { hours, efficiency: divide(total, hours), total, products: productCounts };
-      teamTotals[team].hours += hours;
+      dayTeams[team] = { hours, efficiency: hours === null ? null : divide(total, hours), total, products: productCounts };
+      teamTotals[team].hours += hours ?? 0;
       teamTotals[team].total += total;
       products.forEach((product) => {
         teamTotals[team].products[product] += productCounts[product];
       });
     });
-    const allHours = teams.reduce((sum, team) => sum + dayTeams[team].hours, 0);
+    const allHours = afterTargetDate ? null : teams.reduce((sum, team) => sum + (dayTeams[team].hours ?? 0), 0);
     const allTotal = teams.reduce((sum, team) => sum + dayTeams[team].total, 0);
     const dayLabel: number | "定休日" = holidays.has(date) ? "定休日" : day;
     return {
       day: dayLabel,
       date,
       weekday,
-      all: { hours: allHours, efficiency: divide(allTotal, allHours), total: allTotal },
+      all: { hours: allHours, efficiency: allHours === null ? null : divide(allTotal, allHours), total: allTotal },
       teams: dayTeams,
     };
   });

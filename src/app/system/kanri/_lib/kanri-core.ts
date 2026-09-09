@@ -77,7 +77,7 @@ export const CREDIT_FIELDS = [
 
 export const ROSTER_FIELDS = [
   "レコード番号", "社員番号", "打刻ID", "従業員名_姓名", "従業員名_姓名カナ", "雇用形態", "チーム名",
-  "従業員ステータス", "入社日", "退職日", "基準時給", "ドロップダウン_15",
+  "従業員ステータス", "入社日", "退職日", "基準時給", "ドロップダウン_15", "交通費_片道",
 ] as const;
 
 export function tokyoToday(now = new Date()) {

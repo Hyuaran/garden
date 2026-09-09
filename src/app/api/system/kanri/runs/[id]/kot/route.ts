@@ -16,7 +16,7 @@ function emptyInputs(): KanriManualInputs {
 }
 
 function isHoursBasis(value: FormDataEntryValue | null): value is KotDailyHoursBasis {
-  return value === "plan" || value === "actual";
+  return value === "auto" || value === "plan" || value === "actual";
 }
 
 function isUploadedFile(value: FormDataEntryValue | null): value is File {

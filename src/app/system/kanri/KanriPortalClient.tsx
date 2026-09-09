@@ -163,7 +163,12 @@ function hasKotPersonValue(inputs: KanriManualInputs, person: string, key: "land
 }
 
 function kotHoursBasis(inputs: KanriManualInputs) {
-  return inputs.monthlySettings?.kot?.hoursBasis ?? "plan";
+  return inputs.monthlySettings?.kot?.hoursBasis ?? "auto";
+}
+
+function kotHoursBasisLabel(value: "auto" | "plan" | "actual") {
+  if (value === "auto") return "対象日まで実績・以降は予定";
+  return value === "plan" ? "予定" : "実績";
 }
 
 function kotDispatchNames(inputs: KanriManualInputs) {
@@ -707,7 +712,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         <button className={styles.primaryInline} type="button" disabled={kotImporting} onClick={() => void importKotDaily()}>{kotImporting ? "取り込んでいます" : "取り込む"}</button>
       </div>
       {inputs.kotDaily?.summary ? <div className={styles.kotResult}>
-        <p>取り込み結果：{inputs.kotDaily.summary.startDate.replace(/-/g, "/")}〜{inputs.kotDaily.summary.endDate.slice(5).replace("-", "/")}・{inputs.kotDaily.summary.peopleCount} 人・{inputs.kotDaily.summary.rowCount.toLocaleString("ja-JP")} 行。稼働時間（{inputs.kotDaily.summary.hoursBasis === "plan" ? "予定" : "実績"}）を {inputs.kotDaily.summary.teamDayCount} マスに入れました。</p>
+        <p>取り込み結果：{inputs.kotDaily.summary.startDate.replace(/-/g, "/")}〜{inputs.kotDaily.summary.endDate.slice(5).replace("-", "/")}・{inputs.kotDaily.summary.peopleCount} 人・{inputs.kotDaily.summary.rowCount.toLocaleString("ja-JP")} 行。稼働時間（{kotHoursBasisLabel(inputs.kotDaily.summary.hoursBasis)}）を {inputs.kotDaily.summary.teamDayCount} マスに入れました。</p>
         <p>台帳に無い名前 {inputs.kotDaily.summary.missingNames.length} 人 ／ 手入力を上書きしたマス {inputs.kotDaily.summary.overwrittenCells.length}</p>
         <p>勤怠の確認：{kotIssueSummary(inputs.kotDaily.issues)} <button className={styles.linkButton} type="button" onClick={() => setShowKotDetails((current) => !current)}>{showKotDetails ? "閉じる" : "明細を見る"}</button></p>
         {showKotDetails && <div className={styles.resultScroller}>
@@ -733,6 +738,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       <div className={styles.controls}>
         <fieldset>
           <legend>稼働時間の元</legend>
+          <label><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "auto"} onChange={() => updateKotSetting("hoursBasis", "auto")} />対象日まで実績・以降は予定</label>
           <label><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "plan"} onChange={() => updateKotSetting("hoursBasis", "plan")} />予定</label>
           <label><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "actual"} onChange={() => updateKotSetting("hoursBasis", "actual")} />実績</label>
         </fieldset>

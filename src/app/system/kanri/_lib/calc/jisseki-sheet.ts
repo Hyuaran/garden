@@ -195,6 +195,20 @@ export function normalizeCommuteMap(rows: { name: string | null; commute_daily_a
   return Object.fromEntries(rows.map((row) => [normalizeName(row.name), row.commute_daily_allowance]));
 }
 
+export function normalizeRosterCommuteMap(rows: KanriSourceRow[]) {
+  return Object.fromEntries(rows.filter((row) => row.source === "roster").map((row) => {
+    const oneWay = toNumber(fieldValue(row.payload, "交通費_片道"));
+    return [normalizeName(fieldValue(row.payload, "従業員名_姓名")), oneWay > 0 ? oneWay * 2 : null];
+  }).filter(([name, value]) => Boolean(name) && value !== null));
+}
+
+export function mergeCommuteMaps(root: Record<string, number | string | null>, roster: Record<string, number | string | null>) {
+  return {
+    ...roster,
+    ...Object.fromEntries(Object.entries(root).filter(([, value]) => value !== null && value !== undefined && value !== "")),
+  };
+}
+
 export function calculateJissekiSheet(input: JissekiSheetInput): JissekiSheetGrid {
   const points = sortByOrder(input.points.filter(active));
   const products = points.map((point) => point.product);

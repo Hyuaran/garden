@@ -1,5 +1,6 @@
 import iconv from "iconv-lite";
-import { normalizeName, type KanriSourceRow } from "./kanri-core";
+import { normalizeName, weekdayJa, type KanriSourceRow } from "./kanri-core";
+import { isJapaneseHoliday } from "./jp-holidays";
 import type {
   KanriKotDailyIssue,
   KanriKotDailyIssueKind,
@@ -8,7 +9,7 @@ import type {
 } from "./calc/kanri-sheet";
 import type { KanriPerson } from "./calc/jisseki-sheet";
 
-export type KotDailyHoursBasis = "plan" | "actual";
+export type KotDailyHoursBasis = "auto" | "plan" | "actual";
 
 export type KotDailyRow = {
   employeeCode: string;
@@ -134,6 +135,23 @@ function hasShift(row: KotDailyRow) {
   return Boolean(row.patternName && !REST_PATTERNS.has(row.patternName));
 }
 
+function hasManualFieldSalesInput(fieldSales: KanriManualInputs["fieldSales"], personName: string, date: string) {
+  const current = fieldSales?.byPerson?.[personName]?.days?.[date];
+  return Boolean(current && Object.values(current).some((value) => value !== undefined && value !== null && value !== ""));
+}
+
+function isWeekendOrHoliday(row: KotDailyRow) {
+  if (row.workdayKind && row.workdayKind !== "平日") return true;
+  if (isJapaneseHoliday(row.date)) return true;
+  return ["土", "日"].includes(weekdayJa(row.date));
+}
+
+function teamHours(row: KotDailyRow, hoursBasis: KotDailyHoursBasis, actualThroughDate: string) {
+  if (hoursBasis === "actual") return row.actualHours;
+  if (hoursBasis === "plan") return row.plannedHours;
+  return row.date <= actualThroughDate ? row.actualHours : row.plannedHours;
+}
+
 function diffMinutes(from: string, to: string) {
   const start = minuteOfDay(from);
   const end = minuteOfDay(to);
@@ -236,7 +254,7 @@ export function calculateKotDailyImport(input: {
   actualThroughDate?: string;
   importedAt?: string;
 }): KotDailyImportResult {
-  const hoursBasis = input.hoursBasis ?? input.currentInputs.monthlySettings?.kot?.hoursBasis ?? "plan";
+  const hoursBasis = input.hoursBasis ?? input.currentInputs.monthlySettings?.kot?.hoursBasis ?? "auto";
   const includeDispatchNames = input.includeDispatchNames
     ?? input.currentInputs.monthlySettings?.kot?.includeDispatchNames
     ?? DEFAULT_INCLUDE_DISPATCH_NAMES;
@@ -248,6 +266,10 @@ export function calculateKotDailyImport(input: {
   const missingNames = [...new Set(input.rows.map((row) => row.name).filter((name) => !byName.has(normalizeKotName(name))))].sort();
 
   const hoursByTeamByDate: KanriManualInputs["hoursByTeamByDate"] = { ...input.currentInputs.hoursByTeamByDate };
+  const fieldSales: KanriManualInputs["fieldSales"] = {
+    ...(input.currentInputs.fieldSales ?? {}),
+    byPerson: { ...(input.currentInputs.fieldSales?.byPerson ?? {}) },
+  };
   const teamSums = new Map<string, number>();
   const personMonthly = { ...(input.currentInputs.personMonthly ?? {}) };
   const personSums = new Map<string, { actual: number; days: Set<string>; futurePlan: number }>();
@@ -261,8 +283,26 @@ export function calculateKotDailyImport(input: {
     if (!person) return;
     if (includedInTeamHours(person, includeDispatchNames)) {
       const key = `${person.department}\t${row.date}`;
-      const hours = hoursBasis === "actual" ? row.actualHours : row.plannedHours;
+      const hours = teamHours(row, hoursBasis, actualThroughDate);
       teamSums.set(key, (teamSums.get(key) ?? 0) + hours);
+    }
+    const hasManualSalesDay = hasManualFieldSalesInput(input.currentInputs.fieldSales, person.name, row.date)
+      || Boolean(person.kot_name && hasManualFieldSalesInput(input.currentInputs.fieldSales, person.kot_name, row.date));
+    if (person.is_field_sales && row.date <= actualThroughDate && !hasManualSalesDay) {
+      if (hasShift(row) && (hasPunch(row) || row.plannedHours > 0)) {
+        const currentPerson = fieldSales.byPerson?.[person.name] ?? {};
+        const currentDays = currentPerson.days ?? {};
+        fieldSales.byPerson = {
+          ...(fieldSales.byPerson ?? {}),
+          [person.name]: {
+            ...currentPerson,
+            days: {
+              ...currentDays,
+              [row.date]: { status: "出勤", hours: isWeekendOrHoliday(row) ? 11 : 7 },
+            },
+          },
+        };
+      }
     }
     const monthly = personSums.get(person.name);
     if (monthly) {
@@ -320,6 +360,7 @@ export function calculateKotDailyImport(input: {
       ...input.currentInputs,
       hoursByTeamByDate,
       personMonthly,
+      fieldSales,
       monthlySettings: {
         ...(input.currentInputs.monthlySettings ?? {}),
         kot: { hoursBasis, includeDispatchNames },

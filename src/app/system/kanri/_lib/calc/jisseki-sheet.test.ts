@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { KanriSourceRow } from "../kanri-core";
-import { calculateJissekiSheet, normalizeCommuteMap, type KanriPerson } from "./jisseki-sheet";
+import { calculateJissekiSheet, mergeCommuteMaps, normalizeCommuteMap, normalizeRosterCommuteMap, type KanriPerson } from "./jisseki-sheet";
 import type { KanriPointMaster } from "./kanri-sheet";
 
 const points: KanriPointMaster[] = [
@@ -65,5 +65,27 @@ describe("calculateJissekiSheet", () => {
     expect(grid.rows[1].totalPoints).toBe(27.6);
     expect(Object.values(grid.rows[1].counts).every((count) => count === 0)).toBe(true);
     expect(grid.missingCommuteNames).toContain("訪販　太郎");
+  });
+
+  it("uses Root commute first and falls back to roster one-way commute doubled", () => {
+    const commuteByName = mergeCommuteMaps(
+      normalizeCommuteMap([{ name: "山田 花子", commute_daily_allowance: 900 }]),
+      normalizeRosterCommuteMap([
+        { source: "roster", sourceApp: null, recordId: "1", payload: { 従業員名_姓名: "山田　花子", 交通費_片道: "300" } },
+        { source: "roster", sourceApp: null, recordId: "2", payload: { 従業員名_姓名: "交通費　なし", 交通費_片道: "450" } },
+      ]),
+    );
+    const grid = calculateJissekiSheet({
+      yearMonth: "2026-08",
+      points,
+      people,
+      commuteByName,
+      manualInputs: { hoursByTeamByDate: {}, openRateByTeamByProduct: {} },
+      sourceRows: [],
+    });
+
+    expect(grid.rows[0].commuteDailyAllowance).toBe(900);
+    expect(grid.rows[2].commuteDailyAllowance).toBe(900);
+    expect(grid.rows[2].missingCommute).toBe(false);
   });
 });
