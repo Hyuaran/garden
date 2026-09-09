@@ -1,5 +1,6 @@
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { buildMyPageProfile } from "@/app/system/mypage/_lib/mypage-profile.server";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 
 type Body = { code?: unknown };
 
@@ -16,10 +17,10 @@ export async function POST(request: Request) {
   if (!auth.user) return Response.json({ ok: false }, { status: 401 });
 
   const { data: employee, error } = await supabase.from("root_employees")
-    .select("employee_id,name,name_kana,employee_number,employment_type,birthday,email,garden_role,commute_daily_allowance,commute_monthly_cap")
+    .select("employee_id,name,name_kana,employee_number,employment_type,birthday,email,garden_role,commute_daily_allowance,commute_monthly_cap,is_active,termination_date,deleted_at")
     .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
   if (error) return Response.json({ ok: false }, { status: 500 });
-  if (!employee) return Response.json({ ok: false }, { status: 409 });
+  if (!employee || !isEmployeeActive(employee)) return Response.json({ ok: false }, { status: 409 });
 
   const birthday = typeof employee.birthday === "string" ? employee.birthday : null;
   if (!birthday) return Response.json({ ok: true, profile: await buildMyPageProfile(employee) });

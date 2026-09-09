@@ -141,6 +141,9 @@ export interface Employee {
   account_holder_kana: string;
   kot_employee_id: string | null;
   mf_employee_id: string | null;
+  commute_daily_allowance?: number | null;
+  roster_record_id?: string | null;
+  garden_role_manual?: boolean;
   chatwork_api_token_enc?: string | null;
   chatwork_account_name?: string | null;
   chatwork_token_updated_at?: string | null;

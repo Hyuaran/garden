@@ -33,7 +33,7 @@ describe("manuals hub page", () => {
     render(await ManualsHubPage());
 
     const employeeQuery = supabase.from.mock.results[0].value;
-    expect(employeeQuery.select).toHaveBeenCalledWith("garden_role");
+    expect(employeeQuery.select).toHaveBeenCalledWith("garden_role,is_active,termination_date,deleted_at");
     expect(screen.getByRole("heading", { name: "マニュアル" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "System" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Bud" })).toBeInTheDocument();

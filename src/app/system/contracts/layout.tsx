@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 
 export const metadata = { title: "契約書管理 | Garden" };
 
@@ -11,12 +12,12 @@ export default async function ContractsLayout({ children }: { children: ReactNod
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Fcontracts");
   const { data: employee } = await supabase.from("root_employees")
-    .select("garden_role")
+    .select("garden_role,is_active,termination_date,deleted_at")
     .eq("user_id", auth.user.id)
     .eq("is_active", true)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!employee || !VIEW_ROLES.has(String(employee.garden_role))) {
+  if (!employee || !isEmployeeActive(employee) || !VIEW_ROLES.has(String(employee.garden_role))) {
     return <main style={{ padding: 32 }}><h1>閲覧権限がありません</h1><p>この画面は責任者以上が利用できます。</p></main>;
   }
   return children;

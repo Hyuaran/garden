@@ -3,6 +3,7 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import { findManual, findManualDoc } from "@/app/system/manuals/_lib/manuals-registry";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 
 export const runtime = "nodejs";
 
@@ -40,13 +41,13 @@ export async function GET(
 
   const { data: employee, error: employeeError } = await session
     .from("root_employees")
-    .select("garden_role")
+    .select("garden_role,is_active,termination_date,deleted_at")
     .eq("user_id", auth.user.id)
     .eq("is_active", true)
     .is("deleted_at", null)
     .maybeSingle();
   if (employeeError) return jsonError(500, "employee role lookup failed");
-  if (!employee) return jsonError(403, "manual access denied");
+  if (!employee || !isEmployeeActive(employee)) return jsonError(403, "manual access denied");
 
   const role = validRole(employee.garden_role);
   if (!isRoleAtLeast(role, doc.minRole)) return jsonError(403, "manual access denied");

@@ -1,5 +1,3 @@
-import "server-only";
-
 export type KintoneRecord = Record<string, { value: unknown } | unknown>;
 
 const PAGE_SIZE = 500;

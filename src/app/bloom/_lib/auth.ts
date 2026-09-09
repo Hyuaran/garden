@@ -21,6 +21,7 @@ import {
   touchAuthSession,
   unlockAuthSession,
 } from "../../_lib/auth-unified";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 import { supabase } from "./supabase";
 
 export type GardenRole =
@@ -39,6 +40,9 @@ export type BloomUser = {
   name: string;
   garden_role: GardenRole;
   birthday: string | null;
+  is_active?: boolean | null;
+  termination_date?: string | null;
+  deleted_at?: string | null;
 };
 
 /**
@@ -134,7 +138,7 @@ export async function getUser() {
 export async function fetchBloomUser(userId: string): Promise<BloomUser | null> {
   const { data, error } = await supabase
     .from("root_employees")
-    .select("user_id, employee_id, employee_number, name, garden_role, birthday")
+    .select("user_id, employee_id, employee_number, name, garden_role, birthday, is_active, termination_date, deleted_at")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -142,6 +146,7 @@ export async function fetchBloomUser(userId: string): Promise<BloomUser | null> 
     console.error("[bloom] fetchBloomUser failed:", error.message);
     return null;
   }
+  if (!isEmployeeActive(data)) return null;
   return (data as BloomUser | null) ?? null;
 }
 

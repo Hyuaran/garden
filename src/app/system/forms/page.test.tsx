@@ -33,7 +33,7 @@ describe("forms hub page", () => {
     render(await FormsHubPage());
 
     const employeeQuery = supabase.from.mock.results[0].value;
-    expect(employeeQuery.select).toHaveBeenCalledWith("garden_role");
+    expect(employeeQuery.select).toHaveBeenCalledWith("garden_role,is_active,termination_date,deleted_at");
     expect(screen.getByRole("heading", { name: "フォーム" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "給与計算連絡" })).toBeInTheDocument();
   });

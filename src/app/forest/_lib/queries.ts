@@ -14,6 +14,7 @@ import type {
   Shinkouki,
 } from "../_constants/companies";
 import { supabase } from "./supabase";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 import type { Hankanhi, LastUpdatedAt } from "./types";
 
 /**
@@ -84,22 +85,31 @@ export async function fetchForestUser(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    return null;
-  }
+    if (!user) {
+      return null;
+    }
 
-  const { data, error } = await supabase
-    .from("forest_users")
-    .select("*")
+    const { data, error } = await supabase
+      .from("forest_users")
+      .select("*")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(`fetchForestUser failed: ${error.message}`);
-  }
+    if (error) {
+      throw new Error(`fetchForestUser failed: ${error.message}`);
+    }
+    if (!data) return null;
 
-  return data as ForestUser | null;
-}
+    const { data: employee, error: employeeError } = await supabase
+      .from("root_employees")
+      .select("is_active,termination_date,deleted_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (employeeError) return null;
+    if (employee && "is_active" in employee && !isEmployeeActive(employee)) return null;
+
+    return data as ForestUser;
+  }
 
 /**
  * 指定法人 × 期の販管費内訳を 1 件取得する。

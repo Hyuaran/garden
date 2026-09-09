@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 import ManualDetailClient from "../../ManualDetailClient";
 import { findManual, findManualModule, getVisibleManualDocs } from "../../_lib/manuals-registry";
 
@@ -29,12 +30,12 @@ export default async function ManualDetailPage({
 
   const { data: employee } = await supabase
     .from("root_employees")
-    .select("garden_role")
+    .select("garden_role,is_active,termination_date,deleted_at")
     .eq("user_id", auth.user.id)
     .eq("is_active", true)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!employee) redirect(`/login?returnTo=%2Fsystem%2Fmanuals%2F${encodeURIComponent(moduleSlug)}%2F${encodeURIComponent(slug)}`);
+  if (!employee || !isEmployeeActive(employee)) redirect(`/login?returnTo=%2Fsystem%2Fmanuals%2F${encodeURIComponent(moduleSlug)}%2F${encodeURIComponent(slug)}`);
 
   const role = GARDEN_ROLE_ORDER.includes(employee.garden_role as GardenRole)
     ? employee.garden_role as GardenRole

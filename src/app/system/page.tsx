@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 import { MenuIcon } from "./_components/ShachoShell/ShachoShell";
 import SystemBreadcrumb from "./_components/SystemBreadcrumb/SystemBreadcrumb";
 import { canUseSystemItem, SYSTEM_MENU_ITEMS } from "./_components/ShachoShell/shacho-shell-config";
@@ -14,8 +15,8 @@ export default async function SystemHomePage() {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem");
-  const { data: employee } = await supabase.from("root_employees").select("employee_id,garden_role").eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
-  if (!employee) redirect("/login?returnTo=%2Fsystem");
+  const { data: employee } = await supabase.from("root_employees").select("employee_id,garden_role,is_active,termination_date,deleted_at").eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
+  if (!employee || !isEmployeeActive(employee)) redirect("/login?returnTo=%2Fsystem");
   const role = GARDEN_ROLE_ORDER.includes(employee.garden_role as GardenRole) ? employee.garden_role as GardenRole : "staff";
   const visible = SYSTEM_MENU_ITEMS.filter((item) => canUseSystemItem(item, role));
   const showOnboarding = await needsOnboarding(supabase, employee.employee_id);

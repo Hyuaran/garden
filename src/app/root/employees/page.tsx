@@ -69,6 +69,18 @@ type ChatworkTokenSyncResult = {
   retired: number;
 };
 
+type RosterSyncResult = {
+  syncedAt: string;
+  dryRun: boolean;
+  rosterRecords: number;
+  created: number;
+  updated: number;
+  accountsCreated: number;
+  authBanned: number;
+  authUnbanned: number;
+  errors: string[];
+};
+
 type ChatworkTokenStatus = {
   registered: boolean;
   accountName: string | null;
@@ -149,6 +161,8 @@ export default function EmployeesPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [tokenSyncing, setTokenSyncing] = useState(false);
   const [tokenSyncResult, setTokenSyncResult] = useState<ChatworkTokenSyncResult | null>(null);
+  const [rosterSyncing, setRosterSyncing] = useState(false);
+  const [rosterSyncResult, setRosterSyncResult] = useState<RosterSyncResult | null>(null);
   const [chatworkTokenStatus, setChatworkTokenStatus] = useState<ChatworkTokenStatus>(emptyChatworkTokenStatus);
   const [chatworkTokenInput, setChatworkTokenInput] = useState("");
   const [chatworkTokenLoading, setChatworkTokenLoading] = useState(false);
@@ -157,6 +171,7 @@ export default function EmployeesPage() {
   const bankRequired = editTarget ? isEmployeeBankRequired(editTarget) : true;
   const canSyncChatworkTokens = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "manager") : false;
   const canManageChatworkToken = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "manager") : false;
+  const canSyncRoster = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "admin") : false;
   const canOpenEmployeeModal = canWrite || canManageChatworkToken;
   const editEmployeeId = editTarget?.employee_id;
   const editEmployeeCreatedAt = editTarget?.created_at;
@@ -338,6 +353,40 @@ export default function EmployeesPage() {
     }
   }
 
+  async function handleRosterSync() {
+    if (!canSyncRoster) {
+      setError("管理者以上の権限が必要です");
+      return;
+    }
+    try {
+      setRosterSyncing(true);
+      setError(null);
+      setRosterSyncResult(null);
+      const response = await fetch("/api/root/roster-sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ dryRun: false }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "名簿同期に失敗しました");
+      setRosterSyncResult(body as RosterSyncResult);
+      await load();
+    } catch (syncError) {
+      setError(syncError instanceof Error ? syncError.message : "名簿同期に失敗しました");
+    } finally {
+      setRosterSyncing(false);
+    }
+  }
+
+  function formatRosterSyncLine() {
+    const row = rosterSyncResult as Record<string, unknown> | null;
+    const syncedAt = String(row?.syncedAt ?? row?.synced_at ?? "");
+    if (!syncedAt) return "最終同期 なし";
+    const updated = Number(row?.updated ?? row?.updated_count ?? 0);
+    const disabled = Number(row?.authBanned ?? row?.auth_banned_count ?? 0);
+    return `最終同期 ${new Date(syncedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}（更新 ${updated}・無効化 ${disabled}）`;
+  }
+
   function formatChatworkTokenUpdatedAt(value: string | null) {
     if (!value) return "";
     return new Date(value).toLocaleString("ja-JP", {
@@ -486,6 +535,8 @@ export default function EmployeesPage() {
               {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
             </select>
             <input ref={searchRef} type="search" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 200 }} />
+            <Button variant="secondary" onClick={handleRosterSync} disabled={rosterSyncing || !canSyncRoster} title={!canSyncRoster ? "管理者以上の権限が必要です" : undefined}>{rosterSyncing ? "同期中..." : "名簿と同期"}</Button>
+            <span style={{ alignSelf: "center", color: colors.textMuted, fontSize: 12 }}>{formatRosterSyncLine()}</span>
             <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
             <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
           </div>

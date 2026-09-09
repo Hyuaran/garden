@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 import ShachoShell from "./_components/ShachoShell/ShachoShell";
 
 export default async function SystemLayout({ children }: { children: ReactNode }) {
@@ -11,12 +12,12 @@ export default async function SystemLayout({ children }: { children: ReactNode }
 
   const { data: employee } = await supabase
     .from("root_employees")
-    .select("name,garden_role,company_id")
+    .select("name,garden_role,company_id,is_active,termination_date,deleted_at")
     .eq("user_id", auth.user.id)
     .eq("is_active", true)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!employee) redirect("/login?returnTo=%2Fsystem");
+  if (!employee || !isEmployeeActive(employee)) redirect("/login?returnTo=%2Fsystem");
 
   const role = GARDEN_ROLE_ORDER.includes(employee.garden_role as GardenRole)
     ? employee.garden_role as GardenRole

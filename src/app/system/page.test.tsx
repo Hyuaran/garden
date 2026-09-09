@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 import SystemHomePage from "./page";
 
 function client(role = "manager", status: string | null = null) {
-  const employee = { employee_id: "EMP-9999", garden_role: role };
+  const employee = { employee_id: "EMP-9999", garden_role: role, is_active: true, termination_date: null, deleted_at: null };
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "U1" } } }) },
     from: vi.fn((table: string) => {
@@ -33,7 +33,7 @@ describe("system home", () => {
     render(await SystemHomePage());
     const employeeQuery = supabase.from.mock.results[0].value;
     const onboardingQuery = supabase.from.mock.results[1].value;
-    expect(employeeQuery.select).toHaveBeenCalledWith("employee_id,garden_role");
+    expect(employeeQuery.select).toHaveBeenCalledWith("employee_id,garden_role,is_active,termination_date,deleted_at");
     expect(onboardingQuery.eq).toHaveBeenCalledWith("employee_id", "EMP-9999");
     expect(mocks.redirect).not.toHaveBeenCalled();
   });

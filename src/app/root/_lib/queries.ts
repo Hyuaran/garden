@@ -16,6 +16,7 @@ import type {
   Attendance,
   GardenRole,
 } from "../_constants/types";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 
 const ROOT_EMPLOYEE_SELECT_FIELDS = [
   "employee_id",
@@ -42,6 +43,9 @@ const ROOT_EMPLOYEE_SELECT_FIELDS = [
   "account_holder_kana",
   "kot_employee_id",
   "mf_employee_id",
+  "commute_daily_allowance",
+  "roster_record_id",
+  "garden_role_manual",
   "chatwork_account_name",
   "chatwork_token_updated_at",
   "insurance_type",
@@ -163,8 +167,13 @@ export async function fetchEmployees(): Promise<Employee[]> {
 }
 
 export async function upsertEmployee(employee: Partial<Employee> & { employee_id: string }): Promise<void> {
-  const { error } = await supabase.from("root_employees").upsert(employee, { onConflict: "employee_id" });
-  if (error) throw new Error(`upsertEmployee failed: ${error.message}`);
+  const response = await fetch("/api/root/employees", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(employee),
+  });
+  const body = await response.json().catch(() => null) as { error?: string } | null;
+  if (!response.ok) throw new Error(`upsertEmployee failed: ${body?.error ?? response.statusText}`);
 }
 
 export async function updateEmployeeGardenRole(
@@ -179,7 +188,14 @@ export async function updateEmployeeGardenRole(
 }
 
 export const setEmployeeActive = (id: string, active: boolean) =>
-  setActive("root_employees", "employee_id", id, active);
+  fetch("/api/root/employees", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ employee_id: id, is_active: active }),
+  }).then(async (response) => {
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    if (!response.ok) throw new Error(`root_employees.setActive failed: ${body?.error ?? response.statusText}`);
+  });
 
 // ============================================================
 // 6. 社会保険マスタ
@@ -244,18 +260,21 @@ export async function fetchRootUser(userId: string): Promise<RootUser | null> {
         "garden_role",
         "company_id",
         "is_active",
+        "termination_date",
+        "deleted_at",
         "user_id",
       ].join(","),
     )
     .eq("user_id", userId)
     .eq("is_active", true)
-    .maybeSingle();
+    .maybeSingle<RootUser & { termination_date: string | null; deleted_at: string | null }>();
 
   if (error) {
     console.error("[fetchRootUser]", error.message);
     return null;
   }
   if (!data) return null;
+  if (!isEmployeeActive(data)) return null;
 
   return data as unknown as RootUser;
 }

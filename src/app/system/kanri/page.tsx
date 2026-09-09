@@ -3,6 +3,7 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 import { monthRange, tokyoToday } from "./_lib/kanri-core";
 import type { KanriPerson } from "./_lib/calc/jisseki-sheet";
 import KanriPortalClient, { type KanriRunView } from "./KanriPortalClient";
@@ -25,12 +26,12 @@ export default async function KanriPortalPage({
 
   const { data: employee } = await supabase
     .from("root_employees")
-    .select("name,garden_role")
+    .select("name,garden_role,is_active,termination_date,deleted_at")
     .eq("user_id", auth.user.id)
     .eq("is_active", true)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!employee) redirect("/login?returnTo=%2Fsystem%2Fkanri");
+  if (!employee || !isEmployeeActive(employee)) redirect("/login?returnTo=%2Fsystem%2Fkanri");
 
   const role = String(employee.garden_role ?? "staff") as GardenRole;
   if (!isRoleAtLeast(role, "staff")) {

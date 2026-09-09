@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { ListMasterClient } from "./_components/ListMasterClient";
 import styles from "./_components/list-master.module.css";
@@ -16,12 +17,12 @@ export default async function ListMasterPage() {
 
   const { data: employee } = await supabase
     .from("root_employees")
-    .select("garden_role")
+    .select("garden_role,is_active,termination_date,deleted_at")
     .eq("user_id", auth.user.id)
     .eq("is_active", true)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!employee) redirect("/login?returnTo=%2Fsystem%2Flist");
+  if (!employee || !isEmployeeActive(employee)) redirect("/login?returnTo=%2Fsystem%2Flist");
 
   const role = String(employee.garden_role ?? "staff") as GardenRole;
   if (!isRoleAtLeast(role, "manager")) {

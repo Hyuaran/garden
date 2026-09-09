@@ -26,6 +26,7 @@ import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 import { supabase } from "../bloom/_lib/supabase";
 import type { GardenRole } from "../root/_constants/types";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
@@ -200,11 +201,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchRole = useCallback(async (uid: string) => {
     const { data, error } = await supabase
       .from("root_employees")
-      .select("garden_role, employee_number")
+      .select("garden_role, employee_number, is_active, termination_date, deleted_at")
       .eq("user_id", uid)
       .maybeSingle();
     if (error) {
       // root_employees 未登録 / RLS 拒否時は role = null（各モジュール側 Gate で拒否される想定）
+      setRole(null);
+      setEmployeeNumber(null);
+      return;
+    }
+    if (!isEmployeeActive(data)) {
       setRole(null);
       setEmployeeNumber(null);
       return;

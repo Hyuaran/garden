@@ -13,6 +13,7 @@ import { supabase } from "./supabase";
 import type { GardenRole } from "../../root/_constants/types";
 import type { BudRole, BudSessionUser } from "../_constants/types";
 import { hasAutoAccess } from "../_constants/roles";
+import { isEmployeeActive } from "@/lib/auth/employee-access";
 
 /**
  * Bud アクセス可能な認証済みユーザー情報を取得
@@ -40,10 +41,11 @@ export async function fetchBudSessionUser(
         "garden_role",
         "user_id",
         "is_active",
+        "termination_date",
+        "deleted_at",
       ].join(","),
     )
     .eq("user_id", userId)
-    .eq("is_active", true)
     .maybeSingle<{
       employee_id: string;
       employee_number: string;
@@ -51,9 +53,11 @@ export async function fetchBudSessionUser(
       garden_role: GardenRole | null;
       user_id: string;
       is_active: boolean;
+      termination_date: string | null;
+      deleted_at: string | null;
     }>();
 
-  if (empError || !emp) {
+  if (empError || !emp || !isEmployeeActive(emp)) {
     return null;
   }
 
