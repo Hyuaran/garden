@@ -102,6 +102,16 @@ function numberValue(record: KintoneRecord, code: string): number | null {
 
 // Root の社員番号（employee_number）は KOT の打刻 ID と同じ採番。名簿の「社員番号（APID）」は別の採番なので照合には使わない（2026-09-09 本番で判明：宮永＝名簿 0091／Root・KOT 1165）
 // 打刻 ID が無い名簿の行（古い退職者）は履歴として R{名簿レコード番号} で登録する（ログインは作らない）
+/**
+ * Root に入っている社員番号を、名簿から作る番号（normalizeEmployeeNumber）と同じ形にそろえる。
+ * 数字だけの番号は 4 桁に左ゼロ詰め。打刻 ID の無い人の「R1」「R10」のような番号は**そのまま**。
+ * （2026-09-10：ここで R 番号まで 4 桁詰めしていたため「R1」が「00R1」となり、
+ *   毎朝の同期で 84 人が毎回「新規」と判定され、同じ社員番号を作ろうとして同期全体が止まっていた）
+ */
+export function existingNumberKey(employeeNumber: string): string {
+  return /^\d+$/.test(employeeNumber) ? employeeNumber.padStart(4, "0") : employeeNumber;
+}
+
 export function normalizeEmployeeNumber(record: KintoneRecord): string {
   const kot = text(record, "打刻ID").replace(/\D/g, "");
   if (kot) return kot.padStart(4, "0");
@@ -269,7 +279,7 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
 
   const { data: existingRows, error } = await admin.from("root_employees").select("employee_id,employee_number,name,name_kana,company_id,employment_type,salary_system_id,hire_date,termination_date,email,kot_employee_id,commute_daily_allowance,garden_role,garden_role_manual,user_id,is_active,birthday");
   if (error) throw error;
-  const existingByNumber = new Map(((existingRows ?? []) as RootEmployeeRow[]).map((row) => [String(row.employee_number ?? "").padStart(4, "0"), row]));
+  const existingByNumber = new Map(((existingRows ?? []) as RootEmployeeRow[]).map((row) => [existingNumberKey(String(row.employee_number ?? "")), row]));
 
   // 同じ打刻 ID が名簿に複数ある（再入社・業務委託での再加入＝新規レコード）ときは、在籍中の行 → 入社日が新しい行 の順に 1 行だけ採用する
   const chosen = new Map<string, KintoneRecord>();

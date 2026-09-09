@@ -1,10 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { mapRosterRecordToRoot, normalizeEmployeeNumber, roleFromRoster } from "../roster-sync.server";
+import { existingNumberKey, mapRosterRecordToRoot, normalizeEmployeeNumber, roleFromRoster } from "../roster-sync.server";
 import type { KintoneRecord } from "@/lib/kintone/records";
 
 function record(values: Record<string, unknown>): KintoneRecord {
   return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { value }]));
 }
+
+describe("Root の社員番号と名簿から作る番号のそろえ方", () => {
+  it("打刻 ID の無い人の R 番号は 4 桁に詰めない（詰めると毎朝 84 人が新規扱いになり同期が止まる）", () => {
+    for (const recordId of ["1", "10", "99", "112"]) {
+      const fromRoster = normalizeEmployeeNumber(record({ 打刻ID: "", $id: recordId }));
+      expect(fromRoster).toBe(`R${recordId}`);
+      expect(existingNumberKey(`R${recordId}`)).toBe(fromRoster);
+    }
+  });
+
+  it("数字だけの社員番号は 4 桁にそろえ、5 桁以上はそのまま", () => {
+    expect(existingNumberKey("8")).toBe("0008");
+    expect(existingNumberKey("1530")).toBe("1530");
+    expect(existingNumberKey("999990")).toBe("999990");
+    expect(existingNumberKey(normalizeEmployeeNumber(record({ 打刻ID: "8" })))).toBe("0008");
+  });
+});
 
 describe("roster sync mapping", () => {
   it("maps roster fields to root employee columns without overriding protected existing values", () => {
