@@ -235,6 +235,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [busy, setBusy] = useState(false);
   const [callSyncState, setCallSyncState] = useState<CallSyncState | null>(null);
   const [callSyncBusy, setCallSyncBusy] = useState(false);
+  const [callSyncMessage, setCallSyncMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [conditionName, setConditionName] = useState("AU光○ アポ禁なし");
   const [selectedColumns, setSelectedColumns] = useState<SoilListColumnKey[]>(
     SOIL_LIST_EXPORT_COLUMNS.filter((column) => column.defaultChecked).map((column) => column.key),
@@ -274,14 +275,15 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
 
   async function handleCallSync() {
     setCallSyncBusy(true);
-    setMessage("");
+    setCallSyncMessage(null);
     try {
       const response = await fetch("/api/soil/list/call-sync", { method: "POST" });
       const data = await readJson<{ ok: boolean; result: { phones: number; callRows: number; syncedThrough: string | null }; state: CallSyncState }>(response);
       setCallSyncState(data.state);
-      setMessage(`反映しました（対象 ${data.result.phones.toLocaleString("ja-JP")} 番号・${formatDateShort(data.result.syncedThrough ?? "")} まで）`);
+      // 結果はアイコンの右横に出す（下の黄色い帯には出さない）
+      setCallSyncMessage({ text: `反映しました（対象 ${data.result.phones.toLocaleString("ja-JP")} 番号・${formatDateShort(data.result.syncedThrough ?? "")} まで）`, error: false });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "反映できませんでした");
+      setCallSyncMessage({ text: error instanceof Error ? error.message : "反映できませんでした", error: true });
     } finally {
       setCallSyncBusy(false);
     }
@@ -423,6 +425,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <path d="M19.8 4.6v4.2h-4.2z" fill="currentColor" />
               </svg>
             </button>
+          )}
+          {callSyncMessage && (
+            <span className={callSyncMessage.error ? styles.callSyncError : styles.callSyncDone} role="status">
+              {callSyncMessage.text}
+            </span>
           )}
         </div>
       </div>

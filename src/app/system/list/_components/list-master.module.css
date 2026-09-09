@@ -84,6 +84,17 @@
   opacity: .7;
 }
 
+/* アイコンの右横に出す反映結果 */
+.callSyncDone {
+  color: var(--tealDark);
+  font-weight: 700;
+}
+
+.callSyncError {
+  color: #b42318;
+  font-weight: 700;
+}
+
 .syncIconBusy svg {
   animation: syncSpin 1s linear infinite;
 }
