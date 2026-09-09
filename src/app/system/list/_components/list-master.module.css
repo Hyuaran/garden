@@ -205,8 +205,8 @@
   left: 0;
   z-index: 20;
   box-sizing: border-box;
-  width: min(760px, calc(100vw - 48px));
-  max-height: 420px;
+  width: min(940px, calc(100vw - 48px));
+  max-height: 460px;
   overflow: auto;
   padding: 14px;
   border: 1px solid var(--line);
@@ -259,10 +259,11 @@
   min-height: auto;
 }
 
+/* 全地方で列数を固定して縦横を揃える（自動で列数を変えると地方ごとにずれる） */
 .checkboxGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-  gap: 8px 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px 10px;
 }
 
 .checkboxGrid label {
@@ -274,6 +275,15 @@
   font-size: 13px;
   font-weight: 500;
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1100px) {
+  .checkboxGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .checkboxGrid input {
@@ -410,6 +420,10 @@
   .multiSelectPanel {
     right: 0;
     width: 100%;
+  }
+
+  .checkboxGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .savedRow {
