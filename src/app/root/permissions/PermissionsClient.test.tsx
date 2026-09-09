@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Employee } from "../_constants/types";
 import PermissionsClient, { buildCsv, type PermissionMatrixRow } from "./PermissionsClient";
+import { buildRoleSummary } from "@/lib/auth/permission-registry";
 
 const mocks = vi.hoisted(() => ({
   fetchEmployees: vi.fn(),
@@ -197,6 +198,17 @@ describe("権限一覧", () => {
     expect(screen.queryByText("退職 太郎")).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("在籍中だけ"));
     expect(screen.getByText("退職 太郎")).toBeInTheDocument();
+  });
+
+  it("役職の一覧（順位・説明・使える数・在籍中の人数）を上に表示する", async () => {
+    render(<PermissionsClient initialPermissionRows={permissionRows} roleSummary={buildRoleSummary()} />);
+    expect(screen.getByRole("heading", { name: "役職の一覧" })).toBeInTheDocument();
+    const roleTable = screen.getByRole("heading", { name: "役職の一覧" }).parentElement as HTMLElement;
+    expect(within(roleTable).getAllByRole("row")).toHaveLength(9);
+    expect(within(roleTable).getByText(/アルバイト（トス）/)).toBeInTheDocument();
+    await screen.findByRole("cell", { name: "宮永 ひかり" });
+    expect(within(roleTable).getAllByRole("cell", { name: "1 人" }).length).toBeGreaterThan(0);
+    expect(within(roleTable).getAllByRole("cell", { name: "0 人" }).length).toBeGreaterThan(0);
   });
 
   it("トスでは RootGate 側で閲覧不可にする前提の表示コンポーネントに保つ", () => {

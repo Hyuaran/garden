@@ -13,6 +13,7 @@ import { Button } from "../_components/Button";
 import { DataTable, type Column } from "../_components/DataTable";
 import { StatusBadge } from "../_components/StatusBadge";
 import { fetchEmployees } from "../_lib/queries";
+import type { RoleSummaryRow } from "@/lib/auth/permission-registry";
 
 export type PermissionMatrixRow = {
   key: string;
@@ -53,8 +54,16 @@ function toEmployeeRow(employee: Employee): EmployeePermissionRow {
   };
 }
 
-export function buildCsv(permissionRows: PermissionMatrixRow[], employeeRows: EmployeePermissionRow[]) {
+export function buildCsv(permissionRows: PermissionMatrixRow[], employeeRows: EmployeePermissionRow[], roleSummary: RoleSummaryRow[] = [], headcount: Partial<Record<GardenRole, number>> = {}) {
   const lines: string[] = [];
+  if (roleSummary.length) {
+    lines.push("役職の一覧");
+    lines.push(["順位", "役職", "誰か・どこまで使えるか", "使える画面／機能", "在籍中の人数"].map(escapeCsvCell).join(","));
+    roleSummary.forEach((row) => {
+      lines.push([String(row.rank), row.label, row.note, `${row.allowedCount}／${row.totalCount}`, String(headcount[row.role] ?? 0)].map(escapeCsvCell).join(","));
+    });
+    lines.push("");
+  }
   lines.push("役職ごとに使える画面");
   lines.push(["画面／機能", "区分", ...GARDEN_ROLE_ORDER.map(roleLabel)].map(escapeCsvCell).join(","));
   permissionRows.forEach((row) => {
@@ -81,8 +90,10 @@ export function buildCsv(permissionRows: PermissionMatrixRow[], employeeRows: Em
 
 export default function PermissionsClient({
   initialPermissionRows,
+  roleSummary = [],
 }: {
   initialPermissionRows: PermissionMatrixRow[];
+  roleSummary?: RoleSummaryRow[];
 }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,6 +132,18 @@ export default function PermissionsClient({
       .map(toEmployeeRow);
   }, [activeOnly, employees, filterRole]);
 
+  // 役職ごとの在籍中の人数（履歴行 R〜 は除く）
+  const headcount = useMemo(() => {
+    const counts: Partial<Record<GardenRole, number>> = {};
+    employees
+      .filter((employee) => !isRosterHistoryRow(employee) && employee.is_active)
+      .forEach((employee) => {
+        const role = employee.garden_role ?? "staff";
+        counts[role] = (counts[role] ?? 0) + 1;
+      });
+    return counts;
+  }, [employees]);
+
   const employeeColumns: Column<EmployeePermissionRow>[] = [
     { key: "number", header: "社員番号", render: (employee) => employee.employee_number, width: 100 },
     { key: "name", header: "氏名", render: (employee) => employee.name, width: 160 },
@@ -130,7 +153,7 @@ export default function PermissionsClient({
   ];
 
   function handleCsvExport() {
-    const csv = buildCsv(initialPermissionRows, employeeRows);
+    const csv = buildCsv(initialPermissionRows, employeeRows, roleSummary, headcount);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -149,6 +172,41 @@ export default function PermissionsClient({
         description="役職ごとに使える画面と、Root 従業員マスタ上の人ごとの役職を確認します。"
         actions={<Button variant="secondary" onClick={handleCsvExport}>CSV 書き出し</Button>}
       />
+
+      {roleSummary.length > 0 && (
+        <section style={{ marginBottom: 24 }}>
+          <h2 style={{ margin: "0 0 10px", fontSize: 16, color: colors.text }}>
+            役職の一覧
+          </h2>
+          <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 6, overflow: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
+                  <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>順位</th>
+                  <th style={{ textAlign: "left", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>役職</th>
+                  <th style={{ textAlign: "left", padding: "10px 12px", color: colors.textMuted }}>誰か・どこまで使えるか</th>
+                  <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>使える画面／機能</th>
+                  <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>在籍中の人数</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roleSummary.map((row) => (
+                  <tr key={row.role} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                    <td style={{ padding: "10px 12px", textAlign: "center", color: colors.textMuted }}>{row.rank}</td>
+                    <td style={{ padding: "10px 12px", color: colors.text, fontWeight: 700, whiteSpace: "nowrap" }}>{row.label}</td>
+                    <td style={{ padding: "10px 12px", color: colors.text }}>{row.note}</td>
+                    <td style={{ padding: "10px 12px", textAlign: "center", color: colors.text, whiteSpace: "nowrap" }}>{row.allowedCount}／{row.totalCount}</td>
+                    <td style={{ padding: "10px 12px", textAlign: "center", color: colors.text, whiteSpace: "nowrap" }}>{loading ? "…" : `${headcount[row.role] ?? 0} 人`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p style={{ margin: "8px 0 0", color: colors.textMuted, fontSize: 12 }}>
+            順位が上の役職ほど使える範囲が広い（下の表の○の数）。人数は在籍中で、打刻 ID の無い履歴行は数えない。
+          </p>
+        </section>
+      )}
 
       <section style={{ marginBottom: 24 }}>
         <h2 style={{ margin: "0 0 10px", fontSize: 16, color: colors.text }}>

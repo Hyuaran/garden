@@ -5,7 +5,7 @@ import {
   type GardenRole,
 } from "@/app/root/_constants/types";
 import { SYSTEM_MENU_ITEMS } from "@/app/system/_components/ShachoShell/shacho-shell-config";
-import { PERMISSION_ENTRIES } from "./permission-registry";
+import { PERMISSION_ENTRIES, buildRoleSummary } from "./permission-registry";
 
 function allows(label: string, role: GardenRole) {
   const entry = PERMISSION_ENTRIES.find((item) => item.label === label);
@@ -36,6 +36,21 @@ describe("PERMISSION_ENTRIES", () => {
     expect(allows("前確依頼", "toss")).toBe(true);
     expect(allows("テレマ コール集計", "staff")).toBe(true);
     expect(allows("勤怠打刻", "cs")).toBe(true);
+  });
+
+  it("役職の一覧は 8 役職を順位つきで返し、上の役職ほど使える行が多い", () => {
+    const summary = buildRoleSummary();
+    expect(summary.map((row) => row.label)).toEqual(["トス", "クローザー", "CS", "正社員", "業務委託", "マネージャー", "管理者", "全権管理者"]);
+    expect(summary.map((row) => row.rank)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    for (const row of summary) {
+      expect(row.note.length).toBeGreaterThan(0);
+      expect(row.totalCount).toBe(PERMISSION_ENTRIES.length);
+    }
+    const byRole = Object.fromEntries(summary.map((row) => [row.role, row.allowedCount]));
+    // 全権管理者は「準備中（画面はまだ無い）」以外の全行
+    expect(byRole.super_admin).toBe(PERMISSION_ENTRIES.filter((entry) => !entry.label.includes("準備中")).length);
+    expect(byRole.manager).toBeGreaterThan(byRole.staff);
+    expect(byRole.staff).toBeGreaterThan(byRole.toss);
   });
 
   it("準備中（画面の無い）メニューは全員 ×", () => {

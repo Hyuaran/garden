@@ -1,4 +1,4 @@
-import { buildPermissionMatrix } from "@/lib/auth/permission-registry";
+import { buildPermissionMatrix, buildRoleSummary } from "@/lib/auth/permission-registry";
 import PermissionsClient from "./PermissionsClient";
 
 export const metadata = {
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function PermissionsPage() {
-  return <PermissionsClient initialPermissionRows={buildPermissionMatrix()} />;
+  return <PermissionsClient initialPermissionRows={buildPermissionMatrix()} roleSummary={buildRoleSummary()} />;
 }

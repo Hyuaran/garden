@@ -1,4 +1,5 @@
 import {
+  GARDEN_ROLE_LABELS,
   GARDEN_ROLE_ORDER,
   ROOT_VIEW_ROLES,
   ROOT_WRITE_ROLES,
@@ -250,6 +251,39 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     source: "src/app/api/root/roster-sync/route.ts:requireAdmin",
   },
 ];
+
+/** 役職ごとの説明（画面の「役職の一覧」に出す。誰がこの役職か・どこまで使えるか） */
+export const GARDEN_ROLE_NOTES: Record<GardenRole, string> = {
+  toss: "アルバイト（トス）。System のサイドバーは出ず、マイページのタブ（自分の情報・勤怠打刻・シフト・前確依頼）と入社手続きだけ",
+  closer: "アルバイト（クローザー。テレマにもいる）。使える範囲はトスと同じ",
+  cs: "CS。サイドバーが出て、社員向け以外の画面（資料・前確依頼・前確／後確の閲覧など）を使える",
+  staff: "正社員。社員向けの画面（操作マニュアル・フォーム・自動配信）まで",
+  outsource: "業務委託（外注）。サイドバーは出ず、マイページのタブと入社手続きだけ。社員以上の API は使える",
+  manager: "責任者（チームリーダー・責任者）。管理表ポータル・リストマスタ・契約書管理・コール集計・勤怠の同期状況・Root の閲覧",
+  admin: "管理者。責任者の範囲に加えて Root 従業員マスタの編集と名簿との同期",
+  super_admin: "全権管理者。すべての画面と、マニュアルの仕組み・仕様・Claude 用の資料",
+};
+
+export type RoleSummaryRow = {
+  role: GardenRole;
+  rank: number;
+  label: string;
+  note: string;
+  allowedCount: number;
+  totalCount: number;
+};
+
+/** 役職の一覧：順位・名前・説明・使える行の数（上の表から自動で数える） */
+export function buildRoleSummary(): RoleSummaryRow[] {
+  return GARDEN_ROLE_ORDER.map((role, index) => ({
+    role,
+    rank: index + 1,
+    label: GARDEN_ROLE_LABELS[role],
+    note: GARDEN_ROLE_NOTES[role],
+    allowedCount: PERMISSION_ENTRIES.filter((entry) => entry.allows(role)).length,
+    totalCount: PERMISSION_ENTRIES.length,
+  }));
+}
 
 export function buildPermissionMatrix() {
   return PERMISSION_ENTRIES.map((entry) => ({
