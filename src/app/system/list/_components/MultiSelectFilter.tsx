@@ -147,8 +147,7 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
                         onChange={() => toggleGroup(group)}
                         aria-label={`${group.label}をすべて選ぶ`}
                       />
-                      {group.label}
-                      <span className={styles.groupTotal}>合計 {total.toLocaleString("ja-JP")}</span>
+                      {group.label}（{total.toLocaleString("ja-JP")}）
                     </label>
                   );
                 })() : (

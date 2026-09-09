@@ -66,8 +66,7 @@ describe("ListMasterClient call sync status", () => {
   it("shows the sync state in the header", async () => {
     installFetch();
     render(<ListMasterClient />);
-    expect(await screen.findByText(/コール履歴の反映：9\/7 まで/)).toBeInTheDocument();
-    expect(screen.getByText(/最終反映 9\/7 19:35/)).toBeInTheDocument();
+    expect(await screen.findByText("コール履歴最終更新：2026/09/07(月) 19:35")).toBeInTheDocument();
   });
 
   it("hides the sync button below manager", () => {

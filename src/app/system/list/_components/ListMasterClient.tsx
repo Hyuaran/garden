@@ -189,10 +189,31 @@ function formatDateShort(value: string): string {
   return `${month}/${day}`;
 }
 
+/** 「2026/09/09(水) 21:09」の形（日本時間）。日付だけの値（YYYY-MM-DD）は時刻なし */
+export function formatJstWithWeekday(value: string): string {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date = new Date(dateOnly ? `${value}T00:00:00+09:00` : value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  const stamp = `${part("year")}/${part("month")}/${part("day")}(${part("weekday")})`;
+  return dateOnly ? stamp : `${stamp} ${part("hour")}:${part("minute")}`;
+}
+
+/** 見出し下の 1 行：コール履歴を最後に反映した日時（東海林さん 2026-09-09 の表記） */
 function formatCallSyncStatus(state: CallSyncState | null): string {
-  if (!state?.syncedThrough) return "コール履歴の反映：7/31 まで（FileMaker の書き出し）";
-  const lastRun = state.lastRunAt ? `（最終反映 ${formatDateTime(state.lastRunAt)}）` : "";
-  return `コール履歴の反映：${formatDateShort(state.syncedThrough)} まで${lastRun}`;
+  if (!state?.syncedThrough) return "コール履歴最終更新：2026/07/31(金)（FileMaker の書き出し）";
+  const stamp = state.lastRunAt ? formatJstWithWeekday(state.lastRunAt) : formatJstWithWeekday(state.syncedThrough);
+  return `コール履歴最終更新：${stamp}`;
 }
 
 async function readJson<T>(response: Response): Promise<T> {
