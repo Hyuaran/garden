@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { EMPTY_OPTION_VALUE, type SoilListOptionItem } from "../_lib/list-fields";
 
@@ -37,6 +37,25 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
   const panelId = useId();
   const allOptions = useMemo(() => groups.flatMap((group) => group.options), [groups]);
   const selected = new Set(value);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
+
+  // パネルは絞り込みの枠（親）の中に収める：幅は枠の幅まで、右にはみ出すなら左へずらす
+  useEffect(() => {
+    if (!open) return;
+    const wrapper = wrapperRef.current;
+    const parent = wrapper?.parentElement;
+    if (!wrapper || !parent) return;
+    const place = () => {
+      const parentWidth = parent.clientWidth;
+      const offset = wrapper.getBoundingClientRect().left - parent.getBoundingClientRect().left;
+      const width = Math.min(940, parentWidth);
+      const left = Math.max(-offset, parentWidth - offset - width);
+      setPanelStyle({ width, left });
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -99,7 +118,7 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
         <span aria-hidden="true">▼</span>
       </button>
       {open && (
-        <div className={styles.multiSelectPanel} id={panelId}>
+        <div className={styles.multiSelectPanel} id={panelId} style={panelStyle}>
           <div className={styles.multiSelectHeader}>
             <strong>{label}</strong>
             <span>
