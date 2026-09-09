@@ -77,7 +77,7 @@ export async function GET() {
       clockIn: clockIn ? timeText(clockIn.punched_at) : transformed.roundedClockIn,
       clockOut: clockOut ? timeText(clockOut.punched_at) : transformed.roundedClockOut,
       breakIncluded: transformed.breakIncluded,
-      rawPunches: group.map((row) => ({ id: row.id, type: row.punch_type, time: timeText(row.punched_at) })),
+      rawPunches: [...group].sort((left, right) => left.punched_at.localeCompare(right.punched_at)).map((row) => ({ id: row.id, type: row.punch_type, time: timeText(row.punched_at) })),
     };
   }).sort((left, right) => Number(right.needsCheck) - Number(left.needsCheck) || left.date.localeCompare(right.date) || left.name.localeCompare(right.name, "ja"));
   const exportSummary = {

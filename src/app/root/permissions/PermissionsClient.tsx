@@ -117,6 +117,7 @@ export default function PermissionsClient({
       .filter((employee) => !isRosterHistoryRow(employee))
       .filter((employee) => !activeOnly || employee.is_active)
       .filter((employee) => !filterRole || (employee.garden_role ?? "staff") === filterRole)
+      .sort((left, right) => left.employee_number.localeCompare(right.employee_number, "ja", { numeric: true }))
       .map(toEmployeeRow);
   }, [activeOnly, employees, filterRole]);
 
@@ -154,7 +155,7 @@ export default function PermissionsClient({
           役職ごとに使える画面
         </h2>
         <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 6, overflow: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 980 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
                 <th style={{ textAlign: "left", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>画面／機能</th>
