@@ -9,12 +9,15 @@ function json(data: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), { status }));
 }
 
-function installFetch() {
+function installFetch(options: { uploads?: unknown[] } = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url === "/api/soil/list/conditions") return json({ ok: true, conditions: [] });
     if (url === "/api/soil/list/exports") return json({ ok: true, exports: [] });
-    if (url === "/api/soil/list/uploads") return json({ ok: true, uploads: [] });
+    if (url === "/api/soil/list/uploads") return json({ ok: true, uploads: options.uploads ?? [] });
+    if (url === "/api/soil/list/uploads/upload-failed/apply" && init?.method === "POST") {
+      return json({ ok: true, result: { assignments: 2500, assignments_new: 2500, assignments_updated: 0, parent_updated: 2500, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 0 } });
+    }
     if (url === "/api/soil/list/analysis") return json({ ok: true, rows: [] });
     if (url === "/api/soil/list/options") {
       return json({
@@ -105,6 +108,56 @@ describe("ListMasterClient tabs", () => {
     fireEvent.click(screen.getByRole("tab", { name: "アップロード" }));
     expect(window.location.search).toBe("?tab=upload");
     expect(screen.getByText("リストの取込ファイルをアップロード")).toBeInTheDocument();
+  });
+});
+
+describe("ListMasterClient upload history", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("shows the resume button only for stopped uploads and reloads after applying", async () => {
+    const fetchMock = installFetch({
+      uploads: [
+        {
+          id: "upload-failed",
+          file_name: "stopped.csv",
+          format: "B",
+          row_count: 2500,
+          status: "failed",
+          result: { assignments: 1000, assignments_new: 1000, assignments_updated: 0, parent_updated: 1000, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 1500 },
+          created_by: "東海林 美琴",
+          created_at: "2026-09-09T13:34:00Z",
+        },
+        {
+          id: "upload-done",
+          file_name: "done.csv",
+          format: "B",
+          row_count: 1000,
+          status: "done",
+          result: { assignments: 1000, assignments_new: 1000, assignments_updated: 0, parent_updated: 990, parent_inserted: 10, parent_kept: 0, skipped: 0, remaining: 0 },
+          created_by: "東海林 美琴",
+          created_at: "2026-09-09T13:33:00Z",
+        },
+      ],
+    });
+    window.history.replaceState(null, "", "/system/list?tab=upload");
+    render(<ListMasterClient />);
+
+    expect(await screen.findByText("途中で止まりました（親へ反映 1,000 / 2,500）")).toBeInTheDocument();
+    expect(screen.getByText("新規 10／更新 990")).toBeInTheDocument();
+    const resume = screen.getByRole("button", { name: "反映をやり直す" });
+    expect(resume).toBeInTheDocument();
+    expect(screen.getAllByText("反映をやり直す")).toHaveLength(1);
+
+    fireEvent.click(resume);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/soil/list/uploads/upload-failed/apply", { method: "POST" });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("反映しました")).toBeInTheDocument();
+    });
   });
 });
 

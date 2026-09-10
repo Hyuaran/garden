@@ -75,6 +75,7 @@ type UploadResult = {
   parent_inserted: number;
   parent_kept: number;
   skipped: number;
+  remaining: number;
   warning?: string;
 };
 
@@ -84,6 +85,7 @@ type UploadHistory = {
   format: string;
   row_count: number;
   result: UploadResult | null;
+  status: "processing" | "done" | "failed";
   created_by: string | null;
   created_at: string;
 };
@@ -325,6 +327,20 @@ function parentResultLine(result: UploadResult): string {
   return `親（電話番号台帳）：更新 ${result.parent_updated.toLocaleString("ja-JP")} 件・新規追加 ${result.parent_inserted.toLocaleString("ja-JP")} 件・投入日が古いので据え置き ${result.parent_kept.toLocaleString("ja-JP")} 件`;
 }
 
+function uploadHistoryStatus(item: UploadHistory): string {
+  if (item.status === "done" && item.result) {
+    return `新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}`;
+  }
+  if (item.result && (item.status === "failed" || item.result.remaining > 0)) {
+    return `途中で止まりました（親へ反映 ${item.result.assignments.toLocaleString("ja-JP")} / ${item.row_count.toLocaleString("ja-JP")}）`;
+  }
+  return "処理中";
+}
+
+function canResumeUpload(item: UploadHistory): boolean {
+  return Boolean(item.result && (item.status === "failed" || item.result.remaining > 0));
+}
+
 export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boolean }) {
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [count, setCount] = useState<number | null>(null);
@@ -352,6 +368,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [uploadHistory, setUploadHistory] = useState<UploadHistory[]>([]);
   const [uploadMessage, setUploadMessage] = useState("");
   const [uploadBusy, setUploadBusy] = useState<"preview" | "import" | null>(null);
+  const [uploadApplyBusyId, setUploadApplyBusyId] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [analysisRows, setAnalysisRows] = useState<AnalysisRow[]>([]);
   const [analysisFilter, setAnalysisFilter] = useState("");
@@ -600,14 +617,30 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       const form = new FormData();
       form.set("file", uploadFile);
       const response = await fetch("/api/soil/list/uploads", { method: "POST", body: form });
-      const data = await readJson<{ ok: boolean; result: UploadResult }>(response);
-      setUploadResult(data.result);
+      const data = await readJson<{ ok: boolean; result?: UploadResult; error?: string }>(response);
+      setUploadResult(data.result ?? null);
       await loadUploadHistory();
-      setUploadMessage(data.result.warning ?? "");
+      setUploadMessage(data.ok ? (data.result?.warning ?? "") : (data.error ?? "途中で止まりました"));
     } catch (error) {
       setUploadMessage(error instanceof Error ? error.message : "取り込めませんでした（保存できませんでした）");
     } finally {
       setUploadBusy(null);
+    }
+  }
+
+  async function handleResumeUpload(uploadId: string) {
+    setUploadApplyBusyId(uploadId);
+    setUploadMessage("");
+    try {
+      const response = await fetch(`/api/soil/list/uploads/${uploadId}/apply`, { method: "POST" });
+      const data = await readJson<{ ok: boolean; result?: UploadResult; error?: string }>(response);
+      if (data.result) setUploadResult(data.result);
+      await loadUploadHistory();
+      setUploadMessage(data.ok ? "反映しました" : (data.error ?? "反映できませんでした"));
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : "反映できませんでした");
+    } finally {
+      setUploadApplyBusyId(null);
     }
   }
 
@@ -934,6 +967,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <p className={styles.result}>取り込みました：{resultLine(uploadResult)}</p>
               <p>{parentResultLine(uploadResult)}</p>
               <p>読めなかった行：{uploadResult.skipped.toLocaleString("ja-JP")} 行</p>
+              {uploadResult.remaining > 0 && <p>残り：{uploadResult.remaining.toLocaleString("ja-JP")} 行</p>}
             </section>
           )}
 
@@ -945,7 +979,12 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <div className={styles.savedRow} key={item.id}>
                   <span>{formatDateTime(item.created_at)} {item.created_by ?? ""} {item.file_name}</span>
                   <small>{item.row_count.toLocaleString("ja-JP")} 行</small>
-                  <small>{item.result ? `新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}` : "処理中"}</small>
+                  <small>{uploadHistoryStatus(item)}</small>
+                  {canResumeUpload(item) && (
+                    <button type="button" onClick={() => void handleResumeUpload(item.id)} disabled={uploadApplyBusyId === item.id}>
+                      {uploadApplyBusyId === item.id ? "反映しています…" : "反映をやり直す"}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

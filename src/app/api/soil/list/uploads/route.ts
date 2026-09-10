@@ -5,22 +5,10 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 import { requireSoilListUser } from "../_lib/auth";
 import { IMPORT_COLUMNS, parseUploadFile, prepareAssignmentRows, SoilListUploadError, type ParsedUploadRow } from "../_lib/upload-parser";
+import { applyUploadInBatches, emptyUploadResult, uploadStoppedMessage, UploadApplyError, type DbError, type UploadResult } from "./_lib/apply-upload";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
-
-type DbError = { message: string } | null;
-type UploadResult = {
-  assignments: number;
-  assignments_new: number;
-  assignments_updated: number;
-  parent_updated: number;
-  parent_inserted: number;
-  parent_kept: number;
-  skipped: number;
-  duplicate_rows?: number;
-  warning?: string;
-};
 
 type UploadRecord = {
   id: string;
@@ -29,6 +17,7 @@ type UploadRecord = {
   row_count: number;
   list_names: Record<string, number>;
   result: UploadResult | null;
+  status: "processing" | "done" | "failed";
   created_by: string | null;
   created_at: string;
 };
@@ -82,22 +71,14 @@ async function upsertInChunks(db: UploadDb, rows: ParsedUploadRow[], uploadId: s
   }
 }
 
-function normalizeApplyResult(data: UploadResult[] | UploadResult | null): UploadResult {
-  const row = Array.isArray(data) ? data[0] : data;
-  return {
-    assignments: row?.assignments ?? 0,
-    assignments_new: row?.assignments_new ?? 0,
-    assignments_updated: row?.assignments_updated ?? 0,
-    parent_updated: row?.parent_updated ?? 0,
-    parent_inserted: row?.parent_inserted ?? 0,
-    parent_kept: row?.parent_kept ?? 0,
-    skipped: row?.skipped ?? 0,
-  };
-}
-
 async function refreshOptions(db: UploadDb, result: UploadResult): Promise<UploadResult> {
   const { error } = await db.rpc("soil_list_refresh_options");
   return error ? { ...result, warning: "選択肢の件数を更新できませんでした" } : result;
+}
+
+async function saveUploadResult(db: UploadDb, uploadId: string, status: "done" | "failed", result: UploadResult) {
+  const { error } = await db.from(SOIL_LIST_TABLES.upload).update({ status, result }).eq("id", uploadId);
+  if (error) throw new Error(error.message);
 }
 
 export async function GET() {
@@ -107,7 +88,7 @@ export async function GET() {
   const db = getSupabaseAdmin() as unknown as UploadDb;
   const { data, error } = await db
     .from(SOIL_LIST_TABLES.upload)
-    .select("id,file_name,format,row_count,list_names,result,created_by,created_at")
+    .select("id,file_name,format,row_count,list_names,result,status,created_by,created_at")
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) return NextResponse.json({ ok: false, error: "取り込みの記録を読み込めませんでした" }, { status: 500 });
@@ -119,6 +100,9 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response;
 
   let uploadId: string | null = null;
+  let uploadRowCount = 0;
+  let emptyPhoneRows = 0;
+  let duplicateRows = 0;
   try {
     const form = await request.formData();
     const file = form.get("file");
@@ -127,6 +111,7 @@ export async function POST(request: Request) {
     }
 
     const parsed = await parseUploadFile(file);
+    uploadRowCount = parsed.rowCount;
     const db = getSupabaseAdmin() as unknown as UploadDb;
     const { data: upload, error: uploadError } = await db
       .from(SOIL_LIST_TABLES.upload)
@@ -136,6 +121,7 @@ export async function POST(request: Request) {
         row_count: parsed.rowCount,
         list_names: listNameCounts(parsed.rows),
         result: null,
+        status: "processing",
         created_by: auth.user.name,
       })
       .select("id")
@@ -147,19 +133,32 @@ export async function POST(request: Request) {
 
     // 電話番号が空の行は投入履歴に入れない（主キーが作れず、同じリスト名で衝突する）。同じ番号×リスト名の重複は後の行を残す
     const prepared = prepareAssignmentRows(parsed.rows);
+    emptyPhoneRows = prepared.emptyPhoneRows;
+    duplicateRows = prepared.duplicateRows;
     await upsertInChunks(db, prepared.rows, uploadId);
-    const { data: applied, error: applyError } = await db.rpc("soil_list_apply_upload", { p_upload_id: uploadId });
-    if (applyError) throw new Error(applyError.message);
-    const applyResult = normalizeApplyResult(applied);
-    const result = await refreshOptions(db, {
+    const applyResult = await applyUploadInBatches(db, uploadId, emptyUploadResult({ remaining: prepared.rows.length }));
+    const result = await refreshOptions(db, emptyUploadResult({
       ...applyResult,
-      skipped: applyResult.skipped + prepared.emptyPhoneRows,
-      duplicate_rows: prepared.duplicateRows,
-    });
-    await db.from(SOIL_LIST_TABLES.upload).update({ result }).eq("id", uploadId);
+      skipped: applyResult.skipped + emptyPhoneRows,
+      duplicate_rows: duplicateRows,
+    }));
+    await saveUploadResult(db, uploadId, "done", result);
 
     return NextResponse.json({ ok: true, uploadId, result, preview: { ...parsed, rows: undefined } });
   } catch (error) {
+    if (uploadId && error instanceof UploadApplyError) {
+      const db = getSupabaseAdmin() as unknown as UploadDb;
+      const result = emptyUploadResult({
+        ...error.result,
+        skipped: error.result.skipped + emptyPhoneRows,
+        duplicate_rows: duplicateRows,
+      });
+      await saveUploadResult(db, uploadId, "failed", result);
+      return NextResponse.json(
+        { ok: false, uploadId, result, error: uploadStoppedMessage(result, uploadRowCount) },
+        { status: 200 },
+      );
+    }
     const message = error instanceof SoilListUploadError ? error.message : "保存できませんでした";
     const status = error instanceof SoilListUploadError ? error.status : 500;
     return NextResponse.json(
