@@ -58,6 +58,9 @@ function assignmentPayload(row: ParsedUploadRow, uploadId: string) {
     形式: row.format,
     upload_id: uploadId,
     要確認の理由: row.checkReason,
+    // 同じ 電話番号×リスト名 を上げ直したときは前回の「反映済み」を外す。
+    // 外さないと、前に取り込んだ番号ばかりのファイルが「投入履歴 0 件」で素通りしてしまう
+    applied_at: null,
     updated_at: new Date().toISOString(),
   };
 }

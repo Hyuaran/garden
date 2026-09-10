@@ -121,6 +121,8 @@ describe("/api/soil/list/uploads", () => {
     const response = await POST(requestWithFile(csv(2500)));
     expect(response.status).toBe(200);
     expect(client.upserts.map((chunk) => chunk.length)).toEqual([1000, 1000, 500]);
+    // 前に取り込んだ番号を上げ直しても素通りしないよう、「反映済み」の印を外して入れ直す
+    expect((client.upserts[0] as Array<Record<string, unknown>>)[0]).toMatchObject({ applied_at: null });
     expect(client.rpc).toHaveBeenNthCalledWith(1, "soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
     expect(client.rpc).toHaveBeenNthCalledWith(2, "soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
     expect(client.rpc).toHaveBeenNthCalledWith(3, "soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
