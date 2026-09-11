@@ -108,6 +108,8 @@ describe("/api/soil/list/orders/cron", () => {
       kintoneRecord("1", "0600000001", "09000000001"),
       ...Array.from({ length: 1000 }, (_, index) => kintoneRecord(String(index + 2), `07${String(index).padStart(8, "0")}`)),
       kintoneRecord("empty"),
+      // 「0000000000」のような仮の番号は受注履歴に入れない
+      kintoneRecord("zero", "0000000000", "00000000000"),
     ]);
 
     const response = await GET(request());
@@ -117,7 +119,7 @@ describe("/api/soil/list/orders/cron", () => {
     expect(client.rpc).toHaveBeenCalledWith("soil_list_refresh_phone_latest", { p_phones: expect.any(Array) });
     const refreshCalls = client.rpc.mock.calls.filter(([name]) => name === "soil_list_refresh_phone_latest");
     expect(refreshCalls.map(([, args]) => (args as { p_phones: string[] }).p_phones.length)).toEqual([1000, 3]);
-    await expect(response.json()).resolves.toMatchObject({ ok: true, records: 1002, orderRows: 1002, deletedRows: 1 });
+    await expect(response.json()).resolves.toMatchObject({ ok: true, records: 1003, orderRows: 1002, deletedRows: 1 });
   });
 
   it("does not refresh the ledger when Kintone fails", async () => {

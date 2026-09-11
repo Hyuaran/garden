@@ -466,8 +466,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   async function loadPurchaseVendors() {
     const response = await fetch("/api/soil/list/purchase-vendors");
     const data = await readJson<{ ok: boolean; vendors: PurchaseVendorOption[] }>(response);
+    // 購入先は必ず人が選ぶ（一番多い購入先を勝手に既定にすると、違う購入先のまま取り込まれる）
     setPurchaseVendors(data.vendors);
-    setPurchaseVendor((current) => current || data.vendors[0]?.value || "");
   }
 
   async function loadAnalysis() {

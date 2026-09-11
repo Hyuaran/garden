@@ -115,7 +115,8 @@ export function orderRowsFromRecord(record: KintoneRecord, importedAt: string): 
   const phones = [
     normalizePhone(fieldValue(record, "電話番号_ハイフンなし")),
     normalizePhone(fieldValue(record, "携帯番号_ハイフンなし")),
-  ].filter(Boolean);
+    // 「0000000000」のような仮の番号は受注履歴に入れない（顧客一覧の番号なし案件に入っている）
+  ].filter((phone) => phone && !/^0+$/.test(phone));
   const uniquePhones = [...new Set(phones)];
 
   return uniquePhones.map((phone) => ({
