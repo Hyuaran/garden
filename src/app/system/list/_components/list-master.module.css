@@ -605,7 +605,15 @@
 }
 
 .guideTable {
-  min-width: 980px !important;
+  min-width: 900px !important;
+}
+
+/* 名前・1 行の単位・件数の目安は短いので折り返さない（折れると「電話／番号／台帳」と 3 行になって読めない） */
+.guideTable th:nth-child(-n + 3),
+.guideTable td:nth-child(-n + 3),
+.guideRulesTable th:first-child,
+.guideRulesTable td:first-child {
+  white-space: nowrap;
 }
 
 .guideRulesTable {
