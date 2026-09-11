@@ -104,6 +104,22 @@ describe("ListMasterClient tabs", () => {
     render(<ListMasterClient />);
     expect(await screen.findByRole("tab", { name: "管理方法", selected: true })).toBeInTheDocument();
     expect(screen.getByText("リストマスタのデータの持ち方")).toBeInTheDocument();
+    const guidePanel = screen.getByRole("heading", { name: "リストマスタのデータの持ち方" }).closest("section");
+    expect(guidePanel).not.toBeNull();
+    const guide = within(guidePanel as HTMLElement);
+    expect(guide.getByRole("columnheader", { name: "名前" })).toBeInTheDocument();
+    expect(guide.getByRole("columnheader", { name: "決まり" })).toBeInTheDocument();
+    expect(guide.getAllByRole("table")).toHaveLength(2);
+    expect(guide.getAllByRole("row").slice(1, 6).map((row) => within(row).getAllByRole("cell")[0].textContent)).toEqual([
+      "電話番号台帳",
+      "購入履歴",
+      "投入履歴",
+      "コール履歴",
+      "受注履歴",
+    ]);
+    expect(guide.getByRole("cell", { name: "準備中（Kintone「顧客一覧」の受注を毎朝取り込む予定）" })).toBeInTheDocument();
+    expect(guidePanel?.textContent).not.toContain("親");
+    expect(guidePanel?.textContent).not.toContain("子");
 
     fireEvent.click(screen.getByRole("tab", { name: "アップロード" }));
     expect(window.location.search).toBe("?tab=upload");
@@ -145,7 +161,7 @@ describe("ListMasterClient upload history", () => {
     window.history.replaceState(null, "", "/system/list?tab=upload");
     render(<ListMasterClient />);
 
-    expect(await screen.findByText("途中で止まりました（親へ反映 1,000 / 2,500）")).toBeInTheDocument();
+    expect(await screen.findByText("途中で止まりました（電話番号台帳へ反映 1,000 / 2,500）")).toBeInTheDocument();
     expect(screen.getByText("新規 10／更新 990")).toBeInTheDocument();
     const resume = screen.getByRole("button", { name: "反映をやり直す" });
     expect(resume).toBeInTheDocument();

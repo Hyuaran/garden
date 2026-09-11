@@ -147,7 +147,7 @@ describe("/api/soil/list/uploads", () => {
     await expect(response.json()).resolves.toMatchObject({
       ok: false,
       result: { assignments: 1000, remaining: 1500 },
-      error: "途中で止まりました（親へ反映 1,000 / 2,500）。記録から「反映をやり直す」を押してください",
+      error: "途中で止まりました（電話番号台帳へ反映 1,000 / 2,500）。記録から「反映をやり直す」を押してください",
     });
   });
 

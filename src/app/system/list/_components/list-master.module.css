@@ -593,6 +593,37 @@
   margin: 0;
 }
 
+.guideTables {
+  display: grid;
+  gap: 18px;
+}
+
+.guideTableWrap {
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.guideTable {
+  min-width: 980px !important;
+}
+
+.guideRulesTable {
+  min-width: 760px !important;
+}
+
+.guideTable th,
+.guideTable td,
+.guideRulesTable th,
+.guideRulesTable td {
+  line-height: 1.75;
+}
+
+.pendingRow {
+  color: var(--sub);
+  background: color-mix(in srgb, var(--card) 86%, var(--line));
+}
+
 .listStack {
   display: grid;
   gap: 8px;

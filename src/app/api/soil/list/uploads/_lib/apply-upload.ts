@@ -78,7 +78,7 @@ export function reflectedRows(result: UploadResult): number {
 }
 
 export function uploadStoppedMessage(result: UploadResult, totalRows: number): string {
-  return `途中で止まりました（親へ反映 ${reflectedRows(result).toLocaleString("ja-JP")} / ${totalRows.toLocaleString("ja-JP")}）。記録から「反映をやり直す」を押してください`;
+  return `途中で止まりました（電話番号台帳へ反映 ${reflectedRows(result).toLocaleString("ja-JP")} / ${totalRows.toLocaleString("ja-JP")}）。記録から「反映をやり直す」を押してください`;
 }
 
 export async function applyUploadInBatches(

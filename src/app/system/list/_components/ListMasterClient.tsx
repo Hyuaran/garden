@@ -142,31 +142,51 @@ const TAB_LABELS: Array<{ key: ActiveTab; label: string; query?: string }> = [
   { key: "guide", label: "管理方法", query: "guide" },
 ];
 
-const GUIDE_TEXT = [
-  ["親：電話番号台帳", [
-    "電話番号 1 件につき 1 行です（約 267 万件）。同じ番号が別のリストに再び投入されたときは、行を増やさず「リスト名」と「リスト投入日」を新しいものに書き換えます（更新スタイル）。",
-    "氏名・住所・郵便番号・携帯番号は、空欄のときだけ新しい投入の値で埋めます。既に入っている値は残します。",
-    "AU光架電可否・アポ禁・購入状態などの判定は投入では変えません。",
-  ]],
-  ["子：購入履歴", [
-    "購入や開通が起きるたびに 1 行増えます。過去の分もすべて残します（約 242 万件）。",
-  ]],
-  ["子：コール履歴", [
-    "電話番号 × リスト名で 1 行です。7 月末までは FileMaker の書き出し、8 月 1 日からはコールセンターから毎日届く通話記録を Garden が集計して足しています。",
-    "親の「コール回数」「最終コール日」はこの集計から作ります。画面右上の丸い矢印で手動でも反映できます。",
-  ]],
-  ["子：投入履歴（アップロードで増えます）", [
-    "電話番号 × リスト名で 1 行です。取込ファイルの列（申込者・連絡担当者・既契約者・設置先など）をそのまま残します。",
-    "リスト投入日は、リスト名の中の日付（_20260907 の部分）です。",
-  ]],
-  ["そのほかの表", [
-    "保留（桁がおかしい番号など）・携帯のみ・絞り込みの選択肢・保存した条件・書き出しの記録・アップロードの記録・コール履歴の反映状態。",
-  ]],
-  ["リスト名と投入日の決まり", [
-    "リスト名は取込ファイルのものをそのまま使います（例：【光回線】フレッツ_20260907）。",
-    "投入日はリスト名の日付です。末尾の「_2」などは無視します。",
-    "この日付は「その日から架電する日」です。先の日付のリストは前もって入れておき、その日が来るまで架電しません。分析で架電済み率が低いリストは、まだ開始日が来ていないだけのことがあります。",
-  ]],
+const GUIDE_TABLE_ROWS = [
+  {
+    name: "電話番号台帳",
+    unit: "電話番号 1 件",
+    count: "約 267 万件",
+    contains: "氏名・住所・郵便番号・携帯番号、いまのリスト名と投入日、AU光架電可否・アポ禁・購入状態、コール回数・最終コール日",
+    timing: "同じ番号が別のリストで再び投入されたら、行を増やさずリスト名と投入日を新しいものに書き換える。氏名・住所・郵便番号・携帯番号は空欄のときだけ埋める。AU光架電可否・アポ禁・購入状態は投入では変えない",
+  },
+  {
+    name: "購入履歴",
+    unit: "購入 1 回",
+    count: "約 242 万件",
+    contains: "電話番号・購入先・購入日",
+    timing: "購入や開通のたびに 1 行増える。過去の分もすべて残す",
+  },
+  {
+    name: "投入履歴",
+    unit: "電話番号×リスト名",
+    count: "約 3.9 万件",
+    contains: "取込ファイルの列（申込者・連絡担当者・既契約者・設置先など）そのまま",
+    timing: "アップロードのたびに増える。同じ番号×リスト名は上書き。リスト投入日はリスト名の中の日付を使う",
+  },
+  {
+    name: "コール履歴",
+    unit: "電話番号×リスト名",
+    count: "約 119 万件",
+    contains: "コール回数・初回／最終コール日・最終結果",
+    timing: "8/1 からはコールセンターの通話記録を毎日集計して足す。電話番号台帳のコール回数・最終コール日はこの集計から作る。画面右上の丸い矢印で手動でも反映できる",
+  },
+  {
+    name: "受注履歴",
+    unit: "受注 1 件",
+    count: "準備中",
+    contains: "準備中（Kintone「顧客一覧」の受注を毎朝取り込む予定）",
+    timing: "準備中",
+    pending: true,
+  },
+] as const;
+
+const GUIDE_RULE_ROWS = [
+  ["リスト名", "取込ファイルのものをそのまま使う（例：【光回線】フレッツ_20260907）"],
+  ["リスト投入日", "リスト名の中の日付（_20260907 の部分）。末尾の「_2」などは無視する"],
+  ["投入日の意味", "「その日から架電する日」。先の日付のリストは前もって入れておき、その日が来るまで架電しない。分析で架電済み率が低いリストは、まだ開始日が来ていないだけのことがある"],
+  ["判定は投入で変えない", "AU光架電可否・アポ禁・購入状態は、アップロードでは書き換えない"],
+  ["そのほかの表", "保留（桁がおかしい番号など）・携帯のみ・絞り込みの選択肢・保存した条件・書き出しの記録・アップロードの記録・コール履歴の反映状態"],
 ] as const;
 
 export function filtersToCondition(filters: FilterState): SoilListConditionPayload {
@@ -325,7 +345,7 @@ function resultLine(result: UploadResult): string {
 }
 
 function parentResultLine(result: UploadResult): string {
-  return `親（電話番号台帳）：更新 ${result.parent_updated.toLocaleString("ja-JP")} 件・新規追加 ${result.parent_inserted.toLocaleString("ja-JP")} 件・投入日が古いので据え置き ${result.parent_kept.toLocaleString("ja-JP")} 件`;
+  return `電話番号台帳：更新 ${result.parent_updated.toLocaleString("ja-JP")} 件・新規追加 ${result.parent_inserted.toLocaleString("ja-JP")} 件・投入日が古いので据え置き ${result.parent_kept.toLocaleString("ja-JP")} 件`;
 }
 
 function uploadHistoryStatus(item: UploadHistory): string {
@@ -333,7 +353,7 @@ function uploadHistoryStatus(item: UploadHistory): string {
     return `新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}`;
   }
   if (item.result && (item.status === "failed" || item.result.remaining > 0)) {
-    return `途中で止まりました（親へ反映 ${item.result.assignments.toLocaleString("ja-JP")} / ${item.row_count.toLocaleString("ja-JP")}）`;
+    return `途中で止まりました（電話番号台帳へ反映 ${item.result.assignments.toLocaleString("ja-JP")} / ${item.row_count.toLocaleString("ja-JP")}）`;
   }
   return "処理中";
 }
@@ -1046,13 +1066,49 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       {activeTab === "guide" && (
         <section className={styles.panel} aria-labelledby="guide-heading">
           <h2 id="guide-heading">リストマスタのデータの持ち方</h2>
-          <div className={styles.guideBlock}>
-            {GUIDE_TEXT.map(([heading, lines]) => (
-              <section key={heading}>
-                <h3>■ {heading}</h3>
-                {lines.map((line) => <p key={line}>・{line}</p>)}
-              </section>
-            ))}
+          <div className={styles.guideTables}>
+            <div className={`${styles.tableWrap} ${styles.guideTableWrap}`}>
+              <table className={styles.guideTable}>
+                <thead>
+                  <tr>
+                    <th>名前</th>
+                    <th>1 行の単位</th>
+                    <th>件数の目安</th>
+                    <th>入っているもの</th>
+                    <th>いつ増える・変わるか</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {GUIDE_TABLE_ROWS.map((row) => (
+                    <tr key={row.name} className={"pending" in row && row.pending ? styles.pendingRow : undefined}>
+                      <td>{row.name}</td>
+                      <td>{row.unit}</td>
+                      <td>{row.count}</td>
+                      <td>{row.contains}</td>
+                      <td>{row.timing}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className={`${styles.tableWrap} ${styles.guideTableWrap}`}>
+              <table className={styles.guideRulesTable}>
+                <thead>
+                  <tr>
+                    <th>項目</th>
+                    <th>決まり</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {GUIDE_RULE_ROWS.map(([item, rule]) => (
+                    <tr key={item}>
+                      <td>{item}</td>
+                      <td>{rule}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       )}
