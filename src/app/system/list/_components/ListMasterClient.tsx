@@ -57,6 +57,21 @@ type CallSyncState = {
   callRows: number;
 };
 
+type OrderSyncState = {
+  lastRunAt: string | null;
+  records: number;
+  orderRows: number;
+  phoneUpdates: number;
+  deletedRows: number;
+  elapsedMs: number;
+  error: string | null;
+};
+
+type PurchaseVendorOption = {
+  value: string;
+  count: number;
+};
+
 type ActiveTab = "list" | "upload" | "analysis" | "guide";
 
 type UploadPreview = {
@@ -76,6 +91,7 @@ type UploadResult = {
   parent_kept: number;
   skipped: number;
   remaining: number;
+  purchase_inserted: number;
   warning?: string;
 };
 
@@ -86,6 +102,7 @@ type UploadHistory = {
   row_count: number;
   result: UploadResult | null;
   status: "processing" | "done" | "failed";
+  購入先: string | null;
   created_by: string | null;
   created_at: string;
 };
@@ -147,7 +164,7 @@ const GUIDE_TABLE_ROWS = [
     name: "電話番号台帳",
     unit: "電話番号 1 件",
     count: "約 267 万件",
-    contains: "氏名・住所・郵便番号・携帯番号、いまのリスト名と投入日、AU光架電可否・アポ禁・購入状態、コール回数・最終コール日",
+    contains: "氏名・住所・郵便番号・携帯番号、購入履歴・投入履歴・コール履歴・受注履歴それぞれの一番新しい値、AU光架電可否・アポ禁・購入状態",
     timing: "同じ番号が別のリストで再び投入されたら、行を増やさずリスト名と投入日を新しいものに書き換える。氏名・住所・郵便番号・携帯番号は空欄のときだけ埋める。AU光架電可否・アポ禁・購入状態は投入では変えない",
   },
   {
@@ -174,10 +191,9 @@ const GUIDE_TABLE_ROWS = [
   {
     name: "受注履歴",
     unit: "受注 1 件",
-    count: "準備中",
-    contains: "準備中（Kintone「顧客一覧」の受注を毎朝取り込む予定）",
-    timing: "準備中",
-    pending: true,
+    count: "約 2 万件",
+    contains: "受注日・商材・チーム・営業ID",
+    timing: "毎朝 6:30 に Kintone「顧客一覧」を取り込み直す。1 行は顧客一覧のレコード×電話番号",
   },
 ] as const;
 
@@ -348,9 +364,13 @@ function parentResultLine(result: UploadResult): string {
   return `電話番号台帳：更新 ${result.parent_updated.toLocaleString("ja-JP")} 件・新規追加 ${result.parent_inserted.toLocaleString("ja-JP")} 件・投入日が古いので据え置き ${result.parent_kept.toLocaleString("ja-JP")} 件`;
 }
 
+function purchaseResultLine(result: UploadResult): string {
+  return `購入履歴：新規 ${(result.purchase_inserted ?? 0).toLocaleString("ja-JP")} 件`;
+}
+
 function uploadHistoryStatus(item: UploadHistory): string {
   if (item.status === "done" && item.result) {
-    return `新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}`;
+    return `新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}／購入履歴 ${(item.result.purchase_inserted ?? 0).toLocaleString("ja-JP")}`;
   }
   if (item.result && (item.status === "failed" || item.result.remaining > 0)) {
     return `途中で止まりました（電話番号台帳へ反映 ${item.result.assignments.toLocaleString("ja-JP")} / ${item.row_count.toLocaleString("ja-JP")}）`;
@@ -360,6 +380,11 @@ function uploadHistoryStatus(item: UploadHistory): string {
 
 function canResumeUpload(item: UploadHistory): boolean {
   return Boolean(item.result && (item.status === "failed" || item.result.remaining > 0));
+}
+
+function formatOrderSyncStatus(state: OrderSyncState | null): string {
+  if (!state?.lastRunAt) return "受注履歴最終更新：未反映";
+  return `受注履歴最終更新：${formatJstWithWeekday(state.lastRunAt)}`;
 }
 
 export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boolean }) {
@@ -376,6 +401,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [callSyncState, setCallSyncState] = useState<CallSyncState | null>(null);
   const [callSyncBusy, setCallSyncBusy] = useState(false);
   const [callSyncMessage, setCallSyncMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [orderSyncState, setOrderSyncState] = useState<OrderSyncState | null>(null);
   const [conditionName, setConditionName] = useState("AU光○ アポ禁なし");
   const [selectedColumns, setSelectedColumns] = useState<SoilListColumnKey[]>(
     SOIL_LIST_EXPORT_COLUMNS.filter((column) => column.defaultChecked).map((column) => column.key),
@@ -387,6 +413,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [uploadHistory, setUploadHistory] = useState<UploadHistory[]>([]);
+  const [purchaseVendors, setPurchaseVendors] = useState<PurchaseVendorOption[]>([]);
+  const [purchaseVendor, setPurchaseVendor] = useState("");
+  const [purchaseVendorOther, setPurchaseVendorOther] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
   const [uploadBusy, setUploadBusy] = useState<"preview" | "import" | null>(null);
   const [uploadApplyBusyId, setUploadApplyBusyId] = useState<string | null>(null);
@@ -422,10 +451,23 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setCallSyncState(data.state);
   }
 
+  async function loadOrderSyncState() {
+    const response = await fetch("/api/soil/list/orders/status");
+    const data = await readJson<{ ok: boolean; state: OrderSyncState }>(response);
+    setOrderSyncState(data.state);
+  }
+
   async function loadUploadHistory() {
     const response = await fetch("/api/soil/list/uploads");
     const data = await readJson<{ ok: boolean; uploads: UploadHistory[] }>(response);
     setUploadHistory(data.uploads);
+  }
+
+  async function loadPurchaseVendors() {
+    const response = await fetch("/api/soil/list/purchase-vendors");
+    const data = await readJson<{ ok: boolean; vendors: PurchaseVendorOption[] }>(response);
+    setPurchaseVendors(data.vendors);
+    setPurchaseVendor((current) => current || data.vendors[0]?.value || "");
   }
 
   async function loadAnalysis() {
@@ -444,7 +486,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
 
   useEffect(() => {
     setActiveTab(tabFromLocation());
-    Promise.all([loadSaved(), loadOptions(), loadCallSyncState(), loadUploadHistory()]).catch((error: unknown) =>
+    Promise.all([loadSaved(), loadOptions(), loadCallSyncState(), loadOrderSyncState(), loadUploadHistory(), loadPurchaseVendors()]).catch((error: unknown) =>
       setMessage(error instanceof Error ? error.message : "取得できませんでした"),
     );
   }, []);
@@ -631,12 +673,18 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
 
   async function handleUploadImport() {
     if (!uploadFile) return;
+    const vendor = purchaseVendor === "__other__" ? purchaseVendorOther.trim() : purchaseVendor.trim();
+    if (!vendor) {
+      setUploadMessage("購入先を選んでください");
+      return;
+    }
     setUploadBusy("import");
     setUploadMessage("");
     setUploadResult(null);
     try {
       const form = new FormData();
       form.set("file", uploadFile);
+      form.set("purchaseVendor", vendor);
       const response = await fetch("/api/soil/list/uploads", { method: "POST", body: form });
       const data = await readJson<{ ok: boolean; result?: UploadResult; error?: string }>(response);
       setUploadResult(data.result ?? null);
@@ -708,6 +756,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               {callSyncMessage.text}
             </span>
           )}
+          <span>{formatOrderSyncStatus(orderSyncState)}</span>
         </div>
       </div>
 
@@ -914,6 +963,27 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               accept=".csv,.xlsx,.mer"
               onChange={(event) => void previewFile(event.target.files?.[0] ?? null)}
             />
+            <div className={styles.purchaseVendorRow}>
+              <label>
+                購入先
+                <select required value={purchaseVendor} onChange={(event) => setPurchaseVendor(event.target.value)}>
+                  <option value="">選択してください</option>
+                  {purchaseVendors.map((vendor) => (
+                    <option key={vendor.value} value={vendor.value}>
+                      {vendor.value}（{vendor.count.toLocaleString("ja-JP")}）
+                    </option>
+                  ))}
+                  <option value="__other__">その他（手入力）</option>
+                </select>
+              </label>
+              {purchaseVendor === "__other__" && (
+                <label>
+                  その他の購入先
+                  <input value={purchaseVendorOther} onChange={(event) => setPurchaseVendorOther(event.target.value)} />
+                </label>
+              )}
+              <span>初めての電話番号は、この購入先で購入履歴に入ります</span>
+            </div>
             <div
               className={`${styles.dropZone} ${dragActive ? styles.dropZoneActive : ""}`}
               role="button"
@@ -972,7 +1042,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 要確認：電話番号が空 {uploadPreview.warnings.emptyPhoneRows.toLocaleString("ja-JP")} 行／数字でないものを除くと 9 桁未満 {uploadPreview.warnings.shortPhoneRows.toLocaleString("ja-JP")} 行／投入日が読めないリスト名 {uploadPreview.warnings.unreadableListDateNames.toLocaleString("ja-JP")} 件
               </p>
               <div className={styles.actions}>
-                <button type="button" onClick={handleUploadImport} disabled={uploadBusy !== null}>
+                <button type="button" onClick={handleUploadImport} disabled={uploadBusy !== null || !purchaseVendor || (purchaseVendor === "__other__" && !purchaseVendorOther.trim())}>
                   {uploadBusy === "import" ? "取り込んでいます…" : "取り込む"}
                 </button>
               </div>
@@ -987,6 +1057,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </div>
               <p className={styles.result}>取り込みました：{resultLine(uploadResult)}</p>
               <p>{parentResultLine(uploadResult)}</p>
+              <p>{purchaseResultLine(uploadResult)}</p>
               <p>読めなかった行：{uploadResult.skipped.toLocaleString("ja-JP")} 行</p>
               {uploadResult.remaining > 0 && <p>残り：{uploadResult.remaining.toLocaleString("ja-JP")} 行</p>}
             </section>
@@ -1000,6 +1071,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <div className={styles.savedRow} key={item.id}>
                   <span>{formatDateTime(item.created_at)} {item.created_by ?? ""} {item.file_name}</span>
                   <small>{item.row_count.toLocaleString("ja-JP")} 行</small>
+                  <small>購入先：{item.購入先 ?? ""}</small>
                   <small>{uploadHistoryStatus(item)}</small>
                   {canResumeUpload(item) && (
                     <button type="button" onClick={() => void handleResumeUpload(item.id)} disabled={uploadApplyBusyId === item.id}>

@@ -15,8 +15,14 @@ function installFetch(options: { uploads?: unknown[] } = {}) {
     if (url === "/api/soil/list/conditions") return json({ ok: true, conditions: [] });
     if (url === "/api/soil/list/exports") return json({ ok: true, exports: [] });
     if (url === "/api/soil/list/uploads") return json({ ok: true, uploads: options.uploads ?? [] });
+    if (url === "/api/soil/list/orders/status") {
+      return json({ ok: true, state: { lastRunAt: "2026-09-11T21:30:00Z", records: 12666, orderRows: 19434, phoneUpdates: 9506, deletedRows: 0, elapsedMs: 1200, error: null } });
+    }
+    if (url === "/api/soil/list/purchase-vendors") {
+      return json({ ok: true, vendors: [{ value: "データ総研", count: 1200 }, { value: "ABC", count: 20 }] });
+    }
     if (url === "/api/soil/list/uploads/upload-failed/apply" && init?.method === "POST") {
-      return json({ ok: true, result: { assignments: 2500, assignments_new: 2500, assignments_updated: 0, parent_updated: 2500, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 0 } });
+      return json({ ok: true, result: { assignments: 2500, assignments_new: 2500, assignments_updated: 0, parent_updated: 2500, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 0, purchase_inserted: 0 } });
     }
     if (url === "/api/soil/list/analysis") return json({ ok: true, rows: [] });
     if (url === "/api/soil/list/options") {
@@ -72,6 +78,7 @@ describe("ListMasterClient call sync status", () => {
     installFetch();
     render(<ListMasterClient />);
     expect(await screen.findByText("コール履歴最終更新：2026/09/07(月) 19:35")).toBeInTheDocument();
+    expect(screen.getByText("受注履歴最終更新：2026/09/12(土) 06:30")).toBeInTheDocument();
   });
 
   it("hides the sync button below manager", () => {
@@ -117,7 +124,8 @@ describe("ListMasterClient tabs", () => {
       "コール履歴",
       "受注履歴",
     ]);
-    expect(guide.getByRole("cell", { name: "準備中（Kintone「顧客一覧」の受注を毎朝取り込む予定）" })).toBeInTheDocument();
+    expect(guide.getByRole("cell", { name: "受注日・商材・チーム・営業ID" })).toBeInTheDocument();
+    expect(guidePanel?.textContent).not.toContain("準備中");
     expect(guidePanel?.textContent).not.toContain("親");
     expect(guidePanel?.textContent).not.toContain("子");
 
@@ -142,7 +150,8 @@ describe("ListMasterClient upload history", () => {
           format: "B",
           row_count: 2500,
           status: "failed",
-          result: { assignments: 1000, assignments_new: 1000, assignments_updated: 0, parent_updated: 1000, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 1500 },
+          result: { assignments: 1000, assignments_new: 1000, assignments_updated: 0, parent_updated: 1000, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 1500, purchase_inserted: 0 },
+          購入先: "データ総研",
           created_by: "東海林 美琴",
           created_at: "2026-09-09T13:34:00Z",
         },
@@ -152,7 +161,8 @@ describe("ListMasterClient upload history", () => {
           format: "B",
           row_count: 1000,
           status: "done",
-          result: { assignments: 1000, assignments_new: 1000, assignments_updated: 0, parent_updated: 990, parent_inserted: 10, parent_kept: 0, skipped: 0, remaining: 0 },
+          result: { assignments: 1000, assignments_new: 1000, assignments_updated: 0, parent_updated: 990, parent_inserted: 10, parent_kept: 0, skipped: 0, remaining: 0, purchase_inserted: 10 },
+          購入先: "データ総研",
           created_by: "東海林 美琴",
           created_at: "2026-09-09T13:33:00Z",
         },
@@ -162,7 +172,8 @@ describe("ListMasterClient upload history", () => {
     render(<ListMasterClient />);
 
     expect(await screen.findByText("途中で止まりました（電話番号台帳へ反映 1,000 / 2,500）")).toBeInTheDocument();
-    expect(screen.getByText("新規 10／更新 990")).toBeInTheDocument();
+    expect(screen.getByText("新規 10／更新 990／購入履歴 10")).toBeInTheDocument();
+    expect(screen.getAllByText("購入先：データ総研")).toHaveLength(2);
     const resume = screen.getByRole("button", { name: "反映をやり直す" });
     expect(resume).toBeInTheDocument();
     expect(screen.getAllByText("反映をやり直す")).toHaveLength(1);
@@ -174,6 +185,22 @@ describe("ListMasterClient upload history", () => {
     await waitFor(() => {
       expect(screen.getByText("反映しました")).toBeInTheDocument();
     });
+  });
+});
+
+describe("ListMasterClient upload purchase vendor", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("requires a purchase vendor before upload import", async () => {
+    installFetch();
+    window.history.replaceState(null, "", "/system/list?tab=upload");
+    render(<ListMasterClient />);
+
+    expect(await screen.findByLabelText("購入先")).toBeRequired();
+    expect(screen.getByRole("option", { name: "データ総研（1,200）" })).toBeInTheDocument();
   });
 });
 

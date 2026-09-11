@@ -449,6 +449,31 @@
   border: 0;
 }
 
+.purchaseVendorRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(180px, 260px) 1fr;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.purchaseVendorRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--heading);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.purchaseVendorRow span {
+  align-self: center;
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
 .dropZone {
   display: flex;
   min-height: 220px;
@@ -714,5 +739,9 @@
   .savedRow {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .purchaseVendorRow {
+    grid-template-columns: 1fr;
   }
 }

@@ -21,14 +21,15 @@ function csv(rowCount: number) {
   return `${header}\n${rows.join("\n")}\n`;
 }
 
-function requestWithFile(body: string) {
+function requestWithFile(body: string, purchaseVendor = "データ総研") {
   const form = new FormData();
   form.set("file", new File([body], "list.csv", { type: "text/csv" }));
+  if (purchaseVendor) form.set("purchaseVendor", purchaseVendor);
   return { formData: async () => form } as Request;
 }
 
 function applyRow(assignments: number, remaining: number) {
-  return { assignments, assignments_new: assignments, assignments_updated: 0, parent_updated: assignments, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining };
+  return { assignments, assignments_new: assignments, assignments_updated: 0, parent_updated: assignments, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining, purchase_inserted: 0 };
 }
 
 function adminClient(
@@ -41,7 +42,7 @@ function adminClient(
   const upserts: unknown[][] = [];
   const updates: Array<{ table: string; values: Record<string, unknown>; column: string; value: unknown }> = [];
   const rpcResults = options.rpcResults ?? [{
-    data: [{ assignments: 1001, assignments_new: 1001, assignments_updated: 0, parent_updated: 999, parent_inserted: 2, parent_kept: 0, skipped: 0, remaining: 0 }],
+    data: [{ assignments: 1001, assignments_new: 1001, assignments_updated: 0, parent_updated: 999, parent_inserted: 2, parent_kept: 0, skipped: 0, remaining: 0, purchase_inserted: 2 }],
     error: null,
   }];
   const rpc = vi.fn(async (name: string) => {
@@ -63,7 +64,10 @@ function adminClient(
       }
       if (table === "soil_list_upload") {
         return {
-          insert: () => ({ select: () => ({ single: async () => ({ data: { id: "upload-1" }, error: null }) }) }),
+          insert: (values: Record<string, unknown>) => {
+            updates.push({ table, values, column: "insert", value: "insert" });
+            return { select: () => ({ single: async () => ({ data: { id: "upload-1" }, error: null }) }) };
+          },
           update: (values: Record<string, unknown>) => ({
             eq: async (column: string, value: unknown) => {
               updates.push({ table, values, column, value });
@@ -109,6 +113,13 @@ describe("/api/soil/list/uploads", () => {
     expect(response.status).toBe(403);
   });
 
+  it("returns 400 when purchase vendor is missing", async () => {
+    mocks.getAdmin.mockReturnValue(adminClient("manager"));
+    const response = await POST(requestWithFile(csv(1), ""));
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: "取り込めませんでした（購入先を選んでください）" });
+  });
+
   it("imports assignments in 1,000 row chunks and applies the upload until no rows remain", async () => {
     const client = adminClient("manager", {
       rpcResults: [
@@ -123,13 +134,14 @@ describe("/api/soil/list/uploads", () => {
     expect(client.upserts.map((chunk) => chunk.length)).toEqual([1000, 1000, 500]);
     // 前に取り込んだ番号を上げ直しても素通りしないよう、「反映済み」の印を外して入れ直す
     expect((client.upserts[0] as Array<Record<string, unknown>>)[0]).toMatchObject({ applied_at: null });
+    expect(client.updates[0].values).toMatchObject({ 購入先: "データ総研" });
     expect(client.rpc).toHaveBeenNthCalledWith(1, "soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
     expect(client.rpc).toHaveBeenNthCalledWith(2, "soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
     expect(client.rpc).toHaveBeenNthCalledWith(3, "soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
-    expect(client.updates.at(-1)?.values).toMatchObject({ status: "done", result: { assignments: 2500, parent_updated: 2500, remaining: 0 } });
+    expect(client.updates.at(-1)?.values).toMatchObject({ status: "done", result: { assignments: 2500, parent_updated: 2500, remaining: 0, purchase_inserted: 0 } });
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
-      result: { assignments: 2500, parent_updated: 2500, remaining: 0 },
+      result: { assignments: 2500, parent_updated: 2500, remaining: 0, purchase_inserted: 0 },
     });
   });
 
@@ -160,7 +172,7 @@ describe("/api/soil/list/uploads", () => {
     expect(client.rpc).toHaveBeenCalledWith("soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
-      result: { assignments: 1001, parent_updated: 999, parent_inserted: 2 },
+      result: { assignments: 1001, parent_updated: 999, parent_inserted: 2, purchase_inserted: 2 },
     });
   });
 

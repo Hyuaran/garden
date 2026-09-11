@@ -9,6 +9,7 @@ export type UploadResult = {
   parent_kept: number;
   skipped: number;
   remaining: number;
+  purchase_inserted: number;
   duplicate_rows?: number;
   warning?: string;
 };
@@ -29,6 +30,7 @@ const EMPTY_RESULT: UploadResult = {
   parent_kept: 0,
   skipped: 0,
   remaining: 0,
+  purchase_inserted: 0,
 };
 
 export class UploadApplyError extends Error {
@@ -55,6 +57,7 @@ export function normalizeApplyResult(data: UploadResult[] | UploadResult | null)
     parent_kept: row?.parent_kept ?? 0,
     skipped: row?.skipped ?? 0,
     remaining: row?.remaining ?? 0,
+    purchase_inserted: row?.purchase_inserted ?? 0,
   });
 }
 
@@ -68,6 +71,7 @@ export function addUploadResults(left: UploadResult, right: UploadResult): Uploa
     parent_kept: left.parent_kept + right.parent_kept,
     skipped: left.skipped + right.skipped,
     remaining: right.remaining,
+    purchase_inserted: left.purchase_inserted + right.purchase_inserted,
     duplicate_rows: left.duplicate_rows ?? right.duplicate_rows,
     warning: left.warning ?? right.warning,
   };

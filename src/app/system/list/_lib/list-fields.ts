@@ -7,6 +7,8 @@ export const SOIL_LIST_TABLES = {
   option: "soil_list_option",
   assignment: "soil_list_assignment",
   upload: "soil_list_upload",
+  order: "soil_list_order",
+  orderSyncState: "soil_list_order_sync_state",
 } as const;
 
 /** 選択肢に出す値の上限（都道府県の列には 2,700 種類の表記ゆれがあるため、件数の多い順にここまで） */
@@ -57,6 +59,11 @@ export const SOIL_LIST_COLUMNS = {
   firstCalledOn: "初回コール日",
   lastCalledOn: "最終コール日_集約",
   lastCallResult: "最終結果",
+  latestPurchaseVendor: "最新購入先",
+  latestPurchasedOn: "最新購入日",
+  latestOrderOn: "最新受注日",
+  latestOrderProduct: "最新受注商材",
+  orderCount: "受注件数",
   purchaseHistoryExists: "購入履歴あり",
 } as const;
 

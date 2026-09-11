@@ -18,6 +18,7 @@ type UploadRecord = {
   list_names: Record<string, number>;
   result: UploadResult | null;
   status: "processing" | "done" | "failed";
+  購入先: string | null;
   created_by: string | null;
   created_at: string;
 };
@@ -46,6 +47,20 @@ function listNameCounts(rows: ParsedUploadRow[]): Record<string, number> {
     counts[key] = (counts[key] ?? 0) + 1;
     return counts;
   }, {});
+}
+
+function todayInJapan(): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function formText(form: FormData, name: string): string {
+  const value = form.get(name);
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function assignmentPayload(row: ParsedUploadRow, uploadId: string) {
@@ -91,7 +106,7 @@ export async function GET() {
   const db = getSupabaseAdmin() as unknown as UploadDb;
   const { data, error } = await db
     .from(SOIL_LIST_TABLES.upload)
-    .select("id,file_name,format,row_count,list_names,result,status,created_by,created_at")
+    .select("id,file_name,format,row_count,list_names,result,status,購入先,created_by,created_at")
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) return NextResponse.json({ ok: false, error: "取り込みの記録を読み込めませんでした" }, { status: 500 });
@@ -112,6 +127,10 @@ export async function POST(request: Request) {
     if (!isUploadedFile(file)) {
       return NextResponse.json({ ok: false, error: "取り込めませんでした（ファイルを選んでください）" }, { status: 400 });
     }
+    const purchaseVendor = formText(form, "purchaseVendor");
+    if (!purchaseVendor) {
+      return NextResponse.json({ ok: false, error: "取り込めませんでした（購入先を選んでください）" }, { status: 400 });
+    }
 
     const parsed = await parseUploadFile(file);
     uploadRowCount = parsed.rowCount;
@@ -123,6 +142,8 @@ export async function POST(request: Request) {
         format: parsed.format,
         row_count: parsed.rowCount,
         list_names: listNameCounts(parsed.rows),
+        購入先: purchaseVendor,
+        購入日: todayInJapan(),
         result: null,
         status: "processing",
         created_by: auth.user.name,
