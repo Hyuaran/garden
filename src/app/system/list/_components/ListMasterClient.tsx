@@ -190,6 +190,7 @@ const initialFilters: FilterState = {
 };
 
 const ACCEPTED_UPLOAD_EXTENSIONS = [".csv", ".xlsx", ".mer"];
+const ANALYSIS_ROW_LIMIT = 50;
 const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
 const TAB_LABELS: Array<{ key: ActiveTab; label: string; query?: string }> = [
   { key: "list", label: "リスト" },
@@ -503,6 +504,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
   const [analysisSelections, setAnalysisSelections] = useState({ vendor: "合計", activeList: "合計" });
   const [activeListDays, setActiveListDays] = useState<15 | 30>(30);
+  // 表は上位 50 行だけ描く（購入先は 2,400 種類あり、全部描くと画面が固まった。2026-09-13 本番で確認）
+  const [showAllSegments, setShowAllSegments] = useState<{ vendor: boolean; active_list: boolean }>({ vendor: false, active_list: false });
   const [analysisDetail, setAnalysisDetail] = useState<{
     block: "vendor" | "active_list";
     segment: string;
@@ -846,6 +849,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     controls?: ReactNode,
   ) {
     const selected = segments.find((segment) => segment.segment === selectedSegment) ?? segments[0];
+    const showAll = showAllSegments[block];
+    const visibleSegments = showAll ? segments : segments.slice(0, ANALYSIS_ROW_LIMIT);
     const chartData: ChartData<"doughnut"> = {
       labels: selected?.results.map((item) => item.result) ?? [],
       datasets: [
@@ -910,7 +915,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                     </tr>
                   </thead>
                   <tbody>
-                    {segments.map((segment) => (
+                    {visibleSegments.map((segment) => (
                       <tr
                         key={segment.segment}
                         className={segment.segment === selected.segment ? styles.analysisSelectedRow : undefined}
@@ -931,6 +936,16 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   </tbody>
                 </table>
               </div>
+              {segments.length > ANALYSIS_ROW_LIMIT && (
+                <div className={styles.actions}>
+                  <span className={styles.empty}>
+                    {showAll ? `全 ${formatCount(segments.length)} 行を表示中` : `件数の多い順に ${ANALYSIS_ROW_LIMIT} 行を表示（全 ${formatCount(segments.length)} 行）`}
+                  </span>
+                  <button type="button" className={styles.secondaryButton} onClick={() => setShowAllSegments((current) => ({ ...current, [block]: !showAll }))}>
+                    {showAll ? `上位 ${ANALYSIS_ROW_LIMIT} 行だけにする` : "すべて表示する"}
+                  </button>
+                </div>
+              )}
             </div>
             <div className={styles.resultButtons}>
               {(selected?.results ?? []).map((item) => (

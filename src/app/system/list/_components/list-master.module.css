@@ -701,20 +701,46 @@
   letter-spacing: 0;
 }
 
+/* 円グラフを上・表を下に縦積み（横に並べると表の幅が 385px しか残らず、購入先の列しか見えなかった） */
 .analysisGrid {
   display: grid;
-  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
 
 .chartPane {
   position: relative;
-  min-height: 280px;
+  width: min(100%, 360px);
+  min-height: 260px;
+}
+
+/* 表は枠の中で縦にスクロール（購入先は 2,400 種類あり、全部並べると画面が 15 万 px になって固まる） */
+.analysisTableWrap {
+  max-height: 460px;
+  overflow: auto;
 }
 
 .analysisTableWrap table.analysisTable {
-  min-width: 1060px;
+  min-width: 960px;
+}
+
+.analysisTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--card);
+}
+
+.analysisTable th,
+.analysisTable td {
+  white-space: nowrap;
+}
+
+.analysisTable td:first-child {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .analysisTable tbody tr {
