@@ -1,11 +1,15 @@
 [CmdletBinding()]
 param(
   [string]$TaskName = "GardenShineigyoSnapshot",
-  [string]$AgentPath = (Join-Path $PSScriptRoot "ShineigyoSnapshot.ps1"),
-  [string]$ConfigPath = (Join-Path $PSScriptRoot "config.json")
+  [string]$AgentPath,
+  [string]$ConfigPath
 )
 
 $ErrorActionPreference = "Stop"
+# $PSScriptRoot is empty inside param defaults when run with -File on Windows PowerShell 5.1, so resolve the folder here.
+$scriptFolder = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $AgentPath) { $AgentPath = Join-Path $scriptFolder "ShineigyoSnapshot.ps1" }
+if (-not $ConfigPath) { $ConfigPath = Join-Path $scriptFolder "config.json" }
 $powerShell32 = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
 if (-not (Test-Path -LiteralPath $powerShell32)) { throw "32-bit PowerShell was not found: $powerShell32" }
 if (-not (Test-Path -LiteralPath $AgentPath)) { throw "Agent was not found: $AgentPath" }

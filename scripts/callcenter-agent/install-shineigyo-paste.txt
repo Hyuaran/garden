@@ -29,5 +29,5 @@ $ps32 = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
 #
 # ■ 段階 3：毎朝 5:30 のタスクを登録（段階 2 が成功してから）
 #   ※ 社内ホストPCはスクリプトの実行が止められている設定なので、-ExecutionPolicy Bypass を付けて呼ぶ
-& "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "C:\Garden\callcenter-agent\Register-ShineigyoSnapshotTask.ps1"
+& "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "C:\Garden\callcenter-agent\Register-ShineigyoSnapshotTask.ps1" -AgentPath "C:\Garden\callcenter-agent\ShineigyoSnapshot.ps1" -ConfigPath "C:\Garden\callcenter-agent\config.json"
 Get-ScheduledTaskInfo -TaskName "GardenShineigyoSnapshot"
