@@ -386,6 +386,33 @@
   width: 220px;
 }
 
+.radioGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+}
+
+.radioGroup legend {
+  color: var(--heading);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.radioGroup label {
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+}
+
+.radioGroup input {
+  width: auto;
+  min-height: auto;
+}
+
 .panel button {
   min-height: 36px;
   border: 0;

@@ -30,6 +30,12 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
       pageSize: 100,
       sort: JSON.parse(String(init.body)).sort ?? null,
     });
+    if (url === "/api/soil/list/export" && init?.method === "POST") {
+      return Promise.resolve(new Response(new Blob(["export"]), {
+        status: 200,
+        headers: { "Content-Disposition": "attachment; filename=\"list-master.csv\"; filename*=UTF-8''%E3%83%AA%E3%82%B9%E3%83%88.csv" },
+      }));
+    }
     if (url === "/api/soil/list/uploads") return json({ ok: true, uploads: options.uploads ?? [] });
     if (url === "/api/soil/list/orders/status") {
       return json({ ok: true, state: { lastRunAt: "2026-09-11T21:30:00Z", records: 12666, orderRows: 19434, phoneUpdates: 9506, deletedRows: 0, elapsedMs: 1200, error: null } });
@@ -465,6 +471,57 @@ describe("ListMasterClient list search UX", () => {
     fireEvent.click(screen.getByRole("button", { name: "削除" }));
     await waitFor(() => expect(confirm).toHaveBeenCalledWith("この条件を削除しますか"));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/soil/list/conditions/condition-1", { method: "DELETE" }));
+  });
+});
+
+describe("ListMasterClient export UX", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function stubDownloadApis() {
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:soil-list") });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  }
+
+  it("selects a format, downloads all counted rows, and shows the export overlay", async () => {
+    stubDownloadApis();
+    const fetchMock = installFetch();
+    render(<ListMasterClient />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "検索" }));
+    await screen.findByText("該当 12,563 件（0.8 秒）");
+    expect(screen.getByRole("radio", { name: "CSV" })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: "Excel" }));
+    fireEvent.click(screen.getByRole("button", { name: "12,563 件を書き出す" }));
+
+    expect(screen.getByText("12,563件をExcelで書き出しています…")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("12,563 件を Excel で書き出しました")).toBeInTheDocument());
+    const exportCall = fetchMock.mock.calls.find(([url, init]) => url === "/api/soil/list/export" && init?.method === "POST");
+    expect(exportCall).toBeTruthy();
+    expect(JSON.parse(String(exportCall?.[1]?.body))).toMatchObject({ format: "xlsx", sortKey: "listLoadedOnAsc" });
+    expect(JSON.parse(String(exportCall?.[1]?.body))).not.toHaveProperty("limit");
+  });
+
+  it("confirms exports over 100,000 rows before downloading", async () => {
+    stubDownloadApis();
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    installFetch();
+    render(<ListMasterClient />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "検索" }));
+    await screen.findByText("該当 12,563 件（0.8 秒）");
+    // 画面の件数だけを大きくするため、次の count 応答を差し替える。
+    vi.mocked(fetch).mockImplementationOnce(() => json({ ok: true, count: 120000, approximate: false, elapsedMs: 800 }) as unknown as ReturnType<typeof fetch>);
+    fireEvent.click(screen.getByRole("button", { name: "条件を変える" }));
+    fireEvent.click(screen.getByRole("button", { name: "検索" }));
+    await screen.findByText("該当 120,000 件（0.8 秒）");
+    fireEvent.click(screen.getByRole("button", { name: "120,000 件を書き出す" }));
+
+    expect(confirm).toHaveBeenCalledWith("約 120,000 件を書き出します（目安 6 分）。よろしいですか");
   });
 });
 

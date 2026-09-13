@@ -8,7 +8,6 @@ import { Doughnut } from "react-chartjs-2";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 
 import {
-  DEFAULT_EXPORT_LIMIT,
   EMPTY_OPTION_VALUE,
   MAX_SEARCH_PAGE,
   PREFECTURE_REGIONS,
@@ -67,10 +66,14 @@ type ExportHistory = {
   id: string;
   row_count: number;
   replaced_chars: number;
+  format?: ExportFormat;
+  rebuild_from_condition?: boolean;
   file_name: string;
   created_by: string | null;
   created_at: string;
 };
+
+type ExportFormat = "xlsx" | "csv" | "mer";
 
 type CallSyncState = {
   syncedThrough: string | null;
@@ -211,6 +214,14 @@ const initialFilters: FilterState = {
 
 const ACCEPTED_UPLOAD_EXTENSIONS = [".csv", ".xlsx", ".mer"];
 const ANALYSIS_ROW_LIMIT = 50;
+const EXCEL_MAX_EXPORT_ROWS = 1048575;
+const LARGE_EXPORT_CONFIRM_ROWS = 100000;
+const EXPORT_SPEED_ROWS_PER_MINUTE = 20000;
+const EXPORT_FORMAT_OPTIONS: Array<{ value: ExportFormat; label: string; action: string }> = [
+  { value: "xlsx", label: "Excel", action: "Excel で書き出し" },
+  { value: "csv", label: "CSV", action: "CSV で書き出し" },
+  { value: "mer", label: ".mer", action: ".mer で書き出し" },
+];
 
 /** 分析の各ブロックの見出し横の「？」に出す集計の条件（東海林さん 2026-09-13） */
 const ANALYSIS_HELP = {
@@ -463,6 +474,10 @@ function formatCount(value: number): string {
   return value.toLocaleString("ja-JP");
 }
 
+function exportFormatLabel(format: ExportFormat | undefined): string {
+  return EXPORT_FORMAT_OPTIONS.find((option) => option.value === format)?.label ?? ".mer";
+}
+
 function formatElapsedSeconds(value: number): string {
   return (value / 1000).toFixed(1);
 }
@@ -699,8 +714,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [selectedColumns, setSelectedColumns] = useState<SoilListColumnKey[]>(
     SOIL_LIST_EXPORT_COLUMNS.filter((column) => column.defaultChecked).map((column) => column.key),
   );
-  const [limit, setLimit] = useState(DEFAULT_EXPORT_LIMIT);
   const [sortKey, setSortKey] = useState<SoilListSortKey>("listLoadedOnAsc");
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
+  const [exportBusy, setExportBusy] = useState<{ count: number; format: string } | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("list");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
@@ -955,7 +971,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     await runListSearch({ nextPage: 1, nextSort: { key, direction }, refreshCount: false });
   }
 
-  async function downloadMer(body: Record<string, unknown>) {
+  async function downloadExport(body: Record<string, unknown>) {
     const response = await fetch("/api/soil/list/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -969,7 +985,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     const disposition = response.headers.get("Content-Disposition") ?? "";
     const utf8Match = /filename\*=UTF-8''([^;]+)/.exec(disposition);
     const asciiMatch = /filename="([^"]+)"/.exec(disposition);
-    const fileName = utf8Match ? decodeURIComponent(utf8Match[1]) : (asciiMatch?.[1] ?? "soil-list.mer");
+    const fileName = utf8Match ? decodeURIComponent(utf8Match[1]) : (asciiMatch?.[1] ?? "soil-list");
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -979,27 +995,44 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }
 
   async function handleExport() {
+    if (count === null) {
+      setMessage("先に検索してください");
+      return;
+    }
+    if (exportFormat === "xlsx" && count > EXCEL_MAX_EXPORT_ROWS) {
+      setMessage("Excel は 1,048,576 行までです。CSV か .mer を選んでください");
+      return;
+    }
+    if (count > LARGE_EXPORT_CONFIRM_ROWS) {
+      const minutes = Math.ceil(count / EXPORT_SPEED_ROWS_PER_MINUTE);
+      if (!window.confirm(`約 ${count.toLocaleString("ja-JP")} 件を書き出します（目安 ${minutes.toLocaleString("ja-JP")} 分）。よろしいですか`)) return;
+    }
+    const label = exportFormatLabel(exportFormat);
     setBusy(true);
+    setExportBusy({ count, format: label });
     setMessage("");
     try {
-      await downloadMer({ condition, columns: selectedColumns, limit, sortKey });
+      await downloadExport({ condition, columns: selectedColumns, sortKey, format: exportFormat });
       await loadSaved();
-      setMessage("書き出しました");
+      setMessage(`${count.toLocaleString("ja-JP")} 件を ${label} で書き出しました`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "書き出しできませんでした");
     } finally {
+      setExportBusy(null);
       setBusy(false);
     }
   }
 
-  async function handleRedownload(id: string) {
+  async function handleRedownload(item: ExportHistory) {
     setBusy(true);
+    setExportBusy({ count: item.row_count, format: exportFormatLabel(item.format) });
     setMessage("");
     try {
-      await downloadMer({ exportId: id });
+      await downloadExport({ exportId: item.id });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "再ダウンロードできませんでした");
     } finally {
+      setExportBusy(null);
       setBusy(false);
     }
   }
@@ -1324,6 +1357,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       </div>
 
       <ListProcessingOverlay open={searchBusy} mode="search" />
+      <ListProcessingOverlay open={exportBusy !== null} mode="export" count={exportBusy?.count ?? 0} format={exportBusy?.format ?? ""} />
       <SaveConditionModal
         open={conditionModalOpen}
         conditionName={conditionName}
@@ -1493,10 +1527,6 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         </div>
         <div className={styles.actions}>
           <label>
-            上限
-            <input type="number" min="1" max="50000" value={limit} onChange={(event) => setLimit(Number(event.target.value))} />
-          </label>
-          <label>
             並び
             <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SoilListSortKey)}>
               {SOIL_LIST_SORT_OPTIONS.map((option) => (
@@ -1506,18 +1536,37 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               ))}
             </select>
           </label>
-          <button type="button" onClick={handleExport} disabled={busy}>
-            .mer を書き出す
+          <fieldset className={styles.radioGroup}>
+            <legend>形式</legend>
+            {EXPORT_FORMAT_OPTIONS.map((option) => (
+              <label key={option.value}>
+                <input
+                  type="radio"
+                  name="soil-list-export-format"
+                  value={option.value}
+                  checked={exportFormat === option.value}
+                  disabled={option.value === "xlsx" && count !== null && count > EXCEL_MAX_EXPORT_ROWS}
+                  onChange={() => setExportFormat(option.value)}
+                />
+                {option.label}
+              </label>
+            ))}
+          </fieldset>
+          <button type="button" onClick={handleExport} disabled={busy || count === null || (exportFormat === "xlsx" && count > EXCEL_MAX_EXPORT_ROWS)}>
+            {count === null ? "検索後に書き出す" : `${count.toLocaleString("ja-JP")} 件を書き出す`}
           </button>
         </div>
+        <p className={styles.empty}>※ Excel は 1,048,576 行まで（Excel の上限）。それを超えるときは CSV か .mer を選んでください</p>
+        {count !== null && count > EXCEL_MAX_EXPORT_ROWS && <p className={styles.warningLine}>Excel の上限を超えています。CSV か .mer を選んでください。</p>}
         <div className={styles.listStack}>
           {exports.map((item) => (
             <div className={styles.savedRow} key={item.id}>
               <span>
-                {formatDateTime(item.created_at)} {item.created_by ?? ""} {item.row_count.toLocaleString("ja-JP")} 件
+                {formatDateTime(item.created_at)} {item.created_by ?? ""} {item.row_count.toLocaleString("ja-JP")} 件 {exportFormatLabel(item.format)}
               </span>
-              <small>置き換え {item.replaced_chars.toLocaleString("ja-JP")} 文字</small>
-              <button type="button" onClick={() => handleRedownload(item.id)}>
+              {item.format === "mer" || !item.format ? <small>置き換え {item.replaced_chars.toLocaleString("ja-JP")} 文字</small> : null}
+              {item.rebuild_from_condition && <small>条件で作り直し</small>}
+              <button type="button" onClick={() => handleRedownload(item)}>
                 再ダウンロード
               </button>
             </div>

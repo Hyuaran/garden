@@ -34,29 +34,32 @@ function quoteMerField(value: MerValue): { value: string; replaced: number } {
   return { value: `"${safe.value.replaceAll("\"", "\"\"")}"`, replaced: safe.count };
 }
 
+export function quoteMerLine(columns: SoilListColumnKey[], row?: MerRow): { line: string; replacedChars: number } {
+  let replacedChars = 0;
+  const line = columns
+    .map((column) => {
+      const value = row ? (row[column] ?? row[getColumnName(column)]) : getColumnName(column);
+      const quoted = quoteMerField(value);
+      replacedChars += quoted.replaced;
+      return quoted.value;
+    })
+    .join(",");
+  return { line, replacedChars };
+}
+
 export function buildMerBuffer(
   columns: SoilListColumnKey[],
   rows: MerRow[],
 ): { buffer: Buffer; text: string; replacedChars: number } {
   let replacedChars = 0;
   const lines = [
-    columns
-      .map((column) => {
-        const quoted = quoteMerField(getColumnName(column));
-        replacedChars += quoted.replaced;
-        return quoted.value;
-      })
-      .join(","),
+    quoteMerLine(columns).line,
     ...rows.map((row) =>
-      columns
-        .map((column) => {
-          const quoted = quoteMerField(row[column] ?? row[getColumnName(column)]);
-          replacedChars += quoted.replaced;
-          return quoted.value;
-        })
-        .join(","),
+      quoteMerLine(columns, row).line,
     ),
   ];
+  replacedChars += quoteMerLine(columns).replacedChars;
+  for (const row of rows) replacedChars += quoteMerLine(columns, row).replacedChars;
   const text = `${lines.join("\r\n")}\r\n`;
   return { buffer: iconv.encode(text, "cp932"), text, replacedChars };
 }
