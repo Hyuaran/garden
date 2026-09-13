@@ -46,5 +46,5 @@ export default async function ManualDetailPage({
   }
 
   const selectedDoc = visibleDocs.find((doc) => doc.key === tab) ?? visibleDocs[0];
-  return <ManualDetailClient module={manualModule} manual={manual} docs={visibleDocs} selectedDoc={selectedDoc} />;
+  return <ManualDetailClient module={manualModule} manual={manual} docs={visibleDocs} selectedDoc={selectedDoc} canManageVersions={role === "super_admin"} />;
 }
