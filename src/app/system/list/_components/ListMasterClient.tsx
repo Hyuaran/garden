@@ -430,11 +430,55 @@ function valueClassName(value: number): string {
 function filterActiveSegments(segments: AnalysisSegment[], days: 15 | 30): AnalysisSegment[] {
   if (days === 30) return segments;
   const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
-  return segments.filter((segment) => {
-    if (segment.segment === "合計") return true;
+  const kept = segments.filter((segment) => {
+    if (segment.segment === "合計") return false;
     if (!segment.segmentLastCalledOn) return false;
     return new Date(`${segment.segmentLastCalledOn}T00:00:00+09:00`).getTime() >= threshold;
   });
+  // 「合計」は絞った後のリストだけで作り直す（集計表の合計は 30 日分なので、そのまま出すと 15 日側の数字と合わない）
+  const total: AnalysisSegment = {
+    segment: "合計",
+    rowCount: 0,
+    calledCount: 0,
+    callTotal: 0,
+    invalidCount: 0,
+    validCount: 0,
+    orderCount: 0,
+    acquiredCount: 0,
+    lastCalledOn: null,
+    segmentLastCalledOn: null,
+    rotation: 0,
+    orderRateValid: 0,
+    orderRateTotal: 0,
+    results: [],
+  };
+  const results = new Map<string, number>();
+  for (const segment of kept) {
+    total.rowCount += segment.rowCount;
+    total.calledCount += segment.calledCount;
+    total.callTotal += segment.callTotal;
+    total.invalidCount += segment.invalidCount;
+    total.orderCount += segment.orderCount;
+    total.acquiredCount += segment.acquiredCount;
+    if (segment.lastCalledOn && (!total.lastCalledOn || segment.lastCalledOn > total.lastCalledOn)) total.lastCalledOn = segment.lastCalledOn;
+    if (segment.segmentLastCalledOn && (!total.segmentLastCalledOn || segment.segmentLastCalledOn > total.segmentLastCalledOn)) {
+      total.segmentLastCalledOn = segment.segmentLastCalledOn;
+    }
+    for (const item of segment.results) results.set(item.result, (results.get(item.result) ?? 0) + item.rowCount);
+  }
+  total.validCount = Math.max(0, total.rowCount - total.invalidCount);
+  total.rotation = total.rowCount > 0 ? total.callTotal / total.rowCount : 0;
+  total.orderRateValid = total.validCount > 0 ? total.orderCount / total.validCount : 0;
+  total.orderRateTotal = total.rowCount > 0 ? total.orderCount / total.rowCount : 0;
+  const order = segments.find((segment) => segment.segment === "合計")?.results.map((item) => item.result) ?? [];
+  total.results = [...results.entries()]
+    .map(([result, rowCount]) => ({ result, rowCount }))
+    .sort((a, b) => {
+      const left = order.indexOf(a.result);
+      const right = order.indexOf(b.result);
+      return (left === -1 ? order.length : left) - (right === -1 ? order.length : right) || b.rowCount - a.rowCount;
+    });
+  return [total, ...kept];
 }
 
 function resultLine(result: UploadResult): string {
