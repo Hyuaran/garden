@@ -1435,21 +1435,22 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   <input type="number" min="0" value={filters.callCountTo} onChange={(event) => setFilter("callCountTo", event.target.value)} />
                 </span>
               </label>
-              <label className={styles.searchInline}>
+              <label>
                 購入履歴
-                <span>
-                  <select value={filters.purchaseHistory} onChange={(event) => setFilter("purchaseHistory", event.target.value)}>
-                    {SOIL_LIST_FILTER_DEFINITIONS[9].options?.map((option) => (
-                      <option key={option} value={option}>
-                        {option || "指定なし"}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" disabled={busy}>
-                    検索
-                  </button>
-                </span>
+                <select value={filters.purchaseHistory} onChange={(event) => setFilter("purchaseHistory", event.target.value)}>
+                  {SOIL_LIST_FILTER_DEFINITIONS[9].options?.map((option) => (
+                    <option key={option} value={option}>
+                      {option || "指定なし"}
+                    </option>
+                  ))}
+                </select>
               </label>
+              {/* 「検索」は購入履歴の右隣の枠（購入履歴と同じ幅・下ぞろえ）。購入履歴の枠に同居させると購入履歴が細くなる */}
+              <div className={styles.searchCell}>
+                <button type="submit" disabled={busy}>
+                  検索
+                </button>
+              </div>
             </div>
           </form>
         )}
@@ -1472,7 +1473,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             <span>100 件ずつ{pageCapped ? `（ページ送りは ${MAX_SEARCH_PAGE} ページ＝${(MAX_SEARCH_PAGE * SEARCH_PAGE_SIZE).toLocaleString("ja-JP")} 件まで。先を見るときは条件で絞ってください）` : ""}</span>
           </div>
         </div>
-        <div className={styles.tableWrap}>
+        <div className={`${styles.tableWrap} ${styles.resultsTableWrap}`}>
           <table>
             <thead>
               <tr>
@@ -1525,7 +1526,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             </label>
           ))}
         </div>
-        <div className={styles.actions}>
+        <div className={`${styles.actions} ${styles.exportActions}`}>
           <label>
             並び
             <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SoilListSortKey)}>
@@ -1536,22 +1537,17 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               ))}
             </select>
           </label>
-          <fieldset className={styles.radioGroup}>
-            <legend>形式</legend>
-            {EXPORT_FORMAT_OPTIONS.map((option) => (
-              <label key={option.value}>
-                <input
-                  type="radio"
-                  name="soil-list-export-format"
-                  value={option.value}
-                  checked={exportFormat === option.value}
-                  disabled={option.value === "xlsx" && count !== null && count > EXCEL_MAX_EXPORT_ROWS}
-                  onChange={() => setExportFormat(option.value)}
-                />
-                {option.label}
-              </label>
-            ))}
-          </fieldset>
+          <label>
+            形式
+            <select value={exportFormat} onChange={(event) => setExportFormat(event.target.value as ExportFormat)}>
+              {EXPORT_FORMAT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} disabled={option.value === "xlsx" && count !== null && count > EXCEL_MAX_EXPORT_ROWS}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className={styles.exportSpacer} />
           <button type="button" onClick={handleExport} disabled={busy || count === null || (exportFormat === "xlsx" && count > EXCEL_MAX_EXPORT_ROWS)}>
             {count === null ? "検索後に書き出す" : `${count.toLocaleString("ja-JP")} 件を書き出す`}
           </button>

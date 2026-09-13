@@ -468,19 +468,47 @@
   font-weight: 700;
 }
 
-.searchInline span {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) auto;
-  gap: 8px;
-  align-items: end;
+/* 「検索」は購入履歴の右隣の枠。ほかの入力と同じ高さで下ぞろえ・枠いっぱいの幅 */
+.searchCell {
+  display: flex;
+  align-items: flex-end;
 }
 
-/* 「検索」は 1 行で（枠が狭いと「検／索」と縦に折れて読めなかった） */
-.searchInline button {
+.searchCell button {
+  width: 100%;
+  min-width: 96px;
   white-space: nowrap;
-  min-width: 72px;
-  padding-left: 18px;
-  padding-right: 18px;
+}
+
+/* 書き出しの操作行：並び・形式は左から並べ、ボタンだけ右端（詰めて見えないように間を空ける） */
+.exportActions {
+  justify-content: flex-start;
+  margin-top: 18px;
+}
+
+.exportActions label {
+  min-width: 180px;
+}
+
+.exportActions label select {
+  min-width: 180px;
+}
+
+.exportSpacer {
+  flex: 1 1 auto;
+}
+
+/* 検索結果の一覧：高さを画面の 6 割までにして枠の中で縦スクロール。
+   横スクロールのつまみが常に見える（100 行の下まで下りないと横に動かせなかった）。見出しは上に固定 */
+.resultsTableWrap {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.resultsTableWrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .tableHeaderRow {

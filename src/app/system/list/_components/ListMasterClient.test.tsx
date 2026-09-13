@@ -493,8 +493,10 @@ describe("ListMasterClient export UX", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "検索" }));
     await screen.findByText("該当 12,563 件（0.8 秒）");
-    expect(screen.getByRole("radio", { name: "CSV" })).toBeChecked();
-    fireEvent.click(screen.getByRole("radio", { name: "Excel" }));
+    // 形式はプルダウン（東海林さん 2026-09-13：ラジオだと詰まって見える）
+    const formatSelect = screen.getByRole("combobox", { name: "形式" });
+    expect(formatSelect).toHaveValue("csv");
+    fireEvent.change(formatSelect, { target: { value: "xlsx" } });
     fireEvent.click(screen.getByRole("button", { name: "12,563 件を書き出す" }));
 
     expect(screen.getByText("12,563件をExcelで書き出しています…")).toBeInTheDocument();
