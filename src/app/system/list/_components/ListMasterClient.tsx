@@ -223,39 +223,61 @@ const EXPORT_FORMAT_OPTIONS: Array<{ value: ExportFormat; label: string; action:
 ];
 
 /** 分析の各ブロックの見出し横の「？」に出す集計の条件（東海林さん 2026-09-13） */
-const ANALYSIS_HELP = {
-  vendor: [
-    "区切り：電話番号台帳の「最新購入先」（購入履歴のいちばん新しい行の購入先）。空欄は「（購入先なし）」",
-    "件数：その購入先の電話番号の数（電話番号が空の行は数えない）",
-    "円グラフ：その区切りの最終コール結果の内訳。コール回数 0 は「未コール」、上位 6 つ以外は「その他」",
-    "受注率：受注（案件）÷ 有効（件数 − 無効）。獲得（コール）は件数を並べるだけ",
-    "集計：毎朝 6:45 と右上の ↻ で作り直し",
-  ],
-  activeList: [
-    "区切り：リスト名があり、投入日が直近 60 日以内で、直近 30 日にコールがあるリスト",
-    "「直近 15 日」：その中で、15 日以内にコールがあるリストだけ。合計もその分だけで計算",
-    "件数：そのリスト名が電話番号台帳に入っている電話番号の数",
-    "円グラフ・受注率：①と同じ",
-  ],
-  contract: [
-    "区切り：新営業の「既契約情報」。空欄は「（既契約情報なし）」",
-    "件数：その既契約情報を持つ新営業の電話番号のうち、電話番号台帳にある番号。同じ番号が複数行あれば修正日が新しい行を使う",
-    "円グラフ・受注率：①と同じ",
-    "元データ：社内ホストPCから毎朝 5:30 に写す新営業の表",
-  ],
-} as const;
+type HelpRow = { label: string; text: string };
 
-/** 見出し横の「？」。マウスを乗せる・キーボードで選ぶと条件が出る */
-function HelpTip({ lines }: { lines: readonly string[] }) {
+/** 分析の各ブロックの見出し横の「？」に出す集計の条件（東海林さん 2026-09-13）。項目名｜説明 の 2 列で読みやすく */
+const ANALYSIS_HELP: Record<"vendor" | "activeList" | "contract", { title: string; rows: readonly HelpRow[] }> = {
+  vendor: {
+    title: "① どこから購入したか の数え方",
+    rows: [
+      { label: "区切り", text: "電話番号台帳の「最新購入先」（購入履歴のいちばん新しい行の購入先）。空欄は「（購入先なし）」" },
+      { label: "件数", text: "その購入先の電話番号の数（電話番号が空の行は数えない）" },
+      { label: "円グラフ", text: "その区切りの最終コール結果の内訳。コール回数 0 は「未コール」、上位 6 つ以外は「その他」" },
+      { label: "受注率", text: "受注（案件）÷ 有効（件数 − 無効）。「獲得（コール）」は件数を並べるだけ" },
+      { label: "集計", text: "毎朝 6:45 と右上の丸い矢印で作り直し" },
+    ],
+  },
+  activeList: {
+    title: "② 今コールしているリスト の数え方",
+    rows: [
+      { label: "区切り", text: "リスト名があり、投入日が直近 60 日以内で、直近 30 日にコールがあるリスト" },
+      { label: "直近 15 日", text: "その中で、15 日以内にコールがあるリストだけ。合計もその分だけで計算" },
+      { label: "件数", text: "そのリスト名が電話番号台帳に入っている電話番号の数" },
+      { label: "円グラフ・受注率", text: "①と同じ" },
+    ],
+  },
+  contract: {
+    title: "③ 新営業 FileMaker の既契約 の数え方",
+    rows: [
+      { label: "区切り", text: "新営業の「既契約情報」。空欄は「（既契約情報なし）」" },
+      { label: "件数", text: "その既契約情報を持つ新営業の電話番号のうち、電話番号台帳にある番号。同じ番号が複数行あれば修正日が新しい行を使う" },
+      { label: "円グラフ・受注率", text: "①と同じ" },
+      { label: "元データ", text: "社内ホストPCから毎朝 5:30 に写す新営業の表" },
+    ],
+  },
+};
+
+/** 見出し横の「？」。マウスを乗せる・キーボードで選ぶと条件が表で出る */
+function HelpTip({ help }: { help: { title: string; rows: readonly HelpRow[] } }) {
   return (
-    <span className={styles.helpTip} tabIndex={0} aria-label={lines.join("。")}>
+    <span className={styles.helpTip} tabIndex={0} aria-label={help.rows.map((row) => `${row.label}：${row.text}`).join("。")}>
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" />
         <path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.8" />
         <circle cx="12" cy="17" r=".6" fill="currentColor" />
       </svg>
       <span className={styles.helpTipBubble} role="tooltip">
-        {lines.map((line) => <span key={line}>{line}</span>)}
+        <strong className={styles.helpTipTitle}>{help.title}</strong>
+        <table className={styles.helpTipTable}>
+          <tbody>
+            {help.rows.map((row) => (
+              <tr key={row.label}>
+                <th scope="row">{row.label}</th>
+                <td>{row.text}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </span>
     </span>
   );
@@ -1145,7 +1167,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     selectedSegment: string,
     onSelectSegment: (segment: string) => void,
     controls?: ReactNode,
-    help?: readonly string[],
+    help?: { title: string; rows: readonly HelpRow[] },
     emptyText = "対象データがありません",
   ) {
     const selected = segments.find((segment) => segment.segment === selectedSegment) ?? segments[0];
@@ -1188,7 +1210,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     return (
       <section className={styles.analysisBlock}>
         <div className={styles.analysisBlockHeader}>
-          <h3>{title}{help && <HelpTip lines={help} />}</h3>
+          <h3>{title}{help && <HelpTip help={help} />}</h3>
           {controls}
         </div>
         {segments.length === 0 ? (
