@@ -13,11 +13,23 @@ function json(data: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), { status }));
 }
 
-function installFetch(options: { uploads?: unknown[]; analysis?: unknown } = {}) {
+function installFetch(options: { uploads?: unknown[]; analysis?: unknown; conditions?: unknown[] } = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url === "/api/soil/list/conditions") return json({ ok: true, conditions: [] });
+    if (url === "/api/soil/list/conditions" && !init?.method) return json({ ok: true, conditions: options.conditions ?? [] });
+    if (url === "/api/soil/list/conditions" && init?.method === "POST") return json({ ok: true, condition: { id: "saved-new" } });
+    if (url.startsWith("/api/soil/list/conditions/") && init?.method === "DELETE") return json({ ok: true });
     if (url === "/api/soil/list/exports") return json({ ok: true, exports: [] });
+    if (url === "/api/soil/list/count" && init?.method === "POST") return json({ ok: true, count: 12563, approximate: false, elapsedMs: 800 });
+    if (url === "/api/soil/list/search" && init?.method === "POST") return json({
+      ok: true,
+      rows: [
+        { phoneNumber: "072****81", name: "嶋*", addressCity: "大阪府大阪市", listName: "大阪AU", lastCalledOn: "2026-09-09", callCount: 2, purchaseStatus: "完パケ" },
+      ],
+      page: JSON.parse(String(init.body)).page ?? 1,
+      pageSize: 100,
+      sort: JSON.parse(String(init.body)).sort ?? null,
+    });
     if (url === "/api/soil/list/uploads") return json({ ok: true, uploads: options.uploads ?? [] });
     if (url === "/api/soil/list/orders/status") {
       return json({ ok: true, state: { lastRunAt: "2026-09-11T21:30:00Z", records: 12666, orderRows: 19434, phoneUpdates: 9506, deletedRows: 0, elapsedMs: 1200, error: null } });
@@ -377,6 +389,82 @@ describe("ListMasterClient filter condition conversion", () => {
 
     expect(groups.map((group) => group.label ?? "空欄")).toEqual(["北海道・東北", "近畿", "九州・沖縄", "その他の表記（表記ゆれ・件数の多い順）", "空欄"]);
     expect(groups.flatMap((group) => group.options.map((option) => option.label))).toEqual(["北海道", "大阪府", "沖縄県", "大阪", "（空欄）"]);
+  });
+});
+
+describe("ListMasterClient list search UX", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the processing overlay, collapses filters after search, and reopens them", async () => {
+    installFetch();
+    render(<ListMasterClient />);
+
+    const search = await screen.findByRole("button", { name: "検索" });
+    fireEvent.click(search);
+    expect(screen.getByText("条件に合う番号を検索しています…")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("該当 12,563 件（0.8 秒）")).toBeInTheDocument());
+    expect(screen.getByText(/AU光架電可否：○/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "一覧（12,563 件・個人情報は一部伏せる）" })).toBeInTheDocument();
+    expect(screen.getByText("1 / 126 ページ")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "条件を変える" }));
+    expect(screen.getByRole("button", { name: "検索" })).toBeInTheDocument();
+  });
+
+  it("changes sort and page through the table controls", async () => {
+    const fetchMock = installFetch();
+    render(<ListMasterClient />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "検索" }));
+    await screen.findByText("1 / 126 ページ");
+    fireEvent.click(screen.getByRole("button", { name: /氏名/ }));
+    await waitFor(() => {
+      const body = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+      expect(body.sort).toEqual({ key: "name", direction: "asc" });
+      expect(body.page).toBe(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "＞" }));
+    await waitFor(() => {
+      const body = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+      expect(body.page).toBe(2);
+      expect(body.sort).toEqual({ key: "name", direction: "asc" });
+    });
+  });
+
+  it("opens the save modal, disables empty save, loads and deletes saved conditions", async () => {
+    const confirm = vi.fn(() => true);
+    vi.stubGlobal("confirm", confirm);
+    const fetchMock = installFetch({
+      conditions: [
+        {
+          id: "condition-1",
+          name: "大阪・奈良 AU光○",
+          condition: { filters: [{ field: "prefecture", op: "in", value: ["大阪府", "奈良県"] }] },
+          created_by: "東海林",
+          updated_at: "2026-09-09T00:00:00+09:00",
+        },
+      ],
+    });
+    render(<ListMasterClient />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "条件を保存" }));
+    expect(screen.getByRole("dialog", { name: "条件を保存" })).toBeInTheDocument();
+    expect(screen.getByText(/いまの条件：/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("条件名"), { target: { value: "" } });
+    expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "読み込む" }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/soil/list/search", expect.objectContaining({ method: "POST" }));
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "条件を保存" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "削除" }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledWith("この条件を削除しますか"));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/soil/list/conditions/condition-1", { method: "DELETE" }));
   });
 });
 

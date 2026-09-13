@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ArcElement, Chart as ChartJS, Legend, Tooltip, type ChartData, type ChartOptions } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 
@@ -9,6 +10,7 @@ import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBr
 import {
   DEFAULT_EXPORT_LIMIT,
   EMPTY_OPTION_VALUE,
+  MAX_SEARCH_PAGE,
   PREFECTURE_REGIONS,
   SOIL_LIST_EXPORT_COLUMNS,
   SOIL_LIST_FILTER_DEFINITIONS,
@@ -23,6 +25,7 @@ import {
 } from "../_lib/list-fields";
 
 import styles from "./list-master.module.css";
+import { ListProcessingOverlay } from "./ListProcessingOverlay";
 import MultiSelectFilter, { type MultiSelectOptionGroup } from "./MultiSelectFilter";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -36,6 +39,21 @@ type SearchRow = {
   callCount: number | null;
   purchaseStatus: string;
 };
+
+type ListSearchSortKey = keyof SearchRow;
+type ListSearchSortDirection = "asc" | "desc";
+type ListSearchSort = { key: ListSearchSortKey; direction: ListSearchSortDirection };
+
+const SEARCH_PAGE_SIZE = 100;
+const SEARCH_TABLE_COLUMNS: Array<{ key: ListSearchSortKey; label: string }> = [
+  { key: "phoneNumber", label: "電話番号" },
+  { key: "name", label: "氏名" },
+  { key: "addressCity", label: "住所（市区町村まで）" },
+  { key: "listName", label: "リスト名" },
+  { key: "lastCalledOn", label: "最終コール日" },
+  { key: "callCount", label: "コール回数" },
+  { key: "purchaseStatus", label: "購入状態" },
+];
 
 type SavedCondition = {
   id: string;
@@ -553,6 +571,109 @@ function formatOrderSyncStatus(state: OrderSyncState | null): string {
   return `受注履歴最終更新：${formatJstWithWeekday(state.lastRunAt)}`;
 }
 
+function optionLabel(field: SoilListOptionFieldKey, value: string, options: Partial<SoilListOptionsPayload>): string {
+  if (value === EMPTY_OPTION_VALUE || value === "") return field === "appointmentBlocked" ? "なし" : "（空欄）";
+  return options[field]?.find((option) => option.value === value)?.label ?? value;
+}
+
+export function describeFilters(filters: FilterState, options: Partial<SoilListOptionsPayload> = {}): string {
+  const parts: string[] = [];
+  const pushMulti = (field: SoilListOptionFieldKey, label: string, values: string[]) => {
+    if (values.length === 0) return;
+    parts.push(`${label}：${values.map((value) => optionLabel(field, value, options)).join("・")}`);
+  };
+  pushMulti("prefecture", "都道府県", filters.prefecture);
+  pushMulti("auCallAvailability", "AU光架電可否", filters.auCallAvailability);
+  pushMulti("purchaseStatus", "購入状態", filters.purchaseStatus);
+  pushMulti("appointmentBlocked", "アポ禁", filters.appointmentBlocked);
+  if (filters.listName) parts.push(`リスト名：${filters.listName}を含む`);
+  if (filters.listLoadedOnFrom || filters.listLoadedOnTo) parts.push(`投入日：${filters.listLoadedOnFrom || "指定なし"}〜${filters.listLoadedOnTo || "指定なし"}`);
+  if (filters.recheckedOnFrom || filters.recheckedOnTo) parts.push(`再判定日：${filters.recheckedOnFrom || "指定なし"}〜${filters.recheckedOnTo || "指定なし"}`);
+  if (filters.lastCalledOnFrom || filters.lastCalledOnTo) parts.push(`最終コール日：${filters.lastCalledOnFrom || "指定なし"}〜${filters.lastCalledOnTo || "指定なし"}`);
+  if (filters.callCountFrom || filters.callCountTo) parts.push(`コール回数：${filters.callCountFrom || "指定なし"}〜${filters.callCountTo || "指定なし"}`);
+  if (filters.purchaseHistory) parts.push(`購入履歴：${filters.purchaseHistory}`);
+  return parts.join("／") || "指定なし";
+}
+
+function SaveConditionModal({
+  open,
+  conditionName,
+  currentSummary,
+  savedConditions,
+  busy,
+  message,
+  onNameChange,
+  onClose,
+  onSave,
+  onLoad,
+  onDelete,
+}: {
+  open: boolean;
+  conditionName: string;
+  currentSummary: string;
+  savedConditions: SavedCondition[];
+  busy: boolean;
+  message: string;
+  onNameChange(value: string): void;
+  onClose(): void;
+  onSave(): void;
+  onLoad(item: SavedCondition): void;
+  onDelete(id: string): void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return createPortal(
+    <div className={styles.modalBackdrop} onMouseDown={onClose}>
+      <section className={styles.conditionModal} aria-modal="true" role="dialog" aria-labelledby="condition-modal-heading" onMouseDown={(event) => event.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2 id="condition-modal-heading">条件を保存</h2>
+          <button type="button" className={styles.modalCloseButton} onClick={onClose} aria-label="閉じる">
+            ×
+          </button>
+        </div>
+        <div className={styles.modalSaveRow}>
+          <label>
+            条件名
+            <input value={conditionName} onChange={(event) => onNameChange(event.target.value)} />
+          </label>
+          <button type="button" onClick={onSave} disabled={busy || conditionName.trim() === ""}>
+            保存
+          </button>
+        </div>
+        <p className={styles.conditionSummary}>いまの条件：{currentSummary}</p>
+        {message && <p className={styles.message}>{message}</p>}
+        <h3>保存した条件</h3>
+        <div className={styles.listStack}>
+          {savedConditions.length === 0 && <p className={styles.empty}>保存した条件はありません</p>}
+          {savedConditions.map((item) => (
+            <div className={styles.modalSavedRow} key={item.id}>
+              <span>{item.name}</span>
+              <small>
+                {item.created_by ?? ""} {formatDateTime(item.updated_at)}
+              </small>
+              <button type="button" onClick={() => onLoad(item)} disabled={busy}>
+                読み込む
+              </button>
+              <button type="button" className={styles.secondaryButton} onClick={() => onDelete(item.id)} disabled={busy}>
+                削除
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
 export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boolean }) {
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [count, setCount] = useState<number | null>(null);
@@ -564,11 +685,17 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [options, setOptions] = useState<Partial<SoilListOptionsPayload>>({});
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [searchBusy, setSearchBusy] = useState(false);
   const [callSyncState, setCallSyncState] = useState<CallSyncState | null>(null);
   const [callSyncBusy, setCallSyncBusy] = useState(false);
   const [callSyncMessage, setCallSyncMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [orderSyncState, setOrderSyncState] = useState<OrderSyncState | null>(null);
   const [conditionName, setConditionName] = useState("AU光○ アポ禁なし");
+  const [conditionModalOpen, setConditionModalOpen] = useState(false);
+  const [conditionModalMessage, setConditionModalMessage] = useState("");
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [listPage, setListPage] = useState(1);
+  const [listSort, setListSort] = useState<ListSearchSort | null>(null);
   const [selectedColumns, setSelectedColumns] = useState<SoilListColumnKey[]>(
     SOIL_LIST_EXPORT_COLUMNS.filter((column) => column.defaultChecked).map((column) => column.key),
   );
@@ -603,6 +730,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [analysisRefreshBusy, setAnalysisRefreshBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const condition = useMemo(() => filtersToCondition(filters), [filters]);
+  const currentFilterSummary = useMemo(() => describeFilters(filters, options), [filters, options]);
+  // ページ送りは 500 ページ（50,000 件）まで。深いページは遅い（本番実測：190 万件目で 89 秒）ので、それより先は条件で絞ってもらう
+  const rawTotalPages = count === null ? 1 : Math.max(1, Math.ceil(count / SEARCH_PAGE_SIZE));
+  const totalPages = Math.min(rawTotalPages, MAX_SEARCH_PAGE);
+  const pageCapped = rawTotalPages > MAX_SEARCH_PAGE;
 
   async function loadSaved() {
     const [conditionsRes, exportsRes] = await Promise.all([
@@ -715,37 +847,63 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
-  async function handleCountAndSearch() {
+  async function runListSearch({
+    nextPage = 1,
+    nextSort = listSort,
+    nextCondition = condition,
+    refreshCount = true,
+  }: {
+    nextPage?: number;
+    nextSort?: ListSearchSort | null;
+    nextCondition?: SoilListConditionPayload;
+    refreshCount?: boolean;
+  } = {}) {
     setBusy(true);
+    setSearchBusy(true);
     setMessage("");
     try {
-      const countResponse = await fetch("/api/soil/list/count", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ condition }),
-      });
-      const countData = await readJson<{ count: number; approximate: boolean; elapsedMs: number }>(countResponse);
-      setCount(countData.count);
-      setApproximate(countData.approximate);
-      setElapsedMs(countData.elapsedMs);
+      if (refreshCount) {
+        const countResponse = await fetch("/api/soil/list/count", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ condition: nextCondition }),
+        });
+        const countData = await readJson<{ count: number; approximate: boolean; elapsedMs: number }>(countResponse);
+        setCount(countData.count);
+        setApproximate(countData.approximate);
+        setElapsedMs(countData.elapsedMs);
+      }
 
       const searchResponse = await fetch("/api/soil/list/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ condition }),
+        body: JSON.stringify({ condition: nextCondition, page: nextPage, sort: nextSort }),
       });
-      const searchData = await readJson<{ rows: SearchRow[] }>(searchResponse);
+      const searchData = await readJson<{ rows: SearchRow[]; page: number; sort: ListSearchSort | null }>(searchResponse);
       setRows(searchData.rows);
+      setListPage(searchData.page);
+      setListSort(searchData.sort);
+      setFiltersCollapsed(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "取得できませんでした");
     } finally {
+      setSearchBusy(false);
       setBusy(false);
     }
   }
 
+  async function handleCountAndSearch() {
+    await runListSearch({ nextPage: 1, refreshCount: true });
+  }
+
+  function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void handleCountAndSearch();
+  }
+
   async function handleSaveCondition() {
     setBusy(true);
-    setMessage("");
+    setConditionModalMessage("");
     try {
       const response = await fetch("/api/soil/list/conditions", {
         method: "POST",
@@ -754,26 +912,47 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       });
       await readJson(response);
       await loadSaved();
-      setMessage("条件を保存しました");
+      setConditionName("");
+      setConditionModalMessage("保存しました");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "保存できませんでした");
+      setConditionModalMessage(error instanceof Error ? error.message : "保存できませんでした");
     } finally {
       setBusy(false);
     }
   }
 
   async function handleDeleteCondition(id: string) {
+    if (!window.confirm("この条件を削除しますか")) return;
     setBusy(true);
-    setMessage("");
+    setConditionModalMessage("");
     try {
-      const response = await fetch(`/api/soil/list/conditions?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const response = await fetch(`/api/soil/list/conditions/${encodeURIComponent(id)}`, { method: "DELETE" });
       await readJson(response);
       await loadSaved();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "削除できませんでした");
+      setConditionModalMessage(error instanceof Error ? error.message : "削除できませんでした");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleLoadCondition(item: SavedCondition) {
+    const nextFilters = conditionToFilters(item.condition);
+    setFilters(nextFilters);
+    setConditionModalOpen(false);
+    setConditionModalMessage("");
+    await runListSearch({ nextPage: 1, nextCondition: item.condition, refreshCount: true });
+  }
+
+  async function handlePageChange(nextPage: number) {
+    if (nextPage < 1 || nextPage > totalPages || busy) return;
+    await runListSearch({ nextPage, refreshCount: false });
+  }
+
+  async function handleSortChange(key: ListSearchSortKey) {
+    if (busy) return;
+    const direction: ListSearchSortDirection = listSort?.key === key && listSort.direction === "asc" ? "desc" : "asc";
+    await runListSearch({ nextPage: 1, nextSort: { key, direction }, refreshCount: false });
   }
 
   async function downloadMer(body: Record<string, unknown>) {
@@ -1144,114 +1323,137 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         ))}
       </div>
 
+      <ListProcessingOverlay open={searchBusy} mode="search" />
+      <SaveConditionModal
+        open={conditionModalOpen}
+        conditionName={conditionName}
+        currentSummary={currentFilterSummary}
+        savedConditions={savedConditions}
+        busy={busy}
+        message={conditionModalMessage}
+        onNameChange={setConditionName}
+        onClose={() => setConditionModalOpen(false)}
+        onSave={() => void handleSaveCondition()}
+        onLoad={(item) => void handleLoadCondition(item)}
+        onDelete={(id) => void handleDeleteCondition(id)}
+      />
+
       {activeTab === "list" && (
         <>
-      <section className={styles.panel} aria-labelledby="filter-heading">
+      <section className={`${styles.panel} ${filtersCollapsed ? styles.filterSummaryPanel : ""}`} aria-labelledby="filter-heading">
         <div className={styles.panelTitle}>
           <h2 id="filter-heading">絞り込み</h2>
-          <span>{SOIL_LIST_FILTER_DEFINITIONS.length} 項目</span>
-        </div>
-        <div className={styles.filterGrid}>
-          <MultiSelectFilter label="都道府県" value={filters.prefecture} groups={buildOptionGroups("prefecture", options.prefecture)} onChange={(value) => setFilter("prefecture", value)} />
-          <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} />
-          <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} />
-          <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} />
-          <label className={styles.wide}>
-            リスト名
-            <input value={filters.listName} onChange={(event) => setFilter("listName", event.target.value)} placeholder="含む" />
-          </label>
-          <label>
-            リスト投入日
-            <span className={styles.range}>
-              <input type="date" value={filters.listLoadedOnFrom} onChange={(event) => setFilter("listLoadedOnFrom", event.target.value)} />
-              <input type="date" value={filters.listLoadedOnTo} onChange={(event) => setFilter("listLoadedOnTo", event.target.value)} />
-            </span>
-          </label>
-          <label>
-            再判定日
-            <span className={styles.range}>
-              <input type="date" value={filters.recheckedOnFrom} onChange={(event) => setFilter("recheckedOnFrom", event.target.value)} />
-              <input type="date" value={filters.recheckedOnTo} onChange={(event) => setFilter("recheckedOnTo", event.target.value)} />
-            </span>
-          </label>
-          <label>
-            最終コール日
-            <span className={styles.range}>
-              <input type="date" value={filters.lastCalledOnFrom} onChange={(event) => setFilter("lastCalledOnFrom", event.target.value)} />
-              <input type="date" value={filters.lastCalledOnTo} onChange={(event) => setFilter("lastCalledOnTo", event.target.value)} />
-            </span>
-          </label>
-          <label>
-            コール回数
-            <span className={styles.range}>
-              <input type="number" min="0" value={filters.callCountFrom} onChange={(event) => setFilter("callCountFrom", event.target.value)} />
-              <input type="number" min="0" value={filters.callCountTo} onChange={(event) => setFilter("callCountTo", event.target.value)} />
-            </span>
-          </label>
-          <label>
-            購入履歴
-            <select value={filters.purchaseHistory} onChange={(event) => setFilter("purchaseHistory", event.target.value)}>
-              {SOIL_LIST_FILTER_DEFINITIONS[9].options?.map((option) => (
-                <option key={option} value={option}>
-                  {option || "指定なし"}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div className={styles.actions}>
-          <button type="button" onClick={handleCountAndSearch} disabled={busy}>
-            件数を見る
-          </button>
-          <input value={conditionName} onChange={(event) => setConditionName(event.target.value)} aria-label="保存する条件名" />
-          <button type="button" onClick={handleSaveCondition} disabled={busy}>
+          <button type="button" className={styles.secondaryButton} onClick={() => { setConditionModalOpen(true); setConditionModalMessage(""); }} disabled={busy}>
             条件を保存
           </button>
         </div>
-        {count !== null && (
-          <p className={styles.result}>
-            該当 {approximate ? "約 " : ""}
-            {count.toLocaleString("ja-JP")} 件
-            {elapsedMs !== null ? `（${(elapsedMs / 1000).toFixed(1)} 秒）` : ""}
-          </p>
+        {filtersCollapsed && count !== null ? (
+          <div className={styles.collapsedFilterRow}>
+            <strong>
+              該当 {approximate ? "約 " : ""}
+              {count.toLocaleString("ja-JP")} 件
+              {elapsedMs !== null ? `（${(elapsedMs / 1000).toFixed(1)} 秒）` : ""}
+            </strong>
+            <span>{currentFilterSummary}</span>
+            <button type="button" className={styles.secondaryButton} onClick={() => setFiltersCollapsed(false)}>
+              条件を変える
+            </button>
+            <button type="button" className={styles.secondaryButton} onClick={() => { setConditionModalOpen(true); setConditionModalMessage(""); }} disabled={busy}>
+              条件を保存
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleFilterSubmit}>
+            <div className={styles.filterGrid}>
+              <MultiSelectFilter label="都道府県" value={filters.prefecture} groups={buildOptionGroups("prefecture", options.prefecture)} onChange={(value) => setFilter("prefecture", value)} />
+              <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} />
+              <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} />
+              <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} />
+              <label className={styles.wide}>
+                リスト名
+                <input value={filters.listName} onChange={(event) => setFilter("listName", event.target.value)} placeholder="含む" />
+              </label>
+              <label>
+                リスト投入日
+                <span className={styles.range}>
+                  <input type="date" value={filters.listLoadedOnFrom} onChange={(event) => setFilter("listLoadedOnFrom", event.target.value)} />
+                  <input type="date" value={filters.listLoadedOnTo} onChange={(event) => setFilter("listLoadedOnTo", event.target.value)} />
+                </span>
+              </label>
+              <label>
+                再判定日
+                <span className={styles.range}>
+                  <input type="date" value={filters.recheckedOnFrom} onChange={(event) => setFilter("recheckedOnFrom", event.target.value)} />
+                  <input type="date" value={filters.recheckedOnTo} onChange={(event) => setFilter("recheckedOnTo", event.target.value)} />
+                </span>
+              </label>
+              <label>
+                最終コール日
+                <span className={styles.range}>
+                  <input type="date" value={filters.lastCalledOnFrom} onChange={(event) => setFilter("lastCalledOnFrom", event.target.value)} />
+                  <input type="date" value={filters.lastCalledOnTo} onChange={(event) => setFilter("lastCalledOnTo", event.target.value)} />
+                </span>
+              </label>
+              <label>
+                コール回数
+                <span className={styles.range}>
+                  <input type="number" min="0" value={filters.callCountFrom} onChange={(event) => setFilter("callCountFrom", event.target.value)} />
+                  <input type="number" min="0" value={filters.callCountTo} onChange={(event) => setFilter("callCountTo", event.target.value)} />
+                </span>
+              </label>
+              <label className={styles.searchInline}>
+                購入履歴
+                <span>
+                  <select value={filters.purchaseHistory} onChange={(event) => setFilter("purchaseHistory", event.target.value)}>
+                    {SOIL_LIST_FILTER_DEFINITIONS[9].options?.map((option) => (
+                      <option key={option} value={option}>
+                        {option || "指定なし"}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="submit" disabled={busy}>
+                    検索
+                  </button>
+                </span>
+              </label>
+            </div>
+          </form>
         )}
         {message && <p className={styles.message}>{message}</p>}
       </section>
 
-      <section className={styles.panel} aria-labelledby="saved-heading">
-        <h2 id="saved-heading">保存した条件</h2>
-        <div className={styles.listStack}>
-          {savedConditions.length === 0 && <p className={styles.empty}>保存した条件はありません</p>}
-          {savedConditions.map((item) => (
-            <div className={styles.savedRow} key={item.id}>
-              <span>{item.name}</span>
-              <small>
-                {formatDateTime(item.updated_at)} {item.created_by ?? ""}
-              </small>
-              <button type="button" onClick={() => setFilters(conditionToFilters(item.condition))}>
-                この条件で絞る
-              </button>
-              <button type="button" className={styles.secondaryButton} onClick={() => handleDeleteCondition(item.id)}>
-                削除
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section className={styles.panel} aria-labelledby="table-heading">
-        <h2 id="table-heading">一覧（先頭 100 件・個人情報は一部伏せる）</h2>
+        <div className={styles.tableHeaderRow}>
+          <h2 id="table-heading">
+            一覧（{count === null ? "0" : `${approximate ? "約 " : ""}${count.toLocaleString("ja-JP")}`} 件・個人情報は一部伏せる）
+          </h2>
+          <div className={styles.pagination}>
+            <button type="button" className={styles.secondaryButton} onClick={() => void handlePageChange(listPage - 1)} disabled={busy || listPage <= 1}>
+              ＜
+            </button>
+            <span>{listPage} / {totalPages} ページ</span>
+            <button type="button" className={styles.secondaryButton} onClick={() => void handlePageChange(listPage + 1)} disabled={busy || listPage >= totalPages}>
+              ＞
+            </button>
+            <span>100 件ずつ{pageCapped ? `（ページ送りは ${MAX_SEARCH_PAGE} ページ＝${(MAX_SEARCH_PAGE * SEARCH_PAGE_SIZE).toLocaleString("ja-JP")} 件まで。先を見るときは条件で絞ってください）` : ""}</span>
+          </div>
+        </div>
         <div className={styles.tableWrap}>
           <table>
             <thead>
               <tr>
-                <th>電話番号</th>
-                <th>氏名</th>
-                <th>住所（市区町村まで）</th>
-                <th>リスト名</th>
-                <th>最終コール日</th>
-                <th>コール回数</th>
-                <th>購入状態</th>
+                {SEARCH_TABLE_COLUMNS.map((column) => (
+                  <th key={column.key}>
+                    <button type="button" className={styles.sortHeaderButton} onClick={() => void handleSortChange(column.key)}>
+                      {column.label}
+                      {listSort?.key === column.key && (
+                        <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+                          {listSort.direction === "asc" ? <path d="M6 2 2 8h8z" /> : <path d="M6 10 2 4h8z" />}
+                        </svg>
+                      )}
+                    </button>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>

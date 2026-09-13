@@ -410,6 +410,216 @@
   color: var(--tealDark) !important;
 }
 
+.filterSummaryPanel {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.collapsedFilterRow {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.collapsedFilterRow strong,
+.collapsedFilterRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collapsedFilterRow strong {
+  color: var(--heading);
+}
+
+.collapsedFilterRow span {
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.searchInline span {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: 8px;
+}
+
+.tableHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.tableHeaderRow h2 {
+  margin: 0;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pagination button {
+  min-width: 36px;
+  padding: 6px 10px;
+}
+
+.sortHeaderButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  font: inherit;
+  text-align: left;
+}
+
+.sortHeaderButton svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  flex: 0 0 auto;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 20, 35, .56);
+}
+
+.conditionModal {
+  box-sizing: border-box;
+  width: min(760px, 100%);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.modalHeader h2,
+.conditionModal h3 {
+  margin: 0;
+  color: var(--heading);
+  letter-spacing: 0;
+}
+
+.modalHeader h2 {
+  font-size: 20px;
+}
+
+.conditionModal h3 {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.modalCloseButton {
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--heading);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.modalSaveRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.modalSaveRow label {
+  display: grid;
+  gap: 6px;
+  color: var(--heading);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.modalSaveRow input,
+.conditionModal input {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink);
+  padding: 7px 9px;
+  font-size: 14px;
+}
+
+.conditionSummary {
+  margin: 12px 0 0;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.modalSavedRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.modalSavedRow small {
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.conditionModal button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--teal);
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.conditionModal button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
 .result {
   margin-top: 12px;
   font-size: 15px;
@@ -968,6 +1178,18 @@
   .savedRow {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .collapsedFilterRow,
+  .modalSaveRow,
+  .modalSavedRow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .collapsedFilterRow strong,
+  .collapsedFilterRow span {
+    white-space: normal;
   }
 
   .purchaseVendorRow {

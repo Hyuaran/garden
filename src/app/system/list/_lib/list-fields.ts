@@ -207,6 +207,8 @@ export const DEFAULT_SOIL_LIST_CONDITION: SoilListConditionPayload = {
 };
 
 export const MAX_SEARCH_ROWS = 100;
+/** ページ送りの上限。offset が深いと遅くなる（本番実測：offset 50,000 で 2〜9 秒、190 万件目で 89 秒）ので 500 ページ＝50,000 件まで */
+export const MAX_SEARCH_PAGE = 500;
 export const DEFAULT_EXPORT_LIMIT = 5000;
 export const MAX_EXPORT_LIMIT = 50000;
 
