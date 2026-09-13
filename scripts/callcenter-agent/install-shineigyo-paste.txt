@@ -1,11 +1,12 @@
 # 社内ホストPC（コール履歴を毎日読んでいる PC・C:\Garden\callcenter-agent\ がある PC）での「新営業の毎朝の写し」の入れ方
 # 2026-09-13 作成（Codex-317）。3 段階。各段階の中身を PowerShell（管理者）に丸ごと貼る。
 #
-# ■ 段階 0（手で行う・貼る前に）
-#   このPC（東海林さんの PC）の次の 3 ファイルを、社内ホストPCの C:\Garden\callcenter-agent\ にコピーして上書きする
-#     C:\garden\a-bloom-008\scripts\callcenter-agent\ShineigyoSnapshot.ps1
-#     C:\garden\a-bloom-008\scripts\callcenter-agent\Register-ShineigyoSnapshotTask.ps1
-#     C:\garden\a-bloom-008\scripts\callcenter-agent\CallCenterAgent.Core.ps1   ← 既存を上書き（新営業用の関数を足したもの。今の取り込みの関数はそのまま）
+# ■ 段階 0（手で行う・貼る前に）：フォルダごとコピーして上書き
+#   コピー元（このPC）  ：C:\garden\a-bloom-008\scripts\callcenter-agent\   の中身ぜんぶ
+#   コピー先（社内ホストPC）：C:\Garden\callcenter-agent\   に貼り付け →「ファイルを置き換える」を選ぶ
+#   ・コピー元に config.json は無いので、社内ホストPCの設定（config.json）と状態ファイルは消えない
+#   ・CallCenterAgent.ps1（今のコール履歴の取り込み）は 8/14 から変わっていないので、上書きしても中身は同じ
+#   ・README や tests など余分なものも一緒に入るが、動きには影響しない
 #
 # ■ 段階 1：設定に送り先を 1 行足して、試し読み（DryRun＝Garden には送らない・件数と列の型だけ出る）
 $cfgPath = "C:\Garden\callcenter-agent\config.json"
