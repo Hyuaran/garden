@@ -42,12 +42,6 @@
   line-height: 1.25;
 }
 
-.lead {
-  margin: 8px 0 0;
-  color: var(--sub);
-  line-height: 1.8;
-}
-
 .callSyncStatus {
   display: flex;
   align-items: center;
@@ -481,21 +475,24 @@
 }
 
 /* 書き出しの操作行：並び・形式は左から並べ、ボタンだけ右端（詰めて見えないように間を空ける） */
+/* 書き出しの操作行：形式のプルダウン（180px）の右隣にボタンを並べる（端と端だと使いにくい。東海林さん 2026-09-13） */
 .exportActions {
   justify-content: flex-start;
+  align-items: flex-end;
+  gap: 12px;
   margin-top: 18px;
 }
 
 .exportActions label {
-  min-width: 180px;
+  width: 180px;
 }
 
 .exportActions label select {
-  min-width: 180px;
+  width: 100%;
 }
 
-.exportSpacer {
-  flex: 1 1 auto;
+.exportActions button {
+  white-space: nowrap;
 }
 
 /* 検索結果の一覧：高さを画面の 6 割までにして枠の中で縦スクロール。

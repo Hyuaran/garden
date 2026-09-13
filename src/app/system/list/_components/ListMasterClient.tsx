@@ -1344,7 +1344,6 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       <div className={styles.header}>
         <SystemBreadcrumb items={[{ label: "リストマスタ" }]} />
         <h1>リストマスタ</h1>
-        <p className={styles.lead}>営業リストを条件で絞って件数を見て、.mer に書き出します。</p>
         <div className={styles.callSyncStatus}>
           <span>{formatCallSyncStatus(callSyncState)}</span>
           {canSyncCalls && (
@@ -1560,7 +1559,6 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               ))}
             </select>
           </label>
-          <span className={styles.exportSpacer} />
           <button type="button" onClick={handleExport} disabled={busy || count === null || excelOverLimit}>
             {count === null ? "検索後に書き出す" : `${count.toLocaleString("ja-JP")} 件を書き出す`}
           </button>
