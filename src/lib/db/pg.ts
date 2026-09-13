@@ -1,4 +1,8 @@
-import { Pool, type QueryResultRow } from "pg";
+import { Pool, types, type QueryResultRow } from "pg";
+
+// date 型（OID 1082）は Date に変換せず "YYYY-MM-DD" の文字列のまま受け取る
+// （変換すると画面に "Sun May 31 2026 00:00:00 GMT+0000 …" と出る。時刻付き timestamptz は今までどおり）
+types.setTypeParser(1082, (value: string) => value);
 
 /**
  * PostgreSQL への直結（Supabase の Session pooler）。

@@ -476,11 +476,26 @@
   color: var(--sub);
   font-size: 13px;
   font-weight: 800;
+  flex-wrap: wrap;
+}
+
+/* 「1 / 500 ページ」は途中で折らない。長い注意書き（500 ページまで…）は次の行に回す */
+.pagination > span:first-of-type {
+  white-space: nowrap;
+}
+
+.pagination > span:last-of-type {
+  font-weight: 600;
 }
 
 .pagination button {
   min-width: 36px;
   padding: 6px 10px;
+}
+
+/* 一覧の見出しは折り返さない（「氏／名」と縦に折れて読めなかった） */
+.tableWrap th {
+  white-space: nowrap;
 }
 
 .sortHeaderButton {
