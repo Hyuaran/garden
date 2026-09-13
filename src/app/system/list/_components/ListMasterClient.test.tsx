@@ -78,7 +78,18 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   rotation: 1.5,
                   orderRateValid: 3 / 25,
                   orderRateTotal: 3 / 28,
-                  results: [{ result: "留守", rowCount: 546083 }],
+                  results: [
+                    { result: "留守", rowCount: 546083 },
+                    { result: "担不", rowCount: 0 },
+                    { result: "無効", rowCount: 0 },
+                    { result: "NG", rowCount: 0 },
+                    { result: "前確OK", rowCount: 0 },
+                    { result: "見込", rowCount: 0 },
+                    { result: "獲得", rowCount: 0 },
+                    { result: "未コール", rowCount: 118626 },
+                    { result: "その他", rowCount: 10 },
+                    { result: "（結果なし）", rowCount: 783 },
+                  ],
                 },
                 {
                   segment: "データ総研",
@@ -402,6 +413,11 @@ describe("ListMasterClient analysis vendor controls", () => {
     const legendButton = await vendor.findByRole("button", { name: /留守\s+546,083\s+件/ });
 
     expect(legendButton).toBeInTheDocument();
+    expect(vendor.getByRole("button", { name: /前確OK\s+0\s+件/ })).toBeInTheDocument();
+    const orderSummary = vendor.getByText("うち受注（案件）");
+    expect(orderSummary).toBeInTheDocument();
+    expect(orderSummary.closest("button")).toBeNull();
+    expect(vendor.getByText("Kintone の案件から数えた数。コール結果とは別の数え方です。")).toBeInTheDocument();
     expect(container.querySelector("[class*='resultButton']")).not.toBeInTheDocument();
 
     fireEvent.click(legendButton);

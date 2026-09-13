@@ -103,8 +103,22 @@ export type RefreshResult = {
 };
 
 const PAGE_SIZE = 1000;
-const TOP_RESULT_LIMIT = 6;
-const RESULT_ORDER = ["留守", "担不", "無効", "NG", "前確OK", "見込", "未コール", "その他"];
+const FIXED_RESULTS = ["留守", "担不", "無効", "NG", "前確OK", "見込", "獲得", "未コール", "（結果なし）"] as const;
+const RESULT_ORDER = ["留守", "担不", "無効", "NG", "前確OK", "見込", "獲得", "未コール", "その他", "（結果なし）"];
+
+function normalizeResultBreakdown(rows: AnalysisCellRow[]): Map<string, number> {
+  const fixed = new Set<string>(FIXED_RESULTS);
+  const results = new Map<string, number>();
+  for (const result of FIXED_RESULTS) results.set(result, 0);
+  results.set("その他", 0);
+
+  for (const row of rows) {
+    const result = fixed.has(row.result) ? row.result : "その他";
+    results.set(result, (results.get(result) ?? 0) + numberValue(row.row_count));
+  }
+
+  return results;
+}
 
 let cached: { expiresAt: number; payload: AnalysisPayload; cells: AnalysisCellRow[] } | null = null;
 const CACHE_MS = 10 * 60 * 1000;
@@ -150,24 +164,15 @@ function emptySegment(segment: string): AnalysisSegment {
 }
 
 function finalizeSegment(segment: AnalysisSegment, rows: AnalysisCellRow[]): AnalysisSegment {
-  const rawResults = new Map<string, number>();
-  for (const row of rows) rawResults.set(row.result, (rawResults.get(row.result) ?? 0) + numberValue(row.row_count));
-
-  const ranked = [...rawResults.entries()]
-    .filter(([result]) => result !== "未コール")
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja-JP"));
-  const top = new Set(ranked.slice(0, TOP_RESULT_LIMIT).map(([result]) => result));
-  const results = new Map<string, number>();
-  for (const [result, count] of rawResults) {
-    if (result === "未コール" || top.has(result)) results.set(result, (results.get(result) ?? 0) + count);
-    else results.set("その他", (results.get("その他") ?? 0) + count);
-  }
+  const results = normalizeResultBreakdown(rows);
 
   segment.validCount = Math.max(0, segment.rowCount - segment.invalidCount);
   segment.rotation = segment.rowCount > 0 ? segment.callTotal / segment.rowCount : 0;
   segment.orderRateValid = segment.validCount > 0 ? segment.orderCount / segment.validCount : 0;
   segment.orderRateTotal = segment.rowCount > 0 ? segment.orderCount / segment.rowCount : 0;
+  // 前確OK と獲得は 0 件でも凡例に出す（受注に一番近い結果なので隠さない）。ほかは件数があるものだけ
   segment.results = [...results.entries()]
+    .filter(([result, rowCount]) => rowCount > 0 || result === "前確OK" || result === "獲得")
     .map(([result, rowCount]) => ({ result, rowCount }))
     .sort((a, b) => {
       const left = RESULT_ORDER.indexOf(a.result);
@@ -267,17 +272,9 @@ export async function loadAnalysisDetail(
   const now = Date.now();
   const cells = cached && cached.expiresAt > now ? cached.cells : await loadAnalysisCells(db);
   const blockRows = cells.filter((row) => row.block === block && (segment === "__all__" || row.segment === segment));
-  const rawResults = new Map<string, number>();
-  for (const row of blockRows) rawResults.set(row.result, (rawResults.get(row.result) ?? 0) + numberValue(row.row_count));
-  const topResults = new Set(
-    [...rawResults.entries()]
-      .filter(([name]) => name !== "未コール")
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja-JP"))
-      .slice(0, TOP_RESULT_LIMIT)
-      .map(([name]) => name),
-  );
+  const fixedResults = new Set<string>(FIXED_RESULTS);
   const detailRows = blockRows.filter((row) => {
-    if (result === "その他") return row.result !== "未コール" && !topResults.has(row.result);
+    if (result === "その他") return !fixedResults.has(row.result);
     return row.result === result;
   });
   const byList = new Map<string, AnalysisDetailRow>();

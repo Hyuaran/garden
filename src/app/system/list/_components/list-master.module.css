@@ -1209,6 +1209,26 @@
   white-space: nowrap;
 }
 
+.analysisOrderSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  margin-top: 4px;
+  padding: 6px 6px 0 24px;
+  border-top: 1px solid var(--line);
+  color: var(--heading);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.analysisOrderSummary small {
+  grid-column: 1 / -1;
+  color: var(--sub);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 /* 表は枠の中で縦にスクロール（購入先は 2,400 種類あり、全部並べると画面が 15 万 px になって固まる） */
 .analysisTableWrap {
   max-height: 460px;

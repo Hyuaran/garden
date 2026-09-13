@@ -81,7 +81,7 @@ const cells: AnalysisCellRow[] = [
   },
 ];
 
-function adminClient(role = "manager", contractSnapshotAt: string | null = "2026-09-13T15:27:00+09:00") {
+function adminClient(role = "manager", contractSnapshotAt: string | null = "2026-09-13T15:27:00+09:00", analysisCells = cells) {
   const rpc = vi.fn(async (name: string) => {
     if (name === "soil_list_analysis_finish") return { data: [{ refreshed_at: "2026-09-13T06:45:00+09:00", rows: 3, elapsed_ms: 1234 }], error: null };
     return { data: [{ rows: 1 }], error: null };
@@ -104,7 +104,7 @@ function adminClient(role = "manager", contractSnapshotAt: string | null = "2026
           select: () => ({
             eq: () => ({
               maybeSingle: async () => ({
-                data: { refreshed_at: "2026-09-13T06:45:00+09:00", last_elapsed_ms: 1200, last_error: null, rows: cells.length },
+                data: { refreshed_at: "2026-09-13T06:45:00+09:00", last_elapsed_ms: 1200, last_error: null, rows: analysisCells.length },
                 error: null,
               }),
             }),
@@ -121,7 +121,7 @@ function adminClient(role = "manager", contractSnapshotAt: string | null = "2026
         return {
           select: () => ({
             order: () => ({
-              range: async (from: number) => ({ data: from === 0 ? cells : [], error: null }),
+              range: async (from: number) => ({ data: from === 0 ? analysisCells : [], error: null }),
             }),
           }),
         };
@@ -183,6 +183,32 @@ describe("/api/soil/list/analysis", () => {
           },
         },
       },
+    });
+  });
+
+  it("returns fixed result order (前確OK・獲得 stay even at zero) and groups the rest as その他", async () => {
+    const analysisCells: AnalysisCellRow[] = [
+      ...cells,
+      { ...cells[0], result: "テスト", row_count: 6, called_count: 6, call_total: 6, order_count: 0 },
+      { ...cells[0], result: "前確NG", row_count: 4, called_count: 4, call_total: 4, order_count: 0 },
+    ];
+    mocks.getAdmin.mockReturnValue(adminClient("manager", "2026-09-13T15:27:00+09:00", analysisCells));
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.analysis.blocks.vendor.segments[0].results).toEqual([
+      { result: "留守", rowCount: 10 },
+      { result: "無効", rowCount: 3 },
+      { result: "前確OK", rowCount: 0 },
+      { result: "獲得", rowCount: 0 },
+      { result: "その他", rowCount: 10 },
+    ]);
+
+    const detail = await detailGET(new Request(`http://test/api/soil/list/analysis/detail?block=vendor&segment=__all__&result=${encodeURIComponent("その他")}`));
+    expect(detail.status).toBe(200);
+    await expect(detail.json()).resolves.toMatchObject({
+      ok: true,
+      rows: [{ listName: "リストA", rowCount: 10, callTotal: 10 }],
     });
   });
 

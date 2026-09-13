@@ -258,7 +258,7 @@ const ANALYSIS_HELP: Record<"vendor" | "activeList" | "contract", { title: strin
     rows: [
       { label: "区切り", text: "電話番号台帳の「最新購入先」（購入履歴のいちばん新しい行の購入先）。空欄は「（購入先なし）」" },
       { label: "件数", text: "その購入先の電話番号の数（電話番号が空の行は数えない）" },
-      { label: "円グラフ", text: "その区切りの最終コール結果の内訳。コール回数 0 は「未コール」、上位 6 つ以外は「その他」" },
+      { label: "円グラフ", text: "コール履歴の最終結果。留守・担不・無効・NG・前確OK・見込・獲得・未コール・（結果なし）を固定で出し、それ以外は「その他」。受注（案件）は Kintone の案件から数えたもので、円グラフとは別の数え方" },
       { label: "受注率", text: "受注（案件）÷ 有効（件数 − 無効）。「獲得（コール）」は件数を並べるだけ" },
       { label: "集計", text: "毎朝 6:45 と右上の丸い矢印で作り直し" },
     ],
@@ -536,9 +536,13 @@ const ANALYSIS_COLORS: Record<string, string> = {
   NG: "#f59e0b",
   前確OK: "#7c3aed",
   見込: "#16a34a",
+  獲得: "#0891b2",
   未コール: "#6b7280",
   その他: "#cbd5e1",
+  "（結果なし）": "#94a3b8",
 };
+
+const ANALYSIS_RESULT_ORDER = ["留守", "担不", "無効", "NG", "前確OK", "見込", "獲得", "未コール", "その他", "（結果なし）"];
 
 function resultColor(result: string): string {
   return ANALYSIS_COLORS[result] ?? "#64748b";
@@ -583,13 +587,19 @@ function buildAnalysisTotal(segments: AnalysisSegment[], resultOrderSource: Anal
   total.rotation = total.rowCount > 0 ? total.callTotal / total.rowCount : 0;
   total.orderRateValid = total.validCount > 0 ? total.orderCount / total.validCount : 0;
   total.orderRateTotal = total.rowCount > 0 ? total.orderCount / total.rowCount : 0;
-  const order = resultOrderSource.find((segment) => segment.segment === "合計")?.results.map((item) => item.result) ?? [];
+  const sourceOrder = resultOrderSource.find((segment) => segment.segment === "合計")?.results.map((item) => item.result) ?? [];
   total.results = [...results.entries()]
     .map(([result, rowCount]) => ({ result, rowCount }))
     .sort((a, b) => {
-      const left = order.indexOf(a.result);
-      const right = order.indexOf(b.result);
-      return (left === -1 ? order.length : left) - (right === -1 ? order.length : right) || b.rowCount - a.rowCount;
+      const left = ANALYSIS_RESULT_ORDER.indexOf(a.result);
+      const right = ANALYSIS_RESULT_ORDER.indexOf(b.result);
+      const leftSource = sourceOrder.indexOf(a.result);
+      const rightSource = sourceOrder.indexOf(b.result);
+      return (
+        (left === -1 ? ANALYSIS_RESULT_ORDER.length : left) - (right === -1 ? ANALYSIS_RESULT_ORDER.length : right) ||
+        (leftSource === -1 ? sourceOrder.length : leftSource) - (rightSource === -1 ? sourceOrder.length : rightSource) ||
+        b.rowCount - a.rowCount
+      );
     });
   return total;
 }
@@ -1336,6 +1346,13 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                       <span className={styles.analysisLegendCount}>{formatCount(item.rowCount)} 件</span>
                     </button>
                   ))}
+                  {selected && (
+                    <div className={styles.analysisOrderSummary}>
+                      <span className={styles.analysisLegendName}>うち受注（案件）</span>
+                      <span className={styles.analysisLegendCount}>{formatCount(selected.orderCount)} 件</span>
+                      <small> Kintone の案件から数えた数。コール結果とは別の数え方です。</small>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className={`${styles.tableWrap} ${styles.analysisTableWrap}`}>
