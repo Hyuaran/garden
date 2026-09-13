@@ -5,6 +5,10 @@ import { EMPTY_OPTION_VALUE } from "../_lib/list-fields";
 
 import { ListMasterClient, buildOptionGroups, conditionToFilters, filtersToCondition, type FilterState } from "./ListMasterClient";
 
+vi.mock("react-chartjs-2", () => ({
+  Doughnut: () => <div data-testid="analysis-doughnut" />,
+}));
+
 function json(data: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), { status }));
 }
@@ -24,7 +28,40 @@ function installFetch(options: { uploads?: unknown[] } = {}) {
     if (url === "/api/soil/list/uploads/upload-failed/apply" && init?.method === "POST") {
       return json({ ok: true, result: { assignments: 2500, assignments_new: 2500, assignments_updated: 0, parent_updated: 2500, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 0, purchase_inserted: 0 } });
     }
-    if (url === "/api/soil/list/analysis") return json({ ok: true, rows: [] });
+    if (url === "/api/soil/list/analysis") {
+      return json({
+        ok: true,
+        analysis: {
+          refreshedAt: "2026-09-13T06:45:00+09:00",
+          elapsedMs: 1200,
+          lastError: null,
+          blocks: {
+            vendor: {
+              segments: [
+                {
+                  segment: "合計",
+                  rowCount: 13,
+                  calledCount: 10,
+                  callTotal: 20,
+                  invalidCount: 0,
+                  validCount: 13,
+                  orderCount: 1,
+                  acquiredCount: 0,
+                  lastCalledOn: "2026-09-12",
+                  segmentLastCalledOn: null,
+                  rotation: 1.5,
+                  orderRateValid: 1 / 13,
+                  orderRateTotal: 1 / 13,
+                  results: [{ result: "留守", rowCount: 13 }],
+                },
+              ],
+            },
+            activeList: { segments: [] },
+            contract: { pending: true },
+          },
+        },
+      });
+    }
     if (url === "/api/soil/list/options") {
       return json({
         ok: true,

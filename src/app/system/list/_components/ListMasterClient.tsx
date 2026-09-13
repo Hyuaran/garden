@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { ArcElement, Chart as ChartJS, Legend, Tooltip, type ChartData, type ChartOptions } from "chart.js";
+import { Doughnut } from "react-chartjs-2";
 
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 
@@ -22,6 +24,8 @@ import {
 
 import styles from "./list-master.module.css";
 import MultiSelectFilter, { type MultiSelectOptionGroup } from "./MultiSelectFilter";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 type SearchRow = {
   phoneNumber: string;
@@ -107,13 +111,48 @@ type UploadHistory = {
   created_at: string;
 };
 
-type AnalysisRow = {
-  list_name: string;
-  list_loaded_on: string | null;
-  row_count: number;
-  called_count: number;
-  purchase_history_count: number;
-  last_called_on: string | null;
+type AnalysisResultBreakdown = {
+  result: string;
+  rowCount: number;
+};
+
+type AnalysisSegment = {
+  segment: string;
+  rowCount: number;
+  calledCount: number;
+  callTotal: number;
+  invalidCount: number;
+  validCount: number;
+  orderCount: number;
+  acquiredCount: number;
+  lastCalledOn: string | null;
+  segmentLastCalledOn: string | null;
+  rotation: number;
+  orderRateValid: number;
+  orderRateTotal: number;
+  results: AnalysisResultBreakdown[];
+};
+
+type AnalysisPayload = {
+  refreshedAt: string | null;
+  elapsedMs: number;
+  lastError: string | null;
+  blocks: {
+    vendor: { segments: AnalysisSegment[] };
+    activeList: { segments: AnalysisSegment[] };
+    contract: { pending: true };
+  };
+};
+
+type AnalysisDetailRow = {
+  listName: string;
+  listLoadedOn: string | null;
+  rowCount: number;
+  calledCount: number;
+  callTotal: number;
+  orderCount: number;
+  acquiredCount: number;
+  lastCalledOn: string | null;
 };
 
 export type FilterState = {
@@ -352,8 +391,49 @@ function formatFileSize(size: number): string {
   return `${Math.max(1, Math.round(size / 1024)).toLocaleString("ja-JP")} KB`;
 }
 
-function formatPercent(numerator: number, denominator: number): string {
-  return denominator > 0 ? `${((numerator / denominator) * 100).toFixed(1)}%` : "0.0%";
+function formatRate(value: number): string {
+  return `${(value * 100).toFixed(2)}%`;
+}
+
+function formatRotation(value: number): string {
+  return value.toFixed(1);
+}
+
+function formatCount(value: number): string {
+  return value.toLocaleString("ja-JP");
+}
+
+function formatElapsedSeconds(value: number): string {
+  return (value / 1000).toFixed(1);
+}
+
+const ANALYSIS_COLORS: Record<string, string> = {
+  留守: "#2563eb",
+  担不: "#0ea5a0",
+  無効: "#dc2626",
+  NG: "#f59e0b",
+  前確OK: "#7c3aed",
+  見込: "#16a34a",
+  未コール: "#6b7280",
+  その他: "#cbd5e1",
+};
+
+function resultColor(result: string): string {
+  return ANALYSIS_COLORS[result] ?? "#64748b";
+}
+
+function valueClassName(value: number): string {
+  return value > 0 ? styles.valueStrong : styles.valueZero;
+}
+
+function filterActiveSegments(segments: AnalysisSegment[], days: 15 | 30): AnalysisSegment[] {
+  if (days === 30) return segments;
+  const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
+  return segments.filter((segment) => {
+    if (segment.segment === "合計") return true;
+    if (!segment.segmentLastCalledOn) return false;
+    return new Date(`${segment.segmentLastCalledOn}T00:00:00+09:00`).getTime() >= threshold;
+  });
 }
 
 function resultLine(result: UploadResult): string {
@@ -420,11 +500,19 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [uploadBusy, setUploadBusy] = useState<"preview" | "import" | null>(null);
   const [uploadApplyBusyId, setUploadApplyBusyId] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
-  const [analysisRows, setAnalysisRows] = useState<AnalysisRow[]>([]);
-  const [analysisFilter, setAnalysisFilter] = useState("");
-  const [analysisSort, setAnalysisSort] = useState("listLoadedOnDesc");
+  const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
+  const [analysisSelections, setAnalysisSelections] = useState({ vendor: "合計", activeList: "合計" });
+  const [activeListDays, setActiveListDays] = useState<15 | 30>(30);
+  const [analysisDetail, setAnalysisDetail] = useState<{
+    block: "vendor" | "active_list";
+    segment: string;
+    result: string;
+    rows: AnalysisDetailRow[];
+    filter: string;
+  } | null>(null);
   const [analysisMessage, setAnalysisMessage] = useState("");
   const [analysisBusy, setAnalysisBusy] = useState(false);
+  const [analysisRefreshBusy, setAnalysisRefreshBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const condition = useMemo(() => filtersToCondition(filters), [filters]);
 
@@ -475,8 +563,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setAnalysisMessage("");
     try {
       const response = await fetch("/api/soil/list/analysis");
-      const data = await readJson<{ ok: boolean; rows: AnalysisRow[] }>(response);
-      setAnalysisRows(data.rows);
+      const data = await readJson<{ ok: boolean; analysis: AnalysisPayload }>(response);
+      setAnalysis(data.analysis);
     } catch (error) {
       setAnalysisMessage(error instanceof Error ? error.message : "分析を読み込めませんでした");
     } finally {
@@ -492,9 +580,36 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "analysis" || analysisRows.length > 0 || analysisBusy) return;
+    if (activeTab !== "analysis" || analysis || analysisBusy) return;
     void loadAnalysis();
-  }, [activeTab, analysisRows.length, analysisBusy]);
+  }, [activeTab, analysis, analysisBusy]);
+
+  async function handleAnalysisRefresh() {
+    setAnalysisRefreshBusy(true);
+    setAnalysisMessage("");
+    try {
+      const response = await fetch("/api/soil/list/analysis/refresh", { method: "POST" });
+      const data = await readJson<{ ok: true; rows: number; elapsed_ms: number }>(response);
+      await loadAnalysis();
+      setAnalysisMessage(`作り直しました（${formatCount(data.rows)} 行・${formatElapsedSeconds(data.elapsed_ms)} 秒）`);
+    } catch (error) {
+      setAnalysisMessage(error instanceof Error ? error.message : "集計を作り直せませんでした（途中で止まりました）。もう一度押してください");
+    } finally {
+      setAnalysisRefreshBusy(false);
+    }
+  }
+
+  async function openAnalysisDetail(block: "vendor" | "active_list", segment: string, result: string) {
+    setAnalysisMessage("");
+    try {
+      const params = new URLSearchParams({ block, segment: segment === "合計" ? "__all__" : segment, result });
+      const response = await fetch(`/api/soil/list/analysis/detail?${params.toString()}`);
+      const data = await readJson<{ ok: boolean; rows: AnalysisDetailRow[] }>(response);
+      setAnalysisDetail({ block, segment, result, rows: data.rows, filter: "" });
+    } catch (error) {
+      setAnalysisMessage(error instanceof Error ? error.message : "一覧を読み込めませんでした");
+    }
+  }
 
   async function handleCallSync() {
     setCallSyncBusy(true);
@@ -713,19 +828,177 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
-  const filteredAnalysisRows = useMemo(() => {
-    const keyword = analysisFilter.trim();
-    const source = keyword ? analysisRows.filter((row) => row.list_name.includes(keyword)) : analysisRows;
-    return [...source].sort((a, b) => {
-      if (analysisSort === "rowCountDesc") return b.row_count - a.row_count;
-      if (analysisSort === "calledRateDesc") return (b.called_count / Math.max(1, b.row_count)) - (a.called_count / Math.max(1, a.row_count));
-      if (analysisSort === "purchaseRateDesc") return (b.purchase_history_count / Math.max(1, b.row_count)) - (a.purchase_history_count / Math.max(1, a.row_count));
-      return String(b.list_loaded_on ?? "").localeCompare(String(a.list_loaded_on ?? ""));
-    });
-  }, [analysisFilter, analysisRows, analysisSort]);
+  const activeListSegments = useMemo(
+    () => filterActiveSegments(analysis?.blocks.activeList.segments ?? [], activeListDays),
+    [activeListDays, analysis],
+  );
 
   function setFilter<K extends keyof FilterState>(key: K, value: FilterState[K]) {
     setFilters((current) => ({ ...current, [key]: value }));
+  }
+
+  function renderAnalysisBlock(
+    title: string,
+    block: "vendor" | "active_list",
+    segments: AnalysisSegment[],
+    selectedSegment: string,
+    onSelectSegment: (segment: string) => void,
+    controls?: ReactNode,
+  ) {
+    const selected = segments.find((segment) => segment.segment === selectedSegment) ?? segments[0];
+    const chartData: ChartData<"doughnut"> = {
+      labels: selected?.results.map((item) => item.result) ?? [],
+      datasets: [
+        {
+          data: selected?.results.map((item) => item.rowCount) ?? [],
+          backgroundColor: selected?.results.map((item) => resultColor(item.result)) ?? [],
+          borderColor: "rgba(255,255,255,.9)",
+          borderWidth: 2,
+        },
+      ],
+    };
+    const chartOptions: ChartOptions<"doughnut"> = {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom" },
+        tooltip: {
+          callbacks: {
+            label(context) {
+              const value = Number(context.raw ?? 0);
+              const total = context.dataset.data.reduce((sum, item) => sum + Number(item), 0);
+              const rate = total > 0 ? `（${((value / total) * 100).toFixed(1)}%）` : "";
+              return `${context.label ?? ""} ${formatCount(value)} 件${rate}`;
+            },
+          },
+        },
+      },
+      onClick(_event, elements) {
+        const index = elements[0]?.index;
+        const result = typeof index === "number" ? selected?.results[index]?.result : null;
+        if (selected && result) void openAnalysisDetail(block, selected.segment, result);
+      },
+    };
+
+    return (
+      <section className={styles.analysisBlock}>
+        <div className={styles.analysisBlockHeader}>
+          <h3>{title}</h3>
+          {controls}
+        </div>
+        {segments.length === 0 ? (
+          <p className={styles.empty}>対象データがありません</p>
+        ) : (
+          <>
+            <div className={styles.analysisGrid}>
+              <div className={styles.chartPane}>
+                <Doughnut data={chartData} options={chartOptions} />
+              </div>
+              <div className={`${styles.tableWrap} ${styles.analysisTableWrap}`}>
+                <table className={styles.analysisTable}>
+                  <thead>
+                    <tr>
+                      <th>{block === "vendor" ? "購入先" : "リスト名"}</th>
+                      <th>件数</th>
+                      <th>コール済み</th>
+                      <th>総コール回数</th>
+                      <th>回転</th>
+                      <th>有効</th>
+                      <th>受注（案件）</th>
+                      <th>獲得（コール）</th>
+                      <th>受注率（有効）</th>
+                      <th>受注率（総数）</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {segments.map((segment) => (
+                      <tr
+                        key={segment.segment}
+                        className={segment.segment === selected.segment ? styles.analysisSelectedRow : undefined}
+                        onClick={() => onSelectSegment(segment.segment)}
+                      >
+                        <td>{segment.segment}</td>
+                        <td>{formatCount(segment.rowCount)}</td>
+                        <td>{formatCount(segment.calledCount)}</td>
+                        <td>{formatCount(segment.callTotal)}</td>
+                        <td>{formatRotation(segment.rotation)}</td>
+                        <td>{formatCount(segment.validCount)}</td>
+                        <td className={valueClassName(segment.orderCount)}>{formatCount(segment.orderCount)}</td>
+                        <td className={valueClassName(segment.acquiredCount)}>{formatCount(segment.acquiredCount)}</td>
+                        <td>{formatRate(segment.orderRateValid)}</td>
+                        <td>{formatRate(segment.orderRateTotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className={styles.resultButtons}>
+              {(selected?.results ?? []).map((item) => (
+                <button key={item.result} type="button" className={styles.resultButton} onClick={() => void openAnalysisDetail(block, selected.segment, item.result)}>
+                  <span style={{ background: resultColor(item.result) }} />
+                  {item.result} {formatCount(item.rowCount)} 件
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
+
+  function renderAnalysisDetail() {
+    if (!analysisDetail) return null;
+    const keyword = analysisDetail.filter.trim();
+    const rows = keyword ? analysisDetail.rows.filter((row) => row.listName.includes(keyword)) : analysisDetail.rows;
+    return (
+      <section className={styles.analysisDetail}>
+        <div className={styles.analysisBlockHeader}>
+          <h3>{analysisDetail.segment} × {analysisDetail.result}：リスト名ごと</h3>
+          <button type="button" className={styles.secondaryButton} onClick={() => setAnalysisDetail(null)}>閉じる</button>
+        </div>
+        <div className={styles.actions}>
+          <label>
+            リスト名で絞る
+            <input
+              value={analysisDetail.filter}
+              onChange={(event) => setAnalysisDetail((current) => current ? { ...current, filter: event.target.value } : current)}
+              placeholder="含む"
+            />
+          </label>
+        </div>
+        <div className={`${styles.tableWrap} ${styles.analysisTableWrap}`}>
+          <table className={styles.analysisTable}>
+            <thead>
+              <tr>
+                <th>リスト名</th>
+                <th>投入日</th>
+                <th>件数</th>
+                <th>コール済み</th>
+                <th>総コール回数</th>
+                <th>受注（案件）</th>
+                <th>獲得（コール）</th>
+                <th>最終コール日</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.listName}>
+                  <td>{row.listName}</td>
+                  <td>{row.listLoadedOn ?? ""}</td>
+                  <td>{formatCount(row.rowCount)}</td>
+                  <td>{formatCount(row.calledCount)}</td>
+                  <td>{formatCount(row.callTotal)}</td>
+                  <td className={valueClassName(row.orderCount)}>{formatCount(row.orderCount)}</td>
+                  <td className={valueClassName(row.acquiredCount)}>{formatCount(row.acquiredCount)}</td>
+                  <td>{row.lastCalledOn ?? ""}</td>
+                </tr>
+              ))}
+              {rows.length === 0 && <tr><td colSpan={8}>対象データがありません</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -1089,49 +1362,65 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         <section className={styles.panel} aria-labelledby="analysis-heading">
           <div className={styles.panelTitle}>
             <h2 id="analysis-heading">分析</h2>
-            <button type="button" onClick={() => void loadAnalysis()} disabled={analysisBusy}>{analysisBusy ? "読み込み中…" : "再読み込み"}</button>
-          </div>
-          <div className={styles.actions}>
-            <label>
-              リスト名で絞る
-              <input value={analysisFilter} onChange={(event) => setAnalysisFilter(event.target.value)} placeholder="含む" />
-            </label>
-            <label>
-              並び
-              <select value={analysisSort} onChange={(event) => setAnalysisSort(event.target.value)}>
-                <option value="listLoadedOnDesc">投入日が新しい順</option>
-                <option value="rowCountDesc">件数が多い順</option>
-                <option value="calledRateDesc">架電済み率が高い順</option>
-                <option value="purchaseRateDesc">購入あり率が高い順</option>
-              </select>
-            </label>
+            <div className={styles.analysisTitleActions}>
+              <span>
+                {analysis?.refreshedAt
+                  ? `集計：${formatJstWithWeekday(analysis.refreshedAt)} 時点`
+                  : "集計がまだありません。↻ を押してください"}
+              </span>
+              <button
+                type="button"
+                className={`${styles.syncIconButton} ${analysisRefreshBusy ? styles.syncIconBusy : ""}`}
+                onClick={() => void handleAnalysisRefresh()}
+                disabled={analysisRefreshBusy}
+                aria-label="分析集計を作り直す"
+                title="分析集計を作り直す"
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path d="M20 12a8 8 0 1 1-2.3-5.6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                  <path d="M19.8 4.6v4.2h-4.2z" fill="currentColor" />
+                </svg>
+              </button>
+            </div>
           </div>
           {analysisMessage && <p className={styles.message}>{analysisMessage}</p>}
-          <div className={styles.tableWrap}>
-            <table>
-              <thead><tr><th>リスト名</th><th>投入日</th><th>件数</th><th>架電済み</th><th>架電済み率</th><th>購入履歴あり</th><th>購入あり率</th><th>最終コール日</th></tr></thead>
-              <tbody>
-                {filteredAnalysisRows.map((row) => (
-                  <tr key={row.list_name}>
-                    <td>{row.list_name}</td>
-                    <td>{row.list_loaded_on ?? ""}</td>
-                    <td>{row.row_count.toLocaleString("ja-JP")}</td>
-                    <td>{row.called_count.toLocaleString("ja-JP")}</td>
-                    <td>{formatPercent(row.called_count, row.row_count)}</td>
-                    <td>{row.purchase_history_count.toLocaleString("ja-JP")}</td>
-                    <td>{formatPercent(row.purchase_history_count, row.row_count)}</td>
-                    <td>{row.last_called_on ?? ""}</td>
-                  </tr>
-                ))}
-                {filteredAnalysisRows.length === 0 && <tr><td colSpan={8}>対象データがありません</td></tr>}
-              </tbody>
-            </table>
-          </div>
-          <div className={styles.guideBlock}>
-            <p>架電済み＝コール回数合計が 1 以上</p>
-            <p>購入履歴あり＝購入履歴あり が真</p>
-            <p>最終コール日＝その番号の最終コール日の最大</p>
-          </div>
+          {analysisBusy && <div className={styles.loading}><span />読み込んでいます</div>}
+          {analysis && (
+            <div className={styles.analysisStack}>
+              {renderAnalysisBlock(
+                "① どこから購入したか",
+                "vendor",
+                analysis.blocks.vendor.segments,
+                analysisSelections.vendor,
+                (segment) => setAnalysisSelections((current) => ({ ...current, vendor: segment })),
+              )}
+              {renderAnalysisBlock(
+                "② 今コールしているリスト",
+                "active_list",
+                activeListSegments,
+                analysisSelections.activeList,
+                (segment) => setAnalysisSelections((current) => ({ ...current, activeList: segment })),
+                <div className={styles.segmentedControl}>
+                  <button type="button" aria-pressed={activeListDays === 30} onClick={() => setActiveListDays(30)}>直近 30 日</button>
+                  <button type="button" aria-pressed={activeListDays === 15} onClick={() => setActiveListDays(15)}>直近 15 日</button>
+                </div>,
+              )}
+              <section className={styles.analysisBlock}>
+                <div className={styles.analysisBlockHeader}>
+                  <h3>③ 新営業 FileMaker の既契約</h3>
+                </div>
+                <p className={styles.empty}>準備中（新営業 FileMaker の既契約を毎朝取り込む仕組みができたら表示します）</p>
+              </section>
+              {renderAnalysisDetail()}
+              <details className={styles.definitionBox}>
+                <summary>定義</summary>
+                <p>件数＝その区切りに入る電話番号の数。電話番号が空の行は数えません。</p>
+                <p>コール済み＝コール回数合計が 1 以上の番号数。総コール回数＝コール回数合計の合計。回転＝総コール回数 ÷ 件数。</p>
+                <p>有効＝件数 − 最終コール結果が「無効」の番号数。受注（案件）＝受注件数が 1 以上の番号数。獲得（コール）＝最終コール結果が「獲得」の番号数。</p>
+                <p>受注率は受注（案件）で計算しています。獲得（コール）は件数だけ並べています。</p>
+              </details>
+            </div>
+          )}
         </section>
       )}
 

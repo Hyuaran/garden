@@ -12,6 +12,7 @@
     { "path": "/api/system/call-report/cron", "schedule": "5 2-12 * * *" },
     { "path": "/api/system/postal-import", "schedule": "20 1 5 * *" },
     { "path": "/api/root/roster-sync/cron", "schedule": "0 21 * * *" },
-    { "path": "/api/soil/list/orders/cron", "schedule": "30 21 * * *" }
+    { "path": "/api/soil/list/orders/cron", "schedule": "30 21 * * *" },
+    { "path": "/api/soil/list/analysis/cron", "schedule": "45 21 * * *" }
   ]
 }

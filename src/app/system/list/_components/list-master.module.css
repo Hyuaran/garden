@@ -6,6 +6,8 @@
   --line: #dce5ef;
   --teal: #0ea5a0;
   --tealDark: #0b7773;
+  --val-strong: #17212e;
+  --val-zero: #98a4b3;
   --amber: #8a5a00;
   --amberBg: #fff7e6;
   width: 100%;
@@ -22,6 +24,8 @@
   --card: #152438;
   --line: #31435a;
   --tealDark: #9ce5e1;
+  --val-strong: #edf4fb;
+  --val-zero: #8493a5;
   --amber: #f6c96b;
   --amberBg: #302918;
 }
@@ -657,6 +661,137 @@
   background: color-mix(in srgb, var(--card) 86%, var(--line));
 }
 
+.analysisTitleActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.analysisStack {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.analysisBlock,
+.analysisDetail,
+.definitionBox {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 96%, var(--line));
+}
+
+.analysisBlockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.analysisBlockHeader h3 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.analysisGrid {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.chartPane {
+  position: relative;
+  min-height: 280px;
+}
+
+.analysisTableWrap table.analysisTable {
+  min-width: 1060px;
+}
+
+.analysisTable tbody tr {
+  cursor: pointer;
+}
+
+.analysisSelectedRow {
+  background: rgba(14, 165, 160, .11);
+}
+
+.valueStrong {
+  color: var(--val-strong, var(--ink));
+  font-weight: 900;
+}
+
+.valueZero {
+  color: var(--val-zero, var(--sub));
+  font-weight: 600;
+}
+
+.resultButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resultButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent !important;
+  border: 1px solid var(--line) !important;
+  color: var(--ink) !important;
+}
+
+.resultButton span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.segmentedControl {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.segmentedControl button {
+  min-height: 30px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sub);
+  padding: 5px 10px;
+}
+
+.segmentedControl button[aria-pressed="true"] {
+  background: var(--teal);
+  color: #fff;
+}
+
+.definitionBox {
+  color: var(--ink);
+  line-height: 1.8;
+}
+
+.definitionBox summary {
+  color: var(--heading);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.definitionBox p {
+  margin: 0;
+}
+
 .listStack {
   display: grid;
   gap: 8px;
@@ -743,5 +878,13 @@
 
   .purchaseVendorRow {
     grid-template-columns: 1fr;
+  }
+
+  .analysisGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartPane {
+    min-height: 240px;
   }
 }
