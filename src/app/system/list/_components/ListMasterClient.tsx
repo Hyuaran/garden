@@ -13,7 +13,6 @@ import {
   PREFECTURE_REGIONS,
   SOIL_LIST_EXPORT_COLUMNS,
   SOIL_LIST_FILTER_DEFINITIONS,
-  SOIL_LIST_SORT_OPTIONS,
   type SoilListColumnKey,
   type SoilListConditionPayload,
   type SoilListFilter,
@@ -714,7 +713,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [selectedColumns, setSelectedColumns] = useState<SoilListColumnKey[]>(
     SOIL_LIST_EXPORT_COLUMNS.filter((column) => column.defaultChecked).map((column) => column.key),
   );
-  const [sortKey, setSortKey] = useState<SoilListSortKey>("listLoadedOnAsc");
+  // 書き出しの並びは「リスト投入日が古い順」で固定（画面では選ばない）
+  const sortKey: SoilListSortKey = "listLoadedOnAsc";
   const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
   const [exportBusy, setExportBusy] = useState<{ count: number; format: string } | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("list");
@@ -751,6 +751,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const rawTotalPages = count === null ? 1 : Math.max(1, Math.ceil(count / SEARCH_PAGE_SIZE));
   const totalPages = Math.min(rawTotalPages, MAX_SEARCH_PAGE);
   const pageCapped = rawTotalPages > MAX_SEARCH_PAGE;
+  const excelOverLimit = exportFormat === "xlsx" && count !== null && count > EXCEL_MAX_EXPORT_ROWS;
 
   async function loadSaved() {
     const [conditionsRes, exportsRes] = await Promise.all([
@@ -1528,32 +1529,24 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         </div>
         <div className={`${styles.actions} ${styles.exportActions}`}>
           <label>
-            並び
-            <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SoilListSortKey)}>
-              {SOIL_LIST_SORT_OPTIONS.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
             形式
             <select value={exportFormat} onChange={(event) => setExportFormat(event.target.value as ExportFormat)}>
               {EXPORT_FORMAT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} disabled={option.value === "xlsx" && count !== null && count > EXCEL_MAX_EXPORT_ROWS}>
+                <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
           </label>
           <span className={styles.exportSpacer} />
-          <button type="button" onClick={handleExport} disabled={busy || count === null || (exportFormat === "xlsx" && count > EXCEL_MAX_EXPORT_ROWS)}>
+          <button type="button" onClick={handleExport} disabled={busy || count === null || excelOverLimit}>
             {count === null ? "検索後に書き出す" : `${count.toLocaleString("ja-JP")} 件を書き出す`}
           </button>
         </div>
-        <p className={styles.empty}>※ Excel は 1,048,576 行まで（Excel の上限）。それを超えるときは CSV か .mer を選んでください</p>
-        {count !== null && count > EXCEL_MAX_EXPORT_ROWS && <p className={styles.warningLine}>Excel の上限を超えています。CSV か .mer を選んでください。</p>}
+        {/* 並びはリスト投入日が古い順で固定（東海林さん 2026-09-13：書き出しで並びは選ばない）。上限の注意は Excel を選んで超えているときだけ赤字 */}
+        {excelOverLimit && (
+          <p className={styles.errorLine}>Excel は 1,048,576 行までです（Excel の上限）。この件数は超えているので、CSV か .mer を選んでください</p>
+        )}
         <div className={styles.listStack}>
           {exports.map((item) => (
             <div className={styles.savedRow} key={item.id}>

@@ -902,6 +902,18 @@
   font-weight: 800;
 }
 
+/* 赤字の注意（Excel の上限を超える件数で Excel を選んだときだけ出す） */
+.errorLine {
+  margin: 12px 0 0;
+  color: #b42318;
+  font-weight: 800;
+}
+
+:global(.dark) .errorLine,
+:global([data-theme="dark"]) .errorLine {
+  color: #ff8a80;
+}
+
 .guideBlock {
   display: grid;
   gap: 12px;
