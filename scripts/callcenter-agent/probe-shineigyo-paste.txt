@@ -1,0 +1,50 @@
+# 社内ホストPC（コール履歴を毎日読んでいる PC）の PowerShell に、この下を丸ごと貼って実行する。
+# FileMaker「新営業」の既契約まわりの欄の値の種類と、読む速さを調べる（読むだけ・書き込みなし）。
+# 結果は Claude に貼って渡す。2026-09-11 作成（Codex-317 の前調査）。
+
+$p = "C:\Garden\callcenter-agent\probe-shineigyo.ps1"
+@'
+$ErrorActionPreference = "Continue"
+$pw = [Environment]::GetEnvironmentVariable("FM_CALL_HISTORY_PASSWORD","Machine")
+if (-not $pw) { $pw = $env:FM_CALL_HISTORY_PASSWORD }
+if (-not $pw) { Write-Host "FMパスワードが環境変数に見つかりません"; exit 1 }
+
+# 読むだけ（書き込みなし）。「新営業」の既契約まわりの値の種類と、読む速さを調べる
+$cols = @("主キー","電話番号_ハイフンなし","携帯番号_ハイフンなし","リスト名","営業ID","受注日","既契約回線タイプ","既契約情報","既契約継続有無","既契約利用期間","修正日")
+$quoted = ($cols | ForEach-Object { '"' + $_ + '"' }) -join ", "
+$cs = "Driver={FileMaker ODBC};Server=192.168.1.100;Port=2399;Database=コール履歴;UID=Garden;PWD=" + $pw
+$c = New-Object System.Data.Odbc.OdbcConnection $cs
+$c.Open()
+Write-Host ("接続OK ServerVersion=" + $c.ServerVersion)
+$cmd = $c.CreateCommand()
+$cmd.CommandText = "SELECT $quoted FROM `"新営業`" ORDER BY `"主キー`""
+$cmd.CommandTimeout = 300
+$sw = [Diagnostics.Stopwatch]::StartNew()
+$r = $cmd.ExecuteReader()
+$n = 0; $phone = 0; $mobile = 0; $order = 0
+$tally = @{}
+foreach ($k in @("既契約回線タイプ","既契約情報","既契約継続有無","既契約利用期間")) { $tally[$k] = @{} }
+while ($r.Read()) {
+  $n++
+  if ($n -eq 500) { Write-Host ("最初の 500 件：" + [Math]::Round($sw.Elapsed.TotalSeconds,1) + " 秒") }
+  if ([string]$r["電話番号_ハイフンなし"]) { $phone++ }
+  if ([string]$r["携帯番号_ハイフンなし"]) { $mobile++ }
+  if ([string]$r["受注日"]) { $order++ }
+  foreach ($k in $tally.Keys) {
+    $v = ([string]$r[$k]).Trim()
+    if (-not $v) { $v = "(空欄)" }
+    if ($v.Length -gt 30) { $v = $v.Substring(0,30) + "…" }
+    $tally[$k][$v] = 1 + [int]$tally[$k][$v]
+  }
+  if ($sw.Elapsed.TotalSeconds -gt 600) { Write-Host "10 分を超えたので打ち切り"; break }
+}
+$r.Close(); $c.Close()
+Write-Host ("読んだ件数：" + $n + "（" + [Math]::Round($sw.Elapsed.TotalSeconds,1) + " 秒）")
+Write-Host ("電話番号あり：" + $phone + " ／ 携帯あり：" + $mobile + " ／ 受注日あり：" + $order)
+foreach ($k in @("既契約回線タイプ","既契約情報","既契約継続有無","既契約利用期間")) {
+  Write-Host ""
+  Write-Host ("=== " + $k + "（種類 " + $tally[$k].Count + "・多い順 15）")
+  $tally[$k].GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 15 | ForEach-Object { Write-Host ("  " + $_.Key + " : " + $_.Value) }
+}
+'@ | Out-File -FilePath $p -Encoding utf8
+& "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $p
