@@ -16,6 +16,7 @@ type MultiSelectFilterProps = {
   value: string[];
   groups: MultiSelectOptionGroup[];
   onChange(value: string[]): void;
+  searchable?: boolean;
 };
 
 function optionText(option: SoilListOptionItem): string {
@@ -30,12 +31,24 @@ function summarizeSelection(value: string[], options: SoilListOptionItem[]): str
   return `${labels.slice(0, 2).join("、")} ほか${rest}（${labels.length}）`;
 }
 
-export default function MultiSelectFilter({ label, value, groups, onChange }: MultiSelectFilterProps) {
+export default function MultiSelectFilter({ label, value, groups, onChange, searchable = false }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const labelId = useId();
   const panelId = useId();
   const allOptions = useMemo(() => groups.flatMap((group) => group.options), [groups]);
+  const visibleGroups = useMemo(() => {
+    const keyword = searchQuery.trim().toLocaleLowerCase("ja-JP");
+    if (!searchable || !keyword) return groups;
+    return groups
+      .map((group) => ({
+        ...group,
+        options: group.options.filter((option) => `${option.label} ${option.value}`.toLocaleLowerCase("ja-JP").includes(keyword)),
+      }))
+      .filter((group) => group.options.length > 0);
+  }, [groups, searchQuery, searchable]);
+  const visibleOptions = useMemo(() => visibleGroups.flatMap((group) => group.options), [visibleGroups]);
   const selected = new Set(value);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
 
@@ -95,7 +108,8 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
     onChange(all ? value.filter((item) => !groupValues.includes(item)) : Array.from(new Set([...value, ...groupValues])));
   }
 
-  const allValues = allOptions.map(optionValue);
+  const toggleAllOptions = searchable ? visibleOptions : allOptions;
+  const allValues = toggleAllOptions.map(optionValue);
   const everythingSelected = allValues.length > 0 && allValues.every((item) => selected.has(item));
 
   // 右上のボタン：全部入っていれば「すべて外す」、そうでなければ「すべて選ぶ」
@@ -132,8 +146,14 @@ export default function MultiSelectFilter({ label, value, groups, onChange }: Mu
               </button>
             </span>
           </div>
+          {searchable && (
+            <label className={styles.multiSelectSearch}>
+              名前で絞る
+              <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="含む" />
+            </label>
+          )}
           <div className={styles.multiSelectOptions}>
-            {groups.map((group, groupIndex) => (
+            {visibleGroups.map((group, groupIndex) => (
               <div className={styles.optionGroup} key={`${label}-${group.label ?? groupIndex}`}>
                 {group.label ? (() => {
                   const state = groupState(group);

@@ -58,19 +58,67 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
               segments: [
                 {
                   segment: "合計",
-                  rowCount: 13,
-                  calledCount: 10,
-                  callTotal: 20,
-                  invalidCount: 0,
-                  validCount: 13,
-                  orderCount: 1,
-                  acquiredCount: 0,
+                  rowCount: 28,
+                  calledCount: 21,
+                  callTotal: 42,
+                  invalidCount: 3,
+                  validCount: 25,
+                  orderCount: 3,
+                  acquiredCount: 1,
                   lastCalledOn: "2026-09-12",
                   segmentLastCalledOn: null,
                   rotation: 1.5,
-                  orderRateValid: 1 / 13,
+                  orderRateValid: 3 / 25,
+                  orderRateTotal: 3 / 28,
+                  results: [{ result: "留守", rowCount: 28 }],
+                },
+                {
+                  segment: "データ総研",
+                  rowCount: 13,
+                  calledCount: 10,
+                  callTotal: 20,
+                  invalidCount: 1,
+                  validCount: 12,
+                  orderCount: 1,
+                  acquiredCount: 0,
+                  lastCalledOn: "2026-09-12",
+                  segmentLastCalledOn: "2026-09-12",
+                  rotation: 20 / 13,
+                  orderRateValid: 1 / 12,
                   orderRateTotal: 1 / 13,
                   results: [{ result: "留守", rowCount: 13 }],
+                },
+                {
+                  segment: "ラディッシュ",
+                  rowCount: 10,
+                  calledCount: 7,
+                  callTotal: 16,
+                  invalidCount: 2,
+                  validCount: 8,
+                  orderCount: 2,
+                  acquiredCount: 1,
+                  lastCalledOn: "2026-09-11",
+                  segmentLastCalledOn: "2026-09-11",
+                  rotation: 1.6,
+                  orderRateValid: 2 / 8,
+                  orderRateTotal: 2 / 10,
+                  results: [{ result: "留守", rowCount: 10 }],
+                },
+                {
+                  segment: "日本データ総研株式会社",
+                  rowCount: 5,
+                  calledCount: 4,
+                  callTotal: 6,
+                  invalidCount: 0,
+                  validCount: 5,
+                  orderCount: 0,
+                  acquiredCount: 0,
+                  lastCalledOn: "2026-09-10",
+                  segmentLastCalledOn: "2026-09-10",
+                  rotation: 1.2,
+                  orderRateValid: 0,
+                  orderRateTotal: 0,
+                  results: [{ result: "留守", rowCount: 5 }],
                 },
               ],
             },
@@ -265,6 +313,74 @@ describe("ListMasterClient analysis contract block", () => {
 
     expect(await screen.findByText("集計を作り直すと表示されます（↻）")).toBeInTheDocument();
     expect(screen.getByText("新営業の写しはまだありません")).toBeInTheDocument();
+  });
+});
+
+describe("ListMasterClient analysis vendor controls", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("sorts analysis rows from headers while keeping the total row first", async () => {
+    installFetch();
+    window.history.replaceState(null, "", "/system/list?tab=analysis");
+    render(<ListMasterClient />);
+
+    const vendorSection = (await screen.findByRole("heading", { name: /① どこから購入したか/ })).closest("section");
+    expect(vendorSection).not.toBeNull();
+    const vendor = within(vendorSection as HTMLElement);
+    fireEvent.click(vendor.getByRole("button", { name: "購入先" }));
+
+    const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByRole("columnheader", { name: /購入先/ }));
+    expect(analysisTable).toBeTruthy();
+    const bodyRows = within(analysisTable as HTMLElement).getAllByRole("row").slice(1, 5);
+    expect(bodyRows.map((row) => within(row).getAllByRole("cell")[0].textContent)).toEqual([
+      "合計",
+      "データ総研",
+      "ラディッシュ",
+      "日本データ総研株式会社",
+    ]);
+
+    fireEvent.click(within(analysisTable as HTMLElement).getByRole("button", { name: /購入先/ }));
+    const descRows = within(analysisTable as HTMLElement).getAllByRole("row").slice(1, 5);
+    expect(descRows.map((row) => within(row).getAllByRole("cell")[0].textContent)).toEqual([
+      "合計",
+      "日本データ総研株式会社",
+      "ラディッシュ",
+      "データ総研",
+    ]);
+  });
+
+  it("filters vendors and rebuilds the total from selected rows", async () => {
+    installFetch();
+    window.history.replaceState(null, "", "/system/list?tab=analysis");
+    render(<ListMasterClient />);
+
+    const vendorSection = (await screen.findByRole("heading", { name: /① どこから購入したか/ })).closest("section");
+    expect(vendorSection).not.toBeNull();
+    const vendor = within(vendorSection as HTMLElement);
+
+    fireEvent.click(vendor.getByRole("button", { name: /購入先で絞る 指定なし/ }));
+    fireEvent.change(vendor.getByLabelText("名前で絞る"), { target: { value: "データ" } });
+    expect(vendor.queryByRole("checkbox", { name: "ラディッシュ（10）" })).not.toBeInTheDocument();
+    fireEvent.click(vendor.getByRole("checkbox", { name: "データ総研（13）" }));
+    fireEvent.change(vendor.getByLabelText("名前で絞る"), { target: { value: "" } });
+    fireEvent.click(vendor.getByRole("checkbox", { name: "ラディッシュ（10）" }));
+    fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
+
+    const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByRole("columnheader", { name: /購入先/ }));
+    expect(analysisTable).toBeTruthy();
+    const bodyRows = within(analysisTable as HTMLElement).getAllByRole("row").slice(1);
+    expect(bodyRows).toHaveLength(3);
+    expect(within(bodyRows[0]).getAllByRole("cell").map((cell) => cell.textContent).slice(0, 4)).toEqual([
+      "合計（選んだ 2 つ）",
+      "23",
+      "17",
+      "36",
+    ]);
+    expect(within(bodyRows[1]).getAllByRole("cell")[0]).toHaveTextContent("データ総研");
+    expect(within(bodyRows[2]).getAllByRole("cell")[0]).toHaveTextContent("ラディッシュ");
   });
 });
 

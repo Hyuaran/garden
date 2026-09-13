@@ -166,6 +166,32 @@ type AnalysisPayload = {
 
 type AnalysisBlockKey = "vendor" | "active_list" | "contract";
 
+type AnalysisSortKey =
+  | "segment"
+  | "rowCount"
+  | "calledCount"
+  | "callTotal"
+  | "rotation"
+  | "validCount"
+  | "orderCount"
+  | "acquiredCount"
+  | "orderRateValid"
+  | "orderRateTotal";
+type AnalysisSort = { key: AnalysisSortKey; direction: ListSearchSortDirection };
+
+const ANALYSIS_TABLE_COLUMNS: Array<{ key: AnalysisSortKey; label: string }> = [
+  { key: "segment", label: "区切り" },
+  { key: "rowCount", label: "件数" },
+  { key: "calledCount", label: "コール済み" },
+  { key: "callTotal", label: "総コール回数" },
+  { key: "rotation", label: "回転" },
+  { key: "validCount", label: "有効" },
+  { key: "orderCount", label: "受注（案件）" },
+  { key: "acquiredCount", label: "獲得（コール）" },
+  { key: "orderRateValid", label: "受注率（有効）" },
+  { key: "orderRateTotal", label: "受注率（総数）" },
+];
+
 type AnalysisDetailRow = {
   listName: string;
   listLoadedOn: string | null;
@@ -522,15 +548,7 @@ function valueClassName(value: number): string {
   return value > 0 ? styles.valueStrong : styles.valueZero;
 }
 
-function filterActiveSegments(segments: AnalysisSegment[], days: 15 | 30): AnalysisSegment[] {
-  if (days === 30) return segments;
-  const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
-  const kept = segments.filter((segment) => {
-    if (segment.segment === "合計") return false;
-    if (!segment.segmentLastCalledOn) return false;
-    return new Date(`${segment.segmentLastCalledOn}T00:00:00+09:00`).getTime() >= threshold;
-  });
-  // 「合計」は絞った後のリストだけで作り直す（集計表の合計は 30 日分なので、そのまま出すと 15 日側の数字と合わない）
+function buildAnalysisTotal(segments: AnalysisSegment[], resultOrderSource: AnalysisSegment[] = segments): AnalysisSegment {
   const total: AnalysisSegment = {
     segment: "合計",
     rowCount: 0,
@@ -548,7 +566,7 @@ function filterActiveSegments(segments: AnalysisSegment[], days: 15 | 30): Analy
     results: [],
   };
   const results = new Map<string, number>();
-  for (const segment of kept) {
+  for (const segment of segments) {
     total.rowCount += segment.rowCount;
     total.calledCount += segment.calledCount;
     total.callTotal += segment.callTotal;
@@ -565,7 +583,7 @@ function filterActiveSegments(segments: AnalysisSegment[], days: 15 | 30): Analy
   total.rotation = total.rowCount > 0 ? total.callTotal / total.rowCount : 0;
   total.orderRateValid = total.validCount > 0 ? total.orderCount / total.validCount : 0;
   total.orderRateTotal = total.rowCount > 0 ? total.orderCount / total.rowCount : 0;
-  const order = segments.find((segment) => segment.segment === "合計")?.results.map((item) => item.result) ?? [];
+  const order = resultOrderSource.find((segment) => segment.segment === "合計")?.results.map((item) => item.result) ?? [];
   total.results = [...results.entries()]
     .map(([result, rowCount]) => ({ result, rowCount }))
     .sort((a, b) => {
@@ -573,7 +591,42 @@ function filterActiveSegments(segments: AnalysisSegment[], days: 15 | 30): Analy
       const right = order.indexOf(b.result);
       return (left === -1 ? order.length : left) - (right === -1 ? order.length : right) || b.rowCount - a.rowCount;
     });
-  return [total, ...kept];
+  return total;
+}
+
+function filterActiveSegments(segments: AnalysisSegment[], days: 15 | 30): AnalysisSegment[] {
+  if (days === 30) return segments;
+  const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
+  const kept = segments.filter((segment) => {
+    if (segment.segment === "合計") return false;
+    if (!segment.segmentLastCalledOn) return false;
+    return new Date(`${segment.segmentLastCalledOn}T00:00:00+09:00`).getTime() >= threshold;
+  });
+  // 「合計」は絞った後のリストだけで作り直す（集計表の合計は 30 日分なので、そのまま出すと 15 日側の数字と合わない）
+  return [buildAnalysisTotal(kept, segments), ...kept];
+}
+
+function filterVendorSegments(segments: AnalysisSegment[], selectedVendors: string[]): AnalysisSegment[] {
+  if (selectedVendors.length === 0) return segments;
+  const selected = new Set(selectedVendors);
+  const kept = segments.filter((segment) => segment.segment !== "合計" && selected.has(segment.segment));
+  return [buildAnalysisTotal(kept, segments), ...kept];
+}
+
+function sortAnalysisSegments(segments: AnalysisSegment[], sort: AnalysisSort | null): AnalysisSegment[] {
+  if (!sort) return segments;
+  const total = segments.find((segment) => segment.segment === "合計");
+  const rows = segments.filter((segment) => segment.segment !== "合計");
+  const direction = sort.direction === "asc" ? 1 : -1;
+  const sorted = [...rows].sort((a, b) => {
+    if (sort.key === "segment") {
+      return a.segment.localeCompare(b.segment, "ja-JP") * direction;
+    }
+    const diff = a[sort.key] - b[sort.key];
+    if (diff !== 0) return diff * direction;
+    return a.segment.localeCompare(b.segment, "ja-JP");
+  });
+  return total ? [total, ...sorted] : sorted;
 }
 
 function resultLine(result: UploadResult): string {
@@ -754,6 +807,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
   const [analysisSelections, setAnalysisSelections] = useState({ vendor: "合計", activeList: "合計", contract: "合計" });
   const [activeListDays, setActiveListDays] = useState<15 | 30>(30);
+  const [analysisSorts, setAnalysisSorts] = useState<Record<AnalysisBlockKey, AnalysisSort | null>>({ vendor: null, active_list: null, contract: null });
+  const [analysisVendorFilter, setAnalysisVendorFilter] = useState<string[]>([]);
   // 表は上位 50 行だけ描く（購入先は 2,400 種類あり、全部描くと画面が固まった。2026-09-13 本番で確認）
   const [showAllSegments, setShowAllSegments] = useState<Record<AnalysisBlockKey, boolean>>({ vendor: false, active_list: false, contract: false });
   const [analysisDetail, setAnalysisDetail] = useState<{
@@ -1155,9 +1210,40 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     () => filterActiveSegments(analysis?.blocks.activeList.segments ?? [], activeListDays),
     [activeListDays, analysis],
   );
+  const vendorSegments = useMemo(
+    () => filterVendorSegments(analysis?.blocks.vendor.segments ?? [], analysisVendorFilter),
+    [analysis, analysisVendorFilter],
+  );
+  const vendorFilterGroups = useMemo<MultiSelectOptionGroup[]>(() => {
+    const optionsForFilter = (analysis?.blocks.vendor.segments ?? [])
+      .filter((segment) => segment.segment !== "合計")
+      .map<SoilListOptionItem>((segment) => ({
+        value: segment.segment,
+        label: segment.segment,
+        count: segment.rowCount,
+        empty: false,
+      }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "ja-JP"));
+    return [{ options: optionsForFilter }];
+  }, [analysis]);
 
   function setFilter<K extends keyof FilterState>(key: K, value: FilterState[K]) {
     setFilters((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleAnalysisSortChange(block: AnalysisBlockKey, key: AnalysisSortKey) {
+    setAnalysisSorts((current) => {
+      const currentSort = current[block];
+      const direction: ListSearchSortDirection = currentSort?.key === key && currentSort.direction === "asc" ? "desc" : "asc";
+      return { ...current, [block]: { key, direction } };
+    });
+  }
+
+  function analysisSegmentLabel(block: AnalysisBlockKey, segment: AnalysisSegment): string {
+    if (block === "vendor" && segment.segment === "合計" && analysisVendorFilter.length > 0) {
+      return `合計（選んだ ${analysisVendorFilter.length.toLocaleString("ja-JP")} つ）`;
+    }
+    return segment.segment;
   }
 
   function renderAnalysisBlock(
@@ -1170,9 +1256,14 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     help?: { title: string; rows: readonly HelpRow[] },
     emptyText = "対象データがありません",
   ) {
+    const sort = analysisSorts[block];
     const selected = segments.find((segment) => segment.segment === selectedSegment) ?? segments[0];
     const showAll = showAllSegments[block];
-    const visibleSegments = showAll ? segments : segments.slice(0, ANALYSIS_ROW_LIMIT);
+    const sortedSegments = sortAnalysisSegments(segments, sort);
+    const hasLimitedRows = block === "vendor" && analysisVendorFilter.length > 0 ? false : segments.length > ANALYSIS_ROW_LIMIT;
+    const visibleSegments = showAll || !hasLimitedRows ? sortedSegments : sortedSegments.slice(0, ANALYSIS_ROW_LIMIT);
+    const segmentColumnLabel = block === "vendor" ? "購入先" : block === "contract" ? "既契約情報" : "リスト名";
+    const tableColumns = ANALYSIS_TABLE_COLUMNS.map((column) => (column.key === "segment" ? { ...column, label: segmentColumnLabel } : column));
     const chartData: ChartData<"doughnut"> = {
       labels: selected?.results.map((item) => item.result) ?? [],
       datasets: [
@@ -1211,7 +1302,17 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       <section className={styles.analysisBlock}>
         <div className={styles.analysisBlockHeader}>
           <h3>{title}{help && <HelpTip help={help} />}</h3>
-          {controls}
+          {block === "vendor" ? (
+            <div className={styles.analysisHeaderControls}>
+              <MultiSelectFilter
+                label="購入先で絞る"
+                value={analysisVendorFilter}
+                groups={vendorFilterGroups}
+                onChange={setAnalysisVendorFilter}
+                searchable
+              />
+            </div>
+          ) : controls}
         </div>
         {segments.length === 0 ? (
           <p className={styles.empty}>{emptyText}</p>
@@ -1225,16 +1326,18 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <table className={styles.analysisTable}>
                   <thead>
                     <tr>
-                      <th>{block === "vendor" ? "購入先" : block === "contract" ? "既契約情報" : "リスト名"}</th>
-                      <th>件数</th>
-                      <th>コール済み</th>
-                      <th>総コール回数</th>
-                      <th>回転</th>
-                      <th>有効</th>
-                      <th>受注（案件）</th>
-                      <th>獲得（コール）</th>
-                      <th>受注率（有効）</th>
-                      <th>受注率（総数）</th>
+                      {tableColumns.map((column) => (
+                        <th key={column.key}>
+                          <button type="button" className={styles.sortHeaderButton} onClick={() => handleAnalysisSortChange(block, column.key)}>
+                            {column.label}
+                            {sort?.key === column.key && (
+                              <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+                                {sort.direction === "asc" ? <path d="M6 2 2 8h8z" /> : <path d="M6 10 2 4h8z" />}
+                              </svg>
+                            )}
+                          </button>
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -1244,7 +1347,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                         className={segment.segment === selected.segment ? styles.analysisSelectedRow : undefined}
                         onClick={() => onSelectSegment(segment.segment)}
                       >
-                        <td>{segment.segment}</td>
+                        <td>
+                          <span className={styles.analysisSegmentName} title={analysisSegmentLabel(block, segment)}>
+                            {analysisSegmentLabel(block, segment)}
+                          </span>
+                        </td>
                         <td>{formatCount(segment.rowCount)}</td>
                         <td>{formatCount(segment.calledCount)}</td>
                         <td>{formatCount(segment.callTotal)}</td>
@@ -1259,7 +1366,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   </tbody>
                 </table>
               </div>
-              {segments.length > ANALYSIS_ROW_LIMIT && (
+              {hasLimitedRows && (
                 <div className={styles.actions}>
                   <span className={styles.empty}>
                     {showAll ? `全 ${formatCount(segments.length)} 行を表示中` : `件数の多い順に ${ANALYSIS_ROW_LIMIT} 行を表示（全 ${formatCount(segments.length)} 行）`}
@@ -1756,7 +1863,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               {renderAnalysisBlock(
                 "① どこから購入したか",
                 "vendor",
-                analysis.blocks.vendor.segments,
+                vendorSegments,
                 analysisSelections.vendor,
                 (segment) => setAnalysisSelections((current) => ({ ...current, vendor: segment })),
                 undefined,

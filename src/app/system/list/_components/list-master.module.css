@@ -304,6 +304,20 @@
   gap: 8px;
 }
 
+.multiSelectSearch {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: var(--heading);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.multiSelectSearch input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .multiSelectOptions {
   display: grid;
   gap: 10px;
@@ -1024,6 +1038,10 @@
   letter-spacing: 0;
 }
 
+.analysisHeaderControls {
+  min-width: min(360px, 100%);
+}
+
 /* 見出し横の「？」。乗せる／選ぶと右下に条件が出る */
 .helpTip {
   position: relative;
@@ -1122,10 +1140,6 @@
   overflow: auto;
 }
 
-.analysisTableWrap table.analysisTable {
-  min-width: 960px;
-}
-
 .analysisTable thead th {
   position: sticky;
   top: 0;
@@ -1138,10 +1152,27 @@
   white-space: nowrap;
 }
 
+.analysisTable {
+  table-layout: fixed;
+}
+
+.analysisTable th:first-child,
 .analysisTable td:first-child {
-  max-width: 280px;
+  width: 200px;
+}
+
+.analysisTable th:not(:first-child),
+.analysisTable td:not(:first-child) {
+  width: 8.33%;
+}
+
+.analysisSegmentName {
+  display: inline-block;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: top;
+  white-space: nowrap;
 }
 
 .analysisTable tbody tr {
