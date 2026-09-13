@@ -114,7 +114,20 @@
   transition: background .15s ease, border-color .15s ease;
 }
 
-.syncIconButton:hover {
+/* 枠（.panel）の中に置いても上部と同じ見た目にする（.panel button のティール塗りつぶしに負けないよう指定を強くする） */
+.panel .syncIconButton {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--tealDark);
+}
+
+.syncIconButton:hover,
+.panel .syncIconButton:hover {
   border-color: var(--teal);
   background: rgba(14, 165, 160, .08);
 }

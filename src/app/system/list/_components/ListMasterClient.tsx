@@ -1479,8 +1479,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 aria-label="分析集計を作り直す"
                 title="分析集計を作り直す"
               >
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path d="M20 12a8 8 0 1 1-2.3-5.6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                  <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
                   <path d="M19.8 4.6v4.2h-4.2z" fill="currentColor" />
                 </svg>
               </button>
