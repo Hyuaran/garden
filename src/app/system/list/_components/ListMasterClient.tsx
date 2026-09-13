@@ -191,6 +191,43 @@ const initialFilters: FilterState = {
 
 const ACCEPTED_UPLOAD_EXTENSIONS = [".csv", ".xlsx", ".mer"];
 const ANALYSIS_ROW_LIMIT = 50;
+
+/** 分析の各ブロックの見出し横の「？」に出す集計の条件（東海林さん 2026-09-13） */
+const ANALYSIS_HELP = {
+  vendor: [
+    "区切り：電話番号台帳の「最新購入先」（購入履歴のいちばん新しい行の購入先）。空欄は「（購入先なし）」",
+    "件数：その購入先の電話番号の数（電話番号が空の行は数えない）",
+    "円グラフ：その区切りの最終コール結果の内訳。コール回数 0 は「未コール」、上位 6 つ以外は「その他」",
+    "受注率：受注（案件）÷ 有効（件数 − 無効）。獲得（コール）は件数を並べるだけ",
+    "集計：毎朝 6:45 と右上の ↻ で作り直し",
+  ],
+  activeList: [
+    "区切り：リスト名があり、投入日が直近 60 日以内で、直近 30 日にコールがあるリスト",
+    "「直近 15 日」：その中で、15 日以内にコールがあるリストだけ。合計もその分だけで計算",
+    "件数：そのリスト名が電話番号台帳に入っている電話番号の数",
+    "円グラフ・受注率：①と同じ",
+  ],
+  contract: [
+    "区切り：FileMaker「新営業」の「既契約情報」（ドコモ光・BIGLOBE光 など）",
+    "元データ：社内ホストPCから毎朝 5:30 に写す新営業の表（準備中）",
+  ],
+} as const;
+
+/** 見出し横の「？」。マウスを乗せる・キーボードで選ぶと条件が出る */
+function HelpTip({ lines }: { lines: readonly string[] }) {
+  return (
+    <span className={styles.helpTip} tabIndex={0} aria-label={lines.join("。")}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.8" />
+        <circle cx="12" cy="17" r=".6" fill="currentColor" />
+      </svg>
+      <span className={styles.helpTipBubble} role="tooltip">
+        {lines.map((line) => <span key={line}>{line}</span>)}
+      </span>
+    </span>
+  );
+}
 const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
 const TAB_LABELS: Array<{ key: ActiveTab; label: string; query?: string }> = [
   { key: "list", label: "リスト" },
@@ -891,6 +928,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     selectedSegment: string,
     onSelectSegment: (segment: string) => void,
     controls?: ReactNode,
+    help?: readonly string[],
   ) {
     const selected = segments.find((segment) => segment.segment === selectedSegment) ?? segments[0];
     const showAll = showAllSegments[block];
@@ -932,7 +970,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     return (
       <section className={styles.analysisBlock}>
         <div className={styles.analysisBlockHeader}>
-          <h3>{title}</h3>
+          <h3>{title}{help && <HelpTip lines={help} />}</h3>
           {controls}
         </div>
         {segments.length === 0 ? (
@@ -1453,6 +1491,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 analysis.blocks.vendor.segments,
                 analysisSelections.vendor,
                 (segment) => setAnalysisSelections((current) => ({ ...current, vendor: segment })),
+                undefined,
+                ANALYSIS_HELP.vendor,
               )}
               {renderAnalysisBlock(
                 "② 今コールしているリスト",
@@ -1464,10 +1504,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   <button type="button" aria-pressed={activeListDays === 30} onClick={() => setActiveListDays(30)}>直近 30 日</button>
                   <button type="button" aria-pressed={activeListDays === 15} onClick={() => setActiveListDays(15)}>直近 15 日</button>
                 </div>,
+                ANALYSIS_HELP.activeList,
               )}
               <section className={styles.analysisBlock}>
                 <div className={styles.analysisBlockHeader}>
-                  <h3>③ 新営業 FileMaker の既契約</h3>
+                  <h3>③ 新営業 FileMaker の既契約<HelpTip lines={ANALYSIS_HELP.contract} /></h3>
                 </div>
                 <p className={styles.empty}>準備中（新営業 FileMaker の既契約を毎朝取り込む仕組みができたら表示します）</p>
               </section>

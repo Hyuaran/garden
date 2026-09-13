@@ -695,10 +695,65 @@
 }
 
 .analysisBlockHeader h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   color: var(--heading);
   font-size: 16px;
   letter-spacing: 0;
+}
+
+/* 見出し横の「？」。乗せる／選ぶと右下に条件が出る */
+.helpTip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--sub);
+  cursor: help;
+  outline: none;
+}
+
+.helpTip:hover,
+.helpTip:focus-visible {
+  color: var(--tealDark);
+}
+
+.helpTipBubble {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  display: none;
+  width: min(460px, calc(100vw - 80px));
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: 0 12px 30px rgba(16, 35, 63, .18);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.7;
+  text-align: left;
+  white-space: normal;
+}
+
+.helpTipBubble span {
+  display: block;
+  padding-left: 1em;
+  text-indent: -1em;
+}
+
+.helpTipBubble span::before {
+  content: "・";
+}
+
+.helpTip:hover .helpTipBubble,
+.helpTip:focus-visible .helpTipBubble,
+.helpTip:focus-within .helpTipBubble {
+  display: grid;
+  gap: 4px;
 }
 
 /* 円グラフを上・表を下に縦積み（横に並べると表の幅が 385px しか残らず、購入先の列しか見えなかった） */
