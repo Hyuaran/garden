@@ -109,3 +109,6 @@
 - 「未コミット」と明記／変更・追加ファイルのフルパス／受け入れ基準 1〜3 の結果／本番データ・git に触っていないことの明記／`buildSearchSql` の既定条件の SQL 全文／足した依存とそのバージョン
 
 ## 10. 既知の差分（Codex が追記する）
+
+- Codex-320（2026-09-13）：`npm install pg @types/pg` が registry の EACCES で失敗したため、package.json / package-lock.json を手書きで反映し、`src/lib/db/pg.ts` は `eval("require")("pg")` で型検査を通していた。
+- Claude（2026-09-13 レビューで修正）：pg 8.23.0 / @types/pg 8.23.1 を実際に導入して lock を正規に生成し、`pg.ts` を通常の `import { Pool } from "pg"` に戻した。`buildSearchSql` は並び指定なしでも `order by "電話番号" asc` を付ける（順序が無いと offset のページ送りで同じ行が出たり抜けたりする）。「住所（市区町村まで）」の並びは 都道府県 → 市区町村。**ページ送りは 500 ページ＝50,000 件まで**（`MAX_SEARCH_PAGE`・本番実測：offset 50,000 で 電話番号順 2.4 秒／氏名順 8.8 秒、190 万件目で 89 秒＝60 秒の制限を超える）。上限を超える件数のときは一覧の右上に「先を見るときは条件で絞ってください」と出す。

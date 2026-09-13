@@ -445,6 +445,15 @@
   display: grid;
   grid-template-columns: minmax(120px, 1fr) auto;
   gap: 8px;
+  align-items: end;
+}
+
+/* 「検索」は 1 行で（枠が狭いと「検／索」と縦に折れて読めなかった） */
+.searchInline button {
+  white-space: nowrap;
+  min-width: 72px;
+  padding-left: 18px;
+  padding-right: 18px;
 }
 
 .tableHeaderRow {
