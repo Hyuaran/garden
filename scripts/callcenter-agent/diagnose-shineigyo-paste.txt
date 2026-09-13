@@ -1,0 +1,11 @@
+# 新営業の写しが「Worker exited with code 1」で止まったときの原因調べ（社内ホストPC・PowerShell に丸ごと貼る）
+# 子プロセス（見えない窓）で起きたエラーを、そのまま画面に出す。Garden には送らない（DryRun）。
+$ps32 = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+$hb = "C:\ProgramData\Garden\CallCenterAgent\shineigyo-heartbeat-test.json"
+& $ps32 -NoProfile -ExecutionPolicy Bypass -Command "& { try { & 'C:\Garden\callcenter-agent\ShineigyoSnapshot.ps1' -ConfigPath 'C:\Garden\callcenter-agent\config.json' -Worker -Once -DryRun -HeartbeatPath '$hb' } catch { Write-Host ('ERROR: ' + `$_.Exception.GetType().Name + ' : ' + `$_.Exception.Message); Write-Host (`$_.ScriptStackTrace); exit 1 } }"
+Remove-Item -LiteralPath $hb -Force -ErrorAction SilentlyContinue
+# 参考：設定と環境変数が読めているか（値は出さない）
+$cfg = Get-Content -Raw -Encoding UTF8 -LiteralPath "C:\Garden\callcenter-agent\config.json" | ConvertFrom-Json
+Write-Host ("fmDatabase=" + $cfg.fmDatabase + " / fmServer=" + $cfg.fmServer + " / shineigyoApiUrl=" + $cfg.shineigyoApiUrl)
+Write-Host ("FM_CALL_HISTORY_PASSWORD あり=" + [bool][Environment]::GetEnvironmentVariable("FM_CALL_HISTORY_PASSWORD","Machine") + " / CALL_INGEST_SECRET あり=" + [bool][Environment]::GetEnvironmentVariable("CALL_INGEST_SECRET","Machine"))
+Get-Content -LiteralPath (Get-ChildItem "C:\ProgramData\Garden\CallCenterAgent\logs\shineigyo-snapshot-*.jsonl" | Sort-Object LastWriteTime | Select-Object -Last 1).FullName -Tail 5
