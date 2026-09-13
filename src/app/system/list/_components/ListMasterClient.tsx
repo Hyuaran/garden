@@ -909,7 +909,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     const chartOptions: ChartOptions<"doughnut"> = {
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: "bottom" },
+        // 凡例は円グラフの右（下に 2 段だと読みにくく、右側が空いていた。東海林さん 2026-09-13）
+        legend: { position: "right", labels: { boxWidth: 14, padding: 10 } },
         tooltip: {
           callbacks: {
             label(context) {
