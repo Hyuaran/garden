@@ -59,7 +59,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "toss", "関電トスポータル", "関西電力のトスアップの受け付けと、Kintone への連携。"),
   manual("system", "deliveries", "自動配信", "決まった時刻に Chatwork へ自動で送っている連絡の中身と確認のしかた。"),
   manual("system", "kanri", "管理表ポータル", "毎日の管理表を KOT・Kintone のデータから作り、TV・Excel・Chatwork へ出す手順。"),
-  manual("system", "list", "リストマスタ", "営業リストを条件で絞って件数を見て、.mer に書き出す手順。"),
+  manual("system", "list", "リストマスタ", "営業リストを絞って Excel／CSV／.mer に書き出す・日々のリスト投入を登録する・購入先やリストごとの成績を見る（リスト｜アップロード｜分析｜管理方法）。"),
   manual("bud", "expense", "経費精算", "領収書の申請から承認・仕訳までの流れ。"),
 ];
 
