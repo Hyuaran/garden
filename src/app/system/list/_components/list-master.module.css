@@ -475,16 +475,25 @@
 }
 
 /* 書き出しの操作行：並び・形式は左から並べ、ボタンだけ右端（詰めて見えないように間を空ける） */
-/* 書き出しの操作行：形式のプルダウン（180px）の右隣にボタンを並べる（端と端だと使いにくい。東海林さん 2026-09-13） */
+/* 書き出し：左＝列のチェック、右＝形式＋書き出しボタン（データ出所の右側・下ぞろえ）。狭いときは下に回る */
+.exportLayout {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  flex-wrap: wrap;
+}
+
 .exportActions {
   justify-content: flex-start;
   align-items: flex-end;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 0;
+  flex: 0 0 auto;
 }
 
 .exportActions label {
-  width: 180px;
+  width: 150px;
 }
 
 .exportActions label select {
@@ -1253,8 +1262,9 @@
 
 .columns {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, max-content);
+  column-gap: 22px;
+  row-gap: 8px;
 }
 
 .columns label {

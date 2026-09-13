@@ -1532,6 +1532,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
 
       <section className={styles.panel} aria-labelledby="export-heading">
         <h2 id="export-heading">書き出し</h2>
+        {/* 左＝列のチェック（詰めて並べる）、右＝形式と書き出しボタン（データ出所の右側）。東海林さん 2026-09-13 */}
+        <div className={styles.exportLayout}>
         <div className={styles.columns}>
           {SOIL_LIST_EXPORT_COLUMNS.map((column) => (
             <label key={column.key}>
@@ -1562,6 +1564,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           <button type="button" onClick={handleExport} disabled={busy || count === null || excelOverLimit}>
             {count === null ? "検索後に書き出す" : `${count.toLocaleString("ja-JP")} 件を書き出す`}
           </button>
+        </div>
         </div>
         {/* 並びはリスト投入日が古い順で固定（東海林さん 2026-09-13：書き出しで並びは選ばない）。上限の注意は Excel を選んで超えているときだけ赤字 */}
         {excelOverLimit && (
