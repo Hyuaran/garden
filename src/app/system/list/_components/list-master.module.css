@@ -593,6 +593,21 @@
   flex: 0 0 auto;
 }
 
+.analysisHeaderLabel {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  line-height: 1.12;
+}
+
+.analysisHeaderLabel span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
 .modalBackdrop {
   position: fixed;
   inset: 0;
@@ -1130,8 +1145,68 @@
 
 .chartPane {
   position: relative;
-  width: min(100%, 560px);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(100%, 620px);
+  min-height: 260px;
+}
+
+.chartCanvas {
+  position: relative;
+  flex: 0 0 260px;
+  width: 260px;
   height: 260px;
+}
+
+.analysisLegend {
+  display: grid;
+  gap: 2px;
+  min-width: min(260px, 100%);
+  max-width: 320px;
+}
+
+.analysisLegendButton {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 24px !important;
+  padding: 2px 6px !important;
+  border: 0 !important;
+  border-radius: 4px;
+  background: transparent !important;
+  color: var(--heading) !important;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.analysisLegendButton:hover,
+.analysisLegendButton:focus-visible {
+  background: rgba(14, 165, 160, .11) !important;
+}
+
+.analysisLegendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.analysisLegendName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysisLegendCount {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* 表は枠の中で縦にスクロール（購入先は 2,400 種類あり、全部並べると画面が 15 万 px になって固まる） */
@@ -1153,17 +1228,19 @@
 }
 
 .analysisTable {
-  table-layout: fixed;
+  min-width: 0 !important;
+  table-layout: auto;
 }
 
 .analysisTable th:first-child,
 .analysisTable td:first-child {
-  width: 200px;
+  width: auto;
 }
 
 .analysisTable th:not(:first-child),
 .analysisTable td:not(:first-child) {
-  width: 8.33%;
+  width: 1%;
+  white-space: nowrap;
 }
 
 .analysisSegmentName {
@@ -1191,27 +1268,6 @@
 .valueZero {
   color: var(--val-zero, var(--sub));
   font-weight: 600;
-}
-
-.resultButtons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.resultButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: transparent !important;
-  border: 1px solid var(--line) !important;
-  color: var(--ink) !important;
-}
-
-.resultButton span {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
 }
 
 .segmentedControl {
@@ -1274,6 +1330,10 @@
   min-width: 840px;
   color: var(--ink);
   font-size: 13px;
+}
+
+.analysisTableWrap table {
+  min-width: 0;
 }
 
 .tableWrap th,
@@ -1356,6 +1416,14 @@
   }
 
   .chartPane {
+    align-items: flex-start;
+    flex-direction: column;
     min-height: 240px;
+  }
+
+  .chartCanvas {
+    flex-basis: 240px;
+    width: 240px;
+    height: 240px;
   }
 }

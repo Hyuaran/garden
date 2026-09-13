@@ -46,6 +46,14 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
     if (url === "/api/soil/list/uploads/upload-failed/apply" && init?.method === "POST") {
       return json({ ok: true, result: { assignments: 2500, assignments_new: 2500, assignments_updated: 0, parent_updated: 2500, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 0, purchase_inserted: 0 } });
     }
+    if (url === "/api/soil/list/analysis/detail?block=vendor&segment=__all__&result=%E7%95%99%E5%AE%88") {
+      return json({
+        ok: true,
+        rows: [
+          { listName: "データ総研", listLoadedOn: "2026-09-12", rowCount: 546083, calledCount: 546083, callTotal: 546083, orderCount: 3, acquiredCount: 1, lastCalledOn: "2026-09-12" },
+        ],
+      });
+    }
     if (url === "/api/soil/list/analysis") {
       return json(options.analysis ?? {
         ok: true,
@@ -70,7 +78,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   rotation: 1.5,
                   orderRateValid: 3 / 25,
                   orderRateTotal: 3 / 28,
-                  results: [{ result: "留守", rowCount: 28 }],
+                  results: [{ result: "留守", rowCount: 546083 }],
                 },
                 {
                   segment: "データ総研",
@@ -381,6 +389,28 @@ describe("ListMasterClient analysis vendor controls", () => {
     ]);
     expect(within(bodyRows[1]).getAllByRole("cell")[0]).toHaveTextContent("データ総研");
     expect(within(bodyRows[2]).getAllByRole("cell")[0]).toHaveTextContent("ラディッシュ");
+  });
+
+  it("shows clickable legend rows with counts and removes the old result buttons", async () => {
+    const fetchMock = installFetch();
+    window.history.replaceState(null, "", "/system/list?tab=analysis");
+    const { container } = render(<ListMasterClient />);
+
+    const vendorSection = (await screen.findByRole("heading", { name: /① どこから購入したか/ })).closest("section");
+    expect(vendorSection).not.toBeNull();
+    const vendor = within(vendorSection as HTMLElement);
+    const legendButton = await vendor.findByRole("button", { name: /留守\s+546,083\s+件/ });
+
+    expect(legendButton).toBeInTheDocument();
+    expect(container.querySelector("[class*='resultButton']")).not.toBeInTheDocument();
+
+    fireEvent.click(legendButton);
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([calledUrl]) => (
+        decodeURIComponent(String(calledUrl)) === "/api/soil/list/analysis/detail?block=vendor&segment=__all__&result=留守"
+      ))).toBe(true);
+    });
   });
 });
 

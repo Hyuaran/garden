@@ -179,17 +179,17 @@ type AnalysisSortKey =
   | "orderRateTotal";
 type AnalysisSort = { key: AnalysisSortKey; direction: ListSearchSortDirection };
 
-const ANALYSIS_TABLE_COLUMNS: Array<{ key: AnalysisSortKey; label: string }> = [
+const ANALYSIS_TABLE_COLUMNS: Array<{ key: AnalysisSortKey; label: string; sub?: string }> = [
   { key: "segment", label: "区切り" },
   { key: "rowCount", label: "件数" },
-  { key: "calledCount", label: "コール済み" },
-  { key: "callTotal", label: "総コール回数" },
+  { key: "calledCount", label: "コール", sub: "済み" },
+  { key: "callTotal", label: "総コール", sub: "回数" },
   { key: "rotation", label: "回転" },
   { key: "validCount", label: "有効" },
-  { key: "orderCount", label: "受注（案件）" },
-  { key: "acquiredCount", label: "獲得（コール）" },
-  { key: "orderRateValid", label: "受注率（有効）" },
-  { key: "orderRateTotal", label: "受注率（総数）" },
+  { key: "orderCount", label: "受注", sub: "（案件）" },
+  { key: "acquiredCount", label: "獲得", sub: "（コール）" },
+  { key: "orderRateValid", label: "受注率", sub: "（有効）" },
+  { key: "orderRateTotal", label: "受注率", sub: "（総数）" },
 ];
 
 type AnalysisDetailRow = {
@@ -1278,8 +1278,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     const chartOptions: ChartOptions<"doughnut"> = {
       maintainAspectRatio: false,
       plugins: {
-        // 凡例は円グラフの右（下に 2 段だと読みにくく、右側が空いていた。東海林さん 2026-09-13）
-        legend: { position: "right", labels: { boxWidth: 14, padding: 10 } },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label(context) {
@@ -1320,7 +1319,24 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           <>
             <div className={styles.analysisGrid}>
               <div className={styles.chartPane}>
-                <Doughnut data={chartData} options={chartOptions} />
+                <div className={styles.chartCanvas}>
+                  <Doughnut data={chartData} options={chartOptions} />
+                </div>
+                <div className={styles.analysisLegend}>
+                  {(selected?.results ?? []).map((item) => (
+                    <button
+                      key={item.result}
+                      type="button"
+                      className={styles.analysisLegendButton}
+                      aria-label={`${item.result} ${formatCount(item.rowCount)} 件`}
+                      onClick={() => void openAnalysisDetail(block, selected.segment, item.result)}
+                    >
+                      <span className={styles.analysisLegendDot} style={{ background: resultColor(item.result) }} />
+                      <span className={styles.analysisLegendName}>{item.result}</span>
+                      <span className={styles.analysisLegendCount}>{formatCount(item.rowCount)} 件</span>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className={`${styles.tableWrap} ${styles.analysisTableWrap}`}>
                 <table className={styles.analysisTable}>
@@ -1329,12 +1345,17 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                       {tableColumns.map((column) => (
                         <th key={column.key}>
                           <button type="button" className={styles.sortHeaderButton} onClick={() => handleAnalysisSortChange(block, column.key)}>
-                            {column.label}
-                            {sort?.key === column.key && (
-                              <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
-                                {sort.direction === "asc" ? <path d="M6 2 2 8h8z" /> : <path d="M6 10 2 4h8z" />}
-                              </svg>
-                            )}
+                            <span className={styles.analysisHeaderLabel}>
+                              <span>
+                                {column.label}
+                                {sort?.key === column.key && (
+                                  <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+                                    {sort.direction === "asc" ? <path d="M6 2 2 8h8z" /> : <path d="M6 10 2 4h8z" />}
+                                  </svg>
+                                )}
+                              </span>
+                              {column.sub && <span>{column.sub}</span>}
+                            </span>
                           </button>
                         </th>
                       ))}
@@ -1376,14 +1397,6 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   </button>
                 </div>
               )}
-            </div>
-            <div className={styles.resultButtons}>
-              {(selected?.results ?? []).map((item) => (
-                <button key={item.result} type="button" className={styles.resultButton} onClick={() => void openAnalysisDetail(block, selected.segment, item.result)}>
-                  <span style={{ background: resultColor(item.result) }} />
-                  {item.result} {formatCount(item.rowCount)} 件
-                </button>
-              ))}
             </div>
           </>
         )}
