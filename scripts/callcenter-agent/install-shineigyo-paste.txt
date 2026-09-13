@@ -1,0 +1,31 @@
+# 社内ホストPC（コール履歴を毎日読んでいる PC・C:\Garden\callcenter-agent\ がある PC）での「新営業の毎朝の写し」の入れ方
+# 2026-09-13 作成（Codex-317）。3 段階。各段階の中身を PowerShell（管理者）に丸ごと貼る。
+#
+# ■ 段階 0（手で行う・貼る前に）
+#   このPC（東海林さんの PC）の次の 3 ファイルを、社内ホストPCの C:\Garden\callcenter-agent\ にコピーして上書きする
+#     C:\garden\a-bloom-008\scripts\callcenter-agent\ShineigyoSnapshot.ps1
+#     C:\garden\a-bloom-008\scripts\callcenter-agent\Register-ShineigyoSnapshotTask.ps1
+#     C:\garden\a-bloom-008\scripts\callcenter-agent\CallCenterAgent.Core.ps1   ← 既存を上書き（新営業用の関数を足したもの。今の取り込みの関数はそのまま）
+#
+# ■ 段階 1：設定に送り先を 1 行足して、試し読み（DryRun＝Garden には送らない・件数と列の型だけ出る）
+$cfgPath = "C:\Garden\callcenter-agent\config.json"
+$cfg = Get-Content -Raw -Encoding UTF8 -LiteralPath $cfgPath | ConvertFrom-Json
+if (-not ($cfg.PSObject.Properties.Name -contains "shineigyoApiUrl")) {
+  $cfg | Add-Member -MemberType NoteProperty -Name shineigyoApiUrl -Value "https://garden-os.net/api/system/shineigyo-ingest"
+  Copy-Item -LiteralPath $cfgPath -Destination "$cfgPath.bak-20260913"
+  $cfg | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $cfgPath -Encoding UTF8
+}
+Write-Host ("shineigyoApiUrl = " + $cfg.shineigyoApiUrl)
+$ps32 = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File "C:\Garden\callcenter-agent\ShineigyoSnapshot.ps1" -ConfigPath $cfgPath -DryRun -Once
+#
+#   → 「dry-run completed」の行に rows（約 55,100）が出れば OK。出た内容を Claude に貼る。
+#
+# ■ 段階 2：本番で 1 回写す（Garden へ送る。約 1〜2 分）
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File "C:\Garden\callcenter-agent\ShineigyoSnapshot.ps1" -ConfigPath "C:\Garden\callcenter-agent\config.json" -Once
+#
+#   → 「snapshot completed」の行に complete_status = success が出れば OK。Claude が Garden 側の件数を確認する。
+#
+# ■ 段階 3：毎朝 5:30 のタスクを登録（段階 2 が成功してから）
+& "C:\Garden\callcenter-agent\Register-ShineigyoSnapshotTask.ps1"
+Get-ScheduledTaskInfo -TaskName "GardenShineigyoSnapshot"
