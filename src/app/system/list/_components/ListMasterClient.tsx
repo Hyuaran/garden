@@ -140,9 +140,11 @@ type AnalysisPayload = {
   blocks: {
     vendor: { segments: AnalysisSegment[] };
     activeList: { segments: AnalysisSegment[] };
-    contract: { pending: true };
+    contract: { segments: AnalysisSegment[]; snapshotAt: string | null };
   };
 };
+
+type AnalysisBlockKey = "vendor" | "active_list" | "contract";
 
 type AnalysisDetailRow = {
   listName: string;
@@ -208,8 +210,10 @@ const ANALYSIS_HELP = {
     "円グラフ・受注率：①と同じ",
   ],
   contract: [
-    "区切り：FileMaker「新営業」の「既契約情報」（ドコモ光・BIGLOBE光 など）",
-    "元データ：社内ホストPCから毎朝 5:30 に写す新営業の表（準備中）",
+    "区切り：新営業の「既契約情報」。空欄は「（既契約情報なし）」",
+    "件数：その既契約情報を持つ新営業の電話番号のうち、電話番号台帳にある番号。同じ番号が複数行あれば修正日が新しい行を使う",
+    "円グラフ・受注率：①と同じ",
+    "元データ：社内ホストPCから毎朝 5:30 に写す新営業の表",
   ],
 } as const;
 
@@ -583,12 +587,12 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [uploadApplyBusyId, setUploadApplyBusyId] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
-  const [analysisSelections, setAnalysisSelections] = useState({ vendor: "合計", activeList: "合計" });
+  const [analysisSelections, setAnalysisSelections] = useState({ vendor: "合計", activeList: "合計", contract: "合計" });
   const [activeListDays, setActiveListDays] = useState<15 | 30>(30);
   // 表は上位 50 行だけ描く（購入先は 2,400 種類あり、全部描くと画面が固まった。2026-09-13 本番で確認）
-  const [showAllSegments, setShowAllSegments] = useState<{ vendor: boolean; active_list: boolean }>({ vendor: false, active_list: false });
+  const [showAllSegments, setShowAllSegments] = useState<Record<AnalysisBlockKey, boolean>>({ vendor: false, active_list: false, contract: false });
   const [analysisDetail, setAnalysisDetail] = useState<{
-    block: "vendor" | "active_list";
+    block: AnalysisBlockKey;
     segment: string;
     result: string;
     rows: AnalysisDetailRow[];
@@ -683,7 +687,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
-  async function openAnalysisDetail(block: "vendor" | "active_list", segment: string, result: string) {
+  async function openAnalysisDetail(block: AnalysisBlockKey, segment: string, result: string) {
     setAnalysisMessage("");
     try {
       const params = new URLSearchParams({ block, segment: segment === "合計" ? "__all__" : segment, result });
@@ -923,12 +927,13 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
 
   function renderAnalysisBlock(
     title: string,
-    block: "vendor" | "active_list",
+    block: AnalysisBlockKey,
     segments: AnalysisSegment[],
     selectedSegment: string,
     onSelectSegment: (segment: string) => void,
     controls?: ReactNode,
     help?: readonly string[],
+    emptyText = "対象データがありません",
   ) {
     const selected = segments.find((segment) => segment.segment === selectedSegment) ?? segments[0];
     const showAll = showAllSegments[block];
@@ -974,7 +979,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           {controls}
         </div>
         {segments.length === 0 ? (
-          <p className={styles.empty}>対象データがありません</p>
+          <p className={styles.empty}>{emptyText}</p>
         ) : (
           <>
             <div className={styles.analysisGrid}>
@@ -985,7 +990,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <table className={styles.analysisTable}>
                   <thead>
                     <tr>
-                      <th>{block === "vendor" ? "購入先" : "リスト名"}</th>
+                      <th>{block === "vendor" ? "購入先" : block === "contract" ? "既契約情報" : "リスト名"}</th>
                       <th>件数</th>
                       <th>コール済み</th>
                       <th>総コール回数</th>
@@ -1506,12 +1511,20 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 </div>,
                 ANALYSIS_HELP.activeList,
               )}
-              <section className={styles.analysisBlock}>
-                <div className={styles.analysisBlockHeader}>
-                  <h3>③ 新営業 FileMaker の既契約<HelpTip lines={ANALYSIS_HELP.contract} /></h3>
-                </div>
-                <p className={styles.empty}>準備中（新営業 FileMaker の既契約を毎朝取り込む仕組みができたら表示します）</p>
-              </section>
+              {renderAnalysisBlock(
+                "③ 新営業 FileMaker の既契約",
+                "contract",
+                analysis.blocks.contract.segments,
+                analysisSelections.contract,
+                (segment) => setAnalysisSelections((current) => ({ ...current, contract: segment })),
+                <span className={styles.empty}>
+                  {analysis.blocks.contract.snapshotAt
+                    ? `新営業の写し：${formatJstWithWeekday(analysis.blocks.contract.snapshotAt)} 時点`
+                    : "新営業の写しはまだありません"}
+                </span>,
+                ANALYSIS_HELP.contract,
+                "集計を作り直すと表示されます（↻）",
+              )}
               {renderAnalysisDetail()}
               <details className={styles.definitionBox}>
                 <summary>定義</summary>

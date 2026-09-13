@@ -52,7 +52,7 @@ export type AnalysisPayload = {
   blocks: {
     vendor: { segments: AnalysisSegment[] };
     activeList: { segments: AnalysisSegment[] };
-    contract: { pending: true };
+    contract: { segments: AnalysisSegment[]; snapshotAt: string | null };
   };
 };
 
@@ -68,15 +68,24 @@ export type AnalysisDetailRow = {
 };
 
 type QueryResult<T> = Promise<{ data: T[] | null; error: DbError }>;
+type MaybeSingleResult<T> = Promise<{ data: T | null; error: DbError }>;
 
 export type AnalysisDb = {
   from(table: string): {
     select(columns: string): {
       order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): {
         range(from: number, to: number): QueryResult<AnalysisCellRow>;
+        limit(count: number): {
+          maybeSingle<T>(): MaybeSingleResult<T>;
+        };
       };
       eq(column: string, value: unknown): {
-        maybeSingle<T>(): Promise<{ data: T | null; error: DbError }>;
+        maybeSingle<T>(): MaybeSingleResult<T>;
+        order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): {
+          limit(count: number): {
+            maybeSingle<T>(): MaybeSingleResult<T>;
+          };
+        };
       };
     };
     update(values: Record<string, unknown>): {
@@ -219,10 +228,22 @@ export async function loadAnalysisState(db: AnalysisDb): Promise<AnalysisStateRo
   return data ?? { refreshed_at: null, last_elapsed_ms: 0, last_error: null, rows: 0 };
 }
 
+export async function loadContractSnapshotAt(db: AnalysisDb): Promise<string | null> {
+  const { data, error } = await db
+    .from("system_fm_shineigyo_sync_log")
+    .select("completed_at")
+    .eq("status", "success")
+    .order("completed_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle<{ completed_at: string | null }>();
+  if (error) throw new Error(error.message);
+  return data?.completed_at ?? null;
+}
+
 export async function loadAnalysisPayload(db: AnalysisDb): Promise<AnalysisPayload> {
   const now = Date.now();
   if (cached && cached.expiresAt > now) return cached.payload;
-  const [cells, state] = await Promise.all([loadAnalysisCells(db), loadAnalysisState(db)]);
+  const [cells, state, contractSnapshotAt] = await Promise.all([loadAnalysisCells(db), loadAnalysisState(db), loadContractSnapshotAt(db)]);
   const payload: AnalysisPayload = {
     refreshedAt: state.refreshed_at,
     elapsedMs: numberValue(state.last_elapsed_ms),
@@ -230,7 +251,7 @@ export async function loadAnalysisPayload(db: AnalysisDb): Promise<AnalysisPaylo
     blocks: {
       vendor: buildBlock(cells, "vendor"),
       activeList: buildBlock(cells, "active_list"),
-      contract: { pending: true },
+      contract: { ...buildBlock(cells, "contract"), snapshotAt: contractSnapshotAt },
     },
   };
   cached = { expiresAt: now + CACHE_MS, payload, cells };
@@ -239,7 +260,7 @@ export async function loadAnalysisPayload(db: AnalysisDb): Promise<AnalysisPaylo
 
 export async function loadAnalysisDetail(
   db: AnalysisDb,
-  block: "vendor" | "active_list",
+  block: AnalysisCellRow["block"],
   segment: string,
   result: string,
 ): Promise<AnalysisDetailRow[]> {

@@ -13,7 +13,7 @@ function json(data: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), { status }));
 }
 
-function installFetch(options: { uploads?: unknown[] } = {}) {
+function installFetch(options: { uploads?: unknown[]; analysis?: unknown } = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url === "/api/soil/list/conditions") return json({ ok: true, conditions: [] });
@@ -29,7 +29,7 @@ function installFetch(options: { uploads?: unknown[] } = {}) {
       return json({ ok: true, result: { assignments: 2500, assignments_new: 2500, assignments_updated: 0, parent_updated: 2500, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 0, purchase_inserted: 0 } });
     }
     if (url === "/api/soil/list/analysis") {
-      return json({
+      return json(options.analysis ?? {
         ok: true,
         analysis: {
           refreshedAt: "2026-09-13T06:45:00+09:00",
@@ -57,7 +57,43 @@ function installFetch(options: { uploads?: unknown[] } = {}) {
               ],
             },
             activeList: { segments: [] },
-            contract: { pending: true },
+            contract: {
+              snapshotAt: "2026-09-13T15:27:00+09:00",
+              segments: [
+                {
+                  segment: "合計",
+                  rowCount: 7,
+                  calledCount: 6,
+                  callTotal: 12,
+                  invalidCount: 0,
+                  validCount: 7,
+                  orderCount: 1,
+                  acquiredCount: 0,
+                  lastCalledOn: "2026-09-12",
+                  segmentLastCalledOn: null,
+                  rotation: 12 / 7,
+                  orderRateValid: 1 / 7,
+                  orderRateTotal: 1 / 7,
+                  results: [{ result: "留守", rowCount: 7 }],
+                },
+                {
+                  segment: "ドコモ光",
+                  rowCount: 7,
+                  calledCount: 6,
+                  callTotal: 12,
+                  invalidCount: 0,
+                  validCount: 7,
+                  orderCount: 1,
+                  acquiredCount: 0,
+                  lastCalledOn: "2026-09-12",
+                  segmentLastCalledOn: null,
+                  rotation: 12 / 7,
+                  orderRateValid: 1 / 7,
+                  orderRateTotal: 1 / 7,
+                  results: [{ result: "留守", rowCount: 7 }],
+                },
+              ],
+            },
           },
         },
       });
@@ -169,6 +205,48 @@ describe("ListMasterClient tabs", () => {
     fireEvent.click(screen.getByRole("tab", { name: "アップロード" }));
     expect(window.location.search).toBe("?tab=upload");
     expect(screen.getByText("リストの取込ファイルをアップロード")).toBeInTheDocument();
+  });
+});
+
+describe("ListMasterClient analysis contract block", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("shows the contract analysis table and shineigyo snapshot time", async () => {
+    installFetch();
+    window.history.replaceState(null, "", "/system/list?tab=analysis");
+    render(<ListMasterClient />);
+
+    expect(await screen.findByRole("heading", { name: /③ 新営業 FileMaker の既契約/ })).toBeInTheDocument();
+    expect(screen.getByText("新営業の写し：2026/09/13(日) 15:27 時点")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "既契約情報" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "ドコモ光" })).toBeInTheDocument();
+    expect(screen.getAllByTestId("analysis-doughnut").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows a refresh hint when contract rows are not in the current aggregate yet", async () => {
+    installFetch({
+      analysis: {
+        ok: true,
+        analysis: {
+          refreshedAt: "2026-09-13T06:45:00+09:00",
+          elapsedMs: 1200,
+          lastError: null,
+          blocks: {
+            vendor: { segments: [] },
+            activeList: { segments: [] },
+            contract: { snapshotAt: null, segments: [] },
+          },
+        },
+      },
+    });
+    window.history.replaceState(null, "", "/system/list?tab=analysis");
+    render(<ListMasterClient />);
+
+    expect(await screen.findByText("集計を作り直すと表示されます（↻）")).toBeInTheDocument();
+    expect(screen.getByText("新営業の写しはまだありません")).toBeInTheDocument();
   });
 });
 

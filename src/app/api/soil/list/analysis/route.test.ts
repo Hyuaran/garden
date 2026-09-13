@@ -64,9 +64,24 @@ const cells: AnalysisCellRow[] = [
     last_called_on: "2026-09-12",
     segment_last_called_on: "2026-09-12",
   },
+  {
+    block: "contract",
+    segment: "ドコモ光",
+    result: "留守",
+    list_name: "リストB",
+    list_loaded_on: "2026-09-11",
+    row_count: 7,
+    called_count: 6,
+    call_total: 12,
+    invalid_count: 0,
+    order_count: 1,
+    acquired_count: 0,
+    last_called_on: "2026-09-12",
+    segment_last_called_on: null,
+  },
 ];
 
-function adminClient(role = "manager") {
+function adminClient(role = "manager", contractSnapshotAt: string | null = "2026-09-13T15:27:00+09:00") {
   const rpc = vi.fn(async (name: string) => {
     if (name === "soil_list_analysis_finish") return { data: [{ refreshed_at: "2026-09-13T06:45:00+09:00", rows: 3, elapsed_ms: 1234 }], error: null };
     return { data: [{ rows: 1 }], error: null };
@@ -111,6 +126,19 @@ function adminClient(role = "manager") {
           }),
         };
       }
+      if (table === "system_fm_shineigyo_sync_log") {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: async () => ({ data: contractSnapshotAt ? { completed_at: contractSnapshotAt } : null, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
   };
@@ -146,8 +174,25 @@ describe("/api/soil/list/analysis", () => {
               { segment: "データ総研", rowCount: 13, callTotal: 23, rotation: 23 / 13 },
             ],
           },
+          contract: {
+            snapshotAt: "2026-09-13T15:27:00+09:00",
+            segments: [
+              { segment: "合計", rowCount: 7, calledCount: 6, orderCount: 1 },
+              { segment: "ドコモ光", rowCount: 7, callTotal: 12 },
+            ],
+          },
         },
       },
+    });
+  });
+
+  it("returns null contract snapshot when the sync log has no success row", async () => {
+    mocks.getAdmin.mockReturnValue(adminClient("manager", null));
+    const response = await GET();
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      analysis: { blocks: { contract: { snapshotAt: null } } },
     });
   });
 
@@ -156,6 +201,13 @@ describe("/api/soil/list/analysis", () => {
     const response = await detailGET(new Request("http://test/api/soil/list/analysis/detail?block=vendor&segment=データ総研&result=留守"));
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ ok: true, rows: [{ listName: "リストA", rowCount: 10, callTotal: 20 }] });
+  });
+
+  it("accepts contract detail rows", async () => {
+    mocks.getAdmin.mockReturnValue(adminClient());
+    const response = await detailGET(new Request("http://test/api/soil/list/analysis/detail?block=contract&segment=ドコモ光&result=留守"));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true, rows: [{ listName: "リストB", rowCount: 7, callTotal: 12 }] });
   });
 
   it("refresh calls begin, collect x100 and finish in order", async () => {
