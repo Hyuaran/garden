@@ -219,3 +219,29 @@ Describe "Test-IsHeartbeatStalled" {
     Test-IsHeartbeatStalled ([datetime]"2026-08-12T00:00:00Z") $now 300 | Should Be $true
   }
 }
+
+Describe "Shineigyo snapshot helpers" {
+  It "selects only the stored fields needed for the existing-contract snapshot" {
+    $columns = @(Get-ShineigyoFetchColumns)
+    $columns | Should Be @(
+      "主キー",
+      "電話番号_ハイフンなし",
+      "携帯番号_ハイフンなし",
+      "リスト名",
+      "営業ID",
+      "受注日",
+      "既契約情報",
+      "既契約回線タイプ",
+      "既契約継続有無",
+      "修正日"
+    )
+    ($columns -contains "既契約利用期間") | Should Be $false
+  }
+
+  It "formats order dates and keeps ids as invariant strings" {
+    Convert-ShineigyoOdbcValue ([datetime]"2026-09-11") "受注日" | Should Be "2026-09-11"
+    Convert-ShineigyoOdbcValue 123.0 "主キー" | Should Be "123"
+    Convert-ShineigyoOdbcValue 2027231 "営業ID" | Should Be "2027231"
+    Convert-ShineigyoOdbcValue ([DBNull]::Value) "既契約情報" | Should Be $null
+  }
+}

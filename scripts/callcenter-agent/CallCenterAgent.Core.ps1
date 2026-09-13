@@ -148,3 +148,43 @@ function Test-IsHeartbeatStalled {
   param([datetime]$LastWriteUtc, [datetime]$NowUtc, [int]$TimeoutSeconds)
   return ($NowUtc - $LastWriteUtc).TotalSeconds -gt [Math]::Max($TimeoutSeconds, 1)
 }
+
+function Get-ShineigyoFetchColumns {
+  return @(
+    "主キー",
+    "電話番号_ハイフンなし",
+    "携帯番号_ハイフンなし",
+    "リスト名",
+    "営業ID",
+    "受注日",
+    "既契約情報",
+    "既契約回線タイプ",
+    "既契約継続有無",
+    "修正日"
+  )
+}
+
+function Convert-ShineigyoOdbcValue {
+  param(
+    [AllowNull()] [object]$Value,
+    [Parameter(Mandatory = $true)] [string]$ColumnName
+  )
+
+  if ($Value -is [DBNull]) { return $null }
+  if ($ColumnName -eq "受注日" -and $Value -is [datetime]) { return $Value.ToString("yyyy-MM-dd") }
+  if ($ColumnName -in @("主キー", "営業ID")) { return [Convert]::ToString($Value, [Globalization.CultureInfo]::InvariantCulture) }
+  return $Value
+}
+
+function ConvertTo-ShineigyoApiRow {
+  param(
+    [Parameter(Mandatory = $true)] [System.Data.IDataRecord]$Reader,
+    [Parameter(Mandatory = $true)] [string[]]$Columns
+  )
+
+  $row = [ordered]@{}
+  for ($i = 0; $i -lt $Columns.Count; $i++) {
+    $row[$Columns[$i]] = Convert-ShineigyoOdbcValue $Reader.GetValue($i) $Columns[$i]
+  }
+  return $row
+}

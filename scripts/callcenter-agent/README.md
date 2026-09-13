@@ -207,10 +207,60 @@ Get-ScheduledTaskInfo -TaskName "GardenCallCenterAgent"
 
 タスクはWindows起動時に開始し、`runContinuously=true`の場合はプロセス内で定期実行します。多重起動は`IgnoreNew`です。
 
+## 新営業の毎朝の写し
+
+FileMaker「コール履歴」ファイル内の「新営業」表を、毎朝 5:30 に Garden の `POST /api/system/shineigyo-ingest` へ丸ごと写します。既存の `GardenCallCenterAgent` とは別スクリプト・別タスクなので、互いの状態や起動方式には影響しません。
+
+`config.json` には通常の `apiUrl` に加えて、新営業用の送信先を入れます。秘密値は入れません。
+
+```json
+{
+  "shineigyoApiUrl": "https://garden.example.com/api/system/shineigyo-ingest"
+}
+```
+
+社内ホストPCに `ShineigyoSnapshot.ps1`、`CallCenterAgent.Core.ps1`、`Register-ShineigyoSnapshotTask.ps1`、`config.json` を同じフォルダへ置き、先に DryRun で件数と列型だけを確認します。DryRun は値を出さず、API へ送信しません。
+
+```powershell
+$ps32 = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+$agent = "C:\Garden\callcenter-agent\ShineigyoSnapshot.ps1"
+$config = "C:\Garden\callcenter-agent\config.json"
+
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -DryRun -Once
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $agent -ConfigPath $config -Once
+```
+
+初回送信後、Garden 側で次を確認します。件数は社内ホストPCの調査結果では約 55,100 件、既契約情報はドコモ光 3,058 件などの分布が目安です。
+
+```sql
+select count(*) from public.system_fm_shineigyo;
+
+select "既契約情報", count(*)
+from public.system_fm_shineigyo
+where nullif("既契約情報", '') is not null
+group by "既契約情報"
+order by count(*) desc
+limit 20;
+
+select run_id, status, total_rows, started_at, completed_at
+from public.system_fm_shineigyo_sync_log
+order by started_at desc
+limit 20;
+```
+
+確認後、管理者PowerShellで毎朝 5:30 のタスクを登録します。
+
+```powershell
+& "C:\Garden\callcenter-agent\Register-ShineigyoSnapshotTask.ps1"
+Start-ScheduledTask -TaskName "GardenShineigyoSnapshot"
+Get-ScheduledTaskInfo -TaskName "GardenShineigyoSnapshot"
+```
+
 ## 状態・ログ・障害復旧
 
 - 状態: `C:\ProgramData\Garden\CallCenterAgent\state.json`
 - ログ: `C:\ProgramData\Garden\CallCenterAgent\logs\agent-YYYYMMDD.jsonl`
+- 新営業ログ: `C:\ProgramData\Garden\CallCenterAgent\logs\shineigyo-snapshot-YYYYMMDD.jsonl`
 - partialまたは失敗時は状態日付を進めません。通常増分は次回オーバーラップ範囲を再送し、バックフィルは失敗月へ範囲を狭めて再実行します。どちらもAPIのupsertで重複を防ぎます。
 - 状態ファイルが壊れた場合、内容を保全して別名へ移動してから`-StartDate`を指定して復旧します。
 - ログにはFMパスワード、Bearer token、電話番号、受信行本文を出しません。

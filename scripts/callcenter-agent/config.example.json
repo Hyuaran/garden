@@ -1,5 +1,6 @@
 {
   "apiUrl": "https://garden.example.com/api/system/call-ingest",
+  "shineigyoApiUrl": "https://garden.example.com/api/system/shineigyo-ingest",
   "batchSize": 500,
   "includeAggregateFields": false,
   "overlapDays": 3,
