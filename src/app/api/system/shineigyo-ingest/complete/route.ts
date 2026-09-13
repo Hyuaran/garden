@@ -32,7 +32,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, status: "failure", error: "新営業件数確認に失敗しました" }, { status: 500 });
   }
 
-  if ((count ?? 0) !== parsed.total) {
+  // 件数の突き合わせは「受け取って検証を通った行数（記録の total_rows）」と DB の行数で行う。
+  // 社内ホストPCが読んだ件数（parsed.total）との差は、検証で除外した行（主キーが空など）なので失敗にしない。
+  // （2026-09-13 初回：読んだ 55,100 件のうち 4 件が検証で除外され、55,096 件が入ったのに count_mismatch で止まった）
+  const { data: runLog, error: runLogError } = await supabase
+    .from("system_fm_shineigyo_sync_log")
+    .select("total_rows")
+    .eq("run_id", parsed.runId)
+    .maybeSingle<{ total_rows: number }>();
+  if (runLogError) {
+    console.error("[system/shineigyo-ingest/complete] log lookup failed", runLogError.message, { run_id: parsed.runId });
+    return NextResponse.json({ ok: false, status: "failure", error: "新営業の取込記録を読めませんでした" }, { status: 500 });
+  }
+  const accepted = runLog?.total_rows ?? 0;
+  const rejected = Math.max(0, parsed.total - accepted);
+  if ((count ?? 0) !== accepted || accepted === 0) {
     await supabase
       .from("system_fm_shineigyo_sync_log")
       .upsert({
@@ -40,9 +54,9 @@ export async function POST(request: Request) {
         completed_at: completedAt,
         total_rows: count ?? 0,
         status: "count_mismatch",
-        error_message: `expected ${parsed.total}, got ${count ?? 0}`,
+        error_message: `受け取った ${accepted} 件に対して DB は ${count ?? 0} 件（読んだ件数 ${parsed.total}）`,
       }, { onConflict: "run_id", ignoreDuplicates: false });
-    return NextResponse.json({ ok: false, status: "count_mismatch", total: parsed.total, actual: count ?? 0 }, { status: 409 });
+    return NextResponse.json({ ok: false, status: "count_mismatch", total: parsed.total, accepted, actual: count ?? 0 }, { status: 409 });
   }
 
   const { error: deleteError } = await supabase
@@ -59,14 +73,14 @@ export async function POST(request: Request) {
     .upsert({
       run_id: parsed.runId,
       completed_at: completedAt,
-      total_rows: parsed.total,
+      total_rows: accepted,
       status: "success",
-      error_message: null,
+      error_message: rejected > 0 ? `読んだ ${parsed.total} 件のうち ${rejected} 件は検証で除外（主キーが空など）` : null,
     }, { onConflict: "run_id", ignoreDuplicates: false });
   if (logError) {
     console.error("[system/shineigyo-ingest/complete] log failed", logError.message, { run_id: parsed.runId });
     return NextResponse.json({ ok: false, status: "failure", error: "新営業ログ更新に失敗しました" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, status: "success", total: parsed.total });
+  return NextResponse.json({ ok: true, status: "success", total: parsed.total, accepted, rejected });
 }

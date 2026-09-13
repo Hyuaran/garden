@@ -109,7 +109,7 @@ function Invoke-ShineigyoOnce {
           if ($batch.Count -ge $batchSize) {
             $rowsInBatch = $batch.Count
             $result = Invoke-ShineigyoBatch $runId $batchIndex $batch.ToArray()
-            Write-ShineigyoLog "info" "batch completed" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status }
+            Write-ShineigyoLog "info" "batch completed" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; rejected_codes = @(@($result.rejected) | Select-Object -First 3 | ForEach-Object { "$($_.index):$($_.code)" }) }
             $batch.Clear()
             $batchIndex++
             Update-ShineigyoHeartbeat "reading" -Force
@@ -119,7 +119,7 @@ function Invoke-ShineigyoOnce {
       if (-not $DryRun -and $batch.Count -gt 0) {
         $rowsInBatch = $batch.Count
         $result = Invoke-ShineigyoBatch $runId $batchIndex $batch.ToArray()
-        Write-ShineigyoLog "info" "batch completed" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status }
+        Write-ShineigyoLog "info" "batch completed" @{ run_id = $runId.ToString(); batch_index = $batchIndex; rows = $rowsInBatch; cumulative_rows = $totalRows; status = [string]$result.status; rejected = [int]$result.records_rejected; rejected_codes = @(@($result.rejected) | Select-Object -First 3 | ForEach-Object { "$($_.index):$($_.code)" }) }
         $batchIndex++
       }
       if ($DryRun) {

@@ -53,7 +53,10 @@ export async function POST(request: Request) {
         run_id: parsed.metadata.runId,
         status: "running",
         total_rows: nextTotal,
-        error_message: parsed.rejected.length > 0 ? "一部の行を検証で拒否しました" : null,
+        // どの行が何で除外されたかを残す（例：主キーが空）。complete で件数付きの文に置き換わる
+        error_message: parsed.rejected.length > 0
+          ? `検証で除外 ${parsed.rejected.length} 行（batch ${parsed.metadata.batchIndex}: ${parsed.rejected.slice(0, 3).map((row) => `${row.index}:${row.code}`).join(", ")}）`
+          : null,
       }, { onConflict: "run_id", ignoreDuplicates: false });
     if (logError) throw new Error(`新営業ログ更新失敗: ${logError.message}`);
 
