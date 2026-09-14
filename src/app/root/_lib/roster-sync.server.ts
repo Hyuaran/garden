@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAllRecords, type KintoneRecord } from "@/lib/kintone/records";
+import { createHash } from "node:crypto";
+import { getAllRecords, getFormFields, type KintoneRecord } from "@/lib/kintone/records";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { isRetiredByDate, shouldEmployeeBeActive, tokyoDateString } from "@/lib/auth/employee-access";
 import type { GardenRole } from "../_constants/types";
@@ -63,6 +64,11 @@ export type RosterSyncSummary = {
   accountsReused: number;
   authBanned: number;
   authUnbanned: number;
+  snapshotRows: number;
+  historyRows: number;
+  myNumberRows: number;
+  bankListRows: number;
+  bankListSkipped: number;
   errors: string[];
 };
 
@@ -98,6 +104,149 @@ function numberValue(record: KintoneRecord, code: string): number | null {
   if (!raw) return null;
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function digits(value: string | null): string | null {
+  const normalized = String(value ?? "").replace(/\D/g, "");
+  return normalized ? normalized : null;
+}
+
+function postalCode(value: string | null): string | null {
+  const normalized = digits(value);
+  return normalized && normalized.length === 7 ? normalized : normalized;
+}
+
+function dateOrNull(value: string | null): string | null {
+  return value && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
+}
+
+function compactPayload<T extends Record<string, unknown>>(payload: T): T {
+  return Object.fromEntries(Object.entries(payload).map(([key, current]) => [key, current === "" ? null : current])) as T;
+}
+
+function stable(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stable);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, current]) => [key, stable(current)]));
+  }
+  return value;
+}
+
+function stableJson(value: unknown): string {
+  return JSON.stringify(stable(value));
+}
+
+function payloadEquals(a: unknown, b: unknown): boolean {
+  return stableJson(a ?? null) === stableJson(b ?? null);
+}
+
+function sha256(value: unknown): string {
+  return createHash("sha256").update(stableJson(value)).digest("hex");
+}
+
+export function buildRosterSnapshot(record: KintoneRecord): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(record).map(([code, field]) => {
+    const current = field && typeof field === "object" && "value" in field ? (field as { value?: unknown }).value : field;
+    return [code, code === "マイナンバー" && String(current ?? "").trim() ? "***" : current ?? null];
+  }));
+}
+
+export function mapRosterRecordToProfilePayloads(record: KintoneRecord, importedAt: string) {
+  const address = compactPayload({
+    postal_code: postalCode(nullableText(record, "郵便番号")),
+    prefecture: nullableText(record, "文字列__1行_"),
+    city: nullableText(record, "文字列__1行__0"),
+    town: nullableText(record, "文字列__1行__2"),
+    building: nullableText(record, "文字列__1行__3"),
+    room: nullableText(record, "文字列__1行__4"),
+    full: nullableText(record, "住所"),
+  });
+  const contact = compactPayload({
+    phone: digits(nullableText(record, "連絡先")),
+    phone_1: digits(nullableText(record, "文字列__1行__15")),
+    phone_2: digits(nullableText(record, "文字列__1行__16")),
+    phone_3: digits(nullableText(record, "文字列__1行__17")),
+    email: nullableText(record, "メールアドレス"),
+  });
+  const bank1 = compactPayload({
+    bank_name: nullableText(record, "銀行名_1"),
+    bank_code: nullableText(record, "金融機関コード_1"),
+    branch_name: nullableText(record, "文字列__1行__18"),
+    branch_code: nullableText(record, "支店コード_1"),
+    account_type: normalizeAccountType(nullableText(record, "種別")),
+    account_number: digits(nullableText(record, "口座番号_1")),
+    holder_kana: nullableText(record, "文字列__1行__9"),
+    slot: 1,
+  });
+  const bank2 = compactPayload({
+    bank_name: nullableText(record, "銀行名_2"),
+    bank_code: nullableText(record, "金融機関コード_2"),
+    branch_name: nullableText(record, "文字列__1行__19"),
+    branch_code: nullableText(record, "支店コード_2"),
+    account_type: normalizeAccountType(nullableText(record, "種別_1")),
+    account_number: digits(nullableText(record, "口座番号_2")),
+    holder_kana: nullableText(record, "文字列__1行__10"),
+    slot: 2,
+  });
+  const commute = compactPayload({
+    one_way: numberValue(record, "交通費_片道"),
+    round_trip: numberValue(record, "交通費_往復"),
+    monthly_cap: numberValue(record, "交通費上限"),
+    nearest_station: nullableText(record, "ドロップダウン_3"),
+    route: nullableText(record, "文字列__1行__6"),
+    paid: nullableText(record, "ドロップダウン_1"),
+  });
+  const employment = compactPayload({
+    employment_type: nullableText(record, "雇用形態"),
+    hire_date: dateText(record, "入社日"),
+    business: nullableText(record, "ドロップダウン"),
+    department: nullableText(record, "ドロップダウン_0"),
+    affiliation: nullableText(record, "ドロップダウン_15"),
+    team: nullableText(record, "チーム名"),
+    salary_system: nullableText(record, "配属・異動_1"),
+    base_hourly: numberValue(record, "基準時給"),
+    training_hourly: numberValue(record, "数値_0"),
+    training_cap: numberValue(record, "数値"),
+    year_end_adjustment: nullableText(record, "ドロップダウン_8"),
+    social_insurance: nullableText(record, "ドロップダウン_5"),
+    employment_insurance: nullableText(record, "ドロップダウン_4"),
+    employment_insurance_no: nullableText(record, "雇用保険番号"),
+    pension_no: nullableText(record, "文字列__1行__8"),
+    advance_pay: nullableText(record, "ドロップダウン_6"),
+    call_type: nullableText(record, "ドロップダウン_16"),
+  });
+  const result: Array<{ category: string; payload: Record<string, unknown> }> = [
+    { category: "address", payload: address },
+    { category: "contact", payload: contact },
+    { category: "bank_account", payload: bank1 },
+    { category: "commute", payload: commute },
+    { category: "employment", payload: employment },
+  ];
+  if (hasMeaningfulBankPayload(bank2)) result.push({ category: "bank_account", payload: bank2 });
+  if (nullableText(record, "マイナンバー")) {
+    result.push({ category: "my_number_status", payload: { submitted: true, source: "roster", imported_at: importedAt } });
+  }
+  return result;
+}
+
+function hasMeaningfulBankPayload(payload: Record<string, unknown>): boolean {
+  return ["bank_name", "branch_name", "account_number", "holder_kana"].some((key) => Boolean(payload[key]));
+}
+
+function normalizeAccountType(current: string | null): string | null {
+  if (!current) return null;
+  if (current.includes("当座")) return "current";
+  if (current.includes("普通")) return "ordinary";
+  return current;
+}
+
+function shouldCollectProfileHistory(record: KintoneRecord, today: string): boolean {
+  if (text(record, "従業員ステータス") === "在籍中") return true;
+  const terminationDate = dateText(record, "退職日");
+  if (!terminationDate) return false;
+  const until = new Date(`${terminationDate}T00:00:00+09:00`);
+  until.setDate(until.getDate() + 90);
+  return new Date(`${today}T00:00:00+09:00`) <= until;
 }
 
 // Root の社員番号（employee_number）は KOT の打刻 ID と同じ採番。名簿の「社員番号（APID）」は別の採番なので照合には使わない（2026-09-09 本番で判明：宮永＝名簿 0091／Root・KOT 1165）
@@ -241,6 +390,182 @@ async function banAuthUser(admin: SupabaseClient, userId: string | null, dryRun:
   if (!dryRun) await admin.auth.admin.updateUserById(userId, { ban_duration: "876000h" });
 }
 
+type LooseSupabase = {
+  from: (table: string) => {
+    select?: (...args: unknown[]) => unknown;
+    insert?: (...args: unknown[]) => Promise<{ error?: unknown }> | { error?: unknown };
+    upsert?: (...args: unknown[]) => Promise<{ error?: unknown }> | { error?: unknown };
+    update?: (...args: unknown[]) => unknown;
+  };
+};
+
+async function maybeThen<T>(value: T | Promise<T>): Promise<T> {
+  return await value;
+}
+
+async function syncRosterFieldLabels(admin: SupabaseClient, app: string, token: string, dryRun: boolean): Promise<number> {
+  const fields = await getFormFields(app, token).catch(() => []);
+  if (!fields.length || dryRun) return fields.length;
+  const table = (admin as unknown as LooseSupabase).from("root_employee_roster_field_labels");
+  if (typeof table.upsert !== "function") return fields.length;
+  const { error } = await maybeThen(table.upsert(fields.map((field) => ({
+    field_code: field.code,
+    label: field.label,
+    field_type: field.type,
+    updated_at: new Date().toISOString(),
+  })), { onConflict: "field_code" }));
+  if (error) throw error;
+  return fields.length;
+}
+
+async function latestSnapshotHash(admin: SupabaseClient, employeeId: string): Promise<string | null> {
+  const query = (admin as unknown as LooseSupabase).from("root_employee_roster_snapshot").select?.("snapshot_hash");
+  if (!query || typeof query !== "object") return null;
+  const chain = query as { eq?: (...args: unknown[]) => unknown };
+  const eq = chain.eq?.("employee_id", employeeId);
+  const ordered = eq && typeof eq === "object" && "order" in eq ? (eq as { order: (...args: unknown[]) => unknown }).order("taken_at", { ascending: false }) : null;
+  const limited = ordered && typeof ordered === "object" && "limit" in ordered ? (ordered as { limit: (...args: unknown[]) => unknown }).limit(1) : null;
+  const single = limited && typeof limited === "object" && "maybeSingle" in limited ? await (limited as { maybeSingle: () => Promise<{ data?: { snapshot_hash?: string | null } | null; error?: unknown }> }).maybeSingle() : null;
+  if (single?.error) throw single.error;
+  return single?.data?.snapshot_hash ?? null;
+}
+
+async function insertSnapshotIfChanged(admin: SupabaseClient, employeeId: string, record: KintoneRecord, today: string, dryRun: boolean): Promise<number> {
+  const snapshot = buildRosterSnapshot(record);
+  const snapshotHash = sha256(snapshot);
+  if (await latestSnapshotHash(admin, employeeId) === snapshotHash) return 0;
+  if (dryRun) return 1;
+  const table = (admin as unknown as LooseSupabase).from("root_employee_roster_snapshot");
+  if (typeof table.insert !== "function") return 1;
+  const { error } = await maybeThen(table.insert({
+    employee_id: employeeId,
+    roster_record_id: text(record, "$id") || text(record, "レコード番号") || null,
+    snapshot,
+    snapshot_hash: snapshotHash,
+    taken_at: `${today}T00:00:00+09:00`,
+  }));
+  if (error) throw error;
+  return 1;
+}
+
+async function latestProfilePayload(admin: SupabaseClient, employeeId: string, category: string): Promise<Record<string, unknown> | null> {
+  const query = (admin as unknown as LooseSupabase).from("root_employee_profile_history").select?.("payload");
+  if (!query || typeof query !== "object") return null;
+  const first = (query as { eq?: (...args: unknown[]) => unknown }).eq?.("employee_id", employeeId);
+  const second = first && typeof first === "object" && "eq" in first ? (first as { eq: (...args: unknown[]) => unknown }).eq("category", category) : null;
+  const ordered = second && typeof second === "object" && "order" in second ? (second as { order: (...args: unknown[]) => unknown }).order("recorded_at", { ascending: false }) : null;
+  const limited = ordered && typeof ordered === "object" && "limit" in ordered ? (ordered as { limit: (...args: unknown[]) => unknown }).limit(1) : null;
+  const single = limited && typeof limited === "object" && "maybeSingle" in limited ? await (limited as { maybeSingle: () => Promise<{ data?: { payload?: Record<string, unknown> } | null; error?: unknown }> }).maybeSingle() : null;
+  if (single?.error) throw single.error;
+  return single?.data?.payload ?? null;
+}
+
+async function insertProfileHistoryIfChanged(
+  admin: SupabaseClient,
+  row: { employee_id: string; category: string; payload: Record<string, unknown>; source: string; source_ref: string | null; effective_from: string; recorded_by: string },
+  dryRun: boolean,
+): Promise<number> {
+  const latest = await latestProfilePayload(admin, row.employee_id, row.category);
+  if (payloadEquals(latest, row.payload)) return 0;
+  if (dryRun) return 1;
+  const table = (admin as unknown as LooseSupabase).from("root_employee_profile_history");
+  if (typeof table.insert !== "function") return 1;
+  const { error } = await maybeThen(table.insert(row));
+  if (error) throw error;
+  return 1;
+}
+
+async function upsertMyNumberIfChanged(admin: SupabaseClient, employeeId: string, myNumber: string | null, today: string, dryRun: boolean): Promise<number> {
+  if (!myNumber) return 0;
+  const table = (admin as unknown as LooseSupabase).from("root_employee_my_numbers");
+  const query = table.select?.("my_number");
+  let current: string | null = null;
+  if (query && typeof query === "object" && "eq" in query) {
+    const eq = (query as { eq: (...args: unknown[]) => unknown }).eq("employee_id", employeeId);
+    const single = eq && typeof eq === "object" && "maybeSingle" in eq ? await (eq as { maybeSingle: () => Promise<{ data?: { my_number?: string | null } | null; error?: unknown }> }).maybeSingle() : null;
+    if (single?.error) throw single.error;
+    current = single?.data?.my_number ?? null;
+  }
+  if (current === myNumber) return 0;
+  if (dryRun || typeof table.upsert !== "function") return 1;
+  const { error } = await maybeThen(table.upsert({ employee_id: employeeId, my_number: myNumber, submitted_at: `${today}T00:00:00+09:00` }, { onConflict: "employee_id" }));
+  if (error) throw error;
+  return 1;
+}
+
+function timestampForSort(value: string | null): number {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function mapBankListPayload(record: KintoneRecord) {
+  return compactPayload({
+    bank_name: nullableText(record, "銀行名"),
+    bank_code: null,
+    branch_name: nullableText(record, "支店名"),
+    branch_code: nullableText(record, "支店コード"),
+    account_type: normalizeAccountType(nullableText(record, "種別")),
+    account_number: digits(nullableText(record, "口座番号")),
+    holder_kana: nullableText(record, "口座名義カナ"),
+    slot: 1,
+    paid_on: dateOrNull(nullableText(record, "支払日")),
+    kintone_record: nullableText(record, "レコード番号") ?? nullableText(record, "$id"),
+  });
+}
+
+// 口座一覧（app92）の突合は氏名で行う。KOTID（ルックアップ_0）は 297 行中 216 行が空・66 行が r 付きで、在籍者の打刻IDと一致しない（2026-09-14 実測）。氏名が無いときだけ KOTID を試す
+export function normalizeEmployeeName(value: string | null | undefined): string {
+  return String(value ?? "").normalize("NFKC").replace(/[\s　]+/g, "").replace(/惠/g, "恵");
+}
+
+async function syncBankListHistory(
+  admin: SupabaseClient,
+  employeesByKot: Map<string, Pick<RootEmployeeRow, "employee_id" | "kot_employee_id">>,
+  employeesByName: Map<string, Pick<RootEmployeeRow, "employee_id" | "kot_employee_id">>,
+  today: string,
+  dryRun: boolean,
+): Promise<{ rows: number; skipped: number }> {
+  const app = process.env.KINTONE_BANK_ACCOUNTS_APP_ID;
+  const token = process.env.KINTONE_BANK_ACCOUNTS_TOKEN;
+  if (!app || !token) return { rows: 0, skipped: 0 };
+  const records = await getAllRecords(app, token, "", null);
+  const latestByEmployee = new Map<string, KintoneRecord>();
+  let skipped = 0;
+  for (const record of records) {
+    const nameKey = normalizeEmployeeName(nullableText(record, "文字列__1行__0"));
+    const kot = digits(nullableText(record, "ルックアップ_0"));
+    const employee = (nameKey ? employeesByName.get(nameKey) : undefined)
+      ?? (kot ? (employeesByKot.get(kot.padStart(4, "0")) ?? employeesByKot.get(kot)) : undefined);
+    if (!employee) { skipped += 1; continue; }
+    const current = latestByEmployee.get(employee.employee_id);
+    if (!current) {
+      latestByEmployee.set(employee.employee_id, record);
+      continue;
+    }
+    const currentUpdated = timestampForSort(nullableText(current, "更新日時"));
+    const nextUpdated = timestampForSort(nullableText(record, "更新日時"));
+    const currentPaid = timestampForSort(nullableText(current, "支払日"));
+    const nextPaid = timestampForSort(nullableText(record, "支払日"));
+    if (nextUpdated > currentUpdated || (nextUpdated === currentUpdated && nextPaid > currentPaid)) {
+      latestByEmployee.set(employee.employee_id, record);
+    }
+  }
+  let rows = 0;
+  for (const [employeeId, record] of latestByEmployee) {
+    rows += await insertProfileHistoryIfChanged(admin, {
+      employee_id: employeeId,
+      category: "bank_account",
+      payload: mapBankListPayload(record),
+      source: "bank_list",
+      source_ref: nullableText(record, "レコード番号") ?? nullableText(record, "$id"),
+      effective_from: dateOrNull(nullableText(record, "支払日")) ?? dateOrNull(nullableText(record, "更新日時")) ?? today,
+      recorded_by: "system:roster-sync",
+    }, dryRun);
+  }
+  return { rows, skipped };
+}
+
 export async function writeRetirementToRoster(employee: { kot_employee_id?: string | null; termination_date?: string | null }, fetchImpl: typeof fetch = fetch) {
   if (!employee.kot_employee_id || !employee.termination_date) return { status: "skipped" as const, note: "KOTIDまたは退職日が空のため名簿更新をスキップ" };
   const subdomain = process.env.KINTONE_SUBDOMAIN;
@@ -271,15 +596,42 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
   const dryRun = options.dryRun ?? true;
   const admin = options.supabase ?? getSupabaseAdmin();
   const today = tokyoDateString(options.now);
-  const summary: RosterSyncSummary = { ok: true, dryRun, syncedAt: new Date().toISOString(), rosterRecords: 0, created: 0, updated: 0, unchanged: 0, accountsCreated: 0, accountsReused: 0, authBanned: 0, authUnbanned: 0, errors: [] };
+  const summary: RosterSyncSummary = {
+    ok: true,
+    dryRun,
+    syncedAt: new Date().toISOString(),
+    rosterRecords: 0,
+    created: 0,
+    updated: 0,
+    unchanged: 0,
+    accountsCreated: 0,
+    accountsReused: 0,
+    authBanned: 0,
+    authUnbanned: 0,
+    snapshotRows: 0,
+    historyRows: 0,
+    myNumberRows: 0,
+    bankListRows: 0,
+    bankListSkipped: 0,
+    errors: [],
+  };
   const token = process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN ?? "";
   const app = process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID || "56";
-  const records = await getAllRecords(app, token, "", ROSTER_SYNC_FIELDS);
+  await syncRosterFieldLabels(admin, app, token, dryRun);
+  const records = await getAllRecords(app, token, "", null);
   summary.rosterRecords = records.length;
 
   const { data: existingRows, error } = await admin.from("root_employees").select("employee_id,employee_number,name,name_kana,company_id,employment_type,salary_system_id,hire_date,termination_date,email,kot_employee_id,commute_daily_allowance,garden_role,garden_role_manual,user_id,is_active,birthday");
   if (error) throw error;
   const existingByNumber = new Map(((existingRows ?? []) as RootEmployeeRow[]).map((row) => [existingNumberKey(String(row.employee_number ?? "")), row]));
+  const employeesByKot = new Map<string, Pick<RootEmployeeRow, "employee_id" | "kot_employee_id">>();
+  const employeesByName = new Map<string, Pick<RootEmployeeRow, "employee_id" | "kot_employee_id">>();
+  for (const row of (existingRows ?? []) as RootEmployeeRow[]) {
+    const kot = digits(row.kot_employee_id);
+    if (kot) employeesByKot.set(kot.padStart(4, "0"), row);
+    const nameKey = normalizeEmployeeName(row.name);
+    if (nameKey && (row.is_active || !employeesByName.has(nameKey))) employeesByName.set(nameKey, row);
+  }
 
   // 同じ打刻 ID が名簿に複数ある（再入社・業務委託での再加入＝新規レコード）ときは、在籍中の行 → 入社日が新しい行 の順に 1 行だけ採用する
   const chosen = new Map<string, KintoneRecord>();
@@ -344,7 +696,33 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
         if (insertError) throw insertError;
       }
     }
+    const mappedKot = digits(mapped.kot_employee_id);
+    if (mappedKot) employeesByKot.set(mappedKot.padStart(4, "0"), { employee_id: mapped.employee_id, kot_employee_id: mapped.kot_employee_id });
+    const mappedName = normalizeEmployeeName(mapped.name);
+    if (mappedName) employeesByName.set(mappedName, { employee_id: mapped.employee_id, kot_employee_id: mapped.kot_employee_id });
+
+    if (shouldCollectProfileHistory(record, today)) {
+      summary.snapshotRows += await insertSnapshotIfChanged(admin, mapped.employee_id, record, today, dryRun);
+      const sourceRef = text(record, "$id") || text(record, "レコード番号") || null;
+      for (const item of mapRosterRecordToProfilePayloads(record, today)) {
+        summary.historyRows += await insertProfileHistoryIfChanged(admin, {
+          employee_id: mapped.employee_id,
+          category: item.category,
+          payload: item.payload,
+          source: "roster",
+          source_ref: sourceRef,
+          effective_from: today,
+          recorded_by: "system:roster-sync",
+        }, dryRun);
+      }
+      summary.myNumberRows += await upsertMyNumberIfChanged(admin, mapped.employee_id, nullableText(record, "マイナンバー"), today, dryRun);
+    }
   }
+
+  const bankSummary = await syncBankListHistory(admin, employeesByKot, employeesByName, today, dryRun);
+  summary.bankListRows = bankSummary.rows;
+  summary.bankListSkipped = bankSummary.skipped;
+  summary.historyRows += bankSummary.rows;
 
   if (!dryRun) {
     await admin.from("root_roster_sync_log").insert({
@@ -356,6 +734,11 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
       accounts_created_count: summary.accountsCreated,
       auth_banned_count: summary.authBanned,
       auth_unbanned_count: summary.authUnbanned,
+      snapshot_rows: summary.snapshotRows,
+      history_rows: summary.historyRows,
+      my_number_rows: summary.myNumberRows,
+      bank_list_rows: summary.bankListRows,
+      bank_list_skipped: summary.bankListSkipped,
       errors: summary.errors,
     });
   }

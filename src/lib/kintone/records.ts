@@ -2,10 +2,10 @@ export type KintoneRecord = Record<string, { value: unknown } | unknown>;
 
 const PAGE_SIZE = 500;
 
-function kintoneBaseUrl() {
+function kintoneApiUrl(path: string) {
   const subdomain = process.env.KINTONE_SUBDOMAIN;
   if (!subdomain) throw new Error("kintone_config_missing");
-  return `https://${subdomain}.cybozu.com/k/v1/records.json`;
+  return `https://${subdomain}.cybozu.com/k/v1/${path}`;
 }
 
 function asKintoneError(response: Response) {
@@ -20,15 +20,15 @@ export async function getRecords<T extends KintoneRecord = KintoneRecord>(
   app: string | number,
   token: string,
   query: string,
-  fields: readonly string[],
+  fields?: readonly string[] | null,
 ): Promise<T[]> {
   if (!token) throw new Error("kintone_token_missing");
   const params = new URLSearchParams();
   params.set("app", String(app));
   params.set("query", query);
-  appendFields(params, fields);
+  if (fields?.length) appendFields(params, fields);
 
-  const response = await fetch(`${kintoneBaseUrl()}?${params.toString()}`, {
+  const response = await fetch(`${kintoneApiUrl("records.json")}?${params.toString()}`, {
     // GET に Content-Type を付けると Kintone が 400（CB_IL02 Invalid request）を返す。付けない。
     headers: { "X-Cybozu-API-Token": token },
     cache: "no-store",
@@ -42,10 +42,10 @@ export async function getAllRecords<T extends KintoneRecord = KintoneRecord>(
   app: string | number,
   token: string,
   condition: string,
-  fields: readonly string[],
+  fields?: readonly string[] | null,
 ): Promise<T[]> {
   const records: T[] = [];
-  const pageFields = fields.includes("$id") ? fields : [...fields, "$id"];
+  const pageFields = fields?.length ? (fields.includes("$id") ? fields : [...fields, "$id"]) : null;
   let lastId: string | null = null;
 
   while (true) {
@@ -66,4 +66,30 @@ export async function getAllRecords<T extends KintoneRecord = KintoneRecord>(
   }
 
   return records;
+}
+
+export type KintoneFormField = {
+  code: string;
+  label: string;
+  type: string;
+};
+
+export async function getFormFields(
+  app: string | number,
+  token: string,
+): Promise<KintoneFormField[]> {
+  if (!token) throw new Error("kintone_token_missing");
+  const params = new URLSearchParams();
+  params.set("app", String(app));
+  const response = await fetch(`${kintoneApiUrl("app/form/fields.json")}?${params.toString()}`, {
+    headers: { "X-Cybozu-API-Token": token },
+    cache: "no-store",
+  });
+  if (!response.ok) throw asKintoneError(response);
+  const body = await response.json() as { properties?: Record<string, { code?: string; label?: string; type?: string }> };
+  return Object.entries(body.properties ?? {}).map(([fallbackCode, field]) => ({
+    code: String(field.code ?? fallbackCode),
+    label: String(field.label ?? field.code ?? fallbackCode),
+    type: String(field.type ?? ""),
+  }));
 }
