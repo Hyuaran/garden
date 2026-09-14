@@ -52,13 +52,13 @@ function memorySupabase(tables: MemoryTable) {
           eq: (key: string, value: string) => {
             const first = tables.history.filter((row) => row[key] === value);
             return {
-              eq: (key2: string, value2: string) => ({
-                order: () => ({
-                  limit: () => ({
-                    maybeSingle: () => Promise.resolve({ data: first.filter((row) => row[key2] === value2).at(-1) ?? null, error: null }),
-                  }),
-                }),
-              }),
+              eq: (key2: string, value2: string) => {
+                const second = first.filter((row) => row[key2] === value2);
+                const tail = (rows: Record<string, unknown>[]) => ({
+                  order: () => ({ limit: () => ({ maybeSingle: () => Promise.resolve({ data: rows.at(-1) ?? null, error: null }) }) }),
+                });
+                return { ...tail(second), eq: (key3: string, value3: string) => tail(second.filter((row) => row[key3] === value3)) };
+              },
             };
           },
         }),
@@ -423,6 +423,18 @@ describe("roster profile history sync", () => {
       expect(result.bankListSkipped).toBe(1);
       expect(bankHistory).toHaveLength(1);
       expect(bankHistory[0].payload).toMatchObject({ bank_name: "新しい銀行", account_type: "current", account_number: "2222222" });
+
+      // 2 回目の同期：名簿も口座一覧も変わっていなければ、名簿の口座行を足し直さない（最新行が bank_list でも roster 行は同じ出どころの最新行と比べる）
+      const before = tables.history.length;
+      const second = await syncRootRoster({ dryRun: false, supabase: memorySupabase(tables), now: new Date("2026-09-15T00:00:00Z") });
+      expect(second.historyRows).toBe(0);
+      expect(tables.history.length).toBe(before);
+
+      // 事務入力（admin）が最新でも、名簿の値が変わっていなければ roster 行は足さない＝事務の決定が上書きされない
+      tables.history.push({ employee_id: tables.rootEmployees[0].employee_id, category: "bank_account", payload: { bank_name: "事務が決めた銀行", account_number: "9999999", slot: 1 }, source: "admin", source_ref: "chat", effective_from: "2026-09-15", recorded_by: "claude", recorded_at: "2026-09-15T01:00:00Z" });
+      const third = await syncRootRoster({ dryRun: false, supabase: memorySupabase(tables), now: new Date("2026-09-16T00:00:00Z") });
+      expect(third.historyRows).toBe(0);
+      expect(tables.history.at(-1)?.source).toBe("admin");
     } finally {
       globalThis.fetch = original;
     }

@@ -218,11 +218,10 @@ export function mapRosterRecordToProfilePayloads(record: KintoneRecord, imported
   const result: Array<{ category: string; payload: Record<string, unknown> }> = [
     { category: "address", payload: address },
     { category: "contact", payload: contact },
-    { category: "bank_account", payload: bank1 },
+    { category: "bank_account", payload: hasMeaningfulBankPayload(bank2) ? { ...bank1, sub_account: bank2 } : bank1 },
     { category: "commute", payload: commute },
     { category: "employment", payload: employment },
   ];
-  if (hasMeaningfulBankPayload(bank2)) result.push({ category: "bank_account", payload: bank2 });
   if (nullableText(record, "マイナンバー")) {
     result.push({ category: "my_number_status", payload: { submitted: true, source: "roster", imported_at: importedAt } });
   }
@@ -448,12 +447,16 @@ async function insertSnapshotIfChanged(admin: SupabaseClient, employeeId: string
   return 1;
 }
 
-async function latestProfilePayload(admin: SupabaseClient, employeeId: string, category: string): Promise<Record<string, unknown> | null> {
+// 「同じ値なら足さない」の比較相手は、同じ人・同じ区分・**同じ出どころ**の最新行。
+// 全体の最新行と比べると、事務入力（admin）や口座一覧（bank_list）が最新のときに名簿（roster）の行を毎朝足し直してしまい、
+// 東海林さんが決めた口座を上書きする（2026-09-14 本番で発生）。出どころごとに比べれば、名簿の値が実際に変わったときだけ足す
+async function latestProfilePayload(admin: SupabaseClient, employeeId: string, category: string, source: string): Promise<Record<string, unknown> | null> {
   const query = (admin as unknown as LooseSupabase).from("root_employee_profile_history").select?.("payload");
   if (!query || typeof query !== "object") return null;
   const first = (query as { eq?: (...args: unknown[]) => unknown }).eq?.("employee_id", employeeId);
   const second = first && typeof first === "object" && "eq" in first ? (first as { eq: (...args: unknown[]) => unknown }).eq("category", category) : null;
-  const ordered = second && typeof second === "object" && "order" in second ? (second as { order: (...args: unknown[]) => unknown }).order("recorded_at", { ascending: false }) : null;
+  const third = second && typeof second === "object" && "eq" in second ? (second as { eq: (...args: unknown[]) => unknown }).eq("source", source) : null;
+  const ordered = third && typeof third === "object" && "order" in third ? (third as { order: (...args: unknown[]) => unknown }).order("recorded_at", { ascending: false }) : null;
   const limited = ordered && typeof ordered === "object" && "limit" in ordered ? (ordered as { limit: (...args: unknown[]) => unknown }).limit(1) : null;
   const single = limited && typeof limited === "object" && "maybeSingle" in limited ? await (limited as { maybeSingle: () => Promise<{ data?: { payload?: Record<string, unknown> } | null; error?: unknown }> }).maybeSingle() : null;
   if (single?.error) throw single.error;
@@ -465,7 +468,7 @@ async function insertProfileHistoryIfChanged(
   row: { employee_id: string; category: string; payload: Record<string, unknown>; source: string; source_ref: string | null; effective_from: string; recorded_by: string },
   dryRun: boolean,
 ): Promise<number> {
-  const latest = await latestProfilePayload(admin, row.employee_id, row.category);
+  const latest = await latestProfilePayload(admin, row.employee_id, row.category, row.source);
   if (payloadEquals(latest, row.payload)) return 0;
   if (dryRun) return 1;
   const table = (admin as unknown as LooseSupabase).from("root_employee_profile_history");
