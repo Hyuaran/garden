@@ -176,12 +176,27 @@ export async function saveOrderSyncState(db: OrderSyncDb, values: Record<string,
   if (error) throw new Error(error.message);
 }
 
+// 受注履歴の取り込み元（既定＝顧客一覧 app10）。
+// 全案件一覧（app233）へ切り替えるときは Vercel に KINTONE_ORDERS_SOURCE_APP_ID / KINTONE_ORDERS_SOURCE_TOKEN を入れるだけ（配備し直し不要・翌朝 6:30 から）。
+// 実際の切り替えは「アルバイトの Garden アカウント発行・マイページ展開・前確依頼の正常動作」の後（東海林さん 2026-09-14）。項目名は両アプリで同じ。
+export function resolveOrderSource(env: Record<string, string | undefined> = process.env): { appId: string; token: string; source: "顧客一覧" | "全案件一覧" } {
+  const overrideApp = env.KINTONE_ORDERS_SOURCE_APP_ID?.trim();
+  const overrideToken = env.KINTONE_ORDERS_SOURCE_TOKEN?.trim();
+  if (overrideApp && overrideToken) return { appId: overrideApp, token: overrideToken, source: "全案件一覧" };
+  return {
+    appId: required(env.KINTONE_KANRI_CUSTOMER_APP_ID, "KINTONE_KANRI_CUSTOMER_APP_ID"),
+    token: required(env.KINTONE_KANRI_CUSTOMER_TOKEN, "KINTONE_KANRI_CUSTOMER_TOKEN"),
+    source: "顧客一覧",
+  };
+}
+
 export async function syncOrders({ db, now = new Date(), appId, token }: SyncOrdersInput): Promise<OrderSyncResult> {
   const started = Date.now();
   const importedAt = now.toISOString();
+  const source = resolveOrderSource();
   const records = await getAllRecords(
-    appId ?? required(process.env.KINTONE_KANRI_CUSTOMER_APP_ID, "KINTONE_KANRI_CUSTOMER_APP_ID"),
-    token ?? required(process.env.KINTONE_KANRI_CUSTOMER_TOKEN, "KINTONE_KANRI_CUSTOMER_TOKEN"),
+    appId ?? source.appId,
+    token ?? source.token,
     "",
     ORDER_FIELDS,
   );

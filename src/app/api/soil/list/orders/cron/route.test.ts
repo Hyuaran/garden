@@ -8,8 +8,19 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => mocks.getAdmin() }));
 vi.mock("@/lib/kintone/records", () => ({ getAllRecords: (...args: unknown[]) => mocks.getAllRecords(...args) }));
 
-import { orderRowsFromRecord } from "../_lib/order-sync";
+import { orderRowsFromRecord, resolveOrderSource } from "../_lib/order-sync";
 import { GET } from "./route";
+
+describe("resolveOrderSource", () => {
+  it("reads 顧客一覧 by default and 全案件一覧 only when both override values are set", () => {
+    const base: Record<string, string | undefined> = { KINTONE_KANRI_CUSTOMER_APP_ID: "10", KINTONE_KANRI_CUSTOMER_TOKEN: "customer-token" };
+    expect(resolveOrderSource(base)).toEqual({ appId: "10", token: "customer-token", source: "顧客一覧" });
+    expect(resolveOrderSource({ ...base, KINTONE_ORDERS_SOURCE_APP_ID: "233" })).toMatchObject({ appId: "10", source: "顧客一覧" });
+    expect(resolveOrderSource({ ...base, KINTONE_ORDERS_SOURCE_APP_ID: "233", KINTONE_ORDERS_SOURCE_TOKEN: "zenken-token" }))
+      .toEqual({ appId: "233", token: "zenken-token", source: "全案件一覧" });
+    expect(() => resolveOrderSource({})).toThrow("KINTONE_KANRI_CUSTOMER_APP_ID_missing");
+  });
+});
 
 function kintoneRecord(id: string, phone = "", mobile = "") {
   return {
