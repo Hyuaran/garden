@@ -88,6 +88,11 @@ function filterToSql(filter: SoilListFilter, state: SqlState): string {
   }
 }
 
+function buildWhereSql(condition: SoilListConditionPayload, state: SqlState): string {
+  const where = condition.filters.map((filter) => filterToSql(filter, state));
+  return where.length > 0 ? `where ${where.join(" and ")}` : "";
+}
+
 /** 「住所（市区町村まで）」の列は 都道府県 → 市区町村 の順で並べる */
 function orderColumns(sort: SearchSort): string {
   const direction = sort.direction === "desc" ? "desc" : "asc";
@@ -120,15 +125,26 @@ export function normalizeSearchPage(input: unknown): number {
 export function buildSearchSql(condition: SoilListConditionPayload, sort: SearchSort | null, page: number): { text: string; values: unknown[] } {
   const state: SqlState = { values: [] };
   const select = SOIL_LIST_SEARCH_COLUMNS.map((key) => columnSql(key)).join(", ");
-  const where = condition.filters.map((filter) => filterToSql(filter, state));
+  const where = buildWhereSql(condition, state);
   const offset = (Math.max(1, page) - 1) * MAX_SEARCH_ROWS;
   const text = [
     `select ${select}`,
     `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
-    where.length > 0 ? `where ${where.join(" and ")}` : "",
+    where,
     // 並びを指定しないときも電話番号順に固定する（順序が無いと offset のページ送りで同じ行が出たり抜けたりする）
     sort ? `order by ${orderColumns(sort)} nulls last, ${columnSql("phoneNumber")} asc` : `order by ${columnSql("phoneNumber")} asc`,
     `limit ${MAX_SEARCH_ROWS} offset ${offset}`,
+  ].filter(Boolean).join("\n");
+  return { text, values: state.values };
+}
+
+export function buildCountSql(condition: SoilListConditionPayload): { text: string; values: unknown[] } {
+  const state: SqlState = { values: [] };
+  const where = buildWhereSql(condition, state);
+  const text = [
+    "select count(*)::bigint as count",
+    `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
+    where,
   ].filter(Boolean).join("\n");
   return { text, values: state.values };
 }

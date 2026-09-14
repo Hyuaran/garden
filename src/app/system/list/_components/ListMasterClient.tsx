@@ -1319,6 +1319,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 groups={vendorFilterGroups}
                 onChange={setAnalysisVendorFilter}
                 searchable
+                initialLimit={100}
               />
             </div>
           ) : controls}

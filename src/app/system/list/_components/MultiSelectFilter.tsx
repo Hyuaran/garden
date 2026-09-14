@@ -17,7 +17,12 @@ type MultiSelectFilterProps = {
   groups: MultiSelectOptionGroup[];
   onChange(value: string[]): void;
   searchable?: boolean;
+  initialLimit?: number;
 };
+
+function optionValue(option: SoilListOptionItem): string {
+  return option.empty ? EMPTY_OPTION_VALUE : option.value;
+}
 
 function optionText(option: SoilListOptionItem): string {
   return `${option.label}（${option.count.toLocaleString("ja-JP")}）`;
@@ -31,13 +36,14 @@ function summarizeSelection(value: string[], options: SoilListOptionItem[]): str
   return `${labels.slice(0, 2).join("、")} ほか${rest}（${labels.length}）`;
 }
 
-export default function MultiSelectFilter({ label, value, groups, onChange, searchable = false }: MultiSelectFilterProps) {
+export default function MultiSelectFilter({ label, value, groups, onChange, searchable = false, initialLimit }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const labelId = useId();
   const panelId = useId();
   const allOptions = useMemo(() => groups.flatMap((group) => group.options), [groups]);
+  const allOptionsByValue = useMemo(() => new Map(allOptions.map((option) => [optionValue(option), option])), [allOptions]);
   const visibleGroups = useMemo(() => {
     const keyword = searchQuery.trim().toLocaleLowerCase("ja-JP");
     if (!searchable || !keyword) return groups;
@@ -48,7 +54,32 @@ export default function MultiSelectFilter({ label, value, groups, onChange, sear
       }))
       .filter((group) => group.options.length > 0);
   }, [groups, searchQuery, searchable]);
-  const visibleOptions = useMemo(() => visibleGroups.flatMap((group) => group.options), [visibleGroups]);
+  const limitedGroups = useMemo(() => {
+    const limit = searchable && searchQuery.trim() === "" ? initialLimit : undefined;
+    if (!limit || limit <= 0) return visibleGroups;
+    let remaining = limit;
+    return visibleGroups
+      .map((group) => {
+        const options = group.options.slice(0, Math.max(0, remaining));
+        remaining -= options.length;
+        return { ...group, options };
+      })
+      .filter((group) => group.options.length > 0);
+  }, [initialLimit, searchQuery, searchable, visibleGroups]);
+  const displayedOptionValues = useMemo(() => new Set(limitedGroups.flatMap((group) => group.options.map(optionValue))), [limitedGroups]);
+  const selectedOverflowOptions = useMemo(() => {
+    if (!searchable || searchQuery.trim() !== "" || !initialLimit || initialLimit <= 0) return [];
+    return value
+      .map((item) => allOptionsByValue.get(item))
+      .filter((option): option is SoilListOptionItem => Boolean(option))
+      .filter((option) => !displayedOptionValues.has(optionValue(option)));
+  }, [allOptionsByValue, displayedOptionValues, initialLimit, searchable, searchQuery, value]);
+  const renderGroups = useMemo(() => {
+    if (selectedOverflowOptions.length === 0) return limitedGroups;
+    return [{ label: "選択中", options: selectedOverflowOptions }, ...limitedGroups];
+  }, [limitedGroups, selectedOverflowOptions]);
+  const visibleOptions = useMemo(() => renderGroups.flatMap((group) => group.options), [renderGroups]);
+  const isLimited = searchable && searchQuery.trim() === "" && Boolean(initialLimit && allOptions.length > initialLimit);
   const selected = new Set(value);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
 
@@ -87,10 +118,6 @@ export default function MultiSelectFilter({ label, value, groups, onChange, sear
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
-
-  function optionValue(option: SoilListOptionItem): string {
-    return option.empty ? EMPTY_OPTION_VALUE : option.value;
-  }
 
   function toggle(nextValue: string) {
     onChange(selected.has(nextValue) ? value.filter((item) => item !== nextValue) : [...value, nextValue]);
@@ -153,7 +180,7 @@ export default function MultiSelectFilter({ label, value, groups, onChange, sear
             </label>
           )}
           <div className={styles.multiSelectOptions}>
-            {visibleGroups.map((group, groupIndex) => (
+            {renderGroups.map((group, groupIndex) => (
               <div className={styles.optionGroup} key={`${label}-${group.label ?? groupIndex}`}>
                 {group.label ? (() => {
                   const state = groupState(group);
@@ -187,6 +214,11 @@ export default function MultiSelectFilter({ label, value, groups, onChange, sear
               </div>
             ))}
           </div>
+          {isLimited && (
+            <p className={styles.muted}>
+              上位 {initialLimit?.toLocaleString("ja-JP")} 件を表示中（全 {allOptions.length.toLocaleString("ja-JP")} 件）。名前で絞ると全体から探せます
+            </p>
+          )}
         </div>
       )}
     </div>

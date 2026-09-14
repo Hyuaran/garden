@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_OPTION_VALUE } from "../_lib/list-fields";
 
 import { ListMasterClient, buildOptionGroups, conditionToFilters, filtersToCondition, type FilterState } from "./ListMasterClient";
+import MultiSelectFilter from "./MultiSelectFilter";
 
 vi.mock("react-chartjs-2", () => ({
   Doughnut: () => <div data-testid="analysis-doughnut" />,
@@ -729,5 +730,74 @@ describe("ListMasterClient multi-select filters", () => {
     fireEvent.click(screen.getByRole("button", { name: "すべて外す" }));
     expect(screen.getByRole("button", { name: "すべて選ぶ" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "大阪府（11,165）" })).not.toBeChecked();
+  });
+});
+
+describe("MultiSelectFilter initial limit", () => {
+  const manyOptions = Array.from({ length: 2452 }, (_, index) => {
+    const number = index + 1;
+    return {
+      value: `vendor-${number}`,
+      label: `購入先${String(number).padStart(4, "0")}`,
+      count: 3000 - number,
+      empty: false,
+    };
+  });
+
+  it("renders only the first limited options at first and searches all options", () => {
+    render(
+      <MultiSelectFilter
+        label="購入先で絞る"
+        value={[]}
+        groups={[{ options: manyOptions }]}
+        onChange={() => undefined}
+        searchable
+        initialLimit={100}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /購入先で絞る 指定なし/ }));
+    expect(screen.getByRole("checkbox", { name: "購入先0100（2,900）" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "購入先0101（2,899）" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox", { name: /購入先\d{4}/ })).toHaveLength(100);
+    expect(screen.getByText("上位 100 件を表示中（全 2,452 件）。名前で絞ると全体から探せます")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("名前で絞る"), { target: { value: "2452" } });
+    expect(screen.getByRole("checkbox", { name: "購入先2452（548）" })).toBeInTheDocument();
+    expect(screen.queryByText("上位 100 件を表示中（全 2,452 件）。名前で絞ると全体から探せます")).not.toBeInTheDocument();
+  });
+
+  it("keeps selected values visible even when they are outside the initial limit", () => {
+    render(
+      <MultiSelectFilter
+        label="購入先で絞る"
+        value={["vendor-2452"]}
+        groups={[{ options: manyOptions }]}
+        onChange={() => undefined}
+        searchable
+        initialLimit={100}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /購入先で絞る 購入先2452/ }));
+    expect(screen.getByRole("checkbox", { name: "選択中をすべて選ぶ" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "購入先2452（548）" })).toBeChecked();
+    expect(screen.getAllByRole("checkbox", { name: /購入先\d{4}/ })).toHaveLength(101);
+  });
+
+  it("renders every option when initialLimit is not set", () => {
+    render(
+      <MultiSelectFilter
+        label="購入先で絞る"
+        value={[]}
+        groups={[{ options: manyOptions.slice(0, 120) }]}
+        onChange={() => undefined}
+        searchable
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /購入先で絞る 指定なし/ }));
+    expect(screen.getByRole("checkbox", { name: "購入先0120（2,880）" })).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox", { name: /購入先\d{4}/ })).toHaveLength(120);
   });
 });

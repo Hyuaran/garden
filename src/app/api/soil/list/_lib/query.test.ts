@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { getColumnName } from "@/app/system/list/_lib/list-fields";
 
 import { applyParentFilters, buildSelect, maskPhone } from "./query";
-import { buildSearchSql, normalizeSearchSort } from "./search-sql";
+import { buildCountSql, buildSearchSql, normalizeSearchSort } from "./search-sql";
 
 class QuerySpy {
   calls: string[] = [];
@@ -190,6 +190,28 @@ describe("soil list query helpers", () => {
         ],
       }
     `);
+  });
+
+  it("builds count SQL with the same where clause and values as search SQL", () => {
+    const condition = {
+      filters: [
+        { field: "listName" as const, op: "contains" as const, value: "A%_B\\C" },
+        { field: "listLoadedOn" as const, op: "gte" as const, value: "2026-09-01" },
+        { field: "appointmentBlocked" as const, op: "inOrEmpty" as const, value: ["戸建"] },
+      ],
+    };
+    const search = buildSearchSql(condition, null, 1);
+    const count = buildCountSql(condition);
+    const searchWhere = search.text.split("\n").find((line) => line.startsWith("where "));
+    const countWhere = count.text.split("\n").find((line) => line.startsWith("where "));
+
+    expect(count.text).toMatchInlineSnapshot(`
+      "select count(*)::bigint as count
+      from "soil_list_phone"
+      where "リスト名" ilike $1 escape '\\' and "リスト投入日" >= $2 and ("アポ禁" = any($3) or "アポ禁" is null or "アポ禁" = '')"
+    `);
+    expect(countWhere).toBe(searchWhere);
+    expect(count.values).toEqual(search.values);
   });
 
   it("rejects search sort keys outside the allow list", () => {
