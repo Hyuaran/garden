@@ -59,6 +59,7 @@ describe("soil list upload parser", () => {
     expect(parsed.rowCount).toBe(1);
     expect(parsed.rows[0].normalizedPhone).toBe("0612345678");
     expect(parsed.rows[0].listLoadedOn).toBe("2026-08-29");
+    expect(parsed.lineTypes).toEqual([{ value: "フレッツ", count: 1 }]);
   });
 
   it("detects 8-column and 10-column files", async () => {

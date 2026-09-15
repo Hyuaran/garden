@@ -27,9 +27,10 @@ function replaceUnsupportedCp932(value: string): { value: string; count: number 
   return { value: replaced, count };
 }
 
-function quoteMerField(value: MerValue): { value: string; replaced: number } {
+function quoteMerField(column: SoilListColumnKey, value: MerValue): { value: string; replaced: number } {
   if (value === null || value === undefined) return { value: "\"\"", replaced: 0 };
-  const raw = formatDateLike(String(value));
+  const text = String(value);
+  const raw = column === "contractMonth" ? text.replace(/^(\d{4})-(\d{2})(?:-\d{2})?.*$/, "$1/$2") : formatDateLike(text);
   const safe = replaceUnsupportedCp932(raw);
   return { value: `"${safe.value.replaceAll("\"", "\"\"")}"`, replaced: safe.count };
 }
@@ -39,7 +40,7 @@ export function quoteMerLine(columns: SoilListColumnKey[], row?: MerRow): { line
   const line = columns
     .map((column) => {
       const value = row ? (row[column] ?? row[getColumnName(column)]) : getColumnName(column);
-      const quoted = quoteMerField(value);
+      const quoted = quoteMerField(column, value);
       replacedChars += quoted.replaced;
       return quoted.value;
     })

@@ -35,4 +35,13 @@ describe("buildMerBuffer", () => {
     expect(decoded).toContain("\"〓田\"");
     expect(result.replacedChars).toBe(1);
   });
+
+  it("formats contract month as year and month", () => {
+    const result = buildMerBuffer(["contractMonth", "contractElapsed"], [
+      { contractMonth: "2024-10-01", contractElapsed: "1年11か月" },
+    ]);
+    const decoded = iconv.decode(result.buffer, "cp932");
+
+    expect(decoded).toContain("\"2024/10\",\"1年11か月\"");
+  });
 });

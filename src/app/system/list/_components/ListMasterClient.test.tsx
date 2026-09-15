@@ -25,7 +25,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
     if (url === "/api/soil/list/search" && init?.method === "POST") return json({
       ok: true,
       rows: [
-        { phoneNumber: "072****81", name: "嶋*", addressCity: "大阪府大阪市", listName: "大阪AU", lastCalledOn: "2026-09-09", callCount: 2, purchaseStatus: "完パケ" },
+        { phoneNumberKey: "0721111181", phoneNumber: "072****81", name: "嶋*", addressCity: "大阪府大阪市", listName: "大阪AU", lastCalledOn: "2026-09-09", callCount: 2, purchaseStatus: "完パケ", lineType: "au", contractMonth: "2024/10", contractElapsed: "1年11か月", category: "個人" },
       ],
       page: JSON.parse(String(init.body)).page ?? 1,
       pageSize: 100,
@@ -45,7 +45,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
       return json({ ok: true, vendors: [{ value: "データ総研", count: 1200 }, { value: "ABC", count: 20 }] });
     }
     if (url === "/api/soil/list/uploads/upload-failed/apply" && init?.method === "POST") {
-      return json({ ok: true, result: { assignments: 2500, assignments_new: 2500, assignments_updated: 0, parent_updated: 2500, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 0, purchase_inserted: 0 } });
+      return json({ ok: true, result: { assignments: 2500, assignments_new: 2500, assignments_updated: 0, parent_updated: 2500, parent_inserted: 0, parent_kept: 0, skipped: 0, remaining: 0, purchase_inserted: 0, line_type_set: 3, category_set: 4 } });
     }
     if (url === "/api/soil/list/analysis/detail?block=vendor&segment=__all__&result=%E7%95%99%E5%AE%88") {
       return json({
@@ -204,6 +204,14 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
           appointmentBlocked: [
             { value: "", label: "（空欄）", count: 1945619, empty: true },
             { value: "戸建", label: "戸建", count: 500, empty: false },
+          ],
+          lineType: [
+            { value: "フレッツ", label: "フレッツ", count: 1200, empty: false },
+            { value: "", label: "（空欄）", count: 20, empty: true },
+          ],
+          category: [
+            { value: "個人", label: "個人", count: 1000, empty: false },
+            { value: "法人", label: "法人", count: 30, empty: false },
           ],
         },
       });
@@ -468,7 +476,7 @@ describe("ListMasterClient upload history", () => {
     render(<ListMasterClient />);
 
     expect(await screen.findByText("途中で止まりました（電話番号台帳へ反映 1,000 / 2,500）")).toBeInTheDocument();
-    expect(screen.getByText("新規 10／更新 990／購入履歴 10")).toBeInTheDocument();
+    expect(screen.getByText("新規 10／更新 990／購入履歴 10／元回線 0／区分 0")).toBeInTheDocument();
     expect(screen.getAllByText("購入先：データ総研")).toHaveLength(2);
     const resume = screen.getByRole("button", { name: "反映をやり直す" });
     expect(resume).toBeInTheDocument();
@@ -507,6 +515,8 @@ describe("ListMasterClient filter condition conversion", () => {
       auCallAvailability: ["○", "×"],
       purchaseStatus: ["完パケ", "電話番号のみ"],
       appointmentBlocked: [EMPTY_OPTION_VALUE, "戸建"],
+      lineType: ["フレッツ", EMPTY_OPTION_VALUE],
+      category: ["個人", "法人"],
       listName: "",
       listLoadedOnFrom: "",
       listLoadedOnTo: "",
@@ -516,6 +526,8 @@ describe("ListMasterClient filter condition conversion", () => {
       lastCalledOnTo: "",
       callCountFrom: "",
       callCountTo: "",
+      elapsedYearsFrom: "9",
+      elapsedYearsTo: "10",
       purchaseHistory: "",
     };
 
@@ -525,6 +537,10 @@ describe("ListMasterClient filter condition conversion", () => {
         { field: "auCallAvailability", op: "in", value: ["○", "×"] },
         { field: "purchaseStatus", op: "in", value: ["完パケ", "電話番号のみ"] },
         { field: "appointmentBlocked", op: "inOrEmpty", value: ["戸建"] },
+        { field: "lineType", op: "inOrEmpty", value: ["フレッツ"] },
+        { field: "category", op: "in", value: ["個人", "法人"] },
+        { field: "contractMonth", op: "lte", value: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
+        { field: "contractMonth", op: "gte", value: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
       ],
     });
   });
@@ -537,6 +553,8 @@ describe("ListMasterClient filter condition conversion", () => {
           { field: "appointmentBlocked", op: "empty" },
           { field: "auCallAvailability", op: "in", value: ["○", "×"] },
           { field: "purchaseStatus", op: "inOrEmpty", value: ["完パケ"] },
+          { field: "lineType", op: "empty" },
+          { field: "category", op: "eq", value: "法人" },
         ],
       }),
     ).toMatchObject({
@@ -544,6 +562,8 @@ describe("ListMasterClient filter condition conversion", () => {
       appointmentBlocked: [EMPTY_OPTION_VALUE],
       auCallAvailability: ["○", "×"],
       purchaseStatus: ["完パケ", EMPTY_OPTION_VALUE],
+      lineType: [EMPTY_OPTION_VALUE],
+      category: ["法人"],
     });
   });
 

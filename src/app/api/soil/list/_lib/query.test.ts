@@ -124,7 +124,7 @@ describe("soil list query helpers", () => {
       ],
     }, null, 1)).toMatchInlineSnapshot(`
       {
-        "text": "select "電話番号", "氏名", "住所_都道府県", "住所_市区町村", "リスト名", "最終コール日_集約", "コール回数合計", "購入状態"
+        "text": "select "電話番号", "氏名", "住所_都道府県", "住所_市区町村", "リスト名", "最終コール日_集約", "コール回数合計", "購入状態", "元回線", "契約時期", "区分"
       from "soil_list_phone"
       where "AU光架電可否" = $1 and ("アポ禁" is null or "アポ禁" = '')
       order by "電話番号" asc
@@ -141,7 +141,7 @@ describe("soil list query helpers", () => {
       filters: [{ field: "prefecture", op: "in", value: ["大阪府", "奈良県"] }],
     }, { key: "name", direction: "asc" }, 2)).toMatchInlineSnapshot(`
       {
-        "text": "select "電話番号", "氏名", "住所_都道府県", "住所_市区町村", "リスト名", "最終コール日_集約", "コール回数合計", "購入状態"
+        "text": "select "電話番号", "氏名", "住所_都道府県", "住所_市区町村", "リスト名", "最終コール日_集約", "コール回数合計", "購入状態", "元回線", "契約時期", "区分"
       from "soil_list_phone"
       where "住所_都道府県" = any($1)
       order by "氏名" asc nulls last, "電話番号" asc
@@ -161,7 +161,7 @@ describe("soil list query helpers", () => {
       filters: [{ field: "appointmentBlocked", op: "inOrEmpty", value: ["戸建"] }],
     }, { key: "purchaseStatus", direction: "desc" }, 1)).toMatchInlineSnapshot(`
       {
-        "text": "select "電話番号", "氏名", "住所_都道府県", "住所_市区町村", "リスト名", "最終コール日_集約", "コール回数合計", "購入状態"
+        "text": "select "電話番号", "氏名", "住所_都道府県", "住所_市区町村", "リスト名", "最終コール日_集約", "コール回数合計", "購入状態", "元回線", "契約時期", "区分"
       from "soil_list_phone"
       where ("アポ禁" = any($1) or "アポ禁" is null or "アポ禁" = '')
       order by "購入状態" desc nulls last, "電話番号" asc
@@ -180,7 +180,7 @@ describe("soil list query helpers", () => {
       filters: [{ field: "listName", op: "contains", value: "A%_B\\C" }],
     }, { key: "lastCalledOn", direction: "desc" }, 1)).toMatchInlineSnapshot(`
       {
-        "text": "select "電話番号", "氏名", "住所_都道府県", "住所_市区町村", "リスト名", "最終コール日_集約", "コール回数合計", "購入状態"
+        "text": "select "電話番号", "氏名", "住所_都道府県", "住所_市区町村", "リスト名", "最終コール日_集約", "コール回数合計", "購入状態", "元回線", "契約時期", "区分"
       from "soil_list_phone"
       where "リスト名" ilike $1 escape '\\'
       order by "最終コール日_集約" desc nulls last, "電話番号" asc

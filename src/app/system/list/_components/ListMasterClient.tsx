@@ -29,6 +29,7 @@ import MultiSelectFilter, { type MultiSelectOptionGroup } from "./MultiSelectFil
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 type SearchRow = {
+  phoneNumberKey: string;
   phoneNumber: string;
   name: string;
   addressCity: string;
@@ -36,14 +37,19 @@ type SearchRow = {
   lastCalledOn: string;
   callCount: number | null;
   purchaseStatus: string;
+  lineType: string;
+  contractMonth: string;
+  contractElapsed: string;
+  category: string;
 };
 
 type ListSearchSortKey = keyof SearchRow;
 type ListSearchSortDirection = "asc" | "desc";
 type ListSearchSort = { key: ListSearchSortKey; direction: ListSearchSortDirection };
+type SortableListSearchKey = "phoneNumber" | "name" | "addressCity" | "listName" | "lastCalledOn" | "callCount" | "purchaseStatus" | "contractMonth";
 
 const SEARCH_PAGE_SIZE = 100;
-const SEARCH_TABLE_COLUMNS: Array<{ key: ListSearchSortKey; label: string }> = [
+const SEARCH_TABLE_COLUMNS: Array<{ key: ListSearchSortKey; label: string; sortable?: boolean }> = [
   { key: "phoneNumber", label: "電話番号" },
   { key: "name", label: "氏名" },
   { key: "addressCity", label: "住所（市区町村まで）" },
@@ -51,6 +57,10 @@ const SEARCH_TABLE_COLUMNS: Array<{ key: ListSearchSortKey; label: string }> = [
   { key: "lastCalledOn", label: "最終コール日" },
   { key: "callCount", label: "コール回数" },
   { key: "purchaseStatus", label: "購入状態" },
+  { key: "lineType", label: "元回線", sortable: false },
+  { key: "contractMonth", label: "契約時期", sortable: true },
+  { key: "contractElapsed", label: "経過", sortable: false },
+  { key: "category", label: "区分", sortable: false },
 ];
 
 type SavedCondition = {
@@ -103,6 +113,7 @@ type UploadPreview = {
   formatLabel: string;
   rowCount: number;
   listNames: Array<{ name: string; count: number; listLoadedOn: string | null }>;
+  lineTypes: Array<{ value: string; count: number }>;
   warnings: { emptyPhoneRows: number; shortPhoneRows: number; unreadableListDateNames: number };
 };
 
@@ -116,6 +127,8 @@ type UploadResult = {
   skipped: number;
   remaining: number;
   purchase_inserted: number;
+  line_type_set: number;
+  category_set: number;
   warning?: string;
 };
 
@@ -208,6 +221,8 @@ export type FilterState = {
   auCallAvailability: string[];
   purchaseStatus: string[];
   appointmentBlocked: string[];
+  lineType: string[];
+  category: string[];
   listName: string;
   listLoadedOnFrom: string;
   listLoadedOnTo: string;
@@ -217,6 +232,8 @@ export type FilterState = {
   lastCalledOnTo: string;
   callCountFrom: string;
   callCountTo: string;
+  elapsedYearsFrom: string;
+  elapsedYearsTo: string;
   purchaseHistory: string;
 };
 
@@ -225,6 +242,8 @@ const initialFilters: FilterState = {
   auCallAvailability: ["○"],
   purchaseStatus: [],
   appointmentBlocked: [EMPTY_OPTION_VALUE],
+  lineType: [],
+  category: [],
   listName: "",
   listLoadedOnFrom: "",
   listLoadedOnTo: "",
@@ -234,6 +253,8 @@ const initialFilters: FilterState = {
   lastCalledOnTo: "",
   callCountFrom: "",
   callCountTo: "",
+  elapsedYearsFrom: "",
+  elapsedYearsTo: "",
   purchaseHistory: "",
 };
 
@@ -321,7 +342,7 @@ const GUIDE_TABLE_ROWS = [
     name: "電話番号台帳",
     unit: "電話番号 1 件",
     count: "約 267 万件",
-    contains: "氏名・住所・郵便番号・携帯番号、購入履歴・投入履歴・コール履歴・受注履歴それぞれの一番新しい値、AU光架電可否・アポ禁・購入状態",
+    contains: "氏名・住所・郵便番号・携帯番号、元回線・契約時期・区分、購入履歴・投入履歴・コール履歴・受注履歴それぞれの一番新しい値、AU光架電可否・アポ禁・購入状態",
     timing: "同じ番号が別のリストで再び投入されたら、行を増やさずリスト名と投入日を新しいものに書き換える。氏名・住所・郵便番号・携帯番号は空欄のときだけ埋める。AU光架電可否・アポ禁・購入状態は投入では変えない",
   },
   {
@@ -359,8 +380,39 @@ const GUIDE_RULE_ROWS = [
   ["リスト投入日", "リスト名の中の日付（_20260907 の部分）。末尾の「_2」などは無視する"],
   ["投入日の意味", "「その日から架電する日」。先の日付のリストは前もって入れておき、その日が来るまで架電しない。分析で架電済み率が低いリストは、まだ開始日が来ていないだけのことがある"],
   ["判定は投入で変えない", "AU光架電可否・アポ禁・購入状態は、アップロードでは書き換えない"],
+  ["元回線", "元回線＝リスト名（【光回線】アナログ／フレッツ／AU）→ 判定項目 → 購入先_NEW の順に決めた回線の種類"],
+  ["契約時期", "契約時期＝購入日と経過月数から逆算した契約の年月（購入日が無い番号は空欄）"],
+  ["区分", "区分＝氏名の言葉から自動で決めた個人／屋号／法人。一覧で直せます"],
   ["そのほかの表", "保留（桁がおかしい番号など）・携帯のみ・絞り込みの選択肢・保存した条件・書き出しの記録・アップロードの記録・コール履歴の反映状態"],
 ] as const;
+
+function dateInJapanParts(now = new Date()): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+    day: Number(parts.find((part) => part.type === "day")?.value),
+  };
+}
+
+function toIsoDate(year: number, month: number, day: number): string {
+  return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+}
+
+function yearsAgoDate(years: string, exclusiveUpper = false, now = new Date()): string {
+  const parsed = Number(years);
+  if (!Number.isInteger(parsed) || parsed < 0) return "";
+  const current = dateInJapanParts(now);
+  const date = new Date(Date.UTC(current.year - parsed, current.month - 1, current.day));
+  if (exclusiveUpper) date.setUTCFullYear(date.getUTCFullYear() - 1);
+  if (exclusiveUpper) date.setUTCDate(date.getUTCDate() + 1);
+  return toIsoDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+}
 
 export function filtersToCondition(filters: FilterState): SoilListConditionPayload {
   const result: SoilListFilter[] = [];
@@ -378,6 +430,8 @@ export function filtersToCondition(filters: FilterState): SoilListConditionPaylo
   pushSelect("auCallAvailability", filters.auCallAvailability);
   pushSelect("purchaseStatus", filters.purchaseStatus);
   pushSelect("appointmentBlocked", filters.appointmentBlocked);
+  pushSelect("lineType", filters.lineType);
+  pushSelect("category", filters.category);
   if (filters.listName) result.push({ field: "listName", op: "contains", value: filters.listName });
   if (filters.listLoadedOnFrom) result.push({ field: "listLoadedOn", op: "gte", value: filters.listLoadedOnFrom });
   if (filters.listLoadedOnTo) result.push({ field: "listLoadedOn", op: "lte", value: filters.listLoadedOnTo });
@@ -387,6 +441,8 @@ export function filtersToCondition(filters: FilterState): SoilListConditionPaylo
   if (filters.lastCalledOnTo) result.push({ field: "lastCalledOn", op: "lte", value: filters.lastCalledOnTo });
   if (filters.callCountFrom) result.push({ field: "callCount", op: "gte", value: Number(filters.callCountFrom) });
   if (filters.callCountTo) result.push({ field: "callCount", op: "lte", value: Number(filters.callCountTo) });
+  if (filters.elapsedYearsFrom) result.push({ field: "contractMonth", op: "lte", value: yearsAgoDate(filters.elapsedYearsFrom) });
+  if (filters.elapsedYearsTo) result.push({ field: "contractMonth", op: "gte", value: yearsAgoDate(filters.elapsedYearsTo, true) });
   if (filters.purchaseHistory === "あり") result.push({ field: "purchaseHistoryExists", op: "eq", value: true });
   if (filters.purchaseHistory === "なし") result.push({ field: "purchaseHistoryExists", op: "eq", value: false });
   return { filters: result };
@@ -410,11 +466,26 @@ export function conditionToFilters(condition: SoilListConditionPayload): FilterS
     if (filter.field === "lastCalledOn" && filter.op === "lte") next.lastCalledOnTo = String(filter.value);
     if (filter.field === "callCount" && filter.op === "gte") next.callCountFrom = String(filter.value);
     if (filter.field === "callCount" && filter.op === "lte") next.callCountTo = String(filter.value);
+    if (filter.field === "contractMonth" && filter.op === "lte") next.elapsedYearsFrom = contractDateToYears(String(filter.value), "from");
+    if (filter.field === "contractMonth" && filter.op === "gte") next.elapsedYearsTo = contractDateToYears(String(filter.value), "to");
     if (filter.field === "purchaseHistoryExists" && filter.op === "eq") {
       next.purchaseHistory = filter.value === true ? "あり" : "なし";
     }
   }
   return next;
+}
+
+function contractDateToYears(value: string, bound: "from" | "to"): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return "";
+  const current = dateInJapanParts();
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  let months = (current.year - year) * 12 + (current.month - month);
+  if (current.day < day) months -= 1;
+  const years = Math.max(0, Math.floor(months / 12));
+  return String(bound === "to" ? Math.max(0, years - 1) : years);
 }
 
 function formatDateTime(value: string): string {
@@ -429,7 +500,7 @@ function formatDateTime(value: string): string {
 }
 
 function isOptionFilterField(field: SoilListColumnKey): field is SoilListOptionFieldKey {
-  return field === "prefecture" || field === "auCallAvailability" || field === "purchaseStatus" || field === "appointmentBlocked";
+  return field === "prefecture" || field === "auCallAvailability" || field === "purchaseStatus" || field === "appointmentBlocked" || field === "lineType" || field === "category";
 }
 
 export function buildOptionGroups(field: SoilListOptionFieldKey, fieldOptions: SoilListOptionItem[] = []): MultiSelectOptionGroup[] {
@@ -651,9 +722,13 @@ function purchaseResultLine(result: UploadResult): string {
   return `購入履歴：新規 ${(result.purchase_inserted ?? 0).toLocaleString("ja-JP")} 件`;
 }
 
+function derivedResultLine(result: UploadResult): string {
+  return `元回線を付けた ${(result.line_type_set ?? 0).toLocaleString("ja-JP")} 件・区分を付けた ${(result.category_set ?? 0).toLocaleString("ja-JP")} 件`;
+}
+
 function uploadHistoryStatus(item: UploadHistory): string {
   if (item.status === "done" && item.result) {
-    return `新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}／購入履歴 ${(item.result.purchase_inserted ?? 0).toLocaleString("ja-JP")}`;
+    return `新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}／購入履歴 ${(item.result.purchase_inserted ?? 0).toLocaleString("ja-JP")}／元回線 ${(item.result.line_type_set ?? 0).toLocaleString("ja-JP")}／区分 ${(item.result.category_set ?? 0).toLocaleString("ja-JP")}`;
   }
   if (item.result && (item.status === "failed" || item.result.remaining > 0)) {
     return `途中で止まりました（電話番号台帳へ反映 ${item.result.assignments.toLocaleString("ja-JP")} / ${item.row_count.toLocaleString("ja-JP")}）`;
@@ -685,11 +760,14 @@ export function describeFilters(filters: FilterState, options: Partial<SoilListO
   pushMulti("auCallAvailability", "AU光架電可否", filters.auCallAvailability);
   pushMulti("purchaseStatus", "購入状態", filters.purchaseStatus);
   pushMulti("appointmentBlocked", "アポ禁", filters.appointmentBlocked);
+  pushMulti("lineType", "元回線", filters.lineType);
+  pushMulti("category", "区分", filters.category);
   if (filters.listName) parts.push(`リスト名：${filters.listName}を含む`);
   if (filters.listLoadedOnFrom || filters.listLoadedOnTo) parts.push(`投入日：${filters.listLoadedOnFrom || "指定なし"}〜${filters.listLoadedOnTo || "指定なし"}`);
   if (filters.recheckedOnFrom || filters.recheckedOnTo) parts.push(`再判定日：${filters.recheckedOnFrom || "指定なし"}〜${filters.recheckedOnTo || "指定なし"}`);
   if (filters.lastCalledOnFrom || filters.lastCalledOnTo) parts.push(`最終コール日：${filters.lastCalledOnFrom || "指定なし"}〜${filters.lastCalledOnTo || "指定なし"}`);
   if (filters.callCountFrom || filters.callCountTo) parts.push(`コール回数：${filters.callCountFrom || "指定なし"}〜${filters.callCountTo || "指定なし"}`);
+  if (filters.elapsedYearsFrom || filters.elapsedYearsTo) parts.push(`経過（年）：${filters.elapsedYearsFrom || "指定なし"}年以上〜${filters.elapsedYearsTo || "指定なし"}年以下`);
   if (filters.purchaseHistory) parts.push(`購入履歴：${filters.purchaseHistory}`);
   return parts.join("／") || "指定なし";
 }
@@ -795,6 +873,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [listPage, setListPage] = useState(1);
   const [listSort, setListSort] = useState<ListSearchSort | null>(null);
+  const [categoryBusyPhone, setCategoryBusyPhone] = useState<string | null>(null);
   const [selectedColumns, setSelectedColumns] = useState<SoilListColumnKey[]>(
     SOIL_LIST_EXPORT_COLUMNS.filter((column) => column.defaultChecked).map((column) => column.key),
   );
@@ -1053,10 +1132,29 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     await runListSearch({ nextPage, refreshCount: false });
   }
 
-  async function handleSortChange(key: ListSearchSortKey) {
+  async function handleSortChange(key: SortableListSearchKey) {
     if (busy) return;
     const direction: ListSearchSortDirection = listSort?.key === key && listSort.direction === "asc" ? "desc" : "asc";
     await runListSearch({ nextPage: 1, nextSort: { key, direction }, refreshCount: false });
+  }
+
+  async function handleCategoryChange(rowIndex: number, phoneNumber: string, category: string) {
+    const previousRows = rows;
+    setCategoryBusyPhone(phoneNumber);
+    setRows((current) => current.map((row, index) => index === rowIndex ? { ...row, category } : row));
+    try {
+      const response = await fetch("/api/soil/list/phones/category", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber, category }),
+      });
+      await readJson(response);
+    } catch (error) {
+      setRows(previousRows);
+      setMessage(error instanceof Error ? error.message : "区分を更新できませんでした");
+    } finally {
+      setCategoryBusyPhone(null);
+    }
   }
 
   async function downloadExport(body: Record<string, unknown>) {
@@ -1563,6 +1661,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} />
               <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} />
               <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} />
+              <MultiSelectFilter label="元回線" value={filters.lineType} groups={buildOptionGroups("lineType", options.lineType)} onChange={(value) => setFilter("lineType", value)} />
+              <MultiSelectFilter label="区分" value={filters.category} groups={buildOptionGroups("category", options.category)} onChange={(value) => setFilter("category", value)} />
               <label className={styles.wide}>
                 リスト名
                 <input value={filters.listName} onChange={(event) => setFilter("listName", event.target.value)} placeholder="含む" />
@@ -1598,12 +1698,19 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <label>
                 購入履歴
                 <select value={filters.purchaseHistory} onChange={(event) => setFilter("purchaseHistory", event.target.value)}>
-                  {SOIL_LIST_FILTER_DEFINITIONS[9].options?.map((option) => (
+                  {SOIL_LIST_FILTER_DEFINITIONS.find((definition) => definition.key === "purchaseHistoryExists")?.options?.map((option) => (
                     <option key={option} value={option}>
                       {option || "指定なし"}
                     </option>
                   ))}
                 </select>
+              </label>
+              <label>
+                経過（年）
+                <span className={styles.range}>
+                  <input type="number" min="0" value={filters.elapsedYearsFrom} onChange={(event) => setFilter("elapsedYearsFrom", event.target.value)} aria-label="年以上" placeholder="年以上" />
+                  <input type="number" min="0" value={filters.elapsedYearsTo} onChange={(event) => setFilter("elapsedYearsTo", event.target.value)} aria-label="年以下" placeholder="年以下" />
+                </span>
               </label>
               {/* 「検索」は購入履歴の右隣の枠（購入履歴と同じ幅・下ぞろえ）。購入履歴の枠に同居させると購入履歴が細くなる */}
               <div className={styles.searchCell}>
@@ -1639,14 +1746,18 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <tr>
                 {SEARCH_TABLE_COLUMNS.map((column) => (
                   <th key={column.key}>
-                    <button type="button" className={styles.sortHeaderButton} onClick={() => void handleSortChange(column.key)}>
-                      {column.label}
-                      {listSort?.key === column.key && (
-                        <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
-                          {listSort.direction === "asc" ? <path d="M6 2 2 8h8z" /> : <path d="M6 10 2 4h8z" />}
-                        </svg>
+                    {column.sortable === false ? (
+                      <span className={styles.staticHeaderLabel}>{column.label}</span>
+                    ) : (
+                      <button type="button" className={styles.sortHeaderButton} onClick={() => void handleSortChange(column.key as SortableListSearchKey)}>
+                        {column.label}
+                        {listSort?.key === column.key && (
+                          <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+                            {listSort.direction === "asc" ? <path d="M6 2 2 8h8z" /> : <path d="M6 10 2 4h8z" />}
+                          </svg>
+                        )}
+                      </button>
                       )}
-                    </button>
                   </th>
                 ))}
               </tr>
@@ -1661,6 +1772,23 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   <td>{row.lastCalledOn}</td>
                   <td>{row.callCount ?? ""}</td>
                   <td>{row.purchaseStatus}</td>
+                  <td>{row.lineType}</td>
+                  <td>{row.contractMonth}</td>
+                  <td>{row.contractElapsed}</td>
+                  <td>
+                    <select
+                      className={styles.inlineSelect}
+                      value={row.category}
+                      onChange={(event) => void handleCategoryChange(index, row.phoneNumberKey, event.target.value)}
+                      disabled={categoryBusyPhone === row.phoneNumberKey}
+                      aria-label="区分"
+                    >
+                      <option value="">（空欄）</option>
+                      <option value="個人">個人</option>
+                      <option value="屋号">屋号</option>
+                      <option value="法人">法人</option>
+                    </select>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1815,6 +1943,13 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   <span key={item.name}>{item.name}（{item.listLoadedOn ? formatJstWithWeekday(item.listLoadedOn) : "投入日不明"}） {item.count.toLocaleString("ja-JP")} 件</span>
                 ))}
               </div>
+              <div className={styles.summaryList}>
+                {uploadPreview.lineTypes.length === 0 ? (
+                  <span>元回線：該当なし</span>
+                ) : uploadPreview.lineTypes.map((item) => (
+                  <span key={item.value}>元回線：{item.value} {item.count.toLocaleString("ja-JP")} 件</span>
+                ))}
+              </div>
               <p className={styles.warningLine}>
                 要確認：電話番号が空 {uploadPreview.warnings.emptyPhoneRows.toLocaleString("ja-JP")} 行／数字でないものを除くと 9 桁未満 {uploadPreview.warnings.shortPhoneRows.toLocaleString("ja-JP")} 行／投入日が読めないリスト名 {uploadPreview.warnings.unreadableListDateNames.toLocaleString("ja-JP")} 件
               </p>
@@ -1835,6 +1970,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <p className={styles.result}>取り込みました：{resultLine(uploadResult)}</p>
               <p>{parentResultLine(uploadResult)}</p>
               <p>{purchaseResultLine(uploadResult)}</p>
+              <p>{derivedResultLine(uploadResult)}</p>
               <p>読めなかった行：{uploadResult.skipped.toLocaleString("ja-JP")} 行</p>
               {uploadResult.remaining > 0 && <p>残り：{uploadResult.remaining.toLocaleString("ja-JP")} 行</p>}
             </section>

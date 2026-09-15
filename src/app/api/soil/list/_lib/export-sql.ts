@@ -22,6 +22,13 @@ function columnSql(key: SoilListColumnKey): string {
   return quoteIdentifier(getColumnName(key));
 }
 
+function selectColumnSql(key: SoilListColumnKey): string {
+  if (key === "contractElapsed") {
+    return `case when ${columnSql("contractMonth")} is null then null else concat(extract(year from age(current_date, ${columnSql("contractMonth")}))::int, '年', extract(month from age(current_date, ${columnSql("contractMonth")}))::int, 'か月') end`;
+  }
+  return columnSql(key);
+}
+
 function nextParam(state: SqlState, value: unknown): string {
   state.values.push(value);
   return `$${state.values.length}`;
@@ -33,6 +40,9 @@ function escapeLike(value: string): string {
 
 function filterToSql(filter: SoilListFilter, state: SqlState): string {
   if (!(filter.field in SOIL_LIST_COLUMNS)) {
+    throw new SoilListRequestError("使えない条件が含まれています");
+  }
+  if (filter.field === "contractElapsed") {
     throw new SoilListRequestError("使えない条件が含まれています");
   }
   const column = columnSql(filter.field);
@@ -88,7 +98,7 @@ export function buildExportSelectSql(
   offset: number,
 ): { text: string; values: unknown[] } {
   const state: SqlState = { values: [] };
-  const select = columns.map((key) => `${columnSql(key)} as ${quoteIdentifier(key)}`).join(", ");
+  const select = columns.map((key) => `${selectColumnSql(key)} as ${quoteIdentifier(key)}`).join(", ");
   const text = [
     `select ${select}`,
     `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
@@ -106,7 +116,7 @@ export function buildExportStreamSql(
   sortKey: SoilListSortKey,
 ): { text: string; values: unknown[] } {
   const state: SqlState = { values: [] };
-  const select = columns.map((key) => `${columnSql(key)} as ${quoteIdentifier(key)}`).join(", ");
+  const select = columns.map((key) => `${selectColumnSql(key)} as ${quoteIdentifier(key)}`).join(", ");
   const text = [
     `select ${select}`,
     `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
@@ -123,4 +133,3 @@ export function buildExportPhoneSql(
 ): { text: string; values: unknown[] } {
   return buildExportSelectSql(condition, ["phoneNumber"], sortKey, limit, 0);
 }
-

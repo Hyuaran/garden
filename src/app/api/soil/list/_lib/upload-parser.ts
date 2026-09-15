@@ -60,6 +60,7 @@ export type UploadPreview = {
   formatLabel: string;
   rowCount: number;
   listNames: UploadListSummary[];
+  lineTypes: Array<{ value: string; count: number }>;
   warnings: {
     emptyPhoneRows: number;
     shortPhoneRows: number;
@@ -198,14 +199,26 @@ function checkReason(phone: string, listLoadedOn: string | null): string | null 
   return reasons.length ? reasons.join("／") : null;
 }
 
+export function deriveLineTypeFromListName(listName: string | null): string | null {
+  const value = listName ?? "";
+  const upper = value.toUpperCase();
+  if (value.includes("アナログ")) return "アナログ";
+  if (value.includes("フレッツ") || value.includes("F×転用")) return "フレッツ";
+  if (upper.includes("AU") || value.includes("au光") || value.includes("auひかり")) return "au";
+  return null;
+}
+
 function summarize(format: SoilListUploadFormat, rows: ParsedUploadRow[]): UploadPreview {
   const byList = new Map<string, UploadListSummary>();
+  const lineTypes = new Map<string, number>();
   for (const row of rows) {
     const name = row["リスト名"] || "（リスト名なし）";
     const current = byList.get(name) ?? { name, count: 0, listLoadedOn: row.listLoadedOn };
     current.count += 1;
     current.listLoadedOn ??= row.listLoadedOn;
     byList.set(name, current);
+    const lineType = deriveLineTypeFromListName(row["リスト名"]);
+    if (lineType) lineTypes.set(lineType, (lineTypes.get(lineType) ?? 0) + 1);
   }
   const unreadableNames = new Set(rows.filter((row) => !row.listLoadedOn).map((row) => row["リスト名"] || "（リスト名なし）"));
   return {
@@ -213,6 +226,9 @@ function summarize(format: SoilListUploadFormat, rows: ParsedUploadRow[]): Uploa
     formatLabel: formatLabel(format),
     rowCount: rows.length,
     listNames: [...byList.values()].sort((a, b) => b.count - a.count),
+    lineTypes: [...lineTypes.entries()]
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, "ja-JP")),
     warnings: {
       emptyPhoneRows: rows.filter((row) => !row.normalizedPhone).length,
       shortPhoneRows: rows.filter((row) => row.normalizedPhone.length > 0 && row.normalizedPhone.length < 9).length,

@@ -15,5 +15,11 @@ describe("buildCsvLine", () => {
       listLoadedOn: "2026-09-04",
     })).toBe("\"0311112222\",\"テスト\"\"太郎\",\"2026/09/04\"");
   });
-});
 
+  it("formats contract month as year and month while keeping elapsed text", () => {
+    expect(buildCsvLine(["contractMonth", "contractElapsed"], {
+      contractMonth: "2024-10-01",
+      contractElapsed: "1年11か月",
+    })).toBe("\"2024/10\",\"1年11か月\"");
+  });
+});

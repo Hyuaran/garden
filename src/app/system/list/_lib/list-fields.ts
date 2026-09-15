@@ -37,7 +37,12 @@ export const SOIL_LIST_COLUMNS = {
   managementLoaded: "管理マスタ投入済み",
   purchaseStatus: "購入状態",
   eastWest: "東西",
+  lineType: "元回線",
   originalLine: "元回線",
+  contractMonth: "契約時期",
+  contractElapsed: "経過",
+  category: "区分",
+  categorySource: "区分_判定元",
   lineIspExpected: "回線_ISP想定",
   elapsedMonths: "経過月数",
   elapsedLabel: "経過期間_表示",
@@ -98,7 +103,7 @@ export type SoilListFilterDefinition = {
   options?: string[];
 };
 
-export type SoilListOptionFieldKey = "prefecture" | "auCallAvailability" | "purchaseStatus" | "appointmentBlocked";
+export type SoilListOptionFieldKey = "prefecture" | "auCallAvailability" | "purchaseStatus" | "appointmentBlocked" | "lineType" | "category";
 
 export type SoilListOptionItem = {
   value: string;
@@ -128,6 +133,8 @@ export const SOIL_LIST_OPTION_FIELDS: SoilListOptionFieldKey[] = [
   "auCallAvailability",
   "purchaseStatus",
   "appointmentBlocked",
+  "lineType",
+  "category",
 ];
 
 export const SOIL_LIST_FILTER_DEFINITIONS: SoilListFilterDefinition[] = [
@@ -155,11 +162,24 @@ export const SOIL_LIST_FILTER_DEFINITIONS: SoilListFilterDefinition[] = [
     input: "select",
     options: [""],
   },
+  {
+    key: "lineType",
+    label: "元回線",
+    input: "select",
+    options: [""],
+  },
+  {
+    key: "category",
+    label: "区分",
+    input: "select",
+    options: [""],
+  },
   { key: "listName", label: "リスト名", input: "contains" },
   { key: "listLoadedOn", label: "リスト投入日", input: "range" },
   { key: "recheckedOn", label: "再判定日", input: "range" },
   { key: "lastCalledOn", label: "最終コール日", input: "range" },
   { key: "callCount", label: "コール回数", input: "range" },
+  { key: "contractMonth", label: "経過（年）", input: "range" },
   {
     key: "purchaseHistoryExists",
     label: "購入履歴",
@@ -177,6 +197,9 @@ export const SOIL_LIST_SEARCH_COLUMNS: SoilListColumnKey[] = [
   "lastCalledOn",
   "callCount",
   "purchaseStatus",
+  "lineType",
+  "contractMonth",
+  "category",
 ];
 
 export const SOIL_LIST_EXPORT_COLUMNS: SoilListExportColumn[] = [
@@ -191,6 +214,10 @@ export const SOIL_LIST_EXPORT_COLUMNS: SoilListExportColumn[] = [
   { key: "mobileNumber", label: "携帯番号", defaultChecked: false },
   { key: "listName", label: "リスト名", defaultChecked: true },
   { key: "listLoadedOn", label: "リスト投入日", defaultChecked: true },
+  { key: "lineType", label: "元回線", defaultChecked: false },
+  { key: "contractMonth", label: "契約時期", defaultChecked: false },
+  { key: "contractElapsed", label: "経過", defaultChecked: false },
+  { key: "category", label: "区分", defaultChecked: false },
   { key: "source", label: "データ出所", defaultChecked: true },
 ];
 

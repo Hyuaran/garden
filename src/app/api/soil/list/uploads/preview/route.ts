@@ -26,6 +26,7 @@ export async function POST(request: Request) {
       formatLabel: parsed.formatLabel,
       rowCount: parsed.rowCount,
       listNames: parsed.listNames,
+      lineTypes: parsed.lineTypes,
       warnings: parsed.warnings,
     };
     return NextResponse.json({ ok: true, preview });

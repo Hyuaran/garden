@@ -35,5 +35,22 @@ describe("export SQL", () => {
     expect(sql.text).toContain("order by \"リスト投入日\" asc nulls last, \"電話番号\" asc");
     expect(sql.text).toContain("limit 50000 offset 0");
   });
-});
 
+  it("selects computed elapsed text and filters line type/category", () => {
+    const sql = buildExportSelectSql({
+      filters: [
+        { field: "lineType", op: "in", value: ["フレッツ"] },
+        { field: "category", op: "inOrEmpty", value: ["法人"] },
+        { field: "contractMonth", op: "lte", value: "2017-09-15" },
+      ],
+    }, ["lineType", "contractMonth", "contractElapsed", "category"], "listLoadedOnAsc", 100, 0);
+
+    expect(sql.text).toContain("\"元回線\" as \"lineType\"");
+    expect(sql.text).toContain("concat(extract(year from age(current_date, \"契約時期\"))::int");
+    expect(sql.text).toContain("\"区分\" as \"category\"");
+    expect(sql.text).toContain("\"元回線\" = any($1)");
+    expect(sql.text).toContain("(\"区分\" = any($2) or \"区分\" is null or \"区分\" = '')");
+    expect(sql.text).toContain("\"契約時期\" <= $3");
+    expect(sql.values).toEqual([["フレッツ"], ["法人"], "2017-09-15"]);
+  });
+});

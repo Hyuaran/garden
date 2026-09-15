@@ -106,7 +106,12 @@ function getColumnNameMap(): Record<SoilListColumnKey, string> {
     managementLoaded: getColumnName("managementLoaded"),
     purchaseStatus: getColumnName("purchaseStatus"),
     eastWest: getColumnName("eastWest"),
+    lineType: getColumnName("lineType"),
     originalLine: getColumnName("originalLine"),
+    contractMonth: getColumnName("contractMonth"),
+    contractElapsed: getColumnName("contractElapsed"),
+    category: getColumnName("category"),
+    categorySource: getColumnName("categorySource"),
     lineIspExpected: getColumnName("lineIspExpected"),
     elapsedMonths: getColumnName("elapsedMonths"),
     elapsedLabel: getColumnName("elapsedLabel"),
@@ -154,7 +159,13 @@ async function fetchPhoneNumbers(condition: SoilListConditionPayload, sortKey: S
 function exportRowsSql(condition: SoilListConditionPayload, columns: SoilListColumnKey[], sortKey: SoilListSortKey, phoneNumbers: string[] | null): { text: string; values: unknown[] } {
   if (!phoneNumbers) return buildExportStreamSql(condition, columns, sortKey);
   const phoneColumn = `"${getColumnName("phoneNumber").replaceAll('"', '""')}"`;
-  const select = columns.map((key) => `"${getColumnName(key).replaceAll('"', '""')}" as "${key}"`).join(", ");
+  const contractMonthColumn = `"${getColumnName("contractMonth").replaceAll('"', '""')}"`;
+  const select = columns.map((key) => {
+    const expression = key === "contractElapsed"
+      ? `case when ${contractMonthColumn} is null then null else concat(extract(year from age(current_date, ${contractMonthColumn}))::int, '年', extract(month from age(current_date, ${contractMonthColumn}))::int, 'か月') end`
+      : `"${getColumnName(key).replaceAll('"', '""')}"`;
+    return `${expression} as "${key}"`;
+  }).join(", ");
   const text = [
     `select ${select}`,
     `from "${SOIL_LIST_TABLES.phone}"`,

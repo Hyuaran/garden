@@ -18,6 +18,9 @@ describe("soil list validation", () => {
           { field: "listName", op: "contains", value: "サンプル" },
           { field: "appointmentBlocked", op: "empty" },
           { field: "purchaseHistoryExists", op: "eq", value: false },
+          { field: "lineType", op: "in", value: ["フレッツ"] },
+          { field: "category", op: "inOrEmpty", value: ["法人"] },
+          { field: "contractMonth", op: "lte", value: "2017-09-15" },
         ],
       }),
     ).toEqual({
@@ -26,6 +29,9 @@ describe("soil list validation", () => {
         { field: "listName", op: "contains", value: "サンプル" },
         { field: "appointmentBlocked", op: "empty" },
         { field: "purchaseHistoryExists", op: "eq", value: false },
+        { field: "lineType", op: "in", value: ["フレッツ"] },
+        { field: "category", op: "inOrEmpty", value: ["法人"] },
+        { field: "contractMonth", op: "lte", value: "2017-09-15" },
       ],
     });
 

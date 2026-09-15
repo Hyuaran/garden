@@ -8,14 +8,15 @@ function formatDateLike(value: string): string {
   return match ? `${match[1]}/${match[2]}/${match[3]}` : value;
 }
 
-function quoteCsvField(value: ExportValue): string {
+function formatExportValue(column: SoilListColumnKey, value: ExportValue): string {
   if (value === null || value === undefined) return "\"\"";
-  return `"${formatDateLike(String(value)).replaceAll("\"", "\"\"")}"`;
+  const raw = String(value);
+  const formatted = column === "contractMonth" ? raw.replace(/^(\d{4})-(\d{2})(?:-\d{2})?.*$/, "$1/$2") : formatDateLike(raw);
+  return `"${formatted.replaceAll("\"", "\"\"")}"`;
 }
 
 export function buildCsvLine(columns: SoilListColumnKey[], row?: ExportRow): string {
   return columns
-    .map((column) => quoteCsvField(row ? (row[column] ?? row[getColumnName(column)]) : getColumnName(column)))
+    .map((column) => formatExportValue(column, row ? (row[column] ?? row[getColumnName(column)]) : getColumnName(column)))
     .join(",");
 }
-

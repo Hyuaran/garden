@@ -19,7 +19,8 @@ export type SearchSortKey =
   | "listName"
   | "lastCalledOn"
   | "callCount"
-  | "purchaseStatus";
+  | "purchaseStatus"
+  | "contractMonth";
 
 export type SearchSortDirection = "asc" | "desc";
 
@@ -40,6 +41,7 @@ const SORT_COLUMNS: Record<SearchSortKey, SoilListColumnKey> = {
   lastCalledOn: "lastCalledOn",
   callCount: "callCount",
   purchaseStatus: "purchaseStatus",
+  contractMonth: "contractMonth",
 };
 
 function quoteIdentifier(value: string): string {
@@ -48,6 +50,13 @@ function quoteIdentifier(value: string): string {
 
 function columnSql(key: SoilListColumnKey): string {
   return quoteIdentifier(getColumnName(key));
+}
+
+function selectColumnSql(key: SoilListColumnKey): string {
+  if (key === "contractElapsed") {
+    return `case when ${columnSql("contractMonth")} is null then null else concat(extract(year from age(current_date, ${columnSql("contractMonth")}))::int, '年', extract(month from age(current_date, ${columnSql("contractMonth")}))::int, 'か月') end as ${quoteIdentifier(getColumnName(key))}`;
+  }
+  return columnSql(key);
 }
 
 function nextParam(state: SqlState, value: unknown): string {
@@ -61,6 +70,9 @@ function escapeLike(value: string): string {
 
 function filterToSql(filter: SoilListFilter, state: SqlState): string {
   if (!(filter.field in SOIL_LIST_COLUMNS)) {
+    throw new SoilListRequestError("使えない条件が含まれています");
+  }
+  if (filter.field === "contractElapsed") {
     throw new SoilListRequestError("使えない条件が含まれています");
   }
   const column = columnSql(filter.field);
@@ -124,7 +136,7 @@ export function normalizeSearchPage(input: unknown): number {
 
 export function buildSearchSql(condition: SoilListConditionPayload, sort: SearchSort | null, page: number): { text: string; values: unknown[] } {
   const state: SqlState = { values: [] };
-  const select = SOIL_LIST_SEARCH_COLUMNS.map((key) => columnSql(key)).join(", ");
+  const select = SOIL_LIST_SEARCH_COLUMNS.map((key) => selectColumnSql(key)).join(", ");
   const where = buildWhereSql(condition, state);
   const offset = (Math.max(1, page) - 1) * MAX_SEARCH_ROWS;
   const text = [

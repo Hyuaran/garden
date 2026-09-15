@@ -13,6 +13,7 @@ import {
 import { SoilListRequestError } from "./validation";
 
 export type SearchRow = {
+  phoneNumberKey: string;
   phoneNumber: string;
   name: string;
   addressCity: string;
@@ -20,6 +21,10 @@ export type SearchRow = {
   lastCalledOn: string;
   callCount: number | null;
   purchaseStatus: string;
+  lineType: string;
+  contractMonth: string;
+  contractElapsed: string;
+  category: string;
 };
 
 type QueryResult = {
@@ -59,6 +64,9 @@ function applyFilter<T extends FilterQuery<T>>(query: T, filter: SoilListFilter)
     throw new SoilListRequestError("使えない条件が含まれています");
   }
   const column = getColumnName(filter.field);
+  if (filter.field === "contractElapsed") {
+    throw new SoilListRequestError("使えない条件が含まれています");
+  }
   switch (filter.op) {
     case "eq":
       return query.eq(column, filter.value);
@@ -115,12 +123,40 @@ function maskName(name: string): string {
   return `${name.slice(0, 1)}*`;
 }
 
+export function formatContractMonth(value: unknown): string {
+  const raw = String(value ?? "");
+  const match = /^(\d{4})-(\d{2})/.exec(raw);
+  return match ? `${match[1]}/${match[2]}` : "";
+}
+
+export function formatContractElapsed(value: unknown, now = new Date()): string {
+  const raw = String(value ?? "");
+  const match = /^(\d{4})-(\d{2})/.exec(raw);
+  if (!match) return "";
+  const startYear = Number(match[1]);
+  const startMonth = Number(match[2]);
+  if (!startYear || !startMonth) return "";
+  const nowParts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "numeric",
+  }).formatToParts(now);
+  const currentYear = Number(nowParts.find((part) => part.type === "year")?.value);
+  const currentMonth = Number(nowParts.find((part) => part.type === "month")?.value);
+  if (!currentYear || !currentMonth) return "";
+  const months = currentYear * 12 + currentMonth - (startYear * 12 + startMonth);
+  if (months < 0) return "";
+  return `${Math.floor(months / 12)}年${months % 12}か月`;
+}
+
 export function toSearchRow(row: Record<string, unknown>): SearchRow {
   const callCount = row[getColumnName("callCount")];
   const phone = String(row[getColumnName("phoneNumber")] ?? "");
   const prefecture = String(row[getColumnName("prefecture")] ?? "");
   const city = String(row[getColumnName("city")] ?? "");
+  const contractMonth = row[getColumnName("contractMonth")];
   return {
+    phoneNumberKey: phone,
     phoneNumber: maskPhone(phone),
     name: maskName(String(row[getColumnName("name")] ?? "")),
     addressCity: `${prefecture}${city}`,
@@ -128,6 +164,10 @@ export function toSearchRow(row: Record<string, unknown>): SearchRow {
     lastCalledOn: String(row[getColumnName("lastCalledOn")] ?? ""),
     callCount: typeof callCount === "number" ? callCount : callCount === null || callCount === undefined ? null : Number(callCount),
     purchaseStatus: String(row[getColumnName("purchaseStatus")] ?? ""),
+    lineType: String(row[getColumnName("lineType")] ?? ""),
+    contractMonth: formatContractMonth(contractMonth),
+    contractElapsed: formatContractElapsed(contractMonth),
+    category: String(row[getColumnName("category")] ?? ""),
   };
 }
 
