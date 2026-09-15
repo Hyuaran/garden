@@ -16,14 +16,15 @@ export async function GET(request: Request) {
   if (phone.length < 9) return NextResponse.json({ ok: false, error: "電話番号の形が違います" }, { status: 400 });
 
   try {
-    const [currentResult, historyResult] = await Promise.all([
-      queryPg<SoilListHistoryCurrent>(CURRENT_HISTORY_SQL, [phone]),
-      queryPg<SoilListHistoryRow>(buildHistorySql(), [phone]),
-    ]);
+    // 先に台帳の行を引き、入力＋台帳の電話番号・携帯番号を対象番号の配列にして履歴を引く（配列で絞ると各表の索引が効く）
+    const currentResult = await queryPg<SoilListHistoryCurrent>(CURRENT_HISTORY_SQL, [phone]);
+    const current = currentResult.rows[0] ?? null;
+    const phones = [...new Set([phone, current?.phoneNumber ?? "", current?.mobileNumber ?? ""].map((value) => normalizePhone(value)).filter((value) => value.length >= 9))];
+    const historyResult = await queryPg<SoilListHistoryRow>(buildHistorySql(), [phone, phones]);
     const omitted = historyResult.rows.length > 500;
     return NextResponse.json({
       ok: true,
-      current: currentResult.rows[0] ?? null,
+      current,
       rows: historyResult.rows.slice(0, 500),
       omitted,
     });
