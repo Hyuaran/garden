@@ -10,7 +10,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 import { requireSoilListUser } from "../_lib/auth";
 import { buildCsvLine, type ExportRow } from "../_lib/export-format";
-import { buildExportCountSql, buildExportPhoneSql, buildExportStreamSql } from "../_lib/export-sql";
+import { buildExportCountSql, buildExportPhoneSql, buildExportStreamSql, buildInternalBlockExcludedCountSql } from "../_lib/export-sql";
 import { quoteMerLine, type MerRow } from "../_lib/mer";
 import {
   SoilListRequestError,
@@ -37,6 +37,7 @@ type ExportRecord = {
   file_name: string;
   phone_numbers: string[] | null;
   format?: ExportFormat | null;
+  excluded_internal_block?: number | null;
 };
 
 function normalizeFormat(input: unknown): ExportFormat {
@@ -67,13 +68,14 @@ function timestampFileName(format: ExportFormat): string {
   return `リストマスタ_${parts.year}${parts.month}${parts.day}_${parts.hour}${parts.minute}.${format}`;
 }
 
-function responseHeaders(fileName: string, format: ExportFormat, rowCount: number, replacedChars: number) {
+function responseHeaders(fileName: string, format: ExportFormat, rowCount: number, replacedChars: number, excludedInternalBlock: number) {
   const headers = new Headers({
     "Content-Type": contentType(format),
     "Content-Disposition": `attachment; filename="list-master.${format}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
     "X-Soil-List-Row-Count": String(rowCount),
   });
   if (format === "mer") headers.set("X-Soil-List-Replaced-Chars", String(replacedChars));
+  headers.set("X-Soil-List-Excluded-Internal-Block", String(excludedInternalBlock));
   return headers;
 }
 
@@ -138,12 +140,19 @@ function getColumnNameMap(): Record<SoilListColumnKey, string> {
     latestOrderOn: getColumnName("latestOrderOn"),
     latestOrderProduct: getColumnName("latestOrderProduct"),
     orderCount: getColumnName("orderCount"),
+    internalBlocked: getColumnName("internalBlocked"),
     purchaseHistoryExists: getColumnName("purchaseHistoryExists"),
   };
 }
 
 async function countRows(condition: SoilListConditionPayload): Promise<number> {
   const sql = buildExportCountSql(condition);
+  const result = await queryPg<{ count: string }>(sql.text, sql.values);
+  return Number(result.rows[0]?.count ?? 0);
+}
+
+async function countExcludedInternalBlock(condition: SoilListConditionPayload): Promise<number> {
+  const sql = buildInternalBlockExcludedCountSql(condition);
   const result = await queryPg<{ count: string }>(sql.text, sql.values);
   return Number(result.rows[0]?.count ?? 0);
 }
@@ -213,6 +222,7 @@ async function insertExportRecord(input: {
   sortKey: SoilListSortKey;
   format: ExportFormat;
   createdBy: string;
+  excludedInternalBlock: number;
 }) {
   const admin = getSupabaseAdmin();
   const { error } = await admin.from(SOIL_LIST_TABLES.export).insert({
@@ -225,6 +235,7 @@ async function insertExportRecord(input: {
     phone_numbers: input.phoneNumbers,
     file_name: input.fileName,
     format: input.format,
+    excluded_internal_block: input.excludedInternalBlock,
     created_by: input.createdBy,
   });
   if (error) throw new Error("書き出しの記録を保存できませんでした");
@@ -291,12 +302,13 @@ async function buildExportResponse(input: {
   phoneNumbers: string[] | null;
   rowCount: number;
   replacedChars: number;
+  excludedInternalBlock: number;
 }) {
   const body = input.format === "xlsx"
     ? streamExcelExport(input)
     : streamTextExport({ ...input, format: input.format });
   return new Response(body, {
-    headers: responseHeaders(input.fileName, input.format, input.rowCount, input.replacedChars),
+    headers: responseHeaders(input.fileName, input.format, input.rowCount, input.replacedChars, input.excludedInternalBlock),
   });
 }
 
@@ -304,7 +316,7 @@ async function redownload(exportId: string) {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from(SOIL_LIST_TABLES.export)
-    .select("id,condition,columns,row_limit,sort_key,file_name,phone_numbers,format")
+    .select("id,condition,columns,row_limit,sort_key,file_name,phone_numbers,format,excluded_internal_block")
     .eq("id", exportId)
     .maybeSingle();
 
@@ -317,13 +329,14 @@ async function redownload(exportId: string) {
   const format = record.format ?? "mer";
   const phoneNumbers = record.phone_numbers && record.phone_numbers.length > 0 ? record.phone_numbers : null;
   const rowCount = phoneNumbers ? phoneNumbers.length : await countRows(record.condition);
+  const excludedInternalBlock = record.excluded_internal_block ?? (await countExcludedInternalBlock(record.condition));
   if (format === "xlsx" && rowCount > EXCEL_MAX_DATA_ROWS) {
     return NextResponse.json({ ok: false, error: "Excel は 1,048,576 行までです。CSV か .mer を選んでください" }, { status: 400 });
   }
   const replacedChars = format === "mer"
     ? await computeMerReplacedChars(record.condition, columns, sortKey, phoneNumbers)
     : 0;
-  return buildExportResponse({ condition: record.condition, columns, sortKey, format, fileName: record.file_name, phoneNumbers, rowCount, replacedChars });
+  return buildExportResponse({ condition: record.condition, columns, sortKey, format, fileName: record.file_name, phoneNumbers, rowCount, replacedChars, excludedInternalBlock });
 }
 
 export async function POST(request: Request) {
@@ -340,7 +353,10 @@ export async function POST(request: Request) {
     const columns = normalizeExportColumns(body.columns);
     const sortKey = normalizeSortKey(body.sortKey);
     const format = normalizeFormat(body.format);
-    const rowCount = await countRows(condition);
+    const [rowCount, excludedInternalBlock] = await Promise.all([
+      countRows(condition),
+      countExcludedInternalBlock(condition),
+    ]);
     if (format === "xlsx" && rowCount > EXCEL_MAX_DATA_ROWS) {
       return NextResponse.json({ ok: false, error: "Excel は 1,048,576 行までです。CSV か .mer を選んでください" }, { status: 400 });
     }
@@ -361,9 +377,10 @@ export async function POST(request: Request) {
       sortKey,
       format,
       createdBy: auth.user.name ?? "",
+      excludedInternalBlock,
     });
 
-    return buildExportResponse({ condition, columns, sortKey, format, fileName, phoneNumbers, rowCount, replacedChars });
+    return buildExportResponse({ condition, columns, sortKey, format, fileName, phoneNumbers, rowCount, replacedChars, excludedInternalBlock });
   } catch (error) {
     if (error instanceof SoilListRequestError) {
       return NextResponse.json({ ok: false, error: error.message }, { status: error.status });

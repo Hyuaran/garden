@@ -1018,6 +1018,118 @@
   min-width: 760px !important;
 }
 
+.internalBlockPanel {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.internalBlockPanel h3 {
+  margin: 0;
+  color: var(--heading);
+}
+
+.internalBlockForm,
+.internalBlockFileRow,
+.internalBlockListHeader,
+.historyTypeFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+
+.internalBlockForm label,
+.internalBlockListHeader label {
+  display: flex;
+  min-width: 220px;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.internalBlockBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.internalBlockTable {
+  min-width: 900px !important;
+}
+
+.releasedRow {
+  color: var(--sub);
+  opacity: 0.65;
+}
+
+.historyCurrent {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 90%, var(--line));
+}
+
+.historyCurrent h3,
+.historyCurrent p {
+  margin: 0;
+}
+
+.historyTypeFilters label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.historyList {
+  display: grid;
+  gap: 8px;
+}
+
+.historyItem {
+  display: grid;
+  grid-template-columns: 120px 160px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border-left: 4px solid #0ea5a0;
+  padding: 9px 12px;
+  background: color-mix(in srgb, var(--card) 94%, var(--line));
+}
+
+.historyItem[data-kind^="購入"] { border-left-color: #2563eb; }
+.historyItem[data-kind^="コール"] { border-left-color: #0ea5a0; }
+.historyItem[data-kind^="受注"] { border-left-color: #dc2626; }
+.historyItem[data-kind^="既契約"] { border-left-color: #7c3aed; }
+.historyItem[data-kind^="住所"] { border-left-color: #0891b2; }
+.historyItem[data-kind^="自社"] { border-left-color: #b91c1c; }
+
+.historyItem span,
+.historyItem strong,
+.historyItem p {
+  margin: 0;
+  min-width: 0;
+}
+
+.historyItem span {
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+
 .guideTable th,
 .guideTable td,
 .guideRulesTable th,

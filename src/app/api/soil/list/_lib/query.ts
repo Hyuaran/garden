@@ -25,6 +25,7 @@ export type SearchRow = {
   contractMonth: string;
   contractElapsed: string;
   category: string;
+  internalBlocked: boolean;
 };
 
 type QueryResult = {
@@ -168,6 +169,7 @@ export function toSearchRow(row: Record<string, unknown>): SearchRow {
     contractMonth: formatContractMonth(contractMonth),
     contractElapsed: formatContractElapsed(contractMonth),
     category: String(row[getColumnName("category")] ?? ""),
+    internalBlocked: row[getColumnName("internalBlocked")] === true,
   };
 }
 

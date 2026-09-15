@@ -159,13 +159,13 @@ describe("/api/soil/list/analysis", () => {
 
   it("returns 403 below manager", async () => {
     mocks.getAdmin.mockReturnValue(adminClient("staff"));
-    const response = await GET();
+    const response = await GET(new Request("http://test/api/soil/list/analysis"));
     expect(response.status).toBe(403);
   });
 
   it("builds segment totals and rates from analysis cells", async () => {
     mocks.getAdmin.mockReturnValue(adminClient());
-    const response = await GET();
+    const response = await GET(new Request("http://test/api/soil/list/analysis"));
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
@@ -196,7 +196,7 @@ describe("/api/soil/list/analysis", () => {
       { ...cells[0], result: "前確NG", row_count: 4, called_count: 4, call_total: 4, order_count: 0 },
     ];
     mocks.getAdmin.mockReturnValue(adminClient("manager", "2026-09-13T15:27:00+09:00", analysisCells));
-    const response = await GET();
+    const response = await GET(new Request("http://test/api/soil/list/analysis"));
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.analysis.blocks.vendor.segments[0].results).toEqual([
@@ -217,7 +217,7 @@ describe("/api/soil/list/analysis", () => {
 
   it("returns null contract snapshot when the sync log has no success row", async () => {
     mocks.getAdmin.mockReturnValue(adminClient("manager", null));
-    const response = await GET();
+    const response = await GET(new Request("http://test/api/soil/list/analysis"));
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       ok: true,

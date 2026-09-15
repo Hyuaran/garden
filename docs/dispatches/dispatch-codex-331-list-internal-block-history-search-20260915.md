@@ -2,7 +2,7 @@
 
 作成日: 2026-09-15
 作業ツリー: C:\garden\a-bloom-008
-起点: Codex-330 のマージ後の main（`git log -1` を控えてから着手）
+起点: main 91c9cf0（Codex-329／330 反映済み。`git log -1` で一致を確認してから着手）
 **git は触らないこと（commit するな）。本番のデータ・DB・Kintone に触らないこと。開発サーバ・ブラウザを起動しないこと。migration は supabase/migrations に書くだけで実行しない（実行は Claude）。**
 
 必ず先に読むもの：

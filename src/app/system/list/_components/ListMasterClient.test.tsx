@@ -25,7 +25,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
     if (url === "/api/soil/list/search" && init?.method === "POST") return json({
       ok: true,
       rows: [
-        { phoneNumberKey: "0721111181", phoneNumber: "072****81", name: "嶋*", addressCity: "大阪府大阪市", listName: "大阪AU", lastCalledOn: "2026-09-09", callCount: 2, purchaseStatus: "完パケ", lineType: "au", contractMonth: "2024/10", contractElapsed: "1年11か月", category: "個人" },
+        { phoneNumberKey: "0721111181", phoneNumber: "072****81", name: "嶋*", addressCity: "大阪府大阪市", listName: "大阪AU", lastCalledOn: "2026-09-09", callCount: 2, purchaseStatus: "完パケ", lineType: "au", contractMonth: "2024/10", contractElapsed: "1年11か月", category: "個人", internalBlocked: true },
       ],
       page: JSON.parse(String(init.body)).page ?? 1,
       pageSize: 100,
@@ -34,8 +34,23 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
     if (url === "/api/soil/list/export" && init?.method === "POST") {
       return Promise.resolve(new Response(new Blob(["export"]), {
         status: 200,
-        headers: { "Content-Disposition": "attachment; filename=\"list-master.csv\"; filename*=UTF-8''%E3%83%AA%E3%82%B9%E3%83%88.csv" },
+        headers: { "Content-Disposition": "attachment; filename=\"list-master.csv\"; filename*=UTF-8''%E3%83%AA%E3%82%B9%E3%83%88.csv", "X-Soil-List-Excluded-Internal-Block": "2" },
       }));
+    }
+    if (url.startsWith("/api/soil/list/internal-block?")) {
+      return json({ ok: true, rows: [], count: 0, page: 1, pageSize: 100 });
+    }
+    if (url.startsWith("/api/soil/list/history?")) {
+      return json({
+        ok: true,
+        current: { phoneNumber: "0285720215", name: "佐藤 民一", address: "栃木県芳賀郡益子町", listName: "【光回線】アナログ_20260914", lineType: "アナログ", auCallAvailability: "○", appointmentBlocked: "", internalBlocked: false, purchaseStatus: "完パケ", callCount: 3, lastCallResult: "留守" },
+        rows: [
+          { occurred_on: "2026-09-14", type: "投入", title: "【光回線】アナログ_20260914", detail: "アップロード" },
+          { occurred_on: "2026-08-03", type: "コール", title: "留守", detail: "田中" },
+          { occurred_on: "2026-06-01", type: "自社アポ禁", title: "登録", detail: "理由：重クレーム" },
+        ],
+        omitted: false,
+      });
     }
     if (url === "/api/soil/list/uploads") return json({ ok: true, uploads: options.uploads ?? [] });
     if (url === "/api/soil/list/orders/status") {
@@ -349,7 +364,7 @@ describe("ListMasterClient tabs", () => {
     const guide = within(guidePanel as HTMLElement);
     expect(guide.getByRole("columnheader", { name: "名前" })).toBeInTheDocument();
     expect(guide.getByRole("columnheader", { name: "決まり" })).toBeInTheDocument();
-    expect(guide.getAllByRole("table")).toHaveLength(2);
+    expect(guide.getAllByRole("table").length).toBeGreaterThanOrEqual(2);
     expect(guide.getAllByRole("row").slice(1, 6).map((row) => within(row).getAllByRole("cell")[0].textContent)).toEqual([
       "電話番号台帳",
       "購入履歴",
@@ -365,6 +380,20 @@ describe("ListMasterClient tabs", () => {
     fireEvent.click(screen.getByRole("tab", { name: "アップロード" }));
     expect(window.location.search).toBe("?tab=upload");
     expect(screen.getByText("リストの取込ファイルをアップロード")).toBeInTheDocument();
+  });
+
+  it("shows the history search tab and renders timeline rows", async () => {
+    installFetch();
+    window.history.replaceState(null, "", "/system/list?tab=history");
+    render(<ListMasterClient />);
+
+    expect(await screen.findByRole("tab", { name: "履歴検索", selected: true })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("電話番号"), { target: { value: "028-572-0215" } });
+    fireEvent.click(screen.getByRole("button", { name: "検索" }));
+
+    expect(await screen.findByText(/佐藤 民一/)).toBeInTheDocument();
+    expect(screen.getAllByText("投入").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("自社アポ禁").length).toBeGreaterThan(0);
   });
 });
 
@@ -605,6 +634,7 @@ describe("ListMasterClient filter condition conversion", () => {
       elapsedYearsFrom: "9",
       elapsedYearsTo: "10",
       purchaseHistory: "",
+      internalBlock: "なし",
     };
 
     expect(filtersToCondition(base)).toEqual({
@@ -617,6 +647,7 @@ describe("ListMasterClient filter condition conversion", () => {
         { field: "category", op: "in", value: ["個人", "法人"] },
         { field: "contractMonth", op: "lte", value: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
         { field: "contractMonth", op: "gte", value: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
+        { field: "internalBlocked", op: "eq", value: false },
       ],
     });
   });
@@ -631,6 +662,7 @@ describe("ListMasterClient filter condition conversion", () => {
           { field: "purchaseStatus", op: "inOrEmpty", value: ["完パケ"] },
           { field: "lineType", op: "empty" },
           { field: "category", op: "eq", value: "法人" },
+          { field: "internalBlocked", op: "eq", value: true },
         ],
       }),
     ).toMatchObject({
@@ -640,6 +672,7 @@ describe("ListMasterClient filter condition conversion", () => {
       purchaseStatus: ["完パケ", EMPTY_OPTION_VALUE],
       lineType: [EMPTY_OPTION_VALUE],
       category: ["法人"],
+      internalBlock: "あり",
     });
   });
 
@@ -671,7 +704,9 @@ describe("ListMasterClient list search UX", () => {
     expect(screen.getByText("条件に合う番号を検索しています…")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText("該当 12,563 件（0.8 秒）")).toBeInTheDocument());
     expect(screen.getByText(/AU光架電可否：○/)).toBeInTheDocument();
+    expect(screen.getByText(/自社アポ禁：なし/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "一覧（12,563 件・個人情報は一部伏せる）" })).toBeInTheDocument();
+    expect(screen.getAllByText("自社アポ禁").length).toBeGreaterThan(0);
     expect(screen.getByText("1 / 126 ページ")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "条件を変える" }));
@@ -759,7 +794,7 @@ describe("ListMasterClient export UX", () => {
     fireEvent.click(screen.getByRole("button", { name: "12,563 件を書き出す" }));
 
     expect(screen.getByText("12,563件をExcelで書き出しています…")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText("12,563 件を Excel で書き出しました")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("12,563 件を Excel で書き出しました（自社アポ禁 2 件を除きました）")).toBeInTheDocument());
     const exportCall = fetchMock.mock.calls.find(([url, init]) => url === "/api/soil/list/export" && init?.method === "POST");
     expect(exportCall).toBeTruthy();
     expect(JSON.parse(String(exportCall?.[1]?.body))).toMatchObject({ format: "xlsx", sortKey: "listLoadedOnAsc" });

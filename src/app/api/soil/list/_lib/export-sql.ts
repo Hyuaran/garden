@@ -75,9 +75,12 @@ function orderBySql(sortKey: SoilListSortKey): string {
   return `${columnSql("listLoadedOn")} ${listDirection} nulls last, ${columnSql("phoneNumber")} asc`;
 }
 
-function whereSql(condition: SoilListConditionPayload, state: SqlState): string {
-  const parts = condition.filters.map((filter) => filterToSql(filter, state));
-  return parts.length > 0 ? `where ${parts.join(" and ")}` : "";
+function whereSqlExcludingInternalBlock(condition: SoilListConditionPayload, state: SqlState): string {
+  const parts = [
+    ...condition.filters.map((filter) => filterToSql(filter, state)),
+    `${columnSql("internalBlocked")} is not true`,
+  ];
+  return `where ${parts.join(" and ")}`;
 }
 
 export function buildExportCountSql(condition: SoilListConditionPayload): { text: string; values: unknown[] } {
@@ -85,7 +88,21 @@ export function buildExportCountSql(condition: SoilListConditionPayload): { text
   const text = [
     "select count(*)::bigint as count",
     `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
-    whereSql(condition, state),
+    whereSqlExcludingInternalBlock(condition, state),
+  ].filter(Boolean).join("\n");
+  return { text, values: state.values };
+}
+
+export function buildInternalBlockExcludedCountSql(condition: SoilListConditionPayload): { text: string; values: unknown[] } {
+  const state: SqlState = { values: [] };
+  const parts = [
+    ...condition.filters.map((filter) => filterToSql(filter, state)),
+    `${columnSql("internalBlocked")} is true`,
+  ];
+  const text = [
+    "select count(*)::bigint as count",
+    `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
+    `where ${parts.join(" and ")}`,
   ].filter(Boolean).join("\n");
   return { text, values: state.values };
 }
@@ -102,7 +119,7 @@ export function buildExportSelectSql(
   const text = [
     `select ${select}`,
     `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
-    whereSql(condition, state),
+    whereSqlExcludingInternalBlock(condition, state),
     `order by ${orderBySql(sortKey)}`,
     `limit ${Math.max(0, Math.floor(limit))} offset ${Math.max(0, Math.floor(offset))}`,
   ].filter(Boolean).join("\n");
@@ -120,7 +137,7 @@ export function buildExportStreamSql(
   const text = [
     `select ${select}`,
     `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
-    whereSql(condition, state),
+    whereSqlExcludingInternalBlock(condition, state),
     `order by ${orderBySql(sortKey)}`,
   ].filter(Boolean).join("\n");
   return { text, values: state.values };

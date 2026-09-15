@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildExportCountSql, buildExportPhoneSql, buildExportSelectSql } from "./export-sql";
+import { buildExportCountSql, buildExportPhoneSql, buildExportSelectSql, buildInternalBlockExcludedCountSql } from "./export-sql";
 
 const condition = {
   filters: [
@@ -16,6 +16,7 @@ describe("export SQL", () => {
     expect(sql.text).toContain("select count(*)::bigint as count");
     expect(sql.text).toContain("\"AU光架電可否\" = $1");
     expect(sql.text).toContain("(\"アポ禁\" is null or \"アポ禁\" = '')");
+    expect(sql.text).toContain("\"自社アポ禁\" is not true");
     expect(sql.values).toEqual(["○"]);
   });
 
@@ -25,6 +26,7 @@ describe("export SQL", () => {
     expect(sql.text).toContain("select \"電話番号\" as \"phoneNumber\", \"氏名\" as \"name\"");
     expect(sql.text).toContain("order by \"リスト投入日\" desc nulls last, \"電話番号\" asc");
     expect(sql.text).toContain("limit 5000 offset 10000");
+    expect(sql.text).toContain("\"自社アポ禁\" is not true");
     expect(sql.values).toEqual(["○"]);
   });
 
@@ -51,6 +53,15 @@ describe("export SQL", () => {
     expect(sql.text).toContain("\"元回線\" = any($1)");
     expect(sql.text).toContain("(\"区分\" = any($2) or \"区分\" is null or \"区分\" = '')");
     expect(sql.text).toContain("\"契約時期\" <= $3");
+    expect(sql.text).toContain("\"自社アポ禁\" is not true");
     expect(sql.values).toEqual([["フレッツ"], ["法人"], "2017-09-15"]);
+  });
+
+  it("builds a separate excluded internal block count", () => {
+    const sql = buildInternalBlockExcludedCountSql(condition);
+
+    expect(sql.text).toContain("\"自社アポ禁\" is true");
+    expect(sql.text).toContain("\"AU光架電可否\" = $1");
+    expect(sql.values).toEqual(["○"]);
   });
 });

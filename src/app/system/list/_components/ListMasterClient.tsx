@@ -41,6 +41,7 @@ type SearchRow = {
   contractMonth: string;
   contractElapsed: string;
   category: string;
+  internalBlocked: boolean;
 };
 
 type ListSearchSortKey = keyof SearchRow;
@@ -61,6 +62,7 @@ const SEARCH_TABLE_COLUMNS: Array<{ key: ListSearchSortKey; label: string; sorta
   { key: "contractMonth", label: "契約時期", sortable: true },
   { key: "contractElapsed", label: "経過", sortable: false },
   { key: "category", label: "区分", sortable: false },
+  { key: "internalBlocked", label: "自社アポ禁", sortable: false },
 ];
 
 type SavedCondition = {
@@ -106,7 +108,7 @@ type PurchaseVendorOption = {
   count: number;
 };
 
-type ActiveTab = "list" | "upload" | "analysis" | "guide";
+type ActiveTab = "list" | "upload" | "analysis" | "history" | "guide";
 
 type UploadPreview = {
   format: "A" | "B" | "C";
@@ -142,6 +144,49 @@ type UploadHistory = {
   購入先: string | null;
   created_by: string | null;
   created_at: string;
+};
+
+type InternalBlockRow = {
+  id: string;
+  電話番号: string;
+  登録日: string;
+  理由: string;
+  登録者: string | null;
+  出所: string;
+  解除日: string | null;
+  解除者: string | null;
+  解除理由: string | null;
+  created_at: string;
+};
+
+type InternalBlockPreview = {
+  rowCount: number;
+  validRows: number;
+  duplicateRows: number;
+  invalidPhoneRows: number;
+  missingReasonRows: number;
+  alreadyBlockedRows: number;
+};
+
+type HistoryCurrent = {
+  phoneNumber: string;
+  name: string;
+  address: string;
+  listName: string;
+  lineType: string;
+  auCallAvailability: string;
+  appointmentBlocked: string;
+  internalBlocked: boolean;
+  purchaseStatus: string;
+  callCount: number;
+  lastCallResult: string;
+};
+
+type HistoryRow = {
+  occurred_on: string | null;
+  type: string;
+  title: string;
+  detail: string;
 };
 
 type AnalysisResultBreakdown = {
@@ -242,6 +287,7 @@ export type FilterState = {
   elapsedYearsFrom: string;
   elapsedYearsTo: string;
   purchaseHistory: string;
+  internalBlock: string;
 };
 
 const initialFilters: FilterState = {
@@ -263,6 +309,7 @@ const initialFilters: FilterState = {
   elapsedYearsFrom: "",
   elapsedYearsTo: "",
   purchaseHistory: "",
+  internalBlock: "なし",
 };
 
 const ACCEPTED_UPLOAD_EXTENSIONS = [".csv", ".xlsx", ".mer"];
@@ -341,6 +388,7 @@ const TAB_LABELS: Array<{ key: ActiveTab; label: string; query?: string }> = [
   { key: "list", label: "リスト" },
   { key: "upload", label: "アップロード", query: "upload" },
   { key: "analysis", label: "分析", query: "analysis" },
+  { key: "history", label: "履歴検索", query: "history" },
   { key: "guide", label: "管理方法", query: "guide" },
 ];
 
@@ -452,6 +500,8 @@ export function filtersToCondition(filters: FilterState): SoilListConditionPaylo
   if (filters.elapsedYearsTo) result.push({ field: "contractMonth", op: "gte", value: yearsAgoDate(filters.elapsedYearsTo, true) });
   if (filters.purchaseHistory === "あり") result.push({ field: "purchaseHistoryExists", op: "eq", value: true });
   if (filters.purchaseHistory === "なし") result.push({ field: "purchaseHistoryExists", op: "eq", value: false });
+  if (filters.internalBlock === "あり") result.push({ field: "internalBlocked", op: "eq", value: true });
+  if (filters.internalBlock === "なし") result.push({ field: "internalBlocked", op: "eq", value: false });
   return { filters: result };
 }
 
@@ -477,6 +527,9 @@ export function conditionToFilters(condition: SoilListConditionPayload): FilterS
     if (filter.field === "contractMonth" && filter.op === "gte") next.elapsedYearsTo = contractDateToYears(String(filter.value), "to");
     if (filter.field === "purchaseHistoryExists" && filter.op === "eq") {
       next.purchaseHistory = filter.value === true ? "あり" : "なし";
+    }
+    if (filter.field === "internalBlocked" && filter.op === "eq") {
+      next.internalBlock = filter.value === true ? "あり" : "なし";
     }
   }
   return next;
@@ -574,7 +627,7 @@ async function readJson<T>(response: Response): Promise<T> {
 function tabFromLocation(): ActiveTab {
   if (typeof window === "undefined") return "list";
   const tab = new URLSearchParams(window.location.search).get("tab");
-  return tab === "upload" || tab === "analysis" || tab === "guide" ? tab : "list";
+  return tab === "upload" || tab === "analysis" || tab === "history" || tab === "guide" ? tab : "list";
 }
 
 function fileExtension(name: string): string {
@@ -780,6 +833,7 @@ export function describeFilters(filters: FilterState, options: Partial<SoilListO
   if (filters.callCountFrom || filters.callCountTo) parts.push(`コール回数：${filters.callCountFrom || "指定なし"}〜${filters.callCountTo || "指定なし"}`);
   if (filters.elapsedYearsFrom || filters.elapsedYearsTo) parts.push(`経過（年）：${filters.elapsedYearsFrom || "指定なし"}年以上〜${filters.elapsedYearsTo || "指定なし"}年以下`);
   if (filters.purchaseHistory) parts.push(`購入履歴：${filters.purchaseHistory}`);
+  if (filters.internalBlock) parts.push(`自社アポ禁：${filters.internalBlock}`);
   return parts.join("／") || "指定なし";
 }
 
@@ -924,6 +978,23 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [analysisMessage, setAnalysisMessage] = useState("");
   const [analysisBusy, setAnalysisBusy] = useState(false);
   const [analysisRefreshBusy, setAnalysisRefreshBusy] = useState(false);
+  const [internalBlockPhone, setInternalBlockPhone] = useState("");
+  const [internalBlockReason, setInternalBlockReason] = useState("");
+  const [internalBlockRows, setInternalBlockRows] = useState<InternalBlockRow[]>([]);
+  const [internalBlockQuery, setInternalBlockQuery] = useState("");
+  const [internalBlockIncludeReleased, setInternalBlockIncludeReleased] = useState(false);
+  const [internalBlockMessage, setInternalBlockMessage] = useState("");
+  const [internalBlockBusy, setInternalBlockBusy] = useState(false);
+  const [internalBlockFile, setInternalBlockFile] = useState<File | null>(null);
+  const [internalBlockPreview, setInternalBlockPreview] = useState<InternalBlockPreview | null>(null);
+  const internalBlockFileRef = useRef<HTMLInputElement>(null);
+  const [historyPhone, setHistoryPhone] = useState("");
+  const [historyCurrent, setHistoryCurrent] = useState<HistoryCurrent | null>(null);
+  const [historyRows, setHistoryRows] = useState<HistoryRow[]>([]);
+  const [historyOmitted, setHistoryOmitted] = useState(false);
+  const [historyTypes, setHistoryTypes] = useState<string[]>([]);
+  const [historyMessage, setHistoryMessage] = useState("");
+  const [historyBusy, setHistoryBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const condition = useMemo(() => filtersToCondition(filters), [filters]);
   const currentFilterSummary = useMemo(() => describeFilters(filters, options), [filters, options]);
@@ -973,6 +1044,15 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     const data = await readJson<{ ok: boolean; vendors: PurchaseVendorOption[] }>(response);
     // 購入先は必ず人が選ぶ（一番多い購入先を勝手に既定にすると、違う購入先のまま取り込まれる）
     setPurchaseVendors(data.vendors);
+  }
+
+  async function loadInternalBlocks() {
+    const params = new URLSearchParams({ page: "1" });
+    if (internalBlockQuery.trim()) params.set("q", internalBlockQuery.trim());
+    if (internalBlockIncludeReleased) params.set("includeReleased", "true");
+    const response = await fetch(`/api/soil/list/internal-block?${params.toString()}`);
+    const data = await readJson<{ ok: boolean; rows: InternalBlockRow[] }>(response);
+    setInternalBlockRows(data.rows);
   }
 
   async function loadAnalysis() {
@@ -1027,6 +1107,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     if (activeTab !== "analysis") return;
     void loadVendorAndAnalysis(analysisVendorFilter, analysisAxis);
   }, [activeTab, analysisAxis, analysisVendorFilter]);
+
+  useEffect(() => {
+    if (activeTab !== "guide") return;
+    void loadInternalBlocks().catch((error: unknown) => setInternalBlockMessage(error instanceof Error ? error.message : "自社アポ禁を読み込めませんでした"));
+  }, [activeTab, internalBlockIncludeReleased]);
 
   async function handleAnalysisRefresh() {
     setAnalysisRefreshBusy(true);
@@ -1198,7 +1283,111 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
-  async function downloadExport(body: Record<string, unknown>) {
+  async function handleInternalBlockRegister() {
+    setInternalBlockBusy(true);
+    setInternalBlockMessage("");
+    try {
+      const response = await fetch("/api/soil/list/internal-block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: internalBlockPhone, reason: internalBlockReason }),
+      });
+      const data = await readJson<{ ok: boolean; inserted: number; alreadyBlocked: number }>(response);
+      setInternalBlockPhone("");
+      setInternalBlockReason("");
+      await loadInternalBlocks();
+      setInternalBlockMessage(data.inserted > 0 ? "登録しました" : "すでに登録済みです");
+    } catch (error) {
+      setInternalBlockMessage(error instanceof Error ? error.message : "登録できませんでした");
+    } finally {
+      setInternalBlockBusy(false);
+    }
+  }
+
+  async function previewInternalBlockFile(file: File | null) {
+    setInternalBlockMessage("");
+    setInternalBlockPreview(null);
+    setInternalBlockFile(file);
+    if (!file) return;
+    setInternalBlockBusy(true);
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      const response = await fetch("/api/soil/list/internal-block/preview", { method: "POST", body: form });
+      const data = await readJson<{ ok: boolean; preview: InternalBlockPreview }>(response);
+      setInternalBlockPreview(data.preview);
+    } catch (error) {
+      setInternalBlockFile(null);
+      setInternalBlockMessage(error instanceof Error ? error.message : "取り込めませんでした");
+    } finally {
+      setInternalBlockBusy(false);
+    }
+  }
+
+  async function handleInternalBlockBulk() {
+    if (!internalBlockFile) return;
+    setInternalBlockBusy(true);
+    setInternalBlockMessage("");
+    try {
+      const form = new FormData();
+      form.set("file", internalBlockFile);
+      const response = await fetch("/api/soil/list/internal-block/bulk", { method: "POST", body: form });
+      const data = await readJson<{ ok: boolean; result: InternalBlockPreview & { inserted: number } }>(response);
+      setInternalBlockFile(null);
+      setInternalBlockPreview(null);
+      await loadInternalBlocks();
+      setInternalBlockMessage(`登録しました（${data.result.inserted.toLocaleString("ja-JP")} 件）`);
+    } catch (error) {
+      setInternalBlockMessage(error instanceof Error ? error.message : "登録できませんでした");
+    } finally {
+      setInternalBlockBusy(false);
+    }
+  }
+
+  async function handleInternalBlockRelease(id: string) {
+    const reason = window.prompt("解除理由を入力してください")?.trim();
+    if (!reason) return;
+    setInternalBlockBusy(true);
+    setInternalBlockMessage("");
+    try {
+      const response = await fetch(`/api/soil/list/internal-block/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      await readJson(response);
+      await loadInternalBlocks();
+      setInternalBlockMessage("解除しました");
+    } catch (error) {
+      setInternalBlockMessage(error instanceof Error ? error.message : "解除できませんでした");
+    } finally {
+      setInternalBlockBusy(false);
+    }
+  }
+
+  async function handleHistorySearch(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    setHistoryBusy(true);
+    setHistoryMessage("");
+    try {
+      const params = new URLSearchParams({ phone: historyPhone });
+      const response = await fetch(`/api/soil/list/history?${params.toString()}`);
+      const data = await readJson<{ ok: boolean; current: HistoryCurrent | null; rows: HistoryRow[]; omitted: boolean }>(response);
+      setHistoryCurrent(data.current);
+      setHistoryRows(data.rows);
+      setHistoryOmitted(data.omitted);
+      setHistoryTypes([...new Set(data.rows.map((row) => row.type))]);
+      if (!data.current && data.rows.length === 0) setHistoryMessage("この番号の記録はありません");
+    } catch (error) {
+      setHistoryCurrent(null);
+      setHistoryRows([]);
+      setHistoryMessage(error instanceof Error ? error.message : "履歴を取得できませんでした");
+    } finally {
+      setHistoryBusy(false);
+    }
+  }
+
+  async function downloadExport(body: Record<string, unknown>): Promise<{ excludedInternalBlock: number }> {
     const response = await fetch("/api/soil/list/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1219,6 +1408,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     anchor.download = fileName;
     anchor.click();
     URL.revokeObjectURL(url);
+    return { excludedInternalBlock: Number(response.headers.get("X-Soil-List-Excluded-Internal-Block") ?? 0) };
   }
 
   async function handleExport() {
@@ -1239,9 +1429,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setExportBusy({ count, format: label });
     setMessage("");
     try {
-      await downloadExport({ condition, columns: selectedColumns, sortKey, format: exportFormat });
+      const result = await downloadExport({ condition, columns: selectedColumns, sortKey, format: exportFormat });
       await loadSaved();
-      setMessage(`${count.toLocaleString("ja-JP")} 件を ${label} で書き出しました`);
+      setMessage(`${count.toLocaleString("ja-JP")} 件を ${label} で書き出しました${result.excludedInternalBlock > 0 ? `（自社アポ禁 ${result.excludedInternalBlock.toLocaleString("ja-JP")} 件を除きました）` : ""}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "書き出しできませんでした");
     } finally {
@@ -1688,6 +1878,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     );
   }
 
+  const visibleHistoryRows = historyRows.filter((row) => historyTypes.includes(row.type));
+
   return (
     <div className={styles.pageShell}>
       <div className={styles.header}>
@@ -1819,6 +2011,16 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 </select>
               </label>
               <label>
+                自社アポ禁
+                <select value={filters.internalBlock} onChange={(event) => setFilter("internalBlock", event.target.value)}>
+                  {SOIL_LIST_FILTER_DEFINITIONS.find((definition) => definition.key === "internalBlocked")?.options?.map((option) => (
+                    <option key={option} value={option}>
+                      {option || "指定なし"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 経過（年）
                 <span className={styles.range}>
                   <input type="number" min="0" value={filters.elapsedYearsFrom} onChange={(event) => setFilter("elapsedYearsFrom", event.target.value)} aria-label="年以上" placeholder="年以上" />
@@ -1902,6 +2104,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                       <option value="法人">法人</option>
                     </select>
                   </td>
+                  <td>{row.internalBlocked && <span className={styles.internalBlockBadge}>自社アポ禁</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -2188,6 +2391,59 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         </section>
       )}
 
+      {activeTab === "history" && (
+        <section className={styles.panel} aria-labelledby="history-heading">
+          <h2 id="history-heading">履歴検索</h2>
+          <form className={styles.actions} onSubmit={handleHistorySearch}>
+            <label>
+              電話番号
+              <input value={historyPhone} onChange={(event) => setHistoryPhone(event.target.value)} placeholder="0285720215" />
+            </label>
+            <button type="submit" disabled={historyBusy}>{historyBusy ? "検索しています…" : "検索"}</button>
+          </form>
+          {historyMessage && <p className={styles.message}>{historyMessage}</p>}
+          {historyCurrent && (
+            <div className={styles.historyCurrent}>
+              <h3>今の値（電話番号台帳）</h3>
+              <p>
+                {historyCurrent.name || "氏名なし"} ｜ {historyCurrent.address || "住所なし"} ｜ リスト名 {historyCurrent.listName || "（空欄）"} ｜ 元回線 {historyCurrent.lineType || "（空欄）"}
+              </p>
+              <p>
+                AU光架電可否 {historyCurrent.auCallAvailability || "（空欄）"} ｜ アポ禁 {historyCurrent.appointmentBlocked || "（空欄）"} ｜ 自社アポ禁 {historyCurrent.internalBlocked ? "あり" : "なし"} ｜ 購入状態 {historyCurrent.purchaseStatus || "（空欄）"} ｜ コール回数 {historyCurrent.callCount} ｜ 最終結果 {historyCurrent.lastCallResult || "（結果なし）"}
+              </p>
+            </div>
+          )}
+          {historyRows.length > 0 && (
+            <>
+              <div className={styles.historyTypeFilters}>
+                {[...new Set(historyRows.map((row) => row.type))].map((type) => (
+                  <label key={type}>
+                    <input
+                      type="checkbox"
+                      checked={historyTypes.includes(type)}
+                      onChange={(event) =>
+                        setHistoryTypes((current) => event.target.checked ? [...current, type] : current.filter((item) => item !== type))
+                      }
+                    />
+                    {type}
+                  </label>
+                ))}
+              </div>
+              <div className={styles.historyList}>
+                {visibleHistoryRows.map((row, index) => (
+                  <div className={styles.historyItem} data-kind={row.type} key={`${row.type}-${row.occurred_on}-${index}`}>
+                    <span>{row.occurred_on ? formatJstWithWeekday(row.occurred_on) : "日付なし"}</span>
+                    <strong>{row.type}</strong>
+                    <p>{row.title}{row.detail ? ` ｜ ${row.detail}` : ""}</p>
+                  </div>
+                ))}
+              </div>
+              {historyOmitted && <p className={styles.empty}>古い分は省略しました</p>}
+            </>
+          )}
+        </section>
+      )}
+
       {activeTab === "guide" && (
         <section className={styles.panel} aria-labelledby="guide-heading">
           <h2 id="guide-heading">リストマスタのデータの持ち方</h2>
@@ -2235,6 +2491,98 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </table>
             </div>
           </div>
+          <section className={styles.internalBlockPanel} aria-labelledby="internal-block-heading">
+            <h3 id="internal-block-heading">自社アポ禁</h3>
+            <p className={styles.empty}>ヒュアラン社内だけの架電禁止。購入元のアポ禁とは別です</p>
+            <div className={styles.internalBlockForm}>
+              <label>
+                電話番号
+                <input value={internalBlockPhone} onChange={(event) => setInternalBlockPhone(event.target.value)} />
+              </label>
+              <label>
+                理由
+                <input value={internalBlockReason} onChange={(event) => setInternalBlockReason(event.target.value)} />
+              </label>
+              <button type="button" onClick={handleInternalBlockRegister} disabled={internalBlockBusy || !internalBlockPhone.trim() || !internalBlockReason.trim()}>
+                登録
+              </button>
+            </div>
+            <input
+              ref={internalBlockFileRef}
+              className={styles.hiddenFileInput}
+              type="file"
+              accept=".csv,.xlsx,.mer"
+              onChange={(event) => void previewInternalBlockFile(event.target.files?.[0] ?? null)}
+            />
+            <div className={styles.internalBlockFileRow}>
+              <button type="button" className={styles.secondaryButton} onClick={() => internalBlockFileRef.current?.click()} disabled={internalBlockBusy}>
+                CSV／Excel を選ぶ
+              </button>
+              <span>列＝電話番号・理由（1 行目は見出し）</span>
+              {internalBlockFile && <strong>{internalBlockFile.name}</strong>}
+            </div>
+            {internalBlockPreview && (
+              <div className={styles.summaryList}>
+                <span>中身の確認：{internalBlockPreview.rowCount.toLocaleString("ja-JP")} 件</span>
+                <span>重複 {internalBlockPreview.duplicateRows.toLocaleString("ja-JP")}</span>
+                <span>すでに登録済み {internalBlockPreview.alreadyBlockedRows.toLocaleString("ja-JP")}</span>
+                <span>番号の形が違う {internalBlockPreview.invalidPhoneRows.toLocaleString("ja-JP")}</span>
+                <span>理由なし {internalBlockPreview.missingReasonRows.toLocaleString("ja-JP")}</span>
+                <button type="button" onClick={handleInternalBlockBulk} disabled={internalBlockBusy || internalBlockPreview.validRows === 0}>
+                  登録する
+                </button>
+              </div>
+            )}
+            <div className={styles.internalBlockListHeader}>
+              <label>
+                番号で探す
+                <input value={internalBlockQuery} onChange={(event) => setInternalBlockQuery(event.target.value)} />
+              </label>
+              <button type="button" className={styles.secondaryButton} onClick={() => void loadInternalBlocks()} disabled={internalBlockBusy}>
+                検索
+              </button>
+              <label>
+                <input type="checkbox" checked={internalBlockIncludeReleased} onChange={(event) => setInternalBlockIncludeReleased(event.target.checked)} />
+                解除済みも見る
+              </label>
+            </div>
+            {internalBlockMessage && <p className={styles.message}>{internalBlockMessage}</p>}
+            <div className={`${styles.tableWrap} ${styles.guideTableWrap}`}>
+              <table className={styles.internalBlockTable}>
+                <thead>
+                  <tr>
+                    <th>電話番号</th>
+                    <th>登録日</th>
+                    <th>理由</th>
+                    <th>登録者</th>
+                    <th>出所</th>
+                    <th>解除</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {internalBlockRows.length === 0 && (
+                    <tr><td colSpan={6} className={styles.empty}>登録済み一覧はありません</td></tr>
+                  )}
+                  {internalBlockRows.map((row) => (
+                    <tr key={row.id} className={row.解除日 ? styles.releasedRow : undefined}>
+                      <td>{row.電話番号}</td>
+                      <td>{formatJstWithWeekday(row.登録日)}</td>
+                      <td>{row.理由}</td>
+                      <td>{row.登録者 ?? ""}</td>
+                      <td>{row.出所}</td>
+                      <td>
+                        {row.解除日 ? `${formatJstWithWeekday(row.解除日)} ${row.解除者 ?? ""}` : (
+                          <button type="button" className={styles.secondaryButton} onClick={() => void handleInternalBlockRelease(row.id)} disabled={internalBlockBusy}>
+                            解除
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </section>
       )}
     </div>

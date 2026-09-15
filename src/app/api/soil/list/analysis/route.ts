@@ -8,12 +8,12 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const auth = await requireSoilListUser();
   if (!auth.ok) return auth.response;
 
   try {
-    const url = new URL(request?.url ?? "http://test/api/soil/list/analysis");
+    const url = new URL(request.url);
     const axis = url.searchParams.get("axis");
     const vendors = url.searchParams.getAll("vendor");
     if (vendors.length >= 2) {

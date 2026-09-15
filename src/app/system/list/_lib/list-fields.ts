@@ -69,6 +69,7 @@ export const SOIL_LIST_COLUMNS = {
   latestOrderOn: "最新受注日",
   latestOrderProduct: "最新受注商材",
   orderCount: "受注件数",
+  internalBlocked: "自社アポ禁",
   purchaseHistoryExists: "購入履歴あり",
 } as const;
 
@@ -186,6 +187,12 @@ export const SOIL_LIST_FILTER_DEFINITIONS: SoilListFilterDefinition[] = [
     input: "select",
     options: ["", "なし", "あり"],
   },
+  {
+    key: "internalBlocked",
+    label: "自社アポ禁",
+    input: "select",
+    options: ["なし", "", "あり"],
+  },
 ];
 
 export const SOIL_LIST_SEARCH_COLUMNS: SoilListColumnKey[] = [
@@ -200,6 +207,7 @@ export const SOIL_LIST_SEARCH_COLUMNS: SoilListColumnKey[] = [
   "lineType",
   "contractMonth",
   "category",
+  "internalBlocked",
 ];
 
 export const SOIL_LIST_EXPORT_COLUMNS: SoilListExportColumn[] = [
@@ -230,6 +238,7 @@ export const DEFAULT_SOIL_LIST_CONDITION: SoilListConditionPayload = {
   filters: [
     { field: "auCallAvailability", op: "eq", value: "○" },
     { field: "appointmentBlocked", op: "empty" },
+    { field: "internalBlocked", op: "eq", value: false },
   ],
 };
 
