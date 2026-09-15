@@ -55,6 +55,66 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
         ],
       });
     }
+    if (url.startsWith("/api/soil/list/analysis?")) {
+      return json({
+        ok: true,
+        block: {
+          segments: [
+            {
+              segment: "合計",
+              rowCount: 23,
+              calledCount: 17,
+              callTotal: 36,
+              invalidCount: 3,
+              validCount: 20,
+              orderCount: 3,
+              orderCaseCount: 4,
+              acquiredCount: 1,
+              lastCalledOn: "2026-09-12",
+              segmentLastCalledOn: null,
+              rotation: 36 / 23,
+              orderRateValid: 3 / 20,
+              orderRateTotal: 3 / 23,
+              results: [{ result: "留守", rowCount: 23 }],
+            },
+            {
+              segment: "データ総研",
+              rowCount: 13,
+              calledCount: 10,
+              callTotal: 20,
+              invalidCount: 1,
+              validCount: 12,
+              orderCount: 1,
+              orderCaseCount: 1,
+              acquiredCount: 0,
+              lastCalledOn: "2026-09-12",
+              segmentLastCalledOn: null,
+              rotation: 20 / 13,
+              orderRateValid: 1 / 12,
+              orderRateTotal: 1 / 13,
+              results: [{ result: "留守", rowCount: 13 }],
+            },
+            {
+              segment: "ラディッシュ",
+              rowCount: 10,
+              calledCount: 7,
+              callTotal: 16,
+              invalidCount: 2,
+              validCount: 8,
+              orderCount: 2,
+              orderCaseCount: 3,
+              acquiredCount: 1,
+              lastCalledOn: "2026-09-11",
+              segmentLastCalledOn: null,
+              rotation: 1.6,
+              orderRateValid: 2 / 8,
+              orderRateTotal: 2 / 10,
+              results: [{ result: "留守", rowCount: 10 }],
+            },
+          ],
+        },
+      });
+    }
     if (url === "/api/soil/list/analysis") {
       return json(options.analysis ?? {
         ok: true,
@@ -73,6 +133,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   invalidCount: 3,
                   validCount: 25,
                   orderCount: 3,
+                  orderCaseCount: 4,
                   acquiredCount: 1,
                   lastCalledOn: "2026-09-12",
                   segmentLastCalledOn: null,
@@ -100,6 +161,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   invalidCount: 1,
                   validCount: 12,
                   orderCount: 1,
+                  orderCaseCount: 1,
                   acquiredCount: 0,
                   lastCalledOn: "2026-09-12",
                   segmentLastCalledOn: "2026-09-12",
@@ -116,6 +178,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   invalidCount: 2,
                   validCount: 8,
                   orderCount: 2,
+                  orderCaseCount: 3,
                   acquiredCount: 1,
                   lastCalledOn: "2026-09-11",
                   segmentLastCalledOn: "2026-09-11",
@@ -132,6 +195,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   invalidCount: 0,
                   validCount: 5,
                   orderCount: 0,
+                  orderCaseCount: 0,
                   acquiredCount: 0,
                   lastCalledOn: "2026-09-10",
                   segmentLastCalledOn: "2026-09-10",
@@ -154,6 +218,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   invalidCount: 0,
                   validCount: 7,
                   orderCount: 1,
+                  orderCaseCount: 1,
                   acquiredCount: 0,
                   lastCalledOn: "2026-09-12",
                   segmentLastCalledOn: null,
@@ -170,6 +235,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   invalidCount: 0,
                   validCount: 7,
                   orderCount: 1,
+                  orderCaseCount: 1,
                   acquiredCount: 0,
                   lastCalledOn: "2026-09-12",
                   segmentLastCalledOn: null,
@@ -397,12 +463,22 @@ describe("ListMasterClient analysis vendor controls", () => {
     fireEvent.click(vendor.getByRole("checkbox", { name: "ラディッシュ（10）" }));
     fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
 
-    const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByRole("columnheader", { name: /購入先/ }));
-    expect(analysisTable).toBeTruthy();
+    await waitFor(() => {
+      const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByText("データ総研 かつ ラディッシュ：23 件"));
+      expect(analysisTable).toBeTruthy();
+      const bodyRows = within(analysisTable as HTMLElement).getAllByRole("row").slice(1);
+      expect(bodyRows).toHaveLength(3);
+      expect(within(bodyRows[0]).getAllByRole("cell").map((cell) => cell.textContent).slice(0, 4)).toEqual([
+        "データ総研 かつ ラディッシュ：23 件",
+        "23",
+        "17",
+        "36",
+      ]);
+    });
+    const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByText("データ総研 かつ ラディッシュ：23 件"));
     const bodyRows = within(analysisTable as HTMLElement).getAllByRole("row").slice(1);
-    expect(bodyRows).toHaveLength(3);
     expect(within(bodyRows[0]).getAllByRole("cell").map((cell) => cell.textContent).slice(0, 4)).toEqual([
-      "合計（選んだ 2 つ）",
+      "データ総研 かつ ラディッシュ：23 件",
       "23",
       "17",
       "36",
@@ -423,10 +499,10 @@ describe("ListMasterClient analysis vendor controls", () => {
 
     expect(legendButton).toBeInTheDocument();
     expect(vendor.getByRole("button", { name: /前確OK\s+0\s+件/ })).toBeInTheDocument();
-    const orderSummary = vendor.getByText("うち受注（案件）");
+    const orderSummary = vendor.getByText("うち受注顧客 3 人・受注案件 4 件");
     expect(orderSummary).toBeInTheDocument();
     expect(orderSummary.closest("button")).toBeNull();
-    expect(vendor.getByText("Kintone の案件から数えた数。コール結果とは別の数え方です。")).toBeInTheDocument();
+    expect(vendor.getByText("Kintone の受注履歴から数えた数。コール結果とは別の数え方です。")).toBeInTheDocument();
     expect(container.querySelector("[class*='resultButton']")).not.toBeInTheDocument();
 
     fireEvent.click(legendButton);

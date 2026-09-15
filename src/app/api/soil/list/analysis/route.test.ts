@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createServerClient: vi.fn(),
   getAdmin: vi.fn(),
+  queryPg: vi.fn(),
 }));
 
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: () => mocks.createServerClient() }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => mocks.getAdmin() }));
+vi.mock("@/lib/db/pg", () => ({ queryPg: (...args: unknown[]) => mocks.queryPg(...args) }));
 
 import { GET as cronGET } from "./cron/route";
 import { GET as detailGET } from "./detail/route";
@@ -150,6 +152,7 @@ describe("/api/soil/list/analysis", () => {
     clearAnalysisCache();
     mocks.createServerClient.mockReset().mockResolvedValue(serverClient());
     mocks.getAdmin.mockReset();
+    mocks.queryPg.mockReset();
     vi.unstubAllEnvs();
     vi.stubEnv("CRON_SECRET", "secret");
   });
@@ -170,7 +173,7 @@ describe("/api/soil/list/analysis", () => {
         blocks: {
           vendor: {
             segments: [
-              { segment: "合計", rowCount: 13, validCount: 10, orderCount: 2, orderRateValid: 0.2, orderRateTotal: 2 / 13 },
+              { segment: "合計", rowCount: 13, validCount: 10, orderCount: 2, orderCaseCount: 0, orderRateValid: 0.2, orderRateTotal: 2 / 13 },
               { segment: "データ総研", rowCount: 13, callTotal: 23, rotation: 23 / 13 },
             ],
           },
@@ -227,6 +230,44 @@ describe("/api/soil/list/analysis", () => {
     const response = await detailGET(new Request("http://test/api/soil/list/analysis/detail?block=vendor&segment=データ総研&result=留守"));
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ ok: true, rows: [{ listName: "リストA", rowCount: 10, callTotal: 20 }] });
+  });
+
+  it("loads vendor AND aggregation through PostgreSQL for two or more selected vendors", async () => {
+    mocks.getAdmin.mockReturnValue(adminClient());
+    mocks.queryPg.mockResolvedValue({
+      rows: [
+        {
+          block: "line_type",
+          segment: "au",
+          result: "留守",
+          list_name: "リストA",
+          list_loaded_on: "2026-09-10",
+          row_count: 8,
+          called_count: 8,
+          call_total: 16,
+          invalid_count: 0,
+          order_count: 2,
+          order_case_count: 3,
+          acquired_count: 1,
+          last_called_on: "2026-09-12",
+          segment_last_called_on: null,
+        },
+      ],
+    });
+    const response = await GET(new Request("http://test/api/soil/list/analysis?axis=line_type&vendor=Luna&vendor=%E3%83%87%E3%83%BC%E3%82%BF%E7%B7%8F%E7%A0%94"));
+    expect(response.status).toBe(200);
+    expect(mocks.queryPg).toHaveBeenCalledWith("select * from public.soil_list_analysis_vendor_and($1::text[], $2::text)", [["Luna", "データ総研"], "line_type"]);
+    const data = await response.json();
+    expect(data.ok).toBe(true);
+    expect(data.block.segments[0]).toMatchObject({ segment: "合計", rowCount: 8, orderCount: 2, orderCaseCount: 3 });
+  });
+
+  it("returns the agreed broad-condition message when vendor AND query times out", async () => {
+    mocks.getAdmin.mockReturnValue(adminClient());
+    mocks.queryPg.mockRejectedValue(new Error("canceling statement due to statement timeout"));
+    const response = await GET(new Request("http://test/api/soil/list/analysis?axis=vendor&vendor=A&vendor=B"));
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({ ok: false, error: "条件が広すぎます。購入先を減らしてください" });
   });
 
   it("accepts contract detail rows", async () => {

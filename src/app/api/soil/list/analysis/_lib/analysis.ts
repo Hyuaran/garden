@@ -1,7 +1,12 @@
+import { queryPg } from "@/lib/db/pg";
+
 export type DbError = { message: string } | null;
 
+export type AnalysisAxis = "vendor" | "line_type" | "contract_year";
+export type AnalysisBlock = AnalysisAxis | "active_list" | "contract";
+
 export type AnalysisCellRow = {
-  block: "vendor" | "active_list" | "contract";
+  block: AnalysisBlock;
   segment: string;
   result: string;
   list_name: string;
@@ -11,6 +16,7 @@ export type AnalysisCellRow = {
   call_total: number;
   invalid_count: number;
   order_count: number;
+  order_case_count?: number;
   acquired_count: number;
   last_called_on: string | null;
   segment_last_called_on: string | null;
@@ -36,6 +42,7 @@ export type AnalysisSegment = {
   invalidCount: number;
   validCount: number;
   orderCount: number;
+  orderCaseCount: number;
   acquiredCount: number;
   lastCalledOn: string | null;
   segmentLastCalledOn: string | null;
@@ -51,6 +58,8 @@ export type AnalysisPayload = {
   lastError: string | null;
   blocks: {
     vendor: { segments: AnalysisSegment[] };
+    lineType: { segments: AnalysisSegment[] };
+    contractYear: { segments: AnalysisSegment[] };
     activeList: { segments: AnalysisSegment[] };
     contract: { segments: AnalysisSegment[]; snapshotAt: string | null };
   };
@@ -63,6 +72,7 @@ export type AnalysisDetailRow = {
   calledCount: number;
   callTotal: number;
   orderCount: number;
+  orderCaseCount: number;
   acquiredCount: number;
   lastCalledOn: string | null;
 };
@@ -137,6 +147,7 @@ function addSegmentTotals(target: AnalysisSegment, row: AnalysisCellRow) {
   target.callTotal += numberValue(row.call_total);
   target.invalidCount += numberValue(row.invalid_count);
   target.orderCount += numberValue(row.order_count);
+  target.orderCaseCount += numberValue(row.order_case_count);
   target.acquiredCount += numberValue(row.acquired_count);
   if (row.last_called_on && (!target.lastCalledOn || row.last_called_on > target.lastCalledOn)) target.lastCalledOn = row.last_called_on;
   if (row.segment_last_called_on && (!target.segmentLastCalledOn || row.segment_last_called_on > target.segmentLastCalledOn)) {
@@ -153,6 +164,7 @@ function emptySegment(segment: string): AnalysisSegment {
     invalidCount: 0,
     validCount: 0,
     orderCount: 0,
+    orderCaseCount: 0,
     acquiredCount: 0,
     lastCalledOn: null,
     segmentLastCalledOn: null,
@@ -184,7 +196,7 @@ function finalizeSegment(segment: AnalysisSegment, rows: AnalysisCellRow[]): Ana
   return segment;
 }
 
-function buildBlock(cells: AnalysisCellRow[], block: AnalysisCellRow["block"]) {
+function buildBlock(cells: AnalysisCellRow[], block: AnalysisBlock) {
   const blockRows = cells.filter((row) => row.block === block);
   const rowsBySegment = new Map<string, AnalysisCellRow[]>();
   const segments = new Map<string, AnalysisSegment>();
@@ -213,7 +225,7 @@ export async function loadAnalysisCells(db: AnalysisDb): Promise<AnalysisCellRow
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await db
       .from("soil_list_analysis_cell")
-      .select("block,segment,result,list_name,list_loaded_on,row_count,called_count,call_total,invalid_count,order_count,acquired_count,last_called_on,segment_last_called_on")
+      .select("block,segment,result,list_name,list_loaded_on,row_count,called_count,call_total,invalid_count,order_count,order_case_count,acquired_count,last_called_on,segment_last_called_on")
       .order("block", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
@@ -255,6 +267,8 @@ export async function loadAnalysisPayload(db: AnalysisDb): Promise<AnalysisPaylo
     lastError: state.last_error,
     blocks: {
       vendor: buildBlock(cells, "vendor"),
+      lineType: buildBlock(cells, "line_type"),
+      contractYear: buildBlock(cells, "contract_year"),
       activeList: buildBlock(cells, "active_list"),
       contract: { ...buildBlock(cells, "contract"), snapshotAt: contractSnapshotAt },
     },
@@ -265,7 +279,7 @@ export async function loadAnalysisPayload(db: AnalysisDb): Promise<AnalysisPaylo
 
 export async function loadAnalysisDetail(
   db: AnalysisDb,
-  block: AnalysisCellRow["block"],
+  block: AnalysisBlock,
   segment: string,
   result: string,
 ): Promise<AnalysisDetailRow[]> {
@@ -286,6 +300,7 @@ export async function loadAnalysisDetail(
       calledCount: 0,
       callTotal: 0,
       orderCount: 0,
+      orderCaseCount: 0,
       acquiredCount: 0,
       lastCalledOn: null,
     };
@@ -293,12 +308,43 @@ export async function loadAnalysisDetail(
     current.calledCount += numberValue(row.called_count);
     current.callTotal += numberValue(row.call_total);
     current.orderCount += numberValue(row.order_count);
+    current.orderCaseCount += numberValue(row.order_case_count);
     current.acquiredCount += numberValue(row.acquired_count);
     if (row.list_loaded_on && (!current.listLoadedOn || row.list_loaded_on > current.listLoadedOn)) current.listLoadedOn = row.list_loaded_on;
     if (row.last_called_on && (!current.lastCalledOn || row.last_called_on > current.lastCalledOn)) current.lastCalledOn = row.last_called_on;
     byList.set(row.list_name, current);
   }
   return [...byList.values()].sort((a, b) => String(b.listLoadedOn ?? "").localeCompare(String(a.listLoadedOn ?? "")) || a.listName.localeCompare(b.listName, "ja-JP"));
+}
+
+function normalizeVendorFilters(vendors: string[]): string[] {
+  return [...new Set(vendors.map((vendor) => vendor.trim()).filter(Boolean))];
+}
+
+export function isAnalysisAxis(value: string | null): value is AnalysisAxis {
+  return value === "vendor" || value === "line_type" || value === "contract_year";
+}
+
+export function isVendorAndTooBroadError(error: unknown): boolean {
+  return error instanceof Error && /statement timeout|canceling statement due to statement timeout/i.test(error.message);
+}
+
+export async function loadVendorAndAnalysis(vendors: string[], axis: AnalysisAxis): Promise<{ segments: AnalysisSegment[] }> {
+  const normalized = normalizeVendorFilters(vendors);
+  if (normalized.length < 2) throw new Error("購入先を 2 つ以上選んでください");
+
+  try {
+    const { rows } = await queryPg(
+      'select * from public.soil_list_analysis_vendor_and($1::text[], $2::text)',
+      [normalized, axis],
+    );
+    return buildBlock((rows as AnalysisCellRow[]).map((row) => ({ ...row, block: axis })), axis);
+  } catch (error) {
+    if (isVendorAndTooBroadError(error)) {
+      throw new Error("条件が広すぎます。購入先を減らしてください");
+    }
+    throw error;
+  }
 }
 
 function normalizeFinish(data: unknown): RefreshResult {

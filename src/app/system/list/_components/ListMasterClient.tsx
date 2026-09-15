@@ -157,6 +157,7 @@ type AnalysisSegment = {
   invalidCount: number;
   validCount: number;
   orderCount: number;
+  orderCaseCount: number;
   acquiredCount: number;
   lastCalledOn: string | null;
   segmentLastCalledOn: string | null;
@@ -172,12 +173,15 @@ type AnalysisPayload = {
   lastError: string | null;
   blocks: {
     vendor: { segments: AnalysisSegment[] };
+    lineType: { segments: AnalysisSegment[] };
+    contractYear: { segments: AnalysisSegment[] };
     activeList: { segments: AnalysisSegment[] };
     contract: { segments: AnalysisSegment[]; snapshotAt: string | null };
   };
 };
 
-type AnalysisBlockKey = "vendor" | "active_list" | "contract";
+type AnalysisAxis = "vendor" | "line_type" | "contract_year";
+type AnalysisBlockKey = AnalysisAxis | "active_list" | "contract";
 
 type AnalysisSortKey =
   | "segment"
@@ -187,6 +191,7 @@ type AnalysisSortKey =
   | "rotation"
   | "validCount"
   | "orderCount"
+  | "orderCaseCount"
   | "acquiredCount"
   | "orderRateValid"
   | "orderRateTotal";
@@ -199,7 +204,8 @@ const ANALYSIS_TABLE_COLUMNS: Array<{ key: AnalysisSortKey; label: string; sub?:
   { key: "callTotal", label: "総コール", sub: "回数" },
   { key: "rotation", label: "回転" },
   { key: "validCount", label: "有効" },
-  { key: "orderCount", label: "受注", sub: "（案件）" },
+  { key: "orderCount", label: "受注", sub: "顧客数" },
+  { key: "orderCaseCount", label: "受注", sub: "案件数" },
   { key: "acquiredCount", label: "獲得", sub: "（コール）" },
   { key: "orderRateValid", label: "受注率", sub: "（有効）" },
   { key: "orderRateTotal", label: "受注率", sub: "（総数）" },
@@ -212,6 +218,7 @@ type AnalysisDetailRow = {
   calledCount: number;
   callTotal: number;
   orderCount: number;
+  orderCaseCount: number;
   acquiredCount: number;
   lastCalledOn: string | null;
 };
@@ -279,8 +286,8 @@ const ANALYSIS_HELP: Record<"vendor" | "activeList" | "contract", { title: strin
     rows: [
       { label: "区切り", text: "電話番号台帳の「最新購入先」（購入履歴のいちばん新しい行の購入先）。空欄は「（購入先なし）」" },
       { label: "件数", text: "その購入先の電話番号の数（電話番号が空の行は数えない）" },
-      { label: "円グラフ", text: "コール履歴の最終結果。留守・担不・無効・NG・前確OK・見込・獲得・未コール・（結果なし）を固定で出し、それ以外は「その他」。受注（案件）は Kintone の案件から数えたもので、円グラフとは別の数え方" },
-      { label: "受注率", text: "受注（案件）÷ 有効（件数 − 無効）。「獲得（コール）」は件数を並べるだけ" },
+      { label: "円グラフ", text: "コール履歴の最終結果。留守・担不・無効・NG・前確OK・見込・獲得・未コール・（結果なし）を固定で出し、それ以外は「その他」。受注顧客数・受注案件数は Kintone の受注履歴から数えたもので、円グラフとは別の数え方" },
+      { label: "受注率", text: "受注顧客数 ÷ 有効（件数 − 無効）。受注案件数は別列で並べます" },
       { label: "集計", text: "毎朝 6:45 と右上の丸い矢印で作り直し" },
     ],
   },
@@ -632,6 +639,7 @@ function buildAnalysisTotal(segments: AnalysisSegment[], resultOrderSource: Anal
     invalidCount: 0,
     validCount: 0,
     orderCount: 0,
+    orderCaseCount: 0,
     acquiredCount: 0,
     lastCalledOn: null,
     segmentLastCalledOn: null,
@@ -647,6 +655,7 @@ function buildAnalysisTotal(segments: AnalysisSegment[], resultOrderSource: Anal
     total.callTotal += segment.callTotal;
     total.invalidCount += segment.invalidCount;
     total.orderCount += segment.orderCount;
+    total.orderCaseCount += segment.orderCaseCount ?? 0;
     total.acquiredCount += segment.acquiredCount;
     if (segment.lastCalledOn && (!total.lastCalledOn || segment.lastCalledOn > total.lastCalledOn)) total.lastCalledOn = segment.lastCalledOn;
     if (segment.segmentLastCalledOn && (!total.segmentLastCalledOn || segment.segmentLastCalledOn > total.segmentLastCalledOn)) {
@@ -703,7 +712,9 @@ function sortAnalysisSegments(segments: AnalysisSegment[], sort: AnalysisSort | 
     if (sort.key === "segment") {
       return a.segment.localeCompare(b.segment, "ja-JP") * direction;
     }
-    const diff = a[sort.key] - b[sort.key];
+    const left = typeof a[sort.key] === "number" ? a[sort.key] : 0;
+    const right = typeof b[sort.key] === "number" ? b[sort.key] : 0;
+    const diff = left - right;
     if (diff !== 0) return diff * direction;
     return a.segment.localeCompare(b.segment, "ja-JP");
   });
@@ -896,10 +907,13 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
   const [analysisSelections, setAnalysisSelections] = useState({ vendor: "合計", activeList: "合計", contract: "合計" });
   const [activeListDays, setActiveListDays] = useState<15 | 30>(30);
-  const [analysisSorts, setAnalysisSorts] = useState<Record<AnalysisBlockKey, AnalysisSort | null>>({ vendor: null, active_list: null, contract: null });
+  const [analysisSorts, setAnalysisSorts] = useState<Record<AnalysisBlockKey, AnalysisSort | null>>({ vendor: null, line_type: null, contract_year: null, active_list: null, contract: null });
   const [analysisVendorFilter, setAnalysisVendorFilter] = useState<string[]>([]);
+  const [analysisAxis, setAnalysisAxis] = useState<AnalysisAxis>("vendor");
+  const [vendorAndSegments, setVendorAndSegments] = useState<AnalysisSegment[] | null>(null);
+  const [vendorAndBusy, setVendorAndBusy] = useState(false);
   // 表は上位 50 行だけ描く（購入先は 2,400 種類あり、全部描くと画面が固まった。2026-09-13 本番で確認）
-  const [showAllSegments, setShowAllSegments] = useState<Record<AnalysisBlockKey, boolean>>({ vendor: false, active_list: false, contract: false });
+  const [showAllSegments, setShowAllSegments] = useState<Record<AnalysisBlockKey, boolean>>({ vendor: false, line_type: false, contract_year: false, active_list: false, contract: false });
   const [analysisDetail, setAnalysisDetail] = useState<{
     block: AnalysisBlockKey;
     segment: string;
@@ -975,6 +989,28 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
+  async function loadVendorAndAnalysis(vendors: string[], axis: AnalysisAxis) {
+    if (vendors.length < 2) {
+      setVendorAndSegments(null);
+      return;
+    }
+    setVendorAndBusy(true);
+    setAnalysisMessage("");
+    try {
+      const params = new URLSearchParams({ axis });
+      for (const vendor of vendors) params.append("vendor", vendor);
+      const response = await fetch(`/api/soil/list/analysis?${params.toString()}`);
+      const data = await readJson<{ ok: boolean; block: { segments: AnalysisSegment[] } }>(response);
+      setVendorAndSegments(data.block.segments);
+      setAnalysisSelections((current) => ({ ...current, vendor: "合計" }));
+    } catch (error) {
+      setVendorAndSegments(null);
+      setAnalysisMessage(error instanceof Error ? error.message : "分析を読み込めませんでした");
+    } finally {
+      setVendorAndBusy(false);
+    }
+  }
+
   useEffect(() => {
     setActiveTab(tabFromLocation());
     Promise.all([loadSaved(), loadOptions(), loadCallSyncState(), loadOrderSyncState(), loadUploadHistory(), loadPurchaseVendors()]).catch((error: unknown) =>
@@ -986,6 +1022,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     if (activeTab !== "analysis" || analysis || analysisBusy) return;
     void loadAnalysis();
   }, [activeTab, analysis, analysisBusy]);
+
+  useEffect(() => {
+    if (activeTab !== "analysis") return;
+    void loadVendorAndAnalysis(analysisVendorFilter, analysisAxis);
+  }, [activeTab, analysisAxis, analysisVendorFilter]);
 
   async function handleAnalysisRefresh() {
     setAnalysisRefreshBusy(true);
@@ -1318,9 +1359,19 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     () => filterActiveSegments(analysis?.blocks.activeList.segments ?? [], activeListDays),
     [activeListDays, analysis],
   );
+  const axisSegments = useMemo(() => {
+    if (!analysis) return [];
+    if (analysisAxis === "line_type") return analysis.blocks.lineType.segments;
+    if (analysisAxis === "contract_year") return analysis.blocks.contractYear.segments;
+    return analysis.blocks.vendor.segments;
+  }, [analysis, analysisAxis]);
   const vendorSegments = useMemo(
-    () => filterVendorSegments(analysis?.blocks.vendor.segments ?? [], analysisVendorFilter),
-    [analysis, analysisVendorFilter],
+    () => {
+      if (analysisVendorFilter.length >= 2) return vendorAndSegments ?? [];
+      if (analysisAxis !== "vendor") return axisSegments;
+      return filterVendorSegments(axisSegments, analysisVendorFilter);
+    },
+    [analysisAxis, analysisVendorFilter, axisSegments, vendorAndSegments],
   );
   const vendorFilterGroups = useMemo<MultiSelectOptionGroup[]>(() => {
     const optionsForFilter = (analysis?.blocks.vendor.segments ?? [])
@@ -1348,10 +1399,43 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }
 
   function analysisSegmentLabel(block: AnalysisBlockKey, segment: AnalysisSegment): string {
-    if (block === "vendor" && segment.segment === "合計" && analysisVendorFilter.length > 0) {
+    if (block === "vendor" && segment.segment === "合計" && analysisVendorFilter.length >= 2) {
+      return `${analysisVendorFilter.join(" かつ ")}：${formatCount(segment.rowCount)} 件`;
+    }
+    if (block === "vendor" && segment.segment === "合計" && analysisVendorFilter.length > 0 && analysisAxis === "vendor") {
       return `合計（選んだ ${analysisVendorFilter.length.toLocaleString("ja-JP")} つ）`;
     }
     return segment.segment;
+  }
+
+  function analysisAxisLabel(axis: AnalysisAxis): string {
+    if (axis === "line_type") return "元回線";
+    if (axis === "contract_year") return "契約時期（年）";
+    return "購入先";
+  }
+
+  function analysisAxisHelp(axis: AnalysisAxis): { title: string; rows: readonly HelpRow[] } {
+    if (axis === "line_type") {
+      return {
+        title: "① 元回線 の数え方",
+        rows: [
+          { label: "区切り", text: "電話番号台帳の「元回線」。空欄は「（元回線なし）」" },
+          { label: "購入先で絞る", text: "2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます" },
+          { label: "受注率", text: "受注顧客数 ÷ 有効（件数 − 無効）。受注案件数は別列で並べます" },
+        ],
+      };
+    }
+    if (axis === "contract_year") {
+      return {
+        title: "① 契約時期（年） の数え方",
+        rows: [
+          { label: "区切り", text: "電話番号台帳の「契約時期」の年。空欄は「（契約時期なし）」" },
+          { label: "購入先で絞る", text: "2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます" },
+          { label: "受注率", text: "受注顧客数 ÷ 有効（件数 − 無効）。受注案件数は別列で並べます" },
+        ],
+      };
+    }
+    return ANALYSIS_HELP.vendor;
   }
 
   function renderAnalysisBlock(
@@ -1365,12 +1449,13 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     emptyText = "対象データがありません",
   ) {
     const sort = analysisSorts[block];
+    const detailBlock: AnalysisBlockKey = block === "vendor" ? analysisAxis : block;
     const selected = segments.find((segment) => segment.segment === selectedSegment) ?? segments[0];
     const showAll = showAllSegments[block];
     const sortedSegments = sortAnalysisSegments(segments, sort);
     const hasLimitedRows = block === "vendor" && analysisVendorFilter.length > 0 ? false : segments.length > ANALYSIS_ROW_LIMIT;
     const visibleSegments = showAll || !hasLimitedRows ? sortedSegments : sortedSegments.slice(0, ANALYSIS_ROW_LIMIT);
-    const segmentColumnLabel = block === "vendor" ? "購入先" : block === "contract" ? "既契約情報" : "リスト名";
+    const segmentColumnLabel = block === "vendor" ? analysisAxisLabel(analysisAxis) : block === "contract" ? "既契約情報" : "リスト名";
     const tableColumns = ANALYSIS_TABLE_COLUMNS.map((column) => (column.key === "segment" ? { ...column, label: segmentColumnLabel } : column));
     const chartData: ChartData<"doughnut"> = {
       labels: selected?.results.map((item) => item.result) ?? [],
@@ -1401,7 +1486,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       onClick(_event, elements) {
         const index = elements[0]?.index;
         const result = typeof index === "number" ? selected?.results[index]?.result : null;
-        if (selected && result) void openAnalysisDetail(block, selected.segment, result);
+        if (selected && result) void openAnalysisDetail(detailBlock, selected.segment, result);
       },
     };
 
@@ -1411,6 +1496,28 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           <h3>{title}{help && <HelpTip help={help} />}</h3>
           {block === "vendor" ? (
             <div className={styles.analysisHeaderControls}>
+              <div className={styles.analysisAxisControls} aria-label="切り口">
+                <span>切り口</span>
+                {([
+                  ["vendor", "購入先"],
+                  ["line_type", "元回線"],
+                  ["contract_year", "契約時期（年）"],
+                ] as const).map(([axis, label]) => (
+                  <label key={axis}>
+                    <input
+                      type="radio"
+                      name="analysis-axis"
+                      value={axis}
+                      checked={analysisAxis === axis}
+                      onChange={() => {
+                        setAnalysisAxis(axis);
+                        setAnalysisSelections((current) => ({ ...current, vendor: "合計" }));
+                      }}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
               <MultiSelectFilter
                 label="購入先で絞る"
                 value={analysisVendorFilter}
@@ -1419,10 +1526,13 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 searchable
                 initialLimit={100}
               />
+              <small className={styles.analysisFilterNote}>2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます（かつ）</small>
             </div>
           ) : controls}
         </div>
-        {segments.length === 0 ? (
+        {block === "vendor" && vendorAndBusy ? (
+          <div className={styles.loading}><span />読み込んでいます</div>
+        ) : segments.length === 0 ? (
           <p className={styles.empty}>{emptyText}</p>
         ) : (
           <>
@@ -1438,7 +1548,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                       type="button"
                       className={styles.analysisLegendButton}
                       aria-label={`${item.result} ${formatCount(item.rowCount)} 件`}
-                      onClick={() => void openAnalysisDetail(block, selected.segment, item.result)}
+                      onClick={() => void openAnalysisDetail(detailBlock, selected.segment, item.result)}
                     >
                       <span className={styles.analysisLegendDot} style={{ background: resultColor(item.result) }} />
                       <span className={styles.analysisLegendName}>{item.result}</span>
@@ -1447,9 +1557,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   ))}
                   {selected && (
                     <div className={styles.analysisOrderSummary}>
-                      <span className={styles.analysisLegendName}>うち受注（案件）</span>
-                      <span className={styles.analysisLegendCount}>{formatCount(selected.orderCount)} 件</span>
-                      <small> Kintone の案件から数えた数。コール結果とは別の数え方です。</small>
+                      <span className={styles.analysisLegendName}>うち受注顧客 {formatCount(selected.orderCount)} 人・受注案件 {formatCount(selected.orderCaseCount ?? 0)} 件</span>
+                      <span className={styles.analysisLegendCount} />
+                      <small> Kintone の受注履歴から数えた数。コール結果とは別の数え方です。</small>
                     </div>
                   )}
                 </div>
@@ -1495,6 +1605,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                         <td>{formatRotation(segment.rotation)}</td>
                         <td>{formatCount(segment.validCount)}</td>
                         <td className={valueClassName(segment.orderCount)}>{formatCount(segment.orderCount)}</td>
+                        <td className={valueClassName(segment.orderCaseCount ?? 0)}>{formatCount(segment.orderCaseCount ?? 0)}</td>
                         <td className={valueClassName(segment.acquiredCount)}>{formatCount(segment.acquiredCount)}</td>
                         <td>{formatRate(segment.orderRateValid)}</td>
                         <td>{formatRate(segment.orderRateTotal)}</td>
@@ -1548,10 +1659,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <th>投入日</th>
                 <th>件数</th>
                 <th>コール済み</th>
-                <th>総コール回数</th>
-                <th>受注（案件）</th>
-                <th>獲得（コール）</th>
-                <th>最終コール日</th>
+                  <th>総コール回数</th>
+                  <th>受注顧客数</th>
+                  <th>受注案件数</th>
+                  <th>獲得（コール）</th>
+                  <th>最終コール日</th>
               </tr>
             </thead>
             <tbody>
@@ -1563,11 +1675,12 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   <td>{formatCount(row.calledCount)}</td>
                   <td>{formatCount(row.callTotal)}</td>
                   <td className={valueClassName(row.orderCount)}>{formatCount(row.orderCount)}</td>
+                  <td className={valueClassName(row.orderCaseCount ?? 0)}>{formatCount(row.orderCaseCount ?? 0)}</td>
                   <td className={valueClassName(row.acquiredCount)}>{formatCount(row.acquiredCount)}</td>
                   <td>{row.lastCalledOn ?? ""}</td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan={8}>対象データがありません</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={9}>対象データがありません</td></tr>}
             </tbody>
           </table>
         </div>
@@ -2034,7 +2147,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 analysisSelections.vendor,
                 (segment) => setAnalysisSelections((current) => ({ ...current, vendor: segment })),
                 undefined,
-                ANALYSIS_HELP.vendor,
+                analysisAxisHelp(analysisAxis),
               )}
               {renderAnalysisBlock(
                 "② 今コールしているリスト",
@@ -2067,8 +2180,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <summary>定義</summary>
                 <p>件数＝その区切りに入る電話番号の数。電話番号が空の行は数えません。</p>
                 <p>コール済み＝コール回数合計が 1 以上の番号数。総コール回数＝コール回数合計の合計。回転＝総コール回数 ÷ 件数。</p>
-                <p>有効＝件数 − 最終コール結果が「無効」の番号数。受注（案件）＝受注件数が 1 以上の番号数。獲得（コール）＝最終コール結果が「獲得」の番号数。</p>
-                <p>受注率は受注（案件）で計算しています。獲得（コール）は件数だけ並べています。</p>
+                <p>有効＝件数 − 最終コール結果が「無効」の番号数。受注顧客数＝受注件数が 1 以上の番号数。受注案件数＝受注履歴の案件数。獲得（コール）＝最終コール結果が「獲得」の番号数。</p>
+                <p>受注率は受注顧客数で計算しています。獲得（コール）は件数だけ並べています。</p>
               </details>
             </div>
           )}

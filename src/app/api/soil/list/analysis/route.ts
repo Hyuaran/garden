@@ -1,21 +1,32 @@
 import { NextResponse } from "next/server";
 
 import { requireSoilListUser } from "../_lib/auth";
-import { loadAnalysisPayload, type AnalysisDb } from "./_lib/analysis";
+import { isAnalysisAxis, loadAnalysisPayload, loadVendorAndAnalysis, type AnalysisDb } from "./_lib/analysis";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request?: Request) {
   const auth = await requireSoilListUser();
   if (!auth.ok) return auth.response;
 
   try {
+    const url = new URL(request?.url ?? "http://test/api/soil/list/analysis");
+    const axis = url.searchParams.get("axis");
+    const vendors = url.searchParams.getAll("vendor");
+    if (vendors.length >= 2) {
+      if (!isAnalysisAxis(axis)) {
+        return NextResponse.json({ ok: false, error: "切り口が不正です" }, { status: 400 });
+      }
+      const block = await loadVendorAndAnalysis(vendors, axis);
+      return NextResponse.json({ ok: true, block });
+    }
+
     const analysis = await loadAnalysisPayload(getSupabaseAdmin() as unknown as AnalysisDb);
     return NextResponse.json({ ok: true, analysis });
-  } catch {
-    return NextResponse.json({ ok: false, error: "分析を読み込めませんでした" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "分析を読み込めませんでした" }, { status: 500 });
   }
 }
