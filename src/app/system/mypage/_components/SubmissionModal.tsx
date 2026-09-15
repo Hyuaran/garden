@@ -52,20 +52,22 @@ const definitions: Record<
 export default function SubmissionModal({
   type,
   employeeName,
+  initialValues,
   onClose,
   onSent,
 }: {
   type: SubmissionType;
   employeeName: string;
+  initialValues?: Record<string, string>;
   onClose: () => void;
   onSent: () => void;
 }) {
   const [values, setValues] = useState<Record<string, string | boolean>>(() =>
     type === "emergency_contact"
-      ? { kind: "new" }
+      ? { kind: initialValues ? "change" : "new", ...(initialValues ?? {}) }
       : type === "nda"
-        ? { kind: "new", pledgeDate: todayJst() }
-        : ({} as Record<string, string | boolean>),
+        ? { kind: "new", pledgeDate: todayJst(), ...(initialValues ?? {}) }
+        : ({ ...(initialValues ?? {}) } as Record<string, string | boolean>),
   );
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);

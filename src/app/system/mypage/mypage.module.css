@@ -46,6 +46,15 @@
 .confirmationBanner p { margin:0; color:var(--sub); font-size:.82rem; }
 .confirmationActions { display:flex; gap:8px; flex-shrink:0; }
 .confirmationActions .secondaryButton { border:1px solid #b67a00; background:transparent; color:#8a5d00; }
+.confirmGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.confirmCard { display:grid; gap:10px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--card); }
+.confirmCard h3 { margin:0; color:var(--heading); font-size:.95rem; }
+.confirmCard p { margin:0; color:var(--ink); line-height:1.65; }
+.confirmCard small { color:var(--sub); }
+.confirmButtons { display:flex; gap:8px; flex-wrap:wrap; }
+.confirmButtons button { padding:9px 13px; border:0; border-radius:8px; background:var(--teal-d); color:#fff; font-weight:700; }
+.confirmButtons .secondaryButton { border:1px solid var(--teal-d); background:transparent; color:var(--teal-d); }
+.confirmedMark { color:var(--teal-d); font-weight:800; font-size:.88rem; }
 .unlockedNotice { margin:0; padding:12px 16px; border-radius:10px; background:#e9f7f6; color:var(--teal-d); font-weight:700; }
 .zenkakuContent { display:grid; gap:18px; max-width:920px; margin:0 auto; }
 .zenkakuLead { margin:0 0 18px; color:var(--sub); }
@@ -88,12 +97,14 @@
 :global(.dark) .preparingBadge, :global([data-theme="dark"]) .preparingBadge { background:#183b48; color:#9ce5e1; }
 :global(.dark) .settings button, :global([data-theme="dark"]) .settings button { color:#9ce5e1; border-color:#55bdb7; }
 :global(.dark) .confirmationActions .secondaryButton, :global([data-theme="dark"]) .confirmationActions .secondaryButton { color:#f6c96b; border-color:#d9a83e; }
+:global(.dark) .confirmButtons .secondaryButton, :global([data-theme="dark"]) .confirmButtons .secondaryButton { color:#9ce5e1; border-color:#55bdb7; }
 :global(.dark) .partnerChoice label:has(input:checked), :global([data-theme="dark"]) .partnerChoice label:has(input:checked) { background:#183b48; }
 :global(.dark) .blockingResult .error, :global([data-theme="dark"]) .blockingResult .error,
 :global(.dark) .zenkakuContent > .card > .error, :global([data-theme="dark"]) .zenkakuContent > .card > .error { color:#ffabb0 !important; }
 
 @media (max-width:720px) {
   .header { padding-right:100px; } .infoGrid { grid-template-columns:1fr; } .actionGrid { grid-template-columns:1fr; }
+  .confirmGrid { grid-template-columns:1fr; }
   .confirmationBanner { align-items:flex-start; flex-direction:column; } .confirmationActions { width:100%; flex-wrap:wrap; }
   .checkForm { grid-template-columns:1fr; } .checkForm label { grid-column:auto; }
 }

@@ -81,6 +81,46 @@ type RosterSyncResult = {
   errors: string[];
 };
 
+type ProfileHistoryRow = {
+  id?: string;
+  category: string;
+  payload: Record<string, unknown>;
+  source: string;
+  source_ref: string | null;
+  source_document_url?: string | null;
+  effective_from: string | null;
+  recorded_at?: string | null;
+  recorded_by: string | null;
+  confirmed_by_employee_at?: string | null;
+};
+
+type ProfileHistoryState = {
+  employee: Employee;
+  rows: ProfileHistoryRow[];
+  currentIds: Record<string, string | null>;
+} | null;
+
+const PROFILE_CATEGORY_LABELS: Record<string, string> = { address: "住所", contact: "連絡先", emergency_contact: "緊急連絡先", bank_account: "給与受取口座", commute: "交通費", employment: "雇用条件", dependents: "扶養", my_number_status: "マイナンバー" };
+const PROFILE_SOURCE_LABELS: Record<string, string> = { roster: "従業員名簿", bank_list: "口座一覧", transfer_group: "振込グループ", mf_contract: "電子契約の書類", employee_confirm: "本人確認", submission: "届出", onboarding: "入社手続き", admin: "事務の入力" };
+
+function profileValue(row: ProfileHistoryRow) {
+  const p = row.payload ?? {};
+  const s = (key: string) => p[key] === null || p[key] === undefined ? "" : String(p[key]);
+  if (row.category === "address") return s("full") || "未登録";
+  if (row.category === "contact") return [s("phone"), s("email")].filter(Boolean).join(" / ") || "未登録";
+  if (row.category === "emergency_contact") return `${s("name")}${s("relation") ? `（${s("relation")}）` : ""} ${s("phone")} ${Boolean(p.same_address_as_employee) ? "本人と同じ" : s("address")}`.trim() || "未登録";
+  if (row.category === "bank_account") return [s("bank_name"), s("branch_name"), ({ ordinary: "普通", current: "当座", savings: "貯蓄" } as Record<string, string>)[s("account_type")] ?? s("account_type"), s("account_number")].filter(Boolean).join(" ") || "未登録";
+  if (row.category === "commute") return `日額 ${s("round_trip") || "-"}円・片道 ${s("one_way") || "-"}円・上限 ${s("monthly_cap") || "なし"}${s("nearest_station") ? `・${s("nearest_station")}` : ""}`;
+  if (row.category === "employment") return [s("employment_type"), s("hire_date"), s("department"), s("affiliation")].filter(Boolean).join(" / ") || "未登録";
+  if (row.category === "dependents") return `${s("count") || "0"} 人`;
+  if (row.category === "my_number_status") return p.submitted ? "提出済み" : "未提出";
+  return JSON.stringify(p);
+}
+
+function profileSource(row: ProfileHistoryRow) {
+  return `${PROFILE_SOURCE_LABELS[row.source] ?? row.source}${row.source_ref ? `（${row.source_ref}）` : ""}`;
+}
+
 type ChatworkTokenStatus = {
   registered: boolean;
   accountName: string | null;
@@ -168,6 +208,12 @@ export default function EmployeesPage() {
   const [chatworkTokenLoading, setChatworkTokenLoading] = useState(false);
   const [chatworkTokenSaving, setChatworkTokenSaving] = useState(false);
   const [chatworkTokenError, setChatworkTokenError] = useState<string | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<Employee | null>(null);
+  const [profileHistory, setProfileHistory] = useState<ProfileHistoryState>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyCategory, setHistoryCategory] = useState("");
+  const [historySource, setHistorySource] = useState("");
   const bankRequired = editTarget ? isEmployeeBankRequired(editTarget) : true;
   const canSyncChatworkTokens = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "manager") : false;
   const canManageChatworkToken = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "manager") : false;
@@ -493,6 +539,25 @@ export default function EmployeesPage() {
     }
   }
 
+  async function openHistory(employee: Employee) {
+    setHistoryTarget(employee);
+    setProfileHistory(null);
+    setHistoryError(null);
+    setHistoryCategory("");
+    setHistorySource("");
+    try {
+      setHistoryLoading(true);
+      const response = await fetch(`/api/root/employees/${encodeURIComponent(employee.employee_id)}/profile-history`, { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "履歴を読み込めませんでした");
+      setProfileHistory({ employee, rows: body.rows ?? [], currentIds: body.currentIds ?? {} });
+    } catch (loadError) {
+      setHistoryError(loadError instanceof Error ? loadError.message : "履歴を読み込めませんでした");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
   const columns: Column<Employee>[] = [
     { key: "id", header: "ID", render: (e) => e.employee_id, width: 100 },
     { key: "num", header: "社員番号", render: (e) => e.employee_number, width: 90 },
@@ -508,6 +573,7 @@ export default function EmployeesPage() {
     { key: "actions", header: "", render: (e) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
         <Button variant="secondary" onClick={() => setEditTarget(e)} disabled={!canOpenEmployeeModal} title={!canOpenEmployeeModal ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <Button variant="secondary" onClick={() => openHistory(e)}>履歴</Button>
         <Button
           variant="secondary"
           onClick={() => openRoleDialog(e)}
@@ -518,7 +584,7 @@ export default function EmployeesPage() {
         </Button>
         <Button variant={e.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(e)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{e.is_active ? "無効化" : "有効化"}</Button>
       </div>
-    ), width: 230, align: "right" },
+    ), width: 280, align: "right" },
   ];
 
   const canAdd = companies.length > 0 && salarySystems.length > 0;
@@ -555,6 +621,45 @@ export default function EmployeesPage() {
       )}
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
       {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable columns={columns} rows={filtered} activeIndex={activeIndex} onRowClick={canOpenEmployeeModal ? setEditTarget : undefined} />}
+
+      <Modal open={!!historyTarget} onClose={() => setHistoryTarget(null)} title={`${historyTarget?.name ?? ""}（${historyTarget?.employee_number ?? ""}）の履歴`} width={960}>
+        {historyLoading ? <div style={{ color: colors.textMuted }}>読込中...</div> : historyError ? <div role="alert" style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4 }}>{historyError}</div> : profileHistory ? (
+          <div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+              <select value={historyCategory} onChange={(e) => setHistoryCategory(e.target.value)} style={{ padding: "7px 10px", border: `1px solid ${colors.border}`, borderRadius: 4, background: colors.bgPanel, color: colors.text }}>
+                <option value="">区分：すべて</option>
+                {Object.entries(PROFILE_CATEGORY_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </select>
+              <select value={historySource} onChange={(e) => setHistorySource(e.target.value)} style={{ padding: "7px 10px", border: `1px solid ${colors.border}`, borderRadius: 4, background: colors.bgPanel, color: colors.text }}>
+                <option value="">出どころ：すべて</option>
+                {Object.entries(PROFILE_SOURCE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </select>
+            </div>
+            {Object.entries(profileHistory.rows.filter((row) => (!historyCategory || row.category === historyCategory) && (!historySource || row.source === historySource)).reduce<Record<string, ProfileHistoryRow[]>>((acc, row) => { (acc[row.category] ??= []).push(row); return acc; }, {})).map(([category, rows]) => (
+              <section key={category} style={{ marginBottom: 18 }}>
+                <h3 style={{ margin: "0 0 8px", fontSize: 15, color: colors.text }}>{PROFILE_CATEGORY_LABELS[category] ?? category}</h3>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {rows.map((row) => {
+                    const isCurrent = profileHistory.currentIds[row.category] === row.id;
+                    return <div key={row.id ?? `${row.category}-${row.recorded_at}`} style={{ display: "grid", gridTemplateColumns: "18px 96px minmax(210px,1fr) minmax(130px,180px) auto", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 6, background: isCurrent ? colors.bgPanel : "#fff1f2", border: `1px solid ${isCurrent ? colors.border : "#fecdd3"}`, fontSize: 13, color: colors.text }}>
+                      <span aria-hidden="true">{isCurrent ? "●" : "▲"}</span>
+                      <span>{row.effective_from ?? "-"}</span>
+                      <span>{profileValue(row)}</span>
+                      <span>{profileSource(row)}</span>
+                      <span style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end", whiteSpace: "nowrap" }}>
+                        {row.source_document_url ? <a href={row.source_document_url} target="_blank" rel="noreferrer">書類を開く</a> : null}
+                        {isCurrent ? <strong>今の値</strong> : null}
+                        {row.confirmed_by_employee_at ? <span>本人確認 {row.confirmed_by_employee_at.slice(0, 10)}</span> : null}
+                      </span>
+                    </div>;
+                  })}
+                </div>
+              </section>
+            ))}
+            {profileHistory.rows.length === 0 ? <div style={{ color: colors.textMuted }}>履歴はまだありません。</div> : null}
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         open={!!roleTarget}

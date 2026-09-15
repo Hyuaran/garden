@@ -11,6 +11,17 @@ export type MyPageProfile = {
   commuteDailyAllowance: number | null;
   commuteMonthlyCap: number | null;
   mynaSubmitted: boolean;
+  current?: Record<string, {
+    id?: string;
+    payload: Record<string, unknown>;
+    source: string;
+    sourceRef: string | null;
+    sourceDocumentUrl?: string | null;
+    effectiveFrom: string | null;
+    recordedAt?: string | null;
+  }>;
+  confirmations?: Record<string, string>;
+  pendingSubmissions?: Array<{ type: string; createdAt: string }>;
 };
 
 export type MyPageTab = "profile" | "attendance" | "shift" | "zenkaku";

@@ -358,23 +358,14 @@ describe("system mypage", () => {
       }),
     });
   });
-  it("keeps the existing 90-day localStorage confirmation key", async () => {
+  it("does not use the old localStorage confirmation key", async () => {
     renderMyPage({
       ...baseProps,
       birthdayRegistered: false,
       initialProfile: { ...profile, birthday: null },
     });
-    const button = await screen.findByRole("button", {
-      name: "変更はありません",
-    });
-    fireEvent.click(button);
-    await waitFor(() =>
-      expect(localStorage.getItem("gardenTree_mypageLastConfirm")).toMatch(
-        /^\d{4}-/,
-      ),
-    );
-    expect(
-      screen.queryByLabelText("個人情報の定期確認"),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByLabelText("登録内容の確認")).toBeInTheDocument();
+    expect(localStorage.getItem("gardenTree_mypageLastConfirm")).toBeNull();
+    expect(screen.queryByLabelText("個人情報の定期確認")).not.toBeInTheDocument();
   });
 });

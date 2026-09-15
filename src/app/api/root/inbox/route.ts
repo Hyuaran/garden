@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { syncSubmissionToKintone } from "@/app/system/mypage/_lib/submission-kintone.server";
 import { generateSubmissionPdf } from "@/app/system/mypage/_lib/todoke-generation.server";
+import { getCurrentProfile, insertProfileHistoryIfChanged, todayJst } from "@/app/root/_lib/profile-history.server";
 import type { SubmissionRow } from "@/app/system/mypage/_lib/submission-types";
 
 const EMPLOYEE_FIELDS =
@@ -103,6 +104,24 @@ export async function PATCH(request: Request) {
         : "completed";
     if (next === "completed" && data.submission_type === "bank_account") {
       const p = data.payload;
+      await insertProfileHistoryIfChanged(admin, {
+        employee_id: data.employee_id,
+        category: "bank_account",
+        payload: {
+          bank_name: p.bankName,
+          bank_code: p.bankCode,
+          branch_name: p.branchName,
+          branch_code: p.branchCode,
+          account_type: "ordinary",
+          account_number: p.accountNumber,
+          holder_kana: p.holderKana,
+          slot: 1,
+        },
+        source: "submission",
+        source_ref: String(data.id),
+        effective_from: todayJst(),
+        recorded_by: String(manager.employee_number ?? manager.employee_id),
+      });
       await admin
         .from("bud_employee_bank_accounts")
         .update({
@@ -140,6 +159,46 @@ export async function PATCH(request: Request) {
         })
         .eq("id", body.id);
       return NextResponse.json({ ok: true });
+    }
+    if (next === "completed" && data.submission_type === "emergency_contact") {
+      const p = data.payload as Record<string, unknown>;
+      const current = await getCurrentProfile(admin, data.employee_id, true);
+      const currentEmail = current.contact?.payload?.email ?? null;
+      const recordedBy = String(manager.employee_number ?? manager.employee_id);
+      const effectiveFrom = todayJst();
+      await insertProfileHistoryIfChanged(admin, {
+        employee_id: data.employee_id,
+        category: "address",
+        payload: { full: typeof p.selfAddress === "string" ? p.selfAddress : "" },
+        source: "submission",
+        source_ref: String(data.id),
+        effective_from: effectiveFrom,
+        recorded_by: recordedBy,
+      });
+      await insertProfileHistoryIfChanged(admin, {
+        employee_id: data.employee_id,
+        category: "contact",
+        payload: { phone: typeof p.selfPhone === "string" ? p.selfPhone : "", email: currentEmail },
+        source: "submission",
+        source_ref: String(data.id),
+        effective_from: effectiveFrom,
+        recorded_by: recordedBy,
+      });
+      await insertProfileHistoryIfChanged(admin, {
+        employee_id: data.employee_id,
+        category: "emergency_contact",
+        payload: {
+          name: p.ecName,
+          relation: p.ecRelationship,
+          phone: p.ecPhone,
+          address: p.ecAddress,
+          same_address_as_employee: p.ecAddress === "同上",
+        },
+        source: "submission",
+        source_ref: String(data.id),
+        effective_from: effectiveFrom,
+        recorded_by: recordedBy,
+      });
     }
     await admin
       .from("system_mypage_submissions")
