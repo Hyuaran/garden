@@ -488,7 +488,7 @@ describe("ListMasterClient tabs", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "アップロード" }));
     expect(window.location.search).toBe("?tab=upload");
-    expect(screen.getByText("リストの取込ファイルをアップロード")).toBeInTheDocument();
+    expect(screen.getByText("新しく買ったリストをアップロード")).toBeInTheDocument();
   });
 
   it("shows the history search tab and renders timeline rows", async () => {

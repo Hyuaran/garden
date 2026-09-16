@@ -1,6 +1,27 @@
 import { SOIL_LIST_TABLES } from "@/app/system/list/_lib/list-fields";
 import { getAllRecords, type KintoneRecord } from "@/lib/kintone/records";
 
+export const ORDER_FILEMAKER_FIELDS = [
+  "申込者名_姓",
+  "申込者名_名",
+  "申込者名_生年月日",
+  "連絡担当者名_姓",
+  "連絡担当者名_名",
+  "連絡担当者名_生年月日",
+  "既契約者名_姓",
+  "既契約者名_名",
+  "既契約者名_生年月日",
+  "携帯キャリア",
+  "設置先_郵便番号",
+  "設置先_住所_都道府県",
+  "設置先_住所_市町村",
+  "設置先_住所_町域",
+  "設置先_住所_建物名",
+  "設置先_住所_部屋番号",
+  "電話番号_ハイフンなし",
+  "携帯番号_ハイフンなし",
+] as const;
+
 export const ORDER_FIELDS = [
   "レコード番号",
   "電話番号_ハイフンなし",
@@ -14,6 +35,7 @@ export const ORDER_FIELDS = [
   "実績日",
   "開通日",
   "キャンセル日",
+  ...ORDER_FILEMAKER_FIELDS,
 ] as const;
 
 export type DbError = { message: string } | null;
@@ -31,7 +53,7 @@ export type OrderRow = {
   開通日: string | null;
   キャンセル日: string | null;
   取込日時: string;
-};
+} & Record<(typeof ORDER_FILEMAKER_FIELDS)[number], string | null>;
 
 export type OrderSyncStateRow = {
   id: number;
@@ -104,8 +126,35 @@ function nullableText(value: string): string | null {
   return value === "" ? null : value;
 }
 
+function nullablePhone(value: string): string | null {
+  return nullableText(normalizePhone(value));
+}
+
 function nullableDate(value: string): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
+function fileMakerFields(record: KintoneRecord): Record<(typeof ORDER_FILEMAKER_FIELDS)[number], string | null> {
+  return {
+    申込者名_姓: nullableText(fieldValue(record, "申込者名_姓")),
+    申込者名_名: nullableText(fieldValue(record, "申込者名_名")),
+    申込者名_生年月日: nullableDate(fieldValue(record, "申込者名_生年月日")),
+    連絡担当者名_姓: nullableText(fieldValue(record, "連絡担当者名_姓")),
+    連絡担当者名_名: nullableText(fieldValue(record, "連絡担当者名_名")),
+    連絡担当者名_生年月日: nullableDate(fieldValue(record, "連絡担当者名_生年月日")),
+    既契約者名_姓: nullableText(fieldValue(record, "既契約者名_姓")),
+    既契約者名_名: nullableText(fieldValue(record, "既契約者名_名")),
+    既契約者名_生年月日: nullableDate(fieldValue(record, "既契約者名_生年月日")),
+    携帯キャリア: nullableText(fieldValue(record, "携帯キャリア")),
+    設置先_郵便番号: nullableText(fieldValue(record, "設置先_郵便番号")),
+    設置先_住所_都道府県: nullableText(fieldValue(record, "設置先_住所_都道府県")),
+    設置先_住所_市町村: nullableText(fieldValue(record, "設置先_住所_市町村")),
+    設置先_住所_町域: nullableText(fieldValue(record, "設置先_住所_町域")),
+    設置先_住所_建物名: nullableText(fieldValue(record, "設置先_住所_建物名")),
+    設置先_住所_部屋番号: nullableText(fieldValue(record, "設置先_住所_部屋番号")),
+    電話番号_ハイフンなし: nullablePhone(fieldValue(record, "電話番号_ハイフンなし")),
+    携帯番号_ハイフンなし: nullablePhone(fieldValue(record, "携帯番号_ハイフンなし")),
+  };
 }
 
 export function orderRowsFromRecord(record: KintoneRecord, importedAt: string): OrderRow[] {
@@ -118,6 +167,7 @@ export function orderRowsFromRecord(record: KintoneRecord, importedAt: string): 
     // 「0000000000」のような仮の番号は受注履歴に入れない（顧客一覧の番号なし案件に入っている）
   ].filter((phone) => phone && !/^0+$/.test(phone));
   const uniquePhones = [...new Set(phones)];
+  const fmFields = fileMakerFields(record);
 
   return uniquePhones.map((phone) => ({
     電話番号: phone,
@@ -132,6 +182,7 @@ export function orderRowsFromRecord(record: KintoneRecord, importedAt: string): 
     開通日: nullableDate(fieldValue(record, "開通日")),
     キャンセル日: nullableDate(fieldValue(record, "キャンセル日")),
     取込日時: importedAt,
+    ...fmFields,
   }));
 }
 
@@ -218,6 +269,8 @@ export async function syncOrders({ db, now = new Date(), appId, token }: SyncOrd
     const refreshed = await db.rpc("soil_list_refresh_phone_latest", { p_phones: phoneChunk });
     if (refreshed.error) throw new Error(refreshed.error.message);
     phoneUpdates += normalizeRefresh(refreshed.data).updated ?? 0;
+    const filled = await db.rpc("soil_list_fill_phone_blanks_from_orders", { p_phones: phoneChunk });
+    if (filled.error) throw new Error(filled.error.message);
   }
 
   const elapsedMs = Date.now() - started;

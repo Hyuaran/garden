@@ -14,7 +14,7 @@ export async function GET() {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from(SOIL_LIST_TABLES.export)
-    .select("id,condition,columns,row_limit,sort_key,row_count,replaced_chars,file_name,format,phone_numbers,created_by,created_at")
+    .select("id,condition,columns,row_limit,sort_key,row_count,replaced_chars,file_name,format,phone_numbers,list_name,created_by,created_at")
     .order("created_at", { ascending: false })
     .limit(50);
 

@@ -80,11 +80,12 @@ type ExportHistory = {
   format?: ExportFormat;
   rebuild_from_condition?: boolean;
   file_name: string;
+  list_name?: string | null;
   created_by: string | null;
   created_at: string;
 };
 
-type ExportFormat = "xlsx" | "csv" | "mer";
+type ExportFormat = "xlsx" | "csv" | "mer" | "fm_import";
 
 type CallSyncState = {
   syncedThrough: string | null;
@@ -127,6 +128,13 @@ type RawUploadPreview = {
   excluded: Array<{ rowNumber: number; listName: string | null; phone: string; reason: string | undefined }>;
 };
 
+type ExportDownloadResult = {
+  excludedInternalBlock: number;
+  assignmentRecorded: number;
+  assignmentNew: number;
+  assignmentUpdated: number;
+};
+
 type UploadResult = {
   assignments: number;
   assignments_new: number;
@@ -154,7 +162,7 @@ type UploadHistory = {
   購入先: string | null;
   created_by: string | null;
   created_at: string;
-  source_kind?: "import_file" | "raw_excel";
+  source_kind?: "import_file" | "raw_excel" | "export";
   raw_file_names?: string[] | null;
   excluded_assignment?: number | null;
   excluded_order?: number | null;
@@ -346,10 +354,13 @@ const ANALYSIS_ROW_LIMIT = 50;
 const EXCEL_MAX_EXPORT_ROWS = 1048575;
 const LARGE_EXPORT_CONFIRM_ROWS = 100000;
 const EXPORT_SPEED_ROWS_PER_MINUTE = 20000;
+const FM_LINE_TYPE_OPTIONS = ["フレッツ", "アナログ", "AU", "クレカ", "その他"] as const;
+
 const EXPORT_FORMAT_OPTIONS: Array<{ value: ExportFormat; label: string; action: string }> = [
   { value: "xlsx", label: "Excel", action: "Excel で書き出し" },
   { value: "csv", label: "CSV", action: "CSV で書き出し" },
   { value: "mer", label: ".mer", action: ".mer で書き出し" },
+  { value: "fm_import", label: "FileMaker 取込用（19 列）", action: "FileMaker 取込用で書き出し" },
 ];
 
 /** 分析の各ブロックの見出し横の「？」に出す集計の条件（東海林さん 2026-09-13） */
@@ -436,14 +447,14 @@ const GUIDE_TABLE_ROWS = [
     unit: "電話番号×購入先×購入日",
     count: "約 242 万件",
     contains: "電話番号・購入先・購入日",
-    timing: "買うたびに 1 行増える。同じ購入先・同じ日は 1 行にまとめ、買い直しも残す",
+    timing: "新しく買ったリストのアップロードで増える。同じ購入先・同じ日は 1 行にまとめ、買い直しも残す",
   },
   {
     name: "投入履歴",
     unit: "電話番号×リスト名",
     count: "約 3.9 万件",
     contains: "取込ファイルの列（申込者・連絡担当者・既契約者・設置先など）そのまま",
-    timing: "アップロードのたびに増える。同じ番号×リスト名は上書き。リスト投入日はリスト名の中の日付を使う",
+    timing: "リストタブの FileMaker 取込用の書き出しで増える。新しく買ったリストのアップロードでも増える。同じ番号×リスト名は上書き",
   },
   {
     name: "コール履歴",
@@ -685,6 +696,23 @@ function formatCount(value: number): string {
 
 function exportFormatLabel(format: ExportFormat | undefined): string {
   return EXPORT_FORMAT_OPTIONS.find((option) => option.value === format)?.label ?? ".mer";
+}
+
+function tomorrowInJapan(): string {
+  const now = new Date();
+  const japan = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+  japan.setDate(japan.getDate() + 1);
+  return `${japan.getFullYear()}-${String(japan.getMonth() + 1).padStart(2, "0")}-${String(japan.getDate()).padStart(2, "0")}`;
+}
+
+function compactDate(value: string): string {
+  return value.replaceAll("-", "");
+}
+
+function defaultFmListName(lineType: string, startDate: string): string {
+  const base = lineType || "フレッツ";
+  if (base === "クレカ") return `【クレカ】リスト_${compactDate(startDate)}`;
+  return `【光回線】${base}_${compactDate(startDate)}`;
 }
 
 function formatElapsedSeconds(value: number): string {
@@ -1110,6 +1138,12 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
   const [exportBusy, setExportBusy] = useState<{ count: number; format: string } | null>(null);
   const [exportConfirm, setExportConfirm] = useState<{ count: number; minutes: number } | null>(null);
+  const [fmExportOpen, setFmExportOpen] = useState(false);
+  const [fmExportLineType, setFmExportLineType] = useState<string>("フレッツ");
+  const [fmExportListLoadedOn, setFmExportListLoadedOn] = useState(tomorrowInJapan);
+  const [fmExportListName, setFmExportListName] = useState("");
+  const [fmExportListNameTouched, setFmExportListNameTouched] = useState(false);
+  const [fmExportRecordAssignment, setFmExportRecordAssignment] = useState(true);
   const [activeTab, setActiveTab] = useState<ActiveTab>("list");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
@@ -1173,7 +1207,13 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const rawTotalPages = count === null ? 1 : Math.max(1, Math.ceil(count / SEARCH_PAGE_SIZE));
   const totalPages = Math.min(rawTotalPages, MAX_SEARCH_PAGE);
   const pageCapped = rawTotalPages > MAX_SEARCH_PAGE;
-  const excelOverLimit = exportFormat === "xlsx" && count !== null && count > EXCEL_MAX_EXPORT_ROWS;
+  const excelOverLimit = (exportFormat === "xlsx" || exportFormat === "fm_import") && count !== null && count > EXCEL_MAX_EXPORT_ROWS;
+  const fmExportDefaultListName = useMemo(() => defaultFmListName(fmExportLineType, fmExportListLoadedOn), [fmExportLineType, fmExportListLoadedOn]);
+
+  useEffect(() => {
+    if (!fmExportOpen || fmExportListNameTouched) return;
+    setFmExportListName(fmExportDefaultListName);
+  }, [fmExportDefaultListName, fmExportListNameTouched, fmExportOpen]);
 
   async function loadSaved() {
     const [conditionsRes, exportsRes] = await Promise.all([
@@ -1579,7 +1619,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
-  async function downloadExport(body: Record<string, unknown>): Promise<{ excludedInternalBlock: number }> {
+  async function downloadExport(body: Record<string, unknown>): Promise<ExportDownloadResult> {
     const response = await fetch("/api/soil/list/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1600,20 +1640,33 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     anchor.download = fileName;
     anchor.click();
     URL.revokeObjectURL(url);
-    return { excludedInternalBlock: Number(response.headers.get("X-Soil-List-Excluded-Internal-Block") ?? 0) };
+    return {
+      excludedInternalBlock: Number(response.headers.get("X-Soil-List-Excluded-Internal-Block") ?? 0),
+      assignmentRecorded: Number(response.headers.get("X-Soil-List-Assignment-Recorded") ?? 0),
+      assignmentNew: Number(response.headers.get("X-Soil-List-Assignment-New") ?? 0),
+      assignmentUpdated: Number(response.headers.get("X-Soil-List-Assignment-Updated") ?? 0),
+    };
   }
 
-  async function executeExport() {
+  async function executeExport(fmInput?: { listName: string; listLoadedOn: string; recordAssignment: boolean }) {
     if (count === null) return;
     setExportConfirm(null);
+    setFmExportOpen(false);
     const label = exportFormatLabel(exportFormat);
     setBusy(true);
     setExportBusy({ count, format: label });
     setMessage("");
     try {
-      const result = await downloadExport({ condition, columns: selectedColumns, sortKey, format: exportFormat });
+      const result = await downloadExport({ condition, columns: selectedColumns, sortKey, format: exportFormat, ...fmInput });
       await loadSaved();
-      setMessage(`${count.toLocaleString("ja-JP")} 件を ${label} で書き出しました${result.excludedInternalBlock > 0 ? `（自社アポ禁 ${result.excludedInternalBlock.toLocaleString("ja-JP")} 件を除きました）` : ""}`);
+      if (exportFormat === "fm_import") {
+        const assignmentText = fmInput?.recordAssignment
+          ? `／投入履歴に記録：新規 ${result.assignmentNew.toLocaleString("ja-JP")}・更新 ${result.assignmentUpdated.toLocaleString("ja-JP")}（${fmInput.listName}）`
+          : "／投入履歴に記録：なし";
+        setMessage(`書き出しました：${count.toLocaleString("ja-JP")} 件${assignmentText}${result.excludedInternalBlock > 0 ? `（自社アポ禁 ${result.excludedInternalBlock.toLocaleString("ja-JP")} 件を除きました）` : ""}`);
+      } else {
+        setMessage(`${count.toLocaleString("ja-JP")} 件を ${label} で書き出しました${result.excludedInternalBlock > 0 ? `（自社アポ禁 ${result.excludedInternalBlock.toLocaleString("ja-JP")} 件を除きました）` : ""}`);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "書き出しできませんでした");
     } finally {
@@ -1627,8 +1680,19 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       setMessage("先に検索してください");
       return;
     }
-    if (exportFormat === "xlsx" && count > EXCEL_MAX_EXPORT_ROWS) {
+    if ((exportFormat === "xlsx" || exportFormat === "fm_import") && count > EXCEL_MAX_EXPORT_ROWS) {
       setMessage("Excel は 1,048,576 行までです。CSV か .mer を選んでください");
+      return;
+    }
+    if (exportFormat === "fm_import") {
+      const nextLineType = filters.lineType.length === 1 && filters.lineType[0] ? filters.lineType[0] : "フレッツ";
+      const nextDate = fmExportListLoadedOn || tomorrowInJapan();
+      setFmExportLineType(nextLineType);
+      setFmExportListLoadedOn(nextDate);
+      setFmExportRecordAssignment(true);
+      setFmExportListNameTouched(false);
+      setFmExportListName(defaultFmListName(nextLineType, nextDate));
+      setFmExportOpen(true);
       return;
     }
     if (count > LARGE_EXPORT_CONFIRM_ROWS) {
@@ -2290,6 +2354,43 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           約 {exportConfirm?.count.toLocaleString("ja-JP")} 件を書き出します。目安は {exportConfirm?.minutes.toLocaleString("ja-JP")} 分です。
         </p>
       </ConfirmActionModal>
+      <ConfirmActionModal
+        open={fmExportOpen}
+        title="FileMaker 取込用で書き出し"
+        busy={busy}
+        confirmLabel="書き出す"
+        onClose={() => setFmExportOpen(false)}
+        onConfirm={() => void executeExport({ listName: fmExportListName.trim(), listLoadedOn: fmExportListLoadedOn, recordAssignment: fmExportRecordAssignment })}
+      >
+        <p className={styles.conditionSummary}>
+          該当 {count?.toLocaleString("ja-JP") ?? "0"} 件を書き出します。
+        </p>
+        <div className={styles.formGrid}>
+          <label>
+            回線種別
+            <select value={fmExportLineType} onChange={(event) => { setFmExportLineType(event.target.value); if (!fmExportListNameTouched) setFmExportListName(defaultFmListName(event.target.value, fmExportListLoadedOn)); }}>
+              {FM_LINE_TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <label>
+            架電開始日
+            <input type="date" value={fmExportListLoadedOn} onChange={(event) => { setFmExportListLoadedOn(event.target.value); if (!fmExportListNameTouched) setFmExportListName(defaultFmListName(fmExportLineType, event.target.value)); }} />
+          </label>
+        </div>
+        <div className={styles.modalSaveRow}>
+          <label>
+            リスト名
+            <input value={fmExportListName} onChange={(event) => { setFmExportListNameTouched(true); setFmExportListName(event.target.value); }} />
+          </label>
+          <button type="button" className={styles.secondaryButton} onClick={() => { setFmExportListNameTouched(false); setFmExportListName(fmExportDefaultListName); }} disabled={busy}>
+            自動名に戻す
+          </button>
+        </div>
+        <label className={styles.checkboxLine}>
+          <input type="checkbox" checked={fmExportRecordAssignment} onChange={(event) => setFmExportRecordAssignment(event.target.checked)} />
+          <span>この番号を「配った」として投入履歴に記録する</span>
+        </label>
+      </ConfirmActionModal>
       <InternalBlockReleaseModal
         row={internalBlockReleaseTarget}
         reason={internalBlockReleaseReason}
@@ -2540,8 +2641,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           <section className={styles.panel} aria-labelledby="upload-step-1">
             <div className={styles.stepHeading}>
               <span><small>STEP</small><strong>1</strong></span>
-              <h2 id="upload-step-1">リストの取込ファイルをアップロード</h2>
+              <h2 id="upload-step-1">新しく買ったリストをアップロード</h2>
             </div>
+            <p className={styles.conditionSummary}>ここに上げるのは新しく買ったリスト（購入先から届いた Excel）だけです。営業に配るときは、リストタブの FileMaker 取込用で書き出してください。</p>
             <input
               ref={fileInputRef}
               className={styles.hiddenFileInput}

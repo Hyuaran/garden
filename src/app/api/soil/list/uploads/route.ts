@@ -21,7 +21,7 @@ type UploadRecord = {
   購入先: string | null;
   created_by: string | null;
   created_at: string;
-  source_kind?: "import_file" | "raw_excel";
+  source_kind?: "import_file" | "raw_excel" | "export";
   raw_file_names?: string[] | null;
   excluded_assignment?: number | null;
   excluded_order?: number | null;

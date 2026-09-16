@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => mocks.getAdmin() }));
 vi.mock("@/lib/kintone/records", () => ({ getAllRecords: (...args: unknown[]) => mocks.getAllRecords(...args) }));
 
-import { orderRowsFromRecord, resolveOrderSource } from "../_lib/order-sync";
+import { ORDER_FILEMAKER_FIELDS, orderRowsFromRecord, resolveOrderSource } from "../_lib/order-sync";
 import { GET } from "./route";
 
 describe("resolveOrderSource", () => {
@@ -36,6 +36,22 @@ function kintoneRecord(id: string, phone = "", mobile = "") {
     実績日: { value: "" },
     開通日: { value: "2026-09-20" },
     キャンセル日: { value: "" },
+    申込者名_姓: { value: "申込姓" },
+    申込者名_名: { value: "申込名" },
+    申込者名_生年月日: { value: "1990-02-03" },
+    連絡担当者名_姓: { value: "連絡姓" },
+    連絡担当者名_名: { value: "連絡名" },
+    連絡担当者名_生年月日: { value: "" },
+    既契約者名_姓: { value: "既契約姓" },
+    既契約者名_名: { value: "既契約名" },
+    既契約者名_生年月日: { value: "1980-01-02" },
+    携帯キャリア: { value: "docomo" },
+    設置先_郵便番号: { value: "5300001" },
+    設置先_住所_都道府県: { value: "大阪府" },
+    設置先_住所_市町村: { value: "大阪市北区" },
+    設置先_住所_町域: { value: "梅田" },
+    設置先_住所_建物名: { value: "大阪ビル" },
+    設置先_住所_部屋番号: { value: "101" },
   };
 }
 
@@ -50,6 +66,7 @@ function adminClient() {
     void _args;
     if (name === "soil_list_delete_missing_orders") return { data: [{ deleted_rows: 1, phones: ["0999999999"] }], error: null };
     if (name === "soil_list_refresh_phone_latest") return { data: [{ updated: 1 }], error: null };
+    if (name === "soil_list_fill_phone_blanks_from_orders") return { data: [{ updated: 1 }], error: null };
     throw new Error(`Unexpected rpc: ${name}`);
   });
   return {
@@ -81,11 +98,13 @@ function adminClient() {
 }
 
 describe("orderRowsFromRecord", () => {
-  it("expands phone and mobile into two rows and skips records without phones", () => {
-    expect(orderRowsFromRecord(kintoneRecord("1", "06-1234-5678", "090-1111-2222"), "2026-09-11T00:00:00.000Z")).toMatchObject([
-      { 電話番号: "0612345678", 顧客一覧レコード番号: "1", 受注日: "2026-09-10" },
-      { 電話番号: "09011112222", 顧客一覧レコード番号: "1", 受注日: "2026-09-10" },
+  it("expands phone and mobile into two rows, stores 18 FileMaker fields, and skips records without phones", () => {
+    const rows = orderRowsFromRecord(kintoneRecord("1", "06-1234-5678", "090-1111-2222"), "2026-09-11T00:00:00.000Z");
+    expect(rows).toMatchObject([
+      { 電話番号: "0612345678", 顧客一覧レコード番号: "1", 受注日: "2026-09-10", 既契約者名_姓: "既契約姓", 設置先_住所_建物名: "大阪ビル" },
+      { 電話番号: "09011112222", 顧客一覧レコード番号: "1", 受注日: "2026-09-10", 携帯キャリア: "docomo", 携帯番号_ハイフンなし: "09011112222" },
     ]);
+    for (const field of ORDER_FILEMAKER_FIELDS) expect(rows[0]).toHaveProperty(field);
     expect(orderRowsFromRecord(kintoneRecord("2"), "2026-09-11T00:00:00.000Z")).toEqual([]);
   });
 });
@@ -112,14 +131,13 @@ describe("/api/soil/list/orders/cron", () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it("upserts orders and refreshes latest values in 1,000 phone chunks", async () => {
+  it("upserts orders, refreshes latest values, and fills blank ledger fields in 1,000 phone chunks", async () => {
     const client = adminClient();
     mocks.getAdmin.mockReturnValue(client);
     mocks.getAllRecords.mockResolvedValue([
       kintoneRecord("1", "0600000001", "09000000001"),
       ...Array.from({ length: 1000 }, (_, index) => kintoneRecord(String(index + 2), `07${String(index).padStart(8, "0")}`)),
       kintoneRecord("empty"),
-      // 「0000000000」のような仮の番号は受注履歴に入れない
       kintoneRecord("zero", "0000000000", "00000000000"),
     ]);
 
@@ -127,9 +145,10 @@ describe("/api/soil/list/orders/cron", () => {
     expect(response.status).toBe(200);
     expect(client.upserts.map((chunk) => chunk.length)).toEqual([1000, 2]);
     expect(client.rpc).toHaveBeenCalledWith("soil_list_delete_missing_orders", { p_record_ids: expect.arrayContaining(["1", "2"]) });
-    expect(client.rpc).toHaveBeenCalledWith("soil_list_refresh_phone_latest", { p_phones: expect.any(Array) });
     const refreshCalls = client.rpc.mock.calls.filter(([name]) => name === "soil_list_refresh_phone_latest");
+    const fillCalls = client.rpc.mock.calls.filter(([name]) => name === "soil_list_fill_phone_blanks_from_orders");
     expect(refreshCalls.map(([, args]) => (args as { p_phones: string[] }).p_phones.length)).toEqual([1000, 3]);
+    expect(fillCalls.map(([, args]) => (args as { p_phones: string[] }).p_phones.length)).toEqual([1000, 3]);
     await expect(response.json()).resolves.toMatchObject({ ok: true, records: 1003, orderRows: 1002, deletedRows: 1 });
   });
 
@@ -143,3 +162,4 @@ describe("/api/soil/list/orders/cron", () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 });
+
