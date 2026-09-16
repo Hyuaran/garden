@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRosterSnapshot, existingNumberKey, mapRosterRecordToProfilePayloads, mapRosterRecordToRoot, normalizeEmployeeNumber, roleFromRoster } from "../roster-sync.server";
+import { buildRosterSnapshot, existingNumberKey, mapRosterRecordToProfilePayloads, mapRosterRecordToRoot, normalizeEmployeeNumber, normalizeEmploymentType, roleFromRoster } from "../roster-sync.server";
 import type { KintoneRecord } from "@/lib/kintone/records";
 
 function record(values: Record<string, unknown>): KintoneRecord {
@@ -111,6 +111,13 @@ describe("Root の社員番号と名簿から作る番号のそろえ方", () =>
 });
 
 describe("roster sync mapping", () => {
+  it("normalizes employment type values including officer", () => {
+    expect(normalizeEmploymentType("役員")).toBe("役員");
+    expect(normalizeEmploymentType("パート")).toBe("アルバイト");
+    expect(normalizeEmploymentType("外注")).toBe("outsource");
+    expect(normalizeEmploymentType("")).toBe("正社員");
+  });
+
   it("maps roster fields to root employee columns without overriding protected existing values", () => {
     const mapped = mapRosterRecordToRoot(record({
       社員番号: "1530",
@@ -167,11 +174,32 @@ describe("roster sync mapping", () => {
     expect(mapped.is_active).toBe(false);
   });
 
+  it("keeps officer employment type from the roster without changing active calculation", () => {
+    const mapped = mapRosterRecordToRoot(record({
+      社員番号: "0000",
+      打刻ID: "0000",
+      従業員名_姓名: "後道 翔太",
+      従業員ステータス: "在籍中",
+      雇用形態: "役員",
+      入社日: "2026-04-01",
+    }), null, "2026-09-16");
+
+    expect(mapped).toMatchObject({
+      employee_id: "EMP-0000",
+      employment_type: "役員",
+      is_active: true,
+    });
+  });
+
   it("assigns part-time roles from base wage with the 1500 yen training exception", () => {
     expect(roleFromRoster(record({ 雇用形態: "アルバイト", 基準時給: "1450" }))).toBe("closer");
     expect(roleFromRoster(record({ 雇用形態: "アルバイト", 基準時給: "1500" }))).toBe("toss");
     expect(roleFromRoster(record({ 雇用形態: "アルバイト", 基準時給: "1300" }))).toBe("toss");
     expect(roleFromRoster(record({ 雇用形態: "アルバイト", 基準時給: "1600", チーム名: "バックヤード" }))).toBe("staff");
+  });
+
+  it("treats officer as a staff role when no existing role is present", () => {
+    expect(roleFromRoster(record({ 雇用形態: "役員", 基準時給: "1600" }))).toBe("staff");
   });
 });
 

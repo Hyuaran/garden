@@ -323,8 +323,9 @@ export function mapRosterRecordToRoot(record: KintoneRecord, existing?: RootEmpl
   };
 }
 
-function normalizeEmploymentType(value: string | null | undefined): string {
+export function normalizeEmploymentType(value: string | null | undefined): string {
   const source = value ?? "";
+  if (/役員/.test(source)) return "役員";
   if (/アルバイト|パート/.test(source)) return "アルバイト";
   if (/外注|業務委託|outsource/i.test(source)) return "outsource";
   return "正社員";

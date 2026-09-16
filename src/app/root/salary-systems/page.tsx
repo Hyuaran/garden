@@ -21,7 +21,7 @@ import {
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
-const EMP_TYPES = ["正社員", "アルバイト", "共通"];
+const EMP_TYPES = ["役員", "正社員", "アルバイト", "共通"];
 const BASE_TYPES = ["月給", "時給", "日給"];
 
 const emptySystem = (nextId: string): SalarySystem => ({

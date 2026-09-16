@@ -50,9 +50,10 @@ function baseEmployee(overrides: Partial<Employee> = {}): Employee {
 }
 
 describe("validateEmployee — employment_type", () => {
-  it("accepts 正社員 / アルバイト", () => {
+  it("accepts 正社員 / アルバイト / 役員", () => {
     expect(validateEmployee(baseEmployee({ employment_type: "正社員" })).employment_type).toBeUndefined();
     expect(validateEmployee(baseEmployee({ employment_type: "アルバイト" })).employment_type).toBeUndefined();
+    expect(validateEmployee(baseEmployee({ employment_type: "役員" })).employment_type).toBeUndefined();
   });
 
   it("accepts outsource (Phase A-3-g)", () => {
@@ -61,9 +62,10 @@ describe("validateEmployee — employment_type", () => {
   });
 
   it("rejects unknown employment_type values", () => {
-    const errs = validateEmployee(baseEmployee({ employment_type: "freelancer" }));
+    const errs = validateEmployee(baseEmployee({ employment_type: "社長" }));
     expect(errs.employment_type).toBeDefined();
     expect(errs.employment_type).toContain("外注");
+    expect(errs.employment_type).toContain("役員");
   });
 });
 

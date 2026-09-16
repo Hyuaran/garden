@@ -173,9 +173,9 @@ export function validateEmployee(em: Employee): FieldErrors {
   if (!em.company_id) e.company_id = "必須";
   if (!em.employment_type) e.employment_type = "必須";
   else if (
-    !["正社員", "アルバイト", "outsource"].includes(em.employment_type)
+    !["正社員", "アルバイト", "outsource", "役員"].includes(em.employment_type)
   ) {
-    e.employment_type = "正社員 / アルバイト / 外注 のいずれか";
+    e.employment_type = "正社員 / アルバイト / 外注 / 役員 のいずれか";
   }
   if (!em.salary_system_id) e.salary_system_id = "必須";
   if (!em.hire_date) e.hire_date = "必須";

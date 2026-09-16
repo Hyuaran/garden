@@ -35,6 +35,7 @@ import { GardenRoleField } from "./GardenRoleField";
  * Phase A-3-g で 'outsource' を追加（DB は英語、UI は「外注」表示）。
  */
 const EMP_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "役員",       label: "役員" },
   { value: "正社員",    label: "正社員" },
   { value: "アルバイト", label: "アルバイト" },
   { value: "outsource", label: "外注" },

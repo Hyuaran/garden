@@ -94,7 +94,7 @@ export interface Vendor {
 export interface SalarySystem {
   salary_system_id: string; // SAL-SYS-001
   system_name: string;
-  employment_type: string; // 正社員/アルバイト/共通
+  employment_type: string; // 役員/正社員/アルバイト/共通
   base_salary_type: string; // 月給/時給/日給
   working_hours_day: number;
   working_days_month: number;
@@ -118,7 +118,7 @@ export interface Employee {
   name: string;
   name_kana: string;
   company_id: string;
-  employment_type: string; // 正社員 / アルバイト / outsource（Phase A-3-g）
+  employment_type: string; // 正社員 / アルバイト / outsource（Phase A-3-g） / 役員
   salary_system_id: string;
   hire_date: string; // YYYY-MM-DD
   termination_date: string | null;
