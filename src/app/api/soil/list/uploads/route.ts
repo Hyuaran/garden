@@ -21,6 +21,11 @@ type UploadRecord = {
   購入先: string | null;
   created_by: string | null;
   created_at: string;
+  source_kind?: "import_file" | "raw_excel";
+  raw_file_names?: string[] | null;
+  excluded_assignment?: number | null;
+  excluded_order?: number | null;
+  needs_review?: number | null;
 };
 
 type UploadDb = {
@@ -106,7 +111,7 @@ export async function GET() {
   const db = getSupabaseAdmin() as unknown as UploadDb;
   const { data, error } = await db
     .from(SOIL_LIST_TABLES.upload)
-    .select("id,file_name,format,row_count,list_names,result,status,購入先,created_by,created_at")
+    .select("id,file_name,format,row_count,list_names,result,status,購入先,created_by,created_at,source_kind,raw_file_names,excluded_assignment,excluded_order,needs_review")
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) return NextResponse.json({ ok: false, error: "取り込みの記録を読み込めませんでした" }, { status: 500 });
@@ -144,6 +149,11 @@ export async function POST(request: Request) {
         list_names: listNameCounts(parsed.rows),
         購入先: purchaseVendor,
         購入日: todayInJapan(),
+        source_kind: "import_file",
+        raw_file_names: [],
+        excluded_assignment: 0,
+        excluded_order: 0,
+        needs_review: parsed.rows.filter((row) => row.checkReason).length,
         result: null,
         status: "processing",
         created_by: auth.user.name,

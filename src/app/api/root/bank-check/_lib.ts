@@ -141,7 +141,12 @@ export async function applyBankCheckFinding(admin: SupabaseClient, actorEmployee
   if (!employeeId || !input.payload || typeof input.payload !== "object") throw new Error("invalid_payload");
   const current = await getCurrentProfile(admin as never, employeeId, true);
   const base = (current.bank_account?.payload ?? {}) as Record<string, unknown>;
-  const next = { ...base, ...(input.payload as Record<string, unknown>) };
+  const incoming = input.payload as Record<string, unknown>;
+  // サブ口座（2 つ目の口座）の補正は sub_account の中身だけを合成する（丸ごと置き換えると口座番号が消える）
+  const next: Record<string, unknown> = { ...base, ...incoming };
+  if (incoming.sub_account && typeof incoming.sub_account === "object") {
+    next.sub_account = { ...((base.sub_account as Record<string, unknown> | undefined) ?? {}), ...(incoming.sub_account as Record<string, unknown>) };
+  }
   const added = await insertProfileHistoryIfChanged(admin as never, {
     employee_id: employeeId,
     category: "bank_account",

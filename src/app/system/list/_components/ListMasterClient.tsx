@@ -119,6 +119,14 @@ type UploadPreview = {
   warnings: { emptyPhoneRows: number; shortPhoneRows: number; unreadableListDateNames: number };
 };
 
+type RawUploadPreview = {
+  files: Array<{ fileName: string; kind: "hikari" | "kureka"; rowCount: number }>;
+  summary: { readRows: number; importRows: number; excludedRows: number; needsReviewRows: number; excludedAssignment: number; excludedOrder: number };
+  listNames: Array<{ name: string; count: number; needsReview: number; excluded: number }>;
+  needsReview: Array<{ rowNumber: number; listName: string | null; name: string; phone: string; reasons: string[] }>;
+  excluded: Array<{ rowNumber: number; listName: string | null; phone: string; reason: string | undefined }>;
+};
+
 type UploadResult = {
   assignments: number;
   assignments_new: number;
@@ -144,6 +152,11 @@ type UploadHistory = {
   購入先: string | null;
   created_by: string | null;
   created_at: string;
+  source_kind?: "import_file" | "raw_excel";
+  raw_file_names?: string[] | null;
+  excluded_assignment?: number | null;
+  excluded_order?: number | null;
+  needs_review?: number | null;
 };
 
 type InternalBlockRow = {
@@ -312,7 +325,7 @@ const initialFilters: FilterState = {
   internalBlock: "なし",
 };
 
-const ACCEPTED_UPLOAD_EXTENSIONS = [".csv", ".xlsx", ".mer"];
+const ACCEPTED_UPLOAD_EXTENSIONS = [".csv", ".xlsx", ".xls", ".mer"];
 const ANALYSIS_ROW_LIMIT = 50;
 const EXCEL_MAX_EXPORT_ROWS = 1048575;
 const LARGE_EXPORT_CONFIRM_ROWS = 100000;
@@ -791,8 +804,9 @@ function derivedResultLine(result: UploadResult): string {
 }
 
 function uploadHistoryStatus(item: UploadHistory): string {
+  const prefix = item.source_kind === "raw_excel" ? "元 Excel／" : "";
   if (item.status === "done" && item.result) {
-    return `新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}／購入履歴 ${(item.result.purchase_inserted ?? 0).toLocaleString("ja-JP")}／元回線 ${(item.result.line_type_set ?? 0).toLocaleString("ja-JP")}／区分 ${(item.result.category_set ?? 0).toLocaleString("ja-JP")}`;
+    return `${prefix}新規 ${item.result.parent_inserted.toLocaleString("ja-JP")}／更新 ${item.result.parent_updated.toLocaleString("ja-JP")}／購入履歴 ${(item.result.purchase_inserted ?? 0).toLocaleString("ja-JP")}／元回線 ${(item.result.line_type_set ?? 0).toLocaleString("ja-JP")}／区分 ${(item.result.category_set ?? 0).toLocaleString("ja-JP")}`;
   }
   if (item.result && (item.status === "failed" || item.result.remaining > 0)) {
     return `途中で止まりました（電話番号台帳へ反映 ${item.result.assignments.toLocaleString("ja-JP")} / ${item.row_count.toLocaleString("ja-JP")}）`;
@@ -1077,13 +1091,15 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [activeTab, setActiveTab] = useState<ActiveTab>("list");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
+  const [rawUploadPreview, setRawUploadPreview] = useState<RawUploadPreview | null>(null);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [uploadHistory, setUploadHistory] = useState<UploadHistory[]>([]);
   const [purchaseVendors, setPurchaseVendors] = useState<PurchaseVendorOption[]>([]);
   const [purchaseVendor, setPurchaseVendor] = useState("");
   const [purchaseVendorOther, setPurchaseVendorOther] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
-  const [uploadBusy, setUploadBusy] = useState<"preview" | "import" | null>(null);
+  const [uploadMode, setUploadMode] = useState<"raw" | "import">("raw");
+  const [uploadBusy, setUploadBusy] = useState<"preview" | "import" | "download" | null>(null);
   const [uploadApplyBusyId, setUploadApplyBusyId] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
@@ -1622,14 +1638,16 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setUploadMessage("");
     setUploadResult(null);
     setUploadPreview(null);
+    setRawUploadPreview(null);
     if (!next) {
       setUploadFile(null);
       return;
     }
     const extension = fileExtension(next.name);
-    if (!ACCEPTED_UPLOAD_EXTENSIONS.includes(extension)) {
+    const allowed = uploadMode === "raw" ? [".csv", ".xlsx", ".xls"] : [".csv", ".xlsx", ".mer"];
+    if (!allowed.includes(extension)) {
       setUploadFile(null);
-      setUploadMessage("CSV・Excel・.mer のファイルを選んでください");
+      setUploadMessage(uploadMode === "raw" ? "CSV・Excel のファイルを選んでください" : "CSV・Excel・.mer のファイルを選んでください");
       return;
     }
     if (next.size > MAX_UPLOAD_SIZE) {
@@ -1641,12 +1659,75 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setUploadBusy("preview");
     try {
       const form = new FormData();
-      form.set("file", next);
-      const response = await fetch("/api/soil/list/uploads/preview", { method: "POST", body: form });
-      const data = await readJson<{ ok: boolean; preview: UploadPreview }>(response);
-      setUploadPreview(data.preview);
+      if (uploadMode === "raw") {
+        form.append("files", next);
+        const response = await fetch("/api/soil/list/uploads/raw/preview", { method: "POST", body: form });
+        const data = await readJson<{ ok: boolean; preview: RawUploadPreview }>(response);
+        setRawUploadPreview(data.preview);
+      } else {
+        form.set("file", next);
+        const response = await fetch("/api/soil/list/uploads/preview", { method: "POST", body: form });
+        const data = await readJson<{ ok: boolean; preview: UploadPreview }>(response);
+        setUploadPreview(data.preview);
+      }
     } catch (error) {
       setUploadMessage(error instanceof Error ? error.message : "取り込めませんでした（ファイルを読み取れませんでした）");
+    } finally {
+      setUploadBusy(null);
+    }
+  }
+
+  async function handleRawDownload() {
+    if (!uploadFile) return;
+    setUploadBusy("download");
+    setUploadMessage("");
+    try {
+      const form = new FormData();
+      form.append("files", uploadFile);
+      form.set("action", "download");
+      const response = await fetch("/api/soil/list/uploads/raw/preview", { method: "POST", body: form });
+      if (!response.ok) {
+        const data = await readJson<{ error?: string }>(response);
+        throw new Error(data.error ?? "取込ファイルを作れませんでした");
+      }
+      const blob = await response.blob();
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = "統合インポート_光回線＋クレカ.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(href);
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : "取込ファイルを作れませんでした");
+    } finally {
+      setUploadBusy(null);
+    }
+  }
+
+  async function handleRawImport() {
+    if (!uploadFile) return;
+    const vendor = purchaseVendor === "__other__" ? purchaseVendorOther.trim() : purchaseVendor.trim();
+    if (!vendor) {
+      setUploadMessage("購入先を選んでください");
+      return;
+    }
+    setUploadBusy("import");
+    setUploadMessage("");
+    setUploadResult(null);
+    try {
+      const form = new FormData();
+      form.append("files", uploadFile);
+      form.set("action", "import");
+      form.set("purchaseVendor", vendor);
+      const response = await fetch("/api/soil/list/uploads/raw/preview", { method: "POST", body: form });
+      const data = await readJson<{ ok: boolean; result?: UploadResult; error?: string }>(response);
+      setUploadResult(data.result ?? null);
+      await loadUploadHistory();
+      setUploadMessage(data.ok ? (data.result?.warning ?? "") : (data.error ?? "取り込めませんでした"));
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : "取り込めませんでした");
     } finally {
       setUploadBusy(null);
     }
@@ -2370,9 +2451,31 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               ref={fileInputRef}
               className={styles.hiddenFileInput}
               type="file"
-              accept=".csv,.xlsx,.mer"
+              accept={uploadMode === "raw" ? ".csv,.xlsx,.xls" : ".csv,.xlsx,.mer"}
               onChange={(event) => void previewFile(event.target.files?.[0] ?? null)}
             />
+            <div className={styles.uploadChoiceBox}>
+              <label>
+                <input
+                  type="radio"
+                  checked={uploadMode === "raw"}
+                  onChange={() => { setUploadMode("raw"); void previewFile(null); }}
+                />
+                営業の元 Excel（光回線／クレカ）
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  checked={uploadMode === "import"}
+                  onChange={() => { setUploadMode("import"); void previewFile(null); }}
+                />
+                取込ファイル（8 列／10 列／19 列）
+              </label>
+              <div className={styles.templateActions}>
+                <a href="/api/soil/list/uploads/template?kind=hikari">光回線（8 列）をダウンロード</a>
+                <a href="/api/soil/list/uploads/template?kind=kureka">クレカ（19 列）をダウンロード</a>
+              </div>
+            </div>
             <div className={styles.purchaseVendorRow}>
               <label>
                 購入先
@@ -2398,7 +2501,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               className={`${styles.dropZone} ${dragActive ? styles.dropZoneActive : ""}`}
               role="button"
               tabIndex={0}
-              aria-label="リストの取込ファイルをアップロード"
+              aria-label={uploadMode === "raw" ? "営業の元 Excel をアップロード" : "リストの取込ファイルをアップロード"}
               onClick={() => fileInputRef.current?.click()}
               onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") fileInputRef.current?.click(); }}
               onDragEnter={(event) => { event.preventDefault(); setDragActive(true); }}
@@ -2422,7 +2525,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               ) : (
                 <>
                   <div className={styles.uploadNotes}>
-                    <span>ここにファイルをドラッグ＆ドロップ（CSV／Excel／.mer）</span>
+                    <span>{uploadMode === "raw" ? "ここに営業の元 Excel をドラッグ＆ドロップ（CSV／Excel）" : "ここに取込ファイルをドラッグ＆ドロップ（CSV／Excel／.mer）"}</span>
                     <span>20MB・50,000行まで</span>
                   </div>
                   <button type="button" className={styles.uploadButton} onClick={(event) => { event.stopPropagation(); fileInputRef.current?.click(); }}>
@@ -2435,6 +2538,47 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             {uploadBusy === "preview" && <p className={styles.loading} role="status"><span />中身を確認しています…</p>}
             {uploadMessage && <p className={styles.message}>{uploadMessage}</p>}
           </section>
+
+          {rawUploadPreview && (
+            <section className={styles.panel} aria-labelledby="upload-step-2">
+              <div className={styles.stepHeading}>
+                <span><small>STEP</small><strong>2</strong></span>
+                <h2 id="upload-step-2">チェック結果</h2>
+              </div>
+              <p className={styles.result}>
+                読み込んだ行 {rawUploadPreview.summary.readRows.toLocaleString("ja-JP")} ／ 取込ファイルに出す行 {rawUploadPreview.summary.importRows.toLocaleString("ja-JP")} ／ 除外 {rawUploadPreview.summary.excludedRows.toLocaleString("ja-JP")} ／ 要確認 {rawUploadPreview.summary.needsReviewRows.toLocaleString("ja-JP")}
+              </p>
+              <div className={styles.summaryList}>
+                {rawUploadPreview.listNames.slice(0, 8).map((item) => (
+                  <span key={item.name}>{item.name} {item.count.toLocaleString("ja-JP")} 行（除外 {item.excluded.toLocaleString("ja-JP")}・要確認 {item.needsReview.toLocaleString("ja-JP")}）</span>
+                ))}
+              </div>
+              {rawUploadPreview.needsReview.length > 0 && (
+                <div className={styles.tableWrap}>
+                  <table>
+                    <thead><tr><th>行</th><th>リスト名</th><th>氏名</th><th>電話番号</th><th>指摘</th></tr></thead>
+                    <tbody>
+                      {rawUploadPreview.needsReview.map((row) => (
+                        <tr key={`${row.rowNumber}-${row.phone}`}><td>{row.rowNumber}</td><td>{row.listName ?? ""}</td><td>{row.name}</td><td>{row.phone}</td><td>{row.reasons.join("／")}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className={styles.warningLine}>
+                除外：過去に配った番号 {rawUploadPreview.summary.excludedAssignment.toLocaleString("ja-JP")} 件／案件あり {rawUploadPreview.summary.excludedOrder.toLocaleString("ja-JP")} 件
+              </p>
+              <div className={styles.actions}>
+                <button type="button" onClick={handleRawDownload} disabled={uploadBusy !== null}>
+                  {uploadBusy === "download" ? "作っています…" : "取込ファイルをダウンロード（19 列）"}
+                </button>
+                <button type="button" onClick={handleRawImport} disabled={uploadBusy !== null || !purchaseVendor || (purchaseVendor === "__other__" && !purchaseVendorOther.trim())}>
+                  {uploadBusy === "import" ? "登録しています…" : "Garden に登録する"}
+                </button>
+                <button type="button" className={styles.secondaryButton} onClick={() => void previewFile(null)} disabled={uploadBusy !== null}>やり直す</button>
+              </div>
+            </section>
+          )}
 
           {uploadPreview && (
             <section className={styles.panel} aria-labelledby="upload-step-2">

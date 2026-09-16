@@ -118,7 +118,7 @@ export default function BankCheckPage() {
     const response = await fetch("/api/root/bank-check/apply", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ employee_id: row.employeeId, payload: row.candidate, issue: row.issueLabel }),
+      body: JSON.stringify({ employee_id: row.employeeId, payload: row.id.endsWith(":sub") ? { sub_account: row.candidate } : row.candidate, issue: row.id.endsWith(":sub") ? `サブ口座 ${row.issueLabel}` : row.issueLabel }),
     });
     const body = await response.json();
     if (!response.ok) {
