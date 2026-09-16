@@ -137,6 +137,8 @@ type UploadResult = {
   skipped: number;
   remaining: number;
   purchase_inserted: number;
+  purchase_initial_inserted?: number;
+  purchase_repurchase_inserted?: number;
   line_type_set: number;
   category_set: number;
   warning?: string;
@@ -223,6 +225,15 @@ type AnalysisSegment = {
   orderRateValid: number;
   orderRateTotal: number;
   results: AnalysisResultBreakdown[];
+  repurchaseCount?: number;
+  repurchaseSources?: string;
+};
+
+type AnalysisRepurchasePair = {
+  sourceVendor: string;
+  targetVendor: string;
+  phoneCount: number;
+  orderCount: number;
 };
 
 type AnalysisPayload = {
@@ -236,6 +247,7 @@ type AnalysisPayload = {
     activeList: { segments: AnalysisSegment[] };
     contract: { segments: AnalysisSegment[]; snapshotAt: string | null };
   };
+  repurchasePairs: AnalysisRepurchasePair[];
 };
 
 type AnalysisAxis = "vendor" | "line_type" | "contract_year";
@@ -250,6 +262,8 @@ type AnalysisSortKey =
   | "validCount"
   | "orderCount"
   | "orderCaseCount"
+  | "repurchaseCount"
+  | "repurchaseSources"
   | "acquiredCount"
   | "orderRateValid"
   | "orderRateTotal";
@@ -264,6 +278,8 @@ const ANALYSIS_TABLE_COLUMNS: Array<{ key: AnalysisSortKey; label: string; sub?:
   { key: "validCount", label: "有効" },
   { key: "orderCount", label: "受注", sub: "顧客数" },
   { key: "orderCaseCount", label: "受注", sub: "案件数" },
+  { key: "repurchaseCount", label: "買い直し", sub: "数" },
+  { key: "repurchaseSources", label: "買い直し", sub: "元" },
   { key: "acquiredCount", label: "獲得", sub: "（コール）" },
   { key: "orderRateValid", label: "受注率", sub: "（有効）" },
   { key: "orderRateTotal", label: "受注率", sub: "（総数）" },
@@ -348,6 +364,8 @@ const ANALYSIS_HELP: Record<"vendor" | "activeList" | "contract", { title: strin
       { label: "件数", text: "その購入先の電話番号の数（電話番号が空の行は数えない）" },
       { label: "円グラフ", text: "コール履歴の最終結果。留守・担不・無効・NG・前確OK・見込・獲得・未コール・（結果なし）を固定で出し、それ以外は「その他」。受注顧客数・受注案件数は Kintone の受注履歴から数えたもので、円グラフとは別の数え方" },
       { label: "受注率", text: "受注顧客数 ÷ 有効（件数 − 無効）。受注案件数は別列で並べます" },
+      { label: "買い直し", text: "同じ電話番号を別の購入先でも買っている数。買い直し元は多い順に 3 つまで並べます" },
+      { label: "絞り込み", text: "購入先・元回線・契約時期を同時に使えます。購入先を 2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます" },
       { label: "集計", text: "毎朝 6:45 と右上の丸い矢印で作り直し" },
     ],
   },
@@ -415,10 +433,10 @@ const GUIDE_TABLE_ROWS = [
   },
   {
     name: "購入履歴",
-    unit: "購入 1 回",
+    unit: "電話番号×購入先×購入日",
     count: "約 242 万件",
     contains: "電話番号・購入先・購入日",
-    timing: "購入や開通のたびに 1 行増える。過去の分もすべて残す",
+    timing: "買うたびに 1 行増える。同じ購入先・同じ日は 1 行にまとめ、買い直しも残す",
   },
   {
     name: "投入履歴",
@@ -713,6 +731,8 @@ function buildAnalysisTotal(segments: AnalysisSegment[], resultOrderSource: Anal
     orderRateValid: 0,
     orderRateTotal: 0,
     results: [],
+    repurchaseCount: 0,
+    repurchaseSources: "",
   };
   const results = new Map<string, number>();
   for (const segment of segments) {
@@ -722,6 +742,7 @@ function buildAnalysisTotal(segments: AnalysisSegment[], resultOrderSource: Anal
     total.invalidCount += segment.invalidCount;
     total.orderCount += segment.orderCount;
     total.orderCaseCount += segment.orderCaseCount ?? 0;
+    total.repurchaseCount = (total.repurchaseCount ?? 0) + (segment.repurchaseCount ?? 0);
     total.acquiredCount += segment.acquiredCount;
     if (segment.lastCalledOn && (!total.lastCalledOn || segment.lastCalledOn > total.lastCalledOn)) total.lastCalledOn = segment.lastCalledOn;
     if (segment.segmentLastCalledOn && (!total.segmentLastCalledOn || segment.segmentLastCalledOn > total.segmentLastCalledOn)) {
@@ -762,13 +783,6 @@ function filterActiveSegments(segments: AnalysisSegment[], days: 15 | 30): Analy
   return [buildAnalysisTotal(kept, segments), ...kept];
 }
 
-function filterVendorSegments(segments: AnalysisSegment[], selectedVendors: string[]): AnalysisSegment[] {
-  if (selectedVendors.length === 0) return segments;
-  const selected = new Set(selectedVendors);
-  const kept = segments.filter((segment) => segment.segment !== "合計" && selected.has(segment.segment));
-  return [buildAnalysisTotal(kept, segments), ...kept];
-}
-
 function sortAnalysisSegments(segments: AnalysisSegment[], sort: AnalysisSort | null): AnalysisSegment[] {
   if (!sort) return segments;
   const total = segments.find((segment) => segment.segment === "合計");
@@ -778,8 +792,13 @@ function sortAnalysisSegments(segments: AnalysisSegment[], sort: AnalysisSort | 
     if (sort.key === "segment") {
       return a.segment.localeCompare(b.segment, "ja-JP") * direction;
     }
-    const left = typeof a[sort.key] === "number" ? a[sort.key] : 0;
-    const right = typeof b[sort.key] === "number" ? b[sort.key] : 0;
+    if (sort.key === "repurchaseSources") {
+      return String(a.repurchaseSources ?? "").localeCompare(String(b.repurchaseSources ?? ""), "ja-JP") * direction;
+    }
+    const leftValue = a[sort.key];
+    const rightValue = b[sort.key];
+    const left = typeof leftValue === "number" ? leftValue : 0;
+    const right = typeof rightValue === "number" ? rightValue : 0;
     const diff = left - right;
     if (diff !== 0) return diff * direction;
     return a.segment.localeCompare(b.segment, "ja-JP");
@@ -796,7 +815,10 @@ function parentResultLine(result: UploadResult): string {
 }
 
 function purchaseResultLine(result: UploadResult): string {
-  return `購入履歴：新規 ${(result.purchase_inserted ?? 0).toLocaleString("ja-JP")} 件`;
+  const total = result.purchase_inserted ?? 0;
+  const initial = result.purchase_initial_inserted ?? total;
+  const repurchase = result.purchase_repurchase_inserted ?? 0;
+  return `購入履歴：${total.toLocaleString("ja-JP")} 件（初めて ${initial.toLocaleString("ja-JP")}・買い直し ${repurchase.toLocaleString("ja-JP")}）`;
 }
 
 function derivedResultLine(result: UploadResult): string {
@@ -1107,9 +1129,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [activeListDays, setActiveListDays] = useState<15 | 30>(30);
   const [analysisSorts, setAnalysisSorts] = useState<Record<AnalysisBlockKey, AnalysisSort | null>>({ vendor: null, line_type: null, contract_year: null, active_list: null, contract: null });
   const [analysisVendorFilter, setAnalysisVendorFilter] = useState<string[]>([]);
+  const [analysisLineTypeFilter, setAnalysisLineTypeFilter] = useState<string[]>([]);
+  const [analysisContractYearFilter, setAnalysisContractYearFilter] = useState<string[]>([]);
   const [analysisAxis, setAnalysisAxis] = useState<AnalysisAxis>("vendor");
-  const [vendorAndSegments, setVendorAndSegments] = useState<AnalysisSegment[] | null>(null);
-  const [vendorAndBusy, setVendorAndBusy] = useState(false);
+  const [analysisFilteredSegments, setAnalysisFilteredSegments] = useState<AnalysisSegment[] | null>(null);
+  const [analysisFilteredBusy, setAnalysisFilteredBusy] = useState(false);
   // 表は上位 50 行だけ描く（購入先は 2,400 種類あり、全部描くと画面が固まった。2026-09-13 本番で確認）
   const [showAllSegments, setShowAllSegments] = useState<Record<AnalysisBlockKey, boolean>>({ vendor: false, line_type: false, contract_year: false, active_list: false, contract: false });
   const [analysisDetail, setAnalysisDetail] = useState<{
@@ -1216,25 +1240,28 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
-  async function loadVendorAndAnalysis(vendors: string[], axis: AnalysisAxis) {
-    if (vendors.length < 2) {
-      setVendorAndSegments(null);
+  async function loadFilteredAnalysis(vendors: string[], lineTypes: string[], contractYears: string[], axis: AnalysisAxis) {
+    if (vendors.length === 0 && lineTypes.length === 0 && contractYears.length === 0) {
+      setAnalysisFilteredSegments(null);
       return;
     }
-    setVendorAndBusy(true);
+    setAnalysisFilteredBusy(true);
     setAnalysisMessage("");
     try {
       const params = new URLSearchParams({ axis });
       for (const vendor of vendors) params.append("vendor", vendor);
+      for (const lineType of lineTypes) params.append("lineType", lineType);
+      for (const contractYear of contractYears) params.append("contractYear", contractYear);
       const response = await fetch(`/api/soil/list/analysis?${params.toString()}`);
-      const data = await readJson<{ ok: boolean; block: { segments: AnalysisSegment[] } }>(response);
-      setVendorAndSegments(data.block.segments);
+      const data = await readJson<{ ok: boolean; block: { segments: AnalysisSegment[] }; error?: string }>(response);
+      if (!response.ok || !data.ok) throw new Error(data.error ?? "分析を読み込めませんでした");
+      setAnalysisFilteredSegments(data.block.segments);
       setAnalysisSelections((current) => ({ ...current, vendor: "合計" }));
     } catch (error) {
-      setVendorAndSegments(null);
+      setAnalysisFilteredSegments(null);
       setAnalysisMessage(error instanceof Error ? error.message : "分析を読み込めませんでした");
     } finally {
-      setVendorAndBusy(false);
+      setAnalysisFilteredBusy(false);
     }
   }
 
@@ -1252,8 +1279,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
 
   useEffect(() => {
     if (activeTab !== "analysis") return;
-    void loadVendorAndAnalysis(analysisVendorFilter, analysisAxis);
-  }, [activeTab, analysisAxis, analysisVendorFilter]);
+    void loadFilteredAnalysis(analysisVendorFilter, analysisLineTypeFilter, analysisContractYearFilter, analysisAxis);
+  }, [activeTab, analysisAxis, analysisVendorFilter, analysisLineTypeFilter, analysisContractYearFilter]);
 
   useEffect(() => {
     if (activeTab !== "guide") return;
@@ -1787,17 +1814,17 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   );
   const axisSegments = useMemo(() => {
     if (!analysis) return [];
-    if (analysisAxis === "line_type") return analysis.blocks.lineType.segments;
-    if (analysisAxis === "contract_year") return analysis.blocks.contractYear.segments;
+    if (analysisAxis === "line_type") return analysis.blocks.lineType?.segments ?? [];
+    if (analysisAxis === "contract_year") return analysis.blocks.contractYear?.segments ?? [];
     return analysis.blocks.vendor.segments;
   }, [analysis, analysisAxis]);
+  const hasAnalysisFilters = analysisVendorFilter.length > 0 || analysisLineTypeFilter.length > 0 || analysisContractYearFilter.length > 0;
   const vendorSegments = useMemo(
     () => {
-      if (analysisVendorFilter.length >= 2) return vendorAndSegments ?? [];
-      if (analysisAxis !== "vendor") return axisSegments;
-      return filterVendorSegments(axisSegments, analysisVendorFilter);
+      if (hasAnalysisFilters) return analysisFilteredSegments ?? [];
+      return axisSegments;
     },
-    [analysisAxis, analysisVendorFilter, axisSegments, vendorAndSegments],
+    [analysisFilteredSegments, axisSegments, hasAnalysisFilters],
   );
   const vendorFilterGroups = useMemo<MultiSelectOptionGroup[]>(() => {
     const optionsForFilter = (analysis?.blocks.vendor.segments ?? [])
@@ -1809,6 +1836,25 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         empty: false,
       }))
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "ja-JP"));
+    return [{ options: optionsForFilter }];
+  }, [analysis]);
+  const analysisLineTypeFilterGroups = useMemo<MultiSelectOptionGroup[]>(
+    () => buildOptionGroups("lineType", options.lineType ?? []),
+    [options.lineType],
+  );
+  const analysisContractYearFilterGroups = useMemo<MultiSelectOptionGroup[]>(() => {
+    const optionsForFilter = (analysis?.blocks.contractYear?.segments ?? [])
+      .filter((segment) => segment.segment !== "合計")
+      .map<SoilListOptionItem>((segment) => ({
+        value: segment.segment,
+        label: segment.segment,
+        count: segment.rowCount,
+        empty: segment.segment === "（契約時期なし）",
+      }))
+      .sort((a, b) => {
+        if (a.empty !== b.empty) return a.empty ? 1 : -1;
+        return b.label.localeCompare(a.label, "ja-JP");
+      });
     return [{ options: optionsForFilter }];
   }, [analysis]);
 
@@ -1825,11 +1871,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }
 
   function analysisSegmentLabel(block: AnalysisBlockKey, segment: AnalysisSegment): string {
-    if (block === "vendor" && segment.segment === "合計" && analysisVendorFilter.length >= 2) {
-      return `${analysisVendorFilter.join(" かつ ")}：${formatCount(segment.rowCount)} 件`;
-    }
-    if (block === "vendor" && segment.segment === "合計" && analysisVendorFilter.length > 0 && analysisAxis === "vendor") {
-      return `合計（選んだ ${analysisVendorFilter.length.toLocaleString("ja-JP")} つ）`;
+    if (block === "vendor" && segment.segment === "合計" && hasAnalysisFilters) {
+      return `合計（絞り込み）：${formatCount(segment.rowCount)} 件`;
     }
     return segment.segment;
   }
@@ -1846,7 +1889,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         title: "① 元回線 の数え方",
         rows: [
           { label: "区切り", text: "電話番号台帳の「元回線」。空欄は「（元回線なし）」" },
-          { label: "購入先で絞る", text: "2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます" },
+          { label: "絞り込み", text: "購入先・元回線・契約時期を同時に使えます。購入先を 2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます" },
           { label: "受注率", text: "受注顧客数 ÷ 有効（件数 − 無効）。受注案件数は別列で並べます" },
         ],
       };
@@ -1856,7 +1899,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         title: "① 契約時期（年） の数え方",
         rows: [
           { label: "区切り", text: "電話番号台帳の「契約時期」の年。空欄は「（契約時期なし）」" },
-          { label: "購入先で絞る", text: "2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます" },
+          { label: "絞り込み", text: "購入先・元回線・契約時期を同時に使えます。購入先を 2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます" },
           { label: "受注率", text: "受注顧客数 ÷ 有効（件数 − 無効）。受注案件数は別列で並べます" },
         ],
       };
@@ -1882,7 +1925,10 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     const hasLimitedRows = block === "vendor" && analysisVendorFilter.length > 0 ? false : segments.length > ANALYSIS_ROW_LIMIT;
     const visibleSegments = showAll || !hasLimitedRows ? sortedSegments : sortedSegments.slice(0, ANALYSIS_ROW_LIMIT);
     const segmentColumnLabel = block === "vendor" ? analysisAxisLabel(analysisAxis) : block === "contract" ? "既契約情報" : "リスト名";
-    const tableColumns = ANALYSIS_TABLE_COLUMNS.map((column) => (column.key === "segment" ? { ...column, label: segmentColumnLabel } : column));
+    const showRepurchaseColumns = block === "vendor" && analysisAxis === "vendor";
+    const tableColumns = ANALYSIS_TABLE_COLUMNS
+      .filter((column) => (column.key !== "repurchaseCount" && column.key !== "repurchaseSources") || showRepurchaseColumns)
+      .map((column) => (column.key === "segment" ? { ...column, label: segmentColumnLabel } : column));
     const chartData: ChartData<"doughnut"> = {
       labels: selected?.results.map((item) => item.result) ?? [],
       datasets: [
@@ -1952,11 +1998,27 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 searchable
                 initialLimit={100}
               />
-              <small className={styles.analysisFilterNote}>2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます（かつ）</small>
+              <div className={styles.analysisFilterGrid}>
+                <MultiSelectFilter
+                  label="元回線で絞る"
+                  value={analysisLineTypeFilter}
+                  groups={analysisLineTypeFilterGroups}
+                  onChange={setAnalysisLineTypeFilter}
+                  searchable
+                />
+                <MultiSelectFilter
+                  label="契約時期で絞る"
+                  value={analysisContractYearFilter}
+                  groups={analysisContractYearFilterGroups}
+                  onChange={setAnalysisContractYearFilter}
+                  searchable
+                />
+              </div>
+              <small className={styles.analysisFilterNote}>購入先・元回線・契約時期を同時に絞れます。購入先を 2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます（かつ）。</small>
             </div>
           ) : controls}
         </div>
-        {block === "vendor" && vendorAndBusy ? (
+        {block === "vendor" && analysisFilteredBusy ? (
           <div className={styles.loading}><span />読み込んでいます</div>
         ) : segments.length === 0 ? (
           <p className={styles.empty}>{emptyText}</p>
@@ -2032,6 +2094,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                         <td>{formatCount(segment.validCount)}</td>
                         <td className={valueClassName(segment.orderCount)}>{formatCount(segment.orderCount)}</td>
                         <td className={valueClassName(segment.orderCaseCount ?? 0)}>{formatCount(segment.orderCaseCount ?? 0)}</td>
+                        {showRepurchaseColumns && <td className={valueClassName(segment.repurchaseCount ?? 0)}>{formatCount(segment.repurchaseCount ?? 0)}</td>}
+                        {showRepurchaseColumns && <td>{segment.repurchaseSources ?? ""}</td>}
                         <td className={valueClassName(segment.acquiredCount)}>{formatCount(segment.acquiredCount)}</td>
                         <td>{formatRate(segment.orderRateValid)}</td>
                         <td>{formatRate(segment.orderRateTotal)}</td>
@@ -2053,6 +2117,37 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             </div>
           </>
         )}
+      </section>
+    );
+  }
+
+  function renderRepurchasePairs() {
+    if (!analysis?.repurchasePairs || analysis.repurchasePairs.length === 0) return null;
+    return (
+      <section className={styles.analysisBlock}>
+        <div className={styles.analysisBlockHeader}>
+          <h3>買い直し</h3>
+        </div>
+        <div className={`${styles.tableWrap} ${styles.analysisTableWrap}`}>
+          <table className={styles.analysisTable}>
+            <thead>
+              <tr>
+                <th>組み合わせ</th>
+                <th>番号数</th>
+                <th>受注顧客数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.repurchasePairs.map((row) => (
+                <tr key={`${row.sourceVendor}->${row.targetVendor}`}>
+                  <td>{row.sourceVendor} → {row.targetVendor}</td>
+                  <td>{formatCount(row.phoneCount)}</td>
+                  <td className={valueClassName(row.orderCount)}>{formatCount(row.orderCount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     );
   }
@@ -2495,7 +2590,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   <input value={purchaseVendorOther} onChange={(event) => setPurchaseVendorOther(event.target.value)} />
                 </label>
               )}
-              <span>初めての電話番号は、この購入先で購入履歴に入ります</span>
+              <span>この購入先で買った番号は、購入履歴に残ります</span>
             </div>
             <div
               className={`${styles.dropZone} ${dragActive ? styles.dropZoneActive : ""}`}
@@ -2685,6 +2780,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 undefined,
                 analysisAxisHelp(analysisAxis),
               )}
+              {renderRepurchasePairs()}
               {renderAnalysisBlock(
                 "② 今コールしているリスト",
                 "active_list",

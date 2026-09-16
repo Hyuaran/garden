@@ -153,6 +153,8 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   validCount: 25,
                   orderCount: 3,
                   orderCaseCount: 4,
+                  repurchaseCount: 8,
+                  repurchaseSources: "",
                   acquiredCount: 1,
                   lastCalledOn: "2026-09-12",
                   segmentLastCalledOn: null,
@@ -181,6 +183,8 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   validCount: 12,
                   orderCount: 1,
                   orderCaseCount: 1,
+                  repurchaseCount: 5,
+                  repurchaseSources: "Luna 3／ABC 2",
                   acquiredCount: 0,
                   lastCalledOn: "2026-09-12",
                   segmentLastCalledOn: "2026-09-12",
@@ -198,6 +202,8 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   validCount: 8,
                   orderCount: 2,
                   orderCaseCount: 3,
+                  repurchaseCount: 3,
+                  repurchaseSources: "データ総研 3",
                   acquiredCount: 1,
                   lastCalledOn: "2026-09-11",
                   segmentLastCalledOn: "2026-09-11",
@@ -215,6 +221,8 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   validCount: 5,
                   orderCount: 0,
                   orderCaseCount: 0,
+                  repurchaseCount: 0,
+                  repurchaseSources: "",
                   acquiredCount: 0,
                   lastCalledOn: "2026-09-10",
                   segmentLastCalledOn: "2026-09-10",
@@ -222,6 +230,99 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
                   orderRateValid: 0,
                   orderRateTotal: 0,
                   results: [{ result: "留守", rowCount: 5 }],
+                },
+              ],
+            },
+            lineType: {
+              segments: [
+                {
+                  segment: "合計",
+                  rowCount: 28,
+                  calledCount: 21,
+                  callTotal: 42,
+                  invalidCount: 3,
+                  validCount: 25,
+                  orderCount: 3,
+                  orderCaseCount: 4,
+                  acquiredCount: 1,
+                  lastCalledOn: "2026-09-12",
+                  segmentLastCalledOn: null,
+                  rotation: 1.5,
+                  orderRateValid: 3 / 25,
+                  orderRateTotal: 3 / 28,
+                  results: [{ result: "留守", rowCount: 28 }],
+                },
+                {
+                  segment: "フレッツ",
+                  rowCount: 18,
+                  calledCount: 14,
+                  callTotal: 30,
+                  invalidCount: 1,
+                  validCount: 17,
+                  orderCount: 2,
+                  orderCaseCount: 2,
+                  acquiredCount: 1,
+                  lastCalledOn: "2026-09-12",
+                  segmentLastCalledOn: null,
+                  rotation: 30 / 18,
+                  orderRateValid: 2 / 17,
+                  orderRateTotal: 2 / 18,
+                  results: [{ result: "留守", rowCount: 18 }],
+                },
+              ],
+            },
+            contractYear: {
+              segments: [
+                {
+                  segment: "合計",
+                  rowCount: 28,
+                  calledCount: 21,
+                  callTotal: 42,
+                  invalidCount: 3,
+                  validCount: 25,
+                  orderCount: 3,
+                  orderCaseCount: 4,
+                  acquiredCount: 1,
+                  lastCalledOn: "2026-09-12",
+                  segmentLastCalledOn: null,
+                  rotation: 1.5,
+                  orderRateValid: 3 / 25,
+                  orderRateTotal: 3 / 28,
+                  results: [{ result: "留守", rowCount: 28 }],
+                },
+                {
+                  segment: "2024",
+                  rowCount: 9,
+                  calledCount: 8,
+                  callTotal: 15,
+                  invalidCount: 0,
+                  validCount: 9,
+                  orderCount: 1,
+                  orderCaseCount: 1,
+                  acquiredCount: 0,
+                  lastCalledOn: "2026-09-12",
+                  segmentLastCalledOn: null,
+                  rotation: 15 / 9,
+                  orderRateValid: 1 / 9,
+                  orderRateTotal: 1 / 9,
+                  results: [{ result: "留守", rowCount: 9 }],
+                },
+                {
+                  segment: "（契約時期なし）",
+                  rowCount: 4,
+                  calledCount: 2,
+                  callTotal: 3,
+                  invalidCount: 0,
+                  validCount: 4,
+                  orderCount: 0,
+                  orderCaseCount: 0,
+                  acquiredCount: 0,
+                  lastCalledOn: "2026-09-10",
+                  segmentLastCalledOn: null,
+                  rotation: 0.75,
+                  orderRateValid: 0,
+                  orderRateTotal: 0,
+                  results: [{ result: "留守", rowCount: 4 }],
                 },
               ],
             },
@@ -266,6 +367,10 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
               ],
             },
           },
+          repurchasePairs: [
+            { sourceVendor: "Luna", targetVendor: "データ総研", phoneCount: 3, orderCount: 1 },
+            { sourceVendor: "データ総研", targetVendor: "ラディッシュ", phoneCount: 2, orderCount: 0 },
+          ],
         },
       });
     }
@@ -497,27 +602,55 @@ describe("ListMasterClient analysis vendor controls", () => {
     fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
 
     await waitFor(() => {
-      const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByText("データ総研 かつ ラディッシュ：23 件"));
+      const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByText("合計（絞り込み）：23 件"));
       expect(analysisTable).toBeTruthy();
       const bodyRows = within(analysisTable as HTMLElement).getAllByRole("row").slice(1);
       expect(bodyRows).toHaveLength(3);
       expect(within(bodyRows[0]).getAllByRole("cell").map((cell) => cell.textContent).slice(0, 4)).toEqual([
-        "データ総研 かつ ラディッシュ：23 件",
+        "合計（絞り込み）：23 件",
         "23",
         "17",
         "36",
       ]);
     });
-    const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByText("データ総研 かつ ラディッシュ：23 件"));
+    const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByText("合計（絞り込み）：23 件"));
     const bodyRows = within(analysisTable as HTMLElement).getAllByRole("row").slice(1);
     expect(within(bodyRows[0]).getAllByRole("cell").map((cell) => cell.textContent).slice(0, 4)).toEqual([
-      "データ総研 かつ ラディッシュ：23 件",
+      "合計（絞り込み）：23 件",
       "23",
       "17",
       "36",
     ]);
     expect(within(bodyRows[1]).getAllByRole("cell")[0]).toHaveTextContent("データ総研");
     expect(within(bodyRows[2]).getAllByRole("cell")[0]).toHaveTextContent("ラディッシュ");
+  });
+
+  it("sends purchase vendor, line type, and contract year filters together", async () => {
+    const fetchMock = installFetch();
+    window.history.replaceState(null, "", "/system/list?tab=analysis");
+    render(<ListMasterClient />);
+
+    const vendorSection = (await screen.findByRole("heading", { name: /① どこから購入したか/ })).closest("section");
+    expect(vendorSection).not.toBeNull();
+    const vendor = within(vendorSection as HTMLElement);
+
+    fireEvent.click(vendor.getByRole("button", { name: /購入先で絞る 指定なし/ }));
+    fireEvent.click(vendor.getByRole("checkbox", { name: "データ総研（13）" }));
+    fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
+
+    fireEvent.click(vendor.getByRole("button", { name: /元回線で絞る 指定なし/ }));
+    fireEvent.click(vendor.getByRole("checkbox", { name: "フレッツ（1,200）" }));
+    fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
+
+    fireEvent.click(vendor.getByRole("button", { name: /契約時期で絞る 指定なし/ }));
+    fireEvent.click(vendor.getByRole("checkbox", { name: "2024（9）" }));
+    fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([calledUrl]) => (
+        decodeURIComponent(String(calledUrl)) === "/api/soil/list/analysis?axis=vendor&vendor=データ総研&lineType=フレッツ&contractYear=2024"
+      ))).toBe(true);
+    });
   });
 
   it("shows clickable legend rows with counts and removes the old result buttons", async () => {
@@ -535,6 +668,10 @@ describe("ListMasterClient analysis vendor controls", () => {
     const orderSummary = vendor.getByText("うち受注顧客 3 人・受注案件 4 件");
     expect(orderSummary).toBeInTheDocument();
     expect(orderSummary.closest("button")).toBeNull();
+    expect(vendor.getByRole("columnheader", { name: "買い直し数" })).toBeInTheDocument();
+    expect(vendor.getByRole("columnheader", { name: "買い直し元" })).toBeInTheDocument();
+    expect(vendor.getByText("Luna 3／ABC 2")).toBeInTheDocument();
+    expect(screen.getByText("Luna → データ総研")).toBeInTheDocument();
     expect(vendor.getByText("Kintone の受注履歴から数えた数。コール結果とは別の数え方です。")).toBeInTheDocument();
     expect(container.querySelector("[class*='resultButton']")).not.toBeInTheDocument();
 

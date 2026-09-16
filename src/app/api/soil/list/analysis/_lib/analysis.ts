@@ -50,6 +50,15 @@ export type AnalysisSegment = {
   orderRateValid: number;
   orderRateTotal: number;
   results: AnalysisResultBreakdown[];
+  repurchaseCount?: number;
+  repurchaseSources?: string;
+};
+
+export type AnalysisRepurchasePair = {
+  sourceVendor: string;
+  targetVendor: string;
+  phoneCount: number;
+  orderCount: number;
 };
 
 export type AnalysisPayload = {
@@ -63,6 +72,7 @@ export type AnalysisPayload = {
     activeList: { segments: AnalysisSegment[] };
     contract: { segments: AnalysisSegment[]; snapshotAt: string | null };
   };
+  repurchasePairs: AnalysisRepurchasePair[];
 };
 
 export type AnalysisDetailRow = {
@@ -97,6 +107,7 @@ export type AnalysisDb = {
           };
         };
       };
+      limit(count: number): QueryResult<Record<string, unknown>>;
     };
     update(values: Record<string, unknown>): {
       eq(column: string, value: unknown): Promise<{ error: DbError }>;
@@ -172,6 +183,8 @@ function emptySegment(segment: string): AnalysisSegment {
     orderRateValid: 0,
     orderRateTotal: 0,
     results: [],
+    repurchaseCount: 0,
+    repurchaseSources: "",
   };
 }
 
@@ -220,6 +233,33 @@ function buildBlock(cells: AnalysisCellRow[], block: AnalysisBlock) {
   return { segments: finalized };
 }
 
+type RepurchaseVendorRow = {
+  segment: string;
+  repurchase_count: number;
+  source_summary: string | null;
+};
+
+type RepurchasePairRow = {
+  source_vendor: string;
+  target_vendor: string;
+  phone_count: number;
+  order_count: number;
+};
+
+function decorateVendorRepurchase(segments: AnalysisSegment[], rows: RepurchaseVendorRow[]): AnalysisSegment[] {
+  const bySegment = new Map(rows.map((row) => [row.segment, row]));
+  const total = rows.reduce((sum, row) => sum + numberValue(row.repurchase_count), 0);
+  return segments.map((segment) => {
+    if (segment.segment === "合計") return { ...segment, repurchaseCount: total, repurchaseSources: "" };
+    const row = bySegment.get(segment.segment);
+    return {
+      ...segment,
+      repurchaseCount: numberValue(row?.repurchase_count),
+      repurchaseSources: row?.source_summary ?? "",
+    };
+  });
+}
+
 export async function loadAnalysisCells(db: AnalysisDb): Promise<AnalysisCellRow[]> {
   const rows: AnalysisCellRow[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -257,21 +297,54 @@ export async function loadContractSnapshotAt(db: AnalysisDb): Promise<string | n
   return data?.completed_at ?? null;
 }
 
+export async function loadRepurchaseVendors(db: AnalysisDb): Promise<RepurchaseVendorRow[]> {
+  const { data, error } = await db
+    .from("soil_list_analysis_vendor_repurchase")
+    .select("segment,repurchase_count,source_summary")
+    .order("repurchase_count", { ascending: false })
+    .range(0, 999);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as RepurchaseVendorRow[];
+}
+
+export async function loadRepurchasePairs(db: AnalysisDb): Promise<AnalysisRepurchasePair[]> {
+  const { data, error } = await db
+    .from("soil_list_analysis_repurchase_pair")
+    .select("source_vendor,target_vendor,phone_count,order_count")
+    .order("phone_count", { ascending: false })
+    .range(0, 49);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as unknown as RepurchasePairRow[]).map((row) => ({
+    sourceVendor: row.source_vendor,
+    targetVendor: row.target_vendor,
+    phoneCount: numberValue(row.phone_count),
+    orderCount: numberValue(row.order_count),
+  }));
+}
+
 export async function loadAnalysisPayload(db: AnalysisDb): Promise<AnalysisPayload> {
   const now = Date.now();
   if (cached && cached.expiresAt > now) return cached.payload;
-  const [cells, state, contractSnapshotAt] = await Promise.all([loadAnalysisCells(db), loadAnalysisState(db), loadContractSnapshotAt(db)]);
+  const [cells, state, contractSnapshotAt, repurchaseVendors, repurchasePairs] = await Promise.all([
+    loadAnalysisCells(db),
+    loadAnalysisState(db),
+    loadContractSnapshotAt(db),
+    loadRepurchaseVendors(db),
+    loadRepurchasePairs(db),
+  ]);
+  const vendor = buildBlock(cells, "vendor");
   const payload: AnalysisPayload = {
     refreshedAt: state.refreshed_at,
     elapsedMs: numberValue(state.last_elapsed_ms),
     lastError: state.last_error,
     blocks: {
-      vendor: buildBlock(cells, "vendor"),
+      vendor: { segments: decorateVendorRepurchase(vendor.segments, repurchaseVendors) },
       lineType: buildBlock(cells, "line_type"),
       contractYear: buildBlock(cells, "contract_year"),
       activeList: buildBlock(cells, "active_list"),
       contract: { ...buildBlock(cells, "contract"), snapshotAt: contractSnapshotAt },
     },
+    repurchasePairs,
   };
   cached = { expiresAt: now + CACHE_MS, payload, cells };
   return payload;
@@ -333,15 +406,19 @@ export async function loadVendorAndAnalysis(vendors: string[], axis: AnalysisAxi
   const normalized = normalizeVendorFilters(vendors);
   if (normalized.length < 2) throw new Error("購入先を 2 つ以上選んでください");
 
+  return loadFilteredAnalysis({ vendors: normalized, lineTypes: [], contractYears: [], axis });
+}
+
+export async function loadFilteredAnalysis(filters: { vendors: string[]; lineTypes: string[]; contractYears: string[]; axis: AnalysisAxis }): Promise<{ segments: AnalysisSegment[] }> {
   try {
     const { rows } = await queryPg(
-      'select * from public.soil_list_analysis_vendor_and($1::text[], $2::text)',
-      [normalized, axis],
+      'select * from public.soil_list_analysis_filtered($1::text[], $2::text[], $3::text[], $4::text)',
+      [normalizeVendorFilters(filters.vendors), filters.lineTypes, filters.contractYears, filters.axis],
     );
-    return buildBlock((rows as AnalysisCellRow[]).map((row) => ({ ...row, block: axis })), axis);
+    return buildBlock((rows as AnalysisCellRow[]).map((row) => ({ ...row, block: filters.axis })), filters.axis);
   } catch (error) {
     if (isVendorAndTooBroadError(error)) {
-      throw new Error("条件が広すぎます。購入先を減らしてください");
+      throw new Error("条件が広すぎます。絞り込みを減らしてください");
     }
     throw error;
   }

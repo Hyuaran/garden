@@ -10,6 +10,8 @@ export type UploadResult = {
   skipped: number;
   remaining: number;
   purchase_inserted: number;
+  purchase_initial_inserted: number;
+  purchase_repurchase_inserted: number;
   line_type_set: number;
   category_set: number;
   duplicate_rows?: number;
@@ -33,6 +35,8 @@ const EMPTY_RESULT: UploadResult = {
   skipped: 0,
   remaining: 0,
   purchase_inserted: 0,
+  purchase_initial_inserted: 0,
+  purchase_repurchase_inserted: 0,
   line_type_set: 0,
   category_set: 0,
 };
@@ -62,6 +66,8 @@ export function normalizeApplyResult(data: UploadResult[] | UploadResult | null)
     skipped: row?.skipped ?? 0,
     remaining: row?.remaining ?? 0,
     purchase_inserted: row?.purchase_inserted ?? 0,
+    purchase_initial_inserted: row?.purchase_initial_inserted ?? 0,
+    purchase_repurchase_inserted: row?.purchase_repurchase_inserted ?? 0,
     line_type_set: row?.line_type_set ?? 0,
     category_set: row?.category_set ?? 0,
   });
@@ -78,6 +84,8 @@ export function addUploadResults(left: UploadResult, right: UploadResult): Uploa
     skipped: left.skipped + right.skipped,
     remaining: right.remaining,
     purchase_inserted: left.purchase_inserted + right.purchase_inserted,
+    purchase_initial_inserted: left.purchase_initial_inserted + right.purchase_initial_inserted,
+    purchase_repurchase_inserted: left.purchase_repurchase_inserted + right.purchase_repurchase_inserted,
     line_type_set: left.line_type_set + right.line_type_set,
     category_set: left.category_set + right.category_set,
     duplicate_rows: left.duplicate_rows ?? right.duplicate_rows,

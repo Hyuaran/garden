@@ -141,6 +141,30 @@ function adminClient(role = "manager", contractSnapshotAt: string | null = "2026
           }),
         };
       }
+      if (table === "soil_list_analysis_vendor_repurchase") {
+        return {
+          select: () => ({
+            order: () => ({
+              range: async () => ({
+                data: [{ segment: "データ総研", repurchase_count: 4, source_summary: "Luna 3／ABC 1" }],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "soil_list_analysis_repurchase_pair") {
+        return {
+          select: () => ({
+            order: () => ({
+              range: async () => ({
+                data: [{ source_vendor: "Luna", target_vendor: "データ総研", phone_count: 3, order_count: 1 }],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
   };
@@ -174,7 +198,7 @@ describe("/api/soil/list/analysis", () => {
           vendor: {
             segments: [
               { segment: "合計", rowCount: 13, validCount: 10, orderCount: 2, orderCaseCount: 0, orderRateValid: 0.2, orderRateTotal: 2 / 13 },
-              { segment: "データ総研", rowCount: 13, callTotal: 23, rotation: 23 / 13 },
+              { segment: "データ総研", rowCount: 13, callTotal: 23, rotation: 23 / 13, repurchaseCount: 4, repurchaseSources: "Luna 3／ABC 1" },
             ],
           },
           contract: {
@@ -185,6 +209,7 @@ describe("/api/soil/list/analysis", () => {
             ],
           },
         },
+        repurchasePairs: [{ sourceVendor: "Luna", targetVendor: "データ総研", phoneCount: 3, orderCount: 1 }],
       },
     });
   });
@@ -232,7 +257,7 @@ describe("/api/soil/list/analysis", () => {
     await expect(response.json()).resolves.toMatchObject({ ok: true, rows: [{ listName: "リストA", rowCount: 10, callTotal: 20 }] });
   });
 
-  it("loads vendor AND aggregation through PostgreSQL for two or more selected vendors", async () => {
+  it("loads filtered aggregation through PostgreSQL for the selected filters", async () => {
     mocks.getAdmin.mockReturnValue(adminClient());
     mocks.queryPg.mockResolvedValue({
       rows: [
@@ -254,9 +279,9 @@ describe("/api/soil/list/analysis", () => {
         },
       ],
     });
-    const response = await GET(new Request("http://test/api/soil/list/analysis?axis=line_type&vendor=Luna&vendor=%E3%83%87%E3%83%BC%E3%82%BF%E7%B7%8F%E7%A0%94"));
+    const response = await GET(new Request("http://test/api/soil/list/analysis?axis=line_type&vendor=Luna&vendor=%E3%83%87%E3%83%BC%E3%82%BF%E7%B7%8F%E7%A0%94&lineType=%E3%83%95%E3%83%AC%E3%83%83%E3%83%84&contractYear=2024"));
     expect(response.status).toBe(200);
-    expect(mocks.queryPg).toHaveBeenCalledWith("select * from public.soil_list_analysis_vendor_and($1::text[], $2::text)", [["Luna", "データ総研"], "line_type"]);
+    expect(mocks.queryPg).toHaveBeenCalledWith("select * from public.soil_list_analysis_filtered($1::text[], $2::text[], $3::text[], $4::text)", [["Luna", "データ総研"], ["フレッツ"], ["2024"], "line_type"]);
     const data = await response.json();
     expect(data.ok).toBe(true);
     expect(data.block.segments[0]).toMatchObject({ segment: "合計", rowCount: 8, orderCount: 2, orderCaseCount: 3 });
@@ -267,7 +292,7 @@ describe("/api/soil/list/analysis", () => {
     mocks.queryPg.mockRejectedValue(new Error("canceling statement due to statement timeout"));
     const response = await GET(new Request("http://test/api/soil/list/analysis?axis=vendor&vendor=A&vendor=B"));
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toMatchObject({ ok: false, error: "条件が広すぎます。購入先を減らしてください" });
+    await expect(response.json()).resolves.toMatchObject({ ok: false, error: "条件が広すぎます。絞り込みを減らしてください" });
   });
 
   it("accepts contract detail rows", async () => {
