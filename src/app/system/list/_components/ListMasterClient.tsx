@@ -916,6 +916,132 @@ function SaveConditionModal({
   );
 }
 
+function ConfirmActionModal({
+  open,
+  title,
+  children,
+  busy,
+  confirmLabel,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  title: string;
+  children: ReactNode;
+  busy: boolean;
+  confirmLabel: string;
+  onClose(): void;
+  onConfirm(): void;
+}) {
+  useEffect(() => {
+    if (!open || busy) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [busy, open, onClose]);
+
+  if (!open) return null;
+  return createPortal(
+    <div className={styles.modalBackdrop} onMouseDown={busy ? undefined : onClose}>
+      <section className={styles.conditionModal} aria-modal="true" role="dialog" aria-labelledby="confirm-modal-heading" onMouseDown={(event) => event.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2 id="confirm-modal-heading">{title}</h2>
+          <button type="button" className={styles.modalCloseButton} onClick={onClose} aria-label="閉じる" disabled={busy}>
+            ×
+          </button>
+        </div>
+        <div className={styles.modalBody}>{children}</div>
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={busy}>
+            やめる
+          </button>
+          <button type="button" onClick={onConfirm} disabled={busy}>
+            {confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
+function InternalBlockReleaseModal({
+  row,
+  reason,
+  busy,
+  error,
+  onReasonChange,
+  onClose,
+  onSubmit,
+}: {
+  row: InternalBlockRow | null;
+  reason: string;
+  busy: boolean;
+  error: string;
+  onReasonChange(value: string): void;
+  onClose(): void;
+  onSubmit(): void;
+}) {
+  const open = row !== null;
+  useEffect(() => {
+    if (!open || busy) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [busy, open, onClose]);
+
+  if (!row) return null;
+  return createPortal(
+    <div className={styles.modalBackdrop} onMouseDown={busy ? undefined : onClose}>
+      <section className={styles.conditionModal} aria-modal="true" role="dialog" aria-labelledby="internal-block-release-heading" onMouseDown={(event) => event.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2 id="internal-block-release-heading">自社アポ禁を解除する</h2>
+          <button type="button" className={styles.modalCloseButton} onClick={onClose} aria-label="閉じる" disabled={busy}>
+            ×
+          </button>
+        </div>
+        <dl className={styles.releaseSummary}>
+          <div>
+            <dt>電話番号</dt>
+            <dd>{row.電話番号}</dd>
+          </div>
+          <div>
+            <dt>登録日</dt>
+            <dd>{formatJstWithWeekday(row.登録日)}</dd>
+          </div>
+          <div>
+            <dt>理由</dt>
+            <dd>{row.理由}</dd>
+          </div>
+          <div>
+            <dt>登録者</dt>
+            <dd>{row.登録者 ?? ""}</dd>
+          </div>
+        </dl>
+        <label className={styles.modalTextareaLabel}>
+          解除理由（必須）
+          <textarea value={reason} rows={2} onChange={(event) => onReasonChange(event.target.value)} disabled={busy} />
+        </label>
+        <p className={styles.modalHint}>例：本人から再架電の了承あり／登録間違い</p>
+        {error && <p className={styles.modalError}>{error}</p>}
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={busy}>
+            やめる
+          </button>
+          <button type="button" onClick={onSubmit} disabled={busy || reason.trim() === ""}>
+            {busy ? "解除中…" : "解除する"}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
 export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boolean }) {
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [count, setCount] = useState<number | null>(null);
@@ -935,6 +1061,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [conditionName, setConditionName] = useState("AU光○ アポ禁なし");
   const [conditionModalOpen, setConditionModalOpen] = useState(false);
   const [conditionModalMessage, setConditionModalMessage] = useState("");
+  const [conditionDeleteTarget, setConditionDeleteTarget] = useState<SavedCondition | null>(null);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [listPage, setListPage] = useState(1);
   const [listSort, setListSort] = useState<ListSearchSort | null>(null);
@@ -946,6 +1073,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const sortKey: SoilListSortKey = "listLoadedOnAsc";
   const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
   const [exportBusy, setExportBusy] = useState<{ count: number; format: string } | null>(null);
+  const [exportConfirm, setExportConfirm] = useState<{ count: number; minutes: number } | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("list");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
@@ -987,6 +1115,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [internalBlockBusy, setInternalBlockBusy] = useState(false);
   const [internalBlockFile, setInternalBlockFile] = useState<File | null>(null);
   const [internalBlockPreview, setInternalBlockPreview] = useState<InternalBlockPreview | null>(null);
+  const [internalBlockReleaseTarget, setInternalBlockReleaseTarget] = useState<InternalBlockRow | null>(null);
+  const [internalBlockReleaseReason, setInternalBlockReleaseReason] = useState("");
+  const [internalBlockReleaseError, setInternalBlockReleaseError] = useState("");
   const internalBlockFileRef = useRef<HTMLInputElement>(null);
   const [historyPhone, setHistoryPhone] = useState("");
   const [historyCurrent, setHistoryCurrent] = useState<HistoryCurrent | null>(null);
@@ -1231,13 +1362,13 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }
 
   async function handleDeleteCondition(id: string) {
-    if (!window.confirm("この条件を削除しますか")) return;
     setBusy(true);
     setConditionModalMessage("");
     try {
       const response = await fetch(`/api/soil/list/conditions/${encodeURIComponent(id)}`, { method: "DELETE" });
       await readJson(response);
       await loadSaved();
+      setConditionDeleteTarget(null);
     } catch (error) {
       setConditionModalMessage(error instanceof Error ? error.message : "削除できませんでした");
     } finally {
@@ -1344,22 +1475,40 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
-  async function handleInternalBlockRelease(id: string) {
-    const reason = window.prompt("解除理由を入力してください")?.trim();
-    if (!reason) return;
+  function openInternalBlockRelease(row: InternalBlockRow) {
+    setInternalBlockReleaseTarget(row);
+    setInternalBlockReleaseReason("");
+    setInternalBlockReleaseError("");
+    setInternalBlockMessage("");
+  }
+
+  function closeInternalBlockRelease() {
+    if (internalBlockBusy) return;
+    setInternalBlockReleaseTarget(null);
+    setInternalBlockReleaseReason("");
+    setInternalBlockReleaseError("");
+  }
+
+  async function handleInternalBlockRelease() {
+    const target = internalBlockReleaseTarget;
+    const reason = internalBlockReleaseReason.trim();
+    if (!target || !reason) return;
     setInternalBlockBusy(true);
     setInternalBlockMessage("");
+    setInternalBlockReleaseError("");
     try {
-      const response = await fetch(`/api/soil/list/internal-block/${encodeURIComponent(id)}`, {
+      const response = await fetch(`/api/soil/list/internal-block/${encodeURIComponent(target.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),
       });
       await readJson(response);
       await loadInternalBlocks();
+      setInternalBlockReleaseTarget(null);
+      setInternalBlockReleaseReason("");
       setInternalBlockMessage("解除しました");
     } catch (error) {
-      setInternalBlockMessage(error instanceof Error ? error.message : "解除できませんでした");
+      setInternalBlockReleaseError(error instanceof Error ? error.message : "解除できませんでした");
     } finally {
       setInternalBlockBusy(false);
     }
@@ -1411,19 +1560,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     return { excludedInternalBlock: Number(response.headers.get("X-Soil-List-Excluded-Internal-Block") ?? 0) };
   }
 
-  async function handleExport() {
-    if (count === null) {
-      setMessage("先に検索してください");
-      return;
-    }
-    if (exportFormat === "xlsx" && count > EXCEL_MAX_EXPORT_ROWS) {
-      setMessage("Excel は 1,048,576 行までです。CSV か .mer を選んでください");
-      return;
-    }
-    if (count > LARGE_EXPORT_CONFIRM_ROWS) {
-      const minutes = Math.ceil(count / EXPORT_SPEED_ROWS_PER_MINUTE);
-      if (!window.confirm(`約 ${count.toLocaleString("ja-JP")} 件を書き出します（目安 ${minutes.toLocaleString("ja-JP")} 分）。よろしいですか`)) return;
-    }
+  async function executeExport() {
+    if (count === null) return;
+    setExportConfirm(null);
     const label = exportFormatLabel(exportFormat);
     setBusy(true);
     setExportBusy({ count, format: label });
@@ -1438,6 +1577,22 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       setExportBusy(null);
       setBusy(false);
     }
+  }
+
+  async function handleExport() {
+    if (count === null) {
+      setMessage("先に検索してください");
+      return;
+    }
+    if (exportFormat === "xlsx" && count > EXCEL_MAX_EXPORT_ROWS) {
+      setMessage("Excel は 1,048,576 行までです。CSV か .mer を選んでください");
+      return;
+    }
+    if (count > LARGE_EXPORT_CONFIRM_ROWS) {
+      setExportConfirm({ count, minutes: Math.ceil(count / EXPORT_SPEED_ROWS_PER_MINUTE) });
+      return;
+    }
+    await executeExport();
   }
 
   async function handleRedownload(item: ExportHistory) {
@@ -1932,7 +2087,41 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         onClose={() => setConditionModalOpen(false)}
         onSave={() => void handleSaveCondition()}
         onLoad={(item) => void handleLoadCondition(item)}
-        onDelete={(id) => void handleDeleteCondition(id)}
+        onDelete={(id) => {
+          const target = savedConditions.find((item) => item.id === id) ?? null;
+          setConditionDeleteTarget(target);
+        }}
+      />
+      <ConfirmActionModal
+        open={conditionDeleteTarget !== null}
+        title="条件を削除する"
+        busy={busy}
+        confirmLabel="削除する"
+        onClose={() => setConditionDeleteTarget(null)}
+        onConfirm={() => conditionDeleteTarget && void handleDeleteCondition(conditionDeleteTarget.id)}
+      >
+        <p className={styles.conditionSummary}>{conditionDeleteTarget?.name ?? ""} を削除します。</p>
+      </ConfirmActionModal>
+      <ConfirmActionModal
+        open={exportConfirm !== null}
+        title="書き出しを始める"
+        busy={busy}
+        confirmLabel="書き出す"
+        onClose={() => setExportConfirm(null)}
+        onConfirm={() => void executeExport()}
+      >
+        <p className={styles.conditionSummary}>
+          約 {exportConfirm?.count.toLocaleString("ja-JP")} 件を書き出します。目安は {exportConfirm?.minutes.toLocaleString("ja-JP")} 分です。
+        </p>
+      </ConfirmActionModal>
+      <InternalBlockReleaseModal
+        row={internalBlockReleaseTarget}
+        reason={internalBlockReleaseReason}
+        busy={internalBlockBusy}
+        error={internalBlockReleaseError}
+        onReasonChange={setInternalBlockReleaseReason}
+        onClose={closeInternalBlockRelease}
+        onSubmit={() => void handleInternalBlockRelease()}
       />
 
       {activeTab === "list" && (
@@ -2572,7 +2761,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                       <td>{row.出所}</td>
                       <td>
                         {row.解除日 ? `${formatJstWithWeekday(row.解除日)} ${row.解除者 ?? ""}` : (
-                          <button type="button" className={styles.secondaryButton} onClick={() => void handleInternalBlockRelease(row.id)} disabled={internalBlockBusy}>
+                          <button type="button" className={styles.secondaryButton} onClick={() => openInternalBlockRelease(row)} disabled={internalBlockBusy}>
                             解除
                           </button>
                         )}

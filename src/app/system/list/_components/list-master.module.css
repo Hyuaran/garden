@@ -628,7 +628,21 @@
   white-space: nowrap;
 }
 
+/* モーダルは body 直下に出す（createPortal）ので、.pageShell の配色変数が届かない。ここでも同じ値を持たせる */
 .modalBackdrop {
+  --ink: #17212e;
+  --sub: #5a6b80;
+  --heading: #10233f;
+  --card: #fff;
+  --line: #dce5ef;
+  --teal: #0ea5a0;
+  --tealDark: #0b7773;
+  --val-strong: #17212e;
+  --val-zero: #98a4b3;
+  --amber: #8a5a00;
+  --amberBg: #fff7e6;
+  color: var(--ink);
+  font-family: Meiryo, "Noto Sans JP", sans-serif;
   position: fixed;
   inset: 0;
   z-index: 9000;
@@ -637,6 +651,20 @@
   justify-content: center;
   padding: 24px;
   background: rgba(10, 20, 35, .56);
+}
+
+:global(.dark) .modalBackdrop,
+:global([data-theme="dark"]) .modalBackdrop {
+  --ink: #edf4fb;
+  --sub: #b7c5d4;
+  --heading: #edf4fb;
+  --card: #152438;
+  --line: #31435a;
+  --tealDark: #9ce5e1;
+  --val-strong: #edf4fb;
+  --val-zero: #8493a5;
+  --amber: #f6c96b;
+  --amberBg: #302918;
 }
 
 .conditionModal {
@@ -721,6 +749,86 @@
   font-size: 13px;
   font-weight: 700;
   line-height: 1.7;
+}
+
+.modalBody {
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+.releaseSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0 0 18px;
+}
+
+.releaseSummary div {
+  min-width: 0;
+}
+
+.releaseSummary dt {
+  margin: 0 0 4px;
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.releaseSummary dd {
+  margin: 0;
+  color: var(--heading);
+  font-size: 14px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.modalTextareaLabel {
+  display: grid;
+  gap: 6px;
+  color: var(--heading);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.modalTextareaLabel textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.modalHint {
+  margin: 8px 0 0;
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.modalError {
+  margin: 12px 0 0;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+:global(.dark) .modalError,
+:global([data-theme="dark"]) .modalError {
+  color: #ff8a80;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .modalSavedRow {
@@ -1576,9 +1684,14 @@
 
   .collapsedFilterRow,
   .modalSaveRow,
-  .modalSavedRow {
+  .modalSavedRow,
+  .releaseSummary {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .modalActions {
+    flex-direction: column-reverse;
   }
 
   .collapsedFilterRow strong,

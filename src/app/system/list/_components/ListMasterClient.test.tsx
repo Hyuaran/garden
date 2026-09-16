@@ -14,7 +14,7 @@ function json(data: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), { status }));
 }
 
-function installFetch(options: { uploads?: unknown[]; analysis?: unknown; conditions?: unknown[] } = {}) {
+function installFetch(options: { uploads?: unknown[]; analysis?: unknown; conditions?: unknown[]; internalBlocks?: unknown[]; internalBlockRelease?: { status?: number; body: unknown } } = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url === "/api/soil/list/conditions" && !init?.method) return json({ ok: true, conditions: options.conditions ?? [] });
@@ -37,8 +37,12 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
         headers: { "Content-Disposition": "attachment; filename=\"list-master.csv\"; filename*=UTF-8''%E3%83%AA%E3%82%B9%E3%83%88.csv", "X-Soil-List-Excluded-Internal-Block": "2" },
       }));
     }
+    if (url.startsWith("/api/soil/list/internal-block/") && init?.method === "PATCH") {
+      const release = options.internalBlockRelease;
+      return json(release?.body ?? { ok: true }, release?.status ?? 200);
+    }
     if (url.startsWith("/api/soil/list/internal-block?")) {
-      return json({ ok: true, rows: [], count: 0, page: 1, pageSize: 100 });
+      return json({ ok: true, rows: options.internalBlocks ?? [], count: 0, page: 1, pageSize: 100 });
     }
     if (url.startsWith("/api/soil/list/history?")) {
       return json({
@@ -735,8 +739,6 @@ describe("ListMasterClient list search UX", () => {
   });
 
   it("opens the save modal, disables empty save, loads and deletes saved conditions", async () => {
-    const confirm = vi.fn(() => true);
-    vi.stubGlobal("confirm", confirm);
     const fetchMock = installFetch({
       conditions: [
         {
@@ -763,7 +765,8 @@ describe("ListMasterClient list search UX", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "条件を保存" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "削除" }));
-    await waitFor(() => expect(confirm).toHaveBeenCalledWith("この条件を削除しますか"));
+    expect(screen.getByRole("dialog", { name: "条件を削除する" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "削除する" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/soil/list/conditions/condition-1", { method: "DELETE" }));
   });
 });
@@ -803,9 +806,7 @@ describe("ListMasterClient export UX", () => {
 
   it("confirms exports over 100,000 rows before downloading", async () => {
     stubDownloadApis();
-    const confirm = vi.fn(() => false);
-    vi.stubGlobal("confirm", confirm);
-    installFetch();
+    const fetchMock = installFetch();
     render(<ListMasterClient />);
 
     fireEvent.click(await screen.findByRole("button", { name: "検索" }));
@@ -817,7 +818,84 @@ describe("ListMasterClient export UX", () => {
     await screen.findByText("該当 120,000 件（0.8 秒）");
     fireEvent.click(screen.getByRole("button", { name: "120,000 件を書き出す" }));
 
-    expect(confirm).toHaveBeenCalledWith("約 120,000 件を書き出します（目安 6 分）。よろしいですか");
+    expect(screen.getByRole("dialog", { name: "書き出しを始める" })).toBeInTheDocument();
+    expect(screen.getByText("約 120,000 件を書き出します。目安は 6 分です。")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url, init]) => url === "/api/soil/list/export" && init?.method === "POST")).toBe(false);
+  });
+});
+
+describe("ListMasterClient internal block release modal", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, "", "/");
+  });
+
+  const internalBlockRow = {
+    id: "block-1",
+    電話番号: "0285720215",
+    登録日: "2026-09-15",
+    理由: "重クレーム",
+    登録者: "東海林",
+    出所: "画面",
+    解除日: null,
+    解除者: null,
+    解除理由: null,
+    created_at: "2026-09-15T00:00:00+09:00",
+  };
+
+  async function openReleaseModal(fetchOptions: Parameters<typeof installFetch>[0] = {}) {
+    const fetchMock = installFetch({ internalBlocks: [internalBlockRow], ...fetchOptions });
+    window.history.replaceState(null, "", "/system/list?tab=guide");
+    render(<ListMasterClient />);
+    expect(await screen.findByRole("tab", { name: "管理方法", selected: true })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "解除" }));
+    return fetchMock;
+  }
+
+  it("opens and closes the release modal", async () => {
+    await openReleaseModal();
+
+    const dialog = screen.getByRole("dialog", { name: "自社アポ禁を解除する" });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("0285720215")).toBeInTheDocument();
+    expect(within(dialog).getByText("重クレーム")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "やめる" }));
+    expect(screen.queryByRole("dialog", { name: "自社アポ禁を解除する" })).not.toBeInTheDocument();
+  });
+
+  it("keeps submit disabled when the release reason is empty", async () => {
+    await openReleaseModal();
+
+    expect(screen.getByRole("button", { name: "解除する" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("解除理由（必須）"), { target: { value: "   " } });
+    expect(screen.getByRole("button", { name: "解除する" })).toBeDisabled();
+  });
+
+  it("sends the trimmed release reason to PATCH", async () => {
+    const fetchMock = await openReleaseModal();
+
+    fireEvent.change(screen.getByLabelText("解除理由（必須）"), { target: { value: "  本人から再架電の了承あり  " } });
+    fireEvent.click(screen.getByRole("button", { name: "解除する" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/soil/list/internal-block/block-1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ reason: "本人から再架電の了承あり" }),
+      }),
+    ));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "自社アポ禁を解除する" })).not.toBeInTheDocument());
+    expect(screen.getByText("解除しました")).toBeInTheDocument();
+  });
+
+  it("shows the API error in the release modal", async () => {
+    await openReleaseModal({ internalBlockRelease: { status: 400, body: { error: "解除理由を入力してください" } } });
+
+    fireEvent.change(screen.getByLabelText("解除理由（必須）"), { target: { value: "登録間違い" } });
+    fireEvent.click(screen.getByRole("button", { name: "解除する" }));
+
+    expect(await screen.findByText("解除理由を入力してください")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "自社アポ禁を解除する" })).toBeInTheDocument();
   });
 });
 
