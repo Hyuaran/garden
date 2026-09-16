@@ -18,6 +18,7 @@ function supabaseMock() {
       const builder = {
         select(...args: unknown[]) { ops.push({ method: "select", args }); return builder; },
         eq(...args: unknown[]) { ops.push({ method: "eq", args }); return builder; },
+        is(...args: unknown[]) { ops.push({ method: "is", args }); return builder; },
         or(...args: unknown[]) { ops.push({ method: "or", args }); return builder; },
         order(...args: unknown[]) { ops.push({ method: "order", args }); return builder; },
         limit(...args: unknown[]) { ops.push({ method: "limit", args }); return mocks.query(table, ops); },
@@ -38,10 +39,10 @@ describe("入社手続きの銀行検索API", () => {
     const response = await GET(new Request("https://garden.example/api/system/onboarding/lookup/bank?name=古い名前&code=0001"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ banks: [{ bankCode: "0001", bankName: "みずほ" }] });
+    expect(await response.json()).toEqual({ banks: [{ bankCode: "0001", bankName: "みずほ", expired: false, validTo: null }] });
     expect(mocks.query).toHaveBeenCalledTimes(1);
     expect(mocks.query.mock.calls[0][1]).toEqual([
-      { method: "select", args: ["bank_code,bank_name"] },
+      { method: "select", args: ["bank_code,bank_name,valid_to"] },
       { method: "eq", args: ["bank_code", "0001"] },
       { method: "order", args: ["bank_code", { ascending: true }] },
       { method: "limit", args: [1] },
@@ -56,9 +57,18 @@ describe("入社手続きの銀行検索API", () => {
     const response = await GET(new Request("https://garden.example/api/system/onboarding/lookup/bank?name=三菱UFJ銀行"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ banks: [{ bankCode: "0005", bankName: "三菱ＵＦＪ" }] });
+    expect(await response.json()).toEqual({ banks: [{ bankCode: "0005", bankName: "三菱ＵＦＪ", expired: false, validTo: null }] });
     expect(mocks.query).toHaveBeenCalledTimes(3);
     expect(mocks.query.mock.calls[2][1]).toContainEqual({ method: "or", args: ["bank_name.ilike.*三菱ＵＦＪ*,bank_kana.ilike.*三菱ＵＦＪ*"] });
+    expect(mocks.query.mock.calls[2][1]).toContainEqual({ method: "is", args: ["valid_to", null] });
     expect(mocks.query.mock.calls[2][1]).toContainEqual({ method: "limit", args: [20] });
+  });
+
+  it("コード逆引きは廃止済みも expired 付きで返す", async () => {
+    mocks.query.mockResolvedValue({ data: [{ bank_code: "9900", bank_name: "ゆうちょ", valid_to: "2026-08-24" }], error: null });
+    const response = await GET(new Request("https://garden.example/api/system/onboarding/lookup/bank?code=9900"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ banks: [{ bankCode: "9900", bankName: "ゆうちょ", expired: true, validTo: "2026-08-24" }] });
   });
 });

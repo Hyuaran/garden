@@ -18,6 +18,7 @@ function supabaseMock() {
       const builder = {
         select(...args: unknown[]) { ops.push({ method: "select", args }); return builder; },
         eq(...args: unknown[]) { ops.push({ method: "eq", args }); return builder; },
+        is(...args: unknown[]) { ops.push({ method: "is", args }); return builder; },
         or(...args: unknown[]) { ops.push({ method: "or", args }); return builder; },
         order(...args: unknown[]) { ops.push({ method: "order", args }); return builder; },
         limit(...args: unknown[]) { ops.push({ method: "limit", args }); return mocks.query(table, ops); },
@@ -38,9 +39,9 @@ describe("入社手続きの支店検索API", () => {
     const response = await GET(new Request("https://garden.example/api/system/onboarding/lookup/branch?bankCode=0001&name=古い支店&code=135"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ branches: [{ branchCode: "135", branchName: "渋谷" }] });
+    expect(await response.json()).toEqual({ branches: [{ branchCode: "135", branchName: "渋谷", expired: false, validTo: null }] });
     expect(mocks.query.mock.calls[0][1]).toEqual([
-      { method: "select", args: ["branch_code,branch_name"] },
+      { method: "select", args: ["branch_code,branch_name,valid_to"] },
       { method: "eq", args: ["bank_code", "0001"] },
       { method: "eq", args: ["branch_code", "135"] },
       { method: "order", args: ["branch_code", { ascending: true }] },
@@ -55,9 +56,17 @@ describe("入社手続きの支店検索API", () => {
     const response = await GET(new Request("https://garden.example/api/system/onboarding/lookup/branch?bankCode=0001&name=渋谷支店"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ branches: [{ branchCode: "135", branchName: "渋谷" }] });
+    expect(await response.json()).toEqual({ branches: [{ branchCode: "135", branchName: "渋谷", expired: false, validTo: null }] });
     expect(mocks.query).toHaveBeenCalledTimes(2);
     expect(mocks.query.mock.calls[1][1]).toContainEqual({ method: "or", args: ["branch_name.ilike.*渋谷*,branch_kana.ilike.*渋谷*"] });
+    expect(mocks.query.mock.calls[1][1]).toContainEqual({ method: "is", args: ["valid_to", null] });
     expect(mocks.query.mock.calls[1][1]).toContainEqual({ method: "limit", args: [20] });
+  });
+
+  it("コード逆引きは廃止済みも expired 付きで返す", async () => {
+    mocks.query.mockResolvedValue({ data: [{ branch_code: "408", branch_name: "四〇八", valid_to: "2026-08-24" }], error: null });
+    const response = await GET(new Request("https://garden.example/api/system/onboarding/lookup/branch?bankCode=9900&code=408"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ branches: [{ branchCode: "408", branchName: "四〇八", expired: true, validTo: "2026-08-24" }] });
   });
 });

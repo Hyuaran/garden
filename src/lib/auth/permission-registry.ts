@@ -179,6 +179,22 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     source: "src/app/root/_constants/types.ts:ROOT_WRITE_ROLES",
   },
   {
+    key: "root-bank-check",
+    label: "Root 口座の点検",
+    group: "Root",
+    kind: "画面",
+    allows: allowsMinRole("admin"),
+    source: "src/app/root/bank-check/page.tsx:hasRoleAtLeast(\"admin\")",
+  },
+  {
+    key: "api-root-bank-check",
+    label: "口座の点検 API",
+    group: "API",
+    kind: "API",
+    allows: allowsMinRole("admin"),
+    source: "src/app/api/root/bank-check/*/route.ts:requireAdmin",
+  },
+  {
     key: "root-tree-confirm-view",
     label: "前確・後確（閲覧）",
     group: "Root",

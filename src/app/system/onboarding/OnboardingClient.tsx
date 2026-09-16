@@ -9,8 +9,8 @@ import OnboardingReview from "./_components/OnboardingReview";
 import styles from "./onboarding.module.css";
 
 type Address = { address: string; addressKana: string };
-type BankChoice = { bankName: string; bankCode: string };
-type BranchChoice = { branchName: string; branchCode: string };
+type BankChoice = { bankName: string; bankCode: string; expired?: boolean; validTo?: string | null };
+type BranchChoice = { branchName: string; branchCode: string; expired?: boolean; validTo?: string | null };
 
 function StepProgress({ step }: { step: number }) {
   const total = STEPS.length;
@@ -45,6 +45,8 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   const [postalNotice, setPostalNotice] = useState("");
   const [bankNotice, setBankNotice] = useState("");
   const [branchNotice, setBranchNotice] = useState("");
+  const [bankExpiredNotice, setBankExpiredNotice] = useState("");
+  const [branchExpiredNotice, setBranchExpiredNotice] = useState("");
   const [bankChoices, setBankChoices] = useState<BankChoice[]>([]);
   const [branchChoices, setBranchChoices] = useState<BranchChoice[]>([]);
   const addressRevision = useRef(0);
@@ -57,7 +59,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
 
   function change(key: TextField, value: string) {
     if (key === "address" || key === "address_kana") addressRevision.current++;
-    if (key === "bank_name" || key === "bank_code") { setBranchChoices([]); setBranchNotice(""); }
+    if (key === "bank_name" || key === "bank_code") { setBranchChoices([]); setBranchNotice(""); setBankExpiredNotice(""); setBranchExpiredNotice(""); }
     if (key === "my_number" && isMaskedMyNumber(values.my_number)) value = "";
     setValues(previous => ({ ...previous, [key]: value }));
   }
@@ -106,7 +108,14 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   }
   function applyBank(choice: BankChoice) {
     setValues(previous => ({ ...previous, bank_name: choice.bankName, bank_code: choice.bankCode }));
-    setBankChoices([]); setBankNotice("銀行コードを入れました。");
+    setBankChoices([]);
+    if (choice.expired) {
+      setBankNotice("銀行コードを入れました。");
+      setBankExpiredNotice(`この金融機関は台帳で廃止になっています${choice.validTo ? `（廃止日：${choice.validTo}）` : ""}。通帳・アプリの表示をご確認ください。`);
+    } else {
+      setBankNotice("銀行コードを入れました。");
+      setBankExpiredNotice("");
+    }
   }
   async function lookupBankByCode() {
     const bankCode = values.bank_code.trim();
@@ -133,7 +142,14 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   }
   function applyBranch(choice: BranchChoice) {
     setValues(previous => ({ ...previous, branch_name: choice.branchName, branch_code: choice.branchCode }));
-    setBranchChoices([]); setBranchNotice("支店コードを入れました。");
+    setBranchChoices([]);
+    if (choice.expired) {
+      setBranchNotice("支店コードを入れました。");
+      setBranchExpiredNotice(`この支店は台帳で廃止になっています${choice.validTo ? `（廃止日：${choice.validTo}）` : ""}。通帳・アプリの表示をご確認ください。`);
+    } else {
+      setBranchNotice("支店コードを入れました。");
+      setBranchExpiredNotice("");
+    }
   }
   async function lookupBranchByCode() {
     const bankCode = values.bank_code.trim();
@@ -250,9 +266,11 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         {addresses.length > 0 && <select aria-label="住所の候補" value="" onChange={event => { const address = addresses[Number(event.target.value)]; if (event.target.value && address) applyAddress(address); }}><option value="">住所の候補</option>{addresses.map((address, index) => <option value={String(index)} key={`${address.address}-${index}`}>{address.address}</option>)}</select>}
       </>}
       {key === "bank_name" && bankNotice && <span className={styles.hint} role="status">{bankNotice}</span>}
+      {key === "bank_name" && bankExpiredNotice && <span className={styles.warning} role="status">{bankExpiredNotice}</span>}
       {key === "bank_name" && bankChoices.length > 0 && <select aria-label="銀行の候補" value="" onChange={event => { const choice = bankChoices[Number(event.target.value)]; if (event.target.value && choice) applyBank(choice); }}><option value="">銀行の候補</option>{bankChoices.map((choice, index) => <option value={String(index)} key={`${choice.bankCode}-${index}`}>{choice.bankName}（{choice.bankCode}）</option>)}</select>}
       {key === "bank_name" && <span className={styles.hint}>{BANK_NAME_LEDGER_HINT}</span>}
       {key === "branch_name" && branchNotice && <span className={styles.hint} role="status">{branchNotice}</span>}
+      {key === "branch_name" && branchExpiredNotice && <span className={styles.warning} role="status">{branchExpiredNotice}</span>}
       {key === "branch_name" && branchChoices.length > 0 && <select aria-label="支店の候補" value="" onChange={event => { const choice = branchChoices[Number(event.target.value)]; if (event.target.value && choice) applyBranch(choice); }}><option value="">支店の候補</option>{branchChoices.map((choice, index) => <option value={String(index)} key={`${choice.branchCode}-${index}`}>{choice.branchName}（{choice.branchCode}）</option>)}</select>}
       {key === "my_number" && isMaskedMyNumber(values.my_number) && <button type="button" onClick={() => change("my_number", "")}>入れ直す</button>}
     </div>;

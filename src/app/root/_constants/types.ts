@@ -360,6 +360,13 @@ export const MASTER_MENUS: MasterMenu[] = [
     icon: "👤",
   },
   {
+    slug: "bank-check",
+    title: "口座の点検",
+    description: "給与口座と銀行台帳の突き合わせ、台帳の更新記録",
+    icon: "点",
+    adminOnly: true,
+  },
+  {
     slug: "permissions",
     title: "権限一覧",
     description: "役職ごとの利用可否と、人ごとの役職を確認",
