@@ -109,7 +109,7 @@ type PurchaseVendorOption = {
   count: number;
 };
 
-type ActiveTab = "list" | "upload" | "analysis" | "history" | "guide";
+type ActiveTab = "list" | "upload" | "analysis" | "history" | "internal-block" | "guide";
 
 type UploadPreview = {
   format: "A" | "B" | "C";
@@ -309,6 +309,7 @@ export type FilterState = {
   prefecture: string[];
   auCallAvailability: string[];
   purchaseStatus: string[];
+  purchaseVendor: string[];
   appointmentBlocked: string[];
   lineType: string[];
   category: string[];
@@ -331,6 +332,7 @@ const initialFilters: FilterState = {
   prefecture: [],
   auCallAvailability: ["○"],
   purchaseStatus: [],
+  purchaseVendor: [],
   appointmentBlocked: [EMPTY_OPTION_VALUE],
   lineType: [],
   category: [],
@@ -431,6 +433,7 @@ const TAB_LABELS: Array<{ key: ActiveTab; label: string; query?: string }> = [
   { key: "upload", label: "アップロード", query: "upload" },
   { key: "analysis", label: "分析", query: "analysis" },
   { key: "history", label: "履歴検索", query: "history" },
+  { key: "internal-block", label: "自社アポ禁", query: "internal-block" },
   { key: "guide", label: "管理方法", query: "guide" },
 ];
 
@@ -480,6 +483,8 @@ const GUIDE_RULE_ROWS = [
   ["元回線", "元回線＝リスト名（【光回線】アナログ／フレッツ／AU）→ 判定項目 → 購入先_NEW の順に決めた回線の種類"],
   ["契約時期", "契約時期＝購入日と経過月数から逆算した契約の年月（購入日が無い番号は空欄）"],
   ["区分", "区分＝氏名の言葉から自動で決めた個人／屋号／法人。一覧で直せます"],
+  ["購入先で絞る", "リストタブでは電話番号台帳の最新購入先だけで探します。分析の購入先絞り込みとは数え方が違います"],
+  ["自社アポ禁", "登録・解除は「自社アポ禁」タブで行います"],
   ["そのほかの表", "保留（桁がおかしい番号など）・携帯のみ・絞り込みの選択肢・保存した条件・書き出しの記録・アップロードの記録・コール履歴の反映状態"],
 ] as const;
 
@@ -526,6 +531,7 @@ export function filtersToCondition(filters: FilterState): SoilListConditionPaylo
   pushSelect("prefecture", filters.prefecture);
   pushSelect("auCallAvailability", filters.auCallAvailability);
   pushSelect("purchaseStatus", filters.purchaseStatus);
+  pushSelect("latestVendor", filters.purchaseVendor);
   pushSelect("appointmentBlocked", filters.appointmentBlocked);
   pushSelect("lineType", filters.lineType);
   pushSelect("category", filters.category);
@@ -549,12 +555,16 @@ export function filtersToCondition(filters: FilterState): SoilListConditionPaylo
 
 export function conditionToFilters(condition: SoilListConditionPayload): FilterState {
   const next = { ...initialFilters, listLoadedOnFrom: "" };
+  const setOptionValues = (field: SoilListOptionFieldKey, values: string[]) => {
+    if (field === "latestVendor") next.purchaseVendor = values;
+    else next[field] = values;
+  };
   for (const filter of condition.filters ?? []) {
     if (isOptionFilterField(filter.field)) {
-      if (filter.op === "eq") next[filter.field] = [String(filter.value)];
-      if (filter.op === "empty") next[filter.field] = [EMPTY_OPTION_VALUE];
-      if (filter.op === "in" && Array.isArray(filter.value)) next[filter.field] = filter.value.map(String);
-      if (filter.op === "inOrEmpty" && Array.isArray(filter.value)) next[filter.field] = [...filter.value.map(String), EMPTY_OPTION_VALUE];
+      if (filter.op === "eq") setOptionValues(filter.field, [String(filter.value)]);
+      if (filter.op === "empty") setOptionValues(filter.field, [EMPTY_OPTION_VALUE]);
+      if (filter.op === "in" && Array.isArray(filter.value)) setOptionValues(filter.field, filter.value.map(String));
+      if (filter.op === "inOrEmpty" && Array.isArray(filter.value)) setOptionValues(filter.field, [...filter.value.map(String), EMPTY_OPTION_VALUE]);
     }
     if (filter.field === "listName" && filter.op === "contains") next.listName = String(filter.value);
     if (filter.field === "listLoadedOn" && filter.op === "gte") next.listLoadedOnFrom = String(filter.value);
@@ -602,7 +612,7 @@ function formatDateTime(value: string): string {
 }
 
 function isOptionFilterField(field: SoilListColumnKey): field is SoilListOptionFieldKey {
-  return field === "prefecture" || field === "auCallAvailability" || field === "purchaseStatus" || field === "appointmentBlocked" || field === "lineType" || field === "category";
+  return field === "prefecture" || field === "auCallAvailability" || field === "purchaseStatus" || field === "latestVendor" || field === "appointmentBlocked" || field === "lineType" || field === "category";
 }
 
 export function buildOptionGroups(field: SoilListOptionFieldKey, fieldOptions: SoilListOptionItem[] = []): MultiSelectOptionGroup[] {
@@ -669,7 +679,7 @@ async function readJson<T>(response: Response): Promise<T> {
 function tabFromLocation(): ActiveTab {
   if (typeof window === "undefined") return "list";
   const tab = new URLSearchParams(window.location.search).get("tab");
-  return tab === "upload" || tab === "analysis" || tab === "history" || tab === "guide" ? tab : "list";
+  return tab === "upload" || tab === "analysis" || tab === "history" || tab === "internal-block" || tab === "guide" ? tab : "list";
 }
 
 function fileExtension(name: string): string {
@@ -887,6 +897,7 @@ export function describeFilters(filters: FilterState, options: Partial<SoilListO
   pushMulti("prefecture", "都道府県", filters.prefecture);
   pushMulti("auCallAvailability", "AU光架電可否", filters.auCallAvailability);
   pushMulti("purchaseStatus", "購入状態", filters.purchaseStatus);
+  pushMulti("latestVendor", "購入先", filters.purchaseVendor);
   pushMulti("appointmentBlocked", "アポ禁", filters.appointmentBlocked);
   pushMulti("lineType", "元回線", filters.lineType);
   pushMulti("category", "区分", filters.category);
@@ -1323,7 +1334,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }, [activeTab, analysisAxis, analysisVendorFilter, analysisLineTypeFilter, analysisContractYearFilter]);
 
   useEffect(() => {
-    if (activeTab !== "guide") return;
+    if (activeTab !== "internal-block") return;
     void loadInternalBlocks().catch((error: unknown) => setInternalBlockMessage(error instanceof Error ? error.message : "自社アポ禁を読み込めませんでした"));
   }, [activeTab, internalBlockIncludeReleased]);
 
@@ -2431,6 +2442,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <MultiSelectFilter label="都道府県" value={filters.prefecture} groups={buildOptionGroups("prefecture", options.prefecture)} onChange={(value) => setFilter("prefecture", value)} />
               <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} />
               <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} />
+              <MultiSelectFilter label="購入先" value={filters.purchaseVendor} groups={buildOptionGroups("latestVendor", options.latestVendor)} onChange={(value) => setFilter("purchaseVendor", value)} searchable initialLimit={100} />
               <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} />
               <MultiSelectFilter label="元回線" value={filters.lineType} groups={buildOptionGroups("lineType", options.lineType)} onChange={(value) => setFilter("lineType", value)} />
               <MultiSelectFilter label="区分" value={filters.category} groups={buildOptionGroups("category", options.category)} onChange={(value) => setFilter("category", value)} />
@@ -3022,8 +3034,14 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </table>
             </div>
           </div>
-          <section className={styles.internalBlockPanel} aria-labelledby="internal-block-heading">
-            <h3 id="internal-block-heading">自社アポ禁</h3>
+          <p className={styles.empty}>自社アポ禁の登録・解除は「自社アポ禁」タブで行います。</p>
+        </section>
+      )}
+
+      {activeTab === "internal-block" && (
+        <section className={styles.panel} aria-labelledby="internal-block-heading">
+          <div className={styles.internalBlockPanel}>
+            <h2 id="internal-block-heading">自社アポ禁</h2>
             <p className={styles.empty}>ヒュアラン社内だけの架電禁止。購入元のアポ禁とは別です</p>
             <div className={styles.internalBlockForm}>
               <label>
@@ -3049,6 +3067,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <button type="button" className={styles.secondaryButton} onClick={() => internalBlockFileRef.current?.click()} disabled={internalBlockBusy}>
                 CSV／Excel を選ぶ
               </button>
+              <a className={styles.secondaryButton} href="/api/soil/list/internal-block/template">
+                テンプレートをダウンロード
+              </a>
               <span>列＝電話番号・理由（1 行目は見出し）</span>
               {internalBlockFile && <strong>{internalBlockFile.name}</strong>}
             </div>
@@ -3113,7 +3134,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 </tbody>
               </table>
             </div>
-          </section>
+          </div>
         </section>
       )}
     </div>

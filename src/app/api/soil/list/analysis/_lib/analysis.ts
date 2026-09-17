@@ -87,6 +87,8 @@ export type AnalysisDetailRow = {
   lastCalledOn: string | null;
 };
 
+type QueryPgResult = Awaited<ReturnType<typeof queryPg>>;
+
 type QueryResult<T> = Promise<{ data: T[] | null; error: DbError }>;
 type MaybeSingleResult<T> = Promise<{ data: T | null; error: DbError }>;
 
@@ -409,12 +411,67 @@ export async function loadVendorAndAnalysis(vendors: string[], axis: AnalysisAxi
   return loadFilteredAnalysis({ vendors: normalized, lineTypes: [], contractYears: [], axis });
 }
 
+function normalizeSimpleFilters(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function usesPurchaseFilterCell(filters: { vendors: string[] }): boolean {
+  return normalizeVendorFilters(filters.vendors).length <= 1;
+}
+
+function purchaseFilterCellSql(axis: AnalysisAxis): string {
+  const segmentColumn = axis === "vendor" ? "vendor" : axis === "line_type" ? "line_type" : "contract_year";
+  return `
+    select
+      $4::text as block,
+      ${segmentColumn} as segment,
+      result,
+      '（詳細なし）'::text as list_name,
+      null::date as list_loaded_on,
+      sum(row_count)::integer as row_count,
+      sum(called_count)::integer as called_count,
+      sum(call_total)::integer as call_total,
+      sum(invalid_count)::integer as invalid_count,
+      sum(order_count)::integer as order_count,
+      sum(order_case_count)::integer as order_case_count,
+      sum(acquired_count)::integer as acquired_count,
+      null::date as last_called_on,
+      null::date as segment_last_called_on
+    from public.soil_list_analysis_purchase_filter_cell
+    where (cardinality($1::text[]) = 0 or vendor = any($1::text[]))
+      and (cardinality($2::text[]) = 0 or line_type = any($2::text[]))
+      and (cardinality($3::text[]) = 0 or contract_year = any($3::text[]))
+    group by ${segmentColumn}, result
+  `;
+}
+
+async function purchaseFilterCellHasRows(): Promise<boolean> {
+  const { rows } = await queryPg("select exists(select 1 from public.soil_list_analysis_purchase_filter_cell) as has_rows", []);
+  return Boolean((rows[0] as { has_rows?: boolean } | undefined)?.has_rows);
+}
+
+async function loadFilteredAnalysisFromPurchaseCell(filters: { vendors: string[]; lineTypes: string[]; contractYears: string[]; axis: AnalysisAxis }): Promise<QueryPgResult | null> {
+  const vendors = normalizeVendorFilters(filters.vendors);
+  const lineTypes = normalizeSimpleFilters(filters.lineTypes);
+  const contractYears = normalizeSimpleFilters(filters.contractYears);
+  const result = await queryPg(purchaseFilterCellSql(filters.axis), [vendors, lineTypes, contractYears, filters.axis]);
+  if (result.rows.length > 0 || (await purchaseFilterCellHasRows())) return result;
+  return null;
+}
+
+async function loadFilteredAnalysisDirect(filters: { vendors: string[]; lineTypes: string[]; contractYears: string[]; axis: AnalysisAxis }): Promise<QueryPgResult> {
+  return queryPg(
+    "select * from public.soil_list_analysis_filtered($1::text[], $2::text[], $3::text[], $4::text)",
+    [normalizeVendorFilters(filters.vendors), normalizeSimpleFilters(filters.lineTypes), normalizeSimpleFilters(filters.contractYears), filters.axis],
+  );
+}
+
 export async function loadFilteredAnalysis(filters: { vendors: string[]; lineTypes: string[]; contractYears: string[]; axis: AnalysisAxis }): Promise<{ segments: AnalysisSegment[] }> {
   try {
-    const { rows } = await queryPg(
-      'select * from public.soil_list_analysis_filtered($1::text[], $2::text[], $3::text[], $4::text)',
-      [normalizeVendorFilters(filters.vendors), filters.lineTypes, filters.contractYears, filters.axis],
-    );
+    const result = usesPurchaseFilterCell(filters)
+      ? (await loadFilteredAnalysisFromPurchaseCell(filters)) ?? await loadFilteredAnalysisDirect(filters)
+      : await loadFilteredAnalysisDirect(filters);
+    const { rows } = result;
     return buildBlock((rows as AnalysisCellRow[]).map((row) => ({ ...row, block: filters.axis })), filters.axis);
   } catch (error) {
     if (isVendorAndTooBroadError(error)) {

@@ -287,6 +287,97 @@ describe("/api/soil/list/analysis", () => {
     expect(data.block.segments[0]).toMatchObject({ segment: "合計", rowCount: 8, orderCount: 2, orderCaseCount: 3 });
   });
 
+  it("sums purchase filter cells for one vendor with line type and contract year filters", async () => {
+    mocks.getAdmin.mockReturnValue(adminClient());
+    mocks.queryPg.mockResolvedValueOnce({
+      rows: [
+        {
+          block: "line_type",
+          segment: "フレッツ",
+          result: "留守",
+          list_name: "（詳細なし）",
+          list_loaded_on: null,
+          row_count: 8,
+          called_count: 8,
+          call_total: 16,
+          invalid_count: 0,
+          order_count: 2,
+          order_case_count: 3,
+          acquired_count: 1,
+          last_called_on: null,
+          segment_last_called_on: null,
+        },
+        {
+          block: "line_type",
+          segment: "au",
+          result: "未コール",
+          list_name: "（詳細なし）",
+          list_loaded_on: null,
+          row_count: 4,
+          called_count: 0,
+          call_total: 0,
+          invalid_count: 0,
+          order_count: 0,
+          order_case_count: 0,
+          acquired_count: 0,
+          last_called_on: null,
+          segment_last_called_on: null,
+        },
+      ],
+    });
+    const response = await GET(new Request("http://test/api/soil/list/analysis?axis=line_type&vendor=Luna&lineType=%E3%83%95%E3%83%AC%E3%83%83%E3%83%84&lineType=au&contractYear=2024"));
+    expect(response.status).toBe(200);
+    expect(mocks.queryPg).toHaveBeenCalledTimes(1);
+    expect(mocks.queryPg.mock.calls[0][0]).toContain("soil_list_analysis_purchase_filter_cell");
+    expect(mocks.queryPg.mock.calls[0][1]).toEqual([["Luna"], ["フレッツ", "au"], ["2024"], "line_type"]);
+    const data = await response.json();
+    expect(data.block.segments[0]).toMatchObject({ segment: "合計", rowCount: 12, calledCount: 8, orderCount: 2, orderCaseCount: 3 });
+    expect(data.block.segments[1]).toMatchObject({ segment: "フレッツ", rowCount: 8, results: [{ result: "留守", rowCount: 8 }, { result: "前確OK", rowCount: 0 }, { result: "獲得", rowCount: 0 }] });
+  });
+
+  it("uses the direct filtered function when two vendors are selected", async () => {
+    mocks.getAdmin.mockReturnValue(adminClient());
+    mocks.queryPg.mockResolvedValue({ rows: [] });
+    const response = await GET(new Request("http://test/api/soil/list/analysis?axis=vendor&vendor=A&vendor=B"));
+    expect(response.status).toBe(200);
+    expect(mocks.queryPg).toHaveBeenCalledTimes(1);
+    expect(mocks.queryPg).toHaveBeenCalledWith("select * from public.soil_list_analysis_filtered($1::text[], $2::text[], $3::text[], $4::text)", [["A", "B"], [], [], "vendor"]);
+  });
+
+  it("falls back to the direct filtered function when the purchase filter cell is empty", async () => {
+    mocks.getAdmin.mockReturnValue(adminClient());
+    mocks.queryPg
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ has_rows: false }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            block: "contract_year",
+            segment: "2024",
+            result: "獲得",
+            list_name: "リストB",
+            list_loaded_on: "2026-09-10",
+            row_count: 2,
+            called_count: 2,
+            call_total: 4,
+            invalid_count: 0,
+            order_count: 1,
+            order_case_count: 1,
+            acquired_count: 2,
+            last_called_on: "2026-09-12",
+            segment_last_called_on: null,
+          },
+        ],
+      });
+    const response = await GET(new Request("http://test/api/soil/list/analysis?axis=contract_year&vendor=Luna&contractYear=2024"));
+    expect(response.status).toBe(200);
+    expect(mocks.queryPg.mock.calls[0][0]).toContain("soil_list_analysis_purchase_filter_cell");
+    expect(mocks.queryPg.mock.calls[1][0]).toContain("exists(select 1 from public.soil_list_analysis_purchase_filter_cell)");
+    expect(mocks.queryPg.mock.calls[2]).toEqual(["select * from public.soil_list_analysis_filtered($1::text[], $2::text[], $3::text[], $4::text)", [["Luna"], [], ["2024"], "contract_year"]]);
+    const data = await response.json();
+    expect(data.block.segments[0]).toMatchObject({ segment: "合計", rowCount: 2, orderCount: 1, orderCaseCount: 1 });
+  });
+
   it("returns the agreed broad-condition message when vendor AND query times out", async () => {
     mocks.getAdmin.mockReturnValue(adminClient());
     mocks.queryPg.mockRejectedValue(new Error("canceling statement due to statement timeout"));

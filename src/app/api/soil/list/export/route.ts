@@ -165,6 +165,7 @@ function getColumnNameMap(): Record<SoilListColumnKey, string> {
     lastCalledOn: getColumnName("lastCalledOn"),
     lastCallResult: getColumnName("lastCallResult"),
     latestPurchaseVendor: getColumnName("latestPurchaseVendor"),
+    latestVendor: getColumnName("latestVendor"),
     latestPurchasedOn: getColumnName("latestPurchasedOn"),
     latestOrderOn: getColumnName("latestOrderOn"),
     latestOrderProduct: getColumnName("latestOrderProduct"),

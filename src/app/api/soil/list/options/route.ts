@@ -28,6 +28,7 @@ type OptionQuery = PromiseLike<OptionQueryResult> & {
   or(filters: string): OptionQuery;
   order(column: string, options?: { ascending?: boolean }): OptionQuery;
   limit(count: number): OptionQuery;
+  range(from: number, to: number): OptionQuery;
 };
 type OptionDb = {
   from(table: string): {
@@ -37,8 +38,33 @@ type OptionDb = {
 
 let cachedOptions: { expiresAt: number; value: SoilListOptionsPayload } | null = null;
 
+async function fetchLatestVendorRows(db: OptionDb, column: string): Promise<OptionRow[]> {
+  const rows: OptionRow[] = [];
+  for (let from = 0; from < 3000; from += 1000) {
+    const page = await db
+      .from(SOIL_LIST_TABLES.option)
+      .select("value,row_count")
+      .eq("column_name", column)
+      .order("row_count", { ascending: false })
+      .range(from, from + 999);
+    if (page.error) throw new Error(page.error.message);
+    const data = page.data ?? [];
+    rows.push(...data);
+    if (data.length < 1000) break;
+  }
+  return rows;
+}
+
 async function fetchFieldOptions(db: OptionDb, field: SoilListOptionFieldKey): Promise<SoilListOptionItem[]> {
   const column = getColumnName(field);
+  if (field === "latestVendor") {
+    const [top, empty] = await Promise.all([
+      fetchLatestVendorRows(db, column),
+      db.from(SOIL_LIST_TABLES.option).select("value,row_count").eq("column_name", column).or("value.is.null,value.eq."),
+    ]);
+    if (empty.error) throw new Error(empty.error.message);
+    return toOptionItems(mergeOptionRows(top, empty.data ?? [])).filter((item) => item.empty || item.count >= 2);
+  }
   // PostgREST は 1 回 1,000 行までしか返さない（都道府県は表記ゆれが 2,700 種類）。
   // 全部を取ってから並べ替えると上位が抜けるので、DB 側で件数の多い順に上限まで取り、「（空欄）」の行は別に取って先頭に置く
   const officialPrefectures =

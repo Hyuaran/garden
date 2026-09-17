@@ -72,6 +72,7 @@ describe("soil list query helpers", () => {
       { field: "listName", op: "contains", value: "サンプル" },
       { field: "listLoadedOn", op: "gte", value: "2026-01-01" },
       { field: "purchaseStatus", op: "in", value: ["未購入"] },
+      { field: "latestVendor", op: "inOrEmpty", value: ["Luna"] },
       { field: "callCount", op: "lte", value: 3 },
       { field: "purchaseHistoryExists", op: "eq", value: false },
     ]);
@@ -81,6 +82,7 @@ describe("soil list query helpers", () => {
       `ilike:${getColumnName("listName")}:%サンプル%`,
       `gte:${getColumnName("listLoadedOn")}:2026-01-01`,
       `in:${getColumnName("purchaseStatus")}:1`,
+      `or:${getColumnName("latestVendor")}.in.("Luna"),${getColumnName("latestVendor")}.is.null,${getColumnName("latestVendor")}.eq.`,
       `lte:${getColumnName("callCount")}:3`,
       `eq:${getColumnName("purchaseHistoryExists")}:false`,
     ]);

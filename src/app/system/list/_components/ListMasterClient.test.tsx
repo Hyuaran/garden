@@ -391,6 +391,11 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
             { value: "×", label: "×", count: 120, empty: false },
           ],
           purchaseStatus: [],
+          latestVendor: [
+            { value: "Luna", label: "Luna", count: 2400, empty: false },
+            { value: "データ総研", label: "データ総研", count: 1200, empty: false },
+            { value: "", label: "（空欄）", count: 20, empty: true },
+          ],
           appointmentBlocked: [
             { value: "", label: "（空欄）", count: 1945619, empty: true },
             { value: "戸建", label: "戸建", count: 500, empty: false },
@@ -485,6 +490,12 @@ describe("ListMasterClient tabs", () => {
     expect(guidePanel?.textContent).not.toContain("準備中");
     expect(guidePanel?.textContent).not.toContain("親");
     expect(guidePanel?.textContent).not.toContain("子");
+    expect(within(guidePanel as HTMLElement).queryByLabelText("電話番号")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "自社アポ禁" }));
+    expect(window.location.search).toBe("?tab=internal-block");
+    expect(screen.getByRole("heading", { name: "自社アポ禁" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "テンプレートをダウンロード" })).toHaveAttribute("href", "/api/soil/list/internal-block/template");
 
     fireEvent.click(screen.getByRole("tab", { name: "アップロード" }));
     expect(window.location.search).toBe("?tab=upload");
@@ -760,6 +771,7 @@ describe("ListMasterClient filter condition conversion", () => {
       prefecture: ["大阪府"],
       auCallAvailability: ["○", "×"],
       purchaseStatus: ["完パケ", "電話番号のみ"],
+      purchaseVendor: ["Luna", EMPTY_OPTION_VALUE],
       appointmentBlocked: [EMPTY_OPTION_VALUE, "戸建"],
       lineType: ["フレッツ", EMPTY_OPTION_VALUE],
       category: ["個人", "法人"],
@@ -783,6 +795,7 @@ describe("ListMasterClient filter condition conversion", () => {
         { field: "prefecture", op: "eq", value: "大阪府" },
         { field: "auCallAvailability", op: "in", value: ["○", "×"] },
         { field: "purchaseStatus", op: "in", value: ["完パケ", "電話番号のみ"] },
+        { field: "latestVendor", op: "inOrEmpty", value: ["Luna"] },
         { field: "appointmentBlocked", op: "inOrEmpty", value: ["戸建"] },
         { field: "lineType", op: "inOrEmpty", value: ["フレッツ"] },
         { field: "category", op: "in", value: ["個人", "法人"] },
@@ -801,6 +814,7 @@ describe("ListMasterClient filter condition conversion", () => {
           { field: "appointmentBlocked", op: "empty" },
           { field: "auCallAvailability", op: "in", value: ["○", "×"] },
           { field: "purchaseStatus", op: "inOrEmpty", value: ["完パケ"] },
+          { field: "latestVendor", op: "eq", value: "Luna" },
           { field: "lineType", op: "empty" },
           { field: "category", op: "eq", value: "法人" },
           { field: "internalBlocked", op: "eq", value: true },
@@ -811,6 +825,7 @@ describe("ListMasterClient filter condition conversion", () => {
       appointmentBlocked: [EMPTY_OPTION_VALUE],
       auCallAvailability: ["○", "×"],
       purchaseStatus: ["完パケ", EMPTY_OPTION_VALUE],
+      purchaseVendor: ["Luna"],
       lineType: [EMPTY_OPTION_VALUE],
       category: ["法人"],
       internalBlock: "あり",
@@ -982,9 +997,9 @@ describe("ListMasterClient internal block release modal", () => {
 
   async function openReleaseModal(fetchOptions: Parameters<typeof installFetch>[0] = {}) {
     const fetchMock = installFetch({ internalBlocks: [internalBlockRow], ...fetchOptions });
-    window.history.replaceState(null, "", "/system/list?tab=guide");
+    window.history.replaceState(null, "", "/system/list?tab=internal-block");
     render(<ListMasterClient />);
-    expect(await screen.findByRole("tab", { name: "管理方法", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "自社アポ禁", selected: true })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: "解除" }));
     return fetchMock;
   }

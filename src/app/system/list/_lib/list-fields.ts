@@ -65,6 +65,7 @@ export const SOIL_LIST_COLUMNS = {
   lastCalledOn: "最終コール日_集約",
   lastCallResult: "最終結果",
   latestPurchaseVendor: "最新購入先",
+  latestVendor: "最新購入先",
   latestPurchasedOn: "最新購入日",
   latestOrderOn: "最新受注日",
   latestOrderProduct: "最新受注商材",
@@ -104,7 +105,7 @@ export type SoilListFilterDefinition = {
   options?: string[];
 };
 
-export type SoilListOptionFieldKey = "prefecture" | "auCallAvailability" | "purchaseStatus" | "appointmentBlocked" | "lineType" | "category";
+export type SoilListOptionFieldKey = "prefecture" | "auCallAvailability" | "purchaseStatus" | "latestVendor" | "appointmentBlocked" | "lineType" | "category";
 
 export type SoilListOptionItem = {
   value: string;
@@ -133,6 +134,7 @@ export const SOIL_LIST_OPTION_FIELDS: SoilListOptionFieldKey[] = [
   "prefecture",
   "auCallAvailability",
   "purchaseStatus",
+  "latestVendor",
   "appointmentBlocked",
   "lineType",
   "category",
@@ -154,6 +156,12 @@ export const SOIL_LIST_FILTER_DEFINITIONS: SoilListFilterDefinition[] = [
   {
     key: "purchaseStatus",
     label: "購入状態",
+    input: "select",
+    options: [""],
+  },
+  {
+    key: "latestVendor",
+    label: "購入先",
     input: "select",
     options: [""],
   },
