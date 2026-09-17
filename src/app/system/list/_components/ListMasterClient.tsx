@@ -121,12 +121,15 @@ type UploadPreview = {
 };
 
 type RawUploadPreview = {
+  previewId: string;
   files: Array<{ fileName: string; kind: "hikari" | "kureka"; rowCount: number }>;
   summary: { readRows: number; importRows: number; excludedRows: number; needsReviewRows: number; excludedAssignment: number; excludedOrder: number };
   listNames: Array<{ name: string; count: number; needsReview: number; excluded: number }>;
-  needsReview: Array<{ rowNumber: number; listName: string | null; name: string; phone: string; reasons: string[] }>;
-  excluded: Array<{ rowNumber: number; listName: string | null; phone: string; reason: string | undefined }>;
+  needsReview: Array<{ fileName: string; rowNumber: number; listName: string | null; lastName: string; firstName: string; phone: string; postal: string; reasons: string[] }>;
+  excluded: Array<{ fileName: string; rowNumber: number; listName: string | null; phone: string; reason: string | undefined }>;
 };
+
+type RawReviewEdit = { fileName: string; rowNumber: number; listName: string; lastName: string; firstName: string; phone: string; postal: string };
 
 type ExportDownloadResult = {
   excludedInternalBlock: number;
@@ -1157,8 +1160,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [fmExportRecordAssignment, setFmExportRecordAssignment] = useState(true);
   const [activeTab, setActiveTab] = useState<ActiveTab>("list");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
   const [rawUploadPreview, setRawUploadPreview] = useState<RawUploadPreview | null>(null);
+  const [rawPreviewId, setRawPreviewId] = useState("");
+  const [rawReviewEdits, setRawReviewEdits] = useState<Record<string, RawReviewEdit>>({});
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [uploadHistory, setUploadHistory] = useState<UploadHistory[]>([]);
   const [purchaseVendors, setPurchaseVendors] = useState<PurchaseVendorOption[]>([]);
@@ -1736,38 +1742,96 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
+  function rawReviewKey(row: { fileName: string; rowNumber: number }) {
+    return `${row.fileName}:${row.rowNumber}`;
+  }
+
+  function syncRawReviewEdits(preview: RawUploadPreview) {
+    setRawReviewEdits((current) => {
+      // 直した値は要確認から消えた後も残す（消すと 19 列 DL・Garden 登録に直した値が渡らない）。
+      // ファイルを選び直したときは previewFiles で空に戻す
+      const next: Record<string, RawReviewEdit> = { ...current };
+      for (const row of preview.needsReview) {
+        const key = rawReviewKey(row);
+        next[key] = current[key] ?? {
+          fileName: row.fileName,
+          rowNumber: row.rowNumber,
+          listName: row.listName ?? "",
+          lastName: row.lastName,
+          firstName: row.firstName,
+          phone: row.phone,
+          postal: row.postal,
+        };
+      }
+      return next;
+    });
+  }
+
+  function rawReviewOverrides() {
+    return Object.values(rawReviewEdits).map((edit) => ({
+      fileName: edit.fileName,
+      rowNumber: edit.rowNumber,
+      listName: edit.listName,
+      lastName: edit.lastName,
+      firstName: edit.firstName,
+      phone: edit.phone,
+      postal: edit.postal,
+    }));
+  }
+
+  function appendRawFormFiles(form: FormData) {
+    // previewId はサーバ側の一時キャッシュの鍵。本番（Vercel）は別インスタンスに当たるとキャッシュが無いので、
+    // ファイルも毎回いっしょに送り、キャッシュが無ければサーバが読み直せるようにする
+    if (rawPreviewId) form.set("previewId", rawPreviewId);
+    for (const file of uploadFiles) form.append("files", file);
+    form.set("overrides", JSON.stringify(rawReviewOverrides()));
+  }
+
   async function previewFile(next: File | null) {
+    await previewFiles(next ? [next] : []);
+  }
+
+  async function previewFiles(nextFiles: File[]) {
     setUploadMessage("");
     setUploadResult(null);
     setUploadPreview(null);
     setRawUploadPreview(null);
-    if (!next) {
+    setRawReviewEdits({});
+    setRawPreviewId("");
+    if (nextFiles.length === 0) {
       setUploadFile(null);
+      setUploadFiles([]);
       return;
     }
-    const extension = fileExtension(next.name);
+    const files = uploadMode === "raw" ? nextFiles : nextFiles.slice(0, 1);
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
     const allowed = uploadMode === "raw" ? [".csv", ".xlsx", ".xls"] : [".csv", ".xlsx", ".mer"];
-    if (!allowed.includes(extension)) {
+    if (files.some((file) => !allowed.includes(fileExtension(file.name)))) {
       setUploadFile(null);
+      setUploadFiles([]);
       setUploadMessage(uploadMode === "raw" ? "CSV・Excel のファイルを選んでください" : "CSV・Excel・.mer のファイルを選んでください");
       return;
     }
-    if (next.size > MAX_UPLOAD_SIZE) {
+    if (totalSize > MAX_UPLOAD_SIZE) {
       setUploadFile(null);
-      setUploadMessage("ファイルは20MBまでです");
+      setUploadFiles([]);
+      setUploadMessage("ファイルは合計20MBまでです");
       return;
     }
-    setUploadFile(next);
+    setUploadFile(files[0]);
+    setUploadFiles(files);
     setUploadBusy("preview");
     try {
       const form = new FormData();
       if (uploadMode === "raw") {
-        form.append("files", next);
+        for (const file of files) form.append("files", file);
         const response = await fetch("/api/soil/list/uploads/raw/preview", { method: "POST", body: form });
         const data = await readJson<{ ok: boolean; preview: RawUploadPreview }>(response);
         setRawUploadPreview(data.preview);
+        setRawPreviewId(data.preview.previewId);
+        syncRawReviewEdits(data.preview);
       } else {
-        form.set("file", next);
+        form.set("file", files[0]);
         const response = await fetch("/api/soil/list/uploads/preview", { method: "POST", body: form });
         const data = await readJson<{ ok: boolean; preview: UploadPreview }>(response);
         setUploadPreview(data.preview);
@@ -1780,12 +1844,12 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }
 
   async function handleRawDownload() {
-    if (!uploadFile) return;
+    if (uploadFiles.length === 0 && !rawPreviewId) return;
     setUploadBusy("download");
     setUploadMessage("");
     try {
       const form = new FormData();
-      form.append("files", uploadFile);
+      appendRawFormFiles(form);
       form.set("action", "download");
       const response = await fetch("/api/soil/list/uploads/raw/preview", { method: "POST", body: form });
       if (!response.ok) {
@@ -1808,8 +1872,31 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     }
   }
 
+  async function handleRawRecheck() {
+    if (uploadFiles.length === 0 && !rawPreviewId) return;
+    setUploadBusy("preview");
+    setUploadMessage("");
+    try {
+      const form = new FormData();
+      appendRawFormFiles(form);
+      const response = await fetch("/api/soil/list/uploads/raw/preview", { method: "POST", body: form });
+      const data = await readJson<{ ok: boolean; preview: RawUploadPreview }>(response);
+      setRawUploadPreview(data.preview);
+      setRawPreviewId(data.preview.previewId);
+      syncRawReviewEdits(data.preview);
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : "再チェックできませんでした");
+    } finally {
+      setUploadBusy(null);
+    }
+  }
+
+  function updateRawReviewEdit(key: string, patch: Partial<RawReviewEdit>) {
+    setRawReviewEdits((current) => ({ ...current, [key]: { ...current[key], ...patch } }));
+  }
+
   async function handleRawImport() {
-    if (!uploadFile) return;
+    if (uploadFiles.length === 0 && !rawPreviewId) return;
     const vendor = purchaseVendor === "__other__" ? purchaseVendorOther.trim() : purchaseVendor.trim();
     if (!vendor) {
       setUploadMessage("購入先を選んでください");
@@ -1820,7 +1907,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setUploadResult(null);
     try {
       const form = new FormData();
-      form.append("files", uploadFile);
+      appendRawFormFiles(form);
       form.set("action", "import");
       form.set("purchaseVendor", vendor);
       const response = await fetch("/api/soil/list/uploads/raw/preview", { method: "POST", body: form });
@@ -1838,7 +1925,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   function dropUpload(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDragActive(false);
-    void previewFile(event.dataTransfer.files[0] ?? null);
+    void previewFiles(Array.from(event.dataTransfer.files));
   }
 
   async function handleUploadImport() {
@@ -2661,7 +2748,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               className={styles.hiddenFileInput}
               type="file"
               accept={uploadMode === "raw" ? ".csv,.xlsx,.xls" : ".csv,.xlsx,.mer"}
-              onChange={(event) => void previewFile(event.target.files?.[0] ?? null)}
+              multiple={uploadMode === "raw"}
+              onChange={(event) => void previewFiles(Array.from(event.target.files ?? []))}
             />
             <div className={styles.uploadChoiceBox}>
               <label>
@@ -2725,8 +2813,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </svg>
               {uploadFile ? (
                 <div className={styles.selectedFile}>
-                  <strong>{uploadFile.name}</strong>
-                  <span>{formatFileSize(uploadFile.size)}</span>
+                  <strong>{uploadFiles.length > 1 ? `${uploadFiles.length.toLocaleString("ja-JP")} ファイル` : uploadFile.name}</strong>
+                  <span>{uploadFiles.map((file) => `${file.name}（${formatFileSize(file.size)}）`).join("、")}</span>
                   <button type="button" onClick={(event) => { event.stopPropagation(); void previewFile(null); }}>
                     選び直す
                   </button>
@@ -2734,7 +2822,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               ) : (
                 <>
                   <div className={styles.uploadNotes}>
-                    <span>{uploadMode === "raw" ? "ここに営業の元 Excel をドラッグ＆ドロップ（CSV／Excel）" : "ここに取込ファイルをドラッグ＆ドロップ（CSV／Excel／.mer）"}</span>
+                    <span>{uploadMode === "raw" ? "ここに営業の元 Excel をドラッグ＆ドロップ（複数まとめて上げられます）" : "ここに取込ファイルをドラッグ＆ドロップ（CSV／Excel／.mer）"}</span>
                     <span>20MB・50,000行まで</span>
                   </div>
                   <button type="button" className={styles.uploadButton} onClick={(event) => { event.stopPropagation(); fileInputRef.current?.click(); }}>
@@ -2758,6 +2846,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 読み込んだ行 {rawUploadPreview.summary.readRows.toLocaleString("ja-JP")} ／ 取込ファイルに出す行 {rawUploadPreview.summary.importRows.toLocaleString("ja-JP")} ／ 除外 {rawUploadPreview.summary.excludedRows.toLocaleString("ja-JP")} ／ 要確認 {rawUploadPreview.summary.needsReviewRows.toLocaleString("ja-JP")}
               </p>
               <div className={styles.summaryList}>
+                {rawUploadPreview.files.map((file) => (
+                  <span key={file.fileName}>{file.fileName} {file.rowCount.toLocaleString("ja-JP")} 行</span>
+                ))}
                 {rawUploadPreview.listNames.slice(0, 8).map((item) => (
                   <span key={item.name}>{item.name} {item.count.toLocaleString("ja-JP")} 行（除外 {item.excluded.toLocaleString("ja-JP")}・要確認 {item.needsReview.toLocaleString("ja-JP")}）</span>
                 ))}
@@ -2765,11 +2856,32 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               {rawUploadPreview.needsReview.length > 0 && (
                 <div className={styles.tableWrap}>
                   <table>
-                    <thead><tr><th>行</th><th>リスト名</th><th>氏名</th><th>電話番号</th><th>指摘</th></tr></thead>
+                    <thead><tr><th>ファイル</th><th>行</th><th>リスト名</th><th>姓</th><th>名</th><th>電話番号</th><th>郵便番号</th><th>指摘</th></tr></thead>
                     <tbody>
-                      {rawUploadPreview.needsReview.map((row) => (
-                        <tr key={`${row.rowNumber}-${row.phone}`}><td>{row.rowNumber}</td><td>{row.listName ?? ""}</td><td>{row.name}</td><td>{row.phone}</td><td>{row.reasons.join("／")}</td></tr>
-                      ))}
+                      {rawUploadPreview.needsReview.map((row) => {
+                        const key = rawReviewKey(row);
+                        const edit = rawReviewEdits[key] ?? {
+                          fileName: row.fileName,
+                          rowNumber: row.rowNumber,
+                          listName: row.listName ?? "",
+                          lastName: row.lastName,
+                          firstName: row.firstName,
+                          phone: row.phone,
+                          postal: row.postal,
+                        };
+                        return (
+                          <tr key={key}>
+                            <td>{row.fileName}</td>
+                            <td>{row.rowNumber}</td>
+                            <td><input className={styles.reviewInputWide} value={edit.listName} onChange={(event) => updateRawReviewEdit(key, { listName: event.target.value })} /></td>
+                            <td><input className={styles.reviewInput} value={edit.lastName} onChange={(event) => updateRawReviewEdit(key, { lastName: event.target.value })} /></td>
+                            <td><input className={styles.reviewInput} value={edit.firstName} onChange={(event) => updateRawReviewEdit(key, { firstName: event.target.value })} /></td>
+                            <td><input className={styles.reviewInputPhone} value={edit.phone} onChange={(event) => updateRawReviewEdit(key, { phone: event.target.value })} /></td>
+                            <td><input className={styles.reviewInputPhone} value={edit.postal} onChange={(event) => updateRawReviewEdit(key, { postal: event.target.value })} /></td>
+                            <td>{row.reasons.join("／")}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -2778,6 +2890,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 除外：過去に配った番号 {rawUploadPreview.summary.excludedAssignment.toLocaleString("ja-JP")} 件／案件あり {rawUploadPreview.summary.excludedOrder.toLocaleString("ja-JP")} 件
               </p>
               <div className={styles.actions}>
+                {rawUploadPreview.needsReview.length > 0 && (
+                  <button type="button" className={styles.secondaryButton} onClick={handleRawRecheck} disabled={uploadBusy !== null}>
+                    {uploadBusy === "preview" ? "確認しています…" : "再チェック"}
+                  </button>
+                )}
                 <button type="button" onClick={handleRawDownload} disabled={uploadBusy !== null}>
                   {uploadBusy === "download" ? "作っています…" : "取込ファイルをダウンロード（19 列）"}
                 </button>

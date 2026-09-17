@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import iconv from "iconv-lite";
 
-import { MAX_UPLOAD_FILE_SIZE, MAX_UPLOAD_ROWS, SoilListUploadError, uploadFileExtension } from "../upload-parser";
+import { extractListLoadedOn, MAX_UPLOAD_FILE_SIZE, MAX_UPLOAD_ROWS, SoilListUploadError, uploadFileExtension } from "../upload-parser";
 import { HIKARI_HEADERS, KUREKA_HEADERS, type RawKind } from "./constants";
 import { detectRawKind } from "./detect";
 import { hikariListNameFromFile, kurekaListName } from "./list-name";
@@ -18,6 +18,15 @@ import {
 } from "./normalize";
 
 export type RawParsedFile = { fileName: string; kind: RawKind; rows: RawImportRow[]; reviews: string[] };
+export type RawRowOverride = {
+  fileName?: string;
+  rowNumber: number;
+  lastName?: string;
+  firstName?: string;
+  phone?: string;
+  postal?: string;
+  listName?: string;
+};
 
 function csvRows(body: string): string[][] {
   const rows: string[][] = [];
@@ -98,6 +107,7 @@ async function parseHikariRows(fileName: string, rawRows: string[][], positions:
     if (nameResult.review) reasons.push(nameResult.review);
     rows.push(buildHikariImportRow({
       rowNumber: index + 1,
+      sourceFileName: fileName,
       // 026 と同じく、光回線のリスト名はファイル名から作った値を優先する（元 Excel のリスト名列にはファイル名などが入っていることが多い）
       listName: nameResult.value || valueByHeader(raw, positions, "リスト名"),
       lastName: name.last,
@@ -138,7 +148,56 @@ async function parseKurekaRows(fileName: string, rawRows: string[][], positions:
     const postal = await normalizePostal(values["設置先_郵便番号"], address.prefecture, lookup);
     values["設置先_郵便番号"] = postal.value;
     const reasons = [listName.review, tel.review && !mobile.value ? tel.review : null, mobile.review && !tel.value ? mobile.review : null, postal.review].filter(Boolean) as string[];
-    rows.push(buildKurekaImportRow({ rowNumber: index + 1, values, reviewReasons: reasons }));
+    rows.push(buildKurekaImportRow({ rowNumber: index + 1, sourceFileName: fileName, values, reviewReasons: reasons }));
+  }
+  return rows;
+}
+
+function replaceReason(reasons: string[], predicate: (reason: string) => boolean, next?: string): string[] {
+  const kept = reasons.filter((reason) => !predicate(reason));
+  if (next) kept.push(next);
+  return [...new Set(kept)];
+}
+
+function nameColumns(row: RawImportRow): { last: "既契約者名_姓" | "申込者名_姓"; first: "既契約者名_名" | "申込者名_名" } {
+  return row.sourceKind === "hikari" ? { last: "既契約者名_姓", first: "既契約者名_名" } : { last: "申込者名_姓", first: "申込者名_名" };
+}
+
+export async function applyRawOverrides(rows: RawImportRow[], overrides: RawRowOverride[] = [], lookup?: PostalLookup): Promise<RawImportRow[]> {
+  const overrideMap = new Map(overrides.map((override) => [`${override.fileName ?? ""}:${override.rowNumber}`, override]));
+  for (const row of rows) {
+    const override = overrideMap.get(`${row.sourceFileName}:${row.rowNumber}`) ?? overrideMap.get(`:${row.rowNumber}`);
+    if (!override) continue;
+
+    const columns = nameColumns(row);
+    if (override.lastName !== undefined || override.firstName !== undefined) {
+      const name = normalizeName(override.lastName ?? row[columns.last] ?? "", override.firstName ?? row[columns.first] ?? "");
+      row[columns.last] = name.last;
+      row[columns.first] = name.first;
+      row.reviewReasons = replaceReason(row.reviewReasons, (reason) => reason === "氏名の区切りなし", name.review);
+    }
+
+    if (override.phone !== undefined) {
+      const phone = normalizePhoneForImport(override.phone);
+      row["電話番号_ハイフンなし"] = phone.value;
+      row.normalizedPhone = phone.value || (row["携帯番号_ハイフンなし"] ?? "");
+      row.reviewReasons = replaceReason(row.reviewReasons, (reason) => reason.includes("電話番号"), phone.review);
+    }
+
+    if (override.postal !== undefined) {
+      const postal = await normalizePostal(override.postal, row["設置先_住所_都道府県"] ?? "", lookup);
+      row["設置先_郵便番号"] = postal.value;
+      row.reviewReasons = replaceReason(row.reviewReasons, (reason) => reason.includes("郵便番号"), postal.review);
+    }
+
+    if (override.listName !== undefined) {
+      const listName = text(override.listName);
+      row["リスト名"] = listName;
+      row.listLoadedOn = extractListLoadedOn(listName);
+      row.reviewReasons = replaceReason(row.reviewReasons, (reason) => reason.includes("リスト名を作れませんでした"), listName ? undefined : "リスト名を作れませんでした");
+    }
+
+    row.checkReason = row.reviewReasons.length ? row.reviewReasons.join("／") : null;
   }
   return rows;
 }
@@ -164,4 +223,3 @@ export async function parseRawExcelFiles(files: File[], lookup?: PostalLookup): 
   }
   return { files: parsedFiles, rows: parsedFiles.flatMap((file) => file.rows) };
 }
-

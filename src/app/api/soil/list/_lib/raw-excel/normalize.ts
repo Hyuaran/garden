@@ -44,7 +44,13 @@ export function normalizeName(lastRaw: string, firstRaw: string): NameParts {
   const source = last || first;
   const parts = source.split(SPACE_RE).filter(Boolean);
   if (parts.length >= 2) return { last: parts[0], first: parts.slice(1).join("") };
-  if (source) return { last: source, first: "", review: "氏名の区切りなし" };
+  if (source) {
+    const matches = SORTED_COMMON_SURNAMES.filter((surname) => source.startsWith(surname) && source.length > surname.length);
+    const longestLength = matches[0]?.length ?? 0;
+    const longest = matches.filter((surname) => surname.length === longestLength);
+    if (longest.length === 1) return { last: longest[0], first: source.slice(longest[0].length) };
+    return { last: source, first: "", review: "氏名の区切りなし" };
+  }
   return { last: "", first: "", }; // 氏名が空の行は 026 でも要確認にしていない（電話番号があれば架電できる）
 }
 
@@ -78,4 +84,5 @@ export function normalizeBirthday(value: unknown): string {
   if (!match) return raw;
   return `${match[1].padStart(4, "0")}/${match[2].padStart(2, "0")}/${match[3].padStart(2, "0")}`;
 }
+import { SORTED_COMMON_SURNAMES } from "./surnames";
 

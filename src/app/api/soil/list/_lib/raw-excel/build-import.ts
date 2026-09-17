@@ -3,6 +3,7 @@ import { RAW_IMPORT_COLUMNS, type ImportColumn, type RawKind } from "./constants
 
 export type RawImportRow = Record<ImportColumn, string | null> & {
   rowNumber: number;
+  sourceFileName: string;
   sourceKind: RawKind;
   normalizedPhone: string;
   listLoadedOn: string | null;
@@ -17,6 +18,7 @@ export function emptyImportValues(): Record<ImportColumn, string | null> {
 
 export function buildHikariImportRow(input: {
   rowNumber: number;
+  sourceFileName?: string;
   listName: string;
   lastName: string;
   firstName: string;
@@ -40,6 +42,7 @@ export function buildHikariImportRow(input: {
   return {
     ...values,
     rowNumber: input.rowNumber,
+    sourceFileName: input.sourceFileName ?? "",
     sourceKind: "hikari",
     normalizedPhone: input.phone,
     listLoadedOn: extractListLoadedOn(input.listName),
@@ -48,7 +51,7 @@ export function buildHikariImportRow(input: {
   };
 }
 
-export function buildKurekaImportRow(input: { rowNumber: number; values: Record<string, string>; reviewReasons?: string[] }): RawImportRow {
+export function buildKurekaImportRow(input: { rowNumber: number; sourceFileName?: string; values: Record<string, string>; reviewReasons?: string[] }): RawImportRow {
   const values = emptyImportValues();
   for (const column of RAW_IMPORT_COLUMNS) values[column] = input.values[column] ?? null;
   const phone = values["電話番号_ハイフンなし"] || values["携帯番号_ハイフンなし"] || "";
@@ -56,6 +59,7 @@ export function buildKurekaImportRow(input: { rowNumber: number; values: Record<
   return {
     ...values,
     rowNumber: input.rowNumber,
+    sourceFileName: input.sourceFileName ?? "",
     sourceKind: "kureka",
     normalizedPhone: phone,
     listLoadedOn: extractListLoadedOn(values["リスト名"] ?? ""),
@@ -67,4 +71,3 @@ export function buildKurekaImportRow(input: { rowNumber: number; values: Record<
 export function toParsedUploadRow(row: RawImportRow): ParsedUploadRow {
   return { ...row, format: "A" };
 }
-

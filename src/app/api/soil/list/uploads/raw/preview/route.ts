@@ -7,16 +7,35 @@ import { requireSoilListUser } from "../../../_lib/auth";
 import { IMPORT_COLUMNS, prepareAssignmentRows, SoilListUploadError, type ParsedUploadRow } from "../../../_lib/upload-parser";
 import { applyRawChecks } from "../../../_lib/raw-excel/check";
 import { createImportWorkbook, workbookBuffer } from "../../../_lib/raw-excel/excel";
-import { parseRawExcelFiles } from "../../../_lib/raw-excel/parser";
+import { applyRawOverrides, parseRawExcelFiles, type RawRowOverride } from "../../../_lib/raw-excel/parser";
 import { findExistingPhones, lookupPostal } from "../../../_lib/raw-excel/raw-excel.server";
-import { toParsedUploadRow } from "../../../_lib/raw-excel/build-import";
+import { toParsedUploadRow, type RawImportRow } from "../../../_lib/raw-excel/build-import";
+import type { RawParsedFile } from "../../../_lib/raw-excel/parser";
 import { applyUploadInBatches, emptyUploadResult } from "../../_lib/apply-upload";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
+const PREVIEW_CACHE_MS = 10 * 60 * 1000;
+const previewCache = new Map<string, { expiresAt: number; files: RawParsedFile[]; rows: RawImportRow[] }>();
+
 function isUploadedFile(value: FormDataEntryValue): value is File {
   return Boolean(value && typeof value === "object" && "arrayBuffer" in value);
+}
+
+function cloneRows<T>(rows: T): T {
+  return JSON.parse(JSON.stringify(rows)) as T;
+}
+
+function newPreviewId() {
+  return crypto.randomUUID();
+}
+
+function prunePreviewCache() {
+  const now = Date.now();
+  for (const [key, value] of previewCache) {
+    if (value.expiresAt <= now) previewCache.delete(key);
+  }
 }
 
 function todayYmd() {
@@ -30,6 +49,24 @@ function todayIso() {
 function formText(form: FormData, name: string): string {
   const value = form.get(name);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function parseOverrides(form: FormData): RawRowOverride[] {
+  const raw = form.get("overrides");
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  const parsed = JSON.parse(raw) as unknown;
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter((item): item is Record<string, unknown> & { rowNumber: number } => Boolean(item) && typeof item === "object" && typeof item.rowNumber === "number")
+    .map((item) => ({
+      fileName: typeof item.fileName === "string" ? item.fileName : undefined,
+      rowNumber: item.rowNumber,
+      lastName: typeof item.lastName === "string" ? item.lastName : undefined,
+      firstName: typeof item.firstName === "string" ? item.firstName : undefined,
+      phone: typeof item.phone === "string" ? item.phone : undefined,
+      postal: typeof item.postal === "string" ? item.postal : undefined,
+      listName: typeof item.listName === "string" ? item.listName : undefined,
+    }));
 }
 
 function summarizeByList(rows: Array<{ "リスト名": string | null; reviewReasons: string[]; excludedReason?: string }>) {
@@ -84,8 +121,16 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const files = form.getAll("files").filter(isUploadedFile);
     const action = typeof form.get("action") === "string" ? form.get("action") : "";
+    const requestedPreviewId = formText(form, "previewId");
     const db = getSupabaseAdmin();
-    const parsed = await parseRawExcelFiles(files, (postal) => lookupPostal(db as never, postal));
+    prunePreviewCache();
+    const cached = requestedPreviewId ? previewCache.get(requestedPreviewId) : undefined;
+    const parsed = cached
+      ? { files: cloneRows(cached.files), rows: cloneRows(cached.rows) }
+      : await parseRawExcelFiles(files, (postal) => lookupPostal(db as never, postal));
+    const previewId = cached ? requestedPreviewId : newPreviewId();
+    if (!cached) previewCache.set(previewId, { expiresAt: Date.now() + PREVIEW_CACHE_MS, files: cloneRows(parsed.files), rows: cloneRows(parsed.rows) });
+    await applyRawOverrides(parsed.rows, parseOverrides(form), (postal) => lookupPostal(db as never, postal));
     const hits = await findExistingPhones(db as never, parsed.rows.flatMap((row) => [row["電話番号_ハイフンなし"], row["携帯番号_ハイフンなし"]].filter(Boolean) as string[]));
     const checked = applyRawChecks(parsed.rows, hits);
 
@@ -137,17 +182,21 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       preview: {
+        previewId,
         files: parsed.files.map((file) => ({ fileName: file.fileName, kind: file.kind, rowCount: file.rows.length })),
         summary: checked.summary,
         listNames: summarizeByList(allRows),
         needsReview: checked.rows.filter((row) => row.reviewReasons.length > 0).slice(0, 50).map((row) => ({
+          fileName: row.sourceFileName,
           rowNumber: row.rowNumber,
           listName: row["リスト名"],
-          name: `${row["既契約者名_姓"] ?? row["申込者名_姓"] ?? ""}${row["既契約者名_名"] ?? row["申込者名_名"] ?? ""}`,
+          lastName: row["既契約者名_姓"] ?? row["申込者名_姓"] ?? "",
+          firstName: row["既契約者名_名"] ?? row["申込者名_名"] ?? "",
           phone: row.normalizedPhone,
+          postal: row["設置先_郵便番号"] ?? "",
           reasons: row.reviewReasons,
         })),
-        excluded: checked.excluded.slice(0, 50).map((row) => ({ rowNumber: row.rowNumber, listName: row["リスト名"], phone: row.normalizedPhone, reason: row.excludedReason })),
+        excluded: checked.excluded.slice(0, 50).map((row) => ({ fileName: row.sourceFileName, rowNumber: row.rowNumber, listName: row["リスト名"], phone: row.normalizedPhone, reason: row.excludedReason })),
       },
     });
   } catch (error) {
