@@ -216,7 +216,8 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
     </div>
 
     {tab === "attendance" && <section className={styles.workArea}>
-      <div className={styles.controls}>
+      {/* ［コピー］は文面の枠の上の行の右端（シフト連絡のまとまりと同じ位置・2026-09-19 東海林さん） */}
+      <div className={`${styles.controls} ${styles.attendanceControls}`}>
         <label>対象日<SelectDate value={attendanceDate} dates={dates} onChange={(date) => {
           setAttendanceDate(date);
           setAttendanceTime(defaultAttendanceTime(date));
@@ -227,11 +228,9 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
           <label><input type="radio" checked={attendanceTime === "14:00"} onChange={() => setAttendanceTime("14:00")} />14:00</label>
         </div>
         <label className={styles.check}><input type="checkbox" checked={withConfirmation} onChange={(event) => setWithConfirmation(event.currentTarget.checked)} />出勤の確認を付ける</label>
-      </div>
-      <div className={styles.previewGrid}>
-        <pre className={styles.preview}>{attendanceText}</pre>
         <button type="button" className={styles.copy} onClick={() => void copyText(attendanceText)}>コピー</button>
       </div>
+      <pre className={styles.preview}>{attendanceText}</pre>
       <PlanFields plans={plans} onChange={setPlans} />
       <Coverage
         coverage={coverage}
@@ -247,14 +246,16 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
         <label>対象日<SelectDate value={lineDate} dates={dates} onChange={setLineDate} /></label>
         <p className={styles.targetText}>対象：宮永チーム・小泉チーム・石原チーム・新人チームの全員</p>
       </div>
-      {tomorrowMissing && <p className={styles.lineRecipientsLabel} role="status">明日（{compactSlashDate(tomorrow)}）の日別データが入っていません。KOT の日別データ出力で、出力対象年月を今日〜明日にして出してください。</p>}
+      {tomorrowMissing && <p className={styles.notice} role="status">明日（{compactSlashDate(tomorrow)}）の日別データが入っていません。KOT の日別データ出力で、出力対象年月を今日〜明日にして出してください。</p>}
       <div className={styles.blocks}>
+        {/* 見出し＝シフト（人数）と［コピー］、その下に送る相手、送る文面（［コピー］で取れるのは文面だけ） */}
         {lineBlocks.map((block) => <article className={styles.lineBlock} key={block.shift}>
-          <div><h2>{block.shift}</h2><button type="button" className={styles.copySmall} onClick={() => void copyText(block.message)} aria-label={`${block.shift} の文面をコピー`}>コピー</button></div>
-          <p className={styles.lineRecipientsLabel}>送る相手（{block.recipients.length} 人）</p>
-          <ul className={styles.lineRecipients}>{block.recipients.map((line) => <li key={line}>{line}</li>)}</ul>
-          <p className={styles.lineRecipientsLabel}>送る文面（［コピー］で取れるのはここだけ）</p>
-          <pre>{block.message}</pre>
+          <div className={styles.lineHead}>
+            <h2>{block.shift}<span>（{block.recipients.length} 人）</span></h2>
+            <button type="button" className={styles.copy} onClick={() => void copyText(block.message)} aria-label={`${block.shift} の文面をコピー`}>コピー</button>
+          </div>
+          <ul className={styles.lineRecipients} aria-label="送る相手">{block.recipients.map((line) => <li key={line}>{line}</li>)}</ul>
+          <pre className={styles.preview}>{block.message}</pre>
         </article>)}
         {lineBlocks.length === 0 && <p className={styles.empty}>この日のシフト連絡はありません。</p>}
       </div>
