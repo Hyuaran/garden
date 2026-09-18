@@ -206,6 +206,11 @@
   font-weight: 800;
 }
 
+/* 同じ段の入力欄の下端をそろえる（「から／まで」の小見出しがある項目と無い項目が並ぶため） */
+.filterGrid > * {
+  justify-content: flex-end;
+}
+
 .wide {
   grid-column: span 2;
 }
@@ -215,6 +220,23 @@
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   min-width: 0;
+}
+
+.rangeLabels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.filterDivider {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line);
+  margin: 4px 0;
+  min-height: 0;
 }
 
 /* 日付・数値の「〜」入力は 2 枠ぶん使う（1 枠だと日付入力がはみ出て隣と重なる） */
@@ -483,7 +505,6 @@
   font-weight: 700;
 }
 
-/* 「検索」は購入履歴の右隣の枠。ほかの入力と同じ高さで下ぞろえ・枠いっぱいの幅 */
 .searchCell {
   display: flex;
   align-items: flex-end;
@@ -1766,7 +1787,8 @@
   }
 
   .wide,
-  .filterGrid > label:has(.range) {
+  .filterGrid > label:has(.range),
+  .filterDivider {
     grid-column: auto;
   }
 

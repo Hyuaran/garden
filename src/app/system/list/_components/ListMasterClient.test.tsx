@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EMPTY_OPTION_VALUE } from "../_lib/list-fields";
 
-import { ListMasterClient, buildOptionGroups, conditionToFilters, filtersToCondition, type FilterState } from "./ListMasterClient";
+import { ListMasterClient, buildOptionGroups, conditionToFilters, describeFilters, filtersToCondition, type FilterState } from "./ListMasterClient";
 import MultiSelectFilter from "./MultiSelectFilter";
 
 vi.mock("react-chartjs-2", () => ({
@@ -832,6 +832,59 @@ describe("ListMasterClient filter condition conversion", () => {
     });
   });
 
+  it("keeps purchase history conditions compatible for saved filters and summaries", () => {
+    const filters = conditionToFilters({
+      filters: [{ field: "purchaseHistoryExists", op: "eq", value: true }],
+    });
+
+    expect(filters.purchaseHistory).toBe("あり");
+    expect(filtersToCondition(filters).filters).toContainEqual({ field: "purchaseHistoryExists", op: "eq", value: true });
+    expect(describeFilters(filters)).toContain("購入履歴：あり");
+  });
+
+  it("summarizes filters in the same order as the form", () => {
+    const summary = describeFilters({
+      prefecture: ["大阪府"],
+      purchaseVendor: ["データ総研"],
+      category: ["個人"],
+      purchaseStatus: ["完パケ"],
+      lineType: ["フレッツ"],
+      elapsedYearsFrom: "3",
+      elapsedYearsTo: "5",
+      listLoadedOnFrom: "2026-09-01",
+      listLoadedOnTo: "2026-09-18",
+      listName: "光回線",
+      recheckedOnFrom: "2026-09-02",
+      recheckedOnTo: "2026-09-17",
+      lastCalledOnFrom: "2026-09-03",
+      lastCalledOnTo: "2026-09-16",
+      callCountFrom: "1",
+      callCountTo: "4",
+      purchaseHistory: "あり",
+      internalBlock: "なし",
+      appointmentBlocked: [EMPTY_OPTION_VALUE],
+      auCallAvailability: ["○"],
+    });
+
+    expect(summary.split("／").map((item) => item.split("：")[0])).toEqual([
+      "都道府県",
+      "購入先",
+      "区分",
+      "購入状態",
+      "元回線",
+      "経過（年）",
+      "投入日",
+      "リスト名",
+      "再判定日",
+      "最終コール日",
+      "コール回数",
+      "購入履歴",
+      "自社アポ禁",
+      "アポ禁",
+      "AU光架電可否",
+    ]);
+  });
+
   it("groups prefectures north to south, then other labels, then empty", () => {
     const groups = buildOptionGroups("prefecture", [
       { value: "大阪府", label: "大阪府", count: 11165, empty: false },
@@ -867,6 +920,26 @@ describe("ListMasterClient list search UX", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "条件を変える" }));
     expect(screen.getByRole("button", { name: "検索" })).toBeInTheDocument();
+  });
+
+  it("shows the filter fields in the requested order with range captions and dividers", async () => {
+    installFetch();
+    render(<ListMasterClient />);
+
+    const grid = await screen.findByTestId("list-filter-grid");
+    const labels = ["都道府県", "購入先", "区分", "購入状態", "元回線", "経過（年）", "リスト投入日", "リスト名", "再判定日", "最終コール日", "コール回数", "自社アポ禁", "アポ禁", "AU光架電可否"];
+    const fieldLabels = Array.from(grid.children)
+      .map((child) => labels.find((label) => (child.textContent ?? "").startsWith(label)))
+      .filter(Boolean);
+    expect(fieldLabels).toEqual(labels);
+    expect(within(grid).queryByLabelText("購入履歴")).not.toBeInTheDocument();
+    expect(within(grid).getAllByText("から")).toHaveLength(3);
+    expect(within(grid).getAllByText("まで")).toHaveLength(3);
+    expect(within(grid).getByText("回以上")).toBeInTheDocument();
+    expect(within(grid).getByText("回以下")).toBeInTheDocument();
+    expect(within(grid).getByText("年以上")).toBeInTheDocument();
+    expect(within(grid).getByText("年以下")).toBeInTheDocument();
+    expect(grid.querySelectorAll('[class*="filterDivider"]')).toHaveLength(2);
   });
 
   it("changes sort and page through the table controls", async () => {
@@ -920,6 +993,34 @@ describe("ListMasterClient list search UX", () => {
     expect(screen.getByRole("dialog", { name: "条件を削除する" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "削除する" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/soil/list/conditions/condition-1", { method: "DELETE" }));
+  });
+
+  it("loads an old saved purchase history condition without showing the removed select", async () => {
+    const fetchMock = installFetch({
+      conditions: [
+        {
+          id: "condition-history",
+          name: "購入履歴あり",
+          condition: { filters: [{ field: "purchaseHistoryExists", op: "eq", value: true }] },
+          created_by: "東海林",
+          updated_at: "2026-09-09T00:00:00+09:00",
+        },
+      ],
+    });
+    render(<ListMasterClient />);
+
+    const grid = await screen.findByTestId("list-filter-grid");
+    expect(within(grid).queryByLabelText("購入履歴")).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "条件を保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "読み込む" }));
+
+    await waitFor(() => {
+      const searchCall = fetchMock.mock.calls.find(([url, init]) => url === "/api/soil/list/search" && init?.method === "POST");
+      expect(JSON.parse(String(searchCall?.[1]?.body)).condition.filters).toEqual([
+        { field: "purchaseHistoryExists", op: "eq", value: true },
+      ]);
+    });
+    expect(await screen.findByText(/購入履歴：あり/)).toBeInTheDocument();
   });
 });
 

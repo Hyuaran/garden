@@ -898,20 +898,20 @@ export function describeFilters(filters: FilterState, options: Partial<SoilListO
     parts.push(`${label}：${values.map((value) => optionLabel(field, value, options)).join("・")}`);
   };
   pushMulti("prefecture", "都道府県", filters.prefecture);
-  pushMulti("auCallAvailability", "AU光架電可否", filters.auCallAvailability);
-  pushMulti("purchaseStatus", "購入状態", filters.purchaseStatus);
   pushMulti("latestVendor", "購入先", filters.purchaseVendor);
-  pushMulti("appointmentBlocked", "アポ禁", filters.appointmentBlocked);
-  pushMulti("lineType", "元回線", filters.lineType);
   pushMulti("category", "区分", filters.category);
-  if (filters.listName) parts.push(`リスト名：${filters.listName}を含む`);
+  pushMulti("purchaseStatus", "購入状態", filters.purchaseStatus);
+  pushMulti("lineType", "元回線", filters.lineType);
+  if (filters.elapsedYearsFrom || filters.elapsedYearsTo) parts.push(`経過（年）：${filters.elapsedYearsFrom || "指定なし"}年以上〜${filters.elapsedYearsTo || "指定なし"}年以下`);
   if (filters.listLoadedOnFrom || filters.listLoadedOnTo) parts.push(`投入日：${filters.listLoadedOnFrom || "指定なし"}〜${filters.listLoadedOnTo || "指定なし"}`);
+  if (filters.listName) parts.push(`リスト名：${filters.listName}を含む`);
   if (filters.recheckedOnFrom || filters.recheckedOnTo) parts.push(`再判定日：${filters.recheckedOnFrom || "指定なし"}〜${filters.recheckedOnTo || "指定なし"}`);
   if (filters.lastCalledOnFrom || filters.lastCalledOnTo) parts.push(`最終コール日：${filters.lastCalledOnFrom || "指定なし"}〜${filters.lastCalledOnTo || "指定なし"}`);
   if (filters.callCountFrom || filters.callCountTo) parts.push(`コール回数：${filters.callCountFrom || "指定なし"}〜${filters.callCountTo || "指定なし"}`);
-  if (filters.elapsedYearsFrom || filters.elapsedYearsTo) parts.push(`経過（年）：${filters.elapsedYearsFrom || "指定なし"}年以上〜${filters.elapsedYearsTo || "指定なし"}年以下`);
   if (filters.purchaseHistory) parts.push(`購入履歴：${filters.purchaseHistory}`);
   if (filters.internalBlock) parts.push(`自社アポ禁：${filters.internalBlock}`);
+  pushMulti("appointmentBlocked", "アポ禁", filters.appointmentBlocked);
+  pushMulti("auCallAvailability", "AU光架電可否", filters.auCallAvailability);
   return parts.join("／") || "指定なし";
 }
 
@@ -2525,27 +2525,45 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           </div>
         ) : (
           <form onSubmit={handleFilterSubmit}>
-            <div className={styles.filterGrid}>
+            <div className={styles.filterGrid} data-testid="list-filter-grid">
               <MultiSelectFilter label="都道府県" value={filters.prefecture} groups={buildOptionGroups("prefecture", options.prefecture)} onChange={(value) => setFilter("prefecture", value)} />
-              <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} />
-              <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} />
               <MultiSelectFilter label="購入先" value={filters.purchaseVendor} groups={buildOptionGroups("latestVendor", options.latestVendor)} onChange={(value) => setFilter("purchaseVendor", value)} searchable initialLimit={100} />
-              <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} />
-              <MultiSelectFilter label="元回線" value={filters.lineType} groups={buildOptionGroups("lineType", options.lineType)} onChange={(value) => setFilter("lineType", value)} />
               <MultiSelectFilter label="区分" value={filters.category} groups={buildOptionGroups("category", options.category)} onChange={(value) => setFilter("category", value)} />
-              <label className={styles.wide}>
-                リスト名
-                <input value={filters.listName} onChange={(event) => setFilter("listName", event.target.value)} placeholder="含む" />
+              <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} />
+              <MultiSelectFilter label="元回線" value={filters.lineType} groups={buildOptionGroups("lineType", options.lineType)} onChange={(value) => setFilter("lineType", value)} />
+              <label>
+                経過（年）
+                <span className={styles.rangeLabels}>
+                  <span>年以上</span>
+                  <span>年以下</span>
+                </span>
+                <span className={styles.range}>
+                  <input type="number" min="0" value={filters.elapsedYearsFrom} onChange={(event) => setFilter("elapsedYearsFrom", event.target.value)} aria-label="年以上" placeholder="年以上" />
+                  <input type="number" min="0" value={filters.elapsedYearsTo} onChange={(event) => setFilter("elapsedYearsTo", event.target.value)} aria-label="年以下" placeholder="年以下" />
+                </span>
               </label>
+              <div className={styles.filterDivider} aria-hidden="true" />
               <label>
                 リスト投入日
+                <span className={styles.rangeLabels}>
+                  <span>から</span>
+                  <span>まで</span>
+                </span>
                 <span className={styles.range}>
                   <input type="date" value={filters.listLoadedOnFrom} onChange={(event) => setFilter("listLoadedOnFrom", event.target.value)} />
                   <input type="date" value={filters.listLoadedOnTo} onChange={(event) => setFilter("listLoadedOnTo", event.target.value)} />
                 </span>
               </label>
+              <label className={styles.wide}>
+                リスト名
+                <input value={filters.listName} onChange={(event) => setFilter("listName", event.target.value)} placeholder="含む" />
+              </label>
               <label>
                 再判定日
+                <span className={styles.rangeLabels}>
+                  <span>から</span>
+                  <span>まで</span>
+                </span>
                 <span className={styles.range}>
                   <input type="date" value={filters.recheckedOnFrom} onChange={(event) => setFilter("recheckedOnFrom", event.target.value)} />
                   <input type="date" value={filters.recheckedOnTo} onChange={(event) => setFilter("recheckedOnTo", event.target.value)} />
@@ -2553,6 +2571,10 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </label>
               <label>
                 最終コール日
+                <span className={styles.rangeLabels}>
+                  <span>から</span>
+                  <span>まで</span>
+                </span>
                 <span className={styles.range}>
                   <input type="date" value={filters.lastCalledOnFrom} onChange={(event) => setFilter("lastCalledOnFrom", event.target.value)} />
                   <input type="date" value={filters.lastCalledOnTo} onChange={(event) => setFilter("lastCalledOnTo", event.target.value)} />
@@ -2560,21 +2582,16 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </label>
               <label>
                 コール回数
+                <span className={styles.rangeLabels}>
+                  <span>回以上</span>
+                  <span>回以下</span>
+                </span>
                 <span className={styles.range}>
                   <input type="number" min="0" value={filters.callCountFrom} onChange={(event) => setFilter("callCountFrom", event.target.value)} />
                   <input type="number" min="0" value={filters.callCountTo} onChange={(event) => setFilter("callCountTo", event.target.value)} />
                 </span>
               </label>
-              <label>
-                購入履歴
-                <select value={filters.purchaseHistory} onChange={(event) => setFilter("purchaseHistory", event.target.value)}>
-                  {SOIL_LIST_FILTER_DEFINITIONS.find((definition) => definition.key === "purchaseHistoryExists")?.options?.map((option) => (
-                    <option key={option} value={option}>
-                      {option || "指定なし"}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className={styles.filterDivider} aria-hidden="true" />
               <label>
                 自社アポ禁
                 <select value={filters.internalBlock} onChange={(event) => setFilter("internalBlock", event.target.value)}>
@@ -2585,14 +2602,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   ))}
                 </select>
               </label>
-              <label>
-                経過（年）
-                <span className={styles.range}>
-                  <input type="number" min="0" value={filters.elapsedYearsFrom} onChange={(event) => setFilter("elapsedYearsFrom", event.target.value)} aria-label="年以上" placeholder="年以上" />
-                  <input type="number" min="0" value={filters.elapsedYearsTo} onChange={(event) => setFilter("elapsedYearsTo", event.target.value)} aria-label="年以下" placeholder="年以下" />
-                </span>
-              </label>
-              {/* 「検索」は購入履歴の右隣の枠（購入履歴と同じ幅・下ぞろえ）。購入履歴の枠に同居させると購入履歴が細くなる */}
+              <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} />
+              <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} />
               <div className={styles.searchCell}>
                 <button type="submit" disabled={busy}>
                   検索
