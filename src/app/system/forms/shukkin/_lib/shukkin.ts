@@ -7,6 +7,7 @@ export type ShukkinGroup = (typeof SHUKKIN_GROUPS)[number];
 export type ShukkinMember = {
   employeeNumber: string;
   name: string;
+  displayName?: string;
   groupName: ShukkinGroup;
   sortOrder: number;
   active?: boolean;
@@ -33,6 +34,9 @@ export type LineShiftBlock = {
 
 const REST_KINDS = new Set(["定休", "公休", "欠勤", "有給", "退職"]);
 const TEAM_GROUPS = new Set<ShukkinGroup>(["宮永チーム", "小泉チーム", "石原チーム"]);
+// KOT の雇用区分の値そのまま（スペースなし・2026-09 の実データで確認）
+export const SHUKKIN_MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS = ["SES事業部"] as const;
+const MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS = new Set<string>(SHUKKIN_MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS);
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 
 export const DEFAULT_PLAN_FIELDS: ShukkinPlanFields = {
@@ -79,6 +83,12 @@ export function formatFiveCharName(name: string) {
   return `${family}${"　".repeat(missing)}${given}`;
 }
 
+// 名前は Garden の従業員名簿を優先（東海林さん 2026-09-19：改姓が名簿に未反映でも名簿の表記でよい）。
+// 名簿に無い人（派遣・外注で未登録）だけ KOT の名前、それも無ければ足したときの名前
+export function resolvedMemberName(member: ShukkinMember, row?: KotDailyRow) {
+  return member.name.trim() || row?.name.trim() || member.displayName?.trim() || member.employeeNumber;
+}
+
 function minutes(value: string) {
   const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
   if (!match) return null;
@@ -110,7 +120,8 @@ function hasPlan(row: KotDailyRow | undefined) {
 
 function shukkinShift(row: KotDailyRow | undefined, groupName: ShukkinGroup) {
   if (!row) return "×";
-  if (!hasPlan(row)) return groupName === "ＢＹ" && row.workdayKind ? row.workdayKind : "×";
+  // ＢＹは休みの種類（公休・有給など）だけを文字で出す。予定の無い「平日」などは × にする
+  if (!hasPlan(row)) return groupName === "ＢＹ" && REST_KINDS.has(row.workdayKind) ? row.workdayKind : "×";
   return shiftLabel(row) || "×";
 }
 
@@ -145,7 +156,9 @@ export function summarizeKotCoverage(input: { rows: KotDailyRow[]; members: Shuk
   const memberNumbers = new Set(ordered.map((member) => member.employeeNumber));
   return {
     missingInKot: ordered.filter((member) => !byNumber.has(member.employeeNumber)),
-    missingInOrder: input.rows.filter((row) => row.date === input.date && !memberNumbers.has(normalizeEmployeeNumber(row.employeeCode))),
+    missingInOrder: input.rows.filter((row) => row.date === input.date
+      && !memberNumbers.has(normalizeEmployeeNumber(row.employeeCode))
+      && !MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS.has(row.employmentKind)),
   };
 }
 
@@ -168,7 +181,7 @@ export function buildAttendanceMessage(input: {
     groupMembers.forEach((member) => {
       const row = byNumber.get(member.employeeNumber);
       const mark = input.withConfirmation ? confirmationMark(row, input.tableTime) : "";
-      lines.push(`(${formatFiveCharName(member.name)})${shukkinShift(row, groupName)}　${mark}`);
+      lines.push(`(${formatFiveCharName(resolvedMemberName(member, row))})${shukkinShift(row, groupName)}　${mark}`);
     });
   });
 
@@ -213,7 +226,10 @@ export function buildLineShiftBlocks(input: { rows: KotDailyRow[]; members: Shuk
     .map(([shift, people]) => {
       const dateLabel = `${compactSlashDate(input.date)}(${weekdayLabel(input.date)})`;
       // LINE の名前は姓と名の間を半角スペース 1 つに（Garden の登録は全角スペース）
-      const personLines = people.map((person) => `${person.employeeNumber} ${person.name.trim().split(/\s+/).join(" ")}`);
+      const personLines = people.map((person) => {
+        const row = byNumber.get(person.employeeNumber);
+        return `${person.employeeNumber} ${resolvedMemberName(person, row).trim().split(/\s+/).join(" ")}`;
+      });
       const message = [
         shift,
         ...personLines,

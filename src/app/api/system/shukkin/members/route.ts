@@ -5,13 +5,14 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-const SELECT_COLUMNS = "employee_number,group_name,sort_order,active,root_employees(name)";
+const SELECT_COLUMNS = "employee_number,group_name,sort_order,active,display_name";
 
 type RequestMember = {
   employeeNumber?: unknown;
   groupName?: unknown;
   sortOrder?: unknown;
   active?: unknown;
+  displayName?: unknown;
 };
 
 function validGroup(value: unknown): value is ShukkinGroup {
@@ -30,24 +31,39 @@ function normalizeMembers(value: unknown) {
       group_name: member.groupName,
       sort_order: Number.isFinite(sortOrder) ? sortOrder : (index + 1) * 10,
       active: member.active !== false,
+      display_name: typeof member.displayName === "string" && member.displayName.trim() ? member.displayName.trim() : null,
     };
   });
   return rows.every(Boolean) ? rows : null;
 }
 
-function shapeRows(rows: unknown[]) {
+async function employeeNamesByNumber(client: ReturnType<typeof getSupabaseAdmin>, employeeNumbers: string[]) {
+  const numbers = [...new Set(employeeNumbers)].filter(Boolean);
+  if (numbers.length === 0) return new Map<string, string>();
+  const { data, error } = await client
+    .from("root_employees")
+    .select("employee_number,name")
+    .in("employee_number", numbers);
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => {
+    const item = row as { employee_number: string; name: string | null };
+    return [item.employee_number, String(item.name ?? "")];
+  }));
+}
+
+function shapeRows(rows: unknown[], employeeNames: Map<string, string>) {
   return rows.map((row) => {
     const item = row as {
       employee_number: string;
       group_name: ShukkinGroup;
       sort_order: number;
       active: boolean;
-      root_employees?: { name?: string | null } | Array<{ name?: string | null }> | null;
+      display_name?: string | null;
     };
-    const employee = Array.isArray(item.root_employees) ? item.root_employees[0] : item.root_employees;
     return {
       employeeNumber: item.employee_number,
-      name: String(employee?.name ?? ""),
+      name: employeeNames.get(item.employee_number) ?? "",
+      displayName: String(item.display_name ?? ""),
       groupName: item.group_name,
       sortOrder: item.sort_order,
       active: item.active,
@@ -58,14 +74,20 @@ function shapeRows(rows: unknown[]) {
 export async function GET() {
   const staff = await requireStaff();
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
-  const { data, error } = await getSupabaseAdmin()
+  const client = getSupabaseAdmin();
+  const { data, error } = await client
     .from("system_shukkin_member")
     .select(SELECT_COLUMNS)
     .eq("active", true)
     .order("group_name", { ascending: true })
     .order("sort_order", { ascending: true });
   if (error) return NextResponse.json({ ok: false, error: "並びの設定を読み込めませんでした" }, { status: 500 });
-  return NextResponse.json({ ok: true, members: shapeRows(data ?? []) });
+  try {
+    const employeeNames = await employeeNamesByNumber(client, (data ?? []).map((row) => String(row.employee_number ?? "")));
+    return NextResponse.json({ ok: true, members: shapeRows(data ?? [], employeeNames) });
+  } catch {
+    return NextResponse.json({ ok: false, error: "並びの設定を読み込めませんでした" }, { status: 500 });
+  }
 }
 
 export async function PUT(request: Request) {
@@ -75,12 +97,18 @@ export async function PUT(request: Request) {
   const rows = normalizeMembers(body?.members);
   if (!rows) return NextResponse.json({ ok: false, error: "並びの設定を確認してください" }, { status: 400 });
 
-  const { data, error } = await getSupabaseAdmin()
+  const client = getSupabaseAdmin();
+  const { data, error } = await client
     .from("system_shukkin_member")
     .upsert(rows.map((row) => ({ ...row, updated_by: manager.userId })), { onConflict: "employee_number" })
     .select(SELECT_COLUMNS)
     .order("group_name", { ascending: true })
     .order("sort_order", { ascending: true });
   if (error) return NextResponse.json({ ok: false, error: "並びの設定を保存できませんでした" }, { status: 500 });
-  return NextResponse.json({ ok: true, members: shapeRows(data ?? []) });
+  try {
+    const employeeNames = await employeeNamesByNumber(client, (data ?? []).map((row) => String(row.employee_number ?? "")));
+    return NextResponse.json({ ok: true, members: shapeRows(data ?? [], employeeNames) });
+  } catch {
+    return NextResponse.json({ ok: false, error: "並びの設定を保存できませんでした" }, { status: 500 });
+  }
 }

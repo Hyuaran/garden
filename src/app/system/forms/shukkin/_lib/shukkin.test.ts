@@ -4,6 +4,7 @@ import {
   buildAttendanceMessage,
   buildLineShiftBlocks,
   formatFiveCharName,
+  summarizeKotCoverage,
   type ShukkinMember,
 } from "./shukkin";
 
@@ -179,5 +180,61 @@ describe("shukkin text builder", () => {
     const blocks = buildLineShiftBlocks({ rows, members: fullWidth, date: "2026-09-20" });
     expect(blocks[0].message).toContain("1392 田中 実花");
     expect(blocks[0].message).not.toContain("田中　実花");
+  });
+
+  it("uses roster names first (even before a name change reaches the roster), then KOT names, then display names", () => {
+    const rows = parsed([
+      row("1510", "谷本 結那", "2026/09/20", "平日", "10:00", "21:00"),
+      row("1555", "梶野 恵園", "2026/09/20", "平日", "14:00", "21:00"),
+    ]);
+    const targetMembers: ShukkinMember[] = [
+      { employeeNumber: "1510", name: "萩原 結那", displayName: "谷本 結那", groupName: "石原チーム", sortOrder: 10 },
+      { employeeNumber: "1555", name: "", displayName: "梶野 恵園", groupName: "小泉チーム", sortOrder: 10 },
+      { employeeNumber: "1556", name: "", displayName: "藤田 悠誠", groupName: "石原チーム", sortOrder: 20 },
+    ];
+
+    const withKot = buildAttendanceMessage({ rows, members: targetMembers, date: "2026-09-20", tableTime: "14:00", withConfirmation: false });
+    expect(withKot).toContain("(萩原　結那)10-21");
+    expect(withKot).not.toContain("(谷本　結那)");
+    expect(withKot).toContain("(梶野　恵園)14-21");
+
+    const withoutKot = buildAttendanceMessage({ rows: [], members: targetMembers, date: "2026-09-21", tableTime: "14:00", withConfirmation: false });
+    expect(withoutKot).toContain("(萩原　結那)×");
+    expect(withoutKot).toContain("(藤田　悠誠)×");
+  });
+
+  it("uses display names for members missing from the roster in attendance and LINE messages", () => {
+    const rows = parsed([
+      row("1555", "梶野 恵園", "2026/09/20", "平日", "10:00", "21:00"),
+    ]);
+    const targetMembers: ShukkinMember[] = [
+      { employeeNumber: "1555", name: "", displayName: "梶野 恵園", groupName: "小泉チーム", sortOrder: 10 },
+    ];
+
+    const attendance = buildAttendanceMessage({ rows: [], members: targetMembers, date: "2026-09-21", tableTime: "14:00", withConfirmation: false });
+    expect(attendance).toContain("(梶野　恵園)×");
+
+    const blocks = buildLineShiftBlocks({ rows, members: targetMembers, date: "2026-09-20" });
+    expect(blocks[0].message).toContain("1555 梶野 恵園");
+  });
+
+  it("does not show SES division rows as missing from the order", () => {
+    const rows = parsed([
+      ["9001", "SES事業部", "対象 外", "2026/09/20", "平日", "通常", "10:00", "21:00", "", "", "", "", "0", "0", "0", "0", "0", "0", "0"],
+      ["9002", "アルバイト", "追加 対象", "2026/09/20", "平日", "通常", "10:00", "21:00", "", "", "", "", "0", "0", "0", "0", "0", "0", "0"],
+    ]);
+    const coverage = summarizeKotCoverage({ rows, members: [], date: "2026-09-20" });
+    expect(coverage.missingInOrder.map((item) => item.employeeCode)).toEqual(["9002"]);
+  });
+
+  it("shows ＢＹ rest kinds as text but a plan-less 平日 as ×", () => {
+    const rows = parsed([
+      row("1003", "東海林 美琴", "2026/09/19", "公休"),
+      row("1004", "簡 棣榮", "2026/09/19", "平日"),
+    ]);
+    const text = buildAttendanceMessage({ rows, members: members.slice(2, 4), date: "2026-09-19", tableTime: "14:00", withConfirmation: false });
+    expect(text).toContain("(東海林美琴)公休　");
+    expect(text).toContain("(簡　　棣榮)×　");
+    expect(text).not.toContain("平日　");
   });
 });

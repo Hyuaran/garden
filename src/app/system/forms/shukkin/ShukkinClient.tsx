@@ -57,6 +57,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
   const [withConfirmation, setWithConfirmation] = useState(false);
   const [lineDate, setLineDate] = useState(addDays(today, 1));
   const [plans, setPlans] = useState<ShukkinPlanFields>(DEFAULT_PLAN_FIELDS);
+  const [missingGroups, setMissingGroups] = useState<Record<string, ShukkinGroup>>({});
   const dates = useMemo(() => dateOptions(rows), [rows]);
 
   const loadMembers = useCallback(async () => {
@@ -139,19 +140,34 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
     setMembers(reindex([...members, { employeeNumber: normalized, name: "", groupName: "宮永チーム", sortOrder: 10, active: true }]));
   }
 
-  async function saveMembers() {
+  function addKotMember(row: KotDailyRow, groupName: ShukkinGroup) {
+    const employeeNumber = row.employeeCode.trim().padStart(4, "0");
+    if (!/^\d{4}$/.test(employeeNumber) || members.some((member) => member.employeeNumber === employeeNumber)) return;
+    const nextMembers = reindex([...members, {
+      employeeNumber,
+      name: "",
+      displayName: row.name,
+      groupName,
+      sortOrder: 10,
+      active: true,
+    }]);
+    setMembers(nextMembers);
+    void saveMembers(nextMembers);
+  }
+
+  async function saveMembers(nextMembers = members) {
     setMessage("");
     const response = await fetch("/api/system/shukkin/members", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ members }),
+      body: JSON.stringify({ members: nextMembers }),
     });
     const body = await response.json();
     if (!response.ok) {
       setMessage(String(body.error ?? "保存できませんでした"));
       return;
     }
-    setMembers(Array.isArray(body.members) ? body.members : members);
+    setMembers(Array.isArray(body.members) ? body.members : nextMembers);
     setMessage("保存しました");
   }
 
@@ -201,7 +217,13 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
         <button type="button" className={styles.copy} onClick={() => void copyText(attendanceText)}>コピー</button>
       </div>
       <PlanFields plans={plans} onChange={setPlans} />
-      <Coverage coverage={coverage} />
+      <Coverage
+        coverage={coverage}
+        canEditMembers={canEditMembers}
+        missingGroups={missingGroups}
+        onMissingGroupChange={(employeeNumber, groupName) => setMissingGroups((current) => ({ ...current, [employeeNumber]: groupName }))}
+        onAddMissing={(row) => addKotMember(row, missingGroups[row.employeeCode] ?? "宮永チーム")}
+      />
     </section>}
 
     {tab === "line" && <section className={styles.workArea}>
@@ -230,7 +252,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
           {members.map((member, index) => ({ member, index })).filter((item) => item.member.groupName === group).map(({ member, index }) => (
             <div className={styles.memberRow} key={member.employeeNumber}>
               <span>{member.employeeNumber}</span>
-              <strong>{member.name || "名簿で確認"}</strong>
+              <strong>{member.name || member.displayName || "名前未設定"}</strong>
               <button type="button" disabled={!canEditMembers} onClick={() => moveMember(index, -1)}>↑</button>
               <button type="button" disabled={!canEditMembers} onClick={() => moveMember(index, 1)}>↓</button>
               <select disabled={!canEditMembers} value={member.groupName} onChange={(event) => updateMember(index, { groupName: event.currentTarget.value as ShukkinGroup })}>
@@ -271,10 +293,41 @@ function PlanFields({ plans, onChange }: { plans: ShukkinPlanFields; onChange: (
   </div>;
 }
 
-function Coverage({ coverage }: { coverage: ReturnType<typeof summarizeKotCoverage> }) {
+function Coverage({
+  coverage,
+  canEditMembers,
+  missingGroups,
+  onMissingGroupChange,
+  onAddMissing,
+}: {
+  coverage: ReturnType<typeof summarizeKotCoverage>;
+  canEditMembers: boolean;
+  missingGroups: Record<string, ShukkinGroup>;
+  onMissingGroupChange: (employeeNumber: string, groupName: ShukkinGroup) => void;
+  onAddMissing: (row: KotDailyRow) => void;
+}) {
   return <div className={styles.coverage}>
-    <span>KOT に居ない人 {coverage.missingInKot.length} 人：{coverage.missingInKot.map((member) => member.name || member.employeeNumber).join("、") || "なし"}</span>
-    <span>並びに無い人 {coverage.missingInOrder.length} 人：{coverage.missingInOrder.map((row) => row.name).join("、") || "なし"}</span>
+    <span>KOT に居ない人 {coverage.missingInKot.length} 人：{coverage.missingInKot.map((member) => member.name || member.displayName || member.employeeNumber).join("、") || "なし"}</span>
+    <div className={styles.missingOrder}>
+      <span>並びに無い人 {coverage.missingInOrder.length} 人：{coverage.missingInOrder.map((row) => row.name).join("、") || "なし"}</span>
+      {coverage.missingInOrder.length > 0 && <div className={styles.missingOrderRows}>
+        {coverage.missingInOrder.map((row) => {
+          const employeeNumber = row.employeeCode.trim().padStart(4, "0");
+          return <div className={styles.missingOrderRow} key={employeeNumber}>
+            <span>{employeeNumber}</span>
+            <strong>{row.name}</strong>
+            <select
+              disabled={!canEditMembers}
+              value={missingGroups[row.employeeCode] ?? "宮永チーム"}
+              onChange={(event) => onMissingGroupChange(row.employeeCode, event.currentTarget.value as ShukkinGroup)}
+            >
+              {SHUKKIN_GROUPS.map((group) => <option key={group} value={group}>{group}</option>)}
+            </select>
+            <button type="button" disabled={!canEditMembers} onClick={() => onAddMissing(row)}>並びに足す</button>
+          </div>;
+        })}
+      </div>}
+    </div>
   </div>;
 }
 
