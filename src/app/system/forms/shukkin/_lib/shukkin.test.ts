@@ -162,7 +162,13 @@ describe("shukkin text builder", () => {
     ]);
     const blocks = buildLineShiftBlocks({ rows, members, date: "2026-09-20" });
     expect(blocks.map((block) => block.shift)).toEqual(["10-21", "14-21"]);
-    expect(blocks[0].message).toBe(`10-21
+    // ［コピー］で取る文面は送る 4 行だけ（シフトの見出しや送る相手は入れない）
+    expect(blocks[0].message).toBe(`お疲れ様です！！
+明日【09/20(日)】は
+【10-21】の勤務シフトです。
+本日21時までに出勤確認の返信を必ず下さい。`);
+    expect(blocks[0].recipients).toEqual(["1392 田中 実花", "1600 毛利 祐星"]);
+    expect(blocks[0].summary).toBe(`10-21
 1392 田中 実花
 1600 毛利 祐星
 
@@ -170,16 +176,16 @@ describe("shukkin text builder", () => {
 明日【09/20(日)】は
 【10-21】の勤務シフトです。
 本日21時までに出勤確認の返信を必ず下さい。`);
-    expect(blocks.map((block) => block.message).join("\n")).not.toContain("萩尾");
-    expect(blocks.map((block) => block.message).join("\n")).not.toContain("上田");
+    expect(blocks.map((block) => block.summary).join("\n")).not.toContain("萩尾");
+    expect(blocks.map((block) => block.summary).join("\n")).not.toContain("上田");
   });
 
   it("uses a half-width space in LINE names even when the roster name has a full-width space", () => {
     const rows: KotDailyRow[] = parsed([row("1392", "田中 実花", "2026/09/20", "平日", "10:00", "21:00")]);
     const fullWidth = members.map((member) => member.employeeNumber === "1392" ? { ...member, name: "田中　実花" } : member);
     const blocks = buildLineShiftBlocks({ rows, members: fullWidth, date: "2026-09-20" });
-    expect(blocks[0].message).toContain("1392 田中 実花");
-    expect(blocks[0].message).not.toContain("田中　実花");
+    expect(blocks[0].recipients).toContain("1392 田中 実花");
+    expect(blocks[0].summary).not.toContain("田中　実花");
   });
 
   it("uses roster names first (even before a name change reaches the roster), then KOT names, then display names", () => {
@@ -215,7 +221,7 @@ describe("shukkin text builder", () => {
     expect(attendance).toContain("(梶野　恵園)×");
 
     const blocks = buildLineShiftBlocks({ rows, members: targetMembers, date: "2026-09-20" });
-    expect(blocks[0].message).toContain("1555 梶野 恵園");
+    expect(blocks[0].recipients).toContain("1555 梶野 恵園");
   });
 
   it("does not show SES division rows as missing from the order", () => {
@@ -238,7 +244,7 @@ describe("shukkin text builder", () => {
     expect(text.indexOf("＜新人チーム＞")).toBeLessThan(text.indexOf("【ヒュアラン予定】"));
     expect(text).toContain("(北野　　晟)10-21　");
     const blocks = buildLineShiftBlocks({ rows, members: withNewcomer, date: "2026-09-20" });
-    expect(blocks[0].message).toContain("1557 北野 晟");
+    expect(blocks[0].recipients).toContain("1557 北野 晟");
   });
 
   it("shows ＢＹ days without a plan as 公休 (blank or 平日 kind), rest kinds as their text, and others as ×", () => {

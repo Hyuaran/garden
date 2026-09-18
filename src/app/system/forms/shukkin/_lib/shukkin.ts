@@ -30,7 +30,12 @@ export type ShukkinIssueSummary = {
 export type LineShiftBlock = {
   shift: string;
   people: ShukkinMember[];
+  /** 「1392 田中 実花」の形（送る相手の確認用・コピーしない） */
+  recipients: string[];
+  /** LINE に送る文面だけ */
   message: string;
+  /** 見出し＋送る相手＋文面（まとめてコピー用） */
+  summary: string;
 };
 
 const REST_KINDS = new Set(["定休", "公休", "欠勤", "有給", "退職"]);
@@ -236,16 +241,16 @@ export function buildLineShiftBlocks(input: { rows: KotDailyRow[]; members: Shuk
         const row = byNumber.get(person.employeeNumber);
         return `${person.employeeNumber} ${resolvedMemberName(person, row).trim().split(/\s+/).join(" ")}`;
       });
+      // message＝LINE に送る文面だけ（［コピー］で取るのはここだけ）。送る相手は recipients で別に出す
       const message = [
-        shift,
-        ...personLines,
-        "",
         "お疲れ様です！！",
         `明日【${dateLabel}】は`,
         `【${shift}】の勤務シフトです。`,
         "本日21時までに出勤確認の返信を必ず下さい。",
       ].join("\n");
-      return { shift, people, message };
+      // summary＝送る相手つきの一覧（まとめてコピー用）
+      const summary = [shift, ...personLines, "", message].join("\n");
+      return { shift, people, recipients: personLines, message, summary };
     });
 }
 

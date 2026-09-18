@@ -90,7 +90,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
 
   const coverage = useMemo(() => summarizeKotCoverage({ rows, members, date: attendanceDate }), [attendanceDate, members, rows]);
   const lineBlocks = useMemo(() => buildLineShiftBlocks({ rows, members, date: lineDate }), [lineDate, members, rows]);
-  const allLineText = useMemo(() => lineBlocks.map((block) => block.message).join("\n\n"), [lineBlocks]);
+  const allLineText = useMemo(() => lineBlocks.map((block) => block.summary).join("\n\n\n"), [lineBlocks]);
 
   // 日別データは 1 日ずつ出すことが多いので、今日と明日の 2 ファイル（それ以上でも）をまとめて読み込む。
   // 期間で出した 1 ファイルでもよい。同じ人・同じ日の行は後から読んだ方で上書きする
@@ -242,12 +242,15 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
       </div>
       <div className={styles.blocks}>
         {lineBlocks.map((block) => <article className={styles.lineBlock} key={block.shift}>
-          <div><h2>{block.shift}</h2><button type="button" className={styles.copySmall} onClick={() => void copyText(block.message)}>コピー</button></div>
+          <div><h2>{block.shift}</h2><button type="button" className={styles.copySmall} onClick={() => void copyText(block.message)} aria-label={`${block.shift} の文面をコピー`}>コピー</button></div>
+          <p className={styles.lineRecipientsLabel}>送る相手（{block.recipients.length} 人）</p>
+          <ul className={styles.lineRecipients}>{block.recipients.map((line) => <li key={line}>{line}</li>)}</ul>
+          <p className={styles.lineRecipientsLabel}>送る文面（［コピー］で取れるのはここだけ）</p>
           <pre>{block.message}</pre>
         </article>)}
         {lineBlocks.length === 0 && <p className={styles.empty}>この日のシフト連絡はありません。</p>}
       </div>
-      <button type="button" className={styles.primary} disabled={!allLineText} onClick={() => void copyText(allLineText)}>すべてまとめてコピー</button>
+      <button type="button" className={styles.primary} disabled={!allLineText} onClick={() => void copyText(allLineText)}>送る相手と文面をまとめてコピー</button>
     </section>}
 
     {tab === "members" && <section className={styles.workArea}>

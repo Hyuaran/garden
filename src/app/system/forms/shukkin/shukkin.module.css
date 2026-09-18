@@ -14,3 +14,8 @@
 :global(.dark) .preview,:global([data-theme="dark"]) .preview,:global(.dark) .lineBlock pre,:global([data-theme="dark"]) .lineBlock pre{background:#101d2d}
 @media(max-width:980px){.planFields{grid-template-columns:repeat(2,minmax(0,1fr))}.previewGrid{grid-template-columns:1fr}.copy{position:static}.memberRow{grid-template-columns:56px minmax(120px,1fr) 38px 38px}.memberRow select,.memberRow button:last-child{grid-column:2 / span 3}}
 @media(max-width:560px){.panel,.workArea{padding:14px;border-radius:14px}.controls,.memberHeader{align-items:stretch;flex-direction:column}.planFields{grid-template-columns:1fr}.addMember{width:100%}.addMember input{min-width:0;flex:1}.preview,.lineBlock pre{font-size:13px}.memberRow{grid-template-columns:50px minmax(0,1fr) 34px 34px}.missingOrderRow{grid-template-columns:48px minmax(0,1fr)}.missingOrderRow select,.missingOrderRow button{grid-column:2}}
+/* LINE のまとまり：送る相手（コピーしない）と送る文面（コピーする）を分けて出す（2026-09-19 東海林さん） */
+.lineBlock pre{min-height:0}
+.lineRecipientsLabel{margin:10px 0 6px;color:var(--sub);font-size:12px;font-weight:700}
+.lineRecipients{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.lineRecipients li{padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-size:13px;white-space:nowrap}
