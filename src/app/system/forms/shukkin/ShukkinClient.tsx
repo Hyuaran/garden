@@ -6,6 +6,7 @@ import type { KotDailyRow } from "@/app/system/kanri/_lib/kot-daily";
 import {
   buildAttendanceMessage,
   buildLineShiftBlocks,
+  compactSlashDate,
   defaultAttendanceTime,
   DEFAULT_PLAN_FIELDS,
   isWeekendOrHoliday,
@@ -74,10 +75,16 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
     void loadMembers();
   }, [loadMembers]);
 
+  // シフト連絡の対象日：明日（予定のある次の日）。CSV に入っていなければ CSV の最後の日にする
+  // （選択欄の値と中身が食い違って空になるのを防ぐ・2026-09-19 本番で発生）
   useEffect(() => {
     if (rows.length === 0) return;
-    setLineDate(nextDateWithPlan(rows, addDays(today, 1)));
+    const candidate = nextDateWithPlan(rows, addDays(today, 1));
+    const available = dateOptions(rows);
+    setLineDate(available.includes(candidate) ? candidate : available[available.length - 1] ?? candidate);
   }, [rows, today]);
+  const tomorrow = addDays(today, 1);
+  const tomorrowMissing = rows.length > 0 && !dates.includes(tomorrow);
 
   const attendanceText = useMemo(() => buildAttendanceMessage({
     rows,
@@ -238,8 +245,9 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
     {tab === "line" && <section className={styles.workArea}>
       <div className={styles.controls}>
         <label>対象日<SelectDate value={lineDate} dates={dates} onChange={setLineDate} /></label>
-        <p className={styles.targetText}>対象：宮永チーム・小泉チーム・石原チームの全員</p>
+        <p className={styles.targetText}>対象：宮永チーム・小泉チーム・石原チーム・新人チームの全員</p>
       </div>
+      {tomorrowMissing && <p className={styles.lineRecipientsLabel} role="status">明日（{compactSlashDate(tomorrow)}）の日別データが入っていません。KOT の日別データ出力で、出力対象年月を今日〜明日にして出してください。</p>}
       <div className={styles.blocks}>
         {lineBlocks.map((block) => <article className={styles.lineBlock} key={block.shift}>
           <div><h2>{block.shift}</h2><button type="button" className={styles.copySmall} onClick={() => void copyText(block.message)} aria-label={`${block.shift} の文面をコピー`}>コピー</button></div>
