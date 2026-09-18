@@ -6,42 +6,38 @@
  */
 
 export const colors = {
-  // 基本色（暫定：濃いグレー系）
-  primary: "#3E3E3E",
-  primaryDark: "#2A2A2A",
-  primaryLight: "#EEEEEE",
+  primary: "var(--root-primary)",
+  primaryDark: "var(--root-primary-dark)",
+  primaryLight: "var(--root-primary-light)",
 
-  // アクセント（暫定）
-  accent: "#8B6F47",      // 木の根っこ色（暫定）
-  accentLight: "#D7C4A8",
+  accent: "var(--root-accent)",
+  accentLight: "var(--root-accent-light)",
 
-  // 背景
-  bg: "#FAFAF7",
-  bgPanel: "#FFFFFF",
-  bgSidebar: "#2A2A2A",
-  bgSidebarHover: "#3E3E3E",
+  bg: "var(--root-bg)",
+  bgPanel: "var(--root-bg-panel)",
+  bgSidebar: "var(--root-bg-sidebar)",
+  bgSidebarHover: "var(--root-bg-sidebar-hover)",
 
-  // テキスト
-  text: "#1A1A1A",
-  textMuted: "#6B6B6B",
-  textOnDark: "#FAFAF7",
-  textOnDarkMuted: "#B8B8B8",
+  text: "var(--root-text)",
+  textMuted: "var(--root-text-muted)",
+  textOnDark: "var(--root-text-on-dark)",
+  textOnDarkMuted: "var(--root-text-on-dark-muted)",
+  heading: "var(--root-heading)",
 
-  // ボーダー
-  border: "#E0E0E0",
-  borderStrong: "#BDBDBD",
+  border: "var(--root-border)",
+  borderStrong: "var(--root-border-strong)",
+  shadowSmall: "var(--root-shadow-small)",
 
-  // ステータス
-  success: "#2E7D32",
-  successBg: "#E8F5E9",
-  warning: "#ED6C02",
-  warningBg: "#FFF3E0",
-  danger: "#C62828",
-  dangerBg: "#FFEBEE",
-  info: "#0277BD",
-  infoBg: "#E1F5FE",
+  success: "var(--root-success)",
+  successBg: "var(--root-success-bg)",
+  warning: "var(--root-warning)",
+  warningBg: "var(--root-warning-bg)",
+  danger: "var(--root-danger)",
+  dangerBg: "var(--root-danger-bg)",
+  dangerSolid: "var(--root-danger-solid)",
+  info: "var(--root-info)",
+  infoBg: "var(--root-info-bg)",
 
-  // 無効化（is_active=false）
-  disabled: "#9E9E9E",
-  disabledBg: "#F5F5F5",
+  disabled: "var(--root-disabled)",
+  disabledBg: "var(--root-disabled-bg)",
 };

@@ -24,7 +24,7 @@ export function UserHeader() {
     >
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ fontSize: 14, color: colors.text }}>
-          👤 {rootUser.name}
+          {rootUser.name}
         </span>
         <span
           style={{

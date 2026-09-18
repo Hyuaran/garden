@@ -20,6 +20,7 @@ import type { ReactNode } from "react";
 import { ModuleGate } from "../../_components/ModuleGate";
 import { AuthLoadingScreen } from "../../_components/AuthLoadingScreen";
 import { useRootState } from "../_state/RootStateContext";
+import rootStyles from "./root-shell.module.css";
 
 function RootLocalGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -31,44 +32,22 @@ function RootLocalGate({ children }: { children: ReactNode }) {
   if (!isAuthenticated) {
     const href = `/root/login?returnTo=${encodeURIComponent(pathname)}&reason=expired`;
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "grid",
-          placeItems: "center",
-          background: "#f8fafc",
-          padding: 24,
-        }}
-      >
-        <section
-          style={{
-            width: "min(420px, 100%)",
-            padding: 32,
-            borderRadius: 16,
-            background: "#fff",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-            textAlign: "center",
-          }}
-        >
-          <div aria-hidden="true" style={{ fontSize: 36, marginBottom: 12 }}>🌱</div>
-          <h1 style={{ margin: "0 0 10px", fontSize: 20, color: "#1f2937" }}>
+      <main className={`${rootStyles.shell} ${rootStyles.loginMain}`}>
+        <section className={rootStyles.loginCard}>
+          <svg className={rootStyles.loginMark} viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 21v-8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M12 13c0-3 2.2-5 5-5 0 3-2.2 5-5 5z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M12 15c0-2.6-2-4.5-4.5-4.5 0 2.6 2 4.5 4.5 4.5z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <h1 className={rootStyles.loginHeading}>
             もう一度ログインしてください
           </h1>
-          <p style={{ margin: "0 0 20px", fontSize: 14, lineHeight: 1.7, color: "#64748b" }}>
+          <p className={rootStyles.loginText}>
             Root の利用を続けるには、本人確認が必要です。
           </p>
           <Link
             href={href}
-            style={{
-              display: "inline-block",
-              padding: "10px 18px",
-              borderRadius: 8,
-              background: "#3e3e3e",
-              color: "#fff",
-              textDecoration: "none",
-              fontSize: 14,
-              fontWeight: 600,
-            }}
+            className={rootStyles.loginLink}
           >
             ログイン画面へ
           </Link>

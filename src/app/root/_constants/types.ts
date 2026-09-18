@@ -317,84 +317,99 @@ export interface MasterMenu {
   slug: string;
   title: string;
   description: string;
-  icon: string;
+  icon: RootMenuIconName;
   /** admin 以上のロールに限定表示するメニュー（ナビ非表示 + 直接 URL アクセス時は RootGate が弾く） */
   adminOnly?: boolean;
 }
+
+export type RootMenuIconName =
+  | "home"
+  | "inbox"
+  | "document"
+  | "building"
+  | "bank"
+  | "partner"
+  | "person"
+  | "check"
+  | "key"
+  | "salary"
+  | "shield"
+  | "calendar"
+  | "sync";
 
 export const MASTER_MENUS: MasterMenu[] = [
   {
     slug: "inbox",
     title: "届出受信箱",
     description: "従業員から届いた申請の確認・対応",
-    icon: "📥",
+    icon: "inbox",
   },
   {
     slug: "contracts",
     title: "雇用契約書",
     description: "クルー向け雇用契約書の発行・履歴",
-    icon: "📄",
+    icon: "document",
   },
   {
     slug: "companies",
     title: "法人マスタ",
     description: "6法人の基本情報、デフォルト振込銀行",
-    icon: "🏢",
+    icon: "building",
   },
   {
     slug: "bank-accounts",
     title: "銀行口座マスタ",
     description: "法人ごとの振込元口座",
-    icon: "🏦",
+    icon: "bank",
   },
   {
     slug: "vendors",
     title: "取引先マスタ",
     description: "振込先（外注先・仕入先）の口座情報",
-    icon: "🤝",
+    icon: "partner",
   },
   {
     slug: "employees",
     title: "従業員マスタ",
     description: "従業員情報、振込口座、給与体系",
-    icon: "👤",
+    icon: "person",
   },
   {
     slug: "bank-check",
     title: "口座の点検",
     description: "給与口座と銀行台帳の突き合わせ、台帳の更新記録",
-    icon: "点",
+    icon: "check",
     adminOnly: true,
   },
   {
     slug: "permissions",
     title: "権限一覧",
     description: "役職ごとの利用可否と、人ごとの役職を確認",
-    icon: "権",
+    icon: "key",
   },
   {
     slug: "salary-systems",
     title: "給与体系マスタ",
     description: "雇用形態別の計算ルール",
-    icon: "💰",
+    icon: "salary",
   },
   {
     slug: "insurance",
     title: "社会保険マスタ",
     description: "保険料率、等級テーブル",
-    icon: "🛡️",
+    icon: "shield",
   },
   {
     slug: "attendance",
     title: "勤怠データ",
     description: "キングオブタイムから取込",
-    icon: "📅",
+    icon: "calendar",
   },
   {
     slug: "kot-sync-history",
     title: "KoT 同期履歴",
     description: "KoT 連携の同期ログ閲覧・再実行",
-    icon: "🔄",
+    icon: "sync",
     adminOnly: true,
   },
 ];

@@ -15,7 +15,7 @@ const baseInputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
   fontSize: 14,
-  borderRadius: 4,
+  borderRadius: 8,
   background: colors.bgPanel,
   color: colors.text,
   outline: "none",

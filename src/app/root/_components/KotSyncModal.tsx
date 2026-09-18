@@ -223,8 +223,8 @@ export function KotSyncModal({
             <SummaryCard label="警告（退職者等）" value={`${warnings.length} 行`} tone={warnings.length > 0 ? "warning" : "muted"} />
             <SummaryCard label="未解決（スキップ）" value={`${unresolvable.length} 行`} tone={unresolvable.length > 0 ? "danger" : "muted"} />
           </div>
-          <div style={{ maxHeight: 360, overflowY: "auto", border: `1px solid ${colors.border}`, borderRadius: 6 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <div style={{ maxHeight: 360, overflow: "auto", border: `1px solid ${colors.border}`, borderRadius: 16 }}>
+            <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 12 }}>
               <thead style={{ position: "sticky", top: 0, background: colors.bg }}>
                 <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
                   <th style={cellTH}>#</th>
@@ -300,7 +300,7 @@ export function KotSyncModal({
 }
 
 const cellTH: React.CSSProperties = { padding: "8px 10px", fontSize: 11, fontWeight: 600, color: colors.textMuted, textAlign: "left", whiteSpace: "nowrap" };
-const cellTD: React.CSSProperties = { padding: "6px 10px", color: colors.text, verticalAlign: "middle" };
+const cellTD: React.CSSProperties = { padding: "6px 10px", color: colors.text, verticalAlign: "middle", whiteSpace: "nowrap" };
 
 function SummaryCard({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" | "danger" | "muted" }) {
   const toneColor = tone === "success" ? colors.success : tone === "warning" ? colors.warning : tone === "danger" ? colors.danger : colors.textMuted;

@@ -30,7 +30,7 @@ export function SessionWarningModal() {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.5)",
+        background: "rgba(8,15,28,.55)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -41,7 +41,7 @@ export function SessionWarningModal() {
         style={{
           background: colors.bgPanel,
           padding: 32,
-          borderRadius: 12,
+          borderRadius: 18,
           maxWidth: 480,
           width: "90%",
           boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
@@ -59,11 +59,11 @@ export function SessionWarningModal() {
               marginBottom: 12,
             }}
           >
-            ⚠️ 開発モード中 (タイマー短縮)
+            開発モード中（タイマー短縮）
           </div>
         )}
-        <h2 style={{ margin: "0 0 12px", fontSize: 20, color: colors.text }}>
-          ⏰ セッションの有効期限が近づいています
+        <h2 style={{ margin: "0 0 12px", fontSize: 20, color: colors.heading }}>
+          セッションの有効期限が近づいています
         </h2>
         <p
           style={{

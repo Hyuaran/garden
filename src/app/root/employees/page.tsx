@@ -666,7 +666,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
       const address = addresses[e.employee_id];
       const text = addressLine(address);
       return <span style={{ color: address?.full ? colors.text : colors.textMuted }}>{text}</span>;
-    }, width: 260 },
+    }, width: 260, wrap: true },
     { key: "company", header: "法人", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, width: 160 },
     { key: "emp_type", header: "雇用形態", render: (e) => e.employment_type, width: 80 },
     { key: "garden_role", header: "Garden権限", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], width: 110 },
@@ -745,7 +745,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
                 <div style={{ display: "grid", gap: 6 }}>
                   {rows.map((row) => {
                     const isCurrent = profileHistory.currentIds[row.category] === row.id;
-                    return <div key={row.id ?? `${row.category}-${row.recorded_at}`} style={{ display: "grid", gridTemplateColumns: "18px 96px minmax(210px,1fr) minmax(130px,180px) auto", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 6, background: isCurrent ? colors.bgPanel : "#fff1f2", border: `1px solid ${isCurrent ? colors.border : "#fecdd3"}`, fontSize: 13, color: colors.text }}>
+                    return <div key={row.id ?? `${row.category}-${row.recorded_at}`} style={{ display: "grid", gridTemplateColumns: "18px 96px minmax(210px,1fr) minmax(130px,180px) auto", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 6, background: isCurrent ? colors.bgPanel : colors.dangerBg, border: `1px solid ${isCurrent ? colors.border : colors.danger}`, fontSize: 13, color: colors.text }}>
                       <span aria-hidden="true">{isCurrent ? "●" : "▲"}</span>
                       <span>{row.effective_from ?? "-"}</span>
                       <span>{profileValue(row)}</span>

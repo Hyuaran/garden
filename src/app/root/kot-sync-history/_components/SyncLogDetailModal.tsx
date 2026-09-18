@@ -114,7 +114,8 @@ export function SyncLogDetailModal({
           )}
           {hint && (
             <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 4, padding: 8, marginTop: 8, fontSize: 12, color: colors.text }}>
-              💡 <strong>このエラーの対処</strong>：{hint}
+              <span style={{ display: "inline-block", marginRight: 8, padding: "2px 7px", borderRadius: 999, background: colors.infoBg, color: colors.info, fontWeight: 700 }}>対処</span>
+              {hint}
             </div>
           )}
           {log.error_stack && (

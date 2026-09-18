@@ -169,7 +169,7 @@ export default function BankCheckPage() {
           <strong style={{ color: colors.text }}>点検結果 {state.findings.length} 件</strong>
           <label style={{ display: "flex", gap: 8, alignItems: "center", color: colors.textMuted, fontSize: 13 }}>
             指摘で絞る：
-            <select value={filter} onChange={(event) => setFilter(event.target.value)} style={{ padding: "7px 10px", border: `1px solid ${colors.border}`, borderRadius: 4, background: "#fff" }}>
+            <select value={filter} onChange={(event) => setFilter(event.target.value)} style={{ padding: "7px 10px", border: `1px solid ${colors.border}`, borderRadius: 4, background: colors.bgPanel, color: colors.text }}>
               {ISSUE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
@@ -178,16 +178,16 @@ export default function BankCheckPage() {
           <div style={{ padding: 28, color: colors.textMuted }}>点検結果はありません。登録されている口座はすべて台帳と合っています。</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, color: colors.text }}>
+            <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13, color: colors.text }}>
               <thead><tr>{["氏名", "出どころ", "登録されている値", "指摘", "候補", ""].map((head) => <th key={head} style={{ textAlign: "left", padding: "9px 8px", borderBottom: `1px solid ${colors.border}`, color: colors.textMuted, whiteSpace: "nowrap" }}>{head}</th>)}</tr></thead>
               <tbody>
                 {visible.map((row) => (
                   <tr key={row.id}>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}` }}>{row.employeeName}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}` }}>{row.sourceLabel}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, minWidth: 220 }}>{row.registeredLabel}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, color: row.issueLabel === "廃止済み" ? colors.danger : colors.warning, fontWeight: 700 }}>{row.issueLabel}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, minWidth: 180 }}>{row.candidateLabel}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{row.employeeName}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{row.sourceLabel}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, minWidth: 220, whiteSpace: "nowrap" }}>{row.registeredLabel}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, color: row.issueLabel === "廃止済み" ? colors.danger : colors.warning, fontWeight: 700, whiteSpace: "nowrap" }}>{row.issueLabel}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, minWidth: 180, whiteSpace: "nowrap" }}>{row.candidateLabel}</td>
                     <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>
                       {row.issueLabel === "廃止済み" && !row.canApply ? <Button variant="secondary" onClick={() => openSuccessor(row)}>後継を登録</Button> : null}
                       {row.canApply && row.source === "history" ? <Button onClick={() => void apply(row)}>この値で登録</Button> : null}
@@ -205,15 +205,15 @@ export default function BankCheckPage() {
       <section style={{ marginTop: 18, background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 6, padding: 16 }}>
         <h2 style={{ margin: "0 0 10px", fontSize: 15, color: colors.text }}>台帳の確認記録</h2>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 12 }}>
             <tbody>
               {state.datasets.map((row) => (
                 <tr key={row.id ?? row.imported_at}>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}` }}>{formatDateTime(row.imported_at)}</td>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}` }}>{row.source_date}</td>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}` }}>{row.status === "skipped_same" ? "変更なし" : row.status === "ok" ? "更新済み" : "失敗"}</td>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}` }}>追加 {(row.banks_added ?? 0) + (row.branches_added ?? 0)}・改称 {(row.banks_renamed ?? 0) + (row.branches_renamed ?? 0)}・廃止 {(row.banks_expired ?? 0) + (row.branches_expired ?? 0)}</td>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}` }}>点検 {row.check_findings ?? "-"} 件</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{formatDateTime(row.imported_at)}</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{row.source_date}</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{row.status === "skipped_same" ? "変更なし" : row.status === "ok" ? "更新済み" : "失敗"}</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>追加 {(row.banks_added ?? 0) + (row.branches_added ?? 0)}・改称 {(row.banks_renamed ?? 0) + (row.branches_renamed ?? 0)}・廃止 {(row.banks_expired ?? 0) + (row.branches_expired ?? 0)}</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>点検 {row.check_findings ?? "-"} 件</td>
                 </tr>
               ))}
             </tbody>

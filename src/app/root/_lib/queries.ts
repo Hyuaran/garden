@@ -244,6 +244,7 @@ export type RootUser = {
   email: string;
   garden_role: GardenRole;
   company_id: string;
+  company_name?: string | null;
   is_active: boolean;
   user_id: string;
 };
@@ -276,5 +277,15 @@ export async function fetchRootUser(userId: string): Promise<RootUser | null> {
   if (!data) return null;
   if (!isEmployeeActive(data)) return null;
 
-  return data as unknown as RootUser;
+  const rootUser = data as unknown as RootUser;
+  const { data: company } = await supabase
+    .from("root_companies")
+    .select("company_name")
+    .eq("company_id", rootUser.company_id)
+    .maybeSingle<{ company_name: string | null }>();
+
+  return {
+    ...rootUser,
+    company_name: company?.company_name ?? null,
+  };
 }

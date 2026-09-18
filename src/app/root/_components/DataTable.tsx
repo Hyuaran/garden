@@ -9,6 +9,7 @@ export interface Column<T> {
   render: (row: T) => ReactNode;
   width?: number | string;
   align?: "left" | "right" | "center";
+  wrap?: boolean;
 }
 
 export function DataTable<T>({
@@ -34,14 +35,14 @@ export function DataTable<T>({
   }, [activeIndex]);
 
   return (
-    <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 6, overflow: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+    <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "auto", boxShadow: colors.shadowSmall }}>
+      <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
             {columns.map((col) => (
               <th
                 key={col.key}
-                style={{ textAlign: col.align ?? "left", padding: "10px 12px", fontSize: 12, fontWeight: 600, color: colors.textMuted, width: col.width, whiteSpace: "nowrap" }}
+                style={{ textAlign: col.align ?? "left", padding: "10px 12px", fontSize: 12, fontWeight: 700, color: colors.heading, width: col.width, whiteSpace: "nowrap" }}
               >
                 {col.header}
               </th>
@@ -73,7 +74,7 @@ export function DataTable<T>({
                   onMouseLeave={(e) => { if (onRowClick && !isActive) (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} style={{ padding: "10px 12px", textAlign: col.align ?? "left", color: colors.text, verticalAlign: "middle" }}>
+                    <td key={col.key} style={{ padding: "10px 12px", textAlign: col.align ?? "left", color: colors.text, verticalAlign: "middle", whiteSpace: col.wrap ? "normal" : "nowrap", minWidth: col.wrap ? col.width : undefined }}>
                       {col.render(row)}
                     </td>
                   ))}

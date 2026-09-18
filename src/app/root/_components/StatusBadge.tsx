@@ -8,7 +8,7 @@ export function StatusBadge({ active }: { active: boolean }) {
       style={{
         display: "inline-block",
         padding: "2px 8px",
-        borderRadius: 10,
+        borderRadius: 999,
         fontSize: 11,
         fontWeight: 600,
         background: active ? colors.successBg : colors.disabledBg,

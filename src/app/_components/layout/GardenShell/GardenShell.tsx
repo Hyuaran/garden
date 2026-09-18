@@ -37,7 +37,7 @@ const ACT_W = 320;
 const HEADER_H = 80;
 const FAV_KEY = "garden_favorites";
 
-interface FavoriteItem {
+export interface FavoriteItem {
   title: string;
   url: string;
   icon?: string;
@@ -49,7 +49,7 @@ function formatDateJP(date: Date): string {
   return `${date.getFullYear()}\u5e74${date.getMonth() + 1}\u6708${date.getDate()}\u65e5(${weekdays[date.getDay()]})`;
 }
 
-function readFavorites(): FavoriteItem[] {
+export function readFavorites(): FavoriteItem[] {
   const raw = readFavoritesRaw();
   try {
     return raw ? JSON.parse(raw) as FavoriteItem[] : [];
@@ -58,7 +58,7 @@ function readFavorites(): FavoriteItem[] {
   }
 }
 
-function readFavoritesRaw(): string {
+export function readFavoritesRaw(): string {
   if (typeof window === "undefined") return "[]";
   try {
     return window.localStorage.getItem(FAV_KEY) ?? "[]";
@@ -67,7 +67,7 @@ function readFavoritesRaw(): string {
   }
 }
 
-function writeFavorites(list: FavoriteItem[]) {
+export function writeFavorites(list: FavoriteItem[]) {
   try {
     window.localStorage.setItem(FAV_KEY, JSON.stringify(list));
     window.dispatchEvent(new Event("garden-favorites-change"));
@@ -76,7 +76,7 @@ function writeFavorites(list: FavoriteItem[]) {
   }
 }
 
-function subscribeFavorites(onStoreChange: () => void): () => void {
+export function subscribeFavorites(onStoreChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   window.addEventListener("storage", onStoreChange);
   window.addEventListener("garden-favorites-change", onStoreChange);

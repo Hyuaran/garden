@@ -148,9 +148,14 @@ export default function KotSyncHistoryPage() {
       </div>
 
       {staleRunning.length > 0 && (
-        <div style={{ background: colors.warningBg, color: colors.warning, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>
-          ⚠ 5 分以上「実行中」のまま滞留しているログが {staleRunning.length} 件あります。Server Action 途中終了 / クライアント upsert 未完了の可能性。
-          詳細は行をクリックして確認し、必要に応じて再実行してください。
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: colors.warningBg, color: colors.warning, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 17px", marginTop: 1 }}>
+            <path d="M12 4.2 3.5 19h17L12 4.2z" />
+            <path d="M12 9v4M12 16.5h.01" />
+          </svg>
+          <span>
+            5 分以上「実行中」のまま止まっている記録が {staleRunning.length} 件あります。もう一度同期を実行しても変わらないときは、管理者へお問い合わせください。
+          </span>
         </div>
       )}
 
@@ -194,7 +199,7 @@ function LabeledSelect({ label, value, onChange, children }: { label: string; va
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <span style={{ fontSize: 11, color: colors.textMuted }}>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 140 }}>{children}</select>
+      <select value={value} onChange={(e) => onChange(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bgPanel, color: colors.text, fontSize: 13, minWidth: 140 }}>{children}</select>
     </label>
   );
 }
@@ -203,7 +208,7 @@ function LabeledInput({ label, type, value, onChange }: { label: string; type: s
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <span style={{ fontSize: 11, color: colors.textMuted }}>{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }} />
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bgPanel, color: colors.text, fontSize: 13 }} />
     </label>
   );
 }

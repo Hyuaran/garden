@@ -4,7 +4,8 @@ import Link from "next/link";
 import { MASTER_MENUS } from "./_constants/types";
 import { colors } from "./_constants/colors";
 import { PageHeader } from "./_components/PageHeader";
-import LegacyUiNotice from "@/app/_components/LegacyUiNotice";
+import { RootMenuIcon } from "./_components/RootMenuIcon";
+import rootStyles from "./_components/root-shell.module.css";
 
 export default function RootTopPage() {
   return (
@@ -12,13 +13,6 @@ export default function RootTopPage() {
       <PageHeader
         title="マスタ管理"
         description="Garden シリーズ全モジュールで参照される基礎マスタ。削除は不可、無効化で管理します。"
-        titleAddon={
-          <LegacyUiNotice
-            badgeLabel="旧UI・新UI切替予定"
-            toastTitle="旧UI・新UI切替予定"
-            toastBody="Garden Shell への切替を予定しています。既存機能はそのまま利用できます。"
-          />
-        }
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
@@ -38,14 +32,16 @@ export default function RootTopPage() {
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
+              e.currentTarget.style.boxShadow = colors.shadowSmall;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
               e.currentTarget.style.boxShadow = "none";
             }}
           >
-            <div style={{ fontSize: 32, marginBottom: 8 }}>{menu.icon}</div>
+            <div className={rootStyles.iconBadge}>
+              <RootMenuIcon icon={menu.icon} className={rootStyles.homeCardIcon} />
+            </div>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{menu.title}</div>
             <div style={{ fontSize: 12, color: colors.textMuted, lineHeight: 1.5 }}>{menu.description}</div>
           </Link>

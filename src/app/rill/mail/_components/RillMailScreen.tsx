@@ -3,7 +3,6 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import { RillComposePane } from "./RillComposePane";
 import type { GardenShellPageMenuItem } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { abbreviateBox, daySeparatedMessages, formatMailDetailDate, formatMailListDate, isViewableAttachment, mergeMessagePages, pruneToRefreshWindow, reviewerInitials, reviewerNames, reviewerTone, statusCategory } from "../_lib/format";
@@ -21,6 +20,7 @@ import { attachmentToNoticePages, downloadDataUrl, type NoticeClientPage } from 
 import { notificationIsNew } from "../_lib/notifications";
 import { anomalyStorageKeys, type MailAnomaly, type MailAnomalyResponse } from "../_lib/anomaly";
 import styles from "./RillMailScreen.module.css";
+import shellStyles from "../../_components/RillShachoShell.module.css";
 
 const ICON = "/themes/garden-shell/images/icons_bloom/orb_rill.png";
 const MENU: GardenShellPageMenuItem[] = [
@@ -38,6 +38,14 @@ const INTAKE_DESCRIPTIONS: Record<IntakeKind, string> = {
 };
 type NoticeWorkspace = { intakeId: string; pages: NoticeClientPage[]; text: string; salesPerson: string; projectName: string; contentMemo: string; truncated: boolean; saved: boolean };
 type MoveToast = { operation: "archive" | "delete"; entries: Array<{ snapshot: RillMailMessage; movedId: string }>; seconds: number };
+
+function RefreshIcon() {
+  return <svg className={styles.toolbarIcon} viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" /></svg>;
+}
+
+function MailOrbIcon() {
+  return <svg className={styles.connectOrbIcon} viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></svg>;
+}
 
 function DownloadIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" /></svg>;
@@ -837,10 +845,9 @@ export function RillMailScreen() {
     void openMessage(message);
   };
 
-  return <GardenShell activeModule="rill" pageMenu={MENU} activityItems={[]} contentFullBleed>
-    <section className={styles.surface} aria-label="Rill Mail">
+  return <section className={styles.surface} aria-label="Rill Mail">
       <div className={styles.toolbar}>
-        <button className={styles.primaryButton} onClick={() => void initialize()} disabled={loading}>↻ 更新</button>
+        <button className={styles.primaryButton} onClick={() => void initialize()} disabled={loading}><RefreshIcon />更新</button>
         <button className={styles.anomalyCheckButton} onClick={() => void checkAnomalies(true)} disabled={anomalyLoading}><AnomalyIcon />{anomalyLoading ? "確認中…" : "異常チェック"}</button>
         <span className={styles.fresh}>{updatedAt ? `最終更新 ${updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}・60秒ごと` : "未更新"}</span>{autoRefreshFailed && <span className={styles.autoWarning}>更新に失敗（自動で再試行します）</span>}<span className={styles.separator} />
         <button className={styles.composeAction} onClick={() => openCompose("new")}>新規</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("reply")}>返信</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("replyAll")}>全員に返信</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("forward")}>転送</button>
@@ -850,7 +857,7 @@ export function RillMailScreen() {
         <details className={styles.moreMenu}><summary className={styles.moreButton}>…</summary><div><button disabled={!selected} onClick={() => selected && void moveMessages([selected], "archive")}>アーカイブ</button><button disabled={!selected} onClick={() => selected && void moveMessages([selected], "delete")}>削除</button></div></details></>}
         <label className={styles.search}><span><SearchIcon /></span><input value={query} onChange={(event) => changeQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") runFullSearch(); }} placeholder="メールを検索" />{query && <button type="button" className={styles.clearSearch} aria-label="検索を解除" onClick={() => { setQuery(""); exitSearch(); }}>×</button>}</label>
       </div>
-      {connected === false ? <div className={styles.connect}><div className={styles.connectOrb}>✉</div><h1>Microsoft メールを接続</h1><p>本人の Microsoft アカウントでサインインすると、許可された受信箱を Garden から閲覧できます。</p><a href="/api/rill/mail/auth/login">Microsoft に接続</a></div> :
+      {connected === false ? <div className={styles.connect}><div className={styles.connectOrb}><MailOrbIcon /></div><h1>Microsoft メールを接続</h1><p>本人の Microsoft アカウントでサインインすると、許可された受信箱を Garden から閲覧できます。</p><a href="/api/rill/mail/auth/login">Microsoft に接続</a></div> :
       <div className={styles.panes}>
         <aside className={styles.column}><header className={styles.columnHeader}>受信箱 <span>{messages.filter((message) => message.box.id !== "sent").length}</span></header><div className={styles.scroll}>
           <div className={styles.group}>まとめて見る</div><button className={`${styles.box} ${activeBox === "all" ? styles.active : ""}`} onClick={() => selectBox("all")}><span className={styles.dot} />すべての箱</button><button className={`${styles.box} ${activeBox === "flagged" ? styles.active : ""}`} onClick={() => selectBox("flagged")}><span className={styles.pinIcon} role="img" aria-label="ピン"><PinIcon on /></span>ピン止め</button>
@@ -879,17 +886,16 @@ export function RillMailScreen() {
       </div>}
       {sendToast && <div className={`${styles.sendToast} ${sendToast.tone === "error" ? styles.sendToastError : ""}`}>{sendToast.text}{sendToast.tone === "pending" && <button onClick={() => delayedSend.current?.cancel()}>取り消す（{sendToast.seconds}秒）</button>}</div>}
       {moveToast && <div className={`${styles.sendToast} ${styles.moveToast}`}>{moveToast.operation === "archive" ? "アーカイブしました" : "削除しました"}<button onClick={() => void undoMove()}>元に戻す（{moveToast.seconds}秒）</button></div>}
-      {anomalyResult && createPortal(<div className={styles.modalBackdrop}>
+      {anomalyResult && createPortal(<div className={`${shellStyles.portalScope}`}><div className={styles.modalBackdrop}>
         <section className={styles.anomalyModal} role="dialog" aria-modal="true" aria-labelledby="anomaly-title">
           <header><span className={styles.anomalySymbol}><AnomalyIcon /></span><div><h2 id="anomaly-title">{anomalyError ? "異常チェックを完了できませんでした" : anomalyResult.anomalies.length ? "対応が止まっているメールがあります" : "異常はありません"}</h2><p>{anomalyError || (anomalyResult.anomalies.length ? "48時間以上、対応状況が更新されていない受信メールです。" : "過去30日間に、48時間以上放置された対象メールはありません。")}</p></div></header>
           {!anomalyError && anomalyResult.anomalies.length > 0 && <><div className={styles.anomalySummary}><span>要対応 <b>{anomalyResult.counts["要対応"]}件</b></span><span>確認中 <b>{anomalyResult.counts["確認中"]}件</b></span><span>状態なし <b>{anomalyResult.counts["状態なし"]}件</b></span></div>
           <div className={styles.anomalyList}>{anomalyResult.anomalies.map((message) => <button key={keyOf(message)} onClick={() => openAnomalyMessage(message)}><span className={styles.anomalySubject}>{message.subject}</span><span className={styles.badge}>{abbreviateBox(message.box.address)}</span><time>{formatMailListDate(message.receivedDateTime)}</time><b>{message.elapsedDays}日経過</b></button>)}</div></>}
           <footer><label><input type="checkbox" checked={disableAutomaticAnomaly} onChange={(event) => setDisableAutomaticAnomaly(event.target.checked)} />今後は自動表示しない</label><button onClick={closeAnomalyModal}>閉じる</button></footer>
         </section>
-      </div>, document.body)}
-      {/* GardenShell 側のスタッキング文脈にモーダルが閉じ込められ、ヘッダー(z-index:100)の下に潜るため body 直下へポータル描画する */}
-      {viewingAttachment && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingAttachment(null); }}><section className={styles.attachmentModal} role="dialog" aria-modal="true" aria-label={`${viewingAttachment.name}のプレビュー`}><header><h2>{viewingAttachment.name}</h2><a href={attachmentUrl(viewingAttachment)} aria-label="ダウンロード" title="ダウンロード"><DownloadIcon /></a><button onClick={() => setViewingAttachment(null)} aria-label="閉じる">×</button></header><div className={styles.viewer}>{viewingAttachment.contentType?.split(";", 1)[0].trim().toLowerCase().startsWith("image/") || (!viewingAttachment.contentType && /\.(png|jpe?g|gif|webp)$/i.test(viewingAttachment.name)) ? <img src={viewingUrl} alt={viewingAttachment.name} /> : <iframe src={viewingUrl} title={viewingAttachment.name} />}</div></section></div>, document.body)}
-      {intakeTarget && createPortal(<div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) closeIntake(); }}><section className={`${styles.intakeModal} ${noticeWorkspace ? styles.noticeModal : ""}`} role="dialog" aria-modal="true" aria-label="Garden取込分類"><header><div><h2>{noticeWorkspace ? "周知の準備" : "Garden取込実行"}</h2><p>{intakeTarget.name}</p></div><button onClick={closeIntake} aria-label="閉じる">×</button></header>{!noticeWorkspace && !noticeProgress && <div className={styles.intakeChoices}>{INTAKE_KINDS.map((kind) => <button key={kind} disabled={intakeSubmitting} onClick={() => void runIntake(kind)}><b>{kind}</b><span>{INTAKE_DESCRIPTIONS[kind]}</span></button>)}</div>}{noticeProgress && <div className={styles.noticeProcessing} role="status" aria-live="polite"><span className={styles.noticeSpinner} /><b>{noticeProgressLabel(noticeProgress)}</b><small>このまま少しお待ちください</small></div>}{noticeWorkspace && !noticeProgress && <div className={styles.noticeEditor}>{noticeWorkspace.truncated && <p className={styles.noticeWarning}>20頁を超えたため、先頭20頁まで処理しました。</p>}<div className={styles.noticePages}>{noticeWorkspace.pages.map((page, index) => <figure key={index}><img src={page.url} alt={`周知画像 ${index + 1}ページ`} /><figcaption>{index + 1}ページ <button onClick={() => downloadDataUrl(page.url, `周知_p${index + 1}.png`)}>ダウンロード</button></figcaption></figure>)}</div><div className={styles.noticeFields}><label>営業担当<input value={noticeWorkspace.salesPerson} onChange={(event) => updateNoticeField("salesPerson", event.target.value)} /></label><label>案件名<input value={noticeWorkspace.projectName} onChange={(event) => updateNoticeField("projectName", event.target.value)} /></label></div>{noticeWorkspace.contentMemo && <aside className={styles.noticeMemo}><b>内容メモ（参考）</b><p>{noticeWorkspace.contentMemo}</p><small>コピー・LINE送信には含まれません</small></aside>}<label>周知文<textarea value={noticeWorkspace.text} onChange={(event) => setNoticeWorkspace({ ...noticeWorkspace, text: event.target.value })} /></label><div className={styles.noticeActions}><button onClick={() => void navigator.clipboard.writeText(noticeWorkspace.text)}>コピー</button><button disabled={intakeSubmitting || !noticeWorkspace.text.trim()} onClick={() => void saveNotice()}>{noticeWorkspace.saved ? "変更を保存して閉じる" : "保存して閉じる"}</button></div></div>}{intakeError && <div className={styles.intakeError}>{intakeError}</div>}</section></div>, document.body)}
-    </section>
-  </GardenShell>;
+      </div></div>, document.body)}
+      {/* 枠のスタッキング文脈にモーダルが閉じ込められないよう body 直下へポータル描画する。portalScope で Rill の色とフォントを届ける */}
+      {viewingAttachment && createPortal(<div className={`${shellStyles.portalScope}`}><div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingAttachment(null); }}><section className={styles.attachmentModal} role="dialog" aria-modal="true" aria-label={`${viewingAttachment.name}のプレビュー`}><header><h2>{viewingAttachment.name}</h2><a href={attachmentUrl(viewingAttachment)} aria-label="ダウンロード" title="ダウンロード"><DownloadIcon /></a><button onClick={() => setViewingAttachment(null)} aria-label="閉じる">×</button></header><div className={styles.viewer}>{viewingAttachment.contentType?.split(";", 1)[0].trim().toLowerCase().startsWith("image/") || (!viewingAttachment.contentType && /\.(png|jpe?g|gif|webp)$/i.test(viewingAttachment.name)) ? <img src={viewingUrl} alt={viewingAttachment.name} /> : <iframe src={viewingUrl} title={viewingAttachment.name} />}</div></section></div></div>, document.body)}
+      {intakeTarget && createPortal(<div className={`${shellStyles.portalScope}`}><div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) closeIntake(); }}><section className={`${styles.intakeModal} ${noticeWorkspace ? styles.noticeModal : ""}`} role="dialog" aria-modal="true" aria-label="Garden取込分類"><header><div><h2>{noticeWorkspace ? "周知の準備" : "Garden取込実行"}</h2><p>{intakeTarget.name}</p></div><button onClick={closeIntake} aria-label="閉じる">×</button></header>{!noticeWorkspace && !noticeProgress && <div className={styles.intakeChoices}>{INTAKE_KINDS.map((kind) => <button key={kind} disabled={intakeSubmitting} onClick={() => void runIntake(kind)}><b>{kind}</b><span>{INTAKE_DESCRIPTIONS[kind]}</span></button>)}</div>}{noticeProgress && <div className={styles.noticeProcessing} role="status" aria-live="polite"><span className={styles.noticeSpinner} /><b>{noticeProgressLabel(noticeProgress)}</b><small>このまま少しお待ちください</small></div>}{noticeWorkspace && !noticeProgress && <div className={styles.noticeEditor}>{noticeWorkspace.truncated && <p className={styles.noticeWarning}>20頁を超えたため、先頭20頁まで処理しました。</p>}<div className={styles.noticePages}>{noticeWorkspace.pages.map((page, index) => <figure key={index}><img src={page.url} alt={`周知画像 ${index + 1}ページ`} /><figcaption>{index + 1}ページ <button onClick={() => downloadDataUrl(page.url, `周知_p${index + 1}.png`)}>ダウンロード</button></figcaption></figure>)}</div><div className={styles.noticeFields}><label>営業担当<input value={noticeWorkspace.salesPerson} onChange={(event) => updateNoticeField("salesPerson", event.target.value)} /></label><label>案件名<input value={noticeWorkspace.projectName} onChange={(event) => updateNoticeField("projectName", event.target.value)} /></label></div>{noticeWorkspace.contentMemo && <aside className={styles.noticeMemo}><b>内容メモ（参考）</b><p>{noticeWorkspace.contentMemo}</p><small>コピー・LINE送信には含まれません</small></aside>}<label>周知文<textarea value={noticeWorkspace.text} onChange={(event) => setNoticeWorkspace({ ...noticeWorkspace, text: event.target.value })} /></label><div className={styles.noticeActions}><button onClick={() => void navigator.clipboard.writeText(noticeWorkspace.text)}>コピー</button><button disabled={intakeSubmitting || !noticeWorkspace.text.trim()} onClick={() => void saveNotice()}>{noticeWorkspace.saved ? "変更を保存して閉じる" : "保存して閉じる"}</button></div></div>}{intakeError && <div className={styles.intakeError}>{intakeError}</div>}</section></div></div>, document.body)}
+    </section>;
 }

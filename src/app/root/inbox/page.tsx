@@ -114,7 +114,7 @@ export default function InboxPage() {
             zIndex: 1000,
             display: "grid",
             placeItems: "center",
-            background: "#0008",
+            background: "rgba(8,15,28,.55)",
           }}
         >
           <section

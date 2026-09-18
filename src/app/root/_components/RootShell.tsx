@@ -1,70 +1,134 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
-import { colors } from "../_constants/colors";
-import { MASTER_MENUS } from "../_constants/types";
-import { UserHeader } from "./UserHeader";
+import { type CSSProperties, type ReactNode } from "react";
+import { MODULE_META, ModuleIcon, RailIcon } from "@/app/_components/ModuleIcon/ModuleIcon";
+import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
+import { getVisibleModules } from "@/app/_lib/module-visibility";
+import { useTheme } from "@/app/_lib/theme/ThemeProvider";
+import { GARDEN_ROLE_LABELS, MASTER_MENUS, type RootMenuIconName } from "../_constants/types";
 import { SessionWarningModal } from "./SessionWarningModal";
 import { useRootState } from "../_state/RootStateContext";
+import { RootMenuIcon } from "./RootMenuIcon";
+import systemStyles from "@/app/system/_components/ShachoShell/shacho-shell.module.css";
+import rootStyles from "./root-shell.module.css";
+
+const HOME_MENU = {
+  slug: "",
+  title: "ホーム",
+  icon: "home" as RootMenuIconName,
+  href: "/root",
+};
 
 export function RootShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { canWrite } = useRootState();
+  const { canWrite, gardenRole, rootUser, signOut } = useRootState();
+  const { theme, toggleTheme } = useTheme();
 
-  // ログイン画面はシェル無し (サイドバー・ヘッダー非表示)
   if (pathname === "/root/login") {
     return <>{children}</>;
   }
 
-  // adminOnly メニューは admin 以上のみ表示（canWrite = admin/super_admin）。
-  // manager 以下は直接 URL アクセスでも RootGate が弾くが、ナビからも非表示にする。
   const menus = MASTER_MENUS.filter((m) => !m.adminOnly || canWrite);
+  const visibleModules = new Set(getVisibleModules(gardenRole).map((module) => module.toLowerCase()));
+  const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
+  const userName = rootUser?.name ?? "";
+  const affiliation = rootUser?.company_name || "所属会社未登録";
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: "system-ui, -apple-system, 'Segoe UI', Meiryo, sans-serif" }}>
-      {/* サイドバー */}
-      <aside style={{ width: 240, background: colors.bgSidebar, color: colors.textOnDark, padding: "24px 0", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
-        <div style={{ padding: "0 24px 20px", borderBottom: `1px solid ${colors.textOnDarkMuted}33` }}>
-          <Link href="/root" style={{ color: colors.textOnDark, textDecoration: "none" }}>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 1 }}>Garden Root</div>
-            <div style={{ fontSize: 12, color: colors.textOnDarkMuted, marginTop: 4 }}>マスタ管理</div>
+    <div className={`${systemStyles.shell} ${rootStyles.shell}`}>
+      <aside className={systemStyles.rail} aria-label="Gardenシリーズ">
+        <div className={systemStyles.railInner}>
+          <Link href="/system" className={systemStyles.app} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
+            <RailIcon color="#0ea5a0" shade="#054e4b" iconScale={1.85} iconStrokeWidth={1.9}>
+              <path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" /><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 13.8v2.2M17.6 15.2V17" />
+            </RailIcon>
+            <span className={systemStyles.railTip}><b>System</b><span>社内システム</span></span>
           </Link>
-        </div>
-
-        <nav style={{ padding: "16px 0" }}>
-          {menus.map((menu) => {
-            const href = `/root/${menu.slug}`;
-            const active = pathname === href || pathname?.startsWith(href + "/");
+          <div className={systemStyles.separator} />
+          {GARDEN_SHELL_MODULES.filter((module) => visibleModules.has(module.id)).map((module) => {
+            const current = module.id === "root";
             return (
               <Link
-                key={menu.slug}
-                href={href}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "10px 24px",
-                  color: active ? colors.textOnDark : colors.textOnDarkMuted,
-                  background: active ? colors.bgSidebarHover : "transparent",
-                  borderLeft: active ? `3px solid ${colors.accent}` : "3px solid transparent",
-                  textDecoration: "none",
-                  fontSize: 14,
-                }}
+                key={module.id}
+                href={`/${module.id}`}
+                className={`${systemStyles.app} ${current ? systemStyles.current : ""}`}
+                style={{ "--c": MODULE_META[module.id].color } as CSSProperties}
+                aria-current={current ? "page" : undefined}
+                aria-label={`${module.name}：${MODULE_META[module.id].role}`}
               >
-                <span style={{ fontSize: 18 }}>{menu.icon}</span>
-                <span>{menu.title}</span>
+                <ModuleIcon id={module.id} />
+                <span className={systemStyles.railTip}><b>{module.name}</b><span>{MODULE_META[module.id].role}</span></span>
               </Link>
             );
           })}
-        </nav>
+        </div>
       </aside>
 
-      {/* メインコンテンツ */}
-      <main style={{ flex: 1, maxWidth: "100%", overflow: "auto", display: "flex", flexDirection: "column" }}>
-        <UserHeader />
-        <div style={{ padding: "24px 32px", flex: 1 }}>
+      <aside className={systemStyles.side}>
+        <div className={systemStyles.sideInner}>
+          <div className={systemStyles.brand}>
+            <Link href="/" className={systemStyles.brandName} aria-label="Garden ホームへ">
+              <Image className={systemStyles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized />
+              <span>Garden</span>
+            </Link>
+            <div className={systemStyles.moduleName}>Root ／ 組織台帳</div>
+          </div>
+
+          <nav className={systemStyles.nav} aria-label="Rootメニュー">
+            <div className={rootStyles.navLabel}>メニュー</div>
+            <Link
+              href={HOME_MENU.href}
+              className={pathname === "/root" ? systemStyles.active : undefined}
+              aria-current={pathname === "/root" ? "page" : undefined}
+            >
+              <RootMenuIcon icon={HOME_MENU.icon} />
+              {HOME_MENU.title}
+            </Link>
+            {menus.map((menu) => {
+              const href = `/root/${menu.slug}`;
+              const active = pathname === href || pathname?.startsWith(href + "/");
+              return (
+                <Link
+                  key={menu.slug}
+                  href={href}
+                  className={active ? systemStyles.active : undefined}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <RootMenuIcon icon={menu.icon} />
+                  <span>{menu.title}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {rootUser && gardenRole && (
+            <div className={systemStyles.who}>
+              <div className={systemStyles.avatar}>{rootUser.name.charAt(0)}</div>
+              <div>
+                <div className={systemStyles.userName}>{rootUser.name}</div>
+                <div className={systemStyles.userRole}>{affiliation} ／ {GARDEN_ROLE_LABELS[gardenRole]}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <main className={`${systemStyles.main} ${rootStyles.main}`}>
+        <div className={systemStyles.actions}>
+          {userName && <span className={systemStyles.accountName}>{userName}さん</span>}
+          <button className={systemStyles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>
+            {theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" /></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z" /></svg>}
+            <span className={systemStyles.actionTip}>{themeLabel}</span>
+          </button>
+          <button className={systemStyles.iconButton} type="button" aria-label="ログアウト" onClick={() => void signOut("manual")}>
+            <svg viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6" /></svg>
+            <span className={systemStyles.actionTip}>ログアウト</span>
+          </button>
+        </div>
+        <div className={rootStyles.content}>
           {children}
         </div>
         <SessionWarningModal />

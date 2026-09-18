@@ -178,13 +178,13 @@ export default function PermissionsClient({
           <h2 style={{ margin: "0 0 10px", fontSize: 16, color: colors.text }}>
             役職の一覧
           </h2>
-          <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 6, overflow: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "auto", boxShadow: colors.shadowSmall }}>
+            <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
                   <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>順位</th>
                   <th style={{ textAlign: "left", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>役職</th>
-                  <th style={{ textAlign: "left", padding: "10px 12px", color: colors.textMuted }}>誰か・どこまで使えるか</th>
+                  <th style={{ textAlign: "left", padding: "10px 12px", color: colors.heading }}>誰か・どこまで使えるか</th>
                   <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>使える画面／機能</th>
                   <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>在籍中の人数</th>
                 </tr>
@@ -194,7 +194,7 @@ export default function PermissionsClient({
                   <tr key={row.role} style={{ borderBottom: `1px solid ${colors.border}` }}>
                     <td style={{ padding: "10px 12px", textAlign: "center", color: colors.textMuted }}>{row.rank}</td>
                     <td style={{ padding: "10px 12px", color: colors.text, fontWeight: 700, whiteSpace: "nowrap" }}>{row.label}</td>
-                    <td style={{ padding: "10px 12px", color: colors.text }}>{row.note}</td>
+                    <td style={{ padding: "10px 12px", color: colors.text, whiteSpace: "normal", minWidth: 260 }}>{row.note}</td>
                     <td style={{ padding: "10px 12px", textAlign: "center", color: colors.text, whiteSpace: "nowrap" }}>{row.allowedCount}／{row.totalCount}</td>
                     <td style={{ padding: "10px 12px", textAlign: "center", color: colors.text, whiteSpace: "nowrap" }}>{loading ? "…" : `${headcount[row.role] ?? 0} 人`}</td>
                   </tr>
@@ -212,8 +212,8 @@ export default function PermissionsClient({
         <h2 style={{ margin: "0 0 10px", fontSize: 16, color: colors.text }}>
           役職ごとに使える画面
         </h2>
-        <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 6, overflow: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "auto", boxShadow: colors.shadowSmall }}>
+          <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
                 <th style={{ textAlign: "left", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>画面／機能</th>
@@ -228,12 +228,12 @@ export default function PermissionsClient({
             <tbody>
               {initialPermissionRows.map((row) => (
                 <tr key={row.key} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                  <td style={{ padding: "10px 12px", color: colors.text }}>{row.label}</td>
+                  <td style={{ padding: "10px 12px", color: colors.text, whiteSpace: "nowrap" }}>{row.label}</td>
                   <td style={{ padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>{row.kind}</td>
                   {GARDEN_ROLE_ORDER.map((role) => {
                     const allowed = row.roles[role];
                     return (
-                      <td key={role} style={{ padding: "10px 12px", textAlign: "center", color: allowed ? colors.success : colors.textMuted, fontWeight: allowed ? 700 : 500 }}>
+                      <td key={role} style={{ padding: "10px 12px", textAlign: "center", color: allowed ? colors.success : colors.textMuted, fontWeight: allowed ? 700 : 500, whiteSpace: "nowrap" }}>
                         {allowed ? "○" : "×"}
                       </td>
                     );
