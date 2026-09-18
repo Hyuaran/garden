@@ -222,14 +222,20 @@
   min-width: 0;
 }
 
-.rangeLabels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+/* 日付欄は空のとき「年/月/日」の代わりに「から」「まで」を欄の中に出す（Chrome 系）。入力中・入力後は通常表示 */
+.range input[type="date"][data-empty="true"]:not(:focus) {
+  position: relative;
+  color: transparent;
+}
+
+.range input[type="date"][data-empty="true"]:not(:focus)::before {
+  content: attr(placeholder);
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--sub);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.2;
+  pointer-events: none;
 }
 
 .filterDivider {

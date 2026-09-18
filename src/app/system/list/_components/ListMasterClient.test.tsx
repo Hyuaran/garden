@@ -933,12 +933,17 @@ describe("ListMasterClient list search UX", () => {
       .filter(Boolean);
     expect(fieldLabels).toEqual(labels);
     expect(within(grid).queryByLabelText("購入履歴")).not.toBeInTheDocument();
-    expect(within(grid).getAllByText("から")).toHaveLength(3);
-    expect(within(grid).getAllByText("まで")).toHaveLength(3);
-    expect(within(grid).getByText("回以上")).toBeInTheDocument();
-    expect(within(grid).getByText("回以下")).toBeInTheDocument();
-    expect(within(grid).getByText("年以上")).toBeInTheDocument();
-    expect(within(grid).getByText("年以下")).toBeInTheDocument();
+    // 範囲入力の「から／まで」等は欄の中の薄い文字（placeholder）だけ。欄の外に小見出しは出さない
+    expect(within(grid).getAllByPlaceholderText("から")).toHaveLength(3);
+    expect(within(grid).getAllByPlaceholderText("まで")).toHaveLength(3);
+    expect(within(grid).getByPlaceholderText("回以上")).toBeInTheDocument();
+    expect(within(grid).getByPlaceholderText("回以下")).toBeInTheDocument();
+    expect(within(grid).getByPlaceholderText("年以上")).toBeInTheDocument();
+    expect(within(grid).getByPlaceholderText("年以下")).toBeInTheDocument();
+    expect(within(grid).queryByText("から")).not.toBeInTheDocument();
+    expect(within(grid).queryByText("回以上")).not.toBeInTheDocument();
+    expect(within(grid).queryByText("年以上")).not.toBeInTheDocument();
+    expect(within(grid).getAllByPlaceholderText("から")[0]).toHaveAttribute("data-empty", "true");
     expect(grid.querySelectorAll('[class*="filterDivider"]')).toHaveLength(2);
   });
 

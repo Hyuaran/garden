@@ -2533,10 +2533,6 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <MultiSelectFilter label="元回線" value={filters.lineType} groups={buildOptionGroups("lineType", options.lineType)} onChange={(value) => setFilter("lineType", value)} />
               <label>
                 経過（年）
-                <span className={styles.rangeLabels}>
-                  <span>年以上</span>
-                  <span>年以下</span>
-                </span>
                 <span className={styles.range}>
                   <input type="number" min="0" value={filters.elapsedYearsFrom} onChange={(event) => setFilter("elapsedYearsFrom", event.target.value)} aria-label="年以上" placeholder="年以上" />
                   <input type="number" min="0" value={filters.elapsedYearsTo} onChange={(event) => setFilter("elapsedYearsTo", event.target.value)} aria-label="年以下" placeholder="年以下" />
@@ -2545,13 +2541,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <div className={styles.filterDivider} aria-hidden="true" />
               <label>
                 リスト投入日
-                <span className={styles.rangeLabels}>
-                  <span>から</span>
-                  <span>まで</span>
-                </span>
                 <span className={styles.range}>
-                  <input type="date" value={filters.listLoadedOnFrom} onChange={(event) => setFilter("listLoadedOnFrom", event.target.value)} />
-                  <input type="date" value={filters.listLoadedOnTo} onChange={(event) => setFilter("listLoadedOnTo", event.target.value)} />
+                  <input type="date" value={filters.listLoadedOnFrom} onChange={(event) => setFilter("listLoadedOnFrom", event.target.value)} aria-label="から" placeholder="から" data-empty={filters.listLoadedOnFrom ? undefined : "true"} />
+                  <input type="date" value={filters.listLoadedOnTo} onChange={(event) => setFilter("listLoadedOnTo", event.target.value)} aria-label="まで" placeholder="まで" data-empty={filters.listLoadedOnTo ? undefined : "true"} />
                 </span>
               </label>
               <label className={styles.wide}>
@@ -2560,35 +2552,23 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </label>
               <label>
                 再判定日
-                <span className={styles.rangeLabels}>
-                  <span>から</span>
-                  <span>まで</span>
-                </span>
                 <span className={styles.range}>
-                  <input type="date" value={filters.recheckedOnFrom} onChange={(event) => setFilter("recheckedOnFrom", event.target.value)} />
-                  <input type="date" value={filters.recheckedOnTo} onChange={(event) => setFilter("recheckedOnTo", event.target.value)} />
+                  <input type="date" value={filters.recheckedOnFrom} onChange={(event) => setFilter("recheckedOnFrom", event.target.value)} aria-label="から" placeholder="から" data-empty={filters.recheckedOnFrom ? undefined : "true"} />
+                  <input type="date" value={filters.recheckedOnTo} onChange={(event) => setFilter("recheckedOnTo", event.target.value)} aria-label="まで" placeholder="まで" data-empty={filters.recheckedOnTo ? undefined : "true"} />
                 </span>
               </label>
               <label>
                 最終コール日
-                <span className={styles.rangeLabels}>
-                  <span>から</span>
-                  <span>まで</span>
-                </span>
                 <span className={styles.range}>
-                  <input type="date" value={filters.lastCalledOnFrom} onChange={(event) => setFilter("lastCalledOnFrom", event.target.value)} />
-                  <input type="date" value={filters.lastCalledOnTo} onChange={(event) => setFilter("lastCalledOnTo", event.target.value)} />
+                  <input type="date" value={filters.lastCalledOnFrom} onChange={(event) => setFilter("lastCalledOnFrom", event.target.value)} aria-label="から" placeholder="から" data-empty={filters.lastCalledOnFrom ? undefined : "true"} />
+                  <input type="date" value={filters.lastCalledOnTo} onChange={(event) => setFilter("lastCalledOnTo", event.target.value)} aria-label="まで" placeholder="まで" data-empty={filters.lastCalledOnTo ? undefined : "true"} />
                 </span>
               </label>
               <label>
                 コール回数
-                <span className={styles.rangeLabels}>
-                  <span>回以上</span>
-                  <span>回以下</span>
-                </span>
                 <span className={styles.range}>
-                  <input type="number" min="0" value={filters.callCountFrom} onChange={(event) => setFilter("callCountFrom", event.target.value)} />
-                  <input type="number" min="0" value={filters.callCountTo} onChange={(event) => setFilter("callCountTo", event.target.value)} />
+                  <input type="number" min="0" value={filters.callCountFrom} onChange={(event) => setFilter("callCountFrom", event.target.value)} aria-label="回以上" placeholder="回以上" />
+                  <input type="number" min="0" value={filters.callCountTo} onChange={(event) => setFilter("callCountTo", event.target.value)} aria-label="回以下" placeholder="回以下" />
                 </span>
               </label>
               <div className={styles.filterDivider} aria-hidden="true" />
