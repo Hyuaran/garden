@@ -119,6 +119,21 @@ export function shiftLabel(row: KotDailyRow) {
   return start && end ? `${start}-${end}` : "";
 }
 
+// 出勤表の時刻：ちょうどの時は 2 桁（09）、分があるときは時間を小数で（09:30 → 9.5・14:15 → 14.25）（東海林さん 2026-09-19）
+// LINE のシフト連絡は shiftLabel のまま
+function timeForAttendance(value: string) {
+  const total = minutes(value);
+  if (total === null) return "";
+  if (total % 60 === 0) return String(total / 60).padStart(2, "0");
+  return String(Math.round((total / 60) * 100) / 100);
+}
+
+function attendanceShiftLabel(row: KotDailyRow) {
+  const start = timeForAttendance(row.plannedClockIn);
+  const end = timeForAttendance(row.plannedClockOut);
+  return start && end ? `${start}-${end}` : "";
+}
+
 function hasPlan(row: KotDailyRow | undefined) {
   if (!row) return false;
   if (REST_KINDS.has(row.workdayKind)) return false;
@@ -133,7 +148,7 @@ function shukkinShift(row: KotDailyRow | undefined, groupName: ShukkinGroup) {
     if (groupName !== "ＢＹ") return "×";
     return REST_KINDS.has(row.workdayKind) ? row.workdayKind : "公休";
   }
-  return shiftLabel(row) || "×";
+  return attendanceShiftLabel(row) || "×";
 }
 
 function confirmationMark(row: KotDailyRow | undefined, tableTime: "10:00" | "14:00") {

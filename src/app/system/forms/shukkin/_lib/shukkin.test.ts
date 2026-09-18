@@ -84,8 +84,22 @@ describe("shukkin text builder", () => {
     expect(text).not.toContain("　 ○");
     expect(text).toContain("(桐井　大輔)10-21　※10：05打刻");
     expect(text).toContain("(上田　基人)14-21　※不明/打刻漏れの可能性");
-    expect(text).toContain("(簡　　棣榮)14:30-21　");
-    expect(text).not.toContain("(簡　　棣榮)14:30-21　※");
+    expect(text).toContain("(簡　　棣榮)14.5-21　");
+    expect(text).not.toContain("(簡　　棣榮)14.5-21　※");
+  });
+
+  // 出勤表の時刻：分があるときは時間を小数で（09:30 → 9.5）。ちょうどの時は今までどおり 2 桁（東海林さん 2026-09-19）
+  it("writes minutes as decimal hours in the attendance message", () => {
+    const rows = parsed([
+      row("1001", "萩尾 拓也", "2026/09/19", "平日", "09:30", "18:00"),
+      row("1002", "桐井 大輔", "2026/09/19", "平日", "09:15", "17:45"),
+      row("1003", "東海林 美琴", "2026/09/19", "平日", "09:00", "17:00"),
+    ]);
+    const text = buildAttendanceMessage({ rows, members: members.slice(0, 3), date: "2026-09-19", tableTime: "14:00", withConfirmation: false });
+    expect(text).toContain("(萩尾　拓也)9.5-18　");
+    expect(text).toContain("(桐井　大輔)9.25-17.75　");
+    expect(text).toContain("(東海林美琴)09-17　");
+    expect(text).not.toContain("09:30");
   });
 
   it("matches the 2026/09/19 14:00 fixture without confirmation", () => {
