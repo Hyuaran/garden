@@ -92,24 +92,34 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
   const lineBlocks = useMemo(() => buildLineShiftBlocks({ rows, members, date: lineDate }), [lineDate, members, rows]);
   const allLineText = useMemo(() => lineBlocks.map((block) => block.message).join("\n\n"), [lineBlocks]);
 
-  async function readCsv(file: File) {
+  // 日別データは 1 日ずつ出すことが多いので、今日と明日の 2 ファイル（それ以上でも）をまとめて読み込む。
+  // 期間で出した 1 ファイルでもよい。同じ人・同じ日の行は後から読んだ方で上書きする
+  async function readCsvFiles(files: File[]) {
+    if (files.length === 0) return;
     setLoadingCsv(true);
     setMessage("");
-    const form = new FormData();
-    form.append("file", file);
     try {
-      const response = await fetch("/api/system/shukkin/parse", { method: "POST", body: form });
-      const body = await response.json();
-      if (!response.ok) {
-        setMessage(String(body.error ?? "CSV を読み込めませんでした"));
-        return;
+      const merged = new Map<string, KotDailyRow>();
+      for (const file of files) {
+        const form = new FormData();
+        form.append("file", file);
+        const response = await fetch("/api/system/shukkin/parse", { method: "POST", body: form });
+        const body = await response.json();
+        if (!response.ok) {
+          setMessage(`${file.name}：${String(body.error ?? "CSV を読み込めませんでした")}`);
+          return;
+        }
+        for (const row of (Array.isArray(body.rows) ? body.rows : []) as KotDailyRow[]) merged.set(`${row.employeeCode}-${row.date}`, row);
       }
-      setRows(Array.isArray(body.rows) ? body.rows : []);
-      setSummary(body.summary ?? null);
-      setFileName(file.name);
-      if (body.summary?.startDate && body.summary?.endDate && (attendanceDate < body.summary.startDate || attendanceDate > body.summary.endDate)) {
-        setAttendanceDate(body.summary.startDate);
-        setAttendanceTime(defaultAttendanceTime(body.summary.startDate));
+      const nextRows = [...merged.values()];
+      const dates = [...new Set(nextRows.map((row) => row.date))].sort();
+      const nextSummary = { startDate: dates[0] ?? "", endDate: dates[dates.length - 1] ?? "", peopleCount: new Set(nextRows.map((row) => row.employeeCode)).size };
+      setRows(nextRows);
+      setSummary(nextSummary);
+      setFileName(files.map((file) => file.name).join("、"));
+      if (nextSummary.startDate && (attendanceDate < nextSummary.startDate || attendanceDate > nextSummary.endDate)) {
+        setAttendanceDate(nextSummary.startDate);
+        setAttendanceTime(defaultAttendanceTime(nextSummary.startDate));
       }
       setMessage("読み込みました");
     } finally {
@@ -181,16 +191,15 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
     <section className={styles.panel}>
       <h2>1. KOT の日別データ</h2>
       <div className={styles.fileRow}>
-        <label className={styles.fileButton}>CSV を選ぶ<input type="file" accept=".csv,text/csv" onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          if (file) void readCsv(file);
+        <label className={styles.fileButton}>CSV を選ぶ<input type="file" accept=".csv,text/csv" multiple onChange={(event) => {
+          void readCsvFiles(Array.from(event.currentTarget.files ?? []));
         }} /></label>
         <span>{fileName || "未選択"}</span>
         {summary && <strong>{slashDate(summary.startDate)}〜{slashDate(summary.endDate)}・{summary.peopleCount} 人</strong>}
         {loadingCsv && <span>読み込み中...</span>}
         {message && <span className={styles.message}>{message}</span>}
       </div>
-      <p className={styles.hint}>今日と明日が入った期間で出してください。</p>
+      <p className={styles.hint}>今日の日別データ（出勤表用）と明日の日別データ（シフト連絡用）を、2 つまとめて選んでください。期間で出した 1 ファイルでも使えます。</p>
     </section>
 
     <div className={styles.tabs} role="tablist" aria-label="文面">
