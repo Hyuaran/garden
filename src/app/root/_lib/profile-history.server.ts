@@ -34,6 +34,17 @@ export type ProfileHistoryRow = {
 export type ProfileCurrentMap = Record<string, ProfileHistoryRow>;
 export type ProfileConfirmationMap = Record<string, string>;
 
+export type CurrentAddress = {
+  postal_code: string | null;
+  full: string | null;
+  building: string | null;
+  room: string | null;
+  source: string;
+  recorded_at: string | null;
+};
+
+export type CurrentAddressMap = Record<string, CurrentAddress>;
+
 function asQuery(value: unknown): Record<string, (...args: unknown[]) => unknown> {
   return value && typeof value === "object" ? value as Record<string, (...args: unknown[]) => unknown> : {};
 }
@@ -79,6 +90,35 @@ export async function getCurrentProfile(admin: LooseSupabase, employeeId: string
       payload: row.category === "bank_account" ? maskBankPayload(row.payload ?? {}, revealBankAccount) : row.payload,
     },
   ]));
+}
+
+function payloadString(payload: Record<string, unknown>, key: string): string | null {
+  const value = payload[key];
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text || null;
+}
+
+export async function getCurrentAddresses(admin: LooseSupabase): Promise<CurrentAddressMap> {
+  const query = asQuery(admin.from("root_employee_profile_current").select?.("employee_id,payload,source,recorded_at"));
+  const filtered = query.eq?.("category", "address");
+  const { data, error } = await maybeThen<{ data?: ProfileHistoryRow[]; error?: unknown }>(filtered);
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  return Object.fromEntries(rows.map((row) => {
+    const payload = row.payload ?? {};
+    return [
+      row.employee_id,
+      {
+        postal_code: payloadString(payload, "postal_code"),
+        full: payloadString(payload, "full"),
+        building: payloadString(payload, "building"),
+        room: payloadString(payload, "room"),
+        source: row.source,
+        recorded_at: row.recorded_at ?? null,
+      },
+    ];
+  }));
 }
 
 export async function getProfileHistory(admin: LooseSupabase, employeeId: string, revealBankAccount = false): Promise<ProfileHistoryRow[]> {

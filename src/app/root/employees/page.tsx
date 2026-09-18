@@ -101,8 +101,105 @@ type ProfileHistoryState = {
   currentIds: Record<string, string | null>;
 } | null;
 
+type CurrentAddress = {
+  postal_code: string | null;
+  full: string | null;
+  building: string | null;
+  room: string | null;
+  source: string;
+  recorded_at: string | null;
+};
+
+type CurrentAddressMap = Record<string, CurrentAddress>;
+
 const PROFILE_CATEGORY_LABELS: Record<string, string> = { address: "住所", contact: "連絡先", emergency_contact: "緊急連絡先", bank_account: "給与受取口座", commute: "交通費", employment: "雇用条件", dependents: "扶養", my_number_status: "マイナンバー" };
 const PROFILE_SOURCE_LABELS: Record<string, string> = { roster: "従業員名簿", bank_list: "口座一覧", transfer_group: "振込グループ", mf_contract: "電子契約の書類", employee_confirm: "本人確認", submission: "届出", onboarding: "入社手続き", admin: "事務の入力" };
+
+function sourceLabel(source: string) {
+  return PROFILE_SOURCE_LABELS[source] ?? source;
+}
+
+function formatPostalCode(value: string | null | undefined) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (/^\d{7}$/.test(raw)) return `${raw.slice(0, 3)}-${raw.slice(3)}`;
+  return raw;
+}
+
+function addressLine(address: CurrentAddress | undefined) {
+  const full = address?.full?.trim() ?? "";
+  if (!full) return "未登録";
+  const postalCode = formatPostalCode(address?.postal_code);
+  return [postalCode ? `〒${postalCode}` : "", full].filter(Boolean).join(" ");
+}
+
+function formatProfileDate(value: string | null | undefined) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+}
+
+function addressSourceLine(address: CurrentAddress | undefined) {
+  if (!address?.source) return "";
+  const date = formatProfileDate(address.recorded_at);
+  return `出どころ：${sourceLabel(address.source)}${date ? `（${date}）` : ""}`;
+}
+
+async function fetchCurrentAddresses(): Promise<CurrentAddressMap> {
+  // 住所が読めなくても一覧そのものは出す（住所列は「未登録」になる）
+  let body: unknown;
+  try {
+    const response = await fetch("/api/root/employees/addresses", { cache: "no-store" });
+    if (!response.ok) return {};
+    body = await response.json();
+  } catch {
+    return {};
+  }
+  const raw = (body as { addresses?: unknown })?.addresses ?? body;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: CurrentAddressMap = {};
+  for (const [employeeId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const row = value as Record<string, unknown>;
+    out[employeeId] = {
+      postal_code: typeof row.postal_code === "string" ? row.postal_code : null,
+      full: typeof row.full === "string" ? row.full : null,
+      building: typeof row.building === "string" ? row.building : null,
+      room: typeof row.room === "string" ? row.room : null,
+      source: typeof row.source === "string" ? row.source : "",
+      recorded_at: typeof row.recorded_at === "string" ? row.recorded_at : null,
+    };
+  }
+  return out;
+}
+
+function AddressReadOnly({ address }: { address: CurrentAddress | undefined }) {
+  const full = address?.full?.trim() ?? "";
+  const postalCode = formatPostalCode(address?.postal_code);
+  const building = address?.building?.trim() ?? "";
+  const room = address?.room?.trim() ?? "";
+  const source = addressSourceLine(address);
+
+  return (
+    <section style={{ margin: "16px 0 8px" }}>
+      <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: colors.textMuted }}>住所（今の値・変更は届出か名簿から）</h3>
+      <div style={{ border: `1px solid ${colors.border}`, borderRadius: 6, background: colors.bgPanel, padding: "10px 12px", color: colors.text, fontSize: 14, lineHeight: 1.7 }}>
+        {full ? (
+          <>
+            {postalCode ? <div>〒{postalCode}</div> : null}
+            <div>{full}</div>
+            {building || room ? <div>{[building, room].filter(Boolean).join(" ")}</div> : null}
+            {source ? <div style={{ color: colors.textMuted, fontSize: 13 }}>{source}</div> : null}
+          </>
+        ) : (
+          <div style={{ color: colors.textMuted }}>未登録</div>
+        )}
+      </div>
+      <div style={{ color: colors.textMuted, fontSize: 12, lineHeight: 1.6, marginTop: 6 }}>
+        住所の変更は本人の届出（マイページ）か、名簿の同期で入ります。履歴は一覧の［履歴］から確認できます。
+      </div>
+    </section>
+  );
+}
 
 function profileValue(row: ProfileHistoryRow) {
   const p = row.payload ?? {};
@@ -186,6 +283,7 @@ function formatSyncPeople(people: ChatworkTokenSyncPerson[]) {
 export default function EmployeesPage() {
   const { canWrite, rootUser } = useRootState();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [addresses, setAddresses] = useState<CurrentAddressMap>({});
   const [companies, setCompanies] = useState<Company[]>([]);
   const [salarySystems, setSalarySystems] = useState<SalarySystem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,8 +327,8 @@ export default function EmployeesPage() {
   async function load() {
     try {
       setLoading(true); setError(null);
-      const [e, c, s] = await Promise.all([fetchEmployees(), fetchCompanies(), fetchSalarySystems()]);
-      setEmployees(e); setCompanies(c); setSalarySystems(s);
+      const [e, c, s, a] = await Promise.all([fetchEmployees(), fetchCompanies(), fetchSalarySystems(), fetchCurrentAddresses()]);
+      setEmployees(e); setCompanies(c); setSalarySystems(s); setAddresses(a);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   }
@@ -434,7 +532,7 @@ export default function EmployeesPage() {
     return `最終同期 ${new Date(syncedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}（更新 ${updated}・無効化 ${disabled}）`;
   }
 
-  function formatChatworkTokenUpdatedAt(value: string | null) {
+function formatChatworkTokenUpdatedAt(value: string | null) {
     if (!value) return "";
     return new Date(value).toLocaleString("ja-JP", {
       timeZone: "Asia/Tokyo",
@@ -564,6 +662,11 @@ export default function EmployeesPage() {
     { key: "num", header: "社員番号", render: (e) => e.employee_number, width: 90 },
     { key: "name", header: "氏名", render: (e) => e.name, width: 120 },
     { key: "kana", header: "カナ", render: (e) => e.name_kana, width: 160 },
+    { key: "address", header: "住所", render: (e) => {
+      const address = addresses[e.employee_id];
+      const text = addressLine(address);
+      return <span style={{ color: address?.full ? colors.text : colors.textMuted }}>{text}</span>;
+    }, width: 260 },
     { key: "company", header: "法人", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, width: 160 },
     { key: "emp_type", header: "雇用形態", render: (e) => e.employment_type, width: 80 },
     { key: "garden_role", header: "Garden権限", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], width: 110 },
@@ -757,6 +860,8 @@ export default function EmployeesPage() {
                 />
               )}
             </FormGrid>
+
+            <AddressReadOnly address={addresses[editTarget.employee_id]} />
 
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>振込先口座</h3>
             <FormGrid cols={3}>

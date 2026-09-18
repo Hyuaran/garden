@@ -118,9 +118,18 @@ describe("Garden権限の編集UI", () => {
     mocks.upsertEmployee.mockResolvedValue(undefined);
     mocks.updateEmployeeGardenRole.mockResolvedValue(undefined);
     mocks.audit.mockResolvedValue(undefined);
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ registered: false, accountName: null, updatedAt: null }),
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/root/employees/addresses")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({}),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ registered: false, accountName: null, updatedAt: null }),
+      });
     }));
   });
 
@@ -171,6 +180,92 @@ describe("Garden権限の編集UI", () => {
     expect(screen.getAllByText("正社員")).toHaveLength(2);
   });
 
+  it("一覧の住所列に今の住所を表示し、住所が無い人は未登録を表示する", async () => {
+    mocks.fetchEmployees.mockResolvedValue([
+      {
+        ...employee,
+        employee_id: "EMP-1559",
+        employee_number: "1559",
+        name: "吉田 陽菜",
+        name_kana: "ヨシダ ヒナ",
+      },
+      {
+        ...employee,
+        employee_id: "EMP-0001",
+        employee_number: "0001",
+        name: "未登録 太郎",
+        name_kana: "ミトウロク タロウ",
+      },
+    ]);
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/root/employees/addresses")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            "EMP-1559": {
+              postal_code: "6360001",
+              full: "奈良県北葛城郡王寺町舟戸1丁目1番25号",
+              building: null,
+              room: null,
+              source: "roster",
+              recorded_at: "2026-09-14T00:00:00.000Z",
+            },
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ registered: false, accountName: null, updatedAt: null }),
+      });
+    }));
+
+    renderPage();
+
+    expect(await screen.findByRole("columnheader", { name: "住所" })).toBeInTheDocument();
+    expect(screen.getByText("〒636-0001 奈良県北葛城郡王寺町舟戸1丁目1番25号")).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /EMP-0001/ })).toHaveTextContent("未登録");
+  });
+
+  it("編集モーダルに住所を読み取り専用で表示し、出どころも表示する", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/root/employees/addresses")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            "EMP-1404": {
+              postal_code: "6360001",
+              full: "奈良県北葛城郡王寺町舟戸1丁目1番25号",
+              building: "テストハイツ",
+              room: "101",
+              source: "roster",
+              recorded_at: "2026-09-14T00:00:00.000Z",
+            },
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ registered: false, accountName: null, updatedAt: null }),
+      });
+    }));
+    renderPage();
+
+    await openEmployee();
+    const heading = screen.getByRole("heading", { name: "従業員を編集" });
+    const panel = heading.parentElement?.parentElement as HTMLElement;
+    const dialog = within(panel);
+
+    expect(dialog.getByText("住所（今の値・変更は届出か名簿から）")).toBeInTheDocument();
+    expect(dialog.getByText("〒636-0001")).toBeInTheDocument();
+    expect(dialog.getByText("奈良県北葛城郡王寺町舟戸1丁目1番25号")).toBeInTheDocument();
+    expect(dialog.getByText("テストハイツ 101")).toBeInTheDocument();
+    expect(dialog.getByText("出どころ：従業員名簿（2026-09-14）")).toBeInTheDocument();
+    expect(dialog.getByText("住所の変更は本人の届出（マイページ）か、名簿の同期で入ります。履歴は一覧の［履歴］から確認できます。")).toBeInTheDocument();
+    expect(dialog.queryByDisplayValue("奈良県北葛城郡王寺町舟戸1丁目1番25号")).not.toBeInTheDocument();
+  });
+
   it("変更したgarden_roleを既存の保存経路へ含める", async () => {
     renderPage();
     const select = await openEmployee();
@@ -191,19 +286,29 @@ describe("Garden権限の編集UI", () => {
   });
 
   it("Chatwork トークン保存後に入力を空にして登録済み状態を表示する", async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/root/employees/addresses")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({}),
+        });
+      }
+      if (init?.method === "PUT") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            ok: true,
+            accountName: "金亜奈",
+            updatedAt: "2026-09-07T10:38:00.000Z",
+          }),
+        });
+      }
+      return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ registered: false, accountName: null, updatedAt: null }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          ok: true,
-          accountName: "金亜奈",
-          updatedAt: "2026-09-07T10:38:00.000Z",
-        }),
       });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     renderPage();
