@@ -227,6 +227,20 @@ describe("shukkin text builder", () => {
     expect(coverage.missingInOrder.map((item) => item.employeeCode)).toEqual(["9002"]);
   });
 
+  it("puts 新人チーム after 石原チーム in the roster and includes it in LINE notices", () => {
+    const rows = parsed([
+      row("1600", "毛利 祐星", "2026/09/20", "平日", "10:00", "21:00"),
+      row("1557", "北野 晟", "2026/09/20", "平日", "10:00", "21:00"),
+    ]);
+    const withNewcomer: ShukkinMember[] = [...members, { employeeNumber: "1557", name: "", displayName: "北野 晟", groupName: "新人チーム", sortOrder: 10 }];
+    const text = buildAttendanceMessage({ rows, members: withNewcomer, date: "2026-09-20", tableTime: "14:00", withConfirmation: false });
+    expect(text.indexOf("＜新人チーム＞")).toBeGreaterThan(text.indexOf("＜石原チーム＞"));
+    expect(text.indexOf("＜新人チーム＞")).toBeLessThan(text.indexOf("【ヒュアラン予定】"));
+    expect(text).toContain("(北野　　晟)10-21　");
+    const blocks = buildLineShiftBlocks({ rows, members: withNewcomer, date: "2026-09-20" });
+    expect(blocks[0].message).toContain("1557 北野 晟");
+  });
+
   it("shows ＢＹ days without a plan as 公休 (blank or 平日 kind), rest kinds as their text, and others as ×", () => {
     const rows = parsed([
       row("1003", "東海林 美琴", "2026/09/19", ""),

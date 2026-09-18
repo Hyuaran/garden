@@ -1,7 +1,8 @@
 import { isJapaneseHoliday } from "@/app/system/kanri/_lib/jp-holidays";
 import type { KotDailyRow } from "@/app/system/kanri/_lib/kot-daily";
 
-export const SHUKKIN_GROUPS = ["訪販社員", "ＢＹ", "テレマ社員", "宮永チーム", "小泉チーム", "石原チーム"] as const;
+// 新人チーム＝チームに所属する前の新人（2026-09-19 東海林さん）。石原チームの次に出す
+export const SHUKKIN_GROUPS = ["訪販社員", "ＢＹ", "テレマ社員", "宮永チーム", "小泉チーム", "石原チーム", "新人チーム"] as const;
 export type ShukkinGroup = (typeof SHUKKIN_GROUPS)[number];
 
 export type ShukkinMember = {
@@ -33,7 +34,8 @@ export type LineShiftBlock = {
 };
 
 const REST_KINDS = new Set(["定休", "公休", "欠勤", "有給", "退職"]);
-const TEAM_GROUPS = new Set<ShukkinGroup>(["宮永チーム", "小泉チーム", "石原チーム"]);
+// LINE のシフト連絡の対象＝アルバイト全員（3 チーム＋新人チーム）。社員の区分は出さない
+const TEAM_GROUPS = new Set<ShukkinGroup>(["宮永チーム", "小泉チーム", "石原チーム", "新人チーム"]);
 // KOT の雇用区分の値そのまま（スペースなし・2026-09 の実データで確認）
 export const SHUKKIN_MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS = ["SES事業部"] as const;
 const MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS = new Set<string>(SHUKKIN_MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS);
