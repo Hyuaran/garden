@@ -2,13 +2,17 @@ import Link from "next/link";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { MenuIcon } from "../_components/ShachoShell/ShachoShell";
 import { companyDocument, formatDocumentDate } from "./_data/company-doc";
+import { hikariBasicsDocument } from "./_data/hikari-basics";
 import { requireDocsUser } from "./_lib/company-doc.server";
 import styles from "./docs.module.css";
 
 export const metadata = { title: "資料 | Garden" };
 
 // 資料追加時はこの一覧に1件追加する。
-const documents = [{ ...companyDocument, href: "/system/docs/company" }];
+const documents = [
+  { ...companyDocument, href: "/system/docs/company" },
+  { ...hikariBasicsDocument, title: hikariBasicsDocument.title, href: "/system/docs/hikari-basics" },
+];
 
 export default async function DocsPage() {
   await requireDocsUser();
