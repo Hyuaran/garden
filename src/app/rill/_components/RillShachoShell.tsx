@@ -220,7 +220,7 @@ export default function RillShachoShell({ children, user }: Props) {
           <Link href="/rill/mail" className={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? styles.active : undefined} aria-current={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? "page" : undefined}><MailIcon />Mail<NavigationPendingHint /></Link>
           <Link href="#rill-chat"><ChatIcon />Chat（year-end）</Link>
         </nav>
-        <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}>{user.company} ／ {user.roleLabel}</div></div></div>
+        <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}><span>{user.company}</span><span>{user.roleLabel}</span></div></div></div>
       </div>
     </aside>
     <div className={styles.work}>

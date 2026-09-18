@@ -87,7 +87,7 @@ export default function ShachoShell({ children, user }: Props) {
         <SidebarNavigation upcomingCount={upcoming.length} upcoming={upcoming.map((item) => <span key={item.label} className={styles.soon}><MenuIcon icon={item.icon}/>{item.label}<span className={styles.tag}>準備中</span></span>)}>
           {visible.filter((item) => !item.upcoming).map((item) => <Link key={item.label} href={item.href!} className={activePath === item.href ? styles.active : undefined} aria-current={activePath === item.href ? "page" : undefined}><MenuIcon icon={item.icon}/>{item.label}<NavigationPendingHint /></Link>)}
         </SidebarNavigation>
-        <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}>{user.company} ／ {GARDEN_ROLE_LABELS[user.role]}</div></div></div>
+        <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}><span>{user.company}</span><span>{GARDEN_ROLE_LABELS[user.role]}</span></div></div></div>
       </div>
     </aside></>}
     <main className={`${styles.main} ${hideSidebar ? styles.mainFull : ""}`}>

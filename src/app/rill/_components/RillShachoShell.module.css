@@ -12,3 +12,11 @@
 
 .separator{width:26px;height:1px;background:var(--rail-line);margin:3px 0 6px}
 .infoItem b{color:var(--ink);font-weight:600}.infoItem small{color:var(--muted);font-size:11px}
+/* 日本語の改行 */
+/* 日本語の改行（2026-09-18）：言葉の切れ目で折り返し、最後の 1 文字だけが次の行に落ちないようにする。
+   折り返せない長い英数字だけは欄の中で折る */
+.shell{word-break:auto-phrase;line-break:strict;text-wrap:pretty;overflow-wrap:break-word}
+.shell :where(h1,h2,h3,h4){text-wrap:balance}
+/* 利用者欄：会社名と役職を 2 行に分け、それぞれ 1 行に収める（「／」でつなぐと最後の 1 文字が落ちた） */
+.userRole{display:flex;flex-direction:column;gap:1px;min-width:0;max-width:150px}
+.userRole span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

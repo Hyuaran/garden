@@ -76,7 +76,8 @@ describe("ShachoShell", () => {
     expect(nav.parentElement).toHaveClass(styles.navFrame);
     expect(nav.parentElement?.parentElement).toHaveClass(styles.sideInner);
     expect(nav.parentElement?.parentElement).toContainElement(screen.getByRole("link", { name: "Garden ホームへ" }));
-    expect(nav.parentElement?.parentElement).toContainElement(screen.getByText("株式会社A ／ マネージャー"));
+    expect(nav.parentElement?.parentElement).toContainElement(screen.getByText("株式会社A"));
+    expect(nav.parentElement?.parentElement).toContainElement(screen.getByText("マネージャー"));
   });
 
   it("restores a saved theme", async () => {

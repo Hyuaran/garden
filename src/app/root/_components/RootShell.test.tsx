@@ -60,7 +60,9 @@ describe("RootShell", () => {
     }
     expect(nav.textContent ?? "").not.toMatch(emojiPattern);
     expect(within(nav).getByRole("link", { name: "従業員マスタ" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByText("株式会社ヒュアラン ／ 全権管理者")).toBeInTheDocument();
+    // 利用者欄は会社名と役職を 2 行に分けて出す（1 行に詰めると最後の 1 文字が落ちた）
+    expect(screen.getByText("株式会社ヒュアラン")).toBeInTheDocument();
+    expect(screen.getByText("全権管理者")).toBeInTheDocument();
   });
 
   it("adminOnlyはcanWriteのときだけ表示し、ログアウトとテーマ切替を出す", () => {

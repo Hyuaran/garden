@@ -158,7 +158,7 @@ export default function BankCheckPage() {
   return (
     <>
       <PageHeader
-        title="Root ／ 口座の点検"
+        title="口座の点検"
         description={datasetSummary(state.datasets)}
         actions={<Button onClick={refreshLedger} disabled={refreshing}>{refreshing ? "確認中..." : <><Icon path="M21 12a9 9 0 0 1-15 6.7M3 12a9 9 0 0 1 15-6.7M18 3v4h-4M6 21v-4h4" /> 台帳をいま更新</>}</Button>}
       />

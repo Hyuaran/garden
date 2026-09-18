@@ -704,7 +704,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
               <option value="">すべての法人</option>
               {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
             </select>
-            <input ref={searchRef} type="search" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 200 }} />
+            <input ref={searchRef} type="search" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 260 }} />
             <Button variant="secondary" onClick={handleRosterSync} disabled={rosterSyncing || !canSyncRoster} title={!canSyncRoster ? "管理者以上の権限が必要です" : undefined}>{rosterSyncing ? "同期中..." : "名簿と同期"}</Button>
             <span style={{ alignSelf: "center", color: colors.textMuted, fontSize: 12 }}>{formatRosterSyncLine()}</span>
             <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>

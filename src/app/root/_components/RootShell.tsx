@@ -109,7 +109,7 @@ export function RootShell({ children }: { children: ReactNode }) {
               <div className={systemStyles.avatar}>{rootUser.name.charAt(0)}</div>
               <div>
                 <div className={systemStyles.userName}>{rootUser.name}</div>
-                <div className={systemStyles.userRole}>{affiliation} ／ {GARDEN_ROLE_LABELS[gardenRole]}</div>
+                <div className={systemStyles.userRole}><span>{affiliation}</span><span>{GARDEN_ROLE_LABELS[gardenRole]}</span></div>
               </div>
             </div>
           )}
