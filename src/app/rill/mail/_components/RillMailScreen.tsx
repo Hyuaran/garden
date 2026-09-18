@@ -38,6 +38,7 @@ const INTAKE_DESCRIPTIONS: Record<IntakeKind, string> = {
 };
 type NoticeWorkspace = { intakeId: string; pages: NoticeClientPage[]; text: string; salesPerson: string; projectName: string; contentMemo: string; truncated: boolean; saved: boolean };
 type MoveToast = { operation: "archive" | "delete"; entries: Array<{ snapshot: RillMailMessage; movedId: string }>; seconds: number };
+type MobilePane = "list" | "detail" | "boxes";
 
 function RefreshIcon() {
   return <svg className={styles.toolbarIcon} viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" /></svg>;
@@ -61,6 +62,10 @@ function PinIcon({ on = false }: { on?: boolean }) {
 
 function SearchIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>;
+}
+
+function BackToListIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6 5 12l6 6" /><path d="M6 12h13" /></svg>;
 }
 
 function AnomalyIcon() {
@@ -101,6 +106,8 @@ export function RillMailScreen() {
   const [pinsNotice, setPinsNotice] = useState("");
   const [pinSortOrder, setPinSortOrder] = useState<PinSortOrder>("newest");
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [mobilePane, setMobilePane] = useState<MobilePane>("list");
+  const [narrowMail, setNarrowMail] = useState(false);
   const [anomalyResult, setAnomalyResult] = useState<MailAnomalyResponse | null>(null);
   const [anomalyLoading, setAnomalyLoading] = useState(false);
   const [anomalyError, setAnomalyError] = useState("");
@@ -267,6 +274,13 @@ export function RillMailScreen() {
   }, [loadMessages]);
 
   useEffect(() => { void initialize(); }, [initialize]);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const apply = () => setNarrowMail(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
   useEffect(() => {
     if (!connected || !gardenUserId.current || automaticAnomalyAttempted.current) return;
     automaticAnomalyAttempted.current = true;
@@ -462,6 +476,7 @@ export function RillMailScreen() {
   const openMessage = async (message: RillMailMessage) => {
     setActiveDraftId(null);
     setViewingAttachment(null);
+    setMobilePane("detail");
     setSelected(message);
     if (message.box.id === "sent") return;
     if (!ownName || !isMessageUnread(message, ownName)) return;
@@ -709,6 +724,7 @@ export function RillMailScreen() {
     requestGeneration.current += 1; automaticPageCount.current = 0;
     autoSearch.current?.clear();
     setViewingAttachment(null); setActiveDraftId(null); setActiveBox(id); setSelected(null); setPicked(new Set()); setCursor(null); setError(""); setSearchResults(null); setSearchError(""); setSearchTruncated(false); setPriorityPages(0);
+    setMobilePane("list");
     const request = id === "flagged" ? loadPinnedMessages() : loadMessages(id, null, "switch");
     void request.catch((cause) => setError(cause instanceof Error ? cause.message : "メールを取得できませんでした"));
   };
@@ -830,6 +846,7 @@ export function RillMailScreen() {
   const pickedMessages = useMemo(() => (searchResults ?? (activeBox === "flagged" ? pinnedMessages : messages)).filter((message) => picked.has(keyOf(message))), [activeBox, messages, picked, pinnedMessages, searchResults]);
   const bulkPinOn = shouldAddBulkPin(pickedMessages, ownName);
   const intakeByAttachment = useMemo(() => intakeMarks(intakeItems), [intakeItems]);
+  const activeBoxLabel = activeBox === "all" ? "すべての箱" : activeBox === "flagged" ? "ピン止め" : boxes.find((box) => box.id === activeBox || box.address === activeBox)?.label ?? "すべての箱";
   const closeAnomalyModal = useCallback(() => {
     try {
       const keys = anomalyStorageKeys(gardenUserId.current);
@@ -858,13 +875,13 @@ export function RillMailScreen() {
         <label className={styles.search}><span><SearchIcon /></span><input value={query} onChange={(event) => changeQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") runFullSearch(); }} placeholder="メールを検索" />{query && <button type="button" className={styles.clearSearch} aria-label="検索を解除" onClick={() => { setQuery(""); exitSearch(); }}>×</button>}</label>
       </div>
       {connected === false ? <div className={styles.connect}><div className={styles.connectOrb}><MailOrbIcon /></div><h1>Microsoft メールを接続</h1><p>本人の Microsoft アカウントでサインインすると、許可された受信箱を Garden から閲覧できます。</p><a href="/api/rill/mail/auth/login">Microsoft に接続</a></div> :
-      <div className={styles.panes}>
-        <aside className={styles.column}><header className={styles.columnHeader}>受信箱 <span>{messages.filter((message) => message.box.id !== "sent").length}</span></header><div className={styles.scroll}>
+      <div className={styles.panes} data-mobile-pane={mobilePane}>
+        <aside className={styles.column} aria-label="箱の一覧" hidden={narrowMail && mobilePane !== "boxes"}><header className={styles.columnHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobilePane("list")}><BackToListIcon />一覧へ</button><span className={styles.desktopOnly}>受信箱</span> <span>{messages.filter((message) => message.box.id !== "sent").length}</span></header><div className={styles.scroll}>
           <div className={styles.group}>まとめて見る</div><button className={`${styles.box} ${activeBox === "all" ? styles.active : ""}`} onClick={() => selectBox("all")}><span className={styles.dot} />すべての箱</button><button className={`${styles.box} ${activeBox === "flagged" ? styles.active : ""}`} onClick={() => selectBox("flagged")}><span className={styles.pinIcon} role="img" aria-label="ピン"><PinIcon on /></span>ピン止め</button>
           <div className={styles.group}>自分</div>{boxes.filter((box) => box.kind === "personal").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.personalDot} />{box.label}</button>)}
           <div className={styles.group}>共有</div>{boxes.filter((box) => box.kind === "shared").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.sharedDot} />{box.label}</button>)}
         </div><footer className={styles.foot}>メールは Garden に保存せず<br />Microsoft から都度取得します</footer></aside>
-        <section className={styles.column}><header className={styles.columnHeader}>{searchLoading ? "全期間を検索中…" : searchResults !== null ? <>全期間から{filtered.length}件 <small>（Outlook検索）</small></> : <>メール一覧 <span>{filtered.length}件</span></>}{activeBox === "flagged" && searchResults === null && <span className={styles.pinReviewControls}><label><input type="checkbox" checked={allVisiblePicked} disabled={!filtered.length} onChange={() => setPicked((current) => toggleVisibleSelection(current, filteredKeys))} />すべて選択</label><button type="button" onClick={() => setPinSortOrder((current) => current === "newest" ? "oldest" : "newest")}>{pinSortOrder === "newest" ? "新しい順" : "古い順"} ⇄</button></span>}{activeBox === "flagged" && searchResults === null && filtered.length > 0 && <button className={styles.importAgain} disabled={importingFlags} onClick={() => void importLegacyFlags()}>旧フラグ取込</button>}</header>
+        <section className={styles.column} aria-label="メール一覧" hidden={narrowMail && mobilePane !== "list"}><header className={styles.columnHeader}><button type="button" className={styles.mobileBoxButton} onClick={() => setMobilePane("boxes")}>{activeBoxLabel} <span>{filtered.length}件</span></button><span className={styles.desktopOnly}>{searchLoading ? "全期間を検索中…" : searchResults !== null ? <>全期間から{filtered.length}件 <small>（Outlook検索）</small></> : <>メール一覧 <span>{filtered.length}件</span></>}</span>{activeBox === "flagged" && searchResults === null && <span className={styles.pinReviewControls}><label><input type="checkbox" checked={allVisiblePicked} disabled={!filtered.length} onChange={() => setPicked((current) => toggleVisibleSelection(current, filteredKeys))} />すべて選択</label><button type="button" onClick={() => setPinSortOrder((current) => current === "newest" ? "oldest" : "newest")}>{pinSortOrder === "newest" ? "新しい順" : "古い順"} ⇄</button></span>}{activeBox === "flagged" && searchResults === null && filtered.length > 0 && <button className={styles.importAgain} disabled={importingFlags} onClick={() => void importLegacyFlags()}>旧フラグ取込</button>}</header>
           {picked.size > 0 && !sentView && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button aria-label={bulkPinOn ? "ピン" : "ピンを外す"} onClick={() => void bulkWrite("pin", bulkPinOn)}><PinIcon on={!bulkPinOn} />{bulkPinOn ? "ピン" : "ピンを外す"}</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button onClick={() => void moveMessages(pickedMessages, "archive")}>アーカイブ</button><button onClick={() => void moveMessages(pickedMessages, "delete")}>削除</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
           <div className={styles.scroll} onScroll={trackListScroll}>{((activeBox === "flagged" ? pinsLoading : loading && !messages.length) && searchResults === null) && <div className={styles.notice}>読み込み中…</div>}{error && <div className={styles.error}>{error}</div>}{searchError && <div className={styles.error}>{searchError}</div>}
           {searchResults !== null && !searchLoading && filtered.length === 0 && <div className={styles.searchEmpty}>該当するメールはありません。日本語は単語の一部だけでは見つからない場合があります。</div>}
@@ -877,7 +894,8 @@ export function RillMailScreen() {
             <span className={styles.row}><span className={styles.subject}>{message.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{message.subject}</span>{status && <span className={`${styles.status} ${styles[`status${status}`]}`}>{status}</span>}</span><span className={styles.row}><span className={styles.preview}>{message.bodyPreview}</span><span className={styles.reviewers}>{confirmedBy.map((name, index) => <i key={name} className={styles[`reviewerTone${reviewerTone(name, reviewers)}`]} title={name}>{initials[index]}{status && setter === name && <span className={`${styles.statusSetterDot} ${styles[`statusSetterDot${status}`]}`} title={`${status}を設定: ${name}`} />}</i>)}</span></span>
           </div></Fragment>; })}<div className={styles.pageTrigger} aria-hidden="true" /></div>
         </section>
-        <article className={`${styles.column} ${styles.composeHost}`}>{activeDraft ? <RillComposePane draft={activeDraft} addresses={suggestionAddresses} error={composeError} onChange={updateDraft} onSend={() => queueSend(activeDraft)} onMinimize={() => setActiveDraftId(null)} onClose={() => setActiveDraftId(null)} onDiscard={() => discardDraft(activeDraft.id)} /> : !selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <><header className={styles.readerHeader}><div className={styles.readerTitle}><h2>{selected.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{selected.subject}</h2><span className={styles.badge}>{selected.box.id === "sent" ? "送信済み" : abbreviateBox(selected.box.address)}</span></div><dl><div><dt>差出人</dt><dd>{selected.fromName} &lt;{selected.fromAddress}&gt;</dd></div><div><dt>{selected.box.id === "sent" ? "送信" : "受信"}</dt><dd>{formatMailDetailDate(selected.receivedDateTime)}</dd></div></dl></header><div className={styles.readerBody}><p className={styles.previewLead}>{selected.bodyPreview || "本文を読み込んでいます…"}</p><div className={styles.skeletonLine} /><div className={`${styles.skeletonLine} ${styles.skeletonShort}`} /></div></> : <><header className={styles.readerHeader}>
+        <article className={`${styles.column} ${styles.composeHost}`} aria-label="メール本文" hidden={narrowMail && mobilePane !== "detail"}>{activeDraft ? <RillComposePane draft={activeDraft} addresses={suggestionAddresses} error={composeError} onChange={updateDraft} onSend={() => queueSend(activeDraft)} onMinimize={() => setActiveDraftId(null)} onClose={() => setActiveDraftId(null)} onDiscard={() => discardDraft(activeDraft.id)} /> : !selected ? <div className={styles.emptyDetail}>メールを選ぶと、ここに本文が表示されます。</div> : !detail ? <><header className={styles.readerHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobilePane("list")}><BackToListIcon />一覧へ</button><div className={styles.readerTitle}><h2>{selected.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{selected.subject}</h2><span className={styles.badge}>{selected.box.id === "sent" ? "送信済み" : abbreviateBox(selected.box.address)}</span></div><dl><div><dt>差出人</dt><dd>{selected.fromName} &lt;{selected.fromAddress}&gt;</dd></div><div><dt>{selected.box.id === "sent" ? "送信" : "受信"}</dt><dd>{formatMailDetailDate(selected.receivedDateTime)}</dd></div></dl></header><div className={styles.readerBody}><p className={styles.previewLead}>{selected.bodyPreview || "本文を読み込んでいます…"}</p><div className={styles.skeletonLine} /><div className={`${styles.skeletonLine} ${styles.skeletonShort}`} /></div></> : <><header className={styles.readerHeader}>
+          <button type="button" className={styles.mobileBackButton} onClick={() => setMobilePane("list")}><BackToListIcon />一覧へ</button>
           <div className={styles.readerTitle}><h2>{detail.hasAttachments && <span className={styles.paperclip} role="img" aria-label="添付あり"><PaperclipIcon /></span>}{detail.subject}</h2>{!sentView && <button aria-label="ピン" disabled={!ownName || pendingWrites.has(keyOf(detail))} className={`${styles.inlineFlag} ${ownName && hasOwnPin(detail.categories, ownName) ? styles.flag : ""}`} onClick={() => void writeOne(detail, "pin", !hasOwnPin(detail.categories, ownName))}><PinIcon on={Boolean(ownName && hasOwnPin(detail.categories, ownName))} /></button>}<span className={styles.badge}>{sentView ? "送信済み" : abbreviateBox(detail.box.address)}</span></div>
           <dl><div><dt>差出人</dt><dd>{detail.fromName} &lt;{detail.fromAddress}&gt;</dd></div><div><dt>宛先</dt><dd>{detail.to.join(", ")}</dd></div>{detail.cc.length > 0 && <div><dt>Cc</dt><dd>{detail.cc.join(", ")}</dd></div>}{detail.bcc.length > 0 && <div><dt>Bcc</dt><dd>{detail.bcc.join(", ")}</dd></div>}<div><dt>{sentView ? "送信" : "受信"}</dt><dd>{formatMailDetailDate(detail.receivedDateTime)}</dd></div></dl>
           <div className={styles.categoryLine}>{translationView.eligible && <button className={styles.translateButton} disabled={translatingKey === translationView.key} onClick={() => void translateDetail()}>{translatingKey === translationView.key ? "翻訳中…" : showTranslation ? "原文を表示" : translationView.translation ? "日本語訳を表示" : "日本語に翻訳"}</button>}{!sentView && <><span className={styles.states}>{MAIL_STATES.map((state) => <button key={state} disabled={pendingWrites.has(keyOf(detail))} className={detail.categories.includes(state) ? styles.stateOn : ""} onClick={() => void writeOne(detail, "state", detail.categories.includes(state) ? null : state)}>{state}</button>)}</span><span className={styles.reviewersLarge}>{reviewers.filter((name) => detail.categories.includes(name) || name === ownName || name === stateSetterName(detail.categories)).map((name) => { const detailStatus = statusCategory(detail.categories); const isConfirmed = detail.categories.includes(name); return <button key={name} title={name} className={`${isConfirmed ? styles[`reviewerTone${reviewerTone(name, reviewers)}`] : styles.reviewerEmpty} ${name === ownName ? styles.reviewerMine : styles.reviewerLocked}`} disabled={name !== ownName || isConfirmed || pendingWrites.has(keyOf(detail))} onClick={() => void writeOne(detail, "confirm", true)}>{reviewerInitials([name], [name])[0]}{detailStatus && stateSetterName(detail.categories) === name && <span className={`${styles.statusSetterDot} ${styles[`statusSetterDot${detailStatus}`]}`} title={`${detailStatus}を設定: ${name}`} />}</button>; })}</span></>}</div>{translationError && <div className={styles.translationError}>{translationError}</div>}
