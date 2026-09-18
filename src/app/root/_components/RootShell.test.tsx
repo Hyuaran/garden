@@ -80,6 +80,41 @@ describe("RootShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "ダークにする" }));
     expect(mocks.toggleTheme).toHaveBeenCalled();
   });
+
+  it("モバイル引き出しを開閉でき、モジュール・メニュー・利用者欄を表示する", () => {
+    mocks.pathname = "/root/employees";
+    mocks.canWrite = true;
+    render(<RootShell><div>本文</div></RootShell>);
+
+    const open = screen.getByRole("button", { name: "メニューを開く" });
+    expect(open).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(open);
+    expect(open).toHaveAttribute("aria-expanded", "true");
+    let drawer = screen.getByRole("dialog", { name: "Rootメニュー" });
+    const moduleLinks = within(drawer).getAllByRole("link").map((link) => link.getAttribute("aria-label"));
+    expect(moduleLinks).toContain("System：社内システム");
+    expect(within(drawer).getByRole("link", { name: "Root：組織台帳", current: "page" })).toBeInTheDocument();
+    expect(within(drawer).getByRole("link", { name: "従業員マスタ", current: "page" })).toBeInTheDocument();
+    expect(within(drawer).getByText("株式会社ヒュアラン")).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "閉じる" })).toHaveFocus();
+
+    fireEvent.click(within(drawer).getByRole("button", { name: "閉じる" }));
+    expect(screen.queryByRole("dialog", { name: "Rootメニュー" })).not.toBeInTheDocument();
+    expect(open).toHaveFocus();
+
+    fireEvent.click(open);
+    fireEvent.click(screen.getByRole("button", { name: "メニューを閉じる" }));
+    expect(screen.queryByRole("dialog", { name: "Rootメニュー" })).not.toBeInTheDocument();
+
+    fireEvent.click(open);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Rootメニュー" })).not.toBeInTheDocument();
+
+    fireEvent.click(open);
+    drawer = screen.getByRole("dialog", { name: "Rootメニュー" });
+    fireEvent.click(within(drawer).getByRole("link", { name: "ホーム" }));
+    expect(screen.queryByRole("dialog", { name: "Rootメニュー" })).not.toBeInTheDocument();
+  });
 });
 
 describe("Root colors", () => {

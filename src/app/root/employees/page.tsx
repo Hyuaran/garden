@@ -699,14 +699,14 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
         title="従業員マスタ"
         description="給与処理対象者。退職時は退職日を入力し無効化。業務委託は登録対象外。Ctrl+Shift+G 検索・Ctrl+↑↓ 行移動・Ctrl+Enter 編集。"
         actions={
-          <div style={{ display: "flex", gap: 8 }}>
-            <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", minWidth: 0, width: "100%" }}>
+            <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 180px", minWidth: 0 }}>
               <option value="">すべての法人</option>
               {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
             </select>
-            <input ref={searchRef} type="search" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, fontSize: 13, minWidth: 260 }} />
+            <input ref={searchRef} type="search" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 260px", minWidth: 0 }} />
             <Button variant="secondary" onClick={handleRosterSync} disabled={rosterSyncing || !canSyncRoster} title={!canSyncRoster ? "管理者以上の権限が必要です" : undefined}>{rosterSyncing ? "同期中..." : "名簿と同期"}</Button>
-            <span style={{ alignSelf: "center", color: colors.textMuted, fontSize: 12 }}>{formatRosterSyncLine()}</span>
+            <span style={{ alignSelf: "center", color: colors.textMuted, fontSize: 12, whiteSpace: "nowrap" }}>{formatRosterSyncLine()}</span>
             <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
             <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
           </div>

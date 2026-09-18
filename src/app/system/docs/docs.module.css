@@ -111,6 +111,9 @@
 .hikariTable th:first-child, .hikariTable td:first-child { border-left:0; }
 .hikariTable tr:last-child td { border-bottom:0; }
 .hikariTable th { color:var(--heading); background:var(--tint); font-weight:700; white-space:nowrap; }
+/* 1・2 列目の太字の語（アナログ回線・事業者変更など）は途中で折り返さない（最後の 1 文字が落ちた・2026-09-18） */
+.hikariTable td:nth-child(-n+2) strong { white-space:nowrap; }
+.hikariTable td { word-break:auto-phrase; line-break:strict; text-wrap:pretty; }
 .tableLine { display:block; }
 .termList { display:grid; gap:12px; margin:0 0 28px; }
 .termList > div { padding:16px 18px; border:1px solid var(--line); border-radius:16px; background:var(--card); }

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { MODULE_META, ModuleIcon, RailIcon } from "@/app/_components/ModuleIcon/ModuleIcon";
 import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { readFavorites, readFavoritesRaw, subscribeFavorites, writeFavorites, type FavoriteItem } from "@/app/_components/layout/GardenShell/GardenShell";
@@ -130,8 +130,12 @@ export default function RillShachoShell({ children, user }: Props) {
   const [activityOpen, setActivityOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [dateText, setDateText] = useState(() => formatDateJP(new Date()));
   const [weather, setWeather] = useState<WeatherState>({ temp: "--℃", label: "位置未設定", kind: "partly" });
+  const drawerId = useId();
+  const openButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const visibleModules = new Set(getVisibleModules(user.role).map((module) => module.toLowerCase()));
   const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
 
@@ -173,6 +177,25 @@ export default function RillShachoShell({ children, user }: Props) {
     return () => window.removeEventListener("keydown", handleSearchShortcut, true);
   }, []);
 
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setDrawerOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+      openButtonRef.current?.focus();
+    };
+  }, [drawerOpen]);
+
   async function logout() {
     await createBrowserClient().auth.signOut();
     window.location.assign("/login");
@@ -193,20 +216,44 @@ export default function RillShachoShell({ children, user }: Props) {
     writeFavorites(readFavorites().filter((item) => item.url !== url));
   }
 
+  const renderModuleRail = () => (
+    <>
+      <Link href="/system" className={styles.app} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
+        <RailIcon color="#0ea5a0" shade="#054e4b" iconScale={1.85} iconStrokeWidth={1.9}>
+          <path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" /><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 13.8v2.2M17.6 15.2V17" />
+        </RailIcon>
+        <span className={styles.railTip}><b>System</b><span>社内システム</span></span>
+      </Link>
+      <div className={styles.separator} />
+      {GARDEN_SHELL_MODULES.filter((module) => visibleModules.has(module.id)).map((module) => <Link key={module.id} href={`/${module.id}`} className={`${styles.app} ${module.id === "rill" ? styles.current : ""}`} style={{ "--c": MODULE_META[module.id].color } as CSSProperties} aria-current={module.id === "rill" ? "page" : undefined} aria-label={`${module.name}：${MODULE_META[module.id].role}`}>
+        <ModuleIcon id={module.id} />
+        <span className={styles.railTip}><b>{module.name}</b><span>{MODULE_META[module.id].role}</span></span>
+      </Link>)}
+    </>
+  );
+  const renderRillMenu = () => (
+    <nav className={styles.nav} aria-label="Rill メニュー" onClick={(event) => {
+      if ((event.target as HTMLElement).closest("a")) setDrawerOpen(false);
+    }}>
+      <div className={styles.navLabel}>メニュー</div>
+      <Link href="/rill/mail" className={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? styles.active : undefined} aria-current={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? "page" : undefined}><MailIcon />Mail<NavigationPendingHint /></Link>
+      <Link href="#rill-chat"><ChatIcon />Chat（year-end）</Link>
+    </nav>
+  );
+
   return <div className={styles.shell}>
+    <header className={styles.mobileTopbar}>
+      <button ref={openButtonRef} className={styles.menuButton} type="button" aria-label="メニューを開く" aria-expanded={drawerOpen} aria-controls={drawerId} onClick={() => setDrawerOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
+      <Link href="/" className={styles.mobileBrand} aria-label="Garden ホームへ（上部）"><Image className={styles.mobileBrandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized /><span>Garden ／ Rill</span></Link>
+      <div className={styles.mobileActions}>
+        <button className={styles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}</button>
+        <button className={styles.iconButton} type="button" aria-label="通知" onClick={() => setActivityOpen(true)}><BellIcon /></button>
+        <button className={styles.iconButton} type="button" aria-label="ユーザーメニュー" onClick={() => setUserOpen((value) => !value)}><UserIcon /></button>
+      </div>
+    </header>
     <aside className={styles.rail} aria-label="Gardenシリーズ">
       <div className={styles.railInner}>
-        <Link href="/system" className={styles.app} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-label="System：社内システム">
-          <RailIcon color="#0ea5a0" shade="#054e4b" iconScale={1.85} iconStrokeWidth={1.9}>
-            <path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" /><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 13.8v2.2M17.6 15.2V17" />
-          </RailIcon>
-          <span className={styles.railTip}><b>System</b><span>社内システム</span></span>
-        </Link>
-        <div className={styles.separator} />
-        {GARDEN_SHELL_MODULES.filter((module) => visibleModules.has(module.id)).map((module) => <Link key={module.id} href={`/${module.id}`} className={`${styles.app} ${module.id === "rill" ? styles.current : ""}`} style={{ "--c": MODULE_META[module.id].color } as CSSProperties} aria-label={`${module.name}：${MODULE_META[module.id].role}`}>
-          <ModuleIcon id={module.id} />
-          <span className={styles.railTip}><b>{module.name}</b><span>{MODULE_META[module.id].role}</span></span>
-        </Link>)}
+        {renderModuleRail()}
       </div>
     </aside>
     <aside className={styles.side}>
@@ -215,14 +262,23 @@ export default function RillShachoShell({ children, user }: Props) {
           <Link href="/" className={styles.brandName} aria-label="Garden ホームへ"><Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized /><span>Garden</span></Link>
           <div className={styles.moduleName}>Rill ／ メッセージ</div>
         </div>
-        <nav className={styles.nav} aria-label="Rill メニュー">
-          <div className={styles.navLabel}>メニュー</div>
-          <Link href="/rill/mail" className={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? styles.active : undefined} aria-current={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? "page" : undefined}><MailIcon />Mail<NavigationPendingHint /></Link>
-          <Link href="#rill-chat"><ChatIcon />Chat（year-end）</Link>
-        </nav>
+        {renderRillMenu()}
         <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}><span>{user.company}</span><span>{user.roleLabel}</span></div></div></div>
       </div>
     </aside>
+    {drawerOpen && <div className={`${styles.drawerLayer} ${styles.drawerOpen}`}>
+      <aside id={drawerId} className={styles.drawer} role="dialog" aria-modal="true" aria-label="Rill メニュー">
+        <div className={styles.drawerHead}>
+          <Link href="/" className={styles.brandName} aria-label="Garden ホームへ"><Image className={styles.brandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized /><span>Garden</span></Link>
+          <button ref={closeButtonRef} className={styles.drawerClose} type="button" aria-label="閉じる" onClick={() => setDrawerOpen(false)}>×</button>
+        </div>
+        <div className={styles.moduleName}>Rill ／ メッセージ</div>
+        <div className={styles.drawerRail} aria-label="Gardenシリーズ">{renderModuleRail()}</div>
+        {renderRillMenu()}
+        <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}><span>{user.company}</span><span>{user.roleLabel}</span></div></div></div>
+      </aside>
+      <button className={styles.drawerBackdrop} type="button" aria-label="メニューを閉じる" onClick={() => setDrawerOpen(false)} />
+    </div>}
     <div className={styles.work}>
       <header className={styles.topbar}>
         <div className={styles.searchBox}>

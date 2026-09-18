@@ -116,6 +116,24 @@
   padding-top: 54px;
 }
 
+.pageHeader {
+  min-width: 0;
+}
+
+.pageHeaderText {
+  flex: 1 1 280px;
+}
+
+.pageHeaderDescription {
+  word-break: auto-phrase;
+  line-break: strict;
+  text-wrap: pretty;
+}
+
+.pageHeaderActions {
+  min-width: 0;
+}
+
 .navLabel {
   padding: 14px 10px 8px;
   font-size: 10.5px;
@@ -220,8 +238,43 @@
   font-weight: 600;
 }
 
+@media (max-width: 760px) {
+  .main.main {
+    overflow: visible;
+  }
+
+  .content {
+    padding-top: 0;
+  }
+
+  .pageHeader {
+    display: block !important;
+  }
+
+  .pageHeaderText {
+    width: 100%;
+  }
+
+  .pageHeaderActions {
+    width: 100%;
+    margin-top: 12px;
+    justify-content: flex-start !important;
+  }
+
+  .pageHeaderActions :where(select, input) {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .pageHeaderActions :where(button) {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 640px) {
   .content {
-    padding-top: 50px;
+    padding-top: 0;
   }
 }

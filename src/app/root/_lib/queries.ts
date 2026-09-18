@@ -56,6 +56,12 @@ const ROOT_EMPLOYEE_SELECT_FIELDS = [
   "garden_role",
 ].join(",");
 
+// 読み出しに失敗したとき、画面には読む人向けの文だけを出し、詳しい原因はブラウザの記録に残す（2026-09-18）
+function loadError(fn: string, label: string, error: { message: string }) {
+  console.error(`${fn} failed: ${error.message}`);
+  return new Error(`${label}を読み込めませんでした。時間をおいてもう一度お試しください。続くときは管理者へお問い合わせください。`);
+}
+
 // ============================================================
 // 共通: トグル is_active
 // ============================================================
@@ -80,7 +86,7 @@ export async function fetchCompanies(): Promise<Company[]> {
     .from("root_companies")
     .select("*")
     .order("company_id", { ascending: true });
-  if (error) throw new Error(`fetchCompanies failed: ${error.message}`);
+  if (error) throw loadError("fetchCompanies", "法人の一覧", error);
   return (data ?? []) as Company[];
 }
 
@@ -101,7 +107,7 @@ export async function fetchBankAccounts(): Promise<BankAccount[]> {
     .select("*")
     .order("company_id", { ascending: true })
     .order("account_id", { ascending: true });
-  if (error) throw new Error(`fetchBankAccounts failed: ${error.message}`);
+  if (error) throw loadError("fetchBankAccounts", "銀行口座の一覧", error);
   return (data ?? []) as BankAccount[];
 }
 
@@ -121,7 +127,7 @@ export async function fetchVendors(): Promise<Vendor[]> {
     .from("root_vendors")
     .select("*")
     .order("vendor_name_kana", { ascending: true });
-  if (error) throw new Error(`fetchVendors failed: ${error.message}`);
+  if (error) throw loadError("fetchVendors", "取引先の一覧", error);
   return (data ?? []) as Vendor[];
 }
 
@@ -141,7 +147,7 @@ export async function fetchSalarySystems(): Promise<SalarySystem[]> {
     .from("root_salary_systems")
     .select("*")
     .order("salary_system_id", { ascending: true });
-  if (error) throw new Error(`fetchSalarySystems failed: ${error.message}`);
+  if (error) throw loadError("fetchSalarySystems", "給与体系の一覧", error);
   return (data ?? []) as SalarySystem[];
 }
 
@@ -162,7 +168,7 @@ export async function fetchEmployees(): Promise<Employee[]> {
     .select(ROOT_EMPLOYEE_SELECT_FIELDS)
     .order("company_id", { ascending: true })
     .order("employee_number", { ascending: true });
-  if (error) throw new Error(`fetchEmployees failed: ${error.message}`);
+  if (error) throw loadError("fetchEmployees", "従業員の一覧", error);
   return (data ?? []) as unknown as Employee[];
 }
 
@@ -205,7 +211,7 @@ export async function fetchInsurance(): Promise<Insurance[]> {
     .from("root_insurance")
     .select("*")
     .order("fiscal_year", { ascending: false });
-  if (error) throw new Error(`fetchInsurance failed: ${error.message}`);
+  if (error) throw loadError("fetchInsurance", "社会保険料率の一覧", error);
   return (data ?? []) as Insurance[];
 }
 
@@ -224,7 +230,7 @@ export async function fetchAttendance(targetMonth?: string): Promise<Attendance[
   let query = supabase.from("root_attendance").select("*").order("target_month", { ascending: false }).order("employee_id", { ascending: true });
   if (targetMonth) query = query.eq("target_month", targetMonth);
   const { data, error } = await query;
-  if (error) throw new Error(`fetchAttendance failed: ${error.message}`);
+  if (error) throw loadError("fetchAttendance", "勤怠データ", error);
   return (data ?? []) as Attendance[];
 }
 

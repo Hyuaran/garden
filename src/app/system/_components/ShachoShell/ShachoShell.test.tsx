@@ -70,6 +70,39 @@ describe("ShachoShell", () => {
     expect(screen.getByText("責任者Aさん").parentElement).toContainElement(screen.getByRole("button", { name:"ダークにする" }));
   });
 
+  it("opens and closes the mobile drawer with modules, menu, user area, backdrop, Escape, and item clicks", () => {
+    renderShell("/system/mypage");
+    const open = screen.getByRole("button", { name: "メニューを開く" });
+    expect(open).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(open);
+    expect(open).toHaveAttribute("aria-expanded", "true");
+    let drawer = screen.getByRole("dialog", { name: "Systemメニュー" });
+    expect(within(drawer).getByRole("link", { name: "System：社内システム", current: "page" })).toBeInTheDocument();
+    expect(within(drawer).getByRole("link", { name: "Root：組織台帳" })).toBeInTheDocument();
+    expect(within(drawer).getByRole("link", { name: "自分の情報", current: "page" })).toBeInTheDocument();
+    expect(within(drawer).getByText("株式会社A")).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "閉じる" })).toHaveFocus();
+
+    fireEvent.click(within(drawer).getByRole("button", { name: "閉じる" }));
+    expect(screen.queryByRole("dialog", { name: "Systemメニュー" })).not.toBeInTheDocument();
+    expect(open).toHaveFocus();
+
+    fireEvent.click(open);
+    drawer = screen.getByRole("dialog", { name: "Systemメニュー" });
+    fireEvent.click(screen.getByRole("button", { name: "メニューを閉じる" }));
+    expect(screen.queryByRole("dialog", { name: "Systemメニュー" })).not.toBeInTheDocument();
+
+    fireEvent.click(open);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Systemメニュー" })).not.toBeInTheDocument();
+
+    fireEvent.click(open);
+    drawer = screen.getByRole("dialog", { name: "Systemメニュー" });
+    fireEvent.click(within(drawer).getByRole("link", { name: "ホーム" }));
+    expect(screen.queryByRole("dialog", { name: "Systemメニュー" })).not.toBeInTheDocument();
+  });
+
   it("keeps the sidebar content in the sticky inner wrapper", () => {
     renderShell();
     const nav = screen.getByRole("navigation", { name: "Systemメニュー" });

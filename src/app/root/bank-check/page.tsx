@@ -167,9 +167,9 @@ export default function BankCheckPage() {
       <section style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 6, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
           <strong style={{ color: colors.text }}>点検結果 {state.findings.length} 件</strong>
-          <label style={{ display: "flex", gap: 8, alignItems: "center", color: colors.textMuted, fontSize: 13 }}>
+          <label style={{ display: "flex", gap: 8, alignItems: "center", color: colors.textMuted, fontSize: 13, flexWrap: "wrap", minWidth: 0 }}>
             指摘で絞る：
-            <select value={filter} onChange={(event) => setFilter(event.target.value)} style={{ padding: "7px 10px", border: `1px solid ${colors.border}`, borderRadius: 4, background: colors.bgPanel, color: colors.text }}>
+            <select value={filter} onChange={(event) => setFilter(event.target.value)} style={{ padding: "7px 10px", border: `1px solid ${colors.border}`, borderRadius: 4, background: colors.bgPanel, color: colors.text, whiteSpace: "nowrap", minWidth: 0 }}>
               {ISSUE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
