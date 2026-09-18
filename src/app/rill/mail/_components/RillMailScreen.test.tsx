@@ -88,7 +88,7 @@ afterEach(() => {
 });
 
 describe("RillMailScreen", () => {
-  it("760px 以下では最初に一覧だけを表示し、メール選択と戻るで切り替える", async () => {
+  it("1024px 以下では最初に一覧だけを表示し、メール選択と戻るで切り替える", async () => {
     mockMatchMedia(true);
     render(<RillMailScreen />);
 
@@ -109,7 +109,7 @@ describe("RillMailScreen", () => {
     expect(reader).toHaveAttribute("hidden");
   });
 
-  it("760px 以下では箱ボタンから箱の一覧へ移り、選ぶと一覧へ戻って絞り込む", async () => {
+  it("1024px 以下では箱ボタンから箱の一覧へ移り、選ぶと一覧へ戻って絞り込む", async () => {
     mockMatchMedia(true);
     render(<RillMailScreen />);
 

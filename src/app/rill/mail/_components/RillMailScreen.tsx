@@ -275,7 +275,7 @@ export function RillMailScreen() {
 
   useEffect(() => { void initialize(); }, [initialize]);
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 760px)");
+    const media = window.matchMedia("(max-width: 1024px)");
     const apply = () => setNarrowMail(media.matches);
     apply();
     media.addEventListener("change", apply);
