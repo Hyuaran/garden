@@ -36,6 +36,7 @@ describe("forms hub page", () => {
     expect(employeeQuery.select).toHaveBeenCalledWith("garden_role,is_active,termination_date,deleted_at");
     expect(screen.getByRole("heading", { name: "フォーム" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "給与計算連絡" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "出勤表・シフト連絡" })).toBeInTheDocument();
   });
 
   it("filters forms below staff", async () => {
@@ -44,5 +45,6 @@ describe("forms hub page", () => {
     render(await FormsHubPage());
 
     expect(screen.queryByRole("cell", { name: "給与計算連絡" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("cell", { name: "出勤表・シフト連絡" })).not.toBeInTheDocument();
   });
 });

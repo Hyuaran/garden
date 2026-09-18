@@ -21,6 +21,15 @@ export const SYSTEM_FORMS: SystemFormDefinition[] = [
     icon: "document",
     href: "/system/forms/payroll-notice",
   },
+  {
+    slug: "shukkin",
+    name: "出勤表・シフト連絡",
+    description: "KING OF TIME の日別データから、出勤表と翌日のシフト連絡の文面を作ります。",
+    roleLabel: "社員以上",
+    minRole: "staff",
+    icon: "shift",
+    href: "/system/forms/shukkin",
+  },
 ];
 
 export function getVisibleSystemForms(role: GardenRole) {
