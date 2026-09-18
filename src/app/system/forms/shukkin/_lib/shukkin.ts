@@ -134,6 +134,12 @@ function attendanceShiftLabel(row: KotDailyRow) {
   return start && end ? `${start}-${end}` : "";
 }
 
+// 退職の人は出勤表にも「並びに無い人」にも出さない（東海林さん 2026-09-19）。
+// 実物の KOT では勤務日種別＝平日・パターン名＝退職で来る（岩下 英美 1540）ので両方を見る
+function isRetired(row: KotDailyRow | undefined) {
+  return row?.workdayKind === "退職" || row?.patternName === "退職";
+}
+
 function hasPlan(row: KotDailyRow | undefined) {
   if (!row) return false;
   if (REST_KINDS.has(row.workdayKind)) return false;
@@ -183,6 +189,7 @@ export function summarizeKotCoverage(input: { rows: KotDailyRow[]; members: Shuk
   return {
     missingInKot: ordered.filter((member) => !byNumber.has(member.employeeNumber)),
     missingInOrder: input.rows.filter((row) => row.date === input.date
+      && !isRetired(row)
       && !memberNumbers.has(normalizeEmployeeNumber(row.employeeCode))
       && !MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS.has(row.employmentKind)),
   };
@@ -201,7 +208,7 @@ export function buildAttendanceMessage(input: {
   const members = activeMembers(input.members);
 
   SHUKKIN_GROUPS.forEach((groupName) => {
-    const groupMembers = members.filter((member) => member.groupName === groupName);
+    const groupMembers = members.filter((member) => member.groupName === groupName && !isRetired(byNumber.get(member.employeeNumber)));
     if (groupMembers.length === 0) return;
     lines.push("", `＜${groupName}＞`);
     groupMembers.forEach((member) => {

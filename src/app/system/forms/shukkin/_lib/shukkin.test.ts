@@ -147,7 +147,6 @@ describe("shukkin text builder", () => {
 
 ＜石原チーム＞
 (毛利　祐星)10-21　
-(高木麟心愛)×　
 
 【ヒュアラン予定】
 なし
@@ -245,6 +244,44 @@ describe("shukkin text builder", () => {
     ]);
     const coverage = summarizeKotCoverage({ rows, members: [], date: "2026-09-20" });
     expect(coverage.missingInOrder.map((item) => item.employeeCode)).toEqual(["9002"]);
+  });
+
+  // 退職の人は出勤表に出さない・並びに無い人にも出さない（東海林さん 2026-09-19）。
+  // 実物の KOT では勤務日種別＝平日・パターン名＝退職（岩下 英美 1540 で確認）
+  it("leaves retired people out of the attendance message and the not-in-order list", () => {
+    const retired = (code: string, name: string, date: string) => {
+      const value = row(code, name, date, "平日");
+      value[5] = "退職";
+      return value;
+    };
+    const rows = parsed([
+      row("1600", "毛利 祐星", "2026/09/20", "平日", "10:00", "21:00"),
+      retired("1601", "高木 麟心愛", "2026/09/20"),
+      retired("1540", "岩下 英美", "2026/09/20"),
+      row("1392", "田中 実花", "2026/09/20", "平日", "10:00", "21:00"),
+    ]);
+    const onlyRetiredInGroup: ShukkinMember[] = [
+      ...members.filter((member) => member.groupName !== "石原チーム"),
+      { employeeNumber: "1600", name: "毛利 祐星", groupName: "石原チーム", sortOrder: 10 },
+      { employeeNumber: "1601", name: "高木 麟心愛", groupName: "石原チーム", sortOrder: 20 },
+      { employeeNumber: "1557", name: "北野 晟", groupName: "新人チーム", sortOrder: 10 },
+    ];
+    const text = buildAttendanceMessage({ rows, members: onlyRetiredInGroup, date: "2026-09-20", tableTime: "14:00", withConfirmation: false });
+    expect(text).toContain("(毛利　祐星)10-21　");
+    expect(text).not.toContain("高木");
+    expect(text).not.toContain("岩下");
+
+    const retiredOnly = buildAttendanceMessage({
+      rows,
+      members: [{ employeeNumber: "1601", name: "高木 麟心愛", groupName: "石原チーム", sortOrder: 10 }],
+      date: "2026-09-20",
+      tableTime: "14:00",
+      withConfirmation: false,
+    });
+    expect(retiredOnly).not.toContain("＜石原チーム＞");
+
+    const coverage = summarizeKotCoverage({ rows, members: onlyRetiredInGroup, date: "2026-09-20" });
+    expect(coverage.missingInOrder.map((item) => item.employeeCode)).toEqual([]);
   });
 
   it("puts 新人チーム after 石原チーム in the roster and includes it in LINE notices", () => {
