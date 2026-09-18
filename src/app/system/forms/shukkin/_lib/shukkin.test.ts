@@ -227,14 +227,18 @@ describe("shukkin text builder", () => {
     expect(coverage.missingInOrder.map((item) => item.employeeCode)).toEqual(["9002"]);
   });
 
-  it("shows ＢＹ rest kinds as text but a plan-less 平日 as ×", () => {
+  it("shows ＢＹ days without a plan as 公休 (blank or 平日 kind), rest kinds as their text, and others as ×", () => {
     const rows = parsed([
-      row("1003", "東海林 美琴", "2026/09/19", "公休"),
+      row("1003", "東海林 美琴", "2026/09/19", ""),
       row("1004", "簡 棣榮", "2026/09/19", "平日"),
+      row("1005", "上田 基人", "2026/09/19", ""),
     ]);
-    const text = buildAttendanceMessage({ rows, members: members.slice(2, 4), date: "2026-09-19", tableTime: "14:00", withConfirmation: false });
+    const text = buildAttendanceMessage({ rows, members: members.slice(2, 5), date: "2026-09-19", tableTime: "14:00", withConfirmation: false });
     expect(text).toContain("(東海林美琴)公休　");
-    expect(text).toContain("(簡　　棣榮)×　");
+    expect(text).toContain("(簡　　棣榮)公休　");
+    expect(text).toContain("(上田　基人)×　");
     expect(text).not.toContain("平日　");
+    const paid = buildAttendanceMessage({ rows: parsed([row("1003", "東海林 美琴", "2026/09/19", "有給")]), members: members.slice(2, 3), date: "2026-09-19", tableTime: "14:00", withConfirmation: false });
+    expect(paid).toContain("(東海林美琴)有給　");
   });
 });

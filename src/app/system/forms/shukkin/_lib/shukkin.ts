@@ -119,9 +119,13 @@ function hasPlan(row: KotDailyRow | undefined) {
 }
 
 function shukkinShift(row: KotDailyRow | undefined, groupName: ShukkinGroup) {
-  if (!row) return "×";
-  // ＢＹは休みの種類（公休・有給など）だけを文字で出す。予定の無い「平日」などは × にする
-  if (!hasPlan(row)) return groupName === "ＢＹ" && REST_KINDS.has(row.workdayKind) ? row.workdayKind : "×";
+  if (!row) return groupName === "ＢＹ" ? "公休" : "×";
+  // ＢＹは予定の無い日を「公休」と出す（有給など休みの種類が入っていればその文字）。
+  // 実物の KOT では休みの日の勤務日種別が空欄・「平日」のことがある（2026-09-19 の実データで確認）
+  if (!hasPlan(row)) {
+    if (groupName !== "ＢＹ") return "×";
+    return REST_KINDS.has(row.workdayKind) ? row.workdayKind : "公休";
+  }
   return shiftLabel(row) || "×";
 }
 
