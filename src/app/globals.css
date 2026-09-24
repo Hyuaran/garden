@@ -2,6 +2,13 @@
    絞らないと outputs/ の PDF・PNG まで読みに行き、CSS の組み立てが失敗する。 */
 @import "tailwindcss" source("../");
 
+:root {
+  --font-noto-serif-jp: "Noto Serif JP Variable", "Noto Serif JP";
+  --font-shippori: "Shippori Mincho";
+  --font-eb-garamond: "EB Garamond Variable", "EB Garamond";
+  --font-cormorant: "Cormorant Garamond Variable", "Cormorant Garamond";
+}
+
 /* ====================================================================
  * Garden Series — Home UI Stylesheet (Next.js 移植版)
  * v2.8a / 2026-04-27 (originated by ChatGPT prototype)

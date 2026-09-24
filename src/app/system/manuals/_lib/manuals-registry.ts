@@ -57,6 +57,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "payroll-notice", "フォーム（給与計算連絡）", "月に一度の給与計算に関する連絡の送り方と、送信履歴の見方。"),
   manual("system", "nhk-visit", "フォーム（NHK訪問業務 報告）", "NHK 訪問業務の当日の報告の入力と送信、集計の受け取り方（Chatwork・LINE）。"),
   manual("system", "contracts", "契約書管理", "上位店との契約書の登録と、パートナー配布用ひな形の作り方。"),
+  manual("system", "sites", "コーポレートサイト", "グループ各社の会社HPと商品ページの一覧。稼働状態・問い合わせの配線・旧サーバー契約の見方と、一覧の更新のしかた。"),
   manual("system", "toss", "関電トスポータル", "関西電力のトスアップの受け付けと、Kintone への連携。"),
   manual("system", "deliveries", "自動配信", "決まった時刻に Chatwork へ自動で送っている連絡の中身と確認のしかた。"),
   manual("system", "kanri", "管理表ポータル", "毎日の管理表を KOT・Kintone のデータから作り、TV・Excel・Chatwork へ出す手順。"),

@@ -10,7 +10,7 @@ import {
 
 describe("manuals registry", () => {
   it("defines the initial manual modules and documents", () => {
-    expect(SYSTEM_MANUALS).toHaveLength(15);
+    expect(SYSTEM_MANUALS).toHaveLength(16);
     expect(findManual("system", "kot-attendance")).toMatchObject({
       moduleSlug: "system",
       slug: "kot-attendance",
@@ -40,9 +40,21 @@ describe("manuals registry", () => {
   it("hides manuals and modules with no readable document", () => {
     expect(getVisibleManuals("cs")).toEqual([]);
     expect(getManualModules("staff").map((module) => [module.slug, module.count])).toEqual([
-      ["system", 14],
+      ["system", 15],
       ["bud", 1],
     ]);
+  });
+
+  it("shows the corporate site manual immediately after contracts", () => {
+    const visibleManuals = getVisibleManuals("super_admin");
+    const contractsIndex = visibleManuals.findIndex((manual) => manual.slug === "contracts");
+
+    expect(visibleManuals.map((manual) => manual.slug)).toContain("sites");
+    expect(visibleManuals[contractsIndex + 1]).toMatchObject({
+      moduleSlug: "system",
+      slug: "sites",
+      name: "コーポレートサイト",
+    });
   });
 
   it("resolves registered manuals and files only", () => {
