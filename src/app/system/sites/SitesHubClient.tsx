@@ -160,18 +160,9 @@ export default function SitesHubClient({ data }: { data: CorporateSitesData }) {
 
   return <div className={styles.pageShell}>
     <header className={styles.header}>
-      <div>
-        <SystemBreadcrumb items={[{ label: "コーポレートサイト" }]} />
-        <h1>コーポレートサイト</h1>
-        <p className={styles.lead}>グループ各社の会社HPと商品ページ。稼働中のサイトは URL から開けます。</p>
-      </div>
-      <div className={styles.headerAside}>
-        <span>更新日：{formatDate(data.as_of)}</span>
-        <div className={styles.viewToggle} role="group" aria-label="表示形式">
-          <button type="button" aria-label="一覧表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon /></button>
-          <button type="button" aria-label="カード表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon /></button>
-        </div>
-      </div>
+      <SystemBreadcrumb items={[{ label: "コーポレートサイト" }]} />
+      <h1>コーポレートサイト</h1>
+      <p className={styles.lead}>グループ各社の会社HPと商品ページ。稼働中のサイトは URL から開けます。</p>
     </header>
 
     <details className={styles.commonBox}>
@@ -183,10 +174,19 @@ export default function SitesHubClient({ data }: { data: CorporateSitesData }) {
       </dl>
     </details>
 
-    <div className={styles.countStrip}>
-      <span>稼働 {counts.live}</span>
-      <span>移管待ち {counts.pending}</span>
-      <span>新規作成待ち {counts.planned}</span>
+    <div className={styles.toolbar}>
+      <div className={styles.countStrip}>
+        <span>稼働 {counts.live}</span>
+        <span>移管待ち {counts.pending}</span>
+        <span>新規作成待ち {counts.planned}</span>
+      </div>
+      <div className={styles.headerAside}>
+        <span>更新日：{formatDate(data.as_of)}</span>
+        <div className={styles.viewToggle} role="group" aria-label="表示形式">
+          <button type="button" aria-label="一覧表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon /></button>
+          <button type="button" aria-label="カード表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon /></button>
+        </div>
+      </div>
     </div>
 
     <div className={styles.groups} data-testid={viewMode === "grid" ? "sites-grid-view" : "sites-list-view"}>
