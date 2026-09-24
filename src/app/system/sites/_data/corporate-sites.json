@@ -53,6 +53,67 @@
       ]
     },
     {
+      "company": "株式会社センターライズ",
+      "kind": "会社HP",
+      "domain": "centerise.co.jp",
+      "status": "planned_new",
+      "notes": [
+        "SES事業",
+        "お名前保有は centerrise.co.jp/centerrise.jp＝着手時に centerise.co.jp の保有状況を確認"
+      ]
+    },
+    {
+      "company": "株式会社ARATA",
+      "kind": "会社HP",
+      "domain": "arata123.co.jp",
+      "status": "planned_new",
+      "mail": "M365",
+      "notes": [
+        "ドメイン決定済・サイト無し"
+      ]
+    },
+    {
+      "company": "株式会社ARATA",
+      "kind": "商品LP",
+      "product": "ARATA光",
+      "domain": "ara-ta.net",
+      "url": "https://ara-ta.net/hikari/",
+      "status": "pending_migration",
+      "stack": "static",
+      "mail": "M365",
+      "old_server": {
+        "plan": "RS",
+        "contract": "1698999"
+      },
+      "notes": [
+        "次の着手候補"
+      ]
+    },
+    {
+      "company": "株式会社リンクサポート",
+      "kind": "商品LP",
+      "product": "助成金制作サイト",
+      "domain": "link-support-osaka.com",
+      "status": "restored_pending_migration",
+      "stack": "WordPress",
+      "mail": "M365",
+      "old_server": {
+        "plan": "RS",
+        "contract": "1373547",
+        "onamae_id": "10291682"
+      },
+      "notes": [
+        "2026-06-03 DNS A修正で復活",
+        "助成金の維持義務の可能性＝忠実移行が前提"
+      ]
+    },
+    {
+      "company": "株式会社リンクサポート",
+      "kind": "会社HP",
+      "domain": null,
+      "status": "planned_new"
+    },
+    {
       "company": "株式会社たいよう",
       "kind": "会社HP",
       "domain": null,
@@ -114,7 +175,20 @@
       }
     },
     {
-      "company": "ストーンベース",
+      "company": "株式会社壱",
+      "kind": "会社HP+商品",
+      "product": "Ichi光",
+      "domain": "ichi-one.com",
+      "status": "pending_migration_and_new",
+      "stack": "static",
+      "mail": "M365",
+      "old_server": {
+        "plan": "ベーシック",
+        "contract": "2216624"
+      }
+    },
+    {
+      "company": "株式会社ストーンベース",
       "kind": "会社HP",
       "domain": "stone-base.jp",
       "url": "https://stone-base.jp/",
@@ -135,46 +209,6 @@
       ]
     },
     {
-      "company": "ARATA",
-      "kind": "会社HP",
-      "domain": "arata123.co.jp",
-      "status": "planned_new",
-      "mail": "M365",
-      "notes": [
-        "ドメイン決定済・サイト無し"
-      ]
-    },
-    {
-      "company": "ARATA",
-      "kind": "商品LP",
-      "product": "ARATA光",
-      "domain": "ara-ta.net",
-      "url": "https://ara-ta.net/hikari/",
-      "status": "pending_migration",
-      "stack": "static",
-      "mail": "M365",
-      "old_server": {
-        "plan": "RS",
-        "contract": "1698999"
-      },
-      "notes": [
-        "次の着手候補"
-      ]
-    },
-    {
-      "company": "株式会社壱",
-      "kind": "会社HP+商品",
-      "product": "Ichi光",
-      "domain": "ichi-one.com",
-      "status": "pending_migration_and_new",
-      "stack": "static",
-      "mail": "M365",
-      "old_server": {
-        "plan": "ベーシック",
-        "contract": "2216624"
-      }
-    },
-    {
       "company": "株式会社almalio",
       "kind": "商品",
       "product": "ウチのわんにゃんNET",
@@ -190,40 +224,6 @@
         "慎重に（almalioとの兼ね合い）",
         "almalio.net は会社HP作らず解約済"
       ]
-    },
-    {
-      "company": "リンクサポート",
-      "kind": "商品LP",
-      "product": "助成金制作サイト",
-      "domain": "link-support-osaka.com",
-      "status": "restored_pending_migration",
-      "stack": "WordPress",
-      "mail": "M365",
-      "old_server": {
-        "plan": "RS",
-        "contract": "1373547",
-        "onamae_id": "10291682"
-      },
-      "notes": [
-        "2026-06-03 DNS A修正で復活",
-        "助成金の維持義務の可能性＝忠実移行が前提"
-      ]
-    },
-    {
-      "company": "リンクサポート",
-      "kind": "会社HP",
-      "domain": null,
-      "status": "planned_new"
-    },
-    {
-      "company": "株式会社センターライズ",
-      "kind": "会社HP",
-      "domain": "centerise.co.jp",
-      "status": "planned_new",
-      "notes": [
-        "SES事業",
-        "お名前保有は centerrise.co.jp/centerrise.jp＝着手時に centerise.co.jp の保有状況を確認"
-      ]
     }
   ],
   "excluded": [
@@ -234,5 +234,6 @@
     "all-partner.net",
     "arata123.online",
     "internet-hikari.pro（別LP案件）"
-  ]
+  ],
+  "company_order_rule": "設立順（Root 法人マスタ established_on）。almalio は設立日に関係なく最後（東海林さん 2026-09-25）"
 }

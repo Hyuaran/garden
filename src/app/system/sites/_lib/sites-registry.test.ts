@@ -8,16 +8,16 @@ describe("sites registry", () => {
     expect(groups).toHaveLength(8);
     expect(groups.map((group) => group.company)).toEqual([
       "株式会社ヒュアラン",
-      "株式会社たいよう",
-      "ストーンベース",
-      "ARATA",
-      "株式会社壱",
-      "株式会社almalio",
-      "リンクサポート",
       "株式会社センターライズ",
+      "株式会社ARATA",
+      "株式会社リンクサポート",
+      "株式会社たいよう",
+      "株式会社壱",
+      "株式会社ストーンベース",
+      "株式会社almalio",
     ]);
     expect(groups[0].sites.map((site) => site.kind)).toEqual(["会社HP", "商品ページ"]);
-    expect(groups[1].sites.map((site) => site.kind)).toEqual(["会社HP", "事業LP", "商品LP"]);
+    expect(groups[4].sites.map((site) => site.kind)).toEqual(["会社HP", "事業LP", "商品LP"]);
   });
 
   it("maps every status to the expected label and badge tone", () => {
