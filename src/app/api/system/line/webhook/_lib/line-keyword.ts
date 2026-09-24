@@ -1,27 +1,43 @@
 export type LineSummaryKeyword =
-  | { kind: "day"; dateOffset: 0 | -1 }
-  | { kind: "date"; date: string }
-  | { kind: "month" };
+  | { kind: "day"; summaryKeyword: string; dateOffset: 0 | -1 }
+  | { kind: "date"; summaryKeyword: string; date: string }
+  | { kind: "month"; summaryKeyword: string };
+
+export type LineKeywordCommand = LineSummaryKeyword | { kind: "list" };
 
 function validDate(year: number, month: number, day: number) {
   const date = new Date(Date.UTC(year, month - 1, day));
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
-export function parseLineSummaryKeyword(text: string): LineSummaryKeyword | null {
-  const normalized = text.trim();
-  if (normalized === "集計") return { kind: "day", dateOffset: 0 };
-  if (normalized === "昨日の集計") return { kind: "day", dateOffset: -1 };
-  if (normalized === "今月の集計") return { kind: "month" };
+function findSummaryPrefix(text: string, summaryKeywords: readonly string[]) {
+  const normalized = text.trimStart();
+  return [...summaryKeywords]
+    .sort((left, right) => right.length - left.length)
+    .find((keyword) => normalized.toLocaleLowerCase().startsWith(keyword.toLocaleLowerCase())) ?? null;
+}
 
-  const match = normalized.match(/^(\d{4})[-/]?(\d{1,2})[-/]?(\d{1,2})\s*集計$/);
+export function parseLineSummaryKeyword(text: string, summaryKeywords: readonly string[] = ["NHK"]): LineKeywordCommand | null {
+  const normalized = text.trim();
+  if (normalized === "合言葉") return { kind: "list" };
+
+  const summaryKeyword = findSummaryPrefix(normalized, summaryKeywords);
+  if (!summaryKeyword) return null;
+
+  // 「NHK集計 昨日」「NHK集計　20260924」のように空白（半角・全角）が入っても同じ扱いにする
+  const rest = normalized.slice(summaryKeyword.length).replace(/[\s　]+/g, "");
+  if (rest === "集計") return { kind: "day", summaryKeyword, dateOffset: 0 };
+  if (rest === "集計昨日") return { kind: "day", summaryKeyword, dateOffset: -1 };
+  if (rest === "今月" || rest === "今月の集計") return { kind: "month", summaryKeyword };
+
+  const match = rest.match(/^集計(\d{4})[-/]?(\d{1,2})[-/]?(\d{1,2})$/);
   if (!match) return null;
   const [, yearText, monthText, dayText] = match;
   const year = Number(yearText);
   const month = Number(monthText);
   const day = Number(dayText);
   if (!validDate(year, month, day)) return null;
-  return { kind: "date", date: `${yearText}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` };
+  return { kind: "date", summaryKeyword, date: `${yearText}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` };
 }
 
 export function todayJst(now = new Date()) {

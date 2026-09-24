@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   admin: {
     from: vi.fn(),
   },
+  lineTarget: vi.fn(),
 }));
 
 vi.mock("@/app/system/forms/nhk-visit/_lib/nhk-visit-summary.server", () => ({
@@ -30,6 +31,27 @@ describe("LINE webhook route", () => {
     process.env.LINE_CHANNEL_SECRET = "line-secret";
     process.env.LINE_CHANNEL_ACCESS_TOKEN = "line-token";
     mocks.loadNhkVisitRows.mockResolvedValue([]);
+    mocks.lineTarget.mockResolvedValue({ data: { summary_keywords: ["NHK"], label: "テスト部屋" }, error: null });
+    mocks.admin.from.mockImplementation((table: string) => {
+      if (table === "system_line_target") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: mocks.lineTarget,
+              })),
+            })),
+          })),
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+          update: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn().mockResolvedValue({ error: null }),
+            })),
+          })),
+        };
+      }
+      return {};
+    });
     global.fetch = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
   });
 
@@ -48,7 +70,7 @@ describe("LINE webhook route", () => {
         type: "message",
         replyToken: "reply-token",
         source: { type: "group", groupId: "group-1" },
-        message: { type: "text", text: "2026-09-24集計" },
+        message: { type: "text", text: "NHK集計2026-09-24" },
       }],
     });
     const response = await POST(new Request("http://test/api/system/line/webhook", {
@@ -58,6 +80,64 @@ describe("LINE webhook route", () => {
     }));
     expect(response.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledWith("https://api.line.me/v2/bot/message/reply", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("does not reply when the room is not registered", async () => {
+    mocks.lineTarget.mockResolvedValue({ data: null, error: null });
+    const body = JSON.stringify({
+      events: [{
+        type: "message",
+        replyToken: "reply-token",
+        source: { type: "group", groupId: "group-1" },
+        message: { type: "text", text: "NHK集計" },
+      }],
+    });
+    const response = await POST(new Request("http://test/api/system/line/webhook", {
+      method: "POST",
+      headers: { "x-line-signature": signature(body) },
+      body,
+    }));
+    expect(response.status).toBe(200);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not reply when NHK is not enabled for the room", async () => {
+    mocks.lineTarget.mockResolvedValue({ data: { summary_keywords: ["SHUKKIN"], label: "別部屋" }, error: null });
+    const body = JSON.stringify({
+      events: [{
+        type: "message",
+        replyToken: "reply-token",
+        source: { type: "group", groupId: "group-1" },
+        message: { type: "text", text: "NHK集計" },
+      }],
+    });
+    const response = await POST(new Request("http://test/api/system/line/webhook", {
+      method: "POST",
+      headers: { "x-line-signature": signature(body) },
+      body,
+    }));
+    expect(response.status).toBe(200);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("replies with the enabled keyword list", async () => {
+    const body = JSON.stringify({
+      events: [{
+        type: "message",
+        replyToken: "reply-token",
+        source: { type: "group", groupId: "group-1" },
+        message: { type: "text", text: "合言葉" },
+      }],
+    });
+    const response = await POST(new Request("http://test/api/system/line/webhook", {
+      method: "POST",
+      headers: { "x-line-signature": signature(body) },
+      body,
+    }));
+    expect(response.status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledWith("https://api.line.me/v2/bot/message/reply", expect.objectContaining({
+      body: expect.stringContaining("NHK集計"),
+    }));
   });
 
   it("does not reply to unrelated text", async () => {

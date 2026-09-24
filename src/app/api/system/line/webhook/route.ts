@@ -2,8 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { parseLineSummaryKeyword, addDays, monthOf, todayJst } from "./_lib/line-keyword";
-import { buildNhkVisitLineDailySummary, buildNhkVisitLineMonthSummary } from "@/app/system/forms/nhk-visit/_lib/nhk-visit-summary";
-import { loadNhkVisitRows, monthStart, summaryLoadStart } from "@/app/system/forms/nhk-visit/_lib/nhk-visit-summary.server";
+import { findLineSummaryDefinition } from "./_lib/summary-registry";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -25,6 +24,11 @@ type LineWebhookEvent = {
 
 type LineWebhookBody = {
   events?: LineWebhookEvent[];
+};
+
+type LineTargetRow = {
+  summary_keywords?: string[] | null;
+  label?: string | null;
 };
 
 function sourceTarget(source?: LineSource) {
@@ -68,11 +72,12 @@ async function handleJoin(event: LineWebhookEvent) {
     line_target_id: target.id,
     target_type: target.type,
     purpose: "nhk_visit",
+    summary_keywords: ["NHK"],
     active: true,
     joined_at: new Date().toISOString(),
     left_at: null,
   }, { onConflict: "line_target_id" });
-  await replyLine(event.replyToken, "この部屋で「集計」と送ると、その日の NHK 訪問の集計をお返しします。");
+  await replyLine(event.replyToken, "この部屋で「NHK集計」と送ると、その日の NHK 訪問の集計をお返しします。「合言葉」で使える集計を確認できます。");
 }
 
 async function handleLeave(event: LineWebhookEvent) {
@@ -85,24 +90,62 @@ async function handleLeave(event: LineWebhookEvent) {
     .eq("purpose", "nhk_visit");
 }
 
-async function buildReplyForText(text: string) {
-  const keyword = parseLineSummaryKeyword(text);
+async function loadLineTarget(event: LineWebhookEvent) {
+  const target = sourceTarget(event.source);
+  if (!target) return null;
+  const { data, error } = await getSupabaseAdmin()
+    .from("system_line_target")
+    .select("summary_keywords,label")
+    .eq("line_target_id", target.id)
+    .eq("active", true)
+    .maybeSingle<LineTargetRow>();
+  if (error) throw error;
+  return data;
+}
+
+function targetSummaryKeywords(target: LineTargetRow) {
+  return (target.summary_keywords ?? []).filter((keyword): keyword is string => Boolean(keyword));
+}
+
+function buildKeywordListReply(summaryKeywords: readonly string[]) {
+  const available = summaryKeywords
+    .map((keyword) => findLineSummaryDefinition(keyword))
+    .filter((summary): summary is NonNullable<typeof summary> => Boolean(summary));
+  if (available.length === 0) return null;
+  return [
+    "この部屋で使える合言葉",
+    ...available.flatMap((summary) => [
+      `${summary.keyword}集計　　今日の集計`,
+      `${summary.keyword}集計 昨日　　昨日の集計`,
+      `${summary.keyword}集計 20260924　　その日の集計`,
+      `${summary.keyword}今月　　今月の累計`,
+    ]),
+  ].join("\n");
+}
+
+async function buildReplyForText(text: string, target: LineTargetRow) {
+  const summaryKeywords = targetSummaryKeywords(target);
+  const keyword = parseLineSummaryKeyword(text, summaryKeywords);
   if (!keyword) return null;
+  if (keyword.kind === "list") return buildKeywordListReply(summaryKeywords);
+
+  const summary = findLineSummaryDefinition(keyword.summaryKeyword);
+  if (!summary) return null;
   const today = todayJst();
   if (keyword.kind === "month") {
     const month = monthOf(today);
-    const rows = await loadNhkVisitRows(monthStart(month), today);
-    return buildNhkVisitLineMonthSummary(rows, month);
+    return summary.buildMonth(month);
   }
 
   const date = keyword.kind === "date" ? keyword.date : addDays(today, keyword.dateOffset);
-  const rows = await loadNhkVisitRows(summaryLoadStart(date), date);
-  return buildNhkVisitLineDailySummary(rows, date);
+  return summary.buildDay(date);
 }
 
 async function handleMessage(event: LineWebhookEvent) {
   if (event.message?.type !== "text" || !event.message.text || !event.replyToken) return;
-  const reply = await buildReplyForText(event.message.text);
+  const target = await loadLineTarget(event);
+  if (!target) return;
+  const reply = await buildReplyForText(event.message.text, target);
   if (reply) await replyLine(event.replyToken, reply);
 }
 
