@@ -69,6 +69,15 @@ async function handler(request: Request) {
   }
 
   const rows = await loadNhkVisitRows(summaryLoadStart(reportDate), reportDate);
+
+  // その日の報告が 0 件なら送らない（東海林さん 2026-09-24）。
+  // 記録は succeeded=false で残す＝あとから報告が入って手で流したときは送れる
+  const reportedToday = rows.filter((row) => String(row.visit_date).slice(0, 10) === reportDate).length;
+  if (reportedToday === 0) {
+    await insertLog(reportDate, destination, "", false, "no_reports").catch(() => undefined);
+    return NextResponse.json({ ok: true, skipped: true, reason: "no_reports" });
+  }
+
   const body = buildNhkVisitChatworkSummary(rows, reportDate);
 
   try {
