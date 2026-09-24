@@ -34,7 +34,7 @@ export const SYSTEM_DELIVERIES: SystemDeliveryDefinition[] = [
     name: "NHK訪問 集計配信",
     description: "その日の NHK 訪問業務の集計（人別・合計・月累計・見立て）を責任者の Chatwork へ送ります。",
     schedule: "毎日 20:30",
-    recipient: "（テスト中）開発ルーム",
+    recipient: "【NHK派遣】上田×東海林×桐井×金",
     status: "active",
     statusLabel: "稼働中",
     minRole: "staff",
