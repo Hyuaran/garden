@@ -27,7 +27,7 @@ describe("ManualsHubClient", () => {
 
     expect(screen.getByTestId("manuals-grid-view")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "System" })).toBeInTheDocument();
-    expect(screen.getByText("マニュアル 13 件")).toBeInTheDocument();
+    expect(screen.getByText("マニュアル 14 件")).toBeInTheDocument();
     expect(localStorage.getItem("garden.manuals.viewMode")).toBe("grid");
   });
 });

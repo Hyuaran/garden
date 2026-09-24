@@ -60,7 +60,6 @@ async function copyText(text: string) {
 
 export default function NhkVisitClient({ submitterName, employeeNumber }: { submitterName: string; employeeNumber: string }) {
   const today = useMemo(() => todayJst(), []);
-  const [guideOpen, setGuideOpen] = useState(false);
   const [visitDate, setVisitDate] = useState(today);
   const [startTime, setStartTime] = useState("09:30");
   const [endTime, setEndTime] = useState("18:00");
@@ -131,19 +130,10 @@ export default function NhkVisitClient({ submitterName, employeeNumber }: { subm
       <p className={styles.lead}>業務が終わったら、この画面に入力して送信してください。</p>
     </header>
 
+    {/* 使い方は画面の中に書かず、画像つきの使い方ガイド（マニュアル①）へ送る（東海林さん 2026-09-24） */}
     <section className={styles.guide}>
-      <button type="button" aria-expanded={guideOpen} onClick={() => setGuideOpen((open) => !open)}>
-        <span>{guideOpen ? "▲" : "▼"}</span> 使い方
-      </button>
-      {guideOpen && <div className={styles.guideBody}>
-        <p>① 日付　開くと今日の日付が入ります。違う日を報告するときだけ変えてください。</p>
-        <p>② 時間　標準の時間が入っています。違うときだけ変えてください。</p>
-        <p>③ 派遣先　一覧から選びます。必ず選んでください。</p>
-        <p>④ 業務　「対面アプローチ」で固定です。</p>
-        <p>⑤ 成約件数　＋／－で数えます。無ければ 0 のままで OK。</p>
-        <p>⑥ 交通費　「あり」「なし」を選びます。</p>
-        <p>⑦ 送信　［報告内容を送信する］を押すと記録されます。送信すると Garden と Kintone に記録されます。LINE に貼る文面は［コピー］で取れます。</p>
-      </div>}
+      <a href="/system/manuals/system/nhk-visit?tab=operation">使い方ガイドを見る</a>
+      <p>①〜⑦の入力のしかたを、画面の写真つきで説明しています。</p>
     </section>
 
     <p className={styles.sender}>送信者　{submitterName}（{employeeNumber}）</p>

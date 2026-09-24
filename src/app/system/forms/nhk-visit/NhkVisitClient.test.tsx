@@ -10,15 +10,14 @@ describe("NhkVisitClient", () => {
     });
   });
 
-  it("toggles the guide", async () => {
+  // 使い方は画面に書かず、画像つきのマニュアル①へ送る（2026-09-24）
+  it("links to the illustrated guide", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ ok: true, reports: [] }));
     render(<NhkVisitClient submitterName="東海林 美琴" employeeNumber="1234" />);
     await screen.findByText("まだありません");
 
-    expect(screen.queryByText(/送信すると Garden と Kintone に記録されます/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /使い方/ }));
-
-    expect(await screen.findByText(/送信すると Garden と Kintone に記録されます/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "使い方ガイドを見る" })).toHaveAttribute("href", "/system/manuals/system/nhk-visit?tab=operation");
+    expect(screen.queryByRole("button", { name: /使い方/ })).not.toBeInTheDocument();
   });
 
   it("updates totals with plus and minus buttons", async () => {
