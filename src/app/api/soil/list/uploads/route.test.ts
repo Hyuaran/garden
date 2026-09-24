@@ -138,6 +138,7 @@ describe("/api/soil/list/uploads", () => {
     expect(client.rpc).toHaveBeenNthCalledWith(1, "soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
     expect(client.rpc).toHaveBeenNthCalledWith(2, "soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
     expect(client.rpc).toHaveBeenNthCalledWith(3, "soil_list_apply_upload", { p_upload_id: "upload-1", p_limit: 1000 });
+    expect(client.rpc.mock.calls.some((call) => call[0] === "soil_list_refresh_options")).toBe(false);
     expect(client.updates.at(-1)?.values).toMatchObject({ status: "done", result: { assignments: 2500, parent_updated: 2500, remaining: 0, purchase_inserted: 0 } });
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
@@ -187,7 +188,8 @@ describe("/api/soil/list/uploads", () => {
     mocks.getAdmin.mockReturnValue(client);
     const response = await APPLY_POST(new Request("http://test"), { params: Promise.resolve({ id: "upload-1" }) });
     expect(response.status).toBe(200);
-    expect(client.rpc).toHaveBeenCalledTimes(3);
+    expect(client.rpc).toHaveBeenCalledTimes(2);
+    expect(client.rpc.mock.calls.some((call) => call[0] === "soil_list_refresh_options")).toBe(false);
     expect(client.updates.at(-1)?.values).toMatchObject({ status: "done", result: { assignments: 2500, remaining: 0 } });
   });
 

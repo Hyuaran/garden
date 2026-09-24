@@ -1,4 +1,4 @@
-import { queryPg } from "@/lib/db/pg";
+import { getPgPool, hasDatabaseUrl, queryPg } from "@/lib/db/pg";
 
 export type DbError = { message: string } | null;
 
@@ -123,6 +123,11 @@ export type RefreshResult = {
   refreshed_at: string | null;
   rows: number;
   elapsed_ms: number;
+};
+
+export type OptionsRefreshResult = {
+  optionsRefreshed: boolean;
+  optionsRefreshError?: string;
 };
 
 const PAGE_SIZE = 1000;
@@ -515,5 +520,28 @@ export async function refreshAnalysis(db: AnalysisDb): Promise<RefreshResult> {
   } catch (error) {
     await saveAnalysisFailure(db, error instanceof Error ? error.message : "analysis_refresh_failed").catch(() => undefined);
     throw error;
+  }
+}
+
+export async function refreshListOptions(): Promise<OptionsRefreshResult> {
+  if (!hasDatabaseUrl()) return { optionsRefreshed: false };
+
+  const client = await getPgPool().connect();
+  try {
+    await client.query("begin");
+    try {
+      await client.query("set local statement_timeout = '240s'");
+      await client.query("select public.soil_list_refresh_options()");
+      await client.query("commit");
+      return { optionsRefreshed: true };
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      return {
+        optionsRefreshed: false,
+        optionsRefreshError: error instanceof Error ? error.message : "選択肢の件数を更新できませんでした",
+      };
+    }
+  } finally {
+    client.release();
   }
 }

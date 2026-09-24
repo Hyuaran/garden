@@ -3,12 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createServerClient: vi.fn(),
   getAdmin: vi.fn(),
+  getPgPool: vi.fn(),
+  hasDatabaseUrl: vi.fn(),
   queryPg: vi.fn(),
 }));
 
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: () => mocks.createServerClient() }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => mocks.getAdmin() }));
-vi.mock("@/lib/db/pg", () => ({ queryPg: (...args: unknown[]) => mocks.queryPg(...args) }));
+vi.mock("@/lib/db/pg", () => ({
+  getPgPool: () => mocks.getPgPool(),
+  hasDatabaseUrl: () => mocks.hasDatabaseUrl(),
+  queryPg: (...args: unknown[]) => mocks.queryPg(...args),
+}));
 
 import { GET as cronGET } from "./cron/route";
 import { GET as detailGET } from "./detail/route";
@@ -176,6 +182,8 @@ describe("/api/soil/list/analysis", () => {
     clearAnalysisCache();
     mocks.createServerClient.mockReset().mockResolvedValue(serverClient());
     mocks.getAdmin.mockReset();
+    mocks.getPgPool.mockReset();
+    mocks.hasDatabaseUrl.mockReset().mockReturnValue(false);
     mocks.queryPg.mockReset();
     vi.unstubAllEnvs();
     vi.stubEnv("CRON_SECRET", "secret");
@@ -418,5 +426,58 @@ describe("/api/soil/list/analysis", () => {
     mocks.getAdmin.mockReturnValue(adminClient());
     const response = await cronGET(new Request("http://test/api/soil/list/analysis/cron", { headers: { authorization: "Bearer wrong" } }));
     expect(response.status).toBe(401);
+  });
+
+  it("cron refreshes list options after analysis with a longer local timeout", async () => {
+    const pgClient = {
+      query: vi.fn(async () => ({ rows: [] })),
+      release: vi.fn(),
+    };
+    mocks.hasDatabaseUrl.mockReturnValue(true);
+    mocks.getPgPool.mockReturnValue({ connect: vi.fn(async () => pgClient) });
+    mocks.getAdmin.mockReturnValue(adminClient());
+
+    const response = await cronGET(new Request("http://test/api/soil/list/analysis/cron", { headers: { authorization: "Bearer secret" } }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true, optionsRefreshed: true });
+    expect(pgClient.query.mock.calls.map((call) => (call as unknown[])[0])).toEqual([
+      "begin",
+      "set local statement_timeout = '240s'",
+      "select public.soil_list_refresh_options()",
+      "commit",
+    ]);
+    expect(pgClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("cron skips list option refresh without DATABASE_URL", async () => {
+    mocks.hasDatabaseUrl.mockReturnValue(false);
+    mocks.getAdmin.mockReturnValue(adminClient());
+
+    const response = await cronGET(new Request("http://test/api/soil/list/analysis/cron", { headers: { authorization: "Bearer secret" } }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true, optionsRefreshed: false });
+    expect(mocks.getPgPool).not.toHaveBeenCalled();
+  });
+
+  it("cron returns analysis result when list option refresh fails", async () => {
+    const pgClient = {
+      query: vi.fn(async (sql: string) => {
+        if (sql === "select public.soil_list_refresh_options()") throw new Error("timeout");
+        return { rows: [] };
+      }),
+      release: vi.fn(),
+    };
+    mocks.hasDatabaseUrl.mockReturnValue(true);
+    mocks.getPgPool.mockReturnValue({ connect: vi.fn(async () => pgClient) });
+    mocks.getAdmin.mockReturnValue(adminClient());
+
+    const response = await cronGET(new Request("http://test/api/soil/list/analysis/cron", { headers: { authorization: "Bearer secret" } }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true, optionsRefreshed: false, optionsRefreshError: "timeout" });
+    expect(pgClient.query).toHaveBeenCalledWith("rollback");
+    expect(pgClient.release).toHaveBeenCalledTimes(1);
   });
 });

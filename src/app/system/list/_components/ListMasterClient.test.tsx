@@ -901,6 +901,7 @@ describe("ListMasterClient filter condition conversion", () => {
 
 describe("ListMasterClient list search UX", () => {
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -1026,6 +1027,74 @@ describe("ListMasterClient list search UX", () => {
       ]);
     });
     expect(await screen.findByText(/購入履歴：あり/)).toBeInTheDocument();
+  });
+
+  it("exports with the loaded saved condition even when it contains a field outside the form", async () => {
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:soil-list") });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const savedCondition = {
+      filters: [{ field: "phoneNumber", op: "eq", value: "0247542485" }],
+    };
+    const fetchMock = installFetch({
+      conditions: [
+        {
+          id: "condition-phone",
+          name: "電話番号 1 件",
+          condition: savedCondition,
+          created_by: "東海林",
+          updated_at: "2026-09-16T00:00:00+09:00",
+        },
+      ],
+    });
+    render(<ListMasterClient />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "条件を保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "読み込む" }));
+    await waitFor(() => expect(screen.getByText(/電話番号：0247542485/)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "12,563 件を書き出す" }));
+
+    await waitFor(() => {
+      const exportCall = fetchMock.mock.calls.find(([url, init]) => url === "/api/soil/list/export" && init?.method === "POST");
+      expect(JSON.parse(String(exportCall?.[1]?.body)).condition).toEqual(savedCondition);
+    });
+  });
+
+  it("keeps exporting with the last searched condition and warns when filters changed after search", async () => {
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:soil-list") });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const savedCondition = {
+      filters: [{ field: "phoneNumber", op: "eq", value: "0247542485" }],
+    };
+    const fetchMock = installFetch({
+      conditions: [
+        {
+          id: "condition-phone",
+          name: "電話番号 1 件",
+          condition: savedCondition,
+          created_by: "東海林",
+          updated_at: "2026-09-16T00:00:00+09:00",
+        },
+      ],
+    });
+    render(<ListMasterClient />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "条件を保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "読み込む" }));
+    await screen.findByText(/電話番号：0247542485/);
+    fireEvent.click(screen.getByRole("button", { name: "条件を変える" }));
+    fireEvent.click(screen.getByRole("button", { name: /都道府県 指定なし/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "大阪府（11,165）" }));
+    fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
+
+    expect(screen.getByText("絞り込みを変えました。［検索］を押すと書き出しに反映されます")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "12,563 件を書き出す" }));
+
+    await waitFor(() => {
+      const exportCall = fetchMock.mock.calls.find(([url, init]) => url === "/api/soil/list/export" && init?.method === "POST");
+      expect(JSON.parse(String(exportCall?.[1]?.body)).condition).toEqual(savedCondition);
+    });
   });
 });
 

@@ -11,6 +11,7 @@ import {
   EMPTY_OPTION_VALUE,
   MAX_SEARCH_PAGE,
   PREFECTURE_REGIONS,
+  SOIL_LIST_COLUMNS,
   SOIL_LIST_EXPORT_COLUMNS,
   SOIL_LIST_FILTER_DEFINITIONS,
   type SoilListColumnKey,
@@ -915,6 +916,55 @@ export function describeFilters(filters: FilterState, options: Partial<SoilListO
   return parts.join("／") || "指定なし";
 }
 
+function conditionKey(condition: SoilListConditionPayload | null): string {
+  return JSON.stringify(condition ?? { filters: [] });
+}
+
+function filterKey(filter: SoilListFilter): string {
+  return JSON.stringify(filter);
+}
+
+function operatorLabel(filter: SoilListFilter): string {
+  if (filter.op === "eq") return "＝";
+  if (filter.op === "in" || filter.op === "inOrEmpty") return "のいずれか";
+  if (filter.op === "contains") return "を含む";
+  if (filter.op === "gte") return "以上";
+  if (filter.op === "lte") return "以下";
+  if (filter.op === "empty") return "（空欄）";
+  if (filter.op === "notEmpty") return "（空欄以外）";
+  return filter.op;
+}
+
+function formatFilterValue(filter: SoilListFilter, options: Partial<SoilListOptionsPayload>): string {
+  if (filter.op === "empty" || filter.op === "notEmpty") return "";
+  if (Array.isArray(filter.value)) return filter.value.map(String).join("・");
+  if (typeof filter.value === "boolean") return filter.value ? "あり" : "なし";
+  if (filter.field === "appointmentBlocked" && filter.value === "") return "なし";
+  if (isOptionFilterField(filter.field)) return optionLabel(filter.field, String(filter.value ?? ""), options);
+  return String(filter.value ?? "");
+}
+
+function describeConditionFilter(filter: SoilListFilter, options: Partial<SoilListOptionsPayload>): string {
+  const label = SOIL_LIST_COLUMNS[filter.field] ?? filter.field;
+  const op = operatorLabel(filter);
+  const value = formatFilterValue(filter, options);
+  if (filter.op === "eq") return `${label}：${value}`;
+  return value ? `${label}：${value}${op}` : `${label}：${op}`;
+}
+
+export function describeCondition(
+  condition: SoilListConditionPayload,
+  formFilters: FilterState,
+  options: Partial<SoilListOptionsPayload> = {},
+): string {
+  const baseSummary = describeFilters(formFilters, options);
+  const formFilterKeys = new Set(filtersToCondition(formFilters).filters.map(filterKey));
+  const extraParts = (condition.filters ?? [])
+    .filter((filter) => !formFilterKeys.has(filterKey(filter)))
+    .map((filter) => describeConditionFilter(filter, options));
+  return [baseSummary === "指定なし" ? "" : baseSummary, ...extraParts].filter(Boolean).join("／") || "指定なし";
+}
+
 function SaveConditionModal({
   open,
   conditionName,
@@ -1126,6 +1176,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [approximate, setApproximate] = useState(false);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [rows, setRows] = useState<SearchRow[]>([]);
+  const [searchedCondition, setSearchedCondition] = useState<SoilListConditionPayload | null>(null);
+  const [searchedFormCondition, setSearchedFormCondition] = useState<SoilListConditionPayload | null>(null);
   const [savedConditions, setSavedConditions] = useState<SavedCondition[]>([]);
   const [exports, setExports] = useState<ExportHistory[]>([]);
   const [options, setOptions] = useState<Partial<SoilListOptionsPayload>>({});
@@ -1220,6 +1272,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const fileInputRef = useRef<HTMLInputElement>(null);
   const condition = useMemo(() => filtersToCondition(filters), [filters]);
   const currentFilterSummary = useMemo(() => describeFilters(filters, options), [filters, options]);
+  const searchedFilterSummary = useMemo(
+    () => describeCondition(searchedCondition ?? condition, filters, options),
+    [condition, filters, options, searchedCondition],
+  );
+  const filtersChangedAfterSearch = searchedFormCondition !== null && conditionKey(condition) !== conditionKey(searchedFormCondition);
   // ページ送りは 500 ページ（50,000 件）まで。深いページは遅い（本番実測：190 万件目で 89 秒）ので、それより先は条件で絞ってもらう
   const rawTotalPages = count === null ? 1 : Math.max(1, Math.ceil(count / SEARCH_PAGE_SIZE));
   const totalPages = Math.min(rawTotalPages, MAX_SEARCH_PAGE);
@@ -1390,12 +1447,14 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   async function runListSearch({
     nextPage = 1,
     nextSort = listSort,
-    nextCondition = condition,
+    nextCondition = searchedCondition ?? condition,
+    nextFormCondition = condition,
     refreshCount = true,
   }: {
     nextPage?: number;
     nextSort?: ListSearchSort | null;
     nextCondition?: SoilListConditionPayload;
+    nextFormCondition?: SoilListConditionPayload;
     refreshCount?: boolean;
   } = {}) {
     setBusy(true);
@@ -1423,6 +1482,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       setRows(searchData.rows);
       setListPage(searchData.page);
       setListSort(searchData.sort);
+      setSearchedCondition(nextCondition);
+      setSearchedFormCondition(nextFormCondition);
       setFiltersCollapsed(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "取得できませんでした");
@@ -1433,7 +1494,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }
 
   async function handleCountAndSearch() {
-    await runListSearch({ nextPage: 1, refreshCount: true });
+    await runListSearch({ nextPage: 1, nextCondition: condition, nextFormCondition: condition, refreshCount: true });
   }
 
   function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1478,10 +1539,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
 
   async function handleLoadCondition(item: SavedCondition) {
     const nextFilters = conditionToFilters(item.condition);
+    const nextFormCondition = filtersToCondition(nextFilters);
     setFilters(nextFilters);
     setConditionModalOpen(false);
     setConditionModalMessage("");
-    await runListSearch({ nextPage: 1, nextCondition: item.condition, refreshCount: true });
+    await runListSearch({ nextPage: 1, nextCondition: item.condition, nextFormCondition, refreshCount: true });
   }
 
   async function handlePageChange(nextPage: number) {
@@ -1666,7 +1728,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }
 
   async function executeExport(fmInput?: { listName: string; listLoadedOn: string; recordAssignment: boolean }) {
-    if (count === null) return;
+    if (count === null || !searchedCondition) return;
     setExportConfirm(null);
     setFmExportOpen(false);
     const label = exportFormatLabel(exportFormat);
@@ -1674,13 +1736,13 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setExportBusy({ count, format: label });
     setMessage("");
     try {
-      const result = await downloadExport({ condition, columns: selectedColumns, sortKey, format: exportFormat, ...fmInput });
+      const result = await downloadExport({ condition: searchedCondition, columns: selectedColumns, sortKey, format: exportFormat, ...fmInput });
       await loadSaved();
       if (exportFormat === "fm_import") {
         const assignmentText = fmInput?.recordAssignment
           ? `／投入履歴に記録：新規 ${result.assignmentNew.toLocaleString("ja-JP")}・更新 ${result.assignmentUpdated.toLocaleString("ja-JP")}（${fmInput.listName}）`
           : "／投入履歴に記録：なし";
-        setMessage(`書き出しました：${count.toLocaleString("ja-JP")} 件${assignmentText}${result.excludedInternalBlock > 0 ? `（自社アポ禁 ${result.excludedInternalBlock.toLocaleString("ja-JP")} 件を除きました）` : ""}`);
+        setMessage(`書き出しました：${count.toLocaleString("ja-JP")} 件${assignmentText}${result.excludedInternalBlock > 0 ? `（自社アポ禁 ${result.excludedInternalBlock.toLocaleString("ja-JP")} 件を除きました）` : ""}。選択肢の件数は翌朝 6:45 に更新されます`);
       } else {
         setMessage(`${count.toLocaleString("ja-JP")} 件を ${label} で書き出しました${result.excludedInternalBlock > 0 ? `（自社アポ禁 ${result.excludedInternalBlock.toLocaleString("ja-JP")} 件を除きました）` : ""}`);
       }
@@ -1693,7 +1755,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   }
 
   async function handleExport() {
-    if (count === null) {
+    if (count === null || !searchedCondition) {
       setMessage("先に検索してください");
       return;
     }
@@ -2515,7 +2577,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               {count.toLocaleString("ja-JP")} 件
               {elapsedMs !== null ? `（${(elapsedMs / 1000).toFixed(1)} 秒）` : ""}
             </strong>
-            <span>{currentFilterSummary}</span>
+            <span>{searchedFilterSummary}</span>
             <button type="button" className={styles.secondaryButton} onClick={() => setFiltersCollapsed(false)}>
               条件を変える
             </button>
@@ -2707,6 +2769,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         {/* 並びはリスト投入日が古い順で固定（東海林さん 2026-09-13：書き出しで並びは選ばない）。上限の注意は Excel を選んで超えているときだけ赤字 */}
         {excelOverLimit && (
           <p className={styles.errorLine}>Excel は 1,048,576 行までです（Excel の上限）。この件数は超えているので、CSV か .mer を選んでください</p>
+        )}
+        {filtersChangedAfterSearch && (
+          <p className={styles.muted}>絞り込みを変えました。［検索］を押すと書き出しに反映されます</p>
         )}
         <div className={styles.listStack}>
           {exports.map((item) => (
@@ -2937,6 +3002,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <p>{parentResultLine(uploadResult)}</p>
               <p>{purchaseResultLine(uploadResult)}</p>
               <p>{derivedResultLine(uploadResult)}</p>
+              <p>選択肢の件数は翌朝 6:45 に更新されます</p>
               <p>読めなかった行：{uploadResult.skipped.toLocaleString("ja-JP")} 行</p>
               {uploadResult.remaining > 0 && <p>残り：{uploadResult.remaining.toLocaleString("ja-JP")} 行</p>}
             </section>
@@ -3175,6 +3241,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <button type="button" className={styles.secondaryButton} onClick={() => internalBlockFileRef.current?.click()} disabled={internalBlockBusy}>
                 CSV／Excel を選ぶ
               </button>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- API route downloads a file, not an app page navigation. */}
               <a className={styles.secondaryButton} href="/api/soil/list/internal-block/template">
                 テンプレートをダウンロード
               </a>

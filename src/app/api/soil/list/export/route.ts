@@ -432,9 +432,7 @@ async function recordExportAssignment(input: {
   if (uploadError || !upload) throw new Error(uploadError?.message ?? "投入履歴の記録を作れませんでした");
 
   await upsertExportAssignments({ ...input, db, uploadId: upload.id });
-  let result = await applyUploadInBatches(db, upload.id, emptyUploadResult({ remaining: input.rowCount }));
-  const refreshed = await db.rpc("soil_list_refresh_options");
-  if (refreshed.error) result = { ...result, warning: "選択肢の件数を更新できませんでした" };
+  const result = await applyUploadInBatches(db, upload.id, emptyUploadResult({ remaining: input.rowCount }));
   const { error: updateError } = await db.from(SOIL_LIST_TABLES.upload).update({ status: "done", result }).eq("id", upload.id);
   if (updateError) throw new Error(updateError.message);
   return result;

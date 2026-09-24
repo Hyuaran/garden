@@ -94,11 +94,6 @@ async function upsertInChunks(db: UploadDb, rows: ParsedUploadRow[], uploadId: s
   }
 }
 
-async function refreshOptions(db: UploadDb, result: UploadResult): Promise<UploadResult> {
-  const { error } = await db.rpc("soil_list_refresh_options");
-  return error ? { ...result, warning: "選択肢の件数を更新できませんでした" } : result;
-}
-
 async function saveUploadResult(db: UploadDb, uploadId: string, status: "done" | "failed", result: UploadResult) {
   const { error } = await db.from(SOIL_LIST_TABLES.upload).update({ status, result }).eq("id", uploadId);
   if (error) throw new Error(error.message);
@@ -171,11 +166,11 @@ export async function POST(request: Request) {
     duplicateRows = prepared.duplicateRows;
     await upsertInChunks(db, prepared.rows, uploadId);
     const applyResult = await applyUploadInBatches(db, uploadId, emptyUploadResult({ remaining: prepared.rows.length }));
-    const result = await refreshOptions(db, emptyUploadResult({
+    const result = emptyUploadResult({
       ...applyResult,
       skipped: applyResult.skipped + emptyPhoneRows,
       duplicate_rows: duplicateRows,
-    }));
+    });
     await saveUploadResult(db, uploadId, "done", result);
 
     return NextResponse.json({ ok: true, uploadId, result, preview: { ...parsed, rows: undefined } });

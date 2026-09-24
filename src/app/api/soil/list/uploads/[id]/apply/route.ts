@@ -32,11 +32,6 @@ function completedResult(row: UploadRecord): UploadResult {
   return emptyUploadResult({ ...(row.result ?? {}), remaining: 0 });
 }
 
-async function refreshOptions(db: ApplyDb, result: UploadResult): Promise<UploadResult> {
-  const { error } = await db.rpc("soil_list_refresh_options");
-  return error ? { ...result, warning: "選択肢の件数を更新できませんでした" } : result;
-}
-
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSoilListUser();
   if (!auth.ok) return auth.response;
@@ -56,7 +51,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   const initial = emptyUploadResult(upload.result ?? {});
   try {
-    const result = await refreshOptions(db, completedResult({ ...upload, result: await applyUploadInBatches(db, id, initial) }));
+    const result = completedResult({ ...upload, result: await applyUploadInBatches(db, id, initial) });
     await db.from(SOIL_LIST_TABLES.upload).update({ status: "done", result }).eq("id", id);
     return NextResponse.json({ ok: true, result });
   } catch (applyError) {
