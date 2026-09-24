@@ -3,7 +3,7 @@ import { getVisibleSystemForms, SYSTEM_FORMS } from "./forms-registry";
 
 describe("forms registry", () => {
   it("defines system forms in the registry", () => {
-    expect(SYSTEM_FORMS).toHaveLength(2);
+    expect(SYSTEM_FORMS).toHaveLength(3);
     expect(SYSTEM_FORMS[0]).toMatchObject({
       slug: "payroll-notice",
       name: "給与計算連絡",
@@ -16,11 +16,17 @@ describe("forms registry", () => {
       minRole: "staff",
       href: "/system/forms/shukkin",
     });
+    expect(SYSTEM_FORMS[2]).toMatchObject({
+      slug: "nhk-visit",
+      name: "NHK訪問業務 報告",
+      minRole: "staff",
+      href: "/system/forms/nhk-visit",
+    });
   });
 
   it("filters forms by role", () => {
     expect(getVisibleSystemForms("cs")).toEqual([]);
-    expect(getVisibleSystemForms("staff").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフト連絡"]);
-    expect(getVisibleSystemForms("manager").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフト連絡"]);
+    expect(getVisibleSystemForms("staff").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフト連絡", "NHK訪問業務 報告"]);
+    expect(getVisibleSystemForms("manager").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフト連絡", "NHK訪問業務 報告"]);
   });
 });

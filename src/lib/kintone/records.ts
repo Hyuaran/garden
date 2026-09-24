@@ -68,6 +68,29 @@ export async function getAllRecords<T extends KintoneRecord = KintoneRecord>(
   return records;
 }
 
+export async function createRecord(
+  app: string | number,
+  token: string,
+  record: KintoneRecord,
+): Promise<{ id: string; revision?: string }> {
+  if (!token) throw new Error("kintone_token_missing");
+  const response = await fetch(kintoneApiUrl("record.json"), {
+    method: "POST",
+    headers: {
+      "X-Cybozu-API-Token": token,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ app: String(app), record }),
+    cache: "no-store",
+  });
+  if (!response.ok) throw asKintoneError(response);
+  const body = await response.json() as { id?: unknown; revision?: unknown };
+  return {
+    id: String(body.id ?? ""),
+    revision: body.revision == null ? undefined : String(body.revision),
+  };
+}
+
 export type KintoneFormField = {
   code: string;
   label: string;

@@ -18,8 +18,10 @@ describe("FormsHubClient", () => {
     expect(screen.getByTestId("forms-list-view")).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "給与計算連絡" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "出勤表・シフト連絡" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "NHK訪問業務 報告" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "開く" })[0]).toHaveAttribute("href", "/system/forms/payroll-notice");
     expect(screen.getAllByRole("link", { name: "開く" })[1]).toHaveAttribute("href", "/system/forms/shukkin");
+    expect(screen.getAllByRole("link", { name: "開く" })[2]).toHaveAttribute("href", "/system/forms/nhk-visit");
     expect(screen.getByRole("button", { name: "リスト表示にする" })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -31,7 +33,8 @@ describe("FormsHubClient", () => {
     expect(screen.getByTestId("forms-grid-view")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "給与計算連絡" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "出勤表・シフト連絡" })).toBeInTheDocument();
-    expect(screen.getAllByText("権限：社員以上")).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "NHK訪問業務 報告" })).toBeInTheDocument();
+    expect(screen.getAllByText("権限：社員以上")).toHaveLength(3);
     expect(localStorage.getItem("garden.forms.viewMode")).toBe("grid");
   });
 

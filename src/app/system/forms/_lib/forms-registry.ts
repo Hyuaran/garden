@@ -30,6 +30,15 @@ export const SYSTEM_FORMS: SystemFormDefinition[] = [
     icon: "shift",
     href: "/system/forms/shukkin",
   },
+  {
+    slug: "nhk-visit",
+    name: "NHK訪問業務 報告",
+    description: "NHK 訪問業務の当日の報告を送ります。Garden に記録し、Kintone にも同じ内容が入ります。",
+    roleLabel: "社員以上",
+    minRole: "staff",
+    icon: "document",
+    href: "/system/forms/nhk-visit",
+  },
 ];
 
 export function getVisibleSystemForms(role: GardenRole) {
