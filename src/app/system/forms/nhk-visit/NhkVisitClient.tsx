@@ -131,10 +131,9 @@ export default function NhkVisitClient({ submitterName, employeeNumber }: { subm
     </header>
 
     {/* 使い方は画面の中に書かず、画像つきの使い方ガイド（マニュアル①）へ送る（東海林さん 2026-09-24） */}
-    <section className={styles.guide}>
+    <p className={styles.guide}>
       <a href="/system/manuals/system/nhk-visit?tab=operation">使い方ガイドを見る</a>
-      <p>①〜⑦の入力のしかたを、画面の写真つきで説明しています。</p>
-    </section>
+    </p>
 
     <p className={styles.sender}>送信者　{submitterName}（{employeeNumber}）</p>
 
