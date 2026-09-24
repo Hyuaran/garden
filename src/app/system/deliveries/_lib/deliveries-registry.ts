@@ -33,7 +33,7 @@ export const SYSTEM_DELIVERIES: SystemDeliveryDefinition[] = [
     slug: "nhk-visit-summary",
     name: "NHK訪問 集計配信",
     description: "その日の NHK 訪問業務の集計（人別・合計・月累計・見立て）を責任者の Chatwork へ送ります。",
-    schedule: "毎日 20:00",
+    schedule: "毎日 20:30",
     recipient: "（テスト中）開発ルーム",
     status: "active",
     statusLabel: "稼働中",
