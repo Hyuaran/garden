@@ -34,6 +34,7 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "テレマ コール集計", description: "架電の件数や結果を日ごと・リストごとに見られます。コールセンターへの共有もここから。", icon: "chart", href: "/system/call-metrics", minRole: "staff" },
   { label: "フォーム", description: "月に一度の連絡や申請を、ここから開いて送ります。", icon: "document", href: "/system/forms", minRole: "staff" },
   { label: "契約書管理", description: "上位店との契約書を登録して保存漏れを防ぎます。パートナー配布用のひな形もここで作れます。", icon: "document", href: "/system/contracts", minRole: "manager" },
+  { label: "コーポレートサイト", description: "グループ各社の会社HPと商品ページを一覧し、サイトへ飛べます。", icon: "folder", href: "/system/sites", minRole: "staff" },
   { label: "関電トスポータル", description: "関西電力のトスアップを受け付けます。入力内容はそのままKintoneへ連携されます。", icon: "folder", href: "/p/toss" },
   { label: "自動配信", description: "決まった時刻に Chatwork へ自動で送っている連絡をまとめて見られます。", icon: "message", href: "/system/deliveries", minRole: "staff" },
   { label: "テレマ日報", description: "その日の架電の報告をまとめて提出できるようにします。", icon: "report", upcoming: true },

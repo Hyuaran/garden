@@ -1,0 +1,238 @@
+{
+  "as_of": "2026-09-24",
+  "common": {
+    "hosting": "Vercel (Pro team ヒュアラン)",
+    "dns_policy": "B方式（NSごとVercel・メール系先行登録）",
+    "form": "/api/contact → Kintone(9j11u0q829lg) → Chatwork room 438678960（コーポレートサイト問合せ）"
+  },
+  "sites": [
+    {
+      "company": "株式会社ヒュアラン",
+      "kind": "会社HP",
+      "domain": "hyuaran.com",
+      "url": "https://hyuaran.com/",
+      "status": "live",
+      "live_since": "2026-09-24",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/hyuaran",
+      "vercel_project": "hyuaran",
+      "kintone_app": 242,
+      "kintone_app_name": "ヒュアラン問い合わせ受付",
+      "source": "ヒュアラン-HP",
+      "chatwork_to": [
+        "金亜奈",
+        "東海林美琴"
+      ],
+      "mail": "M365",
+      "old_server": {
+        "plan": "RS",
+        "contract": "1713021",
+        "yen_per_year": 22932,
+        "action": "解約予定"
+      },
+      "notes": [
+        "新デザインへ刷新",
+        "スマホ幅ナビはみ出し（未判断）",
+        "ヒーロー動画16.5MB（未判断）"
+      ]
+    },
+    {
+      "company": "株式会社ヒュアラン",
+      "kind": "商品ページ",
+      "product": "SMART BREAKER",
+      "domain": "denshibreaker.com",
+      "status": "pending_migration",
+      "stack": "WordPress",
+      "mail": "お名前メール（要移行）",
+      "old_server": {
+        "plan": "RS",
+        "contract": "1877490"
+      },
+      "notes": [
+        "後回し（他デザイン担当者との兼ね合い）"
+      ]
+    },
+    {
+      "company": "株式会社たいよう",
+      "kind": "会社HP",
+      "domain": null,
+      "status": "planned_new",
+      "notes": [
+        "ドメイン要決定"
+      ]
+    },
+    {
+      "company": "株式会社たいよう",
+      "kind": "事業LP",
+      "product": "不動産アライアンス",
+      "domain": "sunsun-taiyou.com",
+      "url": "https://sunsun-taiyou.com/",
+      "status": "live",
+      "live_since": "2026-06-03",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/sunsun-taiyou",
+      "vercel_project": "sunsun-taiyou",
+      "kintone_app": 224,
+      "kintone_app_name": "たいよう問い合わせ受付",
+      "source": "TAIYOU-HP",
+      "chatwork_to": [
+        "上田基人",
+        "石原孝志朗"
+      ],
+      "mail": "M365",
+      "old_server": {
+        "plan": "RS",
+        "contract": "1447709",
+        "action": "解約済"
+      }
+    },
+    {
+      "company": "株式会社たいよう",
+      "kind": "商品LP",
+      "product": "JUST光",
+      "domain": "just-hikari.com",
+      "url": "https://just-hikari.com/",
+      "status": "live",
+      "live_since": "2026-06-03",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/just-hikari",
+      "vercel_project": "just-hikari",
+      "kintone_app": 225,
+      "kintone_app_name": "問い合わせ受付_JUST光（商品）",
+      "source": "JUST光-LP",
+      "chatwork_to": [
+        "上田基人",
+        "宮永ひかり",
+        "小泉翔",
+        "石原孝志朗"
+      ],
+      "mail": "M365",
+      "old_server": {
+        "plan": "RS",
+        "contract": "1850667",
+        "action": "解約済"
+      }
+    },
+    {
+      "company": "ストーンベース",
+      "kind": "会社HP",
+      "domain": "stone-base.jp",
+      "url": "https://stone-base.jp/",
+      "status": "live",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/stonebase",
+      "vercel_project": "stonebase",
+      "kintone_app": 223,
+      "kintone_app_name": "ストーンベース問い合わせ受付",
+      "source": "HP",
+      "chatwork_to": [
+        "東海林美琴"
+      ],
+      "mail": "未使用",
+      "notes": [
+        "Cloudflareから集約済",
+        "方式の手本"
+      ]
+    },
+    {
+      "company": "ARATA",
+      "kind": "会社HP",
+      "domain": "arata123.co.jp",
+      "status": "planned_new",
+      "mail": "M365",
+      "notes": [
+        "ドメイン決定済・サイト無し"
+      ]
+    },
+    {
+      "company": "ARATA",
+      "kind": "商品LP",
+      "product": "ARATA光",
+      "domain": "ara-ta.net",
+      "url": "https://ara-ta.net/hikari/",
+      "status": "pending_migration",
+      "stack": "static",
+      "mail": "M365",
+      "old_server": {
+        "plan": "RS",
+        "contract": "1698999"
+      },
+      "notes": [
+        "次の着手候補"
+      ]
+    },
+    {
+      "company": "株式会社壱",
+      "kind": "会社HP+商品",
+      "product": "Ichi光",
+      "domain": "ichi-one.com",
+      "status": "pending_migration_and_new",
+      "stack": "static",
+      "mail": "M365",
+      "old_server": {
+        "plan": "ベーシック",
+        "contract": "2216624"
+      }
+    },
+    {
+      "company": "株式会社almalio",
+      "kind": "商品",
+      "product": "ウチのわんにゃんNET",
+      "domain": "uchinowannyannet.com",
+      "status": "pending_migration",
+      "stack": "static",
+      "mail": "お名前メール（要移行）",
+      "old_server": {
+        "plan": "ベーシック",
+        "contract": "2224542"
+      },
+      "notes": [
+        "慎重に（almalioとの兼ね合い）",
+        "almalio.net は会社HP作らず解約済"
+      ]
+    },
+    {
+      "company": "リンクサポート",
+      "kind": "商品LP",
+      "product": "助成金制作サイト",
+      "domain": "link-support-osaka.com",
+      "status": "restored_pending_migration",
+      "stack": "WordPress",
+      "mail": "M365",
+      "old_server": {
+        "plan": "RS",
+        "contract": "1373547",
+        "onamae_id": "10291682"
+      },
+      "notes": [
+        "2026-06-03 DNS A修正で復活",
+        "助成金の維持義務の可能性＝忠実移行が前提"
+      ]
+    },
+    {
+      "company": "リンクサポート",
+      "kind": "会社HP",
+      "domain": null,
+      "status": "planned_new"
+    },
+    {
+      "company": "株式会社センターライズ",
+      "kind": "会社HP",
+      "domain": "centerise.co.jp",
+      "status": "planned_new",
+      "notes": [
+        "SES事業",
+        "お名前保有は centerrise.co.jp/centerrise.jp＝着手時に centerise.co.jp の保有状況を確認"
+      ]
+    }
+  ],
+  "excluded": [
+    "ms-support-osaka.com",
+    "kanden.biz",
+    "almalio.net",
+    "shopnt.xyz",
+    "all-partner.net",
+    "arata123.online",
+    "internet-hikari.pro（別LP案件）"
+  ]
+}
