@@ -12,7 +12,7 @@ describe("forms registry", () => {
     });
     expect(SYSTEM_FORMS[1]).toMatchObject({
       slug: "shukkin",
-      name: "出勤表・シフト連絡",
+      name: "出勤表・シフトLINE連絡テキスト生成",
       minRole: "staff",
       href: "/system/forms/shukkin",
     });
@@ -26,7 +26,7 @@ describe("forms registry", () => {
 
   it("filters forms by role", () => {
     expect(getVisibleSystemForms("cs")).toEqual([]);
-    expect(getVisibleSystemForms("staff").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフト連絡", "NHK訪問業務 報告"]);
-    expect(getVisibleSystemForms("manager").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフト連絡", "NHK訪問業務 報告"]);
+    expect(getVisibleSystemForms("staff").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフトLINE連絡テキスト生成", "NHK訪問業務 報告"]);
+    expect(getVisibleSystemForms("manager").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフトLINE連絡テキスト生成", "NHK訪問業務 報告"]);
   });
 });

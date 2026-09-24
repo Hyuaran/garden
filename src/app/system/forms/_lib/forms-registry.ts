@@ -23,7 +23,7 @@ export const SYSTEM_FORMS: SystemFormDefinition[] = [
   },
   {
     slug: "shukkin",
-    name: "出勤表・シフト連絡",
+    name: "出勤表・シフトLINE連絡テキスト生成",
     description: "KING OF TIME の日別データから、出勤表と翌日のシフト連絡の文面を作ります。",
     roleLabel: "社員以上",
     minRole: "staff",

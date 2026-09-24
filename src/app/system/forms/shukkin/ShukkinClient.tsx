@@ -190,8 +190,8 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
 
   return <div className={styles.pageShell}>
     <header className={styles.header}>
-      <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "出勤表・シフト連絡" }]} />
-      <h1>出勤表・シフト連絡</h1>
+      <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "出勤表・シフトLINE連絡テキスト生成" }]} />
+      <h1>出勤表・シフトLINE連絡テキスト生成</h1>
       <p className={styles.lead}>KING OF TIME の日別データ（出力の型「Garden管理表ポータル（日）」）を読み込むと、文面を作ります。</p>
     </header>
 
