@@ -17,8 +17,9 @@ describe("DeliveriesHubClient", () => {
     expect(screen.getByRole("heading", { name: "自動配信" })).toBeInTheDocument();
     expect(screen.getByTestId("deliveries-list-view")).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "コール数配信" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "稼働中" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "開く" })).toHaveAttribute("href", "/system/call-metrics");
+    expect(screen.getByRole("cell", { name: "NHK訪問 集計配信" })).toBeInTheDocument();
+    expect(screen.getAllByRole("cell", { name: "稼働中" })).toHaveLength(SYSTEM_DELIVERIES.length);
+    expect(screen.getAllByRole("link", { name: "開く" })[0]).toHaveAttribute("href", "/system/call-metrics");
     expect(screen.getByRole("button", { name: "一覧表示にする" })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -29,8 +30,9 @@ describe("DeliveriesHubClient", () => {
 
     expect(screen.getByTestId("deliveries-grid-view")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "コール数配信" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "NHK訪問 集計配信" })).toBeInTheDocument();
     expect(screen.getByText("HR グループ【共有】")).toBeInTheDocument();
-    expect(screen.getByText("稼働中")).toBeInTheDocument();
+    expect(screen.getAllByText("稼働中")).toHaveLength(SYSTEM_DELIVERIES.length);
     expect(localStorage.getItem("garden.deliveries.viewMode")).toBe("grid");
   });
 
