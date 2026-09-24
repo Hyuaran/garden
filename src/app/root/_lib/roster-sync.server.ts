@@ -326,8 +326,10 @@ export function mapRosterRecordToRoot(record: KintoneRecord, existing?: RootEmpl
 export function normalizeEmploymentType(value: string | null | undefined): string {
   const source = value ?? "";
   if (/役員/.test(source)) return "役員";
+  // 名簿の選択肢に「業務委託／外注」は無く、外注の人は「パートナー」で登録する（藤木さん 2026-06-01 再加入・東海林さん 2026-09-24）。
+  // 「パートナー」は「パート」を含むので、アルバイト判定より先に見る
+  if (/外注|業務委託|パートナー|outsource/i.test(source)) return "outsource";
   if (/アルバイト|パート/.test(source)) return "アルバイト";
-  if (/外注|業務委託|outsource/i.test(source)) return "outsource";
   return "正社員";
 }
 
