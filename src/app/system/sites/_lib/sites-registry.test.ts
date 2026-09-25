@@ -29,6 +29,6 @@ describe("sites registry", () => {
   });
 
   it("counts sites by status bucket", () => {
-    expect(countByStatus(CORPORATE_SITES_DATA)).toEqual({ live: 4, pending: 4, planned: 5 });
+    expect(countByStatus(CORPORATE_SITES_DATA)).toEqual({ live: 10, pending: 3, planned: 0 });
   });
 });

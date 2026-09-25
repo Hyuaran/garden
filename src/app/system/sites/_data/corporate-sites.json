@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-09-24",
+  "as_of": "2026-09-25",
   "common": {
     "hosting": "Vercel (Pro team ヒュアラン)",
     "dns_policy": "B方式（NSごとVercel・メール系先行登録）",
@@ -55,21 +55,47 @@
     {
       "company": "株式会社センターライズ",
       "kind": "会社HP",
-      "domain": "centerise.co.jp",
-      "status": "planned_new",
+      "domain": "centerrise.co.jp",
+      "url": "https://centerrise.co.jp/",
+      "status": "live",
+      "live_since": "2026-09-25",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/centerise",
+      "vercel_project": "centerise",
+      "kintone_app": 244,
+      "kintone_app_name": "センターライズ問い合わせ受付",
+      "source": "センターライズ-HP",
+      "chatwork_to": [
+        "上田基人",
+        "石原孝志朗"
+      ],
+      "mail": "M365",
       "notes": [
         "SES事業",
-        "お名前保有は centerrise.co.jp/centerrise.jp＝着手時に centerise.co.jp の保有状況を確認"
+        "ChatGPTデザイン（ダークグレー×ミント）",
+        "centerise.co.jp は未登録（.co.jp 1社1ドメイン）のため centerrise.co.jp"
       ]
     },
     {
       "company": "株式会社ARATA",
       "kind": "会社HP",
       "domain": "arata123.co.jp",
-      "status": "planned_new",
+      "url": "https://arata123.co.jp/",
+      "status": "live",
+      "live_since": "2026-09-25",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/arata",
+      "vercel_project": "arata",
+      "kintone_app": 243,
+      "kintone_app_name": "ARATA問い合わせ受付",
+      "source": "ARATA-HP",
+      "chatwork_to": [
+        "上田基人",
+        "石原孝志朗"
+      ],
       "mail": "M365",
       "notes": [
-        "ドメイン決定済・サイト無し"
+        "ChatGPTデザイン（白×ネイビー）・2026-09-25 開通"
       ]
     },
     {
@@ -94,33 +120,74 @@
       "kind": "商品LP",
       "product": "助成金制作サイト",
       "domain": "link-support-osaka.com",
-      "status": "restored_pending_migration",
-      "stack": "WordPress",
+      "url": "https://link-support-osaka.com/",
+      "status": "live",
+      "live_since": "2026-09-25",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/link-support",
+      "vercel_project": "link-support",
+      "kintone_app": 245,
+      "kintone_app_name": "リンクサポート問い合わせ受付",
+      "source": "リンクサポート-LP",
+      "chatwork_to": [
+        "上田基人",
+        "石原孝志朗"
+      ],
       "mail": "M365",
       "old_server": {
         "plan": "RS",
         "contract": "1373547",
-        "onamae_id": "10291682"
+        "onamae_id": "10291682",
+        "action": "36ヶ月前払い満了時に整理"
       },
       "notes": [
-        "2026-06-03 DNS A修正で復活",
-        "助成金の維持義務の可能性＝忠実移行が前提"
+        "WordPress を静的化して忠実移行（助成金要件）",
+        "会社HPは /company/"
       ]
     },
     {
       "company": "株式会社リンクサポート",
       "kind": "会社HP",
-      "domain": null,
-      "status": "planned_new"
+      "domain": "link-support-osaka.com",
+      "url": "https://link-support-osaka.com/company/",
+      "status": "live",
+      "live_since": "2026-09-25",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/link-support",
+      "vercel_project": "link-support",
+      "kintone_app": 245,
+      "kintone_app_name": "リンクサポート問い合わせ受付",
+      "source": "リンクサポート-HP",
+      "chatwork_to": [
+        "上田基人",
+        "石原孝志朗"
+      ],
+      "mail": "M365",
+      "notes": [
+        "ChatGPTデザイン（白×ロイヤルブルー）・LP と同一プロジェクトの /company/"
+      ]
     },
     {
       "company": "株式会社たいよう",
       "kind": "会社HP",
-      "domain": null,
-      "status": "planned_new",
+      "domain": "sunsun-taiyou.com",
+      "status": "live",
       "notes": [
-        "ドメイン要決定"
-      ]
+        "事業LP と同一プロジェクトの /company/（app224 共用・依頼文 2026-09-25）"
+      ],
+      "url": "https://sunsun-taiyou.com/company/",
+      "live_since": "2026-09-25",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/sunsun-taiyou",
+      "vercel_project": "sunsun-taiyou",
+      "kintone_app": 224,
+      "kintone_app_name": "たいよう問い合わせ受付",
+      "source": "たいよう会社HP",
+      "chatwork_to": [
+        "上田基人",
+        "石原孝志朗"
+      ],
+      "mail": "M365"
     },
     {
       "company": "株式会社たいよう",
@@ -179,13 +246,30 @@
       "kind": "会社HP+商品",
       "product": "Ichi光",
       "domain": "ichi-one.com",
-      "status": "pending_migration_and_new",
-      "stack": "static",
+      "url": "https://ichi-one.com/company",
+      "status": "live",
+      "live_since": "2026-09-25",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/ichi",
+      "vercel_project": "ichi",
+      "kintone_app": 246,
+      "kintone_app_name": "壱問い合わせ受付（Ichi光は app247 申込／app248 問い合わせ）",
+      "source": "壱-HP",
+      "chatwork_to": [
+        "上田基人",
+        "石原孝志朗"
+      ],
       "mail": "M365",
       "old_server": {
         "plan": "ベーシック",
-        "contract": "2216624"
-      }
+        "contract": "2216624",
+        "action": "解約可（過去申込データの要否確認後）"
+      },
+      "notes": [
+        "Ichi光は URL 不変で Vercel 化（https://ichi-one.com/ 他5ページ）",
+        "ChatGPTデザイン（和モダン）"
+      ],
+      "highlight": "Ichi光は URL 不変で Vercel 化（https://ichi-one.com/ 他 5 ページ）"
     },
     {
       "company": "株式会社ストーンベース",

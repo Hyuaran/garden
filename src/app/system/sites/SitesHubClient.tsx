@@ -48,6 +48,17 @@ function siteTitle(site: CorporateSite) {
   return [site.kind, site.product].filter(Boolean).join(" ");
 }
 
+function kindChip(site: CorporateSite): { label: string; company: boolean } {
+  if (site.kind === "会社HP") return { label: "会社HP", company: true };
+  if (site.kind === "会社HP+商品") return { label: "会社HP＋商品", company: true };
+  return { label: "商品ページ", company: false };
+}
+
+function KindChip({ site }: { site: CorporateSite }) {
+  const chip = kindChip(site);
+  return <span className={`${styles.kindChip} ${chip.company ? styles.kindHp : styles.kindProduct}`}>{chip.label}</span>;
+}
+
 function domainLabel(site: CorporateSite) {
   return site.domain ?? "ドメイン未定";
 }
@@ -110,12 +121,14 @@ function SiteCard({ site }: { site: CorporateSite }) {
     <div className={styles.cardHeading}>
       <span className={styles.iconPlate}><MenuIcon icon="folder" /></span>
       <h2>{siteTitle(site)}</h2>
+      <KindChip site={site} />
     </div>
     <p className={styles.cardDescription}>
       <span>{domainLabel(site)}</span>
       {contactLabel(site) ? <span>{contactLabel(site)}</span> : null}
       {toLabel(site) ? <span>{toLabel(site)}</span> : null}
     </p>
+    {site.highlight ? <p className={styles.highlight}>{site.highlight}</p> : null}
     <details className={styles.wiring}>
       <summary>配線・契約の詳細</summary>
       <dl>
@@ -145,7 +158,7 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
       <tbody>
         {rows.map((site) => <tr key={`${site.company}-${site.kind}-${site.product ?? site.domain ?? "domain"}`}>
           <td>{site.company}</td>
-          <td>{siteTitle(site)}</td>
+          <td><KindChip site={site} /> {siteTitle(site)}</td>
           <td>{domainLabel(site)}</td>
           <td><StatusBadge site={site} /></td>
           <td>{[kintoneLabel(site), toLabel(site)].filter(Boolean).join("・")}</td>

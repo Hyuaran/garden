@@ -33,6 +33,7 @@ export type CorporateSite = {
   mail?: string;
   old_server?: CorporateSiteOldServer;
   notes?: string[];
+  highlight?: string;
 };
 
 export type CorporateSitesData = {
