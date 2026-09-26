@@ -77,7 +77,7 @@ describe("garden-company.js", () => {
   it("prepends news before existing items in prepend mode, formats year-month and fires an event", async () => {
     document.body.innerHTML = `
       <div data-garden-news data-garden-news-limit="2" data-garden-news-mode="prepend">
-        <template><div class="card"><span class="ym">{{published_on_ym}}</span><b>{{title}}</b></div></template>
+        <template><div class="card"><span class="ym">{{published_on_ym}}</span><b>{{title}}</b><i>{{published_on_dot}}</i></div></template>
         <div class="card old">既存 1</div>
         <div class="card old">既存 2</div>
       </div>
@@ -93,7 +93,7 @@ describe("garden-company.js", () => {
     await window.GardenCompany.refresh();
 
     const cards = Array.from(document.querySelectorAll("[data-garden-news] .card")).map((el) => el.textContent);
-    expect(cards).toEqual(["2026.09新 1", "2026.09新 2", "既存 1", "既存 2"]);
+    expect(cards).toEqual(["2026.09新 12026.09.26", "2026.09新 22026.09.01", "既存 1", "既存 2"]);
     expect(handler).toHaveBeenCalledTimes(1);
     expect((handler.mock.calls[0][0] as CustomEvent).detail).toEqual({ count: 2 });
 

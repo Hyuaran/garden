@@ -82,6 +82,7 @@
     if (token === "published_on") return item.published_on || "";
     if (token === "published_on_ja") return formatDateJa(item.published_on || "");
     if (token === "published_on_ym") return formatDateYm(item.published_on || "");
+    if (token === "published_on_dot") return formatDateDot(item.published_on || "");
     return item[token] || "";
   }
 
@@ -96,7 +97,7 @@
       var value = textNode.nodeValue || "";
       if (value.indexOf("{{") === -1) return;
       var fragment = document.createDocumentFragment();
-      value.split(/(\{\{published_on\}\}|\{\{published_on_ja\}\}|\{\{published_on_ym\}\}|\{\{title\}\}|\{\{body\}\})/g).forEach(function (part) {
+      value.split(/(\{\{published_on\}\}|\{\{published_on_ja\}\}|\{\{published_on_ym\}\}|\{\{published_on_dot\}\}|\{\{title\}\}|\{\{body\}\})/g).forEach(function (part) {
         var token = /^\{\{(.+)\}\}$/.exec(part);
         if (!token) {
           fragment.appendChild(document.createTextNode(part));
