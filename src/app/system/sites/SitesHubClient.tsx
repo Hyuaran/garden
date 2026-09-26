@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { GardenRole } from "@/app/root/_constants/types";
 import { MenuIcon } from "@/app/system/_components/ShachoShell/ShachoShell";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
+import SiteNewsPanel, { companiesForNews, type SiteNewsItem } from "./_components/SiteNewsPanel";
 import {
   countByStatus,
   groupSitesByCompany,
@@ -14,6 +16,8 @@ import styles from "./sites.module.css";
 
 const VIEW_MODE_KEY = "garden.sites.viewMode";
 type ViewMode = "list" | "grid";
+type TopTab = "sites" | "news";
+type NewsSummary = { count: number; latestTitle: string | null; latestDate: string | null };
 
 function ListViewIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><rect x="4" y="5" width="2" height="2" rx=".5"/><rect x="4" y="11" width="2" height="2" rx=".5"/><rect x="4" y="17" width="2" height="2" rx=".5"/></svg>;
@@ -37,6 +41,26 @@ function storeViewMode(mode: ViewMode) {
     window.localStorage.setItem(VIEW_MODE_KEY, mode);
   } catch {
     // 保存できない環境でも、現在の画面では表示形式を切り替えられるようにする。
+  }
+}
+
+function readTab(): TopTab {
+  try {
+    if (typeof window === "undefined") return "sites";
+    return new URLSearchParams(window.location.search).get("tab") === "news" ? "news" : "sites";
+  } catch {
+    return "sites";
+  }
+}
+
+function storeTab(tab: TopTab) {
+  try {
+    const url = new URL(window.location.href);
+    if (tab === "news") url.searchParams.set("tab", "news");
+    else url.searchParams.delete("tab");
+    window.history.replaceState(null, "", url);
+  } catch {
+    // URL を更新できない環境でもタブ切替は継続する。
   }
 }
 
@@ -106,6 +130,11 @@ function DetailItem({ label, value }: { label: string; value?: string }) {
   return <div><dt>{label}</dt><dd>{value}</dd></div>;
 }
 
+function newsSummaryLabel(summary?: NewsSummary) {
+  if (!summary || summary.count === 0) return "お知らせ なし";
+  return `お知らせ ${summary.count} 件（最新：${summary.latestTitle} ${summary.latestDate}）`;
+}
+
 function StatusBadge({ site }: { site: CorporateSite }) {
   const status = statusMeta(site);
   return <span className={`${styles.statusBadge} ${styles[status.tone]}`}>{status.label}</span>;
@@ -169,15 +198,48 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
   </div>;
 }
 
-export default function SitesHubClient({ data }: { data: CorporateSitesData }) {
+export default function SitesHubClient({ data, role }: { data: CorporateSitesData; role: GardenRole }) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
+  const [tab, setTab] = useState<TopTab>(() => readTab());
+  const [summaries, setSummaries] = useState<Record<string, NewsSummary>>({});
   const groups = groupSitesByCompany(data);
   const counts = countByStatus(data);
+  const newsCompanies = useMemo(() => companiesForNews(data), [data]);
 
   function changeViewMode(mode: ViewMode) {
     setViewMode(mode);
     storeViewMode(mode);
   }
+
+  function changeTab(nextTab: TopTab) {
+    setTab(nextTab);
+    storeTab(nextTab);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSummaries() {
+      const entries = await Promise.all(newsCompanies.map(async (company) => {
+        try {
+          const response = await fetch(`/api/system/sites/news?company_id=${encodeURIComponent(company.company_id)}`);
+          const body = await response.json().catch(() => null) as { news?: SiteNewsItem[] } | null;
+          const news = response.ok ? body?.news ?? [] : [];
+          return [company.company_id, {
+            count: news.length,
+            latestTitle: news[0]?.title ?? null,
+            latestDate: news[0]?.published_on ?? null,
+          }] as const;
+        } catch {
+          return [company.company_id, { count: 0, latestTitle: null, latestDate: null }] as const;
+        }
+      }));
+      if (!cancelled) setSummaries(Object.fromEntries(entries));
+    }
+    loadSummaries();
+    return () => {
+      cancelled = true;
+    };
+  }, [newsCompanies]);
 
   return <div className={styles.pageShell}>
     <header className={styles.header}>
@@ -186,6 +248,12 @@ export default function SitesHubClient({ data }: { data: CorporateSitesData }) {
       <p className={styles.lead}>グループ各社の会社HPと商品ページ。稼働中のサイトは［開く］で開けます。</p>
     </header>
 
+    <div className={styles.topTabs} role="tablist" aria-label="コーポレートサイト表示">
+      <button type="button" role="tab" aria-selected={tab === "sites"} onClick={() => changeTab("sites")}>サイト一覧</button>
+      <button type="button" role="tab" aria-selected={tab === "news"} onClick={() => changeTab("news")}>お知らせ</button>
+    </div>
+
+    {tab === "news" ? <SiteNewsPanel data={data} role={role} /> : <>
     <div className={styles.listHeading}>
       <h2>サイトの一覧（稼働 {counts.live}／移管待ち {counts.pending}／新規作成待ち {counts.planned}）</h2>
       <div className={styles.headerAside}>
@@ -209,7 +277,7 @@ export default function SitesHubClient({ data }: { data: CorporateSitesData }) {
     {viewMode === "grid" ? (
       <div className={styles.groups} data-testid="sites-grid-view">
         {groups.map((group) => <section className={styles.companySection} key={group.company}>
-          <h3>{group.company}</h3>
+          <h3><span>{group.company}</span><small>{newsSummaryLabel(summaries[group.sites.find((site) => site.company_id)?.company_id ?? ""])}</small></h3>
           <div className={styles.formGrid}>
             {group.sites.map((site) => <SiteCard site={site} key={`${site.company}-${site.kind}-${site.product ?? site.domain ?? "domain"}`} />)}
           </div>
@@ -223,5 +291,6 @@ export default function SitesHubClient({ data }: { data: CorporateSitesData }) {
         {data.excluded.map((item) => <li key={item}>{item}</li>)}
       </ul>
     </section>
+    </>}
   </div>;
 }

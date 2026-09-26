@@ -16,6 +16,8 @@ export type CorporateSiteOldServer = {
 };
 
 export type CorporateSite = {
+  company_id?: string;
+  public_slug?: string;
   company: string;
   kind: string;
   product?: string;

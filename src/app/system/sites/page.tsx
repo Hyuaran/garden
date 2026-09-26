@@ -26,5 +26,5 @@ export default async function CorporateSitesPage() {
     : "staff";
   if (!isRoleAtLeast(role, "staff")) redirect("/system");
 
-  return <SitesHubClient data={CORPORATE_SITES_DATA} />;
+  return <SitesHubClient data={CORPORATE_SITES_DATA} role={role} />;
 }

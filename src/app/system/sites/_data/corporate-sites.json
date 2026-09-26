@@ -34,7 +34,9 @@
         "新デザインへ刷新",
         "スマホ幅ナビはみ出し（未判断）",
         "ヒーロー動画16.5MB（未判断）"
-      ]
+      ],
+      "public_slug": "hyuaran",
+      "company_id": "COMP-001"
     },
     {
       "company": "株式会社ヒュアラン",
@@ -50,7 +52,9 @@
       },
       "notes": [
         "後回し（他デザイン担当者との兼ね合い）"
-      ]
+      ],
+      "public_slug": "hyuaran",
+      "company_id": "COMP-001"
     },
     {
       "company": "株式会社センターライズ",
@@ -74,7 +78,9 @@
         "SES事業",
         "ChatGPTデザイン（ダークグレー×ミント）",
         "centerise.co.jp は未登録（.co.jp 1社1ドメイン）のため centerrise.co.jp"
-      ]
+      ],
+      "public_slug": "centerrise",
+      "company_id": "COMP-002"
     },
     {
       "company": "株式会社ARATA",
@@ -96,7 +102,9 @@
       "mail": "M365",
       "notes": [
         "ChatGPTデザイン（白×ネイビー）・2026-09-25 開通"
-      ]
+      ],
+      "public_slug": "arata",
+      "company_id": "COMP-004"
     },
     {
       "company": "株式会社ARATA",
@@ -113,7 +121,9 @@
       },
       "notes": [
         "次の着手候補"
-      ]
+      ],
+      "public_slug": "arata",
+      "company_id": "COMP-004"
     },
     {
       "company": "株式会社リンクサポート",
@@ -143,7 +153,9 @@
       "notes": [
         "WordPress を静的化して忠実移行（助成金要件）",
         "会社HPは /company/"
-      ]
+      ],
+      "public_slug": "link-support",
+      "company_id": "COMP-003"
     },
     {
       "company": "株式会社リンクサポート",
@@ -165,7 +177,9 @@
       "mail": "M365",
       "notes": [
         "ChatGPTデザイン（白×ロイヤルブルー）・LP と同一プロジェクトの /company/"
-      ]
+      ],
+      "public_slug": "link-support",
+      "company_id": "COMP-003"
     },
     {
       "company": "株式会社たいよう",
@@ -187,7 +201,9 @@
         "上田基人",
         "石原孝志朗"
       ],
-      "mail": "M365"
+      "mail": "M365",
+      "public_slug": "taiyou",
+      "company_id": "COMP-005"
     },
     {
       "company": "株式会社たいよう",
@@ -212,7 +228,9 @@
         "plan": "RS",
         "contract": "1447709",
         "action": "解約済"
-      }
+      },
+      "public_slug": "taiyou",
+      "company_id": "COMP-005"
     },
     {
       "company": "株式会社たいよう",
@@ -239,7 +257,9 @@
         "plan": "RS",
         "contract": "1850667",
         "action": "解約済"
-      }
+      },
+      "public_slug": "taiyou",
+      "company_id": "COMP-005"
     },
     {
       "company": "株式会社壱",
@@ -269,7 +289,9 @@
         "Ichi光は URL 不変で Vercel 化（https://ichi-one.com/ 他5ページ）",
         "ChatGPTデザイン（和モダン）"
       ],
-      "highlight": "Ichi光は URL 不変で Vercel 化（https://ichi-one.com/ 他 5 ページ）"
+      "highlight": "Ichi光は URL 不変で Vercel 化（https://ichi-one.com/ 他 5 ページ）",
+      "public_slug": "ichi",
+      "company_id": "COMP-006"
     },
     {
       "company": "株式会社ストーンベース",
@@ -290,7 +312,9 @@
       "notes": [
         "Cloudflareから集約済",
         "方式の手本"
-      ]
+      ],
+      "public_slug": "stonebase",
+      "company_id": "COMP-007"
     },
     {
       "company": "株式会社almalio",

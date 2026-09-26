@@ -1,80 +1,74 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import SitesHubClient from "./SitesHubClient";
-import { CORPORATE_SITES_DATA } from "./_lib/sites-registry";
+import type { CorporateSitesData } from "./_lib/sites-registry";
+
+const data: CorporateSitesData = {
+  as_of: "2026-09-26",
+  common: { hosting: "Vercel", dns_policy: "DNS", form: "Form" },
+  sites: [
+    {
+      company_id: "COMP-001",
+      public_slug: "hyuaran",
+      company: "株式会社ヒュアラン",
+      kind: "会社HP",
+      domain: "hyuaran.com",
+      status: "live",
+      url: "https://hyuaran.com/",
+    },
+    {
+      company_id: "COMP-002",
+      public_slug: "centerrise",
+      company: "株式会社センターライズ",
+      kind: "会社HP",
+      domain: "centerrise.co.jp",
+      status: "live",
+      url: "https://centerrise.co.jp/",
+    },
+  ],
+  excluded: [],
+};
+
+function mockFetch() {
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+    const news = url.includes("COMP-001")
+      ? [{ id: "n1", company_id: "COMP-001", published_on: "2026-09-26", title: "本店移転のお知らせ", body: "", kind: "auto", source_field: "address", is_published: true, created_at: "1", updated_at: "1" }]
+      : [];
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, news }) });
+  }));
+}
 
 describe("SitesHubClient", () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.restoreAllMocks();
+    window.history.replaceState(null, "", "/system/sites");
+    window.localStorage.clear();
+    mockFetch();
   });
 
-  it("shows the grid view by default with company headings and site cards", () => {
-    render(<SitesHubClient data={CORPORATE_SITES_DATA} />);
+  it("switches to the news tab and lists selected company news", async () => {
+    render(<SitesHubClient data={data} role="manager" />);
+    fireEvent.click(screen.getByRole("tab", { name: "お知らせ" }));
 
-    const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
-    expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
-    expect(within(breadcrumb).getByText("コーポレートサイト")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "コーポレートサイト" })).toBeInTheDocument();
-    expect(screen.getByText("サイトの一覧（稼働 10／移管待ち 3／新規作成待ち 0）")).toBeInTheDocument();
-    expect(screen.getByText("更新日 2026/09/25")).toBeInTheDocument();
-
-    expect(screen.getByTestId("sites-grid-view")).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(8);
-    expect(screen.getAllByTestId("site-card")).toHaveLength(13);
+    expect(screen.getByTestId("site-news-panel")).toBeInTheDocument();
+    expect(await screen.findByText("本店移転のお知らせ")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("会社"), { target: { value: "COMP-002" } });
+    await waitFor(() => expect(screen.getByText("お知らせはありません")).toBeInTheDocument());
   });
 
-  it("renders live site cards with open links and keeps pending or unpublished cards closed", () => {
-    render(<SitesHubClient data={CORPORATE_SITES_DATA} />);
+  it("hides edit buttons for non-managers", async () => {
+    render(<SitesHubClient data={data} role="staff" />);
+    fireEvent.click(screen.getByRole("tab", { name: "お知らせ" }));
+    await screen.findByText("本店移転のお知らせ");
 
-    const liveLinks = screen.getAllByRole("link", { name: "開く" });
-    expect(liveLinks).toHaveLength(10);
-    expect(liveLinks[0]).toHaveAttribute("href", "https://hyuaran.com/");
-    liveLinks.forEach((link) => {
-      expect(link).toHaveAttribute("target", "_blank");
-      expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    });
-
-    // 移管待ち（denshibreaker.com）は URL が無く「未公開」。ARATA光は URL があっても移管待ちなので［開く］は出ない
-    const pendingCard = screen.getAllByTestId("site-card").find((card) =>
-      within(card).queryByText("denshibreaker.com"),
-    );
-    expect(pendingCard).toBeDefined();
-    expect(within(pendingCard!).getByText("未公開")).toBeInTheDocument();
-    expect(screen.queryByText("ドメイン未定")).not.toBeInTheDocument();
-    expect(screen.getByText("GitHub Hyuaran/hyuaran")).toBeInTheDocument();
-    // 種別チップ：会社HP と 商品ページ を区別。壱は 会社HP＋商品 で注記（highlight）が出る
-    expect(screen.getAllByText("会社HP", { selector: "span" }).length).toBeGreaterThanOrEqual(6);
-    expect(screen.getAllByText("商品ページ", { selector: "span" }).length).toBeGreaterThanOrEqual(5);
-    expect(screen.getByText("会社HP＋商品")).toBeInTheDocument();
-    expect(screen.getByText("Ichi光は URL 不変で Vercel 化（https://ichi-one.com/ 他 5 ページ）")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+ 追加" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "編集" })).toBeNull();
   });
 
-  it("switches to list view with a six-column table and ten open links", () => {
-    render(<SitesHubClient data={CORPORATE_SITES_DATA} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "リスト表示にする" }));
-
-    const listView = screen.getByTestId("sites-list-view");
-    expect(within(listView).getAllByRole("columnheader")).toHaveLength(6);
-    expect(within(listView).getAllByRole("row")).toHaveLength(14);
-    expect(within(listView).getAllByRole("link", { name: "開く" })).toHaveLength(10);
-    expect(localStorage.getItem("garden.sites.viewMode")).toBe("list");
-  });
-
-  it("restores the saved list view and can switch back to grid", () => {
-    localStorage.setItem("garden.sites.viewMode", "list");
-    render(<SitesHubClient data={CORPORATE_SITES_DATA} />);
-
-    expect(screen.getByTestId("sites-list-view")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "グリッド表示にする" }));
-    expect(screen.getByTestId("sites-grid-view")).toBeInTheDocument();
-    expect(localStorage.getItem("garden.sites.viewMode")).toBe("grid");
-  });
-
-  it("shows seven excluded items at the bottom", () => {
-    render(<SitesHubClient data={CORPORATE_SITES_DATA} />);
-
-    const excluded = screen.getByRole("region", { name: "対象外・解約" });
-    expect(within(excluded).getAllByRole("listitem")).toHaveLength(7);
+  it("shows news summary beside company headings on the sites tab", async () => {
+    render(<SitesHubClient data={data} role="manager" />);
+    const heading = await screen.findByRole("heading", { name: /株式会社ヒュアラン/ });
+    expect(within(heading).getByText("お知らせ 1 件（最新：本店移転のお知らせ 2026-09-26）")).toBeInTheDocument();
   });
 });
