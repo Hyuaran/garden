@@ -502,8 +502,7 @@ export async function saveAnalysisFailure(db: AnalysisDb, message: string) {
   if (error) throw new Error(error.message);
 }
 
-export async function refreshAnalysis(db: AnalysisDb): Promise<RefreshResult> {
-  const startedAt = new Date().toISOString();
+async function refreshAnalysisViaRest(db: AnalysisDb, startedAt: string): Promise<RefreshResult> {
   const begin = await db.rpc("soil_list_analysis_begin");
   if (begin.error) throw new Error(begin.error.message);
 
@@ -521,6 +520,36 @@ export async function refreshAnalysis(db: AnalysisDb): Promise<RefreshResult> {
     await saveAnalysisFailure(db, error instanceof Error ? error.message : "analysis_refresh_failed").catch(() => undefined);
     throw error;
   }
+}
+
+async function refreshAnalysisViaPg(db: AnalysisDb, startedAt: string): Promise<RefreshResult> {
+  const client = await getPgPool().connect();
+  try {
+    await client.query("begin");
+    try {
+      await client.query("set local statement_timeout = '240s'");
+      await client.query("select public.soil_list_analysis_begin()");
+      for (let index = 0; index < 100; index += 1) {
+        await client.query("select public.soil_list_analysis_collect($1, $2)", [index, 100]);
+      }
+      const finished = await client.query("select * from public.soil_list_analysis_finish($1)", [startedAt]);
+      await client.query("commit");
+      clearAnalysisCache();
+      return normalizeFinish(finished.rows);
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      await saveAnalysisFailure(db, error instanceof Error ? error.message : "analysis_refresh_failed").catch(() => undefined);
+      throw error;
+    }
+  } finally {
+    client.release();
+  }
+}
+
+export async function refreshAnalysis(db: AnalysisDb): Promise<RefreshResult> {
+  const startedAt = new Date().toISOString();
+  if (!hasDatabaseUrl()) return refreshAnalysisViaRest(db, startedAt);
+  return refreshAnalysisViaPg(db, startedAt);
 }
 
 export async function refreshListOptions(): Promise<OptionsRefreshResult> {
