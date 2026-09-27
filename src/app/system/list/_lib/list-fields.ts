@@ -251,6 +251,8 @@ export const DEFAULT_SOIL_LIST_CONDITION: SoilListConditionPayload = {
 };
 
 export const MAX_SEARCH_ROWS = 100;
+/** 一覧：見込み件数がこれ未満なら「先に条件で絞ってから並べる」。本番実測（2026-09-27）：14 万件で 7 秒かかるため 10 万件に */
+export const FILTER_FIRST_THRESHOLD = 100000;
 /** ページ送りの上限。offset が深いと遅くなる（本番実測：offset 50,000 で 2〜9 秒、190 万件目で 89 秒）ので 500 ページ＝50,000 件まで */
 export const MAX_SEARCH_PAGE = 500;
 export const DEFAULT_EXPORT_LIMIT = 5000;

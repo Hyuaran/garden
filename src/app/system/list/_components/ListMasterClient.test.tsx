@@ -3,12 +3,26 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EMPTY_OPTION_VALUE } from "../_lib/list-fields";
 
-import { ListMasterClient, buildOptionGroups, conditionToFilters, describeFilters, filtersToCondition, type FilterState } from "./ListMasterClient";
+import { ListMasterClient, buildOptionGroups, conditionToFilters, describeFilters, filtersToCondition, formatApproxCount, type FilterState } from "./ListMasterClient";
 import MultiSelectFilter from "./MultiSelectFilter";
 
 vi.mock("react-chartjs-2", () => ({
   Doughnut: () => <div data-testid="analysis-doughnut" />,
 }));
+
+describe("formatApproxCount", () => {
+  it("formats management guide counts at the requested thresholds", () => {
+    expect(formatApproxCount(undefined)).toBe("集計待ち");
+    expect(formatApproxCount(0)).toBe("0 件");
+    expect(formatApproxCount(9849)).toBe("約 9,800 件");
+    expect(formatApproxCount(9850)).toBe("約 9,900 件");
+    expect(formatApproxCount(10000)).toBe("約 1.0 万件");
+    expect(formatApproxCount(99000)).toBe("約 9.9 万件");
+    expect(formatApproxCount(99999)).toBe("約 10.0 万件");
+    expect(formatApproxCount(100000)).toBe("約 10 万件");
+    expect(formatApproxCount(2675537)).toBe("約 268 万件");
+  });
+});
 
 function json(data: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), { status }));

@@ -26,7 +26,6 @@ export async function POST(request: Request) {
       return NextResponse.json({
         ok: true,
         count: Number(result.rows[0]?.count ?? 0),
-        approximate: elapsedMs > 5000,
         elapsedMs,
       });
     }
@@ -45,7 +44,6 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       count: result.count ?? 0,
-      approximate: elapsedMs > 5000,
       elapsedMs,
     });
   } catch (error) {

@@ -57,7 +57,8 @@ describe("soil list count route", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ ok: true, count: 42, approximate: false });
+    expect(body).toMatchObject({ ok: true, count: 42 });
+    expect(body).not.toHaveProperty("approximate");
     expect(mocks.queryPg).toHaveBeenCalledWith(expect.stringContaining("select count(*)::bigint as count"), ["奈良県"]);
     expect(mocks.from).not.toHaveBeenCalled();
   });
@@ -74,7 +75,8 @@ describe("soil list count route", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ ok: true, count: 7, approximate: false });
+    expect(body).toMatchObject({ ok: true, count: 7 });
+    expect(body).not.toHaveProperty("approximate");
     expect(mocks.from).toHaveBeenCalledWith("soil_list_phone");
     expect(select).toHaveBeenCalledWith("電話番号", { count: "exact", head: true });
     expect(query.or).toHaveBeenCalledWith("アポ禁.is.null,アポ禁.eq.");

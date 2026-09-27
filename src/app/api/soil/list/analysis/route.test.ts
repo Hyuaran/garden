@@ -481,7 +481,7 @@ describe("/api/soil/list/analysis", () => {
     expect(response.status).toBe(401);
   });
 
-  it("cron refreshes list options after analysis with a longer local timeout", async () => {
+  it("cron refreshes only the analysis (list options run in their own cron at 6:55)", async () => {
     const analysisPgClient = {
       query: vi.fn(async (sql: string) => ({
         rows: sql === "select * from public.soil_list_analysis_finish($1)"
@@ -490,13 +490,7 @@ describe("/api/soil/list/analysis", () => {
       })),
       release: vi.fn(),
     };
-    const optionsPgClient = {
-      query: vi.fn(async () => ({ rows: [] })),
-      release: vi.fn(),
-    };
-    const connect = vi.fn()
-      .mockResolvedValueOnce(analysisPgClient)
-      .mockResolvedValueOnce(optionsPgClient);
+    const connect = vi.fn().mockResolvedValueOnce(analysisPgClient);
     mocks.hasDatabaseUrl.mockReturnValue(true);
     mocks.getPgPool.mockReturnValue({ connect });
     mocks.getAdmin.mockReturnValue(adminClient());
@@ -504,61 +498,13 @@ describe("/api/soil/list/analysis", () => {
     const response = await cronGET(new Request("http://test/api/soil/list/analysis/cron", { headers: { authorization: "Bearer secret" } }));
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ ok: true, analysis: { ok: true }, optionsRefreshed: true });
-    expect(optionsPgClient.query.mock.calls.map((call) => (call as unknown[])[0])).toEqual([
-      "begin",
-      "set local statement_timeout = '240s'",
-      "select public.soil_list_refresh_options()",
-      "commit",
-    ]);
+    await expect(response.json()).resolves.toMatchObject({ ok: true });
+    expect(connect).toHaveBeenCalledTimes(1);
+    expect(analysisPgClient.query).not.toHaveBeenCalledWith("select public.soil_list_refresh_options()");
     expect(analysisPgClient.release).toHaveBeenCalledTimes(1);
-    expect(optionsPgClient.release).toHaveBeenCalledTimes(1);
   });
 
-  it("cron skips list option refresh without DATABASE_URL", async () => {
-    mocks.hasDatabaseUrl.mockReturnValue(false);
-    mocks.getAdmin.mockReturnValue(adminClient());
-
-    const response = await cronGET(new Request("http://test/api/soil/list/analysis/cron", { headers: { authorization: "Bearer secret" } }));
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ ok: true, analysis: { ok: true }, optionsRefreshed: false });
-    expect(mocks.getPgPool).not.toHaveBeenCalled();
-  });
-
-  it("cron returns 500 with analysis result when list option refresh fails", async () => {
-    const analysisPgClient = {
-      query: vi.fn(async (sql: string) => ({
-        rows: sql === "select * from public.soil_list_analysis_finish($1)"
-          ? [{ refreshed_at: "2026-09-13T06:45:00+09:00", rows: 3, elapsed_ms: 1234 }]
-          : [],
-      })),
-      release: vi.fn(),
-    };
-    const optionsPgClient = {
-      query: vi.fn(async (sql: string) => {
-        if (sql === "select public.soil_list_refresh_options()") throw new Error("timeout");
-        return { rows: [] };
-      }),
-      release: vi.fn(),
-    };
-    const connect = vi.fn()
-      .mockResolvedValueOnce(analysisPgClient)
-      .mockResolvedValueOnce(optionsPgClient);
-    mocks.hasDatabaseUrl.mockReturnValue(true);
-    mocks.getPgPool.mockReturnValue({ connect });
-    mocks.getAdmin.mockReturnValue(adminClient());
-
-    const response = await cronGET(new Request("http://test/api/soil/list/analysis/cron", { headers: { authorization: "Bearer secret" } }));
-
-    expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toMatchObject({ ok: false, analysis: { ok: true }, optionsRefreshed: false, optionsRefreshError: "timeout" });
-    expect(optionsPgClient.query).toHaveBeenCalledWith("rollback");
-    expect(analysisPgClient.release).toHaveBeenCalledTimes(1);
-    expect(optionsPgClient.release).toHaveBeenCalledTimes(1);
-  });
-
-  it("cron still refreshes list options and returns 500 when analysis refresh fails", async () => {
+  it("cron returns 500 when analysis refresh fails", async () => {
     const analysisPgClient = {
       query: vi.fn(async (sql: string, args?: unknown[]) => {
         if (sql === "select public.soil_list_analysis_collect($1, $2)" && Array.isArray(args) && args[0] === 2) {
@@ -568,13 +514,7 @@ describe("/api/soil/list/analysis", () => {
       }),
       release: vi.fn(),
     };
-    const optionsPgClient = {
-      query: vi.fn(async () => ({ rows: [] })),
-      release: vi.fn(),
-    };
-    const connect = vi.fn()
-      .mockResolvedValueOnce(analysisPgClient)
-      .mockResolvedValueOnce(optionsPgClient);
+    const connect = vi.fn().mockResolvedValueOnce(analysisPgClient);
     mocks.hasDatabaseUrl.mockReturnValue(true);
     mocks.getPgPool.mockReturnValue({ connect });
     mocks.getAdmin.mockReturnValue(adminClient());
@@ -582,13 +522,8 @@ describe("/api/soil/list/analysis", () => {
     const response = await cronGET(new Request("http://test/api/soil/list/analysis/cron", { headers: { authorization: "Bearer secret" } }));
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toMatchObject({
-      ok: false,
-      analysis: { ok: false, error: "analysis timeout" },
-      optionsRefreshed: true,
-    });
+    await expect(response.json()).resolves.toMatchObject({ ok: false, error: "analysis timeout" });
     expect(analysisPgClient.query).toHaveBeenCalledWith("rollback");
-    expect(optionsPgClient.query).toHaveBeenCalledWith("select public.soil_list_refresh_options()");
-    expect(optionsPgClient.release).toHaveBeenCalledTimes(1);
+    expect(connect).toHaveBeenCalledTimes(1);
   });
 });

@@ -126,10 +126,11 @@ describe("soil list query helpers", () => {
       ],
     }, null, 1);
     expect(sql.text).toContain('"自社アポ禁"');
-    expect(sql.text).toContain('where "AU光架電可否" = $1 and ("アポ禁" is null or "アポ禁" = \'\')');
+    // 既定条件の値は部分索引を使わせるため定数で書く（Codex-359）
+    expect(sql.text).toContain('where "AU光架電可否" = \'○\' and ("アポ禁" is null or "アポ禁" = \'\')');
     expect(sql.text).toContain('order by "電話番号" asc');
     expect(sql.text).toContain("limit 100 offset 0");
-    expect(sql.values).toEqual(["○"]);
+    expect(sql.values).toEqual([]);
   });
 
   it("builds search SQL for prefecture in values", () => {

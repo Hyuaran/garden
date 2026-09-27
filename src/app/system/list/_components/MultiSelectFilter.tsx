@@ -18,6 +18,7 @@ type MultiSelectFilterProps = {
   onChange(value: string[]): void;
   searchable?: boolean;
   initialLimit?: number;
+  countNote?: string;
 };
 
 function optionValue(option: SoilListOptionItem): string {
@@ -36,7 +37,7 @@ function summarizeSelection(value: string[], options: SoilListOptionItem[]): str
   return `${labels.slice(0, 2).join("、")} ほか${rest}（${labels.length}）`;
 }
 
-export default function MultiSelectFilter({ label, value, groups, onChange, searchable = false, initialLimit }: MultiSelectFilterProps) {
+export default function MultiSelectFilter({ label, value, groups, onChange, searchable = false, initialLimit, countNote }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -219,6 +220,7 @@ export default function MultiSelectFilter({ label, value, groups, onChange, sear
               上位 {initialLimit?.toLocaleString("ja-JP")} 件を表示中（全 {allOptions.length.toLocaleString("ja-JP")} 件）。名前で絞ると全体から探せます
             </p>
           )}
+          {countNote && <p className={styles.muted}>{countNote}</p>}
         </div>
       )}
     </div>

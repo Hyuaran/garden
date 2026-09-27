@@ -1,4 +1,6 @@
 import {
+  DEFAULT_SOIL_LIST_CONDITION,
+  FILTER_FIRST_THRESHOLD,
   MAX_SEARCH_PAGE,
   MAX_SEARCH_ROWS,
   SOIL_LIST_COLUMNS,
@@ -33,6 +35,10 @@ type SqlState = {
   values: unknown[];
 };
 
+type BuildSearchSqlOptions = {
+  filterFirst?: boolean;
+};
+
 const SORT_COLUMNS: Record<SearchSortKey, SoilListColumnKey> = {
   phoneNumber: "phoneNumber",
   name: "name",
@@ -46,6 +52,10 @@ const SORT_COLUMNS: Record<SearchSortKey, SoilListColumnKey> = {
 
 function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
+}
+
+function quoteLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
 }
 
 function columnSql(key: SoilListColumnKey): string {
@@ -68,16 +78,23 @@ function escapeLike(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
 }
 
+function defaultAuAvailabilityValue(): unknown {
+  return DEFAULT_SOIL_LIST_CONDITION.filters.find((filter) => filter.field === "auCallAvailability" && filter.op === "eq")?.value;
+}
+
 function filterToSql(filter: SoilListFilter, state: SqlState): string {
-  if (!(filter.field in SOIL_LIST_COLUMNS)) {
-    throw new SoilListRequestError("使えない条件が含まれています");
-  }
-  if (filter.field === "contractElapsed") {
+  if (!(filter.field in SOIL_LIST_COLUMNS) || filter.field === "contractElapsed") {
     throw new SoilListRequestError("使えない条件が含まれています");
   }
   const column = columnSql(filter.field);
   switch (filter.op) {
     case "eq":
+      if (filter.field === "auCallAvailability" && filter.value === defaultAuAvailabilityValue()) {
+        return `${column} = ${quoteLiteral(String(defaultAuAvailabilityValue() ?? ""))}`;
+      }
+      if (filter.field === "internalBlocked" && typeof filter.value === "boolean") {
+        return `${column} = ${filter.value ? "true" : "false"}`;
+      }
       return `${column} = ${nextParam(state, filter.value)}`;
     case "empty":
       return `(${column} is null or ${column} = '')`;
@@ -114,6 +131,17 @@ function orderColumns(sort: SearchSort): string {
   return `${columnSql(SORT_COLUMNS[sort.key])} ${direction}`;
 }
 
+function orderColumnKeys(sort: SearchSort | null): SoilListColumnKey[] {
+  if (!sort) return ["phoneNumber"];
+  if (sort.key === "addressCity") return ["prefecture", "city", "phoneNumber"];
+  const key = SORT_COLUMNS[sort.key];
+  return key === "phoneNumber" ? ["phoneNumber"] : [key, "phoneNumber"];
+}
+
+function orderBySql(sort: SearchSort | null): string {
+  return sort ? `order by ${orderColumns(sort)} nulls last, ${columnSql("phoneNumber")} asc` : `order by ${columnSql("phoneNumber")} asc`;
+}
+
 export function normalizeSearchSort(input: unknown): SearchSort | null {
   if (!input || typeof input !== "object") return null;
   const raw = input as Record<string, unknown>;
@@ -134,20 +162,61 @@ export function normalizeSearchPage(input: unknown): number {
   return Math.min(Math.floor(page), MAX_SEARCH_PAGE);
 }
 
-export function buildSearchSql(condition: SoilListConditionPayload, sort: SearchSort | null, page: number): { text: string; values: unknown[] } {
+export function buildSearchSql(
+  condition: SoilListConditionPayload,
+  sort: SearchSort | null,
+  page: number,
+  options: BuildSearchSqlOptions = {},
+): { text: string; values: unknown[] } {
   const state: SqlState = { values: [] };
   const select = SOIL_LIST_SEARCH_COLUMNS.map((key) => selectColumnSql(key)).join(", ");
   const where = buildWhereSql(condition, state);
   const offset = (Math.max(1, page) - 1) * MAX_SEARCH_ROWS;
+  const orderBy = orderBySql(sort);
+
+  if (options.filterFirst) {
+    const materializedColumns = orderColumnKeys(sort).map((key) => columnSql(key)).join(", ");
+    const text = [
+      "with m as materialized (",
+      `  select ctid as _rid, ${materializedColumns}`,
+      `  from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
+      where ? `  ${where}` : "",
+      "), k as (",
+      "  select _rid from m",
+      `  ${orderBy}`,
+      `  limit ${MAX_SEARCH_ROWS} offset ${offset}`,
+      ")",
+      `select ${select}`,
+      `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)} p join k on p.ctid = k._rid`,
+      orderBy,
+    ].filter(Boolean).join("\n");
+    return { text, values: state.values };
+  }
+
   const text = [
     `select ${select}`,
     `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
     where,
-    // 並びを指定しないときも電話番号順に固定する（順序が無いと offset のページ送りで同じ行が出たり抜けたりする）
-    sort ? `order by ${orderColumns(sort)} nulls last, ${columnSql("phoneNumber")} asc` : `order by ${columnSql("phoneNumber")} asc`,
+    orderBy,
     `limit ${MAX_SEARCH_ROWS} offset ${offset}`,
   ].filter(Boolean).join("\n");
   return { text, values: state.values };
+}
+
+export function buildSearchPlanSql(condition: SoilListConditionPayload): { text: string; values: unknown[] } {
+  const state: SqlState = { values: [] };
+  const where = buildWhereSql(condition, state);
+  const text = [
+    "explain (format json)",
+    "select 1",
+    `from ${quoteIdentifier(SOIL_LIST_TABLES.phone)}`,
+    where,
+  ].filter(Boolean).join("\n");
+  return { text, values: state.values };
+}
+
+export function shouldUseFilterFirstSearch(planRows: number | null): boolean {
+  return typeof planRows === "number" && Number.isFinite(planRows) && planRows < FILTER_FIRST_THRESHOLD;
 }
 
 export function buildCountSql(condition: SoilListConditionPayload): { text: string; values: unknown[] } {

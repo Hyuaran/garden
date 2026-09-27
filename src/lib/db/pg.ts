@@ -39,6 +39,22 @@ export async function queryPg<T extends QueryResultRow = QueryResultRow>(text: s
   return { rows: result.rows };
 }
 
+/** 打ち切り時間を短くして 1 回だけ照会する（打ち切られると code 57014 の例外） */
+export async function queryPgWithTimeout<T extends QueryResultRow = QueryResultRow>(text: string, values: unknown[], timeoutMs: number): Promise<{ rows: T[] }> {
+  return withPgClient(async (client) => {
+    await client.query("begin");
+    try {
+      await client.query(`set local statement_timeout = '${Math.max(1, Math.floor(timeoutMs))}ms'`);
+      const result = await client.query<T>(text, values);
+      await client.query("commit");
+      return { rows: result.rows };
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    }
+  });
+}
+
 /**
  * 1 つの接続を占有して使う（カーソルのように同じ接続で続けて実行する必要がある処理用）。
  * 終わったら必ず接続を返す。

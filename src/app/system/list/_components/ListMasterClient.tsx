@@ -112,6 +112,13 @@ type PurchaseVendorOption = {
 
 type ActiveTab = "list" | "upload" | "analysis" | "history" | "internal-block" | "guide";
 
+type TableCountKey = "phone" | "purchase" | "assignment" | "call" | "order";
+
+type TableCountsPayload = {
+  counts: Record<TableCountKey, number | null>;
+  countedAt: string | null;
+};
+
 type UploadPreview = {
   format: "A" | "B" | "C";
   formatLabel: string;
@@ -360,6 +367,7 @@ const ANALYSIS_ROW_LIMIT = 50;
 const EXCEL_MAX_EXPORT_ROWS = 1048575;
 const LARGE_EXPORT_CONFIRM_ROWS = 100000;
 const EXPORT_SPEED_ROWS_PER_MINUTE = 20000;
+const FILTER_COUNT_NOTE = "件数は台帳全体の件数です（毎朝 6:55 更新）。ほかの絞り込みをかけた件数とは違います。";
 const FM_LINE_TYPE_OPTIONS = ["フレッツ", "アナログ", "AU", "クレカ", "その他"] as const;
 
 const EXPORT_FORMAT_OPTIONS: Array<{ value: ExportFormat; label: string; action: string }> = [
@@ -478,6 +486,8 @@ const GUIDE_TABLE_ROWS = [
     timing: "毎朝 6:30 に Kintone「顧客一覧」を取り込み直す。1 行は顧客一覧のレコード×電話番号",
   },
 ] as const;
+
+const GUIDE_TABLE_COUNT_KEYS: TableCountKey[] = ["phone", "purchase", "assignment", "call", "order"];
 
 const GUIDE_RULE_ROWS = [
   ["リスト名", "取込ファイルのものをそのまま使う（例：【光回線】フレッツ_20260907）"],
@@ -706,6 +716,14 @@ function formatRotation(value: number): string {
 
 function formatCount(value: number): string {
   return value.toLocaleString("ja-JP");
+}
+
+export function formatApproxCount(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "集計待ち";
+  if (value <= 0) return "0 件";
+  if (value >= 100000) return `約 ${Math.round(value / 10000).toLocaleString("ja-JP")} 万件`;
+  if (value >= 10000) return `約 ${(Math.round(value / 1000) / 10).toLocaleString("ja-JP", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} 万件`;
+  return `約 ${(Math.round(value / 100) * 100).toLocaleString("ja-JP")} 件`;
 }
 
 function exportFormatLabel(format: ExportFormat | undefined): string {
@@ -1173,7 +1191,6 @@ function InternalBlockReleaseModal({
 export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boolean }) {
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [count, setCount] = useState<number | null>(null);
-  const [approximate, setApproximate] = useState(false);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [rows, setRows] = useState<SearchRow[]>([]);
   const [searchedCondition, setSearchedCondition] = useState<SoilListConditionPayload | null>(null);
@@ -1181,6 +1198,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [savedConditions, setSavedConditions] = useState<SavedCondition[]>([]);
   const [exports, setExports] = useState<ExportHistory[]>([]);
   const [options, setOptions] = useState<Partial<SoilListOptionsPayload>>({});
+  const [tableCounts, setTableCounts] = useState<TableCountsPayload | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [searchBusy, setSearchBusy] = useState(false);
@@ -1306,6 +1324,12 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     setOptions(data.options);
   }
 
+  async function loadTableCounts() {
+    const response = await fetch("/api/soil/list/table-counts");
+    const data = await readJson<{ ok: boolean } & TableCountsPayload>(response);
+    setTableCounts({ counts: data.counts, countedAt: data.countedAt });
+  }
+
   async function loadCallSyncState() {
     const response = await fetch("/api/soil/list/call-sync");
     const data = await readJson<{ ok: boolean; state: CallSyncState; canSync: boolean }>(response);
@@ -1401,6 +1425,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     void loadInternalBlocks().catch((error: unknown) => setInternalBlockMessage(error instanceof Error ? error.message : "自社アポ禁を読み込めませんでした"));
   }, [activeTab, internalBlockIncludeReleased]);
 
+  useEffect(() => {
+    if (activeTab !== "guide" || tableCounts) return;
+    void loadTableCounts().catch(() => undefined);
+  }, [activeTab, tableCounts]);
+
   async function handleAnalysisRefresh() {
     setAnalysisRefreshBusy(true);
     setAnalysisMessage("");
@@ -1467,9 +1496,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ condition: nextCondition }),
         });
-        const countData = await readJson<{ count: number; approximate: boolean; elapsedMs: number }>(countResponse);
+        const countData = await readJson<{ count: number; elapsedMs: number }>(countResponse);
         setCount(countData.count);
-        setApproximate(countData.approximate);
         setElapsedMs(countData.elapsedMs);
       }
 
@@ -2573,7 +2601,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         {filtersCollapsed && count !== null ? (
           <div className={styles.collapsedFilterRow}>
             <strong>
-              該当 {approximate ? "約 " : ""}
+              該当{" "}
               {count.toLocaleString("ja-JP")} 件
               {elapsedMs !== null ? `（${(elapsedMs / 1000).toFixed(1)} 秒）` : ""}
             </strong>
@@ -2588,11 +2616,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         ) : (
           <form onSubmit={handleFilterSubmit}>
             <div className={styles.filterGrid} data-testid="list-filter-grid">
-              <MultiSelectFilter label="都道府県" value={filters.prefecture} groups={buildOptionGroups("prefecture", options.prefecture)} onChange={(value) => setFilter("prefecture", value)} />
-              <MultiSelectFilter label="購入先" value={filters.purchaseVendor} groups={buildOptionGroups("latestVendor", options.latestVendor)} onChange={(value) => setFilter("purchaseVendor", value)} searchable initialLimit={100} />
-              <MultiSelectFilter label="区分" value={filters.category} groups={buildOptionGroups("category", options.category)} onChange={(value) => setFilter("category", value)} />
-              <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} />
-              <MultiSelectFilter label="元回線" value={filters.lineType} groups={buildOptionGroups("lineType", options.lineType)} onChange={(value) => setFilter("lineType", value)} />
+              <MultiSelectFilter label="都道府県" value={filters.prefecture} groups={buildOptionGroups("prefecture", options.prefecture)} onChange={(value) => setFilter("prefecture", value)} countNote={FILTER_COUNT_NOTE} />
+              <MultiSelectFilter label="購入先" value={filters.purchaseVendor} groups={buildOptionGroups("latestVendor", options.latestVendor)} onChange={(value) => setFilter("purchaseVendor", value)} searchable initialLimit={100} countNote={FILTER_COUNT_NOTE} />
+              <MultiSelectFilter label="区分" value={filters.category} groups={buildOptionGroups("category", options.category)} onChange={(value) => setFilter("category", value)} countNote={FILTER_COUNT_NOTE} />
+              <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} countNote={FILTER_COUNT_NOTE} />
+              <MultiSelectFilter label="元回線" value={filters.lineType} groups={buildOptionGroups("lineType", options.lineType)} onChange={(value) => setFilter("lineType", value)} countNote={FILTER_COUNT_NOTE} />
               <label>
                 経過（年）
                 <span className={styles.range}>
@@ -2644,8 +2672,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   ))}
                 </select>
               </label>
-              <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} />
-              <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} />
+              <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} countNote={FILTER_COUNT_NOTE} />
+              <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} countNote={FILTER_COUNT_NOTE} />
               <div className={styles.searchCell}>
                 <button type="submit" disabled={busy}>
                   検索
@@ -2660,7 +2688,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       <section className={styles.panel} aria-labelledby="table-heading">
         <div className={styles.tableHeaderRow}>
           <h2 id="table-heading">
-            一覧（{count === null ? "0" : `${approximate ? "約 " : ""}${count.toLocaleString("ja-JP")}`} 件・個人情報は一部伏せる）
+            一覧（{count === null ? "0" : count.toLocaleString("ja-JP")} 件・個人情報は一部伏せる）
           </h2>
           <div className={styles.pagination}>
             <button type="button" className={styles.secondaryButton} onClick={() => void handlePageChange(listPage - 1)} disabled={busy || listPage <= 1}>
@@ -3002,7 +3030,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               <p>{parentResultLine(uploadResult)}</p>
               <p>{purchaseResultLine(uploadResult)}</p>
               <p>{derivedResultLine(uploadResult)}</p>
-              <p>選択肢の件数は翌朝 6:45 に更新されます</p>
+              <p>選択肢の件数は翌朝 6:55 に更新されます</p>
               <p>読めなかった行：{uploadResult.skipped.toLocaleString("ja-JP")} 行</p>
               {uploadResult.remaining > 0 && <p>残り：{uploadResult.remaining.toLocaleString("ja-JP")} 行</p>}
             </section>
@@ -3102,6 +3130,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <p>コール済み＝コール回数合計が 1 以上の番号数。総コール回数＝コール回数合計の合計。回転＝総コール回数 ÷ 件数。</p>
                 <p>有効＝件数 − 最終コール結果が「無効」の番号数。受注顧客数＝受注件数が 1 以上の番号数。受注案件数＝受注履歴の案件数。獲得（コール）＝最終コール結果が「獲得」の番号数。</p>
                 <p>受注率は受注顧客数で計算しています。獲得（コール）は件数だけ並べています。</p>
+                <p>受注は、電話番号台帳にある番号に付いた受注だけを数えます。携帯番号だけのお客様など、台帳に無い番号の受注は入りません。</p>
+                <p>① どこから購入したか：購入先で絞ると「その購入先で一度でも買った番号」、絞らない時は「いちばん新しい購入先」で数えます。同じ購入先でも数が違うことがあります。</p>
               </details>
             </div>
           )}
@@ -3164,6 +3194,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       {activeTab === "guide" && (
         <section className={styles.panel} aria-labelledby="guide-heading">
           <h2 id="guide-heading">リストマスタのデータの持ち方</h2>
+          <p className={styles.muted}>
+            件数：{tableCounts?.countedAt ? `${formatJstWithWeekday(tableCounts.countedAt)} 時点` : "集計待ち"}（毎朝 6:55 に数え直します）
+          </p>
           <div className={styles.guideTables}>
             <div className={`${styles.tableWrap} ${styles.guideTableWrap}`}>
               <table className={styles.guideTable}>
@@ -3177,11 +3210,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   </tr>
                 </thead>
                 <tbody>
-                  {GUIDE_TABLE_ROWS.map((row) => (
+                  {GUIDE_TABLE_ROWS.map((row, index) => (
                     <tr key={row.name} className={"pending" in row && row.pending ? styles.pendingRow : undefined}>
                       <td>{row.name}</td>
                       <td>{row.unit}</td>
-                      <td>{row.count}</td>
+                      <td>{formatApproxCount(tableCounts?.counts[GUIDE_TABLE_COUNT_KEYS[index]])}</td>
                       <td>{row.contains}</td>
                       <td>{row.timing}</td>
                     </tr>
