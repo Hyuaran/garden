@@ -11,6 +11,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { BLOOM_PATHS } from "../_constants/routes";
 import { useBloomState } from "../_state/BloomStateContext";
 import { ShojiStatusWidget } from "../../../components/shared/ShojiStatusWidget";
@@ -83,7 +84,7 @@ export function BloomShell({ children }: { children: ReactNode }) {
             <ShojiStatusWidget mode="compact" />
           </div>
           <ViewModeToggle />
-          <span style={{ fontSize: 12, color: "#40916c" }}>
+          <span style={{ fontSize: 12, color: "#40916c" }} {...CLARITY_MASK}>
             {bloomUser?.name ?? userEmail ?? ""}
           </span>
           <button

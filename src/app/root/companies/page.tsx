@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
 import { DataTable, Column } from "../_components/DataTable";
@@ -212,7 +213,7 @@ export default function CompaniesPage() {
     {
       key: "rep",
       header: "代表者",
-      render: (c) => c.representative,
+      render: (c) => <span {...CLARITY_MASK}>{c.representative}</span>,
       width: 120,
     },
     {

@@ -18,6 +18,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useRef, useState, type ReactElement } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { C } from "../_constants/colors";
 import { SHOW_DEMO_CONTROLS } from "../_constants/flags";
 import { LOGO_PATH } from "../_constants/logo";
@@ -595,7 +596,7 @@ export function SidebarNav() {
             )}
           </div>
           {isExpanded && (
-            <div style={{ overflow: "hidden", whiteSpace: "nowrap" }}>
+            <div style={{ overflow: "hidden", whiteSpace: "nowrap" }} {...CLARITY_MASK}>
               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>
                 {treeUser?.employment_type ?? USER.employmentType} / {rc.fullLabel}
               </div>
@@ -1006,6 +1007,7 @@ export function SidebarNav() {
             onClick={handleLogout}
             title={`ログアウト（${treeUser.name}）`}
             aria-label="ログアウト"
+            {...CLARITY_MASK}
             style={{
               display: "flex",
               alignItems: "center",

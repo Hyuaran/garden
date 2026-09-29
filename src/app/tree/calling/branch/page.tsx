@@ -24,6 +24,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { ActionButton } from "../../_components/ActionButton";
 import { CallTimer } from "../../_components/CallTimer";
 import { GlassPanel } from "../../_components/GlassPanel";
@@ -297,6 +298,7 @@ export default function CallingBranchPage() {
                   color: C.textDark,
                   marginBottom: 6,
                 }}
+                {...CLARITY_MASK}
               >
                 {cu.name}{" "}
                 <span style={{ fontSize: 14 }}>様</span>
@@ -307,6 +309,7 @@ export default function CallingBranchPage() {
                   color: C.textSub,
                   marginBottom: 4,
                 }}
+                {...CLARITY_MASK}
               >
                 <MapLink address={cu.address} />
               </div>
@@ -741,6 +744,7 @@ export default function CallingBranchPage() {
                       fontWeight: 700,
                       color: C.textDark,
                     }}
+                    {...CLARITY_MASK}
                   >
                     {c.name}
                   </div>

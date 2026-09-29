@@ -1,6 +1,7 @@
 "use client";
 
 import { GARDEN_ROLE_LABELS } from "../_constants/types";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { colors } from "../_constants/colors";
 import { useRootState } from "../_state/RootStateContext";
 
@@ -23,7 +24,7 @@ export function UserHeader() {
       }}
     >
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 14, color: colors.text }}>
+        <span style={{ fontSize: 14, color: colors.text }} {...CLARITY_MASK}>
           {rootUser.name}
         </span>
         <span

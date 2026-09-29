@@ -26,6 +26,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { ActionButton } from "../../_components/ActionButton";
 import { BreezeDualTimer } from "../../_components/BreezeDualTimer";
 import { GlassPanel } from "../../_components/GlassPanel";
@@ -556,6 +557,7 @@ export default function CallingSproutPage() {
               color: C.textDark,
               marginBottom: 12,
             }}
+            {...CLARITY_MASK}
           >
             {cu.name}{" "}
             <span style={{ fontSize: 14 }}>様</span>
@@ -566,6 +568,7 @@ export default function CallingSproutPage() {
               color: C.textSub,
               marginBottom: 8,
             }}
+            {...CLARITY_MASK}
           >
             <MapLink address={cu.address} />
           </div>

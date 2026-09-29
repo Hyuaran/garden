@@ -19,6 +19,7 @@
 
 import { useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { GlassPanel } from "../_components/GlassPanel";
 import { PointValue } from "../_components/PointValue";
 import { WireframeLabel } from "../_components/WireframeLabel";
@@ -259,7 +260,7 @@ export default function AporanPage() {
       {/* 更新情報 */}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 16, marginBottom: 8, fontSize: 11, color: C.textMuted }}>
         <span>最終更新: 2026/04/12（土）18:30</span>
-        <span>更新者: {selfFullName}</span>
+        <span {...CLARITY_MASK}>更新者: {selfFullName}</span>
         {role === ROLES.MANAGER && (
           <span style={{ position: "relative" }}
             onMouseEnter={() => setShowHistory(true)}
@@ -280,7 +281,7 @@ export default function AporanPage() {
                     fontSize: 12, color: C.textDark,
                   }}>
                     <span style={{ color: C.textMuted }}>{h.date}</span>
-                    <span style={{ fontWeight: 600 }}>{h.name}</span>
+                    <span style={{ fontWeight: 600 }} {...CLARITY_MASK}>{h.name}</span>
                   </div>
                 ))}
               </div>
@@ -338,7 +339,7 @@ export default function AporanPage() {
           }}>
             <div style={{ fontSize: r.rank <= 5 ? 20 : 14, fontWeight: 800, color: r.rank <= 5 ? C.gold : C.textMuted, textAlign: "center" }}>{medalIcon(r.rank)}</div>
             <div style={{ fontSize: 11, color: C.textMuted }}>{r.dept}</div>
-            <div style={{ fontWeight: 700 }}>{r.name}</div>
+            <div style={{ fontWeight: 700 }} {...CLARITY_MASK}>{r.name}</div>
             <div><span style={{ fontSize: 12, color: statusColor(r.status), fontWeight: 600 }}>{r.status}</span></div>
             <div style={{ textAlign: "right", fontWeight: 800, color: r.pts >= 10 ? C.midGreen : C.textDark }}>{P(r.pts)}</div>
             <div style={{ textAlign: "right", color: C.textSub }}>{r.hours}h</div>

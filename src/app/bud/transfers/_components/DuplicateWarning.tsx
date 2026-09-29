@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { transferFormStyles as styles } from "./transferFormStyles";
 
 interface DuplicateEntry {
@@ -49,7 +50,7 @@ export function DuplicateWarning({
                 >
                   {d.transfer_id}
                 </Link>
-                <span className="ml-2 text-text-sub">
+                <span className="ml-2 text-text-sub" {...CLARITY_MASK}>
                   {d.payee_name} / ¥{d.amount.toLocaleString()} /{" "}
                   {d.scheduled_date ?? "—"} / {d.status}
                 </span>

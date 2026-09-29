@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { OnboardingError } from "../_lib/onboarding.server";
 import { onboardingAdminContext, readAdminOnboardingList } from "../_lib/onboarding-admin.server";
@@ -25,7 +26,7 @@ export default async function OnboardingAdminPage() {
         <div className={styles.adminTopActions}><Link className={styles.button} href="/system/onboarding">自分の入社手続きへ</Link></div>
         {rows?.length ? <div className={styles.tableWrap}><table className={styles.adminTable}>
           <thead><tr><th>氏名</th><th>入社日</th><th>状態</th><th>未入力</th><th>事務入力</th></tr></thead>
-          <tbody>{rows.map(row => <tr key={row.employeeId}>
+          <tbody {...CLARITY_MASK}>{rows.map(row => <tr key={row.employeeId}>
             <td><Link href={`/system/onboarding/admin/${encodeURIComponent(row.employeeId)}`}>{row.name}</Link></td>
             <td>{row.hireDate ?? "未入力"}</td>
             <td>{row.status === "submitted" ? "提出ずみ" : "入力中"}</td>

@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import type { OrganizationNode } from "../_data/company-doc";
 import styles from "../docs.module.css";
 
@@ -11,7 +12,7 @@ function Branch({ node }: { node: OrganizationNode }) {
     <div className={styles.orgUnit}>
       <div className={styles.orgNode} data-org-label><strong>{node.label}</strong></div>
       {!!node.members?.length && <div className={styles.orgMembers} data-org-members>
-        {node.members.map(member => <div className={styles.orgMember} data-org-member key={`${member.role ?? ""}:${member.name}`}>
+        {node.members.map(member => <div className={styles.orgMember} data-org-member key={`${member.role ?? ""}:${member.name}`} {...CLARITY_MASK}>
           {member.role && <span className={styles.orgMemberRole}>{member.role}</span>}
           {/* 全角換算で余裕を持たせ、長い氏名も文字を切らず箱幅に収める。 */}
           <span className={styles.orgMemberName} data-org-name style={{ "--org-name-length": Array.from(member.name).length + 0.25 } as CSSProperties}>{member.name}</span>

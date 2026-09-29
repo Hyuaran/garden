@@ -16,6 +16,7 @@
 
 import { useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
@@ -90,9 +91,9 @@ export default function SearchPage() {
           <GlassPanel key={c.name} style={{ padding: 14, marginBottom: 8, cursor: "pointer" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.textDark }}>{c.name}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.textDark }} {...CLARITY_MASK}>{c.name}</span>
                 <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 12 }}>{c.phone}</span>
-                <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 12 }}>{c.address}</span>
+                <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 12 }} {...CLARITY_MASK}>{c.address}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 11, color: C.textMuted }}>{c.lastDate}</span>
@@ -139,7 +140,7 @@ export default function SearchPage() {
                   width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 12, fontWeight: 800, background: "rgba(201,168,76,0.15)", color: C.gold,
                 }}>{p.rank}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.textDark }}>{p.customer}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.textDark }} {...CLARITY_MASK}>{p.customer}</span>
               </div>
               <span style={{ fontSize: 11, color: C.textMuted }}>{p.date}</span>
             </div>
@@ -159,7 +160,7 @@ export default function SearchPage() {
           <GlassPanel key={h.customer} style={{ padding: 14, marginBottom: 8, cursor: "pointer" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.textDark }}>{h.customer}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.textDark }} {...CLARITY_MASK}>{h.customer}</span>
                 <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 12 }}>{h.date}</span>
               </div>
               <span style={{

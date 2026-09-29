@@ -2,6 +2,7 @@
 
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
@@ -115,6 +116,7 @@ export function BudFaithfulFrame({
             className={styles.htmlPort}
             data-bud-port={route}
             onClick={handleTabClick}
+            {...CLARITY_MASK}
             dangerouslySetInnerHTML={{ __html: sourceHtml }}
           />
           {children}

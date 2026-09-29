@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { supabase } from "../../_lib/supabase";
 import { fetchMatchableTransfers } from "../../_lib/statement-queries";
 import { transitionTransferStatus } from "../../_lib/transfer-mutations";
@@ -159,7 +160,7 @@ export function ManualAssignModal({
                       <div className="font-mono text-xs text-gray-700">
                         {c.transfer_id}
                       </div>
-                      <div className="text-gray-900">
+                      <div className="text-gray-900" {...CLARITY_MASK}>
                         {c.payee_name} / ¥{c.amount.toLocaleString()} /{" "}
                         {c.scheduled_date ?? "—"} / {c.status}
                       </div>

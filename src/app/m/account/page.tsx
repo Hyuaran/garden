@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { signOutUnified, useAuthUnified } from "@/app/_lib/auth-unified";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 
@@ -34,7 +35,7 @@ export default function MobileAccountPage() {
         <p style={lead}>ログイン中のユーザー情報です。</p>
       </header>
 
-      <section style={card}>
+      <section style={card} {...CLARITY_MASK}>
         <div style={avatar}>G</div>
         <div style={row}>
           <span style={label}>氏名</span>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { BudGate } from "../../_components/BudGate";
 import { BudShell } from "../../_components/BudShell";
 import { useBudState } from "../../_state/BudStateContext";
@@ -228,7 +229,7 @@ function CsvExportContent() {
                       <td className="px-3 py-2 font-mono text-xs">
                         {t.transfer_id}
                       </td>
-                      <td className="px-3 py-2">{t.payee_name}</td>
+                      <td className="px-3 py-2" {...CLARITY_MASK}>{t.payee_name}</td>
                       <td className="px-3 py-2 text-gray-600">
                         {t.payee_bank_name ?? "—"}
                       </td>

@@ -14,6 +14,7 @@
 import { useState } from "react";
 
 import { C } from "../_constants/colors";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { USER } from "../_constants/user";
 import { useTreeState } from "../_state/TreeStateContext";
 
@@ -237,6 +238,7 @@ export function ProspectList({ mode = "sprout" }: ProspectListProps) {
                     fontWeight: 700,
                     color: C.textDark,
                   }}
+                  {...CLARITY_MASK}
                 >
                   {p.customer}
                 </span>

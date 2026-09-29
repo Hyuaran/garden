@@ -7,6 +7,7 @@ import { type CSSProperties, type ReactNode, useEffect, useId, useMemo, useRef, 
 import { MODULE_META, ModuleIcon, RailIcon } from "@/app/_components/ModuleIcon/ModuleIcon";
 import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { readFavorites, readFavoritesRaw, subscribeFavorites, writeFavorites, type FavoriteItem } from "@/app/_components/layout/GardenShell/GardenShell";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useTheme } from "@/app/_lib/theme/ThemeProvider";
 import { getVisibleModules } from "@/app/_lib/module-visibility";
@@ -263,7 +264,7 @@ export default function RillShachoShell({ children, user }: Props) {
           <div className={styles.moduleName}>Rill ／ メッセージ</div>
         </div>
         {renderRillMenu()}
-        <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}><span>{user.company}</span><span>{user.roleLabel}</span></div></div></div>
+        <div className={styles.who} {...CLARITY_MASK}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}><span>{user.company}</span><span>{user.roleLabel}</span></div></div></div>
       </div>
     </aside>
     {drawerOpen && <div className={`${styles.drawerLayer} ${styles.drawerOpen}`}>
@@ -275,7 +276,7 @@ export default function RillShachoShell({ children, user }: Props) {
         <div className={styles.moduleName}>Rill ／ メッセージ</div>
         <div className={styles.drawerRail} aria-label="Gardenシリーズ">{renderModuleRail()}</div>
         {renderRillMenu()}
-        <div className={styles.who}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}><span>{user.company}</span><span>{user.roleLabel}</span></div></div></div>
+        <div className={styles.who} {...CLARITY_MASK}><div className={styles.avatar}>{user.name.charAt(0)}</div><div><div className={styles.userName}>{user.name}</div><div className={styles.userRole}><span>{user.company}</span><span>{user.roleLabel}</span></div></div></div>
       </aside>
       <button className={styles.drawerBackdrop} type="button" aria-label="メニューを閉じる" onClick={() => setDrawerOpen(false)} />
     </div>}
@@ -309,7 +310,7 @@ export default function RillShachoShell({ children, user }: Props) {
             </div>
           </div>
           <div className={`${styles.userWrap} ${userOpen ? styles.open : ""}`}>
-            <button className={styles.userButton} type="button" aria-label="ユーザーメニュー" aria-expanded={userOpen} onClick={() => setUserOpen((value) => !value)}><span>{user.name.charAt(0)}</span><UserIcon /></button>
+            <button className={styles.userButton} type="button" aria-label="ユーザーメニュー" aria-expanded={userOpen} onClick={() => setUserOpen((value) => !value)} {...CLARITY_MASK}><span>{user.name.charAt(0)}</span><UserIcon /></button>
             <div className={styles.userMenu} role="menu" aria-hidden={!userOpen}>
               <Link href="/mypage"><UserIcon />マイページ</Link>
               <Link href="/settings"><GearIcon />ユーザー設定</Link>

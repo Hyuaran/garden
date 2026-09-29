@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
@@ -149,7 +150,7 @@ export default function EffRankingPage() {
           }}>
             <div style={{ fontSize: m.rank <= 3 ? 20 : 14, fontWeight: 800, color: m.rank <= 3 ? "#3478c6" : C.textMuted, textAlign: "center" }}>{medalIcon(m.rank)}</div>
             <div style={{ fontSize: 11, color: C.textMuted }}>{m.dept}</div>
-            <div style={{ fontWeight: 700 }}>{m.name}</div>
+            <div style={{ fontWeight: 700 }} {...CLARITY_MASK}>{m.name}</div>
             <div><span style={{ fontSize: 12, color: statusColor(m.status), fontWeight: 600 }}>{m.status}</span></div>
             <div style={{ textAlign: "right" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>

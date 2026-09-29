@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { BudGardenFrame } from "../../_components/BudGardenFrame";
 import { fetchTransferById } from "../../_lib/transfer-queries";
 import type { BudTransfer } from "../../_constants/types";
@@ -178,7 +179,7 @@ function TabButton({
 
 function BasicInfoTab({ transfer }: { transfer: BudTransfer }) {
   return (
-    <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+    <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm" {...CLARITY_MASK}>
       <Row label="振込種別">{transfer.transfer_category ?? "—"}</Row>
       <Row label="データソース">{transfer.data_source ?? "—"}</Row>
       <Row label="依頼会社">{transfer.request_company_id ?? "—"}</Row>

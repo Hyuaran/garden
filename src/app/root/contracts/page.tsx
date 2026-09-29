@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
 import { colors } from "../_constants/colors";
 import type {
@@ -225,7 +226,7 @@ export default function ContractsPage() {
               background: colors.bgPanel,
             }}
           >
-            <strong>{r.root_employees?.name ?? r.employee_id}</strong>　
+            <strong {...CLARITY_MASK}>{r.root_employees?.name ?? r.employee_id}</strong>　
             {r.root_employees?.root_companies?.company_name ?? ""}　
             {r.payload.kind === "new" ? "新規" : "更新"}　
             {r.payload.contractStart}～{r.payload.contractEnd}　時給{" "}

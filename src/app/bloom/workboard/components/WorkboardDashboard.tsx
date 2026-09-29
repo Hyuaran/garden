@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
@@ -247,7 +248,7 @@ export default function WorkboardDashboard() {
               {teamMembers.map((member) => (
                 <div key={member.name} className={styles.teamRow}>
                   <Image className={styles.avatar} src={member.avatar} alt="" width={34} height={34} />
-                  <span className={styles.memberName}>{member.name}</span>
+                  <span className={styles.memberName} {...CLARITY_MASK}>{member.name}</span>
                   <span className={cx(styles.memberStatus, styles[member.tone])}>{member.status}</span>
                   <span className={styles.memberTask}>{member.task}</span>
                 </div>

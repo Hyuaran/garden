@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type CSSProperties, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { MODULE_META, ModuleIcon, RailIcon } from "@/app/_components/ModuleIcon/ModuleIcon";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { getVisibleModules } from "@/app/_lib/module-visibility";
 import { useTheme } from "@/app/_lib/theme/ThemeProvider";
@@ -138,7 +139,7 @@ export function RootShell({ children }: { children: ReactNode }) {
           {renderRootMenu()}
 
           {rootUser && gardenRole && (
-            <div className={systemStyles.who}>
+            <div className={systemStyles.who} {...CLARITY_MASK}>
               <div className={systemStyles.avatar}>{rootUser.name.charAt(0)}</div>
               <div>
                 <div className={systemStyles.userName}>{rootUser.name}</div>
@@ -173,7 +174,7 @@ export function RootShell({ children }: { children: ReactNode }) {
           <div className={systemStyles.drawerRail} aria-label="Gardenシリーズ">{renderModuleRail()}</div>
           {renderRootMenu()}
           {rootUser && gardenRole && (
-            <div className={systemStyles.who}>
+            <div className={systemStyles.who} {...CLARITY_MASK}>
               <div className={systemStyles.avatar}>{rootUser.name.charAt(0)}</div>
               <div>
                 <div className={systemStyles.userName}>{rootUser.name}</div>
@@ -187,7 +188,7 @@ export function RootShell({ children }: { children: ReactNode }) {
 
       <main className={`${systemStyles.main} ${rootStyles.main}`}>
         <div className={systemStyles.actions}>
-          {userName && <span className={systemStyles.accountName}>{userName}さん</span>}
+          {userName && <span className={systemStyles.accountName} {...CLARITY_MASK}>{userName}さん</span>}
           <button className={systemStyles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>
             {theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" /></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z" /></svg>}
             <span className={systemStyles.actionTip}>{themeLabel}</span>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
 import { buildEmployeeMap, fetchExpenseEmployeeLookup, resolveExpenseApplicantName, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
@@ -660,7 +661,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                             />
                           </td>
                           <td style={td}>{formatDate(row.submitted_at)}</td>
-                          <td style={applicantTd}><ExpenseKindBadge kind={row.expense_kind} />{employeeLabel(row, employees)}</td>
+                          <td style={applicantTd} {...CLARITY_MASK}><ExpenseKindBadge kind={row.expense_kind} />{employeeLabel(row, employees)}</td>
                           <td style={td}>{formatDate(row.receipt_date)}</td>
                           <td style={td}>{categoryLabel(row.category_id, cats)}</td>
                           <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
@@ -771,7 +772,7 @@ function DetailModal({
         </div>
         <div style={modalGrid}>
           <div>
-            <Row label="申請者">{employeeLabel(row, employees)}</Row>
+            <Row label="申請者" masked>{employeeLabel(row, employees)}</Row>
             <Row label="経費種別"><ExpenseKindBadge kind={row.expense_kind} />{row.expense_kind === "company" ? "" : "個人経費"}</Row>
             <Row label="申請日">{formatDate(row.submitted_at)}</Row>
             <Row label="日付">{formatDate(row.receipt_date)}</Row>
@@ -836,11 +837,11 @@ function CompactCard({
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({ label, children, masked = false }: { label: string; children: React.ReactNode; masked?: boolean }) {
   return (
     <div style={{ display: "flex", gap: 10, padding: "6px 0", fontSize: 14 }}>
       <span style={{ width: 96, color: "var(--text-sub)", flexShrink: 0 }}>{label}</span>
-      <span style={{ color: "var(--text-main)" }}>{children}</span>
+      <span style={{ color: "var(--text-main)" }} {...(masked ? CLARITY_MASK : {})}>{children}</span>
     </div>
   );
 }

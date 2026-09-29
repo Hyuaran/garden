@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
 import { DataTable, Column } from "../_components/DataTable";
@@ -150,7 +151,7 @@ export default function BankAccountsPage() {
     { key: "branch", header: "支店", render: (a) => `${a.branch_name} (${a.branch_code})`, width: 160 },
     { key: "type", header: "種別", render: (a) => a.account_type, width: 60 },
     { key: "number", header: "口座番号", render: (a) => a.account_number, width: 100 },
-    { key: "holder", header: "名義", render: (a) => a.account_holder },
+    { key: "holder", header: "名義", render: (a) => <span {...CLARITY_MASK}>{a.account_holder}</span> },
     { key: "purpose", header: "用途", render: (a) => a.purpose ?? "—", width: 80 },
     { key: "status", header: "状態", render: (a) => <StatusBadge active={a.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (a) => (

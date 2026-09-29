@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { supabase } from "../../_lib/supabase";
 import {
   PAYMENT_CATEGORY_TABS,
@@ -477,7 +478,7 @@ export function TransferPaymentCategoryPanel({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody {...CLARITY_MASK}>
                 {pagedRows.map((row) => {
                   const paid = Boolean(row.manual_paid_at);
                   const rowCategory = normalizePaymentCategory(

@@ -6,6 +6,7 @@ import { ArcElement, Chart as ChartJS, Legend, Tooltip, type ChartData, type Cha
 import { Doughnut } from "react-chartjs-2";
 
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 
 import {
   EMPTY_OPTION_VALUE,
@@ -2389,7 +2390,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <th>受注顧客数</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody {...CLARITY_MASK}>
               {analysis.repurchasePairs.map((row) => (
                 <tr key={`${row.sourceVendor}->${row.targetVendor}`}>
                   <td>{row.sourceVendor} → {row.targetVendor}</td>
@@ -2726,7 +2727,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody {...CLARITY_MASK}>
               {rows.map((row, index) => (
                 <tr key={`${row.phoneNumber}-${index}`}>
                   <td>{row.phoneNumber}</td>
@@ -3153,7 +3154,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           </form>
           {historyMessage && <p className={styles.message}>{historyMessage}</p>}
           {historyCurrent && (
-            <div className={styles.historyCurrent}>
+            <div className={styles.historyCurrent} {...CLARITY_MASK}>
               <h3>今の値（電話番号台帳）</h3>
               <p>
                 {historyCurrent.name || "氏名なし"} ｜ {historyCurrent.address || "住所なし"} ｜ リスト名 {historyCurrent.listName || "（空欄）"} ｜ 元回線 {historyCurrent.lineType || "（空欄）"}
@@ -3181,7 +3182,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </div>
               <div className={styles.historyList}>
                 {visibleHistoryRows.map((row, index) => (
-                  <div className={styles.historyItem} data-kind={row.type} key={`${row.type}-${row.occurred_on}-${index}`}>
+                  <div className={styles.historyItem} data-kind={row.type} key={`${row.type}-${row.occurred_on}-${index}`} {...CLARITY_MASK}>
                     <span>{row.occurred_on ? formatJstWithWeekday(row.occurred_on) : "日付なし"}</span>
                     <strong>{row.type}</strong>
                     <p>{row.title}{row.detail ? ` ｜ ${row.detail}` : ""}</p>
@@ -3212,7 +3213,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                     <th>いつ増える・変わるか</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody {...CLARITY_MASK}>
                   {GUIDE_TABLE_ROWS.map((row, index) => (
                     <tr key={row.name} className={"pending" in row && row.pending ? styles.pendingRow : undefined}>
                       <td>{row.name}</td>
@@ -3311,7 +3312,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             </div>
             {internalBlockMessage && <p className={styles.message}>{internalBlockMessage}</p>}
             <div className={`${styles.tableWrap} ${styles.guideTableWrap}`}>
-              <table className={styles.internalBlockTable}>
+              <table className={styles.internalBlockTable} {...CLARITY_MASK}>
                 <thead>
                   <tr>
                     <th>電話番号</th>

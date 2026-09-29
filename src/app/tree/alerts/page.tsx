@@ -17,6 +17,7 @@
 
 import { useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
@@ -153,7 +154,7 @@ export default function AlertsPage() {
           const level = dangerLevel(count);
           return (
             <div key={name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid rgba(0,0,0,0.03)" }}>
-              <div style={{ width: 100, fontSize: 13, fontWeight: 600, color: dangerColor[level] }}>{name}</div>
+              <div style={{ width: 100, fontSize: 13, fontWeight: 600, color: dangerColor[level] }} {...CLARITY_MASK}>{name}</div>
               <div style={{ flex: 1, height: 8, background: "rgba(0,0,0,0.04)", borderRadius: 4, overflow: "hidden" }}>
                 <div style={{
                   width: `${(count / maxCount) * 100}%`, height: "100%", borderRadius: 4,
@@ -184,7 +185,7 @@ export default function AlertsPage() {
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: C.textDark }}>{a.name}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: C.textDark }} {...CLARITY_MASK}>{a.name}</span>
                     <span style={{ fontSize: 12, color: C.textMuted }}>有効率 {(a.eff * 100).toFixed(0)}%</span>
                     <span style={{ fontSize: 11, color: C.textMuted }}>{a.time}</span>
                   </div>

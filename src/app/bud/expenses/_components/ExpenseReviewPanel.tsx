@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
 import { expenseKindLabel } from "@/app/bud/expenses/_lib/expense-kind";
@@ -1184,7 +1185,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         />
                       </Field>
                     ) : (
-                      <InfoValue label="申請者">{employeeLabel(current, employees)}</InfoValue>
+                      <InfoValue label="申請者" masked>{employeeLabel(current, employees)}</InfoValue>
                     )}
                     {(showOcrConfirmBadge || corpChangeBadge) && (
                       <div style={badgeStack}>
@@ -1815,7 +1816,7 @@ function StatusList({
                     </td>
                   )}
                   <td style={td}>{formatDate(row.submitted_at)}</td>
-                  <td style={applicantTd}>{employeeLabel(row, employees)}</td>
+                  <td style={applicantTd} {...CLARITY_MASK}>{employeeLabel(row, employees)}</td>
                   <td style={td}>{formatDate(row.receipt_date)}</td>
                   <td style={td}>{row.store_name ?? "-"}</td>
                   <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
@@ -2042,15 +2043,17 @@ function InfoValue({
   label,
   children,
   emphasis = "normal",
+  masked = false,
 }: {
   label: string;
   children: React.ReactNode;
   emphasis?: "normal" | "danger";
+  masked?: boolean;
 }) {
   return (
     <div>
       <div style={{ fontSize: 12, color: emphasis === "danger" ? "var(--text-warning)" : "var(--text-sub)", marginBottom: 4 }}>{label}</div>
-      <div style={infoBox(emphasis)}>{children}</div>
+      <div style={infoBox(emphasis)} {...(masked ? CLARITY_MASK : {})}>{children}</div>
     </div>
   );
 }

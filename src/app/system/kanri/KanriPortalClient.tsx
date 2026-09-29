@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import {
   isMonthEnd,
@@ -663,7 +664,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     </div>
 
     {canWrite && <section className={styles.panel}>
-      <p className={styles.greeting}>お疲れ様です。{formatDate(targetDate)}の管理表を {creatorName} が作成します。</p>
+      <p className={styles.greeting} {...CLARITY_MASK}>お疲れ様です。{formatDate(targetDate)}の管理表を {creatorName} が作成します。</p>
       <div className={styles.controls}>
         <label>対象日<input type="date" value={targetDate} onChange={(event) => changeDate(event.target.value)} /></label>
         <fieldset>
@@ -718,7 +719,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         {showKotDetails && <div className={styles.resultScroller}>
           <table className={styles.resultTable}>
             <thead><tr><th className={styles.stickyCell}>日付</th><th>チーム</th><th>氏名</th><th>種類</th><th>予定</th><th>打刻</th><th>差</th></tr></thead>
-            <tbody>{inputs.kotDaily.issues.map((issue, index) => <tr key={`${issue.date}-${issue.name}-${issue.kind}-${index}`}>
+            <tbody {...CLARITY_MASK}>{inputs.kotDaily.issues.map((issue, index) => <tr key={`${issue.date}-${issue.name}-${issue.kind}-${index}`}>
               <th className={styles.stickyCell}>{issue.date.replace(/-/g, "/")}</th>
               <td>{issue.team || "—"}</td>
               <td>{issue.name}</td>
@@ -932,7 +933,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         <div className={styles.inputScroller}>
           <table className={styles.inputTable}>
             <thead><tr><th>氏名</th><th>チーム</th><th>区分/時給</th><th>着地予想h</th><th>稼働時間h</th><th>稼働日数</th><th>訪販の合計評価</th></tr></thead>
-            <tbody>{people.filter((person) => person.active !== false).map((person) => <tr key={person.name || String(person.sort_order)}>
+            <tbody {...CLARITY_MASK}>{people.filter((person) => person.active !== false).map((person) => <tr key={person.name || String(person.sort_order)}>
               <th>{person.name}</th>
               <td>{person.team}</td>
               <td>{person.employment_kind === "アルバイト" ? formatNumber(Number(person.base_wage ?? 0)) : person.employment_kind}</td>
@@ -1176,7 +1177,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>
         </div>
         {fieldSalesPeople.length > 0 ? <>
-          <div className={styles.personTabs} aria-label="担当者">
+          <div className={styles.personTabs} aria-label="担当者" {...CLARITY_MASK}>
             {fieldSalesPeople.map((person) => <button
               key={person.name}
               type="button"

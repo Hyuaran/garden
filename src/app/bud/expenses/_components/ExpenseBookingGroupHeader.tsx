@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { calculateTaxExcludedAmount } from "../_lib/expense-booking-groups";
 
 type Props = {
@@ -59,7 +60,7 @@ export function ExpenseBookingGroupHeader({
             disabled={disabled}
             onChange={(event) => onToggleSelection(event.target.checked)}
           />
-          <strong style={groupName}>{applicantName}</strong>
+          <strong style={groupName} {...CLARITY_MASK}>{applicantName}</strong>
           <span style={groupStats}>
             <span style={selectedMeta}>選択 {selectedCount}件 {yenWithTaxExcluded(selectedAmount)}</span>
             <span aria-hidden="true">／</span>

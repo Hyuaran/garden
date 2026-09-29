@@ -23,6 +23,7 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { ActionButton } from "../_components/ActionButton";
 import {
   ConfirmSidePanel,
@@ -345,9 +346,9 @@ export default function InCallPage() {
           }
         >
           {isConfirm
-            ? `${prefix}通話画面 — ${cu.name} 様`
+            ? <>{prefix}通話画面 — <span {...CLARITY_MASK}>{cu.name}</span> 様</>
             : isFromToss
-              ? `クローザー通話画面 — ${cu.name} 様`
+              ? <>クローザー通話画面 — <span {...CLARITY_MASK}>{cu.name}</span> 様</>
               : "画面5: 通話画面（クローザー・責任者）"}
         </WireframeLabel>
         <div style={{ paddingTop: 8 }} />
@@ -753,6 +754,7 @@ export default function InCallPage() {
               color: C.textDark,
               marginBottom: 8,
             }}
+            {...CLARITY_MASK}
           >
             {cu.name}{" "}
             <span style={{ fontSize: 14 }}>様</span>
@@ -763,6 +765,7 @@ export default function InCallPage() {
               color: C.textSub,
               marginBottom: 4,
             }}
+            {...CLARITY_MASK}
           >
             <MapLink address={cu.address} />
           </div>

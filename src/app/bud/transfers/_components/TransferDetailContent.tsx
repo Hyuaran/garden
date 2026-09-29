@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { supabase } from "../../_lib/supabase";
 
 type TransferDetailRecord = Record<string, unknown> & {
@@ -53,7 +54,7 @@ export function TransferDetailContent({ transferId }: { transferId: string }) {
       style={{ fontFamily: serifFont }}
       data-transfer-detail-content={transferId}
     >
-      <div style={heroStyle}>
+      <div style={heroStyle} {...CLARITY_MASK}>
         <div>
           <div style={eyebrowStyle}>TRANSFER RECORD</div>
           <h3 style={titleStyle}>{text(row.payee_name)}</h3>
@@ -90,7 +91,7 @@ export function TransferDetailContent({ transferId }: { transferId: string }) {
         </DetailGrid>
       </DetailSection>
 
-      <DetailSection title="振込先口座">
+      <DetailSection title="振込先口座" masked>
         <DetailGrid>
           <Detail
             label="銀行"
@@ -149,12 +150,14 @@ export function TransferDetailContent({ transferId }: { transferId: string }) {
 function DetailSection({
   title,
   children,
+  masked = false,
 }: {
   title: string;
   children: ReactNode;
+  masked?: boolean;
 }) {
   return (
-    <section style={sectionStyle}>
+    <section style={sectionStyle} {...(masked ? CLARITY_MASK : {})}>
       <h4 style={sectionTitleStyle}>{title}</h4>
       {children}
     </section>

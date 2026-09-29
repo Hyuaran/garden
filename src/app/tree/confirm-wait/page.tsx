@@ -18,6 +18,7 @@
 
 import { useEffect, useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
@@ -204,7 +205,7 @@ export default function ConfirmWaitPage() {
                 width: 10, height: 10, borderRadius: "50%",
                 background: cf.status === "free" ? C.midGreen : "#e67e22",
               }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark }}>{cf.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark }} {...CLARITY_MASK}>{cf.name}</span>
               <span style={{ fontSize: 11, color: C.textMuted }}>
                 {cf.status === "free" ? "空き" : `対応中 ${fmt(cf.sec)}`}
               </span>
@@ -232,7 +233,7 @@ export default function ConfirmWaitPage() {
                   fontSize: 10, fontWeight: 700, color: C.white,
                   background: typeColor(item.type), padding: "2px 8px", borderRadius: 8,
                 }}>{item.type}</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: C.textDark }}>{item.customer}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.textDark }} {...CLARITY_MASK}>{item.customer}</span>
                 <span style={{ fontSize: 12, color: C.textMuted }}>{item.phone}</span>
               </div>
               {item.scheduledTime && (
@@ -288,9 +289,9 @@ export default function ConfirmWaitPage() {
             opacity: 0.5, borderBottom: "1px solid rgba(0,0,0,0.03)",
           }}>
             <div><span style={{ fontSize: 10, fontWeight: 600, color: typeColor(item.type) }}>{item.type}</span></div>
-            <div>{item.customer}</div>
-            <div>{item.closer}</div>
-            <div>{item.confirmer}</div>
+            <div {...CLARITY_MASK}>{item.customer}</div>
+            <div {...CLARITY_MASK}>{item.closer}</div>
+            <div {...CLARITY_MASK}>{item.confirmer}</div>
             <div>{item.time}</div>
             <div style={{ fontWeight: 700, color: item.resultColor }}>{item.result}</div>
           </div>

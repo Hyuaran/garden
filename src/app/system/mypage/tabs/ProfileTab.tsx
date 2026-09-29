@@ -6,6 +6,7 @@ import type { MyPageProfile } from "../types";
 import styles from "../mypage.module.css";
 import SubmissionModal from "../_components/SubmissionModal";
 import type {SubmissionRow,SubmissionType} from "../_lib/submission-types";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 
 const MYPAGE_CONFIRM_INTERVAL_DAYS = 90;
 type ProfileIcon = "lock" | "phone" | "route" | "bank" | "document";
@@ -100,9 +101,9 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   return <div className={styles.profileContent}>
     {!birthdayRegistered && <p className={styles.unlockedNotice}>生年月日が未登録のため確認を省略しています。</p>}
     {remaining>0 && <section className={styles.confirmationBanner} aria-label="登録内容の確認"><div><h2>登録内容の確認が済んでいません（残り {remaining} 件）</h2><p>会社に登録されているあなたの情報です。区分ごとに確認してください。</p></div></section>}
-    {remaining>0 && <section className={styles.card}><h2>登録内容の確認</h2>{confirmError?<p role="alert" className={styles.error}>{confirmError}</p>:null}<div className={styles.confirmGrid}>{CONFIRM_CATEGORIES.map(({category,label})=>{const current=profile.current?.[category];const confirmed=isConfirmed(category);const pending=pendingByCategory(category);return <article className={styles.confirmCard} key={category}><h3>{label}</h3><p>{textValue(category)}</p>{sourceText(category)?<small>{sourceText(category)}</small>:null}{confirmed?<div className={styles.confirmedMark}>確認済み（{(profile.confirmations?.[category]??"").slice(0,10)}）</div>:pending?<div className={styles.confirmedMark}>届出済み（{pending.createdAt.slice(0,10)}）</div>:<div className={styles.confirmButtons}>{current?<button type="button" disabled={confirming===category} onClick={()=>void confirmCategory(category)}>{confirming===category?"保存中":"合っている"}</button>:null}{category!=="dependents"?<button type="button" className={styles.secondaryButton} onClick={()=>openDifferent(category)}>違う</button>:null}</div>}</article>})}</div></section>}
+    {remaining>0 && <section className={styles.card}><h2>登録内容の確認</h2>{confirmError?<p role="alert" className={styles.error}>{confirmError}</p>:null}<div className={styles.confirmGrid} {...CLARITY_MASK}>{CONFIRM_CATEGORIES.map(({category,label})=>{const current=profile.current?.[category];const confirmed=isConfirmed(category);const pending=pendingByCategory(category);return <article className={styles.confirmCard} key={category}><h3>{label}</h3><p>{textValue(category)}</p>{sourceText(category)?<small>{sourceText(category)}</small>:null}{confirmed?<div className={styles.confirmedMark}>確認済み（{(profile.confirmations?.[category]??"").slice(0,10)}）</div>:pending?<div className={styles.confirmedMark}>届出済み（{pending.createdAt.slice(0,10)}）</div>:<div className={styles.confirmButtons}>{current?<button type="button" disabled={confirming===category} onClick={()=>void confirmCategory(category)}>{confirming===category?"保存中":"合っている"}</button>:null}{category!=="dependents"?<button type="button" className={styles.secondaryButton} onClick={()=>openDifferent(category)}>違う</button>:null}</div>}</article>})}</div></section>}
 
-    <section className={styles.card}><h2>基本情報</h2><dl className={styles.infoGrid}>
+    <section className={styles.card}><h2>基本情報</h2><dl className={styles.infoGrid} {...CLARITY_MASK}>
       <InfoRow label="氏名" value={profile.name} /><InfoRow label="氏名カナ" value={profile.nameKana} />
       <InfoRow label="社員番号" value={profile.employeeNumber} /><InfoRow label="雇用形態" value={profile.employmentType} />
       <InfoRow label="生年月日" value={profile.birthday ?? "未登録"} /><InfoRow label="Garden権限" value={roleLabel} />

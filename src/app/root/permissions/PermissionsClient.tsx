@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import {
   GARDEN_ROLE_LABELS,
   GARDEN_ROLE_ORDER,
@@ -145,8 +146,8 @@ export default function PermissionsClient({
   }, [employees]);
 
   const employeeColumns: Column<EmployeePermissionRow>[] = [
-    { key: "number", header: "社員番号", render: (employee) => employee.employee_number, width: 100 },
-    { key: "name", header: "氏名", render: (employee) => employee.name, width: 160 },
+    { key: "number", header: "社員番号", render: (employee) => <span {...CLARITY_MASK}>{employee.employee_number}</span>, width: 100 },
+    { key: "name", header: "氏名", render: (employee) => <span {...CLARITY_MASK}>{employee.name}</span>, width: 160 },
     { key: "employment", header: "雇用形態", render: (employee) => employee.employment_type, width: 120 },
     { key: "role", header: "役職", render: (employee) => roleLabel(employee.garden_role), width: 120 },
     { key: "status", header: "状態", render: (employee) => <StatusBadge active={employee.is_active} />, width: 90, align: "center" },

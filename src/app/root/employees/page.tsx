@@ -29,6 +29,7 @@ import {
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 import { GardenRoleField } from "./GardenRoleField";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 
 /**
  * 雇用形態選択肢。DB 値（value）と UI ラベル（label）を分離。
@@ -180,7 +181,7 @@ function AddressReadOnly({ address }: { address: CurrentAddress | undefined }) {
   const source = addressSourceLine(address);
 
   return (
-    <section style={{ margin: "16px 0 8px" }}>
+    <section style={{ margin: "16px 0 8px" }} {...CLARITY_MASK}>
       <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: colors.textMuted }}>住所（今の値・変更は届出か名簿から）</h3>
       <div style={{ border: `1px solid ${colors.border}`, borderRadius: 6, background: colors.bgPanel, padding: "10px 12px", color: colors.text, fontSize: 14, lineHeight: 1.7 }}>
         {full ? (
@@ -659,13 +660,13 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
 
   const columns: Column<Employee>[] = [
     { key: "id", header: "ID", render: (e) => e.employee_id, width: 100 },
-    { key: "num", header: "社員番号", render: (e) => e.employee_number, width: 90 },
-    { key: "name", header: "氏名", render: (e) => e.name, width: 120 },
-    { key: "kana", header: "カナ", render: (e) => e.name_kana, width: 160 },
+    { key: "num", header: "社員番号", render: (e) => <span {...CLARITY_MASK}>{e.employee_number}</span>, width: 90 },
+    { key: "name", header: "氏名", render: (e) => <span {...CLARITY_MASK}>{e.name}</span>, width: 120 },
+    { key: "kana", header: "カナ", render: (e) => <span {...CLARITY_MASK}>{e.name_kana}</span>, width: 160 },
     { key: "address", header: "住所", render: (e) => {
       const address = addresses[e.employee_id];
       const text = addressLine(address);
-      return <span style={{ color: address?.full ? colors.text : colors.textMuted }}>{text}</span>;
+      return <span style={{ color: address?.full ? colors.text : colors.textMuted }} {...CLARITY_MASK}>{text}</span>;
     }, width: 260, wrap: true },
     { key: "company", header: "法人", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, width: 160 },
     { key: "emp_type", header: "雇用形態", render: (e) => e.employment_type, width: 80 },
@@ -745,7 +746,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
                 <div style={{ display: "grid", gap: 6 }}>
                   {rows.map((row) => {
                     const isCurrent = profileHistory.currentIds[row.category] === row.id;
-                    return <div key={row.id ?? `${row.category}-${row.recorded_at}`} style={{ display: "grid", gridTemplateColumns: "18px 96px minmax(210px,1fr) minmax(130px,180px) auto", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 6, background: isCurrent ? colors.bgPanel : colors.dangerBg, border: `1px solid ${isCurrent ? colors.border : colors.danger}`, fontSize: 13, color: colors.text }}>
+                    return <div key={row.id ?? `${row.category}-${row.recorded_at}`} style={{ display: "grid", gridTemplateColumns: "18px 96px minmax(210px,1fr) minmax(130px,180px) auto", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 6, background: isCurrent ? colors.bgPanel : colors.dangerBg, border: `1px solid ${isCurrent ? colors.border : colors.danger}`, fontSize: 13, color: colors.text }} {...CLARITY_MASK}>
                       <span aria-hidden="true">{isCurrent ? "●" : "▲"}</span>
                       <span>{row.effective_from ?? "-"}</span>
                       <span>{profileValue(row)}</span>
@@ -781,7 +782,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
             )}
             <div style={{ margin: 0, display: "grid", gridTemplateColumns: "110px 1fr", gap: "12px 16px", alignItems: "center" }}>
               <div style={{ color: colors.textMuted, fontSize: 13 }}>氏名</div>
-              <div style={{ margin: 0, color: colors.text, fontSize: 14 }}>
+              <div style={{ margin: 0, color: colors.text, fontSize: 14 }} {...CLARITY_MASK}>
                 {roleTarget.name}（社員番号 {roleTarget.employee_number}）
               </div>
               <div style={{ color: colors.textMuted, fontSize: 13 }}>いまの権限</div>

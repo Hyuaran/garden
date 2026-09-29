@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { Button } from "../_components/Button";
 import { Modal } from "../_components/Modal";
 import { PageHeader } from "../_components/PageHeader";
@@ -180,7 +181,7 @@ export default function BankCheckPage() {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13, color: colors.text }}>
               <thead><tr>{["氏名", "出どころ", "登録されている値", "指摘", "候補", ""].map((head) => <th key={head} style={{ textAlign: "left", padding: "9px 8px", borderBottom: `1px solid ${colors.border}`, color: colors.textMuted, whiteSpace: "nowrap" }}>{head}</th>)}</tr></thead>
-              <tbody>
+              <tbody {...CLARITY_MASK}>
                 {visible.map((row) => (
                   <tr key={row.id}>
                     <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{row.employeeName}</td>

@@ -18,6 +18,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
@@ -123,7 +124,7 @@ function SeatCell({ emp }: { emp: Employee | null }) {
       display: "flex", flexDirection: "column", justifyContent: "space-between",
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: C.textDark }}>{emp.name}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: C.textDark }} {...CLARITY_MASK}>{emp.name}</span>
         <span style={{ fontSize: 10, color: roleColor(emp.role), fontWeight: 600 }}>{emp.role}</span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -248,7 +249,7 @@ export default function MonitoringPage() {
                 padding: 12, textAlign: "center",
                 border: isActive(emp.status) ? `2px solid ${C.accentGreen}` : undefined,
               }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.textDark, marginBottom: 4 }}>{emp.name}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.textDark, marginBottom: 4 }} {...CLARITY_MASK}>{emp.name}</div>
                 <div style={{ fontSize: 10, color: roleColor(emp.role), fontWeight: 600, marginBottom: 6 }}>{emp.role}</div>
                 <div style={{ fontSize: 16, marginBottom: 2 }}>{si.icon}</div>
                 <div style={{ fontSize: 11, color: si.color, fontWeight: 600 }}>{emp.status}</div>

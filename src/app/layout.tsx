@@ -13,6 +13,7 @@ import "./globals.css";
 import { ShojiStatusProvider } from "../components/shared/ShojiStatusContext";
 import { ThemeProvider } from "./_lib/theme/ThemeProvider";
 import { AuthProvider } from "./_lib/auth-unified";
+import ClarityTracker from "./_components/analytics/ClarityTracker";
 
 export const metadata: Metadata = {
   title: "Garden",
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         */}
         <AuthProvider>
           <ThemeProvider>
+            <ClarityTracker />
             <ShojiStatusProvider>{children}</ShojiStatusProvider>
           </ThemeProvider>
         </AuthProvider>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import {
   businesses, chapters, companyDocument, formatDocumentDate, getCompanyOverview, groupCompanies,
@@ -18,7 +19,7 @@ export function MemberCard({ member, photo }: { member: Member; photo?: string }
     { field: "title" as const, label: "兼務", value: member.alsoRepresents },
     { field: "hobbies" as const, label: "趣味", value: member.hobbies },
   ].filter(row => showsMemberField(member, row.field) && row.value?.trim());
-  return <article className={styles.memberCard} data-member-id={member.id} aria-labelledby={`member-${member.id}`}>
+  return <article className={styles.memberCard} data-member-id={member.id} aria-labelledby={`member-${member.id}`} {...CLARITY_MASK}>
     <MemberPhoto key={photo} name={member.name} src={showsMemberField(member, "photo") ? photo : undefined} />
     <div className={styles.memberBody}>
       <p className={styles.kana}>{member.kana}</p>
@@ -71,7 +72,7 @@ export default function CompanyDocument({ members, photos = {}, presentation = f
         <section id="organization" aria-labelledby="organization-heading" className={styles.chapter}>
           <ChapterHeading index={2} /><p>{organizationNote}</p>
           <OrganizationChart root={organization} />
-          <h3>グループ会社</h3><div className={styles.groupGrid}>{groupCompanies.map(company => <article className={styles.panel} key={company.name} data-group-company>
+          <h3>グループ会社</h3><div className={styles.groupGrid}>{groupCompanies.map(company => <article className={styles.panel} key={company.name} data-group-company {...CLARITY_MASK}>
             <h4>{company.name}</h4><dl className={styles.memberDetails}><div><dt>代表者</dt><dd>{company.representative}</dd></div><div><dt>設立</dt><dd>{company.established}</dd></div></dl>
           </article>)}</div>
         </section>

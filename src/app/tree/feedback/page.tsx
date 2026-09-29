@@ -17,6 +17,7 @@
 
 import { useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { ActionButton } from "../_components/ActionButton";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
@@ -130,7 +131,7 @@ export default function FeedbackPage() {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.textDark }}>{m.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.textDark }} {...CLARITY_MASK}>{m.name}</div>
                   <div style={{ fontSize: 10, color: C.textMuted }}>{m.dept}</div>
                 </div>
                 {hasFb && (
@@ -154,7 +155,7 @@ export default function FeedbackPage() {
           ) : (
             <>
               <GlassPanel style={{ padding: 20, marginBottom: 16 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: C.textDark, marginBottom: 4 }}>{selectedMember.name}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.textDark, marginBottom: 4 }} {...CLARITY_MASK}>{selectedMember.name}</div>
                 <div style={{ fontSize: 12, color: C.textMuted }}>{selectedMember.dept}</div>
               </GlassPanel>
 

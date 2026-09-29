@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { useBudState } from "../../_state/BudStateContext";
 import {
   createTransfer,
@@ -660,7 +661,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                   </p>
                 )}
                 {vendor && (
-                  <div className={styles.infoCard}>
+                  <div className={styles.infoCard} {...CLARITY_MASK}>
                     <div>
                       銀行: {vendor.payee_bank_name ?? "—"}（{vendor.payee_bank_code}）
                     </div>

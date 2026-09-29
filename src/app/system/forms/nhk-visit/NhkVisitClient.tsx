@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import {
   buildNhkVisitReportMessage,
@@ -135,7 +136,7 @@ export default function NhkVisitClient({ submitterName, employeeNumber }: { subm
       <a href="/system/manuals/system/nhk-visit?tab=operation">使い方ガイドを見る</a>
     </p>
 
-    <p className={styles.sender}>送信者　{submitterName}（{employeeNumber}）</p>
+    <p className={styles.sender} {...CLARITY_MASK}>送信者　{submitterName}（{employeeNumber}）</p>
 
     <section className={styles.panel}>
       <h2>1 日付</h2>

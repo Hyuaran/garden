@@ -18,6 +18,7 @@
 
 import { useEffect, useState } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
@@ -169,7 +170,7 @@ export default function TossWaitPage() {
                   background: cl.status === "free" ? C.midGreen : "#e67e22",
                   animation: cl.status === "busy" ? "pulse 1.5s infinite" : undefined,
                 }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark }}>{cl.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.textDark }} {...CLARITY_MASK}>{cl.name}</span>
                 <span style={{ fontSize: 11, color: C.textMuted }}>
                   {cl.status === "free" ? "空き" : `通話中 ${fmt(cl.sec)}`}
                 </span>
@@ -185,7 +186,7 @@ export default function TossWaitPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8 }}>
           {sortedTossers.map(([name, count]) => (
             <div key={name} style={{ textAlign: "center", padding: "6px 4px", background: "rgba(0,0,0,0.02)", borderRadius: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: C.textDark }}>{name}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.textDark }} {...CLARITY_MASK}>{name}</div>
               <div style={{ fontSize: 18, fontWeight: 800, color: "#3478c6" }}>{count}<span style={{ fontSize: 10 }}>件</span></div>
             </div>
           ))}
@@ -208,7 +209,7 @@ export default function TossWaitPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
               <div>
-                <span style={{ fontSize: 16, fontWeight: 700, color: C.textDark }}>{item.customer}</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: C.textDark }} {...CLARITY_MASK}>{item.customer}</span>
                 <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 12 }}>{item.phone}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -222,7 +223,7 @@ export default function TossWaitPage() {
               </div>
             </div>
             <div style={{ display: "flex", gap: 16, fontSize: 12, color: C.textSub, marginBottom: 6 }}>
-              <span>{item.address}</span>
+              <span {...CLARITY_MASK}>{item.address}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", gap: 12, fontSize: 12 }}>
@@ -262,9 +263,9 @@ export default function TossWaitPage() {
             padding: "10px 16px", fontSize: 12, color: C.textSub, gap: 8,
             opacity: 0.5, borderBottom: "1px solid rgba(0,0,0,0.03)",
           }}>
-            <div>{item.customer}</div>
+            <div {...CLARITY_MASK}>{item.customer}</div>
             <div>{item.phone}</div>
-            <div>{item.tosser}</div>
+            <div {...CLARITY_MASK}>{item.tosser}</div>
             <div>{item.closer}</div>
             <div>{item.time}</div>
             <div style={{ fontWeight: 700, color: item.resultColor }}>{item.result}</div>

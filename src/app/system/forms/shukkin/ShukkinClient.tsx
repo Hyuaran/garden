@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { KotDailyRow } from "@/app/system/kanri/_lib/kot-daily";
 import {
@@ -271,7 +272,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
         {SHUKKIN_GROUPS.map((group) => <div className={styles.memberGroup} key={group}>
           <h2>{group}</h2>
           {members.map((member, index) => ({ member, index })).filter((item) => item.member.groupName === group).map(({ member, index }) => (
-            <div className={styles.memberRow} key={member.employeeNumber}>
+            <div className={styles.memberRow} key={member.employeeNumber} {...CLARITY_MASK}>
               <span>{member.employeeNumber}</span>
               <strong>{member.name || member.displayName || "名前未設定"}</strong>
               <button type="button" disabled={!canEditMembers} onClick={() => moveMember(index, -1)}>↑</button>
@@ -328,13 +329,13 @@ function Coverage({
   onAddMissing: (row: KotDailyRow) => void;
 }) {
   return <div className={styles.coverage}>
-    <span>KOT に居ない人 {coverage.missingInKot.length} 人：{coverage.missingInKot.map((member) => member.name || member.displayName || member.employeeNumber).join("、") || "なし"}</span>
+    <span {...CLARITY_MASK}>KOT に居ない人 {coverage.missingInKot.length} 人：{coverage.missingInKot.map((member) => member.name || member.displayName || member.employeeNumber).join("、") || "なし"}</span>
     <div className={styles.missingOrder}>
-      <span>並びに無い人 {coverage.missingInOrder.length} 人：{coverage.missingInOrder.map((row) => row.name).join("、") || "なし"}</span>
+      <span {...CLARITY_MASK}>並びに無い人 {coverage.missingInOrder.length} 人：{coverage.missingInOrder.map((row) => row.name).join("、") || "なし"}</span>
       {coverage.missingInOrder.length > 0 && <div className={styles.missingOrderRows}>
         {coverage.missingInOrder.map((row) => {
           const employeeNumber = row.employeeCode.trim().padStart(4, "0");
-          return <div className={styles.missingOrderRow} key={employeeNumber}>
+          return <div className={styles.missingOrderRow} key={employeeNumber} {...CLARITY_MASK}>
             <span>{employeeNumber}</span>
             <strong>{row.name}</strong>
             <select

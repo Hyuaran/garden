@@ -22,6 +22,7 @@ import {
 } from "react";
 
 import { ActionButton } from "../_components/ActionButton";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { GlassPanel } from "../_components/GlassPanel";
 import { WireframeLabel } from "../_components/WireframeLabel";
 import { C } from "../_constants/colors";
@@ -141,7 +142,7 @@ export default function TreeBirthdayPage() {
               margin: "0 0 28px",
             }}
           >
-            {treeUser?.name ? `${treeUser.name} さん、ようこそ。` : "ようこそ。"}
+            {treeUser?.name ? <span {...CLARITY_MASK}>{treeUser.name} さん、ようこそ。</span> : "ようこそ。"}
             <br />
             ご本人確認のため、誕生日を登録してください。
           </p>

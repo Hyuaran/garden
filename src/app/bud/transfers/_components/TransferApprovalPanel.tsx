@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { useBudState } from "../../_state/BudStateContext";
 import { supabase } from "../../_lib/supabase";
 import {
@@ -517,7 +518,7 @@ export function TransferApprovalPanel({
                     <th style={{ ...thStyle, textAlign: "right" }}>操作</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody {...CLARITY_MASK}>
                   {pageRows.map((row) => {
                     const urgency = classifyTransferUrgency(row.scheduled_date);
                     const selected = selectedIds.has(row.transfer_id);

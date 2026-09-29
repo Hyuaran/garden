@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { OnboardingError } from "../../_lib/onboarding.server";
 import { onboardingAdminContext, readAdminOnboardingDetail } from "../../_lib/onboarding-admin.server";
@@ -22,7 +23,7 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding" }, { label: "入社手続き（事務）", href: "/system/onboarding/admin" }, { label: record?.values.name || record?.employee.name || "入社手続き" }]} />
-      <h1>{record?.values.name || record?.employee.name || "入社手続き"}</h1>
+      <h1 {...CLARITY_MASK}>{record?.values.name || record?.employee.name || "入社手続き"}</h1>
     </header>
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>

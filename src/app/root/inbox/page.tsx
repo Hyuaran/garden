@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
 import {
   SUBMISSION_LABELS,
@@ -89,7 +90,7 @@ export default function InboxPage() {
             }}
           >
             <strong>{SUBMISSION_LABELS[row.submission_type]}</strong>　
-            {row.root_employees?.name ?? row.employee_id}
+            <span {...CLARITY_MASK}>{row.root_employees?.name ?? row.employee_id}</span>
             <span style={{ float: "right" }}>
               {STATUS[row.status] ?? row.status}
             </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import {
   buildPayrollNoticeMessage,
@@ -167,7 +168,7 @@ export default function PayrollNoticeClient({
       <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "給与計算連絡" }]} />
       <h1>給与計算に関する連絡</h1>
       <p className={styles.lead}>営業部のみなさま、今月も業務お疲れ様でした！ 入力して送信すると、Chatwork に投稿されます。</p>
-      <p className={styles.sender}>送信者：{submitterName}{registered && status.accountName ? `（Chatwork：${status.accountName} で投稿します）` : ""}</p>
+      <p className={styles.sender} {...CLARITY_MASK}>送信者：{submitterName}{registered && status.accountName ? `（Chatwork：${status.accountName} で投稿します）` : ""}</p>
     </header>
 
     {!status.loading && !status.registered && (
@@ -242,7 +243,7 @@ export default function PayrollNoticeClient({
             {history.map((item) => <tr key={item.id}>
               <td>{compactDate(item.submitted_at)}</td>
               <td>{item.team}</td>
-              <td>{item.submitter_name}</td>
+              <td {...CLARITY_MASK}>{item.submitter_name}</td>
               <td>{summarizeFlag(item.commute_flag, item.commute_people?.length ?? 0)}</td>
               <td>{summarizeFlag(item.training_flag, item.training_people?.length ?? 0)}</td>
               <td>{summarizeFlag(item.referral_flag, item.referral_people?.length ?? 0)}</td>
