@@ -11,7 +11,10 @@ vi.mock("../_lib/auth", () => ({
 }));
 
 vi.mock("../_lib/query", () => ({
-  toSearchRow: (row: Record<string, unknown>) => row,
+  toSearchRow: (row: Record<string, unknown>) => ({
+    rowToken: row["電話番号"] ? "safe-row-token" : null,
+    phoneNumber: "072****81",
+  }),
 }));
 
 vi.mock("@/lib/db/pg", () => ({
@@ -70,6 +73,18 @@ describe("soil list search route", () => {
     expect(response.status).toBe(200);
     expect(mocks.queryPgWithTimeout).toHaveBeenCalledWith(expect.stringContaining("order by"), ["Osaka"], 8000);
     expect(mocks.queryPg).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not include the raw phone number in the response JSON", async () => {
+    mocks.queryPg.mockResolvedValueOnce({ rows: [{ "QUERY PLAN": [{ Plan: { "Plan Rows": 1900000 } }] }] });
+    mocks.queryPgWithTimeout.mockResolvedValueOnce({ rows: [{ 電話番号: "0721234581" }] });
+
+    const response = await POST(request());
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(text).toContain("safe-row-token");
+    expect(text).not.toContain("0721234581");
   });
 
   it("retries with filter-first SQL when the normal search is cut off", async () => {

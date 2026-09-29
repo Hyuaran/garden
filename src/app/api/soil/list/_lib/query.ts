@@ -11,9 +11,10 @@ import {
 } from "@/app/system/list/_lib/list-fields";
 
 import { SoilListRequestError } from "./validation";
+import { issueRowToken } from "./row-token";
 
 export type SearchRow = {
-  phoneNumberKey: string;
+  rowToken: string | null;
   phoneNumber: string;
   name: string;
   addressCity: string;
@@ -150,14 +151,14 @@ export function formatContractElapsed(value: unknown, now = new Date()): string 
   return `${Math.floor(months / 12)}年${months % 12}か月`;
 }
 
-export function toSearchRow(row: Record<string, unknown>): SearchRow {
+export function toSearchRow(row: Record<string, unknown>, tokenIssuer: (phone: string) => string = issueRowToken): SearchRow {
   const callCount = row[getColumnName("callCount")];
   const phone = String(row[getColumnName("phoneNumber")] ?? "");
   const prefecture = String(row[getColumnName("prefecture")] ?? "");
   const city = String(row[getColumnName("city")] ?? "");
   const contractMonth = row[getColumnName("contractMonth")];
   return {
-    phoneNumberKey: phone,
+    rowToken: phone ? tokenIssuer(phone) : null,
     phoneNumber: maskPhone(phone),
     name: maskName(String(row[getColumnName("name")] ?? "")),
     addressCity: `${prefecture}${city}`,

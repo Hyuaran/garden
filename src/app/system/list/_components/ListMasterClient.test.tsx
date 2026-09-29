@@ -28,7 +28,7 @@ function json(data: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(data), { status }));
 }
 
-function installFetch(options: { uploads?: unknown[]; analysis?: unknown; conditions?: unknown[]; internalBlocks?: unknown[]; internalBlockRelease?: { status?: number; body: unknown } } = {}) {
+function installFetch(options: { uploads?: unknown[]; analysis?: unknown; conditions?: unknown[]; internalBlocks?: unknown[]; internalBlockRelease?: { status?: number; body: unknown }; searchRows?: unknown[] } = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url === "/api/soil/list/conditions" && !init?.method) return json({ ok: true, conditions: options.conditions ?? [] });
@@ -38,8 +38,8 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
     if (url === "/api/soil/list/count" && init?.method === "POST") return json({ ok: true, count: 12563, approximate: false, elapsedMs: 800 });
     if (url === "/api/soil/list/search" && init?.method === "POST") return json({
       ok: true,
-      rows: [
-        { phoneNumberKey: "0721111181", phoneNumber: "072****81", name: "嶋*", addressCity: "大阪府大阪市", listName: "大阪AU", lastCalledOn: "2026-09-09", callCount: 2, purchaseStatus: "完パケ", lineType: "au", contractMonth: "2024/10", contractElapsed: "1年11か月", category: "個人", internalBlocked: true },
+      rows: options.searchRows ?? [
+        { rowToken: "row-token-0721111181", phoneNumber: "072****81", name: "嶋*", addressCity: "大阪府大阪市", listName: "大阪AU", lastCalledOn: "2026-09-09", callCount: 2, purchaseStatus: "完パケ", lineType: "au", contractMonth: "2024/10", contractElapsed: "1年11か月", category: "個人", internalBlocked: true },
       ],
       page: JSON.parse(String(init.body)).page ?? 1,
       pageSize: 100,
@@ -51,6 +51,7 @@ function installFetch(options: { uploads?: unknown[]; analysis?: unknown; condit
         headers: { "Content-Disposition": "attachment; filename=\"list-master.csv\"; filename*=UTF-8''%E3%83%AA%E3%82%B9%E3%83%88.csv", "X-Soil-List-Excluded-Internal-Block": "2" },
       }));
     }
+    if (url === "/api/soil/list/phones/category" && init?.method === "PATCH") return json({ ok: true });
     if (url.startsWith("/api/soil/list/internal-block/") && init?.method === "PATCH") {
       const release = options.internalBlockRelease;
       return json(release?.body ?? { ok: true }, release?.status ?? 200);
@@ -981,6 +982,38 @@ describe("ListMasterClient list search UX", () => {
       expect(body.page).toBe(2);
       expect(body.sort).toEqual({ key: "name", direction: "asc" });
     });
+  });
+
+  it("sends the row token when changing category", async () => {
+    const fetchMock = installFetch();
+    render(<ListMasterClient />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "検索" }));
+    const categorySelect = await screen.findByRole("combobox", { name: "区分" });
+    fireEvent.change(categorySelect, { target: { value: "法人" } });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/soil/list/phones/category",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ rowToken: "row-token-0721111181", category: "法人" }),
+        }),
+      );
+    });
+  });
+
+  it("disables the category select when row token is null", async () => {
+    installFetch({
+      searchRows: [
+        { rowToken: null, phoneNumber: "****", name: "", addressCity: "大阪府大阪市", listName: "大阪AU", lastCalledOn: "", callCount: null, purchaseStatus: "", lineType: "", contractMonth: "", contractElapsed: "", category: "", internalBlocked: false },
+      ],
+    });
+    render(<ListMasterClient />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "検索" }));
+
+    expect(await screen.findByRole("combobox", { name: "区分" })).toBeDisabled();
   });
 
   it("opens the save modal, disables empty save, loads and deletes saved conditions", async () => {

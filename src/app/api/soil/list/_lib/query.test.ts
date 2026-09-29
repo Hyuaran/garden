@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getColumnName } from "@/app/system/list/_lib/list-fields";
 
-import { applyParentFilters, buildSelect, maskPhone } from "./query";
+import { applyParentFilters, buildSelect, maskPhone, toSearchRow } from "./query";
 import { buildCountSql, buildSearchSql, normalizeSearchSort } from "./search-sql";
 
 class QuerySpy {
@@ -116,6 +116,32 @@ describe("soil list query helpers", () => {
   it("centralizes selected table columns and masks phone values", () => {
     expect(buildSelect(["phoneNumber", "name"])).toBe(`${getColumnName("phoneNumber")},${getColumnName("name")}`);
     expect(maskPhone("0311112222")).toBe("031****22");
+  });
+
+  it("returns a row token instead of the raw phone number", () => {
+    const issuedPhones: string[] = [];
+    const row = toSearchRow(
+      {
+        [getColumnName("phoneNumber")]: "0721234581",
+        [getColumnName("name")]: "嶋田",
+        [getColumnName("prefecture")]: "大阪府",
+        [getColumnName("city")]: "大阪市",
+      },
+      (phone) => {
+        issuedPhones.push(phone);
+        return "safe-row-token";
+      },
+    );
+
+    expect(issuedPhones).toEqual(["0721234581"]);
+    expect(row.rowToken).toBe("safe-row-token");
+    expect(JSON.stringify(row)).not.toContain("0721234581");
+  });
+
+  it("sets row token to null when the phone number is empty", () => {
+    const row = toSearchRow({ [getColumnName("phoneNumber")]: "" }, () => "token");
+
+    expect(row.rowToken).toBeNull();
   });
 
   it("builds search SQL for the default condition", () => {

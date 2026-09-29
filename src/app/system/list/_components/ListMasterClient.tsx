@@ -30,7 +30,7 @@ import MultiSelectFilter, { type MultiSelectOptionGroup } from "./MultiSelectFil
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 type SearchRow = {
-  phoneNumberKey: string;
+  rowToken: string | null;
   phoneNumber: string;
   name: string;
   addressCity: string;
@@ -1213,7 +1213,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [listPage, setListPage] = useState(1);
   const [listSort, setListSort] = useState<ListSearchSort | null>(null);
-  const [categoryBusyPhone, setCategoryBusyPhone] = useState<string | null>(null);
+  const [categoryBusyToken, setCategoryBusyToken] = useState<string | null>(null);
   const [selectedColumns, setSelectedColumns] = useState<SoilListColumnKey[]>(
     SOIL_LIST_EXPORT_COLUMNS.filter((column) => column.defaultChecked).map((column) => column.key),
   );
@@ -1585,22 +1585,22 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     await runListSearch({ nextPage: 1, nextSort: { key, direction }, refreshCount: false });
   }
 
-  async function handleCategoryChange(rowIndex: number, phoneNumber: string, category: string) {
+  async function handleCategoryChange(rowIndex: number, rowToken: string, category: string) {
     const previousRows = rows;
-    setCategoryBusyPhone(phoneNumber);
+    setCategoryBusyToken(rowToken);
     setRows((current) => current.map((row, index) => index === rowIndex ? { ...row, category } : row));
     try {
       const response = await fetch("/api/soil/list/phones/category", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber, category }),
+        body: JSON.stringify({ rowToken, category }),
       });
       await readJson(response);
     } catch (error) {
       setRows(previousRows);
       setMessage(error instanceof Error ? error.message : "区分を更新できませんでした");
     } finally {
-      setCategoryBusyPhone(null);
+      setCategoryBusyToken(null);
     }
   }
 
@@ -2743,8 +2743,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                     <select
                       className={styles.inlineSelect}
                       value={row.category}
-                      onChange={(event) => void handleCategoryChange(index, row.phoneNumberKey, event.target.value)}
-                      disabled={categoryBusyPhone === row.phoneNumberKey}
+                      onChange={(event) => row.rowToken && void handleCategoryChange(index, row.rowToken, event.target.value)}
+                      disabled={!row.rowToken || categoryBusyToken === row.rowToken}
                       aria-label="区分"
                     >
                       <option value="">（空欄）</option>

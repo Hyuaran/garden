@@ -4,6 +4,7 @@ import { SOIL_LIST_TABLES } from "@/app/system/list/_lib/list-fields";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 import { requireSoilListUser } from "../../_lib/auth";
+import { readRowToken } from "../../_lib/row-token";
 
 export const runtime = "nodejs";
 
@@ -22,10 +23,11 @@ export async function PATCH(request: Request) {
   if (!auth.ok) return auth.response;
 
   const body = (await request.json()) as Record<string, unknown>;
-  const phoneNumber = typeof body.phoneNumber === "string" ? body.phoneNumber.trim() : "";
+  const rowToken = typeof body.rowToken === "string" ? body.rowToken.trim() : "";
   const category = typeof body.category === "string" ? body.category.trim() : "";
+  const phoneNumber = rowToken ? readRowToken(rowToken) : null;
   if (!phoneNumber) {
-    return NextResponse.json({ ok: false, error: "電話番号がありません" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "画面を読み込み直してから、もう一度選んでください" }, { status: 400 });
   }
   if (!CATEGORY_VALUES.has(category)) {
     return NextResponse.json({ ok: false, error: "区分の値が正しくありません" }, { status: 400 });
