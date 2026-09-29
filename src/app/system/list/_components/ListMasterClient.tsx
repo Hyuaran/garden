@@ -2594,9 +2594,12 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       <section className={`${styles.panel} ${filtersCollapsed ? styles.filterSummaryPanel : ""}`} aria-labelledby="filter-heading">
         <div className={styles.panelTitle}>
           <h2 id="filter-heading">絞り込み</h2>
-          <button type="button" className={styles.secondaryButton} onClick={() => { setConditionModalOpen(true); setConditionModalMessage(""); }} disabled={busy}>
-            条件を保存
-          </button>
+          {/* 検索後に畳んだ行にも［条件を保存］があるので、畳んでいる間は見出し横には出さない */}
+          {!(filtersCollapsed && count !== null) && (
+            <button type="button" className={styles.secondaryButton} onClick={() => { setConditionModalOpen(true); setConditionModalMessage(""); }} disabled={busy}>
+              条件を保存
+            </button>
+          )}
         </div>
         {filtersCollapsed && count !== null ? (
           <div className={styles.collapsedFilterRow}>
