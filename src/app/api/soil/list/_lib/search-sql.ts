@@ -82,7 +82,8 @@ function defaultAuAvailabilityValue(): unknown {
   return DEFAULT_SOIL_LIST_CONDITION.filters.find((filter) => filter.field === "auCallAvailability" && filter.op === "eq")?.value;
 }
 
-function filterToSql(filter: SoilListFilter, state: SqlState): string {
+/** 条件 1 つ → SQL。件数・一覧・書き出しで共用（既定条件の値は部分索引を使わせるため定数で書く） */
+export function filterToSql(filter: SoilListFilter, state: { values: unknown[] }): string {
   if (!(filter.field in SOIL_LIST_COLUMNS) || filter.field === "contractElapsed") {
     throw new SoilListRequestError("使えない条件が含まれています");
   }
