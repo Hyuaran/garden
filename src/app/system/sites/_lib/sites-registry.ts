@@ -134,6 +134,14 @@ export function googleMapByCompany(data: CorporateSitesData) {
   return new Map((data.google_maps ?? []).map((map) => [map.company, map]));
 }
 
+/** 1 社ぶんの並び：会社HP → Googleマップ → 採用ページ・LP など（2026-09-30 東海林さん指定）。会社HP が無い会社は Googleマップを先頭に */
+export function orderCompanyCards(sites: CorporateSite[], googleMap?: CorporateGoogleMap): (CorporateSite | CorporateGoogleMap)[] {
+  if (!googleMap) return sites;
+  const companyHp = sites.filter((site) => siteKindRank(site) === 0);
+  const others = sites.filter((site) => siteKindRank(site) !== 0);
+  return [...companyHp, googleMap, ...others];
+}
+
 export function normalizeCompanyNameForComparison(value: string) {
   return value.normalize("NFKC").replace(/\s/g, "");
 }

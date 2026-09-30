@@ -5,6 +5,8 @@ import {
   countByStatus,
   extractAddressBlockForComparison,
   groupSitesByCompany,
+  orderCompanyCards,
+  googleMapByCompany,
   statusLabel,
 } from "./sites-registry";
 
@@ -72,5 +74,14 @@ describe("sites registry", () => {
     expect(extractAddressBlockForComparison("〒558-0013 大阪府大阪市住吉区我孫子東３丁目２番２５号７０１")).toBe("大阪府大阪市住吉区我孫子東3-2-25");
     expect(extractAddressBlockForComparison("〒558-0013 大阪府大阪市住吉区我孫子東３丁目２−２５ 701")).toBe("大阪府大阪市住吉区我孫子東3-2-25");
     expect(extractAddressBlockForComparison("〒556-0016 大阪府大阪市浪速区元町1丁目9番18号605")).toBe("大阪府大阪市浪速区元町1-9-18");
+  });
+
+  it("orders one company as 会社HP → Googleマップ → the rest", () => {
+    const groups = groupSitesByCompany(CORPORATE_SITES_DATA);
+    const maps = googleMapByCompany(CORPORATE_SITES_DATA);
+    const label = (company: string) => orderCompanyCards(groups.find((group) => group.company === company)!.sites, maps.get(company)).map((card) => ("kind" in card ? card.kind : "Googleマップ"));
+    expect(label("株式会社ヒュアラン")).toEqual(["会社HP", "Googleマップ", "採用ページ", "商品ページ"]);
+    expect(label("株式会社壱")).toEqual(["会社HP", "Googleマップ", "商品LP"]);
+    expect(label("株式会社almalio")).toEqual(["商品"]);
   });
 });

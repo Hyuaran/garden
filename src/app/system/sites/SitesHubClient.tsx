@@ -10,6 +10,7 @@ import {
   countByStatus,
   googleMapByCompany,
   groupSitesByCompany,
+  orderCompanyCards,
   statusLabel,
   type CorporateGoogleMap,
   type CorporateSite,
@@ -260,7 +261,7 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
   const googleMaps = googleMapByCompany(data);
   const rows = groupSitesByCompany(data).flatMap((group) => {
     const map = googleMaps.get(group.company);
-    return map ? [...group.sites, map] : group.sites;
+    return orderCompanyCards(group.sites, map);
   });
 
   return <div className={styles.tableWrap} data-testid="sites-list-view">
@@ -400,12 +401,9 @@ export default function SitesHubClient({ data, role }: { data: CorporateSitesDat
         {groups.map((group) => <section className={styles.companySection} key={group.company}>
           <h3><span>{group.company}</span><small>{newsSummaryLabel(summaries[group.sites.find((site) => site.company_id)?.company_id ?? ""])}</small></h3>
           <div className={styles.formGrid}>
-            {group.sites.map((site) => <SiteCard site={site} key={`${site.company}-${site.kind}-${site.product ?? site.domain ?? "domain"}`} />)}
-            {googleMaps.get(group.company) ? <GoogleMapCard
-              map={googleMaps.get(group.company)!}
-              garden={publicCompanies[companySlug(group) ?? ""]}
-              key={`${group.company}-google-map`}
-            /> : null}
+            {orderCompanyCards(group.sites, googleMaps.get(group.company)).map((card) => "kind" in card
+              ? <SiteCard site={card} key={`${card.company}-${card.kind}-${card.product ?? card.domain ?? "domain"}`} />
+              : <GoogleMapCard map={card} garden={publicCompanies[companySlug(group) ?? ""]} key={`${group.company}-google-map`} />)}
           </div>
         </section>)}
       </div>
