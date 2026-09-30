@@ -395,5 +395,83 @@
     "arata123.online",
     "internet-hikari.pro（別LP案件）"
   ],
-  "company_order_rule": "設立順（Root 法人マスタ established_on）。almalio は設立日に関係なく最後（東海林さん 2026-09-25）"
+  "company_order_rule": "設立順（Root 法人マスタ established_on）。almalio は設立日に関係なく最後（東海林さん 2026-09-25）",
+  "google_maps": [
+    {
+      "company": "株式会社ヒュアラン",
+      "status": "registered",
+      "url": "https://www.google.com/maps?cid=12172809656869944469",
+      "map_name": "株式会社ヒュアラン",
+      "map_address": "〒541-0054 大阪府大阪市中央区南本町２丁目６−１２ サンマリオンタワー 2階",
+      "map_phone": "06-4400-5414",
+      "map_website": "hyuaran.com",
+      "map_category": "企業のオフィス",
+      "owner_claimed": true,
+      "checked_on": "2026-09-30",
+      "notes": [
+        "クチコミ 3 件（評価 2.3）",
+        "先頭のストリートビューが旧事務所（なんば）のまま＝要修正",
+        "店舗の写真は未登録"
+      ]
+    },
+    {
+      "company": "株式会社センターライズ",
+      "status": "unregistered",
+      "checked_on": "2026-09-30",
+      "notes": [
+        "社名＋住所・代表電話のどちらで探しても見つからない"
+      ]
+    },
+    {
+      "company": "株式会社ARATA",
+      "status": "unregistered",
+      "checked_on": "2026-09-30",
+      "notes": [
+        "社名＋住所・代表電話のどちらで探しても見つからない"
+      ]
+    },
+    {
+      "company": "株式会社リンクサポート",
+      "status": "unregistered",
+      "checked_on": "2026-09-30",
+      "notes": [
+        "社名＋住所・代表電話のどちらで探しても見つからない",
+        "同名の別会社（中央区北久宝寺町・06-6210-2590）が載っている＝取り違えに注意"
+      ]
+    },
+    {
+      "company": "株式会社たいよう",
+      "status": "unclaimed",
+      "url": "https://www.google.com/maps?cid=5481045010673177390",
+      "map_name": "株式会社たいよう",
+      "map_address": "〒537-0001 大阪府大阪市東成区深江北２丁目６−１ エーデル深江橋 ４０５",
+      "map_phone": "06-7777-4605",
+      "map_website": "sunsun-taiyou.com",
+      "map_category": "不動産仲介業",
+      "owner_claimed": false,
+      "checked_on": "2026-09-30",
+      "notes": [
+        "オーナー確認がされていない（「ビジネス オーナーですか？」の表示あり）",
+        "業種が「不動産仲介業」になっている",
+        "営業時間・写真は未登録"
+      ]
+    },
+    {
+      "company": "株式会社壱",
+      "status": "unregistered",
+      "checked_on": "2026-09-30",
+      "notes": [
+        "社名＋住所・代表電話のどちらで探しても見つからない",
+        "同名の別会社が複数載っている（西中島・豊中・枚方）＝取り違えに注意"
+      ]
+    },
+    {
+      "company": "株式会社ストーンベース",
+      "status": "unregistered",
+      "checked_on": "2026-09-30",
+      "notes": [
+        "社名＋住所・代表電話のどちらで探しても見つからない"
+      ]
+    }
+  ]
 }

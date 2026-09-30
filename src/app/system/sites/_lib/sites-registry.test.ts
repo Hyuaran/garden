@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CORPORATE_SITES_DATA, countByStatus, groupSitesByCompany, statusLabel } from "./sites-registry";
+import {
+  CORPORATE_SITES_DATA,
+  compareGoogleMapWithGarden,
+  countByStatus,
+  extractAddressBlockForComparison,
+  groupSitesByCompany,
+  statusLabel,
+} from "./sites-registry";
 
 describe("sites registry", () => {
   it("groups sites by company in appearance order and sorts company HP first", () => {
@@ -35,5 +42,35 @@ describe("sites registry", () => {
 
   it("counts sites by status bucket", () => {
     expect(countByStatus(CORPORATE_SITES_DATA)).toEqual({ live: 12, pending: 3, planned: 0 });
+  });
+
+  it("normalizes addresses to the block number for Google Maps comparison", () => {
+    expect(extractAddressBlockForComparison("〒541-0054 大阪府大阪市中央区南本町2-6-12　サンマリオンタワー地上2階西号室")).toBe("大阪府大阪市中央区南本町2-6-12");
+    expect(extractAddressBlockForComparison("〒541-0054 大阪府大阪市中央区南本町２丁目６−１２ サンマリオンタワー 2階")).toBe("大阪府大阪市中央区南本町2-6-12");
+    expect(extractAddressBlockForComparison("〒537-0001 大阪府大阪市東成区深江北2-6-1　エーデル深江橋405")).toBe("大阪府大阪市東成区深江北2-6-1");
+    expect(extractAddressBlockForComparison("〒537-0001 大阪府大阪市東成区深江北２丁目６−１ エーデル深江橋 ４０５")).toBe("大阪府大阪市東成区深江北2-6-1");
+  });
+
+  it("compares Google Maps and Garden registry values by normalized company name and block address", () => {
+    expect(compareGoogleMapWithGarden(
+      { map_name: "株式会社ヒュアラン", map_address: "〒541-0054 大阪府大阪市中央区南本町２丁目６−１２ サンマリオンタワー 2階" },
+      { company_name: "株式会社 ヒュアラン", address: "〒541-0054 大阪府大阪市中央区南本町2-6-12　サンマリオンタワー地上2階西号室" },
+    )).toEqual({ companyNameMatches: true, addressMatches: true });
+
+    expect(compareGoogleMapWithGarden(
+      { map_name: "株式会社たいよう", map_address: "〒537-0001 大阪府大阪市東成区深江北２丁目６−１ エーデル深江橋 ４０５" },
+      { company_name: "株式会社たいよう", address: "〒537-0001 大阪府大阪市東成区深江北2-6-1　エーデル深江橋405" },
+    )).toEqual({ companyNameMatches: true, addressMatches: true });
+
+    expect(compareGoogleMapWithGarden(
+      { map_name: "株式会社たいよう", map_address: "大阪府大阪市浪速区湊町1-4-38" },
+      { company_name: "株式会社たいよう", address: "〒537-0001 大阪府大阪市東成区深江北2-6-1　エーデル深江橋405" },
+    )).toEqual({ companyNameMatches: true, addressMatches: false });
+  });
+
+  it("keeps the room number out of the block when it follows 号 or a space", () => {
+    expect(extractAddressBlockForComparison("〒558-0013 大阪府大阪市住吉区我孫子東３丁目２番２５号７０１")).toBe("大阪府大阪市住吉区我孫子東3-2-25");
+    expect(extractAddressBlockForComparison("〒558-0013 大阪府大阪市住吉区我孫子東３丁目２−２５ 701")).toBe("大阪府大阪市住吉区我孫子東3-2-25");
+    expect(extractAddressBlockForComparison("〒556-0016 大阪府大阪市浪速区元町1丁目9番18号605")).toBe("大阪府大阪市浪速区元町1-9-18");
   });
 });

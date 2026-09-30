@@ -41,6 +41,22 @@ export type CorporateSite = {
   highlight?: string;
 };
 
+export type CorporateGoogleMapStatus = "registered" | "unclaimed" | "unregistered";
+
+export type CorporateGoogleMap = {
+  company: string;
+  status: CorporateGoogleMapStatus;
+  url?: string;
+  map_name?: string;
+  map_address?: string;
+  map_phone?: string;
+  map_website?: string;
+  map_category?: string;
+  owner_claimed?: boolean;
+  checked_on: string;
+  notes?: string[];
+};
+
 export type CorporateSitesData = {
   as_of: string;
   common: {
@@ -49,6 +65,7 @@ export type CorporateSitesData = {
     form: string;
   };
   sites: CorporateSite[];
+  google_maps?: CorporateGoogleMap[];
   excluded: string[];
 };
 
@@ -111,4 +128,39 @@ export function countByStatus(data: CorporateSitesData) {
     },
     { live: 0, pending: 0, planned: 0 },
   );
+}
+
+export function googleMapByCompany(data: CorporateSitesData) {
+  return new Map((data.google_maps ?? []).map((map) => [map.company, map]));
+}
+
+export function normalizeCompanyNameForComparison(value: string) {
+  return value.normalize("NFKC").replace(/\s/g, "");
+}
+
+export function extractAddressBlockForComparison(value: string) {
+  // 空白と「号」は区切り（|）として残す。消してしまうと「2-25 701」「2番25号701」の部屋番号が番地の数字にくっつく
+  const normalized = value
+    .normalize("NFKC")
+    .replace(/〒\d{3}-?\d{4}/g, "")
+    .replace(/丁目|番地|番/g, "-")
+    .replace(/号|\s+/g, "|")
+    .replace(/[−‐‑‒–—―ーｰ－]/g, "-")
+    .replace(/-+/g, "-");
+  return (normalized.match(/^.*?\d+(?:-\d+)+/)?.[0] ?? normalized).replace(/\|/g, "");
+}
+
+export function compareGoogleMapWithGarden(
+  googleMap: Pick<CorporateGoogleMap, "map_name" | "map_address">,
+  garden: { company_name?: string | null; address?: string | null },
+) {
+  const mapName = googleMap.map_name ?? "";
+  const gardenName = garden.company_name ?? "";
+  const mapAddress = googleMap.map_address ?? "";
+  const gardenAddress = garden.address ?? "";
+
+  return {
+    companyNameMatches: normalizeCompanyNameForComparison(mapName) === normalizeCompanyNameForComparison(gardenName),
+    addressMatches: extractAddressBlockForComparison(mapAddress) === extractAddressBlockForComparison(gardenAddress),
+  };
 }

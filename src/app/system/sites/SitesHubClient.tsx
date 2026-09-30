@@ -6,9 +6,12 @@ import { MenuIcon } from "@/app/system/_components/ShachoShell/ShachoShell";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import SiteNewsPanel, { companiesForNews, type SiteNewsItem } from "./_components/SiteNewsPanel";
 import {
+  compareGoogleMapWithGarden,
   countByStatus,
+  googleMapByCompany,
   groupSitesByCompany,
   statusLabel,
+  type CorporateGoogleMap,
   type CorporateSite,
   type CorporateSitesData,
 } from "./_lib/sites-registry";
@@ -18,6 +21,7 @@ const VIEW_MODE_KEY = "garden.sites.viewMode";
 type ViewMode = "list" | "grid";
 type TopTab = "sites" | "news";
 type NewsSummary = { count: number; latestTitle: string | null; latestDate: string | null };
+type PublicCompany = { company_name?: string | null; address?: string | null };
 
 function ListViewIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><rect x="4" y="5" width="2" height="2" rx=".5"/><rect x="4" y="11" width="2" height="2" rx=".5"/><rect x="4" y="17" width="2" height="2" rx=".5"/></svg>;
@@ -25,6 +29,10 @@ function ListViewIcon() {
 
 function GridViewIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/></svg>;
+}
+
+function MapPinIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.4"/></svg>;
 }
 
 function readViewMode(): ViewMode {
@@ -86,6 +94,10 @@ const KIND_TONE_CLASS: Record<KindTone, string> = { hp: styles.kindHp, recruit: 
 function KindChip({ site }: { site: CorporateSite }) {
   const chip = kindChip(site);
   return <span className={`${styles.kindChip} ${KIND_TONE_CLASS[chip.tone]}`}>{chip.label}</span>;
+}
+
+function MapKindChip() {
+  return <span className={`${styles.kindChip} ${styles.kindMap}`}>Googleマップ</span>;
 }
 
 function domainLabel(site: CorporateSite) {
@@ -151,6 +163,17 @@ function StatusBadge({ site }: { site: CorporateSite }) {
   return <span className={`${styles.statusBadge} ${styles[status.tone]}`}>{status.label}</span>;
 }
 
+function googleMapStatusLabel(map: CorporateGoogleMap) {
+  if (map.status === "registered") return { label: "登録済み", tone: "active" };
+  if (map.status === "unclaimed") return { label: "オーナー未確認", tone: "pending" };
+  return { label: "未登録", tone: "unregistered" };
+}
+
+function GoogleMapStatusBadge({ map }: { map: CorporateGoogleMap }) {
+  const status = googleMapStatusLabel(map);
+  return <span className={`${styles.statusBadge} ${styles[status.tone]}`}>{status.label}</span>;
+}
+
 function OpenAction({ site }: { site: CorporateSite }) {
   if (!canOpen(site)) return <span className={styles.unpublished}>未公開</span>;
   return <a href={site.url} target="_blank" rel="noopener noreferrer">開く</a>;
@@ -190,8 +213,55 @@ function SiteCard({ site }: { site: CorporateSite }) {
   </article>;
 }
 
+function GoogleMapCard({ map, garden }: { map: CorporateGoogleMap; garden?: PublicCompany }) {
+  const canCompare = map.status !== "unregistered" && garden;
+  const comparison = canCompare ? compareGoogleMapWithGarden(map, garden) : null;
+  const detailItems = [
+    { label: "業種", value: map.map_category },
+    { label: "ウェブサイト", value: map.map_website },
+    { label: "オーナー確認", value: map.owner_claimed === undefined ? undefined : map.owner_claimed ? "済み" : "されていない" },
+    { label: "備考", value: map.notes?.join("・") },
+  ];
+
+  return <article className={styles.formCard} data-testid="google-map-card">
+    <div className={styles.cardHeading}>
+      <span className={styles.iconPlate}><MapPinIcon /></span>
+      <h2>Googleマップ</h2>
+      <MapKindChip />
+    </div>
+    <p className={styles.cardDescription}>
+      {map.status === "unregistered" ? <span>Google マップに登録がありません</span> : <>
+        {map.map_name ? <span>{map.map_name}</span> : null}
+        {map.map_address ? <span>{map.map_address}</span> : null}
+        {map.map_phone ? <span>{map.map_phone}</span> : null}
+      </>}
+    </p>
+    {garden && map.status !== "unregistered" ? <p className={styles.gardenRegistry}>Garden の登録：{garden.company_name}／{garden.address}</p> : null}
+    {comparison && !comparison.companyNameMatches ? <p className={styles.highlight}>社名が Garden の組織台帳と違います</p> : null}
+    {comparison && !comparison.addressMatches ? <p className={styles.highlight}>住所（番地まで）が Garden の組織台帳と違います</p> : null}
+    <details className={styles.wiring}>
+      <summary>登録の詳細</summary>
+      <dl>
+        {detailItems.map((item) => <DetailItem key={item.label} label={item.label} value={item.value} />)}
+      </dl>
+    </details>
+    <div className={styles.cardFooter}>
+      <span className={styles.footerMeta}><GoogleMapStatusBadge map={map} /><span>確認 {map.checked_on}</span></span>
+      {map.url ? <a href={map.url} target="_blank" rel="noopener noreferrer">開く</a> : null}
+    </div>
+  </article>;
+}
+
+function companySlug(group: { sites: CorporateSite[] }) {
+  return group.sites.find((site) => site.public_slug)?.public_slug;
+}
+
 function SiteTable({ data }: { data: CorporateSitesData }) {
-  const rows = groupSitesByCompany(data).flatMap((group) => group.sites);
+  const googleMaps = googleMapByCompany(data);
+  const rows = groupSitesByCompany(data).flatMap((group) => {
+    const map = googleMaps.get(group.company);
+    return map ? [...group.sites, map] : group.sites;
+  });
 
   return <div className={styles.tableWrap} data-testid="sites-list-view">
     <table>
@@ -199,13 +269,20 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
         <tr><th>会社</th><th>サイト</th><th>ドメイン</th><th>状態</th><th>問い合わせ先</th><th></th></tr>
       </thead>
       <tbody>
-        {rows.map((site) => <tr key={`${site.company}-${site.kind}-${site.product ?? site.domain ?? "domain"}`}>
-          <td>{site.company}</td>
-          <td><KindChip site={site} /> {siteTitle(site)}</td>
-          <td>{domainLabel(site)}</td>
-          <td><StatusBadge site={site} /></td>
-          <td>{[kintoneLabel(site), toLabel(site)].filter(Boolean).join("・")}</td>
-          <td>{canOpen(site) ? <a href={site.url} target="_blank" rel="noopener noreferrer">開く</a> : null}</td>
+        {rows.map((row) => "kind" in row ? <tr key={`${row.company}-${row.kind}-${row.product ?? row.domain ?? "domain"}`}>
+          <td>{row.company}</td>
+          <td><KindChip site={row} /> {siteTitle(row)}</td>
+          <td>{domainLabel(row)}</td>
+          <td><StatusBadge site={row} /></td>
+          <td>{[kintoneLabel(row), toLabel(row)].filter(Boolean).join("・")}</td>
+          <td>{canOpen(row) ? <a href={row.url} target="_blank" rel="noopener noreferrer">開く</a> : null}</td>
+        </tr> : <tr key={`${row.company}-google-map`}>
+          <td>{row.company}</td>
+          <td><MapKindChip /> Googleマップ</td>
+          <td>—</td>
+          <td><GoogleMapStatusBadge map={row} /></td>
+          <td>{row.map_address ?? "Google マップに登録がありません"}</td>
+          <td>{row.url ? <a href={row.url} target="_blank" rel="noopener noreferrer">開く</a> : null}</td>
         </tr>)}
       </tbody>
     </table>
@@ -216,9 +293,18 @@ export default function SitesHubClient({ data, role }: { data: CorporateSitesDat
   const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
   const [tab, setTab] = useState<TopTab>(() => readTab());
   const [summaries, setSummaries] = useState<Record<string, NewsSummary>>({});
-  const groups = groupSitesByCompany(data);
+  const [publicCompanies, setPublicCompanies] = useState<Record<string, PublicCompany>>({});
+  const groups = useMemo(() => groupSitesByCompany(data), [data]);
+  const googleMaps = useMemo(() => googleMapByCompany(data), [data]);
   const counts = countByStatus(data);
   const newsCompanies = useMemo(() => companiesForNews(data), [data]);
+  const publicSlugs = useMemo(() => groups
+    .filter((group) => {
+      const map = googleMaps.get(group.company);
+      return map?.status === "registered" || map?.status === "unclaimed";
+    })
+    .map((group) => companySlug(group))
+    .filter((slug): slug is string => Boolean(slug)), [groups, googleMaps]);
 
   function changeViewMode(mode: ViewMode) {
     setViewMode(mode);
@@ -255,11 +341,32 @@ export default function SitesHubClient({ data, role }: { data: CorporateSitesDat
     };
   }, [newsCompanies]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPublicCompanies() {
+      const entries = await Promise.all(publicSlugs.map(async (slug) => {
+        try {
+          const response = await fetch(`/api/public/company/${encodeURIComponent(slug)}`);
+          if (!response.ok) return null;
+          const body = await response.json().catch(() => null) as PublicCompany | null;
+          return body ? [slug, body] as const : null;
+        } catch {
+          return null;
+        }
+      }));
+      if (!cancelled) setPublicCompanies(Object.fromEntries(entries.filter((entry): entry is readonly [string, PublicCompany] => Boolean(entry))));
+    }
+    loadPublicCompanies();
+    return () => {
+      cancelled = true;
+    };
+  }, [publicSlugs]);
+
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "コーポレートサイト" }]} />
       <h1>コーポレートサイト</h1>
-      <p className={styles.lead}>グループ各社の会社HPと商品ページ。稼働中のサイトは［開く］で開けます。</p>
+      <p className={styles.lead}>グループ各社の会社HP・商品ページと、Google マップの登録状況。稼働中のサイトは［開く］で開けます。</p>
     </header>
 
     <div className={styles.topTabs} role="tablist" aria-label="コーポレートサイト表示">
@@ -294,6 +401,11 @@ export default function SitesHubClient({ data, role }: { data: CorporateSitesDat
           <h3><span>{group.company}</span><small>{newsSummaryLabel(summaries[group.sites.find((site) => site.company_id)?.company_id ?? ""])}</small></h3>
           <div className={styles.formGrid}>
             {group.sites.map((site) => <SiteCard site={site} key={`${site.company}-${site.kind}-${site.product ?? site.domain ?? "domain"}`} />)}
+            {googleMaps.get(group.company) ? <GoogleMapCard
+              map={googleMaps.get(group.company)!}
+              garden={publicCompanies[companySlug(group) ?? ""]}
+              key={`${group.company}-google-map`}
+            /> : null}
           </div>
         </section>)}
       </div>
