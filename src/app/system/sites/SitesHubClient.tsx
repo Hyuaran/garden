@@ -72,15 +72,20 @@ function siteTitle(site: CorporateSite) {
   return [site.kind, site.product].filter(Boolean).join(" ");
 }
 
-function kindChip(site: CorporateSite): { label: string; company: boolean } {
-  if (site.kind === "会社HP") return { label: "会社HP", company: true };
-  if (site.kind === "会社HP+商品") return { label: "会社HP＋商品", company: true };
-  return { label: "商品ページ", company: false };
+type KindTone = "hp" | "recruit" | "product";
+
+function kindChip(site: CorporateSite): { label: string; tone: KindTone } {
+  if (site.kind === "会社HP") return { label: "会社HP", tone: "hp" };
+  if (site.kind === "会社HP+商品") return { label: "会社HP＋商品", tone: "hp" };
+  if (site.kind === "採用ページ") return { label: "採用ページ", tone: "recruit" };
+  return { label: "商品ページ", tone: "product" };
 }
+
+const KIND_TONE_CLASS: Record<KindTone, string> = { hp: styles.kindHp, recruit: styles.kindRecruit, product: styles.kindProduct };
 
 function KindChip({ site }: { site: CorporateSite }) {
   const chip = kindChip(site);
-  return <span className={`${styles.kindChip} ${chip.company ? styles.kindHp : styles.kindProduct}`}>{chip.label}</span>;
+  return <span className={`${styles.kindChip} ${KIND_TONE_CLASS[chip.tone]}`}>{chip.label}</span>;
 }
 
 function domainLabel(site: CorporateSite) {
@@ -101,7 +106,7 @@ function kintoneLabel(site: CorporateSite) {
 }
 
 function contactLabel(site: CorporateSite) {
-  if (site.kintone_app) return `問い合わせ→${kintoneLabel(site)}`;
+  if (site.kintone_app) return `${site.kind === "採用ページ" ? "応募" : "問い合わせ"}→${kintoneLabel(site)}`;
   return [site.stack, site.mail].filter(Boolean).join("・");
 }
 
@@ -164,6 +169,8 @@ function SiteCard({ site }: { site: CorporateSite }) {
         <DetailItem label="GitHub" value={site.github ? `GitHub ${site.github}` : undefined} />
         <DetailItem label="Vercel" value={site.vercel_project} />
         <DetailItem label="流入元" value={site.source} />
+        <DetailItem label="通知ルーム" value={site.chatwork_room} />
+        <DetailItem label="通知の送り手" value={site.chatwork_sender} />
         <DetailItem label="メール" value={site.mail} />
         <DetailItem label="旧サーバー" value={oldServerLabel(site)} />
         <DetailItem label="備考" value={site.notes?.join("・")} />

@@ -47,6 +47,37 @@ describe("SitesHubClient", () => {
     mockFetch();
   });
 
+  it("shows the recruit page with its own badge, 応募→Kintone and the separate notice room", () => {
+    const recruitData: CorporateSitesData = {
+      ...data,
+      sites: [
+        data.sites[0],
+        {
+          company: "株式会社ヒュアラン",
+          kind: "採用ページ",
+          domain: "hyuaran.com",
+          url: "https://hyuaran.com/saiyou",
+          status: "live",
+          live_since: "2026-09-30",
+          kintone_app: 250,
+          chatwork_room: "448119702（【採用】NHK業務_インオーダー様）",
+          chatwork_sender: "東海林美琴（本人トークン）",
+          chatwork_to: ["金亜奈"],
+          notes: ["応募通知はコーポレートサイト問合せルームとは別"],
+        },
+      ],
+    };
+    render(<SitesHubClient data={recruitData} role="manager" />);
+    const card = screen.getAllByTestId("site-card").find((element) => element.textContent?.includes("採用ページ"));
+    expect(card).toBeDefined();
+    const scope = within(card as HTMLElement);
+    expect(scope.getAllByText("採用ページ").length).toBeGreaterThan(0);
+    expect(scope.getByText("応募→Kintone app250")).toBeInTheDocument();
+    expect(scope.getByText("448119702（【採用】NHK業務_インオーダー様）")).toBeInTheDocument();
+    expect(scope.getByText("東海林美琴（本人トークン）")).toBeInTheDocument();
+    expect(scope.getByRole("link", { name: "開く" })).toHaveAttribute("href", "https://hyuaran.com/saiyou");
+  });
+
   it("switches to the news tab and lists selected company news", async () => {
     render(<SitesHubClient data={data} role="manager" />);
     fireEvent.click(screen.getByRole("tab", { name: "お知らせ" }));

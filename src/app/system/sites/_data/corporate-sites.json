@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-09-25",
+  "as_of": "2026-09-30",
   "common": {
     "hosting": "Vercel (Pro team ヒュアラン)",
     "dns_policy": "B方式（NSごとVercel・メール系先行登録）",
@@ -37,6 +37,31 @@
       ],
       "public_slug": "hyuaran",
       "company_id": "COMP-001"
+    },
+    {
+      "company": "株式会社ヒュアラン",
+      "kind": "採用ページ",
+      "domain": "hyuaran.com",
+      "url": "https://hyuaran.com/saiyou",
+      "status": "live",
+      "live_since": "2026-09-30",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/hyuaran",
+      "vercel_project": "hyuaran",
+      "kintone_app": 250,
+      "kintone_app_name": "ヒュアラン採用エントリー受付",
+      "source": "ヒュアラン-採用",
+      "chatwork_room": "448119702（【採用】NHK業務_インオーダー様）",
+      "chatwork_sender": "東海林美琴（本人トークン）",
+      "chatwork_to": [
+        "金亜奈"
+      ],
+      "mail": "M365",
+      "notes": [
+        "NHK訪問業務スタッフ募集（奈良・京都）",
+        "トップページとは独立（単体公開）",
+        "応募通知はコーポレートサイト問合せルームとは別"
+      ]
     },
     {
       "company": "株式会社ヒュアラン",

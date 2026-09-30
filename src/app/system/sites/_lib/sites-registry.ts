@@ -32,6 +32,9 @@ export type CorporateSite = {
   kintone_app_name?: string;
   source?: string;
   chatwork_to?: string[];
+  /** 通知先の Chatwork ルーム（会社HPの問い合わせルームと別のときに入れる。例：採用ページ） */
+  chatwork_room?: string;
+  chatwork_sender?: string;
   mail?: string;
   old_server?: CorporateSiteOldServer;
   notes?: string[];
@@ -67,7 +70,10 @@ const STATUS_LABELS: Record<CorporateSiteStatus, CorporateSiteStatusLabel> = {
 };
 
 function siteKindRank(site: CorporateSite) {
-  return site.kind === "会社HP" || site.kind === "会社HP+商品" ? 0 : 1;
+  if (site.kind === "会社HP" || site.kind === "会社HP+商品") return 0;
+  // 採用ページは会社HPのすぐ後（2026-09-30 ヒュアラン採用ページ）
+  if (site.kind === "採用ページ") return 1;
+  return 2;
 }
 
 export function groupSitesByCompany(data: CorporateSitesData) {

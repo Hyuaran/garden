@@ -16,7 +16,7 @@ describe("sites registry", () => {
       "株式会社ストーンベース",
       "株式会社almalio",
     ]);
-    expect(groups[0].sites.map((site) => site.kind)).toEqual(["会社HP", "商品ページ"]);
+    expect(groups[0].sites.map((site) => site.kind)).toEqual(["会社HP", "採用ページ", "商品ページ"]);
     expect(groups[4].sites.map((site) => site.kind)).toEqual(["会社HP", "事業LP", "商品LP"]);
   });
 
@@ -29,6 +29,6 @@ describe("sites registry", () => {
   });
 
   it("counts sites by status bucket", () => {
-    expect(countByStatus(CORPORATE_SITES_DATA)).toEqual({ live: 10, pending: 3, planned: 0 });
+    expect(countByStatus(CORPORATE_SITES_DATA)).toEqual({ live: 11, pending: 3, planned: 0 });
   });
 });
