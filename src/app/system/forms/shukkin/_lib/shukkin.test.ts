@@ -3,6 +3,7 @@ import { parseKotDailyCsv, type KotDailyRow } from "@/app/system/kanri/_lib/kot-
 import {
   buildAttendanceMessage,
   buildLineShiftBlocks,
+  countSeatUsage,
   formatFiveCharName,
   summarizeKotCoverage,
   type ShukkinMember,
@@ -52,8 +53,8 @@ function csv(rows: string[][]) {
   return [headers, ...rows].map((row) => row.join(",")).join("\n");
 }
 
-function row(code: string, name: string, date: string, kind: string, start = "", end = "", clockIn = "", rounded = "") {
-  return [code, "アルバイト", name, date, kind, start ? "通常" : "", start, end, rounded, "", clockIn, "", "0", "0", "0", "0", "0", "0", "0"];
+function row(code: string, name: string, date: string, kind: string, start = "", end = "", clockIn = "", rounded = "", employmentKind = "アルバイト") {
+  return [code, employmentKind, name, date, kind, start ? "通常" : "", start, end, rounded, "", clockIn, "", "0", "0", "0", "0", "0", "0", "0"];
 }
 
 function parsed(rows: string[][]) {
@@ -86,6 +87,25 @@ describe("shukkin text builder", () => {
     expect(text).toContain("(上田　基人)14-21　※不明/打刻漏れの可能性");
     expect(text).toContain("(簡　　棣榮)14.5-21　");
     expect(text).not.toContain("(簡　　棣榮)14.5-21　※");
+  });
+
+  it("does not add confirmation marks for people who do not punch in", () => {
+    const rows = parsed([
+      row("0004", "上田 基人", "2026/09/30", "平日", "14:00", "21:00"),
+      row("0008", "東海林 美琴", "2026/09/30", "公休"),
+      row("1165", "宮永 ひかり", "2026/09/30", "平日", "14:00", "21:00"),
+    ]);
+    const targetMembers: ShukkinMember[] = [
+      { employeeNumber: "0004", name: "上田 基人", groupName: "テレマ社員", sortOrder: 10 },
+      { employeeNumber: "0008", name: "東海林 美琴", groupName: "ＢＹ", sortOrder: 10 },
+      { employeeNumber: "1165", name: "宮永 ひかり", groupName: "テレマ社員", sortOrder: 20 },
+    ];
+    const text = buildAttendanceMessage({ rows, members: targetMembers, date: "2026-09-30", tableTime: "14:00", withConfirmation: true });
+    expect(text).toContain("(上田　基人)14-21　");
+    expect(text).toContain("(東海林美琴)公休　");
+    expect(text).toContain("(宮永ひかり)14-21　※不明/打刻漏れの可能性");
+    expect(text).not.toContain("(上田　基人)14-21　※");
+    expect(text).not.toContain("(東海林美琴)公休　※");
   });
 
   // 出勤表の時刻：分があるときは時間を小数で（09:30 → 9.5）。ちょうどの時は今までどおり 2 桁（東海林さん 2026-09-19）
@@ -296,6 +316,39 @@ describe("shukkin text builder", () => {
     expect(text).toContain("(北野　　晟)10-21　");
     const blocks = buildLineShiftBlocks({ rows, members: withNewcomer, date: "2026-09-20" });
     expect(blocks[0].recipients).toContain("1557 北野 晟");
+  });
+
+  it("counts seat usage by planned people in the target groups and employment type", () => {
+    const rows = parsed([
+      row("0004", "上田 基人", "2026/09/30", "平日", "14:00", "21:00"),
+      row("1165", "宮永 ひかり", "2026/09/30", "平日", "14:00", "21:00"),
+      row("1326", "小泉 翔", "2026/09/30", "平日", "14:00", "21:00"),
+      row("1523", "石原 孝志朗", "2026/09/30", "平日", "14:00", "21:00"),
+      row("1392", "田中 実花", "2026/09/30", "平日", "10:00", "21:00"),
+      row("1554", "小谷 智子", "2026/09/30", "平日", "14:00", "21:00"),
+      row("1490", "藤木 誠希", "2026/09/30", "平日", "14:00", "21:00"),
+      row("1555", "梶野 恵園", "2026/09/30", "平日", "14:00", "21:00"),
+      row("1556", "藤田 悠誠", "2026/09/30", "公休"),
+      row("1557", "北野 晟", "2026/09/30", "平日"),
+      row("1601", "高木 麟心愛", "2026/09/30", "退職"),
+      row("9001", "訪販 対象外", "2026/09/30", "平日", "10:00", "21:00"),
+    ]);
+    const targetMembers: ShukkinMember[] = [
+      { employeeNumber: "0004", name: "上田 基人", employmentType: "正社員", groupName: "テレマ社員", sortOrder: 10 },
+      { employeeNumber: "1165", name: "宮永 ひかり", employmentType: "正社員", groupName: "テレマ社員", sortOrder: 20 },
+      { employeeNumber: "1326", name: "小泉 翔", employmentType: "正社員", groupName: "テレマ社員", sortOrder: 30 },
+      { employeeNumber: "1523", name: "石原 孝志朗", employmentType: "役員", groupName: "テレマ社員", sortOrder: 40 },
+      { employeeNumber: "1392", name: "田中 実花", employmentType: "アルバイト", groupName: "小泉チーム", sortOrder: 10 },
+      { employeeNumber: "1554", name: "小谷 智子", employmentType: "正社員", groupName: "新人チーム", sortOrder: 10 },
+      { employeeNumber: "1490", name: "藤木 誠希", employmentType: "outsource", groupName: "小泉チーム", sortOrder: 20 },
+      { employeeNumber: "1555", name: "", displayName: "梶野 恵園", groupName: "新人チーム", sortOrder: 20 },
+      { employeeNumber: "1556", name: "", displayName: "藤田 悠誠", groupName: "新人チーム", sortOrder: 30 },
+      { employeeNumber: "1557", name: "", displayName: "北野 晟", groupName: "新人チーム", sortOrder: 40 },
+      { employeeNumber: "1601", name: "高木 麟心愛", employmentType: "アルバイト", groupName: "石原チーム", sortOrder: 10 },
+      { employeeNumber: "9001", name: "訪販 対象外", employmentType: "正社員", groupName: "訪販社員", sortOrder: 10 },
+    ];
+
+    expect(countSeatUsage({ rows, members: targetMembers, date: "2026-09-30" })).toEqual({ staff: 4, partTime: 3 });
   });
 
   it("shows ＢＹ days without a plan as 公休 (blank or 平日 kind), rest kinds as their text, and others as ×", () => {

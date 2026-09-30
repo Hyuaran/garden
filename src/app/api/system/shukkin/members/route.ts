@@ -37,21 +37,21 @@ function normalizeMembers(value: unknown) {
   return rows.every(Boolean) ? rows : null;
 }
 
-async function employeeNamesByNumber(client: ReturnType<typeof getSupabaseAdmin>, employeeNumbers: string[]) {
+async function employeeDetailsByNumber(client: ReturnType<typeof getSupabaseAdmin>, employeeNumbers: string[]) {
   const numbers = [...new Set(employeeNumbers)].filter(Boolean);
-  if (numbers.length === 0) return new Map<string, string>();
+  if (numbers.length === 0) return new Map<string, { name: string; employmentType: string }>();
   const { data, error } = await client
     .from("root_employees")
-    .select("employee_number,name")
+    .select("employee_number,name,employment_type")
     .in("employee_number", numbers);
   if (error) throw error;
   return new Map((data ?? []).map((row) => {
-    const item = row as { employee_number: string; name: string | null };
-    return [item.employee_number, String(item.name ?? "")];
+    const item = row as { employee_number: string; name: string | null; employment_type?: string | null };
+    return [item.employee_number, { name: String(item.name ?? ""), employmentType: String(item.employment_type ?? "") }];
   }));
 }
 
-function shapeRows(rows: unknown[], employeeNames: Map<string, string>) {
+function shapeRows(rows: unknown[], employeeDetails: Map<string, { name: string; employmentType: string }>) {
   return rows.map((row) => {
     const item = row as {
       employee_number: string;
@@ -60,10 +60,12 @@ function shapeRows(rows: unknown[], employeeNames: Map<string, string>) {
       active: boolean;
       display_name?: string | null;
     };
+    const detail = employeeDetails.get(item.employee_number);
     return {
       employeeNumber: item.employee_number,
-      name: employeeNames.get(item.employee_number) ?? "",
+      name: detail?.name ?? "",
       displayName: String(item.display_name ?? ""),
+      employmentType: detail?.employmentType ?? "",
       groupName: item.group_name,
       sortOrder: item.sort_order,
       active: item.active,
@@ -83,8 +85,8 @@ export async function GET() {
     .order("sort_order", { ascending: true });
   if (error) return NextResponse.json({ ok: false, error: "並びの設定を読み込めませんでした" }, { status: 500 });
   try {
-    const employeeNames = await employeeNamesByNumber(client, (data ?? []).map((row) => String(row.employee_number ?? "")));
-    return NextResponse.json({ ok: true, members: shapeRows(data ?? [], employeeNames) });
+    const employeeDetails = await employeeDetailsByNumber(client, (data ?? []).map((row) => String(row.employee_number ?? "")));
+    return NextResponse.json({ ok: true, members: shapeRows(data ?? [], employeeDetails) });
   } catch {
     return NextResponse.json({ ok: false, error: "並びの設定を読み込めませんでした" }, { status: 500 });
   }
@@ -106,8 +108,8 @@ export async function PUT(request: Request) {
     .order("sort_order", { ascending: true });
   if (error) return NextResponse.json({ ok: false, error: "並びの設定を保存できませんでした" }, { status: 500 });
   try {
-    const employeeNames = await employeeNamesByNumber(client, (data ?? []).map((row) => String(row.employee_number ?? "")));
-    return NextResponse.json({ ok: true, members: shapeRows(data ?? [], employeeNames) });
+    const employeeDetails = await employeeDetailsByNumber(client, (data ?? []).map((row) => String(row.employee_number ?? "")));
+    return NextResponse.json({ ok: true, members: shapeRows(data ?? [], employeeDetails) });
   } catch {
     return NextResponse.json({ ok: false, error: "並びの設定を保存できませんでした" }, { status: 500 });
   }

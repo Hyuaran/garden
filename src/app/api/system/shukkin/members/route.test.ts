@@ -44,7 +44,7 @@ describe("/api/system/shukkin/members", () => {
   it("allows staff to read members", async () => {
     auth.requireStaff.mockResolvedValue({ userId: "u1" });
     const memberChain = selectChain([{ employee_number: "1392", group_name: "小泉チーム", sort_order: 10, active: true, display_name: null }]);
-    const employeeChain = selectChain([{ employee_number: "1392", name: "田中 実花" }]);
+    const employeeChain = selectChain([{ employee_number: "1392", name: "田中 実花", employment_type: "アルバイト" }]);
     const from = vi.fn((table: string) => table === "root_employees" ? employeeChain : memberChain);
     db.getSupabaseAdmin.mockReturnValue({ from });
     const route = await import("./route");
@@ -52,9 +52,9 @@ describe("/api/system/shukkin/members", () => {
     const body = await response.json();
     expect(response.status).toBe(200);
     expect(memberChain.select).toHaveBeenCalledWith("employee_number,group_name,sort_order,active,display_name");
-    expect(employeeChain.select).toHaveBeenCalledWith("employee_number,name");
+    expect(employeeChain.select).toHaveBeenCalledWith("employee_number,name,employment_type");
     expect(employeeChain.in).toHaveBeenCalledWith("employee_number", ["1392"]);
-    expect(body.members[0]).toMatchObject({ employeeNumber: "1392", name: "田中 実花", groupName: "小泉チーム" });
+    expect(body.members[0]).toMatchObject({ employeeNumber: "1392", name: "田中 実花", employmentType: "アルバイト", groupName: "小泉チーム" });
   });
 
   it("does not allow non-managers to save members", async () => {
@@ -67,7 +67,7 @@ describe("/api/system/shukkin/members", () => {
   it("allows managers to save members", async () => {
     auth.requireManager.mockResolvedValue({ userId: "u1" });
     const memberChain = upsertChain([{ employee_number: "1392", group_name: "小泉チーム", sort_order: 10, active: true, display_name: "田中 実花" }]);
-    const employeeChain = selectChain([{ employee_number: "1392", name: "田中 実花" }]);
+    const employeeChain = selectChain([{ employee_number: "1392", name: "田中 実花", employment_type: "アルバイト" }]);
     const from = vi.fn((table: string) => table === "root_employees" ? employeeChain : memberChain);
     db.getSupabaseAdmin.mockReturnValue({ from });
     const route = await import("./route");
@@ -88,5 +88,6 @@ describe("/api/system/shukkin/members", () => {
     }], { onConflict: "employee_number" });
     expect(body.members[0].employeeNumber).toBe("1392");
     expect(body.members[0].displayName).toBe("田中 実花");
+    expect(body.members[0].employmentType).toBe("アルバイト");
   });
 });

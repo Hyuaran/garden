@@ -8,10 +8,12 @@ import {
   buildAttendanceMessage,
   buildLineShiftBlocks,
   compactSlashDate,
+  countSeatUsage,
   defaultAttendanceTime,
   DEFAULT_PLAN_FIELDS,
   isWeekendOrHoliday,
   nextDateWithPlan,
+  SEAT_TOTAL_DEFAULT,
   SHUKKIN_GROUPS,
   slashDate,
   summarizeKotCoverage,
@@ -57,10 +59,15 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
   const [attendanceDate, setAttendanceDate] = useState(today);
   const [attendanceTime, setAttendanceTime] = useState<"10:00" | "14:00">(() => defaultAttendanceTime(today));
   const [withConfirmation, setWithConfirmation] = useState(false);
+  const [seatTotal, setSeatTotal] = useState(SEAT_TOTAL_DEFAULT);
+  const [seatStaff, setSeatStaff] = useState(0);
+  const [seatPartTime, setSeatPartTime] = useState(0);
   const [lineDate, setLineDate] = useState(addDays(today, 1));
   const [plans, setPlans] = useState<ShukkinPlanFields>(DEFAULT_PLAN_FIELDS);
   const [missingGroups, setMissingGroups] = useState<Record<string, ShukkinGroup>>({});
   const dates = useMemo(() => dateOptions(rows), [rows]);
+  const seatUsed = seatStaff + seatPartTime;
+  const seatRemaining = seatTotal - seatUsed;
 
   const loadMembers = useCallback(async () => {
     setLoadingMembers(true);
@@ -86,6 +93,12 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
   }, [rows, today]);
   const tomorrow = addDays(today, 1);
   const tomorrowMissing = rows.length > 0 && !dates.includes(tomorrow);
+
+  useEffect(() => {
+    const usage = countSeatUsage({ rows, members, date: attendanceDate });
+    setSeatStaff(usage.staff);
+    setSeatPartTime(usage.partTime);
+  }, [attendanceDate, members, rows]);
 
   const attendanceText = useMemo(() => buildAttendanceMessage({
     rows,
@@ -207,17 +220,29 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
         {loadingCsv && <span>読み込み中...</span>}
         {message && <span className={styles.message}>{message}</span>}
       </div>
-      <p className={styles.hint}>今日の日別データ（出勤表用）と明日の日別データ（シフト連絡用）を、2 つまとめて選んでください。期間で出した 1 ファイルでも使えます。</p>
+      <p className={styles.hint}>KING OF TIME ログイン＞エクスポート インポート＞データ出力 日別データCSV＞日付指定＞日付を本日/明日選択＞出力レイアウト Garden選択＞データ出力</p>
     </section>
 
     <div className={styles.tabs} role="tablist" aria-label="文面">
-      <button type="button" aria-selected={tab === "attendance"} onClick={() => setTab("attendance")}>出勤表</button>
-      <button type="button" aria-selected={tab === "line"} onClick={() => setTab("line")}>シフト連絡（LINE）</button>
-      <button type="button" aria-selected={tab === "members"} onClick={() => setTab("members")}>並びの設定</button>
+      <button type="button" role="tab" aria-selected={tab === "attendance"} onClick={() => setTab("attendance")}>出勤表</button>
+      <button type="button" role="tab" aria-selected={tab === "line"} onClick={() => setTab("line")}>シフト連絡（LINE）</button>
+      <button type="button" role="tab" aria-selected={tab === "members"} onClick={() => setTab("members")}>並びの設定</button>
     </div>
 
     {tab === "attendance" && <section className={styles.workArea}>
       {/* ［コピー］は文面の枠の上の行の右端（シフト連絡のまとまりと同じ位置・2026-09-19 東海林さん） */}
+      <div className={styles.seatControls}>
+        <span className={styles.seatTitle}>席数</span>
+        <label>総席数<NumberInput value={seatTotal} onChange={setSeatTotal} /></label>
+        <span>－</span>
+        <span>出勤</span>
+        <label>社員<NumberInput value={seatStaff} onChange={setSeatStaff} /></label>
+        <span>＋</span>
+        <label>アルバイト<NumberInput value={seatPartTime} onChange={setSeatPartTime} /></label>
+        <span>＝ {seatUsed}</span>
+        <span>＝</span>
+        <span className={seatRemaining < 0 ? styles.seatDanger : undefined}>残 {seatRemaining}</span>
+      </div>
       <div className={`${styles.controls} ${styles.attendanceControls}`}>
         <label>対象日<SelectDate value={attendanceDate} dates={dates} onChange={(date) => {
           setAttendanceDate(date);
@@ -300,6 +325,16 @@ function SelectDate({ value, dates, onChange }: { value: string; dates: string[]
   return dates.length > 0 ? <select value={value} onChange={(event) => onChange(event.currentTarget.value)}>
     {dates.map((date) => <option key={date} value={date}>{slashDate(date)}</option>)}
   </select> : <input type="date" value={value} onChange={(event) => onChange(event.currentTarget.value)} />;
+}
+
+function NumberInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  return <input
+    className={styles.seatInput}
+    type="number"
+    min={0}
+    value={value}
+    onChange={(event) => onChange(Math.max(0, event.currentTarget.valueAsNumber || 0))}
+  />;
 }
 
 function PlanFields({ plans, onChange }: { plans: ShukkinPlanFields; onChange: (plans: ShukkinPlanFields) => void }) {
