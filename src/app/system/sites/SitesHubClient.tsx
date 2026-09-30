@@ -106,7 +106,13 @@ function kintoneLabel(site: CorporateSite) {
 }
 
 function contactLabel(site: CorporateSite) {
-  if (site.kintone_app) return `${site.kind === "採用ページ" ? "応募" : "問い合わせ"}→${kintoneLabel(site)}`;
+  if (site.kintone_app) {
+    // 申込の受付アプリが主のサイト（例：Ichi光＝app247 申込／app248 問い合わせ）は「申込→」と書き、問い合わせ先を後ろに添える
+    const name = site.kintone_app_name ?? "";
+    const verb = site.kind === "採用ページ" ? "応募" : name.includes("申込受付") ? "申込" : "問い合わせ";
+    const inquiryApp = verb === "申込" ? name.match(/問い合わせは\s*app(\d+)/)?.[1] : undefined;
+    return `${verb}→${kintoneLabel(site)}${inquiryApp ? `／問い合わせ→app${inquiryApp}` : ""}`;
+  }
   return [site.stack, site.mail].filter(Boolean).join("・");
 }
 
@@ -168,6 +174,7 @@ function SiteCard({ site }: { site: CorporateSite }) {
       <dl>
         <DetailItem label="GitHub" value={site.github ? `GitHub ${site.github}` : undefined} />
         <DetailItem label="Vercel" value={site.vercel_project} />
+        <DetailItem label="受付アプリ" value={site.kintone_app_name} />
         <DetailItem label="流入元" value={site.source} />
         <DetailItem label="通知ルーム" value={site.chatwork_room} />
         <DetailItem label="通知の送り手" value={site.chatwork_sender} />

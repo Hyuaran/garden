@@ -47,6 +47,41 @@ describe("SitesHubClient", () => {
     mockFetch();
   });
 
+  it("shows 申込→ and the separate inquiry app for a product LP whose main app receives applications", () => {
+    const ichiData: CorporateSitesData = {
+      ...data,
+      sites: [
+        {
+          company: "株式会社壱",
+          kind: "会社HP",
+          domain: "ichi-one.com",
+          url: "https://ichi-one.com/company",
+          status: "live",
+          kintone_app: 246,
+          kintone_app_name: "壱問い合わせ受付",
+        },
+        {
+          company: "株式会社壱",
+          kind: "商品LP",
+          product: "Ichi光",
+          domain: "ichi-one.com",
+          url: "https://ichi-one.com/",
+          status: "live",
+          kintone_app: 247,
+          kintone_app_name: "Ichi光申込受付（問い合わせは app248 Ichi光問い合わせ受付）",
+        },
+      ],
+    };
+    render(<SitesHubClient data={ichiData} role="manager" />);
+    const cards = screen.getAllByTestId("site-card");
+    expect(cards).toHaveLength(2);
+    expect(within(cards[0]).getByText("問い合わせ→Kintone app246")).toBeInTheDocument();
+    expect(within(cards[0]).getByRole("link", { name: "開く" })).toHaveAttribute("href", "https://ichi-one.com/company");
+    expect(within(cards[1]).getByText("申込→Kintone app247／問い合わせ→app248")).toBeInTheDocument();
+    expect(within(cards[1]).getByText("Ichi光申込受付（問い合わせは app248 Ichi光問い合わせ受付）")).toBeInTheDocument();
+    expect(within(cards[1]).getByRole("link", { name: "開く" })).toHaveAttribute("href", "https://ichi-one.com/");
+  });
+
   it("shows the recruit page with its own badge, 応募→Kintone and the separate notice room", () => {
     const recruitData: CorporateSitesData = {
       ...data,
