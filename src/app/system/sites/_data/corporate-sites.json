@@ -288,8 +288,7 @@
     },
     {
       "company": "株式会社壱",
-      "kind": "会社HP+商品",
-      "product": "Ichi光",
+      "kind": "会社HP",
       "domain": "ichi-one.com",
       "url": "https://ichi-one.com/company",
       "status": "live",
@@ -298,10 +297,38 @@
       "github": "Hyuaran/ichi",
       "vercel_project": "ichi",
       "kintone_app": 246,
-      "kintone_app_name": "壱問い合わせ受付（Ichi光は app247 申込／app248 問い合わせ）",
+      "kintone_app_name": "壱問い合わせ受付",
       "source": "壱-HP",
       "chatwork_to": [
         "上田基人",
+        "石原孝志朗"
+      ],
+      "mail": "M365",
+      "notes": [
+        "ChatGPTデザイン（和モダン）",
+        "Ichi光と同じドメイン・同じ Vercel プロジェクトの /company"
+      ],
+      "public_slug": "ichi",
+      "company_id": "COMP-006"
+    },
+    {
+      "company": "株式会社壱",
+      "kind": "商品LP",
+      "product": "Ichi光",
+      "domain": "ichi-one.com",
+      "url": "https://ichi-one.com/",
+      "status": "live",
+      "live_since": "2026-09-25",
+      "stack": "static+vercel-function",
+      "github": "Hyuaran/ichi",
+      "vercel_project": "ichi",
+      "kintone_app": 247,
+      "kintone_app_name": "Ichi光申込受付（問い合わせは app248 Ichi光問い合わせ受付）",
+      "source": "Ichi光-申込／Ichi光-問い合わせ",
+      "chatwork_to": [
+        "上田基人",
+        "宮永ひかり",
+        "小泉翔",
         "石原孝志朗"
       ],
       "mail": "M365",
@@ -311,10 +338,10 @@
         "action": "解約可（過去申込データの要否確認後）"
       },
       "notes": [
-        "Ichi光は URL 不変で Vercel 化（https://ichi-one.com/ 他5ページ）",
-        "ChatGPTデザイン（和モダン）"
+        "URL 不変で Vercel 化（重説等に記載のため /, /about, /plan, /entry, /contact をそのまま維持）",
+        "旧 Laravel+Vue を静的化し申込・問い合わせ API を Vercel 関数で再現",
+        "https 正常化"
       ],
-      "highlight": "Ichi光は URL 不変で Vercel 化（https://ichi-one.com/ 他 5 ページ）",
       "public_slug": "ichi",
       "company_id": "COMP-006"
     },

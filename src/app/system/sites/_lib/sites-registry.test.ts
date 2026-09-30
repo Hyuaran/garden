@@ -18,6 +18,11 @@ describe("sites registry", () => {
     ]);
     expect(groups[0].sites.map((site) => site.kind)).toEqual(["会社HP", "採用ページ", "商品ページ"]);
     expect(groups[4].sites.map((site) => site.kind)).toEqual(["会社HP", "事業LP", "商品LP"]);
+    // 壱は会社HPと商品LP（Ichi光）の2枚に分割（2026-09-30）
+    expect(groups[5].sites.map((site) => [site.kind, site.url, site.company_id])).toEqual([
+      ["会社HP", "https://ichi-one.com/company", "COMP-006"],
+      ["商品LP", "https://ichi-one.com/", "COMP-006"],
+    ]);
   });
 
   it("maps every status to the expected label and badge tone", () => {
@@ -29,6 +34,6 @@ describe("sites registry", () => {
   });
 
   it("counts sites by status bucket", () => {
-    expect(countByStatus(CORPORATE_SITES_DATA)).toEqual({ live: 11, pending: 3, planned: 0 });
+    expect(countByStatus(CORPORATE_SITES_DATA)).toEqual({ live: 12, pending: 3, planned: 0 });
   });
 });
