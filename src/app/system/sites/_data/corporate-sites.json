@@ -409,6 +409,7 @@
       "owner_claimed": true,
       "checked_on": "2026-09-30",
       "notes": [
+        "オーナー＝hyuaran.group@gmail.com",
         "クチコミ 3 件（評価 2.3）",
         "先頭のストリートビューが旧事務所（なんば）のまま＝要修正",
         "店舗の写真は未登録"
@@ -441,18 +442,18 @@
     },
     {
       "company": "株式会社たいよう",
-      "status": "unclaimed",
+      "status": "registered",
       "url": "https://www.google.com/maps?cid=5481045010673177390",
       "map_name": "株式会社たいよう",
       "map_address": "〒537-0001 大阪府大阪市東成区深江北２丁目６−１ エーデル深江橋 ４０５",
       "map_phone": "06-7777-4605",
       "map_website": "sunsun-taiyou.com",
       "map_category": "不動産仲介業",
-      "owner_claimed": false,
+      "owner_claimed": true,
       "checked_on": "2026-09-30",
       "notes": [
-        "オーナー確認がされていない（「ビジネス オーナーですか？」の表示あり）",
-        "業種が「不動産仲介業」になっている",
+        "2026-09-30 に hyuaran.group@gmail.com でオーナー登録（本人確認済み）",
+        "業種が「不動産仲介業」になっている＝要修正",
         "営業時間・写真は未登録"
       ]
     },

@@ -32,7 +32,7 @@ function GridViewIcon() {
 }
 
 function MapPinIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.4"/></svg>;
+  return <svg className={styles.mapPinIcon} viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.4"/></svg>;
 }
 
 function readViewMode(): ViewMode {
@@ -229,7 +229,7 @@ function GoogleMapCard({ map, garden }: { map: CorporateGoogleMap; garden?: Publ
       <h2>Googleマップ</h2>
       <MapKindChip />
     </div>
-    <p className={styles.cardDescription}>
+    <p className={`${styles.cardDescription} ${styles.mapDescription}`}>
       {map.status === "unregistered" ? <span>Google マップに登録がありません</span> : <>
         {map.map_name ? <span>{map.map_name}</span> : null}
         {map.map_address ? <span>{map.map_address}</span> : null}
