@@ -54,18 +54,18 @@ describe("ShukkinClient", () => {
     const seatRow = screen.getByText("席数").closest("div");
     expect(seatRow).not.toBeNull();
     expect(within(seatRow as HTMLElement).getByText("総席数")).toBeInTheDocument();
-    expect(within(seatRow as HTMLElement).getByText("社員")).toBeInTheDocument();
+    expect(within(seatRow as HTMLElement).getByText("リーダー")).toBeInTheDocument();
     expect(within(seatRow as HTMLElement).getByText("アルバイト")).toBeInTheDocument();
     expect(seatRow?.compareDocumentPosition(screen.getByText("対象日"))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
     const [totalInput, staffInput, partTimeInput] = within(seatRow as HTMLElement).getAllByRole("spinbutton");
-    await waitFor(() => expect(staffInput).toHaveValue(2));
+    await waitFor(() => expect(staffInput).toHaveValue(1));
 
     expect(within(seatRow as HTMLElement).getByText((_, element) => element?.textContent === "＝ 3")).toBeInTheDocument();
     expect(within(seatRow as HTMLElement).getByText((_, element) => element?.textContent === "残 22")).toBeInTheDocument();
 
     expect(totalInput).toHaveValue(25);
-    expect(partTimeInput).toHaveValue(1);
+    expect(partTimeInput).toHaveValue(2);
 
     fireEvent.change(totalInput, { target: { value: "2" } });
     fireEvent.change(staffInput, { target: { value: "3" } });

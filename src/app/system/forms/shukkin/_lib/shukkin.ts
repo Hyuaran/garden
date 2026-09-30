@@ -47,10 +47,11 @@ const CONFIRMATION_EXCLUDED_EMPLOYEE_NUMBER_SET = new Set<string>(CONFIRMATION_E
 export const SEAT_TOTAL_DEFAULT = 25;
 export const SEAT_GROUPS = ["テレマ社員", "宮永チーム", "小泉チーム", "石原チーム", "新人チーム"] as const satisfies readonly ShukkinGroup[];
 export const SEAT_EXCLUDED_EMPLOYEE_NUMBERS = ["0004"] as const;
-export const SEAT_STAFF_EMPLOYMENT_TYPES = ["正社員", "役員"] as const;
+// リーダー＝テレマ社員の区分の人（上田は除く）。4 チームの人は雇用形態に関係なくアルバイトとして数える（東海林さん 2026-09-30：小谷さんは社員だがアルバイトの数に入れる）
+export const SEAT_LEADER_GROUPS = ["テレマ社員"] as const satisfies readonly ShukkinGroup[];
 const SEAT_GROUP_SET = new Set<ShukkinGroup>(SEAT_GROUPS);
 const SEAT_EXCLUDED_EMPLOYEE_NUMBER_SET = new Set<string>(SEAT_EXCLUDED_EMPLOYEE_NUMBERS);
-const SEAT_STAFF_EMPLOYMENT_TYPE_SET = new Set<string>(SEAT_STAFF_EMPLOYMENT_TYPES);
+const SEAT_LEADER_GROUP_SET = new Set<ShukkinGroup>(SEAT_LEADER_GROUPS);
 // KOT の雇用区分の値そのまま（スペースなし・2026-09 の実データで確認）
 export const SHUKKIN_MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS = ["SES事業部"] as const;
 const MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS = new Set<string>(SHUKKIN_MISSING_ORDER_EXCLUDED_EMPLOYMENT_KINDS);
@@ -207,13 +208,13 @@ export function summarizeKotCoverage(input: { rows: KotDailyRow[]; members: Shuk
 
 export function countSeatUsage(input: { rows: KotDailyRow[]; members: ShukkinMember[]; date: string }) {
   const byNumber = rowsByNumber(input.rows, input.date);
-  return activeMembers(input.members).reduce<{ staff: number; partTime: number }>((counts, member) => {
+  return activeMembers(input.members).reduce<{ leader: number; partTime: number }>((counts, member) => {
     const row = byNumber.get(member.employeeNumber);
     if (!SEAT_GROUP_SET.has(member.groupName) || SEAT_EXCLUDED_EMPLOYEE_NUMBER_SET.has(member.employeeNumber) || !hasPlan(row) || isRetired(row)) return counts;
-    if (SEAT_STAFF_EMPLOYMENT_TYPE_SET.has(String(member.employmentType ?? ""))) counts.staff += 1;
+    if (SEAT_LEADER_GROUP_SET.has(member.groupName)) counts.leader += 1;
     else counts.partTime += 1;
     return counts;
-  }, { staff: 0, partTime: 0 });
+  }, { leader: 0, partTime: 0 });
 }
 
 export function buildAttendanceMessage(input: {

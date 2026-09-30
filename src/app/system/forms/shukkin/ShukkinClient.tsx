@@ -60,13 +60,13 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
   const [attendanceTime, setAttendanceTime] = useState<"10:00" | "14:00">(() => defaultAttendanceTime(today));
   const [withConfirmation, setWithConfirmation] = useState(false);
   const [seatTotal, setSeatTotal] = useState(SEAT_TOTAL_DEFAULT);
-  const [seatStaff, setSeatStaff] = useState(0);
+  const [seatLeader, setSeatLeader] = useState(0);
   const [seatPartTime, setSeatPartTime] = useState(0);
   const [lineDate, setLineDate] = useState(addDays(today, 1));
   const [plans, setPlans] = useState<ShukkinPlanFields>(DEFAULT_PLAN_FIELDS);
   const [missingGroups, setMissingGroups] = useState<Record<string, ShukkinGroup>>({});
   const dates = useMemo(() => dateOptions(rows), [rows]);
-  const seatUsed = seatStaff + seatPartTime;
+  const seatUsed = seatLeader + seatPartTime;
   const seatRemaining = seatTotal - seatUsed;
 
   const loadMembers = useCallback(async () => {
@@ -96,7 +96,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
 
   useEffect(() => {
     const usage = countSeatUsage({ rows, members, date: attendanceDate });
-    setSeatStaff(usage.staff);
+    setSeatLeader(usage.leader);
     setSeatPartTime(usage.partTime);
   }, [attendanceDate, members, rows]);
 
@@ -236,7 +236,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
         <label>総席数<NumberInput value={seatTotal} onChange={setSeatTotal} /></label>
         <span>－</span>
         <span>出勤</span>
-        <label>社員<NumberInput value={seatStaff} onChange={setSeatStaff} /></label>
+        <label>リーダー<NumberInput value={seatLeader} onChange={setSeatLeader} /></label>
         <span>＋</span>
         <label>アルバイト<NumberInput value={seatPartTime} onChange={setSeatPartTime} /></label>
         <span>＝ {seatUsed}</span>

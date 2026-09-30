@@ -318,7 +318,7 @@ describe("shukkin text builder", () => {
     expect(blocks[0].recipients).toContain("1557 北野 晟");
   });
 
-  it("counts seat usage by planned people in the target groups and employment type", () => {
+  it("counts seat usage: leaders are テレマ社員 without 上田, everyone in the 4 teams (even 正社員 like 小谷) is part-time", () => {
     const rows = parsed([
       row("0004", "上田 基人", "2026/09/30", "平日", "14:00", "21:00"),
       row("1165", "宮永 ひかり", "2026/09/30", "平日", "14:00", "21:00"),
@@ -348,7 +348,7 @@ describe("shukkin text builder", () => {
       { employeeNumber: "9001", name: "訪販 対象外", employmentType: "正社員", groupName: "訪販社員", sortOrder: 10 },
     ];
 
-    expect(countSeatUsage({ rows, members: targetMembers, date: "2026-09-30" })).toEqual({ staff: 4, partTime: 3 });
+    expect(countSeatUsage({ rows, members: targetMembers, date: "2026-09-30" })).toEqual({ leader: 3, partTime: 4 });
   });
 
   it("shows ＢＹ days without a plan as 公休 (blank or 平日 kind), rest kinds as their text, and others as ×", () => {
