@@ -50,7 +50,8 @@ export function resolveSystemActivePath(pathname: string): string | null {
     .sort((a, b) => (b.href?.length ?? 0) - (a.href?.length ?? 0));
   return matches.find((item) => {
     if (!item.href) return false;
-    return pathname === item.href || (item.href !== "/system" && pathname.startsWith(`${item.href}/`));
+    const paths = [item.href, ...(item.activePrefixes ?? [])];
+    return paths.some((path) => pathname === path || (path !== "/system" && pathname.startsWith(`${path}/`)));
   })?.href ?? null;
 }
 

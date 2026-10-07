@@ -91,6 +91,29 @@ export async function createRecord(
   };
 }
 
+export async function updateRecord(
+  app: string | number,
+  token: string,
+  id: string | number,
+  record: KintoneRecord,
+): Promise<{ revision?: string }> {
+  if (!token) throw new Error("kintone_token_missing");
+  const response = await fetch(kintoneApiUrl("record.json"), {
+    method: "PUT",
+    headers: {
+      "X-Cybozu-API-Token": token,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ app: String(app), id: String(id), record }),
+    cache: "no-store",
+  });
+  if (!response.ok) throw asKintoneError(response);
+  const body = await response.json() as { revision?: unknown };
+  return {
+    revision: body.revision == null ? undefined : String(body.revision),
+  };
+}
+
 export type KintoneFormField = {
   code: string;
   label: string;

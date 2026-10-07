@@ -4,8 +4,9 @@ import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types"
 import { isEmployeeActive } from "@/lib/auth/employee-access";
 import FormsHubClient from "./FormsHubClient";
 import { getVisibleSystemForms } from "./_lib/forms-registry";
+import { getVisibleGyomuTools } from "./_lib/gyomu-tools-registry";
 
-export const metadata = { title: "フォーム | Garden" };
+export const metadata = { title: "業務管理ツール | Garden" };
 
 export default async function FormsHubPage() {
   const supabase = await createServerClient();
@@ -25,5 +26,5 @@ export default async function FormsHubPage() {
     ? employee.garden_role as GardenRole
     : "staff";
 
-  return <FormsHubClient forms={getVisibleSystemForms(role)} />;
+  return <FormsHubClient forms={getVisibleSystemForms(role)} tools={getVisibleGyomuTools(role)} />;
 }

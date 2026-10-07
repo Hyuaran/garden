@@ -49,7 +49,7 @@ describe("system home", () => {
     expect(screen.getByRole("heading", { name: "シフト" }).closest("a")).toHaveAttribute("href", "/system/shift");
     expect(screen.getByRole("heading", { name: "前確依頼" }).closest("a")).toHaveAttribute("href", "/system/zenkaku");
     expect(screen.getByRole("heading", { name: "テレマ コール集計" }).closest("a")).toHaveAttribute("href", "/system/call-metrics");
-    expect(screen.getByRole("heading", { name: "フォーム" }).closest("a")).toHaveAttribute("href", "/system/forms");
+    expect(screen.getByRole("heading", { name: "業務管理ツール" }).closest("a")).toHaveAttribute("href", "/system/forms");
     expect(screen.getByRole("heading", { name: "自動配信" }).closest("a")).toHaveAttribute("href", "/system/deliveries");
     expect(screen.queryByRole("heading", { name: "コール数配信" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "給与計算連絡" })).not.toBeInTheDocument();

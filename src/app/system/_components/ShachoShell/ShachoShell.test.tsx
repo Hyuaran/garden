@@ -3,8 +3,8 @@ import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { ThemeProvider } from "@/app/_lib/theme/ThemeProvider";
-import ShachoShell from "./ShachoShell";
-import { shouldHideSidebar } from "./shacho-shell-config";
+import ShachoShell, { resolveSystemActivePath } from "./ShachoShell";
+import { shouldHideSidebar, SYSTEM_MENU_ITEMS } from "./shacho-shell-config";
 import styles from "./shacho-shell.module.css";
 
 const mocks = vi.hoisted(() => ({ signOut: vi.fn(), pathname: "/system" }));
@@ -146,7 +146,13 @@ describe("ShachoShell", () => {
 
   it("marks forms as the current System menu item", () => {
     renderShell("/system/forms/payroll-notice");
-    expect(screen.getByRole("link", { name: "フォーム", current: "page" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "業務管理ツール", current: "page" })).toBeInTheDocument();
+  });
+
+  it("marks business tools as current for the INNOVERA sync page", () => {
+    renderShell("/system/innovera");
+    expect(screen.getByRole("link", { name: "業務管理ツール", current: "page" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "電話番号の同期" })).not.toBeInTheDocument();
   });
 
   it("marks deliveries as the current System menu item", () => {
@@ -173,8 +179,9 @@ describe("ShachoShell", () => {
     ["/system/shift", "シフト"],
     ["/system/zenkaku", "前確依頼"],
     ["/system/call-metrics", "テレマ コール集計"],
-    ["/system/forms", "フォーム"],
-    ["/system/forms/payroll-notice", "フォーム"],
+    ["/system/forms", "業務管理ツール"],
+    ["/system/forms/payroll-notice", "業務管理ツール"],
+    ["/system/innovera", "業務管理ツール"],
     ["/system/deliveries", "自動配信"],
     ["/system/contracts", "契約書管理"],
     ["/system/list", "リストマスタ"],
@@ -186,6 +193,12 @@ describe("ShachoShell", () => {
   it("keeps the attendance item current on its nested sync page", () => {
     renderShell("/system/attendance/sync-status");
     expect(screen.getByRole("link", { name: "勤怠打刻", current: "page" })).toBeInTheDocument();
+  });
+
+  it("resolves the INNOVERA page to the business tools item", () => {
+    expect(SYSTEM_MENU_ITEMS.map((item) => item.label)).toContain("業務管理ツール");
+    expect(SYSTEM_MENU_ITEMS.map((item) => item.label)).not.toContain("電話番号の同期");
+    expect(resolveSystemActivePath("/system/innovera")).toBe("/system/forms");
   });
 
   it("filters the rail with the shared staff visibility matrix", () => {
@@ -264,7 +277,7 @@ describe("ShachoShell", () => {
     const nav = screen.getByRole("navigation", { name: "Systemメニュー" });
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
       "ホーム", "資料", "マニュアル", "入社手続き", "自分の情報", "勤怠打刻", "シフト", "前確依頼",
-      "テレマ コール集計", "フォーム", "契約書管理", "コーポレートサイト", "関電トスポータル", "自動配信", "管理表ポータル", "リストマスタ",
+      "テレマ コール集計", "業務管理ツール", "契約書管理", "コーポレートサイト", "関電トスポータル", "自動配信", "管理表ポータル", "リストマスタ",
     ]);
     for (const label of ["資料", "シフト", "前確依頼"]) {
       const link = within(nav).getByRole("link", { name: label });

@@ -8,6 +8,7 @@ export type SystemMenuItem = {
   description: string;
   icon: SystemIcon;
   href?: string;
+  activePrefixes?: string[];
   minRole?: GardenRole;
   upcoming?: boolean;
 };
@@ -32,7 +33,7 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "シフト", description: "シフトの提出と勤務予定の確認を行う画面です。", icon: "shift", href: "/system/shift" },
   { label: "前確依頼", description: "営業IDの登録内容を確認し、取次先へ前確依頼を出します。", icon: "zenkaku", href: "/system/zenkaku" },
   { label: "テレマ コール集計", description: "架電の件数や結果を日ごと・リストごとに見られます。コールセンターへの共有もここから。", icon: "chart", href: "/system/call-metrics", minRole: "staff" },
-  { label: "フォーム", description: "月に一度の連絡や申請を、ここから開いて送ります。", icon: "document", href: "/system/forms", minRole: "staff" },
+  { label: "業務管理ツール", description: "日々の連絡や申請の入力、自動で動いている仕組み、Kintone に入れたしかけをまとめた入口です。", icon: "document", href: "/system/forms", activePrefixes: ["/system/innovera"], minRole: "staff" },
   { label: "契約書管理", description: "上位店との契約書を登録して保存漏れを防ぎます。パートナー配布用のひな形もここで作れます。", icon: "document", href: "/system/contracts", minRole: "manager" },
   { label: "コーポレートサイト", description: "グループ各社の会社HPと商品ページを一覧し、サイトへ飛べます。", icon: "folder", href: "/system/sites", minRole: "staff" },
   { label: "関電トスポータル", description: "関西電力のトスアップを受け付けます。入力内容はそのままKintoneへ連携されます。", icon: "folder", href: "/p/toss" },
