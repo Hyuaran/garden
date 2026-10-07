@@ -91,6 +91,8 @@ export type InnoveraSyncResult = {
   actions: InnoveraDiffAction[];
   details: InnoveraSyncDetail[];
   latestLogs?: InnoveraSyncLogRow[];
+  notificationSkipped?: boolean;
+  recovered?: boolean;
 };
 
 export type InnoveraSyncDetail = {

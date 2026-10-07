@@ -125,7 +125,7 @@ describe("runInnoveraSync", () => {
   it("does not write when INNOVERA returns result false", async () => {
     const { writes } = mockFetch([], [], { innoveraResult: false });
     const result = await runInnoveraSync({ apply: true, trigger: "cron", now: fixedNow });
-    expect(result).toMatchObject({ ok: false, error: "innovera_unreachable" });
+    expect(result).toMatchObject({ ok: false, error: expect.stringMatching(/^innovera_unreachable/) });
     expect(writes).toHaveLength(0);
   });
 
@@ -215,6 +215,59 @@ describe("runInnoveraSync", () => {
     const result = await runInnoveraSync({ apply: true, trigger: "cron", now: fixedNow });
     expect(result.actions).toHaveLength(0);
     expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("records the failure detail (HTTP status) in the error", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("down", { status: 503 })));
+    const result = await runInnoveraSync({ apply: true, trigger: "cron", now: fixedNow });
+    expect(result).toMatchObject({ ok: false, error: "innovera_unreachable:http 503" });
+    expect(mocks.inserts).toHaveLength(1);
+    expect((mocks.inserts[0] as { error: string }).error).toBe("innovera_unreachable:http 503");
+  });
+
+  it("notifies the first failure but not the same failure repeated within 12 hours", async () => {
+    mockFetch([], [], { innoveraResult: false });
+    const first = await runInnoveraSync({ apply: true, trigger: "cron", now: fixedNow });
+    expect(first.notificationSkipped).toBeUndefined();
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+
+    mocks.logRows = [{ ran_at: fixedNow.toISOString(), trigger: "cron", applied: true, ok: false, error: "innovera_unreachable:999", innovera_count: null, kintone_count: null, added: 0, renamed: 0, retired: 0, needs_review: 0, failed: 0, details: [], actor_employee_id: null }];
+    const fiveMinutesLater = new Date(fixedNow.getTime() + 5 * 60 * 1000);
+    const second = await runInnoveraSync({ apply: true, trigger: "cron", now: fiveMinutesLater });
+    expect(second.ok).toBe(false);
+    expect(second.notificationSkipped).toBe(true);
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.inserts).toHaveLength(2);
+  });
+
+  it("notifies again when a different kind of failure follows", async () => {
+    mocks.logRows = [{ ran_at: fixedNow.toISOString(), trigger: "cron", applied: true, ok: false, error: "innovera_unreachable:http 503", innovera_count: null, kintone_count: null, added: 0, renamed: 0, retired: 0, needs_review: 0, failed: 0, details: [], actor_employee_id: null }];
+    mockFetch([circuit()], [], { failKintoneRead: true });
+    const result = await runInnoveraSync({ apply: true, trigger: "cron", now: new Date(fixedNow.getTime() + 5 * 60 * 1000) });
+    expect(result.error).toBe("kintone_read_failed");
+    expect(result.notificationSkipped).toBeUndefined();
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends one recovery message and logs the run after a failure", async () => {
+    mocks.logRows = [{ ran_at: fixedNow.toISOString(), trigger: "cron", applied: true, ok: false, error: "innovera_unreachable:http 503", innovera_count: null, kintone_count: null, added: 0, renamed: 0, retired: 0, needs_review: 0, failed: 0, details: [], actor_employee_id: null }];
+    mockFetch([circuit()], [record()]);
+    const result = await runInnoveraSync({ apply: true, trigger: "cron", now: new Date(fixedNow.getTime() + 5 * 60 * 1000) });
+    expect(result.ok).toBe(true);
+    expect(result.recovered).toBe(true);
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.sendMessage).toHaveBeenCalledWith("room-1", expect.stringContaining("回復しました"));
+    expect(mocks.inserts).toHaveLength(1);
+    expect((mocks.inserts[0] as { ok: boolean }).ok).toBe(true);
+  });
+
+  it("does not send a recovery message when the previous run succeeded", async () => {
+    mocks.logRows = [{ ran_at: fixedNow.toISOString(), trigger: "cron", applied: true, ok: true, error: null, innovera_count: 1, kintone_count: 1, added: 0, renamed: 0, retired: 0, needs_review: 0, failed: 0, details: [], actor_employee_id: null }];
+    mockFetch([circuit()], [record()]);
+    const result = await runInnoveraSync({ apply: true, trigger: "cron", now: new Date(fixedNow.getTime() + 5 * 60 * 1000) });
+    expect(result.recovered).toBeUndefined();
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.inserts).toHaveLength(0);
   });
 
   it("sends a failure message and keeps the result when notification throws", async () => {

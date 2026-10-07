@@ -101,13 +101,20 @@ function detailFor(action: InnoveraDiffAction, result: InnoveraSyncDetail["resul
 }
 
 async function fetchInnoveraCircuits(config: { host: string; apiKey: string }): Promise<InnoveraCircuit[]> {
-  const response = await fetch(`https://${config.host}/pbx/api/front/index/?ckey=circuit&akey=search`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ api_key: config.apiKey }),
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error("innovera_unreachable");
+  let response: Response;
+  try {
+    response = await fetch(`https://${config.host}/pbx/api/front/index/?ckey=circuit&akey=search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ api_key: config.apiKey }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(25_000),
+    });
+  } catch (error) {
+    const cause = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    throw new Error(`innovera_unreachable:fetch ${cause}`.slice(0, 200));
+  }
+  if (!response.ok) throw new Error(`innovera_unreachable:http ${response.status}`);
   const body = await response.json() as { result?: unknown; error_code?: unknown; data?: unknown };
   if (body.result !== true) throw new Error(`innovera_unreachable:${String(body.error_code ?? "")}`);
   if (!Array.isArray(body.data)) throw new Error("innovera_unreachable");
@@ -141,9 +148,49 @@ async function writeAction(config: { appId: string; token: string }, action: Inn
   }
 }
 
+// 直前の記録（失敗が続いているか・回復したかの判定に使う）
+async function loadPreviousLog(): Promise<InnoveraSyncLogRow | null> {
+  const rows = await loadInnoveraSyncLogs(1).catch(() => [] as InnoveraSyncLogRow[]);
+  return rows[0] ?? null;
+}
+
+const SAME_FAILURE_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+function errorKind(error: string | null | undefined) {
+  return (error ?? "").split(";")[0].split(":")[0].trim();
+}
+
+// 同じ種類の失敗が 12 時間以内に続いているなら、通知は最初の 1 回だけ（5 分ごとに送らない）
+export function isRepeatedFailure(previous: InnoveraSyncLogRow | null, error: string | undefined, now: Date) {
+  if (!previous || previous.ok || !error) return false;
+  if (errorKind(previous.error) !== errorKind(error)) return false;
+  const elapsed = now.getTime() - new Date(previous.ran_at).getTime();
+  return Number.isFinite(elapsed) && elapsed >= 0 && elapsed < SAME_FAILURE_WINDOW_MS;
+}
+
+export function buildInnoveraRecoveryBody(previous: InnoveraSyncLogRow, now = new Date()) {
+  const { minute } = nowParts(now);
+  const since = nowParts(new Date(previous.ran_at)).minute;
+  return `[info][title]INNOVERA番号の同期（INNOVERA → Kintone）[/title]${minute} 自動\n回復しました。${since} から続いていた失敗（${failureMessage(previous.error ?? "")}）は解消し、通常どおり突き合わせています。\n\n確認：https://garden-os.net/system/innovera[/info]`;
+}
+
+async function notifyRecoveryIfNeeded(result: InnoveraSyncResult, previous: InnoveraSyncLogRow | null, now: Date) {
+  if (!result.ok || !result.applied || !previous || previous.ok) return result;
+  const elapsed = now.getTime() - new Date(previous.ran_at).getTime();
+  if (!(elapsed >= 0 && elapsed < SAME_FAILURE_WINDOW_MS)) return result;
+  const token = process.env.CHATWORK_API_TOKEN;
+  if (!token) return { ...result, recovered: true };
+  try {
+    await new ChatworkClient(token).sendMessage(process.env.GARDEN_NOTICE_CHATWORK_ROOM_ID || DEFAULT_CHATWORK_ROOM_ID, buildInnoveraRecoveryBody(previous, now));
+  } catch {
+    // 回復の知らせが送れなくても結果は変えない
+  }
+  return { ...result, recovered: true };
+}
+
 async function insertLog(result: InnoveraSyncResult, actorEmployeeId: string | null) {
   if (!result.applied) return;
-  const shouldLog = result.trigger === "manual" || !result.ok || result.actions.length > 0 || result.counts.failed > 0;
+  const shouldLog = result.trigger === "manual" || !result.ok || result.actions.length > 0 || result.counts.failed > 0 || result.recovered === true;
   if (!shouldLog) return;
   await getSupabaseAdmin().from("system_innovera_sync_log").insert({
     trigger: result.trigger,
@@ -215,9 +262,10 @@ export function buildInnoveraChatworkBody(result: InnoveraSyncResult, now = new 
   return lines.join("\n");
 }
 
-async function notifyIfNeeded(result: InnoveraSyncResult, now: Date) {
+async function notifyIfNeeded(result: InnoveraSyncResult, now: Date, previous: InnoveraSyncLogRow | null = null) {
   const wrote = result.details.some((detail) => detail.result === "created" || detail.result === "updated");
   if (!wrote && result.ok && result.counts.failed === 0) return result;
+  if (!result.ok && isRepeatedFailure(previous, result.error, now)) return { ...result, notificationSkipped: true };
   const token = process.env.CHATWORK_API_TOKEN;
   if (!token) return { ...result, error: result.error ? `${result.error}; chatwork_not_configured` : "chatwork_not_configured" };
   try {
@@ -233,8 +281,9 @@ export async function runInnoveraSync(options: RunInnoveraSyncOptions): Promise<
   const now = options.now ?? new Date();
   const { today } = nowParts(now);
   const config = envConfig();
+  const previous = options.apply ? await loadPreviousLog() : null;
   if (!config) {
-    const result = await notifyIfNeeded(emptyResult(options, now, "not_configured"), now);
+    const result = await notifyIfNeeded(emptyResult(options, now, "not_configured"), now, previous);
     await insertLog(result, options.actorEmployeeId ?? null).catch(() => undefined);
     return result;
   }
@@ -245,8 +294,9 @@ export async function runInnoveraSync(options: RunInnoveraSyncOptions): Promise<
     circuits = await fetchInnoveraCircuits(config);
     if (circuits.length === 0) throw new Error("innovera_empty");
   } catch (error) {
-    const code = error instanceof Error && error.message === "innovera_empty" ? "innovera_empty" : "innovera_unreachable";
-    const result = await notifyIfNeeded({ ...emptyResult(options, now, code), innoveraCount: code === "innovera_empty" ? 0 : null }, now);
+    const message = error instanceof Error ? error.message : String(error);
+    const code = message === "innovera_empty" ? "innovera_empty" : (message.startsWith("innovera_unreachable") ? message : "innovera_unreachable");
+    const result = await notifyIfNeeded({ ...emptyResult(options, now, code), innoveraCount: code === "innovera_empty" ? 0 : null }, now, previous);
     await insertLog(result, options.actorEmployeeId ?? null).catch(() => undefined);
     return result;
   }
@@ -254,7 +304,7 @@ export async function runInnoveraSync(options: RunInnoveraSyncOptions): Promise<
   try {
     records = await getAllRecords<KintoneInnoveraRecord>(config.appId, config.token, "", KINTONE_FIELDS);
   } catch {
-    const result = await notifyIfNeeded({ ...emptyResult(options, now, "kintone_read_failed"), innoveraCount: circuits.length }, now);
+    const result = await notifyIfNeeded({ ...emptyResult(options, now, "kintone_read_failed"), innoveraCount: circuits.length }, now, previous);
     await insertLog(result, options.actorEmployeeId ?? null).catch(() => undefined);
     return result;
   }
@@ -293,7 +343,8 @@ export async function runInnoveraSync(options: RunInnoveraSyncOptions): Promise<
     details,
   };
 
-  result = await notifyIfNeeded(result, now);
+  result = await notifyIfNeeded(result, now, previous);
+  result = await notifyRecoveryIfNeeded(result, previous, now);
   await insertLog(result, options.actorEmployeeId ?? null).catch(() => undefined);
   if (options.includeLogs) {
     result.latestLogs = await loadInnoveraSyncLogs().catch(() => []);
