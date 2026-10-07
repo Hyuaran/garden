@@ -1,7 +1,9 @@
+.pageShell{--ink:#17212e;--sub:#5a6b80;--muted:#98a4b3;--heading:#10233f;--card:#fff;--cardSolid:#fff;--soft:#eef2f6;--line:#dce5ef;--bg:#f4f6f8;--teal:#0ea5a0;--tealDark:#0b7773;--blue:#1d4ed8;--warn:#b45309;--shadowSoft:0 4px 14px rgba(16,35,63,.06);--overlay:rgba(16,35,63,.86)}
+:global(.dark) .pageShell,:global([data-theme="dark"]) .pageShell{--ink:#edf4fb;--sub:#b7c5d4;--muted:#8a9bb0;--heading:#edf4fb;--card:#152438;--cardSolid:#152438;--soft:#1c2f47;--line:#31435a;--bg:#0c1726;--tealDark:#9ce5e1;--blue:#93c5fd;--warn:#fbbf24;--shadowSoft:0 4px 14px rgba(0,0,0,.35);--overlay:rgba(5,12,22,.88)}
 .pageShell {
   width: 100%;
   min-width: 0;
-  color: var(--text-main);
+  color: var(--ink);
   font-family: Meiryo, "Noto Sans JP", sans-serif;
 }
 
@@ -12,7 +14,7 @@
 
 .header h1 {
   margin: 0;
-  color: var(--text-main);
+  color: var(--heading);
   font-size: 30px;
   line-height: 1.25;
 }
@@ -20,7 +22,7 @@
 .header p {
   max-width: 860px;
   margin: 10px 0 0;
-  color: var(--text-sub);
+  color: var(--sub);
   font-size: 13.5px;
   line-height: 1.85;
 }
@@ -28,24 +30,24 @@
 .lastBox {
   margin: 0 0 14px;
   padding: 14px 16px;
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-input);
-  background: var(--bg-card);
-  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--shadowSoft);
 }
 
 .lastBox h2,
 .diffSection h2,
 .history h2 {
   margin: 0 0 8px;
-  color: var(--text-main);
+  color: var(--heading);
   font-size: 15px;
   font-weight: 900;
 }
 
 .lastBox p {
   margin: 0;
-  color: var(--text-sub);
+  color: var(--sub);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -60,24 +62,24 @@
 .actions button {
   min-height: 40px;
   padding: 9px 14px;
-  border: 1px solid var(--accent-green);
-  border-radius: var(--radius-input);
-  background: var(--accent-green);
-  color: var(--bg-card-solid);
+  border: 1px solid var(--teal);
+  border-radius: 8px;
+  background: var(--teal);
+  color: #fff;
   font: inherit;
   font-weight: 900;
   cursor: pointer;
 }
 
 .actions button + button {
-  background: var(--bg-card);
-  color: var(--accent-green-d);
+  background: var(--card);
+  color: var(--tealDark);
 }
 
 .actions button:disabled {
-  border-color: var(--border-soft);
-  background: var(--bg-card-hover);
-  color: var(--text-muted);
+  border-color: var(--line);
+  background: var(--soft);
+  color: var(--muted);
   cursor: not-allowed;
 }
 
@@ -85,10 +87,10 @@
 .errorSmall {
   margin: 10px 0;
   padding: 10px 12px;
-  border: 1px solid var(--text-warning);
-  border-radius: var(--radius-input);
-  background: var(--bg-card-hover);
-  color: var(--text-warning);
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--warn);
   font-size: 13px;
   font-weight: 800;
 }
@@ -104,16 +106,16 @@
 .empty {
   margin: 0;
   padding: 14px 0;
-  color: var(--text-sub);
+  color: var(--sub);
   font-size: 13px;
 }
 
 .tableWrap {
   overflow-x: auto;
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-input);
-  background: var(--bg-card);
-  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--shadowSoft);
 }
 
 .tableWrap table {
@@ -127,15 +129,15 @@
 .tableWrap th,
 .tableWrap td {
   padding: 11px 12px;
-  border-right: 1px solid var(--border-soft);
-  border-bottom: 1px solid var(--border-soft);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: middle;
 }
 
 .tableWrap th {
-  background: var(--bg-card-hover);
-  color: var(--text-main);
+  background: var(--soft);
+  color: var(--heading);
   font-weight: 900;
 }
 
@@ -153,30 +155,30 @@
   align-items: center;
   min-height: 24px;
   padding: 2px 8px;
-  border-radius: var(--radius-pill);
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .added {
-  background: var(--bg-card-hover);
-  color: var(--accent-green-d);
+  background: var(--soft);
+  color: var(--tealDark);
 }
 
 .renamed {
-  background: var(--bg-card-hover);
-  color: var(--accent-blue);
+  background: var(--soft);
+  color: var(--blue);
 }
 
 .retired {
-  background: var(--bg-card-hover);
-  color: var(--text-muted);
+  background: var(--soft);
+  color: var(--muted);
 }
 
 .needs_review {
-  background: var(--bg-card-hover);
-  color: var(--text-warning);
+  background: var(--soft);
+  color: var(--warn);
 }
 
 .history {
@@ -184,12 +186,12 @@
 }
 
 .logItem {
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid var(--line);
   padding: 10px 0;
 }
 
 .logItem summary {
-  color: var(--text-main);
+  color: var(--ink);
   cursor: pointer;
   font-size: 13px;
   font-weight: 800;
@@ -199,14 +201,14 @@
 .logItem ul {
   margin: 8px 0 0 18px;
   padding: 0;
-  color: var(--text-sub);
+  color: var(--sub);
   font-size: 12.5px;
   line-height: 1.7;
 }
 
 .logItem p {
   margin: 8px 0 0;
-  color: var(--text-sub);
+  color: var(--sub);
   font-size: 12.5px;
 }
 
@@ -220,8 +222,8 @@
   justify-content: center;
   gap: 18px;
   padding: 24px;
-  background: color-mix(in srgb, var(--text-main) 86%, transparent);
-  color: var(--bg-card-solid);
+  background: var(--overlay);
+  color: #fff;
   text-align: center;
   backdrop-filter: blur(3px);
   pointer-events: all;
@@ -236,9 +238,9 @@
 
 .processingOverlay div:last-child {
   padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-card-solid);
-  color: var(--text-warning);
+  border-radius: 999px;
+  background: #fff;
+  color: #b45309;
   font-size: 14px;
   font-weight: 700;
 }
@@ -246,9 +248,9 @@
 .processingSpinner {
   width: 72px;
   height: 72px;
-  border: 7px solid color-mix(in srgb, var(--bg-card-solid) 22%, transparent);
-  border-top-color: var(--accent-green);
-  border-right-color: var(--bg-card-solid);
+  border: 7px solid rgba(255,255,255,.22);
+  border-top-color: var(--teal);
+  border-right-color: #fff;
   border-radius: 50%;
   animation: innovera-processing-spin .85s linear infinite;
 }
@@ -288,10 +290,10 @@
 
   .tableWrap tr {
     margin-bottom: 10px;
-    border: 1px solid var(--border-card);
-    border-radius: var(--radius-input);
-    background: var(--bg-card);
-    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    box-shadow: var(--shadowSoft);
   }
 
   .tableWrap td {
@@ -304,12 +306,12 @@
 
   .tableWrap td::before {
     content: attr(data-label);
-    color: var(--text-muted);
+    color: var(--muted);
     font-weight: 900;
   }
 
   .tableWrap tr:last-child td {
-    border-bottom: 1px solid var(--border-soft);
+    border-bottom: 1px solid var(--line);
   }
 
   .tableWrap tr td:last-child {
