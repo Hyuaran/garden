@@ -280,7 +280,7 @@ export default function InnoveraCallsClient({
       setCurrentLine(result.current);
       setLineMessage("変更しました");
       setLineDialog({ step: "done", next: result.current ?? lineDialog.next });
-      window.setTimeout(() => setLineDialog((current) => (current?.step === "done" ? null : current)), 1500);
+      // 「変更しました」は自動で閉じず、「閉じる」を押して閉じる（東海林さん 2026-10-08）
     } catch (cause) {
       // 失敗はモーダルの中だけに出す（外側の回線名の下にも同じ文が先に出て二重になっていた・2026-10-08）
       const message = cause instanceof Error ? cause.message : "発信番号を変更できませんでした";
@@ -496,9 +496,14 @@ export default function InnoveraCallsClient({
                 </div>
               )}
               {lineDialog.step === "done" && (
-                <div className={styles.working} role="status" aria-live="polite">
-                  <p className={styles.ok}>変更しました：{lineDialog.next?.name ?? ""}</p>
-                </div>
+                <>
+                  <div className={styles.working} role="status" aria-live="polite">
+                    <p className={styles.ok}>変更しました：{lineDialog.next?.name ?? ""}</p>
+                  </div>
+                  <div className={styles.modalActions}>
+                    <button type="button" onClick={() => setLineDialog(null)}>閉じる</button>
+                  </div>
+                </>
               )}
               {lineDialog.step === "error" && (
                 <>

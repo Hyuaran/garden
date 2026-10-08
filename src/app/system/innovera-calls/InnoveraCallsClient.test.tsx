@@ -136,7 +136,11 @@ describe("InnoveraCallsClient", () => {
 
     fireEvent.click(within(dialog).getByRole("button", { name: "変更する" }));
     await screen.findByText("変更しました：【代表ヒュアラン】06-4400-5414");
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "発信番号の変更" })).not.toBeInTheDocument(), { timeout: 3000 });
+    // 自動では閉じない（1.5 秒待っても出たまま）→「閉じる」で閉じる
+    await new Promise((resolve) => setTimeout(resolve, 1700));
+    expect(screen.getByRole("dialog", { name: "発信番号の変更" })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getAllByRole("button", { name: "閉じる" }).at(-1) as HTMLElement);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "発信番号の変更" })).not.toBeInTheDocument());
     expect(screen.getAllByText(/【代表ヒュアラン】06-4400-5414/).length).toBeGreaterThan(0);
   });
 
