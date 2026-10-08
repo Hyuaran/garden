@@ -476,6 +476,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end; /* 前の100件／件数／次の100件は右寄せ（東海林さん 2026-10-08） */
   gap: 10px;
   margin: 0 0 10px;
   color: var(--sub);
