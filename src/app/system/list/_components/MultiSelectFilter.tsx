@@ -23,6 +23,8 @@ type MultiSelectFilterProps = {
   columns?: number;
   /** 何も選んでいないときの表示（既定「指定なし」）。INNOVERA履歴・録音の担当は「全員」 */
   emptyLabel?: string;
+  /** パネルの最小幅（px）。親の欄が狭くても「すべて選ぶ／閉じる」が 1 行に収まるようにする（INNOVERA履歴・録音の結果） */
+  panelMinWidth?: number;
 };
 
 function optionValue(option: SoilListOptionItem): string {
@@ -41,7 +43,7 @@ function summarizeSelection(value: string[], options: SoilListOptionItem[], empt
   return `${labels.slice(0, 2).join("、")} ほか${rest}（${labels.length}）`;
 }
 
-export default function MultiSelectFilter({ label, value, groups, onChange, searchable = false, initialLimit, countNote, columns: fixedColumns, emptyLabel }: MultiSelectFilterProps) {
+export default function MultiSelectFilter({ label, value, groups, onChange, searchable = false, initialLimit, countNote, columns: fixedColumns, emptyLabel, panelMinWidth }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -97,7 +99,7 @@ export default function MultiSelectFilter({ label, value, groups, onChange, sear
     const place = () => {
       const parentWidth = parent.clientWidth;
       const offset = wrapper.getBoundingClientRect().left - parent.getBoundingClientRect().left;
-      const width = Math.min(940, parentWidth);
+      const width = Math.max(panelMinWidth ?? 0, Math.min(940, parentWidth));
       const left = Math.max(-offset, parentWidth - offset - width);
       // 列数はパネルの幅で決める（県名＋件数が 1 行に収まる幅＝約 180px）
       const columns = fixedColumns ?? (width >= 880 ? 5 : width >= 700 ? 4 : width >= 500 ? 3 : 2);

@@ -122,16 +122,18 @@ export function applyUiFilters(calls: NormalizedInnoveraCall[], searchParams: UR
     .filter(Boolean);
   const extensionSet = new Set(extensions);
   const ownExtensionSet = new Set(ownExtensions.map((value) => value.trim()).filter(Boolean));
-  const circuit = searchParams.get("circuit")?.trim() ?? "";
+  // 回線・結果は複数選択（?circuit=a&circuit=b でも ?circuit=a,b でも可）。何も無ければ全部（2026-10-08）
+  const multi = (key: string) => new Set(searchParams.getAll(key).flatMap((value) => value.split(",")).map((value) => value.trim()).filter(Boolean));
+  const circuitSet = multi("circuit");
   const type = searchParams.get("type")?.trim() ?? "";
-  const status = searchParams.get("status")?.trim() ?? "";
+  const statusSet = multi("status");
   const number = searchParams.get("number")?.replace(/\D/g, "") ?? "";
   return calls.filter((call) => {
     if (mine && ownExtensionSet.size && !ownExtensionSet.has(call.extension)) return false;
     if (extensionSet.size && !extensionSet.has(call.extension)) return false;
-    if (circuit && call.circuitId !== circuit) return false;
+    if (circuitSet.size && !circuitSet.has(call.circuitId)) return false;
     if (type && call.type !== type) return false;
-    if (status && call.status !== status) return false;
+    if (statusSet.size && !statusSet.has(call.status)) return false;
     if (number) {
       const haystack = `${call.counterpartNumber} ${call.extension}`.replace(/\D/g, "");
       if (!haystack.includes(number)) return false;

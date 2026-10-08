@@ -628,9 +628,77 @@
   white-space: nowrap;
 }
 
+/* 2 行の列をそろえる（広い画面）：1 行目＝開始／時刻／～／終了／時刻／今日昨日今週／担当／自分だけ、
+   2 行目＝回線（1〜4 列）／発着（時刻の列）／結果（今日昨日今週の列）／番号（担当の列）／表示（自分だけの列）（東海林さん 2026-10-08） */
+@media (min-width: 721px) {
+  /* 2 行を 1 つの格子にまとめる（行ごとに別の格子だと「今日昨日今週」の列幅が行で違い、番号が担当の真下に来ない） */
+  .filters {
+    display: grid;
+    grid-template-columns: 150px 108px 16px 150px 108px auto minmax(0, 1fr) 76px;
+    align-items: end;
+  }
+
+  .filters .filterRow {
+    display: contents;
+  }
+
+  .filters .filterRow .circuitField {
+    grid-column: 1 / 5;
+  }
+
+  .filters .filterRow .typeField {
+    grid-column: 5;
+  }
+
+  .filters .filterRow .statusField {
+    grid-column: 6;
+  }
+
+  .filters .filterRow .numberField {
+    grid-column: 7;
+    max-width: none;
+  }
+
+  .filters .filterRow .submit {
+    grid-column: 8;
+    width: 100%;
+    margin-left: 0;
+    padding: 0;
+  }
+
+  .filters .filterRow .employeePicker {
+    grid-column: 7 / 9;
+    gap: 10px; /* 格子の間隔と同じにして、担当の右端＝番号の右端 */
+    min-width: 0;
+  }
+
+  .filters .filterRow > label > select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* 回線・結果も担当と同じ複数選択部品（中身で幅を伸ばさない） */
+.filters .circuitField,
+.filters .statusField {
+  position: relative;
+  min-width: 0;
+}
+
+.filters .circuitField > :first-child,
+.filters .statusField > :first-child {
+  min-width: 0;
+}
+
+.filters .circuitField button,
+.filters .statusField button {
+  white-space: nowrap;
+}
+
 .filters .ownOnly {
+  width: 76px; /* 「自分だけ」「全員」で幅を変えない */
   min-height: 38px;
-  padding: 0 10px;
+  padding: 0;
   border-color: var(--line);
   background: var(--card);
   color: var(--ink);

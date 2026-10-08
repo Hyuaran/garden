@@ -150,9 +150,10 @@ export default function InnoveraCallsClient({
   const [toTime, setToTime] = useState("");
   // 担当の既定＝全員（何も選ばない）。「自分だけ」ボタンで自分に絞る（東海林さん 2026-10-08）。権限 own の人は欄なし＝API 側で自分だけ
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
-  const [circuit, setCircuit] = useState("");
+  // 回線・結果は担当と同じ複数選択（何も選ばなければすべて・東海林さん 2026-10-08）
+  const [selectedCallCircuits, setSelectedCallCircuits] = useState<string[]>([]);
   const [type, setType] = useState("");
-  const [status, setStatus] = useState("");
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [number, setNumber] = useState("");
   const [calls, setCalls] = useState<ApiCall[]>([]);
   const [counts, setCounts] = useState({ total: 0, success: 0, missed: 0, inProgress: 0 });
@@ -220,9 +221,9 @@ export default function InnoveraCallsClient({
     });
     setShownRange(range);
     for (const item of selectedExtensions) params.append("extension", item);
-    if (circuit) params.set("circuit", circuit);
+    for (const item of selectedCallCircuits) params.append("circuit", item);
     if (type) params.set("type", type);
-    if (status) params.set("status", status);
+    for (const item of selectedStatuses) params.append("status", item);
     if (number.trim()) params.set("number", number.trim());
     try {
       const response = await fetch(`/api/system/innovera-calls?${params}`, { cache: "no-store" });
@@ -327,6 +328,26 @@ export default function InnoveraCallsClient({
       empty: false,
     })),
   }]), [employeeChoices, calls]);
+  // 回線・結果の選択肢（件数＝表示中の通話の内訳）
+  const circuitOptionGroups = useMemo(() => ([{
+    options: filterOptions.circuits.map((item) => ({
+      value: item.value,
+      label: item.label,
+      count: calls.filter((call) => call.circuitId === item.value).length,
+      empty: false,
+    })),
+  }]), [filterOptions.circuits, calls]);
+  const statusOptionGroups = useMemo(() => ([{
+    options: [
+      { value: "1", label: "通話成功" },
+      { value: "2", label: "通話中に切断" },
+      { value: "3", label: "不在" },
+    ].map((item) => ({
+      ...item,
+      count: calls.filter((call) => call.status === item.value).length,
+      empty: false,
+    })),
+  }]), [calls]);
   const selectedEmployeeValues = useMemo(() => {
     const set = new Set(selectedExtensions);
     return employeeChoices
@@ -414,9 +435,29 @@ export default function InnoveraCallsClient({
         )}
         </div>
         <div className={styles.filterRow}>
-        <label className={styles.circuitField}>回線<select value={circuit} onChange={(event) => setCircuit(event.target.value)}><option value="">すべて</option>{filterOptions.circuits.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-        <label>発着<select value={type} onChange={(event) => setType(event.target.value)}><option value="">すべて</option><option value="2">発信</option><option value="1">着信</option></select></label>
-        <label>結果<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">すべて</option><option value="1">通話成功</option><option value="2">通話中に切断</option><option value="3">不在</option></select></label>
+        <div className={styles.circuitField}>
+          <MultiSelectFilter
+            label="回線"
+            value={selectedCallCircuits}
+            groups={circuitOptionGroups}
+            onChange={setSelectedCallCircuits}
+            searchable={filterOptions.circuits.length > 12}
+            columns={1}
+            emptyLabel="すべて"
+          />
+        </div>
+        <label className={styles.typeField}>発着<select value={type} onChange={(event) => setType(event.target.value)}><option value="">すべて</option><option value="2">発信</option><option value="1">着信</option></select></label>
+        <div className={styles.statusField}>
+          <MultiSelectFilter
+            label="結果"
+            value={selectedStatuses}
+            groups={statusOptionGroups}
+            onChange={setSelectedStatuses}
+            columns={1}
+            emptyLabel="すべて"
+            panelMinWidth={300}
+          />
+        </div>
         <label className={styles.numberField}>番号<input value={number} onChange={(event) => setNumber(event.target.value)} /></label>
         <button type="submit" className={styles.submit} disabled={loading}>{loading ? "表示中..." : "表示"}</button>
         </div>
