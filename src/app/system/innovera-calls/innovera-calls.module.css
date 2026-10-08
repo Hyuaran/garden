@@ -53,6 +53,48 @@
   line-height: 1.85;
 }
 
+/* 見出し下の 1 行：INNOVERA最終更新＋取り直しの丸い矢印（リストマスタと同じ見た目・処理中は回る） */
+.syncStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--sub);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.syncIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--teal);
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.syncIconButton:hover {
+  border-color: var(--teal);
+  background: rgba(14, 165, 160, .08);
+}
+
+.syncIconButton:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
+.syncIconBusy svg {
+  animation: innovera-calls-spin 1s linear infinite;
+}
+
 .linePanel {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(220px, 340px) auto;

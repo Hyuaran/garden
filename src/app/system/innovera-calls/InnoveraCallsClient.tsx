@@ -59,6 +59,22 @@ function todayJst() {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
+/** 見出し下の「INNOVERA最終更新」の日時（リストマスタと同じ 2026/10/08(木) 15:11 の形） */
+function formatSyncStamp(value: Date) {
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}/${get("month")}/${get("day")}(${get("weekday")}) ${get("hour")}:${get("minute")}`;
+}
+
 function shiftDate(date: string, days: number) {
   const value = new Date(`${date}T00:00:00+09:00`);
   value.setDate(value.getDate() + days);
@@ -149,6 +165,7 @@ export default function InnoveraCallsClient({
   const [lineLoading, setLineLoading] = useState(true);
   const [lineError, setLineError] = useState<string | null>(null);
   const [lineMessage, setLineMessage] = useState<string | null>(null);
+  const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
   const [currentLine, setCurrentLine] = useState<LineCircuit | null>(null);
   const [lineEmployee, setLineEmployee] = useState<{ extension?: string | null; mobileExtension?: string | null } | null>(null);
   const [circuits, setCircuits] = useState<LineCircuit[]>([]);
@@ -214,6 +231,7 @@ export default function InnoveraCallsClient({
       setCalls(result.calls ?? []);
       setCounts(result.counts ?? { total: 0, success: 0, missed: 0, inProgress: 0 });
       setFilterOptions(result.filterOptions ?? { employees: [], circuits: [] });
+      setLastLoadedAt(new Date());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "INNOVERA に接続できませんでした");
       setCalls([]);
@@ -331,7 +349,22 @@ export default function InnoveraCallsClient({
       <header className={styles.header}>
         <SystemBreadcrumb items={[{ label: "INNOVERA履歴・録音" }]} />
         <h1>INNOVERA履歴・録音</h1>
-        <p>INNOVERA の通話履歴を見て、終話してから 1 分たった通話の録音をその場で聞けます。録音や履歴は消せません。</p>
+        <div className={styles.syncStatus}>
+          <span>INNOVERA最終更新：{loading ? "取得中..." : lastLoadedAt ? formatSyncStamp(lastLoadedAt) : "未取得"}</span>
+          <button
+            type="button"
+            className={`${styles.syncIconButton} ${loading ? styles.syncIconBusy : ""}`}
+            onClick={() => void loadCalls()}
+            disabled={loading}
+            aria-label="INNOVERA から取り直す"
+            title={loading ? "取得しています…" : "INNOVERA から取り直す（いまの絞り込み条件で最新の通話履歴を取得します）"}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+              <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              <path d="M19.8 4.6v4.2h-4.2z" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <section className={styles.linePanel}>
