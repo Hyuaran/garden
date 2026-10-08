@@ -103,19 +103,24 @@ function isTransientInnoveraError(error: unknown) {
   return message.startsWith("innovera_unreachable:fetch") || /^innovera_unreachable:http 5\d\d$/.test(message);
 }
 
-// Vercel → INNOVERA の接続が一時的に途切れることがあるので、接続エラー・5xx は 2 秒おいて 1 回だけやり直す
+// Vercel → INNOVERA の接続が一時的に途切れることがあるので、接続エラー・5xx はやり直す
 export async function callInnovera<T>(
   ckey: string,
   akey: string,
   params: Record<string, ParamValue | ParamValue[]> = {},
 ): Promise<T> {
-  try {
-    return await callInnoveraOnce<T>(ckey, akey, params);
-  } catch (error) {
-    if (!isTransientInnoveraError(error)) throw error;
-    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-    return await callInnoveraOnce<T>(ckey, akey, params);
+  // 2 回まで やり直す（2 秒→4 秒）。一時的な途切れが 10 秒以内に戻れば画面には出ない
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await callInnoveraOnce<T>(ckey, akey, params);
+    } catch (error) {
+      lastError = error;
+      if (!isTransientInnoveraError(error) || attempt === 2) throw error;
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * (attempt + 1)));
+    }
   }
+  throw lastError;
 }
 
 async function callInnoveraOnce<T>(

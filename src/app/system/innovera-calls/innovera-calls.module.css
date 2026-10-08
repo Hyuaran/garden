@@ -582,3 +582,61 @@
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* 発信番号の変更：確認→くるくる→変更しました（Loading スタイル＝くるくるが見える・二重押し不可・失敗時は閉じられる） */
+.modalSmall {
+  max-width: 440px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.modalActions button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--teal);
+  border-radius: 8px;
+  background: var(--teal);
+  color: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.modalActions .modalSecondary {
+  border-color: var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+
+.working {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 4px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.working p {
+  margin: 0;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 5px solid var(--line);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: innovera-calls-spin .85s linear infinite;
+}
+
+@keyframes innovera-calls-spin {
+  to { transform: rotate(360deg); }
+}

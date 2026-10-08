@@ -58,11 +58,19 @@ const callsPayload = {
   },
 };
 
-function mockFetch() {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+type LineMock = { current: unknown; circuits: unknown[]; postOk?: boolean };
+
+function mockFetch(line?: LineMock) {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.startsWith("/api/system/innovera-calls/line")) {
-      return new Response(JSON.stringify({ ok: true, current: null, employee: null, circuits: [] }));
+      if (init?.method === "POST") {
+        if (line?.postOk === false) return new Response(JSON.stringify({ ok: false, error: "発信番号を変更できませんでした" }), { status: 500 });
+        const body = JSON.parse(String(init.body ?? "{}")) as { circuitId?: string };
+        const next = (line?.circuits ?? []).find((item) => (item as { id: string }).id === body.circuitId) ?? null;
+        return new Response(JSON.stringify({ ok: true, current: next }));
+      }
+      return new Response(JSON.stringify({ ok: true, current: line?.current ?? null, employee: null, circuits: line?.circuits ?? [] }));
     }
     if (url.startsWith("/api/system/innovera-calls?")) {
       return new Response(JSON.stringify(callsPayload));
@@ -107,6 +115,42 @@ describe("InnoveraCallsClient", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(before + 1));
     const callUrls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/system/innovera-calls?"));
     expect(new URLSearchParams(callUrls.at(-1)?.split("?")[1]).getAll("extension")).toEqual(["2040", "1003"]);
+  });
+
+  const lineA = { id: "c-1", name: "【ARATAキャリア】0120-402-347", number: "0120402347", freeNumber: "0120402347", circuitNum: "001" };
+  const lineB = { id: "c-2", name: "【代表ヒュアラン】06-4400-5414", number: "0644005414", freeNumber: "", circuitNum: "007" };
+
+  it("changes the outbound line through the Garden modal: confirm, working, done", async () => {
+    mockFetch({ current: lineA, circuits: [lineA, lineB] });
+    render(<InnoveraCallsClient access="all" ownExtension="2001" ownExtensions={["2001"]} ownName="東海林" role="super_admin" />);
+    await screen.findAllByText(/【ARATAキャリア】/);
+
+    const lineSelect = screen.getAllByRole("combobox").find((element) => Array.from((element as HTMLSelectElement).options).some((option) => option.value === "c-2")) as HTMLSelectElement;
+    fireEvent.change(lineSelect, { target: { value: "c-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+    const dialog = await screen.findByRole("dialog", { name: "発信番号の変更" });
+    expect(dialog).toHaveTextContent("【代表ヒュアラン】06-4400-5414 に変更します");
+    expect(within(dialog).getByRole("button", { name: "キャンセル" })).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "変更する" }));
+    await screen.findByText("変更しました：【代表ヒュアラン】06-4400-5414");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "発信番号の変更" })).not.toBeInTheDocument(), { timeout: 3000 });
+    expect(screen.getAllByText(/【代表ヒュアラン】06-4400-5414/).length).toBeGreaterThan(0);
+  });
+
+  it("shows the failure inside the modal and lets the user retry", async () => {
+    mockFetch({ current: lineA, circuits: [lineA, lineB], postOk: false });
+    render(<InnoveraCallsClient access="all" ownExtension="2001" ownExtensions={["2001"]} ownName="東海林" role="super_admin" />);
+    await screen.findAllByText(/【ARATAキャリア】/);
+    const lineSelect = screen.getAllByRole("combobox").find((element) => Array.from((element as HTMLSelectElement).options).some((option) => option.value === "c-2")) as HTMLSelectElement;
+    fireEvent.change(lineSelect, { target: { value: "c-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "変更する" }));
+    const dialog = await screen.findByRole("dialog", { name: "発信番号の変更" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "変更する" }));
+    await within(dialog).findByRole("alert");
+    expect(within(dialog).getByRole("button", { name: "もう一度" })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getAllByRole("button", { name: "閉じる" }).at(-1) as HTMLElement);
+    expect(screen.queryByRole("dialog", { name: "発信番号の変更" })).not.toBeInTheDocument();
   });
 
   it("stops invalid ranges before fetching", async () => {

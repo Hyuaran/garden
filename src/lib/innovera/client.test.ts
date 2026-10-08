@@ -32,7 +32,7 @@ describe("innovera client", () => {
 
     vi.mocked(fetch).mockRejectedValue(new DOMException("The operation was aborted.", "TimeoutError"));
     await expect(callInnovera("cdr", "search")).rejects.toThrow("innovera_unreachable:fetch TimeoutError");
-    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3);
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(4);
   });
 
   it("retries once after a transient connection error and succeeds", async () => {

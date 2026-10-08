@@ -153,6 +153,7 @@ export default function InnoveraCallsClient({
   const [lineEmployee, setLineEmployee] = useState<{ extension?: string | null; mobileExtension?: string | null } | null>(null);
   const [circuits, setCircuits] = useState<LineCircuit[]>([]);
   const [selectedCircuit, setSelectedCircuit] = useState("");
+  const [lineDialog, setLineDialog] = useState<{ step: "confirm" | "working" | "done" | "error"; next: LineCircuit | null; message?: string } | null>(null);
 
   const showAllControls = access !== "own";
   const canSeeMapping = isRoleAtLeast(role, "admin");
@@ -239,13 +240,17 @@ export default function InnoveraCallsClient({
     }
   }
 
-  async function changeLine() {
+  function openLineDialog() {
     if (!selectedCircuit) return;
-    const next = circuits.find((item) => item.id === selectedCircuit);
-    const ok = window.confirm(`${currentLine?.name ?? "現在の発信番号"} から ${next?.name ?? "選択した回線"} に変更します。よろしいですか。`);
-    if (!ok) return;
+    const next = circuits.find((item) => item.id === selectedCircuit) ?? null;
     setLineMessage(null);
     setLineError(null);
+    setLineDialog({ step: "confirm", next });
+  }
+
+  async function changeLine() {
+    if (!selectedCircuit || !lineDialog || lineDialog.step !== "confirm") return;
+    setLineDialog({ ...lineDialog, step: "working" });
     try {
       const response = await fetch("/api/system/innovera-calls/line", {
         method: "POST",
@@ -256,8 +261,12 @@ export default function InnoveraCallsClient({
       if (!response.ok) throw new Error(result.error || "発信番号を変更できませんでした");
       setCurrentLine(result.current);
       setLineMessage("変更しました");
+      setLineDialog({ step: "done", next: result.current ?? lineDialog.next });
+      window.setTimeout(() => setLineDialog((current) => (current?.step === "done" ? null : current)), 1500);
     } catch (cause) {
-      setLineError(cause instanceof Error ? cause.message : "発信番号を変更できませんでした");
+      const message = cause instanceof Error ? cause.message : "発信番号を変更できませんでした";
+      setLineError(message);
+      setLineDialog({ step: "error", next: lineDialog.next, message });
     }
   }
 
@@ -337,7 +346,7 @@ export default function InnoveraCallsClient({
             <option key={item.id} value={item.id}>{item.name} {item.freeNumber || item.number}</option>
           ))}
         </select>
-        <button type="button" onClick={() => void changeLine()} disabled={!selectedCircuit || selectedCircuit === currentLine?.id}>変更する</button>
+        <button type="button" onClick={openLineDialog} disabled={!selectedCircuit || selectedCircuit === currentLine?.id}>変更する</button>
         {lineMessage && <span className={styles.ok}>{lineMessage}</span>}
         {lineError && <span className={styles.error}>{lineError}</span>}
       </section>
@@ -417,6 +426,48 @@ export default function InnoveraCallsClient({
           <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={currentPage <= 1}>前の 100 件</button>
           <span>{currentPage} / {pageCount} ページ</span>
           <button type="button" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={currentPage >= pageCount}>次の 100 件</button>
+        </div>
+      )}
+
+      {lineDialog && (
+        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && lineDialog.step !== "working") setLineDialog(null); }}>
+          <div className={`${styles.modal} ${styles.modalSmall}`} role="dialog" aria-modal="true" aria-labelledby="line-dialog-title" aria-busy={lineDialog.step === "working"}>
+            <div className={styles.modalHead}>
+              <h2 id="line-dialog-title">発信番号の変更</h2>
+              {lineDialog.step !== "working" && <button type="button" onClick={() => setLineDialog(null)} aria-label="閉じる">×</button>}
+            </div>
+            <div className={styles.modalBody}>
+              {lineDialog.step === "confirm" && (
+                <>
+                  <p>{currentLine?.name ?? "現在の発信番号"} から<br /><strong>{lineDialog.next?.name ?? "選択した回線"}</strong> に変更します。よろしいですか。</p>
+                  <div className={styles.modalActions}>
+                    <button type="button" className={styles.modalSecondary} onClick={() => setLineDialog(null)}>キャンセル</button>
+                    <button type="button" onClick={() => void changeLine()}>変更する</button>
+                  </div>
+                </>
+              )}
+              {lineDialog.step === "working" && (
+                <div className={styles.working} role="status" aria-live="assertive">
+                  <div className={styles.spinner} aria-hidden="true" />
+                  <p>発信番号を変更しています…</p>
+                </div>
+              )}
+              {lineDialog.step === "done" && (
+                <div className={styles.working} role="status" aria-live="polite">
+                  <p className={styles.ok}>変更しました：{lineDialog.next?.name ?? ""}</p>
+                </div>
+              )}
+              {lineDialog.step === "error" && (
+                <>
+                  <p className={styles.error} role="alert">{lineDialog.message}</p>
+                  <div className={styles.modalActions}>
+                    <button type="button" className={styles.modalSecondary} onClick={() => setLineDialog(null)}>閉じる</button>
+                    <button type="button" onClick={() => setLineDialog({ step: "confirm", next: lineDialog.next })}>もう一度</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
