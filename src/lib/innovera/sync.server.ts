@@ -148,10 +148,28 @@ async function writeAction(config: { appId: string; token: string }, action: Inn
   }
 }
 
-// 直前の記録（失敗が続いているか・回復したかの判定に使う）
-async function loadPreviousLog(): Promise<InnoveraSyncLogRow | null> {
-  const rows = await loadInnoveraSyncLogs(1).catch(() => [] as InnoveraSyncLogRow[]);
-  return rows[0] ?? null;
+// 直前の記録（失敗が続いているか・回復したかの判定に使う）と、同じ失敗が続き始めた最初の記録
+type PreviousLogs = { previous: InnoveraSyncLogRow | null; streakStart: InnoveraSyncLogRow | null };
+
+async function loadPreviousLogs(): Promise<PreviousLogs> {
+  const rows = await loadInnoveraSyncLogs(100).catch(() => [] as InnoveraSyncLogRow[]);
+  const previous = rows[0] ?? null;
+  return { previous, streakStart: findFailureStreakStart(rows) };
+}
+
+// 新しい順の記録から、直前の失敗と同じ種類の失敗が途切れず続いている範囲の「最初」を返す
+export function findFailureStreakStart(rowsNewestFirst: InnoveraSyncLogRow[]): InnoveraSyncLogRow | null {
+  const latest = rowsNewestFirst[0];
+  if (!latest || latest.ok) return null;
+  const kind = errorKind(latest.error);
+  let start = latest;
+  for (const row of rowsNewestFirst.slice(1)) {
+    if (row.ok || errorKind(row.error) !== kind) break;
+    const gap = new Date(start.ran_at).getTime() - new Date(row.ran_at).getTime();
+    if (!(gap >= 0 && gap < SAME_FAILURE_WINDOW_MS)) break;
+    start = row;
+  }
+  return start;
 }
 
 const SAME_FAILURE_WINDOW_MS = 12 * 60 * 60 * 1000;
@@ -168,20 +186,20 @@ export function isRepeatedFailure(previous: InnoveraSyncLogRow | null, error: st
   return Number.isFinite(elapsed) && elapsed >= 0 && elapsed < SAME_FAILURE_WINDOW_MS;
 }
 
-export function buildInnoveraRecoveryBody(previous: InnoveraSyncLogRow, now = new Date()) {
+export function buildInnoveraRecoveryBody(previous: InnoveraSyncLogRow, now = new Date(), streakStart: InnoveraSyncLogRow | null = null) {
   const { minute } = nowParts(now);
-  const since = nowParts(new Date(previous.ran_at)).minute;
+  const since = nowParts(new Date((streakStart ?? previous).ran_at)).minute;
   return `[info][title]INNOVERA番号の同期（INNOVERA → Kintone）[/title]${minute} 自動\n回復しました。${since} から続いていた失敗（${failureMessage(previous.error ?? "")}）は解消し、通常どおり突き合わせています。\n\n確認：https://garden-os.net/system/innovera[/info]`;
 }
 
-async function notifyRecoveryIfNeeded(result: InnoveraSyncResult, previous: InnoveraSyncLogRow | null, now: Date) {
+async function notifyRecoveryIfNeeded(result: InnoveraSyncResult, previous: InnoveraSyncLogRow | null, now: Date, streakStart: InnoveraSyncLogRow | null = null) {
   if (!result.ok || !result.applied || !previous || previous.ok) return result;
   const elapsed = now.getTime() - new Date(previous.ran_at).getTime();
   if (!(elapsed >= 0 && elapsed < SAME_FAILURE_WINDOW_MS)) return result;
   const token = process.env.CHATWORK_API_TOKEN;
   if (!token) return { ...result, recovered: true };
   try {
-    await new ChatworkClient(token).sendMessage(process.env.GARDEN_NOTICE_CHATWORK_ROOM_ID || DEFAULT_CHATWORK_ROOM_ID, buildInnoveraRecoveryBody(previous, now));
+    await new ChatworkClient(token).sendMessage(process.env.GARDEN_NOTICE_CHATWORK_ROOM_ID || DEFAULT_CHATWORK_ROOM_ID, buildInnoveraRecoveryBody(previous, now, streakStart));
   } catch {
     // 回復の知らせが送れなくても結果は変えない
   }
@@ -281,7 +299,7 @@ export async function runInnoveraSync(options: RunInnoveraSyncOptions): Promise<
   const now = options.now ?? new Date();
   const { today } = nowParts(now);
   const config = envConfig();
-  const previous = options.apply ? await loadPreviousLog() : null;
+  const { previous, streakStart } = options.apply ? await loadPreviousLogs() : { previous: null, streakStart: null };
   if (!config) {
     const result = await notifyIfNeeded(emptyResult(options, now, "not_configured"), now, previous);
     await insertLog(result, options.actorEmployeeId ?? null).catch(() => undefined);
@@ -344,7 +362,7 @@ export async function runInnoveraSync(options: RunInnoveraSyncOptions): Promise<
   };
 
   result = await notifyIfNeeded(result, now, previous);
-  result = await notifyRecoveryIfNeeded(result, previous, now);
+  result = await notifyRecoveryIfNeeded(result, previous, now, streakStart);
   await insertLog(result, options.actorEmployeeId ?? null).catch(() => undefined);
   if (options.includeLogs) {
     result.latestLogs = await loadInnoveraSyncLogs().catch(() => []);

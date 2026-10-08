@@ -261,6 +261,19 @@ describe("runInnoveraSync", () => {
     expect((mocks.inserts[0] as { ok: boolean }).ok).toBe(true);
   });
 
+  it("uses the first failure of the streak as the recovery start time", async () => {
+    const row = (minutesAgo: number, ok: boolean, error: string | null) => ({ ran_at: new Date(fixedNow.getTime() - minutesAgo * 60 * 1000).toISOString(), trigger: "cron" as const, applied: true, ok, error, innovera_count: null, kintone_count: null, added: 0, renamed: 0, retired: 0, needs_review: 0, failed: 0, details: [], actor_employee_id: null });
+    // 新しい順：失敗 5 回（25 分前が最初）→ その前は成功
+    mocks.logRows = [row(5, false, "innovera_unreachable:http 503"), row(10, false, "innovera_unreachable:http 503"), row(15, false, "innovera_unreachable:http 503"), row(20, false, "innovera_unreachable:http 503"), row(25, false, "innovera_unreachable:http 503"), row(30, true, null)];
+    mockFetch([circuit()], [record()]);
+    const result = await runInnoveraSync({ apply: true, trigger: "cron", now: fixedNow });
+    expect(result.recovered).toBe(true);
+    const body = String(mocks.sendMessage.mock.calls[0][1]);
+    const startMinute = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date(fixedNow.getTime() - 25 * 60 * 1000));
+    const v = Object.fromEntries(startMinute.map((part) => [part.type, part.value]));
+    expect(body).toContain(`${v.year}-${v.month}-${v.day} ${v.hour}:${v.minute} から続いていた失敗`);
+  });
+
   it("does not send a recovery message when the previous run succeeded", async () => {
     mocks.logRows = [{ ran_at: fixedNow.toISOString(), trigger: "cron", applied: true, ok: true, error: null, innovera_count: 1, kintone_count: 1, added: 0, renamed: 0, retired: 0, needs_review: 0, failed: 0, details: [], actor_employee_id: null }];
     mockFetch([circuit()], [record()]);
