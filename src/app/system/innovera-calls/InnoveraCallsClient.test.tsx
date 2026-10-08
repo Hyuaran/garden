@@ -91,6 +91,13 @@ describe("InnoveraCallsClient", () => {
     render(<InnoveraCallsClient access="all" ownExtension="2040" ownExtensions={["2040", "1003"]} role="cs" />);
 
     await screen.findByText(/通話 2 件/);
+    // 開いたときは欄にも今日の日付と 00:00〜23:59 が入っている（空欄で今日だけ出る矛盾をなくす）
+    const fromDateInput = screen.getByLabelText("開始") as HTMLInputElement;
+    const toDateInput = screen.getByLabelText("終了") as HTMLInputElement;
+    expect(fromDateInput.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(toDateInput.value).toBe(fromDateInput.value);
+    expect((screen.getAllByLabelText("時刻")[0] as HTMLInputElement).value).toBe("00:00");
+    expect((screen.getAllByLabelText("時刻")[1] as HTMLInputElement).value).toBe("23:59");
     const callUrl = String(fetchMock.mock.calls.find(([url]) => String(url).startsWith("/api/system/innovera-calls?"))?.[0]);
     expect(callUrl).toContain("from=");
     expect(callUrl).toContain("to=");

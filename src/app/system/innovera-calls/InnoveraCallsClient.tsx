@@ -291,6 +291,8 @@ export default function InnoveraCallsClient({
   }, [canSeeMapping]);
 
   useEffect(() => {
+    // 開いたときは欄にも「今日 00:00〜23:59」を入れる（空欄のまま今日だけ出るのは矛盾＝東海林さん 2026-10-08）
+    applyPreset("today");
     void loadCalls();
     void loadLine();
     // eslint-disable-next-line react-hooks/exhaustive-deps
