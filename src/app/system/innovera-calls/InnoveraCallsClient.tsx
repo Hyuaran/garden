@@ -164,7 +164,6 @@ export default function InnoveraCallsClient({
   const PAGE_SIZE = 100;
   const [lineLoading, setLineLoading] = useState(true);
   const [lineError, setLineError] = useState<string | null>(null);
-  const [lineMessage, setLineMessage] = useState<string | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
   const [currentLine, setCurrentLine] = useState<LineCircuit | null>(null);
   const [lineEmployee, setLineEmployee] = useState<{ extension?: string | null; mobileExtension?: string | null } | null>(null);
@@ -261,7 +260,6 @@ export default function InnoveraCallsClient({
   function openLineDialog() {
     if (!selectedCircuit) return;
     const next = circuits.find((item) => item.id === selectedCircuit) ?? null;
-    setLineMessage(null);
     setLineError(null);
     setLineDialog({ step: "confirm", next });
   }
@@ -278,7 +276,6 @@ export default function InnoveraCallsClient({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "発信番号を変更できませんでした");
       setCurrentLine(result.current);
-      setLineMessage("変更しました");
       setLineDialog({ step: "done", next: result.current ?? lineDialog.next });
       // 「変更しました」は自動で閉じず、「閉じる」を押して閉じる（東海林さん 2026-10-08）
     } catch (cause) {
@@ -380,7 +377,6 @@ export default function InnoveraCallsClient({
           ))}
         </select>
         <button type="button" onClick={openLineDialog} disabled={!selectedCircuit || selectedCircuit === currentLine?.id}>変更する</button>
-        {lineMessage && <span className={styles.ok}>{lineMessage}</span>}
         {lineError && <span className={styles.error}>{lineError}</span>}
       </section>
 
