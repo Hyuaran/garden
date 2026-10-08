@@ -24,12 +24,12 @@ async function targetEmployee(ctx: Awaited<ReturnType<typeof requireCallAccess>>
   const targetId = employeeId || ctx.employeeId;
   const { data, error } = await getSupabaseAdmin()
     .from("root_employees")
-    .select("employee_id,name,innovera_extension")
+    .select("employee_id,name,innovera_extension,innovera_mobile_extension")
     .eq("employee_id", targetId)
     .maybeSingle();
   if (error || !data) return { error: NextResponse.json({ ok: false, error: "従業員が見つかりません" }, { status: 404 }) };
   if (!data.innovera_extension) {
-    return { error: NextResponse.json({ ok: false, error: "内線番号が登録されていません。管理者へ問い合わせてください。" }, { status: 400 }) };
+    return { error: NextResponse.json({ ok: false, error: "PC 版の内線番号が登録されていないため、発信番号は変更できません" }, { status: 400 }) };
   }
   return { employee: data };
 }
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
     const current = circuits.find((circuit) => text(circuit.id) === text(user.default_circuit_id)) ?? null;
     return NextResponse.json({
       ok: true,
-      employee: { id: employee.employee_id, name: employee.name, extension: employee.innovera_extension },
+      employee: { id: employee.employee_id, name: employee.name, extension: employee.innovera_extension, mobileExtension: employee.innovera_mobile_extension ?? null },
       user: { id: user.id, name: user.name, number: user.number },
       current: current ? circuitSummary(current) : null,
       circuits: allowed.map(circuitSummary),

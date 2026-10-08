@@ -223,6 +223,12 @@ export function validateEmployee(em: Employee): FieldErrors {
     e.innovera_extension = "INNOVERA 内線番号は 2〜6 桁の数字で入力してください";
   }
   if (
+    em.innovera_mobile_extension &&
+    !RE_INNOVERA_EXTENSION.test(em.innovera_mobile_extension)
+  ) {
+    e.innovera_mobile_extension = "INNOVERA 内線番号（モバイル）は 2〜6 桁の数字で入力してください";
+  }
+  if (
     em.call_recording_access &&
     !CALL_RECORDING_OVERRIDE_VALUES.has(em.call_recording_access)
   ) {

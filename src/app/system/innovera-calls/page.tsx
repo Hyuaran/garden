@@ -11,6 +11,7 @@ export default async function InnoveraCallsPage() {
       <InnoveraCallsClient
         access={ctx.access}
         ownExtension={ctx.ownExtension}
+        ownExtensions={ctx.ownExtensions}
         role={ctx.role}
       />
     );

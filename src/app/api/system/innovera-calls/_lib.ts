@@ -47,11 +47,26 @@ export async function employeeNameByExtension(
   const extensions = Array.from(new Set(calls.map((call) => call.extension).filter(Boolean)));
   if (!extensions.length) return new Map<string, string>();
   void supabase;
-  const { data } = await getSupabaseAdmin()
-    .from("root_employees")
-    .select("name,innovera_extension")
-    .in("innovera_extension", extensions);
-  return new Map((data ?? []).map((row) => [String(row.innovera_extension), String(row.name ?? "")]));
+  const admin = getSupabaseAdmin();
+  const [pcResult, mobileResult] = await Promise.all([
+    admin
+      .from("root_employees")
+      .select("name,innovera_extension,innovera_mobile_extension")
+      .in("innovera_extension", extensions),
+    admin
+      .from("root_employees")
+      .select("name,innovera_extension,innovera_mobile_extension")
+      .in("innovera_mobile_extension", extensions),
+  ]);
+  const names = new Map<string, string>();
+  for (const row of [...(pcResult.data ?? []), ...(mobileResult.data ?? [])]) {
+    const name = String(row.name ?? "");
+    for (const extension of [row.innovera_extension, row.innovera_mobile_extension]) {
+      const key = String(extension ?? "").trim();
+      if (key && extensions.includes(key)) names.set(key, name);
+    }
+  }
+  return names;
 }
 
 export function counts(calls: NormalizedInnoveraCall[]) {
@@ -63,16 +78,22 @@ export function counts(calls: NormalizedInnoveraCall[]) {
   };
 }
 
-export function applyUiFilters(calls: NormalizedInnoveraCall[], searchParams: URLSearchParams, ownExtension: string | null) {
+export function applyUiFilters(calls: NormalizedInnoveraCall[], searchParams: URLSearchParams, ownExtensions: string[]) {
   const mine = searchParams.get("mine") === "1";
-  const extension = searchParams.get("extension")?.trim() ?? "";
+  const extensions = searchParams
+    .getAll("extension")
+    .flatMap((value) => value.split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const extensionSet = new Set(extensions);
+  const ownExtensionSet = new Set(ownExtensions.map((value) => value.trim()).filter(Boolean));
   const circuit = searchParams.get("circuit")?.trim() ?? "";
   const type = searchParams.get("type")?.trim() ?? "";
   const status = searchParams.get("status")?.trim() ?? "";
   const number = searchParams.get("number")?.replace(/\D/g, "") ?? "";
   return calls.filter((call) => {
-    if (mine && ownExtension && call.extension !== ownExtension) return false;
-    if (extension && call.extension !== extension) return false;
+    if (mine && ownExtensionSet.size && !ownExtensionSet.has(call.extension)) return false;
+    if (extensionSet.size && !extensionSet.has(call.extension)) return false;
     if (circuit && call.circuitId !== circuit) return false;
     if (type && call.type !== type) return false;
     if (status && call.status !== status) return false;
@@ -87,13 +108,13 @@ export function applyUiFilters(calls: NormalizedInnoveraCall[], searchParams: UR
 export async function loadAllowedCallsForDate(ctx: CallAccessContext, date: string, uniqid?: string) {
   const range = dayRange(date);
   const rawCalls = await searchInnoveraCalls({ ...range, uniqid });
-  const allowed = filterCallsForAccess(rawCalls, ctx.access, ctx.ownExtension);
+  const allowed = filterCallsForAccess(rawCalls, ctx.access, ctx.ownExtensions);
   const normalized = allowed.map((call) => normalizeCall(call));
   const names = await employeeNameByExtension(ctx.supabase, normalized);
   return normalized.map((call) => ({
     ...call,
     employeeName: names.get(call.extension) || call.extension,
-    canPlay: canPlayRecording(call, ctx.access, ctx.ownExtension),
+    canPlay: canPlayRecording(call, ctx.access, ctx.ownExtensions),
   }));
 }
 

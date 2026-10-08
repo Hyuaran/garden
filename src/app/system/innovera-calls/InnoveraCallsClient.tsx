@@ -28,7 +28,7 @@ type ApiCall = {
 
 type MappingResult = {
   mapped: Array<{ user: { number?: string | null; name?: string | null }; employee: { name?: string | null } | null }>;
-  unmappedEmployees: Array<{ employee_id: string; name?: string | null; innovera_extension?: string | null }>;
+  unmappedEmployees: Array<{ employee_id: string; name?: string | null; innovera_extension?: string | null; innovera_mobile_extension?: string | null }>;
   unmappedUsers: Array<{ id?: string | null; number?: string | null; name?: string | null }>;
 };
 
@@ -51,13 +51,24 @@ function todayJst() {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
+function ownExtensionLabel(ownExtension: string | null, ownExtensions: string[], lineEmployee: { extension?: string | null; mobileExtension?: string | null } | null) {
+  const pc = lineEmployee?.extension || ownExtension;
+  const mobile = lineEmployee?.mobileExtension || ownExtensions.find((extension) => extension !== pc) || null;
+  if (pc && mobile) return `（PC 内線 ${pc} ／ モバイル内線 ${mobile}）`;
+  if (pc) return `（PC 内線 ${pc}）`;
+  if (mobile) return `（モバイル内線 ${mobile}）`;
+  return "";
+}
+
 export default function InnoveraCallsClient({
   access,
   ownExtension,
+  ownExtensions,
   role,
 }: {
   access: CallRecordingAccess;
   ownExtension: string | null;
+  ownExtensions: string[];
   role: GardenRole;
 }) {
   const [date, setDate] = useState(todayJst());
@@ -76,6 +87,7 @@ export default function InnoveraCallsClient({
   const [lineError, setLineError] = useState<string | null>(null);
   const [lineMessage, setLineMessage] = useState<string | null>(null);
   const [currentLine, setCurrentLine] = useState<LineCircuit | null>(null);
+  const [lineEmployee, setLineEmployee] = useState<{ extension?: string | null; mobileExtension?: string | null } | null>(null);
   const [circuits, setCircuits] = useState<LineCircuit[]>([]);
   const [selectedCircuit, setSelectedCircuit] = useState("");
 
@@ -102,7 +114,11 @@ export default function InnoveraCallsClient({
     setPlaying(null);
     const params = new URLSearchParams({ date });
     if (mine) params.set("mine", "1");
-    if (extension) params.set("extension", extension);
+    if (extension) {
+      for (const item of extension.split(",").map((value) => value.trim()).filter(Boolean)) {
+        params.append("extension", item);
+      }
+    }
     if (circuit) params.set("circuit", circuit);
     if (type) params.set("type", type);
     if (status) params.set("status", status);
@@ -129,6 +145,7 @@ export default function InnoveraCallsClient({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "発信番号を確認できませんでした");
       setCurrentLine(result.current ?? null);
+      setLineEmployee(result.employee ?? null);
       setCircuits(result.circuits ?? []);
       setSelectedCircuit(result.current?.id ?? "");
     } catch (cause) {
@@ -171,11 +188,19 @@ export default function InnoveraCallsClient({
   }, []);
 
   const employeeOptions = useMemo(() => {
-    return Array.from(new Map(calls.map((call) => [call.extension, call.employeeName || call.extension])).entries());
+    const byName = new Map<string, Set<string>>();
+    for (const call of calls) {
+      const label = call.employeeName || call.extension;
+      if (!label || !call.extension) continue; // 担当の内線が無い行（自動留守録など）は選択肢に出さない
+      if (!byName.has(label)) byName.set(label, new Set());
+      if (call.extension) byName.get(label)?.add(call.extension);
+    }
+    return Array.from(byName.entries()).map(([label, values]) => [Array.from(values).join(","), label] as const);
   }, [calls]);
   const circuitOptions = useMemo(() => {
     return Array.from(new Map(calls.map((call) => [call.circuitId, call.circuitName || call.circuitId])).entries());
   }, [calls]);
+  const ownExtensionText = ownExtensionLabel(ownExtension, ownExtensions, lineEmployee);
 
   return (
     <div className={styles.page}>
@@ -189,6 +214,7 @@ export default function InnoveraCallsClient({
         <div>
           <h2>自分の発信番号</h2>
           <p>{lineLoading ? "確認中..." : currentLine ? `${currentLine.name} ${currentLine.freeNumber || currentLine.number}` : "未設定"}</p>
+          {ownExtensionText && <p>{ownExtensionText}</p>}
         </div>
         <select value={selectedCircuit} onChange={(event) => setSelectedCircuit(event.target.value)} disabled={lineLoading || !circuits.length}>
           <option value="">選択してください</option>
@@ -257,9 +283,12 @@ export default function InnoveraCallsClient({
           {!mapping && !mappingError && <p>確認中...</p>}
           {mapping && (
             <>
-              <p>内線が紐づいていない従業員（在籍中）：{mapping.unmappedEmployees.length ? mapping.unmappedEmployees.map((employee) => `${employee.name}${employee.innovera_extension ? `（内線 ${employee.innovera_extension} は INNOVERA に無い）` : ""}`).join(" ／ ") : "なし"}</p>
+              <p>内線が紐づいていない従業員（在籍中）：{mapping.unmappedEmployees.length ? mapping.unmappedEmployees.map((employee) => {
+                const extensions = [employee.innovera_extension, employee.innovera_mobile_extension].filter(Boolean).join(" ／ ");
+                return `${employee.name}${extensions ? `（内線 ${extensions} は INNOVERA に無い）` : ""}`;
+              }).join(" ／ ") : "なし"}</p>
               <p>従業員に紐づいていない内線：{mapping.unmappedUsers.length ? mapping.unmappedUsers.map((user) => `${user.number}${user.name ? `（${user.name}）` : ""}`).join(" ／ ") : "なし"}</p>
-              <p>紐づいている内線：{mapping.mapped.length} 件。紐づけは Root の従業員編集「INNOVERA 内線番号」で行います。</p>
+              <p>紐づいている内線：{mapping.mapped.length} 件。紐づけは Root の従業員編集「INNOVERA 内線番号（PC）」と「INNOVERA 内線番号（モバイル）」で行います。</p>
             </>
           )}
         </section>

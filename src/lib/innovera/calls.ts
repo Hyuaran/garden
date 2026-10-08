@@ -129,27 +129,27 @@ export function isCallFinished(raw: Pick<InnoveraCallRaw, "end_time" | "start_ti
 export function filterCallsForAccess<T extends InnoveraCallRaw>(
   calls: T[],
   access: CallRecordingAccess,
-  ownExtension: string | null | undefined,
+  ownExtensions: string[],
 ): T[] {
   if (access === "none") return [];
   if (access === "all" || access === "all_history_own_audio") return calls;
-  const own = text(ownExtension);
-  if (!own) return [];
-  return calls.filter((call) => normalizeCall(call).extension === own);
+  const own = new Set(ownExtensions.map(text).filter(Boolean));
+  if (!own.size) return [];
+  return calls.filter((call) => own.has(normalizeCall(call).extension));
 }
 
 export function canPlayRecording(
   call: InnoveraCallRaw | NormalizedInnoveraCall,
   access: CallRecordingAccess,
-  ownExtension: string | null | undefined,
+  ownExtensions: string[],
   now = new Date(),
 ) {
   if (access === "none") return false;
   const normalized = isNormalizedCall(call) ? call : normalizeCall(call, now);
   if (!normalized.hasRecording || !isCallFinished(normalized.raw, now)) return false;
   if (access === "all") return true;
-  const own = text(ownExtension);
-  return Boolean(own && normalized.extension === own);
+  const own = new Set(ownExtensions.map(text).filter(Boolean));
+  return own.has(normalized.extension);
 }
 
 export function allowedCircuitsForUser<T extends InnoveraCircuit>(circuits: T[], userId: string): T[] {

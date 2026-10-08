@@ -268,6 +268,7 @@ const empty = (nextId: string, companyId: string, salarySystemId: string): Emplo
   account_holder_kana: "",
   kot_employee_id: null,
   innovera_extension: null,
+  innovera_mobile_extension: null,
   mf_employee_id: null,
   call_recording_access: "default",
   insurance_type: "加入",
@@ -925,12 +926,20 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
             <FormGrid>
               <TextField label="キングオブタイムID" value={editTarget.kot_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, kot_employee_id: e.target.value || null })} />
               <TextField
-                label="INNOVERA 内線番号"
+                label="INNOVERA 内線番号（PC）"
                 maxLength={6}
                 inputMode="numeric"
                 value={editTarget.innovera_extension ?? ""}
                 onChange={(e) => setEditTarget({ ...editTarget, innovera_extension: e.target.value || null })}
                 error={errors.innovera_extension}
+              />
+              <TextField
+                label="INNOVERA 内線番号（モバイル）"
+                maxLength={6}
+                inputMode="numeric"
+                value={editTarget.innovera_mobile_extension ?? ""}
+                onChange={(e) => setEditTarget({ ...editTarget, innovera_mobile_extension: e.target.value || null })}
+                error={errors.innovera_mobile_extension}
               />
               <TextField label="MFクラウド給与ID" value={editTarget.mf_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, mf_employee_id: e.target.value || null })} />
             </FormGrid>

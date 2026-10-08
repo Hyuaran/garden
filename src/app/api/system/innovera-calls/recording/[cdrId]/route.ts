@@ -50,7 +50,7 @@ export async function GET(
     if (!isCallFinished(raw)) {
       return NextResponse.json({ ok: false, error: "通話中は再生できません" }, { status: 409 });
     }
-    if (!canPlayRecording(raw, ctx.access, ctx.ownExtension)) {
+    if (!canPlayRecording(raw, ctx.access, ctx.ownExtensions)) {
       return NextResponse.json({ ok: false, error: "この録音は聞けません" }, { status: 403 });
     }
 

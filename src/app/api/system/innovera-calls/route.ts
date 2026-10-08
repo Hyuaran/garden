@@ -11,12 +11,13 @@ export async function GET(request: Request) {
     const searchParams = new URL(request.url).searchParams;
     const date = validateDate(searchParams.get("date"));
     const calls = await loadAllowedCallsForDate(ctx, date);
-    const filtered = applyUiFilters(calls, searchParams, ctx.ownExtension);
+    const filtered = applyUiFilters(calls, searchParams, ctx.ownExtensions);
     return NextResponse.json({
       ok: true,
       date,
       access: ctx.access,
       ownExtension: ctx.ownExtension,
+      ownExtensions: ctx.ownExtensions,
       calls: filtered.map(({ raw: _raw, ...call }) => call),
       counts: counts(filtered),
     });

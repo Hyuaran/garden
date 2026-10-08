@@ -45,17 +45,19 @@ describe("innovera calls", () => {
 
   it("filters calls by access level", () => {
     const other = { ...baseCall, id: "cdr-2", caller_num: "2050" };
-    expect(filterCallsForAccess([baseCall, other], "own", "2040")).toHaveLength(1);
-    expect(filterCallsForAccess([baseCall, other], "all_history_own_audio", "2040")).toHaveLength(2);
-    expect(filterCallsForAccess([baseCall], "none", "2040")).toHaveLength(0);
+    const mobile = { ...baseCall, id: "cdr-3", caller_num: "1003" };
+    expect(filterCallsForAccess([baseCall, mobile, other], "own", ["2040", "1003"]).map((call) => call.id)).toEqual(["cdr-1", "cdr-3"]);
+    expect(filterCallsForAccess([baseCall, other], "all_history_own_audio", ["2040"])).toHaveLength(2);
+    expect(filterCallsForAccess([baseCall], "none", ["2040"])).toHaveLength(0);
   });
 
   it("checks recording playback permission", () => {
-    expect(canPlayRecording(baseCall, "all", null)).toBe(true);
-    expect(canPlayRecording(baseCall, "all_history_own_audio", "2040")).toBe(true);
-    expect(canPlayRecording(baseCall, "own", "2050")).toBe(false);
-    expect(canPlayRecording({ ...baseCall, record_file_flg: "2" }, "all", null)).toBe(false);
-    expect(canPlayRecording({ ...baseCall, end_time: "" }, "all", null, new Date("2026-10-08T01:00:30Z"))).toBe(false);
+    expect(canPlayRecording(baseCall, "all", [])).toBe(true);
+    expect(canPlayRecording(baseCall, "all_history_own_audio", ["2040", "1003"])).toBe(true);
+    expect(canPlayRecording({ ...baseCall, caller_num: "1003" }, "own", ["2040", "1003"])).toBe(true);
+    expect(canPlayRecording(baseCall, "own", ["2050"])).toBe(false);
+    expect(canPlayRecording({ ...baseCall, record_file_flg: "2" }, "all", [])).toBe(false);
+    expect(canPlayRecording({ ...baseCall, end_time: "" }, "all", [], new Date("2026-10-08T01:00:30Z"))).toBe(false);
   });
 
   it("parses allowed circuit user id hashes", () => {

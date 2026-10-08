@@ -21,19 +21,24 @@ export async function GET() {
       listInnoveraUsers(),
       getSupabaseAdmin()
         .from("root_employees")
-        .select("employee_id,name,innovera_extension,is_active,termination_date,deleted_at")
+        .select("employee_id,name,innovera_extension,innovera_mobile_extension,is_active,termination_date,deleted_at")
         .eq("is_active", true)
         .is("deleted_at", null),
     ]);
     const employees = employeesResult.data ?? [];
-    const employeeByExtension = new Map(
-      employees
-        .filter((employee) => employee.innovera_extension)
-        .map((employee) => [text(employee.innovera_extension), employee]),
-    );
+    const employeeByExtension = new Map();
+    for (const employee of employees) {
+      for (const extension of [employee.innovera_extension, employee.innovera_mobile_extension]) {
+        const key = text(extension);
+        if (key) employeeByExtension.set(key, employee);
+      }
+    }
     const userByExtension = new Map(users.map((user) => [text(user.number), user]));
     const unmappedEmployees = employees.filter(
-      (employee) => !employee.innovera_extension || !userByExtension.has(text(employee.innovera_extension)),
+      (employee) => {
+        const extensions = [employee.innovera_extension, employee.innovera_mobile_extension].map(text).filter(Boolean);
+        return extensions.length === 0 || extensions.some((extension) => !userByExtension.has(extension));
+      },
     );
     const unmappedUsers = users.filter((user) => user.number && !employeeByExtension.has(text(user.number)));
     const mapped = users

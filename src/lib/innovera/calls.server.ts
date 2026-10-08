@@ -15,6 +15,7 @@ export type CallAccessContext = {
   role: GardenRole;
   access: CallRecordingAccess;
   ownExtension: string | null;
+  ownExtensions: string[];
 };
 
 export class CallAccessError extends Error {
@@ -30,6 +31,10 @@ function role(value: unknown): GardenRole {
   return String(value || "toss") as GardenRole;
 }
 
+function extensionList(...values: unknown[]) {
+  return Array.from(new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean)));
+}
+
 export async function requireCallAccess(): Promise<CallAccessContext> {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -37,7 +42,7 @@ export async function requireCallAccess(): Promise<CallAccessContext> {
 
   const { data: employee, error } = await supabase
     .from("root_employees")
-    .select("employee_id,name,garden_role,innovera_extension,call_recording_access,is_active,termination_date,deleted_at")
+    .select("employee_id,name,garden_role,innovera_extension,innovera_mobile_extension,call_recording_access,is_active,termination_date,deleted_at")
     .eq("user_id", auth.user.id)
     .eq("is_active", true)
     .is("deleted_at", null)
@@ -52,7 +57,8 @@ export async function requireCallAccess(): Promise<CallAccessContext> {
   if (!canUseCallScreen(access)) {
     throw new CallAccessError(403, "この画面を使う権限がありません。管理者へ問い合わせてください。");
   }
-  if (access !== "all" && !employee.innovera_extension) {
+  const ownExtensions = extensionList(employee.innovera_extension, employee.innovera_mobile_extension);
+  if (access !== "all" && ownExtensions.length === 0) {
     throw new CallAccessError(403, "内線番号が登録されていません。管理者へ問い合わせてください。");
   }
 
@@ -62,7 +68,8 @@ export async function requireCallAccess(): Promise<CallAccessContext> {
     employeeName: String(employee.name ?? ""),
     role: role(employee.garden_role),
     access,
-    ownExtension: employee.innovera_extension ? String(employee.innovera_extension) : null,
+    ownExtension: employee.innovera_extension ? String(employee.innovera_extension) : (employee.innovera_mobile_extension ? String(employee.innovera_mobile_extension) : null),
+    ownExtensions,
   };
 }
 

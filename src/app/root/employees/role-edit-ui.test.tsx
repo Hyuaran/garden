@@ -67,6 +67,7 @@ const employee = {
   account_holder_kana: "モウリテスト",
   kot_employee_id: null,
   innovera_extension: null,
+  innovera_mobile_extension: null,
   mf_employee_id: null,
   call_recording_access: "default" as const,
   insurance_type: "加入",
@@ -284,8 +285,11 @@ describe("Garden権限の編集UI", () => {
     renderPage();
     await openEmployee();
 
-    fireEvent.change(screen.getByLabelText("INNOVERA 内線番号"), {
+    fireEvent.change(screen.getByLabelText("INNOVERA 内線番号（PC）"), {
       target: { value: "2040" },
+    });
+    fireEvent.change(screen.getByLabelText("INNOVERA 内線番号（モバイル）"), {
+      target: { value: "1003" },
     });
     fireEvent.change(screen.getByLabelText("INNOVERA録音の権限"), {
       target: { value: "all_history_own_audio" },
@@ -297,6 +301,7 @@ describe("Garden権限の編集UI", () => {
       expect.objectContaining({
         employee_id: "EMP-1404",
         innovera_extension: "2040",
+        innovera_mobile_extension: "1003",
         call_recording_access: "all_history_own_audio",
       }),
     );
