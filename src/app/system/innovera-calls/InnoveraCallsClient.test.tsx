@@ -94,11 +94,13 @@ describe("InnoveraCallsClient", () => {
     render(<InnoveraCallsClient access="all" ownExtension="2040" ownExtensions={["2040", "1003"]} role="cs" />);
     await screen.findByText(/通話 2 件/);
 
-    fireEvent.click(screen.getByRole("button", { name: /担当：自分/ }));
-    const listbox = screen.getByRole("listbox");
-    expect(listbox).toHaveAttribute("aria-multiselectable", "true");
-    fireEvent.click(within(listbox).getByRole("button", { name: "選択を外す" }));
-    fireEvent.click(within(listbox).getByLabelText("東海林"));
+    // リストマスタと同じプルダウン：閉じた状態では「担当 東海林」（自分が既定で選ばれている）
+    const picker = screen.getByRole("button", { name: /担当/ });
+    expect(picker).toHaveTextContent("東海林");
+    fireEvent.click(picker);
+    fireEvent.click(screen.getByRole("button", { name: "すべて外す" }));
+    fireEvent.click(screen.getByLabelText(/東海林/));
+    fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
     const before = fetchMock.mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: "表示" }));
 

@@ -559,3 +559,26 @@
 .tableWrap th {
   text-align: center;
 }
+
+/* 担当：リストマスタと同じプルダウン部品＋「自分だけ」の小さなボタン */
+.filters .employeePicker {
+  display: flex;
+  align-items: end;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.filters .employeePicker > :first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.filters .ownOnly {
+  min-height: 38px;
+  padding: 0 10px;
+  border-color: var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 700;
+  white-space: nowrap;
+}

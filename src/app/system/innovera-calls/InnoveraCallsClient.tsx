@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { CallRecordingAccess } from "@/lib/innovera/call-access";
+import MultiSelectFilter from "@/app/system/list/_components/MultiSelectFilter";
 import styles from "./innovera-calls.module.css";
 
 type ApiCall = {
@@ -110,7 +111,7 @@ function formatRange(fromDate: string, fromTime: string, toDate: string, toTime:
 }
 
 // 日時は「2026-10-08 13:54:57」の形（日付と秒まで・東海林さん指定）
-function callDisplayTime(call: ApiCall, _showDate: boolean) {
+function callDisplayTime(call: ApiCall) {
   return call.startTime || call.displayTime;
 }
 
@@ -125,13 +126,11 @@ export default function InnoveraCallsClient({
   ownExtensions: string[];
   role: GardenRole;
 }) {
-  const today = todayJst();
   const [fromDate, setFromDate] = useState("");
   const [fromTime, setFromTime] = useState("");
   const [toDate, setToDate] = useState("");
   const [toTime, setToTime] = useState("");
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>(access === "own" ? [] : ownExtensions);
-  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
   const [circuit, setCircuit] = useState("");
   const [type, setType] = useState("");
   const [status, setStatus] = useState("");
@@ -145,7 +144,6 @@ export default function InnoveraCallsClient({
   const [page, setPage] = useState(1);
   const [shownRange, setShownRange] = useState(() => resolveRange("", "", "", "", todayJst()));
   const PAGE_SIZE = 100;
-  const pickerRef = useRef<HTMLDivElement | null>(null);
   const [lineLoading, setLineLoading] = useState(true);
   const [lineError, setLineError] = useState<string | null>(null);
   const [lineMessage, setLineMessage] = useState<string | null>(null);
@@ -263,7 +261,6 @@ export default function InnoveraCallsClient({
 
   useEffect(() => {
     if (canSeeMapping) void loadMapping();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSeeMapping]);
 
   useEffect(() => {
@@ -273,51 +270,42 @@ export default function InnoveraCallsClient({
   }, []);
 
   useEffect(() => {
-    function closeOnOutside(event: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) setEmployeePickerOpen(false);
-    }
     function closeOnEsc(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setEmployeePickerOpen(false);
-        closePlayer();
-      }
+      if (event.key === "Escape") closePlayer();
     }
-    document.addEventListener("mousedown", closeOnOutside);
     document.addEventListener("keydown", closeOnEsc);
-    return () => {
-      document.removeEventListener("mousedown", closeOnOutside);
-      document.removeEventListener("keydown", closeOnEsc);
-    };
+    return () => document.removeEventListener("keydown", closeOnEsc);
   }, []);
 
   const pageCount = Math.max(1, Math.ceil(calls.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const pagedCalls = useMemo(() => calls.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [calls, currentPage]);
 
+  // リストマスタと同じ複数選択プルダウンに渡す形。値＝その人の内線（カンマ区切り）
+  const employeeOptionGroups = useMemo(() => ([{
+    options: filterOptions.employees.map((employee) => ({
+      value: employee.extensions.join(","),
+      label: employee.label,
+      count: calls.filter((call) => employee.extensions.includes(call.extension)).length,
+      empty: false,
+    })),
+  }]), [filterOptions.employees, calls]);
+  const selectedEmployeeValues = useMemo(() => {
+    const set = new Set(selectedExtensions);
+    return filterOptions.employees
+      .filter((employee) => employee.extensions.length > 0 && employee.extensions.every((extension) => set.has(extension)))
+      .map((employee) => employee.extensions.join(","));
+  }, [filterOptions.employees, selectedExtensions]);
+  function applyEmployeeSelection(values: string[]) {
+    setSelectedExtensions(Array.from(new Set(values.flatMap((value) => value.split(",")).filter(Boolean))));
+  }
+
   const ownSelected = useMemo(() => {
     const own = new Set(ownExtensions);
     return selectedExtensions.length > 0 && selectedExtensions.every((extension) => own.has(extension));
   }, [ownExtensions, selectedExtensions]);
-  const employeeButtonLabel = selectedExtensions.length === 0
-    ? "担当：全員"
-    : ownSelected
-      ? `担当：自分（${selectedExtensions.join("・")}）`
-      : `担当：${selectedExtensions.length} 人`;
   const ownExtensionText = ownExtensionLabel(ownExtension, ownExtensions, lineEmployee);
   const rangeText = formatRange(shownRange.fromDate, shownRange.fromTime, shownRange.toDate, shownRange.toTime);
-  const showDateInTime = shownRange.fromDate !== shownRange.toDate;
-
-  function toggleExtensions(extensions: string[]) {
-    setSelectedExtensions((current) => {
-      const set = new Set(current);
-      const selected = extensions.every((extension) => set.has(extension));
-      for (const extension of extensions) {
-        if (selected) set.delete(extension);
-        else set.add(extension);
-      }
-      return Array.from(set);
-    });
-  }
 
   return (
     <div className={styles.page}>
@@ -357,27 +345,17 @@ export default function InnoveraCallsClient({
           <button type="button" onClick={() => applyPreset("week")}>今週</button>
         </div>
         {showAllControls && (
-          <div className={styles.employeePicker} ref={pickerRef}>
-            <button type="button" aria-expanded={employeePickerOpen} onClick={() => setEmployeePickerOpen((open) => !open)}>
-              {employeeButtonLabel}
-            </button>
-            {employeePickerOpen && (
-              <div className={styles.employeeMenu} role="listbox" aria-multiselectable="true">
-                <div className={styles.employeeMenuActions}>
-                  <button type="button" onClick={() => setSelectedExtensions([])}>全員を選ぶ</button>
-                  <button type="button" onClick={() => setSelectedExtensions(ownExtensions)}>自分だけにする</button>
-                  <button type="button" onClick={() => setSelectedExtensions([])}>選択を外す</button>
-                </div>
-                {filterOptions.employees.map((employee) => {
-                  const checked = employee.extensions.every((extension) => selectedExtensions.includes(extension));
-                  return (
-                    <label key={employee.label} role="option" aria-selected={checked}>
-                      <input type="checkbox" checked={checked} onChange={() => toggleExtensions(employee.extensions)} />
-                      <span>{employee.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
+          <div className={styles.employeePicker}>
+            <MultiSelectFilter
+              label="担当"
+              value={selectedEmployeeValues}
+              groups={employeeOptionGroups}
+              onChange={applyEmployeeSelection}
+              searchable={filterOptions.employees.length > 12}
+              countNote="（ ）は表示中の期間の通話数です。何も選ばなければ全員"
+            />
+            {ownExtensions.length > 0 && (
+              <button type="button" className={styles.ownOnly} onClick={() => setSelectedExtensions(ownExtensions)} disabled={ownSelected}>自分だけ</button>
             )}
           </div>
         )}
@@ -410,7 +388,7 @@ export default function InnoveraCallsClient({
           <tbody>
             {pagedCalls.length ? pagedCalls.map((call) => (
               <tr key={call.id}>
-                <td>{callDisplayTime(call, showDateInTime)}</td>
+                <td>{callDisplayTime(call)}</td>
                 <td>{call.typeLabel}</td>
                 <td>{call.counterpartNumber || "-"}</td>
                 <td>{call.circuitName || "-"}</td>
