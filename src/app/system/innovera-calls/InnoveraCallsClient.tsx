@@ -21,6 +21,7 @@ type ApiCall = {
   employeeName: string;
   counterpartNumber: string;
   counterpartName: string;
+  talkSeconds: number | null;
   talkTimeLabel: string;
   hasRecording: boolean;
   inProgress: boolean;
@@ -416,7 +417,7 @@ export default function InnoveraCallsClient({
                 <td>{call.employeeName || call.extension || "-"}</td>
                 <td>{call.inProgress ? "通話中" : call.talkTimeLabel}</td>
                 <td>{call.inProgress ? "通話中" : call.statusLabel}</td>
-                <td>{call.canPlay ? <button type="button" onClick={() => setPlaying(call)}>再生</button> : call.inProgress ? "通話中" : "-"}</td>
+                <td>{call.canPlay && (call.talkSeconds ?? 0) > 0 ? <button type="button" onClick={() => setPlaying(call)}>再生</button> : call.inProgress ? "通話中" : "-"}</td>
               </tr>
             )) : <tr><td colSpan={8}>{loading ? "読み込み中..." : "履歴がありません"}</td></tr>}
           </tbody>

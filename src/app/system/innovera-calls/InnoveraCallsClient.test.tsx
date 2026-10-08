@@ -24,6 +24,7 @@ const callsPayload = {
       employeeName: "東海林",
       counterpartNumber: "090-4097-8843",
       counterpartName: "",
+      talkSeconds: 79,
       talkTimeLabel: "1:19",
       hasRecording: true,
       inProgress: false,
