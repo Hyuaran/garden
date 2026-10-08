@@ -132,6 +132,10 @@ export async function POST(request: Request) {
     try {
       return callAccessErrorResponse(error);
     } catch {
+      // INNOVERA に届かなかった（Vercel→INNOVERA の途切れ）ときは理由が分かる文で返す（2026-10-08）
+      if (error instanceof Error && error.message.startsWith("innovera_unreachable:")) {
+        return NextResponse.json({ ok: false, error: "INNOVERA に接続できなかったため、発信番号を変更できませんでした。少し待ってからもう一度お試しください" }, { status: 503 });
+      }
       return NextResponse.json({ ok: false, error: "発信番号を変更できませんでした" }, { status: 500 });
     }
   }

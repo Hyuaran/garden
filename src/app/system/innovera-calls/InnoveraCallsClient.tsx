@@ -282,8 +282,8 @@ export default function InnoveraCallsClient({
       setLineDialog({ step: "done", next: result.current ?? lineDialog.next });
       window.setTimeout(() => setLineDialog((current) => (current?.step === "done" ? null : current)), 1500);
     } catch (cause) {
+      // 失敗はモーダルの中だけに出す（外側の回線名の下にも同じ文が先に出て二重になっていた・2026-10-08）
       const message = cause instanceof Error ? cause.message : "発信番号を変更できませんでした";
-      setLineError(message);
       setLineDialog({ step: "error", next: lineDialog.next, message });
     }
   }

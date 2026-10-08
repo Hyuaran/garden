@@ -149,7 +149,9 @@ describe("InnoveraCallsClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "変更する" }));
     const dialog = await screen.findByRole("dialog", { name: "発信番号の変更" });
     fireEvent.click(within(dialog).getByRole("button", { name: "変更する" }));
-    await within(dialog).findByRole("alert");
+    const alert = await within(dialog).findByRole("alert");
+    // 失敗文はモーダルの中だけ（回線名の下に二重に出さない）
+    expect(screen.getAllByText(alert.textContent as string)).toHaveLength(1);
     expect(within(dialog).getByRole("button", { name: "もう一度" })).toBeInTheDocument();
     fireEvent.click(within(dialog).getAllByRole("button", { name: "閉じる" }).at(-1) as HTMLElement);
     expect(screen.queryByRole("dialog", { name: "発信番号の変更" })).not.toBeInTheDocument();
