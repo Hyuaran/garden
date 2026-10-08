@@ -148,7 +148,8 @@ export default function InnoveraCallsClient({
   const [fromTime, setFromTime] = useState("");
   const [toDate, setToDate] = useState("");
   const [toTime, setToTime] = useState("");
-  const [selectedExtensions, setSelectedExtensions] = useState<string[]>(access === "own" ? [] : ownExtensions);
+  // 担当の既定＝全員（何も選ばない）。「自分だけ」ボタンで自分に絞る（東海林さん 2026-10-08）。権限 own の人は欄なし＝API 側で自分だけ
+  const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
   const [circuit, setCircuit] = useState("");
   const [type, setType] = useState("");
   const [status, setStatus] = useState("");
@@ -400,7 +401,8 @@ export default function InnoveraCallsClient({
               groups={employeeOptionGroups}
               onChange={applyEmployeeSelection}
               searchable={employeeChoices.length > 12}
-              countNote="（ ）は表示中の期間の通話数です。何も選ばなければ全員"
+              columns={1}
+              emptyLabel="全員"
             />
             {ownExtensions.length > 0 && (
               <button type="button" className={styles.ownOnly} onClick={() => setSelectedExtensions(ownExtensions)} disabled={ownSelected}>自分だけ</button>

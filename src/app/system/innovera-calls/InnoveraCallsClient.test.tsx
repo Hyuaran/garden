@@ -94,7 +94,8 @@ describe("InnoveraCallsClient", () => {
     const callUrl = String(fetchMock.mock.calls.find(([url]) => String(url).startsWith("/api/system/innovera-calls?"))?.[0]);
     expect(callUrl).toContain("from=");
     expect(callUrl).toContain("to=");
-    expect(new URLSearchParams(callUrl.split("?")[1]).getAll("extension")).toEqual(["2040", "1003"]);
+    // 既定＝全員（担当を送らない）
+    expect(new URLSearchParams(callUrl.split("?")[1]).getAll("extension")).toEqual([]);
   });
 
   it("opens the employee multiselect and appends the selected extensions", async () => {
@@ -102,11 +103,11 @@ describe("InnoveraCallsClient", () => {
     render(<InnoveraCallsClient access="all" ownExtension="2040" ownExtensions={["2040", "1003"]} role="cs" />);
     await screen.findByText(/通話 2 件/);
 
-    // リストマスタと同じプルダウン：閉じた状態では「担当 東海林」（自分が既定で選ばれている）
+    // リストマスタと同じプルダウン：閉じた状態では「担当 全員」（既定は何も選ばない＝全員）
     const picker = screen.getByRole("button", { name: /担当/ });
-    expect(picker).toHaveTextContent("東海林");
+    expect(picker).toHaveTextContent("全員");
     fireEvent.click(picker);
-    fireEvent.click(screen.getByRole("button", { name: "すべて外す" }));
+    expect(screen.queryByText(/表示中の期間の通話数/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/東海林/));
     fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
     const before = fetchMock.mock.calls.length;

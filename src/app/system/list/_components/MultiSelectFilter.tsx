@@ -19,6 +19,10 @@ type MultiSelectFilterProps = {
   searchable?: boolean;
   initialLimit?: number;
   countNote?: string;
+  /** 列数を固定する（省略＝パネルの幅で 2〜5 列）。INNOVERA履歴・録音の担当は 1 列（縦並び） */
+  columns?: number;
+  /** 何も選んでいないときの表示（既定「指定なし」）。INNOVERA履歴・録音の担当は「全員」 */
+  emptyLabel?: string;
 };
 
 function optionValue(option: SoilListOptionItem): string {
@@ -29,15 +33,15 @@ function optionText(option: SoilListOptionItem): string {
   return `${option.label}（${option.count.toLocaleString("ja-JP")}）`;
 }
 
-function summarizeSelection(value: string[], options: SoilListOptionItem[]): string {
-  if (value.length === 0) return "指定なし";
+function summarizeSelection(value: string[], options: SoilListOptionItem[], emptyLabel = "指定なし"): string {
+  if (value.length === 0) return emptyLabel;
   const labels = value.map((selected) => options.find((option) => (option.empty ? EMPTY_OPTION_VALUE : option.value) === selected)?.label ?? selected);
   if (labels.length <= 2) return labels.join("、");
   const rest = labels.length - 2;
   return `${labels.slice(0, 2).join("、")} ほか${rest}（${labels.length}）`;
 }
 
-export default function MultiSelectFilter({ label, value, groups, onChange, searchable = false, initialLimit, countNote }: MultiSelectFilterProps) {
+export default function MultiSelectFilter({ label, value, groups, onChange, searchable = false, initialLimit, countNote, columns: fixedColumns, emptyLabel }: MultiSelectFilterProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -96,7 +100,7 @@ export default function MultiSelectFilter({ label, value, groups, onChange, sear
       const width = Math.min(940, parentWidth);
       const left = Math.max(-offset, parentWidth - offset - width);
       // 列数はパネルの幅で決める（県名＋件数が 1 行に収まる幅＝約 180px）
-      const columns = width >= 880 ? 5 : width >= 700 ? 4 : width >= 500 ? 3 : 2;
+      const columns = fixedColumns ?? (width >= 880 ? 5 : width >= 700 ? 4 : width >= 500 ? 3 : 2);
       setPanelStyle({ width, left, "--cols": columns } as CSSProperties);
     };
     place();
@@ -158,7 +162,7 @@ export default function MultiSelectFilter({ label, value, groups, onChange, sear
         aria-controls={panelId}
         onClick={() => setOpen((current) => !current)}
       >
-        <span id={`${panelId}-summary`}>{summarizeSelection(value, allOptions)}</span>
+        <span id={`${panelId}-summary`}>{summarizeSelection(value, allOptions, emptyLabel)}</span>
         <span aria-hidden="true">▼</span>
       </button>
       {open && (
