@@ -130,7 +130,7 @@ async function fetchInnoveraCircuitsOnce(config: { host: string; apiKey: string 
   return body.data as InnoveraCircuit[];
 }
 
-const RETRY_DELAY_MS = 3_000;
+const RETRY_DELAY_MS = process.env.VITEST ? 0 : 3_000;
 
 // 一時的な途切れ（接続エラー・5xx）は 3 秒おいて 1 回だけやり直してから「失敗」と判定する
 async function fetchInnoveraCircuits(config: { host: string; apiKey: string }, delayMs = RETRY_DELAY_MS): Promise<InnoveraCircuit[]> {

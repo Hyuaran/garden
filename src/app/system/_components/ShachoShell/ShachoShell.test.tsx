@@ -179,6 +179,7 @@ describe("ShachoShell", () => {
     ["/system/shift", "シフト"],
     ["/system/zenkaku", "前確依頼"],
     ["/system/call-metrics", "テレマ コール集計"],
+    ["/system/innovera-calls", "INNOVERA履歴・録音"],
     ["/system/forms", "業務管理ツール"],
     ["/system/forms/payroll-notice", "業務管理ツール"],
     ["/system/innovera", "業務管理ツール"],
@@ -277,7 +278,7 @@ describe("ShachoShell", () => {
     const nav = screen.getByRole("navigation", { name: "Systemメニュー" });
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
       "ホーム", "資料", "マニュアル", "入社手続き", "自分の情報", "勤怠打刻", "シフト", "前確依頼",
-      "テレマ コール集計", "業務管理ツール", "契約書管理", "コーポレートサイト", "関電トスポータル", "自動配信", "管理表ポータル", "リストマスタ",
+      "テレマ コール集計", "INNOVERA履歴・録音", "業務管理ツール", "契約書管理", "コーポレートサイト", "関電トスポータル", "自動配信", "管理表ポータル", "リストマスタ",
     ]);
     for (const label of ["資料", "シフト", "前確依頼"]) {
       const link = within(nav).getByRole("link", { name: label });

@@ -1,0 +1,261 @@
+/* INNOVERA履歴・録音：社長スタイル（forms.module.css / innovera.module.css と同じ変数） */
+.page {
+  --ink: #17212e;
+  --sub: #5a6b80;
+  --muted: #98a4b3;
+  --heading: #10233f;
+  --card: #fff;
+  --soft: #eef2f6;
+  --line: #dce5ef;
+  --bg: #f4f6f8;
+  --teal: #0ea5a0;
+  --tealDark: #0b7773;
+  --warn: #b45309;
+  --shadowSoft: 0 4px 14px rgba(16, 35, 63, .06);
+  width: 100%;
+  min-width: 0;
+  color: var(--ink);
+  font-family: Meiryo, "Noto Sans JP", sans-serif;
+}
+
+:global(.dark) .page,
+:global([data-theme="dark"]) .page {
+  --ink: #edf4fb;
+  --sub: #b7c5d4;
+  --muted: #8a9bb0;
+  --heading: #edf4fb;
+  --card: #152438;
+  --soft: #1c2f47;
+  --line: #31435a;
+  --bg: #0c1726;
+  --tealDark: #9ce5e1;
+  --warn: #fbbf24;
+  --shadowSoft: 0 4px 14px rgba(0, 0, 0, .35);
+}
+
+.header {
+  margin-bottom: 18px;
+  padding-right: 112px;
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 30px;
+  line-height: 1.25;
+}
+
+.header p {
+  max-width: 860px;
+  margin: 10px 0 0;
+  color: var(--sub);
+  font-size: 13.5px;
+  line-height: 1.85;
+}
+
+.linePanel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 340px) auto;
+  gap: 12px;
+  align-items: end;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--shadowSoft);
+}
+
+.linePanel h2,
+.mappingNote h2 {
+  margin: 0 0 6px;
+  color: var(--heading);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.linePanel p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.linePanel span {
+  grid-column: 1 / -1;
+  font-size: 13px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+  padding: 4px 0 14px;
+}
+
+.filters label {
+  display: grid;
+  gap: 4px;
+  color: var(--sub);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.check {
+  display: flex !important;
+  min-height: 38px;
+  align-items: center;
+  gap: 6px !important;
+  color: var(--ink) !important;
+}
+
+.filters input,
+.filters select,
+.linePanel select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.filters button,
+.linePanel button,
+.tableWrap button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--teal);
+  border-radius: 8px;
+  background: var(--teal);
+  color: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tableWrap button {
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.filters button:disabled,
+.linePanel button:disabled,
+.tableWrap button:disabled {
+  border-color: var(--line);
+  background: var(--soft);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.summary {
+  margin: 0 0 10px;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.error {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--warn);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ok {
+  color: var(--tealDark);
+  font-weight: 800;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--shadowSoft);
+}
+
+.tableWrap table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.tableWrap th,
+.tableWrap td {
+  padding: 10px 12px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tableWrap td:nth-child(4) {
+  white-space: normal;
+  min-width: 220px;
+}
+
+.tableWrap th {
+  background: var(--soft);
+  color: var(--heading);
+  font-weight: 900;
+}
+
+.tableWrap th:last-child,
+.tableWrap td:last-child {
+  border-right: 0;
+}
+
+.tableWrap tr:last-child td {
+  border-bottom: 0;
+}
+
+.tableWrap audio {
+  width: min(100%, 560px);
+  display: block;
+}
+
+.mappingNote {
+  margin-top: 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--shadowSoft);
+}
+
+.mappingNote p {
+  margin: 6px 0 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+@media (max-width: 720px) {
+  .header {
+    padding-right: 0;
+  }
+
+  .linePanel {
+    grid-template-columns: 1fr;
+  }
+
+  .filters label {
+    flex: 1 1 140px;
+  }
+
+  .filters button {
+    flex: 1 1 100%;
+  }
+}

@@ -3,12 +3,12 @@ import { getVisibleGyomuTools, GYOMU_TOOLS } from "./gyomu-tools-registry";
 
 describe("gyomu tools registry", () => {
   it("loads tools grouped by purpose", () => {
-    expect(GYOMU_TOOLS.filter((tool) => tool.group === "auto")).toHaveLength(9);
+    expect(GYOMU_TOOLS.filter((tool) => tool.group === "auto")).toHaveLength(10);
     expect(GYOMU_TOOLS.filter((tool) => tool.group === "kintone")).toHaveLength(6);
     expect(GYOMU_TOOLS[0]).toMatchObject({
       group: "auto",
-      name: "INNOVERA番号の同期",
-      href: "/system/innovera",
+      name: "INNOVERA履歴・録音",
+      href: "/system/innovera-calls",
     });
   });
 

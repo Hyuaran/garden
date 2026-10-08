@@ -1,4 +1,5 @@
 [
+  { "group": "auto", "name": "INNOVERA履歴・録音", "description": "INNOVERA の通話履歴の閲覧、終話後の録音の再生、自分の発信番号の切り替え。", "runsOn": "Garden", "target": "INNOVERA", "href": "/system/innovera-calls", "since": "2026-10-08" },
   { "group": "auto", "name": "INNOVERA番号の同期", "description": "INNOVERA の回線一覧を Kintone の番号一覧へ自動で写します。増えた・消えた・名前が変わった番号をここで確認できます。", "schedule": "5 分ごと", "runsOn": "Garden", "target": "Kintone INNOVERA 番号一覧", "href": "/system/innovera", "since": "2026-10-07" },
   { "group": "auto", "name": "Chatwork への自動配信", "description": "決まった時刻に Chatwork へ自動で送っている連絡（NHK 訪問の集計・コール集計・給与計算連絡など）をまとめて見られます。", "schedule": "毎日", "runsOn": "Garden", "target": "Chatwork", "href": "/system/deliveries" },
   { "group": "auto", "name": "従業員名簿の同期", "description": "Kintone の従業員名簿を Root の組織台帳へ写します。入退社や所属の変更が翌朝には Garden に反映されます。", "schedule": "毎朝 6:00", "runsOn": "Garden", "target": "Root 組織台帳" },
