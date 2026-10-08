@@ -123,6 +123,7 @@ export interface Employee {
   employment_type: string; // 正社員 / アルバイト / outsource（Phase A-3-g） / 役員
   salary_system_id: string;
   hire_date: string; // YYYY-MM-DD
+  birthday?: string | null; // YYYY-MM-DD・Kintone 従業員名簿から同期（Root では表示だけ）
   termination_date: string | null;
   /** 外注の契約終了日（employment_type=outsource のときに利用）。Phase A-3-g */
   contract_end_on?: string | null;

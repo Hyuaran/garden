@@ -687,6 +687,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
     { key: "garden_role", header: "Garden権限", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], width: 110 },
     { key: "salary", header: "給与体系", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, width: 130 },
     { key: "hire", header: "入社日", render: (e) => e.hire_date, width: 110 },
+    { key: "birthday", header: "生年月日", render: (e) => e.birthday ?? "—", width: 110 },
     { key: "termination", header: "退職日", render: (e) => e.termination_date ?? "—", width: 110 },
     { key: "status", header: "状態", render: (e) => <StatusBadge active={e.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (e) => (
@@ -855,6 +856,8 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
                 onChange={(gardenRole) => setEditTarget({ ...editTarget, garden_role: gardenRole })}
               />
               <TextField label="入社日" required type="date" value={editTarget.hire_date} onChange={(e) => setEditTarget({ ...editTarget, hire_date: e.target.value })} error={errors.hire_date} />
+              {/* 生年月日は Kintone 従業員名簿から同期（Root で直しても次の同期で名簿の値に戻るため表示だけ・2026-10-08） */}
+              <TextField label="生年月日（従業員名簿から同期・ここでは直せません）" type="date" value={editTarget.birthday ?? ""} readOnly />
               <TextField label="退職日" type="date" value={editTarget.termination_date ?? ""} onChange={(e) => {
                 const next = { ...editTarget, termination_date: e.target.value || null };
                 setEditTarget(next);

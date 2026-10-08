@@ -27,6 +27,7 @@ const ROOT_EMPLOYEE_SELECT_FIELDS = [
   "employment_type",
   "salary_system_id",
   "hire_date",
+  "birthday",
   "termination_date",
   "contract_end_on",
   "kou_otsu",
