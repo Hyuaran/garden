@@ -577,7 +577,7 @@
 
 .filters input[type="time"],
 .filters .timeField input {
-  width: 92px;
+  width: 108px; /* 92px だと時計アイコンに最後の 1 桁がかぶる（2026-10-08） */
 }
 
 .filters .numberField {

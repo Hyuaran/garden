@@ -170,7 +170,8 @@ export function filterOptions(calls: ApiCall[]) {
       if (!employees.has(label)) employees.set(label, { label, extensions: new Set() });
       employees.get(label)?.extensions.add(call.extension);
     }
-    if (call.circuitId) circuits.set(call.circuitId, call.circuitName || call.circuitId);
+    // circuit_id "0"＝外線を通らない通話（内線どうし・保留）。INNOVERA は回線名を返さないので読める名前にする（2026-10-08）
+    if (call.circuitId) circuits.set(call.circuitId, call.circuitName || (call.circuitId === "0" ? "回線なし（内線・保留）" : call.circuitId));
   }
   return {
     employees: Array.from(employees.values()).map((item) => ({

@@ -125,6 +125,20 @@ describe("InnoveraCallsClient", () => {
     expect(new URLSearchParams(callUrls.at(-1)?.split("?")[1]).getAll("extension")).toEqual(["2040", "1003"]);
   });
 
+  it("toggles between own-only and everyone with one click", async () => {
+    mockFetch();
+    render(<InnoveraCallsClient access="all" ownExtension="2040" ownExtensions={["2040", "1003"]} ownName="東海林" role="cs" />);
+    await screen.findByText(/通話 2 件/);
+    const picker = screen.getByRole("button", { name: /担当/ });
+    expect(picker).toHaveTextContent("全員");
+    fireEvent.click(screen.getByRole("button", { name: "自分だけ" }));
+    expect(picker).toHaveTextContent("東海林");
+    // 押したあとはボタンが「全員」になり、1 クリックで戻せる
+    fireEvent.click(screen.getByRole("button", { name: "全員" }));
+    expect(picker).toHaveTextContent("全員");
+    expect(screen.getByRole("button", { name: "自分だけ" })).toBeInTheDocument();
+  });
+
   const lineA = { id: "c-1", name: "【ARATAキャリア】0120-402-347", number: "0120402347", freeNumber: "0120402347", circuitNum: "001" };
   const lineB = { id: "c-2", name: "【代表ヒュアラン】06-4400-5414", number: "0644005414", freeNumber: "", circuitNum: "007" };
 

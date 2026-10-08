@@ -406,8 +406,9 @@ export default function InnoveraCallsClient({
               columns={1}
               emptyLabel="全員"
             />
+            {/* 1 クリックで「自分だけ」⇄「全員」を切り替える（東海林さん 2026-10-08） */}
             {ownExtensions.length > 0 && (
-              <button type="button" className={styles.ownOnly} onClick={() => setSelectedExtensions(ownExtensions)} disabled={ownSelected}>自分だけ</button>
+              <button type="button" className={styles.ownOnly} onClick={() => setSelectedExtensions(ownSelected ? [] : ownExtensions)}>{ownSelected ? "全員" : "自分だけ"}</button>
             )}
           </div>
         )}
