@@ -532,8 +532,7 @@
 }
 
 .filters .circuitField {
-  flex: 1 1 260px;
-  max-width: 420px;
+  flex: 1 1 260px; /* 2 行目は回線が残り幅を埋める（横幅いっぱい・2026-10-08） */
 }
 
 .filters .submit {
@@ -581,8 +580,13 @@
   width: 92px;
 }
 
+.filters .numberField {
+  flex: 1 1 150px;
+  max-width: 260px;
+}
+
 .filters .numberField input {
-  width: 150px;
+  width: 100%;
 }
 
 .filters .circuitField select {
@@ -607,14 +611,21 @@
 /* 担当：リストマスタと同じプルダウン部品＋「自分だけ」の小さなボタン */
 .filters .employeePicker {
   display: flex;
+  flex: 1 1 260px; /* 1 行目の残り幅を埋める。幅は中身（選んだ人の文字）で伸びない＝2 行目に落ちない（2026-10-08） */
   align-items: end;
   gap: 6px;
   min-width: 260px;
+  max-width: 100%;
 }
 
 .filters .employeePicker > :first-child {
   flex: 1 1 220px;
   min-width: 0;
+}
+
+/* 選択窓の中の「すべて選ぶ」「閉じる」「自分だけ」は折り返さない */
+.filters .employeePicker button {
+  white-space: nowrap;
 }
 
 .filters .ownOnly {
