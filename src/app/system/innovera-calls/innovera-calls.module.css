@@ -556,6 +556,8 @@ section.linePanel > button {
 
 .filters .submit {
   margin-left: auto;
+  min-width: 76px; /* 折り返しのときも「自分だけ」と同じ幅 */
+  padding: 0;
 }
 
 /* 担当の選択は入力欄と同じ見た目（押しボタンの色にしない） */
@@ -649,11 +651,13 @@ section.linePanel > button {
 
 /* 2 行の列をそろえる（広い画面）：1 行目＝開始／時刻／～／終了／時刻／今日昨日今週／担当／自分だけ、
    2 行目＝回線（1〜4 列）／発着（時刻の列）／結果（今日昨日今週の列）／番号（担当の列）／表示（自分だけの列）（東海林さん 2026-10-08） */
-@media (min-width: 721px) {
+/* 格子は横幅が足りるときだけ（固定列の合計 約 940px＋担当 200px＝内容幅 1,140px 以上。窓が 1,440px 未満なら従来の折り返し。
+   1,200px の窓で担当が潰れ「自分だけ」「検索」が枠からはみ出た実例あり・2026-10-08） */
+@media (min-width: 1440px) {
   /* 2 行を 1 つの格子にまとめる（行ごとに別の格子だと「今日昨日今週」の列幅が行で違い、番号が担当の真下に来ない） */
   .filters {
     display: grid;
-    grid-template-columns: 150px 108px 16px 150px 108px auto minmax(0, 1fr) 76px;
+    grid-template-columns: 150px 108px 16px 150px 108px auto minmax(200px, 1fr) 76px;
     align-items: end;
   }
 
