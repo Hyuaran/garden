@@ -29,6 +29,7 @@ export default async function InnoveraCallsPage() {
       access={ctx.access}
       ownExtension={ctx.ownExtension}
       ownExtensions={ctx.ownExtensions}
+      ownName={ctx.employeeName}
       role={ctx.role}
     />
   );

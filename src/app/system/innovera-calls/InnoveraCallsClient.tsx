@@ -119,11 +119,13 @@ export default function InnoveraCallsClient({
   access,
   ownExtension,
   ownExtensions,
+  ownName = "",
   role,
 }: {
   access: CallRecordingAccess;
   ownExtension: string | null;
   ownExtensions: string[];
+  ownName?: string;
   role: GardenRole;
 }) {
   const [fromDate, setFromDate] = useState("");
@@ -282,20 +284,28 @@ export default function InnoveraCallsClient({
   const pagedCalls = useMemo(() => calls.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [calls, currentPage]);
 
   // リストマスタと同じ複数選択プルダウンに渡す形。値＝その人の内線（カンマ区切り）
+  const employeeChoices = useMemo(() => {
+    const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((item) => b.includes(item));
+    const list = filterOptions.employees.map((employee) => ({ label: employee.label, extensions: employee.extensions }));
+    if (ownExtensions.length > 0 && !list.some((employee) => sameSet(employee.extensions, ownExtensions))) {
+      list.unshift({ label: ownName ? `${ownName}（自分）` : "自分", extensions: ownExtensions });
+    }
+    return list;
+  }, [filterOptions.employees, ownExtensions, ownName]);
   const employeeOptionGroups = useMemo(() => ([{
-    options: filterOptions.employees.map((employee) => ({
+    options: employeeChoices.map((employee) => ({
       value: employee.extensions.join(","),
       label: employee.label,
       count: calls.filter((call) => employee.extensions.includes(call.extension)).length,
       empty: false,
     })),
-  }]), [filterOptions.employees, calls]);
+  }]), [employeeChoices, calls]);
   const selectedEmployeeValues = useMemo(() => {
     const set = new Set(selectedExtensions);
-    return filterOptions.employees
+    return employeeChoices
       .filter((employee) => employee.extensions.length > 0 && employee.extensions.every((extension) => set.has(extension)))
       .map((employee) => employee.extensions.join(","));
-  }, [filterOptions.employees, selectedExtensions]);
+  }, [employeeChoices, selectedExtensions]);
   function applyEmployeeSelection(values: string[]) {
     setSelectedExtensions(Array.from(new Set(values.flatMap((value) => value.split(",")).filter(Boolean))));
   }
@@ -351,7 +361,7 @@ export default function InnoveraCallsClient({
               value={selectedEmployeeValues}
               groups={employeeOptionGroups}
               onChange={applyEmployeeSelection}
-              searchable={filterOptions.employees.length > 12}
+              searchable={employeeChoices.length > 12}
               countNote="（ ）は表示中の期間の通話数です。何も選ばなければ全員"
             />
             {ownExtensions.length > 0 && (
