@@ -97,7 +97,8 @@
 
 .linePanel {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(220px, 340px) auto;
+  /* 回線のプルダウンを長く・左寄りに（長い回線名が右にはみ出ない）。変更するボタンは「自分だけ」と同じ 76px（2026-10-08） */
+  grid-template-columns: minmax(240px, 0.8fr) minmax(360px, 1.2fr) 76px;
   gap: 12px;
   align-items: end;
   margin: 0 0 16px;
@@ -126,6 +127,12 @@
 .linePanel span {
   grid-column: 1 / -1;
   font-size: 13px;
+}
+
+.linePanel > button {
+  width: 76px; /* 下の「自分だけ」と同じ幅 */
+  padding: 0;
+  white-space: nowrap;
 }
 
 .filters {
@@ -230,6 +237,8 @@
 .filters .filterRow > label > input,
 .filters .filterRow > label > select,
 .linePanel select {
+  width: 100%;
+  min-width: 0;
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 8px;
