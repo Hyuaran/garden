@@ -33,6 +33,41 @@ export function validateDate(value: string | null) {
   return date;
 }
 
+function parseLocalMinute(value: string | null, fallback: string) {
+  const raw = value || fallback;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) throw new Error("日時の形式が正しくありません");
+  const date = new Date(`${raw}:00+09:00`);
+  if (Number.isNaN(date.getTime())) throw new Error("日時の形式が正しくありません");
+  return { value: raw, date };
+}
+
+export function validateRange(searchParams: URLSearchParams) {
+  const legacyDate = searchParams.get("date");
+  const today = tokyoToday();
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+  const date = legacyDate ? validateDate(legacyDate) : fromParam?.slice(0, 10) || toParam?.slice(0, 10) || today;
+  const from = parseLocalMinute(fromParam, `${date}T00:00`);
+  const to = parseLocalMinute(toParam, `${date}T23:59`);
+  if (from.date.getTime() > to.date.getTime()) throw new Error("開始は終了より前にしてください");
+
+  const oldest = new Date(`${today}T00:00:00+09:00`);
+  oldest.setFullYear(oldest.getFullYear() - 1);
+  if (from.date.getTime() < oldest.getTime()) throw new Error("1年より前の履歴は表示できません");
+
+  const maxRangeMs = 31 * 24 * 60 * 60 * 1000;
+  if (to.date.getTime() - from.date.getTime() > maxRangeMs) throw new Error("期間は 31 日以内にしてください");
+
+  return {
+    from: from.value,
+    to: to.value,
+    innovera: {
+      from: `${from.value.replace("T", " ")}:00`,
+      to: `${to.value.replace("T", " ")}:59`,
+    },
+  };
+}
+
 export function dayRange(date: string) {
   return {
     from: `${date} 00:00:00`,
@@ -107,6 +142,14 @@ export function applyUiFilters(calls: NormalizedInnoveraCall[], searchParams: UR
 
 export async function loadAllowedCallsForDate(ctx: CallAccessContext, date: string, uniqid?: string) {
   const range = dayRange(date);
+  return loadAllowedCallsForRange(ctx, range, uniqid);
+}
+
+export async function loadAllowedCallsForRange(
+  ctx: CallAccessContext,
+  range: { from: string; to: string },
+  uniqid?: string,
+) {
   const rawCalls = await searchInnoveraCalls({ ...range, uniqid });
   const allowed = filterCallsForAccess(rawCalls, ctx.access, ctx.ownExtensions);
   const normalized = allowed.map((call) => normalizeCall(call));
@@ -116,6 +159,26 @@ export async function loadAllowedCallsForDate(ctx: CallAccessContext, date: stri
     employeeName: names.get(call.extension) || call.extension,
     canPlay: canPlayRecording(call, ctx.access, ctx.ownExtensions),
   }));
+}
+
+export function filterOptions(calls: ApiCall[]) {
+  const employees = new Map<string, { label: string; extensions: Set<string> }>();
+  const circuits = new Map<string, string>();
+  for (const call of calls) {
+    if (call.extension) {
+      const label = call.employeeName || call.extension;
+      if (!employees.has(label)) employees.set(label, { label, extensions: new Set() });
+      employees.get(label)?.extensions.add(call.extension);
+    }
+    if (call.circuitId) circuits.set(call.circuitId, call.circuitName || call.circuitId);
+  }
+  return {
+    employees: Array.from(employees.values()).map((item) => ({
+      label: item.label,
+      extensions: Array.from(item.extensions),
+    })),
+    circuits: Array.from(circuits.entries()).map(([value, label]) => ({ value, label })),
+  };
 }
 
 export function jsonError(message: string, status: number) {

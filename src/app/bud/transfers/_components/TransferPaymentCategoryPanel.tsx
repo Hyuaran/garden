@@ -408,7 +408,7 @@ export function TransferPaymentCategoryPanel({
             </select>
           </label>
           <input
-            type="search"
+            type="text"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

@@ -1691,7 +1691,7 @@ function ExpenseListTab({
           </select>
           <input
             ref={listSearchInputRef}
-            type="search"
+            type="text"
             value={listSearchValue}
             onChange={(event) => setListSearchValue(event.target.value)}
             placeholder="一覧を検索"

@@ -284,7 +284,7 @@ export default function RillShachoShell({ children, user }: Props) {
       <header className={styles.topbar}>
         <div className={styles.searchBox}>
           <SearchIcon />
-          <input ref={searchInputRef} type="search" placeholder="検索（取引先、請求書、タスク、ヘルプなど）" aria-label="検索" />
+          <input ref={searchInputRef} type="text" placeholder="検索（取引先、請求書、タスク、ヘルプなど）" aria-label="検索" />
           <span>Ctrl+Shift+G</span>
         </div>
         <div className={styles.topbarInfo}>

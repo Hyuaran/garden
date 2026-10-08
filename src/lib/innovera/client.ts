@@ -168,20 +168,35 @@ export type SearchInnoveraCallsParams = {
   to: string;
   uniqid?: string;
   number?: string;
+  page?: number;
 };
 
-export function searchInnoveraCalls(params: SearchInnoveraCallsParams) {
+const CALL_SEARCH_LIMIT = 50000;
+const CALL_SEARCH_MAX_PAGES = 5;
+
+async function searchInnoveraCallsPage(params: SearchInnoveraCallsParams, page: number) {
   const requestParams: Record<string, ParamValue> = {
     start_time_start: params.from,
     start_time_end: params.to,
-    page: 1,
-    limit: 50000,
+    page,
+    limit: CALL_SEARCH_LIMIT,
   };
   if (params.uniqid) requestParams.uniqid = params.uniqid;
   if (params.number) requestParams.cdr_number = params.number;
   return cached(cacheKey("cdr", "search", requestParams), CALL_CACHE_MS, () =>
     callInnovera<InnoveraCallRaw[]>("cdr", "search", requestParams),
   );
+}
+
+export async function searchInnoveraCalls(params: SearchInnoveraCallsParams) {
+  const firstPage = params.page ?? 1;
+  const all: InnoveraCallRaw[] = [];
+  for (let page = firstPage; page < firstPage + CALL_SEARCH_MAX_PAGES; page += 1) {
+    const rows = await searchInnoveraCallsPage(params, page);
+    all.push(...rows);
+    if (rows.length < CALL_SEARCH_LIMIT) break;
+  }
+  return all;
 }
 
 export async function getInnoveraRecordingUrl(cdrId: string) {

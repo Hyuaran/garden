@@ -592,7 +592,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                   </select>
                   <input
                     ref={listSearchInputRef}
-                    type="search"
+                    type="text"
                     value={listSearchValue}
                     onChange={(event) => setListSearchValue(event.target.value)}
                     placeholder="完了待ちを検索"

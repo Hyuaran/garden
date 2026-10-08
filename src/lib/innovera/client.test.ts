@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { callInnovera, listInnoveraUsers, setInnoveraDefaultCircuit } from "./client";
+import { callInnovera, listInnoveraUsers, searchInnoveraCalls, setInnoveraDefaultCircuit } from "./client";
 
 describe("innovera client", () => {
   beforeEach(() => {
@@ -48,5 +48,16 @@ describe("innovera client", () => {
     vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ result: false, error_code: 999, data: null })));
     await expect(callInnovera("cdr", "search")).rejects.toThrow("innovera_unreachable:999");
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it("continues call search while full pages are returned", async () => {
+    const fullPage = Array.from({ length: 50000 }, (_, index) => ({ id: `cdr-${index}` }));
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: true, data: fullPage })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: true, data: [{ id: "cdr-last" }] })));
+    const data = await searchInnoveraCalls({ from: "2026-10-08 00:00:00", to: "2026-10-08 23:59:59" });
+    expect(data).toHaveLength(50001);
+    expect(String(vi.mocked(fetch).mock.calls[0][1]?.body)).toContain("page=1");
+    expect(String(vi.mocked(fetch).mock.calls[1][1]?.body)).toContain("page=2");
   });
 });

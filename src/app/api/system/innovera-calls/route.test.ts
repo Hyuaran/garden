@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
+import { searchInnoveraCalls } from "@/lib/innovera/client";
 
 vi.mock("@/lib/innovera/calls.server", () => ({
   requireCallAccess: vi.fn(async () => ({
@@ -46,5 +47,30 @@ describe("innovera calls route", () => {
   it("rejects dates older than one year", async () => {
     const response = await GET(new Request("http://localhost/api/system/innovera-calls?date=2000-01-01"));
     expect(response.status).toBe(400);
+  });
+
+  it("searches by from/to range and returns it", async () => {
+    const response = await GET(new Request("http://localhost/api/system/innovera-calls?from=2026-10-08T09:30&to=2026-10-09T18:15"));
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.range).toEqual({ from: "2026-10-08T09:30", to: "2026-10-09T18:15" });
+    expect(vi.mocked(searchInnoveraCalls).mock.calls.at(-1)?.[0]).toMatchObject({
+      from: "2026-10-08 09:30:00",
+      to: "2026-10-09 18:15:59",
+    });
+  });
+
+  it("defaults a missing range end to the same day", async () => {
+    const response = await GET(new Request("http://localhost/api/system/innovera-calls?from=2026-10-07T09:30"));
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.range).toEqual({ from: "2026-10-07T09:30", to: "2026-10-07T23:59" });
+  });
+
+  it("rejects invalid ranges", async () => {
+    const reversed = await GET(new Request("http://localhost/api/system/innovera-calls?from=2026-10-09T00:00&to=2026-10-08T23:59"));
+    expect(reversed.status).toBe(400);
+    const tooLong = await GET(new Request("http://localhost/api/system/innovera-calls?from=2026-10-01T00:00&to=2026-11-02T00:00"));
+    expect(tooLong.status).toBe(400);
   });
 });
