@@ -337,13 +337,13 @@ export default function InnoveraCallsClient({
       <section className={styles.linePanel}>
         <div>
           <h2>自分の発信番号</h2>
-          <p>{lineLoading ? "確認中..." : currentLine ? `${currentLine.name} ${currentLine.freeNumber || currentLine.number}` : "未設定"}</p>
+          <p>{lineLoading ? "確認中..." : currentLine ? currentLine.name : "未設定"}</p>
           {ownExtensionText && <p>{ownExtensionText}</p>}
         </div>
         <select value={selectedCircuit} onChange={(event) => setSelectedCircuit(event.target.value)} disabled={lineLoading || !circuits.length}>
           <option value="">選択してください</option>
           {circuits.map((item) => (
-            <option key={item.id} value={item.id}>{item.name} {item.freeNumber || item.number}</option>
+            <option key={item.id} value={item.id}>{item.name}</option>
           ))}
         </select>
         <button type="button" onClick={openLineDialog} disabled={!selectedCircuit || selectedCircuit === currentLine?.id}>変更する</button>
@@ -439,7 +439,17 @@ export default function InnoveraCallsClient({
             <div className={styles.modalBody}>
               {lineDialog.step === "confirm" && (
                 <>
-                  <p>{currentLine?.name ?? "現在の発信番号"} から<br /><strong>{lineDialog.next?.name ?? "選択した回線"}</strong> に変更します。よろしいですか。</p>
+                  <dl className={styles.lineChange}>
+                    <div className={styles.lineChangeRow}>
+                      <dt>現状</dt>
+                      <dd>{currentLine?.name ?? "未設定"}</dd>
+                    </div>
+                    <div className={`${styles.lineChangeRow} ${styles.lineChangeNext}`}>
+                      <dt>変更後</dt>
+                      <dd>{lineDialog.next?.name ?? "選択した回線"}</dd>
+                    </div>
+                  </dl>
+                  <p className={styles.lineChangeAsk}>変更しますが、本当によろしいですか？</p>
                   <div className={styles.modalActions}>
                     <button type="button" className={styles.modalSecondary} onClick={() => setLineDialog(null)}>キャンセル</button>
                     <button type="button" onClick={() => void changeLine()}>変更する</button>

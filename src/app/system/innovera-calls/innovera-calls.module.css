@@ -94,7 +94,7 @@
   padding: 4px 0 14px;
 }
 
-.filters label {
+.filters .filterRow > label {
   display: grid;
   gap: 4px;
   color: var(--sub);
@@ -184,8 +184,9 @@
   background: var(--soft);
 }
 
-.filters input,
-.filters select,
+/* 絞り込みの label・入力欄の見た目は直下だけに当てる（担当の選択窓の中のチェックボックスや検索欄には当てない） */
+.filters .filterRow > label > input,
+.filters .filterRow > label > select,
 .linePanel select {
   min-height: 38px;
   border: 1px solid var(--line);
@@ -394,7 +395,7 @@
     grid-template-columns: 1fr;
   }
 
-  .filters label {
+  .filters .filterRow > label {
     flex: 1 1 140px;
   }
 
@@ -586,6 +587,62 @@
 /* 発信番号の変更：確認→くるくる→変更しました（Loading スタイル＝くるくるが見える・二重押し不可・失敗時は閉じられる） */
 .modalSmall {
   max-width: 440px;
+}
+
+.lineChange {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lineChangeRow {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--soft);
+}
+
+.lineChangeRow + .lineChangeRow {
+  border-top: 1px solid var(--line);
+}
+
+.lineChangeRow dt {
+  margin: 0;
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lineChangeRow dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.lineChangeNext {
+  background: var(--card);
+  box-shadow: inset 3px 0 0 var(--teal);
+}
+
+.lineChangeNext dt {
+  color: var(--teal);
+}
+
+.lineChangeNext dd {
+  color: var(--heading);
+  font-size: 15px;
+}
+
+.lineChangeAsk {
+  margin: 14px 0 0 !important;
+  font-size: 13.5px !important;
+  font-weight: 700;
 }
 
 .modalActions {

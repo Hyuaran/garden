@@ -129,7 +129,9 @@ describe("InnoveraCallsClient", () => {
     fireEvent.change(lineSelect, { target: { value: "c-2" } });
     fireEvent.click(screen.getByRole("button", { name: "変更する" }));
     const dialog = await screen.findByRole("dialog", { name: "発信番号の変更" });
-    expect(dialog).toHaveTextContent("【代表ヒュアラン】06-4400-5414 に変更します");
+    expect(within(dialog).getByText("現状").nextElementSibling).toHaveTextContent("【ARATAキャリア】0120-402-347");
+    expect(within(dialog).getByText("変更後").nextElementSibling).toHaveTextContent("【代表ヒュアラン】06-4400-5414");
+    expect(dialog).toHaveTextContent("変更しますが、本当によろしいですか？");
     expect(within(dialog).getByRole("button", { name: "キャンセル" })).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "変更する" }));
