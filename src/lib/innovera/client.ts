@@ -96,7 +96,29 @@ function stripPassword<T>(value: T): T {
   return next as T;
 }
 
+const RETRY_DELAY_MS = process.env.VITEST ? 0 : 2_000;
+
+function isTransientInnoveraError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.startsWith("innovera_unreachable:fetch") || /^innovera_unreachable:http 5\d\d$/.test(message);
+}
+
+// Vercel → INNOVERA の接続が一時的に途切れることがあるので、接続エラー・5xx は 2 秒おいて 1 回だけやり直す
 export async function callInnovera<T>(
+  ckey: string,
+  akey: string,
+  params: Record<string, ParamValue | ParamValue[]> = {},
+): Promise<T> {
+  try {
+    return await callInnoveraOnce<T>(ckey, akey, params);
+  } catch (error) {
+    if (!isTransientInnoveraError(error)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    return await callInnoveraOnce<T>(ckey, akey, params);
+  }
+}
+
+async function callInnoveraOnce<T>(
   ckey: string,
   akey: string,
   params: Record<string, ParamValue | ParamValue[]> = {},

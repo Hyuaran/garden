@@ -30,7 +30,23 @@ describe("innovera client", () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ result: false, error_code: 999, data: null })));
     await expect(callInnovera("cdr", "search")).rejects.toThrow("innovera_unreachable:999");
 
-    vi.mocked(fetch).mockRejectedValueOnce(new DOMException("The operation was aborted.", "TimeoutError"));
+    vi.mocked(fetch).mockRejectedValue(new DOMException("The operation was aborted.", "TimeoutError"));
     await expect(callInnovera("cdr", "search")).rejects.toThrow("innovera_unreachable:fetch TimeoutError");
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3);
+  });
+
+  it("retries once after a transient connection error and succeeds", async () => {
+    vi.mocked(fetch)
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: true, data: [{ id: "c1" }] })));
+    const data = await callInnovera<Array<{ id: string }>>("circuit", "search");
+    expect(data).toEqual([{ id: "c1" }]);
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry when INNOVERA answers result false", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ result: false, error_code: 999, data: null })));
+    await expect(callInnovera("cdr", "search")).rejects.toThrow("innovera_unreachable:999");
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
   });
 });
