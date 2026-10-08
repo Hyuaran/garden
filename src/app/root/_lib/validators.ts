@@ -14,6 +14,7 @@ import type {
   Insurance,
   Attendance,
 } from "../_constants/types";
+import type { CallRecordingOverride } from "@/lib/innovera/call-access";
 
 export type FieldErrors = Partial<Record<string, string>>;
 
@@ -26,6 +27,14 @@ const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RE_PHONE = /^[0-9+\-()\s]+$/;
 const RE_YEAR_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const RE_FISCAL_YEAR = /^\d{4}$/;
+const RE_INNOVERA_EXTENSION = /^\d{2,6}$/;
+const CALL_RECORDING_OVERRIDE_VALUES = new Set<CallRecordingOverride>([
+  "default",
+  "all",
+  "all_history_own_audio",
+  "own",
+  "none",
+]);
 
 export function isDigits(v: string, n: number): boolean {
   return new RegExp(`^\\d{${n}}$`).test(v);
@@ -207,6 +216,18 @@ export function validateEmployee(em: Employee): FieldErrors {
   else if (em.account_holder_kana.trim() && !isKatakana(em.account_holder_kana))
     e.account_holder_kana = "全角カタカナのみ";
   if (!em.insurance_type) e.insurance_type = "必須";
+  if (
+    em.innovera_extension &&
+    !RE_INNOVERA_EXTENSION.test(em.innovera_extension)
+  ) {
+    e.innovera_extension = "INNOVERA 内線番号は 2〜6 桁の数字で入力してください";
+  }
+  if (
+    em.call_recording_access &&
+    !CALL_RECORDING_OVERRIDE_VALUES.has(em.call_recording_access)
+  ) {
+    e.call_recording_access = "INNOVERA録音の権限を選択してください";
+  }
 
   // Phase A-3-h: 給与関連（nullable、値が入っていれば検証）
   if (em.kou_otsu !== undefined && em.kou_otsu !== null) {

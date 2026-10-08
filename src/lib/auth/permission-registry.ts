@@ -16,6 +16,12 @@ import { SYSTEM_FORMS } from "@/app/system/forms/_lib/forms-registry";
 import { SYSTEM_DELIVERIES } from "@/app/system/deliveries/_lib/deliveries-registry";
 import { MANAGER_VIEW_ROLES, STAFF_VIEW_ROLES } from "@/lib/auth/view-roles";
 import { MANAGER_ROLES } from "@/app/system/_lib/attendance";
+import {
+  canPlayAllRecordings,
+  canSeeAllCalls,
+  canUseCallScreen,
+  defaultCallRecordingAccess,
+} from "@/lib/innovera/call-access";
 
 // 各入口（page.tsx／layout.tsx／route.ts）は Next の制約で定数を export できないため、
 // 入口と同じ集合を src/lib/auth/view-roles.ts から参照する
@@ -153,6 +159,30 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     kind: "画面",
     allows: (role) => MANAGER_ROLES.has(role),
     source: "src/app/system/onboarding/_lib/onboarding-admin.server.ts:onboardingAdminContext（MANAGER_ROLES）",
+  },
+  {
+    key: "calls.view_all",
+    label: "INNOVERA履歴・録音：全員の履歴を見る",
+    group: "System",
+    kind: "操作",
+    allows: (role) => canSeeAllCalls(defaultCallRecordingAccess(role)),
+    source: "src/lib/innovera/call-access.ts",
+  },
+  {
+    key: "calls.play_all",
+    label: "INNOVERA履歴・録音：全員の録音を聞く",
+    group: "System",
+    kind: "操作",
+    allows: (role) => canPlayAllRecordings(defaultCallRecordingAccess(role)),
+    source: "src/lib/innovera/call-access.ts",
+  },
+  {
+    key: "calls.own",
+    label: "INNOVERA履歴・録音：自分の履歴と録音",
+    group: "System",
+    kind: "操作",
+    allows: (role) => canUseCallScreen(defaultCallRecordingAccess(role)),
+    source: "src/lib/innovera/call-access.ts",
   },
   {
     key: "root-permissions-view",

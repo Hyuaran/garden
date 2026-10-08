@@ -66,7 +66,9 @@ const employee = {
   account_holder: "毛利テスト",
   account_holder_kana: "モウリテスト",
   kot_employee_id: null,
+  innovera_extension: null,
   mf_employee_id: null,
+  call_recording_access: "default" as const,
   insurance_type: "加入",
   is_active: true,
   notes: null,
@@ -275,6 +277,28 @@ describe("Garden権限の編集UI", () => {
     await waitFor(() => expect(mocks.upsertEmployee).toHaveBeenCalledTimes(1));
     expect(mocks.upsertEmployee).toHaveBeenCalledWith(
       expect.objectContaining({ employee_id: "EMP-1404", garden_role: "closer" }),
+    );
+  });
+
+  it("INNOVERA内線番号と通話録音権限を既存の保存経路へ含める", async () => {
+    renderPage();
+    await openEmployee();
+
+    fireEvent.change(screen.getByLabelText("INNOVERA 内線番号"), {
+      target: { value: "2040" },
+    });
+    fireEvent.change(screen.getByLabelText("INNOVERA録音の権限"), {
+      target: { value: "all_history_own_audio" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => expect(mocks.upsertEmployee).toHaveBeenCalledTimes(1));
+    expect(mocks.upsertEmployee).toHaveBeenCalledWith(
+      expect.objectContaining({
+        employee_id: "EMP-1404",
+        innovera_extension: "2040",
+        call_recording_access: "all_history_own_audio",
+      }),
     );
   });
 

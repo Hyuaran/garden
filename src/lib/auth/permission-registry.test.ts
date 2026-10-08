@@ -13,6 +13,12 @@ function allows(label: string, role: GardenRole) {
   return entry.allows(role);
 }
 
+function allowsKey(key: string, role: GardenRole) {
+  const entry = PERMISSION_ENTRIES.find((item) => item.key === key);
+  if (!entry) throw new Error(`missing permission entry: ${key}`);
+  return entry.allows(role);
+}
+
 describe("PERMISSION_ENTRIES", () => {
   it("代表的な役職ごとの利用可否を既存定義から判定する", () => {
     expect(allows("マニュアル", "toss")).toBe(false);
@@ -63,6 +69,25 @@ describe("PERMISSION_ENTRIES", () => {
     for (const item of SYSTEM_MENU_ITEMS) {
       const label = item.upcoming ? `${item.label}（準備中・画面はまだ無い）` : item.label;
       expect(labels.has(label)).toBe(true);
+    }
+  });
+
+  it("INNOVERA履歴・録音の既定権限を権限一覧に含める", () => {
+    expect(allowsKey("calls.view_all", "staff")).toBe(true);
+    expect(allowsKey("calls.view_all", "cs")).toBe(false);
+    expect(allowsKey("calls.play_all", "manager")).toBe(true);
+    expect(allowsKey("calls.play_all", "staff")).toBe(false);
+    expect(allowsKey("calls.own", "cs")).toBe(true);
+    expect(allowsKey("calls.own", "closer")).toBe(false);
+
+    const callEntries = PERMISSION_ENTRIES.filter((entry) =>
+      entry.key.startsWith("calls."),
+    );
+    expect(callEntries).toHaveLength(3);
+    for (const entry of callEntries) {
+      expect(entry.group).toBe("System");
+      expect(entry.kind).toBe("操作");
+      expect(entry.source).toBe("src/lib/innovera/call-access.ts");
     }
   });
 

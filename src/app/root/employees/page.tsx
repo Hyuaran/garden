@@ -30,6 +30,10 @@ import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 import { GardenRoleField } from "./GardenRoleField";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
+import {
+  CALL_RECORDING_OVERRIDE_LABELS,
+  type CallRecordingOverride,
+} from "@/lib/innovera/call-access";
 
 /**
  * 雇用形態選択肢。DB 値（value）と UI ラベル（label）を分離。
@@ -43,6 +47,13 @@ const EMP_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 const ACCOUNT_TYPES = ["普通", "当座"];
 const INS_TYPES = ["加入", "未加入", "一部加入"];
+const CALL_RECORDING_OVERRIDE_OPTIONS: CallRecordingOverride[] = [
+  "default",
+  "all",
+  "all_history_own_audio",
+  "own",
+  "none",
+];
 const GARDEN_ROLE_CHANGE_ERROR = "Garden権限を変更できませんでした。全権管理者のアカウントで操作してください。";
 const GARDEN_ROLE_CHANGE_RETRY_ERROR = "Garden権限を変更できませんでした。時間をおいて、もう一度お試しください。";
 
@@ -256,7 +267,9 @@ const empty = (nextId: string, companyId: string, salarySystemId: string): Emplo
   account_holder: "",
   account_holder_kana: "",
   kot_employee_id: null,
+  innovera_extension: null,
   mf_employee_id: null,
+  call_recording_access: "default",
   insurance_type: "加入",
   is_active: true,
   notes: null,
@@ -911,8 +924,35 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>外部ID連携</h3>
             <FormGrid>
               <TextField label="キングオブタイムID" value={editTarget.kot_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, kot_employee_id: e.target.value || null })} />
+              <TextField
+                label="INNOVERA 内線番号"
+                maxLength={6}
+                inputMode="numeric"
+                value={editTarget.innovera_extension ?? ""}
+                onChange={(e) => setEditTarget({ ...editTarget, innovera_extension: e.target.value || null })}
+                error={errors.innovera_extension}
+              />
               <TextField label="MFクラウド給与ID" value={editTarget.mf_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, mf_employee_id: e.target.value || null })} />
             </FormGrid>
+            <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>INNOVERA履歴・録音</h3>
+            <FormGrid>
+              <SelectField
+                label="INNOVERA録音の権限"
+                value={editTarget.call_recording_access ?? "default"}
+                onChange={(e) => setEditTarget({
+                  ...editTarget,
+                  call_recording_access: e.target.value as CallRecordingOverride,
+                })}
+                error={errors.call_recording_access}
+              >
+                {CALL_RECORDING_OVERRIDE_OPTIONS.map((value) => (
+                  <option key={value} value={value}>{CALL_RECORDING_OVERRIDE_LABELS[value]}</option>
+                ))}
+              </SelectField>
+            </FormGrid>
+            <div style={{ color: colors.textMuted, fontSize: 12, lineHeight: 1.6, marginTop: -8, marginBottom: 12 }}>
+              既定では、マネージャー以上は全員の通話と録音、社員・業務委託は全員の履歴と自分の録音、CSは自分の通話と録音、クローザー・トスは使わせない設定です。ここで変更すると役職より優先されます。
+            </div>
             {canManageChatworkToken && editTarget.created_at && (
               <section style={{ marginTop: 16, padding: 12, border: `1px solid ${colors.border}`, borderRadius: 6, background: colors.bgPanel }}>
                 <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: colors.textMuted }}>Chatwork 連携</h3>

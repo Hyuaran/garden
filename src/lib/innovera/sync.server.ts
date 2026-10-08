@@ -100,7 +100,17 @@ function detailFor(action: InnoveraDiffAction, result: InnoveraSyncDetail["resul
   };
 }
 
-async function fetchInnoveraCircuits(config: { host: string; apiKey: string }): Promise<InnoveraCircuit[]> {
+// 接続エラーの中身（接続拒否・名前解決失敗・タイムアウト等）を短い文字にする
+function describeFetchError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const cause = (error as Error & { cause?: unknown }).cause;
+  const causeText = cause && typeof cause === "object"
+    ? [(cause as { code?: unknown }).code, (cause as { message?: unknown }).message].filter(Boolean).map(String).join(" ")
+    : "";
+  return `${error.name}: ${error.message}${causeText ? ` (${causeText})` : ""}`;
+}
+
+async function fetchInnoveraCircuitsOnce(config: { host: string; apiKey: string }): Promise<InnoveraCircuit[]> {
   let response: Response;
   try {
     response = await fetch(`https://${config.host}/pbx/api/front/index/?ckey=circuit&akey=search`, {
@@ -111,14 +121,28 @@ async function fetchInnoveraCircuits(config: { host: string; apiKey: string }): 
       signal: AbortSignal.timeout(25_000),
     });
   } catch (error) {
-    const cause = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-    throw new Error(`innovera_unreachable:fetch ${cause}`.slice(0, 200));
+    throw new Error(`innovera_unreachable:fetch ${describeFetchError(error)}`.slice(0, 240));
   }
   if (!response.ok) throw new Error(`innovera_unreachable:http ${response.status}`);
   const body = await response.json() as { result?: unknown; error_code?: unknown; data?: unknown };
   if (body.result !== true) throw new Error(`innovera_unreachable:${String(body.error_code ?? "")}`);
   if (!Array.isArray(body.data)) throw new Error("innovera_unreachable");
   return body.data as InnoveraCircuit[];
+}
+
+const RETRY_DELAY_MS = 3_000;
+
+// 一時的な途切れ（接続エラー・5xx）は 3 秒おいて 1 回だけやり直してから「失敗」と判定する
+async function fetchInnoveraCircuits(config: { host: string; apiKey: string }, delayMs = RETRY_DELAY_MS): Promise<InnoveraCircuit[]> {
+  try {
+    return await fetchInnoveraCircuitsOnce(config);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const transient = message.startsWith("innovera_unreachable:fetch") || /^innovera_unreachable:http 5\d\d$/.test(message);
+    if (!transient) throw error;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return await fetchInnoveraCircuitsOnce(config);
+  }
 }
 
 async function writeAction(config: { appId: string; token: string }, action: InnoveraDiffAction) {

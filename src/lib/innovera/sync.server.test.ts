@@ -217,12 +217,43 @@ describe("runInnoveraSync", () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
 
-  it("records the failure detail (HTTP status) in the error", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("down", { status: 503 })));
+  it("records the failure detail (HTTP status) in the error after one retry", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetchMock = vi.fn(async () => new Response("down", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
     const result = await runInnoveraSync({ apply: true, trigger: "cron", now: fixedNow });
+    vi.useRealTimers();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result).toMatchObject({ ok: false, error: "innovera_unreachable:http 503" });
     expect(mocks.inserts).toHaveLength(1);
     expect((mocks.inserts[0] as { error: string }).error).toBe("innovera_unreachable:http 503");
+  });
+
+  it("succeeds when the retry after a transient connection error works", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { fetchMock } = mockFetch([circuit()], [record()]);
+    const original = fetchMock.getMockImplementation()!;
+    let calls = 0;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("ckey=circuit") && calls++ === 0) {
+        throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNRESET", message: "socket hang up" } });
+      }
+      return original(input, init);
+    });
+    const result = await runInnoveraSync({ apply: true, trigger: "cron", now: fixedNow });
+    vi.useRealTimers();
+    expect(result.ok).toBe(true);
+    expect(result.innoveraCount).toBe(1);
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("records the connection error cause when both attempts fail", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.stubGlobal("fetch", vi.fn(async () => { throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ENOTFOUND", message: "getaddrinfo ENOTFOUND" } }); }));
+    const result = await runInnoveraSync({ apply: true, trigger: "cron", now: fixedNow });
+    vi.useRealTimers();
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("innovera_unreachable:fetch TypeError: fetch failed (ENOTFOUND getaddrinfo ENOTFOUND)");
   });
 
   it("notifies the first failure but not the same failure repeated within 12 hours", async () => {

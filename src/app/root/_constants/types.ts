@@ -1,3 +1,5 @@
+import type { CallRecordingOverride } from "@/lib/innovera/call-access";
+
 /**
  * Garden Root — マスタデータの型定義
  *
@@ -140,7 +142,9 @@ export interface Employee {
   account_holder: string;
   account_holder_kana: string;
   kot_employee_id: string | null;
+  innovera_extension?: string | null;
   mf_employee_id: string | null;
+  call_recording_access?: CallRecordingOverride | null;
   commute_daily_allowance?: number | null;
   roster_record_id?: string | null;
   garden_role_manual?: boolean;

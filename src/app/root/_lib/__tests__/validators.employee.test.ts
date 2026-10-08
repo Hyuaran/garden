@@ -39,7 +39,9 @@ function baseEmployee(overrides: Partial<Employee> = {}): Employee {
     account_holder: "ヤマダ タロウ",
     account_holder_kana: "ヤマダ タロウ",
     kot_employee_id: null,
+    innovera_extension: null,
     mf_employee_id: null,
+    call_recording_access: "default",
     insurance_type: "加入",
     is_active: true,
     notes: null,
@@ -48,6 +50,35 @@ function baseEmployee(overrides: Partial<Employee> = {}): Employee {
     ...overrides,
   };
 }
+
+describe("validateEmployee - INNOVERA and call recording", () => {
+  it.each([
+    [null, undefined],
+    ["", undefined],
+    ["2040", undefined],
+    ["abc", "INNOVERA 内線番号は 2〜6 桁の数字で入力してください"],
+  ])("validates innovera_extension %s", (innovera_extension, expected) => {
+    const errs = validateEmployee(baseEmployee({ innovera_extension }));
+    expect(errs.innovera_extension).toBe(expected);
+  });
+
+  it.each(["default", "all", "all_history_own_audio", "own", "none"] as const)(
+    "accepts call_recording_access %s",
+    (call_recording_access) => {
+      const errs = validateEmployee(baseEmployee({ call_recording_access }));
+      expect(errs.call_recording_access).toBeUndefined();
+    },
+  );
+
+  it("rejects invalid call_recording_access values", () => {
+    const errs = validateEmployee(
+      baseEmployee({
+        call_recording_access: "manager" as never,
+      }),
+    );
+    expect(errs.call_recording_access).toBe("INNOVERA録音の権限を選択してください");
+  });
+});
 
 describe("validateEmployee — employment_type", () => {
   it("accepts 正社員 / アルバイト / 役員", () => {
