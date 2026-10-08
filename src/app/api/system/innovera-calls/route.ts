@@ -25,9 +25,11 @@ export async function GET(request: Request) {
     try {
       return callAccessErrorResponse(error);
     } catch {
+      const message = error instanceof Error ? error.message : "";
+      const isInputError = message.includes("日付") || message.includes("1年");
       return NextResponse.json(
-        { ok: false, error: error instanceof Error ? error.message : "INNOVERA に接続できませんでした。少し待ってからもう一度押してください。" },
-        { status: error instanceof Error && (error.message.includes("日付") || error.message.includes("1年")) ? 400 : 500 },
+        { ok: false, error: isInputError ? message : "INNOVERA に接続できませんでした。少し待ってからもう一度押してください。", detail: isInputError ? undefined : message },
+        { status: isInputError ? 400 : 500 },
       );
     }
   }
