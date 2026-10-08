@@ -10,7 +10,7 @@ import {
 
 describe("manuals registry", () => {
   it("defines the initial manual modules and documents", () => {
-    expect(SYSTEM_MANUALS).toHaveLength(17);
+    expect(SYSTEM_MANUALS).toHaveLength(18);
     expect(findManual("system", "kot-attendance")).toMatchObject({
       moduleSlug: "system",
       slug: "kot-attendance",
@@ -40,7 +40,7 @@ describe("manuals registry", () => {
   it("hides manuals and modules with no readable document", () => {
     expect(getVisibleManuals("cs")).toEqual([]);
     expect(getManualModules("staff").map((module) => [module.slug, module.count])).toEqual([
-      ["system", 16],
+      ["system", 17],
       ["bud", 1],
     ]);
   });
