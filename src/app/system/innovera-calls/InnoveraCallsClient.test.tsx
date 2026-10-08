@@ -115,7 +115,7 @@ describe("InnoveraCallsClient", () => {
     fireEvent.click(screen.getByLabelText(/東海林/));
     fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
     const before = fetchMock.mock.calls.length;
-    fireEvent.click(screen.getByRole("button", { name: "表示" }));
+    fireEvent.click(screen.getByRole("button", { name: "検索" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(before + 1));
     const callUrls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/system/innovera-calls?"));
@@ -128,7 +128,7 @@ describe("InnoveraCallsClient", () => {
     await screen.findByText(/通話 2 件/);
     fireEvent.change(screen.getByLabelText("番号"), { target: { value: "090-4097" } });
     const before = fetchMock.mock.calls.length;
-    fireEvent.click(screen.getByRole("button", { name: "表示" }));
+    fireEvent.click(screen.getByRole("button", { name: "検索" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(before + 1));
     const callUrls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/system/innovera-calls?"));
     const query = new URLSearchParams(callUrls.at(-1)?.split("?")[1]);
@@ -205,7 +205,7 @@ describe("InnoveraCallsClient", () => {
 
     fireEvent.change(screen.getByLabelText("開始"), { target: { value: "2026-10-09" } });
     fireEvent.change(screen.getByLabelText("終了"), { target: { value: "2026-10-08" } });
-    fireEvent.click(screen.getByRole("button", { name: "表示" }));
+    fireEvent.click(screen.getByRole("button", { name: "検索" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("開始は終了より前にしてください");
     expect(fetchMock).toHaveBeenCalledTimes(before);

@@ -129,7 +129,11 @@
   font-size: 13px;
 }
 
-.linePanel > button {
+/* section を付けて .linePanel button（padding 0 14px）より強くする。padding が残ると 76px に収まらず文字が右に寄る */
+section.linePanel > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 76px; /* 下の「自分だけ」と同じ幅 */
   padding: 0;
   white-space: nowrap;
@@ -140,7 +144,13 @@
   flex-wrap: wrap;
   gap: 10px;
   align-items: end;
-  padding: 4px 0 14px;
+  /* 発信番号の枠と同じ枠に入れて、検索ボタンの右端＝変更するボタンの右端にそろえる（東海林さん 2026-10-08） */
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--shadowSoft);
 }
 
 .filters .filterRow > label {
@@ -705,6 +715,9 @@
 }
 
 .filters .ownOnly {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 76px; /* 「自分だけ」「全員」で幅を変えない */
   min-height: 38px;
   padding: 0;

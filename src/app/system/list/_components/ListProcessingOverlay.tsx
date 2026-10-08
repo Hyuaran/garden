@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 
 type Props =
-  | { open: boolean; mode: "search" }
+  | { open: boolean; mode: "search"; title?: string } // title＝画面ごとの文言（INNOVERA履歴・録音など）
   | { open: boolean; mode: "export"; count: number; format: string };
 
 /**
@@ -14,7 +14,7 @@ type Props =
 export function ListProcessingOverlay(props: Props) {
   if (!props.open) return null;
   const title = props.mode === "search"
-    ? "条件に合う番号を検索しています…"
+    ? (props.title ?? "条件に合う番号を検索しています…")
     : `${props.count.toLocaleString("ja-JP")}件を${props.format}で書き出しています…`;
   return createPortal(
     <div style={backdrop} role="status" aria-live="assertive" aria-label={title}>

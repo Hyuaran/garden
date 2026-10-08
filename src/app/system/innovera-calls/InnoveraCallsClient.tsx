@@ -5,6 +5,7 @@ import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { CallRecordingAccess } from "@/lib/innovera/call-access";
 import MultiSelectFilter from "@/app/system/list/_components/MultiSelectFilter";
+import { ListProcessingOverlay } from "@/app/system/list/_components/ListProcessingOverlay";
 import styles from "./innovera-calls.module.css";
 
 type ApiCall = {
@@ -167,6 +168,7 @@ export default function InnoveraCallsClient({
   const [lineLoading, setLineLoading] = useState(true);
   const [lineError, setLineError] = useState<string | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
+  const [searchBusy, setSearchBusy] = useState(false); // 利用者が「検索」「取り直す」を押している間＝全画面のくるくる（Loading スタイル）
   // 件数の行の書き方：wide＝番号で 1 年ぶん／blank＝期間が空欄（＝今日）
   const [shownMode, setShownMode] = useState<{ wide: boolean; blank: boolean; number: string }>({ wide: false, blank: true, number: "" });
   const [currentLine, setCurrentLine] = useState<LineCircuit | null>(null);
@@ -206,7 +208,7 @@ export default function InnoveraCallsClient({
     }
   }
 
-  async function loadCalls() {
+  async function loadCalls(userTriggered = false) {
     setPage(1);
     // 番号が入っていて期間が空欄＝1 年ぶんを INNOVERA 側で番号で絞って探す（期間は送らない）
     const wide = Boolean(number.trim()) && !fromDate && !toDate;
@@ -217,6 +219,7 @@ export default function InnoveraCallsClient({
       return;
     }
     setLoading(true);
+    setSearchBusy(userTriggered);
     setError(null);
     closePlayer();
     const params = new URLSearchParams();
@@ -244,6 +247,7 @@ export default function InnoveraCallsClient({
       setCalls([]);
     } finally {
       setLoading(false);
+      setSearchBusy(false); // 成功・失敗とも必ず閉じる
     }
   }
 
@@ -382,7 +386,7 @@ export default function InnoveraCallsClient({
           <button
             type="button"
             className={`${styles.syncIconButton} ${loading ? styles.syncIconBusy : ""}`}
-            onClick={() => void loadCalls()}
+            onClick={() => void loadCalls(true)}
             disabled={loading}
             aria-label="INNOVERA から取り直す"
             title={loading ? "取得しています…" : "INNOVERA から取り直す（いまの絞り込み条件で最新の通話履歴を取得します）"}
@@ -411,7 +415,7 @@ export default function InnoveraCallsClient({
         {lineError && <span className={styles.error}>{lineError}</span>}
       </section>
 
-      <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void loadCalls(); }}>
+      <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void loadCalls(true); }}>
         <div className={styles.filterRow}>
         <label>開始<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
         <label className={styles.timeField}>時刻<input type="time" value={fromTime} onChange={(event) => setFromTime(event.target.value)} /></label>
@@ -466,7 +470,7 @@ export default function InnoveraCallsClient({
           />
         </div>
         <label className={styles.numberField}>番号<input value={number} onChange={(event) => setNumber(event.target.value)} /></label>
-        <button type="submit" className={styles.submit} disabled={loading}>{loading ? "表示中..." : "表示"}</button>
+        <button type="submit" className={styles.submit} disabled={loading}>{loading ? "検索中..." : "検索"}</button>
         </div>
       </form>
 
@@ -510,6 +514,8 @@ export default function InnoveraCallsClient({
           <button type="button" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={currentPage >= pageCount}>次の 100 件</button>
         </div>
       )}
+
+      <ListProcessingOverlay open={searchBusy} mode="search" title="INNOVERA の通話履歴を検索しています…" />
 
       {lineDialog && (
         <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && lineDialog.step !== "working") setLineDialog(null); }}>
