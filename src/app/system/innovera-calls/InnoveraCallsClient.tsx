@@ -72,7 +72,7 @@ export default function InnoveraCallsClient({
   role: GardenRole;
 }) {
   const [date, setDate] = useState(todayJst());
-  const [mine, setMine] = useState(access === "own");
+  const [mine, setMine] = useState(true); // 「自分だけ」は既定 ON（東海林さん指定）。own の人は常に自分だけ
   const [extension, setExtension] = useState("");
   const [circuit, setCircuit] = useState("");
   const [type, setType] = useState("");
