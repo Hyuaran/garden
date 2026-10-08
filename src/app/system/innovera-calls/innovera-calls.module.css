@@ -554,3 +554,8 @@
 .filters .employeePicker > button {
   padding: 0 12px;
 }
+
+/* 表の見出し行は中央ぞろえ（Garden 共通の決まり・2026-10-08） */
+.tableWrap th {
+  text-align: center;
+}

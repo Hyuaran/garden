@@ -108,9 +108,9 @@ function formatRange(fromDate: string, fromTime: string, toDate: string, toTime:
   return `${fromDate} ${fromTime} ～ ${toDate} ${toTime}`;
 }
 
-function callDisplayTime(call: ApiCall, showDate: boolean) {
-  if (!showDate) return call.displayTime;
-  return call.startTime ? `${call.startTime.slice(5, 10).replace("-", "/")} ${call.startTime.slice(11, 16)}` : call.displayTime;
+// 日時は「2026-10-08 13:54:57」の形（日付と秒まで・東海林さん指定）
+function callDisplayTime(call: ApiCall, _showDate: boolean) {
+  return call.startTime || call.displayTime;
 }
 
 export default function InnoveraCallsClient({
@@ -404,7 +404,7 @@ export default function InnoveraCallsClient({
       <div className={styles.tableWrap}>
         <table>
           <thead>
-            <tr><th>時刻</th><th>発着</th><th>相手の番号</th><th>回線</th><th>担当</th><th>通話時間</th><th>結果</th><th>録音</th></tr>
+            <tr><th>日時</th><th>発着</th><th>相手の番号</th><th>回線</th><th>担当</th><th>通話時間</th><th>結果</th><th>録音</th></tr>
           </thead>
           <tbody>
             {pagedCalls.length ? pagedCalls.map((call) => (
