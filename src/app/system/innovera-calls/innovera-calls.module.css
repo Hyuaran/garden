@@ -477,3 +477,80 @@
 .mappingNote[open] summary {
   margin-bottom: 6px;
 }
+
+/* 絞り込みは 2 行：1 行目＝期間・今日/昨日/今週・担当、2 行目＝回線・発着・結果・番号・表示 */
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  width: 100%;
+}
+
+.filters .circuitField {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.filters .submit {
+  margin-left: auto;
+}
+
+/* 担当の選択は入力欄と同じ見た目（押しボタンの色にしない） */
+.filters .employeePicker > button,
+.filters .presetButtons button {
+  border-color: var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.filters .employeePicker > button[aria-expanded="true"] {
+  border-color: var(--teal);
+}
+
+.filters .employeeMenuActions button {
+  border-color: var(--line);
+  background: var(--soft);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .filters .submit {
+    margin-left: 0;
+    flex: 1 1 100%;
+  }
+
+  .filters .circuitField {
+    max-width: none;
+  }
+}
+
+/* 2 行に収めるための幅（1 行目 約 830px・2 行目 約 820px） */
+.filters input[type="date"] {
+  width: 150px;
+}
+
+.filters input[type="time"],
+.filters .timeField input {
+  width: 92px;
+}
+
+.filters .numberField input {
+  width: 150px;
+}
+
+.filters .circuitField select {
+  width: 100%;
+  min-width: 0;
+}
+
+.filters .presetButtons button {
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.filters .employeePicker > button {
+  padding: 0 12px;
+}

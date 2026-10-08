@@ -84,6 +84,13 @@ function minuteValue(date: string, time: string) {
   return `${date}T${time}`;
 }
 
+// 空欄の補い方：日付が両方空なら今日、片方だけなら同じ日。時刻が空なら開始 00:00・終了 23:59
+export function resolveRange(fromDate: string, fromTime: string, toDate: string, toTime: string, today: string) {
+  const start = fromDate || toDate || today;
+  const end = toDate || fromDate || today;
+  return { fromDate: start, fromTime: fromTime || "00:00", toDate: end, toTime: toTime || "23:59" };
+}
+
 function validateRange(fromDate: string, fromTime: string, toDate: string, toTime: string) {
   if (!fromDate || !fromTime || !toDate || !toTime) return "日時の形式が正しくありません";
   const from = new Date(`${minuteValue(fromDate, fromTime)}:00+09:00`);
@@ -118,10 +125,10 @@ export default function InnoveraCallsClient({
   role: GardenRole;
 }) {
   const today = todayJst();
-  const [fromDate, setFromDate] = useState(today);
-  const [fromTime, setFromTime] = useState("00:00");
-  const [toDate, setToDate] = useState(today);
-  const [toTime, setToTime] = useState("23:59");
+  const [fromDate, setFromDate] = useState("");
+  const [fromTime, setFromTime] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [toTime, setToTime] = useState("");
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>(access === "own" ? [] : ownExtensions);
   const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
   const [circuit, setCircuit] = useState("");
@@ -135,6 +142,7 @@ export default function InnoveraCallsClient({
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState<ApiCall | null>(null);
   const [page, setPage] = useState(1);
+  const [shownRange, setShownRange] = useState(() => resolveRange("", "", "", "", todayJst()));
   const PAGE_SIZE = 100;
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const [lineLoading, setLineLoading] = useState(true);
@@ -178,7 +186,8 @@ export default function InnoveraCallsClient({
 
   async function loadCalls() {
     setPage(1);
-    const validation = validateRange(fromDate, fromTime, toDate, toTime);
+    const range = resolveRange(fromDate, fromTime, toDate, toTime, todayJst());
+    const validation = validateRange(range.fromDate, range.fromTime, range.toDate, range.toTime);
     if (validation) {
       setError(validation);
       return;
@@ -187,9 +196,10 @@ export default function InnoveraCallsClient({
     setError(null);
     closePlayer();
     const params = new URLSearchParams({
-      from: minuteValue(fromDate, fromTime),
-      to: minuteValue(toDate, toTime),
+      from: minuteValue(range.fromDate, range.fromTime),
+      to: minuteValue(range.toDate, range.toTime),
     });
+    setShownRange(range);
     for (const item of selectedExtensions) params.append("extension", item);
     if (circuit) params.set("circuit", circuit);
     if (type) params.set("type", type);
@@ -293,8 +303,8 @@ export default function InnoveraCallsClient({
       ? `担当：自分（${selectedExtensions.join("・")}）`
       : `担当：${selectedExtensions.length} 人`;
   const ownExtensionText = ownExtensionLabel(ownExtension, ownExtensions, lineEmployee);
-  const rangeText = formatRange(fromDate, fromTime, toDate, toTime);
-  const showDateInTime = fromDate !== toDate;
+  const rangeText = formatRange(shownRange.fromDate, shownRange.fromTime, shownRange.toDate, shownRange.toTime);
+  const showDateInTime = shownRange.fromDate !== shownRange.toDate;
 
   function toggleExtensions(extensions: string[]) {
     setSelectedExtensions((current) => {
@@ -334,6 +344,7 @@ export default function InnoveraCallsClient({
       </section>
 
       <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void loadCalls(); }}>
+        <div className={styles.filterRow}>
         <label>開始<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
         <label className={styles.timeField}>時刻<input type="time" value={fromTime} onChange={(event) => setFromTime(event.target.value)} /></label>
         <span className={styles.rangeSeparator}>～</span>
@@ -369,11 +380,14 @@ export default function InnoveraCallsClient({
             )}
           </div>
         )}
-        <label>回線<select value={circuit} onChange={(event) => setCircuit(event.target.value)}><option value="">すべて</option>{filterOptions.circuits.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+        </div>
+        <div className={styles.filterRow}>
+        <label className={styles.circuitField}>回線<select value={circuit} onChange={(event) => setCircuit(event.target.value)}><option value="">すべて</option>{filterOptions.circuits.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
         <label>発着<select value={type} onChange={(event) => setType(event.target.value)}><option value="">すべて</option><option value="2">発信</option><option value="1">着信</option></select></label>
         <label>結果<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">すべて</option><option value="1">通話成功</option><option value="2">通話中に切断</option><option value="3">不在</option></select></label>
-        <label>番号<input value={number} onChange={(event) => setNumber(event.target.value)} /></label>
-        <button type="submit" disabled={loading}>{loading ? "表示中..." : "表示"}</button>
+        <label className={styles.numberField}>番号<input value={number} onChange={(event) => setNumber(event.target.value)} /></label>
+        <button type="submit" className={styles.submit} disabled={loading}>{loading ? "表示中..." : "表示"}</button>
+        </div>
       </form>
 
       {error && <p className={styles.error} role="alert">{error}</p>}
