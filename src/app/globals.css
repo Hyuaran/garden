@@ -3444,3 +3444,9 @@ body.home-concept-active {
     right: 18px;
   }
 }
+
+/* 表の見出し行（先頭行）だけ中央ぞろえ。System・Root 共通（2026-10-08 東海林さん指示）。本文の行は各画面のまま */
+.garden-table-head-center thead th,
+.garden-table-head-center table > tbody:first-child > tr:first-child > th {
+  text-align: center !important;
+}

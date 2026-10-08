@@ -447,7 +447,7 @@ export default function InnoveraCallsClient({
                 controlsList="nodownload"
                 src={`/api/system/innovera-calls/recording/${encodeURIComponent(playing.id)}?uniqid=${encodeURIComponent(playing.uniqid)}&date=${encodeURIComponent((playing.startTime ?? fromDate).slice(0, 10))}`}
               />
-              <p className={styles.modalNote}>ダウンロードや削除はできません。聞いた記録は残ります。</p>
+              <p className={styles.modalNote}>ダウンロードや削除はできません。</p>
             </div>
           </div>
         </div>

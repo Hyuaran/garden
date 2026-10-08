@@ -29,7 +29,10 @@ describe("system shared layout", () => {
       children: ReactElement;
     }>;
     expect(shell.props.user).toEqual({ name: "責任者A", company: "株式会社A", role: "manager" });
-    expect(shell.props.children).toBe(child);
+    // 本文は「表の見出し行を中央ぞろえにする包み」の中に入る（見た目には影響しない display: contents）
+    const wrapper = shell.props.children as ReactElement<{ className: string; children: ReactElement }>;
+    expect(wrapper.props.className).toBe("garden-table-head-center");
+    expect(wrapper.props.children).toBe(child);
   });
 
   it("preserves sidebarless roles for the shell", async () => {

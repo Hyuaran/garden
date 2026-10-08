@@ -36,7 +36,7 @@ export default async function SystemLayout({ children }: { children: ReactNode }
       company: String(company?.company_name ?? "所属会社未登録"),
       role,
     }}>
-      {children}
+      <div className="garden-table-head-center" style={{ display: "contents" }}>{children}</div>
     </ShachoShell>
   );
 }

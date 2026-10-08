@@ -11,7 +11,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <RootStateProvider>
       <RootGate>
-        <RootShell>{children}</RootShell>
+        <RootShell><div className="garden-table-head-center" style={{ display: "contents" }}>{children}</div></RootShell>
       </RootGate>
     </RootStateProvider>
   );
