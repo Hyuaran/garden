@@ -91,13 +91,10 @@ describe("InnoveraCallsClient", () => {
     render(<InnoveraCallsClient access="all" ownExtension="2040" ownExtensions={["2040", "1003"]} role="cs" />);
 
     await screen.findByText(/通話 2 件/);
-    // 開いたときは欄にも今日の日付と 00:00〜23:59 が入っている（空欄で今日だけ出る矛盾をなくす）
-    const fromDateInput = screen.getByLabelText("開始") as HTMLInputElement;
-    const toDateInput = screen.getByLabelText("終了") as HTMLInputElement;
-    expect(fromDateInput.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(toDateInput.value).toBe(fromDateInput.value);
-    expect((screen.getAllByLabelText("時刻")[0] as HTMLInputElement).value).toBe("00:00");
-    expect((screen.getAllByLabelText("時刻")[1] as HTMLInputElement).value).toBe("23:59");
+    // 開いたときの期間の欄は空欄（番号検索を期間に縛られず使うため）。件数の行に「期間が空欄のときは今日」と出る
+    expect((screen.getByLabelText("開始") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("終了") as HTMLInputElement).value).toBe("");
+    expect(screen.getByText(/期間が空欄のときは今日/)).toBeInTheDocument();
     const callUrl = String(fetchMock.mock.calls.find(([url]) => String(url).startsWith("/api/system/innovera-calls?"))?.[0]);
     expect(callUrl).toContain("from=");
     expect(callUrl).toContain("to=");
@@ -123,6 +120,23 @@ describe("InnoveraCallsClient", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(before + 1));
     const callUrls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/system/innovera-calls?"));
     expect(new URLSearchParams(callUrls.at(-1)?.split("?")[1]).getAll("extension")).toEqual(["2040", "1003"]);
+  });
+
+  it("searches a year by number when the period is blank", async () => {
+    const fetchMock = mockFetch();
+    render(<InnoveraCallsClient access="all" ownExtension="2040" ownExtensions={["2040"]} role="cs" />);
+    await screen.findByText(/通話 2 件/);
+    fireEvent.change(screen.getByLabelText("番号"), { target: { value: "090-4097" } });
+    const before = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "表示" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(before + 1));
+    const callUrls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/system/innovera-calls?"));
+    const query = new URLSearchParams(callUrls.at(-1)?.split("?")[1]);
+    // 期間は送らず番号だけ（API 側で 1 年ぶん・INNOVERA の番号絞り込み）
+    expect(query.get("from")).toBeNull();
+    expect(query.get("to")).toBeNull();
+    expect(query.get("number")).toBe("090-4097");
+    expect(await screen.findByText(/番号「090-4097」で 1 年ぶん/)).toBeInTheDocument();
   });
 
   it("toggles between own-only and everyone with one click", async () => {

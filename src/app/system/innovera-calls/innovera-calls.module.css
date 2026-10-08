@@ -708,6 +708,7 @@
   width: 76px; /* 「自分だけ」「全員」で幅を変えない */
   min-height: 38px;
   padding: 0;
+  text-align: center;
   border-color: var(--line);
   background: var(--card);
   color: var(--ink);

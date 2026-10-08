@@ -41,26 +41,51 @@ function parseLocalMinute(value: string | null, fallback: string) {
   return { value: raw, date };
 }
 
+/** 番号検索（INNOVERA 側で絞る）の番号＝数字だけ。空なら null */
+export function numberQuery(searchParams: URLSearchParams) {
+  const digits = searchParams.get("number")?.replace(/\D/g, "") ?? "";
+  return digits || null;
+}
+
 export function validateRange(searchParams: URLSearchParams) {
   const legacyDate = searchParams.get("date");
   const today = tokyoToday();
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
+  const oldest = new Date(`${today}T00:00:00+09:00`);
+  oldest.setFullYear(oldest.getFullYear() - 1);
+
+  // 番号が入っていて期間が空欄＝1 年ぶんを対象（INNOVERA 側で番号を絞るので件数は少ない・東海林さん 2026-10-08）
+  const wide = Boolean(numberQuery(searchParams)) && !legacyDate && !fromParam && !toParam;
+  if (wide) {
+    const oldestValue = `${oldest.toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" })}T00:00`;
+    const latestValue = `${today}T23:59`;
+    return {
+      from: oldestValue,
+      to: latestValue,
+      wide: true,
+      innovera: {
+        from: `${oldestValue.replace("T", " ")}:00`,
+        to: `${latestValue.replace("T", " ")}:59`,
+      },
+    };
+  }
+
   const date = legacyDate ? validateDate(legacyDate) : fromParam?.slice(0, 10) || toParam?.slice(0, 10) || today;
   const from = parseLocalMinute(fromParam, `${date}T00:00`);
   const to = parseLocalMinute(toParam, `${date}T23:59`);
   if (from.date.getTime() > to.date.getTime()) throw new Error("開始は終了より前にしてください");
 
-  const oldest = new Date(`${today}T00:00:00+09:00`);
-  oldest.setFullYear(oldest.getFullYear() - 1);
   if (from.date.getTime() < oldest.getTime()) throw new Error("1年より前の履歴は表示できません");
 
+  // 番号で絞るときは INNOVERA 側で件数が減るので 31 日の上限を掛けない
   const maxRangeMs = 31 * 24 * 60 * 60 * 1000;
-  if (to.date.getTime() - from.date.getTime() > maxRangeMs) throw new Error("期間は 31 日以内にしてください");
+  if (!numberQuery(searchParams) && to.date.getTime() - from.date.getTime() > maxRangeMs) throw new Error("期間は 31 日以内にしてください");
 
   return {
     from: from.value,
     to: to.value,
+    wide: false,
     innovera: {
       from: `${from.value.replace("T", " ")}:00`,
       to: `${to.value.replace("T", " ")}:59`,
@@ -151,8 +176,10 @@ export async function loadAllowedCallsForRange(
   ctx: CallAccessContext,
   range: { from: string; to: string },
   uniqid?: string,
+  number?: string | null,
 ) {
-  const rawCalls = await searchInnoveraCalls({ ...range, uniqid });
+  // number があれば INNOVERA の cdr_number で向こうで絞る（Garden 側の部分一致はそのまま残す）
+  const rawCalls = await searchInnoveraCalls({ ...range, uniqid, number: number ?? undefined });
   const allowed = filterCallsForAccess(rawCalls, ctx.access, ctx.ownExtensions);
   const normalized = allowed.map((call) => normalizeCall(call));
   const names = await employeeNameByExtension(ctx.supabase, normalized);

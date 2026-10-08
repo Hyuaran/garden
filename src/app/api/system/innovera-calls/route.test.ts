@@ -53,7 +53,7 @@ describe("innovera calls route", () => {
     const response = await GET(new Request("http://localhost/api/system/innovera-calls?from=2026-10-08T09:30&to=2026-10-09T18:15"));
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body.range).toEqual({ from: "2026-10-08T09:30", to: "2026-10-09T18:15" });
+    expect(body.range).toEqual({ from: "2026-10-08T09:30", to: "2026-10-09T18:15", wide: false });
     expect(vi.mocked(searchInnoveraCalls).mock.calls.at(-1)?.[0]).toMatchObject({
       from: "2026-10-08 09:30:00",
       to: "2026-10-09 18:15:59",
@@ -64,7 +64,17 @@ describe("innovera calls route", () => {
     const response = await GET(new Request("http://localhost/api/system/innovera-calls?from=2026-10-07T09:30"));
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body.range).toEqual({ from: "2026-10-07T09:30", to: "2026-10-07T23:59" });
+    expect(body.range).toEqual({ from: "2026-10-07T09:30", to: "2026-10-07T23:59", wide: false });
+  });
+
+  it("searches a whole year by number when the period is blank", async () => {
+    const response = await GET(new Request("http://localhost/api/system/innovera-calls?number=090-1131"));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    // 期間が空欄＋番号あり＝1 年ぶん（wide）。INNOVERA には数字だけの番号を渡す
+    expect(body.range.wide).toBe(true);
+    expect(body.range.from.slice(0, 4)).toBe(String(Number(body.range.to.slice(0, 4)) - 1));
+    expect(vi.mocked(searchInnoveraCalls).mock.calls.at(-1)?.[0]).toMatchObject({ number: "0901131" });
   });
 
   it("rejects invalid ranges", async () => {

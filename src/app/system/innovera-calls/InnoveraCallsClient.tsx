@@ -167,6 +167,8 @@ export default function InnoveraCallsClient({
   const [lineLoading, setLineLoading] = useState(true);
   const [lineError, setLineError] = useState<string | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
+  // 件数の行の書き方：wide＝番号で 1 年ぶん／blank＝期間が空欄（＝今日）
+  const [shownMode, setShownMode] = useState<{ wide: boolean; blank: boolean; number: string }>({ wide: false, blank: true, number: "" });
   const [currentLine, setCurrentLine] = useState<LineCircuit | null>(null);
   const [lineEmployee, setLineEmployee] = useState<{ extension?: string | null; mobileExtension?: string | null } | null>(null);
   const [circuits, setCircuits] = useState<LineCircuit[]>([]);
@@ -206,8 +208,10 @@ export default function InnoveraCallsClient({
 
   async function loadCalls() {
     setPage(1);
+    // 番号が入っていて期間が空欄＝1 年ぶんを INNOVERA 側で番号で絞って探す（期間は送らない）
+    const wide = Boolean(number.trim()) && !fromDate && !toDate;
     const range = resolveRange(fromDate, fromTime, toDate, toTime, todayJst());
-    const validation = validateRange(range.fromDate, range.fromTime, range.toDate, range.toTime);
+    const validation = wide ? null : validateRange(range.fromDate, range.fromTime, range.toDate, range.toTime);
     if (validation) {
       setError(validation);
       return;
@@ -215,11 +219,13 @@ export default function InnoveraCallsClient({
     setLoading(true);
     setError(null);
     closePlayer();
-    const params = new URLSearchParams({
-      from: minuteValue(range.fromDate, range.fromTime),
-      to: minuteValue(range.toDate, range.toTime),
-    });
+    const params = new URLSearchParams();
+    if (!wide) {
+      params.set("from", minuteValue(range.fromDate, range.fromTime));
+      params.set("to", minuteValue(range.toDate, range.toTime));
+    }
     setShownRange(range);
+    setShownMode({ wide, blank: !fromDate && !toDate, number: number.trim() });
     for (const item of selectedExtensions) params.append("extension", item);
     for (const item of selectedCallCircuits) params.append("circuit", item);
     if (type) params.set("type", type);
@@ -292,8 +298,7 @@ export default function InnoveraCallsClient({
   }, [canSeeMapping]);
 
   useEffect(() => {
-    // 開いたときは欄にも「今日 00:00〜23:59」を入れる（空欄のまま今日だけ出るのは矛盾＝東海林さん 2026-10-08）
-    applyPreset("today");
+    // 期間の欄は空欄のまま開く（番号検索を期間に縛られず使うため・東海林さん 2026-10-08）。空欄＝今日は件数の行に明記する
     void loadCalls();
     void loadLine();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -363,7 +368,9 @@ export default function InnoveraCallsClient({
     return selectedExtensions.length > 0 && selectedExtensions.every((extension) => own.has(extension));
   }, [ownExtensions, selectedExtensions]);
   const ownExtensionText = ownExtensionLabel(ownExtension, ownExtensions, lineEmployee);
-  const rangeText = formatRange(shownRange.fromDate, shownRange.fromTime, shownRange.toDate, shownRange.toTime);
+  const rangeText = shownMode.wide
+    ? `番号「${shownMode.number}」で 1 年ぶん（${shiftDate(todayJst(), -365)} ～ ${todayJst()}）`
+    : `${formatRange(shownRange.fromDate, shownRange.fromTime, shownRange.toDate, shownRange.toTime)}${shownMode.blank ? "（期間が空欄のときは今日）" : ""}`;
 
   return (
     <div className={styles.page}>

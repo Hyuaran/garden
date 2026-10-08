@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callAccessErrorResponse, requireCallAccess } from "@/lib/innovera/calls.server";
-import { applyUiFilters, counts, filterOptions, loadAllowedCallsForRange, validateRange } from "./_lib";
+import { applyUiFilters, counts, filterOptions, loadAllowedCallsForRange, numberQuery, validateRange } from "./_lib";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,11 +10,11 @@ export async function GET(request: Request) {
     const ctx = await requireCallAccess();
     const searchParams = new URL(request.url).searchParams;
     const range = validateRange(searchParams);
-    const calls = await loadAllowedCallsForRange(ctx, range.innovera);
+    const calls = await loadAllowedCallsForRange(ctx, range.innovera, undefined, numberQuery(searchParams));
     const filtered = applyUiFilters(calls, searchParams, ctx.ownExtensions);
     return NextResponse.json({
       ok: true,
-      range: { from: range.from, to: range.to },
+      range: { from: range.from, to: range.to, wide: range.wide },
       access: ctx.access,
       ownExtension: ctx.ownExtension,
       ownExtensions: ctx.ownExtensions,
