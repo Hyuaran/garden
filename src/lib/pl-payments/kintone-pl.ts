@@ -88,14 +88,15 @@ export function mapPlRecord(record: KintoneRecord, config = getPlKintoneConfig()
 }
 
 export async function fetchWaitingPlRecords(config = getPlKintoneConfig()): Promise<PlPaymentRecord[]> {
-  const conditions = [
-    'カテゴリー in ("支払待ち") and ドロップダウン_1 in ("支払待ち")',
-    'カテゴリー in ("入金待ち") and ドロップダウン_1 in ("入金待ち")',
-  ];
-  const pages = await Promise.all(
-    conditions.map((condition) => getAllRecords(config.appId, config.token, condition, PL_FIELDS)),
-  );
-  return pages.flat().map((record) => mapPlRecord(record, config));
+  // カテゴリー（CATEGORY 型）は Kintone の絞り込み条件に使えない（GAIA_IQ13・本番で実測 2026-10-09）→ ステータスで取ってから Garden 側でカテゴリーを見る
+  const records = await getAllRecords(config.appId, config.token, 'ドロップダウン_1 in ("支払待ち", "入金待ち")', PL_FIELDS);
+  return records
+    .map((record) => mapPlRecord(record, config))
+    .filter(
+      (record) =>
+        (record.status === "支払待ち" && record.category.includes("支払待ち")) ||
+        (record.status === "入金待ち" && record.category.includes("入金待ち")),
+    );
 }
 
 export async function updatePlDriveUrl(recordId: string, driveUrl: string, config = getPlKintoneConfig()): Promise<void> {
