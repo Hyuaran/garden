@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { verifyBearerRequest } from "@/lib/cron-auth";
+import { allowAdminDryRun } from "@/lib/pl-payments/admin-dry-run";
 import { runPlPaymentsDaily } from "@/lib/pl-payments/run";
 
 export const runtime = "nodejs";
@@ -8,10 +9,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET(request: Request) {
-  const auth = verifyBearerRequest(request, "CRON_SECRET");
-  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.reason }, { status: auth.status });
-
   const dry = new URL(request.url).searchParams.get("dry") === "1";
+  const auth = verifyBearerRequest(request, "CRON_SECRET");
+  // cron の合言葉が無くても、管理者以上がログインしていればドライランだけは見られる（本番の確認用・2026-10-09）
+  if (!auth.ok && !(dry && (await allowAdminDryRun()))) {
+    return NextResponse.json({ ok: false, error: auth.reason }, { status: auth.status });
+  }
+
   const result = await runPlPaymentsDaily({ apply: !dry, trigger: "daily" });
   return NextResponse.json(result, { status: result.ok ? 200 : 500 });
 }
