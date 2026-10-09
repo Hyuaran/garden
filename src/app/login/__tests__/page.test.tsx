@@ -129,7 +129,7 @@ describe("GardenLoginPage submit flow", () => {
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/system/onboarding"));
   });
 
-  it("redirects closer users to /tree", async () => {
+  it("redirects closer users to /system/mypage", async () => {
     mocks.signInUnified.mockResolvedValue({ success: true, userId: "u2" });
     mocks.fetchBloomUser.mockResolvedValue({ garden_role: "closer" });
 
@@ -138,7 +138,7 @@ describe("GardenLoginPage submit flow", () => {
     fireEvent.change(screen.getByTestId("login-password"), { target: { value: "pw" } });
     fireEvent.click(screen.getByTestId("login-submit"));
 
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/tree"));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/system/mypage"));
     expect(fetch).not.toHaveBeenCalled();
   });
 

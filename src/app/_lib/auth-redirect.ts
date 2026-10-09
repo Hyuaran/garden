@@ -21,10 +21,10 @@ export function getPostLoginRedirect(role: string | null | undefined): string {
     case "cs": // 5/5 後確定、暫定 home
       return "/";
 
-    // 架電業務専用
+    // トス・クローザー → マイページ（2026-10-09 東海林さん指示。以前は架電アプリ /tree）
     case "closer":
     case "toss":
-      return "/tree";
+      return "/system/mypage";
 
     // 外注パートナー（partner_code lookup は post-5/5）
     case "outsource":

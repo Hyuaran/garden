@@ -12,7 +12,7 @@
  *   1. Supabase Auth セッション確認 → 未ログインなら /login へ
  *   2. root_employees から garden_role を取得
  *   3. isHomeForbidden(role) なら getPostLoginRedirect(role) へ強制 redirect
- *      （closer/toss → /tree、outsource → /leaf/kanden、直 URL 叩き保険）
+ *      （closer/toss → /system/mypage（2026-10-09 まで /tree）、outsource → /leaf/kanden、直 URL 叩き保険）
  *   4. visibleModules を算出して GardenHomeClient に prop で渡す
  *
  * 後続 (Task 3) で各モジュール ModuleGate もこの role 取得経路を再利用予定。

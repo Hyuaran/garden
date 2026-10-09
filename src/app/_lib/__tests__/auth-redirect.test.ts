@@ -3,7 +3,7 @@ import { getPostLoginRedirect } from "../auth-redirect";
 
 describe("getPostLoginRedirect", () => {
   const home = "/";
-  const tree = "/tree";
+  const tree = "/system/mypage"; // 2026-10-09 から トス・クローザーはマイページへ（以前は /tree）
   const leafKanden = "/leaf/kanden";
 
   it.each([
