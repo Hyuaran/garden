@@ -99,8 +99,9 @@ export function summarizeCallMetrics(data: CallMetricsResponse): CallMetricsSumm
     totalTosses,
     averageCalls: employeeCount ? totalCalls / employeeCount : 0,
     effectiveRate: totalCalls ? totalEffective / totalCalls : 0,
-    acquiredRate: totalCalls ? totalAcquired / totalCalls : 0,
-    preconfirmRate: totalCalls ? totalOrders / totalCalls : 0,
+    // 受注率＝受注数 ÷ 有効数／前確OK率＝前確OK数 ÷ 受注数（2026-10-09 東海林さん指示。以前は両方とも総コールで割っていた）
+    acquiredRate: totalEffective ? totalAcquired / totalEffective : 0,
+    preconfirmRate: totalAcquired ? totalOrders / totalAcquired : 0,
   };
 }
 

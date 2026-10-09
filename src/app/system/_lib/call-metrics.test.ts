@@ -69,6 +69,6 @@ describe("call metrics definitions", () => {
         { employee_name: "B", call_count: 517, effective_count: 310, toss_count: 8, order_count: 15, acquired_count: 10 },
       ],
     }, { from: "2026-08-12", to: "2026-08-12", listName: null, employeeName: null });
-    expect(summarizeCallMetrics(data)).toEqual({ employeeCount: 2, totalCalls: 1517, totalEffective: 910, totalOrders: 45, totalAcquired: 30, totalTosses: 20, averageCalls: 758.5, effectiveRate: 910 / 1517, acquiredRate: 30 / 1517, preconfirmRate: 45 / 1517 });
+    expect(summarizeCallMetrics(data)).toEqual({ employeeCount: 2, totalCalls: 1517, totalEffective: 910, totalOrders: 45, totalAcquired: 30, totalTosses: 20, averageCalls: 758.5, effectiveRate: 910 / 1517, acquiredRate: 30 / 910, preconfirmRate: 45 / 30 });
   });
 });

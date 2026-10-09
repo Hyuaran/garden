@@ -66,7 +66,7 @@ describe("call metrics PDF", () => {
     const employeePage = pages.findIndex((text) => text.includes("SECTION_EMPLOYEE"));
     const listPage = pages.findIndex((text) => text.includes("SECTION_LIST"));
     const definitionPage = pages.findIndex((text) => text.includes("SECTION_DEFINITION"));
-    expect(pages).toHaveLength(4);
+    expect(pages).toHaveLength(5); // 2026-10-09 集計の定義に受注率・前確OK率の 2 行を足して定義が 1 ページ増えた
     expect(employeePage).toBe(0);
     expect(listPage).toBe(employeePage + 1);
     expect(definitionPage).toBeGreaterThan(listPage + 1);

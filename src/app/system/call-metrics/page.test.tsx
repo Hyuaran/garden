@@ -35,7 +35,7 @@ describe("CallMetricsClient", () => {
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveClass(styles.summaryBand);
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("平均コール数: 10.0");
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("有効率: 70.0%");
-    expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("受注率: 10.0%（受注数 1件）／前確OK率: 20.0%（前確OK数 2件）");
+    expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("受注率: 14.3%（受注数 1件）／前確OK率: 200.0%（前確OK数 2件）"); // 受注率＝受注÷有効（1/7）・前確OK率＝前確OK÷受注（2/1）
     expect(screen.getByRole("columnheader", { name: "トス数" })).toBeInTheDocument();
     expect(screen.getByText("社員A").closest("table")?.parentElement).toHaveClass(styles.tableWrap);
     expect(screen.queryByRole("columnheader", { name: "シフト" })).not.toBeInTheDocument();
