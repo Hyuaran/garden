@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
-import { shouldHideSidebar } from "../../_components/ShachoShell/shacho-shell-config";
+import { needsDailyExtension } from "@/lib/innovera/daily-extension";
 import { buildMyPageProfile } from "../_lib/mypage-profile.server";
 import MyPageClient from "../MyPageClient";
 import { MY_PAGE_ROUTES, type MyPageProfile, type MyPageTab } from "../types";
@@ -15,19 +15,24 @@ export default async function MyPageSectionPage({ section }: { section: MyPageTa
   if (!auth.user) redirect(`/login?returnTo=${returnTo}`);
 
   const { data: employee } = await supabase.from("root_employees")
-    .select("employee_id,name,name_kana,employee_number,employment_type,birthday,email,garden_role,company_id,commute_daily_allowance,commute_monthly_cap")
+    .select("employee_id,name,name_kana,employee_number,employment_type,birthday,email,garden_role,company_id,commute_daily_allowance,commute_monthly_cap,innovera_extension,innovera_mobile_extension")
     .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
   const birthdayRegistered = typeof employee?.birthday === "string" && employee.birthday.length > 0;
   const role = employee && GARDEN_ROLE_ORDER.includes(employee.garden_role as GardenRole) ? employee.garden_role as GardenRole : "staff";
-  const tabbed = shouldHideSidebar(role);
-  const initialProfile: MyPageProfile | null = employee && !birthdayRegistered && (tabbed || section === "profile") ? await buildMyPageProfile(employee) : null;
+  const initialProfile: MyPageProfile | null = employee && !birthdayRegistered && section === "profile" ? await buildMyPageProfile(employee) : null;
   const postalDataStatus = (await supabase.from("system_postal_datasets").select("source_date,imported_at").eq("active", true).maybeSingle()).data;
   return <MyPageClient
     initialTab={section}
-    tabbed={tabbed}
     registered={Boolean(employee)}
     employeeName={employee?.name ? String(employee.name) : null}
     canViewSync={employee ? MANAGER_ROLES.has(String(employee.garden_role)) : false}
+    needsExtension={employee ? needsDailyExtension({
+      id: String(employee.employee_id ?? ""),
+      name: String(employee.name ?? ""),
+      gardenRole: role,
+      innoveraExtension: employee.innovera_extension ? String(employee.innovera_extension) : null,
+      innoveraMobileExtension: employee.innovera_mobile_extension ? String(employee.innovera_mobile_extension) : null,
+    }) : false}
     birthdayRegistered={birthdayRegistered}
     initialProfile={initialProfile}
     postalDataStatus={postalDataStatus ? {

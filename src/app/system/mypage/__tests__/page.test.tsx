@@ -58,18 +58,13 @@ describe("system mypage", () => {
     vi.restoreAllMocks();
     mocks.replace.mockReset();
   });
-  it("renders four tabs in the fixed order and only the gate before unlock", () => {
+  it("renders the mypage heading and only the gate before unlock", () => {
     renderMyPage();
     const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
     expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
     expect(within(breadcrumb).getByText("マイページ")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "マイページ" })).toBeInTheDocument();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
-      "マイページ",
-      "勤怠打刻",
-      "シフト",
-      "前確依頼",
-    ]);
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.getByLabelText("個人情報を開く")).toBeInTheDocument();
     const unlockCode = screen.getByLabelText("誕生日の月日4桁");
     expect(unlockCode).toHaveAttribute("placeholder", "誕生日を入力　例：12/1の場合1201");
@@ -84,12 +79,12 @@ describe("system mypage", () => {
     expect(document.body.textContent).not.toContain("1234");
     expect(document.body.textContent).not.toContain(profile.birthday);
   });
-  it("shows only the requested function in standalone mode", () => {
+  it("shows the mypage route without upper tabs", () => {
     renderMyPage({ ...baseProps, tabbed: false });
     const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
     expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
-    expect(within(breadcrumb).getByText("自分の情報")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "自分の情報" })).toBeInTheDocument();
+    expect(within(breadcrumb).getByText("マイページ")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "マイページ" })).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.getByLabelText("誕生日の月日4桁")).toBeInTheDocument();
   });
@@ -111,33 +106,32 @@ describe("system mypage", () => {
     expect(screen.queryByRole("button", { name: /ダークにする|ライトにする/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "ログアウト" })).not.toBeInTheDocument();
   });
-  it("opens tabs 2 to 4 without the four-digit check", () => {
-    renderMyPage();
-    fireEvent.click(screen.getByRole("tab", { name: "勤怠打刻" }));
+  it("shows the attendance route without the four-digit check", () => {
+    renderMyPage({ ...baseProps, initialTab: "attendance" });
     expect(screen.getByTestId("attendance-client")).toHaveTextContent(
       JSON.stringify({
         registered: true,
         employeeName: "社員A",
         canViewSync: false,
+        needsExtension: false,
         embedded: true,
       }),
     );
-    fireEvent.click(screen.getByRole("tab", { name: "シフト" }));
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+  it("shows shift and zenkaku routes without the four-digit check", () => {
+    const { unmount } = renderMyPage({ ...baseProps, initialTab: "shift" });
     expect(screen.getByText(/シフトの提出・確認/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "前確依頼" }));
+    unmount();
+    renderMyPage({ ...baseProps, initialTab: "zenkaku" });
     expect(
       screen.getByRole("button", { name: "連携チェック" }),
     ).toBeInTheDocument();
-    expect(mocks.replace.mock.calls.map(([path]) => path)).toEqual([
-      "/system/attendance", "/system/shift", "/system/zenkaku",
-    ]);
   });
   it("uses the attendance route as the initial tab", () => {
     renderMyPage({ ...baseProps, initialTab: "attendance", canViewSync: true });
-    expect(screen.getByRole("tab", { name: "勤怠打刻" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "勤怠打刻" })).toBeInTheDocument();
     expect(screen.getByTestId("attendance-client")).toHaveTextContent(
       '"canViewSync":true',
     );
@@ -164,8 +158,6 @@ describe("system mypage", () => {
     );
     expect(requestBody).toEqual({ code: "0813" });
     expect(screen.getByText("1980-08-13")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "シフト" }));
-    fireEvent.click(screen.getByRole("tab", { name: "マイページ" }));
     expect(screen.getByText("1980-08-13")).toBeInTheDocument();
     expect(
       vi

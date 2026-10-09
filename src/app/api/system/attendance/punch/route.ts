@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { CLIENT_PUNCH_ID_PATTERN, isPunchType } from "@/app/system/_lib/attendance";
+import {
+  attachPunchToDailyExtension,
+  endActiveDailyExtensionForClockOut,
+  needsDailyExtension,
+  reserveDailyExtensionForClockIn,
+  rollbackDailyExtensionReservation,
+  tokyoToday,
+  validateDailyExtension,
+} from "@/lib/innovera/daily-extension";
 import { resolveAttendanceEmployee } from "../_lib/auth";
 
 export const runtime = "nodejs";
@@ -18,6 +27,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "client_punch_idはUUID形式で指定してください" }, { status: 400 });
   }
   const admin = getSupabaseAdmin();
+  const workDate = tokyoToday();
+  let reservedDailyExtension: { id?: unknown } | null = null;
+  let createdDailyExtension = false;
+  if (input.punch_type === "clock_in" && needsDailyExtension(identity.employee)) {
+    const validation = validateDailyExtension(input.extension);
+    if (!validation.ok) return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status });
+    try {
+      const reservation = await reserveDailyExtensionForClockIn(admin, identity.employee.id, validation.extension, workDate);
+      if (!reservation.ok) return NextResponse.json({ ok: false, error: reservation.error }, { status: reservation.status });
+      reservedDailyExtension = reservation.row;
+      createdDailyExtension = reservation.created;
+    } catch (error) {
+      console.error("[system/attendance/punch] daily extension reservation failed", { message: error instanceof Error ? error.message : "unknown" });
+      return NextResponse.json({ ok: false, error: "内線番号を登録できませんでした" }, { status: 500 });
+    }
+  }
   const userAgent = request.headers.get("user-agent")?.slice(0, 500) || null;
   const payload = {
     employee_id: identity.employee.id, punch_type: input.punch_type,
@@ -25,7 +50,18 @@ export async function POST(request: Request) {
   };
   const { data, error } = await admin.from("system_attendance_punches")
     .insert(payload).select("id,employee_id,punch_type,punched_at,kot_sync_status").single();
-  if (!error && data) return NextResponse.json({ ok: true, idempotent: false, punch: data }, { status: 201 });
+  if (!error && data) {
+    if (input.punch_type === "clock_in" && reservedDailyExtension?.id) {
+      await attachPunchToDailyExtension(admin, reservedDailyExtension.id, data.id);
+    }
+    if (input.punch_type === "clock_out") {
+      await endActiveDailyExtensionForClockOut(admin, identity.employee.id, workDate);
+    }
+    return NextResponse.json({ ok: true, idempotent: false, punch: data }, { status: 201 });
+  }
+  if (createdDailyExtension && reservedDailyExtension?.id) {
+    await rollbackDailyExtensionReservation(admin, reservedDailyExtension.id);
+  }
   if (error?.code !== "23505") {
     console.error("[system/attendance/punch] insert failed", { code: error?.code ?? "unknown" });
     return NextResponse.json({ ok: false, error: "打刻を記録できませんでした" }, { status: 500 });

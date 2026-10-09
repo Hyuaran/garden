@@ -10,14 +10,28 @@ export async function GET(request: Request) {
     const ctx = await requireCallAccess();
     const searchParams = new URL(request.url).searchParams;
     const range = validateRange(searchParams);
+    if (ctx.usesDailyExtension && !ctx.ownWindows?.length) {
+      return NextResponse.json({
+        ok: true,
+        range: { from: range.from, to: range.to, wide: range.wide },
+        access: ctx.access,
+        ownExtension: ctx.ownExtension,
+        ownExtensions: ctx.ownExtensions,
+        ownWindows: ctx.ownWindows ?? [],
+        calls: [],
+        counts: counts([]),
+        filterOptions: filterOptions([]),
+      });
+    }
     const calls = await loadAllowedCallsForRange(ctx, range.innovera, undefined, numberQuery(searchParams));
-    const filtered = applyUiFilters(calls, searchParams, ctx.ownExtensions);
+    const filtered = applyUiFilters(calls, searchParams, ctx.ownExtensions, ctx.ownWindows);
     return NextResponse.json({
       ok: true,
       range: { from: range.from, to: range.to, wide: range.wide },
       access: ctx.access,
       ownExtension: ctx.ownExtension,
       ownExtensions: ctx.ownExtensions,
+      ownWindows: ctx.ownWindows ?? [],
       calls: filtered.map(({ raw: _raw, ...call }) => call),
       counts: counts(filtered),
       filterOptions: filterOptions(calls),

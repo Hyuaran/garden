@@ -48,6 +48,7 @@ type FilterOptions = {
   employees: Array<{ label: string; extensions: string[] }>;
   circuits: Array<{ value: string; label: string }>;
 };
+type DailyWindow = { extension: string; from: string; to: string; endedAt: string | null; endedReason: string | null };
 
 function todayJst() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -136,12 +137,16 @@ export default function InnoveraCallsClient({
   access,
   ownExtension,
   ownExtensions,
+  ownWindows = [],
+  usesDailyExtension = false,
   ownName = "",
   role,
 }: {
   access: CallRecordingAccess;
   ownExtension: string | null;
   ownExtensions: string[];
+  ownWindows?: DailyWindow[];
+  usesDailyExtension?: boolean;
   ownName?: string;
   role: GardenRole;
 }) {
@@ -176,6 +181,7 @@ export default function InnoveraCallsClient({
   const [circuits, setCircuits] = useState<LineCircuit[]>([]);
   const [selectedCircuit, setSelectedCircuit] = useState("");
   const [lineDialog, setLineDialog] = useState<{ step: "confirm" | "working" | "done" | "error"; next: LineCircuit | null; message?: string } | null>(null);
+  const [extensionChange, setExtensionChange] = useState<{ extension: string; adminNumber: string; adminPassword: string; error: string | null; saving: boolean } | null>(null);
 
   const showAllControls = access !== "own";
   const canSeeMapping = isRoleAtLeast(role, "admin");
@@ -211,8 +217,8 @@ export default function InnoveraCallsClient({
   async function loadCalls(userTriggered = false) {
     setPage(1);
     // 番号が入っていて期間が空欄＝1 年ぶんを INNOVERA 側で番号で絞って探す（期間は送らない）
-    const wide = Boolean(number.trim()) && !fromDate && !toDate;
-    const range = resolveRange(fromDate, fromTime, toDate, toTime, todayJst());
+    const wide = !usesDailyExtension && Boolean(number.trim()) && !fromDate && !toDate;
+    const range = usesDailyExtension ? resolveRange(todayJst(), "00:00", todayJst(), "23:59", todayJst()) : resolveRange(fromDate, fromTime, toDate, toTime, todayJst());
     const validation = wide ? null : validateRange(range.fromDate, range.fromTime, range.toDate, range.toTime);
     if (validation) {
       setError(validation);
@@ -248,6 +254,31 @@ export default function InnoveraCallsClient({
     } finally {
       setLoading(false);
       setSearchBusy(false); // 成功・失敗とも必ず閉じる
+    }
+  }
+
+  async function submitExtensionChange() {
+    if (!extensionChange) return;
+    setExtensionChange({ ...extensionChange, saving: true, error: null });
+    try {
+      const response = await fetch("/api/system/innovera-calls/daily-extension/change", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          extension: extensionChange.extension,
+          adminEmployeeNumber: extensionChange.adminNumber,
+          adminPassword: extensionChange.adminPassword,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "内線番号を変更できませんでした");
+      window.location.reload();
+    } catch (cause) {
+      setExtensionChange({
+        ...extensionChange,
+        saving: false,
+        error: cause instanceof Error ? cause.message : "内線番号を変更できませんでした",
+      });
     }
   }
 
@@ -371,16 +402,25 @@ export default function InnoveraCallsClient({
     const own = new Set(ownExtensions);
     return selectedExtensions.length > 0 && selectedExtensions.every((extension) => own.has(extension));
   }, [ownExtensions, selectedExtensions]);
-  const ownExtensionText = ownExtensionLabel(ownExtension, ownExtensions, lineEmployee);
-  const rangeText = shownMode.wide
+  // 日ごとの内線の人は「今日の内線」の枠で見せるので、PC／モバイルの内訳は出さない
+  const ownExtensionText = usesDailyExtension
+    ? (ownExtension ? `（今日の内線 ${ownExtension}）` : null)
+    : ownExtensionLabel(ownExtension, ownExtensions, lineEmployee);
+  const rangeText = usesDailyExtension
+    ? `${todayJst()} 00:00 ～ ${todayJst()} 23:59`
+    : shownMode.wide
     ? `番号「${shownMode.number}」で 1 年ぶん（${shiftDate(todayJst(), -365)} ～ ${todayJst()}）`
     : `${formatRange(shownRange.fromDate, shownRange.fromTime, shownRange.toDate, shownRange.toTime)}${shownMode.blank ? "（期間が空欄のときは今日）" : ""}`;
+  const pageTitle = usesDailyExtension ? "通話・録音" : "INNOVERA履歴・録音";
+  const activeWindow = ownWindows.find((window) => !window.endedAt) ?? ownWindows[ownWindows.length - 1] ?? null;
+  const startedAtText = activeWindow ? formatSyncStamp(new Date(activeWindow.from)).replace(/^\d{4}\/\d{2}\/\d{2}\(.+?\) /, "") : "";
+  const endedAtText = activeWindow?.endedAt ? formatSyncStamp(new Date(activeWindow.endedAt)).replace(/^\d{4}\/\d{2}\/\d{2}\(.+?\) /, "") : "";
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <SystemBreadcrumb items={[{ label: "INNOVERA履歴・録音" }]} />
-        <h1>INNOVERA履歴・録音</h1>
+        <SystemBreadcrumb items={[{ label: pageTitle }]} />
+        <h1>{pageTitle}</h1>
         <div className={styles.syncStatus}>
           <span>INNOVERA最終更新：{loading ? "取得中..." : lastLoadedAt ? formatSyncStamp(lastLoadedAt) : "未取得"}</span>
           <button
@@ -399,6 +439,22 @@ export default function InnoveraCallsClient({
         </div>
       </header>
 
+      {usesDailyExtension && (
+        <section className={styles.dailyExtensionPanel}>
+          <div>
+            <h2>今日の内線</h2>
+            {activeWindow ? (
+              <p>{activeWindow.endedAt
+                ? `${activeWindow.extension}　本日の内線登録は終了しました（退勤 ${endedAtText}）`
+                : `${activeWindow.extension}（${ownWindows.indexOf(activeWindow) === 0 ? "出勤" : "変更"} ${startedAtText} から）`}</p>
+            ) : (
+              <p>出勤の打刻で今日の内線番号を登録すると、自分の通話と録音が見られます</p>
+            )}
+          </div>
+          {activeWindow && !activeWindow.endedAt && <button type="button" onClick={() => setExtensionChange({ extension: "", adminNumber: "", adminPassword: "", error: null, saving: false })}>内線を変更（管理者）</button>}
+        </section>
+      )}
+
       <section className={styles.linePanel}>
         <div>
           <h2>自分の発信番号</h2>
@@ -416,7 +472,7 @@ export default function InnoveraCallsClient({
       </section>
 
       <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void loadCalls(true); }}>
-        <div className={styles.filterRow}>
+        {!usesDailyExtension && <div className={styles.filterRow}>
         <label>開始<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
         <label className={styles.timeField}>時刻<input type="time" value={fromTime} onChange={(event) => setFromTime(event.target.value)} /></label>
         <span className={styles.rangeSeparator}>～</span>
@@ -444,7 +500,7 @@ export default function InnoveraCallsClient({
             )}
           </div>
         )}
-        </div>
+        </div>}
         <div className={styles.filterRow}>
         <div className={styles.circuitField}>
           <MultiSelectFilter
@@ -569,6 +625,27 @@ export default function InnoveraCallsClient({
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {extensionChange && (
+        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !extensionChange.saving) setExtensionChange(null); }}>
+          <div className={`${styles.modal} ${styles.modalSmall}`} role="dialog" aria-modal="true" aria-labelledby="extension-change-title">
+            <div className={styles.modalHead}>
+              <h2 id="extension-change-title">内線の変更（管理者）</h2>
+              {!extensionChange.saving && <button type="button" onClick={() => setExtensionChange(null)} aria-label="閉じる">×</button>}
+            </div>
+            <div className={styles.modalBody}>
+              <label className={styles.modalField}>新しい内線番号<input value={extensionChange.extension} onChange={(event) => setExtensionChange({ ...extensionChange, extension: event.target.value.replace(/\D/g, "").slice(0, 5), error: null })} autoComplete="off" inputMode="numeric" /></label>
+              <label className={styles.modalField}>管理者の社員番号<input value={extensionChange.adminNumber} onChange={(event) => setExtensionChange({ ...extensionChange, adminNumber: event.target.value, error: null })} autoComplete="off" /></label>
+              <label className={styles.modalField}>管理者のパスワード<input type="password" value={extensionChange.adminPassword} onChange={(event) => setExtensionChange({ ...extensionChange, adminPassword: event.target.value, error: null })} autoComplete="off" /></label>
+              {extensionChange.error && <p className={styles.error} role="alert">{extensionChange.error}</p>}
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.modalSecondary} onClick={() => setExtensionChange(null)} disabled={extensionChange.saving}>やめる</button>
+                <button type="button" onClick={() => void submitExtensionChange()} disabled={extensionChange.saving}>{extensionChange.saving ? "変更中..." : "変更する"}</button>
+              </div>
             </div>
           </div>
         </div>

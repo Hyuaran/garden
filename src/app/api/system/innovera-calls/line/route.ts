@@ -22,14 +22,18 @@ async function targetEmployee(ctx: Awaited<ReturnType<typeof requireCallAccess>>
     return { error: NextResponse.json({ ok: false, error: "他の従業員の変更権限がありません" }, { status: 403 }) };
   }
   const targetId = employeeId || ctx.employeeId;
-  const { data, error } = await getSupabaseAdmin()
+  const { data: found, error } = await getSupabaseAdmin()
     .from("root_employees")
     .select("employee_id,name,innovera_extension,innovera_mobile_extension")
     .eq("employee_id", targetId)
     .maybeSingle();
-  if (error || !data) return { error: NextResponse.json({ ok: false, error: "従業員が見つかりません" }, { status: 404 }) };
+  if (error || !found) return { error: NextResponse.json({ ok: false, error: "従業員が見つかりません" }, { status: 404 }) };
+  // 日ごとの内線の人（本人）は、今日登録した内線を PC 版の内線として扱う
+  const data = targetId === ctx.employeeId && ctx.usesDailyExtension
+    ? { ...found, innovera_extension: ctx.ownExtension }
+    : found;
   if (!data.innovera_extension) {
-    return { error: NextResponse.json({ ok: false, error: "PC 版の内線番号が登録されていないため、発信番号は変更できません" }, { status: 400 }) };
+    return { error: NextResponse.json({ ok: false, error: ctx.usesDailyExtension && targetId === ctx.employeeId ? "出勤の打刻で今日の内線番号を登録すると、発信番号を変更できます" : "PC 版の内線番号が登録されていないため、発信番号は変更できません" }, { status: 400 }) };
   }
   return { employee: data };
 }

@@ -31,7 +31,7 @@ describe("PERMISSION_ENTRIES", () => {
     expect(allows("名簿と同期", "admin")).toBe(true);
   });
 
-  it("サイドバーが出ない役職（トス・クローザー・業務委託）はマイページのタブ 4 画面だけ使える", () => {
+  it("限定役職（トス・クローザー・業務委託）はマイページのサイドバー 5 画面だけ使える", () => {
     expect(allows("テレマ コール集計", "toss")).toBe(false);
     expect(allows("関電トスポータル", "closer")).toBe(false);
     expect(allows("資料", "outsource")).toBe(false);
@@ -40,6 +40,7 @@ describe("PERMISSION_ENTRIES", () => {
     expect(allows("勤怠打刻", "closer")).toBe(true);
     expect(allows("シフト", "outsource")).toBe(true);
     expect(allows("前確依頼", "toss")).toBe(true);
+    expect(allows("INNOVERA履歴・録音", "closer")).toBe(true);
     expect(allows("テレマ コール集計", "staff")).toBe(true);
     expect(allows("勤怠打刻", "cs")).toBe(true);
   });
@@ -78,7 +79,7 @@ describe("PERMISSION_ENTRIES", () => {
     expect(allowsKey("calls.play_all", "manager")).toBe(true);
     expect(allowsKey("calls.play_all", "staff")).toBe(false);
     expect(allowsKey("calls.own", "cs")).toBe(true);
-    expect(allowsKey("calls.own", "closer")).toBe(false);
+    expect(allowsKey("calls.own", "closer")).toBe(true);
 
     const callEntries = PERMISSION_ENTRIES.filter((entry) =>
       entry.key.startsWith("calls."),

@@ -288,12 +288,18 @@ describe("ShachoShell", () => {
   });
 
   it.each(["closer", "toss", "outsource"] as const)(
-    "hides both sidebars but keeps shared actions for %s",
+    "shows the limited sidebar and non-clickable rail for %s",
     (role) => {
       renderShell("/system/mypage", { ...manager, role });
-      expect(screen.queryByRole("complementary", { name: "Gardenシリーズ" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("navigation", { name: "Systemメニュー" })).not.toBeInTheDocument();
-      expect(screen.getByRole("main")).toHaveClass(styles.mainFull);
+      const rail = screen.getByRole("complementary", { name: "Gardenシリーズ" });
+      expect(rail).toBeInTheDocument();
+      expect(within(rail).queryByRole("link")).not.toBeInTheDocument();
+      expect(rail.querySelector(`.${styles.railTip}`)).toBeNull();
+      expect(screen.getByRole("navigation", { name: "Systemメニュー" })).toBeInTheDocument();
+      expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
+        "マイページ", "勤怠打刻", "シフト", "前確依頼", "通話・録音",
+      ]);
+      expect(screen.getByRole("main")).not.toHaveClass(styles.mainFull);
       expect(screen.getByText("責任者Aさん")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "ダークにする" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "ログアウト" })).toBeInTheDocument();

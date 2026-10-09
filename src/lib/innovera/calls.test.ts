@@ -60,6 +60,24 @@ describe("innovera calls", () => {
     expect(canPlayRecording({ ...baseCall, end_time: "" }, "all", [], new Date("2026-10-08T01:00:30Z"))).toBe(false);
   });
 
+  it("limits own calls and recordings to daily extension windows", () => {
+    const windows = [{
+      extension: "2040",
+      from: "2026-10-08T01:00:00.000Z",
+      to: "2026-10-08T03:00:00.000Z",
+      endedAt: null,
+      endedReason: null,
+    }];
+    const before = { ...baseCall, id: "cdr-before", start_time: "2026-10-08 09:59:59" };
+    const inside = { ...baseCall, id: "cdr-inside", start_time: "2026-10-08 10:21:00" };
+    const after = { ...baseCall, id: "cdr-after", start_time: "2026-10-08 12:01:00" };
+    const otherExtension = { ...baseCall, id: "cdr-other", caller_num: "2050", start_time: "2026-10-08 10:21:00" };
+
+    expect(filterCallsForAccess([before, inside, after, otherExtension], "own", ["2040"], windows).map((call) => call.id)).toEqual(["cdr-inside"]);
+    expect(canPlayRecording(inside, "own", ["2040"], new Date("2026-10-08T04:00:00Z"), windows)).toBe(true);
+    expect(canPlayRecording(after, "own", ["2040"], new Date("2026-10-08T04:00:00Z"), windows)).toBe(false);
+  });
+
   it("parses allowed circuit user id hashes", () => {
     expect(allowedCircuitsForUser([
       { id: "1", out_users_id: "#1#3#4#" },

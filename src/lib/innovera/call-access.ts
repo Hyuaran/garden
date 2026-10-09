@@ -36,7 +36,8 @@ export function defaultCallRecordingAccess(
   role: GardenRole,
 ): CallRecordingAccess {
   if (isRoleAtLeast(role, "manager")) return "all";
-  if (role === "staff" || role === "outsource") return "all_history_own_audio";
+  if (role === "staff") return "all_history_own_audio";
+  if (role === "toss" || role === "closer" || role === "outsource") return "own";
   if (role === "cs") return "own";
   return "none";
 }

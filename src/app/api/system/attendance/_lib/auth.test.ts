@@ -11,6 +11,6 @@ function client(options: { user?: boolean; employee?: object | null; error?: boo
 describe("resolveAttendanceEmployee",()=>{
   beforeEach(()=>mocks.createServerClient.mockReset());
   it("requires login",async()=>{mocks.createServerClient.mockResolvedValue(client({user:false}));expect(await resolveAttendanceEmployee()).toMatchObject({ok:false,status:401});});
-  it("requires an active non-deleted employee and returns its text employee ID",async()=>{const c=client();mocks.createServerClient.mockResolvedValue(c);expect(await resolveAttendanceEmployee()).toEqual({ok:true,employee:{id:"EMP-0001",name:"社員A",gardenRole:"staff"}});expect(c.calls).toContainEqual(["user_id","user-uuid"]);expect(c.calls).toContainEqual(["is_active",true]);expect(c.calls).toContainEqual(["deleted_at",null]);});
+  it("requires an active non-deleted employee and returns its text employee ID",async()=>{const c=client();mocks.createServerClient.mockResolvedValue(c);expect(await resolveAttendanceEmployee()).toEqual({ok:true,employee:{id:"EMP-0001",name:"社員A",gardenRole:"staff",innoveraExtension:null,innoveraMobileExtension:null}});expect(c.calls).toContainEqual(["user_id","user-uuid"]);expect(c.calls).toContainEqual(["is_active",true]);expect(c.calls).toContainEqual(["deleted_at",null]);});
   it("returns a stable 409 for an unregistered user",async()=>{mocks.createServerClient.mockResolvedValue(client({employee:null}));expect(await resolveAttendanceEmployee()).toMatchObject({ok:false,status:409,errorCode:"EMPLOYEE_NOT_REGISTERED"});});
 });

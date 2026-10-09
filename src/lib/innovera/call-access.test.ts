@@ -12,11 +12,11 @@ import type { GardenRole } from "@/app/root/_constants/types";
 
 describe("call recording access", () => {
   it.each<[GardenRole, CallRecordingAccess]>([
-    ["toss", "none"],
-    ["closer", "none"],
+    ["toss", "own"],
+    ["closer", "own"],
     ["cs", "own"],
     ["staff", "all_history_own_audio"],
-    ["outsource", "all_history_own_audio"],
+    ["outsource", "own"],
     ["manager", "all"],
     ["admin", "all"],
     ["super_admin", "all"],

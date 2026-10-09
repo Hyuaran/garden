@@ -18,7 +18,7 @@ export default async function InnoveraCallsPage() {
   if (denied || !ctx) {
     return (
       <main style={{ padding: 32 }}>
-        <h1>この画面を使う権限がありません</h1>
+        <h1>この画面へアクセスする権限がありません</h1>
         <p>管理者へ問い合わせてください。</p>
       </main>
     );
@@ -29,6 +29,8 @@ export default async function InnoveraCallsPage() {
       access={ctx.access}
       ownExtension={ctx.ownExtension}
       ownExtensions={ctx.ownExtensions}
+      ownWindows={ctx.ownWindows ?? []}
+      usesDailyExtension={ctx.usesDailyExtension}
       ownName={ctx.employeeName}
       role={ctx.role}
     />

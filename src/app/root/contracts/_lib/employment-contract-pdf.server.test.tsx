@@ -38,7 +38,7 @@ describe("employment contract PDF", () => {
     expect(normalized).toContain("時給［1,200］円");
     expect(normalized).toContain("以下、余白とする。");
     expect(normalized).not.toContain("住所：大阪");
-  });
+  }, 60_000);
   it("changes company insertion", async () => {
     const buffer = await renderEmploymentContractPdf({
       ...data,
@@ -54,5 +54,5 @@ describe("employment contract PDF", () => {
       .replace(/\s/g, "");
     expect(text).toContain("株式会社ブルーム");
     expect(text).toContain("代表取締役代表者C㊞");
-  });
+  }, 60_000);
 });

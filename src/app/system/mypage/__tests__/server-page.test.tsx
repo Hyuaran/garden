@@ -21,7 +21,7 @@ type PageElement = ReactElement<{
   birthdayRegistered: boolean;
   employeeName: string;
   initialTab: string;
-  tabbed: boolean;
+  needsExtension: boolean;
 }>;
 
 describe("system mypage section server page", () => {
@@ -31,24 +31,24 @@ describe("system mypage section server page", () => {
     const db = client(); mocks.createServerClient.mockResolvedValue(db);
     const page = await MyPageSectionPage({ section: "profile" }) as PageElement;
     expect(db.from).toHaveBeenCalledTimes(2);
-    expect(page.props).toMatchObject({ initialTab: "profile", tabbed: false, initialProfile: null, birthdayRegistered: true, employeeName: "社員A" });
+    expect(page.props).toMatchObject({ initialTab: "profile", initialProfile: null, birthdayRegistered: true, employeeName: "社員A", needsExtension: false });
     expect(JSON.stringify(page.props)).not.toContain("1980-08-13");
   });
 
-  it.each(["closer", "toss", "outsource"] as const)("keeps all four tabs for sidebarless %s", async (role) => {
+  it.each(["closer", "toss", "outsource"] as const)("keeps sidebarless %s on standalone mypage", async (role) => {
     mocks.createServerClient.mockResolvedValue(client({ ...employee, garden_role: role }));
     const page = await MyPageSectionPage({ section: "profile" }) as PageElement;
-    expect(page.props.tabbed).toBe(true);
+    expect(page.props).toMatchObject({ initialTab: "profile" });
   });
 
-  it("opens attendance as a tab for closer and standalone for staff", async () => {
+  it("opens attendance directly for closer and staff", async () => {
     mocks.createServerClient.mockResolvedValue(client({ ...employee, garden_role: "closer" }));
     const closer = await MyPageSectionPage({ section: "attendance" }) as PageElement;
-    expect(closer.props).toMatchObject({ initialTab: "attendance", tabbed: true });
+    expect(closer.props).toMatchObject({ initialTab: "attendance" });
 
     mocks.createServerClient.mockResolvedValue(client());
     const staff = await MyPageSectionPage({ section: "attendance" }) as PageElement;
-    expect(staff.props).toMatchObject({ initialTab: "attendance", tabbed: false });
+    expect(staff.props).toMatchObject({ initialTab: "attendance", needsExtension: false });
   });
 
   it("passes the profile only when birthday is unregistered", async () => {
@@ -60,7 +60,7 @@ describe("system mypage section server page", () => {
   it("does not send profile data to a standalone non-profile page", async () => {
     mocks.createServerClient.mockResolvedValue(client({ ...employee, birthday: null } as unknown as typeof employee));
     const page = await MyPageSectionPage({ section: "attendance" }) as PageElement;
-    expect(page.props).toMatchObject({ tabbed: false, initialProfile: null });
+    expect(page.props).toMatchObject({ initialProfile: null });
   });
 
   it("preserves authentication and returns to the requested section", async () => {

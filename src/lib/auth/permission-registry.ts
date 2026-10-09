@@ -52,12 +52,12 @@ function slugifyLabel(label: string) {
   return label.toLowerCase().replace(/\s+/g, "-");
 }
 
-// サイドバーが出ない役職（トス・クローザー・業務委託）がマイページのタブとして使える 4 画面
-// （src/app/system/mypage/MyPageClient.tsx の TABS：マイページ／勤怠打刻／シフト／前確依頼）
+// サイドバーが出ない役職（トス・クローザー・業務委託）がマイページ用サイドバーで使える 5 画面
+// （マイページ／勤怠打刻／シフト／前確依頼／通話・録音）
 // ＋入社手続き（新しく入った人はログイン直後に案内される。役職の制限なし）
-const SIDEBARLESS_TAB_HREFS = new Set(["/system/mypage", "/system/attendance", "/system/shift", "/system/zenkaku", "/system/onboarding"]);
+const SIDEBARLESS_TAB_HREFS = new Set(["/system/mypage", "/system/attendance", "/system/shift", "/system/zenkaku", "/system/innovera-calls", "/system/onboarding"]);
 
-// System のメニュー項目：サイドバーが出ない役職はメニュー自体を使えず、上の 4 画面だけをタブで使う。
+// System のメニュー項目：サイドバーが出ない役職は限定サイドバーの 5 画面だけを使う。
 // minRole の無い項目でも、サイドバーが隠れる役職には ×。まだ画面の無い項目（準備中）は全員 ×
 const systemMenuEntries: PermissionEntry[] = SYSTEM_MENU_ITEMS.map((item) => ({
   key: `system-menu-${item.href ?? item.label}`,
@@ -69,7 +69,7 @@ const systemMenuEntries: PermissionEntry[] = SYSTEM_MENU_ITEMS.map((item) => ({
     if (SIDEBAR_HIDDEN_ROLES.has(role)) return Boolean(item.href && SIDEBARLESS_TAB_HREFS.has(item.href));
     return !item.minRole || isRoleAtLeast(role, item.minRole);
   },
-  source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SYSTEM_MENU_ITEMS＋SIDEBAR_HIDDEN_ROLES（タブ 4 画面は mypage/MyPageClient.tsx:TABS）",
+  source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SYSTEM_MENU_ITEMS＋SIDEBAR_HIDDEN_ROLES（限定サイドバー 5 画面は LIMITED_MENU_ITEMS）",
 }));
 
 const manualDocEntries: PermissionEntry[] = MANUAL_DOCS.map((doc) => ({
@@ -105,8 +105,8 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     label: "System のサイドバー",
     group: "System",
     kind: "画面",
-    allows: (role) => !SIDEBAR_HIDDEN_ROLES.has(role),
-    source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SIDEBAR_HIDDEN_ROLES",
+    allows: () => true,
+    source: "src/app/system/_components/ShachoShell/shacho-shell-config.ts:SIDEBAR_HIDDEN_ROLES＋LIMITED_MENU_ITEMS",
   },
   ...systemMenuEntries,
   ...formEntries,
@@ -300,11 +300,11 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
 
 /** 役職ごとの説明（画面の「役職の一覧」に出す。誰がこの役職か・どこまで使えるか） */
 export const GARDEN_ROLE_NOTES: Record<GardenRole, string> = {
-  toss: "アルバイト（トス）。System のサイドバーは出ず、マイページのタブ（自分の情報・勤怠打刻・シフト・前確依頼）と入社手続きだけ",
-  closer: "アルバイト（クローザー。テレマにもいる）。使える範囲はトスと同じ",
+  toss: "アルバイト（トス）。マイページのメニュー（マイページ・勤怠打刻・シフト・前確依頼・通話・録音）と入社手続きだけ",
+  closer: "アルバイト（クローザー。テレマにもいる）。マイページのメニュー（マイページ・勤怠打刻・シフト・前確依頼・通話・録音）と入社手続きだけ",
   cs: "CS。サイドバーが出て、社員向け以外の画面（資料・前確依頼・前確／後確の閲覧など）を使える",
   staff: "正社員。社員向けの画面（操作マニュアル・フォーム・自動配信）まで",
-  outsource: "業務委託（外注）。サイドバーは出ず、マイページのタブと入社手続きだけ。社員以上の API は使える",
+  outsource: "業務委託（外注）。マイページのメニュー（マイページ・勤怠打刻・シフト・前確依頼・通話・録音）と入社手続きだけ。社員以上の API は使える",
   manager: "責任者（チームリーダー・責任者）。管理表ポータル・リストマスタ・契約書管理・コール集計・勤怠の同期状況・Root の閲覧",
   admin: "管理者。責任者の範囲に加えて Root 従業員マスタの編集と名簿との同期",
   super_admin: "全権管理者。すべての画面と、マニュアルの仕組み・仕様・Claude 用の資料",

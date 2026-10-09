@@ -1,5 +1,6 @@
 import type { CallRecordingAccess } from "./call-access";
 import type { InnoveraCallRaw, InnoveraCircuit } from "./client";
+import { callInOwnWindow, type DailyExtensionWindow } from "./daily-extension";
 
 export type NormalizedInnoveraCall = {
   id: string;
@@ -130,9 +131,11 @@ export function filterCallsForAccess<T extends InnoveraCallRaw>(
   calls: T[],
   access: CallRecordingAccess,
   ownExtensions: string[],
+  ownWindows?: DailyExtensionWindow[],
 ): T[] {
   if (access === "none") return [];
   if (access === "all" || access === "all_history_own_audio") return calls;
+  if (ownWindows?.length) return calls.filter((call) => callInOwnWindow(normalizeCall(call), ownWindows));
   const own = new Set(ownExtensions.map(text).filter(Boolean));
   if (!own.size) return [];
   return calls.filter((call) => own.has(normalizeCall(call).extension));
@@ -143,11 +146,13 @@ export function canPlayRecording(
   access: CallRecordingAccess,
   ownExtensions: string[],
   now = new Date(),
+  ownWindows?: DailyExtensionWindow[],
 ) {
   if (access === "none") return false;
   const normalized = isNormalizedCall(call) ? call : normalizeCall(call, now);
   if (!normalized.hasRecording || !isCallFinished(normalized.raw, now)) return false;
   if (access === "all") return true;
+  if (ownWindows?.length) return callInOwnWindow(normalized, ownWindows);
   const own = new Set(ownExtensions.map(text).filter(Boolean));
   return own.has(normalized.extension);
 }

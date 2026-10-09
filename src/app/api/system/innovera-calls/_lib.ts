@@ -9,6 +9,7 @@ import {
 import type { InnoveraCallRaw } from "@/lib/innovera/client";
 import { searchInnoveraCalls } from "@/lib/innovera/client";
 import type { CallAccessContext } from "@/lib/innovera/calls.server";
+import { callInOwnWindow } from "@/lib/innovera/daily-extension";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export function tokyoToday() {
@@ -138,7 +139,7 @@ export function counts(calls: NormalizedInnoveraCall[]) {
   };
 }
 
-export function applyUiFilters(calls: NormalizedInnoveraCall[], searchParams: URLSearchParams, ownExtensions: string[]) {
+export function applyUiFilters(calls: NormalizedInnoveraCall[], searchParams: URLSearchParams, ownExtensions: string[], ownWindows?: CallAccessContext["ownWindows"]) {
   const mine = searchParams.get("mine") === "1";
   const extensions = searchParams
     .getAll("extension")
@@ -154,6 +155,7 @@ export function applyUiFilters(calls: NormalizedInnoveraCall[], searchParams: UR
   const statusSet = multi("status");
   const number = searchParams.get("number")?.replace(/\D/g, "") ?? "";
   return calls.filter((call) => {
+    if (ownWindows?.length && !callInOwnWindow(call, ownWindows)) return false;
     if (mine && ownExtensionSet.size && !ownExtensionSet.has(call.extension)) return false;
     if (extensionSet.size && !extensionSet.has(call.extension)) return false;
     if (circuitSet.size && !circuitSet.has(call.circuitId)) return false;
@@ -179,14 +181,15 @@ export async function loadAllowedCallsForRange(
   number?: string | null,
 ) {
   // number があれば INNOVERA の cdr_number で向こうで絞る（Garden 側の部分一致はそのまま残す）
-  const rawCalls = await searchInnoveraCalls({ ...range, uniqid, number: number ?? undefined });
-  const allowed = filterCallsForAccess(rawCalls, ctx.access, ctx.ownExtensions);
+  const ownRange = ctx.usesDailyExtension ? dayRange(tokyoToday()) : range;
+  const rawCalls = await searchInnoveraCalls({ ...ownRange, uniqid, number: number ?? undefined });
+  const allowed = filterCallsForAccess(rawCalls, ctx.access, ctx.ownExtensions, ctx.ownWindows);
   const normalized = allowed.map((call) => normalizeCall(call));
   const names = await employeeNameByExtension(ctx.supabase, normalized);
   return normalized.map((call) => ({
     ...call,
     employeeName: names.get(call.extension) || call.extension,
-    canPlay: canPlayRecording(call, ctx.access, ctx.ownExtensions),
+    canPlay: canPlayRecording(call, ctx.access, ctx.ownExtensions, new Date(), ctx.ownWindows),
   }));
 }
 

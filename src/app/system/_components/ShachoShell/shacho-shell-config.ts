@@ -23,6 +23,14 @@ export function shouldHideSidebar(role: GardenRole) {
   return SIDEBAR_HIDDEN_ROLES.has(role);
 }
 
+export const LIMITED_MENU_ITEMS: SystemMenuItem[] = [
+  { label: "マイページ", description: "自分の登録情報を確認します。", icon: "person", href: "/system/mypage" },
+  { label: "勤怠打刻", description: "出勤・退勤の打刻をします。", icon: "clock", href: "/system/attendance" },
+  { label: "シフト", description: "シフトの提出と勤務予定を確認します。", icon: "shift", href: "/system/shift" },
+  { label: "前確依頼", description: "前確依頼を出します。", icon: "zenkaku", href: "/system/zenkaku" },
+  { label: "通話・録音", description: "自分の通話と録音を確認します。", icon: "message", href: "/system/innovera-calls" },
+];
+
 export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "ホーム", description: "社内システムの入口です。", icon: "home", href: "/system" },
   { label: "資料", description: "会社説明など、社内で読む資料をまとめています。", icon: "book", href: "/system/docs" },
