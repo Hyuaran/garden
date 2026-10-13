@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  // 画面の土台（layout）が「ログイン後の戻り先」に今のパスを使えるよう、要求ヘッダに載せる
+  request.headers.set("x-pathname", `${request.nextUrl.pathname}${request.nextUrl.search}`);
   let supabaseResponse = NextResponse.next({
     request,
   });

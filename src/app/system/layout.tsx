@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
@@ -8,7 +9,10 @@ import ShachoShell from "./_components/ShachoShell/ShachoShell";
 export default async function SystemLayout({ children }: { children: ReactNode }) {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login?returnTo=%2Fsystem");
+  // ログイン後の戻り先＝開こうとしていた画面（以前は常に /system に戻していたため、フォームの URL を直接開いてもホームに飛んでいた・2026-10-13 修正）
+  const requested = (await headers()).get("x-pathname") || "";
+  const returnTo = encodeURIComponent(/^\/system(\/|\?|$)/.test(requested) ? requested : "/system");
+  if (!auth.user) redirect(`/login?returnTo=${returnTo}`);
 
   const { data: employee } = await supabase
     .from("root_employees")
@@ -17,7 +21,7 @@ export default async function SystemLayout({ children }: { children: ReactNode }
     .eq("is_active", true)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!employee || !isEmployeeActive(employee)) redirect("/login?returnTo=%2Fsystem");
+  if (!employee || !isEmployeeActive(employee)) redirect(`/login?returnTo=${returnTo}`);
 
   const role = GARDEN_ROLE_ORDER.includes(employee.garden_role as GardenRole)
     ? employee.garden_role as GardenRole
