@@ -33,7 +33,7 @@ export const SYSTEM_FORMS: SystemFormDefinition[] = [
   {
     slug: "nhk-visit",
     name: "NHK訪問業務 報告",
-    description: "NHK 訪問業務の当日の報告を送ります。Garden に記録し、Kintone にも同じ内容が入ります。",
+    description: "NHK 訪問業務の当日の報告を送ります。Garden に記録し、Kintone にも同じ内容が入ります。スマホは garden-os.net/m/nhk から開けます。",
     roleLabel: "社員以上",
     minRole: "staff",
     icon: "document",
