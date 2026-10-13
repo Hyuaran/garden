@@ -17,3 +17,34 @@
 .guide{margin:14px 0}
 .guide a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:9px 16px;border:1px solid var(--teal);border-radius:8px;background:var(--soft);color:var(--tealDark);font-weight:800;text-decoration:none;white-space:nowrap}
 .guide a:hover{background:var(--teal);color:var(--card)}
+
+.mobile{--heading:#2f3328;--ink:#34382f;--sub:#756f62;--bg:#f7f4ec;--card:#fffdf8;--line:#ded6c4;--soft:#eef8f7;--preview:#fffaf0;--shadow:0 3px 12px rgba(61,53,40,.07);max-width:560px;margin:0 auto;padding:14px 16px 20px;background:var(--bg)}
+.mobile .header{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.mobileTitleRow{display:block}
+.mobile .mobileTitleRow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.mobile .header h1{min-width:0;margin:0;color:var(--heading);font-size:18px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mobileSender{display:none}
+.mobile .mobileSender{display:block;flex:0 0 auto;margin:0;color:var(--heading);font-size:13px;font-weight:900;white-space:nowrap}
+.mobile .panel,.mobile .result,.mobile .history{margin:0;padding:12px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none}
+.mobile .panel{display:grid;grid-template-columns:74px minmax(0,1fr);gap:8px 10px;align-items:center}
+.mobile .panel:has(.countGroup),.mobile .panel:has(.segmented){display:block}
+.mobile .panel h2,.mobile .result h2,.mobile .history h2{margin:0;color:var(--heading);font-size:15px;line-height:1.4}
+.mobile .panel h2{white-space:nowrap}
+.mobile .panel input[type=date],.mobile .panel input[type=time],.mobile .panel select{width:100%;min-height:44px;padding:9px 10px;border-color:var(--line);background:var(--card);font-size:16px}
+.mobile .timeRow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px}
+.mobile .timeRow input[type=time]{width:100%;min-width:0}
+.mobile .fixedText{font-size:16px}
+.mobile .countGroup{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 0;border-top:0}
+.mobile .countGroup h3,.mobile .total{grid-column:1/-1}
+.mobile .panel h3{margin:0;color:var(--sub);font-size:13px}
+.mobile .counter{grid-template-columns:minmax(0,1fr) 38px 42px 38px;gap:5px;max-width:none;margin:0}
+.mobile .counter span{font-size:14px;line-height:1.25}
+.mobile .counter button{width:38px;height:44px;font-size:18px}
+.mobile .counter output{min-height:44px;font-size:16px}
+.mobile .total{margin:0;font-size:13px}
+.mobile .segmented{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.mobile .segmented label{min-width:0;min-height:44px;padding:8px 10px;font-size:16px}
+.mobile .primary{min-height:52px;margin:14px 0 10px;padding:13px 16px;font-size:16px}
+.mobile .message,.mobile .error{font-size:14px}
+.mobile .historyBox{padding:10px;background:var(--card)}
+.mobile .historyBox p,.mobile .empty{font-size:13px}

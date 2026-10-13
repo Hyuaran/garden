@@ -12,6 +12,7 @@ export default function MobileHomePage() {
         <div style={sub}>必要な場所へ、すぐに入る</div>
       </header>
 
+      <Link href="/m/nhk" style={nhkLink}>NHK訪問業務 報告</Link>
       <Link href="/p/toss/board" style={tossLink}>トスアップ一覧を見る</Link>
 
       <section aria-label="Garden 12モジュール" style={grid}>
@@ -74,6 +75,7 @@ const brand: React.CSSProperties = {
   letterSpacing: "0.04em",
 };
 const sub: React.CSSProperties = { fontSize: 12, color: "#7b745f", marginTop: 4 };
+const nhkLink: React.CSSProperties = { display: "block", margin: "0 0 10px", padding: "14px", borderRadius: 12, background: "#fff", border: "2px solid #0ea5a0", color: "#0b7773", textAlign: "center", textDecoration: "none", fontSize: 15, fontWeight: 800 };
 const tossLink: React.CSSProperties = { display: "block", margin: "0 0 14px", padding: "12px 14px", borderRadius: 12, background: "#fff", border: "1px solid #b8c8b8", color: "#35513d", textAlign: "center", textDecoration: "none", fontSize: 13, fontWeight: 700 };
 const grid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 };
 const link: React.CSSProperties = { textDecoration: "none", display: "block" };

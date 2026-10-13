@@ -59,7 +59,7 @@ async function copyText(text: string) {
   await navigator.clipboard.writeText(text);
 }
 
-export default function NhkVisitClient({ submitterName, employeeNumber }: { submitterName: string; employeeNumber: string }) {
+export default function NhkVisitClient({ submitterName, employeeNumber, mobile = false }: { submitterName: string; employeeNumber: string; mobile?: boolean }) {
   const today = useMemo(() => todayJst(), []);
   const [visitDate, setVisitDate] = useState(today);
   const [startTime, setStartTime] = useState("09:30");
@@ -124,19 +124,22 @@ export default function NhkVisitClient({ submitterName, employeeNumber }: { subm
     }
   }
 
-  return <div className={styles.pageShell}>
+  return <div className={mobile ? `${styles.pageShell} ${styles.mobile}` : styles.pageShell}>
     <header className={styles.header}>
-      <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "NHK訪問業務 報告フォーム" }]} />
-      <h1>NHK訪問業務 報告フォーム</h1>
-      <p className={styles.lead}>業務が終わったら、この画面に入力して送信してください。</p>
+      {!mobile && <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "NHK訪問業務 報告フォーム" }]} />}
+      <div className={styles.mobileTitleRow}>
+        <h1>{mobile ? "NHK訪問業務 報告" : "NHK訪問業務 報告フォーム"}</h1>
+        {mobile && <p className={styles.mobileSender} {...CLARITY_MASK}>{submitterName} さん</p>}
+      </div>
+      {!mobile && <p className={styles.lead}>業務が終わったら、この画面に入力して送信してください。</p>}
     </header>
 
     {/* 使い方は画面の中に書かず、画像つきの使い方ガイド（マニュアル①）へ送る（東海林さん 2026-09-24） */}
-    <p className={styles.guide}>
+    {!mobile && <p className={styles.guide}>
       <a href="/system/manuals/system/nhk-visit?tab=operation">使い方ガイドを見る</a>
-    </p>
+    </p>}
 
-    <p className={styles.sender} {...CLARITY_MASK}>送信者　{submitterName}（{employeeNumber}）</p>
+    {!mobile && <p className={styles.sender} {...CLARITY_MASK}>送信者　{submitterName}（{employeeNumber}）</p>}
 
     <section className={styles.panel}>
       <h2>1 日付</h2>
@@ -196,7 +199,7 @@ export default function NhkVisitClient({ submitterName, employeeNumber }: { subm
     </section>
 
     <button type="button" className={styles.primary} disabled={sending} onClick={() => void submit()}>
-      {sending ? "送信中..." : "報告内容を送信する"}
+      {sending ? "送信中..." : mobile ? "送信する" : "報告内容を送信する"}
     </button>
 
     {status && <p className={status.startsWith("送信しました") ? styles.message : styles.error} role="status">{status}</p>}

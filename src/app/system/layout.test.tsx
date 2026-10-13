@@ -1,8 +1,9 @@
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), redirect: vi.fn() }));
+const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), headers: vi.fn(), redirect: vi.fn() }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
+vi.mock("next/headers", () => ({ headers: mocks.headers }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 import SystemLayout from "./layout";
 
@@ -19,7 +20,12 @@ function client(role = "manager") {
 }
 
 describe("system shared layout", () => {
-  beforeEach(() => { mocks.createServerClient.mockReset(); mocks.redirect.mockReset(); });
+  beforeEach(() => {
+    mocks.createServerClient.mockReset();
+    mocks.headers.mockReset();
+    mocks.headers.mockResolvedValue(new Headers({ "x-pathname": "/system" }));
+    mocks.redirect.mockReset();
+  });
 
   it("renders one ShachoShell with the signed-in user", async () => {
     mocks.createServerClient.mockResolvedValue(client());

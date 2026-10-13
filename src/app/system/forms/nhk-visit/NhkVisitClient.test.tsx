@@ -67,4 +67,27 @@ describe("NhkVisitClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "コピー" }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("【日付】2026/09/24")));
   });
+
+  it("uses the same submit endpoint in mobile view without breadcrumbs", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    fetchMock.mockImplementation(async (_url, init) => {
+      if (init?.method === "POST") {
+        return Response.json({ ok: true, kintoneStatus: "queued", message: "送信内容" });
+      }
+      return Response.json({ ok: true, reports: [] });
+    });
+
+    render(<NhkVisitClient submitterName="桐井 大輔" employeeNumber="5678" mobile />);
+    await screen.findByText("まだありません");
+
+    expect(screen.queryByRole("navigation", { name: "現在地" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "NHK訪問業務 報告" })).toBeInTheDocument();
+    expect(screen.getByText("桐井 大輔 さん")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "NHK大阪放送局" } });
+    fireEvent.click(screen.getByRole("button", { name: "送信する" }));
+
+    await screen.findByText("送信しました（Kintone は後で送り直します）");
+    expect(fetchMock).toHaveBeenCalledWith("/api/system/nhk-visit", expect.objectContaining({ method: "POST" }));
+  });
 });
