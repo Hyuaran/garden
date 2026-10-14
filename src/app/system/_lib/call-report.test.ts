@@ -25,6 +25,43 @@ describe("call report", () => {
   it("skips zero-call days without text", () => {
     expect(buildCallReport({ ...summary, totalCalls: 0 })).toEqual({ skipped: true, reason: "本日コール0件", text: null });
   });
+  it("【WEBインバウンド】は事業ごとのまとまりで 1 行 1 項目、フォーム受付だけの日も送る", () => {
+    const funnelBase = {
+      total: 15, inbound: 12, answered: 10, unanswered: 2, callbackConnected: 2, callbackNotConnected: 0, noCallback: 0, forms: 3,
+      withSlot: 2, onTime: { connected: 2, notConnected: 0, noCall: 0 }, late: { connected: 0, notConnected: 0, noCall: 0 }, pendingWithSlot: { connected: 0, notConnected: 0, noCall: 0 },
+      noSlot: 1, noSlotOnTime: { connected: 1, notConnected: 0, noCall: 0 }, noSlotLate: { connected: 0, notConnected: 0, noCall: 0 }, noSlotPending: { connected: 0, notConnected: 0, noCall: 0 },
+      invalidNumberForms: 0, unknownInboundCalls: 2, answerRate: 10 / 12, spoke: 15, spokeInbound: 10, spokeCallback: 2, spokeForm: 3,
+      won: 9, inProgress: 4, lost: 1, excluded: 0, noRecord: 1, contactRate: 1, wonRate: 9 / 15, excludedRate: 0, effectiveWonRate: 9 / 15, pendingCount: 0, noRecordList: [], calcNotes: [],
+    };
+    const metrics = {
+      from: "2026-10-13", to: "2026-10-13", listName: null, employeeName: null, metrics: [], employeeMetrics: [], lastImportedAt: null,
+      innovera: { lastSyncAt: "2026-10-14T14:45:18Z", stopped: false, hasRows: true },
+      lp: {
+        businesses: [
+          { bizCode: "hikari-pro", bizName: "ヒカリのプロ", recordOrder: 1, inbound: 26, answered: 14, missed: 12, voicemail: 0, outbound: 48, outboundAnswered: 39, talkSeconds: 14498, applications: 4, unassignedApplications: 0 },
+          { bizCode: "denki", bizName: "電気開始受付センター", recordOrder: 2, inbound: 21, answered: 14, missed: 7, voicemail: 2, outbound: 39, outboundAnswered: 32, talkSeconds: 11910, applications: 5, unassignedApplications: 0 },
+        ],
+        totals: null, notes: [], unregisteredExtensionSummary: null,
+      },
+      lpFunnel: {
+        asOf: "2026-10-13T14:59:59Z", notes: [], totals: null,
+        businesses: [
+          { ...funnelBase, bizCode: "hikari-pro", bizName: "ヒカリのプロ" },
+          { ...funnelBase, bizCode: "denki", bizName: "電気開始受付センター", inbound: 10, answered: 8, spoke: 16, won: 7, excluded: 4, answerRate: 0.8, wonRate: 7 / 16, excludedRate: 0.25, effectiveWonRate: 7 / 12, pendingCount: 2 },
+        ],
+      },
+      lpFormCount: 11,
+    };
+    const result = buildCallReport(summary, new Date("2026-10-14T06:05:00Z"), metrics);
+    expect(result.text).toContain("前確OK率：3.0％（前確OK45件）\n\n【WEBインバウンド】\n■ヒカリのプロ\n着信：26件（応答14・不在12）／発信：48件／申込み：4件\n応答率：83.3％（応答10／入電12）\n話せた：15件（受注9・対応中4・見送り1・対象外0・記録なし1）\n受注率：60.0％／対象外率：0.0％／有効受注率：60.0％\n⚠記録なし：1件（kintone に登録の無い応答。ポータルで番号を確かめて登録）\n\n■電気開始受付センター\n");
+    expect(result.text).toContain("話せた：16件（受注7・対応中4・見送り1・対象外4・記録なし1・判定待ち2）\n受注率：43.8％／対象外率：25.0％／有効受注率：58.3％\n⚠記録なし：1件");
+    expect(result.text).not.toContain("【対応と結果】");
+    expect(result.text).toContain("⚠記録なし：1件（kintone に登録の無い応答。ポータルで番号を確かめて登録）\n[/info]");
+    // テレマ 0 件・LP の電話 0 件でもフォーム受付があれば送る
+    const formsOnly = buildCallReport({ ...summary, totalCalls: 0 }, new Date("2026-10-14T06:05:00Z"), { ...metrics, lp: { ...metrics.lp, businesses: metrics.lp.businesses.map((b) => ({ ...b, inbound: 0, outbound: 0 })) } });
+    expect(formsOnly.skipped).toBe(false);
+    expect(formsOnly.text).toContain("【本日】従業員15名／総コール0件\n平均コール数：-\n");
+  });
   it("uses the JST calendar date and validates explicit dates", () => {
     const now = new Date("2026-08-11T15:30:00Z");
     expect(jstDateString(now)).toBe("2026-08-12");

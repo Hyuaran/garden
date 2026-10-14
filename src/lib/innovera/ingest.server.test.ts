@@ -25,11 +25,18 @@ function supabase() {
           insert: async (row: unknown) => { insertedLogs.push(row); return { error: null }; },
           select: () => ({
             eq: () => ({
-              order: () => ({
-                limit: () => ({
-                  maybeSingle: async () => ({ data: { range_to: "2026-10-14T02:00:00.000Z" }, error: null }),
-                }),
-              }),
+              // poll／daily の記録だけを見る（backfill は除く）
+              in: (column: string, modes: string[]) => {
+                expect(column).toBe("mode");
+                expect(modes).toEqual(["poll", "daily"]);
+                return {
+                  order: () => ({
+                    limit: () => ({
+                      maybeSingle: async () => ({ data: { range_to: "2026-10-14T02:00:00.000Z" }, error: null }),
+                    }),
+                  }),
+                };
+              },
             }),
           }),
         };

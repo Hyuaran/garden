@@ -119,10 +119,13 @@ export async function runInnoveraIngestBatch(
 }
 
 export async function getCronRange(supabase: SupabaseClient = getSupabaseAdmin(), now = new Date()) {
+  // 前回の終わりは 5 分ごと（poll）と深夜の読み返し（daily）の記録だけから取る。
+  // 過去分（backfill）の記録を見ると、バックフィル中に古い日から読み直してしまうため
   const { data } = await supabase
     .from("system_innovera_ingest_log")
     .select("range_to")
     .eq("status", "success")
+    .in("mode", ["poll", "daily"])
     .order("finished_at", { ascending: false })
     .limit(1)
     .maybeSingle<{ range_to: string | null }>();

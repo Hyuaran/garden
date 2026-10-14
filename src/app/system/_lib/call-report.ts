@@ -1,5 +1,5 @@
 import type { CallMetricsResponse, CallMetricsSummary, LpBusinessMetricRow } from "./call-metrics";
-import { lpFunnelLine } from "./lp-funnel";
+import type { LpFunnelBusiness } from "./lp-funnel";
 
 const JST_TIME_ZONE = "Asia/Tokyo";
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
@@ -59,21 +59,34 @@ function lpTrafficTotal(metrics?: CallMetricsResponse) {
   return (metrics?.lp?.businesses ?? []).reduce((sum, row) => sum + (row.inbound ?? 0) + (row.outbound ?? 0), 0);
 }
 
-function lpLine(row: LpBusinessMetricRow) {
-  return `${row.bizName}：着信${formatLpNumber(row.inbound)}（応答${formatLpNumber(row.answered)}・不在${formatLpNumber(row.missed)}）／発信${formatLpNumber(row.outbound)}／申込み${formatLpNumber(row.applications)}`;
+const formatLpRate = (value: number | null | undefined) => value == null ? "-" : `${(value * 100).toFixed(1)}％`;
+const formatLpCountUnit = (value: number | null | undefined) => value == null ? "-" : `${value.toLocaleString("ja-JP")}件`;
+
+// 【WEBインバウンド】＝事業ごとにひとまとまり。上の【本日】と同じ読みやすさ＝1 行に 1 つの話題、関係の深い数字は括弧でまとめる
+// （東海林さん 2026-10-15「上部のテレマの報告に比べて見づらい」「受注率：0.5％（受注4件）のように 1 行にできるものはしたい」）
+function lpBusinessBlock(row: LpBusinessMetricRow, funnel: LpFunnelBusiness | undefined) {
+  const lines = [
+    `■${row.bizName}`,
+    `着信：${formatLpCountUnit(row.inbound)}（応答${formatLpNumber(row.answered)}・不在${formatLpNumber(row.missed)}）／発信：${formatLpCountUnit(row.outbound)}／申込み：${formatLpCountUnit(row.applications)}`,
+  ];
+  if (funnel) {
+    const pending = (funnel.pendingCount ?? 0) > 0 ? `・判定待ち${formatLpNumber(funnel.pendingCount)}` : "";
+    lines.push(
+      `応答率：${formatLpRate(funnel.answerRate)}（応答${formatLpNumber(funnel.answered)}／入電${formatLpNumber(funnel.inbound)}）`,
+      `話せた：${formatLpCountUnit(funnel.spoke)}（受注${formatLpNumber(funnel.won)}・対応中${formatLpNumber(funnel.inProgress)}・見送り${formatLpNumber(funnel.lost)}・対象外${formatLpNumber(funnel.excluded)}・記録なし${formatLpNumber(funnel.noRecord)}${pending}）`,
+      `受注率：${formatLpRate(funnel.wonRate)}／対象外率：${formatLpRate(funnel.excludedRate)}／有効受注率：${formatLpRate(funnel.effectiveWonRate)}`,
+    );
+    if ((funnel.noRecord ?? 0) > 0) lines.push(`⚠記録なし：${formatLpCountUnit(funnel.noRecord)}（kintone に登録の無い応答。ポータルで番号を確かめて登録）`);
+  }
+  return lines.join("\n");
 }
 
 function buildLpBlock(metrics?: CallMetricsResponse) {
   if (!metrics?.lp) return "";
   const stopped = metrics.innovera?.stopped ? `※INNOVERA 取込停止中（最終 ${formatShortJstTime(metrics.innovera.lastSyncAt)}）\n` : "";
-  return `\n\n【WEBインバウンド】\n${stopped}${metrics.lp.businesses.map(lpLine).join("\n")}${buildFunnelBlock(metrics)}`;
-}
-
-// 【対応と結果】＝事業ごとに 1 行（§5.6.5・§7）。判定待ちと⚠記録なしは行の末尾に付く
-function buildFunnelBlock(metrics: CallMetricsResponse) {
-  const businesses = metrics.lpFunnel?.businesses ?? [];
-  if (!businesses.length) return "";
-  return `\n【対応と結果】\n${businesses.map(lpFunnelLine).join("\n")}`;
+  const funnelByBiz = new Map((metrics.lpFunnel?.businesses ?? []).map((biz) => [biz.bizCode, biz]));
+  const blocks = metrics.lp.businesses.map((row) => lpBusinessBlock(row, funnelByBiz.get(row.bizCode)));
+  return `\n\n【WEBインバウンド】\n${stopped}${blocks.join("\n\n")}`;
 }
 
 export function buildCallReport(summary: CallMetricsSummary, now = new Date(), metrics?: CallMetricsResponse) {
