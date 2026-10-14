@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { ManualDefinition, ManualDoc, ManualModule } from "./_lib/manuals-registry";
@@ -40,6 +40,9 @@ export default function ManualDetailClient({
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [busy, setBusy] = useState<"replace" | "restore" | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const measureTimeoutsRef = useRef<number[]>([]);
   const src = useMemo(() => {
     if (!selectedDoc) return "";
     const base = `/api/system/manuals/${manual.moduleSlug}/${manual.slug}/${selectedDoc.file}`;
@@ -50,14 +53,77 @@ export default function ManualDetailClient({
   const replaceEndpoint = selectedDoc ? `/api/system/manuals/${manual.moduleSlug}/${manual.slug}/${selectedDoc.file}/replace` : "";
   const restoreEndpoint = selectedDoc ? `/api/system/manuals/${manual.moduleSlug}/${manual.slug}/${selectedDoc.file}/restore` : "";
 
+  const setMeasuredHeight = useCallback((docHeight: number) => {
+    if (!Number.isFinite(docHeight) || docHeight <= 0) return;
+    const nextHeight = Math.max(600, Math.ceil(docHeight));
+    setHeight((currentHeight) => currentHeight === nextHeight ? currentHeight : nextHeight);
+  }, []);
+
+  const clearMeasureTimeouts = useCallback(() => {
+    measureTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    measureTimeoutsRef.current = [];
+  }, []);
+
+  const disconnectResizeObserver = useCallback(() => {
+    resizeObserverRef.current?.disconnect();
+    resizeObserverRef.current = null;
+  }, []);
+
+  const measureIframeContent = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || iframe.getBoundingClientRect().width === 0) return;
+    const frameDocument = iframe.contentDocument;
+    if (!frameDocument) return;
+    const docHeight = Math.max(
+      frameDocument.documentElement?.scrollHeight ?? 0,
+      frameDocument.body?.scrollHeight ?? 0,
+    );
+    setMeasuredHeight(docHeight);
+  }, [setMeasuredHeight]);
+
+  const handleIframeLoad = useCallback(() => {
+    disconnectResizeObserver();
+    clearMeasureTimeouts();
+    measureIframeContent();
+    measureTimeoutsRef.current = [200, 800].map((delay) => window.setTimeout(measureIframeContent, delay));
+
+    const frameBody = iframeRef.current?.contentDocument?.body;
+    if (frameBody && typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(measureIframeContent);
+      observer.observe(frameBody);
+      resizeObserverRef.current = observer;
+    }
+  }, [clearMeasureTimeouts, disconnectResizeObserver, measureIframeContent]);
+
   useEffect(() => {
     function onMessage(event: MessageEvent) {
       const docHeight = typeof event.data?.__docHeight === "number" ? event.data.__docHeight : null;
-      if (docHeight) setHeight(Math.max(600, Math.ceil(docHeight)));
+      if (docHeight) setMeasuredHeight(docHeight);
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [setMeasuredHeight]);
+
+  useEffect(() => {
+    setHeight(600);
+    disconnectResizeObserver();
+    clearMeasureTimeouts();
+    // 画面の準備（hydration）より先に資料の読み込みが終わっていると onLoad が来ないため、
+    // 読み込み済みならここからも一度測る（about:blank は高さ 0 で無視される）
+    // ただし「前のタブの資料」がまだ入っているときは測らない（今の src と同じ資料のときだけ）
+    const lateCheck = window.setTimeout(() => {
+      const frameDocument = iframeRef.current?.contentDocument;
+      if (!src || !frameDocument || frameDocument.readyState !== "complete") return;
+      let loadedPath = "";
+      try { loadedPath = frameDocument.location?.pathname ?? ""; } catch { return; }
+      if (loadedPath && loadedPath === src.split("?")[0]) handleIframeLoad();
+    }, 0);
+    return () => {
+      window.clearTimeout(lateCheck);
+      disconnectResizeObserver();
+      clearMeasureTimeouts();
+    };
+  }, [clearMeasureTimeouts, disconnectResizeObserver, handleIframeLoad, src]);
 
   useEffect(() => {
     if (!selectedDoc || selectedDoc.kind !== "md") return;
@@ -192,10 +258,12 @@ export default function ManualDetailClient({
             </div>
           ) : (
             <iframe
+              ref={iframeRef}
               title={`${manual.name} ${selectedDoc?.label ?? ""}`}
               src={src}
               sandbox="allow-same-origin allow-scripts"
               scrolling="no"
+              onLoad={handleIframeLoad}
               style={{ height }}
             />
           )}
