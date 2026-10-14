@@ -4,6 +4,7 @@ import type { DocumentProps } from "@react-pdf/renderer";
 import { openSync } from "fontkit";
 import type { CallMetricsResponse, EmployeeCallMetricRow, CallMetricRow } from "./call-metrics";
 import { formatCallsPerWorkHour, formatWorkTime } from "./call-metrics";
+import { LP_FUNNEL_DEFINITIONS, LP_FUNNEL_LEAD_NOTE, lpFunnelCalcNotes, lpFunnelHeaders, lpFunnelTableA, lpFunnelTableB } from "./lp-funnel-view";
 
 const COLORS = { bg: "#F4F5F7", card: "#FFFFFF", line: "#E3EAF3", navy: "#10233F", teal: "#0EA5A0", ink: "#17212E", sub: "#5A6B80", zero: "#98A4B3", red: "#E5484D" } as const;
 type VectorFont = ReturnType<typeof openSync>;
@@ -231,6 +232,23 @@ function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
   return <SimpleTable headers={["事業名", "着信", "応答", "不在", "留守電", "発信", "発信の応答", "通話時間", "申込み"]} rows={rows} widths={lpSubtotalWidths}/>;
 }
 
+// 第 2 部「WEBインバウンド（事業ごと）」＝表A「対応」と表B「結果」（§5.6.5）。列幅 pt＝指標名 220／事業ごと 110／合計 110
+function LpFunnelPart({ data }: { data: CallMetricsResponse }) {
+  const funnel = data.lpFunnel;
+  if (!funnel) return <VectorParagraph width={870}>WEBインバウンドの対応と結果を取得できませんでした。</VectorParagraph>;
+  const headers = lpFunnelHeaders(funnel);
+  const widths = [220, ...headers.slice(1).map(() => 110)];
+  const toRows = (rows: ReturnType<typeof lpFunnelTableA>) => rows.map((row) => [`${"　".repeat(row.indent ?? 0)}${row.label}`, ...row.values]);
+  const notes = lpFunnelCalcNotes(funnel);
+  const noRecordTotal = funnel.businesses.reduce((sum, biz) => sum + (biz.noRecord ?? 0), 0);
+  return <>
+    <View style={styles.definitionBlock}><DefinitionTitle>表A　対応</DefinitionTitle><SimpleTable headers={headers} rows={toRows(lpFunnelTableA(funnel))} widths={widths}/></View>
+    <View style={styles.definitionBlock}><DefinitionTitle>表B　結果</DefinitionTitle><SimpleTable headers={headers} rows={toRows(lpFunnelTableB(funnel))} widths={widths}/></View>
+    <VectorParagraph width={870}>{`${LP_FUNNEL_LEAD_NOTE}${noRecordTotal ? ` 記録なし ${noRecordTotal} 件の番号はポータルの「WEBインバウンド」タブで確かめてください。` : ""}`}</VectorParagraph>
+    {notes.map((note) => <VectorParagraph key={note} width={870}>{note}</VectorParagraph>)}
+  </>;
+}
+
 function SimpleTable({ headers, rows, widths }: { headers: string[]; rows: string[][]; widths: number[] }) {
   const tableWidth = widths.reduce((sum, width) => sum + width, 0);
   return <View style={[styles.table, { width: tableWidth }]}><View fixed style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>{rows.map((row, i) => <View key={i} wrap={false} style={styles.row}>{row.map((cell, j) => <View key={j} style={[styles.td, { width: widths[j] }]}><VectorParagraph width={widths[j] - 1}>{cell}</VectorParagraph></View>)}</View>)}</View>;
@@ -248,13 +266,14 @@ function ContinuationLabel({ label, marker }: { label: string; marker: string })
 export function CallMetricsPdfDocument({ data, definitionRows = DEFINITIONS }: { data: CallMetricsResponse; definitionRows?: string[][] }): React.ReactElement<DocumentProps> {
   return <Document title="テレマ コール集計ポータル" author="Garden">
     <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics} groups={employeeColumnGroups}/><View style={styles.definitionBlock}><DefinitionTitle>事業別の小計</DefinitionTitle><LpSubtotalTable data={data}/>{data.lp?.unregisteredExtensionSummary ? <VectorParagraph width={870}>{data.lp.unregisteredExtensionSummary}</VectorParagraph> : null}</View></Page>
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_WEB_INBOUND</Text><SectionTitle>WEBインバウンド（事業ごと）</SectionTitle><VectorParagraph width={870}>次の版で追加</VectorParagraph></Page>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_WEB_INBOUND</Text><SectionTitle>WEBインバウンド（事業ごと）</SectionTitle><LpFunnelPart data={data}/></Page>
     <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
     <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="定義方法" marker="DEFINITION"/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
       <View style={styles.definitionBlock}><DefinitionTitle>集計の定義</DefinitionTitle><SimpleTable headers={["指標", "定義"]} rows={definitionRows} widths={[155, 580]}/></View>
       <View style={styles.definitionBlock}><DefinitionTitle>休憩時間割</DefinitionTitle><SimpleTable headers={["回", "開始", "終了", "長さ"]} rows={BREAKS} widths={[100, 170, 170, 170]}/><VectorParagraph width={735}>※ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</VectorParagraph></View>
       <View style={styles.definitionBlock}><DefinitionTitle>コール履歴のフラグ名 → ポータル表示名</DefinitionTitle><SimpleTable headers={["コール履歴", "ポータル表示"]} rows={[["獲得", "受注数"], ["前確OK", "前確OK数"], ["トス", "トス数"]]} widths={[240, 370]}/></View>
       <View style={styles.definitionBlock}><DefinitionTitle>結果フラグの扱い（分類ルール）</DefinitionTitle><SimpleTable headers={["結果フラグ", "扱い"]} rows={FLAG_RULES} widths={[240, 370]}/></View>
+      <View style={styles.definitionBlock}><DefinitionTitle>WEBインバウンドの対応と結果</DefinitionTitle><SimpleTable headers={["項目", "定義"]} rows={LP_FUNNEL_DEFINITIONS} widths={[200, 680]}/></View>
     </Page>
   </Document>;
 }

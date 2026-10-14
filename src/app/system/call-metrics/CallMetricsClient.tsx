@@ -5,7 +5,30 @@ import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { CallMetricsResponse } from "../_lib/call-metrics";
 import { defaultCallMetricDates, formatCallsPerWorkHour, formatWorkTime, summarizeCallMetrics } from "../_lib/call-metrics";
+import { LP_FUNNEL_DEFINITIONS, LP_FUNNEL_FILTER_NOTE, LP_FUNNEL_LEAD_NOTE, LP_FUNNEL_START_NOTE, lpFunnelCalcNotes, lpFunnelHeaders, lpFunnelNoRecordList, lpFunnelTableA, lpFunnelTableB, type LpFunnelViewRow } from "../_lib/lp-funnel-view";
 import styles from "./call-metrics.module.css";
+
+function formatJstDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const parts = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
+}
+
+// 表A・表B の共通の描き方（指標名は左ぞろえ・字下げあり、数字は右ぞろえ）
+function FunnelTable({ title, headers, rows }: { title: string; headers: string[]; rows: LpFunnelViewRow[] }) {
+  return <>
+    <h2>{title}</h2>
+    <div className={styles.tableWrap}><table>
+      <thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
+      <tbody>{rows.map((row) => <tr key={row.label}>
+        <td className={styles.funnelLabel} style={{ paddingLeft: `${13 + (row.indent ?? 0) * 16}px` }}>{row.label}</td>
+        {row.values.map((value, index) => <td key={index}>{value}</td>)}
+      </tr>)}</tbody>
+    </table></div>
+  </>;
+}
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
 const maybeNumber = (value: number | null | undefined) => value == null ? "-" : value.toLocaleString("ja-JP");
@@ -52,7 +75,7 @@ export default function CallMetricsClient() {
   const [data, setData] = useState<CallMetricsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"employees" | "lists" | "definitions">("employees");
+  const [activeTab, setActiveTab] = useState<"employees" | "lists" | "definitions" | "webinbound">("employees");
 
   async function load() {
     setLoading(true); setError(null);
@@ -104,7 +127,27 @@ export default function CallMetricsClient() {
           <button type="button" role="tab" aria-selected={activeTab === "employees"} onClick={() => setActiveTab("employees")}>従業員ごと</button>
           <button type="button" role="tab" aria-selected={activeTab === "lists"} onClick={() => setActiveTab("lists")}>リストごと</button>
           <button type="button" role="tab" aria-selected={activeTab === "definitions"} onClick={() => setActiveTab("definitions")}>定義方法</button>
+          <button type="button" role="tab" aria-selected={activeTab === "webinbound"} onClick={() => setActiveTab("webinbound")}>WEBインバウンド</button>
         </div>
+
+        {activeTab === "webinbound" && <section role="tabpanel">
+          <p className={styles.period}>{LP_FUNNEL_FILTER_NOTE}</p>
+          {data.lpFunnel ? <>
+            <FunnelTable title="対応（表A）" headers={lpFunnelHeaders(data.lpFunnel)} rows={lpFunnelTableA(data.lpFunnel)}/>
+            <FunnelTable title="結果（表B）" headers={lpFunnelHeaders(data.lpFunnel)} rows={lpFunnelTableB(data.lpFunnel)}/>
+            <p className={styles.period}>{LP_FUNNEL_LEAD_NOTE}</p>
+            <h2>記録なし（kintone に登録の無い応答）</h2>
+            <p className={styles.period}>着信に出たのに kintone に番号の一致する記録が無い問い合わせです。番号を確かめて kintone に登録してください。</p>
+            <div className={styles.tableWrap}><table>
+              <thead><tr><th>着信日時</th><th>発信元番号</th><th>応答した内線</th><th>事業</th></tr></thead>
+              <tbody {...CLARITY_MASK}>{lpFunnelNoRecordList(data.lpFunnel).length ? lpFunnelNoRecordList(data.lpFunnel).map((item) => <tr key={`${item.startTime}-${item.number}`}>
+                <td>{formatJstDateTime(item.startTime)}</td><td>{item.number}</td><td>{item.extension ?? "-"}</td><td>{item.bizName}</td>
+              </tr>) : <tr><td colSpan={4}>記録なしはありません</td></tr>}</tbody>
+            </table></div>
+            {lpFunnelCalcNotes(data.lpFunnel).map((note) => <p className={styles.note} key={note}>{note}</p>)}
+            <p className={styles.period}>{LP_FUNNEL_START_NOTE}</p>
+          </> : <p className={styles.note}>WEBインバウンドの対応と結果を取得できませんでした（LP系の範囲〈kintone 事業マスタ〉を読めなかったときはここが空になります）。</p>}
+        </section>}
 
         {activeTab === "employees" && <section role="tabpanel">
           <h2>従業員ごとの指標</h2>
@@ -198,6 +241,13 @@ export default function CallMetricsClient() {
               <tr><td>LP通話時間</td><td>LP 系回線の着信・発信の通話時間合計です。</td></tr>
               <tr><td>LP申込み</td><td>kintone の LP 顧客アプリで、対応状況が「申込み」かつ作成日時が対象期間内の件数です。</td></tr>
             </tbody>
+          </table></div>
+          <h2>WEBインバウンドの対応と結果</h2>
+          <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
+            <thead><tr><th>項目</th><th>定義</th></tr></thead>
+            <tbody>{LP_FUNNEL_DEFINITIONS.map(([item, definition]) => <tr key={item}>
+              <td>{item}</td><td>{definition}</td>
+            </tr>)}</tbody>
           </table></div>
         </section>}
       </>}

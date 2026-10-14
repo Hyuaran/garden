@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { normalizeCallMetricsRpc, summarizeCallMetrics } from "@/app/system/_lib/call-metrics";
 import { mergeCallMetrics, type RootEmployeeForCallMetrics } from "@/app/system/_lib/call-metrics-merge";
-import { countLpApplications, loadLpCustomerRecords, loadLpScope, lpCustomerAppTokenEnv } from "@/app/system/_lib/lp-kintone";
+import { loadLpContext } from "@/app/system/_lib/lp-context.server";
 import { buildCallReport, parseReportDate } from "@/app/system/_lib/call-report";
 import { CallReportChatworkError } from "@/app/system/_lib/chatwork";
 import { deliverCallReport } from "@/app/system/_lib/call-report-delivery";
@@ -65,30 +65,18 @@ export async function POST(request: Request) {
 
   const filemaker = normalizeCallMetricsRpc(data, { from: date, to: date, listName: null, employeeName: null });
   const rootEmployees = await loadRootEmployees(supabase);
-  const lpScope = await loadLpScope().catch(() => null);
-  const lpCircuitIds = [...new Set((lpScope ?? []).flatMap((biz) => biz.circuitIds))];
+  const now = new Date();
+  const lpKintone = await loadLpContext({ client: supabase, from: date, to: date, asOf: now, hasInnoveraRows: true });
   const innoveraResult = await supabase.rpc("system_innovera_metrics", {
-    p_from: date, p_to: date, p_lp_circuit_ids: lpCircuitIds, p_employee_id: null,
+    p_from: date, p_to: date, p_lp_circuit_ids: lpKintone.lpCircuitIds, p_employee_id: null,
   });
-  const notes: string[] = [];
-  const lpApplicationCountsByBiz = new Map<string, Map<string, number> | null>();
-  if (!lpScope) {
-    notes.push("LP申込み（kintone）の事業マスタを取得できませんでした");
-  } else {
-    const recordsByApp = new Map<number, Awaited<ReturnType<typeof loadLpCustomerRecords>>>();
-    for (const biz of lpScope) {
-      if (!lpCustomerAppTokenEnv(biz.customerApp)) {
-        lpApplicationCountsByBiz.set(biz.bizCode, null);
-        notes.push(`LP申込み（kintone）の鍵が未設定：アプリ ${biz.customerApp}`);
-        continue;
-      }
-      if (!recordsByApp.has(biz.customerApp)) recordsByApp.set(biz.customerApp, await loadLpCustomerRecords(biz.customerApp));
-      lpApplicationCountsByBiz.set(biz.bizCode, countLpApplications(recordsByApp.get(biz.customerApp) ?? null, date, date));
-    }
-  }
-  const metrics = mergeCallMetrics({ filemaker, innovera: innoveraResult.error ? null : innoveraResult.data, lpScope, lpApplicationCountsByBiz, rootEmployees, notes });
+  const metrics = {
+    ...mergeCallMetrics({ filemaker, innovera: innoveraResult.error ? null : innoveraResult.data, lpScope: lpKintone.lpScope, lpApplicationCountsByBiz: lpKintone.lpApplicationCountsByBiz, rootEmployees, notes: lpKintone.notes }),
+    lpFunnel: lpKintone.funnel,
+    lpFormCount: lpKintone.formCount,
+  };
   const summary = summarizeCallMetrics(metrics);
-  const report = buildCallReport(summary, new Date(), metrics);
+  const report = buildCallReport(summary, now, metrics);
   if (report.skipped) {
     console.info("[system/call-report] completed", { mode: input.mode, date, skipped: true, aggregateMs, postMs: 0 });
     return NextResponse.json(input.mode === "preview"

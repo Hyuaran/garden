@@ -91,6 +91,8 @@ export type LpMetricsPayload = {
   unregisteredExtensionSummary: string | null;
 };
 
+import type { LpFunnelResult } from "./lp-funnel";
+
 export type CallMetricsResponse = {
   from: string;
   to: string;
@@ -101,6 +103,10 @@ export type CallMetricsResponse = {
   lastImportedAt: string | null;
   innovera?: InnoveraMetricsStatus;
   lp?: LpMetricsPayload;
+  // WEBインバウンドの対応と結果（§5.6・画面の 4 つ目のタブ・本文の【対応と結果】・PDF 第 2 部）
+  lpFunnel?: LpFunnelResult | null;
+  // 当日のフォーム受付数（0 件スキップの判定に足す・§7）
+  lpFormCount?: number | null;
 };
 
 export type CallMetricsSummary = {

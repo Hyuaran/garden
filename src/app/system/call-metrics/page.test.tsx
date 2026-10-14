@@ -21,7 +21,7 @@ describe("CallMetricsClient", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => response }));
   });
-  it("renders the portal and switches across all three tabs", async () => {
+  it("renders the portal and switches across all four tabs", async () => {
     render(<CallMetricsClient />);
     expect(await screen.findByText("社員A")).toBeInTheDocument();
     const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
@@ -29,7 +29,7 @@ describe("CallMetricsClient", () => {
     expect(within(breadcrumb).getByText("テレマ コール集計")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "テレマ コール集計" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "ログアウト" })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("tab")).toHaveLength(3);
+    expect(screen.getAllByRole("tab")).toHaveLength(4); // 2026-10-15 WEBインバウンド（対応と結果）を追加
     expect(screen.getByTestId("call-metrics-page-shell")).toHaveClass(styles.pageShell);
     expect(screen.getByText(/^対象期間:/)).toHaveClass(styles.period);
     expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveClass(styles.summaryBand);
@@ -56,8 +56,8 @@ describe("CallMetricsClient", () => {
     expect(screen.getByText("コール数/h")).toBeInTheDocument();
     expect(screen.getByText("会話できたコール。留守・無効・空白（無効扱い）を除きます。")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "結果フラグの扱い（分類ルール）" })).toBeInTheDocument();
-    // 集計の定義／休憩時間／フラグ名の対応／結果フラグの扱い／通話時間とWEBインバウンド の5表
-    expect(screen.getAllByRole("table")).toHaveLength(5);
+    // 集計の定義／休憩時間／フラグ名の対応／結果フラグの扱い／通話時間とWEBインバウンド／WEBインバウンドの対応と結果 の6表
+    expect(screen.getAllByRole("table")).toHaveLength(6);
     expect(screen.getByRole("heading", { name: "休憩時間割" })).toBeInTheDocument();
     expect(screen.getByText(/^※ 休憩の時間帯が変わったときは/)).toBeInTheDocument();
     expect(screen.queryByText(/^★/)).not.toBeInTheDocument();

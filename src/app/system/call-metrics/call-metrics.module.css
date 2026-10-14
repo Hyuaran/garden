@@ -57,3 +57,5 @@
 @media (max-width: 600px) { .header { align-items: flex-start; } .filters { grid-template-columns: 1fr; } .filters button { width: 100%; } .summaryBand { display: grid; } }
 /* テレマの列と WEBインバウンド（LP系）の列の境（無効｜LP応答）に太い区切り線（東海林さん 2026-10-15） */
 .main th.lpStart, .main td.lpStart { border-left: 2px solid var(--teal); }
+/* WEBインバウンドの対応・結果の表＝指標名は左ぞろえ・改行あり */
+.main td.funnelLabel { text-align: left; white-space: normal; min-width: 260px; }

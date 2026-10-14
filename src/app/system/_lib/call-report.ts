@@ -1,4 +1,5 @@
 import type { CallMetricsResponse, CallMetricsSummary, LpBusinessMetricRow } from "./call-metrics";
+import { lpFunnelLine } from "./lp-funnel";
 
 const JST_TIME_ZONE = "Asia/Tokyo";
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
@@ -65,11 +66,19 @@ function lpLine(row: LpBusinessMetricRow) {
 function buildLpBlock(metrics?: CallMetricsResponse) {
   if (!metrics?.lp) return "";
   const stopped = metrics.innovera?.stopped ? `※INNOVERA 取込停止中（最終 ${formatShortJstTime(metrics.innovera.lastSyncAt)}）\n` : "";
-  return `\n\n【WEBインバウンド】\n${stopped}${metrics.lp.businesses.map(lpLine).join("\n")}`;
+  return `\n\n【WEBインバウンド】\n${stopped}${metrics.lp.businesses.map(lpLine).join("\n")}${buildFunnelBlock(metrics)}`;
+}
+
+// 【対応と結果】＝事業ごとに 1 行（§5.6.5・§7）。判定待ちと⚠記録なしは行の末尾に付く
+function buildFunnelBlock(metrics: CallMetricsResponse) {
+  const businesses = metrics.lpFunnel?.businesses ?? [];
+  if (!businesses.length) return "";
+  return `\n【対応と結果】\n${businesses.map(lpFunnelLine).join("\n")}`;
 }
 
 export function buildCallReport(summary: CallMetricsSummary, now = new Date(), metrics?: CallMetricsResponse) {
-  if (summary.totalCalls + lpTrafficTotal(metrics) === 0) {
+  // 0 件スキップ＝テレマの総コール＋LP の着信＋LP の発信＋フォーム受付数が 0 のときだけ（v1.7）
+  if (summary.totalCalls + lpTrafficTotal(metrics) + (metrics?.lpFormCount ?? 0) === 0) {
     return { skipped: true as const, reason: "本日コール0件", text: null };
   }
   const noTelemaCalls = summary.totalCalls === 0;

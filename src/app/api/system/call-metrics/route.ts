@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { normalizeCallMetricsRpc, parseCallMetricParams } from "@/app/system/_lib/call-metrics";
 import { mergeCallMetrics, resolveEmployeeIdForCallMetrics, type RootEmployeeForCallMetrics } from "@/app/system/_lib/call-metrics-merge";
-import { countLpApplications, loadLpCustomerRecords, loadLpScope, lpCustomerAppTokenEnv } from "@/app/system/_lib/lp-kintone";
+import { loadLpContext } from "@/app/system/_lib/lp-context.server";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
 import type { GardenRole } from "@/app/root/_constants/types";
 import { STAFF_VIEW_ROLES } from "@/lib/auth/view-roles";
@@ -24,6 +24,14 @@ async function loadRootEmployees(supabase: Awaited<ReturnType<typeof createServe
   }
 }
 
+// 集計した時点（as_of）。省略はいま。検算用に ISO で指定できる（例 2026-10-13T23:59:59+09:00）
+function parseAsOf(value: string | null) {
+  if (!value) return new Date();
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error("as_of は日時（ISO 形式）で指定してください");
+  return date;
+}
+
 export async function GET(request: Request) {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -37,8 +45,12 @@ export async function GET(request: Request) {
   }
 
   let range;
-  try { range = parseCallMetricParams(new URL(request.url).searchParams); }
-  catch (error) { return NextResponse.json({ ok: false, error: (error as Error).message }, { status: 400 }); }
+  let asOf: Date;
+  try {
+    const params = new URL(request.url).searchParams;
+    range = parseCallMetricParams(params);
+    asOf = parseAsOf(params.get("as_of"));
+  } catch (error) { return NextResponse.json({ ok: false, error: (error as Error).message }, { status: 400 }); }
 
   const { data, error } = await supabase.rpc("system_call_metrics", {
     p_from: range.from, p_to: range.to, p_list_name: range.listName, p_employee_name: range.employeeName,
@@ -49,43 +61,22 @@ export async function GET(request: Request) {
   }
   const filemaker = normalizeCallMetricsRpc(data, range);
   const rootEmployees = await loadRootEmployees(supabase);
-  const lpScope = await loadLpScope().catch(() => null);
-  const lpCircuitIds = [...new Set((lpScope ?? []).flatMap((biz) => biz.circuitIds))];
   const employeeId = resolveEmployeeIdForCallMetrics(range.employeeName, rootEmployees);
+  // 先に INNOVERA の集計（has_rows）を読み、LP系の読み込みと突き合わせに渡す
+  const lpKintone = await loadLpContext({ client: supabase, from: range.from, to: range.to, asOf, hasInnoveraRows: true });
   const innoveraResult = await supabase.rpc("system_innovera_metrics", {
     p_from: range.from,
     p_to: range.to,
-    p_lp_circuit_ids: lpCircuitIds,
+    p_lp_circuit_ids: lpKintone.lpCircuitIds,
     p_employee_id: employeeId,
   });
-  const notes: string[] = [];
-  const lpApplicationCountsByBiz = new Map<string, Map<string, number> | null>();
-  if (!lpScope) {
-    notes.push("LP申込み（kintone）の事業マスタを取得できませんでした");
-  } else {
-    const recordsByApp = new Map<number, Awaited<ReturnType<typeof loadLpCustomerRecords>>>();
-    for (const biz of lpScope) {
-      if (!lpCustomerAppTokenEnv(biz.customerApp)) {
-        lpApplicationCountsByBiz.set(biz.bizCode, null);
-        notes.push(`LP申込み（kintone）の鍵が未設定：アプリ ${biz.customerApp}`);
-        continue;
-      }
-      if (!recordsByApp.has(biz.customerApp)) recordsByApp.set(biz.customerApp, await loadLpCustomerRecords(biz.customerApp));
-      const records = recordsByApp.get(biz.customerApp) ?? null;
-      if (!records) {
-        lpApplicationCountsByBiz.set(biz.bizCode, null);
-        notes.push(`LP申込み（kintone）を取得できませんでした：${biz.bizName}`);
-      } else {
-        lpApplicationCountsByBiz.set(biz.bizCode, countLpApplications(records, range.from, range.to));
-      }
-    }
-  }
-  return NextResponse.json({ ok: true, ...mergeCallMetrics({
+  const merged = mergeCallMetrics({
     filemaker,
     innovera: innoveraResult.error ? null : innoveraResult.data,
-    lpScope,
-    lpApplicationCountsByBiz,
+    lpScope: lpKintone.lpScope,
+    lpApplicationCountsByBiz: lpKintone.lpApplicationCountsByBiz,
     rootEmployees,
-    notes,
-  }) });
+    notes: lpKintone.notes,
+  });
+  return NextResponse.json({ ok: true, ...merged, lpFunnel: lpKintone.funnel, lpFormCount: lpKintone.formCount });
 }
