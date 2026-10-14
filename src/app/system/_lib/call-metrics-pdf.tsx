@@ -5,7 +5,7 @@ import { openSync } from "fontkit";
 import type { CallMetricsResponse, EmployeeCallMetricRow, CallMetricRow } from "./call-metrics";
 import { formatCallsPerWorkHour, formatWorkTime } from "./call-metrics";
 
-const COLORS = { bg: "#F4F5F7", card: "#FFFFFF", line: "#E3EAF3", navy: "#10233F", teal: "#0EA5A0", ink: "#17212E", sub: "#5A6B80", zero: "#98A4B3" } as const;
+const COLORS = { bg: "#F4F5F7", card: "#FFFFFF", line: "#E3EAF3", navy: "#10233F", teal: "#0EA5A0", ink: "#17212E", sub: "#5A6B80", zero: "#98A4B3", red: "#E5484D" } as const;
 type VectorFont = ReturnType<typeof openSync>;
 let regularFont: VectorFont | null = null;
 let boldFont: VectorFont | null = null;
@@ -86,6 +86,8 @@ const styles = StyleSheet.create({
   thCenter: { textAlign: "center" },
   thLeft: { textAlign: "left" },
   td: { borderRightWidth: 1, borderBottomWidth: 1, borderColor: COLORS.line, textAlign: "right" },
+  // テレマの列と WEBインバウンド（LP系）の列の境（無効｜LP応答）に太い区切り線（東海林さん 2026-10-15）
+  groupStart: { borderLeftWidth: 2, borderLeftColor: COLORS.teal },
   tdLeft: { textAlign: "left" },
   zero: { color: COLORS.zero },
   strong: { color: COLORS.ink, fontWeight: 700 },
@@ -100,29 +102,35 @@ const styles = StyleSheet.create({
   continuationCoverFill: { width: 737, height: 18, backgroundColor: COLORS.bg },
 });
 
-type Column<T> = { label: string; width: number; value: (row: T) => string; align?: "left" | "center"; emphasized?: (row: T) => "zero" | "strong" | null };
+type Column<T> = { label: string; width: number; value: (row: T) => string; align?: "left" | "center"; emphasized?: (row: T) => "zero" | "strong" | null; groupStart?: boolean };
+type ColumnGroup = { label: string; span: number };
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 const maybeNumber = (value: number | null | undefined) => value == null ? "-" : value.toLocaleString("ja-JP");
 const maybeTime = (value: number | null | undefined) => value == null ? "-" : formatWorkTime(value);
 export const callMetricCountTone = (value: number) => value === 0 ? "zero" as const : "strong" as const;
+// 「（内線未登録）n席」の行は FileMaker 由来の列（稼働時間〜無効）を「-」にする（§5.5.2）
+const isUnregisteredRow = (r: EmployeeCallMetricRow) => r.employeeName.startsWith("（内線未登録）");
+const fm = (r: EmployeeCallMetricRow, value: string) => isUnregisteredRow(r) ? "-" : value;
+const fmTone = (r: EmployeeCallMetricRow, value: number) => isUnregisteredRow(r) ? null : callMetricCountTone(value);
+const employeeColumnGroups: ColumnGroup[] = [{ label: "テレマ", span: 15 }, { label: "WEBインバウンド（LP系）", span: 4 }];
 
 const employeeColumns: Column<EmployeeCallMetricRow>[] = [
   { label: "社員名", width: 92, value: (r) => r.employeeName, align: "left" },
-  { label: "稼働時間", width: 58, value: (r) => formatWorkTime(r.workSeconds) },
+  { label: "稼働時間", width: 58, value: (r) => fm(r, formatWorkTime(r.workSeconds)) },
   { label: "通話時間", width: 58, value: (r) => maybeTime(r.talkSecondsOther) },
-  { label: "コール数", width: 43, value: (r) => r.callCount.toLocaleString("ja-JP") },
-  { label: "コール数/h", width: 46, value: (r) => formatCallsPerWorkHour(r.callCount, r.workSeconds) },
-  { label: "有効数", width: 39, value: (r) => r.effectiveCount.toLocaleString("ja-JP") },
-  { label: "有効率", width: 42, value: (r) => pct(r.effectiveRate) },
-  { label: "トス数", width: 37, value: (r) => String(r.tossCount), emphasized: (r) => callMetricCountTone(r.tossCount) },
-  { label: "トス率", width: 41, value: (r) => pct(r.callCount ? r.tossCount / r.callCount : 0) },
-  { label: "受注数", width: 39, value: (r) => String(r.acquiredCount), emphasized: (r) => callMetricCountTone(r.acquiredCount) },
-  { label: "前確OK数", width: 46, value: (r) => String(r.orderCount), emphasized: (r) => callMetricCountTone(r.orderCount) },
-  { label: "見込", width: 34, value: (r) => String(r.prospectCount) },
-  { label: "担不", width: 34, value: (r) => String(r.absentCount) },
-  { label: "留守", width: 34, value: (r) => String(r.awayCount) },
-  { label: "無効", width: 34, value: (r) => String(r.invalidCount) },
-  { label: "LP応答", width: 44, value: (r) => maybeNumber(r.lpAnswered) },
+  { label: "コール数", width: 43, value: (r) => fm(r, r.callCount.toLocaleString("ja-JP")) },
+  { label: "コール数/h", width: 46, value: (r) => fm(r, formatCallsPerWorkHour(r.callCount, r.workSeconds)) },
+  { label: "有効数", width: 39, value: (r) => fm(r, r.effectiveCount.toLocaleString("ja-JP")) },
+  { label: "有効率", width: 42, value: (r) => fm(r, pct(r.effectiveRate)) },
+  { label: "トス数", width: 37, value: (r) => fm(r, String(r.tossCount)), emphasized: (r) => fmTone(r, r.tossCount) },
+  { label: "トス率", width: 41, value: (r) => fm(r, pct(r.callCount ? r.tossCount / r.callCount : 0)) },
+  { label: "受注数", width: 39, value: (r) => fm(r, String(r.acquiredCount)), emphasized: (r) => fmTone(r, r.acquiredCount) },
+  { label: "前確OK数", width: 46, value: (r) => fm(r, String(r.orderCount)), emphasized: (r) => fmTone(r, r.orderCount) },
+  { label: "見込", width: 34, value: (r) => fm(r, String(r.prospectCount)) },
+  { label: "担不", width: 34, value: (r) => fm(r, String(r.absentCount)) },
+  { label: "留守", width: 34, value: (r) => fm(r, String(r.awayCount)) },
+  { label: "無効", width: 34, value: (r) => fm(r, String(r.invalidCount)) },
+  { label: "LP応答", width: 44, value: (r) => maybeNumber(r.lpAnswered), groupStart: true },
   { label: "LP発信", width: 44, value: (r) => maybeNumber(r.lpOutbound) },
   { label: "LP通話時間", width: 58, value: (r) => maybeTime(r.lpTalkSeconds) },
   { label: "LP申込み", width: 44, value: (r) => maybeNumber(r.lpApplications) },
@@ -159,24 +167,55 @@ const DEFINITIONS = [
   ["通話時間と WEBインバウンド（LP系）", "INNOVERA の通話秒数、LP 系回線の応答・発信・通話時間、kintone の申込み件数を表示します。取得できない値は「-」です。"],
 ];
 
+// ヘッダ帯の「INNOVERA 最終取込 HH:MM」（JST）。20 分以上前なら赤字で「INNOVERA 取込停止中（最終 HH:MM）」（§7.2）
+function formatShortJstTime(value: string | null | undefined) {
+  if (!value) return "データなし";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "データなし";
+  const parts = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("hour")}:${get("minute")}`;
+}
+export function innoveraHeaderText(data: CallMetricsResponse) {
+  if (!data.innovera) return null;
+  const time = formatShortJstTime(data.innovera.lastSyncAt);
+  return data.innovera.stopped ? { text: `INNOVERA 取込停止中（最終 ${time}）`, stopped: true } : { text: `INNOVERA 最終取込 ${time}`, stopped: false };
+}
+
 function Chrome({ data }: { data: CallMetricsResponse }) {
   const period = `対象期間 ${data.from}〜${data.to}`;
-  const header = <><VectorText width={350} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText><VectorText width={250} height={18} fontSize={8} align="right" color={COLORS.sub}>{period}</VectorText></>;
+  const innovera = innoveraHeaderText(data);
+  const header = <>
+    <VectorText width={350} height={18} fontSize={11} bold align="left" color={COLORS.navy}>テレマ コール集計ポータル</VectorText>
+    <View style={{ flexDirection: "row", height: 18 }}>
+      <VectorText width={250} height={18} fontSize={8} align="right" color={COLORS.sub}>{period}</VectorText>
+      {innovera ? <VectorText width={220} height={18} fontSize={8} align="right" bold={innovera.stopped} color={innovera.stopped ? COLORS.red : COLORS.sub}>{innovera.text}</VectorText> : null}
+    </View>
+  </>;
   return <><View style={styles.header}>{header}</View><View fixed style={styles.header}>{header}</View><Text fixed style={styles.hiddenMarker}>{`PDF_HEADER ${data.from} ${data.to}`}</Text><Text fixed style={styles.footer} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} /></>;
 }
 
-function DataTable<T>({ columns, rows }: { columns: Column<T>[]; rows: T[] }) {
+function DataTable<T>({ columns, rows, groups }: { columns: Column<T>[]; rows: T[]; groups?: ColumnGroup[] }) {
   const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
+  // 見出し 2 段の上段（例：テレマ｜WEBインバウンド（LP系））。各グループの幅＝含む列の幅の合計
+  const groupCells = groups?.map((group, index) => {
+    const start = groups.slice(0, index).reduce((sum, g) => sum + g.span, 0);
+    const width = columns.slice(start, start + group.span).reduce((sum, column) => sum + column.width, 0);
+    return { ...group, width, groupStart: index > 0 };
+  });
+  const cellStyle = (base: typeof styles.th | typeof styles.td, column: { width: number; groupStart?: boolean }) => column.groupStart ? [base, styles.groupStart, { width: column.width }] : [base, { width: column.width }];
   return <View style={[styles.table, { width: tableWidth }]}>
-    <View fixed style={styles.row}>{columns.map((column) => <View key={column.label} style={[styles.th, { width: column.width }]}><VectorText width={column.width - 1} height={22} bold align="center" color="#FFFFFF">{column.label}</VectorText></View>)}</View>
+    {groupCells ? <View fixed style={styles.row}>{groupCells.map((group) => <View key={group.label} style={cellStyle(styles.th, group)}><VectorText width={group.width - 1} height={22} bold align="center" color="#FFFFFF">{group.label}</VectorText></View>)}</View> : null}
+    <View fixed style={styles.row}>{columns.map((column) => <View key={column.label} style={cellStyle(styles.th, column)}><VectorText width={column.width - 1} height={22} bold align="center" color="#FFFFFF">{column.label}</VectorText></View>)}</View>
     {rows.length ? rows.map((row, rowIndex) => <View key={rowIndex} wrap={false} style={styles.row}>{columns.map((column) => {
       const emphasis = column.emphasized?.(row);
-      return <View key={column.label} style={[styles.td, { width: column.width }]}><VectorText width={column.width - 1} height={22} wrap={column.align === "left"} bold={emphasis === "strong"} align={column.align ?? "right"} color={emphasis === "zero" ? COLORS.zero : COLORS.ink}>{column.value(row)}</VectorText></View>;
+      return <View key={column.label} style={cellStyle(styles.td, column)}><VectorText width={column.width - 1} height={22} wrap={column.align === "left"} bold={emphasis === "strong"} align={column.align ?? "right"} color={emphasis === "zero" ? COLORS.zero : COLORS.ink}>{column.value(row)}</VectorText></View>;
     })}</View>) : <View style={styles.row}><View style={[styles.td, { width: columns.reduce((sum, c) => sum + c.width, 0) }]}><VectorText width={columns.reduce((sum, c) => sum + c.width, 0)} align="left">対象データがありません</VectorText></View></View>}
   </View>;
 }
 
-const lpSubtotalWidths = [220, 60, 60, 60, 60, 60, 80, 80, 60];
+// 申込みの列は「5（うち担当者未設定 1）」が 1 行に入る幅（東海林さん 2026-10-15）
+const lpSubtotalWidths = [220, 60, 60, 60, 60, 60, 80, 80, 200];
 function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
   const rows = [...(data.lp?.businesses ?? []), ...(data.lp?.totals ? [data.lp.totals] : [])].map((row) => [
     row.bizName,
@@ -208,7 +247,7 @@ function ContinuationLabel({ label, marker }: { label: string; marker: string })
 }
 export function CallMetricsPdfDocument({ data, definitionRows = DEFINITIONS }: { data: CallMetricsResponse; definitionRows?: string[][] }): React.ReactElement<DocumentProps> {
   return <Document title="テレマ コール集計ポータル" author="Garden">
-    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics}/><View style={styles.definitionBlock}><DefinitionTitle>事業別の小計</DefinitionTitle><LpSubtotalTable data={data}/>{data.lp?.unregisteredExtensionSummary ? <VectorParagraph width={870}>{data.lp.unregisteredExtensionSummary}</VectorParagraph> : null}</View></Page>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics} groups={employeeColumnGroups}/><View style={styles.definitionBlock}><DefinitionTitle>事業別の小計</DefinitionTitle><LpSubtotalTable data={data}/>{data.lp?.unregisteredExtensionSummary ? <VectorParagraph width={870}>{data.lp.unregisteredExtensionSummary}</VectorParagraph> : null}</View></Page>
     <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_WEB_INBOUND</Text><SectionTitle>WEBインバウンド（事業ごと）</SectionTitle><VectorParagraph width={870}>次の版で追加</VectorParagraph></Page>
     <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
     <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="定義方法" marker="DEFINITION"/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
