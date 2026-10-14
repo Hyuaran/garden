@@ -80,6 +80,8 @@ async function handleLink(event: LineWebhookEvent, employeeNumber: string) {
     .maybeSingle<EmployeeRow>();
   if (error) throw error;
   if (!employee?.employee_number) {
+    // 名簿に無い人も「連携前の一覧」に残す（名簿を直したあと、画面から手で紐づけられるように）。送ってきた文を last_text に
+    await rememberPending(lineUserId, `連携 ${employeeNumber}`);
     await reply(event.replyToken, `社員番号 ${Number(employeeNumber)} が名簿に見つかりません。番号を確かめて、もう一度『連携 社員番号』と送ってください。`);
     return;
   }
@@ -134,6 +136,13 @@ async function handleUnlinkedText(event: LineWebhookEvent, text: string) {
   if (linkedError) throw linkedError;
   if (linked) return;
 
+  const { shouldReply } = await rememberPending(lineUserId, text);
+  if (shouldReply) await reply(event.replyToken, LINK_GUIDE);
+}
+
+// 連携前の一覧（system_line_staff_pending）に残す。戻り値＝今日はまだ案内を返していないか（1 人 1 日 1 回）
+async function rememberPending(lineUserId: string, text: string) {
+  const client = getSupabaseAdmin();
   const { data: pending } = await client
     .from("system_line_staff_pending")
     .select("last_seen_at,first_seen_at")
@@ -153,7 +162,7 @@ async function handleUnlinkedText(event: LineWebhookEvent, text: string) {
       first_seen_at: pending?.first_seen_at ?? now,
     }, { onConflict: "line_user_id" });
   if (upsertError) throw upsertError;
-  if (shouldReply) await reply(event.replyToken, LINK_GUIDE);
+  return { shouldReply };
 }
 
 async function handleMessage(event: LineWebhookEvent) {
