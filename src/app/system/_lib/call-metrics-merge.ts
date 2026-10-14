@@ -89,8 +89,10 @@ function innoveraValue(value: unknown, innoveraRow: InnoveraEmployeeMetric | nul
   return hasFixedExtension(root) ? 0 : null;
 }
 
-function isPositiveLp(row: Pick<EmployeeCallMetricRow, "lpAnswered" | "lpOutbound" | "lpTalkSeconds" | "lpApplications" | "talkSecondsOther">) {
-  return [row.lpAnswered, row.lpOutbound, row.lpTalkSeconds, row.lpApplications, row.talkSecondsOther].some((value) => (value ?? 0) > 0);
+// FileMaker にコールが無い行（LP だけの人・「（内線未登録）」）は、LP の数字（LP応答・LP発信・LP通話時間・LP申込み）のどれかが 1 以上のときだけ出す（§5.5.5）。
+// LP 以外の通話時間だけの人（受付・代表電話・他の商材の回線）は出さない
+function isPositiveLp(row: Pick<EmployeeCallMetricRow, "lpAnswered" | "lpOutbound" | "lpTalkSeconds" | "lpApplications">) {
+  return [row.lpAnswered, row.lpOutbound, row.lpTalkSeconds, row.lpApplications].some((value) => (value ?? 0) > 0);
 }
 
 export function resolveEmployeeIdForCallMetrics(employeeName: string | null, rootEmployees: RootEmployeeForCallMetrics[]) {
