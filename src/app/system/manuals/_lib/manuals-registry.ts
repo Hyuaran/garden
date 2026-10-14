@@ -60,6 +60,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "innovera", "業務管理ツール（INNOVERA番号の同期）", "INNOVERA の回線一覧を Kintone の番号一覧へ 5 分ごとに写す仕組み。差分の見方と「今すぐ反映」の使い方。"),
   manual("system", "innovera-calls", "INNOVERA履歴・録音", "INNOVERA の通話履歴の見方、切断後の録音の再生、自分の発信番号の切り替え。権限の段階と Root での紐づけ。"),
   manual("system", "pl-payments", "業務管理ツール（損益の見張り）", "Kintone【損益】センターライズの支払待ちを 5 分ごとに見張り、通知・請求書の Drive リンク入力・振込依頼／振込実行の自動作成・前日通知を行う仕組み。"),
+  manual("system", "mail-payment-check", "業務管理ツール（支払漏れチェック）", "各社の経理メール 24 箱に届いた請求書を平日 10:00 に調べ、振込依頼の予約漏れと Drive の保存漏れを Chatwork で知らせる仕組み。知らせの読み方と対処。"),
   manual("system", "contracts", "契約書管理", "上位店との契約書の登録と、パートナー配布用ひな形の作り方。"),
   manual("system", "sites", "コーポレートサイト", "グループ各社の会社HPと商品ページの一覧。稼働状態・問い合わせの配線・旧サーバー契約の見方と、一覧の更新のしかた。"),
   manual("system", "toss", "関電トスポータル", "関西電力のトスアップの受け付けと、Kintone への連携。"),
