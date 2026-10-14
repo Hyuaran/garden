@@ -186,8 +186,8 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
             </label>
             {quota?.passwordRequired && <label className={styles.password}>
               送信パスワード
-              <input type="password" value={password} autoComplete="off" inputMode="numeric" onChange={(event) => setPassword(event.currentTarget.value)} placeholder="事務から案内された番号" />
-              <small>通数を無駄に使わないため、送信にはパスワードが要ります</small>
+              <input type="password" value={password} autoComplete="off" inputMode="numeric" onChange={(event) => setPassword(event.currentTarget.value)} />
+              <small>公式 LINE が無料プランのため、送信にはパスワードが必要です</small>
             </label>}
             {state === "failed" && error && <p className={styles.error} role="alert">{error}</p>}
             {failed.length > 0 && <p className={styles.error}>送れなかった人：{failed.map((item) => item.name || item.employeeNumber).join("・")}</p>}
