@@ -82,6 +82,7 @@ export async function GET(request: Request) {
     blocked: employee.line_link_source === "unfollowed",
   })) : [];
   const ownLinked = Boolean(await ownLineUserId(String(staff.employee_id)).catch(() => null));
+  const passwordRequired = sendPasswordRequired();
   try {
     const quota = await getLineStaffQuota();
     return NextResponse.json({
@@ -92,20 +93,33 @@ export async function GET(request: Request) {
       needed,
       members,
       ownLinked,
+      passwordRequired,
     });
   } catch {
-    return NextResponse.json({ ok: true, quota: null, used: 0, remaining: null, needed, members, ownLinked });
+    return NextResponse.json({ ok: true, quota: null, used: 0, remaining: null, needed, members, ownLinked, passwordRequired });
   }
+}
+
+// 送信パスワード（課金するまでの歯止め・2026-10-14 東海林さん）。環境変数 LINE_STAFF_SEND_PASSWORD が無ければ求めない
+function sendPasswordRequired() {
+  return Boolean(process.env.LINE_STAFF_SEND_PASSWORD);
+}
+
+function sendPasswordMatches(value: unknown) {
+  const expected = process.env.LINE_STAFF_SEND_PASSWORD;
+  if (!expected) return true;
+  return typeof value === "string" && value.trim() === expected;
 }
 
 export async function POST(request: Request) {
   const staff = await requireStaff();
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
-  const body = await request.json().catch(() => null) as { date?: unknown; blocks?: unknown; testOnly?: unknown } | null;
+  const body = await request.json().catch(() => null) as { date?: unknown; blocks?: unknown; testOnly?: unknown; password?: unknown } | null;
   const workDate = typeof body?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : "";
   const blocks = normalizeBlocks(body?.blocks);
   const testOnly = body?.testOnly === true;
   if (!workDate || !blocks || blocks.length === 0) return NextResponse.json({ ok: false, error: "送る内容を確認してください" }, { status: 400 });
+  if (!sendPasswordMatches(body?.password)) return NextResponse.json({ ok: false, error: "送信パスワードが違います" }, { status: 403 });
 
   const client = getSupabaseAdmin();
   const sentAt = nowIso();
@@ -116,37 +130,37 @@ export async function POST(request: Request) {
   if (testOnly) {
     const lineUserId = await ownLineUserId(String(staff.employee_id));
     if (!lineUserId) return NextResponse.json({ ok: false, error: "自分の LINE を先に連携してください" }, { status: 400 });
-    for (const block of blocks) {
-      try {
-        await pushLineStaff([lineUserId], block.message);
-        sent.push({ employeeNumber: String(staff.employee_number ?? ""), name: String(staff.name ?? ""), shift: "試し送り" });
-        await client.from("system_line_staff_message").insert({
-          work_date: workDate,
-          shift: "試し送り",
-          employee_id: String(staff.employee_id),
-          employee_number: String(staff.employee_number ?? ""),
-          line_user_id: lineUserId,
-          message: block.message,
-          status: "sent",
-          sent_by_employee_id: String(staff.employee_id),
-          sent_at: sentAt,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        failed.push({ employeeNumber: String(staff.employee_number ?? ""), name: String(staff.name ?? ""), shift: "試し送り", error: message });
-        await client.from("system_line_staff_message").insert({
-          work_date: workDate,
-          shift: "試し送り",
-          employee_id: String(staff.employee_id),
-          employee_number: String(staff.employee_number ?? ""),
-          line_user_id: lineUserId,
-          message: block.message,
-          status: "failed",
-          error: message,
-          sent_by_employee_id: String(staff.employee_id),
-          sent_at: sentAt,
-        });
-      }
+    // 試し送りは 1 通にまとめる（まとまりごとに送ると通数を無駄に使う・2026-10-14 東海林さん）
+    const combined = blocks.map((block) => `【${block.shift}】\n${block.message}`).join("\n\n――――――――\n\n");
+    try {
+      await pushLineStaff([lineUserId], combined);
+      sent.push({ employeeNumber: String(staff.employee_number ?? ""), name: String(staff.name ?? ""), shift: "試し送り" });
+      await client.from("system_line_staff_message").insert({
+        work_date: workDate,
+        shift: "試し送り",
+        employee_id: String(staff.employee_id),
+        employee_number: String(staff.employee_number ?? ""),
+        line_user_id: lineUserId,
+        message: combined,
+        status: "sent",
+        sent_by_employee_id: String(staff.employee_id),
+        sent_at: sentAt,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failed.push({ employeeNumber: String(staff.employee_number ?? ""), name: String(staff.name ?? ""), shift: "試し送り", error: message });
+      await client.from("system_line_staff_message").insert({
+        work_date: workDate,
+        shift: "試し送り",
+        employee_id: String(staff.employee_id),
+        employee_number: String(staff.employee_number ?? ""),
+        line_user_id: lineUserId,
+        message: combined,
+        status: "failed",
+        error: message,
+        sent_by_employee_id: String(staff.employee_id),
+        sent_at: sentAt,
+      });
     }
     return NextResponse.json({ ok: failed.length === 0, sent, unlinked, failed, sentAt });
   }

@@ -15,7 +15,7 @@ type SendResult = {
   sentAt?: string;
   error?: string;
 };
-type Quota = { quota: number | null; used: number; remaining: number | null; needed: number; members: PreviewMember[]; ownLinked: boolean };
+type Quota = { quota: number | null; used: number; remaining: number | null; needed: number; members: PreviewMember[]; ownLinked: boolean; passwordRequired?: boolean };
 
 type Props = {
   open: boolean;
@@ -55,6 +55,7 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
   const [error, setError] = useState("");
   const [quota, setQuota] = useState<Quota | null>(null);
   const [testOnly, setTestOnly] = useState(false);
+  const [password, setPassword] = useState("");
   const [result, setResult] = useState<SendResult | null>(null);
 
   const employeeNumbers = useMemo(() => [...new Set(blocks.flatMap((block) => block.people.map((person) => person.employeeNumber)))], [blocks]);
@@ -69,6 +70,7 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
     setError("");
     setResult(null);
     setTestOnly(false);
+    setPassword("");
     let cancelled = false;
     const params = new URLSearchParams({ needed: String(employeeNumbers.length) });
     employeeNumbers.forEach((number) => params.append("employeeNumber", number));
@@ -113,6 +115,7 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
         body: JSON.stringify({
           date,
           testOnly,
+          password: quota?.passwordRequired ? password : undefined,
           blocks: blocks.map((block) => ({
             shift: block.shift,
             employeeNumbers: block.people.map((person) => person.employeeNumber),
@@ -181,11 +184,16 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
               自分だけに試し送り
               {!quota?.ownLinked && <small>自分の LINE を先に連携してください</small>}
             </label>
+            {quota?.passwordRequired && <label className={styles.password}>
+              送信パスワード
+              <input type="password" value={password} autoComplete="off" inputMode="numeric" onChange={(event) => setPassword(event.currentTarget.value)} placeholder="事務から案内された番号" />
+              <small>通数を無駄に使わないため、送信にはパスワードが要ります</small>
+            </label>}
             {state === "failed" && error && <p className={styles.error} role="alert">{error}</p>}
             {failed.length > 0 && <p className={styles.error}>送れなかった人：{failed.map((item) => item.name || item.employeeNumber).join("・")}</p>}
             <div className={styles.actions}>
               <button type="button" className={styles.secondary} disabled={sending} onClick={onClose}>やめる</button>
-              <button type="button" className={styles.primary} disabled={sending || blocks.length === 0 || Boolean(quotaShortage)} onClick={() => void send()}>{state === "failed" ? "もう一度" : "送信する"}</button>
+              <button type="button" className={styles.primary} disabled={sending || blocks.length === 0 || Boolean(quotaShortage) || (Boolean(quota?.passwordRequired) && !password.trim())} onClick={() => void send()}>{state === "failed" ? "もう一度" : "送信する"}</button>
             </div>
           </>}
         </div>

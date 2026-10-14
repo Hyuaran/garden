@@ -120,7 +120,49 @@ describe("/api/system/shukkin/line-send", () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(mocks.pushLineStaff).toHaveBeenCalledWith(["U-self"], "本文");
+    expect(mocks.pushLineStaff).toHaveBeenCalledWith(["U-self"], "【14-21】\n本文");
     expect(db.inserts).toEqual([expect.objectContaining({ shift: "試し送り", employee_number: "0001", status: "sent" })]);
+  });
+
+  // 試し送りはまとまりが複数でも 1 通にまとめる（2026-10-14 東海林さん「テスト送信は 1 通でいい」）
+  it("試し送りは全まとまりを 1 通にまとめて送る", async () => {
+    const db = supabaseForLineSend([]);
+    mocks.getSupabaseAdmin.mockReturnValue(db.client);
+    const { POST } = await import("./route");
+
+    const response = await POST(request({
+      date: "2026-10-15",
+      testOnly: true,
+      blocks: [
+        { shift: "14-21", employeeNumbers: ["1568"], message: "本文A" },
+        { shift: "17-21", employeeNumbers: ["1569"], message: "本文B" },
+      ],
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.pushLineStaff).toHaveBeenCalledTimes(1);
+    expect(mocks.pushLineStaff).toHaveBeenCalledWith(["U-self"], "【14-21】\n本文A\n\n――――――――\n\n【17-21】\n本文B");
+    expect(db.inserts).toHaveLength(1);
+  });
+
+  // 送信パスワード（環境変数があるときだけ要求・課金までの歯止め）
+  it("送信パスワードが違えば 403 で何も送らない", async () => {
+    process.env.LINE_STAFF_SEND_PASSWORD = "1201";
+    try {
+      const db = supabaseForLineSend([]);
+      mocks.getSupabaseAdmin.mockReturnValue(db.client);
+      const { POST, GET } = await import("./route");
+      const get = await GET(new Request("http://localhost/api/system/shukkin/line-send?needed=1"));
+      expect((await get.json()).passwordRequired).toBe(true);
+
+      const wrong = await POST(request({ date: "2026-10-15", testOnly: true, password: "0000", blocks: [{ shift: "14-21", employeeNumbers: ["1568"], message: "本文" }] }));
+      expect(wrong.status).toBe(403);
+      expect(mocks.pushLineStaff).not.toHaveBeenCalled();
+
+      const right = await POST(request({ date: "2026-10-15", testOnly: true, password: "1201", blocks: [{ shift: "14-21", employeeNumbers: ["1568"], message: "本文" }] }));
+      expect(right.status).toBe(200);
+    } finally {
+      delete process.env.LINE_STAFF_SEND_PASSWORD;
+    }
   });
 });
