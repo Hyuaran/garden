@@ -43,6 +43,7 @@ const EMP_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "役員",       label: "役員" },
   { value: "正社員",    label: "正社員" },
   { value: "アルバイト", label: "アルバイト" },
+  { value: "派遣",       label: "派遣" },
   { value: "outsource", label: "外注" },
 ];
 const ACCOUNT_TYPES = ["普通", "当座"];

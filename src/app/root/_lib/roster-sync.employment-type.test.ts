@@ -11,6 +11,11 @@ describe("normalizeEmploymentType", () => {
     expect(normalizeEmploymentType("業務委託")).toBe("outsource");
   });
 
+  // 派遣（派遣元から受け入れている人）は「派遣」のまま（2026-10-14）
+  it("keeps 派遣 as 派遣", () => {
+    expect(normalizeEmploymentType("派遣")).toBe("派遣");
+  });
+
   // 名簿の選択肢に「業務委託／外注」は無く、外注の人は「パートナー」で登録する（2026-09-24）
   it("treats パートナー as outsource", () => {
     expect(normalizeEmploymentType("パートナー")).toBe("outsource");

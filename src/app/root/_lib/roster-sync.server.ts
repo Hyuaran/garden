@@ -293,7 +293,8 @@ function isBackOffice(record: KintoneRecord): boolean {
 export function roleFromRoster(record: KintoneRecord, existing?: Pick<RootEmployeeRow, "garden_role" | "garden_role_manual"> | null): GardenRole {
   if (existing?.garden_role_manual && existing.garden_role) return existing.garden_role;
   const employmentType = text(record, ROSTER_EMPLOYMENT_TYPE_FIELD) || text(record, "ドロップダウン_15");
-  if (!/アルバイト|パート/.test(employmentType)) return existing?.garden_role ?? "staff";
+  // 派遣の人はアルバイトと同じ決め方（テレマのトス／クローザー。2026-10-14）
+  if (!/アルバイト|パート|派遣/.test(employmentType)) return existing?.garden_role ?? "staff";
   if (isBackOffice(record)) return "staff";
   const hourly = numberValue(record, "基準時給");
   if (hourly === 1500) return "toss";
@@ -326,6 +327,8 @@ export function mapRosterRecordToRoot(record: KintoneRecord, existing?: RootEmpl
 export function normalizeEmploymentType(value: string | null | undefined): string {
   const source = value ?? "";
   if (/役員/.test(source)) return "役員";
+  // 派遣（派遣元から受け入れている人・2026-10-14）。アルバイト判定より先に見る
+  if (/派遣/.test(source)) return "派遣";
   // 名簿の選択肢に「業務委託／外注」は無く、外注の人は「パートナー」で登録する（藤木さん 2026-06-01 再加入・東海林さん 2026-09-24）。
   // 「パートナー」は「パート」を含むので、アルバイト判定より先に見る
   if (/外注|業務委託|パートナー|outsource/i.test(source)) return "outsource";

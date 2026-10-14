@@ -120,7 +120,7 @@ export interface Employee {
   name: string;
   name_kana: string;
   company_id: string;
-  employment_type: string; // 正社員 / アルバイト / outsource（Phase A-3-g） / 役員
+  employment_type: string; // 正社員 / アルバイト / outsource（Phase A-3-g） / 役員 / 派遣（2026-10-14）
   salary_system_id: string;
   hire_date: string; // YYYY-MM-DD
   birthday?: string | null; // YYYY-MM-DD・Kintone 従業員名簿から同期（Root では表示だけ）
