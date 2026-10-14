@@ -8,6 +8,8 @@ import { defaultCallMetricDates, formatCallsPerWorkHour, formatWorkTime, summari
 import styles from "./call-metrics.module.css";
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
+const maybeNumber = (value: number | null | undefined) => value == null ? "-" : value.toLocaleString("ja-JP");
+const maybeTime = (value: number | null | undefined) => value == null ? "-" : formatWorkTime(value);
 const weekday = ["日", "月", "火", "水", "木", "金", "土"];
 function formatJst(value: string | null) {
   if (!value) return "データなし";
@@ -17,6 +19,14 @@ function formatJst(value: string | null) {
   const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
   const jstDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
   return `${get("year")}/${get("month")}/${get("day")}(${weekday[jstDate.getDay()]}) ${get("hour")}:${get("minute")}`;
+}
+function formatJstTime(value: string | null | undefined) {
+  if (!value) return "データなし";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "データなし";
+  const parts = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("hour")}:${get("minute")}`;
 }
 // 稼働時間から引く休憩。変更したら supabase/migrations の稼働時間の計算も直すこと。
 const BREAKS = [
@@ -62,6 +72,7 @@ export default function CallMetricsClient() {
 
   const summary = data ? summarizeCallMetrics(data) : null;
   const totalCalls = summary?.totalCalls ?? 0;
+  const emptyRate = totalCalls === 0;
 
   return (
     <div className={styles.pageShell} data-testid="call-metrics-page-shell">
@@ -83,10 +94,11 @@ export default function CallMetricsClient() {
         <p className={styles.period}>対象期間: {data.from}〜{data.to} ／ リスト数: {data.metrics.length} ／ コール数: {totalCalls.toLocaleString()}</p>
         <div className={styles.summaryBand} aria-label="対象期間の集計サマリー">
           <span>従業員数: {(summary?.employeeCount ?? 0).toLocaleString()} ／ 総コール数: {totalCalls.toLocaleString()}</span>
-          <span>平均コール数: {(summary?.averageCalls ?? 0).toFixed(1)}</span>
-          <span>有効率: {percent(summary?.effectiveRate ?? 0)}</span>
-          <span>受注率: {percent(summary?.acquiredRate ?? 0)}（受注数 {(summary?.totalAcquired ?? 0).toLocaleString()}件）／前確OK率: {percent(summary?.preconfirmRate ?? 0)}（前確OK数 {(summary?.totalOrders ?? 0).toLocaleString()}件）</span>
+          <span>平均コール数: {emptyRate ? "-" : (summary?.averageCalls ?? 0).toFixed(1)}</span>
+          <span>有効率: {emptyRate ? "-" : percent(summary?.effectiveRate ?? 0)}</span>
+          <span>受注率: {emptyRate ? "-" : percent(summary?.acquiredRate ?? 0)}（受注数 {(summary?.totalAcquired ?? 0).toLocaleString()}件）／前確OK率: {emptyRate ? "-" : percent(summary?.preconfirmRate ?? 0)}（前確OK数 {(summary?.totalOrders ?? 0).toLocaleString()}件）</span>
           <span>最終更新: {formatJst(data.lastImportedAt)}</span>
+          {data.innovera && <span className={data.innovera.stopped ? styles.warningText : undefined}>{data.innovera.stopped ? `INNOVERA 取込停止中（最終 ${formatJstTime(data.innovera.lastSyncAt)}）` : `INNOVERA 最終取込 ${formatJstTime(data.innovera.lastSyncAt)}`}</span>}
         </div>
         <div className={styles.tabs} role="tablist" aria-label="集計表示">
           <button type="button" role="tab" aria-selected={activeTab === "employees"} onClick={() => setActiveTab("employees")}>従業員ごと</button>
@@ -97,11 +109,21 @@ export default function CallMetricsClient() {
         {activeTab === "employees" && <section role="tabpanel">
           <h2>従業員ごとの指標</h2>
           <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><table>
-            <thead><tr><th>社員名</th><th>稼働時間</th><th>コール数</th><th>コール数/h</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>前確OK数</th><th>見込</th><th>担不</th><th>留守</th><th>無効</th></tr></thead>
+            <thead><tr><th colSpan={15}>テレマ</th><th colSpan={4}>WEBインバウンド（LP系）</th></tr><tr><th>社員名</th><th>稼働時間</th><th>通話時間</th><th>コール数</th><th>コール数/h</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>前確OK数</th><th>見込</th><th>担不</th><th>留守</th><th>無効</th><th>LP応答</th><th>LP発信</th><th>LP通話時間</th><th>LP申込み</th></tr></thead>
             <tbody {...CLARITY_MASK}>{data.employeeMetrics.length ? data.employeeMetrics.map((row) => <tr key={row.employeeName}>
-              <td>{row.employeeName}</td><td>{formatWorkTime(row.workSeconds)}</td><td>{row.callCount.toLocaleString()}</td><td>{formatCallsPerWorkHour(row.callCount, row.workSeconds)}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td className={row.tossCount === 0 ? styles.zeroValue : styles.strongValue}>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td className={row.acquiredCount === 0 ? styles.zeroValue : styles.strongValue}>{row.acquiredCount.toLocaleString()}</td><td className={row.orderCount === 0 ? styles.zeroValue : styles.strongValue}>{row.orderCount.toLocaleString()}</td><td>{row.prospectCount.toLocaleString()}</td><td>{row.absentCount.toLocaleString()}</td><td>{row.awayCount.toLocaleString()}</td><td>{row.invalidCount.toLocaleString()}</td>
-            </tr>) : <tr><td colSpan={14}>対象データがありません</td></tr>}</tbody>
+              <td title={row.unregisteredExtensionDetails?.join("、")}>{row.employeeName}</td><td>{formatWorkTime(row.workSeconds)}</td><td>{maybeTime(row.talkSecondsOther)}</td><td>{row.callCount.toLocaleString()}</td><td>{formatCallsPerWorkHour(row.callCount, row.workSeconds)}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td className={row.tossCount === 0 ? styles.zeroValue : styles.strongValue}>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td className={row.acquiredCount === 0 ? styles.zeroValue : styles.strongValue}>{row.acquiredCount.toLocaleString()}</td><td className={row.orderCount === 0 ? styles.zeroValue : styles.strongValue}>{row.orderCount.toLocaleString()}</td><td>{row.prospectCount.toLocaleString()}</td><td>{row.absentCount.toLocaleString()}</td><td>{row.awayCount.toLocaleString()}</td><td>{row.invalidCount.toLocaleString()}</td><td>{maybeNumber(row.lpAnswered)}</td><td>{maybeNumber(row.lpOutbound)}</td><td>{maybeTime(row.lpTalkSeconds)}</td><td>{maybeNumber(row.lpApplications)}</td>
+            </tr>) : <tr><td colSpan={19}>対象データがありません</td></tr>}</tbody>
           </table></div>
+          {data.listName && <p className={styles.period}>リスト名で絞り込んだ場合も、通話時間と WEBインバウンド（LP系）はリスト名では絞り込みません。</p>}
+          <h2>事業別の小計</h2>
+          <div className={styles.tableWrap}><table>
+            <thead><tr><th>事業</th><th>着信</th><th>応答</th><th>不在</th><th>留守電</th><th>発信</th><th>発信の応答</th><th>通話時間</th><th>申込み</th></tr></thead>
+            <tbody>{[...(data.lp?.businesses ?? []), ...(data.lp?.totals ? [data.lp.totals] : [])].map((row) => <tr key={row.bizCode}>
+              <td>{row.bizName}</td><td>{maybeNumber(row.inbound)}</td><td>{maybeNumber(row.answered)}</td><td>{maybeNumber(row.missed)}</td><td>{maybeNumber(row.voicemail)}</td><td>{maybeNumber(row.outbound)}</td><td>{maybeNumber(row.outboundAnswered)}</td><td>{maybeTime(row.talkSeconds)}</td><td>{maybeNumber(row.applications)}{row.unassignedApplications ? `（うち担当者未設定 ${row.unassignedApplications}）` : ""}</td>
+            </tr>)}</tbody>
+          </table></div>
+          {data.lp?.unregisteredExtensionSummary && <p className={styles.period}>{data.lp.unregisteredExtensionSummary}</p>}
+          {data.lp?.notes.map((note) => <p className={styles.note} key={note}>{note}</p>)}
         </section>}
 
         {activeTab === "lists" && <section role="tabpanel">
@@ -160,6 +182,17 @@ export default function CallMetricsClient() {
             <tbody>{FLAG_RULES.map(([flag, handling]) => <tr key={flag}>
               <td>{flag}</td><td>{handling}</td>
             </tr>)}</tbody>
+          </table></div>
+          <h2>通話時間と WEBインバウンド（LP系）</h2>
+          <div className={`${styles.definitionTable} ${styles.definitionFit}`}><table>
+            <thead><tr><th>指標</th><th>定義</th></tr></thead>
+            <tbody>
+              <tr><td>通話時間</td><td>INNOVERA の通話秒数を従業員ごとに合計します。テレマ側に通話がなく、INNOVERA にも該当がない場合は「-」です。</td></tr>
+              <tr><td>LP応答</td><td>稼働中の LP 系回線への着信のうち、応答した件数です。</td></tr>
+              <tr><td>LP発信</td><td>稼働中の LP 系回線からの発信件数です。</td></tr>
+              <tr><td>LP通話時間</td><td>LP 系回線の着信・発信の通話時間合計です。</td></tr>
+              <tr><td>LP申込み</td><td>kintone の LP 顧客アプリで、対応状況が「申込み」かつ作成日時が対象期間内の件数です。</td></tr>
+            </tbody>
           </table></div>
         </section>}
       </>}

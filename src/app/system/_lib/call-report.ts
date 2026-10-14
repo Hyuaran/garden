@@ -1,4 +1,4 @@
-import type { CallMetricsSummary } from "./call-metrics";
+import type { CallMetricsResponse, CallMetricsSummary, LpBusinessMetricRow } from "./call-metrics";
 
 const JST_TIME_ZONE = "Asia/Tokyo";
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
@@ -41,18 +41,46 @@ function formatDeliveryTime(now: Date): string {
 
 const rate = (value: number) => `${(value * 100).toFixed(1)}％`;
 
-export function buildCallReport(summary: CallMetricsSummary, now = new Date()) {
-  if (summary.totalCalls === 0) {
+function formatShortJstTime(value: string | null | undefined) {
+  if (!value) return "データなし";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "データなし";
+  const parts = new Intl.DateTimeFormat("ja-JP", { timeZone: JST_TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("hour")}:${get("minute")}`;
+}
+
+function formatLpNumber(value: number | null | undefined) {
+  return value == null ? "-" : value.toLocaleString("ja-JP");
+}
+
+function lpTrafficTotal(metrics?: CallMetricsResponse) {
+  return (metrics?.lp?.businesses ?? []).reduce((sum, row) => sum + (row.inbound ?? 0) + (row.outbound ?? 0), 0);
+}
+
+function lpLine(row: LpBusinessMetricRow) {
+  return `${row.bizName}：着信${formatLpNumber(row.inbound)}（応答${formatLpNumber(row.answered)}・不在${formatLpNumber(row.missed)}）／発信${formatLpNumber(row.outbound)}／申込み${formatLpNumber(row.applications)}`;
+}
+
+function buildLpBlock(metrics?: CallMetricsResponse) {
+  if (!metrics?.lp) return "";
+  const stopped = metrics.innovera?.stopped ? `※INNOVERA 取込停止中（最終 ${formatShortJstTime(metrics.innovera.lastSyncAt)}）\n` : "";
+  return `\n\n【WEBインバウンド】\n${stopped}${metrics.lp.businesses.map(lpLine).join("\n")}`;
+}
+
+export function buildCallReport(summary: CallMetricsSummary, now = new Date(), metrics?: CallMetricsResponse) {
+  if (summary.totalCalls + lpTrafficTotal(metrics) === 0) {
     return { skipped: true as const, reason: "本日コール0件", text: null };
   }
+  const noTelemaCalls = summary.totalCalls === 0;
   const text = `[info][title]テレマ コール集計ポータル 自動配信[/title]${formatDeliveryTime(now)}
 https://garden-os.net/system/call-metrics
 
 【本日】従業員${summary.employeeCount.toLocaleString("ja-JP")}名／総コール${summary.totalCalls.toLocaleString("ja-JP")}件
-平均コール数：${Math.round(summary.averageCalls).toLocaleString("ja-JP")} 件
-有効率：${rate(summary.effectiveRate)}
-受注率：${rate(summary.acquiredRate)}（受注${summary.totalAcquired.toLocaleString("ja-JP")}件）
-前確OK率：${rate(summary.preconfirmRate)}（前確OK${summary.totalOrders.toLocaleString("ja-JP")}件）
+平均コール数：${noTelemaCalls ? "-" : `${Math.round(summary.averageCalls).toLocaleString("ja-JP")} 件`}
+有効率：${noTelemaCalls ? "-" : rate(summary.effectiveRate)}
+受注率：${noTelemaCalls ? "-" : rate(summary.acquiredRate)}（受注${summary.totalAcquired.toLocaleString("ja-JP")}件）
+前確OK率：${noTelemaCalls ? "-" : rate(summary.preconfirmRate)}（前確OK${summary.totalOrders.toLocaleString("ja-JP")}件）${buildLpBlock(metrics)}
 [/info]`;
   return { skipped: false as const, text };
 }

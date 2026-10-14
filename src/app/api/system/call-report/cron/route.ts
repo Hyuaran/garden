@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { verifyCronRequest } from "@/lib/cron-auth";
 import { normalizeCallMetricsRpc, summarizeCallMetrics } from "@/app/system/_lib/call-metrics";
+import { mergeCallMetrics, type RootEmployeeForCallMetrics } from "@/app/system/_lib/call-metrics-merge";
+import { countLpApplications, loadLpCustomerRecords, loadLpScope, lpCustomerAppTokenEnv } from "@/app/system/_lib/lp-kintone";
 import { buildCallReport } from "@/app/system/_lib/call-report";
 import { shouldDeliverAt } from "@/app/system/_lib/call-report-schedule";
 import { CallReportChatworkError } from "@/app/system/_lib/chatwork";
@@ -33,9 +35,37 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, ...base, error: "集計の取得に失敗しました", aggregateMs, postMs: 0 }, { status: 500 });
   }
 
-  const metrics = normalizeCallMetricsRpc(data, { from: schedule.date, to: schedule.date, listName: null, employeeName: null });
+  const filemaker = normalizeCallMetricsRpc(data, { from: schedule.date, to: schedule.date, listName: null, employeeName: null });
+  const admin = getSupabaseAdmin();
+  let rootEmployees: RootEmployeeForCallMetrics[] = [];
+  try {
+    const result = await admin.from("root_employees").select("employee_id,name,filemaker_employee_name,innovera_extension,innovera_mobile_extension,is_active,deleted_at");
+    rootEmployees = Array.isArray(result.data) ? result.data : [];
+  } catch {}
+  const lpScope = await loadLpScope().catch(() => null);
+  const lpCircuitIds = [...new Set((lpScope ?? []).flatMap((biz) => biz.circuitIds))];
+  const innoveraResult = await admin.rpc("system_innovera_metrics", {
+    p_from: schedule.date, p_to: schedule.date, p_lp_circuit_ids: lpCircuitIds, p_employee_id: null,
+  });
+  const notes: string[] = [];
+  const lpApplicationCountsByBiz = new Map<string, Map<string, number> | null>();
+  if (!lpScope) {
+    notes.push("LP申込み（kintone）の事業マスタを取得できませんでした");
+  } else {
+    const recordsByApp = new Map<number, Awaited<ReturnType<typeof loadLpCustomerRecords>>>();
+    for (const biz of lpScope) {
+      if (!lpCustomerAppTokenEnv(biz.customerApp)) {
+        lpApplicationCountsByBiz.set(biz.bizCode, null);
+        notes.push(`LP申込み（kintone）の鍵が未設定：アプリ ${biz.customerApp}`);
+        continue;
+      }
+      if (!recordsByApp.has(biz.customerApp)) recordsByApp.set(biz.customerApp, await loadLpCustomerRecords(biz.customerApp));
+      lpApplicationCountsByBiz.set(biz.bizCode, countLpApplications(recordsByApp.get(biz.customerApp) ?? null, schedule.date, schedule.date));
+    }
+  }
+  const metrics = mergeCallMetrics({ filemaker, innovera: innoveraResult.error ? null : innoveraResult.data, lpScope, lpApplicationCountsByBiz, rootEmployees, notes });
   const summary = summarizeCallMetrics(metrics);
-  const report = buildCallReport(summary, now);
+  const report = buildCallReport(summary, now, metrics);
   if (report.skipped) {
     console.info("[system/call-report/cron] completed", { ...base, skipped: true, reason: "no_calls", sent: false, aggregateMs, postMs: 0 });
     return NextResponse.json({ ok: true, ...base, skipped: true, reason: "no_calls", sent: false, aggregateMs, postMs: 0 });

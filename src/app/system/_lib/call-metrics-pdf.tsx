@@ -102,11 +102,14 @@ const styles = StyleSheet.create({
 
 type Column<T> = { label: string; width: number; value: (row: T) => string; align?: "left" | "center"; emphasized?: (row: T) => "zero" | "strong" | null };
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
+const maybeNumber = (value: number | null | undefined) => value == null ? "-" : value.toLocaleString("ja-JP");
+const maybeTime = (value: number | null | undefined) => value == null ? "-" : formatWorkTime(value);
 export const callMetricCountTone = (value: number) => value === 0 ? "zero" as const : "strong" as const;
 
 const employeeColumns: Column<EmployeeCallMetricRow>[] = [
   { label: "社員名", width: 92, value: (r) => r.employeeName, align: "left" },
   { label: "稼働時間", width: 58, value: (r) => formatWorkTime(r.workSeconds) },
+  { label: "通話時間", width: 58, value: (r) => maybeTime(r.talkSecondsOther) },
   { label: "コール数", width: 43, value: (r) => r.callCount.toLocaleString("ja-JP") },
   { label: "コール数/h", width: 46, value: (r) => formatCallsPerWorkHour(r.callCount, r.workSeconds) },
   { label: "有効数", width: 39, value: (r) => r.effectiveCount.toLocaleString("ja-JP") },
@@ -119,6 +122,10 @@ const employeeColumns: Column<EmployeeCallMetricRow>[] = [
   { label: "担不", width: 34, value: (r) => String(r.absentCount) },
   { label: "留守", width: 34, value: (r) => String(r.awayCount) },
   { label: "無効", width: 34, value: (r) => String(r.invalidCount) },
+  { label: "LP応答", width: 44, value: (r) => maybeNumber(r.lpAnswered) },
+  { label: "LP発信", width: 44, value: (r) => maybeNumber(r.lpOutbound) },
+  { label: "LP通話時間", width: 58, value: (r) => maybeTime(r.lpTalkSeconds) },
+  { label: "LP申込み", width: 44, value: (r) => maybeNumber(r.lpApplications) },
 ];
 
 const listColumns: Column<CallMetricRow>[] = [
@@ -149,6 +156,7 @@ const DEFINITIONS = [
   ["リスト絞り込み時の稼働時間", "リストで絞り込んだ場合、稼働時間はそのリストを架電していた時間の幅になります。"],
   ["Excel集計表との差", "※ 従来のExcel集計表は休憩を引いていないため、こちらの方が短く出ます。"],
   ["リスト数・回転数・リスト受注率", "リストデータ取込後に対応"],
+  ["通話時間と WEBインバウンド（LP系）", "INNOVERA の通話秒数、LP 系回線の応答・発信・通話時間、kintone の申込み件数を表示します。取得できない値は「-」です。"],
 ];
 
 function Chrome({ data }: { data: CallMetricsResponse }) {
@@ -168,6 +176,22 @@ function DataTable<T>({ columns, rows }: { columns: Column<T>[]; rows: T[] }) {
   </View>;
 }
 
+const lpSubtotalWidths = [220, 60, 60, 60, 60, 60, 80, 80, 60];
+function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
+  const rows = [...(data.lp?.businesses ?? []), ...(data.lp?.totals ? [data.lp.totals] : [])].map((row) => [
+    row.bizName,
+    maybeNumber(row.inbound),
+    maybeNumber(row.answered),
+    maybeNumber(row.missed),
+    maybeNumber(row.voicemail),
+    maybeNumber(row.outbound),
+    maybeNumber(row.outboundAnswered),
+    maybeTime(row.talkSeconds),
+    row.unassignedApplications ? `${maybeNumber(row.applications)}（うち担当者未設定 ${row.unassignedApplications}）` : maybeNumber(row.applications),
+  ]);
+  return <SimpleTable headers={["事業名", "着信", "応答", "不在", "留守電", "発信", "発信の応答", "通話時間", "申込み"]} rows={rows} widths={lpSubtotalWidths}/>;
+}
+
 function SimpleTable({ headers, rows, widths }: { headers: string[]; rows: string[][]; widths: number[] }) {
   const tableWidth = widths.reduce((sum, width) => sum + width, 0);
   return <View style={[styles.table, { width: tableWidth }]}><View fixed style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>{rows.map((row, i) => <View key={i} wrap={false} style={styles.row}>{row.map((cell, j) => <View key={j} style={[styles.td, { width: widths[j] }]}><VectorParagraph width={widths[j] - 1}>{cell}</VectorParagraph></View>)}</View>)}</View>;
@@ -184,9 +208,10 @@ function ContinuationLabel({ label, marker }: { label: string; marker: string })
 }
 export function CallMetricsPdfDocument({ data, definitionRows = DEFINITIONS }: { data: CallMetricsResponse; definitionRows?: string[][] }): React.ReactElement<DocumentProps> {
   return <Document title="テレマ コール集計ポータル" author="Garden">
-    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics}/></Page>
-    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
-    <Page size="A3" orientation="portrait" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="定義方法" marker="DEFINITION"/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="従業員ごと" marker="EMPLOYEE"/><Text style={styles.hiddenMarker}>SECTION_EMPLOYEE</Text><SectionTitle>従業員ごと</SectionTitle><DataTable columns={employeeColumns} rows={data.employeeMetrics}/><View style={styles.definitionBlock}><DefinitionTitle>事業別の小計</DefinitionTitle><LpSubtotalTable data={data}/>{data.lp?.unregisteredExtensionSummary ? <VectorParagraph width={870}>{data.lp.unregisteredExtensionSummary}</VectorParagraph> : null}</View></Page>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><Text style={styles.hiddenMarker}>SECTION_WEB_INBOUND</Text><SectionTitle>WEBインバウンド（事業ごと）</SectionTitle><VectorParagraph width={870}>次の版で追加</VectorParagraph></Page>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="リストごと" marker="LIST"/><Text style={styles.hiddenMarker}>SECTION_LIST</Text><SectionTitle>リストごと</SectionTitle><DataTable columns={listColumns} rows={data.metrics}/></Page>
+    <Page size="A3" orientation="landscape" wrap style={styles.page}><Chrome data={data}/><ContinuationLabel label="定義方法" marker="DEFINITION"/><Text style={styles.hiddenMarker}>SECTION_DEFINITION</Text><SectionTitle>定義方法</SectionTitle>
       <View style={styles.definitionBlock}><DefinitionTitle>集計の定義</DefinitionTitle><SimpleTable headers={["指標", "定義"]} rows={definitionRows} widths={[155, 580]}/></View>
       <View style={styles.definitionBlock}><DefinitionTitle>休憩時間割</DefinitionTitle><SimpleTable headers={["回", "開始", "終了", "長さ"]} rows={BREAKS} widths={[100, 170, 170, 170]}/><VectorParagraph width={735}>※ 休憩の時間帯が変わったときは、この表と稼働時間の計算式を変更する必要のため、管理者へ問合せてください。</VectorParagraph></View>
       <View style={styles.definitionBlock}><DefinitionTitle>コール履歴のフラグ名 → ポータル表示名</DefinitionTitle><SimpleTable headers={["コール履歴", "ポータル表示"]} rows={[["獲得", "受注数"], ["前確OK", "前確OK数"], ["トス", "トス数"]]} widths={[240, 370]}/></View>

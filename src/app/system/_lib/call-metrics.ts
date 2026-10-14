@@ -55,6 +55,40 @@ export type EmployeeCallMetricRow = Omit<CallMetricRow, "listName"> & {
   awayCount: number;
   invalidCount: number;
   workSeconds: number;
+  talkSecondsOther?: number | null;
+  lpAnswered?: number | null;
+  lpOutbound?: number | null;
+  lpTalkSeconds?: number | null;
+  lpApplications?: number | null;
+  unregisteredExtensionDetails?: string[] | null;
+};
+
+export type LpBusinessMetricRow = {
+  bizCode: string;
+  bizName: string;
+  recordOrder: number;
+  inbound: number | null;
+  answered: number | null;
+  missed: number | null;
+  voicemail: number | null;
+  outbound: number | null;
+  outboundAnswered: number | null;
+  talkSeconds: number | null;
+  applications: number | null;
+  unassignedApplications: number;
+};
+
+export type InnoveraMetricsStatus = {
+  lastSyncAt: string | null;
+  stopped: boolean;
+  hasRows: boolean;
+};
+
+export type LpMetricsPayload = {
+  businesses: LpBusinessMetricRow[];
+  totals: LpBusinessMetricRow | null;
+  notes: string[];
+  unregisteredExtensionSummary: string | null;
 };
 
 export type CallMetricsResponse = {
@@ -65,6 +99,8 @@ export type CallMetricsResponse = {
   metrics: CallMetricRow[];
   employeeMetrics: EmployeeCallMetricRow[];
   lastImportedAt: string | null;
+  innovera?: InnoveraMetricsStatus;
+  lp?: LpMetricsPayload;
 };
 
 export type CallMetricsSummary = {

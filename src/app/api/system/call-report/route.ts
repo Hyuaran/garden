@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { normalizeCallMetricsRpc, summarizeCallMetrics } from "@/app/system/_lib/call-metrics";
+import { mergeCallMetrics, type RootEmployeeForCallMetrics } from "@/app/system/_lib/call-metrics-merge";
+import { countLpApplications, loadLpCustomerRecords, loadLpScope, lpCustomerAppTokenEnv } from "@/app/system/_lib/lp-kintone";
 import { buildCallReport, parseReportDate } from "@/app/system/_lib/call-report";
 import { CallReportChatworkError } from "@/app/system/_lib/chatwork";
 import { deliverCallReport } from "@/app/system/_lib/call-report-delivery";
@@ -12,6 +14,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const VIEW_ROLES = MANAGER_VIEW_ROLES;
+
+async function loadRootEmployees(supabase: Awaited<ReturnType<typeof createServerClient>>): Promise<RootEmployeeForCallMetrics[]> {
+  try {
+    const result = await supabase
+      .from("root_employees")
+      .select("employee_id,name,filemaker_employee_name,innovera_extension,innovera_mobile_extension,is_active,deleted_at");
+    const rows = "data" in result ? result.data : null;
+    return Array.isArray(rows) ? rows as RootEmployeeForCallMetrics[] : [];
+  } catch {
+    return [];
+  }
+}
 
 export async function POST(request: Request) {
   const supabase = await createServerClient();
@@ -49,9 +63,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "集計の取得に失敗しました" }, { status: 500 });
   }
 
-  const metrics = normalizeCallMetricsRpc(data, { from: date, to: date, listName: null, employeeName: null });
+  const filemaker = normalizeCallMetricsRpc(data, { from: date, to: date, listName: null, employeeName: null });
+  const rootEmployees = await loadRootEmployees(supabase);
+  const lpScope = await loadLpScope().catch(() => null);
+  const lpCircuitIds = [...new Set((lpScope ?? []).flatMap((biz) => biz.circuitIds))];
+  const innoveraResult = await supabase.rpc("system_innovera_metrics", {
+    p_from: date, p_to: date, p_lp_circuit_ids: lpCircuitIds, p_employee_id: null,
+  });
+  const notes: string[] = [];
+  const lpApplicationCountsByBiz = new Map<string, Map<string, number> | null>();
+  if (!lpScope) {
+    notes.push("LP申込み（kintone）の事業マスタを取得できませんでした");
+  } else {
+    const recordsByApp = new Map<number, Awaited<ReturnType<typeof loadLpCustomerRecords>>>();
+    for (const biz of lpScope) {
+      if (!lpCustomerAppTokenEnv(biz.customerApp)) {
+        lpApplicationCountsByBiz.set(biz.bizCode, null);
+        notes.push(`LP申込み（kintone）の鍵が未設定：アプリ ${biz.customerApp}`);
+        continue;
+      }
+      if (!recordsByApp.has(biz.customerApp)) recordsByApp.set(biz.customerApp, await loadLpCustomerRecords(biz.customerApp));
+      lpApplicationCountsByBiz.set(biz.bizCode, countLpApplications(recordsByApp.get(biz.customerApp) ?? null, date, date));
+    }
+  }
+  const metrics = mergeCallMetrics({ filemaker, innovera: innoveraResult.error ? null : innoveraResult.data, lpScope, lpApplicationCountsByBiz, rootEmployees, notes });
   const summary = summarizeCallMetrics(metrics);
-  const report = buildCallReport(summary);
+  const report = buildCallReport(summary, new Date(), metrics);
   if (report.skipped) {
     console.info("[system/call-report] completed", { mode: input.mode, date, skipped: true, aggregateMs, postMs: 0 });
     return NextResponse.json(input.mode === "preview"
