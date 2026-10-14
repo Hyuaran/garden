@@ -118,7 +118,7 @@ async function handleLink(event: LineWebhookEvent, employeeNumber: string) {
     .is("deleted_at", null);
   if (updateError) throw updateError;
   await client.from("system_line_staff_pending").delete().eq("line_user_id", lineUserId);
-  await reply(event.replyToken, `${String(employee.name ?? "").trim() || employeeNumber}さんとして登録しました。これからシフト連絡はこの LINE に届きます。`);
+  await reply(event.replyToken, `${String(employee.name ?? "").trim() || employeeNumber}さんとして登録しました。ありがとうございます。`);
 }
 
 async function handleUnlinkedText(event: LineWebhookEvent, text: string) {

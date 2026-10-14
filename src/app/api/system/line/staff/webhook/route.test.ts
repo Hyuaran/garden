@@ -114,7 +114,7 @@ describe("/api/system/line/staff/webhook", () => {
     expect(mocks.getLineStaffProfile).toHaveBeenCalledWith("U1568");
     expect(db.updates).toEqual([expect.objectContaining({ line_user_id: "U1568", line_display_name: "LINE表示名", line_link_source: "self" })]);
     expect(db.deletes).toEqual(["U1568"]);
-    expect(mocks.replyLineStaff).toHaveBeenCalledWith("reply-token", "中山 聖也さんとして登録しました。これからシフト連絡はこの LINE に届きます。");
+    expect(mocks.replyLineStaff).toHaveBeenCalledWith("reply-token", "中山 聖也さんとして登録しました。ありがとうございます。");
   });
 
   it("continues returning 200 when an event fails", async () => {
