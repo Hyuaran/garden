@@ -76,11 +76,12 @@ function lpBusinessBlock(row: LpBusinessMetricRow, funnel: LpFunnelBusiness | un
     lines.push(
       `応答率：${formatLpRate(funnel.answerRate)}（応答${formatLpNumber(funnel.answered)}／入電${formatLpNumber(funnel.inbound)}）`,
       `話せた：${formatLpCountUnit(funnel.spoke)}（受注${formatLpNumber(funnel.won)}・対応中${formatLpNumber(funnel.inProgress)}）`,
-      `　見送り${formatLpNumber(funnel.lost)}・対象外${formatLpNumber(funnel.excluded)}・記録なし${formatLpNumber(funnel.noRecord)}${pending}`,
+      `　見送り${formatLpNumber(funnel.lost)}・対象外${formatLpNumber(funnel.excluded)}・Kintone記録なし${formatLpNumber(funnel.noRecord)}${pending}`,
       `受注率：${formatLpRate(funnel.wonRate)}／対象外率：${formatLpRate(funnel.excludedRate)}`,
       `有効受注率：${formatLpRate(funnel.effectiveWonRate)}`,
     );
-    if ((funnel.noRecord ?? 0) > 0) lines.push(`⚠記録なし：${formatLpCountUnit(funnel.noRecord)}`, "　kintone に無い応答。ポータルで番号を確かめて登録");
+    // Kintone に登録の無い応答があれば 1 行で知らせる（番号はポータルの「WEBインバウンド」タブ。説明文は付けない＝東海林さん 2026-10-15）
+    if ((funnel.noRecord ?? 0) > 0) lines.push(`⚠Kintone記録なし：${formatLpCountUnit(funnel.noRecord)}`);
   }
   return lines.join("\n");
 }
