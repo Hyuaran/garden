@@ -53,10 +53,11 @@ describe("call report", () => {
       lpFormCount: 11,
     };
     const result = buildCallReport(summary, new Date("2026-10-14T06:05:00Z"), metrics);
-    expect(result.text).toContain("前確OK率：3.0％（前確OK45件）\n\n【WEBインバウンド】\n■ヒカリのプロ\n着信：26件（応答14・不在12）／発信：48件／申込み：4件\n応答率：83.3％（応答10／入電12）\n話せた：15件（受注9・対応中4・見送り1・対象外0・記録なし1）\n受注率：60.0％／対象外率：0.0％／有効受注率：60.0％\n⚠記録なし：1件（kintone に登録の無い応答。ポータルで番号を確かめて登録）\n\n■電気開始受付センター\n");
-    expect(result.text).toContain("話せた：16件（受注7・対応中4・見送り1・対象外4・記録なし1・判定待ち2）\n受注率：43.8％／対象外率：25.0％／有効受注率：58.3％\n⚠記録なし：1件");
+    expect(result.text).toContain("前確OK率：3.0％（前確OK45件）\n\n■ヒカリのプロ\n着信：26件（応答14・不在12）\n発信：48件／申込み：4件\n応答率：83.3％（応答10／入電12）\n話せた：15件（受注9・対応中4）\n　見送り1・対象外0・記録なし1\n受注率：60.0％／対象外率：0.0％\n有効受注率：60.0％\n⚠記録なし：1件\n　kintone に無い応答。ポータルで番号を確かめて登録\n\n■電気開始受付センター\n");
+    expect(result.text).toContain("話せた：16件（受注7・対応中4）\n　見送り1・対象外4・記録なし1・判定待ち2\n受注率：43.8％／対象外率：25.0％\n有効受注率：58.3％\n⚠記録なし：1件");
     expect(result.text).not.toContain("【対応と結果】");
-    expect(result.text).toContain("⚠記録なし：1件（kintone に登録の無い応答。ポータルで番号を確かめて登録）\n[/info]");
+    expect(result.text).not.toContain("【WEBインバウンド】");
+    expect(result.text).toContain("　kintone に無い応答。ポータルで番号を確かめて登録\n[/info]");
     // テレマ 0 件・LP の電話 0 件でもフォーム受付があれば送る
     const formsOnly = buildCallReport({ ...summary, totalCalls: 0 }, new Date("2026-10-14T06:05:00Z"), { ...metrics, lp: { ...metrics.lp, businesses: metrics.lp.businesses.map((b) => ({ ...b, inbound: 0, outbound: 0 })) } });
     expect(formsOnly.skipped).toBe(false);
