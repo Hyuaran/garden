@@ -5,6 +5,7 @@ import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { KotDailyRow } from "@/app/system/kanri/_lib/kot-daily";
 import ChatworkSendDialog from "./_components/ChatworkSendDialog";
+import LineSendDialog from "./_components/LineSendDialog";
 import {
   buildAttendanceMessage,
   buildLineShiftBlocks,
@@ -61,6 +62,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
   const [attendanceTime, setAttendanceTime] = useState<"10:00" | "14:00">(() => defaultAttendanceTime(today));
   const [withConfirmation, setWithConfirmation] = useState(false);
   const [chatworkOpen, setChatworkOpen] = useState(false);
+  const [lineSendOpen, setLineSendOpen] = useState(false);
   const [seatTotal, setSeatTotal] = useState(SEAT_TOTAL_DEFAULT);
   const [seatLeader, setSeatLeader] = useState(0);
   const [seatPartTime, setSeatPartTime] = useState(0);
@@ -284,6 +286,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
         <label>対象日<SelectDate value={lineDate} dates={dates} onChange={setLineDate} /></label>
         <p className={styles.targetText}>対象：宮永チーム・小泉チーム・石原チーム・新人チームの全員</p>
       </div>
+      {canEditMembers && <LineLinkPanel members={members} />}
       {tomorrowMissing && <p className={styles.notice} role="status">明日（{compactSlashDate(tomorrow)}）の日別データが入っていません。KOT の日別データ出力で、出力対象年月を今日〜明日にして出してください。</p>}
       <div className={styles.blocks}>
         {/* 見出し＝シフト（人数）と［コピー］、その下に送る相手、送る文面（［コピー］で取れるのは文面だけ） */}
@@ -297,7 +300,11 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
         </article>)}
         {lineBlocks.length === 0 && <p className={styles.empty}>この日のシフト連絡はありません。</p>}
       </div>
-      <button type="button" className={styles.primary} disabled={!allLineText} onClick={() => void copyText(allLineText)}>送る相手と文面をまとめてコピー</button>
+      <div className={styles.lineActions}>
+        <button type="button" className={styles.primary} disabled={lineBlocks.length === 0} onClick={() => setLineSendOpen(true)}>公式 LINE で送信</button>
+        <button type="button" className={styles.primary} disabled={!allLineText} onClick={() => void copyText(allLineText)}>送る相手と文面をまとめてコピー</button>
+      </div>
+      <LineSendDialog open={lineSendOpen} date={lineDate} blocks={lineBlocks} onClose={() => setLineSendOpen(false)} />
     </section>}
 
     {tab === "members" && <section className={styles.workArea}>
@@ -360,6 +367,157 @@ function PlanFields({ plans, onChange }: { plans: ShukkinPlanFields; onChange: (
   return <div className={styles.planFields}>
     {fields.map(([key, label]) => <label key={key}><span>{label}</span><textarea value={plans[key]} onChange={(event) => onChange({ ...plans, [key]: event.currentTarget.value })} /></label>)}
   </div>;
+}
+
+type LineLinkMember = {
+  employeeNumber: string;
+  name: string;
+  lineUserId: string | null;
+  lineDisplayName: string | null;
+  lineLinkSource: string | null;
+};
+
+type LineLinkPending = {
+  lineUserId: string;
+  displayName: string;
+  lastText: string;
+  lastSeenAtLabel: string;
+};
+
+function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [linkMembers, setLinkMembers] = useState<LineLinkMember[]>([]);
+  const [pending, setPending] = useState<LineLinkPending[]>([]);
+  const [selected, setSelected] = useState<Record<string, string>>({});
+
+  const loadedByNumber = useMemo(() => new Map(linkMembers.map((member) => [member.employeeNumber, member])), [linkMembers]);
+  const rows = useMemo(() => members
+    .filter((member) => member.active !== false)
+    .map((member) => loadedByNumber.get(member.employeeNumber) ?? {
+      employeeNumber: member.employeeNumber,
+      name: member.name || member.displayName || "",
+      lineUserId: null,
+      lineDisplayName: null,
+      lineLinkSource: null,
+    }), [loadedByNumber, members]);
+  const linkedCount = rows.filter((member) => member.lineUserId && member.lineLinkSource !== "unfollowed").length;
+  const unlinkedRows = rows.filter((member) => !member.lineUserId || member.lineLinkSource === "admin_unlink");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/system/shukkin/line-link", { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) {
+        setMessage(String(body.error ?? "LINE の紐づけを読み込めませんでした"));
+        return;
+      }
+      setLinkMembers(Array.isArray(body.members) ? body.members : []);
+      setPending(Array.isArray(body.pending) ? body.pending : []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) void load();
+  }, [load, open]);
+
+  async function unlink(employeeNumber: string, name: string) {
+    if (!window.confirm(`${name || employeeNumber} の LINE の紐づけを外しますか。`)) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/system/shukkin/line-link", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ employeeNumber }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(String(body.error ?? "紐づけを外せませんでした"));
+        return;
+      }
+      await load();
+      setMessage("外しました");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function link(lineUserId: string) {
+    const employeeNumber = selected[lineUserId] ?? "";
+    if (!employeeNumber) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/system/shukkin/line-link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ lineUserId, employeeNumber }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(String(body.error ?? "紐づけを保存できませんでした"));
+        return;
+      }
+      await load();
+      setMessage("紐づけました");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <details className={styles.lineLinkPanel} open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <summary>LINE の紐づけ（済み {linkedCount} ／ 未 {Math.max(0, rows.length - linkedCount)}）</summary>
+    {loading ? <p className={styles.notice}>読み込み中...</p> : <>
+      {message && <p className={styles.message}>{message}</p>}
+      <div className={styles.lineLinkTables}>
+        <div>
+          <h3>メンバー</h3>
+          <table className={styles.linkTable}>
+            <thead><tr><th>社員番号</th><th>名前</th><th>状態</th><th></th></tr></thead>
+            <tbody>
+              {rows.map((member) => {
+                const blocked = member.lineLinkSource === "unfollowed";
+                const linked = Boolean(member.lineUserId) && !blocked;
+                return <tr key={member.employeeNumber} {...CLARITY_MASK}>
+                  <td>{member.employeeNumber}</td>
+                  <td>{member.name || "名前未設定"}</td>
+                  <td>{blocked ? "ブロック中" : linked ? `済み（${member.lineDisplayName || "表示名なし"}）` : "未"}</td>
+                  <td>{linked && <button type="button" disabled={saving} onClick={() => void unlink(member.employeeNumber, member.name)}>外す</button>}</td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>連携前に送ってきた人</h3>
+          <table className={styles.linkTable}>
+            <thead><tr><th>LINE の表示名</th><th>最後の文</th><th>最後に送ってきた日時</th><th>この人は</th><th></th></tr></thead>
+            <tbody>
+              {pending.length === 0 ? <tr><td colSpan={5}>なし</td></tr> : pending.map((item) => <tr key={item.lineUserId}>
+                <td>{item.displayName || "表示名なし"}</td>
+                <td>{item.lastText}</td>
+                <td>{item.lastSeenAtLabel}</td>
+                <td>
+                  <select value={selected[item.lineUserId] ?? ""} disabled={saving} onChange={(event) => setSelected((current) => ({ ...current, [item.lineUserId]: event.currentTarget.value }))}>
+                    <option value="">選んでください</option>
+                    {unlinkedRows.map((member) => <option key={member.employeeNumber} value={member.employeeNumber}>{member.employeeNumber} {member.name}</option>)}
+                  </select>
+                </td>
+                <td><button type="button" disabled={saving || !selected[item.lineUserId]} onClick={() => void link(item.lineUserId)}>紐づける</button></td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>}
+  </details>;
 }
 
 function Coverage({

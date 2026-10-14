@@ -173,4 +173,52 @@ describe("ShukkinClient", () => {
     await waitFor(() => expect(screen.getByText("送信しました")).toBeInTheDocument());
     expect(postCount).toBe(2);
   });
+
+  it("opens the official LINE dialog from the left of the copy button", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/system/shukkin/line-send")) {
+        return new Response(JSON.stringify({
+          ok: true,
+          quota: 200,
+          used: 20,
+          remaining: 180,
+          needed: 2,
+          ownLinked: true,
+          members: [
+            { employeeNumber: "1392", name: "田中 実花", linked: true, blocked: false },
+            { employeeNumber: "1554", name: "小谷 智子", linked: false, blocked: false },
+          ],
+        }), { status: 200 });
+      }
+      if (url.endsWith("/api/system/shukkin/members")) {
+        return new Response(JSON.stringify({ ok: true, members }), { status: 200 });
+      }
+      if (url.endsWith("/api/system/shukkin/parse")) {
+        return new Response(JSON.stringify({ ok: true, rows }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: false }), { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ShukkinClient canEditMembers={false} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "シフト連絡（LINE）" }));
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File([""], "2026-09-30.csv", { type: "text/csv" })] } });
+    await waitFor(() => expect(screen.getByText("読み込みました")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("対象日"), { target: { value: "2026-09-30" } });
+
+    const lineButton = screen.getByRole("button", { name: "公式 LINE で送信" });
+    const copyButton = screen.getByRole("button", { name: "送る相手と文面をまとめてコピー" });
+    expect(lineButton.compareDocumentPosition(copyButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    fireEvent.click(lineButton);
+
+    const dialog = await screen.findByRole("dialog", { name: "この内容で公式 LINE に送信します" });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText("今月の枠：残り 180 通／今回 1 通")).toBeInTheDocument();
+    expect(within(dialog).getByText(/田中/)).toBeInTheDocument();
+    expect(within(dialog).getByText("小谷（未）")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("自分だけに試し送り")).toBeEnabled();
+  });
 });

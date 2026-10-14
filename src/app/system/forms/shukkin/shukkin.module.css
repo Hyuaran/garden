@@ -26,3 +26,15 @@
 .notice{margin:0 0 12px;color:var(--sub);font-size:13px;font-weight:700}
 .lineRecipients{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
 .lineRecipients li{padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-size:13px;white-space:nowrap}
+.lineActions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.lineLinkPanel{box-sizing:border-box;margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe}
+.lineLinkPanel summary{color:var(--heading);font-weight:900;cursor:pointer}
+.lineLinkTables{display:grid;grid-template-columns:1fr;gap:14px;margin-top:12px}
+.lineLinkTables h3{margin:0 0 8px;color:var(--heading);font-size:14px;line-height:1.4}
+.linkTable{width:100%;border-collapse:collapse;font-size:13px;line-height:1.6}
+.linkTable th,.linkTable td{padding:7px 8px;border:1px solid var(--line);text-align:left;vertical-align:middle}
+.linkTable th{background:var(--card);color:var(--heading);white-space:nowrap}
+.linkTable button{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:6px 10px;border:1px solid var(--teal);border-radius:8px;background:var(--teal);color:#fff;font-weight:800;line-height:1;cursor:pointer;white-space:nowrap}
+.linkTable button:disabled,.linkTable select:disabled{opacity:.55;cursor:not-allowed}
+.linkTable select{min-height:34px;box-sizing:border-box;max-width:220px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit}
+:global(.dark) .lineLinkPanel,:global([data-theme="dark"]) .lineLinkPanel{background:#101d2d}
