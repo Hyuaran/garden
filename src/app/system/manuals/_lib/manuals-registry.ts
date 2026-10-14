@@ -54,6 +54,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "shift", "シフト", "シフトの提出と勤務予定の確認のしかた。"),
   manual("system", "zenkaku", "前確依頼", "営業IDの登録内容の確認と、取次先への前確依頼の出し方。"),
   manual("system", "call-metrics", "テレマ コール集計", "架電の件数や結果の見方と、コールセンターへの共有。"),
+  manual("system", "shukkin", "業務管理ツール（出勤表・シフトLINE連絡テキスト生成）", "KOT の日別データから出勤表と翌日のシフト連絡の文面を作り、Chatwork・公式 LINE へ送るまでの手順。並びの設定と LINE の紐づけ。"),
   manual("system", "payroll-notice", "業務管理ツール（給与計算連絡）", "月に一度の給与計算に関する連絡の送り方と、送信履歴の見方。"),
   manual("system", "nhk-visit", "業務管理ツール（NHK訪問業務 報告）", "NHK 訪問業務の当日の報告の入力と送信、集計の受け取り方（Chatwork・LINE）。"),
   manual("system", "innovera", "業務管理ツール（INNOVERA番号の同期）", "INNOVERA の回線一覧を Kintone の番号一覧へ 5 分ごとに写す仕組み。差分の見方と「今すぐ反映」の使い方。"),
