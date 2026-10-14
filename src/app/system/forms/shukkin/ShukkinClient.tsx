@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { KotDailyRow } from "@/app/system/kanri/_lib/kot-daily";
+import ChatworkSendDialog from "./_components/ChatworkSendDialog";
 import {
   buildAttendanceMessage,
   buildLineShiftBlocks,
@@ -59,6 +60,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
   const [attendanceDate, setAttendanceDate] = useState(today);
   const [attendanceTime, setAttendanceTime] = useState<"10:00" | "14:00">(() => defaultAttendanceTime(today));
   const [withConfirmation, setWithConfirmation] = useState(false);
+  const [chatworkOpen, setChatworkOpen] = useState(false);
   const [seatTotal, setSeatTotal] = useState(SEAT_TOTAL_DEFAULT);
   const [seatLeader, setSeatLeader] = useState(0);
   const [seatPartTime, setSeatPartTime] = useState(0);
@@ -254,8 +256,18 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
           <label><input type="radio" checked={attendanceTime === "14:00"} onChange={() => setAttendanceTime("14:00")} />14:00</label>
         </div>
         <label className={styles.check}><input type="checkbox" checked={withConfirmation} onChange={(event) => setWithConfirmation(event.currentTarget.checked)} />出勤の確認を付ける</label>
-        <button type="button" className={styles.copy} onClick={() => void copyText(attendanceText)}>コピー</button>
+        <div className={styles.attendanceActions}>
+          <button type="button" className={styles.copy} disabled={!attendanceText.trim()} onClick={() => setChatworkOpen(true)}>Chatwork へ送信</button>
+          <button type="button" className={styles.copy} onClick={() => void copyText(attendanceText)}>コピー</button>
+        </div>
       </div>
+      <ChatworkSendDialog
+        open={chatworkOpen}
+        text={attendanceText}
+        date={attendanceDate}
+        time={attendanceTime}
+        onClose={() => setChatworkOpen(false)}
+      />
       <pre className={styles.preview}>{attendanceText}</pre>
       <PlanFields plans={plans} onChange={setPlans} />
       <Coverage

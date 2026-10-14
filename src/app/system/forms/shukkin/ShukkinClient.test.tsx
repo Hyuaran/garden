@@ -26,6 +26,9 @@ describe("ShukkinClient", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.endsWith("/api/system/shukkin/chatwork")) {
+        return new Response(JSON.stringify({ ok: true, roomLabel: "開発ルーム（テスト）", sentAt: "2026-10-14T06:30:12.000Z" }), { status: 200 });
+      }
       if (url.endsWith("/api/system/shukkin/members")) {
         return new Response(JSON.stringify({ ok: true, members }), { status: 200 });
       }
@@ -78,5 +81,96 @@ describe("ShukkinClient", () => {
     await waitFor(() => expect(staffInput).toHaveValue(0));
     expect(partTimeInput).toHaveValue(1);
     expect(within(seatRow as HTMLElement).getByText((_, element) => element?.textContent === "残 1")).toBeInTheDocument();
+  });
+
+  it("shows the Chatwork send dialog from the attendance tab and sends the current text", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/system/shukkin/chatwork") && init?.method === "POST") {
+        return new Response(JSON.stringify({ ok: true, sentAt: "2026-10-14T06:30:12.000Z" }), { status: 200 });
+      }
+      if (url.endsWith("/api/system/shukkin/chatwork")) {
+        return new Response(JSON.stringify({ ok: true, roomLabel: "開発ルーム（テスト）" }), { status: 200 });
+      }
+      if (url.endsWith("/api/system/shukkin/members")) {
+        return new Response(JSON.stringify({ ok: true, members }), { status: 200 });
+      }
+      if (url.endsWith("/api/system/shukkin/parse")) {
+        return new Response(JSON.stringify({ ok: true, rows }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: false }), { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ShukkinClient canEditMembers={false} />);
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File([""], "2026-09-30.csv", { type: "text/csv" })] } });
+    await waitFor(() => expect(screen.getByText("読み込みました")).toBeInTheDocument());
+
+    const controls = screen.getByText("対象日").closest("div") as HTMLElement;
+    const chatworkButton = within(controls).getByRole("button", { name: "Chatwork へ送信" });
+    const copyButton = within(controls).getByRole("button", { name: "コピー" });
+    expect(chatworkButton.compareDocumentPosition(copyButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    const attendanceText = (document.querySelector("pre") as HTMLPreElement).textContent ?? "";
+    fireEvent.click(chatworkButton);
+
+    const dialog = await screen.findByRole("dialog", { name: "この内容で Chatwork に送信します" });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText("送り先：開発ルーム（テスト）")).toBeInTheDocument();
+    expect(within(dialog).getByText((_, element) => element?.tagName === "PRE" && element.textContent === attendanceText)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "やめる" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    fireEvent.click(chatworkButton);
+    fireEvent.click(await screen.findByRole("button", { name: "送信する" }));
+    await waitFor(() => expect(screen.getByText("送信しました")).toBeInTheDocument());
+    expect(screen.getByText("時刻：2026-10-14 15:30:12")).toBeInTheDocument();
+
+    const postCall = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith("/api/system/shukkin/chatwork") && init?.method === "POST");
+    expect(postCall).toBeTruthy();
+    expect(JSON.parse(String(postCall?.[1]?.body))).toMatchObject({
+      text: attendanceText,
+      date: "2026-09-30",
+      time: "14:00",
+    });
+  });
+
+  it("keeps the dialog open after a Chatwork failure and allows retry", async () => {
+    let postCount = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/system/shukkin/chatwork") && init?.method === "POST") {
+        postCount += 1;
+        if (postCount === 1) {
+          return new Response(JSON.stringify({ ok: false, error: "送れませんでした" }), { status: 502 });
+        }
+        return new Response(JSON.stringify({ ok: true, sentAt: "2026-10-14T06:30:12.000Z" }), { status: 200 });
+      }
+      if (url.endsWith("/api/system/shukkin/chatwork")) {
+        return new Response(JSON.stringify({ ok: true, roomLabel: "開発ルーム（テスト）" }), { status: 200 });
+      }
+      if (url.endsWith("/api/system/shukkin/members")) {
+        return new Response(JSON.stringify({ ok: true, members }), { status: 200 });
+      }
+      if (url.endsWith("/api/system/shukkin/parse")) {
+        return new Response(JSON.stringify({ ok: true, rows }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: false }), { status: 404 });
+    }));
+    render(<ShukkinClient canEditMembers={false} />);
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File([""], "2026-09-30.csv", { type: "text/csv" })] } });
+    await waitFor(() => expect(screen.getByText("読み込みました")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Chatwork へ送信" }));
+    fireEvent.click(await screen.findByRole("button", { name: "送信する" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("送れませんでした");
+    fireEvent.click(screen.getByRole("button", { name: "もう一度" }));
+    await waitFor(() => expect(screen.getByText("送信しました")).toBeInTheDocument());
+    expect(postCount).toBe(2);
   });
 });

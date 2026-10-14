@@ -1,0 +1,16 @@
+.backdrop{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:24px;background:rgba(16,35,63,.62);font-family:"Meiryo","メイリオ","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif}
+.dialog{box-sizing:border-box;width:min(100%,640px);max-height:calc(100vh - 48px);overflow:auto;padding:22px;border:1px solid #e3eaf3;border-radius:18px;background:#fff;color:#17212e;box-shadow:0 24px 70px rgba(16,35,63,.24)}
+.dialog h2{margin:0 0 12px;color:#10233f;font-size:22px;line-height:1.45;text-wrap:balance}
+.destination,.sentAt{margin:0 0 12px;color:#5a6b80;font-size:14px;font-weight:800;line-height:1.7}
+.preview{box-sizing:border-box;max-height:50vh;margin:0 0 14px;padding:14px;overflow:auto;border:1px solid #e3eaf3;border-radius:8px;background:#fbfcfe;color:#17212e;font-family:"Meiryo","メイリオ","Noto Sans JP",monospace;font-size:14px;line-height:1.75;white-space:pre-wrap}
+.error{margin:0 0 14px;color:#b42318;font-size:14px;font-weight:800;line-height:1.7}
+.actions{display:flex;justify-content:flex-end;gap:10px}
+.primary,.secondary{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 16px;border-radius:8px;font-weight:800;line-height:1;cursor:pointer;white-space:nowrap}
+.primary{border:1px solid #0ea5a0;background:#0ea5a0;color:#fff}
+.secondary{border:1px solid #e3eaf3;background:#fff;color:#10233f}
+.primary:disabled,.secondary:disabled{opacity:.55;cursor:not-allowed}
+:global(.dark) .dialog,:global([data-theme="dark"]) .dialog{border-color:#31435a;background:#152438;color:#edf4fb}
+:global(.dark) .dialog h2,:global([data-theme="dark"]) .dialog h2{color:#c8d6ea}
+:global(.dark) .destination,:global(.dark) .sentAt,:global([data-theme="dark"]) .destination,:global([data-theme="dark"]) .sentAt{color:#b7c5d4}
+:global(.dark) .preview,:global([data-theme="dark"]) .preview{border-color:#31435a;background:#101d2d;color:#edf4fb}
+@media(max-width:560px){.backdrop{padding:14px}.dialog{padding:18px;border-radius:14px}.actions{flex-direction:column-reverse}.primary,.secondary{width:100%}}
