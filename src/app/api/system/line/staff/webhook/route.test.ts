@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getSupabaseAdmin: vi.fn(),
@@ -79,6 +79,39 @@ function supabaseForSuccessfulLink() {
   };
 }
 
+function supabaseForPending(lastSeenAt: string | null) {
+  const upserts: unknown[] = [];
+  return {
+    upserts,
+    client: {
+      from: vi.fn((table: string) => {
+        if (table === "root_employees") {
+          const builder = {
+            select: vi.fn(() => builder),
+            eq: vi.fn(() => builder),
+            neq: vi.fn(() => builder),
+            maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          };
+          return builder;
+        }
+        const builder = {
+          select: vi.fn(() => builder),
+          eq: vi.fn(() => builder),
+          maybeSingle: vi.fn(() => Promise.resolve({
+            data: lastSeenAt ? { last_seen_at: lastSeenAt, first_seen_at: "2026-10-12T01:00:00.000Z" } : null,
+            error: null,
+          })),
+          upsert: vi.fn((row: unknown) => {
+            upserts.push(row);
+            return Promise.resolve({ data: null, error: null });
+          }),
+        };
+        return builder;
+      }),
+    },
+  };
+}
+
 describe("/api/system/line/staff/webhook", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -86,6 +119,10 @@ describe("/api/system/line/staff/webhook", () => {
     process.env.LINE_STAFF_CHANNEL_SECRET = "secret";
     mocks.replyLineStaff.mockResolvedValue(undefined);
     mocks.getLineStaffProfile.mockResolvedValue({ displayName: "LINE表示名" });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("rejects invalid signatures", async () => {
@@ -133,5 +170,46 @@ describe("/api/system/line/staff/webhook", () => {
     }));
 
     expect(response.status).toBe(200);
+  });
+  it("does not repeat the link guide when last_seen_at is today in JST", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-14T00:30:00.000Z"));
+    const db = supabaseForPending("2026-10-13T23:30:00.000Z");
+    mocks.getSupabaseAdmin.mockReturnValue(db.client);
+    const { POST } = await import("./route");
+
+    const response = await POST(signedRequest({
+      events: [{
+        type: "message",
+        replyToken: "reply-token",
+        source: { type: "user", userId: "U1568" },
+        message: { type: "text", text: "hello" },
+      }],
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.replyLineStaff).not.toHaveBeenCalled();
+    expect(db.upserts).toHaveLength(1);
+  });
+
+  it("returns the link guide when last_seen_at is two days old in UTC", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-14T00:30:00.000Z"));
+    const db = supabaseForPending("2026-10-12T23:30:00.000Z");
+    mocks.getSupabaseAdmin.mockReturnValue(db.client);
+    const { POST } = await import("./route");
+
+    const response = await POST(signedRequest({
+      events: [{
+        type: "message",
+        replyToken: "reply-token",
+        source: { type: "user", userId: "U1568" },
+        message: { type: "text", text: "hello" },
+      }],
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.replyLineStaff).toHaveBeenCalledWith("reply-token", expect.any(String));
+    expect(db.upserts).toHaveLength(1);
   });
 });

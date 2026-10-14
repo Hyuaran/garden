@@ -50,6 +50,15 @@ function todayJstDate() {
   return `${map.year}-${map.month}-${map.day}`;
 }
 
+function isoToJstDate(value: string | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
 async function reply(replyToken: string | undefined, text: string) {
   if (!replyToken) return;
   await replyLineStaff(replyToken, text);
@@ -148,7 +157,7 @@ async function rememberPending(lineUserId: string, text: string) {
     .select("last_seen_at,first_seen_at")
     .eq("line_user_id", lineUserId)
     .maybeSingle<{ last_seen_at?: string | null; first_seen_at?: string | null }>();
-  const shouldReply = !String(pending?.last_seen_at ?? "").startsWith(todayJstDate());
+  const shouldReply = isoToJstDate(pending?.last_seen_at) !== todayJstDate();
   const displayName = await displayNameFor(lineUserId);
   const now = new Date().toISOString();
   const { error: upsertError } = await client

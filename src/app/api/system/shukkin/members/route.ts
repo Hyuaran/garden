@@ -73,16 +73,20 @@ function shapeRows(rows: unknown[], employeeDetails: Map<string, { name: string;
   });
 }
 
-export async function GET() {
-  const staff = await requireStaff();
-  if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
-  const client = getSupabaseAdmin();
-  const { data, error } = await client
+async function activeMemberRows(client: ReturnType<typeof getSupabaseAdmin>) {
+  return client
     .from("system_shukkin_member")
     .select(SELECT_COLUMNS)
     .eq("active", true)
     .order("group_name", { ascending: true })
     .order("sort_order", { ascending: true });
+}
+
+export async function GET() {
+  const staff = await requireStaff();
+  if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
+  const client = getSupabaseAdmin();
+  const { data, error } = await activeMemberRows(client);
   if (error) return NextResponse.json({ ok: false, error: "並びの設定を読み込めませんでした" }, { status: 500 });
   try {
     const employeeDetails = await employeeDetailsByNumber(client, (data ?? []).map((row) => String(row.employee_number ?? "")));
@@ -97,16 +101,22 @@ export async function PUT(request: Request) {
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const body = await request.json().catch(() => null) as { members?: unknown } | null;
   const rows = normalizeMembers(body?.members);
+  if (rows?.length === 0) return NextResponse.json({ ok: false, error: "並びの設定を確認してください" }, { status: 400 });
   if (!rows) return NextResponse.json({ ok: false, error: "並びの設定を確認してください" }, { status: 400 });
 
   const client = getSupabaseAdmin();
-  const { data, error } = await client
+  const activeNumbers = [...new Set(rows.map((row) => row!.employee_number))];
+  const { error } = await client
     .from("system_shukkin_member")
-    .upsert(rows.map((row) => ({ ...row, updated_by: manager.userId })), { onConflict: "employee_number" })
-    .select(SELECT_COLUMNS)
-    .order("group_name", { ascending: true })
-    .order("sort_order", { ascending: true });
+    .upsert(rows.map((row) => ({ ...row, updated_by: manager.userId })), { onConflict: "employee_number" });
   if (error) return NextResponse.json({ ok: false, error: "並びの設定を保存できませんでした" }, { status: 500 });
+  const { error: inactiveError } = await client
+    .from("system_shukkin_member")
+    .update({ active: false, updated_by: manager.userId })
+    .not("employee_number", "in", `(${activeNumbers.join(",")})`);
+  if (inactiveError) return NextResponse.json({ ok: false, error: "並びの設定を保存できませんでした" }, { status: 500 });
+  const { data, error: selectError } = await activeMemberRows(client);
+  if (selectError) return NextResponse.json({ ok: false, error: "並びの設定を保存できませんでした" }, { status: 500 });
   try {
     const employeeDetails = await employeeDetailsByNumber(client, (data ?? []).map((row) => String(row.employee_number ?? "")));
     return NextResponse.json({ ok: true, members: shapeRows(data ?? [], employeeDetails) });

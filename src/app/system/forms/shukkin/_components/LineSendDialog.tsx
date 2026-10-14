@@ -49,6 +49,19 @@ function displayName(member: { name: string; employeeNumber: string }) {
   return member.name.trim().split(/\s+/)[0] || member.employeeNumber;
 }
 
+function requestBlocks(blocks: LineShiftBlock[], failed: SendResult["failed"] | undefined) {
+  const retryNumbers = new Set((failed ?? []).map((item) => item.employeeNumber));
+  return blocks
+    .map((block) => ({
+      shift: block.shift,
+      employeeNumbers: block.people
+        .map((person) => person.employeeNumber)
+        .filter((employeeNumber) => retryNumbers.size === 0 || retryNumbers.has(employeeNumber)),
+      message: block.message,
+    }))
+    .filter((block) => block.employeeNumbers.length > 0);
+}
+
 export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
   const [state, setState] = useState<SendState>("confirm");
   const [sending, setSending] = useState(false);
@@ -108,6 +121,7 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
     if (sending || quotaShortage) return;
     setSending(true);
     setError("");
+    const retryFailed = state === "failed" && (result?.failed?.length ?? 0) > 0 ? result?.failed : undefined;
     try {
       const response = await fetch("/api/system/shukkin/line-send", {
         method: "POST",
@@ -116,11 +130,7 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
           date,
           testOnly,
           password: quota?.passwordRequired ? password : undefined,
-          blocks: blocks.map((block) => ({
-            shift: block.shift,
-            employeeNumbers: block.people.map((person) => person.employeeNumber),
-            message: block.message,
-          })),
+          blocks: requestBlocks(blocks, retryFailed),
         }),
       });
       const body = await response.json().catch(() => ({})) as SendResult;
@@ -129,7 +139,7 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
         setError(typeof body.error === "string" ? body.error : "公式 LINE に送れませんでした。しばらくしてからもう一度お試しください");
         return;
       }
-      setResult(body);
+      setResult((current) => retryFailed && current ? { ...body, sent: [...(current.sent ?? []), ...(body.sent ?? [])] } : body);
       setState((body.failed?.length ?? 0) > 0 ? "failed" : "sent");
       if ((body.failed?.length ?? 0) > 0) setError("一部の送信に失敗しました。");
     } finally {

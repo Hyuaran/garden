@@ -26,7 +26,10 @@ function selectChain(data: unknown[] = []) {
 function upsertChain(data: unknown[] = []) {
   const chain = {
     upsert: vi.fn(() => chain),
+    update: vi.fn(() => chain),
+    not: vi.fn(() => chain),
     select: vi.fn(() => chain),
+    eq: vi.fn(() => chain),
     order: vi.fn(() => chain),
     then: (resolve: (value: unknown) => void) => resolve({ data, error: null }),
   };
@@ -86,8 +89,21 @@ describe("/api/system/shukkin/members", () => {
       display_name: "田中 実花",
       updated_by: "u1",
     }], { onConflict: "employee_number" });
+    expect(memberChain.update).toHaveBeenCalledWith({ active: false, updated_by: "u1" });
+    expect(memberChain.not).toHaveBeenCalledWith("employee_number", "in", "(1392)");
     expect(body.members[0].employeeNumber).toBe("1392");
     expect(body.members[0].displayName).toBe("田中 実花");
     expect(body.members[0].employmentType).toBe("アルバイト");
+  });
+  it("keeps empty member lists invalid", async () => {
+    auth.requireManager.mockResolvedValue({ userId: "u1" });
+    const route = await import("./route");
+    const response = await route.PUT(new Request("http://localhost", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ members: [] }),
+    }));
+    expect(response.status).toBe(400);
+    expect(db.getSupabaseAdmin).not.toHaveBeenCalled();
   });
 });
