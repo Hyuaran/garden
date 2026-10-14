@@ -228,6 +228,9 @@ export function validateEmployee(em: Employee): FieldErrors {
   ) {
     e.innovera_mobile_extension = "INNOVERA 内線番号（モバイル）は 2〜6 桁の数字で入力してください";
   }
+  if (em.filemaker_employee_name !== undefined && em.filemaker_employee_name !== null && !em.filemaker_employee_name.trim()) {
+    e.filemaker_employee_name = "FileMaker 社員名は空白にはできません";
+  }
   if (
     em.call_recording_access &&
     !CALL_RECORDING_OVERRIDE_VALUES.has(em.call_recording_access)

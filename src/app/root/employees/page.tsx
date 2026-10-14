@@ -270,6 +270,7 @@ const empty = (nextId: string, companyId: string, salarySystemId: string): Emplo
   kot_employee_id: null,
   innovera_extension: null,
   innovera_mobile_extension: null,
+  filemaker_employee_name: null,
   mf_employee_id: null,
   call_recording_access: "default",
   insurance_type: "加入",
@@ -944,6 +945,12 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
                 value={editTarget.innovera_mobile_extension ?? ""}
                 onChange={(e) => setEditTarget({ ...editTarget, innovera_mobile_extension: e.target.value || null })}
                 error={errors.innovera_mobile_extension}
+              />
+              <TextField
+                label="FileMaker 社員名"
+                value={editTarget.filemaker_employee_name ?? ""}
+                onChange={(e) => setEditTarget({ ...editTarget, filemaker_employee_name: e.target.value.trim() || null })}
+                error={errors.filemaker_employee_name}
               />
               <TextField label="MFクラウド給与ID" value={editTarget.mf_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, mf_employee_id: e.target.value || null })} />
             </FormGrid>

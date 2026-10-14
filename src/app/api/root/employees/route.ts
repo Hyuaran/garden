@@ -14,6 +14,9 @@ export async function POST(request: Request) {
   const employeeId = typeof body?.employee_id === "string" ? body.employee_id : "";
   if (!employeeId) return NextResponse.json({ ok: false, error: "employee_id is required" }, { status: 400 });
   const input = body;
+  if (typeof input.filemaker_employee_name === "string") {
+    input.filemaker_employee_name = input.filemaker_employee_name.trim() || null;
+  }
 
   const admin = getSupabaseAdmin();
   const { data: existing } = await admin

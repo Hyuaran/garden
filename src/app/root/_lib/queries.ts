@@ -45,6 +45,7 @@ const ROOT_EMPLOYEE_SELECT_FIELDS = [
   "kot_employee_id",
   "innovera_extension",
   "innovera_mobile_extension",
+  "filemaker_employee_name",
   "mf_employee_id",
   "call_recording_access",
   "commute_daily_allowance",

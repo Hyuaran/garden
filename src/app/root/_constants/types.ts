@@ -145,6 +145,7 @@ export interface Employee {
   kot_employee_id: string | null;
   innovera_extension?: string | null;
   innovera_mobile_extension?: string | null;
+  filemaker_employee_name?: string | null;
   mf_employee_id: string | null;
   call_recording_access?: CallRecordingOverride | null;
   commute_daily_allowance?: number | null;

@@ -41,6 +41,7 @@ function baseEmployee(overrides: Partial<Employee> = {}): Employee {
     kot_employee_id: null,
     innovera_extension: null,
     innovera_mobile_extension: null,
+    filemaker_employee_name: null,
     mf_employee_id: null,
     call_recording_access: "default",
     insurance_type: "加入",
@@ -88,6 +89,12 @@ describe("validateEmployee - INNOVERA and call recording", () => {
       }),
     );
     expect(errs.call_recording_access).toBe("INNOVERA録音の権限を選択してください");
+  });
+
+  it("normalizes FileMaker employee name as optional but rejects blank-only values", () => {
+    expect(validateEmployee(baseEmployee({ filemaker_employee_name: null })).filemaker_employee_name).toBeUndefined();
+    expect(validateEmployee(baseEmployee({ filemaker_employee_name: "山田 太郎" })).filemaker_employee_name).toBeUndefined();
+    expect(validateEmployee(baseEmployee({ filemaker_employee_name: "  " })).filemaker_employee_name).toBeDefined();
   });
 });
 
