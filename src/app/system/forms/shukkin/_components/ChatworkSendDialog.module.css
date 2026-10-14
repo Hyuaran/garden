@@ -13,4 +13,6 @@
 :global(.dark) .dialog h2,:global([data-theme="dark"]) .dialog h2{color:#c8d6ea}
 :global(.dark) .destination,:global(.dark) .sentAt,:global([data-theme="dark"]) .destination,:global([data-theme="dark"]) .sentAt{color:#b7c5d4}
 :global(.dark) .preview,:global([data-theme="dark"]) .preview{border-color:#31435a;background:#101d2d;color:#edf4fb}
+:global(.dark) .error,:global([data-theme="dark"]) .error{color:#ff8a80}
+:global(.dark) .secondary,:global([data-theme="dark"]) .secondary{border-color:#31435a;background:#101d2d;color:#edf4fb}
 @media(max-width:560px){.backdrop{padding:14px}.dialog{padding:18px;border-radius:14px}.actions{flex-direction:column-reverse}.primary,.secondary{width:100%}}

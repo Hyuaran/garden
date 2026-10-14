@@ -23,4 +23,9 @@
 :global(.dark) .destination,:global(.dark) .sentAt,:global(.dark) .quota,:global([data-theme="dark"]) .destination,:global([data-theme="dark"]) .sentAt,:global([data-theme="dark"]) .quota{color:#b7c5d4}
 :global(.dark) .table th,:global([data-theme="dark"]) .table th{background:#101d2d;color:#c8d6ea}
 :global(.dark) .table th,:global(.dark) .table td,:global([data-theme="dark"]) .table th,:global([data-theme="dark"]) .table td{border-color:#31435a}
+/* ダーク：送れる人・試し送りのラベル・結果の行・文面の見出しは白系に（2026-10-14 実機で文字が見えなかった） */
+:global(.dark) .names,:global(.dark) .result,:global(.dark) .testOnly,:global(.dark) .details summary,:global(.dark) .details pre,:global([data-theme="dark"]) .names,:global([data-theme="dark"]) .result,:global([data-theme="dark"]) .testOnly,:global([data-theme="dark"]) .details summary,:global([data-theme="dark"]) .details pre{color:#edf4fb}
+:global(.dark) .testOnly small,:global([data-theme="dark"]) .testOnly small{color:#b7c5d4}
+:global(.dark) .undelivered,:global(.dark) .error,:global(.dark) .danger,:global([data-theme="dark"]) .undelivered,:global([data-theme="dark"]) .error,:global([data-theme="dark"]) .danger{color:#ff8a80}
+:global(.dark) .secondary,:global([data-theme="dark"]) .secondary{border-color:#31435a;background:#101d2d;color:#edf4fb}
 @media(max-width:640px){.backdrop{padding:14px}.dialog{padding:18px;border-radius:14px}.actions{flex-direction:column-reverse}.primary,.secondary{width:100%}.table{display:block;overflow:auto}}
