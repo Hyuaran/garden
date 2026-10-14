@@ -32,6 +32,7 @@
   var DUE_FIELD = "日付_0"; // 支払期日
   var AMOUNT_FIELD = "数値"; // 金額
   var PERIOD_FIELD = ""; // 「実績期間」欄のフィールドコード（できたら入れる）
+  var DUMMY_PERIOD = "1000-01-01"; // 実績が分からない既存レコードに入れたダミー（同じ実績期間として数えない）
 
   function fileIdOf(url) {
     if (!url) return null;
@@ -80,7 +81,7 @@
       var payee = samePayee(current, row.record);
       if (sameFile && payee) result.same.push(row);
       else if (sameFile) result.other.push(row);
-      else if (PERIOD_FIELD && payee && val(current, PERIOD_FIELD) && val(current, PERIOD_FIELD) === val(row.record, PERIOD_FIELD)) result.period.push(row);
+      else if (PERIOD_FIELD && payee && val(current, PERIOD_FIELD) && val(current, PERIOD_FIELD) !== DUMMY_PERIOD && val(current, PERIOD_FIELD) === val(row.record, PERIOD_FIELD)) result.period.push(row);
     });
     return result;
   }
@@ -109,7 +110,7 @@
     var record = event.record;
     var id = fileIdOf(val(record, LINK_FIELD));
     var payee = val(record, PAYEE_FIELD);
-    var period = PERIOD_FIELD ? val(record, PERIOD_FIELD) : "";
+    var period = PERIOD_FIELD && val(record, PERIOD_FIELD) !== DUMMY_PERIOD ? val(record, PERIOD_FIELD) : "";
     if (!id && !(period && payee)) return event;
     var selfId = event.recordId || val(record, "$id");
 
