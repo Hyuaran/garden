@@ -1,0 +1,321 @@
+#!/usr/bin/env node
+import { mkdir, readdir, readFile, rm, stat, appendFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+export const DEFAULT_CONFIG = {
+  apiBase: "https://garden-os.net",
+  pullWaitMs: 25000,
+  idleSleepMs: 1000,
+  errorSleepMs: 5000,
+  logDir: "logs",
+  logKeepDays: 7,
+  agentVersion: "1.0.0",
+};
+
+const DEFAULT_INNOVERA_TIMEOUT_MS = 25000;
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function toPositiveInteger(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return Math.floor(parsed);
+}
+
+function normalizeConfig(raw, baseDir = scriptDir) {
+  const config = { ...DEFAULT_CONFIG, ...raw };
+  config.pullWaitMs = toPositiveInteger(config.pullWaitMs, DEFAULT_CONFIG.pullWaitMs);
+  config.idleSleepMs = toPositiveInteger(config.idleSleepMs, DEFAULT_CONFIG.idleSleepMs);
+  config.errorSleepMs = toPositiveInteger(config.errorSleepMs, DEFAULT_CONFIG.errorSleepMs);
+  config.logKeepDays = toPositiveInteger(config.logKeepDays, DEFAULT_CONFIG.logKeepDays);
+  config.apiBase = String(config.apiBase || DEFAULT_CONFIG.apiBase).replace(/\/+$/, "");
+  config.agentVersion = String(config.agentVersion || DEFAULT_CONFIG.agentVersion);
+  config.logDir = path.isAbsolute(config.logDir) ? config.logDir : path.join(baseDir, config.logDir);
+  return config;
+}
+
+export async function loadConfig(configPath) {
+  const resolvedPath = configPath ? path.resolve(configPath) : path.join(scriptDir, "config.json");
+  const raw = JSON.parse(await readFile(resolvedPath, "utf8"));
+  return normalizeConfig(raw, path.dirname(resolvedPath));
+}
+
+export function parseArgs(argv = process.argv.slice(2)) {
+  const parsed = { once: false, configPath: null };
+  for (let index = 0; index < argv.length; index += 1) {
+    const item = argv[index];
+    if (item === "--once") {
+      parsed.once = true;
+    } else if (item === "--config") {
+      const value = argv[index + 1];
+      if (!value) throw new Error("--config requires a path.");
+      parsed.configPath = value;
+      index += 1;
+    } else {
+      throw new Error(`Unknown argument: ${item}`);
+    }
+  }
+  return parsed;
+}
+
+export function validateEnvironment(env = process.env) {
+  const missing = ["RELAY_SECRET", "INNOVERA_API_HOST", "INNOVERA_API_KEY"].filter((key) => !env[key]);
+  if (missing.length > 0) {
+    throw new Error(`起動に必要な環境変数がありません: ${missing.join(", ")}`);
+  }
+}
+
+function jstParts(now = new Date()) {
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  return formatter.format(now);
+}
+
+function jstDate(now = new Date()) {
+  return jstParts(now).slice(0, 10).replaceAll("-", "");
+}
+
+export function createLogger(config, { now = () => new Date() } = {}) {
+  return {
+    async write(level, message, fields = {}) {
+      await mkdir(config.logDir, { recursive: true });
+      const safeFields = {};
+      for (const [key, value] of Object.entries(fields)) {
+        if (value !== undefined && value !== null) safeFields[key] = value;
+      }
+      const suffix = Object.keys(safeFields).length > 0 ? ` ${JSON.stringify(safeFields)}` : "";
+      const line = `${jstParts(now())} JST ${level} ${message}${suffix}\n`;
+      await appendFile(path.join(config.logDir, `${jstDate(now())}.log`), line, "utf8");
+      process.stdout.write(line);
+    },
+  };
+}
+
+export async function cleanupOldLogs(config, now = new Date()) {
+  await mkdir(config.logDir, { recursive: true });
+  const keepMs = config.logKeepDays * 24 * 60 * 60 * 1000;
+  const entries = await readdir(config.logDir, { withFileTypes: true });
+  await Promise.all(entries
+    .filter((entry) => entry.isFile() && /^\d{8}\.log$/.test(entry.name))
+    .map(async (entry) => {
+      const fullPath = path.join(config.logDir, entry.name);
+      const info = await stat(fullPath);
+      if (now.getTime() - info.mtimeMs > keepMs) await rm(fullPath, { force: true });
+    }));
+}
+
+export function buildPullRequest(config, env = process.env) {
+  return {
+    url: `${config.apiBase}/api/system/relay/pull`,
+    init: {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${env.RELAY_SECRET}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ agentVersion: config.agentVersion, waitMs: config.pullWaitMs }),
+    },
+  };
+}
+
+export function buildResultRequest(config, payload, env = process.env) {
+  return {
+    url: `${config.apiBase}/api/system/relay/result`,
+    init: {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${env.RELAY_SECRET}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+  };
+}
+
+async function readJsonResponse(response, label) {
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error(`${label}:json`);
+  }
+  return payload;
+}
+
+export async function parsePullResponse(response) {
+  if (response.status === 401) throw new Error("pull:unauthorized");
+  if (!response.ok) throw new Error(`pull:http ${response.status}`);
+  const payload = await readJsonResponse(response, "pull");
+  if (!payload || payload.ok !== true || !("job" in payload)) throw new Error("pull:invalid");
+  if (payload.job === null) return null;
+  if (!payload.job.id || !payload.job.kind) throw new Error("pull:invalid_job");
+  return payload.job;
+}
+
+async function parseResultResponse(response) {
+  if (response.status === 401) throw new Error("result:unauthorized");
+  if (!response.ok) throw new Error(`result:http ${response.status}`);
+  const payload = await readJsonResponse(response, "result");
+  if (!payload || payload.ok !== true) throw new Error("result:invalid");
+  return payload;
+}
+
+function normalizeInnoveraHost(host) {
+  return String(host).replace(/^https?:\/\//, "").replace(/\/+$/, "");
+}
+
+export function appendInnoveraParam(body, key, value) {
+  if (Array.isArray(value)) {
+    const arrayKey = key.endsWith("[]") ? key : `${key}[]`;
+    for (const item of value) appendInnoveraParam(body, arrayKey, item);
+    return;
+  }
+  if (value === null || value === undefined) return;
+  body.append(key, String(value));
+}
+
+export function buildInnoveraRequest(request, env = process.env) {
+  if (!request || typeof request !== "object") throw new Error("request is missing");
+  const { ckey, akey, params = {} } = request;
+  if (!ckey || !akey) throw new Error("ckey or akey is missing");
+  const url = `https://${normalizeInnoveraHost(env.INNOVERA_API_HOST)}/pbx/api/front/index/?ckey=${encodeURIComponent(ckey)}&akey=${encodeURIComponent(akey)}`;
+  const body = new URLSearchParams();
+  body.set("api_key", env.INNOVERA_API_KEY);
+  for (const [key, value] of Object.entries(params)) appendInnoveraParam(body, key, value);
+  return {
+    url,
+    init: {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body,
+    },
+  };
+}
+
+async function callInnovera(request, { fetch: fetchImpl = fetch, env = process.env, timeoutMs = DEFAULT_INNOVERA_TIMEOUT_MS } = {}) {
+  const built = buildInnoveraRequest(request, env);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(built.url, { ...built.init, signal: controller.signal });
+    if (!response.ok) throw new Error(`http ${response.status}`);
+    return await readJsonResponse(response, "innovera");
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("http ")) throw error;
+    if (error instanceof Error && error.message === "innovera:json") throw new Error("json");
+    const name = error && typeof error === "object" && "name" in error ? String(error.name) : "unknown";
+    throw new Error(`fetch ${name}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function shortError(error) {
+  if (error instanceof Error && error.message) return error.message.slice(0, 160);
+  return String(error).slice(0, 160);
+}
+
+export async function handleJob(job, options = {}) {
+  if (!job || !job.id) return { id: undefined, ok: false, error: "job id is missing" };
+  if (job.kind === "kot") {
+    return { id: job.id, ok: false, error: "kot: 未対応です" };
+  }
+  if (job.kind !== "innovera") {
+    return { id: job.id, ok: false, error: `unsupported kind: ${job.kind}` };
+  }
+  try {
+    const result = await callInnovera(job.request, options);
+    return { id: job.id, ok: true, result };
+  } catch (error) {
+    return { id: job.id, ok: false, error: `innovera: ${shortError(error)}` };
+  }
+}
+
+const IDLE_LOG_EVERY = 120; // 仕事なしの問い合わせは約 1 時間に 1 行だけ記録する（25 秒待ち × 120 ≒ 50 分）
+let idleCount = 0;
+
+// Garden への問い合わせ（pull／result）は「待ち時間＋15 秒」で打ち切る＝Garden 側が固まっても常駐が止まらない
+async function fetchWithTimeout(fetchImpl, url, init, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchImpl(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function pullOnce(config, logger, fetchImpl = fetch) {
+  const pullRequest = buildPullRequest(config);
+  const response = await fetchWithTimeout(fetchImpl, pullRequest.url, pullRequest.init, config.pullWaitMs + 15000);
+  const job = await parsePullResponse(response);
+  if (!job) {
+    idleCount += 1;
+    if (idleCount % IDLE_LOG_EVERY === 1) await logger.write("info", "待機中（仕事なし）", { wait_ms: config.pullWaitMs });
+    return false;
+  }
+  idleCount = 0;
+  await logger.write("info", "job開始", { id: job.id, kind: job.kind });
+  const resultPayload = await handleJob(job, { fetch: fetchImpl });
+  const resultRequest = buildResultRequest(config, resultPayload);
+  const resultResponse = await fetchWithTimeout(fetchImpl, resultRequest.url, resultRequest.init, 30000);
+  await parseResultResponse(resultResponse);
+  await logger.write(resultPayload.ok ? "info" : "error", "job完了", { id: job.id, kind: job.kind, ok: resultPayload.ok });
+  return true;
+}
+
+async function run(config, { once = false, logger = createLogger(config), fetchImpl = fetch } = {}) {
+  let stopping = false;
+  const stop = () => {
+    stopping = true;
+  };
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
+  await cleanupOldLogs(config);
+  await logger.write("info", "relay agent started", { version: config.agentVersion });
+  do {
+    try {
+      const hadJob = await pullOnce(config, logger, fetchImpl);
+      if (!once && !hadJob && !stopping) await sleep(config.idleSleepMs);
+    } catch (error) {
+      const message = shortError(error);
+      if (message === "pull:unauthorized" || message === "result:unauthorized") {
+        await logger.write("error", "認証エラー: RELAY_SECRET が違います", {});
+      } else {
+        await logger.write("error", "処理エラー", { error: message });
+      }
+      if (once) throw error;
+      if (!stopping) await sleep(config.errorSleepMs);
+    }
+  } while (!once && !stopping);
+  await logger.write("info", "relay agent stopped");
+}
+
+async function main() {
+  try {
+    const args = parseArgs();
+    const config = await loadConfig(args.configPath);
+    validateEnvironment();
+    await run(config, { once: args.once });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${message}\n`);
+    process.exitCode = 2;
+  }
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  main();
+}

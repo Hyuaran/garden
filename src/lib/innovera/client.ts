@@ -46,6 +46,8 @@ type InnoveraResponse<T> = {
 
 type ParamValue = string | number | boolean | null | undefined;
 
+import { enqueueRelayJob, getRelayHeartbeat, isRelayAlive, waitRelayJob } from "@/lib/relay/queue.server";
+
 const BASE_TIMEOUT_MS = 25_000;
 const LIST_CACHE_MS = 10 * 60_000;
 const CALL_CACHE_MS = 60_000;
@@ -55,8 +57,13 @@ const cache = new Map<string, { expiresAt: number; value: unknown }>();
 function getConfig() {
   const host = process.env.INNOVERA_API_HOST;
   const apiKey = process.env.INNOVERA_API_KEY;
+  if (process.env.INNOVERA_RELAY_MODE === "queue") return { host: host ?? "", apiKey: apiKey ?? "" };
   if (!host || !apiKey) throw new Error("innovera_unreachable:missing config");
   return { host, apiKey };
+}
+
+function relayMode() {
+  return process.env.INNOVERA_RELAY_MODE === "queue" ? "queue" : "direct";
 }
 
 function normalizeHost(host: string) {
@@ -128,6 +135,8 @@ async function callInnoveraOnce<T>(
   akey: string,
   params: Record<string, ParamValue | ParamValue[]> = {},
 ): Promise<T> {
+  if (relayMode() === "queue") return callInnoveraViaRelay<T>(ckey, akey, params);
+
   const { host, apiKey } = getConfig();
   const url = `https://${normalizeHost(host)}/pbx/api/front/index/?ckey=${encodeURIComponent(ckey)}&akey=${encodeURIComponent(akey)}`;
   const body = new URLSearchParams();
@@ -154,6 +163,28 @@ async function callInnoveraOnce<T>(
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function callInnoveraViaRelay<T>(
+  ckey: string,
+  akey: string,
+  params: Record<string, ParamValue | ParamValue[]> = {},
+): Promise<T> {
+  const heartbeat = await getRelayHeartbeat();
+  if (!isRelayAlive(heartbeat)) throw new Error("innovera_unreachable:relay_down");
+
+  const job = await enqueueRelayJob("innovera", { ckey, akey, params }, "screen");
+  let payload: InnoveraResponse<T>;
+  try {
+    payload = await waitRelayJob(job.id, { timeoutMs: BASE_TIMEOUT_MS }) as InnoveraResponse<T>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === "relay_timeout") throw new Error("innovera_unreachable:relay_timeout");
+    throw new Error(`innovera_unreachable:relay ${message}`);
+  }
+
+  if (payload?.result === false) throw new Error(`innovera_unreachable:${payload.error_code ?? "result_false"}`);
+  return stripPassword(payload?.data as T);
 }
 
 export function listInnoveraUsers() {

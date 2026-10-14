@@ -1,11 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const relayMocks = vi.hoisted(() => ({
+  enqueueRelayJob: vi.fn(),
+  waitRelayJob: vi.fn(),
+  getRelayHeartbeat: vi.fn(),
+  isRelayAlive: vi.fn(),
+}));
+
+vi.mock("@/lib/relay/queue.server", () => relayMocks);
+
 import { callInnovera, listInnoveraUsers, searchInnoveraCalls, setInnoveraDefaultCircuit } from "./client";
 
 describe("innovera client", () => {
   beforeEach(() => {
     vi.stubEnv("INNOVERA_API_HOST", "api.example.test");
     vi.stubEnv("INNOVERA_API_KEY", "secret");
+    vi.stubEnv("INNOVERA_RELAY_MODE", "direct");
     vi.stubGlobal("fetch", vi.fn());
+    vi.clearAllMocks();
+    relayMocks.enqueueRelayJob.mockResolvedValue({ id: "job-1" });
+    relayMocks.getRelayHeartbeat.mockResolvedValue({ last_seen_at: new Date().toISOString() });
+    relayMocks.isRelayAlive.mockReturnValue(true);
   });
 
   it("posts form params and strips password fields", async () => {
@@ -59,5 +74,39 @@ describe("innovera client", () => {
     expect(data).toHaveLength(50001);
     expect(String(vi.mocked(fetch).mock.calls[0][1]?.body)).toContain("page=1");
     expect(String(vi.mocked(fetch).mock.calls[1][1]?.body)).toContain("page=2");
+  });
+
+  it("uses the relay queue in queue mode and strips returned password fields", async () => {
+    vi.stubEnv("INNOVERA_RELAY_MODE", "queue");
+    vi.stubEnv("INNOVERA_API_KEY", "");
+    relayMocks.waitRelayJob.mockResolvedValue({
+      result: true,
+      data: [{ id: "u2", password: "hidden" }],
+    });
+
+    const data = await callInnovera<Array<{ id: string }>>("users", "search", { section_ids: [1, 2] });
+
+    expect(data).toEqual([{ id: "u2" }]);
+    expect(relayMocks.enqueueRelayJob).toHaveBeenCalledWith("innovera", {
+      ckey: "users",
+      akey: "search",
+      params: { section_ids: [1, 2] },
+    }, "screen");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("fails fast without retry when the relay heartbeat is stale", async () => {
+    vi.stubEnv("INNOVERA_RELAY_MODE", "queue");
+    relayMocks.isRelayAlive.mockReturnValue(false);
+
+    await expect(callInnovera("cdr", "search")).rejects.toThrow("innovera_unreachable:relay_down");
+    expect(relayMocks.enqueueRelayJob).not.toHaveBeenCalled();
+  });
+
+  it("keeps INNOVERA result false errors from relay results", async () => {
+    vi.stubEnv("INNOVERA_RELAY_MODE", "queue");
+    relayMocks.waitRelayJob.mockResolvedValue({ result: false, error_code: 999, data: null });
+
+    await expect(callInnovera("cdr", "search")).rejects.toThrow("innovera_unreachable:999");
   });
 });

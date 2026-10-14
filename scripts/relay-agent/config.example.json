@@ -1,0 +1,9 @@
+{
+  "apiBase": "https://garden-os.net",
+  "pullWaitMs": 25000,
+  "idleSleepMs": 1000,
+  "errorSleepMs": 5000,
+  "logDir": "logs",
+  "logKeepDays": 7,
+  "agentVersion": "1.0.0"
+}

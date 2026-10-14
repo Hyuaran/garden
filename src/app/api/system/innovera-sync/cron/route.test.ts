@@ -2,10 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   runInnoveraSync: vi.fn(),
+  checkRelayHeartbeat: vi.fn(),
 }));
 
 vi.mock("@/lib/innovera/sync.server", () => ({
   runInnoveraSync: mocks.runInnoveraSync,
+}));
+
+vi.mock("@/lib/relay/monitor.server", () => ({
+  checkRelayHeartbeat: mocks.checkRelayHeartbeat,
 }));
 
 import { GET } from "./route";
@@ -21,6 +26,7 @@ describe("/api/system/innovera-sync/cron", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "cron-secret";
+    mocks.checkRelayHeartbeat.mockResolvedValue({ ok: true, checked: true });
     mocks.runInnoveraSync.mockResolvedValue({
       ok: true,
       applied: true,
@@ -43,7 +49,15 @@ describe("/api/system/innovera-sync/cron", () => {
   it("runs when the bearer token is valid", async () => {
     const response = await GET(request("cron-secret"));
     expect(response.status).toBe(200);
+    expect(mocks.checkRelayHeartbeat).toHaveBeenCalledTimes(1);
     expect(mocks.runInnoveraSync).toHaveBeenCalledWith({ apply: true, trigger: "cron" });
     await expect(response.json()).resolves.toMatchObject({ ok: true, applied: true });
+  });
+
+  it("continues the sync even when heartbeat monitoring fails", async () => {
+    mocks.checkRelayHeartbeat.mockRejectedValue(new Error("monitor failed"));
+    const response = await GET(request("cron-secret"));
+    expect(response.status).toBe(200);
+    expect(mocks.runInnoveraSync).toHaveBeenCalledWith({ apply: true, trigger: "cron" });
   });
 });

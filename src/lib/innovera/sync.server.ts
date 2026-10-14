@@ -3,6 +3,7 @@ import "server-only";
 import { ChatworkClient } from "@/lib/chatwork";
 import { createRecord, getAllRecords, updateRecord, type KintoneRecord } from "@/lib/kintone/records";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { callInnovera } from "./client";
 import { diffInnoveraKintone, stripHistoryUser } from "./diff";
 import type { InnoveraCircuit, InnoveraDiffAction, InnoveraSyncDetail, InnoveraSyncLogRow, InnoveraSyncResult, KintoneInnoveraRecord } from "./types";
 
@@ -55,7 +56,9 @@ function envConfig() {
   const appId = process.env.KINTONE_INNOVERA_APP_ID || DEFAULT_KINTONE_APP_ID;
   const token = process.env.KINTONE_INNOVERA_TOKEN;
   const subdomain = process.env.KINTONE_SUBDOMAIN;
-  if (!host || !apiKey || !appId || !token || !subdomain) return null;
+  if (!appId || !token || !subdomain) return null;
+  if (process.env.INNOVERA_RELAY_MODE === "queue") return { host: host ?? "", apiKey: apiKey ?? "", appId, token };
+  if (!host || !apiKey) return null;
   return { host, apiKey, appId, token };
 }
 
@@ -134,6 +137,8 @@ const RETRY_DELAY_MS = process.env.VITEST ? 0 : 3_000;
 
 // 一時的な途切れ（接続エラー・5xx）は 3 秒おいて 1 回だけやり直してから「失敗」と判定する
 async function fetchInnoveraCircuits(config: { host: string; apiKey: string }, delayMs = RETRY_DELAY_MS): Promise<InnoveraCircuit[]> {
+  // 中継モード＝ホスト PC 経由で毎回取りに行く（10 分キャッシュの listInnoveraCircuits は使わない＝直通と同じ鮮度・やり直しは callInnovera 側）
+  if (process.env.INNOVERA_RELAY_MODE === "queue") return await callInnovera<InnoveraCircuit[]>("circuit", "search");
   try {
     return await fetchInnoveraCircuitsOnce(config);
   } catch (error) {
