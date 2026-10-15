@@ -91,8 +91,9 @@ export function buildTransferRecords(
     ドロップダウン_5: { value: "普通" },
     日付: { value: today },
     日付_0: { value: dueDate },
-    // 実績期間（2026-10-15 追加・月初日）＝損益の実績期間。二重払いチェック（同じ支払先＋同じ実績期間）に使う
-    実績期間: { value: source.periodDate ? `${monthFromDate(source.periodDate)}-01` : "" },
+    // 実績期間（2026-10-15 追加・月初日・51／98 とも必須）＝損益の実績期間。二重払いチェック（同じ支払先＋同じ実績期間）に使う
+    // 損益側が空のときは分からない印の 1000-01-01（空だと必須で作成が失敗し、振込の予約そのものが作られないため）
+    実績期間: { value: source.periodDate ? `${monthFromDate(source.periodDate)}-01` : "1000-01-01" },
     文字列__1行__23: { value: dueDate.replace(/-/g, "").slice(4) },
     文字列__1行__36: { value: dueDate.replace(/-/g, "") },
     文字列__1行_: { value: transferId },

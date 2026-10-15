@@ -46,6 +46,7 @@ describe("transfer", () => {
     expect(built.request["文字列__1行_"]).toEqual({ value: "FK-20261009-096116" });
     expect(built.request["実績期間"]).toEqual({ value: "2026-08-01" });
     expect(built.execute["実績期間"]).toEqual({ value: "2026-08-01" });
+    expect(buildTransferRecords({ ...payment, periodDate: "" }, account, "FK-20261009-096116", "2026-10-09").request["実績期間"]).toEqual({ value: "1000-01-01" });
   });
 
   it("does not create records when a duplicate exists", async () => {
