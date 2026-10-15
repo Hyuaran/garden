@@ -27,7 +27,7 @@ describe("ManualsHubClient", () => {
 
     expect(screen.getByTestId("manuals-grid-view")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "System" })).toBeInTheDocument();
-    expect(screen.getByText("マニュアル 20 件")).toBeInTheDocument(); // 2026-10-15 支払漏れチェックを追加
+    expect(screen.getByText("マニュアル 21 件")).toBeInTheDocument(); // 2026-10-15 振込依頼の二重払い防止チェックを追加
     expect(localStorage.getItem("garden.manuals.viewMode")).toBe("grid");
   });
 });
