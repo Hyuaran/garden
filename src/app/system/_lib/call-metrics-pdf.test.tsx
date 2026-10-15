@@ -99,7 +99,7 @@ describe("call metrics PDF", () => {
     const web = pages.findIndex((text) => text.includes("SECTION_WEB_INBOUND"));
     const list = pages.findIndex((text) => text.includes("SECTION_LIST"));
     expect(list).toBe(web + 1);
-    for (const label of ["表A", "表B", "総数（入電＋フォーム）", "折り返していない", "判定待ち（繋がらない・発信なし）", "番号不備", "初回応答率（応答できた ÷ 入電）", "どうやって話せたか", "Kintone記録なし", "有効受注率"]) {
+    for (const label of ["表A", "表B", "総数（入電＋フォーム）", "折り返していない", "指定どおり（繋がった・繋がらない）", "判定待ち", "番号不備", "初回応答率（応答できた ÷ 入電）", "どうやって話せたか", "Kintone記録なし", "有効受注率"]) {
       expect(pages[web]).toContain(label);
     }
     expect(pages[web]).not.toContain("うち");

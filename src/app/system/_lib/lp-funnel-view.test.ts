@@ -24,10 +24,25 @@ describe("WEBインバウンドの表（階層つき・2026-10-15）", () => {
     expect(rows.map((row) => [row.label.slice(0, 6), row.level, row.kind])).toEqual([
       ["総数（入電＋", 0, "node"], ["入電（番号あ", 1, "node"], ["応答できた", 2, "node"], ["応答できなか", 2, "node"],
       ["折り返して繋", 3, "node"], ["折り返しても", 3, "node"], ["折り返してい", 3, "node"],
-      ["フォーム", 1, "node"], ["時間の指定あ", 2, "node"], ["指定どおり（", 3, "node"], ["指定どおりで", 3, "node"], ["判定待ち（繋", 3, "node"],
-      ["時間の指定な", 2, "node"], ["締切まで（繋", 3, "node"], ["締切超（繋が", 3, "node"], ["判定待ち（繋", 3, "node"], ["番号不備", 2, "node"],
+      ["フォーム", 1, "node"], ["時間の指定あ", 2, "node"], ["指定どおり（", 3, "node"], ["指定どおりで", 3, "node"], ["判定待ち", 3, "node"],
+      ["時間の指定な", 2, "node"], ["締切まで（繋", 3, "node"], ["締切超", 3, "node"], ["判定待ち", 3, "node"], ["番号不備", 2, "node"],
       ["初回応答率（", 0, "rate"], ["（参考）番号", 0, "note"],
     ]);
+  });
+
+  it("内訳の括弧は 0 なら書かない。どの列も 0 の行は指標名の括弧も外す（2026-10-15）", () => {
+    const rows = lpFunnelTableA(funnelFixture);
+    const find = (prefix: string) => rows.find((row) => row.label.startsWith(prefix));
+    // 0 でない行は内訳と説明を残す
+    expect(find("指定どおり（")).toMatchObject({ label: "指定どおり（繋がった・繋がらない）", values: ["2（2・0）"] });
+    expect(find("締切まで")).toMatchObject({ label: "締切まで（繋がった・繋がらない）", values: ["1（1・0）"] });
+    // どの列も 0 の行は「0」だけ・指標名の括弧も外す
+    expect(rows.find((row) => row.label === "指定どおりでない")).toMatchObject({ values: ["0"] });
+    expect(rows.find((row) => row.label === "締切超")).toMatchObject({ values: ["0"] });
+    expect(rows.filter((row) => row.label === "判定待ち").map((row) => row.values)).toEqual([["0"], ["0"]]);
+    // 内訳の無い行の括弧（総数・入電・率）は外さない
+    expect(rows[0].label).toBe("総数（入電＋フォーム）");
+    expect(rows[1].label).toBe("入電（番号あり）");
   });
 
   it("表A の罫線：最後の子は └、上の階層に続きがあれば縦の線を続ける", () => {

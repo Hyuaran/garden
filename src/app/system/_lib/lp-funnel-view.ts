@@ -6,14 +6,28 @@ import type { LpFunnelBusiness, LpFunnelCounts, LpFunnelResult } from "./lp-funn
 export const formatLpRate = (value: number | null | undefined) => value == null ? "-" : `${(value * 100).toFixed(1)}％`;
 export const formatLpCount = (value: number | null | undefined) => value == null ? "-" : value.toLocaleString("ja-JP");
 
-// 「3（2・1・0）」＝合計（繋がった・繋がらない・発信なし）。判定待ちは「繋がった」が起きないので 2 つだけ
+// 「3（2・1・0）」＝合計（繋がった・繋がらない・発信なし）。判定待ちは「繋がった」が起きないので 2 つだけ。
+// 合計が 0 のときは内訳も全部 0 なので「0」だけ（東海林さん 2026-10-15）
 function counts3(value: LpFunnelCounts | null | undefined) {
   if (!value) return "-";
-  return `${value.connected + value.notConnected + value.noCall}（${value.connected}・${value.notConnected}・${value.noCall}）`;
+  const total = value.connected + value.notConnected + value.noCall;
+  return total === 0 ? "0" : `${total}（${value.connected}・${value.notConnected}・${value.noCall}）`;
 }
 function counts2(value: LpFunnelCounts | null | undefined) {
   if (!value) return "-";
-  return `${value.connected + value.notConnected + value.noCall}（${value.notConnected}・${value.noCall}）`;
+  const total = value.connected + value.notConnected + value.noCall;
+  return total === 0 ? "0" : `${total}（${value.notConnected}・${value.noCall}）`;
+}
+// 指定どおり・締切まで＝「合計（繋がった・繋がらない）」。発信なしは「どおり」に入らないが合計には含める（v1.7 と同じ）
+function countsOnTime(value: LpFunnelCounts | null | undefined) {
+  if (!value) return "-";
+  const total = value.connected + value.notConnected + value.noCall;
+  return total === 0 ? "0" : `${total}（${value.connected}・${value.notConnected}）`;
+}
+// 内訳つきの行は、どの列も 0（または -）なら指標名の「（繋がった・繋がらない）」も外す（数字の括弧が無いので説明が要らない）
+function dropBreakdownLabelIfEmpty(row: LpFunnelViewRow): LpFunnelViewRow {
+  if (!row.values.every((value) => value === "0" || value === "-")) return row;
+  return { ...row, label: row.label.replace(/（[^（）]*）$/, "") };
 }
 
 // 行の種類：node＝数字の行（level＝階層の深さ・0 が一番上）／group＝見出しだけの枝（数字なし）／rate＝率（太い区切り線の下）／note＝参考
@@ -42,13 +56,13 @@ export function lpFunnelTableA(result: LpFunnelResult): LpFunnelViewRow[] {
     row("折り返していない", (b) => formatLpCount(b.noCallback), 3),
     row("フォーム", (b) => formatLpCount(b.forms), 1),
     row("時間の指定あり", (b) => formatLpCount(b.withSlot), 2),
-    row("指定どおり（繋がった・繋がらない）", (b) => b.onTime ? `${b.onTime.connected + b.onTime.notConnected + b.onTime.noCall}（${b.onTime.connected}・${b.onTime.notConnected}）` : "-", 3),
-    row("指定どおりでない（繋がった・繋がらない・発信なし）", (b) => counts3(b.late), 3),
-    row("判定待ち（繋がらない・発信なし）", (b) => counts2(b.pendingWithSlot), 3),
+    dropBreakdownLabelIfEmpty(row("指定どおり（繋がった・繋がらない）", (b) => countsOnTime(b.onTime), 3)),
+    dropBreakdownLabelIfEmpty(row("指定どおりでない（繋がった・繋がらない・発信なし）", (b) => counts3(b.late), 3)),
+    dropBreakdownLabelIfEmpty(row("判定待ち（繋がらない・発信なし）", (b) => counts2(b.pendingWithSlot), 3)),
     row("時間の指定なし", (b) => formatLpCount(b.noSlot), 2),
-    row("締切まで（繋がった・繋がらない）", (b) => b.noSlotOnTime ? `${b.noSlotOnTime.connected + b.noSlotOnTime.notConnected + b.noSlotOnTime.noCall}（${b.noSlotOnTime.connected}・${b.noSlotOnTime.notConnected}）` : "-", 3),
-    row("締切超（繋がった・繋がらない・発信なし）", (b) => counts3(b.noSlotLate), 3),
-    row("判定待ち（繋がらない・発信なし）", (b) => counts2(b.noSlotPending), 3),
+    dropBreakdownLabelIfEmpty(row("締切まで（繋がった・繋がらない）", (b) => countsOnTime(b.noSlotOnTime), 3)),
+    dropBreakdownLabelIfEmpty(row("締切超（繋がった・繋がらない・発信なし）", (b) => counts3(b.noSlotLate), 3)),
+    dropBreakdownLabelIfEmpty(row("判定待ち（繋がらない・発信なし）", (b) => counts2(b.noSlotPending), 3)),
     row("番号不備", (b) => formatLpCount(b.invalidNumberForms), 2),
     row("初回応答率（応答できた ÷ 入電）", (b) => formatLpRate(b.answerRate), 0, "rate"),
     row("（参考）番号不明・形式外の着信（回数・総数に含めない）", (b) => formatLpCount(b.unknownInboundCalls), 0, "note"),
