@@ -67,6 +67,8 @@ export function estimateDue(rule: DueRule, receivedDate: string): string | null 
   const month = date.getUTCMonth();
   const day = date.getUTCDate();
   if (rule === "month-end") return day >= 25 ? endOfMonth(year, month + 1) : endOfMonth(year, month);
+  // 受信月の 2 か月後の月末（ディップ：利用月の末に届き 2 か月後の月末払い）
+  if (rule === "plus2-end") return endOfMonth(year, month + 2);
   const dayRule = /^day:(\d+)$/.exec(rule);
   if (dayRule) {
     const target = Number(dayRule[1]);

@@ -44,6 +44,7 @@ describe("estimateDue / alertFrom", () => {
   it("月末：25 日以降の受信は翌月末", () => expect(estimateDue("month-end", "2026-10-26")).toBe("2026-11-30"));
   it("月の 27 日頃", () => expect(estimateDue("day:27", "2026-10-28")).toBe("2026-11-27"));
   it("翌々月 10 日頃", () => expect(estimateDue("plus2:10", "2026-11-05")).toBe("2027-01-10"));
+  it("受信月の 2 か月後の月末（ディップ）", () => expect(estimateDue("plus2-end", "2026-09-28")).toBe("2026-11-30"));
   it("期日が決まらない", () => expect(estimateDue("unknown", "2026-10-05")).toBeNull());
   // 2026-10-31 は土曜→振込は 10-30（金）→ 3 営業日前は 10-27
   it("3 営業日前から要対応", () => expect(alertFrom("2026-10-31")).toBe("2026-10-27"));
