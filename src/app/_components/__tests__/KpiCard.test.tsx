@@ -38,11 +38,11 @@ describe("KpiCard", () => {
 });
 
 describe("getVisibleKpiCards", () => {
-  it("returns all 4 for super_admin", () => {
-    expect(getVisibleKpiCards("super_admin").length).toBe(4);
+  it("returns 3 for super_admin (sales + incoming + tasks)", () => {
+    expect(getVisibleKpiCards("super_admin").map((c) => c.id)).toEqual(["sales", "incoming", "tasks"]);
   });
-  it("returns all 4 for admin", () => {
-    expect(getVisibleKpiCards("admin").length).toBe(4);
+  it("returns 3 for admin (sales + incoming + tasks)", () => {
+    expect(getVisibleKpiCards("admin").map((c) => c.id)).toEqual(["sales", "incoming", "tasks"]);
   });
   it("returns all 4 for manager", () => {
     expect(getVisibleKpiCards("manager").length).toBe(4);

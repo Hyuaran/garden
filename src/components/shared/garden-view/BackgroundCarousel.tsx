@@ -59,7 +59,7 @@ export function BackgroundCarousel({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       // 入力フィールド内では無視（INPUT/TEXTAREA/SELECT/contenteditable）
-      const target = e.target as HTMLElement | null;
+      const target = e.target instanceof HTMLElement ? e.target : null;
       const tag = target?.tagName;
       const isContentEditable =
         target?.isContentEditable ||
