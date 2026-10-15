@@ -29,6 +29,8 @@ function lookups(reserved: boolean, saved: boolean): Lookups {
 describe("classifyMail", () => {
   it("外部の請求書は支払う側", () => expect(classifyMail("a@topway.co.jp", "御請求書")).toBe("payable"));
   it("支払明細は入金側で対象外", () => expect(classifyMail("m.kusamiya@prodelight.co.jp", "お支払明細書")).toBe("excluded"));
+  it("返信は対象外（当社の請求書へのやり取り）", () => expect(classifyMail("sato@fado.co.jp", "Re:  【NLC賃貸御請求書】202610")).toBe("excluded"));
+  it("暫定通知書は入金側で対象外", () => expect(classifyMail("hasegawa@prodelight.co.jp", "10月末暫定通知書")).toBe("excluded"));
   it("自社発の請求書は売上側", () => expect(classifyMail("keiri@centerrise.co.jp", "御請求書")).toBe("own"));
 });
 
