@@ -44,6 +44,8 @@ describe("transfer", () => {
     expect(built.identifier).toBe("00101234567890585200");
     expect(built.request["ドロップダウン_4"]).toEqual({ value: "ジャパンネット銀行" });
     expect(built.request["文字列__1行_"]).toEqual({ value: "FK-20261009-096116" });
+    expect(built.request["実績期間"]).toEqual({ value: "2026-08-01" });
+    expect(built.execute["実績期間"]).toEqual({ value: "2026-08-01" });
   });
 
   it("does not create records when a duplicate exists", async () => {
