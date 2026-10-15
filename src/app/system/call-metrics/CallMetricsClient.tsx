@@ -5,7 +5,7 @@ import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { CallMetricsResponse } from "../_lib/call-metrics";
 import { defaultCallMetricDates, formatCallsPerWorkHour, formatWorkTime, summarizeCallMetrics } from "../_lib/call-metrics";
-import { LP_FUNNEL_DEFINITIONS, LP_FUNNEL_FILTER_NOTE, LP_FUNNEL_LEAD_NOTE, LP_FUNNEL_START_NOTE, lpFunnelCalcNotes, lpFunnelHeaders, lpFunnelNoRecordList, lpFunnelTableA, lpFunnelTableB, type LpFunnelViewRow } from "../_lib/lp-funnel-view";
+import { LP_FUNNEL_DEFINITIONS, LP_FUNNEL_FILTER_NOTE, LP_FUNNEL_LEAD_NOTE, LP_FUNNEL_START_NOTE, lpFunnelCalcNotes, lpFunnelHeaders, lpFunnelNoRecordList, lpFunnelTableA, lpFunnelTableB, lpFunnelTreeLinks, type LpFunnelViewRow } from "../_lib/lp-funnel-view";
 import styles from "./call-metrics.module.css";
 
 function formatJstDateTime(value: string) {
@@ -16,16 +16,37 @@ function formatJstDateTime(value: string) {
   return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
 }
 
-// 表A・表B の共通の描き方（指標名は左ぞろえ・字下げあり、数字は右ぞろえ）
+// 表A・表B の共通の描き方：親は太字＋帯、子は罫線でつなぐ（縦の線が行をまたいでつながる）。率は太い区切り線の下（PDF と同じ・2026-10-15）
+const TREE_STEP = 18;
 function FunnelTable({ title, headers, rows }: { title: string; headers: string[]; rows: LpFunnelViewRow[] }) {
+  const links = lpFunnelTreeLinks(rows);
+  const firstRate = rows.findIndex((row) => row.kind === "rate");
   return <>
     <h2>{title}</h2>
     <div className={styles.tableWrap}><table>
       <thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
-      <tbody>{rows.map((row) => <tr key={row.label}>
-        <td className={styles.funnelLabel} style={{ paddingLeft: `${13 + (row.indent ?? 0) * 16}px` }}>{row.label}</td>
-        {row.values.map((value, index) => <td key={index}>{value}</td>)}
-      </tr>)}</tbody>
+      <tbody>{rows.map((row, index) => {
+        const tree = row.kind === "node" || row.kind === "group";
+        const level = tree ? row.level : 0;
+        const rowClass = [
+          tree && level === 0 ? styles.funnelTop : "",
+          tree && level === 1 ? styles.funnelBranch : "",
+          row.kind === "rate" ? styles.funnelRate : "",
+          row.kind === "note" ? styles.funnelNote : "",
+          index === firstRate ? styles.funnelRateStart : "",
+        ].filter(Boolean).join(" ");
+        const link = links[index];
+        return <tr key={`${index}-${row.label}`} className={rowClass || undefined}>
+          <td className={styles.funnelLabel} style={{ paddingLeft: `${13 + level * TREE_STEP}px` }}>
+            {tree && level > 0 ? <>
+              {link.continues.map((on, depth) => on ? <span key={depth} aria-hidden className={styles.treeVert} style={{ left: `${13 + depth * TREE_STEP + 6}px` }}/> : null)}
+              <span aria-hidden className={link.last ? `${styles.treeOwn} ${styles.treeLast}` : styles.treeOwn} style={{ left: `${13 + (level - 1) * TREE_STEP + 6}px` }}/>
+            </> : null}
+            {row.label}
+          </td>
+          {row.values.map((value, valueIndex) => <td key={valueIndex}>{value}</td>)}
+        </tr>;
+      })}</tbody>
     </table></div>
   </>;
 }

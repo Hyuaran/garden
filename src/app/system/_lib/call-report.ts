@@ -62,26 +62,23 @@ function lpTrafficTotal(metrics?: CallMetricsResponse) {
 const formatLpRate = (value: number | null | undefined) => value == null ? "-" : `${(value * 100).toFixed(1)}％`;
 const formatLpCountUnit = (value: number | null | undefined) => value == null ? "-" : `${value.toLocaleString("ja-JP")}件`;
 
-// 【WEBインバウンド】＝事業ごとにひとまとまり。上の【本日】と同じ読みやすさ＝1 行に 1 つの話題、関係の深い数字は括弧でまとめる
-// （東海林さん 2026-10-15「上部のテレマの報告に比べて見づらい」「受注率：0.5％（受注4件）のように 1 行にできるものはしたい」）
-// スマホ（1 行およそ 20 文字）で折り返さないように、1 行を短く切る。見出し行【WEBインバウンド】は置かない（東海林さん 2026-10-15）
+// 事業ごとのまとまり（4〜5 行）。細かい内訳は添付の PDF で見る（東海林さん 2026-10-15「もう少しキュッと」）
+// 申込＝その日に kintone に登録された「申込み」の数（小計と同じ）／受注＝その日に話せた人のうち「申込み」の人（登録日は問わない）
+// 記録なしがあるときだけ最後に「⚠Kintone記録なし：n件」。見出し行【WEBインバウンド】は置かない
 function lpBusinessBlock(row: LpBusinessMetricRow, funnel: LpFunnelBusiness | undefined) {
   const lines = [
     `■${row.bizName}`,
-    `着信：${formatLpCountUnit(row.inbound)}（応答${formatLpNumber(row.answered)}・不在${formatLpNumber(row.missed)}）`,
-    `発信：${formatLpCountUnit(row.outbound)}／申込み：${formatLpCountUnit(row.applications)}`,
+    `発着信：着信${formatLpCountUnit(row.inbound)}／発信${formatLpCountUnit(row.outbound)}`,
   ];
   if (funnel) {
-    const pending = (funnel.pendingCount ?? 0) > 0 ? `・判定待ち${formatLpNumber(funnel.pendingCount)}` : "";
     lines.push(
-      `応答率：${formatLpRate(funnel.answerRate)}（応答${formatLpNumber(funnel.answered)}／入電${formatLpNumber(funnel.inbound)}）`,
-      `話せた：${formatLpCountUnit(funnel.spoke)}（受注${formatLpNumber(funnel.won)}・対応中${formatLpNumber(funnel.inProgress)}）`,
-      `　見送り${formatLpNumber(funnel.lost)}・対象外${formatLpNumber(funnel.excluded)}・Kintone記録なし${formatLpNumber(funnel.noRecord)}${pending}`,
-      `受注率：${formatLpRate(funnel.wonRate)}／対象外率：${formatLpRate(funnel.excludedRate)}`,
-      `有効受注率：${formatLpRate(funnel.effectiveWonRate)}`,
+      `初回応答率：${formatLpRate(funnel.answerRate)}（応答${formatLpNumber(funnel.answered)}／入電${formatLpNumber(funnel.inbound)}）`,
+      `受注率：${formatLpRate(funnel.wonRate)}（申込${formatLpCountUnit(row.applications)}／受注${formatLpCountUnit(funnel.won)}）`,
+      `対象外率：${formatLpRate(funnel.excludedRate)}`,
     );
-    // Kintone に登録の無い応答があれば 1 行で知らせる（番号はポータルの「WEBインバウンド」タブ。説明文は付けない＝東海林さん 2026-10-15）
     if ((funnel.noRecord ?? 0) > 0) lines.push(`⚠Kintone記録なし：${formatLpCountUnit(funnel.noRecord)}`);
+  } else {
+    lines.push(`申込：${formatLpCountUnit(row.applications)}`);
   }
   return lines.join("\n");
 }

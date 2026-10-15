@@ -16,7 +16,9 @@ function counts2(value: LpFunnelCounts | null | undefined) {
   return `${value.connected + value.notConnected + value.noCall}（${value.notConnected}・${value.noCall}）`;
 }
 
-export type LpFunnelViewRow = { label: string; values: string[]; indent?: number };
+// 行の種類：node＝数字の行（level＝階層の深さ・0 が一番上）／group＝見出しだけの枝（数字なし）／rate＝率（太い区切り線の下）／note＝参考
+// 親子は「うち」と書かず、画面・PDF とも罫線（縦の線が行をまたいでつながる）で見せる（東海林さん 2026-10-15）
+export type LpFunnelViewRow = { label: string; values: string[]; level: number; kind: "node" | "group" | "rate" | "note" };
 
 function columnsOf(result: LpFunnelResult) {
   return [...result.businesses, ...(result.totals ? [result.totals] : [])];
@@ -26,52 +28,78 @@ export function lpFunnelHeaders(result: LpFunnelResult) {
   return ["指標", ...columnsOf(result).map((biz) => biz.bizName)];
 }
 
-// 表A「対応」
+// 表A「対応」＝総数 ─ 入電（応答できた／できなかった ─ 折り返し 3 つ）／フォーム（指定あり 3 つ／指定なし 3 つ／番号不備）。内訳を足すと親の行に戻る
 export function lpFunnelTableA(result: LpFunnelResult): LpFunnelViewRow[] {
   const cols = columnsOf(result);
-  const row = (label: string, pick: (biz: LpFunnelBusiness) => string, indent = 0): LpFunnelViewRow => ({ label, values: cols.map(pick), indent });
+  const row = (label: string, pick: (biz: LpFunnelBusiness) => string, level: number, kind: LpFunnelViewRow["kind"] = "node"): LpFunnelViewRow => ({ label, values: cols.map(pick), level, kind });
   return [
-    row("総数（入電＋フォーム）", (b) => formatLpCount(b.total)),
-    row("入電（番号あり）", (b) => formatLpCount(b.inbound)),
-    row("うち応答できた", (b) => formatLpCount(b.answered), 1),
-    row("うち応答できなかった", (b) => formatLpCount(b.unanswered), 1),
-    row("折り返して繋がった", (b) => formatLpCount(b.callbackConnected), 2),
-    row("折り返しても繋がらない", (b) => formatLpCount(b.callbackNotConnected), 2),
-    row("折り返していない", (b) => formatLpCount(b.noCallback), 2),
-    row("フォーム", (b) => formatLpCount(b.forms)),
-    row("うち指定あり", (b) => formatLpCount(b.withSlot), 1),
-    row("時間指定どおり（繋がった・繋がらない）", (b) => b.onTime ? `${b.onTime.connected + b.onTime.notConnected + b.onTime.noCall}（${b.onTime.connected}・${b.onTime.notConnected}）` : "-", 2),
-    row("どおりでない（繋がった・繋がらない・発信なし）", (b) => counts3(b.late), 2),
-    row("判定待ち（繋がらない・発信なし）", (b) => counts2(b.pendingWithSlot), 2),
-    row("うち指定なし", (b) => formatLpCount(b.noSlot), 1),
-    row("締切まで（繋がった・繋がらない）", (b) => b.noSlotOnTime ? `${b.noSlotOnTime.connected + b.noSlotOnTime.notConnected + b.noSlotOnTime.noCall}（${b.noSlotOnTime.connected}・${b.noSlotOnTime.notConnected}）` : "-", 2),
-    row("締切超（繋がった・繋がらない・発信なし）", (b) => counts3(b.noSlotLate), 2),
-    row("判定待ち（繋がらない・発信なし）", (b) => counts2(b.noSlotPending), 2),
-    row("うち番号不備", (b) => formatLpCount(b.invalidNumberForms), 1),
-    row("応答率（応答できた ÷ 入電）", (b) => formatLpRate(b.answerRate)),
-    row("（参考）番号不明・形式外の着信（回数・総数に含めない）", (b) => formatLpCount(b.unknownInboundCalls)),
+    row("総数（入電＋フォーム）", (b) => formatLpCount(b.total), 0),
+    row("入電（番号あり）", (b) => formatLpCount(b.inbound), 1),
+    row("応答できた", (b) => formatLpCount(b.answered), 2),
+    row("応答できなかった", (b) => formatLpCount(b.unanswered), 2),
+    row("折り返して繋がった", (b) => formatLpCount(b.callbackConnected), 3),
+    row("折り返しても繋がらない", (b) => formatLpCount(b.callbackNotConnected), 3),
+    row("折り返していない", (b) => formatLpCount(b.noCallback), 3),
+    row("フォーム", (b) => formatLpCount(b.forms), 1),
+    row("時間の指定あり", (b) => formatLpCount(b.withSlot), 2),
+    row("指定どおり（繋がった・繋がらない）", (b) => b.onTime ? `${b.onTime.connected + b.onTime.notConnected + b.onTime.noCall}（${b.onTime.connected}・${b.onTime.notConnected}）` : "-", 3),
+    row("指定どおりでない（繋がった・繋がらない・発信なし）", (b) => counts3(b.late), 3),
+    row("判定待ち（繋がらない・発信なし）", (b) => counts2(b.pendingWithSlot), 3),
+    row("時間の指定なし", (b) => formatLpCount(b.noSlot), 2),
+    row("締切まで（繋がった・繋がらない）", (b) => b.noSlotOnTime ? `${b.noSlotOnTime.connected + b.noSlotOnTime.notConnected + b.noSlotOnTime.noCall}（${b.noSlotOnTime.connected}・${b.noSlotOnTime.notConnected}）` : "-", 3),
+    row("締切超（繋がった・繋がらない・発信なし）", (b) => counts3(b.noSlotLate), 3),
+    row("判定待ち（繋がらない・発信なし）", (b) => counts2(b.noSlotPending), 3),
+    row("番号不備", (b) => formatLpCount(b.invalidNumberForms), 2),
+    row("初回応答率（応答できた ÷ 入電）", (b) => formatLpRate(b.answerRate), 0, "rate"),
+    row("（参考）番号不明・形式外の着信（回数・総数に含めない）", (b) => formatLpCount(b.unknownInboundCalls), 0, "note"),
   ];
 }
 
-// 表B「結果」
+// 表B「結果」＝話せた ─ どうやって話せたか（3 つ）／どうなったか（5 つ・集計した時点）。どちらの枝も足すと「話せた」に戻る
 export function lpFunnelTableB(result: LpFunnelResult): LpFunnelViewRow[] {
   const cols = columnsOf(result);
-  const row = (label: string, pick: (biz: LpFunnelBusiness) => string, indent = 0): LpFunnelViewRow => ({ label, values: cols.map(pick), indent });
+  const row = (label: string, pick: (biz: LpFunnelBusiness) => string, level: number, kind: LpFunnelViewRow["kind"] = "node"): LpFunnelViewRow => ({ label, values: cols.map(pick), level, kind });
+  const group = (label: string): LpFunnelViewRow => ({ label, values: cols.map(() => ""), level: 1, kind: "group" });
   return [
-    row("応答（話せた）", (b) => formatLpCount(b.spoke)),
-    row("うち入電で応答", (b) => formatLpCount(b.spokeInbound), 1),
-    row("うち折り返して繋がった", (b) => formatLpCount(b.spokeCallback), 1),
-    row("うちフォームで繋がった", (b) => formatLpCount(b.spokeForm), 1),
-    row("受注", (b) => formatLpCount(b.won)),
-    row("対応中", (b) => formatLpCount(b.inProgress)),
-    row("見送り", (b) => formatLpCount(b.lost)),
-    row("対象外", (b) => formatLpCount(b.excluded)),
-    row("記録なし", (b) => formatLpCount(b.noRecord)),
-    row("対応率（話せた ÷ 総数）", (b) => formatLpRate(b.contactRate)),
-    row("受注率（受注 ÷ 話せた）", (b) => formatLpRate(b.wonRate)),
-    row("対象外率（対象外 ÷ 話せた）", (b) => formatLpRate(b.excludedRate)),
-    row("有効受注率（受注 ÷（話せた − 対象外））", (b) => formatLpRate(b.effectiveWonRate)),
+    row("話せた", (b) => formatLpCount(b.spoke), 0),
+    group("どうやって話せたか"),
+    row("入電で応答", (b) => formatLpCount(b.spokeInbound), 2),
+    row("折り返して繋がった", (b) => formatLpCount(b.spokeCallback), 2),
+    row("フォームで繋がった", (b) => formatLpCount(b.spokeForm), 2),
+    group("どうなったか（集計した時点）"),
+    row("受注", (b) => formatLpCount(b.won), 2),
+    row("対応中", (b) => formatLpCount(b.inProgress), 2),
+    row("見送り", (b) => formatLpCount(b.lost), 2),
+    row("対象外", (b) => formatLpCount(b.excluded), 2),
+    row("Kintone記録なし", (b) => formatLpCount(b.noRecord), 2),
+    row("対応率（話せた ÷ 総数）", (b) => formatLpRate(b.contactRate), 0, "rate"),
+    row("受注率（受注 ÷ 話せた）", (b) => formatLpRate(b.wonRate), 0, "rate"),
+    row("対象外率（対象外 ÷ 話せた）", (b) => formatLpRate(b.excludedRate), 0, "rate"),
+    row("有効受注率（受注 ÷（話せた − 対象外））", (b) => formatLpRate(b.effectiveWonRate), 0, "rate"),
   ];
+}
+
+// 罫線の引き方：continues＝上の階層の縦線を続けるか（深さ 1 から順）／last＝その階層の最後の子か（└ にする）
+export type LpFunnelTreeLink = { continues: boolean[]; last: boolean };
+export function lpFunnelTreeLinks(rows: LpFunnelViewRow[]): LpFunnelTreeLink[] {
+  const tree = rows.map((row) => (row.kind === "node" || row.kind === "group" ? row.level : -1));
+  const isLast = tree.map((level, i) => {
+    if (level <= 0) return true;
+    for (let k = i + 1; k < tree.length; k += 1) {
+      if (tree[k] < 0 || tree[k] < level) return true;
+      if (tree[k] === level) return false;
+    }
+    return true;
+  });
+  return tree.map((level, i) => {
+    const continues: boolean[] = [];
+    for (let depth = 1; depth < level; depth += 1) {
+      let ancestor = -1;
+      for (let k = i - 1; k >= 0; k -= 1) if (tree[k] === depth) { ancestor = k; break; }
+      continues.push(ancestor >= 0 && !isLast[ancestor]);
+    }
+    return { continues, last: isLast[i] };
+  });
 }
 
 // 記録なしの一覧（事業ごとの一覧を 1 つにまとめる・着信日時の昇順）
@@ -100,9 +128,10 @@ export const LP_FUNNEL_DEFINITIONS: string[][] = [
   ["記録なしのアラート", "記録なし（Kintone に登録の無い応答）が 1 件以上あると、配信本文の事業のまとまりに「⚠Kintone記録なし：n件」の行が付く。番号はポータルの「WEBインバウンド」タブの表B の下で確かめ、kintone に登録する"],
   ["応答（話せた）", "入電で応答できた＋折り返して繋がった＋フォームで繋がった"],
   ["受注／対応中／見送り／対象外／記録なし", "kintone の対応状況＝申込み／未対応・対応中・前確待ち／見送り・前確NG／対象外の 3 つ／番号に一致する記録が無い（集計した時点の値）"],
-  ["応答率", "応答できた ÷ 入電"],
+  ["初回応答率", "応答できた ÷ 入電（2026-10-15 に「応答率」から呼び名を変更。中身は同じ）"],
   ["対応率", "応答（話せた）÷ 総数（入電＋フォーム）"],
   ["受注率／対象外率／有効受注率", "受注 ÷ 応答（話せた）／対象外 ÷ 応答（話せた）／受注 ÷（応答（話せた）− 対象外）。記録なしは分母に入れる"],
+  ["本文の申込と受注", "配信本文の「受注率：X％（申込n件／受注n件）」の申込＝その日に kintone に登録された記録のうち対応状況が「申込み」の数（事業別の小計の申込みと同じ）。受注＝その日に話せた人のうち、対応状況が「申込み」の人（登録した日は問わない）。どちらも 1 人＝1 件"],
   ["数字が後から変わる", "折り返しと対応状況は集計した時点の状態なので、翌日以降に前日の数字も更新される。複数日の期間では同じ番号の 2 日分の電話が 1 件になるので、日ごとの合計とは一致しない。前日に出られず翌日にお客様がかけ直して話せた場合、前日は「折り返していない」のまま（折り返しは発信だけを見る）"],
   ["数字の始まり", LP_FUNNEL_START_NOTE],
 ];

@@ -59,3 +59,16 @@
 .main th.lpStart, .main td.lpStart { border-left: 2px solid var(--teal); }
 /* WEBインバウンドの対応・結果の表＝指標名は左ぞろえ・改行あり */
 .main td.funnelLabel { text-align: left; white-space: normal; min-width: 260px; }
+/* 表A・表B の階層（2026-10-15）：親は太字＋帯、子は罫線。率は太い区切り線の下 */
+.main td.funnelLabel { position: relative; }
+.treeVert, .treeOwn { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--tree-line); }
+.treeLast { bottom: 50%; }
+.treeOwn::after { content: ""; position: absolute; top: 100%; left: 0; width: 7px; border-top: 1px solid var(--tree-line); }
+.treeOwn:not(.treeLast)::after { top: 50%; }
+.main tr.funnelTop td { background: var(--band-top); font-weight: 700; }
+.main tr.funnelBranch td { background: var(--band-branch); font-weight: 700; }
+.main tr.funnelRate td { font-weight: 700; }
+.main tr.funnelRateStart td { border-top: 2px solid var(--heading); }
+.main tr.funnelNote td { color: var(--sub); }
+.pageShell { --tree-line: #9aa8b8; --band-top: #e3f4f3; --band-branch: #f1f5fa; }
+:global(.dark) .pageShell, :global([data-theme="dark"]) .pageShell { --tree-line: #5d7088; --band-top: #173b44; --band-branch: #1b2c42; }

@@ -25,7 +25,7 @@ describe("call report", () => {
   it("skips zero-call days without text", () => {
     expect(buildCallReport({ ...summary, totalCalls: 0 })).toEqual({ skipped: true, reason: "本日コール0件", text: null });
   });
-  it("【WEBインバウンド】は事業ごとのまとまりで 1 行 1 項目、フォーム受付だけの日も送る", () => {
+  it("WEBインバウンドは事業ごとに 4〜5 行（発着信・初回応答率・受注率（申込／受注）・対象外率）、フォーム受付だけの日も送る", () => {
     const funnelBase = {
       total: 15, inbound: 12, answered: 10, unanswered: 2, callbackConnected: 2, callbackNotConnected: 0, noCallback: 0, forms: 3,
       withSlot: 2, onTime: { connected: 2, notConnected: 0, noCall: 0 }, late: { connected: 0, notConnected: 0, noCall: 0 }, pendingWithSlot: { connected: 0, notConnected: 0, noCall: 0 },
@@ -53,8 +53,14 @@ describe("call report", () => {
       lpFormCount: 11,
     };
     const result = buildCallReport(summary, new Date("2026-10-14T06:05:00Z"), metrics);
-    expect(result.text).toContain("前確OK率：3.0％（前確OK45件）\n\n■ヒカリのプロ\n着信：26件（応答14・不在12）\n発信：48件／申込み：4件\n応答率：83.3％（応答10／入電12）\n話せた：15件（受注9・対応中4）\n　見送り1・対象外0・Kintone記録なし1\n受注率：60.0％／対象外率：0.0％\n有効受注率：60.0％\n⚠Kintone記録なし：1件\n\n■電気開始受付センター\n");
-    expect(result.text).toContain("話せた：16件（受注7・対応中4）\n　見送り1・対象外4・Kintone記録なし1・判定待ち2\n受注率：43.8％／対象外率：25.0％\n有効受注率：58.3％\n⚠Kintone記録なし：1件\n[/info]");
+    expect(result.text).toContain("前確OK率：3.0％（前確OK45件）\n\n■ヒカリのプロ\n発着信：着信26件／発信48件\n初回応答率：83.3％（応答10／入電12）\n受注率：60.0％（申込4件／受注9件）\n対象外率：0.0％\n⚠Kintone記録なし：1件\n\n■電気開始受付センター\n");
+    expect(result.text).toContain("■電気開始受付センター\n発着信：着信21件／発信39件\n初回応答率：80.0％（応答8／入電10）\n受注率：43.8％（申込5件／受注7件）\n対象外率：25.0％\n⚠Kintone記録なし：1件\n[/info]");
+    // 細かい内訳は PDF に任せる（本文には出さない）
+    expect(result.text).not.toContain("話せた：");
+    expect(result.text).not.toContain("有効受注率");
+    // 記録なしが 0 件の事業は ⚠ の行を出さない
+    const noAlert = buildCallReport(summary, new Date("2026-10-14T06:05:00Z"), { ...metrics, lpFunnel: { ...metrics.lpFunnel, businesses: metrics.lpFunnel.businesses.map((b) => ({ ...b, noRecord: 0 })) } });
+    expect(noAlert.text).not.toContain("⚠Kintone記録なし");
     expect(result.text).not.toContain("【対応と結果】");
     expect(result.text).not.toContain("【WEBインバウンド】");
     expect(result.text).not.toContain("ポータルで番号を確かめて登録");

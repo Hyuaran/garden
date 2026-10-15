@@ -1,9 +1,12 @@
+// @vitest-environment node
+// PDF は Node 向けの部品で作る（jsdom だとブラウザ向けの部品になり、埋め込んだ日本語フォントが壊れる・2026-10-15）
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { callMetricCountTone, callMetricsPdfFilename, measureVectorTextLayout, renderCallMetricsPdf } from "./call-metrics-pdf";
 import type { CallMetricsResponse, EmployeeCallMetricRow } from "./call-metrics";
+import { funnelFixture } from "./lp-funnel-view.test";
 
 const employee = (index: number): EmployeeCallMetricRow => ({
   employeeName: index === 1 ? "非常に長い社員名二十文字以上折返確認担当者" : `社員${String(index).padStart(3, "0")}`,
@@ -78,12 +81,28 @@ describe("call metrics PDF", () => {
     expect(listLayout.lines.length).toBeGreaterThan(1);
     expect([...employeeLayout.lineWidths, ...listLayout.lineWidths].every((width) => width <= 121)).toBe(true);
     expect(pages.every((text) => text.includes("PDF_HEADER 2026-08-21 2026-08-21"))).toBe(true);
+    // 日本語が「文字」として入っている（コピー・検索できる）。ヘッダーのタイトルは各ページ 1 回だけ
+    expect(pages[0]).toContain("従業員ごと");
+    expect(pages[0]).toContain("社員002");
+    expect(pages.every((text) => text.split("テレマ コール集計ポータル").length - 1 === 1)).toBe(true);
     expect(pages.every((text, index) => text.includes(`${index + 1} / ${pages.length}`))).toBe(true);
     if (process.env.WRITE_CALL_METRICS_PDF === "1") {
       const outputDir = path.join(process.cwd(), "output", "pdf");
       mkdirSync(outputDir, { recursive: true });
       writeFileSync(path.join(outputDir, "テレマコール集計ポータル_20260821_1600.pdf"), buffer);
     }
+  }, 180_000);
+
+  it("WEBインバウンドの表A・表B を文字として 1 ページに描く（階層つき・2026-10-15）", async () => {
+    const buffer = await renderCallMetricsPdf({ ...fixture, lpFunnel: funnelFixture });
+    const pages = await extractPages(new Uint8Array(buffer));
+    const web = pages.findIndex((text) => text.includes("SECTION_WEB_INBOUND"));
+    const list = pages.findIndex((text) => text.includes("SECTION_LIST"));
+    expect(list).toBe(web + 1);
+    for (const label of ["表A", "表B", "総数（入電＋フォーム）", "折り返していない", "判定待ち（繋がらない・発信なし）", "番号不備", "初回応答率（応答できた ÷ 入電）", "どうやって話せたか", "Kintone記録なし", "有効受注率"]) {
+      expect(pages[web]).toContain(label);
+    }
+    expect(pages[web]).not.toContain("うち");
   }, 180_000);
 
   it("flows expanded definitions naturally and labels continuation pages", async () => {

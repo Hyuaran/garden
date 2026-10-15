@@ -1,10 +1,10 @@
 import path from "node:path";
-import { Document, G, Page, Path, StyleSheet, Svg, Text, View, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Font, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import type { DocumentProps } from "@react-pdf/renderer";
 import { openSync } from "fontkit";
 import type { CallMetricsResponse, EmployeeCallMetricRow, CallMetricRow } from "./call-metrics";
 import { formatCallsPerWorkHour, formatWorkTime } from "./call-metrics";
-import { LP_FUNNEL_DEFINITIONS, LP_FUNNEL_LEAD_NOTE, lpFunnelCalcNotes, lpFunnelHeaders, lpFunnelTableA, lpFunnelTableB } from "./lp-funnel-view";
+import { LP_FUNNEL_DEFINITIONS, LP_FUNNEL_LEAD_NOTE, lpFunnelCalcNotes, lpFunnelHeaders, lpFunnelTableA, lpFunnelTableB, lpFunnelTreeLinks, type LpFunnelTreeLink, type LpFunnelViewRow } from "./lp-funnel-view";
 
 const COLORS = { bg: "#F4F5F7", card: "#FFFFFF", line: "#E3EAF3", navy: "#10233F", teal: "#0EA5A0", ink: "#17212E", sub: "#5A6B80", zero: "#98A4B3", red: "#E5484D" } as const;
 type VectorFont = ReturnType<typeof openSync>;
@@ -15,6 +15,19 @@ function fonts() {
   regularFont ??= openSync(path.join(dir, "NotoSansJP-Regular.ttf"));
   boldFont ??= openSync(path.join(dir, "NotoSansJP-Bold.ttf"));
   return { regular: regularFont, bold: boldFont };
+}
+
+// 日本語を「文字」として埋め込む（コピー・検索できる。2026-10-15 東海林さん）。届出の PDF（todoke-pdf.server.tsx）と同じ登録。
+// ※テスト（vitest）は jsdom のままだとブラウザ向けの部品が使われ、埋め込んだフォントが壊れて日本語が消える
+//   → PDF のテストは `// @vitest-environment node`。本番（Vercel の Node）は正常（2026-10-15 に PDFium で確認）
+let fontRegistered = false;
+function registerPdfFont() {
+  if (fontRegistered) return;
+  const dir = path.join(process.cwd(), "public", "fonts");
+  Font.register({ family: "NotoSansJP", fonts: [{ src: path.join(dir, "NotoSansJP-Regular.ttf"), fontWeight: 400 }, { src: path.join(dir, "NotoSansJP-Bold.ttf"), fontWeight: 700 }] });
+  // 行の分け方は measureVectorTextLayout が先に決める＝react-pdf には折り返させない
+  Font.registerHyphenationCallback((word) => [word]);
+  fontRegistered = true;
 }
 
 type TextAlign = "left" | "center" | "right";
@@ -41,28 +54,17 @@ export function measureVectorTextLayout(value: string, width: number, fontSize =
   return { lines, fontSize, lineWidths: lines.map((item) => textWidth(font, item, fontSize)) };
 }
 
+// 文字の大きさと行の分け方は fontkit で測って決め（はみ出すときは縮める）、描くのは react-pdf の文字（Text）。
+// 名前は図形で描いていたころ（〜2026-10-15）のまま
 function VectorText({ children, width, height = 22, fontSize = 7.5, bold = false, align = "right", color = COLORS.ink, fixed = false, wrap = false }: {
   children: string; width: number; height?: number; fontSize?: number; bold?: boolean; align?: TextAlign; color?: string; fixed?: boolean; wrap?: boolean;
 }) {
-  const font = (bold ? fonts().bold : fonts().regular) as Exclude<VectorFont, { fonts: unknown }>;
   const layout = measureVectorTextLayout(children, width, fontSize, bold, wrap);
   const lineHeight = layout.fontSize + 3;
   const actualHeight = Math.max(height, layout.lines.length * lineHeight + 4);
-  return <Svg fixed={fixed} width={width} height={actualHeight} viewBox={`0 0 ${width} ${actualHeight}`}>
-    {layout.lines.flatMap((line, lineIndex) => {
-      const run = font.layout(line);
-      const scale = layout.fontSize / font.unitsPerEm;
-      const lineWidth = layout.lineWidths[lineIndex];
-      let cursor = align === "left" ? 3 : align === "center" ? (width - lineWidth) / 2 : width - lineWidth - 3;
-      const baseline = 3 + (lineIndex + 1) * lineHeight - 3;
-      return run.glyphs.map((glyph, index) => {
-        const position = run.positions[index];
-        const x = cursor + position.xOffset * scale;
-        cursor += position.xAdvance * scale;
-        return <G key={`${lineIndex}-${index}`} transform={`translate(${x} ${baseline - position.yOffset * scale}) scale(${scale} ${-scale})`}><Path d={glyph.path.toSVG()} fill={color}/></G>;
-      });
-    })}
-  </Svg>;
+  return <View fixed={fixed} style={{ width, height: actualHeight, justifyContent: "center", paddingHorizontal: 3 }}>
+    {layout.lines.map((line, index) => <Text key={index} style={{ fontFamily: "NotoSansJP", fontWeight: bold ? 700 : 400, fontSize: layout.fontSize, color, textAlign: align, maxLines: 1, lineHeight: 1.25 }}>{line}</Text>)}
+  </View>;
 }
 
 function VectorParagraph({ children, width, fontSize = 7.5, bold = false, color = COLORS.ink }: {
@@ -74,7 +76,7 @@ function VectorParagraph({ children, width, fontSize = 7.5, bold = false, color 
 }
 
 const styles = StyleSheet.create({
-  page: { paddingTop: 66, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
+  page: { fontFamily: "NotoSansJP", paddingTop: 66, paddingBottom: 42, paddingHorizontal: 28, backgroundColor: COLORS.bg, color: COLORS.ink, fontSize: 7.5 },
   header: { position: "absolute", top: 20, left: 28, right: 28, paddingBottom: 7, borderBottomWidth: 1, borderBottomColor: COLORS.teal, flexDirection: "row", justifyContent: "space-between" },
   headerTitle: { color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   headerPeriod: { color: COLORS.sub, fontSize: 8 },
@@ -95,8 +97,7 @@ const styles = StyleSheet.create({
   definitionBlock: { marginBottom: 16 },
   definitionTitle: { marginBottom: 5, color: COLORS.navy, fontSize: 11, fontWeight: 700 },
   hiddenMarker: { position: "absolute", opacity: 0, fontSize: 1 },
-  // 高さは VectorText が返す実寸（fontSize + 3 + 4）以上にすること。
-  // 小さいと Svg が縮小されて中央寄せになり、見出しが右にずれる。
+  // 高さは VectorText が返す実寸（fontSize + 3 + 4）以上にすること（足りないと見出しがずれる）。
   // ヘッダーの区切り線は y=45〜46。cover はそれより下から始めること（線を塗りつぶさないため）。
   continuationLabel: { position: "absolute", top: 47, left: 28, right: 28, height: 16 },
   continuationCover: { position: "absolute", top: 46, left: 27, right: 27, height: 18 },
@@ -193,7 +194,8 @@ function Chrome({ data }: { data: CallMetricsResponse }) {
       {innovera ? <VectorText width={220} height={18} fontSize={8} align="right" bold={innovera.stopped} color={innovera.stopped ? COLORS.red : COLORS.sub}>{innovera.text}</VectorText> : null}
     </View>
   </>;
-  return <><View style={styles.header}>{header}</View><View fixed style={styles.header}>{header}</View><Text fixed style={styles.hiddenMarker}>{`PDF_HEADER ${data.from} ${data.to}`}</Text><Text fixed style={styles.footer} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} /></>;
+  // ヘッダーは fixed の 1 つだけ（2 つ重ねると、文字にした 2026-10-15 からコピーでタイトルが 2 回出るため）
+  return <><View fixed style={styles.header}>{header}</View><Text fixed style={styles.hiddenMarker}>{`PDF_HEADER ${data.from} ${data.to}`}</Text><Text fixed style={styles.footer} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} /></>;
 }
 
 function DataTable<T>({ columns, rows, groups }: { columns: Column<T>[]; rows: T[]; groups?: ColumnGroup[] }) {
@@ -232,20 +234,56 @@ function LpSubtotalTable({ data }: { data: CallMetricsResponse }) {
   return <SimpleTable headers={["事業名", "着信", "応答", "不在", "留守電", "発信", "発信の応答", "通話時間", "申込み"]} rows={rows} widths={lpSubtotalWidths}/>;
 }
 
-// 第 2 部「WEBインバウンド（事業ごと）」＝表A「対応」と表B「結果」（§5.6.5）。列幅 pt＝指標名 220／事業ごと 110／合計 110
+// 第 2 部「WEBインバウンド（事業ごと）」＝表A「対応」と表B「結果」を左右に並べて 1 ページに（§5.6.5・2026-10-15）。
+// 親は太字＋帯、子は罫線でつなぐ（縦の線が行をまたいでつながる）。率は太い区切り線の下。列幅 pt＝指標名 262／事業ごと・合計 92
+const TREE_STEP = 13;
+const TREE_LINE = "#9AA8B8";
+function TreeConnector({ link, level }: { link: LpFunnelTreeLink; level: number }) {
+  if (level <= 0) return null;
+  return <View style={{ flexDirection: "row", width: TREE_STEP * level, height: 22 }}>
+    {link.continues.map((on, depth) => <View key={depth} style={{ width: TREE_STEP, height: 22 }}>{on ? <View style={{ position: "absolute", left: 6, top: 0, width: 0.8, height: 22, backgroundColor: TREE_LINE }}/> : null}</View>)}
+    <View style={{ width: TREE_STEP, height: 22 }}>
+      <View style={{ position: "absolute", left: 6, top: 0, width: 0.8, height: link.last ? 11 : 22, backgroundColor: TREE_LINE }}/>
+      <View style={{ position: "absolute", left: 6, top: 10.6, width: 7, height: 0.8, backgroundColor: TREE_LINE }}/>
+    </View>
+  </View>;
+}
+function TreeTable({ headers, rows, widths }: { headers: string[]; rows: LpFunnelViewRow[]; widths: number[] }) {
+  const tableWidth = widths.reduce((sum, width) => sum + width, 0);
+  const links = lpFunnelTreeLinks(rows);
+  const firstRate = rows.findIndex((row) => row.kind === "rate");
+  return <View wrap={false} style={[styles.table, { width: tableWidth }]}>
+    <View style={styles.row}>{headers.map((h, i) => <View key={h} style={[styles.th, { width: widths[i] }]}><VectorText width={widths[i] - 1} height={22} bold align="center" color="#FFFFFF">{h}</VectorText></View>)}</View>
+    {rows.map((row, i) => {
+      const tree = row.kind === "node" || row.kind === "group";
+      const level = tree ? row.level : 0;
+      const band = tree && level === 0 ? "#E3F4F3" : tree && level === 1 ? "#F1F5FA" : COLORS.card;
+      const strong = row.kind === "rate" || (tree && level <= 1);
+      const tone = row.kind === "note" ? COLORS.sub : COLORS.ink;
+      return <View key={i} wrap={false} style={[styles.row, i === firstRate ? { borderTopWidth: 2, borderTopColor: COLORS.navy } : {}, { backgroundColor: band }]}>
+        <View style={[styles.td, { width: widths[0], flexDirection: "row", paddingLeft: 4 }]}>
+          {tree ? <TreeConnector link={links[i]} level={level}/> : null}
+          <VectorText width={widths[0] - 5 - TREE_STEP * level} height={22} align="left" bold={strong} color={tone}>{row.label}</VectorText>
+        </View>
+        {row.values.map((value, j) => <View key={j} style={[styles.td, { width: widths[j + 1] }]}><VectorText width={widths[j + 1] - 1} height={22} align="right" bold={strong && row.kind !== "note"} color={tone}>{value}</VectorText></View>)}
+      </View>;
+    })}
+  </View>;
+}
 function LpFunnelPart({ data }: { data: CallMetricsResponse }) {
   const funnel = data.lpFunnel;
   if (!funnel) return <VectorParagraph width={870}>WEBインバウンドの対応と結果を取得できませんでした。</VectorParagraph>;
   const headers = lpFunnelHeaders(funnel);
-  const widths = [220, ...headers.slice(1).map(() => 110)];
-  const toRows = (rows: ReturnType<typeof lpFunnelTableA>) => rows.map((row) => [`${"　".repeat(row.indent ?? 0)}${row.label}`, ...row.values]);
+  const widths = [262, ...headers.slice(1).map(() => 92)];
   const notes = lpFunnelCalcNotes(funnel);
   const noRecordTotal = funnel.businesses.reduce((sum, biz) => sum + (biz.noRecord ?? 0), 0);
   return <>
-    <View style={styles.definitionBlock}><DefinitionTitle>表A　対応</DefinitionTitle><SimpleTable headers={headers} rows={toRows(lpFunnelTableA(funnel))} widths={widths}/></View>
-    <View style={styles.definitionBlock}><DefinitionTitle>表B　結果</DefinitionTitle><SimpleTable headers={headers} rows={toRows(lpFunnelTableB(funnel))} widths={widths}/></View>
-    <VectorParagraph width={870}>{`${LP_FUNNEL_LEAD_NOTE}${noRecordTotal ? ` 記録なし ${noRecordTotal} 件の番号はポータルの「WEBインバウンド」タブで確かめてください。` : ""}`}</VectorParagraph>
-    {notes.map((note) => <VectorParagraph key={note} width={870}>{note}</VectorParagraph>)}
+    <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 12 }}>
+      <View style={{ marginRight: 24 }}><DefinitionTitle>表A　対応</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableA(funnel)} widths={widths}/></View>
+      <View><DefinitionTitle>表B　結果</DefinitionTitle><TreeTable headers={headers} rows={lpFunnelTableB(funnel)} widths={widths}/></View>
+    </View>
+    <VectorParagraph width={1100}>{`${LP_FUNNEL_LEAD_NOTE}${noRecordTotal ? ` 記録なし ${noRecordTotal} 件の番号はポータルの「WEBインバウンド」タブで確かめてください。` : ""}`}</VectorParagraph>
+    {notes.map((note) => <VectorParagraph key={note} width={1100}>{note}</VectorParagraph>)}
   </>;
 }
 
@@ -285,5 +323,6 @@ export function callMetricsPdfFilename(now = new Date()) {
 }
 
 export async function renderCallMetricsPdf(data: CallMetricsResponse, options: { definitionRows?: string[][] } = {}) {
+  registerPdfFont();
   return renderToBuffer(<CallMetricsPdfDocument data={data} definitionRows={options.definitionRows}/>);
 }
