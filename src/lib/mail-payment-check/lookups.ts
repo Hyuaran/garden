@@ -69,13 +69,25 @@ export class LiveLookups implements Lookups {
     return this.tokenPromise;
   }
 
+  // 一時的な失敗（429・5xx・通信切れ）は少し待って 3 回までやり直す（2026-10-16：10:01 の初回でフォルダの親の読み取りが
+  // 失敗し、保存済みの請求書を「保存なし」と誤判定した）
   private async driveGet<T>(path: string): Promise<T> {
-    const response = await fetch(`https://www.googleapis.com/drive/v3/${path}`, {
-      headers: { Authorization: `Bearer ${await this.token()}` },
-      cache: "no-store",
-    });
-    if (!response.ok) throw new Error(`Google Drive を読めません（${response.status}）`);
-    return (await response.json()) as T;
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
+      try {
+        const response = await fetch(`https://www.googleapis.com/drive/v3/${path}`, {
+          headers: { Authorization: `Bearer ${await this.token()}` },
+          cache: "no-store",
+        });
+        if (response.ok) return (await response.json()) as T;
+        lastError = new Error(`Google Drive を読めません（${response.status}）`);
+        if (response.status !== 429 && response.status < 500) break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("Google Drive を読めません");
   }
 
   /** 親フォルダをたどって、保存先（02_支払 明細 など）の中にあるかを確かめる */
@@ -83,8 +95,7 @@ export class LiveLookups implements Lookups {
     const cached = this.parentCache.get(id);
     if (cached) return cached;
     const promise = this.driveGet<{ parents?: string[] }>(`files/${id}?fields=parents&supportsAllDrives=true`)
-      .then((body) => body.parents ?? [])
-      .catch(() => []);
+      .then((body) => body.parents ?? []);
     this.parentCache.set(id, promise);
     return promise;
   }

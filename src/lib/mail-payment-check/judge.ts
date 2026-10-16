@@ -142,11 +142,20 @@ export async function judgeMails(input: {
     if (seenVendorDue.has(dedupeKey)) continue;
     seenVendorDue.add(dedupeKey);
 
-    const reservations = await input.lookups.reservations(vendor);
+    // 振込依頼・Drive を読めなかったときは「なし」と決め付けず、人の確認に回す（新着かどうかに関係なく毎回）
+    let reservations: Awaited<ReturnType<Lookups["reservations"]>>;
+    let files: Awaited<ReturnType<Lookups["savedFiles"]>>;
+    try {
+      reservations = await input.lookups.reservations(vendor);
+      files = await input.lookups.savedFiles(vendor);
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error);
+      items.push({ ...base, kind: "human", vendor: vendor.key, dueDate, reserved: null, saved: null, reason: `振込依頼か Drive を読めなかったので確かめられません（${why}）` });
+      continue;
+    }
     // 期日の目安が分かれば前後 10 日、分からなければ受信日から 75 日以内の支払期日を「この請求の予約」とみなす（先月分の予約を拾わない）
     const [from, to] = dueDate ? [addDays(dueDate, -10), addDays(dueDate, 10)] : [received, addDays(received, 75)];
     const reserved = reservations.find((row) => row.dueDate >= from && row.dueDate <= to) ?? null;
-    const files = await input.lookups.savedFiles(vendor);
     const saved = files.find((file) => jstDate(file.createdAt) >= addDays(received, -10)) ?? null;
     const judged = { ...base, vendor: vendor.key, dueDate, reserved, saved };
 

@@ -85,6 +85,14 @@ describe("judgeMails", () => {
     expect(items[0].kind).toBe("human");
   });
 
+  it("振込依頼か Drive を読めないときは「なし」と決め付けず人の確認（新着でなくても）", async () => {
+    const failing: Lookups = { reservations: async () => [], savedFiles: async () => { throw new Error("Google Drive を読めません（503）"); } };
+    const { items, counts } = await judgeMails({ ...base, mails: [mail({ receivedAt: "2026-09-01T01:00:00Z" })], today: "2026-10-28", lookups: failing });
+    expect(counts.action).toBe(0);
+    expect(items[0]).toMatchObject({ kind: "human", vendor: "トップウェイ" });
+    expect(items[0].reason).toContain("読めなかった");
+  });
+
   it("請求と関係ない件名は数えない", async () => {
     const { counts } = await judgeMails({ ...base, mails: [mail({ subject: "打合せの件" })], today: "2026-10-15", lookups: lookups(false, false) });
     expect(counts.invoiceRelated).toBe(0);
