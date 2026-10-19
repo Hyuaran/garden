@@ -54,7 +54,7 @@ export function classifyAttachment(mail: MailItem, attachment: MailAttachmentMet
   if (isElectronicCompletion(mail)) return /\.pdf$/i.test(attachment.name) ? "contract" : null;
   const text = isForwardedMail(mail) || contains(attachment.name, [...CONTRACT_WORDS, ...TERMS_WORDS]) ? attachment.name : mail.subject;
   // 契約書は PDF だけ（Word は締結前の下書き・ひな形のため。東海林さん 2026-10-19）
-  if (contains(text, CONTRACT_WORDS)) return /\.pdf$/i.test(attachment.name) ? "contract" : null;
+  if (contains(text, CONTRACT_WORDS) && /\.pdf$/i.test(attachment.name)) return "contract";
   if (contains(text, TERMS_WORDS)) return direction(mail) === "out" ? "terms-out" : "terms-in";
   return null;
 }

@@ -26,6 +26,7 @@ describe("添付の分類", () => {
     expect(classifyAttachment(mail, { ...attachment, name: "秘密保持契約書.doc" })).toBeNull();
     expect(classifyAttachment(mail, { ...attachment, name: "業務委託基本契約書.pdf" })).toBe("contract");
     expect(classifyAttachment({ ...mail, subject: "条件表" }, { ...attachment, name: "添付.docx" })).toBe("terms-in");
+    expect(classifyAttachment(mail, { ...attachment, name: "契約書別紙_条件表.xlsx" })).toBe("terms-in");
   });
   it("添付名の種類を件名より優先", () => {
     expect(classifyAttachment(mail, { ...attachment, name: "条件表.xlsx" })).toBe("terms-in");
