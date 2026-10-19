@@ -2,9 +2,13 @@
 param(
   [string]$TaskName = "GardenRelayAgent",
   [string]$NodePath = "C:\Program Files\nodejs\node.exe",
-  [string]$AgentPath = (Join-Path $PSScriptRoot "agent.mjs"),
-  [string]$ConfigPath = (Join-Path $PSScriptRoot "config.json")
+  [string]$AgentPath = "",
+  [string]$ConfigPath = ""
 )
+# Windows PowerShell 5.1 で -File 実行すると param の既定値の中では $PSScriptRoot が空になる（2026-10-19 ホスト PC で発生）＝本文で埋める
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $AgentPath) { $AgentPath = Join-Path $scriptDir "agent.mjs" }
+if (-not $ConfigPath) { $ConfigPath = Join-Path $scriptDir "config.json" }
 
 $ErrorActionPreference = "Stop"
 if ($TaskName -eq "--node") {
