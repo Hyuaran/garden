@@ -3,7 +3,7 @@
 // INNOVERA の写し（RPC system_innovera_funnel_calls）と突き合わせて「対応と結果」（§5.6）を作る。
 
 import { buildLpFunnel, formCountInRange, normalizePhoneNumber, isValidPhoneNumber, type LpFunnelCalls, type LpFunnelResult } from "./lp-funnel";
-import { countLpApplications, loadLpCustomerRecords, loadLpScope, lpCustomerAppTokenEnv, type LpCustomerRecord, type LpScopeBusiness } from "./lp-kintone";
+import { unmatchedLpOrders, loadLpCustomerOrderCounts, countLpRegisteredRecords, type LpRegisteredCounts, countLpApplications, loadLpCustomerRecords, loadLpScope, lpCustomerAppTokenEnv, type LpCustomerRecord, type LpScopeBusiness } from "./lp-kintone";
 
 type RpcClient = { rpc: (name: string, params: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> };
 
@@ -12,6 +12,9 @@ export type LpContext = {
   lpCircuitIds: number[];
   recordsByApp: Map<number, LpCustomerRecord[] | null>;
   lpApplicationCountsByBiz: Map<string, Map<string, number> | null>;
+  lpCustomerOrderCountsByBiz: Map<string, number> | null;
+  lpUnmatchedOrders: Array<{ listName: string; count: number }>;
+  lpRegisteredCountsByBiz: Map<string, LpRegisteredCounts | null>;
   notes: string[];
   funnel: LpFunnelResult | null;
   formCount: number | null;
@@ -23,7 +26,11 @@ export async function loadLpKintoneContext(from: string, to: string) {
   const lpCircuitIds = [...new Set((lpScope ?? []).flatMap((biz) => biz.circuitIds))];
   const notes: string[] = [];
   const recordsByApp = new Map<number, LpCustomerRecord[] | null>();
+  const lpRegisteredCountsByBiz = new Map<string, LpRegisteredCounts | null>();
   const lpApplicationCountsByBiz = new Map<string, Map<string, number> | null>();
+  const lpCustomerOrderCountsByBiz = lpScope ? await loadLpCustomerOrderCounts(lpScope, from, to) : null;
+  if (lpScope && !lpCustomerOrderCountsByBiz) notes.push("顧客一覧（受注）を取得できませんでした");
+  const lpUnmatchedOrders = lpCustomerOrderCountsByBiz ? [...(unmatchedLpOrders.get(lpCustomerOrderCountsByBiz) ?? new Map()).entries()].map(([listName, count]) => ({ listName, count })) : [];
   if (!lpScope) {
     notes.push("LP申込み（kintone）の事業マスタを取得できませんでした");
   } else {
@@ -36,6 +43,7 @@ export async function loadLpKintoneContext(from: string, to: string) {
       }
       if (!recordsByApp.has(biz.customerApp)) recordsByApp.set(biz.customerApp, await loadLpCustomerRecords(biz.customerApp));
       const records = recordsByApp.get(biz.customerApp) ?? null;
+      lpRegisteredCountsByBiz.set(biz.bizCode, countLpRegisteredRecords(records, from, to));
       if (!records) {
         lpApplicationCountsByBiz.set(biz.bizCode, null);
         notes.push(`LP申込み（kintone）を取得できませんでした：${biz.bizName}`);
@@ -44,7 +52,7 @@ export async function loadLpKintoneContext(from: string, to: string) {
       }
     }
   }
-  return { lpScope, lpCircuitIds, recordsByApp, lpApplicationCountsByBiz, notes };
+  return { lpUnmatchedOrders, lpCustomerOrderCountsByBiz, lpScope, lpCircuitIds, recordsByApp, lpApplicationCountsByBiz, lpRegisteredCountsByBiz, notes };
 }
 
 // 期間内のフォーム（流入元＝HP）の番号＝RPC の p_numbers（正規化して重複を除く）

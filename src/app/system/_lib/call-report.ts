@@ -51,10 +51,6 @@ function formatShortJstTime(value: string | null | undefined) {
   return `${get("hour")}:${get("minute")}`;
 }
 
-function formatLpNumber(value: number | null | undefined) {
-  return value == null ? "-" : value.toLocaleString("ja-JP");
-}
-
 function lpTrafficTotal(metrics?: CallMetricsResponse) {
   return (metrics?.lp?.businesses ?? []).reduce((sum, row) => sum + (row.inbound ?? 0) + (row.outbound ?? 0), 0);
 }
@@ -63,23 +59,21 @@ const formatLpRate = (value: number | null | undefined) => value == null ? "-" :
 const formatLpCountUnit = (value: number | null | undefined) => value == null ? "-" : `${value.toLocaleString("ja-JP")}件`;
 
 // 事業ごとのまとまり（4〜5 行）。細かい内訳は添付の PDF で見る（東海林さん 2026-10-15「もう少しキュッと」）
-// 申込＝その日に kintone に登録された「申込み」の数（小計と同じ）／受注＝その日に話せた人のうち「申込み」の人（登録日は問わない）
+// 受注は顧客一覧の受注日基準。前確待ち・分母・対象外は登録日（JST）基準。初回応答率・記録なしは従来の流れ図の集計を使う。
 // 記録なしがあるときだけ最後に「⚠Kintone記録なし：n件」。見出し行【WEBインバウンド】は置かない
 function lpBusinessBlock(row: LpBusinessMetricRow, funnel: LpFunnelBusiness | undefined) {
+  const registered = row.registeredCounts;
+  const denominator = registered?.denominator ?? 0;
   const lines = [
     `■${row.bizName}`,
-    `発着信：着信${formatLpCountUnit(row.inbound)}／発信${formatLpCountUnit(row.outbound)}`,
+    `発着信：${formatLpCountUnit(row.inbound == null || row.outbound == null ? null : row.inbound + row.outbound)}（着信${formatLpCountUnit(row.inbound)}／発信${formatLpCountUnit(row.outbound)}）`,
   ];
-  if (funnel) {
-    lines.push(
-      `初回応答率：${formatLpRate(funnel.answerRate)}（応答${formatLpNumber(funnel.answered)}／入電${formatLpNumber(funnel.inbound)}）`,
-      `受注率：${formatLpRate(funnel.wonRate)}（申込${formatLpCountUnit(row.applications)}／受注${formatLpCountUnit(funnel.won)}）`,
-      `対象外率：${formatLpRate(funnel.excludedRate)}`,
-    );
-    if ((funnel.noRecord ?? 0) > 0) lines.push(`⚠Kintone記録なし：${formatLpCountUnit(funnel.noRecord)}`);
-  } else {
-    lines.push(`申込：${formatLpCountUnit(row.applications)}`);
-  }
+  lines.push(
+    `初回応答率：${formatLpRate(funnel?.answerRate)}（応答${formatLpCountUnit(funnel?.answered)}／入電${formatLpCountUnit(funnel?.inbound)}）`,
+    `受注率：${formatLpRate(denominator && row.customerOrders != null ? row.customerOrders / denominator : null)}（前確待ち${formatLpCountUnit(registered?.preconfirmWaiting)}／受注${formatLpCountUnit(row.customerOrders)}）`,
+    `対象外率：${formatLpRate(denominator ? registered!.excluded / denominator : null)}`,
+  );
+  if ((funnel?.noRecord ?? 0) > 0) lines.push(`⚠Kintone記録なし：${formatLpCountUnit(funnel!.noRecord)}`);
   return lines.join("\n");
 }
 
@@ -88,7 +82,10 @@ function buildLpBlock(metrics?: CallMetricsResponse) {
   const stopped = metrics.innovera?.stopped ? `※INNOVERA 取込停止中（最終 ${formatShortJstTime(metrics.innovera.lastSyncAt)}）\n` : "";
   const funnelByBiz = new Map((metrics.lpFunnel?.businesses ?? []).map((biz) => [biz.bizCode, biz]));
   const blocks = metrics.lp.businesses.map((row) => lpBusinessBlock(row, funnelByBiz.get(row.bizCode)));
-  return `\n\n${stopped}${blocks.join("\n\n")}`;
+  // 顧客一覧の受注で、リスト名 WEB_〇〇 の〇〇が事業の名前と違うもの（数え漏れを出さないため最後に知らせる）
+  const unmatched = (metrics.lpUnmatchedOrders ?? []).map((o) => `${o.listName} ${formatLpCountUnit(o.count)}`);
+  const warn = unmatched.length ? `\n\n⚠事業に結びつかない受注（リスト名を確認）：${unmatched.join("、")}` : "";
+  return `\n\n${stopped}${blocks.join("\n\n")}${warn}`;
 }
 
 export function buildCallReport(summary: CallMetricsSummary, now = new Date(), metrics?: CallMetricsResponse) {

@@ -1,5 +1,5 @@
 import type { CallMetricsResponse, EmployeeCallMetricRow, LpBusinessMetricRow, LpMetricsPayload } from "./call-metrics";
-import { normalizeLpAssigneeName, type LpScopeBusiness } from "./lp-kintone";
+import { normalizeLpAssigneeName, type LpRegisteredCounts, type LpScopeBusiness } from "./lp-kintone";
 
 export type RootEmployeeForCallMetrics = {
   employee_id?: string | null;
@@ -44,6 +44,8 @@ type MergeInput = {
   innovera: InnoveraMetricsPayload | null;
   lpScope: LpScopeBusiness[] | null;
   lpApplicationCountsByBiz: Map<string, Map<string, number> | null>;
+  lpCustomerOrderCountsByBiz?: Map<string, number> | null;
+  lpRegisteredCountsByBiz?: Map<string, LpRegisteredCounts | null>;
   rootEmployees: RootEmployeeForCallMetrics[];
   now?: Date;
   notes?: string[];
@@ -202,6 +204,8 @@ export function mergeCallMetrics(input: MergeInput): CallMetricsResponse {
       outbound: hasRows ? counts.reduce((sum, row) => sum + n(row.outbound), 0) : null,
       outboundAnswered: hasRows ? counts.reduce((sum, row) => sum + n(row.outbound_answered), 0) : null,
       talkSeconds: hasRows ? counts.reduce((sum, row) => sum + n(row.talk_seconds), 0) : null,
+      customerOrders: input.lpCustomerOrderCountsByBiz?.get(biz.bizCode) ?? null,
+      registeredCounts: input.lpRegisteredCountsByBiz?.get(biz.bizCode) ?? null,
       applications,
       unassignedApplications: appCounts?.get("担当者未設定") ?? 0,
     };

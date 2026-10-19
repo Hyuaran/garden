@@ -64,6 +64,8 @@ export type EmployeeCallMetricRow = Omit<CallMetricRow, "listName"> & {
 };
 
 export type LpBusinessMetricRow = {
+  customerOrders?: number | null;
+  registeredCounts?: import("./lp-kintone").LpRegisteredCounts | null;
   bizCode: string;
   bizName: string;
   recordOrder: number;
@@ -107,6 +109,8 @@ export type CallMetricsResponse = {
   lpFunnel?: LpFunnelResult | null;
   // 当日のフォーム受付数（0 件スキップの判定に足す・§7）
   lpFormCount?: number | null;
+  // 顧客一覧の受注で、リスト名 WEB_〇〇 の〇〇が事業の名前と違うもの（本文の最後に ⚠ で出す）
+  lpUnmatchedOrders?: Array<{ listName: string; count: number }>;
 };
 
 export type CallMetricsSummary = {

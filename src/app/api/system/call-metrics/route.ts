@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     filemaker,
     innovera: innoveraResult.error ? null : innoveraResult.data,
     lpScope: lpKintone.lpScope,
-    lpApplicationCountsByBiz: lpKintone.lpApplicationCountsByBiz,
+    lpApplicationCountsByBiz: lpKintone.lpApplicationCountsByBiz, lpRegisteredCountsByBiz: lpKintone.lpRegisteredCountsByBiz, lpCustomerOrderCountsByBiz: lpKintone.lpCustomerOrderCountsByBiz,
     rootEmployees,
     notes: lpKintone.notes,
   });

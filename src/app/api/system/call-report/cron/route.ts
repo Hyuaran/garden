@@ -47,9 +47,10 @@ export async function GET(request: Request) {
     p_from: schedule.date, p_to: schedule.date, p_lp_circuit_ids: lpKintone.lpCircuitIds, p_employee_id: null,
   });
   const metrics = {
-    ...mergeCallMetrics({ filemaker, innovera: innoveraResult.error ? null : innoveraResult.data, lpScope: lpKintone.lpScope, lpApplicationCountsByBiz: lpKintone.lpApplicationCountsByBiz, rootEmployees, notes: lpKintone.notes }),
+    ...mergeCallMetrics({ filemaker, innovera: innoveraResult.error ? null : innoveraResult.data, lpScope: lpKintone.lpScope, lpApplicationCountsByBiz: lpKintone.lpApplicationCountsByBiz, lpRegisteredCountsByBiz: lpKintone.lpRegisteredCountsByBiz, lpCustomerOrderCountsByBiz: lpKintone.lpCustomerOrderCountsByBiz, rootEmployees, notes: lpKintone.notes }),
     lpFunnel: lpKintone.funnel,
     lpFormCount: lpKintone.formCount,
+    lpUnmatchedOrders: lpKintone.lpUnmatchedOrders,
   };
   const summary = summarizeCallMetrics(metrics);
   const report = buildCallReport(summary, now, metrics);

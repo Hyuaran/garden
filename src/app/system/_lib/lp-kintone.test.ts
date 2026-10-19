@@ -7,7 +7,7 @@ vi.mock("@/lib/kintone/records", () => ({
   getAllRecords: (...args: unknown[]) => getAllRecords(...args),
 }));
 
-import { countLpApplications, loadLpCustomerRecords, loadLpScope, type LpCustomerRecord } from "./lp-kintone";
+import { loadLpCustomerOrderCounts, countLpRegisteredRecords, countLpApplications, loadLpCustomerRecords, loadLpScope, type LpCustomerRecord } from "./lp-kintone";
 
 const v = (value: unknown) => ({ value });
 
@@ -132,5 +132,56 @@ describe("countLpApplications（LP申込み）", () => {
 
   it("読めなかったとき（null）はそのまま null", () => {
     expect(countLpApplications(null, "2026-10-13", "2026-10-13")).toBeNull();
+  });
+});
+
+describe("登録日基準の配信集計", () => {
+  const record = (status: string | null, createdAt = "2026-10-13T01:00:00Z"): LpCustomerRecord => ({ id: "1", status, createdAt, assignee: null, source: null, slot: [], phones: {} });
+  it("重複と期間外を除きJSTの両端を含む", () => {
+    const records = ["前確待ち", "前確待ち", "申込み", "申込み", "申込み", "申込み", "重複", "対象外（現アナ等）", "対象外（契約不可）", "その他"].map(status => record(status));
+    records[0].createdAt = "2026-10-12T15:00:00Z";
+    records[1].createdAt = "2026-10-13T14:59:59.999Z";
+    records.push(record("申込み", "2026-10-12T14:59:59.999Z"), record("申込み", "2026-10-13T15:00:00Z"), record("申込み", "invalid"), { ...record("申込み"), createdAt: null });
+    expect(countLpRegisteredRecords(records, "2026-10-13", "2026-10-13")).toEqual({ denominator: 9, preconfirmWaiting: 2, applications: 4, won: 6, excluded: 2 });
+    expect([...countLpApplications(records, "2026-10-13", "2026-10-13")!.values()].reduce((a,b) => a+b,0)).toBe(4);
+  });
+  it("対象外3種と空欄を扱い、0件と取得失敗を区別する", () => {
+    expect(countLpRegisteredRecords([record("対象外（連絡つかず）"), record(null)], "2026-10-13", "2026-10-13")).toMatchObject({ denominator: 2, excluded: 1 });
+    expect(countLpRegisteredRecords([record("重複")], "2026-10-13", "2026-10-13")).toEqual({ denominator: 0, preconfirmWaiting: 0, applications: 0, won: 0, excluded: 0 });
+    expect(countLpRegisteredRecords(null, "2026-10-13", "2026-10-13")).toBeNull();
+  });
+});
+
+
+describe("顧客一覧の受注日集計", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const scope = [
+    { bizCode: "hikari", bizName: "ヒカリのプロ", customerApp: 226, circuitIds: [], recordOrder: 1 },
+    { bizCode: "denki", bizName: "電気開始受付センター", customerApp: 235, circuitIds: [], recordOrder: 2 },
+  ];
+  it("リスト名の完全一致と受注日の期間で数える", async () => {
+    vi.stubEnv("KINTONE_KANRI_CUSTOMER_TOKEN", "orders-token");
+    getAllRecords.mockReset();
+    const row = (name: string, day: string) => ({ B_リスト名: v(name), 受注日: v(day) });
+    getAllRecords.mockResolvedValue([
+      row(" WEB_ヒカリのプロ　", "2026-10-16"), row("WEB_ヒカリのプロ", "2026-10-17"),
+      row("WEB_電気開始受付センター", "2026-10-16"),
+      row("WEB_ヒカリのプロ", "2026-10-15"), row("WEB_ヒカリのプロ", "2026-10-18"),
+      row("WEB_ヒカリのプロ別事業", "2026-10-16"), row("ヒカリのプロ", "2026-10-16"), row("WEB_ヒカリのプロ", ""),
+    ]);
+    expect(await loadLpCustomerOrderCounts(scope, "2026-10-16", "2026-10-17")).toEqual(new Map([["hikari", 2], ["denki", 1]]));
+    expect(getAllRecords).toHaveBeenCalledWith(10, "orders-token", 'B_リスト名 like "WEB_" and 受注日 >= "2026-10-16" and 受注日 <= "2026-10-17"', ["$id", "B_リスト名", "受注日"]);
+    expect(await loadLpCustomerOrderCounts(scope, "2026-10-17", "2026-10-17")).toEqual(new Map([["hikari", 1], ["denki", 0]]));
+  });
+  it("取得失敗・鍵なしは null、取得成功の0件は0", async () => {
+    getAllRecords.mockReset();
+    vi.stubEnv("KINTONE_KANRI_CUSTOMER_TOKEN", "");
+    expect(await loadLpCustomerOrderCounts(scope, "2026-10-16", "2026-10-16")).toBeNull();
+    expect(getAllRecords).not.toHaveBeenCalled();
+    vi.stubEnv("KINTONE_KANRI_CUSTOMER_TOKEN", "orders-token");
+    getAllRecords.mockRejectedValue(new Error("unavailable"));
+    expect(await loadLpCustomerOrderCounts(scope, "2026-10-16", "2026-10-16")).toBeNull();
+    getAllRecords.mockResolvedValue([]);
+    expect(await loadLpCustomerOrderCounts(scope, "2026-10-16", "2026-10-16")).toEqual(new Map([["hikari", 0], ["denki", 0]]));
   });
 });

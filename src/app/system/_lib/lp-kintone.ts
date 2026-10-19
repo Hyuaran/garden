@@ -142,3 +142,55 @@ export function countLpApplications(records: LpCustomerRecord[] | null, from: st
 export function normalizeLpAssigneeName(value: string | null | undefined) {
   return normalizeName(value);
 }
+
+// 配信本文専用。流れ図とは独立して登録日（JST）で数える。
+export type LpRegisteredCounts = {
+  denominator: number;
+  preconfirmWaiting: number;
+  applications: number;
+  won: number;
+  excluded: number;
+};
+
+export function countLpRegisteredRecords(records: LpCustomerRecord[] | null, from: string, to: string): LpRegisteredCounts | null {
+  if (records === null) return null;
+  const counts: LpRegisteredCounts = { denominator: 0, preconfirmWaiting: 0, applications: 0, won: 0, excluded: 0 };
+  for (const record of records) {
+    const day = jstDate(record.createdAt);
+    if (!day || day < from || day > to || record.status === "重複") continue;
+    counts.denominator++;
+    if (record.status === "前確待ち") counts.preconfirmWaiting++;
+    if (record.status === "申込み") counts.applications++;
+    if (["対象外（現アナ等）", "対象外（契約不可）", "対象外（連絡つかず）"].includes(record.status ?? "")) counts.excluded++;
+  }
+  counts.won = counts.preconfirmWaiting + counts.applications;
+  return counts;
+}
+
+// 配信本文の受注は顧客一覧 app10 の受注日で数える。
+// 事業に結びつかなかった受注（リスト名が WEB_〇〇 で〇〇が事業マスタの名前と違う）。本文の最後に知らせる
+export const unmatchedLpOrders = new WeakMap<Map<string, number>, Map<string, number>>();
+
+export async function loadLpCustomerOrderCounts(scope: LpScopeBusiness[], from: string, to: string): Promise<Map<string, number> | null> {
+  const token = process.env.KINTONE_KANRI_CUSTOMER_TOKEN?.trim();
+  if (!token) return null;
+  try {
+    const records = await getAllRecords(10, token,
+      `B_リスト名 like "WEB_" and 受注日 >= "${from}" and 受注日 <= "${to}"`,
+      ["$id", "B_リスト名", "受注日"]);
+    const counts = new Map(scope.map(biz => [biz.bizCode, 0]));
+    const unmatched = new Map<string, number>();
+    for (const record of records) {
+      const day = text(record, "受注日");
+      const listName = text(record, "B_リスト名")?.trim() ?? "";
+      if (!day || day < from || day > to || !listName.startsWith("WEB_")) continue;
+      const biz = scope.find(b => listName === `WEB_${b.bizName}`);
+      if (biz) counts.set(biz.bizCode, (counts.get(biz.bizCode) ?? 0) + 1);
+      else unmatched.set(listName, (unmatched.get(listName) ?? 0) + 1);
+    }
+    unmatchedLpOrders.set(counts, unmatched);
+    return counts;
+  } catch {
+    return null;
+  }
+}

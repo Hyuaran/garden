@@ -84,6 +84,16 @@ function merge(rows: EmployeeCallMetricRow[], overrides: Partial<Parameters<type
 
 const byName = (result: CallMetricsResponse, name: string) => result.employeeMetrics.find((row) => row.employeeName === name)!;
 
+it("登録日基準の本文用集計を事業ごとに渡し、申込み小計を変えない", () => {
+  const registered = { denominator: 9, preconfirmWaiting: 2, applications: 4, won: 6, excluded: 2 };
+  const result = merge([], { lpRegisteredCountsByBiz: new Map([["hikari-pro", registered], ["denki-uketsuke", null]]), lpCustomerOrderCountsByBiz: new Map([["hikari-pro", 8]]) });
+  expect(result.lp?.businesses[0].customerOrders).toBe(8);
+  expect(result.lp?.businesses[1].customerOrders).toBeNull();
+  expect(result.lp?.businesses[0].registeredCounts).toEqual(registered);
+  expect(result.lp?.businesses[0].applications).toBe(3);
+  expect(result.lp?.businesses[1].registeredCounts).toBeNull();
+});
+
 describe("mergeCallMetrics（3 系統の合流）", () => {
   it("§13 の内線別の値が FileMaker の行に付く（同名の退職行があっても在籍の行で引く）", () => {
     const result = merge([fmRow("石原　孝志朗", 42), fmRow("小泉　翔", 60), fmRow("藤木　誠希", 143), fmRow("南薗　優樹", 93), fmRow("宮永　ひかり", 6)]);

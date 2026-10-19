@@ -25,7 +25,7 @@ describe("call report", () => {
   it("skips zero-call days without text", () => {
     expect(buildCallReport({ ...summary, totalCalls: 0 })).toEqual({ skipped: true, reason: "本日コール0件", text: null });
   });
-  it("WEBインバウンドは事業ごとに 4〜5 行（発着信・初回応答率・受注率（申込／受注）・対象外率）、フォーム受付だけの日も送る", () => {
+  it("WEBインバウンドは事業ごとに 4〜5 行（発着信・初回応答率・受注率（前確待ち／受注）・対象外率）、フォーム受付だけの日も送る", () => {
     const funnelBase = {
       total: 15, inbound: 12, answered: 10, unanswered: 2, callbackConnected: 2, callbackNotConnected: 0, noCallback: 0, forms: 3,
       withSlot: 2, onTime: { connected: 2, notConnected: 0, noCall: 0 }, late: { connected: 0, notConnected: 0, noCall: 0 }, pendingWithSlot: { connected: 0, notConnected: 0, noCall: 0 },
@@ -38,8 +38,8 @@ describe("call report", () => {
       innovera: { lastSyncAt: "2026-10-14T14:45:18Z", stopped: false, hasRows: true },
       lp: {
         businesses: [
-          { bizCode: "hikari-pro", bizName: "ヒカリのプロ", recordOrder: 1, inbound: 26, answered: 14, missed: 12, voicemail: 0, outbound: 48, outboundAnswered: 39, talkSeconds: 14498, applications: 4, unassignedApplications: 0 },
-          { bizCode: "denki", bizName: "電気開始受付センター", recordOrder: 2, inbound: 21, answered: 14, missed: 7, voicemail: 2, outbound: 39, outboundAnswered: 32, talkSeconds: 11910, applications: 5, unassignedApplications: 0 },
+          { bizCode: "hikari-pro", bizName: "ヒカリのプロ", recordOrder: 1, inbound: 26, answered: 14, missed: 12, voicemail: 0, outbound: 48, outboundAnswered: 39, talkSeconds: 14498, applications: 4, customerOrders: 6, registeredCounts: { denominator: 9, preconfirmWaiting: 2, applications: 4, won: 6, excluded: 2 }, unassignedApplications: 0 },
+          { bizCode: "denki", bizName: "電気開始受付センター", recordOrder: 2, inbound: 21, answered: 14, missed: 7, voicemail: 2, outbound: 39, outboundAnswered: 32, talkSeconds: 11910, applications: 5, customerOrders: 6, registeredCounts: { denominator: 10, preconfirmWaiting: 1, applications: 5, won: 6, excluded: 2 }, unassignedApplications: 0 },
         ],
         totals: null, notes: [], unregisteredExtensionSummary: null,
       },
@@ -53,9 +53,24 @@ describe("call report", () => {
       lpFormCount: 11,
     };
     const result = buildCallReport(summary, new Date("2026-10-14T06:05:00Z"), metrics);
-    expect(result.text).toContain("前確OK率：3.0％（前確OK45件）\n\n■ヒカリのプロ\n発着信：着信26件／発信48件\n初回応答率：83.3％（応答10／入電12）\n受注率：60.0％（申込4件／受注9件）\n対象外率：0.0％\n⚠Kintone記録なし：1件\n\n■電気開始受付センター\n");
-    expect(result.text).toContain("■電気開始受付センター\n発着信：着信21件／発信39件\n初回応答率：80.0％（応答8／入電10）\n受注率：43.8％（申込5件／受注7件）\n対象外率：25.0％\n⚠Kintone記録なし：1件\n[/info]");
+    expect(result.text).toContain("前確OK率：3.0％（前確OK45件）\n\n■ヒカリのプロ\n発着信：74件（着信26件／発信48件）\n初回応答率：83.3％（応答10件／入電12件）\n受注率：66.7％（前確待ち2件／受注6件）\n対象外率：22.2％\n⚠Kintone記録なし：1件\n\n■電気開始受付センター\n");
+    expect(result.text).toContain("■電気開始受付センター\n発着信：60件（着信21件／発信39件）\n初回応答率：80.0％（応答8件／入電10件）\n受注率：60.0％（前確待ち1件／受注6件）\n対象外率：20.0％\n⚠Kintone記録なし：1件\n[/info]");
+    for (const registeredCounts of [null, { denominator: 0, preconfirmWaiting: 0, applications: 0, won: 0, excluded: 0 }]) {
+      const unavailable = buildCallReport(summary, new Date(), { ...metrics, lp: { ...metrics.lp, businesses: metrics.lp.businesses.map(b => ({ ...b, registeredCounts, customerOrders: registeredCounts ? 0 : null })) } });
+      expect(unavailable.text).toContain(registeredCounts ? "受注率：-（前確待ち0件／受注0件）" : "受注率：-（前確待ち-／受注-）");
+      expect(unavailable.text).toContain("対象外率：-");
+    }
     // 細かい内訳は PDF に任せる（本文には出さない）
+    expect(result.text).not.toContain("申込");
+    const ordersUnavailable = buildCallReport(summary, new Date(), { ...metrics, lp: { ...metrics.lp, businesses: metrics.lp.businesses.map(b => ({ ...b, customerOrders: null })) } });
+    expect(ordersUnavailable.text).toContain("受注率：-（前確待ち2件／受注-）");
+    expect(ordersUnavailable.text).toContain("対象外率：22.2％");
+    const ordersOnly = buildCallReport(summary, new Date(), { ...metrics, lp: { ...metrics.lp, businesses: metrics.lp.businesses.map(b => ({ ...b, customerOrders: 3 })) } });
+    expect(ordersOnly.text).toContain("受注率：33.3％（前確待ち2件／受注3件）");
+    // リスト名 WEB_〇〇 の〇〇が事業の名前と違う受注は、最後に ⚠ で知らせる（数え漏れを出さない）
+    expect(result.text).not.toContain("事業に結びつかない受注");
+    const unmatched = buildCallReport(summary, new Date("2026-10-14T06:05:00Z"), { ...metrics, lpUnmatchedOrders: [{ listName: "WEB_ひかりのプロ", count: 2 }] });
+    expect(unmatched.text).toContain("\n\n⚠事業に結びつかない受注（リスト名を確認）：WEB_ひかりのプロ 2件");
     expect(result.text).not.toContain("話せた：");
     expect(result.text).not.toContain("有効受注率");
     // 記録なしが 0 件の事業は ⚠ の行を出さない
