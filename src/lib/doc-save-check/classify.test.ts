@@ -21,6 +21,12 @@ describe("添付の分類", () => {
     expect(classifyAttachment({ ...own, toRecipients: ["external@example.jp"] }, { ...attachment, name: "条件表.xls" })).toBe("terms-out");
     expect(direction({ ...mail, sender: "x@evilhyuaran.com" })).toBe("in");
   });
+  it("契約書は PDF だけ（Word の下書きは除く）・条件表は Excel も対象", () => {
+    expect(classifyAttachment(mail, { ...attachment, name: "260828_業務委託基本契約書.docx" })).toBeNull();
+    expect(classifyAttachment(mail, { ...attachment, name: "秘密保持契約書.doc" })).toBeNull();
+    expect(classifyAttachment(mail, { ...attachment, name: "業務委託基本契約書.pdf" })).toBe("contract");
+    expect(classifyAttachment({ ...mail, subject: "条件表" }, { ...attachment, name: "添付.docx" })).toBe("terms-in");
+  });
   it("添付名の種類を件名より優先", () => {
     expect(classifyAttachment(mail, { ...attachment, name: "条件表.xlsx" })).toBe("terms-in");
     expect(classifyAttachment({ ...mail, subject: "条件表" }, attachment)).toBe("contract");
