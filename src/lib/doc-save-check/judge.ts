@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import type { MailItem, MailAttachmentMetadata } from "../mail-payment-check/graph-mail";
-import { classifyAttachment, excludedMail, isForwardedMail, ROOTS, type DocKind, MIN_ATTACHMENT_BYTES } from "./classify";
+import { classifyAttachment, excludedMail, isElectronicCompletion, isForwardedMail, ROOTS, type DocKind, MIN_ATTACHMENT_BYTES } from "./classify";
 
 export type JudgedItem = {
   md5: string; kind: DocKind; rootFolderId: string; mail: MailItem; fileName: string;
-  status: "saved" | "missing" | "previously-saved" | "autosaved" | "superseded"; driveUrl?: string;
+  status: "saved" | "missing" | "previously-saved" | "autosaved" | "superseded" | "needs-download"; driveUrl?: string;
 };
-export type JudgeCounts = { candidateMails: number; attachments: number; saved: number; missing: number; previouslySaved: number; autosaved: number; superseded: number };
+export type JudgeCounts = { candidateMails: number; attachments: number; saved: number; missing: number; previouslySaved: number; autosaved: number; superseded: number; needsDownload: number };
 export type JudgeDeps = {
   attachments(mail: MailItem): Promise<MailAttachmentMetadata[]>;
   content(mail: MailItem, attachment: MailAttachmentMetadata): Promise<string>;
@@ -15,17 +15,26 @@ export type JudgeDeps = {
   save?: (root: string, mail: MailItem, name: string, content: Buffer, mime: string) => Promise<{ id: string; url: string; fileName: string }>;
   record?: (item: JudgedItem, file: { id: string; url: string; fileName: string }) => Promise<void>;
 };
-export async function judgeMails(mails: MailItem[], deps: JudgeDeps) {
+export async function judgeMails(mails: MailItem[], deps: JudgeDeps, lastSuccessfulRunAt?: string) {
   const items: JudgedItem[] = [];
-  const counts: JudgeCounts = { candidateMails: 0, attachments: 0, saved: 0, missing: 0, previouslySaved: 0, autosaved: 0, superseded: 0 };
+  const counts: JudgeCounts = { candidateMails: 0, attachments: 0, saved: 0, missing: 0, previouslySaved: 0, autosaved: 0, superseded: 0, needsDownload: 0 };
   const seen = new Set<string>();
   const indexes = new Map<string, Set<string>>();
   // 読み取りが全て成功してから保存する。読めないものを「未保存」と決め付けない。
   const candidates: Array<{ item: JudgedItem; attachment: MailAttachmentMetadata; content: Buffer }> = [];
   for (const mail of [...mails].sort((a, b) => Number(isForwardedMail(a)) - Number(isForwardedMail(b)))) {
-    if (!mail.hasAttachments || excludedMail(mail)) continue;
+    if (excludedMail(mail)) continue;
+    const attachments = mail.hasAttachments ? await deps.attachments(mail) : [];
+    if (isElectronicCompletion(mail) && !attachments.some(a => !a.isInline && /\.pdf$/i.test(a.name))) {
+      if (!lastSuccessfulRunAt || Date.parse(mail.receivedAt) > Date.parse(lastSuccessfulRunAt)) {
+        items.push({ md5: "", kind: "contract", rootFolderId: ROOTS.contract.id, mail, fileName: "", status: "needs-download" });
+        counts.candidateMails++;
+        counts.needsDownload++;
+      }
+      continue;
+    }
     let candidate = false;
-    for (const attachment of await deps.attachments(mail)) {
+    for (const attachment of attachments) {
       const kind = classifyAttachment(mail, attachment);
       if (!kind) continue;
       const content = Buffer.from(await deps.content(mail, attachment), "base64");
@@ -64,7 +73,7 @@ export async function judgeMails(mails: MailItem[], deps: JudgeDeps) {
       counts.previouslySaved++;
 
     }
-    else counts[item.status]++;
+    else if (item.status !== "needs-download") counts[item.status]++;
   }
   return { items, counts };
 }

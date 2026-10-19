@@ -8,6 +8,7 @@ import { ChatworkNotifier, allClearMessage, reportMessage, failureMessage, recov
 import { createSaver } from "./save";
 
 export type DocRepository = Pick<RunRepository, "lastApplied" | "insert"> & {
+  lastSuccessfulApplied(): Promise<RunRow | null>;
   wasSaved(md5: string): Promise<boolean>;
   record: NonNullable<JudgeDeps["record"]>;
 };
@@ -15,6 +16,11 @@ export class SupabaseDocRepository implements DocRepository {
   private readonly db = getSupabaseAdmin();
   async lastApplied(): Promise<RunRow | null> {
     const { data, error } = await this.db.from("system_doc_save_runs").select("ran_at,ok,applied").eq("applied", true).order("ran_at", { ascending: false }).limit(1);
+    if (error) throw error;
+    return data?.[0] ?? null;
+  }
+  async lastSuccessfulApplied(): Promise<RunRow | null> {
+    const { data, error } = await this.db.from("system_doc_save_runs").select("ran_at,ok,applied").eq("applied", true).eq("ok", true).order("ran_at", { ascending: false }).limit(1);
     if (error) throw error;
     return data?.[0] ?? null;
   }
@@ -46,6 +52,7 @@ export async function runDocSaveCheck(options: RunOptions, deps: RunDeps = {}) {
   try {
     repo = deps.repo ?? new SupabaseDocRepository();
     previous = await repo.lastApplied();
+    const lastSuccessful = previous?.ok ? previous : await repo.lastSuccessfulApplied();
     const fetched = await (deps.fetchMails ?? (since => fetchMailboxMessages(since, undefined, true)))(`${addDays(today, -45)}T00:00:00+09:00`);
     if (fetched.failedMailboxes.length) throw new Error(`読めなかったメールボックス：${fetched.failedMailboxes.map(m => `${m.mailbox}（${m.error}）`).join("、")}`);
     let token: string | undefined;
@@ -64,8 +71,8 @@ export async function runDocSaveCheck(options: RunOptions, deps: RunDeps = {}) {
       index: deps.index ?? buildDriveIndex,
       wasSaved: md5 => repo!.wasSaved(md5),
       ...(autosave ? { save: deps.save ?? createSaver(), record: (item, file) => repo!.record(item, file) } : {}),
-    });
-    const message = counts.missing || counts.autosaved ? reportMessage(today, items, counts) : parseDate(today).getUTCDay() === 1 ? allClearMessage(today) : undefined;
+    }, lastSuccessful?.ran_at);
+    const message = counts.missing || counts.autosaved || counts.needsDownload ? reportMessage(today, items, counts) : parseDate(today).getUTCDay() === 1 ? allClearMessage(today) : undefined;
     if (options.apply) {
       if (previous && !previous.ok) await notifier.send(recoveryMessage());
       if (message) await notifier.send(message);

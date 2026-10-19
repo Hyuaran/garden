@@ -7,6 +7,7 @@ import { mail, attachment } from "./test-fixtures";
 function setup(ok: boolean | null = true) {
   const history = new Set<string>();
   const repo: DocRepository = {
+    lastSuccessfulApplied: vi.fn(async () => null),
     lastApplied: vi.fn(async () => ok === null ? null : { ran_at: "2026-10-27T01:00:00Z", applied: true, ok }),
     insert: vi.fn(async () => {}), wasSaved: vi.fn(async md5 => history.has(md5)),
     record: vi.fn(async item => { history.add(item.md5); }),
@@ -18,6 +19,23 @@ const apply = { apply: true, trigger: "cron" as const };
 describe("runDocSaveCheck", () => {
   beforeEach(() => { vi.stubEnv("DOC_SAVE_CHECK_AUTOSAVE", "off"); });
   afterEach(() => { vi.unstubAllEnvs(); });
+  it.each([true, false])("PDFなしの通知は本番成功日時を基準にする（apply=%s）", async applyFlag => {
+    const { deps, repo } = setup(false);
+    repo.lastSuccessfulApplied = vi.fn(async () => ({ ran_at: "2026-10-27T17:00:00Z", applied: true, ok: true }));
+    const notice = { ...mail, sender: "support@cloudsign.jp", subject: "業務委託契約書の合意締結が完了しました", hasAttachments: false };
+    deps.fetchMails = async () => ({ items: [notice], failedMailboxes: [] });
+    const old = await runDocSaveCheck({ ...apply, apply: applyFlag }, deps);
+    expect(old.counts?.needsDownload).toBe(0);
+    expect(old.message).toBeUndefined();
+    deps.fetchMails = async () => ({ items: [{ ...notice, receivedAt: "2026-10-27T18:00:00Z" }], failedMailboxes: [] });
+    const recent = await runDocSaveCheck({ ...apply, apply: applyFlag }, deps);
+    expect(recent.counts?.needsDownload).toBe(1);
+    expect(recent.message).toContain("クラウドサイン");
+    expect(recent.notified).toBe(applyFlag);
+    expect(repo.lastSuccessfulApplied).toHaveBeenCalled();
+    expect(deps.index).not.toHaveBeenCalled();
+    expect(deps.save).not.toHaveBeenCalled();
+  });
   it("保存済みの新しい版があれば古い版を保存・通知せず集計を記録する", async () => {
     vi.stubEnv("DOC_SAVE_CHECK_AUTOSAVE", "on");
     const { deps, repo } = setup();

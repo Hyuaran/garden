@@ -4,7 +4,18 @@ import type { MailItem, MailAttachmentMetadata } from "../mail-payment-check/gra
 export const CONTRACT_WORDS = ["契約書", "覚書", "合意書", "締結", "契約更新", "申込書兼契約書"];
 export const TERMS_WORDS = ["条件表", "条件書", "インセンティブ", "単価表", "報酬表", "手数料表"];
 export const EXCLUDE_WORDS = ["雇用契約", "誓約書", "入社", "退職"];
-export const ELECTRONIC_SENDERS = ["cloudsign.jp", "moneyforward.com", "mfkessai.co.jp", "contract.moneyforward.com"];
+export const ELECTRONIC_SENDERS = [
+  { domain: "moneyforward.com", name: "マネーフォワード クラウド契約" },
+  // MF 決済（請求の知らせ）は電子契約ではないが、締結完了の言葉が無いので今までどおり除かれる
+  { domain: "mfkessai.co.jp", name: "マネーフォワード ケッサイ" },
+  { domain: "cloudsign.jp", name: "クラウドサイン" },
+  { domain: "gmosign.com", name: "GMO サイン" },
+  { domain: "docusign.net", name: "DocuSign" },
+  { domain: "echosign.com", name: "Adobe Sign" },
+  { domain: "adobesign.com", name: "Adobe Sign" },
+  { domain: "ninja-sign.com", name: "freee サイン" },
+  { domain: "freee.co.jp", name: "freee サイン", addressIncludes: "sign" },
+];
 export const EXTENSIONS = ["pdf", "xlsx", "xls", "docx", "doc"];
 // 正本に数値の指定がないため初版は 1 KiB 未満を除外する。
 export const MIN_ATTACHMENT_BYTES = 1024;
@@ -25,13 +36,22 @@ export function direction(mail: MailItem): "in" | "out" | null {
   return mail.toRecipients?.some(address => !isOwn(address)) ? "out" : null;
 }
 export function excludedMail(mail: MailItem): boolean {
-  const d = domain(mail.sender);
   return !direction(mail) || contains(mail.subject, EXCLUDE_WORDS) ||
-    ELECTRONIC_SENDERS.some(sender => d === sender || d.endsWith(`.${sender}`));
+    Boolean(electronicService(mail) && !isElectronicCompletion(mail));
+}
+export function electronicService(mail: MailItem) {
+  const d = domain(mail.sender);
+  return ELECTRONIC_SENDERS.find(s => (d === s.domain || d.endsWith(`.${s.domain}`)) &&
+    (!s.addressIncludes || mail.sender.toLowerCase().includes(s.addressIncludes)));
+}
+export function isElectronicCompletion(mail: MailItem): boolean {
+  return Boolean(electronicService(mail)) && /署名完了|締結が完了|締結完了|合意締結|completed/i.test(mail.subject) &&
+    !/依頼|確認|ご案内/.test(mail.subject);
 }
 export function classifyAttachment(mail: MailItem, attachment: MailAttachmentMetadata): DocKind | null {
   if (excludedMail(mail) || attachment.isInline || attachment.size < MIN_ATTACHMENT_BYTES ||
     !EXTENSIONS.includes(attachment.name.split(".").pop()?.toLowerCase() ?? "") || contains(attachment.name, EXCLUDE_WORDS)) return null;
+  if (isElectronicCompletion(mail)) return /\.pdf$/i.test(attachment.name) ? "contract" : null;
   const text = isForwardedMail(mail) || contains(attachment.name, [...CONTRACT_WORDS, ...TERMS_WORDS]) ? attachment.name : mail.subject;
   if (contains(text, CONTRACT_WORDS)) return "contract";
   if (contains(text, TERMS_WORDS)) return direction(mail) === "out" ? "terms-out" : "terms-in";
