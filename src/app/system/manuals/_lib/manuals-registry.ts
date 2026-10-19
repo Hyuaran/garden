@@ -58,6 +58,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "payroll-notice", "業務管理ツール（給与計算連絡）", "月に一度の給与計算に関する連絡の送り方と、送信履歴の見方。"),
   manual("system", "nhk-visit", "業務管理ツール（NHK訪問業務 報告）", "NHK 訪問業務の当日の報告の入力と送信、集計の受け取り方（Chatwork・LINE）。"),
   manual("system", "innovera", "業務管理ツール（INNOVERA番号の同期）", "INNOVERA の回線一覧を Kintone の番号一覧へ 5 分ごとに写す仕組み。差分の見方と「今すぐ反映」の使い方。"),
+  manual("system", "host-relay", "業務管理ツール（ホスト PC 中継）", "INNOVERA への通信を社内ホスト PC から出す仕組み。ホスト PC の常駐の止め方・動かし方・ログの見方と、止まったときの対処・設置し直す手順。"),
   manual("system", "innovera-calls", "INNOVERA履歴・録音", "INNOVERA の通話履歴の見方、切断後の録音の再生、自分の発信番号の切り替え。権限の段階と Root での紐づけ。"),
   manual("system", "pl-payments", "業務管理ツール（損益の見張り）", "Kintone【損益】センターライズの支払待ちを 5 分ごとに見張り、通知・請求書の Drive リンク入力・振込依頼／振込実行の自動作成・前日通知を行う仕組み。"),
   manual("system", "mail-payment-check", "業務管理ツール（支払漏れチェック）", "各社の経理メール 24 箱に届いた請求書を平日 10:00 に調べ、振込依頼の予約漏れと Drive の保存漏れを Chatwork で知らせる仕組み。知らせの読み方と対処。"),
