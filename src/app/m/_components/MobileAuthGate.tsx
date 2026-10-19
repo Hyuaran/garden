@@ -16,9 +16,9 @@ const centered: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "#7b745f",
+  color: "var(--m-sub)",
   fontSize: 14,
-  background: "#f7f4ec",
+  background: "var(--m-bg)",
 };
 
 export function MobileAuthGate({ children }: { children: React.ReactNode }) {

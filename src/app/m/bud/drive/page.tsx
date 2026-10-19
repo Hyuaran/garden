@@ -1,4 +1,5 @@
 "use client";
+import { MobileIcon } from "../../_components/MobileIcon";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -120,7 +121,7 @@ export default function MyExpenseStatusPage() {
     <main style={budPage}>
       <header style={budHeader}>
         <Link href="/m/bud" style={budBackLink} aria-label="Budへ戻る">
-          ‹
+          <MobileIcon name="left"/>
         </Link>
         <div>
           <h1 style={budTitle}>申請状況</h1>
@@ -137,7 +138,7 @@ export default function MyExpenseStatusPage() {
           <div style={folderGrid}>
             {ROOT_FOLDERS.map((folder) => (
               <button key={folder.key} type="button" style={folderTile} onClick={() => setView(folder.key)}>
-                <span style={folderIcon}>▰</span>
+                <span style={folderIcon}><MobileIcon name="folder"/></span>
                 <span style={folderLabel}>{folder.label}</span>
                 <span style={folderSub}>{folder.sub}</span>
                 <span style={folderCount}>{grouped[folder.key].length}件</span>
@@ -153,13 +154,13 @@ export default function MyExpenseStatusPage() {
             <button type="button" style={crumbBtn} onClick={() => setView("root")}>
               フォルダ
             </button>
-            <span>›</span>
+            <span><MobileIcon name="right"/></span>
             <span>{folderTitle(view)}</span>
           </div>
 
           {view === "returned" && (
             <button type="button" style={subFolderTile} onClick={() => setView("not_reimbursable")}>
-              <span style={folderIcon}>▰</span>
+              <span style={folderIcon}><MobileIcon name="folder"/></span>
               <span style={{ flex: 1 }}>0_精算不可</span>
               <span style={folderCount}>{grouped.not_reimbursable.length}件</span>
             </button>
@@ -265,7 +266,7 @@ const folderTile: React.CSSProperties = {
   color: budMobile.colors.text,
   fontFamily: budMobile.font.serif,
 };
-const folderIcon: React.CSSProperties = { color: budMobile.colors.goldStrong, fontSize: 25, lineHeight: 1 };
+const folderIcon: React.CSSProperties = { color: budMobile.colors.gold, fontSize: 25, lineHeight: 1 };
 const folderLabel: React.CSSProperties = { fontSize: 16, fontWeight: 700, letterSpacing: "0.04em" };
 const folderSub: React.CSSProperties = { color: budMobile.colors.sub, fontSize: 11, lineHeight: 1.4, flex: 1 };
 const folderCount: React.CSSProperties = { color: budMobile.colors.gold, fontFamily: budMobile.font.number, fontSize: 20, lineHeight: 1 };
@@ -290,7 +291,7 @@ const thumbEmpty: React.CSSProperties = {
   width: 60,
   height: 60,
   borderRadius: 10,
-  background: "rgba(179,137,46,0.08)",
+  background: "var(--m-tint)",
   color: budMobile.colors.muted,
   display: "flex",
   alignItems: "center",

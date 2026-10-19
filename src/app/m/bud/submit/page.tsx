@@ -1,4 +1,5 @@
 "use client";
+import { MobileIcon } from "../../_components/MobileIcon";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -331,7 +332,7 @@ export default function MobileExpenseSubmit() {
     return (
       <main style={budPage}>
         <section style={successCard}>
-          <div style={successMark}>✓</div>
+          <div style={successMark}><MobileIcon name="check"/></div>
           <h1 style={{ ...budTitle, textAlign: "center" }}>送信しました</h1>
           <p style={{ ...budLead, textAlign: "center", marginTop: 10 }}>
             {sentCount}件の領収書を経理へ送りました。
@@ -376,12 +377,12 @@ export default function MobileExpenseSubmit() {
             {progressTotal}件中 {progressDone}件を送信
           </div>
           <div style={submittingWait}>このまましばらくお待ちください</div>
-          <div style={doNotCloseNotice}>⚠ この画面を閉じないでください</div>
+          <div style={doNotCloseNotice}><MobileIcon name="warning"/> この画面を閉じないでください</div>
         </div>
       )}
       <header style={budHeader}>
         <button type="button" onClick={handleBack} aria-label="戻る" style={{ ...budBackLink, border: undefined }}>
-          ‹
+          <MobileIcon name="left"/>
         </button>
         <div>
           <h1 style={budTitle}>経費申請</h1>
@@ -468,7 +469,7 @@ export default function MobileExpenseSubmit() {
             {shots.map((shot, index) => (
               <article key={shot.id} style={{ ...shotCard, opacity: shot.failed ? 0.45 : 1 }}>
                 <button type="button" onClick={() => toggle(shot.id)} style={selectButton(shot.selected)}>
-                  {shot.selected ? "✓" : ""}
+                  {shot.selected ? <MobileIcon name="check"/> : null}
                 </button>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -503,7 +504,7 @@ export default function MobileExpenseSubmit() {
 const kindRow: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 };
 const kindChip = (active: boolean): React.CSSProperties => ({
   ...budSecondaryButton,
-  background: active ? budMobile.colors.goldStrong : "#fffdf6",
+  background: active ? budMobile.colors.goldStrong : "var(--m-card)",
   color: active ? "#fff" : budMobile.colors.sub,
   borderColor: active ? budMobile.colors.goldStrong : budMobile.colors.borderStrong,
 });
@@ -511,7 +512,7 @@ const corpSelect: React.CSSProperties = {
   width: "100%",
   border: `1px solid ${budMobile.colors.borderStrong}`,
   borderRadius: 12,
-  background: "#fffdf6",
+  background: "var(--m-card)",
   color: budMobile.colors.text,
   fontFamily: budMobile.font.serif,
   fontSize: 15,
@@ -555,7 +556,7 @@ const submittingOverlay: React.CSSProperties = {
   position: "fixed",
   inset: 0,
   zIndex: 1000,
-  background: `radial-gradient(circle at 50% 12%, rgba(212,165,65,0.16), transparent 40%), linear-gradient(180deg, ${budMobile.colors.page} 0%, ${budMobile.colors.paper} 100%)`,
+  background: `radial-gradient(circle at 50% 12%, var(--m-tint), transparent 40%), linear-gradient(180deg, ${budMobile.colors.page} 0%, ${budMobile.colors.paper} 100%)`,
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -637,7 +638,7 @@ const submitBar: React.CSSProperties = {
   right: 0,
   bottom: "calc(70px + env(safe-area-inset-bottom))",
   padding: "10px 16px",
-  background: "linear-gradient(180deg, rgba(247,244,236,0), rgba(247,244,236,0.96) 30%)",
+  background: "linear-gradient(180deg, transparent, var(--m-bg) 30%)",
   zIndex: 40,
 };
 const submitButton = (disabled: boolean): React.CSSProperties => ({
@@ -657,7 +658,7 @@ const modalOverlay: React.CSSProperties = {
   justifyContent: "center",
   padding: 24,
 };
-const modalCard: React.CSSProperties = { ...budCard, width: "min(360px, 100%)", padding: 18, background: "#fffdf6" };
+const modalCard: React.CSSProperties = { ...budCard, width: "min(360px, 100%)", padding: 18, background: "var(--m-card)" };
 const successCard: React.CSSProperties = { ...budCard, padding: 26, marginTop: 38, textAlign: "center" };
 const successMark: React.CSSProperties = {
   width: 68,
@@ -666,7 +667,7 @@ const successMark: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "rgba(94,125,68,0.14)",
+  background: "var(--m-tint)",
   color: budMobile.colors.green,
   fontSize: 34,
   marginBottom: 18,

@@ -1,4 +1,5 @@
 "use client";
+import { MobileIcon } from "../../_components/MobileIcon";
 
 /**
  * ライブカメラ（iPhone カメラ風 UI・ゆるい縦長ガイド枠）
@@ -217,7 +218,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
     blurRejectCount.current = 0;
     setBlurMessage(
       bypassBlur
-        ? "⚠ ピントが甘いまま記録されました。経理のチェック対象になります。次は必ずピントを合わせて撮影してください。"
+        ? "ピントが甘いまま記録されました。経理のチェック対象になります。次は必ずピントを合わせて撮影してください。"
         : null,
     );
     cropped.toBlob(
@@ -254,7 +255,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
       {/* 上部バー */}
       <div style={topBar}>
         <button type="button" onClick={onClose} style={topBtn} aria-label="閉じる">
-          ✕
+          <MobileIcon name="close"/>
         </button>
         <span style={{ color: "#fff", fontSize: 14, fontVariantNumeric: "tabular-nums" }}>
           {count} / {max}
@@ -313,7 +314,7 @@ export function CameraCapture({ onCapture, onClose, count, max }: Props) {
           </>
         )}
         {flash && <div style={flashStyle} aria-hidden />}
-        {blurMessage && !error && <div style={blurWarningStyle}>{blurMessage}</div>}
+        {blurMessage && !error && <div style={blurWarningStyle}><MobileIcon name="warning"/> {blurMessage}</div>}
         {error && (
           <div style={errorBox}>
             <div style={{ marginBottom: 16 }}>{error}</div>
@@ -436,7 +437,7 @@ const shutter: React.CSSProperties = {
   padding: 0,
 };
 const shutterInner: React.CSSProperties = { width: 60, height: 60, borderRadius: "50%", background: "#fff", display: "block" };
-const doneBtn: React.CSSProperties = { background: "transparent", border: "none", color: "#ffd60a", fontSize: 16, fontWeight: 700 };
+const doneBtn: React.CSSProperties = { background: "transparent", border: "none", color: "var(--m-camera-accent)", fontSize: 16, fontWeight: 700 };
 const thumbImg: React.CSSProperties = {
   width: 48,
   height: 48,
@@ -452,7 +453,7 @@ const thumbCount: React.CSSProperties = {
   height: 18,
   padding: "0 4px",
   borderRadius: 9,
-  background: "#E07A9B",
+  background: "var(--m-button)",
   color: "#fff",
   fontSize: 11,
   fontWeight: 700,
@@ -489,7 +490,7 @@ const fallbackBtn: React.CSSProperties = {
   display: "inline-block",
   padding: "12px 24px",
   borderRadius: 12,
-  background: "#E07A9B",
+  background: "var(--m-button)",
   color: "#fff",
   fontWeight: 700,
 };

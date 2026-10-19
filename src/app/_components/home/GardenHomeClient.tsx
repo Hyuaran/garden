@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { ModuleIcon, RailIcon } from "../ModuleIcon/ModuleIcon";
 import Link from "next/link";
 import {
   useCallback,
@@ -9,7 +10,6 @@ import {
   useState,
   type CSSProperties,
   type MouseEvent,
-  type ReactNode,
 } from "react";
 
 import {
@@ -37,57 +37,44 @@ type HomeModule = {
   color: string;
   description: string;
   href: string;
-  icon: ReactNode;
 };
 
 const MODULE_PRESENTATION: Record<GardenModuleId, Omit<HomeModule, "id" | "en" | "href">> = {
   bloom: {
     jp: "案件KPI", color: "#f472b6", description: "案件の進みぐあいと数字。",
-    icon: <><circle cx="12" cy="10" r="2.4"/><path d="M12 7.6c0-2 1-3.6 2.5-3.6S17 5.6 17 7.6c2 0 3.6 1 3.6 2.5S19 12.6 17 12.6c0 2-1 3.6-2.5 3.6S12 14.6 12 12.6c-2 0-3.6-1-3.6-2.5S9.9 7.6 12 7.6z"/><path d="M12 16v5"/></>,
   },
   fruit: {
     jp: "法人実態情報", color: "#fb923c", description: "取引先の法人がどんな会社かを調べます。",
-    icon: <><path d="M12 8c-3.5 0-6 2.6-6 6s2.5 7 6 7 6-3.4 6-7-2.5-6-6-6z"/><path d="M12 8V4"/><path d="M12 5c2-.5 3.5-2 3.5-2"/></>,
   },
   seed: {
     jp: "新事業", color: "#facc15", description: "これから始める事業の検討。",
-    icon: <><ellipse cx="12" cy="13" rx="5" ry="6.5"/><path d="M12 19c0-4 1.5-7 4-9"/></>,
   },
   forest: {
     jp: "全法人決算", color: "#34d399", description: "7つの法人の決算をまとめて。",
-    icon: <path d="M6 20v-3M6 17l-3-3h6zM6 14L4 11h4zM18 20v-3M18 17l-3-3h6zM18 14l-2-3h4zM12 21v-5M12 16l-3.5-4h7z"/>,
   },
   bud: {
     jp: "経理・収支", color: "#c084fc", description: "経費精算・入金・振込・給与・仕訳。",
-    icon: <><path d="M12 21v-7"/><path d="M12 14c-3 0-5-2.4-5-5.5S9 3 12 3s5 2.4 5 5.5S15 14 12 14z"/></>,
   },
   leaf: {
     jp: "案件アプリ", color: "#4ade80", description: "関西電力など、案件ごとの専用画面。",
-    icon: <><path d="M5 19c0-8 5-13 14-14 1 9-4 15-12 15-1 0-2 0-2-1z"/><path d="M8 18c2-4 5-7 9-9"/></>,
   },
   tree: {
     jp: "架電", color: "#a78bfa", description: "架電の受付から結果の記録まで。",
-    icon: <path d="M12 21v-6M12 15l-5-4h10zM12 11L8 7h8zM12 7l-3-3h6z"/>,
   },
   sprout: {
     jp: "採用", color: "#86efac", description: "求人と応募者のやりとり。",
-    icon: <><path d="M12 21v-8"/><path d="M12 13c0-3 2.2-5 5-5 0 3-2.2 5-5 5z"/><path d="M12 15c0-2.6-2-4.5-4.5-4.5 0 2.6 2 4.5 4.5 4.5z"/></>,
   },
   soil: {
     jp: "データベース", color: "#9aa7b8", description: "Garden全体のデータの土台。",
-    icon: <path d="M3 8h18M3 13h18M3 18h18M7 8v10M17 8v10"/>,
   },
   root: {
     jp: "組織台帳", color: "#5b9dff", description: "従業員名簿と法人の情報。",
-    icon: <path d="M12 3v9M12 12c-1.5 2-4 3-5 6M12 12c1.5 2 4 3 5 6M12 12v9"/>,
   },
   rill: {
     jp: "メッセージ", color: "#38bdf8", description: "メールの確認・送信・取り込み。",
-    icon: <path d="M3 8c3 0 3 2 6 2s3-2 6-2 3 2 6 2M3 13c3 0 3 2 6 2s3-2 6-2 3 2 6 2M3 18c3 0 3 2 6 2"/>,
   },
   calendar: {
     jp: "予定管理", color: "#60a5fa", description: "会議や来客の予定を共有。",
-    icon: <><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></>,
   },
 };
 
@@ -98,7 +85,6 @@ const SYSTEM_MODULE: HomeModule = {
   color: "#0ea5a0",
   description: "マイページや勤怠打刻など。",
   href: "/system",
-  icon: <><path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 14.4v1.4M17.6 15.6v1.2"/></>,
 };
 
 const ALL_MODULES: HomeModule[] = [
@@ -144,7 +130,7 @@ function ModuleCard({ module, favorite, compact, onToggleFavorite }: {
     style={{ "--c": module.color } as CSSProperties}
   >
     <Link className={styles.cardLink} href={module.href}>
-      <span className={styles.cardIcon}><svg viewBox="0 0 24 24" aria-hidden="true">{module.icon}</svg></span>
+      <span className={styles.cardIcon}>{module.id === "system" ? <RailIcon color="#0ea5a0" shade="#054e4b" iconScale={1.85} iconStrokeWidth={1.9}><path d="M4 11h9v6.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M13 13.5l5.5-3.8M18.5 9.7l2.2 1.1M6.5 11V9.2A2.2 2.2 0 0 1 8.7 7h1.6M20 13.8v2.2M17.6 15.2V17"/></RailIcon> : <ModuleIcon id={module.id} />}</span>
       <span className={styles.cardBody}>
         <span className={styles.cardName}><strong>{module.jp}</strong><em>{module.en}</em></span>
         {!compact && <span className={styles.cardDesc}>{module.description}</span>}

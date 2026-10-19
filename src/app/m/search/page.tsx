@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { MobileIcon } from "../_components/MobileIcon";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 
@@ -67,7 +68,7 @@ export default function MobileSearchPage() {
       <div style={list}>
         {results.map((item) => (
           <Link key={item.id} href={item.href} style={row}>
-            <span style={kindIcon}>{item.kind === "module" ? "□" : "¥"}</span>
+            <span style={kindIcon}><MobileIcon name={item.kind === "module" ? "modules" : "receipt"}/></span>
             <span style={{ minWidth: 0 }}>
               <span style={rowTitle}>{item.title}</span>
               <span style={rowSub}>{item.sub}</span>
@@ -79,13 +80,13 @@ export default function MobileSearchPage() {
   );
 }
 
-const page: React.CSSProperties = { minHeight: "100dvh", background: "#f7f4ec", padding: "20px 16px 18px", maxWidth: 560, margin: "0 auto" };
+const page: React.CSSProperties = { minHeight: "100dvh", background: "var(--m-bg)", padding: "20px 16px 18px", maxWidth: 560, margin: "0 auto" };
 const head: React.CSSProperties = { marginBottom: 16 };
-const title: React.CSSProperties = { margin: "0 0 12px", color: "#3d3528", fontSize: 24 };
-const input: React.CSSProperties = { width: "100%", boxSizing: "border-box", border: "1px solid #d8cfba", borderRadius: 14, padding: "13px 14px", background: "#fffdf6", color: "#3d3528", fontSize: 16 };
-const notice: React.CSSProperties = { background: "#fffdf6", border: "1px solid #e2ddcf", borderRadius: 14, padding: 22, textAlign: "center", color: "#6d6356", fontSize: 13 };
+const title: React.CSSProperties = { margin: "0 0 12px", color: "var(--m-ink)", fontSize: 24 };
+const input: React.CSSProperties = { width: "100%", boxSizing: "border-box", border: "1px solid var(--m-line)", borderRadius: 14, padding: "13px 14px", background: "var(--m-card)", color: "var(--m-ink)", fontSize: 16 };
+const notice: React.CSSProperties = { background: "var(--m-card)", border: "1px solid var(--m-line)", borderRadius: 14, padding: 22, textAlign: "center", color: "var(--m-sub)", fontSize: 13 };
 const list: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 9 };
-const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, background: "#fffdf6", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 14, padding: 13, color: "#3d3528", textDecoration: "none" };
-const kindIcon: React.CSSProperties = { width: 34, height: 34, borderRadius: 10, background: "rgba(212,165,65,0.14)", color: "#b3892e", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700 };
+const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, background: "var(--m-card)", border: "1px solid var(--m-line)", borderRadius: 14, padding: 13, color: "var(--m-ink)", textDecoration: "none" };
+const kindIcon: React.CSSProperties = { width: 34, height: 34, borderRadius: 10, background: "var(--m-tint)", color: "var(--m-accent)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700 };
 const rowTitle: React.CSSProperties = { display: "block", fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-const rowSub: React.CSSProperties = { display: "block", marginTop: 3, fontSize: 11, color: "#7b745f", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const rowSub: React.CSSProperties = { display: "block", marginTop: 3, fontSize: 11, color: "var(--m-sub)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };

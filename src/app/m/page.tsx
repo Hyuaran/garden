@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ModuleIcon } from "@/app/_components/ModuleIcon/ModuleIcon";
 
 import { MOBILE_MODULES } from "./_lib/mobile-modules";
 
@@ -8,7 +9,7 @@ export default function MobileHomePage() {
   return (
     <main style={page}>
       <header style={header}>
-        <div style={brand}>Garden</div>
+        <h1 style={brand}>ホーム</h1>
         <div style={sub}>必要な場所へ、すぐに入る</div>
       </header>
 
@@ -19,15 +20,7 @@ export default function MobileHomePage() {
         {MOBILE_MODULES.map((module) => {
           const tile = (
             <div style={tileStyle(module.ready, module.color)}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/themes/module-icons/${module.key}.webp`}
-                alt=""
-                aria-hidden
-                width={46}
-                height={46}
-                style={{ objectFit: "contain", filter: module.ready ? "none" : "grayscale(0.65)" }}
-              />
+              <span style={{ width: 46, height: 46, filter: module.ready ? "none" : "grayscale(0.65)" }}><ModuleIcon id={module.key} /></span>
               <div style={tileText}>
                 <div style={moduleLabel(module.ready)}>{module.label}</div>
                 <div style={description}>
@@ -62,21 +55,21 @@ export default function MobileHomePage() {
 
 const page: React.CSSProperties = {
   minHeight: "100dvh",
-  background: "linear-gradient(180deg, #f7f4ec 0%, #eef1e8 100%)",
+  background: "var(--m-bg)",
   padding: "24px 16px 18px",
   maxWidth: 560,
   margin: "0 auto",
 };
 const header: React.CSSProperties = { textAlign: "center", marginBottom: 22 };
 const brand: React.CSSProperties = {
-  fontFamily: "'EB Garamond', serif",
+  fontFamily: "var(--m-font)",
   fontSize: 23,
-  color: "#3d3528",
+  color: "var(--m-ink)",
   letterSpacing: "0.04em",
 };
-const sub: React.CSSProperties = { fontSize: 12, color: "#7b745f", marginTop: 4 };
-const nhkLink: React.CSSProperties = { display: "block", margin: "0 0 10px", padding: "14px", borderRadius: 12, background: "#fff", border: "2px solid #0ea5a0", color: "#0b7773", textAlign: "center", textDecoration: "none", fontSize: 15, fontWeight: 800 };
-const tossLink: React.CSSProperties = { display: "block", margin: "0 0 14px", padding: "12px 14px", borderRadius: 12, background: "#fff", border: "1px solid #b8c8b8", color: "#35513d", textAlign: "center", textDecoration: "none", fontSize: 13, fontWeight: 700 };
+const sub: React.CSSProperties = { fontSize: 12, color: "var(--m-sub)", marginTop: 4 };
+const nhkLink: React.CSSProperties = { display: "block", margin: "0 0 10px", padding: "14px", borderRadius: 12, background: "var(--m-card)", border: "2px solid #0ea5a0", color: "var(--m-accent)", textAlign: "center", textDecoration: "none", fontSize: 15, fontWeight: 800 };
+const tossLink: React.CSSProperties = { display: "block", margin: "0 0 14px", padding: "12px 14px", borderRadius: 12, background: "var(--m-card)", border: "1px solid var(--m-line)", color: "var(--m-accent)", textAlign: "center", textDecoration: "none", fontSize: 13, fontWeight: 700 };
 const grid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 };
 const link: React.CSSProperties = { textDecoration: "none", display: "block" };
 const tileStyle = (ready: boolean, color: string): React.CSSProperties => ({
@@ -89,8 +82,8 @@ const tileStyle = (ready: boolean, color: string): React.CSSProperties => ({
   gap: 7,
   padding: 9,
   borderRadius: 16,
-  background: "rgba(255,255,255,0.92)",
-  border: ready ? `2px solid ${color}` : "2px solid #d8d4c8",
+  background: "var(--m-card)",
+  border: ready ? `2px solid ${color}` : "2px solid var(--m-line)",
   boxShadow: "0 3px 10px rgba(0,0,0,0.05)",
   opacity: ready ? 1 : 0.55,
 });
@@ -99,6 +92,6 @@ const moduleLabel = (ready: boolean): React.CSSProperties => ({
   fontSize: 13,
   lineHeight: 1.15,
   fontWeight: 700,
-  color: ready ? "#2b2b2b" : "#8a8475",
+  color: ready ? "var(--m-ink)" : "var(--m-sub)",
 });
-const description: React.CSSProperties = { fontSize: 9, lineHeight: 1.35, color: "#6f7864", marginTop: 3 };
+const description: React.CSSProperties = { fontSize: 9, lineHeight: 1.35, color: "var(--m-sub)", marginTop: 3 };

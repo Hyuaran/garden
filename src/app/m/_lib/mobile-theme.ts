@@ -2,22 +2,22 @@ import type { CSSProperties } from "react";
 
 export const budMobile = {
   colors: {
-    page: "#f7f4ec",
-    paper: "#fffdf6",
-    surface: "#faf6ec",
-    gold: "#b3892e",
-    goldStrong: "#d4a541",
-    text: "#3d3528",
-    sub: "#6d6356",
-    muted: "#9a8f7d",
-    border: "rgba(179, 137, 46, 0.18)",
-    borderStrong: "rgba(179, 137, 46, 0.32)",
-    green: "#5e7d44",
-    red: "#9b3a2c",
+    page: "var(--m-bg)",
+    paper: "var(--m-card)",
+    surface: "var(--m-card)",
+    gold: "var(--m-accent)",
+    goldStrong: "var(--m-button)",
+    text: "var(--m-ink)",
+    sub: "var(--m-sub)",
+    muted: "var(--m-sub)",
+    border: "var(--m-line)",
+    borderStrong: "var(--m-line)",
+    green: "var(--m-accent)",
+    red: "var(--m-red)",
   },
   font: {
-    serif: "'Shippori Mincho', 'Yu Mincho', 'Hiragino Mincho ProN', serif",
-    number: "'EB Garamond', 'Cormorant Garamond', serif",
+    serif: "var(--m-font)",
+    number: "var(--m-font)",
   },
 } as const;
 
@@ -26,8 +26,7 @@ export const budPage: CSSProperties = {
   maxWidth: 560,
   margin: "0 auto",
   padding: "20px 16px 18px",
-  background:
-    "radial-gradient(circle at 50% -10%, rgba(212,165,65,0.14), transparent 34%), linear-gradient(180deg, #f7f4ec 0%, #f2eadb 100%)",
+  background: "var(--m-bg)",
   color: budMobile.colors.text,
   fontFamily: budMobile.font.serif,
 };
@@ -48,7 +47,7 @@ export const budBackLink: CSSProperties = {
   justifyContent: "center",
   textDecoration: "none",
   color: budMobile.colors.gold,
-  background: "rgba(255,253,246,0.72)",
+  background: "var(--m-card)",
   border: `1px solid ${budMobile.colors.border}`,
   boxShadow: "0 2px 8px rgba(61,53,40,0.05)",
   fontSize: 20,
@@ -73,9 +72,9 @@ export const budLead: CSSProperties = {
 };
 
 export const budCard: CSSProperties = {
-  background: "rgba(255,253,246,0.92)",
+  background: "var(--m-card)",
   border: `1px solid ${budMobile.colors.border}`,
-  borderRadius: 14,
+  borderRadius: 22,
   boxShadow: "0 6px 18px rgba(61,53,40,0.07)",
 };
 
@@ -98,14 +97,14 @@ export const budPrimaryButton: CSSProperties = {
   fontWeight: 700,
   fontSize: 13,
   letterSpacing: "0.04em",
-  boxShadow: "0 4px 12px rgba(212,165,65,0.28)",
+  boxShadow: "0 4px 12px var(--m-tint)",
 };
 
 export const budSecondaryButton: CSSProperties = {
   border: `1px solid ${budMobile.colors.borderStrong}`,
   borderRadius: 999,
   padding: "10px 14px",
-  background: "#fffdf6",
+  background: "var(--m-card)",
   color: budMobile.colors.gold,
   fontFamily: budMobile.font.serif,
   fontWeight: 700,
@@ -120,5 +119,5 @@ export const budSectionTitle: CSSProperties = {
   fontWeight: 600,
   letterSpacing: "0.06em",
   paddingBottom: 8,
-  borderBottom: "1px dashed rgba(212,165,65,0.38)",
+  borderBottom: "1px dashed var(--m-tint)",
 };

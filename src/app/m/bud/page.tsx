@@ -1,4 +1,5 @@
 "use client";
+import { MobileIcon } from "../_components/MobileIcon";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -60,7 +61,7 @@ export default function MobileBudHome() {
     <main style={budPage}>
       <header style={budHeader}>
         <Link href="/m" style={budBackLink} aria-label="ホームへ戻る">
-          ‹
+          <MobileIcon name="left"/>
         </Link>
         <div>
           <h1 style={budTitle}>Bud</h1>
@@ -81,7 +82,7 @@ export default function MobileBudHome() {
               <span style={menuTitle}>{item.title}</span>
               <span style={menuBody}>{item.body}</span>
             </span>
-            <span style={arrow}>›</span>
+            <span style={arrow}><MobileIcon name="right"/></span>
           </Link>
         ))}
       </div>
@@ -93,8 +94,7 @@ const hero: React.CSSProperties = {
   ...budCard,
   padding: "18px 20px",
   marginBottom: 16,
-  background:
-    "linear-gradient(135deg, rgba(255,253,246,0.96), rgba(250,246,236,0.88)), radial-gradient(circle at 90% 10%, rgba(212,165,65,0.22), transparent 40%)",
+  background: "var(--m-card)",
 };
 const heroMark: React.CSSProperties = {
   color: budMobile.colors.gold,
@@ -121,7 +121,7 @@ const menuMark: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "rgba(212,165,65,0.14)",
+  background: "var(--m-tint)",
   color: budMobile.colors.gold,
   fontFamily: budMobile.font.number,
   fontSize: 16,
@@ -129,4 +129,4 @@ const menuMark: React.CSSProperties = {
 };
 const menuTitle: React.CSSProperties = { display: "block", fontSize: 16, fontWeight: 700, letterSpacing: "0.04em" };
 const menuBody: React.CSSProperties = { display: "block", marginTop: 4, color: budMobile.colors.sub, fontSize: 12, lineHeight: 1.55 };
-const arrow: React.CSSProperties = { color: budMobile.colors.goldStrong, fontSize: 22, flexShrink: 0 };
+const arrow: React.CSSProperties = { color: budMobile.colors.gold, fontSize: 22, flexShrink: 0 };
