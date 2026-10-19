@@ -3453,3 +3453,13 @@ body.home-concept-active {
 /* Shared notice surfaces follow the System navy/teal palette. */
 :root,[data-theme="light"]{--notice-bg:#f4f5f7;--notice-card:#fff;--notice-ink:#10233f;--notice-sub:#5a6b80;--notice-line:#e3eaf3;--notice-link:#0b7e7a}
 .dark,[data-theme="dark"]{--notice-bg:#0c1726;--notice-card:#152438;--notice-ink:#edf4fb;--notice-sub:#b7c5d4;--notice-line:#31435a;--notice-link:#5fd6c9}
+
+/* iPhone は 16px 未満の入力欄を押すと画面を拡大し、そのまま戻らない（2026-10-19 東海林さんのスマホで発生：ログイン後の画面が右にはみ出して見える）。
+   指で操作する端末では入力欄の文字を 16px 以上にして拡大させない。ピンチでの拡大はこれまでどおりできる */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
