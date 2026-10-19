@@ -62,3 +62,12 @@ export async function publishNotice(client: SupabaseClient, id: string) {
     if (count !== 1)
         throw new Error("公開できませんでした");
 }
+
+/** 公開しない＝下書きに戻す（確認しました の記録は残す＝もう一度公開しても確認済みの人には出さない） */
+export async function unpublishNotice(client: SupabaseClient, id: string) {
+    const { count, error } = await client.from("system_notices").update({ status: "draft", published_at: null }, { count: "exact" }).eq("id", id).eq("status", "published");
+    if (error)
+        throw error;
+    if (count !== 1)
+        throw new Error("下書きに戻せませんでした");
+}

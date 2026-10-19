@@ -6,7 +6,7 @@ import { useAuthUnified } from "@/app/_lib/auth-unified";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import {
   acknowledgeNotices, excludedNoticePath, fetchNotices, japanDate,
-  publishNotice, snoozeNotices, visibleNotices, type NoticeSnapshot,
+  publishNotice, unpublishNotice, snoozeNotices, visibleNotices, type NoticeSnapshot,
 } from "@/lib/notices";
 
 function useNoticeState() {
@@ -58,9 +58,14 @@ function useNoticeState() {
     refresh();
   }
 
+  async function unpublish(id: string) {
+    await unpublishNotice(createBrowserClient(), id);
+    refresh();
+  }
+
   const published = visibleNotices(snapshot?.notices ?? [], role);
   const unreadCount = published.filter(n => !snapshot?.readIds.includes(n.id)).length;
-  return { snapshot, published, unreadCount, error, refresh, acknowledge, snooze, publish };
+  return { snapshot, published, unreadCount, error, refresh, acknowledge, snooze, publish, unpublish };
 }
 
 const Context = createContext<ReturnType<typeof useNoticeState> | null>(null);

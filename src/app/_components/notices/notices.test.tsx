@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import type { Notice } from "@/lib/notices";
-const mocks = vi.hoisted(() => ({ path: "/system", role: "toss", state: null as unknown, ack: vi.fn(), snooze: vi.fn(), publish: vi.fn(), replace: vi.fn() }));
+const mocks = vi.hoisted(() => ({ path: "/system", role: "toss", state: null as unknown, ack: vi.fn(), snooze: vi.fn(), publish: vi.fn(), unpublish: vi.fn(), replace: vi.fn() }));
 vi.mock("@/app/_lib/auth-unified", () => ({ useAuthUnified: () => ({ role: mocks.role, userId: "user", loading: false, isAuthenticated: true }) }));
 vi.mock("next/navigation", () => ({ usePathname: () => mocks.path, useRouter: () => ({ replace: mocks.replace }) }));
 vi.mock("./NoticeProvider", () => ({ useNotices: () => mocks.state }));
@@ -9,7 +9,7 @@ import NoticeModal from "./NoticeModal";
 import { NoticeList } from "./NoticeList";
 import { NoticeBell } from "./NoticeBell";
 const rows: Notice[] = Array.from({ length: 7 }, (_, i) => ({ id: String(i), kind: "feature", title: `お知らせ${i}`, body: "説明", before_text: null, after_text: null, manual_href: null, module: i === 0 ? "Bud" : "System", visible_roles: [], status: "published", published_at: `2026-10-${String(19 - i).padStart(2, "0")}T03:00:00Z`, created_at: "2026-10-19T03:00:00Z" }));
-beforeEach(() => { vi.clearAllMocks(); mocks.path = "/system"; mocks.role = "toss"; mocks.state = { snapshot: { employeeId: "e", hireDate: null, readIds: [], snoozedOn: null, notices: rows }, published: rows, unreadCount: 7, acknowledge: mocks.ack, snooze: mocks.snooze, publish: mocks.publish, error: false }; HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) { this.open = true; }); HTMLDialogElement.prototype.close = vi.fn(); });
+beforeEach(() => { vi.clearAllMocks(); mocks.path = "/system"; mocks.role = "toss"; mocks.state = { snapshot: { employeeId: "e", hireDate: null, readIds: [], snoozedOn: null, notices: rows }, published: rows, unreadCount: 7, acknowledge: mocks.ack, snooze: mocks.snooze, publish: mocks.publish, unpublish: mocks.unpublish, error: false }; HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) { this.open = true; }); HTMLDialogElement.prototype.close = vi.fn(); });
 afterEach(cleanup);
 describe("お知らせ画面", () => {
     it("最大5件を表示し、表示分だけ確認してすぐ閉じる", () => { render(<NoticeModal />); expect(screen.getByText("ほか 2 件はお知らせページで")).toBeInTheDocument(); expect(screen.queryByText("お知らせ5")).not.toBeInTheDocument(); fireEvent.click(screen.getByRole("button", { name: "確認しました" })); expect(mocks.ack).toHaveBeenCalledWith(["0", "1", "2", "3", "4"]); expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); });
@@ -18,9 +18,29 @@ describe("お知らせ画面", () => {
     it("除外画面には出さない", () => { mocks.path = "/p/customer"; render(<NoticeModal />); expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); });
     it("ベルに未確認数と一覧へのリンクがある", () => { render(<NoticeBell />); expect(screen.getByRole("link", { name: "お知らせ（未確認 7 件）" })).toHaveAttribute("href", "/system/notices"); });
     it("一覧をモジュールで絞り込める", () => { render(<NoticeList />); fireEvent.change(screen.getByLabelText("モジュール"), { target: { value: "Bud" } }); expect(screen.getByText("お知らせ0")).toBeInTheDocument(); expect(screen.queryByText("お知らせ1")).not.toBeInTheDocument(); expect(screen.queryByText(/下書き/)).not.toBeInTheDocument(); });
-    it("全権管理者だけが下書きをプレビューして公開できる", () => { mocks.role = "super_admin"; const draft = { ...rows[0], id: "draft", status: "draft", title: "下書きの見出し" }; (mocks.state as {
-        snapshot: {
-            notices: unknown[];
-        };
-    }).snapshot.notices = [...rows, draft]; render(<NoticeList />); fireEvent.click(screen.getByRole("button", { name: "モーダルでの見え方" })); expect(screen.getByRole("dialog")).toBeInTheDocument(); fireEvent.click(screen.getAllByRole("button", { name: "閉じる" })[0]); fireEvent.click(screen.getByRole("button", { name: "公開する" })); expect(mocks.publish).toHaveBeenCalledWith("draft"); });
+    it("全権管理者は公開する／しないをラジオで選べ、公開するときだけ確認が出る", async () => {
+        mocks.role = "super_admin";
+        const draft = { ...rows[0], id: "draft", status: "draft", published_at: null, title: "下書きの見出し" };
+        (mocks.state as { snapshot: { notices: unknown[] } }).snapshot.notices = [rows[1], draft];
+        render(<NoticeList />);
+        expect(screen.getByText("公開の管理（下書き 1 件）")).toBeInTheDocument();
+        fireEvent.click(screen.getAllByRole("button", { name: "モーダルでの見え方" })[0]); expect(screen.getByRole("dialog")).toBeInTheDocument();
+        fireEvent.click(screen.getAllByRole("button", { name: "閉じる" })[0]);
+        const publishRadios = screen.getAllByRole("radio", { name: "公開する" });
+        const hideRadios = screen.getAllByRole("radio", { name: "公開しない" });
+        // 下書きが先に並ぶ
+        expect(hideRadios[0]).toBeChecked(); expect(publishRadios[1]).toBeChecked();
+        // 公開する → 確認 → やめる なら公開しない
+        fireEvent.click(publishRadios[0]);
+        expect(screen.getByRole("dialog", { name: "本当に公開しますか？" })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "やめる" }));
+        expect(mocks.publish).not.toHaveBeenCalled();
+        // もう一度 → 公開する
+        fireEvent.click(publishRadios[0]);
+        fireEvent.click(screen.getAllByRole("button", { name: "公開する" }).at(-1)!);
+        expect(mocks.publish).toHaveBeenCalledWith("draft");
+        // 公開済みを 公開しない → 確認なしで下書きに戻す
+        fireEvent.click(hideRadios[1]);
+        expect(mocks.unpublish).toHaveBeenCalledWith("1");
+    });
 });
