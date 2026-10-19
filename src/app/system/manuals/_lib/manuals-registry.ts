@@ -61,6 +61,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "innovera-calls", "INNOVERA履歴・録音", "INNOVERA の通話履歴の見方、切断後の録音の再生、自分の発信番号の切り替え。権限の段階と Root での紐づけ。"),
   manual("system", "pl-payments", "業務管理ツール（損益の見張り）", "Kintone【損益】センターライズの支払待ちを 5 分ごとに見張り、通知・請求書の Drive リンク入力・振込依頼／振込実行の自動作成・前日通知を行う仕組み。"),
   manual("system", "mail-payment-check", "業務管理ツール（支払漏れチェック）", "各社の経理メール 24 箱に届いた請求書を平日 10:00 に調べ、振込依頼の予約漏れと Drive の保存漏れを Chatwork で知らせる仕組み。知らせの読み方と対処。"),
+  manual("system", "doc-save-check", "業務管理ツール（契約書・条件表の保存チェック）", "各社の経理メール 24 箱に届いた・送った契約書と条件表が Google ドライブに保存されているかを平日 10:10 に調べ、保存漏れを Chatwork で知らせる仕組み。知らせの読み方と対処。"),
   manual("system", "transfer-duplicate-check", "業務管理ツール（振込依頼の二重払い防止チェック）", "振込依頼を保存するときに出る二重払い・添付間違いの確認の意味と対処、「実績期間」欄の入れ方。"),
   manual("system", "contracts", "契約書管理", "上位店との契約書の登録と、パートナー配布用ひな形の作り方。"),
   manual("system", "sites", "コーポレートサイト", "グループ各社の会社HPと商品ページの一覧。稼働状態・問い合わせの配線・旧サーバー契約の見方と、一覧の更新のしかた。"),
