@@ -18,29 +18,32 @@ describe("お知らせ画面", () => {
     it("除外画面には出さない", () => { mocks.path = "/p/customer"; render(<NoticeModal />); expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); });
     it("ベルに未確認数と一覧へのリンクがある", () => { render(<NoticeBell />); expect(screen.getByRole("link", { name: "お知らせ（未確認 7 件）" })).toHaveAttribute("href", "/system/notices"); });
     it("一覧をモジュールで絞り込める", () => { render(<NoticeList />); fireEvent.change(screen.getByLabelText("モジュール"), { target: { value: "Bud" } }); expect(screen.getByText("お知らせ0")).toBeInTheDocument(); expect(screen.queryByText("お知らせ1")).not.toBeInTheDocument(); expect(screen.queryByText(/下書き/)).not.toBeInTheDocument(); });
-    it("全権管理者は公開する／しないをラジオで選べ、公開するときだけ確認が出る", async () => {
+    it("全権管理者は 公開する／公開しない／未確認 をラジオで選べ、公開するときだけ確認が出る。未確認だけ表示では公開しないを出さない", async () => {
         mocks.role = "super_admin";
         const draft = { ...rows[0], id: "draft", status: "draft", published_at: null, title: "下書きの見出し" };
-        (mocks.state as { snapshot: { notices: unknown[] } }).snapshot.notices = [rows[1], draft];
+        const hidden = { ...rows[2], id: "hidden", status: "hidden", published_at: null, title: "出さないと決めた見出し" };
+        (mocks.state as { snapshot: { notices: unknown[] } }).snapshot.notices = [rows[1], hidden, draft];
         render(<NoticeList />);
-        expect(screen.getByText("公開の管理（下書き 1 件）")).toBeInTheDocument();
-        fireEvent.click(screen.getAllByRole("button", { name: "モーダルでの見え方" })[0]); expect(screen.getByRole("dialog")).toBeInTheDocument();
-        fireEvent.click(screen.getAllByRole("button", { name: "閉じる" })[0]);
-        const publishRadios = screen.getAllByRole("radio", { name: "公開する" });
-        const hideRadios = screen.getAllByRole("radio", { name: "公開しない" });
-        // 下書きが先に並ぶ
-        expect(hideRadios[0]).toBeChecked(); expect(publishRadios[1]).toBeChecked();
-        // 公開する → 確認 → やめる なら公開しない
-        fireEvent.click(publishRadios[0]);
+        expect(screen.getByText("公開の管理（未確認 1 件・公開しない 1 件）")).toBeInTheDocument();
+        const pub = () => screen.getAllByRole("radio", { name: "公開する" });
+        const hide = () => screen.getAllByRole("radio", { name: "公開しない" });
+        const undecided = () => screen.getAllByRole("radio", { name: "未確認" });
+        // 並び＝未確認 → 公開しない → 公開する
+        expect(undecided()[0]).toBeChecked(); expect(hide()[1]).toBeChecked(); expect(pub()[2]).toBeChecked();
+        // 公開する → 確認 → やめる なら何もしない
+        fireEvent.click(pub()[0]);
         expect(screen.getByRole("dialog", { name: "本当に公開しますか？" })).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "やめる" }));
         expect(mocks.publish).not.toHaveBeenCalled();
-        // もう一度 → 公開する
-        fireEvent.click(publishRadios[0]);
+        fireEvent.click(pub()[0]);
         fireEvent.click(screen.getAllByRole("button", { name: "公開する" }).at(-1)!);
         expect(mocks.publish).toHaveBeenCalledWith("draft");
-        // 公開済みを 公開しない → 確認なしで下書きに戻す
-        fireEvent.click(hideRadios[1]);
-        expect(mocks.unpublish).toHaveBeenCalledWith("1");
+        // 公開しない・未確認 は確認なしで切り替え
+        fireEvent.click(hide()[2]); expect(mocks.unpublish).toHaveBeenLastCalledWith("1", "hidden");
+        fireEvent.click(undecided()[1]); expect(mocks.unpublish).toHaveBeenLastCalledWith("hidden", "draft");
+        // 未確認だけ表示 → 公開しない・公開済みは出ない
+        fireEvent.click(screen.getByLabelText(/未確認だけ表示/));
+        expect(screen.getByText("下書きの見出し")).toBeInTheDocument();
+        expect(screen.queryByText("出さないと決めた見出し")).not.toBeInTheDocument();
     });
 });

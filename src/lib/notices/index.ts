@@ -11,7 +11,7 @@ export type Notice = {
     manual_href: string | null;
     module: string;
     visible_roles: GardenRole[];
-    status: "draft" | "published";
+    status: "draft" | "published" | "hidden";
     published_at: string | null;
     created_at: string;
 };
@@ -56,18 +56,18 @@ export async function snoozeNotices(client: SupabaseClient, employeeId: string, 
         throw error;
 }
 export async function publishNotice(client: SupabaseClient, id: string) {
-    const { count, error } = await client.from("system_notices").update({ status: "published", published_at: new Date().toISOString() }, { count: "exact" }).eq("id", id).eq("status", "draft");
+    const { count, error } = await client.from("system_notices").update({ status: "published", published_at: new Date().toISOString() }, { count: "exact" }).eq("id", id).neq("status", "published");
     if (error)
         throw error;
     if (count !== 1)
         throw new Error("公開できませんでした");
 }
 
-/** 公開しない＝下書きに戻す（確認しました の記録は残す＝もう一度公開しても確認済みの人には出さない） */
-export async function unpublishNotice(client: SupabaseClient, id: string) {
-    const { count, error } = await client.from("system_notices").update({ status: "draft", published_at: null }, { count: "exact" }).eq("id", id).eq("status", "published");
+/** 公開しない（hidden）／未確認（draft）に切り替える。確認しました の記録は残す＝もう一度公開しても確認済みの人には出さない */
+export async function setNoticeUnpublished(client: SupabaseClient, id: string, status: "draft" | "hidden") {
+    const { count, error } = await client.from("system_notices").update({ status, published_at: null }, { count: "exact" }).eq("id", id).neq("status", status);
     if (error)
         throw error;
     if (count !== 1)
-        throw new Error("下書きに戻せませんでした");
+        throw new Error("切り替えられませんでした");
 }

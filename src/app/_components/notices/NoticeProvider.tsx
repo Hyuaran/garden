@@ -6,7 +6,7 @@ import { useAuthUnified } from "@/app/_lib/auth-unified";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import {
   acknowledgeNotices, excludedNoticePath, fetchNotices, japanDate,
-  publishNotice, unpublishNotice, snoozeNotices, visibleNotices, type NoticeSnapshot,
+  publishNotice, setNoticeUnpublished, snoozeNotices, visibleNotices, type NoticeSnapshot,
 } from "@/lib/notices";
 
 function useNoticeState() {
@@ -58,8 +58,8 @@ function useNoticeState() {
     refresh();
   }
 
-  async function unpublish(id: string) {
-    await unpublishNotice(createBrowserClient(), id);
+  async function unpublish(id: string, status: "draft" | "hidden" = "hidden") {
+    await setNoticeUnpublished(createBrowserClient(), id, status);
     refresh();
   }
 
