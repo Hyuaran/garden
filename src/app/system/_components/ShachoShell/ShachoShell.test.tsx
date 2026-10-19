@@ -296,7 +296,7 @@ describe("ShachoShell", () => {
       expect(within(rail).queryByRole("link")).not.toBeInTheDocument();
       expect(rail.querySelector(`.${styles.railTip}`)).toBeNull();
       expect(screen.getByRole("navigation", { name: "Systemメニュー" })).toBeInTheDocument();
-      expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
+      expect(within(screen.getByRole("navigation", { name: "Systemメニュー" })).getAllByRole("link").map((link) => link.textContent)).toEqual([
         "マイページ", "勤怠打刻", "シフト", "前確依頼", "通話・録音",
       ]);
       expect(screen.getByRole("main")).not.toHaveClass(styles.mainFull);

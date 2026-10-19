@@ -246,7 +246,7 @@ export default function GardenHomeClient({ visibleModules, employeeName }: Props
 
     <footer className={styles.foot}>
       <Link href="/p/toss/board">トスアップ一覧</Link>
-      <Link href="/notices">お知らせ</Link>
+      <Link href="/system/notices">お知らせ</Link>
       <Link href="/help">サポート</Link>
       <Link href="/company">会社情報</Link>
       <span>ヒュアラングループ</span>

@@ -100,6 +100,7 @@ const deliveryEntries: PermissionEntry[] = SYSTEM_DELIVERIES.map((delivery) => (
 }));
 
 export const PERMISSION_ENTRIES: PermissionEntry[] = [
+  { key: "notices", label: "お知らせ", group: "System", kind: "画面", allows: () => true, source: "src/app/system/notices/page.tsx" },
   {
     key: "system-sidebar",
     label: "System のサイドバー",

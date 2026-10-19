@@ -3450,3 +3450,6 @@ body.home-concept-active {
 .garden-table-head-center table > tbody:first-child > tr:first-child > th {
   text-align: center !important;
 }
+/* Shared notice surfaces follow the System navy/teal palette. */
+:root,[data-theme="light"]{--notice-bg:#f4f5f7;--notice-card:#fff;--notice-ink:#10233f;--notice-sub:#5a6b80;--notice-line:#e3eaf3;--notice-link:#0b7e7a}
+.dark,[data-theme="dark"]{--notice-bg:#0c1726;--notice-card:#152438;--notice-ink:#edf4fb;--notice-sub:#b7c5d4;--notice-line:#31435a;--notice-link:#5fd6c9}

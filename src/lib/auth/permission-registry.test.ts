@@ -20,6 +20,9 @@ function allowsKey(key: string, role: GardenRole) {
 }
 
 describe("PERMISSION_ENTRIES", () => {
+  it("お知らせは全役職が利用できる", () => {
+    for (const role of GARDEN_ROLE_ORDER) expect(allowsKey("notices", role)).toBe(true);
+  });
   it("代表的な役職ごとの利用可否を既存定義から判定する", () => {
     expect(allows("マニュアル", "toss")).toBe(false);
     expect(allows("マニュアル", "staff")).toBe(true);

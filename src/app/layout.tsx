@@ -14,6 +14,8 @@ import { ShojiStatusProvider } from "../components/shared/ShojiStatusContext";
 import { ThemeProvider } from "./_lib/theme/ThemeProvider";
 import { AuthProvider } from "./_lib/auth-unified";
 import ClarityTracker from "./_components/analytics/ClarityTracker";
+import { NoticeProvider } from "./_components/notices/NoticeProvider";
+import NoticeModal from "./_components/notices/NoticeModal";
 
 export const metadata: Metadata = {
   title: "Garden",
@@ -52,7 +54,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <AuthProvider>
           <ThemeProvider>
             <ClarityTracker />
-            <ShojiStatusProvider>{children}</ShojiStatusProvider>
+            <NoticeProvider>
+              <NoticeModal />
+              <ShojiStatusProvider>{children}</ShojiStatusProvider>
+            </NoticeProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

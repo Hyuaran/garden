@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useNotices } from "@/app/_components/notices/NoticeProvider";
 import { usePathname } from "next/navigation";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
@@ -10,6 +11,7 @@ import { getMobileTodoCounts } from "../_lib/mobile-expenses";
 import { isActiveMobileNav, MOBILE_NAV_ITEMS } from "../_lib/mobile-nav";
 
 export function MobileBottomNav() {
+  const noticeCount = useNotices()?.unreadCount ?? 0;
   const pathname = usePathname();
   const supabase = useMemo(() => createBrowserClient(), []);
   const [todoCount, setTodoCount] = useState(0);
@@ -32,7 +34,7 @@ export function MobileBottomNav() {
     <nav aria-label="モバイル共通ナビ" style={nav}>
       {MOBILE_NAV_ITEMS.map((item) => {
         const active = isActiveMobileNav(pathname, item.href);
-        const badge = item.key === "todo" ? todoCount : 0;
+        const badge = item.key === "todo" ? todoCount : item.key === "news" ? noticeCount : 0;
         return (
           <Link key={item.key} href={item.href} style={navLink(active)} aria-current={active ? "page" : undefined}>
             <span style={iconWrap}>
