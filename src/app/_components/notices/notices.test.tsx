@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import type { Notice } from "@/lib/notices";
 const mocks = vi.hoisted(() => ({ path: "/system", role: "toss", state: null as unknown, ack: vi.fn(), snooze: vi.fn(), publish: vi.fn(), unpublish: vi.fn(), replace: vi.fn() }));
@@ -24,10 +24,13 @@ describe("お知らせ画面", () => {
         const hidden = { ...rows[2], id: "hidden", status: "hidden", published_at: null, title: "出さないと決めた見出し" };
         (mocks.state as { snapshot: { notices: unknown[] } }).snapshot.notices = [rows[1], hidden, draft];
         render(<NoticeList />);
-        expect(screen.getByText("公開の管理（未確認 1 件・公開しない 1 件）")).toBeInTheDocument();
-        const pub = () => screen.getAllByRole("radio", { name: "公開する" });
-        const hide = () => screen.getAllByRole("radio", { name: "公開しない" });
-        const undecided = () => screen.getAllByRole("radio", { name: "未確認" });
+        expect(screen.getByText("公開の管理（未確認 1 件・公開しない 1 件・公開中 1 件）")).toBeInTheDocument();
+        // 上の一覧（公開中）にも切り替えが出る＝公開したあとでも公開しないに戻せる
+        expect(screen.getAllByRole("group", { name: "お知らせ1 の公開" })).toHaveLength(2);
+        const manage = () => within(screen.getByText(/公開の管理/).closest("section")!);
+        const pub = () => manage().getAllByRole("radio", { name: "公開する" });
+        const hide = () => manage().getAllByRole("radio", { name: "公開しない" });
+        const undecided = () => manage().getAllByRole("radio", { name: "未確認" });
         // 並び＝未確認 → 公開しない → 公開する
         expect(undecided()[0]).toBeChecked(); expect(hide()[1]).toBeChecked(); expect(pub()[2]).toBeChecked();
         // 公開する → 確認 → やめる なら何もしない
@@ -43,7 +46,7 @@ describe("お知らせ画面", () => {
         fireEvent.click(undecided()[1]); expect(mocks.unpublish).toHaveBeenLastCalledWith("hidden", "draft");
         // 未確認だけ表示 → 公開しない・公開済みは出ない
         fireEvent.click(screen.getByLabelText(/未確認だけ表示/));
-        expect(screen.getByText("下書きの見出し")).toBeInTheDocument();
-        expect(screen.queryByText("出さないと決めた見出し")).not.toBeInTheDocument();
+        expect(manage().getByText("下書きの見出し")).toBeInTheDocument();
+        expect(manage().queryByText("出さないと決めた見出し")).not.toBeInTheDocument();
     });
 });
