@@ -15,7 +15,8 @@ export function NoticeList() {
     const state = useNotices();
     const [kind, setKind] = useState("");
     const [module, setModule] = useState("");
-    const [unreadOnly, setUnreadOnly] = useState(false);
+    // 既定は「未確認だけ表示」にチェックあり（東海林さん 2026-10-19）
+    const [unreadOnly, setUnreadOnly] = useState(true);
     const [preview, setPreview] = useState<Notice | null>(null);
     // 「公開する」を選んだときだけ出す確認（東海林さん 2026-10-19「公開するを選択した場合のみ本当に公開しますか？」）
     const [confirming, setConfirming] = useState<Notice | null>(null);

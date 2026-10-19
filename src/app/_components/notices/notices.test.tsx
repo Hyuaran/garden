@@ -24,6 +24,9 @@ describe("お知らせ画面", () => {
         const hidden = { ...rows[2], id: "hidden", status: "hidden", published_at: null, title: "出さないと決めた見出し" };
         (mocks.state as { snapshot: { notices: unknown[] } }).snapshot.notices = [rows[1], hidden, draft];
         render(<NoticeList />);
+        // 既定は「未確認だけ表示」にチェックあり → 外してすべてを見る
+        expect(screen.getByLabelText(/未確認だけ表示/)).toBeChecked();
+        fireEvent.click(screen.getByLabelText(/未確認だけ表示/));
         expect(screen.getByText("公開の管理（未確認 1 件・公開しない 1 件・公開中 1 件）")).toBeInTheDocument();
         // 上の一覧（公開中）にも切り替えが出る＝公開したあとでも公開しないに戻せる
         expect(screen.getAllByRole("group", { name: "お知らせ1 の公開" })).toHaveLength(2);
