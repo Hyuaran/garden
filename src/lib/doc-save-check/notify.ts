@@ -22,7 +22,7 @@ export function reportMessage(today: string, items: JudgedItem[], counts: JudgeC
     });
     if (lines.length) sections.push(`■${ROOTS[kind].label}\n${lines.join("\n\n")}`);
   }
-  return `[info][title]契約書・条件表の保存チェック ${today}（未保存 ${counts.missing} 件・自動保存 ${counts.autosaved} 件）[/title]${sections.join("\n\n")}\n\n保存の確認：候補のメール ${counts.candidateMails} 通・添付 ${counts.attachments} 件／保存済み ${counts.saved} 件／自動保存履歴あり ${counts.previouslySaved} 件[/info]`;
+  return `[info][title]契約書・条件表の保存チェック ${today}（未保存 ${counts.missing} 件・自動保存 ${counts.autosaved} 件）[/title]${sections.join("\n\n")}\n\n保存の確認：候補のメール ${counts.candidateMails} 通・添付 ${counts.attachments} 件／保存済み ${counts.saved} 件／自動保存履歴あり ${counts.previouslySaved} 件${counts.superseded ? `\n新しい版が保存済みの古い版 ${counts.superseded} 件` : ""}[/info]`;
 }
 export const allClearMessage = (today: string) => `[info][title]契約書・条件表の保存チェック ${today}[/title]異常なし（未保存はありません）。[/info]`;
 export const failureMessage = (error: string) => `[info][title]契約書・条件表の保存チェックが失敗しています[/title]${clean(error)}\n直るまで同じ知らせは送りません。[/info]`;

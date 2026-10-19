@@ -4,6 +4,14 @@ import type { MailItem, MailAttachment } from "../mail-payment-check/graph-mail"
 export const mail: MailItem = { id: "m", internetMessageId: "im", mailboxes: ["keiri@hyuaran.com"], receivedAt: "2026-10-27T16:00:00Z", sender: "vendor@example.jp", senderName: "A/B", subject: "契約書送付", toRecipients: ["keiri@hyuaran.com"], hasAttachments: true };
 export const attachment: MailAttachment = { id: "a", name: "契約書.pdf", size: MIN_ATTACHMENT_BYTES, contentType: "application/pdf", contentBytes: Buffer.alloc(MIN_ATTACHMENT_BYTES, 1).toString("base64") };
 describe("添付の分類", () => {
+  it.each(["FW:", " Fw： ", "FWD:", "Fwd:", "転送：", "Re: Fw:", " RE： Re: 転送："])("自社の転送 %s は添付名だけで判定", prefix => {
+    const forwarded = { ...mail, sender: "m-ueda@hyuaran.com", subject: `${prefix} 【KOSMO 請求書・契約書】契約書通知メール` };
+    expect(direction(forwarded)).toBe("in");
+    expect(classifyAttachment(forwarded, { ...attachment, name: "株式会社ＫＯＳＭＯ_請求書.pdf" })).toBeNull();
+    expect(classifyAttachment(forwarded, { ...attachment, name: "業務委託契約書.pdf" })).toBe("contract");
+    expect(classifyAttachment(forwarded, { ...attachment, name: "条件表.xlsx" })).toBe("terms-in");
+    expect(classifyAttachment(forwarded, { ...attachment, name: "雇用契約書.pdf" })).toBeNull();
+  });
   it.each(["契約書", "覚書", "合意書", "締結", "契約更新", "申込書兼契約書"])("契約の言葉 %s", word => expect(classifyAttachment({ ...mail, subject: word }, { ...attachment, name: "添付.pdf" })).toBe("contract"));
   it.each(["条件表", "条件書", "インセンティブ", "単価表", "報酬表", "手数料表"])("条件表の言葉 %s", word => expect(classifyAttachment({ ...mail, subject: word }, { ...attachment, name: "添付.xlsx" })).toBe("terms-in"));
   it("送信は外部の宛先が必要・ドメインは完全一致", () => {

@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import type { MailItem, MailAttachmentMetadata } from "../mail-payment-check/graph-mail";
-import { classifyAttachment, excludedMail, ROOTS, type DocKind, MIN_ATTACHMENT_BYTES } from "./classify";
+import { classifyAttachment, excludedMail, isForwardedMail, ROOTS, type DocKind, MIN_ATTACHMENT_BYTES } from "./classify";
 
 export type JudgedItem = {
   md5: string; kind: DocKind; rootFolderId: string; mail: MailItem; fileName: string;
-  status: "saved" | "missing" | "previously-saved" | "autosaved"; driveUrl?: string;
+  status: "saved" | "missing" | "previously-saved" | "autosaved" | "superseded"; driveUrl?: string;
 };
-export type JudgeCounts = { candidateMails: number; attachments: number; saved: number; missing: number; previouslySaved: number; autosaved: number };
+export type JudgeCounts = { candidateMails: number; attachments: number; saved: number; missing: number; previouslySaved: number; autosaved: number; superseded: number };
 export type JudgeDeps = {
   attachments(mail: MailItem): Promise<MailAttachmentMetadata[]>;
   content(mail: MailItem, attachment: MailAttachmentMetadata): Promise<string>;
@@ -17,12 +17,12 @@ export type JudgeDeps = {
 };
 export async function judgeMails(mails: MailItem[], deps: JudgeDeps) {
   const items: JudgedItem[] = [];
-  const counts: JudgeCounts = { candidateMails: 0, attachments: 0, saved: 0, missing: 0, previouslySaved: 0, autosaved: 0 };
+  const counts: JudgeCounts = { candidateMails: 0, attachments: 0, saved: 0, missing: 0, previouslySaved: 0, autosaved: 0, superseded: 0 };
   const seen = new Set<string>();
   const indexes = new Map<string, Set<string>>();
   // 読み取りが全て成功してから保存する。読めないものを「未保存」と決め付けない。
   const candidates: Array<{ item: JudgedItem; attachment: MailAttachmentMetadata; content: Buffer }> = [];
-  for (const mail of mails) {
+  for (const mail of [...mails].sort((a, b) => Number(isForwardedMail(a)) - Number(isForwardedMail(b)))) {
     if (!mail.hasAttachments || excludedMail(mail)) continue;
     let candidate = false;
     for (const attachment of await deps.attachments(mail)) {
@@ -31,10 +31,10 @@ export async function judgeMails(mails: MailItem[], deps: JudgeDeps) {
       const content = Buffer.from(await deps.content(mail, attachment), "base64");
       if (content.length < MIN_ATTACHMENT_BYTES) continue;
       candidate = true;
-      counts.attachments++;
       const md5 = createHash("md5").update(content).digest("hex");
       if (seen.has(md5)) continue;
       seen.add(md5);
+      counts.attachments++;
       const rootFolderId = ROOTS[kind].id;
       if (!indexes.has(rootFolderId)) indexes.set(rootFolderId, await deps.index(rootFolderId));
       const status = indexes.get(rootFolderId)!.has(md5) ? "saved" : await deps.wasSaved(md5) ? "previously-saved" : "missing";
@@ -42,6 +42,15 @@ export async function judgeMails(mails: MailItem[], deps: JudgeDeps) {
       candidates.push({ item, attachment, content });
     }
     if (candidate) counts.candidateMails++;
+  }
+  // 自動保存前の saved だけを照合元にする。
+  const saved = candidates.filter(({ item }) => item.status === "saved").map(({ item }) => item);
+  for (const { item } of candidates) {
+    if (item.status === "missing" && saved.some(newer =>
+      senderDomain(newer.mail.sender) === senderDomain(item.mail.sender) &&
+      normalizedVersionName(newer.fileName) === normalizedVersionName(item.fileName) &&
+      Date.parse(newer.mail.receivedAt) >= Date.parse(item.mail.receivedAt)
+    )) item.status = "superseded";
   }
   for (const { item, attachment, content } of candidates) {
     if (item.status === "missing" && deps.save && deps.record) {
@@ -58,4 +67,10 @@ export async function judgeMails(mails: MailItem[], deps: JudgeDeps) {
     else counts[item.status]++;
   }
   return { items, counts };
+}
+
+const senderDomain = (email: string) => email.trim().toLowerCase().split("@")[1] ?? "";
+export function normalizedVersionName(name: string): string {
+  return name.replace(/[Ａ-Ｚａ-ｚ０-９]/g, char => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .toLowerCase().replace(/[【\[（(\s_]*(?:再々送|再再送|再送)[】\]）)\s_]*/g, "");
 }

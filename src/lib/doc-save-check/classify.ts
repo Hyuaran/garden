@@ -17,8 +17,11 @@ export const ROOTS: Record<DocKind, { id: string; label: string }> = {
 const contains = (text: string, words: string[]) => words.some(word => text.includes(word));
 const domain = (email: string) => email.trim().toLowerCase().split("@")[1] ?? "";
 export const isOwn = (email: string) => [...MAILBOX_DOMAINS, "garden-os.net"].some(d => domain(email) === d);
+export function isForwardedMail(mail: MailItem): boolean {
+  return isOwn(mail.sender) && /^(?:\s*re\s*[:：]\s*)*\s*(?:fw|fwd|転送)\s*[:：]/i.test(mail.subject);
+}
 export function direction(mail: MailItem): "in" | "out" | null {
-  if (!isOwn(mail.sender)) return "in";
+  if (!isOwn(mail.sender) || isForwardedMail(mail)) return "in";
   return mail.toRecipients?.some(address => !isOwn(address)) ? "out" : null;
 }
 export function excludedMail(mail: MailItem): boolean {
@@ -29,7 +32,7 @@ export function excludedMail(mail: MailItem): boolean {
 export function classifyAttachment(mail: MailItem, attachment: MailAttachmentMetadata): DocKind | null {
   if (excludedMail(mail) || attachment.isInline || attachment.size < MIN_ATTACHMENT_BYTES ||
     !EXTENSIONS.includes(attachment.name.split(".").pop()?.toLowerCase() ?? "") || contains(attachment.name, EXCLUDE_WORDS)) return null;
-  const text = contains(attachment.name, [...CONTRACT_WORDS, ...TERMS_WORDS]) ? attachment.name : mail.subject;
+  const text = isForwardedMail(mail) || contains(attachment.name, [...CONTRACT_WORDS, ...TERMS_WORDS]) ? attachment.name : mail.subject;
   if (contains(text, CONTRACT_WORDS)) return "contract";
   if (contains(text, TERMS_WORDS)) return direction(mail) === "out" ? "terms-out" : "terms-in";
   return null;

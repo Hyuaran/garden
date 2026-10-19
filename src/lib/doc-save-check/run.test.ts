@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: vi.fn(() => { throw Error("実DB禁止"); }) }));
 vi.mock("@/app/api/bud/expense-drive/_lib/drive", () => ({ getDriveAccessToken: vi.fn(() => { throw Error("実Drive禁止"); }), findOrCreateSubfolder: vi.fn(), uploadToFolder: vi.fn() }));
 import { runDocSaveCheck, type DocRepository, type RunDeps } from "./run";
@@ -17,6 +18,24 @@ const apply = { apply: true, trigger: "cron" as const };
 describe("runDocSaveCheck", () => {
   beforeEach(() => { vi.stubEnv("DOC_SAVE_CHECK_AUTOSAVE", "off"); });
   afterEach(() => { vi.unstubAllEnvs(); });
+  it("保存済みの新しい版があれば古い版を保存・通知せず集計を記録する", async () => {
+    vi.stubEnv("DOC_SAVE_CHECK_AUTOSAVE", "on");
+    const { deps, repo } = setup();
+    const newer = { ...mail, id: "new", receivedAt: "2026-10-28T00:00:00Z" };
+    const bytes = Buffer.alloc(1024, 2);
+    deps.fetchMails = async () => ({ items: [mail, newer], failedMailboxes: [] });
+    deps.attachments = async m => [{ ...attachment, name: m.id === "new" ? "再送契約書.pdf" : attachment.name }];
+    deps.content = async m => m.id === "new" ? bytes.toString("base64") : attachment.contentBytes;
+    deps.index = async () => new Set([createHash("md5").update(bytes).digest("hex")]);
+    const result = await runDocSaveCheck(apply, deps);
+    expect(result.ok).toBe(true);
+    expect(result.counts).toMatchObject({ superseded: 1, missing: 0, autosaved: 0 });
+    expect(result.message).toBeUndefined();
+    expect(deps.notifier!.send).not.toHaveBeenCalled();
+    expect(deps.save).not.toHaveBeenCalled();
+    expect(repo.record).not.toHaveBeenCalled();
+    expect(repo.insert).toHaveBeenCalledWith(expect.objectContaining({ counts: expect.objectContaining({ superseded: 1 }) }));
+  });
   it("切りでは知らせるだけ", async () => {
     const { deps, repo } = setup();
     const result = await runDocSaveCheck(apply, deps);
