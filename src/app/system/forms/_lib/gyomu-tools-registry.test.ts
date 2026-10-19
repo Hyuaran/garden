@@ -3,7 +3,7 @@ import { getVisibleGyomuTools, GYOMU_TOOLS } from "./gyomu-tools-registry";
 
 describe("gyomu tools registry", () => {
   it("loads tools grouped by purpose", () => {
-    expect(GYOMU_TOOLS.filter((tool) => tool.group === "auto")).toHaveLength(13); // 2026-10-15 支払漏れチェックを追加
+    expect(GYOMU_TOOLS.filter((tool) => tool.group === "auto")).toHaveLength(16); // 2026-10-19 ホスト PC の常駐を 4 つに分けて記載
     expect(GYOMU_TOOLS.filter((tool) => tool.group === "kintone")).toHaveLength(7); // 2026-10-15 振込依頼の二重払い防止チェックを追加
     expect(GYOMU_TOOLS[0]).toMatchObject({
       group: "auto",
