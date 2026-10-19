@@ -36,6 +36,25 @@ function storeViewMode(mode: ViewMode) {
   }
 }
 
+const TAB_KEY = "garden.forms.tab";
+
+function readTab(): string {
+  try {
+    if (typeof window === "undefined") return "input";
+    return window.localStorage.getItem(TAB_KEY) ?? "input";
+  } catch {
+    return "input";
+  }
+}
+
+function storeTab(key: string) {
+  try {
+    window.localStorage.setItem(TAB_KEY, key);
+  } catch {
+    // 保存できない環境でも、現在の画面ではタブを切り替えられるようにする。
+  }
+}
+
 type ToolCard = {
   key: string;
   name: string;
@@ -85,6 +104,7 @@ function groupedTools(forms: SystemFormDefinition[], tools: GyomuTool[]): ToolSe
   return [
     { key: "input", title: "入力する", items: forms.map(formToCard) },
     { key: "auto", title: "自動で動いている", items: byGroup("auto") },
+    { key: "host", title: "ホスト PC で動いている", items: byGroup("host") },
     { key: "kintone", title: "Kintone に入れたしかけ", items: byGroup("kintone") },
   ].filter((section) => section.items.length > 0);
 }
@@ -103,6 +123,14 @@ function ToolDetails({ details }: { details?: string[] }) {
 export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFormDefinition[]; tools?: GyomuTool[] }) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
   const sections = groupedTools(forms, tools);
+  // 項目が増えても見やすいよう、区分はタブで切り替える（東海林さん 2026-10-19）。表示形式（リスト／グリッド）はタブと別にそのまま使える
+  const [tabKey, setTabKey] = useState<string>(() => readTab());
+  const active = sections.find((section) => section.key === tabKey) ?? sections[0];
+
+  function changeTab(key: string) {
+    setTabKey(key);
+    storeTab(key);
+  }
 
   function changeViewMode(mode: ViewMode) {
     setViewMode(mode);
@@ -119,15 +147,16 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
     </header>
 
     <div className={styles.listHeading}>
-      <h2>一覧</h2>
+      <div className={styles.tabs} role="tablist" aria-label="区分">
+        {sections.map((section) => <button key={section.key} type="button" role="tab" id={`tab-${section.key}`} aria-controls={`panel-${section.key}`} aria-selected={section.key === active?.key} className={section.key === active?.key ? styles.tabOn : undefined} onClick={() => changeTab(section.key)}>{section.title}<span className={styles.tabCount}>{section.items.length}</span></button>)}
+      </div>
       <div className={styles.viewToggle} role="group" aria-label="表示形式">
         <button type="button" aria-label="リスト表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon /></button>
         <button type="button" aria-label="グリッド表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon /></button>
       </div>
     </div>
 
-    {sections.map((section) => <section key={section.key} className={styles.toolSection}>
-      <h2>{section.title}</h2>
+    {active && [active].map((section) => <section key={section.key} className={styles.toolSection} role="tabpanel" id={`panel-${section.key}`} aria-labelledby={`tab-${section.key}`}>
       {viewMode === "grid" ? (
         <div className={styles.formGrid} data-testid={`${section.key}-grid-view`} aria-label={section.title}>
           {section.items.map((item) => <article className={styles.formCard} key={item.key}>
