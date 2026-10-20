@@ -5,5 +5,5 @@
   "errorSleepMs": 5000,
   "logDir": "logs",
   "logKeepDays": 7,
-  "agentVersion": "1.0.0"
+  "agentVersion": "1.1.0"
 }

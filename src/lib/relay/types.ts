@@ -4,6 +4,10 @@ export type RelayStatus = "queued" | "running" | "done" | "failed" | "expired";
 
 export type RelayRequest =
   | {
+      method: "GET";
+      path: string;
+    }
+  | {
       ckey: string;
       akey: string;
       params?: Record<string, unknown>;

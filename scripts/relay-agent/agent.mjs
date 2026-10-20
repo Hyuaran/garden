@@ -10,7 +10,7 @@ export const DEFAULT_CONFIG = {
   errorSleepMs: 5000,
   logDir: "logs",
   logKeepDays: 7,
-  agentVersion: "1.0.0",
+  agentVersion: "1.1.0",
 };
 
 const DEFAULT_INNOVERA_TIMEOUT_MS = 25000;
@@ -222,6 +222,54 @@ async function callInnovera(request, { fetch: fetchImpl = fetch, env = process.e
   }
 }
 
+export function buildKotRequest(request, env = process.env) {
+  if (request?.method !== "GET") throw new Error("kot: GET 以外は許可していません");
+  const value = request.path;
+  let decoded;
+  try { decoded = decodeURIComponent(value); } catch { throw new Error("kot: path が不正です"); }
+  if (typeof value !== "string" || !/^\/[a-zA-Z0-9_-]/.test(value) ||
+      /\.\.|[\\:#\s]|\/\//.test(decoded) || /%/.test(decoded)) throw new Error("kot: path が不正です");
+  if (!env.KOT_API_TOKEN) throw new Error("kot: KOT の鍵がホスト PC にありません");
+  return { url: `https://api.kingtime.jp/v1.0${value}`, init: {
+    method: "GET", redirect: "error",
+    headers: { Authorization: `Bearer ${env.KOT_API_TOKEN}`, Accept: "application/json" },
+  } };
+}
+
+async function callKot(request, { fetch: fetchImpl = fetch, env = process.env, timeoutMs = 20000, sleep: pause = sleep } = {}) {
+  const built = buildKotRequest(request, env);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    for (let attempt = 0; attempt <= 3; attempt += 1) {
+      const response = await fetchImpl(built.url, { ...built.init, signal: controller.signal });
+      if (!response.ok) {
+        if ((response.status === 429 || response.status >= 500 && response.status < 600) && attempt < 3) {
+          await response.body?.cancel();
+          await pause(500 * 2 ** attempt);
+          continue;
+        }
+        if (response.status === 403) {
+          const body = await response.json().catch(() => null);
+          if (Array.isArray(body?.errors) && body.errors.some(item => Number(item?.code) === 105)) {
+            throw new Error("kot: 403 RATE_LIMITED");
+          }
+        }
+        throw new Error(`kot: ${response.status} HTTP エラー`);
+      }
+      const text = await response.text();
+      if (Buffer.byteLength(text, "utf8") > 4 * 1024 * 1024) throw new Error("kot: 応答が大きすぎます");
+      let result;
+      try { result = JSON.parse(text); } catch { throw new Error("kot: JSON を解釈できません"); }
+      if (Buffer.byteLength(JSON.stringify(result), "utf8") > 4 * 1024 * 1024) throw new Error("kot: 応答が大きすぎます");
+      return result;
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("kot:")) throw error;
+    throw new Error("kot: ホストへ到達できませんでした");
+  } finally { clearTimeout(timer); }
+}
+
 function shortError(error) {
   if (error instanceof Error && error.message) return error.message.slice(0, 160);
   return String(error).slice(0, 160);
@@ -230,7 +278,11 @@ function shortError(error) {
 export async function handleJob(job, options = {}) {
   if (!job || !job.id) return { id: undefined, ok: false, error: "job id is missing" };
   if (job.kind === "kot") {
-    return { id: job.id, ok: false, error: "kot: 未対応です" };
+    try {
+      return { id: job.id, ok: true, result: await callKot(job.request, options) };
+    } catch (error) {
+      return { id: job.id, ok: false, error: shortError(error) };
+    }
   }
   if (job.kind !== "innovera") {
     return { id: job.id, ok: false, error: `unsupported kind: ${job.kind}` };

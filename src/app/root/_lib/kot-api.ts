@@ -49,6 +49,7 @@ type FetchOptions = {
  * - 429 / 5xx は指数バックオフでリトライ
  */
 async function kotFetch<T>(path: string, opts: FetchOptions = {}): Promise<T> {
+  if (process.env.KOT_RELAY_MODE === "queue") return kotFetchViaRelay<T>(path);
   const token = process.env.KOT_API_TOKEN;
   if (!token) {
     throw new KotApiClientError({
@@ -224,6 +225,33 @@ export class KotApiClientError extends Error {
 // ------------------------------------------------------------
 // 内部ヘルパ
 // ------------------------------------------------------------
+
+async function kotFetchViaRelay<T>(path: string): Promise<T> {
+  try {
+    const { enqueueRelayJob, getRelayHeartbeat, isRelayAlive, waitRelayJob } = await import("@/lib/relay/queue.server");
+    if (!isRelayAlive(await getRelayHeartbeat())) {
+      throw new KotApiClientError({ code: "NETWORK_ERROR", httpStatus: 0, message: "中継が止まっています" });
+    }
+    const job = await enqueueRelayJob("kot", { method: "GET", path }, "kot-api");
+    return await waitRelayJob(job.id, { timeoutMs: 25_000 }) as T;
+  } catch (error) {
+    if (error instanceof KotApiClientError) throw error;
+    const message = safeErrorMessage(error);
+    const status = /^kot: (\d{3})\b/.exec(message);
+    if (status) {
+      const httpStatus = Number(status[1]);
+      throw new KotApiClientError({ code: message === "kot: 403 RATE_LIMITED" ? "RATE_LIMITED" : mapHttpToCode(httpStatus, ""), httpStatus, message: buildMessage(httpStatus, "") });
+    }
+    if (message === "kot: KOT の鍵がホスト PC にありません") {
+      throw new KotApiClientError({ code: "TOKEN_MISSING", httpStatus: 0, message: "KOT の鍵がホスト PC にありません" });
+    }
+    if (message === "kot: JSON を解釈できません") {
+      throw new KotApiClientError({ code: "PARSE_ERROR", httpStatus: 200, message: "KoT API のレスポンスを JSON として解釈できませんでした" });
+    }
+    throw new KotApiClientError({ code: "NETWORK_ERROR", httpStatus: 0,
+      message: message === "kot: 応答が大きすぎます" ? "kot: 応答が大きすぎます" : "KoT API ホストへ到達できませんでした" });
+  }
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
