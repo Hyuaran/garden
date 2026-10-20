@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -692,7 +693,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       </div>
     </section>}
 
-    <nav className={styles.tabs} aria-label="表示切替">
+    <SystemTabs role="navigation" aria-label="表示切替">
       {canWrite && <>
         <button type="button" aria-current={activeTab === "kanri" ? "page" : undefined} onClick={() => setActiveTab("kanri")}>管理表</button>
         <button type="button" aria-current={activeTab === "jisseki" ? "page" : undefined} onClick={() => setActiveTab("jisseki")}>実績管理</button>
@@ -702,7 +703,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       </>}
       <button type="button" aria-current={activeTab === "payroll" ? "page" : undefined} onClick={() => setActiveTab("payroll")}>給与試算</button>
       {canWrite && <button type="button" aria-current={activeTab === "settings" ? "page" : undefined} onClick={() => setActiveTab("settings")}>設定</button>}
-    </nav>
+    </SystemTabs>
 
     {activeTab === "kanri" && <>
     <section className={styles.panel}>

@@ -45,13 +45,13 @@ describe("contracts drive browser", () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).includes("browse") ? { ok: true, entries } : { ok: true, companies: [], rows: [] }), { status: 200 })));
     render(<ContractsPage />);
     expect(await screen.findByTestId("contract-list-view")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "リスト表示にする" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "カード表示にする" })).toHaveAttribute("title", "カード表示にする");
     expect(screen.getByText("250715_金銭消費貸借契約書(ARATA⇔ASH).pdf")).toHaveClass(styles.listName);
     expect(screen.getByRole("link", { name: "開く" })).toHaveAttribute("href", "https://drive.example/pdf");
 
-    fireEvent.click(screen.getByRole("button", { name: "グリッド表示にする" }));
+    fireEvent.click(screen.getByRole("button", { name: "カード表示にする" }));
     expect(screen.getByTestId("contract-grid-view")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "グリッド表示にする" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "一覧表示にする" })).toHaveAttribute("title", "一覧表示にする");
     expect(localStorage.getItem("garden.contracts.viewMode")).toBe("grid");
   });
 
@@ -75,7 +75,7 @@ describe("contracts drive browser", () => {
     expect(screen.getByText("ひな形.docx").parentElement).not.toHaveTextContent("登録する");
     expect(screen.getByRole("button", { name: "上位店フォルダ" })).not.toHaveTextContent("登録する");
 
-    fireEvent.click(screen.getByRole("button", { name: "グリッド表示にする" }));
+    fireEvent.click(screen.getByRole("button", { name: "カード表示にする" }));
     const grid = screen.getByTestId("contract-grid-view");
     expect(within(grid).getByRole("button", { name: "登録する" })).toBeEnabled();
     expect(within(grid).getByRole("button", { name: "登録済み" })).toBeDisabled();
@@ -112,10 +112,10 @@ describe("contracts drive browser", () => {
     localStorage.setItem("garden.contracts.viewMode", "grid");
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).includes("browse") ? { ok: true, entries: [] } : { ok: true, companies: [], rows: [] }), { status: 200 })));
     render(<ContractsPage />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "グリッド表示にする" })).toHaveAttribute("aria-pressed", "true"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "一覧表示にする" })).toHaveAttribute("title", "一覧表示にする"));
     expect(screen.getByTestId("contract-grid-view")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "リスト表示にする" }));
+    fireEvent.click(screen.getByRole("button", { name: "一覧表示にする" }));
     expect(screen.getByTestId("contract-list-view")).toBeInTheDocument();
     expect(localStorage.getItem("garden.contracts.viewMode")).toBe("list");
   });

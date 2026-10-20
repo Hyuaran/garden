@@ -6,8 +6,8 @@ export type SystemBreadcrumbItem = {
   href?: string;
 };
 
-export default function SystemBreadcrumb({ items = [] }: { items?: SystemBreadcrumbItem[] }) {
-  const crumbs: SystemBreadcrumbItem[] = [{ label: "System", href: items.length ? "/system" : undefined }, ...items];
+export default function SystemBreadcrumb({ items = [], root = { label: "System", href: "/system" } }: { items?: SystemBreadcrumbItem[]; root?: SystemBreadcrumbItem }) {
+  const crumbs: SystemBreadcrumbItem[] = [{ ...root, href: items.length ? root.href : undefined }, ...items];
 
   return (
     <nav className={styles.breadcrumb} aria-label="現在地">

@@ -1,4 +1,6 @@
 "use client";
+import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -81,7 +83,8 @@ function formToCard(form: SystemFormDefinition): ToolCard {
     key: `form-${form.slug}`,
     name: form.name,
     description: form.description,
-    meta: form.roleLabel,
+    meta: "",
+    target: form.roleLabel,
     href: form.href,
   };
 }
@@ -142,18 +145,14 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
       <div>
         <SystemBreadcrumb items={[{ label: "業務管理ツール" }]} />
         <h1>業務管理ツール</h1>
-        <p className={styles.lead}>連絡や申請の入力、自動で動いている仕組み、Kintone に入れたしかけを 1 か所にまとめています。</p>
       </div>
     </header>
 
     <div className={styles.listHeading}>
-      <div className={styles.tabs} role="tablist" aria-label="区分">
+      <SystemTabs aria-label="区分">
         {sections.map((section) => <button key={section.key} type="button" role="tab" id={`tab-${section.key}`} aria-controls={`panel-${section.key}`} aria-selected={section.key === active?.key} className={section.key === active?.key ? styles.tabOn : undefined} onClick={() => changeTab(section.key)}>{section.title}<span className={styles.tabCount}>{section.items.length}</span></button>)}
-      </div>
-      <div className={styles.viewToggle} role="group" aria-label="表示形式">
-        <button type="button" aria-label="リスト表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon /></button>
-        <button type="button" aria-label="グリッド表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon /></button>
-      </div>
+      </SystemTabs>
+      <HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
     </div>
 
     {active && [active].map((section) => <section key={section.key} className={styles.toolSection} role="tabpanel" id={`panel-${section.key}`} aria-labelledby={`tab-${section.key}`}>
@@ -163,7 +162,7 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
             <div className={styles.cardHeading}><span className={styles.iconPlate}><MenuIcon icon="document" /></span><h3>{item.name}</h3></div>
             <p>{item.description}</p>
             <ToolDetails details={item.details} />
-            <div className={styles.cardFooter}><span>{item.meta}</span><OpenLink item={item} /></div>
+            <div className={styles.cardFooter}><span>{[item.meta, item.target].filter(Boolean).join(" ／ ")}</span><OpenLink item={item} /></div>
           </article>)}
         </div>
       ) : (
@@ -174,7 +173,7 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
               {section.items.map((item) => <tr key={item.key}>
                 <td>{item.name}</td>
                 <td>{item.description}<ToolDetails details={item.details} /></td>
-                <td>{item.meta}</td>
+                <td>{item.meta || "—"}</td>
                 <td>{item.target ?? ""}</td>
                 <td><OpenLink item={item} /></td>
               </tr>)}

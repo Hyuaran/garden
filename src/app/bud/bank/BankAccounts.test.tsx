@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import BankAccounts from "./BankAccounts";
+import BankAccounts, { formatLoadedAt } from "./BankAccounts";
 import type { MfAccount } from "@/lib/bud/mf/types";
 
 const account = (id: string, overrides: Partial<MfAccount> = {}): MfAccount => ({ mf_account_id:id,name:`銀行${id}｜${id === "1" ? "HR" : "CR"}`,kind:"bank",sub_account_label:"支店",sort_order:Number(id),hidden:false,visible_employee_ids:["e1"],book_sub_account_name:"普通",balance_mode:"auto",balance_note:"",balance:100,unjournalized_count:2,fetched_at:"2026-10-20T00:30:12Z", ...overrides });
@@ -8,11 +8,15 @@ const data = (admin = true) => ({ admin,axes:[{axis:"corp",key:"HR",sort_order:0
 const fetcher = vi.fn();
 beforeEach(() => { vi.stubGlobal("fetch",fetcher); fetcher.mockReset(); fetcher.mockImplementation(async (_url:string,init?:RequestInit) => new Response(JSON.stringify(init?.method ? {ok:true} : data()))); });
 describe("bank accounts screen", () => {
+  it("formats the loaded time in Japan", () => { expect(formatLoadedAt("2026-10-20T10:30:00Z")).toBe("2026/10/20(火) 19:30"); });
   it("shows only automatic bank balances in the total and card history without balances", async () => {
     render(<BankAccounts />);
-    await screen.findByText("最終読み込み 2026-10-20 09:30:12");
+    await screen.findByText("MF最終更新：2026/10/20(火) 09:30");
     expect(screen.getAllByText("100 円")).toHaveLength(5);
     expect(screen.getByText("MFで確認")).toBeInTheDocument();
+    expect(screen.getByText("連携を確認中")).toBeInTheDocument();
+    expect(screen.getByRole("link", {name:"Bud"})).toHaveAttribute("href", "/bud/dashboard");
+    expect(screen.getByRole("heading", {level:1,name:"口座残高・カード利用"})).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
     expect(screen.getByText("備品")).toBeInTheDocument();
@@ -20,6 +24,20 @@ describe("bank accounts screen", () => {
     expect(screen.queryByText("999,999 円")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("期間"),{target:{value:"last"}});
     await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url.includes("period=last"))).toBe(true));
+  });
+  it("shows the refresh icon as busy until the reload completes", async () => {
+    let finish!: (response: Response) => void;
+    fetcher.mockImplementation(async (_url:string, init?:RequestInit) => init?.method === "POST" ? new Promise<Response>(resolve => { finish = resolve; }) : new Response(JSON.stringify(data())));
+    render(<BankAccounts />);
+    await screen.findByText("銀行1");
+    const refresh = screen.getByRole("button", {name:"読み直す"});
+    fireEvent.click(refresh);
+    expect(refresh).toHaveAttribute("aria-busy", "true");
+    expect(refresh).toBeDisabled();
+    expect(fetcher).toHaveBeenCalledWith("/api/bud/mf-accounts/refresh", expect.objectContaining({method:"POST"}));
+    finish(new Response(JSON.stringify({ok:true})));
+    await waitFor(() => expect(refresh).toHaveAttribute("aria-busy", "false"));
+    expect(refresh).not.toBeDisabled();
   });
   it("changes order immediately, then saves all account IDs in the background", async () => {
     render(<BankAccounts />);
@@ -49,7 +67,7 @@ describe("bank accounts screen", () => {
     expect(screen.queryByRole("button",{name:"並び替え"})).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button",{name:"読み直す"}));
     expect(await screen.findByRole("alert")).toHaveTextContent("MF に接続できませんでした");
-    expect(screen.getByText("最終読み込み 2026-10-20 09:30:12")).toBeInTheDocument();
+    expect(screen.getByText("MF最終更新：2026/10/20(火) 09:30")).toBeInTheDocument();
     expect(screen.getAllByText("100 円")).toHaveLength(5);
   });
 });

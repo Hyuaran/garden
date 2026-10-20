@@ -7,7 +7,7 @@ export function orderedAxis(keys: string[], axis: AxisOrder["axis"], order: Axis
 export function summarize(accounts: MfAccount[], snapshots: BalanceSnapshot[]) {
  const automatic = accounts.filter(a => a.balance_mode === "auto" && a.balance !== null);
  const baseline = new Map(snapshots.map(s => [s.mf_account_id, Number(s.balance)]));
- return { count: accounts.length, manual: accounts.filter(a => a.balance_mode === "manual_check").length,
+ return { notes: [...new Set(accounts.filter(a => a.balance_mode === "manual_check" && a.balance_note.trim()).map(a => a.balance_note.trim()))], count: accounts.length, manual: accounts.filter(a => a.balance_mode === "manual_check").length,
  balance: automatic.length ? automatic.reduce((s,a) => s + Number(a.balance), 0) : null,
  delta: automatic.length && automatic.every(a => baseline.has(a.mf_account_id)) ? automatic.reduce((s,a) => s + Number(a.balance) - baseline.get(a.mf_account_id)!, 0) : null,
  pending: accounts.reduce((s,a) => s + a.unjournalized_count, 0) };

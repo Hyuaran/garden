@@ -10,6 +10,7 @@ function Delta({ value }: { value: number | null }) {
 function Amount({ value, total = false }: { value: ReturnType<typeof summarize>; total?: boolean }) {
  return <><strong>{value.balance === null ? value.manual && !total ? "MFで確認" : "—" : value.balance.toLocaleString("ja-JP") + " 円"}</strong><Delta value={value.delta} />
  {value.manual > 0 && (value.balance !== null || total) && <small>MFで確認 {value.manual} 口座を除く</small>}
+ {!total && value.notes.map(note => <small className={styles.balanceNote} key={note}>{note}</small>)}
  {!total && value.count > 1 && <small>{value.count} 口座</small>}
  {!total && value.count > 0 && <small>未仕訳 {value.pending} 件</small>}</>;
 }

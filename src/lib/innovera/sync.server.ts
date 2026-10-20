@@ -256,6 +256,12 @@ async function insertLog(result: InnoveraSyncResult, actorEmployeeId: string | n
   });
 }
 
+export async function loadInnoveraSyncState(): Promise<{ last_checked_at: string; last_ok: boolean } | null> {
+  const { data, error } = await getSupabaseAdmin().from("system_innovera_sync_state").select("last_checked_at,last_ok").eq("id", 1).maybeSingle();
+  if (error) return null;
+  return data;
+}
+
 export async function loadInnoveraSyncLogs(limit = 20): Promise<InnoveraSyncLogRow[]> {
   const { data, error } = await getSupabaseAdmin()
     .from("system_innovera_sync_log")
@@ -390,6 +396,11 @@ export async function runInnoveraSync(options: RunInnoveraSyncOptions): Promise<
     details,
   };
 
+  const checkedAt = options.now?.toISOString() ?? new Date().toISOString();
+  const { error: stateError } = await getSupabaseAdmin().from("system_innovera_sync_state")
+    .upsert({ id: 1, last_checked_at: checkedAt, last_ok: result.ok })
+    .then(({ error }) => ({ error }), () => ({ error: true }));
+  if (!stateError) result.lastCheckedAt = checkedAt;
   result = await notifyIfNeeded(result, now, previous);
   result = await notifyRecoveryIfNeeded(result, previous, now, streakStart);
   await insertLog(result, options.actorEmployeeId ?? null).catch(() => undefined);

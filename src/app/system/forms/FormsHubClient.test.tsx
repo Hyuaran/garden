@@ -22,13 +22,18 @@ describe("FormsHubClient", () => {
     expect(screen.getByRole("tab", { name: /^ホスト PC で動いている/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^Kintone に入れたしかけ/ })).toBeInTheDocument();
     expect(screen.getByTestId("input-list-view")).toBeInTheDocument();
+    const row = screen.getByRole("cell", { name: "給与計算連絡" }).closest("tr")!;
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[2]).toHaveTextContent("—");
+    expect(cells[3]).toHaveTextContent("社員以上");
+    expect(screen.getByRole("button", { name: "カード表示にする" }).querySelector("svg rect")).not.toBeNull();
     expect(screen.getByRole("cell", { name: "給与計算連絡" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "出勤表・シフトLINE連絡テキスト生成" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "NHK訪問業務 報告" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "開く →" })[0]).toHaveAttribute("href", "/system/forms/payroll-notice");
     expect(screen.getAllByRole("link", { name: "開く →" })[1]).toHaveAttribute("href", "/system/forms/shukkin");
     expect(screen.getAllByRole("link", { name: "開く →" })[2]).toHaveAttribute("href", "/system/forms/nhk-visit");
-    expect(screen.getByRole("button", { name: "リスト表示にする" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "カード表示にする" })).toHaveAttribute("title", "カード表示にする");
 
     fireEvent.click(screen.getByRole("tab", { name: /^自動で動いている/ }));
     expect(screen.getByRole("cell", { name: "INNOVERA番号の同期" })).toBeInTheDocument();
@@ -44,7 +49,7 @@ describe("FormsHubClient", () => {
   it("switches to card view and saves the setting (the view toggle works with tabs)", () => {
     render(<FormsHubClient forms={SYSTEM_FORMS} tools={getVisibleGyomuTools("staff")} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "グリッド表示にする" }));
+    fireEvent.click(screen.getByRole("button", { name: "カード表示にする" }));
 
     expect(screen.getByTestId("input-grid-view")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "給与計算連絡" })).toBeInTheDocument();
@@ -65,7 +70,7 @@ describe("FormsHubClient", () => {
 
     expect(screen.getByRole("tab", { name: /^Kintone に入れたしかけ/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("kintone-grid-view")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "リスト表示にする" }));
+    fireEvent.click(screen.getByRole("button", { name: "一覧表示にする" }));
     expect(screen.getByTestId("kintone-list-view")).toBeInTheDocument();
     expect(localStorage.getItem("garden.forms.viewMode")).toBe("list");
   });

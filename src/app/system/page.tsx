@@ -23,7 +23,6 @@ export default async function SystemHomePage() {
   return <>
     <header className={styles.header}><SystemBreadcrumb /><h1>社内システム</h1></header>
     {showOnboarding && <section className={styles.onboardingNotice} aria-label="入社手続きのご案内"><p>入社手続きの入力がまだ終わっていません</p><Link href="/system/onboarding">入力する</Link></section>}
-    <p className={styles.lead}>日々の事務作業をまとめた入口です。使いたいものを選んでください。</p>
     <div className={styles.sectionTitle}>使えるもの</div>
     <div className={styles.grid}>{visible.filter((item) => item.href && item.href !== "/system").map((item) => <Link className={styles.card} href={item.href!} key={item.label}><div className={styles.cardHeader}><span className={styles.badge}><MenuIcon icon={item.icon}/></span><h2>{item.label}</h2></div><p>{item.description}</p><div className={styles.meta}>開く →</div></Link>)}</div>
     <div className={styles.sectionTitle}>これから増えるもの</div>

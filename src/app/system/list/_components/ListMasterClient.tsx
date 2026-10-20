@@ -1,4 +1,7 @@
 "use client";
+import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
+import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -663,27 +666,10 @@ export function formatJstWithWeekday(value: string): string {
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
   const date = new Date(dateOnly ? `${value}T00:00:00+09:00` : value);
   if (Number.isNaN(date.getTime())) return "";
-  const parts = new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
-  const stamp = `${part("year")}/${part("month")}/${part("day")}(${part("weekday")})`;
-  return dateOnly ? stamp : `${stamp} ${part("hour")}:${part("minute")}`;
+  const stamp = formatSyncStamp(date);
+  return dateOnly ? stamp.split(" ")[0] : stamp;
 }
 
-/** 見出し下の 1 行：コール履歴を最後に反映した日時（東海林さん 2026-09-09 の表記） */
-function formatCallSyncStatus(state: CallSyncState | null): string {
-  if (!state?.syncedThrough) return "コール履歴最終更新：2026/07/31(金)（FileMaker の書き出し）";
-  const stamp = state.lastRunAt ? formatJstWithWeekday(state.lastRunAt) : formatJstWithWeekday(state.syncedThrough);
-  return `コール履歴最終更新：${stamp}`;
-}
 
 async function readJson<T>(response: Response): Promise<T> {
   const data = (await response.json()) as T & { error?: string };
@@ -901,10 +887,6 @@ function canResumeUpload(item: UploadHistory): boolean {
   return Boolean(item.result && (item.status === "failed" || item.result.remaining > 0));
 }
 
-function formatOrderSyncStatus(state: OrderSyncState | null): string {
-  if (!state?.lastRunAt) return "受注履歴最終更新：未反映";
-  return `受注履歴最終更新：${formatJstWithWeekday(state.lastRunAt)}`;
-}
 
 function optionLabel(field: SoilListOptionFieldKey, value: string, options: Partial<SoilListOptionsPayload>): string {
   if (value === EMPTY_OPTION_VALUE || value === "") return field === "appointmentBlocked" ? "なし" : "（空欄）";
@@ -2469,39 +2451,21 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
       <div className={styles.header}>
         <SystemBreadcrumb items={[{ label: "リストマスタ" }]} />
         <h1>リストマスタ</h1>
-        <div className={styles.callSyncStatus}>
-          <span>{formatCallSyncStatus(callSyncState)}</span>
-          {canSyncCalls && (
-            <button
-              type="button"
-              className={`${styles.syncIconButton} ${callSyncBusy ? styles.syncIconBusy : ""}`}
-              onClick={handleCallSync}
-              disabled={callSyncBusy}
-              aria-label="コール履歴を反映する"
-              title={callSyncBusy ? "反映しています…" : "コール履歴を反映する（最新の通話記録を取り込みます）"}
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-                <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                <path d="M19.8 4.6v4.2h-4.2z" fill="currentColor" />
-              </svg>
-            </button>
-          )}
-          {callSyncMessage && (
-            <span className={callSyncMessage.error ? styles.callSyncError : styles.callSyncDone} role="status">
-              {callSyncMessage.text}
-            </span>
-          )}
-          <span>{formatOrderSyncStatus(orderSyncState)}</span>
-        </div>
+        <UpdatedStampRow>
+          <UpdatedStamp label="コール履歴" date={callSyncState?.syncedThrough ? callSyncState.lastRunAt || callSyncState.syncedThrough : null} emptyText="2026/07/31(金)（FileMaker の書き出し）" busy={callSyncBusy} onRefresh={canSyncCalls ? handleCallSync : undefined} refreshLabel="コール履歴を反映する" title={callSyncBusy ? "反映しています…" : "コール履歴を反映する（最新の通話記録を取り込みます）"}>
+          {callSyncMessage && <span className={callSyncMessage.error ? styles.callSyncError : styles.callSyncDone} role="status">{callSyncMessage.text}</span>}
+          <UpdatedStamp hideRefresh label="受注履歴" date={orderSyncState?.lastRunAt} emptyText="未反映" />
+          </UpdatedStamp>
+        </UpdatedStampRow>
       </div>
 
-      <div className={styles.tabs} role="tablist" aria-label="リストマスタの表示">
+      <SystemTabs aria-label="リストマスタの表示">
         {TAB_LABELS.map((tab) => (
           <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key} onClick={() => changeTab(tab.key)}>
             {tab.label}
           </button>
         ))}
-      </div>
+      </SystemTabs>
 
       <ListProcessingOverlay open={searchBusy} mode="search" />
       <ListProcessingOverlay open={exportBusy !== null} mode="export" count={exportBusy?.count ?? 0} format={exportBusy?.format ?? ""} />

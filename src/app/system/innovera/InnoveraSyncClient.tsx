@@ -1,4 +1,6 @@
 "use client";
+import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
+
 
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -8,6 +10,7 @@ import styles from "./innovera.module.css";
 
 type Props = {
   initialLogs: InnoveraSyncLogRow[];
+  initialCheckedAt?: string;
 };
 
 function countsText(counts: { added: number; renamed: number; retired: number; needsReview: number; failed?: number }) {
@@ -70,7 +73,8 @@ function InnoveraProcessingOverlay({ open }: { open: boolean }) {
   );
 }
 
-export default function InnoveraSyncClient({ initialLogs }: Props) {
+export default function InnoveraSyncClient({ initialLogs, initialCheckedAt }: Props) {
+  const [checkedAt, setCheckedAt] = useState(initialCheckedAt);
   const [logs, setLogs] = useState(initialLogs);
   const [preview, setPreview] = useState<InnoveraSyncResult | null>(null);
   const [lastResult, setLastResult] = useState<InnoveraSyncResult | null>(null);
@@ -101,6 +105,7 @@ export default function InnoveraSyncClient({ initialLogs }: Props) {
     try {
       const response = await fetch("/api/system/innovera-sync", { method });
       const body = await response.json() as InnoveraSyncResult;
+      if (body.lastCheckedAt) setCheckedAt(body.lastCheckedAt);
       if (Array.isArray(body.latestLogs)) setLogs(body.latestLogs);
       if (!body.ok) {
         setError(errorText(body.error));
@@ -126,12 +131,12 @@ export default function InnoveraSyncClient({ initialLogs }: Props) {
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "INNOVERA番号の同期" }]} />
       <h1>INNOVERA番号の同期</h1>
-      <p>INNOVERA の回線一覧と Kintone の番号一覧を 5 分ごとに突き合わせ、差分だけを Kintone に写します。使用中・未使用の区別は Kintone で人が決めます。変更があったときは Chatwork「Garden通知」にも知らせます。</p>
+      <UpdatedStampRow><UpdatedStamp label="INNOVERA番号" date={checkedAt ?? latest?.ranAt} emptyText="まだ反映履歴がありません" /></UpdatedStampRow>
     </header>
 
     <section className={styles.lastBox} aria-label="最後の反映">
       <h2>最後の反映</h2>
-      <p>{latest ? `${formatDateTime(latest.ranAt)}（${latest.trigger === "cron" ? "自動" : "手動"}） ${countsText(latest.counts)}` : "まだ反映履歴がありません"}</p>
+      <p>{latest ? `（${latest.trigger === "cron" ? "自動" : "手動"}） ${countsText(latest.counts)}` : "まだ反映履歴がありません"}</p>
     </section>
 
     <div className={styles.actions}>

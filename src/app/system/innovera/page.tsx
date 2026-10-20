@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
-import { loadInnoveraSyncLogs } from "@/lib/innovera/sync.server";
+import { loadInnoveraSyncLogs, loadInnoveraSyncState } from "@/lib/innovera/sync.server";
 import InnoveraSyncClient from "./InnoveraSyncClient";
 
 export const metadata = { title: "INNOVERA番号の同期 | Garden" };
@@ -28,5 +28,6 @@ export default async function InnoveraSyncPage() {
   if (!isRoleAtLeast(role, "staff")) redirect("/system");
 
   const logs = await loadInnoveraSyncLogs().catch(() => []);
-  return <InnoveraSyncClient initialLogs={logs} />;
+  const state = await loadInnoveraSyncState().catch(() => null);
+  return <InnoveraSyncClient initialLogs={logs} initialCheckedAt={state?.last_checked_at} />;
 }

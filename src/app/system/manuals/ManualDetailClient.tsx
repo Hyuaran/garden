@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
@@ -232,7 +233,6 @@ export default function ManualDetailClient({
       <div>
         <SystemBreadcrumb items={[{ label: "マニュアル", href: "/system/manuals" }, { label: module.name, href: `/system/manuals/${module.slug}` }, { label: manual.name }]} />
         <h1>{manual.name}</h1>
-        <p className={styles.lead}>{manual.description}</p>
       </div>
     </header>
 
@@ -241,9 +241,9 @@ export default function ManualDetailClient({
     ) : (
       <>
         <div className={styles.tabsRow}>
-          <nav className={styles.tabs} aria-label="資料タブ">
+          <SystemTabs role="navigation" aria-label="資料タブ">
             {docs.map((doc) => <Link key={doc.key} href={`/system/manuals/${manual.moduleSlug}/${manual.slug}?tab=${doc.key}`} aria-current={selectedDoc?.key === doc.key ? "page" : undefined}>{doc.label}</Link>)}
-          </nav>
+          </SystemTabs>
           {canManageVersions && selectedDoc && (
             <button type="button" className={styles.replaceButton} onClick={() => setModalOpen(true)}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v4h14v-4" /></svg>

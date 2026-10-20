@@ -1,4 +1,6 @@
 "use client";
+import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import type { ContractCompany, ContractDraft, ContractRow } from "./_lib/contract-types";
@@ -214,17 +216,14 @@ export default function ContractsPage() {
     } catch { setMessage("ひな形を作成できませんでした。管理者へ連絡してください。"); } finally { setLoading(null); }
   }
   return <div className={styles.pageShell}><div className={styles.main}>
-    <header className={styles.header}><div><SystemBreadcrumb items={[{ label: "契約書管理" }]} /><h1>契約書管理</h1><p>契約書の確認、登録、パートナー配布用ひな形の作成を行います。</p></div></header>
+    <header className={styles.header}><div><SystemBreadcrumb items={[{ label: "契約書管理" }]} /><h1>契約書管理</h1></div></header>
     {message && <p role="status" className={styles.message}>{message}</p>}
-    <div className={styles.tabs} role="tablist">
+    <SystemTabs>
       <button role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")}>契約書を見る</button>
       <button role="tab" aria-selected={tab === "register"} onClick={() => setTab("register")}>契約書を登録する</button>
-    </div>
+    </SystemTabs>
     {tab === "browse" ? <section className={styles.card}>
-      <div className={styles.browseHeading}><h2>Driveの契約書</h2><div className={styles.viewToggle} role="group" aria-label="表示形式">
-        <button type="button" aria-label="リスト表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon/></button>
-        <button type="button" aria-label="グリッド表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon/></button>
-      </div></div><nav className={styles.breadcrumbs} aria-label="現在のフォルダ">
+      <div className={styles.browseHeading}><h2>Driveの契約書</h2><HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle></div><nav className={styles.breadcrumbs} aria-label="現在のフォルダ">
         {path.map((part, index) => <button key={`${part.id}-${index}`} onClick={() => openBreadcrumb(index)}>{part.name}</button>)}
       </nav>
       {loading === "browse" ? <p className={styles.loading}><span/>読み込み中…</p> : viewMode === "grid" ?

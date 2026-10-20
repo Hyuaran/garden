@@ -1,4 +1,8 @@
 "use client";
+import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
+import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { accountDisplayName } from "@/lib/bud/mf/corporations";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -7,6 +11,7 @@ import BalanceMatrix from "./BalanceMatrix";
 import styles from "./bank.module.css";
 
 type Snapshot = { axes?: AxisOrder[]; snapshots?: BalanceSnapshot[]; accounts: MfAccount[]; transactions: CardTransaction[]; employees: Employee[]; admin: boolean };
+export const formatLoadedAt = formatSyncStamp;
 const yen = (value: number) => `${value.toLocaleString("ja-JP")} 円`;
 async function api(url: string, init?: RequestInit) {
   const fallback = "読み込めませんでした。時間をおいてもう一度お試しください。続くときは管理者へお問い合わせください。";
@@ -92,18 +97,17 @@ export default function BankAccounts() {
   const shown = snapshot.accounts.filter(a => a.kind === tab && (!a.hidden || settings || reordering));
 
   const times = snapshot.accounts.filter(a => !a.hidden).map(a => a.fetched_at).sort();
-  const last = times[0] ? new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(times[0])) : "未読み込み";
   const selectedAccount = snapshot.accounts.find(a => a.mf_account_id === selected);
   const cards = snapshot.accounts.filter(a => a.kind === "card" && !a.hidden);
   const cardIds = new Set(cards.map(a => a.mf_account_id));
   return <div className={styles.pageShell}>
-    <header className={styles.header}><h1>口座残高・カード利用</h1><div className={styles.toolbar}><small>最終読み込み {last}</small><button disabled={refreshing || loading || saveCount > 0} onClick={async () => {
+    <header className={styles.header}><SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "口座残高・カード利用" }]} /><h1>口座残高・カード利用</h1><UpdatedStampRow><UpdatedStamp label="MF" date={times[0]} emptyText="未読み込み" busy={refreshing || loading} disabled={saveCount > 0} refreshLabel="読み直す" title="読み直す（1分に1回まで）" onRefresh={async () => {
       setRefreshing(true); setError("");
       try { await api("/api/bud/mf-accounts/refresh", { method: "POST" }); await load(); }
       catch(e) { setError(e instanceof Error ? e.message : "読み込めませんでした"); }
       finally { setRefreshing(false); }
-    }}>{refreshing ? "読み込み中…" : "読み直す"}</button></div></header>
-    <div className={styles.toolbar}><div role="tablist" aria-label="表示内容" className={styles.tabs}>{[["bank","口座残高"],["card","カード利用"]].map(([value,label]) => <button role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} key={value} aria-selected={tab === value} onClick={() => { setTab(value); setSelected(null); }}>{label}</button>)}</div>
+    }} /></UpdatedStampRow></header>
+    <div className={styles.tabToolbar}><SystemTabs aria-label="表示内容">{[["bank","口座残高"],["card","カード利用"]].map(([value,label]) => <button role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} key={value} aria-selected={tab === value} onClick={() => { setTab(value); setSelected(null); }}>{label}</button>)}</SystemTabs>
       {snapshot.admin && <><button aria-pressed={reordering} disabled={refreshing} onClick={() => setReordering(!reordering)}>並び替え{reordering ? "を終了" : ""}</button><button aria-pressed={settings} disabled={refreshing} onClick={() => { setSettings(!settings); setSelected(null); }}>設定{settings ? "を終了" : ""}</button></>}
       <small role="status">{saveCount > 0 ? "並び順を保存中…" : loading ? "読み込み中…" : ""}</small>
     </div>

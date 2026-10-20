@@ -1,4 +1,5 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -227,11 +228,11 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
       <p className={styles.hint}>KING OF TIME ログイン＞エクスポート インポート＞データ出力 日別データCSV＞日付指定＞日付を本日/明日選択＞出力レイアウト Garden選択＞データ出力</p>
     </section>
 
-    <div className={styles.tabs} role="tablist" aria-label="文面">
+    <SystemTabs aria-label="文面">
       <button type="button" role="tab" aria-selected={tab === "attendance"} onClick={() => setTab("attendance")}>出勤表</button>
       <button type="button" role="tab" aria-selected={tab === "line"} onClick={() => setTab("line")}>シフト連絡（LINE）</button>
       <button type="button" role="tab" aria-selected={tab === "members"} onClick={() => setTab("members")}>並びの設定</button>
-    </div>
+    </SystemTabs>
 
     {tab === "attendance" && <section className={styles.workArea}>
       {/* ［コピー］は文面の枠の上の行の右端（シフト連絡のまとまりと同じ位置・2026-09-19 東海林さん） */}

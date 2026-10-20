@@ -31,6 +31,16 @@ describe("BudShachoShell", () => {
     expect(screen.getByText("本文")).toBeInTheDocument();
   });
 
+  it("hides only the bank page title in the top bar", () => {
+    mocks.pathname = "/bud/bank";
+    const view = render(<BudShachoShell>本文</BudShachoShell>);
+    expect(screen.queryByText("Bud ／ 口座残高・カード利用")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", {name:"ログアウト"})).toBeInTheDocument();
+    mocks.pathname = "/bud/expenses/review";
+    view.rerender(<BudShachoShell>本文</BudShachoShell>);
+    expect(screen.getByText("Bud ／ 経費精算")).toBeInTheDocument();
+  });
+
   it("closes the drawer with close, backdrop, Escape and navigation, restoring focus", () => {
     mocks.pathname = "/bud/transfers/new-regular";
     render(<BudShachoShell>本文</BudShachoShell>);

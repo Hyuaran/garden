@@ -14,7 +14,6 @@ export default function ModuleManualsClient({ module, manuals }: { module: Manua
       <div>
         <SystemBreadcrumb items={[{ label: "マニュアル", href: "/system/manuals" }, { label: module.name }]} />
         <h1>{module.name} のマニュアル</h1>
-        <p className={styles.lead}>{module.description}</p>
       </div>
     </header>
 

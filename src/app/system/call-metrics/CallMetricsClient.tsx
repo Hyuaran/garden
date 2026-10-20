@@ -1,4 +1,6 @@
 "use client";
+import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import { useEffect, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -54,16 +56,6 @@ function FunnelTable({ title, headers, rows }: { title: string; headers: string[
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
 const maybeNumber = (value: number | null | undefined) => value == null ? "-" : value.toLocaleString("ja-JP");
 const maybeTime = (value: number | null | undefined) => value == null ? "-" : formatWorkTime(value);
-const weekday = ["日", "月", "火", "水", "木", "金", "土"];
-function formatJst(value: string | null) {
-  if (!value) return "データなし";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "データなし";
-  const parts = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date);
-  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
-  const jstDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-  return `${get("year")}/${get("month")}/${get("day")}(${weekday[jstDate.getDay()]}) ${get("hour")}:${get("minute")}`;
-}
 function formatJstTime(value: string | null | undefined) {
   if (!value) return "データなし";
   const date = new Date(value);
@@ -124,6 +116,7 @@ export default function CallMetricsClient() {
       <header className={styles.header}>
         <div><SystemBreadcrumb items={[{ label: "テレマ コール集計" }]} /><h1>テレマ コール集計</h1></div>
       </header>
+      {data && <UpdatedStampRow><UpdatedStamp label="コール履歴" date={data.lastImportedAt} emptyText="データなし" /></UpdatedStampRow>}
 
       <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void load(); }}>
         <label>開始日<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} required /></label>
@@ -141,15 +134,14 @@ export default function CallMetricsClient() {
           <span>平均コール数: {emptyRate ? "-" : (summary?.averageCalls ?? 0).toFixed(1)}</span>
           <span>有効率: {emptyRate ? "-" : percent(summary?.effectiveRate ?? 0)}</span>
           <span>受注率: {emptyRate ? "-" : percent(summary?.acquiredRate ?? 0)}（受注数 {(summary?.totalAcquired ?? 0).toLocaleString()}件）／前確OK率: {emptyRate ? "-" : percent(summary?.preconfirmRate ?? 0)}（前確OK数 {(summary?.totalOrders ?? 0).toLocaleString()}件）</span>
-          <span>最終更新: {formatJst(data.lastImportedAt)}</span>
           {data.innovera && <span className={data.innovera.stopped ? styles.warningText : undefined}>{data.innovera.stopped ? `INNOVERA 取込停止中（最終 ${formatJstTime(data.innovera.lastSyncAt)}）` : `INNOVERA 最終取込 ${formatJstTime(data.innovera.lastSyncAt)}`}</span>}
         </div>
-        <div className={styles.tabs} role="tablist" aria-label="集計表示">
+        <SystemTabs aria-label="集計表示">
           <button type="button" role="tab" aria-selected={activeTab === "employees"} onClick={() => setActiveTab("employees")}>従業員ごと</button>
           <button type="button" role="tab" aria-selected={activeTab === "lists"} onClick={() => setActiveTab("lists")}>リストごと</button>
           <button type="button" role="tab" aria-selected={activeTab === "definitions"} onClick={() => setActiveTab("definitions")}>定義方法</button>
           <button type="button" role="tab" aria-selected={activeTab === "webinbound"} onClick={() => setActiveTab("webinbound")}>WEBインバウンド</button>
-        </div>
+        </SystemTabs>
 
         {activeTab === "webinbound" && <section role="tabpanel">
           <p className={styles.period}>{LP_FUNNEL_FILTER_NOTE}</p>

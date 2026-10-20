@@ -10,7 +10,6 @@ export default async function VideosPage() {
   const videos = await loadVideos();
   return <div className={styles.pageShell}>
     <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "動画" }]} /><h1>動画</h1></header>
-    <p className={styles.lead}>研修や説明の動画をまとめています。</p>
     <VideoLibrary videos={videos} />
     <Link className={styles.backToTop} href="/system/docs">資料の一覧へ戻る</Link>
   </div>;

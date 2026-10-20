@@ -18,7 +18,6 @@ export default async function DocsPage() {
   await requireDocsUser();
   return <div className={styles.pageShell}>
     <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料" }]} /><h1>資料</h1></header>
-    <p className={styles.lead}>会社説明など、社内で読む資料をまとめています。</p>
     <div className={styles.documentGrid}>{documents.map(document => <Link className={styles.documentCard} href={document.href} key={document.href}>
       <span className={styles.bookBadge}><MenuIcon icon="book" /></span><h2>{document.title}</h2><p>{document.description}</p>
       <p className={styles.updated}>最終更新日 <time dateTime={document.updatedAt}>{formatDocumentDate(document.updatedAt)}</time></p><span className={styles.readLink}>資料を読む →</span>

@@ -1,4 +1,6 @@
 "use client";
+import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import { useEffect, useMemo, useState } from "react";
 import type { GardenRole } from "@/app/root/_constants/types";
@@ -367,23 +369,19 @@ export default function SitesHubClient({ data, role }: { data: CorporateSitesDat
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "コーポレートサイト" }]} />
       <h1>コーポレートサイト</h1>
-      <p className={styles.lead}>グループ各社の会社HP・商品ページと、Google マップの登録状況。稼働中のサイトは［開く］で開けます。</p>
     </header>
 
-    <div className={styles.topTabs} role="tablist" aria-label="コーポレートサイト表示">
+    <SystemTabs aria-label="コーポレートサイト表示">
       <button type="button" role="tab" aria-selected={tab === "sites"} onClick={() => changeTab("sites")}>サイト一覧</button>
       <button type="button" role="tab" aria-selected={tab === "news"} onClick={() => changeTab("news")}>お知らせ</button>
-    </div>
+    </SystemTabs>
 
     {tab === "news" ? <SiteNewsPanel data={data} role={role} /> : <>
     <div className={styles.listHeading}>
       <h2>サイトの一覧（稼働 {counts.live}／移管待ち {counts.pending}／新規作成待ち {counts.planned}）</h2>
       <div className={styles.headerAside}>
         <span>更新日 {formatDate(data.as_of)}</span>
-        <div className={styles.viewToggle} role="group" aria-label="表示形式">
-          <button type="button" aria-label="リスト表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon /></button>
-          <button type="button" aria-label="グリッド表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon /></button>
-        </div>
+        <HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
       </div>
     </div>
 

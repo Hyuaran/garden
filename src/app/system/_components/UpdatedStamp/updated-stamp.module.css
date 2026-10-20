@@ -1,0 +1,11 @@
+.row { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:10px 24px; width:100%; min-width:0; margin-top:10px; color:var(--sub); font-size:13.5px; font-weight:700; text-align:right; }
+.stamp { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:10px; min-width:0; max-width:100%; overflow-wrap:anywhere; }
+.stamp > span { min-width:0; }
+.stamp .button { display:inline-flex; flex:0 0 34px; align-items:center; justify-content:center; width:34px; height:34px; min-height:34px; padding:0; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--teal); cursor:pointer; transition:background .15s ease,border-color .15s ease; }
+.stamp .button:hover { border-color:var(--teal); background:rgba(14,165,160,.08); }
+.stamp .button:disabled { cursor:not-allowed; color:var(--sub); opacity:.45; }
+.busy { animation:spin 1s linear infinite; }
+.refresh { position:relative; display:inline-flex; flex:0 0 auto; }
+.tooltip { display:none; position:absolute; z-index:40; right:0; top:100%; width:max-content; max-width:260px; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--sub); font-size:12px; }
+.refresh:hover .tooltip, .refresh:focus .tooltip, .refresh:active .tooltip { display:block; }
+@keyframes spin { to { transform:rotate(360deg); } }

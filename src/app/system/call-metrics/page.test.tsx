@@ -44,7 +44,7 @@ describe("CallMetricsClient", () => {
     expect(employeeHeaders.map((cell) => cell.textContent)).toEqual(["テレマ", "WEBインバウンド（LP系）", "社員名", "稼働時間", "通話時間", "コール数", "コール数/h", "有効数", "有効率", "トス数", "トス率", "受注数", "前確OK数", "見込", "担不", "留守", "無効", "LP応答", "LP発信", "LP通話時間", "LP申込み"]);
     expect(employeeCells.map((cell) => cell.textContent)).toEqual(["社員A", "1:00:00", "-", "10", "10", "7", "70.0%", "3", "30.0%", "1", "2", "4", "5", "6", "7", "-", "-", "-", "-"]);
     expect(screen.queryByText("時間ごとコール")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("対象期間の集計サマリー")).toHaveTextContent("最終更新: 2026/08/12(水) 12:34");
+    expect(screen.getByText("コール履歴最終更新：2026/08/12(水) 12:34")).toBeInTheDocument();
     expect(screen.queryByText(/現在は直近取込分のみ/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "リストごと" }));
     expect(screen.getByText("リストA")).toBeInTheDocument();

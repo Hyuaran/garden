@@ -22,6 +22,14 @@ const baseResult = {
 };
 
 describe("InnoveraSyncClient", () => {
+  it("shows the checked time and updates it after a comparison with no changes", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => response({ ...baseResult, lastCheckedAt: "2026-10-20T03:00:00Z", details: [] })));
+    render(<InnoveraSyncClient initialLogs={[]} initialCheckedAt="2026-10-20T02:00:00Z" />);
+    expect(screen.getByText("INNOVERA番号最終更新：2026/10/20(火) 11:00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "自動で更新されます（手動の取り直しはできません）" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "いまの差分を見る" }));
+    expect(await screen.findByText("INNOVERA番号最終更新：2026/10/20(火) 12:00")).toBeInTheDocument();
+  });
   beforeEach(() => {
     vi.unstubAllGlobals();
   });
@@ -31,6 +39,7 @@ describe("InnoveraSyncClient", () => {
     render(<InnoveraSyncClient initialLogs={[]} />);
 
     expect(screen.getByRole("heading", { name: "INNOVERA番号の同期" })).toBeInTheDocument();
+    expect(screen.getByText("INNOVERA番号最終更新：まだ反映履歴がありません")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "業務管理ツール" })).toHaveAttribute("href", "/system/forms");
     fireEvent.click(screen.getByRole("button", { name: "いまの差分を見る" }));
 
@@ -140,6 +149,7 @@ describe("InnoveraSyncClient", () => {
     ]} />);
 
     expect(screen.getByLabelText("最後の反映")).toHaveTextContent("新規 1件");
+    expect(screen.getByText("INNOVERA番号最終更新：2026/10/07(水) 14:41")).toBeInTheDocument();
     expect(screen.getByText("これまでの反映").parentElement).not.toHaveTextContent("新規 9件");
   });
 

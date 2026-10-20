@@ -11,7 +11,6 @@ export default async function SlidesPage() {
   const decks = await loadSlideDecks();
   return <div className={styles.pageShell}>
     <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "スライド" }]} /><h1>スライド</h1></header>
-    <p className={styles.lead}>研修の内容を、1枚ずつの絵でご覧いただけます。</p>
     <div className={slideStyles.library}>{groupSlideDecks(decks).map((group, index) => <section key={group.category} aria-labelledby={`slide-category-${index}`}>
       <h2 id={`slide-category-${index}`}>{group.category}</h2>
       <div className={slideStyles.deckList}>{group.decks.map(deck => <Link className={slideStyles.deckCard} href={`/system/docs/slides/${deck.id}`} key={deck.id} aria-labelledby={`slide-deck-${deck.id}`}>

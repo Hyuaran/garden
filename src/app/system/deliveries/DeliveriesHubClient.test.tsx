@@ -20,7 +20,7 @@ describe("DeliveriesHubClient", () => {
     expect(screen.getByRole("cell", { name: "NHK訪問 集計配信" })).toBeInTheDocument();
     expect(screen.getAllByRole("cell", { name: "稼働中" })).toHaveLength(SYSTEM_DELIVERIES.length);
     expect(screen.getAllByRole("link", { name: "開く" })[0]).toHaveAttribute("href", "/system/call-metrics");
-    expect(screen.getByRole("button", { name: "一覧表示にする" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "カード表示にする" })).toHaveAttribute("title", "カード表示にする");
   });
 
   it("switches to card view and saves the setting", () => {

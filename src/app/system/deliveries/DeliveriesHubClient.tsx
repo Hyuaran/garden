@@ -1,4 +1,5 @@
 "use client";
+import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -48,16 +49,12 @@ export default function DeliveriesHubClient({ deliveries }: { deliveries: System
       <div>
         <SystemBreadcrumb items={[{ label: "自動配信" }]} />
         <h1>自動配信</h1>
-        <p className={styles.lead}>決まった時刻に Chatwork へ自動で送っている連絡の一覧です。</p>
       </div>
     </header>
 
     <div className={styles.listHeading}>
       <h2>自動配信の一覧</h2>
-      <div className={styles.viewToggle} role="group" aria-label="表示形式">
-        <button type="button" aria-label="一覧表示にする" aria-pressed={viewMode === "list"} onClick={() => changeViewMode("list")}><ListViewIcon /></button>
-        <button type="button" aria-label="カード表示にする" aria-pressed={viewMode === "grid"} onClick={() => changeViewMode("grid")}><GridViewIcon /></button>
-      </div>
+      <HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
     </div>
 
     {viewMode === "grid" ? (

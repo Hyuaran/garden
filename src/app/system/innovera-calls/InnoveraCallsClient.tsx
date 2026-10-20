@@ -1,5 +1,7 @@
 "use client";
 
+import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
+import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
 import { useEffect, useMemo, useState } from "react";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -61,21 +63,6 @@ function todayJst() {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
-/** 見出し下の「INNOVERA最終更新」の日時（リストマスタと同じ 2026/10/08(木) 15:11 の形） */
-function formatSyncStamp(value: Date) {
-  const parts = new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(value);
-  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${get("year")}/${get("month")}/${get("day")}(${get("weekday")}) ${get("hour")}:${get("minute")}`;
-}
 
 function shiftDate(date: string, days: number) {
   const value = new Date(`${date}T00:00:00+09:00`);
@@ -421,22 +408,7 @@ export default function InnoveraCallsClient({
       <header className={styles.header}>
         <SystemBreadcrumb items={[{ label: pageTitle }]} />
         <h1>{pageTitle}</h1>
-        <div className={styles.syncStatus}>
-          <span>INNOVERA最終更新：{loading ? "取得中..." : lastLoadedAt ? formatSyncStamp(lastLoadedAt) : "未取得"}</span>
-          <button
-            type="button"
-            className={`${styles.syncIconButton} ${loading ? styles.syncIconBusy : ""}`}
-            onClick={() => void loadCalls(true)}
-            disabled={loading}
-            aria-label="INNOVERA から取り直す"
-            title={loading ? "取得しています…" : "INNOVERA から取り直す（いまの絞り込み条件で最新の通話履歴を取得します）"}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-              <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-              <path d="M19.8 4.6v4.2h-4.2z" fill="currentColor" />
-            </svg>
-          </button>
-        </div>
+        <UpdatedStampRow><UpdatedStamp label="INNOVERA" date={loading ? null : lastLoadedAt} emptyText={loading ? "取得中..." : "未取得"} busy={loading} onRefresh={() => void loadCalls(true)} refreshLabel="INNOVERA から取り直す" title={loading ? "取得しています…" : "INNOVERA から取り直す（いまの絞り込み条件で最新の通話履歴を取得します）"} /></UpdatedStampRow>
       </header>
 
       {usesDailyExtension && (

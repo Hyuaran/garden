@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
@@ -37,6 +37,7 @@ describe("forms hub page", () => {
     expect(screen.getByRole("heading", { name: "業務管理ツール" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "給与計算連絡" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "出勤表・シフトLINE連絡テキスト生成" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: /^自動で動いている/ }));
     expect(screen.getByRole("cell", { name: "INNOVERA番号の同期" })).toBeInTheDocument();
   });
 

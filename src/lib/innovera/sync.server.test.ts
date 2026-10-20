@@ -6,6 +6,7 @@ vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
   inserts: [] as unknown[],
+  states: [] as unknown[],
   logRows: [] as unknown[],
 }));
 
@@ -18,6 +19,7 @@ vi.mock("@/lib/chatwork", () => ({
 vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdmin: () => ({
     from: (table: string) => {
+      if (table === "system_innovera_sync_state") return { upsert: async (value: unknown) => { mocks.states.push(value); return { error: null }; } };
       if (table !== "system_innovera_sync_log") throw new Error(`unexpected table ${table}`);
       return {
         insert: async (value: unknown) => {
@@ -112,6 +114,7 @@ describe("runInnoveraSync", () => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
     mocks.inserts = [];
+    mocks.states = [];
     mocks.logRows = [];
     process.env.INNOVERA_API_HOST = "innovera.test";
     process.env.INNOVERA_API_KEY = "innovera-key";
@@ -150,6 +153,7 @@ describe("runInnoveraSync", () => {
     expect(result.details[0]).toMatchObject({ result: "pending" });
     expect(writes).toHaveLength(0);
     expect(mocks.inserts).toHaveLength(0);
+    expect(mocks.states).toEqual([{ id: 1, last_checked_at: fixedNow.toISOString(), last_ok: true }]);
   });
 
   it("writes added, renamed, and retired records with the expected bodies", async () => {
@@ -215,6 +219,11 @@ describe("runInnoveraSync", () => {
     const result = await runInnoveraSync({ apply: true, trigger: "cron", now: fixedNow });
     expect(result.actions).toHaveLength(0);
     expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.inserts).toHaveLength(0);
+    expect(mocks.states).toEqual([{ id: 1, last_checked_at: fixedNow.toISOString(), last_ok: true }]);
+    const later = new Date(fixedNow.getTime() + 300_000);
+    await runInnoveraSync({ apply: true, trigger: "cron", now: later });
+    expect(mocks.states[1]).toEqual({ id: 1, last_checked_at: later.toISOString(), last_ok: true });
   });
 
   it("records the failure detail (HTTP status) in the error after one retry", async () => {

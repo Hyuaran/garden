@@ -74,6 +74,7 @@ export type InnoveraSyncLogRow = {
 };
 
 export type InnoveraSyncResult = {
+  lastCheckedAt?: string;
   ok: boolean;
   error?: string;
   applied: boolean;

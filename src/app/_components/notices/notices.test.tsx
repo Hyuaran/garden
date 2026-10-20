@@ -12,6 +12,12 @@ const rows: Notice[] = Array.from({ length: 7 }, (_, i) => ({ id: String(i), kin
 beforeEach(() => { vi.clearAllMocks(); mocks.path = "/system"; mocks.role = "toss"; mocks.state = { snapshot: { employeeId: "e", hireDate: null, readIds: [], snoozedOn: null, notices: rows }, published: rows, unreadCount: 7, acknowledge: mocks.ack, snooze: mocks.snooze, publish: mocks.publish, unpublish: mocks.unpublish, error: false }; HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) { this.open = true; }); HTMLDialogElement.prototype.close = vi.fn(); });
 afterEach(cleanup);
 describe("お知らせ画面", () => {
+    it("Systemへのリンク付きの現在地を表示する", () => {
+        render(<NoticeList />);
+        const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
+        expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
+        expect(within(breadcrumb).getByText("お知らせ")).toBeInTheDocument();
+    });
     it("最大5件を表示し、表示分だけ確認してすぐ閉じる", () => { render(<NoticeModal />); expect(screen.getByText("ほか 2 件はお知らせページで")).toBeInTheDocument(); expect(screen.queryByText("お知らせ5")).not.toBeInTheDocument(); fireEvent.click(screen.getByRole("button", { name: "確認しました" })); expect(mocks.ack).toHaveBeenCalledWith(["0", "1", "2", "3", "4"]); expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); });
     it.each(["あとで", "閉じる"])("%s はあとでとしてすぐ閉じる", name => { render(<NoticeModal />); fireEvent.click(screen.getByRole("button", { name })); expect(mocks.snooze).toHaveBeenCalledOnce(); expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); });
     it("Escと外側もあとでにする", () => { const r = render(<NoticeModal />); fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: true, cancelable: true })); expect(mocks.snooze).toHaveBeenCalledOnce(); r.unmount(); render(<NoticeModal />); fireEvent.click(screen.getByRole("dialog"), { clientX: -1, clientY: -1 }); expect(mocks.snooze).toHaveBeenCalledTimes(2); });

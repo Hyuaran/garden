@@ -68,3 +68,17 @@
 .unchanged { color:var(--sub); }
 :global([data-theme="dark"]) .increase,:global(.dark) .increase { color:#5fd6c9; }
 :global([data-theme="dark"]) .decrease,:global(.dark) .decrease { color:#ff8a8f; }
+
+.header { display:block; margin-bottom:18px; }
+.pageShell h1 { font-size:30px; line-height:1.25; }
+.lead { margin:10px 0 0; color:var(--sub); font-size:13.5px; line-height:1.85; }
+.tabToolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:12px 0; border-bottom:1px solid var(--line); }
+.tabToolbar > [role="tablist"] { flex:1 1 240px; margin:0; border:0; }
+.matrix :is(th,td) { padding:10px 12px; }
+.matrix td,.matrix td:nth-child(3) { min-width:156px; }
+.matrix th:first-child { min-width:145px; }
+.matrix .balanceNote { white-space:normal; width:150px; max-width:150px; text-align:left; font-weight:400; line-height:1.5; }
+@media(prefers-color-scheme:dark) {
+ :global(html:not([data-theme="light"]):not([data-theme="dark"])) .increase { color:#5fd6c9; }
+ :global(html:not([data-theme="light"]):not([data-theme="dark"])) .decrease { color:#ff8a8f; }
+}

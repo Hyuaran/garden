@@ -26,7 +26,7 @@ function RootLocalGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { loading, isAuthenticated } = useRootState();
 
-  if (loading) {
+  if (loading && !isAuthenticated) {
     return <AuthLoadingScreen module="root" message="利用状況を確認しています..." />;
   }
   if (!isAuthenticated) {
