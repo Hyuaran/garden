@@ -142,12 +142,12 @@ describe("登録日基準の配信集計", () => {
     records[0].createdAt = "2026-10-12T15:00:00Z";
     records[1].createdAt = "2026-10-13T14:59:59.999Z";
     records.push(record("申込み", "2026-10-12T14:59:59.999Z"), record("申込み", "2026-10-13T15:00:00Z"), record("申込み", "invalid"), { ...record("申込み"), createdAt: null });
-    expect(countLpRegisteredRecords(records, "2026-10-13", "2026-10-13")).toEqual({ denominator: 9, preconfirmWaiting: 2, applications: 4, won: 6, excluded: 2 });
+    expect(countLpRegisteredRecords(records, "2026-10-13", "2026-10-13")).toEqual({ denominator: 9, preconfirmNg: 0, preconfirmWaiting: 2, applications: 4, won: 6, excluded: 2 });
     expect([...countLpApplications(records, "2026-10-13", "2026-10-13")!.values()].reduce((a,b) => a+b,0)).toBe(4);
   });
   it("対象外3種と空欄を扱い、0件と取得失敗を区別する", () => {
     expect(countLpRegisteredRecords([record("対象外（連絡つかず）"), record(null)], "2026-10-13", "2026-10-13")).toMatchObject({ denominator: 2, excluded: 1 });
-    expect(countLpRegisteredRecords([record("重複")], "2026-10-13", "2026-10-13")).toEqual({ denominator: 0, preconfirmWaiting: 0, applications: 0, won: 0, excluded: 0 });
+    expect(countLpRegisteredRecords([record("重複")], "2026-10-13", "2026-10-13")).toEqual({ denominator: 0, preconfirmNg: 0, preconfirmWaiting: 0, applications: 0, won: 0, excluded: 0 });
     expect(countLpRegisteredRecords(null, "2026-10-13", "2026-10-13")).toBeNull();
   });
 });

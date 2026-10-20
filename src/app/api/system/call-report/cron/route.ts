@@ -1,7 +1,8 @@
+import { loadCallReportCounts } from "@/app/system/_lib/call-report-counts.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { verifyCronRequest } from "@/lib/cron-auth";
-import { normalizeCallMetricsRpc, summarizeCallMetrics } from "@/app/system/_lib/call-metrics";
+import { normalizeCallMetricsRpc, summarizeCallMetrics, type CallMetricsResponse } from "@/app/system/_lib/call-metrics";
 import { mergeCallMetrics, type RootEmployeeForCallMetrics } from "@/app/system/_lib/call-metrics-merge";
 import { loadLpContext } from "@/app/system/_lib/lp-context.server";
 import { buildCallReport } from "@/app/system/_lib/call-report";
@@ -46,13 +47,19 @@ export async function GET(request: Request) {
   const innoveraResult = await admin.rpc("system_innovera_metrics", {
     p_from: schedule.date, p_to: schedule.date, p_lp_circuit_ids: lpKintone.lpCircuitIds, p_employee_id: null,
   });
-  const metrics = {
+  let metrics: CallMetricsResponse = {
     ...mergeCallMetrics({ filemaker, innovera: innoveraResult.error ? null : innoveraResult.data, lpScope: lpKintone.lpScope, lpApplicationCountsByBiz: lpKintone.lpApplicationCountsByBiz, lpRegisteredCountsByBiz: lpKintone.lpRegisteredCountsByBiz, lpCustomerOrderCountsByBiz: lpKintone.lpCustomerOrderCountsByBiz, rootEmployees, notes: lpKintone.notes }),
     lpFunnel: lpKintone.funnel,
     lpFormCount: lpKintone.formCount,
     lpUnmatchedOrders: lpKintone.lpUnmatchedOrders,
   };
-  const summary = summarizeCallMetrics(metrics);
+  try {
+    metrics = await loadCallReportCounts(admin, metrics, lpKintone, now);
+  } catch (error) {
+    // 本文 v2 の新しい項目（受注の内訳・対応顧客数など）だけ取れないときは「-」のまま配信は送る（配信を止めない）
+    console.error("[system/call-report/cron] report counts failed", { error: error instanceof Error ? error.message : String(error) });
+  }
+  const summary = summarizeCallMetrics(filemaker);
   const report = buildCallReport(summary, now, metrics);
   if (report.skipped) {
     console.info("[system/call-report/cron] completed", { ...base, skipped: true, reason: "no_calls", sent: false, aggregateMs, postMs: 0 });

@@ -146,6 +146,7 @@ export function normalizeLpAssigneeName(value: string | null | undefined) {
 // 配信本文専用。流れ図とは独立して登録日（JST）で数える。
 export type LpRegisteredCounts = {
   denominator: number;
+  preconfirmNg?: number;
   preconfirmWaiting: number;
   applications: number;
   won: number;
@@ -154,11 +155,12 @@ export type LpRegisteredCounts = {
 
 export function countLpRegisteredRecords(records: LpCustomerRecord[] | null, from: string, to: string): LpRegisteredCounts | null {
   if (records === null) return null;
-  const counts: LpRegisteredCounts = { denominator: 0, preconfirmWaiting: 0, applications: 0, won: 0, excluded: 0 };
+  const counts: LpRegisteredCounts = { denominator: 0, preconfirmNg: 0, preconfirmWaiting: 0, applications: 0, won: 0, excluded: 0 };
   for (const record of records) {
     const day = jstDate(record.createdAt);
     if (!day || day < from || day > to || record.status === "重複") continue;
     counts.denominator++;
+    if (record.status === "前確NG") counts.preconfirmNg!++;
     if (record.status === "前確待ち") counts.preconfirmWaiting++;
     if (record.status === "申込み") counts.applications++;
     if (["対象外（現アナ等）", "対象外（契約不可）", "対象外（連絡つかず）"].includes(record.status ?? "")) counts.excluded++;

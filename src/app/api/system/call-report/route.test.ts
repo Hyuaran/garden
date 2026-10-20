@@ -8,6 +8,7 @@ import { POST } from "./route";
 function client(options: { user?: boolean; role?: string; rpcError?: boolean; calls?: number } = {}) {
   const calls = options.calls ?? 10;
   const rpc = vi.fn().mockResolvedValue(options.rpcError ? { data: null, error: { code: "XX000", message: "secret" } } : { data: {
+    telema_events: [], confirmed_sales: [], phones: [], authorized: true,
     metrics: calls ? [{ list_name: "A", call_count: calls }] : [],
     employee_metrics: calls ? [{ employee_name: "社員A", call_count: calls, effective_count: 7, order_count: 2, acquired_count: 1 }] : [],
   }, error: null });
@@ -60,5 +61,17 @@ describe("POST /api/system/call-report", () => {
     const response = await POST(request({ mode: "preview", date: "2026-08-12" }));
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ ok: false, error: "集計の取得に失敗しました" });
+  });
+  it("still sends with \"-\" for the new v2 items when the report RPC is unavailable", async () => {
+    const supabase = client();
+    const original = supabase.rpc.getMockImplementation()!;
+    supabase.rpc.mockImplementation((name: string) => name === "system_call_report_counts"
+      ? Promise.resolve({ data: { authorized: false }, error: null })
+      : original());
+    mocks.createServerClient.mockResolvedValue(supabase);
+    const response = await POST(request({ mode: "send", date: "2026-10-20" }));
+    expect(response.status).toBe(200);
+    expect(mocks.deliverCallReport).toHaveBeenCalledOnce();
+    expect(String(mocks.deliverCallReport.mock.calls[0][0])).toContain("受注数：-（前確待ち-／前確NG-／前確OK-）");
   });
 });

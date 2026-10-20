@@ -64,6 +64,7 @@ export type EmployeeCallMetricRow = Omit<CallMetricRow, "listName"> & {
 };
 
 export type LpBusinessMetricRow = {
+  reportCustomers?: { handled: number; effective: number | null } | null;
   customerOrders?: number | null;
   registeredCounts?: import("./lp-kintone").LpRegisteredCounts | null;
   bizCode: string;
@@ -96,6 +97,7 @@ export type LpMetricsPayload = {
 import type { LpFunnelResult } from "./lp-funnel";
 
 export type CallMetricsResponse = {
+  reportTelema?: { acquired: number; waiting: number; ok: number; ng: number } | null;
   from: string;
   to: string;
   listName: string | null;

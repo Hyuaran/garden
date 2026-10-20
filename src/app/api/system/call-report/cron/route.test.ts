@@ -12,6 +12,7 @@ const request = (token = "cron-secret") => new Request("http://localhost/api/sys
 function rpcData(calls: number) {
   return {
     authorized: true,
+    telema_events: [], confirmed_sales: [], phones: [],
     metrics: calls ? [{ list_name: "A", call_count: calls }] : [],
     employee_metrics: calls ? [{ employee_name: "社員A", call_count: calls, effective_count: 7, order_count: 2, acquired_count: 1 }] : [],
   };
