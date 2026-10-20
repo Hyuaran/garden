@@ -72,6 +72,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "kanri", "管理表ポータル", "毎日の管理表を KOT・Kintone のデータから作り、TV・Excel・Chatwork へ出す手順。"),
   manual("system", "list", "リストマスタ", "営業リストを絞って Excel／CSV／.mer に書き出す・日々のリスト投入を登録する・購入先やリストごとの成績を見る（リスト｜アップロード｜分析｜履歴検索｜自社アポ禁｜管理方法）。"),
   manual("bud", "expense", "経費精算", "領収書の申請から承認・仕訳までの流れ。"),
+  manual("bud", "bank", "口座残高・カード利用", "マネーフォワードの口座残高を法人×銀行の表で見る・0 時からの増減と未仕訳の件数の読み方・カードの利用の見方と、全権の人の並び替え・見てよい人の設定。"),
 ];
 
 export function getVisibleManualDocs(manual: ManualDefinition, role: GardenRole) {
