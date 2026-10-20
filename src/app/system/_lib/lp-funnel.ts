@@ -101,6 +101,8 @@ const AFTER_HOURS_DEADLINE_HOUR = 12; // 受付時間外は次の 10:00 から 2
 type ResultKey = "won" | "inProgress" | "lost" | "excluded";
 const RESULT_BY_STATUS: Record<string, ResultKey> = {
   申込み: "won",
+  // ヒカリのプロ・電気開始受付センターの顧客アプリは「申込み」が「前確OK」に変わった（2026-10-20 確認）。どちらも受注として数える
+  前確OK: "won",
   未対応: "inProgress",
   対応中: "inProgress",
   前確待ち: "inProgress",

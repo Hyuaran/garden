@@ -126,11 +126,16 @@ export async function loadLpCustomerRecords(app: number): Promise<LpCustomerReco
   }
 }
 
+// 顧客アプリの「申込み」は、ヒカリのプロ・電気開始受付センターでは「前確OK」という名前に変わった（2026-10-20 確認）。フレッツは「申込み」のまま
+export function isLpWonStatus(status: string | null | undefined) {
+  return status === "申込み" || status === "前確OK";
+}
+
 export function countLpApplications(records: LpCustomerRecord[] | null, from: string, to: string) {
   if (!records) return null;
   const counts = new Map<string, number>();
   for (const record of records) {
-    if (record.status !== "申込み") continue;
+    if (!isLpWonStatus(record.status)) continue;
     const date = jstDate(record.createdAt);
     if (!date || date < from || date > to) continue;
     const assignee = normalizeName(record.assignee);
@@ -162,7 +167,7 @@ export function countLpRegisteredRecords(records: LpCustomerRecord[] | null, fro
     counts.denominator++;
     if (record.status === "前確NG") counts.preconfirmNg!++;
     if (record.status === "前確待ち") counts.preconfirmWaiting++;
-    if (record.status === "申込み") counts.applications++;
+    if (isLpWonStatus(record.status)) counts.applications++;
     if (["対象外（現アナ等）", "対象外（契約不可）", "対象外（連絡つかず）"].includes(record.status ?? "")) counts.excluded++;
   }
   counts.won = counts.preconfirmWaiting + counts.applications;
