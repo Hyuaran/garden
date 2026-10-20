@@ -1,0 +1,70 @@
+.pageShell {
+ --navy:#10233f; --heading:#10233f; --ink:#17212e; --sub:#5a6b80; --teal:#0ea5a0; --bg:#f4f5f7; --card:#fff; --line:#e3eaf3;
+ font-family:"Meiryo","メイリオ","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+ position:relative; width:100%; min-width:0; min-height:100%; background:var(--bg); color:var(--ink);
+ word-break:auto-phrase; line-break:strict; text-wrap:pretty; overflow-wrap:break-word;
+}
+.pageShell::before { content:""; position:fixed; inset:0; z-index:-1; background:var(--bg); }
+.pageShell * { box-sizing:border-box; }
+.pageShell h1,.pageShell h2 { color:var(--heading); text-wrap:balance; }
+.pageShell h1 { font-size:clamp(20px,2vw,28px); margin:0; }
+.pageShell h2 { font-size:16px; margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+.pageShell small { color:var(--sub); font-size:12px; }
+.pageShell button,.pageShell select,.pageShell input { font:inherit; color:var(--ink); }
+.pageShell button,.pageShell select,.pageShell input:not([type="checkbox"]) { border:1px solid var(--line); border-radius:10px; background:var(--card); padding:9px 12px; min-height:40px; }
+.pageShell button { cursor:pointer; white-space:nowrap; }
+.pageShell button:disabled { opacity:.5; cursor:default; }
+.pageShell :is(button,input,select):focus-visible { outline:2px solid var(--teal); outline-offset:3px; }
+.header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
+.toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:12px 0; }
+.tabs { display:flex; gap:6px; margin-right:auto; }
+.tabs button[aria-selected="true"],.pageShell button[type="submit"] { background:var(--teal); color:#fff; }
+.total,.account,.settings { padding:22px; border:1px solid var(--line); border-radius:22px; background:var(--card); box-shadow:0 4px 14px rgba(16,35,63,.07); }
+.total { display:flex; flex-wrap:wrap; align-items:baseline; gap:12px 24px; margin:24px 0; }
+.total strong { font-size:clamp(24px,3vw,36px); font-variant-numeric:tabular-nums; }
+.total small { width:100%; }
+.grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; margin:20px 0; }
+.account { min-width:0; display:flex; flex-direction:column; gap:8px; }
+.amount { display:block; font-size:clamp(20px,1.8vw,28px); font-variant-numeric:tabular-nums; margin:10px 0; }
+.manual { font-size:18px; margin:10px 0 0; font-weight:700; }
+.grip { cursor:grab; display:inline-flex; padding:6px; }
+.tableWrap { max-width:100%; overflow:auto; border:1px solid var(--line); border-radius:22px; background:var(--card); }
+.tableWrap table { width:100%; min-width:max-content; border-collapse:collapse; }
+.tableWrap th,.tableWrap td { padding:14px 18px; border-bottom:1px solid var(--line); white-space:nowrap; text-align:left; }
+.tableWrap th { text-align:center; background:var(--navy); color:#fff; }
+.tableWrap td:nth-child(3) { white-space:normal; min-width:260px; max-width:600px; }
+.tableWrap .money { text-align:right; font-variant-numeric:tabular-nums; }
+.tableWrap p { padding:18px; }
+.settings { margin:24px 0; display:grid; gap:16px; }
+.settings > label { display:grid; gap:8px; }
+.settings > label:has(input[type="checkbox"]) { display:flex; align-items:center; }
+.settings fieldset { border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0; }
+.people { display:flex; flex-wrap:wrap; gap:12px 20px; max-height:240px; overflow:auto; }
+.people label { display:flex; align-items:center; gap:6px; }
+.error { border:1px solid #d46a72; border-radius:10px; padding:14px; }
+:global(.dark) .pageShell,:global([data-theme="dark"]) .pageShell { --navy:#193b62; --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4; --bg:#0c1726; --card:#152438; --line:#31435a; }
+@media(prefers-color-scheme:dark) { :global(html:not([data-theme="light"]):not([data-theme="dark"])) .pageShell { --navy:#193b62; --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4; --bg:#0c1726; --card:#152438; --line:#31435a; } }
+@media(max-width:1400px) { .grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:1100px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .grid { grid-template-columns:1fr; } .total,.account,.settings { padding:18px; } .header > .toolbar { align-items:flex-start; } .tabs { width:100%; } }
+
+.pageShell > section { min-width:0; max-width:100%; }
+.tableWrap { width:100%; min-width:0; overscroll-behavior-inline:contain; }
+.matrix { border-collapse:separate !important; border-spacing:0; }
+.matrix td { text-align:right; min-width:170px; }
+.matrix td:nth-child(3) { white-space:nowrap; min-width:170px; }
+.matrix td > * { display:block; margin:4px 0; }
+.matrix th:first-child { position:sticky; left:0; z-index:2; min-width:160px; }
+.matrix tbody th,.matrix tfoot th { background:var(--card); color:var(--heading); }
+.matrix tfoot td { background:var(--card); font-weight:700; }
+.matrix tfoot th,.matrix tfoot td { border-top:2px solid var(--line); }
+.axisHeading { display:flex; flex-direction:column; align-items:center; gap:8px; }
+.axisHeading[draggable="true"] { cursor:grab; }
+.axisButtons { display:flex; gap:6px; }
+.axisButtons button { padding:4px 10px; }
+/* 増減の色は社長スタイル（増＝ティール・減＝赤）。小さな文字でも読める濃さ（明るい表示で 4.5:1 以上） */
+.increase { color:#0b7e7a; }
+.decrease { color:#c8333b; }
+.unchanged { color:var(--sub); }
+:global([data-theme="dark"]) .increase,:global(.dark) .increase { color:#5fd6c9; }
+:global([data-theme="dark"]) .decrease,:global(.dark) .decrease { color:#ff8a8f; }
