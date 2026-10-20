@@ -3,13 +3,10 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
-import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
-import { budActivityItems } from "../dashboard/mock-data";
 import { useBudState } from "../_state/BudStateContext";
 import { BudGate } from "./BudGate";
-import { getBudGardenPageMenu } from "./bud-garden-menu";
 import styles from "./BudFaithfulFrame.module.css";
 
 const BUD_ICON = "/themes/garden-shell/images/icons_bloom/orb_bud.png";
@@ -74,8 +71,7 @@ export function BudFaithfulFrame({
   topSlot,
   children,
 }: BudFaithfulFrameProps) {
-  const { sessionUser, signOut, budRole } = useBudState();
-  const userName = sessionUser?.name ?? "東海林 美琴";
+  const { budRole } = useBudState();
 
   const bindTabClick = (node: HTMLElement | null) => {
     if (!node || nativeTabRoots.has(node)) return;
@@ -91,15 +87,6 @@ export function BudFaithfulFrame({
 
   return (
     <BudGate>
-      <GardenShell
-        activeModule="bud"
-        pageMenu={getBudGardenPageMenu(route)}
-        activityItems={budActivityItems}
-        userName={userName}
-        userEmail={sessionUser?.employee_number ? `${sessionUser.employee_number}@garden.local` : null}
-        userRoleLabel={formatBudRoleLabel(budRole)}
-        onLogout={signOut}
-      >
         <div className={styles.pageStack}>
           <PageHeader
             title={title}
@@ -121,7 +108,6 @@ export function BudFaithfulFrame({
           />
           {children}
         </div>
-      </GardenShell>
     </BudGate>
   );
 }

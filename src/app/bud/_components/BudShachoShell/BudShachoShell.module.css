@@ -1,0 +1,17 @@
+.shell { width:100%; min-width:0; word-break:auto-phrase; line-break:strict; text-wrap:pretty; overflow-wrap:break-word; }
+.shell::before { content:""; position:fixed; inset:0; z-index:-1; background:var(--bg); }
+:global(.dark) .shell, :global([data-theme="dark"]) .shell {
+  --navy:#193b62; --heading:#c8d6ea; --ink:#edf4fb; --sub:#b7c5d4;
+  --bg:#0c1726; --card:#152438; --line:#31435a;
+  --btn:#152438; --btn-line:#31435a; --btn-ink:#edf4fb;
+}
+.main.main { max-width:none; width:100%; min-width:0; box-sizing:border-box; overflow-x:auto; }
+.topbar { display:flex; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
+.heading { color:var(--heading); font-size:18px; font-weight:700; text-wrap:balance; }
+.actions { margin-left:auto; display:flex; align-items:center; gap:10px; }
+.content { min-width:0; }
+.divider { border:0; border-top:1px solid var(--side-line); margin:14px 10px; }
+.navLabel { color:var(--side-sub); padding:0 10px 10px; font-size:11px; }
+.shell nav a[aria-current="page"] { background:#0b7e7a; color:#fff; }
+.shell :where(a,button):focus-visible { outline:2px solid var(--teal); outline-offset:3px; }
+@media(max-width:760px) { .topbar { display:none; } }

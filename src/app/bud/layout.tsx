@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BudShachoShell } from "./_components/BudShachoShell/BudShachoShell";
 import { BudStateProvider } from "./_state/BudStateContext";
 import { BudModuleGateWrapper } from "./_components/BudModuleGateWrapper";
 
@@ -18,7 +19,7 @@ export const metadata = {
 export default function BudLayout({ children }: { children: ReactNode }) {
   return (
     <BudStateProvider>
-      <BudModuleGateWrapper>{children}</BudModuleGateWrapper>
+      <BudModuleGateWrapper><BudShachoShell>{children}</BudShachoShell></BudModuleGateWrapper>
     </BudStateProvider>
   );
 }

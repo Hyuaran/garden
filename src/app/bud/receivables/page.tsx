@@ -1,10 +1,8 @@
 "use client";
 
-import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
 import { BudGate } from "../_components/BudGate";
-import { getBudGardenPageMenu } from "../_components/bud-garden-menu";
 import { useBudState } from "../_state/BudStateContext";
 
 const BUD_ICON = "/themes/garden-shell/images/icons_bloom/orb_bud.png";
@@ -17,20 +15,11 @@ function formatRoleLabel(role: string | null): string {
 }
 
 export default function ReceivablesPage() {
-  const { sessionUser, signOut, budRole } = useBudState();
-  const userName = sessionUser?.name ?? "東海林 美琴";
+  const { budRole } = useBudState();
   const roleLabel = formatRoleLabel(budRole);
 
   return (
     <BudGate>
-      <GardenShell
-        activeModule="bud"
-        pageMenu={getBudGardenPageMenu("/bud/receivables")}
-        userName={userName}
-        userEmail={sessionUser?.employee_number ? `${sessionUser.employee_number}@garden.local` : null}
-        userRoleLabel={roleLabel}
-        onLogout={signOut}
-      >
         <PageHeader
           title="入金管理"
           titleJp="入金の流れを、整える準備"
@@ -95,7 +84,6 @@ export default function ReceivablesPage() {
             本実装までは他のBud画面から処理を続けてください。
           </p>
         </section>
-      </GardenShell>
     </BudGate>
   );
 }

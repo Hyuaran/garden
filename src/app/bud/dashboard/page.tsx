@@ -12,14 +12,11 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 
-import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
 import { BudGate } from "../_components/BudGate";
-import { BUD_GARDEN_PAGE_MENU } from "../_components/bud-garden-menu";
 import { useBudState } from "../_state/BudStateContext";
 import {
-  budActivityItems,
   companyTabs,
   dashboardTabs,
   kpis,
@@ -42,20 +39,10 @@ function formatRoleLabel(role: string | null): string {
 }
 
 export default function DashboardPage() {
-  const { sessionUser, signOut, budRole } = useBudState();
-  const userName = sessionUser?.name ?? "東海林 美琴";
+  const { budRole } = useBudState();
 
   return (
     <BudGate>
-      <GardenShell
-        activeModule="bud"
-        pageMenu={BUD_GARDEN_PAGE_MENU}
-        activityItems={budActivityItems}
-        userName={userName}
-        userEmail={sessionUser?.employee_number ? `${sessionUser.employee_number}@garden.local` : null}
-        userRoleLabel={formatRoleLabel(budRole)}
-        onLogout={signOut}
-      >
         <div className={styles.pageStack}>
           <PageHeader
             title="Bud"
@@ -130,7 +117,6 @@ export default function DashboardPage() {
             </div>
           </section>
         </div>
-      </GardenShell>
     </BudGate>
   );
 }
