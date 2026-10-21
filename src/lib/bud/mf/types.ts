@@ -1,4 +1,5 @@
 export type MfAccount = {
+  fiscal_start_date?: string | null;
   bank_name?: string; corp_code?: string; mf_account_id: string; name: string; kind: "bank" | "card";
   sub_account_label: string; sort_order: number; hidden: boolean;
   visible_employee_ids: string[]; book_sub_account_name: string;

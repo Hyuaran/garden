@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { cardSummaries } from "@/lib/bud/mf/transactions";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -59,7 +61,8 @@ export default function BankAccounts() {
   const [snapshot, setSnapshot] = useState<Snapshot>({ accounts: [], transactions: [], employees: [], admin: false });
   const [tab, setTab] = useState("bank");
   const [period, setPeriod] = useState("current");
-  const [card, setCard] = useState("");
+  const card = "";
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("tab") === "card") setTab("card"); }, []);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -103,7 +106,7 @@ export default function BankAccounts() {
   const times = snapshot.accounts.filter(a => !a.hidden).map(a => a.fetched_at).sort();
   const selectedAccount = snapshot.accounts.find(a => a.mf_account_id === selected);
   const cards = snapshot.accounts.filter(a => a.kind === "card" && !a.hidden);
-  const cardIds = new Set(cards.map(a => a.mf_account_id));
+
   return <div className={styles.pageShell}>
     <header className={styles.header}><SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "口座残高・カード利用" }]} /><h1>口座残高・カード利用</h1><UpdatedStampRow><UpdatedStamp label="MF" date={times[0]} emptyText="未読み込み" busy={refreshing || loading} disabled={saveCount > 0} refreshLabel="読み直す" title="読み直す（1分に1回まで）" onRefresh={async () => {
       setRefreshing(true); setError("");
@@ -127,7 +130,7 @@ export default function BankAccounts() {
         {(reordering || settings) && <div className={styles.toolbar}>{reordering && tab === "card" && <><button aria-label={`${accountDisplayName(account.name)}を上へ`} disabled={i === 0} onClick={() => move(account.mf_account_id,shown[i-1].mf_account_id)}><Arrow /></button><button aria-label={`${accountDisplayName(account.name)}を下へ`} disabled={i === shown.length-1} onClick={() => move(account.mf_account_id,shown[i+1].mf_account_id)}><Arrow down /></button></>}{settings && <button onClick={() => setSelected(account.mf_account_id)}>{accountDisplayName(account.name)}の設定</button>}</div>}
       </article>)}</div>}
       {!loading && shown.length === 0 && <p>表示できる{tab === "bank" ? "口座" : "カード"}はありません。</p>}
-      {tab === "card" && <><div className={styles.toolbar}><label>カード <select value={card} onChange={e => setCard(e.target.value)}><option value="">すべて</option>{cards.map(a => <option key={a.mf_account_id} value={a.mf_account_id}>{accountDisplayName(a.name)}</option>)}</select></label><label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="three">3 か月</option></select></label></div><div className={styles.tableWrap}><table><thead><tr><th>日付</th><th>カード</th><th>内容</th><th>金額</th></tr></thead><tbody>{snapshot.transactions.filter(t => cardIds.has(t.mf_account_id)).map(t => <tr key={t.mf_transaction_id}><td>{t.date}</td><td>{accountDisplayName(cards.find(a => a.mf_account_id === t.mf_account_id)?.name ?? "")}</td><td>{t.content}</td><td className={styles.money}>{t.side === "INCOME" ? "−" : ""}{yen(Number(t.value))}</td></tr>)}</tbody></table>{!loading && !snapshot.transactions.some(t => cardIds.has(t.mf_account_id)) && <p>この期間の利用はありません。</p>}</div></>}
+      {tab === "card" && <><div className={styles.toolbar}><label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">今年度</option></select></label></div><div className={styles.grid}>{cardSummaries(cards, snapshot.transactions).map(({ account, amount, count, latest }) => <Link className={styles.account} key={account.mf_account_id} href={`/bud/bank/accounts/${encodeURIComponent(account.mf_account_id)}?period=${period}`}><h2>{accountDisplayName(account.name)}</h2><strong className={styles.amount}>{yen(amount)}</strong><small>{count} 件{latest ? `・最後 ${latest}` : ""}</small></Link>)}</div></>}
     </section>
   </div>;
 }

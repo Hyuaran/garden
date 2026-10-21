@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { accountAxes, accountDisplayName } from "@/lib/bud/mf/corporations";
 import { useEffect, useRef, useState } from "react";
 import { buildMatrix, deltaLabel, summarize } from "@/lib/bud/mf/matrix";
 import { corporationName } from "@/lib/bud/mf/corporations";
@@ -12,7 +14,7 @@ function Amount({ value, total = false }: { value: ReturnType<typeof summarize>;
  {value.manual > 0 && (value.balance !== null || total) && <small>MFで確認 {value.manual} 口座を除く</small>}
  {!total && value.notes.map(note => <small className={styles.balanceNote} key={note}>{note}</small>)}
  {!total && value.count > 1 && <small>{value.count} 口座</small>}
- {!total && value.count > 0 && <small>未仕訳 {value.pending} 件</small>}</>;
+</>;
 }
 const emptyAxes: AxisOrder[] = [];
 export default function BalanceMatrix({ accounts, axes = emptyAxes, snapshots = [], reordering, onError }: { accounts: MfAccount[]; axes?: AxisOrder[]; snapshots?: BalanceSnapshot[]; reordering: boolean; onError: (message: string) => void }) {
@@ -52,5 +54,5 @@ export default function BalanceMatrix({ accounts, axes = emptyAxes, snapshots = 
  const total = matrix.cell();
  return <><div className={styles.total}><span>グループ合計</span><strong>{total.balance === null ? "—" : total.balance.toLocaleString("ja-JP") + " 円"}</strong>{total.delta !== null && <span>0 時から <Delta value={total.delta} /></span>}{total.manual > 0 && <small>MFで確認 {total.manual} 口座を除く</small>}</div>
  <small role="status">{saving > 0 ? "並び順を保存中…" : ""}</small>
- <div className={styles.tableWrap} role="region" aria-label="法人別・銀行別の口座残高" tabIndex={0}><table className={styles.matrix}><thead><tr><th scope="col">法人</th>{matrix.banks.map((bank,i) => <th scope="col" key={bank}>{heading("bank",bank,i,matrix.banks)}</th>)}<th scope="col">合計</th></tr></thead><tbody>{matrix.corps.map((corp,i) => <tr key={corp}><th scope="row">{heading("corp",corp,i,matrix.corps)}</th>{matrix.banks.map(bank => <td key={bank}><Amount value={matrix.cell(corp,bank)} /></td>)}<td><Amount total value={matrix.cell(corp)} /></td></tr>)}</tbody><tfoot><tr><th scope="row">合計</th>{matrix.banks.map(bank => <td key={bank}><Amount total value={matrix.cell(undefined,bank)} /></td>)}<td><Amount total value={total} /></td></tr></tfoot></table></div></>;
+ <div className={styles.tableWrap} role="region" aria-label="法人別・銀行別の口座残高" tabIndex={0}><table className={styles.matrix}><thead><tr><th scope="col">法人</th>{matrix.banks.map((bank,i) => <th scope="col" key={bank}>{heading("bank",bank,i,matrix.banks)}</th>)}<th scope="col">合計</th></tr></thead><tbody>{matrix.corps.map((corp,i) => <tr key={corp}><th scope="row">{heading("corp",corp,i,matrix.corps)}</th>{matrix.banks.map(bank => <td key={bank}>{accounts.filter(a => a.kind === "bank" && !a.hidden && accountAxes(a.name).corp_code === corp && accountAxes(a.name).bank_name === bank).map(a => <div key={a.mf_account_id}><Link className={styles.detailLink} aria-label={accountDisplayName(a.name) + "の明細"} href={`/bud/bank/accounts/${encodeURIComponent(a.mf_account_id)}`}><strong>{(a.balance_mode === "manual_check" || a.balance === null || (a.balance_mode === "anchor" && (a.anchor_balance == null || !a.anchor_date))) ? "MFで確認" : Number(a.balance).toLocaleString("ja-JP") + " 円"}</strong></Link></div>)}<Delta value={matrix.cell(corp,bank).delta} />{matrix.cell(corp,bank).notes.map(note => <small className={styles.balanceNote} key={note}>{note}</small>)}</td>)}<td><Amount total value={matrix.cell(corp)} /></td></tr>)}</tbody><tfoot><tr><th scope="row">合計</th>{matrix.banks.map(bank => <td key={bank}><Amount total value={matrix.cell(undefined,bank)} /></td>)}<td><Amount total value={total} /></td></tr></tfoot></table></div></>;
 }

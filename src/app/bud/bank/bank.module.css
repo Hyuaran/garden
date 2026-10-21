@@ -5,6 +5,13 @@
  word-break:auto-phrase; line-break:strict; text-wrap:pretty; overflow-wrap:break-word;
 }
 .pageShell::before { content:""; position:fixed; inset:0; z-index:-1; background:var(--bg); }
+.account:is(a) { color:var(--ink); text-decoration:none; }
+.account:is(a):hover { border-color:var(--teal); }
+.detailLink { color:var(--ink); text-decoration:underline; text-underline-offset:4px; }
+.detailLink:hover { color:var(--teal); }
+.details td:first-child { position:sticky; left:0; background:var(--card); }
+.details td:nth-child(2) { white-space:normal; min-width:220px; max-width:600px; }
+.details td:nth-child(3) { white-space:nowrap; min-width:0; }
 .pageShell * { box-sizing:border-box; }
 .pageShell h1,.pageShell h2 { color:var(--heading); text-wrap:balance; }
 .pageShell h1 { font-size:clamp(20px,2vw,28px); margin:0; }

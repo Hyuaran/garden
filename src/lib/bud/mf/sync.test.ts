@@ -23,14 +23,18 @@ function fixture(failed = false) {
   return {db,client,rpc,update,old};
 }
 describe("MF snapshot sync", () => {
-  it("calculates fiscal-year balances and publishes only three calendar months of cards atomically", async () => {
+  it("calculates fiscal-year balances and publishes fiscal-year bank and card transactions atomically", async () => {
     const f = fixture();
     expect(await syncMf(f.db,"button",{client:f.client,key:"key",viewers:"e1,e2",now:new Date("2026-10-20T00:00:00Z")})).toEqual({ok:true});
     expect(f.client.transactions).toHaveBeenCalledWith("2026-04-01","2026-10-20");
     const payload = f.rpc.mock.calls[1][1];
     expect(payload.p_accounts[0].balance).toBe(110);
     expect(payload.p_accounts[1]).toMatchObject({sort_order:1,visible_employee_ids:["e1","e2"],kind:"card"});
-    expect(payload.p_transactions.map((t:{mf_transaction_id:string})=>t.mf_transaction_id)).toEqual(["2"]);
+    expect(payload.p_transactions.map((t:{mf_transaction_id:string})=>t.mf_transaction_id)).toEqual(["2","3"]);
+    expect(payload.p_bank_transactions.map((t:{mf_transaction_id:string})=>t.mf_transaction_id)).toEqual(["1"]);
+    expect(payload.p_since).toBe("2026-04-01");
+    expect(payload.p_until).toBe("2026-10-20");
+    expect(payload.p_accounts[0].fiscal_start_date).toBe("2026-04-01");
     expect(f.update).not.toHaveBeenCalled();
   });
   it("requests an atomic Japanese-date baseline only after a successful MF read", async () => {

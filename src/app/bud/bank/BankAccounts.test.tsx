@@ -14,12 +14,15 @@ describe("bank accounts screen", () => {
     await screen.findByText("MF最終更新：2026/10/20(火) 09:30");
     expect(screen.getAllByText("100 円")).toHaveLength(5);
     expect(screen.getByText("MFで確認")).toBeInTheDocument();
+    expect(screen.queryByText(/未仕訳/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link",{name:"銀行1（ヒュアラン）の明細"})).toHaveAttribute("href","/bud/bank/accounts/1");
     expect(screen.getByText("連携を確認中")).toBeInTheDocument();
     expect(screen.getByRole("link", {name:"Bud"})).toHaveAttribute("href", "/bud/dashboard");
     expect(screen.getByRole("heading", {level:1,name:"口座残高・カード利用"})).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
-    expect(screen.getByText("備品")).toBeInTheDocument();
+    expect(screen.getByRole("link",{name:/オリコカード/})).toHaveAttribute("href","/bud/bank/accounts/3?period=current");
+    expect(screen.getByText(/1 件・最後 2026-10-01/)).toBeInTheDocument();
     expect(screen.getByText("45 円")).toBeInTheDocument();
     expect(screen.queryByText("999,999 円")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("期間"),{target:{value:"last"}});

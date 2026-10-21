@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { mfAccess } from "@/lib/bud/mf/access";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { monthRange } from "@/lib/bud/mf/balances";
+import { transactionRange } from "@/lib/bud/mf/transactions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,9 @@ export async function GET(request: Request) {
   const accounts = await auth.db.from("bud_mf_accounts").select("*").order("sort_order").order("mf_account_id");
   if (accounts.error) return fail();
   const params = new URL(request.url).searchParams;
-  const range = monthRange(params.get("period") ?? "current");
+  let range;
+  try { range = transactionRange(params.get("period") ?? "current", accounts.data.find(a => a.fiscal_start_date)?.fiscal_start_date); }
+  catch { return NextResponse.json({ error: "今年度の取引を読み直してください" }, { status: 409 }); }
   let query = auth.db.from("bud_mf_card_transactions").select("*").gte("date",range.start).lte("date",range.end).order("date", { ascending: false }).order("mf_transaction_id");
   if (params.get("card")) query = query.eq("mf_account_id", params.get("card"));
   // Paginate the stored snapshot too: Supabase caps a single response at 1,000 rows.
