@@ -3,16 +3,16 @@ import { useEffect, useState } from "react";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
 import { accountDisplayName } from "@/lib/bud/mf/corporations";
-import { fiscalYearLabel, journalLabel, transactionAmount } from "@/lib/bud/mf/transactions";
+import { fiscalYearLabel, pastFiscalYears, validTransactionPeriod, journalLabel, transactionAmount } from "@/lib/bud/mf/transactions";
 import type { CardTransaction, MfAccount } from "@/lib/bud/mf/types";
 import styles from "./bank.module.css";
 
-type Detail = { account: MfAccount; transactions: CardTransaction[] };
+type Detail = { fiscalYears?: number[]; account: MfAccount; transactions: CardTransaction[] };
 const yen = (n: number) => `${n.toLocaleString("ja-JP")} 円`;
 const income = (t: CardTransaction) => t.side === "INCOME" ? Number(t.value) : 0;
 const expense = (t: CardTransaction) => t.side === "EXPENSE" ? Number(t.value) : 0;
 export default function TransactionDetail({ id, initialPeriod = "current" }: { id: string; initialPeriod?: string }) {
-  const [period,setPeriod] = useState(["current","last","year"].includes(initialPeriod) ? initialPeriod : "current");
+  const [period,setPeriod] = useState(validTransactionPeriod(initialPeriod) ? initialPeriod : "current");
   const [data,setData] = useState<Detail | null>(null);
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(true);
@@ -38,7 +38,7 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
     ]),
     { id:"journal", label:"仕訳", value:t => journalLabel(t.journalizing_status), type:"text" },
   ];
-  const periodControl = <label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">{fiscalYearLabel(data?.account.fiscal_start_date)}</option></select></label>;
+  const periodControl = <label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">{fiscalYearLabel(data?.account.fiscal_start_date)}</option>{pastFiscalYears(data?.fiscalYears ?? [], data?.account.fiscal_start_date).map(year => <option key={year} value={`fy:${year}`}>{year}年度</option>)}</select></label>;
   return <div className={styles.pageShell}>
     <SystemBreadcrumb root={{ label:"Bud", href:"/bud/dashboard" }} items={[{ label:"口座残高・カード利用", href:card ? "/bud/bank?tab=card" : "/bud/bank" },{ label:name }]} />
     <h1>{name}</h1>

@@ -45,10 +45,19 @@ it("uses card storage and validates page and period", async () => {
 it("reads successive batches and returns all rows rather than a server page", async () => {
   const f = fixture();
   const row = {mf_transaction_id:"x",date:"2026-10-20",side:"EXPENSE",value:10};
-  f.query.range.mockReset().mockResolvedValueOnce({data:Array.from({length:1000}, (_,i) => ({...row,mf_transaction_id:String(i)}))}).mockResolvedValueOnce({data:[{...row,mf_transaction_id:"1000"}]});
+  f.query.range.mockReset().mockResolvedValueOnce({data:Array.from({length:1000}, (_,i) => ({...row,mf_transaction_id:String(i)}))}).mockResolvedValueOnce({data:[{...row,mf_transaction_id:"1000"}]}).mockResolvedValue({data:[]});
   const data = await (await GET(request("&period=year"))).json();
   expect(data.transactions).toHaveLength(1001);
   expect(data.total).toBe(1001);
   expect(f.query.range).toHaveBeenNthCalledWith(1,0,999);
   expect(f.query.range).toHaveBeenNthCalledWith(2,1000,1999);
+});
+
+it("accepts an explicit past fiscal year and returns account years", async () => {
+  const f = fixture();
+  const data = await (await GET(request("&period=fy:2025"))).json();
+  expect(data.range).toEqual({start:"2025-04-01",end:"2026-03-31"});
+  expect(f.query.gte).toHaveBeenCalledWith("date","2025-04-01");
+  expect(f.query.lte).toHaveBeenCalledWith("date","2026-03-31");
+  expect(data.fiscalYears).toEqual([2026]);
 });

@@ -52,3 +52,12 @@ it("pages locally after filtering and keeps totals over all filtered rows", asyn
   expect(screen.getAllByRole("row")).toHaveLength(51);
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
+
+it("offers available past fiscal years and opens a past-year deep link", async () => {
+  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({account:{name:"銀行",kind:"bank",balance:0,fiscal_start_date:"2026-04-01"},transactions:[],fiscalYears:[2026,2025,2023]})));
+  vi.stubGlobal("fetch",fetcher);
+  render(<TransactionDetail id="b" initialPeriod="fy:2025" />);
+  await screen.findByRole("option",{name:"2025年度"});
+  expect(screen.getAllByRole("option").map(o=>o.textContent)).toEqual(["今月","先月","2026年度","2025年度","2023年度"]);
+  expect(fetcher.mock.calls[0][0]).toContain("period=fy%3A2025");
+});

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { mfAccess } from "@/lib/bud/mf/access";
-import { transactionAmount, transactionRange } from "@/lib/bud/mf/transactions";
+import { transactionAmount, transactionRange, transactionYears, validTransactionPeriod } from "@/lib/bud/mf/transactions";
 import type { CardTransaction } from "@/lib/bud/mf/types";
 
 export const runtime = "nodejs";
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const id = params.get("id");
   const period = params.get("period") ?? "current";
   const page = Number(params.get("page") ?? "1");
-  if (!id || !["current","last","year"].includes(period) || !Number.isSafeInteger(page) || page < 1 || page > 1000000) return NextResponse.json({ error: "表示条件を確認してください" }, { status: 400 });
+  if (!id || !validTransactionPeriod(period) || !Number.isSafeInteger(page) || page < 1 || page > 1000000) return NextResponse.json({ error: "表示条件を確認してください" }, { status: 400 });
   const fail = () => NextResponse.json({ error: "明細を読み込めませんでした。時間をおいてもう一度お試しください。" }, { status: 500 });
   // Use the signed-in session for both account lookup and rows: RLS applies even to a direct URL.
   const result = await auth.db.from("bud_mf_accounts").select("*").eq("mf_account_id",id).maybeSingle();
@@ -30,6 +30,13 @@ export async function GET(request: Request) {
     rows.push(...batch.data);
     if (batch.data.length < 1000) break;
   }
-  return NextResponse.json({ account, transactions: rows, total: rows.length, amount: rows.reduce((sum,t) => sum + transactionAmount(t),0),
+  const dates: { date: string }[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const batch = await auth.db.from(account.kind === "card" ? "bud_mf_card_transactions" : "bud_mf_bank_transactions").select("date").eq("mf_account_id",id).order("mf_transaction_id").range(offset,offset+999);
+    if (batch.error) return fail();
+    dates.push(...batch.data);
+    if (batch.data.length < 1000) break;
+  }
+  return NextResponse.json({ account, fiscalYears: transactionYears(dates), transactions: rows, total: rows.length, amount: rows.reduce((sum,t) => sum + transactionAmount(t),0),
     income: rows.reduce((sum,t) => sum + (t.side === "INCOME" ? Number(t.value) : 0),0), expense: rows.reduce((sum,t) => sum + (t.side === "EXPENSE" ? Number(t.value) : 0),0), page, range }, { headers: { "Cache-Control":"no-store" } });
 }

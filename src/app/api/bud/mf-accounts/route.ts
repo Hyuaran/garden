@@ -3,7 +3,7 @@ import { mfAccess } from "@/lib/bud/mf/access";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { Arrival } from "@/lib/bud/mf/types";
 import { arrivalTotals, monthRange } from "@/lib/bud/mf/balances";
-import { transactionRange } from "@/lib/bud/mf/transactions";
+import { transactionRange, transactionYears, validTransactionPeriod } from "@/lib/bud/mf/transactions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const accounts = await auth.db.from("bud_mf_accounts").select("*").order("sort_order").order("mf_account_id");
   if (accounts.error) return fail();
   const params = new URL(request.url).searchParams;
+  if (!validTransactionPeriod(params.get("period") ?? "current")) return NextResponse.json({ error: "表示条件を確認してください" }, { status: 400 });
   let range;
   try { range = transactionRange(params.get("period") ?? "current", accounts.data.find(a => a.fiscal_start_date)?.fiscal_start_date); }
   catch { return NextResponse.json({ error: "今年度の取引を読み直してください" }, { status: 409 }); }
@@ -27,6 +28,15 @@ export async function GET(request: Request) {
     transactions.push(...page.data);
     if (page.data.length < 1000) break;
   }
+  const yearsByAccount: Record<string, number[]> = {};
+  const dates: { mf_account_id: string; date: string }[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const batch = await auth.db.from("bud_mf_card_transactions").select("mf_account_id,date").order("mf_transaction_id").range(offset,offset+999);
+    if (batch.error) return fail();
+    dates.push(...batch.data);
+    if (batch.data.length < 1000) break;
+  }
+  for (const account of accounts.data.filter(a => a.kind === "card" && !a.hidden)) yearsByAccount[account.mf_account_id] = transactionYears(dates.filter(t => t.mf_account_id === account.mf_account_id));
   let employees: { employee_id: string; name: string | null }[] = [];
   if (auth.admin) {
     const result = await getSupabaseAdmin().from("root_employees").select("employee_id,name").is("deleted_at",null).order("name");
@@ -46,7 +56,7 @@ export async function GET(request: Request) {
  }
  const visibleBanks = accounts.data.filter(a => a.kind === "bank" && !a.hidden);
  const arrivalByAccount = Object.fromEntries(visibleBanks.map(a => [a.mf_account_id, arrivalTotals(arrivals, [a.mf_account_id])]));
- return NextResponse.json({ arrivalByAccount, arrivalTotal: arrivalTotals(arrivals, visibleBanks.map(a => a.mf_account_id)), accounts: accounts.data, transactions, employees, admin: auth.admin, axes: axes.data, snapshots: snapshots.data }, { headers: { "Cache-Control": "no-store" } });
+ return NextResponse.json({ yearsByAccount, arrivalByAccount, arrivalTotal: arrivalTotals(arrivals, visibleBanks.map(a => a.mf_account_id)), accounts: accounts.data, transactions, employees, admin: auth.admin, axes: axes.data, snapshots: snapshots.data }, { headers: { "Cache-Control": "no-store" } });
 }
 export async function PATCH(request: Request) {
   const auth = await mfAccess();

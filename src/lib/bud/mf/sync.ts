@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MfClient } from "./client";
 import { bookBalances, calculateBalance, mergeAccounts, monthRange } from "./balances";
-import type { MfAccount } from "./types";
+import type { MfAccount, Transaction } from "./types";
 
 export async function syncMf(db: SupabaseClient, trigger: "cron" | "button", options: { now?: Date; client?: MfClient; key?: string; viewers?: string; snapshot?: boolean } = {}) {
   const begin = await db.rpc("bud_mf_begin_fetch", { p_trigger: trigger });
@@ -33,15 +33,10 @@ export async function syncMf(db: SupabaseClient, trigger: "cron" | "button", opt
     const accounts = mergeAccounts(incoming, saved.data as MfAccount[], viewers, fetchedAt).map(a => a.kind === "bank"
       ? { ...a, ...calculateBalance(a, books, a.balance_mode === "anchor" ? transactions : transactions.filter(t => t.date >= trial.start_date && t.date <= range.end), range.end, trial.start_date) } : a);
     accounts.forEach(a => { a.fiscal_start_date = trial.start_date; });
-    const cards = new Set(accounts.filter(a => a.kind === "card").map(a => a.mf_account_id));
-    const banks = new Set(accounts.filter(a => a.kind === "bank").map(a => a.mf_account_id));
-    const stored = transactions.map(t => ({
-      mf_transaction_id: String(t.id), mf_account_id: String(t.connected_account_id), date: t.date, content: t.content,
-      value: t.value, side: t.side, journalizing_status: t.journalizing_status, fetched_at: fetchedAt,
-    }));
+    const { card, bank } = storedTransactions(accounts, transactions, fetchedAt);
     // The RPC records first observations and recalculates arrival balances under the
     // settings lock, using the database timestamp and immutable stored amounts.
-    const applied = await db.rpc("bud_mf_apply_fetch", { p_run_id: runId, p_accounts: accounts, p_transactions: stored.filter(t => cards.has(t.mf_account_id)), p_bank_transactions: stored.filter(t => banks.has(t.mf_account_id)), p_since: trial.start_date, p_until: range.end, ...(options.snapshot ? { p_snapshot_date: range.end } : {}) });
+    const applied = await db.rpc("bud_mf_apply_fetch", { p_run_id: runId, p_accounts: accounts, p_transactions: card, p_bank_transactions: bank, p_since: trial.start_date, p_until: range.end, ...(options.snapshot ? { p_snapshot_date: range.end } : {}) });
     if (applied.error) { console.error("[bud-mf] apply failed", applied.error.message); throw new Error("読み込み結果を保存できませんでした"); }
     return { ok: true };
   } catch (error) {
@@ -50,4 +45,14 @@ export async function syncMf(db: SupabaseClient, trigger: "cron" | "button", opt
     if (recorded.error) console.error("MF failure record could not be saved");
     return { ok: false, error: message };
   }
+}
+
+export function storedTransactions(accounts: MfAccount[], transactions: Transaction[], fetchedAt: string) {
+    const cards = new Set(accounts.filter(a => a.kind === "card").map(a => a.mf_account_id));
+    const banks = new Set(accounts.filter(a => a.kind === "bank").map(a => a.mf_account_id));
+    const stored = transactions.map(t => ({
+      mf_transaction_id: String(t.id), mf_account_id: String(t.connected_account_id), date: t.date, content: t.content,
+      value: t.value, side: t.side, journalizing_status: t.journalizing_status, fetched_at: fetchedAt,
+    }));
+    return { card: stored.filter(t => cards.has(t.mf_account_id)), bank: stored.filter(t => banks.has(t.mf_account_id)) };
 }

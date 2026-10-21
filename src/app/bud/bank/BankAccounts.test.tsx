@@ -86,3 +86,14 @@ it("shows and saves the bank anchor fields",async()=>{
  await waitFor(()=>expect(fetcher.mock.calls.some(([,init])=>init?.method === "PATCH")).toBe(true));
  expect(JSON.parse(fetcher.mock.calls.find(([,init])=>init?.method === "PATCH")![1].body)).toMatchObject({mode:"anchor",anchor_balance:3842313,anchor_date:"2026-10-21"});
 });
+
+it("offers available card fiscal years and carries the selected period into details", async () => {
+  fetcher.mockImplementation(async () => new Response(JSON.stringify({...data(),accounts:data().accounts.map(a=>({...a,fiscal_start_date:"2026-04-01"})),yearsByAccount:{"3":[2026,2025,2023]}})));
+  render(<BankAccounts />);
+  await screen.findByText("MF最終更新：2026/10/20(火) 09:30");
+  fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
+  expect(screen.getAllByRole("option").map(o=>o.textContent)).toEqual(["今月","先月","2026年度","2025年度","2023年度"]);
+  fireEvent.change(screen.getByLabelText("期間"),{target:{value:"fy:2025"}});
+  await waitFor(()=>expect(fetcher.mock.calls.some(([url])=>url.includes("period=fy%3A2025"))).toBe(true));
+  expect(screen.getByRole("link",{name:/オリコカード/})).toHaveAttribute("href","/bud/bank/accounts/3?period=fy:2025");
+});
