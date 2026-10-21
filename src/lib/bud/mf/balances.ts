@@ -18,9 +18,15 @@ export function bookBalances(rows: TrialRow[]): Map<string, number> {
   visit(rows);
   return result;
 }
-export function calculateBalance(account: Pick<MfAccount, "mf_account_id" | "book_sub_account_name" | "balance_mode">, books: Map<string, number>, transactions: Transaction[]) {
-  const pending = transactions.filter(t => String(t.connected_account_id) === account.mf_account_id && t.journalizing_status === "none");
+export function calculateBalance(account: Pick<MfAccount, "mf_account_id" | "book_sub_account_name" | "balance_mode" | "anchor_balance" | "anchor_date">, books: Map<string, number>, transactions: Transaction[], today = monthRange("current").end, pendingSince?: string) {
+  const pending = transactions.filter(t => String(t.connected_account_id) === account.mf_account_id && t.journalizing_status === "none" && (!pendingSince || t.date >= pendingSince) && t.date <= today);
   if (account.balance_mode === "manual_check") return { balance: null, unjournalized_count: pending.length };
+  if (account.balance_mode === "anchor") {
+    if (account.anchor_balance == null || !account.anchor_date) return { balance: null, unjournalized_count: pending.length };
+    const balance = transactions.filter(t => String(t.connected_account_id) === account.mf_account_id && t.date > account.anchor_date! && t.date <= today)
+      .reduce((sum, t) => sum + (t.side === "INCOME" ? t.value : -t.value), Number(account.anchor_balance));
+    return { balance, unjournalized_count: pending.length };
+  }
   const book = account.book_sub_account_name ? books.get(account.book_sub_account_name) : 0;
   if (book === undefined) throw new Error("帳簿の補助科目が見つかりません");
   return { balance: pending.reduce((sum, t) => sum + (t.side === "INCOME" ? t.value : -t.value), book), unjournalized_count: pending.length };
@@ -33,6 +39,7 @@ export function mergeAccounts(incoming: ConnectedAccount[], existing: MfAccount[
       sub_account_label: (item.connected_sub_accounts ?? []).map(a => a.name).join(" ／ "),
       sort_order: old?.sort_order ?? next++, hidden: old?.hidden ?? false,
       visible_employee_ids: old?.visible_employee_ids ?? viewers, book_sub_account_name: old?.book_sub_account_name ?? "",
+      anchor_balance: old?.anchor_balance ?? null, anchor_date: old?.anchor_date ?? null,
       balance_mode: old?.balance_mode ?? "manual_check", balance_note: old?.balance_note ?? "帳簿との対応を確認中です",
       balance: null, unjournalized_count: 0, fetched_at: fetchedAt };
   });

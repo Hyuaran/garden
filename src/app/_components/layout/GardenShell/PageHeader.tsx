@@ -15,12 +15,13 @@ interface PageHeaderProps {
   /** 見出し下のサブテキスト (例: "法人 × 口座 マトリクス + 残高推移 + 口座マスタ") */
   subtitle?: string;
   /** 限定公開バッジ表示 */
-  accessBadge?: { icon?: string; label: string };
+  accessBadge?: { icon?: ReactNode; label: string };
   titleAddon?: ReactNode;
   /** お気に入り押下中の状態 */
   isFavorite?: boolean;
   moduleMark?: "sakura" | "forest" | "leaf" | "bud";
   favoriteIcon?: string;
+  outlineFavorite?: boolean;
 }
 
 const FAV_KEY = "garden_favorites";
@@ -86,6 +87,7 @@ export default function PageHeader({
   accessBadge,
   titleAddon,
   isFavorite = false,
+  outlineFavorite = false,
   moduleMark = "sakura",
   favoriteIcon = "/themes/garden-shell/images/icons_bloom/orb_bud.png",
 }: PageHeaderProps) {
@@ -136,7 +138,7 @@ export default function PageHeader({
         aria-pressed={favorite}
         onClick={toggleFavorite}
       >
-        <img
+        {outlineFavorite ? <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: "var(--btn-ink)", display: "block", margin: "auto" }}><path d="m12 3 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3-5.6-3-5.6 3 1.1-6.3L2.9 9.6l6.3-.9Z" /></svg> : <><img
           src="/themes/garden-shell/images/header_icons/D-01a_favorite_outline.png"
           alt=""
           className="page-favorite-icon-off"
@@ -145,7 +147,7 @@ export default function PageHeader({
           src="/themes/garden-shell/images/header_icons/D-01_favorite_simple.png"
           alt=""
           className="page-favorite-icon-on"
-        />
+        /></>}
         <span className={`page-favorite-toast${toastVisible ? " is-visible" : ""}`} aria-live="polite">{toast}</span>
       </button>
       <div className="page-title-block">

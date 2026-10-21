@@ -34,7 +34,7 @@ function Settings({ account, employees, onSave, onClose }: { account: MfAccount;
   return <form className={styles.settings} aria-label={`${accountDisplayName(account.name)}の設定`} onSubmit={async e => {
     e.preventDefault(); setSaving(true); setError("");
     try {
-      await api("/api/bud/mf-accounts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "settings", id: draft.mf_account_id, viewers: draft.visible_employee_ids, hidden: draft.hidden, book: draft.book_sub_account_name, mode: draft.balance_mode, note: draft.balance_note }) });
+      await api("/api/bud/mf-accounts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "settings", id: draft.mf_account_id, viewers: draft.visible_employee_ids, hidden: draft.hidden, book: draft.book_sub_account_name, mode: draft.balance_mode, note: draft.balance_note, anchor_balance: draft.anchor_balance ?? null, anchor_date: draft.anchor_date ?? null }) });
       await onSave(); onClose();
     } catch (e) { setError(e instanceof Error ? e.message : "保存できませんでした"); } finally { setSaving(false); }
   }}>
@@ -43,9 +43,13 @@ function Settings({ account, employees, onSave, onClose }: { account: MfAccount;
     <label><input type="checkbox" checked={draft.hidden} onChange={e => setDraft({ ...draft, hidden: e.target.checked })} />この{account.kind === "bank" ? "口座" : "カード"}を表示しない</label>
     {account.kind === "bank" && <>
       <label>帳簿の補助科目名<input value={draft.book_sub_account_name} maxLength={500} onChange={e => setDraft({ ...draft, book_sub_account_name: e.target.value })} /><small>帳簿に科目がない場合は空欄にしてください。</small></label>
-      <label>残高の出し方<select value={draft.balance_mode} onChange={e => setDraft({ ...draft, balance_mode: e.target.value as MfAccount["balance_mode"] })}><option value="auto">計算した残高を表示</option><option value="manual_check">残高は MF で確認</option></select></label>
+      <label>残高の出し方<select value={draft.balance_mode} onChange={e => setDraft({ ...draft, balance_mode: e.target.value as MfAccount["balance_mode"] })}><option value="auto">計算した残高を表示</option><option value="anchor">銀行の残高を基準にする</option><option value="manual_check">残高は MF で確認</option></select></label>
+      {draft.balance_mode === "anchor" && <>
+        <label>起点の残高（円）<input type="number" step="1" value={draft.anchor_balance ?? ""} onChange={e => setDraft({ ...draft, anchor_balance: e.target.value === "" ? null : Number(e.target.value) })} /></label>
+        <label>起点の日<input type="date" value={draft.anchor_date ?? ""} onChange={e => setDraft({ ...draft, anchor_date: e.target.value || null })} /></label>
+      </>}
       <label>MF で確認する理由<input value={draft.balance_note} maxLength={1000} onChange={e => setDraft({ ...draft, balance_note: e.target.value })} /></label>
-      <small>補助科目名・残高の出し方を変更したあとは、読み直してください。</small>
+      <small>補助科目名・残高の出し方・起点を変更したあとは、読み直してください。</small>
     </>}
     {error && <p role="alert">{error}</p>}
     <div className={styles.toolbar}><button disabled={saving} type="submit">{saving ? "保存中…" : "保存"}</button><button type="button" disabled={saving} onClick={onClose}>閉じる</button></div>

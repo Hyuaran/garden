@@ -52,6 +52,9 @@ describe("RootShell", () => {
     render(<RootShell><div>本文</div></RootShell>);
 
     expect(screen.getAllByLabelText("お知らせ")).toHaveLength(2);
+    const viewButtons = screen.getAllByRole("button", { name: "この画面は表示の切り替えがありません" });
+    expect(viewButtons).toHaveLength(2);
+    for (const button of viewButtons) expect(button).toBeDisabled();
     const rail = screen.getByLabelText("Gardenシリーズ");
     expect(within(rail).getByLabelText("Root：組織台帳")).toHaveAttribute("aria-current", "page");
     expect(within(rail).getByLabelText("System：社内システム")).not.toHaveAttribute("aria-current");

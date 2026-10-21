@@ -544,7 +544,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
           {list.length > 0 && (
             <div style={navWrap}>
               <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((value) => Math.max(0, value - 1))}>
-                <span style={navCircle}>‹</span>前へ<span style={navHint}>Ctrl+↑</span>
+                <span style={navCircle}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg></span>前へ<span style={navHint}>Ctrl+↑</span>
               </button>
               {!embedded && (
                 <span style={navCount}>
@@ -558,7 +558,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                 disabled={idx >= list.length - 1}
                 onClick={() => setIdx((value) => Math.min(list.length - 1, value + 1))}
               >
-                次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>›</span>
+                次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span>
               </button>
             </div>
           )}

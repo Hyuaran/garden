@@ -1059,7 +1059,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   左右入替
                 </button>
                 <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((i) => Math.max(0, i - 1))}>
-                  <span style={navCircle}>←</span>前へ<span style={navHint}>Ctrl+↑</span>
+                  <span style={navCircle}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" /></svg></span>前へ<span style={navHint}>Ctrl+↑</span>
                 </button>
                 {!embedded && (
                   <span style={navCount}>
@@ -1068,7 +1068,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                   </span>
                 )}
                 <button type="button" style={navBtn(idx >= list.length - 1)} disabled={idx >= list.length - 1} onClick={() => setIdx((i) => Math.min(list.length - 1, i + 1))}>
-                  次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>→</span>
+                  次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg></span>
                 </button>
               </div>
             </div>
@@ -1301,8 +1301,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                                 ...(showInvalid ? { background: "color-mix(in srgb, var(--danger) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 45%, transparent)" } : {}),
                               }}
                             />
-                            {!numberDisabled && tValid && <span style={tMarkOk}>✓</span>}
-                            {showInvalid && <span style={tMarkNg}>✕</span>}
+                            {!numberDisabled && tValid && <span style={tMarkOk}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></span>}
+                            {showInvalid && <span style={tMarkNg}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></span>}
                           </div>
                         );
                       })()}
@@ -1391,7 +1391,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       title="画像を90°回転（承認/差戻し時に保存画像へ反映）"
                       style={rotateImgBtn}
                     >
-                      ↻ 回転
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2-5M20 3v5h-5" /></svg> 回転
                     </button>
                   )}
                 </div>

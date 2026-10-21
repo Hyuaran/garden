@@ -1,7 +1,11 @@
-.slot:empty { display:none; }
 .slot { flex-shrink:0; }
 .toggle { display:flex; gap:8px; }
-.toggle button { display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; padding:9px; border:1px solid var(--btn-line); border-radius:13px; background:var(--btn); color:var(--btn-ink); box-shadow:var(--shadow-s); cursor:pointer; }
+.toggle button, .fallback button { display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; padding:9px; border:1px solid var(--btn-line); border-radius:13px; background:var(--btn); color:var(--btn-ink); box-shadow:var(--shadow-s); cursor:pointer; }
 .toggle button[aria-pressed="true"] { color:var(--teal); border-color:var(--teal); background:rgba(14,165,160,.1); }
-.toggle svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; }
-@media(max-width:760px) { .toggle { gap:4px; } .toggle button { width:30px; height:30px; padding:5px; border-radius:8px; } }
+.toggle svg, .fallback svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; }
+@media(max-width:760px) { .toggle { gap:4px; } .toggle button, .fallback button { width:30px; height:30px; padding:5px; border-radius:8px; } }
+
+.fallback { position:relative; display:inline-flex; }
+.fallback button:disabled { color:var(--sub); opacity:.45; cursor:not-allowed; }
+.tooltip { display:none; position:absolute; z-index:40; right:0; top:100%; width:max-content; max-width:260px; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--sub); font-size:12px; }
+.fallback:hover .tooltip, .fallback:focus .tooltip, .fallback:active .tooltip { display:block; }

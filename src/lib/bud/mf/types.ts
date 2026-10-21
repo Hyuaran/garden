@@ -2,7 +2,7 @@ export type MfAccount = {
   bank_name?: string; corp_code?: string; mf_account_id: string; name: string; kind: "bank" | "card";
   sub_account_label: string; sort_order: number; hidden: boolean;
   visible_employee_ids: string[]; book_sub_account_name: string;
-  balance_mode: "auto" | "manual_check"; balance_note: string;
+  balance_mode: "auto" | "manual_check" | "anchor"; anchor_balance?: number | null; anchor_date?: string | null; balance_note: string;
   balance: number | null; unjournalized_count: number; fetched_at: string;
 };
 export type ConnectedAccount = { id: string | number; name: string; connected_sub_accounts?: { name: string }[] };

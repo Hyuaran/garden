@@ -95,8 +95,9 @@ export function BudFaithfulFrame({
             title={title}
             titleJp={titleJp}
             subtitle={subtitle}
-            accessBadge={{ icon: "♕", label: formatBudRoleLabel(budRole) }}
+            accessBadge={{ icon: route === "/bud/expenses" ? <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m3 6 4 4 5-6 5 6 4-4-2 12H5Z M5 21h14" /></svg> : "♕", label: formatBudRoleLabel(budRole) }}
             moduleMark="bud"
+            outlineFavorite={route === "/bud/expenses"}
             favoriteIcon={BUD_ICON}
           />
           {topSlot ? <div className={styles.topSlot}>{topSlot}</div> : null}

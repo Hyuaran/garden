@@ -20,11 +20,11 @@ export async function syncMf(db: SupabaseClient, trigger: "cron" | "button", opt
     if (saved.error) throw new Error("前回の口座を読み込めませんでした");
     const incoming = await client.accounts();
     const trial = await client.trialBalance();
-    const start = trial.start_date < range.start ? trial.start_date : range.start;
+    const start = [trial.start_date, range.start, ...(saved.data as MfAccount[]).filter(a => a.balance_mode === "anchor" && a.anchor_balance != null && a.anchor_date).map(a => a.anchor_date!)].sort()[0];
     const transactions = await client.transactions(start, range.end);
     const books = bookBalances(trial.rows);
     const accounts = mergeAccounts(incoming, saved.data as MfAccount[], viewers, fetchedAt).map(a => a.kind === "bank"
-      ? { ...a, ...calculateBalance(a, books, transactions.filter(t => t.date >= trial.start_date && t.date <= range.end)) } : a);
+      ? { ...a, ...calculateBalance(a, books, a.balance_mode === "anchor" ? transactions : transactions.filter(t => t.date >= trial.start_date && t.date <= range.end), range.end, trial.start_date) } : a);
     const cards = new Set(accounts.filter(a => a.kind === "card").map(a => a.mf_account_id));
     const cardTransactions = transactions.filter(t => cards.has(String(t.connected_account_id)) && t.date >= range.start && t.date <= range.end).map(t => ({
       mf_transaction_id: String(t.id), mf_account_id: String(t.connected_account_id), date: t.date, content: t.content,

@@ -54,8 +54,19 @@ describe("MF route permissions",()=>{
     expect(rpc).toHaveBeenCalledWith("bud_mf_reorder_axis",{p_axis:"bank",p_keys:["楽天銀行","みずほ銀行"]});
     expect((await PATCH(request({action:"axis-order",axis:"corp",keys:["HR","HR"]}))).status).toBe(400);
     expect((await PATCH(request({action:"settings",id:"a",viewers:["e1","e1"],hidden:true,book:" 科目 ",mode:"manual_check",note:"理由"}))).status).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("bud_mf_save_settings",{p_id:"a",p_viewers:["e1"],p_hidden:true,p_book:"科目",p_mode:"manual_check",p_note:"理由"});
+    expect(rpc).toHaveBeenCalledWith("bud_mf_save_settings",{p_id:"a",p_viewers:["e1"],p_hidden:true,p_book:"科目",p_mode:"manual_check",p_note:"理由",p_anchor_balance:null,p_anchor_date:null});
     expect((await PATCH(request({action:"settings",id:"a",viewers:"all"}))).status).toBe(400);
     expect(mocks.admin).not.toHaveBeenCalled();
   });
+});
+
+it("saves anchor settings only for admins and rejects invalid values",async()=>{
+ const rpc=vi.fn().mockResolvedValue({});
+ const body={action:"settings",id:"a",viewers:[],hidden:false,book:"",mode:"anchor",note:"",anchor_balance:0,anchor_date:"2026-10-21"};
+ mocks.access.mockResolvedValue({ok:true,admin:false,db:{rpc}});
+ expect((await PATCH(request(body))).status).toBe(403); expect(rpc).not.toHaveBeenCalled();
+ mocks.access.mockResolvedValue({ok:true,admin:true,db:{rpc}});
+ expect((await PATCH(request(body))).status).toBe(200);
+ expect(rpc).toHaveBeenCalledWith("bud_mf_save_settings",expect.objectContaining({p_mode:"anchor",p_anchor_balance:0,p_anchor_date:"2026-10-21"}));
+ for(const change of [{anchor_balance:1.5},{anchor_balance:"100"},{anchor_date:"2026-02-30"}]) expect((await PATCH(request({...body,...change}))).status).toBe(400);
 });

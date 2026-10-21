@@ -47,8 +47,12 @@ export async function PATCH(request: Request) {
       if (!Array.isArray(body.ids) || !body.ids.every((id: unknown) => typeof id === "string") || body.ids.length > 2000) throw new Error();
       result = await auth.db.rpc("bud_mf_reorder", { p_ids: body.ids });
     } else if (body.action === "settings") {
-      if (typeof body.id !== "string" || typeof body.hidden !== "boolean" || typeof body.book !== "string" || body.book.length > 500 || typeof body.note !== "string" || body.note.length > 1000 || !["auto","manual_check"].includes(body.mode) || !Array.isArray(body.viewers) || body.viewers.length > 2000 || !body.viewers.every((id: unknown) => typeof id === "string")) throw new Error();
-      result = await auth.db.rpc("bud_mf_save_settings", { p_id: body.id, p_viewers: [...new Set(body.viewers)], p_hidden: body.hidden, p_book: body.book.trim(), p_mode: body.mode, p_note: body.note.trim() });
+      if (typeof body.id !== "string" || typeof body.hidden !== "boolean" || typeof body.book !== "string" || body.book.length > 500 || typeof body.note !== "string" || body.note.length > 1000 || !["auto","manual_check","anchor"].includes(body.mode) || !Array.isArray(body.viewers) || body.viewers.length > 2000 || !body.viewers.every((id: unknown) => typeof id === "string")) throw new Error();
+      const anchorBalance = body.anchor_balance ?? null;
+      const anchorDate = body.anchor_date ?? null;
+      if (anchorBalance !== null && (typeof anchorBalance !== "number" || !Number.isSafeInteger(anchorBalance))) throw new Error();
+      if (anchorDate !== null && (typeof anchorDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(anchorDate) || !Number.isFinite(Date.parse(anchorDate)) || new Date(anchorDate).toISOString().slice(0,10) !== anchorDate)) throw new Error();
+      result = await auth.db.rpc("bud_mf_save_settings", { p_id: body.id, p_viewers: [...new Set(body.viewers)], p_hidden: body.hidden, p_book: body.book.trim(), p_mode: body.mode, p_note: body.note.trim(), p_anchor_balance: anchorBalance, p_anchor_date: anchorDate });
     } else throw new Error();
     if (result.error) return NextResponse.json({ error: "保存できませんでした。読み込み中の場合は終了後にもう一度お試しください。" }, { status: 409 });
     return NextResponse.json({ ok: true });

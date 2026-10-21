@@ -71,3 +71,15 @@ describe("bank accounts screen", () => {
     expect(screen.getAllByText("100 円")).toHaveLength(5);
   });
 });
+
+it("shows and saves the bank anchor fields",async()=>{
+ render(<BankAccounts />); await screen.findByText("銀行1");
+ fireEvent.click(screen.getByRole("button",{name:"設定"}));
+ fireEvent.click(screen.getByRole("button",{name:"銀行1（ヒュアラン）の設定"}));
+ fireEvent.change(screen.getByLabelText("残高の出し方"),{target:{value:"anchor"}});
+ fireEvent.change(screen.getByLabelText("起点の残高（円）"),{target:{value:"3842313"}});
+ fireEvent.change(screen.getByLabelText("起点の日"),{target:{value:"2026-10-21"}});
+ fireEvent.click(screen.getByRole("button",{name:"保存"}));
+ await waitFor(()=>expect(fetcher.mock.calls.some(([,init])=>init?.method === "PATCH")).toBe(true));
+ expect(JSON.parse(fetcher.mock.calls.find(([,init])=>init?.method === "PATCH")![1].body)).toMatchObject({mode:"anchor",anchor_balance:3842313,anchor_date:"2026-10-21"});
+});

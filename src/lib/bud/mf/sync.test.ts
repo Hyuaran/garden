@@ -56,3 +56,10 @@ describe("MF snapshot sync", () => {
     expect(f.client.accounts).not.toHaveBeenCalled();
   });
 });
+
+it("fetches anchor history before the fiscal year and retains fiscal pending counts", async()=>{
+ const f=fixture(); Object.assign(f.old,{balance_mode:"anchor",anchor_balance:1000,anchor_date:"2025-01-01"});
+ await syncMf(f.db,"button",{client:f.client,key:"key",now:new Date("2026-10-20T00:00:00Z")});
+ expect(f.client.transactions).toHaveBeenCalledWith("2025-01-01","2026-10-20");
+ expect(f.rpc.mock.calls[1][1].p_accounts[0]).toMatchObject({balance:1010,unjournalized_count:1,anchor_balance:1000,anchor_date:"2025-01-01"});
+});
