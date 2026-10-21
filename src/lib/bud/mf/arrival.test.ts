@@ -18,12 +18,13 @@ describe("arrival balances", () => {
  it("keeps group delta equal to income minus expense and excludes other accounts", () => {
   expect(arrivalTotals([...seen,{...seen[0],mf_account_id:"hidden",value:999}], ["a"])).toEqual({income:200,expense:70,delta:130});
  });
- it("stores immutable first observations atomically before recalculating and seeds migration at one timestamp", () => {
+ it("stores immutable first observations atomically before recalculating and seeds migration before today's midnight", () => {
   const sql=readFileSync("supabase/migrations/20261021000003_bud_mf_arrival.sql","utf8");
   expect(sql).toContain("on conflict (mf_transaction_id) do nothing");
   expect(sql).not.toMatch(/(?:delete from|update) (?:public\.)?bud_mf_bank_tx_seen/i);
   expect(sql).toContain("s.first_seen_at>a.anchor_at");
-  expect(sql).toContain("select mf_transaction_id,mf_account_id,date,side,value,now() from public.bud_mf_bank_transactions");
+  // 切り替え時点で見えていた取引は「今日 0 時（日本時間）の 1 秒前」に届いた扱い＝今日の内訳に入らない
+  expect(sql).toContain("select mf_transaction_id,mf_account_id,date,side,value,(date_trunc('day', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo') - interval '1 second' from public.bud_mf_bank_transactions");
   expect(sql).toContain("anchor_balance=balance,anchor_at=now(),balance_mode='arrival'");
   expect(sql.indexOf("on conflict (mf_transaction_id) do nothing")).toBeLessThan(sql.indexOf("update bud_mf_accounts a set balance"));
  });

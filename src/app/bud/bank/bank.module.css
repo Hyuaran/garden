@@ -98,3 +98,5 @@
 .matrix td:has(.stretchLink:hover), .matrix td:has(.stretchLink:focus-visible) { background:color-mix(in srgb, var(--teal) 8%, transparent); }
 /* 設定を開いたとき、カードの中の「○○の設定」ボタンがカードからはみ出さない（長い名前は折り返す） */
 .account .toolbar button { max-width:100%; white-space:normal; text-align:left; line-height:1.4; height:auto; }
+/* 欄全体を押せる口座は、欄の色だけを変える（数字の後ろに色を重ねない） */
+.detailLink.stretchLink:hover, .detailLink.stretchLink:focus-visible { background:transparent; }
