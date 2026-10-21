@@ -5,6 +5,12 @@ import BalanceMatrix from "./BalanceMatrix";
 import type { MfAccount } from "@/lib/bud/mf/types";
 const account = (id: string, name: string, balance: number): MfAccount => ({mf_account_id:id,name,kind:"bank",sort_order:0,hidden:false,visible_employee_ids:[],book_sub_account_name:"",balance_mode:"auto",balance_note:"",balance,unjournalized_count:2,sub_account_label:"",fetched_at:"now"});
 describe("balance matrix controls", () => {
+ it("shows arrival income and expense beside the group delta instead of the snapshot delta", () => {
+  render(<BalanceMatrix accounts={[account("1","みずほ銀行｜HR",100)]} arrivalTotal={{income:358600,expense:1265775,delta:-907175}} reordering={false} onError={vi.fn()} />);
+  const total = screen.getByText("グループ合計").parentElement!;
+  expect(total).toHaveTextContent("↓ ▲907,175（入金 358,600・出金 1,265,775）");
+  expect(total).not.toHaveTextContent("0 時から");
+ });
  it("moves bank columns with arrows and drag, saves shared keys, and renders daily changes", async () => {
   const fetcher=vi.fn().mockResolvedValue(new Response("{}")); vi.stubGlobal("fetch",fetcher);
   const accounts=[account("1","みずほ銀行｜HR",100),account("2","楽天銀行｜HR",50)];

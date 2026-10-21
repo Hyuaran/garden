@@ -8,11 +8,11 @@ import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBr
 import { accountDisplayName } from "@/lib/bud/mf/corporations";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AxisOrder, BalanceSnapshot, CardTransaction, Employee, MfAccount } from "@/lib/bud/mf/types";
+import type { ArrivalTotals, AxisOrder, BalanceSnapshot, CardTransaction, Employee, MfAccount } from "@/lib/bud/mf/types";
 import BalanceMatrix from "./BalanceMatrix";
 import styles from "./bank.module.css";
 
-type Snapshot = { axes?: AxisOrder[]; snapshots?: BalanceSnapshot[]; accounts: MfAccount[]; transactions: CardTransaction[]; employees: Employee[]; admin: boolean };
+type Snapshot = { arrivalTotal?: ArrivalTotals; axes?: AxisOrder[]; snapshots?: BalanceSnapshot[]; accounts: MfAccount[]; transactions: CardTransaction[]; employees: Employee[]; admin: boolean };
 export const formatLoadedAt = formatSyncStamp;
 const yen = (value: number) => `${value.toLocaleString("ja-JP")} 円`;
 async function api(url: string, init?: RequestInit) {
@@ -36,7 +36,7 @@ function Settings({ account, employees, onSave, onClose }: { account: MfAccount;
   return <form className={styles.settings} aria-label={`${accountDisplayName(account.name)}の設定`} onSubmit={async e => {
     e.preventDefault(); setSaving(true); setError("");
     try {
-      await api("/api/bud/mf-accounts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "settings", id: draft.mf_account_id, viewers: draft.visible_employee_ids, hidden: draft.hidden, book: draft.book_sub_account_name, mode: draft.balance_mode, note: draft.balance_note, anchor_balance: draft.anchor_balance ?? null, anchor_date: draft.anchor_date ?? null }) });
+      await api("/api/bud/mf-accounts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "settings", id: draft.mf_account_id, viewers: draft.visible_employee_ids, hidden: draft.hidden, book: draft.book_sub_account_name, mode: draft.balance_mode, note: draft.balance_note, anchor_balance: draft.anchor_balance ?? null, anchor_at: draft.anchor_at ?? null, anchor_date: draft.anchor_date ?? null }) });
       await onSave(); onClose();
     } catch (e) { setError(e instanceof Error ? e.message : "保存できませんでした"); } finally { setSaving(false); }
   }}>
@@ -45,10 +45,11 @@ function Settings({ account, employees, onSave, onClose }: { account: MfAccount;
     <label><input type="checkbox" checked={draft.hidden} onChange={e => setDraft({ ...draft, hidden: e.target.checked })} />この{account.kind === "bank" ? "口座" : "カード"}を表示しない</label>
     {account.kind === "bank" && <>
       <label>帳簿の補助科目名<input value={draft.book_sub_account_name} maxLength={500} onChange={e => setDraft({ ...draft, book_sub_account_name: e.target.value })} /><small>帳簿に科目がない場合は空欄にしてください。</small></label>
-      <label>残高の出し方<select value={draft.balance_mode} onChange={e => setDraft({ ...draft, balance_mode: e.target.value as MfAccount["balance_mode"] })}><option value="auto">計算した残高を表示</option><option value="anchor">銀行の残高を基準にする</option><option value="manual_check">残高は MF で確認</option></select></label>
-      {draft.balance_mode === "anchor" && <>
+      <label>残高の出し方<select value={draft.balance_mode} onChange={e => setDraft({ ...draft, balance_mode: e.target.value as MfAccount["balance_mode"] })}><option value="arrival">届いた入出金で動かす（おすすめ）</option><option value="auto">計算した残高を表示</option><option value="anchor">銀行の残高を基準にする</option><option value="manual_check">残高は MF で確認</option></select></label>
+      {(draft.balance_mode === "anchor" || draft.balance_mode === "arrival") && <>
         <label>起点の残高（円）<input type="number" step="1" value={draft.anchor_balance ?? ""} onChange={e => setDraft({ ...draft, anchor_balance: e.target.value === "" ? null : Number(e.target.value) })} /></label>
-        <label>起点の日<input type="date" value={draft.anchor_date ?? ""} onChange={e => setDraft({ ...draft, anchor_date: e.target.value || null })} /></label>
+        {draft.balance_mode === "arrival" && <label>起点の時刻（日本時間）<input type="datetime-local" step="1" required value={draft.anchor_at ? new Date(Date.parse(draft.anchor_at) + 9 * 3600000).toISOString().slice(0,19) : ""} onChange={e => setDraft({ ...draft, anchor_at: e.target.value ? new Date(e.target.value + "+09:00").toISOString() : null })} /><small>MF の残高に合わせ直すときは、確認した金額と時刻を手で入力してください。</small></label>}
+        {draft.balance_mode === "anchor" && <label>起点の日<input type="date" value={draft.anchor_date ?? ""} onChange={e => setDraft({ ...draft, anchor_date: e.target.value || null })} /></label>}
       </>}
       <label>MF で確認する理由<input value={draft.balance_note} maxLength={1000} onChange={e => setDraft({ ...draft, balance_note: e.target.value })} /></label>
       <small>補助科目名・残高の出し方・起点を変更したあとは、読み直してください。</small>
@@ -120,7 +121,7 @@ export default function BankAccounts() {
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {selectedAccount && settings && snapshot.admin && <Settings key={selectedAccount.mf_account_id} account={selectedAccount} employees={snapshot.employees} onSave={load} onClose={() => setSelected(null)} />}
     <section role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-      {tab === "bank" && <BalanceMatrix accounts={snapshot.accounts} axes={snapshot.axes} snapshots={snapshot.snapshots} reordering={reordering && snapshot.admin} onError={setError} />}
+      {tab === "bank" && <BalanceMatrix arrivalTotal={snapshot.arrivalTotal} accounts={snapshot.accounts} axes={snapshot.axes} snapshots={snapshot.snapshots} reordering={reordering && snapshot.admin} onError={setError} />}
       {(settings || (tab === "card" && reordering)) && <div className={styles.grid}>{shown.map((account,i) => <article key={account.mf_account_id} data-account={account.mf_account_id} className={styles.account} onDragOver={e => { if (reordering && tab === "card") e.preventDefault(); }} onDrop={e => { e.preventDefault(); if (reordering && tab === "card" && drag.current) move(drag.current, account.mf_account_id); drag.current = null; }}>
         <h2>{reordering && tab === "card" && <span className={styles.grip} draggable onDragStart={e => { drag.current = account.mf_account_id; e.dataTransfer.setData("text/plain",account.mf_account_id); }} onDragEnd={() => { drag.current = null; }} aria-label={`${accountDisplayName(account.name)}をつかんで移動`}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></span>}{accountDisplayName(account.name)}</h2>
         {account.hidden && <small>表示しない設定</small>}

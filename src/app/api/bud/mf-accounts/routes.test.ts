@@ -4,7 +4,7 @@ vi.mock("@/lib/bud/mf/access",()=>({mfAccess:mocks.access}));
 vi.mock("@/lib/supabase/admin",()=>({getSupabaseAdmin:mocks.admin}));
 vi.mock("@/lib/bud/mf/sync",()=>({syncMf:mocks.sync}));
 vi.mock("@/lib/cron-auth",()=>({verifyCronRequest:mocks.cron}));
-import { PATCH } from "./route";
+import { PATCH, GET as accountsGet } from "./route";
 import { POST } from "./refresh/route";
 import { GET } from "./cron/route";
 import { GET as snapshot } from "./snapshot/route";
@@ -69,4 +69,35 @@ it("saves anchor settings only for admins and rejects invalid values",async()=>{
  expect((await PATCH(request(body))).status).toBe(200);
  expect(rpc).toHaveBeenCalledWith("bud_mf_save_settings",expect.objectContaining({p_mode:"anchor",p_anchor_balance:0,p_anchor_date:"2026-10-21"}));
  for(const change of [{anchor_balance:1.5},{anchor_balance:"100"},{anchor_date:"2026-02-30"}]) expect((await PATCH(request({...body,...change}))).status).toBe(400);
+});
+
+it("requires an explicit timezone and anchor amount for arrival settings", async () => {
+ const rpc=vi.fn().mockResolvedValue({}); mocks.access.mockResolvedValue({ok:true,admin:true,db:{rpc}});
+ const body={action:"settings",id:"a",viewers:[],hidden:false,book:"",mode:"arrival",note:"",anchor_balance:0,anchor_at:"2026-10-21T12:00:00+09:00"};
+ expect((await PATCH(request(body))).status).toBe(200);
+ expect(rpc).toHaveBeenCalledWith("bud_mf_save_settings",expect.objectContaining({p_anchor_at:body.anchor_at,p_mode:"arrival",p_anchor_balance:0}));
+ for(const change of [{anchor_at:null},{anchor_at:"2026-10-21T12:00:00"},{anchor_balance:null}]) expect((await PATCH(request({...body,...change}))).status).toBe(400);
+});
+
+it("returns paginated arrivals since Japanese midnight for visible banks only", async () => {
+ vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-21T03:00:00Z"));
+ try {
+  const gt=vi.fn(); const ranges: number[]=[];
+  const accounts=[{mf_account_id:"a",kind:"bank",hidden:false,fiscal_start_date:"2026-04-01"},{mf_account_id:"hidden",kind:"bank",hidden:true}];
+  const db={from:(table:string)=>{
+   const q:any={select:()=>q,order:()=>q,gte:()=>q,lte:()=>q,eq:()=>q,
+    gt:(...args:unknown[])=>{gt(...args);return q;},
+    range:async(offset:number)=>{if(table!=="bud_mf_bank_tx_seen")return {data:[]};ranges.push(offset);return {data:offset===0?Array.from({length:1000},(_,i)=>({mf_transaction_id:String(i),mf_account_id:"a",date:"2026-10-20",side:"INCOME",value:1,first_seen_at:"2026-10-20T15:01:00Z"})):[{mf_account_id:"a",side:"EXPENSE",value:70},{mf_account_id:"hidden",side:"INCOME",value:999}]};},
+    then:(resolve:(v:unknown)=>unknown)=>Promise.resolve({data:table==="bud_mf_accounts"?accounts:[]}).then(resolve)};
+   return q;
+  }};
+  mocks.access.mockResolvedValue({ok:true,admin:false,db});
+  const result=await accountsGet(new Request("https://garden.test/api/bud/mf-accounts"));
+  expect(result.status).toBe(200);
+  const body=await result.json();
+  expect(gt).toHaveBeenCalledWith("first_seen_at","2026-10-20T15:00:00.000Z");
+  expect(ranges).toEqual([0,1000]);
+  expect(body.arrivalTotal).toEqual({income:1000,expense:70,delta:930});
+  expect(body.arrivalByAccount).toEqual({a:body.arrivalTotal});
+ } finally {vi.useRealTimers();}
 });

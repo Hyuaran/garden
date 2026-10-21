@@ -67,3 +67,11 @@ it("fetches anchor history before the fiscal year and retains fiscal pending cou
  expect(f.client.transactions).toHaveBeenCalledWith("2025-01-01","2026-10-20");
  expect(f.rpc.mock.calls[1][1].p_accounts[0]).toMatchObject({balance:1010,unjournalized_count:1,anchor_balance:1000,anchor_date:"2025-01-01"});
 });
+
+it("leaves arrival balances to the atomic first-observation calculation and skips books", async () => {
+ const f=fixture(); Object.assign(f.old,{balance_mode:"arrival",anchor_balance:1000,anchor_at:"2026-10-20T00:00:00Z",fiscal_start_date:"2026-04-01"});
+ expect(await syncMf(f.db,"button",{client:f.client,key:"key",now:new Date("2026-10-21T00:00:00Z")})).toEqual({ok:true});
+ expect(f.client.trialBalance).not.toHaveBeenCalled();
+ expect(f.rpc.mock.calls[1][1].p_accounts[0]).toMatchObject({balance_mode:"arrival",anchor_balance:1000,anchor_at:"2026-10-20T00:00:00Z"});
+ expect(f.rpc.mock.calls[1][1].p_bank_transactions).toHaveLength(1);
+});

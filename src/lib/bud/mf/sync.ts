@@ -19,19 +19,28 @@ export async function syncMf(db: SupabaseClient, trigger: "cron" | "button", opt
     const saved = await db.from("bud_mf_accounts").select("*");
     if (saved.error) throw new Error("前回の口座を読み込めませんでした");
     const incoming = await client.accounts();
-    const trial = await client.trialBalance();
+    const existing = saved.data as MfAccount[];
+    const savedFiscalStart = existing.find(a => a.fiscal_start_date)?.fiscal_start_date;
+    const fiscalAnniversary = savedFiscalStart ? range.end.slice(0,4) + savedFiscalStart.slice(4) : null;
+    const fiscalStart = fiscalAnniversary && (fiscalAnniversary <= range.end
+      ? fiscalAnniversary : String(Number(range.end.slice(0,4)) - 1) + savedFiscalStart!.slice(4));
+    const trial = existing.every(a => a.balance_mode !== "auto") && fiscalStart
+      ? { start_date: fiscalStart, rows: [] }
+      : await client.trialBalance();
     const start = [trial.start_date, ...(saved.data as MfAccount[]).filter(a => a.balance_mode === "anchor" && a.anchor_balance != null && a.anchor_date).map(a => a.anchor_date!)].sort()[0];
     const transactions = await client.transactions(start, range.end);
-    const books = bookBalances(trial.rows);
+    const books = (saved.data as MfAccount[]).some(a => a.balance_mode === "auto") ? bookBalances(trial.rows) : new Map<string, number>();
     const accounts = mergeAccounts(incoming, saved.data as MfAccount[], viewers, fetchedAt).map(a => a.kind === "bank"
       ? { ...a, ...calculateBalance(a, books, a.balance_mode === "anchor" ? transactions : transactions.filter(t => t.date >= trial.start_date && t.date <= range.end), range.end, trial.start_date) } : a);
     accounts.forEach(a => { a.fiscal_start_date = trial.start_date; });
     const cards = new Set(accounts.filter(a => a.kind === "card").map(a => a.mf_account_id));
     const banks = new Set(accounts.filter(a => a.kind === "bank").map(a => a.mf_account_id));
-    const stored = transactions.filter(t => t.date >= trial.start_date && t.date <= range.end).map(t => ({
+    const stored = transactions.map(t => ({
       mf_transaction_id: String(t.id), mf_account_id: String(t.connected_account_id), date: t.date, content: t.content,
       value: t.value, side: t.side, journalizing_status: t.journalizing_status, fetched_at: fetchedAt,
     }));
+    // The RPC records first observations and recalculates arrival balances under the
+    // settings lock, using the database timestamp and immutable stored amounts.
     const applied = await db.rpc("bud_mf_apply_fetch", { p_run_id: runId, p_accounts: accounts, p_transactions: stored.filter(t => cards.has(t.mf_account_id)), p_bank_transactions: stored.filter(t => banks.has(t.mf_account_id)), p_since: trial.start_date, p_until: range.end, ...(options.snapshot ? { p_snapshot_date: range.end } : {}) });
     if (applied.error) { console.error("[bud-mf] apply failed", applied.error.message); throw new Error("読み込み結果を保存できませんでした"); }
     return { ok: true };
