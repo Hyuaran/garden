@@ -1,0 +1,44 @@
+import { beforeEach, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ access: vi.fn(), cron: vi.fn(), admin: vi.fn(), sync: vi.fn() }));
+vi.mock("@/lib/bud/mf/access", () => ({ mfAccess: mocks.access }));
+vi.mock("@/lib/cron-auth", () => ({ verifyCronRequest: mocks.cron }));
+vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: mocks.admin }));
+vi.mock("@/lib/bud/mf/link-alerts", async importOriginal => ({ ...await importOriginal<object>(), syncLinkAlerts: mocks.sync }));
+import { PATCH } from "./route";
+import { GET } from "./cron/route";
+import { PATCH as settings } from "../route";
+beforeEach(() => vi.resetAllMocks());
+const request = () => new Request("https://garden.test", { method: "PATCH", body: JSON.stringify({ id: "11111111-1111-1111-1111-111111111111" }) });
+it("消去は本人のセッションで権限検査関数を通す", async () => {
+ const rpc = vi.fn().mockResolvedValue({ error: { message: "forbidden" } });
+ mocks.access.mockResolvedValue({ ok: false, status: 401 });
+ expect((await PATCH(request())).status).toBe(401);
+ expect(rpc).not.toHaveBeenCalled();
+ mocks.access.mockResolvedValue({ ok: true, db: { rpc } });
+ expect((await PATCH(request())).status).toBe(403);
+ rpc.mockResolvedValue({ error: null });
+ expect((await PATCH(request())).status).toBe(200);
+ expect(rpc).toHaveBeenLastCalledWith("bud_mf_dismiss_link_alert", { p_id: "11111111-1111-1111-1111-111111111111" });
+ expect(mocks.admin).not.toHaveBeenCalled();
+});
+it("定期実行の秘密を確認するまでメールを読まない", async () => {
+ mocks.cron.mockReturnValue({ ok: false, status: 401, reason: "invalid" });
+ expect((await GET(new Request("https://garden.test"))).status).toBe(401);
+ expect(mocks.admin).not.toHaveBeenCalled();
+ expect(mocks.sync).not.toHaveBeenCalled();
+ mocks.cron.mockReturnValue({ ok: true }); mocks.admin.mockReturnValue("db"); mocks.sync.mockResolvedValue({ ok: true });
+ expect((await GET(new Request("https://garden.test"))).status).toBe(200);
+ expect(mocks.sync).toHaveBeenCalledWith("db");
+});
+it("知らせの名前は全権だけが口座設定と一緒に保存できる", async () => {
+ const body = { action: "settings", id: "a", viewers: [], hidden: false, book: "", mode: "manual_check", note: "", mail_alias: " 京都銀行_MS " };
+ const makeRequest = (alias: unknown = body.mail_alias) => new Request("https://garden.test", { method: "PATCH", body: JSON.stringify({ ...body, mail_alias: alias }) });
+ const rpc = vi.fn().mockResolvedValue({});
+ mocks.access.mockResolvedValue({ ok: true, admin: false, db: { rpc } });
+ expect((await settings(makeRequest())).status).toBe(403);
+ expect(rpc).not.toHaveBeenCalled();
+ mocks.access.mockResolvedValue({ ok: true, admin: true, db: { rpc } });
+ expect((await settings(makeRequest())).status).toBe(200);
+ expect(rpc).toHaveBeenCalledWith("bud_mf_save_settings", expect.objectContaining({ p_mail_alias: "京都銀行_MS" }));
+ expect((await settings(makeRequest("a".repeat(501)))).status).toBe(400);
+});

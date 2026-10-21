@@ -5,6 +5,11 @@
  word-break:auto-phrase; line-break:strict; text-wrap:pretty; overflow-wrap:break-word;
 }
 .pageShell::before { content:""; position:fixed; inset:0; z-index:-1; background:var(--bg); }
+.linkAlerts { border:1px solid #e5484d; border-radius:10px; padding:12px; margin-bottom:16px; }
+.linkAlerts > div { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.linkAlerts svg { color:#e5484d; flex-shrink:0; }
+.linkAlerts span { flex:1; min-width:180px; }
+.linkAlerts button { border-color:#e5484d; }
 .account:is(a) { color:var(--ink); text-decoration:none; }
 .account:is(a):hover { border-color:var(--teal); }
 .detailLink { color:var(--ink); text-decoration:none; cursor:pointer; border-radius:6px; transition:color .15s, background-color .15s; }

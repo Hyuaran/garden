@@ -10,6 +10,8 @@ import { accountDisplayName } from "@/lib/bud/mf/corporations";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ArrivalTotals, AxisOrder, BalanceSnapshot, CardTransaction, Employee, MfAccount } from "@/lib/bud/mf/types";
 import BalanceMatrix from "./BalanceMatrix";
+import LinkAlerts from "./LinkAlerts";
+import type { LinkAlert } from "@/lib/bud/mf/link-alerts";
 import styles from "./bank.module.css";
 
 type Snapshot = { yearsByAccount?: Record<string, number[]>; arrivalTotal?: ArrivalTotals; axes?: AxisOrder[]; snapshots?: BalanceSnapshot[]; accounts: MfAccount[]; transactions: CardTransaction[]; employees: Employee[]; admin: boolean };
@@ -36,12 +38,13 @@ function Settings({ account, employees, onSave, onClose }: { account: MfAccount;
   return <form className={styles.settings} aria-label={`${accountDisplayName(account.name)}の設定`} onSubmit={async e => {
     e.preventDefault(); setSaving(true); setError("");
     try {
-      await api("/api/bud/mf-accounts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "settings", id: draft.mf_account_id, viewers: draft.visible_employee_ids, hidden: draft.hidden, book: draft.book_sub_account_name, mode: draft.balance_mode, note: draft.balance_note, anchor_balance: draft.anchor_balance ?? null, anchor_at: draft.anchor_at ?? null, anchor_date: draft.anchor_date ?? null }) });
+      await api("/api/bud/mf-accounts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "settings", id: draft.mf_account_id, viewers: draft.visible_employee_ids, hidden: draft.hidden, mail_alias: draft.mail_alias ?? "", book: draft.book_sub_account_name, mode: draft.balance_mode, note: draft.balance_note, anchor_balance: draft.anchor_balance ?? null, anchor_at: draft.anchor_at ?? null, anchor_date: draft.anchor_date ?? null }) });
       await onSave(); onClose();
     } catch (e) { setError(e instanceof Error ? e.message : "保存できませんでした"); } finally { setSaving(false); }
   }}>
     <h2>{accountDisplayName(account.name)}の設定</h2>
     <fieldset><legend>見てよい人</legend><div className={styles.people}>{employees.map(person => <label key={person.employee_id}><input type="checkbox" checked={draft.visible_employee_ids.includes(person.employee_id)} onChange={e => setDraft({ ...draft, visible_employee_ids: e.target.checked ? [...draft.visible_employee_ids, person.employee_id] : draft.visible_employee_ids.filter(id => id !== person.employee_id) })} />{person.name ?? person.employee_id}</label>)}</div></fieldset>
+    <label>MF の知らせメールでの名前<input value={draft.mail_alias ?? ""} maxLength={500} onChange={e => setDraft({ ...draft, mail_alias: e.target.value })} /></label>
     <label><input type="checkbox" checked={draft.hidden} onChange={e => setDraft({ ...draft, hidden: e.target.checked })} />この{account.kind === "bank" ? "口座" : "カード"}を表示しない</label>
     {account.kind === "bank" && <>
       <label>帳簿の補助科目名<input value={draft.book_sub_account_name} maxLength={500} onChange={e => setDraft({ ...draft, book_sub_account_name: e.target.value })} /><small>帳簿に科目がない場合は空欄にしてください。</small></label>
@@ -59,6 +62,7 @@ function Settings({ account, employees, onSave, onClose }: { account: MfAccount;
   </form>;
 }
 export default function BankAccounts() {
+  const [linkAlerts, setLinkAlerts] = useState<LinkAlert[]>([]);
   const [snapshot, setSnapshot] = useState<Snapshot>({ accounts: [], transactions: [], employees: [], admin: false });
   const [tab, setTab] = useState("bank");
   const [period, setPeriod] = useState("current");
@@ -121,7 +125,8 @@ export default function BankAccounts() {
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {selectedAccount && settings && snapshot.admin && <Settings key={selectedAccount.mf_account_id} account={selectedAccount} employees={snapshot.employees} onSave={load} onClose={() => setSelected(null)} />}
     <section role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-      {tab === "bank" && <BalanceMatrix arrivalTotal={snapshot.arrivalTotal} accounts={snapshot.accounts} axes={snapshot.axes} snapshots={snapshot.snapshots} reordering={reordering && snapshot.admin} onError={setError} />}
+      {tab === "bank" && <LinkAlerts accounts={snapshot.accounts} onChange={setLinkAlerts} />}
+      {tab === "bank" && <BalanceMatrix linkAlerts={linkAlerts} arrivalTotal={snapshot.arrivalTotal} accounts={snapshot.accounts} axes={snapshot.axes} snapshots={snapshot.snapshots} reordering={reordering && snapshot.admin} onError={setError} />}
       {(settings || (tab === "card" && reordering)) && <div className={styles.grid}>{shown.map((account,i) => <article key={account.mf_account_id} data-account={account.mf_account_id} className={styles.account} onDragOver={e => { if (reordering && tab === "card") e.preventDefault(); }} onDrop={e => { e.preventDefault(); if (reordering && tab === "card" && drag.current) move(drag.current, account.mf_account_id); drag.current = null; }}>
         <h2>{reordering && tab === "card" && <span className={styles.grip} draggable onDragStart={e => { drag.current = account.mf_account_id; e.dataTransfer.setData("text/plain",account.mf_account_id); }} onDragEnd={() => { drag.current = null; }} aria-label={`${accountDisplayName(account.name)}をつかんで移動`}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></span>}{accountDisplayName(account.name)}</h2>
         {account.hidden && <small>表示しない設定</small>}

@@ -59,9 +59,10 @@ describe("bank accounts screen", () => {
     const form = screen.getByRole("form",{name:"銀行1（ヒュアラン）の設定"});
     fireEvent.click(within(form).getByLabelText("閲覧者"));
     fireEvent.change(within(form).getByLabelText(/^帳簿の補助科目名/),{target:{value:"補助科目"}});
+    fireEvent.change(within(form).getByLabelText("MF の知らせメールでの名前"),{target:{value:"銀行_MS"}});
     fireEvent.click(within(form).getByRole("button",{name:"保存"}));
     await waitFor(() => expect(fetcher.mock.calls.some(([,init]) => init?.method === "PATCH")).toBe(true));
-    expect(JSON.parse(fetcher.mock.calls.find(([,init]) => init?.method === "PATCH")![1].body)).toMatchObject({action:"settings",viewers:[],book:"補助科目"});
+    expect(JSON.parse(fetcher.mock.calls.find(([,init]) => init?.method === "PATCH")![1].body)).toMatchObject({action:"settings",viewers:[],book:"補助科目",mail_alias:"銀行_MS"});
   });
   it("keeps the old timestamp and values on refresh failure and hides admin controls from viewers", async () => {
     fetcher.mockImplementation(async (_url:string,init?:RequestInit) => new Response(JSON.stringify(init?.method ? {error:"MF に接続できませんでした"} : data(false)),{status:init?.method ? 502 : 200}));
