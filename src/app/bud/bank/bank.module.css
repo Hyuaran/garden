@@ -121,3 +121,4 @@
 /* 期間の箱の中のプルダウンは枠なし（箱そのものが枠）（2026-10-21 東海林さん） */
 .controlBox select { border:0 !important; background:transparent !important; box-shadow:none !important; padding-left:0 !important; font-size:20px; font-weight:900; color:var(--ink); cursor:pointer; }
 .controlBox select:focus-visible { outline:2px solid var(--teal); outline-offset:2px; border-radius:6px; }
+.confirmPrimary { background:var(--teal) !important; border-color:var(--teal) !important; color:#fff !important; }
