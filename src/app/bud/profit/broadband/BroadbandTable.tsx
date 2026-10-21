@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import SystemTabs, { TabActionButton } from "@/app/system/_components/SystemTabs/SystemTabs";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import BoxSelect from "@/app/system/_components/BoxSelect/BoxSelect";
-import { buildPivot, cellTone, kintoneLink, money, periodMonths, periodOptions, readSort, recordStatus, saveSort, sortOptions, statusLabels, total, type SortMode, type TableRecord } from "@/lib/bud/broadband/table";
+import { buildPivot, defaultPeriod, cellTone, kintoneLink, money, periodMonths, periodOptions, readSort, recordStatus, saveSort, sortOptions, statusLabels, total, type SortMode, type TableRecord } from "@/lib/bud/broadband/table";
 import styles from "./broadband.module.css";
 
 export function Details({rows, kintoneBase, onClose}: {rows:TableRecord[]; kintoneBase:string; onClose:()=>void}) {
@@ -17,17 +17,20 @@ export function Details({rows, kintoneBase, onClose}: {rows:TableRecord[]; kinto
 }
 export default function BroadbandTable({rows,userId,today,kintoneBase}: {rows:TableRecord[];userId:string;today:string;kintoneBase:string}) {
   const router=useRouter();
-  const [periods,setPeriods]=useState(["current"]), [sort,setSort]=useState<SortMode>("cash"), [sorting,setSorting]=useState(false), [selected,setSelected]=useState<TableRecord[]|null>(null), [busy,setBusy]=useState(false), [message,setMessage]=useState("");
+  const [periods,setPeriods]=useState([defaultPeriod(today)]), [sort,setSort]=useState<SortMode>("cash"), [sorting,setSorting]=useState(false), [selected,setSelected]=useState<TableRecord[]|null>(null), [busy,setBusy]=useState(false), [message,setMessage]=useState("");
+  // 横スクロールのバーがいつも画面の中に見えるよう、表の高さを画面の下端までに収める
+  const scrollRef=useRef<HTMLDivElement>(null);
+  useEffect(() => { const fit=()=>{const el=scrollRef.current; if(el) el.style.maxHeight=`${Math.max(240, window.innerHeight-(el.getBoundingClientRect().top+window.scrollY)-24)}px`;}; fit(); window.addEventListener("resize",fit); return ()=>window.removeEventListener("resize",fit); },[]);
   useEffect(() => { try { setSort(readSort(window.localStorage,userId)); } catch { setSort("cash"); } },[userId]);
-  const months=periodMonths(periods,today), pivot=buildPivot(rows,months,sort);
+  const months=periodMonths(periods,today,rows), pivot=buildPivot(rows,months,sort);
   // 行の無い欄は空にする（0 円を並べない）。小計・総合計の行は色を付けない（色は取引先の行だけ）
   const cell=(records:TableRecord[], label:string, toned=true) => records.length ? <button aria-label={`${label} ${money(total(records))}の明細`} className={toned ? styles[cellTone(records)] : undefined} onClick={() => setSelected(records)}>{money(total(records))}</button> : null;
   return <div className={styles.pageShell}><SystemBreadcrumb root={{label:"Bud",href:"/bud/dashboard"}} items={[{label:"損益管理",href:"/bud/profit"},{label:"ブロードバンド事業の収支"}]} /><h1>ブロードバンド事業の収支</h1>
     <UpdatedStampRow><UpdatedStamp label="Kintone" date={rows.map(r=>r.updated_at).sort().at(-1)} busy={busy} refreshLabel="収支を更新" onRefresh={async()=>{setBusy(true);setMessage("確認中です");try {const response=await fetch("/api/bud/broadband/refresh",{method:"POST"});const result=await response.json();if(!response.ok) throw new Error(result.error);setMessage(result.message ?? "");router.refresh();}catch {setMessage("収支を更新できませんでした。時間をおいてもう一度お試しください。");}finally {setBusy(false);}}} /></UpdatedStampRow>
-    <SystemTabs actions={<TabActionButton icon="sort" label="並べ替え" pressed={sorting} onClick={()=>setSorting(!sorting)} />}><button role="tab" aria-selected="true" id="broadband-tab" aria-controls="broadband-panel">収支の表</button></SystemTabs>
+    <div className={styles.tabRow}><SystemTabs actions={<TabActionButton icon="sort" label="並べ替え" pressed={sorting} onClick={()=>setSorting(!sorting)} />}><button role="tab" aria-selected="true" id="broadband-tab" aria-controls="broadband-panel">収支の表</button></SystemTabs></div>
     {sorting && <BoxSelect label="並び順" multiple={false} value={[sort]} options={sortOptions} onChange={values=>{const next=values[0] as SortMode;setSort(next);try {saveSort(window.localStorage,userId,next);}catch {}setSorting(false);}} />}
     <section role="tabpanel" id="broadband-panel" aria-labelledby="broadband-tab"><BoxSelect label="期間" value={periods} options={periodOptions(rows,today)} onChange={value=>{setPeriods(value);setSelected(null);}} />
     <p className={styles.legend}>赤＝口座と合わない・まだ届いていない／灰＝予定日前</p>{message && <p role="status">{message}</p>}
-    <div className={styles.scroll}><table><thead><tr><th>事業内容</th><th>取引先</th>{months.map(m=><th key={m}>{Number(m.slice(0,4))}年{Number(m.slice(5,7))}月</th>)}<th>合計</th></tr></thead><tbody>{pivot.map(row=><tr key={row.key} className={row.subtotal ? styles.subtotal : undefined}><th scope="row">{row.subtotal ? row.business : ""}</th><td>{row.partner}</td>{months.map(month=><td key={month}>{cell(row.records.filter(r=>r.scheduled_date?.startsWith(month)),`${row.business} ${row.partner} ${month}`,!row.subtotal)}</td>)}<td>{cell(row.records,`${row.business} ${row.partner} 合計`,!row.subtotal)}</td></tr>)}</tbody></table></div>
+    <div ref={scrollRef} className={styles.scroll}><table><thead><tr><th>事業内容</th><th>取引先</th>{months.map(m=><th key={m}>{Number(m.slice(0,4))}年{Number(m.slice(5,7))}月</th>)}<th>合計</th></tr></thead><tbody>{pivot.map(row=><tr key={row.key} className={row.subtotal ? styles.subtotal : undefined}><th scope="row">{row.subtotal ? row.business : ""}</th><td>{row.partner}</td>{months.map(month=><td key={month}>{cell(row.records.filter(r=>r.scheduled_date?.startsWith(month)),`${row.business} ${row.partner} ${month}`,!row.subtotal)}</td>)}<td>{cell(row.records,`${row.business} ${row.partner} 合計`,!row.subtotal)}</td></tr>)}</tbody></table></div>
     {selected && <Details rows={selected} kintoneBase={kintoneBase} onClose={()=>setSelected(null)} />}</section></div>;
 }

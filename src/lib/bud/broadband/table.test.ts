@@ -1,16 +1,17 @@
 import { expect, it } from "vitest";
-import { buildPivot, cellTone, fiscalYear, periodMonths, readSort, saveSort, type TableRecord } from "./table";
+import { buildPivot, cellTone, fiscalYear, periodMonths, periodOptions, readSort, saveSort, type TableRecord } from "./table";
 const row = (partner:string, amount:number, status:TableRecord["recon_status"]="matched") => ({kintone_record_id:partner,business:"事業",partner,profit_net:amount,scheduled_date:"2026-04-30",recon_status:status,confirmation:""} as TableRecord);
-it("builds chronological fiscal months, subtotals and grand total",()=>{
- const months=periodMonths(["current"],"2026-10-21");
- expect(months).toHaveLength(12);expect(months[0]).toBe("2026-04");expect(months.at(-1)).toBe("2027-03");
+it("builds newest-first fiscal months up to the latest planned month, subtotals and grand total",()=>{
+ const months=periodMonths(["2026"],"2026-10-21",[{...row("A",1),scheduled_date:"2026-11-30"}]);
+ expect(months).toHaveLength(8);expect(months[0]).toBe("2026-11");expect(months.at(-1)).toBe("2026-04");
  const pivot=buildPivot([row("A",100),row("B",-30)],months,"cash");
  expect(pivot.map(r=>r.partner)).toEqual(["小計","A","B",""]);expect(pivot.at(-1)?.records.reduce((n,r)=>n+r.profit_net!,0)).toBe(70);
 });
 it("supports April boundary, rolling months and union of periods",()=>{
  expect(fiscalYear("2026-03-31")).toBe(2025);expect(fiscalYear("2026-04-01")).toBe(2026);
- expect(periodMonths(["current","previous"],"2026-10-21")).toHaveLength(24);
- expect(periodMonths(["rolling"],"2026-10-21")[0]).toBe("2025-11");
+ expect(periodMonths(["2026","2025"],"2026-10-21")).toHaveLength(19);
+ expect(periodMonths(["rolling"],"2026-10-21").at(-1)).toBe("2025-11");
+ expect(periodOptions([],"2026-10-21").map(o=>o.label)).toEqual(["直近12か月","2026年度","2025年度"]);
 });
 it("prioritizes red, only pending gray, ignores exclusions and honors human confirmation",()=>{
  for(const status of ["amount_mismatch","not_arrived","ambiguous"] as const) expect(cellTone([row("a",1,status),row("b",1,"pending")])).toBe("red");

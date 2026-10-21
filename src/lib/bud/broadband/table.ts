@@ -33,17 +33,21 @@ export const fiscalYear = (date: string) => Number(date.slice(0,4)) - (Number(da
 export function periodOptions(rows: TableRecord[], today: string) {
   const year = fiscalYear(today), years = rows.flatMap(r => r.scheduled_date ? [fiscalYear(r.scheduled_date)] : []);
   const earliest = Math.min(year - 1, ...years);
-  return [{ value: "current", label: "今年度" }, { value: "previous", label: "前年度" }, { value: "rolling", label: "直近12か月" }, ...Array.from({length: year-earliest+1}, (_,i) => ({ value: String(year-i), label: `${year-i}年度` }))];
+  // 「今年度」「前年度」とは書かない（東海林さん 2026-10-21：年度は「2026年度」の形で）
+  return [{ value: "rolling", label: "直近12か月" }, ...Array.from({length: year-earliest+1}, (_,i) => ({ value: String(year-i), label: `${year-i}年度` }))];
 }
-export function periodMonths(periods: string[], today: string) {
+export function periodMonths(periods: string[], today: string, rows?: TableRecord[]) {
   const months = new Set<string>(), year = fiscalYear(today);
   for (const period of periods) {
     const start = period === "rolling" ? Number(today.slice(0,4))*12 + Number(today.slice(5,7))-12 : (period === "current" ? year : period === "previous" ? year-1 : Number(period))*12+3;
     if (!Number.isFinite(start)) continue;
     for (let i=0;i<12;i++) { const n=start+i; months.add(`${Math.floor(n/12)}-${String(n%12+1).padStart(2,"0")}`); }
   }
-  return [...months].sort();
+  // 新しい月を左に（東海林さん 2026-10-21）。まだ来ていない月は、予定の行がある月まで
+  const latest = [today.slice(0,7), ...(rows ?? []).map(r => r.scheduled_date?.slice(0,7) ?? "")].sort().at(-1)!;
+  return [...months].filter(m => m <= latest).sort().reverse();
 }
+export const defaultPeriod = (today: string) => String(fiscalYear(today));
 export function recordStatus(row: TableRecord): Kind | null { return row.confirmation ? "matched" : row.recon_status; }
 export function cellTone(rows: TableRecord[]) {
   const states = rows.map(recordStatus).filter(s => s !== "excluded");
