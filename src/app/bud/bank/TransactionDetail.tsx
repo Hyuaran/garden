@@ -6,7 +6,7 @@ import { journalLabel, transactionAmount } from "@/lib/bud/mf/transactions";
 import type { CardTransaction, MfAccount } from "@/lib/bud/mf/types";
 import styles from "./bank.module.css";
 
-type Detail = { account: MfAccount; transactions: CardTransaction[]; total: number; amount: number };
+type Detail = { account: MfAccount; transactions: CardTransaction[]; total: number; amount: number; income?: number; expense?: number };
 const yen = (n: number) => `${n.toLocaleString("ja-JP")} 円`;
 export default function TransactionDetail({ id, initialPeriod = "current" }: { id: string; initialPeriod?: string }) {
   const [period,setPeriod] = useState(["current","last","year"].includes(initialPeriod) ? initialPeriod : "current");
@@ -31,7 +31,9 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
     <SystemBreadcrumb root={{ label:"Bud", href:"/bud/dashboard" }} items={[{ label:"口座残高・カード利用", href:card ? "/bud/bank?tab=card" : "/bud/bank" },{ label:name }]} />
     <h1>{name}</h1>
     {error && <p role="alert">{error}</p>}
-    <div className={styles.toolbar}><label>期間 <select value={period} onChange={e => { setPeriod(e.target.value); setPage(1); }}><option value="current">今月</option><option value="last">先月</option><option value="year">今年度</option></select></label>{data && <strong>合計 {yen(data.amount)}・{data.total} 件</strong>}<span role="status">{loading ? "読み込み中…" : ""}</span></div>
+    <div className={styles.toolbar}><label>期間 <select value={period} onChange={e => { setPeriod(e.target.value); setPage(1); }}><option value="current">今月</option><option value="last">先月</option><option value="year">今年度</option></select></label>{data && (card
+      ? <strong>合計 {yen(data.amount)}・{data.total} 件</strong>
+      : <strong>入金 {yen(data.income ?? 0)}・出金 {yen(data.expense ?? 0)}・{data.total} 件</strong>)}<span role="status">{loading ? "読み込み中…" : ""}</span></div>
     {data && <>
       {!card && <p>今の残高 {data.account.balance_mode === "manual_check" || data.account.balance === null ? "MFで確認" : yen(Number(data.account.balance))}</p>}
       <div className={styles.tableWrap}><table className={styles.details}><thead><tr><th>日付</th><th>内容</th>{card ? <th>金額</th> : <><th>入金</th><th>出金</th></>}<th>仕訳</th></tr></thead><tbody>{data.transactions.map(t => <tr key={t.mf_transaction_id}><td>{t.date}</td><td>{t.content}</td>{card ? <td className={styles.money}>{yen(transactionAmount(t))}</td> : <><td className={styles.money}>{t.side === "INCOME" ? yen(Number(t.value)) : ""}</td><td className={styles.money}>{t.side === "EXPENSE" ? yen(Number(t.value)) : ""}</td></>}<td>{journalLabel(t.journalizing_status)}</td></tr>)}</tbody></table>{!data.total && <p>この期間の明細はありません。</p>}</div>

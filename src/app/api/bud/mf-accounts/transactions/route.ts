@@ -30,5 +30,6 @@ export async function GET(request: Request) {
     rows.push(...batch.data);
     if (batch.data.length < 1000) break;
   }
-  return NextResponse.json({ account, transactions: rows.slice((page-1)*100,page*100), total: rows.length, amount: rows.reduce((sum,t) => sum + transactionAmount(t),0), page, range }, { headers: { "Cache-Control":"no-store" } });
+  return NextResponse.json({ account, transactions: rows.slice((page-1)*100,page*100), total: rows.length, amount: rows.reduce((sum,t) => sum + transactionAmount(t),0),
+    income: rows.reduce((sum,t) => sum + (t.side === "INCOME" ? Number(t.value) : 0),0), expense: rows.reduce((sum,t) => sum + (t.side === "EXPENSE" ? Number(t.value) : 0),0), page, range }, { headers: { "Cache-Control":"no-store" } });
 }
