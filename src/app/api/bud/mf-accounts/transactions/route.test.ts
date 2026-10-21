@@ -61,3 +61,15 @@ it("accepts an explicit past fiscal year and returns account years", async () =>
   expect(f.query.lte).toHaveBeenCalledWith("date","2026-03-31");
   expect(data.fiscalYears).toEqual([2026]);
 });
+
+it("returns a union without duplicate rows or dates in gaps", async () => {
+  const f = fixture();
+  f.query.range.mockResolvedValue({data:[
+    {mf_transaction_id:"a",date:"2025-10-01",side:"EXPENSE",value:20},
+    {mf_transaction_id:"b",date:"2024-10-01",side:"EXPENSE",value:50},
+    {mf_transaction_id:"c",date:"2023-10-01",side:"INCOME",value:10},
+  ]});
+  const data = await (await GET(request("&period=fy:2025,fy:2023,fy:2025"))).json();
+  expect(data.transactions.map((t: {mf_transaction_id:string}) => t.mf_transaction_id)).toEqual(["a","c"]);
+  expect(data.total).toBe(2); expect(data.amount).toBe(10); expect(data.expense).toBe(20); expect(data.income).toBe(10);
+});

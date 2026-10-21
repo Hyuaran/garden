@@ -3,7 +3,7 @@ import { mfAccess } from "@/lib/bud/mf/access";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { Arrival } from "@/lib/bud/mf/types";
 import { arrivalTotals, monthRange } from "@/lib/bud/mf/balances";
-import { transactionRange, transactionYears, validTransactionPeriod } from "@/lib/bud/mf/transactions";
+import { transactionUnion, transactionYears, validTransactionPeriod } from "@/lib/bud/mf/transactions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,9 +15,10 @@ export async function GET(request: Request) {
   if (accounts.error) return fail();
   const params = new URL(request.url).searchParams;
   if (!validTransactionPeriod(params.get("period") ?? "current")) return NextResponse.json({ error: "表示条件を確認してください" }, { status: 400 });
-  let range;
-  try { range = transactionRange(params.get("period") ?? "current", accounts.data.find(a => a.fiscal_start_date)?.fiscal_start_date); }
+  let union;
+  try { union = transactionUnion(params.get("period") ?? "current", accounts.data.find(a => a.fiscal_start_date)?.fiscal_start_date); }
   catch { return NextResponse.json({ error: "今年度の取引を読み直してください" }, { status: 409 }); }
+  const range = union.range;
   let query = auth.db.from("bud_mf_card_transactions").select("*").gte("date",range.start).lte("date",range.end).order("date", { ascending: false }).order("mf_transaction_id");
   if (params.get("card")) query = query.eq("mf_account_id", params.get("card"));
   // Paginate the stored snapshot too: Supabase caps a single response at 1,000 rows.
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
   for (let offset = 0; ; offset += 1000) {
     const page = await query.range(offset,offset+999);
     if (page.error) return fail();
-    transactions.push(...page.data);
+    transactions.push(...page.data.filter(row => union.includes(row.date)));
     if (page.data.length < 1000) break;
   }
   const yearsByAccount: Record<string, number[]> = {};

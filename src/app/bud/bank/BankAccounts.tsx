@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { cardSummaries, fiscalYearLabel, pastFiscalYears } from "@/lib/bud/mf/transactions";
+import { cardSummaries, validTransactionPeriod } from "@/lib/bud/mf/transactions";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
 import SystemTabs, { TabActionButton } from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -12,6 +12,7 @@ import type { ArrivalTotals, AxisOrder, BalanceSnapshot, CardTransaction, Employ
 import BalanceMatrix from "./BalanceMatrix";
 import LinkAlerts from "./LinkAlerts";
 import type { LinkAlert } from "@/lib/bud/mf/link-alerts";
+import PeriodSelect from "./PeriodSelect";
 import styles from "./bank.module.css";
 
 type Snapshot = { yearsByAccount?: Record<string, number[]>; arrivalTotal?: ArrivalTotals; axes?: AxisOrder[]; snapshots?: BalanceSnapshot[]; accounts: MfAccount[]; transactions: CardTransaction[]; employees: Employee[]; admin: boolean };
@@ -67,7 +68,7 @@ export default function BankAccounts() {
   const [tab, setTab] = useState("bank");
   const [period, setPeriod] = useState("current");
   const card = "";
-  useEffect(() => { if (new URLSearchParams(window.location.search).get("tab") === "card") setTab("card"); }, []);
+  useEffect(() => { const params = new URLSearchParams(window.location.search); if (params.get("tab") === "card") setTab("card"); const initial = params.get("period"); if (initial && validTransactionPeriod(initial)) setPeriod(initial); }, []);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -135,7 +136,7 @@ export default function BankAccounts() {
         {(reordering || settings) && <div className={styles.toolbar}>{reordering && tab === "card" && <><button aria-label={`${accountDisplayName(account.name)}を上へ`} disabled={i === 0} onClick={() => move(account.mf_account_id,shown[i-1].mf_account_id)}><Arrow /></button><button aria-label={`${accountDisplayName(account.name)}を下へ`} disabled={i === shown.length-1} onClick={() => move(account.mf_account_id,shown[i+1].mf_account_id)}><Arrow down /></button></>}{settings && <button onClick={() => setSelected(account.mf_account_id)}>{accountDisplayName(account.name)}の設定</button>}</div>}
       </article>)}</div>}
       {!loading && shown.length === 0 && <p>表示できる{tab === "bank" ? "口座" : "カード"}はありません。</p>}
-      {tab === "card" && <><div className={styles.toolbar}><label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">{fiscalYearLabel(snapshot.accounts.find(a => a.fiscal_start_date)?.fiscal_start_date)}</option>{pastFiscalYears(Object.values(snapshot.yearsByAccount ?? {}).flat(), snapshot.accounts.find(a => a.fiscal_start_date)?.fiscal_start_date).map(year => <option key={year} value={`fy:${year}`}>{year}年度</option>)}</select></label></div><div className={styles.grid}>{cardSummaries(cards, snapshot.transactions).map(({ account, amount, count, latest }) => <Link className={styles.account} key={account.mf_account_id} href={`/bud/bank/accounts/${encodeURIComponent(account.mf_account_id)}?period=${period}`}><h2>{accountDisplayName(account.name)}</h2><strong className={styles.amount}>{yen(amount)}</strong><small>{count} 件{latest ? `・最後 ${latest}` : ""}</small></Link>)}</div></>}
+      {tab === "card" && <><div className={styles.toolbar}><PeriodSelect value={period} onChange={value => { setPeriod(value); const url = new URL(window.location.href); url.searchParams.set("period", value); window.history.replaceState(null, "", url); }} fiscalStart={snapshot.accounts.find(a => a.fiscal_start_date)?.fiscal_start_date} years={Object.values(snapshot.yearsByAccount ?? {}).flat()} /></div><div className={styles.grid}>{cardSummaries(cards, snapshot.transactions).map(({ account, amount, count, latest }) => <Link className={styles.account} key={account.mf_account_id} href={`/bud/bank/accounts/${encodeURIComponent(account.mf_account_id)}?period=${encodeURIComponent(period)}`}><h2>{accountDisplayName(account.name)}</h2><strong className={styles.amount}>{yen(amount)}</strong><small>{count} 件{latest ? `・最後 ${latest}` : ""}</small></Link>)}</div></>}
     </section>
   </div>;
 }

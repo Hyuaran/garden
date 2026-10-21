@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { mfAccess } from "@/lib/bud/mf/access";
-import { transactionAmount, transactionRange, transactionYears, validTransactionPeriod } from "@/lib/bud/mf/transactions";
+import { transactionAmount, transactionUnion, transactionYears, validTransactionPeriod } from "@/lib/bud/mf/transactions";
 import type { CardTransaction } from "@/lib/bud/mf/types";
 
 export const runtime = "nodejs";
@@ -19,15 +19,16 @@ export async function GET(request: Request) {
   if (result.error) return fail();
   if (!result.data || result.data.hidden || (!auth.admin && !result.data.visible_employee_ids.includes(auth.employeeId))) return NextResponse.json({ error: "この口座・カードは表示できません" }, { status: 404 });
   const account = result.data;
-  let range;
-  try { range = transactionRange(period, account.fiscal_start_date); }
+  let union;
+  try { union = transactionUnion(period, account.fiscal_start_date); }
   catch { return NextResponse.json({ error: "今年度の取引を読み直してください" }, { status: 409 }); }
+  const range = union.range;
   const query = auth.db.from(account.kind === "card" ? "bud_mf_card_transactions" : "bud_mf_bank_transactions").select("*").eq("mf_account_id",id).gte("date",range.start).lte("date",range.end).order("date",{ ascending:false }).order("mf_transaction_id");
   const rows: CardTransaction[] = [];
   for (let offset = 0; ; offset += 1000) {
     const batch = await query.range(offset,offset+999);
     if (batch.error) return fail();
-    rows.push(...batch.data);
+    rows.push(...batch.data.filter((row: CardTransaction) => union.includes(row.date)));
     if (batch.data.length < 1000) break;
   }
   const dates: { date: string }[] = [];

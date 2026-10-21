@@ -80,3 +80,16 @@
 .searchLabel { flex:1 1 auto; min-width:0; display:block; }
 .topRow .controls .searchBox .clear { align-self:center; flex:0 0 40px; }
 .root .searchField input[type=search] { padding-left:38px; }
+
+/* 検索の箱全体を入力欄として表示する */
+.root .searchBox { box-sizing:border-box; min-height:92px; max-width:100%; }
+.root .searchBox:focus-within { border-color:var(--teal,#0ea5a0); }
+.root .searchBox .searchInput { border:0; background:transparent; box-shadow:none; outline:none; border-radius:0; }
+.root .searchBox .clear { border:0; background:transparent; box-shadow:none; color:var(--sub,#5a6b80); }
+.root .searchBox .clear:not(:disabled):hover { color:var(--teal,#0ea5a0); }
+.root .searchBox .searchInput::-webkit-search-cancel-button { display:none; }
+.topRow .controls .searchBox { min-width:200px; }
+.topRow .controls .searchBox { flex:1 1 150px; min-width:150px; max-width:380px; }
+.topRow { column-gap:12px; }
+.topRow .controls .searchBox { flex:1 1 140px; min-width:140px; }
+.topRow .controls .searchBox { flex:1 1 150px; min-width:150px; }

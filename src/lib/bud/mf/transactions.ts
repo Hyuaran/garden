@@ -29,11 +29,20 @@ export function fiscalYearLabel(fiscalStart?: string | null, now = new Date()) {
   return `${m >= 4 ? y : y - 1}年度`;
 }
 
-export const validTransactionPeriod = (period: string) => ["current", "last", "year"].includes(period) || /^fy:[1-9][0-9]{3}$/.test(period);
+export const validTransactionPeriod = (period: string) => period.split(",").every(value => ["current", "last", "year"].includes(value) || /^fy:[1-9][0-9]{3}$/.test(value));
 export function transactionYears(rows: { date: string }[]) {
   return [...new Set(rows.map(t => Number(t.date.slice(0,4)) - (Number(t.date.slice(5,7)) < 4 ? 1 : 0)))].sort((a,b) => b-a);
 }
 export function pastFiscalYears(years: number[], fiscalStart?: string | null) {
   const current = Number(fiscalYearLabel(fiscalStart).slice(0,4));
   return [...new Set(years)].filter(y => y < current).sort((a,b) => b-a);
+}
+
+export function transactionUnion(period: string, fiscalStart?: string | null, now = new Date()) {
+  if (!validTransactionPeriod(period)) throw new Error("Invalid period");
+  const ranges = [...new Set(period.split(","))].map(value => transactionRange(value, fiscalStart, now));
+  return {
+    range: { start: ranges.map(r => r.start).sort()[0], end: ranges.map(r => r.end).sort().at(-1)! },
+    includes: (date: string) => ranges.some(r => date >= r.start && date <= r.end),
+  };
 }

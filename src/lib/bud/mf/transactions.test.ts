@@ -14,3 +14,16 @@ it("includes zero-use cards in shared order and aggregates refunds, counts and l
   expect(cardSummaries(accounts,rows).map(({amount,count,latest}) => ({amount,count,latest}))).toEqual([{amount:80,count:2,latest:"2026-10-20"},{amount:0,count:0,latest:undefined}]);
   expect(journalLabel("none")).toBe("未"); expect(journalLabel("done")).toBe("済");
 });
+
+import { transactionUnion, validTransactionPeriod } from "./transactions";
+it("accepts old and comma-separated periods and excludes gaps in their union", () => {
+  expect(validTransactionPeriod("current")).toBe(true);
+  expect(validTransactionPeriod("fy:2025,fy:2023")).toBe(true);
+  expect(validTransactionPeriod("current,")).toBe(false);
+  const union = transactionUnion("fy:2025,fy:2023");
+  expect(union.includes("2024-10-01")).toBe(false);
+  expect(union.includes("2023-04-01")).toBe(true);
+  expect(union.includes("2026-03-31")).toBe(true);
+  const overlap = transactionUnion("current,year", "2026-04-01", new Date("2026-10-21T00:00:00Z"));
+  expect(["2026-10-20","2026-05-01"].filter(overlap.includes)).toHaveLength(2);
+});

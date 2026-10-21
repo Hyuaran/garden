@@ -86,3 +86,12 @@ it("keeps a menu inside a 390px viewport and allows scrolling its options", () =
     Object.defineProperty(window, "innerWidth", {configurable:true,value:width});
   }
 });
+
+it("uses the borderless search class and enables reset only while filtering", () => {
+  fixture();
+  const input = screen.getByRole("searchbox",{name:"検索"});
+  expect(input.className).toContain("searchInput");
+  const clear = screen.getByRole("button",{name:"絞り込みをすべて解除"});
+  expect(clear).toBeDisabled(); fireEvent.change(input,{target:{value:"振込"}}); expect(clear).toBeEnabled();
+  fireEvent.click(clear); expect(input).toHaveValue(""); expect(clear).toBeDisabled();
+});

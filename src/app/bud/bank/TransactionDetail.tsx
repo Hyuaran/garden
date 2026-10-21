@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
 import { accountDisplayName } from "@/lib/bud/mf/corporations";
-import { fiscalYearLabel, pastFiscalYears, validTransactionPeriod, journalLabel, transactionAmount } from "@/lib/bud/mf/transactions";
+import { validTransactionPeriod, journalLabel, transactionAmount } from "@/lib/bud/mf/transactions";
 import type { CardTransaction, MfAccount } from "@/lib/bud/mf/types";
+import PeriodSelect from "./PeriodSelect";
 import styles from "./bank.module.css";
 
 type Detail = { fiscalYears?: number[]; account: MfAccount; transactions: CardTransaction[] };
@@ -38,7 +39,9 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
     ]),
     { id:"journal", label:"仕訳", value:t => journalLabel(t.journalizing_status), type:"text" },
   ];
-  const periodControl = <label className={`${styles.statBox} ${styles.controlBox}`}><small>期間</small><select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">{fiscalYearLabel(data?.account.fiscal_start_date)}</option>{pastFiscalYears(data?.fiscalYears ?? [], data?.account.fiscal_start_date).map(year => <option key={year} value={`fy:${year}`}>{year}年度</option>)}</select></label>;
+  const periodControl = <PeriodSelect value={period} onChange={value => {
+    setPeriod(value); const url = new URL(window.location.href); url.searchParams.set("period", value); window.history.replaceState(null, "", url);
+  }} fiscalStart={data?.account.fiscal_start_date} years={data?.fiscalYears ?? []} />;
   return <div className={styles.pageShell}>
     <SystemBreadcrumb root={{ label:"Bud", href:"/bud/dashboard" }} items={[{ label:"口座残高・カード利用", href:card ? "/bud/bank?tab=card" : "/bud/bank" },{ label:name }]} />
     <h1>{name}</h1>
@@ -53,7 +56,7 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
           {card
             ? <div className={styles.statBox}><small>合計</small><strong>{yen(rows.reduce((sum,t) => sum + transactionAmount(t),0))}</strong></div>
             : <><div className={styles.statBox}><small>入金</small><strong className={styles.increase}>{yen(rows.reduce((sum,t) => sum + income(t),0))}</strong></div><div className={styles.statBox}><small>出金</small><strong className={styles.decrease}>{yen(rows.reduce((sum,t) => sum + expense(t),0))}</strong></div></>}
-          <div className={styles.statBox}><small>件数</small><strong>{rows.length} 件</strong></div>
+          <div className={styles.statBox}><small>件数</small><strong>{rows.length.toLocaleString("ja-JP")} 件</strong></div>
         </>} />
     </>}
   </div>;

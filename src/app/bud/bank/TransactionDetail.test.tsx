@@ -29,7 +29,10 @@ it("computes bank totals after search and filtering and changes period without s
   fireEvent.click(within(dialog).getByLabelText("済 (1)"));
   fireEvent.click(within(dialog).getByRole("button", {name:"OK"}));
   expect(stat("入金")).toHaveTextContent("0 円"); expect(stat("出金")).toHaveTextContent("50 円"); expect(stat("件数")).toHaveTextContent("1 件");
-  fireEvent.change(screen.getByLabelText("期間"),{target:{value:"year"}});
+  fireEvent.click(screen.getByRole("button",{name:"期間"}));
+  fireEvent.click(screen.getByRole("button",{name:"すべて解除"}));
+  fireEvent.click(screen.getByRole("checkbox",{name:"2026年度"}));
+  fireEvent.click(screen.getByRole("button",{name:"OK"}));
   await waitFor(() => expect(fetcher.mock.lastCall?.[0]).toContain("period=year"));
   expect(fetcher.mock.lastCall?.[0]).not.toContain("page=");
 });
@@ -57,7 +60,22 @@ it("offers available past fiscal years and opens a past-year deep link", async (
   const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({account:{name:"銀行",kind:"bank",balance:0,fiscal_start_date:"2026-04-01"},transactions:[],fiscalYears:[2026,2025,2023]})));
   vi.stubGlobal("fetch",fetcher);
   render(<TransactionDetail id="b" initialPeriod="fy:2025" />);
-  await screen.findByRole("option",{name:"2025年度"});
-  expect(screen.getAllByRole("option").map(o=>o.textContent)).toEqual(["今月","先月","2026年度","2025年度","2023年度"]);
+  await screen.findByText("今の残高");
+  fireEvent.click(screen.getByRole("button",{name:"期間"}));
+  expect(screen.getAllByRole("checkbox").map(o=>o.parentElement?.textContent)).toEqual(["今月","先月","2026年度","2025年度","2023年度"]);
   expect(fetcher.mock.calls[0][0]).toContain("period=fy%3A2025");
+});
+
+it("reads a comma-separated period URL and applies multiple periods to the URL", async () => {
+  const fetcher = vi.fn().mockImplementation(async () => new Response(JSON.stringify({account:{name:"銀行",kind:"bank",balance:0,fiscal_start_date:"2026-04-01"},transactions:[],fiscalYears:[2025,2024]})));
+  vi.stubGlobal("fetch",fetcher);
+  render(<TransactionDetail id="b" initialPeriod="fy:2025,fy:2024" />);
+  await screen.findByText("今の残高");
+  expect(screen.getByText("2025年度・2024年度")).toBeInTheDocument();
+  expect(fetcher.mock.calls[0][0]).toContain("period=fy%3A2025%2Cfy%3A2024");
+  fireEvent.click(screen.getByRole("button",{name:"期間"}));
+  fireEvent.click(screen.getByRole("checkbox",{name:"今月"}));
+  fireEvent.click(screen.getByRole("button",{name:"OK"}));
+  expect(new URLSearchParams(window.location.search).get("period")).toBe("current,fy:2025,fy:2024");
+  window.history.replaceState(null,"","/");
 });

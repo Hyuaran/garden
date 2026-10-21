@@ -122,3 +122,9 @@
 .controlBox select { border:0 !important; background:transparent !important; box-shadow:none !important; padding-left:0 !important; font-size:20px; font-weight:900; color:var(--ink); cursor:pointer; }
 .controlBox select:focus-visible { outline:2px solid var(--teal); outline-offset:2px; border-radius:6px; }
 .confirmPrimary { background:var(--teal) !important; border-color:var(--teal) !important; color:#fff !important; }
+/* 合計の列の前（左）にだけ縦線。合計の行の上の線と同じ太さ・色（2026-10-21 東海林さん） */
+.matrix th:last-child, .matrix td:last-child { border-left:2px solid var(--line); }
+/* 数字の箱を少し詰めて、期間・検索まで 1 行に収める */
+.statBox { min-width:150px; }
+.statBox strong { font-size:20px; }
+.statBox { padding:12px 16px; }

@@ -25,7 +25,10 @@ describe("bank accounts screen", () => {
     expect(screen.getByText(/1 件・最後 2026-10-01/)).toBeInTheDocument();
     expect(screen.getByText("45 円")).toBeInTheDocument();
     expect(screen.queryByText("999,999 円")).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("期間"),{target:{value:"last"}});
+    fireEvent.click(screen.getByRole("button",{name:"期間"}));
+  fireEvent.click(screen.getByRole("button",{name:"すべて解除"}));
+  fireEvent.click(screen.getByRole("checkbox",{name:"先月"}));
+  fireEvent.click(screen.getByRole("button",{name:"OK"}));
     await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url.includes("period=last"))).toBe(true));
   });
   it("shows the refresh icon as busy until the reload completes", async () => {
@@ -93,8 +96,11 @@ it("offers available card fiscal years and carries the selected period into deta
   render(<BankAccounts />);
   await screen.findByText("MF最終更新：2026/10/20(火) 09:30");
   fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
-  expect(screen.getAllByRole("option").map(o=>o.textContent)).toEqual(["今月","先月","2026年度","2025年度","2023年度"]);
-  fireEvent.change(screen.getByLabelText("期間"),{target:{value:"fy:2025"}});
+  fireEvent.click(screen.getByRole("button",{name:"期間"}));
+  expect(screen.getAllByRole("checkbox").map(o=>o.parentElement?.textContent)).toEqual(["今月","先月","2026年度","2025年度","2023年度"]);
+  fireEvent.click(screen.getByRole("button",{name:"すべて解除"}));
+  fireEvent.click(screen.getByRole("checkbox",{name:"2025年度"}));
+  fireEvent.click(screen.getByRole("button",{name:"OK"}));
   await waitFor(()=>expect(fetcher.mock.calls.some(([url])=>url.includes("period=fy%3A2025"))).toBe(true));
-  expect(screen.getByRole("link",{name:/オリコカード/})).toHaveAttribute("href","/bud/bank/accounts/3?period=fy:2025");
+  expect(screen.getByRole("link",{name:/オリコカード/})).toHaveAttribute("href","/bud/bank/accounts/3?period=fy%3A2025");
 });
