@@ -7,5 +7,6 @@
 
 .fallback { position:relative; display:inline-flex; }
 .fallback button:disabled { color:var(--sub); opacity:.45; cursor:not-allowed; }
-.tooltip { display:none; position:absolute; z-index:40; right:0; top:100%; width:max-content; max-width:260px; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--sub); font-size:12px; }
+/* ほかのボタン（明暗・ログアウト）の説明と同じ見た目・同じ距離（ボタンの上端から 50px）。Chrome の標準の説明（title）は出さない */
+.tooltip { display:none; position:absolute; z-index:60; left:50%; top:50px; transform:translateX(-50%); width:max-content; max-width:260px; padding:5px 10px; border:1px solid var(--side-line, var(--line)); border-radius:9px; background:var(--side, var(--card)); color:var(--side-ink, var(--sub)); font-size:11.5px; white-space:nowrap; pointer-events:none; }
 .fallback:hover .tooltip, .fallback:focus .tooltip, .fallback:active .tooltip { display:block; }

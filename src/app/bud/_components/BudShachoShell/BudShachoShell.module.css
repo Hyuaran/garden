@@ -6,7 +6,7 @@
   --btn:#152438; --btn-line:#31435a; --btn-ink:#edf4fb;
 }
 .main.main { max-width:none; width:100%; min-width:0; box-sizing:border-box; overflow-x:auto; }
-.topbar { display:flex; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
+.topbar { position:relative; z-index:20; display:flex; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
 .heading { color:var(--heading); font-size:18px; font-weight:700; text-wrap:balance; }
 .actions { margin-left:auto; display:flex; align-items:center; gap:10px; }
 .content { min-width:0; }

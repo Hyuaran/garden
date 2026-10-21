@@ -33,7 +33,7 @@ export function HeaderViewSlot({ mobile = false }: { mobile?: boolean }) {
     return () => query.removeEventListener("change", update);
   }, [node, mobile, register]);
   return <div className={styles.slot}>
-    {!occupied && <span className={styles.fallback} tabIndex={0} title="この画面は表示の切り替えがありません">
+    {!occupied && <span className={styles.fallback} tabIndex={0}>
       <button type="button" disabled aria-label="この画面は表示の切り替えがありません">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11" /></svg>
       </button>

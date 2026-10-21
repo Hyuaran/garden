@@ -22,15 +22,21 @@ export default function BroadbandTable({rows,userId,today,kintoneBase}: {rows:Ta
   // 横スクロールのバーは画面の下に張り付けて、表の下まで行かなくても動かせるようにする
   const scrollRef=useRef<HTMLDivElement>(null), barRef=useRef<HTMLDivElement>(null), [barWidth,setBarWidth]=useState(0);
   const [bar,setBar]=useState<{left:number;width:number}|null>(null);
+  // 見出しの行（月）は、表の先頭が画面の上に来たら上に固定して出す（東海林さん 2026-10-21）
+  const headRef=useRef<HTMLDivElement>(null), [head,setHead]=useState<{left:number;width:number;top:number;widths:number[];tableWidth:number}|null>(null);
   useEffect(() => {
     const el=scrollRef.current; if(!el) return;
     // 表が画面の下にはみ出しているあいだだけ、画面の一番下に表と同じ幅で出す（外枠の作りで sticky が効かないため fixed）
-    const fit=()=>{ setBarWidth(el.scrollWidth); const r=el.getBoundingClientRect(); setBar(el.scrollWidth>el.clientWidth && r.top<window.innerHeight && r.bottom>window.innerHeight ? {left:r.left,width:r.width} : null); };
+    const fit=()=>{ setBarWidth(el.scrollWidth); const r=el.getBoundingClientRect(); setBar(el.scrollWidth>el.clientWidth && r.top<window.innerHeight && r.bottom>window.innerHeight ? {left:r.left,width:r.width} : null);
+      const thead=el.querySelector("thead"), top=Math.max(0,el.closest("main")?.getBoundingClientRect().top ?? 0);
+      const h=thead?.getBoundingClientRect();
+      setHead(thead && h && h.top<top && r.bottom>top+h.height*2 ? {left:r.left,width:r.width,top,tableWidth:el.scrollWidth,widths:[...thead.querySelectorAll("th")].map(th=>th.getBoundingClientRect().width)} : null); };
     fit(); const observer=new ResizeObserver(fit); observer.observe(el); if(el.firstElementChild) observer.observe(el.firstElementChild);
     window.addEventListener("scroll",fit,true); window.addEventListener("resize",fit);
     return ()=>{ observer.disconnect(); window.removeEventListener("scroll",fit,true); window.removeEventListener("resize",fit); };
   },[]);
   useEffect(() => { if(bar) sync(scrollRef.current,barRef.current); },[bar]);
+  useEffect(() => { if(head) sync(scrollRef.current,headRef.current); },[head]);
   const sync=(from:HTMLDivElement|null,to:HTMLDivElement|null)=>{ if(from&&to&&to.scrollLeft!==from.scrollLeft) to.scrollLeft=from.scrollLeft; };
   useEffect(() => { try { setSort(readSort(window.localStorage,userId)); } catch { setSort("cash"); } },[userId]);
   const months=periodMonths(periods,today,rows), pivot=buildPivot(rows,months,sort);
@@ -42,6 +48,6 @@ export default function BroadbandTable({rows,userId,today,kintoneBase}: {rows:Ta
     {sorting && <BoxSelect label="並び順" multiple={false} value={[sort]} options={sortOptions} onChange={values=>{const next=values[0] as SortMode;setSort(next);try {saveSort(window.localStorage,userId,next);}catch {}setSorting(false);}} />}
     <section role="tabpanel" id="broadband-panel" aria-labelledby="broadband-tab"><BoxSelect label="期間" value={periods} options={periodOptions(rows,today)} onChange={value=>{setPeriods(value);setSelected(null);}} />
     <p className={styles.legend}>赤＝口座と合わない・まだ届いていない／灰＝予定日前</p>{message && <p role="status">{message}</p>}
-    <div ref={scrollRef} className={styles.scroll} onScroll={()=>sync(scrollRef.current,barRef.current)}><table><thead><tr><th>事業内容</th><th>取引先</th>{months.map(m=><th key={m}>{Number(m.slice(0,4))}年{Number(m.slice(5,7))}月</th>)}<th>合計</th></tr></thead><tbody>{pivot.map(row=><tr key={row.key} className={row.subtotal ? styles.subtotal : undefined}><th scope="row">{row.subtotal ? row.business : ""}</th><td>{row.partner}</td>{months.map(month=><td key={month}>{cell(row.records.filter(r=>r.scheduled_date?.startsWith(month)),`${row.business} ${row.partner} ${month}`,!row.subtotal)}</td>)}<td>{cell(row.records,`${row.business} ${row.partner} 合計`,!row.subtotal)}</td></tr>)}</tbody></table></div>{bar && <div ref={barRef} className={styles.stickyBar} style={{left:bar.left,width:bar.width}} aria-hidden="true" onScroll={()=>sync(barRef.current,scrollRef.current)}><div style={{width:barWidth,height:1}} /></div>}
+    <div ref={scrollRef} className={styles.scroll} onScroll={()=>{sync(scrollRef.current,barRef.current);sync(scrollRef.current,headRef.current);}}><table><thead><tr><th>事業内容</th><th>取引先</th>{months.map(m=><th key={m}>{Number(m.slice(0,4))}年{Number(m.slice(5,7))}月</th>)}<th>合計</th></tr></thead><tbody>{pivot.map(row=><tr key={row.key} className={row.subtotal ? styles.subtotal : undefined}><th scope="row">{row.subtotal ? row.business : ""}</th><td>{row.partner}</td>{months.map(month=><td key={month}>{cell(row.records.filter(r=>r.scheduled_date?.startsWith(month)),`${row.business} ${row.partner} ${month}`,!row.subtotal)}</td>)}<td>{cell(row.records,`${row.business} ${row.partner} 合計`,!row.subtotal)}</td></tr>)}</tbody></table></div>{head && <div ref={headRef} className={`${styles.scroll} ${styles.stickyHead}`} style={{left:head.left,width:head.width,top:head.top}} aria-hidden="true"><table style={{width:head.tableWidth,minWidth:head.tableWidth}}><thead><tr>{["事業内容","取引先",...months.map(m=>`${Number(m.slice(0,4))}年${Number(m.slice(5,7))}月`),"合計"].map((label,i)=><th key={label} style={{width:head.widths[i],minWidth:head.widths[i],maxWidth:head.widths[i],boxSizing:"border-box"}}>{label}</th>)}</tr></thead></table></div>}{bar && <div ref={barRef} className={styles.stickyBar} style={{left:bar.left,width:bar.width}} aria-hidden="true" onScroll={()=>sync(barRef.current,scrollRef.current)}><div style={{width:barWidth,height:1}} /></div>}
     {selected && <Details rows={selected} kintoneBase={kintoneBase} onClose={()=>setSelected(null)} />}</section></div>;
 }
