@@ -96,3 +96,5 @@
 .stretchLink::after { content:""; position:absolute; inset:0; z-index:1; }
 .matrix td:has(.stretchLink) { cursor:pointer; transition:background-color .15s; }
 .matrix td:has(.stretchLink:hover), .matrix td:has(.stretchLink:focus-visible) { background:color-mix(in srgb, var(--teal) 8%, transparent); }
+/* 設定を開いたとき、カードの中の「○○の設定」ボタンがカードからはみ出さない（長い名前は折り返す） */
+.account .toolbar button { max-width:100%; white-space:normal; text-align:left; line-height:1.4; height:auto; }

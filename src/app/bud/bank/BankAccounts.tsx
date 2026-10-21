@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cardSummaries } from "@/lib/bud/mf/transactions";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
-import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
+import SystemTabs, { TabActionButton } from "@/app/system/_components/SystemTabs/SystemTabs";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { accountDisplayName } from "@/lib/bud/mf/corporations";
 
@@ -114,8 +114,7 @@ export default function BankAccounts() {
       catch(e) { setError(e instanceof Error ? e.message : "読み込めませんでした"); }
       finally { setRefreshing(false); }
     }} /></UpdatedStampRow></header>
-    <div className={styles.tabToolbar}><SystemTabs aria-label="表示内容">{[["bank","口座残高"],["card","カード利用"]].map(([value,label]) => <button role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} key={value} aria-selected={tab === value} onClick={() => { setTab(value); setSelected(null); }}>{label}</button>)}</SystemTabs>
-      {snapshot.admin && <><button aria-pressed={reordering} disabled={refreshing} onClick={() => setReordering(!reordering)}>並び替え{reordering ? "を終了" : ""}</button><button aria-pressed={settings} disabled={refreshing} onClick={() => { setSettings(!settings); setSelected(null); }}>設定{settings ? "を終了" : ""}</button></>}
+    <div className={styles.tabToolbar}><SystemTabs aria-label="表示内容" actions={snapshot.admin ? <><TabActionButton icon="sort" label={reordering ? "並び替えを終える" : "並び替え"} pressed={reordering} disabled={refreshing} onClick={() => setReordering(!reordering)} /><TabActionButton icon="settings" label={settings ? "設定を終える" : "設定"} pressed={settings} disabled={refreshing} onClick={() => { setSettings(!settings); setSelected(null); }} /></> : undefined}>{[["bank","口座残高"],["card","カード利用"]].map(([value,label]) => <button role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} key={value} aria-selected={tab === value} onClick={() => { setTab(value); setSelected(null); }}>{label}</button>)}</SystemTabs>
       <small role="status">{saveCount > 0 ? "並び順を保存中…" : loading ? "読み込み中…" : ""}</small>
     </div>
     {error && <p role="alert" className={styles.error}>{error}</p>}
