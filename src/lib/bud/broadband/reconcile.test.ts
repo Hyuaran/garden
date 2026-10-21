@@ -91,3 +91,11 @@ it("does not give another partner's transfer and learns only repeated names", as
   const twice = run([row("1"),row("2",{入出金予定日:"2026-10-02"})],[bank(),bank({mf_transaction_id:"b2",date:"2026-10-02"})]);
   expect(learnRules(twice,[])).toEqual([{partner:"会社",keywords:["カイシャ"]}]);
 });
+
+it("matches rows of the same partner and date paid together in one transfer", () => {
+  const a = row("1",{売上_税抜_:"38000",事業内容:"101_回線ショット"}), b = row("2",{売上_税抜_:"392000",事業内容:"103_クレカ"});
+  const results = run([a,b],[bank({value:473000})]);
+  expect(results.map(r=>r.kind)).toEqual(["matched","matched"]);
+  expect(results.every(r=>r.bank?.mf_transaction_id==="b1" && r.combined===2)).toBe(true);
+  expect(String((buildPatch(results[0],"詳細")!.テーブル as {value:{value:{詳細:{value:string}}}[]}).value.at(-1)!.value.詳細.value)).toContain("2 行をまとめて");
+});
