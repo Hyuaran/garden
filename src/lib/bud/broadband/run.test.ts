@@ -3,7 +3,12 @@ const m=vi.hoisted(()=>({rpc:vi.fn(),from:vi.fn(),get:vi.fn(),send:vi.fn()}));
 vi.mock("@/lib/supabase/admin",()=>({getSupabaseAdmin:()=>({rpc:m.rpc,from:m.from})}));
 vi.mock("@/lib/kintone/records",()=>({getAllRecords:m.get}));
 vi.mock("@/lib/chatwork/client",()=>({ChatworkClient:class {sendMessage=m.send;}}));
-import { runRecon } from "./run";
+import { runRecon, saveReconResults } from "./run";
+it("persists all results once in production, never in dry run",async()=>{
+ const save=vi.fn();const results=[{row:{kintone_record_id:"1",raw:{入金確認:{value:"入金OK"}}},kind:"excluded",expected:110,fee:440,candidates:[]} ] as unknown as Parameters<typeof saveReconResults>[0];
+ await saveReconResults(results,"2026-10-21",true,save);expect(save).not.toHaveBeenCalled();
+ await saveReconResults(results,"2026-10-21",false,save);expect(save).toHaveBeenCalledTimes(1);expect(save).toHaveBeenCalledWith([expect.objectContaining({recon_status:"matched",expected_gross:110,recon_fee:440})]);
+});
 beforeEach(()=>{
  vi.clearAllMocks();vi.stubEnv("KINTONE_BROADBAND_APP_ID","174");vi.stubEnv("KINTONE_BROADBAND_TOKEN","test");vi.stubEnv("KINTONE_SUBDOMAIN","test");
  m.rpc.mockImplementation(async(name:string)=>({data:name==="bud_bb_claim" ? true : null,error:null}));

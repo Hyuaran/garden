@@ -66,7 +66,7 @@ export function BudShachoShell({ children }: { children: ReactNode }) {
       if ((event.target as HTMLElement).closest("a")) setDrawerOpen(false);
     }}>
       <div className={styles.navLabel}>メニュー</div>
-      {BUD_GARDEN_PAGE_MENU.map((menu) => menu.divider
+      {BUD_GARDEN_PAGE_MENU.filter(menu => menu.href !== "/bud/profit/broadband" || gardenRole === "admin" || gardenRole === "super_admin").map((menu) => menu.divider
         ? <hr key={menu.href} className={styles.divider} />
         : <Link key={menu.href} href={menu.href} className={activePath === menu.href ? systemStyles.active : undefined} aria-current={activePath === menu.href ? "page" : undefined}>
             <MenuIcon icon={budMenuIcon(menu.href)} /><span>{menu.label}</span>

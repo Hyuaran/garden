@@ -1,0 +1,32 @@
+import { expect, it } from "vitest";
+import { buildPivot, cellTone, fiscalYear, periodMonths, readSort, saveSort, type TableRecord } from "./table";
+const row = (partner:string, amount:number, status:TableRecord["recon_status"]="matched") => ({kintone_record_id:partner,business:"事業",partner,profit_net:amount,scheduled_date:"2026-04-30",recon_status:status,confirmation:""} as TableRecord);
+it("builds chronological fiscal months, subtotals and grand total",()=>{
+ const months=periodMonths(["current"],"2026-10-21");
+ expect(months).toHaveLength(12);expect(months[0]).toBe("2026-04");expect(months.at(-1)).toBe("2027-03");
+ const pivot=buildPivot([row("A",100),row("B",-30)],months,"cash");
+ expect(pivot.map(r=>r.partner)).toEqual(["小計","A","B",""]);expect(pivot.at(-1)?.records.reduce((n,r)=>n+r.profit_net!,0)).toBe(70);
+});
+it("supports April boundary, rolling months and union of periods",()=>{
+ expect(fiscalYear("2026-03-31")).toBe(2025);expect(fiscalYear("2026-04-01")).toBe(2026);
+ expect(periodMonths(["current","previous"],"2026-10-21")).toHaveLength(24);
+ expect(periodMonths(["rolling"],"2026-10-21")[0]).toBe("2025-11");
+});
+it("prioritizes red, only pending gray, ignores exclusions and honors human confirmation",()=>{
+ for(const status of ["amount_mismatch","not_arrived","ambiguous"] as const) expect(cellTone([row("a",1,status),row("b",1,"pending")])).toBe("red");
+ expect(cellTone([row("a",1,"pending"),row("b",1,"excluded")])).toBe("gray");
+ expect(cellTone([row("a",1,"excluded")])).toBe("normal");expect(cellTone([row("a",1),row("b",1,"pending")])).toBe("normal");
+ expect(cellTone([{...row("a",1,"not_arrived"),confirmation:"入金OK"}])).toBe("normal");
+});
+it("sorts incoming then payments by magnitude, amount and partner",()=>{
+ const rows=[row("C",-10),row("B",-100),row("A",20)];const months=["2026-04"];
+ expect(buildPivot(rows,months,"cash").slice(1,-1).map(r=>r.partner)).toEqual(["A","B","C"]);
+ expect(buildPivot(rows,months,"amount").slice(1,-1).map(r=>r.partner)).toEqual(["A","C","B"]);
+ expect(buildPivot(rows,months,"name").slice(1,-1).map(r=>r.partner)).toEqual(["A","B","C"]);
+});
+it("falls back when storage is unavailable and saves per user",()=>{
+ expect(readSort({getItem:()=>{throw Error();}},"one")).toBe("cash");
+ expect(()=>saveSort({setItem:()=>{throw Error();}},"one","name")).not.toThrow();
+ const data=new Map<string,string>();const storage={getItem:(k:string)=>data.get(k)??null,setItem:(k:string,v:string)=>{data.set(k,v);}};
+ saveSort(storage,"one","name");expect(readSort(storage,"one")).toBe("name");expect(readSort(storage,"two")).toBe("cash");
+});

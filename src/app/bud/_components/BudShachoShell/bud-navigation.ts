@@ -5,7 +5,7 @@ export function resolveBudActivePath(pathname: string): string | null {
   if (pathname === "/bud") return "/bud/dashboard";
   if (pathname === "/bud/shiwakechou" || pathname.startsWith("/bud/shiwakechou/")) return "/bud/journal";
   if (pathname === "/bud/statements" || pathname.startsWith("/bud/statements/")) return "/bud/bank";
-  return BUD_GARDEN_PAGE_MENU.find(item => !item.divider && (pathname === item.href || pathname.startsWith(`${item.href}/`)))?.href ?? null;
+  return [...BUD_GARDEN_PAGE_MENU].sort((a,b) => b.href.length-a.href.length).find(item => !item.divider && (pathname === item.href || pathname.startsWith(`${item.href}/`)))?.href ?? null;
 }
 
 export function budMenuIcon(href: string): SystemIcon {

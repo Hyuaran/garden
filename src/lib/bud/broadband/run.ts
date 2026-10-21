@@ -45,6 +45,13 @@ export async function applyMatches(results: ReturnType<typeof reconcile>, histor
   for (let i=0;i<updates.length;i+=100) await batch(updates.slice(i,i+100));
   return applied;
 }
+export async function saveReconResults(results: ReturnType<typeof reconcile>, now: string, dryRun: boolean, rpc: (rows: object[]) => Promise<void>) {
+  if (dryRun) return;
+  await rpc(results.map(r => ({kintone_record_id:r.row.kintone_record_id,
+    recon_status:text(r.row.raw,"入金確認") ? "matched" : r.kind,
+    expected_gross:Number.isFinite(r.expected) ? r.expected : null, recon_fee:r.fee ?? null,
+    recon_checked_at:now, recon_bank:r.bank ? [r.bank] : r.kind === "amount_mismatch" || r.kind === "ambiguous" ? r.candidates : []})));
+}
 export async function runRecon(dryRun: boolean, now = new Date()) {
   const db = getSupabaseAdmin(), token = crypto.randomUUID();
   const claim = await db.rpc("bud_bb_claim",{p_token:token});
@@ -85,6 +92,7 @@ async function executeRecon(dryRun: boolean, now: Date) {
   const results = reconcile(rows,bank,[...rules,...learned],settings,today);
   const counts = Object.fromEntries(["matched","amount_mismatch","not_arrived","ambiguous","excluded","pending"].map(k => [k,results.filter(r => r.kind===k).length]));
   if (dryRun) return {dryRun,counts,results,learned};
+  await saveReconResults(results,nowText,false,async p_rows => { checked(await db.rpc("bud_bb_save_recon",{p_rows})); });
   if (learned.length) checked(await db.from("bud_bb_payee_rules").upsert(learned,{onConflict:"partner"}));
   const schemaResponse = await fetch(`${base}app/form/fields.json?app=${encodeURIComponent(app)}`,{headers:{"X-Cybozu-API-Token":token},cache:"no-store"});
   if (!schemaResponse.ok) throw new Error("kintone_schema_failed");

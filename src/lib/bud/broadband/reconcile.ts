@@ -51,7 +51,7 @@ export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings:
     const until = [shiftDate(date,settings.date_window_after), endOfNextMonth(date)].sort().at(-1)!;
     // ほかの取引先の名前（決まり・覚えた名前）の明細は当てない
     const others = rules.filter(r => r.partner !== partner).flatMap(r => r.keywords).filter(k => k && !keywords.some(own => own.includes(k) || k.includes(own)));
-    const candidates = bank.filter(b => !used.has(b.mf_transaction_id) && !others.some(k => b.content.includes(k)) && b.side === side(raw) && b.date >= shiftDate(date,-settings.date_window_before) && b.date <= until && (!text(raw,"ドロップダウン_0") || corporationName(b.corp_code) === text(raw,"ドロップダウン_0")));
+    const candidates = bank.filter(b => !used.has(b.mf_transaction_id) && !others.some(k => b.content.includes(k)) && b.side === side(raw) && b.date >= shiftDate(date,-settings.date_window_before) && b.date <= until); // 法人では絞らない：[MF]社名は人の入力で、実際の入金口座と違うことがある（Fプレイン：リンクサポートと入っていてヒュアランに着金）
     const distance = (b: Bank) => Math.abs(Date.parse(b.date)-Date.parse(date));
     const matches = candidates.filter(b => exactAny(b.value,amounts)).sort((a,b) => distance(a)-distance(b));
     if (matches.length > 1 && distance(matches[0]) === distance(matches[1])) return { ...base, candidates: matches, kind: "ambiguous" };
@@ -68,7 +68,7 @@ export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings:
 export function buildPatch(result: Result, historyField: string): KintoneRecord | null {
   if (result.kind !== "matched" || !result.bank || text(result.row.raw,"入金確認")) return null;
   const b = result.bank, corp = corporationName(b.corp_code);
-  const fields = Object.fromEntries(Object.entries({ 入金確認: b.side === "INCOME" ? "入金OK" : "支払OK", ドロップダウン_0: ["ヒュアラン","ARATA","ストーンベース","たいよう","リンクサポート"].includes(corp) ? corp : "", _MF_銀行: ["楽天銀行","みずほ銀行","PayPay銀行"].includes(b.bank_name) ? b.bank_name : "", _MF_摘要: b.content, _MF_取引日: b.date, _MF_取引額: String(Math.abs(b.value)) }).map(([k,v]) => [k,{ value:v }]));
+  const fields = Object.fromEntries(Object.entries({ 入金確認: b.side === "INCOME" ? "入金OK" : "支払OK", ドロップダウン_0: text(result.row.raw,"ドロップダウン_0") || (["ヒュアラン","ARATA","ストーンベース","たいよう","リンクサポート"].includes(corp) ? corp : ""), _MF_銀行: ["楽天銀行","みずほ銀行","PayPay銀行"].includes(b.bank_name) ? b.bank_name : "", _MF_摘要: b.content, _MF_取引日: b.date, _MF_取引額: String(Math.abs(b.value)) }).map(([k,v]) => [k,{ value:v }]));
   const history = value(result.row.raw,"テーブル");
   return { ...fields, テーブル: { value: [...(Array.isArray(history) ? history : []), { value: { [historyField]: { value: result.fee ? `Garden 口座照合（一致・振込手数料 ${result.fee.toLocaleString("ja-JP")} 円を引いて着金）` : "Garden 口座照合（一致）" } } }] } };
 }

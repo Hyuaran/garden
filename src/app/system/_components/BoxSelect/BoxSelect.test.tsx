@@ -2,6 +2,13 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import BoxSelect, { selectionLabel } from "./BoxSelect";
 const options = [{value:"current",label:"今月"},{value:"last",label:"先月"},{value:"year",label:"2026年度"}];
+it("uses exclusive radio selection without bulk actions", () => {
+  const change=vi.fn();render(<BoxSelect label="並び順" multiple={false} value={["current"]} options={options} onChange={change} />);
+  fireEvent.click(screen.getByRole("button",{name:"並び順"}));
+  expect(screen.queryByRole("button",{name:"すべて解除"})).toBeNull();
+  fireEvent.click(screen.getByRole("radio",{name:"先月"}));fireEvent.click(screen.getByRole("button",{name:"OK"}));
+  expect(change).toHaveBeenCalledWith(["last"]);
+});
 it("labels one, two and three selected periods", () => {
   expect(selectionLabel(["current"],options,"期間")).toBe("今月");
   expect(selectionLabel(["current","last"],options,"期間")).toBe("今月・先月");

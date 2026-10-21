@@ -9,7 +9,9 @@ describe("broadband reconciliation",()=>{
  it.each([10,8,0])("tax %s",tax=>{ expect(gross(row("1",{消費税率:tax}).raw)).toBeCloseTo(100*(1+tax/100)); });
  it("rounds display and treats a one yen difference as a match",()=>{const r=run([row("1",{売上_税抜_:"101"})],[bank({value:111})])[0]; expect(r.expected).toBe(111); expect(r.kind).toBe("matched");expect(exact(112,110)).toBe(false);expect(exact(111,110.1)).toBe(true);});
  it("filters direction, dates, corporation and payee",()=>{
-  for (const b of [bank({side:"EXPENSE"}),bank({date:"2026-09-20"}),bank({date:"2026-12-01"}),bank({corp_code:"ART"})]) expect(run([row("1",{ドロップダウン_0:"ヒュアラン"})],[b],[],"2026-12-01")[0].kind).toBe("not_arrived");
+  expect(run([row("1",{ドロップダウン_0:"リンクサポート"})],[bank()])[0].kind).toBe("matched");
+  expect(buildPatch(run([row("1",{ドロップダウン_0:"リンクサポート"})],[bank()])[0],"詳細")!.ドロップダウン_0).toEqual({value:"リンクサポート"});
+  for (const b of [bank({side:"EXPENSE"}),bank({date:"2026-09-20"}),bank({date:"2026-12-01"})]) expect(run([row("1",{ドロップダウン_0:"ヒュアラン"})],[b],[],"2026-12-01")[0].kind).toBe("not_arrived");
   expect(run(undefined,[bank()], [{partner:"会社",keywords:["違う"]}])[0].kind).toBe("matched");
   expect(run(undefined,[bank()], [{partner:"会社",keywords:["違う","カイシャ"]}])[0].kind).toBe("matched");
   expect(run(undefined,[bank({date:"2026-09-21"})])[0].kind).toBe("matched");
