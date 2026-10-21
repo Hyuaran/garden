@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { mfAccess } from "@/lib/bud/mf/access";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import type { Arrival } from "@/lib/bud/mf/types";
+import type { Arrival, Employee } from "@/lib/bud/mf/types";
 import { arrivalTotals, monthRange } from "@/lib/bud/mf/balances";
 import { transactionUnion, transactionYears, validTransactionPeriod } from "@/lib/bud/mf/transactions";
 
@@ -38,9 +38,9 @@ export async function GET(request: Request) {
     if (batch.data.length < 1000) break;
   }
   for (const account of accounts.data.filter(a => a.kind === "card" && !a.hidden)) yearsByAccount[account.mf_account_id] = transactionYears(dates.filter(t => t.mf_account_id === account.mf_account_id));
-  let employees: { employee_id: string; name: string | null }[] = [];
+  let employees: Employee[] = [];
   if (auth.admin) {
-    const result = await getSupabaseAdmin().from("root_employees").select("employee_id,name").is("deleted_at",null).order("name");
+    const result = await getSupabaseAdmin().from("root_employees").select("employee_id,name,name_kana").eq("is_active",true).is("deleted_at",null).or(`termination_date.is.null,termination_date.gt.${new Date(Date.now() + 9 * 3600000).toISOString().slice(0,10)}`).order("name");
     if (result.error) return fail();
     employees = result.data;
   }

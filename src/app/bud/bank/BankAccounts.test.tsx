@@ -104,3 +104,25 @@ it("offers available card fiscal years and carries the selected period into deta
   await waitFor(()=>expect(fetcher.mock.calls.some(([url])=>url.includes("period=fy%3A2025"))).toBe(true));
   expect(screen.getByRole("link",{name:/オリコカード/})).toHaveAttribute("href","/bud/bank/accounts/3?period=fy%3A2025");
 });
+
+
+it("shows settings alone and searches kana while keeping selected viewers first", async () => {
+ const snapshot = {...data(), employees:[{employee_id:"e2",name:"井上"},{employee_id:"e1",name:"閲覧者"},{employee_id:"e3",name:"佐藤",name_kana:"サトウ"}]};
+ fetcher.mockImplementation(async()=>new Response(JSON.stringify(snapshot)));
+ render(<BankAccounts />); await screen.findByText("銀行1");
+ fireEvent.click(screen.getByRole("button",{name:"設定"}));
+ expect(screen.queryByRole("table")).not.toBeInTheDocument();
+ const gear = screen.getByRole("button",{name:"銀行1（ヒュアラン）の設定"});
+ expect(gear.textContent).toBe(""); expect(gear.querySelector("svg")).toBeTruthy(); fireEvent.click(gear);
+ const group=screen.getByRole("group",{name:"閲覧権限"});
+ expect(within(group).getAllByRole("checkbox")[0]).toHaveAccessibleName("閲覧者");
+ fireEvent.change(screen.getByRole("textbox",{name:"名前で探す"}),{target:{value:"さとう"}});
+ expect(within(group).getAllByRole("checkbox")).toHaveLength(2);
+ expect(within(group).queryByLabelText("井上")).not.toBeInTheDocument();
+ expect(within(group).getByLabelText("閲覧者")).toBeChecked();
+ expect(within(group).getByLabelText("佐藤")).not.toBeChecked();
+ fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
+ expect(screen.queryByRole("button",{name:"期間"})).not.toBeInTheDocument();
+ expect(screen.queryByRole("link",{name:/オリコカード/})).not.toBeInTheDocument();
+ expect(screen.getByRole("button",{name:"オリコカードの設定"})).toBeInTheDocument();
+});
