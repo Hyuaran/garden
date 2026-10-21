@@ -1,5 +1,6 @@
 "use client";
 
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
 import { useEffect, useMemo, useState } from "react";
@@ -514,7 +515,7 @@ export default function InnoveraCallsClient({
       )}
 
       <div className={styles.tableWrap}>
-        <table>
+        <StickyTable>
           <thead>
             <tr><th>日時</th><th>発着</th><th>相手の番号</th><th>回線</th><th>担当</th><th>通話時間</th><th>結果</th><th>録音</th></tr>
           </thead>
@@ -532,7 +533,7 @@ export default function InnoveraCallsClient({
               </tr>
             )) : <tr><td colSpan={8}>{loading ? "読み込み中..." : "履歴がありません"}</td></tr>}
           </tbody>
-        </table>
+        </StickyTable>
       </div>
 
       {pageCount > 1 && (

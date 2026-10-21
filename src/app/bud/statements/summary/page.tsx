@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -214,7 +215,7 @@ function BreakdownSection({
       <h2 className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 border-b">
         {title}
       </h2>
-      <table className="w-full text-sm">
+      <StickyTable className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-600 text-xs">
           <tr>
             <th className="px-3 py-2 text-left">{keyLabel}</th>
@@ -245,7 +246,7 @@ function BreakdownSection({
             </tr>
           ))}
         </tbody>
-      </table>
+      </StickyTable>
     </section>
   );
 }

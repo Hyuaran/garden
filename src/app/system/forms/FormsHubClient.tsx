@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
@@ -167,7 +168,7 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
         </div>
       ) : (
         <div className={styles.tableWrap} data-testid={`${section.key}-list-view`}>
-          <table>
+          <StickyTable>
             <thead><tr><th>名前</th><th>説明</th><th>いつ・どこで</th><th>対象</th><th></th></tr></thead>
             <tbody>
               {section.items.map((item) => <tr key={item.key}>
@@ -178,7 +179,7 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
                 <td><OpenLink item={item} /></td>
               </tr>)}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
       )}
     </section>)}

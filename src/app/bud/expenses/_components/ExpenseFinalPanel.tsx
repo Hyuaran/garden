@@ -1,5 +1,6 @@
 "use client";
 
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -627,7 +628,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                       </button>
                     )}
                   </div>
-                  <table style={table}>
+                  <StickyTable style={table}>
                     <thead>
                       <tr>
                         <th style={{ ...th, width: 34 }}>
@@ -693,7 +694,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </StickyTable>
                 </div>
               )}
             </section>

@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
 
 import Link from "next/link";
@@ -72,7 +73,7 @@ export default function DeliveriesHubClient({ deliveries }: { deliveries: System
       </section>
     ) : (
       <div className={styles.tableWrap} data-testid="deliveries-list-view">
-        <table>
+        <StickyTable>
           <thead><tr><th>配信</th><th>内容</th><th>時刻</th><th>送り先</th><th>状態</th><th></th></tr></thead>
           <tbody>
             {deliveries.map((delivery) => <tr className={delivery.status === "upcoming" ? styles.muted : ""} key={delivery.slug}>
@@ -84,7 +85,7 @@ export default function DeliveriesHubClient({ deliveries }: { deliveries: System
               <td><Link href={delivery.href}>開く</Link></td>
             </tr>)}
           </tbody>
-        </table>
+        </StickyTable>
       </div>
     )}
   </div>;

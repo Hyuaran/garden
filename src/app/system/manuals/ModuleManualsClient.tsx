@@ -1,5 +1,6 @@
 "use client";
 
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import Link from "next/link";
 import { MenuIcon } from "@/app/system/_components/ShachoShell/ShachoShell";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -18,7 +19,7 @@ export default function ModuleManualsClient({ module, manuals }: { module: Manua
     </header>
 
     <div className={styles.tableWrap} data-testid="manual-module-list">
-      <table>
+      <StickyTable>
         <thead><tr><th>機能</th><th>内容</th><th>読める資料</th><th></th></tr></thead>
         <tbody>
           {manuals.map((manual) => <tr key={manual.slug}>
@@ -30,7 +31,7 @@ export default function ModuleManualsClient({ module, manuals }: { module: Manua
             <td><Link href={`/system/manuals/${manual.moduleSlug}/${manual.slug}`}>開く</Link></td>
           </tr>)}
         </tbody>
-      </table>
+      </StickyTable>
     </div>
   </div>;
 }

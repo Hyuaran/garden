@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 
 
@@ -150,7 +151,7 @@ export default function InnoveraSyncClient({ initialLogs, initialCheckedAt }: Pr
       <h2>差分の一覧{preview ? `（${formatDateTime(preview.ranAt)} 時点）` : ""}</h2>
       {preview && details.length === 0 ? <p className={styles.empty}>差分はありません。Kintone は最新です。</p> : null}
       {details.length > 0 ? <div className={styles.tableWrap}>
-        <table>
+        <StickyTable>
           <thead><tr><th>種類</th><th>識別番号</th><th>回線番号</th><th>内容</th></tr></thead>
           <tbody>
             {details.map((item, index) => <tr key={`${item.kind}-${item.circuitNum}-${index}`}>
@@ -160,7 +161,7 @@ export default function InnoveraSyncClient({ initialLogs, initialCheckedAt }: Pr
               <td data-label="内容">{detailText(item)}{item.result === "failed" ? `（失敗：${item.error ?? ""}）` : ""}</td>
             </tr>)}
           </tbody>
-        </table>
+        </StickyTable>
       </div> : null}
     </section>
 

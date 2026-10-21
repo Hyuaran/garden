@@ -1,5 +1,6 @@
 "use client";
 
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -237,7 +238,7 @@ export default function PayrollNoticeClient({
     {canViewHistory && <section className={styles.history}>
       <h2>送信履歴</h2>
       <div className={styles.tableWrap}>
-        <table>
+        <StickyTable>
           <thead><tr><th>日時</th><th>対象チーム</th><th>送信者</th><th>交通費</th><th>研修</th><th>紹介</th><th>Chatwork</th><th></th></tr></thead>
           <tbody>
             {history.map((item) => <tr key={item.id}>
@@ -252,7 +253,7 @@ export default function PayrollNoticeClient({
             </tr>)}
             {history.length === 0 && <tr><td colSpan={8}>送信履歴はまだありません。</td></tr>}
           </tbody>
-        </table>
+        </StickyTable>
       </div>
     </section>}
     {historyBody && <div className={styles.modalBackdrop} onClick={() => setHistoryBody(null)}><div className={styles.modal} onClick={(event) => event.stopPropagation()}><button type="button" onClick={() => setHistoryBody(null)}>閉じる</button><pre>{historyBody}</pre></div></div>}

@@ -1,3 +1,4 @@
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 /**
  * 仕訳一覧テーブル
  */
@@ -25,7 +26,7 @@ function accountLabel(
 export function JournalTable({ entries, accounts }: Props) {
   return (
     <div className="bg-white rounded-lg shadow overflow-x-auto border border-gray-200">
-      <table className="min-w-full text-sm">
+      <StickyTable className="min-w-full text-sm">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
             <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">
@@ -85,7 +86,7 @@ export function JournalTable({ entries, accounts }: Props) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </StickyTable>
     </div>
   );
 }

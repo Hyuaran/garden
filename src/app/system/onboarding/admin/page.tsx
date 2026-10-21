@@ -1,3 +1,4 @@
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -24,7 +25,7 @@ export default async function OnboardingAdminPage() {
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
       : <main className={styles.panel}>
         <div className={styles.adminTopActions}><Link className={styles.button} href="/system/onboarding">自分の入社手続きへ</Link></div>
-        {rows?.length ? <div className={styles.tableWrap}><table className={styles.adminTable}>
+        {rows?.length ? <div className={styles.tableWrap}><StickyTable className={styles.adminTable}>
           <thead><tr><th>氏名</th><th>入社日</th><th>状態</th><th>未入力</th><th>事務入力</th></tr></thead>
           <tbody {...CLARITY_MASK}>{rows.map(row => <tr key={row.employeeId}>
             <td><Link href={`/system/onboarding/admin/${encodeURIComponent(row.employeeId)}`}>{row.name}</Link></td>
@@ -33,7 +34,7 @@ export default async function OnboardingAdminPage() {
             <td>{row.missingCount ? `${row.missingCount}件` : "なし"}</td>
             <td>{row.adminComplete ? "済" : "未"}</td>
           </tr>)}</tbody>
-        </table></div> : <p>まだ入社手続きの入力はありません。</p>}
+        </StickyTable></div> : <p>まだ入社手続きの入力はありません。</p>}
       </main>}
   </div>;
 }

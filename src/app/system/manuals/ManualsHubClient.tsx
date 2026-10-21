@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
 
 import Link from "next/link";
@@ -68,7 +69,7 @@ export default function ManualsHubClient({ modules }: { modules: ManualModuleWit
       </section>
     ) : (
       <div className={styles.tableWrap} data-testid="manuals-list-view">
-        <table>
+        <StickyTable>
           <thead><tr><th>モジュール</th><th>内容</th><th>件数</th><th></th></tr></thead>
           <tbody>
             {modules.map((module) => <tr key={module.slug}>
@@ -78,7 +79,7 @@ export default function ManualsHubClient({ modules }: { modules: ManualModuleWit
               <td><Link href={`/system/manuals/${module.slug}`}>開く</Link></td>
             </tr>)}
           </tbody>
-        </table>
+        </StickyTable>
       </div>
     )}
   </div>;

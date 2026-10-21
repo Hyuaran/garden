@@ -1,5 +1,6 @@
 "use client";
 
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
@@ -548,7 +549,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
           <div style={empty}>この条件の仕訳待ちはありません。</div>
         ) : (
           <div style={tableScroll} role="region" aria-label="仕訳待ち明細" tabIndex={0}>
-            <table style={table}>
+            <StickyTable style={table}>
               <thead>
                 <tr>
                   <th style={th}></th>
@@ -633,7 +634,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                   );
                 })}
               </tbody>
-            </table>
+            </StickyTable>
           </div>
         )}
       </section>
@@ -735,7 +736,7 @@ const filterControl: React.CSSProperties = { display: "inline-flex", alignItems:
 const searchControl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, maxWidth: "100%" };
 const searchInput: React.CSSProperties = { width: 180, maxWidth: "40vw", minWidth: 0, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--teal-d)", background: "var(--bg-card-solid)", color: "var(--text-main)", textOverflow: "ellipsis" };
 const checkAllLabel: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-sub)", fontSize: 13 };
-const tableScroll: React.CSSProperties = { maxHeight: "min(70vh, 760px)", overflow: "auto", position: "relative", overscrollBehavior: "contain", scrollbarGutter: "stable" };
+const tableScroll: React.CSSProperties = { overflow: "auto", position: "relative", overscrollBehavior: "contain", scrollbarGutter: "stable" };
 const table: React.CSSProperties = { width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13 };
 const th: React.CSSProperties = { position: "sticky", top: 0, zIndex: 3, height: 36, boxSizing: "border-box", textAlign: "left", color: "var(--text-main)", background: "var(--bg-paper-soft)", fontWeight: 500, padding: "9px 8px", borderBottom: "1px solid color-mix(in srgb, var(--sub) 25%, transparent)", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed color-mix(in srgb, var(--sub) 18%, transparent)", color: "var(--text-main)", verticalAlign: "middle", whiteSpace: "nowrap" };

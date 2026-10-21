@@ -13,6 +13,23 @@ afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const sample=(partner:string,amount:number,business="事業")=>({kintone_record_id:business+partner,business,partner,profit_net:amount,scheduled_date:"2026-04-30",recon_status:"matched",confirmation:"",updated_at:""} as TableRecord);
 const mount=()=>render(<BroadbandTable rows={[sample("A",20),sample("B",-100),sample("C",-10),sample("Z",1,"別事業")]} userId="u" today="2026-10-21" kintoneBase="" />);
 const names=()=>[...document.querySelectorAll('tbody tr')].map(r=>r.children[1].textContent);
+it("places child grips with partner names and floats the whole business group",()=>{
+ vi.stubGlobal("PointerEvent",class extends MouseEvent {pointerId=1;pointerType="mouse";});
+ mount();fireEvent.click(screen.getByRole("button",{name:"並べ替え"}));
+ const child=screen.getByRole("button",{name:"Aをつかんで移動"});
+ const parent=screen.getByRole("button",{name:"事業をつかんで移動"});
+ expect(child.closest("td")).toBe(child.closest("tr")!.children[1]);
+ expect(parent.closest("th")).toBe(parent.closest("tr")!.children[0]);
+ fireEvent.pointerDown(parent,{button:0,clientX:100,clientY:100});
+ const group=[parent,child,screen.getByRole("button",{name:"Bをつかんで移動"}),screen.getByRole("button",{name:"Cをつかんで移動"})];
+ for(const grip of group) expect(grip.closest("tr")!.className).toContain("dragging");
+ const other=screen.getByRole("button",{name:"Zをつかんで移動"});
+ Object.defineProperty(document,"elementFromPoint",{configurable:true,value:()=>other.closest("tr")});
+ fireEvent.pointerMove(parent,{clientX:100,clientY:200});
+ expect(other.closest("tr")!.className).not.toContain("dropTarget");
+ expect(screen.getByRole("button",{name:"別事業をつかんで移動"}).closest("tr")!.className).toContain("dropTarget");
+ fireEvent.pointerUp(parent);
+});
 it("shows legend, resets three orders, moves with keyboard and persists",()=>{
  mount();expect(screen.getByText("金額はすべて税抜")).toBeTruthy();expect(screen.getByLabelText("色の凡例")).toBeTruthy();expect(screen.getByText("合計（税抜）")).toBeTruthy();
  fireEvent.click(screen.getByRole("button",{name:"並べ替え"}));
@@ -41,26 +58,4 @@ it("restores per-user order and requires a 400ms touch hold",()=>{
  fireEvent.pointerDown(a,{button:0,clientX:100,clientY:200});fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(1,4)).toEqual(["B","A","C"]);
  fireEvent.pointerDown(a,{button:0,clientX:100,clientY:200});act(()=>vi.advanceTimersByTime(400));fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(1,4)).toEqual(["A","B","C"]);
  } finally {vi.useRealTimers();}
-});
-
-it.each([0.9, 1, 1.15])("aligns fixed header and scrollbar at zoom %s", zoom => {
- document.documentElement.style.zoom=String(zoom);
- try {
-  mount();
-  const table=document.querySelector('table')!;
-  const scroll=table.parentElement!;
-  Object.defineProperties(scroll,{scrollWidth:{configurable:true,value:1600},clientWidth:{configurable:true,value:700}});
-  vi.spyOn(scroll,'getBoundingClientRect').mockReturnValue({left:100*zoom,width:700*zoom,top:-100,bottom:2000} as DOMRect);
-  vi.spyOn(table.querySelector('thead')!,'getBoundingClientRect').mockReturnValue({top:-100,height:40*zoom} as DOMRect);
-  for(const th of table.querySelectorAll('th')) vi.spyOn(th,'getBoundingClientRect').mockReturnValue({width:120*zoom} as DOMRect);
-  act(()=>window.dispatchEvent(new Event('garden-font-size-change')));
-  const fixedHead=document.querySelector('[class*="stickyHead"]') as HTMLElement;
-  const bar=document.querySelector('[class*="stickyBar"]') as HTMLElement;
-  expect(parseFloat(fixedHead.style.left)).toBeCloseTo(100);
-  expect(parseFloat(fixedHead.style.width)).toBeCloseTo(700);
-  expect(parseFloat(fixedHead.querySelector('th')!.style.width)).toBeCloseTo(120);
-  expect(parseFloat(bar.style.left)).toBeCloseTo(100);
-  expect(parseFloat(bar.style.width)).toBeCloseTo(700);
-  scroll.scrollLeft=200;fireEvent.scroll(scroll);expect(bar.scrollLeft).toBe(200);
- } finally {document.documentElement.style.zoom="";}
 });

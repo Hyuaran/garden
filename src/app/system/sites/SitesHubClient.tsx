@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
@@ -267,7 +268,7 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
   });
 
   return <div className={styles.tableWrap} data-testid="sites-list-view">
-    <table>
+    <StickyTable>
       <thead>
         <tr><th>会社</th><th>サイト</th><th>ドメイン</th><th>状態</th><th>問い合わせ先</th><th></th></tr>
       </thead>
@@ -288,7 +289,7 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
           <td>{row.url ? <a href={row.url} target="_blank" rel="noopener noreferrer">開く</a> : null}</td>
         </tr>)}
       </tbody>
-    </table>
+    </StickyTable>
   </div>;
 }
 

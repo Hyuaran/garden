@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 
 /**
@@ -1777,7 +1778,7 @@ function StatusList({
         <div style={{ ...notice, margin: 0 }}>表示できる申請はありません</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table style={statusTable}>
+          <StickyTable style={statusTable}>
             <thead>
               <tr>
                 {canSelect && (
@@ -1827,7 +1828,7 @@ function StatusList({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
       )}
     </section>
@@ -1898,7 +1899,7 @@ function DeletedExpenseTab({
         <div style={{ ...notice, margin: 0 }}>削除済みの経費申請はありません</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table style={statusTable}>
+          <StickyTable style={statusTable}>
             <thead>
               <tr>
                 <th style={{ ...th, width: 34 }}>
@@ -1946,7 +1947,7 @@ function DeletedExpenseTab({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
       )}
     </section>

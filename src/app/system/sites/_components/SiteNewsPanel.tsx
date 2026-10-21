@@ -1,5 +1,6 @@
 "use client";
 
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import { groupSitesByCompany, type CorporateSitesData } from "../_lib/sites-registry";
@@ -120,7 +121,7 @@ export default function SiteNewsPanel({ data, role }: { data: CorporateSitesData
 
     {error ? <p className={styles.errorText}>{error}</p> : null}
     <div className={styles.tableWrap}>
-      <table>
+      <StickyTable>
         <thead>
           <tr><th>日付</th><th>題名</th><th>種別</th><th>公開</th><th></th></tr>
         </thead>
@@ -141,7 +142,7 @@ export default function SiteNewsPanel({ data, role }: { data: CorporateSitesData
             })}>編集</button> : null}</td>
           </tr>)}
         </tbody>
-      </table>
+      </StickyTable>
     </div>
 
     {form ? <div className={styles.modalBackdrop} role="presentation">

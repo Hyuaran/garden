@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -2288,7 +2289,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 </div>
               </div>
               <div className={`${styles.tableWrap} ${styles.analysisTableWrap}`}>
-                <table className={styles.analysisTable}>
+                <StickyTable className={styles.analysisTable}>
                   <thead>
                     <tr>
                       {tableColumns.map((column) => (
@@ -2337,7 +2338,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </StickyTable>
               </div>
               {hasLimitedRows && (
                 <div className={styles.actions}>
@@ -2364,7 +2365,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           <h3>買い直し</h3>
         </div>
         <div className={`${styles.tableWrap} ${styles.analysisTableWrap}`}>
-          <table className={styles.analysisTable}>
+          <StickyTable className={styles.analysisTable}>
             <thead>
               <tr>
                 <th>組み合わせ</th>
@@ -2381,7 +2382,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 </tr>
               ))}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
       </section>
     );
@@ -2408,7 +2409,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           </label>
         </div>
         <div className={`${styles.tableWrap} ${styles.analysisTableWrap}`}>
-          <table className={styles.analysisTable}>
+          <StickyTable className={styles.analysisTable}>
             <thead>
               <tr>
                 <th>リスト名</th>
@@ -2438,7 +2439,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               ))}
               {rows.length === 0 && <tr><td colSpan={9}>対象データがありません</td></tr>}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
       </section>
     );
@@ -2670,7 +2671,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           </div>
         </div>
         <div className={`${styles.tableWrap} ${styles.resultsTableWrap}`}>
-          <table>
+          <StickyTable>
             <thead>
               <tr>
                 {SEARCH_TABLE_COLUMNS.map((column) => (
@@ -2722,7 +2723,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 </tr>
               ))}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
       </section>
 
@@ -2907,7 +2908,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               </div>
               {rawUploadPreview.needsReview.length > 0 && (
                 <div className={styles.tableWrap}>
-                  <table>
+                  <StickyTable>
                     <thead><tr><th>ファイル</th><th>行</th><th>リスト名</th><th>姓</th><th>名</th><th>電話番号</th><th>郵便番号</th><th>指摘</th></tr></thead>
                     <tbody>
                       {rawUploadPreview.needsReview.map((row) => {
@@ -2935,7 +2936,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                         );
                       })}
                     </tbody>
-                  </table>
+                  </StickyTable>
                 </div>
               )}
               <p className={styles.warningLine}>
@@ -3167,7 +3168,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           </p>
           <div className={styles.guideTables}>
             <div className={`${styles.tableWrap} ${styles.guideTableWrap}`}>
-              <table className={styles.guideTable}>
+              <StickyTable className={styles.guideTable}>
                 <thead>
                   <tr>
                     <th>名前</th>
@@ -3188,10 +3189,10 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </StickyTable>
             </div>
             <div className={`${styles.tableWrap} ${styles.guideTableWrap}`}>
-              <table className={styles.guideRulesTable}>
+              <StickyTable className={styles.guideRulesTable}>
                 <thead>
                   <tr>
                     <th>項目</th>
@@ -3206,7 +3207,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </StickyTable>
             </div>
           </div>
           <p className={styles.empty}>自社アポ禁の登録・解除は「自社アポ禁」タブで行います。</p>
@@ -3276,7 +3277,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             </div>
             {internalBlockMessage && <p className={styles.message}>{internalBlockMessage}</p>}
             <div className={`${styles.tableWrap} ${styles.guideTableWrap}`}>
-              <table className={styles.internalBlockTable} {...CLARITY_MASK}>
+              <StickyTable className={styles.internalBlockTable} {...CLARITY_MASK}>
                 <thead>
                   <tr>
                     <th>電話番号</th>
@@ -3308,7 +3309,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </StickyTable>
             </div>
           </div>
         </section>

@@ -1,5 +1,6 @@
 "use client";
 
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { ReactNode, useEffect, useRef } from "react";
 import styles from "./root-shell.module.css";
 import { colors } from "../_constants/colors";
@@ -41,7 +42,7 @@ export function DataTable<T>({
 
   return (
     <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "auto", maxWidth: "100%", minWidth: 0, boxShadow: colors.shadowSmall }}>
-      <table className={stickyFirstColumn ? undefined : styles.compactTable} style={{ width: "100%", minWidth: stickyFirstColumn ? "max-content" : undefined, tableLayout: stickyFirstColumn ? "auto" : "fixed", borderCollapse: "collapse", fontSize: 13 }}>
+      <StickyTable className={stickyFirstColumn ? undefined : styles.compactTable} style={{ width: "100%", minWidth: stickyFirstColumn ? "max-content" : undefined, tableLayout: stickyFirstColumn ? "auto" : "fixed", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
             {columns.map((col, columnIndex) => (
@@ -88,7 +89,7 @@ export function DataTable<T>({
             })
           )}
         </tbody>
-      </table>
+      </StickyTable>
     </div>
   );
 }

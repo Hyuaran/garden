@@ -1,5 +1,6 @@
 "use client";
 
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { Button } from "../_components/Button";
@@ -179,7 +180,7 @@ export default function BankCheckPage() {
           <div style={{ padding: 28, color: colors.textMuted }}>点検結果はありません。登録されている口座はすべて台帳と合っています。</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13, color: colors.text }}>
+            <StickyTable style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13, color: colors.text }}>
               <thead><tr>{["氏名", "出どころ", "登録されている値", "指摘", "候補", ""].map((head) => <th key={head} style={{ textAlign: "center", padding: "9px 8px", borderBottom: `1px solid ${colors.border}`, color: colors.textMuted, whiteSpace: "nowrap" }}>{head}</th>)}</tr></thead>
               <tbody {...CLARITY_MASK}>
                 {visible.map((row) => (
@@ -196,7 +197,7 @@ export default function BankCheckPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </StickyTable>
           </div>
         )}
         <p style={{ margin: "14px 0 0", color: colors.textMuted, fontSize: 12, lineHeight: 1.7 }}>
@@ -206,7 +207,7 @@ export default function BankCheckPage() {
       <section style={{ marginTop: 18, background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 6, padding: 16 }}>
         <h2 style={{ margin: "0 0 10px", fontSize: 15, color: colors.text }}>台帳の確認記録</h2>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 12 }}>
+          <StickyTable style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 12 }}>
             <tbody>
               {state.datasets.map((row) => (
                 <tr key={row.id ?? row.imported_at}>
@@ -218,7 +219,7 @@ export default function BankCheckPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
       </section>
       <Modal open={!!successorTarget} onClose={() => setSuccessorTarget(null)} title="後継を登録" width={560}>

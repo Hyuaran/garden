@@ -5,8 +5,9 @@ import { describe, expect, it } from "vitest";
 describe("expense booking sticky table", () => {
   const source = fs.readFileSync(path.join(process.cwd(), "src/app/bud/expenses/_components/ExpenseBookingPanel.tsx"), "utf8");
 
-  it("uses one bounded scroll region for horizontal scrolling and vertical stickiness", () => {
-    expect(source).toContain('const tableScroll: React.CSSProperties = { maxHeight: "min(70vh, 760px)", overflow: "auto", position: "relative"');
+  it("uses page scrolling and the shared fixed table header", () => {
+    expect(source).not.toContain('maxHeight: "min(70vh, 760px)"');
+    expect(source).toContain('<StickyTable style={table}>');
     expect(source).toContain('role="region" aria-label="仕訳待ち明細" tabIndex={0}');
   });
 

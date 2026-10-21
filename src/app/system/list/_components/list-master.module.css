@@ -569,7 +569,7 @@
 /* 検索結果の一覧：高さを画面の 6 割までにして枠の中で縦スクロール。
    横スクロールのつまみが常に見える（100 行の下まで下りないと横に動かせなかった）。見出しは上に固定 */
 .resultsTableWrap {
-  max-height: 60vh;
+  max-height: none;
   overflow: auto;
 }
 
@@ -1635,9 +1635,9 @@
   line-height: 1.5;
 }
 
-/* 表は枠の中で縦にスクロール（購入先は 2,400 種類あり、全部並べると画面が 15 万 px になって固まる） */
+/* Tables use page scrolling; no nested vertical viewport. */
 .analysisTableWrap {
-  max-height: 460px;
+  max-height: none;
   overflow: auto;
 }
 

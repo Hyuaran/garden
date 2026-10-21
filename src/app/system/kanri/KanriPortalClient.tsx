@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import Link from "next/link";
@@ -718,7 +719,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         <p>台帳に無い名前 {inputs.kotDaily.summary.missingNames.length} 人 ／ 手入力を上書きしたマス {inputs.kotDaily.summary.overwrittenCells.length}</p>
         <p>勤怠の確認：{kotIssueSummary(inputs.kotDaily.issues)} <button className={styles.linkButton} type="button" onClick={() => setShowKotDetails((current) => !current)}>{showKotDetails ? "閉じる" : "明細を見る"}</button></p>
         {showKotDetails && <div className={styles.resultScroller}>
-          <table className={styles.resultTable}>
+          <StickyTable className={styles.resultTable}>
             <thead><tr><th className={styles.stickyCell}>日付</th><th>チーム</th><th>氏名</th><th>種類</th><th>予定</th><th>打刻</th><th>差</th></tr></thead>
             <tbody {...CLARITY_MASK}>{inputs.kotDaily.issues.map((issue, index) => <tr key={`${issue.date}-${issue.name}-${issue.kind}-${index}`}>
               <th className={styles.stickyCell}>{issue.date.replace(/-/g, "/")}</th>
@@ -729,7 +730,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <td>{issue.punched || "—"}</td>
               <td>{issue.diffMinutes === null ? "—" : `${issue.diffMinutes} 分`}</td>
             </tr>)}</tbody>
-          </table>
+          </StickyTable>
         </div>}
       </div> : <p className={styles.empty}>まだ勤怠の取り込み結果がありません。</p>}
       <p className={styles.hint}>KOT の打刻は編集後の時刻です。数分の遅れは編集で消えていることがあります。</p>
@@ -754,7 +755,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       <p className={styles.hint}>勤怠を取り込むと稼働時間は上書きされます。取り込み後も手で直せます。</p>
       <div className={styles.monthHeader}>{range.yearMonth.replace("-", "年")}月</div>
       <div className={styles.inputScroller}>
-        <table className={styles.inputTable}>
+        <StickyTable className={styles.inputTable}>
           <thead>
             <tr>
               <th>日</th>
@@ -769,10 +770,10 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               </td>)}
             </tr>)}
           </tbody>
-        </table>
+        </StickyTable>
       </div>
       <div className={styles.inputScroller}>
-        <table className={styles.inputTable}>
+        <StickyTable className={styles.inputTable}>
           <thead>
             <tr>
               <th>チーム</th>
@@ -787,7 +788,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               </td>)}
             </tr>)}
           </tbody>
-        </table>
+        </StickyTable>
       </div>
       <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>
     </section>
@@ -823,7 +824,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       </div>
       <p className={styles.hint}>最新の取り込みをもとに計算します。</p>
       {grid ? <div className={styles.resultScroller}>
-        <table className={styles.resultTable}>
+        <StickyTable className={styles.resultTable}>
           <thead>
             <tr>
               <th className={styles.stickyCell}>日</th>
@@ -888,7 +889,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               ])}
             </tr>)}
           </tbody>
-        </table>
+        </StickyTable>
       </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
     </section>
 
@@ -932,7 +933,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       <section className={styles.panel}>
         <h2>人ごとの今月の値</h2>
         <div className={styles.inputScroller}>
-          <table className={styles.inputTable}>
+          <StickyTable className={styles.inputTable}>
             <thead><tr><th>氏名</th><th>チーム</th><th>区分/時給</th><th>着地予想h</th><th>稼働時間h</th><th>稼働日数</th><th>訪販の合計評価</th></tr></thead>
             <tbody {...CLARITY_MASK}>{people.filter((person) => person.active !== false).map((person) => <tr key={person.name || String(person.sort_order)}>
               <th>{person.name}</th>
@@ -943,7 +944,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <td><input type="number" step="1" value={personInputValue(inputs, person.name, "workDays")} onChange={(event) => updatePersonMonthly(person.name, "workDays", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workDays") && <span className={styles.sourceBadge}>KOT から</span>}</td>
               <td>{person.is_field_sales ? "訪問販売から反映" : ""}</td>
             </tr>)}</tbody>
-          </table>
+          </StickyTable>
         </div>
         <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>
       </section>
@@ -958,7 +959,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           <p>{jisseki?.missingCommuteNames.join("、")}</p>
         </div>}
         {jisseki ? <div className={styles.resultScroller}>
-          <table className={styles.resultTable}>
+          <StickyTable className={styles.resultTable}>
             <thead><tr>
               <th className={styles.stickyCell}>氏名</th><th>KOT用</th><th>基準時給</th><th>部署</th><th>チーム</th><th>着地</th><th>稼働h</th><th>獲得P</th><th>効率</th><th>日数</th><th>交通費</th>
               {jisseki.productColumns.map((column, index) => <th key={`${column.product}-${column.kind}-${index}`}>{column.label}</th>)}
@@ -971,7 +972,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
                 return <td key={`${row.personName}-${index}`}>{formatNumber(row.counts[`${column.product}:${suffix}`] ?? 0)}</td>;
               })}
             </tr>)}</tbody>
-          </table>
+          </StickyTable>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
       </section>
     </>}
@@ -993,7 +994,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>
         </div>
         {aporan ? <div className={styles.resultScroller}>
-          <table className={styles.resultTable}>
+          <StickyTable className={styles.resultTable}>
             <thead><tr>
               <th className={styles.stickyCell}></th>
               {aporan.teamOrder.map((key) => <th key={key}>{aporan.teams[key].label}</th>)}
@@ -1008,14 +1009,14 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <tr><th className={styles.stickyCell}>着地予想P</th>{aporan.teamOrder.map((key) => <td key={`${key}-landing-points`}>{formatNumber(aporan.teams[key].landingPoints, 1)}</td>)}</tr>
               <tr><th className={styles.stickyCell}>達成率</th>{aporan.teamOrder.map((key) => <td key={`${key}-achievement`}>{formatRate(aporan.teams[key].achievementRate)}</td>)}</tr>
             </tbody>
-          </table>
+          </StickyTable>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
       </section>
 
       <section className={styles.panel}>
         <h2>アポインターランキング</h2>
         {aporan ? <div className={styles.resultScroller}>
-          <table className={styles.resultTable}>
+          <StickyTable className={styles.resultTable}>
             <thead><tr>
               <th className={styles.stickyCell}>順位</th><th>部署</th><th>氏名</th><th>ステータス</th><th>時給</th><th>獲得P</th><th>稼働時間</th><th>効率</th><th>着地時間</th><th>デジタル着地</th>
             </tr></thead>
@@ -1031,7 +1032,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <td>{formatNumber(row.landingHours, 1)}</td>
               <td>{formatNumber(row.digitalLanding, 1)}</td>
             </tr>)}</tbody>
-          </table>
+          </StickyTable>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
       </section>
     </>}
@@ -1059,7 +1060,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>
         </div>
         {incentive ? <div className={styles.resultScroller}>
-          <table className={styles.resultTable}>
+          <StickyTable className={styles.resultTable}>
             <thead><tr>
               <th className={styles.stickyCell}></th>
               {INCENTIVE_TEAM_ORDER.map((key) => <th key={key}>{INCENTIVE_TEAM_LABELS[key]}</th>)}
@@ -1080,7 +1081,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <tr><th className={styles.stickyCell}>●P達成金</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-point-achievement`}>{formatNumber(incentive.teams[key].pointAchievementBonus)}</td>)}</tr>
               <tr><th className={styles.stickyCell}>合計インセン</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-total`}>{formatNumber(incentive.teams[key].totalIncentive)}</td>)}</tr>
             </tbody>
-          </table>
+          </StickyTable>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
       </section>
 
@@ -1120,7 +1121,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           {canWrite && <button className={styles.primaryInline} type="button" disabled={calculating} onClick={() => void calculateSheet()}>{calculating ? "計算しています" : "計算する"}</button>}
         </div>
         {payroll ? <div className={styles.resultScroller}>
-          <table className={styles.resultTable}>
+          <StickyTable className={styles.resultTable}>
             <thead><tr>
               <th className={styles.stickyCell}>順位</th><th>部署</th><th>氏名</th><th>現ステータス</th><th>効率</th><th>現時給</th>
               <th>次月ステータス</th><th>査定±</th><th>次月時給</th><th>AP時給</th><th>獲得P</th><th>紹介P</th><th>合計P</th>
@@ -1155,7 +1156,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <td>{formatNumber(row.commuteDailyAllowance)}</td>
               <td>{formatNumber(row.commuteTotal)}</td>
             </tr>)}</tbody>
-          </table>
+          </StickyTable>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
         {canWrite && <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>}
       </section>
@@ -1192,7 +1193,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
             <span>稼働h {formatNumber(selectedHouhan?.totals.hours, 1)}</span>
           </div>
           <div className={styles.resultScroller}>
-            <table className={styles.resultTable}>
+            <StickyTable className={styles.resultTable}>
               <thead><tr>
                 <th className={styles.stickyCell}>日付</th><th>状態</th><th>稼働h</th>
                 {HOUHAN_PRODUCTS.map((product) => <th key={product.key}>{product.label}</th>)}
@@ -1223,7 +1224,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
                   <td>{formatNumber(selectedHouhan.totals.actualCount)}</td><td>{formatNumber(selectedHouhan.totals.points, 1)}</td><td></td>
                 </tr>}
               </tbody>
-            </table>
+            </StickyTable>
           </div>
           <button className={styles.secondary} type="button" disabled={saving} onClick={() => void saveInputs()}>{saving ? "保存しています" : "保存"}</button>
         </> : <p className={styles.empty}>訪問販売の担当者が設定されていません。</p>}
@@ -1236,7 +1237,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         <button className={styles.secondary} type="button" onClick={addPerson}>行を足す</button>
       </div>
       <div className={styles.inputScroller}>
-        <table className={styles.inputTable}>
+        <StickyTable className={styles.inputTable}>
           <thead><tr><th>氏名</th><th>KOT用</th><th>チーム</th><th>部署</th><th>区分</th><th>基準時給</th><th>訪販</th><th>有効</th></tr></thead>
           <tbody>{people.map((person, index) => <tr key={`${person.name}-${index}`}>
             <td><input value={person.name} onChange={(event) => updatePerson(index, "name", event.target.value)} /></td>
@@ -1248,7 +1249,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
             <td><input type="checkbox" checked={Boolean(person.is_field_sales)} onChange={(event) => updatePerson(index, "is_field_sales", event.target.checked)} /></td>
             <td><input type="checkbox" checked={person.active !== false} onChange={(event) => updatePerson(index, "active", event.target.checked)} /></td>
           </tr>)}</tbody>
-        </table>
+        </StickyTable>
       </div>
       <button className={styles.secondary} type="button" disabled={saving} onClick={() => void savePeople()}>{saving ? "保存しています" : "保存"}</button>
     </section>}

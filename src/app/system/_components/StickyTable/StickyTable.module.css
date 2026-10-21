@@ -1,0 +1,8 @@
+.wrap{scrollbar-width:none;max-width:100%;min-width:0}
+.wrap::-webkit-scrollbar{display:none}
+.head{position:fixed;z-index:30;overflow:hidden;box-shadow:0 4px 10px #0003}
+.bar{position:fixed;z-index:31;height:12px;overflow-x:auto;overflow-y:hidden;background:var(--bg,var(--bg-card-solid));scrollbar-width:thin;scrollbar-color:var(--line,#8293a6) transparent}
+.bar::-webkit-scrollbar{height:8px}
+.bar::-webkit-scrollbar-thumb{background:var(--line,#8293a6);border-radius:8px}
+.bar>div{height:1px}
+.head[hidden],.bar[hidden]{display:none}

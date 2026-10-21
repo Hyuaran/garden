@@ -1,3 +1,4 @@
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { formatDocumentDate } from "../_data/company-doc";
 import {
@@ -49,10 +50,10 @@ function CellLines({ value }: { value: HikariTableCell }) {
 
 function DataTable({ table }: { table: HikariTable }) {
   return <div className={styles.tableScroller}>
-    <table className={styles.hikariTable}>
+    <StickyTable className={styles.hikariTable}>
       <thead><tr>{table.headers.map(header => <th key={header}>{header}</th>)}</tr></thead>
       <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex}><CellLines value={cell} /></td>)}</tr>)}</tbody>
-    </table>
+    </StickyTable>
   </div>;
 }
 

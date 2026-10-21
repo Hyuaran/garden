@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -175,7 +176,7 @@ function StatementsContent() {
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
+          <StickyTable className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs">
               <tr>
                 <th className="px-3 py-2 text-left">取引日</th>
@@ -236,7 +237,7 @@ function StatementsContent() {
                 ))
               )}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
       )}
 

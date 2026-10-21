@@ -40,7 +40,7 @@ export function ExpenseBookingGroupHeader({
   }, [partial]);
 
   return (
-    <tr>
+    <tr data-sticky-group="true">
       <td colSpan={15} style={groupTd}>
         <div style={groupHead}>
           <button

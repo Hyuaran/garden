@@ -1,4 +1,5 @@
 "use client";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -480,7 +481,7 @@ function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
       <div className={styles.lineLinkTables}>
         <div>
           <h3>メンバー</h3>
-          <table className={styles.linkTable}>
+          <StickyTable className={styles.linkTable}>
             <thead><tr><th>社員番号</th><th>名前</th><th>状態</th><th></th></tr></thead>
             <tbody>
               {rows.map((member) => {
@@ -494,11 +495,11 @@ function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
                 </tr>;
               })}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
         <div>
           <h3>連携前に送ってきた人</h3>
-          <table className={styles.linkTable}>
+          <StickyTable className={styles.linkTable}>
             <thead><tr><th>LINE の表示名</th><th>最後の文</th><th>最後に送ってきた日時</th><th>この人は</th><th></th></tr></thead>
             <tbody>
               {pending.length === 0 ? <tr><td colSpan={5}>なし</td></tr> : pending.map((item) => <tr key={item.lineUserId}>
@@ -514,7 +515,7 @@ function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
                 <td><button type="button" disabled={saving || !selected[item.lineUserId]} onClick={() => void link(item.lineUserId)}>紐づける</button></td>
               </tr>)}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
       </div>
     </>}

@@ -1,5 +1,6 @@
 "use client";
 
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import styles from "../_components/root-shell.module.css";
 import { useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -181,7 +182,7 @@ export default function PermissionsClient({
             役職の一覧
           </h2>
           <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "auto", boxShadow: colors.shadowSmall }}>
-            <table className={styles.permissionTable} style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
+            <StickyTable className={styles.permissionTable} style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
                   <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>順位</th>
@@ -202,7 +203,7 @@ export default function PermissionsClient({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </StickyTable>
           </div>
           <p style={{ margin: "8px 0 0", color: colors.textMuted, fontSize: 12 }}>
             順位が上の役職ほど使える範囲が広い（下の表の○の数）。人数は在籍中で、打刻 ID の無い履歴行は数えない。
@@ -215,7 +216,7 @@ export default function PermissionsClient({
           役職ごとに使える画面
         </h2>
         <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "auto", boxShadow: colors.shadowSmall }}>
-          <table className={styles.permissionTable} style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
+          <StickyTable className={styles.permissionTable} style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
                 <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>画面／機能</th>
@@ -243,7 +244,7 @@ export default function PermissionsClient({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </StickyTable>
         </div>
         <p style={{ margin: "8px 0 0", color: colors.textMuted, fontSize: 12 }}>
           ○＝使える　×＝使えない。Bud・Forest・Bloom は各モジュールの権限で管理。
