@@ -1,6 +1,24 @@
-import { describe, expect, it } from "vitest";
-import { buildRosterSnapshot, existingNumberKey, mapRosterRecordToProfilePayloads, mapRosterRecordToRoot, normalizeEmployeeNumber, normalizeEmploymentType, roleFromRoster } from "../roster-sync.server";
+import { describe, expect, it, vi } from "vitest";
+import { buildRosterSnapshot, existingNumberKey, getLatestRosterSyncLog, mapRosterRecordToProfilePayloads, mapRosterRecordToRoot, normalizeEmployeeNumber, normalizeEmploymentType, roleFromRoster } from "../roster-sync.server";
 import type { KintoneRecord } from "@/lib/kintone/records";
+
+it("reads the latest applied roster timestamp and handles missing history", async () => {
+  const maybeSingle = vi.fn().mockResolvedValue({ data: { synced_at: "2026-10-20T21:00:00Z" }, error: null });
+  const limit = vi.fn(() => ({ maybeSingle }));
+  const order = vi.fn(() => ({ limit }));
+  const eq = vi.fn(() => ({ order }));
+  const select = vi.fn(() => ({ eq }));
+  const from = vi.fn(() => ({ select }));
+  const admin = { from } as unknown as NonNullable<Parameters<typeof getLatestRosterSyncLog>[0]>;
+  expect(await getLatestRosterSyncLog(admin)).toEqual({ synced_at: "2026-10-20T21:00:00Z" });
+  expect(from).toHaveBeenCalledWith("root_roster_sync_log");
+  expect(select).toHaveBeenCalledWith("synced_at");
+  expect(eq).toHaveBeenCalledWith("dry_run", false);
+  expect(order).toHaveBeenCalledWith("synced_at", { ascending: false });
+  expect(limit).toHaveBeenCalledWith(1);
+  maybeSingle.mockResolvedValue({ data: null, error: null });
+  expect(await getLatestRosterSyncLog(admin)).toBeNull();
+});
 
 function record(values: Record<string, unknown>): KintoneRecord {
   return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { value }]));

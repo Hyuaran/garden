@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/app/system/mypage/_lib/submission-server";
+import { requireAdmin, requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { getLatestRosterSyncLog, syncRootRoster } from "@/app/root/_lib/roster-sync.server";
 
 export const runtime = "nodejs";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET() {
-  if (!(await requireAdmin())) return NextResponse.json({ ok: false }, { status: 403 });
+  if (!(await requireManager())) return NextResponse.json({ ok: false }, { status: 403 });
   const latest = await getLatestRosterSyncLog();
   return NextResponse.json({ ok: true, latest });
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
+import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { Button } from "../_components/Button";
 import { DataTable, Column } from "../_components/DataTable";
 import { StatusBadge } from "../_components/StatusBadge";
@@ -319,6 +320,7 @@ export default function EmployeesPage() {
   const [tokenSyncResult, setTokenSyncResult] = useState<ChatworkTokenSyncResult | null>(null);
   const [rosterSyncing, setRosterSyncing] = useState(false);
   const [rosterSyncResult, setRosterSyncResult] = useState<RosterSyncResult | null>(null);
+  const [rosterSyncedAt, setRosterSyncedAt] = useState<string | null>(null);
   const [chatworkTokenStatus, setChatworkTokenStatus] = useState<ChatworkTokenStatus>(emptyChatworkTokenStatus);
   const [chatworkTokenInput, setChatworkTokenInput] = useState("");
   const [chatworkTokenLoading, setChatworkTokenLoading] = useState(false);
@@ -350,6 +352,17 @@ export default function EmployeesPage() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/root/roster-sync", { cache: "no-store" })
+      .then(async response => {
+        if (!response.ok) return;
+        const body = await response.json();
+        if (!cancelled) setRosterSyncedAt(body.latest?.synced_at ?? null);
+      })
+      .catch(() => { /* 履歴を取得できない場合は未取得を表示する。 */ });
+    return () => { cancelled = true; };
+  }, []);
   useEffect(() => { if (!editTarget) setErrors({}); }, [editTarget]);
   useEffect(() => {
     if (!editEmployeeId) {
@@ -516,6 +529,7 @@ export default function EmployeesPage() {
   }
 
   async function handleRosterSync() {
+    if (rosterSyncing) return;
     if (!canSyncRoster) {
       setError("管理者以上の権限が必要です");
       return;
@@ -532,21 +546,13 @@ export default function EmployeesPage() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "名簿同期に失敗しました");
       setRosterSyncResult(body as RosterSyncResult);
+      if (!body.dryRun) setRosterSyncedAt(body.syncedAt);
       await load();
     } catch (syncError) {
       setError(syncError instanceof Error ? syncError.message : "名簿同期に失敗しました");
     } finally {
       setRosterSyncing(false);
     }
-  }
-
-  function formatRosterSyncLine() {
-    const row = rosterSyncResult as Record<string, unknown> | null;
-    const syncedAt = String(row?.syncedAt ?? row?.synced_at ?? "");
-    if (!syncedAt) return "最終同期 なし";
-    const updated = Number(row?.updated ?? row?.updated_count ?? 0);
-    const disabled = Number(row?.authBanned ?? row?.auth_banned_count ?? 0);
-    return `最終同期 ${new Date(syncedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}（更新 ${updated}・無効化 ${disabled}）`;
   }
 
 function formatChatworkTokenUpdatedAt(value: string | null) {
@@ -716,20 +722,20 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
       <PageHeader
         title="従業員マスタ"
         description="給与処理対象者。退職時は退職日を入力し無効化。業務委託は登録対象外。Ctrl+Shift+G 検索・Ctrl+↑↓ 行移動・Ctrl+Enter 編集。"
-        actions={
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", minWidth: 0, width: "100%" }}>
-            <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 180px", minWidth: 0 }}>
-              <option value="">すべての法人</option>
-              {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
-            </select>
-            <input ref={searchRef} type="text" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 260px", minWidth: 0 }} />
-            <Button variant="secondary" onClick={handleRosterSync} disabled={rosterSyncing || !canSyncRoster} title={!canSyncRoster ? "管理者以上の権限が必要です" : undefined}>{rosterSyncing ? "同期中..." : "名簿と同期"}</Button>
-            <span style={{ alignSelf: "center", color: colors.textMuted, fontSize: 12, whiteSpace: "nowrap" }}>{formatRosterSyncLine()}</span>
-            <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
-            <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
-          </div>
-        }
       />
+      <UpdatedStampRow>
+        <UpdatedStamp label="従業員名簿" date={rosterSyncedAt} onRefresh={handleRosterSync} busy={rosterSyncing} disabled={!canSyncRoster} refreshLabel="Kintone の従業員名簿と同期する" title="Kintone の従業員名簿と同期する" />
+      </UpdatedStampRow>
+      {rosterSyncResult && <div role="status" style={{ color: colors.textMuted, fontSize: 12, textAlign: "right", marginBottom: 12 }}>更新 {rosterSyncResult.updated}・無効化 {rosterSyncResult.authBanned}</div>}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", minWidth: 0, width: "100%", margin: "12px 0" }}>
+        <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 180px", minWidth: 0 }}>
+          <option value="">すべての法人</option>
+          {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
+        </select>
+        <input ref={searchRef} type="text" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 260px", minWidth: 0 }} />
+        <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
+        <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
+      </div>
       {!canAdd && !loading && <div style={{ background: colors.warningBg, color: colors.warning, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>従業員を追加するには、先に法人マスタと給与体系マスタを登録してください。</div>}
       {tokenSyncResult && (
         <div style={{ background: colors.warningBg, color: colors.warning, padding: "10px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13, lineHeight: 1.7 }}>

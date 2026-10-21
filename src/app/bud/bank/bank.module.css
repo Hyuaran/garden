@@ -7,7 +7,8 @@
 .pageShell::before { content:""; position:fixed; inset:0; z-index:-1; background:var(--bg); }
 .account:is(a) { color:var(--ink); text-decoration:none; }
 .account:is(a):hover { border-color:var(--teal); }
-.detailLink { color:var(--ink); text-decoration:underline; text-underline-offset:4px; }
+.detailLink { color:var(--ink); text-decoration:none; cursor:pointer; border-radius:6px; transition:color .15s, background-color .15s; }
+.detailLink:hover, .detailLink:focus-visible { color:var(--teal); background:color-mix(in srgb, var(--teal) 10%, transparent); }
 .detailLink:hover { color:var(--teal); }
 .details td:first-child { position:sticky; left:0; background:var(--card); }
 .details td:nth-child(2) { white-space:normal; min-width:220px; max-width:600px; }

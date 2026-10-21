@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireAdmin: vi.fn(),
+  requireManager: vi.fn(),
   getLatestRosterSyncLog: vi.fn(),
   syncRootRoster: vi.fn(),
 }));
 
-vi.mock("@/app/system/mypage/_lib/submission-server", () => ({ requireAdmin: mocks.requireAdmin }));
+vi.mock("@/app/system/mypage/_lib/submission-server", () => ({ requireAdmin: mocks.requireAdmin, requireManager: mocks.requireManager }));
 vi.mock("@/app/root/_lib/roster-sync.server", () => ({
   getLatestRosterSyncLog: mocks.getLatestRosterSyncLog,
   syncRootRoster: mocks.syncRootRoster,
@@ -16,6 +17,7 @@ describe("root roster sync route", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.requireAdmin.mockReset();
+    mocks.requireManager.mockReset();
     mocks.getLatestRosterSyncLog.mockReset();
     mocks.syncRootRoster.mockReset();
   });
@@ -47,7 +49,7 @@ describe("root roster sync route", () => {
   });
 
   it("returns latest sync log", async () => {
-    mocks.requireAdmin.mockResolvedValue({ employee_id: "EMP-1" });
+    mocks.requireManager.mockResolvedValue({ employee_id: "EMP-1" });
     mocks.getLatestRosterSyncLog.mockResolvedValue({ id: 1 });
     const { GET } = await import("./route");
 
@@ -56,5 +58,12 @@ describe("root roster sync route", () => {
 
     expect(response.status).toBe(200);
     expect(body.latest).toEqual({ id: 1 });
+  });
+
+  it("rejects reading history without manager access", async () => {
+    mocks.requireManager.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    expect((await GET()).status).toBe(403);
+    expect(mocks.getLatestRosterSyncLog).not.toHaveBeenCalled();
   });
 });

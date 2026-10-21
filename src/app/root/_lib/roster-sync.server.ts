@@ -755,7 +755,7 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
 }
 
 export async function getLatestRosterSyncLog(admin: SupabaseClient = getSupabaseAdmin()) {
-  const { data, error } = await admin.from("root_roster_sync_log").select("*").order("synced_at", { ascending: false }).limit(1).maybeSingle();
+  const { data, error } = await admin.from("root_roster_sync_log").select("synced_at").eq("dry_run", false).order("synced_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   return data ?? null;
 }

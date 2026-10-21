@@ -136,6 +136,49 @@ describe("Garden権限の編集UI", () => {
     }));
   });
 
+  it("shows the saved roster timestamp on opening", async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ latest: { synced_at: "2026-10-20T21:00:00Z" } }) } as Response);
+    renderPage();
+    expect(await screen.findByText("従業員名簿最終更新：2026/10/21(水) 06:00")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith("/api/root/roster-sync", { cache: "no-store" });
+    expect(screen.queryByText("最終同期 なし")).not.toBeInTheDocument();
+    expect(screen.queryByText("名簿と同期")).not.toBeInTheDocument();
+  });
+
+  it("shows no timestamp and disables sync for managers", async () => {
+    mocks.operatorRole = "manager";
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ latest: null }) } as Response);
+    renderPage();
+    await screen.findByRole("button", { name: "編集" });
+    expect(screen.getByText("従業員名簿最終更新：未取得")).toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "Kintone の従業員名簿と同期する" });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(vi.mocked(fetch).mock.calls.every(([, options]) => options?.method !== "POST")).toBe(true);
+  });
+
+  it("syncs once while busy and updates the timestamp and result", async () => {
+    let finish!: (value: Response) => void;
+    vi.mocked(fetch).mockImplementation(async (_input, options) => {
+      if (options?.method === "POST") return new Promise<Response>(resolve => { finish = resolve; });
+      return { ok: true, json: async () => ({ latest: null }) } as Response;
+    });
+    renderPage();
+    await screen.findByRole("button", { name: "編集" });
+    const button = screen.getByRole("button", { name: "Kintone の従業員名簿と同期する" });
+    expect(button).toHaveAttribute("title", "Kintone の従業員名簿と同期する");
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    fireEvent.click(button);
+    expect(vi.mocked(fetch).mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledWith("/api/root/roster-sync", expect.objectContaining({ method: "POST", body: JSON.stringify({ dryRun: false }) }));
+    finish({ ok: true, json: async () => ({ syncedAt: "2026-10-21T01:00:00Z", dryRun: false, updated: 3, authBanned: 1 }) } as Response);
+    expect(await screen.findByText("従業員名簿最終更新：2026/10/21(水) 10:00")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("更新 3・無効化 1");
+    await waitFor(() => expect(button).toBeEnabled());
+  });
+
   it("全権管理者には指定順の日本語選択肢だけを編集可能で表示する", () => {
     render(
       <GardenRoleField
