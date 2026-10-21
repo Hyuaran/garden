@@ -46,7 +46,7 @@ export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings:
   return [...rows].sort((a,b) => text(a.raw,"入出金予定日").localeCompare(text(b.raw,"入出金予定日")) || a.kintone_record_id.localeCompare(b.kintone_record_id, undefined, { numeric: true })).map(row => {
     const raw = row.raw, date = text(raw,"入出金予定日"), partner = text(raw,"取引先会社名"), amounts = grossCandidates(raw), amount = amounts[0] ?? NaN;
     const base = { row, expected: Math.round(amount), notify: date >= settings.notify_from, candidates: [] as Bank[] };
-    if (!date || date < settings.recon_from || settings.excluded_partners.includes(partner) || text(raw,"入金確認") || !Number.isFinite(amount)) return { ...base, kind: "excluded" };
+    if (partner.startsWith("NTT原価") || ["関電経費合計","決済費用（壱）","決済費用(壱)"].includes(partner) || !date || date < settings.recon_from || settings.excluded_partners.includes(partner) || text(raw,"入金確認") || !Number.isFinite(amount)) return { ...base, kind: "excluded" };
         const keywords = rules.filter(r => r.partner === partner).flatMap(r => r.keywords).filter(Boolean);
     const until = [shiftDate(date,settings.date_window_after), endOfNextMonth(date)].sort().at(-1)!;
     // ほかの取引先の名前（決まり・覚えた名前）の明細は当てない

@@ -16,13 +16,14 @@ export default function UpdatedStamp({ label, date, emptyText = "未取得", onR
     <span>{label}最終更新：{stamp || emptyText}</span>
     {children}
     {!hideRefresh && <span className={styles.refresh} tabIndex={!onRefresh ? 0 : undefined}>
-    <button type="button" className={styles.button} onClick={onRefresh} disabled={!onRefresh || busy || disabled} aria-busy={busy} aria-label={onRefresh ? refreshLabel : "自動で更新されます（手動の取り直しはできません）"} title={onRefresh ? title ?? refreshLabel : "自動で更新されます（手動の取り直しはできません）"}>
+    <button type="button" className={styles.button} onClick={onRefresh} disabled={!onRefresh || busy || disabled} aria-busy={busy} aria-label={onRefresh ? refreshLabel : "自動で更新されます（手動の取り直しはできません）"}>
       <svg className={busy ? styles.busy : undefined} viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
         <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
         <path d="M19.8 4.6v4.2h-4.2z" fill="currentColor" />
       </svg>
     </button>
-    {!onRefresh && <span className={styles.tooltip} role="tooltip">自動で更新されます（手動の取り直しはできません）</span>}
+    {/* 説明は Chrome の標準（title）ではなく、右上のボタンと同じ Garden の説明で出す（二重に出さない・2026-10-21） */}
+    <span className={styles.tooltip} role="tooltip">{onRefresh ? title ?? refreshLabel : "自動で更新されます（手動の取り直しはできません）"}</span>
     </span>}
   </div>;
 }

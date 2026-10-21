@@ -166,7 +166,7 @@ describe("Garden権限の編集UI", () => {
     renderPage();
     await screen.findByRole("button", { name: "編集" });
     const button = screen.getByRole("button", { name: "Kintone の従業員名簿と同期する" });
-    expect(button).toHaveAttribute("title", "Kintone の従業員名簿と同期する");
+    expect(button).not.toHaveAttribute("title");
     fireEvent.click(button);
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");

@@ -6,6 +6,6 @@
 .stamp .button:disabled { cursor:not-allowed; color:var(--sub); opacity:.45; }
 .busy { animation:spin 1s linear infinite; }
 .refresh { position:relative; display:inline-flex; flex:0 0 auto; }
-.tooltip { display:none; position:absolute; z-index:40; right:0; top:100%; width:max-content; max-width:260px; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--sub); font-size:12px; }
+.tooltip { display:none; position:absolute; z-index:60; right:0; top:42px; width:max-content; max-width:280px; padding:5px 10px; border:1px solid var(--side-line, var(--line)); border-radius:9px; background:var(--side, var(--card)); color:var(--side-ink, var(--sub)); font-size:11.5px; font-weight:400; text-align:left; white-space:normal; pointer-events:none; }
 .refresh:hover .tooltip, .refresh:focus .tooltip, .refresh:active .tooltip { display:block; }
 @keyframes spin { to { transform:rotate(360deg); } }

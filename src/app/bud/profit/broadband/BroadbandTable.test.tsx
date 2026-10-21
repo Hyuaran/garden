@@ -2,6 +2,29 @@ import { render, screen, fireEvent, cleanup, act } from "@testing-library/react"
 import { expect, it, vi, beforeEach, afterEach } from "vitest";
 import BroadbandTable, { Details } from "./BroadbandTable";
 import type { TableRecord } from "@/lib/bud/broadband/table";
+import type { AgentDetail } from "@/lib/bud/broadband/agent-details";
+import type { Bank } from "@/lib/bud/broadband/reconcile";
+it("groups NTT and shows neutral account references and document differences",()=>{
+ const r={...sample("NTT原価（東）",-100),recon_status:"amount_mismatch"} as TableRecord;
+ render(<BroadbandTable rows={[r,sample("NTT原価（西）",-200)]} bank={[{date:"2026-05-01",corp_code:"HR",content:"電話料123",side:"EXPENSE",value:330,mf_transaction_id:"phone"} as Bank]} userId="ntt" today="2026-10-21" kintoneBase=""/>);
+ expect(screen.getByText("NTT原価（東西）ヒュアラン")).toBeTruthy();
+ const ref=screen.getAllByText("口座（税込）の参考 330 円")[0];expect(ref.parentElement?.className).not.toContain("red");fireEvent.click(ref);
+ expect(screen.getByText("Kintone の金額（NTT の書面・税抜）")).toBeTruthy();expect(screen.getByText("差（Kintone の税込 − 口座）")).toBeTruthy();
+ expect(screen.queryAllByText(/口座（税込）の参考/).length).toBeGreaterThan(0);
+ fireEvent.click(screen.getByRole("button",{name:"NTT原価（東西）ヒュアランを開く"}));expect(screen.getByText("NTT原価（東）")).toBeTruthy();
+});
+it("expands agents, shows the neutral difference, remembers state and confines child reordering",()=>{
+ const agents=["株式会社COLORS","辻隼人"].map(payee=>({payee,payment_date:"2026-04-30",target_month:"2026-04",net:100,source_file:"明細.xlsx",review_reason:""} as AgentDetail));
+ const props={rows:[sample("代理店支払い合計",-300),sample("関電経費合計",-20)],agents,userId:"agents",today:"2026-10-21",kintoneBase:""};
+ const view=render(<BroadbandTable {...props}/>);
+ expect(screen.queryByText("COLORS")).toBeNull();
+ expect(screen.getByText("K＝Kintone のアプリの合計（口座とは照合しない）")).toBeTruthy();
+ const toggle=screen.getByRole("button",{name:"代理店支払い合計を開く"});expect(toggle.getAttribute("aria-expanded")).toBe("false");
+ fireEvent.click(toggle);expect(screen.getByText("COLORS")).toBeTruthy();expect(screen.getAllByText("明細との差 −100 円").length).toBe(2);
+ fireEvent.click(screen.getByRole("button",{name:"並べ替え"}));fireEvent.keyDown(screen.getByRole("button",{name:"COLORSをつかんで移動"}),{key:"ArrowDown"});
+ expect([...document.querySelectorAll('tbody tr')].map(r=>r.children[1].textContent).findIndex(s=>s?.includes("辻隼人"))).toBeLessThan([...document.querySelectorAll('tbody tr')].map(r=>r.children[1].textContent).findIndex(s=>s?.includes("COLORS")));
+ view.unmount();render(<BroadbandTable {...props}/>);expect(screen.getByRole("button",{name:"代理店支払い合計を閉じる"}).getAttribute("aria-expanded")).toBe("true");
+});
 it("shows fee, actual bank details and server supplied Kintone link",()=>{
  render(<Details rows={[{kintone_record_id:"12",business:"事業",partner:"取引先",scheduled_date:"2026-10-31",actual_period:"2026-09-01",product:"商品",profit_net:10000,expected_gross:11000,recon_fee:440,recon_status:"matched",mf_date:"2026-10-30",mf_amount:10560,mf_bank:"楽天銀行",mf_content:"振込"} as TableRecord]} kintoneBase="https://example.cybozu.com/k/174" onClose={()=>{}} />);
  expect(screen.getByText("手数料 440 円")).toBeTruthy();expect(screen.getByText(/楽天銀行/)).toBeTruthy();expect(screen.getByRole("link").getAttribute("href")).toBe("https://example.cybozu.com/k/174/show#record=12");

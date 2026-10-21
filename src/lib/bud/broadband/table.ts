@@ -1,3 +1,4 @@
+import { isK, isNtt } from "./references";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Kind } from "./reconcile";
 import type { Bank } from "./reconcile";
@@ -48,7 +49,7 @@ export function periodMonths(periods: string[], today: string, rows?: TableRecor
   return [...months].filter(m => m <= latest).sort().reverse();
 }
 export const defaultPeriod = (today: string) => String(fiscalYear(today));
-export function recordStatus(row: TableRecord): Kind | null { return row.confirmation ? "matched" : row.recon_status; }
+export function recordStatus(row: TableRecord): Kind | null { return isK(row.partner) || isNtt(row.partner) ? "excluded" : row.confirmation ? "matched" : row.recon_status; }
 export function cellTone(rows: TableRecord[]) {
   const states = rows.map(recordStatus).filter(s => s !== "excluded");
   if (states.some(s => s === "amount_mismatch" || s === "not_arrived" || s === "ambiguous")) return "red";
