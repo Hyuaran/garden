@@ -31,3 +31,13 @@ it("falls back when storage is unavailable and saves per user",()=>{
  const data=new Map<string,string>();const storage={getItem:(k:string)=>data.get(k)??null,setItem:(k:string,v:string)=>{data.set(k,v);}};
  saveSort(storage,"one","name");expect(readSort(storage,"one")).toBe("name");expect(readSort(storage,"two")).toBe("cash");
 });
+
+import { applyOrder, movePivot, orderFromPivot, readOrder, saveOrder } from "./table";
+it("applies remembered business and partner order, appends new entries and ignores removed ones",()=>{
+ const p=buildPivot([row("A",10),row("B",20),row("C",30),{...row("Z",1),business:"別事業"}],["2026-04"],"cash");
+ const sorted=applyOrder(p,{businesses:["別事業","消滅","事業"],partners:{事業:["B","消滅","A"]}});
+ expect(sorted.map(r=>r.partner)).toEqual(["小計","Z","小計","B","A","C",""]);
+ const before=orderFromPivot(sorted);expect(movePivot(sorted,JSON.stringify(["事業","A"]),JSON.stringify(["別事業","Z"]))).toEqual(before);
+ const moved=movePivot(sorted,JSON.stringify(["事業"]),JSON.stringify(["別事業"]));expect(moved.businesses).toEqual(["事業","別事業"]);
+ expect(readOrder({getItem:()=>{throw Error();}},"u")).toBeNull();expect(readOrder({getItem:()=>'{bad'},"u")).toBeNull();expect(()=>saveOrder({setItem:()=>{throw Error();}},"u",moved)).not.toThrow();
+});

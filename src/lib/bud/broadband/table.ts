@@ -75,3 +75,24 @@ export function buildPivot(records: TableRecord[], months: string[], sort: SortM
 export const money = (n: number | null) => n == null ? "記録なし" : `${n < 0 ? "−" : ""}${Math.abs(n).toLocaleString("ja-JP")} 円`;
 export const statusLabels: Record<Kind,string> = { matched:"確認済み", amount_mismatch:"金額が口座と違う", not_arrived:"口座に見つからない（入金・支払いが届いていない）", ambiguous:"候補が複数", pending:"予定日前", excluded:"照合の対象外" };
 export function kintoneLink(base: string, id: string) { return `${base}/show#record=${encodeURIComponent(id)}`; }
+
+export type BroadbandOrder = { businesses: string[]; partners: Record<string,string[]> };
+export function readOrder(storage: Pick<Storage,"getItem">, user:string): BroadbandOrder|null {
+ try { const v=JSON.parse(storage.getItem('bud-broadband-order:'+user) ?? 'null');
+ if(v && Array.isArray(v.businesses) && v.businesses.every((s:unknown)=>typeof s==='string') && v.partners && typeof v.partners==='object' && !Array.isArray(v.partners) && Object.values(v.partners).every(a=>Array.isArray(a) && a.every(s=>typeof s==='string'))) return v;
+ } catch {} return null;
+}
+export function saveOrder(storage:Pick<Storage,"setItem">,user:string,order:BroadbandOrder) {try {storage.setItem('bud-broadband-order:'+user,JSON.stringify(order));}catch {}}
+export function orderFromPivot(pivot:PivotRow[]):BroadbandOrder {const groups=pivot.filter(r=>r.subtotal && r.key!=='grand');return {businesses:groups.map(r=>r.business),partners:Object.fromEntries(groups.map(r=>[r.business,pivot.filter(p=>!p.subtotal && p.business===r.business).map(p=>p.partner)]))};}
+export function applyOrder(pivot:PivotRow[],order:BroadbandOrder|null):PivotRow[] {
+ if(!order) return pivot;
+ const rank=(list:string[],v:string)=>{const i=list.indexOf(v);return i<0 ? list.length : i;};
+ const groups=pivot.filter(r=>r.subtotal && r.key!=='grand').sort((a,b)=>rank(order.businesses,a.business)-rank(order.businesses,b.business));
+ return [...groups.flatMap(r=>[r,...pivot.filter(p=>!p.subtotal && p.business===r.business).sort((a,b)=>rank((Object.hasOwn(order.partners,r.business) ? order.partners[r.business] : []),a.partner)-rank((Object.hasOwn(order.partners,r.business) ? order.partners[r.business] : []),b.partner))]),...pivot.filter(r=>r.key==='grand')];
+}
+export function movePivot(pivot:PivotRow[],source:string,target:string):BroadbandOrder {
+ const order=orderFromPivot(pivot),a=pivot.find(r=>r.key===source),b=pivot.find(r=>r.key===target);
+ if(!a || !b || a.key==='grand' || b.key==='grand' || a.subtotal!==b.subtotal || (!a.subtotal && a.business!==b.business)) return order;
+ const list=a.subtotal ? order.businesses : order.partners[a.business], from=list.indexOf(a.subtotal ? a.business : a.partner),to=list.indexOf(b.subtotal ? b.business : b.partner);
+ list.splice(to,0,...list.splice(from,1));return order;
+}
