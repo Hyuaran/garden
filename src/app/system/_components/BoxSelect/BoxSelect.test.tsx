@@ -47,3 +47,17 @@ it("switches the clear button to select all when nothing is checked", () => {
   fireEvent.submit(screen.getByRole("dialog"));
   expect(change).toHaveBeenCalledWith(["a","b","current"]);
 });
+
+it.each([0.9, 1, 1.15])("positions the menu in CSS coordinates at zoom %s", zoom => {
+  document.documentElement.style.zoom = String(zoom);
+  try {
+    render(<BoxSelect label="zoom-test" value={["current"]} options={options} onChange={() => {}} />);
+    const button = screen.getByRole("button", { name: "zoom-test" });
+    vi.spyOn(button, "getBoundingClientRect").mockReturnValue({ left: 100 * zoom, bottom: 150 * zoom } as DOMRect);
+    fireEvent.click(button);
+    expect(parseFloat(screen.getByRole("dialog").style.left)).toBeCloseTo(100);
+    expect(parseFloat(screen.getByRole("dialog").style.top)).toBeCloseTo(154);
+    fireEvent(window, new Event("garden-font-size-change"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  } finally { document.documentElement.style.zoom = ""; }
+});

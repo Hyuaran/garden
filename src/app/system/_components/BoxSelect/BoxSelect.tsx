@@ -1,4 +1,5 @@
 "use client";
+import { rootZoom } from "@/app/_lib/font-size";
 import { useEffect, useRef, useState } from "react";
 import styles from "./BoxSelect.module.css";
 export type BoxOption = { value: string; label: string };
@@ -18,13 +19,14 @@ export default function BoxSelect({ label, value, options, onChange, multiple = 
     const outside = (e: PointerEvent) => { if (!menu.current?.contains(e.target as Node) && !trigger.current?.contains(e.target as Node)) setOpen(false); };
     const key = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
     const dismiss = () => setOpen(false);
-    document.addEventListener("pointerdown",outside); document.addEventListener("keydown",key); window.addEventListener("resize",dismiss); 
-    return () => { document.removeEventListener("pointerdown",outside); document.removeEventListener("keydown",key); window.removeEventListener("resize",dismiss);  };
+    document.addEventListener("pointerdown",outside); document.addEventListener("keydown",key); window.addEventListener("resize",dismiss); window.addEventListener("garden-font-size-change",dismiss);
+    return () => { document.removeEventListener("pointerdown",outside); document.removeEventListener("keydown",key); window.removeEventListener("resize",dismiss); window.removeEventListener("garden-font-size-change",dismiss);  };
   },[open]);
   return <div className={styles.root}><button ref={trigger} type="button" className={styles.trigger} aria-label={label} aria-haspopup="dialog" aria-expanded={open} onClick={() => {
     if (open) { close(); return; }
     const rect = trigger.current!.getBoundingClientRect();
-    setPosition({left:Math.max(8,Math.min(rect.left,window.innerWidth-328)),top:Math.max(8,Math.min(rect.bottom+4,window.innerHeight-400))});
+    const zoom = rootZoom();
+    setPosition({left:Math.max(8,Math.min(rect.left/zoom,window.innerWidth/zoom-328)),top:Math.max(8,Math.min(rect.bottom/zoom+4,window.innerHeight/zoom-400))});
     setDraft(value); setOpen(true);
   }}><small>{label}</small><span><em className={styles.valueText} title={selectionLabel(value,options,label)}>{selectionLabel(value,options,label)}</em><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></span></button>
   {open && <form ref={menu} role="dialog" aria-label={label} className={styles.menu} style={position} onKeyDown={e => { if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") { e.preventDefault(); e.currentTarget.requestSubmit(); } }} onSubmit={e => { e.preventDefault(); if (draft.length) { onChange(options.filter(o => draft.includes(o.value)).map(o => o.value)); close(); } }}>

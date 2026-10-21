@@ -1,4 +1,5 @@
 "use client";
+import { rootZoom } from "@/app/_lib/font-size";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -27,13 +28,13 @@ export default function BroadbandTable({rows,userId,today,kintoneBase}: {rows:Ta
   useEffect(() => {
     const el=scrollRef.current; if(!el) return;
     // 表が画面の下にはみ出しているあいだだけ、画面の一番下に表と同じ幅で出す（外枠の作りで sticky が効かないため fixed）
-    const fit=()=>{ setBarWidth(el.scrollWidth); const r=el.getBoundingClientRect(); setBar(el.scrollWidth>el.clientWidth && r.top<window.innerHeight && r.bottom>window.innerHeight ? {left:r.left,width:r.width} : null);
+    const fit=()=>{ const zoom=rootZoom(); setBarWidth(el.scrollWidth); const r=el.getBoundingClientRect(); setBar(el.scrollWidth>el.clientWidth && r.top<window.innerHeight && r.bottom>window.innerHeight ? {left:r.left/zoom,width:r.width/zoom} : null);
       const thead=el.querySelector("thead"), top=Math.max(0,el.closest("main")?.getBoundingClientRect().top ?? 0);
       const h=thead?.getBoundingClientRect();
-      setHead(thead && h && h.top<top && r.bottom>top+h.height*2 ? {left:r.left,width:r.width,top,tableWidth:el.scrollWidth,widths:[...thead.querySelectorAll("th")].map(th=>th.getBoundingClientRect().width)} : null); };
+      setHead(thead && h && h.top<top && r.bottom>top+h.height*2 ? {left:r.left/zoom,width:r.width/zoom,top:top/zoom,tableWidth:el.scrollWidth,widths:[...thead.querySelectorAll("th")].map(th=>th.getBoundingClientRect().width/zoom)} : null); };
     fit(); const observer=new ResizeObserver(fit); observer.observe(el); if(el.firstElementChild) observer.observe(el.firstElementChild);
-    window.addEventListener("scroll",fit,true); window.addEventListener("resize",fit);
-    return ()=>{ observer.disconnect(); window.removeEventListener("scroll",fit,true); window.removeEventListener("resize",fit); };
+    window.addEventListener("scroll",fit,true); window.addEventListener("resize",fit); window.addEventListener("garden-font-size-change",fit);
+    return ()=>{ observer.disconnect(); window.removeEventListener("scroll",fit,true); window.removeEventListener("resize",fit); window.removeEventListener("garden-font-size-change",fit); };
   },[]);
   useEffect(() => { if(bar) sync(scrollRef.current,barRef.current); },[bar]);
   useEffect(() => { if(head) sync(scrollRef.current,headRef.current); },[head]);

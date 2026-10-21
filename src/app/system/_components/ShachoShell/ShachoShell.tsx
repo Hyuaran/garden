@@ -1,4 +1,5 @@
 ﻿"use client";
+import FontSizeButton from "@/app/system/_components/FontSizeButton";
 import { HeaderViewProvider, HeaderViewSlot } from "@/app/system/_components/HeaderViewToggle";
 
 import Image from "next/image";
@@ -140,7 +141,7 @@ export default function ShachoShell({ children, user }: Props) {
       <button ref={openButtonRef} className={styles.menuButton} type="button" aria-label="メニューを開く" aria-expanded={drawerOpen} aria-controls={drawerId} onClick={() => setDrawerOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       {mobileBrand}
       <div className={styles.mobileActions}>
-        <HeaderViewSlot mobile /><NoticeBell className={styles.iconButton} />
+        <HeaderViewSlot mobile /><NoticeBell className={styles.iconButton} /><FontSizeButton className={styles.iconButton} tipClassName={styles.actionTip} />
         <button className={styles.iconButton} type="button" aria-label="テーマを切り替える" onClick={toggleTheme}>{theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z"/></svg>}<span className={styles.actionTip}>{themeLabel}</span></button>
         <button className={styles.iconButton} type="button" aria-label="ログアウトする" onClick={() => void logout()}><svg viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/></svg><span className={styles.actionTip}>ログアウト</span></button>
       </div>
@@ -161,7 +162,7 @@ export default function ShachoShell({ children, user }: Props) {
     <main className={styles.main}>
       <div className={styles.actions}>
         <span className={styles.accountName} {...CLARITY_MASK}>{user.name}さん</span>
-        <HeaderViewSlot /><NoticeBell className={styles.iconButton} />
+        <HeaderViewSlot /><NoticeBell className={styles.iconButton} /><FontSizeButton className={styles.iconButton} tipClassName={styles.actionTip} />
         <button className={styles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>{theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z"/></svg>}<span className={styles.actionTip}>{themeLabel}</span></button>
         <button className={styles.iconButton} type="button" aria-label="ログアウト" onClick={() => void logout()}><svg viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/></svg><span className={styles.actionTip}>ログアウト</span></button>
       </div>

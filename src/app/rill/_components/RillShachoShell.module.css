@@ -54,3 +54,6 @@
 /* 利用者欄：会社名と役職を 2 行に分け、それぞれ 1 行に収める（「／」でつなぐと最後の 1 文字が落ちた） */
 .userRole{display:flex;flex-direction:column;gap:1px;min-width:0;max-width:150px}
 .userRole span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.iconButton:focus-visible .actionTip{opacity:1;transform:translateX(-50%) scale(1)}
+@media(max-width:760px){.mobileActions{flex-shrink:0}.mobileActions .iconButton{flex-shrink:0}.mobileActions .actionTip{left:auto;right:0;transform:scale(.96)}.mobileActions .iconButton:hover .actionTip,.mobileActions .iconButton:focus-visible .actionTip{transform:scale(1)}}

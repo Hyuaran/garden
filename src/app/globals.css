@@ -3463,3 +3463,6 @@ body.home-concept-active {
     font-size: max(16px, 1em) !important;
   }
 }
+
+/* 印刷・PDF 出力には個人の表示倍率を適用しない。 */
+@media print { html { zoom: 1 !important; } }

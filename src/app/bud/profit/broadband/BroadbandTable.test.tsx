@@ -42,3 +42,25 @@ it("restores per-user order and requires a 400ms touch hold",()=>{
  fireEvent.pointerDown(a,{button:0,clientX:100,clientY:200});act(()=>vi.advanceTimersByTime(400));fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(1,4)).toEqual(["A","B","C"]);
  } finally {vi.useRealTimers();}
 });
+
+it.each([0.9, 1, 1.15])("aligns fixed header and scrollbar at zoom %s", zoom => {
+ document.documentElement.style.zoom=String(zoom);
+ try {
+  mount();
+  const table=document.querySelector('table')!;
+  const scroll=table.parentElement!;
+  Object.defineProperties(scroll,{scrollWidth:{configurable:true,value:1600},clientWidth:{configurable:true,value:700}});
+  vi.spyOn(scroll,'getBoundingClientRect').mockReturnValue({left:100*zoom,width:700*zoom,top:-100,bottom:2000} as DOMRect);
+  vi.spyOn(table.querySelector('thead')!,'getBoundingClientRect').mockReturnValue({top:-100,height:40*zoom} as DOMRect);
+  for(const th of table.querySelectorAll('th')) vi.spyOn(th,'getBoundingClientRect').mockReturnValue({width:120*zoom} as DOMRect);
+  act(()=>window.dispatchEvent(new Event('garden-font-size-change')));
+  const fixedHead=document.querySelector('[class*="stickyHead"]') as HTMLElement;
+  const bar=document.querySelector('[class*="stickyBar"]') as HTMLElement;
+  expect(parseFloat(fixedHead.style.left)).toBeCloseTo(100);
+  expect(parseFloat(fixedHead.style.width)).toBeCloseTo(700);
+  expect(parseFloat(fixedHead.querySelector('th')!.style.width)).toBeCloseTo(120);
+  expect(parseFloat(bar.style.left)).toBeCloseTo(100);
+  expect(parseFloat(bar.style.width)).toBeCloseTo(700);
+  scroll.scrollLeft=200;fireEvent.scroll(scroll);expect(bar.scrollLeft).toBe(200);
+ } finally {document.documentElement.style.zoom="";}
+});

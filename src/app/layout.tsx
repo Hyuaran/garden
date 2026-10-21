@@ -1,3 +1,5 @@
+import { initialFontSizeScript } from "./_lib/font-size";
+import { FontSizeProvider } from "./_lib/FontSizeProvider";
 import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
@@ -40,6 +42,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="ja" className={`${fontVariables} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: initialThemeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: initialFontSizeScript }} />
       </head>
       <body className="min-h-full flex flex-col">
         {/*
@@ -52,13 +55,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           内部でも useAuthUnified() が利用可能になる。
         */}
         <AuthProvider>
-          <ThemeProvider>
+          <FontSizeProvider><ThemeProvider>
             <ClarityTracker />
             <NoticeProvider>
               <NoticeModal />
               <ShojiStatusProvider>{children}</ShojiStatusProvider>
             </NoticeProvider>
-          </ThemeProvider>
+          </ThemeProvider></FontSizeProvider>
         </AuthProvider>
       </body>
     </html>
