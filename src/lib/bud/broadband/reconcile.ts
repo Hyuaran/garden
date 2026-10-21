@@ -8,7 +8,7 @@ export type Settings = { record_master: "kintone" | "garden"; recon_from: string
 export type Bank = { mf_transaction_id: string; mf_account_id: string; date: string; side: string; value: number; content: string; corp_code: string; bank_name: string };
 export type Rule = { partner: string; keywords: string[] };
 export type Kind = "matched" | "amount_mismatch" | "not_arrived" | "ambiguous" | "excluded" | "pending";
-export type Result = { row: Mirror; kind: Kind; expected: number; notify: boolean; bank?: Bank; candidates: Bank[] };
+export type Result = { row: Mirror; kind: Kind; expected: number; notify: boolean; bank?: Bank; candidates: Bank[]; fee?: number };
 export const shiftDate = (date: string, days: number) => new Date(Date.parse(date) + days * 86400000).toISOString().slice(0, 10);
 // 行の種類で金額の欄が違う（2026-10-21 実測）：売上・支払額・原価は税抜×(1+税率)、
 // ストックは自社ストック額（税込）−委託費（税込）。どれにも当たらなければ利益額（税抜）×(1+税率)
@@ -28,7 +28,18 @@ export function grossCandidates(raw: KintoneRecord): number[] {
   return [stock, profit].filter(v => Number.isFinite(v) && v > 0);
 }
 export function gross(raw: KintoneRecord) { return grossCandidates(raw)[0] ?? NaN; }
-export const exact = (bank: number, unroundedGross: number) => Math.abs(Math.abs(bank) - unroundedGross) < 1;
+// 東海林さん 2026-10-21：相手の端数処理による 1 円の差は一致とみなす
+export const exact = (bank: number, unroundedGross: number) => Math.abs(Math.abs(bank) - Math.round(unroundedGross)) <= 1;
+// 入金は振込手数料（880 円まで）を引かれて届くことがある。差額を手数料として一致とみなす
+export const MAX_TRANSFER_FEE = 880;
+export const feeOf = (bank: number, amounts: number[]) => { const fees = amounts.map(a => Math.round(a) - Math.abs(bank)).filter(f => f >= 100 && f <= MAX_TRANSFER_FEE && (f % 11 === 0 || f % 5 === 0)); return fees.length ? Math.min(...fees) : 0; };
+// 届くのを待つのは予定日の翌月末まで（東海林さん 2026-10-21）
+export const endOfNextMonth = (date: string) => new Date(Date.UTC(Number(date.slice(0,4)), Number(date.slice(5,7)) + 1, 0)).toISOString().slice(0,10);
+// 一致した明細の摘要から、取引先の口座での名前を取り出す（覚えさせる用）
+export function payeeKeyword(content: string) {
+  return content.replace(/\(依頼人名.*$/, "").replace(/^(振込入金|振込|入金|出金)\s+/, "")
+    .replace(/^.*(普通|当座)(預金)?\s+\d+\s+/, "").replace(/,[0-9,]*$/, "").trim();
+}
 const exactAny = (bank: number, amounts: number[]) => amounts.some(a => exact(bank, a));
 export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings: Settings, today: string): Result[] {
   const used = new Set(rows.map(r => r.mf_transaction_id).filter(Boolean));
@@ -37,13 +48,21 @@ export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings:
     const base = { row, expected: Math.round(amount), notify: date >= settings.notify_from, candidates: [] as Bank[] };
     if (!date || date < settings.recon_from || settings.excluded_partners.includes(partner) || text(raw,"入金確認") || !Number.isFinite(amount)) return { ...base, kind: "excluded" };
         const keywords = rules.filter(r => r.partner === partner).flatMap(r => r.keywords).filter(Boolean);
-    const candidates = bank.filter(b => !used.has(b.mf_transaction_id) && b.side === side(raw) && b.date >= shiftDate(date,-settings.date_window_before) && b.date <= shiftDate(date,settings.date_window_after) && (!text(raw,"ドロップダウン_0") || corporationName(b.corp_code) === text(raw,"ドロップダウン_0")) && (!keywords.length || keywords.some(k => b.content.includes(k))));
+    const until = [shiftDate(date,settings.date_window_after), endOfNextMonth(date)].sort().at(-1)!;
+    // ほかの取引先の名前（決まり・覚えた名前）の明細は当てない
+    const others = rules.filter(r => r.partner !== partner).flatMap(r => r.keywords).filter(k => k && !keywords.some(own => own.includes(k) || k.includes(own)));
+    const candidates = bank.filter(b => !used.has(b.mf_transaction_id) && !others.some(k => b.content.includes(k)) && b.side === side(raw) && b.date >= shiftDate(date,-settings.date_window_before) && b.date <= until && (!text(raw,"ドロップダウン_0") || corporationName(b.corp_code) === text(raw,"ドロップダウン_0")));
     const distance = (b: Bank) => Math.abs(Date.parse(b.date)-Date.parse(date));
     const matches = candidates.filter(b => exactAny(b.value,amounts)).sort((a,b) => distance(a)-distance(b));
     if (matches.length > 1 && distance(matches[0]) === distance(matches[1])) return { ...base, candidates: matches, kind: "ambiguous" };
     if (matches.length) { used.add(matches[0].mf_transaction_id); return { ...base, candidates, bank: matches[0], kind: "matched" }; }
-    if (keywords.length && candidates.length) return { ...base, candidates, kind: "amount_mismatch" };
-    return { ...base, candidates, kind: today > shiftDate(date,settings.date_window_after) ? "not_arrived" : "pending" };
+    const feeMatches = side(raw) === "INCOME" ? candidates.filter(b => feeOf(b.value,amounts) > 0).sort((a,b) => distance(a)-distance(b)) : [];
+    if (feeMatches.length > 1 && distance(feeMatches[0]) === distance(feeMatches[1])) return { ...base, candidates: feeMatches, kind: "ambiguous" };
+    if (feeMatches.length) { used.add(feeMatches[0].mf_transaction_id); return { ...base, candidates, bank: feeMatches[0], fee: feeOf(feeMatches[0].value,amounts), kind: "matched" }; }
+    // 覚えた名前は「金額が違う」を見分けるときだけ使う（一致の判定は金額と日付で行う）
+    const named = keywords.length ? candidates.filter(b => keywords.some(k => b.content.includes(k))) : [];
+    if (named.length) return { ...base, candidates: named, kind: "amount_mismatch" };
+    return { ...base, candidates, kind: today > until ? "not_arrived" : "pending" };
   });
 }
 export function buildPatch(result: Result, historyField: string): KintoneRecord | null {
@@ -51,7 +70,7 @@ export function buildPatch(result: Result, historyField: string): KintoneRecord 
   const b = result.bank, corp = corporationName(b.corp_code);
   const fields = Object.fromEntries(Object.entries({ 入金確認: b.side === "INCOME" ? "入金OK" : "支払OK", ドロップダウン_0: ["ヒュアラン","ARATA","ストーンベース","たいよう","リンクサポート"].includes(corp) ? corp : "", _MF_銀行: ["楽天銀行","みずほ銀行","PayPay銀行"].includes(b.bank_name) ? b.bank_name : "", _MF_摘要: b.content, _MF_取引日: b.date, _MF_取引額: String(Math.abs(b.value)) }).map(([k,v]) => [k,{ value:v }]));
   const history = value(result.row.raw,"テーブル");
-  return { ...fields, テーブル: { value: [...(Array.isArray(history) ? history : []), { value: { [historyField]: { value: "Garden 口座照合（一致）" } } }] } };
+  return { ...fields, テーブル: { value: [...(Array.isArray(history) ? history : []), { value: { [historyField]: { value: result.fee ? `Garden 口座照合（一致・振込手数料 ${result.fee.toLocaleString("ja-JP")} 円を引いて着金）` : "Garden 口座照合（一致）" } } }] } };
 }
 export type Issue = { kintone_record_id: string; kind: string; content: string; opened_at: string; notified_at: string | null; resolved_at: string | null; resolved_notified_at: string | null };
 export function describeResult(r: Result) {

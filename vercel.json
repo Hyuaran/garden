@@ -22,6 +22,7 @@
     { "path": "/api/bud/mf-accounts/snapshot", "schedule": "0 15 * * *" },
     { "path": "/api/bud/mf-accounts/link-alerts/cron", "schedule": "30 0 * * *" },
     { "path": "/api/system/kintone-broadband/cron", "schedule": "15 22 * * *" },
+    { "path": "/api/bud/broadband/recon/cron", "schedule": "30 22 * * *" },
     { "path": "/api/system/innovera-ingest/cron", "schedule": "*/5 * * * *" },
     { "path": "/api/system/innovera-ingest/daily", "schedule": "0 18 * * *" },
     { "path": "/api/root/roster-sync/cron", "schedule": "0 21 * * *" },

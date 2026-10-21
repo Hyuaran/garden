@@ -1,12 +1,24 @@
 import { getAllRecords, type KintoneRecord } from "@/lib/kintone/records";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { ChatworkClient } from "@/lib/chatwork/client";
-import { buildPatch, notification, planIssues, reconcile, shiftDate, text, value, type Bank, type Issue, type Mirror, type Settings } from "./reconcile";
+import { buildPatch, notification, payeeKeyword, planIssues, reconcile, shiftDate, text, value, type Bank, type Issue, type Mirror, type Settings } from "./reconcile";
 
 const env = (key: string) => { const v = process.env[key]; if (!v) throw new Error(`Missing ${key}`); return v; };
 export function mirror(raw: KintoneRecord, now: string) {
   const num = (k: string) => text(raw,k) === "" ? null : Number(value(raw,k));
   return { kintone_record_id:text(raw,"$id"), revision:text(raw,"$revision"), source:"kintone", business:text(raw,"事業内容"), partner:text(raw,"取引先会社名"), product:text(raw,"商材名"), payment_type:text(raw,"入金区分"), scheduled_date:text(raw,"入出金予定日") || null, actual_period:text(raw,"実績期間") || null, tax_rate:num("消費税率"), sales_net:num("売上_税抜_"), payment_net:num("支払額_税抜_"), payment_gross:num("支払額_税込_"), profit_net:num("利益額_税抜_"), confirmation:text(raw,"入金確認"), mf_company:text(raw,"ドロップダウン_0"), mf_bank:text(raw,"_MF_銀行"), mf_content:text(raw,"_MF_摘要"), mf_date:text(raw,"_MF_取引日") || null, mf_amount:num("_MF_取引額"), updated_at:now, raw };
+}
+// 一致した明細から「この取引先は口座ではこの名前」を覚える（東海林さん 2026-10-21 OK）。決まりが既にある取引先は触らない
+export function learnRules(results: ReturnType<typeof reconcile>, rules: {partner:string}[]) {
+  const known = new Set(rules.map(r => r.partner)), counts = new Map<string, Map<string, number>>();
+  for (const r of results) {
+    if (r.kind !== "matched" || !r.bank) continue;
+    const partner = text(r.row.raw,"取引先会社名"), keyword = payeeKeyword(r.bank.content);
+    if (!partner || known.has(partner) || !keyword) continue;
+    const m = counts.get(partner) ?? new Map<string, number>(); m.set(keyword,(m.get(keyword) ?? 0)+1); counts.set(partner,m);
+  }
+  // 2 回以上同じ名前で一致したときだけ覚える（偶然の 1 回を覚えない）
+  return [...counts].map(([partner,m]) => [partner,[...m].sort((a,b) => b[1]-a[1])[0]] as const).filter(([,top]) => top[1] >= 2).map(([partner,top]) => ({ partner, keywords: [top[0]] }));
 }
 export async function applyMatches(results: ReturnType<typeof reconcile>, history: string, dryRun: boolean,
   write: (records: {id:string; revision:string; record:KintoneRecord}[]) => Promise<{id:string; revision:string}[]>,
@@ -68,9 +80,12 @@ async function executeRecon(dryRun: boolean, now: Date) {
     if (page.length<1000) break;
   }
   const today = new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(now);
-  const results = reconcile(rows,bank,rules,settings,today);
+  // 1 回目で覚えた名前を足して 2 回目を本番の結果にする（ほかの取引先の入金を当てないため）
+  const learned = learnRules(reconcile(rows,bank,rules,settings,today), rules);
+  const results = reconcile(rows,bank,[...rules,...learned],settings,today);
   const counts = Object.fromEntries(["matched","amount_mismatch","not_arrived","ambiguous","excluded","pending"].map(k => [k,results.filter(r => r.kind===k).length]));
-  if (dryRun) return {dryRun,counts,results};
+  if (dryRun) return {dryRun,counts,results,learned};
+  if (learned.length) checked(await db.from("bud_bb_payee_rules").upsert(learned,{onConflict:"partner"}));
   const schemaResponse = await fetch(`${base}app/form/fields.json?app=${encodeURIComponent(app)}`,{headers:{"X-Cybozu-API-Token":token},cache:"no-store"});
   if (!schemaResponse.ok) throw new Error("kintone_schema_failed");
   const schema = await schemaResponse.json() as {properties:Record<string,{type:string;fields?:Record<string,{code:string;label:string;type:string}>}>};
