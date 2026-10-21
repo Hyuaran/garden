@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { cardSummaries } from "@/lib/bud/mf/transactions";
+import { cardSummaries, fiscalYearLabel } from "@/lib/bud/mf/transactions";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
 import SystemTabs, { TabActionButton } from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -130,7 +130,7 @@ export default function BankAccounts() {
         {(reordering || settings) && <div className={styles.toolbar}>{reordering && tab === "card" && <><button aria-label={`${accountDisplayName(account.name)}を上へ`} disabled={i === 0} onClick={() => move(account.mf_account_id,shown[i-1].mf_account_id)}><Arrow /></button><button aria-label={`${accountDisplayName(account.name)}を下へ`} disabled={i === shown.length-1} onClick={() => move(account.mf_account_id,shown[i+1].mf_account_id)}><Arrow down /></button></>}{settings && <button onClick={() => setSelected(account.mf_account_id)}>{accountDisplayName(account.name)}の設定</button>}</div>}
       </article>)}</div>}
       {!loading && shown.length === 0 && <p>表示できる{tab === "bank" ? "口座" : "カード"}はありません。</p>}
-      {tab === "card" && <><div className={styles.toolbar}><label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">今年度</option></select></label></div><div className={styles.grid}>{cardSummaries(cards, snapshot.transactions).map(({ account, amount, count, latest }) => <Link className={styles.account} key={account.mf_account_id} href={`/bud/bank/accounts/${encodeURIComponent(account.mf_account_id)}?period=${period}`}><h2>{accountDisplayName(account.name)}</h2><strong className={styles.amount}>{yen(amount)}</strong><small>{count} 件{latest ? `・最後 ${latest}` : ""}</small></Link>)}</div></>}
+      {tab === "card" && <><div className={styles.toolbar}><label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">{fiscalYearLabel(snapshot.accounts.find(a => a.fiscal_start_date)?.fiscal_start_date)}</option></select></label></div><div className={styles.grid}>{cardSummaries(cards, snapshot.transactions).map(({ account, amount, count, latest }) => <Link className={styles.account} key={account.mf_account_id} href={`/bud/bank/accounts/${encodeURIComponent(account.mf_account_id)}?period=${period}`}><h2>{accountDisplayName(account.name)}</h2><strong className={styles.amount}>{yen(amount)}</strong><small>{count} 件{latest ? `・最後 ${latest}` : ""}</small></Link>)}</div></>}
     </section>
   </div>;
 }

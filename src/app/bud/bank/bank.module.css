@@ -100,3 +100,11 @@
 .account .toolbar button { max-width:100%; white-space:normal; text-align:left; line-height:1.4; height:auto; }
 /* 欄全体を押せる口座は、欄の色だけを変える（数字の後ろに色を重ねない） */
 .detailLink.stretchLink:hover, .detailLink.stretchLink:focus-visible { background:transparent; }
+/* 明細の上の数字の箱 */
+.statBox { display:grid; gap:4px; min-width:150px; padding:12px 18px; border:1px solid var(--line); border-radius:16px; background:var(--card); }
+.statBox small { color:var(--sub); font-size:12px; font-weight:800; }
+.statBox strong { font-size:22px; font-weight:900; font-variant-numeric:tabular-nums; color:var(--ink); }
+.statBox strong.increase { color:#0b7e7a; } .statBox strong.decrease { color:#c8333b; }
+:global([data-theme="dark"]) .statBox strong.increase,:global(.dark) .statBox strong.increase { color:#5fd6c9; }
+:global([data-theme="dark"]) .statBox strong.decrease,:global(.dark) .statBox strong.decrease { color:#ff8a8f; }
+@media (prefers-color-scheme: dark) { :global(html:not([data-theme=light])) .statBox strong.increase { color:#5fd6c9; } :global(html:not([data-theme=light])) .statBox strong.decrease { color:#ff8a8f; } }

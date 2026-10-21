@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
 import { accountDisplayName } from "@/lib/bud/mf/corporations";
-import { journalLabel, transactionAmount } from "@/lib/bud/mf/transactions";
+import { fiscalYearLabel, journalLabel, transactionAmount } from "@/lib/bud/mf/transactions";
 import type { CardTransaction, MfAccount } from "@/lib/bud/mf/types";
 import styles from "./bank.module.css";
 
@@ -38,7 +38,7 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
     ]),
     { id:"journal", label:"仕訳", value:t => journalLabel(t.journalizing_status), type:"text" },
   ];
-  const periodControl = <label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">今年度</option></select></label>;
+  const periodControl = <label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">{fiscalYearLabel(data?.account.fiscal_start_date)}</option></select></label>;
   return <div className={styles.pageShell}>
     <SystemBreadcrumb root={{ label:"Bud", href:"/bud/dashboard" }} items={[{ label:"口座残高・カード利用", href:card ? "/bud/bank?tab=card" : "/bud/bank" },{ label:name }]} />
     <h1>{name}</h1>
@@ -46,10 +46,15 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
     <span role="status">{loading ? "読み込み中…" : ""}</span>
     {!data && <div className={styles.toolbar}>{periodControl}</div>}
     {data && <>
-      {!card && <p>今の残高 {data.account.balance_mode === "manual_check" || data.account.balance === null ? "MFで確認" : yen(Number(data.account.balance))}</p>}
       <DataTable key={`${id}:${period}`} rows={data.transactions} columns={columns} rowKey={t => t.mf_transaction_id} defaultSort={{ id:"date", direction:"desc" }} toolbar={periodControl}
         searchText={t => `${t.content} ${Number(t.value)} ${Number(t.value).toLocaleString("ja-JP")} ${transactionAmount(t)} ${transactionAmount(t).toLocaleString("ja-JP")}`}
-        summary={rows => <strong>{card ? `合計 ${yen(rows.reduce((sum,t) => sum + transactionAmount(t),0))}` : `入金 ${yen(rows.reduce((sum,t) => sum + income(t),0))}・出金 ${yen(rows.reduce((sum,t) => sum + expense(t),0))}`}・{rows.length} 件</strong>} />
+        summary={rows => <>
+          {!card && <div className={styles.statBox}><small>今の残高</small><strong>{data.account.balance_mode === "manual_check" || data.account.balance === null ? "MFで確認" : yen(Number(data.account.balance))}</strong></div>}
+          {card
+            ? <div className={styles.statBox}><small>合計</small><strong>{yen(rows.reduce((sum,t) => sum + transactionAmount(t),0))}</strong></div>
+            : <><div className={styles.statBox}><small>入金</small><strong className={styles.increase}>{yen(rows.reduce((sum,t) => sum + income(t),0))}</strong></div><div className={styles.statBox}><small>出金</small><strong className={styles.decrease}>{yen(rows.reduce((sum,t) => sum + expense(t),0))}</strong></div></>}
+          <div className={styles.statBox}><small>件数</small><strong>{rows.length} 件</strong></div>
+        </>} />
     </>}
   </div>;
 }

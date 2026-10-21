@@ -28,3 +28,20 @@
 .root button,.root input:not([type=checkbox]),.root select { border:1px solid var(--table-line); border-radius:10px; background:var(--table-card); color:var(--table-ink); padding:9px 12px; min-height:40px; }
 .tableWrap th button { border:0; background:transparent; color:inherit; }
 .root { font-family:"Meiryo","メイリオ","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; }
+/* 見出しの矢印＝押すだけで昇順・降順を切り替える（並べ替えていない見出しは薄い ↕）（2026-10-21 東海林さん） */
+.tableWrap th { white-space:nowrap; }
+.tableWrap th .sortButton { padding:4px; min-height:0; margin-left:2px; vertical-align:middle; border-radius:6px; opacity:.45; }
+.tableWrap th .sortButton.sortActive { opacity:1; }
+.tableWrap th .sortButton:hover { opacity:1; background:rgba(255,255,255,.12); }
+/* メニューの昇順・降順は横並び */
+.sortRow { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.root .sortRow button[aria-pressed="true"] { border-color:var(--teal,#0ea5a0); color:var(--teal,#0ea5a0); }
+/* 数字の箱（明細の上）と操作の行（2026-10-21 東海林さん「見づらい」→ 分ける） */
+.summary { display:flex; flex-wrap:wrap; gap:12px; margin:14px 0 4px; }
+.search { display:flex; align-items:center; gap:8px; flex:1 1 320px; max-width:520px; }
+.search input { flex:1 1 auto; }
+.clear { margin-left:auto; }
+/* 検索欄＝文字のラベルなし・左端に線画の虫眼鏡（2026-10-21 東海林さん） */
+.search { position:relative; }
+.searchIcon { position:absolute; left:12px; top:50%; width:18px; height:18px; transform:translateY(-50%); fill:none; stroke:var(--sub,#5a6b80); stroke-width:1.8; stroke-linecap:round; pointer-events:none; }
+.root .search input { padding-left:38px; }
