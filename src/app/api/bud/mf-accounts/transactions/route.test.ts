@@ -22,12 +22,12 @@ it("requires authentication and rejects inaccessible direct URLs before reading 
   expect((await GET(request())).status).toBe(404);
   expect(f.from).toHaveBeenCalledTimes(1);
 });
-it("filters the fiscal year, sorts newest first and returns 100 rows with the complete total", async () => {
+it("filters the fiscal year, sorts newest first and returns every row with the complete total", async () => {
   const f = fixture();
   const response = await GET(request("&period=year&page=2"));
   const data = await response.json();
-  expect(data.transactions).toHaveLength(100);
-  expect(data.transactions[0].mf_transaction_id).toBe("100");
+  expect(data.transactions).toHaveLength(205);
+  expect(data.transactions[0].mf_transaction_id).toBe("0");
   expect(data.total).toBe(205); expect(data.amount).toBe(10);
   expect(f.from).toHaveBeenCalledWith("bud_mf_bank_transactions");
   expect(f.query.gte).toHaveBeenCalledWith("date","2026-04-01");
@@ -40,4 +40,15 @@ it("uses card storage and validates page and period", async () => {
   expect(f.from).toHaveBeenCalledWith("bud_mf_card_transactions");
   expect((await GET(request("&page=0"))).status).toBe(400);
   expect((await GET(request("&period=three"))).status).toBe(400);
+});
+
+it("reads successive batches and returns all rows rather than a server page", async () => {
+  const f = fixture();
+  const row = {mf_transaction_id:"x",date:"2026-10-20",side:"EXPENSE",value:10};
+  f.query.range.mockReset().mockResolvedValueOnce({data:Array.from({length:1000}, (_,i) => ({...row,mf_transaction_id:String(i)}))}).mockResolvedValueOnce({data:[{...row,mf_transaction_id:"1000"}]});
+  const data = await (await GET(request("&period=year"))).json();
+  expect(data.transactions).toHaveLength(1001);
+  expect(data.total).toBe(1001);
+  expect(f.query.range).toHaveBeenNthCalledWith(1,0,999);
+  expect(f.query.range).toHaveBeenNthCalledWith(2,1000,1999);
 });
