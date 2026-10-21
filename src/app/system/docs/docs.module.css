@@ -165,7 +165,7 @@
   .header { padding:58px 0 0; min-height:0; }
   .presentationTools { left:12px; right:12px; justify-content:flex-end; }
   .pageShell { font-size:13px; }
-  .pageShell h1 { font-size:25px; } .pageShell h2 { font-size:21px; } .pageShell h3 { font-size:17px; }
+  .pageShell h1 { font-size: 30px; } .pageShell h2 { font-size:21px; } .pageShell h3 { font-size:17px; }
   .hero, .documentCard, .panel, .memberCard { padding:16px 12px; }
   .hero { margin-top:18px; } .heroMessage { font-size:15px; }
   .toc ol { grid-template-columns:minmax(0,1fr); }

@@ -72,7 +72,7 @@
 .main { width: min(760px, 100%); margin: 0 auto; padding: 24px 16px 48px; box-sizing: border-box; }
 .mainEmbedded { width: 100%; padding: 0; }
 .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
-.header h1 { margin: 2px 0; color: var(--attendance-heading); font-size: clamp(2rem, 8vw, 3rem); }
+.header h1 { margin: 2px 0; color: var(--attendance-heading); font-size: 30px; }
 .header p { margin: 4px 0; }
 .employeeName { color: var(--attendance-ink); font-weight: 700; }
 .headerActions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }

@@ -9,10 +9,12 @@
 import { BudGate } from "../../_components/BudGate";
 import { ExpenseReviewPanel } from "../_components/ExpenseReviewPanel";
 
+import styles from "../expenses.module.css";
+
 export default function ExpenseReviewPage() {
   return (
     <BudGate>
-      <main style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 20px 60px" }}>
+      <main className={styles.pageShell} style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 20px 60px" }}>
         <ExpenseReviewPanel />
       </main>
     </BudGate>

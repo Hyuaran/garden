@@ -1,5 +1,5 @@
 "use client";
-
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -138,7 +138,7 @@ function CsvExportContent() {
           ← 一覧に戻る
         </button>
       </div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-4">
+      <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "振込 CSV 出力" }]} /><h1 className="text-2xl font-bold text-gray-800 mb-4">
         CSV 出力（全銀協フォーマット）
       </h1>
 

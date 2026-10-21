@@ -12,6 +12,7 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
 import { BudGate } from "../_components/BudGate";
@@ -44,6 +45,7 @@ export default function DashboardPage() {
   return (
     <BudGate>
         <div className={styles.pageStack}>
+          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "ダッシュボード" }]} />
           <PageHeader
             title="Bud"
             titleJp="経理の蕾、ひらく前の数字たち"

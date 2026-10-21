@@ -532,19 +532,19 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
       {/* コンパクト3カード＋横並びレコード送りを1行に（承認待ちタブと同デザイン・差戻しに経理差戻し行あり） */}
       {loaded && (
         <div style={summaryNavBar}>
-          <CompactCard label="完了待ち" count={list.length} amount={pendingAmount} color="#b3892e" />
-          <CompactCard label="完了（本日）" count={todayStats.approvedCount} amount={todayStats.approvedAmount} color="#5e7d44" />
+          <CompactCard label="完了待ち" count={list.length} amount={pendingAmount} color="var(--teal-d)" />
+          <CompactCard label="完了（本日）" count={todayStats.approvedCount} amount={todayStats.approvedAmount} color="var(--teal-d)" />
           <CompactCard
             label="差戻し（本日）"
             count={todayStats.returnedCount}
             amount={todayStats.returnedAmount}
-            color="#b35850"
+            color="var(--danger)"
             sub={`経理差戻し: ${todayStats.keiriReturnedCount}件（本日）`}
           />
           {list.length > 0 && (
             <div style={navWrap}>
               <button type="button" style={navBtn(idx <= 0)} disabled={idx <= 0} onClick={() => setIdx((value) => Math.max(0, value - 1))}>
-                <span style={navCircle}>◀</span>前へ<span style={navHint}>Ctrl+↑</span>
+                <span style={navCircle}>‹</span>前へ<span style={navHint}>Ctrl+↑</span>
               </button>
               {!embedded && (
                 <span style={navCount}>
@@ -558,7 +558,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                 disabled={idx >= list.length - 1}
                 onClick={() => setIdx((value) => Math.min(list.length - 1, value + 1))}
               >
-                次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>▶</span>
+                次へ<span style={navHint}>Ctrl+↓</span><span style={navCircle}>›</span>
               </button>
             </div>
           )}
@@ -670,7 +670,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                               event.stopPropagation();
                               openDetail(row, "detail");
                             }}>
-                              📄
+
                             </button>
                           </td>
                           <td style={td}>{row.description || row.store_name || "—"}</td>
@@ -898,7 +898,7 @@ const compactCard: React.CSSProperties = {
   gap: 3,
   padding: "8px 14px",
   background: "var(--bg-paper-soft)",
-  border: "1px solid rgba(179,137,46,0.18)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)",
   borderRadius: 10,
   fontSize: 13,
   whiteSpace: "nowrap",
@@ -937,7 +937,7 @@ const navCircle: React.CSSProperties = {
 const navCount: React.CSSProperties = { fontSize: 13, color: "var(--text-main)", fontVariantNumeric: "tabular-nums", padding: "0 2px" };
 const notice: React.CSSProperties = {
   background: "var(--bg-paper-soft)",
-  border: "1px solid rgba(179,137,46,0.18)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)",
   borderRadius: 12,
   padding: 24,
   textAlign: "center",
@@ -950,29 +950,25 @@ const corpSwitch: React.CSSProperties = {
   marginBottom: 18,
   padding: 6,
   background: "var(--bg-card)",
-  borderRadius: 999,
+  borderRadius: 8,
   width: "fit-content",
   border: "1px solid var(--border-card)",
   flexWrap: "wrap",
 };
 const corpTab = (active: boolean): React.CSSProperties => ({
-  padding: "8px 20px",
-  borderRadius: 999,
-  border: "none",
-  background: active ? "#d4a541" : "transparent",
-  color: active ? "#fff" : "var(--text-sub)",
-  boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none",
-  cursor: "pointer",
-  fontSize: 13,
+ padding: "7px 12px", borderRadius: 6,
+ border: active ? "1px solid var(--teal)" : "1px solid var(--line)",
+ background: "var(--card)", color: active ? "var(--teal-d)" : "var(--sub)",
+ boxShadow: "none", cursor: "pointer", fontSize: 13,
 });
 const finalShell: React.CSSProperties = { display: "flex", gap: 12, alignItems: "stretch", marginBottom: 18 };
-const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
+const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)", borderRadius: 12, padding: "18px 20px" };
 const panelHead: React.CSSProperties = {
   display: "flex",
   alignItems: "baseline",
   justifyContent: "space-between",
   gap: 16,
-  borderBottom: "1px dashed rgba(179,137,46,0.35)",
+  borderBottom: "1px dashed color-mix(in srgb, var(--teal-d) 35%, transparent)",
   paddingBottom: 8,
   marginBottom: 12,
 };
@@ -997,7 +993,7 @@ const listSearchBox: React.CSSProperties = {
 const listSearchSelect: React.CSSProperties = {
   width: 132,
   borderRadius: 8,
-  border: "1px solid rgba(179,137,46,0.3)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 30%, transparent)",
   padding: "7px 10px",
   background: "var(--bg-card-solid)",
   color: "var(--text-main)",
@@ -1006,14 +1002,14 @@ const listSearchSelect: React.CSSProperties = {
 const listSearchInput: React.CSSProperties = {
   width: 260,
   borderRadius: 8,
-  border: "1px solid rgba(179,137,46,0.3)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 30%, transparent)",
   padding: "7px 10px",
   background: "var(--bg-card-solid)",
   color: "var(--text-main)",
   fontSize: 13,
 };
 const clearSearchBtn: React.CSSProperties = {
-  border: "1px solid rgba(179,137,46,0.28)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 28%, transparent)",
   borderRadius: 8,
   padding: "7px 10px",
   background: "var(--bg-card-solid)",
@@ -1032,9 +1028,9 @@ const listSummaryPill: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   minHeight: 30,
-  borderRadius: 999,
-  border: "1px solid rgba(179,137,46,0.24)",
-  background: "rgba(255,255,255,0.58)",
+  borderRadius: 8,
+  border: "1px solid color-mix(in srgb, var(--teal-d) 24%, transparent)",
+  background: "color-mix(in srgb, var(--card) 58%, transparent)",
   color: "var(--text-sub)",
   padding: "5px 11px",
   fontSize: 12,
@@ -1061,24 +1057,24 @@ const th: React.CSSProperties = {
 const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed var(--border-card)", color: "var(--text-main)", verticalAlign: "middle" };
 const applicantTd: React.CSSProperties = { ...td, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const tr: React.CSSProperties = { cursor: "pointer" };
-const selectedTr: React.CSSProperties = { ...tr, background: "rgba(212,165,65,0.08)" };
+const selectedTr: React.CSSProperties = { ...tr, background: "color-mix(in srgb, var(--teal-d) 8%, transparent)" };
 const actions: React.CSSProperties = { display: "flex", gap: 6, alignItems: "center" };
 const approveBtn: React.CSSProperties = {
   border: "none",
-  borderRadius: 999,
+  borderRadius: 8,
   padding: "7px 14px",
-  background: "#5e7d44",
-  color: "#fff",
+  background: "var(--teal-d)",
+  color: "var(--on-accent)",
   cursor: "pointer",
   whiteSpace: "nowrap",
   fontSize: 12,
 };
 const returnBtn: React.CSSProperties = {
-  border: "1px solid #b35850",
-  borderRadius: 999,
+  border: "1px solid var(--danger)",
+  borderRadius: 8,
   padding: "7px 14px",
   background: "var(--bg-card-solid)",
-  color: "#b35850",
+  color: "var(--danger)",
   cursor: "pointer",
   whiteSpace: "nowrap",
   fontSize: 12,
@@ -1097,15 +1093,15 @@ const bulkReturnBtn: React.CSSProperties = {
 };
 const bulkDeleteBtn: React.CSSProperties = {
   ...bulkReturnBtn,
-  border: "1px solid #8f3b36",
-  color: "#8f3b36",
+  border: "1px solid var(--sub)",
+  color: "var(--sub)",
 };
 const iconBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", fontSize: 18, padding: 2 };
 const modalBackdrop: React.CSSProperties = {
   position: "fixed",
   inset: 0,
   zIndex: 1000,
-  background: "rgba(40,34,25,0.42)",
+  background: "color-mix(in srgb, var(--teal-d) 42%, transparent)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -1117,16 +1113,16 @@ const modalCard: React.CSSProperties = {
   overflow: "auto",
   background: "var(--bg-card-solid)",
   borderRadius: 14,
-  border: "1px solid rgba(179,137,46,0.25)",
-  boxShadow: "0 18px 48px rgba(40,34,25,0.22)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 25%, transparent)",
+  boxShadow: "0 18px 48px color-mix(in srgb, var(--teal-d) 22%, transparent)",
   padding: 22,
 };
 const modalHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 };
 const closeBtn: React.CSSProperties = {
   width: 34,
   height: 34,
-  borderRadius: 999,
-  border: "1px solid rgba(179,137,46,0.25)",
+  borderRadius: 8,
+  border: "1px solid color-mix(in srgb, var(--teal-d) 25%, transparent)",
   background: "var(--bg-card-solid)",
   color: "var(--text-sub)",
   fontSize: 20,
@@ -1136,7 +1132,7 @@ const modalGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "
 const textarea: React.CSSProperties = {
   width: "100%",
   borderRadius: 8,
-  border: "1px solid rgba(179,137,46,0.3)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 30%, transparent)",
   padding: 10,
   background: "var(--bg-card-solid)",
   color: "var(--text-main)",

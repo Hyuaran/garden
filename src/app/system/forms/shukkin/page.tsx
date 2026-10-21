@@ -25,7 +25,7 @@ export default async function ShukkinPage() {
   if (!isRoleAtLeast(role, "staff")) {
     return <div className={styles.pageShell}>
       <header className={styles.header}>
-        <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "出勤表・シフトLINE連絡テキスト生成" }]} />
+        <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "出勤表・シフトLINE連絡テキスト生成" }]} />
         <h1>出勤表・シフトLINE連絡テキスト生成</h1>
       </header>
       <section className={styles.panel}>

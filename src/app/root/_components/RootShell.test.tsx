@@ -38,6 +38,8 @@ vi.mock("../_state/RootStateContext", () => ({
   }),
 }));
 
+vi.mock("@/app/_components/notices/NoticeProvider", () => ({ useNotices: () => ({ unreadCount: 0 }) }));
+
 import { colors } from "../_constants/colors";
 import { RootShell } from "./RootShell";
 
@@ -49,6 +51,7 @@ describe("RootShell", () => {
     mocks.canWrite = true;
     render(<RootShell><div>本文</div></RootShell>);
 
+    expect(screen.getAllByLabelText("お知らせ")).toHaveLength(2);
     const rail = screen.getByLabelText("Gardenシリーズ");
     expect(within(rail).getByLabelText("Root：組織台帳")).toHaveAttribute("aria-current", "page");
     expect(within(rail).getByLabelText("System：社内システム")).not.toHaveAttribute("aria-current");

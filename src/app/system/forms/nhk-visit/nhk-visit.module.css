@@ -11,7 +11,7 @@
 .primary{width:100%;min-height:48px;padding:12px 18px;font-size:15px}.primary:disabled{opacity:.62;cursor:default}.message,.error{margin:14px 0;padding:12px 14px;border-radius:8px;font-size:13px;font-weight:900}.message{background:var(--soft);color:var(--tealDark)}.error{background:var(--dangerBg);color:var(--danger)}
 .resultHead{display:flex;align-items:center;justify-content:space-between;gap:12px}.resultHead h2{margin:0}.copy{min-height:38px;padding:8px 14px}.preview{box-sizing:border-box;margin:10px 0 0;padding:16px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--preview);color:var(--ink);font-family:Meiryo,"Noto Sans JP",monospace;font-size:14px;line-height:1.75;white-space:pre-wrap}
 .historyBox{display:grid;gap:6px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--preview)}.historyBox p,.empty{margin:0;color:var(--ink);font-size:13px;line-height:1.7}.empty{color:var(--sub);font-weight:800}
-@media(max-width:560px){.header h1{font-size:24px}.panel,.result,.history{padding:14px}.counter{grid-template-columns:minmax(58px,1fr) 44px minmax(48px,64px) 44px}.segmented label{flex:1 1 120px}.timeRow input[type=time]{width:128px}.preview{font-size:13px}}
+@media(max-width:560px){.header h1{font-size: 30px}.panel,.result,.history{padding:14px}.counter{grid-template-columns:minmax(58px,1fr) 44px minmax(48px,64px) 44px}.segmented label{flex:1 1 120px}.timeRow input[type=time]{width:128px}.preview{font-size:13px}}
 
 /* 使い方は画像つきのマニュアル①へのリンク。大枠は付けず、ボタンだけを置く（2026-09-24 東海林さん） */
 .guide{margin:14px 0}
@@ -22,7 +22,7 @@
 .mobile .header{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
 .mobileTitleRow{display:block}
 .mobile .mobileTitleRow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
-.mobile .header h1{min-width:0;margin:0;color:var(--heading);font-size:18px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mobile .header h1{min-width:0;margin:0;color:var(--heading);font-size: 30px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mobileSender{display:none}
 .mobile .mobileSender{display:block;flex:0 0 auto;margin:0;color:var(--heading);font-size:13px;font-weight:900;white-space:nowrap}
 .mobile .panel,.mobile .result,.mobile .history{margin:0;padding:12px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none}

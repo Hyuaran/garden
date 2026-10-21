@@ -1,5 +1,5 @@
 "use client";
-
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BudGate } from "../_components/BudGate";
@@ -95,7 +95,7 @@ function StatementsContent() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">明細管理</h1>
+          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "明細管理" }]} /><h1 className="text-2xl font-bold text-gray-800">明細管理</h1>
           <p className="text-sm text-gray-500 mt-1">
             銀行入出金の取込・自動照合・手動割当
           </p>

@@ -31,14 +31,14 @@ describe("BudShachoShell", () => {
     expect(screen.getByText("本文")).toBeInTheDocument();
   });
 
-  it("hides only the bank page title in the top bar", () => {
+  it("hides page titles in the top bar on every page", () => {
     mocks.pathname = "/bud/bank";
     const view = render(<BudShachoShell>本文</BudShachoShell>);
     expect(screen.queryByText("Bud ／ 口座残高・カード利用")).not.toBeInTheDocument();
     expect(screen.getByRole("button", {name:"ログアウト"})).toBeInTheDocument();
     mocks.pathname = "/bud/expenses/review";
     view.rerender(<BudShachoShell>本文</BudShachoShell>);
-    expect(screen.getByText("Bud ／ 経費精算")).toBeInTheDocument();
+    expect(screen.queryByText("Bud ／ 経費精算")).not.toBeInTheDocument();
   });
 
   it("closes the drawer with close, backdrop, Escape and navigation, restoring focus", () => {

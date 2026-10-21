@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");
 
 describe("expense UI terminology", () => {
-  it("uses the Booking and Done tab labels", () => {
-    expect(read("src/app/bud/expenses/page.tsx")).toContain('<span class=\\"tab-item-jp\\">仕訳待ち</span>/ Booking');
-    expect(read("src/app/bud/expenses/_components/ExpenseDoneEmbed.tsx")).toContain('<span class="tab-item-jp">完了</span>/ Done');
+  it("uses Japanese Booking and Done tab labels", () => {
+    expect(read("src/app/bud/expenses/page.tsx")).toContain('<span class=\\"tab-item-jp\\">仕訳待ち</span>');
+    expect(read("src/app/bud/expenses/_components/ExpenseDoneEmbed.tsx")).toContain('<span class="tab-item-jp">完了</span>');
   });
 
   it("has no old visible wording in expense UI source", () => {

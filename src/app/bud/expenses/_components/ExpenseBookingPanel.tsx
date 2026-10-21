@@ -463,7 +463,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
       <section style={cards}>
         <Card label="仕訳待ち" value={loaded ? selectionSummary.totalCount : "-"} meta={`総額 ${yen(selectionSummary.totalAmount)}`} color="var(--text-main)" />
         <Card label="選択中" value={selectionSummary.selectedCount} meta={`選択した額 ${yen(selectionSummary.selectedAmount)}`} color="var(--text-main)" />
-        <Card label="要確認" value={errorCount} meta="CSV対象外" color="#b35850" />
+        <Card label="要確認" value={errorCount} meta="CSV対象外" color="var(--danger)" />
         <Card label="今月完了" value={doneFiltered.length} meta={`合計 ${yen(doneFiltered.reduce((sum, row) => sum + (row.amount ?? 0), 0))}`} color="var(--text-sub)" />
       </section>
 
@@ -706,7 +706,7 @@ function parseFilename(header: string | null) {
 }
 
 const shell: React.CSSProperties = { marginBottom: 24 };
-const title: React.CSSProperties = { margin: 0, fontSize: 22, color: "var(--text-main)", fontFamily: "'Shippori Mincho', serif" };
+const title: React.CSSProperties = { margin: 0, fontSize: 22, color: "var(--text-main)", fontFamily: "inherit" };
 const lead: React.CSSProperties = { margin: "4px 0 14px", color: "var(--text-sub)", fontSize: 13 };
 // 4枚を横一列に固定すると、狭い幅で金額（総額・選択した額）が省略されて読めなくなる。
 // 入りきらない幅では折り返して2列・1列になるようにする。
@@ -718,7 +718,7 @@ const compactCard: React.CSSProperties = {
   gap: 3,
   padding: "8px 14px",
   background: "var(--bg-paper-soft)",
-  border: "1px solid rgba(179,137,46,0.18)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)",
   borderRadius: 10,
   fontSize: 13,
   whiteSpace: "nowrap",
@@ -726,41 +726,46 @@ const compactCard: React.CSSProperties = {
 // 完了待ちタブの「経理差戻し」行と同じ高さの余白（3タブでカード高さを揃える）
 const compactCardSub: React.CSSProperties = { height: 16, lineHeight: "16px", fontSize: 11 };
 const compactCardMain: React.CSSProperties = { marginTop: "auto", display: "flex", alignItems: "baseline", gap: 8 };
-const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
+const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)", borderRadius: 12, padding: "18px 20px" };
 const panelHead: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 12 };
 const panelTitle: React.CSSProperties = { margin: 0, fontSize: 17, color: "var(--text-main)", fontWeight: 600 };
 const panelMeta: React.CSSProperties = { color: "var(--text-muted)", fontSize: 12, marginTop: 3 };
 const toolbar: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" };
 const filterControl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, color: "var(--text-sub)", fontSize: 12, whiteSpace: "nowrap" };
 const searchControl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, maxWidth: "100%" };
-const searchInput: React.CSSProperties = { width: 180, maxWidth: "40vw", minWidth: 0, padding: "6px 8px", borderRadius: 7, border: "1px solid #8b6a22", background: "var(--bg-card-solid)", color: "var(--text-main)", textOverflow: "ellipsis" };
+const searchInput: React.CSSProperties = { width: 180, maxWidth: "40vw", minWidth: 0, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--teal-d)", background: "var(--bg-card-solid)", color: "var(--text-main)", textOverflow: "ellipsis" };
 const checkAllLabel: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-sub)", fontSize: 13 };
 const tableScroll: React.CSSProperties = { maxHeight: "min(70vh, 760px)", overflow: "auto", position: "relative", overscrollBehavior: "contain", scrollbarGutter: "stable" };
 const table: React.CSSProperties = { width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13 };
-const th: React.CSSProperties = { position: "sticky", top: 0, zIndex: 3, height: 36, boxSizing: "border-box", textAlign: "left", color: "var(--text-main)", background: "var(--bg-paper-soft)", fontWeight: 500, padding: "9px 8px", borderBottom: "1px solid rgba(180,165,130,0.25)", whiteSpace: "nowrap" };
-const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "var(--text-main)", verticalAlign: "middle", whiteSpace: "nowrap" };
+const th: React.CSSProperties = { position: "sticky", top: 0, zIndex: 3, height: 36, boxSizing: "border-box", textAlign: "left", color: "var(--text-main)", background: "var(--bg-paper-soft)", fontWeight: 500, padding: "9px 8px", borderBottom: "1px solid color-mix(in srgb, var(--sub) 25%, transparent)", whiteSpace: "nowrap" };
+const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed color-mix(in srgb, var(--sub) 18%, transparent)", color: "var(--text-main)", verticalAlign: "middle", whiteSpace: "nowrap" };
 const applicantTd: React.CSSProperties = { ...td, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" };
 const tr: React.CSSProperties = {};
-const checkedTr: React.CSSProperties = { background: "rgba(212,165,65,0.08)" };
-const errorTr: React.CSSProperties = { background: "rgba(179,88,80,0.08)" };
+const checkedTr: React.CSSProperties = { background: "color-mix(in srgb, var(--teal-d) 8%, transparent)" };
+const errorTr: React.CSSProperties = { background: "color-mix(in srgb, var(--danger) 8%, transparent)" };
 const empty: React.CSSProperties = { padding: 28, textAlign: "center", color: "var(--text-sub)", background: "var(--bg-card-solid)", borderRadius: 10 };
-const notice: React.CSSProperties = { padding: "10px 14px", marginBottom: 12, background: "rgba(94,125,68,0.12)", border: "1px solid rgba(94,125,68,0.25)", borderRadius: 10, color: "#4d6838", fontSize: 13 };
-const warning: React.CSSProperties = { padding: "10px 14px", marginBottom: 12, background: "rgba(212,165,65,0.12)", border: "1px solid rgba(212,165,65,0.25)", borderRadius: 10, color: "#8a6822", fontSize: 13 };
-const okBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 999, background: "rgba(94,125,68,0.14)", color: "#5e7d44", fontSize: 12 };
-const errorBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 999, background: "rgba(179,88,80,0.16)", color: "#8a3a32", fontSize: 12 };
-const missingBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 999, background: "#7b312d", color: "#fff", fontSize: 12, fontWeight: 600 };
-const bookingSelect: React.CSSProperties = { maxWidth: 150, padding: "6px 8px", borderRadius: 7, border: "1px solid #8b6a22", background: "var(--bg-card-solid)", color: "var(--text-main)" };
-const bookingInput: React.CSSProperties = { maxWidth: 170, padding: "6px 8px", borderRadius: 7, border: "1px solid #8b6a22", background: "var(--bg-card-solid)", color: "var(--text-main)" };
+const notice: React.CSSProperties = { padding: "10px 14px", marginBottom: 12, background: "color-mix(in srgb, var(--teal-d) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--teal-d) 25%, transparent)", borderRadius: 10, color: "var(--teal-d)", fontSize: 13 };
+const warning: React.CSSProperties = { padding: "10px 14px", marginBottom: 12, background: "color-mix(in srgb, var(--teal-d) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--teal-d) 25%, transparent)", borderRadius: 10, color: "var(--teal-d)", fontSize: 13 };
+const okBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 8, background: "color-mix(in srgb, var(--teal-d) 14%, transparent)", color: "var(--teal-d)", fontSize: 12 };
+const errorBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 8, background: "color-mix(in srgb, var(--danger) 16%, transparent)", color: "var(--teal-d)", fontSize: 12 };
+const missingBadge: React.CSSProperties = { display: "inline-block", padding: "3px 9px", borderRadius: 8, background: "var(--sub)", color: "var(--on-accent)", fontSize: 12, fontWeight: 600 };
+const bookingSelect: React.CSSProperties = { maxWidth: 150, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--teal-d)", background: "var(--bg-card-solid)", color: "var(--text-main)" };
+const bookingInput: React.CSSProperties = { maxWidth: 170, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--teal-d)", background: "var(--bg-card-solid)", color: "var(--text-main)" };
 const reassignedLabel: React.CSSProperties = { marginTop: 4, maxWidth: 190, overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-main)", fontSize: 11, fontWeight: 700 };
-const corpSwitch: React.CSSProperties = { display: "flex", gap: 4, marginBottom: 18, padding: 6, background: "var(--bg-card)", borderRadius: 999, width: "fit-content", border: "1px solid rgba(180,165,130,0.2)", flexWrap: "wrap" };
-const corpTab = (active: boolean): React.CSSProperties => ({ padding: "8px 20px", borderRadius: 999, border: "none", background: active ? "#d4a541" : "transparent", color: active ? "#fff" : "var(--text-sub)", cursor: "pointer", boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none" });
-const deleteBtn: React.CSSProperties = { border: "1px solid #8f3b36", borderRadius: 999, padding: "9px 14px", background: "rgba(179,80,72,0.08)", color: "#8f3b36", cursor: "pointer", whiteSpace: "nowrap" };
+const corpSwitch: React.CSSProperties = { display: "flex", gap: 4, marginBottom: 18, padding: 6, background: "var(--bg-card)", borderRadius: 8, width: "fit-content", border: "1px solid color-mix(in srgb, var(--sub) 20%, transparent)", flexWrap: "wrap" };
+const corpTab = (active: boolean): React.CSSProperties => ({
+ padding: "7px 12px", borderRadius: 6,
+ border: active ? "1px solid var(--teal)" : "1px solid var(--line)",
+ background: "var(--card)", color: active ? "var(--teal-d)" : "var(--sub)",
+ boxShadow: "none", cursor: "pointer", fontSize: 13,
+});
+const deleteBtn: React.CSSProperties = { border: "1px solid var(--sub)", borderRadius: 8, padding: "9px 14px", background: "color-mix(in srgb, var(--danger) 8%, transparent)", color: "var(--sub)", cursor: "pointer", whiteSpace: "nowrap" };
 const ledgerExportBtn = (active: boolean): React.CSSProperties => ({
-  border: "1px solid #b3892e",
-  borderRadius: 999,
+  border: "1px solid var(--teal-d)",
+  borderRadius: 8,
   padding: "9px 16px",
-  background: active ? "var(--bg-paper-soft)" : "#d8d0bd",
-  color: active ? "#9b711d" : "#fff",
+  background: active ? "var(--bg-paper-soft)" : "var(--sub)",
+  color: active ? "var(--teal-d)" : "var(--on-accent)",
   cursor: active ? "pointer" : "not-allowed",
   whiteSpace: "nowrap",
 });
@@ -768,7 +773,7 @@ const taxBadge = (taxClass: string): React.CSSProperties => ({
   display: "inline-block",
   padding: "3px 8px",
   borderRadius: 5,
-  background: taxClass === "対象外" ? "rgba(138,94,138,0.14)" : taxClass.includes("80%") ? "rgba(212,165,65,0.16)" : "rgba(91,138,168,0.14)",
-  color: taxClass === "対象外" ? "#8a5e8a" : taxClass.includes("80%") ? "#9b711d" : "#4a728a",
+  background: taxClass === "対象外" ? "color-mix(in srgb, var(--sub) 14%, transparent)" : taxClass.includes("80%") ? "color-mix(in srgb, var(--teal-d) 16%, transparent)" : "color-mix(in srgb, var(--sub) 14%, transparent)",
+  color: taxClass === "対象外" ? "var(--sub)" : taxClass.includes("80%") ? "var(--teal-d)" : "var(--sub)",
   fontSize: 12,
 });

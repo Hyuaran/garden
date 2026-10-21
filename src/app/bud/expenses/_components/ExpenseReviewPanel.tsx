@@ -1,4 +1,5 @@
 "use client";
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 
 /**
  * Bud 経費精算 — 承認待ち（経理レビュー）パネル
@@ -508,7 +509,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       listButton.type = "button";
       listButton.className = "tab-item";
       listButton.dataset.tab = "list";
-      listButton.innerHTML = '<span class="tab-item-jp">一覧</span>/ List';
+      listButton.innerHTML = '<span class="tab-item-jp">一覧</span>';
       nav.insertBefore(listButton, categoriesTab);
     }
 
@@ -547,7 +548,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       button.type = "button";
       button.className = "tab-item";
       button.dataset.tab = "deleted";
-      button.innerHTML = '<span class="tab-item-jp">削除済み</span>/ Deleted';
+      button.innerHTML = '<span class="tab-item-jp">削除済み</span>';
       nav.insertBefore(button, categoriesTab);
     }
     if (!host) {
@@ -1025,10 +1026,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       {!embedded && (
         <>
           <header style={{ marginBottom: 18 }}>
-            <h1 style={{ fontSize: 22, color: "var(--text-main)", margin: 0 }}>経費精算 — 承認待ち（経理）</h1>
-            <p style={{ color: "#7b745f", fontSize: 13, margin: "4px 0 0" }}>
-              スマホ申請を確認して承認／差戻し。Ctrl+↓ / Ctrl+↑ で前後に移動。
-            </p>
+            <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "経費精算", href: "/bud/expenses" }, { label: "承認待ち（経理）" }]} />
+            <h1 style={{ fontSize: 30, color: "var(--heading)", margin: 0 }}>承認待ち（経理）</h1>
           </header>
           <CorpFilter value={corpFilter} corps={sortedCorps} onChange={setCorpFilter} />
         </>
@@ -1037,9 +1036,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       {/* コンパクト3カード＋横並びレコード送りを1行に */}
       {loaded && (
         <div style={summaryNavBar}>
-          <CompactCard label="承認待ち" count={list.length} amount={pendingAmount} color="#b3892e" />
-          <CompactCard label="承認（本日）" count={todayStats.approvedCount} amount={todayStats.approvedAmount} color="#5e7d44" />
-          <CompactCard label="差戻し（本日）" count={todayStats.rejectedCount} amount={todayStats.rejectedAmount} color="#b35850" />
+          <CompactCard label="承認待ち" count={list.length} amount={pendingAmount} color="var(--teal-d)" />
+          <CompactCard label="承認（本日）" count={todayStats.approvedCount} amount={todayStats.approvedAmount} color="var(--teal-d)" />
+          <CompactCard label="差戻し（本日）" count={todayStats.rejectedCount} amount={todayStats.rejectedAmount} color="var(--danger)" />
           {list.length > 0 && current && (
             <div style={reviewControlRow}>
               <div style={sortControlGroup}>
@@ -1192,7 +1191,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         {showOcrConfirmBadge && <div style={ocrBadgeBox(ocrConfirmTone)}>OCR要確認</div>}
                         {corpChangeBadge && (
                           <div style={corpChangeBadgeBox}>
-                            <span style={corpChangeBadgeLine}>⚠ 申請者が法人変更</span>
+                            <span style={corpChangeBadgeLine}><WarningIcon /> 申請者が法人変更</span>
                             <span style={corpChangeBadgeLine}>
                               {corpChangeBadge.defaultName}→{corpChangeBadge.selectedName}
                             </span>
@@ -1224,7 +1223,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       {fiscalPeriod ? formatFiscalDateRange(fiscalPeriod) : "—"}
                     </InfoValue>
                   </div>
-                  {fiscalPeriod?.expired && <div style={fiscalWarning}>⚠ 計上期限超過（期末の翌月末を過ぎています）・要確認</div>}
+                  {fiscalPeriod?.expired && <div style={fiscalWarning}><WarningIcon /> 計上期限超過（期末の翌月末を過ぎています）・要確認</div>}
 
                   {/* 法人・計上期と同じ列幅に揃える（3列目は空き） */}
                   <div style={fieldRow(FISCAL_COLS)}>
@@ -1283,7 +1282,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         const numberDisabled = !searchMode && (form.qualified_class === "無" || form.qualified_class === "非課税");
                         const qualifiedNumberValue = searchMode ? activeSearch.qualified_number ?? "" : form.qualified_number;
                         const tValid = /^T\d{13}$/.test(qualifiedNumberValue.trim());
-                        // 有なのに T+13桁 が拾えていなければ ✖ + 薄赤背景で知らせる
+                        // 有なのに T+13桁 が拾えていなければ  + 薄赤背景で知らせる
                         const showInvalid = !numberDisabled && form.qualified_class === "有" && !tValid;
                         return (
                           <div style={{ position: "relative" }}>
@@ -1299,7 +1298,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                                 ...input,
                                 paddingRight: 32,
                                 ...(numberDisabled ? { background: "var(--bg-paper)", color: "var(--text-muted)" } : {}),
-                                ...(showInvalid ? { background: "rgba(179,88,80,0.12)", border: "1px solid rgba(179,88,80,0.45)" } : {}),
+                                ...(showInvalid ? { background: "color-mix(in srgb, var(--danger) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 45%, transparent)" } : {}),
                               }}
                             />
                             {!numberDisabled && tValid && <span style={tMarkOk}>✓</span>}
@@ -1454,7 +1453,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                               style={{
                                 ...inlineLayout.image,
                                 borderRadius: 10,
-                                border: "1px solid #e2ddcf",
+                                border: "1px solid var(--sub)",
                                 cursor: "zoom-in",
                                 transform: `rotate(${rotation}deg)`,
                                 transformOrigin: "center center",
@@ -1991,7 +1990,7 @@ function DetailModal({
           <div>
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="領収書" style={{ width: "100%", borderRadius: 10, border: "1px solid #e2ddcf" }} />
+              <img src={imageUrl} alt="領収書" style={{ width: "100%", borderRadius: 10, border: "1px solid var(--sub)" }} />
             ) : (
               <div style={{ ...notice, margin: 0 }}>領収書画像なし</div>
             )}
@@ -2194,7 +2193,7 @@ function formatDateTime(value: string | null | undefined) {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ja-JP", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleString("ja-JP", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 function yen(value: number) {
   return "¥" + value.toLocaleString("ja-JP");
@@ -2210,14 +2209,14 @@ function statusLabel(status: string) {
 }
 
 function statusPill(status: string): React.CSSProperties {
-  if (status === "submitted") return { ...pill, background: "rgba(212,165,65,0.16)", color: "#b3892e" };
-  if (status === "keiri_returned") return { ...pill, background: "rgba(179,88,80,0.16)", color: "#b35850" };
-  return { ...pill, background: "rgba(94,125,68,0.16)", color: "#5e7d44" };
+  if (status === "submitted") return { ...pill, background: "color-mix(in srgb, var(--teal-d) 16%, transparent)", color: "var(--teal-d)" };
+  if (status === "keiri_returned") return { ...pill, background: "color-mix(in srgb, var(--danger) 16%, transparent)", color: "var(--danger)" };
+  return { ...pill, background: "color-mix(in srgb, var(--teal-d) 16%, transparent)", color: "var(--teal-d)" };
 }
 
 const notice: React.CSSProperties = {
   background: "var(--bg-paper-soft)",
-  border: "1px solid rgba(179,137,46,0.18)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)",
   borderRadius: 12,
   padding: 24,
   textAlign: "center",
@@ -2250,7 +2249,7 @@ const compactCard: React.CSSProperties = {
   gap: 3,
   padding: "8px 14px",
   background: "var(--bg-paper-soft)",
-  border: "1px solid rgba(179,137,46,0.18)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)",
   borderRadius: 10,
   fontSize: 13,
   whiteSpace: "nowrap",
@@ -2280,7 +2279,7 @@ const navBtn = (disabled: boolean): React.CSSProperties => ({
   whiteSpace: "nowrap",
 });
 const navHint: React.CSSProperties = { fontSize: 10, color: "var(--text-muted)" };
-// ◀/▶ を丸で囲んだ方向アイコン（→と↓の矢印重複を避けて視認性を上げる）
+// ‹/› を丸で囲んだ方向アイコン（→と↓の矢印重複を避けて視認性を上げる）
 const navCircle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -2296,8 +2295,8 @@ const navCircle: React.CSSProperties = {
 const navCount: React.CSSProperties = { fontSize: 13, color: "var(--text-main)", fontVariantNumeric: "tabular-nums", padding: "0 2px" };
 // alignItems: stretch で申請情報カードと領収書カードの高さを揃える（高い方に合わせる）
 const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16, alignItems: "stretch", marginBottom: 0 };
-const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid rgba(179,137,46,0.18)", borderRadius: 12, padding: "18px 20px" };
-const panelTitle: React.CSSProperties = { fontSize: 15, color: "#b3892e", margin: "0 0 12px", borderBottom: "1px dashed rgba(179,137,46,0.35)", paddingBottom: 8 };
+const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)", borderRadius: 12, padding: "18px 20px" };
+const panelTitle: React.CSSProperties = { fontSize: 15, color: "var(--teal-d)", margin: "0 0 12px", borderBottom: "1px dashed color-mix(in srgb, var(--teal-d) 35%, transparent)", paddingBottom: 8 };
 // 「法人/計上期/期の範囲」行と「レシート日付/時刻」行で共有する列幅（枠の縦ラインを揃える）
 const FISCAL_COLS = "1.1fr 0.8fr 1.3fr";
 const formRows: React.CSSProperties = { display: "grid", gap: 10 };
@@ -2316,10 +2315,10 @@ const infoBox = (emphasis: "normal" | "danger"): React.CSSProperties => ({
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
-  color: emphasis === "danger" ? "#b35850" : "var(--text-main)",
+  color: emphasis === "danger" ? "var(--danger)" : "var(--text-main)",
   fontWeight: emphasis === "danger" ? 700 : 500,
-  border: emphasis === "danger" ? "1px solid rgba(179,88,80,0.35)" : "1px solid rgba(179,137,46,0.16)",
-  background: emphasis === "danger" ? "rgba(179,88,80,0.08)" : "var(--bg-card)",
+  border: emphasis === "danger" ? "1px solid color-mix(in srgb, var(--danger) 35%, transparent)" : "1px solid color-mix(in srgb, var(--teal-d) 16%, transparent)",
+  background: emphasis === "danger" ? "color-mix(in srgb, var(--danger) 8%, transparent)" : "var(--bg-card)",
 });
 // 適格番号の判定マーク（右端に重ねる）
 const tMark: React.CSSProperties = {
@@ -2329,21 +2328,21 @@ const tMark: React.CSSProperties = {
   transform: "translateY(-50%)",
   width: 18,
   height: 18,
-  borderRadius: 999,
+  borderRadius: 8,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
   fontSize: 12,
   fontWeight: 700,
-  color: "#fff",
+  color: "var(--on-accent)",
 };
-const tMarkOk: React.CSSProperties = { ...tMark, background: "#5e7d44" };
-const tMarkNg: React.CSSProperties = { ...tMark, background: "#b35850" };
+const tMarkOk: React.CSSProperties = { ...tMark, background: "var(--teal-d)" };
+const tMarkNg: React.CSSProperties = { ...tMark, background: "var(--danger)" };
 const fiscalWarning: React.CSSProperties = {
   padding: "7px 10px",
   borderRadius: 8,
-  background: "rgba(179,88,80,0.1)",
-  border: "1px solid rgba(179,88,80,0.28)",
+  background: "color-mix(in srgb, var(--danger) 10%, transparent)",
+  border: "1px solid color-mix(in srgb, var(--danger) 28%, transparent)",
   color: "var(--text-warning)",
   fontSize: 12,
   fontWeight: 700,
@@ -2352,15 +2351,15 @@ const input: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
   borderRadius: 6,
-  border: "1px solid rgba(179,137,46,0.3)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 30%, transparent)",
   fontSize: 14,
   background: "var(--bg-card-solid)",
   color: "var(--text-main)",
 };
 const missingRequiredInput: React.CSSProperties = {
-  background: "#b35850",
-  border: "1px solid rgba(179,88,80,0.72)",
-  color: "#fff",
+  background: "var(--danger)",
+  border: "1px solid color-mix(in srgb, var(--danger) 72%, transparent)",
+  color: "var(--on-accent)",
   fontWeight: 700,
 };
 function requiredFieldStyle(searchMode: boolean, value: string): React.CSSProperties {
@@ -2377,9 +2376,9 @@ const ocrBadgeBase: React.CSSProperties = {
   padding: "8px 10px",
   lineHeight: "22px",
   borderRadius: 6,
-  background: "rgba(179,88,80,0.14)",
-  border: "1px solid rgba(179,88,80,0.34)",
-  color: "#b35850",
+  background: "color-mix(in srgb, var(--danger) 14%, transparent)",
+  border: "1px solid color-mix(in srgb, var(--danger) 34%, transparent)",
+  color: "var(--danger)",
   fontSize: 12,
   fontWeight: 700,
   whiteSpace: "nowrap",
@@ -2388,9 +2387,9 @@ function ocrBadgeBox(tone: "danger" | "warning" | "hidden"): React.CSSProperties
   if (tone === "warning") {
     return {
       ...ocrBadgeBase,
-      background: "rgba(212,165,65,0.16)",
-      border: "1px solid rgba(179,137,46,0.36)",
-      color: "#8a661f",
+      background: "color-mix(in srgb, var(--teal-d) 16%, transparent)",
+      border: "1px solid color-mix(in srgb, var(--teal-d) 36%, transparent)",
+      color: "var(--teal-d)",
     };
   }
   return ocrBadgeBase;
@@ -2402,9 +2401,9 @@ const badgeStack: React.CSSProperties = {
 };
 const corpChangeBadgeBox: React.CSSProperties = {
   ...ocrBadgeBase,
-  background: "rgba(212,165,65,0.16)",
-  border: "1px solid rgba(179,137,46,0.36)",
-  color: "#8a661f",
+  background: "color-mix(in srgb, var(--teal-d) 16%, transparent)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 36%, transparent)",
+  color: "var(--teal-d)",
   // 2行（見出し／変更内容）にする。1行時と同じ高さ40pxを保つため
   // padding 8+8 ＋ 11px×2行 ＋ border 2 = 40px に収まる字送りとサイズにしている
   flexDirection: "column",
@@ -2446,10 +2445,10 @@ const layoutToggleBtn: React.CSSProperties = {
   alignItems: "center",
   height: CONTROL_HEIGHT,
   boxSizing: "border-box",
-  border: "1px solid rgba(179,137,46,0.28)",
-  borderRadius: 999,
+  border: "1px solid color-mix(in srgb, var(--teal-d) 28%, transparent)",
+  borderRadius: 8,
   background: "var(--bg-card-solid)",
-  color: "#b3892e",
+  color: "var(--teal-d)",
   cursor: "pointer",
   fontSize: 12,
   fontWeight: 700,
@@ -2461,8 +2460,8 @@ const approveBtn: React.CSSProperties = {
   padding: 13,
   borderRadius: 10,
   border: "none",
-  background: "#5e7d44",
-  color: "#fff",
+  background: "var(--teal-d)",
+  color: "var(--on-accent)",
   fontSize: 15,
   fontWeight: 700,
   cursor: "pointer",
@@ -2472,15 +2471,15 @@ const rejectBtn: React.CSSProperties = {
   flex: 1,
   padding: 13,
   borderRadius: 10,
-  border: "1px solid #b35850",
+  border: "1px solid var(--danger)",
   background: "var(--bg-card-solid)",
-  color: "#b35850",
+  color: "var(--danger)",
   fontSize: 15,
   fontWeight: 700,
   cursor: "pointer",
 };
 const disabledRejectBtn: React.CSSProperties = { ...rejectBtn, opacity: 0.45, cursor: "not-allowed" };
-const dangerBtn: React.CSSProperties = { ...rejectBtn, border: "1px solid #8f3b36", background: "rgba(179, 80, 72, 0.08)", color: "#8f3b36" };
+const dangerBtn: React.CSSProperties = { ...rejectBtn, border: "1px solid var(--sub)", background: "color-mix(in srgb, var(--danger) 8%, transparent)", color: "var(--sub)" };
 const searchBanner: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -2488,8 +2487,8 @@ const searchBanner: React.CSSProperties = {
   padding: "10px 14px",
   marginBottom: 10,
   borderRadius: 8,
-  border: "1px solid rgba(179,137,46,0.28)",
-  background: "rgba(212,165,65,0.18)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 28%, transparent)",
+  background: "color-mix(in srgb, var(--teal-d) 18%, transparent)",
   color: "var(--text-main)",
   fontSize: 13,
 };
@@ -2507,9 +2506,9 @@ const searchSheetTab = (active: boolean, omit: boolean): React.CSSProperties => 
   minHeight: 30,
   padding: "5px 10px",
   borderRadius: 8,
-  border: active ? "1px solid #b3892e" : "1px solid rgba(179,137,46,0.22)",
-  background: omit ? (active ? "rgba(179,88,80,0.18)" : "rgba(179,88,80,0.08)") : active ? "rgba(212,165,65,0.18)" : "var(--bg-card-solid)",
-  color: omit ? "#b35850" : "var(--text-sub)",
+  border: active ? "1px solid var(--teal-d)" : "1px solid color-mix(in srgb, var(--teal-d) 22%, transparent)",
+  background: omit ? (active ? "color-mix(in srgb, var(--danger) 18%, transparent)" : "color-mix(in srgb, var(--danger) 8%, transparent)") : active ? "color-mix(in srgb, var(--teal-d) 18%, transparent)" : "var(--bg-card-solid)",
+  color: omit ? "var(--danger)" : "var(--text-sub)",
   fontSize: 13,
   fontWeight: active ? 700 : 500,
   cursor: "pointer",
@@ -2519,26 +2518,26 @@ const searchSheetAdd: React.CSSProperties = {
   width: 30,
   height: 30,
   borderRadius: 8,
-  border: "1px solid rgba(179,137,46,0.25)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 25%, transparent)",
   background: "var(--bg-card-solid)",
-  color: "#b3892e",
+  color: "var(--teal-d)",
   fontWeight: 700,
   cursor: "pointer",
 };
 const searchModeToggle: React.CSSProperties = {
   display: "inline-flex",
   padding: 3,
-  borderRadius: 999,
-  border: "1px solid rgba(179,137,46,0.22)",
+  borderRadius: 8,
+  border: "1px solid color-mix(in srgb, var(--teal-d) 22%, transparent)",
   background: "var(--bg-card-solid)",
   marginLeft: 6,
 };
 const searchModeBtn = (active: boolean): React.CSSProperties => ({
   padding: "5px 12px",
-  borderRadius: 999,
+  borderRadius: 8,
   border: "none",
-  background: active ? "#d4a541" : "transparent",
-  color: active ? "#fff" : "var(--text-sub)",
+  background: active ? "var(--teal-d)" : "transparent",
+  color: active ? "var(--on-accent)" : "var(--text-sub)",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
@@ -2551,17 +2550,17 @@ const foundBar: React.CSSProperties = {
   padding: "9px 12px",
   marginBottom: 12,
   borderRadius: 8,
-  border: "1px solid rgba(179,137,46,0.26)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 26%, transparent)",
   background: "var(--bg-card-solid)",
   color: "var(--text-main)",
   fontSize: 13,
 };
 const foundSummaryText: React.CSSProperties = { flex: 1, minWidth: 160, color: "var(--text-sub)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const foundClearBtn: React.CSSProperties = {
-  border: "1px solid rgba(179,137,46,0.24)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 24%, transparent)",
   background: "var(--bg-card-solid)",
   color: "var(--text-sub)",
-  borderRadius: 999,
+  borderRadius: 8,
   padding: "5px 10px",
   cursor: "pointer",
   fontSize: 12,
@@ -2605,8 +2604,8 @@ const listSummaryPill: React.CSSProperties = {
   alignItems: "center",
   minHeight: 30,
   padding: "5px 12px",
-  borderRadius: 999,
-  border: "1px solid rgba(179,137,46,0.22)",
+  borderRadius: 8,
+  border: "1px solid color-mix(in srgb, var(--teal-d) 22%, transparent)",
   background: "var(--bg-card-solid)",
   color: "var(--text-main)",
   fontSize: 13,
@@ -2616,14 +2615,14 @@ const listSummaryPill: React.CSSProperties = {
 };
 const listDeleteBtn: React.CSSProperties = {
   ...listSummaryPill,
-  border: "1px solid #8f3b36",
-  color: "#8f3b36",
+  border: "1px solid var(--sub)",
+  color: "var(--sub)",
   cursor: "pointer",
 };
 const listRestoreBtn: React.CSSProperties = {
   ...listSummaryPill,
-  border: "1px solid #5e7d44",
-  color: "#4f6f38",
+  border: "1px solid var(--teal-d)",
+  color: "var(--teal-d)",
   cursor: "pointer",
 };
 const corpSwitch: React.CSSProperties = {
@@ -2632,24 +2631,20 @@ const corpSwitch: React.CSSProperties = {
   marginBottom: 18,
   padding: 6,
   background: "var(--bg-card)",
-  borderRadius: 999,
+  borderRadius: 8,
   width: "fit-content",
-  border: "1px solid rgba(180,165,130,0.2)",
+  border: "1px solid color-mix(in srgb, var(--sub) 20%, transparent)",
   flexWrap: "wrap",
 };
 const corpTab = (active: boolean): React.CSSProperties => ({
-  padding: "8px 20px",
-  borderRadius: 999,
-  border: "none",
-  background: active ? "#d4a541" : "transparent",
-  color: active ? "#fff" : "var(--text-sub)",
-  boxShadow: active ? "0 2px 8px rgba(212,165,65,0.3)" : "none",
-  cursor: "pointer",
-  fontSize: 13,
+ padding: "7px 12px", borderRadius: 6,
+ border: active ? "1px solid var(--teal)" : "1px solid var(--line)",
+ background: "var(--card)", color: active ? "var(--teal-d)" : "var(--sub)",
+ boxShadow: "none", cursor: "pointer", fontSize: 13,
 });
 const statusPanel: React.CSSProperties = {
   background: "var(--bg-paper-soft)",
-  border: "1px solid rgba(179,137,46,0.18)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)",
   borderRadius: 12,
   padding: "18px 20px",
   marginTop: 18,
@@ -2659,7 +2654,7 @@ const statusHead: React.CSSProperties = {
   alignItems: "baseline",
   justifyContent: "space-between",
   gap: 16,
-  borderBottom: "1px dashed rgba(179,137,46,0.35)",
+  borderBottom: "1px dashed color-mix(in srgb, var(--teal-d) 35%, transparent)",
   paddingBottom: 8,
   marginBottom: 12,
 };
@@ -2671,17 +2666,17 @@ const th: React.CSSProperties = {
   color: "var(--text-sub)",
   fontWeight: 500,
   padding: "9px 8px",
-  borderBottom: "1px solid rgba(180,165,130,0.25)",
+  borderBottom: "1px solid color-mix(in srgb, var(--sub) 25%, transparent)",
 };
-const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed rgba(180,165,130,0.18)", color: "var(--text-main)" };
+const td: React.CSSProperties = { padding: "10px 8px", borderBottom: "1px dashed color-mix(in srgb, var(--sub) 18%, transparent)", color: "var(--text-main)" };
 const applicantTd: React.CSSProperties = { ...td, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const tr: React.CSSProperties = { cursor: "pointer" };
-const pill: React.CSSProperties = { display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600 };
+const pill: React.CSSProperties = { display: "inline-block", padding: "3px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600 };
 const modalBackdrop: React.CSSProperties = {
   position: "fixed",
   inset: 0,
   zIndex: 1000,
-  background: "rgba(40,34,25,0.42)",
+  background: "color-mix(in srgb, var(--teal-d) 42%, transparent)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -2693,16 +2688,16 @@ const modalCard: React.CSSProperties = {
   overflow: "auto",
   background: "var(--bg-card-solid)",
   borderRadius: 14,
-  border: "1px solid rgba(179,137,46,0.25)",
-  boxShadow: "0 18px 48px rgba(40,34,25,0.22)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 25%, transparent)",
+  boxShadow: "0 18px 48px color-mix(in srgb, var(--teal-d) 22%, transparent)",
   padding: 22,
 };
 const modalHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 };
 const closeBtn: React.CSSProperties = {
   width: 34,
   height: 34,
-  borderRadius: 999,
-  border: "1px solid rgba(179,137,46,0.25)",
+  borderRadius: 8,
+  border: "1px solid color-mix(in srgb, var(--teal-d) 25%, transparent)",
   background: "var(--bg-card-solid)",
   color: "var(--text-sub)",
   fontSize: 20,
@@ -2713,7 +2708,7 @@ const zoomBackdrop: React.CSSProperties = {
   position: "fixed",
   inset: 0,
   zIndex: 1100,
-  background: "rgba(24,20,14,0.78)",
+  background: "color-mix(in srgb, var(--teal-d) 78%, transparent)",
   display: "flex",
   flexDirection: "column",
   padding: 18,
@@ -2723,22 +2718,22 @@ const zoomHead: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
-  color: "#fff",
+  color: "var(--on-accent)",
   marginBottom: 12,
 };
 const zoomTools: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8 };
 const zoomBtn: React.CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.28)",
+  border: "1px solid color-mix(in srgb, var(--card) 28%, transparent)",
   borderRadius: 8,
-  background: "rgba(255,253,245,0.12)",
-  color: "#fff",
+  background: "color-mix(in srgb, var(--card) 12%, transparent)",
+  color: "var(--on-accent)",
   cursor: "pointer",
   minWidth: 34,
   padding: "7px 10px",
 };
 const zoomCloseBtn: React.CSSProperties = {
   ...zoomBtn,
-  borderRadius: 999,
+  borderRadius: 8,
   fontSize: 18,
   lineHeight: 1,
 };
@@ -2747,8 +2742,8 @@ const zoomCanvas: React.CSSProperties = {
   flex: 1,
   overflow: "auto",
   borderRadius: 12,
-  background: "rgba(255,253,245,0.92)",
-  border: "1px solid rgba(255,255,255,0.18)",
+  background: "color-mix(in srgb, var(--card) 92%, transparent)",
+  border: "1px solid color-mix(in srgb, var(--card) 18%, transparent)",
   display: "flex",
   alignItems: "flex-start",
   justifyContent: "flex-start",
@@ -2763,12 +2758,14 @@ const receiptToolGroup: React.CSSProperties = {
 const rotateImgBtn: React.CSSProperties = {
   padding: "6px 14px",
   borderRadius: 8,
-  border: "1px solid rgba(179,137,46,0.35)",
+  border: "1px solid color-mix(in srgb, var(--teal-d) 35%, transparent)",
   background: "var(--bg-card-solid)",
-  color: "#b3892e",
+  color: "var(--teal-d)",
   fontSize: 13,
   fontWeight: 600,
   cursor: "pointer",
   flexShrink: 0,
   marginLeft: 10,
 };
+
+function WarningIcon() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-label="注意" style={{ verticalAlign: "middle" }}><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5m0 3v1"/></svg>; }

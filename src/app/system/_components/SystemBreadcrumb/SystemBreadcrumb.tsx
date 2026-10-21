@@ -7,7 +7,7 @@ export type SystemBreadcrumbItem = {
 };
 
 export default function SystemBreadcrumb({ items = [], root = { label: "System", href: "/system" } }: { items?: SystemBreadcrumbItem[]; root?: SystemBreadcrumbItem }) {
-  const crumbs: SystemBreadcrumbItem[] = [{ ...root, href: items.length ? root.href : undefined }, ...items];
+  const crumbs: SystemBreadcrumbItem[] = [{ ...root, href: items.length || root.label === "Root" ? root.href : undefined }, ...items];
 
   return (
     <nav className={styles.breadcrumb} aria-label="現在地">
@@ -16,7 +16,7 @@ export default function SystemBreadcrumb({ items = [], root = { label: "System",
           const isCurrent = index === crumbs.length - 1;
           return (
             <li key={`${item.label}-${index}`}>
-              {item.href && !isCurrent ? <Link href={item.href}>{item.label}</Link> : <span>{item.label}</span>}
+              {item.href && (!isCurrent || (items.length === 0 && root.label === "Root")) ? <Link href={item.href}>{item.label}</Link> : <span>{item.label}</span>}
             </li>
           );
         })}

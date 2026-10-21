@@ -1,5 +1,7 @@
 "use client";
 
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
+
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -88,6 +90,7 @@ export function BudFaithfulFrame({
   return (
     <BudGate>
         <div className={styles.pageStack}>
+          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: title }]} />
           <PageHeader
             title={title}
             titleJp={titleJp}

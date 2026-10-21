@@ -1,5 +1,6 @@
 "use client";
 
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
 import { BudGate } from "../_components/BudGate";
@@ -20,6 +21,7 @@ export default function ReceivablesPage() {
 
   return (
     <BudGate>
+        <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "入金管理" }]} />
         <PageHeader
           title="入金管理"
           titleJp="入金の流れを、整える準備"

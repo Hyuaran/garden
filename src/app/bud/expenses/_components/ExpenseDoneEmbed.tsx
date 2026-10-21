@@ -24,7 +24,7 @@ export function ExpenseDoneEmbed() {
         button.type = "button";
         button.className = "tab-item";
         button.dataset.tab = "done";
-        button.innerHTML = '<span class="tab-item-jp">完了</span>/ Done';
+        button.innerHTML = '<span class="tab-item-jp">完了</span>';
         bookingButton.insertAdjacentElement("afterend", button);
       }
 

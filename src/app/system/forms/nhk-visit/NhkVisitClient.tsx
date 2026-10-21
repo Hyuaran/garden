@@ -126,7 +126,7 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
 
   return <div className={mobile ? `${styles.pageShell} ${styles.mobile}` : styles.pageShell}>
     <header className={styles.header}>
-      {!mobile && <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "NHK訪問業務 報告フォーム" }]} />}
+      {!mobile && <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "NHK訪問業務 報告フォーム" }]} />}
       <div className={styles.mobileTitleRow}>
         <h1>{mobile ? "NHK訪問業務 報告" : "NHK訪問業務 報告フォーム"}</h1>
         {mobile && <p className={styles.mobileSender} {...CLARITY_MASK}>{submitterName} さん</p>}

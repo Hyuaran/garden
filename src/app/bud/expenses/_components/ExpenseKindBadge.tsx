@@ -5,4 +5,4 @@ export function ExpenseKindBadge({ kind }: { kind: string | null | undefined }) 
   return <span style={badge}>会社経費</span>;
 }
 
-const badge: React.CSSProperties = { display: "inline-block", maxWidth: 96, marginRight: 6, padding: "2px 7px", overflow: "hidden", textOverflow: "ellipsis", verticalAlign: "middle", whiteSpace: "nowrap", border: "1px solid #8f5f18", borderRadius: 999, background: "#f6d776", color: "#302719", fontSize: 11, fontWeight: 800 };
+const badge: React.CSSProperties = { display: "inline-block", maxWidth: 96, marginRight: 6, padding: "2px 7px", overflow: "hidden", textOverflow: "ellipsis", verticalAlign: "middle", whiteSpace: "nowrap", border: "1px solid var(--teal-d)", borderRadius: 8, background: "var(--sub)", color: "var(--teal-d)", fontSize: 11, fontWeight: 800 };

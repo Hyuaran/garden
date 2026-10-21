@@ -23,7 +23,7 @@ export default function MyPageClient({ initialTab, registered, employeeName, can
 }) {
   const activeTab = initialTab;
   const [profile, setProfile] = useState<MyPageProfile | null>(initialProfile);
-  const title = activeTab === "profile" ? "マイページ" : MY_PAGE_TITLES[activeTab];
+  const title = MY_PAGE_TITLES[activeTab];
   return <div className={styles.pageContent}>
     <header className={styles.header}><SystemBreadcrumb items={[{ label: title }]} /><h1>{title}</h1></header>
     <div className={styles.standalonePanel}>

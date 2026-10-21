@@ -1,5 +1,7 @@
 "use client";
 
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
+
 import type { ReactNode } from "react";
 
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
@@ -31,6 +33,7 @@ export function BudGardenFrame({
   return (
     <BudGate>
         <div className={styles.pageStack}>
+          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: title }]} />
           <PageHeader
             title={title}
             titleJp={titleJp}

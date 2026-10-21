@@ -22,3 +22,5 @@
 /* 「モニター表示」は見出しの下・左寄せに置く（右上へ引き上げると枠の［切替］［ログアウト］と重なった・2026-09-18） */
 .monitorEntry{display:flex;justify-content:flex-start;margin:-6px 0 18px}.monitorButton{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 16px;border:1px solid var(--teal);border-radius:8px;background:var(--card);color:var(--tealDark);font-weight:900;text-decoration:none}.monitorButton:hover{background:color-mix(in srgb,var(--teal) 10%,var(--card))}
 @media(max-width:720px){.monitorEntry{justify-content:flex-start;margin:0 0 18px}}
+
+.inputTable thead th,.resultTable thead th{ text-align:center; }

@@ -50,7 +50,7 @@ export function ExpenseBookingGroupHeader({
             aria-label={`${applicantName}の明細を${collapsed ? "開く" : "折りたたむ"}`}
             onClick={onToggleCollapsed}
           >
-            {collapsed ? "▶" : "▼"}
+            {collapsed ? "›" : "▼"}
           </button>
           <input
             ref={checkboxRef}
@@ -81,11 +81,11 @@ function yenWithTaxExcluded(value: number) {
   return `${yen(value)}（${yen(calculateTaxExcludedAmount(value))}）`;
 }
 
-const groupTd: React.CSSProperties = { position: "sticky", top: 36, zIndex: 2, padding: "10px 8px", background: "var(--bg-card-solid)", borderTop: "1px solid var(--border-card)", borderBottom: "1px solid var(--border-card)", boxShadow: "0 2px 4px rgba(25,22,16,0.12)", color: "var(--text-main)" };
+const groupTd: React.CSSProperties = { position: "sticky", top: 36, zIndex: 2, padding: "10px 8px", background: "var(--bg-card-solid)", borderTop: "1px solid var(--border-card)", borderBottom: "1px solid var(--border-card)", boxShadow: "0 2px 4px color-mix(in srgb, var(--ink) 12%, transparent)", color: "var(--text-main)" };
 const groupHead: React.CSSProperties = { display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px 12px", minHeight: 26, whiteSpace: "normal" };
 const collapseBtn: React.CSSProperties = { width: 24, color: "var(--text-main)", fontSize: 12, lineHeight: 1 };
 const groupName: React.CSSProperties = { color: "var(--text-main)", fontSize: 14, fontWeight: 600, overflowWrap: "anywhere" };
 const groupStats: React.CSSProperties = { display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px 8px", minWidth: 0 };
 const selectedMeta: React.CSSProperties = { color: "var(--text-main)", fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", overflowWrap: "anywhere" };
 const groupMeta: React.CSSProperties = { color: "var(--accent-gold-d)", fontSize: 13, fontWeight: 600, fontVariantNumeric: "tabular-nums", overflowWrap: "anywhere" };
-const warningBadge: React.CSSProperties = { padding: "2px 8px", borderRadius: 999, color: "var(--text-main)", background: "rgba(212,165,65,0.18)", fontSize: 12, fontWeight: 600 };
+const warningBadge: React.CSSProperties = { padding: "2px 8px", borderRadius: 8, color: "var(--text-main)", background: "color-mix(in srgb, var(--teal-d) 18%, transparent)", fontSize: 12, fontWeight: 600 };

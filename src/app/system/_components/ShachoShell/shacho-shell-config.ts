@@ -24,7 +24,7 @@ export function shouldHideSidebar(role: GardenRole) {
 }
 
 export const LIMITED_MENU_ITEMS: SystemMenuItem[] = [
-  { label: "マイページ", description: "自分の登録情報を確認します。", icon: "person", href: "/system/mypage" },
+  { label: "自分の情報", description: "自分の登録情報を確認します。", icon: "person", href: "/system/mypage" },
   { label: "勤怠打刻", description: "出勤・退勤の打刻をします。", icon: "clock", href: "/system/attendance" },
   { label: "シフト", description: "シフトの提出と勤務予定を確認します。", icon: "shift", href: "/system/shift" },
   { label: "前確依頼", description: "前確依頼を出します。", icon: "zenkaku", href: "/system/zenkaku" },

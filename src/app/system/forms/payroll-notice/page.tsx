@@ -25,8 +25,8 @@ export default async function PayrollNoticePage() {
   if (!isRoleAtLeast(role, "staff")) {
     return <div className={styles.pageShell}>
       <header className={styles.header}>
-        <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "給与計算連絡" }]} />
-        <h1>給与計算に関する連絡</h1>
+        <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "給与計算連絡" }]} />
+        <h1>給与計算連絡</h1>
       </header>
       <section className={styles.notice}>
         <h2>この画面は社員以上が使えます</h2>

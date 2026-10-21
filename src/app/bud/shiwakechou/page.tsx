@@ -1,5 +1,5 @@
 "use client";
-
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 /**
  * Garden-Bud — 07_Shiwakechou 仕訳帳ダッシュボード
  *
@@ -32,7 +32,7 @@ function ShiwakechouPageContent() {
     <div className="p-6 max-w-7xl mx-auto">
       <header className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">仕訳帳</h1>
+          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "仕訳帳" }]} /><h1 className="text-2xl font-bold text-gray-800">仕訳帳</h1>
           <p className="text-sm text-gray-500 mt-1">
             仕訳一覧 + 弥生エクスポート連動
           </p>

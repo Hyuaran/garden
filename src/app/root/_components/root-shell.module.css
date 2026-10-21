@@ -109,10 +109,12 @@
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  overflow: auto;
+  overflow-x: clip;
 }
 
 .content {
+  min-width: 0;
+  max-width: 100%;
   padding-top: 54px;
 }
 
@@ -278,3 +280,19 @@
     padding-top: 0;
   }
 }
+
+.permissionTable th:first-child,
+.permissionTable td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--root-bg-panel);
+  box-shadow: 1px 0 var(--root-border);
+}
+.permissionTable thead th:first-child {
+  z-index: 2;
+  background: var(--root-bg);
+}
+
+.compactTable td > div { flex-wrap: wrap; min-width: 0; }
+.compactTable button { padding-inline: 8px !important; }

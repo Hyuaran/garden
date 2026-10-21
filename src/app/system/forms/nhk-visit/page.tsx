@@ -25,7 +25,7 @@ export default async function NhkVisitPage() {
   if (!isRoleAtLeast(role, "staff")) {
     return <div className={styles.pageShell}>
       <header className={styles.header}>
-        <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "NHK訪問業務 報告フォーム" }]} />
+        <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "NHK訪問業務 報告フォーム" }]} />
         <h1>NHK訪問業務 報告フォーム</h1>
       </header>
       <section className={styles.panel}>

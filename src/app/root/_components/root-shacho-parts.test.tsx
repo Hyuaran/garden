@@ -23,23 +23,39 @@ function collectFiles(dir: string): string[] {
 }
 
 describe("Root 社長スタイル共通部品", () => {
+  it("通常の表は幅内に収め、見出しを中央・数値を右に揃える", () => {
+    render(<DataTable columns={[
+      { key: "id", header: "ID", width: 100, render: (row: Row) => row.id },
+      { key: "note", header: "金額", width: 200, align: "right", render: (row: Row) => row.note },
+    ]} rows={[{ id: "ROW-1", note: "100" }]} />);
+    const table = screen.getByRole("table");
+    expect(table).toHaveStyle({ width: "100%", tableLayout: "fixed" });
+    expect(table.style.minWidth).toBe("");
+    expect(table.parentElement).toHaveStyle({ maxWidth: "100%", overflow: "auto" });
+    expect(screen.getByRole("columnheader", { name: "金額" }).style.textAlign).toBe("center");
+    expect(screen.getByRole("cell", { name: "100" }).style.textAlign).toBe("right");
+  });
+
   it("DataTable の見出し・選択行・折り返し設定をRoot変数で描画する", () => {
     const columns: Column<Row>[] = [
       { key: "id", header: "ID", render: (row) => row.id, width: 80 },
       { key: "note", header: "説明", render: (row) => row.note, width: 180, wrap: true },
     ];
-    render(<DataTable columns={columns} rows={[{ id: "ROW-1", note: "長い説明" }]} activeIndex={0} />);
+    render(<DataTable stickyFirstColumn columns={columns} rows={[{ id: "ROW-1", note: "長い説明" }]} activeIndex={0} />);
 
     const table = screen.getByRole("table");
     expect(table).toHaveStyle("min-width: max-content");
     const idHeader = screen.getByRole("columnheader", { name: "ID" });
     expect(idHeader.style.color).toBe(colors.heading);
-    expect(idHeader.style.whiteSpace).toBe("nowrap");
+    expect(idHeader.style.textAlign).toBe("center");
+    expect(idHeader.style.position).toBe("sticky");
+    expect(idHeader.style.left).toBe("0px");
     const row = screen.getByRole("row", { name: /ROW-1/ });
     expect(row.style.background).toBe(colors.infoBg);
     expect(within(row).getByText("ROW-1").style.whiteSpace).toBe("nowrap");
     const wrapCell = within(row).getByText("長い説明");
     expect(wrapCell.style.whiteSpace).toBe("normal");
+    expect(within(row).getByText("ROW-1").style.position).toBe("sticky");
     expect(wrapCell.style.minWidth).toBe("180px");
   });
 

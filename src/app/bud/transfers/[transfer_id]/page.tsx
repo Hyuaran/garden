@@ -1,5 +1,6 @@
 "use client";
 
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -96,7 +97,7 @@ function TransferDetailContent() {
 
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 font-mono">
+          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "振込管理", href: "/bud/transfers" }, { label: transfer.transfer_id }]} /><h1 className="text-2xl font-bold text-gray-800 font-mono">
             {transfer.transfer_id}
           </h1>
           <div className="mt-2 flex items-center gap-2 text-sm">

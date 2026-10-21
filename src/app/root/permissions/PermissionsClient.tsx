@@ -1,5 +1,6 @@
 "use client";
 
+import styles from "../_components/root-shell.module.css";
 import { useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import {
@@ -180,12 +181,12 @@ export default function PermissionsClient({
             役職の一覧
           </h2>
           <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "auto", boxShadow: colors.shadowSmall }}>
-            <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
+            <table className={styles.permissionTable} style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
                   <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>順位</th>
-                  <th style={{ textAlign: "left", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>役職</th>
-                  <th style={{ textAlign: "left", padding: "10px 12px", color: colors.heading }}>誰か・どこまで使えるか</th>
+                  <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>役職</th>
+                  <th style={{ textAlign: "center", padding: "10px 12px", color: colors.heading }}>誰か・どこまで使えるか</th>
                   <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>使える画面／機能</th>
                   <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>在籍中の人数</th>
                 </tr>
@@ -214,11 +215,11 @@ export default function PermissionsClient({
           役職ごとに使える画面
         </h2>
         <div style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 16, overflow: "auto", boxShadow: colors.shadowSmall }}>
-          <table style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
+          <table className={styles.permissionTable} style={{ width: "100%", minWidth: "max-content", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: colors.bg, borderBottom: `1px solid ${colors.border}` }}>
-                <th style={{ textAlign: "left", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>画面／機能</th>
-                <th style={{ textAlign: "left", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>区分</th>
+                <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>画面／機能</th>
+                <th style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>区分</th>
                 {GARDEN_ROLE_ORDER.map((role) => (
                   <th key={role} style={{ textAlign: "center", padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>
                     {roleLabel(role)}
@@ -284,7 +285,7 @@ export default function PermissionsClient({
         {loading ? (
           <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div>
         ) : (
-          <DataTable columns={employeeColumns} rows={employeeRows} />
+          <DataTable stickyFirstColumn columns={employeeColumns} rows={employeeRows} />
         )}
       </section>
     </>

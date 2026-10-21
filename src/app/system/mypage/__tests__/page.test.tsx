@@ -62,8 +62,8 @@ describe("system mypage", () => {
     renderMyPage();
     const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
     expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
-    expect(within(breadcrumb).getByText("マイページ")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "マイページ" })).toBeInTheDocument();
+    expect(within(breadcrumb).getByText("自分の情報")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "自分の情報" })).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.getByLabelText("個人情報を開く")).toBeInTheDocument();
     const unlockCode = screen.getByLabelText("誕生日の月日4桁");
@@ -83,8 +83,8 @@ describe("system mypage", () => {
     renderMyPage({ ...baseProps, tabbed: false });
     const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
     expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
-    expect(within(breadcrumb).getByText("マイページ")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "マイページ" })).toBeInTheDocument();
+    expect(within(breadcrumb).getByText("自分の情報")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "自分の情報" })).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.getByLabelText("誕生日の月日4桁")).toBeInTheDocument();
   });

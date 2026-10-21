@@ -1,5 +1,5 @@
 "use client";
-
+import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BudGate } from "../../_components/BudGate";
@@ -106,7 +106,7 @@ function StatementsSummaryContent() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">月次集計</h1>
+          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "月次集計" }]} /><h1 className="text-2xl font-bold text-gray-800">月次集計</h1>
           <p className="text-sm text-gray-500 mt-1">
             指定月の入出金を費目別・口座別・日別で集計
           </p>

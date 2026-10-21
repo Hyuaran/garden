@@ -165,8 +165,8 @@ export default function PayrollNoticeClient({
 
   return <div className={styles.pageShell}>
     <header className={styles.header}>
-      <SystemBreadcrumb items={[{ label: "フォーム", href: "/system/forms" }, { label: "給与計算連絡" }]} />
-      <h1>給与計算に関する連絡</h1>
+      <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "給与計算連絡" }]} />
+      <h1>給与計算連絡</h1>
       <p className={styles.lead}>営業部のみなさま、今月も業務お疲れ様でした！ 入力して送信すると、Chatwork に投稿されます。</p>
       <p className={styles.sender} {...CLARITY_MASK}>送信者：{submitterName}{registered && status.accountName ? `（Chatwork：${status.accountName} で投稿します）` : ""}</p>
     </header>

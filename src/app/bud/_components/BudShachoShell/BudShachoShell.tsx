@@ -165,7 +165,7 @@ export function BudShachoShell({ children }: { children: ReactNode }) {
       </div>}
 
       <main className={`${systemStyles.main} ${styles.main}`}>
-        <div className={styles.topbar}>{pathname !== "/bud/bank" && <span className={styles.heading}>Bud ／ {BUD_GARDEN_PAGE_MENU.find(item => item.href === activePath)?.label ?? "経理・収支"}</span>}<div className={styles.actions}>
+        <div className={styles.topbar}><div className={styles.actions}>
           {userName && <span className={systemStyles.accountName} {...CLARITY_MASK}>{userName}さん</span>}
           <HeaderViewSlot /><NoticeBell className={systemStyles.iconButton} />
           <button className={systemStyles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>

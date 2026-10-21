@@ -40,7 +40,7 @@ describe("system home", () => {
   it("links all manager cards to their configured destinations", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     render(await SystemHomePage());
-    expect(screen.getByRole("heading", { name: "社内システム" }).previousElementSibling).toHaveTextContent("System");
+    expect(screen.getByRole("heading", { name: "ホーム" }).previousElementSibling).toHaveTextContent("System");
     expect(screen.queryByText("SYSTEM")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "資料" }).closest("a")).toHaveAttribute("href", "/system/docs");
     expect(screen.getByRole("heading", { name: "入社手続き" }).closest("a")).toHaveAttribute("href", "/system/onboarding");
