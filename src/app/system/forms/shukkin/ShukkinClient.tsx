@@ -1,6 +1,7 @@
 "use client";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
-import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
+import ReorderGrip from "@/app/system/_components/ReorderGrip/ReorderGrip";
+import SystemTabs, { TabActionButton } from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -52,6 +53,7 @@ async function copyText(text: string) {
 
 export default function ShukkinClient({ canEditMembers }: { canEditMembers: boolean }) {
   const today = useMemo(() => todayJst(), []);
+  const [reordering,setReordering] = useState(false);
   const [tab, setTab] = useState<Tab>("attendance");
   const [members, setMembers] = useState<ShukkinMember[]>([]);
   const [rows, setRows] = useState<KotDailyRow[]>([]);
@@ -154,12 +156,13 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
     }
   }
 
-  function moveMember(index: number, delta: -1 | 1) {
+  function moveMember(key: string, target: string) {
+    const index = members.findIndex(m=>m.employeeNumber===key);
+    const targetIndex = members.findIndex(m=>m.employeeNumber===target);
     const current = [...members];
     const member = current[index];
-    const targetIndex = index + delta;
     if (!member || !current[targetIndex] || current[targetIndex].groupName !== member.groupName) return;
-    [current[index], current[targetIndex]] = [current[targetIndex], current[index]];
+    current.splice(targetIndex,0,current.splice(index,1)[0]);
     setMembers(reindex(current));
   }
 
@@ -229,7 +232,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
       <p className={styles.hint}>KING OF TIME ログイン＞エクスポート インポート＞データ出力 日別データCSV＞日付指定＞日付を本日/明日選択＞出力レイアウト Garden選択＞データ出力</p>
     </section>
 
-    <SystemTabs aria-label="文面">
+    <SystemTabs aria-label="文面" actions={tab === "members" && canEditMembers ? <TabActionButton icon="sort" label="並び替え" pressed={reordering} onClick={()=>setReordering(!reordering)} /> : undefined}>
       <button type="button" role="tab" aria-selected={tab === "attendance"} onClick={() => setTab("attendance")}>出勤表</button>
       <button type="button" role="tab" aria-selected={tab === "line"} onClick={() => setTab("line")}>シフト連絡（LINE）</button>
       <button type="button" role="tab" aria-selected={tab === "members"} onClick={() => setTab("members")}>並びの設定</button>
@@ -318,11 +321,9 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
         {SHUKKIN_GROUPS.map((group) => <div className={styles.memberGroup} key={group}>
           <h2>{group}</h2>
           {members.map((member, index) => ({ member, index })).filter((item) => item.member.groupName === group).map(({ member, index }) => (
-            <div className={styles.memberRow} key={member.employeeNumber} {...CLARITY_MASK}>
+            <div className={styles.memberRow} data-member={member.employeeNumber} key={member.employeeNumber} {...CLARITY_MASK}>
               <span>{member.employeeNumber}</span>
-              <strong>{member.name || member.displayName || "名前未設定"}</strong>
-              <button type="button" disabled={!canEditMembers} onClick={() => moveMember(index, -1)}>↑</button>
-              <button type="button" disabled={!canEditMembers} onClick={() => moveMember(index, 1)}>↓</button>
+              <strong>{canEditMembers && reordering && <ReorderGrip label={member.name || member.displayName || member.employeeNumber} itemKey={member.employeeNumber} keys={members.filter(m=>m.groupName===group).map(m=>m.employeeNumber)} selector="[data-member]" attribute="data-member" onMove={moveMember} />}{member.name || member.displayName || "名前未設定"}</strong>
               <select disabled={!canEditMembers} value={member.groupName} onChange={(event) => updateMember(index, { groupName: event.currentTarget.value as ShukkinGroup })}>
                 {SHUKKIN_GROUPS.map((item) => <option key={item} value={item}>{item}</option>)}
               </select>

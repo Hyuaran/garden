@@ -40,7 +40,6 @@
 .account { min-width:0; display:flex; flex-direction:column; gap:8px; }
 .amount { display:block; font-size:clamp(20px,1.8vw,28px); font-variant-numeric:tabular-nums; margin:10px 0; }
 .manual { font-size:18px; margin:10px 0 0; font-weight:700; }
-.grip { cursor:grab; display:inline-flex; padding:6px; }
 .tableWrap { max-width:100%; overflow:auto; border:1px solid var(--line); border-radius:22px; background:var(--card); }
 .tableWrap table { width:100%; min-width:max-content; border-collapse:collapse; }
 .tableWrap th,.tableWrap td { padding:14px 18px; border-bottom:1px solid var(--line); white-space:nowrap; text-align:left; }
@@ -71,10 +70,7 @@
 .matrix tbody th,.matrix tfoot th { background:var(--card); color:var(--heading); }
 .matrix tfoot td { background:var(--card); font-weight:700; }
 .matrix tfoot th,.matrix tfoot td { border-top:2px solid var(--line); }
-.axisHeading { display:flex; flex-direction:column; align-items:center; gap:8px; }
-.axisHeading[draggable="true"] { cursor:grab; }
-.axisButtons { display:flex; gap:6px; }
-.axisButtons button { padding:4px 10px; }
+.axisHeading { display:flex; flex-direction:row; align-items:center; gap:8px; }
 /* 増減の色は社長スタイル（増＝ティール・減＝赤）。小さな文字でも読める濃さ（明るい表示で 4.5:1 以上） */
 .increase { color:#0b7e7a; }
 .decrease { color:#c8333b; }
@@ -140,3 +136,6 @@
 
 .inheritedViewer { color: var(--sub); opacity: .65; }
 .inheritedViewer small { display: block; }
+
+.mfRetrieve{position:relative;display:inline-flex}.mfRetrieve a{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--sub);text-decoration:none}.mfRetrieve a:hover{color:var(--teal)}.mfRetrieve [role=tooltip]{display:none;position:absolute;right:0;top:calc(100% + 8px);width:280px;background:var(--side);color:var(--side-ink);border:1px solid var(--side-line);border-radius:9px;padding:5px 10px;font-size:11.5px;white-space:normal;z-index:100;pointer-events:none;box-sizing:border-box;max-width:calc(100vw - 32px)}.mfRetrieve:hover [role=tooltip],.mfRetrieve:focus-within [role=tooltip]{display:block}
+

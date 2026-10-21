@@ -59,6 +59,8 @@ export function useStickyTable(ref: RefObject<HTMLElement | null>) {
         if (activeGroup?.contains(node)) { dest.style.top = "auto"; if (css.position === "sticky") dest.style.position = "static"; }
         if (node instanceof HTMLElement && node.matches("button,input,a,select")) {
           dest.addEventListener("click", event => { event.preventDefault(); node.click(); });
+          dest.addEventListener("pointerdown", event => { node.dispatchEvent(new PointerEvent("pointerdown", event)); });
+          dest.addEventListener("keydown", event => { if (!node.dispatchEvent(new KeyboardEvent("keydown", event))) event.preventDefault(); });
         }
       });
       Object.assign(copy.style, { width: `${table.offsetWidth}px`, minWidth: `${table.offsetWidth}px`, maxWidth: "none", height: "auto", minHeight: "0", maxHeight: "none", tableLayout: "fixed", margin: "0" });
@@ -75,7 +77,15 @@ export function useStickyTable(ref: RefObject<HTMLElement | null>) {
         if (/(auto|scroll|hidden|clip)/.test(css.overflowY)) { top = Math.max(top, rect.top); bottom = Math.min(bottom, rect.bottom); }
         if (/(auto|scroll|hidden|clip)/.test(css.overflowX)) { left = Math.max(left, rect.left); right = Math.min(right, rect.right); }
       }
-      const group = Array.from(table.querySelectorAll<HTMLTableRowElement>("tr[data-sticky-group]")).filter(row => row.getBoundingClientRect().top <= top + (h?.height ?? 0)).at(-1) ?? null;
+      let group: HTMLTableRowElement | null = null;
+      // The row retains its natural position even when its cells are sticky.
+      const layoutTop=(node:HTMLElement)=>{let y=0;for(let el:HTMLElement|null=node;el;el=el.offsetParent as HTMLElement|null)y+=el.offsetTop;return y;};
+      const scale=table.offsetWidth ? t.width/table.offsetWidth : 1;
+      for (const row of Array.from(table.tBodies).flatMap(body=>Array.from(body.rows))) {
+        const rowTop = row.offsetHeight ? t.top + (layoutTop(row)-layoutTop(table))*scale : row.getBoundingClientRect().top;
+        if (rowTop > top + (h?.height ?? 0)) break;
+        if (row.hasAttribute("data-sticky-group")) group = row;
+      }
       if (group !== activeGroup) { activeGroup = group; dirty = true; }
       const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
       const width = Math.max(0, right - left);

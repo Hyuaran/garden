@@ -38,3 +38,5 @@
 .linkTable button:disabled,.linkTable select:disabled{opacity:.55;cursor:not-allowed}
 .linkTable select{min-height:34px;box-sizing:border-box;max-width:220px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit}
 :global(.dark) .lineLinkPanel,:global([data-theme="dark"]) .lineLinkPanel{background:#101d2d}
+
+.memberRow{grid-template-columns:56px minmax(130px,1fr) minmax(140px,180px) 58px}.memberRow strong{display:flex;align-items:center}@media(max-width:980px){.memberRow{grid-template-columns:56px minmax(120px,1fr)}.memberRow select,.memberRow>button:last-child{grid-column:2}}@media(max-width:560px){.memberRow{grid-template-columns:50px minmax(0,1fr)}}

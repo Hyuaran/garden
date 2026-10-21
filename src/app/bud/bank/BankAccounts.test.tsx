@@ -49,7 +49,7 @@ describe("bank accounts screen", () => {
     render(<BankAccounts />);
     await screen.findByText("銀行1");
     fireEvent.click(screen.getByRole("button",{name:"並び替え"}));
-    fireEvent.click(screen.getByRole("button",{name:"ヒュアランを下へ"}));
+    fireEvent.keyDown(screen.getByRole("button",{name:"ヒュアランをつかんで移動"}),{key:"ArrowDown"});
     expect(screen.getAllByRole("rowheader")[0]).toHaveTextContent("センターライズ");
     await waitFor(() => expect(fetcher.mock.calls.some(([,init]) => init?.method === "PATCH")).toBe(true));
     const body = JSON.parse(fetcher.mock.calls.find(([,init]) => init?.method === "PATCH")![1].body);
@@ -169,3 +169,7 @@ it("filters the screen by group and individual permissions for a viewer",async()
  fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
  expect(screen.queryByRole("link",{name:/オリコカード/})).not.toBeInTheDocument();
 });
+
+it("opens the MF update screen with an explanatory tooltip",async()=>{render(<BankAccounts/>);const link=await screen.findByRole("link",{name:"MF で再取得"});expect(link).toHaveAttribute("href","https://accounting.moneyforward.com/accounts");expect(link).toHaveAttribute("target","_blank");expect(link).toHaveAttribute("rel","noopener noreferrer");expect(link).not.toHaveAttribute("title");expect(screen.getByRole("tooltip")).toHaveTextContent("MF の画面を開きます。");});
+
+it("saves card order through the existing reorder API",async()=>{fetcher.mockImplementation(async (_url:string,init?:RequestInit)=>new Response(JSON.stringify(init?.method?{ok:true}:{...data(),accounts:[...data().accounts,account("4",{kind:"card",name:"追加カード"})]})));render(<BankAccounts/>);await screen.findByText("銀行1");fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));fireEvent.click(screen.getByRole("button",{name:"並び替え"}));fireEvent.keyDown(screen.getByRole("button",{name:"オリコカードをつかんで移動"}),{key:"ArrowDown"});await waitFor(()=>expect(fetcher.mock.calls.some(([,init])=>init?.method==="PATCH")).toBe(true));expect(JSON.parse(fetcher.mock.calls.find(([,init])=>init?.method==="PATCH")![1].body)).toEqual({action:"reorder",ids:["1","2","4","3"]});expect(document.querySelector("[draggable=true]")).toBeNull();});

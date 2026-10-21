@@ -1,4 +1,5 @@
 "use client";
+import ReorderGrip from "@/app/system/_components/ReorderGrip/ReorderGrip";
 import { visibleAccounts } from "@/lib/bud/mf/balances";
 import Link from "next/link";
 import { cardSummaries, validTransactionPeriod } from "@/lib/bud/mf/transactions";
@@ -29,9 +30,6 @@ async function api(url: string, init?: RequestInit) {
   } catch { throw new Error(fallback); }
   if (!response.ok) throw new Error(data.error ?? fallback);
   return data;
-}
-function Arrow({ down = false }: { down?: boolean }) {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" style={down ? { transform: "rotate(180deg)" } : undefined}><path d="M12 20V4m-6 6 6-6 6 6" /></svg>;
 }
 function People({ employees, selected, inherited = [], onChange }: { employees: Employee[]; selected: string[]; inherited?: string[]; onChange: (ids: string[]) => void }) {
   const [search, setSearch] = useState("");
@@ -95,7 +93,6 @@ export default function BankAccounts() {
   const [settings, setSettings] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [saveCount, setSaveCount] = useState(0);
-  const drag = useRef<string | null>(null);
   const current = useRef(snapshot.accounts);
   const queue = useRef(Promise.resolve());
   const requestSequence = useRef(0);
@@ -134,12 +131,12 @@ export default function BankAccounts() {
   const cards = permitted.filter(a => a.kind === "card" && !a.hidden);
 
   return <div className={styles.pageShell}>
-    <header className={styles.header}><SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "口座残高・カード利用" }]} /><h1>口座残高・カード利用</h1><UpdatedStampRow><UpdatedStamp label="MF" date={times[0]} emptyText="未読み込み" busy={refreshing || loading} disabled={saveCount > 0} refreshLabel="読み直す" title="読み直す（1分に1回まで）" onRefresh={async () => {
+    <header className={styles.header}><SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "口座残高・カード利用" }]} /><h1>口座残高・カード利用</h1><UpdatedStampRow><UpdatedStamp label="MF" date={times[0]} emptyText="未読み込み" busy={refreshing || loading} disabled={saveCount > 0} refreshLabel="読み直す" title="MF に届いている分を読み直す（銀行からの取り直しは MF の［一括更新］）" onRefresh={async () => {
       setRefreshing(true); setError("");
       try { await api("/api/bud/mf-accounts/refresh", { method: "POST" }); await load(); }
       catch(e) { setError(e instanceof Error ? e.message : "読み込めませんでした"); }
       finally { setRefreshing(false); }
-    }} /></UpdatedStampRow></header>
+    }} ><span className={styles.mfRetrieve}><a href="https://accounting.moneyforward.com/accounts" target="_blank" rel="noopener noreferrer">MF で再取得<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M14 3h7v7M21 3 10 14M10 3H3v18h18v-7" /></svg></a><span role="tooltip">MF の画面を開きます。［一括更新］で銀行から取り直したあと、↻ で Garden に読み込みます</span></span></UpdatedStamp></UpdatedStampRow></header>
     <div className={styles.tabToolbar}><SystemTabs aria-label="表示内容" actions={snapshot.admin ? <><TabActionButton icon="sort" label={reordering ? "並び替えを終える" : "並び替え"} pressed={reordering} disabled={refreshing} onClick={() => setReordering(!reordering)} /><TabActionButton icon="settings" label={settings ? "設定を終える" : "設定"} pressed={settings} disabled={refreshing} onClick={() => { setSettings(!settings); setSelected(null); }} /></> : undefined}>{[["bank","口座残高"],["card","カード利用"]].map(([value,label]) => <button role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} key={value} aria-selected={tab === value} onClick={() => { setTab(value); setSelected(null); }}>{label}</button>)}</SystemTabs>
       <small role="status">{saveCount > 0 ? "並び順を保存中…" : loading ? "読み込み中…" : ""}</small>
     </div>
@@ -149,12 +146,12 @@ export default function BankAccounts() {
       {settings && snapshot.admin && <article className={styles.account}><h2>{tab === "bank" ? "銀行すべての閲覧権限" : "カードすべての閲覧権限"}<TabActionButton icon="settings" label={tab === "bank" ? "銀行すべての閲覧権限の設定" : "カードすべての閲覧権限の設定"} onClick={() => setSelected("group")} /></h2>{selected === "group" && <GroupSettings key={tab} kind={tab as "bank" | "card"} viewers={snapshot.groupViewers?.find(g => g.kind === tab)?.employee_ids ?? []} employees={snapshot.employees} onSave={load} onClose={() => setSelected(null)} />}</article>}
       {!settings && tab === "bank" && <LinkAlerts accounts={permitted} onChange={setLinkAlerts} />}
       {!settings && tab === "bank" && <BalanceMatrix linkAlerts={linkAlerts} arrivalTotal={snapshot.arrivalTotal} accounts={permitted} axes={snapshot.axes} snapshots={snapshot.snapshots} reordering={reordering && snapshot.admin} onError={setError} />}
-      {(settings || (tab === "card" && reordering)) && <div className={styles.grid}>{shown.map((account,i) => <article key={account.mf_account_id} data-account={account.mf_account_id} className={styles.account} onDragOver={e => { if (reordering && tab === "card") e.preventDefault(); }} onDrop={e => { e.preventDefault(); if (reordering && tab === "card" && drag.current) move(drag.current, account.mf_account_id); drag.current = null; }}>
-        <h2>{reordering && tab === "card" && <span className={styles.grip} draggable onDragStart={e => { drag.current = account.mf_account_id; e.dataTransfer.setData("text/plain",account.mf_account_id); }} onDragEnd={() => { drag.current = null; }} aria-label={`${accountDisplayName(account.name)}をつかんで移動`}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></span>}{accountDisplayName(account.name)}{settings && <TabActionButton icon="settings" label={`${accountDisplayName(account.name)}の設定`} onClick={() => setSelected(account.mf_account_id)} />}</h2>
+      {(settings || (tab === "card" && reordering)) && <div className={styles.grid}>{shown.map((account) => <article key={account.mf_account_id} data-account={account.mf_account_id} className={styles.account}>
+        <h2>{reordering && tab === "card" && <ReorderGrip label={accountDisplayName(account.name)} itemKey={account.mf_account_id} keys={shown.map(a=>a.mf_account_id)} selector="article[data-account]" attribute="data-account" onMove={move} />}{accountDisplayName(account.name)}{settings && <TabActionButton icon="settings" label={`${accountDisplayName(account.name)}の設定`} onClick={() => setSelected(account.mf_account_id)} />}</h2>
         {account.hidden && <small>表示しない設定</small>}
         <small>{account.sub_account_label}</small>
 
-        {(reordering || settings) && <div className={styles.toolbar}>{reordering && tab === "card" && <><button aria-label={`${accountDisplayName(account.name)}を上へ`} disabled={i === 0} onClick={() => move(account.mf_account_id,shown[i-1].mf_account_id)}><Arrow /></button><button aria-label={`${accountDisplayName(account.name)}を下へ`} disabled={i === shown.length-1} onClick={() => move(account.mf_account_id,shown[i+1].mf_account_id)}><Arrow down /></button></>}</div>}
+
       </article>)}</div>}
       {!loading && shown.length === 0 && <p>表示できる{tab === "bank" ? "口座" : "カード"}はありません。</p>}
       {!settings && tab === "card" && <><div className={styles.toolbar}><PeriodSelect value={period} onChange={value => { setPeriod(value); const url = new URL(window.location.href); url.searchParams.set("period", value); window.history.replaceState(null, "", url); }} fiscalStart={snapshot.accounts.find(a => a.fiscal_start_date)?.fiscal_start_date} years={Object.values(snapshot.yearsByAccount ?? {}).flat()} /></div><div className={styles.grid}>{cardSummaries(cards, snapshot.transactions).map(({ account, amount, count, latest }) => <Link className={styles.account} key={account.mf_account_id} href={`/bud/bank/accounts/${encodeURIComponent(account.mf_account_id)}?period=${encodeURIComponent(period)}`}><h2>{accountDisplayName(account.name)}</h2><strong className={styles.amount}>{yen(amount)}</strong><small>{count} 件{latest ? `・最後 ${latest}` : ""}</small></Link>)}</div></>}

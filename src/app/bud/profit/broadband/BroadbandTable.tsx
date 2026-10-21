@@ -1,5 +1,6 @@
 "use client";
 import { useStickyTable } from "@/app/system/_components/StickyTable/useStickyTable";
+import ReorderGrip from "@/app/system/_components/ReorderGrip/ReorderGrip";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -28,20 +29,10 @@ export default function BroadbandTable({rows,userId,today,kintoneBase}: {rows:Ta
   const fullPivot=applyOrder(buildPivot(rows,allMonths,"cash"),order), pivot=applyOrder(buildPivot(rows,months,"cash"),orderFromPivot(fullPivot));
   const persist=(next:BroadbandOrder)=>{setOrder(next);try {saveOrder(window.localStorage,userId,next);}catch {}};
   const [dragging,setDragging]=useState<string|null>(null),[target,setTarget]=useState<string|null>(null);
-  const gesture=useRef<{pointer:number;active:boolean;x:number;y:number;timer:ReturnType<typeof setTimeout>|null}|null>(null);
-  const stop=()=>{if(gesture.current?.timer) clearTimeout(gesture.current.timer);gesture.current=null;setDragging(null);setTarget(null);};
-  useEffect(()=>()=>{if(gesture.current?.timer) clearTimeout(gesture.current.timer);},[]);
+  const stop=()=>{setDragging(null);setTarget(null);};
   const compatible=(a:PivotRow,b:PivotRow)=>b.key!=="grand" && a.subtotal===b.subtotal && (a.subtotal || a.business===b.business);
-  const handle=(row:PivotRow)=><button className={styles.grip} aria-label={(row.subtotal ? row.business : row.partner)+"をつかんで移動"} onKeyDown={e=>{
-    if(e.key!=="ArrowUp" && e.key!=="ArrowDown") return;e.preventDefault();const siblings=pivot.filter(r=>compatible(row,r)),i=siblings.findIndex(r=>r.key===row.key),next=siblings[i+(e.key==="ArrowUp" ? -1 : 1)];if(next) persist(movePivot(fullPivot,row.key,next.key));
-  }} onPointerDown={e=>{
-    if(e.button!==0) return;stop();e.currentTarget.setPointerCapture?.(e.pointerId);const g={pointer:e.pointerId,active:e.pointerType==="mouse",x:e.clientX,y:e.clientY,timer:null as ReturnType<typeof setTimeout>|null};gesture.current=g;
-    if(g.active) setDragging(row.key);else g.timer=setTimeout(()=>{g.active=true;setDragging(row.key);},400);
-  }} onPointerMove={e=>{
-    const g=gesture.current;if(!g || g.pointer!==e.pointerId) return;if(!g.active){if(Math.hypot(e.clientX-g.x,e.clientY-g.y)>8) stop();return;}
-    e.preventDefault();const key=document.elementFromPoint(e.clientX,e.clientY)?.closest("tr[data-row-key]")?.getAttribute("data-row-key"),hit=pivot.find(r=>r.key===key),next=row.subtotal && hit ? pivot.find(r=>r.subtotal && r.business===hit.business) : hit;setTarget(next && next.key!==row.key && compatible(row,next) ? next.key : null);
-    if(e.clientY<80) window.scrollBy(0,-12);else if(e.clientY>window.innerHeight-80) window.scrollBy(0,12);
-  }} onPointerUp={()=>{if(gesture.current?.active && target) persist(movePivot(fullPivot,row.key,target));stop();}} onPointerCancel={stop} onLostPointerCapture={stop}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>;
+  const handle=(row:PivotRow)=><ReorderGrip label={row.subtotal ? row.business : row.partner} itemKey={row.key} keys={pivot.filter(r=>compatible(row,r)).map(r=>r.key)} selector="tr[data-row-key]" attribute="data-row-key" resolveTarget={key=>{const hit=pivot.find(r=>r.key===key);return row.subtotal && hit ? pivot.find(r=>r.subtotal && r.business===hit.business)?.key : key;}} onMove={(key,target)=>persist(movePivot(fullPivot,key,target))} onState={(key,target)=>{setDragging(key);setTarget(target);}} />;
+
   // 行の無い欄は空にする（0 円を並べない）。小計・総合計の行は色を付けない（色は取引先の行だけ）
   const cell=(records:TableRecord[], label:string, toned=true) => records.length ? <button aria-label={`${label} ${money(total(records))}の明細`} className={toned ? styles[cellTone(records)] : undefined} disabled={sorting} onClick={() => {if(!sorting) setSelected(records);}}>{money(total(records))}</button> : null;
   return <div className={styles.pageShell}><SystemBreadcrumb root={{label:"Bud",href:"/bud/dashboard"}} items={[{label:"損益管理",href:"/bud/profit"},{label:"ブロードバンド事業の収支"}]} /><h1>ブロードバンド事業の収支</h1>

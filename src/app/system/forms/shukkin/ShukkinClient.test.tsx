@@ -44,6 +44,7 @@ describe("ShukkinClient", () => {
     vi.unstubAllGlobals();
   });
 
+  it("reorders members within their group with the shared grip",async()=>{render(<ShukkinClient canEditMembers/>);fireEvent.click(screen.getByRole("tab",{name:"並びの設定"}));await screen.findByText("上田 基人");fireEvent.click(screen.getByRole("button",{name:"並び替え"}));fireEvent.keyDown(screen.getByRole("button",{name:"上田 基人をつかんで移動"}),{key:"ArrowDown"});expect(Array.from(document.querySelectorAll("[data-member]")).slice(0,2).map(el=>el.getAttribute("data-member"))).toEqual(["1165","0004"]);});
   it("shows editable seat counts above the target date and resets them when the date changes", async () => {
     render(<ShukkinClient canEditMembers={false} />);
 
