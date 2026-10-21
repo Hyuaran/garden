@@ -90,3 +90,9 @@
  :global(html:not([data-theme="light"]):not([data-theme="dark"])) .increase { color:#5fd6c9; }
  :global(html:not([data-theme="light"]):not([data-theme="dark"])) .decrease { color:#ff8a8f; }
 }
+
+/* 口座が 1 つだけの欄は、欄のどこを押しても明細が開く（2026-10-21 東海林さん） */
+.matrix td { position:relative; }
+.stretchLink::after { content:""; position:absolute; inset:0; z-index:1; }
+.matrix td:has(.stretchLink) { cursor:pointer; transition:background-color .15s; }
+.matrix td:has(.stretchLink:hover), .matrix td:has(.stretchLink:focus-visible) { background:color-mix(in srgb, var(--teal) 8%, transparent); }
