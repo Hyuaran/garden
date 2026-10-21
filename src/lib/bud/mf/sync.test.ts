@@ -29,7 +29,7 @@ describe("MF snapshot sync", () => {
     expect(f.client.transactions).toHaveBeenCalledWith("2026-04-01","2026-10-20");
     const payload = f.rpc.mock.calls[1][1];
     expect(payload.p_accounts[0].balance).toBe(110);
-    expect(payload.p_accounts[1]).toMatchObject({sort_order:1,visible_employee_ids:["e1","e2"],kind:"card"});
+    expect(payload.p_accounts[1]).toMatchObject({sort_order:1,visible_employee_ids:[],kind:"card"});
     expect(payload.p_transactions.map((t:{mf_transaction_id:string})=>t.mf_transaction_id)).toEqual(["2","3"]);
     expect(payload.p_bank_transactions.map((t:{mf_transaction_id:string})=>t.mf_transaction_id)).toEqual(["1"]);
     expect(payload.p_since).toBe("2026-04-01");
@@ -43,7 +43,7 @@ describe("MF snapshot sync", () => {
     try {
       expect(await syncMf(f.db,"cron",{client:f.client,key:"key",snapshot:true})).toEqual({ok:true});
       expect(f.rpc.mock.calls[1][1].p_snapshot_date).toBe("2026-10-21");
-      expect(f.rpc.mock.calls[1][1].p_accounts[1].visible_employee_ids).toEqual(["EMP-0000","EMP-0004","EMP-0008"]);
+      expect(f.rpc.mock.calls[1][1].p_accounts[1].visible_employee_ids).toEqual([]);
     } finally { vi.useRealTimers(); }
   });
   it("records failure without applying a partial snapshot", async () => {

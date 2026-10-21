@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { visibleAccounts } from "@/lib/bud/mf/balances";
 import { mfAccess } from "@/lib/bud/mf/access";
 import { transactionAmount, transactionUnion, transactionYears, validTransactionPeriod } from "@/lib/bud/mf/transactions";
 import type { CardTransaction } from "@/lib/bud/mf/types";
@@ -17,7 +18,9 @@ export async function GET(request: Request) {
   // Use the signed-in session for both account lookup and rows: RLS applies even to a direct URL.
   const result = await auth.db.from("bud_mf_accounts").select("*").eq("mf_account_id",id).maybeSingle();
   if (result.error) return fail();
-  if (!result.data || result.data.hidden || (!auth.admin && !result.data.visible_employee_ids.includes(auth.employeeId))) return NextResponse.json({ error: "この口座・カードは表示できません" }, { status: 404 });
+  const groups = await auth.db.from("bud_mf_group_viewers").select("*");
+  if (groups.error) return fail();
+  if (!result.data || result.data.hidden || !visibleAccounts([result.data], auth.employeeId, auth.admin, groups.data).length) return NextResponse.json({ error: "この口座・カードは表示できません" }, { status: 404 });
   const account = result.data;
   let union;
   try { union = transactionUnion(period, account.fiscal_start_date); }

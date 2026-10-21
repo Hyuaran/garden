@@ -1,4 +1,5 @@
 "use client";
+import { visibleAccounts } from "@/lib/bud/mf/balances";
 import Link from "next/link";
 import { cardSummaries, validTransactionPeriod } from "@/lib/bud/mf/transactions";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
@@ -8,14 +9,14 @@ import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBr
 import { accountDisplayName } from "@/lib/bud/mf/corporations";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ArrivalTotals, AxisOrder, BalanceSnapshot, CardTransaction, Employee, MfAccount } from "@/lib/bud/mf/types";
+import type { GroupViewers, ArrivalTotals, AxisOrder, BalanceSnapshot, CardTransaction, Employee, MfAccount } from "@/lib/bud/mf/types";
 import BalanceMatrix from "./BalanceMatrix";
 import LinkAlerts from "./LinkAlerts";
 import type { LinkAlert } from "@/lib/bud/mf/link-alerts";
 import PeriodSelect from "./PeriodSelect";
 import styles from "./bank.module.css";
 
-type Snapshot = { yearsByAccount?: Record<string, number[]>; arrivalTotal?: ArrivalTotals; axes?: AxisOrder[]; snapshots?: BalanceSnapshot[]; accounts: MfAccount[]; transactions: CardTransaction[]; employees: Employee[]; admin: boolean };
+type Snapshot = { employeeId?: string; groupViewers?: GroupViewers[]; yearsByAccount?: Record<string, number[]>; arrivalTotal?: ArrivalTotals; axes?: AxisOrder[]; snapshots?: BalanceSnapshot[]; accounts: MfAccount[]; transactions: CardTransaction[]; employees: Employee[]; admin: boolean };
 export const formatLoadedAt = formatSyncStamp;
 const yen = (value: number) => `${value.toLocaleString("ja-JP")} 円`;
 async function api(url: string, init?: RequestInit) {
@@ -32,11 +33,25 @@ async function api(url: string, init?: RequestInit) {
 function Arrow({ down = false }: { down?: boolean }) {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" style={down ? { transform: "rotate(180deg)" } : undefined}><path d="M12 20V4m-6 6 6-6 6 6" /></svg>;
 }
-function Settings({ account, employees, onSave, onClose }: { account: MfAccount; employees: Employee[]; onSave: () => Promise<void>; onClose: () => void }) {
-  const [draft, setDraft] = useState({ ...account, visible_employee_ids: account.visible_employee_ids.filter(id => employees.some(p => p.employee_id === id)) });
+function People({ employees, selected, inherited = [], onChange }: { employees: Employee[]; selected: string[]; inherited?: string[]; onChange: (ids: string[]) => void }) {
   const [search, setSearch] = useState("");
   const normalize = (s: string) => s.normalize("NFKC").toLowerCase().replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0)-0x60));
-  const people = employees.filter(p => draft.visible_employee_ids.includes(p.employee_id) || normalize((p.name ?? "") + " " + (p.name_kana ?? "")).includes(normalize(search.trim()))).sort((a,b) => Number(draft.visible_employee_ids.includes(b.employee_id))-Number(draft.visible_employee_ids.includes(a.employee_id)));
+  const checked = (id: string) => selected.includes(id) || inherited.includes(id);
+  const people = employees.filter(p => checked(p.employee_id) || normalize((p.name ?? "") + " " + (p.name_kana ?? "")).includes(normalize(search.trim()))).sort((a,b) => Number(checked(b.employee_id))-Number(checked(a.employee_id)));
+  return <fieldset><legend>閲覧権限</legend><label className={styles.peopleSearch}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><input aria-label="名前で探す" placeholder="名前で探す" value={search} onChange={e => setSearch(e.target.value)} /></label><div className={styles.people}>{people.map(person => <label key={person.employee_id} className={inherited.includes(person.employee_id) ? styles.inheritedViewer : undefined}><input type="checkbox" checked={checked(person.employee_id)} disabled={inherited.includes(person.employee_id)} onChange={e => onChange(e.target.checked ? [...selected, person.employee_id] : selected.filter(id => id !== person.employee_id))} /><span title={person.name ?? person.employee_id}>{person.name ?? person.employee_id}{inherited.includes(person.employee_id) && <small>すべての口座で閲覧可</small>}</span></label>)}</div></fieldset>;
+}
+function GroupSettings({ kind, viewers, employees, onSave, onClose }: { kind: "bank" | "card"; viewers: string[]; employees: Employee[]; onSave: () => Promise<void>; onClose: () => void }) {
+  const [selected, setSelected] = useState(viewers.filter(id => employees.some(p => p.employee_id === id)));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  return <form className={styles.settings} aria-label={kind === "bank" ? "銀行すべての閲覧権限" : "カードすべての閲覧権限"} onSubmit={async e => {
+    e.preventDefault(); setSaving(true); setError("");
+    try { await api("/api/bud/mf-accounts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "group-viewers", kind, viewers: selected }) }); await onSave(); onClose(); }
+    catch (e) { setError(e instanceof Error ? e.message : "保存できませんでした"); } finally { setSaving(false); }
+  }}><h2>{kind === "bank" ? "銀行すべての閲覧権限" : "カードすべての閲覧権限"}</h2><p>ここに入れた人は、今ある口座と、これから増える口座をすべて見られます</p><People employees={employees} selected={selected} onChange={setSelected} />{error && <p role="alert">{error}</p>}<div className={styles.toolbar}><button disabled={saving} type="submit">{saving ? "保存中…" : "保存"}</button><button type="button" disabled={saving} onClick={onClose}>閉じる</button></div></form>;
+}
+function Settings({ account, employees, inherited, onSave, onClose }: { account: MfAccount; employees: Employee[]; inherited: string[]; onSave: () => Promise<void>; onClose: () => void }) {
+  const [draft, setDraft] = useState({ ...account, visible_employee_ids: account.visible_employee_ids.filter(id => employees.some(p => p.employee_id === id)) });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   return <form className={styles.settings} aria-label={`${accountDisplayName(account.name)}の設定`} onSubmit={async e => {
@@ -47,13 +62,14 @@ function Settings({ account, employees, onSave, onClose }: { account: MfAccount;
     } catch (e) { setError(e instanceof Error ? e.message : "保存できませんでした"); } finally { setSaving(false); }
   }}>
     <h2>{accountDisplayName(account.name)}</h2>
-    <fieldset><legend>閲覧権限</legend><label className={styles.peopleSearch}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><input aria-label="名前で探す" placeholder="名前で探す" value={search} onChange={e => setSearch(e.target.value)} /></label><div className={styles.people}>{people.map(person => <label key={person.employee_id}><input type="checkbox" checked={draft.visible_employee_ids.includes(person.employee_id)} onChange={e => setDraft({ ...draft, visible_employee_ids: e.target.checked ? [...draft.visible_employee_ids, person.employee_id] : draft.visible_employee_ids.filter(id => id !== person.employee_id) })} /><span title={person.name ?? person.employee_id}>{person.name ?? person.employee_id}</span></label>)}</div></fieldset>
+    <People employees={employees} selected={draft.visible_employee_ids} inherited={inherited} onChange={ids => setDraft({ ...draft, visible_employee_ids: ids })} />
     {account.kind === "bank" && <label>MF の知らせメールでの名前<input value={draft.mail_alias ?? ""} maxLength={500} onChange={e => setDraft({ ...draft, mail_alias: e.target.value })} /></label>}
     <label><input type="checkbox" checked={draft.hidden} onChange={e => setDraft({ ...draft, hidden: e.target.checked })} />この{account.kind === "bank" ? "口座" : "カード"}を表示しない</label>
     {account.kind === "bank" && <>
       <label>帳簿の補助科目名<input value={draft.book_sub_account_name} maxLength={500} onChange={e => setDraft({ ...draft, book_sub_account_name: e.target.value })} /><small>帳簿に科目がない場合は空欄にしてください。</small></label>
       <label>残高の出し方<select value={draft.balance_mode} onChange={e => setDraft({ ...draft, balance_mode: e.target.value as MfAccount["balance_mode"] })}><option value="arrival">届いた入出金で動かす（おすすめ）</option><option value="auto">計算した残高を表示</option><option value="anchor">銀行の残高を基準にする</option><option value="manual_check">残高は MF で確認</option></select></label>
       {(draft.balance_mode === "anchor" || draft.balance_mode === "arrival") && <>
+        {draft.balance_note.startsWith("起点を自動で設定") && <small>{draft.balance_note}</small>}
         <label>起点の残高（円）<input type="number" step="1" value={draft.anchor_balance ?? ""} onChange={e => setDraft({ ...draft, anchor_balance: e.target.value === "" ? null : Number(e.target.value) })} /></label>
         {draft.balance_mode === "arrival" && <label>起点の時刻（日本時間）<input type="datetime-local" step="1" required value={draft.anchor_at ? new Date(Date.parse(draft.anchor_at) + 9 * 3600000).toISOString().slice(0,19) : ""} onChange={e => setDraft({ ...draft, anchor_at: e.target.value ? new Date(e.target.value + "+09:00").toISOString() : null })} /><small>MF の残高に合わせ直すときは、確認した金額と時刻を手で入力してください。</small></label>}
         {draft.balance_mode === "anchor" && <label>起点の日<input type="date" value={draft.anchor_date ?? ""} onChange={e => setDraft({ ...draft, anchor_date: e.target.value || null })} /></label>}
@@ -110,11 +126,12 @@ export default function BankAccounts() {
       finally { setSaveCount(n => n-1); }
     });
   };
-  const shown = snapshot.accounts.filter(a => a.kind === tab && (!a.hidden || settings || reordering));
+  const permitted = snapshot.employeeId ? visibleAccounts(snapshot.accounts, snapshot.employeeId, snapshot.admin, snapshot.groupViewers) : snapshot.accounts;
+  const shown = permitted.filter(a => a.kind === tab && (!a.hidden || settings || reordering));
 
   const times = snapshot.accounts.filter(a => !a.hidden).map(a => a.fetched_at).sort();
   const selectedAccount = snapshot.accounts.find(a => a.mf_account_id === selected);
-  const cards = snapshot.accounts.filter(a => a.kind === "card" && !a.hidden);
+  const cards = permitted.filter(a => a.kind === "card" && !a.hidden);
 
   return <div className={styles.pageShell}>
     <header className={styles.header}><SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "口座残高・カード利用" }]} /><h1>口座残高・カード利用</h1><UpdatedStampRow><UpdatedStamp label="MF" date={times[0]} emptyText="未読み込み" busy={refreshing || loading} disabled={saveCount > 0} refreshLabel="読み直す" title="読み直す（1分に1回まで）" onRefresh={async () => {
@@ -127,10 +144,11 @@ export default function BankAccounts() {
       <small role="status">{saveCount > 0 ? "並び順を保存中…" : loading ? "読み込み中…" : ""}</small>
     </div>
     {error && <p role="alert" className={styles.error}>{error}</p>}
-    {selectedAccount && settings && snapshot.admin && <Settings key={selectedAccount.mf_account_id} account={selectedAccount} employees={snapshot.employees} onSave={load} onClose={() => setSelected(null)} />}
+    {selectedAccount && settings && snapshot.admin && <Settings key={selectedAccount.mf_account_id} account={selectedAccount} inherited={snapshot.groupViewers?.find(g => g.kind === selectedAccount.kind)?.employee_ids ?? []} employees={snapshot.employees} onSave={load} onClose={() => setSelected(null)} />}
     <section role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-      {!settings && tab === "bank" && <LinkAlerts accounts={snapshot.accounts} onChange={setLinkAlerts} />}
-      {!settings && tab === "bank" && <BalanceMatrix linkAlerts={linkAlerts} arrivalTotal={snapshot.arrivalTotal} accounts={snapshot.accounts} axes={snapshot.axes} snapshots={snapshot.snapshots} reordering={reordering && snapshot.admin} onError={setError} />}
+      {settings && snapshot.admin && <article className={styles.account}><h2>{tab === "bank" ? "銀行すべての閲覧権限" : "カードすべての閲覧権限"}<TabActionButton icon="settings" label={tab === "bank" ? "銀行すべての閲覧権限の設定" : "カードすべての閲覧権限の設定"} onClick={() => setSelected("group")} /></h2>{selected === "group" && <GroupSettings key={tab} kind={tab as "bank" | "card"} viewers={snapshot.groupViewers?.find(g => g.kind === tab)?.employee_ids ?? []} employees={snapshot.employees} onSave={load} onClose={() => setSelected(null)} />}</article>}
+      {!settings && tab === "bank" && <LinkAlerts accounts={permitted} onChange={setLinkAlerts} />}
+      {!settings && tab === "bank" && <BalanceMatrix linkAlerts={linkAlerts} arrivalTotal={snapshot.arrivalTotal} accounts={permitted} axes={snapshot.axes} snapshots={snapshot.snapshots} reordering={reordering && snapshot.admin} onError={setError} />}
       {(settings || (tab === "card" && reordering)) && <div className={styles.grid}>{shown.map((account,i) => <article key={account.mf_account_id} data-account={account.mf_account_id} className={styles.account} onDragOver={e => { if (reordering && tab === "card") e.preventDefault(); }} onDrop={e => { e.preventDefault(); if (reordering && tab === "card" && drag.current) move(drag.current, account.mf_account_id); drag.current = null; }}>
         <h2>{reordering && tab === "card" && <span className={styles.grip} draggable onDragStart={e => { drag.current = account.mf_account_id; e.dataTransfer.setData("text/plain",account.mf_account_id); }} onDragEnd={() => { drag.current = null; }} aria-label={`${accountDisplayName(account.name)}をつかんで移動`}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></span>}{accountDisplayName(account.name)}{settings && <TabActionButton icon="settings" label={`${accountDisplayName(account.name)}の設定`} onClick={() => setSelected(account.mf_account_id)} />}</h2>
         {account.hidden && <small>表示しない設定</small>}

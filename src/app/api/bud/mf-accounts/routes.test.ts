@@ -29,7 +29,7 @@ describe("MF route permissions",()=>{
     mocks.access.mockResolvedValue({ok:false,status:401});
     expect((await POST()).status).toBe(401);
     const limit = vi.fn().mockResolvedValue({data:[]});
-    mocks.access.mockResolvedValue({ok:true,admin:false,db:{from:()=>({select:()=>({limit})})}});
+    mocks.access.mockResolvedValue({ok:true,admin:false,employeeId:"e",db:{from:()=>({select:()=>({limit})})}});
     expect((await POST()).status).toBe(403);
     expect(mocks.sync).not.toHaveBeenCalled();
   });
@@ -83,7 +83,7 @@ it("returns paginated arrivals since Japanese midnight for visible banks only", 
  vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-21T03:00:00Z"));
  try {
   const gt=vi.fn(); const ranges: number[]=[];
-  const accounts=[{mf_account_id:"a",kind:"bank",hidden:false,fiscal_start_date:"2026-04-01"},{mf_account_id:"hidden",kind:"bank",hidden:true}];
+  const accounts=[{mf_account_id:"a",visible_employee_ids:["e"],sort_order:0,kind:"bank",hidden:false,fiscal_start_date:"2026-04-01"},{mf_account_id:"hidden",kind:"bank",hidden:true}];
   const db={from:(table:string)=>{
    const q:any={select:()=>q,order:()=>q,gte:()=>q,lte:()=>q,eq:()=>q,
     gt:(...args:unknown[])=>{gt(...args);return q;},
@@ -91,7 +91,7 @@ it("returns paginated arrivals since Japanese midnight for visible banks only", 
     then:(resolve:(v:unknown)=>unknown)=>Promise.resolve({data:table==="bud_mf_accounts"?accounts:[]}).then(resolve)};
    return q;
   }};
-  mocks.access.mockResolvedValue({ok:true,admin:false,db});
+  mocks.access.mockResolvedValue({ok:true,admin:false,employeeId:"e",db});
   const result=await accountsGet(new Request("https://garden.test/api/bud/mf-accounts"));
   expect(result.status).toBe(200);
   const body=await result.json();
@@ -100,4 +100,17 @@ it("returns paginated arrivals since Japanese midnight for visible banks only", 
   expect(body.arrivalTotal).toEqual({income:1000,expense:70,delta:930});
   expect(body.arrivalByAccount).toEqual({a:body.arrivalTotal});
  } finally {vi.useRealTimers();}
+});
+
+it("saves group viewers only for super administrators and validates kind and ids",async()=>{
+ const rpc=vi.fn().mockResolvedValue({});
+ mocks.access.mockResolvedValue({ok:true,admin:false,db:{rpc}});
+ expect((await PATCH(request({action:"group-viewers",kind:"bank",viewers:["e"]}))).status).toBe(403);
+ expect(rpc).not.toHaveBeenCalled();
+ mocks.access.mockResolvedValue({ok:true,admin:true,db:{rpc}});
+ for(const kind of ["bank","card"]) {
+ expect((await PATCH(request({action:"group-viewers",kind,viewers:["e","e"]}))).status).toBe(200);
+ expect(rpc).toHaveBeenLastCalledWith("bud_mf_save_group_viewers",{p_kind:kind,p_viewers:["e"]});
+ }
+ for(const body of [{kind:"other",viewers:[]},{kind:"bank",viewers:[1]},{kind:"bank",viewers:null}]) expect((await PATCH(request({action:"group-viewers",...body}))).status).toBe(400);
 });

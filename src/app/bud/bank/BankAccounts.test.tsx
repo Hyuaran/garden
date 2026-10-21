@@ -126,3 +126,46 @@ it("shows settings alone and searches kana while keeping selected viewers first"
  expect(screen.queryByRole("link",{name:/オリコカード/})).not.toBeInTheDocument();
  expect(screen.getByRole("button",{name:"オリコカードの設定"})).toBeInTheDocument();
 });
+
+it.each(["bank","card"])("saves %s group viewers and shows inherited viewers as locked checked boxes", async kind => {
+ const snapshot={...data(),groupViewers:[{kind:"bank",employee_ids:["e1"]},{kind:"card",employee_ids:["e1"]}],employees:[{employee_id:"e1",name:"閲覧者"},{employee_id:"e2",name:"追加する人"}]};
+ fetcher.mockImplementation(async (_url:string,init?:RequestInit) => new Response(JSON.stringify(init?.method ? {ok:true} : snapshot)));
+ render(<BankAccounts />); await screen.findByText("銀行1");
+ if(kind==="card") fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
+ fireEvent.click(screen.getByRole("button",{name:"設定"}));
+ const title=kind==="bank"?"銀行すべての閲覧権限":"カードすべての閲覧権限";
+ expect(screen.getByRole("heading",{name:title})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole("button",{name:title+"の設定"}));
+ const group=screen.getByRole("form",{name:title});
+ expect(within(group).getByText("ここに入れた人は、今ある口座と、これから増える口座をすべて見られます")).toBeInTheDocument();
+ fireEvent.change(within(group).getByLabelText("名前で探す"),{target:{value:"追加"}});
+ fireEvent.click(within(group).getByRole("checkbox",{name:"追加する人"}));
+ fireEvent.click(within(group).getByRole("button",{name:"保存"}));
+ await waitFor(()=>expect(fetcher.mock.calls.some(([,init])=>init?.method==="PATCH")).toBe(true));
+ expect(JSON.parse(fetcher.mock.calls.find(([,init])=>init?.method==="PATCH")![1].body)).toEqual({action:"group-viewers",kind,viewers:["e1","e2"]});
+ await waitFor(()=>expect(screen.queryByRole("form",{name:title})).not.toBeInTheDocument());
+ fireEvent.click(screen.getByRole("button",{name:kind==="bank"?"銀行1（ヒュアラン）の設定":"オリコカードの設定"}));
+ const form=screen.getByRole("form",{name:kind==="bank"?"銀行1（ヒュアラン）の設定":"オリコカードの設定"});
+ const inherited=within(form).getByRole("checkbox",{name:/閲覧者すべての口座で閲覧可/});
+ expect(inherited).toBeChecked(); expect(inherited).toBeDisabled();
+ expect(inherited.closest("label")?.className).toContain("inheritedViewer");
+});
+it("shows the automatic anchor note next to its editable amount",async()=>{
+ const snapshot=data();Object.assign(snapshot.accounts[0],{balance_mode:"arrival",anchor_balance:123,anchor_at:"2026-10-21T03:00:00Z",balance_note:"起点を自動で設定（帳簿＋未仕訳・2026/10/21）"});
+ fetcher.mockImplementation(async () => new Response(JSON.stringify(snapshot)));
+ render(<BankAccounts />); await screen.findByText("銀行1");
+ fireEvent.click(screen.getByRole("button",{name:"設定"}));fireEvent.click(screen.getByRole("button",{name:"銀行1（ヒュアラン）の設定"}));
+ const form=screen.getByRole("form",{name:"銀行1（ヒュアラン）の設定"});
+ expect(within(form).getByText(snapshot.accounts[0].balance_note)).toBeInTheDocument();
+ expect(within(form).getByLabelText("起点の残高（円）")).toHaveValue(123);
+});
+
+it("filters the screen by group and individual permissions for a viewer",async()=>{
+ const snapshot={...data(false),employeeId:"group",groupViewers:[{kind:"bank",employee_ids:["group"]}]};
+ snapshot.accounts[0].visible_employee_ids=[]; snapshot.accounts[1].hidden=true;
+ fetcher.mockImplementation(async()=>new Response(JSON.stringify(snapshot)));
+ render(<BankAccounts />); await screen.findByText("銀行1");
+ expect(screen.queryByRole("link",{name:"銀行2（センターライズ）の明細"})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
+ expect(screen.queryByRole("link",{name:/オリコカード/})).not.toBeInTheDocument();
+});

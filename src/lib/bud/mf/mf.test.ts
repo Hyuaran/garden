@@ -16,7 +16,7 @@ describe("MF balances and access", () => {
     expect(accountKind("オリコカード｜HR")).toBe("card");
     expect(accountKind("PayPay銀行｜STB")).toBe("bank");
     const result = mergeAccounts([{id:"3",name:"カード"},{id:"1",name:"銀行"}],[account("1",{sort_order:8,hidden:true})],["e2"],"today");
-    expect(result[0]).toMatchObject({ sort_order:9,visible_employee_ids:["e2"],balance_mode:"manual_check" });
+    expect(result[0]).toMatchObject({ sort_order:9,visible_employee_ids:[],balance_mode:"manual_check" });
     expect(result[1]).toMatchObject({ sort_order:8,hidden:true,visible_employee_ids:["e1"] });
     expect(visibleAccounts([account(),account("2",{hidden:true}),account("3",{visible_employee_ids:["e2"]})],"e1",false).map(a=>a.mf_account_id)).toEqual(["1"]);
     expect(visibleAccounts([account(),account("2",{hidden:true})],"other",true)).toHaveLength(2);

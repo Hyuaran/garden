@@ -11,7 +11,7 @@ function fixture(kind = "bank", allowed = true) {
   for (const name of ["select","eq","gte","lte","order"]) query[name] = vi.fn(() => query);
   query.maybeSingle = vi.fn().mockResolvedValue({data:account});
   query.range = vi.fn().mockResolvedValue({data:rows});
-  const from = vi.fn(() => query);
+  const from = vi.fn((table: string) => table === "bud_mf_group_viewers" ? {select: vi.fn().mockResolvedValue({data:[]})} : query);
   access.mockResolvedValue({ok:true,admin:false,employeeId:"e",db:{from}});
   return { query, from };
 }
@@ -20,7 +20,7 @@ it("requires authentication and rejects inaccessible direct URLs before reading 
   expect((await GET(request())).status).toBe(401);
   const f = fixture("bank",false);
   expect((await GET(request())).status).toBe(404);
-  expect(f.from).toHaveBeenCalledTimes(1);
+  expect(f.from).toHaveBeenCalledTimes(2);
 });
 it("filters the fiscal year, sorts newest first and returns every row with the complete total", async () => {
   const f = fixture();
@@ -72,4 +72,10 @@ it("returns a union without duplicate rows or dates in gaps", async () => {
   const data = await (await GET(request("&period=fy:2025,fy:2023,fy:2025"))).json();
   expect(data.transactions.map((t: {mf_transaction_id:string}) => t.mf_transaction_id)).toEqual(["a","c"]);
   expect(data.total).toBe(2); expect(data.amount).toBe(10); expect(data.expense).toBe(20); expect(data.income).toBe(10);
+});
+
+it("allows a direct URL through group membership alone", async()=>{
+ const f=fixture("bank",false);
+ f.from.mockImplementation((table:string)=>table==="bud_mf_group_viewers"?{select:vi.fn().mockResolvedValue({data:[{kind:"bank",employee_ids:["e"]}]})}:f.query);
+ expect((await GET(request())).status).toBe(200);
 });

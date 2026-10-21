@@ -1,5 +1,5 @@
 import { accountAxes } from "./corporations";
-import type { Arrival, ConnectedAccount, MfAccount, Transaction, TrialRow } from "./types";
+import type { Arrival, BookSubAccount, GroupViewers, ConnectedAccount, MfAccount, Transaction, TrialRow } from "./types";
 
 export const accountKind = (name: string): "bank" | "card" => name.includes("カード") ? "card" : "bank";
 export function bookBalances(rows: TrialRow[]): Map<string, number> {
@@ -44,13 +44,13 @@ export function mergeAccounts(incoming: ConnectedAccount[], existing: MfAccount[
     return { ...accountAxes(item.name), mf_account_id: String(item.id), name: item.name, kind: accountKind(item.name),
       sub_account_label: (item.connected_sub_accounts ?? []).map(a => a.name).join(" ／ "),
       sort_order: old?.sort_order ?? next++, hidden: old?.hidden ?? false,
-      visible_employee_ids: old?.visible_employee_ids ?? viewers, book_sub_account_name: old?.book_sub_account_name ?? "",
+      visible_employee_ids: old?.visible_employee_ids ?? [], book_sub_account_name: old?.book_sub_account_name ?? "",
       anchor_balance: old?.anchor_balance ?? null, anchor_date: old?.anchor_date ?? null, anchor_at: old?.anchor_at ?? null,
       balance_mode: old?.balance_mode ?? "manual_check", balance_note: old?.balance_note ?? "帳簿との対応を確認中です",
       balance: null, unjournalized_count: 0, fetched_at: fetchedAt };
   });
 }
-export const visibleAccounts = (accounts: MfAccount[], employeeId: string, admin: boolean) => accounts.filter(a => admin || (!a.hidden && a.visible_employee_ids.includes(employeeId))).sort((a,b) => a.sort_order - b.sort_order || a.mf_account_id.localeCompare(b.mf_account_id));
+export const visibleAccounts = (accounts: MfAccount[], employeeId: string, admin: boolean, groups: GroupViewers[] = []) => accounts.filter(a => admin || (!a.hidden && (a.visible_employee_ids.includes(employeeId) || groups.some(g => g.kind === a.kind && g.employee_ids.includes(employeeId))))).sort((a,b) => a.sort_order - b.sort_order || a.mf_account_id.localeCompare(b.mf_account_id));
 export function monthRange(period: string, now = new Date()) {
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(now);
   const [y,m] = today.split("-").map(Number);
@@ -64,4 +64,24 @@ export function arrivalTotals(arrivals: Arrival[], accountIds: string[]) {
   const income = arrivals.filter(t => ids.has(t.mf_account_id) && t.side === "INCOME").reduce((s,t) => s + Number(t.value), 0);
   const expense = arrivals.filter(t => ids.has(t.mf_account_id) && t.side === "EXPENSE").reduce((s,t) => s + Number(t.value), 0);
   return { income, expense, delta: income - expense };
+}
+
+export function automaticAnchor(item: ConnectedAccount, rows: TrialRow[], subAccounts: BookSubAccount[] = []): string | null {
+  const linked = item.connected_sub_accounts ?? [];
+  if (linked.length !== 1 || linked[0].sub_account_id == null) return null;
+  const sub = linked[0];
+  const matches: TrialRow[] = [];
+  function visit(items: TrialRow[], deposits = false) {
+    for (const row of items) {
+      const under = row.type === "account" ? row.name === "普通預金" : deposits;
+      if (under && row.type === "sub_account") {
+        const id = row.sub_account_id ?? row.id;
+        const names = subAccounts.filter(s => String(s.id) === String(sub.sub_account_id) && (sub.account_id == null || String(s.account_id) === String(sub.account_id)));
+        if (id != null ? String(id) === String(sub.sub_account_id) : names.length === 1 && row.name === names[0].name) matches.push(row);
+      }
+      visit(row.rows ?? row.children ?? [], under);
+    }
+  }
+  visit(rows);
+  return matches.length === 1 && matches[0].name ? matches[0].name : null;
 }

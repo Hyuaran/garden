@@ -137,3 +137,6 @@
 .peopleSearch { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
 .peopleSearch input { width:100%; min-width:0; }
 .account h2 button { margin-left:auto; flex-shrink:0; }
+
+.inheritedViewer { color: var(--sub); opacity: .65; }
+.inheritedViewer small { display: block; }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { mfAccess } from "@/lib/bud/mf/access";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { Arrival, Employee } from "@/lib/bud/mf/types";
-import { arrivalTotals, monthRange } from "@/lib/bud/mf/balances";
+import { visibleAccounts, arrivalTotals, monthRange } from "@/lib/bud/mf/balances";
 import { transactionUnion, transactionYears, validTransactionPeriod } from "@/lib/bud/mf/transactions";
 
 export const runtime = "nodejs";
@@ -13,6 +13,9 @@ export async function GET(request: Request) {
   if (!auth.ok) return NextResponse.json({ error: "この画面を見る権限がありません" }, { status: auth.status });
   const accounts = await auth.db.from("bud_mf_accounts").select("*").order("sort_order").order("mf_account_id");
   if (accounts.error) return fail();
+  const groups = await auth.db.from("bud_mf_group_viewers").select("*");
+  if (groups.error) return fail();
+  accounts.data = visibleAccounts(accounts.data, auth.employeeId, auth.admin, groups.data);
   const params = new URL(request.url).searchParams;
   if (!validTransactionPeriod(params.get("period") ?? "current")) return NextResponse.json({ error: "表示条件を確認してください" }, { status: 400 });
   let union;
@@ -57,7 +60,7 @@ export async function GET(request: Request) {
  }
  const visibleBanks = accounts.data.filter(a => a.kind === "bank" && !a.hidden);
  const arrivalByAccount = Object.fromEntries(visibleBanks.map(a => [a.mf_account_id, arrivalTotals(arrivals, [a.mf_account_id])]));
- return NextResponse.json({ yearsByAccount, arrivalByAccount, arrivalTotal: arrivalTotals(arrivals, visibleBanks.map(a => a.mf_account_id)), accounts: accounts.data, transactions, employees, admin: auth.admin, axes: axes.data, snapshots: snapshots.data }, { headers: { "Cache-Control": "no-store" } });
+ return NextResponse.json({ yearsByAccount, arrivalByAccount, arrivalTotal: arrivalTotals(arrivals, visibleBanks.map(a => a.mf_account_id)), employeeId: auth.employeeId, groupViewers: groups.data, accounts: accounts.data, transactions: transactions.filter(t => accounts.data.some(a => a.mf_account_id === t.mf_account_id)), employees, admin: auth.admin, axes: axes.data, snapshots: snapshots.data }, { headers: { "Cache-Control": "no-store" } });
 }
 export async function PATCH(request: Request) {
   const auth = await mfAccess();
@@ -65,7 +68,10 @@ export async function PATCH(request: Request) {
   try {
     const body = await request.json();
     let result;
-    if (body.action === "axis-order") {
+    if (body.action === "group-viewers") {
+      if (!["bank", "card"].includes(body.kind) || !Array.isArray(body.viewers) || body.viewers.length > 2000 || !body.viewers.every((id: unknown) => typeof id === "string" && id.length <= 100)) throw new Error();
+      result = await auth.db.rpc("bud_mf_save_group_viewers", { p_kind: body.kind, p_viewers: [...new Set(body.viewers)] });
+    } else if (body.action === "axis-order") {
  if (!["corp", "bank"].includes(body.axis) || !Array.isArray(body.keys) || body.keys.length > 2000 || !body.keys.every((k: unknown) => typeof k === "string") || new Set(body.keys).size !== body.keys.length) throw new Error();
  result = await auth.db.rpc("bud_mf_reorder_axis", { p_axis: body.axis, p_keys: body.keys });
  } else if (body.action === "reorder") {

@@ -1,4 +1,4 @@
-import type { ConnectedAccount, Transaction, TrialRow } from "./types";
+import type { BookSubAccount, ConnectedAccount, Transaction, TrialRow } from "./types";
 
 // The only POST is token exchange. Accounting data is strictly GET-only.
 export class MfClient {
@@ -35,6 +35,20 @@ export class MfClient {
     const data = await this.get("reports/trial_balance_bs", { with_sub_accounts: "true" });
     if (typeof data.start_date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(data.start_date) || !Array.isArray(data.rows)) throw new Error("MF の帳簿を確認できませんでした");
     return data as { start_date: string; rows: TrialRow[] };
+  }
+  async subAccounts(): Promise<BookSubAccount[]> {
+    const result: BookSubAccount[] = [];
+    for (let page = 1; page <= 10000; page++) {
+      const data = await this.get("sub_accounts", { page: String(page), per_page: "500" });
+      if (!Array.isArray(data.sub_accounts)) throw new Error("MF の補助科目を確認できませんでした");
+      for (const row of data.sub_accounts as BookSubAccount[]) {
+        if (row.id == null || typeof row.name !== "string") throw new Error("MF の補助科目を確認できませんでした");
+        result.push(row);
+      }
+      const pages = (data.metadata as { total_pages?: number } | undefined)?.total_pages;
+      if (pages != null ? page >= pages : data.sub_accounts.length < 500) return result;
+    }
+    throw new Error("MF の補助科目を確認できませんでした");
   }
   async transactions(start: string, end: string): Promise<Transaction[]> {
     const result: Transaction[] = [];
