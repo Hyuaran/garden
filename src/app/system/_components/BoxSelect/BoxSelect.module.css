@@ -20,3 +20,4 @@
 .trigger span { font-size:18px; }
 .valueText { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-style:normal; }
 .root { max-width:262px; }
+.options { scrollbar-color:var(--line,#31435a) transparent; scrollbar-width:thin; }

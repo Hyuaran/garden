@@ -28,7 +28,7 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
     }).catch(e => { if (active) { setData(null); setError(e instanceof Error ? e.message : "明細を読み込めませんでした"); } }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   },[id,period]);
-  const name = data ? accountDisplayName(data.account.name) : "明細";
+  const name = data ? accountDisplayName(data.account.name) : "";
   const card = data?.account.kind === "card";
   const columns: DataColumn<CardTransaction>[] = [
     { id:"date", label:"日付", value:t => t.date, type:"date", filterValue:t => `${t.date.slice(0,4)}年${Number(t.date.slice(5,7))}月` },
@@ -44,10 +44,10 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
   }} fiscalStart={data?.account.fiscal_start_date} years={data?.fiscalYears ?? []} />;
   return <div className={styles.pageShell}>
     <SystemBreadcrumb root={{ label:"Bud", href:"/bud/dashboard" }} items={[{ label:"口座残高・カード利用", href:card ? "/bud/bank?tab=card" : "/bud/bank" },{ label:name }]} />
-    <h1>{name}</h1>
+    <h1>{name || " "}</h1>
     {error && <p role="alert">{error}</p>}
     <span role="status">{loading ? "読み込み中…" : ""}</span>
-    {!data && <div className={styles.toolbar}>{periodControl}</div>}
+    {!data && error && <div className={styles.toolbar}>{periodControl}</div>}
     {data && <>
       <DataTable key={`${id}:${period}`} rows={data.transactions} columns={columns} rowKey={t => t.mf_transaction_id} defaultSort={{ id:"date", direction:"desc" }} toolbar={periodControl}
         searchText={t => `${t.content} ${Number(t.value)} ${Number(t.value).toLocaleString("ja-JP")} ${transactionAmount(t)} ${transactionAmount(t).toLocaleString("ja-JP")}`}

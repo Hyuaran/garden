@@ -31,3 +31,12 @@ it("clamps the menu to a mobile viewport", () => {
     expect(parseFloat(screen.getByRole("dialog").style.left)+320).toBeLessThanOrEqual(382);
   } finally { Object.defineProperty(window,"innerWidth",{configurable:true,value:width}); }
 });
+it("switches the clear button to select all when nothing is checked", () => {
+  const change = vi.fn();
+  render(<BoxSelect label="期間" value={["current"]} options={[{value:"a",label:"A"},{value:"b",label:"B"},{value:"current",label:"C"}]} onChange={change} />);
+  fireEvent.click(screen.getByRole("button",{name:"期間"}));
+  fireEvent.click(screen.getByRole("button",{name:"すべて解除"}));
+  fireEvent.click(screen.getByRole("button",{name:"すべて選択"}));
+  fireEvent.submit(screen.getByRole("dialog"));
+  expect(change).toHaveBeenCalledWith(["a","b","current"]);
+});

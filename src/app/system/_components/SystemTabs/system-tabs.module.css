@@ -7,8 +7,8 @@
 .row { display:flex; align-items:flex-end; gap:8px; width:100%; margin:0 0 16px; border-bottom:1px solid var(--line,var(--notice-line,#e3eaf3)); }
 .tabs.tabs.inRow { margin:0 0 -1px; border-bottom:0; flex:1 1 auto; }
 .actions { display:flex; align-items:center; gap:6px; flex:0 0 auto; padding:0 0 4px; }
-.actions .actionButton.actionButton { display:inline-flex; flex:0 0 34px; min-width:34px; min-height:34px; box-shadow:none; font:inherit; align-items:center; justify-content:center; width:34px; height:34px; padding:7px; border:1px solid transparent; border-radius:9px; background:transparent; color:var(--sub,#5a6b80); cursor:pointer; }
-.actions .actionButton svg { flex:0 0 18px; width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-.actions .actionButton.actionButton:hover, .actions .actionButton.actionButton:focus-visible { color:var(--teal,#0ea5a0); background:color-mix(in srgb, var(--teal,#0ea5a0) 10%, transparent); outline:none; }
-.actions .actionButton.actionButton[aria-pressed="true"] { color:var(--teal,#0ea5a0); border-color:var(--teal,#0ea5a0); background:color-mix(in srgb, var(--teal,#0ea5a0) 12%, transparent); }
-.actions .actionButton.actionButton:disabled { opacity:.45; cursor:not-allowed; }
+.actionButton.actionButton.actionButton { display:inline-flex; flex:0 0 34px; min-width:34px; min-height:34px; box-shadow:none; font:inherit; align-items:center; justify-content:center; width:34px; height:34px; padding:7px; border:1px solid transparent; border-radius:9px; background:transparent; color:var(--sub,#5a6b80); cursor:pointer; }
+.actionButton.actionButton svg { flex:0 0 18px; width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.actionButton.actionButton.actionButton:hover, .actionButton.actionButton.actionButton:focus-visible { color:var(--teal,#0ea5a0); background:color-mix(in srgb, var(--teal,#0ea5a0) 10%, transparent); outline:none; }
+.actionButton.actionButton.actionButton[aria-pressed="true"] { color:var(--teal,#0ea5a0); border-color:var(--teal,#0ea5a0); background:color-mix(in srgb, var(--teal,#0ea5a0) 12%, transparent); }
+.actionButton.actionButton.actionButton:disabled { opacity:.45; cursor:not-allowed; }
