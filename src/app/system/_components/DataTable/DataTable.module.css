@@ -58,3 +58,25 @@
 .root .search input[type=search].searchInput, .root label.search input[type=search] { padding-left:38px; }
 .topRow .controls > label { display:flex; align-items:center; gap:8px; white-space:nowrap; }
 .topRow .controls { flex:1 1 0; min-width:380px; } .topRow .controls .search { flex:1 1 160px; min-width:160px; }
+/* 検索も数字の箱と同じ大きな四角（1 行目＝小さく「検索」・2 行目＝虫眼鏡つきの入力欄）（2026-10-21 東海林さん） */
+.root .searchBox { display:grid; gap:6px; align-content:start; padding:12px 18px; border:1px solid var(--table-line); border-radius:16px; background:var(--table-card); }
+.root .searchBox > small { color:var(--sub,#5a6b80); font-size:12px; font-weight:800; }
+.searchField { position:relative; display:block; }
+.searchField .searchIcon { left:12px; }
+.topRow .controls { align-items:stretch; }
+.topRow .controls .clear { align-self:flex-end; }
+/* 期間・検索の箱は「1 行目＝小さな見出し・2 行目＝入力」の縦並び。検索欄は箱の幅いっぱい */
+.topRow .controls > label { display:grid; grid-auto-flow:row; align-content:start; justify-items:stretch; gap:6px; white-space:nowrap; }
+.topRow .controls .searchBox { flex:1 1 240px; min-width:220px; max-width:380px; }
+.searchField input[type=search] { width:100%; box-sizing:border-box; }
+.topRow .controls { flex-wrap:wrap; gap:12px; min-width:0; }
+/* 数字の箱・期間・検索・解除を 1 つの並びに（箱の高さをそろえる。狭いときは箱ごと次の行へ） */
+.topRow { align-items:stretch; }
+.topRow .summary { display:contents; }
+.topRow .controls { display:contents; }
+.topRow .controls .clear { align-self:center; }
+/* 解除ボタンは検索の箱の中、入力欄の右 */
+.searchRow { display:flex; align-items:center; gap:8px; }
+.searchLabel { flex:1 1 auto; min-width:0; display:block; }
+.topRow .controls .searchBox .clear { align-self:center; flex:0 0 40px; }
+.root .searchField input[type=search] { padding-left:38px; }

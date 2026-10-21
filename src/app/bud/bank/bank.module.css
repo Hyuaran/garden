@@ -113,3 +113,11 @@
 :global([data-theme="dark"]) .statBox strong.increase,:global(.dark) .statBox strong.increase { color:#5fd6c9; }
 :global([data-theme="dark"]) .statBox strong.decrease,:global(.dark) .statBox strong.decrease { color:#ff8a8f; }
 @media (prefers-color-scheme: dark) { :global(html:not([data-theme=light])) .statBox strong.increase { color:#5fd6c9; } :global(html:not([data-theme=light])) .statBox strong.decrease { color:#ff8a8f; } }
+/* 数字の箱：数字は右ぞろえ（桁が増えても「件」「円」の位置が動かない）・幅をそろえる／期間も同じ箱（2026-10-21 東海林さん） */
+.statBox { min-width:170px; }
+.statBox strong { text-align:right; }
+.controlBox { align-content:start; }
+.controlBox select { min-height:40px; min-width:130px; }
+/* 期間の箱の中のプルダウンは枠なし（箱そのものが枠）（2026-10-21 東海林さん） */
+.controlBox select { border:0 !important; background:transparent !important; box-shadow:none !important; padding-left:0 !important; font-size:20px; font-weight:900; color:var(--ink); cursor:pointer; }
+.controlBox select:focus-visible { outline:2px solid var(--teal); outline-offset:2px; border-radius:6px; }

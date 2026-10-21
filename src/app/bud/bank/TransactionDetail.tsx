@@ -38,7 +38,7 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
     ]),
     { id:"journal", label:"仕訳", value:t => journalLabel(t.journalizing_status), type:"text" },
   ];
-  const periodControl = <label>期間 <select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">{fiscalYearLabel(data?.account.fiscal_start_date)}</option>{pastFiscalYears(data?.fiscalYears ?? [], data?.account.fiscal_start_date).map(year => <option key={year} value={`fy:${year}`}>{year}年度</option>)}</select></label>;
+  const periodControl = <label className={`${styles.statBox} ${styles.controlBox}`}><small>期間</small><select value={period} onChange={e => setPeriod(e.target.value)}><option value="current">今月</option><option value="last">先月</option><option value="year">{fiscalYearLabel(data?.account.fiscal_start_date)}</option>{pastFiscalYears(data?.fiscalYears ?? [], data?.account.fiscal_start_date).map(year => <option key={year} value={`fy:${year}`}>{year}年度</option>)}</select></label>;
   return <div className={styles.pageShell}>
     <SystemBreadcrumb root={{ label:"Bud", href:"/bud/dashboard" }} items={[{ label:"口座残高・カード利用", href:card ? "/bud/bank?tab=card" : "/bud/bank" },{ label:name }]} />
     <h1>{name}</h1>
