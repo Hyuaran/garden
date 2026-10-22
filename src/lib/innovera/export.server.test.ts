@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { exportInnoveraCalls, parseExportParams } from "./export.server";
+import { EXPORT_ALLOWED_CIRCUITS, exportInnoveraCalls, parseExportParams } from "./export.server";
 
 type Call = { method: string; args: unknown[] };
 
-/** supabase の from().select()… の呼び方を記録し、決めた返事を順に返す偽物 */
+/** supabase の from().select()… の呼び方を（表をまたいで）呼んだ順に記録し、決めた返事を順に返す偽物 */
 function fakeSupabase(pages: unknown[][], log: { range_to: string; finished_at: string } | null) {
   const calls: Call[] = [];
   let page = 0;
@@ -30,8 +30,13 @@ function fakeSupabase(pages: unknown[][], log: { range_to: string; finished_at: 
   return { client: { from: (table: string) => builder(table) } as never, calls };
 }
 
+const argsOf = (calls: Call[], method: string) => calls.filter((c) => c.method === method).map((c) => c.args);
+
+const RANGE = { from: "2026-10-19 00:00:00", to: "2026-10-19 23:59:59" };
+const LOG = { range_to: "2026-10-22T05:55:00.000Z", finished_at: "2026-10-22T05:55:03.000Z" };
+
 describe("parseExportParams", () => {
-  it("accepts circuit ids and a JST range in the INNOVERA format", () => {
+  it("accepts allowed circuit ids and a JST range in the INNOVERA format", () => {
     expect(parseExportParams({ circuits: [164, "165"], from: "2026-10-19 00:00:00", to: "2026-10-22 23:59:59" })).toEqual({
       circuits: [164, 165],
       from: "2026-10-19 00:00:00",
@@ -39,17 +44,52 @@ describe("parseExportParams", () => {
     });
   });
 
-  it("rejects missing or invalid circuits", () => {
-    expect(() => parseExportParams({ circuits: [], from: "2026-10-19 00:00:00", to: "2026-10-19 23:59:59" })).toThrow();
-    expect(() => parseExportParams({ circuits: [0], from: "2026-10-19 00:00:00", to: "2026-10-19 23:59:59" })).toThrow();
-    expect(() => parseExportParams({ circuits: ["abc"], from: "2026-10-19 00:00:00", to: "2026-10-19 23:59:59" })).toThrow();
-    expect(() => parseExportParams({ circuits: Array.from({ length: 21 }, (_, i) => i + 1), from: "2026-10-19 00:00:00", to: "2026-10-19 23:59:59" })).toThrow();
+  it("allows exactly the circuits of WEB inbound (133・164・165・166)", () => {
+    expect([...EXPORT_ALLOWED_CIRCUITS].sort()).toEqual([133, 164, 165, 166]);
+    expect(parseExportParams({ circuits: [133, 164, 165, 166], ...RANGE }).circuits).toEqual([133, 164, 165, 166]);
+  });
+
+  it("rejects circuits that are not allowed, even mixed with allowed ones", () => {
+    expect(() => parseExportParams({ circuits: [200], ...RANGE })).toThrow(/not allowed/);
+    expect(() => parseExportParams({ circuits: [164, 1], ...RANGE })).toThrow(/not allowed/);
+  });
+
+  it("rejects missing circuits and circuits that are neither integers nor digit strings", () => {
+    expect(() => parseExportParams({ circuits: [], ...RANGE })).toThrow();
+    expect(() => parseExportParams({ ...RANGE })).toThrow();
+    for (const bad of [true, null, {}, [164], 164.5, "164.0", " 164", "164 ", "1e2", "0xa4", "", -164, 0, "-164"]) {
+      expect(() => parseExportParams({ circuits: [bad], ...RANGE }), `circuit ${JSON.stringify(bad)}`).toThrow(/circuits must/);
+    }
+  });
+
+  it("drops duplicated circuits", () => {
+    expect(parseExportParams({ circuits: [164, "164", 165], ...RANGE }).circuits).toEqual([164, 165]);
   });
 
   it("rejects unreadable, reversed or too long ranges", () => {
     expect(() => parseExportParams({ circuits: [164], from: "2026/10/19", to: "2026-10-19 23:59:59" })).toThrow();
+    expect(() => parseExportParams({ circuits: [164], from: 20261019, to: "2026-10-19 23:59:59" })).toThrow();
     expect(() => parseExportParams({ circuits: [164], from: "2026-10-20 00:00:00", to: "2026-10-19 23:59:59" })).toThrow();
     expect(() => parseExportParams({ circuits: [164], from: "2026-09-01 00:00:00", to: "2026-10-19 23:59:59" })).toThrow();
+  });
+
+  it("rejects dates and times that do not exist instead of rolling them over", () => {
+    for (const bad of [
+      "2026-02-30 00:00:00",
+      "2026-02-29 00:00:00",
+      "2026-04-31 00:00:00",
+      "2026-13-01 00:00:00",
+      "2026-00-10 00:00:00",
+      "2026-10-00 00:00:00",
+      "2026-10-19 24:00:00",
+      "2026-10-19 25:61:61",
+      "2026-10-19 23:60:00",
+      "2026-10-19 23:59:60",
+    ]) {
+      expect(() => parseExportParams({ circuits: [164], from: bad, to: bad }), bad).toThrow(/YYYY-MM-DD HH:MM:SS/);
+    }
+    // うるう年の 2/29 は実在する
+    expect(parseExportParams({ circuits: [164], from: "2028-02-29 00:00:00", to: "2028-02-29 23:59:59" }).from).toBe("2028-02-29 00:00:00");
   });
 });
 
@@ -57,7 +97,7 @@ describe("exportInnoveraCalls", () => {
   it("returns the raw INNOVERA rows of the circuits in the range, page by page, with the ingest coverage", async () => {
     const page1 = Array.from({ length: 1000 }, (_, i) => ({ raw: { id: String(i), circuit_id: "164" } }));
     const page2 = [{ raw: { id: "1000", circuit_id: "165" } }, { raw: null }];
-    const { client, calls } = fakeSupabase([page1, page2], { range_to: "2026-10-22T05:55:00.000Z", finished_at: "2026-10-22T05:55:03.000Z" });
+    const { client, calls } = fakeSupabase([page1, page2], LOG);
 
     const result = await exportInnoveraCalls({ circuits: [164, 165], from: "2026-10-19 00:00:00", to: "2026-10-22 23:59:59" }, client);
 
@@ -69,14 +109,48 @@ describe("exportInnoveraCalls", () => {
     // JST の 00:00:00 は UTC の前日 15:00:00
     expect(calls).toContainEqual({ method: "system_innovera_call.gte", args: ["start_time", "2026-10-18T15:00:00.000Z"] });
     expect(calls).toContainEqual({ method: "system_innovera_call.lte", args: ["start_time", "2026-10-22T14:59:59.000Z"] });
-    expect(calls.filter((c) => c.method === "system_innovera_call.range").map((c) => c.args)).toEqual([[0, 999], [1000, 1999]]);
-    expect(calls).toContainEqual({ method: "system_innovera_ingest_log.eq", args: ["status", "success"] });
-    expect(calls).toContainEqual({ method: "system_innovera_ingest_log.in", args: ["mode", ["poll", "daily"]] });
+    expect(argsOf(calls, "system_innovera_call.range")).toEqual([[0, 999], [1000, 1999]]);
+  });
+
+  it("orders every page by start time, then by the INNOVERA id (unique), so pages neither overlap nor skip", async () => {
+    const page1 = Array.from({ length: 1000 }, (_, i) => ({ raw: { id: String(i) } }));
+    const { client, calls } = fakeSupabase([page1, []], null);
+    await exportInnoveraCalls({ circuits: [164], ...RANGE }, client);
+
+    const pageOrder = [["start_time", { ascending: true }], ["innovera_id", { ascending: true }]];
+    expect(argsOf(calls, "system_innovera_call.order")).toEqual([...pageOrder, ...pageOrder]);
+  });
+
+  it("picks the latest successful poll/daily ingest (not backfill, not failed)", async () => {
+    const { client, calls } = fakeSupabase([[]], LOG);
+    await exportInnoveraCalls({ circuits: [164], ...RANGE }, client);
+
+    expect(argsOf(calls, "system_innovera_ingest_log.select")).toEqual([["range_to, finished_at"]]);
+    expect(argsOf(calls, "system_innovera_ingest_log.eq")).toEqual([["status", "success"]]);
+    expect(argsOf(calls, "system_innovera_ingest_log.in")).toEqual([["mode", ["poll", "daily"]]]);
+    expect(argsOf(calls, "system_innovera_ingest_log.order")).toEqual([["finished_at", { ascending: false }]]);
+    expect(argsOf(calls, "system_innovera_ingest_log.limit")).toEqual([[1]]);
+  });
+
+  it("reads the ingest log before the rows, so covered_until never claims calls written after the rows were read", async () => {
+    const { client, calls } = fakeSupabase([[]], LOG);
+    await exportInnoveraCalls({ circuits: [164], ...RANGE }, client);
+
+    const logRead = calls.findIndex((c) => c.method === "system_innovera_ingest_log.maybeSingle");
+    const firstRowRead = calls.findIndex((c) => c.method.startsWith("system_innovera_call."));
+    expect(logRead).toBeGreaterThanOrEqual(0);
+    expect(firstRowRead).toBeGreaterThan(logRead);
+  });
+
+  it("refuses circuits that are not allowed even when called directly", async () => {
+    const { client, calls } = fakeSupabase([[]], LOG);
+    await expect(exportInnoveraCalls({ circuits: [164, 999], ...RANGE }, client)).rejects.toThrow(/not allowed/);
+    expect(calls).toEqual([]);
   });
 
   it("returns null coverage when no ingest has succeeded", async () => {
     const { client } = fakeSupabase([[]], null);
-    const result = await exportInnoveraCalls({ circuits: [164], from: "2026-10-19 00:00:00", to: "2026-10-19 23:59:59" }, client);
+    const result = await exportInnoveraCalls({ circuits: [164], ...RANGE }, client);
     expect(result).toEqual({ rows: [], covered_until: null, last_success_at: null });
   });
 });
