@@ -27,7 +27,7 @@ describe("ManualsHubClient", () => {
 
     expect(screen.getByTestId("manuals-grid-view")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "System" })).toBeInTheDocument();
-    expect(screen.getByText("マニュアル 24 件")).toBeInTheDocument(); // 2026-10-19 ホスト PC 中継を追加
+    expect(screen.getByText("マニュアル 25 件")).toBeInTheDocument(); // 2026-10-22 メール送信失敗の知らせを追加
     expect(localStorage.getItem("garden.manuals.viewMode")).toBe("grid");
   });
 });
