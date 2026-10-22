@@ -1,4 +1,5 @@
 "use client";
+import { agentName } from "@/lib/bud/broadband/agent-names";
 import { useStickyTable } from "@/app/system/_components/StickyTable/useStickyTable";
 import ReorderGrip from "@/app/system/_components/ReorderGrip/ReorderGrip";
 import { useEffect, useRef, useState } from "react";
@@ -26,7 +27,7 @@ export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],
   useEffect(()=>{try {const v=JSON.parse(localStorage.getItem('bud-bb-details:'+userId)??'{}');setExpanded(Array.isArray(v.expanded)?v.expanded:[]);setChildrenOrder(v.order??{});}catch {setExpanded([]);setChildrenOrder({});}},[userId]);
   const remember=(open:string[],order:Record<string,string[]>)=>{setExpanded(open);setChildrenOrder(order);try {localStorage.setItem('bud-bb-details:'+userId,JSON.stringify({expanded:open,order}));}catch {}};
   const toggle=(key:string)=>remember(expanded.includes(key)?expanded.filter(k=>k!==key):[...expanded,key],childrenOrder);
-  const agentRecords=(parent:PivotRow)=>agents.map((a,i)=>({kintone_record_id:'agent-'+i,business:parent.business,partner:a.payee.replace(/様|株式会社/g,''),scheduled_date:a.payment_date,actual_period:a.target_month+'-01',profit_net:a.net==null?null:-a.net,product:a.review_reason ? '要確認：'+a.review_reason : a.source_file,updated_at:a.imported_at,recon_status:'excluded',confirmation:'',expected_gross:a.gross} as TableRecord));
+  const agentRecords=(parent:PivotRow)=>agents.map((a,i)=>({kintone_record_id:'agent-'+i,business:parent.business,partner:agentName(a.payee),scheduled_date:a.payment_date,actual_period:a.target_month+'-01',profit_net:a.net==null?null:-a.net,product:a.review_reason ? '要確認：'+a.review_reason : a.source_file,updated_at:a.imported_at,recon_status:'excluded',confirmation:'',expected_gross:a.gross} as TableRecord));
   const nttLabel=(name:string)=>name==='NTT原価（壱）' || name==='NTT原価(壱)' ? 'NTT原価（東西）センターライズ' : 'NTT原価（東西）ヒュアラン';
   const router=useRouter();
   const [periods,setPeriods]=useState([defaultPeriod(today)]), [order,setOrder]=useState<BroadbandOrder|null>(null), [sorting,setSorting]=useState(false), [selected,setSelected]=useState<TableRecord[]|null>(null), [busy,setBusy]=useState(false), [message,setMessage]=useState("");

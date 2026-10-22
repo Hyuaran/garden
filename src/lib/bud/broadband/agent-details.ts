@@ -3,7 +3,7 @@ import { readdir } from "node:fs/promises";
 import { join, basename } from "node:path";
 
 export type AgentDetail = {payment_date:string;target_month:string;payee:string;corp_code:string;net:number|null;gross:number|null;tax_rate:number|null;tax_mode:string;source_file:string;imported_at:string;review_reason:string};
-export const agentName = (name:string) => name.replace(/様/g, "").replace(/株式会社/g, "").trim();
+export { agentName, AGENT_ALIASES } from "./agent-names";
 const number = (v:string) => { const s=v.replace(/[,，円¥￥\s]/g, ""); return s && /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : null; };
 // 明細は数式で作られている。cell.text は書式（日付など）を当てて文字が化けるので、数式の結果・文字・数字をそのまま読む（2026-10-21 実測）
 const cellText = (v:ExcelJS.CellValue):string => {
