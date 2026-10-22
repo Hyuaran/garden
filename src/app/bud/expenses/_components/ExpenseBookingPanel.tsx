@@ -108,7 +108,8 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const [listSearchField, setListSearchField] = useState<ExpenseBookingSearchField>("all");
   const [listSearchValue, setListSearchValue] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  // 最初は全員分を折りたたむ（開いた人だけを覚える・東海林さん 2026-10-22）
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ledgerBusy, setLedgerBusy] = useState(false);
@@ -346,7 +347,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   };
 
   const toggleCollapsed = (key: string) => {
-    setCollapsedGroups((current) => {
+    setExpandedGroups((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -596,7 +597,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
               </thead>
               <tbody>
                 {groups.map((group) => {
-                  const collapsed = collapsedGroups.has(group.key);
+                  const collapsed = !expandedGroups.has(group.key);
                   const selection = getGroupSelectionState(group.selectableIds, selectedIds);
                   const groupSummary = summarizeExpenseBookingSelection(group.items, selectedIds);
                   return (

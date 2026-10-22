@@ -50,7 +50,8 @@ export function ExpenseBookingGroupHeader({
             aria-label={`${applicantName}の明細を${collapsed ? "開く" : "折りたたむ"}`}
             onClick={onToggleCollapsed}
           >
-            {collapsed ? "›" : "▼"}
+            {/* 折りたたみは四角で囲った＋／－（社長スタイル・2026-10-21） */}
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="2" y="2" width="16" height="16" rx="2" /><path d="M6 10h8" />{collapsed && <path d="M10 6v8" />}</svg>
           </button>
           <input
             ref={checkboxRef}
