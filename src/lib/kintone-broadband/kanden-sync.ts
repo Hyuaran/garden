@@ -66,7 +66,10 @@ export function buildRows(expenses: KintoneRecord[], bank: BankRow[], throughMon
       ...(g.kind ? { _MF_銀行: "楽天銀行", _MF_取引日: g.mfDate, _MF_取引額: String(g.total), _MF_摘要: g.content } : {}) });
   });
 }
-const keyOf = (r: KintoneRecord) => ["事業内容", "取引先会社名", "実績期間"].map(k => text(r, k)).join("|");
+// Kintone のグラフの並び順のために取引先名の頭へ「01 」などの番号が付けられることがある（2026-10-22 実害：番号付きに変わった行を見つけられず 81 行を二重に作った）。
+// 番号は取引先の違いではないので、探すときは外して比べる
+export const partnerBase = (name: string) => name.replace(/^\s*\d+\s+/, "").trim();
+const keyOf = (r: KintoneRecord) => [text(r, "事業内容"), partnerBase(text(r, "取引先会社名")), text(r, "実績期間")].join("|");
 function marked(r: KintoneRecord, historyField: string) {
   const rows = val(r, "テーブル");
   return Array.isArray(rows) && rows.some(row => row?.value?.[historyField]?.value === MARK);

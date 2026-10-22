@@ -4,7 +4,10 @@ import { ChatworkClient } from "@/lib/chatwork/client";
 import { buildPatch, notification, payeeKeyword, planIssues, reconcile, shiftDate, text, value, type Bank, type Issue, type Mirror, type Settings } from "./reconcile";
 
 const env = (key: string) => { const v = process.env[key]; if (!v) throw new Error(`Missing ${key}`); return v; };
-export function mirror(raw: KintoneRecord, now: string) {
+// Garden の写しでは、取引先名の頭の並び順用の番号（「01 」など）を外しておく（照合・表の判定は番号なしの名前で行う。Kintone へは書き戻さない）
+const partnerBase = (name: string) => name.replace(/^\s*\d+\s+/, "").trim();
+export function mirror(original: KintoneRecord, now: string) {
+  const raw = { ...original, 取引先会社名: { ...(original.取引先会社名 as object), value: partnerBase(text(original,"取引先会社名")) } } as KintoneRecord;
   const num = (k: string) => text(raw,k) === "" ? null : Number(value(raw,k));
   return { kintone_record_id:text(raw,"$id"), revision:text(raw,"$revision"), source:"kintone", business:text(raw,"事業内容"), partner:text(raw,"取引先会社名"), product:text(raw,"商材名"), payment_type:text(raw,"入金区分"), scheduled_date:text(raw,"入出金予定日") || null, actual_period:text(raw,"実績期間") || null, tax_rate:num("消費税率"), sales_net:num("売上_税抜_"), payment_net:num("支払額_税抜_"), payment_gross:num("支払額_税込_"), profit_net:num("利益額_税抜_"), confirmation:text(raw,"入金確認"), mf_company:text(raw,"ドロップダウン_0"), mf_bank:text(raw,"_MF_銀行"), mf_content:text(raw,"_MF_摘要"), mf_date:text(raw,"_MF_取引日") || null, mf_amount:num("_MF_取引額"), updated_at:now, raw };
 }
