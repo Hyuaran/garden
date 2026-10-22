@@ -354,9 +354,9 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
     });
   };
 
-  const softDeleteRows = async (targetRows: ExpenseSoftDeleteRow[]) => {
+  const softDeleteRows = async (targetRows: ExpenseSoftDeleteRow[], defaultReason = "") => {
     if (!canManageSoftDelete || targetRows.length === 0 || busy) return;
-    const reason = normalizeDeleteReason(window.prompt("削除理由を入力してください") ?? "");
+    const reason = normalizeDeleteReason(window.prompt("削除理由を入力してください", defaultReason) ?? "");
     if (!reason) {
       setMessage("削除理由は必須です");
       return;
@@ -546,6 +546,12 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                 選択を削除
               </button>
             )}
+            {/* 要確認（仕訳を作れない行）は選べないので、全権だけ「対象外」としてまとめて削除済みに移せる（東海林さん 2026-10-22） */}
+            {canManageSoftDelete && errorCount > 0 && (
+              <button type="button" style={deleteBtn} disabled={busy} onClick={() => void softDeleteRows(rows.filter((item) => !item.journal.ok).map((item) => item.row), "対象外（要確認）")}>
+                要確認 {errorCount} 件を対象外として削除
+              </button>
+            )}
           </div>
         </div>
 
@@ -632,7 +638,11 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                       <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(journal.debitTaxAmount)}</td>
                       <td style={td}>現金</td>
                       <td style={td}>{journal.description}</td>
-                      <td style={td}><span style={journal.ok ? okBadge : errorBadge}>{journal.note}</span></td>
+                      <td style={td}><span style={journal.ok ? okBadge : errorBadge}>{journal.note}</span>
+                        {!journal.ok && canManageSoftDelete && (
+                          <button type="button" style={{ ...deleteBtn, marginLeft: 8, padding: "2px 10px", fontSize: 12 }} disabled={busy} onClick={() => void softDeleteRows([row], "対象外（要確認）")}>対象外として削除</button>
+                        )}
+                      </td>
                     </tr>
                         );
                       })}

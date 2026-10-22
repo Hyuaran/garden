@@ -26,6 +26,9 @@ export function useStickyTable(ref: RefObject<HTMLElement | null>) {
     let frame = 0;
     let dirty = true;
     let activeGroup: HTMLTableRowElement | null = null;
+    let groupRows: HTMLTableRowElement[] = [];
+    const collectGroups = () => { groupRows = Array.from(table.querySelectorAll<HTMLTableRowElement>("tbody tr[data-sticky-group]")); };
+    collectGroups();
     const rebuild = () => {
       const original = table.tHead;
       head.replaceChildren();
@@ -78,13 +81,14 @@ export function useStickyTable(ref: RefObject<HTMLElement | null>) {
         if (/(auto|scroll|hidden|clip)/.test(css.overflowX)) { left = Math.max(left, rect.left); right = Math.min(right, rect.right); }
       }
       let group: HTMLTableRowElement | null = null;
-      // The row retains its natural position even when its cells are sticky.
+      // スクロールのたびに全部の行を測ると、行の多い表（経費精算の仕訳待ち＝約 1,200 行）で重くなる（2026-10-22）。
+      // まとまりの見出しの行だけを、上から順に測る（まとまりの行はその中身より前にある）
       const layoutTop=(node:HTMLElement)=>{let y=0;for(let el:HTMLElement|null=node;el;el=el.offsetParent as HTMLElement|null)y+=el.offsetTop;return y;};
-      const scale=table.offsetWidth ? t.width/table.offsetWidth : 1;
-      for (const row of Array.from(table.tBodies).flatMap(body=>Array.from(body.rows))) {
-        const rowTop = row.offsetHeight ? t.top + (layoutTop(row)-layoutTop(table))*scale : row.getBoundingClientRect().top;
+      const scale=table.offsetWidth ? t.width/table.offsetWidth : 1, tableTop=layoutTop(table);
+      for (const row of groupRows) {
+        const rowTop = row.offsetHeight ? t.top + (layoutTop(row)-tableTop)*scale : row.getBoundingClientRect().top;
         if (rowTop > top + (h?.height ?? 0)) break;
-        if (row.hasAttribute("data-sticky-group")) group = row;
+        group = row;
       }
       if (group !== activeGroup) { activeGroup = group; dirty = true; }
       const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
@@ -100,16 +104,22 @@ export function useStickyTable(ref: RefObject<HTMLElement | null>) {
       bar.scrollLeft = wrap.scrollLeft * (t.width / table.offsetWidth || zoom) / zoom;
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(fit); };
-    const refresh = () => { dirty = true; schedule(); };
+    const refresh = () => { dirty = true; collectGroups(); schedule(); };
     const sync = () => {
       const scale = (table.getBoundingClientRect().width / table.offsetWidth || 1) / (Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1);
       if (Math.abs(wrap.scrollLeft - bar.scrollLeft / scale) > 1) wrap.scrollLeft = bar.scrollLeft / scale;
     };
     bar.addEventListener("scroll", sync);
+    // 固定した見出し・画面下のバーは body の上に重ねているので、その上でホイールを回しても画面が動かなかった（2026-10-22）。
+    // 縦はいちばん近い縦スクロールの親（無ければ画面）へ、横は表へ送る
+    const scroller = (() => { for (let p = wrap.parentElement; p && p !== document.body; p = p.parentElement) { if (/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight) return p; } return document.scrollingElement as HTMLElement; })();
+    const wheel = (event: WheelEvent) => { event.preventDefault(); (scroller ?? document.scrollingElement)?.scrollBy({ top: event.deltaY, left: 0 }); if (event.deltaX) wrap.scrollLeft += event.deltaX; };
+    head.addEventListener("wheel", wheel, { passive: false });
+    bar.addEventListener("wheel", wheel, { passive: false });
     const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(refresh);
     resize?.observe(wrap); resize?.observe(table);
     const mutation = new MutationObserver(refresh);
-    mutation.observe(table, { subtree: true, childList: true, attributes: true, characterData: true });
+    mutation.observe(table, { subtree: true, childList: true, characterData: true });
     table.addEventListener("change", refresh);
     const theme = new MutationObserver(refresh);
     theme.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });
