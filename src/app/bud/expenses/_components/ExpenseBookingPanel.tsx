@@ -279,8 +279,14 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
   const selectionSummary = useMemo(() => summarizeExpenseBookingSelection(rows, selectedIds), [rows, selectedIds]);
   const errorCount = rows.filter((row) => !row.journal.ok).length;
 
+  // 最初は何も選ばない（全選択のままの一括完了で誤って完了にした事故・東海林さん 2026-10-22）。
+  // 絞り込みが変わったときは、見えなくなった行の選択だけ外す
   useEffect(() => {
-    setSelectedIds(new Set(selectableIds));
+    setSelectedIds((current) => {
+      const visible = new Set(selectableIds);
+      const next = new Set([...current].filter((id) => visible.has(id)));
+      return next.size === current.size ? current : next;
+    });
   }, [selectableIds]);
 
   useEffect(() => {
