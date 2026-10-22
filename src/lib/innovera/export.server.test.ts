@@ -88,6 +88,9 @@ describe("parseExportParams", () => {
     ]) {
       expect(() => parseExportParams({ circuits: [164], from: bad, to: bad }), bad).toThrow(/YYYY-MM-DD HH:MM:SS/);
     }
+    // from は正しく to だけが無い日時（繰り上げると期間の中に収まる）でも断る
+    expect(() => parseExportParams({ circuits: [164], from: "2026-10-19 00:00:00", to: "2026-10-20 24:00:00" })).toThrow(/YYYY-MM-DD HH:MM:SS/);
+    expect(() => parseExportParams({ circuits: [164], from: "2026-02-27 00:00:00", to: "2026-02-30 00:00:00" })).toThrow(/YYYY-MM-DD HH:MM:SS/);
     // うるう年の 2/29 は実在する
     expect(parseExportParams({ circuits: [164], from: "2028-02-29 00:00:00", to: "2028-02-29 23:59:59" }).from).toBe("2028-02-29 00:00:00");
   });
@@ -140,6 +143,28 @@ describe("exportInnoveraCalls", () => {
     const firstRowRead = calls.findIndex((c) => c.method.startsWith("system_innovera_call."));
     expect(logRead).toBeGreaterThanOrEqual(0);
     expect(firstRowRead).toBeGreaterThan(logRead);
+  });
+
+  it("does not touch the rows until the ingest log has been answered (not only asked)", async () => {
+    const { client, calls } = fakeSupabase([[]], null);
+    let answerLog: (value: { data: typeof LOG; error: null }) => void = () => {};
+    const pendingLog = new Promise<{ data: typeof LOG; error: null }>((resolve) => { answerLog = resolve; });
+    const from = (client as unknown as { from: (table: string) => Record<string, unknown> }).from;
+    const slowClient = {
+      from: (table: string) => {
+        const chain = from(table);
+        if (table === "system_innovera_ingest_log") chain.maybeSingle = () => pendingLog;
+        return chain;
+      },
+    } as never;
+
+    const running = exportInnoveraCalls({ circuits: [164], ...RANGE }, slowClient);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(calls.some((c) => c.method.startsWith("system_innovera_call."))).toBe(false);
+
+    answerLog({ data: LOG, error: null });
+    await expect(running).resolves.toMatchObject({ covered_until: LOG.range_to });
+    expect(calls.some((c) => c.method.startsWith("system_innovera_call."))).toBe(true);
   });
 
   it("refuses circuits that are not allowed even when called directly", async () => {

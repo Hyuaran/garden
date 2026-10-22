@@ -97,7 +97,9 @@ export async function exportInnoveraCalls(
     .maybeSingle<{ range_to: string | null; finished_at: string | null }>();
   if (logError) throw new Error(`system_innovera_ingest_log select failed: ${logError.message}`);
 
-  // 並びは開始時刻→INNOVERA の id（主キー＝重ならない）。並びが決まらないと、1000 件ずつ読む境目で重なり・抜けが出る
+  // 並びは開始時刻→INNOVERA の id（主キー＝重ならない）。並びが決まらないと、1000 件ずつ読む境目で重なり・抜けが出る。
+  //   読んでいる間の取り込みで足された行は重なり（同じ行が 2 回）にはなりうるが、抜けにはならない。
+  //   抜けるのは既にある行の start_time・circuit_id が変わるときだけで、どちらも INNOVERA の通話 1 件で決まっていて読み返しでも同じ値が入る
   const rows: InnoveraCallRaw[] = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const { data, error } = await supabase
