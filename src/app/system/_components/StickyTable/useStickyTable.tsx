@@ -15,6 +15,8 @@ export function useStickyTable(ref: RefObject<HTMLElement | null>) {
     wrap.style.height = "auto";
     wrap.style.overflowX = "auto";
     wrap.style.overflowY = "hidden";
+    // 表の中で縦スクロールしていたころの「overscroll-behavior: contain」が残ると、枠の上のホイールが画面に渡らず止まる（経費精算の仕訳待ち・2026-10-22）
+    wrap.style.overscrollBehavior = "auto";
     const head = document.createElement("div"), bar = document.createElement("div"), track = document.createElement("div");
     head.className = styles.head;
     head.setAttribute("aria-label", "表の見出し");
