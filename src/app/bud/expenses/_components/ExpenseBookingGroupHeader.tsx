@@ -40,7 +40,9 @@ export function ExpenseBookingGroupHeader({
   }, [partial]);
 
   return (
-    <tr data-sticky-group="true">
+    // 帯のどこを押しても（ボタン・チェック・プルダウン・リンク以外）まとめて選ぶ／外す（東海林さん 2026-10-22）
+    <tr data-sticky-group="true" style={{ cursor: disabled ? undefined : "pointer" }}
+      onClick={(event) => { if (disabled || (event.target as HTMLElement).closest("button,input,select,a,label")) return; onToggleSelection(!checked); }}>
       <td colSpan={15} style={groupTd}>
         <div style={groupHead}>
           <button

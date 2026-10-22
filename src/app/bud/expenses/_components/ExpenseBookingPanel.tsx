@@ -619,7 +619,9 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                       {!collapsed && group.items.map(({ row, applicant, category, journal }) => {
                         const checked = selectedIds.has(row.id) && journal.ok;
                         return (
-                    <tr key={row.id} style={journal.ok ? (checked ? checkedTr : tr) : errorTr}>
+                    <tr key={row.id} style={journal.ok ? { ...(checked ? checkedTr : tr), cursor: "pointer" } : errorTr}
+                      // 行のどこを押しても（プルダウン・ボタン・チェック以外）選ぶ／外す（東海林さん 2026-10-22）
+                      onClick={(event) => { if (!journal.ok || (event.target as HTMLElement).closest("button,input,select,a,label")) return; toggle(row.id, !checked); }}>
                       <td style={td}>
                         <input
                           type="checkbox"
