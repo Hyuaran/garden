@@ -20,8 +20,10 @@ export function ExpenseProcessingOverlay({ open, count, action, progress }: Prop
   );
 }
 
-const backdrop: React.CSSProperties = { position: "fixed", inset: 0, zIndex: 10000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 24, background: "color-mix(in srgb, var(--ink) 88%, transparent)", color: "var(--on-accent)", textAlign: "center", backdropFilter: "blur(3px)", pointerEvents: "all" };
-const spinner: React.CSSProperties = { width: 72, height: 72, border: "7px solid color-mix(in srgb, var(--card) 28%, transparent)", borderTopColor: "var(--teal-d)", borderRightColor: "var(--on-accent)", borderRadius: "50%", animation: "bud-expense-processing-spin .85s linear infinite" };
-const title: React.CSSProperties = { maxWidth: "min(90vw, 620px)", overflowWrap: "break-word", fontSize: 20, lineHeight: 1.6 };
-const progressText: React.CSSProperties = { fontSize: 15, fontVariantNumeric: "tabular-nums" };
-const wait: React.CSSProperties = { padding: "8px 14px", borderRadius: 8, background: "var(--sub)", color: "var(--teal-d)", fontWeight: 700, fontSize: 14 };
+// 社長スタイル版の固定色（Loading スタイル・リストマスタの ListProcessingOverlay と同じ）。
+// 以前は明暗の変数（--ink・--on-accent・--sub・--teal-d）を使っていて、暗い表示で文字が地に溶けて読めなかった（東海林さん 2026-10-22）
+const backdrop: React.CSSProperties = { position: "fixed", inset: 0, zIndex: 10000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 24, background: "rgba(16,35,63,.9)", color: "#ffffff", textAlign: "center", backdropFilter: "blur(3px)", pointerEvents: "all", fontFamily: "Meiryo, \"Hiragino Kaku Gothic ProN\", \"Noto Sans JP\", sans-serif" };
+const spinner: React.CSSProperties = { width: 72, height: 72, border: "7px solid rgba(255,255,255,0.28)", borderTopColor: "#0ea5a0", borderRightColor: "#ffffff", borderRadius: "50%", animation: "bud-expense-processing-spin .85s linear infinite" };
+const title: React.CSSProperties = { maxWidth: "min(90vw, 620px)", overflowWrap: "break-word", fontSize: 20, lineHeight: 1.6, color: "#ffffff" };
+const progressText: React.CSSProperties = { fontSize: 15, fontVariantNumeric: "tabular-nums", color: "#ffffff" };
+const wait: React.CSSProperties = { padding: "8px 14px", borderRadius: 8, background: "#fff7e6", color: "#8a5a00", fontWeight: 700, fontSize: 14 };
