@@ -23,9 +23,11 @@ export async function runMailNdrWatch(dryRun: boolean) {
     async saveAlert(alert, notifiedAt) { check(await db.from("system_mail_ndr_alerts").insert({ ...alert, notified_at: notifiedAt })); },
     collect,
     async send(body) {
-      const room = process.env.MAIL_NDR_WATCH_CHATWORK_ROOM_ID;
-      if (!room || !/^\d+$/.test(room)) throw new Error("MAIL_NDR_WATCH_CHATWORK_ROOM_ID is required");
-      await new ChatworkClient(process.env.CHATWORK_API_TOKEN ?? "").sendMessage(room, body);
+      // 知らせ先は複数の部屋をカンマ区切りで（Garden通知＋別の部屋・東海林さん 2026-10-22）
+      const rooms = (process.env.MAIL_NDR_WATCH_CHATWORK_ROOM_ID ?? "").split(",").map(r => r.trim()).filter(Boolean);
+      if (!rooms.length || rooms.some(r => !/^\d+$/.test(r))) throw new Error("MAIL_NDR_WATCH_CHATWORK_ROOM_ID is required");
+      const client = new ChatworkClient(process.env.CHATWORK_API_TOKEN ?? "");
+      for (const room of rooms) await client.sendMessage(room, body);
     },
   };
   // migration が用意した未開始行は、初回の実行時刻を確定してから読む。
