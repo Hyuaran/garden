@@ -483,7 +483,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
         <div style={panelHead}>
           <div>
             <h3 style={panelTitle}>仕訳プレビュー</h3>
-            <div style={panelMeta}>status=journalize_pending / {rows.length}件</div>
+            <div style={panelMeta}>仕訳待ち {rows.length.toLocaleString("ja-JP")}件</div>
           </div>
           <div style={toolbar}>
             <label style={filterControl}>申請者
