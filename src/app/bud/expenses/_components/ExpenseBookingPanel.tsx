@@ -412,9 +412,11 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
         await load();
         setMessage(`${targetRows.length}件の仕分け情報を保存し、完了へ移しました。`);
       }
+      return true;
     } catch (error) {
       setQueueAll(previous);
       setMessage(`保存に失敗したため元に戻しました: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
     } finally {
       if (!corpOnly) {
         setProcessing(null);
@@ -524,14 +526,25 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
               onChange={(event) => setFiscalPeriodInput(event.target.value)} />
             <button type="button" style={ledgerExportBtn(selectedRows.length > 0 && !busy)} disabled={!selectedRows.length || busy}
               onClick={() => {
-                const selectedCorpIds = Array.from(new Set(selectedRows.map((item) => item.row.booking_corp_id ?? item.corpId).filter(Boolean)));
-                if (!bookingCorpInput && selectedCorpIds.length !== 1) {
-                  setMessage("法人が混在しています。仕分け法人名を選んでください。");
+                const forced = canReassignBookingCorp ? bookingCorpInput : "";
+                if (forced) {
+                  if (sortedCorps.some((corp) => corp.id === forced)) void saveBookingInfo(selectedRows.map((item) => item.row), forced, false, bookingDateInput, fiscalPeriodInput);
                   return;
                 }
-                const initial = selectedCorpIds[0];
-                const corpId = canReassignBookingCorp ? bookingCorpInput || initial : initial;
-                if (corpId && sortedCorps.some((corp) => corp.id === corpId)) void saveBookingInfo(selectedRows.map((item) => item.row), corpId, false, bookingDateInput, fiscalPeriodInput);
+                // 仕分け法人名を選んでいないときは、それぞれの行の法人のまま、法人ごとに分けて入れる
+                // （以前は法人が混在すると止めていた＝不便・東海林さん 2026-10-22）
+                const byCorp = new Map<string, Req[]>();
+                for (const item of selectedRows) {
+                  const corpId = item.row.booking_corp_id ?? item.corpId;
+                  if (!corpId || !sortedCorps.some((corp) => corp.id === corpId)) continue;
+                  byCorp.set(corpId, [...(byCorp.get(corpId) ?? []), item.row]);
+                }
+                if (!byCorp.size) { setMessage("仕分け法人名を選んでください。"); return; }
+                void (async () => {
+                  let done = 0;
+                  for (const [corpId, targets] of byCorp) { if (!(await saveBookingInfo(targets, corpId, false, bookingDateInput, fiscalPeriodInput))) return; done += targets.length; }
+                  if (byCorp.size > 1) setMessage(`${done}件の仕分け情報を、法人ごと（${byCorp.size}社）に保存し、完了へ移しました。`);
+                })();
               }}>仕分け情報を入力</button>
             <button
               type="button"
