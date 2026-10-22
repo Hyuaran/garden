@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-09-30",
+  "as_of": "2026-10-22",
   "common": {
     "hosting": "Vercel (Pro team ヒュアラン)",
     "dns_policy": "B方式（NSごとVercel・メール系先行登録）",
@@ -28,7 +28,7 @@
         "plan": "RS",
         "contract": "1713021",
         "yen_per_year": 22932,
-        "action": "解約予定"
+        "action": "解約手続き済（2026-10-22・解約日 2026/11/30）"
       },
       "notes": [
         "新デザインへ刷新",
@@ -308,8 +308,8 @@
         "ChatGPTデザイン（和モダン）",
         "Ichi光と同じドメイン・同じ Vercel プロジェクトの /company"
       ],
-      "public_slug": "ichi",
-      "company_id": "COMP-006"
+      "company_id": "COMP-006",
+      "public_slug": "ichi"
     },
     {
       "company": "株式会社壱",
@@ -342,8 +342,8 @@
         "旧 Laravel+Vue を静的化し申込・問い合わせ API を Vercel 関数で再現",
         "https 正常化"
       ],
-      "public_slug": "ichi",
-      "company_id": "COMP-006"
+      "company_id": "COMP-006",
+      "public_slug": "ichi"
     },
     {
       "company": "株式会社ストーンベース",
@@ -373,16 +373,19 @@
       "kind": "商品",
       "product": "ウチのわんにゃんNET",
       "domain": "uchinowannyannet.com",
+      "url": "https://uchinowannyannet.com/",
       "status": "pending_migration",
-      "stack": "static",
-      "mail": "お名前メール（要移行）",
+      "stack": "Laravel+Vue（PHP）",
+      "mail": "お名前メール（MX=mail1032.onamae.ne.jp・要移行）",
       "old_server": {
         "plan": "ベーシック",
-        "contract": "2224542"
+        "contract": "2224542",
+        "action": "2026-10-22 移管着手（Ichi光と同方式で静的化＋Vercel関数）"
       },
       "notes": [
         "慎重に（almalioとの兼ね合い）",
-        "almalio.net は会社HP作らず解約済"
+        "almalio.net は会社HP作らず解約済",
+        "申込 /entry/send・問い合わせ /contact/send を Vercel 関数で再現する"
       ]
     }
   ],
