@@ -22,7 +22,7 @@ type EmployeeRow = {
 };
 
 const LINK_GUIDE = "シフト連絡を受け取るために、『連携 社員番号』（例：連携 1568）と送ってください。";
-const FOLLOW_REPLY = `スタッフ連絡用です。${LINK_GUIDE}`;
+const FOLLOW_REPLY = `official｜通知です。${LINK_GUIDE}`;
 
 function verifyLineSignature(rawBody: string, signature: string | null) {
   const secret = process.env.LINE_STAFF_CHANNEL_SECRET;

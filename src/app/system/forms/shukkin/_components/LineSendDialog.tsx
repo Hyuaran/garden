@@ -170,7 +170,7 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
             </div>
           </> : <>
             <h2 id="line-send-title">この内容で公式 LINE に送信します</h2>
-            <p className={styles.destination}>スタッフ連絡用_official から、対象日 {formatSlashDate(date)} のシフト連絡を届けます</p>
+            <p className={styles.destination}>official｜通知 から、対象日 {formatSlashDate(date)} のシフト連絡を届けます</p>
             <p className={quotaShortage ? styles.danger : styles.quota}>
               今月の枠：{quota?.remaining === null || quota?.remaining === undefined ? `今回 ${needed} 通` : `残り ${quota.remaining} 通／今回 ${needed} 通`}
             </p>
