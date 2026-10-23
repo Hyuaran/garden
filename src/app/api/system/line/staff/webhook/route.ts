@@ -21,7 +21,8 @@ type EmployeeRow = {
   line_user_id?: string | null;
 };
 
-const LINK_GUIDE = "シフト連絡を受け取るために、『連携 社員番号』（例：連携 1568）と送ってください。";
+// 公式 LINE「official｜通知」はシフト連絡以外の業務でも使う（2026-10-23 東海林さん）＝用途を限らない言い方に
+const LINK_GUIDE = "アカウント登録のために、『連携 社員番号』（例：連携 1568）と送ってください。";
 const FOLLOW_REPLY = `official｜通知です。${LINK_GUIDE}`;
 
 function verifyLineSignature(rawBody: string, signature: string | null) {
