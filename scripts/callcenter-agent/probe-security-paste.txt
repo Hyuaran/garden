@@ -1,7 +1,7 @@
 # 社内ホストPC（コール履歴を毎日読んでいる PC）の PowerShell に、この下を丸ごと貼って実行する。
 # FileMaker の「セキュリティ（アカウント・権限）」が ODBC から見えるかを調べる（読むだけ・書き込みなし）。
 # 見るもの：ファイルごとの表の一覧・FileMaker の仕組みの表（FileMaker_Tables／FileMaker_Fields）・名前に「アカウント／権限」を含む表。
-# 結果は Claude に貼って渡す。2026-10-24 作成（入社の流れの自動化：FileMaker のアカウント追加を自動にできるかの前調査）。
+# 結果は I:\マイドライブ\東海林専用フォルダ_スクリプト・実行結果\probe-security-result.txt にも保存される（無ければ画面だけ）。2026-10-24 作成（入社の流れの自動化：FileMaker のアカウント追加を自動にできるかの前調査）。
 
 $p = "C:\Garden\callcenter-agent\probe-security.ps1"
 @'
