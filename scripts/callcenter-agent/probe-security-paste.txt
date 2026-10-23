@@ -40,4 +40,10 @@ foreach ($db in $files) {
 Write-Host ""
 Write-Host "おわり"
 '@ | Out-File -FilePath $p -Encoding utf8
-& "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $p
+$out = "I:\マイドライブ\東海林専用フォルダ\03_スクリプト・実行結果\probe-security-result.txt"
+if (Test-Path (Split-Path $out)) {
+  & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $p *>&1 | Tee-Object -FilePath $out
+  Write-Host ("保存しました：" + $out)
+} else {
+  & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $p
+}
