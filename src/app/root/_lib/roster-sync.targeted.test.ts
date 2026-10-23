@@ -1,0 +1,35 @@
+﻿import { afterEach, expect, it, vi } from "vitest";
+import { syncRootRoster } from "./roster-sync.server";
+import { getAllRecords, getFormFields } from "@/lib/kintone/records";
+vi.mock("@/lib/kintone/records", () => ({ getAllRecords: vi.fn(), getFormFields: vi.fn() }));
+afterEach(() => { vi.clearAllMocks(); vi.unstubAllEnvs(); });
+it("filters record IDs, reads all employees and skips full sync sources", async () => {
+  vi.stubEnv("KINTONE_EMPLOYEE_ROSTER_APP_ID", "56"); vi.stubEnv("KINTONE_EMPLOYEE_ROSTER_TOKEN", "token"); vi.stubEnv("KINTONE_BANK_ACCOUNTS_APP_ID", "92"); vi.stubEnv("KINTONE_BANK_ACCOUNTS_TOKEN", "bank");
+  vi.mocked(getAllRecords).mockResolvedValue([]);
+  const select = vi.fn().mockResolvedValue({ data: [], error: null });
+  const from = vi.fn(() => ({ select }));
+  const supabase = { from } as unknown as NonNullable<Parameters<typeof syncRootRoster>[0]>["supabase"];
+  await syncRootRoster({ recordIds: ["12", "13", "12"], supabase });
+  expect(getAllRecords).toHaveBeenCalledExactlyOnceWith("56", "token", "$id in (12,13)", null);
+  expect(getFormFields).not.toHaveBeenCalled();
+  expect(from).toHaveBeenCalledExactlyOnceWith("root_employees");
+  expect(select).toHaveBeenCalledWith(expect.not.stringContaining("eq("));
+});
+it("rejects query injection before fetching", async () => { await expect(syncRootRoster({ recordIds: ["1) or $id > 0"], supabase: {} as never })).rejects.toThrow("Invalid roster record ID"); expect(getAllRecords).not.toHaveBeenCalled(); });
+it("empty IDs never trigger full roster retrieval", async () => { const supabase = { from: () => ({ select: async () => ({ data: [], error: null }) }) } as never; await syncRootRoster({ recordIds: [], supabase }); expect(getAllRecords).not.toHaveBeenCalled(); });
+it("recovers a concurrent insert through the unique employee number", async () => {
+  vi.mocked(getAllRecords).mockResolvedValue([{ $id: { value: "12" }, 打刻ID: { value: "1234" }, 従業員名_姓名: { value: "テスト" }, 従業員ステータス: { value: "退職済み" }, 退職日: { value: "2020-01-01" } }]);
+  const eqUpdate = vi.fn().mockResolvedValue({ error: null });
+  const update = vi.fn(() => ({ eq: eqUpdate }));
+  const maybeSingle = vi.fn().mockResolvedValue({ data: { employee_id: "existing", user_id: "user", commute_daily_allowance: 700 }, error: null });
+  const eq = vi.fn(() => ({ maybeSingle }));
+  const select = vi.fn().mockResolvedValueOnce({ data: [], error: null }).mockReturnValue({ eq });
+  const insert = vi.fn().mockResolvedValue({ error: { code: "23505" } });
+  const from = vi.fn((table: string) => table === "root_employees" ? { select, insert, update } : { insert: vi.fn().mockResolvedValue({ error: null }) });
+  const result = await syncRootRoster({ dryRun: false, recordIds: ["12"], supabase: { from } as never });
+  expect(insert).toHaveBeenCalledTimes(1);
+  expect(eq).toHaveBeenCalledWith("employee_number", "1234");
+  expect(update).toHaveBeenCalledWith(expect.objectContaining({ user_id: "user", commute_daily_allowance: 700 }));
+  expect(eqUpdate).toHaveBeenCalledWith("employee_id", "existing");
+  expect(result.created).toBe(0); expect(result.updated).toBe(1);
+});

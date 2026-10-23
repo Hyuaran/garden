@@ -74,6 +74,7 @@ export type RosterSyncSummary = {
 
 type SyncOptions = {
   dryRun?: boolean;
+  recordIds?: string[];
   now?: Date;
   supabase?: SupabaseClient;
   fetchImpl?: typeof fetch;
@@ -626,8 +627,11 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
   };
   const token = process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN ?? "";
   const app = process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID || "56";
-  await syncRosterFieldLabels(admin, app, token, dryRun);
-  const records = await getAllRecords(app, token, "", null);
+  const targeted = options.recordIds !== undefined;
+  const ids = [...new Set(options.recordIds ?? [])];
+  if (ids.some((id) => !/^[1-9]\d*$/.test(id))) throw new Error("Invalid roster record ID");
+  if (!targeted) await syncRosterFieldLabels(admin, app, token, dryRun);
+  const records = targeted && ids.length === 0 ? [] : await getAllRecords(app, token, targeted ? `$id in (${ids.join(",")})` : "", null);
   summary.rosterRecords = records.length;
 
   const { data: existingRows, error } = await admin.from("root_employees").select("employee_id,employee_number,name,name_kana,company_id,employment_type,salary_system_id,hire_date,termination_date,email,kot_employee_id,commute_daily_allowance,garden_role,garden_role_manual,user_id,is_active,birthday");
@@ -702,7 +706,32 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
       summary.created += 1;
       if (!dryRun) {
         const { error: insertError } = await admin.from("root_employees").insert(row);
-        if (insertError) throw insertError;
+        if (insertError) {
+          if (!targeted || insertError.code !== "23505") throw insertError;
+          // A concurrent webhook may have inserted the same employee after our read.
+          const { data: concurrent, error: readError } = await admin.from("root_employees")
+            .select("employee_id,user_id,commute_daily_allowance").eq("employee_number", employeeNumber).maybeSingle();
+          if (readError) throw readError;
+          if (!concurrent) throw insertError;
+          mapped.employee_id = concurrent.employee_id;
+          const { error: retryError } = await admin.from("root_employees").update({
+            name: row.name,
+            name_kana: row.name_kana,
+            birthday: row.birthday,
+            hire_date: row.hire_date,
+            termination_date: row.termination_date,
+            employment_type: row.employment_type,
+            kot_employee_id: row.kot_employee_id,
+            email: row.email,
+            commute_daily_allowance: concurrent.commute_daily_allowance ?? row.commute_daily_allowance,
+            user_id: concurrent.user_id ?? row.user_id,
+            is_active: row.is_active,
+            roster_record_id: row.roster_record_id,
+          }).eq("employee_id", concurrent.employee_id);
+          if (retryError) throw retryError;
+          summary.created -= 1;
+          summary.updated += 1;
+        }
       }
     }
     const mappedKot = digits(mapped.kot_employee_id);
@@ -728,7 +757,7 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
     }
   }
 
-  const bankSummary = await syncBankListHistory(admin, employeesByKot, employeesByName, today, dryRun);
+  const bankSummary = targeted ? { rows: 0, skipped: 0 } : await syncBankListHistory(admin, employeesByKot, employeesByName, today, dryRun);
   summary.bankListRows = bankSummary.rows;
   summary.bankListSkipped = bankSummary.skipped;
   summary.historyRows += bankSummary.rows;

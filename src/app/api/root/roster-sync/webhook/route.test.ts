@@ -1,0 +1,22 @@
+﻿import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { POST } from "./route";
+import { after } from "next/server";
+import { syncRootRoster } from "@/app/root/_lib/roster-sync.server";
+vi.mock("next/server", () => ({ after: vi.fn() }));
+vi.mock("@/app/root/_lib/roster-sync.server", () => ({ syncRootRoster: vi.fn() }));
+beforeEach(() => { vi.clearAllMocks(); vi.stubEnv("ROOT_ROSTER_WEBHOOK_SECRET", "secret"); vi.stubEnv("KINTONE_EMPLOYEE_ROSTER_APP_ID", "56"); });
+afterEach(() => vi.unstubAllEnvs());
+const request = (key = "secret", body: unknown = { app: { id: "56" }, type: "ADD_RECORD", record: { $id: { value: "12" } } }) => new Request(`https://example.com/api?key=${key}`, { method: "POST", body: JSON.stringify(body) });
+it.each(["", "wrong", "秘密"])("rejects invalid key %s", async key => { expect((await POST(request(key))).status).toBe(401); expect(after).not.toHaveBeenCalled(); });
+it("returns 503 without configuration", async () => { vi.stubEnv("ROOT_ROSTER_WEBHOOK_SECRET", ""); expect((await POST(request())).status).toBe(503); expect(after).not.toHaveBeenCalled(); });
+it("rejects another app", async () => { expect((await POST(request("secret", { app: { id: "57" } }))).status).toBe(400); expect(after).not.toHaveBeenCalled(); });
+it.each(["ADD_RECORD", "UPDATE_RECORD", "UPDATE_STATUS"])("defers single record sync for %s", async type => {
+  vi.mocked(syncRootRoster).mockResolvedValue({ errors: [] } as unknown as Awaited<ReturnType<typeof syncRootRoster>>);
+  expect((await POST(request("secret", { app: { id: 56 }, type, record: { $id: { value: "12" }, name: "untrusted" } }))).status).toBe(200);
+  expect(syncRootRoster).not.toHaveBeenCalled();
+  await (vi.mocked(after).mock.calls[0][0] as () => Promise<void>)();
+  expect(syncRootRoster).toHaveBeenCalledExactlyOnceWith({ dryRun: false, recordIds: ["12"] });
+});
+it("ignores deletion", async () => { const spy = vi.spyOn(console, "info").mockImplementation(() => {}); expect((await POST(request("secret", { app: { id: "56" }, type: "DELETE_RECORD" }))).status).toBe(200); expect(after).not.toHaveBeenCalled(); spy.mockRestore(); });
+it("rejects invalid IDs", async () => { expect((await POST(request("secret", { app: { id: "56" }, type: "ADD_RECORD", record: { $id: { value: "1)" } } }))).status).toBe(400); });
+it("logs background failures", async () => { const spy = vi.spyOn(console, "error").mockImplementation(() => {}); vi.mocked(syncRootRoster).mockRejectedValue(new Error("failed")); await POST(request()); await (vi.mocked(after).mock.calls[0][0] as () => Promise<void>)(); expect(spy).toHaveBeenCalled(); spy.mockRestore(); });
