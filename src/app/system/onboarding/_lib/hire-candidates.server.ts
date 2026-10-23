@@ -76,6 +76,8 @@ export async function hireCandidate({db}: Context, id: string, prepare = false) 
  };
  const done = async () => { await persist({steps:{...c.steps,[stage]:{done:true,at:new Date().toISOString()}}}); };
  try {
+  // Sprout handoffs are planned before company and attendance assignments are chosen.
+  if (!c.company_id || !c.kot_division_code || !c.kot_type_code) throw new HireError("会社・勤怠の所属・雇用区分を設定してから入社手続きを進めてください");
   // A reserved number survives failures and confirmation cancellation.
   if (!c.employee_number) {
    const employees = await fetchKotHireEmployees();
