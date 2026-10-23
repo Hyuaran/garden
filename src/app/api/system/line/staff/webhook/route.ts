@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { parseOneTimeLink } from "@/lib/line/link-code";
 import { NextResponse } from "next/server";
 import { getLineStaffProfile, replyLineStaff } from "@/lib/line/staff-client";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -177,6 +178,16 @@ async function rememberPending(lineUserId: string, text: string) {
 
 async function handleMessage(event: LineWebhookEvent) {
   if (event.message?.type !== "text" || !event.message.text) return;
+  const oneTime = parseOneTimeLink(event.message.text);
+  if (oneTime && event.source?.userId) {
+    const { data, error } = await getSupabaseAdmin().rpc("system_consume_line_link_code", {
+      p_employee_number: oneTime.employeeNumber, p_code: oneTime.code,
+      p_line_user_id: event.source.userId, p_display_name: await displayNameFor(event.source.userId),
+    });
+    if (error) throw error;
+    await reply(event.replyToken, data?.linked ? `${data.name || oneTime.employeeNumber}さんとして登録しました。ありがとうございます。` : "番号が違うか、期限が切れています。入社手続きの画面に出ている文をそのまま送ってください。");
+    return;
+  }
   const employeeNumber = parseLinkText(event.message.text);
   if (employeeNumber) await handleLink(event, employeeNumber);
   else await handleUnlinkedText(event, event.message.text);

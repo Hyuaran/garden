@@ -12,7 +12,7 @@ import { getGreeting } from "../_lib/greeting";
 import { fetchBloomUser } from "../bloom/_lib/auth";
 import styles from "./page.module.css";
 
-const ONBOARDING_REDIRECT_EXCLUDED_ROLES = new Set(["closer", "toss", "outsource"]);
+const ONBOARDING_REDIRECT_EXCLUDED_ROLES = new Set(["outsource"]);
 
 async function fetchNeedsOnboardingAfterLogin() {
   try {

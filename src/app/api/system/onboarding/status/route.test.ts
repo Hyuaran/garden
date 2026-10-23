@@ -8,7 +8,7 @@ import { GET } from "./route";
 
 function client(options: {
   user?: boolean;
-  employee?: { employee_id?: unknown } | null;
+  employee?: { employee_id?: unknown; garden_role?: string; hire_date?: string | null } | null;
   onboarding?: { status?: string; my_number?: string; name?: string } | null;
   employeeError?: unknown;
   onboardingError?: unknown;
@@ -61,7 +61,7 @@ describe("GET /api/system/onboarding/status", () => {
     expect(await response.json()).toEqual({ needsOnboarding });
     expect(db.calls).toContainEqual(["user_id", "logged-in-user"]);
     expect(db.calls).toContainEqual(["employee_id", "EMP-0001"]);
-    expect(db.selects).toEqual(["employee_id", "status"]);
+    expect(db.selects).toEqual(["employee_id,garden_role,hire_date", "status"]);
   });
 
   it("does not return onboarding input values even if the row includes them", async () => {

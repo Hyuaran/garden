@@ -1,4 +1,5 @@
 import "server-only";
+import { isOnboardingLoginTarget } from "./onboarding-login";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { initialInput, isMaskedMyNumber, maskMyNumber, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type Dependent, type OnboardingRecord } from "./onboarding";
 
@@ -105,8 +106,9 @@ export async function needsOnboardingForLogin() {
     const supabase = await createServerClient();
     const { data: auth, error: authError } = await supabase.auth.getUser();
     if (authError || !auth.user) return false;
-    const employeeResult = await supabase.from("root_employees").select("employee_id")
+    const employeeResult = await supabase.from("root_employees").select("employee_id,garden_role,hire_date")
       .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
+    if (!isOnboardingLoginTarget(employeeResult.data)) return false;
     const employeeId = employeeResult.data?.employee_id;
     if (employeeResult.error || typeof employeeId !== "string" || !employeeId) return false;
     const { data, error } = await supabase.from("system_onboarding").select("status").eq("employee_id", employeeId).maybeSingle();

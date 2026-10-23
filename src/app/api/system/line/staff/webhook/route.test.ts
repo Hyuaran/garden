@@ -133,6 +133,15 @@ describe("/api/system/line/staff/webhook", () => {
     expect(response.status).toBe(401);
   });
 
+  it.each([true, false])("使い切り番号の照合結果を返信する: %s", async linked => {
+    const rpc = vi.fn().mockResolvedValue({ data: { linked, name: "太郎" }, error: null });
+    mocks.getSupabaseAdmin.mockReturnValue({ rpc });
+    const { POST } = await import("./route");
+    await POST(signedRequest({ events: [{ type: "message", replyToken: "reply", source: { userId: "U-new" }, message: { type: "text", text: "連携　１５７１－４Ｋ７Ｐ" } }] }));
+    expect(rpc).toHaveBeenCalledWith("system_consume_line_link_code", { p_employee_number: "1571", p_code: "4K7P", p_line_user_id: "U-new", p_display_name: "LINE表示名" });
+    expect(mocks.replyLineStaff).toHaveBeenCalledWith("reply", linked ? "太郎さんとして登録しました。ありがとうございます。" : "番号が違うか、期限が切れています。入社手続きの画面に出ている文をそのまま送ってください。");
+  });
+
   it("links full-width employee numbers and replies with the roster name", async () => {
     const db = supabaseForSuccessfulLink();
     mocks.getSupabaseAdmin.mockReturnValue(db.client);

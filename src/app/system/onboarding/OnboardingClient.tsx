@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { NDA_FULL_TEXT } from "../mypage/_lib/nda-content";
 import { ACCOUNT_TYPE_OPTIONS, BANK_NAME_LEDGER_HINT, CODE_LOOKUP_NOT_FOUND, COMMUTE_METHOD_OPTIONS, COMMUTE_ROUTE_FIELDS, COMMUTE_ROUTE_KIND_OPTIONS, COMMUTE_ROUTE_LABELS, commuteTotals, dependentMyNumberWarning, emptyCommuteRoute, DEPENDENT_FIELDS, DEPENDENT_LABELS, emptyDependent, FIELD_LABELS, formatWarnings, formatYen, HOUSEHOLDER_RELATION_OPTIONS, isMaskedMyNumber, POSTAL_NOT_FOUND, RELATIONSHIP_OPTIONS, STEP_FIELDS, STEPS, type CommuteRoute, type Dependent, type OnboardingRecord, type TextField } from "./_lib/onboarding";
 import OnboardingReview from "./_components/OnboardingReview";
+import LineLink from "./_components/LineLink";
 import styles from "./onboarding.module.css";
 
 type Address = { address: string; addressKana: string };
@@ -282,6 +283,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
     {/* 強制遷移せず、ホームは新しい状態を取得して案内を消す。 */}
     <a className={styles.button} href="/system">Systemのホームへ</a>
     <OnboardingReview values={values} />
+    <LineLink />
   </section>;
 
   return <section className={styles.panel}>
