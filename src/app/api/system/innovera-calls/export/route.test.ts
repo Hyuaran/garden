@@ -42,6 +42,16 @@ describe("POST /api/system/innovera-calls/export", () => {
     expect((await POST(request("not json"))).status).toBe(400);
     expect((await POST(request({ ...VALID, circuits: [] }))).status).toBe(400);
     expect((await POST(request({ ...VALID, from: "2026-10-23 00:00:00" }))).status).toBe(400);
+    expect((await POST(request({ ...VALID, to: "2026-02-30 25:61:61" }))).status).toBe(400);
+    expect((await POST(request({ ...VALID, to: "2026-10-20 24:00:00" }))).status).toBe(400);
+    expect((await POST(request({ ...VALID, circuits: [true] }))).status).toBe(400);
+    expect(mocks.exportCalls).not.toHaveBeenCalled();
+  });
+
+  it("rejects circuits that are not allowed with 400 and names them", async () => {
+    const response = await POST(request({ ...VALID, circuits: [164, 999] }));
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ ok: false, error: expect.stringContaining("999") });
     expect(mocks.exportCalls).not.toHaveBeenCalled();
   });
 
