@@ -62,3 +62,7 @@
 :global([data-theme="dark"]) .pageShell .primary { color:#10233f; }
 :global([data-theme="dark"]) .empty { color:#a8b2c2; }
 @media(max-width:640px) { .header { padding:58px 0 0; min-height:0; }.header h1 { font-size: 30px; }.panel,.adminSection { padding:18px 12px; }.panel h2,.adminSection h2 { font-size:20px; }.dependent,.pledge { padding:12px 8px; }.review dl>div,.adminFields,.allowanceRow { grid-template-columns:minmax(0,1fr); gap:3px; }.actions,.inputWithButton { display:grid; grid-template-columns:minmax(0,1fr); }.totals>div { display:grid; gap:3px; }.totals dd { text-align:left; }.field input,.field select { padding:10px 6px; } }
+
+.hireGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin:20px 0; }
+.hireGrid label { display:flex; flex-direction:column; gap:8px; }
+.hireGrid input { border:1px solid #d8d2c5; padding:10px; border-radius:4px; color:inherit; background:transparent; }

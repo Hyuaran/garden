@@ -1,3 +1,4 @@
+vi.mock("../_lib/hire-candidates.server", () => ({ hireAdminContext: vi.fn(async () => { throw new Error("forbidden"); }) }));
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ context: vi.fn(), list: vi.fn(), redirect: vi.fn() }));
@@ -21,6 +22,7 @@ describe("入社手続き事務一覧ページ", () => {
     render(await OnboardingAdminPage());
 
     expect(screen.getByRole("link", { name: "自分の入社手続きへ" })).toHaveAttribute("href", "/system/onboarding");
+    expect(screen.queryByRole("tab", { name: "入社予定者" })).toBeNull();
     expect(screen.getByText("2026-09-01")).toBeInTheDocument();
   });
 

@@ -297,3 +297,27 @@ function buildMessage(status: number, body: KotApiError | string): string {
   if (typeof body === "string" && body) return `KoT API エラー (HTTP ${status}): ${body.slice(0, 200)}`;
   return `KoT API エラー (HTTP ${status})`;
 }
+
+export function assertKotAvailable(now = new Date()) {
+  const minutes = (now.getUTCHours() * 60 + now.getUTCMinutes() + 540) % 1440;
+  if (minutes >= 510 && minutes < 600 || minutes >= 1050 && minutes < 1110)
+    throw new Error("KOT が止まっている時間です（" + (minutes < 600 ? "10:00" : "18:30") + " 以降に使えます）");
+}
+export async function fetchKotHireOptions() {
+  assertKotAvailable();
+  const divisions = await kotFetchViaRelay<{ code: string; name: string }[]>("/divisions");
+  const workingTypes = await kotFetchViaRelay<{ code: string; name: string }[]>("/working-types");
+  return { divisions, workingTypes };
+}
+export async function fetchKotHireEmployees() {
+  assertKotAvailable();
+  return kotFetchViaRelay<KotEmployee[]>("/employees?includeResigner=true");
+}
+export async function createKotEmployee(body: import("@/lib/relay/types").KotEmployeeCreate) {
+  if (process.env.KOT_EMPLOYEE_CREATE_ENABLED !== "true") throw new Error("KOT 登録は停止中（東海林さんの OK 待ち）");
+  assertKotAvailable();
+  const { enqueueRelayJob, waitRelayJob, getRelayHeartbeat, isRelayAlive } = await import("@/lib/relay/queue.server");
+  if (!isRelayAlive(await getRelayHeartbeat())) throw new Error("中継が止まっています");
+  const job = await enqueueRelayJob("kot", { method: "POST", path: "/employees", body }, "kot-api");
+  return waitRelayJob(job.id, { timeoutMs: 25_000 });
+}

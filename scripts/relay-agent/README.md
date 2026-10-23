@@ -105,3 +105,5 @@ Get-Content -Tail 50 C:\Garden\relay-agent\logs\$(Get-Date -Format yyyyMMdd).log
 Vercel 側の INNOVERA 鍵は、中継運用が 1 週間問題なく動いた後に外す段取りです。
 
 KOT の読み取りを中継する場合は、ホスト PC のマシン環境変数 `KOT_API_TOKEN` に鍵を設定して常駐タスクを再起動します。未設定でも INNOVERA は動き続け、KOT の仕事だけ失敗します。鍵は config.json やログに書かないでください。Garden 側は `KOT_RELAY_MODE=queue` で切り替えます（既定は `direct`）。
+
+KOT は POST /employees を許可します（JSON 16KB まで）。POST は再試行しません。

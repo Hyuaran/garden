@@ -1,3 +1,5 @@
+import HireCandidatesClient from "../HireCandidatesClient";
+import { hireAdminContext } from "../_lib/hire-candidates.server";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -10,6 +12,8 @@ import styles from "../onboarding.module.css";
 export const metadata = { title: "入社手続き（事務） | Garden" };
 
 export default async function OnboardingAdminPage() {
+  let candidatesEnabled = false;
+  try { await hireAdminContext(); candidatesEnabled = true; } catch {}
   let rows = null;
   let message = "";
   try {
@@ -19,8 +23,7 @@ export default async function OnboardingAdminPage() {
     if (error instanceof OnboardingError && error.status === 401) redirect("/login?returnTo=%2Fsystem%2Fonboarding%2Fadmin");
     message = error instanceof OnboardingError ? error.message : "入社手続きを読み込めませんでした。時間をおいて、もう一度お試しください。";
   }
-  return <div className={styles.pageShell}>
-    <header className={styles.header}><SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding" }, { label: "入社手続き（事務）" }]} /><h1>入社手続き（事務）</h1></header>
+  const content = <>
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
       : <main className={styles.panel}>
@@ -36,5 +39,6 @@ export default async function OnboardingAdminPage() {
           </tr>)}</tbody>
         </StickyTable></div> : <p>まだ入社手続きの入力はありません。</p>}
       </main>}
-  </div>;
+  </>;
+  return <div className={styles.pageShell}><header className={styles.header}><SystemBreadcrumb items={[{label:"入社手続き（事務）"}]} /><h1>入社手続き（事務）</h1></header>{candidatesEnabled ? <HireCandidatesClient>{content}</HireCandidatesClient> : content}</div>;
 }

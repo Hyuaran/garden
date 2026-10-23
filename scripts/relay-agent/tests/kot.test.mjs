@@ -49,3 +49,20 @@ it("preserves KOT-specific rate limits without returning the body", async () => 
   });
   expect(result).toEqual({ id: "rate", ok: false, error: "kot: 403 RATE_LIMITED" });
 });
+
+it("allows only exact POST /employees and a JSON object up to 16KB",()=>{
+ const req={method:"POST",path:"/employees",body:{code:"1571",lastName:"山田"}};
+ const built=buildKotRequest(req,env);
+ expect(built.init).toMatchObject({method:"POST",body:JSON.stringify(req.body),headers:{"Content-Type":"application/json; charset=utf-8"}});
+ for(const path of ["/employees/","/employees?x=1","/divisions","//employees","/%65mployees"]) expect(()=>buildKotRequest({...req,path},env)).toThrow();
+ for(const body of [null,[],"{}",{name:"あ".repeat(6000)}]) expect(()=>buildKotRequest({...req,body},env)).toThrow();
+});
+it.each([429,503])("never retries POST on %s",async status=>{
+ const fetch=vi.fn(async()=>new Response(null,{status})),sleep=vi.fn();
+ await handleJob(job({method:"POST",path:"/employees",body:{code:"1571"}}),{fetch,sleep,env});
+ expect(fetch).toHaveBeenCalledTimes(1);expect(sleep).not.toHaveBeenCalled();
+});
+it("never retries POST on network failure",async()=>{
+ const fetch=vi.fn(async()=>{throw new Error("network");});
+ await handleJob(job({method:"POST",path:"/employees",body:{code:"1571"}}),{fetch,env});expect(fetch).toHaveBeenCalledTimes(1);
+});

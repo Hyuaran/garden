@@ -2,7 +2,10 @@ export type RelayKind = "innovera" | "kot";
 
 export type RelayStatus = "queued" | "running" | "done" | "failed" | "expired";
 
+export type KotEmployeeCreate = { code: string; lastName: string; firstName: string; divisionCode: string; typeCode: string; gender: "male" | "female"; lastNamePhonetics?: string; firstNamePhonetics?: string; hiredDate?: string; birthDate?: string };
+
 export type RelayRequest =
+  | { method: "POST"; path: "/employees"; body: KotEmployeeCreate }
   | {
       method: "GET";
       path: string;

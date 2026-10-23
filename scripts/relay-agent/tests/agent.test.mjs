@@ -87,11 +87,11 @@ describe("relay agent", () => {
     expect(result.error).toMatch(/^innovera: fetch TypeError/);
   });
 
-  it("rejects KOT requests without GET", async () => {
+  it("rejects KOT requests without an allowed method", async () => {
     await expect(handleJob({ id: "job-3", kind: "kot", request: {} })).resolves.toEqual({
       id: "job-3",
       ok: false,
-      error: "kot: GET 以外は許可していません",
+      error: "kot: この操作は許可していません",
     });
   });
 });

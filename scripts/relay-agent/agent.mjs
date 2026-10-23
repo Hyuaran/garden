@@ -223,7 +223,13 @@ async function callInnovera(request, { fetch: fetchImpl = fetch, env = process.e
 }
 
 export function buildKotRequest(request, env = process.env) {
-  if (request?.method !== "GET") throw new Error("kot: GET 以外は許可していません");
+  if (request?.method !== "GET" && !(request?.method === "POST" && request.path === "/employees")) throw new Error("kot: この操作は許可していません");
+  let body;
+  if (request.method === "POST") {
+    if (!request.body || typeof request.body !== "object" || Array.isArray(request.body)) throw new Error("kot: JSON 本文が必要です");
+    body = JSON.stringify(request.body);
+    if (Buffer.byteLength(body, "utf8") > 16384) throw new Error("kot: 本文が大きすぎます");
+  }
   const value = request.path;
   let decoded;
   try { decoded = decodeURIComponent(value); } catch { throw new Error("kot: path が不正です"); }
@@ -231,8 +237,8 @@ export function buildKotRequest(request, env = process.env) {
       /\.\.|[\\:#\s]|\/\//.test(decoded) || /%/.test(decoded)) throw new Error("kot: path が不正です");
   if (!env.KOT_API_TOKEN) throw new Error("kot: KOT の鍵がホスト PC にありません");
   return { url: `https://api.kingtime.jp/v1.0${value}`, init: {
-    method: "GET", redirect: "error",
-    headers: { Authorization: `Bearer ${env.KOT_API_TOKEN}`, Accept: "application/json" },
+    method: request.method, body, redirect: "error",
+    headers: { Authorization: `Bearer ${env.KOT_API_TOKEN}`, Accept: "application/json", ...(body ? { "Content-Type": "application/json; charset=utf-8" } : {}) },
   } };
 }
 
@@ -244,7 +250,7 @@ async function callKot(request, { fetch: fetchImpl = fetch, env = process.env, t
     for (let attempt = 0; attempt <= 3; attempt += 1) {
       const response = await fetchImpl(built.url, { ...built.init, signal: controller.signal });
       if (!response.ok) {
-        if ((response.status === 429 || response.status >= 500 && response.status < 600) && attempt < 3) {
+        if ((response.status === 429 || response.status >= 500 && response.status < 600) && request.method === "GET" && attempt < 3) {
           await response.body?.cancel();
           await pause(500 * 2 ** attempt);
           continue;
