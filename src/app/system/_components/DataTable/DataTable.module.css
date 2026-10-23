@@ -14,7 +14,7 @@
 .tableWrap .money { text-align:right; font-variant-numeric:tabular-nums; }
 .tableWrap .wrap { white-space:normal; min-width:220px; max-width:600px; }
 .tableWrap p { padding:18px; }
-.menu { position:fixed; z-index:1000; display:flex; flex-direction:column; gap:10px; width:320px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); overflow:auto; padding:16px; border:1px solid var(--table-line); border-radius:22px; background:var(--table-card); color:var(--table-ink); box-shadow:0 4px 14px #10233f20; }
+.menu { position:fixed; z-index:1000; display:flex; flex-direction:column; gap:10px; width:320px; max-width:calc(100vw - 16px); max-height:calc(100dvh / var(--garden-zoom, 1) - 16px); overflow:auto; padding:16px; border:1px solid var(--table-line); border-radius:22px; background:var(--table-card); color:var(--table-ink); box-shadow:0 4px 14px #10233f20; }
 .menu > label { display:flex; align-items:center; gap:8px; }
 .menu input[type=search] { width:100%; }
 .menu input[type=checkbox] { accent-color:var(--teal,#0ea5a0); flex-shrink:0; }

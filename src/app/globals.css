@@ -49,7 +49,7 @@ body {
 
 body {
   background-color: var(--bg-paper);
-  min-height: 100vh;
+  min-height: calc(100vh / var(--garden-zoom, 1));
   overflow-x: hidden;
   position: relative;
 }
@@ -823,7 +823,7 @@ input { font-family: inherit; }
   top: var(--topbar-h);
   left: 0;
   width: var(--sidebar-w);
-  height: calc(100vh - var(--topbar-h));
+  height: calc(100vh / var(--garden-zoom, 1) - var(--topbar-h));
   background: var(--bg-sidebar);
   /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
   -webkit-backdrop-filter: blur(12px) !important;
@@ -1288,7 +1288,7 @@ input { font-family: inherit; }
   right: 0;
   bottom: 0;
   width: var(--activity-w);
-  height: calc(100vh - var(--topbar-h));
+  height: calc(100vh / var(--garden-zoom, 1) - var(--topbar-h));
   padding: 24px 22px 16px;
   background: var(--bg-activity);
   /* dispatch v2.8a 第 3 弾 Step K: -webkit- 先 → 標準後（dedup 回避） */
@@ -1884,7 +1884,7 @@ input { font-family: inherit; }
   top: var(--topbar-h);
   left: 0;
   width: var(--sidebar-dual-w);
-  height: calc(100vh - var(--topbar-h));
+  height: calc(100vh / var(--garden-zoom, 1) - var(--topbar-h));
   background: var(--bg-sidebar);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
@@ -2744,7 +2744,7 @@ body.activity-collapsed .activity-toggle .activity-toggle-arrow {
  * Codex-051: Garden home orbit spin
  * -------------------------------------------------------------------------- */
 .home-orbit-main {
-  height: 100vh;
+  height: calc(100vh / var(--garden-zoom, 1));
   margin-left: var(--sidebar-w);
   overflow: hidden;
   padding: var(--topbar-h) 0 0;
@@ -2753,7 +2753,7 @@ body.activity-collapsed .activity-toggle .activity-toggle-arrow {
 }
 
 .home-orbit-stage {
-  height: calc(100vh - var(--topbar-h));
+  height: calc(100vh / var(--garden-zoom, 1) - var(--topbar-h));
   min-height: 520px;
   overflow: hidden;
   position: relative;
@@ -3062,7 +3062,7 @@ body.activity-collapsed .activity-toggle .activity-toggle-arrow {
   }
 
   .home-orbit-stage {
-    min-height: calc(100vh - var(--topbar-h));
+    min-height: calc(100vh / var(--garden-zoom, 1) - var(--topbar-h));
   }
 
   .home-orbit-label {
@@ -3132,8 +3132,8 @@ body.home-concept-active {
 .home-concept {
   color: #fdfbf3;
   font-family: var(--font-body);
-  height: 100vh;
-  min-height: 100vh;
+  height: calc(100vh / var(--garden-zoom, 1));
+  min-height: calc(100vh / var(--garden-zoom, 1));
   overflow: hidden;
   position: relative;
   width: 100vw;
@@ -3152,7 +3152,7 @@ body.home-concept-active {
 }
 
 .home-concept-scene {
-  height: 100vh;
+  height: calc(100vh / var(--garden-zoom, 1));
   position: relative;
   width: 100vw;
   z-index: 3;
@@ -3231,9 +3231,9 @@ body.home-concept-active {
 }
 
 .home-concept .home-orbit-stage {
-  height: 100vh;
+  height: calc(100vh / var(--garden-zoom, 1));
   inset: 0;
-  min-height: 100vh;
+  min-height: calc(100vh / var(--garden-zoom, 1));
   overflow: hidden;
   pointer-events: none;
   position: absolute;
@@ -3465,4 +3465,4 @@ body.home-concept-active {
 }
 
 /* 印刷・PDF 出力には個人の表示倍率を適用しない。 */
-@media print { html { zoom: 1 !important; } }
+@media print { html { zoom: 1 !important; --garden-zoom: 1 !important; } }

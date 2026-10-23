@@ -24,7 +24,7 @@
 .presentationButton:hover { background:var(--tint); }
 .presentationButton svg { width:22px; height:22px; flex:0 0 22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .presentationEntry p { margin:8px 0 0; font-size:12px; color:var(--sub); }
-.presentationShell { max-width:1560px; min-height:100vh; margin:0 auto; padding:48px clamp(20px,4vw,64px) 64px; box-sizing:border-box; }
+.presentationShell { max-width:1560px; min-height:calc(100vh / var(--garden-zoom, 1)); margin:0 auto; padding:48px clamp(20px,4vw,64px) 64px; box-sizing:border-box; }
 .presentationHeader { padding:0; }
 .presentationTools { position:fixed; top:12px; right:20px; z-index:10; display:flex; gap:8px; align-items:center; }
 .returnToDocument { padding:6px 12px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--sub); font-size:12px; text-decoration:none; }

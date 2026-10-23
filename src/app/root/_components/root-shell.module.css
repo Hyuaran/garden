@@ -172,7 +172,7 @@
 }
 
 .loginMain {
-  min-height: 100vh;
+  min-height: calc(100vh / var(--garden-zoom, 1));
   display: grid;
   place-items: center;
   background: var(--root-bg);

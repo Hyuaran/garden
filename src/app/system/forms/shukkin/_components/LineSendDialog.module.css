@@ -1,5 +1,5 @@
 .backdrop{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:24px;background:rgba(16,35,63,.62);font-family:"Meiryo","メイリオ","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif}
-.dialog{box-sizing:border-box;width:min(100%,860px);max-height:calc(100vh - 48px);overflow:auto;padding:22px;border:1px solid #e3eaf3;border-radius:18px;background:#fff;color:#17212e;box-shadow:0 24px 70px rgba(16,35,63,.24)}
+.dialog{box-sizing:border-box;width:min(100%,860px);max-height:calc(100vh / var(--garden-zoom, 1) - 48px);overflow:auto;padding:22px;border:1px solid #e3eaf3;border-radius:18px;background:#fff;color:#17212e;box-shadow:0 24px 70px rgba(16,35,63,.24)}
 .dialog h2{margin:0 0 12px;color:#10233f;font-size:22px;line-height:1.45;text-wrap:balance}
 .destination,.sentAt,.quota{margin:0 0 12px;color:#5a6b80;font-size:14px;font-weight:800;line-height:1.7}
 .error,.danger{margin:0 0 14px;color:#b42318;font-size:14px;font-weight:800;line-height:1.7}

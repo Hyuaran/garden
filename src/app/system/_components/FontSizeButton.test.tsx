@@ -15,6 +15,7 @@ it("cycles both headers together, persists per user and restores on account chan
     fireEvent.click(screen.getAllByRole("button")[0]);
     expect(document.documentElement.dataset.fontSize).toBe(size);
     expect(document.documentElement.style.zoom).toBe(zoom);
+    expect(document.documentElement.style.getPropertyValue("--garden-zoom")).toBe(zoom);
     expect(localStorage.getItem("garden-font-size:person-a")).toBe(size);
     for (const button of screen.getAllByRole("button")) {
       expect(button).toHaveAccessibleName(new RegExp(`文字の大きさ：${label}`));

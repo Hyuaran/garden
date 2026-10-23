@@ -8,7 +8,7 @@
   --r:22px;
   position:relative;
   width:100%;
-  min-height:100vh;
+  min-height:calc(100vh / var(--garden-zoom, 1));
   padding:44px 48px 72px;
   max-width:1320px;
   margin:0 auto;

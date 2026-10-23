@@ -11,6 +11,8 @@ export function readFontSize(userId: string | null): FontSize {
 }
 export function applyFontSize(size: FontSize) {
   document.documentElement.style.zoom = String(fontZoom[size]);
+  // 画面の高さ（100vh）も縮むので、CSS 側で割り戻すための倍率
+  document.documentElement.style.setProperty("--garden-zoom", String(fontZoom[size]));
   document.documentElement.dataset.fontSize = size;
   window.dispatchEvent(new Event("garden-font-size-change"));
 }
@@ -37,4 +39,5 @@ export const initialFontSizeScript = `(() => {
   } catch {}
   document.documentElement.dataset.fontSize = size;
   document.documentElement.style.zoom = ({s: "0.9", m: "1", l: "1.15"})[size];
+  document.documentElement.style.setProperty("--garden-zoom", document.documentElement.style.zoom);
 })();`;

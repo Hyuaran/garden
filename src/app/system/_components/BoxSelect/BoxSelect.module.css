@@ -5,7 +5,7 @@
 .trigger span { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:40px; font-size:20px; font-weight:900; }
 .trigger svg { flex-shrink:0; }
 .root :is(button,input):focus-visible { outline:2px solid var(--teal,#0ea5a0); outline-offset:2px; }
-.menu { box-sizing:border-box; position:fixed; z-index:1000; width:320px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); display:flex; flex-direction:column; gap:10px; padding:16px; border:1px solid var(--line,#e3eaf3); border-radius:22px; background:var(--card,#fff); color:inherit; box-shadow:0 4px 14px #10233f20; }
+.menu { box-sizing:border-box; position:fixed; z-index:1000; width:320px; max-width:calc(100vw - 16px); max-height:calc(100dvh / var(--garden-zoom, 1) - 16px); display:flex; flex-direction:column; gap:10px; padding:16px; border:1px solid var(--line,#e3eaf3); border-radius:22px; background:var(--card,#fff); color:inherit; box-shadow:0 4px 14px #10233f20; }
 .options { overflow:auto; max-height:280px; }
 .options label { display:flex; align-items:center; gap:8px; padding:6px 0; }
 .options input { accent-color:var(--teal,#0ea5a0); }

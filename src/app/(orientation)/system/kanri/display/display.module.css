@@ -1,5 +1,5 @@
 .shell {
-  min-height: 100vh;
+  min-height: calc(100vh / var(--garden-zoom, 1));
   background: #ffffff;
   color: #050505;
   display: grid;
