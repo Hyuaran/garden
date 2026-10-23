@@ -4,7 +4,7 @@ import type { InnoveraCallRaw } from "@/lib/innovera/client";
 import { parseInnoveraJst } from "@/lib/innovera/ingest";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-// WEBインバウンド事業（ヒカリのプロ・電気開始受付センター）の夜間処理に、Garden が写した INNOVERA の通話履歴を渡す（読むだけ）。
+// WEBインバウンド事業（ヒカリのプロ・電気開始受付センター・フレッツ光）の夜間処理に、Garden が写した INNOVERA の通話履歴を渡す（読むだけ）。
 //   夜間処理は Vercel から INNOVERA へ直接つなぐと途切れる（2026-10-16〜）ため、ホスト PC 中継で写した system_innovera_call を読む。
 //   返す行は INNOVERA の検索の返事 1 件そのまま（raw）。期間の書き方も INNOVERA の検索と同じ（JST の "YYYY-MM-DD HH:MM:SS"・両端を含む）
 export const EXPORT_MAX_CIRCUITS = 20;
@@ -14,8 +14,9 @@ const PAGE_SIZE = 1000;
 /**
  * この入口で渡してよい回線（WEBインバウンド事業の回線だけ。ほかの事業の通話は渡さない）。
  *   許可外の回線の指定は 400 で断る。回線を足すときはここに足す（hikari-pro-lp は kintone 239 の回線表の回線を渡してくるので、239 に足したらこちらも）
+ *   2026-10-23 の 239：ヒカリのプロ 164・165／電気開始受付センター 166・133／フレッツ光 186・185（準備中。稼働中にした晩に断らないよう先に許可）
  */
-export const EXPORT_ALLOWED_CIRCUITS: readonly number[] = [133, 164, 165, 166];
+export const EXPORT_ALLOWED_CIRCUITS: readonly number[] = [133, 164, 165, 166, 185, 186];
 
 export type InnoveraExportParams = { circuits: number[]; from: string; to: string };
 

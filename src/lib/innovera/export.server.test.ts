@@ -44,9 +44,12 @@ describe("parseExportParams", () => {
     });
   });
 
-  it("allows exactly the circuits of WEB inbound (133・164・165・166)", () => {
-    expect([...EXPORT_ALLOWED_CIRCUITS].sort()).toEqual([133, 164, 165, 166]);
-    expect(parseExportParams({ circuits: [133, 164, 165, 166], ...RANGE }).circuits).toEqual([133, 164, 165, 166]);
+  it("allows exactly the circuits of WEB inbound in kintone 239 (133・164・165・166・185・186)", () => {
+    expect([...EXPORT_ALLOWED_CIRCUITS].sort((a, b) => a - b)).toEqual([133, 164, 165, 166, 185, 186]);
+    expect(parseExportParams({ circuits: [164, 165, 166, 133, 186, 185], ...RANGE }).circuits).toEqual([164, 165, 166, 133, 186, 185]);
+    // 隣の番号は許可しない
+    expect(() => parseExportParams({ circuits: [184], ...RANGE })).toThrow(/not allowed: 184/);
+    expect(() => parseExportParams({ circuits: [187], ...RANGE })).toThrow(/not allowed: 187/);
   });
 
   it("rejects circuits that are not allowed, even mixed with allowed ones", () => {
