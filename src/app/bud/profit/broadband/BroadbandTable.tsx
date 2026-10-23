@@ -51,7 +51,7 @@ export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],
   // 縦はページのスクロールだけ（表の中に縦スクロールを作らない・東海林さん 2026-10-21）。
   // 横スクロールのバーは画面の下に張り付けて、表の下まで行かなくても動かせるようにする
   const scrollRef=useRef<HTMLDivElement>(null);
-  useStickyTable(scrollRef);
+  useStickyTable(scrollRef, `${tab}:${settings}`);
   useEffect(()=>{try {setOrder(readOrder(window.localStorage,userId));}catch {setOrder(null);}},[userId]);
   const months=periodMonths(periods,today,rows), allMonths=[...new Set(rows.flatMap(r=>r.scheduled_date ? [r.scheduled_date.slice(0,7)] : []))];
   const groupNtt=(source:TableRecord[])=>source.map(r=>isNtt(r.partner)?{...r,partner:nttLabel(r.partner)}:r);

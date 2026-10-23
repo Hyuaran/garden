@@ -4,7 +4,8 @@ import { useEffect, useRef, type RefObject, type ComponentProps } from "react";
 import styles from "./StickyTable.module.css";
 
 /** Fixed overlays live on body: only the root zoom applies to their coordinates. */
-export function useStickyTable(ref: RefObject<HTMLElement | null>) {
+/** `remountKey`：タブや設定の切り替えで表を作り直す画面は、変わる値を渡す（作り直した表に付け直す） */
+export function useStickyTable(ref: RefObject<HTMLElement | null>, remountKey?: unknown) {
   useEffect(() => {
     const wrap = ref.current;
     const table = wrap?.querySelector("table");
@@ -134,7 +135,7 @@ export function useStickyTable(ref: RefObject<HTMLElement | null>) {
       window.removeEventListener("scroll", schedule, true); window.removeEventListener("resize", refresh); window.removeEventListener("garden-font-size-change", refresh);
       head.remove(); bar.remove(); wrap.classList.remove(styles.wrap); wrap.style.cssText = previous;
     };
-  }, [ref]);
+  }, [ref, remountKey]);
 }
 
 /** Keeps existing table markup/styles; its immediate parent is the horizontal viewport. */

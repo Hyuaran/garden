@@ -118,3 +118,10 @@ it("names the page and tabs by business and shows SES as in preparation",()=>{
  fireEvent.click(screen.getByRole("tab",{name:"ブロードバンド事業"}));
  expect(screen.getByRole("table")).toBeTruthy();
 });
+it("re-attaches the fixed header after switching tabs",()=>{
+ render(<BroadbandTable rows={[sample("A",20)]} userId="u" today="2026-10-23" kintoneBase="" />);
+ const heads=()=>document.body.querySelectorAll('[aria-label="表の見出し"]').length;
+ expect(heads()).toBe(1);
+ fireEvent.click(screen.getByRole("tab",{name:"SES事業"}));expect(heads()).toBe(0);
+ fireEvent.click(screen.getByRole("tab",{name:"ブロードバンド事業"}));expect(heads()).toBe(1);
+});
