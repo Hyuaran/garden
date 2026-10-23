@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { nextEmployeeNumber, parseHireInput, rosterPayload, type HireCandidate } from "./hire-candidates";
+import { CHECKLIST_KEYS, checklistComplete, checklistPriority, parseChecklist, nextEmployeeNumber, parseHireInput, rosterPayload, type HireCandidate } from "./hire-candidates";
 const mocks = vi.hoisted(()=>({server:vi.fn(),admin:vi.fn(),employees:vi.fn(),create:vi.fn(),records:vi.fn(),record:vi.fn(),sync:vi.fn()}));
 vi.mock("server-only",()=>({}));
 vi.mock("@/app/_lib/supabase/server",()=>({createServerClient:mocks.server}));
@@ -7,7 +7,7 @@ vi.mock("@/lib/supabase/admin",()=>({getSupabaseAdmin:mocks.admin}));
 vi.mock("@/app/root/_lib/kot-api",()=>({fetchKotHireEmployees:mocks.employees,createKotEmployee:mocks.create,fetchKotHireOptions:vi.fn()}));
 vi.mock("@/lib/kintone/records",()=>({getAllRecords:mocks.records,createRecord:mocks.record}));
 vi.mock("@/app/root/_lib/roster-sync.server",()=>({syncRootRoster:mocks.sync}));
-import { ensureRoster, hireCandidate } from "./hire-candidates.server";
+import { ensureRoster, hireCandidate, listCandidates } from "./hire-candidates.server";
 import { GET, POST } from "@/app/api/system/hire-candidates/route";
 import { PATCH } from "@/app/api/system/hire-candidates/[id]/route";
 import { POST as hire } from "@/app/api/system/hire-candidates/[id]/hire/route";
@@ -70,4 +70,53 @@ it("allocates once, persists before a stop, and never reallocates on resume",asy
  const db=dbFor(row);db.rpc.mockImplementation(async()=>{row.employee_number="1572";return {data:"1572",error:null};});
  await hireCandidate({db:db as never,userId:"admin"},row.id);await hireCandidate({db:db as never,userId:"admin"},row.id);
  expect(db.rpc).toHaveBeenCalledTimes(1);expect(row.employee_number).toBe("1572");expect(mocks.create).not.toHaveBeenCalled();
+});
+
+describe("hire checklist",()=>{
+ const authorize = (db:unknown) => {
+  const q={select:vi.fn(),eq:vi.fn(),is:vi.fn(),maybeSingle:vi.fn(async()=>({data:{garden_role:"super_admin"},error:null}))};
+  q.select.mockReturnValue(q);q.eq.mockReturnValue(q);q.is.mockReturnValue(q);
+  mocks.server.mockResolvedValue({auth:{getUser:async()=>({data:{user:{id:"admin"}}})},from:()=>q});mocks.admin.mockReturnValue(db);
+ };
+ const patch = (checklist:unknown) => PATCH(new Request("http://localhost",{method:"PATCH",body:JSON.stringify({checklist})}),{params:Promise.resolve({id:"candidate"})});
+ it.each([{bad:true},{toString:true},{contract_sent:"yes"},[],null,{}].map(value=>({value})))("rejects invalid checklist $value",async ({value})=>{
+  authorize(dbFor(candidate()));expect((await patch(value)).status).toBe(400);
+ });
+ it.each(["planned","hiring","no_show"] as const)("rejects %s candidates",async status=>{
+  authorize(dbFor({...candidate(),status,checklist:{}}));expect((await patch({contract_sent:true})).status).toBe(400);
+ });
+ it.each(["staff","admin","manager",null])("rejects checklist updates by %s",async role=>{
+  const q={select:vi.fn(),eq:vi.fn(),is:vi.fn(),maybeSingle:vi.fn(async()=>({data:{garden_role:role},error:null}))};
+  q.select.mockReturnValue(q);q.eq.mockReturnValue(q);q.is.mockReturnValue(q);
+  mocks.server.mockResolvedValue({auth:{getUser:async()=>({data:{user:{id:"user"}}})},from:()=>q});
+  expect((await patch({contract_sent:true})).status).toBe(403);expect(mocks.admin).not.toHaveBeenCalled();
+ });
+ it("records actor and time, preserves other checks and supports unchecking",async()=>{
+  const row={...candidate(),status:"hired" as const,checklist:{nda_sent:{checked_at:"earlier",checked_by:"other"}}};authorize(dbFor(row));
+  expect((await patch({contract_sent:true})).status).toBe(200);
+  expect(row.checklist).toMatchObject({nda_sent:{checked_by:"other"},contract_sent:{checked_by:"admin",checked_at:expect.any(String)}});
+  expect((await patch({contract_sent:false})).status).toBe(200);expect(row.checklist).not.toHaveProperty("contract_sent");
+ });
+ it("requires every automatic and manual item and prioritizes incomplete hires",()=>{
+  const complete={...candidate(),status:"hired" as const,onboarding_status:"submitted",line_registered:true,checklist:Object.fromEntries(CHECKLIST_KEYS.map(key=>[key,{checked_at:"now",checked_by:"admin"}]))};
+  expect(checklistComplete(complete)).toBe(true);
+  for(const key of CHECKLIST_KEYS) expect(checklistComplete({...complete,checklist:{...complete.checklist,[key]:undefined}})).toBe(false);
+  expect(checklistComplete({...complete,onboarding_status:"draft"})).toBe(false);
+  expect(checklistComplete({...complete,line_registered:false})).toBe(false);
+  expect(checklistComplete({...complete,status:"planned"})).toBe(false);
+  const incomplete={...complete,line_registered:false};
+  expect([complete,candidate(),incomplete].sort((a,b)=>checklistPriority(a)-checklistPriority(b))).toEqual([incomplete,candidate(),complete]);
+  expect(parseChecklist({filemaker_added:false})).toEqual({filemaker_added:false});
+ });
+ it("enriches only hired candidates through the admin connection",async()=>{
+  const rows=[{...candidate(),id:"planned",status:"planned"},{...candidate(),id:"hired",status:"hired",employee_id:"EMP"}];
+  const db={from:vi.fn((table:string)=>{
+   const q:Record<string,unknown>={};for(const key of ["select","in","is"])q[key]=vi.fn(()=>q);
+   q.order=vi.fn(async()=>({data:rows,error:null}));
+   q.then=(resolve:(v:unknown)=>void)=>Promise.resolve({data:table==="system_onboarding"?[{employee_id:"EMP",status:"submitted"}]:[{employee_id:"EMP",line_user_id:"line"}],error:null}).then(resolve);return q;
+  })};
+  const result=await listCandidates({db:db as never,userId:"admin"});
+  expect(result[0]).toMatchObject({id:"hired",onboarding_status:"submitted",line_registered:true});
+  expect(result[1]).not.toHaveProperty("onboarding_status");
+ });
 });

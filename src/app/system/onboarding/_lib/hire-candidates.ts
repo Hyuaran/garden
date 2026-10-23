@@ -1,8 +1,22 @@
 
 export const HIRE_FIELDS = ["last_name", "first_name", "last_name_kana", "first_name_kana", "birthday", "gender", "hire_date", "employment_type", "company_id", "kot_division_code", "kot_type_code"] as const;
 export type HireInput = Record<typeof HIRE_FIELDS[number], string>;
-export type HireCandidate = HireInput & { id: string; status: "planned" | "no_show" | "hiring" | "hired"; employee_number: string | null; employee_id: string | null; kintone_roster_record_id: string | null; steps: Record<string, { done?: boolean; at?: string; error?: string }> };
+export type HireCandidate = HireInput & HireChecklistState & { id: string; status: "planned" | "no_show" | "hiring" | "hired"; employee_number: string | null; employee_id: string | null; kintone_roster_record_id: string | null; steps: Record<string, { done?: boolean; at?: string; error?: string }> };
 export const EMPLOYMENT_TYPES = ["正社員", "アルバイト", "役員", "派遣", "パートナー"];
+export const CHECKLIST_KEYS = ["contract_sent", "contract_signed", "nda_sent", "nda_signed", "emergency_sent", "emergency_signed", "filemaker_added"] as const;
+export type ChecklistKey = typeof CHECKLIST_KEYS[number];
+export type HireChecklist = Partial<Record<ChecklistKey, { checked_at: string; checked_by: string }>>;
+export type HireChecklistState = { checklist?: HireChecklist; onboarding_status?: string | null; line_registered?: boolean };
+export function parseChecklist(raw: unknown): Partial<Record<ChecklistKey, boolean>> {
+ if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Object.keys(raw).length || Object.entries(raw).some(([key,value]) => !CHECKLIST_KEYS.includes(key as ChecklistKey) || typeof value !== "boolean")) throw new Error("確認する項目を選び直してください");
+ return raw as Partial<Record<ChecklistKey, boolean>>;
+}
+export function checklistComplete(row: HireChecklistState & {status: string}) {
+ return row.status === "hired" && row.onboarding_status === "submitted" && row.line_registered === true && CHECKLIST_KEYS.every(key => !!row.checklist?.[key]?.checked_at && !!row.checklist[key]?.checked_by);
+}
+export function checklistPriority(row: HireChecklistState & {status: string}) {
+ return row.status === "hired" && !checklistComplete(row) ? 0 : checklistComplete(row) ? 2 : 1;
+}
 export function parseHireInput(raw: unknown): HireInput {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("入力内容を確認してください");
   const input = Object.fromEntries(HIRE_FIELDS.map(k => [k, String((raw as Record<string, unknown>)[k] ?? "").trim()])) as HireInput;

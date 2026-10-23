@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createRecord, getAllRecords } from "@/lib/kintone/records";
 import { syncRootRoster } from "@/app/root/_lib/roster-sync.server";
 import { createKotEmployee, fetchKotHireEmployees, fetchKotHireOptions } from "@/app/root/_lib/kot-api";
-import { parseHireInput, rosterPayload, type HireCandidate } from "./hire-candidates";
+import { parseHireInput, parseChecklist, checklistPriority, rosterPayload, type HireCandidate, type HireChecklist } from "./hire-candidates";
 export class HireError extends Error { constructor(message: string, public status = 400) { super(message); } }
 export async function hireAdminContext() {
  const db = await createServerClient();
@@ -21,7 +21,17 @@ function checked<T>(result: { data: T; error: unknown }): T {
  return result.data;
 }
 export async function listCandidates({db}: Context) {
- return checked(await db.from("system_hire_candidates").select("*").order("hire_date",{ascending:false}));
+ const rows = checked(await db.from("system_hire_candidates").select("*").order("hire_date",{ascending:false})) as HireCandidate[];
+ const ids = rows.filter(r => r.status === "hired" && r.employee_id).map(r => r.employee_id!);
+ if (!ids.length) return rows;
+ const [onboarding, employees] = await Promise.all([
+  db.from("system_onboarding").select("employee_id,status").in("employee_id",ids),
+  db.from("root_employees").select("employee_id,line_user_id").in("employee_id",ids).is("deleted_at",null),
+ ]);
+ const statuses = new Map((checked(onboarding) ?? []).map(r => [r.employee_id,r.status]));
+ const lines = new Map((checked(employees) ?? []).map(r => [r.employee_id,!!r.line_user_id]));
+ return rows.map(r => r.status === "hired" ? {...r,onboarding_status:statuses.get(r.employee_id) ?? null,line_registered:lines.get(r.employee_id) ?? false} : r)
+  .sort((a,b) => checklistPriority(a)-checklistPriority(b));
 }
 export async function candidateOptions({db}: Context) {
  const companies = checked(await db.from("root_companies").select("company_id,company_name"));
@@ -29,6 +39,21 @@ export async function candidateOptions({db}: Context) {
 }
 export async function saveCandidate(context: Context, raw: unknown, id?: string) {
  const {db,userId} = context;
+ if (raw && typeof raw === "object" && Object.hasOwn(raw,"checklist")) {
+  if (!id || Object.keys(raw).some(key => key !== "checklist")) throw new HireError("確認する項目を選び直してください");
+  const changes = parseChecklist((raw as {checklist:unknown}).checklist);
+  const current = checked(await db.from("system_hire_candidates").select("status,checklist").eq("id",id).maybeSingle());
+  if (!current || current.status !== "hired") throw new HireError("入社済みの方だけ確認できます");
+  const checklist: HireChecklist = {...current.checklist};
+  const now = new Date().toISOString();
+  for (const key of Object.keys(changes) as (keyof HireChecklist)[]) {
+   if (changes[key]) checklist[key] = {checked_at:now,checked_by:userId};
+   else delete checklist[key];
+  }
+  const updated = checked(await db.from("system_hire_candidates").update({checklist,updated_at:now}).eq("id",id).eq("status","hired").eq("checklist",JSON.stringify(current.checklist)).select().maybeSingle());
+  if (!updated) throw new HireError("ほかの方が更新しました。画面を更新してもう一度お試しください",409);
+  return updated;
+ }
  if (id && (raw as {status?: string})?.status === "no_show") {
   const row = checked(await db.from("system_hire_candidates").update({status:"no_show",updated_at:new Date().toISOString()}).eq("id",id).eq("status","planned").is("processing_token",null).select().maybeSingle());
   if (!row) throw new HireError("この方の入社処理はすでに始まっています",409);
