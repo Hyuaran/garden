@@ -12,7 +12,7 @@ const BUD_GARDEN_PAGE_MENU_BASE: GardenShellPageMenuItem[] = [
   { label: "振込管理", href: "/bud/transfers", icon: BUD_ICON },
   { label: "仕訳帳", href: "/bud/journal", icon: BUD_ICON },
   { label: "損益管理", href: "/bud/profit", icon: BUD_ICON },
-  { label: "ブロードバンド収支", href: "/bud/profit/broadband", icon: BUD_ICON },
+  { label: "事業の収支", href: "/bud/profit/broadband", icon: BUD_ICON },
   { label: "区切り線", href: "#bud-admin-divider", divider: true },
   { label: "口座残高・カード利用", href: "/bud/bank", icon: BUD_ICON },
   { label: "マスタ管理", href: "/bud/masters", icon: BUD_ICON },

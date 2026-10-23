@@ -15,3 +15,4 @@
 
 /* 折りたたみの四角は名前の前に並べる（.scroll button の全幅の指定を打ち消す） */
 .scroll .collapse.collapse{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:0;padding:0;margin:0 6px 0 0;vertical-align:-4px;border:0;background:transparent;color:var(--sub);cursor:pointer}.scroll .collapse.collapse:hover{color:var(--teal,#0ea5a0)}
+.preparing { padding: 48px 24px; border: 1px dashed var(--line, #d5d9df); border-radius: 6px; text-align: center; color: var(--sub, #5b6675); }

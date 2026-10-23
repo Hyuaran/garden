@@ -82,3 +82,39 @@ it("restores per-user order and requires a 400ms touch hold",()=>{
  fireEvent.pointerDown(a,{button:0,clientX:100,clientY:200});act(()=>vi.advanceTimersByTime(400));fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(1,4)).toEqual(["A","B","C"]);
  } finally {vi.useRealTimers();}
 });
+
+it("shows viewer settings only for super admins",()=>{
+ const props={rows:[],userId:"u",today:"2026-10-23",kintoneBase:""};
+ const view=render(<BroadbandTable {...props} />);
+ expect(screen.queryByRole("button",{name:"閲覧権限"})).toBeNull();
+ view.rerender(<BroadbandTable {...props} admin />);
+ expect(screen.getByRole("button",{name:"閲覧権限"})).toBeTruthy();
+});
+it("saves with PATCH and closes settings",async()=>{
+ const fetcher=vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({viewers:["a"],employees:[{employee_id:"a",name:"後道",name_kana:"ウシロミチ"}]})}).mockResolvedValueOnce({ok:true});
+ vi.stubGlobal("fetch",fetcher);
+ render(<BroadbandTable rows={[]} userId="u" today="2026-10-23" kintoneBase="" admin />);
+ fireEvent.click(screen.getByRole("button",{name:"閲覧権限"}));
+ expect(screen.queryByRole("table")).toBeNull();
+ await screen.findByRole("checkbox",{name:"後道"});
+ await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"保存"}));});
+ expect(fetcher).toHaveBeenLastCalledWith("/api/bud/broadband/viewers",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({viewers:["a"]})});
+ expect(screen.queryByRole("button",{name:"保存"})).toBeNull();expect(screen.getByRole("table")).toBeTruthy();
+});
+it("announces save failure",async()=>{
+ vi.stubGlobal("fetch",vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({viewers:[],employees:[]})}).mockResolvedValueOnce({ok:false,json:async()=>({error:"保存できませんでした"})}));
+ render(<BroadbandTable rows={[]} userId="u" today="2026-10-23" kintoneBase="" admin />);
+ await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"閲覧権限"}));});
+ await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"保存"}));});
+ expect(screen.getByRole("alert")).toHaveTextContent("保存できませんでした");expect(screen.queryByRole("table")).toBeNull();
+});
+it("names the page and tabs by business and shows SES as in preparation",()=>{
+ render(<BroadbandTable rows={[]} userId="u" today="2026-10-23" kintoneBase="" />);
+ expect(screen.getByRole("heading",{level:1,name:"事業の収支"})).toBeTruthy();
+ expect(screen.getByRole("tab",{name:"ブロードバンド事業"}).getAttribute("aria-selected")).toBe("true");
+ fireEvent.click(screen.getByRole("tab",{name:"SES事業"}));
+ expect(screen.getByRole("tabpanel")).toHaveTextContent("SES事業の収支は、現在作成中です。");
+ expect(screen.queryByRole("table")).toBeNull();expect(screen.queryByRole("button",{name:"並べ替え"})).toBeNull();
+ fireEvent.click(screen.getByRole("tab",{name:"ブロードバンド事業"}));
+ expect(screen.getByRole("table")).toBeTruthy();
+});

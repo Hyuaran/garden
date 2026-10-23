@@ -1,4 +1,5 @@
 "use client";
+import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import FontSizeButton from "@/app/system/_components/FontSizeButton";
 import { HeaderViewProvider, HeaderViewSlot } from "@/app/system/_components/HeaderViewToggle";
 
@@ -31,6 +32,22 @@ export function BudShachoShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
 
+  const [broadbandAccess, setBroadbandAccess] = useState<{userId: string; allowed: boolean} | null>(null);
+  const broadbandUserId = sessionUser?.user_id;
+  useEffect(() => {
+    let cancelled = false;
+    setBroadbandAccess(null);
+    if (broadbandUserId) {
+      void (async () => {
+        try {
+          const result = await createBrowserClient().rpc("bud_bb_can_view");
+          if (!cancelled) setBroadbandAccess({userId: broadbandUserId, allowed: !result.error && result.data === true});
+        } catch { if (!cancelled) setBroadbandAccess(null); }
+      })();
+    }
+    return () => { cancelled = true; };
+  }, [broadbandUserId]);
+  const canViewBroadband = !!broadbandUserId && broadbandAccess?.userId === broadbandUserId && broadbandAccess.allowed;
   const activePath = resolveBudActivePath(pathname);
   const visibleModules = new Set(getVisibleModules(gardenRole ?? "guest").map((module) => module.toLowerCase()));
   const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
@@ -67,7 +84,7 @@ export function BudShachoShell({ children }: { children: ReactNode }) {
       if ((event.target as HTMLElement).closest("a")) setDrawerOpen(false);
     }}>
       <div className={styles.navLabel}>メニュー</div>
-      {BUD_GARDEN_PAGE_MENU.filter(menu => menu.href !== "/bud/profit/broadband" || gardenRole === "admin" || gardenRole === "super_admin").map((menu) => menu.divider
+      {BUD_GARDEN_PAGE_MENU.filter(menu => menu.href !== "/bud/profit/broadband" || canViewBroadband).map((menu) => menu.divider
         ? <hr key={menu.href} className={styles.divider} />
         : <Link key={menu.href} href={menu.href} className={activePath === menu.href ? systemStyles.active : undefined} aria-current={activePath === menu.href ? "page" : undefined}>
             <MenuIcon icon={budMenuIcon(menu.href)} /><span>{menu.label}</span>

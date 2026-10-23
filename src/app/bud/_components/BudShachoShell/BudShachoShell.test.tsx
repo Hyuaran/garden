@@ -1,25 +1,35 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { BUD_GARDEN_PAGE_MENU } from "../bud-garden-menu";
 import { resolveBudActivePath } from "./bud-navigation";
 
-const mocks = vi.hoisted(() => ({ pathname: "/bud/expenses/review", signOut: vi.fn(), toggleTheme: vi.fn() }));
+const mocks = vi.hoisted(() => ({ pathname: "/bud/expenses/review", signOut: vi.fn(), toggleTheme: vi.fn(), rpc: vi.fn().mockResolvedValue({data:true,error:null}) }));
+vi.mock("@/app/_lib/supabase/browser",()=>({createBrowserClient:()=>({rpc:mocks.rpc})}));
 vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
 vi.mock("../BudGate", () => ({ BudGate: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("@/app/_components/notices/NoticeProvider", () => ({ useNotices: () => ({ unreadCount: 0 }) }));
 vi.mock("next/image", () => ({ default: ({ unoptimized: _, ...props }: Record<string, unknown>) => <img {...props} /> }));
 vi.mock("@/app/_lib/theme/ThemeProvider", () => ({ useTheme: () => ({ theme: "light", toggleTheme: mocks.toggleTheme }) }));
 vi.mock("../../_state/BudStateContext", () => ({ useBudState: () => ({
-  gardenRole: "super_admin", budRole: "admin", sessionUser: { name: "利用者" }, signOut: mocks.signOut,
+  gardenRole: "super_admin", budRole: "admin", sessionUser: { name: "利用者", user_id: "u" }, signOut: mocks.signOut,
 }) }));
 
 import { BudShachoShell } from "./BudShachoShell";
 
 describe("BudShachoShell", () => {
-  it("keeps the existing menu order and highlights expense review", () => {
+  it.each([false, true])("uses RPC result for broadband menu: %s", async allowed => {
+    mocks.rpc.mockResolvedValueOnce({data:allowed,error:null});
+    render(<BudShachoShell>本文</BudShachoShell>);
+    expect(screen.queryByRole("link",{name:"事業の収支"})).toBeNull();
+    await waitFor(()=>expect(mocks.rpc).toHaveBeenCalledWith("bud_bb_can_view"));
+    if(allowed) expect(await screen.findByRole("link",{name:"事業の収支"})).toBeTruthy();
+    else expect(screen.queryByRole("link",{name:"事業の収支"})).toBeNull();
+  });
+  it("keeps the existing menu order and highlights expense review", async () => {
     mocks.pathname = "/bud/expenses/review";
     render(<BudShachoShell><div>本文</div></BudShachoShell>);
     const nav = screen.getByRole("navigation", { name: "Budメニュー" });
+    await waitFor(()=>expect(within(nav).getAllByRole("link")).toHaveLength(BUD_GARDEN_PAGE_MENU.filter(item=>!item.divider).length));
     expect(within(nav).getAllByRole("link").map(link => link.textContent)).toEqual(BUD_GARDEN_PAGE_MENU.filter(item => !item.divider).map(item => item.label));
     expect(within(nav).getByRole("link", { name: "経費精算" })).toHaveAttribute("aria-current", "page");
     expect(within(screen.getByLabelText("Gardenシリーズ")).getByLabelText("Bud：経理・取引")).toHaveAttribute("aria-current", "page");
