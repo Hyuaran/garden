@@ -19,7 +19,7 @@ it('splits by UTF8 bytes and preserves dryRun',()=>{
 });
 it('sends authorized body and rejects server errors without logging response data',async()=>{
  const fetch=vi.fn().mockResolvedValue({ok:true,status:200,json:async()=>({ok:true,selected:[{secret:'private'}]})});
- expect(await post({apiBase:'https://example.invalid'},{rows:[],dryRun:true},{RELAY_SECRET:'test'},fetch)).toEqual({status:200,ok:true,skippedReason:undefined});
+ expect(await post({apiBase:'https://example.invalid'},{rows:[],dryRun:true},{RELAY_SECRET:'test'},fetch)).toEqual({status:200,ok:true,skippedReason:undefined,rowsSent:0,dryRun:undefined,counts:undefined,dedupByReason:undefined});
  expect(fetch.mock.calls[0][1]).toMatchObject({headers:{Authorization:'Bearer test'},body:'{"rows":[],"dryRun":true}'});
  fetch.mockResolvedValue({ok:false,status:500});await expect(post({apiBase:'https://example.invalid'},{rows:[]},{RELAY_SECRET:'test'},fetch)).rejects.toThrow('500');
 });

@@ -1,10 +1,11 @@
-﻿import {beforeEach,it,expect,vi} from 'vitest';
+import {beforeEach,it,expect,vi} from 'vitest';
 vi.mock('server-only',()=>({}));
 const m=vi.hoisted(()=>({query:vi.fn(),fetch:vi.fn(),send:vi.fn(),access:vi.fn()}));
 vi.mock('@/lib/db/pg',()=>({withPgClient:(fn:(c:unknown)=>unknown)=>fn({query:m.query}),queryPg:(...args:unknown[])=>m.query(...args)}));
 vi.mock('@/lib/chatwork',()=>({ChatworkClient:class {sendMessage(...args:unknown[]){return m.send(...args);}}}));
 vi.mock('./access.server',()=>({requireSproutUser:m.access}));
-import {reportBaitoruFailure,ingestBaitoru,resendBaitoru,notificationBody,existingIdentity} from './baitoru.server';
+import {reportBaitoruFailure,ingestBaitoru,resendBaitoru,notificationBody,existingIdentity,baitoruFailureReason,baitoruAlertBody,baitoruAlertRooms} from './baitoru.server';
+process.env.CHATWORK_DEV_ROOM_ID ||= '433894375';
 import {loadBaitoru,saveBaitoru,retryBaitoru} from '@/app/sprout/baitoru-actions';
 import {applicant} from './model';
 import type {BaitoruSettings,CsvRow} from './baitoru';
@@ -13,7 +14,7 @@ const row:CsvRow={'問合せNo':'238839646','応募日時':'2026/10/24 10:12:00'
 const stored={...applicant({$id:{value:'baitoru:238839646'},従業員名_姓名:{value:'山田 花子'}}),raw:{...row},inquiry_no:row['問合せNo'],source:'baitoru',mirror_record_id:null,is_repeat:true,notified_at:null,notify_error:'失敗',imported_at:new Date()};
 beforeEach(()=>{
  vi.resetAllMocks();vi.stubGlobal('fetch',m.fetch);
- vi.stubEnv('KINTONE_SUBDOMAIN','example');vi.stubEnv('KINTONE_RECRUIT_APPLICANTS_TOKEN','readonly');vi.stubEnv('CHATWORK_API_TOKEN','automatic');vi.stubEnv('CHATWORK_DEV_ROOM_ID','dev');
+ vi.stubEnv('KINTONE_SUBDOMAIN','example');vi.stubEnv('KINTONE_RECRUIT_APPLICANTS_TOKEN','readonly');vi.stubEnv('CHATWORK_API_TOKEN','automatic');vi.stubEnv('CHATWORK_DEV_ROOM_ID','433894375');
  m.access.mockResolvedValue({id:'admin'});m.send.mockResolvedValue({message_id:'1'});
  m.fetch.mockResolvedValue({ok:false,status:403});
  m.query.mockImplementation(async(sql:string)=>({rows:sql==='select * from sprout_baitoru_settings where id=true'?[config]:sql.includes('as acquired')?[{acquired:true}]:sql.includes('returning id')?[{id:'1'}]:sql.includes('consecutive_failures,failure_alerted')?[{consecutive_failures:0,failure_alerted:false}]:[]}));
@@ -37,7 +38,7 @@ it('keeps Sprout on Kintone 403, logs the reason, and uses Garden notification l
  expect(calls.some(([sql])=>sql.startsWith('insert into sprout_applicants'))).toBe(true);
  expect(calls.some(([sql])=>sql.includes('last_called_at=now()'))).toBe(true);
  expect(calls.some(([sql])=>/delete|rollback/.test(sql))).toBe(false);
- expect(m.send.mock.calls[0][0]).toBe('dev');expect(m.send.mock.calls[0][1]).toContain('/sprout');
+ expect(m.send.mock.calls[0][0]).toBe('433894375');expect(m.send.mock.calls[0][1]).toContain('/sprout');
  expect(m.fetch.mock.invocationCallOrder[0]).toBeGreaterThan(m.query.mock.invocationCallOrder[calls.findIndex(([sql])=>sql.startsWith('insert into sprout_applicants'))]);
 });
 it('uses the returned mirror ID, required fields, and configured optional fields',async()=>{
@@ -79,7 +80,7 @@ it('sends one notice after three failures and one on recovery',async()=>{
   return {rows:sql.includes('settings where')?[config]:sql.includes('as acquired')?[{acquired:true}]:sql.includes('returning id')?[{id:'1'}]:[]};
  });
  for(let i=0;i<4;i++)await expect(ingestBaitoru([])).rejects.toThrow();
- expect(m.send).toHaveBeenCalledTimes(1);fail=false;await ingestBaitoru([]);await ingestBaitoru([]);expect(m.send).toHaveBeenCalledTimes(2);expect(m.send.mock.calls[1][1]).toContain('回復');
+ expect(m.send).toHaveBeenCalledTimes(1);fail=false;await ingestBaitoru([]);await ingestBaitoru([]);expect(m.send).toHaveBeenCalledTimes(2);expect(m.send.mock.calls[1][1]).toContain('直りました');
 });
 it('guards settings, history, save and resend with super-admin access',async()=>{
  m.access.mockRejectedValue(new Error('閲覧権限がありません'));
@@ -101,4 +102,16 @@ it('records host failure and increments health without importing applicants',asy
  expect(m.query.mock.calls.some(([sql,args])=>sql.includes('consecutive_failures=case') && args[0]===true)).toBe(true);
  expect(m.query.mock.calls.some(([sql])=>sql.startsWith('insert into sprout_baitoru_runs'))).toBe(true);
  expect(m.fetch).not.toHaveBeenCalled();expect(m.query.mock.calls.at(-1)?.[0]).toContain('pg_advisory_unlock');
+});
+it('turns the host failure stage into short Japanese and never echoes the raw text',()=>{
+ expect(baitoruFailureReason('Baitoru agent failed (download)')).toBe('バイトルにログインできないか、応募の一覧を取り出せませんでした');
+ expect(baitoruFailureReason('password=abc (unknown)')).toBe('ホスト PC での取り込みが失敗しました');
+ const body=baitoruAlertBody(true,'ホスト PC でブラウザを起動できませんでした',new Date('2026-10-24T03:00:00Z'));
+ expect(body).toContain('バイトル応募の取り込みが止まっています');expect(body).toContain('10/24 12:00');expect(body).not.toContain('Error');
+});
+it('sends failure notices to the alert rooms only (dev room until switched)',()=>{
+ const before={...process.env};process.env.SPROUT_BAITORU_ALERT_ROOM_IDS='';process.env.CHATWORK_DEV_ROOM_ID='433894375';
+ expect(baitoruAlertRooms()).toEqual(['433894375']);
+ process.env.SPROUT_BAITORU_ALERT_ROOM_IDS='450125458, 451292009';expect(baitoruAlertRooms()).toEqual(['450125458','451292009']);
+ process.env=before;
 });

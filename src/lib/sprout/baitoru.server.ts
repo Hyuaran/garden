@@ -56,11 +56,23 @@ async function notify(client: PoolClient, a: Stored, s: BaitoruSettings) {
   return false;
  }
 }
-async function health(client: PoolClient, failed: boolean) {
+// 失敗の知らせの送り先：後確FC（応募の通知のルーム）には送らない。本番は Garden通知・重要通知、試しの間は開発ルーム（2026-10-24 東海林さん）
+export function baitoruAlertRooms() {
+ const rooms=(process.env.SPROUT_BAITORU_ALERT_ROOM_IDS || process.env.CHATWORK_DEV_ROOM_ID || '').split(',').map(r=>r.trim()).filter(r=>/^\d+$/.test(r));
+ return [...new Set(rooms)];
+}
+export function baitoruAlertBody(failed: boolean, reason = '', now = new Date()) {
+ const at=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now);
+ return failed
+  ? `[info][title]バイトル応募の取り込みが止まっています[/title]${at}　${reason || '取り込みが続けて失敗しました'}\n新しい応募が Garden・Kintone・Chatwork に届いていない可能性があります。\n取り込みの記録：https://garden-os.net/sprout[/info]`
+  : `[info][title]バイトル応募の取り込みが直りました[/title]${at}　取り込みが再開しました。[/info]`;
+}
+async function health(client: PoolClient, failed: boolean, reason = '') {
  const state=(await client.query<{consecutive_failures:number;failure_alerted:boolean}>('update sprout_baitoru_settings set consecutive_failures=case when $1 then consecutive_failures+1 else 0 end where id=true returning consecutive_failures,failure_alerted',[failed])).rows[0];
  if(!state || (failed ? state.consecutive_failures<3 || state.failure_alerted : !state.failure_alerted)) return;
  try {
-  await new ChatworkClient(process.env.CHATWORK_API_TOKEN || '').sendMessage(process.env.GARDEN_NOTICE_CHATWORK_ROOM_ID || '450125458',`[info][title]バイトル応募の取り込み[/title]${failed?'取り込みが3回続けて失敗しました。設定と取り込みの記録を確認してください。':'取り込みが回復しました。'}\nhttps://garden-os.net/sprout[/info]`);
+  const client2=new ChatworkClient(process.env.CHATWORK_API_TOKEN || '');
+  for (const room of baitoruAlertRooms()) await client2.sendMessage(room,baitoruAlertBody(failed,reason));
   await client.query('update sprout_baitoru_settings set failure_alerted=$1 where id=true',[failed]);
  } catch { /* Retry the notice on the next call, without failing the import. */ }
 }
@@ -88,7 +100,7 @@ export async function ingestBaitoru(rows: CsvRow[], dryRun=false) {
     a.raw={...a.raw,...r};
     // Commit the Garden copy before any external request; mirror failures cannot remove it.
     const columns=Object.keys(a);
-    await client.query(`insert into sprout_applicants(${columns.join(',')},inquiry_no,source,is_repeat,notify_error) select ${columns.join(',')},$2,'baitoru',$3,'?????????' from jsonb_populate_record(null::sprout_applicants,$1::jsonb)`,[JSON.stringify(a),r['問合せNo'].trim(),item.isRepeat]);
+    await client.query(`insert into sprout_applicants(${columns.join(',')},inquiry_no,source,is_repeat,notify_error) select ${columns.join(',')},$2,'baitoru',$3,'まだ知らせていません' from jsonb_populate_record(null::sprout_applicants,$1::jsonb)`,[JSON.stringify(a),r['問合せNo'].trim(),item.isRepeat]);
     counts.added++; if(item.isRepeat) counts.repeatAdded++;
     let mirrorId: string | null=null;
     try {
@@ -104,7 +116,7 @@ export async function ingestBaitoru(rows: CsvRow[], dryRun=false) {
   } catch(error) {
    if(!dryRun) {
     if(run) await client.query('update sprout_baitoru_runs set finished_at=now(),counts=$2,error=$3 where id=$1',[run,JSON.stringify(counts),statusReason(error)]);
-    await health(client,true);
+    await health(client,true,'Garden で応募を登録できませんでした');
    }
    throw new Error('取り込みに失敗しました。取り込みの記録を確認してください');
   } finally { await client.query('select pg_advisory_unlock($1)',[BAITORU_LOCK]); }
@@ -122,16 +134,29 @@ export async function resendBaitoru(id: string) {
  });
 }
 
+// ホスト PC から来る失敗理由は「Baitoru agent failed (段階)」の形。段階だけを読み、決まった日本語にする（来た文はそのまま残さない）
+const FAILURE_REASONS: Record<string,string> = {
+ lock: 'ホスト PC で前回の取り込みが終わっていません',
+ browser: 'ホスト PC でブラウザを起動できませんでした',
+ download: 'バイトルにログインできないか、応募の一覧を取り出せませんでした',
+ 'browser-close': 'ホスト PC でブラウザを閉じられませんでした',
+ send: 'ホスト PC から Garden へ送れませんでした',
+};
+export function baitoruFailureReason(error?: string) {
+ const stage = /\(([a-z-]+)\)\s*$/.exec(error ?? '')?.[1] ?? '';
+ return FAILURE_REASONS[stage] ?? 'ホスト PC での取り込みが失敗しました';
+}
 // Never persist caller text: it may contain credentials or applicant data.
-export async function reportBaitoruFailure() {
+export async function reportBaitoruFailure(error?: string) {
  return withPgClient(async client=>{
   if(!(await settings(client)).enabled) return {ok:true,skippedReason:'disabled'};
   const lock=await client.query('select pg_try_advisory_lock($1) as acquired',[BAITORU_LOCK]);
   if(!lock.rows[0].acquired) return {ok:true,skippedReason:'already syncing'};
   try {
    await client.query('update sprout_baitoru_settings set last_called_at=now() where id=true');
-   await client.query("insert into sprout_baitoru_runs(dry_run,finished_at,error) values(false,now(),$1)",['??? PC ?????????????????????????????????????']);
-   await health(client,true);
+   const reason=baitoruFailureReason(error);
+   await client.query("insert into sprout_baitoru_runs(dry_run,finished_at,error) values(false,now(),$1)",[reason]);
+   await health(client,true,reason);
    return {ok:true};
   } finally {await client.query('select pg_advisory_unlock($1)',[BAITORU_LOCK]);}
  });
