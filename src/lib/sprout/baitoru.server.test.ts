@@ -22,6 +22,11 @@ it('disabled has no writes, lock or external requests',async()=>{
  m.query.mockResolvedValue({rows:[{...config,enabled:false}]});
  expect(await ingestBaitoru([row])).toEqual({ok:true,skippedReason:'disabled'});expect(m.query).toHaveBeenCalledTimes(1);expect(m.fetch).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
 });
+it('dryRun still returns decisions while disabled, without writes',async()=>{
+ m.query.mockImplementation(async(sql:string)=>({rows:sql==='select * from sprout_baitoru_settings where id=true'?[{...config,enabled:false}]:sql.includes('as acquired')?[{acquired:true}]:[]}));
+ const r=await ingestBaitoru([row],true);expect(r).toMatchObject({ok:true,dryRun:true,selected:[{row,isRepeat:false}]});
+ expect(m.query.mock.calls.every(([sql])=>sql.startsWith('select'))).toBe(true);expect(m.fetch).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
+});
 it('dryRun returns decisions without any writes, including heartbeat, history or notices',async()=>{
  const r=await ingestBaitoru([row],true);expect(r).toMatchObject({ok:true,dryRun:true,selected:[{row,isRepeat:false}]});
  expect(m.query.mock.calls.every(([sql])=>sql.startsWith('select'))).toBe(true);expect(m.fetch).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();

@@ -67,7 +67,8 @@ async function health(client: PoolClient, failed: boolean) {
 export async function ingestBaitoru(rows: CsvRow[], dryRun=false) {
  return withPgClient(async client=>{
   const s=await settings(client);
-  if(!s.enabled) return {ok:true,skippedReason:'disabled'};
+  // 止めている間も「書き込みなしの試し」は判定まで行う（掲載前にホスト PC の取得と重複判定を確かめるため）
+  if(!s.enabled && !dryRun) return {ok:true,skippedReason:'disabled'};
   const lock=await client.query('select pg_try_advisory_lock($1) as acquired',[BAITORU_LOCK]);
   if(!lock.rows[0].acquired) return {ok:true,skippedReason:'already syncing'};
   let run: string | undefined;
