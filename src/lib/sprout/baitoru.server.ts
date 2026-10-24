@@ -4,13 +4,15 @@ import { withPgClient } from '@/lib/db/pg';
 import { ChatworkClient } from '@/lib/chatwork';
 import { applicant, type Applicant } from './model';
 import { appliedAt, dateKey, identity, kintoneValues, optionalMappings, plan, type BaitoruSettings, type CsvRow, type Identity } from './baitoru';
+import { postingContext, type Posting } from './postings';
 
 export const BAITORU_LOCK = 42020261024; // Shared with the Kintone import.
 type Stored = Applicant & { inquiry_no: string | null; source: string; mirror_record_id: string | null; is_repeat: boolean; notified_at: string | null; notify_error: string | null; imported_at: string | Date };
 export async function settings(client: PoolClient) {
  const result=await client.query<BaitoruSettings>('select * from sprout_baitoru_settings where id=true');
  if(!result.rows[0]) throw new Error('取り込みの設定が見つかりません');
- return result.rows[0];
+ const postings=(await client.query<Posting>('select id,start_date::text,end_date::text,content,created_at,ended_early_at from sprout_baitoru_postings order by created_at desc,id')).rows;
+ return {...result.rows[0],...postingContext(postings)};
 }
 export function existingIdentity(a: Stored): Identity {
  const raw=a.raw || {}, text=(k:string)=>typeof raw[k]==='string' ? raw[k] as string : '';
@@ -64,7 +66,7 @@ export function baitoruAlertRooms() {
 export function baitoruAlertBody(failed: boolean, reason = '', now = new Date()) {
  const at=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now);
  return failed
-  ? `[info][title]バイトル応募の取り込みが止まっています[/title]${at}　${reason || '取り込みが続けて失敗しました'}\n新しい応募が Garden・Kintone・Chatwork に届いていない可能性があります。\n取り込みの記録：https://garden-os.net/sprout[/info]`
+  ? `[info][title]バイトル応募の取り込みが止まっています[/title]${at}　${reason || '取り込みが続けて失敗しました'}\n新しい応募が Garden・Kintone・Chatwork に届いていない可能性があります。\n取り込みの記録：https://garden-os.net/sprout/postings[/info]`
   : `[info][title]バイトル応募の取り込みが直りました[/title]${at}　取り込みが再開しました。[/info]`;
 }
 async function health(client: PoolClient, failed: boolean, reason = '') {
