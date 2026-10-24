@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import BaitoruPanel from "./baitoru-panel";
 import Link from "next/link";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -77,7 +78,7 @@ export default function Sprout() {
     <aside className={`${shell.side} ${styles.sidebar}`}><div className={styles.brand}>Garden<br /><strong>Sprout</strong></div><nav className={shell.nav}><Link href="/sprout" className={shell.active}>採用管理</Link></nav></aside>
     <main className={`${shell.main} ${styles.main}`}><div className={styles.heading}><SystemBreadcrumb root={{ label: "Sprout", href: "/sprout" }} items={[{ label: "採用管理" }]} /><h1>採用管理</h1><UpdatedStamp label="Kintone取込" date={data.updated} onRefresh={refresh} busy={busy} refreshLabel="採用情報を取り込む" /></div>
       <SystemTabs>{[["applicants", "応募者"], ["interviews", "面接予定"], ["training", "研修予定"]].map(([id,label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}</SystemTabs>
-      <div className={styles.filters}>{tab === "applicants" && <BoxSelect label="期間" multiple={false} value={[month]} onChange={v => setMonth(v[0])} options={[{ value: "", label: "すべての期間" }, ...months.map(m => ({ value: m, label: `${m.slice(0,4)}年${Number(m.slice(5))}月` }))]} />}
+      {tab === "baitoru" ? <BaitoruPanel /> : <><div className={styles.filters}>{tab === "applicants" && <BoxSelect label="期間" multiple={false} value={[month]} onChange={v => setMonth(v[0])} options={[{ value: "", label: "すべての期間" }, ...months.map(m => ({ value: m, label: `${m.slice(0,4)}年${Number(m.slice(5))}月` }))]} />}
         <BoxSelect label="状況" value={statuses.length ? statuses : [...new Set(data.applicants.map(a => a.status))]} options={[...new Set(data.applicants.map(a => a.status))].sort().map(s => ({ value: s, label: s || "未設定" }))} onChange={setStatuses} />
         <label>名前・電話で探す<input type="search" value={search} onChange={e => setSearch(e.target.value)} /></label>
       </div>
@@ -95,7 +96,7 @@ export default function Sprout() {
         <h3>求人の記録</h3><Value value={row.raw["配属・異動"]} />
         <h3>ヒアリングシート</h3>{data.hearings.filter(h => h.applicant_record_id === row.kintone_record_id).map(h => <Fields key={h.kintone_record_id} raw={h.raw} keys={Object.keys(h.raw).filter(k => labels[k])} />)}{!data.hearings.some(h => h.applicant_record_id === row.kintone_record_id) && <p>記録はありません</p>}
         {canSend(row.status) && <button disabled={busy || data.sent.includes(row.kintone_record_id)} onClick={() => send(row)}>{data.sent.includes(row.kintone_record_id) ? "入社予定者へ送付済み" : "入社予定者へ"}</button>}
-      </section>}</div>
+      </section>}</div></>}
     </main>
   </div>;
 }

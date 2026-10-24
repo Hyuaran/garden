@@ -71,3 +71,16 @@ describe("Sprout server boundaries",()=>{
     expect(calls.at(-1)).toBe("commit");
   });
 });
+
+it("preserves Baitoru originals during mirror refresh and keeps their local IDs",async()=>{
+ const a=applicant(record({$id:'42',従業員名_姓名:'山田 花子'}));
+ mocks.query.mockImplementation(async(sql:string)=>({rows:
+  sql.includes('pg_try_advisory')?[{acquired:true}]:
+  sql.includes('returning id')?[{id:'1'}]:
+  sql.includes("where source='baitoru'")?[{kintone_record_id:'baitoru:238839646',mirror_record_id:'42',raw:{応募日時:'2026/10/24 10:12:00'}}]:[]}));
+ mocks.fetch.mockImplementation(async(url:string)=>({ok:true,json:async()=>url.includes('form/fields')?{properties:{}}:{records:url.includes('app=44')?[record({$id:a.kintone_record_id,従業員名_姓名:a.name})]:[]}}));
+ await importRecruit();
+ const upsert=mocks.query.mock.calls.find(([sql])=>sql.startsWith('insert into sprout_applicants'))!;
+ expect(JSON.parse(upsert[1][0])[0]).toMatchObject({kintone_record_id:'baitoru:238839646',raw:{応募日時:'2026/10/24 10:12:00'}});
+ expect(mocks.query.mock.calls.find(([sql])=>sql.startsWith('delete from sprout_applicants'))?.[0]).toContain("source='kintone'");
+});

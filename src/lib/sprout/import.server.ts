@@ -53,7 +53,11 @@ export async function importRecruit() {
       const lock = await client.query("select pg_try_advisory_xact_lock(42020261024) as acquired");
       if (!lock.rows[0].acquired) throw new Error("取り込み中です。しばらくお待ちください");
       runId = (await client.query("insert into sprout_import_runs(status,created_by) values('running',$1) returning id", [user.id])).rows[0].id;
-      const applicants = (await fetchRecords("APPLICANTS")).map(applicant);
+      const local = (await client.query<{kintone_record_id:string;mirror_record_id:string;raw:Record<string,unknown>}>("select kintone_record_id,mirror_record_id,raw from sprout_applicants where source='baitoru' and mirror_record_id is not null")).rows;
+      const applicants = (await fetchRecords("APPLICANTS")).map(applicant).map(a => {
+        const saved=local.find(r=>r.mirror_record_id===a.kintone_record_id);
+        return saved ? {...a,kintone_record_id:saved.kintone_record_id,raw:{...saved.raw,...a.raw}} : a;
+      });
       const match = await relation();
       const hearings = (await fetchRecords("HEARING")).map(r => hearing(r, applicants, match));
       for (const [table, rows] of [["sprout_applicants", applicants], ["sprout_hearing_sheets", hearings]] as const) {
@@ -66,7 +70,7 @@ export async function importRecruit() {
         }
       }
       await client.query("delete from sprout_hearing_sheets where not(kintone_record_id=any($1::text[]))", [hearings.map(r => r.kintone_record_id)]);
-      await client.query("delete from sprout_applicants where not(kintone_record_id=any($1::text[]))", [applicants.map(r => r.kintone_record_id)]);
+      await client.query("delete from sprout_applicants where source='kintone' and not(kintone_record_id=any($1::text[]))", [applicants.map(r => r.kintone_record_id)]);
       await client.query("update sprout_import_runs set status='success',finished_at=now(),applicant_count=$2,hearing_count=$3 where id=$1", [runId, applicants.length, hearings.length]);
       await client.query("commit");
     } catch (error) {

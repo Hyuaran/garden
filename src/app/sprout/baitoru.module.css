@@ -1,0 +1,11 @@
+﻿.panel { padding: 24px 0; color: var(--color-text, #303a32); }
+.panel h2 { font-size: 1.1rem; margin: 12px 0 18px; }
+.panel fieldset { border: 1px solid #cdd5ca; border-radius: 8px; padding: 20px; display: flex; flex-wrap: wrap; gap: 18px; align-items: end; }
+.panel label { display: flex; flex-direction: column; gap: 6px; font-size: .9rem; }
+.panel label:has(input[type=radio]) { flex-direction: row; align-items: center; }
+.panel input:not([type=radio]), .panel textarea, .panel select { padding: 8px; border: 1px solid #bac5b8; border-radius: 4px; background: white; color: inherit; }
+.panel textarea { min-height: 80px; }
+.panel button { padding: 8px 16px; border: 1px solid #8d9f89; border-radius: 4px; cursor: pointer; }
+.history { overflow-x: auto; margin-bottom: 28px; }
+.history table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+.history th, .history td { text-align: left; padding: 12px; border-bottom: 1px solid #dbe1d8; min-width: 70px; white-space: pre-line; }
