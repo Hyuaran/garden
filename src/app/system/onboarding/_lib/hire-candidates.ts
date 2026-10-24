@@ -28,9 +28,10 @@ export function parseHireInput(raw: unknown): HireInput {
   return input;
 }
 export function nextEmployeeNumber(numbers: (string | null)[], kotCodes: string[], reserved: (string | null)[] = []) {
+  // 1900 未満のいちばん大きい番号＋1 から（1900〜1902 は付け間違いの飛び番・2026-10-24）。使用中の番号は飛ばす
   const valid = numbers.filter((n): n is string => !!n && /^\d+$/.test(n) && Number(n) < 9000);
-  let number = Math.max(0, ...valid.map(Number)) + 1;
-  const occupied = new Set([...kotCodes, ...reserved.filter((n): n is string => !!n)].filter(n => /^\d+$/.test(n)).map(Number));
+  let number = Math.max(0, ...valid.map(Number).filter(n => n < 1900)) + 1;
+  const occupied = new Set([...valid, ...kotCodes, ...reserved.filter((n): n is string => !!n)].filter(n => /^\d+$/.test(n)).map(Number));
   while (occupied.has(number) && number < 9000) number++;
   if (number >= 9000) throw new Error("入力内容を確認してください");
   return String(number);

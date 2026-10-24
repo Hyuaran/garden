@@ -29,7 +29,9 @@ function dbFor(row:HireCandidate) {
 beforeEach(()=>{vi.clearAllMocks();vi.stubEnv("KOT_EMPLOYEE_CREATE_ENABLED","true");mocks.employees.mockResolvedValue([]);mocks.create.mockResolvedValue({});mocks.records.mockResolvedValue([]);mocks.record.mockResolvedValue({id:"42"});mocks.sync.mockResolvedValue({errors:[]});});
 it("excludes test/external numbers and skips normalized KOT codes and reservations",()=>{
  expect(nextEmployeeNumber(["1570","9001","9997","9999","999991","abc",null],["01571"],["1572"])).toBe("1573");
- expect(()=>nextEmployeeNumber(["8999"],[])).toThrow();
+ expect(nextEmployeeNumber(["1570","1900","1901","1902"],[])).toBe("1571");
+ expect(nextEmployeeNumber(["1899","1900","1901"],[])).toBe("1902");
+ expect(()=>nextEmployeeNumber(["1899"],[],Array.from({length:7101},(_,i)=>String(1900+i)))).toThrow();
 });
 it("rejects impossible dates and unknown employment types",()=>{expect(()=>parseHireInput({...candidate(),birthday:"2000-02-30"})).toThrow();expect(()=>parseHireInput({...candidate(),employment_type:"bad"})).toThrow();});
 it("writes the roster fields consumed by the existing sync",()=>{expect(rosterPayload(candidate(),"法人")).toMatchObject({社員番号:{value:"1571"},打刻ID:{value:"1571"},生年月日:{value:"2000-01-01"},従業員ステータス:{value:"在籍中"},ドロップダウン_15:{value:"法人"}});});
