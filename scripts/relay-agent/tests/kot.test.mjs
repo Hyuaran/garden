@@ -66,3 +66,26 @@ it("never retries POST on network failure",async()=>{
  const fetch=vi.fn(async()=>{throw new Error("network");});
  await handleJob(job({method:"POST",path:"/employees",body:{code:"1571"}}),{fetch,env});expect(fetch).toHaveBeenCalledTimes(1);
 });
+
+it("allows employee lookup with only supported query parameters", () => {
+ expect(buildKotRequest({method:"GET",path:"/employees/1571?includeResigner=true&date=2026-10-24"},env).init.method).toBe("GET");
+ for (const path of ["/employees/a-b", "/employees/1571/other", "/employees/1571?other=true", "/employees/1571?date=no", "/employees/1571?includeResigner=true&includeResigner=false"]) expect(()=>buildKotRequest({method:"GET",path},env)).toThrow();
+});
+it("restricts PUT path, query and JSON body", () => {
+ const req={method:"PUT",path:"/employees/key-123?updateDate=2026-10-24",body:{divisionCode:"2"}};
+ expect(buildKotRequest(req,env).init).toMatchObject({method:"PUT",body:'{"divisionCode":"2"}',headers:{"Content-Type":"application/json; charset=utf-8"}});
+ for (const path of ["/employees", "/divisions/key?updateDate=2026-10-24", "/employees/key", "/employees/key?date=2026-10-24", "/employees/key?updateDate=2026-10-24&x=1", "/employees/key_1?updateDate=2026-10-24"]) expect(()=>buildKotRequest({...req,path},env)).toThrow();
+ for(const body of [null,[],"{}",{name:"あ".repeat(6000)}]) expect(()=>buildKotRequest({...req,body},env)).toThrow();
+});
+it.each([429,503,"network"])("never retries PUT on %s", async status => {
+ const fetch=vi.fn(async()=>{if(status==="network") throw new Error("network");return new Response(null,{status});});
+ const sleep=vi.fn();
+ await handleJob(job({method:"PUT",path:"/employees/key-123?updateDate=2026-10-24",body:{typeCode:"1"}}),{fetch,sleep,env});
+ expect(fetch).toHaveBeenCalledTimes(1);expect(sleep).not.toHaveBeenCalled();
+});
+it("accepts empty PUT success", async()=>{
+ expect(await handleJob(job({method:"PUT",path:"/employees/key?updateDate=2026-10-24",body:{typeCode:"1"}}),{env,fetch:async()=>new Response(null,{status:204})})).toMatchObject({ok:true,result:null});
+});
+it.each(["/unknown", "/employees/key-123", "/employees/key/extra", "/employees/%31", "/employees/1571?updateDate=2026-10-24"])("rejects unapproved employee lookup %s", path => {
+ expect(()=>buildKotRequest({method:"GET",path},env)).toThrow();
+});

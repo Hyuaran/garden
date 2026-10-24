@@ -4,7 +4,10 @@ export type RelayStatus = "queued" | "running" | "done" | "failed" | "expired";
 
 export type KotEmployeeCreate = { code: string; lastName: string; firstName: string; divisionCode: string; typeCode: string; gender: "male" | "female"; lastNamePhonetics?: string; firstNamePhonetics?: string; hiredDate?: string; birthDate?: string };
 
+export type KotEmployeeUpdate = Partial<{ divisionCode: string; typeCode: string; lastName: string; firstName: string; lastNamePhonetics: string; firstNamePhonetics: string; hiredDate: string; birthDate: string; resignationDate: string; emailAddresses: string[]; gender: "male" | "female" }>;
+
 export type RelayRequest =
+  | { method: "PUT"; path: string; body: KotEmployeeUpdate }
   | { method: "POST"; path: "/employees"; body: KotEmployeeCreate }
   | {
       method: "GET";

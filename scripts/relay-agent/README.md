@@ -107,3 +107,9 @@ Vercel 側の INNOVERA 鍵は、中継運用が 1 週間問題なく動いた後
 KOT の読み取りを中継する場合は、ホスト PC のマシン環境変数 `KOT_API_TOKEN` に鍵を設定して常駐タスクを再起動します。未設定でも INNOVERA は動き続け、KOT の仕事だけ失敗します。鍵は config.json やログに書かないでください。Garden 側は `KOT_RELAY_MODE=queue` で切り替えます（既定は `direct`）。
 
 KOT は POST /employees を許可します（JSON 16KB まで）。POST は再試行しません。
+
+### 従業員の所属・雇用区分の変更
+- GET `/employees/{英数字}`：クエリは `includeResigner` と `date` のみ。
+- PUT `/employees/{英数字とハイフン}?updateDate=YYYY-MM-DD`：JSON オブジェクト 16KB まで。UTF-8 で送信し、失敗時も再試行しません。
+- Garden 側の `KOT_EMPLOYEE_UPDATE_ENABLED=true` の場合のみ更新可能です。既定は停止。全権管理者の従業員編集から変更日を指定して操作します。
+- 日本時間 8:30〜10:00、17:30〜18:30 は利用できません。ホスト側は既存の逐次実行を維持してください。

@@ -29,6 +29,7 @@ import {
 } from "../_lib/validators";
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
+import KotEmployeePanel from "./KotEmployeePanel";
 import { GardenRoleField } from "./GardenRoleField";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import {
@@ -933,6 +934,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
               />
             </FormGrid>
 
+            {rootUser?.garden_role === "super_admin" && editTarget.created_at && <KotEmployeePanel key={editTarget.employee_id} employeeId={editTarget.employee_id} name={editTarget.name} />}
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>外部ID連携</h3>
             <FormGrid>
               <TextField label="キングオブタイムID" value={editTarget.kot_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, kot_employee_id: e.target.value || null })} />

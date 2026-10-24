@@ -223,9 +223,14 @@ async function callInnovera(request, { fetch: fetchImpl = fetch, env = process.e
 }
 
 export function buildKotRequest(request, env = process.env) {
-  if (request?.method !== "GET" && !(request?.method === "POST" && request.path === "/employees")) throw new Error("kot: この操作は許可していません");
+  const employeePut = request?.method === "PUT" && /^\/employees\/[a-zA-Z0-9-]+\?updateDate=\d{4}-\d{2}-\d{2}$/.test(request.path);
+  if (request?.method === "GET" && request.path?.startsWith("/employees/")) {
+    const params = new URLSearchParams(request.path.split("?")[1]);
+    if (!/^\/employees\/[a-zA-Z0-9]+(?:\?|$)/.test(request.path) || [...params].some(([key, value]) => !["includeResigner", "date"].includes(key) || params.getAll(key).length !== 1 || (key === "includeResigner" ? !/^(true|false)$/.test(value) : !/^\d{4}-\d{2}-\d{2}$/.test(value)))) throw new Error("kot: この操作は許可していません");
+  }
+  if (request?.method !== "GET" && !(request?.method === "POST" && request.path === "/employees") && !employeePut) throw new Error("kot: この操作は許可していません");
   let body;
-  if (request.method === "POST") {
+  if (request.method === "POST" || request.method === "PUT") {
     if (!request.body || typeof request.body !== "object" || Array.isArray(request.body)) throw new Error("kot: JSON 本文が必要です");
     body = JSON.stringify(request.body);
     if (Buffer.byteLength(body, "utf8") > 16384) throw new Error("kot: 本文が大きすぎます");
@@ -235,6 +240,10 @@ export function buildKotRequest(request, env = process.env) {
   try { decoded = decodeURIComponent(value); } catch { throw new Error("kot: path が不正です"); }
   if (typeof value !== "string" || !/^\/[a-zA-Z0-9_-]/.test(value) ||
       /\.\.|[\\:#\s]|\/\//.test(decoded) || /%/.test(decoded)) throw new Error("kot: path が不正です");
+  if (request.method === "GET") {
+    const pathname = value.split("?")[0];
+    if (!/^\/(?:employees(?:\/[a-zA-Z0-9]+)?|divisions|working-types|monthly-workings\/\d{4}-\d{2}|daily-workings\/\d{4}-\d{2}-\d{2})$/.test(pathname)) throw new Error("kot: この操作は許可していません");
+  }
   if (!env.KOT_API_TOKEN) throw new Error("kot: KOT の鍵がホスト PC にありません");
   return { url: `https://api.kingtime.jp/v1.0${value}`, init: {
     method: request.method, body, redirect: "error",
@@ -264,6 +273,7 @@ async function callKot(request, { fetch: fetchImpl = fetch, env = process.env, t
         throw new Error(`kot: ${response.status} HTTP エラー`);
       }
       const text = await response.text();
+      if (request.method === "PUT" && !text.trim()) return null;
       if (Buffer.byteLength(text, "utf8") > 4 * 1024 * 1024) throw new Error("kot: 応答が大きすぎます");
       let result;
       try { result = JSON.parse(text); } catch { throw new Error("kot: JSON を解釈できません"); }

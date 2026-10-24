@@ -321,3 +321,25 @@ export async function createKotEmployee(body: import("@/lib/relay/types").KotEmp
   const job = await enqueueRelayJob("kot", { method: "POST", path: "/employees", body }, "kot-api");
   return waitRelayJob(job.id, { timeoutMs: 25_000 });
 }
+
+export async function fetchKotEmployeeByCode(code: string) {
+  if (!/^[a-zA-Z0-9]+$/.test(code)) throw new Error("KOT の従業員コードを確認してください");
+  assertKotAvailable();
+  return kotFetchViaRelay<KotEmployee>(`/employees/${code}?includeResigner=true`);
+}
+export function isKotUpdateDate(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+}
+export async function updateKotEmployee(key: string, fields: import("@/lib/relay/types").KotEmployeeUpdate, updateDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date())) {
+  if (process.env.KOT_EMPLOYEE_UPDATE_ENABLED !== "true") throw new Error("KOT の変更は止めています");
+  if (!/^[a-zA-Z0-9-]+$/.test(key) || !isKotUpdateDate(updateDate)) throw new Error("KOT の変更内容を確認してください");
+  assertKotAvailable();
+  const body: import("@/lib/relay/types").KotEmployeeUpdate = {};
+  const allowed = ["divisionCode", "typeCode", "lastName", "firstName", "lastNamePhonetics", "firstNamePhonetics", "hiredDate", "birthDate", "resignationDate", "emailAddresses", "gender"] as const;
+  for (const field of allowed) if (fields[field] !== undefined) Object.assign(body, { [field]: fields[field] });
+  if (!Object.keys(body).length) throw new Error("変更する項目を選んでください");
+  const { enqueueRelayJob, waitRelayJob, getRelayHeartbeat, isRelayAlive } = await import("@/lib/relay/queue.server");
+  if (!isRelayAlive(await getRelayHeartbeat())) throw new Error("中継が止まっています");
+  const job = await enqueueRelayJob("kot", { method: "PUT", path: `/employees/${key}?updateDate=${updateDate}`, body }, "kot-api");
+  return waitRelayJob(job.id, { timeoutMs: 25_000 });
+}
