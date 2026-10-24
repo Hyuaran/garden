@@ -75,7 +75,9 @@ export async function post(config,body,env=process.env,fetchImpl=fetch) {
  const result=await response.json();
  if(result.ok!==true) throw new Error('Garden rejected request');
  // Only aggregate values are logged; response bodies may contain applicants.
- return {status:response.status,ok:result.ok,skippedReason:['disabled','already syncing'].includes(result.skippedReason)?result.skippedReason:undefined};
+ // 件数だけは残す（試しの結果を確かめるため。氏名などは含まない）
+ const numbers=v=>v&&typeof v==='object'?Object.fromEntries(Object.entries(v).filter(([,n])=>typeof n==='number')):undefined;
+ return {status:response.status,ok:result.ok,skippedReason:['disabled','already syncing'].includes(result.skippedReason)?result.skippedReason:undefined,rowsSent:Array.isArray(body.rows)?body.rows.length:undefined,dryRun:result.dryRun,counts:numbers(result.counts),dedupByReason:numbers(result.dedupByReason)};
 }
 export async function run(config,{env=process.env,launch,fetchImpl=fetch}={}) {
  await mkdir(config.logDir,{recursive:true});
