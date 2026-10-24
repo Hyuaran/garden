@@ -76,6 +76,10 @@ async function health(client: PoolClient, failed: boolean, reason = '') {
   await client.query('update sprout_baitoru_settings set failure_alerted=$1 where id=true',[failed]);
  } catch { /* Retry the notice on the next call, without failing the import. */ }
 }
+// ホスト PC が取りに行く前に聞く：止めている間はバイトルにログインしない（掲載しない間は止める運用・2026-10-24）
+export async function baitoruEnabled() {
+ return withPgClient(async client=>(await settings(client)).enabled);
+}
 export async function ingestBaitoru(rows: CsvRow[], dryRun=false) {
  return withPgClient(async client=>{
   const s=await settings(client);

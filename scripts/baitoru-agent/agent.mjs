@@ -72,6 +72,13 @@ export async function collect(browser,config,env=process.env) {
   return rows;
  } finally {try {if(context) await context.close();} finally {if(temp) await rm(temp,{recursive:true,force:true});}}
 }
+export async function enabled(config,env=process.env,fetchImpl=fetch) {
+ if(!env.RELAY_SECRET) throw new Error('Relay secret missing');
+ const response=await fetchImpl(new URL('/api/sprout/baitoru/ingest',config.apiBase),{method:'GET',headers:{Authorization:`Bearer ${env.RELAY_SECRET}`},signal:AbortSignal.timeout(30000)});
+ if(!response.ok) throw new Error(`Garden HTTP ${response.status}`);
+ const result=await response.json();
+ return result.ok===true && result.enabled===true;
+}
 export async function post(config,body,env=process.env,fetchImpl=fetch) {
  if(!env.RELAY_SECRET) throw new Error('Relay secret missing');
  const response=await fetchImpl(new URL('/api/sprout/baitoru/ingest',config.apiBase),{method:'POST',headers:{Authorization:`Bearer ${env.RELAY_SECRET}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(60000)});
@@ -91,6 +98,11 @@ export async function run(config,{env=process.env,launch,fetchImpl=fetch}={}) {
  let lock, browser, stage='lock';
  try {
   try {lock=await open(lockPath,'wx'); await lock.writeFile(String(process.pid));} catch(e) {if(e.code==='EEXIST') {await log({event:'skipped',reason:'already running'}); return;} throw e;}
+  // 本番の実行（dry-run でない）は、Garden の Sprout で「止める」になっていればバイトルにログインせずに終える（掲載しない間は止める運用）
+  if(!config.dryRun) {
+   stage='check';
+   if(!(await enabled(config,env,fetchImpl))) {await log({event:'skipped',reason:'disabled in Garden'}); return;}
+  }
   stage='browser'; const start=launch || (await import('playwright')).chromium.launch.bind((await import('playwright')).chromium);
   browser=await start({headless:true}); stage='download'; const rows=await collect(browser,config,env);
   stage='browser-close'; await browser.close(); browser=undefined;

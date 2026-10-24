@@ -48,3 +48,12 @@ it('reads Baitoru CSV with blank and duplicated headers and ragged rows',async()
  const rows=parseCsv('問合せNo,,氏名（漢字）,備考,備考\r\n1,x,山田 花子,a,b\r\n2,,鈴木 一郎\r\n');
  expect(rows).toEqual([{'問合せNo':'1','氏名（漢字）':'山田 花子','備考':'a','備考__2':'b'},{'問合せNo':'2','氏名（漢字）':'鈴木 一郎','備考':'','備考__2':''}]);
 });
+it('skips without opening a browser when Garden says the import is stopped',async()=>{
+ const {run}=await import('../agent.mjs');
+ const dir=await mkdtemp(path.join(os.tmpdir(),'baitoru-test-'));
+ try {
+  const launch=vi.fn(),fetch=vi.fn().mockResolvedValue({ok:true,status:200,json:async()=>({ok:true,enabled:false})});
+  await run({dryRun:false,apiBase:'https://example.invalid',logDir:path.join(dir,'logs'),logKeepDays:7,storageStatePath:path.join(dir,'state')},{env:{RELAY_SECRET:'test'},launch,fetchImpl:fetch});
+  expect(launch).not.toHaveBeenCalled();expect(fetch.mock.calls[0][1].method).toBe('GET');
+ } finally {await rm(dir,{recursive:true,force:true});}
+});

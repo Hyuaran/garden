@@ -22,7 +22,7 @@ export default function HireCandidatesClient({children}:{children:ReactNode}) {
  useEffect(()=>{load().catch(e=>setMessage(e.message));},[]);
  useEffect(()=>{if(!busy)return; const timer=setInterval(()=>{load().catch(()=>{});},1200);return()=>clearInterval(timer);},[busy]);
  const run = async (action:()=>Promise<void>)=>{setBusy(true);setMessage("");try{await action();await load();}catch(e){setMessage(e instanceof Error?e.message:"処理できませんでした");}finally{setBusy(false);}};
- const openForm = (row?:HireCandidate)=>run(async()=>{setOptions(await api("/kot-options"));setEditing(row?.id ?? null);setForm(row ?? {last_name:"",first_name:"",last_name_kana:"",first_name_kana:"",birthday:"",hire_date:"",gender:"male",employment_type:"アルバイト",company_id:"",kot_division_code:"",kot_type_code:""});});
+ const openForm = (row?:HireCandidate)=>run(async()=>{setOptions(await api("/kot-options"));setEditing(row?.id ?? null);setForm(row ?? {last_name:"",first_name:"",last_name_kana:"",first_name_kana:"",birthday:"",hire_date:"",gender:"male",employment_type:"アルバイト",company_id:"",kot_division_code:"104",kot_type_code:""});});
  const set=(key:keyof HireInput,value:string)=>setForm(old=>old?{...old,[key]:value}:null);
  const select=(key:keyof HireInput,label:string,opts:{value:string;label:string}[]) => <BoxSelect key={key} label={label} multiple={false} value={form?.[key]?[form[key]]:[]} options={opts} onChange={v=>set(key,v[0])}/>;
  const status=(r:HireCandidate)=>r.status==="hired"?"入社済み（"+r.employee_number+"）":r.status==="no_show"?"来なかった":r.status==="hiring"?(!r.steps.kot?.done?"KOT 登録待ち":!r.steps.roster?.done?"名簿登録待ち":"Garden 反映待ち"):"入社予定";
