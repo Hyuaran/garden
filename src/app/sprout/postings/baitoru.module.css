@@ -1,11 +1,22 @@
-﻿.panel { padding: 24px 0; color: var(--color-text, #303a32); }
-.panel h2 { font-size: 1.1rem; margin: 12px 0 18px; }
-.panel fieldset { border: 1px solid #cdd5ca; border-radius: 8px; padding: 20px; display: flex; flex-wrap: wrap; gap: 18px; align-items: end; }
-.panel label { display: flex; flex-direction: column; gap: 6px; font-size: .9rem; }
-.panel label:has(input[type=radio]) { flex-direction: row; align-items: center; }
-.panel input:not([type=radio]), .panel textarea, .panel select { padding: 8px; border: 1px solid #bac5b8; border-radius: 4px; background: white; color: inherit; }
+﻿/* 社長スタイルの色の決まり（--ink・--sub・--line・--card・--heading・--teal）で書く。ダークでも読めるように直書きの色は使わない（2026-10-24） */
+.panel { padding: 8px 0 24px; color: var(--ink); }
+.panel h2 { font-size: 17px; font-weight: 700; color: var(--heading); margin: 28px 0 12px; }
+.panel form, .panel fieldset { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin: 0; }
+.panel fieldset { display: flex; flex-wrap: wrap; gap: 18px; align-items: end; min-width: 0; }
+.panel form > fieldset { border: 0; padding: 0; background: transparent; }
+.panel legend { font-size: 13px; color: var(--sub); padding: 0 4px; }
+.panel label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--sub); }
+.panel label:has(input[type=radio]) { flex-direction: row; align-items: center; color: var(--ink); }
+.panel p { color: var(--sub); font-size: 13px; }
+.panel input:not([type=radio]), .panel textarea, .panel select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; }
+.panel input[type=date] { color-scheme: light dark; }
 .panel textarea { min-height: 80px; }
-.panel button { padding: 8px 16px; border: 1px solid #8d9f89; border-radius: 4px; cursor: pointer; }
-.history { overflow-x: auto; margin-bottom: 28px; }
-.history table { border-collapse: collapse; width: 100%; font-size: .85rem; }
-.history th, .history td { text-align: left; padding: 12px; border-bottom: 1px solid #dbe1d8; min-width: 70px; white-space: pre-line; }
+.panel button { padding: 9px 18px; border: 1px solid var(--teal); border-radius: 8px; background: var(--card); color: var(--ink); cursor: pointer; font: inherit; }
+.panel button[type=submit] { background: var(--teal); border-color: var(--teal); color: #fff; }
+.panel button:disabled { opacity: .5; cursor: default; }
+.history { overflow-x: auto; margin-bottom: 28px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.history table { border-collapse: collapse; width: 100%; font-size: 13px; color: var(--ink); }
+.history th { text-align: center; color: var(--sub); font-weight: 600; }
+.history th, .history td { padding: 12px; border-bottom: 1px solid var(--line); min-width: 70px; white-space: pre-line; }
+.history td { text-align: left; }
+@media (max-width: 600px) { .panel form, .panel fieldset { padding: 16px; } }
