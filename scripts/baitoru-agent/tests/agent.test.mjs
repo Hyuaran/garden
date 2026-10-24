@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 it('parses BOM, escaped quotes, commas and multiline fields by headers',()=>{
  expect(parseCsv('\uFEFF名前,備考\r\n山田,"a,""b""\r\nc"\r\n')).toEqual([{名前:'山田',備考:'a,"b"\r\nc'}]);
- expect(()=>parseCsv('a,b\n1')).toThrow();expect(()=>parseCsv('a\n"b')).toThrow();
+ expect(parseCsv('a,b\n1')).toEqual([{a:'1',b:''}]);expect(()=>parseCsv('a\n"b')).toThrow();
 });
 it('decodes cp932 Japanese',()=>expect(decodeCsv(iconv.encode('氏名,問合せNo\r\n髙橋,123','cp932'))).toEqual([{氏名:'髙橋',問合せNo:'123'}]));
 it('detects both expired session patterns',()=>{
@@ -42,4 +42,9 @@ it('discards expired context before login in a new context without storageState'
   const browser={newContext:vi.fn().mockResolvedValueOnce({newPage:async()=>page,close:oldClose}).mockImplementationOnce(async options=>{expect(oldClose).toHaveBeenCalledOnce();expect(options).not.toHaveProperty('storageState');return {newPage:async()=>page,close:vi.fn()};})};
   await expect(collect(browser,{storageStatePath},{})).rejects.toThrow('credentials');expect(browser.newContext).toHaveBeenCalledTimes(2);
  }finally{await rm(dir,{recursive:true,force:true});}
+});
+it('reads Baitoru CSV with blank and duplicated headers and ragged rows',async()=>{
+ const {parseCsv}=await import('../agent.mjs');
+ const rows=parseCsv('問合せNo,,氏名（漢字）,備考,備考\r\n1,x,山田 花子,a,b\r\n2,,鈴木 一郎\r\n');
+ expect(rows).toEqual([{'問合せNo':'1','氏名（漢字）':'山田 花子','備考':'a','備考__2':'b'},{'問合せNo':'2','氏名（漢字）':'鈴木 一郎','備考':'','備考__2':''}]);
 });

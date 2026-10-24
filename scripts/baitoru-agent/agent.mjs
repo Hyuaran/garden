@@ -16,9 +16,13 @@ export function parseCsv(text) {
  }
  if(quoted) throw new Error('CSV quote not closed');
  if(value || row.length) {row.push(value); records.push(row);}
- const headers=records.shift();
- if(!headers || headers.some(h=>!h) || new Set(headers).size!==headers.length) throw new Error('CSV headers invalid');
- return records.filter(r=>r.some(Boolean)).map(r=>{if(r.length!==headers.length) throw new Error('CSV column count invalid'); return Object.fromEntries(headers.map((h,i)=>[h,r[i]]));});
+ const raw=records.shift();
+ if(!raw || !raw.some(h=>h.trim())) throw new Error('CSV headers invalid');
+ // バイトルの CSV（約 300 列）は見出しが空欄の列や同じ名前の列を含む（2026-10-24 実物）。空欄の列は読まず、同じ名前の 2 つ目以降は「名前__2」とする
+ const seen=new Map();
+ const headers=raw.map(h=>{const name=h.trim(); if(!name) return ''; const n=(seen.get(name) ?? 0)+1; seen.set(name,n); return n===1?name:`${name}__${n}`;});
+ // 行の列数が見出しと少しずれる（末尾の空欄の有無など）ことがあるので、見出しの数に合わせて読む
+ return records.filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(headers.flatMap((h,i)=>h?[[h,r[i] ?? '']]:[])));
 }
 export const decodeCsv = bytes => parseCsv(iconv.decode(bytes,'cp932'));
 export const sessionExpired = (url='', error='') => /\/login/i.test(url) || /ERR_TOO_MANY_REDIRECTS/.test(String(error));

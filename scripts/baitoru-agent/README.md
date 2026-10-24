@@ -2,7 +2,7 @@
 
 固定 IP のホストへこのディレクトリを C:\Garden\baitoru-agent に配置する。
 
-1. ホストで `npm install`、`npx playwright install chromium` を実行。
+1. ホストで `npm.cmd install`、`npx.cmd playwright install chromium`（PowerShell では .cmd を付ける） を実行。
 2. SYSTEM のタスクが使えるシステム環境変数 `BAITORU_ID`、`BAITORU_PW`、`RELAY_SECRET` を設定。必要なら `BAITORU_LOGIN_URL` を設定。秘密の値をコマンド履歴やログへ残さない。
 3. `config.example.json` を `config.json` にコピーし、apiBase とパスを確認。相対パスは config の場所を基準に解決する。dryRun は初期 true。
 4. `node agent.mjs --once --dry-run` で確認。dry-run もバイトルへのアクセス・Cookie 更新・Garden への送信を行う。失敗報告は監視に記録される。
