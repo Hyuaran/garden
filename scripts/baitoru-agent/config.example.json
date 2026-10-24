@@ -1,0 +1,1 @@
+{"apiBase":"https://garden-os.net","intervalMinutes":10,"logDir":"logs","logKeepDays":7,"storageStatePath":"C:\\Garden\\baitoru-agent\\storageState.json","dryRun":true}

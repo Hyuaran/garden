@@ -120,3 +120,18 @@ export async function resendBaitoru(id: string) {
   } finally {await client.query('select pg_advisory_unlock($1)',[BAITORU_LOCK]);}
  });
 }
+
+// Never persist caller text: it may contain credentials or applicant data.
+export async function reportBaitoruFailure() {
+ return withPgClient(async client=>{
+  if(!(await settings(client)).enabled) return {ok:true,skippedReason:'disabled'};
+  const lock=await client.query('select pg_try_advisory_lock($1) as acquired',[BAITORU_LOCK]);
+  if(!lock.rows[0].acquired) return {ok:true,skippedReason:'already syncing'};
+  try {
+   await client.query('update sprout_baitoru_settings set last_called_at=now() where id=true');
+   await client.query("insert into sprout_baitoru_runs(dry_run,finished_at,error) values(false,now(),$1)",['??? PC ?????????????????????????????????????']);
+   await health(client,true);
+   return {ok:true};
+  } finally {await client.query('select pg_advisory_unlock($1)',[BAITORU_LOCK]);}
+ });
+}

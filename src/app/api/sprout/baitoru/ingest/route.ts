@@ -1,5 +1,5 @@
 ﻿import { timingSafeEqual } from 'node:crypto';
-import { ingestBaitoru } from '@/lib/sprout/baitoru.server';
+import { ingestBaitoru, reportBaitoruFailure } from '@/lib/sprout/baitoru.server';
 export const runtime='nodejs';
 export const maxDuration=300;
 export async function POST(request: Request) {
@@ -10,6 +10,10 @@ export async function POST(request: Request) {
  let body: unknown;
  try {body=await request.json();} catch {return Response.json({ok:false,error:'本文を確認してください'},{status:400});}
  if(!body || typeof body!=='object' || !('rows' in body) || !Array.isArray(body.rows) || body.rows.length>10000 || ('dryRun' in body && typeof body.dryRun!=='boolean') || body.rows.some(r=>!r || typeof r!=='object' || Array.isArray(r) || Object.values(r).some(v=>typeof v!=='string'))) return Response.json({ok:false,error:'応募の行を確認してください'},{status:400});
+ if('error' in body) {
+  if(typeof body.error!=='string' || !body.error.trim() || body.error.length>500 || body.rows.length || ('dryRun' in body && body.dryRun===true)) return Response.json({ok:false,error:'?????????????'},{status:400});
+  try {return Response.json(await reportBaitoruFailure());} catch {return Response.json({ok:false,error:'???????????????'},{status:500});}
+ }
  try {return Response.json(await ingestBaitoru(body.rows, 'dryRun' in body && body.dryRun===true));}
  catch {return Response.json({ok:false,error:'取り込みに失敗しました。取り込みの記録を確認してください'},{status:500});}
 }

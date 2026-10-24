@@ -4,7 +4,7 @@ const m=vi.hoisted(()=>({query:vi.fn(),fetch:vi.fn(),send:vi.fn(),access:vi.fn()
 vi.mock('@/lib/db/pg',()=>({withPgClient:(fn:(c:unknown)=>unknown)=>fn({query:m.query}),queryPg:(...args:unknown[])=>m.query(...args)}));
 vi.mock('@/lib/chatwork',()=>({ChatworkClient:class {sendMessage(...args:unknown[]){return m.send(...args);}}}));
 vi.mock('./access.server',()=>({requireSproutUser:m.access}));
-import {ingestBaitoru,resendBaitoru,notificationBody,existingIdentity} from './baitoru.server';
+import {reportBaitoruFailure,ingestBaitoru,resendBaitoru,notificationBody,existingIdentity} from './baitoru.server';
 import {loadBaitoru,saveBaitoru,retryBaitoru} from '@/app/sprout/baitoru-actions';
 import {applicant} from './model';
 import type {BaitoruSettings,CsvRow} from './baitoru';
@@ -89,4 +89,11 @@ it('puts the To line at the end of the notification on one line',()=>{
  const body=notificationBody({...stored,mirror_record_id:'1'},{...config,mentions:'[To:2746758]\n[To:4958142]'});
  expect(body.startsWith('[info][title]')).toBe(true);
  expect(body.endsWith('[/info]\n[To:2746758][To:4958142]')).toBe(true);
+});
+
+it('records host failure and increments health without importing applicants',async()=>{
+ expect(await reportBaitoruFailure()).toEqual({ok:true});
+ expect(m.query.mock.calls.some(([sql,args])=>sql.includes('consecutive_failures=case') && args[0]===true)).toBe(true);
+ expect(m.query.mock.calls.some(([sql])=>sql.startsWith('insert into sprout_baitoru_runs'))).toBe(true);
+ expect(m.fetch).not.toHaveBeenCalled();expect(m.query.mock.calls.at(-1)?.[0]).toContain('pg_advisory_unlock');
 });
