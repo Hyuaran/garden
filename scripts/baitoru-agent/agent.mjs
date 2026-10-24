@@ -91,8 +91,13 @@ export async function run(config,{env=process.env,launch,fetchImpl=fetch}={}) {
   browser=await start({headless:true}); stage='download'; const rows=await collect(browser,config,env);
   stage='browser-close'; await browser.close(); browser=undefined;
   stage='send'; for(const body of bodies(rows,config.dryRun)) await log({event:'response',...await post(config,body,env,fetchImpl)});
- } catch {
-  const reason=`Baitoru agent failed (${stage})`; await log({event:'failure',reason});
+ } catch(error) {
+  const reason=`Baitoru agent failed (${stage})`;
+  // 原因を見分けるため、エラーの 1 行目だけをログに残す（ID・パスワード・合言葉は伏せる。Garden へは送らない）
+  let detail=String(error?.message ?? error).split('
+')[0].slice(0,200);
+  for(const key of ['BAITORU_ID','BAITORU_PW','RELAY_SECRET']) if(env[key]) detail=detail.split(env[key]).join('***');
+  await log({event:'failure',reason,detail});
   try {await post(config,{rows:[],error:reason},env,fetchImpl); await log({event:'failure-reported'});} catch {await log({event:'failure-report-failed'});}
   throw new Error(reason);
  } finally {try {if(browser) await browser.close();} finally {if(lock) {await lock.close(); await unlink(lockPath);}}}
