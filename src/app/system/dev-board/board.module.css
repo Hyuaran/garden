@@ -34,3 +34,5 @@
 @media(max-width:600px){.board{padding:18px}.board header{flex-wrap:wrap}.card{padding:18px}}
 
 .group{margin:18px 0}.group>summary{display:flex;align-items:center;gap:6px;list-style:none;cursor:pointer}.group>summary::-webkit-details-marker{display:none}.group>summary svg{width:20px;height:20px}.group[open]>summary .plusVertical{display:none}
+
+.board button.clearChoice{justify-self:start;padding:4px 8px;font-size:12px;background:transparent}

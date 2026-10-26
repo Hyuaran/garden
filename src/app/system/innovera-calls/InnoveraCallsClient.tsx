@@ -1,4 +1,6 @@
 "use client";
+import Modal from "../_components/Modal/Modal";
+import ChangeConfirm from "../_components/ChangeConfirm/ChangeConfirm";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
@@ -550,33 +552,8 @@ export default function InnoveraCallsClient({
 
       <ListProcessingOverlay open={searchBusy} mode="search" title="INNOVERA の通話履歴を検索しています…" />
 
-      {lineDialog && (
-        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && lineDialog.step !== "working") setLineDialog(null); }} data-garden-modal="overlay">
-          <div className={`${styles.modal} ${styles.modalSmall}`} role="dialog" aria-modal="true" aria-labelledby="line-dialog-title" aria-busy={lineDialog.step === "working"} data-garden-modal="panel" data-size="sm">
-            <div className={styles.modalHead}>
-              <h2 id="line-dialog-title">発信番号の変更</h2>
-              {lineDialog.step !== "working" && <button type="button" onClick={() => setLineDialog(null)} aria-label="閉じる">×</button>}
-            </div>
-            <div className={styles.modalBody}>
-              {lineDialog.step === "confirm" && (
-                <>
-                  <dl className={styles.lineChange}>
-                    <div className={styles.lineChangeRow}>
-                      <dt>現状</dt>
-                      <dd>{currentLine?.name ?? "未設定"}</dd>
-                    </div>
-                    <div className={`${styles.lineChangeRow} ${styles.lineChangeNext}`}>
-                      <dt>変更後</dt>
-                      <dd>{lineDialog.next?.name ?? "選択した回線"}</dd>
-                    </div>
-                  </dl>
-                  <p className={styles.lineChangeAsk}>変更しますが、本当によろしいですか？</p>
-                  <div className={styles.modalActions} data-modal-actions>
-                    <button type="button" className={styles.modalSecondary} onClick={() => setLineDialog(null)} data-modal-action="secondary">キャンセル</button>
-                    <button type="button" onClick={() => void changeLine()} data-modal-action="primary">変更する</button>
-                  </div>
-                </>
-              )}
+      {lineDialog && <Modal title="発信番号の変更" size="sm" onClose={()=>{if(lineDialog.step!=="working")setLineDialog(null);}}>
+      {lineDialog.step==="confirm" && <ChangeConfirm embedded title="発信番号の変更" beforeLabel="現状" before={currentLine?.name ?? "未設定"} afterLabel="変更後" after={lineDialog.next?.name ?? "選択した回線"} question="変更しますが、本当によろしいですか？" onClose={()=>setLineDialog(null)} actions={<><button type="button" onClick={()=>setLineDialog(null)} data-modal-action="secondary">キャンセル</button><button type="button" onClick={()=>void changeLine()} data-modal-action="primary">変更する</button></>}/>}
               {lineDialog.step === "working" && (
                 <div className={styles.working} role="status" aria-live="assertive">
                   <div className={styles.spinner} aria-hidden="true" />
@@ -602,10 +579,8 @@ export default function InnoveraCallsClient({
                   </div>
                 </>
               )}
-            </div>
-          </div>
-        </div>
-      )}
+
+      </Modal>}
 
       {extensionChange && (
         <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !extensionChange.saving) setExtensionChange(null); }} data-garden-modal="overlay">

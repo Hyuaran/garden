@@ -762,62 +762,6 @@ section.linePanel > button:not(:where([data-garden-box-select] *)) {
   max-width: 440px;
 }
 
-.lineChange {
-  margin: 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.lineChangeRow {
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: var(--soft);
-}
-
-.lineChangeRow + .lineChangeRow {
-  border-top: 1px solid var(--line);
-}
-
-.lineChangeRow dt {
-  margin: 0;
-  color: var(--sub);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.lineChangeRow dd {
-  margin: 0;
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1.5;
-  word-break: break-all;
-}
-
-.lineChangeNext {
-  background: var(--card);
-  box-shadow: inset 3px 0 0 var(--teal);
-}
-
-.lineChangeNext dt {
-  color: var(--teal);
-}
-
-.lineChangeNext dd {
-  color: var(--heading);
-  font-size: 15px;
-}
-
-.lineChangeAsk {
-  margin: 14px 0 0 !important;
-  font-size: 13.5px !important;
-  font-weight: 700;
-}
-
 .modalActions {
   display: flex;
   justify-content: flex-end;

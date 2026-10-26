@@ -3,6 +3,28 @@ import { beforeEach, expect, it, vi } from "vitest";
 import BoardClient from "./BoardClient";
 import { resolveCanView } from "@/lib/auth/view-permission";
 import type { Question } from "./board";
+it.each([false,true])("送信前の比較と主ボタンを確認する（前後同じ：%s）",async same=>{
+ HTMLDialogElement.prototype.showModal=function(){this.setAttribute("open","");};
+ HTMLDialogElement.prototype.close=function(){this.removeAttribute("open");};
+ const fetcher=vi.fn().mockImplementation(async(_url,init)=>({ok:true,json:async()=>init?.method==="POST"?{raw:"原文",text:same?"原文":"整文"}:{questions:[{id:"choice",module:"system",title:"選ぶ質問",body:"説明",status:"open",answer_type:"choice",options:[{key:"a",label:"答えA"}],created_at:"2026-10-26",sort:0,system_dev_question_logs:[]}]}}));
+ vi.stubGlobal("fetch",fetcher);render(<BoardClient/>);await screen.findByText("選ぶ質問");fireEvent.click(screen.getByRole("tab",{name:"System"}));
+ fireEvent.change(screen.getByRole("textbox",{name:"補足"}),{target:{value:"原文"}});fireEvent.click(screen.getByRole("button",{name:"回答する"}));
+ const dialog=await screen.findByRole("dialog",{name:"送る内容の確認"});
+ expect(dialog.querySelectorAll('[data-modal-action="primary"]')).toHaveLength(1);
+ expect(dialog.querySelectorAll('dt')).toHaveLength(same?1:2);
+ expect(screen.queryByRole("button",{name:"もとの文のまま送る"})!==null).toBe(!same);
+ fireEvent.click(screen.getByRole("button",{name:same?"送る":"整えた文で送る"}));
+ await waitFor(()=>expect(fetcher).toHaveBeenCalledWith("/api/system/dev-board",expect.objectContaining({body:JSON.stringify({action:"answer",id:"choice",choice:"",text:"原文",answer:same?"原文":"整文"})})));
+});
+it("選択をクリックとSpaceで外せて、補足だけでも回答できる",async()=>{
+ vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:true,json:async()=>({questions:[{id:"choice",module:"system",title:"選ぶ質問",body:"説明",status:"open",answer_type:"choice",options:[{key:"a",label:"答えA"}],created_at:"2026-10-26",sort:0,system_dev_question_logs:[]}]})}));
+ render(<BoardClient/>);await screen.findByText("選ぶ質問");fireEvent.click(screen.getByRole("tab",{name:"System"}));
+ const submit=screen.getByRole("button",{name:"回答する"}),radio=screen.getByRole("radio",{name:"答えA"});
+ expect(submit).toBeDisabled();fireEvent.click(radio);expect(radio).toBeChecked();fireEvent.click(radio);expect(radio).not.toBeChecked();
+ fireEvent.click(radio);fireEvent.keyDown(radio,{key:" "});expect(radio).not.toBeChecked();
+ fireEvent.change(screen.getByRole("textbox",{name:"補足"}),{target:{value:"自由な回答"}});expect(submit).toBeEnabled();
+ fireEvent.change(screen.getByRole("textbox",{name:"補足"}),{target:{value:""}});fireEvent.click(screen.getByRole("radio",{name:"その他（補足に書く）"}));fireEvent.click(submit);expect(screen.getByRole("alert")).toHaveTextContent("補足に書いてください");
+});
 beforeEach(()=>{vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:true,json:async()=>({questions:[{id:"one",module:"system",title:"交通費の扱い",body:"説明",status:"open",answer_type:"text",options:[],created_at:"2026-10-26",sort:0,system_dev_question_logs:[]}]})}));});
 it("空のタブは無効で、一覧の行から対象の質問へ移動できる",async()=>{render(<BoardClient/>);await screen.findByText("交通費の扱い");expect(screen.getByRole("tab",{name:"Bloom"})).toBeDisabled();fireEvent.click(screen.getByText("交通費の扱い"));await waitFor(()=>expect(screen.getByRole("tab",{name:"System"})).toHaveAttribute("aria-selected","true"));expect(screen.getByRole("button",{name:"回答する"})).toBeInTheDocument();});
 it("全権管理者もEMP-0008以外は見えない",()=>{expect(resolveCanView([],"system-dev-board","",{employeeId:"EMP-0009",role:"super_admin"})).toBe(false);expect(resolveCanView([],"system-dev-board","",{employeeId:"EMP-0008",role:"staff"})).toBe(true);});
@@ -15,7 +37,7 @@ it("状態で残数を数え、回答済みと完了をまとめ、利用者ご�
  await screen.findByText("質問0");
  expect(screen.queryByRole("progressbar")).toBeNull();
  fireEvent.click(screen.getByRole("tab",{name:"System"}));
- expect(screen.getByRole("progressbar",{name:"残り 1件（全4件）"})).toHaveAttribute("aria-valuenow","3");
+ expect(screen.getByRole("progressbar",{name:"残り 1件（回答待ち）・対応中 2件"})).toHaveAttribute("aria-valuenow","2");
  const answered=screen.getByText("回答済み（2件）").closest("details")!;
  expect(answered.open).toBe(false);
  fireEvent.click(screen.getByText("回答済み（2件）"));
