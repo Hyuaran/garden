@@ -31,6 +31,8 @@ const CALL_METRICS_API_VIEW_ROLES = STAFF_VIEW_ROLES;
 const CALL_REPORT_API_VIEW_ROLES = MANAGER_VIEW_ROLES;
 
 export type PermissionEntry = {
+  pageKey?: string;
+  tabKey?: string;
   key: string;
   label: string;
   group: "System" | "Root" | "API";
@@ -100,6 +102,11 @@ const deliveryEntries: PermissionEntry[] = SYSTEM_DELIVERIES.map((delivery) => (
 }));
 
 export const PERMISSION_ENTRIES: PermissionEntry[] = [
+  { key: "system-onboarding", pageKey: "system-onboarding", tabKey: "", label: "入社手続き", group: "System", kind: "画面", allows: () => true, source: "src/app/system/onboarding/page.tsx" },
+  ...([['self', '自分の入社手続き'], ['candidates', '入社予定者'], ['confirmations', '入社後の確認'], ['all', 'みんなの入社手続き']] as const).map(([tabKey, label]): PermissionEntry => ({
+    key: `system-onboarding-${tabKey}`, pageKey: "system-onboarding", tabKey, label: `入社手続き：${label}`, group: "System", kind: "タブ",
+    allows: role => tabKey === "self" || (tabKey === "all" ? MANAGER_ROLES.has(role) : role === "super_admin"), source: "src/app/system/onboarding/page.tsx",
+  })),
   { key: "notices", label: "お知らせ", group: "System", kind: "画面", allows: () => true, source: "src/app/system/notices/page.tsx" },
   {
     key: "system-sidebar",

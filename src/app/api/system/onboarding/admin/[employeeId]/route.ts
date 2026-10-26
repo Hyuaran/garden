@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { OnboardingError } from "@/app/system/onboarding/_lib/onboarding.server";
-import { applyAdminOnboarding, onboardingAdminContext, readMyNumberForAdmin, saveAdminOnboarding, saveAdminOnboardingEmail, saveAdminOnboardingHouseholder } from "@/app/system/onboarding/_lib/onboarding-admin.server";
+import { applyAdminOnboarding, onboardingAdminContext, readAdminOnboardingDetail, readMyNumberForAdmin, saveAdminOnboarding, saveAdminOnboardingEmail, saveAdminOnboardingHouseholder } from "@/app/system/onboarding/_lib/onboarding-admin.server";
 import { createAndSaveFuyouPdf } from "@/app/system/onboarding/_lib/onboarding-fuyou.server";
 import { safeFuyouErrorMessage } from "@/app/system/onboarding/_lib/fuyou-pdf";
 import { createAndSaveRenrakuhyo } from "@/app/system/onboarding/_lib/renrakuhyo.server";
@@ -9,6 +9,17 @@ import { safeRenrakuhyoErrorMessage } from "@/app/system/onboarding/_lib/renraku
 
 function sameOrigin(request: Request) {
   return (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin) || request.headers.get("sec-fetch-site") === "cross-site";
+}
+
+export async function GET(_request: Request, { params }: { params: Promise<{ employeeId: string }> }) {
+  const headers = { "Cache-Control": "private, no-store" };
+  try {
+    const context = await onboardingAdminContext(true);
+    const record = await readAdminOnboardingDetail(context, (await params).employeeId);
+    return NextResponse.json(record ?? { error: "入社手続きが見つかりませんでした。" }, { status: record ? 200 : 404, headers });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "読み込めませんでした。" }, { status: error instanceof OnboardingError ? error.status : 403, headers });
+  }
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ employeeId: string }> }) {

@@ -5,6 +5,7 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
 import ShachoShell from "./_components/ShachoShell/ShachoShell";
+import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 
 export default async function SystemLayout({ children }: { children: ReactNode }) {
   const supabase = await createServerClient();
@@ -35,7 +36,7 @@ export default async function SystemLayout({ children }: { children: ReactNode }
     : null;
 
   return (
-    <ShachoShell user={{
+    <ShachoShell hiddenHrefs={(await canView("system-onboarding", "", (await viewPermissionContext()).viewer)) ? [] : ["/system/onboarding"]} user={{
       name: String(employee.name),
       company: String(company?.company_name ?? "所属会社未登録"),
       role,

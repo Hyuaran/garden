@@ -9,7 +9,7 @@ import { emptyInput, PREPARING_MESSAGE } from "./onboarding";
 import OnboardingPage from "../page";
 
 function fixture() {
-  const employee = { employee_id: "EMP-9999", name: "検証 太郎", name_kana: "ケンショウ タロウ", birthday: "2000-01-02" };
+  const employee = { employee_id: "EMP-9999", name: "検証 太郎", name_kana: "ケンショウ タロウ", birthday: "2000-01-02", garden_role:"staff", is_active:true, termination_date:null, deleted_at:null };
   const employeeQuery = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), maybeSingle: vi.fn() };
   employeeQuery.maybeSingle.mockImplementation(async () => {
     const columns = String(employeeQuery.select.mock.lastCall?.[0] ?? "").split(",");
@@ -18,7 +18,7 @@ function fixture() {
   });
   const saved = { select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: { status: "draft", nda_agreed_at: null, submitted_at: null }, error: null }) };
   const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }), upsert: vi.fn().mockReturnValue(saved) };
-  const supabase = { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "U1" } }, error: null }) }, from: vi.fn((table: string) => table === "root_employees" ? employeeQuery : query) };
+  const supabase = { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "U1" } }, error: null }) }, from: vi.fn((table: string) => table === "root_employees" ? employeeQuery : table === "system_view_permissions" ? {select:async()=>({data:[],error:null})} : query) };
   mocks.createServerClient.mockResolvedValue(supabase);
   return { supabase, employee, employeeQuery, query, saved };
 }
@@ -107,7 +107,7 @@ describe("入社手続きの本人専用保存", () => {
   });
   it("責任者以上には本人画面から事務一覧への入口を出す", async () => {
     const f = fixture();
-    (f.employee as Record<string, string>).garden_role = "manager";
+    (f.employee as unknown as Record<string, string>).garden_role = "manager";
     render(await OnboardingPage({}));
     expect(screen.getByRole("tab", { name: "みんなの入社手続き" })).toHaveAttribute("href", "/system/onboarding?tab=all");
   });

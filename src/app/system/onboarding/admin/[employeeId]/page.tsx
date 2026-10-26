@@ -13,8 +13,10 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
   const { employeeId } = await params;
   let record = null;
   let message = "";
+  let canWrite = false;
   try {
-    const context = await onboardingAdminContext();
+    const context = await onboardingAdminContext(true);
+    canWrite = context.canWrite ?? false;
     record = await readAdminOnboardingDetail(context, employeeId);
     if (!record) message = "入社手続きの入力が見つかりませんでした。";
   } catch (error) {
@@ -29,6 +31,6 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
     <Link className={styles.button} href="/system/onboarding?tab=all">戻る</Link>
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
-      : record ? <main><OnboardingAdminDetailClient record={record} /></main> : null}
+      : record ? <main><OnboardingAdminDetailClient record={record} canWrite={canWrite} /></main> : null}
   </div>;
 }

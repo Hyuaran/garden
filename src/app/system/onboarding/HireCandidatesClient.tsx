@@ -11,7 +11,7 @@ async function api(path = "", method = "GET", body?: unknown) {
 }
 type Options = {companies:{company_id:string;company_name:string}[];divisions:{code:string;name:string}[];workingTypes:{code:string;name:string}[]};
 const steps = [["number","社員番号を決める"],["kot","KOT に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
-export default function HireCandidatesClient({userId,tab}:{userId:string;tab:"candidates"|"confirmations"}) {
+export default function HireCandidatesClient({userId,tab,canWrite = true}:{userId:string;tab:"candidates"|"confirmations";canWrite?:boolean}) {
  const [showNoShow,setShowNoShow]=useState(false), [showComplete,setShowComplete]=useState(false);
  useEffect(()=>{
   try {
@@ -43,14 +43,14 @@ export default function HireCandidatesClient({userId,tab}:{userId:string;tab:"ca
   return()=>{dialog?.close();previous?.focus();};
  },[!!confirmation]);
  const [saving,setSaving]=useState<string|null>(null);
- const load = async () => { const data = await api(); setRows(data); };
- useEffect(()=>{load().catch(e=>setMessage(e.message));},[]);
+ const load = async () => { const data = await api("?tab="+tab); setRows(data); };
+ useEffect(()=>{load().catch(e=>setMessage(e.message));},[tab]);
  useEffect(()=>{if(!busy)return; const timer=setInterval(()=>{load().catch(()=>{});},1200);return()=>clearInterval(timer);},[busy]);
  const run = async (action:()=>Promise<void>)=>{setBusy(true);setMessage("");try{await action();await load();}catch(e){setMessage(e instanceof Error?e.message:"処理できませんでした");}finally{setBusy(false);}};
  // KOT の選択肢は画面を開いた時に先に読んでおく（行を押してから小窓が出るまで 5 秒かかったため 2026-10-26）
  const optionsRequest=useRef<Promise<Options>|null>(null);
  const loadOptions=()=>optionsRequest.current ??= api("/kot-options").then((o:Options)=>{setOptions(o);return o;}).catch((e:unknown)=>{optionsRequest.current=null;throw e;});
- useEffect(()=>{loadOptions().catch(()=>{});},[]);
+ useEffect(()=>{if(canWrite)loadOptions().catch(()=>{});},[canWrite]);
  const openForm = (row?:HireCandidate)=>{setMessage("");setEditing(row?.id ?? null);setForm(row ?? {last_name:"",first_name:"",last_name_kana:"",first_name_kana:"",birthday:"",hire_date:"",gender:"male",employment_type:"アルバイト",company_id:"",kot_division_code:"104",kot_type_code:""});if(!options)loadOptions().catch(e=>setMessage(e instanceof Error?e.message:"選択肢を読み込めませんでした"));};
  const set=(key:keyof HireInput,value:string)=>setForm(old=>old?{...old,[key]:value}:null);
  const field=(key:keyof HireInput,label:string,type="text")=><label key={key}>{label}<input required type={type} value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}/></label>;
@@ -68,15 +68,15 @@ export default function HireCandidatesClient({userId,tab}:{userId:string;tab:"ca
    setMessage(e instanceof Error?e.message:"保存できませんでした");
   } finally {setSaving(null);}
  };
- const check = (r:HireCandidate,key:ChecklistKey,label:string) => <label key={key} className={styles.hireCheck}><input type="checkbox" aria-label={`${r.last_name} ${r.first_name} ${key.startsWith("contract")?"雇用契約書":key.startsWith("nda")?"秘密保持":key.startsWith("emergency")?"緊急連絡先":"FileMaker"} ${label}`} checked={!!r.checklist?.[key]} disabled={busy||!!saving} onChange={e=>toggleChecklist(r,key,e.target.checked)}/>{label}</label>;
+ const check = (r:HireCandidate,key:ChecklistKey,label:string) => <label key={key} className={styles.hireCheck}><input type="checkbox" aria-label={`${r.last_name} ${r.first_name} ${key.startsWith("contract")?"雇用契約書":key.startsWith("nda")?"秘密保持":key.startsWith("emergency")?"緊急連絡先":"FileMaker"} ${label}`} checked={!!r.checklist?.[key]} disabled={!canWrite||busy||!!saving} onChange={e=>toggleChecklist(r,key,e.target.checked)}/>{label}</label>;
  const columns:DataColumn<HireCandidate>[]=[
  {id:"date",label:"入社予定日",type:"date",value:r=>r.hire_date},
  {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name},
  {id:"employment",label:"雇用形態",type:"text",value:r=>r.employment_type},
  {id:"status",label:"状態",type:"text",value:r=>status(r)+(checklistComplete(r)?" 完了":"")},
  {id:"actions",label:"操作",type:"text",value:()=>"",wrap:true,render:r=><div className={styles.hireRowActions}>
- {r.status==="planned"&&<button className={styles.hireDecline} disabled={busy||!!saving} onClick={()=>run(async()=>{await api("/"+r.id,"PATCH",{status:"no_show"});})}>辞退</button>}
- {(r.status==="planned"||r.status==="hiring")&&<button className={styles.hirePrimary} disabled={busy||!!saving} onClick={()=>run(async()=>{const updated=await api("/"+r.id+"/hire","POST",{prepare:true});if(!updated.employee_number)throw new Error(updated.steps.number?.error || "社員番号を決められませんでした");setConfirmation(updated);})}>{r.status==="hiring"?"続きから":"入社"}</button>}
+ {r.status==="planned"&&<button className={styles.hireDecline} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{await api("/"+r.id,"PATCH",{status:"no_show"});})}>辞退</button>}
+ {(r.status==="planned"||r.status==="hiring")&&<button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{const updated=await api("/"+r.id+"/hire","POST",{prepare:true});if(!updated.employee_number)throw new Error(updated.steps.number?.error || "社員番号を決められませんでした");setConfirmation(updated);})}>{r.status==="hiring"?"続きから":"入社"}</button>}
  {(r.status==="hiring"||r.status==="hired")&&<ol aria-label="入社の進み具合">{steps.map(([key,label])=><li key={key}>{r.steps[key]?.done?"✓ ":""}{label}{r.steps[key]?.error&&<p role="status">{r.steps[key].error}</p>}</li>)}</ol>}
  </div>}
  ];
@@ -96,7 +96,7 @@ export default function HireCandidatesClient({userId,tab}:{userId:string;tab:"ca
  </section>}
  {tab==="candidates"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
  {message&&<p role="alert">{message}</p>}
- <DataTable key="candidates" onRowClick={r=>{if(!busy&&!saving)void openForm(r);}} rowClickable={r=>r.status==="planned"} rows={candidateRows} columns={columns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"date",direction:"asc"}} toolbar={<button disabled={busy||!!saving} onClick={()=>openForm()}>＋ 入社予定者を登録</button>}/>
+ <DataTable key="candidates" onRowClick={r=>{if(canWrite&&!busy&&!saving)void openForm(r);}} rowClickable={r=>canWrite&&r.status==="planned"} rows={candidateRows} columns={columns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"date",direction:"asc"}} toolbar={canWrite && <button disabled={!canWrite||busy||!!saving} onClick={()=>openForm()}>＋ 入社予定者を登録</button>}/>
  <label className={styles.hireCheck}><input type="checkbox" checked={showNoShow} onChange={e=>saveVisibility(e.target.checked,showComplete)}/>辞退した人も表示</label>
  {form&&options&&<dialog ref={formDialog} aria-labelledby="hire-form-title" className={styles.panel+" "+styles.hireDialog} onCancel={()=>setForm(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setForm(null);}}}>
  <h2 id="hire-form-title">{editing?"入社予定者を修正":"入社予定者を登録"}</h2>
@@ -107,10 +107,10 @@ export default function HireCandidatesClient({userId,tab}:{userId:string;tab:"ca
  {field("last_name","姓")}{field("first_name","名")}{field("birthday","生年月日","date")}
  {field("hire_date","入社予定日","date")}{choice("company_id","所属法人",options.companies.map(c=>({value:c.company_id,label:c.company_name})))}{choice("employment_type","雇用形態",EMPLOYMENT_TYPES.map(value=>({value,label:value})))}
  {choice("kot_division_code","KOT の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}{choice("kot_type_code","KOT の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
-  </div></div><div className={styles.hireRowActions}><button className={styles.hirePrimary} disabled={busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})}>保存する</button><button disabled={busy||!!saving} onClick={()=>setForm(null)}>閉じる</button></div></dialog>}
+  </div></div><div className={styles.hireRowActions}><button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})}>保存する</button><button disabled={!canWrite||busy||!!saving} onClick={()=>setForm(null)}>閉じる</button></div></dialog>}
  {confirmation&&<dialog ref={confirmDialog} aria-label="入社の確認" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setConfirmation(null)} onClick={event=>{if(event.target===event.currentTarget)setConfirmation(null);}}>
  <h2>入社の確認</h2>
  <p>{confirmation.last_name} {confirmation.first_name}さんを社員番号 {confirmation.employee_number} で KOT と Garden に登録します。KOT はこの時点から料金の対象になります。</p>
- <div className={styles.hireRowActions}><button className={styles.hirePrimary} disabled={busy||!!saving} onClick={()=>run(async()=>{const id=confirmation.id;setConfirmation(null);await api("/"+id+"/hire","POST",{});})}>登録する</button><button disabled={busy||!!saving} onClick={()=>setConfirmation(null)}>やめる</button></div></dialog>}
+ <div className={styles.hireRowActions}><button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{const id=confirmation.id;setConfirmation(null);await api("/"+id+"/hire","POST",{});})}>登録する</button><button disabled={!canWrite||busy||!!saving} onClick={()=>setConfirmation(null)}>やめる</button></div></dialog>}
  </section>}</>;
 }

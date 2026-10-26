@@ -62,7 +62,7 @@ describe("authorization",()=>{
   const q={select:vi.fn(),eq:vi.fn(),is:vi.fn(),maybeSingle:vi.fn(async()=>({data:{garden_role:role},error:null}))};q.select.mockReturnValue(q);q.eq.mockReturnValue(q);q.is.mockReturnValue(q);
   mocks.server.mockResolvedValue({auth:{getUser:async()=>({data:{user:{id:"user"}}})},from:()=>q});
   const req=new Request("http://localhost",{method:"POST",body:"{}"}),ctx={params:Promise.resolve({id:"id"})};
-  for (const response of [await GET(),await POST(req),await PATCH(req,ctx),await hire(req,ctx),await options()]) expect(response.status).toBe(403);
+  for (const response of [await GET(new Request("http://localhost/api/system/hire-candidates")),await POST(req),await PATCH(req,ctx),await hire(req,ctx),await options()]) expect(response.status).toBe(403);
   expect(mocks.admin).not.toHaveBeenCalled();
  });
 });

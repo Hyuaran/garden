@@ -19,6 +19,7 @@ import SidebarNavigation from "./SidebarNavigation";
 import styles from "./shacho-shell.module.css";
 
 type Props = {
+  hiddenHrefs?: string[];
   children: ReactNode;
   user: { name: string; company: string; role: GardenRole };
 };
@@ -58,7 +59,7 @@ export function resolveSystemActivePath(pathname: string): string | null {
   })?.href ?? null;
 }
 
-export default function ShachoShell({ children, user }: Props) {
+export default function ShachoShell({ children, user, hiddenHrefs = [] }: Props) {
   const pathname = usePathname();
   const activePath = resolveSystemActivePath(pathname);
   const { theme, toggleTheme } = useTheme();
@@ -71,7 +72,7 @@ export default function ShachoShell({ children, user }: Props) {
     window.location.assign("/login");
   }
   const limitedSidebar = shouldHideSidebar(user.role);
-  const visible = limitedSidebar ? LIMITED_MENU_ITEMS : SYSTEM_MENU_ITEMS.filter((item) => canUseSystemItem(item, user.role));
+  const visible = (limitedSidebar ? LIMITED_MENU_ITEMS : SYSTEM_MENU_ITEMS.filter((item) => canUseSystemItem(item, user.role))).filter(item => !item.href || !hiddenHrefs.includes(item.href));
   const upcoming = visible.filter(item => item.upcoming);
   const visibleModules = new Set(getVisibleModules(user.role).map((module) => module.toLowerCase()));
   const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";

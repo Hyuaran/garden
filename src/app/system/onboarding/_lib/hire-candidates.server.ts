@@ -1,4 +1,5 @@
 import "server-only";
+import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { randomUUID } from "node:crypto";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -7,7 +8,14 @@ import { syncRootRoster } from "@/app/root/_lib/roster-sync.server";
 import { createKotEmployee, fetchKotHireEmployees, fetchKotHireOptions } from "@/app/root/_lib/kot-api";
 import { parseHireInput, parseChecklist, checklistPriority, rosterPayload, type HireCandidate, type HireChecklist } from "./hire-candidates";
 export class HireError extends Error { constructor(message: string, public status = 400) { super(message); } }
-export async function hireAdminContext() {
+export async function hireAdminContext(readTab?: "candidates" | "confirmations") {
+ if (readTab) {
+  try {
+   const context = await viewPermissionContext();
+   if (!(await canView("system-onboarding", readTab, context.viewer))) throw new HireError("閲覧権限がありません",403);
+   return {db:getSupabaseAdmin(),userId:context.userId};
+  } catch (error) { throw new HireError(error instanceof Error ? error.message : "閲覧権限がありません",403); }
+ }
  const db = await createServerClient();
  const { data: { user } } = await db.auth.getUser();
  if (!user) throw new HireError("閲覧権限がありません",403);
@@ -20,8 +28,8 @@ function checked<T>(result: { data: T; error: unknown }): T {
  if (result.error) throw new HireError("保存・読み込みができませんでした。時間をおいてお試しください。",503);
  return result.data;
 }
-export async function listCandidates({db}: Context) {
- const rows = checked(await db.from("system_hire_candidates").select("*").order("hire_date",{ascending:false})) as HireCandidate[];
+export async function listCandidates({db}: Context, tab?: "candidates" | "confirmations") {
+ const rows = checked(await (tab === "confirmations" ? db.from("system_hire_candidates").select("*").eq("status","hired") : tab === "candidates" ? db.from("system_hire_candidates").select("*").in("status",["planned","hiring","no_show"]) : db.from("system_hire_candidates").select("*")).order("hire_date",{ascending:false})) as HireCandidate[];
  const ids = rows.filter(r => r.status === "hired" && r.employee_id).map(r => r.employee_id!);
  if (!ids.length) return rows;
  const [onboarding, employees] = await Promise.all([

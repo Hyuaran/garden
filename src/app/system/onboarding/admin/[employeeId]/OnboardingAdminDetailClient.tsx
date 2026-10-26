@@ -13,7 +13,7 @@ function emptyAllowance(): AdminAllowance {
   return { name: "", amount: "" };
 }
 
-export default function OnboardingAdminDetailClient({ record }: { record: AdminOnboardingRecord }) {
+export default function OnboardingAdminDetailClient({ record, canWrite = true }: { record: AdminOnboardingRecord; canWrite?: boolean }) {
   const router = useRouter();
   const [reviewValues, setReviewValues] = useState(record.values);
   const [admin, setAdmin] = useState<AdminInput>(() => ({
@@ -287,7 +287,7 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
     }
   }
 
-  return <div className={styles.detailStack}>
+  return <fieldset disabled={!canWrite} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}><div className={styles.detailStack}>
     <section className={styles.adminSection}>
       <h2>本人が入れた内容</h2>
       <OnboardingReview values={reviewValues} slots={{ email: <span className={styles.emailReviewValue}>
@@ -432,5 +432,5 @@ export default function OnboardingAdminDetailClient({ record }: { record: AdminO
         </> : null}
       </div>
     </section>
-  </div>;
+  </div></fieldset>;
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { MANAGER_ROLES } from "@/app/system/_lib/attendance";
@@ -10,9 +11,19 @@ const ADMIN_ONBOARDING_COLUMNS = `employee_id,${ONBOARDING_COLUMNS},office,weekl
 const EMPLOYEE_COLUMNS = "employee_id,name,hire_date,birthday,company_id";
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerClient>>;
-export type AdminContext = { supabase: SupabaseClient; managerEmployeeId: string };
+export type AdminContext = { supabase: SupabaseClient; managerEmployeeId: string; canWrite?: boolean };
 
-export async function onboardingAdminContext(): Promise<AdminContext> {
+export async function onboardingAdminContext(readOnly = false): Promise<AdminContext> {
+  if (readOnly) {
+    try {
+      const context = await viewPermissionContext();
+      if (!(await canView("system-onboarding", "all", context.viewer))) throw new OnboardingError("閲覧権限がありません", 403);
+      return { supabase: getSupabaseAdmin(), managerEmployeeId: context.viewer.employeeId, canWrite: MANAGER_ROLES.has(context.viewer.role) };
+    } catch (error) {
+      if (error instanceof OnboardingError) throw error;
+      throw new OnboardingError(error instanceof Error ? error.message : "閲覧権限がありません", typeof (error as { status?: number })?.status === "number" ? (error as { status: number }).status : 403);
+    }
+  }
   const supabase = await createServerClient();
   const { data: auth, error } = await supabase.auth.getUser();
   if (error || !auth.user) throw new OnboardingError("ログインし直してください。", 401);

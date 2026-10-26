@@ -1,0 +1,15 @@
+.dialog { box-sizing: border-box; width: min(640px, calc(100vw - 32px)); max-height: 85dvh; overflow: auto; padding: 28px; color: var(--ink, #17212e); background: var(--card, #fff); border: 1px solid var(--line, #e3eaf3); border-radius: 12px; font: inherit; }
+.dialog::backdrop { background: #10282066; }
+.dialog h2 { margin: 0 0 20px; font-size: 20px; color: var(--heading, #10233f); }
+.dialog h3 { margin: 16px 0 8px; font-size: 15px; }
+.dialog fieldset { display: flex; flex-wrap: wrap; gap: 16px; margin: 12px 0; border: 1px solid var(--line, #e3eaf3); padding: 12px; }
+.dialog label { display: inline-flex; align-items: center; gap: 6px; }
+.dialog input { accent-color: var(--teal, #0ea5a0); }
+.actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.actions button { padding: 8px 16px; border: 1px solid var(--line, #e3eaf3); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; font: inherit; white-space: nowrap; }
+.actions button:last-child { background: var(--teal-d, #0b7e7a); color: white; }
+.actions button:disabled { opacity: .5; cursor: default; }
+.selected { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+.selected span { display: inline-flex; align-items: center; gap: 6px; }
+.selected button { border: 0; background: transparent; color: inherit; cursor: pointer; }
+@media (max-width: 480px) { .dialog { padding: 18px; } .actions { flex-wrap: wrap; } }
