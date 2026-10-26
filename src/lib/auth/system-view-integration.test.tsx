@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { GARDEN_ROLE_ORDER, isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
-import { SYSTEM_VIEW_SCOPES } from "./system-view-scopes";
+import { SYSTEM_VIEW_SCOPES as ALL_SYSTEM_VIEW_SCOPES } from "./system-view-scopes";
+// 開発ボードは東海林さんだけの特別な画面（役職の既定なし・歯車なし・DB の scope 表にも載せない）ので、共通の確かめからは外す
+const SYSTEM_VIEW_SCOPES = ALL_SYSTEM_VIEW_SCOPES.filter(scope => scope.pageKey !== "system-dev-board");
 import { permissionEntry, resolveCanView, type ViewPermission } from "./view-permission";
 
 const state = vi.hoisted(() => ({ role: "toss" as GardenRole, rows: [] as ViewPermission[], reads: [] as string[], user: true, permissionError: null as null | { code: string } }));
