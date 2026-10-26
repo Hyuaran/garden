@@ -133,7 +133,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  <h2 id="hire-stop-title">入社の登録が途中で止まりました</h2>
  <p>{failure.last_name} {failure.first_name}</p>
  <ol aria-label="入社の進み具合" className={styles.hireSteps}>{steps.map(([key,label])=><li key={key} className={failure.steps[key]?.error?styles.hireError:failure.steps[key]?.done?styles.hireStepDone:styles.hint}>
- {failure.steps[key]?.done?"◎":"✕"} {label}{key==="number"&&failure.employee_number&&"（"+failure.employee_number+"）"}
+ <span className={styles.hireStepMark} aria-hidden="true">{failure.steps[key]?.done?"◎":"✕"}</span>{label}{key==="number"&&failure.employee_number&&"（"+failure.employee_number+"）"}
  {failure.steps[key]?.error&&<p role="status">{failure.steps[key].error}</p>}
  </li>)}</ol>
  <div className={styles.hireRowActions}><button onClick={()=>setFailure(null)}>閉じる</button><button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(()=>register(failure.id))}>続きから</button></div>

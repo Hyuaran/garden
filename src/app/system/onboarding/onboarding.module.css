@@ -106,4 +106,8 @@
 .hireStepDone { color:var(--teal,var(--accent,#0b7e7a)); }
 .hireSteps { list-style:none; padding:0; display:grid; gap:12px; }
 .hireSteps li { min-width:0; white-space:normal; overflow-wrap:anywhere; }
-.hireSteps p { margin:6px 0 0 1.5em; white-space:pre-wrap; }
+.hireSteps p { margin:6px 0 0 1.75em; white-space:pre-wrap; }
+/* 印（◎✕）は文字と同じ大きさ以上で、幅をそろえる（◎が小さく見えたため 2026-10-26） */
+.hireStepMark { display:inline-block; width:1.75em; font-size:17px; line-height:1; font-family:"Segoe UI Symbol","Hiragino Sans","Noto Sans JP",sans-serif; }
+.hireSteps + .hireRowActions { margin-top:20px; }
+.hireSteps li { font-size:15px; }
