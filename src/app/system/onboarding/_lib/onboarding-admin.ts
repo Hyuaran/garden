@@ -40,6 +40,7 @@ export type AdminOnboardingRecord = {
 export type AdminListItem = {
   employeeId: string;
   name: string;
+  nameKana?: string;
   hireDate: string | null;
   status: "draft" | "submitted";
   submittedAt: string | null;

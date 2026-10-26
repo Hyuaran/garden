@@ -99,8 +99,8 @@ describe("事務用入社手続きサーバー処理", () => {
     const auditQuery = chain({ error: null });
     const supabase = { from: vi.fn((table: string) => table === "root_audit_log" ? auditQuery : systemQuery) };
 
-    const self = await readMyNumberForAdmin({ supabase, managerEmployeeId: "EMP-M" } as unknown as AdminContext, "EMP-1", { kind: "self" });
-    const dependent = await readMyNumberForAdmin({ supabase, managerEmployeeId: "EMP-M" } as unknown as AdminContext, "EMP-1", { kind: "dependent", index: 0 });
+    const self = await readMyNumberForAdmin({ supabase, managerEmployeeId: "EMP-M", sensitive: true } as unknown as AdminContext, "EMP-1", { kind: "self" });
+    const dependent = await readMyNumberForAdmin({ supabase, managerEmployeeId: "EMP-M", sensitive: true } as unknown as AdminContext, "EMP-1", { kind: "dependent", index: 0 });
 
     expect(self.myNumber).toBe("123456785540");
     expect(dependent.myNumber).toBe("111122223333");

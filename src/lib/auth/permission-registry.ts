@@ -102,6 +102,7 @@ const deliveryEntries: PermissionEntry[] = SYSTEM_DELIVERIES.map((delivery) => (
 }));
 
 export const PERMISSION_ENTRIES: PermissionEntry[] = [
+  { key: "system-onboarding-proxy", label: "入社手続き：代行入力", group: "System", kind: "操作", allows: role => MANAGER_ROLES.has(role), source: "src/app/system/onboarding/_lib/onboarding-proxy.server.ts（みんなの入社手続きの閲覧設定に従う。マイナンバー・口座はsuper_adminのみ）" },
   { key: "system-onboarding", pageKey: "system-onboarding", tabKey: "", label: "入社手続き", group: "System", kind: "画面", allows: () => true, source: "src/app/system/onboarding/page.tsx" },
   ...([['self', '自分の入社手続き'], ['candidates', '入社予定者'], ['confirmations', '入社後の確認'], ['all', 'みんなの入社手続き']] as const).map(([tabKey, label]): PermissionEntry => ({
     key: `system-onboarding-${tabKey}`, pageKey: "system-onboarding", tabKey, label: `入社手続き：${label}`, group: "System", kind: "タブ",

@@ -5,20 +5,21 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { MANAGER_ROLES } from "@/app/system/_lib/attendance";
 import { databaseError, OnboardingError, ONBOARDING_COLUMNS } from "./onboarding.server";
 import { maskMyNumber, parseInput, parseNullableAmount } from "./onboarding";
+import { proxyPayload } from "./onboarding-proxy";
 import { adminInputFromRow, buildAdminList, commuteDailyAllowance, initialAdminRecord, parseAdminEmailInput, parseAdminHouseholderInput, parseAdminInput, type AdminInput, type AdminListItem, type AdminOnboardingRecord } from "./onboarding-admin";
 
 const ADMIN_ONBOARDING_COLUMNS = `employee_id,${ONBOARDING_COLUMNS},office,weekly_hours,health_insurance,pension_insurance,employment_insurance,tax_class,salary_kind,base_salary,allowances,commute_fixed_monthly,commute_cap_monthly,admin_updated_at`;
 const EMPLOYEE_COLUMNS = "employee_id,name,hire_date,birthday,company_id";
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerClient>>;
-export type AdminContext = { supabase: SupabaseClient; managerEmployeeId: string; canWrite?: boolean };
+export type AdminContext = { supabase: SupabaseClient; managerEmployeeId: string; canWrite?: boolean; sensitive?: boolean };
 
 export async function onboardingAdminContext(readOnly = false): Promise<AdminContext> {
   if (readOnly) {
     try {
       const context = await viewPermissionContext();
       if (!(await canView("system-onboarding", "all", context.viewer))) throw new OnboardingError("閲覧権限がありません", 403);
-      return { supabase: getSupabaseAdmin(), managerEmployeeId: context.viewer.employeeId, canWrite: MANAGER_ROLES.has(context.viewer.role) };
+      return { supabase: getSupabaseAdmin(), managerEmployeeId: context.viewer.employeeId, canWrite: MANAGER_ROLES.has(context.viewer.role), sensitive: context.viewer.role === "super_admin" };
     } catch (error) {
       if (error instanceof OnboardingError) throw error;
       throw new OnboardingError(error instanceof Error ? error.message : "閲覧権限がありません", typeof (error as { status?: number })?.status === "number" ? (error as { status: number }).status : 403);
@@ -30,7 +31,7 @@ export async function onboardingAdminContext(readOnly = false): Promise<AdminCon
   const { data: employee, error: employeeError } = await supabase.from("root_employees").select("employee_id,garden_role")
     .eq("user_id", auth.user.id).eq("is_active", true).is("deleted_at", null).maybeSingle();
   if (employeeError || !employee || !MANAGER_ROLES.has(String(employee.garden_role))) throw new OnboardingError("閲覧権限がありません", 403);
-  return { supabase, managerEmployeeId: String(employee.employee_id) };
+  return { supabase: getSupabaseAdmin(), managerEmployeeId: String(employee.employee_id), sensitive: employee.garden_role === "super_admin" };
 }
 
 async function readEmployees(employeeIds: string[]) {
@@ -78,7 +79,7 @@ export async function readAdminOnboardingList(context: AdminContext): Promise<Ad
     const employeeId = String(row.employee_id ?? "");
     return recordFromRow(row, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null });
   });
-  return buildAdminList(records);
+  return buildAdminList(records).map(item => ({ ...item, nameKana: records.find(record => record.employee.employee_id === item.employeeId)?.values.name_kana ?? "" }));
 }
 
 export async function readAdminOnboardingDetail(context: AdminContext, employeeId: string): Promise<AdminOnboardingRecord | null> {
@@ -86,10 +87,13 @@ export async function readAdminOnboardingDetail(context: AdminContext, employeeI
   if (error) throw databaseError(error);
   if (!data) return null;
   const employees = await readEmployees([employeeId]);
-  return recordFromRow(data as unknown as Record<string, unknown>, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null });
+  const record = recordFromRow(data as unknown as Record<string, unknown>, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null });
+  if (!context.sensitive) record.values = parseInput(proxyPayload(record.values, false));
+  return record;
 }
 
 export async function readAdminOnboardingDetailForFuyou(context: AdminContext, employeeId: string): Promise<AdminOnboardingRecord | null> {
+  if (!context.sensitive) throw new OnboardingError("この書類は全権管理者だけが作成できます。", 403);
   const { data, error } = await context.supabase.from("system_onboarding").select(ADMIN_ONBOARDING_COLUMNS).eq("employee_id", employeeId).maybeSingle();
   if (error) throw databaseError(error);
   if (!data) return null;
@@ -166,6 +170,7 @@ export async function applyAdminOnboarding(context: AdminContext, employeeId: st
 }
 
 export async function readMyNumberForAdmin(context: AdminContext, employeeId: string, input: unknown) {
+  if (!context.sensitive) throw new OnboardingError("この項目は全権管理者だけが確認できます。", 403);
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new OnboardingError("表示する項目を確認してください。", 400);
   const body = input as Record<string, unknown>;
   const kind = body.kind === "dependent" ? "dependent" : body.kind === "self" ? "self" : "";

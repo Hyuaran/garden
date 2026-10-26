@@ -8,6 +8,7 @@ import { ACCOUNT_TYPE_OPTIONS, BANK_NAME_LEDGER_HINT, CODE_LOOKUP_NOT_FOUND, COM
 import OnboardingReview from "./_components/OnboardingReview";
 import LineLink from "./_components/LineLink";
 import styles from "./onboarding.module.css";
+import { proxyPayload, PROXY_RESTRICTED_MESSAGE } from "./_lib/onboarding-proxy";
 
 type Address = { address: string; addressKana: string };
 type BankChoice = { bankName: string; bankCode: string; expired?: boolean; validTo?: string | null };
@@ -33,10 +34,13 @@ function StepProgress({ step }: { step: number }) {
   </div>;
 }
 
-export default function OnboardingClient({ initial }: { initial: OnboardingRecord }) {
+export default function OnboardingClient({ initial, proxy }: { initial: OnboardingRecord; proxy?: { employeeId: string; employeeName: string; actorName: string; sensitive: boolean } }) {
   const router = useRouter();
+  const restricted = Boolean(proxy && !proxy.sensitive);
   const [values, setValues] = useState(initial.values);
   const [step, setStep] = useState(0);
+  const blockedStep = restricted && [6, 7].includes(step);
+  const proxyBanner = proxy ? <div className={styles.proxyBanner}>代行入力中：{proxy.employeeName}さんの入社手続き（入力：{proxy.actorName}）<Link href={`/system/onboarding/admin/${encodeURIComponent(proxy.employeeId)}`}>代行をやめる</Link></div> : null;
   const [submitted, setSubmitted] = useState(initial.status === "submitted");
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
@@ -226,12 +230,13 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
 
   async function save(nextStep?: number, submit = false) {
     if (saving.current) return;
+    if (blockedStep) { if (nextStep != null) setStep(nextStep); return; }
     if (postalTimer.current) clearTimeout(postalTimer.current);
     postalRequest.current?.abort();
     setPostalNotice(previous => previous === "住所を調べています。" ? "" : previous);
     saving.current = true; setBusy(true); setNotice("");
     try {
-      const response = await fetch("/api/system/onboarding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: submit ? "submit" : "save", values }) });
+      const response = await fetch(proxy ? `/api/system/onboarding/admin/${encodeURIComponent(proxy.employeeId)}/proxy` : "/api/system/onboarding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: submit ? "submit" : "save", values: proxy ? proxyPayload(values, proxy.sensitive) : values, ...(proxy ? { step } : {}) }) });
       const result = await response.json();
       if (!response.ok) { setNotice(result.error ?? "保存できませんでした。もう一度お試しください。"); return; }
       if (result.status === "submitted") {
@@ -279,29 +284,31 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   }
 
   if (submitted) return <section className={styles.panel}>
+    {proxyBanner}
     <StepProgress step={STEPS.length - 1} />
     <h2 ref={heading} tabIndex={-1}>入社手続きを提出しました</h2>
     <p>ご入力ありがとうございました。提出した内容をご確認いただけます。</p>
     {/* 強制遷移せず、ホームは新しい状態を取得して案内を消す。 */}
     <a className={styles.button} href="/system">Systemのホームへ</a>
-    <OnboardingReview values={values} />
-    <LineLink />
+    <OnboardingReview restricted={restricted} values={values} />
+    {!proxy && <LineLink />}
   </section>;
 
   return <section className={styles.panel}>
+    {proxyBanner}
     <StepProgress step={step} />
     <h2 ref={heading} tabIndex={-1}>{STEPS[step]}</h2>
     <p className={styles.hint}>空欄のままでも進めます。分かる範囲で入力してください。</p>
     <form noValidate onSubmit={event => { event.preventDefault(); void save(step < STEPS.length - 1 ? step + 1 : undefined, step === STEPS.length - 1); }}>
       <fieldset disabled={busy} className={styles.fields}>
-        {step !== 2 && step !== 9 && step !== 10 && STEP_FIELDS[step].filter(key => (key !== "employment_insurance_number" || values.employment_insurance_status === "yes") && (key !== "emergency_relation_other" || relationSelectValue(values.emergency_relation) === "その他")).map(field)}
+        {!blockedStep && step !== 2 && step !== 9 && step !== 10 && STEP_FIELDS[step].filter(key => (key !== "employment_insurance_number" || values.employment_insurance_status === "yes") && (key !== "emergency_relation_other" || relationSelectValue(values.emergency_relation) === "その他")).map(field)}
         {step === 2 && <>
           {STEP_FIELDS[2].map(key => <div key={key}>{field(key)}{key === "householder_relation" ? <span className={styles.hint}>ご本人が世帯主なら「本人」を選んでください</span> : null}</div>)}
           <label className={styles.field}>扶養している家族はいますか<select value={hasFamily ? "yes" : "no"} onChange={event => { const yes = event.target.value === "yes"; setHasFamily(yes); setValues(previous => ({ ...previous, dependents: yes ? previous.dependents.length ? previous.dependents : [emptyDependent()] : [] })); }}><option value="no">いいえ</option><option value="yes">はい</option></select></label>
           {hasFamily && <>
             <p className={styles.noticeLines}>マイナンバーは、税と社会保険の手続きにだけ使います。{"\n"}入力後は、下4桁だけが表示されます。</p>
             {values.dependents.map((person, index) => <fieldset className={styles.dependent} key={index}><legend>扶養家族 {index + 1}人目</legend>
-              {DEPENDENT_FIELDS.map(key => {
+              {DEPENDENT_FIELDS.filter(key => !restricted || key !== "my_number").map(key => {
                 const id = `dependent-${index}-${key}`;
                 const warningId = `dependent-${index}-${key}-warning`;
                 const myNumberWarning = key === "my_number" ? dependentMyNumberWarning(person.my_number) : "";
@@ -321,14 +328,15 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
         {step === 3 && <p>番号が分からないときは、次の画面で前の勤務先を教えてください。こちらで調べます。</p>}
         {step === 4 && <p>雇用保険の番号を調べるために使います。分かる範囲で大丈夫です。</p>}
         {step === 5 && <p>金額は、乗換案内などでお調べのうえ入れてください。分かる範囲で大丈夫です。こちらで確認して決めます。</p>}
-        {step === 6 && <p>お給料の振込先です。通帳やアプリの表示どおりに入れてください。</p>}
-        {step === 7 && <p className={styles.noticeLines}>税と社会保険の手続きにだけ使います。{"\n"}それ以外の目的では使いません。{"\n"}入力後は、下4桁だけが表示されます。</p>}
+        {blockedStep && <p>{PROXY_RESTRICTED_MESSAGE}</p>}
+        {step === 6 && !restricted && <p>お給料の振込先です。通帳やアプリの表示どおりに入れてください。</p>}
+        {step === 7 && !restricted && <p className={styles.noticeLines}>税と社会保険の手続きにだけ使います。{"\n"}それ以外の目的では使いません。{"\n"}入力後は、下4桁だけが表示されます。</p>}
         {step === 8 && <p>災害や急なご病気のときの連絡先です。</p>}
         {step === 9 && <><div className={styles.pledge}>{NDA_FULL_TEXT}</div><label className={styles.agree}><input type="checkbox" checked={values.nda_agreed} onChange={event => setValues(previous => ({ ...previous, nda_agreed: event.target.checked }))} />内容を確認しました</label></>}
-        {step === 10 && <OnboardingReview values={values} onEdit={index => void save(index)} />}
+        {step === 10 && <OnboardingReview restricted={restricted} values={values} onEdit={index => void save(index)} />}
         <div className={styles.actions}>
           {step > 0 && <button type="button" onClick={() => void save(step - 1)}>戻る</button>}
-          <button type="button" onClick={() => void save()}>途中保存</button>
+          {!blockedStep && <button type="button" onClick={() => void save()}>途中保存</button>}
           <button className={styles.primary} type="submit">{step === STEPS.length - 1 ? "提出する" : "次へ"}</button>
         </div>
       </fieldset>

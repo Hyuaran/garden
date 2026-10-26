@@ -7,7 +7,7 @@ import { onboardingAdminContext, readAdminOnboardingDetail } from "../../_lib/on
 import OnboardingAdminDetailClient from "./OnboardingAdminDetailClient";
 import styles from "../../onboarding.module.css";
 
-export const metadata = { title: "入社手続き（事務） | Garden" };
+export const metadata = { title: "入社手続き | Garden" };
 
 export default async function OnboardingAdminDetailPage({ params }: { params: Promise<{ employeeId: string }> }) {
   const { employeeId } = await params;
@@ -25,10 +25,11 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
   }
   return <div className={styles.pageShell}>
     <header className={styles.header}>
-      <SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding" }, { label: "みんなの入社手続き", href: "/system/onboarding?tab=all" }, { label: record?.values.name || record?.employee.name || "入社手続き" }]} />
-      <h1 {...CLARITY_MASK}>{record?.values.name || record?.employee.name || "入社手続き"}</h1>
+      <SystemBreadcrumb items={[{ label: "入社手続き", href: "/system/onboarding?tab=all" }, { label: record?.values.name || record?.employee.name || "入社手続き" }]} />
+      <h1 {...CLARITY_MASK}>{record ? `${record.values.name || record.employee.name}さんの入社手続き` : "入社手続き"}</h1>
     </header>
-    <Link className={styles.button} href="/system/onboarding?tab=all">戻る</Link>
+    <div className={styles.detailActions}><Link className={styles.button} href="/system/onboarding?tab=all">戻る</Link>
+    {record?.status === "draft" && <Link className={styles.button} href={`/system/onboarding/admin/${encodeURIComponent(employeeId)}/proxy`}>本人の代わりに入力する</Link>}</div>
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
       : record ? <main><OnboardingAdminDetailClient record={record} canWrite={canWrite} /></main> : null}

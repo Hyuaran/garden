@@ -39,6 +39,25 @@ describe("11画面の入社手続き", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
+  it.each([false, true])("代行の機微画面は全権だけ入力できる（全権=%s）", async sensitive => {
+    render(<OnboardingClient initial={initial()} proxy={{ employeeId: "EMP-1", employeeName: "後道 愛美", actorName: "東海林 美琴", sensitive }} />);
+    expect(screen.getByText(/代行入力中：後道 愛美さん/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "代行をやめる" })).toHaveAttribute("href", "/system/onboarding/admin/EMP-1");
+    for (let index = 1; index <= 6; index++) await next(index);
+    expect(screen.queryByLabelText("銀行名") !== null).toBe(sensitive);
+    if (!sensitive) expect(screen.getByText("この画面は全権管理者だけが代わりに入力できます")).toBeInTheDocument();
+    await next(7);
+    expect(screen.queryByLabelText("マイナンバー（12桁）") !== null).toBe(sensitive);
+    for (let index = 8; index < STEPS.length; index++) await next(index);
+    fireEvent.click(screen.getByRole("button", { name: "提出する" }));
+    await screen.findByRole("heading", { name: "入社手続きを提出しました" });
+    expect(fetchMock.mock.calls.every(([url]) => url === "/api/system/onboarding/admin/EMP-1/proxy")).toBe(true);
+    if (!sensitive) for (const request of requests) {
+      expect(request.values).not.toHaveProperty("account_number");
+      expect(request.values).not.toHaveProperty("my_number");
+    }
+  });
+
   it("初期値を表示し、編集できる。初期画面にマイナンバー欄はない", () => {
     const record = initial(); record.values.name = "検証 太郎"; record.values.name_kana = "ケンショウ タロウ"; record.values.birth_date = "2000-01-02";
     const { container } = render(<OnboardingClient initial={record} />);
