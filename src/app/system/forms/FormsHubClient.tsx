@@ -172,11 +172,11 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
             <thead><tr><th>名前</th><th>説明</th><th>いつ・どこで</th><th>対象</th><th></th></tr></thead>
             <tbody>
               {section.items.map((item) => <tr key={item.key}>
-                <td>{item.name}</td>
-                <td>{item.description}<ToolDetails details={item.details} /></td>
-                <td>{item.meta || "—"}</td>
-                <td>{item.target ?? ""}</td>
-                <td><OpenLink item={item} /></td>
+                <td className="garden-cell-text">{item.name}</td>
+                <td className="garden-cell-text">{item.description}<ToolDetails details={item.details} /></td>
+                <td className="garden-cell-text">{item.meta || "—"}</td>
+                <td className="garden-cell-text">{item.target ?? ""}</td>
+                <td className="garden-cell-text"><OpenLink item={item} /></td>
               </tr>)}
             </tbody>
           </StickyTable>

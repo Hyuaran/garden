@@ -124,9 +124,9 @@ export default function AttendancePage() {
   }
 
   const columns: Column<Attendance>[] = [
-    { key: "id", header: "ID", render: (r) => r.attendance_id, width: 160 },
-    { key: "emp", header: "従業員", render: (r) => employeeMap.get(r.employee_id)?.name ?? r.employee_id, width: 140 },
-    { key: "month", header: "対象月", render: (r) => r.target_month, width: 90 },
+    { key: "id", header: "ID", align: "center", render: (r) => r.attendance_id, width: 160 },
+    { key: "emp", header: "従業員", align: "left", render: (r) => employeeMap.get(r.employee_id)?.name ?? r.employee_id, width: 140 },
+    { key: "month", header: "対象月", align: "center", render: (r) => r.target_month, width: 90 },
     { key: "wd", header: "出勤", render: (r) => `${r.working_days}日`, width: 70, align: "right" },
     { key: "ad", header: "欠勤", render: (r) => `${r.absence_days}日`, width: 70, align: "right" },
     { key: "pl", header: "有給", render: (r) => `${r.paid_leave_days}日`, width: 70, align: "right" },
@@ -134,12 +134,12 @@ export default function AttendancePage() {
     { key: "ot", header: "残業", render: (r) => `${r.overtime_hours}h`, width: 70, align: "right" },
     { key: "nh", header: "深夜", render: (r) => `${r.night_hours}h`, width: 70, align: "right" },
     { key: "hh", header: "休出", render: (r) => `${r.holiday_hours}h`, width: 70, align: "right" },
-    { key: "status", header: "取込", render: (r) => r.import_status, width: 80 },
+    { key: "status", header: "取込", align: "center", render: (r) => r.import_status, width: 80 },
     { key: "actions", header: "", render: (r) => (
       <div onClick={(e) => e.stopPropagation()}>
         <Button variant="secondary" onClick={() => setEditTarget(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
       </div>
-    ), width: 80, align: "right" },
+    ), width: 80, align: "left" },
   ];
 
   return (

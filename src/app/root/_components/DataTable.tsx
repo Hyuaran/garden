@@ -80,7 +80,7 @@ export function DataTable<T>({
                   onMouseLeave={(e) => { if (onRowClick && !isActive) (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
                 >
                   {columns.map((col, columnIndex) => (
-                    <td key={col.key} style={{ padding: "10px 6px", textAlign: col.align ?? "left", color: colors.text, verticalAlign: "middle", whiteSpace: !stickyFirstColumn || col.wrap ? "normal" : "nowrap", overflowWrap: "anywhere", minWidth: stickyFirstColumn && col.wrap ? col.width : undefined, ...(stickyFirstColumn && columnIndex === 0 ? { position: "sticky", left: 0, zIndex: 1, background: isActive ? colors.infoBg : colors.bgPanel } as const : {}) }}>
+                    <td key={col.key} className={col.align === "right" ? "garden-cell-number" : col.align === "center" ? "garden-cell-fixed" : "garden-cell-text"} style={{ padding: "10px 6px", textAlign: col.align ?? "left", color: colors.text, verticalAlign: "middle", whiteSpace: !stickyFirstColumn || col.wrap ? "normal" : "nowrap", overflowWrap: "anywhere", minWidth: stickyFirstColumn && col.wrap ? col.width : undefined, ...(stickyFirstColumn && columnIndex === 0 ? { position: "sticky", left: 0, zIndex: 1, background: isActive ? colors.infoBg : colors.bgPanel } as const : {}) }}>
                       {col.render(row)}
                     </td>
                   ))}

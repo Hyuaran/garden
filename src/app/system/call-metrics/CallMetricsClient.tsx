@@ -40,14 +40,14 @@ function FunnelTable({ title, headers, rows }: { title: string; headers: string[
         ].filter(Boolean).join(" ");
         const link = links[index];
         return <tr key={`${index}-${row.label}`} className={rowClass || undefined}>
-          <td className={styles.funnelLabel} style={{ paddingLeft: `${13 + level * TREE_STEP}px` }}>
+          <td className={[styles.funnelLabel, "garden-cell-text"].join(" ")} style={{ paddingLeft: `${13 + level * TREE_STEP}px` }}>
             {tree && level > 0 ? <>
               {link.continues.map((on, depth) => on ? <span key={depth} aria-hidden className={styles.treeVert} style={{ left: `${13 + depth * TREE_STEP + 6}px` }}/> : null)}
               <span aria-hidden className={link.last ? `${styles.treeOwn} ${styles.treeLast}` : styles.treeOwn} style={{ left: `${13 + (level - 1) * TREE_STEP + 6}px` }}/>
             </> : null}
             {row.label}
           </td>
-          {row.values.map((value, valueIndex) => <td key={valueIndex}>{value}</td>)}
+          {row.values.map((value, valueIndex) => <td key={valueIndex} className="garden-cell-number">{value}</td>)}
         </tr>;
       })}</tbody>
     </StickyTable></div>
@@ -155,8 +155,8 @@ export default function CallMetricsClient() {
             <div className={styles.tableWrap}><StickyTable>
               <thead><tr><th>着信日時</th><th>発信元番号</th><th>応答した内線</th><th>事業</th></tr></thead>
               <tbody {...CLARITY_MASK}>{lpFunnelNoRecordList(data.lpFunnel).length ? lpFunnelNoRecordList(data.lpFunnel).map((item) => <tr key={`${item.startTime}-${item.number}`}>
-                <td>{formatJstDateTime(item.startTime)}</td><td>{item.number}</td><td>{item.extension ?? "-"}</td><td>{item.bizName}</td>
-              </tr>) : <tr><td colSpan={4}>記録なしはありません</td></tr>}</tbody>
+                <td className="garden-cell-fixed">{formatJstDateTime(item.startTime)}</td><td className="garden-cell-fixed">{item.number}</td><td className="garden-cell-fixed">{item.extension ?? "-"}</td><td className="garden-cell-text">{item.bizName}</td>
+              </tr>) : <tr><td colSpan={4} className="garden-cell-text">記録なしはありません</td></tr>}</tbody>
             </StickyTable></div>
             {lpFunnelCalcNotes(data.lpFunnel).map((note) => <p className={styles.note} key={note}>{note}</p>)}
             <p className={styles.period}>{LP_FUNNEL_START_NOTE}</p>
@@ -173,15 +173,15 @@ export default function CallMetricsClient() {
               const fm = (value: string) => unregistered ? "-" : value;
               const tone = (value: number) => unregistered ? undefined : value === 0 ? styles.zeroValue : styles.strongValue;
               return <tr key={row.employeeName}>
-              <td title={row.unregisteredExtensionDetails?.join("、")}>{row.employeeName}</td><td>{fm(formatWorkTime(row.workSeconds))}</td><td>{maybeTime(row.talkSecondsOther)}</td><td>{fm(row.callCount.toLocaleString())}</td><td>{fm(formatCallsPerWorkHour(row.callCount, row.workSeconds))}</td><td>{fm(row.effectiveCount.toLocaleString())}</td><td>{fm(percent(row.effectiveRate))}</td><td className={tone(row.tossCount)}>{fm(row.tossCount.toLocaleString())}</td><td>{fm(percent(row.callCount ? row.tossCount / row.callCount : 0))}</td><td className={tone(row.acquiredCount)}>{fm(row.acquiredCount.toLocaleString())}</td><td className={tone(row.orderCount)}>{fm(row.orderCount.toLocaleString())}</td><td>{fm(row.prospectCount.toLocaleString())}</td><td>{fm(row.absentCount.toLocaleString())}</td><td>{fm(row.awayCount.toLocaleString())}</td><td>{fm(row.invalidCount.toLocaleString())}</td><td className={styles.lpStart}>{maybeNumber(row.lpAnswered)}</td><td>{maybeNumber(row.lpOutbound)}</td><td>{maybeTime(row.lpTalkSeconds)}</td><td>{maybeNumber(row.lpApplications)}</td>
-            </tr>; }) : <tr><td colSpan={19}>対象データがありません</td></tr>}</tbody>
+              <td title={row.unregisteredExtensionDetails?.join("、")} className="garden-cell-text">{row.employeeName}</td><td className="garden-cell-number">{fm(formatWorkTime(row.workSeconds))}</td><td className="garden-cell-number">{maybeTime(row.talkSecondsOther)}</td><td className="garden-cell-number">{fm(row.callCount.toLocaleString())}</td><td className="garden-cell-number">{fm(formatCallsPerWorkHour(row.callCount, row.workSeconds))}</td><td className="garden-cell-number">{fm(row.effectiveCount.toLocaleString())}</td><td className="garden-cell-number">{fm(percent(row.effectiveRate))}</td><td className={[tone(row.tossCount), "garden-cell-number"].join(" ")}>{fm(row.tossCount.toLocaleString())}</td><td className="garden-cell-number">{fm(percent(row.callCount ? row.tossCount / row.callCount : 0))}</td><td className={[tone(row.acquiredCount), "garden-cell-number"].join(" ")}>{fm(row.acquiredCount.toLocaleString())}</td><td className={[tone(row.orderCount), "garden-cell-number"].join(" ")}>{fm(row.orderCount.toLocaleString())}</td><td className="garden-cell-number">{fm(row.prospectCount.toLocaleString())}</td><td className="garden-cell-number">{fm(row.absentCount.toLocaleString())}</td><td className="garden-cell-number">{fm(row.awayCount.toLocaleString())}</td><td className="garden-cell-number">{fm(row.invalidCount.toLocaleString())}</td><td className={[styles.lpStart, "garden-cell-number"].join(" ")}>{maybeNumber(row.lpAnswered)}</td><td className="garden-cell-number">{maybeNumber(row.lpOutbound)}</td><td className="garden-cell-number">{maybeTime(row.lpTalkSeconds)}</td><td className="garden-cell-number">{maybeNumber(row.lpApplications)}</td>
+            </tr>; }) : <tr><td colSpan={19} className="garden-cell-text">対象データがありません</td></tr>}</tbody>
           </StickyTable></div>
           {data.listName && <p className={styles.period}>リスト名で絞り込んだ場合も、通話時間と WEBインバウンド（LP系）はリスト名では絞り込みません。</p>}
           <h2>事業別の小計</h2>
           <div className={styles.tableWrap}><StickyTable>
             <thead><tr><th>事業</th><th>着信</th><th>応答</th><th>不在</th><th>留守電</th><th>発信</th><th>発信の応答</th><th>通話時間</th><th>申込み</th></tr></thead>
             <tbody>{[...(data.lp?.businesses ?? []), ...(data.lp?.totals ? [data.lp.totals] : [])].map((row) => <tr key={row.bizCode}>
-              <td>{row.bizName}</td><td>{maybeNumber(row.inbound)}</td><td>{maybeNumber(row.answered)}</td><td>{maybeNumber(row.missed)}</td><td>{maybeNumber(row.voicemail)}</td><td>{maybeNumber(row.outbound)}</td><td>{maybeNumber(row.outboundAnswered)}</td><td>{maybeTime(row.talkSeconds)}</td><td>{maybeNumber(row.applications)}{row.unassignedApplications ? `（うち担当者未設定 ${row.unassignedApplications}）` : ""}</td>
+              <td className="garden-cell-text">{row.bizName}</td><td className="garden-cell-number">{maybeNumber(row.inbound)}</td><td className="garden-cell-number">{maybeNumber(row.answered)}</td><td className="garden-cell-number">{maybeNumber(row.missed)}</td><td className="garden-cell-number">{maybeNumber(row.voicemail)}</td><td className="garden-cell-number">{maybeNumber(row.outbound)}</td><td className="garden-cell-number">{maybeNumber(row.outboundAnswered)}</td><td className="garden-cell-number">{maybeTime(row.talkSeconds)}</td><td className="garden-cell-number">{maybeNumber(row.applications)}{row.unassignedApplications ? `（うち担当者未設定 ${row.unassignedApplications}）` : ""}</td>
             </tr>)}</tbody>
           </StickyTable></div>
           {data.lp?.unregisteredExtensionSummary && <p className={styles.period}>{data.lp.unregisteredExtensionSummary}</p>}
@@ -193,8 +193,8 @@ export default function CallMetricsClient() {
           <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><StickyTable>
             <thead><tr><th>リスト名</th><th>コール数</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>受注率</th><th>前確OK数</th><th>前確OK率</th><th>リスト数</th><th>回転数</th><th>リスト受注率</th></tr></thead>
             <tbody>{data.metrics.length ? data.metrics.map((row) => <tr key={row.listName}>
-              <td>{row.listName}</td><td>{row.callCount.toLocaleString()}</td><td>{row.effectiveCount.toLocaleString()}</td><td>{percent(row.effectiveRate)}</td><td>{row.tossCount.toLocaleString()}</td><td>{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td>{row.acquiredCount.toLocaleString()}</td><td>{percent(row.callAcquiredRate)}</td><td>{row.orderCount.toLocaleString()}</td><td>{percent(row.callOrderRate)}</td><td className={styles.pending}>未取得</td><td className={styles.pending}>未取得</td><td className={styles.pending}>未取得</td>
-            </tr>) : <tr><td colSpan={13}>対象データがありません</td></tr>}</tbody>
+              <td className="garden-cell-text">{row.listName}</td><td className="garden-cell-number">{row.callCount.toLocaleString()}</td><td className="garden-cell-number">{row.effectiveCount.toLocaleString()}</td><td className="garden-cell-number">{percent(row.effectiveRate)}</td><td className="garden-cell-number">{row.tossCount.toLocaleString()}</td><td className="garden-cell-number">{percent(row.callCount ? row.tossCount / row.callCount : 0)}</td><td className="garden-cell-number">{row.acquiredCount.toLocaleString()}</td><td className="garden-cell-number">{percent(row.callAcquiredRate)}</td><td className="garden-cell-number">{row.orderCount.toLocaleString()}</td><td className="garden-cell-number">{percent(row.callOrderRate)}</td><td className={[styles.pending, "garden-cell-number"].join(" ")}>未取得</td><td className={[styles.pending, "garden-cell-number"].join(" ")}>未取得</td><td className={[styles.pending, "garden-cell-number"].join(" ")}>未取得</td>
+            </tr>) : <tr><td colSpan={13} className="garden-cell-text">対象データがありません</td></tr>}</tbody>
           </StickyTable></div>
         </section>}
 
@@ -203,23 +203,23 @@ export default function CallMetricsClient() {
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><StickyTable>
             <thead><tr><th>指標</th><th>定義</th></tr></thead>
             <tbody>
-              <tr><td>コール数</td><td>架電回数</td></tr>
-              <tr><td>有効</td><td>会話できたコール。留守・無効・空白（無効扱い）を除きます。</td></tr>
-              <tr><td>有効率</td><td>有効数 ÷ コール数</td></tr>
-              <tr><td>トス数</td><td>結果フラグが「トス」のコール</td></tr>
-              <tr><td>受注数</td><td>結果フラグが「獲得」のコール（コール履歴では「獲得」、ポータルでは「受注」と表示）</td></tr>
-              <tr><td>前確OK数</td><td>結果フラグが「前確OK」のコール</td></tr>
-              <tr><td>受注率</td><td>受注数 ÷ 有効数（2026-10-09 から。以前は総コール数で割っていました）</td></tr>
-              <tr><td>前確OK率</td><td>前確OK数 ÷ 受注数。受注が 0 件の日は 0％（2026-10-09 から。以前は総コール数で割っていました）</td></tr>
-              <tr><td>稼働時間</td><td>その日の最初のコールから最後のコールまでの時間から、休憩時間（下表）を引いた実働時間です。その休憩の時間帯をまたいで働いていた場合に、その休憩の長さをまるごと引きます（休憩中に架電していても、別の時間に同じ長さの休憩を取っているため引きます）。休憩の途中から働き始めた日・途中で終えた日は、その休憩は引きません。</td></tr>
-              <tr><td>コール数/h</td><td>コール数 ÷ 稼働時間（時間）。1時間あたり何件かけたかです。</td></tr>
-              <tr><td>見込</td><td>結果フラグが「見込」のコール</td></tr>
-              <tr><td>担不</td><td>結果フラグが「担不」（担当者不在）のコール</td></tr>
-              <tr><td>留守</td><td>結果フラグが「留守」のコール</td></tr>
-              <tr><td>無効</td><td>結果フラグが「無効」のコール</td></tr>
-              <tr><td>リスト絞り込み時の稼働時間</td><td>リストで絞り込んだ場合、稼働時間はそのリストを架電していた時間の幅になります。</td></tr>
-              <tr><td>Excel集計表との差</td><td>※ 従来のExcel集計表は休憩を引いていないため、こちらの方が短く出ます。</td></tr>
-              <tr><td>リスト数・回転数・リスト受注率</td><td>リストデータ取込後に対応</td></tr>
+              <tr><td className="garden-cell-text">コール数</td><td className="garden-cell-text">架電回数</td></tr>
+              <tr><td className="garden-cell-text">有効</td><td className="garden-cell-text">会話できたコール。留守・無効・空白（無効扱い）を除きます。</td></tr>
+              <tr><td className="garden-cell-text">有効率</td><td className="garden-cell-text">有効数 ÷ コール数</td></tr>
+              <tr><td className="garden-cell-text">トス数</td><td className="garden-cell-text">結果フラグが「トス」のコール</td></tr>
+              <tr><td className="garden-cell-text">受注数</td><td className="garden-cell-text">結果フラグが「獲得」のコール（コール履歴では「獲得」、ポータルでは「受注」と表示）</td></tr>
+              <tr><td className="garden-cell-text">前確OK数</td><td className="garden-cell-text">結果フラグが「前確OK」のコール</td></tr>
+              <tr><td className="garden-cell-text">受注率</td><td className="garden-cell-text">受注数 ÷ 有効数（2026-10-09 から。以前は総コール数で割っていました）</td></tr>
+              <tr><td className="garden-cell-text">前確OK率</td><td className="garden-cell-text">前確OK数 ÷ 受注数。受注が 0 件の日は 0％（2026-10-09 から。以前は総コール数で割っていました）</td></tr>
+              <tr><td className="garden-cell-text">稼働時間</td><td className="garden-cell-text">その日の最初のコールから最後のコールまでの時間から、休憩時間（下表）を引いた実働時間です。その休憩の時間帯をまたいで働いていた場合に、その休憩の長さをまるごと引きます（休憩中に架電していても、別の時間に同じ長さの休憩を取っているため引きます）。休憩の途中から働き始めた日・途中で終えた日は、その休憩は引きません。</td></tr>
+              <tr><td className="garden-cell-text">コール数/h</td><td className="garden-cell-text">コール数 ÷ 稼働時間（時間）。1時間あたり何件かけたかです。</td></tr>
+              <tr><td className="garden-cell-text">見込</td><td className="garden-cell-text">結果フラグが「見込」のコール</td></tr>
+              <tr><td className="garden-cell-text">担不</td><td className="garden-cell-text">結果フラグが「担不」（担当者不在）のコール</td></tr>
+              <tr><td className="garden-cell-text">留守</td><td className="garden-cell-text">結果フラグが「留守」のコール</td></tr>
+              <tr><td className="garden-cell-text">無効</td><td className="garden-cell-text">結果フラグが「無効」のコール</td></tr>
+              <tr><td className="garden-cell-text">リスト絞り込み時の稼働時間</td><td className="garden-cell-text">リストで絞り込んだ場合、稼働時間はそのリストを架電していた時間の幅になります。</td></tr>
+              <tr><td className="garden-cell-text">Excel集計表との差</td><td className="garden-cell-text">※ 従来のExcel集計表は休憩を引いていないため、こちらの方が短く出ます。</td></tr>
+              <tr><td className="garden-cell-text">リスト数・回転数・リスト受注率</td><td className="garden-cell-text">リストデータ取込後に対応</td></tr>
             </tbody>
           </StickyTable></div>
           <h2>休憩時間割</h2>
@@ -228,39 +228,39 @@ export default function CallMetricsClient() {
             <thead><tr><th>回</th><th>開始</th><th>終了</th><th>長さ</th></tr></thead>
             <tbody>
               {BREAKS.map((row, index) => <tr key={row.start}>
-                <td>{index + 1}</td><td>{row.start}</td><td>{row.end}</td><td>{row.length}</td>
+                <td className="garden-cell-fixed">{index + 1}</td><td className="garden-cell-fixed">{row.start}</td><td className="garden-cell-fixed">{row.end}</td><td className="garden-cell-number">{row.length}</td>
               </tr>)}
-              <tr><td colSpan={3}>合計</td><td>2時間</td></tr>
+              <tr><td colSpan={3} className="garden-cell-text">合計</td><td className="garden-cell-number">2時間</td></tr>
             </tbody>
           </StickyTable></div>
           <h2>コール履歴のフラグ名 → ポータル表示名</h2>
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><StickyTable>
             <thead><tr><th>コール履歴</th><th>ポータル表示</th></tr></thead>
-            <tbody><tr><td>獲得</td><td>受注数</td></tr><tr><td>前確OK</td><td>前確OK数</td></tr><tr><td>トス</td><td>トス数</td></tr></tbody>
+            <tbody><tr><td className="garden-cell-text">獲得</td><td className="garden-cell-text">受注数</td></tr><tr><td className="garden-cell-text">前確OK</td><td className="garden-cell-text">前確OK数</td></tr><tr><td className="garden-cell-text">トス</td><td className="garden-cell-text">トス数</td></tr></tbody>
           </StickyTable></div>
           <h2>結果フラグの扱い（分類ルール）</h2>
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><StickyTable>
             <thead><tr><th>結果フラグ</th><th>扱い</th></tr></thead>
             <tbody>{FLAG_RULES.map(([flag, handling]) => <tr key={flag}>
-              <td>{flag}</td><td>{handling}</td>
+              <td className="garden-cell-text">{flag}</td><td className="garden-cell-text">{handling}</td>
             </tr>)}</tbody>
           </StickyTable></div>
           <h2>通話時間と WEBインバウンド（LP系）</h2>
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><StickyTable>
             <thead><tr><th>指標</th><th>定義</th></tr></thead>
             <tbody>
-              <tr><td>通話時間</td><td>INNOVERA の通話秒数を従業員ごとに合計します。テレマ側に通話がなく、INNOVERA にも該当がない場合は「-」です。</td></tr>
-              <tr><td>LP応答</td><td>稼働中の LP 系回線への着信のうち、応答した件数です。</td></tr>
-              <tr><td>LP発信</td><td>稼働中の LP 系回線からの発信件数です。</td></tr>
-              <tr><td>LP通話時間</td><td>LP 系回線の着信・発信の通話時間合計です。</td></tr>
-              <tr><td>LP申込み</td><td>kintone の LP 顧客アプリで、対応状況が「申込み」かつ作成日時が対象期間内の件数です。</td></tr>
+              <tr><td className="garden-cell-text">通話時間</td><td className="garden-cell-text">INNOVERA の通話秒数を従業員ごとに合計します。テレマ側に通話がなく、INNOVERA にも該当がない場合は「-」です。</td></tr>
+              <tr><td className="garden-cell-text">LP応答</td><td className="garden-cell-text">稼働中の LP 系回線への着信のうち、応答した件数です。</td></tr>
+              <tr><td className="garden-cell-text">LP発信</td><td className="garden-cell-text">稼働中の LP 系回線からの発信件数です。</td></tr>
+              <tr><td className="garden-cell-text">LP通話時間</td><td className="garden-cell-text">LP 系回線の着信・発信の通話時間合計です。</td></tr>
+              <tr><td className="garden-cell-text">LP申込み</td><td className="garden-cell-text">kintone の LP 顧客アプリで、対応状況が「申込み」かつ作成日時が対象期間内の件数です。</td></tr>
             </tbody>
           </StickyTable></div>
           <h2>WEBインバウンドの対応と結果</h2>
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><StickyTable>
             <thead><tr><th>項目</th><th>定義</th></tr></thead>
             <tbody>{LP_FUNNEL_DEFINITIONS.map(([item, definition]) => <tr key={item}>
-              <td>{item}</td><td>{definition}</td>
+              <td className="garden-cell-text">{item}</td><td className="garden-cell-text">{definition}</td>
             </tr>)}</tbody>
           </StickyTable></div>
         </section>}

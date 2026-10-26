@@ -563,12 +563,12 @@ function DecisionsTab() {
               <tbody>
                 {reports.map((report) => (
                   <tr key={report.number}>
-                    <td className={styles.colNum}>{report.number}</td>
-                    <td className={styles.colDate}>{report.date}</td>
-                    <td className={styles.colContent}>{report.content}</td>
-                    <td className={styles.colAuthor}>{report.author}</td>
-                    <td className={styles.colStatus}><span className={cx(styles.reportStatusBadge, styles[report.statusTone])}>{report.status}</span></td>
-                    <td className={styles.colAttach}>📎</td>
+                    <td className={[styles.colNum, "garden-cell-fixed"].join(" ")}>{report.number}</td>
+                    <td className={[styles.colDate, "garden-cell-fixed"].join(" ")}>{report.date}</td>
+                    <td className={[styles.colContent, "garden-cell-text"].join(" ")}>{report.content}</td>
+                    <td className={[styles.colAuthor, "garden-cell-text"].join(" ")}>{report.author}</td>
+                    <td className={[styles.colStatus, "garden-cell-mark"].join(" ")}><span className={cx(styles.reportStatusBadge, styles[report.statusTone])}>{report.status}</span></td>
+                    <td className={[styles.colAttach, "garden-cell-mark"].join(" ")}>📎</td>
                   </tr>
                 ))}
               </tbody>

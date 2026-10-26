@@ -52,7 +52,7 @@ function DataTable({ table }: { table: HikariTable }) {
   return <div className={styles.tableScroller}>
     <StickyTable className={styles.hikariTable}>
       <thead><tr>{table.headers.map(header => <th key={header}>{header}</th>)}</tr></thead>
-      <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex}><CellLines value={cell} /></td>)}</tr>)}</tbody>
+      <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} className={table.headers[cellIndex] === "順序" ? "garden-cell-fixed" : "garden-cell-text"}><CellLines value={cell} /></td>)}</tr>)}</tbody>
     </StickyTable>
   </div>;
 }

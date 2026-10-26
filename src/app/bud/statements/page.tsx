@@ -189,7 +189,7 @@ function StatementsContent() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-3 py-8 text-center text-gray-400"
+                    className="px-3 py-8 text-center text-gray-400 garden-cell-text"
                   >
                     該当する明細がありません
                   </td>
@@ -197,21 +197,21 @@ function StatementsContent() {
               ) : (
                 statements.map((s) => (
                   <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-700">
+                    <td className="px-3 py-2 text-gray-700 garden-cell-fixed">
                       {s.transaction_date}
                     </td>
-                    <td className="px-3 py-2">{s.description}</td>
+                    <td className="px-3 py-2 garden-cell-text">{s.description}</td>
                     <td
-                      className={`px-3 py-2 text-right font-medium ${
+                      className={[`px-3 py-2 text-right font-medium ${
                         s.amount < 0 ? "text-rose-700" : "text-emerald-700"
-                      }`}
+                      }`, "garden-cell-number"].join(" ")}
                     >
                       ¥{Math.abs(s.amount).toLocaleString()}
                       {s.amount < 0 && (
                         <span className="text-xs ml-1">(出)</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 garden-cell-mark">
                       {s.matched_transfer_id ? (
                         <span className="text-xs text-blue-700">
                           ✓ {s.match_confidence}（{s.matched_transfer_id}）
@@ -220,7 +220,7 @@ function StatementsContent() {
                         <span className="text-xs text-amber-700">未照合</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 garden-cell-mark">
                       {!s.matched_transfer_id && s.amount < 0 && (
                         <button
                           type="button"

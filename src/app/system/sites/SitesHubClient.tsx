@@ -274,19 +274,19 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
       </thead>
       <tbody>
         {rows.map((row) => "kind" in row ? <tr key={`${row.company}-${row.kind}-${row.product ?? row.domain ?? "domain"}`}>
-          <td>{row.company}</td>
-          <td><KindChip site={row} /> {siteTitle(row)}</td>
-          <td>{domainLabel(row)}</td>
-          <td><StatusBadge site={row} /></td>
-          <td>{[kintoneLabel(row), toLabel(row)].filter(Boolean).join("・")}</td>
-          <td>{canOpen(row) ? <a href={row.url} target="_blank" rel="noopener noreferrer">開く</a> : null}</td>
+          <td className="garden-cell-text">{row.company}</td>
+          <td className="garden-cell-text"><KindChip site={row} /> {siteTitle(row)}</td>
+          <td className="garden-cell-text">{domainLabel(row)}</td>
+          <td className="garden-cell-mark"><StatusBadge site={row} /></td>
+          <td className="garden-cell-text">{[kintoneLabel(row), toLabel(row)].filter(Boolean).join("・")}</td>
+          <td className="garden-cell-text">{canOpen(row) ? <a href={row.url} target="_blank" rel="noopener noreferrer">開く</a> : null}</td>
         </tr> : <tr key={`${row.company}-google-map`}>
-          <td>{row.company}</td>
-          <td><MapKindChip /> Googleマップ</td>
-          <td>—</td>
-          <td><GoogleMapStatusBadge map={row} /></td>
-          <td>{row.map_address ?? "Google マップに登録がありません"}</td>
-          <td>{row.url ? <a href={row.url} target="_blank" rel="noopener noreferrer">開く</a> : null}</td>
+          <td className="garden-cell-text">{row.company}</td>
+          <td className="garden-cell-text"><MapKindChip /> Googleマップ</td>
+          <td className="garden-cell-text">—</td>
+          <td className="garden-cell-mark"><GoogleMapStatusBadge map={row} /></td>
+          <td className="garden-cell-text">{row.map_address ?? "Google マップに登録がありません"}</td>
+          <td className="garden-cell-text">{row.url ? <a href={row.url} target="_blank" rel="noopener noreferrer">開く</a> : null}</td>
         </tr>)}
       </tbody>
     </StickyTable>

@@ -109,7 +109,7 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
 
               return (
                 <tr key={company.id}>
-                  <td className={styles.matrixCompanyCell}>
+                  <td className={[styles.matrixCompanyCell, "garden-cell-text"].join(" ")}>
                     <div className={styles.companyLine}>
                       <span className={styles.companyDot} style={{ background: company.color }} />
                       <div>
@@ -125,7 +125,7 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
 
                     if (!source) {
                       return (
-                        <td key={year} className={styles.matrixDataCell}>
+                        <td key={year} className={[styles.matrixDataCell, "garden-cell-number"].join(" ")}>
                           <div className={styles.emptyCell}>-</div>
                         </td>
                       );
@@ -159,7 +159,7 @@ export function MicroGrid({ companies, periods, shinkouki, onEditShinkouki }: Pr
                     };
 
                     return (
-                      <td key={year} className={styles.matrixDataCell}>
+                      <td key={year} className={[styles.matrixDataCell, "garden-cell-number"].join(" ")}>
                         <button
                           type="button"
                           className={`${styles.matrixMiniCard} ${isActive ? styles.matrixMiniCardShinkou : ""}`}

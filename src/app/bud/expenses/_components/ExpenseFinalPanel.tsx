@@ -655,7 +655,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                     <tbody>
                       {list.map((row, rowIndex) => (
                         <tr key={row.id} style={rowIndex === idx ? selectedTr : tr} onClick={() => setIdx(rowIndex)}>
-                          <td style={td}>
+                          <td style={td} className="garden-cell-mark">
                             <input
                               type="checkbox"
                               checked={selectedIds.has(row.id)}
@@ -664,12 +664,12 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                               aria-label={`${employeeLabel(row, employees)} の申請を選択`}
                             />
                           </td>
-                          <td style={td}>{formatDate(row.submitted_at)}</td>
-                          <td style={applicantTd} {...CLARITY_MASK}><ExpenseKindBadge kind={row.expense_kind} />{employeeLabel(row, employees)}</td>
-                          <td style={td}>{formatDate(row.receipt_date)}</td>
-                          <td style={td}>{categoryLabel(row.category_id, cats)}</td>
-                          <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
-                          <td style={td}>
+                          <td style={td} className="garden-cell-fixed">{formatDate(row.submitted_at)}</td>
+                          <td style={applicantTd} {...CLARITY_MASK} className="garden-cell-text"><ExpenseKindBadge kind={row.expense_kind} />{employeeLabel(row, employees)}</td>
+                          <td style={td} className="garden-cell-fixed">{formatDate(row.receipt_date)}</td>
+                          <td style={td} className="garden-cell-text">{categoryLabel(row.category_id, cats)}</td>
+                          <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }} className="garden-cell-number">{yen(row.amount ?? 0)}</td>
+                          <td style={td} className="garden-cell-mark">
                             <button type="button" style={iconBtn} onClick={(event) => {
                               event.stopPropagation();
                               openDetail(row, "detail");
@@ -677,8 +677,8 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
 
                             </button>
                           </td>
-                          <td style={td}>{row.description || row.store_name || "—"}</td>
-                          <td style={td}>
+                          <td style={td} className="garden-cell-text">{row.description || row.store_name || "—"}</td>
+                          <td style={td} className="garden-cell-mark">
                             <div style={actions}>
                               <button type="button" disabled={busyId === row.id} style={approveBtn} onClick={(event) => {
                                 event.stopPropagation();

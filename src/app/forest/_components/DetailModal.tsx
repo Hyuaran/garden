@@ -144,7 +144,7 @@ export function DetailModal({ data, onClose }: Props) {
                     color: FOREST_THEME.textSecondary,
                     borderBottom: "1px solid #f0f0f0",
                   }}
-                >
+                 className="garden-cell-text">
                   {r.label}
                 </td>
                 <td
@@ -159,7 +159,7 @@ export function DetailModal({ data, onClose }: Props) {
                         ? FOREST_THEME.negative
                         : FOREST_THEME.textPrimary,
                   }}
-                >
+                 className="garden-cell-number">
                   {r.value}
                 </td>
               </tr>
@@ -197,7 +197,7 @@ export function DetailModal({ data, onClose }: Props) {
                         color: FOREST_THEME.textSecondary,
                         borderBottom: "1px solid #f5f5f5",
                       }}
-                    >
+                     className="garden-cell-text">
                       {label}
                     </td>
                     <td
@@ -209,7 +209,7 @@ export function DetailModal({ data, onClose }: Props) {
                         color: FOREST_THEME.textPrimary,
                         borderBottom: "1px solid #f5f5f5",
                       }}
-                    >
+                     className="garden-cell-number">
                       {fmtYen(hankanhi[key])}
                     </td>
                   </tr>

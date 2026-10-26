@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -437,8 +437,8 @@ function HelpTip({ help }: { help: { title: string; rows: readonly HelpRow[] } }
           <tbody>
             {help.rows.map((row) => (
               <tr key={row.label}>
-                <th scope="row">{row.label}</th>
-                <td>{row.text}</td>
+                <th scope="row" className="garden-cell-text">{row.label}</th>
+                <td className="garden-cell-text">{row.text}</td>
               </tr>
             ))}
           </tbody>
@@ -2317,23 +2317,23 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                         className={segment.segment === selected.segment ? styles.analysisSelectedRow : undefined}
                         onClick={() => onSelectSegment(segment.segment)}
                       >
-                        <td>
+                        <td className="garden-cell-text">
                           <span className={styles.analysisSegmentName} title={analysisSegmentLabel(block, segment)}>
                             {analysisSegmentLabel(block, segment)}
                           </span>
                         </td>
-                        <td>{formatCount(segment.rowCount)}</td>
-                        <td>{formatCount(segment.calledCount)}</td>
-                        <td>{formatCount(segment.callTotal)}</td>
-                        <td>{formatRotation(segment.rotation)}</td>
-                        <td>{formatCount(segment.validCount)}</td>
-                        <td className={valueClassName(segment.orderCount)}>{formatCount(segment.orderCount)}</td>
-                        <td className={valueClassName(segment.orderCaseCount ?? 0)}>{formatCount(segment.orderCaseCount ?? 0)}</td>
-                        {showRepurchaseColumns && <td className={valueClassName(segment.repurchaseCount ?? 0)}>{formatCount(segment.repurchaseCount ?? 0)}</td>}
-                        {showRepurchaseColumns && <td>{segment.repurchaseSources ?? ""}</td>}
-                        <td className={valueClassName(segment.acquiredCount)}>{formatCount(segment.acquiredCount)}</td>
-                        <td>{formatRate(segment.orderRateValid)}</td>
-                        <td>{formatRate(segment.orderRateTotal)}</td>
+                        <td className="garden-cell-number">{formatCount(segment.rowCount)}</td>
+                        <td className="garden-cell-number">{formatCount(segment.calledCount)}</td>
+                        <td className="garden-cell-number">{formatCount(segment.callTotal)}</td>
+                        <td className="garden-cell-number">{formatRotation(segment.rotation)}</td>
+                        <td className="garden-cell-number">{formatCount(segment.validCount)}</td>
+                        <td className={[valueClassName(segment.orderCount), "garden-cell-number"].join(" ")}>{formatCount(segment.orderCount)}</td>
+                        <td className={[valueClassName(segment.orderCaseCount ?? 0), "garden-cell-number"].join(" ")}>{formatCount(segment.orderCaseCount ?? 0)}</td>
+                        {showRepurchaseColumns && <td className={[valueClassName(segment.repurchaseCount ?? 0), "garden-cell-number"].join(" ")}>{formatCount(segment.repurchaseCount ?? 0)}</td>}
+                        {showRepurchaseColumns && <td className="garden-cell-text">{segment.repurchaseSources ?? ""}</td>}
+                        <td className={[valueClassName(segment.acquiredCount), "garden-cell-number"].join(" ")}>{formatCount(segment.acquiredCount)}</td>
+                        <td className="garden-cell-number">{formatRate(segment.orderRateValid)}</td>
+                        <td className="garden-cell-number">{formatRate(segment.orderRateTotal)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2375,9 +2375,9 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             <tbody {...CLARITY_MASK}>
               {analysis.repurchasePairs.map((row) => (
                 <tr key={`${row.sourceVendor}->${row.targetVendor}`}>
-                  <td>{row.sourceVendor} → {row.targetVendor}</td>
-                  <td>{formatCount(row.phoneCount)}</td>
-                  <td className={valueClassName(row.orderCount)}>{formatCount(row.orderCount)}</td>
+                  <td className="garden-cell-text">{row.sourceVendor} → {row.targetVendor}</td>
+                  <td className="garden-cell-number">{formatCount(row.phoneCount)}</td>
+                  <td className={[valueClassName(row.orderCount), "garden-cell-number"].join(" ")}>{formatCount(row.orderCount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -2425,18 +2425,18 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             <tbody>
               {rows.map((row) => (
                 <tr key={row.listName}>
-                  <td>{row.listName}</td>
-                  <td>{row.listLoadedOn ?? ""}</td>
-                  <td>{formatCount(row.rowCount)}</td>
-                  <td>{formatCount(row.calledCount)}</td>
-                  <td>{formatCount(row.callTotal)}</td>
-                  <td className={valueClassName(row.orderCount)}>{formatCount(row.orderCount)}</td>
-                  <td className={valueClassName(row.orderCaseCount ?? 0)}>{formatCount(row.orderCaseCount ?? 0)}</td>
-                  <td className={valueClassName(row.acquiredCount)}>{formatCount(row.acquiredCount)}</td>
-                  <td>{row.lastCalledOn ?? ""}</td>
+                  <td className="garden-cell-text">{row.listName}</td>
+                  <td className="garden-cell-fixed">{row.listLoadedOn ?? ""}</td>
+                  <td className="garden-cell-number">{formatCount(row.rowCount)}</td>
+                  <td className="garden-cell-number">{formatCount(row.calledCount)}</td>
+                  <td className="garden-cell-number">{formatCount(row.callTotal)}</td>
+                  <td className={[valueClassName(row.orderCount), "garden-cell-number"].join(" ")}>{formatCount(row.orderCount)}</td>
+                  <td className={[valueClassName(row.orderCaseCount ?? 0), "garden-cell-number"].join(" ")}>{formatCount(row.orderCaseCount ?? 0)}</td>
+                  <td className={[valueClassName(row.acquiredCount), "garden-cell-number"].join(" ")}>{formatCount(row.acquiredCount)}</td>
+                  <td className="garden-cell-fixed">{row.lastCalledOn ?? ""}</td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan={9}>対象データがありません</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={9} className="garden-cell-text">対象データがありません</td></tr>}
             </tbody>
           </StickyTable>
         </div>
@@ -2677,17 +2677,17 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             <tbody {...CLARITY_MASK}>
               {rows.map((row, index) => (
                 <tr key={`${row.phoneNumber}-${index}`}>
-                  <td>{row.phoneNumber}</td>
-                  <td>{row.name}</td>
-                  <td>{row.addressCity}</td>
-                  <td>{row.listName}</td>
-                  <td>{row.lastCalledOn}</td>
-                  <td>{row.callCount ?? ""}</td>
-                  <td>{row.purchaseStatus}</td>
-                  <td>{row.lineType}</td>
-                  <td>{row.contractMonth}</td>
-                  <td>{row.contractElapsed}</td>
-                  <td>
+                  <td className="garden-cell-fixed">{row.phoneNumber}</td>
+                  <td className="garden-cell-text">{row.name}</td>
+                  <td className="garden-cell-text">{row.addressCity}</td>
+                  <td className="garden-cell-text">{row.listName}</td>
+                  <td className="garden-cell-fixed">{row.lastCalledOn}</td>
+                  <td className="garden-cell-number">{row.callCount ?? ""}</td>
+                  <td className="garden-cell-mark">{row.purchaseStatus}</td>
+                  <td className="garden-cell-text">{row.lineType}</td>
+                  <td className="garden-cell-fixed">{row.contractMonth}</td>
+                  <td className="garden-cell-number">{row.contractElapsed}</td>
+                  <td className="garden-cell-text">
                     <select
                       
                       value={row.category}
@@ -2701,7 +2701,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                       <option value="法人">法人</option>
                     </select>
                   </td>
-                  <td>{row.internalBlocked && <span className={styles.internalBlockBadge}>自社アポ禁</span>}</td>
+                  <td className="garden-cell-mark">{row.internalBlocked && <span className={styles.internalBlockBadge}>自社アポ禁</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -2906,14 +2906,14 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                         };
                         return (
                           <tr key={key}>
-                            <td>{row.fileName}</td>
-                            <td>{row.rowNumber}</td>
-                            <td><input className={styles.reviewInputWide} value={edit.listName} onChange={(event) => updateRawReviewEdit(key, { listName: event.target.value })} /></td>
-                            <td><input className={styles.reviewInput} value={edit.lastName} onChange={(event) => updateRawReviewEdit(key, { lastName: event.target.value })} /></td>
-                            <td><input className={styles.reviewInput} value={edit.firstName} onChange={(event) => updateRawReviewEdit(key, { firstName: event.target.value })} /></td>
-                            <td><input className={styles.reviewInputPhone} value={edit.phone} onChange={(event) => updateRawReviewEdit(key, { phone: event.target.value })} /></td>
-                            <td><input className={styles.reviewInputPhone} value={edit.postal} onChange={(event) => updateRawReviewEdit(key, { postal: event.target.value })} /></td>
-                            <td>{row.reasons.join("／")}</td>
+                            <td className="garden-cell-text">{row.fileName}</td>
+                            <td className="garden-cell-fixed">{row.rowNumber}</td>
+                            <td className="garden-cell-text"><input className={styles.reviewInputWide} value={edit.listName} onChange={(event) => updateRawReviewEdit(key, { listName: event.target.value })} /></td>
+                            <td className="garden-cell-text"><input className={styles.reviewInput} value={edit.lastName} onChange={(event) => updateRawReviewEdit(key, { lastName: event.target.value })} /></td>
+                            <td className="garden-cell-text"><input className={styles.reviewInput} value={edit.firstName} onChange={(event) => updateRawReviewEdit(key, { firstName: event.target.value })} /></td>
+                            <td className="garden-cell-fixed"><input className={styles.reviewInputPhone} value={edit.phone} onChange={(event) => updateRawReviewEdit(key, { phone: event.target.value })} /></td>
+                            <td className="garden-cell-fixed"><input className={styles.reviewInputPhone} value={edit.postal} onChange={(event) => updateRawReviewEdit(key, { postal: event.target.value })} /></td>
+                            <td className="garden-cell-text">{row.reasons.join("／")}</td>
                           </tr>
                         );
                       })}
@@ -3160,11 +3160,11 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <tbody {...CLARITY_MASK}>
                   {GUIDE_TABLE_ROWS.map((row, index) => (
                     <tr key={row.name} className={"pending" in row && row.pending ? styles.pendingRow : undefined}>
-                      <td>{row.name}</td>
-                      <td>{row.unit}</td>
-                      <td>{formatApproxCount(tableCounts?.counts[GUIDE_TABLE_COUNT_KEYS[index]])}</td>
-                      <td>{row.contains}</td>
-                      <td>{row.timing}</td>
+                      <td className="garden-cell-text">{row.name}</td>
+                      <td className="garden-cell-text">{row.unit}</td>
+                      <td className="garden-cell-number">{formatApproxCount(tableCounts?.counts[GUIDE_TABLE_COUNT_KEYS[index]])}</td>
+                      <td className="garden-cell-text">{row.contains}</td>
+                      <td className="garden-cell-text">{row.timing}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -3181,8 +3181,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 <tbody>
                   {GUIDE_RULE_ROWS.map(([item, rule]) => (
                     <tr key={item}>
-                      <td>{item}</td>
-                      <td>{rule}</td>
+                      <td className="garden-cell-text">{item}</td>
+                      <td className="garden-cell-text">{rule}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -3269,16 +3269,16 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 </thead>
                 <tbody>
                   {internalBlockRows.length === 0 && (
-                    <tr><td colSpan={6} className={styles.empty}>登録済み一覧はありません</td></tr>
+                    <tr><td colSpan={6} className={[styles.empty, "garden-cell-text"].join(" ")}>登録済み一覧はありません</td></tr>
                   )}
                   {internalBlockRows.map((row) => (
                     <tr key={row.id} className={row.解除日 ? styles.releasedRow : undefined}>
-                      <td>{row.電話番号}</td>
-                      <td>{formatJstWithWeekday(row.登録日)}</td>
-                      <td>{row.理由}</td>
-                      <td>{row.登録者 ?? ""}</td>
-                      <td>{row.出所}</td>
-                      <td>
+                      <td className="garden-cell-fixed">{row.電話番号}</td>
+                      <td className="garden-cell-fixed">{formatJstWithWeekday(row.登録日)}</td>
+                      <td className="garden-cell-text">{row.理由}</td>
+                      <td className="garden-cell-text">{row.登録者 ?? ""}</td>
+                      <td className="garden-cell-text">{row.出所}</td>
+                      <td className="garden-cell-text">
                         {row.解除日 ? `${formatJstWithWeekday(row.解除日)} ${row.解除者 ?? ""}` : (
                           <button type="button" className={styles.secondaryButton} onClick={() => openInternalBlockRelease(row)} disabled={internalBlockBusy}>
                             解除

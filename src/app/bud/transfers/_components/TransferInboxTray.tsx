@@ -236,7 +236,7 @@ export function TransferInboxTray({
                     key={item.id}
                     style={stalled ? stalledRowStyle : undefined}
                   >
-                    <td style={tdStyle}>
+                    <td style={tdStyle} className="garden-cell-text">
                       <div style={fileNameRowStyle}>
                         <span style={fileNameStyle}>{item.file_name}</span>
                         {item.source === "mail" && (
@@ -264,10 +264,10 @@ export function TransferInboxTray({
                         </a>
                       )}
                     </td>
-                    <td style={tdStyle}>
+                    <td style={tdStyle} className="garden-cell-text">
                       {formatMimeType(item.mime_type)}
                     </td>
-                    <td style={tdStyle}>
+                    <td style={tdStyle} className="garden-cell-fixed">
                       <div>{formatDateTime(item.imported_at)}</div>
                       {stalled && (
                         <span style={stalledBadgeStyle}>
@@ -275,7 +275,7 @@ export function TransferInboxTray({
                         </span>
                       )}
                     </td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                    <td style={{ ...tdStyle, textAlign: "right" }} className="garden-cell-mark">
                       <div style={rowActionStyle}>
                         <button
                           type="button"

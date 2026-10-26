@@ -23,12 +23,12 @@ export default function ModuleManualsClient({ module, manuals }: { module: Manua
         <thead><tr><th>機能</th><th>内容</th><th>読める資料</th><th></th></tr></thead>
         <tbody>
           {manuals.map((manual) => <tr key={manual.slug}>
-            <td>
+            <td className="garden-cell-text">
               <span className={styles.nameWithIcon}><span className={styles.iconPlate}><MenuIcon icon={module.icon} /></span>{manual.name}</span>
             </td>
-            <td>{manual.description}</td>
-            <td>{manual.visibleDocs.map((doc) => doc.label).join(" / ")}</td>
-            <td><Link href={`/system/manuals/${manual.moduleSlug}/${manual.slug}`}>開く</Link></td>
+            <td className="garden-cell-text">{manual.description}</td>
+            <td className="garden-cell-text">{manual.visibleDocs.map((doc) => doc.label).join(" / ")}</td>
+            <td className="garden-cell-text"><Link href={`/system/manuals/${manual.moduleSlug}/${manual.slug}`}>開く</Link></td>
           </tr>)}
         </tbody>
       </StickyTable>

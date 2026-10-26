@@ -156,20 +156,20 @@ export default function VendorsPage() {
   const companyMap = useMemo(() => new Map(companies.map((c) => [c.company_id, c])), [companies]);
 
   const columns: Column<Vendor>[] = [
-    { key: "id", header: "ID", render: (v) => v.vendor_id, width: 90 },
-    { key: "name", header: "取引先名", render: (v) => v.vendor_name, width: 200 },
-    { key: "kana", header: "カナ", render: (v) => v.vendor_name_kana, width: 200 },
-    { key: "type", header: "区分", render: (v) => v.vendor_type ?? "—", width: 80 },
-    { key: "bank", header: "振込先", render: (v) => `${v.bank_name} ${v.branch_name} ${v.account_type}${v.account_number}` },
-    { key: "fee", header: "手数料", render: (v) => v.fee_bearer, width: 90 },
-    { key: "company", header: "担当法人", render: (v) => v.company_id ? companyMap.get(v.company_id)?.company_name ?? v.company_id : "—", width: 140 },
+    { key: "id", header: "ID", align: "center", render: (v) => v.vendor_id, width: 90 },
+    { key: "name", header: "取引先名", align: "left", render: (v) => v.vendor_name, width: 200 },
+    { key: "kana", header: "カナ", align: "left", render: (v) => v.vendor_name_kana, width: 200 },
+    { key: "type", header: "区分", align: "left", render: (v) => v.vendor_type ?? "—", width: 80 },
+    { key: "bank", header: "振込先", align: "left", render: (v) => `${v.bank_name} ${v.branch_name} ${v.account_type}${v.account_number}` },
+    { key: "fee", header: "手数料", align: "left", render: (v) => v.fee_bearer, width: 90 },
+    { key: "company", header: "担当法人", align: "left", render: (v) => v.company_id ? companyMap.get(v.company_id)?.company_name ?? v.company_id : "—", width: 140 },
     { key: "status", header: "状態", render: (v) => <StatusBadge active={v.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (v) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
         <Button variant="secondary" onClick={() => setEditTarget(v)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
         <Button variant={v.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(v)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{v.is_active ? "無効化" : "有効化"}</Button>
       </div>
-    ), width: 170, align: "right" },
+    ), width: 170, align: "left" },
   ];
 
   return (

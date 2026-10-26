@@ -276,7 +276,7 @@ export default function BalanceOverviewPage() {
               const corpAccounts = accountsByCorp.get(corp.id) ?? [];
               return (
                 <tr key={corp.id}>
-                  <td style={td(true)}>
+                  <td style={td(true)} className="garden-cell-text">
                     <div style={{ fontWeight: 600 }}>{corp.name_short}</div>
                     <div style={{ fontSize: 11, color: "#6b7280" }}>
                       {corp.name_full}
@@ -291,14 +291,14 @@ export default function BalanceOverviewPage() {
                         <td
                           key={b.kind}
                           style={{ ...td(), color: "#d1d5db", textAlign: "center" }}
-                        >
+                         className="garden-cell-number">
                           —
                         </td>
                       );
                     }
                     const badge = sourceBadge(acct.latest_balance_source);
                     return (
-                      <td key={b.kind} style={td()}>
+                      <td key={b.kind} style={td()} className="garden-cell-number">
                         <div
                           style={{
                             fontWeight: 600,
@@ -345,7 +345,7 @@ export default function BalanceOverviewPage() {
                       textAlign: "right",
                       fontWeight: 600,
                     }}
-                  >
+                   className="garden-cell-number">
                     {formatYen(corpTotals.get(corp.id) ?? null)}
                   </td>
                 </tr>
@@ -354,12 +354,12 @@ export default function BalanceOverviewPage() {
 
             {/* 銀行別合計行 */}
             <tr style={{ background: "#fef3c7" }}>
-              <td style={{ ...td(true), fontWeight: 600 }}>銀行合計</td>
+              <td style={{ ...td(true), fontWeight: 600 }} className="garden-cell-text">銀行合計</td>
               {BANK_ORDER.map((b) => (
                 <td
                   key={b.kind}
                   style={{ ...td(), fontWeight: 600, textAlign: "right" }}
-                >
+                 className="garden-cell-number">
                   {formatYen(bankTotals.get(b.kind) ?? null)}
                 </td>
               ))}
@@ -370,7 +370,7 @@ export default function BalanceOverviewPage() {
                   fontWeight: 700,
                   textAlign: "right",
                 }}
-              >
+               className="garden-cell-number">
                 {formatYen(data.totals.total_balance)}
               </td>
             </tr>

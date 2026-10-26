@@ -624,7 +624,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                     <tr key={row.id} style={journal.ok ? { ...(checked ? checkedTr : tr), cursor: "pointer" } : errorTr}
                       // 行のどこを押しても（プルダウン・ボタン・チェック以外）選ぶ／外す（東海林さん 2026-10-22）
                       onClick={(event) => { if (!journal.ok || (event.target as HTMLElement).closest("button,input,select,a,label")) return; toggle(row.id, !checked); }}>
-                      <td style={td}>
+                      <td style={td} className="garden-cell-mark">
                         <input
                           type="checkbox"
                           disabled={!journal.ok}
@@ -632,10 +632,10 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                           onChange={(event) => toggle(row.id, event.target.checked)}
                         />
                       </td>
-                      <td style={applicantTd}><ExpenseKindBadge kind={row.expense_kind} />{applicant}</td>
-                      <td style={td}>{formatDate(row.receipt_date)}</td>
-                      <td style={td}>{row.booking_date ? formatDate(row.booking_date) : <span style={missingBadge}>未入力</span>}</td>
-                      <td style={td}>
+                      <td style={applicantTd} className="garden-cell-text"><ExpenseKindBadge kind={row.expense_kind} />{applicant}</td>
+                      <td style={td} className="garden-cell-fixed">{formatDate(row.receipt_date)}</td>
+                      <td style={td} className="garden-cell-fixed">{row.booking_date ? formatDate(row.booking_date) : <span style={missingBadge}>未入力</span>}</td>
+                      <td style={td} className="garden-cell-text">
                         {canReassignBookingCorp ? (
                           <select aria-label={`${applicant}の仕分け法人名`} value={row.booking_corp_id ?? effectiveCorpId(row) ?? ""}
                             style={{ width: "100%" }}
@@ -647,16 +647,16 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                           <div style={reassignedLabel}>{corpLabel(effectiveCorpId(row), sortedCorps)} → {corpLabel(row.booking_corp_id, sortedCorps)}</div>
                         )}
                       </td>
-                      <td style={td}>{row.fiscal_period ?? "—"}</td>
-                      <td style={td}>{category}</td>
-                      <td style={td}>{row.store_name ?? "-"}</td>
-                      <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
-                      <td style={td}>{journal.debitAccount}</td>
-                      <td style={td}><span style={taxBadge(journal.debitTaxClass)}>{journal.debitTaxClass}</span></td>
-                      <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(journal.debitTaxAmount)}</td>
-                      <td style={td}>現金</td>
-                      <td style={td}>{journal.description}</td>
-                      <td style={td}><span style={journal.ok ? okBadge : errorBadge}>{journal.note}</span>
+                      <td style={td} className="garden-cell-text">{row.fiscal_period ?? "—"}</td>
+                      <td style={td} className="garden-cell-text">{category}</td>
+                      <td style={td} className="garden-cell-text">{row.store_name ?? "-"}</td>
+                      <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }} className="garden-cell-number">{yen(row.amount ?? 0)}</td>
+                      <td style={td} className="garden-cell-text">{journal.debitAccount}</td>
+                      <td style={td} className="garden-cell-text"><span style={taxBadge(journal.debitTaxClass)}>{journal.debitTaxClass}</span></td>
+                      <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }} className="garden-cell-number">{yen(journal.debitTaxAmount)}</td>
+                      <td style={td} className="garden-cell-text">現金</td>
+                      <td style={td} className="garden-cell-text">{journal.description}</td>
+                      <td style={td} className="garden-cell-text"><span style={journal.ok ? okBadge : errorBadge}>{journal.note}</span>
                         {!journal.ok && canManageSoftDelete && (
                           <button type="button" style={{ ...deleteBtn, marginLeft: 8, padding: "2px 10px", fontSize: 12 }} disabled={busy} onClick={() => void softDeleteRows([row], "対象外（要確認）")}>対象外として削除</button>
                         )}

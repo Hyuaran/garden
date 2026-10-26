@@ -242,16 +242,16 @@ export default function PayrollNoticeClient({
           <thead><tr><th>日時</th><th>対象チーム</th><th>送信者</th><th>交通費</th><th>研修</th><th>紹介</th><th>Chatwork</th><th></th></tr></thead>
           <tbody>
             {history.map((item) => <tr key={item.id}>
-              <td>{compactDate(item.submitted_at)}</td>
-              <td>{item.team}</td>
-              <td {...CLARITY_MASK}>{item.submitter_name}</td>
-              <td>{summarizeFlag(item.commute_flag, item.commute_people?.length ?? 0)}</td>
-              <td>{summarizeFlag(item.training_flag, item.training_people?.length ?? 0)}</td>
-              <td>{summarizeFlag(item.referral_flag, item.referral_people?.length ?? 0)}</td>
-              <td>{item.chatwork_sent_at ? "投稿済み" : item.chatwork_error ? "未送信" : "処理中"}</td>
-              <td><button className={styles.linkButton} type="button" onClick={() => setHistoryBody(item.chatwork_message)}>本文を見る</button></td>
+              <td className="garden-cell-fixed">{compactDate(item.submitted_at)}</td>
+              <td className="garden-cell-text">{item.team}</td>
+              <td {...CLARITY_MASK} className="garden-cell-text">{item.submitter_name}</td>
+              <td className="garden-cell-number">{summarizeFlag(item.commute_flag, item.commute_people?.length ?? 0)}</td>
+              <td className="garden-cell-number">{summarizeFlag(item.training_flag, item.training_people?.length ?? 0)}</td>
+              <td className="garden-cell-number">{summarizeFlag(item.referral_flag, item.referral_people?.length ?? 0)}</td>
+              <td className="garden-cell-mark">{item.chatwork_sent_at ? "投稿済み" : item.chatwork_error ? "未送信" : "処理中"}</td>
+              <td className="garden-cell-text"><button className={styles.linkButton} type="button" onClick={() => setHistoryBody(item.chatwork_message)}>本文を見る</button></td>
             </tr>)}
-            {history.length === 0 && <tr><td colSpan={8}>送信履歴はまだありません。</td></tr>}
+            {history.length === 0 && <tr><td colSpan={8} className="garden-cell-text">送信履歴はまだありません。</td></tr>}
           </tbody>
         </StickyTable>
       </div>

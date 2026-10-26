@@ -127,10 +127,10 @@ export default function InsurancePage() {
   }
 
   const columns: Column<Insurance>[] = [
-    { key: "id",    header: "ID",           render: (r) => r.insurance_id, width: 110 },
-    { key: "year",  header: "年度",         render: (r) => r.fiscal_year,  width: 70 },
-    { key: "from",  header: "開始",         render: (r) => r.effective_from, width: 120 },
-    { key: "to",    header: "終了",         render: (r) => r.effective_to ?? "—", width: 120 },
+    { key: "id",    header: "ID", align: "center",           render: (r) => r.insurance_id, width: 110 },
+    { key: "year",  header: "年度", align: "center",         render: (r) => r.fiscal_year,  width: 70 },
+    { key: "from",  header: "開始", align: "center",         render: (r) => r.effective_from, width: 120 },
+    { key: "to",    header: "終了", align: "center",         render: (r) => r.effective_to ?? "—", width: 120 },
     { key: "health", header: "健康保険",    render: (r) => `${r.health_insurance_rate}%`, width: 90, align: "right" },
     { key: "nursing", header: "介護",        render: (r) => `${r.nursing_insurance_rate}%`, width: 80, align: "right" },
     { key: "pension", header: "厚生年金",    render: (r) => `${r.pension_rate}%`, width: 90, align: "right" },
@@ -142,7 +142,7 @@ export default function InsurancePage() {
         <Button variant="secondary" onClick={() => setEditTarget(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
         <Button variant={r.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{r.is_active ? "無効化" : "有効化"}</Button>
       </div>
-    ), width: 170, align: "right" },
+    ), width: 170, align: "left" },
   ];
 
   return (

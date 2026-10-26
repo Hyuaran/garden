@@ -3512,3 +3512,9 @@ body.home-concept-active {
 :where(input[type="radio"]) { accent-color: var(--teal, #0f9f97); width: 18px; height: 18px; margin: 0; flex-shrink: 0; }
 :where(.garden-radio) { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 :where(.garden-radio-group) { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+
+/* 表の本文：文章・名前／日付・コード／印・状態／比較する数字（全画面共通） */
+table :is(td, th).garden-cell-text { text-align:left !important; }
+table :is(td, th).garden-cell-fixed, table :is(td, th).garden-cell-mark { text-align:center !important; }
+table :is(td, th).garden-cell-number { text-align:right !important; font-variant-numeric:tabular-nums; }
+table :is(td, th):is(.garden-cell-text, .garden-cell-fixed, .garden-cell-mark, .garden-cell-number) :is(input:not([type=checkbox]):not([type=radio]), select) { text-align:inherit; }

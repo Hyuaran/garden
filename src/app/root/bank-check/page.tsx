@@ -186,12 +186,12 @@ export default function BankCheckPage() {
               <tbody {...CLARITY_MASK}>
                 {visible.map((row) => (
                   <tr key={row.id}>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{row.employeeName}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{row.sourceLabel}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, minWidth: 220, whiteSpace: "nowrap" }}>{row.registeredLabel}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, color: row.issueLabel === "廃止済み" ? colors.danger : colors.warning, fontWeight: 700, whiteSpace: "nowrap" }}>{row.issueLabel}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, minWidth: 180, whiteSpace: "nowrap" }}>{row.candidateLabel}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }} className="garden-cell-text">{row.employeeName}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }} className="garden-cell-text">{row.sourceLabel}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, minWidth: 220, whiteSpace: "nowrap" }} className="garden-cell-text">{row.registeredLabel}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, color: row.issueLabel === "廃止済み" ? colors.danger : colors.warning, fontWeight: 700, whiteSpace: "nowrap" }} className="garden-cell-mark">{row.issueLabel}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, minWidth: 180, whiteSpace: "nowrap" }} className="garden-cell-text">{row.candidateLabel}</td>
+                    <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }} className="garden-cell-text">
                       {row.issueLabel === "廃止済み" && !row.canApply ? <Button variant="secondary" onClick={() => openSuccessor(row)}>後継を登録</Button> : null}
                       {row.canApply && row.source === "history" ? <Button onClick={() => void apply(row)}>この値で登録</Button> : null}
                     </td>
@@ -212,11 +212,11 @@ export default function BankCheckPage() {
             <tbody>
               {state.datasets.map((row) => (
                 <tr key={row.id ?? row.imported_at}>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{formatDateTime(row.imported_at)}</td>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{row.source_date}</td>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>{row.status === "skipped_same" ? "変更なし" : row.status === "ok" ? "更新済み" : "失敗"}</td>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>追加 {(row.banks_added ?? 0) + (row.branches_added ?? 0)}・改称 {(row.banks_renamed ?? 0) + (row.branches_renamed ?? 0)}・廃止 {(row.banks_expired ?? 0) + (row.branches_expired ?? 0)}</td>
-                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }}>点検 {row.check_findings ?? "-"} 件</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }} className="garden-cell-fixed">{formatDateTime(row.imported_at)}</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }} className="garden-cell-fixed">{row.source_date}</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }} className="garden-cell-mark">{row.status === "skipped_same" ? "変更なし" : row.status === "ok" ? "更新済み" : "失敗"}</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }} className="garden-cell-number">追加 {(row.banks_added ?? 0) + (row.branches_added ?? 0)}・改称 {(row.banks_renamed ?? 0) + (row.branches_renamed ?? 0)}・廃止 {(row.banks_expired ?? 0) + (row.branches_expired ?? 0)}</td>
+                  <td style={{ padding: 8, borderTop: `1px solid ${colors.border}`, whiteSpace: "nowrap" }} className="garden-cell-number">点検 {row.check_findings ?? "-"} 件</td>
                 </tr>
               ))}
             </tbody>

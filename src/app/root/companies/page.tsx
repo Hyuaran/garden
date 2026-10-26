@@ -197,32 +197,32 @@ export default function CompaniesPage() {
   }
 
   const columns: Column<Company>[] = [
-    { key: "id", header: "ID", render: (c) => c.company_id, width: 100 },
+    { key: "id", header: "ID", align: "center", render: (c) => c.company_id, width: 100 },
     {
       key: "name",
-      header: "法人名",
+      header: "法人名", align: "left",
       render: (c) => c.company_name,
       width: 220,
     },
     {
       key: "kana",
-      header: "カナ",
+      header: "カナ", align: "left",
       render: (c) => c.company_name_kana,
       width: 220,
     },
     {
       key: "rep",
-      header: "代表者",
+      header: "代表者", align: "left",
       render: (c) => <span {...CLARITY_MASK}>{c.representative}</span>,
       width: 120,
     },
     {
       key: "bank",
-      header: "デフォルト銀行",
+      header: "デフォルト銀行", align: "left",
       render: (c) => c.default_bank,
       width: 120,
     },
-    { key: "phone", header: "電話", render: (c) => c.phone ?? "—" },
+    { key: "phone", header: "電話", align: "center", render: (c) => c.phone ?? "—" },
     {
       key: "status",
       header: "状態",
@@ -257,7 +257,7 @@ export default function CompaniesPage() {
         </div>
       ),
       width: 170,
-      align: "right",
+      align: "left",
     },
   ];
 

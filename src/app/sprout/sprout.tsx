@@ -36,7 +36,7 @@ function Value({ value }: { value: unknown }) {
     if (value.every(v => typeof v !== "object")) return <>{value.join("・")}</>;
     if (value.every(v => v && typeof v === "object" && "id" in v)) {
       const keys = [...new Set(value.flatMap(v => Object.keys(v)))].filter(k => k !== "id");
-      return <div className={styles.recordTable}><table><thead><tr>{keys.map(k => <th key={k}>{labels[k] || "記録"}</th>)}</tr></thead><tbody>{value.map((v,i) => <tr key={i}>{keys.map(k => <td key={k}><Value value={v[k]} /></td>)}</tr>)}</tbody></table></div>;
+      return <div className={styles.recordTable}><table><thead><tr>{keys.map(k => <th key={k}>{labels[k] || "記録"}</th>)}</tr></thead><tbody>{value.map((v,i) => <tr key={i}>{keys.map(k => <td key={k} className={/日時|日付|時刻|番号|電話|時間帯|期間|曜日/.test(labels[k] || k) ? "garden-cell-fixed" : /時給|給与|年齢/.test(labels[k] || k) ? "garden-cell-number" : (labels[k] || k) === "結果" ? "garden-cell-mark" : "garden-cell-text"}><Value value={v[k]} /></td>)}</tr>)}</tbody></table></div>;
     }
     return <>{value.map(v => typeof v === "object" && v ? v.name || "" : String(v)).join("・")}</>;
   }
@@ -58,13 +58,13 @@ export default function Sprout() {
   const row = data.applicants.find(a => a.kintone_record_id === selected);
   const filtered = filterApplicants(data.applicants, tab, month, statuses, search, todayJst());
   const columns: DataColumn<Applicant>[] = [
-    { id: "applied_date", label: "応募日", type: "date", value: a => a.applied_date || "" },
+    { id: "applied_date", label: "応募日",  type: "date", value: a => a.applied_date || "" },
     { id: "name", label: "氏名", type: "text", value: a => a.name, render: a => <button className={styles.name} data-applicant-id={a.kintone_record_id} onClick={() => setSelected(a.kintone_record_id)}>{a.name || "氏名未登録"}</button> },
-    { id: "age_group", label: "年代", type: "text", value: a => a.age_group },
+    { id: "age_group", label: "年代", align: "fixed", type: "text", value: a => a.age_group },
     { id: "method", label: "応募方法", type: "text", value: a => a.application_methods.join("・") },
-    { id: "status", label: "状況", type: "text", value: a => a.status },
+    { id: "status", label: "状況", align: "mark", type: "text", value: a => a.status },
     { id: "interview", label: "面接予定日時", type: "date", value: a => a.interview_at || "", render: a => showDate(a.interview_at) },
-    { id: "training", label: "研修日", type: "date", value: a => a.training_at || a.training_date || "", render: a => showDate(a.training_at || a.training_date) },
+    { id: "training", label: "研修日",  type: "date", value: a => a.training_at || a.training_date || "", render: a => showDate(a.training_at || a.training_date) },
   ];
   const months = [...new Set([todayJst().slice(0,7), ...data.applicants.map(a => a.applied_date?.slice(0,7)).filter((v): v is string => !!v)])].sort().reverse();
   async function refresh() {

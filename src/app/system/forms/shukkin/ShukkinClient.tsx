@@ -489,10 +489,10 @@ function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
                 const blocked = member.lineLinkSource === "unfollowed";
                 const linked = Boolean(member.lineUserId) && !blocked;
                 return <tr key={member.employeeNumber} {...CLARITY_MASK}>
-                  <td>{member.employeeNumber}</td>
-                  <td>{member.name || "名前未設定"}</td>
-                  <td>{blocked ? "ブロック中" : linked ? `済み（${member.lineDisplayName || "表示名なし"}）` : "未"}</td>
-                  <td>{linked && <button type="button" disabled={saving} onClick={() => void unlink(member.employeeNumber, member.name)}>外す</button>}</td>
+                  <td className="garden-cell-fixed">{member.employeeNumber}</td>
+                  <td className="garden-cell-text">{member.name || "名前未設定"}</td>
+                  <td className="garden-cell-mark">{blocked ? "ブロック中" : linked ? `済み（${member.lineDisplayName || "表示名なし"}）` : "未"}</td>
+                  <td className="garden-cell-text">{linked && <button type="button" disabled={saving} onClick={() => void unlink(member.employeeNumber, member.name)}>外す</button>}</td>
                 </tr>;
               })}
             </tbody>
@@ -503,17 +503,17 @@ function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
           <StickyTable className={styles.linkTable}>
             <thead><tr><th>LINE の表示名</th><th>最後の文</th><th>最後に送ってきた日時</th><th>この人は</th><th></th></tr></thead>
             <tbody>
-              {pending.length === 0 ? <tr><td colSpan={5}>なし</td></tr> : pending.map((item) => <tr key={item.lineUserId}>
-                <td>{item.displayName || "表示名なし"}</td>
-                <td>{item.lastText}</td>
-                <td>{item.lastSeenAtLabel}</td>
-                <td>
+              {pending.length === 0 ? <tr><td colSpan={5} className="garden-cell-text">なし</td></tr> : pending.map((item) => <tr key={item.lineUserId}>
+                <td className="garden-cell-text">{item.displayName || "表示名なし"}</td>
+                <td className="garden-cell-text">{item.lastText}</td>
+                <td className="garden-cell-fixed">{item.lastSeenAtLabel}</td>
+                <td className="garden-cell-text">
                   <select value={selected[item.lineUserId] ?? ""} disabled={saving} onChange={(event) => setSelected((current) => ({ ...current, [item.lineUserId]: event.currentTarget.value }))}>
                     <option value="">選んでください</option>
                     {unlinkedRows.map((member) => <option key={member.employeeNumber} value={member.employeeNumber}>{member.employeeNumber} {member.name}</option>)}
                   </select>
                 </td>
-                <td><button type="button" disabled={saving || !selected[item.lineUserId]} onClick={() => void link(item.lineUserId)}>紐づける</button></td>
+                <td className="garden-cell-text"><button type="button" disabled={saving || !selected[item.lineUserId]} onClick={() => void link(item.lineUserId)}>紐づける</button></td>
               </tr>)}
             </tbody>
           </StickyTable>

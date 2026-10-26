@@ -37,7 +37,7 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
       { id:"income", label:"入金", value:income, filterValue:(t: CardTransaction) => t.side === "INCOME" ? String(income(t)) : "", type:"number" as const, right:true, render:(t: CardTransaction) => t.side === "INCOME" ? yen(income(t)) : "" },
       { id:"expense", label:"出金", value:expense, filterValue:(t: CardTransaction) => t.side === "EXPENSE" ? String(expense(t)) : "", type:"number" as const, right:true, render:(t: CardTransaction) => t.side === "EXPENSE" ? yen(expense(t)) : "" },
     ]),
-    { id:"journal", label:"仕訳", value:t => journalLabel(t.journalizing_status), type:"text" },
+    { id:"journal", label:"仕訳", value:t => journalLabel(t.journalizing_status), type:"text", align:"mark" },
   ];
   const periodControl = <PeriodSelect value={period} onChange={value => {
     setPeriod(value); const url = new URL(window.location.href); url.searchParams.set("period", value); window.history.replaceState(null, "", url);

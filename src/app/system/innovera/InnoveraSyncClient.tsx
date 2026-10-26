@@ -155,10 +155,10 @@ export default function InnoveraSyncClient({ initialLogs, initialCheckedAt }: Pr
           <thead><tr><th>種類</th><th>識別番号</th><th>回線番号</th><th>内容</th></tr></thead>
           <tbody>
             {details.map((item, index) => <tr key={`${item.kind}-${item.circuitNum}-${index}`}>
-              <td data-label="種類"><span className={`${styles.badge} ${styles[item.kind]}`}>{kindLabel(item.kind)}</span></td>
-              <td data-label="識別番号">{item.circuitNum}</td>
-              <td data-label="回線番号">{item.lineNumber}</td>
-              <td data-label="内容">{detailText(item)}{item.result === "failed" ? `（失敗：${item.error ?? ""}）` : ""}</td>
+              <td data-label="種類" className="garden-cell-text"><span className={`${styles.badge} ${styles[item.kind]}`}>{kindLabel(item.kind)}</span></td>
+              <td data-label="識別番号" className="garden-cell-fixed">{item.circuitNum}</td>
+              <td data-label="回線番号" className="garden-cell-fixed">{item.lineNumber}</td>
+              <td data-label="内容" className="garden-cell-text">{detailText(item)}{item.result === "failed" ? `（失敗：${item.error ?? ""}）` : ""}</td>
             </tr>)}
           </tbody>
         </StickyTable>

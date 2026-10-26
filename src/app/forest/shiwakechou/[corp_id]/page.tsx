@@ -465,19 +465,19 @@ function BankAccountUploadCard(props: { account: AccountRow }) {
                     <tbody>
                       {result.rows_preview.map((r, i) => (
                         <tr key={i}>
-                          <td style={cellTd}>{r.transaction_date}</td>
-                          <td style={cellTd}>
+                          <td style={cellTd} className="garden-cell-fixed">{r.transaction_date}</td>
+                          <td style={cellTd} className="garden-cell-mark">
                             {r.flow === "deposit" ? "入" : "出"}
                           </td>
-                          <td style={{ ...cellTd, textAlign: "right" }}>
+                          <td style={{ ...cellTd, textAlign: "right" }} className="garden-cell-number">
                             {formatYen(r.amount)}
                           </td>
                           <td
                             style={{ ...cellTd, maxWidth: 300, overflow: "hidden" }}
-                          >
+                           className="garden-cell-text">
                             {r.description.slice(0, 40)}
                           </td>
-                          <td style={{ ...cellTd, textAlign: "right" }}>
+                          <td style={{ ...cellTd, textAlign: "right" }} className="garden-cell-number">
                             {formatYen(r.balance_after)}
                           </td>
                         </tr>

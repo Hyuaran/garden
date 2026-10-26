@@ -210,7 +210,7 @@ function CsvExportContent() {
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-3 py-8 text-center text-gray-400"
+                      className="px-3 py-8 text-center text-gray-400 garden-cell-text"
                     >
                       出力対象（承認済み）がありません
                     </td>
@@ -218,7 +218,7 @@ function CsvExportContent() {
                 ) : (
                   transfers.map((t) => (
                     <tr key={t.transfer_id}>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 garden-cell-mark">
                         <input
                           type="checkbox"
                           aria-label={`選択 ${t.transfer_id}`}
@@ -227,17 +227,17 @@ function CsvExportContent() {
                           className="accent-emerald-600"
                         />
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs">
+                      <td className="px-3 py-2 font-mono text-xs garden-cell-text">
                         {t.transfer_id}
                       </td>
-                      <td className="px-3 py-2" {...CLARITY_MASK}>{t.payee_name}</td>
-                      <td className="px-3 py-2 text-gray-600">
+                      <td className="px-3 py-2 garden-cell-text" {...CLARITY_MASK}>{t.payee_name}</td>
+                      <td className="px-3 py-2 text-gray-600 garden-cell-text">
                         {t.payee_bank_name ?? "—"}
                       </td>
-                      <td className="px-3 py-2 text-right font-medium">
+                      <td className="px-3 py-2 text-right font-medium garden-cell-number">
                         ¥{t.amount.toLocaleString()}
                       </td>
-                      <td className="px-3 py-2 text-gray-600">
+                      <td className="px-3 py-2 text-gray-600 garden-cell-fixed">
                         {t.scheduled_date ?? "—"}
                       </td>
                     </tr>

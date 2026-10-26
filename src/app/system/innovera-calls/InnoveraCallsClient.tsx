@@ -525,16 +525,16 @@ export default function InnoveraCallsClient({
           <tbody>
             {pagedCalls.length ? pagedCalls.map((call) => (
               <tr key={call.id}>
-                <td>{callDisplayTime(call)}</td>
-                <td>{call.typeLabel}</td>
-                <td>{call.counterpartNumber || "-"}</td>
-                <td>{call.circuitName || "-"}</td>
-                <td>{call.employeeName || call.extension || "-"}</td>
-                <td>{call.inProgress ? "通話中" : call.talkTimeLabel}</td>
-                <td>{call.inProgress ? "通話中" : call.statusLabel}</td>
-                <td>{call.canPlay && (call.talkSeconds ?? 0) > 0 ? <button type="button" onClick={() => setPlaying(call)}>再生</button> : call.inProgress ? "通話中" : "-"}</td>
+                <td className="garden-cell-fixed">{callDisplayTime(call)}</td>
+                <td className="garden-cell-mark">{call.typeLabel}</td>
+                <td className="garden-cell-fixed">{call.counterpartNumber || "-"}</td>
+                <td className="garden-cell-text">{call.circuitName || "-"}</td>
+                <td className="garden-cell-text">{call.employeeName || call.extension || "-"}</td>
+                <td className="garden-cell-number">{call.inProgress ? "通話中" : call.talkTimeLabel}</td>
+                <td className="garden-cell-mark">{call.inProgress ? "通話中" : call.statusLabel}</td>
+                <td className="garden-cell-mark">{call.canPlay && (call.talkSeconds ?? 0) > 0 ? <button type="button" onClick={() => setPlaying(call)}>再生</button> : call.inProgress ? "通話中" : "-"}</td>
               </tr>
-            )) : <tr><td colSpan={8}>{loading ? "読み込み中..." : "履歴がありません"}</td></tr>}
+            )) : <tr><td colSpan={8} className="garden-cell-text">{loading ? "読み込み中..." : "履歴がありません"}</td></tr>}
           </tbody>
         </StickyTable>
       </div>

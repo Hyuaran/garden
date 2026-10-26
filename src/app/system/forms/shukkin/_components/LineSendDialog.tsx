@@ -179,13 +179,13 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
               <thead><tr><th>シフト</th><th>送れる人</th><th>届かない人</th><th>文面</th></tr></thead>
               <tbody>
                 {rows.map(({ block, sendable, undelivered }) => <tr key={block.shift}>
-                  <td>{block.shift}</td>
-                  <td className={styles.names}>{sendable.map(displayName).join("・") || "なし"}{sendable.length > 0 ? `（${sendable.length}）` : ""}</td>
-                  <td className={styles.undelivered}>{undelivered.map((person) => {
+                  <td className="garden-cell-text">{block.shift}</td>
+                  <td className={[styles.names, "garden-cell-text"].join(" ")}>{sendable.map(displayName).join("・") || "なし"}{sendable.length > 0 ? `（${sendable.length}）` : ""}</td>
+                  <td className={[styles.undelivered, "garden-cell-text"].join(" ")}>{undelivered.map((person) => {
                     const preview = previewByNumber.get(person.employeeNumber);
                     return `${displayName(person)}（${preview?.blocked ? "ブロック中" : "未"}）`;
                   }).join("・") || "なし"}</td>
-                  <td><details className={styles.details}><summary>見る</summary><pre>{block.message}</pre></details></td>
+                  <td className="garden-cell-text"><details className={styles.details}><summary>見る</summary><pre>{block.message}</pre></details></td>
                 </tr>)}
               </tbody>
             </table>

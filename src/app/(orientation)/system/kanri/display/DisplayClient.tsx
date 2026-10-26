@@ -65,8 +65,8 @@ export default function DisplayClient({ initialData }: { initialData: DisplayDat
         </thead>
         <tbody>
           {data.rows.map((row) => <tr key={row.key} className={row.emphasis ? styles.emphasisRow : undefined}>
-            <th>{row.label}</th>
-            {row.values.map((value, index) => <td key={`${row.key}-${data.columns[index]?.key}`}>{value}</td>)}
+            <th className="garden-cell-text">{row.label}</th>
+            {row.values.map((value, index) => <td key={`${row.key}-${data.columns[index]?.key}`} className="garden-cell-number">{value}</td>)}
           </tr>)}
         </tbody>
       </table>

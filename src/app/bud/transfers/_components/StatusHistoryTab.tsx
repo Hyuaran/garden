@@ -74,10 +74,10 @@ export function StatusHistoryTab({ transferId }: Props) {
         <tbody className="divide-y divide-gray-100 text-gray-900">
           {rows.map((r) => (
             <tr key={r.id}>
-              <td className="px-3 py-2 text-xs text-gray-600">
+              <td className="px-3 py-2 text-xs text-gray-600 garden-cell-fixed">
                 {new Date(r.changed_at).toLocaleString("ja-JP")}
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-2 garden-cell-text">
                 <div className="flex items-center gap-2">
                   {r.from_status ? (
                     <StatusBadge status={r.from_status as TransferStatus} size="sm" />
@@ -88,10 +88,10 @@ export function StatusHistoryTab({ transferId }: Props) {
                   <StatusBadge status={r.to_status as TransferStatus} size="sm" />
                 </div>
               </td>
-              <td className="px-3 py-2 text-xs text-gray-700">
+              <td className="px-3 py-2 text-xs text-gray-700 garden-cell-text">
                 {r.changed_by_role}
               </td>
-              <td className="px-3 py-2 text-xs text-gray-700">
+              <td className="px-3 py-2 text-xs text-gray-700 garden-cell-text">
                 {r.reason ?? "—"}
               </td>
             </tr>

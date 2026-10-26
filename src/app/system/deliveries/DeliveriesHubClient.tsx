@@ -77,12 +77,12 @@ export default function DeliveriesHubClient({ deliveries }: { deliveries: System
           <thead><tr><th>配信</th><th>内容</th><th>時刻</th><th>送り先</th><th>状態</th><th></th></tr></thead>
           <tbody>
             {deliveries.map((delivery) => <tr className={delivery.status === "upcoming" ? styles.muted : ""} key={delivery.slug}>
-              <td>{delivery.name}</td>
-              <td>{delivery.description}</td>
-              <td>{delivery.schedule}</td>
-              <td>{delivery.recipient}</td>
-              <td><span className={`${styles.statusBadge} ${styles[delivery.status]}`}>{delivery.statusLabel}</span></td>
-              <td><Link href={delivery.href}>開く</Link></td>
+              <td className="garden-cell-text">{delivery.name}</td>
+              <td className="garden-cell-text">{delivery.description}</td>
+              <td className="garden-cell-fixed">{delivery.schedule}</td>
+              <td className="garden-cell-text">{delivery.recipient}</td>
+              <td className="garden-cell-mark"><span className={`${styles.statusBadge} ${styles[delivery.status]}`}>{delivery.statusLabel}</span></td>
+              <td className="garden-cell-text"><Link href={delivery.href}>開く</Link></td>
             </tr>)}
           </tbody>
         </StickyTable>

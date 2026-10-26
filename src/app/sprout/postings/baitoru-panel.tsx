@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect,useState } from 'react';
 import { loadBaitoru,saveBaitoru,retryBaitoru,createPosting,endPosting,cancelPosting,changeContentOption } from './baitoru-actions';
 import { postingStatus, todayJst, type Posting } from '@/lib/sprout/postings';
@@ -27,11 +27,11 @@ export default function BaitoruPanel() {
   try {await action();await reload();setMessage(success);} catch {setMessage('保存できませんでした。内容を確認してください');} finally {setBusy(false);}
  }
  const columns:DataColumn<Posting>[]=[
-  {id:'status',label:'状態',type:'text',value:p=>postingStatus(p,today)},
-  {id:'period',label:'掲載期間',type:'text',value:p=>`${p.start_date} ～ ${p.end_date}`},
+  {id:'status',label:'状態', align: "mark",type:'text',value:p=>postingStatus(p,today)},
+  {id:'period',label:'掲載期間', align: "fixed",type:'text',value:p=>`${p.start_date} ～ ${p.end_date}`},
   {id:'content',label:'掲載内容',type:'text',value:p=>p.content},
   {id:'created_at',label:'登録日',type:'date',value:p=>p.created_at,render:p=>new Date(p.created_at).toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'})},
-  {id:'operation',label:'操作',type:'text',value:()=>'',render:p=>postingStatus(p,today)==='掲載中'?<button disabled={busy} onClick={()=>void change(()=>endPosting(p.id),'掲載を終えました')}>今すぐ終える</button>:postingStatus(p,today)==='予定'?<button disabled={busy} onClick={()=>void change(()=>cancelPosting(p.id),'掲載を取り消しました')}>取り消す</button>:'─'},
+  {id:'operation',label:'操作', align: "mark",type:'text',value:()=>'',render:p=>postingStatus(p,today)==='掲載中'?<button disabled={busy} onClick={()=>void change(()=>endPosting(p.id),'掲載を終えました')}>今すぐ終える</button>:postingStatus(p,today)==='予定'?<button disabled={busy} onClick={()=>void change(()=>cancelPosting(p.id),'掲載を取り消しました')}>取り消す</button>:'─'},
  ];
  return <section className={styles.panel} aria-label="バイトル取り込み">
   {message && <p role="status">{message}</p>}
@@ -49,7 +49,7 @@ export default function BaitoruPanel() {
    <label>メンション<textarea value={s.mentions} onChange={e=>update({mentions:e.target.value})}/></label>
    <label>1回に登録する上限<input type="number" required min={1} max={100} value={s.max_per_run} onChange={e=>update({max_per_run:Number(e.target.value)})}/></label>
    <button type="submit">保存</button></fieldset><p>最後に届いた時刻：{s.last_called_at?new Date(s.last_called_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'まだ届いていません'}</p></form>}
-  <h2>取り込みの記録</h2><div className={styles.history}><table><thead><tr>{['日時','読んだ行','新規','重複でとばし（理由別）','不足でとばし','対象外でとばし','次回に回す','通知の失敗','結果'].map(t=><th key={t}>{t}</th>)}</tr></thead><tbody>{data?.runs.map(r=><tr key={r.id}><td>{new Date(r.started_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})}</td><td>{r.counts.totalRows || 0}</td><td>{r.counts.added || 0}</td><td>{Object.entries(r.dedup_by_reason).map(([k,v])=><div key={k}>{reasons[k] || '重複'}：{v}</div>)}</td><td>{r.counts.missing || 0}</td><td>{(r.counts.seed||0)+(r.counts.period||0)+(r.counts.excluded||0)}</td><td>{r.counts.trimmed || 0}</td><td>{r.counts.notifyFailed || 0}</td><td>{r.error || '完了'}</td></tr>)}</tbody></table></div>
+  <h2>取り込みの記録</h2><div className={styles.history}><table><thead><tr>{['日時','読んだ行','新規','重複でとばし（理由別）','不足でとばし','対象外でとばし','次回に回す','通知の失敗','結果'].map(t=><th key={t}>{t}</th>)}</tr></thead><tbody>{data?.runs.map(r=><tr key={r.id}><td className="garden-cell-fixed">{new Date(r.started_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})}</td><td className="garden-cell-number">{r.counts.totalRows || 0}</td><td className="garden-cell-number">{r.counts.added || 0}</td><td className="garden-cell-number">{Object.entries(r.dedup_by_reason).map(([k,v])=><div key={k}>{reasons[k] || '重複'}：{v}</div>)}</td><td className="garden-cell-number">{r.counts.missing || 0}</td><td className="garden-cell-number">{(r.counts.seed||0)+(r.counts.period||0)+(r.counts.excluded||0)}</td><td className="garden-cell-number">{r.counts.trimmed || 0}</td><td className="garden-cell-number">{r.counts.notifyFailed || 0}</td><td className="garden-cell-text">{r.error || '完了'}</td></tr>)}</tbody></table></div>
   <h2>通知できなかった応募</h2>{data?.failed.map(a=><p key={a.kintone_record_id}>{a.name}：{a.notify_error} <button disabled={busy} onClick={()=>void retry(a.kintone_record_id)}>もう一度知らせる</button></p>)}
  </section>;
 }

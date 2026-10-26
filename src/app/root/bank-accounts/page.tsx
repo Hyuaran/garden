@@ -147,21 +147,21 @@ export default function BankAccountsPage() {
   }
 
   const columns: Column<BankAccount>[] = [
-    { key: "id", header: "ID", render: (a) => a.account_id, width: 90 },
-    { key: "company", header: "法人", render: (a) => companyMap.get(a.company_id)?.company_name ?? a.company_id, width: 180 },
-    { key: "bank", header: "銀行", render: (a) => `${a.bank_name} (${a.bank_code})`, width: 180 },
-    { key: "branch", header: "支店", render: (a) => `${a.branch_name} (${a.branch_code})`, width: 160 },
-    { key: "type", header: "種別", render: (a) => a.account_type, width: 60 },
-    { key: "number", header: "口座番号", render: (a) => a.account_number, width: 100 },
-    { key: "holder", header: "名義", render: (a) => <span {...CLARITY_MASK}>{a.account_holder}</span> },
-    { key: "purpose", header: "用途", render: (a) => a.purpose ?? "—", width: 80 },
+    { key: "id", header: "ID", align: "center", render: (a) => a.account_id, width: 90 },
+    { key: "company", header: "法人", align: "left", render: (a) => companyMap.get(a.company_id)?.company_name ?? a.company_id, width: 180 },
+    { key: "bank", header: "銀行", align: "left", render: (a) => `${a.bank_name} (${a.bank_code})`, width: 180 },
+    { key: "branch", header: "支店", align: "left", render: (a) => `${a.branch_name} (${a.branch_code})`, width: 160 },
+    { key: "type", header: "種別", align: "left", render: (a) => a.account_type, width: 60 },
+    { key: "number", header: "口座番号", align: "center", render: (a) => a.account_number, width: 100 },
+    { key: "holder", header: "名義", align: "left", render: (a) => <span {...CLARITY_MASK}>{a.account_holder}</span> },
+    { key: "purpose", header: "用途", align: "left", render: (a) => a.purpose ?? "—", width: 80 },
     { key: "status", header: "状態", render: (a) => <StatusBadge active={a.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (a) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
         <Button variant="secondary" onClick={() => setEditTarget(a)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
         <Button variant={a.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(a)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{a.is_active ? "無効化" : "有効化"}</Button>
       </div>
-    ), width: 170, align: "right" },
+    ), width: 170, align: "left" },
   ];
 
   return (

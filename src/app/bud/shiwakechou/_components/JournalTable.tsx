@@ -58,25 +58,25 @@ export function JournalTable({ entries, accounts }: Props) {
               key={e.id}
               className={e.status === "cancelled" ? "opacity-50" : ""}
             >
-              <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+              <td className="px-3 py-2 text-gray-600 whitespace-nowrap garden-cell-fixed">
                 {e.entryDate}
               </td>
-              <td className="px-3 py-2 text-gray-800">
+              <td className="px-3 py-2 text-gray-800 garden-cell-text">
                 {accountLabel(accounts, e.debitAccountCode)}
               </td>
-              <td className="px-3 py-2 text-gray-800">
+              <td className="px-3 py-2 text-gray-800 garden-cell-text">
                 {accountLabel(accounts, e.creditAccountCode)}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-gray-900 whitespace-nowrap">
+              <td className="px-3 py-2 text-right font-mono text-gray-900 whitespace-nowrap garden-cell-number">
                 {formatYen(e.amount)}
               </td>
-              <td className="px-3 py-2 text-gray-700 max-w-xs truncate">
+              <td className="px-3 py-2 text-gray-700 max-w-xs truncate garden-cell-text">
                 {e.description ?? "—"}
               </td>
-              <td className="px-3 py-2 text-xs text-gray-500">
+              <td className="px-3 py-2 text-xs text-gray-500 garden-cell-text">
                 {SOURCE_LABELS[e.source]}
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-2 garden-cell-mark">
                 <span
                   className={`inline-block px-2 py-0.5 text-xs rounded ${STATUS_BADGE_COLORS[e.status]}`}
                 >

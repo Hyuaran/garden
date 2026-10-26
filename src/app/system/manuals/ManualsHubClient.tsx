@@ -73,10 +73,10 @@ export default function ManualsHubClient({ modules }: { modules: ManualModuleWit
           <thead><tr><th>モジュール</th><th>内容</th><th>件数</th><th></th></tr></thead>
           <tbody>
             {modules.map((module) => <tr key={module.slug}>
-              <td>{module.name}</td>
-              <td>{module.description}</td>
-              <td>{module.count}</td>
-              <td><Link href={`/system/manuals/${module.slug}`}>開く</Link></td>
+              <td className="garden-cell-text">{module.name}</td>
+              <td className="garden-cell-text">{module.description}</td>
+              <td className="garden-cell-number">{module.count}</td>
+              <td className="garden-cell-text"><Link href={`/system/manuals/${module.slug}`}>開く</Link></td>
             </tr>)}
           </tbody>
         </StickyTable>

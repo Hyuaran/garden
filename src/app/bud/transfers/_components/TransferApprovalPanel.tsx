@@ -513,7 +513,7 @@ export function TransferApprovalPanel({
                           cursor: "pointer",
                         }}
                       >
-                        <td style={{ ...tdStyle, textAlign: "center" }}>
+                        <td style={{ ...tdStyle, textAlign: "center" }} className="garden-cell-mark">
                           <input
                             type="checkbox"
                             checked={selected}
@@ -522,13 +522,13 @@ export function TransferApprovalPanel({
                             aria-label={`${row.payee_name ?? row.transfer_id}を選択`}
                           />
                         </td>
-                        <td style={tdStyle}>
+                        <td style={tdStyle} className="garden-cell-mark">
                           <UrgencyBadge urgency={urgency} />
                         </td>
-                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }} className="garden-cell-fixed">
                           {row.scheduled_date ?? "—"}
                         </td>
-                        <td style={tdStyle}>
+                        <td style={tdStyle} className="garden-cell-text">
                           <div style={{ fontWeight: 600 }}>
                             {row.payee_name ?? "—"}
                           </div>
@@ -537,7 +537,7 @@ export function TransferApprovalPanel({
                           </div>
                           <div style={idTextStyle}>{row.transfer_id}</div>
                         </td>
-                        <td style={tdStyle}>
+                        <td style={tdStyle} className="garden-cell-text">
                           <span style={categoryPillStyle}>
                             {formatPaymentCategory(
                               normalizePaymentCategory(row.payment_category),
@@ -551,15 +551,15 @@ export function TransferApprovalPanel({
                             fontWeight: 600,
                             whiteSpace: "nowrap",
                           }}
-                        >
+                         className="garden-cell-number">
                           {yen(row.amount ?? 0)}
                         </td>
-                        <td style={tdStyle}>
+                        <td style={tdStyle} className="garden-cell-mark">
                           <span style={statusPillStyle}>
                             {row.status ?? "—"}
                           </span>
                         </td>
-                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                        <td style={{ ...tdStyle, textAlign: "right" }} className="garden-cell-mark">
                           <button
                             type="button"
                             style={detailButtonStyle}

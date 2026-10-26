@@ -110,3 +110,21 @@ it("opens only enabled rows by pointer or keyboard and ignores interactive desce
  expect(screen.getAllByRole("row")[2]).not.toHaveAttribute("tabindex");
  expect(screen.getByPlaceholderText("氏名・カナで探す")).toBeInTheDocument();
 });
+
+it("aligns dates, numbers and text automatically and gives explicit alignment priority", () => {
+ const alignmentColumns: DataColumn<typeof rows[number]>[] = [
+  { id:"date", label:"日付", type:"date", value:r=>r.date },
+  { id:"amount", label:"金額", type:"number", value:r=>r.amount, render:()=>"なし" },
+  { id:"name", label:"氏名", type:"text", value:r=>r.name },
+  { id:"code", label:"番号", type:"number", align:"fixed", value:r=>r.amount },
+  { id:"status", label:"状態", type:"text", align:"mark", value:()=>"済" },
+  { id:"override", label:"指定優先", type:"date", align:"text", right:true, value:r=>r.date },
+  { id:"count", label:"件数", type:"text", align:"number", value:()=>"—" },
+ ];
+ render(<DataTable rows={[rows[0]]} columns={alignmentColumns} rowKey={r=>r.id} searchText={r=>r.name} defaultSort={{id:"date",direction:"asc"}} />);
+ const cells = within(screen.getAllByRole("row")[1]).getAllByRole("cell");
+ expect(cells.map(cell=>cell.className.trim())).toEqual(["garden-cell-fixed", "garden-cell-number", "garden-cell-text", "garden-cell-fixed", "garden-cell-mark", "garden-cell-text", "garden-cell-number"]);
+ expect(cells[1]).toHaveTextContent("なし");
+ expect(cells[6]).toHaveTextContent("—");
+ expect(screen.getAllByRole("columnheader").every(cell=>!cell.className.includes("garden-cell-"))).toBe(true);
+});

@@ -126,14 +126,14 @@ export default function SiteNewsPanel({ data, role }: { data: CorporateSitesData
           <tr><th>日付</th><th>題名</th><th>種別</th><th>公開</th><th></th></tr>
         </thead>
         <tbody>
-          {loading ? <tr><td colSpan={5}>読込中...</td></tr> : null}
-          {!loading && items.length === 0 ? <tr><td colSpan={5}>お知らせはありません</td></tr> : null}
+          {loading ? <tr><td colSpan={5} className="garden-cell-text">読込中...</td></tr> : null}
+          {!loading && items.length === 0 ? <tr><td colSpan={5} className="garden-cell-text">お知らせはありません</td></tr> : null}
           {!loading && items.map((item) => <tr key={item.id}>
-            <td>{item.published_on}</td>
-            <td>{item.is_published ? item.title : `（非公開）${item.title}`}</td>
-            <td>{kindLabel(item)}</td>
-            <td>{item.is_published ? "公開" : "非公開"}</td>
-            <td>{canEdit ? <button type="button" className={styles.secondaryButton} onClick={() => setForm({
+            <td className="garden-cell-fixed">{item.published_on}</td>
+            <td className="garden-cell-text">{item.is_published ? item.title : `（非公開）${item.title}`}</td>
+            <td className="garden-cell-text">{kindLabel(item)}</td>
+            <td className="garden-cell-mark">{item.is_published ? "公開" : "非公開"}</td>
+            <td className="garden-cell-text">{canEdit ? <button type="button" className={styles.secondaryButton} onClick={() => setForm({
               id: item.id,
               published_on: item.published_on,
               title: item.title,

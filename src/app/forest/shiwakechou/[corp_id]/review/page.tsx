@@ -304,28 +304,28 @@ function ConsistencyCheckSection(props: {
         <tbody>
           {checks.map((c) => (
             <tr key={c.bank_account_id}>
-              <td style={cellTd}>
+              <td style={cellTd} className="garden-cell-text">
                 {c.bank_kind} {c.account_number}
               </td>
-              <td style={{ ...cellTd, textAlign: "right" }}>
+              <td style={{ ...cellTd, textAlign: "right" }} className="garden-cell-number">
                 {c.transaction_count}
               </td>
-              <td style={{ ...cellTd, textAlign: "right" }}>
+              <td style={{ ...cellTd, textAlign: "right" }} className="garden-cell-number">
                 {formatYen(c.opening_balance)}
               </td>
-              <td style={{ ...cellTd, textAlign: "right", color: "#166534" }}>
+              <td style={{ ...cellTd, textAlign: "right", color: "#166534" }} className="garden-cell-number">
                 +{formatYen(c.deposit_sum)}
               </td>
-              <td style={{ ...cellTd, textAlign: "right", color: "#dc2626" }}>
+              <td style={{ ...cellTd, textAlign: "right", color: "#dc2626" }} className="garden-cell-number">
                 -{formatYen(c.withdrawal_sum)}
               </td>
-              <td style={{ ...cellTd, textAlign: "right" }}>
+              <td style={{ ...cellTd, textAlign: "right" }} className="garden-cell-number">
                 {formatYen(c.derived_closing_balance)}
               </td>
-              <td style={{ ...cellTd, textAlign: "right" }}>
+              <td style={{ ...cellTd, textAlign: "right" }} className="garden-cell-number">
                 {formatYen(c.actual_closing_balance)}
               </td>
-              <td style={cellTd}>
+              <td style={cellTd} className="garden-cell-mark">
                 {c.transaction_count === 0
                   ? <span style={{ color: "#6b7280" }}>—</span>
                   : c.matched
@@ -387,22 +387,22 @@ function TransactionTable(props: { rows: TransactionListRow[] }) {
             const conf = STATUS_COLORS[r.status] ?? STATUS_COLORS.pending;
             return (
               <tr key={r.id} style={{ background: conf.bg }}>
-                <td style={cellTd}>{r.transaction_date}</td>
-                <td style={cellTd}>
+                <td style={cellTd} className="garden-cell-fixed">{r.transaction_date}</td>
+                <td style={cellTd} className="garden-cell-text">
                   {r.bank_kind} {r.account_number}
                 </td>
-                <td style={{ ...cellTd, textAlign: "right", fontWeight: 500 }}>
+                <td style={{ ...cellTd, textAlign: "right", fontWeight: 500 }} className="garden-cell-number">
                   ¥{formatYen(r.amount)}
                 </td>
-                <td style={cellTd}>{r.flow === "deposit" ? "入" : "出"}</td>
-                <td style={{ ...cellTd, maxWidth: 280 }}>
+                <td style={cellTd} className="garden-cell-mark">{r.flow === "deposit" ? "入" : "出"}</td>
+                <td style={{ ...cellTd, maxWidth: 280 }} className="garden-cell-text">
                   {r.description.slice(0, 60)}
                   {r.description.length > 60 ? "..." : ""}
                 </td>
-                <td style={cellTd}>{r.debit_account ?? "—"}</td>
-                <td style={cellTd}>{r.credit_account ?? "—"}</td>
-                <td style={cellTd}>{r.tax_class ?? "—"}</td>
-                <td style={{ ...cellTd, color: conf.color, fontWeight: 500 }}>
+                <td style={cellTd} className="garden-cell-text">{r.debit_account ?? "—"}</td>
+                <td style={cellTd} className="garden-cell-text">{r.credit_account ?? "—"}</td>
+                <td style={cellTd} className="garden-cell-text">{r.tax_class ?? "—"}</td>
+                <td style={{ ...cellTd, color: conf.color, fontWeight: 500 }} className="garden-cell-mark">
                   {conf.label}
                 </td>
               </tr>

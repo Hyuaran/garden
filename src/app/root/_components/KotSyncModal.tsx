@@ -247,14 +247,14 @@ export function KotSyncModal({
                       ? r.resolution.employee_name : "—";
                   return (
                     <tr key={r.index} style={{ borderBottom: `1px solid ${colors.border}`, background: bg }}>
-                      <td style={cellTD}>{r.index}</td>
-                      <td style={cellTD}>{r.employee_code ?? "—"}</td>
-                      <td style={cellTD}>{name}</td>
-                      <td style={{ ...cellTD, textAlign: "right" }}>{r.values?.working_days ?? "—"}日</td>
-                      <td style={{ ...cellTD, textAlign: "right" }}>{r.values?.actual_hours ?? "—"}h</td>
-                      <td style={{ ...cellTD, textAlign: "right" }}>{r.values?.overtime_hours ?? "—"}h</td>
-                      <td style={{ ...cellTD, textAlign: "right" }}>{r.values?.night_hours ?? "—"}h</td>
-                      <td style={cellTD}>
+                      <td style={cellTD} className="garden-cell-fixed">{r.index}</td>
+                      <td style={cellTD} className="garden-cell-fixed">{r.employee_code ?? "—"}</td>
+                      <td style={cellTD} className="garden-cell-text">{name}</td>
+                      <td style={{ ...cellTD, textAlign: "right" }} className="garden-cell-number">{r.values?.working_days ?? "—"}日</td>
+                      <td style={{ ...cellTD, textAlign: "right" }} className="garden-cell-number">{r.values?.actual_hours ?? "—"}h</td>
+                      <td style={{ ...cellTD, textAlign: "right" }} className="garden-cell-number">{r.values?.overtime_hours ?? "—"}h</td>
+                      <td style={{ ...cellTD, textAlign: "right" }} className="garden-cell-number">{r.values?.night_hours ?? "—"}h</td>
+                      <td style={cellTD} className="garden-cell-mark">
                         {r.resolution.kind === "unresolved" && <span style={{ color: colors.danger }}>未解決: {r.resolution.reason}</span>}
                         {r.resolution.kind === "warning" && <span style={{ color: colors.warning }}>警告: {r.resolution.reason}</span>}
                         {r.resolution.kind === "resolved" && <span style={{ color: colors.success }}>取込可</span>}

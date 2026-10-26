@@ -1789,7 +1789,7 @@ function StatusList({
                   title={row.rowKind === "pending" ? "レビューUIで表示" : "申請詳細を表示"}
                 >
                   {canSelect && (
-                    <td style={td}>
+                    <td style={td} className="garden-cell-mark">
                       <input
                         type="checkbox"
                         checked={selectedIds?.has(row.id) ?? false}
@@ -1799,16 +1799,16 @@ function StatusList({
                       />
                     </td>
                   )}
-                  <td style={td}>{formatDate(row.submitted_at)}</td>
-                  <td style={applicantTd} {...CLARITY_MASK}>{employeeLabel(row, employees)}</td>
-                  <td style={td}>{formatDate(row.receipt_date)}</td>
-                  <td style={td}>{row.store_name ?? "-"}</td>
-                  <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
-                  <td style={td}>
+                  <td style={td} className="garden-cell-fixed">{formatDate(row.submitted_at)}</td>
+                  <td style={applicantTd} {...CLARITY_MASK} className="garden-cell-text">{employeeLabel(row, employees)}</td>
+                  <td style={td} className="garden-cell-fixed">{formatDate(row.receipt_date)}</td>
+                  <td style={td} className="garden-cell-text">{row.store_name ?? "-"}</td>
+                  <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }} className="garden-cell-number">{yen(row.amount ?? 0)}</td>
+                  <td style={td} className="garden-cell-mark">
                     <span style={statusPill(row.status)}>{statusLabel(row.status)}</span>
                   </td>
-                  <td style={td}>{corpLabel(row.corp_id, corps)}</td>
-                  <td style={td}><ExpenseKindBadge kind={row.expense_kind} /></td>
+                  <td style={td} className="garden-cell-text">{corpLabel(row.corp_id, corps)}</td>
+                  <td style={td} className="garden-cell-text"><ExpenseKindBadge kind={row.expense_kind} /></td>
                 </tr>
               ))}
             </tbody>
@@ -1903,7 +1903,7 @@ function DeletedExpenseTab({
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} style={tr}>
-                  <td style={td}>
+                  <td style={td} className="garden-cell-mark">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(row.id)}
@@ -1917,17 +1917,17 @@ function DeletedExpenseTab({
                       }
                     />
                   </td>
-                  <td style={td}>{formatDateTime(row.deleted_at)}</td>
-                  <td style={td}>{deletedByLabel(row.deleted_by, deletedByNames)}</td>
-                  <td style={td}>{row.delete_reason ?? "-"}</td>
-                  <td style={td}>{formatDate(row.submitted_at)}</td>
-                  <td style={applicantTd}>{employeeLabel(row, employees)}</td>
-                  <td style={td}><ExpenseKindBadge kind={row.expense_kind} /></td>
-                  <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{yen(row.amount ?? 0)}</td>
-                  <td style={td}>
+                  <td style={td} className="garden-cell-fixed">{formatDateTime(row.deleted_at)}</td>
+                  <td style={td} className="garden-cell-text">{deletedByLabel(row.deleted_by, deletedByNames)}</td>
+                  <td style={td} className="garden-cell-text">{row.delete_reason ?? "-"}</td>
+                  <td style={td} className="garden-cell-fixed">{formatDate(row.submitted_at)}</td>
+                  <td style={applicantTd} className="garden-cell-text">{employeeLabel(row, employees)}</td>
+                  <td style={td} className="garden-cell-text"><ExpenseKindBadge kind={row.expense_kind} /></td>
+                  <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }} className="garden-cell-number">{yen(row.amount ?? 0)}</td>
+                  <td style={td} className="garden-cell-mark">
                     <span style={statusPill(row.status)}>{statusLabel(row.status)}</span>
                   </td>
-                  <td style={td}>{corpLabel(row.corp_id, corps)}</td>
+                  <td style={td} className="garden-cell-text">{corpLabel(row.corp_id, corps)}</td>
                 </tr>
               ))}
             </tbody>

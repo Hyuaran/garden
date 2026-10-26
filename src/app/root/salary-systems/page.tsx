@@ -138,20 +138,20 @@ export default function SalarySystemsPage() {
   }
 
   const columns: Column<SalarySystem>[] = [
-    { key: "id", header: "ID", render: (s) => s.salary_system_id, width: 140 },
-    { key: "name", header: "体系名", render: (s) => s.system_name, width: 200 },
-    { key: "emp", header: "対象", render: (s) => s.employment_type, width: 100 },
-    { key: "base", header: "基本給", render: (s) => s.base_salary_type, width: 80 },
+    { key: "id", header: "ID", align: "center", render: (s) => s.salary_system_id, width: 140 },
+    { key: "name", header: "体系名", align: "left", render: (s) => s.system_name, width: 200 },
+    { key: "emp", header: "対象", align: "left", render: (s) => s.employment_type, width: 100 },
+    { key: "base", header: "基本給", align: "left", render: (s) => s.base_salary_type, width: 80 },
     { key: "hours", header: "所定時間/日", render: (s) => `${s.working_hours_day}h`, width: 110, align: "right" },
     { key: "days", header: "所定日数/月", render: (s) => `${s.working_days_month}日`, width: 110, align: "right" },
-    { key: "ot", header: "残業/深夜/休日", render: (s) => `${s.overtime_rate} / ${s.night_overtime_rate} / ${s.holiday_overtime_rate}`, width: 160 },
+    { key: "ot", header: "残業/深夜/休日", align: "right", render: (s) => `${s.overtime_rate} / ${s.night_overtime_rate} / ${s.holiday_overtime_rate}`, width: 160 },
     { key: "status", header: "状態", render: (s) => <StatusBadge active={s.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (s) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
         <Button variant="secondary" onClick={() => setEditTarget(s)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
         <Button variant={s.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(s)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{s.is_active ? "無効化" : "有効化"}</Button>
       </div>
-    ), width: 170, align: "right" },
+    ), width: 170, align: "left" },
   ];
 
   return (

@@ -228,18 +228,18 @@ function BreakdownSection({
         <tbody className="divide-y divide-gray-100 text-gray-900">
           {entries.slice(0, compact ? 31 : 50).map((e) => (
             <tr key={e.key}>
-              <td className="px-3 py-2">{keyDisplay(e.key)}</td>
-              <td className="px-3 py-2 text-right text-gray-600">{e.count}</td>
-              <td className="px-3 py-2 text-right text-emerald-700">
+              <td className="px-3 py-2 garden-cell-text">{keyDisplay(e.key)}</td>
+              <td className="px-3 py-2 text-right text-gray-600 garden-cell-number">{e.count}</td>
+              <td className="px-3 py-2 text-right text-emerald-700 garden-cell-number">
                 {e.inflow > 0 ? `¥${e.inflow.toLocaleString()}` : "—"}
               </td>
-              <td className="px-3 py-2 text-right text-rose-700">
+              <td className="px-3 py-2 text-right text-rose-700 garden-cell-number">
                 {e.outflow > 0 ? `¥${e.outflow.toLocaleString()}` : "—"}
               </td>
               <td
-                className={`px-3 py-2 text-right font-medium ${
+                className={[`px-3 py-2 text-right font-medium ${
                   e.netChange >= 0 ? "text-emerald-800" : "text-rose-800"
-                }`}
+                }`, "garden-cell-number"].join(" ")}
               >
                 ¥{e.netChange.toLocaleString()}
               </td>

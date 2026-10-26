@@ -685,22 +685,22 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
   }
 
   const columns: Column<Employee>[] = [
-    { key: "id", header: "ID", render: (e) => e.employee_id, width: 100 },
-    { key: "num", header: "社員番号", render: (e) => <span {...CLARITY_MASK}>{e.employee_number}</span>, width: 90 },
-    { key: "name", header: "氏名", render: (e) => <span {...CLARITY_MASK}>{e.name}</span>, width: 120 },
-    { key: "kana", header: "カナ", render: (e) => <span {...CLARITY_MASK}>{e.name_kana}</span>, width: 160 },
-    { key: "address", header: "住所", render: (e) => {
+    { key: "id", header: "ID", align: "center", render: (e) => e.employee_id, width: 100 },
+    { key: "num", header: "社員番号", align: "center", render: (e) => <span {...CLARITY_MASK}>{e.employee_number}</span>, width: 90 },
+    { key: "name", header: "氏名", align: "left", render: (e) => <span {...CLARITY_MASK}>{e.name}</span>, width: 120 },
+    { key: "kana", header: "カナ", align: "left", render: (e) => <span {...CLARITY_MASK}>{e.name_kana}</span>, width: 160 },
+    { key: "address", header: "住所", align: "left", render: (e) => {
       const address = addresses[e.employee_id];
       const text = addressLine(address);
       return <span style={{ color: address?.full ? colors.text : colors.textMuted }} {...CLARITY_MASK}>{text}</span>;
     }, width: 260, wrap: true },
-    { key: "company", header: "法人", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, width: 160 },
-    { key: "emp_type", header: "雇用形態", render: (e) => e.employment_type, width: 80 },
-    { key: "garden_role", header: "Garden権限", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], width: 110 },
-    { key: "salary", header: "給与体系", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, width: 130 },
-    { key: "hire", header: "入社日", render: (e) => e.hire_date, width: 110 },
-    { key: "birthday", header: "生年月日", render: (e) => e.birthday ?? "—", width: 110 },
-    { key: "termination", header: "退職日", render: (e) => e.termination_date ?? "—", width: 110 },
+    { key: "company", header: "法人", align: "left", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, width: 160 },
+    { key: "emp_type", header: "雇用形態", align: "left", render: (e) => e.employment_type, width: 80 },
+    { key: "garden_role", header: "Garden権限", align: "left", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], width: 110 },
+    { key: "salary", header: "給与体系", align: "left", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, width: 130 },
+    { key: "hire", header: "入社日", align: "center", render: (e) => e.hire_date, width: 110 },
+    { key: "birthday", header: "生年月日", align: "center", render: (e) => e.birthday ?? "—", width: 110 },
+    { key: "termination", header: "退職日", align: "center", render: (e) => e.termination_date ?? "—", width: 110 },
     { key: "status", header: "状態", render: (e) => <StatusBadge active={e.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (e) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
@@ -716,7 +716,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
         </Button>
         <Button variant={e.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(e)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{e.is_active ? "無効化" : "有効化"}</Button>
       </div>
-    ), width: 280, align: "right" },
+    ), width: 280, align: "left" },
   ];
 
   const canAdd = companies.length > 0 && salarySystems.length > 0;

@@ -493,7 +493,7 @@ export function TransferPaymentCategoryPanel({
                             : "transparent",
                       }}
                     >
-                      <td style={{ ...tableCellStyle, textAlign: "center" }}>
+                      <td style={{ ...tableCellStyle, textAlign: "center" }} className="garden-cell-mark">
                         <input
                           type="checkbox"
                           aria-label={`${row.payee_name ?? row.transfer_id}を選択`}
@@ -501,10 +501,10 @@ export function TransferPaymentCategoryPanel({
                           onChange={() => toggleRowSelection(row.transfer_id)}
                         />
                       </td>
-                      <td style={{ ...tableCellStyle, whiteSpace: "nowrap" }}>
+                      <td style={{ ...tableCellStyle, whiteSpace: "nowrap" }} className="garden-cell-fixed">
                         {row.scheduled_date ?? "—"}
                       </td>
-                      <td style={tableCellStyle}>
+                      <td style={tableCellStyle} className="garden-cell-text">
                         <div style={{ fontWeight: 600 }}>
                           {row.payee_name ?? "—"}
                         </div>
@@ -517,7 +517,7 @@ export function TransferPaymentCategoryPanel({
                           {row.transfer_id}
                         </div>
                       </td>
-                      <td style={tableCellStyle}>
+                      <td style={tableCellStyle} className="garden-cell-text">
                         <span style={categoryPillStyle}>
                           {formatPaymentCategory(rowCategory)}
                         </span>
@@ -530,10 +530,10 @@ export function TransferPaymentCategoryPanel({
                           fontVariantNumeric: "tabular-nums",
                           whiteSpace: "nowrap",
                         }}
-                      >
+                       className="garden-cell-number">
                         ¥{(row.amount ?? 0).toLocaleString("ja-JP")}
                       </td>
-                      <td style={tableCellStyle}>
+                      <td style={tableCellStyle} className="garden-cell-text">
                         {rowCategory === "payeasy" ? (
                           <>
                             <PayeasyCopyRow
@@ -564,7 +564,7 @@ export function TransferPaymentCategoryPanel({
                           "—"
                         )}
                       </td>
-                      <td style={tableCellStyle}>
+                      <td style={tableCellStyle} className="garden-cell-mark">
                         <span style={subtlePillStyle}>
                           {paid ? (
                             <>
@@ -580,7 +580,7 @@ export function TransferPaymentCategoryPanel({
                           )}
                         </span>
                       </td>
-                      <td style={{ ...tableCellStyle, textAlign: "right" }}>
+                      <td style={{ ...tableCellStyle, textAlign: "right" }} className="garden-cell-mark">
                         {(rowCategory === "payeasy" ||
                           rowCategory === "cash" ||
                           rowCategory === "deposit") && (

@@ -722,13 +722,13 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           <StickyTable className={styles.resultTable}>
             <thead><tr><th className={styles.stickyCell}>日付</th><th>チーム</th><th>氏名</th><th>種類</th><th>予定</th><th>打刻</th><th>差</th></tr></thead>
             <tbody {...CLARITY_MASK}>{inputs.kotDaily.issues.map((issue, index) => <tr key={`${issue.date}-${issue.name}-${issue.kind}-${index}`}>
-              <th className={styles.stickyCell}>{issue.date.replace(/-/g, "/")}</th>
-              <td>{issue.team || "—"}</td>
-              <td>{issue.name}</td>
-              <td>{issue.kind}</td>
-              <td>{issue.planned || "—"}</td>
-              <td>{issue.punched || "—"}</td>
-              <td>{issue.diffMinutes === null ? "—" : `${issue.diffMinutes} 分`}</td>
+              <th className={[styles.stickyCell, "garden-cell-fixed"].join(" ")}>{issue.date.replace(/-/g, "/")}</th>
+              <td className="garden-cell-text">{issue.team || "—"}</td>
+              <td className="garden-cell-text">{issue.name}</td>
+              <td className="garden-cell-text">{issue.kind}</td>
+              <td className="garden-cell-fixed">{issue.planned || "—"}</td>
+              <td className="garden-cell-fixed">{issue.punched || "—"}</td>
+              <td className="garden-cell-number">{issue.diffMinutes === null ? "—" : `${issue.diffMinutes} 分`}</td>
             </tr>)}</tbody>
           </StickyTable>
         </div>}
@@ -764,8 +764,8 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           </thead>
           <tbody>
             {monthDays.map((day) => <tr key={day.date}>
-              <th>{holidays.includes(day.date) ? "定休日" : day.label}</th>
-              {initialTeams.map((team) => <td key={`${team}-${day.date}`}>
+              <th className="garden-cell-fixed">{holidays.includes(day.date) ? "定休日" : day.label}</th>
+              {initialTeams.map((team) => <td key={`${team}-${day.date}`} className="garden-cell-number">
                 <input type="number" step="0.1" value={inputValue(inputs, team, day.date)} onChange={(event) => updateHour(team, day.date, event.target.value)} />
               </td>)}
             </tr>)}
@@ -782,8 +782,8 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           </thead>
           <tbody>
             {initialTeams.map((team) => <tr key={team}>
-              <th>{team}</th>
-              {initialProducts.map((product) => <td key={`${team}-${product}`}>
+              <th className="garden-cell-text">{team}</th>
+              {initialProducts.map((product) => <td key={`${team}-${product}`} className="garden-cell-number">
                 <input type="number" step="0.01" value={rateValue(inputs, team, product)} onChange={(event) => updateRate(team, product, event.target.value)} />
               </td>)}
             </tr>)}
@@ -841,51 +841,51 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           </thead>
           <tbody>
             <tr className={styles.totalRow}>
-              <th className={styles.stickyCell}>実数</th>
-              <td>{formatNumber(grid.totals.all.hours, 1)}</td>
-              <td>{formatRate(grid.totals.all.efficiency)}</td>
-              <td>{formatNumber(grid.totals.all.total)}</td>
+              <th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>実数</th>
+              <td className="garden-cell-number">{formatNumber(grid.totals.all.hours, 1)}</td>
+              <td className="garden-cell-number">{formatRate(grid.totals.all.efficiency)}</td>
+              <td className="garden-cell-number">{formatNumber(grid.totals.all.total)}</td>
               {grid.teams.flatMap((team) => [
-                <td key={`total-${team}-h`}>{formatNumber(grid.totals.teams[team].hours, 1)}</td>,
-                <td key={`total-${team}-rate`}>{formatRate(grid.totals.teams[team].efficiency)}</td>,
-                <td key={`total-${team}-total`}>{formatNumber(grid.totals.teams[team].total)}</td>,
-                ...grid.products.map((product) => <td key={`total-${team}-${product}`}>{formatNumber(grid.totals.teams[team].products[product])}</td>),
+                <td key={`total-${team}-h`} className="garden-cell-number">{formatNumber(grid.totals.teams[team].hours, 1)}</td>,
+                <td key={`total-${team}-rate`} className="garden-cell-number">{formatRate(grid.totals.teams[team].efficiency)}</td>,
+                <td key={`total-${team}-total`} className="garden-cell-number">{formatNumber(grid.totals.teams[team].total)}</td>,
+                ...grid.products.map((product) => <td key={`total-${team}-${product}`} className="garden-cell-number">{formatNumber(grid.totals.teams[team].products[product])}</td>),
               ])}
             </tr>
             <tr className={styles.totalRow}>
-              <th className={styles.stickyCell}>ポイント</th>
-              <td>—</td>
-              <td>{formatNumber(grid.totals.all.pointEfficiency, 1)}</td>
-              <td>{formatNumber(grid.totals.all.points, 1)}</td>
+              <th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>ポイント</th>
+              <td className="garden-cell-number">—</td>
+              <td className="garden-cell-number">{formatNumber(grid.totals.all.pointEfficiency, 1)}</td>
+              <td className="garden-cell-number">{formatNumber(grid.totals.all.points, 1)}</td>
               {grid.teams.flatMap((team) => [
-                <td key={`points-${team}-h`}>—</td>,
-                <td key={`points-${team}-rate`}>{formatNumber(grid.totals.teams[team].hours === 0 ? null : grid.totals.teams[team].points / grid.totals.teams[team].hours, 1)}</td>,
-                <td key={`points-${team}-total`}>{formatNumber(grid.totals.teams[team].points, 1)}</td>,
-                ...grid.products.map((product) => <td key={`points-${team}-${product}`}>{formatNumber(grid.totals.teams[team].pointsByProduct[product], 1)}</td>),
+                <td key={`points-${team}-h`} className="garden-cell-number">—</td>,
+                <td key={`points-${team}-rate`} className="garden-cell-number">{formatNumber(grid.totals.teams[team].hours === 0 ? null : grid.totals.teams[team].points / grid.totals.teams[team].hours, 1)}</td>,
+                <td key={`points-${team}-total`} className="garden-cell-number">{formatNumber(grid.totals.teams[team].points, 1)}</td>,
+                ...grid.products.map((product) => <td key={`points-${team}-${product}`} className="garden-cell-number">{formatNumber(grid.totals.teams[team].pointsByProduct[product], 1)}</td>),
               ])}
             </tr>
             <tr className={styles.totalRow}>
-              <th className={styles.stickyCell}>額</th>
-              <td>{formatNumber(grid.totals.all.amountPerHour)}</td>
-              <td>—</td>
-              <td>{formatNumber(grid.totals.all.amount)}</td>
+              <th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>額</th>
+              <td className="garden-cell-number">{formatNumber(grid.totals.all.amountPerHour)}</td>
+              <td className="garden-cell-number">—</td>
+              <td className="garden-cell-number">{formatNumber(grid.totals.all.amount)}</td>
               {grid.teams.flatMap((team) => [
-                <td key={`amount-${team}-h`}>{formatNumber(grid.totals.teams[team].hours === 0 ? null : grid.totals.teams[team].amount / grid.totals.teams[team].hours)}</td>,
-                <td key={`amount-${team}-rate`}>—</td>,
-                <td key={`amount-${team}-total`}>{formatNumber(grid.totals.teams[team].amount)}</td>,
-                ...grid.products.map((product) => <td key={`amount-${team}-${product}`}>{formatNumber(grid.totals.teams[team].amountByProduct[product])}</td>),
+                <td key={`amount-${team}-h`} className="garden-cell-number">{formatNumber(grid.totals.teams[team].hours === 0 ? null : grid.totals.teams[team].amount / grid.totals.teams[team].hours)}</td>,
+                <td key={`amount-${team}-rate`} className="garden-cell-number">—</td>,
+                <td key={`amount-${team}-total`} className="garden-cell-number">{formatNumber(grid.totals.teams[team].amount)}</td>,
+                ...grid.products.map((product) => <td key={`amount-${team}-${product}`} className="garden-cell-number">{formatNumber(grid.totals.teams[team].amountByProduct[product])}</td>),
               ])}
             </tr>
             {grid.days.map((day) => <tr key={day.date}>
-              <th className={styles.stickyCell}>{day.day === "定休日" ? "定休日" : `${Number(day.date.slice(5, 7))}/${Number(day.date.slice(8, 10))}（${day.weekday}）`}</th>
-              <td>{formatNumber(day.all.hours, 1)}</td>
-              <td>{formatRate(day.all.efficiency)}</td>
-              <td>{formatNumber(day.all.total)}</td>
+              <th className={[styles.stickyCell, "garden-cell-fixed"].join(" ")}>{day.day === "定休日" ? "定休日" : `${Number(day.date.slice(5, 7))}/${Number(day.date.slice(8, 10))}（${day.weekday}）`}</th>
+              <td className="garden-cell-number">{formatNumber(day.all.hours, 1)}</td>
+              <td className="garden-cell-number">{formatRate(day.all.efficiency)}</td>
+              <td className="garden-cell-number">{formatNumber(day.all.total)}</td>
               {grid.teams.flatMap((team) => [
-                <td key={`${day.date}-${team}-h`}>{formatNumber(day.teams[team].hours, 1)}</td>,
-                <td key={`${day.date}-${team}-rate`}>{formatRate(day.teams[team].efficiency)}</td>,
-                <td key={`${day.date}-${team}-total`}>{formatNumber(day.teams[team].total)}</td>,
-                ...grid.products.map((product) => <td key={`${day.date}-${team}-${product}`}>{formatNumber(day.teams[team].products[product])}</td>),
+                <td key={`${day.date}-${team}-h`} className="garden-cell-number">{formatNumber(day.teams[team].hours, 1)}</td>,
+                <td key={`${day.date}-${team}-rate`} className="garden-cell-number">{formatRate(day.teams[team].efficiency)}</td>,
+                <td key={`${day.date}-${team}-total`} className="garden-cell-number">{formatNumber(day.teams[team].total)}</td>,
+                ...grid.products.map((product) => <td key={`${day.date}-${team}-${product}`} className="garden-cell-number">{formatNumber(day.teams[team].products[product])}</td>),
               ])}
             </tr>)}
           </tbody>
@@ -936,13 +936,13 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           <StickyTable className={styles.inputTable}>
             <thead><tr><th>氏名</th><th>チーム</th><th>区分/時給</th><th>着地予想h</th><th>稼働時間h</th><th>稼働日数</th><th>訪販の合計評価</th></tr></thead>
             <tbody {...CLARITY_MASK}>{people.filter((person) => person.active !== false).map((person) => <tr key={person.name || String(person.sort_order)}>
-              <th>{person.name}</th>
-              <td>{person.team}</td>
-              <td>{person.employment_kind === "アルバイト" ? formatNumber(Number(person.base_wage ?? 0)) : person.employment_kind}</td>
-              <td><input type="number" step="0.1" value={personInputValue(inputs, person.name, "landingHours")} onChange={(event) => updatePersonMonthly(person.name, "landingHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "landingHours") && <span className={styles.sourceBadge}>KOT から</span>}</td>
-              <td>{person.is_field_sales ? "訪問販売から反映" : <><input type="number" step="0.1" value={personInputValue(inputs, person.name, "workHours")} onChange={(event) => updatePersonMonthly(person.name, "workHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workHours") && <span className={styles.sourceBadge}>KOT から</span>}</>}</td>
-              <td><input type="number" step="1" value={personInputValue(inputs, person.name, "workDays")} onChange={(event) => updatePersonMonthly(person.name, "workDays", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workDays") && <span className={styles.sourceBadge}>KOT から</span>}</td>
-              <td>{person.is_field_sales ? "訪問販売から反映" : ""}</td>
+              <th className="garden-cell-text">{person.name}</th>
+              <td className="garden-cell-text">{person.team}</td>
+              <td className="garden-cell-number">{person.employment_kind === "アルバイト" ? formatNumber(Number(person.base_wage ?? 0)) : person.employment_kind}</td>
+              <td className="garden-cell-number"><input type="number" step="0.1" value={personInputValue(inputs, person.name, "landingHours")} onChange={(event) => updatePersonMonthly(person.name, "landingHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "landingHours") && <span className={styles.sourceBadge}>KOT から</span>}</td>
+              <td className="garden-cell-number">{person.is_field_sales ? "訪問販売から反映" : <><input type="number" step="0.1" value={personInputValue(inputs, person.name, "workHours")} onChange={(event) => updatePersonMonthly(person.name, "workHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workHours") && <span className={styles.sourceBadge}>KOT から</span>}</>}</td>
+              <td className="garden-cell-number"><input type="number" step="1" value={personInputValue(inputs, person.name, "workDays")} onChange={(event) => updatePersonMonthly(person.name, "workDays", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workDays") && <span className={styles.sourceBadge}>KOT から</span>}</td>
+              <td className="garden-cell-number">{person.is_field_sales ? "訪問販売から反映" : ""}</td>
             </tr>)}</tbody>
           </StickyTable>
         </div>
@@ -965,11 +965,11 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               {jisseki.productColumns.map((column, index) => <th key={`${column.product}-${column.kind}-${index}`}>{column.label}</th>)}
             </tr></thead>
             <tbody>{jisseki.rows.map((row) => <tr key={row.personName}>
-              <th className={styles.stickyCell}>{row.personName}</th><td>{row.kotName}</td><td>{typeof row.wageLabel === "number" ? formatNumber(row.wageLabel) : row.wageLabel}</td><td>{row.department}</td><td>{row.team}</td>
-              <td>{formatNumber(row.landingHours, 1)}</td><td>{formatNumber(row.workHours, 1)}</td><td>{formatNumber(row.totalPoints, 1)}</td><td>{formatNumber(row.efficiency, 3)}</td><td>{formatNumber(row.workDays)}</td><td>{formatNumber(row.commuteDailyAllowance)}</td>
+              <th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>{row.personName}</th><td className="garden-cell-text">{row.kotName}</td><td className="garden-cell-number">{typeof row.wageLabel === "number" ? formatNumber(row.wageLabel) : row.wageLabel}</td><td className="garden-cell-text">{row.department}</td><td className="garden-cell-text">{row.team}</td>
+              <td className="garden-cell-number">{formatNumber(row.landingHours, 1)}</td><td className="garden-cell-number">{formatNumber(row.workHours, 1)}</td><td className="garden-cell-number">{formatNumber(row.totalPoints, 1)}</td><td className="garden-cell-number">{formatNumber(row.efficiency, 3)}</td><td className="garden-cell-number">{formatNumber(row.workDays)}</td><td className="garden-cell-number">{formatNumber(row.commuteDailyAllowance)}</td>
               {jisseki.productColumns.map((column, index) => {
                 const suffix = column.kind === "hikari_toss" ? "toss" : column.kind === "hikari_ap" ? "ap" : "single";
-                return <td key={`${row.personName}-${index}`}>{formatNumber(row.counts[`${column.product}:${suffix}`] ?? 0)}</td>;
+                return <td key={`${row.personName}-${index}`} className="garden-cell-number">{formatNumber(row.counts[`${column.product}:${suffix}`] ?? 0)}</td>;
               })}
             </tr>)}</tbody>
           </StickyTable>
@@ -1000,14 +1000,14 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               {aporan.teamOrder.map((key) => <th key={key}>{aporan.teams[key].label}</th>)}
             </tr></thead>
             <tbody>
-              <tr><th className={styles.stickyCell}>効率</th>{aporan.teamOrder.map((key) => <td key={`${key}-efficiency`}>{formatNumber(aporan.teams[key].efficiency, 4)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>実績P</th>{aporan.teamOrder.map((key) => <td key={`${key}-actual`}>{formatNumber(aporan.teams[key].actualPoints, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>目標P</th>{aporan.teamOrder.map((key) => <td key={`${key}-target`}>{formatNumber(aporan.teams[key].targetPoints, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>現時点必要P</th>{aporan.teamOrder.map((key) => <td key={`${key}-current`}>{formatNumber(aporan.teams[key].currentRequiredPoints, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>稼働h</th>{aporan.teamOrder.map((key) => <td key={`${key}-work`}>{formatNumber(aporan.teams[key].workHours, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>着地予想h</th>{aporan.teamOrder.map((key) => <td key={`${key}-landing-hours`}>{formatNumber(aporan.teams[key].landingHours, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>着地予想P</th>{aporan.teamOrder.map((key) => <td key={`${key}-landing-points`}>{formatNumber(aporan.teams[key].landingPoints, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>達成率</th>{aporan.teamOrder.map((key) => <td key={`${key}-achievement`}>{formatRate(aporan.teams[key].achievementRate)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>効率</th>{aporan.teamOrder.map((key) => <td key={`${key}-efficiency`} className="garden-cell-number">{formatNumber(aporan.teams[key].efficiency, 4)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>実績P</th>{aporan.teamOrder.map((key) => <td key={`${key}-actual`} className="garden-cell-number">{formatNumber(aporan.teams[key].actualPoints, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>目標P</th>{aporan.teamOrder.map((key) => <td key={`${key}-target`} className="garden-cell-number">{formatNumber(aporan.teams[key].targetPoints, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>現時点必要P</th>{aporan.teamOrder.map((key) => <td key={`${key}-current`} className="garden-cell-number">{formatNumber(aporan.teams[key].currentRequiredPoints, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>稼働h</th>{aporan.teamOrder.map((key) => <td key={`${key}-work`} className="garden-cell-number">{formatNumber(aporan.teams[key].workHours, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>着地予想h</th>{aporan.teamOrder.map((key) => <td key={`${key}-landing-hours`} className="garden-cell-number">{formatNumber(aporan.teams[key].landingHours, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>着地予想P</th>{aporan.teamOrder.map((key) => <td key={`${key}-landing-points`} className="garden-cell-number">{formatNumber(aporan.teams[key].landingPoints, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>達成率</th>{aporan.teamOrder.map((key) => <td key={`${key}-achievement`} className="garden-cell-number">{formatRate(aporan.teams[key].achievementRate)}</td>)}</tr>
             </tbody>
           </StickyTable>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
@@ -1021,16 +1021,16 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <th className={styles.stickyCell}>順位</th><th>部署</th><th>氏名</th><th>ステータス</th><th>時給</th><th>獲得P</th><th>稼働時間</th><th>効率</th><th>着地時間</th><th>デジタル着地</th>
             </tr></thead>
             <tbody>{aporan.ranking.map((row) => <tr key={`${row.rank}-${row.personName}`}>
-              <th className={styles.stickyCell}>{row.rank}</th>
-              <td>{row.department}</td>
-              <td>{row.personName}</td>
-              <td>{row.status ?? "—"}</td>
-              <td>{typeof row.wageLabel === "number" ? formatNumber(row.wageLabel) : row.wageLabel}</td>
-              <td>{formatNumber(row.totalPoints, 1)}</td>
-              <td>{formatNumber(row.workHours, 1)}</td>
-              <td>{formatNumber(row.displayEfficiency, 2)}</td>
-              <td>{formatNumber(row.landingHours, 1)}</td>
-              <td>{formatNumber(row.digitalLanding, 1)}</td>
+              <th className={[styles.stickyCell, "garden-cell-fixed"].join(" ")}>{row.rank}</th>
+              <td className="garden-cell-text">{row.department}</td>
+              <td className="garden-cell-text">{row.personName}</td>
+              <td className="garden-cell-mark">{row.status ?? "—"}</td>
+              <td className="garden-cell-number">{typeof row.wageLabel === "number" ? formatNumber(row.wageLabel) : row.wageLabel}</td>
+              <td className="garden-cell-number">{formatNumber(row.totalPoints, 1)}</td>
+              <td className="garden-cell-number">{formatNumber(row.workHours, 1)}</td>
+              <td className="garden-cell-number">{formatNumber(row.displayEfficiency, 2)}</td>
+              <td className="garden-cell-number">{formatNumber(row.landingHours, 1)}</td>
+              <td className="garden-cell-number">{formatNumber(row.digitalLanding, 1)}</td>
             </tr>)}</tbody>
           </StickyTable>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
@@ -1066,20 +1066,20 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               {INCENTIVE_TEAM_ORDER.map((key) => <th key={key}>{INCENTIVE_TEAM_LABELS[key]}</th>)}
             </tr></thead>
             <tbody>
-              <tr><th className={styles.stickyCell}>稼働日数</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-days`}>{formatNumber(incentive.teams[key].workDays)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>稼働時間</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-hours`}>{formatNumber(incentive.teams[key].landingHours, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>目標P</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-target`}>{formatNumber(incentive.teams[key].targetPoints, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>着地P</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-actual`}>{formatNumber(incentive.teams[key].actualPoints, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>達成率</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-rate`}>{formatRate(incentive.teams[key].achievementRate)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>効率</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-efficiency`}>{formatNumber(incentive.teams[key].efficiency, 4)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>個人P（リーダー）</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-leader`}>{formatNumber(incentive.teams[key].leaderPoints, 1)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>個人P比率</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-leader-rate`}>{formatRate(incentive.teams[key].leaderPointRate)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>P達成金</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-achievement-bonus`}>{formatNumber(incentive.teams[key].achievementBonus)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>P達成支給額</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-achievement-payout`}>{formatNumber(incentive.teams[key].achievementPayout)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>チーム勝利支給額</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-victory`}>{formatNumber(incentive.teams[key].teamVictoryBonus)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>目標P超え</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-target-over`}>{formatNumber(incentive.teams[key].targetOverBonus)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>●P達成金</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-point-achievement`}>{formatNumber(incentive.teams[key].pointAchievementBonus)}</td>)}</tr>
-              <tr><th className={styles.stickyCell}>合計インセン</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-total`}>{formatNumber(incentive.teams[key].totalIncentive)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>稼働日数</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-days`} className="garden-cell-number">{formatNumber(incentive.teams[key].workDays)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>稼働時間</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-hours`} className="garden-cell-number">{formatNumber(incentive.teams[key].landingHours, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>目標P</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-target`} className="garden-cell-number">{formatNumber(incentive.teams[key].targetPoints, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>着地P</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-actual`} className="garden-cell-number">{formatNumber(incentive.teams[key].actualPoints, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>達成率</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-rate`} className="garden-cell-number">{formatRate(incentive.teams[key].achievementRate)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>効率</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-efficiency`} className="garden-cell-number">{formatNumber(incentive.teams[key].efficiency, 4)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>個人P（リーダー）</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-leader`} className="garden-cell-number">{formatNumber(incentive.teams[key].leaderPoints, 1)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>個人P比率</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-leader-rate`} className="garden-cell-number">{formatRate(incentive.teams[key].leaderPointRate)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>P達成金</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-achievement-bonus`} className="garden-cell-number">{formatNumber(incentive.teams[key].achievementBonus)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>P達成支給額</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-achievement-payout`} className="garden-cell-number">{formatNumber(incentive.teams[key].achievementPayout)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>チーム勝利支給額</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-victory`} className="garden-cell-number">{formatNumber(incentive.teams[key].teamVictoryBonus)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>目標P超え</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-target-over`} className="garden-cell-number">{formatNumber(incentive.teams[key].targetOverBonus)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>●P達成金</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-point-achievement`} className="garden-cell-number">{formatNumber(incentive.teams[key].pointAchievementBonus)}</td>)}</tr>
+              <tr><th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>合計インセン</th>{INCENTIVE_TEAM_ORDER.map((key) => <td key={`${key}-total`} className="garden-cell-number">{formatNumber(incentive.teams[key].totalIncentive)}</td>)}</tr>
             </tbody>
           </StickyTable>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
@@ -1128,33 +1128,33 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <th>基本</th><th>APインセン</th><th>研修h</th><th>研修手当</th><th>社長賞</th><th>件数賞</th><th>入社祝い金</th><th>人材紹介</th><th>案件</th><th>支給合計</th><th>所定h</th><th>勤務日数</th><th>交通費往復</th><th>交通費合計</th>
             </tr></thead>
             <tbody>{payroll.rows.map((row) => <tr key={`${row.rank}-${row.personName}`}>
-              <th className={styles.stickyCell}>{row.rank}</th>
-              <td>{row.department}</td>
-              <td>{row.personName}</td>
-              <td>{row.currentStatus ?? "—"}</td>
-              <td>{formatNumber(row.timeEfficiency, 2)}</td>
-              <td>{typeof row.currentWage === "number" ? formatNumber(row.currentWage) : row.currentWage}</td>
-              <td>{canWrite ? <input value={payrollPersonValue(inputs, row.personName, "nextStatus")} onChange={(event) => updatePayrollPerson(row.personName, "nextStatus", event.target.value)} /> : (row.nextStatus || "—")}</td>
-              <td>{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "wageAdjustment")} onChange={(event) => updatePayrollPerson(row.personName, "wageAdjustment", event.target.value)} /> : formatNumber(row.wageAdjustment)}</td>
-              <td>{formatNumber(row.nextWage)}</td>
-              <td>{formatNumber(row.apHourlyWage)}</td>
-              <td>{formatNumber(row.acquiredPoints, 1)}</td>
-              <td>{canWrite ? <input type="number" step="0.1" value={payrollPersonValue(inputs, row.personName, "referralPoints")} onChange={(event) => updatePayrollPerson(row.personName, "referralPoints", event.target.value)} /> : formatNumber(row.referralPoints, 1)}</td>
-              <td>{formatNumber(row.totalPoints, 1)}</td>
-              <td>{formatNumber(row.basePay)}</td>
-              <td>{formatNumber(row.apIncentive)}</td>
-              <td>{canWrite ? <input type="number" step="0.1" value={payrollPersonValue(inputs, row.personName, "trainingHours")} onChange={(event) => updatePayrollPerson(row.personName, "trainingHours", event.target.value)} /> : formatNumber(row.trainingHours, 1)}</td>
-              <td>{formatNumber(row.trainingAllowance)}</td>
-              <td>{formatNumber(row.presidentAward)}</td>
-              <td>{formatNumber(row.pointAward)}</td>
-              <td>{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "hiringBonus")} onChange={(event) => updatePayrollPerson(row.personName, "hiringBonus", event.target.value)} /> : formatNumber(row.hiringBonus)}</td>
-              <td>{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "talentReferralIncentive")} onChange={(event) => updatePayrollPerson(row.personName, "talentReferralIncentive", event.target.value)} /> : formatNumber(row.talentReferralIncentive)}</td>
-              <td>{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "dealIncentive")} onChange={(event) => updatePayrollPerson(row.personName, "dealIncentive", event.target.value)} /> : formatNumber(row.dealIncentive)}</td>
-              <td>{formatNumber(row.totalPayout)}</td>
-              <td>{formatNumber(row.scheduledHours, 1)}</td>
-              <td>{formatNumber(row.workDays)}</td>
-              <td>{formatNumber(row.commuteDailyAllowance)}</td>
-              <td>{formatNumber(row.commuteTotal)}</td>
+              <th className={[styles.stickyCell, "garden-cell-fixed"].join(" ")}>{row.rank}</th>
+              <td className="garden-cell-text">{row.department}</td>
+              <td className="garden-cell-text">{row.personName}</td>
+              <td className="garden-cell-mark">{row.currentStatus ?? "—"}</td>
+              <td className="garden-cell-number">{formatNumber(row.timeEfficiency, 2)}</td>
+              <td className="garden-cell-number">{typeof row.currentWage === "number" ? formatNumber(row.currentWage) : row.currentWage}</td>
+              <td className="garden-cell-mark">{canWrite ? <input value={payrollPersonValue(inputs, row.personName, "nextStatus")} onChange={(event) => updatePayrollPerson(row.personName, "nextStatus", event.target.value)} /> : (row.nextStatus || "—")}</td>
+              <td className="garden-cell-number">{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "wageAdjustment")} onChange={(event) => updatePayrollPerson(row.personName, "wageAdjustment", event.target.value)} /> : formatNumber(row.wageAdjustment)}</td>
+              <td className="garden-cell-number">{formatNumber(row.nextWage)}</td>
+              <td className="garden-cell-number">{formatNumber(row.apHourlyWage)}</td>
+              <td className="garden-cell-number">{formatNumber(row.acquiredPoints, 1)}</td>
+              <td className="garden-cell-number">{canWrite ? <input type="number" step="0.1" value={payrollPersonValue(inputs, row.personName, "referralPoints")} onChange={(event) => updatePayrollPerson(row.personName, "referralPoints", event.target.value)} /> : formatNumber(row.referralPoints, 1)}</td>
+              <td className="garden-cell-number">{formatNumber(row.totalPoints, 1)}</td>
+              <td className="garden-cell-number">{formatNumber(row.basePay)}</td>
+              <td className="garden-cell-number">{formatNumber(row.apIncentive)}</td>
+              <td className="garden-cell-number">{canWrite ? <input type="number" step="0.1" value={payrollPersonValue(inputs, row.personName, "trainingHours")} onChange={(event) => updatePayrollPerson(row.personName, "trainingHours", event.target.value)} /> : formatNumber(row.trainingHours, 1)}</td>
+              <td className="garden-cell-number">{formatNumber(row.trainingAllowance)}</td>
+              <td className="garden-cell-number">{formatNumber(row.presidentAward)}</td>
+              <td className="garden-cell-number">{formatNumber(row.pointAward)}</td>
+              <td className="garden-cell-number">{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "hiringBonus")} onChange={(event) => updatePayrollPerson(row.personName, "hiringBonus", event.target.value)} /> : formatNumber(row.hiringBonus)}</td>
+              <td className="garden-cell-number">{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "talentReferralIncentive")} onChange={(event) => updatePayrollPerson(row.personName, "talentReferralIncentive", event.target.value)} /> : formatNumber(row.talentReferralIncentive)}</td>
+              <td className="garden-cell-number">{canWrite ? <input type="number" step="1" value={payrollPersonValue(inputs, row.personName, "dealIncentive")} onChange={(event) => updatePayrollPerson(row.personName, "dealIncentive", event.target.value)} /> : formatNumber(row.dealIncentive)}</td>
+              <td className="garden-cell-number">{formatNumber(row.totalPayout)}</td>
+              <td className="garden-cell-number">{formatNumber(row.scheduledHours, 1)}</td>
+              <td className="garden-cell-number">{formatNumber(row.workDays)}</td>
+              <td className="garden-cell-number">{formatNumber(row.commuteDailyAllowance)}</td>
+              <td className="garden-cell-number">{formatNumber(row.commuteTotal)}</td>
             </tr>)}</tbody>
           </StickyTable>
         </div> : <p className={styles.empty}>まだ計算結果がありません。</p>}
@@ -1204,24 +1204,24 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
                   const calculated = selectedHouhan?.days.find((row) => row.date === day.date);
                   const personName = selectedFieldSales?.name ?? "";
                   return <tr key={day.date}>
-                    <th className={styles.stickyCell}>{day.label}</th>
-                    <td><select value={String(fieldSalesDayValue(inputs, personName, day.date, "status"))} onChange={(event) => updateFieldSalesDay(personName, day.date, "status", event.target.value)}><option value=""></option><option value="出勤">出勤</option><option value="公休">公休</option><option value="ゼロ">ゼロ</option></select></td>
-                    <td><input type="number" step="0.1" value={fieldSalesDayValue(inputs, personName, day.date, "hours")} onChange={(event) => updateFieldSalesDay(personName, day.date, "hours", event.target.value)} /></td>
+                    <th className={[styles.stickyCell, "garden-cell-fixed"].join(" ")}>{day.label}</th>
+                    <td className="garden-cell-mark"><select value={String(fieldSalesDayValue(inputs, personName, day.date, "status"))} onChange={(event) => updateFieldSalesDay(personName, day.date, "status", event.target.value)}><option value=""></option><option value="出勤">出勤</option><option value="公休">公休</option><option value="ゼロ">ゼロ</option></select></td>
+                    <td className="garden-cell-number"><input type="number" step="0.1" value={fieldSalesDayValue(inputs, personName, day.date, "hours")} onChange={(event) => updateFieldSalesDay(personName, day.date, "hours", event.target.value)} /></td>
                     {HOUHAN_PRODUCTS.map((product) => {
                       const manualKey = product.manualKey;
                       return manualKey
-                        ? <td key={product.key}><input type="number" step="1" value={fieldSalesDayValue(inputs, personName, day.date, manualKey)} onChange={(event) => updateFieldSalesDay(personName, day.date, manualKey, event.target.value)} /></td>
-                        : <td key={product.key}>{formatNumber(calculated?.products[product.key])}</td>;
+                        ? <td key={product.key} className="garden-cell-number"><input type="number" step="1" value={fieldSalesDayValue(inputs, personName, day.date, manualKey)} onChange={(event) => updateFieldSalesDay(personName, day.date, manualKey, event.target.value)} /></td>
+                        : <td key={product.key} className="garden-cell-number">{formatNumber(calculated?.products[product.key])}</td>;
                     })}
-                    <td>{formatNumber(calculated?.actualCount)}</td>
-                    <td>{formatNumber(calculated?.personalPoints, 1)}</td>
-                    <td>{calculated?.missingReport ? "報告なし" : ""}</td>
+                    <td className="garden-cell-number">{formatNumber(calculated?.actualCount)}</td>
+                    <td className="garden-cell-number">{formatNumber(calculated?.personalPoints, 1)}</td>
+                    <td className="garden-cell-mark">{calculated?.missingReport ? "報告なし" : ""}</td>
                   </tr>;
                 })}
                 {selectedHouhan && <tr className={styles.totalRow}>
-                  <th className={styles.stickyCell}>合計（×係数）</th><td></td><td>{formatNumber(selectedHouhan.totals.hours, 1)}</td>
-                  {HOUHAN_PRODUCTS.map((product) => <td key={product.key}>{formatNumber(selectedHouhan.totals.pointsByProduct[product.key], 1)}</td>)}
-                  <td>{formatNumber(selectedHouhan.totals.actualCount)}</td><td>{formatNumber(selectedHouhan.totals.points, 1)}</td><td></td>
+                  <th className={[styles.stickyCell, "garden-cell-text"].join(" ")}>合計（×係数）</th><td className="garden-cell-mark"></td><td className="garden-cell-number">{formatNumber(selectedHouhan.totals.hours, 1)}</td>
+                  {HOUHAN_PRODUCTS.map((product) => <td key={product.key} className="garden-cell-number">{formatNumber(selectedHouhan.totals.pointsByProduct[product.key], 1)}</td>)}
+                  <td className="garden-cell-number">{formatNumber(selectedHouhan.totals.actualCount)}</td><td className="garden-cell-number">{formatNumber(selectedHouhan.totals.points, 1)}</td><td className="garden-cell-mark"></td>
                 </tr>}
               </tbody>
             </StickyTable>
@@ -1240,14 +1240,14 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         <StickyTable className={styles.inputTable}>
           <thead><tr><th>氏名</th><th>KOT用</th><th>チーム</th><th>部署</th><th>区分</th><th>基準時給</th><th>訪販</th><th>有効</th></tr></thead>
           <tbody>{people.map((person, index) => <tr key={`${person.name}-${index}`}>
-            <td><input value={person.name} onChange={(event) => updatePerson(index, "name", event.target.value)} /></td>
-            <td><input value={person.kot_name ?? ""} onChange={(event) => updatePerson(index, "kot_name", event.target.value)} /></td>
-            <td><select value={person.team} onChange={(event) => updatePerson(index, "team", event.target.value)}>{[...new Set([...initialTeams, person.team, "訪問営業"])].filter(Boolean).map((team) => <option key={team}>{team}</option>)}</select></td>
-            <td><input value={person.department} onChange={(event) => updatePerson(index, "department", event.target.value)} /></td>
-            <td><select value={person.employment_kind} onChange={(event) => updatePerson(index, "employment_kind", event.target.value)}>{["社員", "アルバイト", "派遣"].map((kind) => <option key={kind}>{kind}</option>)}</select></td>
-            <td><input type="number" value={person.base_wage ?? ""} onChange={(event) => updatePerson(index, "base_wage", event.target.value)} disabled={person.employment_kind !== "アルバイト"} /></td>
-            <td><input type="checkbox" checked={Boolean(person.is_field_sales)} onChange={(event) => updatePerson(index, "is_field_sales", event.target.checked)} /></td>
-            <td><input type="checkbox" checked={person.active !== false} onChange={(event) => updatePerson(index, "active", event.target.checked)} /></td>
+            <td className="garden-cell-text"><input value={person.name} onChange={(event) => updatePerson(index, "name", event.target.value)} /></td>
+            <td className="garden-cell-text"><input value={person.kot_name ?? ""} onChange={(event) => updatePerson(index, "kot_name", event.target.value)} /></td>
+            <td className="garden-cell-text"><select value={person.team} onChange={(event) => updatePerson(index, "team", event.target.value)}>{[...new Set([...initialTeams, person.team, "訪問営業"])].filter(Boolean).map((team) => <option key={team}>{team}</option>)}</select></td>
+            <td className="garden-cell-text"><input value={person.department} onChange={(event) => updatePerson(index, "department", event.target.value)} /></td>
+            <td className="garden-cell-text"><select value={person.employment_kind} onChange={(event) => updatePerson(index, "employment_kind", event.target.value)}>{["社員", "アルバイト", "派遣"].map((kind) => <option key={kind}>{kind}</option>)}</select></td>
+            <td className="garden-cell-number"><input type="number" value={person.base_wage ?? ""} onChange={(event) => updatePerson(index, "base_wage", event.target.value)} disabled={person.employment_kind !== "アルバイト"} /></td>
+            <td className="garden-cell-mark"><input type="checkbox" checked={Boolean(person.is_field_sales)} onChange={(event) => updatePerson(index, "is_field_sales", event.target.checked)} /></td>
+            <td className="garden-cell-mark"><input type="checkbox" checked={person.active !== false} onChange={(event) => updatePerson(index, "active", event.target.checked)} /></td>
           </tr>)}</tbody>
         </StickyTable>
       </div>

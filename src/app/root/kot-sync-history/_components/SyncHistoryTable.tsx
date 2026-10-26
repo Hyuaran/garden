@@ -61,13 +61,13 @@ export function SyncHistoryTable({
   onRowClick: (log: RootKotSyncLog) => void;
 }) {
   const columns: Column<RootKotSyncLog>[] = [
-    { key: "triggered_at", header: "実行日時", width: 160,
+    { key: "triggered_at", header: "実行日時", align: "center", width: 160,
       render: (r) => <span style={{ fontFamily: "ui-monospace, monospace" }}>{formatJst(r.triggered_at)}</span> },
-    { key: "sync_type", header: "種別", width: 90,
+    { key: "sync_type", header: "種別", align: "left", width: 90,
       render: (r) => SYNC_TYPE_LABEL[r.sync_type] ?? r.sync_type },
-    { key: "sync_target", header: "対象", width: 110,
+    { key: "sync_target", header: "対象", align: "left", width: 110,
       render: (r) => r.sync_target ?? "—" },
-    { key: "triggered_by", header: "起動者", width: 140,
+    { key: "triggered_by", header: "起動者", align: "left", width: 140,
       render: (r) => (
         <span style={{
           padding: "2px 8px",
@@ -106,7 +106,7 @@ export function SyncHistoryTable({
       render: (r) => r.records_updated ?? 0 },
     { key: "records_skipped", header: "スキップ", width: 76, align: "right",
       render: (r) => r.records_skipped ?? 0 },
-    { key: "actions", header: "", width: 90, align: "right",
+    { key: "actions", header: "", width: 90, align: "left",
       render: (r) => (
         <span style={{ color: colors.textMuted, fontSize: 11 }}>
           {(r.status === "failure" || r.status === "partial") ? "再実行 →" : "詳細 →"}

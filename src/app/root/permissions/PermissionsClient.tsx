@@ -151,10 +151,10 @@ export default function PermissionsClient({
   }, [employees]);
 
   const employeeColumns: Column<EmployeePermissionRow>[] = [
-    { key: "number", header: "社員番号", render: (employee) => <span {...CLARITY_MASK}>{employee.employee_number}</span>, width: 100 },
-    { key: "name", header: "氏名", render: (employee) => <span {...CLARITY_MASK}>{employee.name}</span>, width: 160 },
-    { key: "employment", header: "雇用形態", render: (employee) => employee.employment_type, width: 120 },
-    { key: "role", header: "役職", render: (employee) => roleLabel(employee.garden_role), width: 120 },
+    { key: "number", header: "社員番号", align: "center", render: (employee) => <span {...CLARITY_MASK}>{employee.employee_number}</span>, width: 100 },
+    { key: "name", header: "氏名", align: "left", render: (employee) => <span {...CLARITY_MASK}>{employee.name}</span>, width: 160 },
+    { key: "employment", header: "雇用形態", align: "left", render: (employee) => employee.employment_type, width: 120 },
+    { key: "role", header: "役職", align: "left", render: (employee) => roleLabel(employee.garden_role), width: 120 },
     { key: "status", header: "状態", render: (employee) => <StatusBadge active={employee.is_active} />, width: 90, align: "center" },
   ];
 
@@ -198,11 +198,11 @@ export default function PermissionsClient({
               <tbody>
                 {roleSummary.map((row) => (
                   <tr key={row.role} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                    <td style={{ padding: "10px 12px", textAlign: "center", color: colors.textMuted }}>{row.rank}</td>
-                    <td style={{ padding: "10px 12px", color: colors.text, fontWeight: 700, whiteSpace: "nowrap" }}>{row.label}</td>
-                    <td style={{ padding: "10px 12px", color: colors.text, whiteSpace: "normal", minWidth: 260 }}>{row.note}</td>
-                    <td style={{ padding: "10px 12px", textAlign: "center", color: colors.text, whiteSpace: "nowrap" }}>{row.allowedCount}／{row.totalCount}</td>
-                    <td style={{ padding: "10px 12px", textAlign: "center", color: colors.text, whiteSpace: "nowrap" }}>{loading ? "…" : `${headcount[row.role] ?? 0} 人`}</td>
+                    <td style={{ padding: "10px 12px", textAlign: "center", color: colors.textMuted }} className="garden-cell-fixed">{row.rank}</td>
+                    <td style={{ padding: "10px 12px", color: colors.text, fontWeight: 700, whiteSpace: "nowrap" }} className="garden-cell-text">{row.label}</td>
+                    <td style={{ padding: "10px 12px", color: colors.text, whiteSpace: "normal", minWidth: 260 }} className="garden-cell-text">{row.note}</td>
+                    <td style={{ padding: "10px 12px", textAlign: "center", color: colors.text, whiteSpace: "nowrap" }} className="garden-cell-number">{row.allowedCount}／{row.totalCount}</td>
+                    <td style={{ padding: "10px 12px", textAlign: "center", color: colors.text, whiteSpace: "nowrap" }} className="garden-cell-number">{loading ? "…" : `${headcount[row.role] ?? 0} 人`}</td>
                   </tr>
                 ))}
               </tbody>
@@ -234,12 +234,12 @@ export default function PermissionsClient({
             <tbody>
               {initialPermissionRows.map((row) => (
                 <tr key={row.key} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                  <td style={{ padding: "10px 12px", color: colors.text, whiteSpace: "nowrap" }}>{row.label}</td>
-                  <td style={{ padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }}>{row.kind}</td>
+                  <td style={{ padding: "10px 12px", color: colors.text, whiteSpace: "nowrap" }} className="garden-cell-text">{row.label}</td>
+                  <td style={{ padding: "10px 12px", color: colors.textMuted, whiteSpace: "nowrap" }} className="garden-cell-text">{row.kind}</td>
                   {GARDEN_ROLE_ORDER.map((role) => {
                     const allowed = row.roles[role];
                     return (
-                      <td key={role} style={{ padding: "10px 12px", textAlign: "center", color: allowed ? colors.success : colors.textMuted, fontWeight: allowed ? 700 : 500, whiteSpace: "nowrap" }}>
+                      <td key={role} style={{ padding: "10px 12px", textAlign: "center", color: allowed ? colors.success : colors.textMuted, fontWeight: allowed ? 700 : 500, whiteSpace: "nowrap" }} className="garden-cell-mark">
                         {allowed ? "○" : "×"}
                       </td>
                     );

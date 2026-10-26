@@ -160,7 +160,7 @@ function StatementsImportsContent() {
                 <tr>
                   <td
                     colSpan={10}
-                    className="px-3 py-8 text-center text-gray-400"
+                    className="px-3 py-8 text-center text-gray-400 garden-cell-text"
                   >
                     取込履歴がありません
                   </td>
@@ -168,40 +168,40 @@ function StatementsImportsContent() {
               ) : (
                 batches.map((b) => (
                   <tr key={b.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-xs text-gray-700">
+                    <td className="px-3 py-2 text-xs text-gray-700 garden-cell-fixed">
                       {new Date(b.imported_at).toLocaleString("ja-JP")}
                     </td>
-                    <td className="px-3 py-2 text-gray-700 text-xs">
+                    <td className="px-3 py-2 text-gray-700 text-xs garden-cell-text">
                       {bankNameMap.get(b.bank_account_id) ?? b.bank_account_id}
                     </td>
-                    <td className="px-3 py-2 text-gray-700 text-xs">
+                    <td className="px-3 py-2 text-gray-700 text-xs garden-cell-text">
                       {SOURCE_TYPE_LABELS[b.source_type] ?? b.source_type}
                     </td>
-                    <td className="px-3 py-2 text-gray-700 text-xs truncate max-w-xs">
+                    <td className="px-3 py-2 text-gray-700 text-xs truncate max-w-xs garden-cell-text">
                       {b.file_name}
                     </td>
-                    <td className="px-3 py-2 text-right text-gray-700">
+                    <td className="px-3 py-2 text-right text-gray-700 garden-cell-number">
                       {b.row_count}
                     </td>
-                    <td className="px-3 py-2 text-right text-emerald-700 font-medium">
+                    <td className="px-3 py-2 text-right text-emerald-700 font-medium garden-cell-number">
                       {b.success_count}
                     </td>
-                    <td className="px-3 py-2 text-right text-gray-600">
+                    <td className="px-3 py-2 text-right text-gray-600 garden-cell-number">
                       {b.skipped_count}
                     </td>
                     <td
-                      className={`px-3 py-2 text-right ${
+                      className={[`px-3 py-2 text-right ${
                         b.error_count > 0
                           ? "text-rose-700 font-medium"
                           : "text-gray-400"
-                      }`}
+                      }`, "garden-cell-number"].join(" ")}
                     >
                       {b.error_count}
                     </td>
-                    <td className="px-3 py-2 text-right text-blue-700">
+                    <td className="px-3 py-2 text-right text-blue-700 garden-cell-number">
                       {b.auto_matched_count}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 garden-cell-mark">
                       <span
                         className={`text-xs px-2 py-0.5 rounded ${
                           STATUS_BG[b.status] ?? "bg-gray-100 text-gray-700"

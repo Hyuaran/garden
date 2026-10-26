@@ -155,9 +155,9 @@ export default function KpiDashboard() {
                 <tbody>
                   {visibleRows.map((row) => (
                     <tr key={row.name}>
-                      <td>{row.name}</td><td>{row.sales}</td><td>{row.profit}</td><td>{row.cash}</td>
-                      <td className={cx(row.negative ? styles.negative : styles.positive)}>{row.yoy}</td>
-                      <td><span className={cx(styles.statusPill, row.negative && styles.warning)}>{row.status}</span></td>
+                      <td className="garden-cell-text">{row.name}</td><td className="garden-cell-number">{row.sales}</td><td className="garden-cell-number">{row.profit}</td><td className="garden-cell-number">{row.cash}</td>
+                      <td className={[cx(row.negative ? styles.negative : styles.positive), "garden-cell-number"].join(" ")}>{row.yoy}</td>
+                      <td className="garden-cell-mark"><span className={cx(styles.statusPill, row.negative && styles.warning)}>{row.status}</span></td>
                     </tr>
                   ))}
                 </tbody>
