@@ -101,3 +101,9 @@
 .stepProgress { position:sticky; top:0; z-index:5; padding:12px 0; background:var(--card); }
 .stepProgressLabel { grid-column:1 / -1; font-size:13px; color:var(--sub); }
 @media(max-width:760px) { :global(div:has(> header) > main) .stepProgress { top:56px; } }
+
+.hireError { color:var(--danger,#c8333b); }
+.hireStepDone { color:var(--teal,var(--accent,#0b7e7a)); }
+.hireSteps { list-style:none; padding:0; display:grid; gap:12px; }
+.hireSteps li { min-width:0; white-space:normal; overflow-wrap:anywhere; }
+.hireSteps p { margin:6px 0 0 1.5em; white-space:pre-wrap; }

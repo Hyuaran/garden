@@ -90,12 +90,12 @@ const normalizeName = (s: string) => s.replace(/[\s　]/g, "");
 export async function ensureRoster(c: HireCandidate, companyName: string) {
  const app = process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID || "56";
  const token = process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN || "";
- const records = await getAllRecords(app,token,'従業員ステータス in ("在籍中")', ["$id","従業員名_姓名","生年月日","社員番号","打刻ID"]);
+ const records = await getAllRecords(app,token,'従業員ステータス in ("在籍中")', ["$id","従業員名_姓名","生年月日","社員番号","打刻ID"]).catch(()=>{throw new HireError(`社員番号 ${c.employee_number} の登録前に Kintone 名簿を読み込めませんでした。名簿の API トークンの閲覧権限と接続を確認してから［続きから］を押してください。`);});
  const matches = records.filter(r => normalizeName(field(r,"従業員名_姓名")) === normalizeName(c.last_name+c.first_name) && field(r,"生年月日") === c.birthday);
- if (matches.length > 1) throw new HireError("名簿に同じ氏名・生年月日の方が複数います。事務で確認してください",409);
+ if (matches.length > 1) throw new HireError(`Kintone 名簿に『${c.last_name} ${c.first_name}』さん（生年月日 ${c.birthday}）が ${matches.length} 件あります。重複しているレコードを 1 件にしてから［続きから］を押してください。`,409);
  if (matches.length) {
   const r = matches[0];
-  if (Number(field(r,"社員番号")) !== Number(c.employee_number) || Number(field(r,"打刻ID")) !== Number(c.employee_number)) throw new HireError("同じ方が別の社員番号で名簿に登録されています。事務で確認してください",409);
+  if (Number(field(r,"社員番号")) !== Number(c.employee_number) || Number(field(r,"打刻ID")) !== Number(c.employee_number)) throw new HireError(`Kintone 名簿に『${c.last_name} ${c.first_name}』さん（生年月日 ${c.birthday}）が別の番号（社員番号 ${field(r,"社員番号") || "なし"}／打刻ID ${field(r,"打刻ID") || "なし"}）で登録されています。名簿のその方の社員番号と打刻ID を ${c.employee_number} に直してから［続きから］を押してください。`,409);
   return field(r,"$id");
  }
  try {
@@ -103,8 +103,8 @@ export async function ensureRoster(c: HireCandidate, companyName: string) {
   if (!/^\d+$/.test(result.id)) throw new Error("invalid record id");
   return result.id;
  } catch (e) {
-  if (e instanceof Error && e.message === "kintone_403") throw new HireError("Kintone 名簿に登録できませんでした（名簿の API トークンに『レコード追加』の権限が必要です）");
-  throw new HireError("Kintone 名簿に登録できませんでした。続きからお試しください。");
+  if (e instanceof Error && e.message === "kintone_403") throw new HireError(`社員番号 ${c.employee_number} を Kintone 名簿に登録できませんでした。名簿の API トークンに『レコード追加』の権限を付けてから［続きから］を押してください。`);
+  throw new HireError(`社員番号 ${c.employee_number} を Kintone 名簿に登録できませんでした。名簿の接続と登録内容を確認してから［続きから］を押してください。`);
  }
 }
 export async function hireCandidate({db}: Context, id: string, prepare = false) {
@@ -132,10 +132,10 @@ export async function hireCandidate({db}: Context, id: string, prepare = false) 
   await persist({status:"hiring"});
   stage = "kot";
   if (!c.steps.kot?.done) {
-   if (process.env.KOT_EMPLOYEE_CREATE_ENABLED !== "true") throw new HireError("KOT 登録は停止中（東海林さんの OK 待ち）");
+   if (process.env.KOT_EMPLOYEE_CREATE_ENABLED !== "true") throw new HireError(`社員番号 ${c.employee_number} の KOT 登録は停止中です（東海林さんの OK 待ち）。登録の再開後に［続きから］を押してください。`);
    const employees = await fetchKotHireEmployees();
    const existing = employees.find(e=> Number(e.code) === Number(c.employee_number));
-   if (existing && (normalizeName((existing.lastName || "")+(existing.firstName || "")) !== normalizeName(c.last_name+c.first_name))) throw new HireError("同じ社員番号が別の方に使われています。事務で確認してください",409);
+   if (existing && (normalizeName((existing.lastName || "")+(existing.firstName || "")) !== normalizeName(c.last_name+c.first_name))) throw new HireError(`社員番号 ${c.employee_number} は KOT で別の方（${existing.lastName || ""} ${existing.firstName || ""}）に使われています。KOT のその方の社員番号を確認・修正してから［続きから］を押してください。`,409);
    if (!existing) await createKotEmployee({code:c.employee_number!,lastName:c.last_name,firstName:c.first_name,lastNamePhonetics:c.last_name_kana,firstNamePhonetics:c.first_name_kana,birthDate:c.birthday,hiredDate:c.hire_date,gender:c.gender as "male"|"female",divisionCode:c.kot_division_code,typeCode:c.kot_type_code});
    await done();
   }
@@ -147,17 +147,20 @@ export async function hireCandidate({db}: Context, id: string, prepare = false) 
   }
   await done();
   stage = "garden";
+  const existingGarden = checked(await db.from("root_employees").select("name").eq("employee_number",c.employee_number!.padStart(4,"0")).maybeSingle());
+  if (existingGarden?.name && normalizeName(existingGarden.name) !== normalizeName(c.last_name+c.first_name)) throw new HireError(`社員番号 ${c.employee_number} は Garden で別の方（${existingGarden.name}）に使われています。管理者が Garden と名簿の社員番号を確認・修正してから［続きから］を押してください。`,409);
   const summary = await syncRootRoster({dryRun:false,recordIds:[c.kintone_roster_record_id!]});
-  if (summary.errors.length) throw new HireError("Garden への反映を完了できませんでした。事務で確認して続きからお試しください。");
+  if (summary.errors.length) throw new HireError(`社員番号 ${c.employee_number} の Kintone 名簿から Garden への反映に失敗しました。管理者が名簿の登録内容と同期処理のエラーを確認・修正してから［続きから］を押してください。`);
   const employee = checked(await db.from("root_employees").select("employee_id,user_id").eq("employee_number",c.employee_number!.padStart(4,"0")).single());
-  if (!employee?.user_id) throw new HireError("アカウントの準備を完了できませんでした。続きからお試しください。");
+  if (!employee?.user_id) throw new HireError(`社員番号 ${c.employee_number} の Garden アカウントを準備できませんでした。管理者がアカウント作成処理を確認・修正してから［続きから］を押してください。`);
   // The existing sync defaults new employees to COMP-001; apply the selected company.
   checked(await db.from("root_employees").update({company_id:c.company_id}).eq("employee_id",employee!.employee_id));
   await done();
   await persist({employee_id:employee!.employee_id,status:"hired"});
   return c;
  } catch (e) {
-  const message = e instanceof HireError || e instanceof Error && e.message.startsWith("KOT が止まって") ? e.message : "処理を完了できませんでした。時間をおいて続きからお試しください。";
+  const stageName = {number:"社員番号の採番",kot:"KOT 登録",roster:"Kintone 名簿への登録",garden:"Garden への反映"}[stage];
+  const message = e instanceof HireError ? e.message : `社員番号 ${c.employee_number || "未決定"} の${stageName}を完了できませんでした。${e instanceof Error && e.message.startsWith("KOT が止まって") ? "KOT が止まっている時間帯です。利用できる時間になってから" : "管理者が接続と登録内容を確認してから"}［続きから］を押してください。`;
   await persist({steps:{...c.steps,[stage]:{done:false,at:new Date().toISOString(),error:message}}});
   return c;
  } finally {

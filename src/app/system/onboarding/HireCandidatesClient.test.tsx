@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import CandidatePanel from "./HireCandidatesClient";
 import { useState, type ReactNode } from "react";
@@ -12,6 +12,43 @@ beforeEach(()=>{
  Object.defineProperty(HTMLDialogElement.prototype,"close",{configurable:true,value:function(this:HTMLDialogElement){this.removeAttribute("open");}});
 });
 const row={id:"c",last_name:"山田",first_name:"太郎",hire_date:"2026-10-24",employment_type:"アルバイト",status:"planned",employee_number:null,steps:{}};
+const stoppedRow={...row,status:"hiring",employee_number:"1572",steps:{number:{done:true},kot:{done:true},roster:{done:false,error:"社員番号 1572 の名簿を確認してください。"}}};
+it("opens the stop dialog after registration and from the stopped row without editing",async()=>{
+ let current: typeof row | typeof stoppedRow=row;
+ vi.stubGlobal("fetch",vi.fn(async(url:string,init?:RequestInit)=>{
+  if(url.endsWith("kot-options"))return Response.json({companies:[],divisions:[],workingTypes:[]});
+  if(init?.method==="POST"){
+   if(init.body===JSON.stringify({prepare:true}))return Response.json({...row,employee_number:"1572"});
+   current=stoppedRow;return Response.json(stoppedRow);
+  }
+  return Response.json([current]);
+ }));
+ render(<CandidatePanel userId="admin" tab="candidates"/>);
+ fireEvent.click(await screen.findByRole("button",{name:"入社"}));
+ await screen.findByRole("dialog",{name:"入社の確認"});
+ await waitFor(()=>expect(screen.getByRole("button",{name:"登録する"})).toBeEnabled());
+ fireEvent.click(screen.getByRole("button",{name:"登録する"}));
+ const dialog=await screen.findByRole("dialog",{name:"入社の登録が途中で止まりました"});
+ const items=within(dialog).getAllByRole("listitem");
+ expect(items.map(item=>item.textContent?.slice(0,1))).toEqual(["◎","◎","✕","✕"]);
+ expect(items[2].className).toContain("hireError");
+ expect(within(dialog).getByRole("status")).toHaveTextContent("1572");
+ expect(screen.getByText("名簿で止まっています").className).toContain("hireError");
+ expect(screen.getByText("山田 太郎",{selector:"td"}).closest("tr")?.querySelector("ol")).toBeNull();
+ fireEvent.click(within(dialog).getByRole("button",{name:"閉じる"}));
+ fireEvent.click(screen.getByText("山田 太郎",{selector:"td"}));
+ expect(await screen.findByRole("dialog",{name:"入社の登録が途中で止まりました"})).toBeVisible();
+ expect(screen.queryByRole("dialog",{name:"入社予定者を修正"})).not.toBeInTheDocument();
+ fireEvent(screen.getByRole("dialog"),new Event("cancel",{cancelable:true}));
+ expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+it("does nothing when an in-progress row is clicked",async()=>{
+ vi.stubGlobal("fetch",vi.fn(async()=>Response.json([{...row,status:"hiring"}])));
+ render(<CandidatePanel userId="admin" tab="candidates"/>);
+ fireEvent.click(await screen.findByText("山田 太郎"));
+ expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+ expect(screen.queryByRole("button",{name:"続きから"})).not.toBeInTheDocument();
+});
 afterEach(()=>{cleanup();localStorage.clear();vi.restoreAllMocks();vi.unstubAllGlobals();});
 it("shows candidate tab only in its super-admin wrapper and preserves the old list",async()=>{
  vi.stubGlobal("fetch",vi.fn(async()=>Response.json([row])));
@@ -91,7 +128,7 @@ it("opens the row editor and registration dialog, closes on cancel and backdrop,
  expect(screen.getByText("処理 太郎").closest("tr")).not.toHaveAttribute("tabindex");
  fireEvent.click(screen.getByRole("checkbox",{name:"辞退した人も表示"}));
  expect(screen.getByText("欠席 太郎").closest("tr")).not.toHaveAttribute("tabindex");
- expect(screen.getByText("辞退",{selector:"td"})).toBeVisible();
+ expect(screen.getByText("辞退",{selector:"span"})).toBeVisible();
  fireEvent.click(name);
  const dialog=await screen.findByRole("dialog",{name:"入社予定者を修正"});
  fireEvent(dialog,new Event("cancel",{cancelable:true}));

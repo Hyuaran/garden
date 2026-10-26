@@ -57,6 +57,18 @@ it("reuses a matching active roster record without POST",async()=>{
  expect(await ensureRoster(candidate(),"法人")).toBe("21");expect(mocks.record).not.toHaveBeenCalled();
 });
 it("explains roster token permission failures",async()=>{mocks.record.mockRejectedValue(new Error("kintone_403"));await expect(ensureRoster(candidate(),"法人")).rejects.toThrow("レコード追加");});
+it("explains the conflicting roster numbers and how to resume",async()=>{
+ mocks.records.mockResolvedValue([{従業員名_姓名:{value:"山田 太郎"},生年月日:{value:"2000-01-01"},社員番号:{value:""},打刻ID:{value:"99999-2"}}]);
+ await expect(ensureRoster(candidate(),"法人")).rejects.toThrow("社員番号 なし／打刻ID 99999-2");
+ await expect(ensureRoster(candidate(),"法人")).rejects.toThrow("1571 に直してから［続きから］");
+ expect(mocks.record).not.toHaveBeenCalled();
+});
+it("reports the count of duplicate roster identities",async()=>{
+ const record={従業員名_姓名:{value:"山田 太郎"},生年月日:{value:"2000-01-01"}};
+ mocks.records.mockResolvedValue([record,record]);
+ await expect(ensureRoster(candidate(),"法人")).rejects.toThrow("2 件あります");
+ expect(mocks.record).not.toHaveBeenCalled();
+});
 describe("authorization",()=>{
  it.each(["staff","admin","manager",null])("all endpoints reject %s before reading input",async role=>{
   const q={select:vi.fn(),eq:vi.fn(),is:vi.fn(),maybeSingle:vi.fn(async()=>({data:{garden_role:role},error:null}))};q.select.mockReturnValue(q);q.eq.mockReturnValue(q);q.is.mockReturnValue(q);
