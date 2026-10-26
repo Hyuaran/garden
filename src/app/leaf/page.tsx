@@ -1,5 +1,5 @@
-import LeafOverview from "./_components/LeafOverview";
-
-export default function LeafPage() {
-  return <LeafOverview />;
+import { LeafForestView } from "@/lib/auth/leaf-forest-view.server";
+import Content from "./view";
+export default function Page() {
+ return <LeafForestView page="leaf-overview"><Content /></LeafForestView>;
 }

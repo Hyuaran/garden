@@ -1,4 +1,5 @@
 "use client";
+import { useLeafForestNavigation } from "@/lib/auth/leaf-forest-view.client";
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -28,6 +29,7 @@ function isActiveMenu(pathname: string, href: string): boolean {
 }
 
 export function ForestShell({ children }: { children: ReactNode }) {
+  const visible = useLeafForestNavigation();
   const pathname = usePathname() || "";
   const isLoginPage = pathname === "/forest/login" || pathname === "/forest";
   const { isUnlocked, userEmail, lockAndLogout, lastUpdated } = useForestState();
@@ -37,7 +39,7 @@ export function ForestShell({ children }: { children: ReactNode }) {
   }
 
   const updateText = `\u6700\u7d42\u66f4\u65b0: ${fmtDateJP(lastUpdated?.at ?? null)}`;
-  const activeMenu = FOREST_PAGE_MENU_BASE.map((item) => ({
+  const activeMenu = FOREST_PAGE_MENU_BASE.filter(item => visible(item.href)).map((item) => ({
     ...item,
     active: isActiveMenu(pathname, item.href),
   }));

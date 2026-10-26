@@ -1,10 +1,5 @@
-import { ShinkoukiWorkspace } from "../../_components/ShinkoukiWorkspace";
-
-type Props = {
-  params: Promise<{ companyId: string }>;
-};
-
-export default async function ForestShinkoukiCompanyPage({ params }: Props) {
-  const { companyId } = await params;
-  return <ShinkoukiWorkspace mode="detail" companyId={companyId} />;
+import { LeafForestView } from "@/lib/auth/leaf-forest-view.server";
+import Content from "./view";
+export default function Page(props: { params: Promise<{ companyId: string }> }) {
+ return <LeafForestView page="forest-shinkouki-company"><Content {...props}/></LeafForestView>;
 }

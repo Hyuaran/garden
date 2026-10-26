@@ -1,12 +1,5 @@
-import { ComingSoonPage } from "../_components/ComingSoonPage";
-
-export default function FruitPage() {
-  return (
-    <ComingSoonPage
-      moduleName="Fruit"
-      nameJa="実"
-      description="法人法的実体情報（番号系・許認可・登記簿）"
-      phase="Phase B"
-    />
-  );
+import { LeafForestView } from "@/lib/auth/leaf-forest-view.server";
+import Content from "./view";
+export default function Page() {
+ return <LeafForestView page="fruit-overview"><Content /></LeafForestView>;
 }

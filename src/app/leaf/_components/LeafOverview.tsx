@@ -1,5 +1,8 @@
 "use client";
+import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
+
+import { useLeafForestNavigation } from "@/lib/auth/leaf-forest-view.client";
 import Link from "next/link";
 
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
@@ -97,10 +100,11 @@ function DivisionCardView({ card }: { card: DivisionCard }) {
 }
 
 export default function LeafOverview() {
+  const visible = useLeafForestNavigation();
   return (
     <LeafShell active="overview">
       <div className={styles.pageStack}>
-        <PageHeader
+        <PageHeader titleAddon={<SystemViewButton />}
           title="Leaf"
           subtitle="事業部ごとの業務アプリを束ねる入口です。現在は関電プロトタイプの閲覧を先行して公開しています。"
           accessBadge={{ icon: "🌿", label: "Leaf" }}
@@ -119,7 +123,7 @@ export default function LeafOverview() {
         </section>
 
         <section className={styles.navGrid} aria-label="Leaf 事業部一覧">
-          {DIVISIONS.map((card) => (
+          {DIVISIONS.filter(card => !card.href || visible(card.href)).map((card) => (
             <DivisionCardView key={card.title} card={card} />
           ))}
         </section>

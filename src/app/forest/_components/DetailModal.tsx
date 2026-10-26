@@ -10,6 +10,7 @@
  *   - Google Drive の決算書リンク
  */
 
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { useEffect, useState } from "react";
 
 import type { CellData } from "../_constants/companies";
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export function DetailModal({ data, onClose }: Props) {
+  const { state } = useSystemView();
   const rows: { label: string; value: string }[] = [
     { label: "売上高", value: fmtYen(data.uriage) },
     { label: "外注費", value: fmtYen(data.gaichuhi) },
@@ -37,7 +39,7 @@ export function DetailModal({ data, onClose }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    fetchHankanhi(data.company.id, data.ki)
+    (state ? fetch('/api/forest/view?kind=hankanhi&page=' + encodeURIComponent(state.pageKey) + '&tab=matrix&company=' + encodeURIComponent(data.company.id) + '&ki=' + data.ki, { cache: 'no-store' }).then(response => { if (!response.ok) throw new Error('閲覧権限がありません'); return response.json(); }) : fetchHankanhi(data.company.id, data.ki))
       .then((result) => {
         if (!cancelled) setHankanhi(result);
       })
@@ -48,7 +50,7 @@ export function DetailModal({ data, onClose }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [data.company.id, data.ki]);
+  }, [data.company.id, data.ki, state]);
 
   // 8 科目のうち少なくとも 1 つが non-null のときだけセクションを描画
   const hasAnyHankanhi =

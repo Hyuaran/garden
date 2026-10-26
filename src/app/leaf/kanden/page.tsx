@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
-
-export default function KandenPage() {
-  redirect("/leaf/kanden/input");
+import { LeafForestView } from "@/lib/auth/leaf-forest-view.server";
+import Content from "./view";
+export default function Page() {
+ return <LeafForestView page="leaf-kanden"><Content /></LeafForestView>;
 }

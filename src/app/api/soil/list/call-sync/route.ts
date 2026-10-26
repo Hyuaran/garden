@@ -1,3 +1,4 @@
+import { canView, ViewPermissionError } from "@/lib/auth/view-permission.server";
 import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
@@ -109,8 +110,14 @@ function refreshPayload(data: RefreshResultRow[] | RefreshResultRow | null) {
 
 export async function GET() {
   const employee = await requireViewEmployee("system-list", "list", "staff");
-  if (!employee) return NextResponse.json({ ok: false }, { status: 403 });
-  const { viewer } = await viewPermissionContext();
+  let viewer;
+  try {
+    ({ viewer } = await viewPermissionContext());
+    if (!await canView("soil-overview", "", viewer, !!employee)) return NextResponse.json({ ok: false }, { status: 403 });
+  } catch (error) {
+    if (error instanceof ViewPermissionError) return NextResponse.json({ ok: false }, { status: error.status });
+    throw error;
+  }
 
   try {
     const db = getSupabaseAdmin() as unknown as RpcDb;

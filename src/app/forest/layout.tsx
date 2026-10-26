@@ -1,24 +1,15 @@
-/**
- * Garden-Forest モジュール共通レイアウト
- *
- * /forest 配下のすべてのページに適用される。
- * Tree と同パターン: Provider → Shell → children
- */
-
 import type { ReactNode } from "react";
 
-import { ForestGate } from "./_components/ForestGate";
+import { LeafForestLayout } from "@/lib/auth/leaf-forest-view.server";
 import { ForestShell } from "./_components/ForestShell";
-import { ForestStateProvider } from "./_state/ForestStateContext";
+import { ForestViewState } from "./_components/ForestViewState";
 
 export default function ForestLayout({ children }: { children: ReactNode }) {
-  // Task 3: ForestGate を ModuleGate ラッパー化したため layout に装着。
-  // 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 3 §Step 3-7
   return (
-    <ForestStateProvider>
-      <ForestGate>
+    <LeafForestLayout module="forest"><ForestViewState>
+      
         <ForestShell>{children}</ForestShell>
-      </ForestGate>
-    </ForestStateProvider>
+      
+    </ForestViewState></LeafForestLayout>
   );
 }

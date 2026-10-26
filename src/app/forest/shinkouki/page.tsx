@@ -1,5 +1,5 @@
-import { ShinkoukiWorkspace } from "../_components/ShinkoukiWorkspace";
-
-export default function ForestShinkoukiPage() {
-  return <ShinkoukiWorkspace mode="overview" />;
+import { LeafForestView } from "@/lib/auth/leaf-forest-view.server";
+import Content from "./view";
+export default function Page() {
+ return <LeafForestView page="forest-shinkouki"><Content /></LeafForestView>;
 }

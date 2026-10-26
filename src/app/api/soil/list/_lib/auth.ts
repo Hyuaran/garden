@@ -49,6 +49,8 @@ export async function requireSoilListUser(readTab?: string): Promise<
   if (readTab !== undefined) {
     try { allowed = await canView("system-list", readTab, (await viewPermissionContext()).viewer, allowed); }
     catch (error) { if (error instanceof ViewPermissionError && error.status < 500) allowed = false; else throw error; }
+    try { allowed = await canView("soil-overview", "", (await viewPermissionContext()).viewer, allowed); }
+    catch (error) { if (error instanceof ViewPermissionError && error.status < 500) allowed = false; else throw error; }
   }
   if (!allowed || !role) {
     return {

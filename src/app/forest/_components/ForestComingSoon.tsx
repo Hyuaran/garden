@@ -1,4 +1,6 @@
 "use client";
+import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+
 
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
@@ -12,7 +14,7 @@ type Props = {
 export function ForestComingSoon({ title, description }: Props) {
   return (
     <div className={styles.pageStack}>
-      <PageHeader
+      <PageHeader titleAddon={<SystemViewButton />}
         title={title}
         subtitle={description}
         accessBadge={{ icon: "\ud83c\udf31", label: "\u6e96\u5099\u4e2d" }}

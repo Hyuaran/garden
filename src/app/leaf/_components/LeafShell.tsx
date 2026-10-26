@@ -1,4 +1,5 @@
 "use client";
+import { useLeafForestNavigation } from "@/lib/auth/leaf-forest-view.client";
 
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import type { GardenShellPageMenuItem } from "@/app/_components/layout/GardenShell/garden-shell-config";
@@ -57,13 +58,14 @@ export default function LeafShell({
   active: LeafActivePage;
   children: React.ReactNode;
 }) {
+  const visible = useLeafForestNavigation();
   const { role, employeeNumber } = useAuthUnified();
   const userName = employeeNumber ? `社員 ${employeeNumber}` : "Garden Leaf";
 
   return (
     <GardenShell
       activeModule="leaf"
-      pageMenu={leafPageMenu(active)}
+      pageMenu={leafPageMenu(active).filter(item => visible(item.href))}
       activityItems={ACTIVITY_ITEMS}
       userName={userName}
       userEmail={null}

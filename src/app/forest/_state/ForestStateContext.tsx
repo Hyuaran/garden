@@ -68,7 +68,7 @@ export function useForestState(): ForestState {
   return ctx;
 }
 
-export function ForestStateProvider({ children }: { children: ReactNode }) {
+export function ForestStateProvider({ children, readPage }: { children: ReactNode; readPage?: string }) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
@@ -112,6 +112,16 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
 
   const refreshData = useCallback(async () => {
     try {
+      if (readPage) {
+        if (!["forest-dashboard", "forest-shinkouki", "forest-shinkouki-company"].includes(readPage)) return;
+        const response = await fetch('/api/forest/view?page=' + encodeURIComponent(readPage), { cache: 'no-store' });
+        if (!response.ok) throw new Error('閲覧権限がありません');
+        const data = await response.json();
+        setCompanies(data.companies); setPeriods(data.periods); setShinkoukiData(data.shinkouki);
+        const dates = [...data.periods, ...data.shinkouki].map((row: { updated_at?: string }) => new Date(row.updated_at ?? 0).getTime());
+        setLastUpdated({ source: 'both', at: new Date(Math.max(0, ...dates)) });
+        return;
+      }
       const [c, p, s, lu] = await Promise.all([
         fetchCompanies(),
         fetchFiscalPeriods(),
@@ -125,7 +135,7 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Forest data fetch error:", err);
     }
-  }, []);
+  }, [readPage]);
 
   /**
    * ログイン成功後に呼ぶ：セッション + forest_user を再取得し、
@@ -161,7 +171,10 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
       }
 
       const fu = await fetchForestUser(session.user.id);
-      if (!fu) {
+      const accessResponse = readPage ? await fetch('/api/forest/view?kind=access&page=' + encodeURIComponent(readPage), { cache: 'no-store' }) : null;
+      const access = accessResponse?.ok ? await accessResponse.json() : null;
+      const configuredRead = access?.configured === true;
+      if (!fu && !configuredRead) {
         // Forest 権限が確認できない場合でも、Garden 全体のセッションは維持する。
         // 旧実装は signOutForest()（= supabase.auth.signOut()）を呼び、
         // Forest の権限が読めないだけで Garden 全モジュールからログアウトさせて
@@ -181,14 +194,14 @@ export function ForestStateProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(true);
       setUserEmail(session.user.email ?? null);
       setHasPermission(true);
-      setForestUser(fu);
+      setForestUser(fu && access?.legacyEntryAllowed === false ? { ...fu, role: "viewer" } : fu);
       setIsUnlocked(true);
       return { success: true };
     } catch (err) {
       console.error("[forest] Refresh auth error:", err);
       return { success: false, error: "認証情報の取得に失敗しました" };
     }
-  }, []);
+  }, [readPage]);
 
   // --- Effects ---
 

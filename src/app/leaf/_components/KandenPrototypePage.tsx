@@ -1,4 +1,8 @@
 "use client";
+import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+import { useState } from "react";
+import { LEAF_FOREST_TABS } from "@/lib/auth/leaf-forest-view-scopes";
+
 
 import LegacyUiNotice from "@/app/_components/LegacyUiNotice";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
@@ -10,13 +14,13 @@ type ProtoMode = "input" | "backoffice";
 
 const PROTO = {
   input: {
-    src: "/_proto/leaf-kanden/input.html",
+    src: "/api/leaf/prototype?mode=input",
     title: "関電プロトタイプ 入力UI",
     pageTitle: "関電 入力",
     crumb: "入力",
   },
   backoffice: {
-    src: "/_proto/leaf-kanden/backoffice.html",
+    src: "/api/leaf/prototype?mode=backoffice",
     title: "関電プロトタイプ 事務UI",
     pageTitle: "関電 事務",
     crumb: "事務",
@@ -29,6 +33,11 @@ type KandenPrototypePageProps = {
 
 export default function KandenPrototypePage({ mode }: KandenPrototypePageProps) {
   const activeProto = PROTO[mode];
+  const { allowedTab } = useSystemView();
+  const [selected, setSelected] = useState("input");
+  const tabs = mode === "input" ? LEAF_FOREST_TABS["leaf-kanden-input"].filter(([key]) => allowedTab(key)) : [];
+  const tab = tabs.some(([key]) => key === selected) ? selected : tabs[0]?.[0] ?? "";
+  const source = activeProto.src + (tab ? `&tab=${tab}` : "");
 
   return (
     <LeafShell active={mode === "input" ? "kanden-input" : "kanden-backoffice"}>
@@ -38,11 +47,11 @@ export default function KandenPrototypePage({ mode }: KandenPrototypePageProps) 
           subtitle="関西電力業務委託の旧プロトタイプを Garden Shell 内で確認するページです。"
           accessBadge={{ icon: "i", label: "Leaf / 関電" }}
           titleAddon={
-            <LegacyUiNotice
+            <>{mode !== "input" && <SystemViewButton />}<LegacyUiNotice
               badgeLabel="旧プロト・新UI切替予定"
               toastTitle="旧プロト・新UI切替予定"
               toastBody="この画面は旧プロトタイプです。新UIへの作り替えを予定しています。"
-            />
+            /></>
           }
           moduleMark="leaf"
           favoriteIcon="/themes/garden-shell/images/icons_bloom/orb_leaf.png"
@@ -56,19 +65,24 @@ export default function KandenPrototypePage({ mode }: KandenPrototypePageProps) 
           <strong>{activeProto.crumb}</strong>
         </nav>
 
+        {mode === "input" && <div role="tablist" aria-label="関電入力" style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          {tabs.map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setSelected(key)}>{label}</button>)}
+          <span style={{ marginLeft: "auto" }}><SystemViewButton tabKey={tab} /></span>
+        </div>}
+
         <section className={styles.protoShell}>
           <div className={styles.protoToolbar}>
             <strong className={styles.protoTitle}>{activeProto.title}</strong>
-            <a className={styles.protoLink} href={activeProto.src} target="_blank" rel="noreferrer">
+            <a className={styles.protoLink} href={source} target="_blank" rel="noreferrer">
               HTMLを別タブで開く
             </a>
           </div>
 
           <div className={styles.iframeWrap}>
             <iframe
-              key={mode}
+              key={`${mode}:${tab}`}
               className={styles.iframe}
-              src={activeProto.src}
+              src={source}
               title={activeProto.title}
             />
           </div>

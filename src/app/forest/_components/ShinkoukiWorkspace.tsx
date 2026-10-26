@@ -1,5 +1,6 @@
 "use client";
 
+import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -145,6 +146,7 @@ function TabButtons({
   onChange: (tab: Tab) => void;
   disabled: boolean;
 }) {
+  const { allowedTab } = useSystemView();
   const items: { key: Tab; label: string }[] = [
     { key: "numbers", label: "数値更新" },
     { key: "rollover", label: "期の切り替え" },
@@ -159,7 +161,7 @@ function TabButtons({
         marginBottom: 18,
       }}
     >
-      {items.map((item) => (
+      {items.filter(item => allowedTab(item.key)).map((item) => (
         <button
           key={item.key}
           type="button"
@@ -181,6 +183,7 @@ function TabButtons({
           {item.label}
         </button>
       ))}
+      <span style={{ marginLeft: "auto" }}><SystemViewButton tabKey={active} /></span>
     </div>
   );
 }
@@ -219,6 +222,8 @@ function CompanyEditor({
   refreshData: () => Promise<void>;
   compact?: boolean;
 }) {
+  const { allowedTab } = useSystemView();
+  activeTab = allowedTab(activeTab) ? activeTab : allowedTab("numbers") ? "numbers" : "rollover";
   return (
     <section style={{ ...panelStyle, padding: compact ? 20 : 24 }}>
       <div
