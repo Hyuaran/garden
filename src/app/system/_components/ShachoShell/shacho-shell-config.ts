@@ -51,6 +51,7 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "給与試算", description: "支給前におおよその金額を確認できるようにします。", icon: "salary", upcoming: true },
   { label: "管理表ポータル", description: "毎日の管理表を、手で貼らずに作ります。", icon: "portal", href: "/system/kanri", minRole: "manager" },
   { label: "リストマスタ", description: "営業リストを絞って件数と一覧を見て書き出す・買ったリストの登録・購入先やリストごとの分析。", icon: "folder", href: "/system/list", minRole: "manager" },
+  { label: "開発ボード", description: "未決定のことと残タスクを整理します。", icon: "portal", href: "/system/dev-board" },
 ];
 
 

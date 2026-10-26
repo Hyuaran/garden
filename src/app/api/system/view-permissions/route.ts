@@ -11,6 +11,7 @@ function failure(error: unknown) {
   return Response.json({ error: error instanceof ViewPermissionError ? error.message : "閲覧設定を処理できませんでした。" }, { status: error instanceof ViewPermissionError ? error.status : 500, headers });
 }
 function scope(page: unknown, tab: unknown) {
+  if (page === "system-dev-board") throw new ViewPermissionError("この画面の閲覧者は固定です。");
   if (typeof page !== "string" || typeof tab !== "string" || !permissionEntry(page, tab)) throw new ViewPermissionError("対象を確認してください。", 400);
   return { page, tab };
 }

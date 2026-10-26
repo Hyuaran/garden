@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import FontSizeButton from "@/app/system/_components/FontSizeButton";
 import { HeaderViewProvider, HeaderViewSlot } from "@/app/system/_components/HeaderViewToggle";
 
@@ -74,6 +74,7 @@ export default function ShachoShell({ children, user, hiddenHrefs = [], allowedH
   }
   const limitedSidebar = shouldHideSidebar(user.role);
   const visible = SYSTEM_MENU_ITEMS.filter(item => {
+    if (item.href === "/system/dev-board" && !allowedHrefs.includes(item.href)) return false;
     if (item.href && hiddenHrefs.includes(item.href)) return false;
     if (item.href && allowedHrefs.includes(item.href)) return true;
     return limitedSidebar ? LIMITED_MENU_ITEMS.some(limited => limited.href === item.href) : canUseSystemItem(item, user.role);

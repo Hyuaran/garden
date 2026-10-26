@@ -57,8 +57,8 @@ describe("PERMISSION_ENTRIES", () => {
       expect(row.totalCount).toBe(PERMISSION_ENTRIES.length);
     }
     const byRole = Object.fromEntries(summary.map((row) => [row.role, row.allowedCount]));
-    // 全権管理者は「準備中（画面はまだ無い）」以外の全行
-    expect(byRole.super_admin).toBe(PERMISSION_ENTRIES.filter((entry) => !entry.label.includes("準備中")).length);
+    // 開発ボードは全権管理者の例外で、EMP-0008 の個人権限だけ。
+    expect(byRole.super_admin).toBe(PERMISSION_ENTRIES.filter((entry) => !entry.label.includes("準備中") && entry.label !== "開発ボード").length);
     expect(byRole.manager).toBeGreaterThan(byRole.staff);
     expect(byRole.staff).toBeGreaterThan(byRole.toss);
   });

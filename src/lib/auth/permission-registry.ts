@@ -68,6 +68,7 @@ const systemMenuEntries: PermissionEntry[] = SYSTEM_MENU_ITEMS.map((item) => ({
   group: "System",
   kind: "画面",
   allows: (role) => {
+    if (item.href === "/system/dev-board") return false; // 役職による許可なし。EMP-0008 のみ。
     if (item.upcoming) return false;
     if (SIDEBAR_HIDDEN_ROLES.has(role)) return Boolean(item.href && SIDEBARLESS_TAB_HREFS.has(item.href));
     return !item.minRole || isRoleAtLeast(role, item.minRole);
