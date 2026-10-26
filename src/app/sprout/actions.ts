@@ -1,20 +1,35 @@
 "use server";
 import { requireSproutUser } from "@/lib/sprout/access.server";
 import { importRecruit } from "@/lib/sprout/import.server";
-import { queryPg, withPgClient } from "@/lib/db/pg";
-import { hireValues, type Applicant, type Hearing } from "@/lib/sprout/model";
+import { withPgClient } from "@/lib/db/pg";
+import { hireValues, type Applicant, type ApplicantSummary, type Hearing } from "@/lib/sprout/model";
 
 export async function loadSprout() {
   await requireSproutUser();
-  const applicants = await queryPg<Applicant>("select * from sprout_applicants order by applied_date desc nulls last", []);
-  const hearings = await queryPg<Hearing>("select * from sprout_hearing_sheets", []);
-  const runs = await queryPg("select finished_at from sprout_import_runs where status='success' order by finished_at desc limit 1", []);
-  const sent = await queryPg("select source_applicant_id from system_hire_candidates where source_applicant_id is not null", []);
-  // pg timestamps become Dates; serialize explicitly for the browser.
-  return JSON.parse(JSON.stringify({ applicants: applicants.rows, hearings: hearings.rows, updated: runs.rows[0]?.finished_at || null, sent: sent.rows.map(r => r.source_applicant_id) })) as {
-    applicants: Applicant[]; hearings: Hearing[]; updated: string | null; sent: string[];
-  };
+  return withPgClient(async client => {
+    const [applicants, hearings, runs, sent] = await Promise.all([
+      client.query<ApplicantSummary>("select kintone_record_id, name, kana, birthday, gender, phone, email, address, applied_date, application_methods, status, interview_at, interview_date, training_at, training_date, hire_date, age_group from sprout_applicants order by applied_date desc nulls last", []),
+      client.query<Pick<Hearing, "applicant_record_id">>("select applicant_record_id from sprout_hearing_sheets", []),
+      client.query("select finished_at from sprout_import_runs where status='success' order by finished_at desc limit 1", []),
+      client.query("select source_applicant_id from system_hire_candidates where source_applicant_id is not null", []),
+    ]);
+    return JSON.parse(JSON.stringify({ applicants: applicants.rows, hearings: hearings.rows, updated: runs.rows[0]?.finished_at || null, sent: sent.rows.map(r => r.source_applicant_id) })) as {
+      applicants: ApplicantSummary[]; hearings: Pick<Hearing, "applicant_record_id">[]; updated: string | null; sent: string[];
+    };
+  });
 }
+export async function loadApplicantDetail(kintoneRecordId: string) {
+  await requireSproutUser();
+  return withPgClient(async client => {
+    const [applicants, hearings] = await Promise.all([
+      client.query<Pick<Applicant, "raw">>("select raw from sprout_applicants where kintone_record_id=$1", [kintoneRecordId]),
+      client.query<Pick<Hearing, "kintone_record_id" | "raw">>("select kintone_record_id, raw from sprout_hearing_sheets where applicant_record_id=$1", [kintoneRecordId]),
+    ]);
+    if (!applicants.rows[0]) throw new Error("応募者が見つかりません");
+    return { raw: applicants.rows[0].raw, hearings: hearings.rows };
+  });
+}
+
 export async function refreshSprout() {
   try { await importRecruit(); return { ok: true }; }
   catch (error) { return { ok: false, message: error instanceof Error && /^(閲覧権限|取り込み中|取り込みの接続|採用情報)/.test(error.message) ? error.message : "取り込めませんでした。時間をおいてお試しください" }; }

@@ -31,6 +31,7 @@ export function applicant(record: KRecord) {
   };
 }
 export type Applicant = ReturnType<typeof applicant>;
+export type ApplicantSummary = Omit<Applicant, "raw" | "last_name" | "first_name" | "last_name_kana" | "first_name_kana" | "kintone_updated_at">;
 export type Relation = { field: string; relatedField: string };
 const normalize = (s: string) => s.normalize("NFKC").replace(/[\s　]/g, "");
 const phoneKey = (s: string) => s.replace(/\D/g, "");
@@ -53,8 +54,8 @@ export function hireValues(a: Applicant) {
     last_name_kana: a.last_name_kana, first_name_kana: a.first_name_kana, birthday: a.birthday,
     gender: a.gender === "男性" ? "male" : "female", hire_date: a.training_date || a.hire_date, employment_type: "アルバイト", status: "planned" };
 }
-export function filterApplicants(rows: Applicant[], tab: string, month: string, statuses: string[], search: string, today: string) {
-  const schedule = (a: Applicant) => tab === "interviews" ? a.interview_at : a.training_at || a.training_date;
+export function filterApplicants<T extends ApplicantSummary>(rows: T[], tab: string, month: string, statuses: string[], search: string, today: string) {
+  const schedule = (a: ApplicantSummary) => tab === "interviews" ? a.interview_at : a.training_at || a.training_date;
   return rows.filter(a => (!statuses.length || statuses.includes(a.status)) && (!search || normalize(a.name + a.phone).includes(normalize(search)) || phoneKey(search) && phoneKey(a.phone).includes(phoneKey(search))) &&
     (tab === "applicants" ? !month || a.applied_date?.startsWith(month) : !!schedule(a) && new Date(schedule(a)!).getTime() >= new Date(today + "T00:00:00+09:00").getTime()))
     .sort((a,b) => tab === "applicants" ? (b.applied_date || "").localeCompare(a.applied_date || "") : (schedule(a) || "").localeCompare(schedule(b) || ""));

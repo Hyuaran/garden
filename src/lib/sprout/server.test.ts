@@ -3,7 +3,7 @@ vi.mock("server-only",()=>({}));
 const mocks = vi.hoisted(() => ({ access:vi.fn(), query:vi.fn(), fetch:vi.fn(), user:vi.fn(), role:vi.fn() }));
 vi.mock("./access.server",()=>({requireSproutUser:mocks.access}));
 vi.mock("@/lib/db/pg",()=>({queryPg:mocks.query,withPgClient:(fn:(c:unknown)=>unknown)=>fn({query:mocks.query})}));
-import { sendToHire, loadSprout, refreshSprout } from "@/app/sprout/actions";
+import { sendToHire, loadSprout, loadApplicantDetail, refreshSprout } from "@/app/sprout/actions";
 import { applicant, type KRecord } from "./model";
 import { importRecruit, fetchRecords } from "./import.server";
 const record = (v:Record<string,unknown>):KRecord=>Object.fromEntries(Object.entries(v).map(([k,value])=>[k,{value}]));
@@ -17,6 +17,7 @@ describe("Sprout server boundaries",()=>{
   it("rejects all reads, imports, and handoffs before database or Kintone access",async()=>{
     mocks.access.mockRejectedValue(new Error("閲覧権限がありません"));
     await expect(loadSprout()).rejects.toThrow("閲覧権限");
+    await expect(loadApplicantDetail("1")).rejects.toThrow("閲覧権限");
     expect((await refreshSprout()).ok).toBe(false);
     expect((await sendToHire("1")).ok).toBe(false);
     expect(mocks.query).not.toHaveBeenCalled(); expect(mocks.fetch).not.toHaveBeenCalled();
@@ -83,4 +84,18 @@ it("preserves Baitoru originals during mirror refresh and keeps their local IDs"
  const upsert=mocks.query.mock.calls.find(([sql])=>sql.startsWith('insert into sprout_applicants'))!;
  expect(JSON.parse(upsert[1][0])[0]).toMatchObject({kintone_record_id:'baitoru:238839646',raw:{応募日時:'2026/10/24 10:12:00'}});
  expect(mocks.query.mock.calls.find(([sql])=>sql.startsWith('delete from sprout_applicants'))?.[0]).toContain("source='kintone'");
+});
+
+it("omits raw and wildcard columns from all four list queries", async () => {
+  await loadSprout();
+  expect(mocks.query).toHaveBeenCalledTimes(4);
+  for (const [sql] of mocks.query.mock.calls) expect(sql).not.toMatch(/\braw\b|select\s+\*/i);
+  expect(mocks.query.mock.calls[1][0]).toBe("select applicant_record_id from sprout_hearing_sheets");
+});
+it("loads only the selected applicant raw and linked hearing raw", async () => {
+  mocks.query.mockResolvedValueOnce({rows:[{raw:{希望給与:"1200"}}]})
+    .mockResolvedValueOnce({rows:[{kintone_record_id:"h1",raw:{性別:"女性"}}]});
+  expect(await loadApplicantDetail("42")).toEqual({raw:{希望給与:"1200"},hearings:[{kintone_record_id:"h1",raw:{性別:"女性"}}]});
+  expect(mocks.query).toHaveBeenNthCalledWith(1,"select raw from sprout_applicants where kintone_record_id=$1",["42"]);
+  expect(mocks.query).toHaveBeenNthCalledWith(2,"select kintone_record_id, raw from sprout_hearing_sheets where applicant_record_id=$1",["42"]);
 });
