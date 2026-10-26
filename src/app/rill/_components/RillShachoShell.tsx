@@ -17,6 +17,7 @@ import styles from "./RillShachoShell.module.css";
 
 type Props = {
   children: ReactNode;
+  mailAllowed?: boolean;
   user: { name: string; company: string; role: string; roleLabel: string };
 };
 
@@ -116,7 +117,7 @@ function formatDateJP(date: Date): string {
   return `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`;
 }
 
-export default function RillShachoShell({ children, user }: Props) {
+export default function RillShachoShell({ children, user, mailAllowed = true }: Props) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -238,7 +239,7 @@ export default function RillShachoShell({ children, user }: Props) {
       if ((event.target as HTMLElement).closest("a")) setDrawerOpen(false);
     }}>
       <div className={styles.navLabel}>メニュー</div>
-      <Link href="/rill/mail" className={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? styles.active : undefined} aria-current={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? "page" : undefined}><MailIcon />Mail<NavigationPendingHint /></Link>
+      {mailAllowed && <Link href="/rill/mail" className={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? styles.active : undefined} aria-current={pathname === "/rill/mail" || pathname.startsWith("/rill/mail/") ? "page" : undefined}><MailIcon />Mail<NavigationPendingHint /></Link>}
       <Link href="#rill-chat"><ChatIcon />Chat（year-end）</Link>
     </nav>
   );

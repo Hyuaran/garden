@@ -1,3 +1,5 @@
+import { requireRillWrite } from "@/app/rill/mail/_lib/view-access.server";
+import { requireRillRead } from "@/app/rill/mail/_lib/view-access.server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prepareTranslationInput } from "@/app/rill/mail/_lib/translate";
 import { errorResponse, requireGardenUser, RillMailHttpError } from "@/app/rill/mail/_lib/server-auth";
@@ -7,7 +9,7 @@ export const maxDuration = 60;
 
 export async function GET() {
   try {
-    await requireGardenUser();
+    await requireRillRead();
     return Response.json({ available: Boolean(process.env.ANTHROPIC_API_KEY_TRANSLATE || process.env.ANTHROPIC_API_KEY) });
   } catch (error) {
     return errorResponse(error);
@@ -16,7 +18,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireGardenUser();
+    await requireRillWrite();
     const apiKey = process.env.ANTHROPIC_API_KEY_TRANSLATE || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new RillMailHttpError(501, "翻訳機能は現在利用できません");
     const body = await request.json() as { text?: unknown };

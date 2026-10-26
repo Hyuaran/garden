@@ -1,5 +1,6 @@
+import { requireRillRead, requireRillWrite } from "@/app/rill/mail/_lib/view-access.server";
 import { NextRequest } from "next/server";
-import { getIntakeSource } from "@/app/rill/mail/_lib/graph";
+import { getMessage, getIntakeSource } from "@/app/rill/mail/_lib/graph";
 import { intakeStoragePath, isDuplicateIntakeError, isIntakeKind, type IntakeItem } from "@/app/rill/mail/_lib/intake";
 import { bestEffortIntakeDriveMirror } from "@/app/rill/mail/_lib/intake-drive";
 import { ensureRillTransferInbox, type RillTransferInboxSource } from "@/app/api/bud/transfer-inbox/_lib/import-from-rill";
@@ -46,10 +47,11 @@ function toTransferSource(row: IntakeItemRow): RillTransferInboxSource {
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase } = await requireGardenUser();
+    const { supabase, user, readTabs } = await requireRillRead();
     const box = request.nextUrl.searchParams.get("box")?.trim();
     const messageId = request.nextUrl.searchParams.get("messageId")?.trim();
     if (!box || !messageId) throw new RillMailHttpError(400, "box and messageId are required");
+    await getMessage(supabase, user, box, messageId, readTabs);
     const { data, error } = await supabase.from("garden_intake_items").select(ITEM_SELECT).eq("box_address", box).eq("message_id", messageId).order("created_at", { ascending: false });
     if (error) throw new RillMailHttpError(500, error.message);
     return Response.json({ items: ((data ?? []) as IntakeItemRow[]).map(toIntakeItem) });
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user } = await requireGardenUser();
+    const { supabase, user } = await requireRillWrite();
     const body = await request.json() as { box?: unknown; messageId?: unknown; attachmentId?: unknown; kind?: unknown };
     const box = typeof body.box === "string" ? body.box.trim() : "";
     const messageId = typeof body.messageId === "string" ? body.messageId.trim() : "";

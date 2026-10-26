@@ -2,6 +2,7 @@ import { beforeEach,afterEach,it,expect,vi } from 'vitest';
 vi.mock('server-only',()=>({}));
 const m=vi.hoisted(()=>({access:vi.fn(),query:vi.fn(),resend:vi.fn()}));
 vi.mock('@/lib/sprout/access.server',()=>({requireSproutUser:m.access}));
+vi.mock('@/lib/auth/sprout-rill-view.server',()=>({requireRecruitMailRead:m.access}));
 vi.mock('@/lib/db/pg',()=>({queryPg:m.query}));
 vi.mock('@/lib/sprout/baitoru.server',()=>({resendBaitoru:m.resend}));
 import { createPosting,endPosting,cancelPosting,changeContentOption,loadBaitoru,saveBaitoru,retryBaitoru } from './baitoru-actions';

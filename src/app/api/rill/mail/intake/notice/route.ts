@@ -1,21 +1,24 @@
+import { requireRillRead, requireRillWrite } from "@/app/rill/mail/_lib/view-access.server";
+import { getMessage } from "@/app/rill/mail/_lib/graph";
 import { uploadToFolder } from "@/app/api/bud/expense-drive/_lib/drive";
 import { intakeDriveFileName, resolveIntakeDriveFolder } from "@/app/rill/mail/_lib/intake-drive";
 import { assertNoticeKind, decodeNoticePng, limitNoticePages, noticeDriveNames, noticeStoragePath } from "@/app/rill/mail/_lib/intake-notice";
 import { errorResponse, requireGardenUser, RillMailHttpError } from "@/app/rill/mail/_lib/server-auth";
 
 type IntakeRow = {
-  id: string; kind: string; notice_text: string | null; mail_received_at: string; mail_from_name: string;
+  id: string; box_address: string; message_id: string; kind: string; notice_text: string | null; mail_received_at: string; mail_from_name: string;
   mail_from_address: string; mail_subject: string; file_name: string; created_by: string;
 };
 
-const SELECT = "id,kind,notice_text,mail_received_at,mail_from_name,mail_from_address,mail_subject,file_name,created_by";
+const SELECT = "box_address,message_id,id,kind,notice_text,mail_received_at,mail_from_name,mail_from_address,mail_subject,file_name,created_by";
 
 export async function GET(request: Request) {
   try {
-    const { supabase } = await requireGardenUser();
+    const { supabase, user, readTabs } = await requireRillRead();
     const id = new URL(request.url).searchParams.get("id") ?? "";
     if (!id) throw new RillMailHttpError(400, "id is required");
     const row = await noticeRow(supabase, id);
+    await getMessage(supabase, user, row.box_address, row.message_id, readTabs);
     const prefix = `shuchi/${new Date(row.mail_received_at).getUTCFullYear()}/${String(new Date(row.mail_received_at).getUTCMonth() + 1).padStart(2, "0")}/${id}_p`;
     const { data: files, error } = await supabase.storage.from("garden-intake").list(prefix.slice(0, prefix.lastIndexOf("/")), { search: `${id}_p`, sortBy: { column: "name", order: "asc" } });
     if (error) throw new RillMailHttpError(500, error.message);
@@ -31,7 +34,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user } = await requireGardenUser();
+    const { supabase, user } = await requireRillWrite();
     const body = await request.json() as { intakeId?: unknown; noticeText?: unknown; pages?: unknown };
     const intakeId = typeof body.intakeId === "string" ? body.intakeId : "";
     const noticeText = typeof body.noticeText === "string" ? body.noticeText.trim() : "";

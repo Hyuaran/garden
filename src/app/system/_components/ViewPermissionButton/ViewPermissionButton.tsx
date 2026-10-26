@@ -10,7 +10,7 @@ import styles from "./view-permission.module.css";
 
 type Settings = { settings: ViewPermission[]; employees: ViewerEmployee[]; updaters: {employee_id: string; name: string}[]; defaults: Record<string, string[]> };
 export default function ViewPermissionButton({ pageKey, tabKey, tabLabel, admin, canAdd = false }: { pageKey: string; tabKey: string; tabLabel: string; admin: boolean; canAdd?: boolean }) {
-  const moneyPage = pageKey.startsWith("bud-");
+  const moneyPage = pageKey.startsWith("bud-") || pageKey.startsWith("sprout-") || pageKey.startsWith("rill-");
   const router = useRouter();
   const [open, setOpen] = useState(false), [target, setTarget] = useState(tabKey);
   const [data, setData] = useState<Settings | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false);
@@ -57,7 +57,7 @@ export default function ViewPermissionButton({ pageKey, tabKey, tabLabel, admin,
           <div className={styles.selected}>{people.map(id => <span key={id}>{data.employees.find(employee => employee.employee_id === id)?.name ?? id}<button type="button" aria-label={`${data.employees.find(employee => employee.employee_id === id)?.name ?? id}を外す`} disabled={busy} onClick={() => setPeople(values => values.filter(value => value !== id))}>×</button></span>)}</div>
           {picking && <ViewerPicker employees={data.employees} value={people} onChange={setPeople} disabled={busy} />}
         </> : <ViewerPicker employees={data.employees.filter(employee => !people.includes(employee.employee_id))} value={[]} onChange={ids => { if (ids[0]) void change("add", ids[0]); }} disabled={busy} />}
-        {admin && <label><input type="checkbox" checked={allowAdd} disabled={busy || moneyPage} onChange={event => setAllowAdd(event.target.checked)} />見られる人が人を追加できる{moneyPage && "（経理・収支はオフ）"}</label>}
+        {admin && <label><input type="checkbox" checked={allowAdd} disabled={busy || moneyPage} onChange={event => setAllowAdd(event.target.checked)} />見られる人が人を追加できる{moneyPage && (pageKey.startsWith("bud-") ? "（経理・収支はオフ）" : "（この画面ではオフ）")}</label>}
         {stamp && <p>最終変更：{data.updaters.find(person => person.employee_id === stamp.updated_by)?.name ?? stamp.updated_by} {new Date(stamp.updated_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", weekday: "short", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</p>}
       </>}
       {error && <p role="alert">{error}</p>}

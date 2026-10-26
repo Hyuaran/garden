@@ -13,10 +13,10 @@ export const cellAlignment = <T,>(column: DataColumn<T>) => column.align ?? (col
 type Sort = { id: string; direction: "asc" | "desc" };
 const normalize = (value: string) => value.normalize("NFKC").toLocaleLowerCase("ja-JP");
 const filterKey = <T,>(column: DataColumn<T>, row: T) => column.filterValue?.(row) ?? String(column.value(row));
-export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, pageSize = 100, searchPlaceholder = "内容・金額", onRowClick, rowClickable }: {
+export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, pageSize = 100, searchable = true, searchPlaceholder = "内容・金額", onRowClick, rowClickable }: {
   rows: T[]; columns: DataColumn<T>[]; rowKey: (row: T) => string;
   searchText: (row: T) => string; summary?: (rows: T[]) => ReactNode; toolbar?: ReactNode;
-  defaultSort: Sort; pageSize?: number; searchPlaceholder?: string;
+  defaultSort: Sort; pageSize?: number; searchable?: boolean; searchPlaceholder?: string;
   onRowClick?: (row: T) => void; rowClickable?: (row: T) => boolean;
 }) {
   const [search, setSearch] = useState("");
@@ -42,7 +42,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
     window.addEventListener("scroll", dismiss, true);
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); window.removeEventListener("resize", dismiss); window.removeEventListener("scroll", dismiss, true); };
   }, [menu]);
-  const filtered = useMemo(() => rows.filter(row => (!search || normalize(searchText(row)).includes(normalize(search))) && columns.every(column => !filters[column.id] || filters[column.id].includes(filterKey(column, row)))), [rows, columns, filters, search, searchText]);
+  const filtered = useMemo(() => rows.filter(row => (!searchable || !search || normalize(searchText(row)).includes(normalize(search))) && columns.every(column => !filters[column.id] || filters[column.id].includes(filterKey(column, row)))), [rows, columns, filters, search, searchText, searchable]);
   const sorted = useMemo(() => {
     const column = columns.find(column => column.id === sort.id);
     if (!column) return filtered;
@@ -64,7 +64,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
   };
   return <div className={styles.root}>
     <div className={styles.topRow}>{summary && <div className={styles.summary}>{summary(filtered)}</div>}
-    <div className={[styles.toolbar, styles.controls].join(" ")}>{toolbar}<div className={`${styles.search} ${styles.searchBox}`}><small>検索</small><div className={styles.searchRow}><label className={styles.searchLabel}><span className={styles.searchField}><svg className={styles.searchIcon} viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg><input className={styles.searchInput} type="search" aria-label="検索" placeholder={searchPlaceholder} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></span></label><button type="button" className={styles.clear} disabled={!search && !Object.keys(filters).length} aria-label="絞り込みをすべて解除" title="絞り込みをすべて解除" onClick={() => { setSearch(""); setFilters({}); setPage(1); close(); }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5Z" /><path d="m16 15 5 5M21 15l-5 5" /></svg></button></div></div></div></div>
+    <div className={[styles.toolbar, styles.controls].join(" ")}>{toolbar}{searchable && <div className={`${styles.search} ${styles.searchBox}`}><small>検索</small><div className={styles.searchRow}><label className={styles.searchLabel}><span className={styles.searchField}><svg className={styles.searchIcon} viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg><input className={styles.searchInput} type="search" aria-label="検索" placeholder={searchPlaceholder} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></span></label><button type="button" className={styles.clear} disabled={!search && !Object.keys(filters).length} aria-label="絞り込みをすべて解除" title="絞り込みをすべて解除" onClick={() => { setSearch(""); setFilters({}); setPage(1); close(); }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5Z" /><path d="m16 15 5 5M21 15l-5 5" /></svg></button></div></div>}</div></div>
     <div className={styles.tableWrap}><StickyTable><thead><tr>{columns.map(column => <th key={column.id} aria-sort={sort.id === column.id ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" aria-label={`${column.label}の並べ替え・絞り込み`} aria-haspopup="dialog" aria-expanded={menu === column.id} onClick={event => {
       if (menu === column.id) { close(); return; }
       trigger.current = event.currentTarget;

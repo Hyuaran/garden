@@ -1,11 +1,12 @@
+import { requireRillRead } from "@/app/rill/mail/_lib/view-access.server";
 import { listVisibleBoxes } from "@/app/rill/mail/_lib/graph";
 import { errorResponse, requireGardenUser } from "@/app/rill/mail/_lib/server-auth";
 
 export async function GET() {
   try {
-    const { supabase, user } = await requireGardenUser();
+    const { supabase, user, readTabs } = await requireRillRead();
     const [boxes, employees] = await Promise.all([
-      listVisibleBoxes(supabase, user),
+      listVisibleBoxes(supabase, user, readTabs),
       supabase.from("root_employees").select("name,user_id,employee_number").not("name", "is", null).order("employee_number", { ascending: true, nullsFirst: false }),
     ]);
     const reviewers = [...new Set((employees.data ?? []).map((employee) => employee.name).filter((name): name is string => Boolean(name)))];

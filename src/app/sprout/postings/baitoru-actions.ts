@@ -1,11 +1,12 @@
 "use server";
+import { requireRecruitMailRead } from "@/lib/auth/sprout-rill-view.server";
 import { requireSproutUser } from '@/lib/sprout/access.server';
 import { queryPg } from '@/lib/db/pg';
 import { resendBaitoru } from '@/lib/sprout/baitoru.server';
 import type { BaitoruSettings } from '@/lib/sprout/baitoru';
 import { todayJst, yesterdayJst, validPosting, type Posting } from '@/lib/sprout/postings';
 export async function loadBaitoru() {
- await requireSproutUser();
+ await requireRecruitMailRead("sprout-postings", "baitoru");
  const [settings,runs,failed,postings]=await Promise.all([
   queryPg<BaitoruSettings & {last_called_at:string|null;content_options:string[]}>('select * from sprout_baitoru_settings where id=true',[]),
   queryPg<{id:string;started_at:string;counts:Record<string,number>;dedup_by_reason:Record<string,number>;error:string|null}>('select * from sprout_baitoru_runs order by id desc limit 50',[]),

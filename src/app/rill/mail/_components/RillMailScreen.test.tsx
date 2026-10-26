@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RillMailScreen } from "./RillMailScreen";
 import type { RillMailDetail, RillMailMessage } from "../_lib/types";
+import { SystemViewProvider } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 const personalBox = { id: "me", address: "me@example.com", label: "東海林 美琴", kind: "personal" as const };
 const sharedBox = { id: "shared", address: "keiri@example.com", label: "keiri", kind: "shared" as const };
@@ -88,6 +89,23 @@ afterEach(() => {
 });
 
 describe("RillMailScreen", () => {
+  it("閲覧だけ追加された人には送信・自動既読を許可しない", async () => {
+    mockMatchMedia(false);
+    render(<RillMailScreen canWrite={false} />);
+    expect(screen.getByRole("button", {name:"新規"})).toBeDisabled();
+    fireEvent.click(await screen.findByRole("button", {name:/取次進捗報告/}));
+    await screen.findByText("本文です。");
+    expect(vi.mocked(fetch).mock.calls.some(([,init]) => ["PATCH", "POST"].includes(init?.method ?? "GET"))).toBe(false);
+  });
+  it("許可された箱だけを出し、許可された箱から読み始める", async () => {
+    mockMatchMedia(false);
+    render(<SystemViewProvider value={{ pageKey: "rill-mail", admin: false, canAdd: false, tabs: ["all", "flagged", "me", "sent", "shared"].map(key => ({key, label:key, allowed:key === "me", canAdd:false})) }}><RillMailScreen /></SystemViewProvider>);
+    await screen.findByRole("button", {name:"東海林 美琴"});
+    expect(screen.queryByRole("button", {name:"すべての箱"})).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", {name:"keiri"})).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", {name:"ピン止め"})).not.toBeInTheDocument();
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/rill/mail/messages?box=me", {cache:"no-store"}));
+  });
   it("1024px 以下では最初に一覧だけを表示し、メール選択と戻るで切り替える", async () => {
     mockMatchMedia(true);
     render(<RillMailScreen />);

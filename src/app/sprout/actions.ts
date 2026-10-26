@@ -1,11 +1,12 @@
 "use server";
+import { requireRecruitMailRead } from "@/lib/auth/sprout-rill-view.server";
 import { requireSproutUser } from "@/lib/sprout/access.server";
 import { importRecruit } from "@/lib/sprout/import.server";
 import { withPgClient } from "@/lib/db/pg";
 import { hireValues, type Applicant, type ApplicantSummary, type Hearing } from "@/lib/sprout/model";
 
-export async function loadSprout() {
-  await requireSproutUser();
+export async function loadSprout(tab = "applicants") {
+  await requireRecruitMailRead("sprout-applicants", tab);
   return withPgClient(async client => {
     const [applicants, hearings, runs, sent] = await Promise.all([
       client.query<ApplicantSummary>("select kintone_record_id, name, kana, birthday, gender, phone, email, address, applied_date, application_methods, status, interview_at, interview_date, training_at, training_date, hire_date, age_group from sprout_applicants order by applied_date desc nulls last", []),
@@ -18,8 +19,8 @@ export async function loadSprout() {
     };
   });
 }
-export async function loadApplicantDetail(kintoneRecordId: string) {
-  await requireSproutUser();
+export async function loadApplicantDetail(kintoneRecordId: string, tab = "applicants") {
+  await requireRecruitMailRead("sprout-applicants", tab);
   return withPgClient(async client => {
     const [applicants, hearings] = await Promise.all([
       client.query<Pick<Applicant, "raw">>("select raw from sprout_applicants where kintone_record_id=$1", [kintoneRecordId]),

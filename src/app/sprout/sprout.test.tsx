@@ -24,11 +24,18 @@ it("shows basic information immediately, lazily loads raw and reuses it after re
   const panel = screen.getByRole("region", { name: "応募者の詳細" });
   expect(within(panel).getByText("09012345678")).toBeInTheDocument();
   expect(within(panel).getAllByText("詳細を読み込んでいます…").length).toBeGreaterThan(0);
-  expect(m.detail).toHaveBeenCalledWith("42");
+  expect(m.detail).toHaveBeenCalledWith("42", "applicants");
   resolve({ raw: { 希望給与: "詳細の給与" }, hearings: [] });
   expect(await within(panel).findByText("詳細の給与")).toBeInTheDocument();
   fireEvent.click(within(panel).getByRole("button", { name: "閉じる" }));
   fireEvent.click(screen.getByRole("button", { name: "山田 花子" }));
   expect(await screen.findByText("詳細の給与")).toBeInTheDocument();
   expect(m.detail).toHaveBeenCalledTimes(1);
+});
+
+it("keeps only the name and phone search", async () => {
+ render(<Sprout />);
+ await screen.findByRole("button", {name:"山田 花子"});
+ expect(screen.getAllByRole("searchbox")).toHaveLength(1);
+ expect(screen.getByText("名前・電話で探す")).toBeInTheDocument();
 });

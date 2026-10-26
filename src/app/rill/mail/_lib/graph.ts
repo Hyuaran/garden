@@ -1,3 +1,4 @@
+import { filterMailReadBoxes, isMailPageForBox, type MailReadTabs } from "./view-access";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { randomBytes } from "node:crypto";
 import { decryptToken, encryptToken } from "./token-crypto";
@@ -224,10 +225,10 @@ export async function ensureMailSubscriptions(supabase: SupabaseClient, user: Pi
   return { skipped: false, renewed };
 }
 
-export async function listVisibleBoxes(supabase: SupabaseClient, user: User) {
+export async function listVisibleBoxes(supabase: SupabaseClient, user: User, readTabs?: MailReadTabs) {
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
-  return boxes[0] ? [boxes[0], sentBox(boxes[0]), ...boxes.slice(1)] : boxes;
+  return filterMailReadBoxes(boxes[0] ? [boxes[0], sentBox(boxes[0]), ...boxes.slice(1)] : boxes, readTabs);
 }
 
 function mapMessage(raw: GraphMessage, box: RillMailBox): RillMailMessage {
@@ -243,16 +244,17 @@ export function resolveBoxPageUrl(cursor: Cursor, boxId: string, initialUrl: str
   return { exhausted: false, url: cursor[boxId] ?? initialUrl };
 }
 
-export async function listMessages(supabase: SupabaseClient, user: User, boxId: string, cursorValue: string | null): Promise<RillMessagesResponse> {
+export async function listMessages(supabase: SupabaseClient, user: User, boxId: string, cursorValue: string | null, readTabs?: MailReadTabs): Promise<RillMessagesResponse> {
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
-  const selected = boxesForRequest(boxes, boxId);
+  const selected = filterMailReadBoxes(boxesForRequest(boxes, boxId), readTabs);
   if (!selected.length) throw new RillMailHttpError(404, "Mailbox not found");
   const cursor = decodeCursor(cursorValue);
   const groups = await Promise.all(selected.map(async (box) => {
     const params = new URLSearchParams({ "$top": "50", "$select": MESSAGE_SELECT, ...(box.id === "sent" ? { "$orderby": "sentDateTime desc" } : {}) });
     const page = resolveBoxPageUrl(cursor, box.id, `${folderMessagePath(box)}?${params}`);
     if (page.exhausted || !page.url) return { messages: [] as RillMailMessage[], next: null };
+    if (!isMailPageForBox(page.url, folderMessagePath(box))) throw new RillMailHttpError(403, "Invalid mailbox cursor");
     const response = await graphFetch(page.url, token);
     const data = await response.json() as GraphList<GraphMessage>;
     return { messages: (data.value ?? []).map((raw) => mapMessage(raw, box)), next: data["@odata.nextLink"] ?? null };
@@ -261,9 +263,9 @@ export async function listMessages(supabase: SupabaseClient, user: User, boxId: 
   return { messages: mergeMessages(groups.map((group) => group.messages)), cursor: encodeCursor(next), boxIds: selected.map((box) => box.id) };
 }
 
-export async function listMailAnomalies(supabase: SupabaseClient, user: User, now = new Date()): Promise<MailAnomalyResponse> {
+export async function listMailAnomalies(supabase: SupabaseClient, user: User, now = new Date(), readTabs?: MailReadTabs): Promise<MailAnomalyResponse> {
   const { token, upn } = await accessToken(supabase, user);
-  const boxes = await visibleBoxesWithToken(token, upn);
+  const boxes = filterMailReadBoxes(await visibleBoxesWithToken(token, upn), readTabs);
   const cutoff = new Date(now.getTime() - ANOMALY_THRESHOLD_HOURS * 60 * 60 * 1000).toISOString();
   const oldest = new Date(now.getTime() - ANOMALY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const groups = await Promise.all(boxes.map(async (box) => {
@@ -286,7 +288,7 @@ export async function listMailAnomalies(supabase: SupabaseClient, user: User, no
   return detectMailAnomalies(groups.flat(), now.getTime());
 }
 
-export async function searchMessages(supabase: SupabaseClient, user: User, queryValue: string | null, boxId: string): Promise<SearchMessagesResponse> {
+export async function searchMessages(supabase: SupabaseClient, user: User, queryValue: string | null, boxId: string, readTabs?: MailReadTabs): Promise<SearchMessagesResponse> {
   let query: string;
   try { query = normalizeSearchQuery(queryValue); }
   catch { throw new RillMailHttpError(400, "検索語を入力してください"); }
@@ -297,6 +299,8 @@ export async function searchMessages(supabase: SupabaseClient, user: User, query
   try { selected = boxId === "sent" ? boxesForRequest(boxes, boxId) : selectSearchBoxes(boxes, boxId); }
   catch { throw new RillMailHttpError(404, "Mailbox not found"); }
 
+  selected = filterMailReadBoxes(selected, readTabs);
+  if (!selected.length) throw new RillMailHttpError(403, "Mailbox not permitted");
   const groups = await Promise.all(selected.map(async (box) => {
     const params = new URLSearchParams({
       "$top": String(SEARCH_PAGE_SIZE),
@@ -316,9 +320,9 @@ export async function searchMessages(supabase: SupabaseClient, user: User, query
   return { messages: mergeSearchResults(groups.map((group) => group.messages)), truncated: anySearchTruncated(groups.map((group) => group.truncated)) };
 }
 
-export async function listPinnedMessages(supabase: SupabaseClient, user: User): Promise<PinnedMessagesResponse> {
+export async function listPinnedMessages(supabase: SupabaseClient, user: User, readTabs?: MailReadTabs): Promise<PinnedMessagesResponse> {
   const { token, upn } = await accessToken(supabase, user);
-  const [boxes, ownName] = await Promise.all([visibleBoxesWithToken(token, upn), gardenUserName(supabase, user)]);
+  const [boxes, ownName] = await Promise.all([visibleBoxesWithToken(token, upn).then(boxes => filterMailReadBoxes(boxes, readTabs)), gardenUserName(supabase, user)]);
   const filter = pinnedCategoryFilter(ownName);
   const groups = await Promise.all(boxes.map(async (box) => {
     const params = new URLSearchParams({ "$top": String(PINNED_PAGE_SIZE), "$select": MESSAGE_SELECT, "$filter": filter });
@@ -350,16 +354,16 @@ export async function listPinnedMessages(supabase: SupabaseClient, user: User): 
   };
 }
 
-export async function getMessage(supabase: SupabaseClient, user: User, boxId: string, id: string): Promise<RillMailDetail> {
+export async function getMessage(supabase: SupabaseClient, user: User, boxId: string, id: string, readTabs?: MailReadTabs): Promise<RillMailDetail> {
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
-  const box = boxId === "all" ? undefined : boxesForRequest(boxes, boxId)[0];
+  const box = boxId === "all" ? undefined : filterMailReadBoxes(boxesForRequest(boxes, boxId), readTabs)[0];
   if (!box) throw new RillMailHttpError(404, "Mailbox not found");
-  const response = await graphFetch(`${oneMessagePath(box.id, id)}?$select=${MESSAGE_DETAIL_SELECT}`, token);
+  const response = await graphFetch(`${box.id === "sent" ? `${folderMessagePath(box)}/${encodeURIComponent(id)}` : oneMessagePath(box.id, id)}?$select=${MESSAGE_DETAIL_SELECT}`, token);
   const raw = await response.json() as GraphMessage;
   let attachments: RillMailAttachment[] = [];
   if (raw.hasAttachments) {
-    const ares = await graphFetch(`${oneMessagePath(box.id, id)}/attachments?$select=id,name,contentType,size`, token);
+    const ares = await graphFetch(`${box.id === "sent" ? `${folderMessagePath(box)}/${encodeURIComponent(id)}` : oneMessagePath(box.id, id)}/attachments?$select=id,name,contentType,size`, token);
     const data = await ares.json() as GraphList<RillMailAttachment>;
     attachments = (data.value ?? []).filter((item) => item.id && item.name);
   }
@@ -372,12 +376,12 @@ export async function getMessage(supabase: SupabaseClient, user: User, boxId: st
   };
 }
 
-export async function getAttachment(supabase: SupabaseClient, user: User, boxId: string, messageId: string, attachmentId: string) {
+export async function getAttachment(supabase: SupabaseClient, user: User, boxId: string, messageId: string, attachmentId: string, readTabs?: MailReadTabs) {
   const { token, upn } = await accessToken(supabase, user);
   const boxes = await visibleBoxesWithToken(token, upn);
-  const box = boxId === "all" ? undefined : boxesForRequest(boxes, boxId)[0];
+  const box = boxId === "all" ? undefined : filterMailReadBoxes(boxesForRequest(boxes, boxId), readTabs)[0];
   if (!box) throw new RillMailHttpError(404, "Mailbox not found");
-  const response = await graphFetch(`${oneMessagePath(box.id, messageId)}/attachments/${encodeURIComponent(attachmentId)}`, token);
+  const response = await graphFetch(`${box.id === "sent" ? `${folderMessagePath(box)}/${encodeURIComponent(messageId)}` : oneMessagePath(box.id, messageId)}/attachments/${encodeURIComponent(attachmentId)}`, token);
   return response.json() as Promise<{ name?: string; contentType?: string; contentBytes?: string }>;
 }
 

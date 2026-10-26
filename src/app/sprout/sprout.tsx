@@ -1,4 +1,5 @@
 "use client";
+import { useSystemView, SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import { useEffect, useRef, useState } from "react";
@@ -48,8 +49,10 @@ function Fields({ raw, keys }: { raw: Record<string, unknown>; keys: string[] })
   return <dl className={styles.fields}>{keys.map(k => <div key={k}><dt>{labels[k] || k}</dt><dd><Value value={raw[k]} /></dd></div>)}</dl>;
 }
 export default function Sprout() {
+  const { allowedTab } = useSystemView();
+  const initialTab = ["applicants", "interviews", "training"].find(key => allowedTab(key)) ?? "applicants";
   const [data, setData] = useState<Data>({ applicants: [], hearings: [], sent: [], updated: null });
-  const [tab, setTab] = useState("applicants"), [month, setMonth] = useState(todayJst().slice(0,7));
+  const [tab, setTab] = useState(initialTab), [month, setMonth] = useState(todayJst().slice(0,7));
   const [statuses, setStatuses] = useState<string[]>([]), [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
   type Detail = Awaited<ReturnType<typeof loadApplicantDetail>>;
@@ -63,7 +66,7 @@ export default function Sprout() {
     let request = requests.current.get(id);
     if (!request) {
       setDetailErrors(current => ({ ...current, [id]: "" }));
-      request = loadApplicantDetail(id);
+      request = loadApplicantDetail(id, tab);
       requests.current.set(id, request);
     }
     request.then(detail => {
@@ -73,11 +76,11 @@ export default function Sprout() {
       if (active) setDetailErrors(current => ({ ...current, [id]: "詳細を読み込めませんでした。開き直してお試しください" }));
     });
     return () => { active = false; };
-  }, [selected]);
+  }, [selected, tab]);
   const detail = selected ? details[selected] : undefined;
   const detailLoading = <p role="status">{selected && detailErrors[selected] || "詳細を読み込んでいます…"}</p>;
   const [loaded, setLoaded] = useState(false);
-  useEffect(() => { let active = true; loadSprout().then(d => { if (active) { setData(d); setLoaded(true); } }).catch(() => { if (active) setMessage("読み込めませんでした。時間をおいてお試しください"); }); return () => { active = false; }; }, []);
+  useEffect(() => { let active = true; loadSprout(tab).then(d => { if (active) { setData(d); setLoaded(true); } }).catch(() => { if (active) setMessage("読み込めませんでした。時間をおいてお試しください"); }); return () => { active = false; }; }, [tab]);
   const row = data.applicants.find(a => a.kintone_record_id === selected);
   const filtered = filterApplicants(data.applicants, tab, month, statuses, search, todayJst());
   const columns: DataColumn<ApplicantSummary>[] = [
@@ -92,7 +95,7 @@ export default function Sprout() {
   const months = [...new Set([todayJst().slice(0,7), ...data.applicants.map(a => a.applied_date?.slice(0,7)).filter((v): v is string => !!v)])].sort().reverse();
   async function refresh() {
     setBusy(true); setMessage("");
-    try { const result = await refreshSprout(); if (!result.ok) setMessage(result.message || "取り込めませんでした"); else { setData(await loadSprout()); setMessage("採用情報を取り込みました"); } }
+    try { const result = await refreshSprout(); if (!result.ok) setMessage(result.message || "取り込めませんでした"); else { setData(await loadSprout(tab)); setMessage("採用情報を取り込みました"); } }
     catch { setMessage("取り込めませんでした。時間をおいてお試しください"); } finally { setBusy(false); }
   }
   async function send(a: ApplicantSummary) {
@@ -101,7 +104,7 @@ export default function Sprout() {
     catch { setMessage("送れませんでした。時間をおいてお試しください"); } finally { setBusy(false); }
   }
   return <SproutShell current="採用管理"><div className={styles.heading}><SystemBreadcrumb root={{ label: "Sprout", href: "/sprout" }} items={[{ label: "採用管理" }]} /><h1>採用管理</h1><UpdatedStamp label="Kintone取込" date={data.updated} onRefresh={refresh} busy={busy || !loaded} refreshLabel="採用情報を取り込む" /></div>
-      <SystemTabs>{[["applicants", "応募者"], ["interviews", "面接予定"], ["training", "研修予定"]].map(([id,label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}</SystemTabs>
+      <SystemTabs actions={<SystemViewButton tabKey={tab} />}>{[["applicants", "応募者"], ["interviews", "面接予定"], ["training", "研修予定"]].filter(([id]) => allowedTab(id)).map(([id,label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => { if (tab === id) return; setSelected(null); setLoaded(false); setData({applicants:[],hearings:[],sent:[],updated:null}); setTab(id); }}>{label}</button>)}</SystemTabs>
       <><FilterRow className={styles.filters}>{tab === "applicants" && <BoxSelect label="期間" multiple={false} value={[month]} onChange={v => setMonth(v[0])} options={[{ value: "", label: "すべての期間" }, ...months.map(m => ({ value: m, label: `${m.slice(0,4)}年${Number(m.slice(5))}月` }))]} />}
         <BoxSelect label="状況" value={statuses.length ? statuses : [...new Set(data.applicants.map(a => a.status))]} options={[...new Set(data.applicants.map(a => a.status))].sort().map(s => ({ value: s, label: s || "未設定" }))} onChange={setStatuses} />
         <FilterBox label="名前・電話で探す" search><input type="search" value={search} onChange={e => setSearch(e.target.value)} /></FilterBox>
@@ -111,7 +114,7 @@ export default function Sprout() {
       <div className={styles.content}><section className={styles.list} onClick={event => {
         const target = (event.target as HTMLElement).closest("tbody tr")?.querySelector<HTMLButtonElement>("[data-applicant-id]");
         if (target?.dataset.applicantId) setSelected(target.dataset.applicantId);
-      }}><DataTable key={tab} rows={filtered} columns={columns} rowKey={a => a.kintone_record_id} searchText={a => a.name + a.phone} summary={r => loaded ? `${r.length}人` : "読み込み中…"} defaultSort={{ id: tab === "applicants" ? "applied_date" : tab === "interviews" ? "interview" : "training", direction: tab === "applicants" ? "desc" : "asc" }} /></section>
+      }}><DataTable searchable={false} key={tab} rows={filtered} columns={columns} rowKey={a => a.kintone_record_id} searchText={a => a.name + a.phone} summary={r => loaded ? `${r.length}人` : "読み込み中…"} defaultSort={{ id: tab === "applicants" ? "applied_date" : tab === "interviews" ? "interview" : "training", direction: tab === "applicants" ? "desc" : "asc" }} /></section>
       {row && <section className={styles.detail} aria-label="応募者の詳細"><button onClick={() => setSelected(null)}>閉じる</button><h2>{row.name}</h2>
         <h3>基本</h3><dl className={styles.fields}>{[["カナ", row.kana], ["生年月日", row.birthday], ["性別", row.gender], ["電話", row.phone], ["メール", row.email], ["住所", row.address]].map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value || "─"}</dd></div>)}</dl>
         <h3>応募</h3><p>応募日：{showDate(row.applied_date)} ／ {row.status}</p>{detail ? <Fields raw={detail.raw} keys={["文字列__1行__5", "チェックボックス_3", "チェックボックス_4", "チェックボックス_5"]} /> : detailLoading}

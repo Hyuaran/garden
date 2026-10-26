@@ -1,3 +1,4 @@
+import { requireRillWrite } from "@/app/rill/mail/_lib/view-access.server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages/messages";
 import { assertNoticeKind, limitNoticePages } from "@/app/rill/mail/_lib/intake-notice";
@@ -10,7 +11,7 @@ type IntakeRow = { kind: string; mail_from_name: string; mail_from_address: stri
 
 export async function POST(request: Request) {
   try {
-    const { supabase } = await requireGardenUser();
+    const { supabase } = await requireRillWrite();
     const body = await request.json() as { intakeId?: unknown; pages?: unknown };
     const intakeId = typeof body.intakeId === "string" ? body.intakeId : "";
     if (!intakeId) throw new RillMailHttpError(400, "intakeId is required");

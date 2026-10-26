@@ -1,5 +1,6 @@
 import {beforeEach,it,expect,vi} from 'vitest';
 vi.mock('server-only',()=>({}));
+vi.mock('@/lib/auth/sprout-rill-view.server',()=>({requireRecruitMailRead:m.access}));
 const m=vi.hoisted(()=>({query:vi.fn(),postings:vi.fn(),fetch:vi.fn(),send:vi.fn(),access:vi.fn()}));
 vi.mock('@/lib/db/pg',()=>({withPgClient:(fn:(c:unknown)=>unknown)=>fn({query:(sql:string,...args:unknown[])=>sql.includes('from sprout_baitoru_postings')?m.postings():m.query(sql,...args)}),queryPg:(...args:unknown[])=>m.query(...args)}));
 vi.mock('@/lib/chatwork',()=>({ChatworkClient:class {sendMessage(...args:unknown[]){return m.send(...args);}}}));

@@ -1,3 +1,4 @@
+import { requireRillWrite } from "@/app/rill/mail/_lib/view-access.server";
 import { patchOneMessage } from "@/app/rill/mail/_lib/write-request";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/rill/mail/messages/[id]/confirm">) {

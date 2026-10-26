@@ -1,3 +1,4 @@
+import { canViewRecruitMail } from "@/lib/auth/sprout-rill-view.server";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
@@ -9,7 +10,6 @@ export const metadata = {
   title: "Garden-Rill - メッセージ",
 };
 
-const ROLE_ORDER = ["outsource", "toss", "closer", "cs", "staff", "manager", "admin", "super_admin"] as const;
 const ROLE_LABELS: Record<string, string> = {
   super_admin: "全権管理者",
   admin: "管理者",
@@ -20,12 +20,6 @@ const ROLE_LABELS: Record<string, string> = {
   toss: "トス",
   outsource: "外部スタッフ",
 };
-
-function isRoleAtLeast(role: string | null | undefined, minimum: string): boolean {
-  const roleIndex = ROLE_ORDER.indexOf(role as (typeof ROLE_ORDER)[number]);
-  const minimumIndex = ROLE_ORDER.indexOf(minimum as (typeof ROLE_ORDER)[number]);
-  return roleIndex >= 0 && minimumIndex >= 0 && roleIndex >= minimumIndex;
-}
 
 export default async function RillLayout({ children }: { children: ReactNode }) {
   const supabase = await createServerClient();
@@ -42,7 +36,8 @@ export default async function RillLayout({ children }: { children: ReactNode }) 
   if (!employee || !isEmployeeActive(employee)) redirect("/login?returnTo=%2Frill");
 
   const role = typeof employee.garden_role === "string" ? employee.garden_role : "staff";
-  if (!isRoleAtLeast(role, "admin")) redirect("/access-denied?module=rill");
+  const mailAllowed = await canViewRecruitMail("rill-mail");
+  if (!mailAllowed) redirect("/access-denied?module=rill");
 
   const company = employee.company_id
     ? (await supabase
@@ -53,7 +48,7 @@ export default async function RillLayout({ children }: { children: ReactNode }) 
     : null;
 
   return (
-    <RillShachoShell user={{
+    <RillShachoShell mailAllowed={mailAllowed} user={{
       name: String(employee.name),
       company: String(company?.company_name ?? "所属会社未登録"),
       role,

@@ -1,6 +1,8 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- authenticated Graph attachment URLs cannot use the Next image optimizer */
 
+import { useSystemView, SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+import { rillBoxTab } from "@/lib/auth/sprout-rill-view-scopes";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -85,11 +87,13 @@ async function readJson<T>(response: Response): Promise<T> {
   return data;
 }
 
-export function RillMailScreen() {
+export function RillMailScreen({ canWrite = true }: { canWrite?: boolean }) {
+  const { state: viewState, allowedTab } = useSystemView();
+  const initialBox = viewState?.tabs.find(tab => tab.allowed)?.key ?? "all";
   const [boxes, setBoxes] = useState<RillMailBox[]>([]);
   const [reviewers, setReviewers] = useState<string[]>(FALLBACK_REVIEWERS);
   const [ownName, setOwnName] = useState("");
-  const [activeBox, setActiveBox] = useState("all");
+  const [activeBox, setActiveBox] = useState(initialBox);
   const [messages, setMessages] = useState<RillMailMessage[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [selected, setSelected] = useState<RillMailMessage | null>(null);
@@ -266,13 +270,14 @@ export function RillMailScreen() {
       pinOverrides.current = loadPinOverrides(pinOverrideStorage.current, data.userId, Date.now());
       moveExclusions.current = loadMoveExclusions(moveExclusionStorage.current, data.userId, Date.now());
       setBoxes(data.boxes); setReviewers(data.reviewers.length ? data.reviewers : FALLBACK_REVIEWERS); setOwnName(data.ownName ?? ""); setConnected(true); setAutoRefreshFailed(false);
-      await loadMessages("all");
+      const firstBox = initialBox === "shared" ? data.boxes.find(box => box.kind === "shared")?.id : initialBox;
+      if (firstBox) { setActiveBox(firstBox); if (firstBox === "flagged") await loadPinnedMessages(); else await loadMessages(firstBox); }
     } catch (cause) {
       if (generation !== requestGeneration.current) return;
       if ((cause as { status?: number }).status === 428) setConnected(false);
       else setError(cause instanceof Error ? cause.message : "メールを取得できませんでした");
     } finally { if (generation === requestGeneration.current) setLoading(false); }
-  }, [loadMessages]);
+  }, [loadMessages, loadPinnedMessages, initialBox]);
 
   useEffect(() => { void initialize(); }, [initialize]);
   useEffect(() => {
@@ -460,6 +465,7 @@ export function RillMailScreen() {
   }, []);
 
   const writeOne = async (message: RillMailMessage, op: MailWriteOperation, value: boolean | MailState | null) => {
+    if (!canWrite) return;
     const key = keyOf(message);
     if (pendingWriteKeys.current.has(key)) return;
     const updated = applyLocalMailMutation(message, op, value, ownName);
@@ -509,6 +515,7 @@ export function RillMailScreen() {
   };
 
   const bulkWrite = async (op: MailWriteOperation, value: boolean | MailState | null) => {
+    if (!canWrite) return;
     const targets = (searchResults ?? (activeBox === "flagged" ? pinnedMessages : messages)).filter((message) => picked.has(keyOf(message)) && !pendingWriteKeys.current.has(keyOf(message)));
     if (!targets.length) return;
     const snapshots = new Map(targets.map((message) => [keyOf(message), message]));
@@ -576,6 +583,7 @@ export function RillMailScreen() {
   };
 
   const moveMessages = async (targets: RillMailMessage[], operation: "archive" | "delete") => {
+    if (!canWrite) return;
     const unique = [...new Map(targets.map((message) => [keyOf(message), message])).values()];
     if (!unique.length) return;
     moveUndoWindow.current?.dispose();
@@ -649,6 +657,7 @@ export function RillMailScreen() {
   };
 
   const importLegacyFlags = async () => {
+    if (!canWrite) return;
     if (importingFlags) return;
     setImportingFlags(true); setImportResult(""); setError("");
     try {
@@ -662,6 +671,7 @@ export function RillMailScreen() {
   };
 
   const openCompose = (mode: ComposeMode) => {
+    if (!canWrite) return;
     if (mode !== "new" && !detail) return;
     const source = mode === "new" ? null : detail!;
     const id = source ? `${mode}:${source.box.id}:${source.id}` : `new:${++draftCounter.current}`;
@@ -868,21 +878,21 @@ export function RillMailScreen() {
         <button className={styles.primaryButton} onClick={() => void initialize()} disabled={loading}><RefreshIcon />更新</button>
         <button className={styles.anomalyCheckButton} onClick={() => void checkAnomalies(true)} disabled={anomalyLoading}><AnomalyIcon />{anomalyLoading ? "確認中…" : "異常チェック"}</button>
         <span className={styles.fresh}>{updatedAt ? `最終更新 ${updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}・60秒ごと` : "未更新"}</span>{autoRefreshFailed && <span className={styles.autoWarning}>更新に失敗（自動で再試行します）</span>}<span className={styles.separator} />
-        <button className={styles.composeAction} onClick={() => openCompose("new")}>新規</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("reply")}>返信</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("replyAll")}>全員に返信</button><button className={styles.composeAction} disabled={!detail} onClick={() => openCompose("forward")}>転送</button>
-        {!sentView && <><button className={styles.actionButton} disabled={!selected || (!selectedPersonal && selectedConfirmed) || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, selectedPersonal ? "read" : "confirm", selectedPersonal ? selectedUnread : true)}>○ {selectedPersonal ? selectedUnread ? "開封済みに" : "未読に戻す" : selectedConfirmed ? "確認済" : "確認"}</button>
-        <button aria-label="ピン" className={`${styles.actionButton} ${currentPinned ? styles.actionOn : ""}`} disabled={!selected || !ownName || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "pin", !currentPinned)}><PinIcon on={currentPinned} />ピン</button>
-        <span className={styles.toolbarStates}>{MAIL_STATES.map((state) => <button key={state} className={selected && statusCategory(selected.categories) === state ? styles.actionOn : ""} disabled={!selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "state", statusCategory(selected.categories) === state ? null : state)}>{state}</button>)}</span>
-        <details className={styles.moreMenu}><summary className={styles.moreButton}>…</summary><div><button disabled={!selected} onClick={() => selected && void moveMessages([selected], "archive")}>アーカイブ</button><button disabled={!selected} onClick={() => selected && void moveMessages([selected], "delete")}>削除</button></div></details></>}
+        <button className={styles.composeAction} disabled={!canWrite} onClick={() => openCompose("new")}>新規</button><button className={styles.composeAction} disabled={!canWrite || !detail} onClick={() => openCompose("reply")}>返信</button><button className={styles.composeAction} disabled={!canWrite || !detail} onClick={() => openCompose("replyAll")}>全員に返信</button><button className={styles.composeAction} disabled={!canWrite || !detail} onClick={() => openCompose("forward")}>転送</button>
+        {!sentView && <><button className={styles.actionButton} disabled={!canWrite || !selected || (!selectedPersonal && selectedConfirmed) || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, selectedPersonal ? "read" : "confirm", selectedPersonal ? selectedUnread : true)}>○ {selectedPersonal ? selectedUnread ? "開封済みに" : "未読に戻す" : selectedConfirmed ? "確認済" : "確認"}</button>
+        <button aria-label="ピン" className={`${styles.actionButton} ${currentPinned ? styles.actionOn : ""}`} disabled={!canWrite || !selected || !ownName || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "pin", !currentPinned)}><PinIcon on={currentPinned} />ピン</button>
+        <span className={styles.toolbarStates}>{MAIL_STATES.map((state) => <button key={state} className={selected && statusCategory(selected.categories) === state ? styles.actionOn : ""} disabled={!canWrite || !selected || Boolean(selected && pendingWrites.has(keyOf(selected)))} onClick={() => selected && void writeOne(selected, "state", statusCategory(selected.categories) === state ? null : state)}>{state}</button>)}</span>
+        <details className={styles.moreMenu}><summary className={styles.moreButton}>…</summary><div><button disabled={!canWrite || !selected} onClick={() => selected && void moveMessages([selected], "archive")}>アーカイブ</button><button disabled={!canWrite || !selected} onClick={() => selected && void moveMessages([selected], "delete")}>削除</button></div></details></>}
         <label className={styles.search}><span><SearchIcon /></span><input value={query} onChange={(event) => changeQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") runFullSearch(); }} placeholder="メールを検索" />{query && <button type="button" className={styles.clearSearch} aria-label="検索を解除" onClick={() => { setQuery(""); exitSearch(); }}>×</button>}</label>
       </div>
-      {connected === false ? <div className={styles.connect}><div className={styles.connectOrb}><MailOrbIcon /></div><h1>Microsoft メールを接続</h1><p>本人の Microsoft アカウントでサインインすると、許可された受信箱を Garden から閲覧できます。</p><a href="/api/rill/mail/auth/login">Microsoft に接続</a></div> :
+      {connected === false ? <div className={styles.connect}><div className={styles.connectOrb}><MailOrbIcon /></div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h1>Microsoft メールを接続</h1><SystemViewButton /></div><p>本人の Microsoft アカウントでサインインすると、許可された受信箱を Garden から閲覧できます。</p><a href="/api/rill/mail/auth/login">Microsoft に接続</a></div> :
       <div className={styles.panes} data-mobile-pane={mobilePane}>
-        <aside className={styles.column} aria-label="箱の一覧" hidden={narrowMail && mobilePane !== "boxes"}><header className={styles.columnHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobilePane("list")}><BackToListIcon />一覧へ</button><span className={styles.desktopOnly}>受信箱</span> <span>{messages.filter((message) => message.box.id !== "sent").length}</span></header><div className={styles.scroll}>
-          <div className={styles.group}>まとめて見る</div><button className={`${styles.box} ${activeBox === "all" ? styles.active : ""}`} onClick={() => selectBox("all")}><span className={styles.dot} />すべての箱</button><button className={`${styles.box} ${activeBox === "flagged" ? styles.active : ""}`} onClick={() => selectBox("flagged")}><span className={styles.pinIcon} role="img" aria-label="ピン"><PinIcon on /></span>ピン止め</button>
-          <div className={styles.group}>自分</div>{boxes.filter((box) => box.kind === "personal").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.personalDot} />{box.label}</button>)}
-          <div className={styles.group}>共有</div>{boxes.filter((box) => box.kind === "shared").map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.sharedDot} />{box.label}</button>)}
+        <aside className={styles.column} aria-label="箱の一覧" hidden={narrowMail && mobilePane !== "boxes"}><header className={styles.columnHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobilePane("list")}><BackToListIcon />一覧へ</button><span className={styles.desktopOnly}>受信箱</span> <span>{messages.filter((message) => message.box.id !== "sent").length}</span><SystemViewButton tabKey={rillBoxTab(activeBox)} /></header><div className={styles.scroll}>
+          <div className={styles.group}>まとめて見る</div>{allowedTab("all") && <button className={`${styles.box} ${activeBox === "all" ? styles.active : ""}`} onClick={() => selectBox("all")}><span className={styles.dot} />すべての箱</button>}{allowedTab("flagged") && <button className={`${styles.box} ${activeBox === "flagged" ? styles.active : ""}`} onClick={() => selectBox("flagged")}><span className={styles.pinIcon} role="img" aria-label="ピン"><PinIcon on /></span>ピン止め</button>}
+          <div className={styles.group}>自分</div>{boxes.filter((box) => box.kind === "personal" && allowedTab(rillBoxTab(box.id))).map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.personalDot} />{box.label}</button>)}
+          <div className={styles.group}>共有</div>{boxes.filter((box) => box.kind === "shared" && allowedTab("shared")).map((box) => <button key={box.id} className={`${styles.box} ${activeBox === box.id ? styles.active : ""}`} onClick={() => selectBox(box.id)}><span className={styles.sharedDot} />{box.label}</button>)}
         </div><footer className={styles.foot}>メールは Garden に保存せず<br />Microsoft から都度取得します</footer></aside>
-        <section className={styles.column} aria-label="メール一覧" hidden={narrowMail && mobilePane !== "list"}><header className={styles.columnHeader}><button type="button" className={styles.mobileBoxButton} onClick={() => setMobilePane("boxes")}>{activeBoxLabel} <span>{filtered.length}件</span></button><span className={styles.desktopOnly}>{searchLoading ? "全期間を検索中…" : searchResults !== null ? <>全期間から{filtered.length}件 <small>（Outlook検索）</small></> : <>メール一覧 <span>{filtered.length}件</span></>}</span>{activeBox === "flagged" && searchResults === null && <span className={styles.pinReviewControls}><label><input type="checkbox" checked={allVisiblePicked} disabled={!filtered.length} onChange={() => setPicked((current) => toggleVisibleSelection(current, filteredKeys))} />すべて選択</label><button type="button" onClick={() => setPinSortOrder((current) => current === "newest" ? "oldest" : "newest")}>{pinSortOrder === "newest" ? "新しい順" : "古い順"} ⇄</button></span>}{activeBox === "flagged" && searchResults === null && filtered.length > 0 && <button className={styles.importAgain} disabled={importingFlags} onClick={() => void importLegacyFlags()}>旧フラグ取込</button>}</header>
+        <section className={styles.column} aria-label="メール一覧" hidden={narrowMail && mobilePane !== "list"}><header className={styles.columnHeader}><button type="button" className={styles.mobileBoxButton} onClick={() => setMobilePane("boxes")}>{activeBoxLabel} <span>{filtered.length}件</span></button><span className={styles.desktopOnly}>{searchLoading ? "全期間を検索中…" : searchResults !== null ? <>全期間から{filtered.length}件 <small>（Outlook検索）</small></> : <>メール一覧 <span>{filtered.length}件</span></>}</span>{activeBox === "flagged" && searchResults === null && <span className={styles.pinReviewControls}><label><input type="checkbox" checked={allVisiblePicked} disabled={!filtered.length} onChange={() => setPicked((current) => toggleVisibleSelection(current, filteredKeys))} />すべて選択</label><button type="button" onClick={() => setPinSortOrder((current) => current === "newest" ? "oldest" : "newest")}>{pinSortOrder === "newest" ? "新しい順" : "古い順"} ⇄</button></span>}{activeBox === "flagged" && searchResults === null && filtered.length > 0 && <button className={styles.importAgain} disabled={!canWrite || importingFlags} onClick={() => void importLegacyFlags()}>旧フラグ取込</button>}</header>
           {picked.size > 0 && !sentView && <div className={styles.bulk}><b>{picked.size}件選択</b><button onClick={() => void bulkWrite("read", true)}>開封済みに</button><button aria-label={bulkPinOn ? "ピン" : "ピンを外す"} onClick={() => void bulkWrite("pin", bulkPinOn)}><PinIcon on={!bulkPinOn} />{bulkPinOn ? "ピン" : "ピンを外す"}</button>{MAIL_STATES.map((state) => <button key={state} onClick={() => void bulkWrite("state", state)}>{state}</button>)}<button onClick={() => void bulkWrite("confirm", true)}>確認</button><button onClick={() => void moveMessages(pickedMessages, "archive")}>アーカイブ</button><button onClick={() => void moveMessages(pickedMessages, "delete")}>削除</button><button className={styles.bulkClose} onClick={() => setPicked(new Set())}>×</button></div>}
           <div className={styles.scroll} onScroll={trackListScroll}>{((activeBox === "flagged" ? pinsLoading : loading && !messages.length) && searchResults === null) && <div className={styles.notice}>読み込み中…</div>}{error && <div className={styles.error}>{error}</div>}{searchError && <div className={styles.error}>{searchError}</div>}
           {searchResults !== null && !searchLoading && filtered.length === 0 && <div className={styles.searchEmpty}>該当するメールはありません。日本語は単語の一部だけでは見つからない場合があります。</div>}

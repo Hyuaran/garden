@@ -1,3 +1,4 @@
+import { requireRillRead } from "@/app/rill/mail/_lib/view-access.server";
 import { NextRequest } from "next/server";
 import { getAttachment } from "@/app/rill/mail/_lib/graph";
 import { isViewableAttachment } from "@/app/rill/mail/_lib/format";
@@ -15,8 +16,8 @@ export async function GET(request: NextRequest, context: RouteContext<"/api/rill
     const box = request.nextUrl.searchParams.get("box");
     if (!box) throw new RillMailHttpError(400, "box is required");
     const { id, aid } = await context.params;
-    const { supabase, user } = await requireGardenUser();
-    const attachment = await getAttachment(supabase, user, box, id, aid);
+    const { supabase, user, readTabs } = await requireRillRead(box);
+    const attachment = await getAttachment(supabase, user, box, id, aid, readTabs);
     if (!attachment.contentBytes) throw new RillMailHttpError(404, "Attachment content is unavailable");
     const name = attachment.name ?? "attachment";
     const inline = request.nextUrl.searchParams.get("view") === "1" && isViewableAttachment(attachment.contentType, name);

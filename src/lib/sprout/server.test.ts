@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only",()=>({}));
+vi.mock("@/lib/auth/sprout-rill-view.server",()=>({requireRecruitMailRead:mocks.access}));
 const mocks = vi.hoisted(() => ({ access:vi.fn(), query:vi.fn(), fetch:vi.fn(), user:vi.fn(), role:vi.fn() }));
 vi.mock("./access.server",()=>({requireSproutUser:mocks.access}));
 vi.mock("@/lib/db/pg",()=>({queryPg:mocks.query,withPgClient:(fn:(c:unknown)=>unknown)=>fn({query:mocks.query})}));

@@ -1,3 +1,4 @@
+import { requireRillWrite } from "@/app/rill/mail/_lib/view-access.server";
 import { validateAttachmentSizes, validateComposeInput } from "@/app/rill/mail/_lib/compose";
 import { sendComposeMessage } from "@/app/rill/mail/_lib/graph";
 import { errorResponse, requireGardenUser, RillMailHttpError } from "@/app/rill/mail/_lib/server-auth";
@@ -7,7 +8,7 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user } = await requireGardenUser();
+    const { supabase, user } = await requireRillWrite();
     let input;
     let attachments: Array<{ name: string; contentType: string; bytes: Uint8Array }> = [];
     try {

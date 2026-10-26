@@ -1,3 +1,4 @@
+import { requireRillWrite } from "@/app/rill/mail/_lib/view-access.server";
 import { moveMailMessages, type MailMove } from "@/app/rill/mail/_lib/graph";
 import { type MailMoveOperation } from "@/app/rill/mail/_lib/move-ops";
 import { errorResponse, requireGardenUser, RillMailHttpError } from "@/app/rill/mail/_lib/server-auth";
@@ -6,7 +7,7 @@ const OPERATIONS = new Set<MailMoveOperation>(["archive", "delete", "restore"]);
 
 export async function POST(request: Request) {
   try {
-    const { supabase, user } = await requireGardenUser();
+    const { supabase, user } = await requireRillWrite();
     const body = await request.json() as { moves?: unknown };
     if (!Array.isArray(body.moves) || !body.moves.length || body.moves.length > 100) {
       throw new RillMailHttpError(400, "moves must contain 1 to 100 items");
