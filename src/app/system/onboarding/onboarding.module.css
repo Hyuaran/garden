@@ -95,3 +95,5 @@
 .hireDialog { width:calc(100% - 32px); max-width:780px; max-height:calc(100dvh / var(--garden-zoom, 1) - 32px); margin:auto; overflow:auto; color:var(--ink,#17212e); box-sizing:border-box; }
 .hireDialog::backdrop { background:rgba(16,35,63,.45); }
 .hireDialog .hireGrid > label { min-width:0; }
+.hireConfirmDialog { max-width:520px; }
+.hireConfirmDialog .hireRowActions { margin-top:16px; }

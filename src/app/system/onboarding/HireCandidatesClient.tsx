@@ -34,6 +34,15 @@ export default function HireCandidatesClient({children,userId}:{children:ReactNo
   dialog?.showModal();
   return()=>{dialog?.close();previous?.focus();};
  },[!!form,!!options]);
+ // 入社の確認も画面の真ん中のモーダルに（一覧の下に出ると人数が多いとき見えないため 2026-10-26）
+ const confirmDialog=useRef<HTMLDialogElement>(null);
+ useEffect(()=>{
+  if(!confirmation)return;
+  const dialog=confirmDialog.current;
+  const previous=document.activeElement as HTMLElement|null;
+  dialog?.showModal();
+  return()=>{dialog?.close();previous?.focus();};
+ },[!!confirmation]);
  const [saving,setSaving]=useState<string|null>(null);
  const load = async () => { const data = await api(); setRows(data); };
  useEffect(()=>{load().catch(e=>setMessage(e.message));},[]);
@@ -101,8 +110,9 @@ export default function HireCandidatesClient({children,userId}:{children:ReactNo
  {field("hire_date","入社予定日","date")}{choice("company_id","所属法人",options.companies.map(c=>({value:c.company_id,label:c.company_name})))}{choice("employment_type","雇用形態",EMPLOYMENT_TYPES.map(value=>({value,label:value})))}
  {choice("kot_division_code","KOT の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}{choice("kot_type_code","KOT の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
   </div></div><div className={styles.hireRowActions}><button className={styles.hirePrimary} disabled={busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})}>保存する</button><button disabled={busy||!!saving} onClick={()=>setForm(null)}>閉じる</button></div></dialog>}
- {confirmation&&<section role="dialog" aria-modal="true" aria-label="入社の確認" className={styles.panel}>
+ {confirmation&&<dialog ref={confirmDialog} aria-label="入社の確認" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setConfirmation(null)} onClick={event=>{if(event.target===event.currentTarget)setConfirmation(null);}}>
+ <h2>入社の確認</h2>
  <p>{confirmation.last_name} {confirmation.first_name}さんを社員番号 {confirmation.employee_number} で KOT と Garden に登録します。KOT はこの時点から料金の対象になります。</p>
- <button disabled={busy||!!saving} onClick={()=>run(async()=>{const id=confirmation.id;setConfirmation(null);await api("/"+id+"/hire","POST",{});})}>登録する</button><button disabled={busy||!!saving} onClick={()=>setConfirmation(null)}>やめる</button></section>}
+ <div className={styles.hireRowActions}><button className={styles.hirePrimary} disabled={busy||!!saving} onClick={()=>run(async()=>{const id=confirmation.id;setConfirmation(null);await api("/"+id+"/hire","POST",{});})}>登録する</button><button disabled={busy||!!saving} onClick={()=>setConfirmation(null)}>やめる</button></div></dialog>}
  </section>}</>;
 }
