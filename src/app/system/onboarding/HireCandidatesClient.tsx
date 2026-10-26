@@ -52,11 +52,31 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
   dialog?.showModal();
   return()=>{dialog?.close();previous?.focus();};
  },[!!failure]);
+ const [success,setSuccess]=useState<HireCandidate|null>(null);
+ const successDialog=useRef<HTMLDialogElement>(null);
+ useEffect(()=>{
+  if(!success)return;
+  const dialog=successDialog.current;
+  const previous=document.activeElement as HTMLElement|null;
+  dialog?.showModal();
+  const timer=setTimeout(()=>setSuccess(null),3000);
+  return()=>{clearTimeout(timer);dialog?.close();previous?.focus();};
+ },[success]);
+ const [lineSkip,setLineSkip]=useState<HireCandidate|null>(null);
+ const lineSkipDialog=useRef<HTMLDialogElement>(null);
+ useEffect(()=>{
+  if(!lineSkip)return;
+  const dialog=lineSkipDialog.current;
+  const previous=document.activeElement as HTMLElement|null;
+  dialog?.showModal();
+  return()=>{dialog?.close();previous?.focus();};
+ },[!!lineSkip]);
  const [saving,setSaving]=useState<string|null>(null);
  const load = async () => { const data = await api("?tab="+tab); setRows(data); return data as HireCandidate[]; };
  const register=async(id:string)=>{
-  setFailure(null);
+  setFailure(null);setSuccess(null);
   const updated:HireCandidate=await api("/"+id+"/hire","POST",{});
+  if(updated.status==="hired"){setSuccess(updated);return;}
   const refreshed=await load();
   const current=refreshed.find(r=>r.id===id) ?? updated;
   if(stopped(current))setFailure(current);
@@ -101,16 +121,22 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  {r.status==="hiring"&&(stopped(r)?<button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(()=>register(r.id))}>続きから</button>:<span>処理中</span>)}
  </div>}
  ];
+ const lineStatus=(r:HireCandidate)=>r.line_registered?"登録済み":r.checklist?.line_skipped?"登録しない":"未登録";
  const confirmationColumns:DataColumn<HireCandidate>[]=[
  // 1280px の画面でもはみ出さないよう 3 列に（氏名の下に社員番号・入社日、書類と FileMaker は 1 列）2026-10-26
  {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name,wrap:true,render:r=><div className={styles.hireMf}><div>{r.last_name} {r.first_name}{checklistComplete(r)&&<span className={styles.hireDone}>完了</span>}</div><div className={styles.hireNumber}>{r.employee_number ?? "番号なし"}・{r.hire_date} 入社</div></div>},
- {id:"onboarding",label:"手続き・LINE",type:"text",value:r=>(r.onboarding_status==="submitted"?"提出済み":r.onboarding_status?"入力中":"未")+" "+(r.line_registered?"登録済み":"未登録"),wrap:true,render:r=><div className={styles.hireMf}><div className={styles.hireMfRow}><span className={styles.hireMfLabel}>入社手続き</span>{r.onboarding_status==="submitted"?"提出済み":r.onboarding_status?"入力中":"未"}</div><div className={styles.hireMfRow}><span className={styles.hireMfLabel}>公式 LINE</span>{r.line_registered?"登録済み":"未登録"}</div></div>},
+ {id:"onboarding",label:"手続き・LINE",type:"text",value:r=>(r.onboarding_status==="submitted"?"提出済み":r.onboarding_status?"入力中":"未")+" "+lineStatus(r),wrap:true,render:r=><div className={styles.hireMf}><div className={styles.hireMfRow}><span className={styles.hireMfLabel}>入社手続き</span>{r.onboarding_status==="submitted"?"提出済み":r.onboarding_status?"入力中":"未"}</div><div className={styles.hireMfRow}><span className={styles.hireMfLabel}>公式 LINE</span>{r.line_registered?"登録済み":<><span className={r.checklist?.line_skipped?styles.hint:undefined}>{lineStatus(r)}</span>{canWrite&&<button disabled={busy||!!saving} onClick={()=>r.checklist?.line_skipped?toggleChecklist(r,"line_skipped",false):setLineSkip(r)}>{r.checklist?.line_skipped?"戻す":"登録しない"}</button>}</>}</div></div>},
  {id:"docs",label:"書類・FileMaker",type:"number",value:checklistPriority,wrap:true,render:r=><div className={styles.hireMf}>{([["contract","雇用契約書"],["nda","秘密保持"],["emergency","緊急連絡先"]] as const).map(([key,label])=><div key={key} className={styles.hireMfRow}><span className={styles.hireMfLabel}>{label}</span>{check(r,`${key}_sent`,"送った")}{check(r,`${key}_signed`,"締結済み")}</div>)}<div className={styles.hireMfRow}><span className={styles.hireMfLabel}>FileMaker</span>{check(r,"filemaker_added","追加済み")}</div></div>}
  ];
  const candidateRows=rows.filter(r=>r.status==="planned"||r.status==="hiring"||(showNoShow&&r.status==="no_show"));
  const confirmationRows=rows.filter(r=>r.status==="hired"&&(showComplete||!checklistComplete(r)));
  return <>
  {tab==="confirmations"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
+ {lineSkip&&<dialog ref={lineSkipDialog} aria-labelledby="hire-line-skip-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setLineSkip(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setLineSkip(null);}}}>
+ <h2 id="hire-line-skip-title">公式 LINE を登録しない</h2>
+ <p>{lineSkip.last_name} {lineSkip.first_name}さん：ガラケーなどで登録できないため、公式 LINE を登録しない扱いにします</p>
+ <div className={styles.hireRowActions}><button disabled={!canWrite||busy||!!saving} onClick={()=>{const row=lineSkip;setLineSkip(null);void toggleChecklist(row,"line_skipped",true);}}>登録しない</button><button onClick={()=>setLineSkip(null)}>やめる</button></div>
+ </dialog>}
  {message&&<p role="alert">{message}</p>}
  <DataTable key="confirmations" rows={confirmationRows} columns={confirmationColumns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"complete",direction:"asc"}}/>
  <label className={styles.hireCheck}><input type="checkbox" checked={showComplete} onChange={e=>saveVisibility(showNoShow,e.target.checked)}/>完了も表示</label>
@@ -129,6 +155,13 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  {field("hire_date","入社予定日","date")}{choice("company_id","所属法人",options.companies.map(c=>({value:c.company_id,label:c.company_name})))}{choice("employment_type","雇用形態",EMPLOYMENT_TYPES.map(value=>({value,label:value})))}
  {choice("kot_division_code","KOT の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}{choice("kot_type_code","KOT の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
   </div></div><div className={styles.hireRowActions}><button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})}>保存する</button><button disabled={!canWrite||busy||!!saving} onClick={()=>setForm(null)}>閉じる</button></div></dialog>}
+ {success&&<dialog ref={successDialog} aria-labelledby="hire-success-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setSuccess(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setSuccess(null);}}}>
+ <h2 id="hire-success-title">入社の登録が完了しました</h2>
+ <p role="status">◎ {success.last_name} {success.first_name}さん（社員番号 {success.employee_number}）</p>
+ <ol aria-label="入社の進み具合" className={styles.hireSteps}>{steps.map(([key,label])=><li key={key} className={styles.hireStepDone}><span className={styles.hireStepMark} aria-hidden="true">◎</span>{label}</li>)}</ol>
+ <p>次は「入社後の確認」タブで、契約書・LINE などを確認してください。</p>
+ <div className={styles.hireRowActions}><button onClick={()=>setSuccess(null)}>閉じる</button></div>
+ </dialog>}
  {failure&&<dialog ref={failureDialog} aria-labelledby="hire-stop-title" className={styles.panel+" "+styles.hireDialog} onCancel={()=>setFailure(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setFailure(null);}}}>
  <h2 id="hire-stop-title">入社の登録が途中で止まりました</h2>
  <p>{failure.last_name} {failure.first_name}</p>

@@ -111,6 +111,13 @@ describe("hire checklist",()=>{
   expect(row.checklist).toMatchObject({nda_sent:{checked_by:"other"},contract_sent:{checked_by:"admin",checked_at:expect.any(String)}});
   expect((await patch({contract_sent:false})).status).toBe(200);expect(row.checklist).not.toHaveProperty("contract_sent");
  });
+ it("audits LINE skips and supports restoring unregistered state",async()=>{
+  const row={...candidate(),status:"hired" as const,checklist:{}};authorize(dbFor(row));
+  expect((await patch({line_skipped:true})).status).toBe(200);
+  expect(row.checklist).toMatchObject({line_skipped:{checked_by:"admin",checked_at:expect.any(String)}});
+  expect((await patch({line_skipped:false})).status).toBe(200);
+  expect(row.checklist).not.toHaveProperty("line_skipped");
+ });
  it("requires every automatic and manual item and prioritizes incomplete hires",()=>{
   const complete={...candidate(),status:"hired" as const,onboarding_status:"submitted",line_registered:true,checklist:Object.fromEntries(CHECKLIST_KEYS.map(key=>[key,{checked_at:"now",checked_by:"admin"}]))};
   expect(checklistComplete(complete)).toBe(true);
@@ -121,6 +128,10 @@ describe("hire checklist",()=>{
   const incomplete={...complete,line_registered:false};
   expect([complete,candidate(),incomplete].sort((a,b)=>checklistPriority(a)-checklistPriority(b))).toEqual([incomplete,candidate(),complete]);
   expect(parseChecklist({filemaker_added:false})).toEqual({filemaker_added:false});
+  expect(parseChecklist({line_skipped:true})).toEqual({line_skipped:true});
+  const skipped={...complete,line_registered:false,checklist:{...complete.checklist,line_skipped:{checked_at:"now",checked_by:"admin"}}};
+  expect(checklistComplete(skipped)).toBe(true);
+  expect(checklistComplete({...skipped,checklist:{...skipped.checklist,line_skipped:undefined}})).toBe(false);
  });
  it("enriches only hired candidates through the admin connection",async()=>{
   const rows=[{...candidate(),id:"planned",status:"planned"},{...candidate(),id:"hired",status:"hired",employee_id:"EMP"}];

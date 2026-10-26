@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import CandidatePanel from "./HireCandidatesClient";
 import { useState, type ReactNode } from "react";
@@ -13,6 +13,39 @@ beforeEach(()=>{
 });
 const row={id:"c",last_name:"山田",first_name:"太郎",hire_date:"2026-10-24",employment_type:"アルバイト",status:"planned",employee_number:null,steps:{}};
 const stoppedRow={...row,status:"hiring",employee_number:"1572",steps:{number:{done:true},kot:{done:true},roster:{done:false,error:"社員番号 1572 の名簿を確認してください。"}}};
+it.each(["planned","hiring"])("shows success for %s and closes after three seconds",async status=>{
+ let current={...row,status};
+ vi.stubGlobal("fetch",vi.fn(async(url:string,init?:RequestInit)=>{
+  if(url.endsWith("kot-options"))return Response.json({companies:[],divisions:[],workingTypes:[]});
+  if(init?.method==="POST"){
+   if(init.body===JSON.stringify({prepare:true}))return Response.json({...current,employee_number:"1572"});
+   current={...current,status:"hired"};return Response.json({...current,employee_number:"1572"});
+  }
+  return Response.json([{...current,steps:current.status==="hiring"?stoppedRow.steps:{}}]);
+ }));
+ render(<CandidatePanel userId="success" tab="candidates"/>);
+ fireEvent.click(await screen.findByRole("button",{name:status==="planned"?"入社":"続きから"}));
+ if(status==="planned"){
+  await waitFor(()=>expect(screen.getByRole("button",{name:"登録する"})).toBeEnabled());
+  fireEvent.click(screen.getByRole("button",{name:"登録する"}));
+ }
+ const dialog=await screen.findByRole("dialog",{name:"入社の登録が完了しました"});
+ expect(within(dialog).getByRole("status")).toHaveTextContent("社員番号 1572");
+ expect(within(dialog).getAllByRole("listitem")).toHaveLength(4);
+ // Restart the effect with fake timers so the full three-second boundary is deterministic.
+ cleanup();vi.useFakeTimers();
+ try {
+  current={...current,status:"hiring"};
+  render(<CandidatePanel userId="success-timer" tab="candidates"/>);
+  await act(async()=>{await Promise.resolve();});
+  fireEvent.click(screen.getByRole("button",{name:"続きから"}));
+  await act(async()=>{await Promise.resolve();});
+  act(()=>vi.advanceTimersByTime(2999));
+  expect(screen.getByRole("dialog",{name:"入社の登録が完了しました"})).toBeVisible();
+  act(()=>vi.advanceTimersByTime(1));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+ } finally {cleanup();vi.useRealTimers();}
+});
 it("opens the stop dialog after registration and from the stopped row without editing",async()=>{
  let current: typeof row | typeof stoppedRow=row;
  vi.stubGlobal("fetch",vi.fn(async(url:string,init?:RequestInit)=>{
@@ -99,6 +132,33 @@ it("saves checks immediately, removes completed hires, and restores failed saves
  fireEvent.click(check);
  expect(await screen.findByRole("alert")).toHaveTextContent("保存失敗");
  expect(check).toBeChecked();
+});
+it("skips LINE, restores it and prioritizes registration",async()=>{
+ let current={...hired,line_registered:false,checklist:{...fullChecklist}};
+ vi.stubGlobal("fetch",vi.fn(async(_url:string,init?:RequestInit)=>{
+  if(init?.method==="PATCH"){
+   const value=JSON.parse(String(init.body)).checklist.line_skipped;
+   current={...current,checklist:{...fullChecklist,...(value?{line_skipped:{checked_at:"now",checked_by:"admin"}}:{})}};
+   return Response.json(current);
+  }
+  return Response.json([current]);
+ }));
+ const view=render(<CandidatePanel userId="line-test" tab="confirmations"/>);
+ fireEvent.click(await screen.findByRole("button",{name:"登録しない"}));
+ const dialog=screen.getByRole("dialog",{name:"公式 LINE を登録しない"});
+ expect(dialog).toHaveTextContent("ガラケー");
+ fireEvent.click(within(dialog).getByRole("button",{name:"登録しない"}));
+ await waitFor(()=>expect(screen.queryByText("入社 太郎")).not.toBeInTheDocument());
+ fireEvent.click(screen.getByRole("checkbox",{name:"完了も表示"}));
+ await waitFor(()=>expect(screen.getByRole("button",{name:"戻す"})).toBeEnabled());
+ fireEvent.click(screen.getByRole("button",{name:"戻す"}));
+ await waitFor(()=>expect(screen.getByRole("button",{name:"登録しない"})).toBeEnabled());
+ expect(screen.getByText("未登録")).toBeVisible();
+ view.unmount();
+ current={...current,line_registered:true,checklist:{...fullChecklist,line_skipped:{checked_at:"now",checked_by:"admin"}}};
+ render(<CandidatePanel userId="line-test" tab="confirmations"/>);
+ expect(await screen.findByText("登録済み")).toBeVisible();
+ expect(screen.queryByRole("button",{name:"戻す"})).not.toBeInTheDocument();
 });
 it("works when localStorage is unavailable",async()=>{
  vi.spyOn(Storage.prototype,"getItem").mockImplementation(()=>{throw new Error("blocked");});

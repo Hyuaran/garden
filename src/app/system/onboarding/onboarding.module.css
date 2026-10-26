@@ -96,6 +96,7 @@
 .hireDialog::backdrop { background:rgba(16,35,63,.45); }
 .hireDialog .hireGrid > label { min-width:0; }
 .hireConfirmDialog { max-width:520px; }
+.hireMfRow:has(button) { flex-wrap:wrap; white-space:normal; }
 .hireConfirmDialog .hireRowActions { margin-top:16px; }
 
 .stepProgress { position:sticky; top:0; z-index:5; padding:12px 0; background:var(--card); }
