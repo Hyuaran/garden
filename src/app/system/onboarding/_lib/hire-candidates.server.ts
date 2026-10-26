@@ -35,7 +35,17 @@ export async function listCandidates({db}: Context) {
 }
 export async function candidateOptions({db}: Context) {
  const companies = checked(await db.from("root_companies").select("company_id,company_name"));
- return { ...await fetchKotHireOptions(), companies };
+ // KOT の選択肢は控えておき、KOT が止まっている時間（8:30〜10:00・17:30〜18:30）や読めないときは控えを使う（登録するだけなら KOT は要らない・2026-10-26）
+ const admin = getSupabaseAdmin();
+ try {
+  const options = await fetchKotHireOptions();
+  await admin.from("system_kot_options_cache").upsert({ id: "hire", divisions: options.divisions, working_types: options.workingTypes, updated_at: new Date().toISOString() });
+  return { ...options, companies };
+ } catch (error) {
+  const { data } = await admin.from("system_kot_options_cache").select("divisions,working_types").eq("id", "hire").maybeSingle();
+  if (!data) throw error;
+  return { divisions: data.divisions, workingTypes: data.working_types, companies, cached: true };
+ }
 }
 export async function saveCandidate(context: Context, raw: unknown, id?: string) {
  const {db,userId} = context;
