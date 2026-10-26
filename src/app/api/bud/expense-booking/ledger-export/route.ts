@@ -1,3 +1,4 @@
+import { budViewContext, budViewResponse } from "@/lib/auth/bud-view.server";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -45,17 +46,19 @@ const REQUEST_SELECT =
   "id,corp_id,applicant_employee_id,applicant_name_text,receipt_date,store_name,amount,qualified_class,qualified_number,category_id,submitted_at,submitted_by,keiri_checked_at,keiri_checked_by,booking_date,booking_corp_id,fiscal_period";
 
 export async function POST(request: Request) {
+  const viewDenied = await budViewResponse("bud-expenses");
+  if (viewDenied) return viewDenied;
   try {
-    const supabase = await createServerClient();
-    const { data: auth } = await supabase.auth.getUser();
+    const authDb = await createServerClient();
+    const { data: auth } = await authDb.auth.getUser();
     if (!auth?.user?.id) return NextResponse.json({ ok: false, error: "未ログインです" }, { status: 401 });
-
-    const { data: hasAccess, error: accessError } = await supabase.rpc("bud_has_access");
-    if (accessError || !hasAccess) return NextResponse.json({ ok: false, error: "Bud権限がありません" }, { status: 403 });
 
     const body = (await request.json()) as ExportBody;
     const corpId = body.corpId ?? "all";
     const scope = body.scope === "done" ? "done" : "pending";
+    const tabDenied = await budViewResponse("bud-expenses", scope === "done" ? "done" : "booking");
+    if (tabDenied) return tabDenied;
+    const supabase = (await budViewContext()).defaultAllowed ? authDb : getSupabaseAdmin();
     const [requestRes, categoryRes, corporationRes, companyRes] = await Promise.all([
       readAllSupabasePages((from, to) => {
         let query = supabase

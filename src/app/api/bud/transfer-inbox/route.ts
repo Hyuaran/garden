@@ -1,3 +1,5 @@
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { budViewContext, budViewResponse, budWriteResponse } from "@/lib/auth/bud-view.server";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -19,12 +21,15 @@ const FALLBACK_SELECT_COLUMNS =
   "id,drive_file_id,file_name,mime_type,storage_path,public_url,status,transfer_id,imported_at,consumed_at,discarded_at,created_at,updated_at";
 
 export async function GET(request: Request) {
+  const viewDenied = await budViewResponse("bud-transfers", "approval");
+  if (viewDenied) return viewDenied;
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user?.id) {
     return NextResponse.json({ ok: false, error: "未ログインです" }, { status: 401 });
   }
 
+  const readDb = (await budViewContext()).defaultAllowed ? supabase : getSupabaseAdmin();
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
   let query = supabase
@@ -65,6 +70,10 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const writeDenied = await budWriteResponse();
+  if (writeDenied) return writeDenied;
+  const viewDenied = await budViewResponse("bud-transfers", "approval");
+  if (viewDenied) return viewDenied;
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user?.id) {
@@ -106,6 +115,10 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const writeDenied = await budWriteResponse();
+  if (writeDenied) return writeDenied;
+  const viewDenied = await budViewResponse("bud-transfers", "approval");
+  if (viewDenied) return viewDenied;
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user?.id) {

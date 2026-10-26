@@ -11,7 +11,8 @@ import {
   touchAuthSession,
   unlockAuthSession,
 } from "../../_lib/auth-unified";
-import { supabase } from "./supabase";
+import { createBrowserClient } from "@/app/_lib/supabase/browser";
+const supabase = createBrowserClient();
 
 /**
  * Convert an employee number to the synthetic auth email used by Garden.

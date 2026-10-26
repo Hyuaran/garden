@@ -1,4 +1,5 @@
 "use client";
+import { budPageKey } from "@/lib/auth/bud-view-scopes";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import FontSizeButton from "@/app/system/_components/FontSizeButton";
 import { HeaderViewProvider, HeaderViewSlot } from "@/app/system/_components/HeaderViewToggle";
@@ -22,7 +23,7 @@ import systemStyles from "@/app/system/_components/ShachoShell/shacho-shell.modu
 import styles from "./BudShachoShell.module.css";
 
 
-export function BudShachoShell({ children }: { children: ReactNode }) {
+export function BudShachoShell({ children, viewNavigation }: { children: ReactNode; viewNavigation?: Record<string, boolean> }) {
   const pathname = usePathname();
   const { gardenRole, sessionUser: sessionUser, signOut, budRole } = useBudState();
   const { theme, toggleTheme } = useTheme();
@@ -84,7 +85,7 @@ export function BudShachoShell({ children }: { children: ReactNode }) {
       if ((event.target as HTMLElement).closest("a")) setDrawerOpen(false);
     }}>
       <div className={styles.navLabel}>メニュー</div>
-      {BUD_GARDEN_PAGE_MENU.filter(menu => menu.href !== "/bud/profit/broadband" || canViewBroadband).map((menu) => menu.divider
+      {BUD_GARDEN_PAGE_MENU.filter(menu => { const key = budPageKey(menu.href); return !key || !viewNavigation || viewNavigation[key] === true; }).filter(menu => menu.href !== "/bud/profit/broadband" || canViewBroadband).map((menu) => menu.divider
         ? <hr key={menu.href} className={styles.divider} />
         : <Link key={menu.href} href={menu.href} className={activePath === menu.href ? systemStyles.active : undefined} aria-current={activePath === menu.href ? "page" : undefined}>
             <MenuIcon icon={budMenuIcon(menu.href)} /><span>{menu.label}</span>

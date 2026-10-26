@@ -5,12 +5,14 @@
  * 注入HTMLは BudGate/認証解決後に現れるため、マウント先が見つかるまで短い間隔でポーリングする。
  */
 
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { ExpenseReviewPanel } from "./ExpenseReviewPanel";
 
 export function ExpenseReviewEmbed() {
+  const { allowedTab } = useSystemView();
   const [el, setEl] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export function ExpenseReviewEmbed() {
     };
   }, []);
 
-  if (!el) return null;
+  if (!el) return !allowedTab("submit") && (allowedTab("list") || allowedTab("deleted", false)) ? <div hidden><ExpenseReviewPanel embedded /></div> : null;
   return createPortal(<ExpenseReviewPanel embedded />, el);
 }
 

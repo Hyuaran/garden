@@ -24,7 +24,7 @@ import type { RoleSummaryRow } from "@/lib/auth/permission-registry";
 export type PermissionMatrixRow = {
   key: string;
   label: string;
-  group: "System" | "Root" | "API";
+  group: "System" | "Root" | "Bud" | "API";
   kind: "画面" | "タブ" | "操作" | "API";
   source: string;
   roles: Record<GardenRole, boolean>;

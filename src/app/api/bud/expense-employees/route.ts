@@ -1,3 +1,4 @@
+import { budViewResponse } from "@/lib/auth/bud-view.server";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -16,15 +17,12 @@ type EmployeeRow = {
 const MAX_IDS = 2000;
 
 export async function POST(request: Request) {
+  const viewDenied = await budViewResponse("bud-expenses");
+  if (viewDenied) return viewDenied;
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user?.id) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { data: hasAccess, error: accessError } = await supabase.rpc("bud_has_access");
-  if (accessError || !hasAccess) {
-    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
 
   let employeeIds: string[] = [];

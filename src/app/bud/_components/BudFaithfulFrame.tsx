@@ -4,6 +4,8 @@ import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBr
 
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+import { filterBudViewHtml } from "@/lib/auth/bud-view-html";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
@@ -74,6 +76,8 @@ export function BudFaithfulFrame({
   children,
 }: BudFaithfulFrameProps) {
   const { budRole } = useBudState();
+  const { state } = useSystemView();
+  sourceHtml = filterBudViewHtml(sourceHtml, state?.tabs ?? []);
 
   const bindTabClick = (node: HTMLElement | null) => {
     if (!node || nativeTabRoots.has(node)) return;

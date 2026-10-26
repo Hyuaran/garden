@@ -11,6 +11,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { isBudUnlocked } from "../_lib/auth";
 import { useBudState } from "../_state/BudStateContext";
 
@@ -20,10 +21,12 @@ const isBudDevBypass =
 
 export function BudGate({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const { state: viewState } = useSystemView();
+  const viewAllowed = !!viewState?.pageKey.startsWith("bud-");
   const { loading, isAuthenticated, hasPermission } = useBudState();
 
   useEffect(() => {
-    if (loading || isBudDevBypass) return;
+    if (loading || isBudDevBypass || viewAllowed) return;
     if (!isAuthenticated) {
       router.replace("/bud/login");
       return;
@@ -35,9 +38,9 @@ export function BudGate({ children }: { children: ReactNode }) {
     if (!isBudUnlocked()) {
       router.replace("/bud/login?reason=expired");
     }
-  }, [loading, isAuthenticated, hasPermission, router]);
+  }, [loading, isAuthenticated, hasPermission, router, viewAllowed]);
 
-  if (isBudDevBypass) return <>{children}</>;
+  if (isBudDevBypass || viewAllowed) return <>{children}</>;
 
   if (loading) {
     return (

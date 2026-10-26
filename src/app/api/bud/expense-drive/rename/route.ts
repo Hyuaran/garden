@@ -1,3 +1,4 @@
+import { budViewResponse, budWriteResponse } from "@/lib/auth/bud-view.server";
 /**
  * POST /api/bud/expense-drive/rename
  * 経理承認時に、Drive 上のレシートファイルを内容確定後の名前へ自動リネームする。
@@ -23,6 +24,10 @@ function sanitize(part: string): string {
 }
 
 export async function POST(req: Request) {
+  const writeDenied = await budWriteResponse();
+  if (writeDenied) return writeDenied;
+  const viewDenied = await budViewResponse("bud-expenses");
+  if (viewDenied) return viewDenied;
   try {
     const supabase = await createServerClient();
     const { data: auth } = await supabase.auth.getUser();

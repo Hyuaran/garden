@@ -1,3 +1,4 @@
+import { budViewResponse, budWriteResponse } from "@/lib/auth/bud-view.server";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -45,6 +46,10 @@ const REQUEST_SELECT =
   "id,corp_id,applicant_employee_id,applicant_name_text,receipt_date,store_name,amount,qualified_class,category_id,status,submitted_at,booking_date,booking_corp_id";
 
 export async function POST(req: Request) {
+  const writeDenied = await budWriteResponse();
+  if (writeDenied) return writeDenied;
+  const viewDenied = await budViewResponse("bud-expenses", "done");
+  if (viewDenied) return viewDenied;
   try {
     const supabase = await createServerClient();
     const { data: auth } = await supabase.auth.getUser();

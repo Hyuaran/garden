@@ -1,4 +1,6 @@
 "use client";
+import { BudViewTab } from "@/app/bud/_components/BudViewChrome";
+
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useEffect, useMemo, useState } from "react";
@@ -119,12 +121,12 @@ function StatementsSummaryContent() {
           >
             ← 明細一覧
           </Link>
-          <Link
-            href="/bud/statements/imports"
+          <BudViewTab tabKey="imports"><Link
+            data-tab="imports" href="/bud/statements/imports"
             className="text-emerald-600 hover:underline"
           >
             取込履歴 →
-          </Link>
+          </Link></BudViewTab>
         </nav>
       </div>
 

@@ -1,3 +1,4 @@
+import { budViewResponse, budWriteResponse } from "@/lib/auth/bud-view.server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages/messages";
 import { NextResponse } from "next/server";
@@ -73,6 +74,10 @@ const OCR_SCHEMA = {
 } as const;
 
 export async function POST(req: Request) {
+  const writeDenied = await budWriteResponse();
+  if (writeDenied) return writeDenied;
+  const viewDenied = await budViewResponse("bud-transfers", "approval");
+  if (viewDenied) return viewDenied;
   try {
     const supabase = await createServerClient();
     const { data: auth } = await supabase.auth.getUser();

@@ -9,7 +9,8 @@
  *   2. それ以外 → bud_users に is_active=true で登録されていればOK
  */
 
-import { supabase } from "./supabase";
+import { createBrowserClient } from "@/app/_lib/supabase/browser";
+const supabase = createBrowserClient();
 import type { GardenRole } from "../../root/_constants/types";
 import type { BudRole, BudSessionUser } from "../_constants/types";
 import { hasAutoAccess } from "../_constants/roles";

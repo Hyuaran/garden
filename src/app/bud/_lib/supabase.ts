@@ -12,6 +12,6 @@
  *   NEXT_PUBLIC_SUPABASE_ANON_KEY
  */
 
-import { createBrowserClient } from "../../_lib/supabase/browser";
+import { createBudViewClient } from "./view-client";
 
-export const supabase = createBrowserClient();
+export const supabase = createBudViewClient();

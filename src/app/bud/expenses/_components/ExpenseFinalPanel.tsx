@@ -7,7 +7,7 @@ import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
-import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { createBudViewClient } from "@/app/bud/_lib/view-client";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
 import { buildEmployeeMap, fetchExpenseEmployeeLookup, resolveExpenseApplicantName, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
 import { filterExpenseListRecords, sumExpenseAmounts } from "@/app/bud/expenses/_lib/expense-list-filter";
@@ -94,7 +94,7 @@ function readInitialCorpFilter() {
 }
 
 export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) {
-  const supabase = useMemo(() => createBrowserClient(), []);
+  const supabase = useMemo(() => createBudViewClient("bud-expenses", "approve"), []);
   const { gardenRole } = useBudState();
   const canManageSoftDelete = canManageExpenseSoftDelete(gardenRole);
   const [pendingAll, setPendingAll] = useState<Req[]>([]);

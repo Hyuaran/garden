@@ -40,3 +40,12 @@ it("追加だけできる人には役職や削除、保存の操作を出さな�
   expect(JSON.parse(String(request[1].body))).toMatchObject({action:"add",tab:"all",employeeId:"EMP-1"});
   expect(screen.queryByRole("button",{name:"保存"})).toBeNull();
 });
+it("Budのお金の画面では閲覧者による追加をオフに固定する",async()=>{
+  const fetcher=vi.fn(async()=>Response.json({...response,defaults:{"": ["super_admin","staff"]}}));vi.stubGlobal("fetch",fetcher);
+  const view=render(<ViewPermissionButton pageKey="bud-expenses" tabKey="" tabLabel="" admin={false} canAdd />);
+  expect(screen.queryByRole("button")).toBeNull();
+  view.rerender(<ViewPermissionButton pageKey="bud-expenses" tabKey="" tabLabel="" admin />);
+  fireEvent.click(screen.getByRole("button",{name:"見られる人の設定"}));
+  const option=await screen.findByRole("checkbox",{name:/見られる人が人を追加できる/});
+  expect(option).toBeDisabled(); expect(option).not.toBeChecked();
+});

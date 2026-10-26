@@ -1,3 +1,4 @@
+import { BUD_VIEW_SCOPES } from "./bud-view-scopes";
 import { ROOT_VIEW_SCOPES } from "./root-view-scopes";
 import {
   GARDEN_ROLE_LABELS,
@@ -37,7 +38,7 @@ export type PermissionEntry = {
   tabKey?: string;
   key: string;
   label: string;
-  group: "System" | "Root" | "API";
+  group: "System" | "Root" | "Bud" | "API";
   kind: "画面" | "タブ" | "操作" | "API";
   allows: (role: GardenRole) => boolean;
   source: string;
@@ -321,6 +322,11 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     key: scope.pageKey + "-view", pageKey: scope.pageKey, tabKey: scope.tabKey,
     label: scope.label, group: "Root", kind: "画面",
     allows: role => scope.defaultRoles.includes(role), source: "src/lib/auth/root-view-scopes.ts",
+  })),
+  ...BUD_VIEW_SCOPES.map((scope): PermissionEntry => ({
+    key: scope.pageKey + (scope.tabKey ? "-tab-" + scope.tabKey : "-view"), pageKey: scope.pageKey, tabKey: scope.tabKey,
+    label: scope.tabKey ? BUD_VIEW_SCOPES.find(page => page.pageKey === scope.pageKey && !page.tabKey)?.label + "：" + scope.label : scope.label,
+    group: "Bud", kind: scope.tabKey ? "タブ" : "画面", allows: role => scope.defaultRoles.includes(role), source: "src/lib/auth/bud-view-scopes.ts（別途 bud_has_access 必須）",
   })),
   ...SYSTEM_VIEW_SCOPES.map((scope): PermissionEntry => ({
     key: `${scope.pageKey}${scope.tabKey ? `-tab-${scope.tabKey}` : "-view"}`,

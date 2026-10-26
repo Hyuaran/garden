@@ -1,3 +1,4 @@
+import { budViewResponse, budWriteResponse } from "@/lib/auth/bud-view.server";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -26,6 +27,10 @@ type EmployeeRow = {
 };
 
 export async function POST(req: Request) {
+  const writeDenied = await budWriteResponse();
+  if (writeDenied) return writeDenied;
+  const viewDenied = await budViewResponse("bud-expenses");
+  if (viewDenied) return viewDenied;
   try {
     const supabase = await createServerClient();
     const { data: auth } = await supabase.auth.getUser();

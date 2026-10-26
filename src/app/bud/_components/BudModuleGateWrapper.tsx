@@ -15,13 +15,17 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { budPageKey } from "@/lib/auth/bud-view-scopes";
 import { ModuleGate } from "../../_components/ModuleGate";
 
 const allowBudDevBypass = process.env.NODE_ENV !== "production";
 
-export function BudModuleGateWrapper({ children }: { children: ReactNode }) {
+export function BudModuleGateWrapper({ children, viewNavigation }: { children: ReactNode; viewNavigation?: Record<string, boolean> }) {
   const pathname = usePathname();
   const isLoginPage = pathname === "/bud/login";
+
+  const pageKey = budPageKey(pathname);
+  if (pageKey && viewNavigation?.[pageKey]) return <>{children}</>;
 
   if (isLoginPage) return <>{children}</>;
 

@@ -1,3 +1,4 @@
+import { budViewResponse, budWriteResponse } from "@/lib/auth/bud-view.server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 
@@ -10,6 +11,10 @@ type Body = {
 };
 
 export async function POST(request: Request) {
+  const writeDenied = await budWriteResponse();
+  if (writeDenied) return writeDenied;
+  const viewDenied = await budViewResponse("bud-expenses", "booking");
+  if (viewDenied) return viewDenied;
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user?.id) return NextResponse.json({ error: "未ログインです" }, { status: 401 });

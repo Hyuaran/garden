@@ -1,4 +1,6 @@
 "use client";
+import { BudViewTab } from "@/app/bud/_components/BudViewChrome";
+
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -106,12 +108,12 @@ function StatementsImportsContent() {
           >
             ← 明細一覧
           </Link>
-          <Link
-            href="/bud/statements/summary"
+          <BudViewTab tabKey="summary"><Link
+            data-tab="summary" href="/bud/statements/summary"
             className="text-emerald-600 hover:underline"
           >
             ← 月次集計
-          </Link>
+          </Link></BudViewTab>
         </nav>
       </div>
 

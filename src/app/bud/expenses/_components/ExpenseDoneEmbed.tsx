@@ -16,7 +16,7 @@ export function ExpenseDoneEmbed() {
       const nav = document.querySelector<HTMLElement>(".tab-nav");
       const bookingButton = nav?.querySelector<HTMLButtonElement>('[data-tab="booking"]');
       const bookingTab = document.getElementById("tab-booking");
-      if (!nav || !bookingButton || !bookingTab) return;
+      if (!nav) return;
 
       let button = nav.querySelector<HTMLButtonElement>('[data-tab="done"]');
       if (!button) {
@@ -25,7 +25,7 @@ export function ExpenseDoneEmbed() {
         button.className = "tab-item";
         button.dataset.tab = "done";
         button.innerHTML = '<span class="tab-item-jp">完了</span>';
-        bookingButton.insertAdjacentElement("afterend", button);
+        if (bookingButton) bookingButton.insertAdjacentElement("afterend", button); else nav.append(button);
       }
 
       let tab = document.getElementById("tab-done");
@@ -33,7 +33,7 @@ export function ExpenseDoneEmbed() {
         tab = document.createElement("div");
         tab.className = "tab-content";
         tab.id = "tab-done";
-        bookingTab.insertAdjacentElement("afterend", tab);
+        if (bookingTab) bookingTab.insertAdjacentElement("afterend", tab); else nav.insertAdjacentElement("afterend", tab);
       }
       setEl((current) => (current === tab ? current : tab));
     };

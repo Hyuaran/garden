@@ -1,4 +1,5 @@
 "use client";
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Modal from "@/app/system/_components/Modal/Modal";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
@@ -19,7 +20,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom";
 
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
-import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { createBudViewClient } from "@/app/bud/_lib/view-client";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
 import { expenseKindLabel } from "@/app/bud/expenses/_lib/expense-kind";
 import { buildEmployeeMap, buildUserNameMap, fetchExpenseEmployeeLookup, resolveExpenseApplicantName, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
@@ -188,7 +189,10 @@ async function readDeletedExpenseRequests(makeQuery: (select: string) => Promise
 }
 
 export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean }) {
-  const supabase = useMemo(() => createBrowserClient(), []);
+  const { allowedTab } = useSystemView();
+  const canViewList = allowedTab("list");
+  const canViewDeleted = allowedTab("deleted", canManageExpenseSoftDelete(useBudState().gardenRole));
+  const supabase = useMemo(() => createBudViewClient("bud-expenses"), []);
   const { gardenRole } = useBudState();
   const canManageSoftDelete = canManageExpenseSoftDelete(gardenRole);
   const canEditExpenseKind = canManageSoftDelete;
@@ -296,7 +300,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
             .in("status", ["final_pending", "final_returned", "journalize_pending", "journalized", "keiri_returned"])
             .order("keiri_checked_at", { ascending: false }),
       ),
-      canManageSoftDelete
+      canViewDeleted
         ? readDeletedExpenseRequests((select) =>
             supabase
               .from("bud_expense_requests")
@@ -353,7 +357,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       setSearchSummary("");
     }
     setLoaded(true);
-  }, [canManageSoftDelete, supabase]);
+  }, [canViewDeleted, supabase]);
 
   useEffect(() => {
     void load();
@@ -502,11 +506,11 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   // 一覧タブは page.tsx の静的HTMLに含めてある（後から生えてくるちらつきを防ぐため）。
   // 万一見つからない場合のみ、ここで生成してフォールバックする。データ読み込み(loaded)は待たない。
   useEffect(() => {
-    if (!embedded) return;
+    if (!embedded || !canViewList) return;
     const main = document.querySelector<HTMLElement>('main[data-bud-port="/bud/expenses"]');
     const nav = main?.querySelector<HTMLElement>(".tab-nav");
     const categoriesTab = nav?.querySelector<HTMLElement>('.tab-item[data-tab="categories"]');
-    if (!main || !nav || !categoriesTab) return;
+    if (!main || !nav) return;
 
     let listButton = nav.querySelector<HTMLButtonElement>('.tab-item[data-tab="list"]');
     if (!listButton) {
@@ -515,7 +519,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       listButton.className = "tab-item";
       listButton.dataset.tab = "list";
       listButton.innerHTML = '<span class="tab-item-jp">一覧</span>';
-      nav.insertBefore(listButton, categoriesTab);
+      nav.insertBefore(listButton, categoriesTab ?? null);
     }
 
     let host = document.getElementById("tab-list");
@@ -531,18 +535,18 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       }
     }
     setListTabHost(host);
-  }, [embedded]);
+  }, [embedded, canViewList]);
 
   useEffect(() => {
     if (!embedded) return;
     const main = document.querySelector<HTMLElement>('main[data-bud-port="/bud/expenses"]');
     const nav = main?.querySelector<HTMLElement>(".tab-nav");
     const categoriesTab = nav?.querySelector<HTMLElement>('.tab-item[data-tab="categories"]');
-    if (!main || !nav || !categoriesTab) return;
+    if (!main || !nav) return;
 
     let button = nav.querySelector<HTMLButtonElement>('.tab-item[data-tab="deleted"]');
     let host = document.getElementById("tab-deleted");
-    if (!canManageSoftDelete) {
+    if (!canViewDeleted) {
       button?.remove();
       host?.remove();
       setDeletedTabHost(null);
@@ -554,7 +558,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       button.className = "tab-item";
       button.dataset.tab = "deleted";
       button.innerHTML = '<span class="tab-item-jp">削除済み</span>';
-      nav.insertBefore(button, categoriesTab);
+      nav.insertBefore(button, categoriesTab ?? null);
     }
     if (!host) {
       host = document.createElement("div");
@@ -565,7 +569,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       else main.appendChild(host);
     }
     setDeletedTabHost(host);
-  }, [canManageSoftDelete, embedded]);
+  }, [canViewDeleted, embedded]);
 
   useEffect(() => {
     if (!embedded) return;
@@ -1546,7 +1550,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
         />
       )}
 
-      {listTabHost &&
+      {canViewList && listTabHost &&
         createPortal(
           <ExpenseListTab
             rows={statusRows}
@@ -1560,10 +1564,9 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           />,
           listTabHost,
         )}
-      {deletedTabHost &&
-        canManageSoftDelete &&
+      {canViewDeleted && deletedTabHost &&
         createPortal(
-          <DeletedExpenseTab rows={deletedRows} cats={cats} corps={sortedCorps} employees={employees} deletedByNames={deletedByNames} onRestoreRows={(rows) => void restoreRows(rows)} />,
+          <DeletedExpenseTab rows={deletedRows} cats={cats} corps={sortedCorps} employees={employees} deletedByNames={deletedByNames} canRestore={canManageSoftDelete} onRestoreRows={(rows) => void restoreRows(rows)} />,
           deletedTabHost,
         )}
     </div>
@@ -1849,6 +1852,7 @@ function DeletedExpenseTab({
   employees,
   deletedByNames,
   onRestoreRows,
+  canRestore,
 }: {
   rows: Req[];
   cats: Cat[];
@@ -1856,6 +1860,7 @@ function DeletedExpenseTab({
   employees: Record<string, Employee>;
   deletedByNames: Record<string, string>;
   onRestoreRows: (rows: Req[]) => void;
+  canRestore: boolean;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const selectedRows = useMemo(() => rows.filter((row) => selectedIds.has(row.id)), [rows, selectedIds]);
@@ -1876,7 +1881,7 @@ function DeletedExpenseTab({
         <span style={statusMeta}>{rows.length.toLocaleString("ja-JP")} 件</span>
       </div>
       <div style={{ ...listToolbar, justifyContent: "flex-end" }}>
-        <button type="button" style={listRestoreBtn} disabled={selectedRows.length === 0} onClick={() => onRestoreRows(selectedRows)}>
+        <button type="button" style={listRestoreBtn} disabled={!canRestore || selectedRows.length === 0} onClick={() => onRestoreRows(selectedRows)}>
           復元 {selectedRows.length > 0 ? selectedRows.length : ""}
         </button>
       </div>

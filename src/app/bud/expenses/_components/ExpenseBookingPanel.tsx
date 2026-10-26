@@ -6,7 +6,7 @@ import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
-import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { createBudViewClient } from "@/app/bud/_lib/view-client";
 import { useBudState } from "@/app/bud/_state/BudStateContext";
 import { buildEmployeeMap, fetchExpenseEmployeeLookup, resolveExpenseApplicantGroupKey, resolveExpenseApplicantName, type ExpenseEmployeeLookupRow } from "@/app/bud/expenses/_lib/expense-employees";
 import { buildExpenseDeleteConfirmMessage, canManageExpenseSoftDelete, normalizeDeleteReason, type ExpenseSoftDeleteRow } from "@/app/bud/expenses/_lib/expense-soft-delete";
@@ -96,7 +96,7 @@ function readInitialCorpFilter() {
 }
 
 export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }) {
-  const supabase = useMemo(() => createBrowserClient(), []);
+  const supabase = useMemo(() => createBudViewClient("bud-expenses", "booking"), []);
   const { gardenRole } = useBudState();
   const canManageSoftDelete = canManageExpenseSoftDelete(gardenRole);
   const canReassignBookingCorp = gardenRole === "super_admin";

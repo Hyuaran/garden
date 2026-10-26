@@ -1,3 +1,4 @@
+import { BudViewTab } from "../_components/BudViewChrome";
 import { BudFaithfulFrame } from "./_components/ExpenseFrame";
 
 import { ExpenseBookingEmbed } from "./_components/ExpenseBookingEmbed";
@@ -23,9 +24,9 @@ export default function ExpensesPage() {
       {/* 承認待ちタブ内 #exp-review-mount へ本物のレビューUIを描画 */}
       <ExpenseReviewEmbed />
       {/* 完了待ちタブ内 #exp-final-mount へ本物の最終チェックUIを描画 */}
-      <ExpenseFinalEmbed />
-      <ExpenseBookingEmbed />
-      <ExpenseDoneEmbed />
+      <BudViewTab tabKey="approve"><ExpenseFinalEmbed /></BudViewTab>
+      <BudViewTab tabKey="booking"><ExpenseBookingEmbed /></BudViewTab>
+      <BudViewTab tabKey="done"><ExpenseDoneEmbed /></BudViewTab>
     </>
   );
 }

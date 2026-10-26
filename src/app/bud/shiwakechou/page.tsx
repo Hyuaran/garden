@@ -32,7 +32,8 @@ function ShiwakechouPageContent() {
     <div className="p-6 max-w-7xl mx-auto">
       <header className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "仕訳帳" }]} /><h1 className="text-2xl font-bold text-gray-800">仕訳帳</h1>
+          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "仕訳帳" }]} />
+          <div className="flex items-center justify-between gap-3"><h1 className="text-2xl font-bold text-gray-800">仕訳帳</h1></div>
           <p className="text-sm text-gray-500 mt-1">
             仕訳一覧 + 弥生エクスポート連動
           </p>

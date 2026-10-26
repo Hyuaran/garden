@@ -1,3 +1,4 @@
+import { budViewResponse, budWriteResponse } from "@/lib/auth/bud-view.server";
 /**
  * POST /api/bud/expense-drive/update-content
  * Drive 上のレシート画像の中身を差し替える（経理レビューでの回転補正の反映用）。
@@ -16,6 +17,10 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { getDriveAccessToken } from "../_lib/drive";
 
 export async function POST(req: Request) {
+  const writeDenied = await budWriteResponse();
+  if (writeDenied) return writeDenied;
+  const viewDenied = await budViewResponse("bud-expenses");
+  if (viewDenied) return viewDenied;
   try {
     const supabase = await createServerClient();
     const { data: auth } = await supabase.auth.getUser();

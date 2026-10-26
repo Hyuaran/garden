@@ -1,3 +1,4 @@
+import { budViewNavigation } from "@/lib/auth/bud-view.server";
 import type { ReactNode } from "react";
 import { BudShachoShell } from "./_components/BudShachoShell/BudShachoShell";
 import { BudStateProvider } from "./_state/BudStateContext";
@@ -16,10 +17,11 @@ export const metadata = {
  *
  * 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 3 §Step 3-7
  */
-export default function BudLayout({ children }: { children: ReactNode }) {
+export default async function BudLayout({ children }: { children: ReactNode }) {
+  const viewNavigation = await budViewNavigation();
   return (
     <BudStateProvider>
-      <BudModuleGateWrapper><BudShachoShell>{children}</BudShachoShell></BudModuleGateWrapper>
+      <BudModuleGateWrapper viewNavigation={viewNavigation}><BudShachoShell viewNavigation={viewNavigation}>{children}</BudShachoShell></BudModuleGateWrapper>
     </BudStateProvider>
   );
 }

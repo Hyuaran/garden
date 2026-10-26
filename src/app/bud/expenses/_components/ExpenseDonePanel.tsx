@@ -4,7 +4,7 @@ import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createBrowserClient } from "@/app/_lib/supabase/browser";
+import { createBudViewClient } from "@/app/bud/_lib/view-client";
 import { buildEmployeeMap, fetchExpenseEmployeeLookup, resolveExpenseApplicantName, type ExpenseEmployeeLookupRow } from "../_lib/expense-employees";
 import { buildReexportConfirmation, DONE_PAGE_SIZE, donePageBounds, donePeriodEnd, donePeriodStart, formatYayoiExportRecord, type DonePeriod } from "../_lib/expense-done";
 import { calculateTaxExcludedAmount } from "../_lib/expense-booking-groups";
@@ -19,7 +19,7 @@ type DoneSummaryRpcRow = { total_count: number | string; total_amount: number | 
 const SELECT = "id,status,applicant_employee_id,applicant_name_text,expense_kind,receipt_date,category_id,store_name,amount,booking_date,booking_corp_id,fiscal_period,deleted_at,yayoi_exported_at,yayoi_export_count";
 
 export function ExpenseDonePanel() {
-  const supabase = useMemo(() => createBrowserClient(), []);
+  const supabase = useMemo(() => createBudViewClient("bud-expenses", "done"), []);
   const [rows, setRows] = useState<DoneRow[]>([]);
   const [corps, setCorps] = useState<Corp[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
