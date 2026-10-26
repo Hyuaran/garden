@@ -12,7 +12,6 @@ async function api(path = "", method = "GET", body?: unknown) {
  const data = await res.json(); if (!res.ok) throw new Error(data.error || "処理できませんでした"); return data;
 }
 type Options = {companies:{company_id:string;company_name:string}[];divisions:{code:string;name:string}[];workingTypes:{code:string;name:string}[]};
-const labels: [keyof HireInput,string][] = [["last_name","姓"],["first_name","名"],["last_name_kana","セイ"],["first_name_kana","メイ"],["birthday","生年月日"],["hire_date","入社日"]];
 const steps = [["number","社員番号を決める"],["kot","KOT に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
 export default function HireCandidatesClient({children,userId}:{children:ReactNode;userId:string}) {
  const [showNoShow,setShowNoShow]=useState(false), [showComplete,setShowComplete]=useState(false);
@@ -35,7 +34,8 @@ export default function HireCandidatesClient({children,userId}:{children:ReactNo
  const run = async (action:()=>Promise<void>)=>{setBusy(true);setMessage("");try{await action();await load();}catch(e){setMessage(e instanceof Error?e.message:"処理できませんでした");}finally{setBusy(false);}};
  const openForm = (row?:HireCandidate)=>run(async()=>{setOptions(await api("/kot-options"));setEditing(row?.id ?? null);setForm(row ?? {last_name:"",first_name:"",last_name_kana:"",first_name_kana:"",birthday:"",hire_date:"",gender:"male",employment_type:"アルバイト",company_id:"",kot_division_code:"104",kot_type_code:""});});
  const set=(key:keyof HireInput,value:string)=>setForm(old=>old?{...old,[key]:value}:null);
- const select=(key:keyof HireInput,label:string,opts:{value:string;label:string}[]) => <BoxSelect key={key} label={label} multiple={false} value={form?.[key]?[form[key]]:[]} options={opts} onChange={v=>set(key,v[0])}/>;
+ const field=(key:keyof HireInput,label:string,type="text")=><label key={key}>{label}<input required type={type} value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}/></label>;
+ const choice=(key:keyof HireInput,label:string,opts:{value:string;label:string}[])=><label key={key}>{label}<select required value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}><option value="" disabled>選んでください</option>{opts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
  const status=(r:HireCandidate)=>r.status==="hired"?"入社済み（"+r.employee_number+"）":r.status==="no_show"?"来なかった":r.status==="hiring"?(!r.steps.kot?.done?"KOT 登録待ち":!r.steps.roster?.done?"名簿登録待ち":"Garden 反映待ち"):"入社予定";
  const toggleChecklist = async (row:HireCandidate,key:ChecklistKey,value:boolean) => {
   if(saving)return;
@@ -51,7 +51,7 @@ export default function HireCandidatesClient({children,userId}:{children:ReactNo
  };
  const check = (r:HireCandidate,key:ChecklistKey,label:string) => <label key={key} className={styles.hireCheck}><input type="checkbox" aria-label={`${r.last_name} ${r.first_name} ${key.startsWith("contract")?"雇用契約書":key.startsWith("nda")?"秘密保持":key.startsWith("emergency")?"緊急連絡先":"FileMaker"} ${label}`} checked={!!r.checklist?.[key]} disabled={busy||!!saving} onChange={e=>toggleChecklist(r,key,e.target.checked)}/>{label}</label>;
  const columns:DataColumn<HireCandidate>[]=[
- {id:"date",label:"入社日",type:"date",value:r=>r.hire_date},
+ {id:"date",label:"入社予定日",type:"date",value:r=>r.hire_date},
  {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name},
  {id:"employment",label:"雇用形態",type:"text",value:r=>r.employment_type},
  {id:"status",label:"状態",type:"text",value:r=>status(r)+(checklistComplete(r)?" 完了":"")},
@@ -82,13 +82,13 @@ export default function HireCandidatesClient({children,userId}:{children:ReactNo
  <label className={styles.hireCheck}><input type="checkbox" checked={showNoShow} onChange={e=>saveVisibility(e.target.checked,showComplete)}/>来なかった人も表示</label>
  {form&&options&&<section aria-label="入社予定者の入力" className={styles.panel}>
  <h2>{editing?"入社予定者を修正":"入社予定者を登録"}</h2>
- <div className={styles.hireGrid}>{labels.map(([key,label])=><label key={key}>{label}<input required type={key==="birthday"||key==="hire_date"?"date":"text"} value={form[key]} onChange={e=>set(key,e.target.value)}/></label>)}
- {select("gender","性別",[{value:"male",label:"男性"},{value:"female",label:"女性"}])}
- {select("employment_type","雇用形態",EMPLOYMENT_TYPES.map(value=>({value,label:value})))}
- {select("company_id","所属法人",options.companies.map(c=>({value:c.company_id,label:c.company_name})))}
- {select("kot_division_code","KOT の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}
- {select("kot_type_code","KOT の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
- </div><button disabled={busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})}>保存する</button><button disabled={busy||!!saving} onClick={()=>setForm(null)}>閉じる</button></section>}
+ {/* 並び＝東海林さん 2026-10-26：セイ・メイ・性別／姓・名・生年月日／入社日・所属法人・雇用形態／KOT の所属・KOT の雇用区分。選ぶ欄は普通のプルダウン（左ぞろえ） */}
+ <div className={styles.hireGridWrap}><div className={styles.hireGrid}>
+ {field("last_name_kana","セイ")}{field("first_name_kana","メイ")}{choice("gender","性別",[{value:"male",label:"男性"},{value:"female",label:"女性"}])}
+ {field("last_name","姓")}{field("first_name","名")}{field("birthday","生年月日","date")}
+ {field("hire_date","入社予定日","date")}{choice("company_id","所属法人",options.companies.map(c=>({value:c.company_id,label:c.company_name})))}{choice("employment_type","雇用形態",EMPLOYMENT_TYPES.map(value=>({value,label:value})))}
+ {choice("kot_division_code","KOT の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}{choice("kot_type_code","KOT の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
+  </div></div><button disabled={busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})}>保存する</button><button disabled={busy||!!saving} onClick={()=>setForm(null)}>閉じる</button></section>}
  {confirmation&&<section role="dialog" aria-modal="true" aria-label="入社の確認" className={styles.panel}>
  <p>{confirmation.last_name} {confirmation.first_name}さんを社員番号 {confirmation.employee_number} で KOT と Garden に登録します。KOT はこの時点から料金の対象になります。</p>
  <button disabled={busy||!!saving} onClick={()=>run(async()=>{const id=confirmation.id;setConfirmation(null);await api("/"+id+"/hire","POST",{});})}>登録する</button><button disabled={busy||!!saving} onClick={()=>setConfirmation(null)}>やめる</button></section>}
