@@ -25,6 +25,7 @@ function StepProgress({ step }: { step: number }) {
     aria-valuemax={total}
     aria-valuenow={current}
   >
+    <span className={styles.stepProgressLabel}>全{total}画面のうち {current}画面目</span>
     {Array.from({ length: total }, (_, index) => {
       const status = index < step ? "passed" : index === step ? "current" : "upcoming";
       return <span className={styles.stepProgressCell} data-step-status={status} aria-hidden="true" key={STEPS[index]} />;
@@ -278,6 +279,7 @@ export default function OnboardingClient({ initial }: { initial: OnboardingRecor
   }
 
   if (submitted) return <section className={styles.panel}>
+    <StepProgress step={STEPS.length - 1} />
     <h2 ref={heading} tabIndex={-1}>入社手続きを提出しました</h2>
     <p>ご入力ありがとうございました。提出した内容をご確認いただけます。</p>
     {/* 強制遷移せず、ホームは新しい状態を取得して案内を消す。 */}

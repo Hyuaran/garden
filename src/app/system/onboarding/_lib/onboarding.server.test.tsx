@@ -44,7 +44,7 @@ describe("入社手続きの本人専用保存", () => {
   });
   it("未認証では従業員照会も保存も行わない", async () => {
     const f = fixture(); f.supabase.auth.getUser.mockResolvedValue({ data: { user: null }, error: null });
-    await expect(OnboardingPage()).rejects.toThrow("redirect:/login?returnTo=%2Fsystem%2Fonboarding");
+    await expect(OnboardingPage({})).rejects.toThrow("redirect:/login?returnTo=%2Fsystem%2Fonboarding");
     expect(f.supabase.from).not.toHaveBeenCalled();
   });
   it("本人の在籍・未削除を確認し、非在籍者を拒否する", async () => {
@@ -99,7 +99,7 @@ describe("入社手続きの本人専用保存", () => {
   });
   it("認証と読み取り成功後に初期値入りフォームを描画する", async () => {
     fixture();
-    render(await OnboardingPage());
+    render(await OnboardingPage({}));
     expect(screen.getByLabelText("氏名")).toHaveValue("検証 太郎");
     expect(screen.getByLabelText("生年月日")).toHaveValue("2000-01-02");
     expect(screen.getByRole("heading", { level: 1, name: "入社手続き" })).toBeInTheDocument();
@@ -108,8 +108,8 @@ describe("入社手続きの本人専用保存", () => {
   it("責任者以上には本人画面から事務一覧への入口を出す", async () => {
     const f = fixture();
     (f.employee as Record<string, string>).garden_role = "manager";
-    render(await OnboardingPage());
-    expect(screen.getByRole("link", { name: "みんなの入社手続きを見る（事務）" })).toHaveAttribute("href", "/system/onboarding/admin");
+    render(await OnboardingPage({}));
+    expect(screen.getByRole("tab", { name: "みんなの入社手続き" })).toHaveAttribute("href", "/system/onboarding?tab=all");
   });
   it("型の注意があっても空欄でも保存でき、ユーザー指定IDを使わない", async () => {
     const f = fixture(); await saveOnboarding(await onboardingEmployee(), { ...emptyInput(), postal_code: "123", employee_id: "other", my_number: "123456789012" }, false);
@@ -136,7 +136,7 @@ describe("入社手続きの本人専用保存", () => {
   });
   it("テーブルが無ければ初期値や内部エラーを応答に含めず日本語の案内を表示する", async () => {
     const f = fixture(); f.query.maybeSingle.mockResolvedValue({ data: null, error: { code: "PGRST205", message: "schema cache detail" } });
-    const { container } = render(await OnboardingPage());
+    const { container } = render(await OnboardingPage({}));
     expect(screen.getByText(PREPARING_MESSAGE)).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/schema|PGRST|migration|RPC|検証 太郎/);
     expect(container.querySelector("input")).toBeNull(); expect(f.query.upsert).not.toHaveBeenCalled();

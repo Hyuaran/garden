@@ -1,6 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, type ReactNode } from "react";
-import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
+import { useState, useEffect, useRef } from "react";
 import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { EMPLOYMENT_TYPES, checklistComplete, checklistPriority, type ChecklistKey, type HireCandidate, type HireInput } from "./_lib/hire-candidates";
@@ -12,7 +11,7 @@ async function api(path = "", method = "GET", body?: unknown) {
 }
 type Options = {companies:{company_id:string;company_name:string}[];divisions:{code:string;name:string}[];workingTypes:{code:string;name:string}[]};
 const steps = [["number","社員番号を決める"],["kot","KOT に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
-export default function HireCandidatesClient({children,userId}:{children:ReactNode;userId:string}) {
+export default function HireCandidatesClient({userId,tab}:{userId:string;tab:"candidates"|"confirmations"}) {
  const [showNoShow,setShowNoShow]=useState(false), [showComplete,setShowComplete]=useState(false);
  useEffect(()=>{
   try {
@@ -24,7 +23,7 @@ export default function HireCandidatesClient({children,userId}:{children:ReactNo
   setShowNoShow(noShow);setShowComplete(complete);
   try {localStorage.setItem('hire-candidates:'+userId,JSON.stringify({showNoShow:noShow,showComplete:complete}));} catch {}
  };
- const [tab,setTab]=useState("candidates"), [rows,setRows]=useState<HireCandidate[]>([]), [message,setMessage]=useState(""), [busy,setBusy]=useState(false);
+ const [rows,setRows]=useState<HireCandidate[]>([]), [message,setMessage]=useState(""), [busy,setBusy]=useState(false);
  const [options,setOptions]=useState<Options|null>(null), [form,setForm]=useState<HireInput|null>(null), [editing,setEditing]=useState<string|null>(null), [confirmation,setConfirmation]=useState<HireCandidate|null>(null);
  const formDialog=useRef<HTMLDialogElement>(null);
  useEffect(()=>{
@@ -89,8 +88,7 @@ export default function HireCandidatesClient({children,userId}:{children:ReactNo
  ];
  const candidateRows=rows.filter(r=>r.status==="planned"||r.status==="hiring"||(showNoShow&&r.status==="no_show"));
  const confirmationRows=rows.filter(r=>r.status==="hired"&&(showComplete||!checklistComplete(r)));
- return <><SystemTabs><button role="tab" aria-selected={tab==="candidates"} onClick={()=>setTab("candidates")}>入社予定者</button><button role="tab" aria-selected={tab==="confirmations"} onClick={()=>setTab("confirmations")}>入社後の確認</button><button role="tab" aria-selected={tab==="onboarding"} onClick={()=>setTab("onboarding")}>入社手続き</button></SystemTabs>
- <div hidden={tab!=="onboarding"}>{children}</div>
+ return <>
  {tab==="confirmations"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
  {message&&<p role="alert">{message}</p>}
  <DataTable key="confirmations" rows={confirmationRows} columns={confirmationColumns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"complete",direction:"asc"}}/>

@@ -155,11 +155,19 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
   },
   {
     key: "system-onboarding-admin",
-    label: "入社手続き：管理画面（入社者の一覧・事務入力）",
+    label: "入社手続き：みんなの入社手続き（/system/onboarding?tab=all・事務入力）",
     group: "System",
     kind: "画面",
     allows: (role) => MANAGER_ROLES.has(role),
     source: "src/app/system/onboarding/_lib/onboarding-admin.server.ts:onboardingAdminContext（MANAGER_ROLES）",
+  },
+  {
+    key: "system-onboarding-hire",
+    label: "入社手続き：入社予定者・入社後の確認（/system/onboarding?tab=candidates・confirmations）",
+    group: "System",
+    kind: "タブ",
+    allows: (role) => role === "super_admin",
+    source: "src/app/system/onboarding/_lib/hire-candidates.server.ts:hireAdminContext（全権管理者のみ）",
   },
   {
     key: "calls.view_all",

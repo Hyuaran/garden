@@ -1,44 +1,7 @@
-import HireCandidatesClient from "../HireCandidatesClient";
-import { hireAdminContext } from "../_lib/hire-candidates.server";
-import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
-import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
-import { OnboardingError } from "../_lib/onboarding.server";
-import { onboardingAdminContext, readAdminOnboardingList } from "../_lib/onboarding-admin.server";
-import styles from "../onboarding.module.css";
-
-export const metadata = { title: "入社手続き（事務） | Garden" };
-
+import { hireAdminContext } from "../_lib/hire-candidates.server";
 export default async function OnboardingAdminPage() {
-  let candidateUserId: string | null = null;
-  try { const context = await hireAdminContext(); candidateUserId = context.userId; } catch {}
-  let rows = null;
-  let message = "";
-  try {
-    const context = await onboardingAdminContext();
-    rows = await readAdminOnboardingList(context);
-  } catch (error) {
-    if (error instanceof OnboardingError && error.status === 401) redirect("/login?returnTo=%2Fsystem%2Fonboarding%2Fadmin");
-    message = error instanceof OnboardingError ? error.message : "入社手続きを読み込めませんでした。時間をおいて、もう一度お試しください。";
-  }
-  const content = <>
-    {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
-      : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
-      : <main className={styles.panel}>
-        <div className={styles.adminTopActions}><Link className={styles.button} href="/system/onboarding">自分の入社手続きへ</Link></div>
-        {rows?.length ? <div className={styles.tableWrap}><StickyTable className={styles.adminTable}>
-          <thead><tr><th>氏名</th><th>入社日</th><th>状態</th><th>未入力</th><th>事務入力</th></tr></thead>
-          <tbody {...CLARITY_MASK}>{rows.map(row => <tr key={row.employeeId}>
-            <td><Link href={`/system/onboarding/admin/${encodeURIComponent(row.employeeId)}`}>{row.name}</Link></td>
-            <td>{row.hireDate ?? "未入力"}</td>
-            <td>{row.status === "submitted" ? "提出ずみ" : "入力中"}</td>
-            <td>{row.missingCount ? `${row.missingCount}件` : "なし"}</td>
-            <td>{row.adminComplete ? "済" : "未"}</td>
-          </tr>)}</tbody>
-        </StickyTable></div> : <p>まだ入社手続きの入力はありません。</p>}
-      </main>}
-  </>;
-  return <div className={styles.pageShell}><header className={styles.header}><SystemBreadcrumb items={[{label:"入社手続き（事務）"}]} /><h1>入社手続き（事務）</h1></header>{candidateUserId ? <HireCandidatesClient userId={candidateUserId}>{content}</HireCandidatesClient> : content}</div>;
+let canManageHires = false;
+try { await hireAdminContext(); canManageHires = true; } catch {}
+redirect(`/system/onboarding?tab=${canManageHires ? "candidates" : "all"}`);
 }

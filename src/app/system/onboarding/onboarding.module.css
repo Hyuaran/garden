@@ -97,3 +97,7 @@
 .hireDialog .hireGrid > label { min-width:0; }
 .hireConfirmDialog { max-width:520px; }
 .hireConfirmDialog .hireRowActions { margin-top:16px; }
+
+.stepProgress { position:sticky; top:0; z-index:5; padding:12px 0; background:var(--card); }
+.stepProgressLabel { grid-column:1 / -1; font-size:13px; color:var(--sub); }
+@media(max-width:760px) { :global(div:has(> header) > main) .stepProgress { top:56px; } }

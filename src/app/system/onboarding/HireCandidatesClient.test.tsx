@@ -1,6 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
-import HireCandidatesClient from "./HireCandidatesClient";
+import CandidatePanel from "./HireCandidatesClient";
+import { useState, type ReactNode } from "react";
+function HireCandidatesClient({userId,children}:{userId:string;children:ReactNode}) {
+ const [tab,setTab]=useState<"candidates"|"confirmations"|"onboarding">("candidates");
+ return <><button role="tab" onClick={()=>setTab("confirmations")}>入社後の確認</button><button role="tab" onClick={()=>setTab("onboarding")}>入社手続き</button>{tab==="onboarding"?children:<CandidatePanel userId={userId} tab={tab}/>}</>;
+}
 import { CHECKLIST_KEYS } from "./_lib/hire-candidates";
 beforeEach(()=>{
  Object.defineProperty(HTMLDialogElement.prototype,"showModal",{configurable:true,value:function(this:HTMLDialogElement){this.setAttribute("open","");}});
