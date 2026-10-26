@@ -50,7 +50,9 @@ export default function Sprout() {
   const [tab, setTab] = useState("applicants"), [month, setMonth] = useState(todayJst().slice(0,7));
   const [statuses, setStatuses] = useState<string[]>([]), [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
-  useEffect(() => { let active = true; loadSprout().then(d => { if (active) setData(d); }).catch(() => { if (active) setMessage("読み込めませんでした。時間をおいてお試しください"); }); return () => { active = false; }; }, []);
+  // 読み込みに 10 秒ほどかかる。その間「0人・未取得」と出さず「読み込み中」と出す（2026-10-26）
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => { let active = true; loadSprout().then(d => { if (active) { setData(d); setLoaded(true); } }).catch(() => { if (active) setMessage("読み込めませんでした。時間をおいてお試しください"); }); return () => { active = false; }; }, []);
   const row = data.applicants.find(a => a.kintone_record_id === selected);
   const filtered = filterApplicants(data.applicants, tab, month, statuses, search, todayJst());
   const columns: DataColumn<Applicant>[] = [
@@ -73,17 +75,18 @@ export default function Sprout() {
     try { const result = await sendToHire(a.kintone_record_id); setMessage(result.message); if (result.ok) setData(d => ({ ...d, sent: [...d.sent, a.kintone_record_id] })); }
     catch { setMessage("送れませんでした。時間をおいてお試しください"); } finally { setBusy(false); }
   }
-  return <SproutShell current="採用管理"><div className={styles.heading}><SystemBreadcrumb root={{ label: "Sprout", href: "/sprout" }} items={[{ label: "採用管理" }]} /><h1>採用管理</h1><UpdatedStamp label="Kintone取込" date={data.updated} onRefresh={refresh} busy={busy} refreshLabel="採用情報を取り込む" /></div>
+  return <SproutShell current="採用管理"><div className={styles.heading}><SystemBreadcrumb root={{ label: "Sprout", href: "/sprout" }} items={[{ label: "採用管理" }]} /><h1>採用管理</h1><UpdatedStamp label="Kintone取込" date={data.updated} onRefresh={refresh} busy={busy || !loaded} refreshLabel="採用情報を取り込む" /></div>
       <SystemTabs>{[["applicants", "応募者"], ["interviews", "面接予定"], ["training", "研修予定"]].map(([id,label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}</SystemTabs>
       <><div className={styles.filters}>{tab === "applicants" && <BoxSelect label="期間" multiple={false} value={[month]} onChange={v => setMonth(v[0])} options={[{ value: "", label: "すべての期間" }, ...months.map(m => ({ value: m, label: `${m.slice(0,4)}年${Number(m.slice(5))}月` }))]} />}
         <BoxSelect label="状況" value={statuses.length ? statuses : [...new Set(data.applicants.map(a => a.status))]} options={[...new Set(data.applicants.map(a => a.status))].sort().map(s => ({ value: s, label: s || "未設定" }))} onChange={setStatuses} />
         <label>名前・電話で探す<input type="search" value={search} onChange={e => setSearch(e.target.value)} /></label>
       </div>
+      {!loaded && !message && <p role="status">採用情報を読み込んでいます…</p>}
       {message && <p role="status">{message}</p>}
       <div className={styles.content}><section className={styles.list} onClick={event => {
         const target = (event.target as HTMLElement).closest("tbody tr")?.querySelector<HTMLButtonElement>("[data-applicant-id]");
         if (target?.dataset.applicantId) setSelected(target.dataset.applicantId);
-      }}><DataTable key={tab} rows={filtered} columns={columns} rowKey={a => a.kintone_record_id} searchText={a => a.name + a.phone} summary={r => `${r.length}人`} defaultSort={{ id: tab === "applicants" ? "applied_date" : tab === "interviews" ? "interview" : "training", direction: tab === "applicants" ? "desc" : "asc" }} /></section>
+      }}><DataTable key={tab} rows={filtered} columns={columns} rowKey={a => a.kintone_record_id} searchText={a => a.name + a.phone} summary={r => loaded ? `${r.length}人` : "読み込み中…"} defaultSort={{ id: tab === "applicants" ? "applied_date" : tab === "interviews" ? "interview" : "training", direction: tab === "applicants" ? "desc" : "asc" }} /></section>
       {row && <section className={styles.detail} aria-label="応募者の詳細"><button onClick={() => setSelected(null)}>閉じる</button><h2>{row.name}</h2>
         <h3>基本</h3><dl className={styles.fields}>{[["カナ", row.kana], ["生年月日", row.birthday], ["性別", row.gender], ["電話", row.phone], ["メール", row.email], ["住所", row.address]].map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value || "─"}</dd></div>)}</dl>
         <h3>応募</h3><p>応募日：{showDate(row.applied_date)} ／ {row.status}</p><Fields raw={row.raw} keys={["文字列__1行__5", "チェックボックス_3", "チェックボックス_4", "チェックボックス_5"]} />
