@@ -66,3 +66,17 @@
 .hireGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin:20px 0; }
 .hireGrid label { display:flex; flex-direction:column; gap:8px; }
 .hireGrid input { border:1px solid #d8d2c5; padding:10px; border-radius:4px; color:inherit; background:transparent; }
+
+.hireCandidates { width:100%; min-width:0; max-width:none; }
+.hireChecklist { display:grid; gap:10px; min-width:320px; text-align:left; }
+.hireChecklist > div { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; }
+.hireCheck { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.hireCheck input { flex-shrink:0; margin:0; }
+
+.hireConfirmationChecks { display:grid; gap:12px; }
+/* 入社後の確認：MF 電子契約の 3 書類を 1 列に（書類名＋送った＋締結済み を 1 行ずつ）2026-10-26 */
+.hireMf { display: grid; gap: 6px; text-align: left; }
+.hireMfRow { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.hireMfLabel { display: inline-block; min-width: 5.5em; color: var(--sub); font-size: 12px; }
+.hireNumber { color: var(--sub); font-size: 12px; white-space: nowrap; }
+.hireDone { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--teal); color: #fff; font-size: 11px; white-space: nowrap; }

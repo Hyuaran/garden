@@ -1,4 +1,5 @@
 import { it,expect,vi } from 'vitest';
+vi.hoisted(()=>{process.env.NEXT_PUBLIC_SUPABASE_URL ||= 'http://localhost:54321';process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||= 'test-anon-key';});
 import { render,screen } from '@testing-library/react';
 const m=vi.hoisted(()=>({user:vi.fn()}));
 vi.mock('@/lib/sprout/access.server',()=>({sproutUser:m.user}));

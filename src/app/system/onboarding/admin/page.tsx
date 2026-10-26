@@ -12,8 +12,8 @@ import styles from "../onboarding.module.css";
 export const metadata = { title: "入社手続き（事務） | Garden" };
 
 export default async function OnboardingAdminPage() {
-  let candidatesEnabled = false;
-  try { await hireAdminContext(); candidatesEnabled = true; } catch {}
+  let candidateUserId: string | null = null;
+  try { const context = await hireAdminContext(); candidateUserId = context.userId; } catch {}
   let rows = null;
   let message = "";
   try {
@@ -40,5 +40,5 @@ export default async function OnboardingAdminPage() {
         </StickyTable></div> : <p>まだ入社手続きの入力はありません。</p>}
       </main>}
   </>;
-  return <div className={styles.pageShell}><header className={styles.header}><SystemBreadcrumb items={[{label:"入社手続き（事務）"}]} /><h1>入社手続き（事務）</h1></header>{candidatesEnabled ? <HireCandidatesClient>{content}</HireCandidatesClient> : content}</div>;
+  return <div className={styles.pageShell}><header className={styles.header}><SystemBreadcrumb items={[{label:"入社手続き（事務）"}]} /><h1>入社手続き（事務）</h1></header>{candidateUserId ? <HireCandidatesClient userId={candidateUserId}>{content}</HireCandidatesClient> : content}</div>;
 }

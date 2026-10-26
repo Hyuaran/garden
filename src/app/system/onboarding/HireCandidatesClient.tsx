@@ -14,7 +14,18 @@ async function api(path = "", method = "GET", body?: unknown) {
 type Options = {companies:{company_id:string;company_name:string}[];divisions:{code:string;name:string}[];workingTypes:{code:string;name:string}[]};
 const labels: [keyof HireInput,string][] = [["last_name","姓"],["first_name","名"],["last_name_kana","セイ"],["first_name_kana","メイ"],["birthday","生年月日"],["hire_date","入社日"]];
 const steps = [["number","社員番号を決める"],["kot","KOT に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
-export default function HireCandidatesClient({children}:{children:ReactNode}) {
+export default function HireCandidatesClient({children,userId}:{children:ReactNode;userId:string}) {
+ const [showNoShow,setShowNoShow]=useState(false), [showComplete,setShowComplete]=useState(false);
+ useEffect(()=>{
+  try {
+   const saved=JSON.parse(localStorage.getItem('hire-candidates:'+userId) ?? "{}");
+   setShowNoShow(saved?.showNoShow===true);setShowComplete(saved?.showComplete===true);
+  } catch {setShowNoShow(false);setShowComplete(false);}
+ },[userId]);
+ const saveVisibility=(noShow:boolean,complete:boolean)=>{
+  setShowNoShow(noShow);setShowComplete(complete);
+  try {localStorage.setItem('hire-candidates:'+userId,JSON.stringify({showNoShow:noShow,showComplete:complete}));} catch {}
+ };
  const [tab,setTab]=useState("candidates"), [rows,setRows]=useState<HireCandidate[]>([]), [message,setMessage]=useState(""), [busy,setBusy]=useState(false);
  const [options,setOptions]=useState<Options|null>(null), [form,setForm]=useState<HireInput|null>(null), [editing,setEditing]=useState<string|null>(null), [confirmation,setConfirmation]=useState<HireCandidate|null>(null);
  const [saving,setSaving]=useState<string|null>(null);
@@ -38,30 +49,37 @@ export default function HireCandidatesClient({children}:{children:ReactNode}) {
    setMessage(e instanceof Error?e.message:"保存できませんでした");
   } finally {setSaving(null);}
  };
- const check = (r:HireCandidate,key:ChecklistKey,label:string) => <label key={key}><input type="checkbox" aria-label={`${r.last_name} ${r.first_name} ${key.startsWith("contract")?"雇用契約書":key.startsWith("nda")?"秘密保持":key.startsWith("emergency")?"緊急連絡先":"FileMaker"} ${label}`} checked={!!r.checklist?.[key]} disabled={busy||!!saving} onChange={e=>toggleChecklist(r,key,e.target.checked)}/>{label}</label>;
+ const check = (r:HireCandidate,key:ChecklistKey,label:string) => <label key={key} className={styles.hireCheck}><input type="checkbox" aria-label={`${r.last_name} ${r.first_name} ${key.startsWith("contract")?"雇用契約書":key.startsWith("nda")?"秘密保持":key.startsWith("emergency")?"緊急連絡先":"FileMaker"} ${label}`} checked={!!r.checklist?.[key]} disabled={busy||!!saving} onChange={e=>toggleChecklist(r,key,e.target.checked)}/>{label}</label>;
  const columns:DataColumn<HireCandidate>[]=[
  {id:"date",label:"入社日",type:"date",value:r=>r.hire_date},
  {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name},
  {id:"employment",label:"雇用形態",type:"text",value:r=>r.employment_type},
  {id:"status",label:"状態",type:"text",value:r=>status(r)+(checklistComplete(r)?" 完了":"")},
- {id:"checklist",label:"入社後の確認",type:"number",value:checklistPriority,filterValue:r=>r.status!=="hired"?"対象外":checklistComplete(r)?"完了":"確認中",wrap:true,render:r=>r.status==="hired"?<div>
- <p>入社手続き：{r.onboarding_status==="submitted"?"提出済み":r.onboarding_status?"入力中":"未"} ／ 公式LINE：{r.line_registered?"登録済み":"未登録"}</p>
- <div>雇用契約書：{check(r,"contract_sent","送った")}{check(r,"contract_signed","締結済み")}</div>
- <div>秘密保持：{check(r,"nda_sent","送った")}{check(r,"nda_signed","締結済み")}</div>
- <div>緊急連絡先：{check(r,"emergency_sent","送った")}{check(r,"emergency_signed","締結済み")}</div>
- <div>FileMaker：{check(r,"filemaker_added","追加済み")}</div>
- </div>:null},
  {id:"actions",label:"操作",type:"text",value:()=>"",wrap:true,render:r=><div>
  {(r.status==="planned"||r.status==="hiring")&&<button disabled={busy||!!saving} onClick={()=>run(async()=>{const updated=await api("/"+r.id+"/hire","POST",{prepare:true});if(!updated.employee_number)throw new Error(updated.steps.number?.error || "社員番号を決められませんでした");setConfirmation(updated);})}>{r.status==="hiring"?"続きから":"出社を確認して入社にする"}</button>}
  {r.status==="planned"&&<>{!r.employee_number&&<button disabled={busy||!!saving} onClick={()=>openForm(r)}>修正</button>}<button disabled={busy||!!saving} onClick={()=>run(async()=>{await api("/"+r.id,"PATCH",{status:"no_show"});})}>来なかった</button></>}
  {(r.status==="hiring"||r.status==="hired")&&<ol aria-label="入社の進み具合">{steps.map(([key,label])=><li key={key}>{r.steps[key]?.done?"✓ ":""}{label}{r.steps[key]?.error&&<p role="status">{r.steps[key].error}</p>}</li>)}</ol>}
  </div>}
  ];
- return <><SystemTabs><button role="tab" aria-selected={tab==="candidates"} onClick={()=>setTab("candidates")}>入社予定者</button><button role="tab" aria-selected={tab==="onboarding"} onClick={()=>setTab("onboarding")}>入社手続き</button></SystemTabs>
+ const confirmationColumns:DataColumn<HireCandidate>[]=[
+ // 1280px の画面でもはみ出さないよう 3 列に（氏名の下に社員番号・入社日、書類と FileMaker は 1 列）2026-10-26
+ {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name,wrap:true,render:r=><div className={styles.hireMf}><div>{r.last_name} {r.first_name}{checklistComplete(r)&&<span className={styles.hireDone}>完了</span>}</div><div className={styles.hireNumber}>{r.employee_number ?? "番号なし"}・{r.hire_date} 入社</div></div>},
+ {id:"onboarding",label:"手続き・LINE",type:"text",value:r=>(r.onboarding_status==="submitted"?"提出済み":r.onboarding_status?"入力中":"未")+" "+(r.line_registered?"登録済み":"未登録"),wrap:true,render:r=><div className={styles.hireMf}><div className={styles.hireMfRow}><span className={styles.hireMfLabel}>入社手続き</span>{r.onboarding_status==="submitted"?"提出済み":r.onboarding_status?"入力中":"未"}</div><div className={styles.hireMfRow}><span className={styles.hireMfLabel}>公式 LINE</span>{r.line_registered?"登録済み":"未登録"}</div></div>},
+ {id:"docs",label:"書類・FileMaker",type:"number",value:checklistPriority,wrap:true,render:r=><div className={styles.hireMf}>{([["contract","雇用契約書"],["nda","秘密保持"],["emergency","緊急連絡先"]] as const).map(([key,label])=><div key={key} className={styles.hireMfRow}><span className={styles.hireMfLabel}>{label}</span>{check(r,`${key}_sent`,"送った")}{check(r,`${key}_signed`,"締結済み")}</div>)}<div className={styles.hireMfRow}><span className={styles.hireMfLabel}>FileMaker</span>{check(r,"filemaker_added","追加済み")}</div></div>}
+ ];
+ const candidateRows=rows.filter(r=>r.status==="planned"||r.status==="hiring"||(showNoShow&&r.status==="no_show"));
+ const confirmationRows=rows.filter(r=>r.status==="hired"&&(showComplete||!checklistComplete(r)));
+ return <><SystemTabs><button role="tab" aria-selected={tab==="candidates"} onClick={()=>setTab("candidates")}>入社予定者</button><button role="tab" aria-selected={tab==="confirmations"} onClick={()=>setTab("confirmations")}>入社後の確認</button><button role="tab" aria-selected={tab==="onboarding"} onClick={()=>setTab("onboarding")}>入社手続き</button></SystemTabs>
  <div hidden={tab!=="onboarding"}>{children}</div>
- {tab==="candidates"&&<section className={styles.panel} {...CLARITY_MASK}>
+ {tab==="confirmations"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
  {message&&<p role="alert">{message}</p>}
- <DataTable rows={rows} columns={columns} rowKey={r=>r.id} searchText={r=>r.last_name+r.first_name+r.employee_number} defaultSort={{id:"checklist",direction:"asc"}} toolbar={<button disabled={busy||!!saving} onClick={()=>openForm()}>＋ 入社予定者を登録</button>}/>
+ <DataTable key="confirmations" rows={confirmationRows} columns={confirmationColumns} rowKey={r=>r.id} searchText={r=>r.last_name+r.first_name+r.employee_number} defaultSort={{id:"complete",direction:"asc"}}/>
+ <label className={styles.hireCheck}><input type="checkbox" checked={showComplete} onChange={e=>saveVisibility(showNoShow,e.target.checked)}/>完了も表示</label>
+ </section>}
+ {tab==="candidates"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
+ {message&&<p role="alert">{message}</p>}
+ <DataTable key="candidates" rows={candidateRows} columns={columns} rowKey={r=>r.id} searchText={r=>r.last_name+r.first_name+r.employee_number} defaultSort={{id:"date",direction:"asc"}} toolbar={<button disabled={busy||!!saving} onClick={()=>openForm()}>＋ 入社予定者を登録</button>}/>
+ <label className={styles.hireCheck}><input type="checkbox" checked={showNoShow} onChange={e=>saveVisibility(e.target.checked,showComplete)}/>来なかった人も表示</label>
  {form&&options&&<section aria-label="入社予定者の入力" className={styles.panel}>
  <h2>{editing?"入社予定者を修正":"入社予定者を登録"}</h2>
  <div className={styles.hireGrid}>{labels.map(([key,label])=><label key={key}>{label}<input required type={key==="birthday"||key==="hire_date"?"date":"text"} value={form[key]} onChange={e=>set(key,e.target.value)}/></label>)}

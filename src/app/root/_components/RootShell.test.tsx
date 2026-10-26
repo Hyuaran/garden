@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+vi.hoisted(()=>{process.env.NEXT_PUBLIC_SUPABASE_URL ||= 'http://localhost:54321';process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||= 'test-anon-key';});
 import { MASTER_MENUS } from "../_constants/types";
 
 const mocks = vi.hoisted(() => ({
