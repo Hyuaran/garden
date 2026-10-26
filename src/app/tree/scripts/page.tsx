@@ -114,7 +114,7 @@ export default function ScriptManagePage() {
         <GlassPanel style={{ padding: 16, marginBottom: 16, borderLeft: "4px solid #8b5cf6" }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.textDark, marginBottom: 8 }}>新規スクリプト</div>
           <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="タイトル" style={inputSt} />
-          <select value={editCat} onChange={(e) => setEditCat(e.target.value)} style={{ ...inputSt, cursor: "pointer" }}>
+          <select value={editCat} onChange={(e) => setEditCat(e.target.value)} style={{ width: "100%" }}>
             <option value="">カテゴリを選択</option>
             {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
           </select>
@@ -149,7 +149,7 @@ export default function ScriptManagePage() {
                   /* 編集モード */
                   <div>
                     <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={inputSt} />
-                    <select value={editCat} onChange={(e) => setEditCat(e.target.value)} style={{ ...inputSt, cursor: "pointer" }}>
+                    <select value={editCat} onChange={(e) => setEditCat(e.target.value)} style={{ width: "100%" }}>
                       {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                     <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ ...inputSt, minHeight: 60, resize: "vertical" }} />

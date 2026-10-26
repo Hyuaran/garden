@@ -85,7 +85,7 @@ export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings:
 export function buildPatch(result: Result, historyField: string): KintoneRecord | null {
   if (result.kind !== "matched" || !result.bank || text(result.row.raw,"入金確認")) return null;
   const b = result.bank, corp = corporationName(b.corp_code);
-  const fields = Object.fromEntries(Object.entries({ 入金確認: b.side === "INCOME" ? "入金OK" : "支払OK", ドロップダウン_0: text(result.row.raw,"ドロップダウン_0") || (["ヒュアラン","ARATA","ストーンベース","たいよう","リンクサポート"].includes(corp) ? corp : ""), _MF_銀行: ["楽天銀行","みずほ銀行","PayPay銀行"].includes(b.bank_name) ? b.bank_name : "", _MF_摘要: b.content, _MF_取引日: b.date, _MF_取引額: String(Math.abs(b.value)) }).map(([k,v]) => [k,{ value:v }]));
+  const fields = Object.fromEntries(Object.entries({ 入金確認: b.side === "INCOME" ? "入金OK" : "支払OK", ドロップダウン_0: text(result.row.raw,"ドロップダウン_0") || (["ヒュアラン","ARATA","リンクサポート","たいよう","ストーンベース"].includes(corp) ? corp : ""), _MF_銀行: ["楽天銀行","みずほ銀行","PayPay銀行"].includes(b.bank_name) ? b.bank_name : "", _MF_摘要: b.content, _MF_取引日: b.date, _MF_取引額: String(Math.abs(b.value)) }).map(([k,v]) => [k,{ value:v }]));
   const history = value(result.row.raw,"テーブル");
   return { ...fields, テーブル: { value: [...(Array.isArray(history) ? history : []), { value: { [historyField]: { value: `Garden 口座照合（一致${result.combined ? `・同じ取引先の ${result.combined} 行をまとめて 1 回で着金` : ""}${result.fee ? `・振込手数料 ${result.fee.toLocaleString("ja-JP")} 円を引いて着金` : ""}）` } } }] } };
 }

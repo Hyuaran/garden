@@ -25,7 +25,7 @@
 .menu .primary { background:var(--teal,#0ea5a0); color:white; }
 :global(.dark) .root,:global([data-theme=dark]) .root { --table-card:var(--card,#152438); --table-line:var(--line,#31435a); --table-ink:var(--ink,#edf4fb); }
 @media(prefers-color-scheme:dark) { :global(html:not([data-theme=light]):not([data-theme=dark])) .root { --table-card:var(--card,#152438); --table-line:var(--line,#31435a); --table-ink:var(--ink,#edf4fb); } }
-.root button,.root input:not([type=checkbox]),.root select { border:1px solid var(--table-line); border-radius:10px; background:var(--table-card); color:var(--table-ink); padding:9px 12px; min-height:40px; }
+.root button,.root input:not([type=checkbox]) { border:1px solid var(--table-line); border-radius:10px; background:var(--table-card); color:var(--table-ink); padding:9px 12px; min-height:40px; }
 .tableWrap th button { border:0; background:transparent; color:inherit; }
 .root { font-family:"Meiryo","メイリオ","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif; }
 /* 見出しの矢印＝押すだけで昇順・降順を切り替える（並べ替えていない見出しは薄い ↕）（2026-10-21 東海林さん） */

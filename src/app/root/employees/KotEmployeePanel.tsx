@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import BoxSelect from "@/app/system/_components/BoxSelect/BoxSelect";
 import { Button } from "../_components/Button";
 import { colors } from "../_constants/colors";
 type Option = { code: string; name: string };
@@ -43,8 +42,8 @@ export default function KotEmployeePanel({ employeeId, name }: { employeeId: str
     <Button type="button" disabled={busy} onClick={load}>KOT から読み直す</Button>
     {current && <fieldset disabled={busy} style={{ border: 0, padding: 0, marginTop: 12 }}>
       <p>現在の所属：{label(current.divisions, current.divisionCode)} ／ 雇用区分：{label(current.workingTypes, current.typeCode)}</p>
-      <BoxSelect label="変更後の所属" multiple={false} value={[division]} options={current.divisions.map(o => ({ value: o.code, label: o.name }))} onChange={v => { setDivision(v[0]); setConfirm(false); }} />
-      <BoxSelect label="変更後の雇用区分" multiple={false} value={[type]} options={current.workingTypes.map(o => ({ value: o.code, label: o.name }))} onChange={v => { setType(v[0]); setConfirm(false); }} />
+      <label>変更後の所属<select value={division} onChange={e => { setDivision(e.target.value); setConfirm(false); }}><option value="">選んでください</option>{current.divisions.map(o => <option key={o.code} value={o.code}>{o.name}</option>)}</select></label>
+      <label>変更後の雇用区分<select value={type} onChange={e => { setType(e.target.value); setConfirm(false); }}><option value="">選んでください</option>{current.workingTypes.map(o => <option key={o.code} value={o.code}>{o.name}</option>)}</select></label>
       <label>いつから <input type="date" value={date} onChange={e => { setDate(e.target.value); setConfirm(false); }} />（所属・雇用区分の変更が効く日）</label>
       <div style={{ marginTop: 12 }}><Button type="button" disabled={busy || !changes.length || !date} onClick={() => setConfirm(true)}>KOT に反映する</Button></div>
       {confirm && <div role="alertdialog" aria-label="KOT の変更確認"><p>{name}さん（{current.code}）の{changes.join("、")}に変えます（{date} から）</p><Button type="button" disabled={busy} onClick={save}>反映する</Button> <Button type="button" onClick={() => setConfirm(false)}>やめる</Button></div>}

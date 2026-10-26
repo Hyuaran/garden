@@ -113,7 +113,7 @@ describe("InnoveraCallsClient", () => {
     fireEvent.click(picker);
     expect(screen.queryByText(/表示中の期間の通話数/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/東海林/));
-    fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
     const before = fetchMock.mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: "検索" }));
 

@@ -1,6 +1,6 @@
 export type KpiSubTab = "summary" | "forest" | "tree" | "bud";
 
-export const entityTabs = ["全社統合", "ヒュアラン", "センターライズ", "リンクサポート", "ARATA", "たいよう", "壱"];
+export const entityTabs = ["全社統合", "ヒュアラン", "センターライズ", "ARATA", "リンクサポート", "たいよう", "壱"];
 
 export const entityKpis: Record<string, {
   sales: string;
@@ -26,8 +26,8 @@ export const entityKpis: Record<string, {
 export const entityRows = [
   { name: "ヒュアラン", sales: "¥28,500,000", profit: "¥12,840,000", cash: "¥83,500,000", yoy: "+12.3%", status: "順調" },
   { name: "センターライズ", sales: "¥18,200,000", profit: "¥8,230,000", cash: "¥56,200,000", yoy: "+6.7%", status: "順調" },
-  { name: "リンクサポート", sales: "¥15,400,000", profit: "¥6,510,000", cash: "¥42,300,000", yoy: "-2.4%", status: "要注意", negative: true },
   { name: "ARATA", sales: "¥9,800,000", profit: "¥15,980,000", cash: "¥92,100,000", yoy: "+18.9%", status: "好調" },
+  { name: "リンクサポート", sales: "¥15,400,000", profit: "¥6,510,000", cash: "¥42,300,000", yoy: "-2.4%", status: "要注意", negative: true },
   { name: "たいよう", sales: "¥7,500,000", profit: "¥4,320,000", cash: "¥31,400,000", yoy: "+1.2%", status: "順調" },
   { name: "壱", sales: "¥6,020,000", profit: "¥9,870,000", cash: "¥64,700,000", yoy: "+9.1%", status: "順調" },
   { name: "全社統合", sales: "¥85,420,000", profit: "¥57,750,000", cash: "¥370,200,000", yoy: "+10.8%", status: "順調" },

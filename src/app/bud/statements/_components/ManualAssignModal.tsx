@@ -142,11 +142,11 @@ export function ManualAssignModal({
                 承認済み・未実行の振込がありません
               </div>
             ) : (
-              <div className="border rounded max-h-64 overflow-y-auto">
+              <div className="garden-radio-group">
                 {candidates.map((c) => (
                   <label
                     key={c.transfer_id}
-                    className="flex items-center gap-2 p-2 border-b last:border-b-0 cursor-pointer hover:bg-gray-50"
+                    className="garden-radio"
                   >
                     <input
                       type="radio"
@@ -154,7 +154,7 @@ export function ManualAssignModal({
                       value={c.transfer_id}
                       checked={selectedTransferId === c.transfer_id}
                       onChange={() => setSelectedTransferId(c.transfer_id)}
-                      className="accent-emerald-600"
+                      
                     />
                     <div className="flex-1 text-sm">
                       <div className="font-mono text-xs text-gray-700">

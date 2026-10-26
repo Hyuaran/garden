@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 /**
  * Garden Root — KoT 同期履歴画面（Phase A-3-b）
@@ -197,10 +198,10 @@ export default function KotSyncHistoryPage() {
 
 function LabeledSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (v: string) => void; children: React.ReactNode }) {
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <span style={{ fontSize: 11, color: colors.textMuted }}>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bgPanel, color: colors.text, fontSize: 13, minWidth: 140 }}>{children}</select>
-    </label>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      
+      <ChoiceFilter label={label} value={value} onValueChange={value => onChange(value)}>{children}</ChoiceFilter>
+    </div>
   );
 }
 

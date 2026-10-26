@@ -2,7 +2,6 @@
 import { useState, useEffect, type ReactNode } from "react";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
-import BoxSelect from "@/app/system/_components/BoxSelect/BoxSelect";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { EMPLOYMENT_TYPES, checklistComplete, checklistPriority, type ChecklistKey, type HireCandidate, type HireInput } from "./_lib/hire-candidates";
 import styles from "./onboarding.module.css";

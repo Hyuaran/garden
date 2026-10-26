@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useEffect, useMemo, useState } from "react";
@@ -169,12 +170,11 @@ export default function BankCheckPage() {
       <section style={{ background: colors.bgPanel, border: `1px solid ${colors.border}`, borderRadius: 6, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
           <strong style={{ color: colors.text }}>点検結果 {state.findings.length} 件</strong>
-          <label style={{ display: "flex", gap: 8, alignItems: "center", color: colors.textMuted, fontSize: 13, flexWrap: "wrap", minWidth: 0 }}>
-            指摘で絞る：
-            <select value={filter} onChange={(event) => setFilter(event.target.value)} style={{ padding: "7px 10px", border: `1px solid ${colors.border}`, borderRadius: 4, background: colors.bgPanel, color: colors.text, whiteSpace: "nowrap", minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", color: colors.textMuted, fontSize: 13, flexWrap: "wrap", minWidth: 0 }}>
+            <ChoiceFilter label="表示" value={filter} onValueChange={value => setFilter(value)}>
               {ISSUE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>
+            </ChoiceFilter>
+          </div>
         </div>
         {loading ? <div style={{ padding: 32, textAlign: "center", color: colors.textMuted }}>読込中...</div> : visible.length === 0 ? (
           <div style={{ padding: 28, color: colors.textMuted }}>点検結果はありません。登録されている口座はすべて台帳と合っています。</div>

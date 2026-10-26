@@ -89,8 +89,7 @@ async function setActive(
 export async function fetchCompanies(): Promise<Company[]> {
   const { data, error } = await supabase
     .from("root_companies")
-    .select("*")
-    .order("company_id", { ascending: true });
+    .select("*").order("established_on", { ascending: true, nullsFirst: false });
   if (error) throw loadError("fetchCompanies", "法人の一覧", error);
   return (data ?? []) as Company[];
 }

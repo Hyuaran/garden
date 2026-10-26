@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -45,7 +46,7 @@ export function ExpenseDonePanel() {
     const [requestRes, summaryRes, corpRes, categoryRes] = await Promise.all([
       query.range(page * DONE_PAGE_SIZE, page * DONE_PAGE_SIZE + DONE_PAGE_SIZE - 1),
       supabase.rpc("bud_expense_done_summary", { p_booking_corp_id: corpId === "all" ? null : corpId, p_start: start, p_end: end }),
-      supabase.from("bud_corporations").select("id,name_short").order("id"),
+      supabase.from("bud_corporations").select("id,name_short,established_on").order("established_on", { ascending: true, nullsFirst: false }),
       supabase.from("bud_expense_categories").select("id,name"),
     ]);
     const nextRows = (requestRes.data as DoneRow[] | null) ?? [];
@@ -111,8 +112,8 @@ export function ExpenseDonePanel() {
     <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} />
     <div style={header}><div><h3 style={title}>完了した経費</h3><div style={meta}>仕訳日が新しい順</div></div><div style={actions}><button type="button" style={button} disabled={ledgerBusy || csvBusy} onClick={() => void exportLedger()}>{ledgerBusy ? "書き出し中..." : "台帳形式で書き出す（Excel）"}</button><button type="button" style={{ ...reexportButton, ...((corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy) ? disabledButton : {}) }} disabled={corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy} onClick={() => void exportYayoi()}>{csvBusy ? "書き出し中..." : "弥生CSVを書き出す"}</button></div></div>
     <div style={filters}>
-      <label>仕分け法人名 <select value={corpId} onChange={(event) => { setPage(0); setCorpId(event.target.value); }}><option value="all">全法人</option>{sortCorps(corps).map((corp) => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}</select></label>
-      <label>期間 <select value={period} onChange={(event) => { setPage(0); setPeriod(event.target.value as DonePeriod); }}><option value="month">今月</option><option value="three-months">直近3か月</option><option value="year">直近12か月</option><option value="all">全期間</option></select></label>
+      <div><ChoiceFilter label="法人" value={corpId} onValueChange={value => { setPage(0); setCorpId(value); }}><option value="all">全法人</option>{sortCorps(corps).map((corp) => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}</ChoiceFilter></div>
+      <div><ChoiceFilter label="期間" value={period} onValueChange={value => { setPage(0); setPeriod(value as DonePeriod); }}><option value="month">今月</option><option value="three-months">直近3か月</option><option value="year">直近12か月</option><option value="all">全期間</option></ChoiceFilter></div>
     </div>
     <div style={summaryStyle}><strong>{summary.count.toLocaleString("ja-JP")}件</strong><span>税込 {yen(summary.taxIncluded)}</span><span>税抜 {yen(summary.taxExcluded)}</span></div>
     {message && <div style={notice}>{message}</div>}

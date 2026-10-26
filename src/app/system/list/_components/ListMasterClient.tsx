@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { formatSyncStamp } from "@/app/system/_components/UpdatedStamp/formatSyncStamp";
@@ -1509,10 +1510,6 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     await runListSearch({ nextPage: 1, nextCondition: condition, nextFormCondition: condition, refreshCount: true });
   }
 
-  function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void handleCountAndSearch();
-  }
 
   async function handleSaveCondition() {
     setBusy(true);
@@ -2204,14 +2201,14 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           <h3>{title}{help && <HelpTip help={help} />}</h3>
           {block === "vendor" ? (
             <div className={styles.analysisHeaderControls}>
-              <div className={styles.analysisAxisControls} aria-label="切り口">
+              <div className="garden-radio-group" aria-label="切り口">
                 <span>切り口</span>
                 {([
                   ["vendor", "購入先"],
                   ["line_type", "元回線"],
                   ["contract_year", "契約時期（年）"],
                 ] as const).map(([axis, label]) => (
-                  <label key={axis}>
+                  <label key={axis} className="garden-radio">
                     <input
                       type="radio"
                       name="analysis-axis"
@@ -2583,7 +2580,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
             </button>
           </div>
         ) : (
-          <form onSubmit={handleFilterSubmit}>
+          <div onKeyDown={event => { if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT" && !(event.target as HTMLElement).closest('[role="dialog"]')) { event.preventDefault(); void handleCountAndSearch(); } }}>
             <div className={styles.filterGrid} data-testid="list-filter-grid">
               <MultiSelectFilter label="都道府県" value={filters.prefecture} groups={buildOptionGroups("prefecture", options.prefecture)} onChange={(value) => setFilter("prefecture", value)} countNote={FILTER_COUNT_NOTE} />
               <MultiSelectFilter label="購入先" value={filters.purchaseVendor} groups={buildOptionGroups("latestVendor", options.latestVendor)} onChange={(value) => setFilter("purchaseVendor", value)} searchable initialLimit={100} countNote={FILTER_COUNT_NOTE} />
@@ -2631,25 +2628,24 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 </span>
               </label>
               <div className={styles.filterDivider} aria-hidden="true" />
-              <label>
-                自社アポ禁
-                <select value={filters.internalBlock} onChange={(event) => setFilter("internalBlock", event.target.value)}>
+              <div>
+                <ChoiceFilter label="自社アポ禁" value={filters.internalBlock} onValueChange={value => setFilter("internalBlock", value)}>
                   {SOIL_LIST_FILTER_DEFINITIONS.find((definition) => definition.key === "internalBlocked")?.options?.map((option) => (
                     <option key={option} value={option}>
                       {option || "指定なし"}
                     </option>
                   ))}
-                </select>
-              </label>
+                </ChoiceFilter>
+              </div>
               <MultiSelectFilter label="アポ禁" value={filters.appointmentBlocked} groups={buildOptionGroups("appointmentBlocked", options.appointmentBlocked)} onChange={(value) => setFilter("appointmentBlocked", value)} countNote={FILTER_COUNT_NOTE} />
               <MultiSelectFilter label="AU光架電可否" value={filters.auCallAvailability} groups={buildOptionGroups("auCallAvailability", options.auCallAvailability)} onChange={(value) => setFilter("auCallAvailability", value)} countNote={FILTER_COUNT_NOTE} />
               <div className={styles.searchCell}>
-                <button type="submit" disabled={busy}>
+                <button type="button" onClick={() => void handleCountAndSearch()} disabled={busy}>
                   検索
                 </button>
               </div>
             </div>
-          </form>
+          </div>
         )}
         {message && <p className={styles.message}>{message}</p>}
       </section>
@@ -2707,7 +2703,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   <td>{row.contractElapsed}</td>
                   <td>
                     <select
-                      className={styles.inlineSelect}
+                      
                       value={row.category}
                       onChange={(event) => row.rowToken && void handleCategoryChange(index, row.rowToken, event.target.value)}
                       disabled={!row.rowToken || categoryBusyToken === row.rowToken}
@@ -2804,8 +2800,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
               multiple={uploadMode === "raw"}
               onChange={(event) => void previewFiles(Array.from(event.target.files ?? []))}
             />
-            <div className={styles.uploadChoiceBox}>
-              <label>
+            <div className="garden-radio-group">
+              <label className="garden-radio">
                 <input
                   type="radio"
                   checked={uploadMode === "raw"}
@@ -2813,7 +2809,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 />
                 営業の元 Excel（光回線／クレカ）
               </label>
-              <label>
+              <label className="garden-radio">
                 <input
                   type="radio"
                   checked={uploadMode === "import"}
@@ -3072,10 +3068,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 activeListSegments,
                 analysisSelections.activeList,
                 (segment) => setAnalysisSelections((current) => ({ ...current, activeList: segment })),
-                <div className={styles.segmentedControl}>
-                  <button type="button" aria-pressed={activeListDays === 30} onClick={() => setActiveListDays(30)}>直近 30 日</button>
-                  <button type="button" aria-pressed={activeListDays === 15} onClick={() => setActiveListDays(15)}>直近 15 日</button>
-                </div>,
+                <ChoiceFilter label="集計期間" value={activeListDays} onValueChange={value => setActiveListDays(Number(value) as 15 | 30)}><option value="30">直近 30 日</option><option value="15">直近 15 日</option></ChoiceFilter>,
                 ANALYSIS_HELP.activeList,
               )}
               {renderAnalysisBlock(

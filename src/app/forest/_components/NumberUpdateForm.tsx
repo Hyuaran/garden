@@ -135,12 +135,12 @@ export function NumberUpdateForm({ companyId, initial, onSaved, onClose }: Props
 
       <div>
         <label style={labelStyle}>状態</label>
-        <div style={{ display: "flex", gap: 16 }}>
-          <label>
+        <div style={{ display: "flex", gap: 16 }} className="garden-radio-group">
+          <label className="garden-radio">
             <input type="radio" checked={zantei} onChange={() => setZantei(true)} />
             <span style={{ marginLeft: 6 }}>暫定</span>
           </label>
-          <label>
+          <label className="garden-radio">
             <input type="radio" checked={!zantei} onChange={() => setZantei(false)} />
             <span style={{ marginLeft: 6 }}>確定</span>
           </label>

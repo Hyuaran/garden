@@ -29,7 +29,7 @@ async function context() {
     .from("root_companies")
     .select("company_id,company_name,representative,address")
     .eq("is_active", true)
-    .order("company_id");
+    .order("established_on", { ascending: true, nullsFirst: false });
   return { manager, admin, companies: (companies ?? []) as ContractCompany[] };
 }
 function extractedPages(value: FormDataEntryValue | null): string[] | null {

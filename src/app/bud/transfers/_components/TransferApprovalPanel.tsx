@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import {
   useCallback,
@@ -57,8 +58,8 @@ const CORPS = [
   { id: "all", label: "全法人合算" },
   { id: "COMP-001", label: "ヒュアラン" },
   { id: "COMP-002", label: "センターライズ" },
-  { id: "COMP-003", label: "リンクサポート" },
   { id: "COMP-004", label: "ARATA" },
+  { id: "COMP-003", label: "リンクサポート" },
   { id: "COMP-005", label: "たいよう" },
   { id: "COMP-006", label: "壱" },
 ] as const;
@@ -386,25 +387,7 @@ export function TransferApprovalPanel({
 
   return (
     <div style={{ fontFamily: serifFont }} data-transfer-approval-panel>
-      <div
-        className="bud-corp-switch"
-        style={{ marginBottom: 20 }}
-        data-approval-corp-filter
-      >
-        {CORPS.map((corp) => (
-          <button
-            key={corp.id}
-            type="button"
-            className={`bud-corp-tab${corpId === corp.id ? " active" : ""}`}
-            onClick={() => {
-              setCorpId(corp.id);
-              setPage(1);
-            }}
-          >
-            {corp.label}
-          </button>
-        ))}
-      </div>
+      <ChoiceFilter label="法人" value={corpId} onValueChange={value => { setCorpId(value); setPage(1); }}>{CORPS.map(corp => <option key={corp.id} value={corp.id}>{corp.label}</option>)}</ChoiceFilter>
 
       <TransferInboxTray onCountChange={onInboxCountChange} />
 
@@ -464,23 +447,18 @@ export function TransferApprovalPanel({
             placeholder="振込先 / 摘要 / ID"
             style={{ ...controlStyle, width: 300, maxWidth: "100%" }}
           />
-          <label style={filterLabelStyle}>
-            支払区分
-            <select
-              value={category}
-              onChange={(event) => {
-                setCategory(event.target.value as CategoryFilter);
+          <div style={filterLabelStyle}>
+            <ChoiceFilter label="振込種別" value={category} onValueChange={value => {
+                setCategory(value as CategoryFilter);
                 setPage(1);
-              }}
-              style={{ ...controlStyle, width: 170 }}
-            >
+              }}>
               {CATEGORY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
-            </select>
-          </label>
+            </ChoiceFilter>
+          </div>
         </div>
 
         {!schemaReady && (

@@ -46,10 +46,10 @@ export function CeoStatusEditor({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   return (
     <form onSubmit={handleSubmit} style={{ padding: 16, border: "1px solid #ddd", borderRadius: 8 }}>
       <h3 style={{ marginTop: 0 }}>東海林さんステータス更新</h3>
-      <fieldset style={{ border: 0, padding: 0, marginBottom: 12 }}>
+      <fieldset style={{ border: 0, padding: 0, marginBottom: 12 }} className="garden-radio-group">
         <legend style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>状態</legend>
         {OPTIONS.map((opt) => (
-          <label key={opt.key} style={{ display: "block", padding: 4 }}>
+          <label key={opt.key}  className="garden-radio">
             <input
               type="radio"
               name="status"

@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
@@ -39,58 +40,38 @@ export function FilterBar({ companies, currentFilter }: FilterBarProps) {
       <div className="flex flex-wrap gap-3 items-end">
         {/* 振込種別 */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            振込種別
-          </label>
-          <select
-            value={currentFilter.category ?? ""}
-            onChange={(e) => updateParam("category", e.target.value || null)}
-            className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-900 bg-white min-w-[140px]"
-          >
+          
+          <ChoiceFilter label="振込種別" value={currentFilter.category ?? ""} onValueChange={value => updateParam("category", value || null)}>
             <option value="">すべて</option>
             <option value="regular">通常振込（FK-）</option>
             <option value="cashback">キャッシュバック（CB-）</option>
-          </select>
+          </ChoiceFilter>
         </div>
 
         {/* ステータス（単一選択） */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            ステータス
-          </label>
-          <select
-            value={currentFilter.statuses?.[0] ?? ""}
-            onChange={(e) => updateParam("status", e.target.value || null)}
-            className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-900 bg-white min-w-[140px]"
-          >
+          
+          <ChoiceFilter label="ステータス" value={currentFilter.statuses?.[0] ?? ""} onValueChange={value => updateParam("status", value || null)}>
             <option value="">すべて</option>
             {TRANSFER_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </ChoiceFilter>
         </div>
 
         {/* 実行会社 */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            実行会社
-          </label>
-          <select
-            value={currentFilter.execute_company_id ?? ""}
-            onChange={(e) =>
-              updateParam("execute_company_id", e.target.value || null)
-            }
-            className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-900 bg-white min-w-[180px]"
-          >
+          
+          <ChoiceFilter label="実行会社" value={currentFilter.execute_company_id ?? ""} onValueChange={value => updateParam("execute_company_id", value || null)}>
             <option value="">すべて</option>
             {companies.map((c) => (
               <option key={c.company_id} value={c.company_id}>
                 {c.company_name}
               </option>
             ))}
-          </select>
+          </ChoiceFilter>
         </div>
 
         {/* 検索 */}

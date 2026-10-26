@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -181,8 +182,8 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
             .range(from, to),
       ),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
-      supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("id", { ascending: true }),
-      supabase.from("root_companies").select("company_id,company_name"),
+      supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("established_on", { ascending: true, nullsFirst: false }),
+      supabase.from("root_companies").select("company_id,company_name").order("established_on", { ascending: true, nullsFirst: false }),
     ]);
 
     const queue = (queueRes.data as Req[] | null) ?? [];
@@ -487,14 +488,13 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
             <div style={panelMeta}>仕訳待ち {rows.length.toLocaleString("ja-JP")}件</div>
           </div>
           <div style={toolbar}>
-            <label style={filterControl}>申請者
-              <select aria-label="申請者で絞り込む" value={applicantFilter} style={bookingSelect} onChange={(event) => setApplicantFilter(event.target.value)}>
+            <div style={filterControl}><ChoiceFilter label="申請者で絞り込む" value={applicantFilter} onValueChange={value => setApplicantFilter(value)}>
                 <option value="all">全員</option>
                 {applicantOptions.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
-            </label>
-            <label style={searchControl}>
-              <select aria-label="仕訳待ちの検索項目" value={listSearchField} style={bookingSelect} onChange={(event) => setListSearchField(event.target.value as ExpenseBookingSearchField)}>
+              </ChoiceFilter>
+            </div>
+            <div style={searchControl}>
+              <ChoiceFilter label="仕訳待ちの検索項目" value={listSearchField} onValueChange={value => setListSearchField(value as ExpenseBookingSearchField)}>
                 <option value="all">全項目</option>
                 <option value="applicant_employee_id">申請者</option>
                 <option value="receipt_date">日付</option>
@@ -504,9 +504,9 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                 <option value="expense_kind">区分（経費区分）</option>
                 <option value="store_name">店名</option>
                 <option value="amount">金額</option>
-              </select>
+              </ChoiceFilter>
               <input aria-label="仕訳待ちを検索" value={listSearchValue} placeholder="仕訳待ちを検索" style={searchInput} onChange={(event) => setListSearchValue(event.target.value)} />
-            </label>
+            </div>
             <label style={checkAllLabel}>
               <input
                 type="checkbox"
@@ -518,7 +518,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
             </label>
             <input aria-label="仕分け日" type="date" value={bookingDateInput} style={bookingInput}
               onChange={(event) => setBookingDateInput(event.target.value)} />
-            <select aria-label="一括仕分け法人名" value={bookingCorpInput} style={bookingSelect} disabled={!canReassignBookingCorp}
+            <select aria-label="一括仕分け法人名" value={bookingCorpInput} style={{ width: "100%" }} disabled={!canReassignBookingCorp}
               onChange={(event) => setBookingCorpInput(event.target.value)}>
               <option value="">元法人（選択先）</option>
               {sortedCorps.map((corp) => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}
@@ -636,7 +636,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                       <td style={td}>
                         {canReassignBookingCorp ? (
                           <select aria-label={`${applicant}の仕分け法人名`} value={row.booking_corp_id ?? effectiveCorpId(row) ?? ""}
-                            style={bookingSelect}
+                            style={{ width: "100%" }}
                             onChange={(event) => void saveBookingInfo([row], event.target.value, true)}>
                             {sortedCorps.map((corp) => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}
                           </select>
@@ -675,18 +675,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
 }
 
 function CorpFilter({ value, corps, onChange }: { value: string; corps: Corp[]; onChange: (value: string) => void }) {
-  return (
-    <div style={corpSwitch}>
-      <button type="button" style={corpTab(value === "all")} onClick={() => onChange("all")}>
-        全法人合算
-      </button>
-      {corps.map((corp) => (
-        <button key={corp.id} type="button" style={corpTab(value === corp.id)} onClick={() => onChange(corp.id)}>
-          {corp.name_short ?? corp.id}
-        </button>
-      ))}
-    </div>
-  );
+  return <ChoiceFilter label="法人" value={value} onValueChange={onChange}><option value="all">全法人合算</option>{corps.map(corp => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}</ChoiceFilter>;
 }
 
 // 完了待ち/承認待ちタブと同じコンパクトカード（上に余白を確保し主要部は下寄せ＝3タブで高さ統一）
@@ -785,13 +774,6 @@ const missingBadge: React.CSSProperties = { display: "inline-block", padding: "3
 const bookingSelect: React.CSSProperties = { maxWidth: 150, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--teal-d)", background: "var(--bg-card-solid)", color: "var(--text-main)" };
 const bookingInput: React.CSSProperties = { maxWidth: 170, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--teal-d)", background: "var(--bg-card-solid)", color: "var(--text-main)" };
 const reassignedLabel: React.CSSProperties = { marginTop: 4, maxWidth: 190, overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-main)", fontSize: 11, fontWeight: 700 };
-const corpSwitch: React.CSSProperties = { display: "flex", gap: 4, marginBottom: 18, padding: 6, background: "var(--bg-card)", borderRadius: 8, width: "fit-content", border: "1px solid color-mix(in srgb, var(--sub) 20%, transparent)", flexWrap: "wrap" };
-const corpTab = (active: boolean): React.CSSProperties => ({
- padding: "7px 12px", borderRadius: 6,
- border: active ? "1px solid var(--teal)" : "1px solid var(--line)",
- background: "var(--card)", color: active ? "var(--teal-d)" : "var(--sub)",
- boxShadow: "none", cursor: "pointer", fontSize: 13,
-});
 const deleteBtn: React.CSSProperties = { border: "1px solid var(--sub)", borderRadius: 8, padding: "9px 14px", background: "color-mix(in srgb, var(--danger) 8%, transparent)", color: "var(--sub)", cursor: "pointer", whiteSpace: "nowrap" };
 const ledgerExportBtn = (active: boolean): React.CSSProperties => ({
   border: "1px solid var(--teal-d)",

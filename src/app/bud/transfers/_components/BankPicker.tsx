@@ -48,12 +48,12 @@ export function BankPicker({
       const [companyResult, corpResult] = await Promise.all([
         supabase
           .from("root_companies")
-          .select("company_id, company_name")
-          .order("company_id"),
+          .select("company_id, company_name").order("established_on", { ascending: true, nullsFirst: false })
+          ,
         supabase
           .from("bud_corporations")
-          .select("id, name_short")
-          .order("id"),
+          .select("id, name_short,established_on").order("established_on", { ascending: true, nullsFirst: false })
+          ,
       ]);
       if (!cancelled) {
         setCompanies((companyResult.data ?? []) as Company[]);
@@ -128,7 +128,7 @@ export function BankPicker({
             onAccountChange(null);
           }}
           disabled={disabled}
-          className={styles.field}
+          
         >
           <option value="">選択してください</option>
           {companies.map((c) => (
@@ -151,7 +151,7 @@ export function BankPicker({
             onAccountChange(acc);
           }}
           disabled={disabled || !executeCompanyId || visibleAccounts.length === 0}
-          className={styles.field}
+          
         >
           <option value="">
             {!executeCompanyId

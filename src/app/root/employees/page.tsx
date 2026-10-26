@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
@@ -729,10 +730,10 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
       </UpdatedStampRow>
       {rosterSyncResult && <div role="status" style={{ color: colors.textMuted, fontSize: 12, textAlign: "right", marginBottom: 12 }}>更新 {rosterSyncResult.updated}・無効化 {rosterSyncResult.authBanned}</div>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", minWidth: 0, width: "100%", margin: "12px 0" }}>
-        <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 180px", minWidth: 0 }}>
+        <ChoiceFilter label="法人" value={filterCompany} onValueChange={value => setFilterCompany(value)}>
           <option value="">すべての法人</option>
           {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
-        </select>
+        </ChoiceFilter>
         <input ref={searchRef} type="text" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 260px", minWidth: 0 }} />
         <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
         <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
@@ -755,14 +756,14 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
         {historyLoading ? <div style={{ color: colors.textMuted }}>読込中...</div> : historyError ? <div role="alert" style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4 }}>{historyError}</div> : profileHistory ? (
           <div>
             <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-              <select value={historyCategory} onChange={(e) => setHistoryCategory(e.target.value)} style={{ padding: "7px 10px", border: `1px solid ${colors.border}`, borderRadius: 4, background: colors.bgPanel, color: colors.text }}>
+              <ChoiceFilter label="区分" value={historyCategory} onValueChange={value => setHistoryCategory(value)}>
                 <option value="">区分：すべて</option>
                 {Object.entries(PROFILE_CATEGORY_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </select>
-              <select value={historySource} onChange={(e) => setHistorySource(e.target.value)} style={{ padding: "7px 10px", border: `1px solid ${colors.border}`, borderRadius: 4, background: colors.bgPanel, color: colors.text }}>
+              </ChoiceFilter>
+              <ChoiceFilter label="出どころ" value={historySource} onValueChange={value => setHistorySource(value)}>
                 <option value="">出どころ：すべて</option>
                 {Object.entries(PROFILE_SOURCE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-              </select>
+              </ChoiceFilter>
             </div>
             {Object.entries(profileHistory.rows.filter((row) => (!historyCategory || row.category === historyCategory) && (!historySource || row.source === historySource)).reduce<Record<string, ProfileHistoryRow[]>>((acc, row) => { (acc[row.category] ??= []).push(row); return acc; }, {})).map(([category, rows]) => (
               <section key={category} style={{ marginBottom: 18 }}>

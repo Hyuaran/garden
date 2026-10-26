@@ -27,13 +27,11 @@ export function DataSourceSelector({ value, onChange, disabled }: Props) {
       </div>
       <fieldset className={styles.cardBody}>
         <legend className="sr-only">データソース</legend>
-        <div className={styles.sourceOptions}>
+        <div className="garden-radio-group">
           {DATA_SOURCES.map((ds) => (
             <label
               key={ds}
-              className={`${styles.sourceOption} ${
-                value === ds ? styles.sourceOptionActive : ""
-              }`}
+              className="garden-radio"
             >
               <input
                 type="radio"
@@ -42,7 +40,7 @@ export function DataSourceSelector({ value, onChange, disabled }: Props) {
                 checked={value === ds}
                 onChange={() => onChange(ds)}
                 disabled={disabled}
-                className="sr-only"
+                
               />
               <b className={styles.sourceOptionTitle}>{ds}</b>
               <small className={styles.sourceOptionText}>

@@ -131,7 +131,6 @@
 
 .htmlPort :global(button),
 .htmlPort :global(input),
-.htmlPort :global(select),
 .htmlPort :global(textarea) {
   font: inherit;
 }

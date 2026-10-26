@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
@@ -317,22 +318,22 @@ function HistoryTab({
   return (
     <>
       <section className={cx(styles.panel, styles.historyFilter)} aria-label="history filters">
-        <label>
-          <span>モジュール</span>
-          <select value={historyModule} onChange={(event) => setHistoryModule(event.target.value)}>
+        <div>
+          
+          <ChoiceFilter label="モジュール" value={historyModule} onValueChange={value => setHistoryModule(value)}>
             <option>すべて</option>
             {progressModules.map((module) => <option key={module.code}>{module.name}</option>)}
-          </select>
-        </label>
-        <label>
-          <span>勤務形態</span>
-          <select value={historyWorkstyle} onChange={(event) => setHistoryWorkstyle(event.target.value)}>
+          </ChoiceFilter>
+        </div>
+        <div>
+          
+          <ChoiceFilter label="勤務形態" value={historyWorkstyle} onValueChange={value => setHistoryWorkstyle(value)}>
             <option value="すべて">すべて</option>
             <option value="office">出社 / Office</option>
             <option value="home">在宅 / Home</option>
             <option value="irregular">イレギュラー / Irregular</option>
-          </select>
-        </label>
+          </ChoiceFilter>
+        </div>
         <div className={styles.periodGroup} aria-label="period filter">
           {historyPeriods.map((label) => (
             <button

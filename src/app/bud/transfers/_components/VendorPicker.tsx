@@ -65,7 +65,7 @@ export function VendorPicker({
             value={selectedVendorId}
             onChange={(e) => handleSelect(e.target.value)}
             disabled={disabled}
-            className={styles.fieldInline}
+            
           >
             <option value="">選択してください</option>
             {vendors.map((v) => (

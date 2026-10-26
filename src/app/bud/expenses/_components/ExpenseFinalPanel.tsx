@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -174,8 +175,8 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
             .order("keiri_checked_at", { ascending: false }),
       ),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
-      supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true }),
-      supabase.from("root_companies").select("company_id,company_name"),
+      supabase.from("bud_corporations").select("id,name_short,established_on").order("established_on", { ascending: true, nullsFirst: false }),
+      supabase.from("root_companies").select("company_id,company_name").order("established_on", { ascending: true, nullsFirst: false }),
     ]);
 
     const pending = (pendingRes.data as Req[] | null) ?? [];
@@ -576,9 +577,9 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                 <span style={panelMeta}>レコード {list.length.toLocaleString("ja-JP")} / {baseList.length.toLocaleString("ja-JP")}</span>
               </div>
               <div style={listToolbar}>
-                <label style={applicantFilterLabel}>申請者 <select aria-label="申請者で絞り込む" value={applicantFilter} onChange={(event) => setApplicantFilter(event.target.value)} style={listSearchSelect}><option value="all">全員</option>{applicantOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+                <div style={applicantFilterLabel}><ChoiceFilter label="申請者で絞り込む" value={applicantFilter} onValueChange={value => setApplicantFilter(value)}><option value="all">全員</option>{applicantOptions.map((name) => <option key={name} value={name}>{name}</option>)}</ChoiceFilter></div>
                 <div style={listSearchBox}>
-                  <select value={listSearchField} onChange={(event) => setListSearchField(event.target.value as SearchField | "all")} style={listSearchSelect}>
+                  <ChoiceFilter label="検索項目" value={listSearchField} onValueChange={value => setListSearchField(value as SearchField | "all")}>
                     <option value="all">全項目</option>
                     <option value="receipt_date">日付</option>
                     <option value="receipt_time">時刻</option>
@@ -590,7 +591,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                     <option value="corp_id">法人</option>
                     <option value="expense_kind">区分</option>
                     <option value="category_id">経費区分</option>
-                  </select>
+                  </ChoiceFilter>
                   <input
                     ref={listSearchInputRef}
                     type="text"
@@ -725,18 +726,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
 }
 
 function CorpFilter({ value, corps, onChange }: { value: string; corps: Corp[]; onChange: (value: string) => void }) {
-  return (
-    <div style={corpSwitch}>
-      <button type="button" style={corpTab(value === "all")} onClick={() => onChange("all")}>
-        全法人合算
-      </button>
-      {corps.map((corp) => (
-        <button key={corp.id} type="button" style={corpTab(value === corp.id)} onClick={() => onChange(corp.id)}>
-          {corp.name_short ?? corp.id}
-        </button>
-      ))}
-    </div>
-  );
+  return <ChoiceFilter label="法人" value={value} onValueChange={onChange}><option value="all">全法人合算</option>{corps.map(corp => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}</ChoiceFilter>;
 }
 
 function DetailModal({
@@ -945,23 +935,6 @@ const notice: React.CSSProperties = {
   color: "var(--text-sub)",
   margin: "12px 0",
 };
-const corpSwitch: React.CSSProperties = {
-  display: "flex",
-  gap: 4,
-  marginBottom: 18,
-  padding: 6,
-  background: "var(--bg-card)",
-  borderRadius: 8,
-  width: "fit-content",
-  border: "1px solid var(--border-card)",
-  flexWrap: "wrap",
-};
-const corpTab = (active: boolean): React.CSSProperties => ({
- padding: "7px 12px", borderRadius: 6,
- border: active ? "1px solid var(--teal)" : "1px solid var(--line)",
- background: "var(--card)", color: active ? "var(--teal-d)" : "var(--sub)",
- boxShadow: "none", cursor: "pointer", fontSize: 13,
-});
 const finalShell: React.CSSProperties = { display: "flex", gap: 12, alignItems: "stretch", marginBottom: 18 };
 const panel: React.CSSProperties = { background: "var(--bg-paper-soft)", border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)", borderRadius: 12, padding: "18px 20px" };
 const panelHead: React.CSSProperties = {

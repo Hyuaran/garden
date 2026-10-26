@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
@@ -389,24 +390,19 @@ export function TransferPaymentCategoryPanel({
 
       <div style={toolbarStyle}>
         <div style={searchBoxStyle}>
-          <label style={searchLabelStyle}>
-            支払区分
-            <select
-              value={activeCategory}
-              onChange={(event) => {
-                setActiveCategory(event.target.value as PaymentCategoryFilter);
+          <div style={searchLabelStyle}>
+            <ChoiceFilter label="支払区分" value={activeCategory} onValueChange={value => {
+                setActiveCategory(value as PaymentCategoryFilter);
                 setPage(1);
-              }}
-              style={{ ...searchControlStyle, width: 176 }}
-            >
+              }}>
               <option value="all">すべて（{scopedRows.length}）</option>
               {categories.map((category) => (
                 <option key={category} value={category}>
                   {formatPaymentCategory(category)}（{counts[category]}）
                 </option>
               ))}
-            </select>
-          </label>
+            </ChoiceFilter>
+          </div>
           <input
             type="text"
             value={query}

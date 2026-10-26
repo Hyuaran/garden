@@ -257,10 +257,10 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
           setAttendanceDate(date);
           setAttendanceTime(defaultAttendanceTime(date));
         }} /></label>
-        <div className={styles.radioGroup} aria-label="時刻">
+        <div className="garden-radio-group" aria-label="時刻">
           <span>時刻</span>
-          {isWeekendOrHoliday(attendanceDate) && <label><input type="radio" checked={attendanceTime === "10:00"} onChange={() => setAttendanceTime("10:00")} />10:00</label>}
-          <label><input type="radio" checked={attendanceTime === "14:00"} onChange={() => setAttendanceTime("14:00")} />14:00</label>
+          {isWeekendOrHoliday(attendanceDate) && <label className="garden-radio"><input type="radio" checked={attendanceTime === "10:00"} onChange={() => setAttendanceTime("10:00")} />10:00</label>}
+          <label className="garden-radio"><input type="radio" checked={attendanceTime === "14:00"} onChange={() => setAttendanceTime("14:00")} />14:00</label>
         </div>
         <label className={styles.check}><input type="checkbox" checked={withConfirmation} onChange={(event) => setWithConfirmation(event.currentTarget.checked)} />出勤の確認を付ける</label>
         <div className={styles.attendanceActions}>

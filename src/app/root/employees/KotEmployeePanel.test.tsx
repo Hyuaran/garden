@@ -9,9 +9,7 @@ it("confirms a named change and submits only changed codes", async () => {
  render(<KotEmployeePanel employeeId="EMP-1" name="後道 愛美" />);
  fireEvent.click(screen.getByRole("button",{name:"KOT から読み直す"}));
  await screen.findByText("KOT の従業員コード 1571");
- fireEvent.click(screen.getByRole("button",{name:"変更後の所属"}));
- fireEvent.click(screen.getByRole("radio",{name:"事務"}));
- fireEvent.click(screen.getByRole("button",{name:"OK"}));
+ fireEvent.change(screen.getByRole("combobox", { name: "変更後の所属" }), { target: { value: "2" } });
  fireEvent.click(screen.getByRole("button",{name:"KOT に反映する"}));
  expect(screen.getByRole("alertdialog").textContent).toContain("後道 愛美さん（1571）の所属を 本社 → 事務");
  expect(fetch).toHaveBeenCalledTimes(1);

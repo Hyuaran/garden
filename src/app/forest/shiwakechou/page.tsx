@@ -48,9 +48,9 @@ export default function ShiwakechouTopPage() {
         });
         const { data, error } = await supabase
           .from("bud_corporations")
-          .select("id, code, name_full, name_short, sort_order")
+          .select("id, code, name_full, name_short, sort_order,established_on").order("established_on", { ascending: true, nullsFirst: false })
           .eq("is_active", true)
-          .order("sort_order", { ascending: true });
+          ;
 
         if (canceled) return;
         if (error) {

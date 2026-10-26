@@ -183,8 +183,8 @@ export default function PayrollNoticeClient({
 
     <section className={`${styles.panel} ${styles.teamPanel}`}>
       <h2>対象チーム <span>必須</span></h2>
-      <div className={styles.segmented}>
-        {TEAMS.map((team) => <label key={team}><input type="radio" name="team" checked={input.team === team} onChange={() => update({ team })} /><span>{team}</span></label>)}
+      <div className="garden-radio-group">
+        {TEAMS.map((team) => <label key={team} className="garden-radio"><input type="radio" name="team" checked={input.team === team} onChange={() => update({ team })} /><span>{team}</span></label>)}
       </div>
     </section>
 
@@ -261,8 +261,8 @@ export default function PayrollNoticeClient({
 }
 
 function FlagRow({ name, value, onChange }: { name: string; value: string; onChange: (value: string) => void }) {
-  return <div className={styles.radioRow}>
-    {["いる", "いない"].map((item) => <label key={item}><input type="radio" name={name} checked={value === item} onChange={() => onChange(item)} /><span>{item}</span></label>)}
+  return <div className="garden-radio-group">
+    {["いる", "いない"].map((item) => <label key={item} className="garden-radio"><input type="radio" name={name} checked={value === item} onChange={() => onChange(item)} /><span>{item}</span></label>)}
   </div>;
 }
 

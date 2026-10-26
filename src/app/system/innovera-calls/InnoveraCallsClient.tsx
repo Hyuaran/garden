@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
@@ -434,7 +435,7 @@ export default function InnoveraCallsClient({
           <p>{lineLoading ? "確認中..." : currentLine ? currentLine.name : "未設定"}</p>
           {ownExtensionText && <p>{ownExtensionText}</p>}
         </div>
-        <select value={selectedCircuit} onChange={(event) => setSelectedCircuit(event.target.value)} disabled={lineLoading || !circuits.length}>
+        <select aria-label="変更後の発信番号" value={selectedCircuit} onChange={event => setSelectedCircuit(event.target.value)} disabled={lineLoading || !circuits.length}>
           <option value="">選択してください</option>
           {circuits.map((item) => (
             <option key={item.id} value={item.id}>{item.name}</option>
@@ -444,7 +445,7 @@ export default function InnoveraCallsClient({
         {lineError && <span className={styles.error}>{lineError}</span>}
       </section>
 
-      <form className={styles.filters} onSubmit={(event) => { event.preventDefault(); void loadCalls(true); }}>
+      <div className={styles.filters} onKeyDown={event => { if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT" && !(event.target as HTMLElement).closest('[role="dialog"]')) { event.preventDefault(); void loadCalls(true); } }}>
         {!usesDailyExtension && <div className={styles.filterRow}>
         <label>開始<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
         <label className={styles.timeField}>時刻<input type="time" value={fromTime} onChange={(event) => setFromTime(event.target.value)} /></label>
@@ -486,7 +487,7 @@ export default function InnoveraCallsClient({
             emptyLabel="すべて"
           />
         </div>
-        <label className={styles.typeField}>発着<select value={type} onChange={(event) => setType(event.target.value)}><option value="">すべて</option><option value="2">発信</option><option value="1">着信</option></select></label>
+        <div className={styles.typeField}><ChoiceFilter label="発着" value={type} onValueChange={value => setType(value)}><option value="">すべて</option><option value="2">発信</option><option value="1">着信</option></ChoiceFilter></div>
         <div className={styles.statusField}>
           <MultiSelectFilter
             label="結果"
@@ -499,9 +500,9 @@ export default function InnoveraCallsClient({
           />
         </div>
         <label className={styles.numberField}>番号<input value={number} onChange={(event) => setNumber(event.target.value)} /></label>
-        <button type="submit" className={styles.submit} disabled={loading}>{loading ? "検索中..." : "検索"}</button>
+        <button type="button" onClick={() => void loadCalls(true)} className={styles.submit} disabled={loading}>{loading ? "検索中..." : "検索"}</button>
         </div>
-      </form>
+      </div>
 
       {error && <p className={styles.error} role="alert">{error}</p>}
       <p className={styles.summary}>{rangeText} の通話 {counts.total.toLocaleString()} 件（通話成功 {counts.success.toLocaleString()}・不在 {counts.missed.toLocaleString()}・通話中 {counts.inProgress.toLocaleString()}）</p>

@@ -23,7 +23,7 @@ describe("お知らせ画面", () => {
     it("Escと外側もあとでにする", () => { const r = render(<NoticeModal />); fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: true, cancelable: true })); expect(mocks.snooze).toHaveBeenCalledOnce(); r.unmount(); render(<NoticeModal />); fireEvent.click(screen.getByRole("dialog"), { clientX: -1, clientY: -1 }); expect(mocks.snooze).toHaveBeenCalledTimes(2); });
     it("除外画面には出さない", () => { mocks.path = "/p/customer"; render(<NoticeModal />); expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); });
     it("ベルに未確認数と一覧へのリンクがある", () => { render(<NoticeBell />); expect(screen.getByRole("link", { name: "お知らせ（未確認 7 件）" })).toHaveAttribute("href", "/system/notices"); });
-    it("一覧をモジュールで絞り込める", () => { render(<NoticeList />); fireEvent.change(screen.getByLabelText("モジュール"), { target: { value: "Bud" } }); expect(screen.getByText("お知らせ0")).toBeInTheDocument(); expect(screen.queryByText("お知らせ1")).not.toBeInTheDocument(); expect(screen.queryByText(/下書き/)).not.toBeInTheDocument(); });
+    it("一覧をモジュールで絞り込める", () => { render(<NoticeList />); fireEvent.click(screen.getByRole("button", { name: "モジュール" })); fireEvent.click(screen.getByRole("radio", { name: "Bud" })); fireEvent.click(screen.getByRole("button", { name: "OK" })); expect(screen.getByText("お知らせ0")).toBeInTheDocument(); expect(screen.queryByText("お知らせ1")).not.toBeInTheDocument(); expect(screen.queryByText(/下書き/)).not.toBeInTheDocument(); });
     it("全権管理者はタブで お知らせ／公開の管理 を分け、公開の管理では 公開する／公開しない／未決定 と色つきの札・状態の絞り込み（既定＝未決定）", async () => {
         mocks.role = "super_admin";
         const draft = { ...rows[0], id: "draft", status: "draft", published_at: null, title: "下書きの見出し" };
@@ -36,10 +36,12 @@ describe("お知らせ画面", () => {
         fireEvent.click(screen.getByRole("tab", { name: "公開の管理（未決定 1）" }));
         expect(screen.queryByLabelText(/未確認だけ表示/)).not.toBeInTheDocument();
         // 既定は 未決定 だけ
-        expect(screen.getByRole("button", { name: "未決定 1" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "状態で絞り込む" })).toHaveTextContent("未決定 1");
         expect(screen.getByText("下書きの見出し")).toBeInTheDocument();
         expect(screen.queryByText("出さないと決めた見出し")).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "すべて 3" }));
+        fireEvent.click(screen.getByRole("button", { name: "状態で絞り込む" }));
+        fireEvent.click(screen.getByRole("radio", { name: "すべて 3" }));
+        fireEvent.click(screen.getByRole("button", { name: "OK" }));
         const pub = () => screen.getAllByRole("radio", { name: "公開する" });
         const hide = () => screen.getAllByRole("radio", { name: "公開しない" });
         const undecided = () => screen.getAllByRole("radio", { name: "未決定" });

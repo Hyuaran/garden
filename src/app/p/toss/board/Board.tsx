@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -37,4 +38,4 @@ export default function Board() {
     <div className={styles.sheet}><table><thead><tr>{columns.map((column,index)=><th key={column.key} className={index===0?styles.first:""} onClick={()=>changeSort(column.key)}><div className={styles.columnTitle}>{column.label}<span>{sort===column.key?(direction==="asc"?"↑":"↓"):"↕"}</span></div><ColumnFilter label={column.label} values={columnValues[column.key]||[]} selected={columnFilters[column.key]||[]} onChange={values=>setColumnFilters(current=>({...current,[column.key]:values}))}/></th>)}</tr></thead><tbody {...CLARITY_MASK}>{!loading&&!error&&visible.map(row=><tr key={row.id}>{columns.map((column,index)=><td key={column.key} className={index===0?styles.first:""}>{column.key==="status"?<span className={`${styles.badge} ${styles[row.status]}`}>{row.status}</span>:display(row[column.key])}{column.key==="latestActivity"&&row.latestCall&&<small className={styles.call}>{row.latestCall}</small>}</td>)}</tr>)}{!loading&&!error&&!visible.length&&<tr><td colSpan={columns.length} className={styles.empty}>該当する案件はありません</td></tr>}</tbody></table></div>
   </section>;
 }
-function Filter({label,value,values,change}:{label:string;value:string;values:string[];change:(v:string)=>void}){return <label>{label}<select value={value} onChange={e=>change(e.target.value)}><option value="">すべて</option>{values.map(v=><option key={v}>{v}</option>)}</select></label>}
+function Filter({label,value,values,change}:{label:string;value:string;values:string[];change:(v:string)=>void}){return <div>{label}<ChoiceFilter label={label} value={value} onValueChange={value => change(value)}><option value="">すべて</option>{values.map(v=><option key={v}>{v}</option>)}</ChoiceFilter></div>}

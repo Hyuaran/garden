@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -169,10 +170,10 @@ export default function BankAccountsPage() {
         description="法人ごとの振込元口座。Ctrl+↑↓ で行移動・Ctrl+Enter で編集。"
         actions={
           <div style={{ display: "flex", gap: 8 }}>
-            <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }}>
+            <ChoiceFilter label="法人" value={filterCompany} onValueChange={value => setFilterCompany(value)}>
               <option value="">すべての法人</option>
               {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
-            </select>
+            </ChoiceFilter>
             <Button onClick={() => setEditTarget(empty(nextId(accounts), companies[0]?.company_id ?? ""))} disabled={companies.length === 0 || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
           </div>
         }

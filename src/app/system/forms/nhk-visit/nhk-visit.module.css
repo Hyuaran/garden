@@ -5,13 +5,14 @@
 .primary,.copy,.counter button{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--teal);border-radius:8px;background:var(--teal);color:var(--card);font:inherit;font-weight:800;cursor:pointer;white-space:nowrap}
 .guideBody{display:grid;gap:7px;margin-top:14px;color:var(--ink);font-size:13px;line-height:1.8}.guideBody p{margin:0}
 .sender{margin:14px 0;color:var(--heading);font-size:13px;font-weight:900}.panel h2,.result h2,.history h2{margin:0 0 12px;color:var(--heading);font-size:17px;line-height:1.35}.panel h3{margin:10px 0;color:var(--heading);font-size:14px}
-.panel input[type=date],.panel input[type=time],.panel select{box-sizing:border-box;width:min(100%,320px);min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit}.timeRow{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.timeRow input[type=time]{width:148px}.timeRow span{color:var(--sub);font-weight:900}.fixedText{margin:0;color:var(--ink);font-weight:800}
+.panel select{width:min(100%,320px)}
+.panel input[type=date],.panel input[type=time]{box-sizing:border-box;width:min(100%,320px);min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit}.timeRow{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.timeRow input[type=time]{width:148px}.timeRow span{color:var(--sub);font-weight:900}.fixedText{margin:0;color:var(--ink);font-weight:800}
 .countGroup{padding:10px 0;border-top:1px solid var(--line)}.countGroup:first-of-type{border-top:0;padding-top:0}.counter{display:grid;grid-template-columns:minmax(72px,1fr) 44px 64px 44px;gap:8px;align-items:center;max-width:360px;margin:8px 0}.counter span{color:var(--ink);font-weight:800}.counter button{width:44px;height:44px;padding:0;font-size:20px;line-height:1}.counter output{display:grid;place-items:center;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--preview);font-weight:900}.total{display:flex;gap:10px;align-items:baseline;margin:8px 0 0;color:var(--sub);font-weight:800}.total strong{color:var(--heading);font-size:18px}
-.segmented{display:flex;flex-wrap:wrap;gap:10px}.segmented label{display:flex;align-items:center;justify-content:center;gap:7px;min-width:112px;min-height:42px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-weight:900;cursor:pointer}.segmented input{width:16px;height:16px;accent-color:var(--teal)}.segmented label:has(input:checked){border-color:var(--teal);background:var(--soft);color:var(--heading)}
+.segmented{display:flex;flex-wrap:wrap;gap:10px}
 .primary{width:100%;min-height:48px;padding:12px 18px;font-size:15px}.primary:disabled{opacity:.62;cursor:default}.message,.error{margin:14px 0;padding:12px 14px;border-radius:8px;font-size:13px;font-weight:900}.message{background:var(--soft);color:var(--tealDark)}.error{background:var(--dangerBg);color:var(--danger)}
 .resultHead{display:flex;align-items:center;justify-content:space-between;gap:12px}.resultHead h2{margin:0}.copy{min-height:38px;padding:8px 14px}.preview{box-sizing:border-box;margin:10px 0 0;padding:16px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--preview);color:var(--ink);font-family:Meiryo,"Noto Sans JP",monospace;font-size:14px;line-height:1.75;white-space:pre-wrap}
 .historyBox{display:grid;gap:6px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--preview)}.historyBox p,.empty{margin:0;color:var(--ink);font-size:13px;line-height:1.7}.empty{color:var(--sub);font-weight:800}
-@media(max-width:560px){.header h1{font-size: 30px}.panel,.result,.history{padding:14px}.counter{grid-template-columns:minmax(58px,1fr) 44px minmax(48px,64px) 44px}.segmented label{flex:1 1 120px}.timeRow input[type=time]{width:128px}.preview{font-size:13px}}
+@media(max-width:560px){.header h1{font-size: 30px}.panel,.result,.history{padding:14px}.counter{grid-template-columns:minmax(58px,1fr) 44px minmax(48px,64px) 44px}.timeRow input[type=time]{width:128px}.preview{font-size:13px}}
 
 /* 使い方は画像つきのマニュアル①へのリンク。大枠は付けず、ボタンだけを置く（2026-09-24 東海林さん） */
 .guide{margin:14px 0}
@@ -30,7 +31,8 @@
 .mobile .panel:has(.countGroup),.mobile .panel:has(.segmented){display:block}
 .mobile .panel h2,.mobile .result h2,.mobile .history h2{margin:0;color:var(--heading);font-size:15px;line-height:1.4}
 .mobile .panel h2{white-space:nowrap}
-.mobile .panel input[type=date],.mobile .panel input[type=time],.mobile .panel select{width:100%;min-height:44px;padding:9px 10px;border-color:var(--line);background:var(--card);font-size:16px}
+.mobile .panel select{width:100%}
+.mobile .panel input[type=date],.mobile .panel input[type=time]{width:100%;min-height:44px;padding:9px 10px;border-color:var(--line);background:var(--card);font-size:16px}
 .mobile .timeRow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px}
 .mobile .timeRow input[type=time]{width:100%;min-width:0}
 .mobile .fixedText{font-size:16px}
@@ -43,7 +45,6 @@
 .mobile .counter output{min-height:44px;font-size:16px}
 .mobile .total{margin:0;font-size:13px}
 .mobile .segmented{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
-.mobile .segmented label{min-width:0;min-height:44px;padding:8px 10px;font-size:16px}
 .mobile .primary{min-height:52px;margin:14px 0 10px;padding:13px 16px;font-size:16px}
 .mobile .message,.mobile .error{font-size:14px}
 .mobile .historyBox{padding:10px;background:var(--card)}

@@ -492,7 +492,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
               </h2>
             </div>
             <div className={styles.cardBody}>
-              <div className={styles.sourceOptions}>
+              <div className="garden-radio-group">
                 {[
                   ["transfer", "振込", "銀行振込として全銀CSV対象にします。"],
                   ["payeasy", "ペイジー", "3番号を控えて銀行画面で支払います。"],
@@ -502,9 +502,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                 ].map(([value, title, text]) => (
                   <label
                     key={value}
-                    className={`${styles.sourceOption} ${
-                      paymentCategory === value ? styles.sourceOptionActive : ""
-                    }`}
+                    className="garden-radio"
                   >
                     <input
                       type="radio"
@@ -513,7 +511,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                       checked={paymentCategory === value}
                       onChange={() => setPaymentCategory(value as PaymentCategory)}
                       disabled={busy}
-                      className="sr-only"
+                      
                     />
                     <span className={styles.sourceOptionTitle}>{title}</span>
                     <span className={styles.sourceOptionText}>{text}</span>
@@ -589,7 +587,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                     value={registeredMethod}
                     onChange={(e) => setRegisteredMethod(e.target.value as RegisteredMethod | "")}
                     disabled={busy}
-                    className={styles.field}
+                    
                   >
                     <option value="">選択してください</option>
                     <option value="credit_card">クレカ</option>
@@ -701,16 +699,14 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                   </label>
                   <fieldset>
                     <legend className={styles.label}>手数料負担</legend>
-                    <div className={styles.segmented}>
+                    <div className="garden-radio-group">
                       {[
                         ["当方負担", "当方"],
                         ["先方負担", "先方"],
                       ].map(([value, label]) => (
                         <label
                           key={value}
-                          className={`${styles.segmentOption} ${
-                            feeBearer === value ? styles.segmentOptionActive : ""
-                          }`}
+                          className="garden-radio"
                         >
                           <input
                             type="radio"
@@ -719,7 +715,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                             checked={feeBearer === value}
                             onChange={() => setFeeBearer(value)}
                             disabled={busy}
-                            className="sr-only"
+                            
                           />
                           <span>{label}</span>
                         </label>

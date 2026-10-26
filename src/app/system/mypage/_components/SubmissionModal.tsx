@@ -107,9 +107,9 @@ export default function SubmissionModal({
         <form onSubmit={submit}>
           {type === "emergency_contact" || type === "nda" ? (
             <>
-              <fieldset>
+              <fieldset className="garden-radio-group">
                 <legend>区分</legend>
-                <label>
+                <label className="garden-radio">
                   <input
                     type="radio"
                     name="kind"
@@ -121,7 +121,7 @@ export default function SubmissionModal({
                   />
                   新規
                 </label>
-                <label>
+                <label className="garden-radio">
                   <input
                     type="radio"
                     name="kind"

@@ -39,8 +39,8 @@ export const gardenModules: GardenModuleProgress[] = [
 export const companies: CompanySummary[] = [
   { name: "ヒュアラン", profit: "¥12,840,000", cash: "¥83,500,000", yoy: "+12.3%", bars: [50, 60, 55, 70, 75, 85] },
   { name: "センターライズ", profit: "¥8,230,000", cash: "¥56,200,000", yoy: "+6.7%", bars: [55, 50, 65, 60, 70, 75] },
-  { name: "リンクサポート", profit: "¥6,510,000", cash: "¥42,300,000", yoy: "▲-2.4%", warning: true, bars: [75, 70, 65, 55, 50, 45] },
   { name: "ARATA", profit: "¥15,980,000", cash: "¥92,100,000", yoy: "+18.9%", bars: [55, 65, 70, 75, 85, 90] },
+  { name: "リンクサポート", profit: "¥6,510,000", cash: "¥42,300,000", yoy: "▲-2.4%", warning: true, bars: [75, 70, 65, 55, 50, 45] },
   { name: "たいよう", profit: "¥4,320,000", cash: "¥31,400,000", yoy: "+1.2%", bars: [55, 60, 55, 60, 65, 62] },
   { name: "壱", profit: "¥9,870,000", cash: "¥64,700,000", yoy: "+9.1%", bars: [50, 55, 60, 70, 75, 80] },
 ];

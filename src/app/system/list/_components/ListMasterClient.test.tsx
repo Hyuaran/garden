@@ -619,13 +619,13 @@ describe("ListMasterClient analysis vendor controls", () => {
     expect(vendorSection).not.toBeNull();
     const vendor = within(vendorSection as HTMLElement);
 
-    fireEvent.click(vendor.getByRole("button", { name: /購入先で絞る 指定なし/ }));
-    fireEvent.change(vendor.getByLabelText("名前で絞る"), { target: { value: "データ" } });
+    fireEvent.click(vendor.getByRole("button", { name: "購入先で絞る" }));
+    fireEvent.change(vendor.getByLabelText("購入先で絞るの候補を検索"), { target: { value: "データ" } });
     expect(vendor.queryByRole("checkbox", { name: "ラディッシュ（10）" })).not.toBeInTheDocument();
     fireEvent.click(vendor.getByRole("checkbox", { name: "データ総研（13）" }));
-    fireEvent.change(vendor.getByLabelText("名前で絞る"), { target: { value: "" } });
+    fireEvent.change(vendor.getByLabelText("購入先で絞るの候補を検索"), { target: { value: "" } });
     fireEvent.click(vendor.getByRole("checkbox", { name: "ラディッシュ（10）" }));
-    fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
+    fireEvent.click(vendor.getByRole("button", { name: "OK" }));
 
     await waitFor(() => {
       const analysisTable = vendor.getAllByRole("table").find((table) => within(table).queryByText("合計（絞り込み）：23 件"));
@@ -660,17 +660,17 @@ describe("ListMasterClient analysis vendor controls", () => {
     expect(vendorSection).not.toBeNull();
     const vendor = within(vendorSection as HTMLElement);
 
-    fireEvent.click(vendor.getByRole("button", { name: /購入先で絞る 指定なし/ }));
+    fireEvent.click(vendor.getByRole("button", { name: "購入先で絞る" }));
     fireEvent.click(vendor.getByRole("checkbox", { name: "データ総研（13）" }));
-    fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
+    fireEvent.click(vendor.getByRole("button", { name: "OK" }));
 
-    fireEvent.click(vendor.getByRole("button", { name: /元回線で絞る 指定なし/ }));
+    fireEvent.click(vendor.getByRole("button", { name: "元回線で絞る" }));
     fireEvent.click(vendor.getByRole("checkbox", { name: "フレッツ（1,200）" }));
-    fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
+    fireEvent.click(vendor.getByRole("button", { name: "OK" }));
 
-    fireEvent.click(vendor.getByRole("button", { name: /契約時期で絞る 指定なし/ }));
+    fireEvent.click(vendor.getByRole("button", { name: "契約時期で絞る" }));
     fireEvent.click(vendor.getByRole("checkbox", { name: "2024（9）" }));
-    fireEvent.click(vendor.getByRole("button", { name: "閉じる" }));
+    fireEvent.click(vendor.getByRole("button", { name: "OK" }));
 
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([calledUrl]) => (
@@ -1131,9 +1131,9 @@ describe("ListMasterClient list search UX", () => {
     fireEvent.click(screen.getByRole("button", { name: "読み込む" }));
     await screen.findByText(/電話番号：0247542485/);
     fireEvent.click(screen.getByRole("button", { name: "条件を変える" }));
-    fireEvent.click(screen.getByRole("button", { name: /都道府県 指定なし/ }));
+    fireEvent.click(screen.getByRole("button", { name: "都道府県" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "大阪府（11,165）" }));
-    fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
 
     expect(screen.getByText("絞り込みを変えました。［検索］を押すと書き出しに反映されます")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "12,563 件を書き出す" }));
@@ -1278,41 +1278,25 @@ describe("ListMasterClient multi-select filters", () => {
     vi.unstubAllGlobals();
   });
 
-  it("opens, checks values, toggles a region, and shows the closed summary", async () => {
+  it("confirms multiple values with OK and discards unconfirmed changes with Escape", async () => {
     installFetch();
     render(<ListMasterClient />);
-
-    const button = await screen.findByRole("button", { name: /都道府県 指定なし/ });
+    const button = await screen.findByRole("button", { name: "都道府県" });
     fireEvent.click(button);
-    expect(screen.getByRole("checkbox", { name: "近畿をすべて選ぶ" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "すべて選ぶ" })).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole("checkbox", { name: "大阪府（11,165）" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "奈良県（709）" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "大阪（12）" }));
-    fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
-    expect(screen.getByRole("button", { name: /都道府県 大阪府、奈良県 ほか1（3）/ })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /都道府県/ }));
-    const groupCheckbox = screen.getByRole("checkbox", { name: "近畿をすべて選ぶ" });
-    const group = groupCheckbox.closest("div");
-    expect(group).not.toBeNull();
-    expect(groupCheckbox).toBeChecked();
-    fireEvent.click(groupCheckbox);
-    expect(within(group as HTMLElement).getByRole("checkbox", { name: "大阪府（11,165）" })).not.toBeChecked();
-    expect(within(group as HTMLElement).getByRole("checkbox", { name: "奈良県（709）" })).not.toBeChecked();
-    expect(groupCheckbox).not.toBeChecked();
-    fireEvent.click(groupCheckbox);
-    expect(within(group as HTMLElement).getByRole("checkbox", { name: "大阪府（11,165）" })).toBeChecked();
-    expect(within(group as HTMLElement).getByRole("checkbox", { name: "奈良県（709）" })).toBeChecked();
-
-    // 右上のボタンは「すべて選ぶ」⇄「すべて外す」の兼任
-    fireEvent.click(screen.getByRole("button", { name: "すべて選ぶ" }));
-    expect(screen.getByRole("button", { name: "すべて外す" })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "北海道（124,880）" })).toBeChecked();
-    fireEvent.click(screen.getByRole("button", { name: "すべて外す" }));
-    expect(screen.getByRole("button", { name: "すべて選ぶ" })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "大阪府（11,165）" })).not.toBeChecked();
+    expect(button).toHaveTextContent("指定なし");
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(button).toHaveTextContent("3 つの都道府県");
+    fireEvent.click(button);
+    fireEvent.click(screen.getByRole("checkbox", { name: "大阪府（11,165）" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(button);
+    expect(screen.getByRole("checkbox", { name: "大阪府（11,165）" })).toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox", { name: "指定なし" }));
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(button).toHaveTextContent("指定なし");
   });
 });
 
@@ -1339,13 +1323,13 @@ describe("MultiSelectFilter initial limit", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /購入先で絞る 指定なし/ }));
+    fireEvent.click(screen.getByRole("button", { name: "購入先で絞る" }));
     expect(screen.getByRole("checkbox", { name: "購入先0100（2,900）" })).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: "購入先0101（2,899）" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("checkbox", { name: /購入先\d{4}/ })).toHaveLength(100);
     expect(screen.getByText("上位 100 件を表示中（全 2,452 件）。名前で絞ると全体から探せます")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("名前で絞る"), { target: { value: "2452" } });
+    fireEvent.change(screen.getByLabelText("購入先で絞るの候補を検索"), { target: { value: "2452" } });
     expect(screen.getByRole("checkbox", { name: "購入先2452（548）" })).toBeInTheDocument();
     expect(screen.queryByText("上位 100 件を表示中（全 2,452 件）。名前で絞ると全体から探せます")).not.toBeInTheDocument();
   });
@@ -1362,8 +1346,7 @@ describe("MultiSelectFilter initial limit", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /購入先で絞る 購入先2452/ }));
-    expect(screen.getByRole("checkbox", { name: "選択中をすべて選ぶ" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "購入先で絞る" }));
     expect(screen.getByRole("checkbox", { name: "購入先2452（548）" })).toBeChecked();
     expect(screen.getAllByRole("checkbox", { name: /購入先\d{4}/ })).toHaveLength(101);
   });
@@ -1379,7 +1362,7 @@ describe("MultiSelectFilter initial limit", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /購入先で絞る 指定なし/ }));
+    fireEvent.click(screen.getByRole("button", { name: "購入先で絞る" }));
     expect(screen.getByRole("checkbox", { name: "購入先0120（2,880）" })).toBeInTheDocument();
     expect(screen.getAllByRole("checkbox", { name: /購入先\d{4}/ })).toHaveLength(120);
   });

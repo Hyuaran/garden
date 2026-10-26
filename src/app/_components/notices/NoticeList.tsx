@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useEffect, useState } from "react";
@@ -68,17 +69,17 @@ export function NoticeList() {
     }
 
     const publishControl = (notice: Notice) => {
-        const radio = (to: Notice["status"], onPick: () => void) => <label><input type="radio" name={`publish-${notice.id}`} checked={notice.status === to} onChange={onPick}/> {to === "published" ? "公開する" : NOTICE_STATUS_LABELS[to]}</label>;
+        const radio = (to: Notice["status"], onPick: () => void) => <label className="garden-radio"><input type="radio" name={`publish-${notice.id}`} checked={notice.status === to} onChange={onPick}/> {to === "published" ? "公開する" : NOTICE_STATUS_LABELS[to]}</label>;
         return <div className={styles.buttons}><fieldset className={styles.publishChoice} disabled={busy !== null}><legend className={styles.srOnly}>{notice.title} の公開</legend>{radio("published", () => setConfirming(notice))}{radio("hidden", () => void change(notice, "hidden"))}{radio("draft", () => void change(notice, "draft"))}{busy === notice.id && <span>切り替えています…</span>}</fieldset><button onClick={() => setPreview(notice)}>モーダルでの見え方</button></div>;
     };
 
     const listView = <>
-        <div className={styles.filters}><label>種類 <select value={kind} onChange={e => setKind(e.target.value)}><option value="">すべて</option>{Object.entries(NOTICE_KINDS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>モジュール <select value={module} onChange={e => setModule(e.target.value)}><option value="">すべて</option>{[...new Set(published.map(n => n.module))].sort().map(m => <option key={m}>{m}</option>)}</select></label><label><input type="checkbox" checked={unreadOnly} onChange={e => setUnreadOnly(e.target.checked)}/> 未確認だけ表示</label></div>
+        <div className={styles.filters}><div><ChoiceFilter label="種類" value={kind} onValueChange={value => setKind(value)}><option value="">すべて</option>{Object.entries(NOTICE_KINDS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</ChoiceFilter></div><div><ChoiceFilter label="モジュール" value={module} onValueChange={value => setModule(value)}><option value="">すべて</option>{[...new Set(published.map(n => n.module))].sort().map(m => <option key={m}>{m}</option>)}</ChoiceFilter></div><label><input type="checkbox" checked={unreadOnly} onChange={e => setUnreadOnly(e.target.checked)}/> 未確認だけ表示</label></div>
         {state.error ? <p role="alert">お知らせを読み込めませんでした。<button onClick={state.refresh}>もう一度読み込む</button></p> : !snapshot ? <p>読み込み中…</p> : !notices.length ? <p>{unreadOnly ? "未確認のお知らせはありません。" : "該当するお知らせはありません。"}</p> : notices.map(notice => <div key={notice.id}><NoticeCard notice={notice} unread={!snapshot.readIds.includes(notice.id)}/>{!snapshot.readIds.includes(notice.id) && <button className={styles.confirm} onClick={() => state.acknowledge([notice.id])}>確認しました</button>}</div>)}
     </>;
 
     const manageView = <section className={styles.manage} aria-label="公開の管理">
-        <div className={styles.statusChips} role="group" aria-label="状態で絞り込む">{(["all", "draft", "published", "hidden"] as const).map(s => <button key={s} aria-pressed={statusFilter === s} className={statusFilter === s ? styles.chipOn : undefined} onClick={() => setStatusFilter(s)}>{s === "all" ? `すべて ${all.length}` : `${NOTICE_STATUS_LABELS[s]} ${count(s)}`}</button>)}</div>
+        <ChoiceFilter label="状態で絞り込む" value={statusFilter} onValueChange={value => setStatusFilter(value as typeof statusFilter)}>{(["all", "draft", "published", "hidden"] as const).map(status => <option key={status} value={status}>{status === "all" ? `すべて ${all.length}` : `${NOTICE_STATUS_LABELS[status]} ${count(status)}`}</option>)}</ChoiceFilter>
         {failed && <p role="alert">{failed}</p>}
         {!managed.length ? <p>{statusFilter === "draft" ? "未決定のお知らせはありません。" : "該当するお知らせはありません。"}</p> : managed.map(notice => <div key={notice.id} className={styles.managed}><span className={`${styles.statusBadge} ${styles[`status_${notice.status}`]}`}>{NOTICE_STATUS_LABELS[notice.status]}</span><NoticeCard notice={notice}/>{publishControl(notice)}</div>)}
     </section>;

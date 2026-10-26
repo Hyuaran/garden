@@ -127,13 +127,13 @@ export default function ContractsPage() {
             ))}
           </select>
         </label>
-        <fieldset>
+        <fieldset className="garden-radio-group">
           <legend>区分</legend>
           {[
             ["new", "新規"],
             ["renewal", "更新"],
           ].map(([v, l]) => (
-            <label key={v}>
+            <label key={v} className="garden-radio">
               <input
                 type="radio"
                 name="kind"

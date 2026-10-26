@@ -90,14 +90,13 @@
   color-scheme: dark;
 }
 
-.shell :where(input, select, textarea) {
+.shell :where(input, textarea):not(:where([data-garden-box-select] *)) {
   background: var(--root-bg-panel);
   color: var(--root-text);
   border-color: var(--root-border);
 }
 
-.shell :where(input, select, textarea):focus-visible,
-.shell :where(button, a):focus-visible {
+.shell :where(input, textarea):focus-visible:not(:where([data-garden-box-select] *)), .shell :where(button, a):focus-visible:not(:where([data-garden-box-select] *)) {
   outline: 2px solid var(--root-primary);
   outline-offset: 2px;
 }
@@ -263,13 +262,13 @@
     justify-content: flex-start !important;
   }
 
-  .pageHeaderActions :where(select, input) {
+  .pageHeaderActions :where(input):not(:where([data-garden-box-select] *)) {
     flex: 1 1 100% !important;
     min-width: 0 !important;
     box-sizing: border-box;
   }
 
-  .pageHeaderActions :where(button) {
+  .pageHeaderActions :where(button):not(:where([data-garden-box-select] *)) {
     flex: 0 0 auto;
     white-space: nowrap;
   }
@@ -295,4 +294,4 @@
 }
 
 .compactTable td > div { flex-wrap: wrap; min-width: 0; }
-.compactTable button { padding-inline: 8px !important; }
+.compactTable button:not(:where([data-garden-box-select] *)) { padding-inline: 8px !important; }

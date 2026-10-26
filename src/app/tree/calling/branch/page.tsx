@@ -540,15 +540,7 @@ export default function CallingBranchPage() {
             アポ禁設定
           </div>
           <select
-            style={{
-              width: "100%",
-              padding: "8px 12px",
-              borderRadius: 10,
-              border: "1px solid #dcedc8",
-              fontSize: 12,
-              background: "rgba(255,255,255,0.8)",
-              fontFamily: "'Noto Sans JP', sans-serif",
-            }}
+            style={{ width: "100%" }}
           >
             <option>設定なし</option>
             <option>3ヶ月</option>

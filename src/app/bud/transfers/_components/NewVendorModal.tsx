@@ -122,7 +122,7 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
               <select
                 value={form.account_type}
                 onChange={(e) => handleChange("account_type", e.target.value)}
-                className={styles.field}
+                
               >
                 <option value="1">普通</option>
                 <option value="2">当座</option>

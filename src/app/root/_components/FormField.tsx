@@ -53,7 +53,7 @@ export function SelectField({ label, required, error, children, ...rest }: Commo
   return (
     <label style={{ display: "block", marginBottom: 12 }}>
       <span style={labelStyle}>{label}{required && <span style={{ color: colors.danger, marginLeft: 4 }}>*</span>}</span>
-      <select {...rest} style={inputStyle(!!error)} aria-invalid={!!error || undefined}>{children}</select>
+      <select {...rest} style={{ width: "100%" }} aria-invalid={!!error || undefined}>{children}</select>
       {error && <div style={errorTextStyle}>{error}</div>}
     </label>
   );

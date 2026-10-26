@@ -63,7 +63,7 @@
   overflow-x: auto;
 }
 
-.tabs button {
+.tabs button:not(:where([data-garden-box-select] *)) {
   flex: 0 0 auto;
   padding: 11px 18px;
   border: 0;
@@ -74,19 +74,19 @@
   white-space: nowrap;
 }
 
-.tabs button[aria-selected="true"] {
+.tabs button[aria-selected="true"]:not(:where([data-garden-box-select] *)) {
   background: var(--teal);
   color: #fff;
 }
 
-:global(.dark) .tabs button,
-:global([data-theme="dark"]) .tabs button {
+:global(.dark) .tabs button:not(:where([data-garden-box-select] *)),
+:global([data-theme="dark"]) .tabs button:not(:where([data-garden-box-select] *)) {
   background: #183b48;
   color: #9ce5e1;
 }
 
-:global(.dark) .tabs button[aria-selected="true"],
-:global([data-theme="dark"]) .tabs button[aria-selected="true"] {
+:global(.dark) .tabs button[aria-selected="true"]:not(:where([data-garden-box-select] *)),
+:global([data-theme="dark"]) .tabs button[aria-selected="true"]:not(:where([data-garden-box-select] *)) {
   background: var(--teal);
   color: #fff;
 }
@@ -142,7 +142,7 @@
   font-weight: 700;
 }
 
-.syncIconBusy svg {
+.syncIconBusy svg:not(:where([data-garden-box-select] *)) {
   animation: syncSpin 1s linear infinite;
 }
 
@@ -183,8 +183,8 @@
   gap: 12px;
 }
 
-.panelTitle span,
-.savedRow small,
+.panelTitle span:not(:where([data-garden-box-select] *)),
+.savedRow small:not(:where([data-garden-box-select] *)),
 .empty {
   color: var(--sub);
   font-size: 12px;
@@ -196,8 +196,8 @@
   gap: 12px;
 }
 
-.filterGrid > label,
-.actions label {
+.filterGrid > label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)),
+.actions label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -223,12 +223,12 @@
 }
 
 /* 日付欄は空のとき「年/月/日」の代わりに「から」「まで」を欄の中に出す（Chrome 系）。入力中・入力後は通常表示 */
-.range input[type="date"][data-empty="true"]:not(:focus) {
+.range input[type="date"][data-empty="true"]:not(:focus):not(:where([data-garden-box-select] *)) {
   position: relative;
   color: transparent;
 }
 
-.range input[type="date"][data-empty="true"]:not(:focus)::before {
+.range input[type="date"][data-empty="true"]:not(:focus):not(:where([data-garden-box-select] *))::before {
   content: attr(placeholder);
   position: absolute;
   left: 9px;
@@ -246,17 +246,16 @@
 }
 
 /* 日付・数値の「〜」入力は 2 枠ぶん使う（1 枠だと日付入力がはみ出て隣と重なる） */
-.filterGrid > label:has(.range) {
+.filterGrid > label:has(.range):not(:where([data-garden-box-select] *)) {
   grid-column: span 2;
 }
 
-.range input {
+.range input:not([type="radio"]):not(:where([data-garden-box-select] *)) {
   min-width: 0;
   width: 100%;
 }
 
-.panel input,
-.panel select,
+.panel input:not([type="radio"]):not(:where([data-garden-box-select] *)),
 .multiSelectButton {
   min-height: 36px;
   border: 1px solid var(--line);
@@ -296,7 +295,7 @@
   text-align: left;
 }
 
-.multiSelectButton span:first-child {
+.multiSelectButton span:first-child:not(:where([data-garden-box-select] *)) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -327,7 +326,7 @@
   margin-bottom: 10px;
 }
 
-.multiSelectHeader span {
+.multiSelectHeader span:not(:where([data-garden-box-select] *)) {
   display: flex;
   gap: 8px;
 }
@@ -341,7 +340,7 @@
   font-weight: 800;
 }
 
-.multiSelectSearch input {
+.multiSelectSearch input:not([type="radio"]):not(:where([data-garden-box-select] *)) {
   width: 100%;
   box-sizing: border-box;
 }
@@ -373,7 +372,7 @@
   cursor: pointer;
 }
 
-.groupButton input {
+.groupButton input:not([type="radio"]):not(:where([data-garden-box-select] *)) {
   min-height: auto;
 }
 
@@ -390,7 +389,7 @@
   gap: 6px 10px;
 }
 
-.checkboxGrid label {
+.checkboxGrid label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -405,7 +404,7 @@
 }
 
 
-.checkboxGrid input {
+.checkboxGrid input:not([type="radio"]):not(:where([data-garden-box-select] *)) {
   min-height: auto;
 }
 
@@ -425,7 +424,7 @@
   flex-wrap: wrap;
 }
 
-.actions input {
+.actions input:not([type="radio"]):not(:where([data-garden-box-select] *)) {
   width: 220px;
 }
 
@@ -444,19 +443,7 @@
   font-weight: 800;
 }
 
-.radioGroup label {
-  flex-direction: row;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-}
-
-.radioGroup input {
-  width: auto;
-  min-height: auto;
-}
-
-.panel button {
+.panel button:not(:where([data-garden-box-select] *)) {
   min-height: 36px;
   border: 0;
   border-radius: 6px;
@@ -469,7 +456,7 @@
   cursor: pointer;
 }
 
-.panel button:disabled {
+.panel button:disabled:not(:where([data-garden-box-select] *)) {
   opacity: .55;
   cursor: wait;
 }
@@ -508,7 +495,7 @@
 }
 
 .collapsedFilterRow strong,
-.collapsedFilterRow span {
+.collapsedFilterRow span:not(:where([data-garden-box-select] *)) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -519,7 +506,7 @@
   color: var(--heading);
 }
 
-.collapsedFilterRow span {
+.collapsedFilterRow span:not(:where([data-garden-box-select] *)) {
   color: var(--sub);
   font-size: 13px;
   font-weight: 700;
@@ -530,7 +517,7 @@
   align-items: flex-end;
 }
 
-.searchCell button {
+.searchCell button:not(:where([data-garden-box-select] *)) {
   width: 100%;
   min-width: 96px;
   white-space: nowrap;
@@ -554,15 +541,15 @@
   flex: 0 0 auto;
 }
 
-.exportActions label {
+.exportActions label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   width: 150px;
 }
 
-.exportActions label select {
+.exportActions label select:not(:where([data-garden-box-select] *)) {
   width: 100%;
 }
 
-.exportActions button {
+.exportActions button:not(:where([data-garden-box-select] *)) {
   white-space: nowrap;
 }
 
@@ -603,15 +590,15 @@
 }
 
 /* 「1 / 500 ページ」は途中で折らない。長い注意書き（500 ページまで…）は次の行に回す */
-.pagination > span:first-of-type {
+.pagination > span:first-of-type:not(:where([data-garden-box-select] *)) {
   white-space: nowrap;
 }
 
-.pagination > span:last-of-type {
+.pagination > span:last-of-type:not(:where([data-garden-box-select] *)) {
   font-weight: 600;
 }
 
-.pagination button {
+.pagination button:not(:where([data-garden-box-select] *)) {
   min-width: 36px;
   padding: 6px 10px;
 }
@@ -634,7 +621,7 @@
   text-align: left;
 }
 
-.sortHeaderButton svg {
+.sortHeaderButton svg:not(:where([data-garden-box-select] *)) {
   width: 12px;
   height: 12px;
   fill: currentColor;
@@ -662,7 +649,7 @@
   line-height: 1.12;
 }
 
-.analysisHeaderLabel span {
+.analysisHeaderLabel span:not(:where([data-garden-box-select] *)) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -765,7 +752,7 @@
   gap: 10px;
 }
 
-.modalSaveRow label {
+.modalSaveRow label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   display: grid;
   gap: 6px;
   color: var(--heading);
@@ -773,9 +760,8 @@
   font-weight: 800;
 }
 
-.modalSaveRow input,
-.conditionModal input,
-.conditionModal select {
+.modalSaveRow input:not([type="radio"]):not(:where([data-garden-box-select] *)),
+.conditionModal input:not([type="radio"]):not(:where([data-garden-box-select] *)) {
   min-height: 36px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -800,7 +786,7 @@
   margin-top: 16px;
 }
 
-.formGrid label,
+.formGrid label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)),
 .checkboxLine {
   display: grid;
   gap: 6px;
@@ -814,7 +800,7 @@
   margin-top: 14px;
 }
 
-.checkboxLine input {
+.checkboxLine input:not([type="radio"]):not(:where([data-garden-box-select] *)) {
   width: auto;
   min-height: auto;
 }
@@ -908,12 +894,12 @@
   border-top: 1px solid var(--line);
 }
 
-.modalSavedRow small {
+.modalSavedRow small:not(:where([data-garden-box-select] *)) {
   color: var(--sub);
   font-size: 12px;
 }
 
-.conditionModal button {
+.conditionModal button:not(:where([data-garden-box-select] *)) {
   min-height: 36px;
   border: 0;
   border-radius: 6px;
@@ -925,7 +911,7 @@
   cursor: pointer;
 }
 
-.conditionModal button:disabled {
+.conditionModal button:disabled:not(:where([data-garden-box-select] *)) {
   opacity: .55;
   cursor: wait;
 }
@@ -953,14 +939,14 @@
   margin: 0 0 14px;
 }
 
-.stepHeading > span {
+.stepHeading > span:not(:where([data-garden-box-select] *)) {
   display: grid;
   min-width: 42px;
   color: var(--heading);
   line-height: .8;
 }
 
-.stepHeading small {
+.stepHeading small:not(:where([data-garden-box-select] *)) {
   font-size: .62rem;
   letter-spacing: .12em;
 }
@@ -1006,7 +992,7 @@
   background: color-mix(in srgb, var(--card) 88%, var(--teal));
 }
 
-.uploadChoiceBox label {
+.uploadChoiceBox label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1034,7 +1020,7 @@
   background: var(--card);
 }
 
-.purchaseVendorRow label {
+.purchaseVendorRow label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1043,7 +1029,7 @@
   font-weight: 800;
 }
 
-.purchaseVendorRow span {
+.purchaseVendorRow span:not(:where([data-garden-box-select] *)) {
   align-self: center;
   color: var(--sub);
   font-size: 12px;
@@ -1116,7 +1102,7 @@
   word-break: break-all;
 }
 
-.selectedFile button {
+.selectedFile button:not(:where([data-garden-box-select] *)) {
   border: 0 !important;
   background: transparent !important;
   color: var(--tealDark) !important;
@@ -1129,7 +1115,7 @@
   gap: 8px;
 }
 
-.uploadButton svg {
+.uploadButton svg:not(:where([data-garden-box-select] *)) {
   width: 18px;
   fill: none;
   stroke: currentColor;
@@ -1150,7 +1136,7 @@
   font-weight: 800;
 }
 
-.loading span {
+.loading span:not(:where([data-garden-box-select] *)) {
   width: 18px;
   height: 18px;
   border: 3px solid #b8e3e1;
@@ -1282,8 +1268,8 @@
   align-items: end;
 }
 
-.internalBlockForm label,
-.internalBlockListHeader label {
+.internalBlockForm label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)),
+.internalBlockListHeader label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   display: flex;
   min-width: 220px;
   flex-direction: column;
@@ -1328,7 +1314,7 @@
   margin: 0;
 }
 
-.historyTypeFilters label {
+.historyTypeFilters label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   display: inline-flex;
   gap: 6px;
   align-items: center;
@@ -1359,14 +1345,14 @@
 .historyItem[data-kind^="住所"] { border-left-color: #0891b2; }
 .historyItem[data-kind^="自社"] { border-left-color: #b91c1c; }
 
-.historyItem span,
+.historyItem span:not(:where([data-garden-box-select] *)),
 .historyItem strong,
 .historyItem p {
   margin: 0;
   min-width: 0;
 }
 
-.historyItem span {
+.historyItem span:not(:where([data-garden-box-select] *)) {
   color: var(--sub);
   font-variant-numeric: tabular-nums;
 }
@@ -1442,7 +1428,7 @@
   font-weight: 700;
 }
 
-.analysisAxisControls label {
+.analysisAxisControls label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1627,7 +1613,7 @@
   font-weight: 800;
 }
 
-.analysisOrderSummary small {
+.analysisOrderSummary small:not(:where([data-garden-box-select] *)) {
   grid-column: 1 / -1;
   color: var(--sub);
   font-size: 11px;
@@ -1694,27 +1680,6 @@
 .valueZero {
   color: var(--val-zero, var(--sub));
   font-weight: 600;
-}
-
-.segmentedControl {
-  display: inline-flex;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--card);
-}
-
-.segmentedControl button {
-  min-height: 30px;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--sub);
-  padding: 5px 10px;
-}
-
-.segmentedControl button[aria-pressed="true"] {
-  background: var(--teal);
-  color: #fff;
 }
 
 .definitionBox {
@@ -1784,7 +1749,7 @@
   row-gap: 8px;
 }
 
-.columns label {
+.columns label:not(:has(> input[type="radio"])):not(:where([data-garden-box-select] *)) {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1792,7 +1757,7 @@
   font-size: 13px;
 }
 
-.columns input {
+.columns input:not([type="radio"]):not(:where([data-garden-box-select] *)) {
   min-height: auto;
 }
 
@@ -1807,7 +1772,7 @@
   }
 
   .wide,
-  .filterGrid > label:has(.range),
+  .filterGrid > label:has(.range):not(:where([data-garden-box-select] *)),
   .filterDivider {
     grid-column: auto;
   }
@@ -1835,7 +1800,7 @@
   }
 
   .collapsedFilterRow strong,
-  .collapsedFilterRow span {
+  .collapsedFilterRow span:not(:where([data-garden-box-select] *)) {
     white-space: normal;
   }
 

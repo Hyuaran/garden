@@ -129,7 +129,7 @@ export function StatementImportModal({
               value={bankAccountId}
               onChange={(e) => setBankAccountId(e.target.value)}
               disabled={submitting}
-              className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+              className="mt-1 block w-full"
             >
               <option value="">選択してください</option>
               {bankAccounts.map((a) => (
@@ -148,7 +148,7 @@ export function StatementImportModal({
                 setSourceType(e.target.value as StatementSourceType)
               }
               disabled={submitting}
-              className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+              className="mt-1 block w-full"
             >
               {SOURCE_TYPES.map((s) => (
                 <option key={s.value} value={s.value}>

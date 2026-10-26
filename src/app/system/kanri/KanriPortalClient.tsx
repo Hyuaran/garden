@@ -669,10 +669,10 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       <p className={styles.greeting} {...CLARITY_MASK}>お疲れ様です。{formatDate(targetDate)}の管理表を {creatorName} が作成します。</p>
       <div className={styles.controls}>
         <label>対象日<input type="date" value={targetDate} onChange={(event) => changeDate(event.target.value)} /></label>
-        <fieldset>
+        <fieldset className="garden-radio-group">
           <legend>種類</legend>
-          <label><input type="radio" name="kanri-mode" checked={mode === "daily"} onChange={() => setMode("daily")} />デイリー</label>
-          <label><input type="radio" name="kanri-mode" checked={mode === "closing"} onChange={() => setMode("closing")} />締めチェック</label>
+          <label className="garden-radio"><input type="radio" name="kanri-mode" checked={mode === "daily"} onChange={() => setMode("daily")} />デイリー</label>
+          <label className="garden-radio"><input type="radio" name="kanri-mode" checked={mode === "closing"} onChange={() => setMode("closing")} />締めチェック</label>
         </fieldset>
       </div>
       <p className={styles.hint}>月末日を選ぶと自動で「締めチェック」に切り替わります。</p>
@@ -739,11 +739,11 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
     <section className={styles.panel}>
       <h2>今月の設定（勤怠）</h2>
       <div className={styles.controls}>
-        <fieldset>
+        <fieldset className="garden-radio-group">
           <legend>稼働時間の元</legend>
-          <label><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "auto"} onChange={() => updateKotSetting("hoursBasis", "auto")} />対象日まで実績・以降は予定</label>
-          <label><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "plan"} onChange={() => updateKotSetting("hoursBasis", "plan")} />予定</label>
-          <label><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "actual"} onChange={() => updateKotSetting("hoursBasis", "actual")} />実績</label>
+          <label className="garden-radio"><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "auto"} onChange={() => updateKotSetting("hoursBasis", "auto")} />対象日まで実績・以降は予定</label>
+          <label className="garden-radio"><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "plan"} onChange={() => updateKotSetting("hoursBasis", "plan")} />予定</label>
+          <label className="garden-radio"><input type="radio" name="kot-hours-basis" checked={kotHoursBasis(inputs) === "actual"} onChange={() => updateKotSetting("hoursBasis", "actual")} />実績</label>
         </fieldset>
         <label>チーム時間に入れる派遣<input type="text" value={kotDispatchNames(inputs)} onChange={(event) => updateKotSetting("includeDispatchNames", event.target.value)} /></label>
       </div>

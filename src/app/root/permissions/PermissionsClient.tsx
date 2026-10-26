@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import styles from "../_components/root-shell.module.css";
@@ -255,19 +256,14 @@ export default function PermissionsClient({
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
           <h2 style={{ margin: 0, fontSize: 16, color: colors.text }}>人ごとの役職</h2>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <label style={{ display: "flex", gap: 6, alignItems: "center", color: colors.text, fontSize: 13 }}>
-              役職で絞る
-              <select
-                value={filterRole}
-                onChange={(event) => setFilterRole(event.target.value as "" | GardenRole)}
-                style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }}
-              >
+            <div style={{ display: "flex", gap: 6, alignItems: "center", color: colors.text, fontSize: 13 }}>
+              <ChoiceFilter label="権限" value={filterRole} onValueChange={value => setFilterRole(value as "" | GardenRole)}>
                 <option value="">すべて</option>
                 {GARDEN_ROLE_ORDER.map((role) => (
                   <option key={role} value={role}>{roleLabel(role)}</option>
                 ))}
-              </select>
-            </label>
+              </ChoiceFilter>
+            </div>
             <label style={{ display: "flex", gap: 6, alignItems: "center", color: colors.text, fontSize: 13 }}>
               <input
                 type="checkbox"

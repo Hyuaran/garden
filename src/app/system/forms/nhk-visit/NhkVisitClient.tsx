@@ -190,8 +190,8 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
 
     <section className={styles.panel}>
       <h2>6 交通費</h2>
-      <div className={styles.segmented}>
-        {(["あり", "なし"] as const).map((item) => <label key={item}>
+      <div className="garden-radio-group">
+        {(["あり", "なし"] as const).map((item) => <label key={item} className="garden-radio">
           <input type="radio" name="transportFee" checked={transportFee === item} onChange={() => setTransportFee(item)} />
           <span>{item}</span>
         </label>)}

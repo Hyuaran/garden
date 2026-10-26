@@ -423,7 +423,7 @@ export default function MobileExpenseSubmit() {
 
       <section style={{ ...budCard, padding: 14, marginBottom: 14 }}>
         <h2 style={budSectionTitle}>法人</h2>
-        <select value={selectedCorpId} onChange={(e) => setSelectedCorpId(e.target.value)} disabled={corpLoading} style={corpSelect}>
+        <select value={selectedCorpId} onChange={(e) => setSelectedCorpId(e.target.value)} disabled={corpLoading} style={{ width: "100%" }}>
           <option value="">未設定</option>
           {selectableCorpOptions.map((corp) => (
             <option key={corp.id} value={corp.id}>

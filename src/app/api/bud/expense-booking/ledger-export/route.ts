@@ -72,8 +72,8 @@ export async function POST(request: Request) {
           .range(from, to);
       }),
       supabase.from("bud_expense_categories").select("id,name"),
-      supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month"),
-      supabase.from("root_companies").select("company_id,company_name"),
+      supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("established_on", { ascending: true, nullsFirst: false }),
+      supabase.from("root_companies").select("company_id,company_name").order("established_on", { ascending: true, nullsFirst: false }),
     ]);
     if (requestRes.error) throw new Error(`対象取得に失敗しました: ${requestRes.error.message}`);
     if (categoryRes.error) throw new Error(`区分取得に失敗しました: ${categoryRes.error.message}`);

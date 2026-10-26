@@ -13,10 +13,10 @@
 .testOnly{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px;color:#10233f;font-size:14px;font-weight:800}
 .testOnly small{color:#5a6b80;font-weight:700}
 .password{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:0 0 14px;color:#10233f;font-size:14px;font-weight:800}
-.password input{box-sizing:border-box;width:160px;min-height:36px;padding:6px 10px;border:1px solid #c9d4e2;border-radius:8px;font-size:16px;letter-spacing:.2em}
+.password input:not([type="radio"]){box-sizing:border-box;width:160px;min-height:36px;padding:6px 10px;border:1px solid #c9d4e2;border-radius:8px;font-size:16px;letter-spacing:.2em}
 .password small{flex-basis:100%;color:#5a6b80;font-weight:700}
 :global(.dark) .password,:global([data-theme="dark"]) .password{color:#edf4fb}
-:global(.dark) .password input,:global([data-theme="dark"]) .password input{border-color:#31435a;background:#101d2d;color:#edf4fb}
+:global(.dark) .password input:not([type="radio"]),:global([data-theme="dark"]) .password input:not([type="radio"]){border-color:#31435a;background:#101d2d;color:#edf4fb}
 :global(.dark) .password small,:global([data-theme="dark"]) .password small{color:#b7c5d4}
 .actions{display:flex;justify-content:flex-end;gap:10px}
 .primary,.secondary{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 16px;border-radius:8px;font-weight:800;line-height:1;cursor:pointer;white-space:nowrap}

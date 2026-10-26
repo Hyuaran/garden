@@ -21,15 +21,13 @@ export async function GET() {
   const admin = getSupabaseAdmin();
   const ordered = await admin
     .from("bud_corporations")
-    .select("id,name_short,sort_order")
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("id", { ascending: true });
+    .select("id,name_short,sort_order,established_on").order("established_on", { ascending: true, nullsFirst: false });
 
   if (!ordered.error) {
     return NextResponse.json({ ok: true, corps: (ordered.data as CorporationRow[] | null) ?? [] });
   }
 
-  const fallback = await admin.from("bud_corporations").select("id,name_short").order("id", { ascending: true });
+  const fallback = await admin.from("bud_corporations").select("id,name_short,established_on").order("established_on", { ascending: true, nullsFirst: false });
   if (fallback.error) {
     return NextResponse.json({ ok: false, error: fallback.error.message }, { status: 500 });
   }

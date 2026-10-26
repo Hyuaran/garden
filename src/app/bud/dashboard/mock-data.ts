@@ -4,8 +4,8 @@ export const companyTabs = [
   "全法人合算",
   "ヒュアラン",
   "センターライズ",
-  "リンクサポート",
   "ARATA",
+  "リンクサポート",
   "たいよう",
   "壱",
 ] as const;

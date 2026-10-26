@@ -1,4 +1,4 @@
-﻿/* 社長スタイルの色の決まり（--ink・--sub・--line・--card・--heading・--teal）で書く。ダークでも読めるように直書きの色は使わない（2026-10-24） */
+/* 社長スタイルの色の決まり（--ink・--sub・--line・--card・--heading・--teal）で書く。ダークでも読めるように直書きの色は使わない（2026-10-24） */
 .panel { padding: 8px 0 24px; color: var(--ink); }
 .panel h2 { font-size: 17px; font-weight: 700; color: var(--heading); margin: 28px 0 12px; }
 .panel form, .panel fieldset { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin: 0; }
@@ -8,7 +8,7 @@
 .panel label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--sub); }
 .panel label:has(input[type=radio]) { flex-direction: row; align-items: center; color: var(--ink); }
 .panel p { color: var(--sub); font-size: 13px; }
-.panel input:not([type=radio]), .panel textarea, .panel select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; }
+.panel input:not([type=radio]), .panel textarea { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; }
 .panel input[type=date] { color-scheme: light dark; }
 .panel textarea { min-height: 80px; }
 .panel button { padding: 9px 18px; border: 1px solid var(--teal); border-radius: 8px; background: var(--card); color: var(--ink); cursor: pointer; font: inherit; }

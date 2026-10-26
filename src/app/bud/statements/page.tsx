@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -132,21 +133,17 @@ function StatementsContent() {
       </section>
 
       <section className="mb-3 flex flex-wrap gap-3 items-center bg-white border border-gray-200 rounded p-3">
-        <label className="text-sm">
-          <span className="text-xs text-gray-600 mr-2">口座:</span>
-          <select
-            value={bankFilter}
-            onChange={(e) => setBankFilter(e.target.value)}
-            className="rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
-          >
+        <div className="text-sm">
+          
+          <ChoiceFilter label="銀行" value={bankFilter} onValueChange={value => setBankFilter(value)}>
             <option value="">すべて</option>
             {bankAccounts.map((a) => (
               <option key={a.account_id} value={a.account_id}>
                 {a.bank_name} {a.account_number}
               </option>
             ))}
-          </select>
-        </label>
+          </ChoiceFilter>
+        </div>
         <div className="flex gap-1">
           {(["all", "matched", "unmatched"] as const).map((f) => (
             <button

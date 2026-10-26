@@ -126,7 +126,7 @@ export default function BreakSchedulePage() {
           </div>
           <div>
             <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>種類</div>
-            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as BreakType }))} style={{ ...inputSt, width: "100%", cursor: "pointer" }}>
+            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as BreakType }))} style={{ width: "100%" }}>
               {(Object.entries(TYPE_LABELS) as [BreakType, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>

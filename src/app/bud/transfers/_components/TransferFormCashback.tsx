@@ -316,7 +316,7 @@ export function TransferFormCashback() {
                     value={accountType}
                     onChange={(e) => setAccountType(e.target.value)}
                     disabled={submitting}
-                    className={styles.field}
+                    
                   >
                     <option value="1">普通</option>
                     <option value="2">当座</option>

@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 
@@ -302,8 +303,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           )
         : Promise.resolve({ data: [], error: null }),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true).order("display_order", { ascending: true }),
-      supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("id", { ascending: true }),
-      supabase.from("root_companies").select("company_id,company_name"),
+      supabase.from("bud_corporations").select("id,name_short,established_on,fiscal_end_month").order("established_on", { ascending: true, nullsFirst: false }),
+      supabase.from("root_companies").select("company_id,company_name").order("established_on", { ascending: true, nullsFirst: false }),
     ]);
 
     const pending = (pendingRes.data as Req[] | null) ?? [];
@@ -317,7 +318,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
     setCats((catRes.data as Cat[] | null) ?? []);
     let corpList = ((corpRes.data as Corp[] | null) ?? []).length > 0 ? ((corpRes.data as Corp[] | null) ?? []) : FALLBACK_CORPS;
     if (corpRes.error) {
-      const fallbackCorpRes = await supabase.from("bud_corporations").select("id,name_short").order("id", { ascending: true });
+      const fallbackCorpRes = await supabase.from("bud_corporations").select("id,name_short,established_on").order("established_on", { ascending: true, nullsFirst: false });
       corpList = fallbackCorpRes.error ? FALLBACK_CORPS : ((fallbackCorpRes.data as Corp[] | null) ?? FALLBACK_CORPS);
     }
     setCorps(corpList);
@@ -1043,7 +1044,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
           {list.length > 0 && current && (
             <div style={reviewControlRow}>
               <div style={sortControlGroup}>
-                <select value={sortField} onChange={(event) => setSortField(event.target.value as ExpenseReviewSortField)} style={sortSelect}>
+                <select value={sortField} onChange={(event) => setSortField(event.target.value as ExpenseReviewSortField)} style={{ width: "100%" }}>
                   <option value="default">送り順</option>
                   <option value="receipt_date">日付</option>
                   <option value="amount">金額</option>
@@ -1164,7 +1165,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                         <select
                           value={searchMode ? activeSearch.expense_kind ?? "" : form.expense_kind}
                           onChange={(e) => (searchMode ? setSearchField("expense_kind", e.target.value) : setF("expense_kind", e.target.value))}
-                          style={input}
+                          style={{ width: "100%" }}
                         >
                           <option value="">すべて</option>
                           <option value="individual">個人経費</option>
@@ -1207,7 +1208,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       <select
                         value={searchMode ? activeSearch.corp_id ?? "" : form.corp_id}
                         onChange={(e) => (searchMode ? setSearchField("corp_id", e.target.value) : setF("corp_id", e.target.value))}
-                        style={requiredFieldStyle(searchMode, form.corp_id)}
+                        style={{ width: "100%" }}
                       >
                         <option value="">未設定</option>
                         {sortedCorps.map((corp) => (
@@ -1254,7 +1255,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       <select
                         value={searchMode ? activeSearch.category_id ?? "" : form.category_id}
                         onChange={(e) => (searchMode ? setSearchField("category_id", e.target.value) : setF("category_id", e.target.value))}
-                        style={requiredFieldStyle(searchMode, form.category_id)}
+                        style={{ width: "100%" }}
                       >
                         <option value="">（未選択）</option>
                         {cats.map((c) => (
@@ -1269,7 +1270,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                       <select
                         value={searchMode ? activeSearch.qualified_class ?? "" : form.qualified_class}
                         onChange={(e) => (searchMode ? setSearchField("qualified_class", e.target.value) : setF("qualified_class", e.target.value))}
-                        style={requiredFieldStyle(searchMode, form.qualified_class)}
+                        style={{ width: "100%" }}
                       >
                         <option value="">（未選択）</option>
                         <option value="有">有</option>
@@ -1566,27 +1567,8 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
   );
 }
 
-function CorpFilter({
-  value,
-  corps,
-  onChange,
-}: {
-  value: string;
-  corps: Corp[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div style={corpSwitch}>
-      <button type="button" style={corpTab(value === "all")} onClick={() => onChange("all")}>
-        全法人合算
-      </button>
-      {corps.map((corp) => (
-        <button key={corp.id} type="button" style={corpTab(value === corp.id)} onClick={() => onChange(corp.id)}>
-          {corp.name_short ?? corp.id}
-        </button>
-      ))}
-    </div>
-  );
+function CorpFilter({ value, corps, onChange }: { value: string; corps: Corp[]; onChange: (value: string) => void }) {
+  return <ChoiceFilter label="法人" value={value} onValueChange={onChange}><option value="all">全法人合算</option>{corps.map(corp => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}</ChoiceFilter>;
 }
 
 function ExpenseListTab({
@@ -1676,7 +1658,7 @@ function ExpenseListTab({
       </div>
       <div style={listToolbar}>
         <div style={listSearchBox}>
-          <select value={listSearchField} onChange={(event) => setListSearchField(event.target.value as SearchField | "all")} style={listSearchSelect}>
+          <ChoiceFilter label="検索項目" value={listSearchField} onValueChange={value => setListSearchField(value as SearchField | "all")}>
             <option value="all">全項目</option>
             <option value="receipt_date">日付</option>
             <option value="receipt_time">時刻</option>
@@ -1688,7 +1670,7 @@ function ExpenseListTab({
             <option value="expense_kind">区分</option>
             <option value="corp_id">法人</option>
             <option value="category_id">経費区分</option>
-          </select>
+          </ChoiceFilter>
           <input
             ref={listSearchInputRef}
             type="text"
@@ -2626,23 +2608,6 @@ const listRestoreBtn: React.CSSProperties = {
   color: "var(--teal-d)",
   cursor: "pointer",
 };
-const corpSwitch: React.CSSProperties = {
-  display: "flex",
-  gap: 4,
-  marginBottom: 18,
-  padding: 6,
-  background: "var(--bg-card)",
-  borderRadius: 8,
-  width: "fit-content",
-  border: "1px solid color-mix(in srgb, var(--sub) 20%, transparent)",
-  flexWrap: "wrap",
-};
-const corpTab = (active: boolean): React.CSSProperties => ({
- padding: "7px 12px", borderRadius: 6,
- border: active ? "1px solid var(--teal)" : "1px solid var(--line)",
- background: "var(--card)", color: active ? "var(--teal-d)" : "var(--sub)",
- boxShadow: "none", cursor: "pointer", fontSize: 13,
-});
 const statusPanel: React.CSSProperties = {
   background: "var(--bg-paper-soft)",
   border: "1px solid color-mix(in srgb, var(--teal-d) 18%, transparent)",

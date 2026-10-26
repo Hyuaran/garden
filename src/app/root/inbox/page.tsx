@@ -1,4 +1,5 @@
 "use client";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import { useEffect, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
@@ -50,30 +51,22 @@ export default function InboxPage() {
         description="従業員から届いた申請を確認し、対応します"
       />
       <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
-        <select
-          aria-label="種類で絞り込み"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        >
+        <ChoiceFilter label="種類で絞り込み" value={type} onValueChange={value => setType(value)}>
           <option value="">すべての種類</option>
           {Object.entries(SUBMISSION_LABELS).map(([v, l]) => (
             <option value={v} key={v}>
               {l}
             </option>
           ))}
-        </select>
-        <select
-          aria-label="状態で絞り込み"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
+        </ChoiceFilter>
+        <ChoiceFilter label="状態で絞り込み" value={status} onValueChange={value => setStatus(value)}>
           <option value="">すべての状態</option>
           {Object.entries(STATUS).map(([v, l]) => (
             <option value={v} key={v}>
               {l}
             </option>
           ))}
-        </select>
+        </ChoiceFilter>
       </div>
       <div style={{ display: "grid", gap: 10 }}>
         {rows.map((row) => (

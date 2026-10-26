@@ -14,8 +14,8 @@ export type ExpenseCorpRow = {
 export const FALLBACK_CORPS: Corp[] = [
   { id: "hyuaran", name_short: "ヒュアラン" },
   { id: "centerrise", name_short: "センターライズ" },
-  { id: "linksupport", name_short: "リンクサポート" },
   { id: "arata", name_short: "ARATA" },
+  { id: "linksupport", name_short: "リンクサポート" },
   { id: "taiyou", name_short: "たいよう" },
   { id: "ichi", name_short: "壱" },
   { id: "stonebase", name_short: "ストーンベース" },
@@ -26,10 +26,14 @@ const CORP_ORDER = FALLBACK_CORPS.map((corp) => corp.id);
 export function sortCorps(corps: Corp[]) {
   const source = corps.length > 0 ? corps : FALLBACK_CORPS;
   return [...source].sort((a, b) => {
+    if (a.established_on || b.established_on) {
+      const dateOrder = (a.established_on ?? "9999-12-31").localeCompare(b.established_on ?? "9999-12-31");
+      if (dateOrder) return dateOrder;
+    }
     const ai = CORP_ORDER.indexOf(a.id);
     const bi = CORP_ORDER.indexOf(b.id);
     if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-    return (a.name_short ?? a.id).localeCompare(b.name_short ?? b.id, "ja");
+    return 0;
   });
 }
 

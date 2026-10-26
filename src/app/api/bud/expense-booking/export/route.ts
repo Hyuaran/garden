@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         .order("id", { ascending: true })
         .range(from, to)),
       supabase.from("bud_expense_categories").select("id,name").eq("is_active", true),
-      supabase.from("bud_corporations").select("id,name_short"),
+      supabase.from("bud_corporations").select("id,name_short,established_on").order("established_on", { ascending: true, nullsFirst: false }),
     ]);
 
     if (reqRes.error) {

@@ -190,11 +190,15 @@ describe("権限一覧", () => {
     renderPage();
     expect(await screen.findByRole("cell", { name: "宮永 ひかり" })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("役職で絞る"), { target: { value: "closer" } });
+    fireEvent.click(screen.getByRole("button", { name: "権限" }));
+    fireEvent.click(screen.getByRole("radio", { name: "クローザー" }));
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
     expect(screen.queryByText("宮永 ひかり")).not.toBeInTheDocument();
     expect(screen.getByText("萩原 結那")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("役職で絞る"), { target: { value: "staff" } });
+    fireEvent.click(screen.getByRole("button", { name: "権限" }));
+    fireEvent.click(screen.getByRole("radio", { name: "正社員" }));
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
     expect(screen.queryByText("退職 太郎")).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("在籍中だけ"));
     expect(screen.getByText("退職 太郎")).toBeInTheDocument();
