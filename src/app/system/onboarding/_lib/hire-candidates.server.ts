@@ -34,7 +34,7 @@ export async function listCandidates({db}: Context) {
   .sort((a,b) => checklistPriority(a)-checklistPriority(b));
 }
 export async function candidateOptions({db}: Context) {
- const companies = checked(await db.from("root_companies").select("company_id,company_name"));
+ const companies = checked(await db.from("root_companies").select("company_id,company_name").order("established_on",{ascending:true}));
  // KOT の選択肢は控えておき、KOT が止まっている時間（8:30〜10:00・17:30〜18:30）や読めないときは控えを使う（登録するだけなら KOT は要らない・2026-10-26）
  const admin = getSupabaseAdmin();
  try {
