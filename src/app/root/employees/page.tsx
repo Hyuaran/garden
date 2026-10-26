@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -729,15 +731,15 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
         <UpdatedStamp label="従業員名簿" date={rosterSyncedAt} onRefresh={handleRosterSync} busy={rosterSyncing} disabled={!canSyncRoster} refreshLabel="Kintone の従業員名簿と同期する" title="Kintone の従業員名簿と同期する" />
       </UpdatedStampRow>
       {rosterSyncResult && <div role="status" style={{ color: colors.textMuted, fontSize: 12, textAlign: "right", marginBottom: 12 }}>更新 {rosterSyncResult.updated}・無効化 {rosterSyncResult.authBanned}</div>}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", minWidth: 0, width: "100%", margin: "12px 0" }}>
+      <FilterRow style={{ display: "flex", gap: 8, flexWrap: "wrap", minWidth: 0, width: "100%", margin: "12px 0" }}>
         <ChoiceFilter label="法人" value={filterCompany} onValueChange={value => setFilterCompany(value)}>
           <option value="">すべての法人</option>
           {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
         </ChoiceFilter>
-        <input ref={searchRef} type="text" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 260px", minWidth: 0 }} />
+        <FilterBox label="氏名・番号で検索（Ctrl+Shift+G）" search><input ref={searchRef} type="text" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 260px", minWidth: 0 }} /></FilterBox>
         <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
         <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
-      </div>
+      </FilterRow>
       {!canAdd && !loading && <div style={{ background: colors.warningBg, color: colors.warning, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>従業員を追加するには、先に法人マスタと給与体系マスタを登録してください。</div>}
       {tokenSyncResult && (
         <div style={{ background: colors.warningBg, color: colors.warning, padding: "10px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13, lineHeight: 1.7 }}>
@@ -755,7 +757,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
       <Modal open={!!historyTarget} onClose={() => setHistoryTarget(null)} title={`${historyTarget?.name ?? ""}（${historyTarget?.employee_number ?? ""}）の履歴`} width={960}>
         {historyLoading ? <div style={{ color: colors.textMuted }}>読込中...</div> : historyError ? <div role="alert" style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4 }}>{historyError}</div> : profileHistory ? (
           <div>
-            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <FilterRow style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
               <ChoiceFilter label="区分" value={historyCategory} onValueChange={value => setHistoryCategory(value)}>
                 <option value="">区分：すべて</option>
                 {Object.entries(PROFILE_CATEGORY_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
@@ -764,7 +766,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
                 <option value="">出どころ：すべて</option>
                 {Object.entries(PROFILE_SOURCE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </ChoiceFilter>
-            </div>
+            </FilterRow>
             {Object.entries(profileHistory.rows.filter((row) => (!historyCategory || row.category === historyCategory) && (!historySource || row.source === historySource)).reduce<Record<string, ProfileHistoryRow[]>>((acc, row) => { (acc[row.category] ??= []).push(row); return acc; }, {})).map(([category, rows]) => (
               <section key={category} style={{ marginBottom: 18 }}>
                 <h3 style={{ margin: "0 0 8px", fontSize: 15, color: colors.text }}>{PROFILE_CATEGORY_LABELS[category] ?? category}</h3>

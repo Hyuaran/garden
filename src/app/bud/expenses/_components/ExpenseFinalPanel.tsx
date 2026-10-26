@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -576,7 +578,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                 <h3 style={panelTitle}>完了待ち一覧</h3>
                 <span style={panelMeta}>レコード {list.length.toLocaleString("ja-JP")} / {baseList.length.toLocaleString("ja-JP")}</span>
               </div>
-              <div style={listToolbar}>
+              <FilterRow style={listToolbar}>
                 <div style={applicantFilterLabel}><ChoiceFilter label="申請者で絞り込む" value={applicantFilter} onValueChange={value => setApplicantFilter(value)}><option value="all">全員</option>{applicantOptions.map((name) => <option key={name} value={name}>{name}</option>)}</ChoiceFilter></div>
                 <div style={listSearchBox}>
                   <ChoiceFilter label="検索項目" value={listSearchField} onValueChange={value => setListSearchField(value as SearchField | "all")}>
@@ -592,14 +594,14 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                     <option value="expense_kind">区分</option>
                     <option value="category_id">経費区分</option>
                   </ChoiceFilter>
-                  <input
+                  <FilterBox label="完了待ちを検索" search><input
                     ref={listSearchInputRef}
                     type="text"
                     value={listSearchValue}
                     onChange={(event) => setListSearchValue(event.target.value)}
                     placeholder="完了待ちを検索"
                     style={listSearchInput}
-                  />
+                  /></FilterBox>
                   {listSearchValue && (
                     <button type="button" style={clearSearchBtn} onClick={() => setListSearchValue("")}>
                       x 解除
@@ -610,7 +612,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                   <span style={listSummaryPill}>レコード {list.length.toLocaleString("ja-JP")} / {baseList.length.toLocaleString("ja-JP")}</span>
                   <span style={listSummaryPill}>合計 {yen(pendingAmount)}</span>
                 </div>
-              </div>
+              </FilterRow>
               {list.length === 0 ? (
                 <div style={{ ...notice, margin: 0 }}>この法人の完了待ちはありません</div>
               ) : (
@@ -959,11 +961,10 @@ const listToolbar: React.CSSProperties = {
 const applicantFilterLabel: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, minWidth: 0, color: "var(--text-main)", fontSize: 12, whiteSpace: "nowrap" };
 const listSearchBox: React.CSSProperties = {
   display: "flex",
-  alignItems: "center",
+  alignItems: "stretch",
   gap: 8,
   flexWrap: "wrap",
-  minWidth: 280,
-};
+  minWidth: 0 };
 const listSearchSelect: React.CSSProperties = {
   width: 132,
   borderRadius: 8,

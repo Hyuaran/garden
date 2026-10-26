@@ -1,0 +1,7 @@
+﻿.row { min-width: 0; max-width: 100%; }
+.row > * { min-width: 0; max-width: 100%; }
+.row > :is(button, a), .row > :is(div, label):has(> button):not(:has([data-garden-box-select])) { align-self: flex-end; }
+.row > :is(button, a):last-child { margin-left: auto; }
+.row > div:has(> [data-garden-filter-box]):has(> [data-garden-box-select]),
+.row > div:has(> [data-garden-filter-box]):has(> div > [data-garden-box-select]) { display: contents !important; }
+.row > div:has(> [data-garden-box-select]) { flex: 0 1 262px; }

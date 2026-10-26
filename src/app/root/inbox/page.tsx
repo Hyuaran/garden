@@ -1,4 +1,5 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import { useEffect, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -50,7 +51,7 @@ export default function InboxPage() {
         title="届出受信箱"
         description="従業員から届いた申請を確認し、対応します"
       />
-      <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+      <FilterRow style={{ display: "flex", gap: 12, marginBottom: 18 }}>
         <ChoiceFilter label="種類で絞り込み" value={type} onValueChange={value => setType(value)}>
           <option value="">すべての種類</option>
           {Object.entries(SUBMISSION_LABELS).map(([v, l]) => (
@@ -67,7 +68,7 @@ export default function InboxPage() {
             </option>
           ))}
         </ChoiceFilter>
-      </div>
+      </FilterRow>
       <div style={{ display: "grid", gap: 10 }}>
         {rows.map((row) => (
           <button

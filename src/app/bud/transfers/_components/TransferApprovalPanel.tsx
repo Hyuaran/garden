@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import {
@@ -436,8 +438,8 @@ export function TransferApprovalPanel({
           </div>
         </div>
 
-        <div style={toolbarStyle}>
-          <input
+        <FilterRow style={toolbarStyle}>
+          <FilterBox label="振込先 / 摘要 / ID" search><input
             type="text"
             value={query}
             onChange={(event) => {
@@ -446,7 +448,7 @@ export function TransferApprovalPanel({
             }}
             placeholder="振込先 / 摘要 / ID"
             style={{ ...controlStyle, width: 300, maxWidth: "100%" }}
-          />
+          /></FilterBox>
           <div style={filterLabelStyle}>
             <ChoiceFilter label="振込種別" value={category} onValueChange={value => {
                 setCategory(value as CategoryFilter);
@@ -459,7 +461,7 @@ export function TransferApprovalPanel({
               ))}
             </ChoiceFilter>
           </div>
-        </div>
+        </FilterRow>
 
         {!schemaReady && (
           <div style={schemaNoticeStyle}>

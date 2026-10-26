@@ -1832,3 +1832,13 @@
     height: 240px;
   }
 }
+/* 絞り込みの箱は選択欄と同じ高さで、幅に応じて折り返す。 */
+.filterGrid { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+.filterGrid > * { flex: 0 1 262px; min-width: min(160px, 100%); max-width: 100%; justify-content: normal; }
+.filterGrid > .filterDivider { display: none; }
+.filterGrid > .searchCell { flex: 1 1 96px; align-self: flex-end; justify-content: flex-end; }
+.filterGrid > .searchCell button { width: auto; }
+.filterGrid [data-garden-filter-box]:has(input[type="date"]) { flex-basis: 330px; }
+.filterGrid [data-garden-filter-box] .range { width: 100%; }
+.analysisFilterGrid { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
+.filterNote { margin: 8px 0 0; color: var(--sub); font-size: 12px; }

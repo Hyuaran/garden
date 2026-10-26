@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
+import styles from "./multi-select-filter.module.css";
 import BoxSelect from "@/app/system/_components/BoxSelect/BoxSelect";
 import { EMPTY_OPTION_VALUE, type SoilListOptionItem } from "../_lib/list-fields";
 
@@ -33,13 +34,18 @@ export default function MultiSelectFilter({ label, value, groups, onChange, sear
     }
     return [{ value: ALL, label: emptyLabel }, ...unique.values()];
   }, [groups, query, value, emptyLabel, searchable, initialLimit]);
-  return <div>
-    {searchable && <input aria-label={`${label}の候補を検索`} placeholder="候補を検索" value={query} onChange={event => setQuery(event.target.value)} />}
+  return <div className={styles.root} title={countNote}>
     <div data-garden-box-select><BoxSelect label={label} value={value.length ? value : [ALL]} options={options} onChange={next => {
       onChange(value.length && next.includes(ALL) ? [] : next.filter(item => item !== ALL));
       setQuery("");
     }} /></div>
-    {searchable && initialLimit && !query && groups.reduce((count, group) => count + group.options.length, 0) > initialLimit && <small>上位 {initialLimit.toLocaleString("ja-JP")} 件を表示中（全 {groups.reduce((count, group) => count + group.options.length, 0).toLocaleString("ja-JP")} 件）。名前で絞ると全体から探せます</small>}
-    {countNote && <small>{countNote}</small>}
+    {searchable && <details className={styles.search}>
+      <summary aria-label={`${label}の候補検索を開く`}>⌕</summary>
+      <div className={styles.panel}>
+        <input aria-label={`${label}の候補を検索`} placeholder="候補を検索" value={query} onChange={event => setQuery(event.target.value)} />
+        {initialLimit && !query && groups.reduce((count, group) => count + group.options.length, 0) > initialLimit && <small>上位 {initialLimit.toLocaleString("ja-JP")} 件を表示中（全 {groups.reduce((count, group) => count + group.options.length, 0).toLocaleString("ja-JP")} 件）。名前で絞ると全体から探せます</small>}
+        {countNote && <small>{countNote}</small>}
+      </div>
+    </details>}
   </div>;
 }

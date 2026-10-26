@@ -18,3 +18,5 @@
 .preparing { padding: 48px 24px; border: 1px dashed var(--line, #d5d9df); border-radius: 6px; text-align: center; color: var(--sub, #5b6675); }
 /* タブを切り替えて縦スクロールの有無が変わっても、タブや歯車の位置が横にずれないように */
 :global(html):has(.pageShell) { scrollbar-gutter: stable; }
+.periodLegend { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
+.periodLegend .legend { flex-basis: 100%; min-width: 0; }

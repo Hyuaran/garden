@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 /**
@@ -198,19 +200,16 @@ export default function KotSyncHistoryPage() {
 
 function LabeledSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (v: string) => void; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <FilterRow style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       
       <ChoiceFilter label={label} value={value} onValueChange={value => onChange(value)}>{children}</ChoiceFilter>
-    </div>
+    </FilterRow>
   );
 }
 
 function LabeledInput({ label, type, value, onChange }: { label: string; type: string; value: string; onChange: (v: string) => void }) {
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <span style={{ fontSize: 11, color: colors.textMuted }}>{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bgPanel, color: colors.text, fontSize: 13 }} />
-    </label>
+    <FilterBox label={label}><input type={type} value={value} onChange={(e) => onChange(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bgPanel, color: colors.text, fontSize: 13 }} /></FilterBox>
   );
 }
 

@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import { useEffect, useState } from "react";
 import SproutShell from "./sprout-shell";
 
@@ -77,10 +79,10 @@ export default function Sprout() {
   }
   return <SproutShell current="採用管理"><div className={styles.heading}><SystemBreadcrumb root={{ label: "Sprout", href: "/sprout" }} items={[{ label: "採用管理" }]} /><h1>採用管理</h1><UpdatedStamp label="Kintone取込" date={data.updated} onRefresh={refresh} busy={busy || !loaded} refreshLabel="採用情報を取り込む" /></div>
       <SystemTabs>{[["applicants", "応募者"], ["interviews", "面接予定"], ["training", "研修予定"]].map(([id,label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}</SystemTabs>
-      <><div className={styles.filters}>{tab === "applicants" && <BoxSelect label="期間" multiple={false} value={[month]} onChange={v => setMonth(v[0])} options={[{ value: "", label: "すべての期間" }, ...months.map(m => ({ value: m, label: `${m.slice(0,4)}年${Number(m.slice(5))}月` }))]} />}
+      <><FilterRow className={styles.filters}>{tab === "applicants" && <BoxSelect label="期間" multiple={false} value={[month]} onChange={v => setMonth(v[0])} options={[{ value: "", label: "すべての期間" }, ...months.map(m => ({ value: m, label: `${m.slice(0,4)}年${Number(m.slice(5))}月` }))]} />}
         <BoxSelect label="状況" value={statuses.length ? statuses : [...new Set(data.applicants.map(a => a.status))]} options={[...new Set(data.applicants.map(a => a.status))].sort().map(s => ({ value: s, label: s || "未設定" }))} onChange={setStatuses} />
-        <label>名前・電話で探す<input type="search" value={search} onChange={e => setSearch(e.target.value)} /></label>
-      </div>
+        <FilterBox label="名前・電話で探す" search><input type="search" value={search} onChange={e => setSearch(e.target.value)} /></FilterBox>
+      </FilterRow>
       {!loaded && !message && <p role="status">採用情報を読み込んでいます…</p>}
       {message && <p role="status">{message}</p>}
       <div className={styles.content}><section className={styles.list} onClick={event => {

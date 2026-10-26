@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -445,13 +447,13 @@ export default function InnoveraCallsClient({
         {lineError && <span className={styles.error}>{lineError}</span>}
       </section>
 
-      <div className={styles.filters} onKeyDown={event => { if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT" && !(event.target as HTMLElement).closest('[role="dialog"]')) { event.preventDefault(); void loadCalls(true); } }}>
+      <FilterRow className={styles.filters} onKeyDown={event => { if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT" && !(event.target as HTMLElement).closest('[role="dialog"]')) { event.preventDefault(); void loadCalls(true); } }}>
         {!usesDailyExtension && <div className={styles.filterRow}>
-        <label>開始<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
-        <label className={styles.timeField}>時刻<input type="time" value={fromTime} onChange={(event) => setFromTime(event.target.value)} /></label>
+        <FilterBox label="開始"><input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></FilterBox>
+        <FilterBox label="時刻"><input type="time" value={fromTime} onChange={(event) => setFromTime(event.target.value)} /></FilterBox>
         <span className={styles.rangeSeparator}>～</span>
-        <label>終了<input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
-        <label className={styles.timeField}>時刻<input type="time" value={toTime} onChange={(event) => setToTime(event.target.value)} /></label>
+        <FilterBox label="終了"><input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} /></FilterBox>
+        <FilterBox label="時刻"><input type="time" value={toTime} onChange={(event) => setToTime(event.target.value)} /></FilterBox>
         <div className={styles.presetButtons}>
           <button type="button" onClick={() => applyPreset("today")}>今日</button>
           <button type="button" onClick={() => applyPreset("yesterday")}>昨日</button>
@@ -499,10 +501,10 @@ export default function InnoveraCallsClient({
             panelMinWidth={300}
           />
         </div>
-        <label className={styles.numberField}>番号<input value={number} onChange={(event) => setNumber(event.target.value)} /></label>
+        <FilterBox label="番号"><input value={number} onChange={(event) => setNumber(event.target.value)} /></FilterBox>
         <button type="button" onClick={() => void loadCalls(true)} className={styles.submit} disabled={loading}>{loading ? "検索中..." : "検索"}</button>
         </div>
-      </div>
+      </FilterRow>
 
       {error && <p className={styles.error} role="alert">{error}</p>}
       <p className={styles.summary}>{rangeText} の通話 {counts.total.toLocaleString()} 件（通話成功 {counts.success.toLocaleString()}・不在 {counts.missed.toLocaleString()}・通話中 {counts.inProgress.toLocaleString()}）</p>

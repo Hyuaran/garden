@@ -1,4 +1,6 @@
 "use client";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -74,7 +76,7 @@ export function NoticeList() {
     };
 
     const listView = <>
-        <div className={styles.filters}><div><ChoiceFilter label="種類" value={kind} onValueChange={value => setKind(value)}><option value="">すべて</option>{Object.entries(NOTICE_KINDS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</ChoiceFilter></div><div><ChoiceFilter label="モジュール" value={module} onValueChange={value => setModule(value)}><option value="">すべて</option>{[...new Set(published.map(n => n.module))].sort().map(m => <option key={m}>{m}</option>)}</ChoiceFilter></div><label><input type="checkbox" checked={unreadOnly} onChange={e => setUnreadOnly(e.target.checked)}/> 未確認だけ表示</label></div>
+        <FilterRow className={styles.filters}><div><ChoiceFilter label="種類" value={kind} onValueChange={value => setKind(value)}><option value="">すべて</option>{Object.entries(NOTICE_KINDS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</ChoiceFilter></div><div><ChoiceFilter label="モジュール" value={module} onValueChange={value => setModule(value)}><option value="">すべて</option>{[...new Set(published.map(n => n.module))].sort().map(m => <option key={m}>{m}</option>)}</ChoiceFilter></div><FilterBox label="未確認だけ表示"><input type="checkbox" checked={unreadOnly} onChange={e => setUnreadOnly(e.target.checked)}/></FilterBox></FilterRow>
         {state.error ? <p role="alert">お知らせを読み込めませんでした。<button onClick={state.refresh}>もう一度読み込む</button></p> : !snapshot ? <p>読み込み中…</p> : !notices.length ? <p>{unreadOnly ? "未確認のお知らせはありません。" : "該当するお知らせはありません。"}</p> : notices.map(notice => <div key={notice.id}><NoticeCard notice={notice} unread={!snapshot.readIds.includes(notice.id)}/>{!snapshot.readIds.includes(notice.id) && <button className={styles.confirm} onClick={() => state.acknowledge([notice.id])}>確認しました</button>}</div>)}
     </>;
 

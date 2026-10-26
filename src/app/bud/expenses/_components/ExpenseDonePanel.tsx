@@ -1,4 +1,5 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -111,10 +112,10 @@ export function ExpenseDonePanel() {
   return <section style={panel} data-expense-done-tab="true">
     <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} />
     <div style={header}><div><h3 style={title}>完了した経費</h3><div style={meta}>仕訳日が新しい順</div></div><div style={actions}><button type="button" style={button} disabled={ledgerBusy || csvBusy} onClick={() => void exportLedger()}>{ledgerBusy ? "書き出し中..." : "台帳形式で書き出す（Excel）"}</button><button type="button" style={{ ...reexportButton, ...((corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy) ? disabledButton : {}) }} disabled={corpId === "all" || selectedRows.length === 0 || ledgerBusy || csvBusy} onClick={() => void exportYayoi()}>{csvBusy ? "書き出し中..." : "弥生CSVを書き出す"}</button></div></div>
-    <div style={filters}>
+    <FilterRow style={filters}>
       <div><ChoiceFilter label="法人" value={corpId} onValueChange={value => { setPage(0); setCorpId(value); }}><option value="all">全法人</option>{sortCorps(corps).map((corp) => <option key={corp.id} value={corp.id}>{corp.name_short ?? corp.id}</option>)}</ChoiceFilter></div>
       <div><ChoiceFilter label="期間" value={period} onValueChange={value => { setPage(0); setPeriod(value as DonePeriod); }}><option value="month">今月</option><option value="three-months">直近3か月</option><option value="year">直近12か月</option><option value="all">全期間</option></ChoiceFilter></div>
-    </div>
+    </FilterRow>
     <div style={summaryStyle}><strong>{summary.count.toLocaleString("ja-JP")}件</strong><span>税込 {yen(summary.taxIncluded)}</span><span>税抜 {yen(summary.taxExcluded)}</span></div>
     {message && <div style={notice}>{message}</div>}
     {!loaded ? <div style={empty}>読み込み中...</div> : visible.length === 0 ? <div style={empty}>この条件の完了した経費はありません。</div> : <div style={{ overflowX: "auto" }}><StickyTable style={table}><thead><tr><th style={checkCell}><input type="checkbox" aria-label="表示中の経費をすべて選択" checked={allVisibleSelected} onChange={(event) => setSelectedIds(event.target.checked ? new Set(visible.map((row) => row.id)) : new Set())} /></th>{["申請者","レシート日付","区分","店名","金額","仕分け日","仕分け法人名","決算区分","出力"].map((label) => <th key={label} style={th}>{label}</th>)}</tr></thead><tbody>{visible.map((row) => <tr key={row.id}><td style={checkCell}><input type="checkbox" aria-label={`${row.store_name ?? "経費"}を選択`} checked={selectedIds.has(row.id)} onChange={(event) => setSelectedIds((current) => { const next = new Set(current); if (event.target.checked) next.add(row.id); else next.delete(row.id); return next; })} /></td><td style={applicantCell}><ExpenseKindBadge kind={row.expense_kind} />{resolveExpenseApplicantName(row, employees)}</td><td style={td}>{date(row.receipt_date)}</td><td style={td}>{row.category_id ? categoryMap.get(row.category_id) ?? row.category_id : "未設定"}</td><td style={ellipsis}>{row.store_name ?? "—"}</td><td style={numberCell}>{yen(row.amount ?? 0)}</td><td style={td}>{date(row.booking_date)}</td><td style={td}>{row.booking_corp_id ? corpMap.get(row.booking_corp_id) ?? row.booking_corp_id : "未設定"}</td><td style={td}>{row.fiscal_period ?? "—"}</td><td style={exportCell}>{formatYayoiExportRecord(row)}</td></tr>)}</tbody></StickyTable></div>}

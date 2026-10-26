@@ -870,3 +870,16 @@ section.linePanel > button:not(:where([data-garden-box-select] *)) {
 @keyframes innovera-calls-spin {
   to { transform: rotate(360deg); }
 }
+/* 固定列を外し、すべての箱を同じ高さで並べる。 */
+.filters { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+.filters .filterRow { display: contents; }
+.filters .employeePicker { display: contents; }
+.filters :is(.circuitField, .typeField, .statusField) { flex: 0 1 170px; min-width: min(160px, 100%); max-width: 100%; }
+.filters .rangeSeparator { display: none; }
+.filters .presetButtons { align-self: flex-end; flex-wrap: wrap; width: auto; margin-left: auto; }
+.filters .ownOnly, .filters .submit { align-self: flex-end; flex: 0 0 auto; }
+.filters [data-garden-filter-box] { flex: 0 1 160px; }
+@media (max-width: 720px) {
+  .filters .presetButtons button { flex: 0 0 auto; }
+  .filters .submit { flex: 0 0 76px; margin-left: auto; }
+}

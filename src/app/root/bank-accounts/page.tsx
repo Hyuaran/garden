@@ -1,4 +1,5 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useEffect, useMemo, useState } from "react";
@@ -169,13 +170,13 @@ export default function BankAccountsPage() {
         title="銀行口座マスタ"
         description="法人ごとの振込元口座。Ctrl+↑↓ で行移動・Ctrl+Enter で編集。"
         actions={
-          <div style={{ display: "flex", gap: 8 }}>
+          <FilterRow style={{ display: "flex", gap: 8 }}>
             <ChoiceFilter label="法人" value={filterCompany} onValueChange={value => setFilterCompany(value)}>
               <option value="">すべての法人</option>
               {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
             </ChoiceFilter>
             <Button onClick={() => setEditTarget(empty(nextId(accounts), companies[0]?.company_id ?? ""))} disabled={companies.length === 0 || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
-          </div>
+          </FilterRow>
         }
       />
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}

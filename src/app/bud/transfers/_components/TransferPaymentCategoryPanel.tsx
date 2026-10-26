@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
@@ -388,7 +390,7 @@ export function TransferPaymentCategoryPanel({
         </span>
       </div>
 
-      <div style={toolbarStyle}>
+      <FilterRow style={toolbarStyle}>
         <div style={searchBoxStyle}>
           <div style={searchLabelStyle}>
             <ChoiceFilter label="支払区分" value={activeCategory} onValueChange={value => {
@@ -403,7 +405,7 @@ export function TransferPaymentCategoryPanel({
               ))}
             </ChoiceFilter>
           </div>
-          <input
+          <FilterBox label="振込先 / 摘要 / ID" search><input
             type="text"
             value={query}
             onChange={(event) => {
@@ -412,7 +414,7 @@ export function TransferPaymentCategoryPanel({
             }}
             placeholder="振込先 / 摘要 / ID"
             style={searchInputStyle}
-          />
+          /></FilterBox>
         </div>
         <div style={summaryPillsStyle}>
           <span style={summaryPillStyle}>
@@ -422,7 +424,7 @@ export function TransferPaymentCategoryPanel({
             合計 ¥{visibleTotal.toLocaleString("ja-JP")}
           </span>
         </div>
-      </div>
+      </FilterRow>
 
       {error && (
         <div

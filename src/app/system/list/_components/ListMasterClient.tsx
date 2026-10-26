@@ -1,4 +1,6 @@
 ﻿"use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
@@ -2231,7 +2233,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                 searchable
                 initialLimit={100}
               />
-              <div className={styles.analysisFilterGrid}>
+              <FilterRow className={styles.analysisFilterGrid}>
                 <MultiSelectFilter
                   label="元回線で絞る"
                   value={analysisLineTypeFilter}
@@ -2246,7 +2248,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   onChange={setAnalysisContractYearFilter}
                   searchable
                 />
-              </div>
+              </FilterRow>
               <small className={styles.analysisFilterNote}>購入先・元回線・契約時期を同時に絞れます。購入先を 2 つ以上選ぶと、選んだ購入先すべてに購入履歴がある番号だけを数えます（かつ）。</small>
             </div>
           ) : controls}
@@ -2581,52 +2583,35 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
           </div>
         ) : (
           <div onKeyDown={event => { if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT" && !(event.target as HTMLElement).closest('[role="dialog"]')) { event.preventDefault(); void handleCountAndSearch(); } }}>
-            <div className={styles.filterGrid} data-testid="list-filter-grid">
+            <FilterRow className={styles.filterGrid} data-testid="list-filter-grid">
               <MultiSelectFilter label="都道府県" value={filters.prefecture} groups={buildOptionGroups("prefecture", options.prefecture)} onChange={(value) => setFilter("prefecture", value)} countNote={FILTER_COUNT_NOTE} />
               <MultiSelectFilter label="購入先" value={filters.purchaseVendor} groups={buildOptionGroups("latestVendor", options.latestVendor)} onChange={(value) => setFilter("purchaseVendor", value)} searchable initialLimit={100} countNote={FILTER_COUNT_NOTE} />
               <MultiSelectFilter label="区分" value={filters.category} groups={buildOptionGroups("category", options.category)} onChange={(value) => setFilter("category", value)} countNote={FILTER_COUNT_NOTE} />
               <MultiSelectFilter label="購入状態" value={filters.purchaseStatus} groups={buildOptionGroups("purchaseStatus", options.purchaseStatus)} onChange={(value) => setFilter("purchaseStatus", value)} countNote={FILTER_COUNT_NOTE} />
               <MultiSelectFilter label="元回線" value={filters.lineType} groups={buildOptionGroups("lineType", options.lineType)} onChange={(value) => setFilter("lineType", value)} countNote={FILTER_COUNT_NOTE} />
-              <label>
-                経過（年）
-                <span className={styles.range}>
+              <FilterBox label="経過（年）"><span className={styles.range}>
                   <input type="number" min="0" value={filters.elapsedYearsFrom} onChange={(event) => setFilter("elapsedYearsFrom", event.target.value)} aria-label="年以上" placeholder="年以上" />
                   <input type="number" min="0" value={filters.elapsedYearsTo} onChange={(event) => setFilter("elapsedYearsTo", event.target.value)} aria-label="年以下" placeholder="年以下" />
-                </span>
-              </label>
+                </span></FilterBox>
               <div className={styles.filterDivider} aria-hidden="true" />
-              <label>
-                リスト投入日
-                <span className={styles.range}>
+              <FilterBox label="リスト投入日"><span className={styles.range}>
                   <input type="date" value={filters.listLoadedOnFrom} onChange={(event) => setFilter("listLoadedOnFrom", event.target.value)} aria-label="から" placeholder="から" data-empty={filters.listLoadedOnFrom ? undefined : "true"} />
                   <input type="date" value={filters.listLoadedOnTo} onChange={(event) => setFilter("listLoadedOnTo", event.target.value)} aria-label="まで" placeholder="まで" data-empty={filters.listLoadedOnTo ? undefined : "true"} />
-                </span>
-              </label>
-              <label className={styles.wide}>
-                リスト名
-                <input value={filters.listName} onChange={(event) => setFilter("listName", event.target.value)} placeholder="含む" />
-              </label>
-              <label>
-                再判定日
-                <span className={styles.range}>
+                </span></FilterBox>
+              <FilterBox label="リスト名"><input value={filters.listName} onChange={(event) => setFilter("listName", event.target.value)} placeholder="含む" />
+              </FilterBox>
+              <FilterBox label="再判定日"><span className={styles.range}>
                   <input type="date" value={filters.recheckedOnFrom} onChange={(event) => setFilter("recheckedOnFrom", event.target.value)} aria-label="から" placeholder="から" data-empty={filters.recheckedOnFrom ? undefined : "true"} />
                   <input type="date" value={filters.recheckedOnTo} onChange={(event) => setFilter("recheckedOnTo", event.target.value)} aria-label="まで" placeholder="まで" data-empty={filters.recheckedOnTo ? undefined : "true"} />
-                </span>
-              </label>
-              <label>
-                最終コール日
-                <span className={styles.range}>
+                </span></FilterBox>
+              <FilterBox label="最終コール日"><span className={styles.range}>
                   <input type="date" value={filters.lastCalledOnFrom} onChange={(event) => setFilter("lastCalledOnFrom", event.target.value)} aria-label="から" placeholder="から" data-empty={filters.lastCalledOnFrom ? undefined : "true"} />
                   <input type="date" value={filters.lastCalledOnTo} onChange={(event) => setFilter("lastCalledOnTo", event.target.value)} aria-label="まで" placeholder="まで" data-empty={filters.lastCalledOnTo ? undefined : "true"} />
-                </span>
-              </label>
-              <label>
-                コール回数
-                <span className={styles.range}>
+                </span></FilterBox>
+              <FilterBox label="コール回数"><span className={styles.range}>
                   <input type="number" min="0" value={filters.callCountFrom} onChange={(event) => setFilter("callCountFrom", event.target.value)} aria-label="回以上" placeholder="回以上" />
                   <input type="number" min="0" value={filters.callCountTo} onChange={(event) => setFilter("callCountTo", event.target.value)} aria-label="回以下" placeholder="回以下" />
-                </span>
-              </label>
+                </span></FilterBox>
               <div className={styles.filterDivider} aria-hidden="true" />
               <div>
                 <ChoiceFilter label="自社アポ禁" value={filters.internalBlock} onValueChange={value => setFilter("internalBlock", value)}>
@@ -2644,7 +2629,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                   検索
                 </button>
               </div>
-            </div>
+            </FilterRow>
+            <p className={styles.filterNote}>{FILTER_COUNT_NOTE}</p>
           </div>
         )}
         {message && <p className={styles.message}>{message}</p>}

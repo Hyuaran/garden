@@ -1,0 +1,6 @@
+﻿.root { position: relative; min-width: 160px; max-width: 262px; height: 92px; }
+.search { position: absolute; right: 14px; top: 8px; z-index: 2; }
+.search summary { cursor: pointer; list-style: none; color: var(--sub, #5a6b80); font-size: 20px; line-height: 24px; }
+.panel { position: absolute; right: 0; top: 28px; width: min(280px, calc(100vw - 64px)); padding: 12px; border: 1px solid var(--line, #e3eaf3); border-radius: 12px; background: var(--card, #fff); box-shadow: 0 4px 14px #10233f20; }
+.panel input { box-sizing: border-box; width: 100%; min-width: 0; }
+.panel small { display: block; margin-top: 6px; color: var(--sub, #5a6b80); font-size: 12px; }

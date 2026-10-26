@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -487,7 +489,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
             <h3 style={panelTitle}>仕訳プレビュー</h3>
             <div style={panelMeta}>仕訳待ち {rows.length.toLocaleString("ja-JP")}件</div>
           </div>
-          <div style={toolbar}>
+          <FilterRow style={toolbar}>
             <div style={filterControl}><ChoiceFilter label="申請者で絞り込む" value={applicantFilter} onValueChange={value => setApplicantFilter(value)}>
                 <option value="all">全員</option>
                 {applicantOptions.map((name) => <option key={name} value={name}>{name}</option>)}
@@ -505,7 +507,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                 <option value="store_name">店名</option>
                 <option value="amount">金額</option>
               </ChoiceFilter>
-              <input aria-label="仕訳待ちを検索" value={listSearchValue} placeholder="仕訳待ちを検索" style={searchInput} onChange={(event) => setListSearchValue(event.target.value)} />
+              <FilterBox label="仕訳待ちを検索" search><input aria-label="仕訳待ちを検索" value={listSearchValue} placeholder="仕訳待ちを検索" style={searchInput} onChange={(event) => setListSearchValue(event.target.value)} /></FilterBox>
             </div>
             <label style={checkAllLabel}>
               <input
@@ -566,7 +568,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                 要確認 {errorCount} 件を対象外として削除
               </button>
             )}
-          </div>
+          </FilterRow>
         </div>
 
         {!loaded ? (
@@ -754,7 +756,7 @@ const panelTitle: React.CSSProperties = { margin: 0, fontSize: 17, color: "var(-
 const panelMeta: React.CSSProperties = { color: "var(--text-muted)", fontSize: 12, marginTop: 3 };
 const toolbar: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" };
 const filterControl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, color: "var(--text-sub)", fontSize: 12, whiteSpace: "nowrap" };
-const searchControl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0, maxWidth: "100%" };
+const searchControl: React.CSSProperties = { display: "flex", alignItems: "stretch", gap: 6, minWidth: 0, maxWidth: "100%" , flexWrap: "wrap" };
 const searchInput: React.CSSProperties = { width: 180, maxWidth: "40vw", minWidth: 0, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--teal-d)", background: "var(--bg-card-solid)", color: "var(--text-main)", textOverflow: "ellipsis" };
 const checkAllLabel: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-sub)", fontSize: 13 };
 const tableScroll: React.CSSProperties = { overflow: "auto", position: "relative", overscrollBehavior: "contain", scrollbarGutter: "stable" };

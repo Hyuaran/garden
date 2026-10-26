@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useMemo, useState } from "react";
@@ -317,7 +319,7 @@ function HistoryTab({
 
   return (
     <>
-      <section className={cx(styles.panel, styles.historyFilter)} aria-label="history filters">
+      <FilterRow className={cx(styles.panel, styles.historyFilter)} aria-label="history filters">
         <div>
           
           <ChoiceFilter label="モジュール" value={historyModule} onValueChange={value => setHistoryModule(value)}>
@@ -348,8 +350,8 @@ function HistoryTab({
         </div>
         {historyPeriod === "日付指定" && (
           <div className={styles.dateRange} aria-label="date range filter">
-            <label>
-              <span>開始日</span>
+            <FilterBox label="開始日">
+              
               <input
                 type="date"
                 value={historyFrom}
@@ -357,9 +359,9 @@ function HistoryTab({
                 onChange={(event) => setHistoryFrom(event.currentTarget.value)}
                 onInput={(event) => setHistoryFrom(event.currentTarget.value)}
               />
-            </label>
-            <label>
-              <span>終了日</span>
+            </FilterBox>
+            <FilterBox label="終了日">
+              
               <input
                 type="date"
                 value={historyTo}
@@ -367,10 +369,10 @@ function HistoryTab({
                 onChange={(event) => setHistoryTo(event.currentTarget.value)}
                 onInput={(event) => setHistoryTo(event.currentTarget.value)}
               />
-            </label>
+            </FilterBox>
           </div>
         )}
-      </section>
+      </FilterRow>
 
       <section className={styles.historyList} aria-label="history list">
         {filteredHistory.length === 0 && (

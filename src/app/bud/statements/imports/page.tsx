@@ -1,4 +1,5 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -114,7 +115,7 @@ function StatementsImportsContent() {
         </nav>
       </div>
 
-      <section className="mb-3 flex items-center gap-3 bg-white border border-gray-200 rounded p-3">
+      <FilterRow className="mb-3 flex items-center gap-3 bg-white border border-gray-200 rounded p-3">
         <div className="text-sm">
           
           <ChoiceFilter label="銀行" value={bankFilter} onValueChange={value => setBankFilter(value)}>
@@ -126,7 +127,7 @@ function StatementsImportsContent() {
             ))}
           </ChoiceFilter>
         </div>
-      </section>
+      </FilterRow>
 
       {loading ? (
         <div className="text-center py-8 text-gray-500">読み込み中…</div>

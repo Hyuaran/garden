@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -1656,7 +1658,7 @@ function ExpenseListTab({
         <h3 style={statusTitle}>経費一覧</h3>
         <span style={statusMeta}>未処理と処理済み（全期間）</span>
       </div>
-      <div style={listToolbar}>
+      <FilterRow style={listToolbar}>
         <div style={listSearchBox}>
           <ChoiceFilter label="検索項目" value={listSearchField} onValueChange={value => setListSearchField(value as SearchField | "all")}>
             <option value="all">全項目</option>
@@ -1671,14 +1673,14 @@ function ExpenseListTab({
             <option value="corp_id">法人</option>
             <option value="category_id">経費区分</option>
           </ChoiceFilter>
-          <input
+          <FilterBox label="一覧を検索" search><input
             ref={listSearchInputRef}
             type="text"
             value={listSearchValue}
             onChange={(event) => setListSearchValue(event.target.value)}
             placeholder="一覧を検索"
             style={listSearchInput}
-          />
+          /></FilterBox>
           {listSearchValue && (
             <button type="button" style={foundClearBtn} onClick={() => setListSearchValue("")}>
               x 解除
@@ -1702,7 +1704,7 @@ function ExpenseListTab({
             </button>
           )}
         </div>
-      </div>
+      </FilterRow>
       <StatusList
         rows={filteredRows}
         cats={cats}
@@ -2558,11 +2560,10 @@ const listToolbar: React.CSSProperties = {
 };
 const listSearchBox: React.CSSProperties = {
   display: "flex",
-  alignItems: "center",
+  alignItems: "stretch",
   gap: 8,
   flexWrap: "wrap",
-  minWidth: 280,
-};
+  minWidth: 0 };
 const listSearchSelect: React.CSSProperties = {
   ...input,
   width: 132,

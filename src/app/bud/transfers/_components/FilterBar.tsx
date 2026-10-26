@@ -1,4 +1,6 @@
 "use client";
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -37,7 +39,7 @@ export function FilterBar({ companies, currentFilter }: FilterBarProps) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 space-y-3">
-      <div className="flex flex-wrap gap-3 items-end">
+      <FilterRow className="flex flex-wrap gap-3 items-end">
         {/* 振込種別 */}
         <div>
           
@@ -76,10 +78,8 @@ export function FilterBar({ companies, currentFilter }: FilterBarProps) {
 
         {/* 検索 */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            検索（受取人名・備考）
-          </label>
-          <input
+          
+          <FilterBox label="検索（受取人名・備考）" search><input
             type="text"
             defaultValue={currentFilter.search ?? ""}
             onBlur={(e) => updateParam("search", e.target.value || null)}
@@ -90,7 +90,7 @@ export function FilterBar({ companies, currentFilter }: FilterBarProps) {
             }}
             placeholder="Enter で検索"
             className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-gray-900 bg-white"
-          />
+          /></FilterBox>
         </div>
 
         {/* クリア */}
@@ -101,7 +101,7 @@ export function FilterBar({ companies, currentFilter }: FilterBarProps) {
         >
           クリア
         </button>
-      </div>
+      </FilterRow>
     </div>
   );
 }
