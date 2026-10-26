@@ -16,7 +16,12 @@ import styles from "./broadband.module.css";
 import ViewerPicker, { type ViewerEmployee } from "@/app/bud/_components/ViewerPicker/ViewerPicker";
 import viewerStyles from "@/app/bud/_components/ViewerPicker/ViewerPicker.module.css";
 
-export function Details({rows, kintoneBase, onClose}: {rows:TableRecord[]; kintoneBase:string; onClose:()=>void}) {
+export function Details({rows: base, kintoneBase, onClose}: {rows:TableRecord[]; kintoneBase:string; onClose:()=>void}) {
+  // 口座の照合の明細（recon_bank）は表の読み込みに含めず、パネルを開いたときに読む（2026-10-26）
+  const [bankById,setBankById]=useState<Record<string,TableRecord["recon_bank"]>>({});
+  const ids=base.filter(r=>!r.kintone_record_id.startsWith("agent-") && r.recon_bank===undefined).map(r=>r.kintone_record_id).join(",");
+  useEffect(()=>{if(!ids) return; let active=true; fetch("/api/bud/broadband/recon-bank?ids="+encodeURIComponent(ids),{cache:"no-store"}).then(r=>r.ok?r.json():{}).then(d=>{if(active) setBankById(d);}).catch(()=>{}); return ()=>{active=false;};},[ids]);
+  const rows=base.map(r=>r.recon_bank===undefined && bankById[r.kintone_record_id] ? {...r,recon_bank:bankById[r.kintone_record_id]} : r);
   return <section className={styles.details} aria-label="収支の明細"><h2>収支の明細</h2><button onClick={onClose}>閉じる</button>{rows.map(r => <article key={r.kintone_record_id}><h3>{r.business} / {r.partner}</h3><dl>
     <dt>予定日</dt><dd>{r.scheduled_date ?? "記録なし"}</dd><dt>実績期間</dt><dd>{r.actual_period ?? "記録なし"}</dd><dt>商材名</dt><dd>{r.product}</dd><dt>税抜</dt><dd>{money(r.profit_net)}</dd><dt>予定の税込</dt><dd>{money(r.expected_gross)}</dd>
     <dt>口座の実際</dt><dd>{r.recon_bank?.length ? r.recon_bank.map(b => <p key={b.mf_transaction_id}>{b.date} / {money(Math.abs(b.value))} / {b.bank_name} / {b.content}</p>) : r.mf_date ? `${r.mf_date} / ${money(r.mf_amount)} / ${r.mf_bank} / ${r.mf_content}` : "記録なし"}</dd>

@@ -15,7 +15,7 @@ export type TableRecord = {
 export async function readBroadbandTable(db: SupabaseClient): Promise<TableRecord[]> {
   const rows: TableRecord[] = [];
   for (let offset = 0;; offset += 1000) {
-    const { data, error } = await db.from("bud_bb_records").select("kintone_record_id,business,partner,product,scheduled_date,actual_period,profit_net,confirmation,recon_status,expected_gross,recon_fee,updated_at,mf_bank,mf_date,mf_content,mf_amount,recon_bank").order("kintone_record_id").range(offset, offset + 999);
+    const { data, error } = await db.from("bud_bb_records").select("kintone_record_id,business,partner,product,scheduled_date,actual_period,profit_net,confirmation,recon_status,expected_gross,recon_fee,updated_at,mf_bank,mf_date,mf_content,mf_amount").order("kintone_record_id").range(offset, offset + 999);
     if (error) throw new Error("収支を読み込めませんでした");
     rows.push(...data as TableRecord[]);
     if (data.length < 1000) return rows;
