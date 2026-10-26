@@ -10,7 +10,7 @@
  */
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { supabase } from "./supabase";
+import { readRootData } from "./read-data";
 import type {
   InsertSyncLogInput,
   KotSyncStatus,
@@ -95,8 +95,7 @@ export async function updateSyncLogComplete(
 }
 
 /**
- * A-3-b 用: クライアント（admin/super_admin）から読取。
- * anon + JWT 経由で RLS を通す（admin 以下は 0 行）。
+ * 閲覧設定を判定する読み取り API を経由する。
  */
 export type FetchSyncLogsFilter = {
   sync_type?: KotSyncType | null;
@@ -110,33 +109,13 @@ export type FetchSyncLogsFilter = {
 };
 
 export async function fetchSyncLogs(filter: FetchSyncLogsFilter = {}): Promise<RootKotSyncLog[]> {
-  const limit = Math.max(1, Math.min(filter.limit ?? 50, 200));
-  const offset = Math.max(0, filter.offset ?? 0);
-
-  let q = supabase
-    .from("root_kot_sync_log")
-    .select("*")
-    .order("triggered_at", { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (filter.sync_type) q = q.eq("sync_type", filter.sync_type);
-  if (filter.status) q = q.eq("status", filter.status);
-  if (filter.from) q = q.gte("triggered_at", `${filter.from}T00:00:00+09:00`);
-  if (filter.to) q = q.lt("triggered_at", `${filter.to}T24:00:00+09:00`);
-
-  const { data, error } = await q;
-  if (error) throw new Error(`fetchSyncLogs failed: ${error.message}`);
-  return (data ?? []) as RootKotSyncLog[];
+  const params = Object.fromEntries(Object.entries(filter).filter(([, value]) => value != null).map(([key, value]) => [key, String(value)]));
+  return readRootData("sync-logs", "root-kot-sync-history", params);
 }
 
 export async function fetchSyncLogById(id: string): Promise<RootKotSyncLog | null> {
-  const { data, error } = await supabase
-    .from("root_kot_sync_log")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw new Error(`fetchSyncLogById failed: ${error.message}`);
-  return (data ?? null) as RootKotSyncLog | null;
+  const rows = await readRootData<RootKotSyncLog[]>("sync-logs", "root-kot-sync-history", { id });
+  return rows[0] ?? null;
 }
 
 /**

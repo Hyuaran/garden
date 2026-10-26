@@ -1,3 +1,4 @@
+import { ROOT_VIEW_SCOPES } from "./root-view-scopes";
 import {
   GARDEN_ROLE_LABELS,
   GARDEN_ROLE_ORDER,
@@ -205,7 +206,7 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     source: "src/lib/innovera/call-access.ts",
   },
   {
-    key: "root-permissions-view",
+    key: "root-permissions-view", pageKey: "root-permissions", tabKey: "",
     label: "Root 権限一覧（この画面）",
     group: "Root",
     kind: "画面",
@@ -213,7 +214,7 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     source: "src/app/root/_constants/types.ts:ROOT_VIEW_ROLES（RootGate）",
   },
   {
-    key: "root-employees-view",
+    key: "root-employees-view", pageKey: "root-employees", tabKey: "",
     label: "Root 従業員マスタ（閲覧）",
     group: "Root",
     kind: "画面",
@@ -229,7 +230,7 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     source: "src/app/root/_constants/types.ts:ROOT_WRITE_ROLES",
   },
   {
-    key: "root-bank-check",
+    key: "root-bank-check", pageKey: "root-bank-check", tabKey: "",
     label: "Root 口座の点検",
     group: "Root",
     kind: "画面",
@@ -316,6 +317,11 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     allows: allowsMinRole("admin"),
     source: "src/app/api/root/roster-sync/route.ts:requireAdmin",
   },
+  ...ROOT_VIEW_SCOPES.filter(scope => !["root-permissions", "root-employees", "root-bank-check"].includes(scope.pageKey)).map((scope): PermissionEntry => ({
+    key: scope.pageKey + "-view", pageKey: scope.pageKey, tabKey: scope.tabKey,
+    label: scope.label, group: "Root", kind: "画面",
+    allows: role => scope.defaultRoles.includes(role), source: "src/lib/auth/root-view-scopes.ts",
+  })),
   ...SYSTEM_VIEW_SCOPES.map((scope): PermissionEntry => ({
     key: `${scope.pageKey}${scope.tabKey ? `-tab-${scope.tabKey}` : "-view"}`,
     pageKey: scope.pageKey, tabKey: scope.tabKey,

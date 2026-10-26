@@ -6,16 +6,15 @@ import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 /**
  * Garden Root — KoT 同期履歴画面（Phase A-3-b）
  *
- * admin / super_admin 専用。manager 以下は RootGate で弾かれる（`canWrite=false`）。
- * 既存 Root モジュールが client-side Supabase auth を使う前提のため、本ページも
- * client component で統一（spec の「Server Component ベース」は現 Root 構造に
- * 未対応のため、実装上は client で妥協。後日 @supabase/ssr 導入時に再検討）。
+ * 閲覧はサーバーの RootView とデータ API で判定する。既定は admin / super_admin。
+ * 同期の再実行は従来の書き込み権限のまま。
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
 import { colors } from "../_constants/colors";
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { useRootState } from "../_state/RootStateContext";
 import { fetchSyncLogs } from "../_lib/kot-sync-log";
 import type {
@@ -43,6 +42,8 @@ const STATUS_LABEL: Record<KotSyncStatus, string> = {
 
 export default function KotSyncHistoryPage() {
   const { canWrite, loading: authLoading } = useRootState();
+  const { state: viewState } = useSystemView();
+  const canRead = Boolean(viewState) || canWrite;
   const [logs, setLogs] = useState<RootKotSyncLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,9 +76,9 @@ export default function KotSyncHistoryPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!canWrite) return; // manager 以下は fetch しない（RootGate 側でリダイレクト想定）
+    if (!canRead) return;
     void load();
-  }, [authLoading, canWrite, load]);
+  }, [authLoading, canRead, load]);
 
   // 5 分超の running ステータスがあるかどうか（警告表示用）
   const staleRunning = useMemo(() => {
@@ -112,7 +113,7 @@ export default function KotSyncHistoryPage() {
     setPage(0);
   };
 
-  if (!authLoading && !canWrite) {
+  if (!authLoading && !canRead) {
     return (
       <>
         <PageHeader title="KoT 同期履歴" />

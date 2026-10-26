@@ -55,6 +55,7 @@ type RootStateValue = {
   rootUser: RootUser | null;
   gardenRole: GardenRole | null;
   canWrite: boolean;
+  viewAccess?: Record<string, boolean>;
   warningActive: boolean;
   remainingMs: number;
   refreshAuth: () => Promise<{ success: boolean; error?: string }>;
@@ -65,7 +66,7 @@ type RootStateValue = {
 
 const RootStateContext = createContext<RootStateValue | null>(null);
 
-export function RootStateProvider({ children }: { children: ReactNode }) {
+export function RootStateProvider({ children, viewAccess }: { children: ReactNode; viewAccess?: Record<string, boolean> }) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [rootUser, setRootUser] = useState<RootUser | null>(null);
@@ -92,7 +93,7 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
         };
       }
       // 閲覧権限 (manager 以上) を確認
-      if (!ROOT_VIEW_ROLES.includes(user.garden_role)) {
+      if (!(viewAccess ? Object.values(viewAccess).some(Boolean) : ROOT_VIEW_ROLES.includes(user.garden_role))) {
         await writeAudit({
           action: "login_denied",
           actorUserId: user.user_id,
@@ -122,7 +123,7 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [viewAccess]);
 
   const signOut = useCallback(
     async (reason: LogoutReason = "manual") => {
@@ -232,6 +233,7 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
       rootUser,
       gardenRole: rootUser?.garden_role ?? null,
       canWrite,
+      viewAccess,
       warningActive,
       remainingMs,
       refreshAuth,
@@ -244,6 +246,7 @@ export function RootStateProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       rootUser,
       canWrite,
+      viewAccess,
       warningActive,
       remainingMs,
       refreshAuth,

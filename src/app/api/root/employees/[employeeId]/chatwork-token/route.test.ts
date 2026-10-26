@@ -1,3 +1,4 @@
+vi.mock("@/lib/auth/view-permission.server", () => ({ systemViewResponse: async () => null }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({

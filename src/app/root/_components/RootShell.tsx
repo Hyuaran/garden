@@ -18,20 +18,20 @@ const HOME_MENU = {
 
 export function RootShell({ children }: { children: ReactNode }) {
  const pathname = usePathname();
- const { canWrite, gardenRole, rootUser, signOut } = useRootState();
+ const { canWrite, viewAccess, gardenRole, rootUser, signOut } = useRootState();
  if (pathname === "/root/login") return <>{children}</>;
- const menus = MASTER_MENUS.filter((m) => !m.adminOnly || canWrite);
+ const menus = MASTER_MENUS.filter((m) => viewAccess ? viewAccess["root-" + m.slug] : !m.adminOnly || canWrite);
  return <ModuleShell moduleId="root" moduleName="Root" moduleLabel="Root ／ 組織台帳" gardenRole={gardenRole}
  userName={rootUser?.name} affiliation={rootUser?.company_name || "所属会社未登録"} roleLabel={gardenRole ? GARDEN_ROLE_LABELS[gardenRole] : ""}
  signOut={() => signOut("manual")} footer={<SessionWarningModal />} menu={<>      <div className={rootStyles.navLabel}>メニュー</div>
-      <Link
+      {(viewAccess?.["root-home"] ?? true) && <Link
         href={HOME_MENU.href}
         className={pathname === "/root" ? systemStyles.active : undefined}
         aria-current={pathname === "/root" ? "page" : undefined}
       >
         <RootMenuIcon icon={HOME_MENU.icon} />
         {HOME_MENU.title}
-      </Link>
+      </Link>}
       {menus.map((menu) => {
         const href = `/root/${menu.slug}`;
         const active = pathname === href || pathname?.startsWith(href + "/");

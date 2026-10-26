@@ -1,3 +1,4 @@
+vi.mock("@/lib/auth/view-permission.server", () => ({ systemViewResponse: async () => null }));
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({ requireEmployee: vi.fn(), getSupabaseAdmin: vi.fn(), fetchKotEmployeeByCode: vi.fn(), fetchKotHireOptions: vi.fn(), updateKotEmployee: vi.fn(), insert: vi.fn() }));
 vi.mock("@/app/system/mypage/_lib/submission-server", () => ({ requireEmployee: m.requireEmployee }));

@@ -6,6 +6,7 @@ import { MASTER_MENUS } from "../_constants/types";
 const mocks = vi.hoisted(() => ({
   pathname: "/root/employees",
   canWrite: true,
+  viewAccess: undefined as Record<string, boolean> | undefined,
   signOut: vi.fn(),
   toggleTheme: vi.fn(),
 }));
@@ -28,6 +29,7 @@ vi.mock("@/app/_lib/theme/ThemeProvider", () => ({
 vi.mock("../_state/RootStateContext", () => ({
   useRootState: () => ({
     canWrite: mocks.canWrite,
+    viewAccess: mocks.viewAccess,
     gardenRole: "super_admin",
     rootUser: {
       name: "東海林 美琴",
@@ -47,6 +49,16 @@ import { RootShell } from "./RootShell";
 const emojiPattern = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
 
 describe("RootShell", () => {
+  it("閲覧設定で許可された画面だけをメニューに出す", () => {
+    mocks.viewAccess = { "root-home": false, "root-employees": true };
+    try {
+      render(<RootShell><div>本文</div></RootShell>);
+      const nav = screen.getByLabelText("Rootメニュー");
+      expect(within(nav).getByRole("link", { name: "従業員マスタ" })).toBeInTheDocument();
+      expect(within(nav).queryByRole("link", { name: "ホーム" })).not.toBeInTheDocument();
+      expect(within(nav).queryByRole("link", { name: "法人マスタ" })).not.toBeInTheDocument();
+    } finally { mocks.viewAccess = undefined; }
+  });
   it("社長スタイルのrailとRootメニューを表示する", () => {
     mocks.pathname = "/root/employees";
     mocks.canWrite = true;

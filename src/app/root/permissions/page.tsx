@@ -1,3 +1,5 @@
+import { RootView } from "@/lib/auth/root-view.server";
+import { requireSystemView } from "@/lib/auth/view-permission.server";
 import { buildPermissionMatrix, buildRoleSummary } from "@/lib/auth/permission-registry";
 import PermissionsClient from "./PermissionsClient";
 import { readViewPermissions } from "@/lib/auth/view-permission.server";
@@ -10,6 +12,7 @@ export const metadata = {
 };
 
 export default async function PermissionsPage() {
+  await requireSystemView("root-permissions");
   const settings = await readViewPermissions();
   const ids = [...new Set(settings.map(row => row.updated_by))];
   const { data: people } = ids.length ? await getSupabaseAdmin().from("root_employees").select("employee_id,name").in("employee_id", ids) : { data: [] };
@@ -20,5 +23,5 @@ export default async function PermissionsPage() {
     const name = people?.find(person => person.employee_id === setting.updated_by)?.name ?? setting.updated_by;
     return { ...row, label: `${row.label} — 設定で変更あり（${name}さん ${new Date(setting.updated_at).toLocaleDateString("ja-JP", {timeZone:"Asia/Tokyo"})}）`, roles: Object.fromEntries(Object.keys(row.roles).map(role => [role, role === "super_admin" || setting.roles.includes(role)])) as typeof row.roles };
   });
-  return <PermissionsClient initialPermissionRows={rows} roleSummary={buildRoleSummary()} />;
+  return <RootView pageKey="root-permissions"><PermissionsClient initialPermissionRows={rows} roleSummary={buildRoleSummary()} /></RootView>;
 }

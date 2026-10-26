@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
@@ -9,8 +10,8 @@ import type { SubmissionRow } from "@/app/system/mypage/_lib/submission-types";
 const EMPLOYEE_FIELDS =
   "*,root_employees(employee_number,name,kot_employee_id,commute_monthly_cap,company_id)";
 export async function GET(request: Request) {
-  if (!(await requireManager()))
-    return NextResponse.json({ ok: false }, { status: 403 });
+  const denied = await systemViewResponse("root-inbox");
+  if (denied) return denied;
   const url = new URL(request.url),
     type = url.searchParams.get("type"),
     status = url.searchParams.get("status");

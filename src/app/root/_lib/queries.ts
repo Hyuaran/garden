@@ -1,3 +1,4 @@
+import { readRootData } from "./read-data";
 /**
  * Garden Root — CRUD クエリ関数
  *
@@ -18,54 +19,10 @@ import type {
 } from "../_constants/types";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
 
-const ROOT_EMPLOYEE_SELECT_FIELDS = [
-  "employee_id",
-  "employee_number",
-  "name",
-  "name_kana",
-  "company_id",
-  "employment_type",
-  "salary_system_id",
-  "hire_date",
-  "birthday",
-  "termination_date",
-  "contract_end_on",
-  "kou_otsu",
-  "dependents_count",
-  "deleted_at",
-  "email",
-  "bank_name",
-  "bank_code",
-  "branch_name",
-  "branch_code",
-  "account_type",
-  "account_number",
-  "account_holder",
-  "account_holder_kana",
-  "kot_employee_id",
-  "innovera_extension",
-  "innovera_mobile_extension",
-  "filemaker_employee_name",
-  "mf_employee_id",
-  "call_recording_access",
-  "commute_daily_allowance",
-  "roster_record_id",
-  "garden_role_manual",
-  "chatwork_account_name",
-  "chatwork_token_updated_at",
-  "insurance_type",
-  "is_active",
-  "notes",
-  "created_at",
-  "updated_at",
-  "garden_role",
-].join(",");
+
 
 // 読み出しに失敗したとき、画面には読む人向けの文だけを出し、詳しい原因はブラウザの記録に残す（2026-09-18）
-function loadError(fn: string, label: string, error: { message: string }) {
-  console.error(`${fn} failed: ${error.message}`);
-  return new Error(`${label}を読み込めませんでした。時間をおいてもう一度お試しください。続くときは管理者へお問い合わせください。`);
-}
+
 
 // ============================================================
 // 共通: トグル is_active
@@ -87,11 +44,7 @@ async function setActive(
 // 1. 法人マスタ
 // ============================================================
 export async function fetchCompanies(): Promise<Company[]> {
-  const { data, error } = await supabase
-    .from("root_companies")
-    .select("*").order("established_on", { ascending: true, nullsFirst: false });
-  if (error) throw loadError("fetchCompanies", "法人の一覧", error);
-  return (data ?? []) as Company[];
+  return readRootData("companies", "root-companies");
 }
 
 export async function upsertCompany(company: Partial<Company> & { company_id: string }): Promise<void> {
@@ -106,13 +59,7 @@ export const setCompanyActive = (id: string, active: boolean) =>
 // 2. 銀行口座マスタ
 // ============================================================
 export async function fetchBankAccounts(): Promise<BankAccount[]> {
-  const { data, error } = await supabase
-    .from("root_bank_accounts")
-    .select("*")
-    .order("company_id", { ascending: true })
-    .order("account_id", { ascending: true });
-  if (error) throw loadError("fetchBankAccounts", "銀行口座の一覧", error);
-  return (data ?? []) as BankAccount[];
+  return readRootData("bank-accounts", "root-bank-accounts");
 }
 
 export async function upsertBankAccount(account: Partial<BankAccount> & { account_id: string }): Promise<void> {
@@ -127,12 +74,7 @@ export const setBankAccountActive = (id: string, active: boolean) =>
 // 3. 取引先マスタ
 // ============================================================
 export async function fetchVendors(): Promise<Vendor[]> {
-  const { data, error } = await supabase
-    .from("root_vendors")
-    .select("*")
-    .order("vendor_name_kana", { ascending: true });
-  if (error) throw loadError("fetchVendors", "取引先の一覧", error);
-  return (data ?? []) as Vendor[];
+  return readRootData("vendors", "root-vendors");
 }
 
 export async function upsertVendor(vendor: Partial<Vendor> & { vendor_id: string }): Promise<void> {
@@ -147,12 +89,7 @@ export const setVendorActive = (id: string, active: boolean) =>
 // 4. 給与体系マスタ
 // ============================================================
 export async function fetchSalarySystems(): Promise<SalarySystem[]> {
-  const { data, error } = await supabase
-    .from("root_salary_systems")
-    .select("*")
-    .order("salary_system_id", { ascending: true });
-  if (error) throw loadError("fetchSalarySystems", "給与体系の一覧", error);
-  return (data ?? []) as SalarySystem[];
+  return readRootData("salary-systems", "root-salary-systems");
 }
 
 export async function upsertSalarySystem(system: Partial<SalarySystem> & { salary_system_id: string }): Promise<void> {
@@ -167,13 +104,7 @@ export const setSalarySystemActive = (id: string, active: boolean) =>
 // 5. 従業員マスタ
 // ============================================================
 export async function fetchEmployees(): Promise<Employee[]> {
-  const { data, error } = await supabase
-    .from("root_employees")
-    .select(ROOT_EMPLOYEE_SELECT_FIELDS)
-    .order("company_id", { ascending: true })
-    .order("employee_number", { ascending: true });
-  if (error) throw loadError("fetchEmployees", "従業員の一覧", error);
-  return (data ?? []) as unknown as Employee[];
+  return readRootData("employees", "root-employees");
 }
 
 export async function upsertEmployee(employee: Partial<Employee> & { employee_id: string }): Promise<void> {
@@ -211,12 +142,7 @@ export const setEmployeeActive = (id: string, active: boolean) =>
 // 6. 社会保険マスタ
 // ============================================================
 export async function fetchInsurance(): Promise<Insurance[]> {
-  const { data, error } = await supabase
-    .from("root_insurance")
-    .select("*")
-    .order("fiscal_year", { ascending: false });
-  if (error) throw loadError("fetchInsurance", "社会保険料率の一覧", error);
-  return (data ?? []) as Insurance[];
+  return readRootData("insurance", "root-insurance");
 }
 
 export async function upsertInsurance(insurance: Partial<Insurance> & { insurance_id: string }): Promise<void> {
@@ -231,11 +157,7 @@ export const setInsuranceActive = (id: string, active: boolean) =>
 // 7. 勤怠データ
 // ============================================================
 export async function fetchAttendance(targetMonth?: string): Promise<Attendance[]> {
-  let query = supabase.from("root_attendance").select("*").order("target_month", { ascending: false }).order("employee_id", { ascending: true });
-  if (targetMonth) query = query.eq("target_month", targetMonth);
-  const { data, error } = await query;
-  if (error) throw loadError("fetchAttendance", "勤怠データ", error);
-  return (data ?? []) as Attendance[];
+  return readRootData("attendance", "root-attendance", targetMonth ? { month: targetMonth } : {});
 }
 
 export async function upsertAttendance(attendance: Partial<Attendance> & { attendance_id: string }): Promise<void> {

@@ -1,12 +1,14 @@
 import { SYSTEM_VIEW_SCOPES } from "./system-view-scopes";
+import { ROOT_VIEW_SCOPES } from "./root-view-scopes";
 import type { GardenRole } from "@/app/root/_constants/types";
 
 export type ViewPermission = { page_key: string; tab_key: string; roles: string[]; employee_ids: string[]; viewers_can_add: boolean; updated_by: string; updated_at: string };
 export type Viewer = { employeeId: string; role: GardenRole };
 export function permissionEntry(page: string, tab = "") {
-  const scope = SYSTEM_VIEW_SCOPES.find(entry => entry.pageKey === page && entry.tabKey === tab);
+  const scopes = [...SYSTEM_VIEW_SCOPES, ...ROOT_VIEW_SCOPES];
+  const scope = scopes.find(entry => entry.pageKey === page && entry.tabKey === tab);
   if (scope) return { pageKey: page, tabKey: tab,
-    label: tab ? `${SYSTEM_VIEW_SCOPES.find(entry => entry.pageKey === page && !entry.tabKey)?.label}：${scope.label}` : scope.label,
+    label: tab ? `${scopes.find(entry => entry.pageKey === page && !entry.tabKey)?.label}：${scope.label}` : scope.label,
     allows: (role: GardenRole) => scope.defaultRoles.includes(role) };
   if (page !== "system-onboarding" || !["", "self", "candidates", "confirmations", "all"].includes(tab)) return undefined;
   const labels: Record<string, string> = { "": "入社手続き", self: "自分の入社手続き", candidates: "入社予定者", confirmations: "入社後の確認", all: "みんなの入社手続き" };

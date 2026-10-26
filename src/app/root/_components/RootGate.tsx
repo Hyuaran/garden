@@ -8,7 +8,7 @@
  *
  * 動作:
  *   - /root/login: 認証チェック対象外（無限ループ防止）
- *   - 上記以外: ModuleGate で認証 + minRole=manager 判定
+ *   - 上記以外: 認証とローカル期限を確認。画面の閲覧権限はサーバーで判定。
  *
  * 仕様: docs/specs/plans/2026-05-11-garden-unified-auth-plan.md §Task 3 §Step 3-7
  */
@@ -65,7 +65,7 @@ export function RootGate({ children }: { children: ReactNode }) {
   if (isLoginPage) return <>{children}</>;
 
   return (
-    <ModuleGate module="root" loginPath="/root/login">
+    <ModuleGate module="root" minRole="toss" loginPath="/root/login">
       <RootLocalGate>{children}</RootLocalGate>
     </ModuleGate>
   );

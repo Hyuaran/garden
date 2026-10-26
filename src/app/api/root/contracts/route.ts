@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
@@ -11,8 +12,8 @@ import {
 const EMPLOYEE_SELECT =
   "employee_id,employee_number,name,company_id,employment_type,is_active,root_companies(company_name,representative,address)";
 export async function GET() {
-  if (!(await requireManager()))
-    return NextResponse.json({ ok: false }, { status: 403 });
+  const denied = await systemViewResponse("root-contracts");
+  if (denied) return denied;
   const admin = getSupabaseAdmin();
   const [{ data: employees, error: e1 }, { data: rows, error: e2 }] =
     await Promise.all([

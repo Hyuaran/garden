@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { requireEmployee } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -21,6 +22,8 @@ function failure(error: unknown) {
   return NextResponse.json({ error: error instanceof Error ? error.message : "KOT の操作に失敗しました" }, { status: 400 });
 }
 export async function GET(_request: Request, context: Context) {
+  const denied = await systemViewResponse("root-employees");
+  if (denied) return denied;
   if (!await authorize()) return NextResponse.json({ error: "全権管理者のみ操作できます" }, { status: 403 });
   try {
     const current = await employee((await context.params).employeeId);

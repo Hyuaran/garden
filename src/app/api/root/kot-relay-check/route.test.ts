@@ -1,3 +1,4 @@
+vi.mock("@/lib/auth/view-permission.server", () => ({ systemViewResponse: async () => null }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ employee: vi.fn(), admin: vi.fn(), fetch: vi.fn(), role: vi.fn() }));
 vi.mock("@/app/system/mypage/_lib/submission-server", () => ({ requireEmployee: mocks.employee }));

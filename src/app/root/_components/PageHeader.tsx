@@ -1,5 +1,6 @@
 "use client";
 
+import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
@@ -17,7 +18,7 @@ export function PageHeader({ title, actions, titleAddon }: { title: string; desc
           {titleAddon}
         </h1>
       </div>
-      {actions && <div className={styles.pageHeaderActions} style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>{actions}</div>}
+      <div className={styles.pageHeaderActions} style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>{actions}<SystemViewButton /></div>
     </div>
   );
 }

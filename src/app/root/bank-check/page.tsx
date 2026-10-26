@@ -10,6 +10,7 @@ import { Modal } from "../_components/Modal";
 import { PageHeader } from "../_components/PageHeader";
 import { TextField, TextareaField } from "../_components/FormField";
 import { colors } from "../_constants/colors";
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { useRootState } from "../_state/RootStateContext";
 
 type Finding = {
@@ -81,7 +82,9 @@ export default function BankCheckPage() {
   const [successorTarget, setSuccessorTarget] = useState<Finding | null>(null);
   const [successor, setSuccessor] = useState({ old_bank_code: "", old_branch_code: "", new_bank_code: "", new_branch_code: "", effective_date: "", note: "" });
 
-  const allowed = hasRoleAtLeast("admin");
+  const { state: viewState } = useSystemView();
+  const allowed = Boolean(viewState) || hasRoleAtLeast("admin");
+  const canEdit = hasRoleAtLeast("admin");
   const visible = useMemo(() => filter === "すべて" ? state.findings : state.findings.filter((row) => row.issueLabel === filter), [filter, state.findings]);
 
   async function load() {
@@ -164,7 +167,7 @@ export default function BankCheckPage() {
       <PageHeader
         title="口座の点検"
         description={datasetSummary(state.datasets)}
-        actions={<Button onClick={refreshLedger} disabled={refreshing}>{refreshing ? "確認中..." : <><Icon path="M21 12a9 9 0 0 1-15 6.7M3 12a9 9 0 0 1 15-6.7M18 3v4h-4M6 21v-4h4" /> 台帳をいま更新</>}</Button>}
+        actions={<Button onClick={refreshLedger} disabled={refreshing || !canEdit}>{refreshing ? "確認中..." : <><Icon path="M21 12a9 9 0 0 1-15 6.7M3 12a9 9 0 0 1 15-6.7M18 3v4h-4M6 21v-4h4" /> 台帳をいま更新</>}</Button>}
       />
       {message && <div style={{ background: colors.successBg, color: colors.success, padding: "9px 12px", borderRadius: 4, marginBottom: 12 }}>{message}</div>}
       {error && <div role="alert" style={{ background: colors.dangerBg, color: colors.danger, padding: "9px 12px", borderRadius: 4, marginBottom: 12 }}>{error}</div>}
@@ -193,7 +196,7 @@ export default function BankCheckPage() {
                     <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, minWidth: 180, whiteSpace: "nowrap" }} className="garden-cell-text">{row.candidateLabel}</td>
                     <td style={{ padding: "10px 8px", borderBottom: `1px solid ${colors.border}`, whiteSpace: "nowrap" }} className="garden-cell-text">
                       {row.issueLabel === "廃止済み" && !row.canApply ? <Button variant="secondary" onClick={() => openSuccessor(row)}>後継を登録</Button> : null}
-                      {row.canApply && row.source === "history" ? <Button onClick={() => void apply(row)}>この値で登録</Button> : null}
+                      {canEdit && row.canApply && row.source === "history" ? <Button onClick={() => void apply(row)}>この値で登録</Button> : null}
                     </td>
                   </tr>
                 ))}

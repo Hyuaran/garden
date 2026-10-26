@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { isValidChatworkApiToken } from "@/app/system/forms/payroll-notice/_lib/chatwork-token-sync.server";
@@ -57,6 +58,8 @@ async function writeTokenAudit({
 }
 
 export async function GET(_request: Request, context: Context) {
+  const denied = await systemViewResponse("root-employees");
+  if (denied) return denied;
   const manager = await requireManager();
   if (!manager) return forbidden();
 

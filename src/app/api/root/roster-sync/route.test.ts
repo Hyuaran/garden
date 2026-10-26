@@ -1,3 +1,4 @@
+vi.mock("@/lib/auth/view-permission.server", () => ({ systemViewResponse: async () => await mocks.requireManager() ? null : Response.json({ ok: false }, { status: 403 }) }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({

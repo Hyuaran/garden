@@ -13,6 +13,9 @@ vi.mock("../supabase", () => ({
   supabase: { from: mocks.from },
 }));
 
+vi.mock("../read-data", () => ({ readRootData: vi.fn(async () => []) }));
+import { readRootData } from "../read-data";
+import { ROOT_EMPLOYEE_SELECT_FIELDS } from "../employee-select";
 import { fetchEmployees, updateEmployeeGardenRole } from "../queries";
 
 describe("updateEmployeeGardenRole", () => {
@@ -43,11 +46,9 @@ describe("updateEmployeeGardenRole", () => {
   it("fetchEmployees selects INNOVERA and call recording fields", async () => {
     await fetchEmployees();
 
-    expect(mocks.from).toHaveBeenCalledWith("root_employees");
-    expect(mocks.select).toHaveBeenCalledTimes(1);
-    expect(mocks.select.mock.calls[0][0]).toContain("innovera_extension");
-    expect(mocks.select.mock.calls[0][0]).toContain("call_recording_access");
-    expect(mocks.order).toHaveBeenCalledWith("company_id", { ascending: true });
-    expect(mocks.order).toHaveBeenCalledWith("employee_number", { ascending: true });
+    expect(readRootData).toHaveBeenCalledWith("employees", "root-employees");
+    expect(ROOT_EMPLOYEE_SELECT_FIELDS).toContain("innovera_extension");
+    expect(ROOT_EMPLOYEE_SELECT_FIELDS).toContain("call_recording_access");
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 });
