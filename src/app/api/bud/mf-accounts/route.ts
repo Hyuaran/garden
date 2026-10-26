@@ -51,9 +51,10 @@ export async function GET(request: Request) {
  const snapshots = await auth.db.from("bud_mf_balance_snapshots").select("*").eq("snapshot_date", monthRange("current").end);
  if (axes.error || snapshots.error) return fail();
  const arrivals: Arrival[] = [];
- const midnight = new Date(monthRange("current").end + "T00:00:00+09:00").toISOString();
+ // 「今日の増減」は今日が取引日のものだけ（MF に今日届いた前の日の取引は入れない・東海林さん 2026-10-26）
+ const today = monthRange("current").end;
  for (let offset = 0; ; offset += 1000) {
-   const page = await auth.db.from("bud_mf_bank_tx_seen").select("*").gt("first_seen_at", midnight).order("mf_transaction_id").range(offset, offset + 999);
+   const page = await auth.db.from("bud_mf_bank_tx_seen").select("*").eq("date", today).order("mf_transaction_id").range(offset, offset + 999);
    if (page.error) return fail();
    arrivals.push(...page.data);
    if (page.data.length < 1000) break;
