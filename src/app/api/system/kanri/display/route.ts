@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/app/system/mypage/_lib/submission-server";
 import { tokyoToday } from "@/app/system/kanri/_lib/kanri-core";
@@ -60,9 +62,13 @@ async function kanriResultForRun(runId: string) {
 }
 
 export async function GET() {
-  const staff = await requireStaff();
+  const staff = await requireViewEmployee("system-kanri", "", "staff");
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
 
+  for (const tab of ["aporan", "kanri"]) {
+    const denied = await systemViewResponse("system-kanri", tab, true);
+    if (denied) return denied;
+  }
   const today = tokyoToday();
   const todayRun = await latestRun(today);
   if (todayRun.error) return NextResponse.json({ ok: false, error: "表示する成績を読み込めませんでした" }, { status: 500 });

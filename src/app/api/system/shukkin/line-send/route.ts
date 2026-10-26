@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/app/system/mypage/_lib/submission-server";
 import { getLineStaffQuota, pushLineStaff } from "@/lib/line/staff-client";
@@ -69,7 +71,7 @@ async function ownLineUserId(employeeId: string) {
 }
 
 export async function GET(request: Request) {
-  const staff = await requireStaff();
+  const staff = await requireViewEmployee("system-forms", "input", "staff");
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
   const params = new URL(request.url).searchParams;
   const neededParam = params.get("needed");
@@ -112,6 +114,11 @@ function sendPasswordMatches(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of ["input"]) {
+    const viewDenied = await systemViewResponse("system-forms", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const staff = await requireStaff();
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
   const body = await request.json().catch(() => null) as { date?: unknown; blocks?: unknown; testOnly?: unknown; password?: unknown } | null;

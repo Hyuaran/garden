@@ -1,13 +1,15 @@
+import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
 import DeliveriesHubClient from "./DeliveriesHubClient";
-import { getVisibleSystemDeliveries } from "./_lib/deliveries-registry";
+import { SYSTEM_DELIVERIES, getVisibleSystemDeliveries } from "./_lib/deliveries-registry";
 
 export const metadata = { title: "自動配信 | Garden" };
 
-export default async function DeliveriesHubPage() {
+async function DeliveriesHubPage() {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Fdeliveries");
@@ -25,5 +27,10 @@ export default async function DeliveriesHubPage() {
     ? employee.garden_role as GardenRole
     : "staff";
 
-  return <DeliveriesHubClient deliveries={getVisibleSystemDeliveries(role)} />;
+  const { viewer } = await viewPermissionContext();
+  const defaults = getVisibleSystemDeliveries(role);
+  const access = await Promise.all(SYSTEM_DELIVERIES.map(item => canView("system-deliveries", "", viewer, defaults.includes(item))));
+  return <DeliveriesHubClient deliveries={SYSTEM_DELIVERIES.filter((_, i) => access[i])} />;
 }
+
+export default withSystemView("system-deliveries", DeliveriesHubPage);

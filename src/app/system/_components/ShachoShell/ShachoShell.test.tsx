@@ -312,3 +312,9 @@ describe("ShachoShell", () => {
     expect(shouldHideSidebar("manager")).toBe(false);
   });
 });
+
+it("honors explicit grants and hides denied menu items, including the limited sidebar", () => {
+  render(<ThemeProvider><ShachoShell user={{ ...manager, role: "toss" }} allowedHrefs={["/system/list"]} hiddenHrefs={["/system/attendance"]}><p>body</p></ShachoShell></ThemeProvider>);
+  expect(document.querySelector('aside a[href="/system/list"]')).not.toBeNull();
+  expect(document.querySelector('aside a[href="/system/attendance"]')).toBeNull();
+});

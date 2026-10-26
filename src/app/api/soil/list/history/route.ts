@@ -9,7 +9,7 @@ import { normalizePhone } from "../_lib/upload-parser";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("history");
   if (!auth.ok) return auth.response;
 
   const phone = normalizePhone(new URL(request.url).searchParams.get("phone") ?? "");

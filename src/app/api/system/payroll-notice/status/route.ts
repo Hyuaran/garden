@@ -1,3 +1,4 @@
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/app/system/mypage/_lib/submission-server";
 import { getSingleTokenSyncReason, syncChatworkTokens } from "@/app/system/forms/payroll-notice/_lib/chatwork-token-sync.server";
@@ -19,7 +20,7 @@ async function readTokenStatus(employeeId: string) {
 }
 
 export async function GET() {
-  const staff = await requireStaff();
+  const staff = await requireViewEmployee("system-forms", "input", "staff");
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
 
   const current = await readTokenStatus(String(staff.employee_id));

@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
@@ -197,7 +198,10 @@ async function readJson(response: Response): Promise<RunResponse> {
 }
 
 export default function KanriPortalClient({ creatorName, today, initialRuns, initialHolidays, initialProducts, initialTeams, initialPeople, canWrite = true }: Props) {
-  const [activeTab, setActiveTab] = useState<"kanri" | "jisseki" | "aporan" | "houhan" | "incentive" | "payroll" | "settings">(canWrite ? "kanri" : "payroll");
+  const { allowedTab: viewAllowedTab } = useSystemView();
+  const allowedTab = (key: string) => viewAllowedTab(key, canWrite || key === "payroll");
+  const [requestedTab, setActiveTab] = useState<"kanri" | "jisseki" | "aporan" | "houhan" | "incentive" | "payroll" | "settings">(canWrite ? "kanri" : "payroll");
+  const activeTab = allowedTab(requestedTab) ? requestedTab : (["kanri", "jisseki", "aporan", "houhan", "incentive", "payroll", "settings"] as const).find(allowedTab);
   const [targetDate, setTargetDate] = useState(today);
   const [mode, setMode] = useState<KanriMode>(isMonthEnd(today) ? "closing" : "daily");
   const [runs, setRuns] = useState(initialRuns);
@@ -252,23 +256,24 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   }
 
   async function loadResult(runId: string) {
+    const fetchResult = (sheet: string) => allowedTab(sheet) ? fetch(`/api/system/kanri/runs/${runId}/result?sheet=${sheet}`) : Promise.resolve(Response.json({}, { status: 403 }));
     try {
-      const response = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=kanri`);
+      const response = await fetchResult("kanri");
       const json = await readJson(response) as { result?: { grid?: KanriSheetGrid } };
       if (response.ok && json.result?.grid) setGrid(json.result.grid);
-      const jissekiResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=jisseki`);
+      const jissekiResponse = await fetchResult("jisseki");
       const jissekiJson = await readJson(jissekiResponse) as { result?: { grid?: JissekiSheetGrid } };
       if (jissekiResponse.ok && jissekiJson.result?.grid) setJisseki(jissekiJson.result.grid);
-      const houhanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=houhan`);
+      const houhanResponse = await fetchResult("houhan");
       const houhanJson = await readJson(houhanResponse) as { result?: { grid?: HouhanSheetGrid } };
       if (houhanResponse.ok && houhanJson.result?.grid) setHouhan(houhanJson.result.grid);
-      const aporanResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=aporan`);
+      const aporanResponse = await fetchResult("aporan");
       const aporanJson = await readJson(aporanResponse) as { result?: { grid?: AporanSheetGrid } };
       if (aporanResponse.ok && aporanJson.result?.grid) setAporan(aporanJson.result.grid);
-      const incentiveResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=incentive`);
+      const incentiveResponse = await fetchResult("incentive");
       const incentiveJson = await readJson(incentiveResponse) as { result?: { grid?: IncentiveSheetGrid } };
       if (incentiveResponse.ok && incentiveJson.result?.grid) setIncentive(incentiveJson.result.grid);
-      const payrollResponse = await fetch(`/api/system/kanri/runs/${runId}/result?sheet=payroll`);
+      const payrollResponse = await fetchResult("payroll");
       const payrollJson = await readJson(payrollResponse) as { result?: { grid?: PayrollSheetGrid } };
       if (payrollResponse.ok && payrollJson.result?.grid) setPayroll(payrollJson.result.grid);
     } catch {
@@ -694,16 +699,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       </div>
     </section>}
 
-    <SystemTabs role="navigation" aria-label="表示切替">
-      {canWrite && <>
-        <button type="button" aria-current={activeTab === "kanri" ? "page" : undefined} onClick={() => setActiveTab("kanri")}>管理表</button>
-        <button type="button" aria-current={activeTab === "jisseki" ? "page" : undefined} onClick={() => setActiveTab("jisseki")}>実績管理</button>
-        <button type="button" aria-current={activeTab === "aporan" ? "page" : undefined} onClick={() => setActiveTab("aporan")}>アポラン</button>
-        <button type="button" aria-current={activeTab === "houhan" ? "page" : undefined} onClick={() => setActiveTab("houhan")}>訪問販売</button>
-        <button type="button" aria-current={activeTab === "incentive" ? "page" : undefined} onClick={() => setActiveTab("incentive")}>インセ計算</button>
-      </>}
-      <button type="button" aria-current={activeTab === "payroll" ? "page" : undefined} onClick={() => setActiveTab("payroll")}>給与試算</button>
-      {canWrite && <button type="button" aria-current={activeTab === "settings" ? "page" : undefined} onClick={() => setActiveTab("settings")}>設定</button>}
+    <SystemTabs role="navigation" aria-label="表示切替" actions={<SystemViewButton tabKey={activeTab} />}>
+      {([ ["kanri", "管理表"], ["jisseki", "実績管理"], ["aporan", "アポラン"], ["houhan", "訪問販売"], ["incentive", "インセ計算"], ["payroll", "給与試算"], ["settings", "設定"] ] as const).filter(([key]) => allowedTab(key)).map(([key, label]) =>
+        <button key={key} type="button" aria-current={activeTab === key ? "page" : undefined} onClick={() => setActiveTab(key)}>{label}</button>)}
     </SystemTabs>
 
     {activeTab === "kanri" && <>

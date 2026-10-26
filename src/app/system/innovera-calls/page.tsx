@@ -1,10 +1,11 @@
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
 import { CallAccessError, requireCallAccess } from "@/lib/innovera/calls.server";
 import InnoveraCallsClient from "./InnoveraCallsClient";
 
 export const metadata = { title: "INNOVERA履歴・録音 | Garden" };
 
-export default async function InnoveraCallsPage() {
+async function InnoveraCallsPage() {
   let ctx: Awaited<ReturnType<typeof requireCallAccess>> | null = null;
   let denied = false;
   try {
@@ -36,3 +37,5 @@ export default async function InnoveraCallsPage() {
     />
   );
 }
+
+export default withSystemView("system-innovera-calls", InnoveraCallsPage);

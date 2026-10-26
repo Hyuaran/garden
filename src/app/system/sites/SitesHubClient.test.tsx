@@ -1,7 +1,8 @@
+import { CORPORATE_SITES_DATA } from "./_lib/sites-data.server";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SitesHubClient from "./SitesHubClient";
-import { CORPORATE_SITES_DATA, type CorporateSitesData } from "./_lib/sites-registry";
+import { type CorporateSitesData } from "./_lib/sites-registry";
 
 const data: CorporateSitesData = {
   as_of: "2026-09-26",

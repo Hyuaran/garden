@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
@@ -72,7 +73,9 @@ async function responseBody(response: Response) {
 }
 
 export default function ContractsPage() {
-  const [tab, setTab] = useState<"browse" | "register">("browse");
+  const { allowedTab } = useSystemView();
+  const [requestedTab, setTab] = useState<"browse" | "register">("browse");
+  const tab = allowedTab(requestedTab) ? requestedTab : allowedTab("browse") ? "browse" : "register";
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [companies, setCompanies] = useState<ContractCompany[]>([]);
   const [rows, setRows] = useState<ContractRow[]>([]);
@@ -94,7 +97,7 @@ export default function ContractsPage() {
   const [product, setProduct] = useState("");
   async function loadLedger() {
     try {
-      const response = await fetch("/api/system/contracts"), json = await responseBody(response);
+      const response = await fetch(tab === "register" ? "/api/system/contracts?tab=register" : "/api/system/contracts"), json = await responseBody(response);
       if (!response.ok || !json) return setMessage(response.status === 403 ? "この画面を見る権限がありません。管理者へ連絡してください。" : "契約書を読み込めませんでした。時間をおいて再度お試しください。");
       setCompanies(json.companies ?? []); setRows(json.rows ?? []); setLedgerLoaded(true);
     } catch { setMessage("契約書を読み込めませんでした。時間をおいて再度お試しください。"); }
@@ -113,7 +116,7 @@ export default function ContractsPage() {
   useEffect(() => {
     // Initial API hydration is intentionally performed once on mount.
     setViewMode(readViewMode());
-    void Promise.all([loadLedger(), browse(currentFolderId())]);
+    void Promise.all([loadLedger(), ...(allowedTab("browse") ? [browse(currentFolderId())] : [])]);
     const restoreFolderFromUrl = () => void browse(currentFolderId());
     window.addEventListener("popstate", restoreFolderFromUrl);
     return () => window.removeEventListener("popstate", restoreFolderFromUrl);
@@ -218,9 +221,9 @@ export default function ContractsPage() {
   return <div className={styles.pageShell}><div className={styles.main}>
     <header className={styles.header}><div><SystemBreadcrumb items={[{ label: "契約書管理" }]} /><h1>契約書管理</h1></div></header>
     {message && <p role="status" className={styles.message}>{message}</p>}
-    <SystemTabs>
-      <button role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")}>契約書を見る</button>
-      <button role="tab" aria-selected={tab === "register"} onClick={() => setTab("register")}>契約書を登録する</button>
+    <SystemTabs actions={<SystemViewButton tabKey={tab} />}>
+      {allowedTab("browse") && <button role="tab" aria-selected={tab === "browse"} onClick={() => setTab("browse")}>契約書を見る</button>}
+      {allowedTab("register") && <button role="tab" aria-selected={tab === "register"} onClick={() => setTab("register")}>契約書を登録する</button>}
     </SystemTabs>
     {tab === "browse" ? <section className={styles.card}>
       <div className={styles.browseHeading}><h2>Driveの契約書</h2><HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle></div><nav className={styles.breadcrumbs} aria-label="現在のフォルダ">

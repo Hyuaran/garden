@@ -1,3 +1,5 @@
+import { withSystemView } from "@/lib/auth/system-view-page.server";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Link from "next/link";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { groupSlideDecks } from "../_data/slides";
@@ -7,10 +9,10 @@ import slideStyles from "./slides.module.css";
 
 export const metadata = { title: "スライド | Garden" };
 
-export default async function SlidesPage() {
+async function SlidesPage() {
   const decks = await loadSlideDecks();
   return <div className={styles.pageShell}>
-    <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "スライド" }]} /><h1>スライド</h1></header>
+    <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "スライド" }]} /><SystemViewHeading><h1>スライド</h1></SystemViewHeading></header>
     <div className={slideStyles.library}>{groupSlideDecks(decks).map((group, index) => <section key={group.category} aria-labelledby={`slide-category-${index}`}>
       <h2 id={`slide-category-${index}`}>{group.category}</h2>
       <div className={slideStyles.deckList}>{group.decks.map(deck => <Link className={slideStyles.deckCard} href={`/system/docs/slides/${deck.id}`} key={deck.id} aria-labelledby={`slide-deck-${deck.id}`}>
@@ -29,3 +31,5 @@ export default async function SlidesPage() {
     <Link className={styles.backToTop} href="/system/docs">資料の一覧へ戻る</Link>
   </div>;
 }
+
+export default withSystemView("system-docs", SlidesPage, undefined, "/system/docs/slides");

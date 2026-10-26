@@ -1,3 +1,5 @@
+import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
@@ -11,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ module: s
   return { title: `${manual?.name ?? "マニュアル"} | Garden` };
 }
 
-export default async function ManualDetailPage({
+async function ManualDetailPage({
   params,
   searchParams,
 }: {
@@ -40,11 +42,16 @@ export default async function ManualDetailPage({
   const role = GARDEN_ROLE_ORDER.includes(employee.garden_role as GardenRole)
     ? employee.garden_role as GardenRole
     : "staff";
-  const visibleDocs = getVisibleManualDocs(manual, role);
+  const { viewer } = await viewPermissionContext();
+  const defaultDocs = getVisibleManualDocs(manual, role);
+  const access = await Promise.all(manual.docs.map(doc => canView("system-manuals", doc.key, viewer, defaultDocs.includes(doc))));
+  const visibleDocs = manual.docs.filter((_, index) => access[index]);
   if (!visibleDocs.length) {
-    return <ManualDetailClient module={manualModule} manual={manual} docs={[]} />;
+    return <ManualDetailClient module={manualModule} manual={{ ...manual, docs: visibleDocs }} docs={[]} />;
   }
 
   const selectedDoc = visibleDocs.find((doc) => doc.key === tab) ?? visibleDocs[0];
   return <ManualDetailClient module={manualModule} manual={manual} docs={visibleDocs} selectedDoc={selectedDoc} canManageVersions={role === "super_admin"} />;
 }
+
+export default withSystemView("system-manuals", ManualDetailPage);

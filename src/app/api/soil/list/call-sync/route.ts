@@ -1,3 +1,6 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { viewPermissionContext } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -105,18 +108,24 @@ function refreshPayload(data: RefreshResultRow[] | RefreshResultRow | null) {
 }
 
 export async function GET() {
-  const auth = await requireRoleAtLeast("staff");
-  if (!auth.ok) return auth.response;
+  const employee = await requireViewEmployee("system-list", "list", "staff");
+  if (!employee) return NextResponse.json({ ok: false }, { status: 403 });
+  const { viewer } = await viewPermissionContext();
 
   try {
     const db = getSupabaseAdmin() as unknown as RpcDb;
-    return NextResponse.json({ ok: true, state: await loadState(db), canSync: isRoleAtLeast(auth.user.role, "manager") });
+    return NextResponse.json({ ok: true, state: await loadState(db), canSync: isRoleAtLeast(viewer.role, "manager") });
   } catch {
     return NextResponse.json({ ok: false, error: "反映状態を取得できませんでした" }, { status: 500 });
   }
 }
 
 export async function POST() {
+  for (const scopeTab of ["list"]) {
+    const viewDenied = await systemViewResponse("system-list", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const auth = await requireRoleAtLeast("manager");
   if (!auth.ok) return auth.response;
 

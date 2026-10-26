@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireEmployee } from "@/app/system/mypage/_lib/submission-server";
@@ -10,7 +12,7 @@ import {
 import { generateSubmissionPdf } from "@/app/system/mypage/_lib/todoke-generation.server";
 
 export async function GET() {
-  const employee = await requireEmployee();
+  const employee = await requireViewEmployee("system-mypage", "", "employee");
   if (!employee) return NextResponse.json({ ok: false }, { status: 401 });
   const { data, error } = await getSupabaseAdmin()
     .from("system_mypage_submissions")
@@ -24,6 +26,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of [""]) {
+    const viewDenied = await systemViewResponse("system-mypage", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const employee = await requireEmployee();
   if (!employee) return NextResponse.json({ ok: false }, { status: 401 });
   let body: { type?: SubmissionType; payload?: Record<string, unknown> } = {};

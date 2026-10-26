@@ -1,3 +1,4 @@
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -8,7 +9,7 @@ import styles from "./nhk-visit.module.css";
 
 export const metadata = { title: "NHK訪問業務 報告フォーム | Garden" };
 
-export default async function NhkVisitPage() {
+async function NhkVisitPage() {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Fforms%2Fnhk-visit");
@@ -22,18 +23,9 @@ export default async function NhkVisitPage() {
   if (!employee || !isEmployeeActive(employee)) redirect("/login?returnTo=%2Fsystem%2Fforms%2Fnhk-visit");
 
   const role = String(employee.garden_role ?? "staff") as GardenRole;
-  if (!isRoleAtLeast(role, "staff")) {
-    return <div className={styles.pageShell}>
-      <header className={styles.header}>
-        <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "NHK訪問業務 報告フォーム" }]} />
-        <h1>NHK訪問業務 報告フォーム</h1>
-      </header>
-      <section className={styles.panel}>
-        <h2>この画面は社員以上が使えます</h2>
-        <p>必要な場合は責任者に確認してください。</p>
-      </section>
-    </div>;
-  }
+
 
   return <NhkVisitClient submitterName={String(employee.name)} employeeNumber={String(employee.employee_number)} />;
 }
+
+export default withSystemView("system-forms", NhkVisitPage, "input");

@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import iconv from "iconv-lite";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

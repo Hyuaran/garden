@@ -1,3 +1,4 @@
+vi.mock("@/lib/auth/system-view-page.server", () => ({ withSystemView: (_key: string, page: unknown) => page }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const redirect = vi.hoisted(()=>vi.fn());
 vi.mock("next/navigation",()=>({redirect}));
@@ -14,9 +15,9 @@ describe("legacy mypage redirects",()=>{
     await MyPagePage({searchParams:Promise.resolve({tab:"attendance"})});
     expect(redirect).toHaveBeenCalledWith("/system/attendance");
   });
-  it("connects each standalone URL to its existing tab content",()=>{
-    expect(AttendancePage().props.section).toBe("attendance");
-    expect(ShiftPage().props.section).toBe("shift");
-    expect(ZenkakuPage().props.section).toBe("zenkaku");
+  it("connects each standalone URL to its existing tab content",async()=>{
+    expect((await AttendancePage()).props.section).toBe("attendance");
+    expect((await ShiftPage()).props.section).toBe("shift");
+    expect((await ZenkakuPage()).props.section).toBe("zenkaku");
   });
 });

@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -29,7 +30,7 @@ function normalizePage(value: string | null): number {
 }
 
 export async function GET(request: Request) {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("internal-block");
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
@@ -54,6 +55,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of ["internal-block"]) {
+    const viewDenied = await systemViewResponse("system-list", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const auth = await requireSoilListUser();
   if (!auth.ok) return auth.response;
 

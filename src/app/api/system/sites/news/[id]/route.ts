@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -54,6 +55,11 @@ async function writeAudit(params: {
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  for (const scopeTab of ["news"]) {
+    const viewDenied = await systemViewResponse("system-sites", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false, error: "編集権限がありません" }, { status: 403 });
 

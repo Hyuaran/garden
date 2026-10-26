@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -411,7 +412,7 @@ export default function InnoveraCallsClient({
     <div className={styles.page}>
       <header className={styles.header}>
         <SystemBreadcrumb items={[{ label: pageTitle }]} />
-        <h1>{pageTitle}</h1>
+        <SystemViewHeading><h1>{pageTitle}</h1></SystemViewHeading>
         <UpdatedStampRow><UpdatedStamp label="INNOVERA" date={loading ? null : lastLoadedAt} emptyText={loading ? "取得中..." : "未取得"} busy={loading} onRefresh={() => void loadCalls(true)} refreshLabel="INNOVERA から取り直す" title={loading ? "取得しています…" : "INNOVERA から取り直す（いまの絞り込み条件で最新の通話履歴を取得します）"} /></UpdatedStampRow>
       </header>
 

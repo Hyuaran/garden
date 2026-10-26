@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
 
@@ -50,7 +51,7 @@ export default function ManualsHubClient({ modules }: { modules: ManualModuleWit
     <header className={styles.header}>
       <div>
         <SystemBreadcrumb items={[{ label: "マニュアル" }]} />
-        <h1>マニュアル</h1>
+        <SystemViewHeading><h1>マニュアル</h1></SystemViewHeading>
       </div>
     </header>
 

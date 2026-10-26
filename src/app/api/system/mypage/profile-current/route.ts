@@ -1,10 +1,11 @@
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireEmployee } from "@/app/system/mypage/_lib/submission-server";
 import { buildMyPageProfile } from "@/app/system/mypage/_lib/mypage-profile.server";
 
 export async function GET() {
-  const employee = await requireEmployee();
+  const employee = await requireViewEmployee("system-mypage", "", "employee");
   if (!employee) return NextResponse.json({ ok: false }, { status: 401 });
   const { data, error } = await getSupabaseAdmin()
     .from("root_employees")

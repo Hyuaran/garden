@@ -1,18 +1,22 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ createServerClient: vi.fn() }));
+const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), admin: null as unknown }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
+vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: () => mocks.admin }));
 import { GET } from "./route";
 
 function client(options: { user?: boolean; role?: string; roleError?: boolean; rpcError?: boolean } = {}) {
   const rpc = vi.fn().mockResolvedValue(options.rpcError
     ? { data: null, error: { code: "XX000", message: "secret db detail" } }
     : { data: { authorized: true, metrics: [], employee_metrics: [], last_imported_at: null }, error: null });
-  return {
+  const db = {
     rpc,
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: options.user === false ? null : { id: "user-1" } } }) },
     from: () => ({ select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => options.roleError ? { data: null, error: { message: "db detail" } } : { data: { garden_role: options.role ?? "manager" }, error: null } }) }) }) }),
   };
+  mocks.admin = db;
+  return db;
 }
 
 const request = (query = "from=2026-08-01&to=2026-08-12") => new Request(`http://localhost/api/system/call-metrics?${query}`);

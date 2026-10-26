@@ -1,3 +1,4 @@
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { MANAGER_ROLES } from "../../_lib/attendance";
@@ -5,7 +6,7 @@ import SyncStatusClient from "./SyncStatusClient";
 
 export const metadata = { title: "勤怠 KOT同期状況 | Garden" };
 
-export default async function SyncStatusPage() {
+async function SyncStatusPage() {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Fattendance%2Fsync-status");
@@ -15,3 +16,5 @@ export default async function SyncStatusPage() {
   return <SyncStatusClient/>;
 }
 
+
+export default withSystemView("system-attendance", SyncStatusPage);

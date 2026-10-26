@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 
 import { SOIL_LIST_TABLES } from "@/app/system/list/_lib/list-fields";
@@ -9,7 +10,7 @@ import { SoilListRequestError, normalizeConditionPayload } from "../_lib/validat
 export const runtime = "nodejs";
 
 export async function GET() {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("list");
   if (!auth.ok) return auth.response;
 
   const admin = getSupabaseAdmin();
@@ -24,6 +25,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of ["list"]) {
+    const viewDenied = await systemViewResponse("system-list", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const auth = await requireSoilListUser();
   if (!auth.ok) return auth.response;
 
@@ -51,6 +57,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  for (const scopeTab of ["list"]) {
+    const viewDenied = await systemViewResponse("system-list", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const auth = await requireSoilListUser();
   if (!auth.ok) return auth.response;
 

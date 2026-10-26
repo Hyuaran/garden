@@ -6,7 +6,7 @@ import { createTemplateWorkbook, workbookBuffer } from "../../_lib/raw-excel/exc
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("upload");
   if (!auth.ok) return auth.response;
   const kind = request.nextUrl.searchParams.get("kind");
   if (kind !== "hikari" && kind !== "kureka") {

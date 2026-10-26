@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -89,7 +90,9 @@ export default function CallMetricsClient() {
   const [data, setData] = useState<CallMetricsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"employees" | "lists" | "definitions" | "webinbound">("employees");
+  const { allowedTab } = useSystemView();
+  const [requestedTab, setActiveTab] = useState<"employees" | "lists" | "definitions" | "webinbound">("employees");
+  const activeTab = allowedTab(requestedTab) ? requestedTab : (["employees", "lists", "definitions", "webinbound"] as const).find(key => allowedTab(key));
 
   async function load() {
     setLoading(true); setError(null);
@@ -137,11 +140,11 @@ export default function CallMetricsClient() {
           <span>受注率: {emptyRate ? "-" : percent(summary?.acquiredRate ?? 0)}（受注数 {(summary?.totalAcquired ?? 0).toLocaleString()}件）／前確OK率: {emptyRate ? "-" : percent(summary?.preconfirmRate ?? 0)}（前確OK数 {(summary?.totalOrders ?? 0).toLocaleString()}件）</span>
           {data.innovera && <span className={data.innovera.stopped ? styles.warningText : undefined}>{data.innovera.stopped ? `INNOVERA 取込停止中（最終 ${formatJstTime(data.innovera.lastSyncAt)}）` : `INNOVERA 最終取込 ${formatJstTime(data.innovera.lastSyncAt)}`}</span>}
         </div>
-        <SystemTabs aria-label="集計表示">
-          <button type="button" role="tab" aria-selected={activeTab === "employees"} onClick={() => setActiveTab("employees")}>従業員ごと</button>
-          <button type="button" role="tab" aria-selected={activeTab === "lists"} onClick={() => setActiveTab("lists")}>リストごと</button>
-          <button type="button" role="tab" aria-selected={activeTab === "definitions"} onClick={() => setActiveTab("definitions")}>定義方法</button>
-          <button type="button" role="tab" aria-selected={activeTab === "webinbound"} onClick={() => setActiveTab("webinbound")}>WEBインバウンド</button>
+        <SystemTabs aria-label="集計表示" actions={<SystemViewButton tabKey={activeTab} />}>
+          {allowedTab("employees") && <button type="button" role="tab" aria-selected={activeTab === "employees"} onClick={() => setActiveTab("employees")}>従業員ごと</button>}
+          {allowedTab("lists") && <button type="button" role="tab" aria-selected={activeTab === "lists"} onClick={() => setActiveTab("lists")}>リストごと</button>}
+          {allowedTab("definitions") && <button type="button" role="tab" aria-selected={activeTab === "definitions"} onClick={() => setActiveTab("definitions")}>定義方法</button>}
+          {allowedTab("webinbound") && <button type="button" role="tab" aria-selected={activeTab === "webinbound"} onClick={() => setActiveTab("webinbound")}>WEBインバウンド</button>}
         </SystemTabs>
 
         {activeTab === "webinbound" && <section role="tabpanel">

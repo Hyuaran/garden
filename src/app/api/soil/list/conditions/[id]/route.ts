@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 
 import { SOIL_LIST_TABLES } from "@/app/system/list/_lib/list-fields";
@@ -8,6 +9,11 @@ import { requireSoilListUser } from "../../_lib/auth";
 export const runtime = "nodejs";
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+  for (const scopeTab of ["list"]) {
+    const viewDenied = await systemViewResponse("system-list", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const auth = await requireSoilListUser();
   if (!auth.ok) return auth.response;
 

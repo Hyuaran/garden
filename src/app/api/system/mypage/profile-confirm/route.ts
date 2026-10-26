@@ -1,9 +1,15 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireEmployee } from "@/app/system/mypage/_lib/submission-server";
 import { PROFILE_CATEGORIES, getCurrentProfile, insertProfileHistoryIfChanged, todayJst, type ProfileCategory } from "@/app/root/_lib/profile-history.server";
 
 export async function POST(request: Request) {
+  for (const scopeTab of [""]) {
+    const viewDenied = await systemViewResponse("system-mypage", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const employee = await requireEmployee();
   if (!employee) return NextResponse.json({ ok: false }, { status: 401 });
   const body = await request.json().catch(() => null) as { category?: unknown } | null;

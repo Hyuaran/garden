@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { readKotDailyCsv } from "@/app/system/kanri/_lib/kot-daily";
 import { requireStaff } from "@/app/system/mypage/_lib/submission-server";
@@ -5,6 +6,11 @@ import { requireStaff } from "@/app/system/mypage/_lib/submission-server";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  for (const scopeTab of ["input"]) {
+    const viewDenied = await systemViewResponse("system-forms", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const staff = await requireStaff();
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
   const form = await request.formData().catch(() => null);

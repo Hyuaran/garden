@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
@@ -32,7 +33,7 @@ describe("deliveries hub page", () => {
 
     render(await DeliveriesHubPage());
 
-    const employeeQuery = supabase.from.mock.results[0].value;
+    const employeeQuery = supabase.from.mock.results.map(result => result.value).find(query => query.select.mock.calls.some((call: unknown[]) => String(call[0]).includes("is_active")));
     expect(employeeQuery.select).toHaveBeenCalledWith("garden_role,is_active,termination_date,deleted_at");
     expect(screen.getByRole("heading", { name: "自動配信" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "コール数配信" })).toBeInTheDocument();

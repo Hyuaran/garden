@@ -3,7 +3,8 @@ import { cache } from "react";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
 import { isEmployeeActive } from "./employee-access";
-import { resolveCanView, type ViewPermission, type Viewer } from "./view-permission";
+import { permissionEntry, resolveCanView, type ViewPermission, type Viewer } from "./view-permission";
+import { SYSTEM_VIEW_SCOPES } from "./system-view-scopes";
 
 export class ViewPermissionError extends Error {
   constructor(message: string, public status = 403) { super(message); }
@@ -27,7 +28,42 @@ export const readViewPermissions = cache(async (): Promise<ViewPermission[]> => 
   }
   return (data ?? []) as ViewPermission[];
 });
-export async function canView(pageKey: string, tabKey: string, viewer: Viewer) {
+export async function canView(pageKey: string, tabKey: string, viewer: Viewer, defaultAllowed?: boolean) {
+  if (!permissionEntry(pageKey, tabKey)) return false;
   if (viewer.role === "super_admin") return true;
-  return resolveCanView(await readViewPermissions(), pageKey, tabKey, viewer);
+  return resolveCanView(await readViewPermissions(), pageKey, tabKey, viewer, defaultAllowed);
+}
+
+/** メニューは従来の表示条件を保ち、設定後は閲覧できるタブがひとつでもあれば表示する。 */
+export async function canViewSystemMenu(pageKey: string, viewer: Viewer, defaultAllowed: boolean) {
+  const tabs = SYSTEM_VIEW_SCOPES.filter(scope => scope.pageKey === pageKey && scope.tabKey);
+  if (!tabs.length) return canView(pageKey, "", viewer, defaultAllowed);
+  const allowed = await Promise.all(tabs.map(scope => canView(pageKey, scope.tabKey, viewer, defaultAllowed && scope.defaultRoles.includes(viewer.role))));
+  return allowed.some(Boolean);
+}
+
+export async function canReadSystemScope(pageKey: string, tabKey: string, viewer: Viewer, defaultAllowed?: boolean) {
+  const tabs = tabKey ? [] : SYSTEM_VIEW_SCOPES.filter(scope => scope.pageKey === pageKey && scope.tabKey);
+  return tabs.length
+    ? (await Promise.all(tabs.map(scope => canView(pageKey, scope.tabKey, viewer, defaultAllowed)))).some(Boolean)
+    : canView(pageKey, tabKey, viewer, defaultAllowed);
+}
+
+export async function requireSystemView(pageKey: string, tabKey = "", defaultAllowed?: boolean) {
+  const context = await viewPermissionContext();
+  if (!await canView(pageKey, tabKey, context.viewer, defaultAllowed)) throw new ViewPermissionError("閲覧権限がありません");
+  return context;
+}
+
+/** API の読み取りの前に使用。書き込みの役職判定の代わりには使わない。 */
+export async function systemViewResponse(pageKey: string, tabKey = "", defaultAllowed?: boolean) {
+  try {
+    const { viewer } = await viewPermissionContext();
+    if (!await canReadSystemScope(pageKey, tabKey, viewer, defaultAllowed)) throw new ViewPermissionError("閲覧権限がありません");
+    return null;
+  }
+  catch (error) {
+    if (error instanceof ViewPermissionError) return Response.json({ ok: false, error: error.message }, { status: error.status });
+    throw error;
+  }
 }

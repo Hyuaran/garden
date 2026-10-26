@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -295,7 +296,9 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
 
 export default function SitesHubClient({ data, role }: { data: CorporateSitesData; role: GardenRole }) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
-  const [tab, setTab] = useState<TopTab>(() => readTab());
+  const { allowedTab } = useSystemView();
+  const [requestedTab, setTab] = useState<TopTab>(() => readTab());
+  const tab = allowedTab(requestedTab) ? requestedTab : allowedTab("sites") ? "sites" : "news";
   const [summaries, setSummaries] = useState<Record<string, NewsSummary>>({});
   const [publicCompanies, setPublicCompanies] = useState<Record<string, PublicCompany>>({});
   const groups = useMemo(() => groupSitesByCompany(data), [data]);
@@ -323,6 +326,7 @@ export default function SitesHubClient({ data, role }: { data: CorporateSitesDat
   useEffect(() => {
     let cancelled = false;
     async function loadSummaries() {
+      if (!allowedTab("news")) return;
       const entries = await Promise.all(newsCompanies.map(async (company) => {
         try {
           const response = await fetch(`/api/system/sites/news?company_id=${encodeURIComponent(company.company_id)}`);
@@ -372,9 +376,9 @@ export default function SitesHubClient({ data, role }: { data: CorporateSitesDat
       <h1>コーポレートサイト</h1>
     </header>
 
-    <SystemTabs aria-label="コーポレートサイト表示">
-      <button type="button" role="tab" aria-selected={tab === "sites"} onClick={() => changeTab("sites")}>サイト一覧</button>
-      <button type="button" role="tab" aria-selected={tab === "news"} onClick={() => changeTab("news")}>お知らせ</button>
+    <SystemTabs aria-label="コーポレートサイト表示" actions={<SystemViewButton tabKey={tab} />}>
+      {allowedTab("sites") && <button type="button" role="tab" aria-selected={tab === "sites"} onClick={() => changeTab("sites")}>サイト一覧</button>}
+      {allowedTab("news") && <button type="button" role="tab" aria-selected={tab === "news"} onClick={() => changeTab("news")}>お知らせ</button>}
     </SystemTabs>
 
     {tab === "news" ? <SiteNewsPanel data={data} role={role} /> : <>

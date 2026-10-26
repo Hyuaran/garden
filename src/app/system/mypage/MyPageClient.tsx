@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 import { useState } from "react";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -25,7 +26,7 @@ export default function MyPageClient({ initialTab, registered, employeeName, can
   const [profile, setProfile] = useState<MyPageProfile | null>(initialProfile);
   const title = MY_PAGE_TITLES[activeTab];
   return <div className={styles.pageContent}>
-    <header className={styles.header}><SystemBreadcrumb items={[{ label: title }]} /><h1>{title}</h1></header>
+    <header className={styles.header}><SystemBreadcrumb items={[{ label: title }]} /><SystemViewHeading><h1>{title}</h1></SystemViewHeading></header>
     <div className={styles.standalonePanel}>
       {activeTab === "profile" && <ProfileTab registered={registered} birthdayRegistered={birthdayRegistered} profile={profile} onUnlocked={setProfile} />}
       {activeTab === "attendance" && <AttendanceTab registered={registered} employeeName={employeeName} canViewSync={canViewSync} needsExtension={needsExtension} />}

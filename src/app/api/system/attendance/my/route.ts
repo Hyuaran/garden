@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { parseJstDate } from "@/app/system/_lib/attendance";
@@ -6,6 +7,9 @@ import { resolveAttendanceEmployee } from "../_lib/auth";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const viewDenied = await systemViewResponse("system-attendance", "");
+  if (viewDenied) return viewDenied;
+
   const identity = await resolveAttendanceEmployee();
   if (!identity.ok) return NextResponse.json({ ok: false, error: identity.error, error_code: "errorCode" in identity ? identity.errorCode : undefined }, { status: identity.status });
   let range;

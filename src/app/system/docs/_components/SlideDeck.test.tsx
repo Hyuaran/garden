@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import SlideDeck from "./SlideDeck";

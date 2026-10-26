@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -74,7 +76,7 @@ function mergeRunSummary(current: unknown, kot: KanriKotDailySummary) {
 }
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const manager = await requireManager();
+  const manager = await requireViewEmployee("system-kanri", "", "manager");
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const { id } = await context.params;
   const { data, error } = await getSupabaseAdmin()
@@ -89,6 +91,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  for (const scopeTab of ["settings"]) {
+    const viewDenied = await systemViewResponse("system-kanri", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const { id } = await context.params;

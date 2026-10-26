@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), redirect: vi.fn() }));
@@ -23,6 +24,6 @@ describe("contracts layout", () => {
   it("returns only the authorized contract content", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     const child = <p>契約書本文</p>;
-    expect(await ContractsLayout({ children: child })).toBe(child);
+    expect((await ContractsLayout({ children: child })).props.children).toBe(child);
   });
 });

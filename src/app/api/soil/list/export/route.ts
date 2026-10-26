@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { PassThrough, Readable } from "node:stream";
 
 import ExcelJS from "exceljs";
@@ -488,6 +489,13 @@ async function redownload(exportId: string) {
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of ["list"]) {
+    const viewDenied = await systemViewResponse("system-list", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
+  const viewDenied = await systemViewResponse("system-list", "list", true);
+  if (viewDenied) return viewDenied;
   const auth = await requireSoilListUser();
   if (!auth.ok) return auth.response;
 

@@ -47,3 +47,6 @@ describe("system kanri Excel route", () => {
     expect(body.error).toBe("先に「計算する」を押してください");
   });
 });
+
+vi.mock("@/lib/auth/system-view-api.server", () => ({ requireViewEmployee: () => mocks.requireManager() }));
+vi.mock("@/lib/auth/view-permission.server", () => ({ canView: async () => true, viewPermissionContext: async () => ({ viewer: { role: "manager", employeeId: "EMP-TEST" } }) }));

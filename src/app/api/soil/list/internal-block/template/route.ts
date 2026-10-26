@@ -41,7 +41,7 @@ function createInternalBlockTemplateWorkbook(): ExcelJS.Workbook {
 }
 
 export async function GET() {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("internal-block");
   if (!auth.ok) return auth.response;
 
   const fileName = "自社アポ禁_一括登録テンプレート.xlsx";

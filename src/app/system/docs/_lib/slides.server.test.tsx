@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), getSupabaseAdmin: vi.fn(), redirect: vi.fn() }));

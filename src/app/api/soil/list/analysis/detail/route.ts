@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const BLOCKS = new Set(["vendor", "line_type", "contract_year", "active_list", "contract"]);
 
 export async function GET(request: Request) {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("analysis");
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);

@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/app/system/mypage/_lib/submission-server";
 import {
@@ -116,6 +118,11 @@ function addDays(date: string, days: number) {
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of ["input"]) {
+    const viewDenied = await systemViewResponse("system-forms", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const staff = await requireStaff();
   if (!staff) return NextResponse.json({ ok: false, error: "ログインが必要です" }, { status: 403 });
 
@@ -192,7 +199,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const staff = await requireStaff();
+  const staff = await requireViewEmployee("system-forms", "input", "staff");
   if (!staff) return NextResponse.json({ ok: false, error: "ログインが必要です" }, { status: 403 });
 
   const url = new URL(request.url);

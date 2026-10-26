@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 
@@ -5,6 +6,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  for (const scopeTab of [""]) {
+    const viewDenied = await systemViewResponse("system-zenkaku", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return NextResponse.json({ ok: false, error: "未ログインです" }, { status: 401 });

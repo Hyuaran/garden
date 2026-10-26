@@ -1,8 +1,14 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authorizeKotExport } from "../_lib/authorization";
 
 export async function POST() {
+  for (const scopeTab of [""]) {
+    const viewDenied = await systemViewResponse("system-attendance", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const authorization = await authorizeKotExport();
   if ("response" in authorization) return authorization.response;
   const admin = getSupabaseAdmin();

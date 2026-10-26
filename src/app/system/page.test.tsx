@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
@@ -31,8 +32,8 @@ describe("system home", () => {
   it("存在するemployee_idを選択し、同じtextキーで案内を判定する", async () => {
     const supabase = client(); mocks.createServerClient.mockResolvedValue(supabase);
     render(await SystemHomePage());
-    const employeeQuery = supabase.from.mock.results[0].value;
-    const onboardingQuery = supabase.from.mock.results[1].value;
+    const employeeQuery = supabase.from.mock.results.map(result => result.value).find(query => query.select.mock.calls.some((call: unknown[]) => String(call[0]).includes("is_active")));
+    const onboardingQuery = supabase.from.mock.results.find((_, index) => supabase.from.mock.calls[index][0] === "system_onboarding")?.value;
     expect(employeeQuery.select).toHaveBeenCalledWith("employee_id,garden_role,is_active,termination_date,deleted_at");
     expect(onboardingQuery.eq).toHaveBeenCalledWith("employee_id", "EMP-9999");
     expect(mocks.redirect).not.toHaveBeenCalled();
@@ -40,7 +41,7 @@ describe("system home", () => {
   it("links all manager cards to their configured destinations", async () => {
     mocks.createServerClient.mockResolvedValue(client());
     render(await SystemHomePage());
-    expect(screen.getByRole("heading", { name: "ホーム" }).previousElementSibling).toHaveTextContent("System");
+    expect(screen.getByRole("heading", { name: "ホーム" }).closest("header")).toHaveTextContent("System");
     expect(screen.queryByText("SYSTEM")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "資料" }).closest("a")).toHaveAttribute("href", "/system/docs");
     expect(screen.getByRole("heading", { name: "入社手続き" }).closest("a")).toHaveAttribute("href", "/system/onboarding");

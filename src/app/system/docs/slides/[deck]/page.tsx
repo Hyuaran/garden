@@ -1,3 +1,5 @@
+import { withSystemView } from "@/lib/auth/system-view-page.server";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -7,14 +9,14 @@ import styles from "../../docs.module.css";
 
 export const metadata = { title: "スライド | Garden" };
 
-export default async function SlideDeckPage({ params }: { params: Promise<{ deck: string }> }) {
+async function SlideDeckPage({ params }: { params: Promise<{ deck: string }> }) {
   const { deck: id } = await params;
   const deck = await loadSlideDeck(id);
   if (!deck) notFound();
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "資料", href: "/system/docs" }, { label: "スライド", href: "/system/docs/slides" }, { label: deck.title }]} />
-      <h1>{deck.title}</h1>
+      <SystemViewHeading><h1>{deck.title}</h1></SystemViewHeading>
     </header>
     <div className={styles.presentationEntry}>
       <Link href={`/system/docs/slides/${deck.id}/present`} className={styles.presentationButton}>
@@ -27,3 +29,5 @@ export default async function SlideDeckPage({ params }: { params: Promise<{ deck
     <Link className={styles.backToTop} href="/system/docs/slides">スライドの一覧へ戻る</Link>
   </div>;
 }
+
+export default withSystemView("system-docs", SlideDeckPage, undefined, "/system/docs/slides/[deck]");

@@ -1,3 +1,4 @@
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -8,7 +9,7 @@ import InnoveraSyncClient from "./InnoveraSyncClient";
 
 export const metadata = { title: "INNOVERA番号の同期 | Garden" };
 
-export default async function InnoveraSyncPage() {
+async function InnoveraSyncPage() {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Finnovera");
@@ -25,9 +26,11 @@ export default async function InnoveraSyncPage() {
   const role = GARDEN_ROLE_ORDER.includes(employee.garden_role as GardenRole)
     ? employee.garden_role as GardenRole
     : "staff";
-  if (!isRoleAtLeast(role, "staff")) redirect("/system");
+
 
   const logs = await loadInnoveraSyncLogs().catch(() => []);
   const state = await loadInnoveraSyncState().catch(() => null);
   return <InnoveraSyncClient initialLogs={logs} initialCheckedAt={state?.last_checked_at} />;
 }
+
+export default withSystemView("system-forms", InnoveraSyncPage, "auto");

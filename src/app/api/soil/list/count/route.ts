@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 
 import { getColumnName } from "@/app/system/list/_lib/list-fields";
@@ -12,7 +13,12 @@ import { SoilListRequestError, normalizeConditionRequestPayload } from "../_lib/
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const auth = await requireSoilListUser();
+  for (const scopeTab of ["list"]) {
+    const viewDenied = await systemViewResponse("system-list", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
+  const auth = await requireSoilListUser("list");
   if (!auth.ok) return auth.response;
 
   try {

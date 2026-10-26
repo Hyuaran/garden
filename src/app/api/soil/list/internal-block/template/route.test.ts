@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import ExcelJS from "exceljs";
 import { describe, expect, it, vi } from "vitest";
 

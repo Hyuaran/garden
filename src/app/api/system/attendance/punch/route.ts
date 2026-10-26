@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { CLIENT_PUNCH_ID_PATTERN, isPunchType } from "@/app/system/_lib/attendance";
@@ -16,6 +17,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  for (const scopeTab of [""]) {
+    const viewDenied = await systemViewResponse("system-attendance", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const identity = await resolveAttendanceEmployee();
   if (!identity.ok) return NextResponse.json({ ok: false, error: identity.error, error_code: "errorCode" in identity ? identity.errorCode : undefined }, { status: identity.status });
   let body: unknown;

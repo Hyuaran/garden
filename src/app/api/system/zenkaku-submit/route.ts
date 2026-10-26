@@ -1,8 +1,14 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export const runtime="nodejs"; export const dynamic="force-dynamic";
 export async function POST(request:Request){
+  for (const scopeTab of [""]) {
+    const viewDenied = await systemViewResponse("system-zenkaku", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
  const supabase=await createServerClient(); const {data:auth}=await supabase.auth.getUser(); if(!auth.user)return NextResponse.json({ok:false,error:"未ログインです"},{status:401});
  let body:{checkRequestId?:string;submissionId?:string;partnerCode?:string;confirmDuplicate?:boolean}={}; try{body=await request.json()}catch{return NextResponse.json({ok:false,error:"依頼内容を確認してください"},{status:400})}
  const admin=getSupabaseAdmin();

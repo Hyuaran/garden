@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { buildMyPageProfile } from "@/app/system/mypage/_lib/mypage-profile.server";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
@@ -5,6 +6,11 @@ import { isEmployeeActive } from "@/lib/auth/employee-access";
 type Body = { code?: unknown };
 
 export async function POST(request: Request) {
+  for (const scopeTab of [""]) {
+    const viewDenied = await systemViewResponse("system-mypage", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   let body: Body;
   try { body = await request.json() as Body; }
   catch { return Response.json({ ok: false }, { status: 400 }); }

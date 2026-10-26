@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks=vi.hoisted(()=>({authorize:vi.fn(),admin:vi.fn()}));
 vi.mock("./_lib/authorization",()=>({authorizeKotExport:mocks.authorize}));

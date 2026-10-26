@@ -1,3 +1,5 @@
+import { withSystemView } from "@/lib/auth/system-view-page.server";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Link from "next/link";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { MenuIcon } from "../_components/ShachoShell/ShachoShell";
@@ -14,10 +16,10 @@ const documents = [
   { ...hikariBasicsDocument, title: hikariBasicsDocument.title, href: "/system/docs/hikari-basics" },
 ];
 
-export default async function DocsPage() {
+async function DocsPage() {
   await requireDocsUser();
   return <div className={styles.pageShell}>
-    <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料" }]} /><h1>資料</h1></header>
+    <header className={styles.header}><SystemBreadcrumb items={[{ label: "資料" }]} /><SystemViewHeading><h1>資料</h1></SystemViewHeading></header>
     <div className={styles.documentGrid}>{documents.map(document => <Link className={styles.documentCard} href={document.href} key={document.href}>
       <span className={styles.bookBadge}><MenuIcon icon="book" /></span><h2>{document.title}</h2><p>{document.description}</p>
       <p className={styles.updated}>最終更新日 <time dateTime={document.updatedAt}>{formatDocumentDate(document.updatedAt)}</time></p><span className={styles.readLink}>資料を読む →</span>
@@ -33,3 +35,5 @@ export default async function DocsPage() {
     </div>
   </div>;
 }
+
+export default withSystemView("system-docs", DocsPage, undefined, "/system/docs");

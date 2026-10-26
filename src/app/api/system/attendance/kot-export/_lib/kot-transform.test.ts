@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { describe, expect, it } from "vitest";
 import { formatKotJstDateTime } from "./kot-csv";
 import { transformDayPunches, type KotTransformPunch } from "./kot-transform";

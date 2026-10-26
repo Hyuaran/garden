@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 
 import { requireSoilListUser } from "../../_lib/auth";
@@ -10,6 +11,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST() {
+  for (const scopeTab of ["analysis"]) {
+    const viewDenied = await systemViewResponse("system-list", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const auth = await requireSoilListUser();
   if (!auth.ok) return auth.response;
 

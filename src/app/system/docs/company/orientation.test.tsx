@@ -1,3 +1,5 @@
+vi.mock("@/lib/auth/system-view-page.server", () => ({ withSystemView: (_key: string, page: unknown) => page }));
+import "@/lib/auth/__tests__/system-view-fixture";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));

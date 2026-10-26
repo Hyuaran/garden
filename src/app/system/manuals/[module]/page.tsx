@@ -1,3 +1,5 @@
+import { visibleManuals } from "@/lib/auth/manual-view.server";
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
@@ -11,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ module: s
   return { title: `${manualModule?.name ?? "マニュアル"} | Garden` };
 }
 
-export default async function ModuleManualsPage({ params }: { params: Promise<{ module: string }> }) {
+async function ModuleManualsPage({ params }: { params: Promise<{ module: string }> }) {
   const { module: moduleSlug } = await params;
   const manualModule = findManualModule(moduleSlug);
   if (!manualModule) notFound();
@@ -32,11 +34,13 @@ export default async function ModuleManualsPage({ params }: { params: Promise<{ 
   const role = GARDEN_ROLE_ORDER.includes(employee.garden_role as GardenRole)
     ? employee.garden_role as GardenRole
     : "staff";
-  const manuals = getVisibleManuals(role)
+  const manuals = (await visibleManuals(role))
     .filter((manual) => manual.moduleSlug === moduleSlug)
-    .map((manual) => ({ ...manual, visibleDocs: getVisibleManualDocs(manual, role) }));
+    ;
 
   if (!manuals.length) notFound();
 
   return <ModuleManualsClient module={manualModule} manuals={manuals} />;
 }
+
+export default withSystemView("system-manuals", ModuleManualsPage);

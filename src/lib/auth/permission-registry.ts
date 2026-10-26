@@ -22,6 +22,7 @@ import {
   canUseCallScreen,
   defaultCallRecordingAccess,
 } from "@/lib/innovera/call-access";
+import { SYSTEM_VIEW_SCOPES } from "./system-view-scopes";
 
 // 各入口（page.tsx／layout.tsx／route.ts）は Next の制約で定数を export できないため、
 // 入口と同じ集合を src/lib/auth/view-roles.ts から参照する
@@ -102,6 +103,7 @@ const deliveryEntries: PermissionEntry[] = SYSTEM_DELIVERIES.map((delivery) => (
 }));
 
 export const PERMISSION_ENTRIES: PermissionEntry[] = [
+
   { key: "system-onboarding-proxy", label: "入社手続き：代行入力", group: "System", kind: "操作", allows: role => MANAGER_ROLES.has(role), source: "src/app/system/onboarding/_lib/onboarding-proxy.server.ts（みんなの入社手続きの閲覧設定に従う。マイナンバー・口座はsuper_adminのみ）" },
   { key: "system-onboarding", pageKey: "system-onboarding", tabKey: "", label: "入社手続き", group: "System", kind: "画面", allows: () => true, source: "src/app/system/onboarding/page.tsx" },
   ...([['self', '自分の入社手続き'], ['candidates', '入社予定者'], ['confirmations', '入社後の確認'], ['all', 'みんなの入社手続き']] as const).map(([tabKey, label]): PermissionEntry => ({
@@ -313,6 +315,13 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
     allows: allowsMinRole("admin"),
     source: "src/app/api/root/roster-sync/route.ts:requireAdmin",
   },
+  ...SYSTEM_VIEW_SCOPES.map((scope): PermissionEntry => ({
+    key: `${scope.pageKey}${scope.tabKey ? `-tab-${scope.tabKey}` : "-view"}`,
+    pageKey: scope.pageKey, tabKey: scope.tabKey,
+    label: scope.tabKey ? `${SYSTEM_VIEW_SCOPES.find(page => page.pageKey === scope.pageKey && !page.tabKey)?.label}：${scope.label}` : scope.label,
+    group: "System", kind: scope.tabKey ? "タブ" : "画面",
+    allows: role => scope.defaultRoles.includes(role), source: "src/lib/auth/system-view-scopes.ts",
+  })),
 ];
 
 /** 役職ごとの説明（画面の「役職の一覧」に出す。誰がこの役職か・どこまで使えるか） */

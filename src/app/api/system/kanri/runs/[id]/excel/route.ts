@@ -1,3 +1,5 @@
+import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
@@ -14,8 +16,11 @@ type RunRow = { id: string; target_date: string };
 type ResultRow = { sheet: ResultSheet; grid: unknown };
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const manager = await requireManager();
+  const manager = await requireViewEmployee("system-kanri", "", "manager");
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
+  const { viewer } = await viewPermissionContext();
+  const sheetsAllowed = await Promise.all(RESULT_SHEETS.map(sheet => canView("system-kanri", sheet, viewer, true)));
+  if (sheetsAllowed.some(allowed => !allowed)) return NextResponse.json({ ok: false }, { status: 403 });
   const { id } = await context.params;
   const admin = getSupabaseAdmin();
 

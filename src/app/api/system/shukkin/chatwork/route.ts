@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { decryptToken } from "@/app/rill/mail/_lib/token-crypto";
 import { sendChatworkMessageWithToken } from "@/app/system/_lib/chatwork";
@@ -18,12 +20,17 @@ function roomLabel() {
 }
 
 export async function GET() {
-  const staff = await requireStaff();
+  const staff = await requireViewEmployee("system-forms", "input", "staff");
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
   return NextResponse.json({ ok: true, roomLabel: roomLabel() });
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of ["input"]) {
+    const viewDenied = await systemViewResponse("system-forms", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const staff = await requireStaff();
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
 

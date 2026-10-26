@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -31,13 +33,19 @@ async function requireStaff() {
 }
 
 export async function GET() {
-  const auth = await requireStaff();
-  if (!auth.ok) return auth.response;
+  const viewer = await requireViewEmployee("system-forms", "auto", "staff");
+  if (!viewer) return NextResponse.json({ ok: false }, { status: 403 });
+  const auth = { employeeId: String(viewer.employee_id) };
   const result = await runInnoveraSync({ apply: false, trigger: "manual", actorEmployeeId: auth.employeeId, includeLogs: true });
   return NextResponse.json(result, { status: result.ok ? 200 : 500 });
 }
 
 export async function POST() {
+  for (const scopeTab of ["auto"]) {
+    const viewDenied = await systemViewResponse("system-forms", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const auth = await requireStaff();
   if (!auth.ok) return auth.response;
   const result = await runInnoveraSync({ apply: true, trigger: "manual", actorEmployeeId: auth.employeeId, includeLogs: true });

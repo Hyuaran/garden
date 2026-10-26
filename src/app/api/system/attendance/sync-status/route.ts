@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { MANAGER_ROLES } from "@/app/system/_lib/attendance";
@@ -27,6 +28,9 @@ function timeText(value: string) {
 }
 
 export async function GET() {
+  const viewDenied = await systemViewResponse("system-attendance", "");
+  if (viewDenied) return viewDenied;
+
   const identity = await resolveAttendanceEmployee();
   if (!identity.ok) return NextResponse.json({ ok: false, error: identity.error, error_code: "errorCode" in identity ? identity.errorCode : undefined }, { status: identity.status });
   if (!MANAGER_ROLES.has(identity.employee.gardenRole)) return NextResponse.json({ ok: false, error: "閲覧権限がありません" }, { status: 403 });

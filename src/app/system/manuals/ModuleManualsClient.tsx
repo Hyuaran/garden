@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import Link from "next/link";
@@ -14,7 +15,7 @@ export default function ModuleManualsClient({ module, manuals }: { module: Manua
     <header className={styles.header}>
       <div>
         <SystemBreadcrumb items={[{ label: "マニュアル", href: "/system/manuals" }, { label: module.name }]} />
-        <h1>{module.name} のマニュアル</h1>
+        <SystemViewHeading><h1>{module.name} のマニュアル</h1></SystemViewHeading>
       </div>
     </header>
 

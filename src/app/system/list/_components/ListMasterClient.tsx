@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -1215,7 +1216,10 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
   const [fmExportListName, setFmExportListName] = useState("");
   const [fmExportListNameTouched, setFmExportListNameTouched] = useState(false);
   const [fmExportRecordAssignment, setFmExportRecordAssignment] = useState(true);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("list");
+  const { allowedTab } = useSystemView();
+  const [requestedTab, setActiveTab] = useState<ActiveTab>("list");
+  const visibleTabs = TAB_LABELS.filter(tab => allowedTab(tab.key));
+  const activeTab = visibleTabs.find(tab => tab.key === requestedTab)?.key ?? visibleTabs[0]?.key;
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
@@ -1392,7 +1396,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
 
   useEffect(() => {
     setActiveTab(tabFromLocation());
-    Promise.all([loadSaved(), loadOptions(), loadCallSyncState(), loadOrderSyncState(), loadUploadHistory(), loadPurchaseVendors()]).catch((error: unknown) =>
+    Promise.all([...(allowedTab("list") ? [loadSaved(), loadOptions(), loadCallSyncState(), loadOrderSyncState()] : []), ...(allowedTab("upload") ? [loadUploadHistory(), loadPurchaseVendors()] : [])]).catch((error: unknown) =>
       setMessage(error instanceof Error ? error.message : "取得できませんでした"),
     );
   }, []);
@@ -2459,8 +2463,8 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
         </UpdatedStampRow>
       </div>
 
-      <SystemTabs aria-label="リストマスタの表示">
-        {TAB_LABELS.map((tab) => (
+      <SystemTabs aria-label="リストマスタの表示" actions={<SystemViewButton tabKey={activeTab} />}>
+        {visibleTabs.map((tab) => (
           <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key} onClick={() => changeTab(tab.key)}>
             {tab.label}
           </button>

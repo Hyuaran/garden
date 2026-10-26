@@ -1,3 +1,4 @@
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
@@ -5,7 +6,7 @@ import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const manager = await requireManager();
+  const manager = await requireViewEmployee("system-kanri", "", "manager");
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const { id } = await context.params;
   const { data, error } = await getSupabaseAdmin()

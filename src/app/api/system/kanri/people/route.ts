@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -20,7 +22,7 @@ function validPeople(value: unknown): value is KanriPerson[] {
 }
 
 export async function GET() {
-  const manager = await requireManager();
+  const manager = await requireViewEmployee("system-kanri", "settings", "manager");
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const { data, error } = await getSupabaseAdmin()
     .from("system_kanri_person")
@@ -31,6 +33,11 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  for (const scopeTab of ["settings"]) {
+    const viewDenied = await systemViewResponse("system-kanri", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const body = await request.json().catch(() => null) as { people?: unknown } | null;

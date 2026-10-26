@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks=vi.hoisted(()=>({user:{id:"user-1"} as {id:string}|null,insert:vi.fn(),single:vi.fn()}));
 vi.mock("@/app/_lib/supabase/server",()=>({createServerClient:async()=>({auth:{getUser:async()=>({data:{auth:{},user:mocks.user}})},from:()=>({insert:mocks.insert})})}));

@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -35,7 +36,7 @@ describe("KanriPortalPage", () => {
 
     render(await Page({ searchParams: Promise.resolve({}) }));
 
-    expect(screen.getByText("この画面は社員以上が使えます")).toBeInTheDocument();
+    expect(screen.getByText("閲覧権限がありません")).toBeInTheDocument();
   });
 
   it("shows only payroll tab to staff", async () => {

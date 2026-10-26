@@ -1,3 +1,4 @@
+import { requireSystemView } from "@/lib/auth/view-permission.server";
 import "server-only";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -15,6 +16,7 @@ export async function requireDocsUser(returnTo = "/system/docs") {
     .select("employee_id").eq("user_id", auth.user.id)
     .eq("is_active", true).is("deleted_at", null).maybeSingle();
   if (error || !employee) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+  await requireSystemView("system-docs");
   return supabase;
 }
 

@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { requireManager, requireStaff } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -50,7 +52,7 @@ async function writeAudit(params: {
 }
 
 export async function GET(request: Request) {
-  const staff = await requireStaff();
+  const staff = await requireViewEmployee("system-sites", "news", "staff");
   if (!staff) return NextResponse.json({ ok: false, error: "ログインが必要です" }, { status: 403 });
 
   const companyId = new URL(request.url).searchParams.get("company_id");
@@ -68,6 +70,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of ["news"]) {
+    const viewDenied = await systemViewResponse("system-sites", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false, error: "編集権限がありません" }, { status: 403 });
 

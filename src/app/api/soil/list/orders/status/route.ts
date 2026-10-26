@@ -8,7 +8,7 @@ import { loadOrderSyncState, type OrderSyncDb } from "../_lib/order-sync";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("list");
   if (!auth.ok) return auth.response;
 
   try {

@@ -55,7 +55,7 @@ export default function ViewPermissionButton({ pageKey, tabKey, tabLabel, admin,
     {admin ? <TabActionButton icon="settings" label="見られる人の設定" onClick={() => void show()} /> : <button type="button" onClick={() => void show()}>＋ 人を追加</button>}
     {open && <dialog ref={dialog} className={styles.dialog} aria-labelledby="view-permission-title" onCancel={event => { if (busy) event.preventDefault(); else setOpen(false); }}>
       <h2 id="view-permission-title">{admin ? "見られる人の設定" : "人を追加"}</h2>
-      {admin && <fieldset disabled={busy}><legend>対象</legend><label><input type="radio" name="scope" checked={target === ""} onChange={() => setTarget("")} />画面全体</label><label><input type="radio" name="scope" checked={target === tabKey} onChange={() => setTarget(tabKey)} />このタブ「{tabLabel}」</label></fieldset>}
+      {admin && <fieldset disabled={busy}><legend>対象</legend><label><input type="radio" name="scope" checked={target === ""} onChange={() => setTarget("")} />画面全体</label>{tabKey && <label><input type="radio" name="scope" checked={target === tabKey} onChange={() => setTarget(tabKey)} />このタブ「{tabLabel}」</label>}</fieldset>}
       {!data ? !error && <p role="status">読み込み中…</p> : <>
         {admin && <fieldset disabled={busy}><legend>役職</legend>{[...GARDEN_ROLE_ORDER].reverse().map(role => <label key={role}><input type="checkbox" checked={role === "super_admin" || roles.includes(role)} disabled={role === "super_admin"} onChange={event => setRoles(event.target.checked ? [...roles, role] : roles.filter(item => item !== role))} />{role === "manager" ? "責任者" : role === "staff" ? "社員" : GARDEN_ROLE_LABELS[role]}{role === "super_admin" && "（外せない）"}</label>)}</fieldset>}
         <h3>個人</h3>

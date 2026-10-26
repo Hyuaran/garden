@@ -1,3 +1,5 @@
+import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
@@ -15,7 +17,7 @@ function validDate(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
-export default async function KanriPortalPage({
+async function KanriPortalPage({
   searchParams,
 }: {
   searchParams: Promise<{ date?: string | string[] | undefined }>;
@@ -34,24 +36,15 @@ export default async function KanriPortalPage({
   if (!employee || !isEmployeeActive(employee)) redirect("/login?returnTo=%2Fsystem%2Fkanri");
 
   const role = String(employee.garden_role ?? "staff") as GardenRole;
-  if (!isRoleAtLeast(role, "staff")) {
-    return <div className={styles.pageShell}>
-      <header className={styles.header}>
-        <SystemBreadcrumb items={[{ label: "管理表ポータル" }]} />
-        <h1>管理表ポータル</h1>
-      </header>
-      <section className={styles.notice}>
-        <h2>この画面は社員以上が使えます</h2>
-        <p>必要な場合は責任者に確認してください。</p>
-      </section>
-    </div>;
-  }
+
   const canWrite = isRoleAtLeast(role, "manager");
 
   const params = await searchParams;
   const requestedDate = Array.isArray(params?.date) ? params?.date[0] : params?.date;
   const today = validDate(requestedDate) ? requestedDate : tokyoToday();
   const { yearMonth } = monthRange(today);
+  const { viewer } = await viewPermissionContext();
+  const settingsAllowed = await canView("system-kanri", "settings", viewer, true);
   const admin = getSupabaseAdmin();
   const [runsResult, settingResult, pointResult, teamResult, personResult] = await Promise.all([
     admin
@@ -59,11 +52,11 @@ export default async function KanriPortalPage({
       .select("id,target_date,mode,creator_name,status,summary,warnings,started_at,finished_at,created_at")
       .order("created_at", { ascending: false })
       .limit(10),
-    admin
+    settingsAllowed ? admin
       .from("system_kanri_month_setting")
       .select("year_month,holidays,updated_at")
       .eq("year_month", yearMonth)
-      .maybeSingle(),
+      .maybeSingle() : { data: null },
     admin
       .from("system_kanri_point_master")
       .select("product,sort_order,active")
@@ -74,10 +67,10 @@ export default async function KanriPortalPage({
       .select("team,sort_order,active")
       .eq("active", true)
       .order("sort_order", { ascending: true }),
-    admin
+    settingsAllowed ? admin
       .from("system_kanri_person")
       .select("id,name,kot_name,team,department,employment_kind,base_wage,is_field_sales,active,sort_order")
-      .order("sort_order", { ascending: true }),
+      .order("sort_order", { ascending: true }) : { data: [] },
   ]);
 
   return <KanriPortalClient
@@ -91,3 +84,5 @@ export default async function KanriPortalPage({
     canWrite={canWrite}
   />;
 }
+
+export default withSystemView("system-kanri", KanriPortalPage);

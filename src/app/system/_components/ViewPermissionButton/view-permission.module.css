@@ -1,3 +1,4 @@
+.headingRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; }
 .dialog { box-sizing: border-box; width: min(640px, calc(100vw - 32px)); max-height: 85dvh; overflow: auto; padding: 28px; color: var(--ink, #17212e); background: var(--card, #fff); border: 1px solid var(--line, #e3eaf3); border-radius: 12px; font: inherit; margin: auto; }
 /* 画面の真ん中に出す（全体のリセットで margin:0 になり左上に寄っていたため 2026-10-26） */
 .dialog { margin: auto; }

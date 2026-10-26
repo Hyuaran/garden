@@ -1,3 +1,5 @@
+import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { normalizeCallMetricsRpc, parseCallMetricParams } from "@/app/system/_lib/call-metrics";
@@ -40,9 +42,13 @@ export async function GET(request: Request) {
   const { data: employee, error: roleError } = await supabase
     .from("root_employees").select("garden_role,is_active,termination_date,deleted_at").eq("user_id", auth.user.id).eq("is_active", true).maybeSingle();
   if (roleError) return NextResponse.json({ ok: false, error: "権限確認に失敗しました" }, { status: 500 });
-  if (!employee || !isEmployeeActive(employee) || !VIEW_ROLES.has(String(employee.garden_role) as GardenRole)) {
+  if (!employee || !isEmployeeActive(employee)) {
     return NextResponse.json({ ok: false, error: "閲覧権限がありません" }, { status: 403 });
   }
+
+  const viewer = (await viewPermissionContext()).viewer;
+  const [employees, lists, web, definitions] = await Promise.all(["employees", "lists", "webinbound", "definitions"].map(tab => canView("system-call-metrics", tab, viewer)));
+  if (!employees && !lists && !web && !definitions) return NextResponse.json({ ok: false }, { status: 403 });
 
   let range;
   let asOf: Date;
@@ -52,7 +58,9 @@ export async function GET(request: Request) {
     asOf = parseAsOf(params.get("as_of"));
   } catch (error) { return NextResponse.json({ ok: false, error: (error as Error).message }, { status: 400 }); }
 
-  const { data, error } = await supabase.rpc("system_call_metrics", {
+  if (!employees && !lists && !web) return NextResponse.json({ ok: true, ...normalizeCallMetricsRpc({ metrics: [], employee_metrics: [] }, range) });
+  const readDb = getSupabaseAdmin();
+  const { data, error } = await readDb.rpc("system_call_metrics", {
     p_from: range.from, p_to: range.to, p_list_name: range.listName, p_employee_name: range.employeeName,
   });
   if (error) {
@@ -60,11 +68,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "集計の取得に失敗しました" }, { status: 500 });
   }
   const filemaker = normalizeCallMetricsRpc(data, range);
-  const rootEmployees = await loadRootEmployees(supabase);
+  const rootEmployees = await loadRootEmployees(readDb);
   const employeeId = resolveEmployeeIdForCallMetrics(range.employeeName, rootEmployees);
   // 先に INNOVERA の集計（has_rows）を読み、LP系の読み込みと突き合わせに渡す
-  const lpKintone = await loadLpContext({ client: supabase, from: range.from, to: range.to, asOf, hasInnoveraRows: true });
-  const innoveraResult = await supabase.rpc("system_innovera_metrics", {
+  const lpKintone = await loadLpContext({ client: readDb, from: range.from, to: range.to, asOf, hasInnoveraRows: true });
+  const innoveraResult = await readDb.rpc("system_innovera_metrics", {
     p_from: range.from,
     p_to: range.to,
     p_lp_circuit_ids: lpKintone.lpCircuitIds,
@@ -78,5 +86,6 @@ export async function GET(request: Request) {
     rootEmployees,
     notes: lpKintone.notes,
   });
-  return NextResponse.json({ ok: true, ...merged, lpFunnel: lpKintone.funnel, lpFormCount: lpKintone.formCount });
+  return NextResponse.json({ ok: true, ...merged, employeeMetrics: employees ? merged.employeeMetrics : [], metrics: lists ? merged.metrics : [],
+    lp: web || employees ? merged.lp : undefined, lpFunnel: web ? lpKintone.funnel : undefined, lpFormCount: web ? lpKintone.formCount : undefined });
 }

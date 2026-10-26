@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -28,7 +30,7 @@ function displayDateTime(value: string | null | undefined) {
 }
 
 export async function GET() {
-  const manager = await requireManager();
+  const manager = await requireViewEmployee("system-forms", "input", "manager");
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const client = getSupabaseAdmin();
   const { data: memberRows, error: memberError } = await client
@@ -84,6 +86,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of ["input"]) {
+    const viewDenied = await systemViewResponse("system-forms", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const body = await request.json().catch(() => null) as { lineUserId?: unknown; employeeNumber?: unknown } | null;
@@ -120,6 +127,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  for (const scopeTab of ["input"]) {
+    const viewDenied = await systemViewResponse("system-forms", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const body = await request.json().catch(() => null) as { employeeNumber?: unknown } | null;

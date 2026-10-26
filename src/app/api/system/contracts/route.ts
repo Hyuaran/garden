@@ -1,3 +1,5 @@
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
@@ -21,8 +23,8 @@ import {
 export const runtime = "nodejs";
 // PDF解析とひな形生成に時間がかかるため長めに許容する
 export const maxDuration = 60;
-async function context() {
-  const manager = await requireManager();
+async function context(readTab?: string) {
+  const manager = readTab === undefined ? await requireManager() : await requireViewEmployee("system-contracts", readTab, "manager");
   if (!manager) return null;
   const admin = getSupabaseAdmin();
   const { data: companies } = await admin
@@ -30,7 +32,7 @@ async function context() {
     .select("company_id,company_name,representative,address")
     .eq("is_active", true)
     .order("established_on", { ascending: true, nullsFirst: false });
-  return { manager, admin, companies: (companies ?? []) as ContractCompany[] };
+  return { manager, admin, canWrite: readTab === undefined || Boolean(await requireManager()), companies: (companies ?? []) as ContractCompany[] };
 }
 function extractedPages(value: FormDataEntryValue | null): string[] | null {
   try {
@@ -65,9 +67,10 @@ async function resolveContractDrivePdf(fileId: string) {
   return { file, folderName: breadcrumbs.at(-1)?.name ?? "契約書" };
 }
 export async function GET(request: Request) {
-  const c = await context();
-  if (!c) return NextResponse.json({ ok: false }, { status: 403 });
   const url = new URL(request.url);
+  const readTab = !url.searchParams.has("browse") && url.searchParams.get("tab") === "register" ? "register" : "browse";
+  const c = await context(readTab);
+  if (!c) return NextResponse.json({ ok: false }, { status: 403 });
   if (url.searchParams.has("browse")) {
     const root = process.env.GARDEN_CONTRACTS_DRIVE_ROOT_FOLDER_ID;
     if (!root)
@@ -79,6 +82,10 @@ export async function GET(request: Request) {
         getContractDriveBreadcrumbs(folderId, root),
       ]);
       return NextResponse.json({ ok: true, entries, breadcrumbs });
+    }
+    if (!c.canWrite) {
+      const entries = (await listDriveFolderEntries(root)).filter(entry => ["01_契約書　上位店", "05_パートナー配布用ひな形"].includes(entry.name) && entry.mimeType === "application/vnd.google-apps.folder");
+      return NextResponse.json({ ok: true, entries, breadcrumbs: [{ id: null, name: "契約書" }] });
     }
     const entries = await Promise.all(
       ["01_契約書　上位店", "05_パートナー配布用ひな形"].map(async (name) => ({
@@ -95,6 +102,7 @@ export async function GET(request: Request) {
       breadcrumbs: [{ id: null, name: "契約書" }],
     });
   }
+  if (readTab === "register") return NextResponse.json({ ok: true, companies: c.companies, rows: [] });
   const { data: rows, error } = await c.admin
     .from("system_contracts")
     // company_id は "ALL"（全社）を取りうるため root_companies へのFKを張っていない。
@@ -110,11 +118,18 @@ export async function GET(request: Request) {
     : NextResponse.json({ ok: true, companies: c.companies, rows });
 }
 export async function POST(request: Request) {
+  for (const scopeTab of ["register"]) {
+    const viewDenied = await systemViewResponse("system-contracts", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const c = await context();
   if (!c) return NextResponse.json({ ok: false }, { status: 403 });
   const form = await request.formData(),
     action = String(form.get("action") ?? "");
   if (action === "read-drive-file") {
+    const denied = await systemViewResponse("system-contracts", "register");
+    if (denied) return denied;
     const driveFile = await resolveContractDrivePdf(String(form.get("driveFileId") ?? ""));
     if (!driveFile)
       return NextResponse.json(

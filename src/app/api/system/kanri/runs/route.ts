@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
@@ -12,7 +14,7 @@ function validDate(value: string) {
 }
 
 export async function GET(request: Request) {
-  const manager = await requireManager();
+  const manager = await requireViewEmployee("system-kanri", "", "manager");
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const limit = Math.min(Math.max(Number(new URL(request.url).searchParams.get("limit") ?? 10), 1), 50);
   const { data, error } = await getSupabaseAdmin()
@@ -25,6 +27,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  for (const scopeTab of [""]) {
+    const viewDenied = await systemViewResponse("system-kanri", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const body = await request.json().catch(() => null) as { targetDate?: unknown; mode?: unknown } | null;

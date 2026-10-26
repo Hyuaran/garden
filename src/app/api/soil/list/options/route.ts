@@ -109,7 +109,7 @@ async function fetchOptions(): Promise<SoilListOptionsPayload> {
 }
 
 export async function GET() {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("list");
   if (!auth.ok) return auth.response;
 
   try {

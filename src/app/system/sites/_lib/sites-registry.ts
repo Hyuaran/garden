@@ -1,4 +1,3 @@
-import rawCorporateSitesData from "../_data/corporate-sites.json";
 
 export type CorporateSiteStatus =
   | "live"
@@ -76,7 +75,7 @@ export type CorporateSiteStatusLabel = {
   tone: CorporateSiteStatusTone;
 };
 
-export const CORPORATE_SITES_DATA = rawCorporateSitesData as CorporateSitesData;
+
 
 const STATUS_LABELS: Record<CorporateSiteStatus, CorporateSiteStatusLabel> = {
   live: { label: "稼働", tone: "active" },

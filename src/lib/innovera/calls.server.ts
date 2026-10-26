@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
@@ -54,6 +55,8 @@ export async function requireCallAccess(): Promise<CallAccessContext> {
   if (error) throw new CallAccessError(500, "権限確認に失敗しました");
   if (!employee || !isEmployeeActive(employee)) throw new CallAccessError(403, "この画面へアクセスする権限がありません\n管理者へ問い合わせてください。");
 
+  const denied = await systemViewResponse("system-innovera-calls");
+  if (denied) throw new CallAccessError(denied.status, "閲覧権限がありません");
   const access = resolveCallRecordingAccess(
     role(employee.garden_role),
     employee.call_recording_access,

@@ -1,3 +1,4 @@
+import { canView, viewPermissionContext, ViewPermissionError } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -14,7 +15,7 @@ export function canUseSoilList(role: GardenRole | null | undefined): role is Gar
   return !!role && isRoleAtLeast(role, "manager");
 }
 
-export async function requireSoilListUser(): Promise<
+export async function requireSoilListUser(readTab?: string): Promise<
   | { ok: true; user: SoilListUser }
   | { ok: false; response: NextResponse }
 > {
@@ -44,7 +45,12 @@ export async function requireSoilListUser(): Promise<
 
   const row = employee as { name?: string | null; garden_role?: GardenRole | null } | null;
   const role = row?.garden_role;
-  if (!canUseSoilList(role)) {
+  let allowed = canUseSoilList(role);
+  if (readTab !== undefined) {
+    try { allowed = await canView("system-list", readTab, (await viewPermissionContext()).viewer, allowed); }
+    catch (error) { if (error instanceof ViewPermissionError && error.status < 500) allowed = false; else throw error; }
+  }
+  if (!allowed || !role) {
     return {
       ok: false,
       response: NextResponse.json({ ok: false, error: "権限がありません" }, { status: 403 }),

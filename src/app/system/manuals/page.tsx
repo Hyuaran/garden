@@ -1,3 +1,5 @@
+import { visibleManualModules } from "@/lib/auth/manual-view.server";
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
@@ -7,7 +9,7 @@ import { getManualModules } from "./_lib/manuals-registry";
 
 export const metadata = { title: "マニュアル | Garden" };
 
-export default async function ManualsHubPage() {
+async function ManualsHubPage() {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Fmanuals");
@@ -25,5 +27,7 @@ export default async function ManualsHubPage() {
     ? employee.garden_role as GardenRole
     : "staff";
 
-  return <ManualsHubClient modules={getManualModules(role)} />;
+  return <ManualsHubClient modules={await visibleManualModules(role)} />;
 }
+
+export default withSystemView("system-manuals", ManualsHubPage);

@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -126,7 +127,8 @@ function ToolDetails({ details }: { details?: string[] }) {
 
 export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFormDefinition[]; tools?: GyomuTool[] }) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
-  const sections = groupedTools(forms, tools);
+  const { allowedTab } = useSystemView();
+  const sections = groupedTools(forms, tools).filter(section => allowedTab(section.key));
   // 項目が増えても見やすいよう、区分はタブで切り替える（東海林さん 2026-10-19）。表示形式（リスト／グリッド）はタブと別にそのまま使える
   const [tabKey, setTabKey] = useState<string>(() => readTab());
   const active = sections.find((section) => section.key === tabKey) ?? sections[0];
@@ -150,7 +152,7 @@ export default function FormsHubClient({ forms, tools = [] }: { forms: SystemFor
     </header>
 
     <div className={styles.listHeading}>
-      <SystemTabs aria-label="区分">
+      <SystemTabs actions={<SystemViewButton tabKey={active?.key} />} aria-label="区分">
         {sections.map((section) => <button key={section.key} type="button" role="tab" id={`tab-${section.key}`} aria-controls={`panel-${section.key}`} aria-selected={section.key === active?.key} className={section.key === active?.key ? styles.tabOn : undefined} onClick={() => changeTab(section.key)}>{section.title}<span className={styles.tabCount}>{section.items.length}</span></button>)}
       </SystemTabs>
       <HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>

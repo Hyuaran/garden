@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 
 import Link from "next/link";
@@ -241,7 +242,7 @@ export default function ManualDetailClient({
     ) : (
       <>
         <div className={styles.tabsRow}>
-          <SystemTabs role="navigation" aria-label="資料タブ">
+          <SystemTabs actions={<SystemViewButton tabKey={selectedDoc?.key} />} role="navigation" aria-label="資料タブ">
             {docs.map((doc) => <Link key={doc.key} href={`/system/manuals/${manual.moduleSlug}/${manual.slug}?tab=${doc.key}`} aria-current={selectedDoc?.key === doc.key ? "page" : undefined}>{doc.label}</Link>)}
           </SystemTabs>
           {canManageVersions && selectedDoc && (

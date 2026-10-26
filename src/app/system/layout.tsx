@@ -5,7 +5,9 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
 import ShachoShell from "./_components/ShachoShell/ShachoShell";
-import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
+import { canViewSystemMenu, viewPermissionContext } from "@/lib/auth/view-permission.server";
+import { SYSTEM_MENU_ITEMS, LIMITED_MENU_ITEMS, shouldHideSidebar, canUseSystemItem } from "./_components/ShachoShell/shacho-shell-config";
+import { systemPageKey } from "@/lib/auth/system-view-scopes";
 
 export default async function SystemLayout({ children }: { children: ReactNode }) {
   const supabase = await createServerClient();
@@ -35,8 +37,14 @@ export default async function SystemLayout({ children }: { children: ReactNode }
         .maybeSingle()).data
     : null;
 
+  const { viewer } = await viewPermissionContext();
+  const menuPermissions = await Promise.all(SYSTEM_MENU_ITEMS.filter(item => item.href && systemPageKey(item.href)).map(async item => {
+    const defaultAllowed = shouldHideSidebar(role) ? LIMITED_MENU_ITEMS.some(limited => limited.href === item.href) : canUseSystemItem(item, role);
+    const pageKey = systemPageKey(item.href!)!;
+    return { href: item.href!, allowed: await canViewSystemMenu(pageKey, viewer, defaultAllowed) };
+  }));
   return (
-    <ShachoShell hiddenHrefs={(await canView("system-onboarding", "", (await viewPermissionContext()).viewer)) ? [] : ["/system/onboarding"]} user={{
+    <ShachoShell allowedHrefs={menuPermissions.filter(item => item.allowed).map(item => item.href)} hiddenHrefs={menuPermissions.filter(item => !item.allowed).map(item => item.href)} user={{
       name: String(employee.name),
       company: String(company?.company_name ?? "所属会社未登録"),
       role,

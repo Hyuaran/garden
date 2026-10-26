@@ -1,3 +1,5 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
+import { requireViewEmployee } from "@/lib/auth/system-view-api.server";
 import { NextResponse } from "next/server";
 import { requireManager, requireStaff } from "@/app/system/mypage/_lib/submission-server";
 import { SHUKKIN_GROUPS, type ShukkinGroup } from "@/app/system/forms/shukkin/_lib/shukkin";
@@ -83,7 +85,7 @@ async function activeMemberRows(client: ReturnType<typeof getSupabaseAdmin>) {
 }
 
 export async function GET() {
-  const staff = await requireStaff();
+  const staff = await requireViewEmployee("system-forms", "input", "staff");
   if (!staff) return NextResponse.json({ ok: false }, { status: 403 });
   const client = getSupabaseAdmin();
   const { data, error } = await activeMemberRows(client);
@@ -97,6 +99,11 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  for (const scopeTab of ["input"]) {
+    const viewDenied = await systemViewResponse("system-forms", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const body = await request.json().catch(() => null) as { members?: unknown } | null;

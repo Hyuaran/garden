@@ -1,3 +1,4 @@
+import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { sendKanriReportMessage } from "@/app/system/_lib/chatwork";
@@ -17,6 +18,11 @@ type RunRow = {
 };
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+  for (const scopeTab of ["kanri","jisseki","aporan","houhan","incentive","payroll"]) {
+    const viewDenied = await systemViewResponse("system-kanri", scopeTab, true);
+    if (viewDenied) return viewDenied;
+  }
+
   const manager = await requireManager();
   if (!manager) return NextResponse.json({ ok: false }, { status: 403 });
   const { id } = await context.params;

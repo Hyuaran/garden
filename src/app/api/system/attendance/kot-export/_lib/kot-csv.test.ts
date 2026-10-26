@@ -1,3 +1,4 @@
+import "@/lib/auth/__tests__/system-view-fixture";
 import iconv from "iconv-lite";
 import { describe, expect, it } from "vitest";
 import { buildKotCsvText, encodeKotCsv, formatKotJstDateTime, getKotImportRange, toKotPunchCode, type KotExportRow } from "./kot-csv";

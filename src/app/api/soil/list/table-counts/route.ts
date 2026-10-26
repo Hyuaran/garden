@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("guide");
   if (!auth.ok) return auth.response;
 
   try {

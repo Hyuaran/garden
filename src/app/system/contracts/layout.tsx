@@ -1,3 +1,4 @@
+import { withSystemView } from "@/lib/auth/system-view-page.server";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -9,7 +10,7 @@ export const metadata = { title: "契約書管理 | Garden" };
 
 const VIEW_ROLES = MANAGER_VIEW_ROLES;
 
-export default async function ContractsLayout({ children }: { children: ReactNode }) {
+async function ContractsLayout({ children }: { children: ReactNode }) {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?returnTo=%2Fsystem%2Fcontracts");
@@ -19,8 +20,10 @@ export default async function ContractsLayout({ children }: { children: ReactNod
     .eq("is_active", true)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!employee || !isEmployeeActive(employee) || !VIEW_ROLES.has(String(employee.garden_role) as GardenRole)) {
+  if (!employee || !isEmployeeActive(employee)) {
     return <main style={{ padding: 32 }}><h1>閲覧権限がありません</h1><p>この画面は責任者以上が利用できます。</p></main>;
   }
   return children;
 }
+
+export default withSystemView("system-contracts", ContractsLayout);

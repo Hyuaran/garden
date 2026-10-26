@@ -16,7 +16,7 @@ type PurchaseVendorDb = {
 };
 
 export async function GET() {
-  const auth = await requireSoilListUser();
+  const auth = await requireSoilListUser("upload");
   if (!auth.ok) return auth.response;
 
   const db = getSupabaseAdmin() as unknown as PurchaseVendorDb;

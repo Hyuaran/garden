@@ -1,3 +1,4 @@
+import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -83,7 +84,7 @@ export async function requireManualDocAccess(
 
   const role = validRole(employee.garden_role);
   const requiredRole = options.superAdminOnly ? "super_admin" : doc.minRole;
-  if (!isRoleAtLeast(role, requiredRole)) return { ok: false, response: jsonError(403, "manual access denied") };
+  if (options.superAdminOnly ? !isRoleAtLeast(role, requiredRole) : !await canView("system-manuals", doc.key, (await viewPermissionContext()).viewer, isRoleAtLeast(role, requiredRole))) return { ok: false, response: jsonError(403, "manual access denied") };
 
   return { ok: true, manual, doc, user: { id: auth.user.id, name: displayName(employee, auth.user), role } };
 }
