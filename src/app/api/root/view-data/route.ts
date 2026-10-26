@@ -11,7 +11,7 @@ export const GET = async (request: Request) => {
   const page = params.get("page") ?? "", dataset = params.get("dataset") ?? "";
   const datasets: Record<string, Record<string, [string, string]>> = {
     "root-companies": { companies: ["root_companies", "*"] },
-    "root-bank-accounts": { "bank-accounts": ["root_bank_accounts", "*"], companies: ["root_companies", "company_id,company_name"] },
+    "root-bank-accounts": { "bank-accounts": ["root_bank_accounts", "*"], corporations: ["bud_corporations", "id,name_short"] },
     "root-vendors": { vendors: ["root_vendors", "*"], companies: ["root_companies", "company_id,company_name"] },
     "root-salary-systems": { "salary-systems": ["root_salary_systems", "*"] },
     "root-insurance": { insurance: ["root_insurance", "*"] },
@@ -29,7 +29,8 @@ export const GET = async (request: Request) => {
   let query = getSupabaseAdmin().from(table).select(select);
   switch (dataset) {
     case "companies": query = query.order(page === "root-companies" ? "established_on" : "company_id", { ascending: true, nullsFirst: false }); break;
-    case "bank-accounts": query = query.order("company_id").order("account_id"); break;
+    case "bank-accounts": query = query.is("deleted_at", null).order("corp_code").order("bank_code").order("account_number"); break;
+    case "corporations": query = query.order("established_on", { ascending: true, nullsFirst: false }); break;
     case "vendors": query = query.order("vendor_name_kana"); break;
     case "salary-systems": query = query.order("salary_system_id"); break;
     case "insurance": query = query.order("fiscal_year", { ascending: false }); break;

@@ -52,20 +52,27 @@ export type DefaultBank = (typeof DEFAULT_BANKS)[number];
 // 2. 銀行口座マスタ
 // ============================================================
 export interface BankAccount {
-  account_id: string; // ACC-001
-  company_id: string;
+  id: string;
+  corp_code: string;
+  bank_code: string;
   bank_name: string;
-  bank_code: string; // 4桁
-  branch_name: string;
-  branch_code: string; // 3桁
-  account_type: string; // 普通/当座
-  account_number: string; // 7桁
-  account_holder: string;
-  purpose: string | null; // メイン/給与/経費等
+  branch_name: string | null;
+  branch_code: string | null;
+  account_type: string;
+  account_number: string;
   is_active: boolean;
+  has_csv_export: boolean;
+  needs_manual_balance: boolean;
+  notes: string | null;
+  sub_account_label: string | null;
+  manual_balance_20260430?: number | null;
   created_at: string;
   updated_at: string;
+  created_by?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 }
+export interface BankCorporation { id: string; name_short: string; }
 
 // ============================================================
 // 3. 取引先マスタ

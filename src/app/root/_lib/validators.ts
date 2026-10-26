@@ -107,15 +107,11 @@ export function validateCompany(c: Company): FieldErrors {
 // ------------------------------------------------------------
 export function validateBankAccount(a: BankAccount): FieldErrors {
   const e: FieldErrors = {};
-  if (!/^ACC-\d{3,}$/.test(a.account_id)) e.account_id = "ACC-XXX 形式";
-  if (!a.company_id) e.company_id = "必須";
-  if (!a.bank_name.trim()) e.bank_name = "必須";
-  if (!isDigits(a.bank_code, 4)) e.bank_code = "半角数字4桁";
-  if (!a.branch_name.trim()) e.branch_name = "必須";
-  if (!isDigits(a.branch_code, 3)) e.branch_code = "半角数字3桁";
-  if (!a.account_type) e.account_type = "必須";
-  if (!isDigits(a.account_number, 7)) e.account_number = "半角数字7桁";
-  if (!a.account_holder.trim()) e.account_holder = "必須";
+  if (!["hyuaran","centerrise","linksupport","arata","taiyou","ichi"].includes(a.corp_code)) e.corp_code="法人を選んでください";
+  if (!["mizuho","rakuten","paypay","kyoto"].includes(a.bank_code)) e.bank_code="銀行を選んでください";
+  if (a.branch_code && !isDigits(a.branch_code,3)) e.branch_code="半角数字3桁";
+  if (!["普通","当座","貯蓄"].includes(a.account_type)) e.account_type="種別を選んでください";
+  if (!/^\d+$/.test(a.account_number)) e.account_number="半角数字で入力してください（必須）";
   return e;
 }
 

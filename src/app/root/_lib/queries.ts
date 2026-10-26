@@ -10,6 +10,7 @@ import { supabase } from "./supabase";
 import type {
   Company,
   BankAccount,
+  BankCorporation,
   Vendor,
   SalarySystem,
   Employee,
@@ -62,13 +63,34 @@ export async function fetchBankAccounts(): Promise<BankAccount[]> {
   return readRootData("bank-accounts", "root-bank-accounts");
 }
 
-export async function upsertBankAccount(account: Partial<BankAccount> & { account_id: string }): Promise<void> {
-  const { error } = await supabase.from("root_bank_accounts").upsert(account, { onConflict: "account_id" });
-  if (error) throw new Error(`upsertBankAccount failed: ${error.message}`);
+export async function fetchBankCorporations(): Promise<BankCorporation[]> {
+  return readRootData("corporations", "root-bank-accounts");
 }
-
-export const setBankAccountActive = (id: string, active: boolean) =>
-  setActive("root_bank_accounts", "account_id", id, active);
+function bankAccountError(error: { code?: string }): Error {
+  if (error.code === "23514") return new Error("入力の形が正しくありません（支店コードは数字3桁か空・口座番号は数字だけ）");
+  return new Error(error.code === "23505" ? "同じ法人・銀行・口座番号の口座がもうあります" : "銀行口座を保存できませんでした。権限や入力内容を確認して、もう一度お試しください。");
+}
+function editableBankFields(a: BankAccount) {
+  return { branch_name: a.branch_name?.trim() || null, branch_code: a.branch_code?.trim() || null, account_type: a.account_type,
+    sub_account_label: a.sub_account_label?.trim() || null, has_csv_export: a.has_csv_export,
+    needs_manual_balance: a.needs_manual_balance, notes: a.notes?.trim() || null };
+}
+export async function insertBankAccount(a: BankAccount): Promise<string> {
+  const { data, error } = await supabase.from("root_bank_accounts").insert({
+    ...editableBankFields(a), corp_code: a.corp_code, bank_code: a.bank_code,
+    bank_name: a.bank_name, account_number: a.account_number, is_active: true,
+  }).select("id").single();
+  if (error) throw bankAccountError(error);
+  return data.id;
+}
+export async function updateBankAccount(a: BankAccount): Promise<void> {
+  const { error } = await supabase.from("root_bank_accounts").update(editableBankFields(a)).eq("id", a.id);
+  if (error) throw bankAccountError(error);
+}
+export async function setBankAccountActive(id: string, active: boolean): Promise<void> {
+  const { error } = await supabase.from("root_bank_accounts").update({ is_active: active }).eq("id", id);
+  if (error) throw bankAccountError(error);
+}
 
 // ============================================================
 // 3. 取引先マスタ

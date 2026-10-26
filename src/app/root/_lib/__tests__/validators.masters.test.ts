@@ -53,19 +53,10 @@ function baseCompany(overrides: Partial<Company> = {}): Company {
 
 function baseBankAccount(overrides: Partial<BankAccount> = {}): BankAccount {
   return {
-    account_id: "ACC-001",
-    company_id: "COMP-001",
-    bank_name: "楽天銀行",
-    bank_code: "0036",
-    branch_name: "第一営業支店",
-    branch_code: "251",
-    account_type: "普通",
-    account_number: "1234567",
-    account_holder: "カブシキガイシャテスト",
-    purpose: null,
-    is_active: true,
-    created_at: "",
-    updated_at: "",
+    id: "uuid", corp_code: "hyuaran", bank_code: "rakuten", bank_name: "楽天銀行",
+    branch_name: "", branch_code: "", account_type: "普通", account_number: "0012345",
+    sub_account_label: null, notes: null, has_csv_export: true, needs_manual_balance: false,
+    is_active: true, created_at: "", updated_at: "",
     ...overrides,
   };
 }
@@ -291,100 +282,14 @@ describe("validateCompany — fiscal end month", () => {
 // 2. validateBankAccount
 // ============================================================
 
-describe("validateBankAccount — happy path", () => {
-  it("accepts a fully valid bank account", () => {
-    const errs = validateBankAccount(baseBankAccount());
-    expect(Object.keys(errs)).toHaveLength(0);
+describe("validateBankAccount", () => {
+  it("accepts actual codes, optional branches and variable length numbers", () => {
+    for (const account_number of ["1", "0012345", "123456789"]) expect(validateBankAccount(baseBankAccount({ account_number, account_type: "貯蓄" }))).toEqual({});
+  });
+  it.each([ ["corp_code", "COMP-001"], ["bank_code", "0036"], ["branch_code", "12"], ["branch_code", "abc"], ["account_type", "その他"], ["account_number", ""], ["account_number", "12a"] ])("rejects %s=%s", (key, value) => {
+    expect(validateBankAccount(baseBankAccount({ [key]: value }))[key]).toBeDefined();
   });
 });
-
-describe("validateBankAccount — account_id format", () => {
-  it("rejects wrong prefix", () => {
-    const errs = validateBankAccount(
-      baseBankAccount({ account_id: "BANK-001" }),
-    );
-    expect(errs.account_id).toBeDefined();
-    expect(errs.account_id).toContain("ACC-");
-  });
-
-  it("rejects too-short numeric part", () => {
-    const errs = validateBankAccount(baseBankAccount({ account_id: "ACC-01" }));
-    expect(errs.account_id).toBeDefined();
-  });
-
-  it("accepts ACC-001 (minimum 3 digits)", () => {
-    const errs = validateBankAccount(
-      baseBankAccount({ account_id: "ACC-001" }),
-    );
-    expect(errs.account_id).toBeUndefined();
-  });
-});
-
-describe("validateBankAccount — digit-length fields", () => {
-  it("rejects bank_code with wrong length (3 digits)", () => {
-    const errs = validateBankAccount(baseBankAccount({ bank_code: "003" }));
-    expect(errs.bank_code).toBeDefined();
-    expect(errs.bank_code).toContain("4桁");
-  });
-
-  it("rejects bank_code with wrong length (5 digits)", () => {
-    const errs = validateBankAccount(baseBankAccount({ bank_code: "00361" }));
-    expect(errs.bank_code).toBeDefined();
-  });
-
-  it("rejects branch_code with wrong length (2 digits)", () => {
-    const errs = validateBankAccount(baseBankAccount({ branch_code: "25" }));
-    expect(errs.branch_code).toBeDefined();
-    expect(errs.branch_code).toContain("3桁");
-  });
-
-  it("rejects account_number with wrong length (6 digits)", () => {
-    const errs = validateBankAccount(
-      baseBankAccount({ account_number: "123456" }),
-    );
-    expect(errs.account_number).toBeDefined();
-    expect(errs.account_number).toContain("7桁");
-  });
-
-  it("rejects account_number with non-digit characters", () => {
-    const errs = validateBankAccount(
-      baseBankAccount({ account_number: "123456A" }),
-    );
-    expect(errs.account_number).toBeDefined();
-  });
-});
-
-describe("validateBankAccount — required fields", () => {
-  it("rejects missing company_id", () => {
-    const errs = validateBankAccount(baseBankAccount({ company_id: "" }));
-    expect(errs.company_id).toBeDefined();
-    expect(errs.company_id).toContain("必須");
-  });
-
-  it("rejects blank bank_name", () => {
-    const errs = validateBankAccount(baseBankAccount({ bank_name: "  " }));
-    expect(errs.bank_name).toBeDefined();
-  });
-
-  it("rejects blank branch_name", () => {
-    const errs = validateBankAccount(baseBankAccount({ branch_name: "" }));
-    expect(errs.branch_name).toBeDefined();
-  });
-
-  it("rejects missing account_type", () => {
-    const errs = validateBankAccount(baseBankAccount({ account_type: "" }));
-    expect(errs.account_type).toBeDefined();
-  });
-
-  it("rejects blank account_holder", () => {
-    const errs = validateBankAccount(baseBankAccount({ account_holder: "" }));
-    expect(errs.account_holder).toBeDefined();
-  });
-});
-
-// ============================================================
-// 3. validateVendor
-// ============================================================
 
 describe("validateVendor — happy path", () => {
   it("accepts a fully valid vendor", () => {
