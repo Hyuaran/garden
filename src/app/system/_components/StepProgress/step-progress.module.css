@@ -1,0 +1,5 @@
+.progress{display:grid;align-items:center;gap:5px;width:100%;min-width:0;margin:0 0 10px}
+.label{grid-column:1 / -1;font-size:13px;color:var(--sub)}
+.cell{display:block;min-width:0;height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.cell[data-step-status=passed],.cell[data-step-status=current],.cell[data-step-status=answered],.fill{background:var(--teal,var(--accent))}
+.cell[data-step-status=passed]{opacity:.68}.cell[data-step-status=current]{height:10px}.fill{display:block;height:100%;border-radius:inherit}

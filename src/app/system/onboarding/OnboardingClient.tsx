@@ -1,5 +1,6 @@
 "use client";
 
+import SharedStepProgress from "../_components/StepProgress/StepProgress";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -14,24 +15,9 @@ type Address = { address: string; addressKana: string };
 type BankChoice = { bankName: string; bankCode: string; expired?: boolean; validTo?: string | null };
 type BranchChoice = { branchName: string; branchCode: string; expired?: boolean; validTo?: string | null };
 
-function StepProgress({ step }: { step: number }) {
-  const total = STEPS.length;
-  const current = step + 1;
-  return <div
-    className={styles.stepProgress}
-    style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}
-    role="progressbar"
-    aria-label={`全${total}画面のうち ${current}画面目`}
-    aria-valuemin={1}
-    aria-valuemax={total}
-    aria-valuenow={current}
-  >
-    <span className={styles.stepProgressLabel}>全{total}画面のうち {current}画面目</span>
-    {Array.from({ length: total }, (_, index) => {
-      const status = index < step ? "passed" : index === step ? "current" : "upcoming";
-      return <span className={styles.stepProgressCell} data-step-status={status} aria-hidden="true" key={STEPS[index]} />;
-    })}
-  </div>;
+function StepProgress({step}:{step:number}) {
+ const label=`全${STEPS.length}画面のうち ${step+1}画面目`;
+ return <SharedStepProgress total={STEPS.length} value={step+1} step={step} label={label} name={label} className={styles.stepProgress}/>;
 }
 
 export default function OnboardingClient({ initial, proxy }: { initial: OnboardingRecord; proxy?: { employeeId: string; employeeName: string; actorName: string; sensitive: boolean } }) {

@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import SystemTabs, { TabActionButton } from "../_components/SystemTabs/SystemTabs";
+import StepProgress from "../_components/StepProgress/StepProgress";
 import DataTable, { type DataColumn } from "../_components/DataTable/DataTable";
 import { ModuleIcon, MODULE_META } from "@/app/_components/ModuleIcon/ModuleIcon";
 import type { GardenModuleId } from "@/app/_components/layout/GardenShell/garden-shell-config";
@@ -12,20 +14,30 @@ async function post(body: unknown) { const r=await fetch(endpoint,{method:"POST"
 function Icon({id}:{id:string}) { if(id!=="system" && id!=="common" && id!=="all") return <ModuleIcon id={id as GardenModuleId}/>; return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">{id==="system"?<><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 9v12"/></>:id==="common"?<><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18"/></>:<path d="M4 6h16M4 12h16M4 18h16"/>}</svg>; }
 const moduleName=(id:string)=>modules.find(m=>m.id===id)?.name || id;
 const date=(s:string|null)=>s?new Date(s).toLocaleString("ja-JP"):"";
-export default function BoardClient() {
+export default function BoardClient({userId}:{userId?:string}) {
  const [rows,setRows]=useState<Question[]>([]),[tab,setTab]=useState("all"),[done,setDone]=useState(false),[error,setError]=useState(""),[adding,setAdding]=useState(false),[target,setTarget]=useState<string|null>(null);
  async function reload(){const r=await fetch(endpoint,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error);setRows(d.questions);}
  useEffect(()=>{void reload().catch(e=>setError(e.message));},[]);
- useEffect(()=>{if(target && tab!=="all"){document.getElementById(`question-${target}`)?.scrollIntoView?.({behavior:"smooth",block:"start"});document.getElementById(`question-${target}`)?.focus();setTarget(null);}},[target,tab,rows]);
+ useEffect(()=>{if(target && tab!=="all"){const card=document.getElementById(`question-${target}`);const group=card?.closest("details");if(group)group.open=true;card?.scrollIntoView?.({behavior:"smooth",block:"start"});card?.focus();setTarget(null);}},[target,tab,rows]);
  const visible=rows.filter(q=>done || q.status!=="done"), selected=rows.filter(q=>q.module===tab);
  const columns:DataColumn<Question>[]=[{id:"module",label:"モジュール",type:"text",value:q=>moduleName(q.module),render:q=><span className={styles.module}><Icon id={q.module}/>{moduleName(q.module)}</span>},{id:"title",label:"質問",type:"text",value:q=>q.title},{id:"status",label:"状態",type:"text",value:q=>statuses[q.status]},...([['created_at','作成日'],['answered_at','回答日'],['done_at','完了日']] as const).map(([id,label])=>({id,label,type:"date" as const,value:(q:Question)=>q[id]||"",render:(q:Question)=>date(q[id])}))];
- return <section className={styles.board}><SystemBreadcrumb items={[{label:"開発ボード"}]}/><header><h1>開発ボード</h1><button className={styles.addButton} onClick={()=>setAdding(true)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>質問を足す</button></header>
- <div role="tablist" aria-label="モジュール" className={styles.tabs}>{[{id:"all",name:"一覧"},...modules].map(m=><button role="tab" aria-selected={tab===m.id} key={m.id} disabled={m.id!=="all" && !rows.some(q=>q.module===m.id)} title={m.id==="system"?"社内システム":m.id==="common"?"共通（外部連携・インフラ）":m.id==="all"?"一覧":MODULE_META[m.id as GardenModuleId].role} onClick={()=>setTab(m.id)}><Icon id={m.id}/><small>{m.name}</small></button>)}</div>
+ return <section className={styles.board}><SystemBreadcrumb items={[{label:"開発ボード"}]}/><header><h1>開発ボード</h1></header>
+ <SystemTabs aria-label="モジュール" className={styles.tabs} actions={<TabActionButton label="質問を足す" icon="plus" pressed={adding} onClick={()=>setAdding(true)}/>}>{[{id:"all",name:"一覧"},...modules].map(m=><button role="tab" aria-selected={tab===m.id} key={m.id} disabled={m.id!=="all" && !rows.some(q=>q.module===m.id)} title={m.id==="system"?"社内システム":m.id==="common"?"共通（外部連携・インフラ）":m.id==="all"?"一覧":MODULE_META[m.id as GardenModuleId].role} onClick={()=>setTab(m.id)}><Icon id={m.id}/><small>{m.name}</small></button>)}</SystemTabs>
  {error && <p role="alert">{error}</p>}
- {tab==="all"?<DataTable rows={visible} columns={columns} rowKey={q=>q.id} searchText={q=>`${moduleName(q.module)} ${q.title} ${q.body} ${statuses[q.status]}`} defaultSort={{id:"created_at",direction:"desc"}} searchPlaceholder="モジュール・質問・状態" onRowClick={q=>{setTab(q.module);setTarget(q.id);}}/>:<><div className={styles.progress}><progress max={selected.length || 1} value={selected.filter(q=>q.answered_at).length}/><span>{selected.length}件のうち {selected.filter(q=>q.answered_at).length}件が回答済み</span></div>{orderedQuestions(visible.filter(q=>q.module===tab)).map(q=><QuestionCard key={q.id} q={q} saved={async warning=>{await reload();setError(warning || "");}}/>)}</>}
+ {tab==="all"?<DataTable rows={visible} columns={columns} rowKey={q=>q.id} searchText={q=>`${moduleName(q.module)} ${q.title} ${q.body} ${statuses[q.status]}`} defaultSort={{id:"created_at",direction:"desc"}} searchPlaceholder="モジュール・質問・状態" onRowClick={q=>{setTab(q.module);setTarget(q.id);}}/>:<><div className={styles.progress}><StepProgress total={selected.length} value={selected.filter(q=>q.status!=="open").length} name={selected.some(q=>q.status==="open")?`残り ${selected.filter(q=>q.status==="open").length}件（全${selected.length}件）`:`残りなし（全${selected.length}件）`} label={<>{selected.some(q=>q.status==="open")?<>残り <strong>{selected.filter(q=>q.status==="open").length}</strong>件</>:"残りなし"}（全{selected.length}件）</>}/></div>
+ {orderedQuestions(selected.filter(q=>q.status==="open")).map(q=><QuestionCard key={q.id} q={q} saved={async warning=>{await reload();setError(warning || "");}}/>)}
+ <QuestionGroup key={`${userId}:${tab}:answered`} title="回答済み" rows={selected.filter(q=>q.status==="answered" || q.status==="in_progress")} storageKey={userId?`dev-board:${userId}:${tab}:answered`:undefined} target={target} saved={async warning=>{await reload();setError(warning || "");}}/>
+ {done && <QuestionGroup key={`${userId}:${tab}:done`} title="完了" rows={selected.filter(q=>q.status==="done")} storageKey={userId?`dev-board:${userId}:${tab}:done`:undefined} target={target} saved={async warning=>{await reload();setError(warning || "");}}/>}</>}
  <label className={styles.showDone}><input type="checkbox" checked={done} onChange={e=>setDone(e.target.checked)}/>完了も表示</label>
  {adding && <CreateQuestion close={()=>setAdding(false)} saved={async()=>{await reload();setAdding(false);}}/>}
  </section>;
+}
+function QuestionGroup({title,rows,storageKey,target,saved}:{title:string;rows:Question[];storageKey?:string;target:string|null;saved:(warning?:string)=>Promise<void>}) {
+ const [open,setOpen]=useState(false);
+ useEffect(()=>{try{setOpen(Boolean(storageKey && localStorage.getItem(storageKey)==="true"));}catch{}},[storageKey]);
+ useEffect(()=>{if(target && rows.some(q=>q.id===target))setOpen(true);},[target,rows]);
+ if(!rows.length)return null;
+ return <details className={styles.group} open={open} onToggle={e=>{const next=e.currentTarget.open;setOpen(next);try{if(storageKey)localStorage.setItem(storageKey,String(next));}catch{}}}><summary><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true"><rect x="2" y="2" width="16" height="16" rx="2"/><path d="M5 10h10"/><path className={styles.plusVertical} d="M10 5v10"/></svg>{title}（{rows.length}件）</summary>{orderedQuestions(rows).map(q=><QuestionCard key={q.id} q={q} saved={saved}/>)}</details>;
 }
 function QuestionCard({q,saved}:{q:Question;saved:(warning?:string)=>Promise<void>}) {
  const [editing,setEditing]=useState(!q.answered_at),[choice,setChoice]=useState(q.answer_choice||""),[text,setText]=useState(""),[preview,setPreview]=useState<{raw:string;text:string;warning?:string}|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false);

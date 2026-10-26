@@ -1,4 +1,4 @@
-﻿import { fireEvent, render, screen, cleanup } from "@testing-library/react";
+import { fireEvent, render, screen, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { FontSizeProvider } from "@/app/_lib/FontSizeProvider";
@@ -47,7 +47,7 @@ it("restores before hydration from chunked cookie session without network", () =
   document.cookie = `${key}.0=; max-age=0`; document.cookie = `${key}.1=; max-age=0`;
 });
 it("installs controls in desktop and mobile shells and resets print zoom", () => {
-  for (const file of ["system/_components/ShachoShell/ShachoShell.tsx", "bud/_components/BudShachoShell/BudShachoShell.tsx", "root/_components/RootShell.tsx", "rill/_components/RillShachoShell.tsx"]) {
+  for (const file of ["system/_components/ShachoShell/ShachoShell.tsx", "bud/_components/BudShachoShell/BudShachoShell.tsx", "_components/layout/GardenShell/ModuleShell.tsx", "rill/_components/RillShachoShell.tsx"]) {
     expect(readFileSync(`src/app/${file}`, "utf8").match(/<FontSizeButton /g)).toHaveLength(2);
   }
   expect(readFileSync("src/app/globals.css", "utf8")).toMatch(/@media print\s*\{\s*html\s*\{\s*zoom:\s*1\s*!important/);

@@ -17,10 +17,6 @@
 .warning { display:block; padding:10px; color:var(--warning-ink); background:var(--warning-bg); border-radius:8px; font-size:13px; font-weight:400; }
 .hint { font-size:13px; font-weight:400; }
 .stepProgress { display:grid; align-items:center; gap:5px; width:100%; min-width:0; margin:0 0 10px; }
-.stepProgressCell { display:block; min-width:0; height:6px; border-radius:999px; background:var(--line); }
-.stepProgressCell[data-step-status="passed"],.stepProgressCell[data-step-status="current"] { background:var(--accent); }
-.stepProgressCell[data-step-status="passed"] { opacity:.68; }
-.stepProgressCell[data-step-status="current"] { height:10px; }
 .noticeLines { white-space:pre-wrap; margin:0; }
 .actions { display:flex; flex-wrap:wrap; gap:10px; }
 .pageShell button,.button { display:inline-flex; align-items:center; justify-content:center; max-width:100%; min-height:44px; padding:9px 15px; border:1px solid var(--accent); border-radius:10px; color:var(--accent); background:var(--card); font:inherit; font-weight:700; cursor:pointer; text-decoration:none; }
@@ -100,7 +96,6 @@
 .hireConfirmDialog .hireRowActions { margin-top:16px; }
 
 .stepProgress { position:sticky; top:0; z-index:5; padding:12px 0; background:var(--card); }
-.stepProgressLabel { grid-column:1 / -1; font-size:13px; color:var(--sub); }
 @media(max-width:760px) { :global(div:has(> header) > main) .stepProgress { top:56px; } }
 
 .hireError { color:var(--danger,#c8333b); }

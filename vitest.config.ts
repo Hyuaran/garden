@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   test: {
+    // 全スイート実行時の jsdom ワーカー数を抑え、メモリ使用量を安定させる。
+    maxWorkers: 4,
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     globals: true,
