@@ -61,7 +61,7 @@ export async function GET(request: Request) {
  }
  const visibleBanks = accounts.data.filter(a => a.kind === "bank" && !a.hidden);
  const arrivalByAccount = Object.fromEntries(visibleBanks.map(a => [a.mf_account_id, arrivalTotals(arrivals, [a.mf_account_id])]));
- return NextResponse.json({ yearsByAccount, arrivalByAccount, arrivalTotal: arrivalTotals(arrivals, visibleBanks.map(a => a.mf_account_id)), employeeId: auth.employeeId, groupViewers: groups.data, accounts: accounts.data, transactions: transactions.filter(t => accounts.data.some(a => a.mf_account_id === t.mf_account_id)), employees, admin: auth.admin, axes: axes.data, snapshots: snapshots.data }, { headers: { "Cache-Control": "no-store" } });
+ return NextResponse.json({ yearsByAccount, arrivalByAccount, arrivalTotal: { ...arrivalTotals(arrivals, visibleBanks.map(a => a.mf_account_id)), byAccount: arrivalByAccount }, employeeId: auth.employeeId, groupViewers: groups.data, accounts: accounts.data, transactions: transactions.filter(t => accounts.data.some(a => a.mf_account_id === t.mf_account_id)), employees, admin: auth.admin, axes: axes.data, snapshots: snapshots.data }, { headers: { "Cache-Control": "no-store" } });
 }
 export async function PATCH(request: Request) {
   const auth = await mfAccess();

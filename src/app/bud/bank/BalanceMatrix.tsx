@@ -27,7 +27,7 @@ export default function BalanceMatrix({ accounts, linkAlerts = [], arrivalTotal,
  const current = useRef(order);
  const queue = useRef(Promise.resolve());
  useEffect(() => { setOrder(axes); current.current = axes; }, [axes]);
- const matrix = buildMatrix(accounts, order, snapshots);
+ const matrix = buildMatrix(accounts, order, snapshots, arrivalTotal?.byAccount);
  function move(axis: AxisOrder["axis"], key: string, target: string) {
   if (key === target) return;
   const visible = axis === "corp" ? matrix.corps : matrix.banks;

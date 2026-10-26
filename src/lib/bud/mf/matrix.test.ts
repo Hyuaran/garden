@@ -34,3 +34,9 @@ describe("法人×銀行", () => {
   expect(buildMatrix(visibleAccounts(accounts,"e1",true)).cell().balance).toBe(200);
  });
 });
+it("uses today's dated transactions for cell deltas when given (not the change since this morning's balance)", () => {
+  const m = buildMatrix([account("1"), account("2", { name: "みずほ銀行｜CR", balance: 50 })], [], [baseline("1", 500)], { "1": { delta: -30 } });
+  expect(m.cell("HR").delta).toBe(-30);
+  expect(m.cell("CR").delta).toBe(0);
+  expect(m.cell().delta).toBe(-30);
+});

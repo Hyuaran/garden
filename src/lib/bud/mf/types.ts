@@ -19,4 +19,4 @@ export type AxisOrder = { axis: "corp" | "bank"; key: string; sort_order: number
 export type BalanceSnapshot = { mf_account_id: string; snapshot_date: string; balance: number; taken_at: string };
 
 export type Arrival = { mf_transaction_id: string; mf_account_id: string; date: string; side: string; value: number; first_seen_at: string };
-export type ArrivalTotals = { income: number; expense: number; delta: number };
+export type ArrivalTotals = { income: number; expense: number; delta: number; byAccount?: Record<string, { income: number; expense: number; delta: number }> };

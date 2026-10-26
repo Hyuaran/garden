@@ -97,8 +97,8 @@ it("returns paginated transactions dated today (Japan) for visible banks only", 
   const body=await result.json();
   expect(eqs).toContainEqual(["date","2026-10-21"]); expect(gt).not.toHaveBeenCalledWith("first_seen_at",expect.anything());
   expect(ranges).toEqual([0,1000]);
-  expect(body.arrivalTotal).toEqual({income:1000,expense:70,delta:930});
-  expect(body.arrivalByAccount).toEqual({a:body.arrivalTotal});
+  expect(body.arrivalTotal).toMatchObject({income:1000,expense:70,delta:930});
+  expect(body.arrivalByAccount).toEqual({a:{income:1000,expense:70,delta:930}}); expect(body.arrivalTotal.byAccount).toEqual(body.arrivalByAccount);
  } finally {vi.useRealTimers();}
 });
 
