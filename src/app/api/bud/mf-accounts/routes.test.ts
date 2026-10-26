@@ -79,13 +79,13 @@ it("requires an explicit timezone and anchor amount for arrival settings", async
  for(const change of [{anchor_at:null},{anchor_at:"2026-10-21T12:00:00"},{anchor_balance:null}]) expect((await PATCH(request({...body,...change}))).status).toBe(400);
 });
 
-it("returns paginated arrivals since Japanese midnight for visible banks only", async () => {
+it("returns paginated transactions dated today (Japan) for visible banks only", async () => {
  vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-21T03:00:00Z"));
  try {
-  const gt=vi.fn(); const ranges: number[]=[];
+  const gt=vi.fn(); const eqs: unknown[][]=[]; const ranges: number[]=[];
   const accounts=[{mf_account_id:"a",visible_employee_ids:["e"],sort_order:0,kind:"bank",hidden:false,fiscal_start_date:"2026-04-01"},{mf_account_id:"hidden",kind:"bank",hidden:true}];
   const db={from:(table:string)=>{
-   const q:any={select:()=>q,order:()=>q,gte:()=>q,lte:()=>q,eq:()=>q,
+   const q:any={select:()=>q,order:()=>q,gte:()=>q,lte:()=>q,eq:(...args:unknown[])=>{eqs.push(args);return q;},
     gt:(...args:unknown[])=>{gt(...args);return q;},
     range:async(offset:number)=>{if(table!=="bud_mf_bank_tx_seen")return {data:[]};ranges.push(offset);return {data:offset===0?Array.from({length:1000},(_,i)=>({mf_transaction_id:String(i),mf_account_id:"a",date:"2026-10-20",side:"INCOME",value:1,first_seen_at:"2026-10-20T15:01:00Z"})):[{mf_account_id:"a",side:"EXPENSE",value:70},{mf_account_id:"hidden",side:"INCOME",value:999}]};},
     then:(resolve:(v:unknown)=>unknown)=>Promise.resolve({data:table==="bud_mf_accounts"?accounts:[]}).then(resolve)};
@@ -95,7 +95,7 @@ it("returns paginated arrivals since Japanese midnight for visible banks only", 
   const result=await accountsGet(new Request("https://garden.test/api/bud/mf-accounts"));
   expect(result.status).toBe(200);
   const body=await result.json();
-  expect(gt).toHaveBeenCalledWith("first_seen_at","2026-10-20T15:00:00.000Z");
+  expect(eqs).toContainEqual(["date","2026-10-21"]); expect(gt).not.toHaveBeenCalledWith("first_seen_at",expect.anything());
   expect(ranges).toEqual([0,1000]);
   expect(body.arrivalTotal).toEqual({income:1000,expense:70,delta:930});
   expect(body.arrivalByAccount).toEqual({a:body.arrivalTotal});
