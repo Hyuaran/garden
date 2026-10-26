@@ -39,7 +39,11 @@ export default function HireCandidatesClient({children,userId}:{children:ReactNo
  useEffect(()=>{load().catch(e=>setMessage(e.message));},[]);
  useEffect(()=>{if(!busy)return; const timer=setInterval(()=>{load().catch(()=>{});},1200);return()=>clearInterval(timer);},[busy]);
  const run = async (action:()=>Promise<void>)=>{setBusy(true);setMessage("");try{await action();await load();}catch(e){setMessage(e instanceof Error?e.message:"処理できませんでした");}finally{setBusy(false);}};
- const openForm = (row?:HireCandidate)=>run(async()=>{setOptions(await api("/kot-options"));setEditing(row?.id ?? null);setForm(row ?? {last_name:"",first_name:"",last_name_kana:"",first_name_kana:"",birthday:"",hire_date:"",gender:"male",employment_type:"アルバイト",company_id:"",kot_division_code:"104",kot_type_code:""});});
+ // KOT の選択肢は画面を開いた時に先に読んでおく（行を押してから小窓が出るまで 5 秒かかったため 2026-10-26）
+ const optionsRequest=useRef<Promise<Options>|null>(null);
+ const loadOptions=()=>optionsRequest.current ??= api("/kot-options").then((o:Options)=>{setOptions(o);return o;}).catch((e:unknown)=>{optionsRequest.current=null;throw e;});
+ useEffect(()=>{loadOptions().catch(()=>{});},[]);
+ const openForm = (row?:HireCandidate)=>{setMessage("");setEditing(row?.id ?? null);setForm(row ?? {last_name:"",first_name:"",last_name_kana:"",first_name_kana:"",birthday:"",hire_date:"",gender:"male",employment_type:"アルバイト",company_id:"",kot_division_code:"104",kot_type_code:""});if(!options)loadOptions().catch(e=>setMessage(e instanceof Error?e.message:"選択肢を読み込めませんでした"));};
  const set=(key:keyof HireInput,value:string)=>setForm(old=>old?{...old,[key]:value}:null);
  const field=(key:keyof HireInput,label:string,type="text")=><label key={key}>{label}<input required type={type} value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}/></label>;
  const choice=(key:keyof HireInput,label:string,opts:{value:string;label:string}[])=><label key={key}>{label}<select required value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}><option value="" disabled>選んでください</option>{opts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;

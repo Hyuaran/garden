@@ -75,7 +75,7 @@ it("confirms the persisted employee number and does not hire on cancellation",as
  await waitFor(()=>expect(screen.getByRole("button",{name:"やめる"})).toBeEnabled());fireEvent.click(screen.getByRole("button",{name:"やめる"}));
  expect(fetch.mock.calls.filter(([,init])=>init?.method==="POST")).toHaveLength(1);
  expect(fetch.mock.calls.find(([,init])=>init?.method==="POST")?.[1]?.body).toBe(JSON.stringify({prepare:true}));
- expect(fetch.mock.calls.some(([url])=>url.endsWith("kot-options"))).toBe(false);
+ expect(screen.queryByRole("heading",{name:"入社予定者を修正"})).not.toBeInTheDocument();
 });
 
 it("opens the row editor and registration dialog, closes on cancel and backdrop, and searches kana",async()=>{
@@ -107,6 +107,6 @@ it("declines without opening the editor and retains the no_show database value",
  fireEvent.click(await screen.findByRole("button",{name:"辞退"}));
  await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/c",expect.objectContaining({method:"PATCH",body:JSON.stringify({status:"no_show"})})));
  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
- expect(fetch.mock.calls.some(([url])=>url.endsWith("kot-options"))).toBe(false);
+ expect(screen.queryByRole("heading",{name:"入社予定者を修正"})).not.toBeInTheDocument();
 });
 

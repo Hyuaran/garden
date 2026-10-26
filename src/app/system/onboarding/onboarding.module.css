@@ -70,8 +70,8 @@
 .hireGrid { display:grid; grid-template-columns:1fr; gap:16px; margin:20px 0; }
 @container (min-width:540px) { .hireGrid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 .hireGrid label:not(:has(> input[type="radio"])) { display:flex; flex-direction:column; gap:8px; text-align:left; font-size:13px; color:var(--sub, inherit); }
-.hireGrid select { width:100%; }
-.hireGrid input:not([type="radio"]) { border:1px solid var(--line, #d8d2c5); padding:10px; border-radius:8px; color:var(--ink, inherit); background:var(--card, transparent); font:inherit; font-size:15px; text-align:left; min-height:44px; box-sizing:border-box; width:100%; }
+.hireGrid select { width:100%; font-size:15px; }
+.hireGrid input:not([type="radio"]) { border:1px solid var(--line, #d8d2c5); padding:0 12px; border-radius:8px; color:var(--ink, inherit); background:var(--card, transparent); font:inherit; font-size:15px; text-align:left; height:44px; box-sizing:border-box; width:100%; }
 
 .hireCandidates { width:100%; min-width:0; max-width:none; }
 .hireChecklist { display:grid; gap:10px; min-width:320px; text-align:left; }
@@ -92,6 +92,6 @@
 .hireCandidates .hireRowActions > button { min-height:44px; padding:9px 15px; border-radius:10px; font:inherit; cursor:pointer; }
 .hireCandidates .hireRowActions .hireDecline { border:1px solid var(--danger,#c8333b); color:var(--danger,#c8333b); background:var(--card,#fff); }
 .hireCandidates .hireRowActions .hirePrimary { border:1px solid var(--teal,#0b7e7a); color:#fff; background:var(--teal,#0b7e7a); }
-.hireDialog { width:calc(100% - 32px); max-width:780px; max-height:calc(100dvh - 32px); margin:auto; overflow:auto; color:var(--ink,#17212e); box-sizing:border-box; }
+.hireDialog { width:calc(100% - 32px); max-width:780px; max-height:calc(100dvh / var(--garden-zoom, 1) - 32px); margin:auto; overflow:auto; color:var(--ink,#17212e); box-sizing:border-box; }
 .hireDialog::backdrop { background:rgba(16,35,63,.45); }
 .hireDialog .hireGrid > label { min-width:0; }
