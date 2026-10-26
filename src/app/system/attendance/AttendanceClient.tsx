@@ -96,8 +96,8 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
         </section>
       </>}
     </main>
-    {extensionDialog && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !extensionDialog.saving) setExtensionDialog(null); }}>
-      <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="extension-dialog-title" tabIndex={-1} ref={dialogRef}>
+    {extensionDialog && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !extensionDialog.saving) setExtensionDialog(null); }} data-garden-modal="overlay">
+      <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="extension-dialog-title" tabIndex={-1} ref={dialogRef} data-garden-modal="panel">
         <h2 id="extension-dialog-title">出勤</h2>
         <label className={styles.extensionField}>今日の内線番号
           <input
@@ -113,17 +113,17 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
         </label>
         <p className={styles.dialogNote}>座った席の電話機の内線（4 桁）です</p>
         {extensionDialog.error && <p className={styles.error} role="alert">{extensionDialog.error}</p>}
-        <div className={styles.dialogActions}>
-          <button type="button" className={styles.secondary} onClick={() => setExtensionDialog(null)} disabled={extensionDialog.saving}>やめる</button>
-          <button type="button" onClick={() => void submitExtensionPunch()} disabled={extensionDialog.saving}>出勤する</button>
+        <div className={styles.dialogActions} data-modal-actions>
+          <button type="button" className={styles.secondary} onClick={() => setExtensionDialog(null)} disabled={extensionDialog.saving} data-modal-action="secondary">やめる</button>
+          <button type="button" onClick={() => void submitExtensionPunch()} disabled={extensionDialog.saving} data-modal-action="secondary">出勤する</button>
         </div>
       </div>
     </div>}
-    {modal && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && modal.phase !== "saving") setModal(null); }}>
-      <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="punch-dialog-title" tabIndex={-1} ref={dialogRef}>
+    {modal && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && modal.phase !== "saving") setModal(null); }} data-garden-modal="overlay">
+      <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="punch-dialog-title" tabIndex={-1} ref={dialogRef} data-garden-modal="panel">
         {modal.phase === "saving" && <><div className={styles.spinner} aria-hidden="true"/><h2 id="punch-dialog-title">{PUNCH_LABELS[modal.type]}を記録しています…</h2><p>保存が完了するまでお待ちください。</p></>}
-        {modal.phase === "success" && <><div className={styles.successMark}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div><h2 id="punch-dialog-title">{PUNCH_LABELS[modal.type]}を記録しました</h2><p className={styles.savedTime}>{formatTime(modal.punchedAt!)}</p><button type="button" onClick={() => setModal(null)}>閉じる</button></>}
-        {modal.phase === "error" && <><h2 id="punch-dialog-title">記録できませんでした</h2><p>{modal.message ? `${modal.message}。もう一度押してください。` : "記録できませんでした。もう一度押してください。"}</p><div className={styles.dialogActions}><button type="button" onClick={() => void savePunch(modal.type, modal.clientId, modal.extension)}>再試行</button><button type="button" className={styles.secondary} onClick={() => setModal(null)}>閉じる</button></div></>}
+        {modal.phase === "success" && <><div className={styles.successMark}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div><h2 id="punch-dialog-title">{PUNCH_LABELS[modal.type]}を記録しました</h2><p className={styles.savedTime}>{formatTime(modal.punchedAt!)}</p><button type="button" onClick={() => setModal(null)} data-modal-action="secondary">閉じる</button></>}
+        {modal.phase === "error" && <><h2 id="punch-dialog-title">記録できませんでした</h2><p>{modal.message ? `${modal.message}。もう一度押してください。` : "記録できませんでした。もう一度押してください。"}</p><div className={styles.dialogActions} data-modal-actions><button type="button" onClick={() => void savePunch(modal.type, modal.clientId, modal.extension)}>再試行</button><button type="button" className={styles.secondary} onClick={() => setModal(null)} data-modal-action="secondary">閉じる</button></div></>}
       </div>
     </div>}
   </div>;

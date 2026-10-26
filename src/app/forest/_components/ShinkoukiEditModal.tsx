@@ -9,7 +9,6 @@
  */
 import { useEffect, useState } from "react";
 
-import { C } from "../_constants/colors";
 import type { Company, Shinkouki } from "../_constants/companies";
 import { NumberUpdateForm } from "./NumberUpdateForm";
 import { PeriodRolloverForm } from "./PeriodRolloverForm";
@@ -58,18 +57,18 @@ export function ShinkoukiEditModal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.45)",
+        background: "var(--modal-backdrop)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 100,
         padding: 16,
       }}
-    >
+     data-garden-modal="overlay">
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff",
+          background: "var(--card)",
           borderRadius: 16,
           padding: 24,
           width: "100%",
@@ -78,14 +77,14 @@ export function ShinkoukiEditModal({
           overflowY: "auto",
           boxShadow: "0 24px 48px rgba(0,0,0,0.2)",
         }}
-      >
+       data-garden-modal="panel">
         {/* ヘッダー */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
           <div style={{ width: 12, height: 12, borderRadius: "50%", background: company.color }} />
-          <div style={{ flex: 1, fontSize: 16, fontWeight: 600, color: C.textDark }}>
+          <div style={{ flex: 1, fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>
             {company.short} 第{shinkouki.ki}期
           </div>
-          <div style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: C.mintBg, color: C.midGreen }}>
+          <div style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "var(--line)", color: "var(--teal)" }}>
             進行期
           </div>
           <button
@@ -95,7 +94,7 @@ export function ShinkoukiEditModal({
               border: "none",
               background: "transparent",
               fontSize: 20,
-              color: C.textMuted,
+              color: "var(--ink)",
               cursor: "pointer",
               lineHeight: 1,
             }}
@@ -105,13 +104,13 @@ export function ShinkoukiEditModal({
         </div>
 
         {/* ナビ */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 16, fontSize: 12, color: C.textSub }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 16, fontSize: 12, color: "var(--ink)" }}>
           <button
             type="button"
             onClick={() => onNavigate(-1)}
             disabled={navIndex.current === 0}
             aria-label="前の法人"
-            style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 16, color: C.textSub }}
+            style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 16, color: "var(--ink)" }}
             title="前の法人 (Ctrl+↑)"
           >
             ▲
@@ -124,7 +123,7 @@ export function ShinkoukiEditModal({
             onClick={() => onNavigate(1)}
             disabled={navIndex.current === navIndex.total - 1}
             aria-label="次の法人"
-            style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 16, color: C.textSub }}
+            style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 16, color: "var(--ink)" }}
             title="次の法人 (Ctrl+↓)"
           >
             ▼
@@ -132,7 +131,7 @@ export function ShinkoukiEditModal({
         </div>
 
         {/* タブ */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: `1px solid ${C.mintBg}` }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: `1px solid ${"var(--line)"}` }}>
           <button
             type="button"
             onClick={() => setTab("numbers")}
@@ -140,13 +139,13 @@ export function ShinkoukiEditModal({
               padding: "10px 16px",
               border: "none",
               background: "transparent",
-              borderBottom: tab === "numbers" ? `2px solid ${C.midGreen}` : "2px solid transparent",
-              color: tab === "numbers" ? C.midGreen : C.textSub,
+              borderBottom: tab === "numbers" ? `2px solid ${"var(--teal)"}` : "2px solid transparent",
+              color: tab === "numbers" ? "var(--teal)" : "var(--ink)",
               fontSize: 14,
               fontWeight: tab === "numbers" ? 600 : 400,
               cursor: "pointer",
             }}
-          >
+           data-modal-action="primary">
             📊 数値更新
           </button>
           <button
@@ -156,8 +155,8 @@ export function ShinkoukiEditModal({
               padding: "10px 16px",
               border: "none",
               background: "transparent",
-              borderBottom: tab === "rollover" ? `2px solid ${C.midGreen}` : "2px solid transparent",
-              color: tab === "rollover" ? C.midGreen : C.textSub,
+              borderBottom: tab === "rollover" ? `2px solid ${"var(--teal)"}` : "2px solid transparent",
+              color: tab === "rollover" ? "var(--teal)" : "var(--ink)",
               fontSize: 14,
               fontWeight: tab === "rollover" ? 600 : 400,
               cursor: "pointer",

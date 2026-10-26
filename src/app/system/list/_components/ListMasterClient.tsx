@@ -1007,8 +1007,8 @@ function SaveConditionModal({
 
   if (!open) return null;
   return createPortal(
-    <div className={styles.modalBackdrop} onMouseDown={onClose}>
-      <section className={styles.conditionModal} aria-modal="true" role="dialog" aria-labelledby="condition-modal-heading" onMouseDown={(event) => event.stopPropagation()}>
+    <div className={styles.modalBackdrop} onMouseDown={onClose} data-garden-modal="overlay">
+      <section className={styles.conditionModal} aria-modal="true" role="dialog" aria-labelledby="condition-modal-heading" onMouseDown={(event) => event.stopPropagation()} data-garden-modal="panel">
         <div className={styles.modalHeader}>
           <h2 id="condition-modal-heading">条件を保存</h2>
           <button type="button" className={styles.modalCloseButton} onClick={onClose} aria-label="閉じる">
@@ -1020,7 +1020,7 @@ function SaveConditionModal({
             条件名
             <input value={conditionName} onChange={(event) => onNameChange(event.target.value)} />
           </label>
-          <button type="button" onClick={onSave} disabled={busy || conditionName.trim() === ""}>
+          <button type="button" onClick={onSave} disabled={busy || conditionName.trim() === ""} data-modal-action="primary">
             保存
           </button>
         </div>
@@ -1038,7 +1038,7 @@ function SaveConditionModal({
               <button type="button" onClick={() => onLoad(item)} disabled={busy}>
                 読み込む
               </button>
-              <button type="button" className={styles.secondaryButton} onClick={() => onDelete(item.id)} disabled={busy}>
+              <button type="button" className={styles.secondaryButton} onClick={() => onDelete(item.id)} disabled={busy} data-modal-action="danger">
                 削除
               </button>
             </div>
@@ -1078,8 +1078,8 @@ function ConfirmActionModal({
 
   if (!open) return null;
   return createPortal(
-    <div className={styles.modalBackdrop} onMouseDown={busy ? undefined : onClose}>
-      <section className={styles.conditionModal} aria-modal="true" role="dialog" aria-labelledby="confirm-modal-heading" onMouseDown={(event) => event.stopPropagation()}>
+    <div className={styles.modalBackdrop} onMouseDown={busy ? undefined : onClose} data-garden-modal="overlay">
+      <section className={styles.conditionModal} aria-modal="true" role="dialog" aria-labelledby="confirm-modal-heading" onMouseDown={(event) => event.stopPropagation()} data-garden-modal="panel">
         <div className={styles.modalHeader}>
           <h2 id="confirm-modal-heading">{title}</h2>
           <button type="button" className={styles.modalCloseButton} onClick={onClose} aria-label="閉じる" disabled={busy}>
@@ -1087,8 +1087,8 @@ function ConfirmActionModal({
           </button>
         </div>
         <div className={styles.modalBody}>{children}</div>
-        <div className={styles.modalActions}>
-          <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={busy}>
+        <div className={styles.modalActions} data-modal-actions>
+          <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={busy} data-modal-action="secondary">
             やめる
           </button>
           <button type="button" onClick={onConfirm} disabled={busy}>
@@ -1130,8 +1130,8 @@ function InternalBlockReleaseModal({
 
   if (!row) return null;
   return createPortal(
-    <div className={styles.modalBackdrop} onMouseDown={busy ? undefined : onClose}>
-      <section className={styles.conditionModal} aria-modal="true" role="dialog" aria-labelledby="internal-block-release-heading" onMouseDown={(event) => event.stopPropagation()}>
+    <div className={styles.modalBackdrop} onMouseDown={busy ? undefined : onClose} data-garden-modal="overlay">
+      <section className={styles.conditionModal} aria-modal="true" role="dialog" aria-labelledby="internal-block-release-heading" onMouseDown={(event) => event.stopPropagation()} data-garden-modal="panel">
         <div className={styles.modalHeader}>
           <h2 id="internal-block-release-heading">自社アポ禁を解除する</h2>
           <button type="button" className={styles.modalCloseButton} onClick={onClose} aria-label="閉じる" disabled={busy}>
@@ -1162,8 +1162,8 @@ function InternalBlockReleaseModal({
         </label>
         <p className={styles.modalHint}>例：本人から再架電の了承あり／登録間違い</p>
         {error && <p className={styles.modalError}>{error}</p>}
-        <div className={styles.modalActions}>
-          <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={busy}>
+        <div className={styles.modalActions} data-modal-actions>
+          <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={busy} data-modal-action="secondary">
             やめる
           </button>
           <button type="button" onClick={onSubmit} disabled={busy || reason.trim() === ""}>

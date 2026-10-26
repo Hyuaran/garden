@@ -755,8 +755,8 @@ function DetailModal({
   onClose: () => void;
 }) {
   return (
-    <div style={modalBackdrop} role="dialog" aria-modal="true" aria-label={mode === "return" ? "差戻し" : "領収書詳細"}>
-      <div style={modalCard}>
+    <div style={modalBackdrop} role="dialog" aria-modal="true" aria-label={mode === "return" ? "差戻し" : "領収書詳細"} data-garden-modal="overlay">
+      <div style={modalCard} data-garden-modal="panel">
         <div style={modalHead}>
           <h3 style={panelTitle}>{mode === "return" ? "差戻し" : "領収書詳細"}</h3>
           <button type="button" onClick={onClose} style={closeBtn} aria-label="閉じる">
@@ -779,7 +779,7 @@ function DetailModal({
               <div style={{ marginTop: 14 }}>
                 <label style={{ display: "block", color: "var(--text-sub)", fontSize: 12, marginBottom: 6 }}>差戻し理由</label>
                 <textarea value={returnReason} onChange={(event) => onReasonChange(event.target.value)} style={textarea} rows={4} />
-                <button type="button" disabled={busy} style={{ ...returnBtn, width: "100%", marginTop: 10, padding: "11px 14px" }} onClick={onReturn}>
+                <button type="button" disabled={busy} style={{ ...returnBtn, width: "100%", marginTop: 10, padding: "11px 14px" }} onClick={onReturn} data-modal-action="danger">
                   {busy ? "処理中…" : "差戻しを確定"}
                 </button>
               </div>

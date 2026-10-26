@@ -256,7 +256,7 @@ export default function PayrollNoticeClient({
         </StickyTable>
       </div>
     </section>}
-    {historyBody && <div className={styles.modalBackdrop} onClick={() => setHistoryBody(null)}><div className={styles.modal} onClick={(event) => event.stopPropagation()}><button type="button" onClick={() => setHistoryBody(null)}>閉じる</button><pre>{historyBody}</pre></div></div>}
+    {historyBody && <div className={styles.modalBackdrop} onClick={() => setHistoryBody(null)} data-garden-modal="overlay"><div className={styles.modal} onClick={(event) => event.stopPropagation()} data-garden-modal="panel" data-size="sm" role="dialog" aria-modal="true"><button type="button" onClick={() => setHistoryBody(null)}>閉じる</button><pre>{historyBody}</pre></div></div>}
   </div>;
 }
 

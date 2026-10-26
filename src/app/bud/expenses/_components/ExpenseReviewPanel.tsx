@@ -1,4 +1,5 @@
 "use client";
+import Modal from "@/app/system/_components/Modal/Modal";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -1490,7 +1491,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
       )}
 
       {receiptZoomOpen && imgUrl && (
-        <div style={zoomBackdrop} role="dialog" aria-modal="true" aria-label="領収書拡大表示">
+        <Modal title="領収書拡大表示" onClose={() => setReceiptZoomOpen(false)}>
           <div style={zoomHead}>
             <strong>領収書ズーム</strong>
             <div style={zoomTools}>
@@ -1529,7 +1530,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
               }}
             />
           </div>
-        </div>
+        </Modal>
       )}
 
       {detail && (
@@ -1952,8 +1953,8 @@ function DetailModal({
   onClose: () => void;
 }) {
   return (
-    <div style={modalBackdrop} role="dialog" aria-modal="true" aria-label="申請詳細">
-      <div style={modalCard}>
+    <Modal title="申請詳細" onClose={onClose}>
+      <div>
         <div style={modalHead}>
           <h3 style={statusTitle}>申請詳細</h3>
           <button type="button" onClick={onClose} style={closeBtn} aria-label="閉じる">
@@ -1982,7 +1983,7 @@ function DetailModal({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

@@ -28,8 +28,8 @@ export default function MemberPhoto({ name, src }: { name: string; src?: string 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className={styles.memberPhoto} src={src} alt={`${name}の写真`} width={160} height={160} loading="eager" referrerPolicy="no-referrer" onError={() => { setExpanded(false); setFailed(true); }} />
     </button>
-    {expanded && <div className={styles.memberPhotoOverlay} role="dialog" aria-modal="true" aria-label={`${name}の写真を拡大表示`} onClick={() => setExpanded(false)}>
-      <div className={styles.memberPhotoDialog} onClick={event => event.stopPropagation()}>
+    {expanded && <div className={styles.memberPhotoOverlay} role="dialog" aria-modal="true" aria-label={`${name}の写真を拡大表示`} onClick={() => setExpanded(false)} data-garden-modal="overlay">
+      <div className={styles.memberPhotoDialog} onClick={event => event.stopPropagation()} data-garden-modal="panel">
         <button className={styles.memberPhotoClose} type="button" onClick={() => setExpanded(false)} aria-label="拡大写真を閉じる">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>

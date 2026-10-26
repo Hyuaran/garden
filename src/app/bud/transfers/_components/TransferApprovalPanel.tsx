@@ -652,13 +652,13 @@ export function TransferApprovalPanel({
           onMouseDown={(event) =>
             event.target === event.currentTarget && closeDetail()
           }
-        >
+         data-garden-modal="overlay">
           <section
             role="dialog"
             aria-modal="true"
             aria-label="振込詳細"
             style={modalStyle}
-          >
+           data-garden-modal="panel">
             <div style={modalHeadStyle}>
               <div>
                 <div style={modalEyebrowStyle}>BUD / TRANSFER DETAIL</div>

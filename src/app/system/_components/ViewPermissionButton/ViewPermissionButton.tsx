@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import Modal from "../Modal/Modal";
 import { useRouter } from "next/navigation";
 import { TabActionButton } from "../SystemTabs/SystemTabs";
 import ViewerPicker, { type ViewerEmployee } from "@/app/bud/_components/ViewerPicker/ViewerPicker";
@@ -10,18 +11,10 @@ import styles from "./view-permission.module.css";
 type Settings = { settings: ViewPermission[]; employees: ViewerEmployee[]; updaters: {employee_id: string; name: string}[]; defaults: Record<string, string[]> };
 export default function ViewPermissionButton({ pageKey, tabKey, tabLabel, admin, canAdd = false }: { pageKey: string; tabKey: string; tabLabel: string; admin: boolean; canAdd?: boolean }) {
   const router = useRouter();
-  const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false), [target, setTarget] = useState(tabKey);
   const [data, setData] = useState<Settings | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false);
   const [roles, setRoles] = useState<string[]>([]), [people, setPeople] = useState<string[]>([]), [allowAdd, setAllowAdd] = useState(false);
   const [picking, setPicking] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.activeElement as HTMLElement | null;
-    const element = dialog.current;
-    element?.showModal();
-    return () => { element?.close(); previous?.focus(); };
-  }, [open]);
   useEffect(() => {
     if (!data) return;
     const setting = effectivePermission(data.settings, pageKey, target);
@@ -53,8 +46,7 @@ export default function ViewPermissionButton({ pageKey, tabKey, tabLabel, admin,
   const stamp = data && effectivePermission(data.settings, pageKey, target);
   return <>
     {admin ? <TabActionButton icon="settings" label="見られる人の設定" onClick={() => void show()} /> : <button type="button" onClick={() => void show()}>＋ 人を追加</button>}
-    {open && <dialog ref={dialog} className={styles.dialog} aria-labelledby="view-permission-title" onCancel={event => { if (busy) event.preventDefault(); else setOpen(false); }}>
-      <h2 id="view-permission-title">{admin ? "見られる人の設定" : "人を追加"}</h2>
+    {open && <Modal className={styles.dialog} title={admin ? "見られる人の設定" : "人を追加"} onClose={() => { if (!busy) setOpen(false); }}>
       {admin && <fieldset disabled={busy}><legend>対象</legend><label><input type="radio" name="scope" checked={target === ""} onChange={() => setTarget("")} />画面全体</label>{tabKey && <label><input type="radio" name="scope" checked={target === tabKey} onChange={() => setTarget(tabKey)} />このタブ「{tabLabel}」</label>}</fieldset>}
       {!data ? !error && <p role="status">読み込み中…</p> : <>
         {admin && <fieldset disabled={busy}><legend>役職</legend>{[...GARDEN_ROLE_ORDER].reverse().map(role => <label key={role}><input type="checkbox" checked={role === "super_admin" || roles.includes(role)} disabled={role === "super_admin"} onChange={event => setRoles(event.target.checked ? [...roles, role] : roles.filter(item => item !== role))} />{role === "manager" ? "責任者" : role === "staff" ? "社員" : GARDEN_ROLE_LABELS[role]}{role === "super_admin" && "（外せない）"}</label>)}</fieldset>}
@@ -68,7 +60,7 @@ export default function ViewPermissionButton({ pageKey, tabKey, tabLabel, admin,
         {stamp && <p>最終変更：{data.updaters.find(person => person.employee_id === stamp.updated_by)?.name ?? stamp.updated_by} {new Date(stamp.updated_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", weekday: "short", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</p>}
       </>}
       {error && <p role="alert">{error}</p>}
-      <div className={styles.actions}>{admin && <button disabled={!data || busy} onClick={() => void change("reset")}>既定に戻す</button>}<button disabled={busy} onClick={() => setOpen(false)}>閉じる</button>{admin && <button disabled={!data || busy} onClick={() => void change("save")}>{busy ? "保存中…" : "保存"}</button>}</div>
-    </dialog>}
+      <div className={styles.actions} data-modal-actions>{admin && <button disabled={!data || busy} onClick={() => void change("reset")}>既定に戻す</button>}<button disabled={busy} onClick={() => setOpen(false)} data-modal-action="secondary">閉じる</button>{admin && <button disabled={!data || busy} onClick={() => void change("save")} data-modal-action="primary">{busy ? "保存中…" : "保存"}</button>}</div>
+    </Modal>}
   </>;
 }

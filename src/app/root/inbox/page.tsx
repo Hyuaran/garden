@@ -111,7 +111,7 @@ export default function InboxPage() {
             placeItems: "center",
             background: "rgba(8,15,28,.55)",
           }}
-        >
+         data-garden-modal="overlay">
           <section
             style={{
               width: "min(700px,90vw)",
@@ -122,7 +122,7 @@ export default function InboxPage() {
               background: colors.bgPanel,
               color: colors.text,
             }}
-          >
+           data-garden-modal="panel">
             <h2>{SUBMISSION_LABELS[selected.submission_type]}</h2>
             <dl>
               {Object.entries(selected.payload).map(([k, v]) => (
@@ -173,7 +173,7 @@ export default function InboxPage() {
               ) : null}
               {selected.kintone_status === "failed" ||
               selected.kintone_status === "skipped" ? (
-                <button onClick={() => void action("retry_kintone")}>
+                <button onClick={() => void action("retry_kintone")} data-modal-action="primary">
                   Kintone反映を再実行
                 </button>
               ) : null}
@@ -184,7 +184,7 @@ export default function InboxPage() {
                   PDF再生成
                 </button>
               ) : null}
-              <button onClick={() => setSelected(null)}>閉じる</button>
+              <button onClick={() => setSelected(null)} data-modal-action="secondary">閉じる</button>
             </div>
           </section>
         </div>

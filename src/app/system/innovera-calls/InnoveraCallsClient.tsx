@@ -551,8 +551,8 @@ export default function InnoveraCallsClient({
       <ListProcessingOverlay open={searchBusy} mode="search" title="INNOVERA の通話履歴を検索しています…" />
 
       {lineDialog && (
-        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && lineDialog.step !== "working") setLineDialog(null); }}>
-          <div className={`${styles.modal} ${styles.modalSmall}`} role="dialog" aria-modal="true" aria-labelledby="line-dialog-title" aria-busy={lineDialog.step === "working"}>
+        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && lineDialog.step !== "working") setLineDialog(null); }} data-garden-modal="overlay">
+          <div className={`${styles.modal} ${styles.modalSmall}`} role="dialog" aria-modal="true" aria-labelledby="line-dialog-title" aria-busy={lineDialog.step === "working"} data-garden-modal="panel" data-size="sm">
             <div className={styles.modalHead}>
               <h2 id="line-dialog-title">発信番号の変更</h2>
               {lineDialog.step !== "working" && <button type="button" onClick={() => setLineDialog(null)} aria-label="閉じる">×</button>}
@@ -571,9 +571,9 @@ export default function InnoveraCallsClient({
                     </div>
                   </dl>
                   <p className={styles.lineChangeAsk}>変更しますが、本当によろしいですか？</p>
-                  <div className={styles.modalActions}>
-                    <button type="button" className={styles.modalSecondary} onClick={() => setLineDialog(null)}>キャンセル</button>
-                    <button type="button" onClick={() => void changeLine()}>変更する</button>
+                  <div className={styles.modalActions} data-modal-actions>
+                    <button type="button" className={styles.modalSecondary} onClick={() => setLineDialog(null)} data-modal-action="secondary">キャンセル</button>
+                    <button type="button" onClick={() => void changeLine()} data-modal-action="primary">変更する</button>
                   </div>
                 </>
               )}
@@ -588,17 +588,17 @@ export default function InnoveraCallsClient({
                   <div className={styles.working} role="status" aria-live="polite">
                     <p className={styles.ok}>変更しました：{lineDialog.next?.name ?? ""}</p>
                   </div>
-                  <div className={styles.modalActions}>
-                    <button type="button" onClick={() => setLineDialog(null)}>閉じる</button>
+                  <div className={styles.modalActions} data-modal-actions>
+                    <button type="button" onClick={() => setLineDialog(null)} data-modal-action="secondary">閉じる</button>
                   </div>
                 </>
               )}
               {lineDialog.step === "error" && (
                 <>
                   <p className={styles.error} role="alert">{lineDialog.message}</p>
-                  <div className={styles.modalActions}>
-                    <button type="button" className={styles.modalSecondary} onClick={() => setLineDialog(null)}>閉じる</button>
-                    <button type="button" onClick={() => setLineDialog({ step: "confirm", next: lineDialog.next })}>もう一度</button>
+                  <div className={styles.modalActions} data-modal-actions>
+                    <button type="button" className={styles.modalSecondary} onClick={() => setLineDialog(null)} data-modal-action="secondary">閉じる</button>
+                    <button type="button" onClick={() => setLineDialog({ step: "confirm", next: lineDialog.next })} data-modal-action="primary">もう一度</button>
                   </div>
                 </>
               )}
@@ -608,8 +608,8 @@ export default function InnoveraCallsClient({
       )}
 
       {extensionChange && (
-        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !extensionChange.saving) setExtensionChange(null); }}>
-          <div className={`${styles.modal} ${styles.modalSmall}`} role="dialog" aria-modal="true" aria-labelledby="extension-change-title">
+        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !extensionChange.saving) setExtensionChange(null); }} data-garden-modal="overlay">
+          <div className={`${styles.modal} ${styles.modalSmall}`} role="dialog" aria-modal="true" aria-labelledby="extension-change-title" data-garden-modal="panel" data-size="sm">
             <div className={styles.modalHead}>
               <h2 id="extension-change-title">内線の変更（管理者）</h2>
               {!extensionChange.saving && <button type="button" onClick={() => setExtensionChange(null)} aria-label="閉じる">×</button>}
@@ -619,9 +619,9 @@ export default function InnoveraCallsClient({
               <label className={styles.modalField}>管理者の社員番号<input value={extensionChange.adminNumber} onChange={(event) => setExtensionChange({ ...extensionChange, adminNumber: event.target.value, error: null })} autoComplete="off" /></label>
               <label className={styles.modalField}>管理者のパスワード<input type="password" value={extensionChange.adminPassword} onChange={(event) => setExtensionChange({ ...extensionChange, adminPassword: event.target.value, error: null })} autoComplete="off" /></label>
               {extensionChange.error && <p className={styles.error} role="alert">{extensionChange.error}</p>}
-              <div className={styles.modalActions}>
-                <button type="button" className={styles.modalSecondary} onClick={() => setExtensionChange(null)} disabled={extensionChange.saving}>やめる</button>
-                <button type="button" onClick={() => void submitExtensionChange()} disabled={extensionChange.saving}>{extensionChange.saving ? "変更中..." : "変更する"}</button>
+              <div className={styles.modalActions} data-modal-actions>
+                <button type="button" className={styles.modalSecondary} onClick={() => setExtensionChange(null)} disabled={extensionChange.saving} data-modal-action="secondary">やめる</button>
+                <button type="button" onClick={() => void submitExtensionChange()} disabled={extensionChange.saving} data-modal-action="primary">{extensionChange.saving ? "変更中..." : "変更する"}</button>
               </div>
             </div>
           </div>
@@ -629,8 +629,8 @@ export default function InnoveraCallsClient({
       )}
 
       {playing && (
-        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) closePlayer(); }}>
-          <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="recording-title">
+        <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) closePlayer(); }} data-garden-modal="overlay">
+          <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="recording-title" data-garden-modal="panel">
             <div className={styles.modalHead}>
               <h2 id="recording-title">録音の再生</h2>
               <button type="button" onClick={closePlayer} aria-label="閉じる">×</button>

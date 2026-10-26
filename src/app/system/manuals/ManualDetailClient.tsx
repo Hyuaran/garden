@@ -299,8 +299,8 @@ export default function ManualDetailClient({
           </section>
         )}
         {modalOpen && selectedDoc && createPortal(
-          <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="manual-replace-heading">
-            <div className={styles.modal}>
+          <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="manual-replace-heading" data-garden-modal="overlay">
+            <div className={styles.modal} data-garden-modal="panel">
               <div className={styles.modalHeading}>
                 <h2 id="manual-replace-heading">資料を差し替える：{manual.name} ／ {selectedDoc.label}</h2>
                 <button type="button" onClick={() => setModalOpen(false)} aria-label="閉じる">×</button>
@@ -333,7 +333,7 @@ export default function ManualDetailClient({
                   <div className={styles.selectedFile}>
                     <strong>{uploadFile.name}</strong>
                     <span>{formatFileSize(uploadFile.size)}</span>
-                    <button type="button" onClick={(event) => { event.stopPropagation(); chooseFile(null); }}>選び直す</button>
+                    <button type="button" onClick={(event) => { event.stopPropagation(); chooseFile(null); }} data-modal-action="secondary">選び直す</button>
                   </div>
                 ) : (
                   <>
@@ -342,8 +342,8 @@ export default function ManualDetailClient({
                   </>
                 )}
               </div>
-              <div className={styles.modalActions}>
-                <button type="button" className={styles.secondaryButton} onClick={() => setModalOpen(false)}>キャンセル</button>
+              <div className={styles.modalActions} data-modal-actions>
+                <button type="button" className={styles.secondaryButton} onClick={() => setModalOpen(false)} data-modal-action="secondary">キャンセル</button>
                 <button type="button" onClick={() => void handleReplace()} disabled={!uploadFile || busy !== null}>
                   差し替える
                 </button>

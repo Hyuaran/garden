@@ -145,16 +145,16 @@ export default function SiteNewsPanel({ data, role }: { data: CorporateSitesData
       </StickyTable>
     </div>
 
-    {form ? <div className={styles.modalBackdrop} role="presentation">
-      <div className={styles.newsModal} role="dialog" aria-modal="true" aria-label={form.id ? "お知らせを編集" : "お知らせを追加"}>
+    {form ? <div className={styles.modalBackdrop} role="presentation" data-garden-modal="overlay">
+      <div className={styles.newsModal} role="dialog" aria-modal="true" aria-label={form.id ? "お知らせを編集" : "お知らせを追加"} data-garden-modal="panel">
         <h2>{form.id ? "お知らせを編集" : "お知らせを追加"}</h2>
         <label>日付<input type="date" value={form.published_on} onChange={(event) => setForm({ ...form, published_on: event.target.value })} /></label>
         <label>題名<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
         <label>本文<textarea rows={6} value={form.body} onChange={(event) => setForm({ ...form, body: event.target.value })} /></label>
         <label className={styles.checkLabel}><input type="checkbox" checked={form.is_published} onChange={(event) => setForm({ ...form, is_published: event.target.checked })} />公開する</label>
-        <div className={styles.modalActions}>
-          <button type="button" className={styles.secondaryButton} onClick={() => setForm(null)} disabled={saving}>キャンセル</button>
-          <button type="button" className={styles.primaryButton} onClick={save} disabled={saving}>{saving ? "保存中..." : "保存"}</button>
+        <div className={styles.modalActions} data-modal-actions>
+          <button type="button" className={styles.secondaryButton} onClick={() => setForm(null)} disabled={saving} data-modal-action="secondary">キャンセル</button>
+          <button type="button" className={styles.primaryButton} onClick={save} disabled={saving} data-modal-action="primary">{saving ? "保存中..." : "保存"}</button>
         </div>
       </div>
     </div> : null}

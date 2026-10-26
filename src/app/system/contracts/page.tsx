@@ -273,10 +273,10 @@ export default function ContractsPage() {
       </section>
       <section className={styles.card}><h2>登録済み契約</h2><div className={styles.rows}>{rows.map((row) => <article key={row.id}><div><strong>{row.counterparty}</strong><span>{companyLabel(row.company_id)} / {row.contract_type} / {row.concluded_on}</span></div><div className={styles.actions}>{row.drive_url && <a href={row.drive_url} target="_blank" rel="noreferrer">元PDF</a>}{row.template_url && <a href={row.template_url} target="_blank" rel="noreferrer">PDFひな形</a>}{row.template_docx_url && <a href={row.template_docx_url} target="_blank" rel="noreferrer">Wordひな形</a>}<button onClick={() => openTemplate(row)} disabled={!row.drive_file_id}>ひな形を作る</button></div></article>)}</div></section>
     </>}
-    {template && <div className={styles.overlay}><section role="dialog" aria-modal="true" className={styles.dialog}><h2>パートナー配布用ひな形</h2><p>元PDFの条文を自社書式で組み直し、WordとPDFを作成します。</p>
+    {template && <div className={styles.overlay} data-garden-modal="overlay"><section role="dialog" aria-modal="true" className={styles.dialog} data-garden-modal="panel"><h2>パートナー配布用ひな形</h2><p>元PDFの条文を自社書式で組み直し、WordとPDFを作成します。</p>
       <label>発行元<select value={issuerId} onChange={(e) => setIssuerId(e.target.value)}>{companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}</select></label>
       <label>商材<input value={product} onChange={(e) => setProduct(e.target.value)}/></label><p>上位店情報、金額、料率、具体的な期間はひな形に入りません。</p>
-      <button className={styles.primary} onClick={() => void generate()} disabled={loading === "template" || !issuerId || !product}>{loading === "template" ? "作成しています…" : "WordとPDFを作成する"}</button><button onClick={() => setTemplate(null)}>閉じる</button>
+      <button className={styles.primary} onClick={() => void generate()} disabled={loading === "template" || !issuerId || !product} data-modal-action="primary">{loading === "template" ? "作成しています…" : "WordとPDFを作成する"}</button><button onClick={() => setTemplate(null)} data-modal-action="secondary">閉じる</button>
     </section></div>}
   </div></div>;
 }

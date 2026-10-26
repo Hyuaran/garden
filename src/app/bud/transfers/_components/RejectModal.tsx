@@ -33,8 +33,8 @@ export function RejectModal({
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
       role="dialog"
       aria-modal="true"
-    >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+     data-garden-modal="overlay">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" data-garden-modal="panel" data-size="sm">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h2 className="text-lg font-medium text-gray-900">差戻し確認</h2>
           <button
@@ -43,7 +43,7 @@ export function RejectModal({
             disabled={submitting}
             className="text-gray-500 hover:text-gray-700"
             aria-label="閉じる"
-          >
+           data-modal-action="secondary">
             ✕
           </button>
         </div>
@@ -99,13 +99,13 @@ export function RejectModal({
           </label>
         </div>
 
-        <div className="flex justify-end gap-2 border-t px-4 py-3 bg-gray-50">
+        <div className="flex justify-end gap-2 border-t px-4 py-3 bg-gray-50" data-modal-actions>
           <button
             type="button"
             onClick={onCancel}
             disabled={submitting}
             className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded"
-          >
+           data-modal-action="secondary">
             キャンセル
           </button>
           <button
@@ -113,7 +113,7 @@ export function RejectModal({
             onClick={() => onConfirm(reason.trim(), notifyChatwork)}
             disabled={!canConfirm || submitting}
             className="px-4 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-          >
+           data-modal-action="danger">
             {submitting ? "送信中…" : "差戻しを確定"}
           </button>
         </div>

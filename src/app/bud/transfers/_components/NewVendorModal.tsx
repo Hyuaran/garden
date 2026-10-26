@@ -91,8 +91,8 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       role="dialog"
       aria-modal="true"
-    >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[12px] border border-[rgba(179,137,46,0.18)] bg-bg-paper-soft shadow-garden-floating">
+     data-garden-modal="overlay">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[12px] border border-[rgba(179,137,46,0.18)] bg-bg-paper-soft shadow-garden-floating" data-garden-modal="panel">
         <div className="flex items-center justify-between border-b border-[rgba(179,137,46,0.18)] px-5 py-4">
           <h2 className="font-shippori text-lg font-semibold text-text-main">新規取引先を追加</h2>
           <button
@@ -101,7 +101,7 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
             disabled={submitting}
             className="text-text-sub transition hover:text-text-main disabled:opacity-50"
             aria-label="閉じる"
-          >
+           data-modal-action="secondary">
             ✕
           </button>
         </div>
@@ -140,13 +140,13 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-[rgba(179,137,46,0.18)] bg-[rgba(212,165,65,0.08)] px-5 py-4">
+        <div className="flex justify-end gap-2 border-t border-[rgba(179,137,46,0.18)] bg-[rgba(212,165,65,0.08)] px-5 py-4" data-modal-actions>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
             className={styles.secondaryButton}
-          >
+           data-modal-action="secondary">
             キャンセル
           </button>
           <button
@@ -154,7 +154,7 @@ export function NewVendorModal({ open, onClose, onCreated }: Props) {
             onClick={handleSubmit}
             disabled={submitting}
             className={styles.goldButton}
-          >
+           data-modal-action="primary">
             {submitting ? "登録中…" : "登録"}
           </button>
         </div>

@@ -13,8 +13,6 @@
 import { useEffect, useState } from "react";
 
 import type { CellData } from "../_constants/companies";
-import { FOREST_THEME } from "../_constants/theme";
-import { C } from "../_constants/colors";
 import { fmtYen } from "../_lib/format";
 import { writeAuditLog } from "../_lib/audit";
 import { fetchHankanhi } from "../_lib/queries";
@@ -67,24 +65,24 @@ export function DetailModal({ data, onClose }: Props) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.4)",
+        background: "var(--modal-backdrop)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 1000,
       }}
-    >
+     data-garden-modal="overlay">
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff",
+          background: "var(--card)",
           borderRadius: 16,
           padding: 32,
           minWidth: 340,
           maxWidth: 420,
           boxShadow: "0 12px 48px rgba(0,0,0,0.2)",
         }}
-      >
+       data-garden-modal="panel" data-size="sm" role="dialog" aria-modal="true">
         {/* ヘッダー */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
           <span
@@ -97,18 +95,18 @@ export function DetailModal({ data, onClose }: Props) {
             }}
           />
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.darkGreen }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--teal)" }}>
               {data.company.short}
             </div>
-            <div style={{ fontSize: 12, color: FOREST_THEME.textMuted }}>
+            <div style={{ fontSize: 12, color: "var(--ink)" }}>
               {`第${data.ki}期（${data.period_from}〜${data.period_to}）`}
               {data.isShinkouki && (
                 <span
                   style={{
                     marginLeft: 8,
                     padding: "1px 8px",
-                    background: FOREST_THEME.shinkouBadge,
-                    color: "#fff",
+                    background: "var(--teal)",
+                    color: "var(--modal-on-primary)",
                     borderRadius: 4,
                     fontSize: 10,
                     fontWeight: 700,
@@ -122,7 +120,7 @@ export function DetailModal({ data, onClose }: Props) {
                   style={{
                     marginLeft: 8,
                     fontSize: 11,
-                    color: FOREST_THEME.negative,
+                    color: "var(--danger)",
                   }}
                 >
                   {`※${data.reflected}`}
@@ -141,8 +139,8 @@ export function DetailModal({ data, onClose }: Props) {
                   style={{
                     padding: "8px 0",
                     fontSize: 13,
-                    color: FOREST_THEME.textSecondary,
-                    borderBottom: "1px solid #f0f0f0",
+                    color: "var(--ink)",
+                    borderBottom: "1px solid var(--line)",
                   }}
                  className="garden-cell-text">
                   {r.label}
@@ -153,11 +151,11 @@ export function DetailModal({ data, onClose }: Props) {
                     fontSize: 14,
                     fontWeight: 600,
                     textAlign: "right",
-                    borderBottom: "1px solid #f0f0f0",
+                    borderBottom: "1px solid var(--line)",
                     color:
                       r.label === "経常利益" && data.rieki != null && data.rieki < 0
-                        ? FOREST_THEME.negative
-                        : FOREST_THEME.textPrimary,
+                        ? "var(--danger)"
+                        : "var(--ink)",
                   }}
                  className="garden-cell-number">
                   {r.value}
@@ -172,14 +170,14 @@ export function DetailModal({ data, onClose }: Props) {
           <>
             <div
               style={{
-                borderTop: "1px solid #e0e0e0",
+                borderTop: "1px solid var(--line)",
                 margin: "12px 0",
               }}
             />
             <div
               style={{
                 fontSize: 12,
-                color: FOREST_THEME.textMuted,
+                color: "var(--ink)",
                 fontWeight: 600,
                 marginBottom: 6,
               }}
@@ -194,8 +192,8 @@ export function DetailModal({ data, onClose }: Props) {
                       style={{
                         padding: "6px 0",
                         fontSize: 13,
-                        color: FOREST_THEME.textSecondary,
-                        borderBottom: "1px solid #f5f5f5",
+                        color: "var(--ink)",
+                        borderBottom: "1px solid var(--line)",
                       }}
                      className="garden-cell-text">
                       {label}
@@ -206,8 +204,8 @@ export function DetailModal({ data, onClose }: Props) {
                         fontSize: 13,
                         textAlign: "right",
                         fontWeight: 500,
-                        color: FOREST_THEME.textPrimary,
-                        borderBottom: "1px solid #f5f5f5",
+                        color: "var(--ink)",
+                        borderBottom: "1px solid var(--line)",
                       }}
                      className="garden-cell-number">
                       {fmtYen(hankanhi[key])}
@@ -230,8 +228,8 @@ export function DetailModal({ data, onClose }: Props) {
               display: "block",
               marginTop: 20,
               padding: "10px 16px",
-              background: `linear-gradient(135deg, ${C.darkGreen}, ${C.midGreen})`,
-              color: "#fff",
+              background: "var(--teal)",
+              color: "var(--modal-on-primary)",
               borderRadius: 8,
               textAlign: "center",
               textDecoration: "none",
@@ -251,11 +249,11 @@ export function DetailModal({ data, onClose }: Props) {
             width: "100%",
             marginTop: 12,
             padding: 10,
-            border: `1px solid #e0e0e0`,
+            border: "1px solid var(--line)",
             borderRadius: 8,
             background: "transparent",
             fontSize: 13,
-            color: FOREST_THEME.textSecondary,
+            color: "var(--ink)",
             cursor: "pointer",
             fontFamily: "inherit",
           }}

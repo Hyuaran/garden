@@ -97,23 +97,23 @@ export default function ChatworkSendDialog({ open, text, date, time, onClose }: 
     {createPortal(
       <div className={styles.backdrop} onMouseDown={() => {
         if (!sending) onClose();
-      }}>
-        <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="chatwork-send-title" onMouseDown={(event) => event.stopPropagation()}>
+      }} data-garden-modal="overlay">
+        <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="chatwork-send-title" onMouseDown={(event) => event.stopPropagation()} data-garden-modal="panel">
           {state === "sent" ? <>
             <h2 id="chatwork-send-title">送信しました</h2>
             <p className={styles.destination}>送り先：{roomLabel}</p>
             {sentAt && <p className={styles.sentAt}>時刻：{sentAt}</p>}
-            <div className={styles.actions}>
-              <button type="button" className={styles.primary} onClick={onClose}>閉じる</button>
+            <div className={styles.actions} data-modal-actions>
+              <button type="button" className={styles.primary} onClick={onClose} data-modal-action="secondary">閉じる</button>
             </div>
           </> : <>
             <h2 id="chatwork-send-title">この内容で Chatwork に送信します</h2>
             <p className={styles.destination}>送り先：{roomLabel}</p>
             <pre className={styles.preview}>{text}</pre>
             {state === "failed" && error && <p className={styles.error} role="alert">{error}</p>}
-            <div className={styles.actions}>
-              <button type="button" className={styles.secondary} disabled={sending} onClick={onClose}>やめる</button>
-              <button type="button" className={styles.primary} disabled={sending || !text.trim()} onClick={() => void send()}>{state === "failed" ? "もう一度" : "送信する"}</button>
+            <div className={styles.actions} data-modal-actions>
+              <button type="button" className={styles.secondary} disabled={sending} onClick={onClose} data-modal-action="secondary">やめる</button>
+              <button type="button" className={styles.primary} disabled={sending || !text.trim()} onClick={() => void send()} data-modal-action="primary">{state === "failed" ? "もう一度" : "送信する"}</button>
             </div>
           </>}
         </div>

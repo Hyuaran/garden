@@ -156,8 +156,8 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
     {createPortal(
       <div className={styles.backdrop} onMouseDown={() => {
         if (!sending) onClose();
-      }}>
-        <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="line-send-title" onMouseDown={(event) => event.stopPropagation()}>
+      }} data-garden-modal="overlay">
+        <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="line-send-title" onMouseDown={(event) => event.stopPropagation()} data-garden-modal="panel">
           {state === "sent" ? <>
             <h2 id="line-send-title">送信しました</h2>
             <div className={styles.result}>
@@ -165,8 +165,8 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
               <span>届かなかった {unlinked.length + blocked.length} 人{unlinked.length > 0 ? `（未紐づけ：${unlinked.map((item) => item.name || item.employeeNumber).join("・")}）` : ""}{blocked.length > 0 ? `（ブロック中：${blocked.map((item) => item.name || item.employeeNumber).join("・")}）` : ""}</span>
             </div>
             {result?.sentAt && <p className={styles.sentAt}>時刻：{formatDateTime(result.sentAt)}</p>}
-            <div className={styles.actions}>
-              <button type="button" className={styles.primary} onClick={onClose}>閉じる</button>
+            <div className={styles.actions} data-modal-actions>
+              <button type="button" className={styles.primary} onClick={onClose} data-modal-action="secondary">閉じる</button>
             </div>
           </> : <>
             <h2 id="line-send-title">この内容で公式 LINE に送信します</h2>
@@ -201,9 +201,9 @@ export default function LineSendDialog({ open, date, blocks, onClose }: Props) {
             </label>}
             {state === "failed" && error && <p className={styles.error} role="alert">{error}</p>}
             {failed.length > 0 && <p className={styles.error}>送れなかった人：{failed.map((item) => item.name || item.employeeNumber).join("・")}</p>}
-            <div className={styles.actions}>
-              <button type="button" className={styles.secondary} disabled={sending} onClick={onClose}>やめる</button>
-              <button type="button" className={styles.primary} disabled={sending || blocks.length === 0 || Boolean(quotaShortage) || (Boolean(quota?.passwordRequired) && !password.trim())} onClick={() => void send()}>{state === "failed" ? "もう一度" : "送信する"}</button>
+            <div className={styles.actions} data-modal-actions>
+              <button type="button" className={styles.secondary} disabled={sending} onClick={onClose} data-modal-action="secondary">やめる</button>
+              <button type="button" className={styles.primary} disabled={sending || blocks.length === 0 || Boolean(quotaShortage) || (Boolean(quota?.passwordRequired) && !password.trim())} onClick={() => void send()} data-modal-action="primary">{state === "failed" ? "もう一度" : "送信する"}</button>
             </div>
           </>}
         </div>

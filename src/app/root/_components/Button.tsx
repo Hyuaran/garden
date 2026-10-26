@@ -16,6 +16,7 @@ export function Button({ variant = "primary", style, ...rest }: ButtonHTMLAttrib
   return (
     <button
       {...rest}
+      data-modal-variant={variant}
       style={{
         ...variants[variant],
         padding: "7px 14px",

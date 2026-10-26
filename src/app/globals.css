@@ -3518,3 +3518,110 @@ table :is(td, th).garden-cell-text { text-align:left !important; }
 table :is(td, th).garden-cell-fixed, table :is(td, th).garden-cell-mark { text-align:center !important; }
 table :is(td, th).garden-cell-number { text-align:right !important; font-variant-numeric:tabular-nums; }
 table :is(td, th):is(.garden-cell-text, .garden-cell-fixed, .garden-cell-mark, .garden-cell-number) :is(input:not([type=checkbox]):not([type=radio]), select) { text-align:inherit; }
+
+/* 小窓：native dialog と既存の小窓に同じ土台を適用する。メニュー類は対象外。 */
+:root, [data-theme="light"] {
+  --modal-card: var(--notice-card);
+  --modal-ink: var(--notice-ink);
+  --modal-line: var(--notice-line);
+  --modal-teal: var(--notice-link);
+  --modal-danger: #e5484d;
+  --modal-on-primary: #fff;
+  --modal-backdrop: rgba(16,35,63,.45);
+}
+.dark, [data-theme="dark"] {
+  --modal-card: #152438;
+  --modal-ink: #edf4fb;
+  --modal-line: #31435a;
+  --modal-teal: #5fd6c9;
+  --modal-danger: #ff9aa6;
+  --modal-on-primary: #082e33;
+  --modal-backdrop: rgba(0,0,0,.6);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --modal-card: #152438;
+    --modal-ink: #edf4fb;
+    --modal-line: #31435a;
+    --modal-teal: #5fd6c9;
+    --modal-danger: #ff9aa6;
+    --modal-on-primary: #082e33;
+    --modal-backdrop: rgba(0,0,0,.6);
+  }
+}
+:where(dialog), [data-garden-modal] {
+  --card: var(--modal-card);
+  --ink: var(--modal-ink);
+  --line: var(--modal-line);
+  --teal: var(--modal-teal);
+  --danger: var(--modal-danger);
+  --text-main: var(--modal-ink);
+  --text-sub: var(--modal-ink);
+  font-family: Meiryo, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+:where(dialog), [data-garden-modal="panel"] {
+  box-sizing: border-box;
+  margin: auto !important;
+  width: min(640px, calc(100vw / var(--garden-zoom, 1) - 32px)) !important;
+  max-width: calc(100vw / var(--garden-zoom, 1) - 32px) !important;
+  max-height: calc(100dvh / var(--garden-zoom, 1) - 32px) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  /* 上下 inset:0 のとき auto だと画面いっぱいに伸びるため、中身の高さに合わせる（2026-10-26） */
+  height: fit-content !important;
+  padding: 24px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  background: var(--card) !important;
+  color: var(--ink) !important;
+  font-size: 15px;
+  line-height: 1.65;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+}
+:where(dialog) { position: fixed; inset: 0; }
+:where(dialog)::backdrop { background: var(--modal-backdrop) !important; }
+[data-garden-modal="panel"][data-size="sm"] { width: min(520px, calc(100vw / var(--garden-zoom, 1) - 32px)) !important; }
+[data-garden-modal="overlay"] {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1100;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  background: var(--modal-backdrop) !important;
+}
+[data-garden-modal="panel"]:not(dialog) { position: relative !important; inset: auto !important; transform: none !important; }
+[data-garden-modal="panel"] :is(h2, h3) { font-size: 20px !important; font-weight: 700 !important; color: var(--ink) !important; }
+[data-garden-modal="panel"] :is(p, label, span, strong, small, legend, li, pre) { color: inherit; }
+[data-garden-modal="panel"] :is(p, label, legend) { font-size: 15px; }
+[data-garden-modal="panel"] :is([class*="text-gray-"], [class*="text-slate-"], [class*="text-white"], [class*="text-["]) { color: var(--ink) !important; }
+[data-garden-modal="panel"] :is([class*="bg-white"], [class*="bg-gray-"], [class*="bg-slate-"], [class*="bg-["]) { background-color: var(--card) !important; }
+[data-garden-modal="panel"] [class*="border-["] { border-color: var(--line) !important; }
+[data-garden-modal="panel"] [class*="text-red-"] { color: var(--danger) !important; }
+[data-garden-modal="panel"] [class*="bg-red-"] { background-color: color-mix(in srgb, var(--danger) 12%, var(--card)) !important; }
+[data-garden-modal="panel"] :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+  background-color: var(--card) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+.garden-modal-body { margin-top: 16px; }
+.garden-modal-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.garden-modal-heading > button { flex-shrink: 0; display: grid; place-items: center; padding: 6px; }
+[data-modal-actions] { display: flex !important; justify-content: flex-end !important; align-items: center; flex-wrap: wrap; gap: 12px !important; margin-top: 20px; }
+[data-garden-modal="panel"] button, button[data-modal-action] {
+  border: 1px solid var(--line) !important;
+  border-radius: 8px !important;
+  background: var(--card) !important;
+  color: var(--ink) !important;
+  padding: 8px 14px;
+  font: inherit;
+}
+button[data-modal-action="primary"], [data-garden-modal="panel"] button[data-modal-action="primary"] { background: var(--teal) !important; border-color: var(--teal) !important; color: var(--modal-on-primary) !important; }
+button[data-modal-action="danger"], [data-garden-modal="panel"] button[data-modal-action="danger"] { border-color: var(--danger) !important; color: var(--danger) !important; }
+[data-garden-modal="panel"] button:is([class*="primary"], [class*="Primary"], [data-modal-variant="primary"]):not([data-modal-action="secondary"]):not([data-modal-action="danger"]) { background: var(--teal) !important; border-color: var(--teal) !important; color: var(--modal-on-primary) !important; }
+[data-garden-modal="panel"] button:is([class*="danger"], [class*="Danger"], [data-modal-variant="danger"]) { background: var(--card) !important; border-color: var(--danger) !important; color: var(--danger) !important; }
+[data-garden-modal="panel"] button:disabled, button[data-modal-action]:disabled { opacity: .5; cursor: not-allowed; }
+[data-garden-modal="panel"] :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+@media (max-width: 600px) { :where(dialog), [data-garden-modal="panel"] { padding: 18px !important; } }

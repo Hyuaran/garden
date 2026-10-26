@@ -132,10 +132,11 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  const confirmationRows=rows.filter(r=>r.status==="hired"&&(showComplete||!checklistComplete(r)));
  return <>
  {tab==="confirmations"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
- {lineSkip&&<dialog ref={lineSkipDialog} aria-labelledby="hire-line-skip-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setLineSkip(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setLineSkip(null);}}}>
+ {lineSkip&&<dialog ref={lineSkipDialog} aria-labelledby="hire-line-skip-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setLineSkip(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setLineSkip(null);}}} data-garden-modal="panel" data-size="sm">
  <h2 id="hire-line-skip-title">公式 LINE を登録しない</h2>
  <p>{lineSkip.last_name} {lineSkip.first_name}さん：ガラケーなどで登録できないため、公式 LINE を登録しない扱いにします</p>
- <div className={styles.hireRowActions}><button disabled={!canWrite||busy||!!saving} onClick={()=>{const row=lineSkip;setLineSkip(null);void toggleChecklist(row,"line_skipped",true);}}>登録しない</button><button onClick={()=>setLineSkip(null)}>やめる</button></div>
+ <div className={styles.hireRowActions} data-modal-actions><button onClick={()=>setLineSkip(null)} data-modal-action="secondary">やめる</button>
+<button disabled={!canWrite||busy||!!saving} onClick={()=>{const row=lineSkip;setLineSkip(null);void toggleChecklist(row,"line_skipped",true);}} data-modal-action="primary">登録しない</button></div>
  </dialog>}
  {message&&<p role="alert">{message}</p>}
  <DataTable key="confirmations" rows={confirmationRows} columns={confirmationColumns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"complete",direction:"asc"}}/>
@@ -145,7 +146,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  {message&&<p role="alert">{message}</p>}
  <DataTable key="candidates" onRowClick={r=>{if(busy||saving)return;if(r.status==="hiring"&&stopped(r))setFailure(r);else if(canWrite&&r.status==="planned")openForm(r);}} rowClickable={r=>(canWrite&&r.status==="planned")||(r.status==="hiring"&&!!stopped(r))} rows={candidateRows} columns={columns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"date",direction:"asc"}} toolbar={canWrite && <button disabled={!canWrite||busy||!!saving} onClick={()=>openForm()}>＋ 入社予定者を登録</button>}/>
  <label className={styles.hireCheck}><input type="checkbox" checked={showNoShow} onChange={e=>saveVisibility(e.target.checked,showComplete)}/>辞退した人も表示</label>
- {form&&options&&<dialog ref={formDialog} aria-labelledby="hire-form-title" className={styles.panel+" "+styles.hireDialog} onCancel={()=>setForm(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setForm(null);}}}>
+ {form&&options&&<dialog ref={formDialog} aria-labelledby="hire-form-title" className={styles.panel+" "+styles.hireDialog} onCancel={()=>setForm(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setForm(null);}}} data-garden-modal="panel">
  <h2 id="hire-form-title">{editing?"入社予定者を修正":"入社予定者を登録"}</h2>
  {message&&<p role="alert">{message}</p>}
  {/* 並び＝東海林さん 2026-10-26：セイ・メイ・性別／姓・名・生年月日／入社日・所属法人・雇用形態／KOT の所属・KOT の雇用区分。選ぶ欄は普通のプルダウン（左ぞろえ） */}
@@ -154,26 +155,28 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  {field("last_name","姓")}{field("first_name","名")}{field("birthday","生年月日","date")}
  {field("hire_date","入社予定日","date")}{choice("company_id","所属法人",options.companies.map(c=>({value:c.company_id,label:c.company_name})))}{choice("employment_type","雇用形態",EMPLOYMENT_TYPES.map(value=>({value,label:value})))}
  {choice("kot_division_code","KOT の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}{choice("kot_type_code","KOT の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
-  </div></div><div className={styles.hireRowActions}><button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})}>保存する</button><button disabled={!canWrite||busy||!!saving} onClick={()=>setForm(null)}>閉じる</button></div></dialog>}
- {success&&<dialog ref={successDialog} aria-labelledby="hire-success-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setSuccess(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setSuccess(null);}}}>
+  </div></div><div className={styles.hireRowActions} data-modal-actions><button disabled={!canWrite||busy||!!saving} onClick={()=>setForm(null)} data-modal-action="secondary">閉じる</button>
+<button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})} data-modal-action="primary">保存する</button></div></dialog>}
+ {success&&<dialog ref={successDialog} aria-labelledby="hire-success-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setSuccess(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setSuccess(null);}}} data-garden-modal="panel" data-size="sm">
  <h2 id="hire-success-title">入社の登録が完了しました</h2>
  <p role="status">◎ {success.last_name} {success.first_name}さん（社員番号 {success.employee_number}）</p>
  <ol aria-label="入社の進み具合" className={styles.hireSteps}>{steps.map(([key,label])=><li key={key} className={styles.hireStepDone}><span className={styles.hireStepMark} aria-hidden="true">◎</span>{label}</li>)}</ol>
  <p>次は「入社後の確認」タブで、契約書・LINE などを確認してください。</p>
- <div className={styles.hireRowActions}><button onClick={()=>setSuccess(null)}>閉じる</button></div>
+ <div className={styles.hireRowActions} data-modal-actions><button onClick={()=>setSuccess(null)} data-modal-action="secondary">閉じる</button></div>
  </dialog>}
- {failure&&<dialog ref={failureDialog} aria-labelledby="hire-stop-title" className={styles.panel+" "+styles.hireDialog} onCancel={()=>setFailure(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setFailure(null);}}}>
+ {failure&&<dialog ref={failureDialog} aria-labelledby="hire-stop-title" className={styles.panel+" "+styles.hireDialog} onCancel={()=>setFailure(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setFailure(null);}}} data-garden-modal="panel">
  <h2 id="hire-stop-title">入社の登録が途中で止まりました</h2>
  <p>{failure.last_name} {failure.first_name}</p>
  <ol aria-label="入社の進み具合" className={styles.hireSteps}>{steps.map(([key,label])=><li key={key} className={failure.steps[key]?.error?styles.hireError:failure.steps[key]?.done?styles.hireStepDone:styles.hint}>
  <span className={styles.hireStepMark} aria-hidden="true">{failure.steps[key]?.done?"◎":"✕"}</span>{label}{key==="number"&&failure.employee_number&&"（"+failure.employee_number+"）"}
  {failure.steps[key]?.error&&<p role="status">{failure.steps[key].error}</p>}
  </li>)}</ol>
- <div className={styles.hireRowActions}><button onClick={()=>setFailure(null)}>閉じる</button><button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(()=>register(failure.id))}>続きから</button></div>
+ <div className={styles.hireRowActions} data-modal-actions><button onClick={()=>setFailure(null)} data-modal-action="secondary">閉じる</button><button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(()=>register(failure.id))} data-modal-action="primary">続きから</button></div>
  </dialog>}
- {confirmation&&<dialog ref={confirmDialog} aria-label="入社の確認" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setConfirmation(null)} onClick={event=>{if(event.target===event.currentTarget)setConfirmation(null);}}>
+ {confirmation&&<dialog ref={confirmDialog} aria-label="入社の確認" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setConfirmation(null)} onClick={event=>{if(event.target===event.currentTarget)setConfirmation(null);}} data-garden-modal="panel" data-size="sm">
  <h2>入社の確認</h2>
  <p>{confirmation.last_name} {confirmation.first_name}さんを社員番号 {confirmation.employee_number} で KOT と Garden に登録します。KOT はこの時点から料金の対象になります。</p>
- <div className={styles.hireRowActions}><button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{const id=confirmation.id;setConfirmation(null);await register(id);})}>登録する</button><button disabled={!canWrite||busy||!!saving} onClick={()=>setConfirmation(null)}>やめる</button></div></dialog>}
+ <div className={styles.hireRowActions} data-modal-actions><button disabled={!canWrite||busy||!!saving} onClick={()=>setConfirmation(null)} data-modal-action="secondary">やめる</button>
+<button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{const id=confirmation.id;setConfirmation(null);await register(id);})} data-modal-action="primary">登録する</button></div></dialog>}
  </section>}</>;
 }

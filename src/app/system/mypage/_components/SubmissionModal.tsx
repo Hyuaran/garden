@@ -92,13 +92,13 @@ export default function SubmissionModal({
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-    >
+     data-garden-modal="overlay">
       <section
         className={styles.submissionModal}
         role="dialog"
         aria-modal="true"
         aria-labelledby="submission-title"
-      >
+       data-garden-modal="panel">
         <h2 id="submission-title">{SUBMISSION_LABELS[type]}</h2>
         {type === "resignation" ? <p>送信後、事務から連絡します。</p> : null}
         {type === "nda" ? (
@@ -187,18 +187,16 @@ export default function SubmissionModal({
               {error}
             </p>
           ) : null}
-          <div className={styles.modalActions}>
-            <button type="submit" disabled={sending}>
-              {sending ? "送信中…" : "送信する"}
-            </button>
-            <button
+          <div className={styles.modalActions} data-modal-actions><button
               type="button"
               className={styles.secondaryButton}
               onClick={onClose}
-            >
+             data-modal-action="secondary">
               閉じる
             </button>
-          </div>
+<button type="submit" disabled={sending} data-modal-action="primary">
+              {sending ? "送信中…" : "送信する"}
+            </button></div>
         </form>
       </section>
     </div>

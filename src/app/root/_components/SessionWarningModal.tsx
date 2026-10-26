@@ -36,7 +36,7 @@ export function SessionWarningModal() {
         justifyContent: "center",
         zIndex: 1000,
       }}
-    >
+     data-garden-modal="overlay">
       <div
         style={{
           background: colors.bgPanel,
@@ -46,7 +46,7 @@ export function SessionWarningModal() {
           width: "90%",
           boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
         }}
-      >
+       data-garden-modal="panel" data-size="sm" role="dialog" aria-modal="true">
         {IS_DEV_MODE && (
           <div
             style={{

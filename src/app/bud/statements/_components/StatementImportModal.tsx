@@ -105,8 +105,8 @@ export function StatementImportModal({
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
       role="dialog"
       aria-modal="true"
-    >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+     data-garden-modal="overlay">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" data-garden-modal="panel" data-size="sm">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h2 className="text-lg font-medium text-gray-900">
             銀行 CSV 取込
@@ -117,7 +117,7 @@ export function StatementImportModal({
             disabled={submitting}
             className="text-gray-500 hover:text-gray-700"
             aria-label="閉じる"
-          >
+           data-modal-action="secondary">
             ✕
           </button>
         </div>
@@ -188,13 +188,13 @@ export function StatementImportModal({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t px-4 py-3 bg-gray-50">
+        <div className="flex justify-end gap-2 border-t px-4 py-3 bg-gray-50" data-modal-actions>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
             className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded"
-          >
+           data-modal-action="secondary">
             閉じる
           </button>
           <button
@@ -202,7 +202,7 @@ export function StatementImportModal({
             onClick={handleImport}
             disabled={submitting || !file || !bankAccountId}
             className="px-4 py-1.5 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
-          >
+           data-modal-action="secondary">
             {submitting ? "取込中…" : "取込実行"}
           </button>
         </div>
