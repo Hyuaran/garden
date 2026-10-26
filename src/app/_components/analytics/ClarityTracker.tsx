@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useAuthUnified } from "@/app/_lib/auth-unified";
@@ -32,13 +32,32 @@ function ensureClarityQueue() {
 export default function ClarityTracker() {
   const pathname = usePathname();
   const { employeeNumber } = useAuthUnified();
+  // 記録するのはログインしている 18 歳以上の人だけ（Clarity の規約・2026-10-26）。ログイン前の画面は記録しない
+  const [eligible, setEligible] = useState(false);
 
   useEffect(() => {
-    if (!isValidProjectId || !employeeNumber) return;
-    ensureClarityQueue()("identify", employeeNumber, undefined, pathname, employeeNumber);
-  }, [employeeNumber, pathname]);
+    if (!isValidProjectId || !employeeNumber) { setEligible(false); return; }
+    const key = `garden.clarity.eligible.${employeeNumber}`;
+    try { const cached = sessionStorage.getItem(key); if (cached !== null) { setEligible(cached === "1"); return; } } catch {}
+    let cancelled = false;
+    fetch("/api/analytics/clarity-eligibility", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : { eligible: false })
+      .then((j: { eligible?: boolean }) => {
+        if (cancelled) return;
+        const ok = j.eligible === true;
+        setEligible(ok);
+        try { sessionStorage.setItem(key, ok ? "1" : "0"); } catch {}
+      })
+      .catch(() => { if (!cancelled) setEligible(false); });
+    return () => { cancelled = true; };
+  }, [employeeNumber]);
 
-  if (!isValidProjectId) return null;
+  useEffect(() => {
+    if (!isValidProjectId || !employeeNumber || !eligible) return;
+    ensureClarityQueue()("identify", employeeNumber, undefined, pathname, employeeNumber);
+  }, [employeeNumber, pathname, eligible]);
+
+  if (!isValidProjectId || !employeeNumber || !eligible) return null;
 
   return (
     <Script

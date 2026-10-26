@@ -7,12 +7,16 @@ async function loadTracker({
   projectId,
   employeeNumber,
   pathname,
+  eligible = true,
 }: {
   projectId?: string;
   employeeNumber: string | null;
   pathname: string;
+  eligible?: boolean;
 }) {
   vi.resetModules();
+  try { sessionStorage.clear(); } catch {}
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ eligible })));
   if (projectId === undefined) {
     delete process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
   } else {
@@ -52,6 +56,7 @@ describe("ClarityTracker", () => {
     vi.resetModules();
     delete process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
     delete window.clarity;
+    vi.unstubAllGlobals();
   });
 
   it("renders nothing and does not identify when the project id is empty", async () => {
@@ -80,17 +85,46 @@ describe("ClarityTracker", () => {
     expect(screen.queryByTestId("clarity-script")).not.toBeInTheDocument();
   });
 
-  it("loads the Clarity script for a valid project id", async () => {
+  it("loads the Clarity script for a logged-in employee aged 18 or over", async () => {
     const { ClarityTracker } = await loadTracker({
       projectId: "abc123",
-      employeeNumber: null,
+      employeeNumber: "0008",
       pathname: "/system/list",
     });
 
     render(<ClarityTracker />);
 
-    expect(screen.getByTestId("clarity-script")).toHaveAttribute("data-src", "https://www.clarity.ms/tag/abc123");
+    expect(await screen.findByTestId("clarity-script")).toHaveAttribute("data-src", "https://www.clarity.ms/tag/abc123");
     expect(screen.getByTestId("clarity-script")).toHaveAttribute("data-strategy", "afterInteractive");
+  });
+
+  it("does not load before login (no recording on the login screen)", async () => {
+    const { ClarityTracker } = await loadTracker({
+      projectId: "abc123",
+      employeeNumber: null,
+      pathname: "/login",
+    });
+
+    render(<ClarityTracker />);
+
+    expect(screen.queryByTestId("clarity-script")).not.toBeInTheDocument();
+  });
+
+  it("does not load or identify for an employee under 18", async () => {
+    const clarity = vi.fn<ClarityCall>();
+    window.clarity = clarity;
+    const { ClarityTracker } = await loadTracker({
+      projectId: "abc123",
+      employeeNumber: "1234",
+      pathname: "/system/list",
+      eligible: false,
+    });
+
+    render(<ClarityTracker />);
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(screen.queryByTestId("clarity-script")).not.toBeInTheDocument();
+    expect(clarity).not.toHaveBeenCalled();
   });
 
   it("identifies the logged-in employee again when the pathname changes", async () => {
