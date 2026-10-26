@@ -1,7 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import HireCandidatesClient from "./HireCandidatesClient";
 import { CHECKLIST_KEYS } from "./_lib/hire-candidates";
+beforeEach(()=>{
+ Object.defineProperty(HTMLDialogElement.prototype,"showModal",{configurable:true,value:function(this:HTMLDialogElement){this.setAttribute("open","");}});
+ Object.defineProperty(HTMLDialogElement.prototype,"close",{configurable:true,value:function(this:HTMLDialogElement){this.removeAttribute("open");}});
+});
 const row={id:"c",last_name:"山田",first_name:"太郎",hire_date:"2026-10-24",employment_type:"アルバイト",status:"planned",employee_number:null,steps:{}};
 afterEach(()=>{cleanup();localStorage.clear();vi.restoreAllMocks();vi.unstubAllGlobals();});
 it("shows candidate tab only in its super-admin wrapper and preserves the old list",async()=>{
@@ -19,7 +23,7 @@ it("splits statuses, hides completed hires, and remembers visibility per user",a
  expect(screen.getByText("処理 太郎")).toBeVisible();
  expect(screen.queryByText("欠席 太郎")).not.toBeInTheDocument();
  expect(screen.queryByText("入社 太郎")).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole("checkbox",{name:"来なかった人も表示"}));
+ fireEvent.click(screen.getByRole("checkbox",{name:"辞退した人も表示"}));
  expect(screen.getByText("欠席 太郎")).toBeVisible();
  fireEvent.click(screen.getByRole("tab",{name:"入社後の確認"}));
  expect(screen.getByText("未確認 太郎")).toBeVisible();
@@ -30,12 +34,12 @@ it("splits statuses, hides completed hires, and remembers visibility per user",a
  expect(screen.getByText("完了")).toBeVisible();
  view.unmount();
  const restored=render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
- expect(screen.getByRole("checkbox",{name:"来なかった人も表示"})).toBeChecked();
+ expect(screen.getByRole("checkbox",{name:"辞退した人も表示"})).toBeChecked();
  fireEvent.click(screen.getByRole("tab",{name:"入社後の確認"}));
  expect(screen.getByRole("checkbox",{name:"完了も表示"})).toBeChecked();
  restored.unmount();
  render(<HireCandidatesClient userId="admin-2"><p>既存一覧</p></HireCandidatesClient>);
- expect(screen.getByRole("checkbox",{name:"来なかった人も表示"})).not.toBeChecked();
+ expect(screen.getByRole("checkbox",{name:"辞退した人も表示"})).not.toBeChecked();
 });
 it("saves checks immediately, removes completed hires, and restores failed saves",async()=>{
  const pending={...hired,checklist:{...fullChecklist,filemaker_added:undefined}};
@@ -60,15 +64,49 @@ it("works when localStorage is unavailable",async()=>{
  vi.stubGlobal("fetch",vi.fn(async()=>Response.json([row])));
  render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
  expect(await screen.findByText("山田 太郎")).toBeVisible();
- fireEvent.click(screen.getByRole("checkbox",{name:"来なかった人も表示"}));
- expect(screen.getByRole("checkbox",{name:"来なかった人も表示"})).toBeChecked();
+ fireEvent.click(screen.getByRole("checkbox",{name:"辞退した人も表示"}));
+ expect(screen.getByRole("checkbox",{name:"辞退した人も表示"})).toBeChecked();
 });
 it("confirms the persisted employee number and does not hire on cancellation",async()=>{
  const fetch=vi.fn(async(url:string,init?:RequestInit)=>Response.json(init?.method==="POST"?{...row,employee_number:"1571"}:[row]));vi.stubGlobal("fetch",fetch);
  render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
- fireEvent.click(await screen.findByRole("button",{name:"出社を確認して入社にする"}));
+ fireEvent.click(await screen.findByRole("button",{name:"入社"}));
  expect(await screen.findByRole("dialog",{name:"入社の確認"})).toHaveTextContent("社員番号 1571");
  await waitFor(()=>expect(screen.getByRole("button",{name:"やめる"})).toBeEnabled());fireEvent.click(screen.getByRole("button",{name:"やめる"}));
  expect(fetch.mock.calls.filter(([,init])=>init?.method==="POST")).toHaveLength(1);
  expect(fetch.mock.calls.find(([,init])=>init?.method==="POST")?.[1]?.body).toBe(JSON.stringify({prepare:true}));
+ expect(fetch.mock.calls.some(([url])=>url.endsWith("kot-options"))).toBe(false);
 });
+
+it("opens the row editor and registration dialog, closes on cancel and backdrop, and searches kana",async()=>{
+ vi.stubGlobal("fetch",vi.fn(async(url:string)=>Response.json(url.endsWith("kot-options")?{companies:[],divisions:[],workingTypes:[]}:[{...row,last_name_kana:"ヤマダ",first_name_kana:"タロウ"},{...row,id:"w",last_name:"処理",status:"hiring"},{...row,id:"n",last_name:"欠席",status:"no_show"}])));
+ render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
+ const name=await screen.findByText("山田 太郎");
+ expect(name.closest("tr")).toHaveAttribute("tabindex","0");
+ expect(screen.getByText("処理 太郎").closest("tr")).not.toHaveAttribute("tabindex");
+ fireEvent.click(screen.getByRole("checkbox",{name:"辞退した人も表示"}));
+ expect(screen.getByText("欠席 太郎").closest("tr")).not.toHaveAttribute("tabindex");
+ expect(screen.getByText("辞退",{selector:"td"})).toBeVisible();
+ fireEvent.click(name);
+ const dialog=await screen.findByRole("dialog",{name:"入社予定者を修正"});
+ fireEvent(dialog,new Event("cancel",{cancelable:true}));
+ await waitFor(()=>expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+ await waitFor(()=>expect(screen.getByRole("button",{name:"＋ 入社予定者を登録"})).toBeEnabled());
+ fireEvent.click(screen.getByRole("button",{name:"＋ 入社予定者を登録"}));
+ const registration=await screen.findByRole("dialog",{name:"入社予定者を登録"});
+ fireEvent.click(registration,{clientX:-10,clientY:-10});
+ await waitFor(()=>expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+ fireEvent.change(screen.getByPlaceholderText("氏名・カナで探す"),{target:{value:"ヤマダタロウ"}});
+ expect(screen.getByText("山田 太郎")).toBeVisible();
+ expect(screen.queryByText("処理 太郎")).not.toBeInTheDocument();
+});
+it("declines without opening the editor and retains the no_show database value",async()=>{
+ const fetch=vi.fn(async(_url:string,init?:RequestInit)=>Response.json(init?.method==="PATCH"?{...row,status:"no_show"}:[row]));
+ vi.stubGlobal("fetch",fetch);
+ render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
+ fireEvent.click(await screen.findByRole("button",{name:"辞退"}));
+ await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/c",expect.objectContaining({method:"PATCH",body:JSON.stringify({status:"no_show"})})));
+ expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+ expect(fetch.mock.calls.some(([url])=>url.endsWith("kot-options"))).toBe(false);
+});
+

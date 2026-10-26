@@ -95,3 +95,18 @@ it("uses the borderless search class and enables reset only while filtering", ()
   expect(clear).toBeDisabled(); fireEvent.change(input,{target:{value:"振込"}}); expect(clear).toBeEnabled();
   fireEvent.click(clear); expect(input).toHaveValue(""); expect(clear).toBeDisabled();
 });
+
+it("opens only enabled rows by pointer or keyboard and ignores interactive descendants",()=>{
+ const click=vi.fn();
+ render(<DataTable rows={rows} columns={[...columns,{id:"actions",label:"操作",type:"text",value:()=>"",render:()=> <><button>Action</button><a href="#">Link</a><input aria-label="操作"/><select aria-label="操作"><option>Link</option></select></>}]} rowKey={r=>r.id} searchText={r=>r.name} searchPlaceholder="氏名・カナで探す" defaultSort={{id:"date",direction:"desc"}} onRowClick={click} rowClickable={r=>r.id==="a"}/>);
+ const enabled=screen.getAllByRole("row")[1];
+ expect(enabled).toHaveAttribute("tabindex","0");
+ fireEvent.click(within(enabled).getByText("振込"));
+ fireEvent.keyDown(enabled,{key:"Enter"});fireEvent.keyDown(enabled,{key:" "});
+ expect(click).toHaveBeenCalledTimes(3);
+ for(const role of ["button","link","textbox","combobox"]){const element=within(enabled).getByRole(role);fireEvent.click(element);fireEvent.keyDown(element,{key:"Enter"});}
+ fireEvent.click(screen.getAllByRole("row")[2]);
+ expect(click).toHaveBeenCalledTimes(3);
+ expect(screen.getAllByRole("row")[2]).not.toHaveAttribute("tabindex");
+ expect(screen.getByPlaceholderText("氏名・カナで探す")).toBeInTheDocument();
+});

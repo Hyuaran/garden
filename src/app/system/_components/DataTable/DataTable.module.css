@@ -93,3 +93,8 @@
 .topRow { column-gap:12px; }
 .topRow .controls .searchBox { flex:1 1 140px; min-width:140px; }
 .topRow .controls .searchBox { flex:1 1 150px; min-width:150px; }
+
+.tableWrap .clickableRow { cursor:pointer; }
+.tableWrap .clickableRow > td { transition:background-color .15s; }
+.tableWrap .clickableRow:hover > td, .tableWrap .clickableRow:focus-visible > td { background:var(--hover, color-mix(in srgb, var(--teal,#0ea5a0) 8%, transparent)); }
+.tableWrap .clickableRow:focus-visible { outline:2px solid var(--teal,#0ea5a0); outline-offset:-2px; }
