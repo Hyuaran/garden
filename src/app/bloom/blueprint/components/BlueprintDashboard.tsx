@@ -1,4 +1,8 @@
 "use client";
+import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 import Image from "next/image";
 import { useState } from "react";
@@ -19,8 +23,8 @@ import styles from "./BlueprintDashboard.module.css";
 type BlueprintTab = "overview" | "modules";
 
 const tabs: Array<{ key: BlueprintTab; label: string }> = [
-  { key: "overview", label: "全体 / Overview" },
-  { key: "modules", label: "モジュール / Modules" },
+  { key: "overview", label: "全体" },
+  { key: "modules", label: "モジュール" },
 ];
 
 function cx(...classes: Array<string | false | undefined>) {
@@ -34,8 +38,11 @@ function roleLabel(role: string | null) {
 }
 
 export default function BlueprintDashboard() {
+  const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, lockAndLogout } = useBloomState();
-  const [activeTab, setActiveTab] = useState<BlueprintTab>("overview");
+  const [selectedTab, setActiveTab] = useState<BlueprintTab>("overview");
+  const { allowedTab } = useSystemView();
+  const activeTab = allowedTab(selectedTab) ? selectedTab : tabs.find(t => allowedTab(t.key))?.key;
   const userName = bloomUser?.name ?? userEmail ?? "東海林 美樹";
   const activeMenu = BLOOM_GARDEN_PAGE_MENU.map((item) => ({ ...item, active: item.href === "/bloom/blueprint" }));
 
@@ -54,7 +61,7 @@ export default function BlueprintDashboard() {
   return (
     <GardenShell
       activeModule="bloom"
-      pageMenu={activeMenu}
+      pageMenu={activeMenu.filter(item => canViewMenu(item.href))}
       userName={userName}
       userEmail={userEmail}
       userRoleLabel={roleLabel(role)}
@@ -71,14 +78,14 @@ export default function BlueprintDashboard() {
         </div>
 
         <div className={styles.bodyActions}>
-          <div className={styles.headerBadge}>12 modules / roles</div>
+          <div className={styles.headerBadge}>12 モジュール・役割</div>
           <button type="button" className={styles.downloadButton} onClick={handleDownloadMarkdown}>
             設計図を .md でダウンロード
           </button>
         </div>
 
         <nav className={styles.tabs} aria-label="blueprint sections">
-          {tabs.map((tab) => (
+          {tabs.filter(tab => allowedTab(tab.key)).map((tab) => (
             <button
               key={tab.key}
               type="button"
@@ -88,7 +95,7 @@ export default function BlueprintDashboard() {
               {tab.label}
             </button>
           ))}
-        </nav>
+        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /><SystemViewButton tabKey={activeTab} /></span></nav>
 
         {activeTab === "overview" && <OverviewTab />}
         {activeTab === "modules" && <ModulesTab />}
@@ -120,7 +127,7 @@ function OverviewTab() {
 
       <div className={styles.bottomGrid}>
         <section className={styles.panel} aria-labelledby="blueprint-ai">
-          <h2 id="blueprint-ai" className={styles.sectionTitle}>AI ROLES / AI 役割分担</h2>
+          <h2 id="blueprint-ai" className={styles.sectionTitle}>AI 役割分担</h2>
           <div className={styles.aiGrid}>
             {roleAllocations.map((item) => (
               <article key={item.name} className={styles.aiCard}>
@@ -136,7 +143,7 @@ function OverviewTab() {
         </section>
 
         <section className={styles.panel} aria-labelledby="blueprint-sources">
-          <h2 id="blueprint-sources" className={styles.sectionTitle}>SOURCES / 参照先</h2>
+          <h2 id="blueprint-sources" className={styles.sectionTitle}>参照先</h2>
           <div className={styles.sourceGrid}>
             {sourceLinkGroups.map((source) => (
               <article key={source.title}>
@@ -175,7 +182,7 @@ function ModulesTab() {
     <section className={styles.panel} aria-labelledby="blueprint-modules">
       <div className={styles.sectionHeader}>
         <div>
-          <p className={styles.eyebrow}>Module Design Data</p>
+          <p className={styles.eyebrow}>モジュール設計情報</p>
           <h2 id="blueprint-modules" className={styles.sectionTitle}>12 MODULES / モジュール設計</h2>
         </div>
         <span>役割・概要・機能・関連・フォルダ・段階を、進捗ではなく設計情報として表示します。</span>

@@ -1,4 +1,8 @@
 "use client";
+import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 import Image from "next/image";
 
@@ -106,6 +110,8 @@ function WeeklyBarsSvg() {
 }
 
 export default function WorkboardDashboard() {
+  const { allowedTab } = useSystemView();
+  const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, lockAndLogout } = useBloomState();
   const userName = bloomUser?.name ?? userEmail ?? "東海林 美琴";
   const activeMenu = BLOOM_GARDEN_PAGE_MENU.map((item) => ({ ...item, active: item.href === "/bloom/workboard" }));
@@ -113,7 +119,7 @@ export default function WorkboardDashboard() {
   return (
     <GardenShell
       activeModule="bloom"
-      pageMenu={activeMenu}
+      pageMenu={activeMenu.filter(item => canViewMenu(item.href))}
       userName={userName}
       userEmail={userEmail}
       userRoleLabel={roleLabel(role)}
@@ -133,14 +139,14 @@ export default function WorkboardDashboard() {
         </div>
 
         <nav className={styles.tabs} aria-label="workboard views">
-          <button type="button" className={cx(styles.tab, styles.tabActive)}>ワークボード / Today</button>
-          <button type="button" className={styles.tab}>週次 / Weekly</button>
-          <button type="button" className={styles.tab}>メンバー別 / By Member</button>
-        </nav>
+          {allowedTab('today') && <button type="button" className={cx(styles.tab, styles.tabActive)}>ワークボード</button>}
+          {allowedTab('weekly') && <button type="button" className={styles.tab}>週次</button>}
+          {allowedTab('members') && <button type="button" className={styles.tab}>メンバー別</button>}
+        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /></span></nav>
 
         <div className={styles.dashboard}>
-          <section className={cx(styles.card, styles.running)} aria-labelledby="workboard-running">
-            <h2 id="workboard-running" className={styles.sectionTitle}>RUNNING / 走行中プロジェクト</h2>
+          {allowedTab('today') && (<section className={cx(styles.card, styles.running)} aria-labelledby="workboard-running">
+            <h2 id="workboard-running" className={styles.sectionTitle}>走行中プロジェクト</h2>
             <div className={styles.runningGrid}>
               {runningProjects.map((project) => (
                 <article key={project.title} className={styles.projectCard}>
@@ -158,12 +164,12 @@ export default function WorkboardDashboard() {
                 </article>
               ))}
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.today)} aria-labelledby="workboard-today">
+          {allowedTab('today') && (<section className={cx(styles.card, styles.today)} aria-labelledby="workboard-today">
             <div className={styles.todayIcon}>❀</div>
             <div>
-              <h2 id="workboard-today" className={styles.sectionTitle}>TODAY / 本日のステータス</h2>
+              <h2 id="workboard-today" className={styles.sectionTitle}>本日のステータス</h2>
               <p className={styles.todayState}>集中業務中 <span className={styles.todayFlower}>✿</span></p>
               <p className={styles.todayProject}>a-main 006 で Root Phase B 確定中</p>
               <p className={styles.todayUpdate}>最終更新: 14:30（東海林 美琴）</p>
@@ -175,10 +181,10 @@ export default function WorkboardDashboard() {
                 ))}
               </div>
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.plan)} aria-labelledby="workboard-plan">
-            <h2 id="workboard-plan" className={styles.sectionTitle}>TODAY&apos;S PLAN / 今日の予定</h2>
+          {allowedTab('today') && (<section className={cx(styles.card, styles.plan)} aria-labelledby="workboard-plan">
+            <h2 id="workboard-plan" className={styles.sectionTitle}>今日の予定</h2>
             <div className={styles.planList}>
               {planItems.map((item) => (
                 <div key={`${item.time}-${item.title}`} className={styles.planItem}>
@@ -190,10 +196,10 @@ export default function WorkboardDashboard() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.milestone)} aria-labelledby="workboard-milestone">
-            <h2 id="workboard-milestone" className={styles.sectionTitle}>NEXT MILESTONE / 次のマイルストーン</h2>
+          {allowedTab('today') && (<section className={cx(styles.card, styles.milestone)} aria-labelledby="workboard-milestone">
+            <h2 id="workboard-milestone" className={styles.sectionTitle}>次のマイルストーン</h2>
             <div className={styles.milestoneBox}>
               <div className={styles.milestoneHead}>
                 <span className={styles.flag}>⚑</span>
@@ -220,10 +226,10 @@ export default function WorkboardDashboard() {
                 <span className={styles.milestoneProgressValue}>30%</span>
               </div>
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.weekly)} aria-labelledby="workboard-weekly">
-            <h2 id="workboard-weekly" className={styles.sectionTitle}>WEEKLY / 週次達成</h2>
+          {allowedTab('weekly') && (<section className={cx(styles.card, styles.weekly)} aria-labelledby="workboard-weekly">
+            <h2 id="workboard-weekly" className={styles.sectionTitle}>週次達成</h2>
             <WeeklyBarsSvg />
             <div className={styles.weekGrid}>
               {weeklyDays.map((day) => {
@@ -240,10 +246,10 @@ export default function WorkboardDashboard() {
                 );
               })}
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.team)} aria-labelledby="workboard-team">
-            <h2 id="workboard-team" className={styles.sectionTitle}>TEAM / ワーカーステータス</h2>
+          {allowedTab('members') && (<section className={cx(styles.card, styles.team)} aria-labelledby="workboard-team">
+            <h2 id="workboard-team" className={styles.sectionTitle}>ワーカーステータス</h2>
             <div className={styles.teamList}>
               {teamMembers.map((member) => (
                 <div key={member.name} className={styles.teamRow}>
@@ -254,7 +260,7 @@ export default function WorkboardDashboard() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>)}
         </div>
       </div>
     </GardenShell>

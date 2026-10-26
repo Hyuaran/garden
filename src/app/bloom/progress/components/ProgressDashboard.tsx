@@ -1,4 +1,8 @@
 "use client";
+import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -22,9 +26,9 @@ import {
 import styles from "./ProgressDashboard.module.css";
 
 const tabs: Array<{ key: ProgressTab; label: string }> = [
-  { key: "overview", label: "全体 / Overview" },
-  { key: "modules", label: "モジュール / Modules" },
-  { key: "history", label: "履歴 / History" },
+  { key: "overview", label: "全体" },
+  { key: "modules", label: "モジュール" },
+  { key: "history", label: "履歴" },
 ];
 
 const historyPeriods = ["週", "月", "直近3か月", "全期間", "日付指定"] as const;
@@ -82,8 +86,11 @@ function periodStartDate(period: string) {
 }
 
 export default function ProgressDashboard() {
+  const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, lockAndLogout } = useBloomState();
-  const [activeTab, setActiveTab] = useState<ProgressTab>("overview");
+  const [selectedTab, setActiveTab] = useState<ProgressTab>("overview");
+  const { allowedTab } = useSystemView();
+  const activeTab = allowedTab(selectedTab) ? selectedTab : tabs.find(t => allowedTab(t.key))?.key;
   const [historyModule, setHistoryModule] = useState("すべて");
   const [historyWorkstyle, setHistoryWorkstyle] = useState("すべて");
   const [historyPeriod, setHistoryPeriod] = useState("月");
@@ -108,7 +115,7 @@ export default function ProgressDashboard() {
   return (
     <GardenShell
       activeModule="bloom"
-      pageMenu={activeMenu}
+      pageMenu={activeMenu.filter(item => canViewMenu(item.href))}
       userName={userName}
       userEmail={userEmail}
       userRoleLabel={roleLabel(role)}
@@ -125,7 +132,7 @@ export default function ProgressDashboard() {
         </div>
 
         <nav className={styles.tabs} aria-label="progress sections">
-          {tabs.map((tab) => (
+          {tabs.filter(tab => allowedTab(tab.key)).map((tab) => (
             <button
               key={tab.key}
               type="button"
@@ -135,7 +142,7 @@ export default function ProgressDashboard() {
               {tab.label}
             </button>
           ))}
-        </nav>
+        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /><SystemViewButton tabKey={activeTab} /></span></nav>
 
         {activeTab === "overview" && <OverviewTab />}
         {activeTab === "modules" && <ModulesTab />}
@@ -164,7 +171,7 @@ function OverviewTab() {
     <>
       <div className={styles.heroGrid}>
         <section className={cx(styles.panel, styles.overallCard)} aria-labelledby="progress-overall">
-          <h2 id="progress-overall" className={styles.sectionTitle}>OVERALL / 全体進捗</h2>
+          <h2 id="progress-overall" className={styles.sectionTitle}>全体進捗</h2>
           <p>12モジュールの育ち具合</p>
           <div className={styles.overallBody}>
             <div className={styles.ring}>
@@ -183,7 +190,7 @@ function OverviewTab() {
         </section>
 
         <section className={cx(styles.panel, styles.milestoneCard)} aria-labelledby="progress-milestones">
-          <h2 id="progress-milestones" className={styles.sectionTitle}>MILESTONES / マイルストーン</h2>
+          <h2 id="progress-milestones" className={styles.sectionTitle}>マイルストーン</h2>
           <p>直近の達成と次の目標</p>
           <div className={styles.milestoneGrid}>
             <article>
@@ -227,7 +234,7 @@ function ModulesTab() {
   return (
     <section className={styles.modulesLayout} aria-label="module details">
       <aside className={cx(styles.panel, styles.modulesToc)}>
-        <h2 className={styles.sectionTitle}>MODULE INDEX</h2>
+        <h2 className={styles.sectionTitle}>モジュール一覧</h2>
         {groups.map((group) => (
           <div key={group} className={styles.tocGroup}>
             <h3>{group}</h3>

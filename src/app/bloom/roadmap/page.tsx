@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import {
   fetchAllActive,
@@ -23,13 +24,16 @@ import { fetchModuleProgress } from "./_lib/module-progress-queries";
 
 const KIND_FILTERS: Array<{ value: "all" | RoadmapEntryKind; label: string }> = [
   { value: "all", label: "すべて" },
-  { value: "phase", label: "Phase" },
+  { value: "phase", label: "段階" },
   { value: "milestone", label: "マイルストーン" },
   { value: "module", label: "モジュール" },
   { value: "risk", label: "リスク" },
 ];
 
 export default function RoadmapPage() {
+  return <><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:24}}><h1>ロードマップ</h1><SystemViewButton /></div><RoadmapContent /></>;
+}
+function RoadmapContent() {
   const [entries, setEntries] = useState<RoadmapEntry[]>([]);
   const [risks, setRisks] = useState<RoadmapEntry[]>([]);
   const [banners, setBanners] = useState<RoadmapEntry[]>([]);

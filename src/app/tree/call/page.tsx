@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 /**
  * Garden-Tree 通話画面 (/tree/call)
@@ -334,23 +335,13 @@ export default function InCallPage() {
     >
       {/* ワイヤーフレームラベル */}
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <WireframeLabel
-          color={
-            isConfirm
-              ? cType === "前確"
-                ? "#3478c6"
-                : "#e67e22"
-              : isFromToss
-                ? "#e67e22"
-                : "#2d6a8a"
-          }
-        >
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>
           {isConfirm
             ? <>{prefix}通話画面 — <span {...CLARITY_MASK}>{cu.name}</span> 様</>
             : isFromToss
               ? <>クローザー通話画面 — <span {...CLARITY_MASK}>{cu.name}</span> 様</>
-              : "画面5: 通話画面（クローザー・責任者）"}
-        </WireframeLabel>
+              : "通話画面（クローザー・責任者）"}
+        </h1><SystemViewButton /></div>
         <div style={{ paddingTop: 8 }} />
       </div>
 

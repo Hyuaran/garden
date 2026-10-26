@@ -1,4 +1,5 @@
 import { LEAF_FOREST_VIEW_SCOPES } from "./leaf-forest-view-scopes";
+import { BLOOM_TREE_VIEW_SCOPES } from "./bloom-tree-view-scopes";
 import { SYSTEM_VIEW_SCOPES } from "./system-view-scopes";
 import { ROOT_VIEW_SCOPES } from "./root-view-scopes";
 import { BUD_VIEW_SCOPES } from "./bud-view-scopes";
@@ -8,7 +9,7 @@ import type { GardenRole } from "@/app/root/_constants/types";
 export type ViewPermission = { page_key: string; tab_key: string; roles: string[]; employee_ids: string[]; viewers_can_add: boolean; updated_by: string; updated_at: string };
 export type Viewer = { employeeId: string; role: GardenRole };
 export function permissionEntry(page: string, tab = "") {
-  const scopes = [...SYSTEM_VIEW_SCOPES, ...ROOT_VIEW_SCOPES, ...BUD_VIEW_SCOPES, ...SPROUT_RILL_VIEW_SCOPES, ...LEAF_FOREST_VIEW_SCOPES];
+  const scopes = [...SYSTEM_VIEW_SCOPES, ...ROOT_VIEW_SCOPES, ...BUD_VIEW_SCOPES, ...SPROUT_RILL_VIEW_SCOPES, ...LEAF_FOREST_VIEW_SCOPES, ...BLOOM_TREE_VIEW_SCOPES];
   const scope = scopes.find(entry => entry.pageKey === page && entry.tabKey === tab);
   if (scope) return { pageKey: page, tabKey: tab,
     label: tab ? `${scopes.find(entry => entry.pageKey === page && !entry.tabKey)?.label}：${scope.label}` : scope.label,

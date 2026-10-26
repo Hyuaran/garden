@@ -1,4 +1,6 @@
 "use client";
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 /**
  * Garden Bloom top — GardenShell migration stage 2-1.
@@ -22,13 +24,14 @@ function formatRoleLabel(role: string | null): string {
 }
 
 export default function BloomTopPage() {
+  const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, lockAndLogout } = useBloomState();
   const userName = bloomUser?.name ?? userEmail ?? "東海林 美琴";
 
   return (
     <GardenShell
       activeModule="bloom"
-      pageMenu={BLOOM_GARDEN_PAGE_MENU}
+      pageMenu={BLOOM_GARDEN_PAGE_MENU.filter(item => canViewMenu(item.href))}
       userName={userName}
       userEmail={userEmail}
       userRoleLabel={formatRoleLabel(role)}

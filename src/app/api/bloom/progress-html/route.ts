@@ -1,3 +1,5 @@
+import { requireBloomTreeRead } from '@/lib/auth/bloom-tree-view.server';
+import { ViewPermissionError } from '@/lib/auth/view-permission.server';
 /**
  * GET /api/bloom/progress-html
  *
@@ -410,6 +412,8 @@ function buildResponseHtml(
 
 // 修正 A: GET 関数全体に try/catch、ビルド失敗時は mock-fallback で 200 維持
 export async function GET() {
+  // この旧 HTML は全タブを一括で返すため、含まれる全スコープを確認する。
+  try { for (const tab of ['overview','modules','history']) await requireBloomTreeRead('bloom-progress',tab); } catch(e) { if(e instanceof ViewPermissionError) return Response.json({error:e.message},{status:e.status}); throw e; }
   const tmplPath = path.join(process.cwd(), "public/_proto/bloom-dev-progress/index.html");
   let template: string;
   try {

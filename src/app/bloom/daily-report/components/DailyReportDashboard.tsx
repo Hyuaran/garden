@@ -1,4 +1,8 @@
 "use client";
+import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 import Image from "next/image";
 
@@ -125,6 +129,8 @@ function WeeklyChart() {
 }
 
 export default function DailyReportDashboard() {
+  const { allowedTab } = useSystemView();
+  const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, lockAndLogout } = useBloomState();
   const userName = bloomUser?.name ?? userEmail ?? "東海林 美琴";
   const activeMenu = BLOOM_GARDEN_PAGE_MENU.map((item) => ({ ...item, active: item.href === "/bloom/daily-report" }));
@@ -132,7 +138,7 @@ export default function DailyReportDashboard() {
   return (
     <GardenShell
       activeModule="bloom"
-      pageMenu={activeMenu}
+      pageMenu={activeMenu.filter(item => canViewMenu(item.href))}
       userName={userName}
       userEmail={userEmail}
       userRoleLabel={roleLabel(role)}
@@ -153,17 +159,17 @@ export default function DailyReportDashboard() {
         </div>
 
         <nav className={styles.tabs} aria-label="daily report views">
-          {dailyTabs.map((tab) => (
+          {dailyTabs.filter(tab => allowedTab(tab.english)).map((tab) => (
             <button key={tab.label} type="button" className={cx(styles.tab, tab.active && styles.tabActive)}>
-              {tab.label} / {tab.english}
+              {tab.label}
             </button>
           ))}
-        </nav>
+        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /></span></nav>
 
         <div className={styles.dashboard}>
-          <section className={cx(styles.card, styles.reportCard)} aria-labelledby="daily-report-main">
+          {allowedTab('Summary') && (<section className={cx(styles.card, styles.reportCard)} aria-labelledby="daily-report-main">
             <div className={styles.cardHeader}>
-              <h2 id="daily-report-main" className={styles.sectionTitle}>TODAY&apos;S REPORT / 本日の日報</h2>
+              <h2 id="daily-report-main" className={styles.sectionTitle}>本日の日報</h2>
             </div>
             <div className={styles.authorRow}>
               <Image className={styles.avatar} src="/themes/garden-shell/images/avatar/avatar_shoji.png" alt="" width={42} height={42} />
@@ -193,10 +199,10 @@ export default function DailyReportDashboard() {
               <button type="button" className={styles.secondaryButton}>▣ 下書き保存</button>
               <button type="button" className={styles.primaryButton}>✈ 公開する</button>
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.summaryCard)} aria-labelledby="daily-summary">
-            <h2 id="daily-summary" className={styles.sectionTitle}>TODAY&apos;S SUMMARY / 本日のサマリ</h2>
+          {allowedTab('Achievements') && (<section className={cx(styles.card, styles.summaryCard)} aria-labelledby="daily-summary">
+            <h2 id="daily-summary" className={styles.sectionTitle}>本日のサマリ</h2>
             <div className={styles.summaryTop}>
               <div className={styles.summaryMetric}>
                 <span className={styles.metricIcon}>◷</span>
@@ -219,10 +225,10 @@ export default function DailyReportDashboard() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.recentCard)} aria-labelledby="daily-recent">
-            <h2 id="daily-recent" className={styles.sectionTitle}>RECENT / 直近の日報</h2>
+          {allowedTab('Summary') && (<section className={cx(styles.card, styles.recentCard)} aria-labelledby="daily-recent">
+            <h2 id="daily-recent" className={styles.sectionTitle}>直近の日報</h2>
             <div className={styles.recentList}>
               {recentReports.map((report) => (
                 <article key={report.date} className={styles.recentRow}>
@@ -238,19 +244,19 @@ export default function DailyReportDashboard() {
                 </article>
               ))}
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.weeklyCard)} aria-labelledby="daily-weekly">
+          {allowedTab('Progress') && (<section className={cx(styles.card, styles.weeklyCard)} aria-labelledby="daily-weekly">
             <div className={styles.sectionHeaderSplit}>
-              <h2 id="daily-weekly" className={styles.sectionTitle}>WEEKLY / 今週のサマリ</h2>
+              <h2 id="daily-weekly" className={styles.sectionTitle}>今週のサマリ</h2>
               <div className={styles.legend}><span className={styles.legendGold} />作業時間（時間）<span className={styles.legendGreen} />完了タスク（件）</div>
             </div>
             <p className={styles.weekTotal}>今週合計：<strong>52</strong> 時間 / <strong>60</strong> タスク完了</p>
             <WeeklyChart />
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.membersCard)} aria-labelledby="daily-members">
-            <h2 id="daily-members" className={styles.sectionTitle}>MEMBERS / メンバー別</h2>
+          {allowedTab('Next Goals') && (<section className={cx(styles.card, styles.membersCard)} aria-labelledby="daily-members">
+            <h2 id="daily-members" className={styles.sectionTitle}>メンバー別</h2>
             <div className={styles.memberList}>
               {dailyMembers.map((member) => (
                 <article key={member.name} className={styles.memberRow}>
@@ -262,7 +268,7 @@ export default function DailyReportDashboard() {
                 </article>
               ))}
             </div>
-          </section>
+          </section>)}
         </div>
       </div>
     </GardenShell>

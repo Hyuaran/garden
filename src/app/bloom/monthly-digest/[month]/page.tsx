@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import { supabase } from "../../_lib/supabase";
 import { useBloomState } from "../../_state/BloomStateContext";
@@ -26,6 +27,9 @@ const STATUS_LABEL: Record<
 };
 
 export default function MonthDigestPage() {
+  return <><div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1>月次まとめ</h1><SystemViewButton /></div><MonthDigestContent /></>;
+}
+function MonthDigestContent() {
   const router = useRouter();
   const params = useParams<{ month: string }>();
   const month = params?.month ?? "";

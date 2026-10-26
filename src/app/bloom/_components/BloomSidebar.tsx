@@ -1,4 +1,6 @@
 "use client";
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 /**
  * BloomSidebar — 試作版 1:1 移植 (dispatch main- No.19 修正版)
@@ -74,6 +76,7 @@ const NAV_PAGES: NavPage[] = [
 ];
 
 export default function BloomSidebar() {
+  const canView = useBloomTreeView();
   const pathname = usePathname() || "";
 
   // default: expanded (collapsed = false)、localStorage で "1" の時のみ collapsed
@@ -113,7 +116,7 @@ export default function BloomSidebar() {
       <aside className="sidebar sidebar-dual" id="sidebarDual">
         {/* 1 本目: nav-apps (Garden 12 モジュール icons column、hover で展開) */}
         <nav className="nav-apps" id="navApps" aria-label="Garden Series アプリ一覧">
-          {NAV_APPS.map((nav) => {
+          {NAV_APPS.filter(nav => nav.app !== 'bloom' || canView(nav.href)).map((nav) => {
             const isCurrent = nav.app === "bloom";
             return (
               <Link
@@ -136,17 +139,17 @@ export default function BloomSidebar() {
 
         {/* 2 本目: nav-pages (Bloom サブページ menu) */}
         <nav className="nav-pages" id="navPages" aria-label="Bloom メニュー">
-          <Link href="/bloom" className="nav-pages-header active" title="Bloomホーム">
+          {canView('/bloom') && <Link href="/bloom" className="nav-pages-header active" title="Bloomホーム">
             <span className="nav-pages-app-icon">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/images/icons_bloom/orb_bloom.png" alt="" />
             </span>
             <span className="nav-pages-app-name">Bloom</span>
-          </Link>
+          </Link>}
 
           <div className="nav-pages-divider" />
 
-          {NAV_PAGES.map((page) => {
+          {NAV_PAGES.filter(p => canView(p.href)).map((page) => {
             const active =
               pathname === page.href || pathname.startsWith(`${page.href}/`);
             return (

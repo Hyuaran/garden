@@ -1,3 +1,4 @@
+import { bloomRead } from '../../_lib/view-read';
 /**
  * 月次ダイジェスト CRUD
  *
@@ -34,21 +35,14 @@ export function toMonthKey(monthStart: string): string {
 }
 
 export async function fetchDigests(): Promise<MonthlyDigest[]> {
-  const { data, error } = await supabase
-    .from("bloom_monthly_digests")
-    .select("*")
-    .order("digest_month", { ascending: false });
-  if (error) {
-    console.error("[bloom] fetchDigests failed:", error.message);
-    return [];
-  }
-  return (data ?? []) as MonthlyDigest[];
+return bloomRead('digests');
 }
 
 export async function fetchDigestByMonth(
   month: string,
-  client: SupabaseClient = supabase,
+  client?: SupabaseClient,
 ): Promise<MonthlyDigest | null> {
+  if (!client) return bloomRead('digest',{month});
   const monthStart = toMonthStart(month);
   const { data, error } = await client
     .from("bloom_monthly_digests")

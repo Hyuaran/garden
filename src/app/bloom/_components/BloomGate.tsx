@@ -19,7 +19,7 @@ import { BLOOM_PATHS } from "../_constants/routes";
 
 export function BloomGate({ children }: { children: ReactNode }) {
   return (
-    <ModuleGate module="bloom" loginPath={BLOOM_PATHS.FOREST_LOGIN}>
+    <ModuleGate module="bloom" minRole="toss" loginPath={BLOOM_PATHS.FOREST_LOGIN}>
       {children}
     </ModuleGate>
   );

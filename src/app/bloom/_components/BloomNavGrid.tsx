@@ -1,4 +1,6 @@
 "use client";
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 /**
  * BloomNavGrid — Bloom Top の 4 ナビカード（横 2 × 縦 2）
@@ -60,6 +62,7 @@ const NAVS: BloomNav[] = [
 ];
 
 export default function BloomNavGrid() {
+  const canView = useBloomTreeView();
   const [toastText, setToastText] = useState<string | null>(null);
 
   const showToast = useCallback((title: string) => {
@@ -70,7 +73,7 @@ export default function BloomNavGrid() {
   return (
     <>
       <section className="bloom-nav-grid">
-        {NAVS.map((nav) => {
+        {NAVS.filter(p => canView(p.href)).map((nav) => {
           const cardInner = (
             <>
               <div className="bloom-nav-img">

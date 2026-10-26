@@ -1,3 +1,4 @@
+import { BloomTreeGate } from '@/lib/auth/bloom-tree-view.client';
 import type { ReactNode } from "react";
 
 import { BloomGate } from "./_components/BloomGate";
@@ -18,7 +19,7 @@ export default function BloomLayout({ children }: { children: ReactNode }) {
     <BloomStateProvider>
       <ViewModeProvider>
         <BloomGate>
-          <BloomLayoutClient>{children}</BloomLayoutClient>
+          <BloomTreeGate><BloomLayoutClient>{children}</BloomLayoutClient></BloomTreeGate>
         </BloomGate>
       </ViewModeProvider>
     </BloomStateProvider>

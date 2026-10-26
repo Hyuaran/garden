@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 /**
  * Garden-Tree 動画ポータル画面 (/tree/videos)
@@ -64,7 +65,7 @@ export default function VideoPortalPage() {
   return (
     <div style={{ padding: "24px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <WireframeLabel color="#8b5cf6">🎬 動画ポータル</WireframeLabel>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>🎬 動画ポータル</h1><SystemViewButton /></div>
         <div style={{ paddingTop: 8 }} />
       </div>
 

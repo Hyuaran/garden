@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 /**
  * Garden-Tree ダッシュボード画面 (/tree/dashboard)
@@ -85,7 +86,7 @@ export default function TreeDashboardPage() {
       }}
     >
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <WireframeLabel>画面2: ダッシュボード</WireframeLabel>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>ダッシュボード</h1><SystemViewButton /></div>
         <div style={{ paddingTop: 8 }} />
       </div>
 

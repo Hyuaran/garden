@@ -1,4 +1,8 @@
 "use client";
+import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
@@ -128,6 +132,8 @@ function ProgressChart() {
 }
 
 export default function MonthlyDigestDashboard() {
+  const { allowedTab } = useSystemView();
+  const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, lockAndLogout } = useBloomState();
   const userName = bloomUser?.name ?? userEmail ?? "東海林 美琴";
   const activeMenu = BLOOM_GARDEN_PAGE_MENU.map((item) => ({ ...item, active: item.href === "/bloom/monthly-digest" }));
@@ -135,7 +141,7 @@ export default function MonthlyDigestDashboard() {
   return (
     <GardenShell
       activeModule="bloom"
-      pageMenu={activeMenu}
+      pageMenu={activeMenu.filter(item => canViewMenu(item.href))}
       userName={userName}
       userEmail={userEmail}
       userRoleLabel={roleLabel(role)}
@@ -157,14 +163,14 @@ export default function MonthlyDigestDashboard() {
         </div>
 
         <nav className={styles.tabs} aria-label="monthly digest views">
-          {digestTabs.map((tab) => (
+          {digestTabs.filter(tab => allowedTab(tab.english)).map((tab) => (
             <button key={tab.label} type="button" className={cx(styles.tab, tab.active && styles.tabActive)}>
-              {tab.label} / {tab.english}
+              {tab.label}
             </button>
           ))}
-        </nav>
+        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /></span></nav>
 
-        <section className={styles.cover} aria-labelledby="monthly-cover">
+        {allowedTab('Summary') && (<section className={styles.cover} aria-labelledby="monthly-cover">
           <h2 id="monthly-cover">2026 年 4 月 月次まとめ</h2>
           <p>Garden Series / Bloom 配信</p>
           <div className={styles.coverMeta}>
@@ -173,11 +179,11 @@ export default function MonthlyDigestDashboard() {
             <span>作成：東海林 美琴</span>
           </div>
           <span className={styles.issued}>2026/05/01</span>
-        </section>
+        </section>)}
 
         <div className={styles.dashboard}>
-          <section className={cx(styles.card, styles.overall)} aria-labelledby="monthly-overall">
-            <h2 id="monthly-overall" className={styles.sectionTitle}>OVERALL / 今月の総括</h2>
+          {allowedTab('Summary') && (<section className={cx(styles.card, styles.overall)} aria-labelledby="monthly-overall">
+            <h2 id="monthly-overall" className={styles.sectionTitle}>今月の総括</h2>
             <div className={styles.metricGrid}>
               {digestMetrics.map((metric) => (
                 <article key={metric.label} className={cx(styles.metricCard, styles[metric.tone])}>
@@ -190,10 +196,10 @@ export default function MonthlyDigestDashboard() {
                 </article>
               ))}
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.summary)} aria-labelledby="monthly-summary">
-            <h2 id="monthly-summary" className={styles.sectionTitle}>SUMMARY / 業務サマリ</h2>
+          {allowedTab('Summary') && (<section className={cx(styles.card, styles.summary)} aria-labelledby="monthly-summary">
+            <h2 id="monthly-summary" className={styles.sectionTitle}>業務サマリ</h2>
             <div className={styles.summaryColumns}>
               <div>
                 <h3>今月のハイライト</h3>
@@ -208,10 +214,10 @@ export default function MonthlyDigestDashboard() {
                 </ul>
               </div>
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.progress)} aria-labelledby="monthly-progress">
-            <h2 id="monthly-progress" className={styles.sectionTitle}>PROGRESS / 進捗グラフ</h2>
+          {allowedTab('Progress') && (<section className={cx(styles.card, styles.progress)} aria-labelledby="monthly-progress">
+            <h2 id="monthly-progress" className={styles.sectionTitle}>進捗グラフ</h2>
             <div className={styles.progressWrap}>
               <ProgressChart />
               <div className={styles.progressStats}>
@@ -221,10 +227,10 @@ export default function MonthlyDigestDashboard() {
               </div>
             </div>
             <p className={styles.progressMessage}>目標を 18% 上回って達成</p>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.achievements)} aria-labelledby="monthly-achievements">
-            <h2 id="monthly-achievements" className={styles.sectionTitle}>ACHIEVEMENTS / 達成リスト</h2>
+          {allowedTab('Achievements') && (<section className={cx(styles.card, styles.achievements)} aria-labelledby="monthly-achievements">
+            <h2 id="monthly-achievements" className={styles.sectionTitle}>達成リスト</h2>
             <div className={styles.achievementList}>
               {digestAchievements.map((achievement) => (
                 <article key={achievement.title} className={styles.achievementRow}>
@@ -238,10 +244,10 @@ export default function MonthlyDigestDashboard() {
                 </article>
               ))}
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.goals)} aria-labelledby="monthly-goals">
-            <h2 id="monthly-goals" className={styles.sectionTitle}>NEXT GOALS / 次月目標</h2>
+          {allowedTab('Next Goals') && (<section className={cx(styles.card, styles.goals)} aria-labelledby="monthly-goals">
+            <h2 id="monthly-goals" className={styles.sectionTitle}>次月目標</h2>
             <div className={styles.goalList}>
               {digestGoals.map((goal) => (
                 <article key={goal.rank} className={styles.goalRow}>
@@ -253,16 +259,16 @@ export default function MonthlyDigestDashboard() {
                 </article>
               ))}
             </div>
-          </section>
+          </section>)}
 
-          <section className={cx(styles.card, styles.ceo)} aria-labelledby="monthly-ceo">
-            <h2 id="monthly-ceo" className={styles.sectionTitle}>TO CEO / 後道代表への報告</h2>
+          {allowedTab('Summary') && (<section className={cx(styles.card, styles.ceo)} aria-labelledby="monthly-ceo">
+            <h2 id="monthly-ceo" className={styles.sectionTitle}>後道代表への報告</h2>
             <p className={styles.ceoText}>
               4 月は目標 105 件に対し 124 件達成。Bloom Top の桜世界観化が完了し、
               経営見える化の基盤が整いました。
             </p>
             <p className={styles.signature}>東海林 美琴（2026/05/01）</p>
-          </section>
+          </section>)}
         </div>
       </div>
     </GardenShell>

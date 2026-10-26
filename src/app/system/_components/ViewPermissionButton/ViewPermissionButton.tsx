@@ -10,7 +10,7 @@ import styles from "./view-permission.module.css";
 
 type Settings = { settings: ViewPermission[]; employees: ViewerEmployee[]; updaters: {employee_id: string; name: string}[]; defaults: Record<string, string[]> };
 export default function ViewPermissionButton({ pageKey, tabKey, tabLabel, admin, canAdd = false }: { pageKey: string; tabKey: string; tabLabel: string; admin: boolean; canAdd?: boolean }) {
-  const moneyPage = pageKey.startsWith("bud-") || pageKey.startsWith("sprout-") || pageKey.startsWith("rill-");
+  const moneyPage = pageKey.startsWith("bud-") || pageKey.startsWith("sprout-") || pageKey.startsWith("rill-") || pageKey.startsWith("bloom-");
   const router = useRouter();
   const [open, setOpen] = useState(false), [target, setTarget] = useState(tabKey);
   const [data, setData] = useState<Settings | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false);
@@ -40,6 +40,7 @@ export default function ViewPermissionButton({ pageKey, tabKey, tabLabel, admin,
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       router.refresh();
+      window.dispatchEvent(new Event('garden:view-permissions-updated'));
       if (result.warning) setError(result.warning); else setOpen(false);
     } catch (e) { setError(e instanceof Error ? e.message : "保存できませんでした。"); }
     finally { setBusy(false); }

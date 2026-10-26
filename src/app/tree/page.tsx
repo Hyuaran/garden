@@ -1,3 +1,4 @@
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 /**
  * Garden-Tree ルート（/tree）
  *
@@ -32,7 +33,7 @@ export default function TreeHomePage() {
         }}
       >
         <div style={{ fontSize: 64 }}>🌳</div>
-        <h1
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h1
           style={{
             fontSize: 28,
             fontWeight: 800,
@@ -46,7 +47,7 @@ export default function TreeHomePage() {
             toastTitle="旧UI・新UI切替予定"
             toastBody="Garden Shell への切替を予定しています。既存機能はそのまま利用できます。"
           />
-        </h1>
+        </h1><SystemViewButton /></div>
         <p style={{ fontSize: 14, color: C.textDark, lineHeight: 1.7 }}>
           架電アプリ — プロトタイプから移植中です。
           <br />

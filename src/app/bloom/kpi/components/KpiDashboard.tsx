@@ -1,4 +1,8 @@
 "use client";
+import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
@@ -20,10 +24,10 @@ import {
 import styles from "./KpiDashboard.module.css";
 
 const subTabs: Array<{ key: KpiSubTab; label: string }> = [
-  { key: "summary", label: "サマリ / Summary" },
-  { key: "forest", label: "Forest / 売上" },
-  { key: "tree", label: "Tree / 架電" },
-  { key: "bud", label: "Bud / 経理" },
+  { key: "summary", label: "サマリ" },
+  { key: "forest", label: "売上" },
+  { key: "tree", label: "架電" },
+  { key: "bud", label: "経理" },
 ];
 
 function cx(...classes: Array<string | false | undefined>) {
@@ -72,14 +76,20 @@ function TrendChart({ chart }: { chart: (typeof trendSeries)[number] }) {
 }
 
 export default function KpiDashboard() {
+  const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, lockAndLogout } = useBloomState();
-  const [activeEntity, setActiveEntity] = useState("全社統合");
-  const [activeSubTab, setActiveSubTab] = useState<KpiSubTab>("summary");
+  const [selectedEntity, setActiveEntity] = useState("全社統合");
+  const { allowedTab: allowedEntity } = useSystemView();
+  const activeEntity = allowedEntity(selectedEntity) ? selectedEntity : entityTabs.find(e => allowedEntity(e)) ?? "全社統合";
+  const [selectedTab, setActiveSubTab] = useState<KpiSubTab>("summary");
+  const { allowedTab } = useSystemView();
+  const activeSubTab = allowedTab(selectedTab) ? selectedTab : subTabs.find(t => allowedTab(t.key))?.key;
   const userName = bloomUser?.name ?? userEmail ?? "東海林 美樹";
   const activeMenu = BLOOM_GARDEN_PAGE_MENU.map((item) => ({ ...item, active: item.href === "/bloom/kpi" }));
   const activeKpi = entityKpis[activeEntity];
   const visibleRows = useMemo(() => activeEntity === "全社統合" ? entityRows : entityRows.filter((row) => row.name === activeEntity || row.name === "全社統合"), [activeEntity]);
-  const activePanel = sectionPanels[activeSubTab];
+  const activePanel = sectionPanels[activeSubTab ?? "summary"];
+  if (!activeSubTab || !entityTabs.some(entity => allowedEntity(entity))) return <p>閲覧権限がありません</p>;
 
   const cards: Array<
     { kind: "line"; label: string; value: string; delta: string; icon: string; values: number[] } |
@@ -94,7 +104,7 @@ export default function KpiDashboard() {
   return (
     <GardenShell
       activeModule="bloom"
-      pageMenu={activeMenu}
+      pageMenu={activeMenu.filter(item => canViewMenu(item.href))}
       userName={userName}
       userEmail={userEmail}
       userRoleLabel={roleLabel(role)}
@@ -112,19 +122,20 @@ export default function KpiDashboard() {
         <div className={styles.periodChip}>対象月: 2026年4月</div>
 
         <nav className={styles.entityTabs} aria-label="entity tabs">
-          {entityTabs.map((entity) => (
+          {entityTabs.filter(e => allowedEntity(e)).map((entity) => (
             <button key={entity} type="button" className={cx(styles.entityTab, activeEntity === entity && styles.entityTabActive)} onClick={() => setActiveEntity(entity)}>
               {entity}
             </button>
           ))}
-        </nav>
+        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton tabKey={activeEntity} /></span></nav>
 
         <nav className={styles.subTabs} aria-label="kpi sections">
-          {subTabs.map((tab) => (
+          {subTabs.filter(tab => allowedTab(tab.key)).map((tab) => (
             <button key={tab.key} type="button" className={cx(styles.subTab, activeSubTab === tab.key && styles.subTabActive)} onClick={() => setActiveSubTab(tab.key)}>
               {tab.label}
             </button>
           ))}
+          <span style={{marginLeft:'auto'}}><SystemViewButton tabKey={activeSubTab} /></span>
         </nav>
 
         <section className={styles.kpiGrid} aria-label="key kpi">
@@ -148,7 +159,7 @@ export default function KpiDashboard() {
 
         <div className={styles.midGrid}>
           <section className={styles.panel} aria-labelledby="kpi-entities">
-            <h2 id="kpi-entities" className={styles.sectionTitle}>BY ENTITY / 法人別 KPI</h2>
+            <h2 id="kpi-entities" className={styles.sectionTitle}>法人別 KPI</h2>
             <div className={styles.tableWrap}>
               <table className={styles.entityTable}>
                 <thead><tr><th>法人名</th><th>売上</th><th>利益</th><th>現預金</th><th>前年比</th><th>状態</th></tr></thead>
@@ -166,7 +177,7 @@ export default function KpiDashboard() {
           </section>
 
           <section className={cx(styles.panel, styles.developmentCard)} aria-labelledby="kpi-development">
-            <h2 id="kpi-development" className={styles.sectionTitle}>DEVELOPMENT / Garden 開発進捗</h2>
+            <h2 id="kpi-development" className={styles.sectionTitle}>Garden 開発進捗</h2>
             <div className={styles.developmentBody}>
               <div className={styles.devRing}><strong>67</strong><span>%</span></div>
               <div className={styles.devList}>

@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 /**
  * Garden-Tree Branch 架電画面 (/tree/calling/branch)
@@ -195,9 +196,9 @@ export default function CallingBranchPage() {
     >
       {/* ワイヤーフレームラベル */}
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <WireframeLabel color={C.goldDark}>
-          画面4: 架電画面（Branch / Dew）
-        </WireframeLabel>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>
+          架電画面（Branch / Dew）
+        </h1><SystemViewButton /></div>
         <div style={{ paddingTop: 8 }} />
       </div>
 

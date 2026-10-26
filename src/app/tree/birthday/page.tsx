@@ -1,4 +1,6 @@
 "use client";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+
 
 /**
  * Garden-Tree 初回ログイン時の誕生日入力画面 (/tree/birthday)
@@ -124,7 +126,7 @@ export default function TreeBirthdayPage() {
       <div style={{ position: "relative" }}>
         <WireframeLabel>画面1-β: 初回ログイン・誕生日入力</WireframeLabel>
         <GlassPanel style={{ width: 420, padding: 40, textAlign: "center" }}>
-          <h1
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><h1
             style={{
               fontSize: 22,
               fontWeight: 800,
@@ -133,7 +135,7 @@ export default function TreeBirthdayPage() {
             }}
           >
             はじめてのログイン
-          </h1>
+          </h1><SystemViewButton /></div>
           <p
             style={{
               fontSize: 13,

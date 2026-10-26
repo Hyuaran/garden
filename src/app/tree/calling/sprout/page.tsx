@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 /**
  * Garden-Tree Sprout 架電画面 (/tree/calling/sprout)
@@ -167,9 +168,9 @@ export default function CallingSproutPage() {
     >
       {/* ワイヤーフレームラベル */}
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <WireframeLabel color={C.lightGreen}>
-          画面4: 架電画面（Sprout / Breeze）
-        </WireframeLabel>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>
+          架電画面（Sprout / Breeze）
+        </h1><SystemViewButton /></div>
         <div style={{ paddingTop: 8 }} />
       </div>
 

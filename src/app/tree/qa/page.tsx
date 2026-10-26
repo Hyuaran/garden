@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 /**
  * Garden-Tree Q&A検索画面 (/tree/qa)
@@ -124,7 +125,7 @@ export default function QASearchPage() {
     <div style={{ padding: "24px 40px 80px", maxWidth: 800, margin: "0 auto" }}>
       {/* ワイヤーフレームラベル */}
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <WireframeLabel color="#6a5a8a">画面8: Q&A検索</WireframeLabel>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>Q&A検索</h1><SystemViewButton /></div>
         <div style={{ paddingTop: 8 }} />
       </div>
 

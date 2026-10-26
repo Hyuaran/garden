@@ -7,6 +7,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useBloomState } from "../../../_state/BloomStateContext";
 import type { DigestPage, DigestPageKind, MonthlyDigest } from "../../../_types/monthly-digest";
 import { fetchDigestByMonth, updateDigest } from "../../_lib/digest-queries";
+import { DigestPageRenderer } from '../../components/DigestPageRenderer';
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 const PAGE_KINDS: Array<{ value: DigestPageKind; label: string; icon: string }> = [
   { value: "cover", label: "表紙", icon: "🌸" },
@@ -18,6 +20,9 @@ const PAGE_KINDS: Array<{ value: DigestPageKind; label: string; icon: string }> 
 ];
 
 export default function EditDigestPage() {
+  return <><div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1>月次まとめの編集</h1><SystemViewButton /></div><EditDigestContent /></>;
+}
+function EditDigestContent() {
   const router = useRouter();
   const params = useParams<{ month: string }>();
   const month = params?.month ?? "";
@@ -105,6 +110,7 @@ export default function EditDigestPage() {
         <p style={{ marginTop: 16, fontSize: 14, color: "#7f1d1d" }}>
           編集には admin 以上の権限が必要です。
         </p>
+          {digest?.pages.map((page,index) => <DigestPageRenderer key={index} page={page} digest={digest} />)}
       </div>
     );
   }

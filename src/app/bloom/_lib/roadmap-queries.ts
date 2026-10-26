@@ -1,3 +1,4 @@
+import { bloomRead } from './view-read';
 /**
  * Bloom 共有ロードマップクエリ
  *
@@ -6,7 +7,6 @@
  * 進行中判定ロジックを一箇所にまとめる。
  */
 
-import { supabase } from "./supabase";
 import type { RoadmapEntry, RoadmapEntryKind } from "../_types/roadmap-entry";
 
 type FetchOptions = {
@@ -21,29 +21,11 @@ async function fetchByKind(
   kind: RoadmapEntryKind,
   options: FetchOptions = {},
 ): Promise<RoadmapEntry[]> {
-  let query = supabase.from("bloom_roadmap_entries").select("*").eq("kind", kind);
-
-  if (!options.includeArchived) {
-    query = query.eq("is_archived", false);
-  }
-
-  if (options.activeOnly) {
-    const today = new Date().toISOString().slice(0, 10);
-    query = query.or(`completed_on.is.null,completed_on.gte.${today}`);
-  }
-
-  if (options.order === "due_on") {
-    query = query.order("due_on", { ascending: true, nullsFirst: false });
-  } else {
-    query = query.order("sort_order", { ascending: true });
-  }
-
-  const { data, error } = await query;
-  if (error) {
-    console.error(`[bloom] fetch roadmap(${kind}) failed:`, error.message);
-    return [];
-  }
-  return (data ?? []) as RoadmapEntry[];
+let rows = await bloomRead<RoadmapEntry[]>('roadmap');
+ rows = rows.filter(row => row.kind === kind && (options.includeArchived || !row.is_archived));
+ if (options.activeOnly) rows = rows.filter(row => !row.completed_on || row.completed_on >= new Date().toISOString().slice(0,10));
+ if (options.order === 'due_on') rows.sort((a,b) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999'));
+ return rows;
 }
 
 export function fetchPhases(options?: FetchOptions) {
@@ -68,16 +50,7 @@ export function fetchBanners(options?: FetchOptions) {
 
 /** すべての非アーカイブエントリをまとめて取得（Roadmap 画面用） */
 export async function fetchAllActive(): Promise<RoadmapEntry[]> {
-  const { data, error } = await supabase
-    .from("bloom_roadmap_entries")
-    .select("*")
-    .eq("is_archived", false)
-    .order("sort_order", { ascending: true });
-  if (error) {
-    console.error("[bloom] fetchAllActive failed:", error.message);
-    return [];
-  }
-  return (data ?? []) as RoadmapEntry[];
+return (await bloomRead<RoadmapEntry[]>('roadmap')).filter(row => !row.is_archived);
 }
 
 /** 現在進行中の Phase 1 件（Workboard の RunningProjectCard 用） */

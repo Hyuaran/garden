@@ -1,4 +1,5 @@
 vi.mock("@/lib/auth/system-view-page.server", () => ({ withSystemView: (_key: string, page: unknown) => page }));
+vi.mock('@/lib/auth/bloom-tree-view.server',()=>({requireBloomTreeRead:vi.fn().mockResolvedValue({})}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const redirect = vi.hoisted(()=>vi.fn());
 vi.mock("next/navigation",()=>({redirect}));
@@ -10,7 +11,7 @@ import MyPagePage from "../page";
 
 describe("legacy mypage redirects",()=>{
   beforeEach(()=>redirect.mockReset());
-  it("moves the Tree URL to System",()=>{TreeMyPage();expect(redirect).toHaveBeenCalledWith("/system/mypage");});
+  it("moves the Tree URL to System",async()=>{await TreeMyPage();expect(redirect).toHaveBeenCalledWith("/system/mypage");});
   it("moves an old attendance query to the standalone URL",async()=>{
     await MyPagePage({searchParams:Promise.resolve({tab:"attendance"})});
     expect(redirect).toHaveBeenCalledWith("/system/attendance");

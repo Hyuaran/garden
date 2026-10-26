@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 /**
  * Garden-Tree アラート管理画面 (/tree/alerts)
@@ -127,7 +128,7 @@ export default function AlertsPage() {
   return (
     <div style={{ padding: "24px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <WireframeLabel color={C.red}>🚨 アラート管理</WireframeLabel>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>🚨 アラート管理</h1><SystemViewButton /></div>
         <div style={{ paddingTop: 8 }} />
       </div>
 

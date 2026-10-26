@@ -1,4 +1,6 @@
 "use client";
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 /**
  * Garden-Tree サイドバーナビゲーション
@@ -245,6 +247,7 @@ const ShortBreakMenuIcon = (
 );
 
 export function SidebarNav() {
+  const canView = useBloomTreeView();
   const pathname = usePathname() || "";
   const router = useRouter();
 
@@ -322,7 +325,7 @@ export function SidebarNav() {
       },
     ];
 
-    if (role !== ROLES.SPROUT) {
+    {
       base.push({
         id: "in_call",
         href: TREE_PATHS.IN_CALL,
@@ -331,7 +334,7 @@ export function SidebarNav() {
       });
     }
 
-    if (role === ROLES.MANAGER) {
+    {
       base.push({
         id: "confirm_wait",
         href: TREE_PATHS.CONFIRM_WAIT,
@@ -341,7 +344,7 @@ export function SidebarNav() {
       });
     }
 
-    if (role !== ROLES.SPROUT) {
+    {
       base.push({
         id: "follow_call",
         href: TREE_PATHS.FOLLOW_CALL,
@@ -389,7 +392,7 @@ export function SidebarNav() {
       },
     );
 
-    if (role !== ROLES.SPROUT) {
+    {
       base.push({
         id: "breeze",
         href: TREE_PATHS.BREEZE,
@@ -398,7 +401,7 @@ export function SidebarNav() {
       });
     }
 
-    if (role === ROLES.MANAGER) {
+    {
       base.push(
         {
           id: "feedback",
@@ -435,8 +438,8 @@ export function SidebarNav() {
       );
     }
 
-    return base;
-  }, [role, tossWaitCount, confirmWaitCount, fbRemaining, alertCount]);
+    return base.filter(item => canView(item.href, ["confirm_wait","feedback","monitoring","script_manage","alerts","break_schedule"].includes(item.id) ? role === ROLES.MANAGER : ["in_call","follow_call","breeze"].includes(item.id) ? role !== ROLES.SPROUT : true));
+  }, [canView, role, tossWaitCount, confirmWaitCount, fbRemaining, alertCount]);
 
   // 並べ替え適用後のアイテム配列
   const orderedItems = useMemo(() => {

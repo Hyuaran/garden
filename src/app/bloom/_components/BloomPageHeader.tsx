@@ -1,4 +1,6 @@
 "use client";
+import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+
 
 /**
  * BloomPageHeader — 試作版 1:1 移植版 ページヘッダー (dispatch main- No.16)
@@ -68,7 +70,7 @@ export default function BloomPageHeader() {
               toastTitle="旧UI・新UI切替予定"
               toastBody="Garden Shell への切替を予定しています。既存機能はそのまま利用できます。"
             />
-          </h1>
+          </h1><SystemViewButton />
         </div>
         <p className="page-subtitle">グループの動きを、咲かせる。</p>
       </div>

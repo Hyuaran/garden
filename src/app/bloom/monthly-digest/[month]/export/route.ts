@@ -1,3 +1,6 @@
+import { requireBloomTreeRead } from '@/lib/auth/bloom-tree-view.server';
+import { ViewPermissionError } from '@/lib/auth/view-permission.server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 /**
  * 月次ダイジェスト PDF エクスポート Route Handler
  *
@@ -41,7 +44,8 @@ export async function GET(
 
   let client;
   try {
-    client = createSupabaseFromRequest(request);
+    await requireBloomTreeRead('bloom-monthly-digest-month');
+    client = getSupabaseAdmin();
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return Response.json({ ok: false, error: msg }, { status: 401 });

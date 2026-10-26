@@ -1,4 +1,8 @@
 "use client";
+import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+
+import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
+
 
 import { useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
@@ -112,8 +116,11 @@ function ConsolidatedChartSvg({ chart }: { chart: ConsolidatedChart }) {
 }
 
 export default function CeoStatusDashboard() {
+  const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, loading, lockAndLogout } = useBloomState();
-  const [activeTab, setActiveTab] = useState<CeoStatusTab>("overview");
+  const [selectedTab, setActiveTab] = useState<CeoStatusTab>("overview");
+  const { allowedTab } = useSystemView();
+  const activeTab = allowedTab(selectedTab) ? selectedTab : TABS.find(t => allowedTab(t.key))?.key;
   const previewRole = useSyncExternalStore(subscribePreviewRole, readPreviewRole, () => null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -122,7 +129,7 @@ export default function CeoStatusDashboard() {
   const activeMenu = BLOOM_GARDEN_PAGE_MENU.map((item) => ({ ...item, active: item.href === "/bloom/ceo-status" }));
 
   const switchTab = (tab: CeoStatusTab, shouldScroll = true) => {
-    setActiveTab(tab);
+    if (allowedTab(tab)) setActiveTab(tab);
     if (shouldScroll) {
       window.requestAnimationFrame(() => contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
@@ -131,7 +138,7 @@ export default function CeoStatusDashboard() {
   return (
     <GardenShell
       activeModule="bloom"
-      pageMenu={activeMenu}
+      pageMenu={activeMenu.filter(item => canViewMenu(item.href))}
       userName={userName}
       userEmail={userEmail}
       userRoleLabel={roleLabel(role)}
@@ -146,7 +153,7 @@ export default function CeoStatusDashboard() {
         />
 
         <nav className={styles.tabNav} role="tablist" aria-label="CEO status tabs">
-          {TABS.map((tab) => (
+          {TABS.filter(tab => allowedTab(tab.key)).map((tab) => (
             <button
               key={tab.key}
               type="button"
@@ -155,15 +162,15 @@ export default function CeoStatusDashboard() {
               onClick={() => switchTab(tab.key)}
               aria-selected={activeTab === tab.key}
             >
-              <span className={styles.tabItemJp}>{tab.jp}</span>/ {tab.en}
+              <span className={styles.tabItemJp}>{tab.jp}</span>
             </button>
           ))}
-        </nav>
+        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /><SystemViewButton tabKey={activeTab} /></span></nav>
 
         <div ref={contentRef}>
           {loading && !previewRole ? (
             <div className={styles.placeholderPanel}>経営状況を読み込んでいます</div>
-          ) : !isSuperAdmin ? (
+          ) : !activeTab ? (
             <div className={styles.permissionPanel}>
               <strong>権限がありません</strong>
               <span>admin 3名のみ閲覧可能です。</span>
@@ -307,7 +314,7 @@ function PerformanceTab() {
   return (
     <section className={styles.tabContent} aria-label="業績 Performance">
       <div className={styles.ceoCardLarge}>
-        <div className={styles.ceoCardTitle}>業績ハイライト<span className={styles.ceoCardTitleSub}>Performance Highlights — KPIと推移</span></div>
+        <div className={styles.ceoCardTitle}>業績ハイライト<span className={styles.ceoCardTitleSub}>経営指標と推移</span></div>
         <div className={styles.kpiIntegratedGrid}>
           {performanceKpis.map((kpi) => (
             <div key={kpi.label} className={styles.kpiIntegratedCard}>

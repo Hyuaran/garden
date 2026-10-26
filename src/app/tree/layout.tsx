@@ -1,3 +1,4 @@
+import { BloomTreeGate } from '@/lib/auth/bloom-tree-view.client';
 /**
  * Garden-Tree モジュール共通レイアウト
  *
@@ -21,7 +22,7 @@ export default function TreeLayout({ children }: { children: ReactNode }) {
   return (
     <TreeStateProvider>
       <TreeAuthGate>
-        <TreeShell>{children}</TreeShell>
+        <BloomTreeGate><TreeShell>{children}</TreeShell></BloomTreeGate>
       </TreeAuthGate>
     </TreeStateProvider>
   );
