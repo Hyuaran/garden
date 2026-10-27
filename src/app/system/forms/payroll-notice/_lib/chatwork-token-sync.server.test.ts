@@ -50,7 +50,7 @@ describe("chatwork token sync", () => {
             is: () => Promise.resolve({
               data: [
                 { employee_id: "emp-1", employee_number: "1001", name: "山田太郎", kot_employee_id: "1001", chatwork_api_token_enc: null },
-                { employee_id: "emp-4", employee_number: "1004", name: "同一太郎", kot_employee_id: "1004", chatwork_api_token_enc: encryptToken(otherValidToken) },
+                { employee_id: "emp-4", employee_number: "1004", name: "同一太郎", kot_employee_id: "1004", chatwork_api_token_enc: encryptToken(otherValidToken), chatwork_account_id: "2746758" },
               ],
               error: null,
             }),
@@ -73,7 +73,7 @@ describe("chatwork token sync", () => {
           kintoneRecord("1004", otherValidToken, "在籍中", "1004", "同一太郎"),
         ] });
       }
-      return Response.json({ name: "Chatwork 表示名" });
+      return Response.json({ name: "Chatwork 表示名", account_id: 2746758 });
     }) as unknown as typeof fetch;
     const { syncChatworkTokens } = await import("./chatwork-token-sync.server");
 
@@ -86,6 +86,7 @@ describe("chatwork token sync", () => {
     expect(result.missingRoot).toEqual([{ employeeNumber: "9999", name: "Rootなし", kotEmployeeId: "9999" }]);
     expect(result.retired).toBe(1);
     expect(updates).toHaveLength(1);
+    expect(updates[0]).toMatchObject({ chatwork_account_id: "2746758" });
     expect(JSON.stringify(result)).not.toContain(validToken);
   });
 
@@ -112,4 +113,24 @@ describe("chatwork token sync", () => {
     expect(result.imported).toBe(0);
     expect(result.rejectedByChatwork).toHaveLength(1);
   });
+});
+
+it('fills an absent account ID even when the token has not changed', async () => {
+  process.env.RILL_TOKEN_ENC_KEY = 'test-key';
+  process.env.KINTONE_SUBDOMAIN = 'example';
+  process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN = 'kintone-token';
+  const update = vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }));
+  mocks.getSupabaseAdmin.mockReturnValue({ from: () => ({
+    select: () => ({ is: async () => ({ data: [{
+      employee_id: 'EMP-1', kot_employee_id: '1001', name: '山田 太郎',
+      chatwork_api_token_enc: encryptToken(validToken), chatwork_account_id: null,
+    }], error: null }) }), update,
+  }) });
+  const fetchImpl = vi.fn(async (url: string) => url.includes('cybozu.com')
+    ? Response.json({ records: [kintoneRecord('1001', validToken)] })
+    : Response.json({ name: '山田 太郎', account_id: 2746758 })) as unknown as typeof fetch;
+  const { syncChatworkTokens } = await import('./chatwork-token-sync.server');
+  const result = await syncChatworkTokens({ fetchImpl });
+  expect(result).toMatchObject({ imported: 1, unchanged: 0 });
+  expect(update).toHaveBeenCalledWith(expect.objectContaining({ chatwork_account_id: '2746758' }));
 });

@@ -41,6 +41,7 @@ function baseEmployee(overrides: Partial<Employee> = {}): Employee {
     kot_employee_id: null,
     innovera_extension: null,
     innovera_mobile_extension: null,
+    chatwork_account_id: null,
     filemaker_employee_name: null,
     mf_employee_id: null,
     call_recording_access: "default",
@@ -272,4 +273,11 @@ describe("validateEmployee — 退職時の口座任意化", () => {
     expect(validateEmployee(baseEmployee({ ...blankBank, termination_date: "2025-03-31" })))
       .toEqual({ termination_date: "入社日より前にはできません" });
   });
+});
+
+it.each([null, '', ' ', '1', '123456789012', ' 2746758 '])('accepts optional numeric Chatwork ID %s', chatwork_account_id => {
+  expect(validateEmployee(baseEmployee({ chatwork_account_id })).chatwork_account_id).toBeUndefined();
+});
+it.each(['abc', '１２３', '1234567890123', '12 34', '[To:1]'])('rejects invalid Chatwork ID %s', chatwork_account_id => {
+  expect(validateEmployee(baseEmployee({ chatwork_account_id })).chatwork_account_id).toBe('Chatwork ID は数字だけで入れてください');
 });

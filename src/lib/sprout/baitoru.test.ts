@@ -1,6 +1,6 @@
-﻿import { describe,it,expect } from 'vitest';
+import { describe,it,expect } from 'vitest';
 import { addKeys,appliedAt,classify,dateKey,emailKey,identity,kanaKey,keys,kintoneValues,nameKey,phoneKey,plan,splitName,type BaitoruSettings,type CsvRow } from './baitoru';
-export const config:BaitoruSettings={enabled:true,period_start:'2026-09-22',chatwork_title:'【バイトル新規応募】',exclude_inquiry_nos:[],notify_room:'dev',mentions:'',max_per_run:10};
+export const config:BaitoruSettings={enabled:true,period_start:'2026-09-22',chatwork_title:'【バイトル新規応募】',exclude_inquiry_nos:[],notify_room:'dev',mention_employee_ids:[],max_per_run:10};
 export const row:CsvRow={'問合せNo':'238839646','応募日時':'2026/10/24 10:12:00','氏名（漢字）':'山田 花子','氏名（ふりがな）':'やまだ はなこ','メールアドレス（PC）':'A@example.com','電話番号':'090-1234-5678','生年月日':'2000/01/01'};
 const now=Date.parse('2026-10-24T12:00:00+09:00');
 describe('Baitoru original seven dedup examples and five rules',()=>{

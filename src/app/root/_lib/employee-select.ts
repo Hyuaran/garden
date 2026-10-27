@@ -31,6 +31,7 @@ export const ROOT_EMPLOYEE_SELECT_FIELDS = [
   "commute_daily_allowance",
   "roster_record_id",
   "garden_role_manual",
+  "chatwork_account_id",
   "chatwork_account_name",
   "chatwork_token_updated_at",
   "insurance_type",

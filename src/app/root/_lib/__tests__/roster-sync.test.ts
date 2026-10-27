@@ -398,13 +398,18 @@ describe("roster profile history sync", () => {
     }) as typeof fetch;
     try {
       const first = await syncRootRoster({ dryRun: false, supabase: memorySupabase(tables), now: new Date("2026-09-14T00:00:00Z") });
-      const second = await syncRootRoster({ dryRun: false, supabase: memorySupabase(tables), now: new Date("2026-09-14T00:00:00Z") });
+      const second = await syncRootRoster({ dryRun: false, supabase: memorySupabase(tables), now: new Date("2026-09-15T00:00:00Z") });
       expect(first.snapshotRows).toBe(1);
       expect(first.historyRows).toBeGreaterThan(0);
       expect(first.myNumberRows).toBe(1);
       expect(second.snapshotRows).toBe(0);
       expect(second.historyRows).toBe(0);
       expect(second.myNumberRows).toBe(0);
+      const submitted = tables.history.find(row => row.category === "my_number_status")!;
+      (submitted.payload as Record<string, unknown>).submitted = false;
+      const third = await syncRootRoster({ dryRun: false, supabase: memorySupabase(tables), now: new Date("2026-09-16T00:00:00Z") });
+      expect(third.historyRows).toBe(1);
+      expect(tables.history.filter(row => row.category === "my_number_status")).toHaveLength(2);
       expect(tables.snapshots).toHaveLength(1);
       expect(JSON.stringify(tables.history)).not.toContain("123456789012");
     } finally {

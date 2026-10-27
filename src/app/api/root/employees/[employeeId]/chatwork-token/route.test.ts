@@ -36,7 +36,7 @@ describe("root employee chatwork token route", () => {
     Object.values(mocks).forEach((mock) => mock.mockReset());
     mocks.requireManager.mockResolvedValue({ userId: "user-1", employee_number: "0001" });
     mocks.isValidChatworkApiToken.mockReturnValue(true);
-    mocks.getChatworkMe.mockResolvedValue({ name: "金亜奈", accountId: "cw-1" });
+    mocks.getChatworkMe.mockResolvedValue({ name: "金亜奈", accountId: "2746758" });
     mocks.encryptToken.mockReturnValue("encrypted-token");
   });
 
@@ -57,6 +57,7 @@ describe("root employee chatwork token route", () => {
       data: {
         chatwork_api_token_enc: "encrypted-token",
         chatwork_account_name: "金亜奈",
+      chatwork_account_id: "2746758",
         chatwork_token_updated_at: "2026-09-07T10:38:00.000Z",
       },
       error: null,
@@ -133,10 +134,12 @@ describe("root employee chatwork token route", () => {
     expect(updates[0]).toEqual({
       chatwork_api_token_enc: "encrypted-token",
       chatwork_account_name: "金亜奈",
+      chatwork_account_id: "2746758",
       chatwork_token_updated_at: "2026-09-07T10:38:00.000Z",
     });
     expect(body).toEqual({
       ok: true,
+      accountId: "2746758",
       accountName: "金亜奈",
       updatedAt: "2026-09-07T10:38:00.000Z",
     });

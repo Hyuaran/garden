@@ -1,5 +1,5 @@
-﻿export type CsvRow = Record<string, string>;
-export type BaitoruSettings = { enabled: boolean; period_start: string; chatwork_title: string; exclude_inquiry_nos: string[]; notify_room: 'production' | 'dev'; mentions: string; max_per_run: number };
+export type CsvRow = Record<string, string>;
+export type BaitoruSettings = { enabled: boolean; period_start: string; chatwork_title: string; exclude_inquiry_nos: string[]; notify_room: 'production' | 'dev'; mention_employee_ids: string[]; max_per_run: number };
 export const nameKey = (s: string) => s.normalize('NFKC').replace(/[\s　]/g, '');
 export const kanaKey = (s: string) => nameKey(s).replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
 export const phoneKey = (s: string) => s.normalize('NFKC').replace(/[-―ー－\s　]/g, '').replace(/^\+81/, '0');

@@ -37,3 +37,28 @@ it('keeps option removal separate from registered postings and rejects empty opt
  expect(m.query).toHaveBeenCalledWith(expect.stringContaining('content_options=array_remove'),['テレマ正社員','admin']);
  expect(m.query.mock.calls[0][0]).not.toContain('sprout_baitoru_postings');
 });
+
+const config = { enabled: true, period_start: '2026-09-22', chatwork_title: '応募', exclude_inquiry_nos: [], notify_room: 'dev' as const, mention_employee_ids: ['EMP-1'], max_per_run: 10 };
+it.each([null, 'EMP-1', ['bad'], ['EMP-'], [123], Array(51).fill('EMP-1')])('rejects invalid recipients %j before writing', async value => {
+ await expect(saveBaitoru({...config, mention_employee_ids:value as never})).rejects.toThrow('設定');
+ expect(m.query).not.toHaveBeenCalled();
+});
+it('saves employee recipients and leaves legacy mentions untouched', async () => {
+ await saveBaitoru(config);
+ expect(m.query).toHaveBeenCalledWith(expect.stringContaining('mention_employee_ids=$3'), [[], 'dev', ['EMP-1'], 10, 'admin']);
+ expect(m.query.mock.calls[0][0]).not.toMatch(/[, ]mentions=/);
+});
+it('loads active recipients and keeps selected unavailable people with their names', async () => {
+ m.query.mockImplementation(async (sql:string) => ({rows:
+  sql.includes('from sprout_baitoru_settings') ? [{...config, mention_employee_ids:['EMP-1','EMP-2','EMP-3']}] :
+  sql.includes('is_active=true') ? [{employee_id:'EMP-1',name:'在籍 太郎'}] :
+  sql.includes('employee_id=any') ? [{employee_id:'EMP-2',name:'退職 花子'}] : []
+ }));
+ const result=await loadBaitoru();
+ expect(result.mention_candidates).toEqual([
+  {value:'EMP-1',label:'在籍 太郎'},
+  {value:'EMP-2',label:'退職 花子（ID 未登録）'},
+  {value:'EMP-3',label:'氏名不明（ID 未登録）'},
+ ]);
+ expect(m.query.mock.calls.find(([sql])=>sql.includes('is_active=true'))?.[0]).toContain('deleted_at is null');
+});

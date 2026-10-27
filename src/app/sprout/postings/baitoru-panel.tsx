@@ -3,6 +3,7 @@ import { useEffect,useState } from 'react';
 import { loadBaitoru,saveBaitoru,retryBaitoru,createPosting,endPosting,cancelPosting,changeContentOption } from './baitoru-actions';
 import { postingStatus, todayJst, type Posting } from '@/lib/sprout/postings';
 import DataTable, { type DataColumn } from '@/app/system/_components/DataTable/DataTable';
+import BoxSelect from '@/app/system/_components/BoxSelect/BoxSelect';
 import styles from './baitoru.module.css';
 type Data=Awaited<ReturnType<typeof loadBaitoru>>;
 const reasons:Record<string,string>={inquiryNo_match:'問合せ番号が一致',batch_inquiryNo_dup:'今回の問合せ番号が重複',phone_name_period_match:'掲載期間内の電話と氏名が一致',batch_phone_name_dup:'今回の電話と氏名が重複',email_name_match:'メールと氏名が一致',kanji_birth_match:'氏名と生年月日が一致',kana_name_match:'最近のカナ氏名が一致'};
@@ -46,7 +47,8 @@ export default function BaitoruPanel() {
    <legend>取り込み</legend><p>掲載期間中は自動で取り込み、期間が終わると止まります。</p>
    <label>今回だけ除外する問合せ番号（カンマ区切り）<input value={excluded} onChange={e=>setExcluded(e.target.value)}/></label>
    <label>通知先<select value={s.notify_room} onChange={e=>update({notify_room:e.target.value as 'dev'|'production'})}><option value="dev">開発ルーム</option><option value="production">本番ルーム</option></select></label>
-   <label>メンション<textarea value={s.mentions} onChange={e=>update({mentions:e.target.value})}/></label>
+   <BoxSelect label="通知の宛先" multiple options={data?.mention_candidates || []} value={s.mention_employee_ids} onChange={value=>update({mention_employee_ids:value})}/>
+   <small>宛先に出るのは Root の従業員で Chatwork ID を入れた人です</small>
    <label>1回に登録する上限<input type="number" required min={1} max={100} value={s.max_per_run} onChange={e=>update({max_per_run:Number(e.target.value)})}/></label>
    <button type="submit">保存</button></fieldset><p>最後に届いた時刻：{s.last_called_at?new Date(s.last_called_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'まだ届いていません'}</p></form>}
   <h2>取り込みの記録</h2><div className={styles.history}><table><thead><tr>{['日時','読んだ行','新規','重複でとばし（理由別）','不足でとばし','対象外でとばし','次回に回す','通知の失敗','結果'].map(t=><th key={t}>{t}</th>)}</tr></thead><tbody>{data?.runs.map(r=><tr key={r.id}><td className="garden-cell-fixed">{new Date(r.started_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})}</td><td className="garden-cell-number">{r.counts.totalRows || 0}</td><td className="garden-cell-number">{r.counts.added || 0}</td><td className="garden-cell-number">{Object.entries(r.dedup_by_reason).map(([k,v])=><div key={k}>{reasons[k] || '重複'}：{v}</div>)}</td><td className="garden-cell-number">{r.counts.missing || 0}</td><td className="garden-cell-number">{(r.counts.seed||0)+(r.counts.period||0)+(r.counts.excluded||0)}</td><td className="garden-cell-number">{r.counts.trimmed || 0}</td><td className="garden-cell-number">{r.counts.notifyFailed || 0}</td><td className="garden-cell-text">{r.error || '完了'}</td></tr>)}</tbody></table></div>

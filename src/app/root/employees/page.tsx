@@ -275,6 +275,7 @@ const empty = (nextId: string, companyId: string, salarySystemId: string): Emplo
   kot_employee_id: null,
   innovera_extension: null,
   innovera_mobile_extension: null,
+  chatwork_account_id: null,
   filemaker_employee_name: null,
   mf_employee_id: null,
   call_recording_access: "default",
@@ -455,7 +456,7 @@ export default function EmployeesPage() {
       setError(null);
       setErrors({});
       await upsertEmployee(
-        sanitizeUpsertPayload(editTarget, { nullableDateKeys: NULLABLE_DATE_KEYS.employees }) as Partial<Employee> & { employee_id: string },
+        sanitizeUpsertPayload({ ...editTarget, chatwork_account_id: editTarget.chatwork_account_id?.trim() || null }, { nullableDateKeys: NULLABLE_DATE_KEYS.employees }) as Partial<Employee> & { employee_id: string },
       );
       await writeAudit({
         action: "master_update",
@@ -586,6 +587,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Chatwork 連携を保存できませんでした");
+      setEditTarget(current => current ? { ...current, chatwork_account_id: body.accountId ?? null } : current);
       setChatworkTokenInput("");
       setChatworkTokenStatus({
         registered: true,
@@ -984,6 +986,17 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
             <div style={{ color: colors.textMuted, fontSize: 12, lineHeight: 1.6, marginTop: -8, marginBottom: 12 }}>
               既定では、マネージャー以上は全員の通話と録音、社員・業務委託は全員の履歴と自分の録音、CSは自分の通話と録音、クローザー・トスは使わせない設定です。ここで変更すると役職より優先されます。
             </div>
+            <TextField
+              label="Chatwork ID"
+              inputMode="numeric"
+              maxLength={12}
+              value={editTarget.chatwork_account_id ?? ""}
+              onChange={(e) => setEditTarget({ ...editTarget, chatwork_account_id: e.target.value.trim() || null })}
+              error={errors.chatwork_account_id}
+            />
+            <p style={{ color: colors.textMuted, fontSize: 12 }}>
+              通知の宛先（TO）に使う番号です。Chatwork のプロフィールに出る数字を入れます
+            </p>
             {canManageChatworkToken && editTarget.created_at && (
               <section style={{ marginTop: 16, padding: 12, border: `1px solid ${colors.border}`, borderRadius: 6, background: colors.bgPanel }}>
                 <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: colors.textMuted }}>Chatwork 連携</h3>

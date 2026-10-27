@@ -159,6 +159,7 @@ export interface Employee {
   roster_record_id?: string | null;
   garden_role_manual?: boolean;
   chatwork_api_token_enc?: string | null;
+  chatwork_account_id?: string | null;
   chatwork_account_name?: string | null;
   chatwork_token_updated_at?: string | null;
   insurance_type: string; // 加入/未加入/一部加入

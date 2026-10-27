@@ -224,6 +224,10 @@ export function validateEmployee(em: Employee): FieldErrors {
   ) {
     e.innovera_mobile_extension = "INNOVERA 内線番号（モバイル）は 2〜6 桁の数字で入力してください";
   }
+  const chatworkId = em.chatwork_account_id?.trim();
+  if (chatworkId && !/^[0-9]{1,12}$/.test(chatworkId)) {
+    e.chatwork_account_id = "Chatwork ID は数字だけで入れてください";
+  }
   if (em.filemaker_employee_name !== undefined && em.filemaker_employee_name !== null && !em.filemaker_employee_name.trim()) {
     e.filemaker_employee_name = "FileMaker 社員名は空白にはできません";
   }

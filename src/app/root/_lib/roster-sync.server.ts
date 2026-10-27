@@ -476,7 +476,11 @@ async function insertProfileHistoryIfChanged(
   dryRun: boolean,
 ): Promise<number> {
   const latest = await latestProfilePayload(admin, row.employee_id, row.category, row.source);
-  if (payloadEquals(latest, row.payload)) return 0;
+  // 個人番号の提出状況は、取込日だけ変わっても履歴を追加しない。
+  const comparable = (payload: Record<string, unknown> | null) => payload && row.category === "my_number_status"
+    ? { submitted: payload.submitted, source: payload.source }
+    : payload;
+  if (payloadEquals(comparable(latest), comparable(row.payload))) return 0;
   if (dryRun) return 1;
   const table = (admin as unknown as LooseSupabase).from("root_employee_profile_history");
   if (typeof table.insert !== "function") return 1;

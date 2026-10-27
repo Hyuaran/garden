@@ -7,18 +7,23 @@ import type { BaitoruSettings } from '@/lib/sprout/baitoru';
 import { todayJst, yesterdayJst, validPosting, type Posting } from '@/lib/sprout/postings';
 export async function loadBaitoru() {
  await requireRecruitMailRead("sprout-postings", "baitoru");
- const [settings,runs,failed,postings]=await Promise.all([
-  queryPg<BaitoruSettings & {last_called_at:string|null;content_options:string[]}>('select * from sprout_baitoru_settings where id=true',[]),
+ const [settings,runs,failed,postings,candidates]=await Promise.all([
+  queryPg<BaitoruSettings & {last_called_at:string|null;content_options:string[]}>('select enabled,period_start,chatwork_title,exclude_inquiry_nos,notify_room,mention_employee_ids,max_per_run,last_called_at,content_options from sprout_baitoru_settings where id=true',[]),
   queryPg<{id:string;started_at:string;counts:Record<string,number>;dedup_by_reason:Record<string,number>;error:string|null}>('select * from sprout_baitoru_runs order by id desc limit 50',[]),
   queryPg<{kintone_record_id:string;name:string;notify_error:string}>("select kintone_record_id,name,notify_error from sprout_applicants where source='baitoru' and notified_at is null and notify_error is not null order by applied_date",[]),
   queryPg<Posting>('select id,start_date::text,end_date::text,content,created_at,ended_early_at from sprout_baitoru_postings order by created_at desc,id desc',[]),
+  queryPg<{employee_id:string;name:string}>("select employee_id,name from root_employees where deleted_at is null and is_active=true and chatwork_account_id is not null and chatwork_account_id<>'' order by name,employee_id",[]),
  ]);
- return JSON.parse(JSON.stringify({settings:settings.rows[0],runs:runs.rows,failed:failed.rows,postings:postings.rows,today:todayJst()})) as {settings:BaitoruSettings & {last_called_at:string|null;content_options:string[]};runs:typeof runs.rows;failed:typeof failed.rows;postings:Posting[];today:string};
+ const selected=settings.rows[0]?.mention_employee_ids || [];
+ const absent=selected.filter(id=>!candidates.rows.some(row=>row.employee_id===id));
+ const former=absent.length ? (await queryPg<{employee_id:string;name:string}>('select employee_id,name from root_employees where employee_id=any($1::text[])',[absent])).rows : [];
+ const mention_candidates=[...candidates.rows.map(row=>({value:row.employee_id,label:row.name})),...absent.map(id=>({value:id,label:`${former.find(row=>row.employee_id===id)?.name || '氏名不明'}（ID 未登録）`}))];
+ return JSON.parse(JSON.stringify({mention_candidates,settings:settings.rows[0],runs:runs.rows,failed:failed.rows,postings:postings.rows,today:todayJst()})) as {mention_candidates:{value:string;label:string}[];settings:BaitoruSettings & {last_called_at:string|null;content_options:string[]};runs:typeof runs.rows;failed:typeof failed.rows;postings:Posting[];today:string};
 }
 export async function saveBaitoru(s: BaitoruSettings) {
  const user=await requireSproutUser();
- if(!['dev','production'].includes(s.notify_room) || !Number.isInteger(s.max_per_run) || s.max_per_run<1 || s.max_per_run>100 || typeof s.mentions!=='string' || s.mentions.length>10000 || !Array.isArray(s.exclude_inquiry_nos) || s.exclude_inquiry_nos.some(n=>typeof n!=='string' || !/^\d+$/.test(n))) throw new Error('設定の内容を確認してください');
- await queryPg('update sprout_baitoru_settings set exclude_inquiry_nos=$1,notify_room=$2,mentions=$3,max_per_run=$4,updated_at=now(),updated_by=$5 where id=true',[s.exclude_inquiry_nos,s.notify_room,s.mentions,s.max_per_run,user.id]);
+ if(!['dev','production'].includes(s.notify_room) || !Number.isInteger(s.max_per_run) || s.max_per_run<1 || s.max_per_run>100 || !Array.isArray(s.mention_employee_ids) || s.mention_employee_ids.length>50 || s.mention_employee_ids.some(id=>typeof id!=='string' || !/^EMP-[0-9A-Za-z-]+$/.test(id)) || !Array.isArray(s.exclude_inquiry_nos) || s.exclude_inquiry_nos.some(n=>typeof n!=='string' || !/^\d+$/.test(n))) throw new Error('設定の内容を確認してください');
+ await queryPg('update sprout_baitoru_settings set exclude_inquiry_nos=$1,notify_room=$2,mention_employee_ids=$3,max_per_run=$4,updated_at=now(),updated_by=$5 where id=true',[s.exclude_inquiry_nos,s.notify_room,s.mention_employee_ids,s.max_per_run,user.id]);
 }
 export async function retryBaitoru(id:string) {
  await requireSproutUser();

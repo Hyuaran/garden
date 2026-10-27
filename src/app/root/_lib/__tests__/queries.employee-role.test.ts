@@ -48,6 +48,7 @@ describe("updateEmployeeGardenRole", () => {
 
     expect(readRootData).toHaveBeenCalledWith("employees", "root-employees");
     expect(ROOT_EMPLOYEE_SELECT_FIELDS).toContain("innovera_extension");
+    expect(ROOT_EMPLOYEE_SELECT_FIELDS).toContain("chatwork_account_id");
     expect(ROOT_EMPLOYEE_SELECT_FIELDS).toContain("call_recording_access");
     expect(mocks.from).not.toHaveBeenCalled();
   });

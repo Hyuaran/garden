@@ -1,6 +1,7 @@
-﻿import 'server-only';
+import 'server-only';
 import type { PoolClient } from 'pg';
 import { withPgClient } from '@/lib/db/pg';
+import { chatworkToLine } from '@/lib/chatwork/mentions.server';
 import { ChatworkClient } from '@/lib/chatwork';
 import { applicant, type Applicant } from './model';
 import { appliedAt, dateKey, identity, kintoneValues, optionalMappings, plan, type BaitoruSettings, type CsvRow, type Identity } from './baitoru';
@@ -9,7 +10,7 @@ import { postingContext, type Posting } from './postings';
 export const BAITORU_LOCK = 42020261024; // Shared with the Kintone import.
 type Stored = Applicant & { inquiry_no: string | null; source: string; mirror_record_id: string | null; is_repeat: boolean; notified_at: string | null; notify_error: string | null; imported_at: string | Date };
 export async function settings(client: PoolClient) {
- const result=await client.query<BaitoruSettings>('select * from sprout_baitoru_settings where id=true');
+ const result=await client.query<BaitoruSettings>('select enabled,period_start,chatwork_title,exclude_inquiry_nos,notify_room,mention_employee_ids,max_per_run from sprout_baitoru_settings where id=true');
  if(!result.rows[0]) throw new Error('取り込みの設定が見つかりません');
  const postings=(await client.query<Posting>('select id,start_date::text,end_date::text,content,created_at,ended_early_at from sprout_baitoru_postings order by created_at desc,id')).rows;
  return {...result.rows[0],...postingContext(postings)};
@@ -38,11 +39,11 @@ async function mirror(row: CsvRow) {
  const result=await response.json(); if(!/^\d+$/.test(String(result.id))) throw new Error('Kintone の登録番号を確認できません');
  return String(result.id);
 }
-export function notificationBody(a: Stored, s: BaitoruSettings) {
+export function notificationBody(a: Stored, s: BaitoruSettings, to = '') {
  const domain=process.env.KINTONE_SUBDOMAIN;
  const url=a.mirror_record_id && domain && /^[\w-]+$/.test(domain) ? `https://${domain}.cybozu.com/k/44/show#record=${a.mirror_record_id}` : `${(process.env.NEXT_PUBLIC_APP_URL || 'https://garden-os.net').replace(/\/$/,'')}/sprout`;
  // 宛先（TO）はコーポレートサイトの通知と同じく最後に 1 行（多数のときは名前なしの [To:id] を並べる・2026-10-24 東海林さん）
- const to = s.mentions.replace(/\s+/g, '');
+
  return `[info][title]${s.chatwork_title}[/title]\n${a.is_repeat?'※過去応募あり\n':''}応募日時: ${a.raw['応募日時'] || a.applied_date}\n氏名: ${a.name}${a.kana?`（${a.kana}）`:''}\n${url}\n[/info]${to?`\n${to}`:''}`;
 }
 async function notify(client: PoolClient, a: Stored, s: BaitoruSettings) {
@@ -50,7 +51,8 @@ async function notify(client: PoolClient, a: Stored, s: BaitoruSettings) {
   const room=s.notify_room==='production' ? process.env.SPROUT_BAITORU_CHATWORK_ROOM_ID || '365721933' : process.env.CHATWORK_DEV_ROOM_ID;
   const token=process.env.CHATWORK_API_TOKEN;
   if(!room || !token) throw new Error('通知先の設定を確認してください');
-  await new ChatworkClient(token).sendMessage(room,notificationBody(a,s));
+  const { line } = await chatworkToLine(s.mention_employee_ids);
+  await new ChatworkClient(token).sendMessage(room,notificationBody(a,s,line));
   await client.query('update sprout_applicants set notified_at=now(),notify_error=null where kintone_record_id=$1',[a.kintone_record_id]);
   return true;
  } catch(error) {

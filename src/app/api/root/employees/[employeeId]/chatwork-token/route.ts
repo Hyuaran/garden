@@ -86,8 +86,11 @@ export async function PUT(request: Request, context: Context) {
   }
 
   let accountName: string;
+  let accountId: string | null;
   try {
-    accountName = (await getChatworkMe(token)).name;
+    const me = await getChatworkMe(token);
+    accountName = me.name;
+    accountId = me.accountId;
   } catch {
     return NextResponse.json({ ok: false, error: CHATWORK_REJECTED_ERROR }, { status: 400 });
   }
@@ -99,13 +102,14 @@ export async function PUT(request: Request, context: Context) {
     .update({
       chatwork_api_token_enc: encryptToken(token),
       chatwork_account_name: accountName,
+      chatwork_account_id: accountId,
       chatwork_token_updated_at: updatedAt,
     })
     .eq("employee_id", employeeId);
 
   if (error) return NextResponse.json({ ok: false }, { status: 500 });
   await writeTokenAudit({ actor: manager, employeeId, action: "Chatwork トークン登録" });
-  return NextResponse.json({ ok: true, accountName, updatedAt });
+  return NextResponse.json({ ok: true, accountName, accountId, updatedAt });
 }
 
 export async function DELETE(_request: Request, context: Context) {

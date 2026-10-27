@@ -42,6 +42,7 @@ type RootEmployeeTokenRow = {
   name: string;
   kot_employee_id: string | null;
   chatwork_api_token_enc: string | null;
+  chatwork_account_id: string | null;
 };
 
 const CHATWORK_TOKEN_PATTERN = /^[0-9a-f]{32}$/;
@@ -137,7 +138,7 @@ export async function syncChatworkTokens({
   const admin = getSupabaseAdmin();
   const { data: roots, error } = await admin
     .from("root_employees")
-    .select("employee_id,employee_number,name,kot_employee_id,chatwork_api_token_enc")
+    .select("employee_id,employee_number,name,kot_employee_id,chatwork_api_token_enc,chatwork_account_id")
     .is("deleted_at", null);
   if (error) throw new Error("Root 従業員マスタを読めませんでした");
 
@@ -164,8 +165,11 @@ export async function syncChatworkTokens({
     }
 
     let accountName: string;
+    let accountId: string | null;
     try {
-      accountName = (await getChatworkMe(token, fetchImpl)).name;
+      const me = await getChatworkMe(token, fetchImpl);
+      accountName = me.name;
+      accountId = me.accountId;
     } catch {
       summary.rejectedByChatwork.push(person);
       continue;
@@ -180,7 +184,7 @@ export async function syncChatworkTokens({
       }
     }
 
-    if (unchanged) {
+    if (unchanged && root.chatwork_account_id === accountId) {
       summary.imported += 1;
       summary.unchanged += 1;
       continue;
@@ -191,6 +195,7 @@ export async function syncChatworkTokens({
       .update({
         chatwork_api_token_enc: encryptToken(token),
         chatwork_account_name: accountName,
+        chatwork_account_id: accountId,
         chatwork_token_updated_at: new Date().toISOString(),
       })
       .eq("employee_id", root.employee_id);

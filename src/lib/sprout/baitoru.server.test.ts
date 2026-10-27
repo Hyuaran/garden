@@ -1,5 +1,6 @@
 import {beforeEach,it,expect,vi} from 'vitest';
 vi.mock('server-only',()=>({}));
+vi.mock('@/lib/chatwork/mentions.server',()=>({chatworkToLine:vi.fn(async()=>({line:'[To:1]',missing:[]}))}));
 vi.mock('@/lib/auth/sprout-rill-view.server',()=>({requireRecruitMailRead:m.access}));
 const m=vi.hoisted(()=>({query:vi.fn(),postings:vi.fn(),fetch:vi.fn(),send:vi.fn(),access:vi.fn()}));
 vi.mock('@/lib/db/pg',()=>({withPgClient:(fn:(c:unknown)=>unknown)=>fn({query:(sql:string,...args:unknown[])=>sql.includes('from sprout_baitoru_postings')?m.postings():m.query(sql,...args)}),queryPg:(...args:unknown[])=>m.query(...args)}));
@@ -10,7 +11,7 @@ process.env.CHATWORK_DEV_ROOM_ID ||= '433894375';
 import {loadBaitoru,saveBaitoru,retryBaitoru} from '@/app/sprout/postings/baitoru-actions';
 import {applicant} from './model';
 import type {BaitoruSettings,CsvRow} from './baitoru';
-const config:BaitoruSettings={enabled:true,period_start:'2026-09-22',chatwork_title:'【バイトル新規応募】',exclude_inquiry_nos:[],notify_room:'dev',mentions:'[To:1]',max_per_run:10};
+const config:BaitoruSettings={enabled:true,period_start:'2026-09-22',chatwork_title:'【バイトル新規応募】',exclude_inquiry_nos:[],notify_room:'dev',mention_employee_ids:['EMP-1'],max_per_run:10};
 const row:CsvRow={'問合せNo':'238839646','応募日時':'2026/10/24 10:12:00','氏名（漢字）':'山田 花子','氏名（ふりがな）':'やまだ はなこ','メールアドレス（PC）':'a@example.com','電話番号':'090-1234-5678'};
 const stored={...applicant({$id:{value:'baitoru:238839646'},従業員名_姓名:{value:'山田 花子'}}),raw:{...row},inquiry_no:row['問合せNo'],source:'baitoru',mirror_record_id:null,is_repeat:true,notified_at:null,notify_error:'失敗',imported_at:new Date()};
 beforeEach(()=>{
@@ -19,7 +20,7 @@ beforeEach(()=>{
  vi.stubEnv('KINTONE_SUBDOMAIN','example');vi.stubEnv('KINTONE_RECRUIT_APPLICANTS_TOKEN','readonly');vi.stubEnv('CHATWORK_API_TOKEN','automatic');vi.stubEnv('CHATWORK_DEV_ROOM_ID','433894375');
  m.access.mockResolvedValue({id:'admin'});m.send.mockResolvedValue({message_id:'1'});
  m.fetch.mockResolvedValue({ok:false,status:403});
- m.query.mockImplementation(async(sql:string)=>({rows:sql==='select * from sprout_baitoru_settings where id=true'?[config]:sql.includes('as acquired')?[{acquired:true}]:sql.includes('returning id')?[{id:'1'}]:sql.includes('consecutive_failures,failure_alerted')?[{consecutive_failures:0,failure_alerted:false}]:[]}));
+ m.query.mockImplementation(async(sql:string)=>({rows:sql==='select enabled,period_start,chatwork_title,exclude_inquiry_nos,notify_room,mention_employee_ids,max_per_run from sprout_baitoru_settings where id=true'?[config]:sql.includes('as acquired')?[{acquired:true}]:sql.includes('returning id')?[{id:'1'}]:sql.includes('consecutive_failures,failure_alerted')?[{consecutive_failures:0,failure_alerted:false}]:[]}));
 });
 it('disabled has no writes, lock or external requests',async()=>{
  m.postings.mockResolvedValue({rows:[]});
@@ -34,7 +35,7 @@ it('uses postings instead of the legacy enabled switch',async()=>{
 });
 it('dryRun still returns decisions while disabled, without writes',async()=>{
  m.postings.mockResolvedValue({rows:[{id:'old',start_date:'2026-09-22',end_date:'2026-10-05',content:'テレマアルバイト',ended_early_at:null}]});
- m.query.mockImplementation(async(sql:string)=>({rows:sql==='select * from sprout_baitoru_settings where id=true'?[{...config,enabled:false}]:sql.includes('as acquired')?[{acquired:true}]:[]}));
+ m.query.mockImplementation(async(sql:string)=>({rows:sql==='select enabled,period_start,chatwork_title,exclude_inquiry_nos,notify_room,mention_employee_ids,max_per_run from sprout_baitoru_settings where id=true'?[{...config,enabled:false}]:sql.includes('as acquired')?[{acquired:true}]:[]}));
  const r=await ingestBaitoru([row],true);expect(r).toMatchObject({ok:true,dryRun:true,selected:[{row,isRepeat:false}]});
  expect(m.query.mock.calls.every(([sql])=>sql.startsWith('select'))).toBe(true);expect(m.fetch).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();
 });
@@ -102,7 +103,7 @@ it('rejects invalid settings before updates and preserves mirror metadata in ded
  expect(notificationBody({...stored,mirror_record_id:'1'},config)).toContain('record=1');
 });
 it('puts the To line at the end of the notification on one line',()=>{
- const body=notificationBody({...stored,mirror_record_id:'1'},{...config,mentions:'[To:2746758]\n[To:4958142]'});
+ const body=notificationBody({...stored,mirror_record_id:'1'},config,'[To:2746758][To:4958142]');
  expect(body.startsWith('[info][title]')).toBe(true);
  expect(body.endsWith('[/info]\n[To:2746758][To:4958142]')).toBe(true);
 });
