@@ -399,6 +399,9 @@ async function main() {
   try {
     const args = parseArgs();
     const config = await loadConfig(args.configPath);
+    // DB の住所と公開用の鍵は秘密ではないので config.json にも書ける（タスクは PC を再起動するまで新しい環境変数を読まないことがあるため）
+    if (!process.env.SUPABASE_URL && config.supabaseUrl) process.env.SUPABASE_URL = String(config.supabaseUrl);
+    if (!process.env.SUPABASE_ANON_KEY && config.supabaseAnonKey) process.env.SUPABASE_ANON_KEY = String(config.supabaseAnonKey);
     validateEnvironment(process.env, config);
     await run(config, { once: args.once });
   } catch (error) {
