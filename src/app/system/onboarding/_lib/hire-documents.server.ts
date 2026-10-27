@@ -1,3 +1,4 @@
+import { initializeContract, japanToday } from "./hire-contract-defaults";
 import { loadCompanySeal, MISSING_COMPANY_SEAL } from "@/lib/company-seal.server";
 import { defaultContractType, contractDefaults } from "@/app/root/contracts/_lib/employment-contract";
 import { validateMinimumWage } from "@/lib/minimum-wages.server";
@@ -27,7 +28,7 @@ export async function hireDocuments({db}:Awaited<ReturnType<typeof hireAdminCont
  const v=input.data,co=company.data;
  if(!v||v.status!=="submitted")throw new HireError("本人の入力が提出されると作れます",409);
  const stored=(contract.data?.payload??{}) as Partial<EmploymentContractPayload>;
- const p={...contractDefaults(stored.templateType ?? defaultContractType(c.employment_type??"")),...stored,...overrides};
+ const p=initializeContract({...contractDefaults(stored.templateType ?? defaultContractType(c.employment_type??"")),...stored,...overrides},japanToday(new Date()));
  const missing=missingDocumentFields(v,co??{},p);
  if(!c.employment_type)missing.push("雇用形態");
  if(missing.length)throw new HireError("足りない項目："+missing.join("・")+"。入社手続きの事務欄・雇用契約書の欄を確認してください",409);

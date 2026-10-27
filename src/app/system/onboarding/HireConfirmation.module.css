@@ -29,3 +29,8 @@
 .pending { color:var(--sub,var(--ink)) !important; }
 @media(max-width:768px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:390px) { .grid { grid-template-columns:minmax(0,1fr); } .contract { padding:12px; } .documents > div { grid-template-columns:1fr 1fr; gap:8px; white-space:normal; } .documents > div > span { grid-column:1 / -1; } }
+
+.dialog[data-garden-modal="panel"] { scrollbar-width:none; }
+.dialog[data-garden-modal="panel"]::-webkit-scrollbar { display:none; }
+.lockedStep { opacity:.6; }
+.grid select:disabled, .grid input:disabled { opacity:.65; cursor:not-allowed; background-color:var(--line); }

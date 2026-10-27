@@ -24,3 +24,16 @@ it("locks LINE until all signatures and documents until submitted, including rea
  render(<HireConfirmationSteps row={{...row,onboarding_status:"draft",checklist:{}}} canWrite documents={null} filemakerCheck={null} skip={()=>{}} onRefresh={async()=>{}}/>);
  expect(screen.getByRole("button",{name:"テスト送信"})).toBeDisabled();expect(screen.getByRole("button",{name:"書類の PDF を作る"})).toBeDisabled();expect(screen.getByRole("button",{name:"FileMaker に依頼"})).toBeDisabled();
 });
+
+it("orders dates, offers renewal choices, recalculates only untouched dates and dims blocked steps",()=>{
+ render(<HireConfirmationSteps row={{...row,checklist:{},line_verified_at:null}} canWrite documents={null} filemakerCheck={null} skip={()=>{}} onRefresh={async()=>{}}/>);
+ const start=screen.getByLabelText("契約開始日"),end=screen.getByLabelText("契約終了日"),concluded=screen.getByLabelText("契約日");
+ expect(concluded.compareDocumentPosition(start)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(start.compareDocumentPosition(end)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ const renewal=screen.getByLabelText("契約更新");expect(renewal.tagName).toBe("SELECT");expect(renewal.querySelectorAll("option")).toHaveLength(4);expect(renewal).toHaveValue("更新する場合があり得る");
+ fireEvent.change(start,{target:{value:"2026-10-05"}});expect(end).toHaveValue("2026-10-31");
+ fireEvent.change(screen.getByLabelText("契約書の種類"),{target:{value:"full_time"}});expect(end).toHaveValue("2026-12-31");
+ fireEvent.change(end,{target:{value:"2027-03-31"}});fireEvent.change(start,{target:{value:"2026-11-01"}});expect(end).toHaveValue("2027-03-31");
+ fireEvent.change(screen.getByLabelText("雇用期間"),{target:{value:"yes"}});expect(end).toHaveValue("");expect(renewal).toBeDisabled();
+ for(const title of ["② LINE テスト送信","③ FileMaker"])expect(screen.getByText(title).closest("section")).toHaveAttribute("aria-disabled","true");
+});
