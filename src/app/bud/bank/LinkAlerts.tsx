@@ -24,8 +24,13 @@ export default function LinkAlerts({ accounts, onChange }: { accounts: MfAccount
   }, delay);
   return () => clearTimeout(timer);
  }, [alerts, onChange]);
+ // 取り直しは 1 分ごとだけ。親が描き直すたびに accounts・onChange が新しくなるので、それをきっかけに取り直さない
+ // （2026-10-27：取り直し→親の描き直し→また取り直し、が休みなく続き、Vercel の呼び出しが 12 時間で 3 万回を超えていた）
+ const onChangeRef = useRef(onChange);
+ onChangeRef.current = onChange;
  useEffect(() => {
   let cancelled = false;
+  const onChange = (rows: LinkAlert[]) => onChangeRef.current(rows);
   async function load() {
    try {
     const response = await fetch("/api/bud/mf-accounts/link-alerts", { cache: "no-store" });
@@ -37,7 +42,7 @@ export default function LinkAlerts({ accounts, onChange }: { accounts: MfAccount
   void load();
   const timer = setInterval(() => { void load(); }, 60000);
   return () => { cancelled = true; clearInterval(timer); };
- }, [accounts, onChange]);
+ }, []);
  const nameOf = (alert: LinkAlert) => { const account = accounts.find(a => a.mf_account_id === alert.mf_account_id); return account ? accountDisplayName(account.name) : alert.mail_account_name; };
  const complete = async (alert: LinkAlert) => {
   setBusy(alert.id); setError("");
