@@ -1,4 +1,5 @@
 import "server-only";
+import { requestFilemakerAccount, overallStatus } from "./filemaker-accounts.server";
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { randomUUID } from "node:crypto";
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -30,6 +31,16 @@ function checked<T>(result: { data: T; error: unknown }): T {
 }
 export async function listCandidates({db}: Context, tab?: "candidates" | "confirmations") {
  const rows = checked(await (tab === "confirmations" ? db.from("system_hire_candidates").select("*").eq("status","hired") : tab === "candidates" ? db.from("system_hire_candidates").select("*").in("status",["planned","hiring","no_show"]) : db.from("system_hire_candidates").select("*")).order("hire_date",{ascending:false})) as HireCandidate[];
+ if(rows.length){
+  const requests = checked(await db.from("system_filemaker_account_requests").select("hire_candidate_id,status,files").in("hire_candidate_id",rows.map(r=>r.id))) ?? [];
+  for(const row of rows) {
+   const request=requests.find(r=>r.hire_candidate_id===row.id);
+   if(request){
+    const files={...request.files,roster:request.files.roster??{status:"waiting"}};
+    row.filemaker_request={...request,files,status:overallStatus(files)};
+   }else row.filemaker_request=null;
+  }
+ }
  const ids = rows.filter(r => r.status === "hired" && r.employee_id).map(r => r.employee_id!);
  if (!ids.length) return rows;
  const [onboarding, employees] = await Promise.all([
@@ -108,7 +119,7 @@ export async function ensureRoster(c: HireCandidate, companyName: string) {
   throw new HireError(`社員番号 ${c.employee_number} を Kintone 名簿に登録できませんでした。名簿の接続と登録内容を確認してから［続きから］を押してください。`);
  }
 }
-export async function hireCandidate({db}: Context, id: string, prepare = false) {
+export async function hireCandidate({db,userId}: Context, id: string, prepare = false) {
  const token = randomUUID();
  const row = checked(await db.from("system_hire_candidates").update({processing_token:token,processing_started_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",id).in("status",["planned","hiring"]).or("processing_token.is.null,processing_started_at.lt."+new Date(Date.now()-10*60_000).toISOString()).select().maybeSingle());
  if (!row) throw new HireError("処理中、または入社済みです。画面を更新してください。",409);
@@ -158,6 +169,12 @@ export async function hireCandidate({db}: Context, id: string, prepare = false) 
   checked(await db.from("root_employees").update({company_id:c.company_id}).eq("employee_id",employee!.employee_id));
   await done();
   await persist({employee_id:employee!.employee_id,status:"hired"});
+  try {
+   await requestFilemakerAccount(db,id,userId);
+   await persist({steps:{...c.steps,filemaker:{done:true,at:new Date().toISOString()}}});
+  } catch (error) {
+   await persist({steps:{...c.steps,filemaker:{done:false,error:error instanceof Error?error.message:"FileMaker に依頼できませんでした"}}}).catch(()=>{});
+  }
   return c;
  } catch (e) {
   const stageName = {number:"社員番号の採番",kot:"KOT 登録",roster:"Kintone 名簿への登録",garden:"Garden への反映"}[stage];

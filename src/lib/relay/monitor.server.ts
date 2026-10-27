@@ -38,13 +38,14 @@ function recoveryBody(now: Date, downSince: string | null) {
 確認：https://garden-os.net/system/innovera[/info]`;
 }
 
-async function sendGardenNotice(body: string) {
+export async function sendGardenNotice(body: string) {
   const token = process.env.CHATWORK_API_TOKEN;
-  if (!token) return;
+  if (!token) return false;
   await new ChatworkClient(token).sendMessage(
     process.env.GARDEN_NOTICE_CHATWORK_ROOM_ID || DEFAULT_CHATWORK_ROOM_ID,
     body,
   );
+  return true;
 }
 
 async function updateHeartbeat(patch: Partial<RelayHeartbeatRow>) {

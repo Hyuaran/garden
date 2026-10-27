@@ -10,8 +10,8 @@ async function api(path = "", method = "GET", body?: unknown) {
  const data = await res.json(); if (!res.ok) throw new Error(data.error || "処理できませんでした"); return data;
 }
 type Options = {companies:{company_id:string;company_name:string}[];divisions:{code:string;name:string}[];workingTypes:{code:string;name:string}[]};
-const steps = [["number","社員番号を決める"],["kot","KOT に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
-const stopped = (r:HireCandidate)=>steps.find(([key])=>!!r.steps[key]?.error);
+const steps = [["number","社員番号を決める"],["kot","KOT に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"],["filemaker","FileMaker に依頼"]];
+const stopped = (r:HireCandidate)=>steps.find(([key])=>key!=="filemaker"&&!!r.steps[key]?.error);
 export default function HireCandidatesClient({userId,tab,canWrite = true}:{userId:string;tab:"candidates"|"confirmations";canWrite?:boolean}) {
  const [showNoShow,setShowNoShow]=useState(false), [showComplete,setShowComplete]=useState(false);
  useEffect(()=>{
@@ -82,6 +82,12 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
   if(stopped(current))setFailure(current);
  };
  useEffect(()=>{load().catch(e=>setMessage(e.message));},[tab]);
+ const pendingFilemaker=rows.some(r=>r.filemaker_request&&["waiting","sent"].includes(r.filemaker_request.status));
+ useEffect(()=>{
+  if(tab!=="confirmations"||!pendingFilemaker)return;
+  const timer=setInterval(()=>{load().catch(()=>{});},30_000);
+  return()=>clearInterval(timer);
+ },[tab,pendingFilemaker]);
  useEffect(()=>{if(!busy)return; const timer=setInterval(()=>{load().catch(()=>{});},1200);return()=>clearInterval(timer);},[busy]);
  const run = async (action:()=>Promise<void>)=>{setBusy(true);setMessage("");try{await action();await load();}catch(e){setMessage(e instanceof Error?e.message:"処理できませんでした");}finally{setBusy(false);}};
  // KOT の選択肢は画面を開いた時に先に読んでおく（行を押してから小窓が出るまで 5 秒かかったため 2026-10-26）
@@ -122,11 +128,19 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  </div>}
  ];
  const lineStatus=(r:HireCandidate)=>r.line_registered?"登録済み":r.checklist?.line_skipped?"登録しない":"未登録";
+ const filemakerStatus=(r:HireCandidate)=>{
+  const request=r.filemaker_request;
+  if(!request&&!r.steps.filemaker?.error)return r.status==="hired"&&canWrite?<button disabled={busy||!!saving} onClick={()=>run(async()=>{await api("/"+r.id+"/filemaker","POST",{});})}>FileMaker に依頼</button>:null;
+  const failed=request?.status==="failed"||(!request&&!!r.steps.filemaker?.error);
+  const labels:Record<string,string>={eigyo:"【新】営業",shain:"社員情報",call:"コール履歴",roster:"社員情報の名簿"};
+  const names=Object.entries(request?.files??{}).filter(([,v])=>v.status==="failed").map(([k])=>labels[k]).join("、");
+  return <><small className={styles.hint}>{request?.status==="done"?"自動：作成済み":failed?"自動：失敗"+(names?"（"+names+"）":""):"自動：依頼中"}</small>{failed&&canWrite&&<button disabled={busy||!!saving} onClick={()=>run(async()=>{await api("/"+r.id+"/filemaker","POST",{});})}>もう一度</button>}</>;
+ };
  const confirmationColumns:DataColumn<HireCandidate>[]=[
  // 1280px の画面でもはみ出さないよう 3 列に（氏名の下に社員番号・入社日、書類と FileMaker は 1 列）2026-10-26
  {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name,wrap:true,render:r=><div className={styles.hireMf}><div>{r.last_name} {r.first_name}{checklistComplete(r)&&<span className={styles.hireDone}>完了</span>}</div><div className={styles.hireNumber}>{r.employee_number ?? "番号なし"}・{r.hire_date} 入社</div></div>},
  {id:"onboarding",label:"手続き・LINE", align: "mark",type:"text",value:r=>(r.onboarding_status==="submitted"?"提出済み":r.onboarding_status?"入力中":"未")+" "+lineStatus(r),wrap:true,render:r=><div className={styles.hireMf}><div className={styles.hireMfRow}><span className={styles.hireMfLabel}>入社手続き</span>{r.onboarding_status==="submitted"?"提出済み":r.onboarding_status?"入力中":"未"}</div><div className={styles.hireMfRow}><span className={styles.hireMfLabel}>公式 LINE</span>{r.line_registered?"登録済み":<><span className={r.checklist?.line_skipped?styles.hint:undefined}>{lineStatus(r)}</span>{canWrite&&<button disabled={busy||!!saving} onClick={()=>r.checklist?.line_skipped?toggleChecklist(r,"line_skipped",false):setLineSkip(r)}>{r.checklist?.line_skipped?"戻す":"登録しない"}</button>}</>}</div></div>},
- {id:"docs",label:"書類・FileMaker", align: "text",type:"number",value:checklistPriority,wrap:true,render:r=><div className={styles.hireMf}>{([["contract","雇用契約書"],["nda","秘密保持"],["emergency","緊急連絡先"]] as const).map(([key,label])=><div key={key} className={styles.hireMfRow}><span className={styles.hireMfLabel}>{label}</span>{check(r,`${key}_sent`,"送った")}{check(r,`${key}_signed`,"締結済み")}</div>)}<div className={styles.hireMfRow}><span className={styles.hireMfLabel}>FileMaker</span>{check(r,"filemaker_added","追加済み")}</div></div>}
+ {id:"docs",label:"書類・FileMaker", align: "text",type:"number",value:checklistPriority,wrap:true,render:r=><div className={styles.hireMf}>{([["contract","雇用契約書"],["nda","秘密保持"],["emergency","緊急連絡先"]] as const).map(([key,label])=><div key={key} className={styles.hireMfRow}><span className={styles.hireMfLabel}>{label}</span>{check(r,`${key}_sent`,"送った")}{check(r,`${key}_signed`,"締結済み")}</div>)}<div className={styles.hireMfRow}><span className={styles.hireMfLabel}>FileMaker</span>{check(r,"filemaker_added","追加済み")}{filemakerStatus(r)}</div></div>}
  ];
  const candidateRows=rows.filter(r=>r.status==="planned"||r.status==="hiring"||(showNoShow&&r.status==="no_show"));
  const confirmationRows=rows.filter(r=>r.status==="hired"&&(showComplete||!checklistComplete(r)));
@@ -160,7 +174,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  {success&&<dialog ref={successDialog} aria-labelledby="hire-success-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setSuccess(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setSuccess(null);}}} data-garden-modal="panel" data-size="sm">
  <h2 id="hire-success-title">入社の登録が完了しました</h2>
  <p role="status">◎ {success.last_name} {success.first_name}さん（社員番号 {success.employee_number}）</p>
- <ol aria-label="入社の進み具合" className={styles.hireSteps}>{steps.map(([key,label])=><li key={key} className={styles.hireStepDone}><span className={styles.hireStepMark} aria-hidden="true">◎</span>{label}</li>)}</ol>
+ <ol aria-label="入社の進み具合" className={styles.hireSteps}>{steps.map(([key,label])=><li key={key} className={success.steps[key]?.error?styles.hireError:styles.hireStepDone}><span className={styles.hireStepMark} aria-hidden="true">{success.steps[key]?.error?"✕":"◎"}</span>{label}{success.steps[key]?.error&&<p>{success.steps[key].error}</p>}</li>)}</ol>
  <p>次は「入社後の確認」タブで、契約書・LINE などを確認してください。</p>
  <div className={styles.hireRowActions} data-modal-actions><button onClick={()=>setSuccess(null)} data-modal-action="secondary">閉じる</button></div>
  </dialog>}

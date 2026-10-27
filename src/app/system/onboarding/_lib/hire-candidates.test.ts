@@ -12,6 +12,7 @@ import { GET, POST } from "@/app/api/system/hire-candidates/route";
 import { PATCH } from "@/app/api/system/hire-candidates/[id]/route";
 import { POST as hire } from "@/app/api/system/hire-candidates/[id]/hire/route";
 import { GET as options } from "@/app/api/system/hire-candidates/kot-options/route";
+import { POST as retryFilemaker } from "@/app/api/system/hire-candidates/[id]/filemaker/route";
 const candidate = ():HireCandidate=>({id:"candidate",last_name:"山田",first_name:"太郎",last_name_kana:"ヤマダ",first_name_kana:"タロウ",birthday:"2000-01-01",hire_date:"2026-10-24",gender:"male",employment_type:"アルバイト",company_id:"COMP-002",kot_division_code:"01",kot_type_code:"02",status:"hiring",employee_number:"1571",employee_id:null,kintone_roster_record_id:null,steps:{number:{done:true}}});
 function dbFor(row:HireCandidate) {
  const db = {from:vi.fn(),rpc:vi.fn()};
@@ -46,6 +47,15 @@ it("resume uses the same number and recognizes an existing KOT employee",async()
  const result=await hireCandidate({db:db as never,userId:"admin"},row.id);
  expect(db.rpc).not.toHaveBeenCalled();expect(mocks.create).not.toHaveBeenCalled();expect(result.status).toBe("hired");expect(mocks.sync).toHaveBeenCalledWith({dryRun:false,recordIds:["42"]});
 });
+it("keeps hiring successful when the FileMaker request fails",async()=>{
+ const row=candidate(),db=dbFor(row);
+ const from=db.from.getMockImplementation()!;
+ db.from.mockImplementation((table:string)=>{if(table==="system_filemaker_account_requests")throw new Error("request unavailable");return from(table);});
+ const result=await hireCandidate({db:db as never,userId:"admin"},row.id);
+ expect(result.status).toBe("hired");
+ expect(result.steps.garden.done).toBe(true);
+ expect(result.steps.filemaker).toMatchObject({done:false,error:"request unavailable"});
+});
 it("a failed KOT POST is invoked once and resume checks GET before a new POST",async()=>{
  const row=candidate(),db=dbFor(row);mocks.create.mockRejectedValueOnce(new Error("network"));
  await hireCandidate({db:db as never,userId:"admin"},row.id);expect(mocks.create).toHaveBeenCalledTimes(1);expect(row.steps.kot.done).toBe(false);
@@ -74,7 +84,7 @@ describe("authorization",()=>{
   const q={select:vi.fn(),eq:vi.fn(),is:vi.fn(),maybeSingle:vi.fn(async()=>({data:{garden_role:role},error:null}))};q.select.mockReturnValue(q);q.eq.mockReturnValue(q);q.is.mockReturnValue(q);
   mocks.server.mockResolvedValue({auth:{getUser:async()=>({data:{user:{id:"user"}}})},from:()=>q});
   const req=new Request("http://localhost",{method:"POST",body:"{}"}),ctx={params:Promise.resolve({id:"id"})};
-  for (const response of [await GET(new Request("http://localhost/api/system/hire-candidates")),await POST(req),await PATCH(req,ctx),await hire(req,ctx),await options()]) expect(response.status).toBe(403);
+  for (const response of [await GET(new Request("http://localhost/api/system/hire-candidates")),await POST(req),await PATCH(req,ctx),await hire(req,ctx),await options(),await retryFilemaker(req,ctx)]) expect(response.status).toBe(403);
   expect(mocks.admin).not.toHaveBeenCalled();
  });
 });

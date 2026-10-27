@@ -1,0 +1,7 @@
+{
+  "apiBase": "https://garden-os.net",
+  "fmServer": "192.168.1.100",
+  "fmPort": 2399,
+  "fmUser": "Garden",
+  "files": { "eigyo": "【新】営業", "shain": "社員情報", "call": "コール履歴", "roster": "社員情報" }
+}

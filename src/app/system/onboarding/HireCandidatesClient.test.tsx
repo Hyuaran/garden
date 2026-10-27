@@ -7,6 +7,26 @@ function HireCandidatesClient({userId,children}:{userId:string;children:ReactNod
  return <><button role="tab" onClick={()=>setTab("confirmations")}>入社後の確認</button><button role="tab" onClick={()=>setTab("onboarding")}>入社手続き</button>{tab==="onboarding"?children:<CandidatePanel userId={userId} tab={tab}/>}</>;
 }
 import { CHECKLIST_KEYS } from "./_lib/hire-candidates";
+it.each([true,false])("shows request button for hired without request only when writable: %s",async canWrite=>{
+ const fetch=vi.fn(async()=>Response.json([{...hired,line_registered:false,filemaker_request:null}]));
+ vi.stubGlobal("fetch",fetch);
+ render(<CandidatePanel userId={"fm-new-"+canWrite} tab="confirmations" canWrite={canWrite}/>);
+ await screen.findByText("入社 太郎");
+ if(canWrite){
+  fireEvent.click(screen.getByRole("button",{name:"FileMaker に依頼"}));
+  await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/h/filemaker",expect.objectContaining({method:"POST"})));
+ }else expect(screen.queryByRole("button",{name:"FileMaker に依頼"})).not.toBeInTheDocument();
+});
+it.each(["done","failed"])("shows automatic FileMaker %s and retry",async status=>{
+ const fetch=vi.fn(async()=>Response.json([{...hired,line_registered:false,filemaker_request:{status,files:{shain:{status}}}}]));
+ vi.stubGlobal("fetch",fetch);
+ render(<CandidatePanel userId="fm-test" tab="confirmations"/>);
+ expect(await screen.findByText(status==="done"?"自動：作成済み":"自動：失敗（社員情報）")).toBeVisible();
+ if(status==="failed"){
+  fireEvent.click(screen.getByRole("button",{name:"もう一度"}));
+  await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/h/filemaker",expect.objectContaining({method:"POST"})));
+ }
+});
 beforeEach(()=>{
  Object.defineProperty(HTMLDialogElement.prototype,"showModal",{configurable:true,value:function(this:HTMLDialogElement){this.setAttribute("open","");}});
  Object.defineProperty(HTMLDialogElement.prototype,"close",{configurable:true,value:function(this:HTMLDialogElement){this.removeAttribute("open");}});
@@ -31,7 +51,7 @@ it.each(["planned","hiring"])("shows success for %s and closes after three secon
  }
  const dialog=await screen.findByRole("dialog",{name:"入社の登録が完了しました"});
  expect(within(dialog).getByRole("status")).toHaveTextContent("社員番号 1572");
- expect(within(dialog).getAllByRole("listitem")).toHaveLength(4);
+ expect(within(dialog).getAllByRole("listitem")).toHaveLength(5);
  // Restart the effect with fake timers so the full three-second boundary is deterministic.
  cleanup();vi.useFakeTimers();
  try {
@@ -63,7 +83,7 @@ it("opens the stop dialog after registration and from the stopped row without ed
  fireEvent.click(screen.getByRole("button",{name:"登録する"}));
  const dialog=await screen.findByRole("dialog",{name:"入社の登録が途中で止まりました"});
  const items=within(dialog).getAllByRole("listitem");
- expect(items.map(item=>item.textContent?.slice(0,1))).toEqual(["◎","◎","✕","✕"]);
+ expect(items.map(item=>item.textContent?.slice(0,1))).toEqual(["◎","◎","✕","✕","✕"]);
  expect(items[2].className).toContain("hireError");
  expect(within(dialog).getByRole("status")).toHaveTextContent("1572");
  expect(screen.getByText("名簿で止まっています").className).toContain("hireError");

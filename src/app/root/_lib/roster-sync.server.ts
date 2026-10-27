@@ -1,3 +1,4 @@
+import { initialPassword } from "@/lib/initial-password";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { getAllRecords, getFormFields, type KintoneRecord } from "@/lib/kintone/records";
@@ -337,11 +338,6 @@ export function normalizeEmploymentType(value: string | null | undefined): strin
   return "正社員";
 }
 
-function initialPassword(birthday: string | null | undefined) {
-  if (!birthday) return null;
-  const [, month, day] = birthday.split("-");
-  return month && day ? `gd${month}${day}` : null;
-}
 
 function syntheticEmail(employeeNumber: string) {
   return `emp${employeeNumber.padStart(4, "0")}@garden.internal`;

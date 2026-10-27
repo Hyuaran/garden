@@ -7,7 +7,7 @@ export const CHECKLIST_KEYS = ["contract_sent", "contract_signed", "nda_sent", "
 export const ALLOWED_CHECKLIST_KEYS = [...CHECKLIST_KEYS, "line_skipped"] as const;
 export type ChecklistKey = typeof ALLOWED_CHECKLIST_KEYS[number];
 export type HireChecklist = Partial<Record<ChecklistKey, { checked_at: string; checked_by: string }>>;
-export type HireChecklistState = { checklist?: HireChecklist; onboarding_status?: string | null; line_registered?: boolean };
+export type HireChecklistState = { filemaker_request?: {status:string;files:Record<string,{status:string;error?:string}>}|null; checklist?: HireChecklist; onboarding_status?: string | null; line_registered?: boolean };
 export function parseChecklist(raw: unknown): Partial<Record<ChecklistKey, boolean>> {
  if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Object.keys(raw).length || Object.entries(raw).some(([key,value]) => !ALLOWED_CHECKLIST_KEYS.includes(key as ChecklistKey) || typeof value !== "boolean")) throw new Error("確認する項目を選び直してください");
  return raw as Partial<Record<ChecklistKey, boolean>>;
