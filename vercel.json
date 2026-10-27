@@ -18,6 +18,7 @@
     { "path": "/api/system/pl-payments/daily", "schedule": "30 23 * * *" },
     { "path": "/api/system/mail-payment-check/cron", "schedule": "0 1 * * 1-5" },
     { "path": "/api/system/mail-ndr-watch/cron", "schedule": "*/15 * * * *" },
+    { "path": "/api/system/filemaker-accounts/cron", "schedule": "*/15 * * * *" },
     { "path": "/api/system/doc-save-check/cron", "schedule": "10 1 * * 1-5" },
     { "path": "/api/bud/mf-accounts/cron", "schedule": "*/30 * * * *" },
     { "path": "/api/bud/mf-accounts/snapshot", "schedule": "0 15 * * *" },
