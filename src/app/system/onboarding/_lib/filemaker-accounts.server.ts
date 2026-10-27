@@ -29,6 +29,7 @@ export async function requestFilemakerAccount(db:SupabaseClient,id:string,reques
  const c=unwrap(await db.from("system_hire_candidates").select("*").eq("id",id).single());
  if(c.status!=="hired")throw new Error("入社済みの方だけ依頼できます");
  const old=unwrap(await db.from(table).select("*").eq("hire_candidate_id",id).maybeSingle()) as AccountRequest|null;
+ if(old&&old.status!=="failed"&&overallStatus(old.files)!=="failed")return old;
  const at=old?nextAt(old.updated_at):new Date().toISOString();
  const files=Object.fromEntries(FM_FILES.map(k=>[k,old?.files[k]?.status==="done"?old.files[k]:{status:"waiting",at}])) as Record<FileKey,FileState>;
  const values={hire_candidate_id:id,employee_id:c.employee_id ?? null,account_name:c.last_name+"　"+c.first_name,files,status:overallStatus(files),requested_by:requestedBy,updated_at:at};

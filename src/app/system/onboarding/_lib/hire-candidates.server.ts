@@ -1,5 +1,5 @@
 import "server-only";
-import { requestFilemakerAccount, overallStatus } from "./filemaker-accounts.server";
+import { overallStatus } from "./filemaker-accounts.server";
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { randomUUID } from "node:crypto";
 import { createServerClient } from "@/app/_lib/supabase/server";
@@ -7,7 +7,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createRecord, getAllRecords } from "@/lib/kintone/records";
 import { syncRootRoster } from "@/app/root/_lib/roster-sync.server";
 import { createKotEmployee, fetchKotHireEmployees, fetchKotHireOptions } from "@/app/root/_lib/kot-api";
-import { parseHireInput, parseChecklist, checklistPriority, rosterPayload, type HireCandidate, type HireChecklist } from "./hire-candidates";
+import { signaturesComplete, lineComplete, parseHireInput, parseChecklist, checklistPriority, rosterPayload, type HireCandidate, type HireChecklist } from "./hire-candidates";
 export class HireError extends Error { constructor(message: string, public status = 400) { super(message); } }
 export async function hireAdminContext(readTab?: "candidates" | "confirmations") {
  if (readTab) {
@@ -72,8 +72,10 @@ export async function saveCandidate(context: Context, raw: unknown, id?: string)
   if (!id || Object.keys(raw).some(key => key !== "checklist")) throw new HireError("確認する項目を選び直してください");
   // line_skipped も共通の許可リストで検証し、操作者と時刻を保存する。
   const changes = parseChecklist((raw as {checklist:unknown}).checklist);
-  const current = checked(await db.from("system_hire_candidates").select("status,checklist").eq("id",id).maybeSingle());
+  const current = checked(await db.from("system_hire_candidates").select("status,checklist,line_verified_at").eq("id",id).maybeSingle());
   if (!current || current.status !== "hired") throw new HireError("入社済みの方だけ確認できます");
+  if (changes.line_skipped === true && !signaturesComplete(current)) throw new HireError("①の締結がそろうと進めます",409);
+  if (changes.filemaker_added === true && (!signaturesComplete(current) || !lineComplete(current))) throw new HireError("①の締結と②の LINE 確認が済むと進めます",409);
   const checklist: HireChecklist = {...current.checklist};
   const now = new Date().toISOString();
   for (const key of Object.keys(changes) as (keyof HireChecklist)[]) {
@@ -169,12 +171,6 @@ export async function hireCandidate({db,userId}: Context, id: string, prepare = 
   checked(await db.from("root_employees").update({company_id:c.company_id}).eq("employee_id",employee!.employee_id));
   await done();
   await persist({employee_id:employee!.employee_id,status:"hired"});
-  try {
-   await requestFilemakerAccount(db,id,userId);
-   await persist({steps:{...c.steps,filemaker:{done:true,at:new Date().toISOString()}}});
-  } catch (error) {
-   await persist({steps:{...c.steps,filemaker:{done:false,error:error instanceof Error?error.message:"FileMaker に依頼できませんでした"}}}).catch(()=>{});
-  }
   return c;
  } catch (e) {
   const stageName = {number:"社員番号の採番",kot:"KOT 登録",roster:"Kintone 名簿への登録",garden:"Garden への反映"}[stage];

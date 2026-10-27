@@ -7,13 +7,13 @@ export const CHECKLIST_KEYS = ["contract_sent", "contract_signed", "nda_sent", "
 export const ALLOWED_CHECKLIST_KEYS = [...CHECKLIST_KEYS, "line_skipped"] as const;
 export type ChecklistKey = typeof ALLOWED_CHECKLIST_KEYS[number];
 export type HireChecklist = Partial<Record<ChecklistKey, { checked_at: string; checked_by: string }>>;
-export type HireChecklistState = { filemaker_request?: {status:string;files:Record<string,{status:string;error?:string}>}|null; checklist?: HireChecklist; onboarding_status?: string | null; line_registered?: boolean };
+export type HireChecklistState = { line_verified?: boolean; line_verified_at?: string | null; line_verified_by?: string | null; filemaker_request?: {status:string;files:Record<string,{status:string;error?:string}>}|null; checklist?: HireChecklist; onboarding_status?: string | null; line_registered?: boolean };
 export function parseChecklist(raw: unknown): Partial<Record<ChecklistKey, boolean>> {
  if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Object.keys(raw).length || Object.entries(raw).some(([key,value]) => !ALLOWED_CHECKLIST_KEYS.includes(key as ChecklistKey) || typeof value !== "boolean")) throw new Error("確認する項目を選び直してください");
  return raw as Partial<Record<ChecklistKey, boolean>>;
 }
 export function checklistComplete(row: HireChecklistState & {status: string}) {
- return row.status === "hired" && row.onboarding_status === "submitted" && (row.line_registered === true || (!!row.checklist?.line_skipped?.checked_at && !!row.checklist.line_skipped.checked_by)) && CHECKLIST_KEYS.every(key => !!row.checklist?.[key]?.checked_at && !!row.checklist[key]?.checked_by);
+ return row.status === "hired" && row.onboarding_status === "submitted" && lineComplete(row) && CHECKLIST_KEYS.every(key => !!row.checklist?.[key]?.checked_at && !!row.checklist[key]?.checked_by);
 }
 export function checklistPriority(row: HireChecklistState & {status: string}) {
  return row.status === "hired" && !checklistComplete(row) ? 0 : checklistComplete(row) ? 2 : 1;
@@ -45,3 +45,6 @@ export function rosterPayload(c: HireCandidate, companyName: string) {
  社員番号: c.employee_number, 打刻ID: c.employee_number, 従業員ステータス: "在籍中", ドロップダウン_15: companyName,
  }).map(([k,value]) => [k,{value}]));
 }
+
+export function signaturesComplete(row: HireChecklistState) { return (["contract_signed","nda_signed","emergency_signed"] as const).every(k => !!row.checklist?.[k]?.checked_at && !!row.checklist[k]?.checked_by); }
+export function lineComplete(row: HireChecklistState) { return !!row.line_verified_at || (!!row.checklist?.line_skipped?.checked_at && !!row.checklist.line_skipped.checked_by); }

@@ -47,14 +47,15 @@ it("resume uses the same number and recognizes an existing KOT employee",async()
  const result=await hireCandidate({db:db as never,userId:"admin"},row.id);
  expect(db.rpc).not.toHaveBeenCalled();expect(mocks.create).not.toHaveBeenCalled();expect(result.status).toBe("hired");expect(mocks.sync).toHaveBeenCalledWith({dryRun:false,recordIds:["42"]});
 });
-it("keeps hiring successful when the FileMaker request fails",async()=>{
+it("does not request FileMaker during hiring",async()=>{
  const row=candidate(),db=dbFor(row);
  const from=db.from.getMockImplementation()!;
  db.from.mockImplementation((table:string)=>{if(table==="system_filemaker_account_requests")throw new Error("request unavailable");return from(table);});
  const result=await hireCandidate({db:db as never,userId:"admin"},row.id);
  expect(result.status).toBe("hired");
  expect(result.steps.garden.done).toBe(true);
- expect(result.steps.filemaker).toMatchObject({done:false,error:"request unavailable"});
+ expect(result.steps.filemaker).toBeUndefined();
+ expect(db.from.mock.calls.some(([table])=>table==="system_filemaker_account_requests")).toBe(false);
 });
 it("a failed KOT POST is invoked once and resume checks GET before a new POST",async()=>{
  const row=candidate(),db=dbFor(row);mocks.create.mockRejectedValueOnce(new Error("network"));
@@ -122,24 +123,24 @@ describe("hire checklist",()=>{
   expect((await patch({contract_sent:false})).status).toBe(200);expect(row.checklist).not.toHaveProperty("contract_sent");
  });
  it("audits LINE skips and supports restoring unregistered state",async()=>{
-  const row={...candidate(),status:"hired" as const,checklist:{}};authorize(dbFor(row));
+  const row={...candidate(),status:"hired" as const,checklist:Object.fromEntries(["contract_signed","nda_signed","emergency_signed"].map(k=>[k,{checked_at:"now",checked_by:"admin"}]))};authorize(dbFor(row));
   expect((await patch({line_skipped:true})).status).toBe(200);
   expect(row.checklist).toMatchObject({line_skipped:{checked_by:"admin",checked_at:expect.any(String)}});
   expect((await patch({line_skipped:false})).status).toBe(200);
   expect(row.checklist).not.toHaveProperty("line_skipped");
  });
  it("requires every automatic and manual item and prioritizes incomplete hires",()=>{
-  const complete={...candidate(),status:"hired" as const,onboarding_status:"submitted",line_registered:true,checklist:Object.fromEntries(CHECKLIST_KEYS.map(key=>[key,{checked_at:"now",checked_by:"admin"}]))};
+  const complete={...candidate(),status:"hired" as const,onboarding_status:"submitted",line_registered:true,line_verified_at:"now",checklist:Object.fromEntries(CHECKLIST_KEYS.map(key=>[key,{checked_at:"now",checked_by:"admin"}]))};
   expect(checklistComplete(complete)).toBe(true);
   for(const key of CHECKLIST_KEYS) expect(checklistComplete({...complete,checklist:{...complete.checklist,[key]:undefined}})).toBe(false);
   expect(checklistComplete({...complete,onboarding_status:"draft"})).toBe(false);
-  expect(checklistComplete({...complete,line_registered:false})).toBe(false);
+  expect(checklistComplete({...complete,line_registered:false,line_verified_at:null})).toBe(false);
   expect(checklistComplete({...complete,status:"planned"})).toBe(false);
-  const incomplete={...complete,line_registered:false};
+  const incomplete={...complete,line_registered:false,line_verified_at:null};
   expect([complete,candidate(),incomplete].sort((a,b)=>checklistPriority(a)-checklistPriority(b))).toEqual([incomplete,candidate(),complete]);
   expect(parseChecklist({filemaker_added:false})).toEqual({filemaker_added:false});
   expect(parseChecklist({line_skipped:true})).toEqual({line_skipped:true});
-  const skipped={...complete,line_registered:false,checklist:{...complete.checklist,line_skipped:{checked_at:"now",checked_by:"admin"}}};
+  const skipped={...complete,line_registered:false,line_verified_at:null,checklist:{...complete.checklist,line_skipped:{checked_at:"now",checked_by:"admin"}}};
   expect(checklistComplete(skipped)).toBe(true);
   expect(checklistComplete({...skipped,checklist:{...skipped.checklist,line_skipped:undefined}})).toBe(false);
  });

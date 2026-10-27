@@ -55,4 +55,11 @@ describe("employment contract PDF", () => {
     expect(text).toContain("株式会社ブルーム");
     expect(text).toContain("代表取締役代表者C㊞");
   }, 60_000);
+  it("inserts the onboarding employment type and preserves three pages", async () => {
+    const buffer = await renderEmploymentContractPdf({...data,employmentType:"アルバイト",employeeAddress:"大阪府大阪市北区梅田一丁目"});
+    const pdf = await getDocument({data:new Uint8Array(buffer)}).promise;
+    expect(pdf.numPages).toBe(3);
+    const content=await (await pdf.getPage(1)).getTextContent();
+    expect(content.items.map(i=>"str" in i?i.str:"").join("").replace(/\s/g,"")).toContain("雇用形態：アルバイト");
+  },60_000);
 });

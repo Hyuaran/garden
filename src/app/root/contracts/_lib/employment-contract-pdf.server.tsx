@@ -17,6 +17,7 @@ import {
 } from "./employment-contract";
 
 export type EmploymentContractPdfData = EmploymentContractPayload & {
+  employmentType?: string;
   companyName: string;
   representative: string;
   companyAddress: string;
@@ -209,6 +210,7 @@ export function EmploymentContractPdfDocument({
           )}
         </Text>
         <Section>〔雇用契約書〕</Section>
+        {data.employmentType && <Text style={s.para}>{jaWrap(`雇用形態：${data.employmentType}`, 45)}</Text>}
         <Text style={s.para}>
           {jaWrap(
             `　${data.companyName}（以下、甲という）と[ ${data.employeeName} ]（以下、乙という）とは、次の通り雇用契約を締結する。`,

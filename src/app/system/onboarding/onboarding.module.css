@@ -111,3 +111,6 @@
 .proxyBanner { position: sticky; top: 0; z-index: 30; padding: 16px; background: #142c46; color: white; display: flex; justify-content: space-between; gap: 16px; }
 .proxyBanner a { color: white; }
 .detailActions { display:flex; flex-wrap:wrap; gap:12px; margin:0 0 16px; }
+
+.hireSpinner { display:inline-block; width:1em; height:1em; margin-right:.5em; border:2px solid #ddd; border-top-color:currentColor; border-radius:50%; animation:hireSpin 1s linear infinite; }
+@keyframes hireSpin { to { transform:rotate(360deg); } }
