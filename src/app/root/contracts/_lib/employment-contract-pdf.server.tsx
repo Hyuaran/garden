@@ -7,16 +7,20 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import type { DocumentProps } from "@react-pdf/renderer";
+import { CompanySeal } from "@/app/system/mypage/_lib/company-seal-pdf";
+import { employmentContractRows } from "./employment-contract-templates";
 import {
   jaWrap,
   registerFonts,
 } from "@/app/system/mypage/_lib/todoke-pdf.server";
 import {
   CONTRACT_TEXT,
+  contractDefaults,
   type EmploymentContractPayload,
 } from "./employment-contract";
 
 export type EmploymentContractPdfData = EmploymentContractPayload & {
+  companySeal?: string;
   employmentType?: string;
   companyName: string;
   representative: string;
@@ -190,6 +194,8 @@ export function EmploymentContractPdfDocument({
   data: EmploymentContractPdfData;
 }): React.ReactElement<DocumentProps> {
   registerFonts();
+  const templateType=data.templateType ?? (data.salaryKind === "monthly" ? "full_time" : "part_time");
+  if (templateType !== "part_time") return <EmployeeDocument data={{...contractDefaults(templateType),...data,templateType}} />;
   const jobLine = (Object.entries(jobs) as [keyof typeof jobs, string][])
     .map(
       ([k, v]) =>
@@ -253,21 +259,21 @@ export function EmploymentContractPdfDocument({
         </View>
         <Section>〔労働条件通知書〕</Section>
         <Address value={data.companyAddress} />
-        <Text style={s.company}>
+        <View style={{position:"relative"}}><Text style={s.company}>
           {jaWrap(
             `${data.companyName}　代表取締役　${data.representative}　㊞`,
             21,
           )}
-        </Text>
+        </Text><CompanySeal src={data.companySeal} /></View>
         <Text style={s.para}>
           {jaWrap("貴殿の労働条件は次の通りです。", 62)}
         </Text>
         <View style={s.table}>
           <Row label="契約期間">
-            <W>{`［ ${d(data.contractStart)} ］ ～ ［ ${d(data.contractEnd)} ］`}</W>
+            <W>{data.indefinite ? `期間の定めなし　${d(data.contractStart)} から` : `［ ${d(data.contractStart)} ］ ～ ［ ${d(data.contractEnd)} ］`}</W>
           </Row>
           <Row label="契約更新">
-            <W units={34}>{CONTRACT_TEXT.renewal}</W>
+            <W units={34}>{data.renewalText ?? CONTRACT_TEXT.renewal}</W>
           </Row>
           <Row label="契約更新基準">
             <W units={34}>{CONTRACT_TEXT.renewalCriteria}</W>
@@ -304,10 +310,10 @@ export function EmploymentContractPdfDocument({
           <Row label="賃金および支払方法">
             <W
               units={34}
-            >{data.salaryKind === "monthly" ? `1. 基本賃金　月給 ［ ${data.hourlyWage.toLocaleString("ja-JP")} ］ 円` : `1. 基本賃金　時給 ［ ${data.hourlyWage.toLocaleString("ja-JP")} ］ 円（大阪府最低賃金額に準ずる）`}</W>
+            >{`1. 基本賃金　時給 ［ ${data.hourlyWage.toLocaleString("ja-JP")} ］ 円（大阪府最低賃金額に準ずる）`}</W>
             {CONTRACT_TEXT.wage.slice(0, 4).map((x) => (
               <Text key={x} style={s.para}>
-                {jaWrap(x, 34)}
+                {jaWrap(data.commuteCap !== undefined ? x.replace("20,000",data.commuteCap.toLocaleString("ja-JP")) : x, 34)}
               </Text>
             ))}
           </Row>
@@ -339,6 +345,36 @@ export function EmploymentContractPdfDocument({
       </Page>
     </Document>
   );
+}
+// Template spacing uses full-width blanks, which jaWrap counts as half-width.
+// Normalize those blanks before applying the same explicit wrapping as part-time.
+const EmployeeW = ({children, units = 45}: {children: string; units?: number}) => (
+  <W units={units}>{children.replaceAll("　", " ")}</W>
+);
+function EmployeeDocument({data}: {data: EmploymentContractPdfData}) {
+ const rows=employmentContractRows(data);
+ return <Document title="雇用契約書 兼 労働条件通知書" author="Garden">
+  <Page size="A4" style={s.page}>
+   <Header name={data.companyName} page={1}/>
+   <Text style={s.title}>{jaWrap("労働条件通知書 兼 雇用契約書",60)}</Text>
+   <Section>〔雇用契約書〕</Section>
+   <EmployeeW units={45}>{`${data.companyName}（以下「甲」という）と ${data.employeeName}（以下「乙」という）は、以下の条件に基づき雇用契約を締結する。`}</EmployeeW>
+   <EmployeeW units={45}>以上の合意を証するため本契約書を2通作成し、甲乙の両当事者記名（又は署名）捺印の上、各々1通を保有する。</EmployeeW>
+   <View style={s.signature}><EmployeeW>{`締結日：${d(data.concludedOn)}`}</EmployeeW><EmployeeW>{`住所：${data.employeeAddress}`}</EmployeeW><EmployeeW>{`氏名：${data.employeeName}　㊞`}</EmployeeW></View>
+   <Section>〔労働条件通知書〕</Section>
+   <Address value={data.companyAddress}/>
+   <View style={{position:"relative"}}><View style={s.company}><W units={21}>{data.companyName}</W><W units={21}>{`代表取締役　${data.representative}　㊞`}</W></View><CompanySeal src={data.companySeal}/></View>
+   <View style={s.table}>{rows.slice(0,4).map(r=><Row key={r.label} label={r.label}><EmployeeW units={34}>{r.text}</EmployeeW></Row>)}</View>
+  </Page>
+  <Page size="A4" style={s.page}><Header name={data.companyName} page={2}/><View style={s.table}>
+   {rows.slice(4,6).map(r=><Row key={r.label} label={r.label}><EmployeeW units={34}>{r.text}</EmployeeW></Row>)}
+   <Row label={rows[6].label}><EmployeeW units={34}>{rows[6].text.split("3.　所定外")[0]}</EmployeeW></Row>
+  </View></Page>
+  <Page size="A4" style={s.page}><Header name={data.companyName} page={3}/><View style={s.table}>
+   <Row label="賃金（続き）"><EmployeeW units={34}>{"3.　所定外"+rows[6].text.split("3.　所定外")[1]}</EmployeeW></Row>
+   {rows.slice(7).map(r=><Row key={r.label} label={r.label}><EmployeeW units={34}>{r.text}</EmployeeW></Row>)}
+  </View><Text style={{marginTop:8}}>{jaWrap("以下、余白とする。",48)}</Text></Page>
+ </Document>;
 }
 export async function renderEmploymentContractPdf(
   data: EmploymentContractPdfData,

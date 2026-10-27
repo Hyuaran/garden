@@ -1,3 +1,4 @@
+import { loadCompanySeal, MISSING_COMPANY_SEAL } from "@/lib/company-seal.server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   renderEmergencyContactPdf,
@@ -38,11 +39,13 @@ export async function generateSubmissionPdf(
       .eq("company_id", employee.company_id)
       .maybeSingle();
     if (error || !company) throw new Error("所属会社を取得できませんでした");
+    const companySeal = await loadCompanySeal(employee.company_id);
     const p = row.payload;
     let buffer: Buffer;
     let documentName: "緊急連絡先届" | "秘密保持誓約書";
     if (row.submission_type === "emergency_contact") {
       const pdfData: EmergencyContactPdfData = {
+        companySeal,
         companyName: String(company.company_name),
         representative: String(company.representative),
         kind: p.kind === "change" ? "change" : "new",
@@ -59,6 +62,7 @@ export async function generateSubmissionPdf(
       documentName = "緊急連絡先届";
     } else {
       const pdfData: NdaPdfData = {
+        companySeal,
         companyName: String(company.company_name),
         representative: String(company.representative),
         kind: p.kind === "resubmit" ? "resubmit" : "new",
@@ -69,13 +73,14 @@ export async function generateSubmissionPdf(
       buffer = Buffer.from(await renderNdaPdf(pdfData));
       documentName = "秘密保持誓約書";
     }
-    return saveTodokePdf(
+    const result = await saveTodokePdf(
       buffer,
       employee.employee_number,
       employee.name,
       documentName,
       now,
     );
+    return {...result, note: [result.note, !companySeal ? MISSING_COMPANY_SEAL : null].filter(Boolean).join(" / ") || null};
   } catch (error) {
     return {
       status: "failed" as const,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { renderEmploymentContractPdf } from "./employment-contract-pdf.server";
+import {contractDefaults} from "./employment-contract";
 const data = {
   companyName: "株式会社ヒュアラン",
   representative: "後道翔太",
@@ -17,13 +18,22 @@ const data = {
   employeeAddress: "",
 };
 describe("employment contract PDF", () => {
+  it.each(["full_time","nhk_dispatch"] as const)("renders %s with variables and a seal",async templateType=>{
+    const buffer=await renderEmploymentContractPdf({...data,...contractDefaults(templateType),templateType,hourlyWage:320000,companySeal:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="});
+    const pdf=await getDocument({data:new Uint8Array(buffer)}).promise;
+    expect(pdf.numPages).toBe(3);
+    let text="";let images=0;
+    for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n);const c=await page.getTextContent();text+=c.items.map(i=>"str" in i?i.str:"").join("");images+=(await page.getOperatorList()).fnArray.filter(x=>x===85).length;}
+    expect(text.replace(/\s/g,"")).toContain("320,000円");expect(text).not.toMatch(/桐井|山﨑|\?\?\?|undefined/);
+    expect(images).toBeGreaterThan(0);
+  },60000);
   it("prints monthly salary while preserving three pages",async()=>{
     const buffer=await renderEmploymentContractPdf({...data,salaryKind:"monthly",hourlyWage:100000,weeklyHours:15});
     const pdf=await getDocument({data:new Uint8Array(buffer)}).promise;
     expect(pdf.numPages).toBe(3);
     let text="";
     for(let page=1;page<=3;page++){const c=await(await pdf.getPage(page)).getTextContent();text+=c.items.map(i=>"str" in i?i.str:"").join("");}
-    expect(text.replace(/\s/g,"")).toContain("基本賃金月給［100,000］円");
+    expect(text.replace(/\s/g,"")).toContain("基本給イ月給（100,000円）");
     expect(text).not.toContain("大阪府最低賃金額に準ずる");
   },60_000);
   it("renders exactly three pages without automatic hyphens", async () => {

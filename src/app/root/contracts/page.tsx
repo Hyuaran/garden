@@ -4,6 +4,8 @@ import { minimumWageAt, wageError, type MinimumWage } from "@/lib/minimum-wages"
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
 import { colors } from "../_constants/colors";
+import { ContractTypeFields } from "./_components/ContractTypeFields";
+import { defaultContractType, contractDefaults } from "./_lib/employment-contract";
 import type {
   ContractEmployee,
   ContractRow,
@@ -61,7 +63,8 @@ export default function ContractsPage() {
       e?.root_companies?.address?.replace(/^〒\d{3}-\d{4}\s*/, "") ?? "";
     setP((v) => ({
       ...v,
-      workLocation: address ? `${address}（または甲が指定する場所）` : "",
+      ...contractDefaults(defaultContractType(e?.employment_type??"")),
+      workLocation: address ? (defaultContractType(e?.employment_type??"") === "nhk_dispatch" ? `（雇い入れ直後）${address}（変更の範囲）会社が指定する場所` : `${address}（または甲が指定する場所）`) : "",
     }));
   }
   async function submit(e: FormEvent) {
@@ -139,6 +142,7 @@ export default function ContractsPage() {
             ))}
           </select>
         </label>
+        <ContractTypeFields value={p} onChange={v=>setP({...p,...v})}/>
         <fieldset className="garden-radio-group">
           <legend>区分</legend>
           {[
@@ -159,7 +163,7 @@ export default function ContractsPage() {
             </label>
           ))}
         </fieldset>
-        <label>給与区分<select value={p.salaryKind??"hourly"} onChange={e=>setP({...p,salaryKind:e.target.value as "hourly"|"monthly"})}><option value="hourly">時給</option><option value="monthly">月給</option></select></label>
+        <label>給与区分<select disabled={!!p.templateType} value={p.salaryKind??"hourly"} onChange={e=>setP({...p,salaryKind:e.target.value as "hourly"|"monthly"})}><option value="hourly">時給</option><option value="monthly">月給</option></select></label>
         {p.salaryKind === "monthly" && <label>週の所定時間<input type="number" min="0.01" step="any" required value={p.weeklyHours??""} onChange={e=>setP({...p,weeklyHours:Number(e.target.value)})}/></label>}
         {[
           ["contractStart", "契約期間（から）", "date"],
@@ -173,7 +177,7 @@ export default function ContractsPage() {
             {label}
             <input
               type={type}
-              required={key !== "employeeAddress"}
+              required={key !== "employeeAddress" && !(key === "contractEnd" && p.indefinite)}
               value={String(p[key as keyof EmploymentContractPayload])}
               onChange={(e) =>
                 setP({

@@ -1,4 +1,7 @@
 "use client";
+import { ContractTypeFields } from "@/app/root/contracts/_components/ContractTypeFields";
+import { contractDefaults, defaultContractType, type EmploymentContractPayload } from "@/app/root/contracts/_lib/employment-contract";
+
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import ChangeConfirm from "@/app/system/_components/ChangeConfirm/ChangeConfirm";
 import HireProcessingOverlay from "./HireProcessingOverlay";
@@ -9,6 +12,8 @@ export default function HireConfirmationSteps({row,canWrite,documents,filemakerC
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[code,setCode]=useState(""),[sent,setSent]=useState(false),[confirm,setConfirm]=useState(false);
  const [deadline,setDeadline]=useState<number|null>(null),[seconds,setSeconds]=useState(0),[showWait,setShowWait]=useState(false);
  const [result,setResult]=useState<HireCandidate["filemaker_request"]>();
+ const [contract,setContract]=useState<Partial<EmploymentContractPayload>>(()=>contractDefaults(defaultContractType(row.employment_type??"")));
+ const [documentNotice,setDocumentNotice]=useState("");
  const checking=useRef(false);
  const signed=signaturesComplete(row),lineDone=lineComplete(row),request=result??row.filemaker_request;
  async function call(path:string,body?:unknown) {
@@ -35,8 +40,12 @@ export default function HireConfirmationSteps({row,canWrite,documents,filemakerC
  const locked=!canWrite||busy||deadline!==null;
  return <div className={styles.hireMf}>
   <section><h3>① 締結</h3>{documents}
+   <ContractTypeFields value={contract} onChange={setContract}/>
+   {([['contractStart','契約開始日','date'],['contractEnd','契約終了日','date'],['concludedOn','契約日','date'],['workLocation','就業場所','text']] as const).map(([key,label,type])=><label key={key}>{label}<input type={type} value={contract[key]??""} placeholder="既存の契約書の値を使用" onChange={e=>setContract({...contract,[key]:e.target.value})}/></label>)}
+   {documentNotice&&<p role="status">{documentNotice}</p>}
    <button disabled={locked||row.onboarding_status!=="submitted"} onClick={()=>run(async()=>{
-    const data=await call("/documents",{});
+    const data=await call("/documents",{contract});
+    setDocumentNotice(data.note??"");
     for(const file of data.files){const bytes=Uint8Array.from(atob(file.data),(c:string)=>c.charCodeAt(0));const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));const a=document.createElement("a");a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60_000);}
    })}>書類の PDF を作る</button>
    {row.onboarding_status!=="submitted"&&<p>本人の入力が提出されると作れます</p>}

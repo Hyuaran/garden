@@ -1,3 +1,4 @@
+vi.mock("@/lib/company-seal.server",()=>({loadCompanySeal:vi.fn(async()=>undefined),MISSING_COMPANY_SEAL:"missing seal"}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   admin: vi.fn(),

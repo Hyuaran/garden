@@ -1,6 +1,16 @@
 export type ContractKind = "new" | "renewal";
 export type JobType = "sales" | "office" | "tech" | "other";
 export type EmploymentContractPayload = {
+  templateType?: "part_time" | "full_time" | "nhk_dispatch";
+  indefinite?: boolean;
+  renewalText?: string;
+  commuteCap?: number;
+  duties?: string;
+  workHours?: string;
+  startTime?: string;
+  endTime?: string;
+  breakMinutes?: number;
+  fixedOvertime?: boolean;
   kind: ContractKind;
   contractStart: string;
   contractEnd: string;
@@ -83,11 +93,20 @@ export function validateContract(
   employeeId: string,
   p: Partial<EmploymentContractPayload>,
 ) {
+  if (p.templateType && !Object.hasOwn(CONTRACT_TYPES, p.templateType)) return "契約書の種類を選んでください。";
+  if (p.templateType === "part_time" && p.salaryKind !== "hourly") return "アルバイトの時給を入力してください。";
+  if (p.templateType && p.templateType !== "part_time") {
+    if (!p.employeeAddress?.trim()) return "従業員住所を入力してください。";
+    if (p.salaryKind !== "monthly" || !Number.isFinite(p.weeklyHours) || !(p.weeklyHours! > 0)) return "月給と週の所定時間を入力してください。";
+    if (!p.duties?.trim() || !p.workHours?.trim() || typeof p.fixedOvertime !== "boolean") return "業務内容・就業時間・固定残業の有無を入力してください。";
+    if (p.templateType === "nhk_dispatch" && (!/^([01]\d|2[0-3]):[0-5]\d$/.test(p.startTime ?? "") || !/^([01]\d|2[0-3]):[0-5]\d$/.test(p.endTime ?? "") || !Number.isFinite(p.breakMinutes) || p.breakMinutes! < 0)) return "始業・終業・休憩を入力してください。";
+  }
+  if (p.commuteCap !== undefined && (!Number.isFinite(p.commuteCap) || p.commuteCap < 0)) return "通勤手当の上限を確認してください。";
   if (
     !employeeId ||
     !["new", "renewal"].includes(String(p.kind)) ||
     !p.contractStart ||
-    !p.contractEnd ||
+    (!p.indefinite && !p.contractEnd) ||
     !["sales", "office", "tech", "other"].includes(String(p.jobType)) ||
     !p.concludedOn ||
     !String(p.workLocation ?? "").trim()
@@ -98,7 +117,15 @@ export function validateContract(
   if (p.salaryKind && !["hourly", "monthly"].includes(p.salaryKind)) return "給与区分を選んでください";
   if (!Number.isInteger(Number(p.hourlyWage)) || Number(p.hourlyWage) <= 0)
     return "基本賃金は正の整数で入力してください。";
-  if (p.contractStart >= p.contractEnd)
+  if (!p.indefinite && p.contractEnd && p.contractStart! >= p.contractEnd)
     return "契約終了日は開始日より後の日付にしてください。";
   return null;
+}
+
+export const CONTRACT_TYPES = {part_time:"アルバイト",full_time:"正社員",nhk_dispatch:"NHK 正社員（派遣）"} as const;
+export function defaultContractType(employmentType: string): NonNullable<EmploymentContractPayload["templateType"]> {
+  return employmentType.includes("派遣") ? "nhk_dispatch" : employmentType.includes("正社員") ? "full_time" : "part_time";
+}
+export function contractDefaults(templateType: NonNullable<EmploymentContractPayload["templateType"]>): Partial<EmploymentContractPayload> {
+ return {templateType,salaryKind:templateType === "part_time" ? "hourly" : "monthly",weeklyHours:templateType === "nhk_dispatch" ? 37.5 : 40,commuteCap:templateType === "nhk_dispatch" ? 15000 : 20000,renewalText:templateType === "part_time" ? undefined : "更新する場合がある",duties:templateType === "nhk_dispatch" ? "（雇い入れ直後）法人・個人顧客に対する営業活動全般（既存顧客の定期訪問、新規開拓のための訪問販売、顧客への提案・販売、および関連する事務処理）\n（変更の範囲）会社の定める業務" : "テレアポ、テレオペ、事務業務、他",workHours:"所定労働時間はシフト制（1カ月単位の変形労働時間制）により、1か月を平均して1週40時間以内、1日8時間以内。休憩時間は平日40分・土日祝120分。",startTime:"09:30",endTime:"18:00",breakMinutes:60,fixedOvertime:false};
 }

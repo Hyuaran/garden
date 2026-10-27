@@ -1,3 +1,4 @@
+vi.mock("@/lib/company-seal.server",()=>({loadCompanySeal:vi.fn(async()=>undefined),MISSING_COMPANY_SEAL:"missing seal"}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/minimum-wages.server",()=>({validateMinimumWage:vi.fn().mockResolvedValue(null)}));
 const mocks = vi.hoisted(() => ({ render: vi.fn(), save: vi.fn() }));
@@ -8,6 +9,7 @@ vi.mock("@/app/system/mypage/_lib/todoke-drive.server", () => ({
   saveTodokePdf: mocks.save,
 }));
 import { generateEmploymentContractPdf } from "./employment-contract-generation.server";
+import {loadCompanySeal} from "@/lib/company-seal.server";
 const payload = {
   kind: "new" as const,
   contractStart: "2026-09-01",
@@ -73,6 +75,14 @@ describe("employment contract generation", () => {
       "雇用契約書",
       expect.any(Date),
     );
+  });
+  it("reports missing seals while still generating",async()=>{
+    expect(await generateEmploymentContractPdf(row,employee)).toMatchObject({status:"generated",note:"missing seal"});
+  });
+  it("passes the registered seal to the PDF",async()=>{
+    vi.mocked(loadCompanySeal).mockResolvedValueOnce("data:image/png;base64,AQID" as never);
+    expect(await generateEmploymentContractPdf(row,employee)).toMatchObject({status:"generated",note:null});
+    expect(mocks.render).toHaveBeenCalledWith(expect.objectContaining({companySeal:"data:image/png;base64,AQID"}));
   });
   it("skips without Drive env", async () => {
     delete process.env.GARDEN_TODOKE_DRIVE_ROOT_FOLDER_ID;

@@ -1,3 +1,4 @@
+import { CompanySeal } from "./company-seal-pdf";
 import path from "node:path";
 import {
   Document,
@@ -73,6 +74,7 @@ export function jaWrap(text: string, maxUnits = 40): string {
   return lines.filter((l) => l !== "").join("\n");
 }
 export type EmergencyContactPdfData = {
+  companySeal?: string;
   companyName: string;
   representative: string;
   kind: "new" | "change";
@@ -86,6 +88,7 @@ export type EmergencyContactPdfData = {
   submittedAt: Date;
 };
 export type NdaPdfData = {
+  companySeal?: string;
   companyName: string;
   representative: string;
   kind: "new" | "resubmit";
@@ -210,7 +213,7 @@ export function EmergencyContactPdfDocument({
         <Text style={styles.revision}>
           {jaWrap("2026年 4月 1日　改定　ver.1")}
         </Text>
-        <View style={styles.address}>
+        <View style={styles.address}><CompanySeal src={data.companySeal} placement="afterAddressee" />
           <Text>{jaWrap(data.companyName)}</Text>
           <Text>{jaWrap(`代表取締役　${data.representative}　様`)}</Text>
         </View>
@@ -293,7 +296,7 @@ export function NdaPdfDocument({
         <Text style={styles.ndaRevision}>
           {jaWrap("2026年　4月　1日　改定 ver.3", 60)}
         </Text>
-        <View style={styles.ndaAddress}>
+        <View style={styles.ndaAddress}><CompanySeal src={data.companySeal} placement="afterAddressee" />
           <Text>{jaWrap(data.companyName, 60)}</Text>
           <Text>{jaWrap(`代表取締役　${data.representative}　様`, 60)}</Text>
         </View>

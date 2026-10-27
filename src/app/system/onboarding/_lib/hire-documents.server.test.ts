@@ -1,3 +1,4 @@
+vi.mock("@/lib/company-seal.server",()=>({loadCompanySeal:vi.fn(async()=>undefined),MISSING_COMPANY_SEAL:"missing seal"}));
 import { expect,it,vi } from "vitest";
 vi.mock("server-only",()=>({}));
 vi.mock("@/lib/minimum-wages.server",()=>({validateMinimumWage:vi.fn(async(p)=>{
