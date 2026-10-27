@@ -17,3 +17,9 @@ it("updates automatic dates, preserves manual dates and clears indefinite dates"
  expect(updateContract({...p,indefinite:true},"2026-10-28",false).contractEnd).toBe("");
 });
 it("normalizes legacy renewal wording",()=>expect(normalizeRenewal("更新する場合がある")).toBe("更新する場合があり得る"));
+
+it("defaults start to concluded date before calculating end and preserves saved dates",()=>{
+ expect(initializeContract({templateType:"full_time",concludedOn:"2025-12-10"},"2026-10-28")).toMatchObject({contractStart:"2025-12-10",contractEnd:"2026-02-28"});
+ expect(initializeContract({templateType:"part_time"},"2026-10-28")).toMatchObject({contractStart:"2026-10-28",contractEnd:"2026-10-31"});
+ expect(initializeContract({contractStart:"2025-01-02",concludedOn:"2025-01-01",contractEnd:"2027-03-31"},"2026-10-28")).toMatchObject({contractStart:"2025-01-02",contractEnd:"2027-03-31"});
+});

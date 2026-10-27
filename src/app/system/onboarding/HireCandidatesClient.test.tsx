@@ -104,7 +104,8 @@ it("keeps the confirmation table compact and opens all fields in the common moda
  const dialog=screen.getByRole("dialog",{name:"入社 太郎 さんの入社後の確認"});
  for(const label of ["契約書の種類","雇用期間","契約更新","契約開始日","契約終了日","契約日","業務内容","就業時間","就業場所"])expect(within(dialog).getByLabelText(label)).toBeVisible();
  expect(within(dialog).getByLabelText("契約書の種類")).toBeDisabled();
- expect(within(dialog).getByRole("button",{name:"テスト送信"})).toBeDisabled();
+ expect(within(dialog).queryByRole("button",{name:"テスト送信"})).not.toBeInTheDocument();
+ expect(within(dialog).getByText("確認済み")).toBeVisible();
  expect(within(dialog).getByRole("button",{name:"FileMaker に依頼"})).toBeDisabled();
  fireEvent(dialog,new Event("cancel",{cancelable:true}));
  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -144,18 +145,19 @@ it("saves checks immediately, removes completed hires, and restores failed saves
  render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
  fireEvent.click(screen.getByRole("tab",{name:"入社後の確認"}));
  fireEvent.click(await screen.findByRole("button",{name:"確認する"}));
- fireEvent.click(screen.getByRole("checkbox",{name:"入社 太郎 FileMaker 追加済み"}));
+ fireEvent.click(screen.getByRole("button",{name:"手で追加済みにする"}));
  await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/h",expect.objectContaining({method:"PATCH",body:JSON.stringify({checklist:{filemaker_added:true}})})));
  fireEvent.click(screen.getAllByRole("button",{name:"閉じる"}).at(-1)!);
  await waitFor(()=>expect(screen.queryByText("入社 太郎")).not.toBeInTheDocument());
  fireEvent.click(screen.getByRole("checkbox",{name:"完了も表示"}));
  fireEvent.click(screen.getByRole("button",{name:"確認する"}));
- const check=screen.getByRole("checkbox",{name:"入社 太郎 FileMaker 追加済み"});
+ const check=within(screen.getByText("③ FileMaker").closest("section")!).getByRole("button",{name:"戻す"});
  await waitFor(()=>expect(check).toBeEnabled());
  fetch.mockImplementation(async()=>Response.json({error:"保存失敗"},{status:500}));
  fireEvent.click(check);
  expect(await screen.findByRole("alert")).toHaveTextContent("保存失敗");
- expect(check).toBeChecked();
+ expect(check).toBeVisible();
+ expect(screen.getAllByText("追加済み").length).toBeGreaterThan(0);
 });
 it("skips LINE, restores it and prioritizes registration",async()=>{
  let current={...hired,line_verified_at:null as string|null,line_registered:false,checklist:{...fullChecklist}};
@@ -176,10 +178,10 @@ it("skips LINE, restores it and prioritizes registration",async()=>{
  await waitFor(()=>expect(screen.queryByText("入社 太郎")).not.toBeInTheDocument());
  fireEvent.click(screen.getByRole("checkbox",{name:"完了も表示"}));
  fireEvent.click(screen.getByRole("button",{name:"確認する"}));
- await waitFor(()=>expect(screen.getByRole("button",{name:"LINE 登録しないを戻す"})).toBeEnabled());
- fireEvent.click(screen.getByRole("button",{name:"LINE 登録しないを戻す"}));
+ await waitFor(()=>expect(within(screen.getByText("② LINE テスト送信").closest("section")!).getByRole("button",{name:"戻す"})).toBeEnabled());
+ fireEvent.click(within(screen.getByText("② LINE テスト送信").closest("section")!).getByRole("button",{name:"戻す"}));
  await waitFor(()=>expect(screen.getByRole("button",{name:"LINE 登録しない"})).toBeEnabled());
- expect(screen.getByText("未確認")).toBeVisible();
+ expect(screen.queryByText("未確認")).not.toBeInTheDocument();
  view.unmount();
  current={...current,line_verified_at:"now",line_registered:true,checklist:{...fullChecklist,line_skipped:{checked_at:"now",checked_by:"admin"}}};
  render(<CandidatePanel userId="line-test" tab="confirmations"/>);

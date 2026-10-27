@@ -13,7 +13,8 @@ export function contractEndDate(p: Contract, today: string) {
  return new Date(Date.UTC(year, month - 1 + (p.templateType === "part_time" ? 1 : 3), 0)).toISOString().slice(0, 10);
 }
 export function initializeContract(p: Contract, today: string) {
- return {...p, concludedOn: p.concludedOn || today, contractEnd: p.indefinite ? "" : p.contractEnd || contractEndDate(p, today), renewalText: normalizeRenewal(p.renewalText)};
+ const dates = {...p, concludedOn: p.concludedOn || today, contractStart: p.contractStart || p.concludedOn || today};
+ return {...dates, contractEnd: p.indefinite ? "" : p.contractEnd || contractEndDate(dates, today), renewalText: normalizeRenewal(p.renewalText)};
 }
 export function updateContract(p: Contract, today: string, automaticEnd: boolean): Contract {
  return {...p, contractEnd: p.indefinite ? "" : automaticEnd ? contractEndDate(p, today) : p.contractEnd, renewalText: normalizeRenewal(p.renewalText)};

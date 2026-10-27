@@ -11,14 +11,14 @@ import layout from "./HireConfirmation.module.css";
 import styles from "./onboarding.module.css";
 import { initializeContract, japanToday, updateContract } from "./_lib/hire-contract-defaults";
 const base="/api/system/hire-candidates/";
-export default function HireConfirmationSteps({row,canWrite,documents,filemakerCheck,skip,onRefresh,onReconciled}:{row:HireCandidate;canWrite:boolean;documents:ReactNode;filemakerCheck:ReactNode;skip:()=>void;onRefresh:()=>Promise<unknown>;onReconciled?:()=>Promise<unknown>}) {
+export default function HireConfirmationSteps({row,canWrite,documents,toggleFilemaker,skip,onRefresh,onReconciled}:{row:HireCandidate;canWrite:boolean;documents:ReactNode;toggleFilemaker:()=>void;skip:()=>void;onRefresh:()=>Promise<unknown>;onReconciled?:()=>Promise<unknown>}) {
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[code,setCode]=useState(""),[sent,setSent]=useState(false),[confirm,setConfirm]=useState(false);
  const [deadline,setDeadline]=useState<number|null>(null),[seconds,setSeconds]=useState(0),[showWait,setShowWait]=useState(false);
  const [result,setResult]=useState<HireCandidate["filemaker_request"]>();
  const [today]=useState(()=>japanToday(new Date()));
- const automaticEnd=useRef(true), automaticConcluded=useRef(true);
+ const automaticStart=useRef(true), automaticEnd=useRef(true), automaticConcluded=useRef(true);
  const [contract,setContract]=useState<Partial<EmploymentContractPayload>>(()=>initializeContract(contractDefaults(defaultContractType(row.employment_type??"")),today));
- function changeContract(value:Partial<EmploymentContractPayload>) {setContract(updateContract(value,today,automaticEnd.current));}
+ function changeContract(value:Partial<EmploymentContractPayload>) {setContract(updateContract(automaticStart.current?{...value,contractStart:value.concludedOn||today}:value,today,automaticEnd.current));}
  const [documentNotice,setDocumentNotice]=useState("");
  const checking=useRef(false);
  const signed=signaturesComplete(row),lineDone=lineComplete(row),request=result??row.filemaker_request;
@@ -47,12 +47,13 @@ export default function HireConfirmationSteps({row,canWrite,documents,filemakerC
  return <div className={layout.steps}>
   <section><header className={layout.sectionHeading}><h3>① 締結</h3><span>{[row.checklist?.contract_signed,row.checklist?.nda_signed,row.checklist?.emergency_signed].filter(Boolean).length}/3</span></header><div className={layout.documents}>{documents}</div><fieldset className={layout.contract} disabled={!canWrite}><legend>雇用契約書の中身</legend><div className={layout.grid}>
    <ContractTypeFields value={contract} onChange={changeContract} renewalSelect/>
-   {([['concludedOn','契約日','date'],['contractStart','契約開始日','date'],['contractEnd','契約終了日','date'],['workLocation','就業場所','text']] as const).map(([key,label,type])=><label key={key}>{label}<input type={type} value={contract[key]??""} placeholder="既存の契約書の値を使用" disabled={key==="contractEnd"&&contract.indefinite} onChange={e=>{if(key==="contractEnd")automaticEnd.current=false;if(key==="concludedOn")automaticConcluded.current=false;changeContract({...contract,[key]:e.target.value});}}/></label>)}
+   {([['concludedOn','契約日','date'],['contractStart','契約開始日','date'],['contractEnd','契約終了日','date'],['workLocation','就業場所','text']] as const).map(([key,label,type])=><label key={key}>{label}<input type={type} value={contract[key]??""} placeholder="既存の契約書の値を使用" disabled={key==="contractEnd"&&contract.indefinite} onChange={e=>{if(key==="contractStart")automaticStart.current=false;if(key==="contractEnd")automaticEnd.current=false;if(key==="concludedOn")automaticConcluded.current=false;changeContract({...contract,[key]:e.target.value});}}/></label>)}
    </div></fieldset>
    {documentNotice&&<p role="status">{documentNotice}</p>}
    <button className={layout.primary} disabled={locked||row.onboarding_status!=="submitted"} onClick={()=>run(async()=>{
     const overrides={...contract};
     if(automaticEnd.current)delete overrides.contractEnd;
+    if(automaticStart.current)delete overrides.contractStart;
     if(automaticConcluded.current)delete overrides.concludedOn;
     const data=await call("/documents",{contract:overrides});
     setDocumentNotice(data.note??"");
@@ -60,21 +61,21 @@ export default function HireConfirmationSteps({row,canWrite,documents,filemakerC
    })}>書類の PDF を作る</button>
    {row.onboarding_status!=="submitted"&&<p>本人の入力が提出されると作れます</p>}
   </section>
-  <section className={!signed?layout.lockedStep:undefined} aria-disabled={!signed}><header className={layout.sectionHeading}><h3>② LINE テスト送信</h3><span>{row.line_verified_at?"確認済み":row.checklist?.line_skipped?"登録しない":"未"}</span></header>
+  <section className={!signed?layout.lockedStep:undefined} aria-disabled={!signed}><header className={layout.sectionHeading}><h3>② LINE テスト送信</h3><div className={layout.headerActions}>
+   {lineDone?<><span className={row.line_verified_at?layout.done:undefined}>{row.line_verified_at?"確認済み":"登録しない"}</span>{!row.line_verified_at&&<button className={layout.textButton} disabled={locked||!signed} onClick={skip}>戻す</button>}</>:<><button disabled={locked||!signed} onClick={skip}>LINE 登録しない</button><button className={layout.primary} disabled={locked||!signed||!row.line_registered} onClick={()=>run(async()=>{await call("/line",{action:"send"});setSent(true);setCode("");})}>テスト送信</button></>}
+   </div></header>
    {!signed&&<p>①の締結がそろうと進めます</p>}
-   {!row.line_registered&&<p>まだ LINE を連携していません（入社手続きの最後のページの QR から登録）</p>}
-   <p>{row.line_verified_at?"確認済み":row.checklist?.line_skipped?"LINE 登録しない":"未確認"}</p>
-   <div className={layout.lineActions}><button disabled={locked||!signed||!row.line_registered} onClick={()=>run(async()=>{await call("/line",{action:"send"});setSent(true);setCode("");})}>テスト送信</button>
-   {sent&&<p role="status">確認コードを送りました</p>}
+   {!lineDone&&!row.line_registered&&<p>まだ LINE を連携していません（入社手続きの最後のページの QR から登録）</p>}
+   {sent&&!lineDone&&<><p role="status">確認コードを送りました</p><div className={layout.lineActions}>
    <label>確認コード<input aria-label="確認コード" inputMode="numeric" autoComplete="off" maxLength={6} value={code} disabled={locked||!signed||!row.line_registered} onChange={e=>setCode(e.target.value.replace(/\D/g,""))}/></label>
-   <button className={layout.primary} disabled={locked||!signed||!row.line_registered||code.length!==6} onClick={()=>run(async()=>{await call("/line",{action:"verify",code});setCode("");})}>確認</button>
-   <button disabled={locked||!signed} onClick={skip}>{row.checklist?.line_skipped?"LINE 登録しないを戻す":"LINE 登録しない"}</button></div>
+   <button className={layout.primary} disabled={locked||!signed||!row.line_registered||code.length!==6} onClick={()=>run(async()=>{await call("/line",{action:"verify",code});setCode("");setSent(false);})}>確認</button></div></>}
   </section>
-  <section className={!signed||!lineDone?layout.lockedStep:undefined} aria-disabled={!signed||!lineDone}><header className={layout.sectionHeading}><h3>③ FileMaker</h3><span>{row.checklist?.filemaker_added?"追加済み":"未"}</span></header>{filemakerCheck}
+  <section className={!signed||!lineDone?layout.lockedStep:undefined} aria-disabled={!signed||!lineDone}><header className={layout.sectionHeading}><h3>③ FileMaker</h3><div className={layout.headerActions}>
+   {row.checklist?.filemaker_added?<><span className={layout.done}>追加済み</span><button className={layout.textButton} disabled={locked||!signed||!lineDone} onClick={toggleFilemaker}>戻す</button></>:<><button className={layout.textButton} disabled={locked||!signed||!lineDone} onClick={toggleFilemaker}>手で追加済みにする</button>{request?.status!=="done"&&<button className={layout.primary} disabled={locked||!signed||!lineDone||!!request&&request.status!=="failed"} onClick={()=>setConfirm(true)}>{request?.status==="failed"?"やり直す":"FileMaker に依頼"}</button>}</>}
+   </div></header>
    {!signed?<p>①の締結がそろうと進めます</p>:!lineDone&&<p>②の LINE 確認が済むと進めます</p>}
    {deadline!==null?<><p role="status"><span className={styles.hireSpinner} aria-hidden="true"/>残り {Math.floor(seconds/60)}:{String(seconds%60).padStart(2,"0")}</p><p>画面を閉じても依頼は止まりません</p></>:request?.status==="done"?<p>FileMaker のアカウントを作りました</p>:request?.status==="failed"?<p className={styles.hireError}>作成できませんでした。下の理由を確認して、やり直してください</p>:request&&<p>まだ作成中です。数分後にもう一度確かめてください</p>}
    {request&&<ul>{Object.entries(request.files).map(([key,file])=><li key={key} className={file.status==="failed"?styles.hireError:undefined}>{({eigyo:"【新】営業",shain:"社員情報",call:"コール履歴",roster:"社員情報の名簿"} as Record<string,string>)[key]}：{file.status==="done"?"作成済み":file.status==="failed"?(file.error||"作成できませんでした"):"作成中"}</li>)}</ul>}
-   {request?.status!=="done"&&<button className={layout.primary} disabled={locked||!signed||!lineDone||deadline!==null||!!request&&request.status!=="failed"} onClick={()=>setConfirm(true)}>{request?.status==="failed"?"やり直す":"FileMaker に依頼"}</button>}
    {request&&request.status!=="done"&&<button disabled={locked||deadline!==null} onClick={()=>run(reconcile,false)}>確かめる</button>}
   </section>
   {error&&<p role="alert" className={styles.hireError}>{error}</p>}

@@ -1,7 +1,7 @@
 .dialog[data-garden-modal="panel"] { width:min(880px, calc(100vw / var(--garden-zoom, 1) - 32px)) !important; }
 .steps { display:grid; gap:24px; text-align:left; min-width:0; }
 .steps section { min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:12px; }
-.sectionHeading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+.sectionHeading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding-bottom:10px; border-bottom:1px solid var(--line); }
 .sectionHeading h3 { margin:0; }
 .sectionHeading span { white-space:nowrap; }
 .documents { display:grid; gap:12px; }
@@ -21,7 +21,7 @@
 .grid textarea { height:84px; min-height:84px; resize:vertical; line-height:20px; }
 .lineActions { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
 .lineActions > label { width:140px; }
-.steps button, .reviewButton { min-height:44px; padding:10px 16px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); font:inherit; white-space:nowrap; cursor:pointer; }
+.steps button, .reviewButton { box-sizing:border-box; height:44px; min-height:44px; padding:10px 16px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); font:inherit; white-space:nowrap; cursor:pointer; }
 .steps section > button { align-self:flex-end; }
 .steps button.primary { background:var(--teal); border-color:var(--teal); color:white; }
 .steps button:disabled { background:var(--line); border-color:var(--line); color:var(--sub,var(--ink)); cursor:not-allowed; opacity:.65; }
@@ -34,3 +34,6 @@
 .dialog[data-garden-modal="panel"]::-webkit-scrollbar { display:none; }
 .lockedStep { opacity:.6; }
 .grid select:disabled, .grid input:disabled { opacity:.65; cursor:not-allowed; background-color:var(--line); }
+
+.headerActions { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:12px; margin-left:auto; min-width:0; }
+.steps button.textButton { height:auto; min-height:0; padding:4px 0; border:0; background:transparent; color:var(--sub,var(--ink)); text-decoration:underline; }
