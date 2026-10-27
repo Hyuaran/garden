@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
   [string]$TaskName = "GardenFilemakerAccountAgent",
-  [string]$AgentPath = (Join-Path $PSScriptRoot "FilemakerAccountAgent.ps1"),
-  [string]$ConfigPath = (Join-Path $PSScriptRoot "config.json")
+  [string]$AgentPath = "C:\Garden\filemaker-account-agent\FilemakerAccountAgent.ps1",
+  [string]$ConfigPath = "C:\Garden\filemaker-account-agent\config.json"
 )
 $ErrorActionPreference = "Stop"
 $powerShell32 = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"

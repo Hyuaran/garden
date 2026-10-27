@@ -1,8 +1,12 @@
 ﻿[CmdletBinding()]
-param([string]$ConfigPath = (Join-Path $PSScriptRoot "config.json"))
+param([string]$ConfigPath = "")
 $ErrorActionPreference = "Stop"
+# The host PC's 32-bit PowerShell leaves $PSScriptRoot empty in the param block (2026-10-27).
+$scriptPath = $MyInvocation.MyCommand.Path
+if (-not $scriptPath) { $scriptPath = "C:\Garden\filemaker-account-agent\FilemakerAccountAgent.ps1" }
+if (-not $ConfigPath) { $ConfigPath = Join-Path (Split-Path -Parent $scriptPath) "config.json" }
 if ([Environment]::Is64BitProcess) {
-  & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath -ConfigPath $ConfigPath
+  & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $scriptPath -ConfigPath $ConfigPath
   exit $LASTEXITCODE
 }
 # Prevent simultaneous scheduled/manual executions on this host.
