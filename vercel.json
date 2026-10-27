@@ -31,6 +31,7 @@
     { "path": "/api/soil/list/orders/cron", "schedule": "30 21 * * *" },
     { "path": "/api/soil/list/analysis/cron", "schedule": "45 21 * * *" },
     { "path": "/api/soil/list/options/cron", "schedule": "55 21 * * *" },
-    { "path": "/api/root/minimum-wages/sync", "schedule": "0 0 * * *" }
+    { "path": "/api/root/minimum-wages/sync", "schedule": "0 0 * * *" },
+    { "path": "/api/system/vercel-usage/cron", "schedule": "5 9 * * *" }
   ]
 }
