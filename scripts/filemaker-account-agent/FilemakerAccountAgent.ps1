@@ -29,10 +29,11 @@ function Invoke-FmQuery($Connection, [string]$Sql, [object[]]$Values, [switch]$S
         $parameter.OdbcType = [System.Data.Odbc.OdbcType]::Date
         $parameter.Value = $value
       } elseif ($value -is [long] -or $value -is [int]) {
-        $parameter.OdbcType = [System.Data.Odbc.OdbcType]::Double
-        $parameter.Value = [double]$value
+        $parameter.OdbcType = [System.Data.Odbc.OdbcType]::Int
+        $parameter.Value = [int]$value
       } else {
-        $parameter.OdbcType = [System.Data.Odbc.OdbcType]::VarChar
+        # VarChar sends Japanese as single-byte and FileMaker stores mojibake (2026-10-27).
+        $parameter.OdbcType = [System.Data.Odbc.OdbcType]::NVarChar
         $parameter.Value = [string]$value
       }
       [void]$command.Parameters.Add($parameter)
