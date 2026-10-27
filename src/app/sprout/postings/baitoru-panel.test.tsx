@@ -54,3 +54,19 @@ it('shows employee recipient choices and keeps unavailable selections visible', 
  fireEvent.click(screen.getByRole('button',{name:'保存'}));
  await waitFor(()=>expect(m.save).toHaveBeenCalledWith(expect.objectContaining({mention_employee_ids:['EMP-2']})));
 });
+it('opens recipient selection outside any parent form without saving settings', async () => {
+ const {container}=render(<BaitoruPanel/>);
+ await screen.findByText('通知の宛先');
+ const saveButton=screen.getByRole('button',{name:'保存'});
+ expect(saveButton).toHaveAttribute('type','button');
+ expect(saveButton.closest('form')).toBeNull();
+ const recipientLabel=screen.getByText('通知の宛先');
+ const picker=recipientLabel.closest('button') || recipientLabel.parentElement?.querySelector('button');
+ expect(picker).toBeTruthy();
+ fireEvent.click(picker!);
+ const dialog=await screen.findByRole('dialog');
+ expect(dialog.closest('form')?.parentElement?.closest('form')).toBeNull();
+ expect(container.querySelector('form form')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'OK'}));
+ expect(m.save).not.toHaveBeenCalled();
+});

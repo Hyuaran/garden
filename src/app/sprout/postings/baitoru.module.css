@@ -1,22 +1,22 @@
 /* 社長スタイルの色の決まり（--ink・--sub・--line・--card・--heading・--teal）で書く。ダークでも読めるように直書きの色は使わない（2026-10-24） */
 .panel { padding: 8px 0 24px; color: var(--ink); }
-.panel h2 { font-size: 17px; font-weight: 700; color: var(--heading); margin: 28px 0 12px; }
-.panel form, .panel fieldset { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin: 0; }
-.panel fieldset { display: flex; flex-wrap: wrap; gap: 18px; align-items: end; min-width: 0; }
-.panel form > fieldset { border: 0; padding: 0; background: transparent; }
-.panel legend { font-size: 13px; color: var(--sub); padding: 0 4px; }
-.panel label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--sub); }
-.panel label:has(input[type=radio]) { flex-direction: row; align-items: center; color: var(--ink); }
-.panel p { color: var(--sub); font-size: 13px; }
-.panel input:not([type=radio]), .panel textarea { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; }
-.panel input[type=date] { color-scheme: light dark; }
-.panel textarea { min-height: 80px; }
-.panel button { padding: 9px 18px; border: 1px solid var(--teal); border-radius: 8px; background: var(--card); color: var(--ink); cursor: pointer; font: inherit; }
-.panel button[type=submit] { background: var(--teal); border-color: var(--teal); color: #fff; }
-.panel button:disabled { opacity: .5; cursor: default; }
+.panel > h2, .panel > form > h2, .card > h2 { font-size: 17px; font-weight: 700; color: var(--heading); margin: 28px 0 12px; }
+.panel > form, .card, .panel > form > fieldset, .card > fieldset { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin: 0; }
+.panel > form > fieldset, .card > fieldset { display: flex; flex-wrap: wrap; gap: 18px; align-items: end; min-width: 0; }
+.panel > form > fieldset, .card > fieldset { border: 0; padding: 0; background: transparent; }
+.card > fieldset > legend { font-size: 13px; color: var(--sub); padding: 0 4px; }
+.panel > form > fieldset > label, .card > fieldset > label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--sub); }
+.panel > form > fieldset > label:has(input[type=radio]), .card > fieldset > label:has(input[type=radio]) { flex-direction: row; align-items: center; color: var(--ink); }
+.panel > p, .card > p, .card > fieldset > p { color: var(--sub); font-size: 13px; }
+.panel > form > fieldset > label > input:not([type=radio]), .card > fieldset > label > input:not([type=radio]) { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; }
+.panel > form > fieldset > label > input[type=date] { color-scheme: light dark; }
+
+.panel > form > fieldset > button, .panel > form > fieldset > span > button, .card > fieldset > button, .action { padding: 9px 18px; border: 1px solid var(--teal); border-radius: 8px; background: var(--card); color: var(--ink); cursor: pointer; font: inherit; }
+.panel > form > fieldset > button[type=submit], .card > fieldset > .save { background: var(--teal); border-color: var(--teal); color: #fff; }
+.panel > form > fieldset > button:disabled, .panel > form > fieldset > span > button:disabled, .card > fieldset > button:disabled, .action:disabled { opacity: .5; cursor: default; }
 .history { overflow-x: auto; margin-bottom: 28px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
 .history table { border-collapse: collapse; width: 100%; font-size: 13px; color: var(--ink); }
 .history th { text-align: center; color: var(--sub); font-weight: 600; }
 .history th, .history td { padding: 12px; border-bottom: 1px solid var(--line); min-width: 70px; white-space: pre-line; }
 .history td { text-align: left; }
-@media (max-width: 600px) { .panel form, .panel fieldset { padding: 16px; } }
+@media (max-width: 600px) { .panel > form, .card, .panel > form > fieldset, .card > fieldset { padding: 16px; } }

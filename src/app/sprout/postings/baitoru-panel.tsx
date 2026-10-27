@@ -32,7 +32,7 @@ export default function BaitoruPanel() {
   {id:'period',label:'掲載期間', align: "fixed",type:'text',value:p=>`${p.start_date} ～ ${p.end_date}`},
   {id:'content',label:'掲載内容',type:'text',value:p=>p.content},
   {id:'created_at',label:'登録日',type:'date',value:p=>p.created_at,render:p=>new Date(p.created_at).toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'})},
-  {id:'operation',label:'操作', align: "mark",type:'text',value:()=>'',render:p=>postingStatus(p,today)==='掲載中'?<button disabled={busy} onClick={()=>void change(()=>endPosting(p.id),'掲載を終えました')}>今すぐ終える</button>:postingStatus(p,today)==='予定'?<button disabled={busy} onClick={()=>void change(()=>cancelPosting(p.id),'掲載を取り消しました')}>取り消す</button>:'─'},
+  {id:'operation',label:'操作', align: "mark",type:'text',value:()=>'',render:p=>postingStatus(p,today)==='掲載中'?<button className={styles.action} disabled={busy} onClick={()=>void change(()=>endPosting(p.id),'掲載を終えました')}>今すぐ終える</button>:postingStatus(p,today)==='予定'?<button className={styles.action} disabled={busy} onClick={()=>void change(()=>cancelPosting(p.id),'掲載を取り消しました')}>取り消す</button>:'─'},
  ];
  return <section className={styles.panel} aria-label="バイトル取り込み">
   {message && <p role="status">{message}</p>}
@@ -43,15 +43,15 @@ export default function BaitoruPanel() {
   </fieldset></form>
   <h2>掲載の一覧</h2><DataTable rows={data?.postings || []} columns={columns} rowKey={p=>p.id} searchText={p=>p.content} defaultSort={{id:'created_at',direction:'desc'}}/>
   <form onSubmit={e=>{e.preventDefault();void change(()=>changeContentOption(option),'選択肢を追加しました');setOption('');}}><h2>掲載内容の選択肢</h2><fieldset disabled={busy}>{s.content_options.map(v=><span key={v}>{v} <button type="button" aria-label={`${v}を削除`} onClick={()=>void change(()=>changeContentOption(v,true),'選択肢を削除しました')}>×</button> </span>)}<label>追加する文字<input required maxLength={200} value={option} onChange={e=>setOption(e.target.value)}/></label><button type="submit">追加</button></fieldset></form></>}
-  {s && <form onSubmit={e=>{e.preventDefault();void save();}}><h2>取り込みの設定</h2><fieldset disabled={busy}>
+  {s && <div className={styles.card}><h2>取り込みの設定</h2><fieldset disabled={busy}>
    <legend>取り込み</legend><p>掲載期間中は自動で取り込み、期間が終わると止まります。</p>
    <label>今回だけ除外する問合せ番号（カンマ区切り）<input value={excluded} onChange={e=>setExcluded(e.target.value)}/></label>
    <label>通知先<select value={s.notify_room} onChange={e=>update({notify_room:e.target.value as 'dev'|'production'})}><option value="dev">開発ルーム</option><option value="production">本番ルーム</option></select></label>
    <BoxSelect label="通知の宛先" multiple options={data?.mention_candidates || []} value={s.mention_employee_ids} onChange={value=>update({mention_employee_ids:value})}/>
    <small>宛先に出るのは Root の従業員で Chatwork ID を入れた人です</small>
    <label>1回に登録する上限<input type="number" required min={1} max={100} value={s.max_per_run} onChange={e=>update({max_per_run:Number(e.target.value)})}/></label>
-   <button type="submit">保存</button></fieldset><p>最後に届いた時刻：{s.last_called_at?new Date(s.last_called_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'まだ届いていません'}</p></form>}
+   <button type="button" className={styles.save} onClick={()=>void save()}>保存</button></fieldset><p>最後に届いた時刻：{s.last_called_at?new Date(s.last_called_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'まだ届いていません'}</p></div>}
   <h2>取り込みの記録</h2><div className={styles.history}><table><thead><tr>{['日時','読んだ行','新規','重複でとばし（理由別）','不足でとばし','対象外でとばし','次回に回す','通知の失敗','結果'].map(t=><th key={t}>{t}</th>)}</tr></thead><tbody>{data?.runs.map(r=><tr key={r.id}><td className="garden-cell-fixed">{new Date(r.started_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})}</td><td className="garden-cell-number">{r.counts.totalRows || 0}</td><td className="garden-cell-number">{r.counts.added || 0}</td><td className="garden-cell-number">{Object.entries(r.dedup_by_reason).map(([k,v])=><div key={k}>{reasons[k] || '重複'}：{v}</div>)}</td><td className="garden-cell-number">{r.counts.missing || 0}</td><td className="garden-cell-number">{(r.counts.seed||0)+(r.counts.period||0)+(r.counts.excluded||0)}</td><td className="garden-cell-number">{r.counts.trimmed || 0}</td><td className="garden-cell-number">{r.counts.notifyFailed || 0}</td><td className="garden-cell-text">{r.error || '完了'}</td></tr>)}</tbody></table></div>
-  <h2>通知できなかった応募</h2>{data?.failed.map(a=><p key={a.kintone_record_id}>{a.name}：{a.notify_error} <button disabled={busy} onClick={()=>void retry(a.kintone_record_id)}>もう一度知らせる</button></p>)}
+  <h2>通知できなかった応募</h2>{data?.failed.map(a=><p key={a.kintone_record_id}>{a.name}：{a.notify_error} <button className={styles.action} disabled={busy} onClick={()=>void retry(a.kintone_record_id)}>もう一度知らせる</button></p>)}
  </section>;
 }
