@@ -15,10 +15,10 @@ describe("ManualDetailClient", () => {
     const manual = SYSTEM_MANUALS[3];
     render(<ManualDetailClient module={MANUAL_MODULES[0]} manual={manual} docs={[manual.docs[0]]} selectedDoc={manual.docs[0]} />);
 
-    expect(screen.getByRole("heading", { name: "勤怠打刻と KOT 取込" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "勤怠打刻と KING OF TIME 取込" })).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "資料タブ" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "要点" })).not.toBeInTheDocument();
-    expect(screen.getByTitle("勤怠打刻と KOT 取込 操作マニュアル")).toHaveAttribute("src", "/api/system/manuals/system/kot-attendance/1_operation.html?embed=1");
+    expect(screen.getByTitle("勤怠打刻と KING OF TIME 取込 操作マニュアル")).toHaveAttribute("src", "/api/system/manuals/system/kot-attendance/1_operation.html?embed=1");
     expect(screen.queryByRole("button", { name: "この資料を差し替える" })).not.toBeInTheDocument();
   });
 

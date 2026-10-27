@@ -10,7 +10,7 @@ import {
 
 describe("manuals registry", () => {
   it("defines the initial manual modules and documents", () => {
-    expect(SYSTEM_MANUALS).toHaveLength(27); // 2026-10-22 メール送信失敗の知らせ（mail-ndr-watch）を追加
+    expect(SYSTEM_MANUALS).toHaveLength(29); // 2026-10-22 メール送信失敗の知らせ（mail-ndr-watch）を追加
     expect(findManual("system", "kot-attendance")).toMatchObject({
       moduleSlug: "system",
       slug: "kot-attendance",
@@ -40,7 +40,7 @@ describe("manuals registry", () => {
   it("hides manuals and modules with no readable document", () => {
     expect(getVisibleManuals("cs")).toEqual([]);
     expect(getManualModules("staff").map((module) => [module.slug, module.count])).toEqual([
-      ["system", 25],
+      ["system", 27],
       ["bud", 2],
     ]);
   });
@@ -59,7 +59,7 @@ describe("manuals registry", () => {
 
   it("resolves registered manuals and files only", () => {
     const manual = findManual("system", "kot-attendance");
-    expect(manual?.name).toBe("勤怠打刻と KOT 取込");
+    expect(manual?.name).toBe("勤怠打刻と KING OF TIME 取込");
     expect(manual && findManualDoc(manual, "1_operation.html")?.key).toBe("operation");
     expect(manual && findManualDoc(manual, "../secret.html")).toBeNull();
   });

@@ -12,7 +12,7 @@ describe("ModuleManualsClient", () => {
     render(<ModuleManualsClient module={MANUAL_MODULES[0]} manuals={[{ ...manual, visibleDocs: getVisibleManualDocs(manual, "staff") }]} />);
 
     expect(screen.getByRole("heading", { name: "System のマニュアル" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "勤怠打刻と KOT 取込" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "勤怠打刻と KING OF TIME 取込" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "操作マニュアル" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "開く" })).toHaveAttribute("href", "/system/manuals/system/kot-attendance");
   });
@@ -20,7 +20,7 @@ describe("ModuleManualsClient", () => {
   it("opens the manual when the row is clicked", () => {
     const manual = SYSTEM_MANUALS[3];
     render(<ModuleManualsClient module={MANUAL_MODULES[0]} manuals={[{ ...manual, visibleDocs: getVisibleManualDocs(manual, "staff") }]} />);
-    fireEvent.click(screen.getByRole("cell", { name: "勤怠打刻と KOT 取込" }));
+    fireEvent.click(screen.getByRole("cell", { name: "勤怠打刻と KING OF TIME 取込" }));
     expect(push).toHaveBeenCalledWith("/system/manuals/system/kot-attendance");
   });
 });
