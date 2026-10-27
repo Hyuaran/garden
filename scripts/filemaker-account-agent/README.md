@@ -9,7 +9,7 @@ FileMaker 11 の 32bit ODBC ドライバーが必要。ファイルごとの権�
 
 1. `config.example.json` を `config.json` にコピーし、apiBase と接続先を確認する。
 2. 既存のマシン環境変数 `RELAY_SECRET` と `FM_CALL_HISTORY_PASSWORD` を確認する。値を設定ファイルやログへ書かない。
-3. 管理者 PowerShell で `./Register-FilemakerAccountAgentTask.ps1` を実行する。SYSTEM で5分おきに1回動作する。
+3. 管理者 PowerShell で `./Register-FilemakerAccountAgentTask.ps1` を実行する。SYSTEM で1分おきに1回動作する。
 4. `Start-ScheduledTask -TaskName GardenFilemakerAccountAgent` で確認し、Garden の入社後の確認で「自動：作成済み」になることを確認する。
 
 ログは `C:\ProgramData\Garden\FilemakerAccountAgent\logs\yyyy-MM-dd.log`。パスワード・SQL・例外本文は記録しない。
