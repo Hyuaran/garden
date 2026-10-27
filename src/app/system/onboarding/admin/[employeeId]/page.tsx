@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { listMinimumWages } from "@/lib/minimum-wages.server";
+import type { MinimumWage } from "@/lib/minimum-wages";
 import { redirect } from "next/navigation";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -14,10 +16,12 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
   let record = null;
   let message = "";
   let canWrite = false;
+  let wages: MinimumWage[] = [];
   try {
     const context = await onboardingAdminContext(true);
     canWrite = context.canWrite ?? false;
     record = await readAdminOnboardingDetail(context, employeeId);
+    wages = await listMinimumWages();
     if (!record) message = "入社手続きの入力が見つかりませんでした。";
   } catch (error) {
     if (error instanceof OnboardingError && error.status === 401) redirect(`/login?returnTo=${encodeURIComponent(`/system/onboarding/admin/${employeeId}`)}`);
@@ -32,6 +36,6 @@ export default async function OnboardingAdminDetailPage({ params }: { params: Pr
     {record?.status === "draft" && <Link className={styles.button} href={`/system/onboarding/admin/${encodeURIComponent(employeeId)}/proxy`}>本人の代わりに入力する</Link>}</div>
     {message === "閲覧権限がありません" ? <main className={styles.panel}><h2>閲覧権限がありません</h2><p>この画面は責任者以上が利用できます。</p></main>
       : message ? <main className={styles.panel} role="status"><h2>入社手続きの確認</h2><p>{message}</p></main>
-      : record ? <main><OnboardingAdminDetailClient record={record} canWrite={canWrite} /></main> : null}
+      : record ? <main><OnboardingAdminDetailClient record={record} canWrite={canWrite} wages={wages} /></main> : null}
   </div>;
 }

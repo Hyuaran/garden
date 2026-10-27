@@ -1,3 +1,4 @@
+import { validateMinimumWage } from "@/lib/minimum-wages.server";
 import { saveTodokePdf } from "@/app/system/mypage/_lib/todoke-drive.server";
 import { renderEmploymentContractPdf } from "./employment-contract-pdf.server";
 import type { ContractEmployee, ContractRow } from "./employment-contract";
@@ -15,6 +16,8 @@ export async function generateEmploymentContractPdf(
       note: "届出PDF保存先が未設定のためスキップ",
     };
   try {
+    const invalid = await validateMinimumWage(row.payload);
+    if (invalid) throw new Error(invalid);
     const company = Array.isArray(employee.root_companies)
       ? employee.root_companies[0]
       : employee.root_companies;

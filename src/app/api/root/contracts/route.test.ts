@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/minimum-wages.server",()=>({validateMinimumWage:vi.fn().mockResolvedValue(null)}));
 const mocks = vi.hoisted(() => ({
   manager: vi.fn(),
   admin: vi.fn(),
@@ -13,6 +14,7 @@ vi.mock(
   () => ({ generateEmploymentContractPdf: mocks.generate }),
 );
 import { POST } from "./route";
+import { validateMinimumWage } from "@/lib/minimum-wages.server";
 const payload = {
   kind: "new",
   contractStart: "2026-09-01",
@@ -71,7 +73,14 @@ function setup(address = "〒530-0001 大阪市") {
 describe("root contract route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(validateMinimumWage).mockResolvedValue(null);
     mocks.manager.mockResolvedValue({ userId: "U1" });
+  });
+  it("rejects insufficient wages before storing or generating a PDF",async()=>{
+    const {contractQuery}=setup();
+    vi.mocked(validateMinimumWage).mockResolvedValue("大阪府の最低賃金を下回っています");
+    const response=await POST(new Request("http://localhost",{method:"POST",body:JSON.stringify({employee_id:"E1",payload})}));
+    expect(response.status).toBe(400);expect(contractQuery.insert).not.toHaveBeenCalled();expect(mocks.generate).not.toHaveBeenCalled();
   });
   it.each(["generated", "skipped", "failed"] as const)(
     "stores %s",

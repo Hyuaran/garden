@@ -1,3 +1,4 @@
+import { validateMinimumWage } from "@/lib/minimum-wages.server";
 import "server-only";
 import { renderEmploymentContractPdf } from "@/app/root/contracts/_lib/employment-contract-pdf.server";
 import { validateContract, type EmploymentContractPayload } from "@/app/root/contracts/_lib/employment-contract";
@@ -15,7 +16,7 @@ export async function hireDocuments({db}:Awaited<ReturnType<typeof hireAdminCont
  const {data:c,error:ce}=await db.from("system_hire_candidates").select("status,employee_id,company_id,employment_type").eq("id",id).single();
  if(ce||c?.status!=="hired")throw new HireError("入社済みの方だけ書類を作れます",409);
  const [input,company,contract]=await Promise.all([
-  db.from("system_onboarding").select("status,name,address,phone,emergency_name,emergency_relation,emergency_relation_other,emergency_address,emergency_phone,nda_agreed_at,submitted_at,salary_kind,base_salary").eq("employee_id",c.employee_id).maybeSingle(),
+  db.from("system_onboarding").select("status,name,address,phone,emergency_name,emergency_relation,emergency_relation_other,emergency_address,emergency_phone,nda_agreed_at,submitted_at,salary_kind,base_salary,weekly_hours").eq("employee_id",c.employee_id).maybeSingle(),
   db.from("root_companies").select("company_name,representative,address").eq("company_id",c.company_id).single(),
   db.from("system_employment_contracts").select("payload").eq("employee_id",c.employee_id).order("created_at",{ascending:false}).limit(1).maybeSingle(),
  ]);
@@ -26,10 +27,10 @@ export async function hireDocuments({db}:Awaited<ReturnType<typeof hireAdminCont
  const missing=missingDocumentFields(v,co??{},p);
  if(!c.employment_type)missing.push("雇用形態");
  if(missing.length)throw new HireError("足りない項目："+missing.join("・")+"。入社手続きの事務欄・雇用契約書の欄を確認してください",409);
- // 既存の雇用契約書は時給用。月給を時給として出力しない。
- if(v.salary_kind!=="時間給")throw new HireError("給与区分が月給の書類には対応していません。雇用契約書の内容を確認してください",409);
- const payload={...p,hourlyWage:Number(v.base_salary),employeeAddress:v.address} as EmploymentContractPayload;
+ if(!["時間給","月給"].includes(v.salary_kind))throw new HireError("給与区分を選んでください",409);
+ const payload={...p,salaryKind:v.salary_kind==="時間給"?"hourly":"monthly",weeklyHours:Number(String(v.weekly_hours??"").replace(/,/g,"")),hourlyWage:Number(String(v.base_salary).replace(/,/g,"")),employeeAddress:v.address} as EmploymentContractPayload;
  const invalid=validateContract(c.employee_id,payload);if(invalid)throw new HireError("雇用契約書："+invalid,409);
+ const wageInvalid=await validateMinimumWage(payload); if(wageInvalid)throw new HireError(wageInvalid,409);
  const common={companyName:co!.company_name,representative:co!.representative,employeeName:v.name};
  const buffers=await Promise.all([
   renderEmploymentContractPdf({...payload,...common,companyAddress:co!.address,employmentType:c.employment_type}),

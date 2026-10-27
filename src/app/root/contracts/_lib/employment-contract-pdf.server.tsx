@@ -304,7 +304,7 @@ export function EmploymentContractPdfDocument({
           <Row label="賃金および支払方法">
             <W
               units={34}
-            >{`1. 基本賃金　時給 ［ ${data.hourlyWage.toLocaleString("ja-JP")} ］ 円（大阪府最低賃金額に準ずる）`}</W>
+            >{data.salaryKind === "monthly" ? `1. 基本賃金　月給 ［ ${data.hourlyWage.toLocaleString("ja-JP")} ］ 円` : `1. 基本賃金　時給 ［ ${data.hourlyWage.toLocaleString("ja-JP")} ］ 円（大阪府最低賃金額に準ずる）`}</W>
             {CONTRACT_TEXT.wage.slice(0, 4).map((x) => (
               <Text key={x} style={s.para}>
                 {jaWrap(x, 34)}

@@ -7,6 +7,8 @@ export type EmploymentContractPayload = {
   jobType: JobType;
   jobTypeOther: string;
   hourlyWage: number;
+  salaryKind?: "hourly" | "monthly";
+  weeklyHours?: number;
   workLocation: string;
   concludedOn: string;
   employeeAddress: string;
@@ -93,8 +95,9 @@ export function validateContract(
     return "必須項目を入力してください。";
   if (p.jobType === "other" && !String(p.jobTypeOther ?? "").trim())
     return "その他の業務内容を入力してください。";
+  if (p.salaryKind && !["hourly", "monthly"].includes(p.salaryKind)) return "給与区分を選んでください";
   if (!Number.isInteger(Number(p.hourlyWage)) || Number(p.hourlyWage) <= 0)
-    return "時給は正の整数で入力してください。";
+    return "基本賃金は正の整数で入力してください。";
   if (p.contractStart >= p.contractEnd)
     return "契約終了日は開始日より後の日付にしてください。";
   return null;

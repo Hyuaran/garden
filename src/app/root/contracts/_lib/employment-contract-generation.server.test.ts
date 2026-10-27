@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/minimum-wages.server",()=>({validateMinimumWage:vi.fn().mockResolvedValue(null)}));
 const mocks = vi.hoisted(() => ({ render: vi.fn(), save: vi.fn() }));
 vi.mock("./employment-contract-pdf.server", () => ({
   renderEmploymentContractPdf: mocks.render,

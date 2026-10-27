@@ -378,6 +378,12 @@ export const MASTER_MENUS: MasterMenu[] = [
     icon: "bank",
   },
   {
+    slug: "minimum-wages",
+    title: "最低賃金マスタ",
+    description: "都道府県ごとの最低賃金と発効日",
+    icon: "bank",
+  },
+  {
     slug: "vendors",
     title: "取引先マスタ",
     description: "振込先（外注先・仕入先）の口座情報",

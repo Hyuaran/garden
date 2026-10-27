@@ -17,6 +17,15 @@ const data = {
   employeeAddress: "",
 };
 describe("employment contract PDF", () => {
+  it("prints monthly salary while preserving three pages",async()=>{
+    const buffer=await renderEmploymentContractPdf({...data,salaryKind:"monthly",hourlyWage:100000,weeklyHours:15});
+    const pdf=await getDocument({data:new Uint8Array(buffer)}).promise;
+    expect(pdf.numPages).toBe(3);
+    let text="";
+    for(let page=1;page<=3;page++){const c=await(await pdf.getPage(page)).getTextContent();text+=c.items.map(i=>"str" in i?i.str:"").join("");}
+    expect(text.replace(/\s/g,"")).toContain("基本賃金月給［100,000］円");
+    expect(text).not.toContain("大阪府最低賃金額に準ずる");
+  },60_000);
   it("renders exactly three pages without automatic hyphens", async () => {
     const buffer = await renderEmploymentContractPdf(data);
     expect(buffer.subarray(0, 4).toString()).toBe("%PDF");

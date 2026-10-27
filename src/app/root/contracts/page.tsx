@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
+import { minimumWageAt, wageError, type MinimumWage } from "@/lib/minimum-wages";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
 import { colors } from "../_constants/colors";
@@ -22,11 +23,13 @@ const initial = (): EmploymentContractPayload => ({
   jobType: "sales",
   jobTypeOther: "",
   hourlyWage: 0,
+  salaryKind: "hourly",
   workLocation: "",
   concludedOn: today(),
   employeeAddress: "",
 });
 export default function ContractsPage() {
+  const [wages,setWages] = useState<MinimumWage[]>([]);
   const [employees, setEmployees] = useState<ContractEmployee[]>([]),
     [rows, setRows] = useState<ContractRow[]>([]),
     [employeeId, setEmployeeId] = useState(""),
@@ -45,7 +48,12 @@ export default function ContractsPage() {
     // Initial API hydration is intentionally performed once on mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
+    void fetch("/api/root/minimum-wages").then(r=>r.json()).then(j=>setWages(j.rows??[])).catch(()=>setError("最低賃金を読み込めませんでした"));
   }, []);
+  useEffect(() => {
+    const wage=minimumWageAt(wages,"大阪府",p.contractStart);
+    if (wage) setP(v=>v.salaryKind!=="monthly"?{...v,hourlyWage:wage.hourly_amount}:v);
+  }, [p.contractStart,wages]);
   function choose(id: string) {
     setEmployeeId(id);
     const e = employees.find((x) => x.employee_id === id);
@@ -58,6 +66,8 @@ export default function ContractsPage() {
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
+    const invalid=wageError(p,wages);
+    if(invalid) return setError(invalid);
     setSaving(true);
     setError("");
     const r = await fetch("/api/root/contracts", {
@@ -73,11 +83,13 @@ export default function ContractsPage() {
     await load();
   }
   async function retry(id: string) {
-    await fetch("/api/root/contracts", {
+    const response = await fetch("/api/root/contracts", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id }),
     });
+    const result = await response.json();
+    if (!response.ok) return setError(result.error ?? "発行できませんでした。");
     await load();
   }
   return (
@@ -147,10 +159,12 @@ export default function ContractsPage() {
             </label>
           ))}
         </fieldset>
+        <label>給与区分<select value={p.salaryKind??"hourly"} onChange={e=>setP({...p,salaryKind:e.target.value as "hourly"|"monthly"})}><option value="hourly">時給</option><option value="monthly">月給</option></select></label>
+        {p.salaryKind === "monthly" && <label>週の所定時間<input type="number" min="0.01" step="any" required value={p.weeklyHours??""} onChange={e=>setP({...p,weeklyHours:Number(e.target.value)})}/></label>}
         {[
           ["contractStart", "契約期間（から）", "date"],
           ["contractEnd", "契約期間（まで）", "date"],
-          ["hourlyWage", "基本賃金（時給・円）", "number"],
+          ["hourlyWage", p.salaryKind === "monthly" ? "基本賃金（月給・円）" : "基本賃金（時給・円）", "number"],
           ["concludedOn", "通知日及び締結日", "date"],
           ["workLocation", "就業場所", "text"],
           ["employeeAddress", "従業員住所（任意）", "text"],
@@ -208,12 +222,13 @@ export default function ContractsPage() {
         ) : null}
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || (!!p.contractStart && !!wageError(p,wages))}
           style={{ gridColumn: "1/-1", padding: 10 }}
         >
           {saving ? "発行中…" : "PDFを発行"}
         </button>
       </form>
+      {p.contractStart && wageError(p,wages) && <p role="alert" style={{color:colors.danger}}>{wageError(p,wages)}</p>}
       <h2>発行履歴</h2>
       <div style={{ display: "grid", gap: 8 }}>
         {rows.map((r) => (
@@ -229,7 +244,7 @@ export default function ContractsPage() {
             <strong {...CLARITY_MASK}>{r.root_employees?.name ?? r.employee_id}</strong>　
             {r.root_employees?.root_companies?.company_name ?? ""}　
             {r.payload.kind === "new" ? "新規" : "更新"}　
-            {r.payload.contractStart}～{r.payload.contractEnd}　時給{" "}
+            {r.payload.contractStart}～{r.payload.contractEnd}　{r.payload.salaryKind === "monthly" ? "月給" : "時給"}{" "}
             {Number(r.payload.hourlyWage).toLocaleString()}円　PDF:{" "}
             {r.pdf_status}
             <span style={{ float: "right" }}>

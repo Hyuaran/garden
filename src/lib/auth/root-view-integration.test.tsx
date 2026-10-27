@@ -116,8 +116,8 @@ describe("Root の13画面", () => {
     expect(response.status).toBe(403);
     expect(state.reads).toEqual([]);
   });
-  it("migration は13画面の既定と一致し、未知key拒否のRPCを維持する", () => {
-    const sql = readFileSync("supabase/migrations/20261026000006_root_view_scopes.sql", "utf8");
+  it("migration はRoot画面の既定と一致し、未知key拒否のRPCを維持する", () => {
+    const sql = readFileSync("supabase/migrations/20261026000006_root_view_scopes.sql", "utf8") + readFileSync("supabase/migrations/20261027000451_root_minimum_wages.sql", "utf8");
     for (const scope of ROOT_VIEW_SCOPES) {
       const line = sql.split("\n").find(line => line.includes(`'${scope.pageKey}'`))!;
       expect(line).toBeTruthy();

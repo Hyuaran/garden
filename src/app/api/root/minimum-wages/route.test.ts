@@ -1,0 +1,10 @@
+import { beforeEach, expect, it, vi } from "vitest";
+const m=vi.hoisted(()=>({context:vi.fn(),db:vi.fn(),list:vi.fn()}));
+vi.mock("@/lib/auth/view-permission.server",()=>({viewPermissionContext:m.context}));
+vi.mock("@/lib/minimum-wages.server",()=>({listMinimumWages:m.list}));
+vi.mock("@/lib/supabase/admin",()=>({getSupabaseAdmin:m.db}));
+import { POST } from "./route";
+beforeEach(()=>vi.clearAllMocks());
+const request=(id?:string)=>new Request("http://localhost",{method:"POST",body:JSON.stringify({id,prefecture:"大阪府",hourly_amount:1231,effective_from:"2026-10-01"})});
+it.each(["admin","manager","employee"])("denies writes from %s",async role=>{m.context.mockResolvedValue({viewer:{role}});expect((await POST(request())).status).toBe(403);expect(m.db).not.toHaveBeenCalled();});
+it.each([undefined,"existing"])("allows super_admin to insert or update %s",async id=>{m.context.mockResolvedValue({viewer:{role:"super_admin"},userId:"u"});const q={insert:vi.fn(async()=>({})),update:vi.fn(()=>q),eq:vi.fn(()=>q),select:vi.fn(()=>q),single:vi.fn(async()=>({data:{id:"existing"}}))};m.db.mockReturnValue({from:()=>q});expect((await POST(request(id))).status).toBe(200);expect(id?q.update:q.insert).toHaveBeenCalled();});

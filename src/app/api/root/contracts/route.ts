@@ -1,3 +1,4 @@
+import { validateMinimumWage } from "@/lib/minimum-wages.server";
 import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -56,6 +57,8 @@ export async function POST(request: Request) {
   );
   if (validation)
     return NextResponse.json({ ok: false, error: validation }, { status: 400 });
+  const wageValidation = await validateMinimumWage(body.payload!);
+  if (wageValidation) return NextResponse.json({ok:false,error:wageValidation},{status:400});
   const admin = getSupabaseAdmin();
   const { data: employee } = await admin
     .from("root_employees")
@@ -122,6 +125,8 @@ export async function PATCH(request: Request) {
     .eq("id", id)
     .maybeSingle();
   if (!data) return NextResponse.json({ ok: false }, { status: 404 });
+  const invalid = await validateMinimumWage(data.payload);
+  if (invalid) return NextResponse.json({ok:false,error:invalid},{status:400});
   const pdf = await generateEmploymentContractPdf(
     data as ContractRow,
     data.root_employees as ContractEmployee,

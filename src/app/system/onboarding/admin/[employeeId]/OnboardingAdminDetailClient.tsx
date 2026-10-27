@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { minimumWageAt, hourlyEquivalent, type MinimumWage } from "@/lib/minimum-wages";
 import OnboardingReview from "../../_components/OnboardingReview";
 import { ADMIN_ALLOWANCE_LIMIT, ADMIN_SELECT_OPTIONS, commutePaymentMonthlyForSalaryKind, formatCommuteDailyAllowance, formatDeclaredCommuteFareOneway, formatDeclaredCommutePassMonthly, isHourlySalaryKind, missingOnboardingItems, type AdminAllowance, type AdminInput, type AdminOnboardingRecord } from "../../_lib/onboarding-admin";
 import { formatWarnings, HOUSEHOLDER_RELATION_OPTIONS } from "../../_lib/onboarding";
@@ -13,7 +14,7 @@ function emptyAllowance(): AdminAllowance {
   return { name: "", amount: "" };
 }
 
-export default function OnboardingAdminDetailClient({ record, canWrite = true }: { record: AdminOnboardingRecord; canWrite?: boolean }) {
+export default function OnboardingAdminDetailClient({ record, canWrite = true, wages = [] }: { record: AdminOnboardingRecord; canWrite?: boolean; wages?: MinimumWage[] }) {
   const router = useRouter();
   const [reviewValues, setReviewValues] = useState(record.values);
   const [admin, setAdmin] = useState<AdminInput>(() => ({
@@ -51,6 +52,11 @@ export default function OnboardingAdminDetailClient({ record, canWrite = true }:
   const fuyouManualNotice = fuyouManualAdditionNotice(reviewValues);
   const renrakuhyoManualNotice = renrakuhyoManualAdditionNotice(reviewValues);
   const isHourly = isHourlySalaryKind(admin.salary_kind);
+  const wage = minimumWageAt(wages,"大阪府",record.employee.hire_date??"");
+  const baseSalary=Number(admin.base_salary.replace(/,/g,""));
+  const weeklyHours=Number(admin.weekly_hours.replace(/,/g,""));
+  const equivalent=hourlyEquivalent(baseSalary,weeklyHours);
+  const belowWage=admin.salary_kind==="月給" && baseSalary>0 && weeklyHours>0 && wage && equivalent<wage.hourly_amount;
 
   function myNumberKey(kind: "self" | "dependent", index?: number) {
     return kind === "self" ? "self" : `dependent-${index ?? -1}`;
@@ -355,6 +361,7 @@ export default function OnboardingAdminDetailClient({ record, canWrite = true }:
           <label className={styles.field}>税区分<select value={admin.tax_class} onChange={event => change("tax_class", event.target.value)}><option value="">選んでください</option>{ADMIN_SELECT_OPTIONS.taxClass.map(label => <option key={label}>{label}</option>)}</select></label>
           <label className={styles.field}>給与の区分<select value={admin.salary_kind} onChange={event => change("salary_kind", event.target.value)}><option value="">選んでください</option>{ADMIN_SELECT_OPTIONS.salaryKind.map(label => <option key={label}>{label}</option>)}</select></label>
           <label className={styles.field}>基本給（円）<input value={admin.base_salary} maxLength={2000} inputMode="numeric" onChange={event => change("base_salary", event.target.value)} /></label>
+          {belowWage && <p role="alert" style={{color:"#b91c1c"}}>1 時間あたり約 {Math.round(equivalent).toLocaleString("ja-JP")} 円＝最低賃金（{wage!.hourly_amount.toLocaleString("ja-JP")} 円）を下回っています</p>}
           <div className={styles.allowanceBlock}>
             <div className={styles.reviewHeading}><h3>手当</h3><button type="button" disabled={admin.allowances.length >= ADMIN_ALLOWANCE_LIMIT} onClick={addAllowance}>もう1つ足す</button></div>
             {(admin.allowances.length ? admin.allowances : [emptyAllowance()]).map((allowance, index) => <div className={styles.allowanceRow} key={index}>

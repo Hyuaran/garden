@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/minimum-wages.server",()=>({listMinimumWages:vi.fn(async()=>[])}));
 const mocks = vi.hoisted(() => ({ context: vi.fn(), detail: vi.fn(), redirect: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("../../_lib/onboarding-admin.server", () => ({
