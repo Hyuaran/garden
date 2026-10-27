@@ -14,3 +14,7 @@
 .pageShell::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bg)}
 .conceptBody ul{list-style:disc}.conceptBody li{display:list-item;margin:4px 0}
 @media(max-width:480px){.conceptBody{padding:16px}}
+
+/* 読める資料は折り返して表の中に収める（［開く］が右へ押し出されないように） */
+.docsCell { display:block; min-width:140px; max-width:220px; white-space:normal; word-break:keep-all; overflow-wrap:anywhere; line-height:1.6; }
+.descCell { display:block; min-width:220px; max-width:330px; white-space:normal; line-height:1.6; }
