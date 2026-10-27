@@ -66,4 +66,11 @@ describe("relay monitor", () => {
     expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
     expect(mocks.updates[0]).toMatchObject({ notified_down_at: null });
   });
-});
+
+  it("accepts the heartbeat refreshed by direct RPC without changing notifications", async () => {
+    const now = new Date("2026-10-27T01:00:00Z");
+    mocks.heartbeat = { last_seen_at: now.toISOString(), notified_down_at: null };
+    await expect(checkRelayHeartbeat(now)).resolves.toMatchObject({ checked: true, status: "alive" });
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.updates).toEqual([]);
+  });});

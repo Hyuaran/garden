@@ -4,13 +4,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const DEFAULT_CONFIG = {
+  transport: "supabase",
   apiBase: "https://garden-os.net",
   pullWaitMs: 25000,
-  idleSleepMs: 1000,
+  idleSleepMs: 2000,
   errorSleepMs: 5000,
   logDir: "logs",
   logKeepDays: 7,
-  agentVersion: "1.1.0",
+  agentVersion: "1.2.0",
 };
 
 const DEFAULT_INNOVERA_TIMEOUT_MS = 25000;
@@ -28,6 +29,7 @@ function toPositiveInteger(value, fallback) {
 
 function normalizeConfig(raw, baseDir = scriptDir) {
   const config = { ...DEFAULT_CONFIG, ...raw };
+  if (!["supabase", "garden"].includes(config.transport)) throw new Error("Invalid transport");
   config.pullWaitMs = toPositiveInteger(config.pullWaitMs, DEFAULT_CONFIG.pullWaitMs);
   config.idleSleepMs = toPositiveInteger(config.idleSleepMs, DEFAULT_CONFIG.idleSleepMs);
   config.errorSleepMs = toPositiveInteger(config.errorSleepMs, DEFAULT_CONFIG.errorSleepMs);
@@ -62,8 +64,10 @@ export function parseArgs(argv = process.argv.slice(2)) {
   return parsed;
 }
 
-export function validateEnvironment(env = process.env) {
-  const missing = ["RELAY_SECRET", "INNOVERA_API_HOST", "INNOVERA_API_KEY"].filter((key) => !env[key]);
+export function validateEnvironment(env = process.env, config = DEFAULT_CONFIG) {
+  const required = ["RELAY_SECRET", "INNOVERA_API_HOST", "INNOVERA_API_KEY"];
+  if (isSupabase(config)) required.push("SUPABASE_URL", "SUPABASE_ANON_KEY");
+  const missing = required.filter((key) => !env[key]);
   if (missing.length > 0) {
     throw new Error(`起動に必要な環境変数がありません: ${missing.join(", ")}`);
   }
@@ -116,7 +120,15 @@ export async function cleanupOldLogs(config, now = new Date()) {
     }));
 }
 
+function isSupabase(config) { return (config.transport ?? DEFAULT_CONFIG.transport) === "supabase"; }
+function rpcRequest(name, body, env) {
+  return { url: env.SUPABASE_URL.replace(/\/+$/, "") + "/rest/v1/rpc/" + name, init: {
+    method: "POST", headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY, "content-type": "application/json" }, body: JSON.stringify(body),
+  } };
+}
+
 export function buildPullRequest(config, env = process.env) {
+  if (isSupabase(config)) return rpcRequest("system_relay_agent_pull", { p_secret: env.RELAY_SECRET, p_agent_version: config.agentVersion }, env);
   return {
     url: `${config.apiBase}/api/system/relay/pull`,
     init: {
@@ -131,6 +143,7 @@ export function buildPullRequest(config, env = process.env) {
 }
 
 export function buildResultRequest(config, payload, env = process.env) {
+  if (isSupabase(config)) return rpcRequest("system_relay_agent_result", { p_secret: env.RELAY_SECRET, p_id: payload.id, p_ok: payload.ok, p_result: payload.result ?? null, p_error: payload.error ?? null }, env);
   return {
     url: `${config.apiBase}/api/system/relay/result`,
     init: {
@@ -154,21 +167,26 @@ async function readJsonResponse(response, label) {
   return payload;
 }
 
-export async function parsePullResponse(response) {
-  if (response.status === 401) throw new Error("pull:unauthorized");
-  if (!response.ok) throw new Error(`pull:http ${response.status}`);
-  const payload = await readJsonResponse(response, "pull");
-  if (!payload || payload.ok !== true || !("job" in payload)) throw new Error("pull:invalid");
-  if (payload.job === null) return null;
-  if (!payload.job.id || !payload.job.kind) throw new Error("pull:invalid_job");
-  return payload.job;
+async function relayResponse(response, label) {
+  if ([401, 403].includes(response.status)) throw new Error(label + ":unauthorized");
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    if (payload?.message === "unauthorized") throw new Error(label + ":unauthorized");
+    throw new Error(label + ":http " + response.status);
+  }
+  return readJsonResponse(response, label);
 }
-
-async function parseResultResponse(response) {
-  if (response.status === 401) throw new Error("result:unauthorized");
-  if (!response.ok) throw new Error(`result:http ${response.status}`);
-  const payload = await readJsonResponse(response, "result");
-  if (!payload || payload.ok !== true) throw new Error("result:invalid");
+export async function parsePullResponse(response, transport = "garden") {
+  const payload = await relayResponse(response, "pull");
+  if (transport === "garden" && (!payload || payload.ok !== true || !("job" in payload))) throw new Error("pull:invalid");
+  const job = transport === "supabase" ? payload : payload.job;
+  if (job === null) return null;
+  if (!job || !job.id || !job.kind) throw new Error("pull:invalid_job");
+  return job;
+}
+export async function parseResultResponse(response, transport = "garden") {
+  const payload = await relayResponse(response, "result");
+  if (transport === "supabase" ? payload !== true : !payload || payload.ok !== true) throw new Error("result:invalid");
   return payload;
 }
 
@@ -311,10 +329,10 @@ export async function handleJob(job, options = {}) {
   }
 }
 
-const IDLE_LOG_EVERY = 120; // 仕事なしの問い合わせは約 1 時間に 1 行だけ記録する（25 秒待ち × 120 ≒ 50 分）
+const IDLE_LOG_EVERY = 120; // 仕事なしのログは 120 回に 1 行だけ記録する
 let idleCount = 0;
 
-// Garden への問い合わせ（pull／result）は「待ち時間＋15 秒」で打ち切る＝Garden 側が固まっても常駐が止まらない
+// RPC は 30 秒、Garden の pull は待ち時間＋15 秒で打ち切る。
 async function fetchWithTimeout(fetchImpl, url, init, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -326,12 +344,13 @@ async function fetchWithTimeout(fetchImpl, url, init, timeoutMs) {
 }
 
 async function pullOnce(config, logger, fetchImpl = fetch) {
+  if (idleCount % IDLE_LOG_EVERY === 0) await logger.write("info", "取りに行く", { transport: config.transport ?? DEFAULT_CONFIG.transport });
   const pullRequest = buildPullRequest(config);
-  const response = await fetchWithTimeout(fetchImpl, pullRequest.url, pullRequest.init, config.pullWaitMs + 15000);
-  const job = await parsePullResponse(response);
+  const response = await fetchWithTimeout(fetchImpl, pullRequest.url, pullRequest.init, isSupabase(config) ? 30000 : config.pullWaitMs + 15000);
+  const job = await parsePullResponse(response, config.transport ?? DEFAULT_CONFIG.transport);
   if (!job) {
     idleCount += 1;
-    if (idleCount % IDLE_LOG_EVERY === 1) await logger.write("info", "待機中（仕事なし）", { wait_ms: config.pullWaitMs });
+    if (idleCount % IDLE_LOG_EVERY === 1) await logger.write("info", "待機中（仕事なし）", { wait_ms: isSupabase(config) ? config.idleSleepMs : config.pullWaitMs });
     return false;
   }
   idleCount = 0;
@@ -339,43 +358,48 @@ async function pullOnce(config, logger, fetchImpl = fetch) {
   const resultPayload = await handleJob(job, { fetch: fetchImpl });
   const resultRequest = buildResultRequest(config, resultPayload);
   const resultResponse = await fetchWithTimeout(fetchImpl, resultRequest.url, resultRequest.init, 30000);
-  await parseResultResponse(resultResponse);
+  await parseResultResponse(resultResponse, config.transport ?? DEFAULT_CONFIG.transport);
   await logger.write(resultPayload.ok ? "info" : "error", "job完了", { id: job.id, kind: job.kind, ok: resultPayload.ok });
   return true;
 }
 
-async function run(config, { once = false, logger = createLogger(config), fetchImpl = fetch } = {}) {
+export async function run(config, { once = false, logger = createLogger(config), fetchImpl = fetch, sleep: pause = sleep } = {}) {
   let stopping = false;
   const stop = () => {
     stopping = true;
   };
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
-  await cleanupOldLogs(config);
-  await logger.write("info", "relay agent started", { version: config.agentVersion });
-  do {
-    try {
-      const hadJob = await pullOnce(config, logger, fetchImpl);
-      if (!once && !hadJob && !stopping) await sleep(config.idleSleepMs);
-    } catch (error) {
-      const message = shortError(error);
-      if (message === "pull:unauthorized" || message === "result:unauthorized") {
-        await logger.write("error", "認証エラー: RELAY_SECRET が違います", {});
-      } else {
-        await logger.write("error", "処理エラー", { error: message });
+  try {
+    await cleanupOldLogs(config);
+    await logger.write("info", "relay agent started", { version: config.agentVersion, transport: config.transport ?? DEFAULT_CONFIG.transport });
+    do {
+      try {
+        const hadJob = await pullOnce(config, logger, fetchImpl);
+        if (!once && !hadJob && !stopping) await pause(config.idleSleepMs);
+      } catch (error) {
+        const message = shortError(error);
+        if (message === "pull:unauthorized" || message === "result:unauthorized") {
+          await logger.write("error", "認証エラー: RELAY_SECRET が違います", {});
+        } else {
+          await logger.write("error", "処理エラー", { error: message });
+        }
+        if (once) throw error;
+        if (!stopping) await pause(config.errorSleepMs);
       }
-      if (once) throw error;
-      if (!stopping) await sleep(config.errorSleepMs);
-    }
-  } while (!once && !stopping);
-  await logger.write("info", "relay agent stopped");
+    } while (!once && !stopping);
+    await logger.write("info", "relay agent stopped");
+  } finally {
+    process.removeListener("SIGINT", stop);
+    process.removeListener("SIGTERM", stop);
+  }
 }
 
 async function main() {
   try {
     const args = parseArgs();
     const config = await loadConfig(args.configPath);
-    validateEnvironment();
+    validateEnvironment(process.env, config);
     await run(config, { once: args.once });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -17,7 +17,7 @@ describe("KOT relay", () => {
     expect(() => buildKotRequest({ ...request, path }, env)).toThrow("path");
   });
   it("missing KOT token only fails the KOT job", async () => {
-    expect(() => validateEnvironment({ RELAY_SECRET: "x", INNOVERA_API_HOST: "x", INNOVERA_API_KEY: "x" })).not.toThrow();
+    expect(() => validateEnvironment({ RELAY_SECRET: "x", INNOVERA_API_HOST: "x", INNOVERA_API_KEY: "x" }, { transport: "garden" })).not.toThrow();
     const fetch = vi.fn();
     expect(await handleJob(job(), { fetch, env: {} })).toMatchObject({ ok: false, error: "kot: KOT の鍵がホスト PC にありません" });
     expect(fetch).not.toHaveBeenCalled();

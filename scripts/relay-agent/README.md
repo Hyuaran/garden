@@ -1,6 +1,6 @@
 # Garden Relay Agent
 
-社内ホスト PC から Garden の中継 API を pull し、INNOVERA へ問い合わせて結果を Garden へ返す Node.js 常駐エージェントです。第 1 段は `kind: "innovera"` だけを処理し、`kind: "kot"` は未対応として失敗を返します。
+社内ホスト PC から Supabase RPC を直接呼び、INNOVERA／KOT の仕事を処理する Node.js 常駐エージェントです。既定は supabase、切り戻し用に garden も利用できます。
 
 ## 置き場
 
@@ -26,6 +26,8 @@ npm パッケージの追加は不要です。Node.js 標準機能だけで動�
 
 秘密値は config やスクリプトに書きません。ホスト PC のシステム環境変数へ、東海林さんが台帳 070 の値を設定します。
 
+- `SUPABASE_URL`: Supabase のプロジェクト URL（supabase のとき必須）
+- `SUPABASE_ANON_KEY`: 公開用 anon key（supabase のとき必須。service_role は使わない）
 - `RELAY_SECRET`: Garden 中継 API と共有する Bearer secret
 - `INNOVERA_API_HOST`: INNOVERA の API ホスト名
 - `INNOVERA_API_KEY`: INNOVERA の API key
@@ -38,17 +40,18 @@ npm パッケージの追加は不要です。Node.js 標準機能だけで動�
 
 ```json
 {
+  "transport": "supabase",
   "apiBase": "https://garden-os.net",
   "pullWaitMs": 25000,
-  "idleSleepMs": 1000,
+  "idleSleepMs": 2000,
   "errorSleepMs": 5000,
   "logDir": "logs",
   "logKeepDays": 7,
-  "agentVersion": "1.0.0"
+  "agentVersion": "1.2.0"
 }
 ```
 
-通常は `apiBase` だけ確認します。ログは `logs\YYYYMMDD.log` に出ます。古いログは起動時に `logKeepDays` より古いものを削除します。
+supabase では仕事がないとき idleSleepMs（既定 2000ms）待ちます。apiBase と pullWaitMs は garden 用です。ログは `logs\YYYYMMDD.log` に出ます。古いログは起動時に `logKeepDays` より古いものを削除します。
 
 ## 手動疎通
 
@@ -113,3 +116,10 @@ KOT は POST /employees を許可します（JSON 16KB まで）。POST は再�
 - PUT `/employees/{英数字とハイフン}?updateDate=YYYY-MM-DD`：JSON オブジェクト 16KB まで。UTF-8 で送信し、失敗時も再試行しません。
 - Garden 側の `KOT_EMPLOYEE_UPDATE_ENABLED=true` の場合のみ更新可能です。既定は停止。全権管理者の従業員編集から変更日を指定して操作します。
 - 日本時間 8:30〜10:00、17:30〜18:30 は利用できません。ホスト側は既存の逐次実行を維持してください。
+## 1.2.0 への入れ替え・切り戻し
+
+1. Claude が migration を適用し、host-pc の agent_secret_hash を設定済みであることを確認します。
+2. ホスト PC のシステム環境変数へ SUPABASE_URL と SUPABASE_ANON_KEY を追加します。秘密値をファイルへ書きません。
+3. agent.mjs を差し替え、config.json を transport: "supabase"、agentVersion: "1.2.0"、idleSleepMs: 2000 にします。
+4. タスク GardenRelayAgent を停止・開始し、ログに「取りに行く」が出て認証エラーがないことを確認します。
+5. 戻す場合は transport を "garden" にし、同じタスクを再起動します。従来の API は残しています。

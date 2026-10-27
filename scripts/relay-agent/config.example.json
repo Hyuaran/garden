@@ -1,9 +1,10 @@
 {
   "apiBase": "https://garden-os.net",
   "pullWaitMs": 25000,
-  "idleSleepMs": 1000,
+  "idleSleepMs": 2000,
   "errorSleepMs": 5000,
   "logDir": "logs",
   "logKeepDays": 7,
-  "agentVersion": "1.1.0"
+  "agentVersion": "1.2.0",
+  "transport": "supabase"
 }
