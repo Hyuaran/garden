@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, createContext, useContext, type ReactNode } from "react";
 import ViewPermissionButton from "./ViewPermissionButton";
 import styles from "./view-permission.module.css";
 
@@ -20,5 +20,5 @@ export function SystemViewButton({ tabKey = "" }: { tabKey?: string }) {
   return <ViewPermissionButton key={`${state.pageKey}:${tabKey}`} pageKey={state.pageKey} tabKey={tabKey} tabLabel={tab?.label ?? ""} admin={state.admin} canAdd={tab?.canAdd ?? state.canAdd} />;
 }
 export function SystemViewHeading({ children }: { children: ReactNode }) {
-  return <div className={styles.headingRow}>{children}<SystemViewButton /></div>;
+  return <div className={styles.headingRow}>{Children.map(children, child => isValidElement<{ children?: ReactNode }>(child) && child.type === "h1" ? cloneElement(child, {}, child.props.children, <span className={styles.headingAction}><SystemViewButton /></span>) : child)}</div>;
 }

@@ -1,13 +1,17 @@
 import "server-only";
-import { MANUAL_DOCS, SYSTEM_MANUALS, MANUAL_MODULES } from "@/app/system/manuals/_lib/manuals-registry";
+import { SYSTEM_MANUALS, MANUAL_MODULES, manualDocPermissionKey } from "@/app/system/manuals/_lib/manuals-registry";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import { canView, viewPermissionContext } from "./view-permission.server";
 
 export async function visibleManuals(role: GardenRole) {
   const { viewer } = await viewPermissionContext();
-  const access = await Promise.all(MANUAL_DOCS.map(doc => canView("system-manuals", doc.key, viewer, isRoleAtLeast(role, doc.minRole))));
-  const docs = MANUAL_DOCS.filter((_, index) => access[index]);
-  return SYSTEM_MANUALS.map(manual => ({ ...manual, docs, visibleDocs: docs })).filter(manual => manual.docs.length);
+  const available = [...new Map(SYSTEM_MANUALS.flatMap(manual => manual.docs).map(doc => [doc.key, doc])).values()];
+  const access = await Promise.all(available.map(doc => canView("system-manuals", manualDocPermissionKey(doc.key), viewer, isRoleAtLeast(role, doc.minRole))));
+  const allowed = new Set(available.filter((_, index) => access[index]).map(doc => doc.key));
+  return SYSTEM_MANUALS.map(manual => {
+    const docs = manual.docs.filter(doc => allowed.has(doc.key));
+    return { ...manual, docs, visibleDocs: docs };
+  }).filter(manual => manual.docs.length);
 }
 export async function visibleManualModules(role: GardenRole) {
   const manuals = await visibleManuals(role);

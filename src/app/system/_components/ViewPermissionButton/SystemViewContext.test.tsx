@@ -17,3 +17,19 @@ it("追加がオンの閲覧者にも歯車は出さず、人の追加だけ出�
   expect(screen.queryByRole("button", { name: "見られる人の設定" })).toBeNull();
   expect(screen.getByRole("button", { name: "＋ 人を追加" })).toBeInTheDocument();
 });
+
+for (const width of [1384, 1024, 768, 375]) {
+  for (const theme of ["light", "dark"]) {
+    it("keeps the gear inline after the heading at " + width + "px in " + theme, () => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
+      document.documentElement.dataset.theme = theme;
+      render(<SystemViewProvider value={{ ...value, admin: true }}><SystemViewHeading><h1>マニュアル</h1></SystemViewHeading></SystemViewProvider>);
+      const heading = screen.getByRole("heading", { name: /^マニュアル/ });
+      const gear = screen.getByRole("button", { name: "見られる人の設定" });
+      expect(heading).toContainElement(gear);
+      expect(heading.firstChild?.textContent).toBe("マニュアル");
+      expect(gear.closest("span")).toBe(heading.lastChild);
+      delete document.documentElement.dataset.theme;
+    });
+  }
+}

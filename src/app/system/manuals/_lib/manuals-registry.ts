@@ -1,7 +1,7 @@
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
 import type { SystemIcon } from "@/app/system/_components/ShachoShell/shacho-shell-config";
 
-export type ManualDocKey = "operation" | "summary" | "overview" | "engineer" | "claude";
+export type ManualDocKey = "operation" | "flow" | "summary" | "overview" | "engineer" | "claude";
 
 export type ManualDoc = {
   key: ManualDocKey;
@@ -25,6 +25,7 @@ export type ManualDefinition = {
   description: string;
   storagePrefix: string;
   docs: ManualDoc[];
+  extraDocs?: ManualDoc[];
 };
 
 // タブの並びと権限（全機能で共通）。①操作マニュアル＝社員以上、⓪②③④＝全権管理者のみ
@@ -41,14 +42,14 @@ export const MANUAL_MODULES: ManualModule[] = [
   { slug: "bud", name: "Bud", description: "経理収支", icon: "salary" },
 ];
 
-function manual(moduleSlug: string, slug: string, name: string, description: string): ManualDefinition {
-  return { moduleSlug, slug, name, description, storagePrefix: `${moduleSlug}/${slug}`, docs: MANUAL_DOCS };
+function manual(moduleSlug: string, slug: string, name: string, description: string, extraDocs: ManualDoc[] = []): ManualDefinition {
+  return { moduleSlug, slug, name, description, storagePrefix: `${moduleSlug}/${slug}`, extraDocs, docs: [MANUAL_DOCS[0], ...extraDocs, ...MANUAL_DOCS.slice(1)] };
 }
 
 // 並びは System の左メニューと同じ。資料の本体は Storage（system-manuals）の storagePrefix 配下に置く
 export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "docs", "資料", "会社説明・スライド・研修動画など、社内で読む資料の見方。"),
-  manual("system", "onboarding", "入社手続き", "入社時の情報入力と、提出した内容の確認のしかた。"),
+  manual("system", "onboarding", "入社手続き", "入社時の情報入力と、提出した内容の確認のしかた。", [{ key: "flow", label: "応募から入社までの流れ", file: "5_flow.html", kind: "html", minRole: "staff" }]),
   manual("system", "mypage", "自分の情報と届出", "登録情報の確認と、住所・口座・交通費などの届出の出し方。"),
   manual("system", "kot-attendance", "勤怠打刻と KOT 取込", "出勤・退勤の打刻と、KOT へ取り込む CSV の作り方。"),
   manual("system", "shift", "シフト", "シフトの提出と勤務予定の確認のしかた。"),
@@ -102,4 +103,9 @@ export function findManual(moduleSlug: string, slug: string) {
 
 export function findManualDoc(manual: ManualDefinition, file: string) {
   return manual.docs.find((doc) => doc.file === file) ?? null;
+}
+
+// 追加資料は操作マニュアルの閲覧設定を引き継ぐ。
+export function manualDocPermissionKey(key: ManualDocKey) {
+  return key === "flow" ? "operation" : key;
 }

@@ -31,20 +31,20 @@ describe("manuals hub page", () => {
     const supabase = client("staff");
     mocks.createServerClient.mockResolvedValue(supabase);
 
-    render(await ManualsHubPage());
+    render(await ManualsHubPage({ searchParams: Promise.resolve({}) }));
 
     const employeeQuery = supabase.from.mock.results.map(result => result.value).find(query => query.select.mock.calls.some((call: unknown[]) => String(call[0]).includes("is_active")));
     expect(employeeQuery.select).toHaveBeenCalledWith("garden_role,is_active,termination_date,deleted_at");
     expect(screen.getByRole("heading", { name: "マニュアル" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "System" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "Bud" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "System" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Bud" })).toBeInTheDocument();
   });
 
   it("filters modules below staff", async () => {
     mocks.createServerClient.mockResolvedValue(client("cs"));
 
-    render(await ManualsHubPage());
+    render(await ManualsHubPage({ searchParams: Promise.resolve({}) }));
 
-    expect(screen.queryByRole("cell", { name: "System" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "System" })).not.toBeInTheDocument();
   });
 });

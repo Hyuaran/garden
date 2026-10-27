@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ManualDetailClient from "./ManualDetailClient";
-import { MANUAL_MODULES, SYSTEM_MANUALS } from "./_lib/manuals-registry";
+import { MANUAL_MODULES, SYSTEM_MANUALS, getVisibleManualDocs } from "./_lib/manuals-registry";
 
 describe("ManualDetailClient", () => {
   afterEach(() => {
@@ -121,3 +121,11 @@ function mockVisibleIframe(iframe: HTMLIFrameElement) {
     }),
   });
 }
+
+it("shows the onboarding flow immediately after operation for staff", () => {
+  const manual = SYSTEM_MANUALS.find(manual => manual.slug === "onboarding")!;
+  const docs = getVisibleManualDocs(manual, "staff");
+  render(<ManualDetailClient module={MANUAL_MODULES[0]} manual={manual} docs={docs} selectedDoc={docs[1]} />);
+  expect(screen.getAllByRole("link").filter(link => link.getAttribute("href")?.includes("?tab=")).map(link => link.textContent)).toEqual(["操作マニュアル", "応募から入社までの流れ"]);
+  expect(screen.getByTitle("入社手続き 応募から入社までの流れ")).toHaveAttribute("src", "/api/system/manuals/system/onboarding/5_flow.html?embed=1");
+});

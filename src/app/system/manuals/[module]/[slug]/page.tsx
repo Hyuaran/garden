@@ -5,7 +5,7 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
 import ManualDetailClient from "../../ManualDetailClient";
-import { findManual, findManualModule, getVisibleManualDocs } from "../../_lib/manuals-registry";
+import { findManual, findManualModule, getVisibleManualDocs, manualDocPermissionKey } from "../../_lib/manuals-registry";
 
 export async function generateMetadata({ params }: { params: Promise<{ module: string; slug: string }> }) {
   const { module: moduleSlug, slug } = await params;
@@ -44,7 +44,7 @@ async function ManualDetailPage({
     : "staff";
   const { viewer } = await viewPermissionContext();
   const defaultDocs = getVisibleManualDocs(manual, role);
-  const access = await Promise.all(manual.docs.map(doc => canView("system-manuals", doc.key, viewer, defaultDocs.includes(doc))));
+  const access = await Promise.all(manual.docs.map(doc => canView("system-manuals", manualDocPermissionKey(doc.key), viewer, defaultDocs.includes(doc))));
   const visibleDocs = manual.docs.filter((_, index) => access[index]);
   if (!visibleDocs.length) {
     return <ManualDetailClient module={manualModule} manual={{ ...manual, docs: visibleDocs }} docs={[]} />;

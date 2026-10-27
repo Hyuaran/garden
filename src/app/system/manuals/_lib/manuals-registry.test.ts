@@ -64,3 +64,12 @@ describe("manuals registry", () => {
     expect(manual && findManualDoc(manual, "../secret.html")).toBeNull();
   });
 });
+
+it("adds the onboarding flow after operation for staff and above only", () => {
+  const manual = findManual("system", "onboarding")!;
+  expect(getVisibleManualDocs(manual, "staff").map(doc => doc.key)).toEqual(["operation", "flow"]);
+  expect(getVisibleManualDocs(manual, "super_admin").slice(0, 2).map(doc => doc.key)).toEqual(["operation", "flow"]);
+  expect(getVisibleManualDocs(manual, "cs")).toEqual([]);
+  expect(findManualDoc(manual, "5_flow.html")).toMatchObject({ key: "flow", kind: "html", minRole: "staff" });
+  expect(SYSTEM_MANUALS.filter(manual => manual.docs.some(doc => doc.key === "flow"))).toHaveLength(1);
+});

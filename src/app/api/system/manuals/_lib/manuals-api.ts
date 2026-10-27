@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
-import { findManual, findManualDoc, type ManualDefinition, type ManualDoc } from "@/app/system/manuals/_lib/manuals-registry";
+import { findManual, findManualDoc, manualDocPermissionKey, type ManualDefinition, type ManualDoc } from "@/app/system/manuals/_lib/manuals-registry";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -84,7 +84,7 @@ export async function requireManualDocAccess(
 
   const role = validRole(employee.garden_role);
   const requiredRole = options.superAdminOnly ? "super_admin" : doc.minRole;
-  if (options.superAdminOnly ? !isRoleAtLeast(role, requiredRole) : !await canView("system-manuals", doc.key, (await viewPermissionContext()).viewer, isRoleAtLeast(role, requiredRole))) return { ok: false, response: jsonError(403, "manual access denied") };
+  if (options.superAdminOnly ? !isRoleAtLeast(role, requiredRole) : !await canView("system-manuals", manualDocPermissionKey(doc.key), (await viewPermissionContext()).viewer, isRoleAtLeast(role, requiredRole))) return { ok: false, response: jsonError(403, "manual access denied") };
 
   return { ok: true, manual, doc, user: { id: auth.user.id, name: displayName(employee, auth.user), role } };
 }

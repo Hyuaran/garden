@@ -1,87 +1,30 @@
 "use client";
-import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
-import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
-import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
-
 import Link from "next/link";
-import { useState } from "react";
-import { MenuIcon } from "@/app/system/_components/ShachoShell/ShachoShell";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
-import type { ManualModule } from "./_lib/manuals-registry";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
+import { SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+import { ModuleManualsList } from "./ModuleManualsClient";
+import type { ManualDefinition, ManualDoc, ManualModule } from "./_lib/manuals-registry";
 import styles from "./manuals.module.css";
 
-const VIEW_MODE_KEY = "garden.manuals.viewMode";
-type ViewMode = "list" | "grid";
-type ManualModuleWithCount = ManualModule & { count: number };
-
-function ListViewIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><rect x="4" y="5" width="2" height="2" rx=".5"/><rect x="4" y="11" width="2" height="2" rx=".5"/><rect x="4" y="17" width="2" height="2" rx=".5"/></svg>;
-}
-
-function GridViewIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/></svg>;
-}
-
-function readViewMode(): ViewMode {
-  try {
-    if (typeof window === "undefined") return "list";
-    return window.localStorage.getItem(VIEW_MODE_KEY) === "grid" ? "grid" : "list";
-  } catch {
-    return "list";
-  }
-}
-
-function storeViewMode(mode: ViewMode) {
-  try {
-    window.localStorage.setItem(VIEW_MODE_KEY, mode);
-  } catch {
-    // Storage is optional; the visible page state still changes.
-  }
-}
-
-export default function ManualsHubClient({ modules }: { modules: ManualModuleWithCount[] }) {
-  const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
-
-  function changeViewMode(mode: ViewMode) {
-    setViewMode(mode);
-    storeViewMode(mode);
-  }
-
+export default function ManualsHubClient({ modules, manuals = [], conceptHtml = "", selectedTab }: {
+  modules: (ManualModule & { count: number })[];
+  manuals?: (ManualDefinition & { visibleDocs: ManualDoc[] })[];
+  conceptHtml?: string;
+  selectedTab?: string;
+}) {
+  const tabs = [...(conceptHtml ? [{ slug: "concept", name: "Garden とは" }] : []), ...modules];
+  const active = tabs.some(tab => tab.slug === selectedTab) ? selectedTab : tabs[0]?.slug;
+  const module = modules.find(module => module.slug === active);
   return <div className={styles.pageShell}>
-    <header className={styles.header}>
-      <div>
-        <SystemBreadcrumb items={[{ label: "マニュアル" }]} />
-        <SystemViewHeading><h1>マニュアル</h1></SystemViewHeading>
-      </div>
-    </header>
-
-    <div className={styles.listHeading}>
-      <h2>モジュール</h2>
-      <HeaderViewToggle><button type="button" aria-label={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} title={viewMode === "list" ? "カード表示にする" : "一覧表示にする"} onClick={() => changeViewMode(viewMode === "list" ? "grid" : "list")}>{viewMode === "list" ? <GridViewIcon /> : <ListViewIcon />}</button></HeaderViewToggle>
-    </div>
-
-    {viewMode === "grid" ? (
-      <section className={styles.manualGrid} data-testid="manuals-grid-view" aria-label="マニュアル">
-        {modules.map((module) => <article className={styles.manualCard} key={module.slug}>
-          <div className={styles.cardHeading}><span className={styles.iconPlate}><MenuIcon icon={module.icon} /></span><h2>{module.name}</h2></div>
-          <p>{module.description}</p>
-          <div className={styles.cardFooter}><span>マニュアル {module.count} 件</span><Link href={`/system/manuals/${module.slug}`}>開く</Link></div>
-        </article>)}
-      </section>
-    ) : (
-      <div className={styles.tableWrap} data-testid="manuals-list-view">
-        <StickyTable>
-          <thead><tr><th>モジュール</th><th>内容</th><th>件数</th><th></th></tr></thead>
-          <tbody>
-            {modules.map((module) => <tr key={module.slug}>
-              <td className="garden-cell-text">{module.name}</td>
-              <td className="garden-cell-text">{module.description}</td>
-              <td className="garden-cell-number">{module.count}</td>
-              <td className="garden-cell-text"><Link href={`/system/manuals/${module.slug}`}>開く</Link></td>
-            </tr>)}
-          </tbody>
-        </StickyTable>
-      </div>
-    )}
+    <header className={styles.header}><div>
+      <SystemBreadcrumb items={[{ label: "マニュアル" }]} />
+      <h1>マニュアル</h1>
+    </div></header>
+    <SystemTabs actions={<SystemViewButton />} aria-label="マニュアルタブ">
+      {tabs.map(tab => <Link key={tab.slug} role="tab" aria-selected={active === tab.slug} aria-current={active === tab.slug ? "page" : undefined} href={"/system/manuals?tab=" + tab.slug}>{tab.name}</Link>)}
+    </SystemTabs>
+    {active === "concept" ? <section className={styles.conceptBody} aria-label="Garden とは" dangerouslySetInnerHTML={{ __html: conceptHtml }} />
+      : module ? <ModuleManualsList module={module} manuals={manuals.filter(manual => manual.moduleSlug === module.slug)} /> : null}
   </div>;
 }

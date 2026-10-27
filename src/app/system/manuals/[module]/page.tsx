@@ -4,8 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
-import ModuleManualsClient from "../ModuleManualsClient";
-import { findManualModule, getVisibleManualDocs, getVisibleManuals } from "../_lib/manuals-registry";
+import { findManualModule } from "../_lib/manuals-registry";
 
 export async function generateMetadata({ params }: { params: Promise<{ module: string }> }) {
   const { module: moduleSlug } = await params;
@@ -40,7 +39,7 @@ async function ModuleManualsPage({ params }: { params: Promise<{ module: string 
 
   if (!manuals.length) notFound();
 
-  return <ModuleManualsClient module={manualModule} manuals={manuals} />;
+  return redirect(`/system/manuals?tab=${encodeURIComponent(moduleSlug)}`);
 }
 
 export default withSystemView("system-manuals", ModuleManualsPage);

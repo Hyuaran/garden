@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
     "/api/system/contracts": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs", "./node_modules/pdfjs-dist/cmaps/*.bcmap", "./node_modules/pdfjs-dist/standard_fonts/*"],
     // 関電プロトの HTML は閲覧権限の判定後にだけ返すので public ではなく src に置いている。
     "/api/leaf/prototype": ["./src/app/leaf/_templates/*.html"],
+    // マニュアルの「Garden とは」の本文は実行時に読む。
+    "/system/manuals": ["./src/app/system/manuals/_content/*.md"],
   },
 };
 

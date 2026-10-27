@@ -1,7 +1,7 @@
 "use client";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 
-import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
+import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
 import Link from "next/link";
 import { MenuIcon } from "@/app/system/_components/ShachoShell/ShachoShell";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -19,20 +19,17 @@ export default function ModuleManualsClient({ module, manuals }: { module: Manua
       </div>
     </header>
 
-    <div className={styles.tableWrap} data-testid="manual-module-list">
-      <StickyTable>
-        <thead><tr><th>機能</th><th>内容</th><th>読める資料</th><th></th></tr></thead>
-        <tbody>
-          {manuals.map((manual) => <tr key={manual.slug}>
-            <td className="garden-cell-text">
-              <span className={styles.nameWithIcon}><span className={styles.iconPlate}><MenuIcon icon={module.icon} /></span>{manual.name}</span>
-            </td>
-            <td className="garden-cell-text">{manual.description}</td>
-            <td className="garden-cell-text">{manual.visibleDocs.map((doc) => doc.label).join(" / ")}</td>
-            <td className="garden-cell-text"><Link href={`/system/manuals/${manual.moduleSlug}/${manual.slug}`}>開く</Link></td>
-          </tr>)}
-        </tbody>
-      </StickyTable>
-    </div>
+    <ModuleManualsList module={module} manuals={manuals} />
   </div>;
+}
+
+export function ModuleManualsList({ module, manuals }: { module: ManualModule; manuals: VisibleManual[] }) {
+  const columns: DataColumn<VisibleManual>[] = [
+    { id: "name", label: "機能", type: "text", align: "text", value: manual => manual.name, render: manual => <span className={styles.nameWithIcon}><span className={styles.iconPlate}><MenuIcon icon={module.icon} /></span>{manual.name}</span> },
+    { id: "description", label: "内容", type: "text", align: "text", wrap: true, value: manual => manual.description },
+    { id: "docs", label: "読める資料", type: "text", align: "text", wrap: true, value: manual => manual.visibleDocs.map(doc => doc.label).join(" / ") },
+    { id: "count", label: "件数", type: "number", align: "number", value: manual => manual.visibleDocs.length },
+    { id: "open", label: "表示", type: "text", align: "mark", value: () => "開く", render: manual => <Link href={"/system/manuals/" + manual.moduleSlug + "/" + manual.slug}>開く</Link> },
+  ];
+  return <div data-testid="manual-module-list"><DataTable key={module.slug} rows={manuals} columns={columns} rowKey={manual => manual.slug} searchText={manual => manual.name + " " + manual.description} searchPlaceholder="機能・内容" defaultSort={{ id: "registry-order", direction: "asc" }} summary={rows => <span>マニュアル {rows.length} 件</span>} /></div>;
 }

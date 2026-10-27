@@ -32,10 +32,28 @@ export function renderMarkdown(markdown: string) {
   const paragraph: string[] = [];
   const list: string[] = [];
   const code: string[] = [];
+  const table: string[] = [];
+  function flushTable() {
+    if (!table.length) return;
+    const cells = (line: string) => line.trim().slice(1, -1).split("|").map(cell => cell.trim());
+    if (table.length > 1 && cells(table[1]).every(cell => /^:?-{3,}:?$/.test(cell))) {
+      output.push('<div class="manualTableScroll"><table><thead><tr>' + cells(table[0]).map(cell => '<th>' + renderInline(cell) + '</th>').join('') + '</tr></thead><tbody>' + table.slice(2).map(line => '<tr>' + cells(line).map(cell => '<td>' + renderInline(cell) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>');
+    } else {
+      output.push('<p>' + table.map(renderInline).join('<br />') + '</p>');
+    }
+    table.length = 0;
+  }
   let inCode = false;
 
   for (const rawLine of markdown.replace(/\r\n/g, "\n").split("\n")) {
     const line = rawLine.trimEnd();
+    if (!inCode && line.trim().startsWith("|") && line.trim().endsWith("|")) {
+      flushParagraph(paragraph, output);
+      flushList(list, output);
+      table.push(line);
+      continue;
+    }
+    flushTable();
     if (line.startsWith("```")) {
       if (inCode) {
         output.push(`<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`);
@@ -75,6 +93,7 @@ export function renderMarkdown(markdown: string) {
   }
 
   if (inCode) output.push(`<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`);
+  flushTable();
   flushParagraph(paragraph, output);
   flushList(list, output);
   return output.join("\n");
