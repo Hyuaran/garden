@@ -4,11 +4,11 @@
 }
 
 function Get-EffectiveRefreshWindowDays {
-  param([AllowNull()] [object]$ConfiguredDays)
-  if ($null -eq $ConfiguredDays -or [string]::IsNullOrWhiteSpace([string]$ConfiguredDays)) { return 7 }
+  param([AllowNull()] [object]$ConfiguredDays, [int]$DefaultDays = 1, [string]$SettingName = 'refreshWindowDays')
+  if ($null -eq $ConfiguredDays -or [string]::IsNullOrWhiteSpace([string]$ConfiguredDays)) { return $DefaultDays }
   $parsed = 0
   if (-not [int]::TryParse([string]$ConfiguredDays, [ref]$parsed) -or $parsed -lt 0) {
-    throw 'refreshWindowDays must be a non-negative integer.'
+    throw "$SettingName must be a non-negative integer."
   }
   return $parsed
 }
@@ -187,4 +187,15 @@ function ConvertTo-ShineigyoApiRow {
     $row[$Columns[$i]] = Convert-ShineigyoOdbcValue $Reader.GetValue($i) $Columns[$i]
   }
   return $row
+}
+
+function Get-CallRefreshPlan {
+  param([AllowNull()][Nullable[datetime]]$LastFullRefreshUtc, [datetime]$NowUtc,
+    [int]$RecentDays, [int]$FullDays, [int]$IntervalMinutes)
+  if ($IntervalMinutes -lt 1) { throw 'fullRefreshIntervalMinutes must be a positive integer.' }
+  $full = $null -eq $LastFullRefreshUtc -or ($NowUtc.ToUniversalTime() - $LastFullRefreshUtc.ToUniversalTime()).TotalMinutes -ge $IntervalMinutes
+  return [pscustomobject]@{
+    Kind = $(if ($full) { 'full' } else { 'recent' })
+    WindowDays = $(if ($full) { $FullDays } else { $RecentDays })
+  }
 }

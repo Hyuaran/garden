@@ -10,7 +10,8 @@ import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
  * 同期の再実行は従来の書き込み権限のまま。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePolling } from "@/lib/hooks/usePolling";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
 import { colors } from "../_constants/colors";
@@ -90,20 +91,7 @@ export default function KotSyncHistoryPage() {
   }, [logs]);
 
   // 自動 refetch（running が残っている場合のみ 30 秒ごと）
-  const refetchTimerRef = useRef<number | null>(null);
-  useEffect(() => {
-    const hasRunning = logs.some((l) => l.status === "running");
-    if (refetchTimerRef.current) {
-      window.clearInterval(refetchTimerRef.current);
-      refetchTimerRef.current = null;
-    }
-    if (hasRunning) {
-      refetchTimerRef.current = window.setInterval(() => void load(), 30_000);
-    }
-    return () => {
-      if (refetchTimerRef.current) window.clearInterval(refetchTimerRef.current);
-    };
-  }, [logs, load]);
+  usePolling(load, 30_000, { enabled: !authLoading && canRead && logs.some((l) => l.status === "running"), immediate: false });
 
   const resetFilter = () => {
     setFilterType("");

@@ -3,6 +3,7 @@ import { ContractTypeFields } from "@/app/root/contracts/_components/ContractTyp
 import { contractDefaults, defaultContractType, type EmploymentContractPayload } from "@/app/root/contracts/_lib/employment-contract";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { usePolling } from "@/lib/hooks/usePolling";
 import ChangeConfirm from "@/app/system/_components/ChangeConfirm/ChangeConfirm";
 import HireProcessingOverlay from "./HireProcessingOverlay";
 import { signaturesComplete, lineComplete, type HireCandidate } from "./_lib/hire-candidates";
@@ -26,18 +27,18 @@ export default function HireConfirmationSteps({row,canWrite,documents,filemakerC
  useEffect(()=>{
   try {const stored=Number(localStorage.getItem("hire-fm:"+row.id));if(stored>0)setDeadline(stored);}catch{}
  },[row.id]);
- useEffect(()=>{
+ usePolling(async ()=>{
   if(deadline===null)return;
-  const tick=()=>{
+  const tick=async ()=>{
    setSeconds(Math.max(0,Math.ceil((deadline-Date.now())/1000)));
    if(Date.now()<deadline||checking.current)return;
    checking.current=true;
-   void run(reconcile,false).finally(()=>{
+   await run(reconcile,false).finally(()=>{
     setDeadline(null);setShowWait(false);checking.current=false;try{localStorage.removeItem("hire-fm:"+row.id);}catch{}
    });
   };
-  tick();const timer=setInterval(tick,1000);return()=>clearInterval(timer);
- },[deadline]);
+  await tick();
+ },1000,{enabled:deadline!==null});
  const locked=!canWrite||busy||deadline!==null;
  return <div className={layout.steps}>
   <section><header className={layout.sectionHeading}><h3>① 締結</h3><span>{[row.checklist?.contract_signed,row.checklist?.nda_signed,row.checklist?.emergency_signed].filter(Boolean).length}/3</span></header><div className={layout.documents}>{documents}</div><fieldset className={layout.contract} disabled={!canWrite}><legend>雇用契約書の中身</legend><div className={layout.grid}>

@@ -3,7 +3,7 @@
 ## Incremental primary-key operation and watchdog
 
 - A normal run without `last_max_primary_key` bootstraps from the narrow call-date window (`overlapDays`) and saves the greatest successfully processed primary key. It does not scan the full table to seed state.
-- Later normal runs first use `WHERE "主キー" > last_max_primary_key ORDER BY "主キー"`, then reread the recent `refreshWindowDays` call-date window and upsert mutable values such as `result_flag`. Explicit date backfills retain call-date/month splitting and never modify primary-key state.
+- Later normal runs first use `WHERE "主キー" > last_max_primary_key ORDER BY "主キー"`, then reread the recent `refreshWindowDays` call-date window (default 1: today and yesterday), or `fullRefreshWindowDays` (default 7) on the first run and every `fullRefreshIntervalMinutes` (default 60) and upsert mutable values such as `result_flag`. Explicit date backfills retain call-date/month splitting and never modify primary-key state.
 - The supervisor kills a 32-bit worker after `readStallTimeoutSeconds` without heartbeat progress (default 300). Continuous mode retries; `-Once` exits nonzero.
 - Heartbeats are forced at batch boundaries and otherwise throttled by `heartbeatIntervalSeconds` (default 5); they contain only time and phase.
 - Secrets remain inherited environment variables and are never placed in worker arguments, heartbeat files, or logs.
@@ -26,7 +26,7 @@ FileMaker Server 11の「コール履歴」を32bit ODBCで取得し、Gardenの
 
 - 増分判定はDATE型の「コール日」です。SQLは`{d 'YYYY-MM-DD'}`を使用し、`{ts ...}`や`MAX()`は使いません。
 - 「作成日」「修正日」はVARCHARのため増分判定に使いません。
-- primary-key増分では直近`refreshWindowDays`日を毎ポール読み返します。それより古い行が後から書き換えられた場合は、`-StartDate`/`-EndDate`で再走査してください。
+- 通常増分では直近`refreshWindowDays`（既定1＝今日と昨日）を毎ポール、初回と60分ごとには`fullRefreshWindowDays`（既定7）を読み返します。それより古い行が後から書き換えられた場合は、`-StartDate`/`-EndDate`で再走査してください。
 - FileMakerの事前集計列は監査用に保存しますが、Garden側の集計には使用しません。
 
 ## 必要な環境変数
@@ -46,7 +46,9 @@ FileMaker Server 11の「コール履歴」を32bit ODBCで取得し、Gardenの
 - `batchSize`: 1〜500、既定500
 - `includeAggregateFields`: 既定false。falseでは保存対象19列だけを取得し、FileMakerの計算・集計25列を省いて高速化します。監査調査で必要な場合だけtrueにします。
 - `overlapDays`: 通常3日
-- `refreshWindowDays`: primary-key増分後に毎回読み返すコール日ウィンドウ。既定7日。結果が週末後に確定するケースも含めます。
+- `refreshWindowDays`: 毎ポールの読み返し。既定1（今日と昨日）、0以上の整数。
+- `fullRefreshWindowDays`: 定期的な広い読み返し。既定7（7日前以降）、0以上の整数。
+- `fullRefreshIntervalMinutes`: 広い読み返しの間隔。既定60、1以上の整数。`state.json`の`last_full_refresh_at`（UTC）から判定し、記録がない初回も実行します。正常完了時だけ保存し、増分が0件でも保存します。失敗・partial・DryRun・`-MaxRows`指定時・明示backfillでは時刻を更新しません。
 - `pollSeconds`: 常駐時の実行間隔
 - `runContinuously`: タスクスケジューラ常駐時はtrue
 - 状態とログの既定保存先: `C:\ProgramData\Garden\CallCenterAgent\`
@@ -99,11 +101,11 @@ limit 20;
 
 同じ日付範囲を再送し、`system_call_history`の件数が増えず、同期ログの`records_updated`が増えることを確認します。
 
-通常運用の`sync completed`ログには`refresh_rows`、`refresh_sent`、`refresh_window_days`、同期全体の`elapsed_seconds`が出ます。各`batch completed`には`query_path`と`elapsed_seconds`が出るため、`query_path=refresh`の500件単位の所要時間を確認できます。refresh行はprimary-key state候補に使用しません。
+通常運用の`sync completed`ログには`refresh_rows`、`refresh_sent`、`refresh_kind`（recent／full）、`refresh_window_days`、同期全体の`elapsed_seconds`が出ます。各`batch completed`には`query_path`と`elapsed_seconds`が出るため、`query_path=refresh`の500件単位の所要時間を確認できます。refresh行はprimary-key state候補に使用しません。
 
 ## 2026-08-10以降の結果フラグ一時修復
 
-ホストへ`CallCenterAgent.ps1`、`CallCenterAgent.Core.ps1`、`config.json`の`refreshWindowDays: 7`を反映後、常駐タスクを止めて明示backfillを1回実行します。まずDryRunし、件数確認後に本送信します。
+ホストへ`CallCenterAgent.ps1`、`CallCenterAgent.Core.ps1`、`config.json`の上記3設定を反映後、常駐タスクを止めて明示backfillを1回実行します。まずDryRunし、件数確認後に本送信します。
 
 ```powershell
 Disable-ScheduledTask -TaskName "GardenCallCenterAgent"
@@ -264,3 +266,18 @@ Get-ScheduledTaskInfo -TaskName "GardenShineigyoSnapshot"
 - partialまたは失敗時は状態日付を進めません。通常増分は次回オーバーラップ範囲を再送し、バックフィルは失敗月へ範囲を狭めて再実行します。どちらもAPIのupsertで重複を防ぎます。
 - 状態ファイルが壊れた場合、内容を保全して別名へ移動してから`-StartDate`を指定して復旧します。
 - ログにはFMパスワード、Bearer token、電話番号、受信行本文を出しません。
+
+## 2026-10-27 ホストPCでの入れ替え・戻し方
+
+1. `GardenCallCenterAgent`タスクを停止し、ワーカープロセスの終了を確認します。ホストの現在の2スクリプト`CallCenterAgent.ps1`・`CallCenterAgent.Core.ps1`をそれぞれ`.bak-20261027`付きでコピー保存します。既存バックアップは上書きしません。
+2. 配布した同名2ファイルを差し替えます（日本語入りps1はUTF-8 BOM付き）。ホストの既存`config.json`は置き換えず、`refreshWindowDays: 1`・`fullRefreshWindowDays: 7`・`fullRefreshIntervalMinutes: 60`を設定します。
+3. `Start-ScheduledTask -TaskName "GardenCallCenterAgent"`で再起動し、当日の`agent-YYYYMMDD.jsonl`の`sync completed`で初回`refresh_kind=full`・`refresh_window_days=7`、続く通常ポールで`recent`・`1`、60分後に`full`・`7`となることを確認します。`state.json`に`last_full_refresh_at`が残ることも確認します。
+4. 戻す場合はタスク停止とワーカー終了確認後、2つの`.bak-20261027`を元の名前へコピーし、`refreshWindowDays`を以前の値へ戻してタスクを開始します。追加の2設定と状態の追加時刻は旧スクリプトでは参照されません。
+
+## ローカルテスト
+
+本番接続・環境変数なしで実行できます（Windows PowerShell / Pester 3）。
+
+```powershell
+Invoke-Pester -Path .\scripts\callcenter-agent\tests -EnableExit
+```

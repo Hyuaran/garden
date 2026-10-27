@@ -68,9 +68,9 @@ Describe "Get-EffectiveBatchSize" {
 }
 
 Describe "recent refresh helpers" {
-  It "defaults the refresh window to seven days" {
-    Get-EffectiveRefreshWindowDays $null | Should Be 7
-    Get-EffectiveRefreshWindowDays "" | Should Be 7
+  It "defaults the refresh window to one day" {
+    Get-EffectiveRefreshWindowDays $null | Should Be 1
+    Get-EffectiveRefreshWindowDays "" | Should Be 1
   }
 
   It "accepts an explicit non-negative refresh window" {
@@ -92,6 +92,7 @@ Describe "primary-key refresh orchestration" {
 
   It "adds refresh only as a non-primary-key state candidate" {
     $agentSource | Should Match "Path = 'refresh'"
+    $agentSource | Should Match 'if \(-not \$isExplicitRange\) \{\s*\$refreshToday'
     $agentSource | Should Match 'TracksPrimaryKey = \$false'
     $agentSource | Should Match 'if \(\$workItem.TracksPrimaryKey -and \$rowPrimaryKey'
   }
@@ -243,5 +244,46 @@ Describe "Shineigyo snapshot helpers" {
     Convert-ShineigyoOdbcValue 123.0 "主キー" | Should Be "123"
     Convert-ShineigyoOdbcValue 2027231 "営業ID" | Should Be "2027231"
     Convert-ShineigyoOdbcValue ([DBNull]::Value) "既契約情報" | Should Be $null
+  }
+}
+
+Describe "two-stage refresh" {
+  $now = ([datetime]'2026-10-27T10:00:00Z').ToUniversalTime()
+  It "uses yesterday onward before sixty minutes" {
+    $plan = Get-CallRefreshPlan $now.AddMinutes(-59) $now 1 7 60
+    $plan.Kind | Should Be 'recent'
+    $plan.WindowDays | Should Be 1
+    Get-CallDateRefreshQuery '"コール日"' $now $plan.WindowDays | Should Match '2026-10-26'
+  }
+  It "uses seven days at sixty minutes" {
+    $plan = Get-CallRefreshPlan $now.AddMinutes(-60) $now 1 7 60
+    $plan.Kind | Should Be 'full'
+    $plan.WindowDays | Should Be 7
+  }
+  It "uses seven days when no timestamp exists" {
+    $plan = Get-CallRefreshPlan $null $now 1 7 60
+    $plan.Kind | Should Be 'full'
+    $plan.WindowDays | Should Be 7
+  }
+  It "persists and reloads the full refresh timestamp with existing state" {
+    $source = Get-Content -Raw -Encoding UTF8 (Join-Path (Split-Path -Parent $here) 'CallCenterAgent.ps1')
+    $tokens = $null; $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($source, [ref]$tokens, [ref]$parseErrors)
+    $parseErrors.Count | Should Be 0
+    foreach ($name in @('Get-AgentState', 'Save-AgentState')) {
+      $definition = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name }, $false)
+      . ([scriptblock]::Create($definition.Extent.Text))
+    }
+    $statePath = Join-Path $TestDrive 'state.json'
+    Save-AgentState ([datetime]'2026-10-27') '123' $now
+    $state = Get-AgentState
+    $state.LastFullRefreshUtc | Should Be $now
+    $state.PrimaryKey | Should Be '123'
+    $plan = Get-CallRefreshPlan $state.LastFullRefreshUtc $now.AddMinutes(5) 1 7 60
+    $plan.Kind | Should Be 'recent'
+    Save-AgentState $state.Date $state.PrimaryKey $state.LastFullRefreshUtc
+    (Get-AgentState).LastFullRefreshUtc | Should Be $now
+    '{"last_max_primary_key":"123"}' | Set-Content -LiteralPath $statePath
+    (Get-AgentState).LastFullRefreshUtc | Should Be $null
   }
 }

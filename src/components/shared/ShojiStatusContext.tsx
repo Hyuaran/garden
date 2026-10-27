@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
+import { usePolling } from "@/lib/hooks/usePolling";
 
 export type CeoStatusKey = "available" | "busy" | "focused" | "away";
 export type CeoStatus = {
@@ -50,25 +51,7 @@ export function ShojiStatusProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    const tick = async () => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      if (cancelled) return;
-      await fetchStatus();
-    };
-    tick();
-    const id = setInterval(tick, POLL_INTERVAL_MS);
-    const onVisibility = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") tick();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, []);
+  usePolling(fetchStatus, POLL_INTERVAL_MS);
 
   return (
     <ShojiStatusContext.Provider value={{ status, loading, error, refresh: fetchStatus }}>

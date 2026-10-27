@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { usePolling } from "@/lib/hooks/usePolling";
 import type { LinkAlert } from "@/lib/bud/mf/link-alerts";
 import type { MfAccount } from "@/lib/bud/mf/types";
 import { accountDisplayName } from "@/lib/bud/mf/corporations";
@@ -28,21 +29,20 @@ export default function LinkAlerts({ accounts, onChange }: { accounts: MfAccount
  // （2026-10-27：取り直し→親の描き直し→また取り直し、が休みなく続き、Vercel の呼び出しが 12 時間で 3 万回を超えていた）
  const onChangeRef = useRef(onChange);
  onChangeRef.current = onChange;
- useEffect(() => {
-  let cancelled = false;
+ const mounted = useRef(false);
+ useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+ usePolling(async () => {
   const onChange = (rows: LinkAlert[]) => onChangeRef.current(rows);
   async function load() {
    try {
     const response = await fetch("/api/bud/mf-accounts/link-alerts", { cache: "no-store" });
     if (!response.ok) throw new Error();
     const data = await response.json();
-    if (!cancelled) { const rows: LinkAlert[] = (data.alerts ?? []).filter((a: LinkAlert) => !dismissed.current.has(a.id) && Date.parse(a.received_at)+8*86400000 > Date.now()); setAlerts(rows); onChange(rows); setError(""); }
-   } catch { if (!cancelled) setError("自動取得の知らせを読み込めませんでした。時間をおいてもう一度お試しください。"); }
+    if (mounted.current) { const rows: LinkAlert[] = (data.alerts ?? []).filter((a: LinkAlert) => !dismissed.current.has(a.id) && Date.parse(a.received_at)+8*86400000 > Date.now()); setAlerts(rows); onChange(rows); setError(""); }
+   } catch { if (mounted.current) setError("自動取得の知らせを読み込めませんでした。時間をおいてもう一度お試しください。"); }
   }
-  void load();
-  const timer = setInterval(() => { void load(); }, 60000);
-  return () => { cancelled = true; clearInterval(timer); };
- }, []);
+  await load();
+ }, 60000);
  const nameOf = (alert: LinkAlert) => { const account = accounts.find(a => a.mf_account_id === alert.mf_account_id); return account ? accountDisplayName(account.name) : alert.mail_account_name; };
  const complete = async (alert: LinkAlert) => {
   setBusy(alert.id); setError("");

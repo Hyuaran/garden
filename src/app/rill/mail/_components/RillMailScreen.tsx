@@ -4,6 +4,7 @@
 import { useSystemView, SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { rillBoxTab } from "@/lib/auth/sprout-rill-view-scopes";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePolling } from "@/lib/hooks/usePolling";
 import { createPortal } from "react-dom";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { RillComposePane } from "./RillComposePane";
@@ -313,20 +314,17 @@ export function RillMailScreen({ canWrite = true }: { canWrite?: boolean }) {
       .then((value) => setTranslationAvailable(value?.available === true))
       .catch(() => setTranslationAvailable(false));
   }, []);
-  useEffect(() => {
-    const timer = window.setInterval(() => {
+  usePolling(async () => {
       if (!connected || searchResults !== null) return;
       const refresh = activeBox === "flagged" ? loadPinnedMessages() : loadMessages(activeBox, null, "refresh");
-      void refresh
+      await refresh
         .then(() => setAutoRefreshFailed(false))
         .catch((cause) => {
           if ((cause as { status?: number }).status === 428) setConnected(false);
           else setAutoRefreshFailed(true);
         });
-    }, 60_000);
-    return () => window.clearInterval(timer);
-  }, [activeBox, connected, loadMessages, loadPinnedMessages, searchResults]);
-  useEffect(() => {
+  }, 60_000, { enabled: !!connected && searchResults === null, immediate: false });
+  usePolling(async () => {
     const check = async () => {
       if (!connected || searchResults !== null) return;
       try {
@@ -338,10 +336,8 @@ export function RillMailScreen({ canWrite = true }: { canWrite?: boolean }) {
         setAutoRefreshFailed(false);
       } catch { /* The 60-second Graph poll remains the fallback. */ }
     };
-    void check();
-    const timer = window.setInterval(() => void check(), 10_000);
-    return () => window.clearInterval(timer);
-  }, [activeBox, connected, loadMessages, loadPinnedMessages, searchResults]);
+    await check();
+  }, 10_000, { enabled: !!connected && searchResults === null });
   useEffect(() => {
     if (!viewingAttachment && !intakeTarget) return;
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") { setViewingAttachment(null); setIntakeTarget(null); } };

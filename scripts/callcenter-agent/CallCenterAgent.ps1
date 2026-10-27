@@ -46,19 +46,20 @@ function Get-ConnectionString {
 }
 
 function Get-AgentState {
-  if (-not (Test-Path -LiteralPath $statePath)) { return [pscustomobject]@{ Date = $null; PrimaryKey = $null } }
+  if (-not (Test-Path -LiteralPath $statePath)) { return [pscustomobject]@{ Date = $null; PrimaryKey = $null; LastFullRefreshUtc = $null } }
   try {
     $state = Get-Content -Raw -Encoding UTF8 -LiteralPath $statePath | ConvertFrom-Json
     $date = if ($state.last_successful_max_call_date) { [datetime]::ParseExact([string]$state.last_successful_max_call_date, "yyyy-MM-dd", $null) } else { $null }
     $pk = ConvertTo-NormalizedPrimaryKey $state.last_max_primary_key
     if ($state.last_max_primary_key -and $null -eq $pk) { throw 'last_max_primary_key is invalid.' }
-    return [pscustomobject]@{ Date = $date; PrimaryKey = $pk }
+    $lastFullRefreshUtc = if ($state.last_full_refresh_at) { [datetime]::Parse([string]$state.last_full_refresh_at, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime() } else { $null }
+    return [pscustomobject]@{ Date = $date; PrimaryKey = $pk; LastFullRefreshUtc = $lastFullRefreshUtc }
   } catch { throw "State file is invalid. Move it aside after inspection: $statePath" }
 }
 
-function Save-AgentState([AllowNull()][Nullable[datetime]]$Date, [AllowNull()][string]$PrimaryKey) {
+function Save-AgentState([AllowNull()][Nullable[datetime]]$Date, [AllowNull()][string]$PrimaryKey, [AllowNull()][Nullable[datetime]]$LastFullRefreshUtc) {
   $temporary = "$statePath.tmp"
-  @{ last_successful_max_call_date = $(if ($Date) { $Date.ToString("yyyy-MM-dd") } else { $null }); last_max_primary_key = $PrimaryKey; updated_at = (Get-Date).ToUniversalTime().ToString("o") } |
+  @{ last_full_refresh_at = $(if ($LastFullRefreshUtc) { $LastFullRefreshUtc.ToUniversalTime().ToString("o") } else { $null }); last_successful_max_call_date = $(if ($Date) { $Date.ToString("yyyy-MM-dd") } else { $null }); last_max_primary_key = $PrimaryKey; updated_at = (Get-Date).ToUniversalTime().ToString("o") } |
     ConvertTo-Json | Set-Content -LiteralPath $temporary -Encoding UTF8
   Move-Item -Force -LiteralPath $temporary -Destination $statePath
 }
@@ -109,11 +110,15 @@ if ($null -ne $config.includeAggregateFields) {
 }
 $columns = @(Get-CallFetchColumns $includeAggregateFields)
 $refreshWindowDays = Get-EffectiveRefreshWindowDays $config.refreshWindowDays
+$fullRefreshWindowDays = Get-EffectiveRefreshWindowDays $config.fullRefreshWindowDays 7 'fullRefreshWindowDays'
+$fullRefreshIntervalMinutes = Get-EffectiveRefreshWindowDays $config.fullRefreshIntervalMinutes 60 'fullRefreshIntervalMinutes'
+if ($fullRefreshIntervalMinutes -lt 1) { throw 'fullRefreshIntervalMinutes must be a positive integer.' }
 
 function Invoke-SyncOnce {
   $runId = [guid]::NewGuid()
   $state = Get-AgentState; $stateDate = $state.Date; $statePrimaryKey = $state.PrimaryKey
   $queryMode = Get-IncrementalQueryMode $isExplicitRange $statePrimaryKey
+  $refreshPlan = Get-CallRefreshPlan $state.LastFullRefreshUtc (Get-Date).ToUniversalTime() $refreshWindowDays $fullRefreshWindowDays $fullRefreshIntervalMinutes
   $from = if ($hasExplicitStartDate) { $StartDate.Date } elseif ($stateDate) { $stateDate.AddDays(-[int]$config.overlapDays).Date } else { (Get-Date).Date.AddDays(-[int]$config.overlapDays) }
   $to = if ($hasExplicitEndDate) { $EndDate.Date } else { (Get-Date).Date }
   if ($from -gt $to) { throw "StartDate must be on or before EndDate." }
@@ -150,13 +155,13 @@ function Invoke-SyncOnce {
       }
       $workItems += [pscustomobject]@{ Range = $range; Sql = $sql; Path = $queryMode; TracksPrimaryKey = $true }
     }
-    if ($queryMode -eq 'primary_key') {
+    if (-not $isExplicitRange) {
       $refreshToday = (Get-Date).Date
-      $refreshFrom = $refreshToday.AddDays(-$refreshWindowDays)
+      $refreshFrom = $refreshToday.AddDays(-$refreshPlan.WindowDays)
       $refreshRange = [pscustomobject]@{ From = $refreshFrom; To = $refreshToday; Month = 'refresh' }
       $workItems += [pscustomobject]@{
         Range = $refreshRange
-        Sql = Get-CallDateRefreshQuery $quotedColumns $refreshToday $refreshWindowDays
+        Sql = Get-CallDateRefreshQuery $quotedColumns $refreshToday $refreshPlan.WindowDays
         Path = 'refresh'
         TracksPrimaryKey = $false
       }
@@ -244,18 +249,20 @@ function Invoke-SyncOnce {
     $completedWithoutPartial = -not $hadPartial
     $shouldAdvanceDate = Test-ShouldAdvanceState $stateDate $maxCallDate $isExplicitRange $completedWithoutPartial
     $shouldAdvancePrimaryKey = Test-ShouldAdvancePrimaryKey $statePrimaryKey $maxPrimaryKey $completedWithoutPartial $isExplicitRange
+    $saveFullRefresh = -not $isExplicitRange -and $refreshPlan.Kind -eq 'full' -and $completedWithoutPartial -and $MaxRows -eq 0
+    $savedFullRefreshUtc = if ($saveFullRefresh) { (Get-Date).ToUniversalTime() } else { $state.LastFullRefreshUtc }
     $stateAdvanced = $false
-    if (-not $DryRun -and ($shouldAdvanceDate -or $shouldAdvancePrimaryKey)) {
+    if (-not $DryRun -and ($shouldAdvanceDate -or $shouldAdvancePrimaryKey -or $saveFullRefresh)) {
       $savedDate = if ($shouldAdvanceDate) { $maxCallDate } else { $stateDate }
       $savedPrimaryKey = if ($shouldAdvancePrimaryKey) { $maxPrimaryKey } else { $statePrimaryKey }
-      Save-AgentState $savedDate $savedPrimaryKey
+      Save-AgentState $savedDate $savedPrimaryKey $savedFullRefreshUtc
       $stateAdvanced = $true
       Write-AgentLog "info" "state advanced" @{ run_id = $runId.ToString(); saved_date = $(if ($savedDate) { $savedDate.ToString('yyyy-MM-dd') } else { $null }); saved_primary_key = $savedPrimaryKey; query_mode = $queryMode }
     } elseif (-not $DryRun -and $maxCallDate) {
       Write-AgentLog "info" "state unchanged" @{ run_id = $runId.ToString(); existing_date = $(if ($stateDate) { $stateDate.ToString("yyyy-MM-dd") } else { $null }); candidate_date = $maxCallDate.ToString("yyyy-MM-dd"); reason = $(if ($hadPartial) { "partial_run" } elseif ($isExplicitRange) { "candidate_not_newer" } else { "not_eligible" }) }
     }
     $syncStatus = if ($hadPartial) { "partial" } else { "success" }
-    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; sent = $totalSent; refresh_rows = $totalRefreshRows; refresh_sent = $totalRefreshSent; refresh_window_days = $(if ($queryMode -eq 'primary_key') { $refreshWindowDays } else { 0 }); skipped_invalid_date = $totalSkippedInvalidDate; months = $ranges.Count; status = $syncStatus; query_mode = $queryMode; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd"); latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); latest_primary_key = $maxPrimaryKey; state_advanced = $stateAdvanced; elapsed_seconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1) }
+    Write-AgentLog "info" "sync completed" @{ run_id = $runId.ToString(); rows = $totalRows; sent = $totalSent; refresh_rows = $totalRefreshRows; refresh_sent = $totalRefreshSent; refresh_kind = $(if (-not $isExplicitRange) { $refreshPlan.Kind } else { $null }); refresh_window_days = $(if (-not $isExplicitRange) { $refreshPlan.WindowDays } else { 0 }); skipped_invalid_date = $totalSkippedInvalidDate; months = $ranges.Count; status = $syncStatus; query_mode = $queryMode; range_from = $from.ToString("yyyy-MM-dd"); range_to = $to.ToString("yyyy-MM-dd"); latest_call_date = $(if ($maxCallDate) { $maxCallDate.ToString("yyyy-MM-dd") } else { $null }); latest_primary_key = $maxPrimaryKey; state_advanced = $stateAdvanced; elapsed_seconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1) }
   } finally { $connection.Dispose() }
 }
 

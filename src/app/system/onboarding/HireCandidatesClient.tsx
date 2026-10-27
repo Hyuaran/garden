@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { usePolling } from "@/lib/hooks/usePolling";
 import Modal from "@/app/system/_components/Modal/Modal";
 import layout from "./HireConfirmation.module.css";
 import HireConfirmationSteps from "./HireConfirmationSteps";
@@ -87,7 +88,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
   if(stopped(current))setFailure(current);
  };
  useEffect(()=>{load().catch(e=>setMessage(e.message));},[tab]);
- useEffect(()=>{if(!busy)return; const timer=setInterval(()=>{load().catch(()=>{});},1200);return()=>clearInterval(timer);},[busy]);
+ usePolling(load,1200,{enabled:busy,immediate:false});
  const run = async (action:()=>Promise<void>)=>{setBusy(true);setMessage("");try{await action();await load();}catch(e){setMessage(e instanceof Error?e.message:"処理できませんでした");}finally{setBusy(false);}};
  // KOT の選択肢は画面を開いた時に先に読んでおく（行を押してから小窓が出るまで 5 秒かかったため 2026-10-26）
  const optionsRequest=useRef<Promise<Options>|null>(null);

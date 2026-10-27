@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { usePolling } from "@/lib/hooks/usePolling";
 import type { KanriDisplayPayload } from "@/app/system/kanri/_lib/kanri-display";
 import styles from "./display.module.css";
 
@@ -31,20 +32,7 @@ async function fetchDisplayData(): Promise<DisplayData> {
 export default function DisplayClient({ initialData }: { initialData: DisplayData }) {
   const [data, setData] = useState(initialData);
 
-  useEffect(() => {
-    let active = true;
-    async function refresh() {
-      const next = await fetchDisplayData();
-      if (active) setData(next);
-    }
-    const timer = window.setInterval(() => {
-      void refresh();
-    }, REFRESH_INTERVAL_MS);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, []);
+  usePolling(async () => { setData(await fetchDisplayData()); }, REFRESH_INTERVAL_MS, { immediate: false });
 
   if (!data.ok) {
     return <main className={styles.shell}><div className={styles.message}>{data.message}</div></main>;
