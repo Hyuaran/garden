@@ -18,16 +18,25 @@ describe("SystemTabs", () => {
   expect(screen.getByText("second")).toBeInTheDocument();
  });
  it("preserves document links and their destinations", () => {
-  render(<SystemTabs role="navigation" aria-label="資料"><a href="?tab=guide" aria-current="page">操作マニュアル</a></SystemTabs>);
-  expect(screen.getByRole("link")).toHaveAttribute("href", "?tab=guide");
+  render(<SystemTabs role="navigation" aria-label="資料"><a href="?tab=guide" aria-current="page">操作マニュアル</a><a href="?tab=admin">管理</a></SystemTabs>);
+  expect(screen.getByRole("link", { name: "操作マニュアル" })).toHaveAttribute("href", "?tab=guide");
  });
  it("puts line-icon actions at the right end of the tab row, outside the tablist", () => {
   const onClick = vi.fn();
-  render(<SystemTabs aria-label="表示" actions={<TabActionButton icon="sort" label="並び替え" pressed={false} onClick={onClick} />}><button role="tab" aria-selected="true">口座残高</button></SystemTabs>);
+  render(<SystemTabs aria-label="表示" actions={<TabActionButton icon="sort" label="並び替え" pressed={false} onClick={onClick} />}><button role="tab" aria-selected="true">口座残高</button><button role="tab">履歴</button></SystemTabs>);
   const action = screen.getByRole("button", { name: "並び替え" });
   expect(screen.getByRole("tablist")).not.toContainElement(action);
   expect(action.querySelector("svg")).not.toBeNull();
   fireEvent.click(action);
   expect(onClick).toHaveBeenCalled();
  });
+});
+
+it.each([0, 1])("hides %i visible tabs together with actions", count => {
+ const { container } = render(<SystemTabs actions={<button>設定</button>}>{null}{false}{Array.from({length: count}, (_, key) => <button role="tab" key={key}>内容</button>)}</SystemTabs>);
+ expect(container).toBeEmptyDOMElement();
+});
+it("counts visible children after removing null and false", () => {
+ render(<SystemTabs>{false}<button role="tab">一覧</button>{null}<button role="tab">集計</button></SystemTabs>);
+ expect(screen.getAllByRole("tab")).toHaveLength(2);
 });

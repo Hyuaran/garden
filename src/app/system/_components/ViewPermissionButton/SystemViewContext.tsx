@@ -19,6 +19,6 @@ export function SystemViewButton({ tabKey = "" }: { tabKey?: string }) {
   if (!state.admin && !(tab?.canAdd ?? state.canAdd)) return null;
   return <ViewPermissionButton key={`${state.pageKey}:${tabKey}`} pageKey={state.pageKey} tabKey={tabKey} tabLabel={tab?.label ?? ""} admin={state.admin} canAdd={tab?.canAdd ?? state.canAdd} />;
 }
-export function SystemViewHeading({ children }: { children: ReactNode }) {
-  return <div className={styles.headingRow}>{Children.map(children, child => isValidElement<{ children?: ReactNode }>(child) && child.type === "h1" ? cloneElement(child, {}, child.props.children, <span className={styles.headingAction}><SystemViewButton /></span>) : child)}</div>;
+export function SystemViewHeading({ children, actions, showActions = true }: { children: ReactNode; actions?: ReactNode; showActions?: boolean }) {
+  return <div className={styles.headingRow}>{Children.map(children, child => isValidElement<{ children?: ReactNode }>(child) && child.type === "h1" ? cloneElement(child, {}, child.props.children, showActions && <span className={styles.headingAction}>{actions ?? <SystemViewButton />}</span>) : child)}</div>;
 }

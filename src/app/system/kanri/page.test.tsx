@@ -69,7 +69,7 @@ describe("KanriPortalPage", () => {
 
     render(await Page({ searchParams: Promise.resolve({}) }));
 
-    expect(screen.getByRole("button", { name: "給与試算" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "表示切替" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "管理表" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "計算する" })).not.toBeInTheDocument();
   });

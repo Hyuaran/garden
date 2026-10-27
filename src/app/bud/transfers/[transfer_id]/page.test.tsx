@@ -1,0 +1,26 @@
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
+import Page from "./page";
+vi.mock("next/navigation", () => ({ useParams: () => ({ transfer_id: "T1" }), useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("../../_components/BudGardenFrame", () => ({ BudGardenFrame: ({ children }: { children: ReactNode }) => children }));
+vi.mock("../../_lib/transfer-queries", () => ({ fetchTransferById: async () => ({ transfer_id: "T1", amount: 1000, payee_name: "支払先", status: "draft" }) }));
+vi.mock("../_components/StatusBadge", () => ({ StatusBadge: () => null }));
+vi.mock("../_components/StatusActionButtons", () => ({ StatusActionButtons: () => null }));
+vi.mock("../_components/StatusHistoryTab", () => ({ StatusHistoryTab: () => <p>履歴の内容</p> }));
+beforeEach(() => window.history.replaceState(null, "", "/bud/transfers/T1?tab=history"));
+it("restores the detail tab and synchronizes all three panels with the URL", async () => {
+  const view = render(<Page />);
+  expect(await screen.findByText("履歴の内容")).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "ステータス履歴", selected: true })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: "基本情報" }));
+  expect(screen.getByText("支払先")).toBeInTheDocument();
+  expect(window.location.search).toBe("?tab=basic");
+  fireEvent.click(screen.getByRole("tab", { name: "関連振込" }));
+  expect(window.location.search).toBe("?tab=related");
+  view.unmount();
+  render(<Page />);
+  expect(await screen.findByRole("tab", { name: "関連振込", selected: true })).toBeInTheDocument();
+  act(() => { window.history.replaceState(null, "", "?tab=history"); window.dispatchEvent(new PopStateEvent("popstate")); });
+  expect(screen.getByText("履歴の内容")).toBeInTheDocument();
+});

@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
@@ -2454,7 +2455,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
     <div className={styles.pageShell}>
       <div className={styles.header}>
         <SystemBreadcrumb items={[{ label: "リストマスタ" }]} />
-        <h1>リストマスタ</h1>
+        <SystemViewHeading showActions={visibleTabs.length <= 1} actions={<SystemViewButton tabKey={activeTab} />}><h1>リストマスタ</h1></SystemViewHeading>
         <UpdatedStampRow>
           <UpdatedStamp label="コール履歴" date={callSyncState?.syncedThrough ? callSyncState.lastRunAt || callSyncState.syncedThrough : null} emptyText="2026/07/31(金)（FileMaker の書き出し）" busy={callSyncBusy} onRefresh={canSyncCalls ? handleCallSync : undefined} refreshLabel="コール履歴を反映する" title={callSyncBusy ? "反映しています…" : "コール履歴を反映する（最新の通話記録を取り込みます）"}>
           {callSyncMessage && <span className={callSyncMessage.error ? styles.callSyncError : styles.callSyncDone} role="status">{callSyncMessage.text}</span>}

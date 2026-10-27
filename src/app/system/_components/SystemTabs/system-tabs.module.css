@@ -4,7 +4,7 @@
 .tabs.tabs :is(button,a):focus-visible { outline:2px solid var(--teal,#0ea5a0); outline-offset:-2px; }
 .tabs.tabs span { font-size:11px; font-variant-numeric:tabular-nums; }
 /* 右端のアイコン付きの行：下線は行全体（右端まで）に引き、タブの下線は行の線に重ねる */
-.row { display:flex; align-items:flex-end; gap:8px; width:100%; margin:0 0 16px; border-bottom:1px solid var(--line,var(--notice-line,#e3eaf3)); }
+.row { min-width:0; max-width:100%; display:flex; align-items:flex-end; gap:8px; width:100%; margin:0 0 16px; border-bottom:1px solid var(--line,var(--notice-line,#e3eaf3)); }
 .tabs.tabs.inRow { margin:0 0 -1px; border-bottom:0; flex:1 1 auto; }
 .actions { display:flex; align-items:center; gap:6px; flex:0 0 auto; padding:0 0 4px; }
 .actionButton.actionButton.actionButton { display:inline-flex; flex:0 0 34px; min-width:34px; min-height:34px; box-shadow:none; font:inherit; align-items:center; justify-content:center; width:34px; height:34px; padding:7px; border:1px solid transparent; border-radius:9px; background:transparent; color:var(--sub,#5a6b80); cursor:pointer; }
@@ -17,3 +17,10 @@
 .tabs::-webkit-scrollbar { height: 4px; }
 .tabs::-webkit-scrollbar-thumb { background: var(--line, #d8dee8); border-radius: 999px; }
 .tabs::-webkit-scrollbar-button { display: none; }
+
+/* Shared icon tabs */
+.tabs.tabs.icons :is(button,a)[role=tab] { flex:1 0 50px; display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; border:0; border-bottom:3px solid transparent; background:transparent; color:inherit; cursor:pointer; }
+.tabs.tabs.icons :is(button,a)[aria-selected=true] { border-bottom-color:var(--teal,#0ea5a0); color:var(--teal,#0ea5a0); }
+.tabs.tabs.icons button:disabled { opacity:.3; filter:grayscale(1); cursor:default; }
+.tabs.icons svg { width:24px; height:24px; flex-shrink:0; }
+.tabs.icons small { font-size:11px; }

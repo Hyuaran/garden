@@ -1,3 +1,4 @@
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { canView, readViewPermissions, viewPermissionContext, ViewPermissionError } from "@/lib/auth/view-permission.server";
 import { effectivePermission } from "@/lib/auth/view-permission";
 import ViewPermissionButton from "@/app/system/_components/ViewPermissionButton/ViewPermissionButton";
@@ -42,7 +43,7 @@ export default async function OnboardingPage({ searchParams = Promise.resolve({}
     message = error instanceof OnboardingError ? error.message : "入社手続きを読み込めませんでした。時間をおいて、もう一度お試しください。";
   }
   return <div className={styles.pageShell}>
-    <header className={styles.header}><SystemBreadcrumb items={[{ label: "入社手続き" }]} /><h1>入社手続き</h1></header>
+    <header className={styles.header}><SystemBreadcrumb items={[{ label: "入社手続き" }]} /><SystemViewHeading showActions={tabs.length <= 1} actions={<ViewPermissionButton key={tab} pageKey="system-onboarding" tabKey={tab} tabLabel={activeLabel} admin={context.viewer.role === "super_admin"} canAdd={canAdd} />}><h1>入社手続き</h1></SystemViewHeading></header>
     <SystemTabs aria-label="入社手続き" actions={<ViewPermissionButton key={tab} pageKey="system-onboarding" tabKey={tab} tabLabel={activeLabel} admin={context.viewer.role === "super_admin"} canAdd={canAdd} />}>{tabs.map(item => <Link key={item.id} role="tab" aria-selected={tab === item.id} href={`/system/onboarding?tab=${item.id}`} scroll={false}>{item.label}</Link>)}</SystemTabs>
     {tab === "self" && (initial ? <OnboardingClient key={`${initial.status}-${initial.submittedAt ?? "draft"}`} initial={initial} />
       : <section className={styles.panel} role="status"><h2>入社手続きのご案内</h2><p>{message}</p></section>)}

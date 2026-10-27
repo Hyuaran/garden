@@ -55,7 +55,7 @@ describe('Bloom / Tree 閲覧設定',()=>{
   expect(bloomTreePageKey('/tree/login')).toBeUndefined();
  });
  it('migration・書き込み・cron の境界',()=>{
-  const sql=readFileSync('supabase/migrations/20261027000448_bloom_tree_view_permissions.sql','utf8');
+  const sql=['20261027000448_bloom_tree_view_permissions.sql','20261027000454_tree_tab_view_scopes.sql'].map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')).join('\n');
   for(const s of BLOOM_TREE_VIEW_SCOPES)expect(sql).toContain(`('${s.pageKey}','${s.tabKey}','${s.label}',`);
   expect(sql).toContain("check (page_key not like 'bloom-%' or viewers_can_add=false)");
   expect(sql).not.toMatch(/for (insert|update|delete)/i);

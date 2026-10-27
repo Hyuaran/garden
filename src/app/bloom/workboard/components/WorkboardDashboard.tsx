@@ -128,6 +128,7 @@ export default function WorkboardDashboard() {
       <ShellLayoutStyle />
       <div className={styles.page}>
         <PageHeader
+          titleAddon={<span style={{ display: "inline-flex" }}><SystemViewButton /></span>}
           title="ワークボード"
           titleJp="今日の動きを、見える化"
           subtitle="業務の作業状況・優先度・進捗を一望"
@@ -138,11 +139,7 @@ export default function WorkboardDashboard() {
           <button type="button" className={styles.actionPill}><span>◎</span> 本日の集中業務</button>
         </div>
 
-        <nav className={styles.tabs} aria-label="workboard views">
-          {allowedTab('today') && <button type="button" className={cx(styles.tab, styles.tabActive)}>ワークボード</button>}
-          {allowedTab('weekly') && <button type="button" className={styles.tab}>週次</button>}
-          {allowedTab('members') && <button type="button" className={styles.tab}>メンバー別</button>}
-        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /></span></nav>
+        
 
         <div className={styles.dashboard}>
           {allowedTab('today') && (<section className={cx(styles.card, styles.running)} aria-labelledby="workboard-running">

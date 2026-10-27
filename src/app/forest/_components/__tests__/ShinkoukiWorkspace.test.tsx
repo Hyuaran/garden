@@ -83,6 +83,7 @@ function mockForestState(role: "admin" | "viewer" = "admin") {
 describe("ShinkoukiWorkspace", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState(null, "", "/forest/shinkouki");
   });
 
   it("renders overview cards and links to the company page", () => {
@@ -101,9 +102,11 @@ describe("ShinkoukiWorkspace", () => {
     mockForestState("admin");
 
     render(<ShinkoukiWorkspace mode="detail" companyId="hualang" />);
-    fireEvent.click(screen.getByRole("button", { name: "期の切り替え" }));
+    fireEvent.click(screen.getByRole("tab", { name: "期の切り替え" }));
 
     expect(screen.getByTestId("rollover-form")).toHaveTextContent("hualang");
+    expect(new URLSearchParams(window.location.search).get("tab")).toBe("rollover");
+    expect(screen.getAllByRole("tablist")).toHaveLength(1);
   });
 
   it("keeps viewer users read-only", () => {

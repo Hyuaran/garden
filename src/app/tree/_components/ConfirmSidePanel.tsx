@@ -1,4 +1,7 @@
 "use client";
+import ScopedTabs, { TabHeadingAction } from "@/app/_components/ScopedTabs";
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+const panelTabs = [{ key: "toss", label: "トス" }, { key: "confirm", label: "前後確" }];
 
 /**
  * Garden-Tree 前確・後確・トス待ちサイドパネル
@@ -138,7 +141,7 @@ function CardItem({
 }
 
 export function ConfirmSidePanel({
-  activeTab,
+  activeTab: selectedTab,
   onTabSelect,
   confirmQueue,
   tossQueue,
@@ -146,6 +149,9 @@ export function ConfirmSidePanel({
   onSelectItem,
   onNavigate,
 }: ConfirmSidePanelProps) {
+  const { allowedTab } = useSystemView();
+  const visibleTabs = panelTabs.filter(tab => allowedTab(tab.key));
+  const activeTab = selectedTab === null ? null : visibleTabs.find(tab => tab.key === selectedTab)?.key ?? visibleTabs[0]?.key ?? null;
   const isOpen = activeTab !== null;
 
   const maeList = confirmQueue.filter((c) => c.type === "前確");
@@ -243,7 +249,7 @@ export function ConfirmSidePanel({
                   color: activeTabData?.color || C.darkGreen,
                 }}
               >
-                {activeTabData?.label || ""}
+                {activeTabData?.label || ""}<TabHeadingAction items={panelTabs} active={activeTab ?? undefined} />
               </div>
               <button
                 onClick={() => onTabSelect(null)}
@@ -265,6 +271,7 @@ export function ConfirmSidePanel({
               </button>
             </div>
 
+            {isOpen && <ScopedTabs items={panelTabs} active={activeTab ?? undefined} onChange={onTabSelect} label="確認待ち" />}
             {/* サマリー */}
             {activeTab === "confirm" && (
               <div style={{ display: "flex", gap: 6 }}>
@@ -604,96 +611,7 @@ export function ConfirmSidePanel({
         </div>
       </div>
 
-      {/* 右端の縦タブ */}
-      <div
-        style={{
-          position: "fixed",
-          right: 0,
-          top: "50%",
-          transform: "translateY(-50%)",
-          zIndex: 201,
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-        }}
-      >
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <div
-              key={tab.id}
-              onClick={() => onTabSelect(isActive ? null : tab.id)}
-              onMouseEnter={(e) => {
-                if (!isActive)
-                  e.currentTarget.style.background = `${tab.bgAlpha}1)`;
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive)
-                  e.currentTarget.style.background = `${tab.bgAlpha}0.85)`;
-              }}
-              style={{
-                width: TAB_WIDTH,
-                padding: "14px 4px",
-                background: isActive
-                  ? tab.color
-                  : `${tab.bgAlpha}0.85)`,
-                backdropFilter: "blur(12px)",
-                borderRadius: "10px 0 0 10px",
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-                boxShadow: isActive
-                  ? `-3px 0 16px ${tab.color}40`
-                  : "-2px 0 12px rgba(0,0,0,0.08)",
-                transition: "all 0.2s ease",
-                border: isActive
-                  ? `2px solid ${tab.color}`
-                  : "2px solid transparent",
-                borderRight: "none",
-              }}
-            >
-              <span
-                style={{
-                  writingMode: "vertical-rl",
-                  textOrientation: "mixed",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: "#fff",
-                  letterSpacing: 2,
-                  fontFamily: "'Noto Sans JP', sans-serif",
-                }}
-              >
-                {tab.shortLabel}
-              </span>
-              {tab.count > 0 && (
-                <span
-                  style={{
-                    minWidth: 18,
-                    height: 18,
-                    borderRadius: "50%",
-                    background: isActive
-                      ? "rgba(255,255,255,0.3)"
-                      : "#fff",
-                    color: isActive ? "#fff" : tab.color,
-                    fontSize: 10,
-                    fontWeight: 800,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {tab.count}
-                </span>
-              )}
-              <span style={{ fontSize: 12, color: "#fff" }}>
-                {isActive ? "▶" : "◀"}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {visibleTabs.length > 0 && <button type="button" aria-label={isOpen ? "確認待ちを閉じる" : "確認待ちを開く"} onClick={() => onTabSelect(isOpen ? null : visibleTabs[0]?.key ?? null)} style={{ position: "fixed", right: 0, top: "50%", zIndex: 201, width: TAB_WIDTH, padding: "14px 4px" }}>確認待ち {tossQueue.length + confirmQueue.length}</button>}
 
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
     </>

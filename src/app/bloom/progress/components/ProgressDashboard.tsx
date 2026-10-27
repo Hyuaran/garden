@@ -1,5 +1,6 @@
 "use client";
-import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
+import { useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
 
@@ -88,9 +89,9 @@ function periodStartDate(period: string) {
 export default function ProgressDashboard() {
   const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, lockAndLogout } = useBloomState();
-  const [selectedTab, setActiveTab] = useState<ProgressTab>("overview");
+  const [selectedTab, setActiveTab] = useUrlTab<ProgressTab>("overview");
   const { allowedTab } = useSystemView();
-  const activeTab = allowedTab(selectedTab) ? selectedTab : tabs.find(t => allowedTab(t.key))?.key;
+  const activeTab = tabs.some(t => t.key === selectedTab && allowedTab(t.key)) ? selectedTab : tabs.find(t => allowedTab(t.key))?.key;
   const [historyModule, setHistoryModule] = useState("すべて");
   const [historyWorkstyle, setHistoryWorkstyle] = useState("すべて");
   const [historyPeriod, setHistoryPeriod] = useState("月");
@@ -124,6 +125,7 @@ export default function ProgressDashboard() {
       <div className={styles.page}>
         <div className={styles.headerWrap}>
           <PageHeader
+          titleAddon={<TabHeadingAction items={tabs} active={activeTab} />}
             title="Garden 開発進捗"
             titleJp="庭の育ち"
             subtitle="12モジュールの育ち方を、一望に"
@@ -131,18 +133,7 @@ export default function ProgressDashboard() {
           />
         </div>
 
-        <nav className={styles.tabs} aria-label="progress sections">
-          {tabs.filter(tab => allowedTab(tab.key)).map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={cx(styles.tab, activeTab === tab.key && styles.tabActive)}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /><SystemViewButton tabKey={activeTab} /></span></nav>
+        <ScopedTabs items={tabs} active={activeTab} onChange={key => setActiveTab(key as ProgressTab)} label="progress sections" />
 
         {activeTab === "overview" && <OverviewTab />}
         {activeTab === "modules" && <ModulesTab />}

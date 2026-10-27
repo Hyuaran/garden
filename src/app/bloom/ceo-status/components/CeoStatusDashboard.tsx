@@ -1,5 +1,6 @@
 "use client";
-import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
+import { useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
 
@@ -118,9 +119,9 @@ function ConsolidatedChartSvg({ chart }: { chart: ConsolidatedChart }) {
 export default function CeoStatusDashboard() {
   const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, loading, lockAndLogout } = useBloomState();
-  const [selectedTab, setActiveTab] = useState<CeoStatusTab>("overview");
+  const [selectedTab, setActiveTab] = useUrlTab<CeoStatusTab>("overview");
   const { allowedTab } = useSystemView();
-  const activeTab = allowedTab(selectedTab) ? selectedTab : TABS.find(t => allowedTab(t.key))?.key;
+  const activeTab = TABS.some(t => t.key === selectedTab && allowedTab(t.key)) ? selectedTab : TABS.find(t => allowedTab(t.key))?.key;
   const previewRole = useSyncExternalStore(subscribePreviewRole, readPreviewRole, () => null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -146,26 +147,14 @@ export default function CeoStatusDashboard() {
     >
       <div className={styles.page}>
         <PageHeader
+          titleAddon={<TabHeadingAction items={TABS.map(tab => ({ key: tab.key, label: tab.jp }))} active={activeTab} />}
           title="経営状況"
           titleJp="経営の全景を、一望に"
           subtitle="経営判断のための統合ダッシュボード"
           accessBadge={{ icon: "👑", label: "限定公開 admin 3名のみ閲覧可能" }}
         />
 
-        <nav className={styles.tabNav} role="tablist" aria-label="CEO status tabs">
-          {TABS.filter(tab => allowedTab(tab.key)).map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              role="tab"
-              className={cx(styles.tabItem, activeTab === tab.key && styles.tabItemActive, tab.key === "settings" && styles.tabItemSettings)}
-              onClick={() => switchTab(tab.key)}
-              aria-selected={activeTab === tab.key}
-            >
-              <span className={styles.tabItemJp}>{tab.jp}</span>
-            </button>
-          ))}
-        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /><SystemViewButton tabKey={activeTab} /></span></nav>
+        <ScopedTabs items={TABS.map(tab => ({ key: tab.key, label: tab.jp }))} active={activeTab} onChange={key => switchTab(key as CeoStatusTab)} label="CEO status tabs" />
 
         <div ref={contentRef}>
           {loading && !previewRole ? (

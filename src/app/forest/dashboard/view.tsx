@@ -1,8 +1,10 @@
 "use client";
+import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
+const dashboardTabs = [{ key: "overview", label: "概要" }, { key: "matrix", label: "6法人マトリクス" }];
 
-import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
@@ -19,8 +21,8 @@ type DashboardTab = "overview" | "matrix";
 export default function ForestDashboardPage() {
   const router = useRouter();
   const { allowedTab } = useSystemView();
-  const [selectedTab, setActiveTab] = useState<DashboardTab>("overview");
-  const activeTab = allowedTab(selectedTab) ? selectedTab : allowedTab("overview") ? "overview" : "matrix";
+  const [selectedTab, setActiveTab] = useUrlTab<DashboardTab>("overview");
+  const activeTab = dashboardTabs.find(t => t.key === selectedTab && allowedTab(t.key))?.key ?? dashboardTabs.find(t => allowedTab(t.key))?.key;
   const {
     loading,
     isAuthenticated,
@@ -58,10 +60,12 @@ export default function ForestDashboardPage() {
   }
 
   if (!isUnlocked) return null;
+  if (!activeTab) return <AccessDenied />;
 
   return (
     <div className={styles.pageStack}>
       <PageHeader
+        titleAddon={<TabHeadingAction items={dashboardTabs} active={activeTab} />}
         title="ダッシュボード"
         subtitle="グループ全体の財務状況を俯瞰できる経営ダッシュボードです。主要指標と進行状況をリアルタイムで確認できます。"
         accessBadge={{ icon: "🌱", label: "Forest" }}
@@ -69,29 +73,7 @@ export default function ForestDashboardPage() {
         favoriteIcon="/themes/garden-shell/images/icons_bloom/orb_forest.png"
       />
 
-      <div className={styles.dashboardTabs} role="tablist" aria-label="Forest dashboard tabs">
-        <button
-          type="button"
-          role="tab"
-          hidden={!allowedTab("overview")}
-          aria-selected={activeTab === "overview"}
-          className={`${styles.dashboardTab} ${activeTab === "overview" ? styles.dashboardTabActive : ""}`}
-          onClick={() => setActiveTab("overview")}
-        >
-          概要
-        </button>
-        <button
-          type="button"
-          role="tab"
-          hidden={!allowedTab("matrix")}
-          aria-selected={activeTab === "matrix"}
-          className={`${styles.dashboardTab} ${activeTab === "matrix" ? styles.dashboardTabActive : ""}`}
-          onClick={() => setActiveTab("matrix")}
-        >
-          6法人マトリクス
-        </button>
-        <span style={{ marginLeft: "auto" }}><SystemViewButton tabKey={activeTab} /></span>
-      </div>
+      <ScopedTabs items={dashboardTabs} active={activeTab} onChange={key => setActiveTab(key as DashboardTab)} label="Forest dashboard tabs" />
 
       {activeTab === "overview" ? (
         <>

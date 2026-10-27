@@ -1,15 +1,17 @@
 "use client";
-import type { HTMLAttributes, ReactNode } from "react";
+import { Children, type HTMLAttributes, type ReactNode } from "react";
 import styles from "./system-tabs.module.css";
 
 type Props = HTMLAttributes<HTMLDivElement> & {
   /** タブの行の右端に置く操作（並び替え・設定などの線画アイコン）。下線はタブと共通で右端まで続く */
   actions?: ReactNode;
+  variant?: "text" | "icons";
 };
 
 /** Shared panel navigation. Children retain their handlers, IDs and link destinations. */
-export default function SystemTabs({ children, className, actions, ...props }: Props) {
-  const tablist = <div role="tablist" {...props} className={[styles.tabs, actions ? styles.inRow : "", className].filter(Boolean).join(" ")}>{children}</div>;
+export default function SystemTabs({ children, className, actions, variant = "text", ...props }: Props) {
+  if (Children.toArray(children).length <= 1) return null;
+  const tablist = <div role="tablist" {...props} className={[styles.tabs, variant === "icons" ? styles.icons : "", actions ? styles.inRow : "", className].filter(Boolean).join(" ")}>{children}</div>;
   if (!actions) return tablist;
   return <div className={styles.row}>{tablist}<div className={styles.actions}>{actions}</div></div>;
 }

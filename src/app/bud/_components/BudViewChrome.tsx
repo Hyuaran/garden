@@ -11,8 +11,9 @@ export function BudViewChrome({ children, tabKey }: { children: ReactNode; tabKe
   const [active, setActive] = useState(tabKey ?? "");
   useEffect(() => {
     const node = root.current;
-    if (!node || !state) return;
+    if (!node || !state || node.querySelector("[data-bud-managed-tabs]")) return;
     const update = () => {
+      if (node.querySelector("[data-bud-managed-tabs]")) { setSlot(null); return; }
       const nav = node.querySelector<HTMLElement>(".tab-nav, [role=tablist]");
       const heading = node.querySelector<HTMLElement>("h1");
       const parent = nav ?? heading?.parentElement;

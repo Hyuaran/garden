@@ -19,6 +19,7 @@ const longResponse = {
 
 describe("CallMetricsClient", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/system/call-metrics");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => response }));
   });
   it("renders the portal and switches across all four tabs", async () => {

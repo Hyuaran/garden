@@ -1,9 +1,11 @@
 "use client";
+import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
+const workspaceTabs = [{ key: "numbers", label: "数値更新" }, { key: "rollover", label: "期の切り替え" }];
 
-import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import { C } from "../_constants/colors";
 import type { Company, Shinkouki } from "../_constants/companies";
@@ -137,57 +139,6 @@ function ShinkoukiSummary({ company, shinkouki }: CompanyPair) {
   );
 }
 
-function TabButtons({
-  active,
-  onChange,
-  disabled,
-}: {
-  active: Tab;
-  onChange: (tab: Tab) => void;
-  disabled: boolean;
-}) {
-  const { allowedTab } = useSystemView();
-  const items: { key: Tab; label: string }[] = [
-    { key: "numbers", label: "数値更新" },
-    { key: "rollover", label: "期の切り替え" },
-  ];
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: 4,
-        borderBottom: `1px solid ${C.mintBg}`,
-        marginBottom: 18,
-      }}
-    >
-      {items.filter(item => allowedTab(item.key)).map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          onClick={() => onChange(item.key)}
-          disabled={disabled}
-          style={{
-            padding: "10px 14px",
-            border: "none",
-            background: "transparent",
-            borderBottom:
-              active === item.key ? `2px solid ${C.midGreen}` : "2px solid transparent",
-            color: active === item.key ? C.midGreen : C.textSub,
-            fontSize: 13,
-            fontWeight: active === item.key ? 700 : 500,
-            cursor: disabled ? "not-allowed" : "pointer",
-            opacity: disabled ? 0.55 : 1,
-          }}
-        >
-          {item.label}
-        </button>
-      ))}
-      <span style={{ marginLeft: "auto" }}><SystemViewButton tabKey={active} /></span>
-    </div>
-  );
-}
-
 function ReadOnlyNotice({ isAdmin }: { isAdmin: boolean }) {
   if (isAdmin) return null;
   return (
@@ -211,19 +162,17 @@ function CompanyEditor({
   company,
   shinkouki,
   activeTab,
-  onTabChange,
   isAdmin,
   refreshData,
   compact,
 }: CompanyPair & {
   activeTab: Tab;
-  onTabChange: (tab: Tab) => void;
   isAdmin: boolean;
   refreshData: () => Promise<void>;
   compact?: boolean;
 }) {
   const { allowedTab } = useSystemView();
-  activeTab = allowedTab(activeTab) ? activeTab : allowedTab("numbers") ? "numbers" : "rollover";
+  if (!activeTab || !allowedTab(activeTab)) return null;
   return (
     <section style={{ ...panelStyle, padding: compact ? 20 : 24 }}>
       <div
@@ -254,7 +203,6 @@ function CompanyEditor({
         </div>
 
         <div>
-          <TabButtons active={activeTab} onChange={onTabChange} disabled={!isAdmin || !shinkouki} />
           {!shinkouki ? (
             <div style={{ color: FOREST_THEME.textMuted, fontSize: 13 }}>
               進行期データが見つかりません。
@@ -296,7 +244,9 @@ export function ShinkoukiWorkspace({ mode, companyId }: Props) {
     forestUser,
     refreshData,
   } = useForestState();
-  const [tabs, setTabs] = useState<Record<string, Tab>>({});
+  const [selectedTab, setActiveTab] = useUrlTab<Tab>("numbers");
+  const { allowedTab } = useSystemView();
+  const activeTab = workspaceTabs.find(t => t.key === selectedTab && allowedTab(t.key))?.key ?? workspaceTabs.find(t => allowedTab(t.key))?.key;
 
   const isAdmin = isForestAdmin(forestUser);
   const pairs = useMemo<CompanyPair[]>(
@@ -333,9 +283,6 @@ export function ShinkoukiWorkspace({ mode, companyId }: Props) {
 
   if (!isUnlocked) return null;
 
-  const setCompanyTab = (id: string, tab: Tab) => {
-    setTabs((current) => ({ ...current, [id]: tab }));
-  };
 
   return (
     <div className={styles.pageStack}>
@@ -346,7 +293,7 @@ export function ShinkoukiWorkspace({ mode, companyId }: Props) {
               Garden Forest
             </div>
             <h2 style={{ margin: "4px 0 6px", color: C.darkGreen, fontSize: 24 }}>
-              進行期の更新
+              進行期の更新 <TabHeadingAction items={workspaceTabs} active={activeTab} />
             </h2>
             <p style={{ margin: 0, color: FOREST_THEME.textSecondary, fontSize: 13 }}>
               進行期の数字を更新する画面です。確定期の閲覧は既存ダッシュボードを使います。
@@ -370,6 +317,8 @@ export function ShinkoukiWorkspace({ mode, companyId }: Props) {
           </Link>
         </div>
       </section>
+
+      <ScopedTabs items={workspaceTabs} active={activeTab} onChange={key => setActiveTab(key as Tab)} label="進行期の更新" />
 
       {mode === "detail" && selected && (
         <div style={{ ...panelStyle, padding: "12px 16px", display: "flex", gap: 12, alignItems: "center" }}>
@@ -424,8 +373,7 @@ export function ShinkoukiWorkspace({ mode, companyId }: Props) {
             key={company.id}
             company={company}
             shinkouki={row}
-            activeTab={tabs[company.id] ?? "numbers"}
-            onTabChange={(tab) => setCompanyTab(company.id, tab)}
+            activeTab={activeTab as Tab}
             isAdmin={isAdmin}
             refreshData={refreshData}
             compact={mode === "overview"}

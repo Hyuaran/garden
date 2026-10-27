@@ -2,12 +2,7 @@
 .board header{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .board h1{font-size:30px;font-weight:700;margin:16px 0}
 .board h2{font-size:17px;margin:0}
-.tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--line);margin:20px 0;gap:2px}
-.board .tabs button[role=tab]{flex:1 0 50px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 5px;border:0;border-bottom:3px solid transparent;background:transparent;color:inherit;cursor:pointer}
-.board .tabs button[aria-selected=true]{border-bottom-color:var(--teal);color:var(--teal)}
-.tabs button:disabled{opacity:.3;filter:grayscale(1);cursor:default}
-.tabs svg,.module svg{width:24px;height:24px;flex-shrink:0}
-.tabs small{font-size:11px}
+.module svg{width:24px;height:24px;flex-shrink:0}
 .module{display:flex;align-items:center;gap:6px}
 .progress{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:24px 0}
 .card{padding:22px;border:1px solid var(--line);background:var(--card);border-radius:12px;margin:18px 0;scroll-margin-top:24px}
@@ -36,3 +31,5 @@
 .group{margin:18px 0}.group>summary{display:flex;align-items:center;gap:6px;list-style:none;cursor:pointer}.group>summary::-webkit-details-marker{display:none}.group>summary svg{width:20px;height:20px}.group[open]>summary .plusVertical{display:none}
 
 .board button.clearChoice{justify-self:start;padding:4px 8px;font-size:12px;background:transparent}
+
+.board button[role=tab]:disabled{opacity:.5;cursor:not-allowed}

@@ -1,3 +1,4 @@
+import { SystemViewProvider } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { applicant } from "@/lib/sprout/model";
@@ -7,7 +8,10 @@ vi.mock("./actions", () => ({ loadSprout: m.load, loadApplicantDetail: m.detail,
 vi.mock("./sprout-shell", () => ({ default: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 import Sprout from "./sprout";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+
 beforeEach(() => {
+  window.history.replaceState(null, "", "/sprout");
   vi.resetAllMocks();
   const full = applicant({ $id: { value: "42" }, 従業員名_姓名: { value: "山田 花子" }, 連絡先_ハイフンなし: { value: "09012345678" } });
   const { raw: _raw, ...summary } = full;
@@ -38,4 +42,11 @@ it("keeps only the name and phone search", async () => {
  await screen.findByRole("button", {name:"山田 花子"});
  expect(screen.getAllByRole("searchbox")).toHaveLength(1);
  expect(screen.getByText("名前・電話で探す")).toBeInTheDocument();
+});
+
+it("hides a single permitted tab and keeps the gear beside the heading", async () => {
+ render(<SystemViewProvider value={{ pageKey: "sprout", admin: true, canAdd: false, tabs: ["applicants", "interviews", "training"].map(key => ({key, label: key, allowed: key === "applicants", canAdd: false})) }}><Sprout /></SystemViewProvider>);
+ await screen.findByRole("button", {name:"山田 花子"});
+ expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+ expect(screen.getByRole("heading", {name:"採用管理"})).toContainElement(screen.getByRole("button", {name:"見られる人の設定"}));
 });

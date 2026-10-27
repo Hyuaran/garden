@@ -14,7 +14,7 @@ import {
   digestGoals,
   digestMetrics,
   digestMonth,
-  digestTabs,
+
   monthlyHighlights,
   progressActual,
   progressTarget,
@@ -151,6 +151,7 @@ export default function MonthlyDigestDashboard() {
       <div className={styles.page}>
         <div className={styles.headerWrap}>
           <PageHeader
+          titleAddon={<span style={{ display: "inline-flex" }}><SystemViewButton /></span>}
             title="月次まとめ"
             titleJp="一月の歩みを、振り返る"
             subtitle="Garden Series / Bloom 配信"
@@ -162,13 +163,7 @@ export default function MonthlyDigestDashboard() {
           </div>
         </div>
 
-        <nav className={styles.tabs} aria-label="monthly digest views">
-          {digestTabs.filter(tab => allowedTab(tab.english)).map((tab) => (
-            <button key={tab.label} type="button" className={cx(styles.tab, tab.active && styles.tabActive)}>
-              {tab.label}
-            </button>
-          ))}
-        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /></span></nav>
+        
 
         {allowedTab('Summary') && (<section className={styles.cover} aria-labelledby="monthly-cover">
           <h2 id="monthly-cover">2026 年 4 月 月次まとめ</h2>

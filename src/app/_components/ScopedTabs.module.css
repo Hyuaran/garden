@@ -1,0 +1,8 @@
+/* Bloom・Forest・Leaf・Tree は外枠が自分の配色で描くので、タブの文字と線はその画面の文字色から作る（Garden の明暗に引っぱられて読めなくならないように） */
+.scoped {
+  --sub: color-mix(in srgb, currentColor 62%, transparent);
+  --heading: currentColor;
+  --line: color-mix(in srgb, currentColor 18%, transparent);
+  min-width: 0;
+  max-width: 100%;
+}

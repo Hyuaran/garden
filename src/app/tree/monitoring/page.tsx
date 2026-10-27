@@ -1,5 +1,8 @@
 "use client";
-import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
+import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
+const monitoringTabs = [{ key: "list", label: "一覧" }, { key: "seat", label: "座席表" }];
+
 
 /**
  * Garden-Tree モニタリング画面 (/tree/monitoring)
@@ -45,7 +48,7 @@ type SeatZone = {
   footerSeat?: string;
 };
 
-type FilterKey = "all" | "toss" | "closer" | "seat";
+type FilterKey = "all" | "toss" | "closer";
 
 /* ---------- デモデータ ---------- */
 
@@ -139,7 +142,10 @@ function SeatCell({ emp }: { emp: Employee | null }) {
 /* ---------- メインコンポーネント ---------- */
 
 export default function MonitoringPage() {
-  const [monFilter, setMonFilter] = useState<FilterKey>("seat");
+  const [monFilter, setMonFilter] = useState<FilterKey>("all");
+  const [selectedTab, setActiveTab] = useUrlTab<string>("seat");
+  const { allowedTab } = useSystemView();
+  const activeTab = monitoringTabs.find(t => t.key === selectedTab && allowedTab(t.key))?.key ?? monitoringTabs.find(t => allowedTab(t.key))?.key;
   const [showSeatConfig, setShowSeatConfig] = useState(false);
   const seatConfigRef = useRef<HTMLDivElement>(null);
 
@@ -169,19 +175,19 @@ export default function MonitoringPage() {
     { key: "all", label: "全員", c: C.textDark },
     { key: "toss", label: "トス", c: "#c44a4a" },
     { key: "closer", label: "クローザー", c: C.gold },
-    { key: "seat", label: "座席表", c: "#3478c6" },
   ];
 
   return (
     <div style={{ padding: "24px 40px 80px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ position: "relative", marginBottom: 20 }}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>📊 モニタリング</h1><SystemViewButton /></div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><h1 style={{fontSize:18,margin:0}}>📊 モニタリング</h1><TabHeadingAction items={monitoringTabs} active={activeTab} /></div>
         <div style={{ paddingTop: 8 }} />
       </div>
 
+      <ScopedTabs items={monitoringTabs} active={activeTab} onChange={setActiveTab} label="モニタリング" />
       {/* フィルタ + ステータスサマリー */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-        <div style={{ display: "flex", gap: 8 }}>
+        {activeTab === "list" && <div style={{ display: "flex", gap: 8 }}>
           {filters.map((f) => (
             <button
               key={f.key}
@@ -197,7 +203,7 @@ export default function MonitoringPage() {
               {f.label}
             </button>
           ))}
-        </div>
+        </div>}
         <div style={{ display: "flex", gap: 8 }}>
           {(["架電中", "通話中", "入力中", "待機中", "離席中", "休憩中"] as EmployeeStatus[]).map((s) => {
             const si = statusIcon(s);
@@ -214,7 +220,7 @@ export default function MonitoringPage() {
       </div>
 
       {/* 座席表モード */}
-      {monFilter === "seat" ? (
+      {!activeTab ? <p>閲覧権限がありません</p> : activeTab === "seat" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {SEAT_LAYOUT.map((zone) => (
             <GlassPanel key={zone.id} style={{ padding: 16 }}>

@@ -17,7 +17,7 @@ describe("expense presentation", () => {
   expect(screen.getByRole("link", { name: "Bud" })).toHaveAttribute("href", "/bud/dashboard");
   const tabs = screen.getByRole("tablist");
   expect(tabs.textContent).not.toMatch(/Pending|Final|Booking|Categories/);
-  fireEvent.click(screen.getByRole("button", { name: "仕訳待ち" }));
+  fireEvent.click(screen.getByRole("tab", { name: "仕訳待ち" }));
   expect(document.getElementById("tab-booking")).toHaveClass("active");
   expect(document.getElementById("tab-submit")).not.toHaveClass("active");
  });
@@ -28,7 +28,7 @@ describe("expense presentation", () => {
   expect(review).toContain('label: "承認待ち（経理）"');
   expect(review).toContain('second: "2-digit"');
   expect(review).not.toContain("スマホ申請を確認して承認／差戻し。");
-  expect(read("_components/ExpenseFrame.tsx")).toContain("<SystemTabs");
+  expect(read("_components/ExpenseFrame.tsx")).toContain("injected.navigation");
  });
  it("contains no pictographic characters or serif fonts in presentation sources", () => {
   const files = fs.readdirSync(path.join(process.cwd(), "src/app/bud/expenses/_components")).filter(f => f.endsWith(".tsx") && !f.includes(".test."));

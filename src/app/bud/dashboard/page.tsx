@@ -15,12 +15,10 @@ import { Line } from "react-chartjs-2";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
 
-import { useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { BudGate } from "../_components/BudGate";
 import { useBudState } from "../_state/BudStateContext";
 import {
   companyTabs,
-  dashboardTabs,
   kpis,
   mirrorItems,
   profitTrend,
@@ -42,7 +40,6 @@ function formatRoleLabel(role: string | null): string {
 
 export default function DashboardPage() {
   const { budRole } = useBudState();
-  const { allowedTab } = useSystemView();
 
   return (
     <BudGate>
@@ -56,21 +53,6 @@ export default function DashboardPage() {
             moduleMark="bud"
             favoriteIcon={BUD_ICON}
           />
-
-          <div className={styles.dashboardTabs} role="tablist" aria-label="Bud dashboard tabs">
-            {dashboardTabs.filter(tab => allowedTab(tab.id)).map((tab, index) => (
-              <button
-                data-tab={tab.id}
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={index === 0}
-                className={`${styles.dashboardTab} ${index === 0 ? styles.dashboardTabActive : ""}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
 
           <div className={styles.companyTabs} aria-label="法人別タブ">
             {companyTabs.map((company, index) => (

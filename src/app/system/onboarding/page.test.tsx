@@ -14,7 +14,7 @@ vi.mock("@/lib/auth/view-permission.server", async () => {
  return { viewPermissionContext: async () => ({viewer:{employeeId:"EMP-1",role:mocks.role}}), readViewPermissions:async()=>mocks.settings,
  canView:async(page:string,tab:string,viewer:import("@/lib/auth/view-permission").Viewer)=>resolveCanView(mocks.settings,page,tab,viewer) };
 });
-vi.mock("@/app/system/_components/ViewPermissionButton/ViewPermissionButton",()=>({default:()=>null}));
+vi.mock("@/app/system/_components/ViewPermissionButton/ViewPermissionButton",()=>({default:()=> <button aria-label="見られる人の設定" />}));
 import Page from "./page";
 afterEach(cleanup);
 beforeEach(() => {
@@ -29,14 +29,20 @@ it.each(["toss", "manager", "super_admin"])("%sのタブと本人の進捗を表
   if (role !== "toss") mocks.admin.mockResolvedValue({});
   if (role === "super_admin") mocks.hire.mockResolvedValue({ userId: "admin" });
   render(await Page({}));
-  expect(screen.getAllByRole("tab")).toHaveLength(role === "toss" ? 1 : role === "manager" ? 2 : 4);
-  expect(screen.getByRole("tab", { name: "自分の入社手続き", selected: true })).toHaveAttribute("href", "/system/onboarding?tab=self");
+  if (role === "toss") {
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", {name: "入社手続き"})).toContainElement(screen.getByRole("button", {name: "見られる人の設定"}));
+  } else {
+    expect(screen.getAllByRole("tab")).toHaveLength(role === "manager" ? 2 : 4);
+    expect(screen.getByRole("tab", { name: "自分の入社手続き", selected: true })).toHaveAttribute("href", "/system/onboarding?tab=self");
+  }
   expect(screen.getByRole("progressbar")).toBeInTheDocument();
   expect(mocks.list).not.toHaveBeenCalled();
 });
 it.each(["candidates", "confirmations", "all", "unknown"])("未許可の%sは本人画面", async tab => {
   render(await Page({ searchParams: Promise.resolve({ tab }) }));
-  expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("自分の入社手続き");
+  expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  expect(screen.getByRole("progressbar")).toBeInTheDocument();
   expect(mocks.list).not.toHaveBeenCalled();
 });
 it("一覧指定時は本人データを読まず一覧を表示", async () => {
@@ -52,5 +58,5 @@ it("設定で許可されたタブだけ表示し、拒否したタブのデー�
  mocks.settings=[{page_key:"system-onboarding",tab_key:"",roles:[],employee_ids:[],viewers_can_add:false,updated_by:"admin",updated_at:"2026-10-26"},{page_key:"system-onboarding",tab_key:"all",roles:[],employee_ids:["EMP-1"],viewers_can_add:false,updated_by:"admin",updated_at:"2026-10-26"}];
  mocks.admin.mockResolvedValue({});
  render(await Page({searchParams:Promise.resolve({tab:"self"})}));
- expect(screen.getAllByRole("tab")).toHaveLength(1);expect(mocks.self).not.toHaveBeenCalled();expect(mocks.list).toHaveBeenCalledOnce();
+ expect(screen.queryByRole("tablist")).not.toBeInTheDocument();expect(mocks.self).not.toHaveBeenCalled();expect(mocks.list).toHaveBeenCalledOnce();
 });

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import ManualsHubClient from "./ManualsHubClient";
 import { getManualModules, getVisibleManuals, getVisibleManualDocs } from "./_lib/manuals-registry";
+import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { renderMarkdown } from "./_lib/render-markdown";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 const modules = getManualModules("staff");
@@ -37,4 +38,17 @@ it("keeps the manual hub gear in the tabs row", () => {
   const gear = screen.getByRole("button", { name: "見られる人の設定" });
   expect(screen.getByRole("heading", { name: "マニュアル" })).not.toContainElement(gear);
   expect(screen.getByRole("tablist").parentElement).toContainElement(gear);
+});
+
+it("shows every module in shell order and disables modules without manuals", () => {
+  render(<ManualsHubClient modules={modules} conceptHtml={conceptHtml} selectedTab="soil" />);
+  expect(screen.getAllByRole("tab").map(tab => tab.textContent)).toEqual(["Garden とは", "System", ...GARDEN_SHELL_MODULES.map(module => module.name)]);
+  for (const module of GARDEN_SHELL_MODULES.filter(module => module.id !== "bud")) {
+    const tab = screen.getByRole("tab", { name: module.name });
+    expect(tab).toBeDisabled();
+    expect(tab).toHaveAttribute("title", "まだマニュアルがありません");
+    expect(tab).not.toHaveAttribute("href");
+  }
+  expect(screen.getByRole("tab", { name: "Garden とは" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.queryByRole("tab", { name: "共通" })).not.toBeInTheDocument();
 });

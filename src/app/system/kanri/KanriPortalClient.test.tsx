@@ -286,7 +286,7 @@ describe("KanriPortalClient", () => {
       canWrite={false}
     />);
 
-    expect(screen.getByRole("button", { name: "給与試算" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "表示切替" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "管理表" })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByText("195,000")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "保存" })).not.toBeInTheDocument();

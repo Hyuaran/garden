@@ -1,4 +1,5 @@
 "use client";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import HeaderViewToggle from "@/app/system/_components/HeaderViewToggle";
@@ -373,7 +374,7 @@ export default function SitesHubClient({ data, role }: { data: CorporateSitesDat
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "コーポレートサイト" }]} />
-      <h1>コーポレートサイト</h1>
+      <SystemViewHeading showActions={["sites", "news"].filter(key => allowedTab(key)).length <= 1} actions={<SystemViewButton tabKey={tab} />}><h1>コーポレートサイト</h1></SystemViewHeading>
     </header>
 
     <SystemTabs aria-label="コーポレートサイト表示" actions={<SystemViewButton tabKey={tab} />}>

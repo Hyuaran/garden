@@ -1,7 +1,10 @@
+import { SystemViewProvider } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ManualDetailClient from "./ManualDetailClient";
 import { MANUAL_MODULES, SYSTEM_MANUALS, getVisibleManualDocs } from "./_lib/manuals-registry";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 describe("ManualDetailClient", () => {
   afterEach(() => {
@@ -13,7 +16,7 @@ describe("ManualDetailClient", () => {
     render(<ManualDetailClient module={MANUAL_MODULES[0]} manual={manual} docs={[manual.docs[0]]} selectedDoc={manual.docs[0]} />);
 
     expect(screen.getByRole("heading", { name: "勤怠打刻と KOT 取込" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "操作マニュアル", current: "page" })).toHaveAttribute("href", "/system/manuals/system/kot-attendance?tab=operation");
+    expect(screen.queryByRole("navigation", { name: "資料タブ" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "要点" })).not.toBeInTheDocument();
     expect(screen.getByTitle("勤怠打刻と KOT 取込 操作マニュアル")).toHaveAttribute("src", "/api/system/manuals/system/kot-attendance/1_operation.html?embed=1");
     expect(screen.queryByRole("button", { name: "この資料を差し替える" })).not.toBeInTheDocument();
@@ -128,4 +131,11 @@ it("shows the onboarding flow immediately after operation for staff", () => {
   render(<ManualDetailClient module={MANUAL_MODULES[0]} manual={manual} docs={docs} selectedDoc={docs[1]} />);
   expect(screen.getAllByRole("link").filter(link => link.getAttribute("href")?.includes("?tab=")).map(link => link.textContent)).toEqual(["操作マニュアル", "応募から入社までの流れ"]);
   expect(screen.getByTitle("入社手続き 応募から入社までの流れ")).toHaveAttribute("src", "/api/system/manuals/system/onboarding/5_flow.html?embed=1");
+});
+
+it("puts the only document's settings beside the heading", () => {
+ const manual = SYSTEM_MANUALS[3];
+ render(<SystemViewProvider value={{ pageKey: "system-manuals", admin: true, canAdd: false, tabs: [] }}><ManualDetailClient module={MANUAL_MODULES[0]} manual={manual} docs={[manual.docs[0]]} selectedDoc={manual.docs[0]} /></SystemViewProvider>);
+ expect(screen.queryByRole("navigation", {name: "資料タブ"})).not.toBeInTheDocument();
+ expect(screen.getByRole("heading", {name: manual.name})).toContainElement(screen.getByRole("button", {name: "見られる人の設定"}));
 });

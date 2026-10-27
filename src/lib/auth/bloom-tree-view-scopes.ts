@@ -23,6 +23,8 @@ export const BLOOM_TREE_PAGES = [
   ['tree-feedback-list','/tree/feedback/list','フィードバック一覧'],
 ] as const;
 export const BLOOM_TREE_TABS: Record<string, readonly (readonly [string,string])[]> = {
+  'tree-monitoring': [['list','一覧'],['seat','座席表']],
+  'tree-call': [['toss','トス'],['confirm','前後確']],
   'bloom-blueprint': [['overview','全体'],['modules','モジュール']],
   'bloom-ceo-status': [['overview','全体'],['performance','業績'],['decisions','判断・会議'],['settings','設定']],
   'bloom-progress': [['overview','全体'],['modules','モジュール'],['history','履歴']],

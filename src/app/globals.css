@@ -3508,7 +3508,10 @@ body.home-concept-active {
     color-scheme: dark;
   }
   :where(:root:not([data-theme="light"]) select option) { background-color: #152438; color: #edf4fb; }
+  :where(:root:not([data-theme="light"]) input) { color-scheme: dark; }
 }
+/* 暗い表示では日付・時刻の欄のカレンダーの印も明るくする */
+:where([data-theme="dark"] input, .dark input) { color-scheme: dark; }
 :where(input[type="radio"]) { accent-color: var(--teal, #0f9f97); width: 18px; height: 18px; margin: 0; flex-shrink: 0; }
 :where(.garden-radio) { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 :where(.garden-radio-group) { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }

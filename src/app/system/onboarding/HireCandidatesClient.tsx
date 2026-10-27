@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import Modal from "@/app/system/_components/Modal/Modal";
+import layout from "./HireConfirmation.module.css";
 import HireConfirmationSteps from "./HireConfirmationSteps";
 import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
@@ -14,6 +16,7 @@ type Options = {companies:{company_id:string;company_name:string}[];divisions:{c
 const steps = [["number","社員番号を決める"],["kot","KOT に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
 const stopped = (r:HireCandidate)=>steps.find(([key])=>key!=="filemaker"&&!!r.steps[key]?.error);
 export default function HireCandidatesClient({userId,tab,canWrite = true}:{userId:string;tab:"candidates"|"confirmations";canWrite?:boolean}) {
+ const [reviewId,setReviewId]=useState<string|null>(null);
  const [showNoShow,setShowNoShow]=useState(false), [showComplete,setShowComplete]=useState(false);
  const [resultRows,setResultRows]=useState<string[]>([]);
  useEffect(()=>{
@@ -125,12 +128,19 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  ];
  const confirmationColumns:DataColumn<HireCandidate>[]=[
  {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name,wrap:true,render:r=><div><span>{r.last_name} {r.first_name}</span><p>{r.employee_number}・{r.hire_date} 入社</p>{checklistComplete(r)&&<span>完了</span>}</div>},
- {id:"complete",label:"入社後の確認",type:"number",value:checklistPriority,wrap:true,render:r=><HireConfirmationSteps row={r} canWrite={canWrite&&!busy&&!saving} onRefresh={load} onReconciled={async()=>{setResultRows(old=>old.includes(r.id)?old:[...old,r.id]);await load();}} filemakerCheck={check(r,"filemaker_added","追加済み")} skip={()=>r.checklist?.line_skipped?void toggleChecklist(r,"line_skipped",false):setLineSkip(r)} documents={<>{([["contract","雇用契約書"],["nda","秘密保持誓約書"],["emergency","緊急連絡先"]] as const).map(([key,label])=><div key={key} className={styles.hireMfRow}><span>{label}</span>{check(r,`${key}_sent`,"送った")}{check(r,`${key}_signed`,"締結済み")}</div>)}</>}/>}
+ {id:"complete",label:"①締結",align:"mark",type:"number",value:checklistPriority,render:r=><span className={signaturesComplete(r)?layout.done:layout.pending}>{[r.checklist?.contract_signed,r.checklist?.nda_signed,r.checklist?.emergency_signed].filter(Boolean).length}/3</span>},
+ {id:"line",label:"②LINE",align:"mark",type:"text",value:r=>r.line_verified_at?"確認済み":r.checklist?.line_skipped?"登録しない":"未",render:r=><span className={lineComplete(r)?layout.done:layout.pending}>{r.line_verified_at?"確認済み":r.checklist?.line_skipped?"登録しない":"未"}</span>},
+ {id:"filemaker",label:"③FileMaker",align:"mark",type:"text",value:r=>r.checklist?.filemaker_added?"追加済み":"未",render:r=><span className={r.checklist?.filemaker_added?layout.done:layout.pending}>{r.checklist?.filemaker_added?"追加済み":"未"}</span>},
+ {id:"review",label:"操作",align:"mark",type:"text",value:()=>"",render:r=><button className={layout.reviewButton} onClick={()=>setReviewId(r.id)}>確認する</button>}
  ];
+ const reviewRow=rows.find(r=>r.id===reviewId);
  const candidateRows=rows.filter(r=>r.status==="planned"||r.status==="hiring"||(showNoShow&&r.status==="no_show"));
  const confirmationRows=rows.filter(r=>r.status==="hired"&&(showComplete||resultRows.includes(r.id)||!checklistComplete(r)));
  return <>
  {tab==="confirmations"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>
+ {reviewRow&&<Modal title={`${reviewRow.last_name} ${reviewRow.first_name} さんの入社後の確認`} className={layout.dialog} onClose={()=>setReviewId(null)} actions={<button onClick={()=>setReviewId(null)} data-modal-action="secondary">閉じる</button>}>
+ {((r:HireCandidate)=><HireConfirmationSteps row={r} canWrite={canWrite&&!busy&&!saving} onRefresh={load} onReconciled={async()=>{setResultRows(old=>old.includes(r.id)?old:[...old,r.id]);await load();}} filemakerCheck={check(r,"filemaker_added","追加済み")} skip={()=>r.checklist?.line_skipped?void toggleChecklist(r,"line_skipped",false):setLineSkip(r)} documents={<>{([["contract","雇用契約書"],["nda","秘密保持誓約書"],["emergency","緊急連絡先"]] as const).map(([key,label])=><div key={key} className={styles.hireMfRow}><span>{label}</span>{check(r,`${key}_sent`,"送った")}{check(r,`${key}_signed`,"締結済み")}</div>)}</>}/>)(reviewRow)}
+ </Modal>}
  {lineSkip&&<dialog ref={lineSkipDialog} aria-labelledby="hire-line-skip-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setLineSkip(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setLineSkip(null);}}} data-garden-modal="panel" data-size="sm">
  <h2 id="hire-line-skip-title">公式 LINE を登録しない</h2>
  <p>{lineSkip.last_name} {lineSkip.first_name}さん：ガラケーなどで登録できないため、公式 LINE を登録しない扱いにします</p>
@@ -138,7 +148,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
 <button disabled={!canWrite||busy||!!saving} onClick={()=>{const row=lineSkip;setLineSkip(null);void toggleChecklist(row,"line_skipped",true);}} data-modal-action="primary">登録しない</button></div>
  </dialog>}
  {message&&<p role="alert">{message}</p>}
- <DataTable key="confirmations" rows={confirmationRows} columns={confirmationColumns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"complete",direction:"asc"}}/>
+ <DataTable onRowClick={r=>setReviewId(r.id)} rowClickable={()=>true} key="confirmations" rows={confirmationRows} columns={confirmationColumns} rowKey={r=>r.id} searchPlaceholder="氏名・カナで探す" searchText={r=>[r.last_name+r.first_name,r.last_name+" "+r.first_name,(r.last_name_kana??"")+(r.first_name_kana??""),r.last_name_kana+" "+r.first_name_kana,r.employee_number].join(" ")} defaultSort={{id:"complete",direction:"asc"}}/>
  <label className={styles.hireCheck}><input type="checkbox" checked={showComplete} onChange={e=>saveVisibility(showNoShow,e.target.checked)}/>完了も表示</label>
  </section>}
  {tab==="candidates"&&<section className={styles.hireCandidates} {...CLARITY_MASK}>

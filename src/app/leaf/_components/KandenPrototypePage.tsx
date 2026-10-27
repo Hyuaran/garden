@@ -1,6 +1,6 @@
 "use client";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
-import { useState } from "react";
+import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
 import { LEAF_FOREST_TABS } from "@/lib/auth/leaf-forest-view-scopes";
 
 
@@ -34,7 +34,7 @@ type KandenPrototypePageProps = {
 export default function KandenPrototypePage({ mode }: KandenPrototypePageProps) {
   const activeProto = PROTO[mode];
   const { allowedTab } = useSystemView();
-  const [selected, setSelected] = useState("input");
+  const [selected, setSelected] = useUrlTab<string>("input");
   const tabs = mode === "input" ? LEAF_FOREST_TABS["leaf-kanden-input"].filter(([key]) => allowedTab(key)) : [];
   const tab = tabs.some(([key]) => key === selected) ? selected : tabs[0]?.[0] ?? "";
   const source = activeProto.src + (tab ? `&tab=${tab}` : "");
@@ -47,7 +47,7 @@ export default function KandenPrototypePage({ mode }: KandenPrototypePageProps) 
           subtitle="関西電力業務委託の旧プロトタイプを Garden Shell 内で確認するページです。"
           accessBadge={{ icon: "i", label: "Leaf / 関電" }}
           titleAddon={
-            <>{mode !== "input" && <SystemViewButton />}<LegacyUiNotice
+            <>{mode === "input" ? <TabHeadingAction items={tabs.map(([key, label]) => ({ key, label }))} active={tab} /> : <SystemViewButton />}<LegacyUiNotice
               badgeLabel="旧プロト・新UI切替予定"
               toastTitle="旧プロト・新UI切替予定"
               toastBody="この画面は旧プロトタイプです。新UIへの作り替えを予定しています。"
@@ -65,12 +65,9 @@ export default function KandenPrototypePage({ mode }: KandenPrototypePageProps) 
           <strong>{activeProto.crumb}</strong>
         </nav>
 
-        {mode === "input" && <div role="tablist" aria-label="関電入力" style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          {tabs.map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setSelected(key)}>{label}</button>)}
-          <span style={{ marginLeft: "auto" }}><SystemViewButton tabKey={tab} /></span>
-        </div>}
+        {mode === "input" && <ScopedTabs items={tabs.map(([key, label]) => ({ key, label }))} active={tab} onChange={setSelected} label="関電入力" />}
 
-        <section className={styles.protoShell}>
+        {mode === "input" && !tab ? <p>閲覧権限がありません</p> : <section className={styles.protoShell}>
           <div className={styles.protoToolbar}>
             <strong className={styles.protoTitle}>{activeProto.title}</strong>
             <a className={styles.protoLink} href={source} target="_blank" rel="noreferrer">
@@ -86,7 +83,7 @@ export default function KandenPrototypePage({ mode }: KandenPrototypePageProps) 
               title={activeProto.title}
             />
           </div>
-        </section>
+        </section>}
       </div>
     </LeafShell>
   );

@@ -1,4 +1,6 @@
 "use client";
+import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
@@ -200,7 +202,7 @@ async function readJson(response: Response): Promise<RunResponse> {
 export default function KanriPortalClient({ creatorName, today, initialRuns, initialHolidays, initialProducts, initialTeams, initialPeople, canWrite = true }: Props) {
   const { allowedTab: viewAllowedTab } = useSystemView();
   const allowedTab = (key: string) => viewAllowedTab(key, canWrite || key === "payroll");
-  const [requestedTab, setActiveTab] = useState<"kanri" | "jisseki" | "aporan" | "houhan" | "incentive" | "payroll" | "settings">(canWrite ? "kanri" : "payroll");
+  const [requestedTab, setActiveTab] = useUrlTab<"kanri" | "jisseki" | "aporan" | "houhan" | "incentive" | "payroll" | "settings">(canWrite ? "kanri" : "payroll", key => ["kanri", "jisseki", "aporan", "houhan", "incentive", "payroll", "settings"].includes(key) && allowedTab(key));
   const activeTab = allowedTab(requestedTab) ? requestedTab : (["kanri", "jisseki", "aporan", "houhan", "incentive", "payroll", "settings"] as const).find(allowedTab);
   const [targetDate, setTargetDate] = useState(today);
   const [mode, setMode] = useState<KanriMode>(isMonthEnd(today) ? "closing" : "daily");
@@ -664,7 +666,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
   return <div className={styles.pageShell}>
     <header className={styles.header}>
       <SystemBreadcrumb items={[{ label: "管理表ポータル" }]} />
-      <h1>管理表ポータル</h1>
+      <SystemViewHeading showActions={["kanri", "jisseki", "aporan", "houhan", "incentive", "payroll", "settings"].filter(key => allowedTab(key)).length <= 1} actions={<SystemViewButton tabKey={activeTab} />}><h1>管理表ポータル</h1></SystemViewHeading>
     </header>
     <div className={styles.monitorEntry}>
       <Link href="/system/kanri/display" target="_blank" rel="noreferrer" className={styles.monitorButton}>モニター表示</Link>

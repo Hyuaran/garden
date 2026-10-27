@@ -13,7 +13,7 @@ import { BLOOM_GARDEN_PAGE_MENU } from "../../_components/bloom-garden-menu";
 import { useBloomState } from "../../_state/BloomStateContext";
 import {
   dailyMembers,
-  dailyTabs,
+
   recentReports,
   reportBlocks,
   summaryCounters,
@@ -148,6 +148,7 @@ export default function DailyReportDashboard() {
       <div className={styles.page}>
         <div className={styles.headerWrap}>
           <PageHeader
+          titleAddon={<span style={{ display: "inline-flex" }}><SystemViewButton /></span>}
             title="日報"
             titleJp="一日の積み重ねを綴る"
             subtitle="自分と業務記録 / PDF 出力（記録/集計）"
@@ -158,13 +159,7 @@ export default function DailyReportDashboard() {
           </div>
         </div>
 
-        <nav className={styles.tabs} aria-label="daily report views">
-          {dailyTabs.filter(tab => allowedTab(tab.english)).map((tab) => (
-            <button key={tab.label} type="button" className={cx(styles.tab, tab.active && styles.tabActive)}>
-              {tab.label}
-            </button>
-          ))}
-        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /></span></nav>
+        
 
         <div className={styles.dashboard}>
           {allowedTab('Summary') && (<section className={cx(styles.card, styles.reportCard)} aria-labelledby="daily-report-main">

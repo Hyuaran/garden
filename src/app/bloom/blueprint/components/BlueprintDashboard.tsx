@@ -1,11 +1,12 @@
 "use client";
-import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
+import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
+import { useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
 
 
 import Image from "next/image";
-import { useState } from "react";
+
 
 import GardenShell from "@/app/_components/layout/GardenShell/GardenShell";
 import PageHeader from "@/app/_components/layout/GardenShell/PageHeader";
@@ -40,9 +41,9 @@ function roleLabel(role: string | null) {
 export default function BlueprintDashboard() {
   const canViewMenu = useBloomTreeView();
   const { bloomUser, userEmail, role, lockAndLogout } = useBloomState();
-  const [selectedTab, setActiveTab] = useState<BlueprintTab>("overview");
+  const [selectedTab, setActiveTab] = useUrlTab<BlueprintTab>("overview");
   const { allowedTab } = useSystemView();
-  const activeTab = allowedTab(selectedTab) ? selectedTab : tabs.find(t => allowedTab(t.key))?.key;
+  const activeTab = tabs.some(t => t.key === selectedTab && allowedTab(t.key)) ? selectedTab : tabs.find(t => allowedTab(t.key))?.key;
   const userName = bloomUser?.name ?? userEmail ?? "東海林 美樹";
   const activeMenu = BLOOM_GARDEN_PAGE_MENU.map((item) => ({ ...item, active: item.href === "/bloom/blueprint" }));
 
@@ -70,6 +71,7 @@ export default function BlueprintDashboard() {
       <div className={styles.page}>
         <div className={styles.headerWrap}>
           <PageHeader
+          titleAddon={<TabHeadingAction items={tabs} active={activeTab} />}
             title="Garden 設計図"
             titleJp="庭の今、ひと目で"
             subtitle="12モジュールの構成・役割・運用ルールを一画面で把握"
@@ -84,18 +86,7 @@ export default function BlueprintDashboard() {
           </button>
         </div>
 
-        <nav className={styles.tabs} aria-label="blueprint sections">
-          {tabs.filter(tab => allowedTab(tab.key)).map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={cx(styles.tab, activeTab === tab.key && styles.tabActive)}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton /><SystemViewButton tabKey={activeTab} /></span></nav>
+        <ScopedTabs items={tabs} active={activeTab} onChange={key => setActiveTab(key as BlueprintTab)} label="blueprint sections" />
 
         {activeTab === "overview" && <OverviewTab />}
         {activeTab === "modules" && <ModulesTab />}

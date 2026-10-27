@@ -1,4 +1,6 @@
 "use client";
+import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { useSystemView, SystemViewButton } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
@@ -52,7 +54,7 @@ export default function Sprout() {
   const { allowedTab } = useSystemView();
   const initialTab = ["applicants", "interviews", "training"].find(key => allowedTab(key)) ?? "applicants";
   const [data, setData] = useState<Data>({ applicants: [], hearings: [], sent: [], updated: null });
-  const [tab, setTab] = useState(initialTab), [month, setMonth] = useState(todayJst().slice(0,7));
+  const [tab, setTab] = useUrlTab(initialTab, key => ["applicants", "interviews", "training"].includes(key) && allowedTab(key)), [month, setMonth] = useState(todayJst().slice(0,7));
   const [statuses, setStatuses] = useState<string[]>([]), [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
   type Detail = Awaited<ReturnType<typeof loadApplicantDetail>>;
@@ -103,7 +105,7 @@ export default function Sprout() {
     try { const result = await sendToHire(a.kintone_record_id); setMessage(result.message); if (result.ok) setData(d => ({ ...d, sent: [...d.sent, a.kintone_record_id] })); }
     catch { setMessage("送れませんでした。時間をおいてお試しください"); } finally { setBusy(false); }
   }
-  return <SproutShell current="採用管理"><div className={styles.heading}><SystemBreadcrumb root={{ label: "Sprout", href: "/sprout" }} items={[{ label: "採用管理" }]} /><h1>採用管理</h1><UpdatedStamp label="Kintone取込" date={data.updated} onRefresh={refresh} busy={busy || !loaded} refreshLabel="採用情報を取り込む" /></div>
+  return <SproutShell current="採用管理"><div className={styles.heading}><SystemBreadcrumb root={{ label: "Sprout", href: "/sprout" }} items={[{ label: "採用管理" }]} /><SystemViewHeading showActions={["applicants", "interviews", "training"].filter(key => allowedTab(key)).length <= 1} actions={<SystemViewButton tabKey={tab} />}><h1>採用管理</h1></SystemViewHeading><UpdatedStamp label="Kintone取込" date={data.updated} onRefresh={refresh} busy={busy || !loaded} refreshLabel="採用情報を取り込む" /></div>
       <SystemTabs actions={<SystemViewButton tabKey={tab} />}>{[["applicants", "応募者"], ["interviews", "面接予定"], ["training", "研修予定"]].filter(([id]) => allowedTab(id)).map(([id,label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => { if (tab === id) return; setSelected(null); setLoaded(false); setData({applicants:[],hearings:[],sent:[],updated:null}); setTab(id); }}>{label}</button>)}</SystemTabs>
       <><FilterRow className={styles.filters}>{tab === "applicants" && <BoxSelect label="期間" multiple={false} value={[month]} onChange={v => setMonth(v[0])} options={[{ value: "", label: "すべての期間" }, ...months.map(m => ({ value: m, label: `${m.slice(0,4)}年${Number(m.slice(5))}月` }))]} />}
         <BoxSelect label="状況" value={statuses.length ? statuses : [...new Set(data.applicants.map(a => a.status))]} options={[...new Set(data.applicants.map(a => a.status))].sort().map(s => ({ value: s, label: s || "未設定" }))} onChange={setStatuses} />

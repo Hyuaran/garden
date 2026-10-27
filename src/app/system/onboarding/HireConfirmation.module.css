@@ -1,0 +1,31 @@
+.dialog[data-garden-modal="panel"] { width:min(880px, calc(100vw / var(--garden-zoom, 1) - 32px)) !important; }
+.steps { display:grid; gap:24px; text-align:left; min-width:0; }
+.steps section { min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:12px; }
+.sectionHeading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+.sectionHeading h3 { margin:0; }
+.sectionHeading span { white-space:nowrap; }
+.documents { display:grid; gap:12px; }
+.documents > div { display:grid; grid-template-columns:minmax(120px,1fr) auto auto; gap:12px; }
+.contract { margin:0; padding:16px; min-width:0; border:1px solid var(--line); border-radius:12px; }
+.contract legend { padding:0 6px; }
+.grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.grid > label, .lineActions > label { display:flex; flex-direction:column; gap:6px; min-width:0; text-align:left; font-size:13px; color:var(--sub,var(--ink)); }
+.grid > label:has(textarea), .grid > label:has(input[type="text"]) { grid-column:1 / -1; }
+.grid > label { order:2; font-size:13px !important; color:var(--sub,var(--ink)) !important; }
+.grid > label:nth-child(-n+3) { order:0; }
+.grid > label:has(input[type="date"]) { order:1; }
+.grid > label:has(textarea) { order:3; }
+.grid > label:has(input[type="text"]) { order:4; }
+.grid input, .grid select, .grid textarea, .lineActions input { box-sizing:border-box; width:100%; min-width:0; height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background-color:var(--card); font:inherit; text-align:left; }
+.grid select { padding-right:40px; }
+.grid textarea { height:84px; min-height:84px; resize:vertical; line-height:20px; }
+.lineActions { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+.lineActions > label { width:140px; }
+.steps button, .reviewButton { min-height:44px; padding:10px 16px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); font:inherit; white-space:nowrap; cursor:pointer; }
+.steps section > button { align-self:flex-end; }
+.steps button.primary { background:var(--teal); border-color:var(--teal); color:white; }
+.steps button:disabled { background:var(--line); border-color:var(--line); color:var(--sub,var(--ink)); cursor:not-allowed; opacity:.65; }
+.done { color:var(--teal) !important; font-weight:700; }
+.pending { color:var(--sub,var(--ink)) !important; }
+@media(max-width:768px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:390px) { .grid { grid-template-columns:minmax(0,1fr); } .contract { padding:12px; } .documents > div { grid-template-columns:1fr 1fr; gap:8px; white-space:normal; } .documents > div > span { grid-column:1 / -1; } }

@@ -1,0 +1,203 @@
+"use client";
+
+import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
+import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
+import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
+import { useEffect, useMemo, useState } from "react";
+import { useBudState } from "../../_state/BudStateContext";
+import { supabase } from "../../_lib/supabase";
+import {
+  fetchImportBatches,
+  type BudStatementImportBatchRow,
+} from "../../_lib/statement-queries";
+
+interface BankAccount {
+  account_id: string;
+  bank_name: string;
+  account_number: string;
+}
+
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  rakuten_csv: "楽天銀行",
+  mizuho_csv: "みずほ銀行",
+  paypay_csv: "PayPay 銀行",
+  manual: "手動",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  completed: "完了",
+  partial: "一部成功",
+  failed: "失敗",
+};
+
+const STATUS_BG: Record<string, string> = {
+  completed: "bg-emerald-100 text-emerald-800",
+  partial: "bg-amber-100 text-amber-800",
+  failed: "bg-rose-100 text-rose-800",
+};
+
+export default function StatementsImportsContent() {
+  const { sessionUser } = useBudState();
+  const [batches, setBatches] = useState<BudStatementImportBatchRow[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [bankFilter, setBankFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("root_bank_accounts")
+        .select("account_id, bank_name, account_number")
+        .order("bank_name");
+      if (!cancelled) setBankAccounts((data ?? []) as BankAccount[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    (async () => {
+      try {
+        const data = await fetchImportBatches(bankFilter || undefined);
+        if (!cancelled) setBatches(data);
+      } catch (e) {
+        if (!cancelled) setError((e as Error).message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bankFilter]);
+
+  const bankNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of bankAccounts) {
+      m.set(a.account_id, `${a.bank_name} ${a.account_number}`);
+    }
+    return m;
+  }, [bankAccounts]);
+
+  if (!sessionUser) return null;
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+
+
+      <FilterRow className="mb-3 flex items-center gap-3 bg-white border border-gray-200 rounded p-3">
+        <div className="text-sm">
+          
+          <ChoiceFilter label="銀行" value={bankFilter} onValueChange={value => setBankFilter(value)}>
+            <option value="">すべて</option>
+            {bankAccounts.map((a) => (
+              <option key={a.account_id} value={a.account_id}>
+                {a.bank_name} {a.account_number}
+              </option>
+            ))}
+          </ChoiceFilter>
+        </div>
+      </FilterRow>
+
+      {loading ? (
+        <div className="text-center py-8 text-gray-500">読み込み中…</div>
+      ) : error ? (
+        <div
+          role="alert"
+          className="bg-red-50 border border-red-200 text-red-800 rounded p-4"
+        >
+          {error}
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <StickyTable className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-600 text-xs">
+              <tr>
+                <th className="px-3 py-2 text-left">取込日時</th>
+                <th className="px-3 py-2 text-left">口座</th>
+                <th className="px-3 py-2 text-left">形式</th>
+                <th className="px-3 py-2 text-left">ファイル名</th>
+                <th className="px-3 py-2 text-right">行数</th>
+                <th className="px-3 py-2 text-right">成功</th>
+                <th className="px-3 py-2 text-right">スキップ</th>
+                <th className="px-3 py-2 text-right">エラー</th>
+                <th className="px-3 py-2 text-right">自動照合</th>
+                <th className="px-3 py-2 text-left">状態</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-gray-900">
+              {batches.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="px-3 py-8 text-center text-gray-400 garden-cell-text"
+                  >
+                    取込履歴がありません
+                  </td>
+                </tr>
+              ) : (
+                batches.map((b) => (
+                  <tr key={b.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-xs text-gray-700 garden-cell-fixed">
+                      {new Date(b.imported_at).toLocaleString("ja-JP")}
+                    </td>
+                    <td className="px-3 py-2 text-gray-700 text-xs garden-cell-text">
+                      {bankNameMap.get(b.bank_account_id) ?? b.bank_account_id}
+                    </td>
+                    <td className="px-3 py-2 text-gray-700 text-xs garden-cell-text">
+                      {SOURCE_TYPE_LABELS[b.source_type] ?? b.source_type}
+                    </td>
+                    <td className="px-3 py-2 text-gray-700 text-xs truncate max-w-xs garden-cell-text">
+                      {b.file_name}
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-700 garden-cell-number">
+                      {b.row_count}
+                    </td>
+                    <td className="px-3 py-2 text-right text-emerald-700 font-medium garden-cell-number">
+                      {b.success_count}
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-600 garden-cell-number">
+                      {b.skipped_count}
+                    </td>
+                    <td
+                      className={[`px-3 py-2 text-right ${
+                        b.error_count > 0
+                          ? "text-rose-700 font-medium"
+                          : "text-gray-400"
+                      }`, "garden-cell-number"].join(" ")}
+                    >
+                      {b.error_count}
+                    </td>
+                    <td className="px-3 py-2 text-right text-blue-700 garden-cell-number">
+                      {b.auto_matched_count}
+                    </td>
+                    <td className="px-3 py-2 garden-cell-mark">
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded ${
+                          STATUS_BG[b.status] ?? "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {STATUS_LABELS[b.status] ?? b.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </StickyTable>
+        </div>
+      )}
+
+      <p className="mt-3 text-xs text-gray-400">
+        {batches.length} 件表示（最新 50 件まで）
+      </p>
+    </div>
+  );
+}
+

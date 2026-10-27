@@ -1,14 +1,9 @@
 "use client";
-import { BudViewTab } from "@/app/bud/_components/BudViewChrome";
 
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
-import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { BudGate } from "../_components/BudGate";
-import { BudShell } from "../_components/BudShell";
 import { useBudState } from "../_state/BudStateContext";
 import { supabase } from "../_lib/supabase";
 import {
@@ -25,7 +20,7 @@ interface BankAccount {
   account_number: string;
 }
 
-function StatementsContent() {
+export default function StatementsContent() {
   const { sessionUser } = useBudState();
   const [statements, setStatements] = useState<BudStatementRow[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -99,25 +94,10 @@ function StatementsContent() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-4 flex items-center justify-between">
-        <div>
-          <SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "明細管理" }]} /><h1 className="text-2xl font-bold text-gray-800">明細管理</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            銀行入出金の取込・自動照合・手動割当
-          </p>
-        </div>
+
         <div className="flex gap-2 items-center">
-          <BudViewTab tabKey="summary"><Link
-            data-tab="summary" href="/bud/statements/summary"
-            className="text-sm text-emerald-700 hover:underline"
-          >
-            月次集計
-          </Link></BudViewTab>
-          <BudViewTab tabKey="imports"><Link
-            data-tab="imports" href="/bud/statements/imports"
-            className="text-sm text-emerald-700 hover:underline"
-          >
-            取込履歴
-          </Link></BudViewTab>
+
+
           <button
             type="button"
             onClick={() => setImportOpen(true)}
@@ -289,12 +269,3 @@ function Card({
   );
 }
 
-export default function StatementsPage() {
-  return (
-    <BudGate>
-      <BudShell>
-        <StatementsContent />
-      </BudShell>
-    </BudGate>
-  );
-}

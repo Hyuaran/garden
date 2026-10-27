@@ -1,4 +1,6 @@
 "use client";
+import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
+import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
 
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import { useCallback, useEffect, useState } from "react";
@@ -24,7 +26,7 @@ function TransferDetailContent() {
   const [transfer, setTransfer] = useState<BudTransfer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("basic");
+  const [tab, setTab] = useUrlTab<Tab>("basic", key => ["basic", "history", "related"].includes(key));
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -124,17 +126,17 @@ function TransferDetailContent() {
       </section>
 
       <div className="mb-2 border-b border-gray-200">
-        <nav className="flex gap-4" role="tablist">
-          <TabButton active={tab === "basic"} onClick={() => setTab("basic")}>
+        <SystemTabs aria-label="振込詳細">
+          <button type="button" role="tab" aria-selected={tab === "basic"} onClick={() => setTab("basic")}>
             基本情報
-          </TabButton>
-          <TabButton active={tab === "history"} onClick={() => setTab("history")}>
+          </button>
+          <button type="button" role="tab" aria-selected={tab === "history"} onClick={() => setTab("history")}>
             ステータス履歴
-          </TabButton>
-          <TabButton active={tab === "related"} onClick={() => setTab("related")}>
+          </button>
+          <button type="button" role="tab" aria-selected={tab === "related"} onClick={() => setTab("related")}>
             関連振込
-          </TabButton>
-        </nav>
+          </button>
+        </SystemTabs>
       </div>
 
       <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-4">
@@ -149,32 +151,6 @@ function TransferDetailContent() {
         )}
       </div>
     </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`px-3 py-2 text-sm border-b-2 ${
-        active
-          ? "border-emerald-600 text-emerald-700 font-medium"
-          : "border-transparent text-gray-600 hover:text-gray-800"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 

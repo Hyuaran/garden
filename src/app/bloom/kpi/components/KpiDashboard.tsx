@@ -1,4 +1,5 @@
 "use client";
+import ScopedTabs, { TabHeadingAction, useUrlTab } from "@/app/_components/ScopedTabs";
 import { SystemViewButton, useSystemView } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 
 import { useBloomTreeView } from '@/lib/auth/bloom-tree-view.client';
@@ -81,9 +82,9 @@ export default function KpiDashboard() {
   const [selectedEntity, setActiveEntity] = useState("全社統合");
   const { allowedTab: allowedEntity } = useSystemView();
   const activeEntity = allowedEntity(selectedEntity) ? selectedEntity : entityTabs.find(e => allowedEntity(e)) ?? "全社統合";
-  const [selectedTab, setActiveSubTab] = useState<KpiSubTab>("summary");
+  const [selectedTab, setActiveSubTab] = useUrlTab<KpiSubTab>("summary");
   const { allowedTab } = useSystemView();
-  const activeSubTab = allowedTab(selectedTab) ? selectedTab : subTabs.find(t => allowedTab(t.key))?.key;
+  const activeSubTab = subTabs.some(t => t.key === selectedTab && allowedTab(t.key)) ? selectedTab : subTabs.find(t => allowedTab(t.key))?.key;
   const userName = bloomUser?.name ?? userEmail ?? "東海林 美樹";
   const activeMenu = BLOOM_GARDEN_PAGE_MENU.map((item) => ({ ...item, active: item.href === "/bloom/kpi" }));
   const activeKpi = entityKpis[activeEntity];
@@ -113,6 +114,7 @@ export default function KpiDashboard() {
       <div className={styles.page}>
         <div className={styles.headerWrap}>
           <PageHeader
+          titleAddon={<TabHeadingAction items={subTabs} active={activeSubTab} />}
             title="統合 KPI"
             titleJp="法人横断の数字"
             subtitle="Forest 月次売上 + Tree（架電）/ Bud（経理）/ Leaf（個別業務）KPI を一画面で"
@@ -129,14 +131,7 @@ export default function KpiDashboard() {
           ))}
         <span style={{marginLeft:'auto',display:'flex'}}><SystemViewButton tabKey={activeEntity} /></span></nav>
 
-        <nav className={styles.subTabs} aria-label="kpi sections">
-          {subTabs.filter(tab => allowedTab(tab.key)).map((tab) => (
-            <button key={tab.key} type="button" className={cx(styles.subTab, activeSubTab === tab.key && styles.subTabActive)} onClick={() => setActiveSubTab(tab.key)}>
-              {tab.label}
-            </button>
-          ))}
-          <span style={{marginLeft:'auto'}}><SystemViewButton tabKey={activeSubTab} /></span>
-        </nav>
+        <ScopedTabs items={subTabs} active={activeSubTab} onChange={key => setActiveSubTab(key as KpiSubTab)} label="kpi sections" />
 
         <section className={styles.kpiGrid} aria-label="key kpi">
           {cards.map((card) => (

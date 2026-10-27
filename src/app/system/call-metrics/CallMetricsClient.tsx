@@ -1,4 +1,6 @@
 "use client";
+import { useUrlTab } from "@/app/system/_components/SystemTabs/useUrlTab";
+import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
@@ -91,7 +93,7 @@ export default function CallMetricsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { allowedTab } = useSystemView();
-  const [requestedTab, setActiveTab] = useState<"employees" | "lists" | "definitions" | "webinbound">("employees");
+  const [requestedTab, setActiveTab] = useUrlTab<"employees" | "lists" | "definitions" | "webinbound">("employees", key => ["employees", "lists", "definitions", "webinbound"].includes(key) && allowedTab(key));
   const activeTab = allowedTab(requestedTab) ? requestedTab : (["employees", "lists", "definitions", "webinbound"] as const).find(key => allowedTab(key));
 
   async function load() {
@@ -118,7 +120,7 @@ export default function CallMetricsClient() {
     <div className={styles.pageShell} data-testid="call-metrics-page-shell">
       <div className={styles.main}>
       <header className={styles.header}>
-        <div><SystemBreadcrumb items={[{ label: "テレマ コール集計" }]} /><h1>テレマ コール集計</h1></div>
+        <div><SystemBreadcrumb items={[{ label: "テレマ コール集計" }]} /><SystemViewHeading showActions={["employees", "lists", "definitions", "webinbound"].filter(key => allowedTab(key)).length <= 1} actions={<SystemViewButton tabKey={activeTab} />}><h1>テレマ コール集計</h1></SystemViewHeading></div>
       </header>
       {data && <UpdatedStampRow><UpdatedStamp label="コール履歴" date={data.lastImportedAt} emptyText="データなし" /></UpdatedStampRow>}
 
