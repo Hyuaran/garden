@@ -9,6 +9,8 @@ import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedS
 import { expiry, latestFiling, remaining, sortForwardings, todayJst, tone, validDate, type Filing, type Forwarding } from "@/lib/mail-forwarding/domain";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import styles from "./page.module.css";
+import AddressInputs from "./AddressInputs";
+import { composeAddress, normalizeAddress, validPostal } from "@/lib/mail-forwarding/address";
 
 export default function MailForwardingPage() {
   const { gardenRole } = useRootState();
@@ -34,7 +36,10 @@ export default function MailForwardingPage() {
     event.preventDefault();
     if (!edit || !writable || locked.current) return;
     const form = new FormData(event.currentTarget), value = (key: string) => String(form.get(key) ?? "").trim();
-    const row = edit.mode === "filing" ? edit.row : { ...edit.row, holder: value("holder"), from_address: value("from_address"), to_address: value("to_address"), notes: value("notes"), stopped: form.get("stopped") === "on" };
+    const addressFields = (name: string) => ({ postal: value(name + "_postal"), address: value(name + "_address"), building: value(name + "_building") });
+    if (edit.mode !== "filing" && !["from_address", "to_address"].every(name => validPostal(addressFields(name).postal))) { setError("郵便番号は 7 桁の数字です"); return; }
+    if (edit.mode !== "filing" && !["from_address", "to_address"].every(name => normalizeAddress(addressFields(name).address))) { setError("必須の欄を確認してください。"); return; }
+    const row = edit.mode === "filing" ? edit.row : { ...edit.row, holder: value("holder"), from_address: composeAddress(addressFields("from_address")), to_address: composeAddress(addressFields("to_address")), notes: value("notes"), stopped: form.get("stopped") === "on" };
     const filing: Filing = { id: crypto.randomUUID(), forwarding_id: row.id, filed_on: value("filed_on"), method: value("method") as Filing["method"], receipt: value("receipt"), filed_by: value("filed_by"), notes: value("filing_notes"), created_at: new Date().toISOString() };
     if (!row.holder || !row.from_address || !row.to_address || (edit.mode !== "edit" && (!validDate(filing.filed_on) || !["e転居", "窓口"].includes(filing.method)))) { setError("必須の欄と届出日を確認してください。"); return; }
     const before = rows, mode = edit.mode;
@@ -65,13 +70,14 @@ export default function MailForwardingPage() {
   return <div className={styles.page} {...CLARITY_MASK}>
     <PageHeader title="郵便の転送" />
     <UpdatedStampRow><UpdatedStamp label="郵便の転送" date={stamp} onRefresh={() => void load()} busy={busy} disabled={saving} refreshLabel="郵便の転送を取り直す" /></UpdatedStampRow>
-    {error && <p role="alert" className={styles.error}>{error}</p>}
+    {error && !edit && <p role="alert" className={styles.error}>{error}</p>}
     {busy && !stamp && <p role="status">読み込んでいます。</p>}
     <DataTable rows={sortForwardings(rows)} columns={columns} rowKey={r => r.id} searchText={r => `${r.holder} ${r.from_address} ${r.to_address}`} defaultSort={{ id: "default", direction: "asc" }} searchPlaceholder="名義・住所" summary={r => <span>{r.length} 件</span>} toolbar={writable && <button disabled={saving || busy} onClick={() => open("add")}><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true"><path d="M10 3v14M3 10h14"/></svg>転送を追加</button>} onRowClick={r => { if (!saving && !busy) open("edit", r); }} />
     {edit && <Modal title={edit.mode === "add" ? "転送を追加" : edit.mode === "filing" ? "届け直した" : "郵便の転送"} onClose={() => setEdit(null)} className={styles.dialog}>
       <form onSubmit={save} className={styles.form}>
+        {error && <p role="alert" className={styles.error}>{error}</p>}
         <fieldset disabled={!writable}>
-          {edit.mode !== "filing" && <>{([['holder','名義'],['from_address','転送元の住所'],['to_address','転送先の住所']] as const).map(([key,label]) => <label key={key}>{label}（必須）<input name={key} required defaultValue={edit.row[key]}/></label>)}<label>メモ<textarea name="notes" defaultValue={edit.row.notes}/></label>{edit.mode === "edit" && <label><input type="checkbox" name="stopped" defaultChecked={edit.row.stopped}/>止める</label>}</>}
+          {edit.mode !== "filing" && <><label>名義（必須）<input name="holder" required defaultValue={edit.row.holder}/></label>{([["from_address", "転送元の住所"], ["to_address", "転送先の住所"]] as const).map(([name, label]) => <AddressInputs key={name} name={name} label={label} initial={edit.row[name]} />)}<label>メモ<textarea name="notes" defaultValue={edit.row.notes}/></label>{edit.mode === "edit" && <label><input type="checkbox" name="stopped" defaultChecked={edit.row.stopped}/>止める</label>}</>}
           {edit.mode !== "edit" && <><label>{edit.mode === "add" ? "最初の届出日" : "新しい届出日"}（必須）<input name="filed_on" type="date" required defaultValue={today}/></label><div>届出の方法<div className={styles.radios}>{["e転居", "窓口"].map(m => <label key={m}><input type="radio" name="method" value={m} defaultChecked={m === "e転居"}/>{m}</label>)}</div></div><label>受付番号<input name="receipt"/></label><label>届けた人<input name="filed_by"/></label><label>届出のメモ<textarea name="filing_notes"/></label></>}
         </fieldset>
         {edit.mode === "edit" && <section><h3>届出の記録</h3>{[...edit.row.filings].sort((a,b) => b.filed_on.localeCompare(a.filed_on) || (b.created_at ?? "").localeCompare(a.created_at ?? "")).map(f => <article key={f.id}><b>{f.filed_on}・{f.method}</b><p>受付番号：{f.receipt || "記録なし"}／届けた人：{f.filed_by || "記録なし"}</p>{f.notes && <p>{f.notes}</p>}</article>)}</section>}

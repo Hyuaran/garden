@@ -43,3 +43,6 @@
 /* 1384px で表が横にはみ出さないよう、欄の余白を銀行口座マスタと同じ 10px に（2026-10-28） */
 .page th,.page td { padding:10px !important; }
 .form section { margin-top:16px; border-top:1px solid var(--line); padding-top:12px; }
+.addressGroup { display:grid; gap:10px; min-width:0; }
+.addressTitle { font-weight:700; }
+.addressGroup p { margin:0; color:var(--sub); }

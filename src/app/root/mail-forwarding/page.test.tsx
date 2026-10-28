@@ -35,3 +35,58 @@ it("届け直しは以前の記録を残して行を追加する",async()=>{
 it("閲覧を許可された管理者にも書き込み操作を出さない",async()=>{
  state.role="admin";render(<Page/>);await waitFor(()=>expect(screen.queryByText("読み込んでいます。")).not.toBeInTheDocument());expect(screen.queryByRole("button",{name:"転送を追加"})).not.toBeInTheDocument();
 });
+it("住所の3欄を表示し、保存時にそろえる",async()=>{
+ await ready();fireEvent.click(screen.getByRole("button",{name:"転送を追加"}));
+ const dialog=within(screen.getByRole("dialog"));
+ const from=within(dialog.getByRole("group",{name:"転送元の住所"}));
+ expect(from.getByLabelText("建物・部屋")).toBeInTheDocument();
+ fireEvent.change(dialog.getByLabelText("名義（必須）"),{target:{value:"会社"}});
+ fireEvent.change(from.getByLabelText("郵便番号"),{target:{value:"〒５４２００８１"}});
+ fireEvent.change(from.getByLabelText("転送元の住所（必須）"),{target:{value:"　南船場２－１０－３０　"}});
+ fireEvent.change(from.getByLabelText("建物・部屋"),{target:{value:" ＮＬＣ　５０３ "}});
+ fireEvent.change(dialog.getByLabelText("転送先の住所（必須）"),{target:{value:"東京"}});
+ fireEvent.click(dialog.getByRole("button",{name:"保存"}));
+ expect(state.rpc).toHaveBeenCalledWith("root_mail_forwarding_create",expect.objectContaining({p_row:expect.objectContaining({from_address:"〒542-0081 南船場2-10-30 NLC 503",to_address:"東京"})}));
+});
+it("郵便番号から自動入力し、検索中の手入力は上書きしない",async()=>{
+ const fetchMock=vi.fn().mockResolvedValue({ok:true,json:async()=>({addresses:[{address:"大阪府大阪市中央区南船場"}]})});
+ vi.stubGlobal("fetch",fetchMock);
+ try {
+  await ready();fireEvent.click(screen.getByRole("button",{name:"転送を追加"}));
+  const from=within(screen.getByRole("group",{name:"転送元の住所"}));
+  fireEvent.change(from.getByLabelText("郵便番号"),{target:{value:"5420081"}});
+  await waitFor(()=>expect(from.getByLabelText("転送元の住所（必須）")).toHaveValue("大阪府大阪市中央区南船場"));
+  const to=within(screen.getByRole("group",{name:"転送先の住所"}));
+  let resolve!: (value:unknown)=>void;
+  fetchMock.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));
+  fireEvent.change(to.getByLabelText("郵便番号"),{target:{value:"5420081"}});
+  await waitFor(()=>expect(fetchMock).toHaveBeenCalledTimes(2));
+  fireEvent.change(to.getByLabelText("転送先の住所（必須）"),{target:{value:"手で書いた住所"}});
+  resolve({ok:true,json:async()=>({addresses:[{address:"大阪府"}]})});
+  await waitFor(()=>expect(to.getByLabelText("転送先の住所（必須）")).toHaveValue("手で書いた住所"));
+ } finally {vi.unstubAllGlobals();}
+});
+it("郵便番号が7桁でなければ保存しない",async()=>{
+ await ready();fireEvent.click(screen.getByRole("button",{name:"転送を追加"}));
+ const dialog=within(screen.getByRole("dialog"));
+ for(const label of ["名義（必須）","転送元の住所（必須）","転送先の住所（必須）"]) fireEvent.change(dialog.getByLabelText(label),{target:{value:"入力"}});
+ fireEvent.change(within(dialog.getByRole("group",{name:"転送元の住所"})).getByLabelText("郵便番号"),{target:{value:"123"}});
+ fireEvent.click(dialog.getByRole("button",{name:"保存"}));
+ expect(dialog.getByRole("alert")).toHaveTextContent("郵便番号は 7 桁の数字です");
+ expect(state.rpc).not.toHaveBeenCalled();
+});
+it("複数候補を選べ、見つからないときも手入力できる",async()=>{
+ const fetchMock=vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({addresses:[{address:"大阪府大阪市"},{address:"大阪府堺市"}]})}).mockResolvedValueOnce({ok:true,json:async()=>({addresses:[]})});
+ vi.stubGlobal("fetch",fetchMock);
+ try {
+  await ready();fireEvent.click(screen.getByRole("button",{name:"転送を追加"}));
+  const from=within(screen.getByRole("group",{name:"転送元の住所"}));
+  fireEvent.change(from.getByLabelText("郵便番号"),{target:{value:"5420081"}});
+  fireEvent.click(await from.findByRole("button",{name:"大阪府堺市"}));
+  expect(from.getByLabelText("転送元の住所（必須）")).toHaveValue("大阪府堺市");
+  fireEvent.change(from.getByLabelText("郵便番号"),{target:{value:"9999999"}});
+  await from.findByText("住所を直接入れてください");
+  fireEvent.change(from.getByLabelText("転送元の住所（必須）"),{target:{value:"直接の住所"}});
+  expect(from.getByLabelText("転送元の住所（必須）")).toHaveValue("直接の住所");
+ } finally {vi.unstubAllGlobals();}
+});
