@@ -87,7 +87,7 @@ export function BudShachoShell({ children, viewNavigation }: { children: ReactNo
       <div className={styles.navLabel}>メニュー</div>
       {BUD_GARDEN_PAGE_MENU.filter(menu => { const key = budPageKey(menu.href); return !key || !viewNavigation || viewNavigation[key] === true; }).filter(menu => menu.href !== "/bud/profit/broadband" || canViewBroadband).map((menu) => menu.divider
         ? <hr key={menu.href} className={styles.divider} />
-        : <Link key={menu.href} href={menu.href} className={activePath === menu.href ? systemStyles.active : undefined} aria-current={activePath === menu.href ? "page" : undefined}>
+        : <Link key={menu.href} href={menu.href} className={[activePath === menu.href ? systemStyles.active : "", menu.preview ? styles.preview : ""].join(" ")} aria-description={menu.preview ? "準備中の画面" : undefined} aria-current={activePath === menu.href ? "page" : undefined}>
             <MenuIcon icon={budMenuIcon(menu.href)} /><span>{menu.label}</span>
           </Link>)} 
     </nav>

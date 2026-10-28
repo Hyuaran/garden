@@ -35,6 +35,7 @@ export const MAX_TRANSFER_FEE = 880;
 export const feeOf = (bank: number, amounts: number[]) => { const fees = amounts.map(a => Math.round(a) - Math.abs(bank)).filter(f => f >= 100 && f <= MAX_TRANSFER_FEE && (f % 11 === 0 || f % 5 === 0)); return fees.length ? Math.min(...fees) : 0; };
 // 届くのを待つのは予定日の翌月末まで（東海林さん 2026-10-21）
 export const endOfNextMonth = (date: string) => new Date(Date.UTC(Number(date.slice(0,4)), Number(date.slice(5,7)) + 1, 0)).toISOString().slice(0,10);
+export const reconciliationDeadline = (date: string, daysAfter: number) => [shiftDate(date,daysAfter),endOfNextMonth(date)].sort().at(-1)!;
 // 一致した明細の摘要から、取引先の口座での名前を取り出す（覚えさせる用）
 export function payeeKeyword(content: string) {
   return content.replace(/\(依頼人名.*$/, "").replace(/^(振込入金|振込|入金|出金)\s+/, "")
@@ -48,7 +49,7 @@ export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings:
     const base = { row, expected: Math.round(amount), notify: date >= settings.notify_from, candidates: [] as Bank[] };
     if (partner.startsWith("NTT原価") || ["関電経費合計","決済費用（壱）","決済費用(壱)"].includes(partner) || !date || date < settings.recon_from || settings.excluded_partners.includes(partner) || text(raw,"入金確認") || !Number.isFinite(amount)) return { ...base, kind: "excluded" };
         const keywords = rules.filter(r => r.partner === partner).flatMap(r => r.keywords).filter(Boolean);
-    const until = [shiftDate(date,settings.date_window_after), endOfNextMonth(date)].sort().at(-1)!;
+    const until = reconciliationDeadline(date,settings.date_window_after);
     // ほかの取引先の名前（決まり・覚えた名前）の明細は当てない
     const others = rules.filter(r => r.partner !== partner).flatMap(r => r.keywords).filter(k => k && !keywords.some(own => own.includes(k) || k.includes(own)));
     const candidates = bank.filter(b => !used.has(b.mf_transaction_id) && !others.some(k => b.content.includes(k)) && b.side === side(raw) && b.date >= shiftDate(date,-settings.date_window_before) && b.date <= until); // 法人では絞らない：[MF]社名は人の入力で、実際の入金口座と違うことがある（Fプレイン：リンクサポートと入っていてヒュアランに着金）
@@ -72,7 +73,7 @@ export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings:
   for (const group of groups.values()) {
     if (group.length < 2) continue;
     const raw = group[0].row.raw, date = text(raw,"入出金予定日"), sum = group.reduce((n,r) => n + r.expected, 0);
-    const until = [shiftDate(date,settings.date_window_after), endOfNextMonth(date)].sort().at(-1)!;
+    const until = reconciliationDeadline(date,settings.date_window_after);
     const distance = (b: Bank) => Math.abs(Date.parse(b.date)-Date.parse(date));
     const hits = bank.filter(b => !used.has(b.mf_transaction_id) && b.side === side(raw) && b.date >= shiftDate(date,-settings.date_window_before) && b.date <= until && (exact(b.value,sum) || (side(raw) === "INCOME" && feeOf(b.value,[sum]) > 0))).sort((a,b) => distance(a)-distance(b));
     if (!hits.length || (hits.length > 1 && distance(hits[0]) === distance(hits[1]))) continue;

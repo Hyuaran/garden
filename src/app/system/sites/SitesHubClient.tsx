@@ -83,7 +83,7 @@ function formatDate(value: string) {
 }
 
 function siteTitle(site: CorporateSite) {
-  return [site.kind, site.product].filter(Boolean).join(" ");
+  return [site.kind?.replace(/LP$/, "ページ"), site.product].filter(Boolean).join(" "); // 画面に略称を出さない（データの値は「商品LP」のまま・2026-10-28）
 }
 
 type KindTone = "hp" | "recruit" | "product";

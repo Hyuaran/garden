@@ -1,9 +1,43 @@
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act, within } from "@testing-library/react";
 import { expect, it, vi, beforeEach, afterEach } from "vitest";
 import BroadbandTable, { Details } from "./BroadbandTable";
 import type { TableRecord } from "@/lib/bud/broadband/table";
 import type { AgentDetail } from "@/lib/bud/broadband/agent-details";
 import type { Bank } from "@/lib/bud/broadband/reconcile";
+it("filters business tabs and totals, keeps unknown codes only in broadband and remembers the tab",()=>{
+ const rows=["101","103","105","102","999"].map((code,i)=>({...sample("取引先"+code,(i+1)*10),business:code+"_事業"}));
+ const props={rows,userId:"tabs",today:"2026-10-28",kintoneBase:""};
+ const view=render(<BroadbandTable {...props}/>);
+ expect(screen.getAllByRole("tab").map(t=>t.textContent)).toEqual(["ブロードバンド事業","テレマ事業","ストック事業","関西電力事業","ブレーカー事業","NHK事業","その他","SES事業"]);
+ expect(screen.getByText("999_事業")).toBeTruthy();
+ fireEvent.click(screen.getByRole("tab",{name:"テレマ事業"}));
+ expect(screen.queryByText("102_事業")).toBeNull();expect(screen.queryByText("999_事業")).toBeNull();
+ const totalRow=screen.getByText("総合計").closest("tr")!;expect(within(totalRow).getAllByText("60 円")).toHaveLength(2);
+ for(const code of ["101","103","105"])expect(screen.getByText(code+"_事業")).toBeTruthy();
+ view.unmount();window.history.replaceState(null,"","/");render(<BroadbandTable {...props}/>);
+ expect(screen.getByRole("tab",{name:"テレマ事業"})).toHaveAttribute("aria-selected","true");
+ fireEvent.click(screen.getByRole("tab",{name:"NHK事業"}));expect(screen.getByText("NHK事業の収支は、現在作成中です。")).toBeTruthy();
+});
+it("opens a mismatch in a dialog with the difference and source links, and suppresses it for neutral totals",()=>{
+ const row={...sample("Crescere",224000),business:"103_クレカ",expected_gross:246400,recon_status:"amount_mismatch",recon_bank:[{mf_transaction_id:"b",mf_account_id:"account-1",date:"2026-03-31",bank_name:"楽天銀行",content:"カ)CRESCERE",value:114400} as Bank]} as TableRecord;
+ render(<BroadbandTable rows={[row]} userId="modal" today="2026-10-28" kintoneBase="https://example.cybozu.com/k/174"/>);
+ fireEvent.click(screen.getAllByRole("button",{name:/^Crescere.*の明細/})[0]);
+ const dialog=screen.getByRole("dialog");expect(dialog).toHaveTextContent("132,000 円 少ない");
+ expect(within(dialog).getByText("Kintone で開く")).toHaveAttribute("href","https://example.cybozu.com/k/174/show#record="+encodeURIComponent(row.kintone_record_id));
+ expect(within(dialog).getByText("口座の明細を開く")).toHaveAttribute("href","/bud/bank/accounts/account-1?period=fy:2025");
+ fireEvent.click(within(dialog).getAllByRole("button",{name:"閉じる"})[1]);expect(screen.queryByRole("dialog")).toBeNull();
+ fireEvent.click(within(screen.getByText("総合計").closest("tr")!).getAllByRole("button")[0]);
+ expect(screen.getByRole("dialog").querySelector('[class*="difference"]')).toBeNull();
+});
+it("explains the search deadline and lists ambiguous candidates without linking agent children to Kintone",()=>{
+ const missing={...sample("A",100),scheduled_date:"2026-04-30",recon_status:"not_arrived",recon_bank:[]} as TableRecord;
+ const candidates=["one","two"].map(id=>({mf_transaction_id:id,mf_account_id:id,date:"2026-05-01",bank_name:"銀行"+id,content:"候補"+id,value:110} as Bank));
+ const ambiguous={...sample("B",100),kintone_record_id:"agent-1",recon_status:"ambiguous",recon_bank:candidates} as TableRecord;
+ render(<Details rows={[missing,ambiguous]} daysAfter={45} kintoneBase="https://example/k/1" onClose={()=>{}}/>);
+ const dialog=screen.getByRole("dialog");expect(dialog).toHaveTextContent("2026-06-14まで探しました");
+ expect(within(dialog).getAllByText(/同じ金額の候補/)).toHaveLength(2);
+ expect(within(dialog).getAllByText("Kintone で開く")).toHaveLength(1);expect(within(dialog).getAllByText("口座の明細を開く")).toHaveLength(2);
+});
 it("groups NTT and shows neutral account references and document differences",()=>{
  const r={...sample("NTT原価（東）",-100),recon_status:"amount_mismatch"} as TableRecord;
  render(<BroadbandTable rows={[r,sample("NTT原価（西）",-200)]} bank={[{date:"2026-05-01",corp_code:"HR",content:"電話料123",side:"EXPENSE",value:330,mf_transaction_id:"phone"} as Bank]} userId="ntt" today="2026-10-21" kintoneBase=""/>);
@@ -31,7 +65,7 @@ it("shows fee, actual bank details and server supplied Kintone link",()=>{
 });
 
 vi.mock("next/navigation",()=>({useRouter:()=>({refresh:vi.fn()})}));
-beforeEach(()=>{vi.stubGlobal("ResizeObserver",class {observe(){} disconnect(){}});localStorage.clear();});
+beforeEach(()=>{vi.stubGlobal("ResizeObserver",class {observe(){} disconnect(){}});localStorage.clear();window.history.replaceState(null,"","/");});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const sample=(partner:string,amount:number,business="事業")=>({kintone_record_id:business+partner,business,partner,profit_net:amount,scheduled_date:"2026-04-30",recon_status:"matched",confirmation:"",updated_at:""} as TableRecord);
 const mount=()=>render(<BroadbandTable rows={[sample("A",20),sample("B",-100),sample("C",-10),sample("Z",1,"別事業")]} userId="u" today="2026-10-21" kintoneBase="" />);

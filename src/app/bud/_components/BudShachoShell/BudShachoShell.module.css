@@ -15,3 +15,5 @@
 .shell nav a[aria-current="page"] { background:#0b7e7a; color:#fff; }
 .shell :where(a,button):focus-visible { outline:2px solid var(--teal); outline-offset:3px; }
 @media(max-width:760px) { .topbar { display:none; } }
+
+.shell nav a.preview,.shell nav a.preview:hover{color:var(--side-sub)}.shell nav a.preview[aria-current="page"]{background:rgba(255,255,255,.07);box-shadow:inset 3px 0 var(--teal);color:var(--side-sub)}

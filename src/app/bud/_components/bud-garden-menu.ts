@@ -1,26 +1,27 @@
 import type { GardenShellPageMenuItem } from "@/app/_components/layout/GardenShell/garden-shell-config";
 
+export type BudMenuItem = GardenShellPageMenuItem & { preview?: boolean };
 const T = "/themes/garden-shell";
 const BUD_ICON = `${T}/images/icons_bloom/orb_bud.png`;
 
-const BUD_GARDEN_PAGE_MENU_BASE: GardenShellPageMenuItem[] = [
-  { label: "ダッシュボード", href: "/bud/dashboard", icon: BUD_ICON },
-  { label: "入金管理", href: "/bud/receivables", icon: BUD_ICON },
-  { label: "請求書管理", href: "/bud/invoices", icon: BUD_ICON },
+const BUD_GARDEN_PAGE_MENU_BASE: BudMenuItem[] = [
+  { label: "ダッシュボード", href: "/bud/dashboard", icon: BUD_ICON, preview: true },
+  { label: "入金管理", href: "/bud/receivables", icon: BUD_ICON, preview: true },
+  { label: "請求書管理", href: "/bud/invoices", icon: BUD_ICON, preview: true },
   { label: "経費精算", href: "/bud/expenses", icon: BUD_ICON },
-  { label: "給与管理", href: "/bud/payroll", icon: BUD_ICON },
-  { label: "振込管理", href: "/bud/transfers", icon: BUD_ICON },
-  { label: "仕訳帳", href: "/bud/journal", icon: BUD_ICON },
-  { label: "損益管理", href: "/bud/profit", icon: BUD_ICON },
+  { label: "給与管理", href: "/bud/payroll", icon: BUD_ICON, preview: true },
+  { label: "振込管理", href: "/bud/transfers", icon: BUD_ICON, preview: true },
+  { label: "仕訳帳", href: "/bud/journal", icon: BUD_ICON, preview: true },
+  { label: "損益管理", href: "/bud/profit", icon: BUD_ICON, preview: true },
   { label: "事業の収支", href: "/bud/profit/broadband", icon: BUD_ICON },
   { label: "区切り線", href: "#bud-admin-divider", divider: true },
   { label: "口座残高・カード利用", href: "/bud/bank", icon: BUD_ICON },
-  { label: "マスタ管理", href: "/bud/masters", icon: BUD_ICON },
-  { label: "監査ログ", href: "/bud/audit", icon: BUD_ICON },
-  { label: "設定", href: "/bud/settings", icon: BUD_ICON },
+  { label: "マスタ管理", href: "/bud/masters", icon: BUD_ICON, preview: true },
+  { label: "監査ログ", href: "/bud/audit", icon: BUD_ICON, preview: true },
+  { label: "設定", href: "/bud/settings", icon: BUD_ICON, preview: true },
 ];
 
-export function getBudGardenPageMenu(activeHref: string): GardenShellPageMenuItem[] {
+export function getBudGardenPageMenu(activeHref: string): BudMenuItem[] {
   return BUD_GARDEN_PAGE_MENU_BASE.map((item) => (
     item.divider
       ? item
@@ -31,4 +32,4 @@ export function getBudGardenPageMenu(activeHref: string): GardenShellPageMenuIte
   ));
 }
 
-export const BUD_GARDEN_PAGE_MENU: GardenShellPageMenuItem[] = getBudGardenPageMenu("/bud/dashboard");
+export const BUD_GARDEN_PAGE_MENU: BudMenuItem[] = getBudGardenPageMenu("/bud/dashboard");

@@ -17,6 +17,22 @@ vi.mock("../../_state/BudStateContext", () => ({ useBudState: () => ({
 import { BudShachoShell } from "./BudShachoShell";
 
 describe("BudShachoShell", () => {
+  it("marks every mock menu as preview while keeping navigation usable in both menus", async () => {
+    mocks.pathname="/bud/dashboard";
+    render(<BudShachoShell>本文</BudShachoShell>);
+    await screen.findByRole("link",{name:"事業の収支"});
+    const check=()=>{for(const item of BUD_GARDEN_PAGE_MENU.filter(i=>!i.divider)) {
+      const preview=!["/bud/expenses","/bud/profit/broadband","/bud/bank"].includes(item.href);
+      expect(!!item.preview).toBe(preview);
+      for(const link of screen.getAllByRole("link",{name:item.label})) {
+        expect(link).toHaveAttribute("href",item.href);
+        expect(link.className.includes("preview")).toBe(preview);
+        expect(link.getAttribute("aria-description")).toBe(preview ? "準備中の画面" : null);
+      }
+    }};
+    check();fireEvent.click(screen.getByRole("button",{name:"メニューを開く"}));check();
+    fireEvent.click(screen.getByRole("button",{name:"閉じる"}));mocks.pathname="/bud/expenses/review";
+  });
   it.each([false, true])("uses RPC result for broadband menu: %s", async allowed => {
     mocks.rpc.mockResolvedValueOnce({data:allowed,error:null});
     render(<BudShachoShell>本文</BudShachoShell>);
