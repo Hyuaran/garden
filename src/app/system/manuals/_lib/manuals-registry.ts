@@ -40,6 +40,7 @@ export const MANUAL_DOCS: ManualDoc[] = [
 export const MANUAL_MODULES: ManualModule[] = [
   { slug: "system", name: "System", description: "社内システム", icon: "home" },
   { slug: "bud", name: "Bud", description: "経理収支", icon: "salary" },
+  { slug: "root", name: "Root", description: "組織台帳", icon: "person" },
 ];
 
 function manual(moduleSlug: string, slug: string, name: string, description: string, extraDocs: ManualDoc[] = []): ManualDefinition {
@@ -76,7 +77,9 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "kanri", "管理表ポータル", "毎日の管理表を KING OF TIME・Kintone のデータから作り、TV・Excel・Chatwork へ出す手順。"),
   manual("system", "list", "リストマスタ", "営業リストを絞って Excel／CSV／.mer に書き出す・日々のリスト投入を登録する・購入先やリストごとの成績を見る（リスト｜アップロード｜分析｜履歴検索｜自社アポ禁｜管理方法）。"),
   manual("bud", "expense", "経費精算", "領収書の申請から承認・仕訳までの流れ。"),
+  manual("bud", "broadband", "事業の収支", "Kintone の入金・支払いの予定を月×事業×取引先の表で見る・口座と合わない（赤）と予定日前（グレー）の見方・金額を押して中身と明細を開く・並べ替えと見てよい人の設定。"),
   manual("bud", "bank", "口座残高・カード利用", "マネーフォワードの口座残高を法人×銀行の表で見る・0 時からの増減と未仕訳の件数の読み方・カードの利用の見方と、全権の人の並び替え・見てよい人の設定。"),
+  manual("root", "mail-forwarding", "郵便の転送", "事務所や代表者の住所から届く郵便の転送（e転居）の期限を管理する。転送の登録・届け直したときの記録・期限前の Garden通知の読み方。"),
 ];
 
 export function getVisibleManualDocs(manual: ManualDefinition, role: GardenRole) {

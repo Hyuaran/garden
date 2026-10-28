@@ -10,7 +10,7 @@ import {
 
 describe("manuals registry", () => {
   it("defines the initial manual modules and documents", () => {
-    expect(SYSTEM_MANUALS).toHaveLength(29); // 2026-10-22 メール送信失敗の知らせ（mail-ndr-watch）を追加
+    expect(SYSTEM_MANUALS).toHaveLength(31); // 2026-10-28 事業の収支（Bud）と郵便の転送（Root）を追加
     expect(findManual("system", "kot-attendance")).toMatchObject({
       moduleSlug: "system",
       slug: "kot-attendance",
@@ -41,7 +41,8 @@ describe("manuals registry", () => {
     expect(getVisibleManuals("cs")).toEqual([]);
     expect(getManualModules("staff").map((module) => [module.slug, module.count])).toEqual([
       ["system", 27],
-      ["bud", 2],
+      ["bud", 3],
+      ["root", 1],
     ]);
   });
 

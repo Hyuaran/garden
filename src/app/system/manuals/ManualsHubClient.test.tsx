@@ -43,7 +43,7 @@ it("keeps the manual hub gear in the tabs row", () => {
 it("shows every module in shell order and disables modules without manuals", () => {
   render(<ManualsHubClient modules={modules} conceptHtml={conceptHtml} selectedTab="soil" />);
   expect(screen.getAllByRole("tab").map(tab => tab.textContent)).toEqual(["Garden とは", "System", ...GARDEN_SHELL_MODULES.map(module => module.name)]);
-  for (const module of GARDEN_SHELL_MODULES.filter(module => module.id !== "bud")) {
+  for (const module of GARDEN_SHELL_MODULES.filter(module => module.id !== "bud" && module.id !== "root")) {
     const tab = screen.getByRole("tab", { name: module.name });
     expect(tab).toBeDisabled();
     expect(tab).toHaveAttribute("title", "まだマニュアルがありません");
