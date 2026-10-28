@@ -27,17 +27,28 @@ function Difference({row:r,daysAfter}:{row:TableRecord;daysAfter:number}) {
  if(!["amount_mismatch","not_arrived","ambiguous"].includes(status??"")) return null;
  return <div className={styles.difference}><strong>{statusLabels[status!]}</strong>{status==="not_arrived" ? <p>予定日を過ぎても入金（支払い）が見つかりません。予定 {money(r.expected_gross)}（税込）・{r.scheduled_date ? reconciliationDeadline(r.scheduled_date,daysAfter) : "記録なし"}まで探しました</p> : <><p>予定（税込） {money(r.expected_gross)}</p>{r.recon_bank?.map(b=><p key={b.mf_transaction_id}>{status==="ambiguous" ? "同じ金額の候補" : "口座に届いた"} {money(Math.abs(b.value))}（{b.bank_name} {b.date} {b.content}）{status==="amount_mismatch" && r.expected_gross!=null && <>・差 {money(Math.abs(Math.abs(b.value)-Math.abs(r.expected_gross)))} {Math.abs(b.value)>=Math.abs(r.expected_gross) ? "多い" : "少ない"}</>}</p>)}</>}</div>;
 }
+// 小窓の一番上に状態と差を並べる。印は線の絵（◎ 確認済み＝緑／△ 予定日前・未確認＝黄／✖ 合わない＝赤・2026-10-28）
+const diffText=(r:TableRecord)=>{
+  const sign=(n:number)=>n===0 ? "±0 円" : money(n);
+  if(r.recon_fee) return `手数料 ${money(r.recon_fee)}`;
+  if(r.recon_bank?.length) return r.recon_bank.map(b=>r.expected_gross==null ? "記録なし" : sign(r.expected_gross-Math.abs(b.value))).join(" / ");
+  return r.expected_gross!=null && r.mf_amount!=null ? sign(r.expected_gross-Math.abs(r.mf_amount)) : "記録なし";
+};
+function StatusLine({row:r}:{row:TableRecord}) {
+  const status=recordStatus(r), tone=status==="matched" ? "ok" : status==="excluded" ? "none" : status==="pending" || !status ? "wait" : "ng";
+  const mark=tone==="ok" ? <><circle cx="10" cy="10" r="7.5"/><circle cx="10" cy="10" r="3.5"/></> : tone==="wait" ? <path d="M10 3 L17.5 16.5 H2.5 Z"/> : tone==="ng" ? <path d="M4.5 4.5 L15.5 15.5 M15.5 4.5 L4.5 15.5"/> : null;
+  return <p className={styles.statusLine} data-tone={tone}><b>{mark && <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">{mark}</svg>}{status ? statusLabels[status] : "未確認"}</b>{tone!=="none" && <span>差 {diffText(r)}</span>}</p>;
+}
 export function Details({rows: base, kintoneBase, onClose,title="収支の明細",daysAfter=7,showDifferences=true}: {rows:TableRecord[]; kintoneBase:string; onClose:()=>void;title?:string;daysAfter?:number;showDifferences?:boolean}) {
   // 口座の照合の明細（recon_bank）は表の読み込みに含めず、パネルを開いたときに読む（2026-10-26）
   const [bankById,setBankById]=useState<Record<string,TableRecord["recon_bank"]>>({});
   const ids=base.filter(r=>!r.kintone_record_id.startsWith("agent-") && r.recon_bank===undefined).map(r=>r.kintone_record_id).join(",");
   useEffect(()=>{if(!ids) return; let active=true; fetch("/api/bud/broadband/recon-bank?ids="+encodeURIComponent(ids),{cache:"no-store"}).then(r=>r.ok?r.json():{}).then(d=>{if(active) setBankById(d);}).catch(()=>{}); return ()=>{active=false;};},[ids]);
   const rows=base.map(r=>r.recon_bank===undefined && bankById[r.kintone_record_id] ? {...r,recon_bank:bankById[r.kintone_record_id]} : r);
-  return <Modal title={title} onClose={onClose} className={styles.details} actions={<button onClick={onClose}>閉じる</button>}>{rows.map(r => <article key={r.kintone_record_id}>{showDifferences && <Difference row={r} daysAfter={daysAfter}/>}<h3>{r.business} / {r.product}</h3><dl>
+  return <Modal title={title} onClose={onClose} className={styles.details} actions={<button onClick={onClose}>閉じる</button>}>{rows.map(r => <article key={r.kintone_record_id}>{showDifferences && <Difference row={r} daysAfter={daysAfter}/>}<h3>{r.business} / {r.product}</h3><StatusLine row={r}/><dl>
     <dt>予定日</dt><dd>{r.scheduled_date ?? "記録なし"}</dd><dt>実績期間</dt><dd>{r.actual_period ?? "記録なし"}</dd><dt>商材名</dt><dd>{r.product}</dd><dt>税抜</dt><dd>{money(r.profit_net)}</dd><dt>予定の税込</dt><dd>{money(r.expected_gross)}</dd>
     <dt>口座の実際</dt><dd>{r.recon_bank?.length ? r.recon_bank.map(b => <p key={b.mf_transaction_id}>{b.date} / {money(Math.abs(b.value))} / {b.bank_name} / {b.content}</p>) : r.mf_date ? `${r.mf_date} / ${money(r.mf_amount)} / ${r.mf_bank} / ${r.mf_content}` : "記録なし"}</dd>
-    <dt>差</dt><dd>{r.recon_fee ? `手数料 ${money(r.recon_fee)}` : r.recon_bank?.length ? r.recon_bank.map(b => money(r.expected_gross == null ? null : r.expected_gross-Math.abs(b.value))).join(" / ") : r.expected_gross != null && r.mf_amount != null ? money(r.expected_gross-Math.abs(r.mf_amount)) : "記録なし"}</dd>
-    <dt>状態</dt><dd>{recordStatus(r) ? statusLabels[recordStatus(r)!] : "未確認"}</dd></dl>{kintoneBase && !r.kintone_record_id.startsWith("agent-") && <a href={kintoneLink(kintoneBase,r.kintone_record_id)} target="_blank" rel="noopener noreferrer">Kintoneレコード</a>}{driveLink(r.drive_link) && <a href={driveLink(r.drive_link)!} target="_blank" rel="noopener noreferrer">Googleドライブ明細</a>}</article>)}</Modal>;
+    </dl>{kintoneBase && !r.kintone_record_id.startsWith("agent-") && <a href={kintoneLink(kintoneBase,r.kintone_record_id)} target="_blank" rel="noopener noreferrer">Kintoneレコード</a>}{driveLink(r.drive_link) && <a href={driveLink(r.drive_link)!} target="_blank" rel="noopener noreferrer">Googleドライブ明細</a>}</article>)}</Modal>;
 }
 export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],bank=[],admin=false,daysAfter=7}: {daysAfter?:number;admin?:boolean;rows:TableRecord[];userId:string;today:string;kintoneBase:string;agents?:AgentDetail[];bank?:Bank[]}) {
   const [tab,setTab]=useState<BusinessTab>("broadband");
