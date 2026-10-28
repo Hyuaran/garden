@@ -434,8 +434,8 @@ export const MASTER_MENUS: MasterMenu[] = [
   },
   {
     slug: "kot-sync-history",
-    title: "KoT 同期履歴",
-    description: "KoT 連携の同期ログ閲覧・再実行",
+    title: "KING OF TIME 同期履歴",
+    description: "KING OF TIME 連携の同期ログ閲覧・再実行",
     icon: "sync",
     adminOnly: true,
   },

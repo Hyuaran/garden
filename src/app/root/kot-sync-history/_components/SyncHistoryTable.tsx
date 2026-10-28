@@ -122,7 +122,7 @@ export function SyncHistoryTable({
     <DataTable
       columns={columns}
       rows={logs}
-      emptyMessage="履歴がありません（fetch フィルタに該当する KoT 同期ログが無し）"
+      emptyMessage="履歴がありません（fetch フィルタに該当する KING OF TIME 同期ログが無し）"
       onRowClick={onRowClick}
     />
   );

@@ -30,7 +30,7 @@ describe("KOT queue mode", () => {
   });
   it("wraps queue failures without leaking details", async () => {
     relay.getRelayHeartbeat.mockRejectedValue(new Error("private"));
-    await expect(fetchKotEmployees()).rejects.toMatchObject({ code: "NETWORK_ERROR", message: "KoT API ホストへ到達できませんでした" });
+    await expect(fetchKotEmployees()).rejects.toMatchObject({ code: "NETWORK_ERROR", message: "KING OF TIME ホストへ到達できませんでした" });
   });
   it.each(["direct", ""])("uses direct fetch in mode %s", async mode => {
     vi.stubEnv("KOT_RELAY_MODE", mode);

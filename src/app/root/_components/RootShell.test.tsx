@@ -91,7 +91,7 @@ describe("RootShell", () => {
 
     const nav = screen.getByLabelText("Rootメニュー");
     expect(within(nav).queryByRole("link", { name: "口座の点検" })).not.toBeInTheDocument();
-    expect(within(nav).queryByRole("link", { name: "KoT 同期履歴" })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: "KING OF TIME 同期履歴" })).not.toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "ホーム" })).toHaveAttribute("aria-current", "page");
 
     fireEvent.click(screen.getByRole("button", { name: "ログアウト" }));

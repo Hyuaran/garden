@@ -25,13 +25,13 @@ const STATUS_LABEL: Record<KotSyncStatus, string> = {
 function friendlyErrorHint(code: string | null): string | null {
   if (!code) return null;
   if (code === "UNAUTHORIZED" || code === "111" || code === "100") {
-    return "KoT の認証トークンが期限切れ・失効、または許可 IP 設定の問題です。管理者にトークンと IP 許可を確認してもらってください。";
+    return "KING OF TIME の認証トークンが期限切れ・失効、または許可 IP 設定の問題です。管理者にトークンと IP 許可を確認してもらってください。";
   }
   if (code === "RATE_LIMITED" || code === "105" || code === "303" || code === "308") {
-    return "KoT API のレート制限に達しました。時間を置いて再試行してください。";
+    return "KING OF TIME のレート制限に達しました。時間を置いて再試行してください。";
   }
-  if (code === "NETWORK_ERROR") return "KoT API ホストへの通信に失敗しました。ネットワーク・DNS を確認してください。";
-  if (code === "SERVER_ERROR") return "KoT 側が一時的に障害中の可能性。時間を置いて再試行してください。";
+  if (code === "NETWORK_ERROR") return "KING OF TIME ホストへの通信に失敗しました。ネットワーク・DNS を確認してください。";
+  if (code === "SERVER_ERROR") return "KING OF TIME 側が一時的に障害中の可能性。時間を置いて再試行してください。";
   if (code === "ALL_UPSERT_FAILED") return "Garden 側への保存（upsert）が全件失敗しました。RLS ポリシーや権限を確認してください。";
   if (code === "SUPABASE_ERROR") return "Garden 従業員マスタ取得時のエラーです。Supabase 側の問題が疑われます。";
   return null;

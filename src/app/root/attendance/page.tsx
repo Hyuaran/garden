@@ -150,7 +150,7 @@ export default function AttendancePage() {
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ padding: "6px 10px", borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 13 }} />
-            <Button variant="primary" onClick={() => setKotOpen(true)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>KoT から月次取込</Button>
+            <Button variant="primary" onClick={() => setKotOpen(true)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>KING OF TIME から月次取込</Button>
             <Button variant="secondary" onClick={() => setEditTarget(empty(employees[0]?.employee_id ?? "", month))} disabled={employees.length === 0 || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 手動追加</Button>
           </div>
         }

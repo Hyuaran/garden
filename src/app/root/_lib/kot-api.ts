@@ -92,7 +92,7 @@ async function kotFetch<T>(path: string, opts: FetchOptions = {}): Promise<T> {
       throw new KotApiClientError({
         code: "NETWORK_ERROR",
         httpStatus: 0,
-        message: "KoT API ホストへ到達できませんでした",
+        message: "KING OF TIME ホストへ到達できませんでした",
         detail: safeErrorMessage(e),
       });
     }
@@ -105,7 +105,7 @@ async function kotFetch<T>(path: string, opts: FetchOptions = {}): Promise<T> {
         throw new KotApiClientError({
           code: "PARSE_ERROR",
           httpStatus: res.status,
-          message: "KoT API のレスポンスを JSON として解釈できませんでした",
+          message: "KING OF TIME のレスポンスを JSON として解釈できませんでした",
           detail: safeErrorMessage(e),
         });
       }
@@ -134,7 +134,7 @@ async function kotFetch<T>(path: string, opts: FetchOptions = {}): Promise<T> {
   throw new KotApiClientError({
     code: "UNKNOWN",
     httpStatus: 0,
-    message: "KoT API 呼び出しに失敗しました（詳細不明）",
+    message: "KING OF TIME 呼び出しに失敗しました（詳細不明）",
     detail: lastError,
   });
 }
@@ -246,10 +246,10 @@ async function kotFetchViaRelay<T>(path: string): Promise<T> {
       throw new KotApiClientError({ code: "TOKEN_MISSING", httpStatus: 0, message: "KING OF TIME の鍵がホスト PC にありません" });
     }
     if (message === "kot: JSON を解釈できません") {
-      throw new KotApiClientError({ code: "PARSE_ERROR", httpStatus: 200, message: "KoT API のレスポンスを JSON として解釈できませんでした" });
+      throw new KotApiClientError({ code: "PARSE_ERROR", httpStatus: 200, message: "KING OF TIME のレスポンスを JSON として解釈できませんでした" });
     }
     throw new KotApiClientError({ code: "NETWORK_ERROR", httpStatus: 0,
-      message: message === "kot: 応答が大きすぎます" ? "kot: 応答が大きすぎます" : "KoT API ホストへ到達できませんでした" });
+      message: message === "kot: 応答が大きすぎます" ? "kot: 応答が大きすぎます" : "KING OF TIME ホストへ到達できませんでした" });
   }
 }
 
@@ -292,10 +292,10 @@ function mapHttpToCode(status: number, body: KotApiError | string): KotApiClient
 function buildMessage(status: number, body: KotApiError | string): string {
   if (typeof body === "object") {
     const msgs = body.errors?.map((e) => `${e.code}: ${e.message}`).join(" / ") ?? body.message;
-    if (msgs) return `KoT API エラー (HTTP ${status}): ${msgs}`;
+    if (msgs) return `KING OF TIME エラー (HTTP ${status}): ${msgs}`;
   }
-  if (typeof body === "string" && body) return `KoT API エラー (HTTP ${status}): ${body.slice(0, 200)}`;
-  return `KoT API エラー (HTTP ${status})`;
+  if (typeof body === "string" && body) return `KING OF TIME エラー (HTTP ${status}): ${body.slice(0, 200)}`;
+  return `KING OF TIME エラー (HTTP ${status})`;
 }
 
 export function assertKotAvailable(now = new Date()) {

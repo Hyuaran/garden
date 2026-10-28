@@ -180,8 +180,8 @@ export function KotSyncModal({
       {stage === "idle" && (
         <div>
           <p style={{ fontSize: 13, color: colors.textMuted, margin: "0 0 12px 0" }}>
-            KoT から月別勤怠を取得し、プレビュー → 確認 → `root_attendance` に一括 upsert します。
-            取得対象は KoT /employees と /monthly-workings です。既存のデータは上書きされます（冪等）。
+            KING OF TIME から月別勤怠を取得し、プレビュー → 確認 → `root_attendance` に一括 upsert します。
+            取得対象は KING OF TIME の /employees と /monthly-workings です。既存のデータは上書きされます（冪等）。
           </p>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
             <label style={{ fontSize: 12, color: colors.textMuted }}>対象月（YYYY-MM）</label>
@@ -195,17 +195,17 @@ export function KotSyncModal({
           {!canWrite && <div style={{ background: colors.warningBg, color: colors.warning, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 12 }}>取込には編集権限（管理者以上）が必要です</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
             <Button variant="secondary" onClick={close}>キャンセル</Button>
-            <Button variant="primary" onClick={handleFetch} disabled={!canWrite}>KoT から取得してプレビュー</Button>
+            <Button variant="primary" onClick={handleFetch} disabled={!canWrite}>KING OF TIME から取得してプレビュー</Button>
           </div>
         </div>
       )}
 
-      {stage === "fetching" && <div style={{ padding: 40, textAlign: "center", color: colors.textMuted }}>KoT API 呼出中…（従業員一覧 + 月別勤怠）</div>}
+      {stage === "fetching" && <div style={{ padding: 40, textAlign: "center", color: colors.textMuted }}>KING OF TIME 呼出中…（従業員一覧 + 月別勤怠）</div>}
 
       {stage === "error" && preview && !preview.ok && (
         <div>
           <div style={{ background: colors.dangerBg, color: colors.danger, padding: 12, borderRadius: 6, marginBottom: 12, fontSize: 13 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>KoT API エラー（{preview.error_code}）</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>KING OF TIME エラー（{preview.error_code}）</div>
             <div>{preview.message}</div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
@@ -228,7 +228,7 @@ export function KotSyncModal({
               <thead style={{ position: "sticky", top: 0, background: colors.bg }}>
                 <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
                   <th style={cellTH}>#</th>
-                  <th style={cellTH}>KoT code</th>
+                  <th style={cellTH}>KING OF TIME の従業員コード</th>
                   <th style={cellTH}>氏名</th>
                   <th style={{ ...cellTH, textAlign: "right" }}>出勤</th>
                   <th style={{ ...cellTH, textAlign: "right" }}>実労働</th>

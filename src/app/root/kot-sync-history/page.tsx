@@ -104,7 +104,7 @@ export default function KotSyncHistoryPage() {
   if (!authLoading && !canRead) {
     return (
       <>
-        <PageHeader title="KoT 同期履歴" />
+        <PageHeader title="KING OF TIME 同期履歴" />
         <div style={{ background: colors.dangerBg, color: colors.danger, padding: 16, borderRadius: 6, fontSize: 14 }}>
           この画面は管理者（admin / super_admin）のみアクセス可能です。
         </div>
@@ -115,8 +115,8 @@ export default function KotSyncHistoryPage() {
   return (
     <>
       <PageHeader
-        title="KoT 同期履歴"
-        description="KoT 連携（月次・日次・マスタ）の同期ログを閲覧・再実行。admin/super_admin 専用。"
+        title="KING OF TIME 同期履歴"
+        description="KING OF TIME 連携（月次・日次・マスタ）の同期の記録を見て、やり直せます。管理者以上だけ使えます。"
         actions={
           <Button variant="secondary" onClick={() => void load()} disabled={loading}>
             {loading ? "読込中..." : "再読込"}

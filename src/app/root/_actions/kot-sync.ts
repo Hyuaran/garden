@@ -188,7 +188,7 @@ export async function previewKotMonthlySync(
 
       let resolution: KotSyncPreviewRow["resolution"];
       if (!code) {
-        resolution = { kind: "unresolved", reason: `KoT employeeKey → code の解決に失敗（/employees に該当無し）` };
+        resolution = { kind: "unresolved", reason: `KING OF TIME employeeKey → code の解決に失敗（/employees に該当無し）` };
       } else if (!garden) {
         resolution = { kind: "unresolved", reason: `Garden 従業員マスタに社員番号 ${code} が未登録` };
       } else if (!garden.is_active) {
