@@ -44,7 +44,7 @@ beforeEach(() => { state.role = "toss"; state.rows = []; state.reads = []; state
 describe("Root の13画面", () => {
   for (const scope of ROOT_VIEW_SCOPES) {
     it(`${scope.pageKey}: 8役職の従来の入口・拡張・制限・個人指定`, async () => {
-      const oldRoles = ["root-bank-check", "root-kot-sync-history"].includes(scope.pageKey) ? ROOT_WRITE_ROLES : ROOT_VIEW_ROLES;
+      const oldRoles: GardenRole[] = scope.pageKey === "root-mail-forwarding" ? ["super_admin"] : ["root-bank-check", "root-kot-sync-history"].includes(scope.pageKey) ? ROOT_WRITE_ROLES : ROOT_VIEW_ROLES;
       for (const role of GARDEN_ROLE_ORDER) {
         state.role = role;
         const viewer = { role, employeeId: "EMP-1" };
@@ -117,7 +117,7 @@ describe("Root の13画面", () => {
     expect(state.reads).toEqual([]);
   });
   it("migration はRoot画面の既定と一致し、未知key拒否のRPCを維持する", () => {
-    const sql = readFileSync("supabase/migrations/20261026000006_root_view_scopes.sql", "utf8") + readFileSync("supabase/migrations/20261027000451_root_minimum_wages.sql", "utf8");
+    const sql = readFileSync("supabase/migrations/20261026000006_root_view_scopes.sql", "utf8") + readFileSync("supabase/migrations/20261027000451_root_minimum_wages.sql", "utf8") + readFileSync("supabase/migrations/20261028000462_root_mail_forwarding.sql", "utf8");
     for (const scope of ROOT_VIEW_SCOPES) {
       const line = sql.split("\n").find(line => line.includes(`'${scope.pageKey}'`))!;
       expect(line).toBeTruthy();

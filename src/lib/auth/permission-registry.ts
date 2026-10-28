@@ -107,6 +107,7 @@ const deliveryEntries: PermissionEntry[] = SYSTEM_DELIVERIES.map((delivery) => (
 }));
 
 export const PERMISSION_ENTRIES: PermissionEntry[] = [
+  { key: "root-mail-forwarding-write", label: "郵便の転送（編集）", group: "Root", kind: "操作", allows: role => role === "super_admin", source: "src/app/root/mail-forwarding/page.tsx（RLS でも全権管理者のみ）" },
 
   { key: "system-onboarding-proxy", label: "入社手続き：代行入力", group: "System", kind: "操作", allows: role => MANAGER_ROLES.has(role), source: "src/app/system/onboarding/_lib/onboarding-proxy.server.ts（みんなの入社手続きの閲覧設定に従う。マイナンバー・口座はsuper_adminのみ）" },
   { key: "system-onboarding", pageKey: "system-onboarding", tabKey: "", label: "入社手続き", group: "System", kind: "画面", allows: () => true, source: "src/app/system/onboarding/page.tsx" },

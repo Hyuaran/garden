@@ -378,6 +378,12 @@ export const MASTER_MENUS: MasterMenu[] = [
     icon: "bank",
   },
   {
+    slug: "mail-forwarding",
+    title: "郵便の転送",
+    description: "郵便の転送の届出と期限",
+    icon: "inbox",
+  },
+  {
     slug: "minimum-wages",
     title: "最低賃金マスタ",
     description: "都道府県ごとの最低賃金と発効日",
