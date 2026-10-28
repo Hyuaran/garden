@@ -120,7 +120,7 @@ type SearchForm = Record<SearchField, string>;
 type StatusRow = Req & { rowKind: "pending" | "processed" };
 type LoadOptions = { preserveIndex?: number; resetSearch?: boolean };
 
-const OCR_CONFIRM_DESCRIPTION = "OCR要確認";
+const OCR_CONFIRM_DESCRIPTION = "読み取り要確認";
 const REQUEST_SELECT =
   "id,corp_id,applicant_employee_id,applicant_name_text,expense_kind,drive_file_id,storage_path,receipt_date,receipt_time,receipt_rotation,store_name,amount,qualified_class,qualified_number,category_id,description,status,return_reason,submitted_at,keiri_checked_at";
 const REQUEST_SELECT_WITH_SOFT_DELETE = `${REQUEST_SELECT},deleted_at,deleted_by,delete_reason`;
@@ -1197,7 +1197,7 @@ export function ExpenseReviewPanel({ embedded = false }: { embedded?: boolean })
                     )}
                     {(showOcrConfirmBadge || corpChangeBadge) && (
                       <div style={badgeStack}>
-                        {showOcrConfirmBadge && <div style={ocrBadgeBox(ocrConfirmTone)}>OCR要確認</div>}
+                        {showOcrConfirmBadge && <div style={ocrBadgeBox(ocrConfirmTone)}>読み取り要確認</div>}
                         {corpChangeBadge && (
                           <div style={corpChangeBadgeBox}>
                             <span style={corpChangeBadgeLine}><WarningIcon /> 申請者が法人変更</span>
@@ -1790,7 +1790,7 @@ function StatusList({
                   key={`${row.rowKind}-${row.id}`}
                   style={tr}
                   onClick={() => (row.rowKind === "pending" ? onPendingClick(row) : onProcessedClick(row))}
-                  title={row.rowKind === "pending" ? "レビューUIで表示" : "申請詳細を表示"}
+                  title={row.rowKind === "pending" ? "レビュー画面で表示" : "申請詳細を表示"}
                 >
                   {canSelect && (
                     <td style={td} className="garden-cell-mark">

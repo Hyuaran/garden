@@ -388,7 +388,7 @@ function BankAccountUploadCard(props: { account: AccountRow }) {
                   }}
                 >
                   <div style={{ fontWeight: 600, color: "#166534" }}>
-                    📥 DB 投入結果
+                    📥 データベースへの投入結果
                   </div>
                   <div>
                     INSERT: {result.insert.transactions_inserted} 件 /{" "}

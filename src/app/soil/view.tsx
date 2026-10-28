@@ -6,7 +6,7 @@ export default function SoilPage() {
     <LeafForestPlaceholder
       moduleName="Soil"
       nameJa="土"
-      description="DB 本体・大量データ基盤"
+      description="データベース本体・大量データ基盤"
       phase="Phase C"
     />
   );

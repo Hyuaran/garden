@@ -20,7 +20,7 @@ export const roleAllocations: RoleAllocation[] = [
     name: "Codex",
     position: "実装と検証",
     responsibilities: [
-      "UI 実装とローカル検証",
+      "画面の実装とローカル検証",
       "ブラウザ確認とスクリーンショット取得",
       "コードレビューと実装メモの作成",
     ],
@@ -30,7 +30,7 @@ export const roleAllocations: RoleAllocation[] = [
     name: "ChatGPT",
     position: "構想と壁打ち",
     responsibilities: [
-      "UI 構想とモック作成",
+      "画面の構想とモック作成",
       "プロンプト作成とセカンドオピニオン",
       "デザイン案・表現案の比較",
     ],

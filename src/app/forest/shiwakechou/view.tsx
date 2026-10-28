@@ -211,7 +211,7 @@ export default function ShiwakechouTopPage() {
         }}
       >
         B-min Phase 1 機能。共通マスタ管理 / 確認画面 / 弥生エクスポート完成は Phase 1 完走後。
-        Phase 2 で CC / MF / 現金処理を統合予定。
+        Phase 2 で CC / マネーフォワード / 現金処理を統合予定。
       </div>
     </div>
   );

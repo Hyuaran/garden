@@ -54,7 +54,7 @@ const NAV_APPS: NavApp[] = [
   { app: "leaf",     name: "Leaf",     iconSrc: "/images/icons_bloom/orb_leaf.png",     status: "dev",      href: "/leaf",     title: "Leaf — 商材・トスアップ" },
   { app: "tree",     name: "Tree",     iconSrc: "/images/icons_bloom/orb_tree.png",     status: "released", href: "/tree",     title: "Tree — 架電アプリ" },
   { app: "sprout",   name: "Sprout",   iconSrc: "/images/icons_bloom/orb_sprout.png",   status: "todo",     href: "/sprout",   title: "Sprout — 採用・入社" },
-  { app: "soil",     name: "Soil",     iconSrc: "/images/icons_bloom/orb_soil.png",     status: "released", href: "/soil",     title: "Soil — DB・大量データ" },
+  { app: "soil",     name: "Soil",     iconSrc: "/images/icons_bloom/orb_soil.png",     status: "released", href: "/soil",     title: "Soil — データベース・大量データ" },
   { app: "root",     name: "Root",     iconSrc: "/images/icons_bloom/orb_root.png",     status: "released", href: "/root",     title: "Root — 組織・顧客・マスタ" },
   { app: "rill",     name: "Rill",     iconSrc: "/images/icons_bloom/orb_rill.png",     status: "dev",      href: "/rill",     title: "Rill — 業務連絡・メッセージング" },
   { app: "calendar", name: "Calendar", iconSrc: "/images/icons_bloom/orb_calendar.png", status: "todo",     href: "/calendar", title: "Calendar — 営業予定・シフト" },

@@ -236,7 +236,7 @@ export default function TransactionReviewPage() {
           lineHeight: 1.6,
         }}
       >
-        B-min 最小実装。 status='pending' 行は UI 手動で借方/貸方/税区分を補完予定 (β/リリース版で実装)。
+        B-min 最小実装。 status='pending' 行は画面から手動で借方/貸方/税区分を補完予定 (β/リリース版で実装)。
         弥生 CSV エクスポートは shared lib bank-csv-parsers/yayoi-csv-exporter で実施 (PR #161)。
       </div>
     </div>

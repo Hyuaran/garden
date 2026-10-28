@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         completed_at: completedAt,
         total_rows: count ?? 0,
         status: "count_mismatch",
-        error_message: `受け取った ${accepted} 件に対して DB は ${count ?? 0} 件（読んだ件数 ${parsed.total}）`,
+        error_message: `受け取った ${accepted} 件に対して データベースは ${count ?? 0} 件（読んだ件数 ${parsed.total}）`,
       }, { onConflict: "run_id", ignoreDuplicates: false });
     return NextResponse.json({ ok: false, status: "count_mismatch", total: parsed.total, accepted, actual: count ?? 0 }, { status: 409 });
   }

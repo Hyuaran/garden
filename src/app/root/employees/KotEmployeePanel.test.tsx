@@ -7,19 +7,19 @@ it("confirms a named change and submits only changed codes", async () => {
  const fetch = vi.fn().mockResolvedValueOnce(Response.json(registration)).mockResolvedValueOnce(Response.json({ok:true}));
  vi.stubGlobal("fetch",fetch);
  render(<KotEmployeePanel employeeId="EMP-1" name="後道 愛美" />);
- fireEvent.click(screen.getByRole("button",{name:"KOT から読み直す"}));
- await screen.findByText("KOT の従業員コード 1571");
+ fireEvent.click(screen.getByRole("button",{name:"KING OF TIME から読み直す"}));
+ await screen.findByText("KING OF TIME の従業員コード 1571");
  fireEvent.change(screen.getByRole("combobox", { name: "変更後の所属" }), { target: { value: "2" } });
- fireEvent.click(screen.getByRole("button",{name:"KOT に反映する"}));
+ fireEvent.click(screen.getByRole("button",{name:"KING OF TIME に反映する"}));
  expect(screen.getByRole("alertdialog").textContent).toContain("後道 愛美さん（1571）の所属を 本社 → 事務");
  expect(fetch).toHaveBeenCalledTimes(1);
  fireEvent.click(screen.getByRole("button",{name:/^反映する$/}));
- await screen.findByText("KOT に反映しました");
+ await screen.findByText("KING OF TIME に反映しました");
  expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({divisionCode:"2",updateDate:expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)});
 });
 it("shows read errors", async () => {
- vi.stubGlobal("fetch",vi.fn(async()=>Response.json({error:"KOT が止まっている時間です"},{status:400})));
+ vi.stubGlobal("fetch",vi.fn(async()=>Response.json({error:"KING OF TIME が止まっている時間です"},{status:400})));
  render(<KotEmployeePanel employeeId="EMP-1" name="後道 愛美" />);
- fireEvent.click(screen.getByRole("button",{name:"KOT から読み直す"}));
- await waitFor(()=>expect(screen.getByRole("status").textContent).toBe("KOT が止まっている時間です"));
+ fireEvent.click(screen.getByRole("button",{name:"KING OF TIME から読み直す"}));
+ await waitFor(()=>expect(screen.getByRole("status").textContent).toBe("KING OF TIME が止まっている時間です"));
 });

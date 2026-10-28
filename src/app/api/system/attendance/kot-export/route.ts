@@ -117,6 +117,6 @@ export async function POST() {
     } });
   } catch (error) {
     console.error("[system/attendance/kot-export] generation failed", { error: error instanceof Error ? error.name : "unknown" });
-    return NextResponse.json({ ok: false, error: error instanceof Error && error.message.startsWith("Shift-JIS") ? error.message : "KOT取込CSVを生成できませんでした" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: error instanceof Error && error.message.startsWith("Shift-JIS") ? error.message : "KING OF TIME 取込CSVを生成できませんでした" }, { status: 500 });
   }
 }

@@ -10,7 +10,7 @@ import type { KanriPerson } from "@/app/system/kanri/_lib/calc/jisseki-sheet";
 
 export const runtime = "nodejs";
 
-const LAYOUT_MESSAGE = "KOT のレイアウト『Garden管理表ポータル（日）』で出したファイルを選んでください";
+const LAYOUT_MESSAGE = "KING OF TIME のレイアウト『Garden管理表ポータル（日）』で出したファイルを選んでください";
 const SELECT_PERSON_COLUMNS = "id,name,kot_name,team,department,employment_kind,base_wage,is_field_sales,active,sort_order";
 
 function emptyInputs(): KanriManualInputs {
@@ -59,7 +59,7 @@ function mergeRunSummary(current: unknown, kot: KanriKotDailySummary) {
   }, kot.rowCount);
   return {
     ...base,
-    kot_daily: { label: "勤怠（KOT）", count: kot.rowCount, unit: "行" },
+    kot_daily: { label: "勤怠（KING OF TIME）", count: kot.rowCount, unit: "行" },
     kotDaily: {
       startDate: kot.startDate,
       endDate: kot.endDate,

@@ -288,7 +288,7 @@ export default function MobileExpenseSubmit() {
           qualified_number: ocr?.qualified_number ?? null,
           qualified_class: ocr?.qualified_class ?? null,
           category_id: ocr?.category_id ?? null,
-          description: shot.ocrConfirmRequired || ocr?.confidence === "low" ? "OCR要確認" : null,
+          description: shot.ocrConfirmRequired || ocr?.confidence === "low" ? "読み取り要確認" : null,
           storage_path: up.data?.path ?? path,
           drive_file_id: driveFileId,
           drive_view_url: driveViewUrl,

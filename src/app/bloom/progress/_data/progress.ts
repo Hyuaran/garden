@@ -105,7 +105,7 @@ export const progressModules: ProgressModule[] = [
     phase: "つぼみ",
     release: "26/06",
     iconSrc: "/themes/garden-shell/images/icons_bloom/orb_bud.png",
-    done: "経理画面の認証・DB設計、給与処理ロジックの骨格",
+    done: "経理画面の認証・データベース設計、給与処理ロジックの骨格",
     now: "振込管理画面、給与処理 v1",
     next: "請求書管理、マネーフォワード連携、法人別経理",
   },
@@ -121,12 +121,12 @@ export const progressModules: ProgressModule[] = [
     iconSrc: "/themes/garden-shell/images/icons_bloom/orb_rill.png",
     done: "通知導線の初期仕様の棚卸し",
     now: "社内メッセージ・通知の実装",
-    next: "チャット特化UIの本格化、各モジュール連携",
+    next: "チャット特化画面の本格化、各モジュール連携",
   },
   {
     code: "soil",
     name: "Soil",
-    purpose: "DB 基盤、大量データ、インポート",
+    purpose: "データベース基盤、大量データ、インポート",
     group: "地下層 / 基盤",
     percent: 0,
     status: "pending",
@@ -234,7 +234,7 @@ export const historyLogs = [
     special: "",
     work: [
       { module: "Bud", code: "bud", text: "経理画面の認証機能とデータベース設計を確認。" },
-      { module: "Leaf", code: "leaf", text: "新規案件登録画面のステータス操作 UI を追加。" },
+      { module: "Leaf", code: "leaf", text: "新規案件登録画面のステータス操作の画面を追加。" },
       { module: "Root", code: "root", text: "従業員情報テーブルと権限段階の整理。" },
     ],
     tomorrow: [

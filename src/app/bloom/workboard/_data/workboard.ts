@@ -65,7 +65,7 @@ export const runningProjects: RunningProject[] = [
     statusTone: "active",
     owner: "東海林 美琴",
     updated: "5/20 11:45",
-    next: "UI 仕上げ",
+    next: "画面の仕上げ",
   },
   {
     title: "Forest 仕訳帳実装",

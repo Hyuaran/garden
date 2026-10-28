@@ -131,7 +131,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, result });
   } catch (error) {
     console.error("[bud expense ocr]", error);
-    return NextResponse.json({ ok: false, error: "OCRに失敗しました" }, { status: 502 });
+    return NextResponse.json({ ok: false, error: "読み取りに失敗しました" }, { status: 502 });
   }
 }
 

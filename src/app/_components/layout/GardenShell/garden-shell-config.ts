@@ -1,4 +1,4 @@
-﻿const T = "/themes/garden-shell";
+const T = "/themes/garden-shell";
 
 export type GardenModuleId =
   | "bloom"
@@ -56,7 +56,7 @@ export const DEFAULT_GARDEN_ACTIVITY_ITEMS: GardenShellActivityItem[] = [
   {
     time: "11:30",
     icon: `${T}/images/icons_bloom/bloom_workboard.png`,
-    title: "残高UIを確認中",
+    title: "残高画面を確認中",
     body: "後道さんに見せる画面として、Budで残高を見える化しています。",
   },
   {

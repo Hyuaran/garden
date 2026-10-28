@@ -39,7 +39,7 @@ function ShiwakechouPageContent() {
           </p>
           <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 inline-block">
             🚧 alpha 版: mock 仕訳 10 件表示中。# 276 Bank からの自動仕訳化 / 弥生
-            export / 検索 UI は後続段階で実装。
+            export / 検索の画面は後続段階で実装。
           </div>
         </div>
 

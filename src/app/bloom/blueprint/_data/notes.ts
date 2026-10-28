@@ -32,7 +32,7 @@ export const blueprintNotes: BlueprintNote[] = [
   {
     title: "自動集計・Chatwork・PDF は対象外",
     body:
-      "今回の MVP は読み取り専用の設計図。DB write、Chatwork 通知、PDF 生成、画像生成、自動集計の新規追加は行わない。",
+      "今回の MVP は読み取り専用の設計図。データベースへの書き込み、Chatwork 通知、PDF 生成、画像生成、自動集計の新規追加は行わない。",
     severity: "保護",
   },
 ];

@@ -14,7 +14,7 @@ function fixture(failed = false) {
   const client = {
     accounts:vi.fn().mockResolvedValue([{id:"b",name:"銀行"},{id:"c",name:"カード"}]),
     trialBalance:vi.fn().mockResolvedValue({start_date:"2026-04-01",rows:[{type:"account",name:"普通預金",rows:[{type:"sub_account",name:"普通",values:[0,0,0,100]}]}]}),
-    transactions: failed ? vi.fn().mockRejectedValue(new Error("MF に接続できませんでした")) : vi.fn().mockResolvedValue([
+    transactions: failed ? vi.fn().mockRejectedValue(new Error("マネーフォワードに接続できませんでした")) : vi.fn().mockResolvedValue([
       {id:"1",connected_account_id:"b",date:"2026-04-20",content:"入金",value:10,side:"INCOME",journalizing_status:"none"},
       {id:"2",connected_account_id:"c",date:"2026-10-01",content:"利用",value:30,side:"EXPENSE",journalizing_status:"none"},
       {id:"3",connected_account_id:"c",date:"2026-04-01",content:"古い利用",value:40,side:"EXPENSE",journalizing_status:"none"},
@@ -48,9 +48,9 @@ describe("MF snapshot sync", () => {
   });
   it("records failure without applying a partial snapshot", async () => {
     const f = fixture(true);
-    expect(await syncMf(f.db,"cron",{client:f.client,key:"key",viewers:"e1"})).toMatchObject({ok:false,error:"MF に接続できませんでした"});
+    expect(await syncMf(f.db,"cron",{client:f.client,key:"key",viewers:"e1"})).toMatchObject({ok:false,error:"マネーフォワードに接続できませんでした"});
     expect(f.rpc).toHaveBeenCalledTimes(1);
-    expect(f.update).toHaveBeenCalledWith({ok:false,error:"MF に接続できませんでした"});
+    expect(f.update).toHaveBeenCalledWith({ok:false,error:"マネーフォワードに接続できませんでした"});
     expect(f.old.balance).toBe(50);
     expect(f.old.fetched_at).toBe("old");
   });

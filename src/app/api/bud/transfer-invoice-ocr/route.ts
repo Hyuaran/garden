@@ -126,7 +126,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, result: normalizeResult(raw) });
   } catch (error) {
     console.error("[bud transfer invoice ocr]", error);
-    return NextResponse.json({ ok: false, error: "請求書OCRに失敗しました" }, { status: 502 });
+    return NextResponse.json({ ok: false, error: "請求書の読み取りに失敗しました" }, { status: 502 });
   }
 }
 

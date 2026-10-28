@@ -41,6 +41,6 @@ describe("MF read-only client", () => {
   });
   it("sanitizes connection errors", async () => {
     const client = new MfClient("secret",vi.fn().mockRejectedValue(new Error("secret")));
-    await expect(client.accounts()).rejects.toThrow("MF に接続できませんでした");
+    await expect(client.accounts()).rejects.toThrow("マネーフォワードに接続できませんでした");
   });
 });

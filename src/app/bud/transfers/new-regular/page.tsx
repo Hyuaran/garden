@@ -18,7 +18,7 @@ export default async function NewRegularPage({
       route="/bud/transfers"
       title="振込依頼 新規作成"
       titleJp="請求書から、支払いの段取りへ"
-      subtitle="請求書アップロードとOCR補助で、振込依頼を作成します。"
+      subtitle="請求書アップロードと読み取り補助で、振込依頼を作成します。"
     >
       <div className="p-6">
         <TransferFormRegular inboxId={inboxId ?? null} />

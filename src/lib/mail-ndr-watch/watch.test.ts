@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { classify, isNdr, makeAlert, formatAlert, type Message } from "./parse";
 import { runWatch, windowStart, type State, type Dependencies } from "./run";
 const now = new Date("2026-10-22T10:00:00Z");
@@ -36,7 +36,7 @@ describe("NDR detection and parsing", () => {
     expect(makeAlert("box", { id: "x" })).toMatchObject({ original_subject: "記録なし", recipients: "記録なし", original_sent_at: null });
   });
   it("formats JST and missing fields", () => {
-    expect(formatAlert(alert)).toBe("[info][title]メール送信失敗を検知[/title]\n種別：SendAsDenied（送信権限不足）\n差出人アカウント：keiri@example.com\n元件名：請求書\n送信日時：2026/10/22 18:30\n宛先：A 他1件\nNDR受信：2026/10/22 19:00\n→ 相手に届いていません。再送が必要です。[/info]");
+    expect(formatAlert(alert)).toBe("[info][title]メール送信失敗を検知[/title]\n種別：SendAsDenied（送信権限不足）\n差出人アカウント：keiri@example.com\n元件名：請求書\n送信日時：2026/10/22 18:30\n宛先：A 他1件\n配信不能の通知の受信：2026/10/22 19:00\n→ 相手に届いていません。再送が必要です。[/info]");
     expect(formatAlert({ ...alert, original_sent_at: null })).toContain("送信日時：記録なし");
   });
 });

@@ -170,7 +170,7 @@ export default function InsurancePage() {
               <TextField label="子ども・子育て支援金率（%）" type="number" step="0.001" min={0} max={100} value={editTarget.child_support_rate} onChange={(e) => setEditTarget({ ...editTarget, child_support_rate: Number(e.target.value) })} error={errors.child_support_rate} />
             </FormGrid>
             <div style={{ background: colors.infoBg, color: colors.info, padding: "8px 12px", borderRadius: 4, fontSize: 12, marginTop: 8 }}>
-              等級テーブル（grade_table）はUIからの編集未対応です。Supabaseダッシュボードで直接編集してください。
+              等級テーブル（grade_table）は画面からの編集未対応です。Supabaseダッシュボードで直接編集してください。
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>

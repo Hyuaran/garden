@@ -146,10 +146,10 @@ export async function hireCandidate({db,userId}: Context, id: string, prepare = 
   await persist({status:"hiring"});
   stage = "kot";
   if (!c.steps.kot?.done) {
-   if (process.env.KOT_EMPLOYEE_CREATE_ENABLED !== "true") throw new HireError(`社員番号 ${c.employee_number} の KOT 登録は停止中です（東海林さんの OK 待ち）。登録の再開後に［続きから］を押してください。`);
+   if (process.env.KOT_EMPLOYEE_CREATE_ENABLED !== "true") throw new HireError(`社員番号 ${c.employee_number} の KING OF TIME 登録は停止中です（東海林さんの OK 待ち）。登録の再開後に［続きから］を押してください。`);
    const employees = await fetchKotHireEmployees();
    const existing = employees.find(e=> Number(e.code) === Number(c.employee_number));
-   if (existing && (normalizeName((existing.lastName || "")+(existing.firstName || "")) !== normalizeName(c.last_name+c.first_name))) throw new HireError(`社員番号 ${c.employee_number} は KOT で別の方（${existing.lastName || ""} ${existing.firstName || ""}）に使われています。KOT のその方の社員番号を確認・修正してから［続きから］を押してください。`,409);
+   if (existing && (normalizeName((existing.lastName || "")+(existing.firstName || "")) !== normalizeName(c.last_name+c.first_name))) throw new HireError(`社員番号 ${c.employee_number} は KING OF TIME で別の方（${existing.lastName || ""} ${existing.firstName || ""}）に使われています。KING OF TIME のその方の社員番号を確認・修正してから［続きから］を押してください。`,409);
    if (!existing) await createKotEmployee({code:c.employee_number!,lastName:c.last_name,firstName:c.first_name,lastNamePhonetics:c.last_name_kana,firstNamePhonetics:c.first_name_kana,birthDate:c.birthday,hiredDate:c.hire_date,gender:c.gender as "male"|"female",divisionCode:c.kot_division_code,typeCode:c.kot_type_code});
    await done();
   }
@@ -173,8 +173,8 @@ export async function hireCandidate({db,userId}: Context, id: string, prepare = 
   await persist({employee_id:employee!.employee_id,status:"hired"});
   return c;
  } catch (e) {
-  const stageName = {number:"社員番号の採番",kot:"KOT 登録",roster:"Kintone 名簿への登録",garden:"Garden への反映"}[stage];
-  const message = e instanceof HireError ? e.message : `社員番号 ${c.employee_number || "未決定"} の${stageName}を完了できませんでした。${e instanceof Error && e.message.startsWith("KOT が止まって") ? "KOT が止まっている時間帯です。利用できる時間になってから" : "管理者が接続と登録内容を確認してから"}［続きから］を押してください。`;
+  const stageName = {number:"社員番号の採番",kot:"KING OF TIME 登録",roster:"Kintone 名簿への登録",garden:"Garden への反映"}[stage];
+  const message = e instanceof HireError ? e.message : `社員番号 ${c.employee_number || "未決定"} の${stageName}を完了できませんでした。${e instanceof Error && e.message.startsWith("KING OF TIME が止まって") ? "KING OF TIME が止まっている時間帯です。利用できる時間になってから" : "管理者が接続と登録内容を確認してから"}［続きから］を押してください。`;
   await persist({steps:{...c.steps,[stage]:{done:false,at:new Date().toISOString(),error:message}}});
   return c;
  } finally {

@@ -577,7 +577,7 @@ async function syncBankListHistory(
 }
 
 export async function writeRetirementToRoster(employee: { kot_employee_id?: string | null; termination_date?: string | null }, fetchImpl: typeof fetch = fetch) {
-  if (!employee.kot_employee_id || !employee.termination_date) return { status: "skipped" as const, note: "KOTIDまたは退職日が空のため名簿更新をスキップ" };
+  if (!employee.kot_employee_id || !employee.termination_date) return { status: "skipped" as const, note: "KING OF TIME の IDまたは退職日が空のため名簿更新をスキップ" };
   const subdomain = process.env.KINTONE_SUBDOMAIN;
   const token = process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN;
   const app = process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID || "56";
@@ -592,7 +592,7 @@ export async function writeRetirementToRoster(employee: { kot_employee_id?: stri
   if (!found.ok) return { status: "failed" as const, note: `名簿検索失敗: ${found.status}` };
   const json = await found.json() as { records?: Array<{ $id?: { value?: string } }> };
   const id = json.records?.[0]?.$id?.value;
-  if (!id) return { status: "skipped" as const, note: "KOTIDが名簿にありません" };
+  if (!id) return { status: "skipped" as const, note: "KING OF TIME の IDが名簿にありません" };
   const updated = await fetchImpl(`https://${subdomain}.cybozu.com/k/v1/record.json`, {
     method: "PUT",
     headers: { "content-type": "application/json", "X-Cybozu-API-Token": token },

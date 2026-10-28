@@ -4,7 +4,7 @@ import { createServerClient } from "@/app/_lib/supabase/server";
 import { MANAGER_ROLES } from "../../_lib/attendance";
 import SyncStatusClient from "./SyncStatusClient";
 
-export const metadata = { title: "勤怠 KOT同期状況 | Garden" };
+export const metadata = { title: "勤怠 KING OF TIME 同期状況 | Garden" };
 
 async function SyncStatusPage() {
   const supabase = await createServerClient();

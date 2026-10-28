@@ -15,11 +15,11 @@ async function authorize() {
 async function employee(employeeId: string) {
   const { data, error } = await getSupabaseAdmin().from("root_employees").select("kot_employee_id").eq("employee_id", employeeId).is("deleted_at", null).maybeSingle();
   if (error) throw new Error("従業員の情報を読み込めませんでした");
-  if (!data || !/^\d+$/.test(data.kot_employee_id ?? "")) throw new Error("KOT の従業員コードを確認してください");
+  if (!data || !/^\d+$/.test(data.kot_employee_id ?? "")) throw new Error("KING OF TIME の従業員コードを確認してください");
   return fetchKotEmployeeByCode(data.kot_employee_id);
 }
 function failure(error: unknown) {
-  return NextResponse.json({ error: error instanceof Error ? error.message : "KOT の操作に失敗しました" }, { status: 400 });
+  return NextResponse.json({ error: error instanceof Error ? error.message : "KING OF TIME の操作に失敗しました" }, { status: 400 });
 }
 export async function GET(_request: Request, context: Context) {
   const denied = await systemViewResponse("root-employees");
@@ -35,7 +35,7 @@ export async function PATCH(request: Request, context: Context) {
   const actor = await authorize();
   if (!actor) return NextResponse.json({ error: "全権管理者のみ操作できます" }, { status: 403 });
   try {
-    if (process.env.KOT_EMPLOYEE_UPDATE_ENABLED !== "true") throw new Error("KOT の変更は止めています");
+    if (process.env.KOT_EMPLOYEE_UPDATE_ENABLED !== "true") throw new Error("KING OF TIME の変更は止めています");
     const body = await request.json();
     if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some(key => !["divisionCode", "typeCode", "updateDate"].includes(key)) || !isKotUpdateDate(body.updateDate)) throw new Error("変更内容と日付を確認してください");
     const fields: { divisionCode?: string; typeCode?: string } = {};
@@ -59,7 +59,7 @@ export async function PATCH(request: Request, context: Context) {
     });
     auditFailed = Boolean(error);
     } catch { auditFailed = true; }
-    if (auditFailed) return NextResponse.json({ error: "KOT に反映しましたが、変更の記録を保存できませんでした。再反映せず管理者にお知らせください" }, { status: 500 });
+    if (auditFailed) return NextResponse.json({ error: "KING OF TIME に反映しましたが、変更の記録を保存できませんでした。再反映せず管理者にお知らせください" }, { status: 500 });
     return NextResponse.json({ ok: true });
   } catch (error) { return failure(error); }
 }

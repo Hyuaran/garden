@@ -7,7 +7,7 @@ const enabledModule: ModuleDef = {
   emoji: "🌳", label: "Forest", description: "全法人決算", href: "/forest", color: "#1F5C3A", enabled: true, layer: "樹冠",
 };
 const disabledModule: ModuleDef = {
-  emoji: "🌱", label: "Soil", description: "DB 本体・大量データ基盤", href: "/soil", color: "#8B6F47", enabled: false, layer: "地下",
+  emoji: "🌱", label: "Soil", description: "データベース本体・大量データ基盤", href: "/soil", color: "#8B6F47", enabled: false, layer: "地下",
 };
 const pos = { x: 0, y: 0 };  // 中央基準（cross-ui-06 §3.4）
 
@@ -98,7 +98,7 @@ describe("ModuleSlot — bilingual label (Phase 2-2 候補 8)", () => {
     const def: ModuleDef = {
       emoji: "🌱",
       label: "Soil",
-      description: "DB 本体・大量データ基盤",
+      description: "データベース本体・大量データ基盤",
       href: "/soil",
       color: "#8B6F47",
       enabled: false,
@@ -106,6 +106,6 @@ describe("ModuleSlot — bilingual label (Phase 2-2 候補 8)", () => {
     };
     render(<ModuleSlot moduleKey="soil" module={def} position={pos} />);
     expect(screen.getByText("Soil")).toBeInTheDocument();
-    expect(screen.getByText(/DB 本体/)).toBeInTheDocument();
+    expect(screen.getByText(/データベース本体/)).toBeInTheDocument();
   });
 });

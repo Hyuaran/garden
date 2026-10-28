@@ -45,7 +45,7 @@ it.each([{divisionCode:"",updateDate:"2026-10-24"},{divisionCode:"2",updateDate:
  expect((await PATCH(request(body),context)).status).toBe(400);expect(m.updateKotEmployee).not.toHaveBeenCalled();
 });
 it("does not audit failed KOT writes", async () => {
- m.updateKotEmployee.mockRejectedValueOnce(new Error("KOT が止まっています"));
+ m.updateKotEmployee.mockRejectedValueOnce(new Error("KING OF TIME が止まっています"));
  expect((await PATCH(request({ divisionCode: "2", updateDate: "2026-10-24" }), context)).status).toBe(400);
  expect(m.insert).not.toHaveBeenCalled();
 });

@@ -25,13 +25,13 @@ async function updateRoster(token:string,app:string,id:string,record:Record<stri
 
 export async function syncSubmissionToKintone(row:SubmissionRow,employee:Employee):Promise<SyncResult>{
   if(!["commute_route","bank_account"].includes(row.submission_type))return{status:"skipped",note:"Kintone反映対象外"};
-  if(!employee.kot_employee_id)return{status:"skipped",note:"KOTID未登録のため名簿更新をスキップ"};
+  if(!employee.kot_employee_id)return{status:"skipped",note:"KING OF TIME の ID未登録のため名簿更新をスキップ"};
   const targetToken=row.submission_type==="commute_route"?process.env.KINTONE_COMMUTE_TOKEN:process.env.KINTONE_PAYROLL_ACCOUNT_TOKEN;
   if(!process.env.KINTONE_SUBDOMAIN||!targetToken||!process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN)return{status:"skipped",note:"Kintone環境変数未設定"};
   try{
     const kot=employee.kot_employee_id,p=row.payload,rosterToken=process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN||"",rosterApp=process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID||"56";
     const rosterId=await findRosterId(rosterToken,rosterApp,kot);
-    if(!rosterId)return{status:"skipped",note:"KOTIDが名簿に無いためKintone反映をスキップ"};
+    if(!rosterId)return{status:"skipped",note:"KING OF TIME の IDが名簿に無いためKintone反映をスキップ"};
     if(row.submission_type==="commute_route"){
       await call("/k/v1/record.json","POST",`${process.env.KINTONE_COMMUTE_TOKEN||""},${rosterToken}`,{app:process.env.KINTONE_COMMUTE_APP_ID||"93",record:{ルックアップ:v(kot),文字列__1行_:v(employee.name),数値:v(row.proposed_one_way),数値_0:v(employee.commute_monthly_cap),文字列__1行__1:v(p.station)}});
       await updateRoster(rosterToken,rosterApp,rosterId,{交通費_片道:v(row.proposed_one_way),交通費上限:v(employee.commute_monthly_cap)});

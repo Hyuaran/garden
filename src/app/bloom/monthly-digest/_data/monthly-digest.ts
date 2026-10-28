@@ -70,7 +70,7 @@ export const digestAchievements: DigestAchievement[] = [
   {
     date: "4/26",
     title: "Bloom homepage v2.8a 完成",
-    body: "UI/UX 改善と桜世界観の演出を強化。体験品質を向上。",
+    body: "画面と使い勝手の改善と桜世界観の演出を強化。体験品質を向上。",
     tag: "Bloom",
     tone: "bloom",
   },

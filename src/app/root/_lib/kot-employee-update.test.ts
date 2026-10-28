@@ -6,7 +6,7 @@ beforeEach(() => { vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 it("stops updates before queue access by default", async () => {
  vi.stubEnv("KOT_EMPLOYEE_UPDATE_ENABLED", "");
- await expect(updateKotEmployee("key", { divisionCode: "2" }, "2026-10-24")).rejects.toThrow("KOT の変更は止めています");
+ await expect(updateKotEmployee("key", { divisionCode: "2" }, "2026-10-24")).rejects.toThrow("KING OF TIME の変更は止めています");
  expect(mocks.enqueueRelayJob).not.toHaveBeenCalled();
 });
 it("sends only provided fields with one relay job", async () => {
@@ -20,6 +20,6 @@ it("looks up the employee through relay only", async () => {
 it("rejects invalid date and unavailable time", async () => {
  await expect(updateKotEmployee("key", { typeCode: "1" }, "2026-02-30")).rejects.toThrow();
  vi.setSystemTime(new Date("2026-10-24T00:00:00Z"));
- await expect(updateKotEmployee("key", { typeCode: "1" }, "2026-10-24")).rejects.toThrow("KOT が止まっている時間です");
+ await expect(updateKotEmployee("key", { typeCode: "1" }, "2026-10-24")).rejects.toThrow("KING OF TIME が止まっている時間です");
  expect(mocks.enqueueRelayJob).not.toHaveBeenCalled();
 });

@@ -11,13 +11,13 @@ describe("UpdatedStamp", () => {
   });
   it("calls refresh and prevents repeated clicks while busy", () => {
     const refresh = vi.fn();
-    const { rerender } = render(<UpdatedStampRow><UpdatedStamp label="MF" date="2026-10-20T10:59:00Z" onRefresh={refresh} refreshLabel="読み直す" title="読み直す（1分に1回まで）" /></UpdatedStampRow>);
-    expect(screen.getByText("MF最終更新：2026/10/20(火) 19:59")).toBeInTheDocument();
+    const { rerender } = render(<UpdatedStampRow><UpdatedStamp label="マネーフォワード" date="2026-10-20T10:59:00Z" onRefresh={refresh} refreshLabel="読み直す" title="読み直す（1分に1回まで）" /></UpdatedStampRow>);
+    expect(screen.getByText("マネーフォワード最終更新：2026/10/20(火) 19:59")).toBeInTheDocument();
     const button = screen.getByRole("button", { name: "読み直す" });
     expect(button).not.toHaveAttribute("title"); expect(screen.getByRole("tooltip")).toHaveTextContent("読み直す（1分に1回まで）");
     fireEvent.click(button);
     expect(refresh).toHaveBeenCalledTimes(1);
-    rerender(<UpdatedStamp label="MF" busy onRefresh={refresh} refreshLabel="読み直す" />);
+    rerender(<UpdatedStamp label="マネーフォワード" busy onRefresh={refresh} refreshLabel="読み直す" />);
     expect(screen.getByRole("button")).toBeDisabled();
     expect(screen.getByRole("button")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByRole("button").querySelector("svg")).toHaveAttribute("class");

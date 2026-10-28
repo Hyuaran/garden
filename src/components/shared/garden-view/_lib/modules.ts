@@ -53,7 +53,7 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   tree:     { emoji: "🌲", label: "Tree",     description: "架電アプリ",              href: "/tree",            color: "#3B9B5C", enabled: true,  layer: "地上" },
   sprout:   { emoji: "🌿", label: "Sprout",   description: "新商材オンボーディング",   href: "/sprout",          color: "#A8D87A", enabled: false, layer: "地上" },
   // Layer 1 地下（3 modules）
-  soil:     { emoji: "🌱", label: "Soil",     description: "DB 本体・大量データ基盤",  href: "/soil",            color: "#8B6F47", enabled: false, layer: "地下" },
+  soil:     { emoji: "🌱", label: "Soil",     description: "データベース本体・大量データ基盤",  href: "/soil",            color: "#8B6F47", enabled: false, layer: "地下" },
   root:     { emoji: "🌿", label: "Root",     description: "組織・マスタデータ",       href: "/root",            color: "#5C4332", enabled: true,  layer: "地下" },
   rill:     { emoji: "🌊", label: "Rill",     description: "Chatwork 連携",          href: "/rill",            color: "#4FA8C9", enabled: false, layer: "地下" },
 };

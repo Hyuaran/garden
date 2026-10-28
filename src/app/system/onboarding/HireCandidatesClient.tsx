@@ -14,7 +14,7 @@ async function api(path = "", method = "GET", body?: unknown) {
  const data = await res.json(); if (!res.ok) throw new Error(data.error || "処理できませんでした"); return data;
 }
 type Options = {companies:{company_id:string;company_name:string}[];divisions:{code:string;name:string}[];workingTypes:{code:string;name:string}[]};
-const steps = [["number","社員番号を決める"],["kot","KOT に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
+const steps = [["number","社員番号を決める"],["kot","KING OF TIME に登録"],["roster","Kintone 名簿に登録"],["garden","Garden に反映"]];
 const stopped = (r:HireCandidate)=>steps.find(([key])=>key!=="filemaker"&&!!r.steps[key]?.error);
 export default function HireCandidatesClient({userId,tab,canWrite = true}:{userId:string;tab:"candidates"|"confirmations";canWrite?:boolean}) {
  const [reviewId,setReviewId]=useState<string|null>(null);
@@ -100,7 +100,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  const choice=(key:keyof HireInput,label:string,opts:{value:string;label:string}[])=><label key={key}>{label}<select required value={form?.[key] ?? ""} onChange={e=>set(key,e.target.value)}><option value="" disabled>選んでください</option>{opts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
  const status=(r:HireCandidate)=>{
   const failed=stopped(r)?.[0];
-  if(failed)return ({number:"番号",kot:"KOT ",roster:"名簿",garden:"Garden 反映"}[failed] ?? "登録")+"で止まっています";
+  if(failed)return ({number:"番号",kot:"KING OF TIME ",roster:"名簿",garden:"Garden 反映"}[failed] ?? "登録")+"で止まっています";
   return r.status==="hired"?"入社済み（"+r.employee_number+"）":r.status==="no_show"?"辞退":r.status==="hiring"?"処理中":"入社予定";
  };
  const toggleChecklist = async (row:HireCandidate,key:ChecklistKey,value:boolean) => {
@@ -164,7 +164,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  {field("last_name_kana","セイ")}{field("first_name_kana","メイ")}{choice("gender","性別",[{value:"male",label:"男性"},{value:"female",label:"女性"}])}
  {field("last_name","姓")}{field("first_name","名")}{field("birthday","生年月日","date")}
  {field("hire_date","入社予定日","date")}{choice("company_id","所属法人",options.companies.map(c=>({value:c.company_id,label:c.company_name})))}{choice("employment_type","雇用形態",EMPLOYMENT_TYPES.map(value=>({value,label:value})))}
- {choice("kot_division_code","KOT の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}{choice("kot_type_code","KOT の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
+ {choice("kot_division_code","KING OF TIME の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}{choice("kot_type_code","KING OF TIME の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
   </div></div><div className={styles.hireRowActions} data-modal-actions><button disabled={!canWrite||busy||!!saving} onClick={()=>setForm(null)} data-modal-action="secondary">閉じる</button>
 <button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})} data-modal-action="primary">保存する</button></div></dialog>}
  {success&&<dialog ref={successDialog} aria-labelledby="hire-success-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setSuccess(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setSuccess(null);}}} data-garden-modal="panel" data-size="sm">
@@ -185,7 +185,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  </dialog>}
  {confirmation&&<dialog ref={confirmDialog} aria-label="入社の確認" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setConfirmation(null)} onClick={event=>{if(event.target===event.currentTarget)setConfirmation(null);}} data-garden-modal="panel" data-size="sm">
  <h2>入社の確認</h2>
- <p>{confirmation.last_name} {confirmation.first_name}さんを社員番号 {confirmation.employee_number} で KOT と Garden に登録します。KOT はこの時点から料金の対象になります。</p>
+ <p>{confirmation.last_name} {confirmation.first_name}さんを社員番号 {confirmation.employee_number} で KING OF TIME と Garden に登録します。KING OF TIME はこの時点から料金の対象になります。</p>
  <div className={styles.hireRowActions} data-modal-actions><button disabled={!canWrite||busy||!!saving} onClick={()=>setConfirmation(null)} data-modal-action="secondary">やめる</button>
 <button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{const id=confirmation.id;setConfirmation(null);await register(id);})} data-modal-action="primary">登録する</button></div></dialog>}
  </section>}</>;

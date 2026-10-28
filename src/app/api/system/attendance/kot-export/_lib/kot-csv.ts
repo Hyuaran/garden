@@ -39,7 +39,7 @@ export function buildKotCsvText(rows: KotExportRow[]) {
   return rows.map((row) => {
     const employeeCode = row.root_employees?.kot_employee_id?.trim();
     if (!employeeCode) throw new Error("従業員コード未設定の打刻が含まれています");
-    if (!/^[A-Za-z0-9]{3,10}$/.test(employeeCode)) throw new Error(`KOT従業員コードの形式が不正です: ${employeeCode}`);
+    if (!/^[A-Za-z0-9]{3,10}$/.test(employeeCode)) throw new Error(`KING OF TIME 従業員コードの形式が不正です: ${employeeCode}`);
     const name = row.root_employees?.name?.trim() ?? "";
     return [employeeCode, name, toKotPunchCode(row.punch_type), formatKotJstDateTime(row.punched_at)]
       .map(csvField).join(",");

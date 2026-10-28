@@ -121,7 +121,7 @@ export const moduleBlueprints: ModuleBlueprint[] = [
     id: "soil",
     name: "Soil",
     code2: "SO",
-    role: "DB基盤",
+    role: "データベース基盤",
     stageLabel: "構想",
     summary: "大量データ・インポート・基盤データの土壌。",
     features: ["大量データインポート", "基盤データ管理（構想段階）"],
@@ -154,7 +154,7 @@ export const moduleBlueprints: ModuleBlueprint[] = [
     relations: "Root（従業員マスタ）",
     folder: "110_Rill_メッセージ",
     iconSrc: "/themes/garden-shell/images/icons_bloom/orb_rill.png",
-    note: "チャット特化 UI（FileMaker 風 UX から逸脱可）",
+    note: "チャット特化画面（FileMaker 風 UX から逸脱可）",
   },
   {
     id: "calendar",

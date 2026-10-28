@@ -265,7 +265,7 @@ export function validateUedaUiAction(input: UedaUiActionInput): UedaUiValidation
   if (input.editingField) {
     return {
       allowed: false,
-      reason: `上田 UI は編集権限なし（試行フィールド: "${input.editingField}"）。spec § 2.7 準拠、編集は東海林さん再判断 → 計算者へ再修正依頼。`,
+      reason: `上田さんの画面は編集権限なし（試行フィールド: "${input.editingField}"）。spec § 2.7 準拠、編集は東海林さん再判断 → 計算者へ再修正依頼。`,
     };
   }
 
@@ -273,7 +273,7 @@ export function validateUedaUiAction(input: UedaUiActionInput): UedaUiValidation
   if (input.triggersTransfer) {
     return {
       allowed: false,
-      reason: "上田 UI は振込実行権限なし。振込実行は東海林さん（payroll_auditor）専任。",
+      reason: "上田さんの画面は振込実行権限なし。振込実行は東海林さん（payroll_auditor）専任。",
     };
   }
 
@@ -281,7 +281,7 @@ export function validateUedaUiAction(input: UedaUiActionInput): UedaUiValidation
   if (!allowedActions.includes(input.action)) {
     return {
       allowed: false,
-      reason: `上田 UI で許可されていない action: "${input.action}"。許可: ${allowedActions.join(", ")}`,
+      reason: `上田さんの画面で許可されていない action: "${input.action}"。許可: ${allowedActions.join(", ")}`,
     };
   }
 

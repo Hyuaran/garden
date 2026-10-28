@@ -175,15 +175,15 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
       if (!res.ok || !json.ok) {
         throw new Error(
           json.ok
-            ? "請求書OCRに失敗しました"
-            : json.error ?? "請求書OCRに失敗しました",
+            ? "請求書の読み取りに失敗しました"
+            : json.error ?? "請求書の読み取りに失敗しました",
         );
       }
       applyInvoiceOcrResult(json.result);
       setOcrMessage(
         json.result.confidence === "low"
-          ? "OCR結果を反映しました。未読取・低信頼の項目を確認してください。"
-          : "OCR結果を反映しました。",
+          ? "読み取り結果を反映しました。未読取・低信頼の項目を確認してください。"
+          : "読み取り結果を反映しました。",
       );
     } catch (error) {
       setServerError(error instanceof Error ? error.message : String(error));
@@ -195,7 +195,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
 
   const handleInboxOcr = async (id: string) => {
     setOcrBusy(true);
-    setOcrMessage("未処理トレイの請求書をOCRしています。");
+    setOcrMessage("未処理トレイの請求書を読み取っています。");
     setServerError(null);
     try {
       const inboxRes = await fetch(
@@ -233,15 +233,15 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
       if (!ocrRes.ok || !ocrJson.ok) {
         throw new Error(
           ocrJson.ok
-            ? "請求書OCRに失敗しました"
-            : ocrJson.error ?? "請求書OCRに失敗しました",
+            ? "請求書の読み取りに失敗しました"
+            : ocrJson.error ?? "請求書の読み取りに失敗しました",
         );
       }
       applyInvoiceOcrResult(ocrJson.result);
       setOcrMessage(
         ocrJson.result.confidence === "low"
-          ? "未処理トレイのOCR結果を反映しました。未読取・低信頼の項目を確認してください。"
-          : "未処理トレイのOCR結果を反映しました。",
+          ? "未処理トレイの読み取り結果を反映しました。未読取・低信頼の項目を確認してください。"
+          : "未処理トレイの読み取り結果を反映しました。",
       );
     } catch (error) {
       setServerError(error instanceof Error ? error.message : String(error));
@@ -440,7 +440,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
             <div className={styles.cardHeader}>
               <h2 className={styles.panelTitle}>
                 <span className={styles.titleIcon}>読</span>
-                請求書OCR自動入力
+                請求書の読み取り自動入力
               </h2>
               <button
                 type="button"
@@ -448,7 +448,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                 disabled={busy}
                 className={`${styles.goldButton} shrink-0`}
               >
-                {ocrBusy ? "OCR中…" : "請求書を選択"}
+                {ocrBusy ? "読み取り中…" : "請求書を選択"}
               </button>
             </div>
             <div className={styles.cardBody}>
@@ -650,7 +650,7 @@ export function TransferFormRegular({ inboxId }: { inboxId?: string | null }) {
                 />
                 {vendor && !vendor.id && (
                   <p className="text-xs text-[#b3892e]">
-                    OCRで読み取った振込先です。既存取引先を使う場合は選択し直してください。
+                    請求書から読み取った振込先です。既存取引先を使う場合は選択し直してください。
                   </p>
                 )}
                 {errors.payee_name && (

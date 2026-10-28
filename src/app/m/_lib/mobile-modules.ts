@@ -6,7 +6,7 @@ type MobileModuleCopy = {
 };
 
 const MOBILE_COPY: Partial<Record<ModuleKey, MobileModuleCopy>> = {
-  soil: { descriptionLines: ["DB", "基盤"] },
+  soil: { descriptionLines: ["データベース", "基盤"] },
   root: { descriptionLines: ["組織", "マスタ"] },
   tree: { descriptionLines: ["架電", "業務"] },
   leaf: { descriptionLines: ["個別アプリ", "トスアップ"] },

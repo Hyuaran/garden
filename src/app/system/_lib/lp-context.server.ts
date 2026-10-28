@@ -32,13 +32,13 @@ export async function loadLpKintoneContext(from: string, to: string) {
   if (lpScope && !lpCustomerOrderCountsByBiz) notes.push("顧客一覧（受注）を取得できませんでした");
   const lpUnmatchedOrders = lpCustomerOrderCountsByBiz ? [...(unmatchedLpOrders.get(lpCustomerOrderCountsByBiz) ?? new Map()).entries()].map(([listName, count]) => ({ listName, count })) : [];
   if (!lpScope) {
-    notes.push("LP申込み（kintone）の事業マスタを取得できませんでした");
+    notes.push("WEB申込み（kintone）の事業マスタを取得できませんでした");
   } else {
     for (const biz of lpScope) {
       if (!lpCustomerAppTokenEnv(biz.customerApp)) {
         lpApplicationCountsByBiz.set(biz.bizCode, null);
         recordsByApp.set(biz.customerApp, null);
-        notes.push(`LP申込み（kintone）の鍵が未設定：アプリ ${biz.customerApp}`);
+        notes.push(`WEB申込み（kintone）の鍵が未設定：アプリ ${biz.customerApp}`);
         continue;
       }
       if (!recordsByApp.has(biz.customerApp)) recordsByApp.set(biz.customerApp, await loadLpCustomerRecords(biz.customerApp));
@@ -46,7 +46,7 @@ export async function loadLpKintoneContext(from: string, to: string) {
       lpRegisteredCountsByBiz.set(biz.bizCode, countLpRegisteredRecords(records, from, to));
       if (!records) {
         lpApplicationCountsByBiz.set(biz.bizCode, null);
-        notes.push(`LP申込み（kintone）を取得できませんでした：${biz.bizName}`);
+        notes.push(`WEB申込み（kintone）を取得できませんでした：${biz.bizName}`);
       } else {
         lpApplicationCountsByBiz.set(biz.bizCode, countLpApplications(records, from, to));
       }

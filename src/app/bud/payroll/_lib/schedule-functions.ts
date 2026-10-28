@@ -278,9 +278,9 @@ export const REMINDER_TEMPLATES: Record<ScheduleStage, MessageTemplate> = {
       "🔴 承認待ちが {hours}h 経過。給与振込スケジュールに影響します。{assignee} さん、即対応をお願いします。",
   },
   mfc_import: {
-    info: "本日 {date} は MFC 取込予定日です。{assignee} さん、CSV 生成と取込をお願いします。",
-    warning: "MFC 取込が {hours}h 遅延。{assignee} さん、実行してください。",
-    critical: "🔴 MFC 取込が {hours}h 遅延。給与振込日に間に合わない可能性。",
+    info: "本日 {date} はマネーフォワード クラウドの取込予定日です。{assignee} さん、CSV 生成と取込をお願いします。",
+    warning: "マネーフォワード クラウドの取込が {hours}h 遅延。{assignee} さん、実行してください。",
+    critical: "🔴 マネーフォワード クラウドの取込が {hours}h 遅延。給与振込日に間に合わない可能性。",
   },
   audit: {
     info: "本日 {date} は給与目視確認予定日です。東海林さん、ご確認をお願いします。",

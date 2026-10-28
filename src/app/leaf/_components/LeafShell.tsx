@@ -18,7 +18,7 @@ const ACTIVITY_ITEMS = [
     time: "10:25",
     icon: LEAF_ICON,
     title: "関電プロトタイプ閲覧",
-    body: "入力UIと事務UIを Garden Shell の中で確認できる状態にしました。",
+    body: "入力画面と事務画面を Garden Shell の中で確認できる状態にしました。",
   },
   {
     time: "09:50",

@@ -1,4 +1,4 @@
-﻿import sanitizeHtml from "sanitize-html";
+import sanitizeHtml from "sanitize-html";
 
 export type Message = {
   id: string; subject?: string; receivedDateTime?: string; sentDateTime?: string;
@@ -73,5 +73,5 @@ export function japanTime(value: string | null) {
 }
 export function formatAlert(a: Alert) {
   const safe = (s: string) => s.replace(/\[/g, "［").replace(/\]/g, "］").replace(/[\r\n]+/g, " ");
-  return `[info][title]メール送信失敗を検知[/title]\n種別：${safe(a.kind)}\n差出人アカウント：${safe(a.mailbox)}\n元件名：${safe(a.original_subject)}\n送信日時：${japanTime(a.original_sent_at)}\n宛先：${safe(a.recipients)}\nNDR受信：${japanTime(a.received_at)}\n→ 相手に届いていません。再送が必要です。[/info]`;
+  return `[info][title]メール送信失敗を検知[/title]\n種別：${safe(a.kind)}\n差出人アカウント：${safe(a.mailbox)}\n元件名：${safe(a.original_subject)}\n送信日時：${japanTime(a.original_sent_at)}\n宛先：${safe(a.recipients)}\n配信不能の通知の受信：${japanTime(a.received_at)}\n→ 相手に届いていません。再送が必要です。[/info]`;
 }

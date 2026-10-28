@@ -165,13 +165,13 @@ export default function CallMetricsClient() {
             </StickyTable></div>
             {lpFunnelCalcNotes(data.lpFunnel).map((note) => <p className={styles.note} key={note}>{note}</p>)}
             <p className={styles.period}>{LP_FUNNEL_START_NOTE}</p>
-          </> : <p className={styles.note}>WEBインバウンドの対応と結果を取得できませんでした（LP系の範囲〈kintone 事業マスタ〉を読めなかったときはここが空になります）。</p>}
+          </> : <p className={styles.note}>WEBインバウンドの対応と結果を取得できませんでした（ランディングページの範囲〈kintone 事業マスタ〉を読めなかったときはここが空になります）。</p>}
         </section>}
 
         {activeTab === "employees" && <section role="tabpanel">
           <h2>従業員ごとの指標</h2>
           <div className={`${styles.tableWrap} ${styles.stickyFirst}`}><StickyTable>
-            <thead><tr><th colSpan={15}>テレマ</th><th colSpan={4} className={styles.lpStart}>WEBインバウンド（LP系）</th></tr><tr><th>社員名</th><th>稼働時間</th><th>通話時間</th><th>コール数</th><th>コール数/h</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>前確OK数</th><th>見込</th><th>担不</th><th>留守</th><th>無効</th><th className={styles.lpStart}>LP応答</th><th>LP発信</th><th>LP通話時間</th><th>LP申込み</th></tr></thead>
+            <thead><tr><th colSpan={15}>テレマ</th><th colSpan={4} className={styles.lpStart}>WEBインバウンド（ランディングページ）</th></tr><tr><th>社員名</th><th>稼働時間</th><th>通話時間</th><th>コール数</th><th>コール数/h</th><th>有効数</th><th>有効率</th><th>トス数</th><th>トス率</th><th>受注数</th><th>前確OK数</th><th>見込</th><th>担不</th><th>留守</th><th>無効</th><th className={styles.lpStart}>WEB応答</th><th>WEB発信</th><th>WEB通話時間</th><th>WEB申込み</th></tr></thead>
             <tbody {...CLARITY_MASK}>{data.employeeMetrics.length ? data.employeeMetrics.map((row) => {
               // 「（内線未登録）n席」の行は FileMaker 由来の列を「-」にする（§5.5.2）
               const unregistered = row.employeeName.startsWith("（内線未登録）");
@@ -181,7 +181,7 @@ export default function CallMetricsClient() {
               <td title={row.unregisteredExtensionDetails?.join("、")} className="garden-cell-text">{row.employeeName}</td><td className="garden-cell-number">{fm(formatWorkTime(row.workSeconds))}</td><td className="garden-cell-number">{maybeTime(row.talkSecondsOther)}</td><td className="garden-cell-number">{fm(row.callCount.toLocaleString())}</td><td className="garden-cell-number">{fm(formatCallsPerWorkHour(row.callCount, row.workSeconds))}</td><td className="garden-cell-number">{fm(row.effectiveCount.toLocaleString())}</td><td className="garden-cell-number">{fm(percent(row.effectiveRate))}</td><td className={[tone(row.tossCount), "garden-cell-number"].join(" ")}>{fm(row.tossCount.toLocaleString())}</td><td className="garden-cell-number">{fm(percent(row.callCount ? row.tossCount / row.callCount : 0))}</td><td className={[tone(row.acquiredCount), "garden-cell-number"].join(" ")}>{fm(row.acquiredCount.toLocaleString())}</td><td className={[tone(row.orderCount), "garden-cell-number"].join(" ")}>{fm(row.orderCount.toLocaleString())}</td><td className="garden-cell-number">{fm(row.prospectCount.toLocaleString())}</td><td className="garden-cell-number">{fm(row.absentCount.toLocaleString())}</td><td className="garden-cell-number">{fm(row.awayCount.toLocaleString())}</td><td className="garden-cell-number">{fm(row.invalidCount.toLocaleString())}</td><td className={[styles.lpStart, "garden-cell-number"].join(" ")}>{maybeNumber(row.lpAnswered)}</td><td className="garden-cell-number">{maybeNumber(row.lpOutbound)}</td><td className="garden-cell-number">{maybeTime(row.lpTalkSeconds)}</td><td className="garden-cell-number">{maybeNumber(row.lpApplications)}</td>
             </tr>; }) : <tr><td colSpan={19} className="garden-cell-text">対象データがありません</td></tr>}</tbody>
           </StickyTable></div>
-          {data.listName && <p className={styles.period}>リスト名で絞り込んだ場合も、通話時間と WEBインバウンド（LP系）はリスト名では絞り込みません。</p>}
+          {data.listName && <p className={styles.period}>リスト名で絞り込んだ場合も、通話時間と WEBインバウンド（ランディングページ）はリスト名では絞り込みません。</p>}
           <h2>事業別の小計</h2>
           <div className={styles.tableWrap}><StickyTable>
             <thead><tr><th>事業</th><th>着信</th><th>応答</th><th>不在</th><th>留守電</th><th>発信</th><th>発信の応答</th><th>通話時間</th><th>申込み</th></tr></thead>
@@ -250,15 +250,15 @@ export default function CallMetricsClient() {
               <td className="garden-cell-text">{flag}</td><td className="garden-cell-text">{handling}</td>
             </tr>)}</tbody>
           </StickyTable></div>
-          <h2>通話時間と WEBインバウンド（LP系）</h2>
+          <h2>通話時間と WEBインバウンド（ランディングページ）</h2>
           <div className={`${styles.definitionTable} ${styles.definitionFit}`}><StickyTable>
             <thead><tr><th>指標</th><th>定義</th></tr></thead>
             <tbody>
               <tr><td className="garden-cell-text">通話時間</td><td className="garden-cell-text">INNOVERA の通話秒数を従業員ごとに合計します。テレマ側に通話がなく、INNOVERA にも該当がない場合は「-」です。</td></tr>
-              <tr><td className="garden-cell-text">LP応答</td><td className="garden-cell-text">稼働中の LP 系回線への着信のうち、応答した件数です。</td></tr>
-              <tr><td className="garden-cell-text">LP発信</td><td className="garden-cell-text">稼働中の LP 系回線からの発信件数です。</td></tr>
-              <tr><td className="garden-cell-text">LP通話時間</td><td className="garden-cell-text">LP 系回線の着信・発信の通話時間合計です。</td></tr>
-              <tr><td className="garden-cell-text">LP申込み</td><td className="garden-cell-text">kintone の LP 顧客アプリで、対応状況が「申込み」かつ作成日時が対象期間内の件数です。</td></tr>
+              <tr><td className="garden-cell-text">WEB応答</td><td className="garden-cell-text">稼働中のランディングページの回線への着信のうち、応答した件数です。</td></tr>
+              <tr><td className="garden-cell-text">WEB発信</td><td className="garden-cell-text">稼働中のランディングページの回線からの発信件数です。</td></tr>
+              <tr><td className="garden-cell-text">WEB通話時間</td><td className="garden-cell-text">ランディングページの回線の着信・発信の通話時間合計です。</td></tr>
+              <tr><td className="garden-cell-text">WEB申込み</td><td className="garden-cell-text">kintone のランディングページの顧客アプリで、対応状況が「申込み」かつ作成日時が対象期間内の件数です。</td></tr>
             </tbody>
           </StickyTable></div>
           <h2>WEBインバウンドの対応と結果</h2>

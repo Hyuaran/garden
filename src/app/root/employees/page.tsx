@@ -965,7 +965,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
                 onChange={(e) => setEditTarget({ ...editTarget, filemaker_employee_name: e.target.value.trim() || null })}
                 error={errors.filemaker_employee_name}
               />
-              <TextField label="MFクラウド給与ID" value={editTarget.mf_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, mf_employee_id: e.target.value || null })} />
+              <TextField label="マネーフォワード クラウド給与 ID" value={editTarget.mf_employee_id ?? ""} onChange={(e) => setEditTarget({ ...editTarget, mf_employee_id: e.target.value || null })} />
             </FormGrid>
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>INNOVERA履歴・録音</h3>
             <FormGrid>

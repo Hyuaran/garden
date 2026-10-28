@@ -13,7 +13,7 @@ describe("KanriPortalClient", () => {
     kanden_report: { label: "訪販（関電件数報告）", count: 0, unit: "件" },
     credit_card: { label: "クレジットカード（8アプリ）", count: 0, unit: "件", apps: {} },
     roster: { label: "従業員名簿（在籍者）", count: 0, unit: "名" },
-    kot_daily: { label: "勤怠（KOT）", count: 0, unit: "行" },
+    kot_daily: { label: "勤怠（KING OF TIME）", count: 0, unit: "行" },
   };
 
   it("shows actual, point, and amount total rows in the calculated grid", async () => {

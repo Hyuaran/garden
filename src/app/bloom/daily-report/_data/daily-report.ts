@@ -52,7 +52,7 @@ export const reportBlocks: ReportBlock[] = [
   {
     label: "B. 気づき・課題",
     icon: "☼",
-    body: "ログイン UI が古いまま。/forest/login の刷新は別フェーズで要対応。",
+    body: "ログイン画面が古いまま。/forest/login の刷新は別フェーズで要対応。",
     tags: [],
   },
   {

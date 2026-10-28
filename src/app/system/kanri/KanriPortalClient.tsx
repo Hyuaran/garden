@@ -614,7 +614,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       return;
     }
     if (!kotFile) {
-      setMessage("KOT のファイルを選んでください。");
+      setMessage("KING OF TIME のファイルを選んでください。");
       return;
     }
     setKotImporting(true);
@@ -708,8 +708,8 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
 
     {activeTab === "kanri" && <>
     <section className={styles.panel}>
-      <h2>勤怠（KOT）</h2>
-      <p className={styles.hint}>KOT の「日別データ[CSV]」（レイアウト Garden管理表ポータル（日））を選んで取り込みます。</p>
+      <h2>勤怠（KING OF TIME）</h2>
+      <p className={styles.hint}>KING OF TIME の「日別データ[CSV]」（レイアウト Garden管理表ポータル（日））を選んで取り込みます。</p>
       <div className={styles.kotUpload}>
         <input type="file" accept=".csv,text/csv" onChange={(event) => setKotFile(event.target.files?.[0] ?? null)} />
         <button className={styles.primaryInline} type="button" disabled={kotImporting} onClick={() => void importKotDaily()}>{kotImporting ? "取り込んでいます" : "取り込む"}</button>
@@ -733,7 +733,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
           </StickyTable>
         </div>}
       </div> : <p className={styles.empty}>まだ勤怠の取り込み結果がありません。</p>}
-      <p className={styles.hint}>KOT の打刻は編集後の時刻です。数分の遅れは編集で消えていることがあります。</p>
+      <p className={styles.hint}>KING OF TIME の打刻は編集後の時刻です。数分の遅れは編集で消えていることがあります。</p>
     </section>
 
     <section className={styles.panel}>
@@ -939,9 +939,9 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
               <th className="garden-cell-text">{person.name}</th>
               <td className="garden-cell-text">{person.team}</td>
               <td className="garden-cell-number">{person.employment_kind === "アルバイト" ? formatNumber(Number(person.base_wage ?? 0)) : person.employment_kind}</td>
-              <td className="garden-cell-number"><input type="number" step="0.1" value={personInputValue(inputs, person.name, "landingHours")} onChange={(event) => updatePersonMonthly(person.name, "landingHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "landingHours") && <span className={styles.sourceBadge}>KOT から</span>}</td>
-              <td className="garden-cell-number">{person.is_field_sales ? "訪問販売から反映" : <><input type="number" step="0.1" value={personInputValue(inputs, person.name, "workHours")} onChange={(event) => updatePersonMonthly(person.name, "workHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workHours") && <span className={styles.sourceBadge}>KOT から</span>}</>}</td>
-              <td className="garden-cell-number"><input type="number" step="1" value={personInputValue(inputs, person.name, "workDays")} onChange={(event) => updatePersonMonthly(person.name, "workDays", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workDays") && <span className={styles.sourceBadge}>KOT から</span>}</td>
+              <td className="garden-cell-number"><input type="number" step="0.1" value={personInputValue(inputs, person.name, "landingHours")} onChange={(event) => updatePersonMonthly(person.name, "landingHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "landingHours") && <span className={styles.sourceBadge}>KING OF TIME から</span>}</td>
+              <td className="garden-cell-number">{person.is_field_sales ? "訪問販売から反映" : <><input type="number" step="0.1" value={personInputValue(inputs, person.name, "workHours")} onChange={(event) => updatePersonMonthly(person.name, "workHours", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workHours") && <span className={styles.sourceBadge}>KING OF TIME から</span>}</>}</td>
+              <td className="garden-cell-number"><input type="number" step="1" value={personInputValue(inputs, person.name, "workDays")} onChange={(event) => updatePersonMonthly(person.name, "workDays", event.target.value)} />{hasKotPersonValue(inputs, person.name, "workDays") && <span className={styles.sourceBadge}>KING OF TIME から</span>}</td>
               <td className="garden-cell-number">{person.is_field_sales ? "訪問販売から反映" : ""}</td>
             </tr>)}</tbody>
           </StickyTable>
@@ -961,7 +961,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
         {jisseki ? <div className={styles.resultScroller}>
           <StickyTable className={styles.resultTable}>
             <thead><tr>
-              <th className={styles.stickyCell}>氏名</th><th>KOT用</th><th>基準時給</th><th>部署</th><th>チーム</th><th>着地</th><th>稼働h</th><th>獲得P</th><th>効率</th><th>日数</th><th>交通費</th>
+              <th className={styles.stickyCell}>氏名</th><th>KING OF TIME 用</th><th>基準時給</th><th>部署</th><th>チーム</th><th>着地</th><th>稼働h</th><th>獲得P</th><th>効率</th><th>日数</th><th>交通費</th>
               {jisseki.productColumns.map((column, index) => <th key={`${column.product}-${column.kind}-${index}`}>{column.label}</th>)}
             </tr></thead>
             <tbody>{jisseki.rows.map((row) => <tr key={row.personName}>
@@ -1238,7 +1238,7 @@ export default function KanriPortalClient({ creatorName, today, initialRuns, ini
       </div>
       <div className={styles.inputScroller}>
         <StickyTable className={styles.inputTable}>
-          <thead><tr><th>氏名</th><th>KOT用</th><th>チーム</th><th>部署</th><th>区分</th><th>基準時給</th><th>訪販</th><th>有効</th></tr></thead>
+          <thead><tr><th>氏名</th><th>KING OF TIME 用</th><th>チーム</th><th>部署</th><th>区分</th><th>基準時給</th><th>訪販</th><th>有効</th></tr></thead>
           <tbody>{people.map((person, index) => <tr key={`${person.name}-${index}`}>
             <td className="garden-cell-text"><input value={person.name} onChange={(event) => updatePerson(index, "name", event.target.value)} /></td>
             <td className="garden-cell-text"><input value={person.kot_name ?? ""} onChange={(event) => updatePerson(index, "kot_name", event.target.value)} /></td>

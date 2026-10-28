@@ -15,13 +15,13 @@ type ProtoMode = "input" | "backoffice";
 const PROTO = {
   input: {
     src: "/api/leaf/prototype?mode=input",
-    title: "関電プロトタイプ 入力UI",
+    title: "関電プロトタイプ 入力画面",
     pageTitle: "関電 入力",
     crumb: "入力",
   },
   backoffice: {
     src: "/api/leaf/prototype?mode=backoffice",
-    title: "関電プロトタイプ 事務UI",
+    title: "関電プロトタイプ 事務画面",
     pageTitle: "関電 事務",
     crumb: "事務",
   },
@@ -48,9 +48,9 @@ export default function KandenPrototypePage({ mode }: KandenPrototypePageProps) 
           accessBadge={{ icon: "i", label: "Leaf / 関電" }}
           titleAddon={
             <>{mode === "input" ? <TabHeadingAction items={tabs.map(([key, label]) => ({ key, label }))} active={tab} /> : <SystemViewButton />}<LegacyUiNotice
-              badgeLabel="旧プロト・新UI切替予定"
-              toastTitle="旧プロト・新UI切替予定"
-              toastBody="この画面は旧プロトタイプです。新UIへの作り替えを予定しています。"
+              badgeLabel="新しい画面に切り替え予定"
+              toastTitle="新しい画面に切り替え予定"
+              toastBody="この画面は旧プロトタイプです。新しい画面への作り替えを予定しています。"
             /></>
           }
           moduleMark="leaf"

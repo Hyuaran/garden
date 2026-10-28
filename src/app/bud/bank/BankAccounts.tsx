@@ -61,18 +61,18 @@ function Settings({ account, employees, inherited, onSave, onClose }: { account:
   }}>
     <h2>{accountDisplayName(account.name)}</h2>
     <People employees={employees} selected={draft.visible_employee_ids} inherited={inherited} onChange={ids => setDraft({ ...draft, visible_employee_ids: ids })} />
-    {account.kind === "bank" && <label>MF の知らせメールでの名前<input value={draft.mail_alias ?? ""} maxLength={500} onChange={e => setDraft({ ...draft, mail_alias: e.target.value })} /></label>}
+    {account.kind === "bank" && <label>マネーフォワードの知らせメールでの名前<input value={draft.mail_alias ?? ""} maxLength={500} onChange={e => setDraft({ ...draft, mail_alias: e.target.value })} /></label>}
     <label><input type="checkbox" checked={draft.hidden} onChange={e => setDraft({ ...draft, hidden: e.target.checked })} />この{account.kind === "bank" ? "口座" : "カード"}を表示しない</label>
     {account.kind === "bank" && <>
       <label>帳簿の補助科目名<input value={draft.book_sub_account_name} maxLength={500} onChange={e => setDraft({ ...draft, book_sub_account_name: e.target.value })} /><small>帳簿に科目がない場合は空欄にしてください。</small></label>
-      <label>残高の出し方<select value={draft.balance_mode} onChange={e => setDraft({ ...draft, balance_mode: e.target.value as MfAccount["balance_mode"] })}><option value="arrival">届いた入出金で動かす（おすすめ）</option><option value="auto">計算した残高を表示</option><option value="anchor">銀行の残高を基準にする</option><option value="manual_check">残高は MF で確認</option></select></label>
+      <label>残高の出し方<select value={draft.balance_mode} onChange={e => setDraft({ ...draft, balance_mode: e.target.value as MfAccount["balance_mode"] })}><option value="arrival">届いた入出金で動かす（おすすめ）</option><option value="auto">計算した残高を表示</option><option value="anchor">銀行の残高を基準にする</option><option value="manual_check">残高は マネーフォワードで確認</option></select></label>
       {(draft.balance_mode === "anchor" || draft.balance_mode === "arrival") && <>
         {draft.balance_note.startsWith("起点を自動で設定") && <small>{draft.balance_note}</small>}
         <label>起点の残高（円）<input type="number" step="1" value={draft.anchor_balance ?? ""} onChange={e => setDraft({ ...draft, anchor_balance: e.target.value === "" ? null : Number(e.target.value) })} /></label>
-        {draft.balance_mode === "arrival" && <label>起点の時刻（日本時間）<input type="datetime-local" step="1" required value={draft.anchor_at ? new Date(Date.parse(draft.anchor_at) + 9 * 3600000).toISOString().slice(0,19) : ""} onChange={e => setDraft({ ...draft, anchor_at: e.target.value ? new Date(e.target.value + "+09:00").toISOString() : null })} /><small>MF の残高に合わせ直すときは、確認した金額と時刻を手で入力してください。</small></label>}
+        {draft.balance_mode === "arrival" && <label>起点の時刻（日本時間）<input type="datetime-local" step="1" required value={draft.anchor_at ? new Date(Date.parse(draft.anchor_at) + 9 * 3600000).toISOString().slice(0,19) : ""} onChange={e => setDraft({ ...draft, anchor_at: e.target.value ? new Date(e.target.value + "+09:00").toISOString() : null })} /><small>マネーフォワードの残高に合わせ直すときは、確認した金額と時刻を手で入力してください。</small></label>}
         {draft.balance_mode === "anchor" && <label>起点の日<input type="date" value={draft.anchor_date ?? ""} onChange={e => setDraft({ ...draft, anchor_date: e.target.value || null })} /></label>}
       </>}
-      <label>MF で確認する理由<input value={draft.balance_note} maxLength={1000} onChange={e => setDraft({ ...draft, balance_note: e.target.value })} /></label>
+      <label>マネーフォワードで確認する理由<input value={draft.balance_note} maxLength={1000} onChange={e => setDraft({ ...draft, balance_note: e.target.value })} /></label>
       <small>補助科目名・残高の出し方・起点を変更したあとは、読み直してください。</small>
     </>}
     {error && <p role="alert">{error}</p>}
@@ -131,12 +131,12 @@ export default function BankAccounts() {
   const cards = permitted.filter(a => a.kind === "card" && !a.hidden);
 
   return <div className={styles.pageShell}>
-    <header className={styles.header}><SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "口座残高・カード利用" }]} /><h1>口座残高・カード利用</h1><UpdatedStampRow><UpdatedStamp label="MF" date={times[0]} emptyText="未読み込み" busy={refreshing || loading} disabled={saveCount > 0} refreshLabel="読み直す" title="MF に届いている分を読み直す（銀行からの取り直しは MF の［一括更新］）" onRefresh={async () => {
+    <header className={styles.header}><SystemBreadcrumb root={{ label: "Bud", href: "/bud/dashboard" }} items={[{ label: "口座残高・カード利用" }]} /><h1>口座残高・カード利用</h1><UpdatedStampRow><UpdatedStamp label="マネーフォワード" date={times[0]} emptyText="未読み込み" busy={refreshing || loading} disabled={saveCount > 0} refreshLabel="読み直す" title="マネーフォワードに届いている分を読み直す（銀行からの取り直しは マネーフォワードの［一括更新］）" onRefresh={async () => {
       setRefreshing(true); setError("");
       try { await api("/api/bud/mf-accounts/refresh", { method: "POST" }); await load(); }
       catch(e) { setError(e instanceof Error ? e.message : "読み込めませんでした"); }
       finally { setRefreshing(false); }
-    }} ><span className={styles.mfRetrieve}><a href="https://accounting.moneyforward.com/accounts" target="_blank" rel="noopener noreferrer">MF で再取得<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M14 3h7v7M21 3 10 14M10 3H3v18h18v-7" /></svg></a><span role="tooltip">MF の画面を開きます。［一括更新］で銀行から取り直したあと、↻ で Garden に読み込みます</span></span></UpdatedStamp></UpdatedStampRow></header>
+    }} ><span className={styles.mfRetrieve}><a href="https://accounting.moneyforward.com/accounts" target="_blank" rel="noopener noreferrer">マネーフォワードで再取得<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M14 3h7v7M21 3 10 14M10 3H3v18h18v-7" /></svg></a><span role="tooltip">マネーフォワードの画面を開きます。［一括更新］で銀行から取り直したあと、↻ で Garden に読み込みます</span></span></UpdatedStamp></UpdatedStampRow></header>
     <div className={styles.tabToolbar}><SystemTabs aria-label="表示内容" actions={snapshot.admin ? <><TabActionButton icon="sort" label={reordering ? "並び替えを終える" : "並び替え"} pressed={reordering} disabled={refreshing} onClick={() => setReordering(!reordering)} /><TabActionButton icon="settings" label={settings ? "設定を終える" : "設定"} pressed={settings} disabled={refreshing} onClick={() => { setSettings(!settings); setSelected(null); }} /></> : undefined}>{[["bank","口座残高"],["card","カード利用"]].map(([value,label]) => <button role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} key={value} aria-selected={tab === value} onClick={() => { setTab(value); setSelected(null); }}>{label}</button>)}</SystemTabs>
       <small role="status">{saveCount > 0 ? "並び順を保存中…" : loading ? "読み込み中…" : ""}</small>
     </div>

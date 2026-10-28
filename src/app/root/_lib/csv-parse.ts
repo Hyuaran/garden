@@ -205,7 +205,7 @@ export function parseKotCsv(text: string, opts: ParseOptions = {}): ParseResult 
   if (!mapping.target_month && !opts.fallbackTargetMonth) {
     errors.push({
       row_index: 0,
-      message: `必須列「対象月」が無く、呼出側の既定月も未指定です（UI で対象月を選択するか、CSV に「対象月」列を追加してください）`,
+      message: `必須列「対象月」が無く、呼出側の既定月も未指定です（画面で対象月を選択するか、CSV に「対象月」列を追加してください）`,
     });
   }
 

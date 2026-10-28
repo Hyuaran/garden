@@ -50,7 +50,7 @@ export const SOURCE_DETAIL_LABELS: Record<KanriSource, string> = {
   kanden_report: "関電件数報告",
   credit_card: "8アプリ",
   roster: "在籍者",
-  kot_daily: "KOT",
+  kot_daily: "KING OF TIME",
 };
 
 export const CUSTOMER_FIELDS = [
@@ -230,7 +230,7 @@ export function summarizeRows(rows: KanriSourceRow[]): KanriSummary {
     kanden_report: { label: "訪販（関電件数報告）", count: sourceRows("kanden_report").length, unit: "件" },
     credit_card: { label: "クレジットカード（8アプリ）", count: sourceRows("credit_card").length, unit: "件", apps: creditApps },
     roster: { label: "従業員名簿（在籍者）", count: sourceRows("roster").length, unit: "名" },
-    kot_daily: { label: "勤怠（KOT）", count: sourceRows("kot_daily").length, unit: "行" },
+    kot_daily: { label: "勤怠（KING OF TIME）", count: sourceRows("kot_daily").length, unit: "行" },
   };
   return { ...summary, total: Object.values(summary).reduce((sum, item) => sum + item.count, 0) };
 }

@@ -68,7 +68,7 @@ const MOCK_LOGS: DailyReportLog[] = [
   { report_date: "2026-04-24", category: "tomorrow", module: "bud", content: "振込管理の 5 画面実装", ord: 2 },
   // 4/23
   { report_date: "2026-04-23", category: "work", module: "bud", content: "経理画面の認証機能実装 + データベース設計・セキュリティ", ord: 1 },
-  { report_date: "2026-04-23", category: "work", module: "leaf", content: "新規案件登録画面（営業自動補完）+ ステータス 1 クリック操作 UI 追加", ord: 2 },
+  { report_date: "2026-04-23", category: "work", module: "leaf", content: "新規案件登録画面（営業自動補完）+ ステータス 1 クリック操作の画面追加", ord: 2 },
   { report_date: "2026-04-23", category: "work", module: "root", content: "従業員情報テーブルの拡張（権限・誕生日）と 7 段階権限対応", ord: 3 },
   { report_date: "2026-04-23", category: "tomorrow", module: "forest", content: "本番公開の確認、会社マスタ統合の設計・着手", ord: 1 },
   // 4/22
@@ -87,7 +87,7 @@ const MODULE_META: Record<string, Pick<ModuleProgress, "code" | "name_jp" | "nam
   Tree:     { code: "tree",     name_jp: "Tree",     name_en: "架電アプリ（コールセンターの要）",            group: "地上（業務オペ）", release: "26/09" },
   Sprout:   { code: "sprout",   name_jp: "Sprout",   name_en: "採用→面接→内定→入社準備",                   group: "地上（業務オペ）", release: null },
   Calendar: { code: "calendar", name_jp: "Calendar", name_en: "営業予定・面接スロット・シフト統合",          group: "地上（業務オペ）", release: null },
-  Soil:     { code: "soil",     name_jp: "Soil",     name_en: "DB 基盤・大量データ",                         group: "地下（基盤）",   release: null },
+  Soil:     { code: "soil",     name_jp: "Soil",     name_en: "データベース基盤・大量データ",                         group: "地下（基盤）",   release: null },
   Root:     { code: "root",     name_jp: "Root",     name_en: "組織・従業員・パートナー・マスタ",            group: "地下（基盤）",   release: "稼働中" },
   Rill:     { code: "rill",     name_jp: "Rill",     name_en: "社内メッセージアプリ",                        group: "地下（基盤）",   release: "26/10" },
 };
@@ -102,7 +102,7 @@ const MOCK_MODULES: ModuleProgress[] = [
   { code: "tree", name_jp: "Tree", name_en: "架電アプリ（コールセンターの要）", percent: 100, group: "地上（業務オペ）", phase_pills: ["Phase D（最終仕上げ）"], phase_active: "Phase D", release: "26/09" },
   { code: "sprout", name_jp: "Sprout", name_en: "採用→面接→内定→入社準備", percent: 0, group: "地上（業務オペ）", phase_pills: ["Phase B（仕様済）"], release: null },
   { code: "calendar", name_jp: "Calendar", name_en: "営業予定・面接スロット・シフト統合", percent: 0, group: "地上（業務オペ）", phase_pills: ["Phase B（仕様済）"], release: null },
-  { code: "soil", name_jp: "Soil", name_en: "DB 基盤・大量データ", percent: 0, group: "地下（基盤）", phase_pills: ["Phase C（仕様済）"], release: null },
+  { code: "soil", name_jp: "Soil", name_en: "データベース基盤・大量データ", percent: 0, group: "地下（基盤）", phase_pills: ["Phase C（仕様済）"], release: null },
   { code: "root", name_jp: "Root", name_en: "組織・従業員・パートナー・マスタ", percent: 100, group: "地下（基盤）", phase_pills: ["Phase A（運用中）", "Phase B"], phase_active: "Phase A", release: "稼働中" },
   { code: "rill", name_jp: "Rill", name_en: "社内メッセージアプリ", percent: 35, group: "地下（基盤）", phase_pills: ["Phase B（進行中）"], phase_active: "Phase B", release: "26/10" },
 ];

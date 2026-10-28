@@ -78,7 +78,7 @@ const MODULES: OrbitModule[] = [
     moduleKey: "Soil",
     iconSrc: "/images/icons/soil.png",
     name: "Soil",
-    jpName: "DB基盤",
+    jpName: "データベース基盤",
     description: "業務リストやコール履歴など、大規模データを支える基盤。",
     tone: "strong",
     href: "/soil",

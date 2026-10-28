@@ -53,7 +53,7 @@ history as (
   from public.system_call_history h
   where h.phone_number = any($2::text[])
   union all
-  select c."最終コール日" as occurred_on, 31 as sort_rank, 'コール（FM 取込の集約）' as type,
+  select c."最終コール日" as occurred_on, 31 as sort_rank, 'コール（FileMaker 取込の集約）' as type,
     coalesce(nullif(c."最終結果", ''), '（結果なし）') as title,
     concat_ws(' ｜ ', 'コール回数 ' || coalesce(c."コール回数", 0)::text, nullif(c."リスト名", ''), nullif(c."旧リスト名", '')) as detail
   from public.soil_list_call c

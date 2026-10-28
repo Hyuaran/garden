@@ -19,7 +19,7 @@ const MODULE_LABEL: Record<string, string> = {
   root: "マスタ (Root)",
   tree: "架電 (Tree)",
   bloom: "業務管理 (Bloom)",
-  soil: "DB 基盤 (Soil)",
+  soil: "データベース基盤 (Soil)",
   leaf: "商材 (Leaf)",
   seed: "新事業 (Seed)",
   rill: "メッセージ (Rill)",

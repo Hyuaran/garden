@@ -43,8 +43,8 @@ export default function TreeHomePage() {
         >
           Garden Tree
           <LegacyUiNotice
-            badgeLabel="旧UI・新UI切替予定"
-            toastTitle="旧UI・新UI切替予定"
+            badgeLabel="新しい画面に切り替え予定"
+            toastTitle="新しい画面に切り替え予定"
             toastBody="Garden Shell への切替を予定しています。既存機能はそのまま利用できます。"
           />
         </h1><SystemViewButton /></div>

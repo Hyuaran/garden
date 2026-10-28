@@ -173,7 +173,7 @@ export function TransferInboxTray({
             未処理トレイ
           </h2>
           <p style={panelMetaStyle}>
-            Driveから取り込んだ請求書です。OCRは「振込依頼にする」を押した後だけ実行します。
+            Driveから取り込んだ請求書です。読み取りは「振込依頼にする」を押した後だけ実行します。
           </p>
         </div>
         <div style={actionGroupStyle}>

@@ -52,7 +52,7 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
       <DataTable key={`${id}:${period}`} rows={data.transactions} columns={columns} rowKey={t => t.mf_transaction_id} defaultSort={{ id:"date", direction:"desc" }} toolbar={periodControl}
         searchText={t => `${t.content} ${Number(t.value)} ${Number(t.value).toLocaleString("ja-JP")} ${transactionAmount(t)} ${transactionAmount(t).toLocaleString("ja-JP")}`}
         summary={rows => <>
-          {!card && <div className={styles.statBox}><small>今の残高</small><strong>{data.account.balance_mode === "manual_check" || data.account.balance === null ? "MFで確認" : yen(Number(data.account.balance))}</strong></div>}
+          {!card && <div className={styles.statBox}><small>今の残高</small><strong>{data.account.balance_mode === "manual_check" || data.account.balance === null ? "マネーフォワードで確認" : yen(Number(data.account.balance))}</strong></div>}
           {card
             ? <div className={styles.statBox}><small>合計</small><strong>{yen(rows.reduce((sum,t) => sum + transactionAmount(t),0))}</strong></div>
             : <><div className={styles.statBox}><small>入金</small><strong className={styles.increase}>{yen(rows.reduce((sum,t) => sum + income(t),0))}</strong></div><div className={styles.statBox}><small>出金</small><strong className={styles.decrease}>{yen(rows.reduce((sum,t) => sum + expense(t),0))}</strong></div></>}

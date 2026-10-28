@@ -114,7 +114,7 @@ export const callMetricCountTone = (value: number) => value === 0 ? "zero" as co
 const isUnregisteredRow = (r: EmployeeCallMetricRow) => r.employeeName.startsWith("（内線未登録）");
 const fm = (r: EmployeeCallMetricRow, value: string) => isUnregisteredRow(r) ? "-" : value;
 const fmTone = (r: EmployeeCallMetricRow, value: number) => isUnregisteredRow(r) ? null : callMetricCountTone(value);
-const employeeColumnGroups: ColumnGroup[] = [{ label: "テレマ", span: 15 }, { label: "WEBインバウンド（LP系）", span: 4 }];
+const employeeColumnGroups: ColumnGroup[] = [{ label: "テレマ", span: 15 }, { label: "WEBインバウンド（ランディングページ）", span: 4 }];
 
 const employeeColumns: Column<EmployeeCallMetricRow>[] = [
   { label: "社員名", width: 92, value: (r) => r.employeeName, align: "left" },
@@ -132,10 +132,10 @@ const employeeColumns: Column<EmployeeCallMetricRow>[] = [
   { label: "担不", width: 34, value: (r) => fm(r, String(r.absentCount)) },
   { label: "留守", width: 34, value: (r) => fm(r, String(r.awayCount)) },
   { label: "無効", width: 34, value: (r) => fm(r, String(r.invalidCount)) },
-  { label: "LP応答", width: 44, value: (r) => maybeNumber(r.lpAnswered), groupStart: true },
-  { label: "LP発信", width: 44, value: (r) => maybeNumber(r.lpOutbound) },
-  { label: "LP通話時間", width: 58, value: (r) => maybeTime(r.lpTalkSeconds) },
-  { label: "LP申込み", width: 44, value: (r) => maybeNumber(r.lpApplications) },
+  { label: "WEB応答", width: 44, value: (r) => maybeNumber(r.lpAnswered), groupStart: true },
+  { label: "WEB発信", width: 44, value: (r) => maybeNumber(r.lpOutbound) },
+  { label: "WEB通話時間", width: 58, value: (r) => maybeTime(r.lpTalkSeconds) },
+  { label: "WEB申込み", width: 44, value: (r) => maybeNumber(r.lpApplications) },
 ];
 
 const listColumns: Column<CallMetricRow>[] = [
@@ -166,7 +166,7 @@ const DEFINITIONS = [
   ["リスト絞り込み時の稼働時間", "リストで絞り込んだ場合、稼働時間はそのリストを架電していた時間の幅になります。"],
   ["Excel集計表との差", "※ 従来のExcel集計表は休憩を引いていないため、こちらの方が短く出ます。"],
   ["リスト数・回転数・リスト受注率", "リストデータ取込後に対応"],
-  ["通話時間と WEBインバウンド（LP系）", "INNOVERA の通話秒数、LP 系回線の応答・発信・通話時間、kintone の申込み件数を表示します。取得できない値は「-」です。"],
+  ["通話時間と WEBインバウンド（ランディングページ）", "INNOVERA の通話秒数、ランディングページの回線の応答・発信・通話時間、kintone の申込み件数を表示します。取得できない値は「-」です。"],
 ];
 
 // ヘッダ帯の「INNOVERA 最終取込 HH:MM」（JST）。20 分以上前なら赤字で「INNOVERA 取込停止中（最終 HH:MM）」（§7.2）

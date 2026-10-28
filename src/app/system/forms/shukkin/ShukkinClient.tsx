@@ -219,7 +219,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
     </header>
 
     <section className={styles.panel}>
-      <h2>1. KOT の日別データ</h2>
+      <h2>1. KING OF TIME の日別データ</h2>
       <div className={styles.fileRow}>
         <label className={styles.fileButton}>CSV を選ぶ<input type="file" accept=".csv,text/csv" multiple onChange={(event) => {
           void readCsvFiles(Array.from(event.currentTarget.files ?? []));
@@ -292,7 +292,7 @@ export default function ShukkinClient({ canEditMembers }: { canEditMembers: bool
         <p className={styles.targetText}>対象：宮永チーム・小泉チーム・石原チーム・新人チームの全員</p>
       </div>
       {canEditMembers && <LineLinkPanel members={members} />}
-      {tomorrowMissing && <p className={styles.notice} role="status">明日（{compactSlashDate(tomorrow)}）の日別データが入っていません。KOT の日別データ出力で、出力対象年月を今日〜明日にして出してください。</p>}
+      {tomorrowMissing && <p className={styles.notice} role="status">明日（{compactSlashDate(tomorrow)}）の日別データが入っていません。KING OF TIME の日別データ出力で、出力対象年月を今日〜明日にして出してください。</p>}
       <div className={styles.blocks}>
         {/* 見出し＝シフト（人数）と［コピー］、その下に送る相手、送る文面（［コピー］で取れるのは文面だけ） */}
         {lineBlocks.map((block) => <article className={styles.lineBlock} key={block.shift}>
@@ -537,7 +537,7 @@ function Coverage({
   onAddMissing: (row: KotDailyRow) => void;
 }) {
   return <div className={styles.coverage}>
-    <span {...CLARITY_MASK}>KOT に居ない人 {coverage.missingInKot.length} 人：{coverage.missingInKot.map((member) => member.name || member.displayName || member.employeeNumber).join("、") || "なし"}</span>
+    <span {...CLARITY_MASK}>KING OF TIME に居ない人 {coverage.missingInKot.length} 人：{coverage.missingInKot.map((member) => member.name || member.displayName || member.employeeNumber).join("、") || "なし"}</span>
     <div className={styles.missingOrder}>
       <span {...CLARITY_MASK}>並びに無い人 {coverage.missingInOrder.length} 人：{coverage.missingInOrder.map((row) => row.name).join("、") || "なし"}</span>
       {coverage.missingInOrder.length > 0 && <div className={styles.missingOrderRows}>

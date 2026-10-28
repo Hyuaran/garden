@@ -161,7 +161,7 @@ export const PERMISSION_ENTRIES: PermissionEntry[] = [
   ...manualDocEntries,
   {
     key: "system-attendance-sync-status",
-    label: "勤怠打刻：同期状況（KOT取込CSVの生成・確定・取消）",
+    label: "勤怠打刻：同期状況（KING OF TIME 取込CSVの生成・確定・取消）",
     group: "System",
     kind: "画面",
     allows: (role) => MANAGER_ROLES.has(role),

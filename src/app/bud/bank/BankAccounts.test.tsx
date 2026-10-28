@@ -11,9 +11,9 @@ describe("bank accounts screen", () => {
   it("formats the loaded time in Japan", () => { expect(formatLoadedAt("2026-10-20T10:30:00Z")).toBe("2026/10/20(火) 19:30"); });
   it("shows only automatic bank balances in the total and card history without balances", async () => {
     render(<BankAccounts />);
-    await screen.findByText("MF最終更新：2026/10/20(火) 09:30");
+    await screen.findByText("マネーフォワード最終更新：2026/10/20(火) 09:30");
     expect(screen.getAllByText("100 円")).toHaveLength(5);
-    expect(screen.getByText("MFで確認")).toBeInTheDocument();
+    expect(screen.getByText("マネーフォワードで確認")).toBeInTheDocument();
     expect(screen.queryByText(/未仕訳/)).not.toBeInTheDocument();
     expect(screen.getByRole("link",{name:"銀行1（ヒュアラン）の明細"})).toHaveAttribute("href","/bud/bank/accounts/1");
     expect(screen.getByText("連携を確認中")).toBeInTheDocument();
@@ -62,19 +62,19 @@ describe("bank accounts screen", () => {
     const form = screen.getByRole("form",{name:"銀行1（ヒュアラン）の設定"});
     fireEvent.click(within(form).getByLabelText("閲覧者"));
     fireEvent.change(within(form).getByLabelText(/^帳簿の補助科目名/),{target:{value:"補助科目"}});
-    fireEvent.change(within(form).getByLabelText("MF の知らせメールでの名前"),{target:{value:"銀行_MS"}});
+    fireEvent.change(within(form).getByLabelText("マネーフォワードの知らせメールでの名前"),{target:{value:"銀行_MS"}});
     fireEvent.click(within(form).getByRole("button",{name:"保存"}));
     await waitFor(() => expect(fetcher.mock.calls.some(([,init]) => init?.method === "PATCH")).toBe(true));
     expect(JSON.parse(fetcher.mock.calls.find(([,init]) => init?.method === "PATCH")![1].body)).toMatchObject({action:"settings",viewers:[],book:"補助科目",mail_alias:"銀行_MS"});
   });
   it("keeps the old timestamp and values on refresh failure and hides admin controls from viewers", async () => {
-    fetcher.mockImplementation(async (_url:string,init?:RequestInit) => new Response(JSON.stringify(init?.method ? {error:"MF に接続できませんでした"} : data(false)),{status:init?.method ? 502 : 200}));
+    fetcher.mockImplementation(async (_url:string,init?:RequestInit) => new Response(JSON.stringify(init?.method ? {error:"マネーフォワードに接続できませんでした"} : data(false)),{status:init?.method ? 502 : 200}));
     render(<BankAccounts />); await screen.findByText("銀行1");
     expect(screen.queryByRole("button",{name:"設定"})).not.toBeInTheDocument();
     expect(screen.queryByRole("button",{name:"並び替え"})).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button",{name:"読み直す"}));
-    expect(await screen.findByRole("alert")).toHaveTextContent("MF に接続できませんでした");
-    expect(screen.getByText("MF最終更新：2026/10/20(火) 09:30")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("マネーフォワードに接続できませんでした");
+    expect(screen.getByText("マネーフォワード最終更新：2026/10/20(火) 09:30")).toBeInTheDocument();
     expect(screen.getAllByText("100 円")).toHaveLength(5);
   });
 });
@@ -94,7 +94,7 @@ it("shows and saves the bank anchor fields",async()=>{
 it("offers available card fiscal years and carries the selected period into details", async () => {
   fetcher.mockImplementation(async () => new Response(JSON.stringify({...data(),accounts:data().accounts.map(a=>({...a,fiscal_start_date:"2026-04-01"})),yearsByAccount:{"3":[2026,2025,2023]}})));
   render(<BankAccounts />);
-  await screen.findByText("MF最終更新：2026/10/20(火) 09:30");
+  await screen.findByText("マネーフォワード最終更新：2026/10/20(火) 09:30");
   fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));
   fireEvent.click(screen.getByRole("button",{name:"期間"}));
   expect(screen.getAllByRole("checkbox").map(o=>o.parentElement?.textContent)).toEqual(["今月","先月","2026年度","2025年度","2023年度"]);
@@ -170,6 +170,6 @@ it("filters the screen by group and individual permissions for a viewer",async()
  expect(screen.queryByRole("link",{name:/オリコカード/})).not.toBeInTheDocument();
 });
 
-it("opens the MF update screen with an explanatory tooltip",async()=>{render(<BankAccounts/>);const link=await screen.findByRole("link",{name:"MF で再取得"});expect(link).toHaveAttribute("href","https://accounting.moneyforward.com/accounts");expect(link).toHaveAttribute("target","_blank");expect(link).toHaveAttribute("rel","noopener noreferrer");expect(link).not.toHaveAttribute("title");expect(link.parentElement?.querySelector('[role="tooltip"]')).toHaveTextContent("MF の画面を開きます。");});
+it("opens the MF update screen with an explanatory tooltip",async()=>{render(<BankAccounts/>);const link=await screen.findByRole("link",{name:"マネーフォワードで再取得"});expect(link).toHaveAttribute("href","https://accounting.moneyforward.com/accounts");expect(link).toHaveAttribute("target","_blank");expect(link).toHaveAttribute("rel","noopener noreferrer");expect(link).not.toHaveAttribute("title");expect(link.parentElement?.querySelector('[role="tooltip"]')).toHaveTextContent("マネーフォワードの画面を開きます。");});
 
 it("saves card order through the existing reorder API",async()=>{fetcher.mockImplementation(async (_url:string,init?:RequestInit)=>new Response(JSON.stringify(init?.method?{ok:true}:{...data(),accounts:[...data().accounts,account("4",{kind:"card",name:"追加カード"})]})));render(<BankAccounts/>);await screen.findByText("銀行1");fireEvent.click(screen.getByRole("tab",{name:"カード利用"}));fireEvent.click(screen.getByRole("button",{name:"並び替え"}));fireEvent.keyDown(screen.getByRole("button",{name:"オリコカードをつかんで移動"}),{key:"ArrowDown"});await waitFor(()=>expect(fetcher.mock.calls.some(([,init])=>init?.method==="PATCH")).toBe(true));expect(JSON.parse(fetcher.mock.calls.find(([,init])=>init?.method==="PATCH")![1].body)).toEqual({action:"reorder",ids:["1","2","4","3"]});expect(document.querySelector("[draggable=true]")).toBeNull();});

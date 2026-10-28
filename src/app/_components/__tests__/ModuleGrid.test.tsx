@@ -83,6 +83,6 @@ describe("ModuleGrid", () => {
     expect(screen.getByText("Bloom")).toBeInTheDocument();
     expect(screen.getByText("案件一覧・KPI")).toBeInTheDocument();
     expect(screen.getByText("Soil")).toBeInTheDocument();
-    expect(screen.getByText(/DB 本体/)).toBeInTheDocument();
+    expect(screen.getByText(/データベース本体/)).toBeInTheDocument();
   });
 });
