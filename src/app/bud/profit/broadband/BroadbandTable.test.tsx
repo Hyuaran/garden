@@ -88,12 +88,12 @@ it("places child grips with partner names and floats the whole business group",(
  fireEvent.pointerUp(parent);
 });
 it("shows legend, resets three orders, moves with keyboard and persists",()=>{
- mount();expect(screen.getByText("金額はすべて税抜")).toBeTruthy();expect(screen.getByLabelText("色の凡例")).toBeTruthy();expect(screen.getByText("合計（税抜）")).toBeTruthy();
+ mount();expect(screen.getByText("金額はすべて税抜")).toBeTruthy();expect(document.querySelector("tbody tr")!.getAttribute("data-row-key")).toBe("grand");expect(screen.getByLabelText("色の凡例")).toBeTruthy();expect(screen.getByText("合計（税抜）")).toBeTruthy();
  fireEvent.click(screen.getByRole("button",{name:"並べ替え"}));
- fireEvent.click(screen.getByText("金額の大きい順にする"));expect(names().slice(1,4)).toEqual(["A","C","B"]);
- fireEvent.click(screen.getByText("取引先名の順にする"));expect(names().slice(1,4)).toEqual(["A","B","C"]);
- fireEvent.click(screen.getByText("入金 → 支払いの順に戻す"));expect(names().slice(1,4)).toEqual(["A","B","C"]);
- fireEvent.keyDown(screen.getByRole("button",{name:"Aをつかんで移動"}),{key:"ArrowDown"});expect(names().slice(1,4)).toEqual(["B","A","C"]);
+ fireEvent.click(screen.getByText("金額の大きい順にする"));expect(names().slice(2,5)).toEqual(["A","C","B"]);
+ fireEvent.click(screen.getByText("取引先名の順にする"));expect(names().slice(2,5)).toEqual(["A","B","C"]);
+ fireEvent.click(screen.getByText("入金 → 支払いの順に戻す"));expect(names().slice(2,5)).toEqual(["A","B","C"]);
+ fireEvent.keyDown(screen.getByRole("button",{name:"Aをつかんで移動"}),{key:"ArrowDown"});expect(names().slice(2,5)).toEqual(["B","A","C"]);
  expect(JSON.parse(localStorage.getItem("bud-broadband-order:u")!).partners.事業).toEqual(["B","A","C"]);
 });
 it("moves with pointer, rejects other businesses and works without storage",()=>{
@@ -101,19 +101,19 @@ it("moves with pointer, rejects other businesses and works without storage",()=>
  vi.stubGlobal("PointerEvent",class extends MouseEvent {pointerId=1;pointerType="mouse";});mount();fireEvent.click(screen.getByRole("button",{name:"並べ替え"}));
  const a=screen.getByRole("button",{name:"Aをつかんで移動"}),b=screen.getByRole("button",{name:"Bをつかんで移動"});
  const hit=vi.fn(()=>b.closest("tr"));Object.defineProperty(document,"elementFromPoint",{configurable:true,value:hit});
- fireEvent.pointerDown(a,{button:0,clientX:100,clientY:100});fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(1,4)).toEqual(["B","A","C"]);
- hit.mockReturnValue(screen.getByRole("button",{name:"Zをつかんで移動"}).closest("tr"));fireEvent.pointerDown(a,{button:0});fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(1,4)).toEqual(["B","A","C"]);
+ fireEvent.pointerDown(a,{button:0,clientX:100,clientY:100});fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(2,5)).toEqual(["B","A","C"]);
+ hit.mockReturnValue(screen.getByRole("button",{name:"Zをつかんで移動"}).closest("tr"));fireEvent.pointerDown(a,{button:0});fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(2,5)).toEqual(["B","A","C"]);
 });
 
 it("restores per-user order and requires a 400ms touch hold",()=>{
  localStorage.setItem("bud-broadband-order:u",JSON.stringify({businesses:["事業","別事業"],partners:{事業:["B","A","C"]}}));
  vi.stubGlobal("PointerEvent",class extends MouseEvent {pointerId=2;pointerType="touch";});
- mount();expect(names().slice(1,4)).toEqual(["B","A","C"]);fireEvent.click(screen.getByRole("button",{name:"並べ替え"}));
+ mount();expect(names().slice(2,5)).toEqual(["B","A","C"]);fireEvent.click(screen.getByRole("button",{name:"並べ替え"}));
  const a=screen.getByRole("button",{name:"Aをつかんで移動"}),b=screen.getByRole("button",{name:"Bをつかんで移動"});
  Object.defineProperty(document,"elementFromPoint",{configurable:true,value:()=>b.closest("tr")});vi.useFakeTimers();
  try {
- fireEvent.pointerDown(a,{button:0,clientX:100,clientY:200});fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(1,4)).toEqual(["B","A","C"]);
- fireEvent.pointerDown(a,{button:0,clientX:100,clientY:200});act(()=>vi.advanceTimersByTime(400));fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(1,4)).toEqual(["A","B","C"]);
+ fireEvent.pointerDown(a,{button:0,clientX:100,clientY:200});fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(2,5)).toEqual(["B","A","C"]);
+ fireEvent.pointerDown(a,{button:0,clientX:100,clientY:200});act(()=>vi.advanceTimersByTime(400));fireEvent.pointerMove(a,{clientX:100,clientY:200});fireEvent.pointerUp(a);expect(names().slice(2,5)).toEqual(["A","B","C"]);
  } finally {vi.useRealTimers();}
 });
 

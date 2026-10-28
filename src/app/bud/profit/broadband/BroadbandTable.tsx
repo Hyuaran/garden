@@ -86,7 +86,7 @@ export default function BroadbandTable({rows,userId,today,kintoneBase,agents=[],
     const names=[...new Set(source.map(r=>r.partner))], saved=childrenOrder[row.key]??[];
     names.sort((a,b)=>(saved.includes(a)?saved.indexOf(a):999)-(saved.includes(b)?saved.indexOf(b):999));
     return [row,...names.map(name=>({key:JSON.stringify([row.key,name]),business:row.business,partner:name,subtotal:false,records:source.filter(r=>r.partner===name),parent:row.key}))];
-  });
+  }).sort((a,b)=>Number(b.key==="grand")-Number(a.key==="grand")); // 総計は表の一番上（下までスクロールしなくても見えるように・2026-10-28）
   const childGrip=(row:DisplayRow)=><ReorderGrip label={row.partner} itemKey={row.key} keys={visible.filter(r=>r.parent===row.parent).map(r=>r.key)} selector="tr[data-row-key]" attribute="data-row-key" onMove={(from,to)=>{const list=visible.filter(r=>r.parent===row.parent);const a=list.findIndex(r=>r.key===from),b=list.findIndex(r=>r.key===to);if(a<0||b<0)return;list.splice(b,0,...list.splice(a,1));remember(expanded,{...childrenOrder,[row.parent!]:list.map(r=>r.partner)});}} />;
   const renderCell=(row:DisplayRow,month?:string)=>{
     const title=(row.partner || row.business)+" ・ "+(month ? Number(month.slice(0,4))+"年"+Number(month.slice(5,7))+"月" : "期間の合計");

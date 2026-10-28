@@ -26,3 +26,7 @@
 /* 事業のタブが 8 つあるので、1384px で横スクロールが出ないよう間を詰める（2026-10-28） */
 .tabRow [role="tablist"]{gap:2px}
 .tabRow [role="tab"]{padding-inline:12px}
+/* 並べ替えのつかむ印は金額のボタンの幅（全幅・130px）を受けない。受けると名前と金額が右へずれる（2026-10-28） */
+.scroll button[aria-label$="をつかんで移動"]{width:auto;min-width:28px}
+/* 総計は一番上の行。下の行との境に太い線 */
+.scroll tbody tr[data-row-key="grand"]>*{border-bottom:2px solid var(--line)}
