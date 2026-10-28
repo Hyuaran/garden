@@ -18,6 +18,7 @@ it("prioritizes red, only pending gray, ignores exclusions and honors human conf
  expect(cellTone([row("a",1,"pending"),row("b",1,"excluded")])).toBe("gray");
  expect(cellTone([row("a",1,"excluded")])).toBe("normal");expect(cellTone([row("a",1),row("b",1,"pending")])).toBe("normal");
  expect(cellTone([{...row("a",1,"not_arrived"),confirmation:"入金OK"}])).toBe("normal");
+ expect(cellTone([{...row("a",1,"matched"),confirmation:"入金OK",mf_date:"2026-10-30"}],"2026-10-28")).toBe("gray");expect(cellTone([{...row("a",1,"matched"),confirmation:"入金OK",mf_date:"2026-10-30"}],"2026-10-30")).toBe("normal");
 });
 it("sorts incoming then payments by magnitude, amount and partner",()=>{
  const rows=[row("C",-10),row("B",-100),row("A",20)];const months=["2026-04"];

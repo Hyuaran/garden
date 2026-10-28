@@ -9,15 +9,16 @@ export type TableRecord = {
   confirmation: string; recon_status: Kind | null; expected_gross: number | null;
   recon_fee: number | null; updated_at: string; mf_bank: string; mf_date: string | null;
   mf_content: string; mf_amount: number | null;
+  drive_link?: string | null; // Kintone の「明細リンク」（Google ドライブの明細）
   recon_bank?: Bank[];
 };
 // Both record masters use the same local table. Never read Kintone here.
 export async function readBroadbandTable(db: SupabaseClient): Promise<TableRecord[]> {
   const rows: TableRecord[] = [];
   for (let offset = 0;; offset += 1000) {
-    const { data, error } = await db.from("bud_bb_records").select("kintone_record_id,business,partner,product,scheduled_date,actual_period,profit_net,confirmation,recon_status,expected_gross,recon_fee,updated_at,mf_bank,mf_date,mf_content,mf_amount").order("kintone_record_id").range(offset, offset + 999);
+    const { data, error } = await db.from("bud_bb_records").select("kintone_record_id,business,partner,product,scheduled_date,actual_period,profit_net,confirmation,recon_status,expected_gross,recon_fee,updated_at,mf_bank,mf_date,mf_content,mf_amount,drive_link:raw->明細リンク->>value").order("kintone_record_id").range(offset, offset + 999);
     if (error) throw new Error("収支を読み込めませんでした");
-    rows.push(...data as TableRecord[]);
+    rows.push(...data as unknown as TableRecord[]); // 型の読み取りは日本語の欄名（明細リンク）を解けないので明示する
     if (data.length < 1000) return rows;
   }
 }
@@ -49,12 +50,20 @@ export function periodMonths(periods: string[], today: string, rows?: TableRecor
   return [...months].filter(m => m <= latest).sort().reverse();
 }
 export const defaultPeriod = (today: string) => String(fiscalYear(today));
-export function recordStatus(row: TableRecord): Kind | null { return isK(row.partner) || isNtt(row.partner) ? "excluded" : row.confirmation ? "matched" : row.recon_status; }
-export function cellTone(rows: TableRecord[]) {
-  const states = rows.map(recordStatus).filter(s => s !== "excluded");
+const tokyoToday = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date());
+// 入金確認があっても、マネーフォワードの取引日が今日より後なら、まだ届いていない＝予定日前（Kintone の入力を先回りしている・2026-10-28 Fプレイン 1099）
+export function recordStatus(row: TableRecord, today = tokyoToday()): Kind | null {
+  if (isK(row.partner) || isNtt(row.partner)) return "excluded";
+  if (row.confirmation && row.mf_date && row.mf_date.slice(0,10) > today) return "pending";
+  return row.confirmation ? "matched" : row.recon_status;
+}
+export function cellTone(rows: TableRecord[], today = tokyoToday()) {
+  const states = rows.map(r => recordStatus(r, today)).filter(s => s !== "excluded");
   if (states.some(s => s === "amount_mismatch" || s === "not_arrived" || s === "ambiguous")) return "red";
   return states.length && states.every(s => s === "pending") ? "gray" : "normal";
 }
+// 明細リンクは Google ドライブのときだけ使う（仮の google.com・Kintone の集計表・口座の画面へのリンクは出さない）
+export const driveLink = (url?: string | null) => url && /^https:\/\/(drive|docs)\.google\.com\//.test(url) ? url : null;
 export const total = (rows: TableRecord[]) => rows.reduce((n,r) => n+Number(r.profit_net ?? 0),0);
 export type PivotRow = { key: string; business: string; partner: string; subtotal: boolean; records: TableRecord[] };
 export function buildPivot(records: TableRecord[], months: string[], sort: SortMode) {
