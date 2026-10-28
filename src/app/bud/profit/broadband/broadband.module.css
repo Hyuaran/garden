@@ -29,4 +29,8 @@
 /* 並べ替えのつかむ印は金額のボタンの幅（全幅・130px）を受けない。受けると名前と金額が右へずれる（2026-10-28） */
 .scroll button[aria-label$="をつかんで移動"]{width:auto;min-width:28px}
 /* 総計は一番上の行。下の行との境に太い線 */
-.scroll tbody tr[data-row-key="grand"]>*{border-bottom:2px solid var(--line)}
+.scroll tbody tr[data-row-key="grand"]>*{border-bottom:2px solid var(--line);background:var(--grand-bg)}
+/* 総合計の背景は見出し（濃紺）とも普通の行とも違う色。左の列は固定なので透けない色にする（2026-10-28） */
+.pageShell{--grand-bg:#e3f1f0}
+:global(.dark) .pageShell,:global([data-theme="dark"]) .pageShell{--grand-bg:#1b3a46}
+@media(prefers-color-scheme:dark){:global(html:not([data-theme="light"]):not([data-theme="dark"])) .pageShell{--grand-bg:#1b3a46}}
