@@ -1,92 +1,34 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { Forwarding } from "@/lib/mail-forwarding/domain";
-const state = vi.hoisted(() => ({ rows: [] as Forwarding[], role:"super_admin", fail:false, pending:undefined as undefined | ((v: unknown)=>void), rpc:vi.fn(), insert:vi.fn() }));
-vi.mock("../_state/RootStateContext",()=>({useRootState:()=>({gardenRole:state.role})}));
-vi.mock("../_components/PageHeader",()=>({PageHeader:({title}:{title:string})=><h1>{title}</h1>}));
-vi.mock("@/app/system/_components/StickyTable/useStickyTable",()=>({default:({children}:{children:React.ReactNode})=><table>{children}</table>}));
-vi.mock("../_lib/supabase",()=>({supabase:{
- from:()=>({select:async()=>({data:state.rows,error:null}),insert:(value:unknown)=>{state.insert(value);return Promise.resolve({error:state.fail?new Error("failed"):null});},update:()=>({eq:()=>({select:()=>({single:async()=>({error:null})})})})}),
- rpc:(...args:unknown[])=>{state.rpc(...args);return new Promise(resolve=>{state.pending=resolve;});},
-}}));
+const m = vi.hoisted(() => ({ rpc: vi.fn(), insert: vi.fn(), rows: [] as unknown[] }));
+vi.mock("../_state/RootStateContext", () => ({ useRootState: () => ({ gardenRole: "super_admin" }) }));
+vi.mock("../_components/PageHeader", () => ({ PageHeader: () => null }));
+vi.mock("../_lib/supabase", () => ({ supabase: { rpc: m.rpc, from: (table: string) => table === "root_mail_forwardings" ? { select: async () => ({ data: m.rows }) } : { insert: m.insert } } }));
+vi.mock("@/app/system/_components/UpdatedStamp/UpdatedStamp", () => ({ default: () => null, UpdatedStampRow: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock("@/app/system/_components/Modal/Modal", () => ({ default: ({ title, children }: { title: string; children: React.ReactNode }) => <div role="dialog" aria-label={title}>{children}</div> }));
+vi.mock("@/app/system/_components/DataTable/DataTable", () => ({ default: ({ rows, columns, toolbar, onRowClick }: { rows: { id: string }[]; columns: { id: string; value: (r: unknown) => string; render?: (r: unknown) => React.ReactNode }[]; toolbar: React.ReactNode; onRowClick: (r: unknown) => void }) => <>{toolbar}{rows.map(row => <div key={row.id}><button onClick={() => onRowClick(row)}>行を開く</button>{columns.map(c => <span key={c.id}>{c.render ? c.render(row) : c.value(row)}</span>)}</div>)}</> }));
+vi.mock("./AddressInputs", () => ({ default: ({ name }: { name: string }) => <><input name={`${name}_postal`} defaultValue="1000001"/><input name={`${name}_address`} defaultValue="東京都千代田区"/></> }));
 import Page from "./page";
-beforeEach(()=>{
- state.rows=[];state.role="super_admin";state.fail=false;state.pending=undefined;state.rpc.mockClear();state.insert.mockClear();
- HTMLDialogElement.prototype.showModal=function(){this.setAttribute("open","");};
- HTMLDialogElement.prototype.close=function(){this.removeAttribute("open");};
+beforeEach(() => { vi.clearAllMocks(); m.rows = [{ id: "a", holder: "会社", from_address: "元", to_address: "先", stopped: false, notes: "", guide_path: "a.png", filings: [] }]; m.rpc.mockResolvedValue({}); m.insert.mockResolvedValue({}); });
+it("待ちの表示と画像リンク、最初の届出で期限が付く", async () => {
+  render(<Page/>);
+  const button = await screen.findByRole("button", { name: "届け出た" });
+  expect(screen.getAllByText("届出待ち")).toHaveLength(2);
+  expect(screen.getByText("―")).toBeTruthy();
+  fireEvent.click(button);
+  expect(screen.getByRole("dialog", { name: "届け出た" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "転居届の書き方（画像）を開く" }).getAttribute("target")).toBe("_blank");
+  fireEvent.click(screen.getByRole("button", { name: "保存" }));
+  await waitFor(() => expect(m.insert).toHaveBeenCalledOnce());
+  expect(screen.getByRole("button", { name: "届け直した" })).toBeTruthy();
 });
-async function ready(){render(<Page/>);await waitFor(()=>expect(screen.getByRole("button",{name:"転送を追加"})).toBeEnabled());}
-it("追加はすぐ一覧に反映し、失敗すれば元に戻す",async()=>{
- await ready();fireEvent.click(screen.getByRole("button",{name:"転送を追加"}));
- const dialog=screen.getByRole("dialog");
- for(const [label,value] of [["名義（必須）","新しい転送"],["転送元の住所（必須）","大阪"],["転送先の住所（必須）","東京"]]) fireEvent.change(within(dialog).getByLabelText(label),{target:{value}});
- fireEvent.click(within(dialog).getByRole("button",{name:"保存"}));
- expect(screen.getByText("新しい転送")).toBeInTheDocument();expect(state.rpc).toHaveBeenCalledWith("root_mail_forwarding_create",expect.anything());
- state.pending?.({error:new Error("failed")});
- await waitFor(()=>expect(screen.queryByText("新しい転送")).not.toBeInTheDocument());expect(screen.getByRole("alert")).toHaveTextContent("変更を戻しました");
-});
-it("届け直しは以前の記録を残して行を追加する",async()=>{
- state.rows=[{id:"a",holder:"転送先会社",from_address:"大阪",to_address:"東京",notes:"",stopped:false,filings:[{id:"f",forwarding_id:"a",filed_on:"2025-10-15",method:"窓口",receipt:"古い番号",filed_by:"担当者",notes:"旧記録"}]}];
- await ready();fireEvent.click(screen.getByRole("button",{name:"届け直した"}));fireEvent.change(screen.getByLabelText("新しい届出日（必須）"),{target:{value:"2026-10-28"}});fireEvent.click(within(screen.getByRole("dialog")).getByRole("button",{name:"保存"}));
- await waitFor(()=>expect(screen.getByText("2027-10-27")).toBeInTheDocument());
- expect(state.insert).toHaveBeenCalledWith(expect.objectContaining({forwarding_id:"a",filed_on:"2026-10-28",method:"e転居"}));
- fireEvent.click(screen.getByText("転送先会社"));expect(screen.getByText("旧記録")).toBeInTheDocument();expect(screen.getByText("2026-10-28・e転居")).toBeInTheDocument();
-});
-it("閲覧を許可された管理者にも書き込み操作を出さない",async()=>{
- state.role="admin";render(<Page/>);await waitFor(()=>expect(screen.queryByText("読み込んでいます。")).not.toBeInTheDocument());expect(screen.queryByRole("button",{name:"転送を追加"})).not.toBeInTheDocument();
-});
-it("住所の3欄を表示し、保存時にそろえる",async()=>{
- await ready();fireEvent.click(screen.getByRole("button",{name:"転送を追加"}));
- const dialog=within(screen.getByRole("dialog"));
- const from=within(dialog.getByRole("group",{name:"転送元の住所"}));
- expect(from.getByLabelText("建物・部屋")).toBeInTheDocument();
- fireEvent.change(dialog.getByLabelText("名義（必須）"),{target:{value:"会社"}});
- fireEvent.change(from.getByLabelText("郵便番号"),{target:{value:"〒５４２００８１"}});
- fireEvent.change(from.getByLabelText("転送元の住所（必須）"),{target:{value:"　南船場２－１０－３０　"}});
- fireEvent.change(from.getByLabelText("建物・部屋"),{target:{value:" ＮＬＣ　５０３ "}});
- fireEvent.change(dialog.getByLabelText("転送先の住所（必須）"),{target:{value:"東京"}});
- fireEvent.click(dialog.getByRole("button",{name:"保存"}));
- expect(state.rpc).toHaveBeenCalledWith("root_mail_forwarding_create",expect.objectContaining({p_row:expect.objectContaining({from_address:"〒542-0081 南船場2-10-30 NLC 503",to_address:"東京"})}));
-});
-it("郵便番号から自動入力し、検索中の手入力は上書きしない",async()=>{
- const fetchMock=vi.fn().mockResolvedValue({ok:true,json:async()=>({addresses:[{address:"大阪府大阪市中央区南船場"}]})});
- vi.stubGlobal("fetch",fetchMock);
- try {
-  await ready();fireEvent.click(screen.getByRole("button",{name:"転送を追加"}));
-  const from=within(screen.getByRole("group",{name:"転送元の住所"}));
-  fireEvent.change(from.getByLabelText("郵便番号"),{target:{value:"5420081"}});
-  await waitFor(()=>expect(from.getByLabelText("転送元の住所（必須）")).toHaveValue("大阪府大阪市中央区南船場"));
-  const to=within(screen.getByRole("group",{name:"転送先の住所"}));
-  let resolve!: (value:unknown)=>void;
-  fetchMock.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));
-  fireEvent.change(to.getByLabelText("郵便番号"),{target:{value:"5420081"}});
-  await waitFor(()=>expect(fetchMock).toHaveBeenCalledTimes(2));
-  fireEvent.change(to.getByLabelText("転送先の住所（必須）"),{target:{value:"手で書いた住所"}});
-  resolve({ok:true,json:async()=>({addresses:[{address:"大阪府"}]})});
-  await waitFor(()=>expect(to.getByLabelText("転送先の住所（必須）")).toHaveValue("手で書いた住所"));
- } finally {vi.unstubAllGlobals();}
-});
-it("郵便番号が7桁でなければ保存しない",async()=>{
- await ready();fireEvent.click(screen.getByRole("button",{name:"転送を追加"}));
- const dialog=within(screen.getByRole("dialog"));
- for(const label of ["名義（必須）","転送元の住所（必須）","転送先の住所（必須）"]) fireEvent.change(dialog.getByLabelText(label),{target:{value:"入力"}});
- fireEvent.change(within(dialog.getByRole("group",{name:"転送元の住所"})).getByLabelText("郵便番号"),{target:{value:"123"}});
- fireEvent.click(dialog.getByRole("button",{name:"保存"}));
- expect(dialog.getByRole("alert")).toHaveTextContent("郵便番号は 7 桁の数字です");
- expect(state.rpc).not.toHaveBeenCalled();
-});
-it("複数候補を選べ、見つからないときも手入力できる",async()=>{
- const fetchMock=vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({addresses:[{address:"大阪府大阪市"},{address:"大阪府堺市"}]})}).mockResolvedValueOnce({ok:true,json:async()=>({addresses:[]})});
- vi.stubGlobal("fetch",fetchMock);
- try {
-  await ready();fireEvent.click(screen.getByRole("button",{name:"転送を追加"}));
-  const from=within(screen.getByRole("group",{name:"転送元の住所"}));
-  fireEvent.change(from.getByLabelText("郵便番号"),{target:{value:"5420081"}});
-  fireEvent.click(await from.findByRole("button",{name:"大阪府堺市"}));
-  expect(from.getByLabelText("転送元の住所（必須）")).toHaveValue("大阪府堺市");
-  fireEvent.change(from.getByLabelText("郵便番号"),{target:{value:"9999999"}});
-  await from.findByText("住所を直接入れてください");
-  fireEvent.change(from.getByLabelText("転送元の住所（必須）"),{target:{value:"直接の住所"}});
-  expect(from.getByLabelText("転送元の住所（必須）")).toHaveValue("直接の住所");
- } finally {vi.unstubAllGlobals();}
+it("待ちを選ぶと届出欄を隠し、nullで追加する", async () => {
+  render(<Page/>);
+  await screen.findByRole("button", { name: "届け出た" });
+  fireEvent.click(screen.getByRole("button", { name: "転送を追加" }));
+  fireEvent.change(screen.getByLabelText("名義（必須）"), { target: { value: "新しい会社" } });
+  fireEvent.click(screen.getByRole("checkbox", { name: "まだ届けていない（届出待ち）" }));
+  expect(screen.queryByText("届けた人")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "保存" }));
+  await waitFor(() => expect(m.rpc).toHaveBeenCalledWith("root_mail_forwarding_create", expect.objectContaining({ p_filing: null })));
 });

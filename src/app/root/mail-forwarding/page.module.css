@@ -7,8 +7,8 @@
 .page table { min-width:0; }
 .page th:first-child,.page td:first-child { position:sticky; left:0; z-index:2; }
 .page th:first-child { background:var(--navy); }
-.page td:first-child { background:var(--card); min-width:110px; max-width:180px; white-space:normal; }
-.page td:nth-child(2),.page td:nth-child(3) { min-width:120px; max-width:220px; white-space:normal; }
+.page td:first-child { background:var(--card); min-width:100px; max-width:130px; white-space:normal; }
+.page td:nth-child(2),.page td:nth-child(3) { min-width:120px; max-width:170px; white-space:normal; }
 .page tr:has(.stopped) td { color:var(--sub); background:var(--bg); }
 .status { display:inline-flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; }
 .status[data-tone=ok] { color:#166534; }
@@ -46,3 +46,7 @@
 .addressGroup { display:grid; gap:10px; min-width:0; }
 .addressTitle { font-weight:700; }
 .addressGroup p { margin:0; color:var(--sub); }
+/* 小窓の「転居届の書き方（画像）を開く」は押せると分かる形に（2026-10-28） */
+.guide { margin:0 0 14px; }
+.guide a { display:inline-flex; align-items:center; gap:6px; color:var(--teal-d); font-weight:bold; text-decoration:underline; text-underline-offset:3px; }
+:global([data-theme=dark]) .guide a,:global(.dark) .guide a { color:#5fd4cf; }
