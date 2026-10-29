@@ -21,7 +21,7 @@ export function validContactUrl(key: string, url: string) {
   try { const u = new URL(url); return u.protocol === 'https:' && !u.username && !u.password && (key === 'guest_home' || (url.startsWith('https://line.me/') && u.hostname === 'line.me')); } catch { return false; }
 }
 type Action = { type: 'message'; text: string } | { type: 'uri'; uri: string };
-export function menuDefinition(group: MenuGroup, contacts: Contact[], liffId?: string) {
+export function menuDefinition(group: MenuGroup, contacts: Contact[], liffId?: string, formsId = process.env.NEXT_PUBLIC_LIFF_FORMS_ID) {
   const message = (text: string): Action => ({ type: 'message', text });
   const contact = (key: string): Action => {
     const url = contacts.find(c => c.key === key)?.url || (key !== 'guest_home' ? contacts.find(c => c.key === 'miyanaga')?.url : '');
@@ -29,9 +29,9 @@ export function menuDefinition(group: MenuGroup, contacts: Contact[], liffId?: s
   };
   const four = group === 'koizumi' || group === 'ishihara';
   const guest = group === 'guest';
-  const image = guest ? 'guest_2' : four ? 'employee_4' : 'employee_3';
+  const image = guest ? 'guest_2' : four ? 'employee_4_' + group : 'employee_3';
   const actions: Action[] = guest ? [message('お問い合わせ'), contact('guest_home')] : [
-    message('申告フォーム'), liffId ? { type: 'uri', uri: 'https://liff.line.me/' + liffId } : message('シフト'),
+    formsId ? { type: 'uri', uri: 'https://liff.line.me/' + formsId } : message('申告フォーム'), liffId ? { type: 'uri', uri: 'https://liff.line.me/' + liffId } : message('シフト'),
     contact(group === 'koizumi' ? 'team:小泉チーム' : group === 'ishihara' ? 'team:石原チーム' : group === 'nhk' ? 'nhk' : group === 'office' ? 'office' : 'miyanaga'),
     ...(four ? [contact('miyanaga')] : []),
   ];

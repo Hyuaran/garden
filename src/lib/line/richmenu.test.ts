@@ -21,7 +21,7 @@ function group(business:string, team?:string) {
   return menuGroup(employee,tags,members);
 }
 describe('メニューの選択と押せる範囲',()=>{
-  it.each([['宮永チーム','telema','employee_3'],['新人チーム','telema','employee_3'],['小泉チーム','koizumi','employee_4'],['石原チーム','ishihara','employee_4'],[undefined,'telema','employee_3']])('%s', (team,expected,image)=>{
+  it.each([['宮永チーム','telema','employee_3'],['新人チーム','telema','employee_3'],['小泉チーム','koizumi','employee_4_koizumi'],['石原チーム','ishihara','employee_4_ishihara'],[undefined,'telema','employee_3']])('%s', (team,expected,image)=>{
     const actual=group('ブロードバンド事業',team);
     expect(actual).toBe(expected);expect(menuDefinition(actual,[]).image).toBe(image);
   });
@@ -80,4 +80,9 @@ it('記録または公開の失敗でも旧メニューを消さない',async()=
     await expect(deployMenus([],new Map(),['old'],[],failSave?fail:async()=>{},failSave?async()=>{}:fail,t.api)).rejects.toThrow();
     expect(t.api.remove).not.toHaveBeenCalled();
   }
+});
+
+it('forms LIFF and fallback actions',()=>{
+ expect(menuDefinition('koizumi',[],undefined,'123-forms').body.areas[0].action).toEqual({type:'uri',uri:'https://liff.line.me/123-forms'});
+ expect(menuDefinition('ishihara',[],undefined,'').body.areas[0].action).toEqual({type:'message',text:'申告フォーム'});
 });

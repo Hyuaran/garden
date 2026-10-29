@@ -14,11 +14,11 @@ export default function RichMenuSettings({data,busy,act}:{data:Data;busy:boolean
   const areas=definition?.body.areas.map((area,index)=>{
     const {bounds,action}=area;
     const position=definition.body.size.height>843?(bounds.x===0?'左':'右')+(bounds.y===0?'上':'下'):bounds.x===0?'左':bounds.x+bounds.width===2500?'右':'中央';
-    const label=group==='guest'?(index===0?'お問い合わせ':'会社のホームページ'):index===0?'申告フォーム':index===1?'シフト':index===3?'宮永さん':definition.body.size.height>843?'チームリーダー':'担当者';
+    const label=group==='guest'?(index===0?'お問い合わせ':'会社のホームページ'):index===0?'申告フォーム':index===1?'シフト':index===3?'マネージャー':definition.body.size.height>843?'チームリーダー':'担当者';
     let description:string;
     if(group==='guest'&&index===1&&action.type==='message') description='準備中です（会社のホームページが登録されていません）';
     else if(action.type==='message') description=`「${action.text}」と送られ、案内が返ります`;
-    else if(action.uri.startsWith('https://liff.line.me/')) description='LINE の中でシフト確認のページが開きます';
+    else if(action.uri.startsWith('https://liff.line.me/')) description=index===0?'LINE の中で申告フォームのページが開きます（通勤経路の変更・給与受取口座の変更）':'LINE の中でシフト確認のページが開きます';
     else if(group==='guest') description=`会社のホームページ（${action.uri}）が開きます`;
     else {
       const owner=data.contacts.find(c=>c.url===action.uri);

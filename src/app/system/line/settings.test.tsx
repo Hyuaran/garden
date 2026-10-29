@@ -11,7 +11,13 @@ beforeEach(()=>{
   HTMLDialogElement.prototype.close=vi.fn();
   localStorage.clear(); window.history.replaceState(null,'','/?tab=people');
 });
-afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.unstubAllEnvs();});
+it('申告フォームの説明はLINE内の2種類の申告である',()=>{
+  vi.stubEnv('NEXT_PUBLIC_LIFF_FORMS_ID','123-forms');
+  render(<RichMenuSettings data={data} busy={false} act={vi.fn()}/>);
+  fireEvent.click(screen.getByText('ブロードバンド事業・小泉チーム'));
+  expect(screen.getByText('LINE の中で申告フォームのページが開きます（通勤経路の変更・給与受取口座の変更）')).toBeInTheDocument();
+});
 it('連絡先は変更列がなく、行をキーボードで押して登録する',()=>{
   render(<ContactSettings data={data} busy={false} act={vi.fn()}/>);
   expect(screen.queryByRole('button',{name:'変更する'})).toBeNull();
@@ -25,8 +31,8 @@ it('反映前も6行あり、小泉チームの画像と位置・連絡先を表
   expect(screen.getByRole('button',{name:'送信中...'})).toBeDisabled();
   fireEvent.click(screen.getByText('ブロードバンド事業・小泉チーム'));
   const dialog=screen.getByRole('dialog');
-  expect(within(dialog).getByRole('img')).toHaveAttribute('src','/line/richmenu/employee_4.jpg');
-  for(const [position,label] of [['左上','申告フォーム'],['右上','シフト'],['左下','チームリーダー'],['右下','宮永さん']]) expect(within(dialog).getByText(new RegExp(position+'.+'+label))).toBeInTheDocument();
+  expect(within(dialog).getByRole('img')).toHaveAttribute('src','/line/richmenu/employee_4_koizumi.jpg');
+  for(const [position,label] of [['左上','申告フォーム'],['右上','シフト'],['左下','チームリーダー'],['右下','マネージャー']]) expect(within(dialog).getByText(new RegExp(position+'.+'+label))).toBeInTheDocument();
   expect(within(dialog).getByText(/小泉さんの LINE/)).toBeInTheDocument();
   expect(within(dialog).getByText(/宮永さんの LINE/)).toBeInTheDocument();
 });

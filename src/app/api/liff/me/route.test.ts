@@ -4,6 +4,10 @@ vi.mock('@/lib/supabase/admin',()=>({getSupabaseAdmin:mocks.db}));
 import { POST } from './route';
 const req=(idToken:unknown)=>new Request('http://localhost/api/liff/me',{method:'POST',body:JSON.stringify({idToken})});
 beforeEach(()=>{vi.resetAllMocks();vi.stubEnv('NEXT_PUBLIC_LIFF_SHIFT_ID','123-test');vi.stubGlobal('fetch',mocks.fetch);});
+it('トークンなしは401、外部へ接続しない',async()=>{
+  expect((await POST(req(null))).status).toBe(401);
+  expect(mocks.fetch).not.toHaveBeenCalled();expect(mocks.db).not.toHaveBeenCalled();
+});
 it('確認失敗は401、データベースへアクセスしない',async()=>{
   mocks.fetch.mockResolvedValue(new Response('{}',{status:400}));
   expect((await POST(req('invalid'))).status).toBe(401);expect(mocks.db).not.toHaveBeenCalled();
