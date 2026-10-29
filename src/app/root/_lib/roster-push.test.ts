@@ -109,8 +109,9 @@ it('defers a second sender when the same employee already has a lease',async()=>
   expect(await queueRosterPush('EMP-1','team',options())).toHaveProperty('warning');
   expect(fetchMock).not.toHaveBeenCalled();expect(queue[0].status).toBe('pending');
 });
-it('queues retirement without the legacy direct PUT',async()=>{
-  await writeRetirementToRoster({employee_id:'EMP-1',termination_date:'2020-01-01'},fetchMock as unknown as typeof fetch);expect(queue[0]).toMatchObject({reason:'retire',status:'held'});expect(fetchMock).not.toHaveBeenCalled();
+it('before switching, retirement keeps the legacy direct write instead of queueing',async()=>{
+  const result=await writeRetirementToRoster({employee_id:'EMP-1',termination_date:'2020-01-01'},fetchMock as unknown as typeof fetch);
+  expect(result.status).toBe('skipped');expect(queue).toHaveLength(0);expect(fetchMock).not.toHaveBeenCalled();
 });
 it('merges only changed categories, preserving unknown and nested fields',async()=>{
   profiles=[{employee_id:'EMP-1',category:'address',payload:{city:'大阪市',room:'1'}},{employee_id:'EMP-1',category:'contact',payload:{phone:'123'}}];

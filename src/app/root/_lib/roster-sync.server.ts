@@ -582,11 +582,37 @@ async function syncBankListHistory(
   return { rows, skipped };
 }
 
-export async function writeRetirementToRoster(employee: { employee_id?: string; kot_employee_id?: string | null; termination_date?: string | null }, _fetchImpl: typeof fetch = fetch) {
-  if (!employee.employee_id) return {status:'skipped' as const,note:'従業員IDがありません'};
-  const { queueRosterPush } = await import('./roster-push.server');
-  const result = await queueRosterPush(employee.employee_id,'retire');
-  return {status:result.status === 'done' ? 'synced' as const:result.warning ? 'failed' as const:'skipped' as const,note:result.warning ?? null};
+export async function writeRetirementToRoster(employee: { employee_id?: string; kot_employee_id?: string | null; termination_date?: string | null }, fetchImpl: typeof fetch = fetch) {
+  const { getRosterDirection, queueRosterPush } = await import('./roster-push.server');
+  // 切り替える前（Kintone が正）は、前と同じく退職日と退職済みだけを直接書く（翌朝の取り込みで戻らないように）
+  if (await getRosterDirection() === 'garden_to_kintone') {
+    if (!employee.employee_id) return {status:'skipped' as const,note:'従業員IDがありません'};
+    const result = await queueRosterPush(employee.employee_id,'retire');
+    return {status:result.status === 'done' ? 'synced' as const:result.warning ? 'failed' as const:'skipped' as const,note:result.warning ?? null};
+  }
+  if (!employee.kot_employee_id || !employee.termination_date) return { status: "skipped" as const, note: "KING OF TIME の IDまたは退職日が空のため名簿更新をスキップ" };
+  const subdomain = process.env.KINTONE_SUBDOMAIN;
+  const token = process.env.KINTONE_EMPLOYEE_ROSTER_TOKEN;
+  const app = process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID || "56";
+  if (!subdomain || !token) return { status: "skipped" as const, note: "Kintone環境変数未設定" };
+  const query = `打刻ID = "${employee.kot_employee_id.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}" order by 作成日時 desc limit 1`;
+  const found = await fetchImpl(`https://${subdomain}.cybozu.com/k/v1/records.json`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "X-Cybozu-API-Token": token, "X-HTTP-Method-Override": "GET" },
+    body: JSON.stringify({ app, query, fields: ["$id"] }),
+    cache: "no-store",
+  });
+  if (!found.ok) return { status: "failed" as const, note: `名簿検索失敗: ${found.status}` };
+  const json = await found.json() as { records?: Array<{ $id?: { value?: string } }> };
+  const id = json.records?.[0]?.$id?.value;
+  if (!id) return { status: "skipped" as const, note: "KING OF TIME の IDが名簿にありません" };
+  const updated = await fetchImpl(`https://${subdomain}.cybozu.com/k/v1/record.json`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", "X-Cybozu-API-Token": token },
+    body: JSON.stringify({ app, id, record: { 退職日: { value: employee.termination_date }, 従業員ステータス: { value: "退職済み" } } }),
+    cache: "no-store",
+  });
+  return updated.ok ? { status: "synced" as const, note: null } : { status: "failed" as const, note: `名簿更新失敗: ${updated.status}` };
 }
 
 export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterSyncSummary> {

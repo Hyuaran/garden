@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { syncSubmissionToKintone } from './submission-kintone.server';
 import { queueRosterPush } from '@/app/root/_lib/roster-push.server';
 import type { SubmissionRow } from './submission-types';
-vi.mock('@/app/root/_lib/roster-push.server',()=>({queueRosterPush:vi.fn(async()=>({status:'held'}))}));
+vi.mock('@/app/root/_lib/roster-push.server',()=>({getRosterDirection:vi.fn(async()=>'garden_to_kintone'),queueRosterPush:vi.fn(async()=>({status:'held'}))}));
 beforeEach(()=>{
   vi.clearAllMocks();
   vi.stubEnv('KINTONE_SUBDOMAIN','mock');vi.stubEnv('KINTONE_EMPLOYEE_ROSTER_TOKEN','roster');
