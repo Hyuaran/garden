@@ -104,6 +104,17 @@ describe("hire checklist",()=>{
   mocks.server.mockResolvedValue({auth:{getUser:async()=>({data:{user:{id:"admin"}}})},from:()=>q});mocks.admin.mockReturnValue(db);
  };
  const patch = (checklist:unknown) => PATCH(new Request("http://localhost",{method:"PATCH",body:JSON.stringify({checklist})}),{params:Promise.resolve({id:"candidate"})});
+ it("blocks both FileMaker entry points until the name change is recorded",async()=>{
+  const row={...candidate(),status:"hired" as const,line_verified_at:"now",checklist:Object.fromEntries(["contract_signed","nda_signed","emergency_signed"].map(k=>[k,{checked_at:"now",checked_by:"admin"}]))};
+  const db=dbFor(row);authorize(db);
+  expect((await patch({filemaker_added:true})).status).toBe(409);
+  const response=await retryFilemaker(new Request("http://localhost",{method:"POST"}),{params:Promise.resolve({id:"candidate"})});
+  expect(response.status).toBe(409);
+  expect(await response.json()).toMatchObject({error:"②の LINE 確認と表示名の変更が済むと進めます"});
+  expect(db.from.mock.calls.some(([table])=>table==="system_filemaker_account_requests")).toBe(false);
+  authorize(dbFor({...row,line_display_renamed_at:"now"}));
+  expect((await patch({filemaker_added:true})).status).toBe(200);
+ });
  it.each([{bad:true},{toString:true},{contract_sent:"yes"},[],null,{}].map(value=>({value})))("rejects invalid checklist $value",async ({value})=>{
   authorize(dbFor(candidate()));expect((await patch(value)).status).toBe(400);
  });
@@ -130,7 +141,7 @@ describe("hire checklist",()=>{
   expect(row.checklist).not.toHaveProperty("line_skipped");
  });
  it("requires every automatic and manual item and prioritizes incomplete hires",()=>{
-  const complete={...candidate(),status:"hired" as const,onboarding_status:"submitted",line_registered:true,line_verified_at:"now",checklist:Object.fromEntries(CHECKLIST_KEYS.map(key=>[key,{checked_at:"now",checked_by:"admin"}]))};
+  const complete={...candidate(),status:"hired" as const,onboarding_status:"submitted",line_registered:true,line_verified_at:"now",line_display_renamed_at:"now",checklist:Object.fromEntries(CHECKLIST_KEYS.map(key=>[key,{checked_at:"now",checked_by:"admin"}]))};
   expect(checklistComplete(complete)).toBe(true);
   for(const key of CHECKLIST_KEYS) expect(checklistComplete({...complete,checklist:{...complete.checklist,[key]:undefined}})).toBe(false);
   expect(checklistComplete({...complete,onboarding_status:"draft"})).toBe(false);

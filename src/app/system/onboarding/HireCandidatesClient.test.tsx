@@ -90,7 +90,7 @@ it("shows candidate tab only in its super-admin wrapper and preserves the old li
  fireEvent.click(screen.getByRole("tab",{name:"入社手続き"}));expect(screen.getByText("既存の入社手続き一覧")).toBeVisible();
 });
 const fullChecklist=Object.fromEntries(CHECKLIST_KEYS.map(key=>[key,{checked_at:"2026-10-26",checked_by:"admin"}]));
-const hired={...row,id:"h",last_name:"入社",status:"hired",employee_number:"1571",onboarding_status:"submitted",line_registered:true,line_verified_at:"now",checklist:fullChecklist};
+const hired={...row,id:"h",last_name:"入社",status:"hired",employee_number:"1571",onboarding_status:"submitted",line_registered:true,line_verified_at:"now",line_display_renamed_at:"now",checklist:fullChecklist};
 it("keeps the confirmation table compact and opens all fields in the common modal",async()=>{
  vi.stubGlobal("fetch",vi.fn(async()=>Response.json([{...hired,employment_type:"正社員",checklist:{}}])));
  render(<CandidatePanel userId="layout" tab="confirmations" canWrite={false}/>);
@@ -105,7 +105,7 @@ it("keeps the confirmation table compact and opens all fields in the common moda
  for(const label of ["契約書の種類","雇用期間","契約更新","契約開始日","契約終了日","契約日","業務内容","就業時間","就業場所"])expect(within(dialog).getByLabelText(label)).toBeVisible();
  expect(within(dialog).getByLabelText("契約書の種類")).toBeDisabled();
  expect(within(dialog).queryByRole("button",{name:"テスト送信"})).not.toBeInTheDocument();
- expect(within(dialog).getByText("確認済み")).toBeVisible();
+ expect(within(dialog).getByText("確認済み・表示名変更済み")).toBeVisible();
  expect(within(dialog).getByRole("button",{name:"FileMaker に依頼"})).toBeDisabled();
  fireEvent(dialog,new Event("cancel",{cancelable:true}));
  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

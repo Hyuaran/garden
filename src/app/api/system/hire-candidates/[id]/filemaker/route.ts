@@ -4,10 +4,10 @@ import { signaturesComplete, lineComplete } from "@/app/system/onboarding/_lib/h
 export async function POST(_req:Request,{params}:{params:Promise<{id:string}>}){
  const {id}=await params;
  return hireResponse(async c=>{
-  const {data:row,error}=await c.db.from("system_hire_candidates").select("status,checklist,line_verified_at").eq("id",id).single();
+  const {data:row,error}=await c.db.from("system_hire_candidates").select("status,checklist,line_verified_at,line_display_renamed_at").eq("id",id).single();
   if(error||!row)throw new HireError("入社情報を読み込めませんでした",503);
   if(row.status!=="hired"||!signaturesComplete(row))throw new HireError("①の締結がそろうと進めます",409);
-  if(!lineComplete(row))throw new HireError("②の LINE 確認が済むと進めます",409);
+  if(!lineComplete(row))throw new HireError("②の LINE 確認と表示名の変更が済むと進めます",409);
   return requestFilemakerAccount(c.db,id,c.userId);
  });
 }

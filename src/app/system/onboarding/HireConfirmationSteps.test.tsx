@@ -3,7 +3,7 @@ import { afterEach,expect,it,vi } from "vitest";
 import HireConfirmationSteps from "./HireConfirmationSteps";
 import type { HireCandidate } from "./_lib/hire-candidates";
 vi.mock("@/app/system/_components/ChangeConfirm/ChangeConfirm",()=>({default:({actions}:{actions:React.ReactNode})=><div>{actions}</div>}));
-const row={id:"test",status:"hired",onboarding_status:"submitted",line_registered:true,line_verified_at:"now",steps:{},checklist:Object.fromEntries(["contract_signed","nda_signed","emergency_signed"].map(k=>[k,{checked_at:"now",checked_by:"u"}]))} as HireCandidate;
+const row={id:"test",status:"hired",onboarding_status:"submitted",line_registered:true,line_verified_at:"now",line_display_renamed_at:"now",steps:{},checklist:Object.fromEntries(["contract_signed","nda_signed","emergency_signed"].map(k=>[k,{checked_at:"now",checked_by:"u"}]))} as HireCandidate;
 afterEach(()=>{cleanup();localStorage.clear();vi.useRealTimers();vi.unstubAllGlobals();});
 it("waits 120 seconds, updates every second, then reconciles once",async()=>{
  vi.useFakeTimers();const fetch=vi.fn(async(_url:string,_init?:RequestInit)=>Response.json({ok:true}));vi.stubGlobal("fetch",fetch);
@@ -50,8 +50,8 @@ it("switches header actions to status and shows code only after sending",async()
  await act(async()=>{fireEvent.click(line.getByRole("button",{name:"テスト送信"}));});
  expect(line.getByLabelText("確認コード")).toBeVisible();
  view.rerender(<HireConfirmationSteps {...props} row={row}/>);
- expect(line.getAllByText("確認済み")).toHaveLength(1);
- expect(line.queryByRole("button")).not.toBeInTheDocument();
+ expect(line.getAllByText("確認済み・表示名変更済み")).toHaveLength(1);
+ expect(line.getByRole("button",{name:"戻す"})).toBeEnabled();
  expect(line.queryByLabelText("確認コード")).not.toBeInTheDocument();
  const fm=within(screen.getByText("③ FileMaker").closest("section")!);
  fireEvent.click(fm.getByRole("button",{name:"手で追加済みにする"}));expect(props.toggleFilemaker).toHaveBeenCalledOnce();
@@ -63,4 +63,27 @@ it("switches header actions to status and shows code only after sending",async()
  expect(fm.getAllByText("追加済み")).toHaveLength(1);
  expect(fm.queryByRole("button",{name:"FileMaker に依頼"})).not.toBeInTheDocument();
  fireEvent.click(fm.getByRole("button",{name:"戻す"}));expect(props.toggleFilemaker).toHaveBeenCalledTimes(2);
+});
+
+it("requires the display name change, copies the padded name, and records the action",async()=>{
+ const fetch=vi.fn(async()=>Response.json({ok:true}));vi.stubGlobal("fetch",fetch);
+ const copy=vi.fn(async()=>{});Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText:copy}});
+ const props={canWrite:true,documents:null,toggleFilemaker:vi.fn(),skip:vi.fn(),onRefresh:vi.fn(async()=>{})};
+ const pending={...row,employee_number:"4",last_name:"上田",first_name:"基人",line_display_renamed_at:null};
+ const view=render(<HireConfirmationSteps {...props} row={pending}/>);
+ expect(screen.getByText("変更後の名前： 0004 上田　基人",{normalizer:s=>s.trim()})).toBeVisible();
+ expect(screen.getByRole("link",{name:"LINE 管理画面のチャットを開く（新しいタブ）"})).toHaveAttribute("target","_blank");
+ expect(screen.getByRole("button",{name:"FileMaker に依頼"})).toBeDisabled();
+ expect(screen.getByText("②の LINE 確認と表示名の変更が済むと進めます")).toBeVisible();
+ await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"名前をコピー"}));});expect(copy).toHaveBeenCalledWith("0004 上田　基人");
+ await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"表示名を変更しました"}));});
+ expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/test/line",expect.objectContaining({body:JSON.stringify({action:"renamed"})}));
+ view.rerender(<HireConfirmationSteps {...props} row={{...pending,line_display_renamed_at:"now"}}/>);
+ expect(screen.getByRole("button",{name:"FileMaker に依頼"})).toBeEnabled();
+ const line=within(screen.getByText("② LINE テスト送信").closest("section")!);
+ await act(async()=>{fireEvent.click(line.getByRole("button",{name:"戻す"}));});
+ expect(fetch).toHaveBeenLastCalledWith("/api/system/hire-candidates/test/line",expect.objectContaining({body:JSON.stringify({action:"renamed_undo"})}));
+ view.rerender(<HireConfirmationSteps {...props} row={{...pending,checklist:{...pending.checklist,line_skipped:{checked_at:"now",checked_by:"u"}}}}/>);
+ expect(screen.queryByText("LINE 管理画面で、この方の表示名を変更してください")).not.toBeInTheDocument();
+ expect(screen.getByRole("button",{name:"FileMaker に依頼"})).toBeEnabled();
 });

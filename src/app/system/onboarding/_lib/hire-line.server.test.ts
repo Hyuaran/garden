@@ -4,16 +4,29 @@ vi.mock("./hire-candidates.server",()=>({HireError:class extends Error {construc
 vi.mock("@/lib/line/staff-client",()=>({pushLineStaff:vi.fn()}));
 import { createLineCode,codeHash,checkHireLine } from "./hire-line.server";
 import { pushLineStaff } from "@/lib/line/staff-client";
-function context(result="ok") {
+function context(result="ok",verified:string|null=null,request:unknown=null,added=false) {
  const saved=vi.fn(async(_values:Record<string,unknown>)=>({error:null})),rpc=vi.fn(async()=>({data:result,error:null}));
  const db={rpc,from:(table:string)=>{
-  const q={select:()=>q,eq:()=>q,is:()=>q,upsert:saved,delete:()=>q,
-   single:async()=>({data:table==="root_employees"?{line_user_id:"line"}:{status:"hired",employee_id:"employee",checklist:Object.fromEntries(["contract_signed","nda_signed","emergency_signed"].map(k=>[k,{checked_at:"now",checked_by:"admin"}]))}}),
-   maybeSingle:async()=>({data:{salt:"salt"}}),then:(resolve:(value:unknown)=>void)=>Promise.resolve({error:null}).then(resolve)};
+  const q={select:()=>q,eq:()=>q,is:()=>q,upsert:saved,update:(values:Record<string,unknown>)=>{saved(values);return q;},delete:()=>q,
+   single:async()=>({data:table==="root_employees"?{line_user_id:"line"}:{status:"hired",employee_id:"employee",line_verified_at:verified,checklist:{...Object.fromEntries(["contract_signed","nda_signed","emergency_signed"].map(k=>[k,{checked_at:"now",checked_by:"admin"}])),...(added?{filemaker_added:{checked_at:"now"}}:{})}}}),
+   maybeSingle:async()=>({data:table==="system_filemaker_account_requests"?request:{id:"c",salt:"salt"}}),then:(resolve:(value:unknown)=>void)=>Promise.resolve({error:null}).then(resolve)};
   return q;
  }};
  return {context:{db:db as never,userId:"admin"},saved,rpc};
 }
+it("requires the confirmation code before recording the name change",async()=>{
+ const c=context();await expect(checkHireLine(c.context,"c",{action:"renamed"})).rejects.toMatchObject({status:409,message:"先に確認コードを確認してください"});expect(c.saved).not.toHaveBeenCalled();
+});
+it("records the actor and time and clears only the name change on undo",async()=>{
+ const c=context("ok","verified");
+ expect(await checkHireLine(c.context,"c",{action:"renamed"})).toEqual({renamed:true});
+ expect(c.saved).toHaveBeenLastCalledWith({line_display_renamed_at:expect.any(String),line_display_renamed_by:"admin",updated_at:expect.any(String)});
+ expect(await checkHireLine(c.context,"c",{action:"renamed_undo"})).toEqual({renamed:false});
+ expect(c.saved).toHaveBeenLastCalledWith({line_display_renamed_at:null,line_display_renamed_by:null,updated_at:expect.any(String)});
+});
+it.each([{request:{id:"fm"},added:false},{request:null,added:true}])("rejects undo after FileMaker has started: %j",async({request,added})=>{
+ const c=context("ok","verified",request,added);await expect(checkHireLine(c.context,"c",{action:"renamed_undo"})).rejects.toMatchObject({status:409});expect(c.saved).not.toHaveBeenCalled();
+});
 it("creates six digits, a salted hash and a 24 hour expiry; resend invalidates the digest",()=>{
  const now=Date.now();const first=createLineCode(),second=createLineCode();
  expect(first.code).toMatch(/^\d{6}$/);expect(first.code_hash).toMatch(/^[a-f0-9]{64}$/);

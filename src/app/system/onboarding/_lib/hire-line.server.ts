@@ -11,9 +11,23 @@ export function createLineCode() {
 }
 export async function checkHireLine(context:Awaited<ReturnType<typeof hireAdminContext>>, id:string, body:{action?:string;code?:string}) {
  const {db,userId}=context;
- const {data:c,error}=await db.from("system_hire_candidates").select("status,employee_id,checklist").eq("id",id).single();
+ const {data:c,error}=await db.from("system_hire_candidates").select("status,employee_id,checklist,line_verified_at").eq("id",id).single();
  if(error||!c||c.status!=="hired")throw new HireError("入社済みの方だけ確認できます",409);
  if(!signaturesComplete(c))throw new HireError("①の締結がそろうと進めます",409);
+ if(body.action==="renamed"||body.action==="renamed_undo") {
+  if(!c.line_verified_at)throw new HireError("先に確認コードを確認してください",409);
+  const undo=body.action==="renamed_undo";
+  if(undo) {
+   const {data:request,error:requestError}=await db.from("system_filemaker_account_requests").select("id").eq("hire_candidate_id",id).maybeSingle();
+   if(requestError)throw new HireError("依頼の状態を確認できませんでした",503);
+   if(request||c.checklist?.filemaker_added?.checked_at)throw new HireError("③の FileMaker に進んだため戻せません",409);
+  }
+  const at=new Date().toISOString();
+  const {data:updated,error:updateError}=await db.from("system_hire_candidates").update({line_display_renamed_at:undo?null:at,line_display_renamed_by:undo?null:userId,updated_at:at}).eq("id",id).eq("status","hired").eq("line_verified_at",c.line_verified_at).select("id").maybeSingle();
+  if(updateError)throw new HireError("表示名の変更を記録できませんでした",503);
+  if(!updated)throw new HireError("状態が更新されています。画面を開き直してから、もう一度操作してください",409);
+  return {renamed:!undo};
+ }
  if(body.action==="send") {
   const {data:e,error:ee}=await db.from("root_employees").select("line_user_id").eq("employee_id",c.employee_id).is("deleted_at",null).single();
   if(ee||!e?.line_user_id)throw new HireError("まだ LINE を連携していません（入社手続きの最後のページの QR から登録）",409);
