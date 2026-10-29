@@ -40,7 +40,9 @@ describe('メニューの選択と押せる範囲',()=>{
   });
   it('絵の区切りと一致し、シフトだけをLIFFへ開く',()=>{
     expect(menuDefinition('koizumi',[]).body.areas.map(a=>a.bounds)).toEqual([{x:0,y:0,width:1250,height:843},{x:1250,y:0,width:1250,height:843},{x:0,y:843,width:1250,height:843},{x:1250,y:843,width:1250,height:843}]);
-    expect(menuDefinition('telema',[]).body.areas[2].bounds).toEqual({x:0,y:843,width:2500,height:843});
+    expect(menuDefinition('telema',[]).body.size).toEqual({width:2500,height:843});
+    expect(menuDefinition('telema',[]).body.areas.map(a=>a.bounds)).toEqual([{x:0,y:0,width:833,height:843},{x:833,y:0,width:834,height:843},{x:1667,y:0,width:833,height:843}]);
+    expect(menuDefinition('guest',[]).body.areas.map(a=>a.bounds)).toEqual([{x:0,y:0,width:1250,height:843},{x:1250,y:0,width:1250,height:843}]);
     expect(menuDefinition('guest',[]).body.size).toEqual({width:2500,height:843});
     expect(menuDefinition('telema',[],'123-test').body.areas[1].action).toEqual({type:'uri',uri:'https://liff.line.me/123-test'});
     expect(menuDefinition('telema',[]).body.areas[1].action).toEqual({type:'message',text:'シフト'});

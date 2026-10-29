@@ -35,5 +35,7 @@ export function menuDefinition(group: MenuGroup, contacts: Contact[], liffId?: s
     contact(group === 'koizumi' ? 'team:小泉チーム' : group === 'ishihara' ? 'team:石原チーム' : group === 'nhk' ? 'nhk' : group === 'office' ? 'office' : 'miyanaga'),
     ...(four ? [contact('miyanaga')] : []),
   ];
-  return { image, body: { size: { width: 2500, height: guest ? 843 : 1686 }, selected: true, name: 'Garden ' + group, chatBarText: 'メニュー', areas: actions.map((action, i) => ({ bounds: { x: i < 2 || four ? (i % 2) * 1250 : 0, y: i < 2 ? 0 : 843, width: i >= 2 && !four ? 2500 : 1250, height: 843 }, action })) } };
+  const columns = four ? 2 : actions.length;
+  const xs = Array.from({ length: columns + 1 }, (_, i) => Math.round(i * 2500 / columns));
+  return { image, body: { size: { width: 2500, height: four ? 1686 : 843 }, selected: true, name: 'Garden ' + group, chatBarText: 'メニュー', areas: actions.map((action, i) => ({ bounds: { x: xs[i % columns], y: Math.floor(i / columns) * 843, width: xs[i % columns + 1] - xs[i % columns], height: 843 }, action })) } };
 }
