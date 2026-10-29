@@ -39,7 +39,7 @@ export function dueNotice(row: Forwarding, notices: Notice[], today: string): No
 }
 const clean = (s: string) => s.replace(/\[/g, "［").replace(/\]/g, "］");
 export function unfiledMessage(rows: Forwarding[]) {
-  const items = rows.map((row, i) => `${i + 1}. ${clean(row.holder)}\n　転送元：${clean(row.from_address)}\n　転送先：${clean(row.to_address)}`).join("\n");
+  const items = [...rows].sort((a, b) => a.holder.localeCompare(b.holder) || a.from_address.localeCompare(b.from_address)).map((row, i) => `${i + 1}. ${clean(row.holder)}\n　転送元：${clean(row.from_address)}\n　転送先：${clean(row.to_address)}`).join("\n");
   return `[info][title]郵便の転送がまだ届けられていません（${rows.length} 件）[/title]\n${items}\n\n郵便局の窓口（または e転居）で転居届を出して、Garden の「郵便の転送」で［届け出た］を押してください。届け出るまで、毎週月曜日の朝にお知らせします。\nhttps://garden-os.net/root/mail-forwarding[/info]`;
 }
 export function noticeMessage(row: Forwarding, notice: Notice, today: string) {
