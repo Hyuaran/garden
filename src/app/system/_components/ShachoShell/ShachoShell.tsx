@@ -1,21 +1,18 @@
 "use client";
-import FontSizeButton from "@/app/system/_components/FontSizeButton";
-import { HeaderViewProvider, HeaderViewSlot } from "@/app/system/_components/HeaderViewToggle";
+import { HeaderViewProvider } from "@/app/system/_components/HeaderViewToggle";
 
 import Image from "next/image";
-import { NoticeBell } from "@/app/_components/notices/NoticeBell";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { type CSSProperties, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { MODULE_META, ModuleIcon, RailIcon } from "@/app/_components/ModuleIcon/ModuleIcon";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
-import { createBrowserClient } from "@/app/_lib/supabase/browser";
-import { useTheme } from "@/app/_lib/theme/ThemeProvider";
 import { getVisibleModules } from "@/app/_lib/module-visibility";
 import { GARDEN_SHELL_MODULES } from "@/app/_components/layout/GardenShell/garden-shell-config";
 import { GARDEN_ROLE_LABELS, type GardenRole } from "@/app/root/_constants/types";
 import { canUseSystemItem, LIMITED_MENU_ITEMS, shouldHideSidebar, SYSTEM_MENU_ITEMS, type SystemIcon } from "./shacho-shell-config";
 import SidebarNavigation from "./SidebarNavigation";
+import GardenHeaderActions from "@/app/system/_components/GardenHeaderActions/GardenHeaderActions";
 import styles from "./shacho-shell.module.css";
 
 type Props = {
@@ -63,15 +60,10 @@ export function resolveSystemActivePath(pathname: string): string | null {
 export default function ShachoShell({ children, user, hiddenHrefs = [], allowedHrefs = [] }: Props) {
   const pathname = usePathname();
   const activePath = resolveSystemActivePath(pathname);
-  const { theme, toggleTheme } = useTheme();
   const drawerId = useId();
   const openButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  async function logout() {
-    await createBrowserClient().auth.signOut();
-    window.location.assign("/login");
-  }
   const limitedSidebar = shouldHideSidebar(user.role);
   const visible = SYSTEM_MENU_ITEMS.filter(item => {
     if (item.href === "/system/dev-board" && !allowedHrefs.includes(item.href)) return false;
@@ -81,7 +73,6 @@ export default function ShachoShell({ children, user, hiddenHrefs = [], allowedH
   }).map(item => limitedSidebar ? LIMITED_MENU_ITEMS.find(limited => limited.href === item.href) ?? item : item);
   const upcoming = visible.filter(item => item.upcoming);
   const visibleModules = new Set(getVisibleModules(user.role).map((module) => module.toLowerCase()));
-  const themeLabel = theme === "dark" ? "ライトにする" : "ダークにする";
   const moduleRail = <>
     {limitedSidebar ? <span className={`${styles.app} ${styles.current}`} style={{ "--c": "#0ea5a0" } as CSSProperties} aria-hidden="true">
       <RailIcon color="#0ea5a0" shade="#054e4b" iconScale={1.85} iconStrokeWidth={1.9}>
@@ -148,9 +139,7 @@ export default function ShachoShell({ children, user, hiddenHrefs = [], allowedH
       <button ref={openButtonRef} className={styles.menuButton} type="button" aria-label="メニューを開く" aria-expanded={drawerOpen} aria-controls={drawerId} onClick={() => setDrawerOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       {mobileBrand}
       <div className={styles.mobileActions}>
-        <HeaderViewSlot mobile /><NoticeBell className={styles.iconButton} /><FontSizeButton className={styles.iconButton} tipClassName={styles.actionTip} />
-        <button className={styles.iconButton} type="button" aria-label="テーマを切り替える" onClick={toggleTheme}>{theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z"/></svg>}<span className={styles.actionTip}>{themeLabel}</span></button>
-        <button className={styles.iconButton} type="button" aria-label="ログアウトする" onClick={() => void logout()}><svg viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/></svg><span className={styles.actionTip}>ログアウト</span></button>
+        <GardenHeaderActions mobile />
       </div>
     </header>
     {drawerOpen && <div className={`${styles.drawerLayer} ${styles.drawerOpen}`}>
@@ -168,10 +157,7 @@ export default function ShachoShell({ children, user, hiddenHrefs = [], allowedH
     </div>}
     <main className={styles.main}>
       <div className={styles.actions}>
-        <span className={styles.accountName} {...CLARITY_MASK}>{user.name}さん</span>
-        <HeaderViewSlot /><NoticeBell className={styles.iconButton} /><FontSizeButton className={styles.iconButton} tipClassName={styles.actionTip} />
-        <button className={styles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>{theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z"/></svg>}<span className={styles.actionTip}>{themeLabel}</span></button>
-        <button className={styles.iconButton} type="button" aria-label="ログアウト" onClick={() => void logout()}><svg viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/></svg><span className={styles.actionTip}>ログアウト</span></button>
+        <GardenHeaderActions name={user.name} />
       </div>
       {children}
     </main>

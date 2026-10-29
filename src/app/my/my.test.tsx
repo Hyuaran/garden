@@ -11,7 +11,8 @@ describe("dedicated my page",()=>{
  expect(screen.getAllByRole("tab")).toHaveLength(6);
  const nav=screen.getByRole("navigation",{name:"マイページ"});
  expect(within(nav).getAllByRole("link")).toHaveLength(6);
- for(const a of screen.getAllByRole("link"))expect(a.getAttribute("href")).toMatch(/^\/my\?tab=/);
+ // ほかの画面と同じ右上の一式を出すので、ベルの「お知らせ一覧」だけは許す。それ以外は /my の中だけ
+ for(const a of screen.getAllByRole("link"))expect(a.getAttribute("href")).toMatch(/^\/my\?tab=|^\/system\/notices$/);
  expect(screen.queryByRole("complementary")).toBeNull();
  expect(screen.queryByRole("button",{name:"利用者メニュー"})).toBeNull();
  });
