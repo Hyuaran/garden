@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { GARDEN_ROLE_LABELS, type GardenRole } from "@/app/root/_constants/types";
 import type { MyPageProfile } from "../types";
 import styles from "../mypage.module.css";
+import { OPEN_MY_NUMBER_EVENT } from "@/lib/my-number/events";
 import SubmissionModal from "../_components/SubmissionModal";
 import type {SubmissionRow,SubmissionType} from "../_lib/submission-types";
 import { TextField } from "@/app/system/forms/_components/form-kit";
@@ -34,7 +35,7 @@ function LineIcon({ icon, className }: { icon: ProfileIcon; className?: string }
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[icon]}</svg>;
 }
 
-function InfoRow({ label, value, pending = false }: { label: string; value: string; pending?: boolean }) {
+function InfoRow({ label, value, pending = false }: { label: string; value: ReactNode; pending?: boolean }) {
   return <div className={styles.infoRow}><dt>{label}</dt><dd className={pending ? styles.pending : undefined}>{value}</dd></div>;
 }
 
@@ -118,7 +119,7 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
       <InfoRow label="氏名" value={profile.name} /><InfoRow label="氏名カナ" value={profile.nameKana} />
       <InfoRow label="社員番号" value={profile.employeeNumber} /><InfoRow label="雇用形態" value={profile.employmentType} />
       <InfoRow label="生年月日" value={profile.birthday ?? "未登録"} /><InfoRow label="Garden権限" value={roleLabel} />
-      <InfoRow label="メール" value={profile.email||"未登録"} /><InfoRow label="マイナンバー" value={profile.mynaStatus ?? (profile.mynaSubmitted?"提出済み":"未提出")} />
+      <InfoRow label="メール" value={profile.email||"未登録"} /><InfoRow label="マイナンバー" value={<>{profile.mynaStatus ?? (profile.mynaSubmitted?"提出済み":"未提出")}{profile.mynaLast4 && profile.mynaStatus!=="差し戻し" ? `（下4桁 ${profile.mynaLast4}）` : ""}{(profile.mynaStatus==="未提出"||profile.mynaStatus==="差し戻し") && <> <button type="button" className={styles.secondaryButton} onClick={()=>window.dispatchEvent(new Event(OPEN_MY_NUMBER_EVENT))}>提出する</button></>}</>} />
       <InfoRow label="交通費" value={commute} /><InfoRow label="給与受取口座" value={bank} />
     </dl></section>
 

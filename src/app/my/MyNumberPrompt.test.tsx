@@ -16,6 +16,6 @@ it.each([{row:null,prompt:false},{row:{status:'pending',my_number_last4:'9018'},
 });
 it('3か月ごとの確認が終わるまで案内を待ち、取得は一度',async()=>{
  const fetcher=vi.fn().mockResolvedValue({ok:true,json:async()=>({row:null,prompt:true})});vi.stubGlobal('fetch',fetcher);
- const view=render(<MyNumberPrompt locked profile/>);await screen.findByText(/未提出/);expect(screen.queryByRole('dialog')).toBeNull();
+ const view=render(<MyNumberPrompt locked profile/>);await waitFor(()=>expect(fetcher).toHaveBeenCalledOnce());expect(screen.queryByRole('dialog')).toBeNull();
  view.rerender(<MyNumberPrompt locked={false} profile/>);await screen.findByRole('dialog');expect(fetcher).toHaveBeenCalledOnce();
 });
