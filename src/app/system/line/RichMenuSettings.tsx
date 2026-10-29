@@ -24,7 +24,7 @@ export default function RichMenuSettings({data,busy,act}:{data:Data;busy:boolean
     else if(group==='guest') description=`会社のホームページ（${action.uri}）が開きます`;
     else {
       const owner=data.contacts.find(c=>c.url===action.uri);
-      const fallback=index===2&&(group==='koizumi'||group==='ishihara'||group==='nhk'||group==='office')&&!data.contacts.find(c=>c.key===(group==='koizumi'?'team:小泉チーム':group==='ishihara'?'team:石原チーム':group))?.url;
+      const fallback=index===2&&(group==='koizumi'||group==='ishihara'||group==='nhk'||group==='kanden'||group==='office')&&!data.contacts.find(c=>c.key===(group==='koizumi'?'team:小泉チーム':group==='ishihara'?'team:石原チーム':group))?.url;
       description=`${fallback?'（登録がないため）':''}${owner?.label||'マネージャー'}の LINE（${action.uri}）が開きます`;
     }
     return {id:String(index),position,label,description};

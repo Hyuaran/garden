@@ -27,7 +27,7 @@ it('連絡先は変更列がなく、行をキーボードで押して登録す�
 });
 it('反映前も6行あり、小泉チームの画像と位置・連絡先を表示する',()=>{
   render(<RichMenuSettings data={data} busy={true} act={vi.fn()}/>);
-  expect(screen.getAllByText('反映していません')).toHaveLength(6);
+  expect(screen.getAllByText('反映していません')).toHaveLength(7);
   expect(screen.getByRole('button',{name:'送信中...'})).toBeDisabled();
   fireEvent.click(screen.getByText('ブロードバンド事業・小泉チーム'));
   const dialog=screen.getByRole('dialog');

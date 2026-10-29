@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { menuDefinition, menuGroup, validContactUrl, type Contact, type MenuGroup } from './richmenu';
+import { menuDefinition, menuGroup, menuGroups, validContactUrl, type Contact, type MenuGroup } from './richmenu';
 import type { Employee, Tag, Member } from './tags';
 import { automaticTeamTag } from './tags';
 vi.mock('@/lib/supabase/admin',()=>({getSupabaseAdmin:vi.fn()}));
@@ -27,9 +27,9 @@ describe('メニューの選択と押せる範囲',()=>{
   });
   it('NHK・事務・退職者・解除された人を選ぶ',()=>{
     expect(group('NHK派遣事業')).toBe('nhk');
-    expect(group('関西電力事業')).toBe('office');
+    expect(group('関西電力事業')).toBe('kanden');
     expect(menuGroup({...employee,employment_type:'正社員'},[{id:'b',kind:'business',name:'ブロードバンド事業',sort:1}],[{tag_id:'b',employee_id:'1',source:'manual'}])).toBe('office');
-    expect(menuGroup(employee,[{id:'r',kind:'role',name:'事務',sort:1}],[{tag_id:'r',employee_id:'1',source:'auto'}])).toBe('office');
+    expect(menuGroup(employee,[{id:'r',kind:'role',name:'事務',sort:1}],[{tag_id:'r',employee_id:'1',source:'auto'}])).toBe('guest');
     for(const e of [{...employee,is_active:false},{...employee,termination_date:'2000-01-01'},{...employee,line_user_id:null},{...employee,line_link_source:'unfollowed'}])expect(menuGroup(e,[],[])).toBe('guest');
   });
   it('連絡先が空なら宮永さん、ホームページは準備中',()=>{
@@ -64,7 +64,7 @@ function transport() {
 it('作成・既定・500人ずつ付け替え・公開・旧メニュー削除の順',async()=>{
   const t=transport(), groups=new Map<MenuGroup,string[]>([['telema',Array.from({length:1001},(_,i)=>'U'+i)]]);
   await deployMenus([],groups,['old-garden'],['former'],async()=>{},async()=>{t.calls.push('publish');},t.api);
-  expect(t.calls).toEqual([...Array.from({length:6},()=>['create','upload']).flat(),'default','link','link','link','unlink','publish','delete']);
+  expect(t.calls).toEqual([...Array.from({length:menuGroups.length},()=>['create','upload']).flat(),'default','link','link','link','unlink','publish','delete']);
   expect(t.api.link.mock.calls.map(c=>(c as unknown as [string,string[]])[1].length)).toEqual([500,500,1]);
   expect(t.api.remove).toHaveBeenCalledWith('old-garden');
 });

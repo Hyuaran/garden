@@ -1,9 +1,9 @@
 import { statusOf, type Employee, type Member, type Tag } from './tags';
 
 export type Contact = { key: string; employee_id?: string | null; label: string; url: string; updated_at: string; updated_by: string | null };
-export const menuGroups = ['guest', 'telema', 'koizumi', 'ishihara', 'nhk', 'office'] as const;
+export const menuGroups = ['guest', 'telema', 'koizumi', 'ishihara', 'nhk', 'kanden', 'office'] as const;
 export type MenuGroup = typeof menuGroups[number];
-export const groupLabels: Record<MenuGroup, string> = { guest: '従業員以外の方', telema: 'ブロードバンド事業・宮永チーム・新人チーム・チームなしのアルバイト', koizumi: 'ブロードバンド事業・小泉チーム', ishihara: 'ブロードバンド事業・石原チーム', nhk: 'NHK派遣事業', office: '事務・その他の従業員' };
+export const groupLabels: Record<MenuGroup, string> = { guest: '従業員以外の方', telema: 'ブロードバンド事業・宮永チーム・新人チーム・チームなしのアルバイト', koizumi: 'ブロードバンド事業・小泉チーム', ishihara: 'ブロードバンド事業・石原チーム', nhk: 'NHK派遣事業', kanden: '関西電力事業', office: 'ブロードバンド事業・チームなし（アルバイト以外）' };
 export function menuGroup(e: Employee, tags: Tag[], members: Member[]): MenuGroup {
   if (!e.line_user_id || e.line_link_source === 'unfollowed' || statusOf(e) === '退職') return 'guest';
   const own = tags.filter(t => members.some(m => m.employee_id === e.employee_id && m.tag_id === t.id));
@@ -14,7 +14,9 @@ export function menuGroup(e: Employee, tags: Tag[], members: Member[]): MenuGrou
     return 'telema';
   }
   if (own.some(t => t.kind === 'business' && t.name === 'NHK派遣事業')) return 'nhk';
-  return 'office';
+  if (own.some(t => t.kind === 'business' && t.name === '関西電力事業')) return 'kanden';
+  // 事業の無い人（業務委託・役員・タグ付け前）は従業員以外の方と同じメニュー。
+  return 'guest';
 }
 export function validContactUrl(key: string, url: string) {
   if (!url) return true;
@@ -32,7 +34,7 @@ export function menuDefinition(group: MenuGroup, contacts: Contact[], liffId?: s
   const image = guest ? 'guest_2' : four ? 'employee_4_base' : 'employee_3_base';
   const actions: Action[] = guest ? [message('お問い合わせ'), contact('guest_home')] : [
     formsId ? { type: 'uri', uri: 'https://liff.line.me/' + formsId } : message('申告フォーム'), liffId ? { type: 'uri', uri: 'https://liff.line.me/' + liffId } : message('シフト'),
-    contact(group === 'koizumi' ? 'team:小泉チーム' : group === 'ishihara' ? 'team:石原チーム' : group === 'nhk' ? 'nhk' : group === 'office' ? 'office' : 'miyanaga'),
+    contact(group === 'koizumi' ? 'team:小泉チーム' : group === 'ishihara' ? 'team:石原チーム' : group === 'nhk' || group === 'kanden' || group === 'office' ? group : 'miyanaga'),
     ...(four ? [contact('miyanaga')] : []),
   ];
   const columns = four ? 2 : actions.length;
@@ -41,7 +43,7 @@ export function menuDefinition(group: MenuGroup, contacts: Contact[], liffId?: s
 }
 
 export const roleLabels: Record<string, string> = {
-  miyanaga: 'マネージャー', 'team:小泉チーム': '小泉チームのリーダー', 'team:石原チーム': '石原チームのリーダー', nhk: 'NHK派遣事業の担当', office: '事務・その他の担当',
+  miyanaga: 'マネージャー', 'team:小泉チーム': '小泉チームのリーダー', 'team:石原チーム': '石原チームのリーダー', nhk: 'NHK派遣事業の担当', kanden: '関西電力事業の担当', office: '事務の担当',
 };
 export const contactName = (name: string) => name.trim().replace(/[\s　]+/g, ' ');
 export function resolveContacts(roles: Contact[], employees: Employee[]): Contact[] {
@@ -59,5 +61,5 @@ export function menuImageLabels(group: MenuGroup, contacts: Contact[]) {
   const surname = (key: string) => contactName((contacts.find(c => c.key === key && c.url) || contacts.find(c => c.key === 'miyanaga'))?.label || '').split(' ')[0];
   const label = (key: string, x: number, y: number, size: number) => ({text: surname(key) ? surname(key) + 'さんに連絡' : '準備中', x, y, size});
   if (group === 'koizumi' || group === 'ishihara') return [label(group === 'koizumi' ? 'team:小泉チーム' : 'team:石原チーム',625,1483,58),label('miyanaga',1875,1483,58)];
-  return [label(group === 'nhk' || group === 'office' ? group : 'miyanaga',2083,640,46)];
+  return [label(group === 'nhk' || group === 'kanden' || group === 'office' ? group : 'miyanaga',2083,640,46)];
 }
