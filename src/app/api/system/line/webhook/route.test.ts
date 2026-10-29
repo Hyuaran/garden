@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   loadNhkVisitRows: vi.fn(),
   admin: {
     from: vi.fn(),
+    rpc: vi.fn(),
   },
   lineTarget: vi.fn(),
 }));
@@ -30,6 +31,9 @@ describe("LINE webhook route", () => {
     vi.restoreAllMocks();
     process.env.LINE_CHANNEL_SECRET = "line-secret";
     process.env.LINE_CHANNEL_ACCESS_TOKEN = "line-token";
+    process.env.CHATWORK_API_TOKEN = 'chatwork-test';
+    process.env.BLOOM_CHATWORK_DRY_RUN = 'false';
+    mocks.admin.rpc.mockResolvedValue({data:'テスト部屋',error:null});
     mocks.loadNhkVisitRows.mockResolvedValue([]);
     mocks.lineTarget.mockResolvedValue({ data: { summary_keywords: ["NHK"], label: "テスト部屋" }, error: null });
     mocks.admin.from.mockImplementation((table: string) => {
@@ -156,5 +160,58 @@ describe("LINE webhook route", () => {
     }));
     expect(response.status).toBe(200);
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  async function send(message: object, userId: string | null = 'U1') {
+    const body = JSON.stringify({events:[{type:'message',replyToken:'reply-token',source:{type:'group',groupId:'group-1',userId},message}]});
+    return POST(new Request('http://test/api/system/line/webhook',{method:'POST',headers:{'x-line-signature':signature(body)},body}));
+  }
+  function enabled(extra = {}) {
+    mocks.lineTarget.mockResolvedValue({data:{summary_keywords:['NHK'],account:'dev',label:'試験',linked_at:'2026-10-29T00:00:00Z',notify_enabled:true,chatwork_room_id:'123',...extra},error:null});
+  }
+  it.each(['連携 G-4821','連携　Ｇ－４８２１',' 連 携 G - 4 8 2 1 '])('コードのゆれを正規化して一度だけ結ぶ: %s',async text=>{
+    expect((await send({type:'text',text})).status).toBe(200);
+    expect(mocks.admin.rpc).toHaveBeenLastCalledWith('link_line_group',{p_code:'G-4821',p_target:'group-1',p_type:'group'});
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenLastCalledWith(expect.stringContaining('/reply'),expect.objectContaining({body:expect.stringContaining('登録しました')}));
+  });
+  it.each(['期限切れ','違うコード'])('%s は作り直しを案内する',async()=>{
+    mocks.admin.rpc.mockResolvedValue({data:null,error:null});
+    await send({type:'text',text:'連携 G-0000'});
+    expect(global.fetch).toHaveBeenLastCalledWith(expect.stringContaining('/reply'),expect.objectContaining({body:expect.stringContaining('確認コードが見つかりません')}));
+  });
+  it.each([
+    [{type:'text',text:'こんにちは'},'こんにちは'],
+    [{type:'image'},'（画像）'],
+    [{type:'sticker'},'（スタンプ）'],
+    [{type:'file',fileName:'資料.pdf'},'（ファイル：資料.pdf）'],
+  ])('通常メッセージを一通だけ知らせる: %o',async(message,text)=>{
+    enabled();
+    vi.mocked(global.fetch).mockResolvedValueOnce(new Response(JSON.stringify({displayName:'山田'}))).mockResolvedValueOnce(new Response('{}'));
+    await send(message);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenNthCalledWith(1,expect.stringContaining('/group/group-1/member/U1'),expect.anything());
+    const [url,init]=vi.mocked(global.fetch).mock.calls[1];
+    expect(url).toBe('https://api.chatwork.com/v2/rooms/123/messages');
+    expect(String(init?.body)).toContain(encodeURIComponent(`山田：${text}`));
+  });
+  it('表示名が取れなくても知らせる',async()=>{
+    enabled();vi.mocked(global.fetch).mockRejectedValueOnce(new Error('profile'));
+    await send({type:'image'});
+    expect(String(vi.mocked(global.fetch).mock.calls[1][1]?.body)).toContain(encodeURIComponent('（名前を取得できませんでした）'));
+  });
+  it.each([{notify_enabled:false},{chatwork_room_id:null},{account:'official'},{linked_at:null}])('通知条件が合わないと送らない: %o',async extra=>{
+    enabled(extra);await send({type:'text',text:'こんにちは'});expect(global.fetch).not.toHaveBeenCalled();
+  });
+  it.each(['NHK集計','合言葉','連携 G-4821'])('合言葉とコードは Chatwork に送らない: %s',async text=>{
+    enabled();await send({type:'text',text});
+    expect(vi.mocked(global.fetch).mock.calls.every(([url])=>String(url).endsWith('/reply'))).toBe(true);
+  });
+  it('利用者のないボットイベントを知らせない',async()=>{
+    enabled();await send({type:'image'}, null);expect(global.fetch).not.toHaveBeenCalled();
+  });
+  it('外部送信失敗でも200',async()=>{
+    enabled();vi.mocked(global.fetch).mockRejectedValue(new Error('offline'));
+    expect((await send({type:'image'})).status).toBe(200);
   });
 });

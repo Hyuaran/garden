@@ -2,8 +2,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { parseLineSummaryKeyword, addDays, monthOf, todayJst } from "./_lib/line-keyword";
-import { findLineSummaryDefinition } from "./_lib/summary-registry";
+import { findLineSummaryDefinition, LINE_SUMMARIES } from "./_lib/summary-registry";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { ChatworkClient } from '@/lib/chatwork/client';
+import { chatworkGroupBody, groupMessage, parseGroupCode } from '@/lib/line/groups';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +21,7 @@ type LineWebhookEvent = {
   type?: string;
   replyToken?: string;
   source?: LineSource;
-  message?: { type?: string; text?: string };
+  message?: { type?: string; text?: string; fileName?: string };
 };
 
 type LineWebhookBody = {
@@ -29,6 +31,10 @@ type LineWebhookBody = {
 type LineTargetRow = {
   summary_keywords?: string[] | null;
   label?: string | null;
+  chatwork_room_id?: string | null;
+  notify_enabled?: boolean;
+  account?: string;
+  linked_at?: string | null;
 };
 
 function sourceTarget(source?: LineSource) {
@@ -95,7 +101,7 @@ async function loadLineTarget(event: LineWebhookEvent) {
   if (!target) return null;
   const { data, error } = await getSupabaseAdmin()
     .from("system_line_target")
-    .select("summary_keywords,label")
+    .select("summary_keywords,label,chatwork_room_id,notify_enabled,account,linked_at")
     .eq("line_target_id", target.id)
     .eq("active", true)
     .maybeSingle<LineTargetRow>();
@@ -142,11 +148,40 @@ async function buildReplyForText(text: string, target: LineTargetRow) {
 }
 
 async function handleMessage(event: LineWebhookEvent) {
-  if (event.message?.type !== "text" || !event.message.text || !event.replyToken) return;
+  const source = sourceTarget(event.source);
+  if (!source || !event.message) return;
+  const code = event.message.type === 'text' ? parseGroupCode(event.message.text || '') : null;
+  if (code && source.type !== 'user') {
+    const {data,error} = await getSupabaseAdmin().rpc('link_line_group', {p_code:code,p_target:source.id,p_type:source.type});
+    if (error) throw error;
+    if (event.replyToken) await replyLine(event.replyToken, data
+      ? `このグループを「${data}」として登録しました。書き込みは Garden の知らせ先へ届きます。`
+      : '確認コードが見つかりません。Garden で作り直してください。');
+    return;
+  }
   const target = await loadLineTarget(event);
-  if (!target) return;
-  const reply = await buildReplyForText(event.message.text, target);
-  if (reply) await replyLine(event.replyToken, reply);
+  if (!target || (target.account && target.account !== 'dev')) return;
+  if (event.message.type === 'text' && event.message.text) {
+    const keyword = parseLineSummaryKeyword(event.message.text, targetSummaryKeywords(target));
+    if (keyword) {
+      const reply = await buildReplyForText(event.message.text, target);
+      if (reply && event.replyToken) await replyLine(event.replyToken, reply);
+      return;
+    }
+    if (parseLineSummaryKeyword(event.message.text, LINE_SUMMARIES.map(s=>s.keyword))) return;
+  }
+  const text = groupMessage(event.message);
+  if (source.type === 'user' || !event.source?.userId || !text || !target.linked_at || !target.notify_enabled || !target.chatwork_room_id) return;
+  let name = '（名前を取得できませんでした）';
+  try {
+    const response = await fetch(`https://api.line.me/v2/bot/${source.type}/${encodeURIComponent(source.id)}/member/${encodeURIComponent(event.source.userId)}`, {
+      headers: {Authorization:`Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`},
+    });
+    if (response.ok) { const profile = await response.json(); if (typeof profile.displayName === 'string' && profile.displayName) name = profile.displayName; }
+  } catch { /* 表示名の取得に失敗しても知らせる */ }
+  await new ChatworkClient(process.env.CHATWORK_API_TOKEN || '', {
+    dryRun: /^(true|1|yes)$/i.test(process.env.BLOOM_CHATWORK_DRY_RUN || ''),
+  }).sendMessage(target.chatwork_room_id, chatworkGroupBody(target.label,name,text));
 }
 
 export async function POST(request: Request) {
