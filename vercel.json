@@ -34,6 +34,7 @@
     { "path": "/api/soil/list/options/cron", "schedule": "55 21 * * *" },
     { "path": "/api/root/minimum-wages/sync", "schedule": "0 1 * * *" },
     { "path": "/api/system/vercel-usage/cron", "schedule": "5 9 * * *" },
-    { "path": "/api/root/mail-forwarding/cron", "schedule": "0 1 * * *" }
+    { "path": "/api/root/mail-forwarding/cron", "schedule": "0 1 * * *" },
+    { "path": "/api/system/mf-stop-notice/cron", "schedule": "0 1 * * *" }
   ]
 }
