@@ -15,7 +15,7 @@ afterEach(()=>{process.argv=argv;vi.unstubAllEnvs();vi.restoreAllMocks();});
 it('件数確認では鍵を必要とせず、書き込まず、件数だけ出力する',async()=>{
  process.argv=['node','script','--dry-run'];vi.stubEnv('MY_NUMBER_ENCRYPTION_KEY','');
  await import('../../../scripts/encrypt-my-numbers.mjs');
- expect(update).not.toHaveBeenCalled();expect(console.log).toHaveBeenCalledWith(JSON.stringify({dryRun:true,rootCount:1,onboardingCount:0}));
+ expect(update).not.toHaveBeenCalled();expect(console.log).toHaveBeenCalledWith(expect.stringMatching(/^\{"dryRun":true,"rootCount":1,"invalidCount":[01],"onboardingCount":0\}$/));
 });
 it('暗号化と平文の空欄化を同じ更新で行う',async()=>{
  process.argv=['node','script'];await import('../../../scripts/encrypt-my-numbers.mjs');

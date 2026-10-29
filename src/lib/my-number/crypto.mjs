@@ -6,9 +6,9 @@ function key() {
   if (value.length !== 32 || value.toString('base64') !== encoded) throw new Error('MY_NUMBER_ENCRYPTION_KEY must be 32 bytes in base64');
   return value;
 }
-/** @param {string} number */
-export function encryptMyNumber(number) {
-  if (!/^\d{12}$/.test(number)) throw new Error('Invalid my number');
+/** @param {string} number @param {{allowInvalid?: boolean}} [options] 名簿から来た形の正しくない番号も平文で残さないために暗号化だけはする */
+export function encryptMyNumber(number, options = {}) {
+  if (!(options.allowInvalid ? /^\d{4,16}$/ : /^\d{12}$/).test(number)) throw new Error('Invalid my number');
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key(), iv);
   return { my_number_cipher: Buffer.concat([cipher.update(number, 'utf8'), cipher.final()]).toString('base64'), my_number_iv: iv.toString('base64'), my_number_tag: cipher.getAuthTag().toString('base64'), my_number_last4: number.slice(-4), key_version: 1 };
@@ -19,7 +19,7 @@ export function decryptMyNumber(row) {
   const decipher = createDecipheriv('aes-256-gcm', key(), Buffer.from(row.my_number_iv, 'base64'));
   decipher.setAuthTag(Buffer.from(row.my_number_tag, 'base64'));
   const value = Buffer.concat([decipher.update(Buffer.from(row.my_number_cipher, 'base64')), decipher.final()]).toString('utf8');
-  if (!/^\d{12}$/.test(value)) throw new Error('Invalid decrypted my number');
+  if (!/^\d{4,16}$/.test(value)) throw new Error('Invalid decrypted my number');
   return value;
 }
 
