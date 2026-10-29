@@ -1,3 +1,5 @@
+import { getRosterDirection, retryRosterPushes } from '@/app/root/_lib/roster-push.server';
+vi.mock('@/app/root/_lib/roster-push.server',()=>({getRosterDirection:vi.fn(async()=> 'kintone_to_garden'),retryRosterPushes:vi.fn(async()=>({sent:1}))}));
 ﻿import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { POST } from "./route";
 import { after } from "next/server";
@@ -20,3 +22,8 @@ it.each(["ADD_RECORD", "UPDATE_RECORD", "UPDATE_STATUS"])("defers single record 
 it("ignores deletion", async () => { const spy = vi.spyOn(console, "info").mockImplementation(() => {}); expect((await POST(request("secret", { app: { id: "56" }, type: "DELETE_RECORD" }))).status).toBe(200); expect(after).not.toHaveBeenCalled(); spy.mockRestore(); });
 it("rejects invalid IDs", async () => { expect((await POST(request("secret", { app: { id: "56" }, type: "ADD_RECORD", record: { $id: { value: "1)" } } }))).status).toBe(400); });
 it("logs background failures", async () => { const spy = vi.spyOn(console, "error").mockImplementation(() => {}); vi.mocked(syncRootRoster).mockRejectedValue(new Error("failed")); await POST(request()); await (vi.mocked(after).mock.calls[0][0] as () => Promise<void>)(); expect(spy).toHaveBeenCalled(); spy.mockRestore(); });
+
+it('acknowledges without importing in garden direction',async()=>{
+ vi.mocked(getRosterDirection).mockResolvedValueOnce('garden_to_kintone');
+ expect((await POST(request())).status).toBe(200);expect(after).not.toHaveBeenCalled();expect(syncRootRoster).not.toHaveBeenCalled();
+});

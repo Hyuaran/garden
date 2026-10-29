@@ -1,3 +1,4 @@
+import { queueRosterPush } from '@/app/root/_lib/roster-push.server';
 import { systemViewResponse } from "@/lib/auth/view-permission.server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -201,6 +202,7 @@ export async function PATCH(request: Request) {
         recorded_by: recordedBy,
       });
     }
+    if (next === 'completed' && data.submission_type === 'emergency_contact') await queueRosterPush(data.employee_id,'inbox');
     await admin
       .from("system_mypage_submissions")
       .update({

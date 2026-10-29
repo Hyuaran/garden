@@ -1,3 +1,5 @@
+import { validProfileChanges, saveProfileChanges } from '@/app/root/_lib/roster-profile-edit.server';
+import { queueRosterPush } from '@/app/root/_lib/roster-push.server';
 import { BUSINESSES } from '@/app/root/_lib/team-history';
 import { validContactUrl } from '@/lib/line/richmenu';
 import { NextResponse } from "next/server";
@@ -11,13 +13,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  if (!(await requireAdmin())) return NextResponse.json({ ok: false }, { status: 403 });
+  const actor = await requireAdmin();
+  if (!actor) return NextResponse.json({ ok: false }, { status: 403 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
   const employeeId = typeof body?.employee_id === "string" ? body.employee_id : "";
   if (!employeeId) return NextResponse.json({ ok: false, error: "employee_id is required" }, { status: 400 });
   const input = { ...body };
   delete input.current_team;
+  const profileChanges = input.profile_changes;
+  delete input.profile_changes;
+  if (profileChanges && !validProfileChanges(profileChanges)) return NextResponse.json({error:'入力を確認してください。'},{status:400});
   if ('business' in input && input.business !== null && !BUSINESSES.includes(input.business as typeof BUSINESSES[number])) return NextResponse.json({error:'事業を確認してください。'}, {status:400});
   if ('line_contact_url' in input) {
     if (typeof input.line_contact_url !== 'string' || input.line_contact_url.length > 2000 || !validContactUrl('employee', input.line_contact_url.trim())) return NextResponse.json({error:'LINE のリンクを入力してください。'}, {status:400});
@@ -40,10 +46,12 @@ export async function POST(request: Request) {
   const { error } = await admin.from("root_employees").upsert(payload, { onConflict: "employee_id" });
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
+  if (profileChanges) await saveProfileChanges(admin,employeeId,profileChanges as Record<string,Record<string,unknown>>,actor.employee_id);
   let rosterSync: Awaited<ReturnType<typeof writeRetirementToRoster>> | null = null;
   if (retired) {
     await retireAuthIfNeeded(admin, { user_id: typeof existing?.user_id === "string" ? existing.user_id : null, termination_date: terminationDate, is_active: false });
     rosterSync = await writeRetirementToRoster({
+      employee_id: employeeId,
       kot_employee_id: typeof existing?.kot_employee_id === "string" ? existing.kot_employee_id : typeof input.kot_employee_id === "string" ? input.kot_employee_id : null,
       termination_date: terminationDate,
     });
@@ -51,7 +59,8 @@ export async function POST(request: Request) {
 
   // LINE のメニューの付け替えに失敗しても、社員の更新・紐づけ自体は成功として返す（次の反映でそろう）
   await syncRichMenus(employeeId).catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
-  return NextResponse.json({ ok: true, retired, rosterSync });
+  const push = retired ? {warning:rosterSync?.note ?? undefined} : await queueRosterPush(employeeId,'root_edit');
+  return NextResponse.json({ ok: true, retired, rosterSync, warning:push.warning });
 }
 
 export async function PATCH(request: Request) {
@@ -74,5 +83,6 @@ export async function PATCH(request: Request) {
   });
   // LINE のメニューの付け替えに失敗しても、社員の更新・紐づけ自体は成功として返す（次の反映でそろう）
   await syncRichMenus(employeeId).catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
-  return NextResponse.json({ ok: true, is_active: nextActive });
+  const push = await queueRosterPush(employeeId,'root_edit');
+  return NextResponse.json({ ok: true, is_active: nextActive,warning:push.warning });
 }

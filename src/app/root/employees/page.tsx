@@ -1,4 +1,6 @@
 "use client";
+import SystemTabs from '@/app/system/_components/SystemTabs/SystemTabs';
+import RosterProfileFields, {type ProfileDraft} from './RosterProfileFields';
 import TeamHistoryPanel from './TeamHistoryPanel';
 import { BUSINESSES } from '../_lib/team-history';
 import { FormRow as KitFormRow, SelectField as KitSelectField } from '@/app/system/forms/_components/form-kit';
@@ -318,6 +320,12 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
+  const [editTab,setEditTab] = useState('basic');
+  const bankBaselineRef = useRef<Record<string,unknown>>({});
+  const [profileDraft,setProfileDraft] = useState<ProfileDraft>({});
+  const [profileChanges,setProfileChanges] = useState<ProfileDraft>({});
+  const [profileReady,setProfileReady] = useState(false);
+  const [pushWarning,setPushWarning] = useState<string>();
   const [roleTarget, setRoleTarget] = useState<Employee | null>(null);
   const [nextGardenRole, setNextGardenRole] = useState<GardenRole>("staff");
   const [saving, setSaving] = useState(false);
@@ -347,6 +355,29 @@ export default function EmployeesPage() {
   const canSyncRoster = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "admin") : false;
   const canOpenEmployeeModal = canWrite || canManageChatworkToken;
   const editEmployeeId = editTarget?.employee_id;
+  useEffect(() => {
+    setProfileDraft({}); setProfileChanges({}); setProfileReady(false);
+    bankBaselineRef.current = Object.fromEntries(Object.entries({bank_name:'bank_name',bank_code:'bank_code',branch_name:'branch_name',branch_code:'branch_code',account_type:'account_type',account_number:'account_number',account_holder_kana:'holder_kana'}).map(([key,source])=>[source,source === 'account_type' ? ({普通:'ordinary',当座:'current'} as Record<string,string>)[String(editTarget?.account_type)] ?? editTarget?.account_type : editTarget?.[key as keyof Employee]]));
+    setEditTab(new URLSearchParams(window.location.search).get('tab') || 'basic');
+    if (!editEmployeeId) return;
+    const controller = new AbortController();
+    fetch('/api/root/employees/'+encodeURIComponent(editEmployeeId)+'/profile-history',{signal:controller.signal}).then(async response=>{
+      if (!response.ok) throw new Error('履歴を読み込めませんでした。');
+      const body = await response.json();
+      if (controller.signal.aborted) return;
+      const current: ProfileDraft = {};
+      for (const row of body.rows ?? []) if (body.currentIds[row.category] === row.id) current[row.category]=row.payload;
+      setProfileDraft(current); setProfileReady(true);
+      const bank = current.bank_account;
+      if (bank) bankBaselineRef.current = bank;
+      if (bank) setEditTarget(target=> target?.employee_id === editEmployeeId ? {...target,...Object.fromEntries(Object.entries({bank_name:'bank_name',bank_code:'bank_code',branch_name:'branch_name',branch_code:'branch_code',account_type:'account_type',account_number:'account_number',account_holder_kana:'holder_kana'}).map(([key,source])=>[key,source === 'account_type' ? ({ordinary:'普通',current:'当座'} as Record<string,string>)[String(bank[source])] ?? bank[source] ?? '' : bank[source] ?? '']))} : target);
+    }).catch(error=>{if (!controller.signal.aborted) setError(error.message);});
+    return ()=>controller.abort();
+  },[editEmployeeId]);
+  function changeProfile(category:string,key:string,value:unknown) {
+    const apply = (old:ProfileDraft) => category === 'sub_account' ? {...old,bank_account:{...old.bank_account,sub_account:{...(old.bank_account?.sub_account as object ?? {}),[key]:value}}} : {...old,[category]:{...old[category],[key]:value}};
+    setProfileDraft(apply);setProfileChanges(apply);
+  }
   const editEmployeeCreatedAt = editTarget?.created_at;
   const editEmployeeTokenRegistered = Boolean(editTarget?.chatwork_api_token_enc);
   const editEmployeeTokenAccountName = editTarget?.chatwork_account_name ?? null;
@@ -461,8 +492,16 @@ export default function EmployeesPage() {
       setSaving(true);
       setError(null);
       setErrors({});
-      await upsertEmployee(
-        sanitizeUpsertPayload({ ...editTarget, chatwork_account_id: editTarget.chatwork_account_id?.trim() || null }, { nullableDateKeys: NULLABLE_DATE_KEYS.employees }) as Partial<Employee> & { employee_id: string },
+      const changes: ProfileDraft = {...profileChanges};
+      const bankPatch: Record<string,unknown> = {};
+      for (const [key,source] of Object.entries({bank_name:'bank_name',bank_code:'bank_code',branch_name:'branch_name',branch_code:'branch_code',account_type:'account_type',account_number:'account_number',account_holder_kana:'holder_kana'})) {
+        const raw = editTarget[key as keyof Employee];
+        const value = source === 'account_type' ? ({普通:'ordinary',当座:'current'} as Record<string,string>)[String(raw)] ?? raw : raw;
+        if (String(value ?? '') !== String(bankBaselineRef.current[source] ?? '')) bankPatch[source] = value;
+      }
+      if (Object.keys(bankPatch).length) changes.bank_account = {...changes.bank_account,...bankPatch};
+      const saved = await upsertEmployee(
+        sanitizeUpsertPayload({ ...editTarget, profile_changes:changes, chatwork_account_id: editTarget.chatwork_account_id?.trim() || null }, { nullableDateKeys: NULLABLE_DATE_KEYS.employees }) as Partial<Employee> & { employee_id: string },
       );
       await writeAudit({
         action: "master_update",
@@ -474,6 +513,7 @@ export default function EmployeesPage() {
       });
       setEditTarget(null);
       await load();
+      setPushWarning(saved?.warning);
     } catch (e) {
       setError(isGardenRoleChangeError(e) ? GARDEN_ROLE_CHANGE_ERROR : (e as Error).message);
     }
@@ -493,7 +533,7 @@ export default function EmployeesPage() {
       return;
     }
     try {
-      await setEmployeeActive(e.employee_id, !e.is_active);
+      const saved = await setEmployeeActive(e.employee_id, !e.is_active);
       await writeAudit({
         action: "master_update",
         actorUserId: rootUser?.user_id ?? null,
@@ -503,6 +543,7 @@ export default function EmployeesPage() {
         payload: { toggle_active: !e.is_active },
       });
       await load();
+      setPushWarning(saved?.warning);
     } catch (err) { setError((err as Error).message); }
   }
 
@@ -845,9 +886,13 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
         )}
       </Modal>
 
+      {pushWarning && <p role="status" style={{fontSize:13}}>{pushWarning}</p>}
       <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "従業員を編集" : "従業員を追加"} width={860}>
         {editTarget && (
           <div>
+            <SystemTabs>{[['basic','基本'],['address','住所・連絡先'],['bank','口座・通勤'],['employment','雇用の条件']].map(([id,label])=><button type="button" role="tab" aria-selected={editTab===id} key={id} onClick={()=>{setEditTab(id);const url=new URL(window.location.href);url.searchParams.set('tab',id);window.history.replaceState(null,'',url);}}>{label}</button>)}</SystemTabs>
+            {!profileReady && editTarget.created_at && <p>履歴を読み込み中です。</p>}
+            <div hidden={editTab!=='basic'}>
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: colors.textMuted }}>基本情報</h3>
             <FormGrid cols={3}>
               <TextField label="従業員ID" required value={editTarget.employee_id} onChange={(e) => setEditTarget({ ...editTarget, employee_id: e.target.value })} disabled={!!editTarget.created_at} error={errors.employee_id} />
@@ -879,8 +924,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
                 onChange={(gardenRole) => setEditTarget({ ...editTarget, garden_role: gardenRole })}
               />
               <TextField label="入社日" required type="date" value={editTarget.hire_date} onChange={(e) => setEditTarget({ ...editTarget, hire_date: e.target.value })} error={errors.hire_date} />
-              {/* 生年月日は Kintone 従業員名簿から同期（Root で直しても次の同期で名簿の値に戻るため表示だけ・2026-10-08） */}
-              <TextField label="生年月日（従業員名簿から同期・ここでは直せません）" type="date" value={editTarget.birthday ?? ""} readOnly />
+              <TextField label="生年月日" type="date" value={editTarget.birthday ?? ""} onChange={e=>setEditTarget({...editTarget,birthday:e.target.value || null})} />
               <TextField label="退職日" type="date" value={editTarget.termination_date ?? ""} onChange={(e) => {
                 const next = { ...editTarget, termination_date: e.target.value || null };
                 setEditTarget(next);
@@ -904,7 +948,10 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
 
             <KitFormRow label="事業"><KitSelectField aria-label="事業" disabled={!canWrite} value={editTarget.business || ''} onChange={e=>setEditTarget({...editTarget,business:e.target.value || null})}>{BUSINESSES.map(b=><option key={b}>{b}</option>)}</KitSelectField></KitFormRow>
             {editTarget.created_at && <TeamHistoryPanel employeeId={editTarget.employee_id} canWrite={canWrite} onChanged={()=>{void fetchEmployees().then(setEmployees).catch(e=>setError(e.message));}}/>}
-            <AddressReadOnly address={addresses[editTarget.employee_id]} />
+            </div>
+            <div hidden={editTab!=='address'}><RosterProfileFields categories={['address','contact']} draft={profileDraft} onChange={changeProfile} disabled={!canWrite || !profileReady}/></div>
+            <div hidden={editTab!=='employment'}><RosterProfileFields categories={['employment']} draft={profileDraft} onChange={changeProfile} disabled={!canWrite || !profileReady}/></div>
+            <div hidden={editTab!=='bank'}>
 
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>振込先口座</h3>
             <FormGrid cols={3}>
@@ -920,7 +967,9 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
               <TextField label="口座名義カナ" required={bankRequired} value={editTarget.account_holder_kana} onChange={(e) => setEditTarget({ ...editTarget, account_holder_kana: e.target.value })} error={errors.account_holder_kana} />
             </FormGrid>
 
-            <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>給与・源泉徴収（Phase A-3-h）</h3>
+            <RosterProfileFields categories={['sub_account','commute']} draft={profileDraft} onChange={changeProfile} disabled={!canWrite || !profileReady}/>
+            </div><div hidden={editTab!=='basic'}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>給与・源泉徴収</h3>
             <FormGrid>
               <SelectField
                 label="年末調整 甲/乙欄"
@@ -1054,9 +1103,10 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
             )}
             <TextareaField label="備考" value={editTarget.notes ?? ""} onChange={(e) => setEditTarget({ ...editTarget, notes: e.target.value || null })} />
 
+            </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
-              <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
+              <Button onClick={handleSave} disabled={saving || !canWrite || (!!editTarget.created_at && !profileReady)} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>
           </div>
         )}

@@ -1,3 +1,5 @@
+import { getRosterDirection, retryRosterPushes } from '@/app/root/_lib/roster-push.server';
+vi.mock('@/app/root/_lib/roster-push.server',()=>({getRosterDirection:vi.fn(async()=> 'kintone_to_garden'),retryRosterPushes:vi.fn(async()=>({sent:1}))}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -43,4 +45,11 @@ describe("root roster sync cron route", () => {
     expect(mocks.syncRichMenus).toHaveBeenCalledTimes(1);
     expect(mocks.syncRootRoster.mock.invocationCallOrder[0]).toBeLessThan(mocks.syncRichMenus.mock.invocationCallOrder[0]);
   });
+});
+
+it('retries pushes without importing in garden direction',async()=>{
+ mocks.syncRootRoster.mockClear();mocks.syncRichMenus.mockClear();
+ vi.mocked(getRosterDirection).mockResolvedValueOnce('garden_to_kintone');mocks.verifyCronRequest.mockReturnValue({ok:true});
+ const {GET}=await import('./route');await GET(new Request('http://localhost'));
+ expect(mocks.syncRootRoster).not.toHaveBeenCalled();expect(retryRosterPushes).toHaveBeenCalled();expect(mocks.syncRichMenus).toHaveBeenCalled();
 });

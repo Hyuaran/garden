@@ -1,3 +1,4 @@
+import { getRosterDirection, retryRosterPushes } from '@/app/root/_lib/roster-push.server';
 import { syncRichMenus } from '@/lib/line/richmenu.server';
 import { NextResponse } from "next/server";
 import { syncRootRoster } from "@/app/root/_lib/roster-sync.server";
@@ -10,7 +11,7 @@ export const maxDuration = 300;
 export async function GET(request: Request) {
   const auth = verifyCronRequest(request);
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.reason }, { status: auth.status });
-  const result = await syncRootRoster({ dryRun: false });
+  const result = await getRosterDirection() === 'garden_to_kintone' ? await retryRosterPushes() : await syncRootRoster({ dryRun: false });
   await syncRichMenus();
   return NextResponse.json(result);
 }

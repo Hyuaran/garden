@@ -1,3 +1,4 @@
+import { queueRosterPush } from '@/app/root/_lib/roster-push.server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/app/system/mypage/_lib/submission-server';
 import { systemViewResponse } from '@/lib/auth/view-permission.server';
@@ -36,7 +37,7 @@ async function mutate(request: Request, context: Context) {
   }
   if (result.error) return Response.json({error:'保存できませんでした。'}, {status:500});
   if (!result.data?.length) return Response.json({error:'履歴が見つかりません。'}, {status:404});
-  let warning: string | undefined;
+  let warning = (await queueRosterPush(employeeId,'team')).warning;
   await syncRichMenus(employeeId).catch(()=>{ warning='Garden には記録しました。LINE への反映に失敗しました。次の名簿取り込みで再反映します。'; });
   return Response.json({ok:true,warning});
 }

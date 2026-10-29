@@ -129,14 +129,15 @@ export async function fetchEmployees(): Promise<Employee[]> {
   return readRootData("employees", "root-employees");
 }
 
-export async function upsertEmployee(employee: Partial<Employee> & { employee_id: string }): Promise<void> {
+export async function upsertEmployee(employee: Partial<Employee> & { employee_id: string }): Promise<{warning?:string}> {
   const response = await fetch("/api/root/employees", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(employee),
   });
-  const body = await response.json().catch(() => null) as { error?: string } | null;
+  const body = await response.json().catch(() => null) as { error?: string; warning?:string } | null;
   if (!response.ok) throw new Error(`upsertEmployee failed: ${body?.error ?? response.statusText}`);
+  return body ?? {};
 }
 
 export async function updateEmployeeGardenRole(
@@ -156,8 +157,9 @@ export const setEmployeeActive = (id: string, active: boolean) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ employee_id: id, is_active: active }),
   }).then(async (response) => {
-    const body = await response.json().catch(() => null) as { error?: string } | null;
+    const body = await response.json().catch(() => null) as { error?: string;warning?:string } | null;
     if (!response.ok) throw new Error(`root_employees.setActive failed: ${body?.error ?? response.statusText}`);
+    return body ?? {};
   });
 
 // ============================================================

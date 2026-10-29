@@ -1,3 +1,4 @@
+import { getRosterDirection } from '@/app/root/_lib/roster-push.server';
 import { createHash, timingSafeEqual } from "node:crypto";
 import { after } from "next/server";
 import { syncRootRoster } from "@/app/root/_lib/roster-sync.server";
@@ -13,6 +14,7 @@ export async function POST(request: Request) {
   if (!key || !timingSafeEqual(digest(key), digest(secret))) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (await getRosterDirection() === 'garden_to_kintone') return Response.json({ok:true});
   let body;
   try {
     body = await request.json();
@@ -32,6 +34,7 @@ export async function POST(request: Request) {
   }
   after(async () => {
     try {
+      if (await getRosterDirection() === 'garden_to_kintone') return;
       const result = await syncRootRoster({ dryRun: false, recordIds: [id] });
       if (result.errors.length) console.error("[roster-webhook] Sync errors", id, result.errors);
     } catch (error) {

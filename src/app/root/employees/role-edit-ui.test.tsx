@@ -98,6 +98,7 @@ function renderPage() {
 
 async function openEmployee() {
   fireEvent.click(await screen.findByRole("button", { name: "編集" }));
+  await waitFor(()=>expect(screen.queryByText('履歴を読み込み中です。')).not.toBeInTheDocument());
   return screen.getByLabelText("Garden権限") as HTMLSelectElement;
 }
 
@@ -109,6 +110,7 @@ async function openRoleDialog() {
 describe("Garden権限の編集UI", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState(null,'','/root/employees');
     mocks.canWrite = true;
     mocks.operatorRole = "super_admin";
     mocks.fetchEmployees.mockResolvedValue([employee]);
@@ -273,43 +275,18 @@ describe("Garden権限の編集UI", () => {
     expect(screen.getByRole("row", { name: /EMP-0001/ })).toHaveTextContent("未登録");
   });
 
-  it("編集モーダルに住所を読み取り専用で表示し、出どころも表示する", async () => {
-    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes("/api/root/employees/addresses")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            "EMP-1404": {
-              postal_code: "6360001",
-              full: "奈良県北葛城郡王寺町舟戸1丁目1番25号",
-              building: "テストハイツ",
-              room: "101",
-              source: "roster",
-              recorded_at: "2026-09-14T00:00:00.000Z",
-            },
-          }),
-        });
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ registered: false, accountName: null, updatedAt: null }),
-      });
-    }));
-    renderPage();
-
-    await openEmployee();
-    const heading = screen.getByRole("heading", { name: "従業員を編集" });
-    const panel = heading.parentElement?.parentElement as HTMLElement;
-    const dialog = within(panel);
-
-    expect(dialog.getByText("住所（今の値・変更は届出か名簿から）")).toBeInTheDocument();
-    expect(dialog.getByText("〒636-0001")).toBeInTheDocument();
-    expect(dialog.getByText("奈良県北葛城郡王寺町舟戸1丁目1番25号")).toBeInTheDocument();
-    expect(dialog.getByText("テストハイツ 101")).toBeInTheDocument();
-    expect(dialog.getByText("出どころ：従業員名簿（2026-09-14）")).toBeInTheDocument();
-    expect(dialog.getByText("住所の変更は本人の届出（マイページ）か、名簿の同期で入ります。履歴は一覧の［履歴］から確認できます。")).toBeInTheDocument();
-    expect(dialog.queryByDisplayValue("奈良県北葛城郡王寺町舟戸1丁目1番25号")).not.toBeInTheDocument();
+  it('4タブで住所と生年月日を編集し、変更した項目を保存する',async()=>{
+    vi.mocked(fetch).mockImplementation(async input=>({ok:true,json:async()=>String(input).includes('/profile-history') ? {currentIds:{address:'a',contact:'c'},rows:[{id:'a',category:'address',payload:{city:'大阪市',room:'101'}},{id:'c',category:'contact',payload:{phone:'123'}}]} : {}} as Response));
+    renderPage();await openEmployee();
+    expect(screen.getAllByRole('tab')).toHaveLength(4);
+    fireEvent.change(screen.getByLabelText('生年月日'),{target:{value:'1990-01-02'}});
+    fireEvent.click(screen.getByRole('tab',{name:'住所・連絡先'}));
+    expect(screen.getByLabelText('市町村')).toHaveValue('大阪市');
+    fireEvent.change(screen.getByLabelText('部屋番号'),{target:{value:'202'}});
+    fireEvent.click(screen.getByRole('button',{name:'保存'}));
+    await waitFor(()=>expect(mocks.upsertEmployee).toHaveBeenCalledTimes(1));
+    expect(mocks.upsertEmployee).toHaveBeenCalledWith(expect.objectContaining({birthday:'1990-01-02',profile_changes:expect.objectContaining({address:{room:'202'}})}));
+    expect(mocks.upsertEmployee.mock.calls[0][0].profile_changes).not.toHaveProperty('contact');
   });
 
   it("変更したgarden_roleを既存の保存経路へ含める", async () => {
