@@ -25,7 +25,9 @@ export function grossCandidates(raw: KintoneRecord): number[] {
   for (const k of ["売上_税抜_", "支払額_税抜_", "原価_税抜_"]) if (num(raw,k) > 0) return [num(raw,k) * rate];
   const stock = num(raw,"自社ストック額_税込_") - num(raw,"委託費_税込_");
   const profit = Math.abs(num(raw,"利益額_税抜_")) * rate;
-  return [stock, profit].filter(v => Number.isFinite(v) && v > 0);
+  // 委託費を引かずに振り込む取引先もある（Next Future Holdings。委託費は利益の計算に要るので Kintone では消さない。東海林さん 2026-10-29）
+  const stockWhole = num(raw,"委託費_税込_") > 0 ? num(raw,"自社ストック額_税込_") : NaN;
+  return [stock, profit, stockWhole].filter(v => Number.isFinite(v) && v > 0);
 }
 export function gross(raw: KintoneRecord) { return grossCandidates(raw)[0] ?? NaN; }
 // 東海林さん 2026-10-21：相手の端数処理による 1 円の差は一致とみなす

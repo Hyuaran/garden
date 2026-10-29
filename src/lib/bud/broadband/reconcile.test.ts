@@ -66,6 +66,9 @@ it("uses the cost field and the stock parts for rows without sales or payment", 
   expect(rowSide(cost)).toBe("EXPENSE"); expect(Math.abs(grossCandidates(cost)[0] - 3923740.7)).toBeLessThan(0.01);
   const stock = f({ 自社ストック額_税込_:"868055", 委託費_税込_:"35620", 利益額_税抜_:"756758", 消費税率:"10" });
   expect(rowSide(stock)).toBe("INCOME"); expect(grossCandidates(stock)).toContain(832435);
+  // 委託費を引かずに届く入金（Next Future）も一致の候補にする。予定の表示は委託費を引いた額のまま
+  expect(grossCandidates(stock)[0]).toBe(832435); expect(grossCandidates(stock)).toContain(868055);
+  expect(grossCandidates(f({ 自社ストック額_税込_:"868055", 委託費_税込_:"0", 消費税率:"10" }))).toEqual([868055]);
 });
 
 import { exact as isExact, feeOf, endOfNextMonth, payeeKeyword } from "./reconcile";
