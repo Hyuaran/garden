@@ -154,8 +154,15 @@ async function handleMessage(event: LineWebhookEvent) {
   if (code && source.type !== 'user') {
     const {data,error} = await getSupabaseAdmin().rpc('link_line_group', {p_code:code,p_target:source.id,p_type:source.type});
     if (error) throw error;
-    if (event.replyToken) await replyLine(event.replyToken, data
-      ? `このグループを「${data}」として登録しました。書き込みは Garden の知らせ先へ届きます。`
+    if (!event.replyToken) return;
+    if (data) {
+      await replyLine(event.replyToken, `このグループを「${data}」として登録しました。書き込みは Garden の知らせ先へ届きます。`);
+      return;
+    }
+    // 同じコードをもう一度送ったときなど、すでに結ばれているグループには「登録済み」と返す
+    const linked = await loadLineTarget(event);
+    await replyLine(event.replyToken, linked?.linked_at
+      ? `このグループは「${linked.label || '（名前なし）'}」としてもう登録済みです。`
       : '確認コードが見つかりません。Garden で作り直してください。');
     return;
   }
