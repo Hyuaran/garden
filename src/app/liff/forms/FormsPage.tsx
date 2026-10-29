@@ -1,7 +1,7 @@
 'use client';
 import Script from 'next/script';
 import { useRef, useState, type FormEvent } from 'react';
-import { FormPage, FormRow, RadioGroup, TextField, TextArea, FixedValue, SubmitButton, ResultMessage, RecentList } from '@/app/system/forms/_components/form-kit';
+import { FormPage, FormRow, RadioGroup, TextField, TextArea, FixedValue, SubmitButton, ResultMessage, RecentList, ActionButton } from '@/app/system/forms/_components/form-kit';
 import { submissionFields } from '@/app/system/mypage/_lib/submission-fields';
 import { validateSubmission, type SubmissionRow } from '@/app/system/mypage/_lib/submission-types';
 type Kind = 'commute_route' | 'bank_account';
@@ -51,6 +51,6 @@ export default function FormsPage() {
  <SubmitButton type="submit" busy={sending}>送信する</SubmitButton><ResultMessage success={success}>{result}</ResultMessage>
  </form><RecentList title="これまでの申告" items={rows.map(row=><p key={row.id}>{new Date(row.created_at).toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'})}　{labels[row.submission_type as Kind]}　{statuses[row.status]}</p>)}/></>}
  {id&&<Script src="https://static.line-scdn.net/liff/edge/2/sdk.js" strategy="afterInteractive" onReady={()=>{void initialize();}} onError={()=>setMessage('確認できませんでした。時間をおいてもう一度お試しください。')}/>}
- <p><a href="/liff/forms/my-number">マイナンバーを提出する</a></p>
+ {ready&&<ActionButton onClick={()=>{location.href='/liff/forms/my-number';}}>マイナンバーを提出する</ActionButton>}
  </FormPage></div>;
 }

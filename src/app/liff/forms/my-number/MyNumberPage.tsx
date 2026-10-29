@@ -20,8 +20,8 @@ export default function MyNumberPage() {
    setName(String(data.name).trim().split(/[\s　]+/)[0]);setRow(data.row);setReady(true);setMessage('');
   }catch{setMessage('確認できませんでした。時間をおいてもう一度お試しください。');}
  }
- return <FormPage title={name?name+'さんのマイナンバーの提出':'マイナンバーの提出'} submitterName="" employeeNumber="" embedded>
+ return <div style={{maxWidth:560,margin:'0 auto',padding:16}}><FormPage title={name?name+'さんのマイナンバーの提出':'マイナンバーの提出'} submitterName="" employeeNumber="" embedded>
  {ready?<MyNumberForm endpoint="/api/liff/my-number" authorization={'Bearer '+token.current} initialRow={row}/>:<ResultMessage>{message}</ResultMessage>}
  {id&&<Script src="https://static.line-scdn.net/liff/edge/2/sdk.js" strategy="afterInteractive" onReady={()=>void initialize()} onError={()=>setMessage('確認できませんでした。')}/>}
- </FormPage>;
+ </FormPage></div>;
 }

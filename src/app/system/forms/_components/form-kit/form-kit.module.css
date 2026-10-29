@@ -102,3 +102,6 @@
 .statusBadge { display:inline-block; padding:3px 10px; border-radius:999px; background:rgba(14,165,160,.12); color:var(--teal, #0b7e7a); font-size:13px; font-weight:800; }
 .statusMuted { background:rgba(128,140,157,.14); color:var(--sub); }
 
+
+/* iPhone の日付・時刻の入力欄は中身の幅で広がって枠からはみ出すので、枠の幅に収める */
+.pageShell input[type="date"], .pageShell input[type="time"], .pageShell input[type="datetime-local"] { min-width:0; max-width:100%; width:100%; box-sizing:border-box; -webkit-appearance:none; appearance:none; }
