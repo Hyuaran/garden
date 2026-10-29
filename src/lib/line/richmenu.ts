@@ -3,13 +3,14 @@ import { statusOf, type Employee, type Member, type Tag } from './tags';
 export type Contact = { key: string; label: string; url: string; updated_at: string; updated_by: string | null };
 export const menuGroups = ['guest', 'telema', 'koizumi', 'ishihara', 'nhk', 'office'] as const;
 export type MenuGroup = typeof menuGroups[number];
-export const groupLabels: Record<MenuGroup, string> = { guest: '従業員以外の方', telema: 'ブロードバンド事業・宮永チーム・新人チーム・チームなし', koizumi: 'ブロードバンド事業・小泉チーム', ishihara: 'ブロードバンド事業・石原チーム', nhk: 'NHK派遣事業', office: '事務・その他の従業員' };
+export const groupLabels: Record<MenuGroup, string> = { guest: '従業員以外の方', telema: 'ブロードバンド事業・宮永チーム・新人チーム・チームなしのアルバイト', koizumi: 'ブロードバンド事業・小泉チーム', ishihara: 'ブロードバンド事業・石原チーム', nhk: 'NHK派遣事業', office: '事務・その他の従業員' };
 export function menuGroup(e: Employee, tags: Tag[], members: Member[]): MenuGroup {
   if (!e.line_user_id || e.line_link_source === 'unfollowed' || statusOf(e) === '退職') return 'guest';
   const own = tags.filter(t => members.some(m => m.employee_id === e.employee_id && m.tag_id === t.id));
   if (own.some(t => t.kind === 'business' && t.name === 'ブロードバンド事業')) {
     if (own.some(t => t.kind === 'team' && t.name === '小泉チーム')) return 'koizumi';
     if (own.some(t => t.kind === 'team' && t.name === '石原チーム')) return 'ishihara';
+    if (!own.some(t => t.kind === 'team') && e.employment_type !== 'アルバイト') return 'office';
     return 'telema';
   }
   if (own.some(t => t.kind === 'business' && t.name === 'NHK派遣事業')) return 'nhk';

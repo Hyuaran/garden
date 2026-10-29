@@ -27,6 +27,8 @@ describe('メニューの選択と押せる範囲',()=>{
   });
   it('NHK・事務・退職者・解除された人を選ぶ',()=>{
     expect(group('NHK派遣事業')).toBe('nhk');
+    expect(group('関西電力事業')).toBe('office');
+    expect(menuGroup({...employee,employment_type:'正社員'},[{id:'b',kind:'business',name:'ブロードバンド事業',sort:1}],[{tag_id:'b',employee_id:'1',source:'manual'}])).toBe('office');
     expect(menuGroup(employee,[{id:'r',kind:'role',name:'事務',sort:1}],[{tag_id:'r',employee_id:'1',source:'auto'}])).toBe('office');
     for(const e of [{...employee,is_active:false},{...employee,termination_date:'2000-01-01'},{...employee,line_user_id:null},{...employee,line_link_source:'unfollowed'}])expect(menuGroup(e,[],[])).toBe('guest');
   });
