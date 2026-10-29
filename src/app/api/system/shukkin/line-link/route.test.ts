@@ -1,6 +1,8 @@
 import "@/lib/auth/__tests__/system-view-fixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock('@/lib/line/richmenu.server',()=>({syncRichMenus:vi.fn(async()=>{})}));
+
 const mocks = vi.hoisted(() => ({
   requireManager: vi.fn(),
   getSupabaseAdmin: vi.fn(),

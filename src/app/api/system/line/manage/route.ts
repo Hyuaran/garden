@@ -4,20 +4,32 @@ import { checked, loadLineData, requireLineAdmin } from '@/lib/line/tags.server'
 import { chunks, personalize, recipients } from '@/lib/line/tags';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getLineStaffQuota, pushLineStaff } from '@/lib/line/staff-client';
+import { applyRichMenus, loadMenuSettings, syncRichMenus } from '@/lib/line/richmenu.server';
+import { validContactUrl } from '@/lib/line/richmenu';
 export const runtime='nodejs';
 function sign(value:string) { const secret=process.env.LINE_STAFF_CHANNEL_SECRET; if(!secret) throw new Error('送信の設定を確認してください。'); return createHmac('sha256',secret).update(value).digest('hex'); }
 export async function GET() {
   if(!await requireLineAdmin()) return NextResponse.json({}, {status:403});
-  try { return NextResponse.json(await loadLineData()); } catch { return NextResponse.json({error:'一覧を取得できませんでした。'}, {status:500}); }
+  try { return NextResponse.json({...await loadLineData(), ...await loadMenuSettings()}); } catch { return NextResponse.json({error:'一覧を取得できませんでした。'}, {status:500}); }
 }
 export async function POST(request:Request) {
   const admin=await requireLineAdmin(); if(!admin) return NextResponse.json({}, {status:403});
   try {
     const b=await request.json(); const db=getSupabaseAdmin();
-    if(b.action==='tag') {
+    if(b.action==='applyMenus') {
+      await applyRichMenus();
+    } else if(b.action==='contact') {
+      if(typeof b.key!=='string'||typeof b.url!=='string'||b.url.length>2000||!validContactUrl(b.key,b.url.trim())) throw new Error(b.key==='guest_home'?'https で始まるリンクを入力してください。':'LINE のリンクを入力してください');
+      const row=checked(await db.from('system_line_contact').update({url:b.url.trim(),updated_at:new Date().toISOString(),updated_by:admin.employee_id}).eq('key',b.key).select('key')).data;
+      if(!row?.length) throw new Error('連絡先を確認してください。');
+    } else if(b.action==='team') {
+      checked(await db.rpc('system_line_set_team',{p_employee:b.employeeId,p_tag:b.tagId}));
+      await syncRichMenus();
+    } else if(b.action==='tag') {
       if(!['free','business'].includes(b.kind) || typeof b.name!=='string' || !b.name.trim() || b.name.length>100) throw new Error('タグの名前を確認してください。');
       if(b.id) checked(await db.from('system_line_tag').update({name:b.name.trim()}).eq('id',b.id).eq('kind',b.kind));
       else checked(await db.from('system_line_tag').insert({kind:b.kind,name:b.name.trim()}));
+      if(b.id) await syncRichMenus();
     } else if(b.action==='deleteTag') {
       checked(await db.from('system_line_tag').delete().eq('id',b.id).eq('kind','free'));
     } else if(b.action==='member') {
@@ -25,6 +37,7 @@ export async function POST(request:Request) {
       if(!['business','free'].includes(tag?.kind ?? '')) throw new Error('このタグは名簿から更新します。');
       if(b.add) checked(await db.from('system_line_tag_member').upsert({tag_id:b.tagId,employee_id:b.employeeId,source:'manual'}));
       else checked(await db.from('system_line_tag_member').delete().eq('tag_id',b.tagId).eq('employee_id',b.employeeId).eq('source','manual'));
+      await syncRichMenus();
     } else if(b.action==='greeting') {
       if(typeof b.body!=='string'||!b.body.trim()||b.body.length>5000) throw new Error('文は1〜5000文字で入力してください。');
       const tags=checked(await db.from('system_line_tag').select('id,kind')).data;
@@ -64,5 +77,5 @@ export async function POST(request:Request) {
       return NextResponse.json({sent,failed});
     } else throw new Error('操作を確認してください。');
     return NextResponse.json({ok:true});
-  } catch(e) { return NextResponse.json({error:e instanceof Error?e.message:'処理に失敗しました。'}, {status:400}); }
+  } catch(e) { return NextResponse.json({error:e instanceof Error?(e.message.startsWith('line_staff:')?'LINE の更新に失敗しました。保存された内容を確認して、もう一度反映してください。':e.message):'処理に失敗しました。'}, {status:400}); }
 }

@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireEmployee } from '@/app/system/mypage/_lib/submission-server';
-import { automaticTags, chooseGreeting, personalize, type Employee, type Tag, type Member, type Greeting } from './tags';
+import { automaticTags, automaticTeamTag, chooseGreeting, personalize, type Employee, type Tag, type Member, type Greeting } from './tags';
 
 export async function requireLineAdmin() {
   const e = await requireEmployee();
@@ -25,7 +25,10 @@ export async function loadLineData(sync = true) {
     allRows<Greeting>('system_line_greeting','*','id'),
   ]);
   const activeRows=employees.filter(e=>!e.deleted_at);
-  if(sync) checked(await db.rpc('system_line_replace_auto',{ p_members:activeRows.flatMap(e=>automaticTags(e,tags)) }));
+  if(sync) {
+    const existing=await allRows<Member>('system_line_tag_member','*','employee_id');
+    checked(await db.rpc('system_line_replace_auto',{ p_members:activeRows.flatMap(e=>[...automaticTags(e,tags),...automaticTeamTag(e,tags,existing)]) }));
+  }
   const members=await allRows<Member>('system_line_tag_member','*','employee_id');
   const history=checked(await db.from('system_line_broadcast').select('*').order('created_at',{ascending:false}).limit(100)).data;
   return { tags: tags.sort((a,b)=>a.sort-b.sort), employees:activeRows, greetings, members, history, updatedAt:new Date().toISOString() };

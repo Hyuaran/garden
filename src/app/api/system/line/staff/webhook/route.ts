@@ -5,6 +5,7 @@ import { getLineStaffProfile, replyLineStaff } from "@/lib/line/staff-client";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { linkedGreeting } from '@/lib/line/tags.server';
 import { linkMessages } from '@/lib/line/tags';
+import { syncRichMenus } from '@/lib/line/richmenu.server';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,6 +135,7 @@ async function handleLink(event: LineWebhookEvent, employeeNumber: string) {
   if (updateError) throw updateError;
   await client.from("system_line_staff_pending").delete().eq("line_user_id", lineUserId);
   await replyLineStaff(event.replyToken, linkMessages(String(employee.name ?? '').trim() || employeeNumber, await linkedGreeting(employeeNumber)));
+  await syncRichMenus().catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
 }
 
 async function handleUnlinkedText(event: LineWebhookEvent, text: string) {
@@ -180,6 +182,10 @@ async function rememberPending(lineUserId: string, text: string) {
 
 async function handleMessage(event: LineWebhookEvent) {
   if (event.message?.type !== "text" || !event.message.text) return;
+  if (['シフト', '準備中'].includes(event.message.text.trim())) {
+    await reply(event.replyToken, '準備中です');
+    return;
+  }
   const oneTime = parseOneTimeLink(event.message.text);
   if (oneTime && event.source?.userId) {
     const { data, error } = await getSupabaseAdmin().rpc("system_consume_line_link_code", {
@@ -187,7 +193,10 @@ async function handleMessage(event: LineWebhookEvent) {
       p_line_user_id: event.source.userId, p_display_name: await displayNameFor(event.source.userId),
     });
     if (error) throw error;
-    if (data?.linked && event.replyToken) await replyLineStaff(event.replyToken, linkMessages(data.name || oneTime.employeeNumber, await linkedGreeting(oneTime.employeeNumber)));
+    if (data?.linked && event.replyToken) {
+      await replyLineStaff(event.replyToken, linkMessages(data.name || oneTime.employeeNumber, await linkedGreeting(oneTime.employeeNumber)));
+      await syncRichMenus().catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
+    }
     else await reply(event.replyToken, "番号が違うか、期限が切れています。入社手続きの画面に出ている文をそのまま送ってください。");
     return;
   }
@@ -199,10 +208,12 @@ async function handleMessage(event: LineWebhookEvent) {
 async function handleUnfollow(event: LineWebhookEvent) {
   const lineUserId = event.source?.userId;
   if (!lineUserId) return;
-  await getSupabaseAdmin()
+  const { error } = await getSupabaseAdmin()
     .from("root_employees")
     .update({ line_link_source: "unfollowed", line_linked_at: new Date().toISOString() })
     .eq("line_user_id", lineUserId);
+  if (error) throw error;
+  await syncRichMenus().catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
 }
 
 export async function POST(request: Request) {

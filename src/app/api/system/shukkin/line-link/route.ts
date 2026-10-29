@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { requireManager } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
+import { syncRichMenus } from '@/lib/line/richmenu.server';
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -123,6 +125,8 @@ export async function POST(request: Request) {
     .is("deleted_at", null);
   if (updateError) return NextResponse.json({ ok: false, error: "紐づけを保存できませんでした" }, { status: 500 });
   await client.from("system_line_staff_pending").delete().eq("line_user_id", lineUserId);
+  // LINE のメニューの付け替えに失敗しても、社員の更新・紐づけ自体は成功として返す（次の反映でそろう）
+  await syncRichMenus().catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
   return NextResponse.json({ ok: true });
 }
 
@@ -147,5 +151,7 @@ export async function DELETE(request: Request) {
     })
     .eq("employee_number", employeeNumber);
   if (error) return NextResponse.json({ ok: false, error: "紐づけを外せませんでした" }, { status: 500 });
+  // LINE のメニューの付け替えに失敗しても、社員の更新・紐づけ自体は成功として返す（次の反映でそろう）
+  await syncRichMenus().catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
   return NextResponse.json({ ok: true });
 }

@@ -20,6 +20,8 @@ it("reads the latest applied roster timestamp and handles missing history", asyn
   expect(await getLatestRosterSyncLog(admin)).toBeNull();
 });
 
+vi.mock('@/lib/line/richmenu.server',()=>({syncRichMenus:vi.fn(async()=>{})}));
+
 function record(values: Record<string, unknown>): KintoneRecord {
   return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { value }]));
 }

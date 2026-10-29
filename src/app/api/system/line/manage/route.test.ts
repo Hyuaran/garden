@@ -1,5 +1,6 @@
 import { beforeEach, expect,it,vi } from 'vitest';
 import { createHmac } from 'node:crypto';
+vi.mock('@/lib/line/richmenu.server',()=>({syncRichMenus:vi.fn(async()=>{}),applyRichMenus:vi.fn(async()=>{}),loadMenuSettings:vi.fn(async()=>({contacts:[],menus:[]}))}));
 const mocks=vi.hoisted(()=>({admin:vi.fn(),load:vi.fn(),db:vi.fn(),quota:vi.fn(),push:vi.fn()}));
 vi.mock('@/lib/line/tags.server',()=>({requireLineAdmin:mocks.admin,loadLineData:mocks.load,checked:(r:{error:unknown})=>{if(r.error)throw r.error;return r;}}));
 vi.mock('@/lib/supabase/admin',()=>({getSupabaseAdmin:mocks.db}));
@@ -10,7 +11,7 @@ const request=(body:object)=>new Request('http://localhost/api/system/line/manag
 it('全権管理者以外のすべての入口を403にする',async()=>{
  mocks.admin.mockResolvedValue(null);
  expect((await GET()).status).toBe(403);
- for(const action of ['tag','member','greeting','test','preview','send'])expect((await POST(request({action}))).status).toBe(403);
+ for(const action of ['tag','member','team','contact','applyMenus','greeting','test','preview','send'])expect((await POST(request({action}))).status).toBe(403);
  expect(mocks.db).not.toHaveBeenCalled();expect(mocks.push).not.toHaveBeenCalled();
 });
 it('確認時に人数と残り通数を返し、送信をしない',async()=>{

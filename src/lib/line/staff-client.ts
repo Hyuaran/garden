@@ -13,10 +13,11 @@ function accessToken(options?: LineStaffOptions) {
   return token;
 }
 
-async function lineStaffFetch(path: string, init: RequestInit, options?: LineStaffOptions) {
+export async function lineStaffFetch(path: string, init: RequestInit, options?: LineStaffOptions, content = false) {
   const fetchImpl = options?.fetchImpl ?? fetch;
-  const response = await fetchImpl(`${LINE_STAFF_API_BASE}${path}`, {
+  const response = await fetchImpl(`${content ? 'https://api-data.line.me/v2/bot' : LINE_STAFF_API_BASE}${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(15000),
     headers: {
       Authorization: `Bearer ${accessToken(options)}`,
       ...(init.body ? { "Content-Type": "application/json" } : {}),

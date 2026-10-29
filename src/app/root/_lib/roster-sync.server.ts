@@ -780,6 +780,10 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
       errors: summary.errors,
     });
   }
+  if (!dryRun) {
+    try { await (await import('@/lib/line/richmenu.server')).syncRichMenus(); }
+    catch (error) { summary.errors.push('LINE のメニューを更新できませんでした。連絡先の画面から再度反映してください。'); console.error('line_richmenu_sync_failed', error); }
+  }
   return summary;
 }
 

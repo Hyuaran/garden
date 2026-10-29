@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { syncRichMenus } from '@/lib/line/richmenu.server';
 import { requireAdmin } from "@/app/system/mypage/_lib/submission-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { isRetiredByDate } from "@/lib/auth/employee-access";
@@ -40,6 +41,8 @@ export async function POST(request: Request) {
     });
   }
 
+  // LINE のメニューの付け替えに失敗しても、社員の更新・紐づけ自体は成功として返す（次の反映でそろう）
+  await syncRichMenus().catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
   return NextResponse.json({ ok: true, retired, rosterSync });
 }
 
@@ -61,5 +64,7 @@ export async function PATCH(request: Request) {
     termination_date: typeof employee?.termination_date === "string" ? employee.termination_date : null,
     is_active: nextActive,
   });
+  // LINE のメニューの付け替えに失敗しても、社員の更新・紐づけ自体は成功として返す（次の反映でそろう）
+  await syncRichMenus().catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
   return NextResponse.json({ ok: true, is_active: nextActive });
 }

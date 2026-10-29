@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock('@/lib/line/richmenu.server',()=>({syncRichMenus:vi.fn(async()=>{})}));
 
 const mocks = vi.hoisted(() => ({
   getSupabaseAdmin: vi.fn(),
