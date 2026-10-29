@@ -3,7 +3,7 @@ const m=vi.hoisted(()=>({rpc:vi.fn(),from:vi.fn(),get:vi.fn(),send:vi.fn()}));
 vi.mock("@/lib/supabase/admin",()=>({getSupabaseAdmin:()=>({rpc:m.rpc,from:m.from})}));
 vi.mock("@/lib/kintone/records",()=>({getAllRecords:m.get}));
 vi.mock("@/lib/chatwork/client",()=>({ChatworkClient:class {sendMessage=m.send;}}));
-import { runRecon, saveReconResults } from "./run";
+import { runRecon, saveReconResults, sendReconNotice, tokyoHour } from "./run";
 it("persists all results once in production, never in dry run",async()=>{
  const save=vi.fn();const results=[{row:{kintone_record_id:"1",raw:{入金確認:{value:"入金OK"}}},kind:"excluded",expected:110,fee:440,candidates:[]} ] as unknown as Parameters<typeof saveReconResults>[0];
  await saveReconResults(results,"2026-10-21",true,save);expect(save).not.toHaveBeenCalled();
@@ -28,3 +28,16 @@ it("dry run refreshes mirror but never fetches schema, writes Kintone or sends C
  expect(m.rpc).toHaveBeenCalledWith("bud_bb_replace_mirror",{p_rows:[]});expect(fetch).not.toHaveBeenCalled();expect(m.send).not.toHaveBeenCalled();vi.unstubAllGlobals();
 });
 it("overlapping cron is skipped",async()=>{m.rpc.mockResolvedValue({data:false,error:null});expect(await runRecon(false)).toMatchObject({skipped:true});expect(m.from).not.toHaveBeenCalled();});
+it("日本時間の時を数える（10:00 より前の照合では知らせない判定に使う）",()=>{
+ expect(tokyoHour(new Date("2026-10-28T22:30:00Z"))).toBe(7);expect(tokyoHour(new Date("2026-10-29T00:59:00Z"))).toBe(9);expect(tokyoHour(new Date("2026-10-29T01:00:00Z"))).toBe(10);
+});
+it("10:00 の定時は、まだ知らせていない行だけを 1 通で送って記録する",async()=>{
+ vi.stubEnv("CHATWORK_API_TOKEN","t");vi.stubEnv("BUD_BB_RECON_CHATWORK_ROOM_ID","1");
+ const issues=[{kintone_record_id:"1",kind:"not_arrived",content:"A：未着",opened_at:"x",notified_at:null,resolved_at:null,resolved_notified_at:null},{kintone_record_id:"2",kind:"not_arrived",content:"B：未着",opened_at:"x",notified_at:"y",resolved_at:null,resolved_notified_at:null}];
+ const upsert=vi.fn(async()=>({error:null}));
+ m.from.mockImplementation(()=>{const chain={select:()=>chain,order:()=>chain,range:async()=>({data:issues,error:null}),upsert};return chain;});
+ expect(await sendReconNotice(new Date("2026-10-29T01:00:00Z"))).toEqual({sent:1});
+ expect(m.send).toHaveBeenCalledTimes(1);expect(m.send.mock.calls[0][1]).toContain("A：未着");expect(m.send.mock.calls[0][1]).not.toContain("B：未着");
+ expect(upsert).toHaveBeenCalledWith([expect.objectContaining({kintone_record_id:"1",notified_at:"2026-10-29T01:00:00.000Z"})],expect.anything());
+ m.send.mockClear();issues[0].notified_at="z";expect(await sendReconNotice()).toEqual({sent:0});expect(m.send).not.toHaveBeenCalled();
+});

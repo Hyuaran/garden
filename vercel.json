@@ -15,7 +15,7 @@
     { "path": "/api/system/nhk-visit/daily-report", "schedule": "30 11 * * *" },
     { "path": "/api/system/innovera-sync/cron", "schedule": "*/5 * * * *" },
     { "path": "/api/system/pl-payments/cron", "schedule": "*/5 * * * *" },
-    { "path": "/api/system/pl-payments/daily", "schedule": "30 23 * * *" },
+    { "path": "/api/system/pl-payments/daily", "schedule": "0 1 * * *" },
     { "path": "/api/system/mail-payment-check/cron", "schedule": "0 1 * * 1-5" },
     { "path": "/api/system/mail-ndr-watch/cron", "schedule": "*/15 * * * *" },
     { "path": "/api/system/filemaker-accounts/cron", "schedule": "*/15 * * * *" },
@@ -31,7 +31,7 @@
     { "path": "/api/soil/list/orders/cron", "schedule": "30 21 * * *" },
     { "path": "/api/soil/list/analysis/cron", "schedule": "45 21 * * *" },
     { "path": "/api/soil/list/options/cron", "schedule": "55 21 * * *" },
-    { "path": "/api/root/minimum-wages/sync", "schedule": "0 0 * * *" },
+    { "path": "/api/root/minimum-wages/sync", "schedule": "0 1 * * *" },
     { "path": "/api/system/vercel-usage/cron", "schedule": "5 9 * * *" },
     { "path": "/api/root/mail-forwarding/cron", "schedule": "0 1 * * *" }
   ]

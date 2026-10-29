@@ -116,11 +116,33 @@ async function executeRecon(dryRun: boolean, now: Date) {
   const existing = await readAll<Issue>("bud_bb_recon_issues");
   const issues = planIssues(existing,results,rows,applied,nowText);
   if (issues.length) checked(await db.from("bud_bb_recon_issues").upsert(issues,{onConflict:"kintone_record_id,kind"}));
-  const message = notification(issues);
-  if (message) {
-    await new ChatworkClient(env("CHATWORK_API_TOKEN")).sendMessage(env("BUD_BB_RECON_CHATWORK_ROOM_ID"),message);
-    const sent = issues.filter(i => (!i.resolved_at && !i.notified_at) || (i.resolved_at && i.notified_at && !i.resolved_notified_at)).map(i => i.resolved_at ? {...i,resolved_notified_at:nowText} : {...i,notified_at:nowText});
-    checked(await db.from("bud_bb_recon_issues").upsert(sent,{onConflict:"kintone_record_id,kind"}));
-  }
+  // 知らせは日本時間 10:00 より前には送らない。朝の照合の分は 10:00 の定時（sendReconNotice）でまとめて送る。
+  if (tokyoHour(now) >= 10) await deliverReconNotice(issues,nowText,async rows => { checked(await db.from("bud_bb_recon_issues").upsert(rows,{onConflict:"kintone_record_id,kind"})); });
   return {dryRun,counts,results,applied:[...applied]};
+}
+export const tokyoHour = (now: Date) => Number(new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",hour:"numeric",hourCycle:"h23"}).format(now));
+async function deliverReconNotice(issues: Issue[], nowText: string, save: (rows: Issue[]) => Promise<void>) {
+  const message = notification(issues);
+  if (!message) return 0;
+  await new ChatworkClient(env("CHATWORK_API_TOKEN")).sendMessage(env("BUD_BB_RECON_CHATWORK_ROOM_ID"),message);
+  const sent = issues.filter(i => (!i.resolved_at && !i.notified_at) || (i.resolved_at && i.notified_at && !i.resolved_notified_at)).map(i => i.resolved_at ? {...i,resolved_notified_at:nowText} : {...i,notified_at:nowText});
+  await save(sent);
+  return sent.length;
+}
+// 10:00 の定時：まだ知らせていない「合わない行」「直りました」を送る（照合はしない）。
+export async function sendReconNotice(now = new Date()) {
+  const db = getSupabaseAdmin(), token = crypto.randomUUID();
+  const claim = await db.rpc("bud_bb_claim",{p_token:token});
+  if (claim.error) throw new Error("口座照合の知らせを開始できませんでした");
+  if (!claim.data) return { skipped:true, reason:"確認中です" };
+  try {
+    const issues: Issue[] = [];
+    for (let offset=0;;offset+=1000) {
+      const page = await db.from("bud_bb_recon_issues").select("*").order("kintone_record_id").range(offset,offset+999);
+      if (page.error) throw new Error("口座照合の知らせを読めませんでした");
+      issues.push(...page.data as Issue[]); if (page.data.length<1000) break;
+    }
+    const sent = await deliverReconNotice(issues,now.toISOString(),async rows => { const r = await db.from("bud_bb_recon_issues").upsert(rows,{onConflict:"kintone_record_id,kind"}); if (r.error) throw new Error("口座照合の知らせを記録できませんでした"); });
+    return { sent };
+  } finally { const released = await db.rpc("bud_bb_release",{p_token:token}); if (released.error) console.error("broadband recon release failed"); }
 }
