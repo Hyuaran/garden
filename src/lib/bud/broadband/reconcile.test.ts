@@ -102,3 +102,13 @@ it("matches rows of the same partner and date paid together in one transfer", ()
   expect(results.every(r=>r.bank?.mf_transaction_id==="b1" && r.combined===2)).toBe(true);
   expect(String((buildPatch(results[0],"詳細")!.テーブル as {value:{value:{詳細:{value:string}}}[]}).value.at(-1)!.value.詳細.value)).toContain("2 行をまとめて");
 });
+it("委託費を引かない額で当たったときは、その額を予定にして差を ±0 にする", () => {
+  const r = run([row("1",{売上_税抜_:"0",自社ストック額_税込_:"831380",委託費_税込_:"35577",利益額_税抜_:"723457"})],[bank({value:831380})])[0];
+  expect(r.kind).toBe("matched"); expect(r.expected).toBe(831380);
+  expect(run([row("2",{売上_税抜_:"0",自社ストック額_税込_:"831380",委託費_税込_:"35577",利益額_税抜_:"723457"})],[bank({value:1})])[0].expected).toBe(795803);
+});
+it("入金確認が済んだ行も、[MF]取引額に合う候補を予定のままにする", () => {
+  const f = {売上_税抜_:"0",自社ストック額_税込_:"831380",委託費_税込_:"35577",利益額_税抜_:"723457",入金確認:"入金OK"};
+  expect(run([row("1",{...f,_MF_取引額:"831380"})],[])[0].expected).toBe(831380);
+  expect(run([row("1",{...f,_MF_取引額:""})],[])[0].expected).toBe(795803);
+});

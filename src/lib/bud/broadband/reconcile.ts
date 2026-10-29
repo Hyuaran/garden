@@ -48,7 +48,9 @@ export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings:
   const used = new Set(rows.map(r => r.mf_transaction_id).filter(Boolean));
   const results: Result[] = [...rows].sort((a,b) => text(a.raw,"入出金予定日").localeCompare(text(b.raw,"入出金予定日")) || a.kintone_record_id.localeCompare(b.kintone_record_id, undefined, { numeric: true })).map(row => {
     const raw = row.raw, date = text(raw,"入出金予定日"), partner = text(raw,"取引先会社名"), amounts = grossCandidates(raw), amount = amounts[0] ?? NaN;
-    const base = { row, expected: Math.round(amount), notify: date >= settings.notify_from, candidates: [] as Bank[] };
+    // 入金確認が済んだ行は、口座の額（[MF]取引額）に合う候補を予定にする（毎朝の記録し直しで差が戻らないように）
+    const done = text(raw,"入金確認") ? amounts.find(a => exact(num(raw,"_MF_取引額"), a)) : undefined;
+    const base = { row, expected: Math.round(done ?? amount), notify: date >= settings.notify_from, candidates: [] as Bank[] };
     if (partner.startsWith("NTT原価") || ["関電経費合計","決済費用（壱）","決済費用(壱)"].includes(partner) || !date || date < settings.recon_from || settings.excluded_partners.includes(partner) || text(raw,"入金確認") || !Number.isFinite(amount)) return { ...base, kind: "excluded" };
         const keywords = rules.filter(r => r.partner === partner).flatMap(r => r.keywords).filter(Boolean);
     const until = reconciliationDeadline(date,settings.date_window_after);
@@ -58,7 +60,8 @@ export function reconcile(rows: Mirror[], bank: Bank[], rules: Rule[], settings:
     const distance = (b: Bank) => Math.abs(Date.parse(b.date)-Date.parse(date));
     const matches = candidates.filter(b => exactAny(b.value,amounts)).sort((a,b) => distance(a)-distance(b));
     if (matches.length > 1 && distance(matches[0]) === distance(matches[1])) return { ...base, candidates: matches, kind: "ambiguous" };
-    if (matches.length) { used.add(matches[0].mf_transaction_id); return { ...base, candidates, bank: matches[0], kind: "matched" }; }
+    // 当たった候補の額を予定にする（委託費を引かない額で当たったときも差は ±0 と出す。東海林さん 2026-10-29）
+    if (matches.length) { used.add(matches[0].mf_transaction_id); return { ...base, expected: Math.round(amounts.find(a => exact(matches[0].value, a)) ?? amount), candidates, bank: matches[0], kind: "matched" }; }
     const feeMatches = side(raw) === "INCOME" ? candidates.filter(b => feeOf(b.value,amounts) > 0).sort((a,b) => distance(a)-distance(b)) : [];
     if (feeMatches.length > 1 && distance(feeMatches[0]) === distance(feeMatches[1])) return { ...base, candidates: feeMatches, kind: "ambiguous" };
     if (feeMatches.length) { used.add(feeMatches[0].mf_transaction_id); return { ...base, candidates, bank: feeMatches[0], fee: feeOf(feeMatches[0].value,amounts), kind: "matched" }; }
