@@ -10,6 +10,7 @@ import {
   SUBMISSION_STATUS_LABELS,
 } from "@/app/system/mypage/_lib/submission-types";
 import { colors } from "../_constants/colors";
+import { submissionFields } from "@/app/system/mypage/_lib/submission-fields";
 const STATUS = SUBMISSION_STATUS_LABELS;
 export default function InboxPage() {
   const [rows, setRows] = useState<SubmissionRow[]>([]),
@@ -120,7 +121,7 @@ export default function InboxPage() {
             <dl>
               {Object.entries(selected.payload).map(([k, v]) => (
                 <div key={k}>
-                  <dt style={{ fontWeight: 700 }}>{k}</dt>
+                  <dt style={{ fontWeight: 700 }}>{submissionFields[selected.submission_type]?.find(([key]) => key === k)?.[1] ?? k}</dt>
                   <dd>{String(v)}</dd>
                 </div>
               ))}

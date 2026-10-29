@@ -21,3 +21,8 @@ it("送信した申告は承認前でも回答として扱う",async()=>{
 it("取得に失敗したときは確認不要と返さない",async()=>{
  state.error={message:"failed"};expect((await GET()).status).toBe(500);
 });
+
+it("dependents change",async()=>{
+ state.submissions=["emergency_contact","bank_account","commute_route","dependents"].map(submission_type=>({submission_type,created_at:new Date().toISOString()}));
+ expect((await (await GET()).json()).required).toBe(false);
+});

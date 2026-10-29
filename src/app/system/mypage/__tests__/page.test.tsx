@@ -69,6 +69,21 @@ describe("system mypage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "変更なし" })[0]);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/system/mypage/profile-confirm", expect.objectContaining({ method: "POST", body: JSON.stringify({ category: "address" }) })));
   });
+  it("扶養の変更を送信すると回答済みになる", async () => {
+    const fetchMock=vi.fn().mockResolvedValue({ok:true,json:async()=>({rows:[]})});
+    vi.stubGlobal("fetch",fetchMock);
+    renderMyPage({...baseProps,birthdayRegistered:false,initialProfile:profile});
+    const card=screen.getByRole("heading",{name:"扶養の人数"}).closest("article")!;
+    expect(within(card).getByRole("button",{name:"変更なし"})).toBeInTheDocument();
+    fireEvent.click(within(card).getByRole("button",{name:"変更する"}));
+    const count=screen.getByLabelText("1 変更後の扶養の人数");
+    expect(count).toBeRequired();expect(count).toHaveAttribute("min","0");expect(count).toHaveAttribute("step","1");
+    fireEvent.change(count,{target:{value:"0"}});
+    fireEvent.change(screen.getByLabelText("2 変更の内容"),{target:{value:"扶養を外す"}});
+    fireEvent.change(screen.getByLabelText("3 変更の日"),{target:{value:"2026-10-29"}});
+    fireEvent.click(screen.getByRole("button",{name:"送信する"}));
+    await waitFor(()=>expect(within(card).getByText(/確認済み/)).toBeInTheDocument());
+  });
   it("renders the mypage heading and only the gate before unlock", () => {
     renderMyPage();
     const breadcrumb = screen.getByRole("navigation", { name: "現在地" });

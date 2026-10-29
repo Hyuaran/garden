@@ -1,4 +1,5 @@
 export const SUBMISSION_LABELS = {
+  dependents: "扶養の変更",
   emergency_contact: "緊急連絡先変更",
   commute_route: "通勤経路変更",
   bank_account: "給与受取口座の変更",
@@ -61,6 +62,7 @@ export function validateSubmission(
       "ecAddress",
       "ecPhone",
     ],
+    dependents: ["count", "details", "effectiveDate"],
     commute_route: ["station", "effectiveDate"],
     bank_account: [
       "bankName",
@@ -92,6 +94,16 @@ export function validateSubmission(
       !/^\d{1,8}$/.test(String(payload.accountNumber)))
   )
     return "金融機関コード・支店コード・口座番号の桁数をご確認ください。";
+  if (type === "dependents") {
+    const count = payload.count;
+    if ((typeof count !== "string" && typeof count !== "number") ||
+      !/^\d+$/.test(String(count)) || !Number.isSafeInteger(Number(count)))
+      return "扶養の人数は0以上の整数で入力してください。";
+    const date = String(payload.effectiveDate);
+    const parsed = new Date(date + "T00:00:00Z");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date)
+      return "変更の日を正しい日付で入力してください。";
+  }
   if (type === "nda" && payload.agreed !== true)
     return "内容への同意が必要です。";
   return null;

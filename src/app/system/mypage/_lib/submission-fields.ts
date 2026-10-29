@@ -3,6 +3,12 @@ export const submissionFields: Record<
   SubmissionType,
   Array<[string, string, string, boolean?]>
 > = {
+  dependents: [
+    ["count", "変更後の扶養の人数", "number"],
+    ["details", "変更の内容", "textarea"],
+    ["effectiveDate", "変更の日", "date"],
+    ["note", "補足（任意）", "textarea", true],
+  ],
   emergency_contact: [
     ["selfAddress", "現住所", "text"],
     ["selfPhone", "個人の電話番号（携帯等）", "tel"],

@@ -68,3 +68,11 @@ describe("mypage submission validation", () => {
     }
   });
 });
+
+describe("dependents change", () => {
+ const payload = { count: "0", details: "dependents change", effectiveDate: "2026-10-29" };
+ it.each([0, "0", 2, "2"]) ("accepts count %s", count => expect(validateSubmission("dependents", {...payload, count})).toBeNull());
+ it.each([undefined, null, "", " ", -1, "-1", 1.5, "1.5", "abc", true, [], "1e2"]) ("rejects count %s", count => expect(validateSubmission("dependents", {...payload, count})).not.toBeNull());
+ it.each(["count", "details", "effectiveDate"])("requires %s", key => expect(validateSubmission("dependents", {...payload, [key]: ""})).not.toBeNull());
+ it.each(["2026-02-30", "invalid", "2026-13-01"]) ("rejects date %s", effectiveDate => expect(validateSubmission("dependents", {...payload, effectiveDate})).not.toBeNull());
+});

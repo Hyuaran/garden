@@ -144,3 +144,14 @@ describe("mypage submission PDF flow", () => {
     },
   );
 });
+
+it("dependents change", async () => {
+ mocks.employee.mockResolvedValue({employee_id:"E1",name:"dependents change",employee_number:"0008"});
+ const query={insert:vi.fn().mockReturnThis(),select:vi.fn().mockReturnThis(),single:vi.fn().mockResolvedValue({data:{id:"dep-1",submission_type:"dependents",status:"received"},error:null})};
+ mocks.admin.mockReturnValue({from:vi.fn(()=>query)});
+ mocks.generate.mockClear();
+ const response=await POST(new Request("http://localhost/api/system/mypage/submissions",{method:"POST",body:JSON.stringify({type:"dependents",payload:{count:"0",details:"dependents change",effectiveDate:"2026-10-29"}})}));
+ expect(response.status).toBe(201);
+ expect(query.insert).toHaveBeenCalledWith(expect.objectContaining({submission_type:"dependents",kintone_status:"not_applicable",pdf_status:"not_applicable"}));
+ expect(mocks.generate).not.toHaveBeenCalled();
+});

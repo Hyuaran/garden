@@ -1,7 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import Modal from "@/app/system/_components/Modal/Modal";
-import { FormRow, RadioGroup, SubmitButton, TextField, TextArea } from "@/app/system/forms/_components/form-kit";
+import { FormRow, RadioGroup, SubmitButton, NumberField, TextField, TextArea } from "@/app/system/forms/_components/form-kit";
 import {
   SUBMISSION_LABELS,
   type SubmissionType,
@@ -79,11 +79,16 @@ export default function SubmissionModal({
             <FormRow key={key} label={<label htmlFor={`submission-${key}`}>{index + 1} {label}</label>}>
               {input === "textarea" ? (
                 <TextArea id={`submission-${key}`} required={!optional}
+                  placeholder={type === "dependents" && key === "details" ? "増える人・外れる人の氏名、続柄、生年月日、その年の収入の見込みを入力してください。" : undefined}
                   value={String(values[key] ?? "")}
                   onChange={(e) =>
                     setValues({ ...values, [key]: e.target.value })
                   }
                 />
+              ) : input === "number" ? (
+                <NumberField id={`submission-${key}`} type="number" min={0} step={1} required={!optional}
+                  value={String(values[key] ?? "")}
+                  onChange={(e) => setValues({ ...values, [key]: e.target.value })} />
               ) : (
                 <TextField id={`submission-${key}`}
                   type={input}
