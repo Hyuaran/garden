@@ -6,6 +6,7 @@ import type { MyPageProfile } from "../types";
 import styles from "../mypage.module.css";
 import SubmissionModal from "../_components/SubmissionModal";
 import type {SubmissionRow,SubmissionType} from "../_lib/submission-types";
+import { TextField } from "@/app/system/forms/_components/form-kit";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 
 const MYPAGE_CONFIRM_INTERVAL_DAYS = 90;
@@ -35,7 +36,9 @@ function InfoRow({ label, value, pending = false }: { label: string; value: stri
   return <div className={styles.infoRow}><dt>{label}</dt><dd className={pending ? styles.pending : undefined}>{value}</dd></div>;
 }
 
-export default function ProfileTab({ birthdayRegistered, profile, registered, onUnlocked }: {
+export default function ProfileTab({ birthdayRegistered, profile, registered, onUnlocked, confirmationOnly = false, onRemaining }: {
+  confirmationOnly?: boolean;
+  onRemaining?: (remaining: number) => void;
   birthdayRegistered: boolean;
   profile: MyPageProfile | null;
   registered: boolean;
@@ -47,7 +50,8 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   const submissionsRef = useRef<HTMLElement>(null);
   const [submissionType,setSubmissionType]=useState<SubmissionType|null>(null);const [submissionMessage,setSubmissionMessage]=useState("");const [submissions,setSubmissions]=useState<SubmissionRow[]>([]);const [confirming,setConfirming]=useState<string|null>(null);const [confirmError,setConfirmError]=useState("");const [submissionInitialValues,setSubmissionInitialValues]=useState<Record<string,string>|undefined>();
   async function loadSubmissions(){try{const response=await fetch("/api/system/mypage/submissions",{cache:"no-store"});if(response.ok)setSubmissions((await response.json()).rows??[])}catch{/* 届出一覧が取得できなくてもプロフィール表示は継続 */}}
-  useEffect(()=>{if(profile)void loadSubmissions()},[profile]);
+  const unlocked = Boolean(profile);
+  useEffect(()=>{if(unlocked)void loadSubmissions()},[unlocked]);
 
   async function unlock() {
     if (!/^\d{4}$/.test(code)) { setUnlockError(true); return; }
@@ -63,6 +67,12 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
     finally { setChecking(false); }
   }
 
+  const categories = CONFIRM_CATEGORIES;
+  const remainingCount = categories.filter(({category}) => {
+    const date = profile?.confirmations?.[category];
+    return !date || !Number.isFinite(Date.parse(date)) || Date.now() - Date.parse(date) > 90 * 86400000;
+  }).length;
+  useEffect(() => { onRemaining?.(profile ? remainingCount : categories.length); }, [remainingCount, profile, onRemaining, categories.length]);
   if (!profile && !birthdayRegistered && !registered) {
     return <section className={styles.comingSoon}><h2>従業員情報がありません</h2><p>従業員情報が登録されていません。管理者にご連絡ください。</p></section>;
   }
@@ -70,7 +80,7 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   if (!profile) return <section className={styles.unlockPanel} aria-label="個人情報を開く">
     <LineIcon icon="lock" className={styles.lockIcon}/>
     <p>個人情報を閲覧するには、キーワードを入力してください。</p>
-    <input className={styles.unlockCode} aria-label="誕生日の月日4桁" placeholder="誕生日を入力　例：12/1の場合1201" inputMode="numeric" autoComplete="one-time-code" type="text"
+    <TextField className={styles.unlockCode} aria-label="誕生日の月日4桁" placeholder="誕生日を入力　例：12/1の場合1201" inputMode="numeric" autoComplete="one-time-code" type="text"
       value={code} maxLength={4} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))}
       onKeyDown={(event) => { if (event.key === "Enter") void unlock(); }} />
     {unlockError && <p role="alert" className={styles.error}>4桁が一致しません。</p>}
@@ -85,13 +95,14 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
     const value = unlockedProfile.confirmations?.[category];
     if (!value) return false;
     const days = (Date.now() - new Date(value).getTime()) / 86_400_000;
-    return Number.isFinite(days) && days < MYPAGE_CONFIRM_INTERVAL_DAYS;
+    return Number.isFinite(days) && days <= MYPAGE_CONFIRM_INTERVAL_DAYS;
   };
   const pendingByCategory = (category: ConfirmCategory) => {
+    if (confirmationOnly) return undefined;
     const types: Record<ConfirmCategory, string[]> = { address:["emergency_contact"], contact:["emergency_contact"], emergency_contact:["emergency_contact"], bank_account:["bank_account"], commute:["commute_route"], dependents:[] };
-    return unlockedProfile.pendingSubmissions?.find((row)=>types[category].includes(row.type));
+    return unlockedProfile.pendingSubmissions?.find((row)=>types[category].includes(row.type) && Date.now()-Date.parse(row.createdAt)<90*86400000);
   };
-  const remaining = CONFIRM_CATEGORIES.filter(({category}) => !isConfirmed(category) && !pendingByCategory(category)).length;
+  const remaining = categories.filter(({category}) => !isConfirmed(category) && !pendingByCategory(category)).length;
   async function refreshProfile(){try{const response=await fetch("/api/system/mypage/profile-current",{cache:"no-store"});if(response.ok){const result=await response.json() as {profile?:MyPageProfile};if(result.profile)onUnlocked(result.profile)}}catch{/* 再取得に失敗しても楽観更新の表示は維持する */}}
   async function confirmCategory(category:ConfirmCategory){setConfirmError("");setConfirming(category);const before=unlockedProfile;try{const response=await fetch("/api/system/mypage/profile-confirm",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({category})});if(!response.ok)throw new Error();const result=await response.json() as {confirmedAt?:string};onUnlocked({...unlockedProfile,confirmations:{...(unlockedProfile.confirmations??{}),[category]:result.confirmedAt??new Date().toISOString()}});void refreshProfile()}catch{onUnlocked(before);setConfirmError("保存できませんでした。もう一度お試しください")}finally{setConfirming(null)}}
   function textValue(category:ConfirmCategory){const p=unlockedProfile.current?.[category]?.payload??{};const s=(key:string)=>typeof p[key]==="string"?String(p[key]):"";const n=(key:string)=>typeof p[key]==="number"?Number(p[key]):null;if(category==="address")return s("full")||"未登録";if(category==="contact")return [s("phone"),s("email")].filter(Boolean).join(" / ")||"未登録";if(category==="emergency_contact")return [s("name"),s("relation")?`（${s("relation")}）`:"",s("phone"),s("same_address_as_employee")==="true"?"本人と同じ":s("address")].join(" ").trim()||"未登録";if(category==="bank_account")return [s("bank_name"),s("branch_name"),({ordinary:"普通",current:"当座",savings:"貯蓄"} as Record<string,string>)[s("account_type")]??s("account_type"),s("account_number")].filter(Boolean).join(" ")||"未登録";if(category==="commute"){const one=n("one_way"), round=n("round_trip"), cap=n("monthly_cap");return round===null&&one===null? "未登録":`日額 ${(round??(one??0)*2).toLocaleString("ja-JP")}円（片道 ${(one??Math.floor((round??0)/2)).toLocaleString("ja-JP")}円・${cap===null?"上限なし":`上限 ${cap.toLocaleString("ja-JP")}円`}）${s("nearest_station")?` / 最寄り駅：${s("nearest_station")}`:""}`;}return p.count===undefined?"未登録":`${String(p.count)} 人`;}
@@ -99,9 +110,9 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
   return <div className={styles.profileContent}>
     {!birthdayRegistered && <p className={styles.unlockedNotice}>生年月日が未登録のため確認を省略しています。</p>}
     {remaining>0 && <section className={styles.confirmationBanner} aria-label="登録内容の確認"><div><h2>登録内容の確認が済んでいません（残り {remaining} 件）</h2><p>会社に登録されているあなたの情報です。区分ごとに確認してください。</p></div></section>}
-    {remaining>0 && <section className={styles.card}><h2>登録内容の確認</h2>{confirmError?<p role="alert" className={styles.error}>{confirmError}</p>:null}<div className={styles.confirmGrid} {...CLARITY_MASK}>{CONFIRM_CATEGORIES.map(({category,label})=>{const current=profile.current?.[category];const confirmed=isConfirmed(category);const pending=pendingByCategory(category);return <article className={styles.confirmCard} key={category}><h3>{label}</h3><p>{textValue(category)}</p>{confirmed?<div className={styles.confirmedMark}>確認済み（{(profile.confirmations?.[category]??"").slice(0,10)}）</div>:pending?<div className={styles.confirmedMark}>届出済み（{pending.createdAt.slice(0,10)}）</div>:<div className={styles.confirmButtons}>{current?<button type="button" disabled={confirming===category} onClick={()=>void confirmCategory(category)}>{confirming===category?"保存中":"変更なし"}</button>:null}{category!=="dependents"?<button type="button" className={styles.secondaryButton} onClick={()=>openDifferent(category)}>変更する</button>:null}</div>}</article>})}</div></section>}
+    {remaining>0 && <section className={styles.card}><h2>登録内容の確認</h2>{confirmError?<p role="alert" className={styles.error}>{confirmError}</p>:null}<div className={styles.confirmGrid} {...CLARITY_MASK}>{categories.map(({category,label})=>{const current=profile.current?.[category];const confirmed=isConfirmed(category);const pending=pendingByCategory(category);return <article className={styles.confirmCard} key={category}><h3>{label}</h3><p>{textValue(category)}</p>{confirmed?<div className={styles.confirmedMark}>確認済み（{(profile.confirmations?.[category]??"").slice(0,10)}）</div>:pending?<div className={styles.confirmedMark}>届出済み（{pending.createdAt.slice(0,10)}）</div>:<div className={styles.confirmButtons}>{current||category==="dependents"?<button type="button" disabled={confirming===category} onClick={()=>void confirmCategory(category)}>{confirming===category?"保存中":"変更なし"}</button>:null}{category!=="dependents"?<button type="button" className={styles.secondaryButton} onClick={()=>openDifferent(category)}>変更する</button>:null}</div>}</article>})}</div></section>}
 
-    <section className={styles.card}><h2>基本情報</h2><dl className={styles.infoGrid} {...CLARITY_MASK}>
+    {!confirmationOnly && <><section className={styles.card}><h2>基本情報</h2><dl className={styles.infoGrid} {...CLARITY_MASK}>
       <InfoRow label="氏名" value={profile.name} /><InfoRow label="氏名カナ" value={profile.nameKana} />
       <InfoRow label="社員番号" value={profile.employeeNumber} /><InfoRow label="雇用形態" value={profile.employmentType} />
       <InfoRow label="生年月日" value={profile.birthday ?? "未登録"} /><InfoRow label="Garden権限" value={roleLabel} />
@@ -117,7 +128,8 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
       {([ ["phone","emergency_contact","緊急連絡先変更"], ["route","commute_route","通勤経路変更"], ["bank","bank_account","給与受取口座の変更"], ["document","resignation","退職届"], ["lock","nda","秘密保持誓約書"] ] as Array<[ProfileIcon,SubmissionType,string]>).map(([icon,type,label])=><button type="button" key={type} onClick={()=>{setSubmissionMessage("");setSubmissionInitialValues(undefined);setSubmissionType(type)}}><LineIcon icon={icon}/>{label}</button>)}
     </div>{submissionMessage?<p role="status" className={styles.receivedMessage}>{submissionMessage}</p>:null}</section>
     {submissions.filter(row=>row.submission_type==="commute_route"&&row.status==="awaiting_employee").map(row=><section className={`${styles.card} ${styles.proposalCard}`} key={row.id}><h2>通勤交通費のご提案</h2><p>日額{((row.proposed_one_way??0)*2).toLocaleString("ja-JP")}円（片道{(row.proposed_one_way??0).toLocaleString("ja-JP")}円）で申請します。よろしいですか？</p><div className={styles.modalActions}><button type="button" onClick={async()=>{await fetch(`/api/system/mypage/submissions/${row.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:"accept"})});await loadSubmissions()}}>この金額でお願いする</button><button type="button" className={styles.secondaryButton} onClick={async()=>{await fetch(`/api/system/mypage/submissions/${row.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({action:"withdraw"})});await loadSubmissions()}}>取りやめる</button></div></section>)}
-    {submissionType?<SubmissionModal type={submissionType} employeeName={profile.name} initialValues={submissionInitialValues} onClose={()=>setSubmissionType(null)} onSent={()=>{setSubmissionType(null);setSubmissionMessage("受け付けました。事務から連絡します");void loadSubmissions();void refreshProfile()}}/>:null}
+    </>}
+    {submissionType?<SubmissionModal type={submissionType} employeeName={profile.name} initialValues={submissionInitialValues} onClose={()=>setSubmissionType(null)} onSent={()=>{setSubmissionType(null);setSubmissionMessage("受け付けました。事務から連絡します");onUnlocked({...unlockedProfile, confirmations:{...unlockedProfile.confirmations,...Object.fromEntries((submissionType==="emergency_contact"?["address","contact","emergency_contact"]:submissionType==="bank_account"?["bank_account"]:["commute"]).map(category=>[category,new Date().toISOString()]))}});void loadSubmissions()}}/>:null}
 
   </div>;
 }

@@ -137,7 +137,7 @@ export async function getProfileHistory(admin: LooseSupabase, employeeId: string
 export async function getLatestConfirmations(admin: LooseSupabase, employeeId: string): Promise<ProfileConfirmationMap> {
   const query = asQuery(admin.from("root_employee_profile_history").select?.("category,confirmed_by_employee_at"));
   const first = asQuery(query.eq?.("employee_id", employeeId));
-  const second = asQuery(first.eq?.("source", "employee_confirm"));
+  const second = first;
   const ordered = asQuery(second.order?.("confirmed_by_employee_at", { ascending: false }));
   const { data, error } = await maybeThen<{ data?: Array<{ category?: string; confirmed_by_employee_at?: string | null }>; error?: unknown }>(ordered);
   if (error) throw error;
@@ -163,7 +163,7 @@ export async function latestProfilePayload(admin: LooseSupabase, employeeId: str
 
 export async function insertProfileHistoryIfChanged(admin: LooseSupabase, row: ProfileHistoryRow): Promise<number> {
   const latest = await latestProfilePayload(admin, row.employee_id, row.category, row.source);
-  if (payloadEquals(latest, row.payload)) return 0;
+  if (!row.confirmed_by_employee_at && payloadEquals(latest, row.payload)) return 0;
   const { error } = await maybeThen<{ error?: unknown }>(admin.from("root_employee_profile_history").insert?.(row));
   if (error) throw error;
   return 1;

@@ -66,7 +66,7 @@ describe("system mypage", () => {
     expect(screen.queryByRole("button", { name: "合っている" })).toBeNull();
     expect(screen.queryByRole("button", { name: "違う" })).toBeNull();
     expect(screen.getAllByRole("button", { name: "変更する" }).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "変更なし" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "変更なし" })[0]);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/system/mypage/profile-confirm", expect.objectContaining({ method: "POST", body: JSON.stringify({ category: "address" }) })));
   });
   it("renders the mypage heading and only the gate before unlock", () => {
@@ -76,8 +76,8 @@ describe("system mypage", () => {
     expect(within(breadcrumb).getByText("自分の情報")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "自分の情報" })).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("個人情報を開く")).toBeInTheDocument();
-    const unlockCode = screen.getByLabelText("誕生日の月日4桁");
+    expect(screen.getByLabelText(new RegExp("(^|\\s)個人情報を開く$"))).toBeInTheDocument();
+    const unlockCode = screen.getByLabelText(new RegExp("(^|\\s)誕生日の月日4桁$"));
     expect(unlockCode).toHaveAttribute("placeholder", "誕生日を入力　例：12/1の場合1201");
     expect(unlockCode).toHaveAttribute("type", "text");
     expect(unlockCode).toHaveAttribute("autocomplete", "one-time-code");
@@ -97,7 +97,7 @@ describe("system mypage", () => {
     expect(within(breadcrumb).getByText("自分の情報")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "自分の情報" })).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("誕生日の月日4桁")).toBeInTheDocument();
+    expect(screen.getByLabelText(new RegExp("(^|\\s)誕生日の月日4桁$"))).toBeInTheDocument();
   });
   it.each([
     ["attendance", "勤怠打刻"],
@@ -157,7 +157,7 @@ describe("system mypage", () => {
         ),
     );
     renderMyPage();
-    fireEvent.change(screen.getByLabelText("誕生日の月日4桁"), {
+    fireEvent.change(screen.getByLabelText(new RegExp("(^|\\s)誕生日の月日4桁$")), {
       target: { value: "0813" },
     });
     fireEvent.click(
@@ -179,7 +179,7 @@ describe("system mypage", () => {
   it("rejects an incorrect four-digit keyword as before", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok:false }), { status:401 })));
     renderMyPage();
-    fireEvent.change(screen.getByLabelText("誕生日の月日4桁"), { target:{ value:"9999" } });
+    fireEvent.change(screen.getByLabelText(new RegExp("(^|\\s)誕生日の月日4桁$")), { target:{ value:"9999" } });
     fireEvent.click(screen.getByRole("button", { name:"マイページを開く" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("4桁が一致しません。");
     expect(screen.queryByText("基本情報")).not.toBeInTheDocument();
@@ -271,8 +271,8 @@ describe("system mypage", () => {
       initialProfile: { ...profile, birthday: null },
     });
     fireEvent.click(screen.getByRole("button", { name: /緊急連絡先変更/ }));
-    expect(screen.getByLabelText("提出者本人の氏名")).toHaveValue("社員A");
-    expect(screen.getByLabelText("提出者本人の氏名")).toHaveAttribute(
+    expect(screen.getByLabelText(new RegExp("(^|\\s)提出者本人の氏名$"))).toHaveValue("社員A");
+    expect(screen.getByLabelText(new RegExp("(^|\\s)提出者本人の氏名$"))).toHaveAttribute(
       "readonly",
     );
     for (const [label, value] of [
@@ -283,7 +283,7 @@ describe("system mypage", () => {
       ["緊急連絡先の住所（同一の場合は「同上」）", "同上"],
       ["緊急連絡先の電話番号", "080"],
     ])
-      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+      fireEvent.change(screen.getByLabelText((text) => text.replace(/^\d+\s+/, "") === label), { target: { value } });
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ ok: true, id: "1" }), { status: 201 }),
     );
@@ -325,17 +325,17 @@ describe("system mypage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /秘密保持誓約書/ }));
     expect(screen.getByText(/第6条 損害賠償/)).toBeInTheDocument();
-    expect((screen.getByLabelText("誓約日") as HTMLInputElement).value).toMatch(
+    expect((screen.getByLabelText(new RegExp("(^|\\s)誓約日$")) as HTMLInputElement).value).toMatch(
       /^\d{4}-\d{2}-\d{2}$/,
     );
-    fireEvent.click(screen.getByLabelText("再提出"));
-    fireEvent.change(screen.getByLabelText("住所"), {
+    fireEvent.click(screen.getByLabelText(new RegExp("(^|\\s)再提出$")));
+    fireEvent.change(screen.getByLabelText(new RegExp("(^|\\s)住所$")), {
       target: { value: "東京都" },
     });
-    fireEvent.change(screen.getByLabelText("氏名（電子署名）"), {
+    fireEvent.change(screen.getByLabelText(new RegExp("(^|\\s)氏名（電子署名）$")), {
       target: { value: "社員A" },
     });
-    fireEvent.click(screen.getByLabelText("内容に同意します"));
+    fireEvent.click(screen.getByLabelText(new RegExp("(^|\\s)内容に同意します$")));
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ ok: true, id: "nda-1" }), { status: 201 }),
     );

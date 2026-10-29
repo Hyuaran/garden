@@ -43,3 +43,13 @@ it("小窓を重ねても最後の小窓を閉じるまで背景のスクロー�
   parent.unmount();
   expect(document.body.style.overflow).toBe("");
 });
+
+it("確認必須の小窓は閉じる操作を受け付けない", () => {
+  const onClose = vi.fn();
+  render(<Modal title="必須の確認" dismissible={false} onClose={onClose}>内容</Modal>);
+  const dialog = screen.getByRole("dialog");
+  fireEvent(dialog, new Event("cancel", { cancelable: true }));
+  fireEvent.click(dialog, { clientX: -10, clientY: -10 });
+  expect(screen.queryByRole("button", { name: "閉じる" })).toBeNull();
+  expect(onClose).not.toHaveBeenCalled();
+});

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   }
   const admin = getSupabaseAdmin();
   const current = await getCurrentProfile(admin, employee.employee_id, true);
-  const row = current[category];
+  const row = current[category] ?? (category === "dependents" ? { payload: {}, id: null, source_document_url: null } : null);
   if (!row) return NextResponse.json({ ok: false, error: "登録内容がありません。" }, { status: 409 });
   const confirmedAt = new Date().toISOString();
   await insertProfileHistoryIfChanged(admin, {
