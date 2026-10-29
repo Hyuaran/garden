@@ -1,4 +1,8 @@
 "use client";
+import TeamHistoryPanel from './TeamHistoryPanel';
+import { BUSINESSES } from '../_lib/team-history';
+import { FormRow as KitFormRow, SelectField as KitSelectField } from '@/app/system/forms/_components/form-kit';
+
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -353,6 +357,8 @@ export default function EmployeesPage() {
       setLoading(true); setError(null);
       const [e, c, s, a] = await Promise.all([fetchEmployees(), fetchCompanies(), fetchSalarySystems(), fetchCurrentAddresses()]);
       setEmployees(e); setCompanies(c); setSalarySystems(s); setAddresses(a);
+      const linkedId = new URLSearchParams(window.location.search).get("employeeId");
+      if (linkedId && !editTarget) setEditTarget(e.find(row=>row.employee_id===linkedId) ?? null);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   }
@@ -697,6 +703,8 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
       return <span style={{ color: address?.full ? colors.text : colors.textMuted }} {...CLARITY_MASK}>{text}</span>;
     }, width: 260, wrap: true },
     { key: "company", header: "法人", align: "left", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, width: 160 },
+    { key: "team", header: "チーム", align: "left", render: (e) => e.current_team || "所属なし", width: 120 },
+    { key: "business", header: "事業", align: "left", render: (e) => e.business || "—", width: 160 },
     { key: "emp_type", header: "雇用形態", align: "left", render: (e) => e.employment_type, width: 80 },
     { key: "garden_role", header: "Garden権限", align: "left", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], width: 110 },
     { key: "salary", header: "給与体系", align: "left", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, width: 130 },
@@ -754,7 +762,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
         </div>
       )}
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
-      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable stickyFirstColumn columns={columns} rows={filtered} activeIndex={activeIndex} onRowClick={canOpenEmployeeModal ? setEditTarget : undefined} />}
+      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable stickyFirstColumn columns={columns} rows={filtered} activeIndex={activeIndex} onRowClick={setEditTarget} />}
 
       <Modal open={!!historyTarget} onClose={() => setHistoryTarget(null)} title={`${historyTarget?.name ?? ""}（${historyTarget?.employee_number ?? ""}）の履歴`} width={960}>
         {historyLoading ? <div style={{ color: colors.textMuted }}>読込中...</div> : historyError ? <div role="alert" style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4 }}>{historyError}</div> : profileHistory ? (
@@ -894,6 +902,8 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
               )}
             </FormGrid>
 
+            <KitFormRow label="事業"><KitSelectField aria-label="事業" disabled={!canWrite} value={editTarget.business || ''} onChange={e=>setEditTarget({...editTarget,business:e.target.value || null})}>{BUSINESSES.map(b=><option key={b}>{b}</option>)}</KitSelectField></KitFormRow>
+            {editTarget.created_at && <TeamHistoryPanel employeeId={editTarget.employee_id} canWrite={canWrite} onChanged={()=>{void fetchEmployees().then(setEmployees).catch(e=>setError(e.message));}}/>}
             <AddressReadOnly address={addresses[editTarget.employee_id]} />
 
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>振込先口座</h3>

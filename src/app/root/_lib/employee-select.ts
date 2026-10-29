@@ -1,5 +1,7 @@
 export const ROOT_EMPLOYEE_SELECT_FIELDS = [
   "employee_id",
+  "business",
+  "current_team",
   "employee_number",
   "name",
   "name_kana",

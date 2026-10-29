@@ -15,7 +15,7 @@ export const GET = async (request: Request) => {
     "root-vendors": { vendors: ["root_vendors", "*"], companies: ["root_companies", "company_id,company_name"] },
     "root-salary-systems": { "salary-systems": ["root_salary_systems", "*"] },
     "root-insurance": { insurance: ["root_insurance", "*"] },
-    "root-employees": { employees: ["root_employees", ROOT_EMPLOYEE_SELECT_FIELDS], companies: ["root_companies", "company_id,company_name"], "salary-systems": ["root_salary_systems", "salary_system_id,system_name"] },
+    "root-employees": { employees: ["root_employees_with_team", ROOT_EMPLOYEE_SELECT_FIELDS], companies: ["root_companies", "company_id,company_name"], "salary-systems": ["root_salary_systems", "salary_system_id,system_name"] },
     "root-attendance": { attendance: ["root_attendance", "*"], employees: ["root_employees", "employee_id,employee_number,name"] },
     "root-permissions": { employees: ["root_employees", "employee_id,employee_number,name,employment_type,garden_role,is_active"] },
     "root-kot-sync-history": { "sync-logs": ["root_kot_sync_log", "*"] },

@@ -41,10 +41,9 @@ export async function POST(request:Request) {
       const row=checked(await db.from('system_line_contact').update({url:b.url.trim(),updated_at:new Date().toISOString(),updated_by:admin.employee_id}).eq('key',b.key).select('key')).data;
       if(!row?.length) throw new Error('連絡先を確認してください。');
     } else if(b.action==='team') {
-      checked(await db.rpc('system_line_set_team',{p_employee:b.employeeId,p_tag:b.tagId}));
-      await syncRichMenus();
+      throw new Error('Root の社員情報で変更します。');
     } else if(b.action==='tag') {
-      if(!['free','business'].includes(b.kind) || typeof b.name!=='string' || !b.name.trim() || b.name.length>100) throw new Error('タグの名前を確認してください。');
+      if(b.kind !== 'free' || typeof b.name!=='string' || !b.name.trim() || b.name.length>100) throw new Error('タグの名前を確認してください。');
       if(b.id) checked(await db.from('system_line_tag').update({name:b.name.trim()}).eq('id',b.id).eq('kind',b.kind));
       else checked(await db.from('system_line_tag').insert({kind:b.kind,name:b.name.trim()}));
       if(b.id) await syncRichMenus();
@@ -52,7 +51,7 @@ export async function POST(request:Request) {
       checked(await db.from('system_line_tag').delete().eq('id',b.id).eq('kind','free'));
     } else if(b.action==='member') {
       const tag=checked(await db.from('system_line_tag').select('kind').eq('id',b.tagId).single()).data;
-      if(!['business','free'].includes(tag?.kind ?? '')) throw new Error('このタグは名簿から更新します。');
+      if(tag?.kind !== 'free') throw new Error('このタグは名簿から更新します。');
       if(b.add) checked(await db.from('system_line_tag_member').upsert({tag_id:b.tagId,employee_id:b.employeeId,source:'manual'}));
       else checked(await db.from('system_line_tag_member').delete().eq('tag_id',b.tagId).eq('employee_id',b.employeeId).eq('source','manual'));
       await syncRichMenus();

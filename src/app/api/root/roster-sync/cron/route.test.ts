@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   verifyCronRequest: vi.fn(),
   syncRootRoster: vi.fn(),
+  syncRichMenus: vi.fn(),
 }));
 
 vi.mock("@/lib/cron-auth", () => ({ verifyCronRequest: mocks.verifyCronRequest }));
+vi.mock("@/lib/line/richmenu.server", () => ({ syncRichMenus: mocks.syncRichMenus }));
 vi.mock("@/app/root/_lib/roster-sync.server", () => ({ syncRootRoster: mocks.syncRootRoster }));
 
 describe("root roster sync cron route", () => {
@@ -13,6 +15,7 @@ describe("root roster sync cron route", () => {
     vi.resetModules();
     mocks.verifyCronRequest.mockReset();
     mocks.syncRootRoster.mockReset();
+    mocks.syncRichMenus.mockReset();
   });
 
   it("rejects invalid cron requests", async () => {
@@ -23,6 +26,7 @@ describe("root roster sync cron route", () => {
 
     expect(response.status).toBe(401);
     expect(mocks.syncRootRoster).not.toHaveBeenCalled();
+    expect(mocks.syncRichMenus).not.toHaveBeenCalled();
   });
 
   it("runs apply sync for valid cron requests", async () => {
@@ -36,5 +40,7 @@ describe("root roster sync cron route", () => {
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(mocks.syncRootRoster).toHaveBeenCalledWith({ dryRun: false });
+    expect(mocks.syncRichMenus).toHaveBeenCalledTimes(1);
+    expect(mocks.syncRootRoster.mock.invocationCallOrder[0]).toBeLessThan(mocks.syncRichMenus.mock.invocationCallOrder[0]);
   });
 });

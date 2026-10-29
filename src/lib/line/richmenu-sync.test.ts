@@ -33,6 +33,15 @@ beforeEach(()=>{
   });
 });
 it('準備段階ではLINEに接続しない',async()=>{activated=false;await syncRichMenus();expect(mocks.fetch).not.toHaveBeenCalled();});
+it('社員単位の更新では他の社員のメニューを付け替えたり解除したりしない',async()=>{
+  employees=[e,{...e,employee_id:'2',line_user_id:'U2'}];
+  saved=[{line_user_id:'U2',richmenu_id:'menu-koizumi'}];
+  await syncRichMenus('1');
+  expect(mocks.load).toHaveBeenCalledWith(true,'1');
+  expect(mocks.fetch).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(mocks.fetch.mock.calls[0][1].body)).toEqual({richMenuId:'menu-telema',userIds:['U1']});
+  expect(saved).toContainEqual({line_user_id:'U2',richmenu_id:'menu-koizumi'});
+});
 it('紐づけ・チーム・事業変更で付け替え、同じ状態では何もしない',async()=>{
   await syncRichMenus();await syncRichMenus();
   expect(mocks.fetch).toHaveBeenCalledTimes(1);

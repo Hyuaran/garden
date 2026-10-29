@@ -122,6 +122,8 @@ export interface SalarySystem {
 // 5. 従業員マスタ
 // ============================================================
 export interface Employee {
+  business?: string | null;
+  current_team?: string | null;
   employee_id: string; // EMP-0001
   employee_number: string;
   name: string;

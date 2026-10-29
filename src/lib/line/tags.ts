@@ -1,6 +1,6 @@
 export type Tag = { id: string; kind: 'employment' | 'business' | 'status' | 'role' | 'team' | 'free'; name: string; sort: number };
 export type Member = { tag_id: string; employee_id: string; source: 'auto' | 'manual' };
-export type Employee = { line_contact_url?: string | null; employee_id: string; employee_number: string; name: string; employment_type: string; garden_role: string; hire_date: string | null; termination_date: string | null; is_active: boolean; line_user_id: string | null; line_link_source: string | null };
+export type Employee = { business?: string | null; current_team?: string | null; line_contact_url?: string | null; employee_id: string; employee_number: string; name: string; employment_type: string; garden_role: string; hire_date: string | null; termination_date: string | null; is_active: boolean; line_user_id: string | null; line_link_source: string | null };
 export type Greeting = { id: string; employment_tag_id: string | null; business_tag_id: string | null; body: string; enabled: boolean };
 export const kindLabels = { employment: '雇用形態', business: '事業', status: '在籍', role: '役割', team: 'チーム', free: '自由タグ' };
 export function statusOf(e: Employee, today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })) {
@@ -11,7 +11,7 @@ export function automaticTags(e: Employee, tags: Tag[], today?: string): Member[
   const employment = ['outsource', '業務委託'].includes(e.employment_type) ? '業務委託' : e.employment_type;
   const roles: Record<string, string> = { toss: 'トス', closer: 'クローザー', cs: 'CS' };
   const role = employment === '業務委託' ? null : roles[e.garden_role] ?? '事務';
-  return tags.filter(t => (t.kind === 'employment' && t.name === employment) || (t.kind === 'status' && t.name === statusOf(e, today)) || (t.kind === 'role' && t.name === role)).map(t => ({ tag_id: t.id, employee_id: e.employee_id, source: 'auto' }));
+  return tags.filter(t => (t.kind === 'employment' && t.name === employment) || (t.kind === 'status' && t.name === statusOf(e, today)) || (t.kind === 'role' && t.name === role) || (t.kind === 'business' && t.name === e.business) || (t.kind === 'team' && e.business === 'ブロードバンド事業' && !['バックヤード','所属なし'].includes(e.current_team ?? '') && t.name === e.current_team)).map(t => ({ tag_id: t.id, employee_id: e.employee_id, source: 'auto' }));
 }
 export function automaticTeamTag(e: Employee, tags: Tag[], members: Member[]): Member[] {
   const own = tags.filter(t => members.some(m => m.employee_id === e.employee_id && m.tag_id === t.id));

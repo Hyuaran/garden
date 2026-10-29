@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireEmployee } from '@/app/system/mypage/_lib/submission-server';
-import { automaticTags, automaticTeamTag, chooseGreeting, personalize, type Employee, type Tag, type Member, type Greeting } from './tags';
+import { automaticTags, chooseGreeting, personalize, type Employee, type Tag, type Member, type Greeting } from './tags';
 
 export async function requireLineAdmin() {
   const e = await requireEmployee();
@@ -17,17 +17,16 @@ async function allRows<T>(table: string, columns: string, order: string): Promis
     const page = result.data as T[]; rows.push(...page); if(page.length<1000) return rows;
   }
 }
-export async function loadLineData(sync = true) {
+export async function loadLineData(sync = true, employeeId?: string) {
   const db=getSupabaseAdmin();
   const [tags, employees, greetings] = await Promise.all([
     allRows<Tag>('system_line_tag','*','id'),
-    allRows<Employee & { deleted_at?: string }>('root_employees','employee_id,employee_number,name,employment_type,garden_role,hire_date,termination_date,is_active,line_user_id,line_link_source,line_contact_url,deleted_at','employee_id'),
+    allRows<Employee & { deleted_at?: string }>('root_employees_with_team','employee_id,employee_number,name,employment_type,garden_role,hire_date,termination_date,is_active,line_user_id,line_link_source,line_contact_url,deleted_at,business,current_team','employee_id'),
     allRows<Greeting>('system_line_greeting','*','id'),
   ]);
   const activeRows=employees.filter(e=>!e.deleted_at);
   if(sync) {
-    const existing=await allRows<Member>('system_line_tag_member','*','employee_id');
-    checked(await db.rpc('system_line_replace_auto',{ p_members:activeRows.flatMap(e=>[...automaticTags(e,tags),...automaticTeamTag(e,tags,existing)]) }));
+    checked(await db.rpc(employeeId ? 'system_line_replace_employee_auto' : 'system_line_replace_auto',{ ...(employeeId ? {p_employee:employeeId} : {}), p_members:activeRows.filter(e=>!employeeId || e.employee_id===employeeId).flatMap(e=>automaticTags(e,tags)) }));
   }
   const members=await allRows<Member>('system_line_tag_member','*','employee_id');
   const history=checked(await db.from('system_line_broadcast').select('*').order('created_at',{ascending:false}).limit(100)).data;
@@ -35,7 +34,7 @@ export async function loadLineData(sync = true) {
 }
 export async function linkedGreeting(employeeNumber: string) {
   const db=getSupabaseAdmin();
-  const e=checked(await db.from('root_employees').select('*').eq('employee_number',employeeNumber).single()).data as Employee;
+  const e=checked(await db.from('root_employees_with_team').select('*').eq('employee_number',employeeNumber).single()).data as Employee;
   const tags=await allRows<Tag>('system_line_tag','*','id');
   const manual=checked(await db.from('system_line_tag_member').select('*').eq('employee_id',e.employee_id).eq('source','manual')).data as Member[];
   const greetings=await allRows<Greeting>('system_line_greeting','*','id');

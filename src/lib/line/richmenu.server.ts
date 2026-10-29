@@ -111,11 +111,13 @@ export async function applyRichMenus() {
   });
 }
 // Event-driven only. Persisted assignments make repeated calls idempotent and retain old IDs after unlinking.
-export async function syncRichMenus() {
-  const { menus } = await loadMenuSettings();
+export async function syncRichMenus(employeeId?: string) {
+  const data = await loadLineData(true, employeeId);
+  const { menus } = await loadMenuSettings(data.employees);
   if (!menus.length) return; // Preparation stage: never create or activate menus automatically.
   return withMenuLock(async renew => {
-    const db = getSupabaseAdmin(), data = await loadLineData(), current = (await loadMenuSettings()).menus;
+    const db = getSupabaseAdmin(), current = (await loadMenuSettings(data.employees)).menus;
+    if (employeeId) data.employees = data.employees.filter(e=>e.employee_id===employeeId);
     const groups = grouped(data), previous = await assignments();
     const wanted = new Set([...groups.values()].flat());
     for (const [group, ids] of groups) {
@@ -128,7 +130,7 @@ export async function syncRichMenus() {
         checked(await db.from('system_line_richmenu_assignment').upsert(batch.map(line_user_id => ({ line_user_id, richmenu_id: menu.richmenu_id, updated_at: new Date().toISOString() }))));
       }
     }
-    for (const row of previous.filter(r => !wanted.has(r.line_user_id))) {
+    for (const row of previous.filter(r => !wanted.has(r.line_user_id) && (!employeeId || data.employees.some(e=>e.line_user_id===r.line_user_id)))) {
       await renew();
       await menuTransport.unlink(row.line_user_id);
       checked(await db.from('system_line_richmenu_assignment').delete().eq('line_user_id', row.line_user_id));

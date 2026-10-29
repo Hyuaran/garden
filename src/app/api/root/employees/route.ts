@@ -1,3 +1,4 @@
+import { BUSINESSES } from '@/app/root/_lib/team-history';
 import { validContactUrl } from '@/lib/line/richmenu';
 import { NextResponse } from "next/server";
 import { syncRichMenus } from '@/lib/line/richmenu.server';
@@ -15,7 +16,9 @@ export async function POST(request: Request) {
   if (!body) return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
   const employeeId = typeof body?.employee_id === "string" ? body.employee_id : "";
   if (!employeeId) return NextResponse.json({ ok: false, error: "employee_id is required" }, { status: 400 });
-  const input = body;
+  const input = { ...body };
+  delete input.current_team;
+  if ('business' in input && input.business !== null && !BUSINESSES.includes(input.business as typeof BUSINESSES[number])) return NextResponse.json({error:'事業を確認してください。'}, {status:400});
   if ('line_contact_url' in input) {
     if (typeof input.line_contact_url !== 'string' || input.line_contact_url.length > 2000 || !validContactUrl('employee', input.line_contact_url.trim())) return NextResponse.json({error:'LINE のリンクを入力してください。'}, {status:400});
     input.line_contact_url = input.line_contact_url.trim();
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   // LINE のメニューの付け替えに失敗しても、社員の更新・紐づけ自体は成功として返す（次の反映でそろう）
-  await syncRichMenus().catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
+  await syncRichMenus(employeeId).catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
   return NextResponse.json({ ok: true, retired, rosterSync });
 }
 
@@ -70,6 +73,6 @@ export async function PATCH(request: Request) {
     is_active: nextActive,
   });
   // LINE のメニューの付け替えに失敗しても、社員の更新・紐づけ自体は成功として返す（次の反映でそろう）
-  await syncRichMenus().catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
+  await syncRichMenus(employeeId).catch(error => console.error('line_richmenu_sync_failed', error instanceof Error ? error.message : error));
   return NextResponse.json({ ok: true, is_active: nextActive });
 }
