@@ -1,4 +1,10 @@
 import type { EmploymentContractPayload } from "./employment-contract";
+
+// 雇用区分ごとの固定選択。アルバイトの書式には適用しない。
+export const CONTRACT_FIXED_CHOICES = {
+  full_time: { overtime: "有", holidayWork: "有", payBenefits: "無", employmentInsurance: "有" },
+  nhk_dispatch: { overtime: "無", holidayWork: "無", payBenefits: "無", employmentInsurance: "有" },
+} as const;
 const source = {
   "full_time": [
     [
@@ -107,6 +113,8 @@ const source = {
 } as const;
 export function employmentContractRows(p: EmploymentContractPayload) {
  const nhk=p.templateType === "nhk_dispatch";
+ const choices=p.templateType === "full_time" || p.templateType === "nhk_dispatch"
+   ? CONTRACT_FIXED_CHOICES[p.templateType] : undefined;
  return source[nhk ? "nhk_dispatch" : "full_time"].map(([label, original],index) => {
  let text: string=original.replaceAll(" / ","\n");
  if(index===0)text=p.indefinite ? `期間の定めなし　${p.contractStart} から` : `期間の定めあり　${p.contractStart} から ${p.contractEnd} まで`;
@@ -118,6 +126,11 @@ export function employmentContractRows(p: EmploymentContractPayload) {
  text=text.replace(/190,000円|260,000　円|\{salary\}/,`${p.hourlyWage.toLocaleString("ja-JP")}円`);
  text=text.replace(/※固定残業の場合、30時間分の時間外割増を含む。但し計算期間に出勤日数が0の場合（有休取得含む）は、支給しない/,p.fixedOvertime ? "固定残業：30時間分の時間外割増を含む。但し計算期間に出勤日数が0の場合（有休取得含む）は、支給しない。超過分は追加支給する。" : "固定残業なし。時間外割増賃金は別途支給する。");
  text=text.replace(/※公共交通機関利用のみ(?:上限15,000円)?支給する/,`※公共交通機関利用のみ、月額上限${(p.commuteCap ?? 20000).toLocaleString("ja-JP")}円支給する`);
+ }
+ if (choices) {
+   if (index === 4) text=text.replace("所定外労働の有無（有／無）", `所定外労働の有無（${choices.overtime}）`).replace("休日労働の有無（有／無）", `休日労働の有無（${choices.holidayWork}）`);
+   if (index === 6) text=text.replace(/(昇給|賞与|退職金)　（　有　　\/　　無/g, `$1　（　${choices.payBenefits}`);
+   if (index === 11) text=text.replace("雇用保険の適用　（　有　　/　　無　）", `雇用保険の適用　（　${choices.employmentInsurance}　）`);
  }
  return {label:label.replaceAll(" / ",""),text};
  });
