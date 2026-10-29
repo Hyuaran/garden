@@ -1,6 +1,6 @@
 export type Tag = { id: string; kind: 'employment' | 'business' | 'status' | 'role' | 'team' | 'free'; name: string; sort: number };
 export type Member = { tag_id: string; employee_id: string; source: 'auto' | 'manual' };
-export type Employee = { employee_id: string; employee_number: string; name: string; employment_type: string; garden_role: string; hire_date: string | null; termination_date: string | null; is_active: boolean; line_user_id: string | null; line_link_source: string | null };
+export type Employee = { line_contact_url?: string | null; employee_id: string; employee_number: string; name: string; employment_type: string; garden_role: string; hire_date: string | null; termination_date: string | null; is_active: boolean; line_user_id: string | null; line_link_source: string | null };
 export type Greeting = { id: string; employment_tag_id: string | null; business_tag_id: string | null; body: string; enabled: boolean };
 export const kindLabels = { employment: '雇用形態', business: '事業', status: '在籍', role: '役割', team: 'チーム', free: '自由タグ' };
 export function statusOf(e: Employee, today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })) {

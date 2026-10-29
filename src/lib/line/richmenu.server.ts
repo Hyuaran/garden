@@ -1,18 +1,17 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
+import { renderMenuImage } from './richmenu-image.server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { checked, loadLineData } from './tags.server';
-import { chunks } from './tags';
-import { menuDefinition, menuGroup, menuGroups, type Contact, type MenuGroup } from './richmenu';
+import { chunks, type Employee } from './tags';
+import { menuDefinition, menuGroup, menuGroups, resolveContacts, type Contact, type MenuGroup } from './richmenu';
 import { lineStaffFetch } from './staff-client';
 
 type MenuRow = { group_key: MenuGroup; richmenu_id: string; created_at: string; applied_at: string | null; active: boolean };
-export async function loadMenuSettings() {
+export async function loadMenuSettings(employees?: Employee[]) {
   const db = getSupabaseAdmin();
   const contacts = checked(await db.from('system_line_contact').select('*').order('key')).data as Contact[];
   const menus = checked(await db.from('system_line_richmenu').select('*').eq('active', true)).data as MenuRow[];
-  return { contacts, menus };
+  return { contacts: resolveContacts(contacts, employees ?? (await loadLineData(false)).employees), menus };
 }
 async function assignments() {
   const rows: { line_user_id: string; richmenu_id: string }[] = [];
@@ -28,9 +27,10 @@ export const menuTransport = {
     if (typeof result.richMenuId !== 'string') throw new Error('メニューを作成できませんでした。');
     return result.richMenuId as string;
   },
-  async upload(id: string, image: string) {
-    const data = await readFile(path.join(process.cwd(), 'public/line/richmenu', image + '.jpg'));
-    await lineStaffFetch('/richmenu/' + encodeURIComponent(id) + '/content', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: new Uint8Array(data) }, undefined, true);
+  async upload(id: string, image: string, contacts: Contact[] = []) {
+    const group = image === 'guest_2' ? 'guest' : image as MenuGroup;
+    const result = await renderMenuImage(group, contacts);
+    await lineStaffFetch('/richmenu/' + encodeURIComponent(id) + '/content', { method: 'POST', headers: { 'Content-Type': result.contentType }, body: new Uint8Array(result.data) }, undefined, true);
   },
   async setDefault(id: string) { await lineStaffFetch('/user/all/richmenu/' + encodeURIComponent(id), { method: 'POST' }); },
   async link(id: string, userIds: string[]) { await lineStaffFetch('/richmenu/bulk/link', { method: 'POST', body: JSON.stringify({ richMenuId: id, userIds }) }); },
@@ -49,7 +49,7 @@ export async function deployMenus(contacts: Contact[], groups: Map<MenuGroup, st
     const id = await transport.create(definition.body);
     const row = { group_key: group, richmenu_id: id };
     await save(row); created.push(row);
-    await transport.upload(id, definition.image);
+    await transport.upload(id, group === 'guest' ? 'guest_2' : group, contacts);
   }
   await transport.setDefault(created.find(r => r.group_key === 'guest')!.richmenu_id);
   for (const row of created) for (const batch of chunks(groups.get(row.group_key) ?? [])) {
@@ -72,7 +72,7 @@ async function withMenuLock<T>(work: (renew: () => Promise<void>) => Promise<T>)
 function guardedTransport(renew: () => Promise<void>): Transport {
   return {
     async create(body) { await renew(); return menuTransport.create(body); },
-    async upload(id, image) { await renew(); await menuTransport.upload(id, image); },
+    async upload(id, image, contacts) { await renew(); await menuTransport.upload(id, image, contacts); },
     async setDefault(id) { await renew(); await menuTransport.setDefault(id); },
     async link(id, users) { await renew(); await menuTransport.link(id, users); },
     async unlink(id) { await renew(); await menuTransport.unlink(id); },
@@ -92,7 +92,7 @@ function grouped(data: Awaited<ReturnType<typeof loadLineData>>) {
 export async function applyRichMenus() {
   return withMenuLock(async renew => {
     const db = getSupabaseAdmin(), data = await loadLineData();
-    const { contacts } = await loadMenuSettings();
+    const { contacts } = await loadMenuSettings(data.employees);
     const old = checked(await db.from('system_line_richmenu').select('*')).data as MenuRow[];
     const groups = grouped(data), users = new Set([...groups.values()].flat());
     const previous = await assignments();

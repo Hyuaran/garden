@@ -686,6 +686,7 @@ export async function syncRootRoster(options: SyncOptions = {}): Promise<RosterS
       summary.updated += 1;
       if (!dryRun) {
         const { error: updateError } = await admin.from("root_employees").update({
+          // line_contact_url is managed in Garden; never copy it from Kintone.
           name: row.name,
           name_kana: row.name_kana,
           birthday: row.birthday,

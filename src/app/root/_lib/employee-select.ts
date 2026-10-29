@@ -14,6 +14,7 @@ export const ROOT_EMPLOYEE_SELECT_FIELDS = [
   "dependents_count",
   "deleted_at",
   "email",
+  "line_contact_url",
   "bank_name",
   "bank_code",
   "branch_name",

@@ -21,7 +21,7 @@ export async function loadLineData(sync = true) {
   const db=getSupabaseAdmin();
   const [tags, employees, greetings] = await Promise.all([
     allRows<Tag>('system_line_tag','*','id'),
-    allRows<Employee & { deleted_at?: string }>('root_employees','employee_id,employee_number,name,employment_type,garden_role,hire_date,termination_date,is_active,line_user_id,line_link_source,deleted_at','employee_id'),
+    allRows<Employee & { deleted_at?: string }>('root_employees','employee_id,employee_number,name,employment_type,garden_role,hire_date,termination_date,is_active,line_user_id,line_link_source,line_contact_url,deleted_at','employee_id'),
     allRows<Greeting>('system_line_greeting','*','id'),
   ]);
   const activeRows=employees.filter(e=>!e.deleted_at);

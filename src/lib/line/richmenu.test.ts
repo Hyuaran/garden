@@ -21,7 +21,7 @@ function group(business:string, team?:string) {
   return menuGroup(employee,tags,members);
 }
 describe('メニューの選択と押せる範囲',()=>{
-  it.each([['宮永チーム','telema','employee_3'],['新人チーム','telema','employee_3'],['小泉チーム','koizumi','employee_4_koizumi'],['石原チーム','ishihara','employee_4_ishihara'],[undefined,'telema','employee_3']])('%s', (team,expected,image)=>{
+  it.each([['宮永チーム','telema','employee_3_base'],['新人チーム','telema','employee_3_base'],['小泉チーム','koizumi','employee_4_base'],['石原チーム','ishihara','employee_4_base'],[undefined,'telema','employee_3_base']])('%s', (team,expected,image)=>{
     const actual=group('ブロードバンド事業',team);
     expect(actual).toBe(expected);expect(menuDefinition(actual,[]).image).toBe(image);
   });

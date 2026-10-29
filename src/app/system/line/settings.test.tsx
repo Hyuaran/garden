@@ -21,8 +21,8 @@ it('申告フォームの説明はLINE内の2種類の申告である',()=>{
 it('連絡先は変更列がなく、行をキーボードで押して登録する',()=>{
   render(<ContactSettings data={data} busy={false} act={vi.fn()}/>);
   expect(screen.queryByRole('button',{name:'変更する'})).toBeNull();
-  fireEvent.keyDown(screen.getByText('宮永さん').closest('tr')!,{key:' '});
-  expect(screen.getByRole('dialog',{name:'宮永さんの連絡先'})).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByText('会社のホームページ').closest('tr')!,{key:' '});
+  expect(screen.getByRole('dialog',{name:'会社のホームページの連絡先'})).toBeInTheDocument();
   expect(screen.getByText('登録したら、リッチメニュータブの［リッチメニューに反映する］を押してください。')).toBeInTheDocument();
 });
 it('反映前も6行あり、小泉チームの画像と位置・連絡先を表示する',()=>{
@@ -31,7 +31,7 @@ it('反映前も6行あり、小泉チームの画像と位置・連絡先を表
   expect(screen.getByRole('button',{name:'送信中...'})).toBeDisabled();
   fireEvent.click(screen.getByText('ブロードバンド事業・小泉チーム'));
   const dialog=screen.getByRole('dialog');
-  expect(within(dialog).getByRole('img')).toHaveAttribute('src','/line/richmenu/employee_4_koizumi.jpg');
+  expect(within(dialog).getByRole('img')).toHaveAttribute('src','/api/system/line/richmenu-image?group=koizumi');
   for(const [position,label] of [['左上','申告フォーム'],['右上','シフト'],['左下','チームリーダー'],['右下','マネージャー']]) expect(within(dialog).getByText(new RegExp(position+'.+'+label))).toBeInTheDocument();
   expect(within(dialog).getByText(/小泉さんの LINE/)).toBeInTheDocument();
   expect(within(dialog).getByText(/宮永さんの LINE/)).toBeInTheDocument();

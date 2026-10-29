@@ -849,6 +849,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
               </SelectField>
               <TextField label="氏名" required value={editTarget.name} onChange={(e) => setEditTarget({ ...editTarget, name: e.target.value })} error={errors.name} />
               <TextField label="氏名カナ" required value={editTarget.name_kana} onChange={(e) => setEditTarget({ ...editTarget, name_kana: e.target.value })} error={errors.name_kana} />
+              <TextField label="公式 LINE の連絡先" type="url" value={editTarget.line_contact_url || ""} onChange={(e) => setEditTarget({ ...editTarget, line_contact_url: e.target.value })} />
               <TextField label="メールアドレス" required type="email" value={editTarget.email} onChange={(e) => setEditTarget({ ...editTarget, email: e.target.value })} error={errors.email} />
               <SelectField label="雇用形態" required value={editTarget.employment_type} onChange={(e) => setEditTarget({
                 ...editTarget,

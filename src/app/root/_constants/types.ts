@@ -140,6 +140,7 @@ export interface Employee {
   dependents_count?: number;
   /** 論理削除タイムスタンプ。null=有効、値あり=削除済（is_active とは別軸）。Phase A-3-h */
   deleted_at?: string | null;
+  line_contact_url?: string | null;
   email: string;
   bank_name: string;
   bank_code: string;

@@ -5,12 +5,13 @@ import { chunks, personalize, recipients } from '@/lib/line/tags';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { getLineStaffQuota, pushLineStaff } from '@/lib/line/staff-client';
 import { applyRichMenus, loadMenuSettings, syncRichMenus } from '@/lib/line/richmenu.server';
-import { validContactUrl } from '@/lib/line/richmenu';
+import { validContactUrl, roleLabels } from '@/lib/line/richmenu';
+import { statusOf } from '@/lib/line/tags';
 export const runtime='nodejs';
 function sign(value:string) { const secret=process.env.LINE_STAFF_CHANNEL_SECRET; if(!secret) throw new Error('送信の設定を確認してください。'); return createHmac('sha256',secret).update(value).digest('hex'); }
 export async function GET() {
   if(!await requireLineAdmin()) return NextResponse.json({}, {status:403});
-  try { return NextResponse.json({...await loadLineData(), ...await loadMenuSettings()}); } catch { return NextResponse.json({error:'一覧を取得できませんでした。'}, {status:500}); }
+  try { const data=await loadLineData(); return NextResponse.json({...data, ...await loadMenuSettings(data.employees)}); } catch { return NextResponse.json({error:'一覧を取得できませんでした。'}, {status:500}); }
 }
 export async function POST(request:Request) {
   const admin=await requireLineAdmin(); if(!admin) return NextResponse.json({}, {status:403});
@@ -18,7 +19,24 @@ export async function POST(request:Request) {
     const b=await request.json(); const db=getSupabaseAdmin();
     if(b.action==='applyMenus') {
       await applyRichMenus();
+    } else if(b.action==='assignment') {
+      if(!Object.hasOwn(roleLabels,b.key) || (b.employeeId !== null && typeof b.employeeId !== 'string')) throw new Error('担当を確認してください。');
+      if(b.employeeId) {
+        const person=checked(await db.from('root_employees').select('*').eq('employee_id',b.employeeId).is('deleted_at',null).single()).data;
+        if(!person?.line_contact_url || statusOf(person)!=='在籍中') throw new Error('連絡先のある在籍者を選んでください。');
+      }
+      checked(await db.from('system_line_contact').update({employee_id:b.employeeId||null,updated_at:new Date().toISOString(),updated_by:admin.employee_id}).eq('key',b.key));
+    } else if(b.action==='employeeContact') {
+      if(typeof b.employeeId!=='string'||typeof b.url!=='string'||b.url.length>2000||!validContactUrl('employee',b.url.trim())) throw new Error('LINE のリンクを入力してください。');
+      const person=checked(await db.from('root_employees').select('*').eq('employee_id',b.employeeId).is('deleted_at',null).single()).data;
+      if(!person || statusOf(person)!=='在籍中') throw new Error('在籍者を選んでください。');
+      if(!b.url.trim()) {
+        const roles=checked(await db.from('system_line_contact').select('key').eq('employee_id',b.employeeId)).data;
+        if(roles?.length) throw new Error('先にリッチメニュータブで担当を変更してください。');
+      }
+      checked(await db.from('root_employees').update({line_contact_url:b.url.trim()}).eq('employee_id',b.employeeId));
     } else if(b.action==='contact') {
+      if(b.key!=='guest_home') throw new Error('連絡先を確認してください。');
       if(typeof b.key!=='string'||typeof b.url!=='string'||b.url.length>2000||!validContactUrl(b.key,b.url.trim())) throw new Error(b.key==='guest_home'?'https で始まるリンクを入力してください。':'LINE のリンクを入力してください');
       const row=checked(await db.from('system_line_contact').update({url:b.url.trim(),updated_at:new Date().toISOString(),updated_by:admin.employee_id}).eq('key',b.key).select('key')).data;
       if(!row?.length) throw new Error('連絡先を確認してください。');

@@ -20,7 +20,7 @@ it("empty IDs never trigger full roster retrieval", async () => { const supabase
 it("recovers a concurrent insert through the unique employee number", async () => {
   vi.mocked(getAllRecords).mockResolvedValue([{ $id: { value: "12" }, 打刻ID: { value: "1234" }, 従業員名_姓名: { value: "テスト" }, 従業員ステータス: { value: "退職済み" }, 退職日: { value: "2020-01-01" } }]);
   const eqUpdate = vi.fn().mockResolvedValue({ error: null });
-  const update = vi.fn(() => ({ eq: eqUpdate }));
+  const update = vi.fn((_payload: Record<string, unknown>) => ({ eq: eqUpdate }));
   const maybeSingle = vi.fn().mockResolvedValue({ data: { employee_id: "existing", user_id: "user", commute_daily_allowance: 700 }, error: null });
   const eq = vi.fn(() => ({ maybeSingle }));
   const select = vi.fn().mockResolvedValueOnce({ data: [], error: null }).mockReturnValue({ eq });
@@ -30,6 +30,7 @@ it("recovers a concurrent insert through the unique employee number", async () =
   expect(insert).toHaveBeenCalledTimes(1);
   expect(eq).toHaveBeenCalledWith("employee_number", "1234");
   expect(update).toHaveBeenCalledWith(expect.objectContaining({ user_id: "user", commute_daily_allowance: 700 }));
+  expect(update.mock.calls[0][0]).not.toHaveProperty('line_contact_url');
   expect(eqUpdate).toHaveBeenCalledWith("employee_id", "existing");
   expect(result.created).toBe(0); expect(result.updated).toBe(1);
 });

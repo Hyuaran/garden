@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
     "/api/leaf/prototype": ["./src/app/leaf/_templates/*.html"],
     // マニュアルの「Garden とは」の本文は実行時に読む。
     "/system/manuals": ["./src/app/system/manuals/_content/*.md"],
+    // 公式 LINE のメニューの絵は、土台の絵に担当の名前を書き込んで作る。
+    "/api/system/line/manage": ["./src/assets/fonts/NotoSansJP-Regular.ttf", "./public/line/richmenu/*.jpg"],
+    "/api/system/line/richmenu-image": ["./src/assets/fonts/NotoSansJP-Regular.ttf", "./public/line/richmenu/*.jpg"],
   },
 };
 

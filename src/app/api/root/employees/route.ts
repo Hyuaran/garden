@@ -1,3 +1,4 @@
+import { validContactUrl } from '@/lib/line/richmenu';
 import { NextResponse } from "next/server";
 import { syncRichMenus } from '@/lib/line/richmenu.server';
 import { requireAdmin } from "@/app/system/mypage/_lib/submission-server";
@@ -15,6 +16,10 @@ export async function POST(request: Request) {
   const employeeId = typeof body?.employee_id === "string" ? body.employee_id : "";
   if (!employeeId) return NextResponse.json({ ok: false, error: "employee_id is required" }, { status: 400 });
   const input = body;
+  if ('line_contact_url' in input) {
+    if (typeof input.line_contact_url !== 'string' || input.line_contact_url.length > 2000 || !validContactUrl('employee', input.line_contact_url.trim())) return NextResponse.json({error:'LINE のリンクを入力してください。'}, {status:400});
+    input.line_contact_url = input.line_contact_url.trim();
+  }
   if (typeof input.filemaker_employee_name === "string") {
     input.filemaker_employee_name = input.filemaker_employee_name.trim() || null;
   }
