@@ -1,9 +1,18 @@
-.pageShell{--navy:#10233f;--heading:#10233f;--ink:#17212e;--sub:#5a6b80;--teal:#0ea5a0;--teal-d:#0b7e7a;--bg:#f4f5f7;--card:#fff;--line:#e3eaf3;position:relative;min-height:100%;width:100%;min-width:0;padding:24px;background:var(--bg);color:var(--ink);font-family:Meiryo,"メイリオ","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;word-break:auto-phrase;line-break:strict;overflow-wrap:break-word}
+.pageShell{box-sizing:border-box;min-height:100%;background:var(--bg)}
 .pageShell::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bg)}
-.pageShell h1{font-size:30px;color:var(--heading);margin:12px 0 20px}.pageShell h2{font-size:20px;color:var(--heading)}
-.panel{margin-top:24px;padding:24px;background:var(--card);border:1px solid var(--line);border-radius:22px;min-width:0}
-.panel fieldset{border:0;padding:0;margin:20px 0;min-width:0}.panel legend{font-weight:700;margin-bottom:12px}.panel label{display:block;margin:12px 0}.panel input:not([type=radio]),.panel select,.panel textarea{display:block;width:100%;min-width:0;box-sizing:border-box;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--card);color:var(--ink);font:inherit;font-size:16px}.panel textarea{min-height:88px}
-.choices{display:flex;flex-wrap:wrap;gap:8px 16px}.choices label{display:flex;align-items:center;gap:6px;margin:4px 0;min-height:32px}.choices input{accent-color:var(--teal)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.submit{display:block;margin-left:auto;min-height:44px;border:0;border-radius:8px;padding:10px 24px;background:var(--teal-d);color:#fff;font:inherit;cursor:pointer}.submit:disabled{opacity:.5;cursor:wait}
-:global([data-theme="dark"]) .pageShell,:global(.dark) .pageShell{--navy:#193b62;--heading:#c8d6ea;--ink:#edf4fb;--sub:#b7c5d4;--bg:#0c1726;--card:#152438;--line:#31435a}
-@media(prefers-color-scheme:dark){.pageShell:not(:global([data-theme="light"] *)){--navy:#193b62;--heading:#c8d6ea;--ink:#edf4fb;--sub:#b7c5d4;--bg:#0c1726;--card:#152438;--line:#31435a}}
-@media(max-width:760px){.pageShell{padding:16px}.panel{padding:16px}.grid{grid-template-columns:1fr;gap:0}}
+.fields,.group{min-width:0;margin:0;padding:0;border:0}
+.fields input:not([type=radio]),.fields select,.fields textarea{box-sizing:border-box;max-width:100%;min-width:0;min-height:44px;font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+.fields input:not([type=radio]),.fields textarea{width:100%}
+.fields textarea{min-height:88px;resize:vertical}
+.choices{display:flex;flex-wrap:wrap;gap:8px 16px}
+.amount{display:flex;align-items:center;gap:8px;max-width:420px}.amount input{flex:1;width:0!important}.amount span{white-space:nowrap;font-size:13px}
+.group>label{display:block;margin-top:12px;font-size:13px}
+.reuse{margin:14px 0}.reuse label{font-weight:800}.reuse p{margin:6px 0;color:var(--sub);font-size:13px}.reuse select{display:block;width:100%;margin-top:8px}
+.srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(prefers-color-scheme:dark){.pageShell:not(:global([data-theme="light"] *)){--heading:#edf4fb;--ink:#edf4fb;--sub:#b7c5d4;--bg:#0c1726;--card:#152438;--line:#31435a;--soft:#12313c;--preview:#101d2d;--tealDark:#9ce5e1;--danger:#ff9aa2;--dangerBg:#351b21}}
+.pageShell .fields section[class] h2{white-space:normal}
+
+/* スマホ：題が長い（例「経費 報告（上田基人 専用）」）ので切らずに折り返す。項目名は NHK より長いので左の列を広げる */
+.pageShell.mobile header h1{white-space:normal;overflow:visible;text-overflow:clip;font-size:24px;text-wrap:balance}
+.pageShell.mobile header > div{align-items:flex-start}
+.mobile .fields > section{grid-template-columns:100px minmax(0,1fr)}

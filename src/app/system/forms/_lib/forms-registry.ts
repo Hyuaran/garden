@@ -41,7 +41,7 @@ export const SYSTEM_FORMS: SystemFormDefinition[] = [
   },
   {
     slug: "expense", name: "経費 報告",
-    description: "立て替えた経費・会社クレジットカードの利用を報告します。Garden に記録し、Kintone の経費一覧にも同じ内容が入ります。スマホは種類ごとに garden-os.net/m/expense/nhk（NHK）・/m/expense/nhk-kanden（NHK・関電）・/m/expense/ueda（上田専用）から開けます。",
+    description: "立て替えた経費・会社クレジットカードの利用を報告します。Garden に記録し、Kintone の経費一覧にも同じ内容が入ります。スマホは種類ごとに garden-os.net/m/expense/nhk（NHK）・/m/expense/nhk-kanden（関電・NHK）・/m/expense/ueda（上田基人 専用）から開けます。",
     roleLabel: "全員", minRole: "toss", icon: "document", href: "/system/forms/expense",
   },
 ];

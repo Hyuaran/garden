@@ -1,6 +1,6 @@
 export const BUSINESSES = { nhk: ['NHK'], 'nhk-kanden': ['関電', '関電トス', 'NHK'], ueda: ['関電トス', 'NHK', 'ブレーカー', '取引先打合せ'] } as const;
 export type ExpenseForm = keyof typeof BUSINESSES;
-export const FORM_LABELS = { nhk: 'NHK', 'nhk-kanden': 'NHK・関電', ueda: '上田専用' };
+export const FORM_LABELS = { nhk: 'NHK', 'nhk-kanden': '関電・NHK', ueda: '上田基人 専用' };
 export const PAYMENTS = ['現金', '会社クレジットカード'] as const;
 export const PURPOSES = ['交通費 電車(現金)', '駐車場代', '宿泊費', 'ETC/高速代', '交通費', 'ガソリン代', 'PITAPA', '交通費 自転車レンタル', '備品代', '郵送代', '会食費', 'その他'] as const;
 export type ExpenseInput = { form: ExpenseForm; business: string; payment: string; paid_on: string; amount: number; purpose: string; purpose_detail: string; note: string };

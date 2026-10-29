@@ -59,6 +59,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "shukkin", "業務管理ツール（出勤表・シフトLINE連絡テキスト生成）", "KING OF TIME の日別データから出勤表と翌日のシフト連絡の文面を作り、Chatwork・公式 LINE へ送るまでの手順。並びの設定と LINE の紐づけ。"),
   manual("system", "payroll-notice", "業務管理ツール（給与計算連絡）", "月に一度の給与計算に関する連絡の送り方と、送信履歴の見方。"),
   manual("system", "nhk-visit", "業務管理ツール（NHK訪問業務 報告）", "NHK 訪問業務の当日の報告の入力と送信、集計の受け取り方（Chatwork・LINE）。"),
+  manual("system", "expense", "業務管理ツール（経費 報告）", "立て替えた経費・会社クレジットカードの利用の報告のしかた。3 種類のフォームとスマホの入口、Kintone 経費一覧への写り方。"),
   manual("system", "innovera", "業務管理ツール（INNOVERA番号の同期）", "INNOVERA の回線一覧を Kintone の番号一覧へ 5 分ごとに写す仕組み。差分の見方と「今すぐ反映」の使い方。"),
   manual("system", "host-relay", "業務管理ツール（ホスト PC 中継）", "INNOVERA への通信を社内ホスト PC から出す仕組み。ホスト PC の常駐の止め方・動かし方・ログの見方と、止まったときの対処・設置し直す手順。"),
   manual("system", "vercel-usage", "業務管理ツール（Vercel 料金の見張り）", "Garden のサーバー（Vercel）の料金を毎日 18:05 に確かめ、込み分を超えそう・急に増えたときに Garden通知で知らせる仕組み。知らせの読み方と、増えたときの調べ方。"),
