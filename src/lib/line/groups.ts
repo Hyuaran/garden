@@ -3,8 +3,10 @@ export type LineGroup = {
   chatwork_room_id: string | null; notify_enabled: boolean; linked_at: string | null;
 };
 export function parseGroupCode(text: string) {
+  // 日本語入力で「-」が「ー」「−」などに化けても、ハイフンなしでも通す
   const normalized = text.normalize('NFKC').replace(/\s/g, '');
-  return /^連携G-\d{4}$/i.test(normalized) ? normalized.slice(2).toUpperCase() : null;
+  const match = normalized.match(/^連携G[-‐‑‒–—―ー−]?(\d{4})$/i);
+  return match ? `G-${match[1]}` : null;
 }
 export function groupMessage(message: { type?: string; text?: string; fileName?: string }) {
   if (message.type === 'text') return message.text || null;
