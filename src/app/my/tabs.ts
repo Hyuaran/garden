@@ -5,6 +5,7 @@ export const MY_TABS = [
  {id:"zenkaku",label:"前確依頼",short:"前確",icon:"check"},
  {id:"calls",label:"通話・録音",short:"通話",icon:"phone"},
  {id:"report",label:"AP日報",short:"日報",icon:"receipt"},
+ {id:"review",label:"振り返り",short:"振り返り",icon:"receipt"},
 ] as const;
 export type MyTab = typeof MY_TABS[number]["id"];
 export function resolveMyTab(value: unknown): MyTab { return MY_TABS.find(item=>item.id===value)?.id ?? "profile"; }

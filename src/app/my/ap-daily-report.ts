@@ -23,7 +23,7 @@ export function validateReport(value: unknown): Report {
 export function buildMessage(r: Report, correction = false) {
   const [,month,day] = r.report_date.split('-').map(Number);
   const time = (t: string) => t.slice(0,5).replace(':','：');
-  return `${correction ? '（訂正）\n' : ''}【${r.employee_name.trim().split(/[\s\u3000]+/)[0]}】\n${month}月${day}日　${time(r.start_time)}～${time(r.end_time)}　　${Number((r.work_minutes/60).toFixed(2))}時間稼働\n総コール${r.calls}件(留守${r.absent}件)（見込み${r.prospect}件）\n有効率${r.effective_rate.toFixed(1)}%（繋がった数÷総コール数）\n\n${r.kind === 'toss' ? `トス${r.count}件` : `本日獲得　${r.count}件\n現状合計　${r.month_total.toFixed(1)}件　効率${r.efficiency.toFixed(2)}`}\n\n【反省点】【それに対しての改善点】\n${r.reflection}`;
+  return `${correction ? '（訂正）\n' : ''}【${r.employee_name.trim().split(/[\s\u3000]+/).join(' ')}/${r.kind === 'toss' ? 'トス' : 'クローザー'}】\n${month}月${day}日　${time(r.start_time)}～${time(r.end_time)}　　${Number((r.work_minutes/60).toFixed(2))}時間稼働\n総コール${r.calls}件(留守${r.absent}件)（見込み${r.prospect}件）\n有効率${r.effective_rate.toFixed(1)}%（繋がった数÷総コール数）\n\n${r.kind === 'toss' ? `トス${r.count}件` : `本日獲得　${r.count}件\n現状合計　${r.month_total.toFixed(1)}件　効率${r.efficiency.toFixed(2)}`}\n\n【反省点】【それに対しての改善点】\n${r.reflection}`;
 }
 export type Punch = { punch_type: string; punched_at: string };
 export function attendance(punches: Punch[]) {

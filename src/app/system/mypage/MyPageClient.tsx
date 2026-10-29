@@ -31,8 +31,8 @@ export default function MyPageClient({ initialTab, embedded = false, registered,
     <div className={styles.standalonePanel}>
       {activeTab === "profile" && <ProfileTab registered={registered} birthdayRegistered={birthdayRegistered} profile={profile} onUnlocked={setProfile} />}
       {activeTab === "attendance" && <AttendanceTab registered={registered} employeeName={employeeName} canViewSync={canViewSync} needsExtension={needsExtension} />}
-      {activeTab === "shift" && <ShiftTab />}
-      {activeTab === "zenkaku" && <ZenkakuTab postalDataStatus={postalDataStatus} />}
+      {activeTab === "shift" && <ShiftTab embedded={embedded} />}
+      {activeTab === "zenkaku" && <ZenkakuTab embedded={embedded} postalDataStatus={postalDataStatus} />}
     </div>
   </div>;
 }

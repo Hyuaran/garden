@@ -24,8 +24,8 @@ export default async function MyPage({searchParams}: {searchParams: Promise<{tab
  // 入社手続きの仕組みを始めた 2026-10-25 以降に入社した人で、まだ終わっていない人だけに出す（前からいる人には出さない）
  const newHire = typeof employee.hire_date === "string" && employee.hire_date >= ONBOARDING_START;
  const pending = tab === "profile" && newHire && await needsOnboarding(supabase,String(employee.employee_id));
- return <MyShell hideHeading={tab === "report"} tab={tab} name={String(employee.name ?? "")}>
+ return <MyShell tab={tab} name={String(employee.name ?? "")}>
  {pending && <section className={styles.card}><Link href="/system/onboarding?tab=self">入社手続きを進めてください</Link></section>}
- {tab === "report" ? <ApDailyReport /> : tab === "calls" ? <InnoveraCallsContent embedded /> : <MyPageSectionPage section={tab as MyPageTab} embedded />}
+ {(tab === "report" || tab === "review") ? <ApDailyReport history={tab === "review"} /> : tab === "calls" ? <InnoveraCallsContent embedded /> : <MyPageSectionPage section={tab as MyPageTab} embedded />}
  </MyShell>;
 }

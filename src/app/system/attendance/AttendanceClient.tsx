@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Modal from "@/app/system/_components/Modal/Modal";
 import { useEffect, useRef, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
@@ -16,6 +17,10 @@ const formatTime = (value: string) => new Intl.DateTimeFormat("ja-JP", {
 export default function AttendanceClient({ registered, employeeName, canViewSync, needsExtension = false, embedded = false }: {
   registered: boolean; employeeName: string | null; canViewSync: boolean; needsExtension?: boolean; embedded?: boolean;
 }) {
+  const [confirmation, setConfirmation] = useState<{ type: PunchType; openedAt: string } | null>(null);
+  const saving = useRef(false);
+  const name = employeeName?.trim().split(/[\s\u3000]+/).join(" ") ?? "";
+  const actions = { clock_in: ["出勤しますか？", "出勤する"], clock_out: ["退勤しますか？", "退勤する"], break_start: ["休憩を始めますか？", "休憩を始める"], break_end: ["休憩を終わりますか？", "休憩を終わる"] };
   const [punches, setPunches] = useState<AttendancePunch[]>([]);
   const [loading, setLoading] = useState(registered);
   const [listError, setListError] = useState<string | null>(null);
@@ -38,6 +43,8 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
   useEffect(() => { if (modal) dialogRef.current?.focus(); }, [modal]);
 
   async function savePunch(type: PunchType, clientId: string, extension?: string) {
+    if (saving.current) return;
+    saving.current = true;
     setModal({ type, clientId, phase: "saving", extension });
     try {
       const response = await fetch("/api/system/attendance/punch", {
@@ -55,6 +62,7 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
       setModal({ type, clientId, phase: "success", punchedAt: result.punch.punched_at });
       await loadPunches();
     } catch (error) { setModal({ type, clientId, phase: "error", extension, message: error instanceof Error ? error.message : "打刻を記録できませんでした" }); }
+    finally { saving.current = false; }
   }
   async function submitExtensionPunch() {
     if (!extensionDialog) return;
@@ -86,7 +94,7 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
       </section> : <>
         <section aria-label="打刻操作" className={styles.punchGrid}>
           {PUNCH_TYPES.map((type) => <button key={type} type="button" disabled={modal?.phase === "saving"}
-            className={styles[type]} onClick={() => punch(type)}>{PUNCH_LABELS[type]}</button>)}
+            className={styles[type]} onClick={() => setConfirmation({ type, openedAt: new Date().toISOString() })}>{PUNCH_LABELS[type]}</button>)}
         </section>
         <section className={styles.history}><h2>今日の打刻</h2>
           {listError && <p role="alert" className={styles.error}>{listError}</p>}
@@ -96,6 +104,7 @@ export default function AttendanceClient({ registered, employeeName, canViewSync
         </section>
       </>}
     </main>
+    {confirmation && <Modal title="打刻の確認" size="sm" onClose={() => setConfirmation(null)} actions={<><button type="button" data-modal-action="secondary" onClick={() => setConfirmation(null)}>やめる</button><button type="button" data-modal-action="primary" onClick={() => { const type = confirmation.type; setConfirmation(null); punch(type); }}>{actions[confirmation.type][1]}</button></>}><p {...CLARITY_MASK}>{name ? `${name}さん　` : ""}{actions[confirmation.type][0]}</p><p>{new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(confirmation.openedAt))}</p></Modal>}
     {extensionDialog && <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !extensionDialog.saving) setExtensionDialog(null); }} data-garden-modal="overlay">
       <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="extension-dialog-title" tabIndex={-1} ref={dialogRef} data-garden-modal="panel">
         <h2 id="extension-dialog-title">出勤</h2>

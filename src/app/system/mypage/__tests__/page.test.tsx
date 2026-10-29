@@ -58,6 +58,17 @@ describe("system mypage", () => {
     vi.restoreAllMocks();
     mocks.replace.mockReset();
   });
+  it("登録内容には出どころを出さず変更の有無を確認する", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ submissions: [], confirmedAt: new Date().toISOString() }) });
+    vi.stubGlobal("fetch", fetchMock);
+    renderMyPage({ ...baseProps, birthdayRegistered: false, initialProfile: { ...profile, current: { address: { payload: { full: "東京都" }, source: "roster", sourceRef: null, effectiveFrom: "2026-10-01" } } } });
+    expect(screen.queryByText(/出どころ/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "合っている" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "違う" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "変更する" }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "変更なし" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/system/mypage/profile-confirm", expect.objectContaining({ method: "POST", body: JSON.stringify({ category: "address" }) })));
+  });
   it("renders the mypage heading and only the gate before unlock", () => {
     renderMyPage();
     const breadcrumb = screen.getByRole("navigation", { name: "現在地" });

@@ -21,7 +21,7 @@ function WarningList({ issues }: { issues: GardenCheckIssue[] }) {
 const SIMPLE_REQUIRED_RULES = new Set(["R6", "R7", "R8", "R9"]);
 type PartnerCandidate = { code:string; label:string };
 
-export default function ZenkakuTab({ runCheck = runZenkakuCheck, postalDataStatus = null, now = new Date() }: { runCheck?: (salesId: string) => Promise<GardenCheckResult>; postalDataStatus?: PostalDatasetStatus | null; now?: Date }) {
+export default function ZenkakuTab({ embedded = false, runCheck = runZenkakuCheck, postalDataStatus = null, now = new Date() }: { embedded?: boolean; runCheck?: (salesId: string) => Promise<GardenCheckResult>; postalDataStatus?: PostalDatasetStatus | null; now?: Date }) {
   const [salesId, setSalesId] = useState("");
   const [checking, setChecking] = useState(false);
   const [inputError, setInputError] = useState("");
@@ -46,8 +46,8 @@ export default function ZenkakuTab({ runCheck = runZenkakuCheck, postalDataStatu
   const canProceed = result !== null && result.blocking.length === 0;
   const simpleRequired = result?.blocking.filter((issue) => SIMPLE_REQUIRED_RULES.has(issue.ruleId)).flatMap((issue) => issue.missingFields ?? []) ?? [];
   const explainedBlocking = result?.blocking.filter((issue) => !SIMPLE_REQUIRED_RULES.has(issue.ruleId)) ?? [];
-  return <section className={styles.zenkakuContent} aria-labelledby="zenkaku-title">
-    <div className={styles.card}><h2 id="zenkaku-title">前確依頼</h2><p className={styles.zenkakuLead}>営業IDを入力して、前確依頼に必要な項目を確認します。</p>
+  return <section className={styles.zenkakuContent} aria-label="前確依頼">
+    <div className={styles.card}>{!embedded && <h2 id="zenkaku-title">前確依頼</h2>}<p className={styles.zenkakuLead}>営業IDを入力して、前確依頼に必要な項目を確認します。</p>
       <p className={styles.postalStatus}>郵便番号データ：{formatPostalDatasetDate(postalDataStatus?.sourceDate ?? null)}</p>
       {isPostalDatasetStale(postalDataStatus?.sourceDate ?? null, now) ? <p className={styles.postalWarning}>郵便番号データが古い可能性があります</p> : null}
       <div className={styles.checkForm}><label htmlFor="zenkaku-sales-id">営業ID</label><input id="zenkaku-sales-id" value={salesId} onChange={(event) => setSalesId(event.target.value)} disabled={checking}/>

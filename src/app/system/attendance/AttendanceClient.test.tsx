@@ -8,6 +8,23 @@ describe("AttendanceClient", () => {
   });
   afterEach(() => { vi.unstubAllGlobals(); });
 
+  it.each([
+    ["出勤", "出勤しますか？", "出勤する"], ["退勤", "退勤しますか？", "退勤する"],
+    ["休憩開始", "休憩を始めますか？", "休憩を始める"], ["休憩終了", "休憩を終わりますか？", "休憩を終わる"],
+  ])("%sの確認を取り消すと送信しない", async (label, question, action) => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ punches: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AttendanceClient registered employeeName="東海林　 美琴" canViewSync={false}/>);
+    await screen.findByText("まだ打刻はありません。");
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("東海林 美琴さん");
+    expect(screen.getByRole("dialog")).toHaveTextContent(question);
+    expect(screen.getByRole("button", { name: action })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "やめる" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the unregistered message without punch buttons", () => {
     render(<AttendanceClient registered={false} employeeName={null} canViewSync={false}/>);
     expect(screen.getByText(/打刻対象の従業員として登録されていません/)).toBeInTheDocument();
@@ -34,7 +51,7 @@ describe("AttendanceClient", () => {
     expect(screen.getByRole("link", { name: "同期状況" })).toBeInTheDocument();
   });
 
-  it("opens immediately in saving state and confirms only after the server response", async () => {
+  it("asks for confirmation then enters saving state and confirms only after the server response", async () => {
     let resolvePunch!: (response: Response) => void;
     const punchPromise = new Promise<Response>((resolve) => { resolvePunch = resolve; });
     const fetchMock = vi.fn()
@@ -45,6 +62,9 @@ describe("AttendanceClient", () => {
     render(<AttendanceClient registered employeeName="社員A" canViewSync={false}/>);
     await waitFor(() => expect(screen.getByText("まだ打刻はありません。")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "出勤" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("出勤しますか？");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "出勤する" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("出勤を記録しています");
     expect(screen.queryByText("出勤を記録しました")).not.toBeInTheDocument();
     resolvePunch(new Response(JSON.stringify({ ok: true, punch: { punched_at: "2026-08-13T01:03:07Z" } }), { status: 201 }));
@@ -68,6 +88,7 @@ describe("AttendanceClient", () => {
     render(<AttendanceClient registered employeeName="社員A" canViewSync={false}/>);
     await waitFor(() => expect(screen.getByText("まだ打刻はありません。")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "退勤" }));
+    fireEvent.click(screen.getByRole("button", { name: "退勤する" }));
     await waitFor(() => expect(screen.getByText(/もう一度押してください/)).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "再試行" }));
     await waitFor(() => expect(screen.getByText("退勤を記録しました")).toBeInTheDocument());

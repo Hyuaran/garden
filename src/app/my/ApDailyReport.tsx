@@ -1,15 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import SystemTabs from '@/app/system/_components/SystemTabs/SystemTabs';
 import { FormPage, FormRow, RadioGroup, TextField, NumberField, TextArea, FixedValue, Stepper, SubmitButton, ResultMessage, RecentList, TimeRange } from '@/app/system/forms/_components/form-kit';
 import { buildMessage, coinKeys, fixedKind, minutes, type Report, type Kind } from './ap-daily-report';
 type Data = { record: Report | null; recent: Report[]; auto: Pick<Report,'start_time'|'end_time'|'work_minutes'|'calls'|'absent'|'prospect'|'effective_rate'> & Record<Kind,number>; totals: Record<Kind,number>; monthMinutes:number; employee:{name:string;number:string;kind:Kind|null} };
 const labels = ['コイン作成数','誘導約束','誘導中','明細確認依頼','トータルコイン'];
-export default function ApDailyReport() {
-  const query = useSearchParams();
-  const history = query.get('reportView') === 'history';
+export default function ApDailyReport({ history = false }: { history?: boolean }) {
   const [date,setDate] = useState(()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo'}).format(new Date()));
   const [data,setData] = useState<Data|null>(null), [report,setReport] = useState<Report|null>(null);
   const [loading,setLoading] = useState(true), [busy,setBusy] = useState(false), [result,setResult] = useState(''), [success,setSuccess] = useState(false);
@@ -38,9 +33,8 @@ export default function ApDailyReport() {
     } catch(e) { setResult(e instanceof Error ? e.message : '送信できませんでした'); }
     finally { sending.current=false; setBusy(false); }
   }
-  return <FormPage embedded title="日報" submitterName={data?.employee.name ?? ''} employeeNumber={data?.employee.number ?? ''}>
-    <SystemTabs aria-label="日報の表示">{[['today','今日の日報'],['history','振り返り']].map(([id,label])=><Link key={id} role="tab" aria-selected={history === (id === 'history')} href={'/my?tab=report&reportView='+id}>{label}</Link>)}</SystemTabs>
-    {history ? <RecentList title="振り返り（直近31日）" items={data?.recent.map(r=><div key={r.report_date}><strong>{r.report_date}</strong><FixedValue>{r.start_time.slice(0,5)}～{r.end_time.slice(0,5)}　{r.work_minutes/60}時間稼働<br/>総コール{r.calls}件・留守{r.absent}件・見込み{r.prospect}件・有効率{Number(r.effective_rate).toFixed(1)}%<br/>{r.kind === 'toss' ? 'トス' : '本日獲得'} {r.count}件{r.kind === 'closer' && <>　現状合計{Number(r.month_total).toFixed(1)}件　効率{Number(r.efficiency).toFixed(2)}</>}</FixedValue></div>)} /> : <>
+  return <FormPage embedded hideHeading title="AP日報" submitterName={data?.employee.name ?? ''} employeeNumber={data?.employee.number ?? ''}>
+    {history ? <RecentList title="直近31日" items={data?.recent.map(r=><div key={r.report_date}><strong>{r.report_date}</strong><FixedValue>{r.start_time.slice(0,5)}～{r.end_time.slice(0,5)}　{r.work_minutes/60}時間稼働<br/>総コール{r.calls}件・留守{r.absent}件・見込み{r.prospect}件・有効率{Number(r.effective_rate).toFixed(1)}%<br/>{r.kind === 'toss' ? 'トス' : '本日獲得'} {r.count}件{r.kind === 'closer' && <>　現状合計{Number(r.month_total).toFixed(1)}件　効率{Number(r.efficiency).toFixed(2)}</>}</FixedValue></div>)} /> : <>
       <FormRow grouped label="1 日付"><TextField aria-label="日付" type="date" value={date} disabled={busy} onChange={e=>{if(e.target.value) setDate(e.target.value);}} /></FormRow>
       {loading && <FixedValue>読み込み中...</FixedValue>}
       {current && data && <form onSubmit={e=>{e.preventDefault();void submit();}}><fieldset disabled={busy || loading}>
