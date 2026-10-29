@@ -3613,7 +3613,8 @@ table :is(td, th):is(.garden-cell-text, .garden-cell-fixed, .garden-cell-mark, .
 .garden-modal-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .garden-modal-heading > button { flex-shrink: 0; display: grid; place-items: center; padding: 6px; }
 [data-modal-actions] { display: flex !important; justify-content: flex-end !important; align-items: center; flex-wrap: wrap; gap: 12px !important; margin-top: 20px; }
-[data-garden-modal="panel"] button, button[data-modal-action] {
+/* 小窓の中のタブ（SystemTabs・role=tab）は下線のタブのままにする */
+[data-garden-modal="panel"] button:not([role="tab"]), button[data-modal-action] {
   border: 1px solid var(--line) !important;
   border-radius: 8px !important;
   background: var(--card) !important;
