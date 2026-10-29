@@ -8,16 +8,11 @@ import {
   type StatementSourceType,
 } from "../../_lib/statement-csv-parser";
 
-interface BankAccount {
-  account_id: string;
-  bank_name: string;
-  branch_name: string;
-  account_number: string;
-}
+import { type StatementBankAccount, statementAccountLabel } from "../statement-accounts";
 
 interface Props {
   open: boolean;
-  bankAccounts: BankAccount[];
+  bankAccounts: StatementBankAccount[];
   onClose: () => void;
   onImported: () => void;
 }
@@ -133,8 +128,8 @@ export function StatementImportModal({
             >
               <option value="">選択してください</option>
               {bankAccounts.map((a) => (
-                <option key={a.account_id} value={a.account_id}>
-                  {a.bank_name} {a.branch_name} {a.account_number}
+                <option key={a.id} value={a.id}>
+                  {statementAccountLabel(a)}
                 </option>
               ))}
             </select>

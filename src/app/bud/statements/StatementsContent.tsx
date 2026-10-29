@@ -5,7 +5,7 @@ import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useBudState } from "../_state/BudStateContext";
-import { supabase } from "../_lib/supabase";
+import { useStatementAccounts, statementAccountLabel } from "./statement-accounts";
 import {
   fetchStatementList,
   type BudStatementRow,
@@ -13,17 +13,10 @@ import {
 import { StatementImportModal } from "./_components/StatementImportModal";
 import { ManualAssignModal } from "./_components/ManualAssignModal";
 
-interface BankAccount {
-  account_id: string;
-  bank_name: string;
-  branch_name: string;
-  account_number: string;
-}
-
 export default function StatementsContent() {
   const { sessionUser } = useBudState();
   const [statements, setStatements] = useState<BudStatementRow[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const { bankAccounts, accountError } = useStatementAccounts();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "matched" | "unmatched">("all");
@@ -33,19 +26,6 @@ export default function StatementsContent() {
   const [importOpen, setImportOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<BudStatementRow | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("root_bank_accounts")
-        .select("account_id, bank_name, branch_name, account_number")
-        .order("bank_name");
-      if (!cancelled) setBankAccounts((data ?? []) as BankAccount[]);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,8 +101,8 @@ export default function StatementsContent() {
           <ChoiceFilter label="銀行" value={bankFilter} onValueChange={value => setBankFilter(value)}>
             <option value="">すべて</option>
             {bankAccounts.map((a) => (
-              <option key={a.account_id} value={a.account_id}>
-                {a.bank_name} {a.account_number}
+              <option key={a.id} value={a.id}>
+                {statementAccountLabel(a)}
               </option>
             ))}
           </ChoiceFilter>
@@ -145,6 +125,7 @@ export default function StatementsContent() {
         </div>
       </FilterRow>
 
+      {accountError && <div role="alert">{accountError}</div>}
       {loading ? (
         <div className="text-center py-8 text-gray-500">読み込み中…</div>
       ) : error ? (

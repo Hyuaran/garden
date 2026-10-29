@@ -5,17 +5,11 @@ import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useEffect, useMemo, useState } from "react";
 import { useBudState } from "../../_state/BudStateContext";
-import { supabase } from "../../_lib/supabase";
+import { useStatementAccounts, statementAccountLabel } from "../statement-accounts";
 import {
   fetchImportBatches,
   type BudStatementImportBatchRow,
 } from "../../_lib/statement-queries";
-
-interface BankAccount {
-  account_id: string;
-  bank_name: string;
-  account_number: string;
-}
 
 const SOURCE_TYPE_LABELS: Record<string, string> = {
   rakuten_csv: "楽天銀行",
@@ -39,24 +33,11 @@ const STATUS_BG: Record<string, string> = {
 export default function StatementsImportsContent() {
   const { sessionUser } = useBudState();
   const [batches, setBatches] = useState<BudStatementImportBatchRow[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const { bankAccounts, accountError } = useStatementAccounts();
   const [bankFilter, setBankFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("root_bank_accounts")
-        .select("account_id, bank_name, account_number")
-        .order("bank_name");
-      if (!cancelled) setBankAccounts((data ?? []) as BankAccount[]);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +61,7 @@ export default function StatementsImportsContent() {
   const bankNameMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const a of bankAccounts) {
-      m.set(a.account_id, `${a.bank_name} ${a.account_number}`);
+      m.set(a.id, statementAccountLabel(a));
     }
     return m;
   }, [bankAccounts]);
@@ -97,14 +78,15 @@ export default function StatementsImportsContent() {
           <ChoiceFilter label="銀行" value={bankFilter} onValueChange={value => setBankFilter(value)}>
             <option value="">すべて</option>
             {bankAccounts.map((a) => (
-              <option key={a.account_id} value={a.account_id}>
-                {a.bank_name} {a.account_number}
+              <option key={a.id} value={a.id}>
+                {statementAccountLabel(a)}
               </option>
             ))}
           </ChoiceFilter>
         </div>
       </FilterRow>
 
+      {accountError && <div role="alert">{accountError}</div>}
       {loading ? (
         <div className="text-center py-8 text-gray-500">読み込み中…</div>
       ) : error ? (

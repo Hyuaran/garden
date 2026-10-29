@@ -3,7 +3,7 @@
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useEffect, useMemo, useState } from "react";
 import { useBudState } from "../../_state/BudStateContext";
-import { supabase } from "../../_lib/supabase";
+import { useStatementAccounts, statementAccountLabel } from "../statement-accounts";
 import {
   fetchStatementList,
   type BudStatementRow,
@@ -16,12 +16,6 @@ import {
   monthBoundary,
 } from "../../_lib/statement-aggregator";
 
-interface BankAccount {
-  account_id: string;
-  bank_name: string;
-  account_number: string;
-}
-
 function defaultMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -30,24 +24,11 @@ function defaultMonth(): string {
 export default function StatementsSummaryContent() {
   const { sessionUser } = useBudState();
   const [yyyymm, setYyyymm] = useState(defaultMonth());
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const { bankAccounts, accountError } = useStatementAccounts();
   const [statements, setStatements] = useState<BudStatementRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("root_bank_accounts")
-        .select("account_id, bank_name, account_number")
-        .order("bank_name");
-      if (!cancelled) setBankAccounts((data ?? []) as BankAccount[]);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const range = useMemo(() => monthBoundary(yyyymm), [yyyymm]);
 
@@ -82,7 +63,7 @@ export default function StatementsSummaryContent() {
   const bankNameMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const a of bankAccounts) {
-      m.set(a.account_id, `${a.bank_name} ${a.account_number}`);
+      m.set(a.id, statementAccountLabel(a));
     }
     return m;
   }, [bankAccounts]);
@@ -121,6 +102,7 @@ export default function StatementsSummaryContent() {
         )}
       </section>
 
+      {accountError && <div role="alert">{accountError}</div>}
       {loading ? (
         <div className="text-center py-8 text-gray-500">読み込み中…</div>
       ) : error ? (
