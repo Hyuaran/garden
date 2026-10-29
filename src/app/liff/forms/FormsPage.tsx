@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { FormPage, FormRow, RadioGroup, TextField, TextArea, FixedValue, SubmitButton, ResultMessage, RecentList, ActionButton } from '@/app/system/forms/_components/form-kit';
 import { submissionFields } from '@/app/system/mypage/_lib/submission-fields';
 import { validateSubmission, type SubmissionRow } from '@/app/system/mypage/_lib/submission-types';
+import { CurrentRegistrationValue } from '@/app/system/mypage/_components/CurrentRegistrationValue';
 type Kind = 'commute_route' | 'bank_account';
 const labels: Record<Kind,string> = {commute_route:'通勤経路の変更',bank_account:'給与受取口座の変更'};
 const statuses = {received:'受付',in_progress:'対応中',amount_proposing:'金額提案中',awaiting_employee:'本人確認待ち',completed:'完了',confirmed:'確認済み',withdrawn:'取り下げ'};
@@ -13,6 +14,7 @@ export default function FormsPage() {
  const started = useRef(false), submitting = useRef(false), token = useRef<string|null>(null);
  const [name,setName]=useState(''), [ready,setReady]=useState(false);
  const [message,setMessage]=useState(id?'確認中です':'準備中です');
+ const [current,setCurrent]=useState<Record<Kind,string>>({commute_route:'未登録',bank_account:'未登録'});
  const [type,setType]=useState<Kind>('commute_route');
  const [drafts,setDrafts]=useState<Record<Kind,Record<string,string>>>({commute_route:{},bank_account:{}});
  const [rows,setRows]=useState<SubmissionRow[]>([]),[sending,setSending]=useState(false),[result,setResult]=useState(''),[success,setSuccess]=useState(false);
@@ -27,7 +29,7 @@ export default function FormsPage() {
    const response=await fetch('/api/liff/submissions',{headers:{Authorization:'Bearer '+(token.current||'')},cache:'no-store'});
    const data=await response.json();
    if (!response.ok) {setMessage(response.status===401||response.status===403?'この画面は従業員の方だけが使えます':data.error||'確認できませんでした。時間をおいてもう一度お試しください。');return;}
-   setName(String(data.name).trim().split(/[\s　]+/)[0]);setRows(data.rows||[]);setReady(true);
+   setName(String(data.name).trim().split(/[\s　]+/)[0]);setRows(data.rows||[]);if(data.current)setCurrent(data.current);setReady(true);
   } catch {setMessage('確認できませんでした。時間をおいてもう一度お試しください。');}
  }
  async function submit(event:FormEvent) {
@@ -42,7 +44,7 @@ export default function FormsPage() {
   finally {submitting.current=false;setSending(false);}
  }
  return <div style={{maxWidth:560,margin:'0 auto',padding:16}}><FormPage title={name?name+'さんの申告':'申告'} submitterName="" employeeNumber="" embedded>
- {!ready?<FixedValue>{message}</FixedValue>:<><form onSubmit={submit}>
+ {!ready?<FixedValue>{message}</FixedValue>:<><FormRow label="今の登録内容" expanded><div><h3>{type==='commute_route'?'交通費':'給与受取口座'}</h3><CurrentRegistrationValue text={current[type]}/></div></FormRow><form onSubmit={submit}>
  <FormRow label="1 申告の種類"><RadioGroup name="submission-type" label="申告の種類" options={Object.values(labels)} value={labels[type]} onChange={value=>{if(!sending){setType(value===labels.commute_route?'commute_route':'bank_account');setResult('');}}}/></FormRow>
  {submissionFields[type].map(([key,label,input,optional],index)=><FormRow key={key} label={<label htmlFor={'submission-'+key}>{index+2} {label}</label>}>
  {input==='textarea'?<TextArea id={'submission-'+key} value={drafts[type][key]||''} disabled={sending} onChange={e=>setDrafts({...drafts,[type]:{...drafts[type],[key]:e.target.value}})}/>:<TextField id={'submission-'+key} type={input} required={!optional} disabled={sending} value={drafts[type][key]||''} onChange={e=>setDrafts({...drafts,[type]:{...drafts[type],[key]:e.target.value}})}/>}

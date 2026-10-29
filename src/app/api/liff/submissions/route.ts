@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { verifyLiffEmployee } from '@/lib/line/liff-verify.server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { createSubmission } from '@/app/system/mypage/_lib/create-submission.server';
+import { getCurrentProfile } from '@/app/root/_lib/profile-history.server';
+import { registrationText } from '@/app/system/mypage/_lib/current-registration';
 export const runtime = 'nodejs';
 const types = ['commute_route', 'bank_account'];
 const headers = {'Cache-Control':'no-store'};
@@ -11,10 +13,15 @@ async function authenticate(request: Request, body?: {idToken?: unknown} | null)
 export async function GET(request: Request) {
  const employee = await authenticate(request);
  if (employee instanceof Response) return employee;
- const {data, error} = await getSupabaseAdmin().from('system_mypage_submissions')
+ try {
+ const admin = getSupabaseAdmin();
+ const current = await getCurrentProfile(admin, employee.employee_id, false);
+ const registration = {commute_route:registrationText('commute',current.commute?.payload),bank_account:registrationText('bank_account',current.bank_account?.payload)};
+ const {data, error} = await admin.from('system_mypage_submissions')
  .select('id,submission_type,status,created_at').eq('employee_id', employee.employee_id)
  .in('submission_type', types).order('created_at', {ascending:false}).limit(10);
- return NextResponse.json(error ? {ok:false,error:'申告を読み込めませんでした。'} : {ok:true,name:employee.name,rows:data}, {status:error?500:200,headers});
+ return NextResponse.json(error ? {ok:false,error:'申告を読み込めませんでした。'} : {ok:true,name:employee.name,rows:data,current:registration}, {status:error?500:200,headers});
+ } catch {return NextResponse.json({ok:false,error:'申告を読み込めませんでした。'}, {status:500,headers});}
 }
 export async function POST(request: Request) {
  const body = await request.json().catch(()=>null);

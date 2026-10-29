@@ -26,3 +26,17 @@ it.each(['commute_route','bank_account'])('delegates %s to the mypage save funct
  expect(m.create).toHaveBeenCalledWith(expect.objectContaining({employee_id:'E1'}),{type,payload:{station:'駅'}});
 });
 it('fails closed if the limiter is unavailable',async()=>{m.db.mockReturnValue({rpc:vi.fn().mockResolvedValue({error:{message:'offline'}})});expect((await POST(req({submission_type:'bank_account'}))).status).toBe(503);expect(m.create).not.toHaveBeenCalled();});
+
+it('returns only masked current registration without source or other profile fields',async()=>{
+ const q={select:vi.fn().mockReturnThis(),eq:vi.fn().mockReturnThis(),in:vi.fn().mockReturnThis(),order:vi.fn().mockReturnThis(),limit:vi.fn().mockResolvedValue({data:[],error:null})};
+ const profile={select:vi.fn().mockReturnThis(),eq:vi.fn().mockResolvedValue({data:[{category:'bank_account',payload:{bank_name:'銀行',account_number:'1234567',secret:'private'},source:'admin'},{category:'contact',payload:{phone:'09012345678'}}]})};
+ m.db.mockReturnValue({from:(table:string)=>table==='root_employee_profile_current'?profile:q});
+ const response=await GET(new Request('http://localhost/api/liff/submissions'));
+ const body=await response.json();expect(body.current).toEqual({commute_route:'未登録',bank_account:'銀行 ****4567'});
+ expect(JSON.stringify(body)).not.toMatch(/1234567|private|09012345678|admin/);
+ expect(profile.eq).toHaveBeenCalledWith('employee_id','E1');
+});
+it('returns a controlled error when current profile cannot be read',async()=>{
+ m.db.mockReturnValue({from:()=>({select:()=>({eq:async()=>({error:new Error('offline')})})})});
+ expect((await GET(new Request('http://localhost/api/liff/submissions'))).status).toBe(500);
+});

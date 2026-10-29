@@ -19,3 +19,14 @@ it('uses surname, validates, submits once and adds history without refetch',asyn
  await waitFor(()=>expect(fetch).toHaveBeenCalledTimes(2));expect(screen.getByText(/2026\/10\/29.*受付/)).toBeInTheDocument();
  expect(JSON.parse(fetch.mock.calls[1][1].body)).toMatchObject({submission_type:'commute_route',payload:{station:'新宿',effectiveDate:'2026-11-01'}});
 });
+
+it('switches current registration by selected kind without fetching again',async()=>{
+ const fetch=vi.fn().mockResolvedValue(Response.json({name:'山田 太郎',rows:[],current:{commute_route:'日額 400円（片道 200円・上限なし） / 最寄り駅：新宿',bank_account:'銀行 支店 普通 ****4567'}}));
+ vi.stubGlobal('fetch',fetch);render(<FormsPage/>);fireEvent.click(screen.getByText('ready'));
+ expect(await screen.findByText(/日額 400円/)).toBeInTheDocument();expect(screen.queryByText('銀行 支店 普通 ****4567')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('radio',{name:'給与受取口座の変更'}));expect(screen.getByText('銀行 支店 普通 ****4567')).toBeInTheDocument();expect(screen.queryByText(/日額 400円/)).not.toBeInTheDocument();expect(fetch).toHaveBeenCalledTimes(1);
+});
+it('shows unregistered for missing current registration',async()=>{
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({name:'山田',rows:[]})));render(<FormsPage/>);fireEvent.click(screen.getByText('ready'));
+ expect(await screen.findByText('未登録')).toBeInTheDocument();fireEvent.click(screen.getByRole('radio',{name:'給与受取口座の変更'}));expect(screen.getByText('未登録')).toBeInTheDocument();
+});
