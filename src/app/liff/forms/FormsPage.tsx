@@ -4,11 +4,11 @@ import LiffLoading from '../_components/LiffLoading';
 import { useRef, useState, type FormEvent } from 'react';
 import { FormPage, FormRow, RadioGroup, TextField, TextArea, FixedValue, SubmitButton, ResultMessage, RecentList, ActionButton } from '@/app/system/forms/_components/form-kit';
 import { submissionFields } from '@/app/system/mypage/_lib/submission-fields';
-import { validateSubmission, type SubmissionRow } from '@/app/system/mypage/_lib/submission-types';
+import { validateSubmission, SUBMISSION_STATUS_LABELS, type SubmissionRow } from '@/app/system/mypage/_lib/submission-types';
 import { CurrentRegistrationValue } from '@/app/system/mypage/_components/CurrentRegistrationValue';
 type Kind = 'commute_route' | 'bank_account';
 const labels: Record<Kind,string> = {commute_route:'通勤経路の変更',bank_account:'給与受取口座の変更'};
-const statuses = {received:'受付',in_progress:'対応中',amount_proposing:'金額提案中',awaiting_employee:'本人確認待ち',completed:'完了',confirmed:'確認済み',withdrawn:'取り下げ'};
+const statuses = SUBMISSION_STATUS_LABELS;
 type Liff = {init:(options:{liffId:string})=>Promise<void>;isInClient:()=>boolean;isLoggedIn:()=>boolean;getIDToken:()=>string|null};
 export default function FormsPage() {
  const id = process.env.NEXT_PUBLIC_LIFF_FORMS_ID;

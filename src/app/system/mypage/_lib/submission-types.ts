@@ -6,6 +6,16 @@ export const SUBMISSION_LABELS = {
   nda: "秘密保持誓約書",
 } as const;
 export type SubmissionType = keyof typeof SUBMISSION_LABELS;
+/** 届出の状態の言葉（受信箱・LINE の申告ページ・マイページで共通）。 */
+export const SUBMISSION_STATUS_LABELS: Record<string, string> = {
+  received: "受付済み",
+  in_progress: "対応中",
+  amount_proposing: "金額提案中",
+  awaiting_employee: "本人承諾待ち",
+  completed: "完了",
+  confirmed: "確定",
+  withdrawn: "取り下げ",
+};
 export type SubmissionStatus =
   | "received"
   | "in_progress"

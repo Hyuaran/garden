@@ -7,17 +7,10 @@ import { PageHeader } from "../_components/PageHeader";
 import {
   SUBMISSION_LABELS,
   type SubmissionRow,
+  SUBMISSION_STATUS_LABELS,
 } from "@/app/system/mypage/_lib/submission-types";
 import { colors } from "../_constants/colors";
-const STATUS: Record<string, string> = {
-  received: "受付済み",
-  in_progress: "対応中",
-  amount_proposing: "金額提案中",
-  awaiting_employee: "本人承諾待ち",
-  completed: "完了",
-  confirmed: "確定",
-  withdrawn: "取り下げ",
-};
+const STATUS = SUBMISSION_STATUS_LABELS;
 export default function InboxPage() {
   const [rows, setRows] = useState<SubmissionRow[]>([]),
     [type, setType] = useState(""),
