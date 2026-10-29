@@ -42,7 +42,9 @@ async function main() {
         people.push({employeeNumber:employee.employee_number, changes:[], errors:['名簿に該当レコードがありません']});
         continue;
       }
-      const result = await pushEmployeeToRoster(employee.employee_id, {supabase:db, dryRun:true, currentRecord});
+      let result;
+      try { result = await pushEmployeeToRoster(employee.employee_id, {supabase:db, dryRun:true, currentRecord}); }
+      catch (error) { people.push({employeeNumber:employee.employee_number, changes:[], errors:[error instanceof Error ? error.message : String(error)]}); continue; }
       const changes = result.changes.map(({code, from, to}) => ({code, from:mask(code, from), to:mask(code, to)}));
       for (const change of changes) counts[change.code] = (counts[change.code] ?? 0) + 1;
       people.push({employeeNumber:employee.employee_number, changes, skipped:result.skipped, errors:result.errors});

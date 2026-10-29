@@ -38,6 +38,8 @@ export function diffRosterRecord(employee: Payload, mapped: RosterRecord, curren
       || Object.values(ROSTER_FIELDS.address).includes(code) && addressSource !== 'admin'
       || [...Object.values(ROSTER_FIELDS.bank_account), ...Object.values(ROSTER_FIELDS.sub_account)].includes(code) && !BANK_SOURCES.includes(String(bankSource))
       || ['従業員名_姓','従業員名_名'].includes(code) && sameRosterValue('従業員名_姓名', current.従業員名_姓名?.value, employee.name);
+    // 退職した人のチームは送らない（Kintone の最後のチームを残す）
+    if ((code === 'チーム名' || code === 'テーブル') && employee.is_active === false) skip = true;
     if (code === 'チーム名') skip ||= sameTeam(from, currentTeam(teams) ?? '所属なし');
     if (code === 'テーブル') {
       const rows = (Array.isArray(from) ? from : []) as {id?: string; value: RosterRecord}[];
@@ -119,6 +121,12 @@ export async function pushEmployeeToRoster(employeeId: string, options: Options 
   if (!options.dryRun && await getRosterDirection(db) !== 'garden_to_kintone') return { held: true, errors: [], changes: [], skipped: [] };
   const employee = await db.from('root_employees').select('*').eq('employee_id', employeeId).single();
   if (employee.error) throw employee.error;
+  // 同じ Kintone の行を指す別の記録（古い重複）が Garden にあるときは、在籍していない方からは写さない（本人を退職済みにしないため）
+  if (employee.data.roster_record_id && employee.data.is_active === false) {
+    const others = await db.from('root_employees').select('employee_id').eq('roster_record_id', employee.data.roster_record_id).neq('employee_id', employeeId).eq('is_active', true);
+    if (others.error) throw others.error;
+    if (others.data?.length) throw new MissingRosterRecord(`同じ名簿の行を在籍中の ${others.data.map(r => r.employee_id).join('・')} が使っています（重複の記録）`);
+  }
   const profiles = await db.from('root_employee_profile_current').select('category,payload,source').eq('employee_id',employeeId);
   if (profiles.error) throw profiles.error;
   const teams = await db.from('root_employee_team_history').select('*').eq('employee_id',employeeId).order('effective_date').order('entered_at').order('id');
