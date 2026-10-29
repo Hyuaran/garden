@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { mapEmployeeToRosterRecord, queueRosterPush, retryRosterPushes, pushEmployeeToRoster } from './roster-push.server';
+import { diffRosterRecord, sameRosterValue, formatRosterValue, mapEmployeeToRosterRecord, queueRosterPush, retryRosterPushes, pushEmployeeToRoster } from './roster-push.server';
 import { mapRosterRecordToProfilePayloads, mapRosterRecordToRoot, writeRetirementToRoster } from './roster-sync.server';
 import { mergeProfileChanges, saveProfileChanges, validProfileChanges } from './roster-profile-edit.server';
 import { ROSTER_FIELDS } from './roster-fields';
@@ -49,10 +49,49 @@ const db = {
 };
 const options = () => ({supabase:db as unknown as SupabaseClient,fetchImpl:fetchMock as unknown as typeof fetch});
 const fetchMock = vi.fn();
+it('compares empty, width, whitespace and numeric formatting without losing zeroes',()=>{
+  for (const empty of [null, '', '　 ']) expect(sameRosterValue('銀行名_1','楽天銀行',empty)).toBe(true);
+  expect(sameRosterValue('x',' ABC１２３　','ＡＢＣ123')).toBe(true);
+  expect(sameRosterValue('従業員名_姓名','山田　 太郎','山田太郎')).toBe(true);
+  expect(sameRosterValue('連絡先','070-1234-5678','０７０１２３４５６７８')).toBe(true);
+  expect(formatRosterValue('連絡先','070-1234-5678','09087654321')).toBe('090-8765-4321');
+  expect(formatRosterValue('金融機関コード_1','0036','０００１')).toBe('0001');
+  expect(sameRosterValue('支店コード_1','001','1')).toBe(false);
+});
+it('only sends admin addresses and protects keys, placeholder emails and split names',()=>{
+  const mapped = {'郵便番号':{value:'1234567'},打刻ID:{value:'r923'},メールアドレス:{value:'emp@garden.internal'},従業員名_姓:{value:'山田'}};
+  const current = {従業員名_姓名:{value:'山田　太郎'}};
+  expect(diffRosterRecord({name:'山田 太郎'},mapped,current,'roster',[]).changes).toEqual([]);
+  expect(diffRosterRecord({name:'山田 太郎'},mapped,current,'admin',[]).changes.map(c=>c.code)).toEqual(['郵便番号']);
+});
+it.each(['アルバイト','正社員'])('preserves imported team aliases and table IDs for %s', employment=>{
+  const team = employment === 'アルバイト' ? '新人チーム' : '所属なし';
+  const row = {id:'existing',value:{日付_8:{value:'2020-01-01'},ドロップダウン_17:{value:'ヒュアラングループ'}}};
+  const teams = [{id:'1',employee_id:'EMP-1',team,effective_date:'2020-01-01',entered_at:'2020',entered_by:'x',source:'garden' as const,memo:null}];
+  const current = {チーム名:{value:'ヒュアラングループ'},テーブル:{value:[row]}};
+  const mapped = mapEmployeeToRosterRecord({employment_type:employment},{},teams).record;
+  const diff = diffRosterRecord({employment_type:employment},mapped,current,'roster',teams);
+  expect(diff.record).not.toHaveProperty('チーム名');expect(diff.record).not.toHaveProperty('テーブル');
+  teams.push({...teams[0],id:'2',effective_date:'2021-01-01'});
+  const appended = diffRosterRecord({employment_type:employment},mapped,current,'roster',teams);
+  expect(appended.record.テーブル.value).toEqual([row,expect.objectContaining({value:expect.any(Object)})]);
+});
+it('dry run bypasses the switch without writes or fetching a supplied record',async()=>{
+  const currentRecord = mapEmployeeToRosterRecord(employee,{},[]).record;
+  const result = await pushEmployeeToRoster('EMP-1',{...options(),dryRun:true,currentRecord});
+  expect(result.changes).toEqual([]);expect(fetchMock).not.toHaveBeenCalled();expect(db.rpc).not.toHaveBeenCalled();
+});
+it('does not PUT when the current record has no differences',async()=>{
+  direction='garden_to_kintone';
+  const record = mapEmployeeToRosterRecord(employee,{},[]).record;
+  fetchMock.mockResolvedValue({ok:true,json:async()=>({record})});
+  await queueRosterPush('EMP-1','root_edit',options());
+  expect(fetchMock).toHaveBeenCalledTimes(1);expect(queue[0].status).toBe('done');
+});
 beforeEach(()=>{
   direction='kintone_to_garden';queue=[];history=[];profiles=[];
   employee={employee_id:'EMP-1',name:'山田 太郎',employment_type:'正社員',is_active:true,roster_record_id:'12'};
-  fetchMock.mockReset().mockResolvedValue({ok:true});db.rpc.mockClear();
+  fetchMock.mockReset().mockResolvedValue({ok:true,json:async()=>({record:{}})});db.rpc.mockClear();
   vi.stubEnv('KINTONE_SUBDOMAIN','test');vi.stubEnv('KINTONE_EMPLOYEE_ROSTER_TOKEN','mock');
 });
 it('round trips every imported writable profile field and excludes protected fields',()=>{
@@ -81,7 +120,7 @@ it('holds and deduplicates without any external writes',async()=>{
 it('sends held rows after switching and records invalid choices',async()=>{
   await queueRosterPush('EMP-1','root_edit',options());direction='garden_to_kintone';profiles=[{employee_id:'EMP-1',category:'employment',payload:{business:'bad'}}];
   await retryRosterPushes(options());expect(queue[0].status).toBe('done');expect(queue[0].last_error).toContain('Kintone');
-  expect(fetchMock).toHaveBeenCalledTimes(1);expect(JSON.parse(fetchMock.mock.calls[0][1].body).id).toBe('12');
+  expect(fetchMock).toHaveBeenCalledTimes(2);expect(JSON.parse(fetchMock.mock.calls[1][1].body).id).toBe('12');
 });
 it('keeps failures pending and stops after five attempts',async()=>{
   direction='garden_to_kintone';fetchMock.mockResolvedValue({ok:false,status:503});
@@ -96,11 +135,11 @@ it('fails permanently when a KOT search finds no roster record',async()=>{
 it('stores a found roster ID before updating that record',async()=>{
   direction='garden_to_kintone';employee.roster_record_id=null;employee.kot_employee_id='0001';
   fetchMock.mockResolvedValueOnce({ok:true,json:async()=>({records:[{$id:{value:'99'}}]})}).mockImplementationOnce(async()=>{
-    expect(employee.roster_record_id).toBe('99');return {ok:true};
+    expect(employee.roster_record_id).toBe('99');return {ok:true,json:async()=>({record:{}})};
   });
   await queueRosterPush('EMP-1','root_edit',options());
-  expect(fetchMock).toHaveBeenCalledTimes(2);expect(queue[0].status).toBe('done');
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body).id).toBe('99');
+  expect(fetchMock).toHaveBeenCalledTimes(3);expect(queue[0].status).toBe('done');
+  expect(JSON.parse(fetchMock.mock.calls[2][1].body).id).toBe('99');
 });
 it('defers a second sender when the same employee already has a lease',async()=>{
   direction='garden_to_kintone';

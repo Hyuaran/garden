@@ -404,6 +404,7 @@ describe("Garden権限の編集UI", () => {
       mocks.fetchEmployees.mockResolvedValue([employeeWithoutBank]);
       renderPage();
       await openEmployee();
+      fireEvent.click(screen.getByRole("tab", { name: "口座・通勤" }));
       bankLabels.forEach(label => expect(hasRequiredMark(label)).toBe(true));
       fireEvent.click(screen.getByRole("button", { name: "保存" }));
       expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(7);
@@ -412,7 +413,7 @@ describe("Garden権限の編集UI", () => {
 
       fireEvent.change(screen.getByLabelText("退職日"), { target: { value: "2026-06-30" } });
       bankLabels.forEach(label => expect(hasRequiredMark(label)).toBe(false));
-      expect(hasRequiredMark("口座種別")).toBe(false);
+      expect(screen.getByRole("radiogroup", { name: "口座種別" }).parentElement!.textContent).not.toContain("*");
       expect(screen.queryByText("必須")).not.toBeInTheDocument();
       expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
       expect(screen.queryByText(VALIDATION_ERROR_BANNER)).not.toBeInTheDocument();

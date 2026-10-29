@@ -1,6 +1,7 @@
 "use client";
 
 import { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes, ReactNode } from "react";
+import styles from "./form-field.module.css";
 import { colors } from "../_constants/colors";
 
 const labelStyle: React.CSSProperties = {
@@ -43,7 +44,7 @@ export function TextField({ label, required, error, ...rest }: CommonExtra & Inp
   return (
     <label style={{ display: "block", marginBottom: 12 }}>
       <span style={labelStyle}>{label}{required && <span style={{ color: colors.danger, marginLeft: 4 }}>*</span>}</span>
-      <input {...rest} style={inputStyle(!!error)} aria-invalid={!!error || undefined} />
+      <input {...rest} style={{...inputStyle(!!error), ...(rest.inputMode === "numeric" || rest.type === "number" ? {textAlign:"right"} : {})}} aria-invalid={!!error || undefined} />
       {error && <div style={errorTextStyle}>{error}</div>}
     </label>
   );
@@ -71,7 +72,7 @@ export function TextareaField({ label, required, error, ...rest }: CommonExtra &
 
 export function FormGrid({ children, cols = 2 }: { children: ReactNode; cols?: number }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: "0 16px" }}>
+    <div className={styles.grid} style={{ "--form-columns": cols } as React.CSSProperties}>
       {children}
     </div>
   );

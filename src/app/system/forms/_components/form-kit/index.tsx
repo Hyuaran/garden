@@ -26,3 +26,6 @@ export function ActionButton({ children, ...props }: ComponentProps<'button'>) {
 export function StatusBadge({ children, muted = false }: { children: ReactNode; muted?: boolean }) { return <span className={[styles.statusBadge, muted ? styles.statusMuted : ''].join(' ')}>{children}</span>; }
 /** 操作ボタンを横に並べる */
 export function ActionRow({ children }: { children: ReactNode }) { return <div className={styles.actionRow}>{children}</div>; }
+
+export function FieldGrid({ children }: {children: ReactNode}) { return <div className={styles.fieldGrid}>{children}</div>; }
+export function FieldLabel({ label, children }: {label: string; children: ReactNode}) { return <div className={styles.fieldLabel}><span>{label}</span>{children}</div>; }

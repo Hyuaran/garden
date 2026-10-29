@@ -3,7 +3,7 @@ import SystemTabs from '@/app/system/_components/SystemTabs/SystemTabs';
 import RosterProfileFields, {type ProfileDraft} from './RosterProfileFields';
 import TeamHistoryPanel from './TeamHistoryPanel';
 import { BUSINESSES } from '../_lib/team-history';
-import { FormRow as KitFormRow, SelectField as KitSelectField } from '@/app/system/forms/_components/form-kit';
+import { FormRow as KitFormRow, SelectField as KitSelectField, FieldLabel, RadioGroup } from '@/app/system/forms/_components/form-kit';
 
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
@@ -358,7 +358,7 @@ export default function EmployeesPage() {
   useEffect(() => {
     setProfileDraft({}); setProfileChanges({}); setProfileReady(false);
     bankBaselineRef.current = Object.fromEntries(Object.entries({bank_name:'bank_name',bank_code:'bank_code',branch_name:'branch_name',branch_code:'branch_code',account_type:'account_type',account_number:'account_number',account_holder_kana:'holder_kana'}).map(([key,source])=>[source,source === 'account_type' ? ({普通:'ordinary',当座:'current'} as Record<string,string>)[String(editTarget?.account_type)] ?? editTarget?.account_type : editTarget?.[key as keyof Employee]]));
-    setEditTab(new URLSearchParams(window.location.search).get('tab') || 'basic');
+    setEditTab('basic');
     if (!editEmployeeId) return;
     const controller = new AbortController();
     fetch('/api/root/employees/'+encodeURIComponent(editEmployeeId)+'/profile-history',{signal:controller.signal}).then(async response=>{
@@ -486,6 +486,10 @@ export default function EmployeesPage() {
     if (hasErrors(errs)) {
       setErrors(errs);
       setError(VALIDATION_ERROR_BANNER);
+      // 入力が足りない欄のあるタブを開く（口座1は「口座・通勤」タブにある）
+      const bankKeys = ["bank_name", "bank_code", "branch_name", "branch_code", "account_type", "account_number", "account_holder", "account_holder_kana"];
+      const errorKeys = Object.keys(errs).filter(key => errs[key as keyof typeof errs]);
+      setEditTab(errorKeys.length > 0 && errorKeys.every(key => bankKeys.includes(key)) ? 'bank' : 'basic');
       return;
     }
     try {
@@ -890,7 +894,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
       <Modal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleSave} title={editTarget?.created_at ? "従業員を編集" : "従業員を追加"} width={860}>
         {editTarget && (
           <div>
-            <SystemTabs>{[['basic','基本'],['address','住所・連絡先'],['bank','口座・通勤'],['employment','雇用の条件']].map(([id,label])=><button type="button" role="tab" aria-selected={editTab===id} key={id} onClick={()=>{setEditTab(id);const url=new URL(window.location.href);url.searchParams.set('tab',id);window.history.replaceState(null,'',url);}}>{label}</button>)}</SystemTabs>
+            <SystemTabs>{[['basic','基本'],['address','住所・連絡先'],['bank','口座・通勤'],['employment','雇用の条件']].map(([id,label])=><button type="button" role="tab" aria-selected={editTab===id} key={id} onClick={()=>setEditTab(id)}>{label}</button>)}</SystemTabs>
             {!profileReady && editTarget.created_at && <p>履歴を読み込み中です。</p>}
             <div hidden={editTab!=='basic'}>
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: colors.textMuted }}>基本情報</h3>
@@ -953,13 +957,11 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
             <div hidden={editTab!=='employment'}><RosterProfileFields categories={['employment']} draft={profileDraft} onChange={changeProfile} disabled={!canWrite || !profileReady}/></div>
             <div hidden={editTab!=='bank'}>
 
-            <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>振込先口座</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 600, margin: "16px 0 8px 0", color: colors.textMuted }}>口座1</h3>
             <FormGrid cols={3}>
               <TextField label="銀行名" required={bankRequired} value={editTarget.bank_name} onChange={(e) => setEditTarget({ ...editTarget, bank_name: e.target.value })} error={errors.bank_name} />
               <TextField label="金融機関コード（4桁）" required={bankRequired} maxLength={4} inputMode="numeric" value={editTarget.bank_code} onChange={(e) => setEditTarget({ ...editTarget, bank_code: e.target.value })} error={errors.bank_code} />
-              <SelectField label="口座種別" required={bankRequired} value={editTarget.account_type} onChange={(e) => setEditTarget({ ...editTarget, account_type: e.target.value })}>
-                {ACCOUNT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </SelectField>
+              <FieldLabel label="口座種別"><RadioGroup name="bank-account-type" label="口座種別" required={bankRequired} options={ACCOUNT_TYPES} value={editTarget.account_type} onChange={value => setEditTarget({...editTarget,account_type:value})}/></FieldLabel>
               <TextField label="支店名" required={bankRequired} value={editTarget.branch_name} onChange={(e) => setEditTarget({ ...editTarget, branch_name: e.target.value })} error={errors.branch_name} />
               <TextField label="支店コード（3桁）" required={bankRequired} maxLength={3} inputMode="numeric" value={editTarget.branch_code} onChange={(e) => setEditTarget({ ...editTarget, branch_code: e.target.value })} error={errors.branch_code} />
               <TextField label="口座番号（7桁）" required={bankRequired} maxLength={7} inputMode="numeric" value={editTarget.account_number} onChange={(e) => setEditTarget({ ...editTarget, account_number: e.target.value })} error={errors.account_number} />
