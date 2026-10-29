@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { decryptMyNumber } from '@/lib/my-number/crypto.server';
+afterEach(()=>vi.unstubAllEnvs());
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ createServerClient: vi.fn(), redirect: vi.fn() }));
 vi.mock("@/app/_lib/supabase/server", () => ({ createServerClient: mocks.createServerClient }));
@@ -24,7 +26,7 @@ function fixture() {
 }
 
 describe("入社手続きの本人専用保存", () => {
-  beforeEach(() => { vi.clearAllMocks(); mocks.redirect.mockImplementation((url: string) => { throw new Error(`redirect:${url}`); }); });
+  beforeEach(() => { vi.clearAllMocks(); vi.stubEnv('MY_NUMBER_ENCRYPTION_KEY',Buffer.alloc(32,1).toString('base64')); mocks.redirect.mockImplementation((url: string) => { throw new Error(`redirect:${url}`); }); });
   it("存在しないidのSELECTが42703になるDBでも、employee_idで本人を取得できる", async () => {
     const f = fixture();
     const invalid = await f.supabase.from("root_employees").select("id,name,name_kana,birthday").maybeSingle();
@@ -93,8 +95,8 @@ describe("入社手続きの本人専用保存", () => {
     ];
     await saveOnboarding(await onboardingEmployee(), input, false);
     expect(f.query.upsert.mock.calls[0][0].dependents).toEqual([
-      { name: "一人目", name_kana: "", my_number: "111122223333", relation: "子", birth_date: "", annual_income: "", occupation: "" },
-      { name: "二人目", name_kana: "", my_number: "777788889999", relation: "子", birth_date: "", annual_income: "", occupation: "" },
+      { name: "一人目", name_kana: "", my_number: "••••••••3333", my_number_secret: expect.any(Object), relation: "子", birth_date: "", annual_income: "", occupation: "" },
+      { name: "二人目", name_kana: "", my_number: "••••••••9999", my_number_secret: expect.any(Object), relation: "子", birth_date: "", annual_income: "", occupation: "" },
     ]);
   });
   it("認証と読み取り成功後に初期値入りフォームを描画する", async () => {
@@ -114,7 +116,9 @@ describe("入社手続きの本人専用保存", () => {
   it("型の注意があっても空欄でも保存でき、ユーザー指定IDを使わない", async () => {
     const f = fixture(); await saveOnboarding(await onboardingEmployee(), { ...emptyInput(), postal_code: "123", employee_id: "other", my_number: "123456789012" }, false);
     const [payload, options] = f.query.upsert.mock.calls[0];
-    expect(payload).toMatchObject({ employee_id: f.employee.employee_id, postal_code: "123", my_number: "123456789012", birth_date: null, previous_employer_from: null, previous_employer_to: null, status: "draft", nda_agreed_at: null, submitted_at: null });
+    expect(payload).toMatchObject({ employee_id: f.employee.employee_id, postal_code: "123", my_number: "••••••••9012", birth_date: null, previous_employer_from: null, previous_employer_to: null, status: "draft", nda_agreed_at: null, submitted_at: null });
+    expect(decryptMyNumber(payload.my_number_secret)).toBe('123456789012');
+    expect(JSON.stringify(payload)).not.toContain('123456789012');
     expect(payload).not.toHaveProperty("nda_agreed");
     expect(options).toEqual({ onConflict: "employee_id" });
     expect(f.supabase.from.mock.calls.every(([name]) => ["root_employees", "system_onboarding"].includes(name))).toBe(true);

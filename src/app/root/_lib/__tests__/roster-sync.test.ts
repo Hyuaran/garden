@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { decryptMyNumber, type EncryptedMyNumber } from '@/lib/my-number/crypto.server';
+beforeEach(()=>vi.stubEnv('MY_NUMBER_ENCRYPTION_KEY',Buffer.alloc(32,1).toString('base64')));
+afterEach(()=>vi.unstubAllEnvs());
 import { buildRosterSnapshot, existingNumberKey, getLatestRosterSyncLog, mapRosterRecordToProfilePayloads, mapRosterRecordToRoot, normalizeEmployeeNumber, normalizeEmploymentType, roleFromRoster } from "../roster-sync.server";
 import type { KintoneRecord } from "@/lib/kintone/records";
 
@@ -404,6 +407,8 @@ describe("roster profile history sync", () => {
       expect(first.snapshotRows).toBe(1);
       expect(first.historyRows).toBeGreaterThan(0);
       expect(first.myNumberRows).toBe(1);
+      expect(tables.myNumbers[0].my_number).toBeNull();
+      expect(decryptMyNumber(tables.myNumbers[0] as EncryptedMyNumber)).toBe('123456789012');
       expect(second.snapshotRows).toBe(0);
       expect(second.historyRows).toBe(0);
       expect(second.myNumberRows).toBe(0);

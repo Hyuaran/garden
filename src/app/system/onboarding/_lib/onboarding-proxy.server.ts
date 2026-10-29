@@ -1,4 +1,5 @@
 import "server-only";
+import { encryptOnboardingNumbers } from '@/lib/my-number/crypto.server';
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { initialInput, parseInput, STEPS, type OnboardingRecord } from "./onboarding";
@@ -48,9 +49,12 @@ export async function saveProxyOnboarding(context: Context, input: unknown, subm
     const date = values[key];
     payload[key] = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date ? date : null;
   }
+  const {data:previous,error:previousError} = context.sensitive ? await context.supabase.from('system_onboarding').select('my_number,my_number_secret,dependents').eq('employee_id',context.employee.employee_id).maybeSingle() : {data:null,error:null};
+  if(previousError) throw databaseError(previousError);
+  const protectedPayload = context.sensitive ? encryptOnboardingNumbers(payload, previous ?? {}) : payload;
   const { error } = await context.supabase.rpc("save_onboarding_proxy", {
     p_employee_id: context.employee.employee_id, p_actor: context.actor.viewer.employeeId,
-    p_actor_name: context.actor.name, p_step: Number(step), p_submit: submit, p_sensitive: context.sensitive, p_values: payload,
+    p_actor_name: context.actor.name, p_step: Number(step), p_submit: submit, p_sensitive: context.sensitive, p_values: protectedPayload,
   });
   if (error) {
     if (error.code === "P0001") throw new OnboardingError("提出ずみの入社手続きは代行入力できません。", 409);

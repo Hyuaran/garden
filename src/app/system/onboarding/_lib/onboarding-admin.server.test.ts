@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { encryptMyNumber } from '@/lib/my-number/crypto.server';
+afterEach(()=>vi.unstubAllEnvs());
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ getSupabaseAdmin: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: mocks.getSupabaseAdmin }));
@@ -95,9 +97,11 @@ describe("事務用入社手続きサーバー処理", () => {
   });
 
   it("見るactionは本人と扶養家族の全桁を返し、監査ログに12桁を入れない", async () => {
-    const systemQuery = chain({ data: { my_number: "123456785540", dependents: [{ my_number: "111122223333" }] }, error: null });
+    vi.stubEnv('MY_NUMBER_ENCRYPTION_KEY',Buffer.alloc(32,1).toString('base64'));
+    const systemQuery = chain({ data: { my_number_secret: encryptMyNumber('123456785540'), dependents: [{ my_number_secret: encryptMyNumber('111122223333') }] }, error: null });
     const auditQuery = chain({ error: null });
     const supabase = { from: vi.fn((table: string) => table === "root_audit_log" ? auditQuery : systemQuery) };
+    mocks.getSupabaseAdmin.mockReturnValue({from:(table:string)=>table==='my_number_viewers'?chain({data:{employee_id:'EMP-M'},error:null}):auditQuery});
 
     const self = await readMyNumberForAdmin({ supabase, managerEmployeeId: "EMP-M", sensitive: true } as unknown as AdminContext, "EMP-1", { kind: "self" });
     const dependent = await readMyNumberForAdmin({ supabase, managerEmployeeId: "EMP-M", sensitive: true } as unknown as AdminContext, "EMP-1", { kind: "dependent", index: 0 });

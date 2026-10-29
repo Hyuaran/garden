@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { statusOf } from '@/lib/line/tags';
-export async function verifyLiffEmployee(idToken: unknown) {
-  const liffId = (process.env.NEXT_PUBLIC_LIFF_SHIFT_ID || process.env.NEXT_PUBLIC_LIFF_FORMS_ID);
+export async function verifyLiffEmployee(idToken: unknown, purpose?: 'forms') {
+  const liffId = purpose === 'forms' ? process.env.NEXT_PUBLIC_LIFF_FORMS_ID : (process.env.NEXT_PUBLIC_LIFF_SHIFT_ID || process.env.NEXT_PUBLIC_LIFF_FORMS_ID);
   // LIFF ID prefix is the LINE Login channel ID, not the Messaging API channel.
   const clientId = liffId?.split('-')[0];
   if (!clientId || !/^\d+$/.test(clientId) || typeof idToken !== 'string' || !idToken || idToken.length > 10000) return NextResponse.json({}, { status: 401 });

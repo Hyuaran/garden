@@ -1,4 +1,6 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { decryptMyNumber } from '@/lib/my-number/crypto.server';
+afterEach(()=>vi.unstubAllEnvs());
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const mocks = vi.hoisted(() => ({ viewer: vi.fn(), canView: vi.fn(), admin: vi.fn() }));
@@ -11,6 +13,7 @@ const params = { params: Promise.resolve({ employeeId: "EMP-1" }) };
 let rpc: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.stubEnv('MY_NUMBER_ENCRYPTION_KEY',Buffer.alloc(32,1).toString('base64'));
   rpc = vi.fn().mockResolvedValue({ error: null });
   mocks.viewer.mockResolvedValue({ name: "責任者", viewer: { employeeId: "EMP-M", role: "manager" } });
   mocks.canView.mockResolvedValue(true);
@@ -44,4 +47,6 @@ it("super_adminの機微項目POSTは保存できる", async () => {
   mocks.viewer.mockResolvedValue({ name: "全権", viewer: { employeeId: "EMP-S", role: "super_admin" } });
   expect((await POST(request({ ...emptyInput(), my_number: "123456789012" }), params)).status).toBe(200);
   expect(rpc.mock.calls[0][1]).toMatchObject({ p_sensitive: true, p_actor: "EMP-S" });
+  expect(decryptMyNumber(rpc.mock.calls[0][1].p_values.my_number_secret)).toBe('123456789012');
+  expect(JSON.stringify(rpc.mock.calls)).not.toContain('123456789012');
 });

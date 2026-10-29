@@ -401,7 +401,7 @@ function parseYearFromIso(iso: string): number {
  * - 12 桁数字
  * - チェックデジット検証（行政手続番号利用法施行令 第 8 条）
  *
- * 注意: 本関数は形式バリデーションのみ。暗号化保管は SQL 関数 bud_encrypt_my_number 経由。
+ * 注意: 本関数は形式バリデーションのみ。番号の保管・表示は共通の my-number サーバー処理を使う。
  */
 export function validateMyNumberFormat(myNumber: string): {
   valid: boolean;

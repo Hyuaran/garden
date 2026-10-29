@@ -1,4 +1,5 @@
 import { rootViewNavigation } from "@/lib/auth/root-view.server";
+import { myNumberViewer } from '@/lib/my-number/access.server';
 import { ReactNode } from "react";
 import { RootShell } from "./_components/RootShell";
 import { RootGate } from "./_components/RootGate";
@@ -10,6 +11,7 @@ export const metadata = {
 
 export default async function Layout({ children }: { children: ReactNode }) {
   const viewAccess = await rootViewNavigation();
+  viewAccess['root-my-numbers'] = !!await myNumberViewer();
   return (
     <RootStateProvider viewAccess={viewAccess}>
       <RootGate>

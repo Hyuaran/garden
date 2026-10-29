@@ -1,4 +1,6 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { decryptMyNumber } from '@/lib/my-number/crypto.server';
+afterEach(()=>vi.unstubAllEnvs());
 import { readFileSync } from "node:fs";
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ viewer: vi.fn(), canView: vi.fn(), admin: vi.fn() }));
@@ -19,11 +21,12 @@ let row: ReturnType<typeof query>;
 let rpc: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.stubEnv('MY_NUMBER_ENCRYPTION_KEY',Buffer.alloc(32,1).toString('base64'));
   row = query(null);
   rpc = vi.fn().mockResolvedValue({ error: null });
   mocks.viewer.mockResolvedValue({ name: "東海林 美琴", viewer: { employeeId: "EMP-M", role: "manager" } });
   mocks.canView.mockResolvedValue(true);
-  mocks.admin.mockReturnValue({ from: (table: string) => table === "root_employees" ? query(employee) : row, rpc });
+  mocks.admin.mockReturnValue({ from: (table: string) => table === "root_employees" ? query(employee) : table === 'my_number_viewers' ? query(null) : row, rpc });
 });
 it("責任者は閲覧設定で許可されれば代行でき、トスも含め不許可なら管理者接続前に拒否", async () => {
   const context = await onboardingProxyContext("EMP-1");
@@ -70,7 +73,9 @@ it("super_adminは口座とマイナンバーを代行保存できる", async ()
   mocks.viewer.mockResolvedValue({ name: "全権", viewer: { employeeId: "EMP-S", role: "super_admin" } });
   const context = await onboardingProxyContext("EMP-1");
   await saveProxyOnboarding(context, { ...emptyInput(), bank_name: "銀行", my_number: "123456789012" }, false, 7);
-  expect(rpc.mock.calls[0][1]).toMatchObject({ p_sensitive: true, p_values: { bank_name: "銀行", my_number: "123456789012" } });
+  expect(rpc.mock.calls[0][1]).toMatchObject({ p_sensitive: true, p_values: { bank_name: "銀行", my_number: "••••••••9012" } });
+  expect(decryptMyNumber(rpc.mock.calls[0][1].p_values.my_number_secret)).toBe('123456789012');
+  expect(JSON.stringify(rpc.mock.calls)).not.toContain('123456789012');
 });
 it("提出済みの読み出しと、保存時の競合は409", async () => {
   row = query({ status: "submitted" });
@@ -96,6 +101,6 @@ it("既存の事務詳細・全桁表示・機微情報付き書類経由でも�
   const context = { supabase: proxy.supabase, managerEmployeeId: "EMP-M", sensitive: false } as AdminContext;
   const record = await readAdminOnboardingDetail(context, "EMP-1");
   expect(JSON.stringify(record)).not.toMatch(/秘密銀行|9012|••••/);
-  await expect(readMyNumberForAdmin(context, "EMP-1", { kind: "self" })).rejects.toMatchObject({ status: 403 });
+  await expect(readMyNumberForAdmin(context, "EMP-1", { kind: "self" })).rejects.toMatchObject({ status: 404 });
   await expect(readAdminOnboardingDetailForFuyou(context, "EMP-1")).rejects.toMatchObject({ status: 403 });
 });

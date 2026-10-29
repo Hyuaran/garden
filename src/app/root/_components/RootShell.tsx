@@ -32,6 +32,7 @@ export function RootShell({ children }: { children: ReactNode }) {
         <RootMenuIcon icon={HOME_MENU.icon} />
         {HOME_MENU.title}
       </Link>}
+      {viewAccess?.['root-my-numbers'] && <Link href="/root/my-numbers" className={pathname === '/root/my-numbers' ? systemStyles.active : undefined}><RootMenuIcon icon="home"/><span>マイナンバー</span></Link>}
       {menus.map((menu) => {
         const href = `/root/${menu.slug}`;
         const active = pathname === href || pathname?.startsWith(href + "/");

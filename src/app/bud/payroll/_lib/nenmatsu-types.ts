@@ -6,7 +6,7 @@
  *
  * 設計方針:
  *   - 1 月精算ベース（2026-04-26 改訂、年末手取り安定 + 賞与分離 + 退職者対応シンプル化）
- *   - PII 暗号化は SQL 側 helper（bud_encrypt_my_number / bud_decrypt_my_number）経由
+ *   - 個人番号の保管・表示は共通の my-number サーバー処理経由
  *   - 純関数は計算のみ、DB I/O は呼び出し元で実施
  */
 

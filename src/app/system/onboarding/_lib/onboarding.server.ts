@@ -1,4 +1,5 @@
 import "server-only";
+import { encryptOnboardingNumbers } from '@/lib/my-number/crypto.server';
 import { isOnboardingLoginTarget } from "./onboarding-login";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { initialInput, isMaskedMyNumber, maskMyNumber, parseInput, PREPARING_MESSAGE, TEXT_FIELDS, type Dependent, type OnboardingRecord } from "./onboarding";
@@ -21,7 +22,7 @@ export async function onboardingEmployee() {
   const employee: OnboardingEmployee = employeeResult.data;
   return { supabase, employee };
 }
-export const ONBOARDING_COLUMNS = [...TEXT_FIELDS, "dependents", "commute_routes", "status", "nda_agreed_at", "submitted_at"].join(",");
+export const ONBOARDING_COLUMNS = [...TEXT_FIELDS, "my_number_secret", "dependents", "commute_routes", "status", "nda_agreed_at", "submitted_at"].join(",");
 type Context = Awaited<ReturnType<typeof onboardingEmployee>>;
 
 async function readOnboardingRow({ supabase, employee }: Context) {
@@ -83,7 +84,7 @@ export async function saveOnboarding(context: Context, input: unknown, submit: b
   if (isMaskedMyNumber(fields.my_number)) delete (fields as Partial<typeof fields>).my_number;
   fields.dependents = mergeMaskedDependentMyNumbers(values.dependents, previousRow?.dependents);
   const { data, error } = await context.supabase.from("system_onboarding").upsert({
-    ...fields, employee_id: context.employee.employee_id, status: submit ? "submitted" : "draft",
+    ...encryptOnboardingNumbers(fields, previousRow ?? {}), employee_id: context.employee.employee_id, status: submit ? "submitted" : "draft",
     birth_date: dateOrNull(values.birth_date), previous_employer_from: dateOrNull(values.previous_employer_from), previous_employer_to: dateOrNull(values.previous_employer_to),
     nda_agreed_at: nda_agreed ? previous.ndaAgreedAt ?? now : null, submitted_at: submit ? now : null,
   }, { onConflict: "employee_id" }).select("status,nda_agreed_at,submitted_at").single();

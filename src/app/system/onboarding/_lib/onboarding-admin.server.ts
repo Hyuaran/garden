@@ -1,4 +1,6 @@
 import "server-only";
+import { isMyNumberViewer, logMyNumberAccess } from '@/lib/my-number/access.server';
+import { decryptMyNumber, type EncryptedMyNumber } from '@/lib/my-number/crypto.server';
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { createServerClient } from "@/app/_lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -98,7 +100,15 @@ export async function readAdminOnboardingDetailForFuyou(context: AdminContext, e
   if (error) throw databaseError(error);
   if (!data) return null;
   const employees = await readEmployees([employeeId]);
-  return recordFromRow(data as unknown as Record<string, unknown>, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null }, { maskMyNumbers: false });
+  // 書類にも番号を載せる場合は役職だけでは許可しない。
+  const row = data as unknown as Record<string, unknown>;
+  if (!await isMyNumberViewer(context.managerEmployeeId)) return recordFromRow(row, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null });
+  {
+    await logMyNumberAccess(context.managerEmployeeId, employeeId, 'display', '入社手続きの書類');
+    if(row.my_number_secret) row.my_number = decryptMyNumber(row.my_number_secret as EncryptedMyNumber);
+    if(Array.isArray(row.dependents)) row.dependents=row.dependents.map(item=>({...item,my_number:item.my_number_secret?decryptMyNumber(item.my_number_secret):''}));
+  }
+  return recordFromRow(row, employees.get(employeeId) ?? { employee_id: employeeId, name: null, hire_date: null, birthday: null, company_id: null }, { maskMyNumbers: false });
 }
 
 export async function saveAdminOnboarding(context: AdminContext, employeeId: string, input: unknown): Promise<AdminInput> {
@@ -170,25 +180,28 @@ export async function applyAdminOnboarding(context: AdminContext, employeeId: st
 }
 
 export async function readMyNumberForAdmin(context: AdminContext, employeeId: string, input: unknown) {
-  if (!context.sensitive) throw new OnboardingError("この項目は全権管理者だけが確認できます。", 403);
+  if (!await isMyNumberViewer(context.managerEmployeeId)) throw new OnboardingError("見つかりませんでした。", 404);
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new OnboardingError("表示する項目を確認してください。", 400);
   const body = input as Record<string, unknown>;
   const kind = body.kind === "dependent" ? "dependent" : body.kind === "self" ? "self" : "";
   if (!kind) throw new OnboardingError("表示する項目を確認してください。", 400);
-  const { data, error } = await context.supabase.from("system_onboarding").select("my_number,dependents").eq("employee_id", employeeId).maybeSingle();
+  const { data, error } = await context.supabase.from("system_onboarding").select("my_number_secret,dependents").eq("employee_id", employeeId).maybeSingle();
   if (error) throw databaseError(error);
   if (!data) throw new OnboardingError("入社手続きの入力が見つかりませんでした。", 404);
   const row = data as Record<string, unknown>;
   const payload: Record<string, unknown> = { kind };
   let value = "";
   if (kind === "self") {
-    value = typeof row.my_number === "string" ? row.my_number : "";
+    await logMyNumberAccess(context.managerEmployeeId, employeeId, 'display', '入社手続き・本人');
+    value = row.my_number_secret ? decryptMyNumber(row.my_number_secret as EncryptedMyNumber) : '';
   } else {
     const index = typeof body.index === "number" && Number.isInteger(body.index) ? body.index : -1;
     const dependents = Array.isArray(row.dependents) ? row.dependents : [];
     const dependent = dependents[index];
     if (!dependent || typeof dependent !== "object" || Array.isArray(dependent)) throw new OnboardingError("表示する項目を確認してください。", 400);
-    value = typeof (dependent as Record<string, unknown>).my_number === "string" ? String((dependent as Record<string, unknown>).my_number) : "";
+    await logMyNumberAccess(context.managerEmployeeId, employeeId, 'display', `入社手続き・扶養家族${index+1}`);
+    const secret = (dependent as Record<string,unknown>).my_number_secret;
+    value = secret ? decryptMyNumber(secret as EncryptedMyNumber) : '';
     payload.index = index + 1;
   }
   try {

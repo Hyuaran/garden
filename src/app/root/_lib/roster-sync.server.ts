@@ -1,4 +1,5 @@
 import { initialPassword } from "@/lib/initial-password";
+import { encryptMyNumber, decryptMyNumber, type EncryptedMyNumber } from '@/lib/my-number/crypto.server';
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { getAllRecords, getFormFields, type KintoneRecord } from "@/lib/kintone/records";
@@ -488,17 +489,19 @@ async function insertProfileHistoryIfChanged(
 async function upsertMyNumberIfChanged(admin: SupabaseClient, employeeId: string, myNumber: string | null, today: string, dryRun: boolean): Promise<number> {
   if (!myNumber) return 0;
   const table = (admin as unknown as LooseSupabase).from("root_employee_my_numbers");
-  const query = table.select?.("my_number");
+  const query = table.select?.("my_number_cipher,my_number_iv,my_number_tag,my_number_last4,key_version,source");
   let current: string | null = null;
   if (query && typeof query === "object" && "eq" in query) {
     const eq = (query as { eq: (...args: unknown[]) => unknown }).eq("employee_id", employeeId);
-    const single = eq && typeof eq === "object" && "maybeSingle" in eq ? await (eq as { maybeSingle: () => Promise<{ data?: { my_number?: string | null } | null; error?: unknown }> }).maybeSingle() : null;
+    const single = eq && typeof eq === "object" && "maybeSingle" in eq ? await (eq as { maybeSingle: () => Promise<{ data?: (EncryptedMyNumber & {source?: string}) | null; error?: unknown }> }).maybeSingle() : null;
     if (single?.error) throw single.error;
-    current = single?.data?.my_number ?? null;
+    // 本人が提出した番号は名簿で上書きしない。
+    if (single?.data?.source === 'liff') return 0;
+    current = single?.data?.my_number_cipher ? decryptMyNumber(single.data) : null;
   }
   if (current === myNumber) return 0;
   if (dryRun || typeof table.upsert !== "function") return 1;
-  const { error } = await maybeThen(table.upsert({ employee_id: employeeId, my_number: myNumber, submitted_at: `${today}T00:00:00+09:00` }, { onConflict: "employee_id" }));
+  const { error } = await maybeThen(table.upsert({ employee_id: employeeId, ...encryptMyNumber(myNumber), my_number: null, source: 'roster', status: 'pending', photo_path: null, confirmed_at: null, confirmed_by: null, rejection_reason: null, submitted_at: `${today}T00:00:00+09:00` }, { onConflict: "employee_id" }));
   if (error) throw error;
   return 1;
 }
