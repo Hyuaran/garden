@@ -8,10 +8,10 @@ const employee: Employee={employee_id:'1',employee_number:'1165',name:' 宮永�
 const role=(key:string,id:string|null):Contact=>({key,employee_id:id,label:'役割',url:'',updated_at:'',updated_by:null});
 const roles=[role('miyanaga','1'),role('team:小泉チーム','2'),role('team:石原チーム',null),role('nhk','3'),role('office','2'),{...role('guest_home',null),label:'会社のホームページ'}];
 const people=[employee,{...employee,employee_id:'2',name:'小泉 翔',line_contact_url:'https://line.me/ti/p/leader'},{...employee,employee_id:'3',name:'桐井 大輔',line_contact_url:'https://line.me/ti/p/nhk'}];
-it('一覧は在籍者の名簿の連絡先とホームページ。役割とは別に追加・変更・削除される',()=>{
- expect(contactRows([...people,{...employee,employee_id:'4',is_active:false},{...employee,employee_id:'5',line_contact_url:''}],roles).map(c=>c.label)).toEqual(['宮永 ひかり','小泉 翔','桐井 大輔','会社のホームページ']);
+it('一覧は在籍者の名簿の連絡先だけ（ホームページは出さない）。役割とは別に追加・変更・削除される',()=>{
+ expect(contactRows([...people,{...employee,employee_id:'4',is_active:false},{...employee,employee_id:'5',line_contact_url:''}],roles).map(c=>c.label)).toEqual(['宮永 ひかり','小泉 翔','桐井 大輔']);
  expect(contactRows([{...employee,line_contact_url:'https://line.me/changed'}],roles)[0].url).toBe('https://line.me/changed');
- expect(contactRows([{...employee,line_contact_url:''}],roles)).toHaveLength(1);
+ expect(contactRows([{...employee,line_contact_url:''}],roles)).toHaveLength(0);
 });
 it('担当を変えると名簿のリンクを開き、空の役割はマネージャーへ開く',()=>{
  const contacts=resolveContacts(roles,people);

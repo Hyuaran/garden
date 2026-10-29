@@ -32,17 +32,17 @@ describe('メニューの選択と押せる範囲',()=>{
     expect(menuGroup(employee,[{id:'r',kind:'role',name:'事務',sort:1}],[{tag_id:'r',employee_id:'1',source:'auto'}])).toBe('guest');
     for(const e of [{...employee,is_active:false},{...employee,termination_date:'2000-01-01'},{...employee,line_user_id:null},{...employee,line_link_source:'unfollowed'}])expect(menuGroup(e,[],[])).toBe('guest');
   });
-  it('連絡先が空なら宮永さん、ホームページは準備中',()=>{
+  it('連絡先が空なら宮永さん、従業員以外の方はお問い合わせだけ',()=>{
     const contacts=[contact('miyanaga','https://line.me/ti/p/test')];
     expect(menuDefinition('ishihara',contacts).body.areas[2].action).toEqual({type:'uri',uri:contacts[0].url});
     expect(menuDefinition('nhk',[]).body.areas[2].action).toEqual({type:'message',text:'準備中'});
-    expect(menuDefinition('guest',contacts).body.areas[1].action).toEqual({type:'message',text:'準備中'});
+    expect(menuDefinition('guest',contacts).body.areas.map(a=>a.action)).toEqual([{type:'message',text:'お問い合わせ'}]);
   });
   it('絵の区切りと一致し、シフトだけをLIFFへ開く',()=>{
     expect(menuDefinition('koizumi',[]).body.areas.map(a=>a.bounds)).toEqual([{x:0,y:0,width:1250,height:843},{x:1250,y:0,width:1250,height:843},{x:0,y:843,width:1250,height:843},{x:1250,y:843,width:1250,height:843}]);
     expect(menuDefinition('telema',[]).body.size).toEqual({width:2500,height:843});
     expect(menuDefinition('telema',[]).body.areas.map(a=>a.bounds)).toEqual([{x:0,y:0,width:833,height:843},{x:833,y:0,width:834,height:843},{x:1667,y:0,width:833,height:843}]);
-    expect(menuDefinition('guest',[]).body.areas.map(a=>a.bounds)).toEqual([{x:0,y:0,width:1250,height:843},{x:1250,y:0,width:1250,height:843}]);
+    expect(menuDefinition('guest',[]).body.areas.map(a=>a.bounds)).toEqual([{x:0,y:0,width:2500,height:843}]);
     expect(menuDefinition('guest',[]).body.size).toEqual({width:2500,height:843});
     expect(menuDefinition('telema',[],'123-test').body.areas[1].action).toEqual({type:'uri',uri:'https://liff.line.me/123-test'});
     expect(menuDefinition('telema',[]).body.areas[1].action).toEqual({type:'message',text:'シフト'});

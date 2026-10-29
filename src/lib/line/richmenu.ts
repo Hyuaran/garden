@@ -31,8 +31,9 @@ export function menuDefinition(group: MenuGroup, contacts: Contact[], liffId?: s
   };
   const four = group === 'koizumi' || group === 'ishihara';
   const guest = group === 'guest';
-  const image = guest ? 'guest_2' : four ? 'employee_4_base' : 'employee_3_base';
-  const actions: Action[] = guest ? [message('お問い合わせ'), contact('guest_home')] : [
+  const image = guest ? 'guest_1' : four ? 'employee_4_base' : 'employee_3_base';
+  // 従業員以外の方のメニューに会社のホームページなど法人が分かるものは載せない（2026-10-29 東海林さん）。
+  const actions: Action[] = guest ? [message('お問い合わせ')] : [
     formsId ? { type: 'uri', uri: 'https://liff.line.me/' + formsId } : message('申告フォーム'), liffId ? { type: 'uri', uri: 'https://liff.line.me/' + liffId } : message('シフト'),
     contact(group === 'koizumi' ? 'team:小泉チーム' : group === 'ishihara' ? 'team:石原チーム' : group === 'nhk' || group === 'kanden' || group === 'office' ? group : 'miyanaga'),
     ...(four ? [contact('miyanaga')] : []),
@@ -54,7 +55,7 @@ export function resolveContacts(roles: Contact[], employees: Employee[]): Contac
   });
 }
 export function contactRows(employees: Employee[], roles: Contact[]): Contact[] {
-  return [...employees.filter(e => statusOf(e) === '在籍中' && e.line_contact_url).map(e => ({key: e.employee_id, employee_id: e.employee_id, label: contactName(e.name), url: e.line_contact_url!, updated_at: '', updated_by: null})), ...roles.filter(c => c.key === 'guest_home')];
+  return [...employees.filter(e => statusOf(e) === '在籍中' && e.line_contact_url).map(e => ({key: e.employee_id, employee_id: e.employee_id, label: contactName(e.name), url: e.line_contact_url!, updated_at: '', updated_by: null}))];
 }
 export function menuImageLabels(group: MenuGroup, contacts: Contact[]) {
   if (group === 'guest') return [];

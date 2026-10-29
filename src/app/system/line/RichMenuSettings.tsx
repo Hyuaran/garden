@@ -15,7 +15,7 @@ export default function RichMenuSettings({data,busy,act}:{data:Data;busy:boolean
   const definition=group?menuDefinition(group,data.contacts,process.env.NEXT_PUBLIC_LIFF_SHIFT_ID):undefined;
   const areas=definition?.body.areas.map((area,index)=>{
     const {bounds,action}=area;
-    const position=definition.body.size.height>843?(bounds.x===0?'左':'右')+(bounds.y===0?'上':'下'):bounds.x===0?'左':bounds.x+bounds.width===2500?'右':'中央';
+    const position=definition.body.areas.length===1?'全体':definition.body.size.height>843?(bounds.x===0?'左':'右')+(bounds.y===0?'上':'下'):bounds.x===0?'左':bounds.x+bounds.width===2500?'右':'中央';
     const label=group==='guest'?(index===0?'お問い合わせ':'会社のホームページ'):index===0?'申告フォーム':index===1?'シフト':index===3?'マネージャー':definition.body.size.height>843?'チームリーダー':'担当者';
     let description:string;
     if(group==='guest'&&index===1&&action.type==='message') description='準備中です（会社のホームページが登録されていません）';

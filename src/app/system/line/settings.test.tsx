@@ -19,10 +19,12 @@ it('申告フォームの説明はLINE内の2種類の申告である',()=>{
   expect(screen.getByText('LINE の中で申告フォームのページが開きます（通勤経路の変更・給与受取口座の変更）')).toBeInTheDocument();
 });
 it('連絡先は変更列がなく、行をキーボードで押して登録する',()=>{
-  render(<ContactSettings data={data} busy={false} act={vi.fn()}/>);
+  const person={employee_id:'E1',employee_number:'0001',name:'山田　花子',employment_type:'正社員',garden_role:'staff',hire_date:null,termination_date:null,is_active:true,line_user_id:null,line_link_source:null,line_contact_url:'https://line.me/ti/p/y'};
+  render(<ContactSettings data={{...data,employees:[person]}} busy={false} act={vi.fn()}/>);
   expect(screen.queryByRole('button',{name:'変更する'})).toBeNull();
-  fireEvent.keyDown(screen.getByText('会社のホームページ').closest('tr')!,{key:' '});
-  expect(screen.getByRole('dialog',{name:'会社のホームページの連絡先'})).toBeInTheDocument();
+  expect(screen.queryByText('会社のホームページ')).toBeNull();
+  fireEvent.keyDown(screen.getByText('山田 花子').closest('tr')!,{key:' '});
+  expect(screen.getByRole('dialog',{name:'山田 花子の連絡先'})).toBeInTheDocument();
   expect(screen.getByText('登録したら、リッチメニュータブの［リッチメニューに反映する］を押してください。')).toBeInTheDocument();
 });
 it('反映前も6行あり、小泉チームの画像と位置・連絡先を表示する',()=>{
@@ -36,13 +38,14 @@ it('反映前も6行あり、小泉チームの画像と位置・連絡先を表
   expect(within(dialog).getByText(/小泉さんの LINE/)).toBeInTheDocument();
   expect(within(dialog).getByText(/宮永さんの LINE/)).toBeInTheDocument();
 });
-it('担当者が未登録なら宮永さん、ホームページ未登録なら準備中を表示する',()=>{
+it('担当者が未登録なら宮永さん、従業員以外の方はお問い合わせだけ',()=>{
   render(<RichMenuSettings data={{...data,contacts:contacts.filter(c=>c.key!=='team:小泉チーム')}} busy={false} act={vi.fn()}/>);
   fireEvent.click(screen.getByText('ブロードバンド事業・小泉チーム'));
   expect(screen.getByText(/（登録がないため）宮永さんの LINE/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'閉じる'}));
   fireEvent.keyDown(screen.getByText('従業員以外の方').closest('tr')!,{key:'Enter'});
-  expect(screen.getByText('準備中です（会社のホームページが登録されていません）')).toBeInTheDocument();
+  expect(screen.getByText(/全体.+お問い合わせ/)).toBeInTheDocument();
+  expect(screen.queryByText(/ホームページ/)).toBeNull();
 });
 it('あいさつ文は一覧が初期表示で、編集・試し送信確認・カード切り替えと保存ができる',async()=>{
   const fetcher=vi.fn().mockResolvedValue({ok:true,json:async()=>data});vi.stubGlobal('fetch',fetcher);

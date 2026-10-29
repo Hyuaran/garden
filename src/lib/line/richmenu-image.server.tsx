@@ -4,7 +4,7 @@ import { ImageResponse } from 'next/og';
 import { menuImageLabels, type Contact, type MenuGroup } from './richmenu';
 export async function renderMenuImage(group: MenuGroup, contacts: Contact[]) {
   const four = group === 'koizumi' || group === 'ishihara';
-  const base = await readFile(path.join(process.cwd(), 'public/line/richmenu', group === 'guest' ? 'guest_2.jpg' : four ? 'employee_4_base.jpg' : 'employee_3_base.jpg'));
+  const base = await readFile(path.join(process.cwd(), 'public/line/richmenu', group === 'guest' ? 'guest_1.jpg' : four ? 'employee_4_base.jpg' : 'employee_3_base.jpg'));
   if (group === 'guest') return {data: base, contentType: 'image/jpeg'};
   const font = await readFile(path.join(process.cwd(), 'src/assets/fonts/NotoSansJP-Regular.ttf'));
   const height = four ? 1686 : 843;
