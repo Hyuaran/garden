@@ -118,7 +118,7 @@ export default function ProfileTab({ birthdayRegistered, profile, registered, on
       <InfoRow label="氏名" value={profile.name} /><InfoRow label="氏名カナ" value={profile.nameKana} />
       <InfoRow label="社員番号" value={profile.employeeNumber} /><InfoRow label="雇用形態" value={profile.employmentType} />
       <InfoRow label="生年月日" value={profile.birthday ?? "未登録"} /><InfoRow label="Garden権限" value={roleLabel} />
-      <InfoRow label="メール" value={profile.email||"未登録"} /><InfoRow label="マイナンバー" value={profile.mynaSubmitted?"提出済み":"未提出"} />
+      <InfoRow label="メール" value={profile.email||"未登録"} /><InfoRow label="マイナンバー" value={profile.mynaStatus ?? (profile.mynaSubmitted?"提出済み":"未提出")} />
       <InfoRow label="交通費" value={commute} /><InfoRow label="給与受取口座" value={bank} />
     </dl></section>
 

@@ -8,7 +8,7 @@ import SystemBreadcrumb from '@/app/system/_components/SystemBreadcrumb/SystemBr
 import {TextArea,ResultMessage} from '@/app/system/forms/_components/form-kit';
 import type {MyNumberRow} from '@/lib/my-number/review.server';
 import styles from './my-numbers.module.css';
-const labels:Record<string,string>={pending:'確認待ち',confirmed:'確認済み',missing:'未提出'};
+const labels:Record<string,string>={pending:'確認待ち',rejected:'差し戻し',confirmed:'確認済み',missing:'未提出'};
 const date=(value:string)=>value?new Date(value).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'記録なし';
 export default function MyNumbers({rows:initial}: {rows:MyNumberRow[]}) {
  const [rows,setRows]=useState(initial),[selected,setSelected]=useState<MyNumberRow|null>(null),[number,setNumber]=useState(''),[photo,setPhoto]=useState(''),[reason,setReason]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
@@ -24,7 +24,7 @@ export default function MyNumbers({rows:initial}: {rows:MyNumberRow[]}) {
    if(!response.ok){setMessage(result.error||'操作を完了できませんでした。');return;}
    if(action==='display')setNumber(result.number);
    else if(action==='detail')setPhoto(result.photoUrl||'');
-   else {setRows(previous=>previous.map(item=>item.employee_id===row.employee_id?{...item,status:action==='confirm'?'confirmed':'pending',rejection_reason:action==='reject'?reason:''}:item));close();if(action==='reject')setMessage(result.notification==='sent'?'差し戻し、LINE にお知らせしました。':result.notification==='failed'?'差し戻しました。LINE へのお知らせに失敗しました。':'差し戻しました。LINE へのお知らせは停止中です。');}
+   else {setRows(previous=>previous.map(item=>item.employee_id===row.employee_id?{...item,status:action==='confirm'?'confirmed':'rejected',rejection_reason:action==='reject'?reason:''}:item));close();if(action==='reject')setMessage(result.notification==='sent'?'差し戻し、LINE にお知らせしました。':result.notification==='failed'?'差し戻しました。LINE へのお知らせに失敗しました。':'差し戻しました。LINE へのお知らせは停止中です。');}
   }catch{if(current===generation.current)setMessage('操作を完了できませんでした。');}finally{lock.current=false;setBusy(false);}
  }
  const columns:DataColumn<MyNumberRow>[]=[{id:'employee_number',label:'社員番号',type:'text',align:'fixed',value:row=>row.employee_number||row.employee_id},{id:'name',label:'氏名',type:'text',value:row=>row.name||'記録なし'},{id:'submitted_at',label:'提出日時',type:'date',align:'fixed',value:row=>row.submitted_at,render:row=>date(row.submitted_at)},{id:'number',label:'番号',type:'text',align:'fixed',value:row=>row.last4?'****-****-'+row.last4:'未提出'}];

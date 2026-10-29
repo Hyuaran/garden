@@ -13,6 +13,6 @@ export async function myNumberRows() {
   if(error)throw new Error('提出の状況を読み込めませんでした。');numbers.push(...data);if(data.length<1000)break;
  }
  const map=new Map(numbers.map(row=>[row.employee_id,row]));
- return employees.map(employee=>{const row=map.get(employee.employee_id);return {...employee,last4:row?.my_number_last4||'',submitted_at:row?.submitted_at||'',status:row?.my_number_last4?(row.status==='confirmed'?'confirmed':'pending'):'missing',source:row?.source||'',hasPhoto:!!row?.photo_path,rejection_reason:row?.rejection_reason||''};});
+ return employees.map(employee=>{const row=map.get(employee.employee_id);return {...employee,last4:row?.my_number_last4||'',submitted_at:row?.submitted_at||'',status:row?.my_number_last4?(row.status==='confirmed'?'confirmed':row.status==='rejected'?'rejected':'pending'):'missing',source:row?.source||'',hasPhoto:!!row?.photo_path,rejection_reason:row?.rejection_reason||''};});
 }
 export type MyNumberRow = Awaited<ReturnType<typeof myNumberRows>>[number];

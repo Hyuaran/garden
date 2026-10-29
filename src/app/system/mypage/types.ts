@@ -11,6 +11,8 @@ export type MyPageProfile = {
   commuteDailyAllowance: number | null;
   commuteMonthlyCap: number | null;
   mynaSubmitted: boolean;
+  /** マイナンバーの状況（未提出・差し戻し・確認待ち・確認済み）。無いときは mynaSubmitted で判断する。 */
+  mynaStatus?: "未提出" | "差し戻し" | "確認待ち" | "確認済み";
   current?: Record<string, {
     id?: string;
     payload: Record<string, unknown>;
