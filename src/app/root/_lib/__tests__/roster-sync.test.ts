@@ -273,7 +273,7 @@ describe("roster profile history payloads", () => {
   it("masks my number in snapshots and never puts the number into history payloads", () => {
     const source = record({
       $id: "100",
-      マイナンバー: "123456789012",
+      マイナンバー: "123456789018",
       郵便番号: "123-4567",
       連絡先: "090-1111-2222",
       メールアドレス: "test@example.com",
@@ -292,7 +292,7 @@ describe("roster profile history payloads", () => {
       source: "roster",
       imported_at: "2026-09-14T00:00:00.000Z",
     });
-    expect(JSON.stringify(payloads)).not.toContain("123456789012");
+    expect(JSON.stringify(payloads)).not.toContain("123456789018");
   });
 
   it("covers the profile keys defined by the design mapping", () => {
@@ -392,7 +392,7 @@ describe("roster profile history sync", () => {
       銀行名_1: "庭銀行",
       口座番号_1: "1234567",
       交通費_片道: "500",
-      マイナンバー: "123456789012",
+      マイナンバー: "123456789018",
     })];
     const tables: MemoryTable = { rootEmployees: [], snapshots: [], history: [], myNumbers: [], logs: [] };
     const original = globalThis.fetch;
@@ -408,7 +408,7 @@ describe("roster profile history sync", () => {
       expect(first.historyRows).toBeGreaterThan(0);
       expect(first.myNumberRows).toBe(1);
       expect(tables.myNumbers[0].my_number).toBeNull();
-      expect(decryptMyNumber(tables.myNumbers[0] as EncryptedMyNumber)).toBe('123456789012');
+      expect(decryptMyNumber(tables.myNumbers[0] as EncryptedMyNumber)).toBe('123456789018');
       expect(second.snapshotRows).toBe(0);
       expect(second.historyRows).toBe(0);
       expect(second.myNumberRows).toBe(0);
@@ -418,7 +418,7 @@ describe("roster profile history sync", () => {
       expect(third.historyRows).toBe(1);
       expect(tables.history.filter(row => row.category === "my_number_status")).toHaveLength(2);
       expect(tables.snapshots).toHaveLength(1);
-      expect(JSON.stringify(tables.history)).not.toContain("123456789012");
+      expect(JSON.stringify(tables.history)).not.toContain("123456789018");
     } finally {
       globalThis.fetch = original;
     }

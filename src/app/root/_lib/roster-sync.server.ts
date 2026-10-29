@@ -1,3 +1,4 @@
+import { validMyNumber } from "@/lib/my-number/validation";
 import { initialPassword } from "@/lib/initial-password";
 import { encryptMyNumber, decryptMyNumber, type EncryptedMyNumber } from '@/lib/my-number/crypto.server';
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -488,6 +489,8 @@ async function insertProfileHistoryIfChanged(
 
 async function upsertMyNumberIfChanged(admin: SupabaseClient, employeeId: string, myNumber: string | null, today: string, dryRun: boolean): Promise<number> {
   if (!myNumber) return 0;
+  // 名簿の番号が 12 桁でない・検査用の数字が合わない・仮の値（同じ数字の並び）のときは取り込まない（取り込み全体を止めない）。
+  if (!validMyNumber(myNumber) || /^(\d)\1+$/.test(myNumber)) return 0;
   const table = (admin as unknown as LooseSupabase).from("root_employee_my_numbers");
   const query = table.select?.("my_number_cipher,my_number_iv,my_number_tag,my_number_last4,key_version,source");
   let current: string | null = null;
