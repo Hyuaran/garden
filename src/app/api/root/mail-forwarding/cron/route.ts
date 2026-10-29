@@ -22,9 +22,10 @@ export async function GET(request: Request) {
       async claim(n) { const r = await db.rpc("root_mail_forwarding_claim", { p_id: n.forwarding_id, p_date: n.filed_on, p_stage: n.stage }); if (r.error) throw r.error; return r.data === true; },
       async sent(n) { const r = await match(n); if (r.error) throw r.error; },
       async release(n) { const r = await db.from("root_mail_forwarding_notices").delete().eq("forwarding_id", n.forwarding_id).eq("filed_on", n.filed_on).eq("stage", n.stage).is("sent_at", null); if (r.error) throw r.error; },
-    }, async message => {
+    }, async (message, mention) => {
       const token = process.env.CHATWORK_API_TOKEN, room = process.env.GARDEN_NOTICE_CHATWORK_ROOM_ID;
       if (!token || !room) throw new Error("通知設定がありません");
+      if (!mention) { await new ChatworkClient(token).sendMessage(room, message); return; }
       const admins = await db.from("root_employees").select("employee_id").eq("garden_role", "super_admin").eq("is_active", true).is("deleted_at", null);
       if (admins.error) throw admins.error;
       const { line } = await chatworkToLine((admins.data ?? []).map(e => e.employee_id));
