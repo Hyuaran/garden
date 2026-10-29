@@ -2,10 +2,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
 import SystemTabs from '@/app/system/_components/SystemTabs/SystemTabs';
-import SystemBreadcrumb from '@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb';
 import DataTable, { type DataColumn } from '@/app/system/_components/DataTable/DataTable';
 import { BUSINESSES, FORM_LABELS, PAYMENTS, PURPOSES, isExpenseForm, jstTimestamp, recentCombinations, validateExpense, type ExpenseForm, type ExpenseReport } from './_lib/expense';
-import styles from '../nhk-visit/nhk-visit.module.css';
+import { FormPage, FormRow, RadioGroup, SelectField, TextField, NumberField, TextArea, FixedValue, SubmitButton, ResultMessage, RecentList, formStyles as styles } from '../_components/form-kit';
 import local from './expense.module.css';
 const columns: DataColumn<ExpenseReport>[] = [
   { id: 'date', label: '決済日', type: 'date', value: r => r.paid_on },
@@ -69,24 +68,19 @@ export default function ExpenseClient({ submitterName, employeeNumber, fixedForm
     finally { busy.current = false; setSending(false); }
   }
 
-  return <main className={[styles.pageShell, local.pageShell, fixedForm ? `${styles.mobile} ${local.mobile}` : ''].join(' ')}>
-    <header className={styles.header}>
-      {!fixedForm && <SystemBreadcrumb items={[{ label: '業務管理ツール', href: '/system/forms' }, { label: '経費 報告' }]} />}
-      <div className={styles.mobileTitleRow}><h1>{fixedForm ? '経費 報告（' + FORM_LABELS[fixedForm] + '）' : '経費 報告'}</h1>{fixedForm && <p className={styles.mobileSender} data-clarity-mask="true">{submitterName} さん</p>}</div>
-    </header>
-    {!fixedForm && <><SystemTabs aria-label="経費の種類" actions={<SystemViewButton />}>{(Object.keys(FORM_LABELS) as ExpenseForm[]).map(key => <button type="button" role="tab" aria-selected={form === key} disabled={sending} key={key} onClick={() => switchForm(key)}>{FORM_LABELS[key]}</button>)}</SystemTabs><p className={styles.sender} data-clarity-mask="true">送信者　{submitterName}（{employeeNumber}）</p></>}
-    <form onSubmit={submit}><fieldset disabled={sending} className={local.fields}>
-      {combinations.length > 0 && <div className={local.reuse}><label>よく使う入力から選ぶ<select value="" onChange={event => { if (event.target.value === '') return; const row = combinations[Number(event.target.value)]; if (row) { setPurpose(row.purpose); setDetail(row.purpose_detail); setAmount(String(row.amount)); } }}><option value="">選んでください</option>{combinations.map((row, index) => <option key={index} value={index}>{row.purpose}｜{row.purpose_detail}｜{row.amount.toLocaleString()} 円</option>)}</select></label><p>選ぶと、使用用途・用途の詳細・金額がまとめて入ります</p></div>}
-      <section className={styles.panel}><h2>1 事業</h2>{form === 'nhk' ? <p className={styles.fixedText}>NHK</p> : form === 'ueda' ? <select aria-label="事業" required value={business} onChange={e => setBusiness(e.target.value)}><option value="">選んでください</option>{BUSINESSES.ueda.map(item => <option key={item}>{item}</option>)}</select> : <div role="radiogroup" aria-label="事業" className={local.choices}>{BUSINESSES[form].map(item => <label className="garden-radio" key={item}><input type="radio" name="business" required checked={business === item} onChange={() => setBusiness(item)} /><span>{item}</span></label>)}</div>}</section>
-      <section className={styles.panel}><h2>2 決済方法</h2><div role="radiogroup" aria-label="決済方法" className={local.choices}>{PAYMENTS.map(item => <label className="garden-radio" key={item}><input type="radio" name="payment" checked={payment === item} onChange={() => setPayment(item)} /><span>{item}</span></label>)}</div></section>
-      <section className={styles.panel}><h2><label htmlFor="expense-date">3 決済日</label></h2><input id="expense-date" aria-label="決済日" type="date" required value={paidOn} onChange={e => setPaidOn(e.target.value)} /></section>
-      <section className={styles.panel}><h2><label htmlFor="expense-amount">4 金額</label></h2><div className={local.amount}><input id="expense-amount" aria-label="金額（円・税込）" inputMode="numeric" pattern="[0-9]+" required value={amount} onChange={e => setAmount(e.target.value)} /><span>円（税込）</span></div></section>
-      <section className={styles.panel}><h2>5 使用用途</h2><div><div role="radiogroup" aria-label="使用用途" className={local.choices}>{PURPOSES.slice(0, 7).map(item => <label className="garden-radio" key={item}><input type="radio" name="purpose" checked={purpose === item} onChange={() => setPurpose(item)} /><span>{item}</span></label>)}</div><label>ほかの用途<select value={(PURPOSES.slice(7) as readonly string[]).includes(purpose) ? purpose : ''} onChange={e => setPurpose(e.target.value)}><option value="">選んでください</option>{PURPOSES.slice(7).map(item => <option key={item}>{item}</option>)}</select></label></div></section>
-      <section className={styles.panel}><h2><label htmlFor="expense-detail">6 用途の詳細{purpose === 'その他' && '（必須）'}</label></h2><input id="expense-detail" aria-label={purpose === 'その他' ? '用途の詳細（必須）' : '用途の詳細'} placeholder="例：帰宅 新大宮-瓢箪山" required={purpose === 'その他'} value={detail} onChange={e => setDetail(e.target.value)} /></section>
-      <section className={styles.panel}><h2><label htmlFor="expense-note">7 備考</label></h2><textarea id="expense-note" aria-label="備考" value={note} onChange={e => setNote(e.target.value)} /></section>
-      <button className={styles.primary} type="submit" disabled={sending}>{sending ? '送信中...' : fixedForm ? '送信する' : '報告内容を送信する'}</button>
+  return <FormPage compactTitle mobile={!!fixedForm} title={fixedForm ? '経費 報告（' + FORM_LABELS[fixedForm] + '）' : '経費 報告'} submitterName={submitterName} employeeNumber={employeeNumber} tabs={<SystemTabs aria-label="経費の種類" actions={<SystemViewButton />}>{(Object.keys(FORM_LABELS) as ExpenseForm[]).map(key => <button type="button" role="tab" aria-selected={form === key} disabled={sending} key={key} onClick={() => switchForm(key)}>{FORM_LABELS[key]}</button>)}</SystemTabs>}>
+    <form onSubmit={submit}><fieldset disabled={sending} className={styles.fields}>
+      {combinations.length > 0 && <div className={local.reuse}><label>よく使う入力から選ぶ<SelectField value="" onChange={event => { if (event.target.value === '') return; const row = combinations[Number(event.target.value)]; if (row) { setPurpose(row.purpose); setDetail(row.purpose_detail); setAmount(String(row.amount)); } }}>{combinations.map((row, index) => <option key={index} value={index}>{row.purpose}｜{row.purpose_detail}｜{row.amount.toLocaleString()} 円</option>)}</SelectField></label><p>選ぶと、使用用途・用途の詳細・金額がまとめて入ります</p></div>}
+      <FormRow label={<>1 事業</>}>{form === 'nhk' ? <FixedValue>NHK</FixedValue> : form === 'ueda' ? <SelectField aria-label="事業" required value={business} onChange={e => setBusiness(e.target.value)}>{BUSINESSES.ueda.map(item => <option key={item}>{item}</option>)}</SelectField> : <RadioGroup label="事業" name="business" options={BUSINESSES[form]} value={business} onChange={setBusiness} required />}</FormRow>
+      <FormRow label={<>2 決済方法</>}><RadioGroup label="決済方法" name="payment" options={PAYMENTS} value={payment} onChange={setPayment}  /></FormRow>
+      <FormRow label={<><label htmlFor="expense-date">3 決済日</label></>}><TextField id="expense-date" aria-label="決済日" type="date" required value={paidOn} onChange={e => setPaidOn(e.target.value)} /></FormRow>
+      <FormRow label={<><label htmlFor="expense-amount">4 金額</label></>}><NumberField unit="円（税込）" id="expense-amount" aria-label="金額（円・税込）" inputMode="numeric" pattern="[0-9]+" required value={amount} onChange={e => setAmount(e.target.value)} /></FormRow>
+      <FormRow label={<>5 使用用途</>}><div><RadioGroup label="使用用途" name="purpose" options={PURPOSES.slice(0, 7)} value={purpose} onChange={setPurpose}  /><label>ほかの用途<SelectField value={(PURPOSES.slice(7) as readonly string[]).includes(purpose) ? purpose : ''} onChange={e => setPurpose(e.target.value)}>{PURPOSES.slice(7).map(item => <option key={item}>{item}</option>)}</SelectField></label></div></FormRow>
+      <FormRow label={<><label htmlFor="expense-detail">6 用途の詳細{purpose === 'その他' && '（必須）'}</label></>}><TextField id="expense-detail" aria-label={purpose === 'その他' ? '用途の詳細（必須）' : '用途の詳細'} placeholder="例：帰宅 新大宮-瓢箪山" required={purpose === 'その他'} value={detail} onChange={e => setDetail(e.target.value)} /></FormRow>
+      <FormRow label={<><label htmlFor="expense-note">7 備考</label></>}><TextArea id="expense-note" aria-label="備考" value={note} onChange={e => setNote(e.target.value)} /></FormRow>
+      <SubmitButton type="submit" busy={sending}>{fixedForm ? '送信する' : '報告内容を送信する'}</SubmitButton>
     </fieldset></form>
-    {status && <p role="status" className={status === '送信しました' ? styles.message : styles.error}>{status}</p>}
-    <section className={styles.history}><h2>自分の最近の報告（直近 1 週間）</h2>{fixedForm ? reports.length === 0 ? <p className={styles.empty}>まだありません</p> : <div className={styles.historyBox}>{reports.map(row => <p key={row.id}>{row.paid_on}　{row.business}　{row.purpose}　{row.purpose_detail}　{row.amount.toLocaleString()} 円　{jstTimestamp(new Date(row.created_at))}</p>)}</div> : <DataTable rows={reports} columns={columns} rowKey={row => row.id} searchText={row => [row.business, row.purpose, row.purpose_detail].join(" ")} defaultSort={{ id: 'created', direction: 'desc' }} />}</section>
-  </main>;
+    <ResultMessage success={status === '送信しました'}>{status}</ResultMessage>
+    <RecentList title="自分の最近の報告（直近 1 週間）" items={reports.map(row => <p key={row.id}>{row.paid_on}　{row.business}　{row.purpose}　{row.purpose_detail}　{row.amount.toLocaleString()} 円　{jstTimestamp(new Date(row.created_at))}</p>)}>{!fixedForm ? <DataTable rows={reports} columns={columns} rowKey={row => row.id} searchText={row => [row.business, row.purpose, row.purpose_detail].join(" ")} defaultSort={{ id: 'created', direction: 'desc' }} /> : undefined}</RecentList>
+  </FormPage>;
 }

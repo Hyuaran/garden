@@ -1,20 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
-import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBreadcrumb";
 import {
   buildNhkVisitReportMessage,
   calculateNhkVisitTotals,
   formatCompactVisitDate,
-  formatVisitDate,
   NHK_VISIT_DESTINATIONS,
   NHK_VISIT_TASK_NAME,
   weekdayLabel,
   type NhkVisitDestination,
   type NhkVisitTransportFee,
 } from "./_lib/nhk-visit";
-import styles from "./nhk-visit.module.css";
+import local from './nhk-visit.module.css';
+import { FormPage, FormRow, RadioGroup, SelectField, Stepper, TextField, FixedValue, SubmitButton, ResultMessage, RecentList } from '../_components/form-kit';
 
 type Counts = {
   newGround: number;
@@ -97,11 +96,6 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
     void loadHistory();
   }, [loadHistory]);
 
-  function updateCount(key: keyof Counts, delta: -1 | 1) {
-    setCounts((current) => ({ ...current, [key]: Math.max(0, current[key] + delta) }));
-    setStatus("");
-  }
-
   async function submit() {
     setSending(true);
     setStatus("");
@@ -124,113 +118,70 @@ export default function NhkVisitClient({ submitterName, employeeNumber, mobile =
     }
   }
 
-  return <div className={mobile ? `${styles.pageShell} ${styles.mobile}` : styles.pageShell}>
-    <header className={styles.header}>
-      {!mobile && <SystemBreadcrumb items={[{ label: "業務管理ツール", href: "/system/forms" }, { label: "NHK訪問業務 報告フォーム" }]} />}
-      <div className={styles.mobileTitleRow}>
-        <h1>{mobile ? "NHK訪問業務 報告" : "NHK訪問業務 報告フォーム"}</h1>
-        {mobile && <p className={styles.mobileSender} {...CLARITY_MASK}>{submitterName} さん</p>}
-      </div>
-      {!mobile && <p className={styles.lead}>業務が終わったら、この画面に入力して送信してください。</p>}
-    </header>
+  return <FormPage mobile={mobile} title={mobile ? "NHK訪問業務 報告" : "NHK訪問業務 報告フォーム"} submitterName={submitterName} employeeNumber={employeeNumber} description="業務が終わったら、この画面に入力して送信してください。" guide={<p className={local.guide}><Link prefetch={false} href="/system/manuals/system/nhk-visit?tab=operation">使い方ガイドを見る</Link></p>}>
+    <FormRow label={<>1 日付</>}>
+      <TextField type="date" value={visitDate} onChange={(event) => setVisitDate(event.currentTarget.value)} />
+    </FormRow>
 
-    {/* 使い方は画面の中に書かず、画像つきの使い方ガイド（マニュアル①）へ送る（東海林さん 2026-09-24） */}
-    {!mobile && <p className={styles.guide}>
-      <a href="/system/manuals/system/nhk-visit?tab=operation">使い方ガイドを見る</a>
-    </p>}
-
-    {!mobile && <p className={styles.sender} {...CLARITY_MASK}>送信者　{submitterName}（{employeeNumber}）</p>}
-
-    <section className={styles.panel}>
-      <h2>1 日付</h2>
-      <input type="date" value={visitDate} onChange={(event) => setVisitDate(event.currentTarget.value)} />
-    </section>
-
-    <section className={styles.panel}>
-      <h2>2 時間</h2>
-      <div className={styles.timeRow}>
-        <input type="time" value={startTime} onChange={(event) => setStartTime(event.currentTarget.value)} />
+    <FormRow label={<>2 時間</>}>
+      <div className={local.timeRow}>
+        <TextField type="time" value={startTime} onChange={(event) => setStartTime(event.currentTarget.value)} />
         <span>〜</span>
-        <input type="time" value={endTime} onChange={(event) => setEndTime(event.currentTarget.value)} />
+        <TextField type="time" value={endTime} onChange={(event) => setEndTime(event.currentTarget.value)} />
       </div>
-    </section>
+    </FormRow>
 
-    <section className={styles.panel}>
-      <h2>3 派遣先</h2>
-      <select value={destination} onChange={(event) => setDestination(event.currentTarget.value)}>
-        <option value="">選択してください</option>
+    <FormRow label={<>3 派遣先</>}>
+      <SelectField value={destination} onChange={(event) => setDestination(event.currentTarget.value)}>
+        
         {NHK_VISIT_DESTINATIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-      </select>
-    </section>
+      </SelectField>
+    </FormRow>
 
-    <section className={styles.panel}>
-      <h2>4 業務</h2>
-      <p className={styles.fixedText}>{NHK_VISIT_TASK_NAME}</p>
-    </section>
+    <FormRow label={<>4 業務</>}>
+      <FixedValue>{NHK_VISIT_TASK_NAME}</FixedValue>
+    </FormRow>
 
-    <section className={styles.panel}>
-      <h2>5 成約件数</h2>
-      <div className={styles.countGroup}>
-        <h3>■新規</h3>
-        <Counter label="地上" value={counts.newGround} onMinus={() => updateCount("newGround", -1)} onPlus={() => updateCount("newGround", 1)} />
-        <Counter label="衛星" value={counts.newSatellite} onMinus={() => updateCount("newSatellite", -1)} onPlus={() => updateCount("newSatellite", 1)} />
-        <p className={styles.total}>新規　計 <strong>{totals.newTotal}</strong> 件</p>
+    <FormRow label={<>5 成約件数</>} expanded>
+      <div className={local.countGroup}>
+        <h3>新規</h3>
+        <Stepper label="地上" value={counts.newGround} onChange={value => { setCounts(current => ({ ...current, newGround: value })); setStatus(""); }} />
+        <Stepper label="衛星" value={counts.newSatellite} onChange={value => { setCounts(current => ({ ...current, newSatellite: value })); setStatus(""); }} />
+        <p className={local.total}>新規　計 <strong>{totals.newTotal}</strong> 件</p>
       </div>
-      <div className={styles.countGroup}>
-        <h3>■住所変更</h3>
-        <Counter label="地上" value={counts.addressGround} onMinus={() => updateCount("addressGround", -1)} onPlus={() => updateCount("addressGround", 1)} />
-        <Counter label="衛星" value={counts.addressSatellite} onMinus={() => updateCount("addressSatellite", -1)} onPlus={() => updateCount("addressSatellite", 1)} />
-        <p className={styles.total}>住所変更　計 <strong>{totals.addressTotal}</strong> 件</p>
+      <div className={local.countGroup}>
+        <h3>住所変更</h3>
+        <Stepper label="地上" value={counts.addressGround} onChange={value => { setCounts(current => ({ ...current, addressGround: value })); setStatus(""); }} />
+        <Stepper label="衛星" value={counts.addressSatellite} onChange={value => { setCounts(current => ({ ...current, addressSatellite: value })); setStatus(""); }} />
+        <p className={local.total}>住所変更　計 <strong>{totals.addressTotal}</strong> 件</p>
       </div>
-      <div className={styles.countGroup}>
-        <h3>■口座・クレ</h3>
-        <Counter label="件数" value={counts.bankCredit} onMinus={() => updateCount("bankCredit", -1)} onPlus={() => updateCount("bankCredit", 1)} />
+      <div className={local.countGroup}>
+        <h3>口座・クレ</h3>
+        <Stepper label="件数" value={counts.bankCredit} onChange={value => { setCounts(current => ({ ...current, bankCredit: value })); setStatus(""); }} />
       </div>
-    </section>
+    </FormRow>
 
-    <section className={styles.panel}>
-      <h2>6 交通費</h2>
-      <div className="garden-radio-group">
-        {(["あり", "なし"] as const).map((item) => <label key={item} className="garden-radio">
-          <input type="radio" name="transportFee" checked={transportFee === item} onChange={() => setTransportFee(item)} />
-          <span>{item}</span>
-        </label>)}
-      </div>
-    </section>
+    <FormRow label={<>6 交通費</>}>
+      <RadioGroup name="transportFee" label="交通費" options={["あり", "なし"]} value={transportFee} onChange={value => setTransportFee(value as NhkVisitTransportFee)} />
+    </FormRow>
 
-    <button type="button" className={styles.primary} disabled={sending} onClick={() => void submit()}>
-      {sending ? "送信中..." : mobile ? "送信する" : "報告内容を送信する"}
-    </button>
+    <SubmitButton busy={sending} onClick={() => void submit()}>{mobile ? "送信する" : "報告内容を送信する"}</SubmitButton>
 
-    {status && <p className={status.startsWith("送信しました") ? styles.message : styles.error} role="status">{status}</p>}
+    <ResultMessage success={status.startsWith("送信しました")}>{status}</ResultMessage>
 
-    {sentMessage && <section className={styles.result}>
-      <div className={styles.resultHead}>
+    {sentMessage && <section className={local.result}>
+      <div className={local.resultHead}>
         <h2>報告内容</h2>
-        <button type="button" className={styles.copy} onClick={() => void copyText(sentMessage)}>コピー</button>
+        <button type="button" className={local.copy} onClick={() => void copyText(sentMessage)}>コピー</button>
       </div>
-      <pre className={styles.preview}>{sentMessage}</pre>
+      <pre className={local.preview}>{sentMessage}</pre>
     </section>}
 
-    <section className={styles.history}>
-      <h2>直近 1 週間のあなたの報告</h2>
-      {history.length === 0 ? <p className={styles.empty}>まだありません</p> : <div className={styles.historyBox}>
-        {history.map((item) => {
+    <RecentList title="直近 1 週間のあなたの報告" items={history.map((item) => {
           const itemTotals = calculateNhkVisitTotals(item);
           return <p key={item.id}>
             {formatCompactVisitDate(item.visit_date)}（{weekdayLabel(item.visit_date)}）{item.destination}　{item.start_time}〜{item.end_time}　新規{itemTotals.newTotal}・住所{itemTotals.addressTotal}・口座{item.bankCredit}　交通費{item.transport_fee}
           </p>;
-        })}
-      </div>}
-    </section>
-  </div>;
-}
-
-function Counter({ label, value, onMinus, onPlus }: { label: string; value: number; onMinus: () => void; onPlus: () => void }) {
-  return <div className={styles.counter}>
-    <span>{label}</span>
-    <button type="button" onClick={onMinus} aria-label={`${label}を減らす`}>－</button>
-    <output>{value}</output>
-    <button type="button" onClick={onPlus} aria-label={`${label}を増やす`}>＋</button>
-  </div>;
+        })} />
+  </FormPage>;
 }

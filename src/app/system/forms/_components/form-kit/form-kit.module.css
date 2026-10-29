@@ -1,0 +1,84 @@
+.pageShell {
+  --navy:#10233f; --heading:#10233f; --ink:#17212e; --sub:#5a6b80;
+  --teal:#0ea5a0; --tealDark:#0b7773; --danger:#b4232b; --dangerBg:#fff1f2;
+  --bg:#f4f5f7; --card:#fff; --line:#dce5ef; --soft:#eef8f7; --preview:#fbfcfe;
+  --shadow:0 4px 14px rgba(16,35,63,.07);
+  box-sizing:border-box; width:100%; min-width:0; min-height:100%; background:var(--bg); color:var(--ink);
+  font-family:Meiryo,"Noto Sans JP",system-ui,sans-serif;
+  word-break:auto-phrase; line-break:strict; overflow-wrap:break-word;
+}
+.pageShell::before { content:""; position:fixed; inset:0; z-index:-1; background:var(--bg); }
+@media(prefers-color-scheme:dark) {
+  .pageShell:not(:global([data-theme="light"] *)) {
+    --heading:#edf4fb; --ink:#edf4fb; --sub:#b7c5d4; --bg:#0c1726; --card:#152438; --line:#31435a;
+    --soft:#12313c; --preview:#101d2d; --tealDark:#9ce5e1; --danger:#ff9aa2; --dangerBg:#351b21;
+    --shadow:0 4px 14px rgba(0,0,0,.22);
+  }
+}
+:global(.dark) .pageShell, :global([data-theme="dark"]) .pageShell {
+  --heading:#edf4fb; --ink:#edf4fb; --sub:#b7c5d4; --bg:#0c1726; --card:#152438; --line:#31435a;
+  --soft:#12313c; --preview:#101d2d; --tealDark:#9ce5e1; --danger:#ff9aa2; --dangerBg:#351b21;
+  --shadow:0 4px 14px rgba(0,0,0,.22);
+}
+.header { margin-bottom:18px; }
+.header h1 { margin:4px 0 8px; color:var(--heading); font-size:30px; line-height:1.25; text-wrap:balance; }
+.lead { margin:0; color:var(--sub); font-size:13.5px; line-height:1.85; }
+.sender { margin:14px 0; color:var(--heading); font-size:13px; font-weight:900; }
+.mobileTitleRow { display:block; }
+.mobileSender { display:none; }
+.panel, .history { box-sizing:border-box; margin:14px 0; padding:18px; border:1px solid var(--line); border-radius:8px; background:var(--card); box-shadow:var(--shadow); }
+.panel h2, .history h2 { margin:0 0 12px; color:var(--heading); font-size:17px; line-height:1.35; }
+.panel h3 { margin:10px 0; color:var(--heading); font-size:14px; }
+.fields { min-width:0; margin:0; padding:0; border:0; }
+.field { box-sizing:border-box; width:100%; max-width:100%; min-width:0; min-height:44px; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background-color:var(--card); color:var(--ink); font:inherit; font-size:16px; }
+.panel select, .panel input[type=date], .panel input[type=time] { width:min(100%,320px); }
+.field:where(select) { padding-right:36px; }
+.area { min-height:88px; resize:vertical; }
+.choices { display:flex; flex-wrap:wrap; gap:8px 16px; }
+.amount { display:flex; align-items:center; gap:8px; max-width:420px; }
+.amount input { flex:1; width:0; }
+.amount span { white-space:nowrap; font-size:13px; }
+.fixedText { margin:0; color:var(--ink); font-weight:800; }
+.counter { display:grid; grid-template-columns:minmax(72px,1fr) 44px 64px 44px; gap:8px; align-items:center; max-width:360px; margin:8px 0; }
+.counter span { color:var(--ink); font-weight:800; }
+.primary, .counter button { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--teal); border-radius:8px; background:var(--teal); color:var(--card); font:inherit; font-weight:800; cursor:pointer; white-space:nowrap; }
+.counter button { width:44px; height:44px; padding:0; font-size:20px; line-height:1; }
+.counter input { box-sizing:border-box; width:100%; min-width:0; min-height:44px; padding:0; border:1px solid var(--line); border-radius:8px; background:var(--preview); color:var(--ink); font:inherit; font-size:16px; font-weight:900; text-align:center; appearance:textfield; }
+.counter input::-webkit-inner-spin-button { appearance:none; }
+.primary { width:100%; min-height:48px; padding:12px 18px; font-size:15px; }
+.primary:disabled { opacity:.62; cursor:default; }
+.message, .error { margin:14px 0; padding:12px 14px; border-radius:8px; font-size:13px; font-weight:900; }
+.message { background:var(--soft); color:var(--tealDark); }
+.error { background:var(--dangerBg); color:var(--danger); }
+.historyBox { display:grid; gap:6px; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--preview); }
+.historyBox p, .empty { margin:0; color:var(--ink); font-size:13px; line-height:1.7; }
+.empty { color:var(--sub); font-weight:800; }
+@media(max-width:560px) {
+  .panel, .history { padding:14px; }
+  .counter { grid-template-columns:minmax(58px,1fr) 44px minmax(48px,64px) 44px; }
+}
+.pageShell.mobile {
+  --heading:var(--m-heading); --ink:var(--m-ink); --sub:var(--m-sub); --bg:var(--m-bg); --card:var(--m-card);
+  --line:var(--m-line); --soft:var(--m-tint); --preview:var(--m-card); --tealDark:var(--m-accent);
+  max-width:560px; margin:0 auto; padding:14px 16px 20px;
+}
+.mobile .header { margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+.mobile .mobileTitleRow { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; min-width:0; }
+.mobile .header h1 { min-width:0; margin:0; color:var(--heading); font-size:30px; line-height:1.35; white-space:normal; overflow-wrap:anywhere; }
+.mobile .header .compactTitle { font-size:24px; }
+.mobile .mobileSender { display:block; flex:0 0 auto; margin:0; color:var(--heading); font-size:13px; font-weight:900; white-space:nowrap; }
+.mobile .panel, .mobile .history { margin:0; padding:12px 0; border:0; border-bottom:1px solid var(--line); border-radius:0; background:transparent; box-shadow:none; }
+.mobile .panel { display:grid; grid-template-columns:100px minmax(0,1fr); gap:8px 10px; align-items:center; }
+.mobile .expanded { display:block; }
+.mobile .panel h2, .mobile .history h2 { margin:0; color:var(--heading); font-size:15px; line-height:1.4; }
+.mobile .panel select, .mobile .panel input[type=date], .mobile .panel input[type=time] { width:100%; }
+.mobile .fixedText { font-size:16px; }
+.mobile .panel h3 { margin:0; color:var(--sub); font-size:13px; }
+.mobile .counter { grid-template-columns:minmax(0,1fr) 38px 42px 38px; gap:5px; max-width:none; margin:0; }
+.mobile .counter span { font-size:14px; line-height:1.25; }
+.mobile .counter button { width:38px; height:44px; font-size:18px; }
+.mobile .primary { min-height:52px; margin:14px 0 10px; padding:13px 16px; font-size:16px; }
+.mobile .message, .mobile .error { font-size:14px; }
+.mobile .historyBox { padding:10px; background:var(--card); }/* スマホの時刻は 2 つ並ぶと狭いので、中の余白と時計の印の間を詰めて「09:30」を切らさない */
+.mobile .panel input[type=time] { padding-left:8px; padding-right:4px; }
+.mobile .panel input[type=time]::-webkit-calendar-picker-indicator { margin-left:0; padding:0; }
