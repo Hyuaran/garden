@@ -1,10 +1,6 @@
-import { withSystemView } from "@/lib/auth/system-view-page.server";
-import MyPageSectionPage from "../mypage/_components/MyPageSectionPage";
+import { redirect } from "next/navigation";
+import { MY_PAGE_ROUTES } from "@/app/system/mypage/types";
 
-export const metadata = { title: "前確依頼 | Garden" };
-
-function ZenkakuPage() {
-  return <MyPageSectionPage section="zenkaku" />;
+export default function Page() {
+  redirect(MY_PAGE_ROUTES.zenkaku);
 }
-
-export default withSystemView("system-zenkaku", ZenkakuPage);

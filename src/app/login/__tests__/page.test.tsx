@@ -129,19 +129,19 @@ describe("GardenLoginPage submit flow", () => {
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/system/onboarding"));
   });
 
-  // トス・クローザーも入社手続きの判定を聞く（対象は入社日 2026-10-25 以降の人だけ＝判定はサーバー側）
-  it("redirects closer users to /system/mypage when onboarding is not needed", async () => {
+  // トス・クローザーの入社手続きは /my の自分の情報から案内する。
+  it.each(["toss", "closer"])("redirects %s users to /my", async (role) => {
     mocks.signInUnified.mockResolvedValue({ success: true, userId: "u2" });
-    mocks.fetchBloomUser.mockResolvedValue({ garden_role: "closer" });
-    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ needsOnboarding: false }), { status: 200 }));
+    mocks.fetchBloomUser.mockResolvedValue({ garden_role: role });
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ needsOnboarding: true }), { status: 200 }));
 
     render(<GardenLoginPage />);
     fireEvent.change(screen.getByTestId("login-empid"), { target: { value: "9" } });
     fireEvent.change(screen.getByTestId("login-password"), { target: { value: "pw" } });
     fireEvent.click(screen.getByTestId("login-submit"));
 
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/system/mypage"));
-    expect(fetch).toHaveBeenCalledWith("/api/system/onboarding/status", expect.anything());
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/my"));
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("lets a safe returnTo override role redirect", async () => {

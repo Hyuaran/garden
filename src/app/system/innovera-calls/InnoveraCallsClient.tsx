@@ -128,6 +128,7 @@ function callDisplayTime(call: ApiCall) {
 }
 
 export default function InnoveraCallsClient({
+  embedded = false,
   access,
   ownExtension,
   ownExtensions,
@@ -136,6 +137,7 @@ export default function InnoveraCallsClient({
   ownName = "",
   role,
 }: {
+  embedded?: boolean;
   access: CallRecordingAccess;
   ownExtension: string | null;
   ownExtensions: string[];
@@ -413,8 +415,8 @@ export default function InnoveraCallsClient({
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <SystemBreadcrumb items={[{ label: pageTitle }]} />
-        <SystemViewHeading><h1>{pageTitle}</h1></SystemViewHeading>
+        {!embedded && <SystemBreadcrumb items={[{ label: pageTitle }]} />}
+        {!embedded && <SystemViewHeading><h1>{pageTitle}</h1></SystemViewHeading>}
         <UpdatedStampRow><UpdatedStamp label="INNOVERA" date={loading ? null : lastLoadedAt} emptyText={loading ? "取得中..." : "未取得"} busy={loading} onRefresh={() => void loadCalls(true)} refreshLabel="INNOVERA から取り直す" title={loading ? "取得しています…" : "INNOVERA から取り直す（いまの絞り込み条件で最新の通話履歴を取得します）"} /></UpdatedStampRow>
       </header>
 

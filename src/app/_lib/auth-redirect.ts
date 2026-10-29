@@ -24,7 +24,7 @@ export function getPostLoginRedirect(role: string | null | undefined): string {
     // トス・クローザー → マイページ（2026-10-09 東海林さん指示。以前は架電アプリ /tree）
     case "closer":
     case "toss":
-      return "/system/mypage";
+      return "/my";
 
     // 外注パートナー（partner_code lookup は post-5/5）
     case "outsource":

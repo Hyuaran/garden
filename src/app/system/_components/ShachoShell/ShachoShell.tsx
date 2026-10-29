@@ -51,7 +51,7 @@ function NavigationPendingHint() {
 
 export function resolveSystemActivePath(pathname: string): string | null {
   const matches = SYSTEM_MENU_ITEMS
-    .filter((item) => item.href?.startsWith("/system"))
+    .filter((item) => item.href?.startsWith("/system") || item.href?.startsWith("/my?"))
     .sort((a, b) => (b.href?.length ?? 0) - (a.href?.length ?? 0));
   return matches.find((item) => {
     if (!item.href) return false;

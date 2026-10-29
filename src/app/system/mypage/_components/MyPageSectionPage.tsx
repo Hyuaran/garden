@@ -8,7 +8,7 @@ import { MY_PAGE_ROUTES, type MyPageProfile, type MyPageTab } from "../types";
 
 const MANAGER_ROLES = new Set(["manager", "admin", "super_admin"]);
 
-export default async function MyPageSectionPage({ section }: { section: MyPageTab }) {
+export default async function MyPageSectionPage({ section, embedded = false }: { section: MyPageTab; embedded?: boolean }) {
   const supabase = await createServerClient();
   const { data: auth } = await supabase.auth.getUser();
   const returnTo = encodeURIComponent(MY_PAGE_ROUTES[section]);
@@ -22,10 +22,11 @@ export default async function MyPageSectionPage({ section }: { section: MyPageTa
   const initialProfile: MyPageProfile | null = employee && !birthdayRegistered && section === "profile" ? await buildMyPageProfile(employee) : null;
   const postalDataStatus = (await supabase.from("system_postal_datasets").select("source_date,imported_at").eq("active", true).maybeSingle()).data;
   return <MyPageClient
+    embedded={embedded}
     initialTab={section}
     registered={Boolean(employee)}
     employeeName={employee?.name ? String(employee.name) : null}
-    canViewSync={employee ? MANAGER_ROLES.has(String(employee.garden_role)) : false}
+    canViewSync={!embedded && employee ? MANAGER_ROLES.has(String(employee.garden_role)) : false}
     needsExtension={employee ? needsDailyExtension({
       id: String(employee.employee_id ?? ""),
       name: String(employee.name ?? ""),

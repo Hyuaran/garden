@@ -68,6 +68,6 @@ describe("system mypage section server page", () => {
     mocks.redirect.mockImplementation(() => { throw new Error("redirected"); });
     mocks.createServerClient.mockResolvedValue(client(employee, null));
     await expect(MyPageSectionPage({ section: "shift" })).rejects.toThrow("redirected");
-    expect(mocks.redirect).toHaveBeenCalledWith("/login?returnTo=%2Fsystem%2Fshift");
+    expect(mocks.redirect).toHaveBeenCalledWith("/login?returnTo=%2Fmy%3Ftab%3Dshift");
   });
 });

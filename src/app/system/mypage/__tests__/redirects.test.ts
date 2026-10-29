@@ -14,11 +14,11 @@ describe("legacy mypage redirects",()=>{
   it("moves the Tree URL to System",async()=>{await TreeMyPage();expect(redirect).toHaveBeenCalledWith("/system/mypage");});
   it("moves an old attendance query to the standalone URL",async()=>{
     await MyPagePage({searchParams:Promise.resolve({tab:"attendance"})});
-    expect(redirect).toHaveBeenCalledWith("/system/attendance");
+    expect(redirect).toHaveBeenCalledWith("/my?tab=attendance");
   });
   it("connects each standalone URL to its existing tab content",async()=>{
-    expect((await AttendancePage()).props.section).toBe("attendance");
-    expect((await ShiftPage()).props.section).toBe("shift");
-    expect((await ZenkakuPage()).props.section).toBe("zenkaku");
+    await AttendancePage(); expect(redirect).toHaveBeenLastCalledWith("/my?tab=attendance");
+    await ShiftPage(); expect(redirect).toHaveBeenLastCalledWith("/my?tab=shift");
+    await ZenkakuPage(); expect(redirect).toHaveBeenLastCalledWith("/my?tab=zenkaku");
   });
 });

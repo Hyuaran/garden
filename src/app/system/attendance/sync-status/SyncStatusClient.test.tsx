@@ -10,7 +10,7 @@ describe("SyncStatusClient", () => {
     render(<SyncStatusClient />);
     const breadcrumb = screen.getByRole("navigation", { name: "現在地" });
     expect(within(breadcrumb).getByRole("link", { name: "System" })).toHaveAttribute("href", "/system");
-    expect(within(breadcrumb).getByRole("link", { name: "勤怠打刻" })).toHaveAttribute("href", "/system/attendance");
+    expect(within(breadcrumb).getByRole("link", { name: "勤怠打刻" })).toHaveAttribute("href", "/my?tab=attendance");
     expect(within(breadcrumb).getByText("同期状況")).toBeInTheDocument();
     expect(screen.queryByText("SYSTEM / ATTENDANCE")).not.toBeInTheDocument();
   });
