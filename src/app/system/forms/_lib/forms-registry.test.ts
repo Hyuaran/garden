@@ -3,7 +3,8 @@ import { getVisibleSystemForms, SYSTEM_FORMS } from "./forms-registry";
 
 describe("forms registry", () => {
   it("defines system forms in the registry", () => {
-    expect(SYSTEM_FORMS).toHaveLength(3);
+    expect(SYSTEM_FORMS).toHaveLength(4);
+    expect(SYSTEM_FORMS[3]).toMatchObject({ slug: "expense", minRole: "toss", href: "/system/forms/expense" });
     expect(SYSTEM_FORMS[0]).toMatchObject({
       slug: "payroll-notice",
       name: "給与計算連絡",
@@ -25,8 +26,8 @@ describe("forms registry", () => {
   });
 
   it("filters forms by role", () => {
-    expect(getVisibleSystemForms("cs")).toEqual([]);
-    expect(getVisibleSystemForms("staff").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフトLINE連絡テキスト生成", "NHK訪問業務 報告"]);
-    expect(getVisibleSystemForms("manager").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフトLINE連絡テキスト生成", "NHK訪問業務 報告"]);
+    expect(getVisibleSystemForms("cs").map((form) => form.name)).toEqual(["経費 報告"]);
+    expect(getVisibleSystemForms("staff").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフトLINE連絡テキスト生成", "NHK訪問業務 報告", "経費 報告"]);
+    expect(getVisibleSystemForms("manager").map((form) => form.name)).toEqual(["給与計算連絡", "出勤表・シフトLINE連絡テキスト生成", "NHK訪問業務 報告", "経費 報告"]);
   });
 });

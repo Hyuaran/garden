@@ -8,6 +8,7 @@ const scope = (page: string, label: string, roles: readonly GardenRole[] = all, 
 
 // 画面の入口の既定。メニューの既定とは異なる画面もあるため、メニューは従来の判定を渡す。
 export const SYSTEM_VIEW_SCOPES: SystemViewScope[] = [
+  scope("expense", "経費 報告"),
   scope("dev-board", "開発ボード", []),
   scope("home", "ホーム"), scope("docs", "資料"), scope("manuals", "マニュアル"),
   scope("mypage", "自分の情報"), scope("attendance", "勤怠打刻"), scope("shift", "シフト"), scope("zenkaku", "前確依頼"),

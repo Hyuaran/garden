@@ -115,7 +115,8 @@ describe("実際のページ・API の読み取りと書き込みの分離", () 
 });
 
 it("SQL の全 scope・既定役職が registry と一致し、全変更RPCが未知keyを先に拒否する", () => {
-  const sql = readFileSync("supabase/migrations/20261026000005_system_view_scopes.sql", "utf8");
+  // 後から足した画面の scope は、その画面の migration に入っている
+  const sql = readFileSync("supabase/migrations/20261026000005_system_view_scopes.sql", "utf8") + readFileSync("supabase/migrations/20261029000466_system_expense_report.sql", "utf8");
   for (const scope of SYSTEM_VIEW_SCOPES) {
     const roles = scope.defaultRoles.map(role => `'${role}'`).join(",");
     expect(sql).toContain(`('${scope.pageKey}','${scope.tabKey}','${permissionEntry(scope.pageKey, scope.tabKey)!.label}',array[${roles}]::text[])`);
