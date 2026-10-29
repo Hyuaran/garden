@@ -12,6 +12,7 @@ export async function middleware(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
+    if (request.nextUrl.pathname === '/system/line') return new NextResponse('403', {status:403});
     return supabaseResponse;
   }
 
@@ -34,7 +35,12 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getUser();
+  if (request.nextUrl.pathname === '/system/line') {
+    const { data: employee } = auth.user ? await supabase.from('root_employees').select('garden_role,is_active,termination_date,deleted_at').eq('user_id',auth.user.id).maybeSingle() : {data:null};
+    const today = new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
+    if (!employee || employee.garden_role !== 'super_admin' || !employee.is_active || employee.deleted_at || (employee.termination_date && employee.termination_date <= today)) return new NextResponse('403 この画面は全権管理者だけが開けます。',{status:403});
+  }
 
   return supabaseResponse;
 }

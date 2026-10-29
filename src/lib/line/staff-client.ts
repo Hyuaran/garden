@@ -27,12 +27,12 @@ async function lineStaffFetch(path: string, init: RequestInit, options?: LineSta
   return response;
 }
 
-export async function replyLineStaff(replyToken: string, text: string, options?: LineStaffOptions) {
+export async function replyLineStaff(replyToken: string, text: string | string[], options?: LineStaffOptions) {
   await lineStaffFetch("/message/reply", {
     method: "POST",
     body: JSON.stringify({
       replyToken,
-      messages: [{ type: "text", text }],
+      messages: (Array.isArray(text) ? text : [text]).slice(0, 5).map(text => ({ type: "text", text: text.slice(0, 5000) })),
     }),
   }, options);
 }

@@ -3,6 +3,8 @@ import { parseOneTimeLink } from "@/lib/line/link-code";
 import { NextResponse } from "next/server";
 import { getLineStaffProfile, replyLineStaff } from "@/lib/line/staff-client";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { linkedGreeting } from '@/lib/line/tags.server';
+import { linkMessages } from '@/lib/line/tags';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +26,7 @@ type EmployeeRow = {
 
 // 公式 LINE「official｜通知」はシフト連絡以外の業務でも使う（2026-10-23 東海林さん）＝用途を限らない言い方に
 const LINK_GUIDE = "アカウント登録のために、『連携 社員番号』（例：連携 1568）と送ってください。";
-const FOLLOW_REPLY = `official｜通知です。${LINK_GUIDE}`;
+const FOLLOW_REPLY = '友だち追加ありがとうございます。official｜通知です。';
 
 function verifyLineSignature(rawBody: string, signature: string | null) {
   const secret = process.env.LINE_STAFF_CHANNEL_SECRET;
@@ -131,7 +133,7 @@ async function handleLink(event: LineWebhookEvent, employeeNumber: string) {
     .is("deleted_at", null);
   if (updateError) throw updateError;
   await client.from("system_line_staff_pending").delete().eq("line_user_id", lineUserId);
-  await reply(event.replyToken, `${String(employee.name ?? "").trim() || employeeNumber}さんとして登録しました。ありがとうございます。`);
+  await replyLineStaff(event.replyToken, linkMessages(String(employee.name ?? '').trim() || employeeNumber, await linkedGreeting(employeeNumber)));
 }
 
 async function handleUnlinkedText(event: LineWebhookEvent, text: string) {
@@ -185,7 +187,8 @@ async function handleMessage(event: LineWebhookEvent) {
       p_line_user_id: event.source.userId, p_display_name: await displayNameFor(event.source.userId),
     });
     if (error) throw error;
-    await reply(event.replyToken, data?.linked ? `${data.name || oneTime.employeeNumber}さんとして登録しました。ありがとうございます。` : "番号が違うか、期限が切れています。入社手続きの画面に出ている文をそのまま送ってください。");
+    if (data?.linked && event.replyToken) await replyLineStaff(event.replyToken, linkMessages(data.name || oneTime.employeeNumber, await linkedGreeting(oneTime.employeeNumber)));
+    else await reply(event.replyToken, "番号が違うか、期限が切れています。入社手続きの画面に出ている文をそのまま送ってください。");
     return;
   }
   const employeeNumber = parseLinkText(event.message.text);

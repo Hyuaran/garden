@@ -19,3 +19,10 @@ export function ResultMessage({ children, success = false }: { children: ReactNo
 export function RecentList({ title = '自分の最近の報告', items, children }: { title?: string; items?: ReactNode[]; children?: ReactNode }) { return <section className={styles.history}><h2>{title}</h2>{children ?? (items?.length ? <div className={styles.historyBox}>{items}</div> : <p className={styles.empty}>まだありません</p>)}</section>; }
 /** 始めと終わりの時刻を 1 行で（［14:00］～［21:00］）。後ろに稼働時間などを足せる */
 export function TimeRange({ start, end, onStart, onEnd, disabled, children }: { start: string; end: string; onStart: (value: string) => void; onEnd: (value: string) => void; disabled?: boolean; children?: ReactNode }) { return <div className={styles.timeRange}><TextField aria-label="開始時間" type="time" required disabled={disabled} value={start} onChange={e => onStart(e.target.value)} /><span>～</span><TextField aria-label="終了時間" type="time" required disabled={disabled} value={end} onChange={e => onEnd(e.target.value)} />{children}</div>; }
+
+/** 行の中の小さな操作（編集する・試しに送るなど）。送信ボタンより控えめな枠つき */
+export function ActionButton({ children, ...props }: ComponentProps<'button'>) { return <button type="button" {...props} className={[styles.actionButton, props.className ?? ''].join(' ')}>{children}</button>; }
+/** 状態の札（使用中・使用しないなど） */
+export function StatusBadge({ children, muted = false }: { children: ReactNode; muted?: boolean }) { return <span className={[styles.statusBadge, muted ? styles.statusMuted : ''].join(' ')}>{children}</span>; }
+/** 操作ボタンを横に並べる */
+export function ActionRow({ children }: { children: ReactNode }) { return <div className={styles.actionRow}>{children}</div>; }

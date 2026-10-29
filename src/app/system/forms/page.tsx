@@ -31,7 +31,7 @@ async function FormsHubPage() {
   const { viewer } = await viewPermissionContext();
   const visibleForms = getVisibleSystemForms(role), visibleTools = getVisibleGyomuTools(role);
   const formAccess = await Promise.all(SYSTEM_FORMS.map(form => canView("system-forms", "input", viewer, visibleForms.includes(form))));
-  const toolAccess = await Promise.all(GYOMU_TOOLS.map(tool => canView("system-forms", tool.group, viewer, visibleTools.includes(tool))));
+  const toolAccess = await Promise.all(GYOMU_TOOLS.map(tool => tool.href === '/system/line' ? role === 'super_admin' : canView("system-forms", tool.group, viewer, visibleTools.includes(tool))));
   return <FormsHubClient forms={SYSTEM_FORMS.filter((_, i) => formAccess[i])} tools={GYOMU_TOOLS.filter((_, i) => toolAccess[i])} />;
 }
 

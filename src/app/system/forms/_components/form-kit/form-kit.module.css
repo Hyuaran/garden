@@ -93,3 +93,11 @@
 .timeRange input[type=time] { flex:0 1 136px; width:136px; min-width:0; }
 .timeRange > span { color:var(--sub); font-weight:900; }
 .timeRange > div { flex:0 0 128px; }
+
+/* ActionButton・StatusBadge・ActionRow：行の中の控えめな操作と状態 */
+.actionRow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px; }
+.actionButton { min-height:38px; padding:7px 14px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+.actionButton:hover { border-color:var(--teal, #0ea5a0); color:var(--teal, #0ea5a0); }
+.actionButton:disabled { opacity:.5; cursor:not-allowed; }
+.statusBadge { display:inline-block; padding:3px 10px; border-radius:999px; background:rgba(14,165,160,.12); color:var(--teal, #0b7e7a); font-size:13px; font-weight:800; }
+.statusMuted { background:rgba(128,140,157,.14); color:var(--sub); }

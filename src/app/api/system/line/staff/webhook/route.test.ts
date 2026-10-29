@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin: mocks.getSupabaseAdmin }));
+vi.mock('@/lib/line/tags.server', () => ({ linkedGreeting: vi.fn(async () => 'あいさつ文') }));
 vi.mock("@/lib/line/staff-client", () => ({
   replyLineStaff: mocks.replyLineStaff,
   getLineStaffProfile: mocks.getLineStaffProfile,
@@ -21,6 +22,14 @@ function signedRequest(body: unknown, signature = sign(JSON.stringify(body))) {
     body: raw,
   });
 }
+
+it('友だち追加では短いお礼だけを同じ返信で返す', async () => {
+  process.env.LINE_STAFF_CHANNEL_SECRET='secret';
+  mocks.replyLineStaff.mockResolvedValue(undefined);
+  const {POST}=await import('./route');
+  await POST(signedRequest({events:[{type:'follow',replyToken:'follow-token'}]}));
+  expect(mocks.replyLineStaff).toHaveBeenCalledWith('follow-token','友だち追加ありがとうございます。official｜通知です。');
+});
 
 function sign(raw: string) {
   return createHmac("sha256", "secret").update(raw).digest("base64");
@@ -139,7 +148,7 @@ describe("/api/system/line/staff/webhook", () => {
     const { POST } = await import("./route");
     await POST(signedRequest({ events: [{ type: "message", replyToken: "reply", source: { userId: "U-new" }, message: { type: "text", text: "連携　１５７１－４Ｋ７Ｐ" } }] }));
     expect(rpc).toHaveBeenCalledWith("system_consume_line_link_code", { p_employee_number: "1571", p_code: "4K7P", p_line_user_id: "U-new", p_display_name: "LINE表示名" });
-    expect(mocks.replyLineStaff).toHaveBeenCalledWith("reply", linked ? "太郎さんとして登録しました。ありがとうございます。" : "番号が違うか、期限が切れています。入社手続きの画面に出ている文をそのまま送ってください。");
+    expect(mocks.replyLineStaff).toHaveBeenCalledWith("reply", linked ? ["太郎さんとして登録しました。ありがとうございます。", 'あいさつ文'] : "番号が違うか、期限が切れています。入社手続きの画面に出ている文をそのまま送ってください。");
   });
 
   it("links full-width employee numbers and replies with the roster name", async () => {
@@ -160,7 +169,7 @@ describe("/api/system/line/staff/webhook", () => {
     expect(mocks.getLineStaffProfile).toHaveBeenCalledWith("U1568");
     expect(db.updates).toEqual([expect.objectContaining({ line_user_id: "U1568", line_display_name: "LINE表示名", line_link_source: "self" })]);
     expect(db.deletes).toEqual(["U1568"]);
-    expect(mocks.replyLineStaff).toHaveBeenCalledWith("reply-token", "中山 聖也さんとして登録しました。ありがとうございます。");
+    expect(mocks.replyLineStaff).toHaveBeenCalledWith("reply-token", ["中山 聖也さんとして登録しました。ありがとうございます。", 'あいさつ文']);
   });
 
   it("continues returning 200 when an event fails", async () => {

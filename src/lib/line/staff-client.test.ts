@@ -2,6 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { getLineStaffProfile, getLineStaffQuota, pushLineStaff, replyLineStaff } from "./staff-client";
 
 describe("line staff client", () => {
+  it('同じ返信に最大5つの吹き出しをまとめる', async () => {
+    const fetchImpl=vi.fn(async(_url: RequestInfo | URL, _init?: RequestInit)=>new Response('{}'));
+    await replyLineStaff('same-token',['成功','あいさつ','3','4','5','6'],{fetchImpl,token:'test'});
+    const body=JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(body.replyToken).toBe('same-token');expect(body.messages).toHaveLength(5);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
   it("sends reply and multicast with the staff token", async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
 

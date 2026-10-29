@@ -47,6 +47,7 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "コーポレートサイト", description: "グループ各社の会社HPと商品ページを一覧し、サイトへ飛べます。", icon: "folder", href: "/system/sites", minRole: "staff" },
   { label: "関電トスポータル", description: "関西電力のトスアップを受け付けます。入力内容はそのままKintoneへ連携されます。", icon: "folder", href: "/p/toss" },
   { label: "自動配信", description: "決まった時刻に Chatwork へ自動で送っている連絡をまとめて見られます。", icon: "message", href: "/system/deliveries", minRole: "staff" },
+  { label: '公式 LINE', description: '人とタグ・あいさつ文・一斉送信を管理します。', icon: 'message', href: '/system/line', minRole: 'super_admin' },
   { label: "テレマ日報", description: "その日の架電の報告をまとめて提出できるようにします。", icon: "report", upcoming: true },
   { label: "給与試算", description: "支給前におおよその金額を確認できるようにします。", icon: "salary", upcoming: true },
   { label: "管理表ポータル", description: "毎日の管理表を、手で貼らずに作ります。", icon: "portal", href: "/system/kanri", minRole: "manager" },
