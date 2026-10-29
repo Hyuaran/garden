@@ -1,4 +1,6 @@
 "use client";
+import SiteNotifyEditor, { useSiteNotify } from "./_components/SiteNotifyEditor";
+import type { NotifyState } from "@/lib/sites/notify";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import { SystemViewButton, useSystemView } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -134,11 +136,6 @@ function contactLabel(site: CorporateSite) {
   return [site.stack, site.mail].filter(Boolean).join("・");
 }
 
-function toLabel(site: CorporateSite) {
-  if (site.chatwork_to?.length) return `TO ${site.chatwork_to.join("・")}`;
-  return site.notes?.[0] ?? "";
-}
-
 function oldServerLabel(site: CorporateSite) {
   const oldServer = site.old_server;
   if (!oldServer) return "";
@@ -186,7 +183,8 @@ function OpenAction({ site }: { site: CorporateSite }) {
 }
 
 function SiteCard({ site }: { site: CorporateSite }) {
-  return <article className={styles.formCard} data-testid="site-card">
+  const notify=useSiteNotify();
+  return <article className={styles.formCard} data-testid="site-card" tabIndex={site.notify_key ? 0 : undefined} onClick={e=>{if(!(e.target as HTMLElement).closest("a,button,summary,details"))notify.open(site);}} onKeyDown={e=>{if(e.target===e.currentTarget && (e.key==="Enter" || e.key===" ")){e.preventDefault();notify.open(site);}}}>
     <div className={styles.cardHeading}>
       <span className={styles.iconPlate}><MenuIcon icon="folder" /></span>
       <h2>{siteTitle(site)}</h2>
@@ -195,7 +193,7 @@ function SiteCard({ site }: { site: CorporateSite }) {
     <p className={styles.cardDescription}>
       <span>{domainLabel(site)}</span>
       {contactLabel(site) ? <span>{contactLabel(site)}</span> : null}
-      {toLabel(site) ? <span>{toLabel(site)}</span> : null}
+      <span>TO {notify.names(site)}</span>
     </p>
     {site.highlight ? <p className={styles.highlight}>{site.highlight}</p> : null}
     <details className={styles.wiring}>
@@ -263,6 +261,7 @@ function companySlug(group: { sites: CorporateSite[] }) {
 }
 
 function SiteTable({ data }: { data: CorporateSitesData }) {
+  const notify=useSiteNotify();
   const googleMaps = googleMapByCompany(data);
   const rows = groupSitesByCompany(data).flatMap((group) => {
     const map = googleMaps.get(group.company);
@@ -275,12 +274,12 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
         <tr><th>会社</th><th>サイト</th><th>ドメイン</th><th>状態</th><th>問い合わせ先</th><th></th></tr>
       </thead>
       <tbody>
-        {rows.map((row) => "kind" in row ? <tr key={`${row.company}-${row.kind}-${row.product ?? row.domain ?? "domain"}`}>
+        {rows.map((row) => "kind" in row ? <tr tabIndex={row.notify_key ? 0 : undefined} onClick={e=>{if(!(e.target as HTMLElement).closest("a"))notify.open(row);}} onKeyDown={e=>{if(e.target===e.currentTarget && (e.key==="Enter" || e.key===" ")){e.preventDefault();notify.open(row);}}} key={`${row.company}-${row.kind}-${row.product ?? row.domain ?? "domain"}`}>
           <td className="garden-cell-text">{row.company}</td>
           <td className="garden-cell-text"><KindChip site={row} /> {siteTitle(row)}</td>
           <td className="garden-cell-text">{domainLabel(row)}</td>
           <td className="garden-cell-mark"><StatusBadge site={row} /></td>
-          <td className="garden-cell-text">{[kintoneLabel(row), toLabel(row)].filter(Boolean).join("・")}</td>
+          <td className="garden-cell-text">{[kintoneLabel(row), "TO "+notify.names(row)].filter(Boolean).join("・")}</td>
           <td className="garden-cell-text">{canOpen(row) ? <a href={row.url} target="_blank" rel="noopener noreferrer">開く</a> : null}</td>
         </tr> : <tr key={`${row.company}-google-map`}>
           <td className="garden-cell-text">{row.company}</td>
@@ -295,7 +294,10 @@ function SiteTable({ data }: { data: CorporateSitesData }) {
   </div>;
 }
 
-export default function SitesHubClient({ data, role }: { data: CorporateSitesData; role: GardenRole }) {
+export default function SitesHubClient({ data, role, notifyState }: { data: CorporateSitesData; role: GardenRole; notifyState?: NotifyState }) {
+ return <SiteNotifyEditor initial={notifyState} canEdit={role==="super_admin"}><SitesHubContent data={data} role={role}/></SiteNotifyEditor>;
+}
+function SitesHubContent({ data, role }: { data: CorporateSitesData; role: GardenRole }) {
   const [viewMode, setViewMode] = useState<ViewMode>(() => readViewMode());
   const { allowedTab } = useSystemView();
   const [requestedTab, setTab] = useState<TopTab>(() => readTab());

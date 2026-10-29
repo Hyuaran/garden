@@ -2,8 +2,9 @@ import { canView, viewPermissionContext } from "@/lib/auth/view-permission.serve
 import { withSystemView } from "@/lib/auth/system-view-page.server";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/app/_lib/supabase/server";
-import { GARDEN_ROLE_ORDER, type GardenRole, isRoleAtLeast } from "@/app/root/_constants/types";
+import { GARDEN_ROLE_ORDER, type GardenRole } from "@/app/root/_constants/types";
 import { isEmployeeActive } from "@/lib/auth/employee-access";
+import { loadNotifyState } from "@/lib/sites/notify.server";
 import SitesHubClient from "./SitesHubClient";
 import { CORPORATE_SITES_DATA } from "./_lib/sites-data.server";
 
@@ -32,7 +33,8 @@ async function CorporateSitesPage() {
   const sitesAllowed = await canView("system-sites", "sites", viewer);
   const data = sitesAllowed ? CORPORATE_SITES_DATA : { as_of: "", common: { hosting: "", dns_policy: "", form: "" }, excluded: [], google_maps: [],
     sites: CORPORATE_SITES_DATA.sites.filter(site => site.company_id).map(site => ({ company_id: site.company_id, company: site.company, kind: "", status: site.status })) };
-  return <SitesHubClient data={data} role={role} />;
+  const notifyState = sitesAllowed ? await loadNotifyState().catch(() => undefined) : undefined;
+  return <SitesHubClient data={data} role={role} notifyState={notifyState} />;
 }
 
 export default withSystemView("system-sites", CorporateSitesPage);

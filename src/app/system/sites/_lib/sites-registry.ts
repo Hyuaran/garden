@@ -15,6 +15,7 @@ export type CorporateSiteOldServer = {
 };
 
 export type CorporateSite = {
+  notify_key?: string;
   company_id?: string;
   public_slug?: string;
   company: string;
