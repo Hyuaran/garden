@@ -1,5 +1,6 @@
 'use client';
 import Script from 'next/script';
+import LiffLoading from '../_components/LiffLoading';
 import { useRef, useState } from 'react';
 import { FormPage, FixedValue, formStyles } from '@/app/system/forms/_components/form-kit';
 type Liff = { init: (options: { liffId: string }) => Promise<void>; isInClient: () => boolean; isLoggedIn: () => boolean; getIDToken: () => string | null };
@@ -24,7 +25,7 @@ export default function ShiftPage() {
   }
   if (!id) return <main className={formStyles.pageShell}><FixedValue>準備中です</FixedValue></main>;
   return <div style={{maxWidth:560,margin:'0 auto',padding:16}}><FormPage title={name ? name + 'さんのシフト' : 'シフト'} submitterName="" employeeNumber="" embedded>
-    <FixedValue>{message}</FixedValue>
+    {message==='確認中です'?<LiffLoading/>:<FixedValue>{message}</FixedValue>}
     <Script src="https://static.line-scdn.net/liff/edge/2/sdk.js" strategy="afterInteractive" onReady={()=>{void initialize();}} onError={()=>setMessage('確認できませんでした。時間をおいてもう一度お試しください。')}/>
   </FormPage></div>;
 }

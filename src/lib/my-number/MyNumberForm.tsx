@@ -20,11 +20,11 @@ export default function MyNumberForm({endpoint,authorization,initialRow=null,onS
  }
  return <>
 <FixedValue>利用目的：給与・社会保険・税の手続きのために使います。</FixedValue><form onSubmit={submit} data-clarity-mask="true">
- <label><input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)}/>利用目的を確認しました</label>
+ <label style={{display:'flex',alignItems:'center',gap:8,margin:'8px 0'}}><input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)}/>利用目的を確認しました</label>
  <FormRow label={<label htmlFor="my-number">1 マイナンバー（12桁）</label>}><TextField id="my-number" inputMode="numeric" autoComplete="off" pattern="[0-9]{12}" maxLength={12} required disabled={busy} value={number} onChange={e=>setNumber(e.target.value.replace(/\D/g,''))}/></FormRow>
- <FormRow label={<label htmlFor="my-number-photo">2 カードの写真</label>}><TextField id="my-number-photo" type="file" accept="image/jpeg,image/png" required disabled={busy} onChange={e=>setPhoto(e.target.files?.[0]||null)}/><FixedValue>マイナンバーカードの裏面または通知カード。JPEG・PNG、5MBまで。</FixedValue></FormRow>
+ <FormRow label={<label htmlFor="my-number-photo">2 カードの写真</label>}><div style={{display:'grid',gap:6,minWidth:0}}><TextField id="my-number-photo" type="file" accept="image/jpeg,image/png" required disabled={busy} onChange={e=>setPhoto(e.target.files?.[0]||null)}/><FixedValue>マイナンバーカードの裏面または通知カード。JPEG・PNG、5MBまで。</FixedValue></div></FormRow>
  <SubmitButton type="submit" busy={busy} disabled={!consent}>送信する</SubmitButton></form>
- {row&&<FixedValue>提出の状況：{labels[row.status]}（{new Date(row.submitted_at).toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'})}）　下4桁：{row.my_number_last4}{row.rejection_reason&&<><br/>{row.rejection_reason}</>}</FixedValue>}
+ {row&&<FixedValue>提出の状況：{labels[row.status]}（{new Date(row.submitted_at).toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'})}）<br/>番号の下4桁：{row.my_number_last4}{row.rejection_reason&&<><br/>{row.rejection_reason}</>}</FixedValue>}
  <ResultMessage success={success}>{message}</ResultMessage>
 </>;
 }
