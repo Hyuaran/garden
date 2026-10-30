@@ -6,14 +6,14 @@ import { BUSINESSES } from '../_lib/team-history';
 import { FormRow as KitFormRow, SelectField as KitSelectField, FieldLabel, RadioGroup } from '@/app/system/forms/_components/form-kit';
 
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
-import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
+
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
 import UpdatedStamp, { UpdatedStampRow } from "@/app/system/_components/UpdatedStamp/UpdatedStamp";
 import { Button } from "../_components/Button";
-import { DataTable, Column } from "../_components/DataTable";
+import DataTable, { type DataColumn } from "@/app/system/_components/DataTable/DataTable";
 import { StatusBadge } from "../_components/StatusBadge";
 import { Modal } from "../_components/Modal";
 import { TextField, SelectField, FormGrid, TextareaField } from "../_components/FormField";
@@ -316,9 +316,7 @@ export default function EmployeesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [salarySystems, setSalarySystems] = useState<SalarySystem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterCompany, setFilterCompany] = useState<string>("");
-  const [search, setSearch] = useState("");
-  const searchRef = useRef<HTMLInputElement | null>(null);
+  const tableRef = useRef<HTMLDivElement | null>(null);
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [editTab,setEditTab] = useState('basic');
   const bankBaselineRef = useRef<Record<string,unknown>>({});
@@ -353,7 +351,6 @@ export default function EmployeesPage() {
   const canSyncChatworkTokens = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "manager") : false;
   const canManageChatworkToken = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "manager") : false;
   const canSyncRoster = rootUser?.garden_role ? isRoleAtLeast(rootUser.garden_role, "admin") : false;
-  const canOpenEmployeeModal = canWrite || canManageChatworkToken;
   const editEmployeeId = editTarget?.employee_id;
   useEffect(() => {
     setProfileDraft({}); setProfileChanges({}); setProfileReady(false);
@@ -452,21 +449,10 @@ export default function EmployeesPage() {
   const companyMap = useMemo(() => new Map(companies.map((c) => [c.company_id, c])), [companies]);
   const salaryMap = useMemo(() => new Map(salarySystems.map((s) => [s.salary_system_id, s])), [salarySystems]);
 
-  const filtered = useMemo(() => {
-    let list = employees;
-    if (filterCompany) list = list.filter((e) => e.company_id === filterCompany);
-    if (search) {
-      const s = search.toLowerCase();
-      list = list.filter((e) => e.name.toLowerCase().includes(s) || e.name_kana.toLowerCase().includes(s) || e.employee_number.toLowerCase().includes(s));
-    }
-    return list;
-  }, [employees, filterCompany, search]);
-
-  const { activeIndex } = useMasterShortcuts<Employee>({
-    rows: filtered,
-    modalOpen: !!editTarget,
-    searchRef,
-    onEditRow: canOpenEmployeeModal ? setEditTarget : undefined,
+  useMasterShortcuts<Employee>({
+    rows: employees, modalOpen: !!editTarget || !!historyTarget || !!roleTarget,
+    onSearch: () => { const input = tableRef.current?.querySelector<HTMLInputElement>('input[type="search"]'); input?.focus(); input?.select(); },
+    rowNavigation: false,
   });
 
   async function handleSave() {
@@ -538,6 +524,7 @@ export default function EmployeesPage() {
     }
     try {
       const saved = await setEmployeeActive(e.employee_id, !e.is_active);
+      setEditTarget(null);
       await writeAudit({
         action: "master_update",
         actorUserId: rootUser?.user_id ?? null,
@@ -695,6 +682,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
           ? { ...employee, garden_role: nextGardenRole }
           : employee
       )));
+      setEditTarget(current => current?.employee_id === roleTarget.employee_id ? { ...current, garden_role: nextGardenRole } : current);
       setRoleTarget(null);
       await writeAudit({
         action: "master_update",
@@ -737,41 +725,27 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
     }
   }
 
-  const columns: Column<Employee>[] = [
-    { key: "id", header: "ID", align: "center", render: (e) => e.employee_id, width: 100 },
-    { key: "num", header: "社員番号", align: "center", render: (e) => <span {...CLARITY_MASK}>{e.employee_number}</span>, width: 90 },
-    { key: "name", header: "氏名", align: "left", render: (e) => <span {...CLARITY_MASK}>{e.name}</span>, width: 120 },
-    { key: "kana", header: "カナ", align: "left", render: (e) => <span {...CLARITY_MASK}>{e.name_kana}</span>, width: 160 },
-    { key: "address", header: "住所", align: "left", render: (e) => {
+  const columns: DataColumn<Employee>[] = [
+    { id: "id", value: (e) => e.employee_id, type: "text", label: "ID", align: "fixed", render: (e) => e.employee_id },
+    { id: "num", value: (e) => e.employee_number, type: "text", label: "社員番号", align: "fixed", render: (e) => <span {...CLARITY_MASK}>{e.employee_number}</span> },
+    { id: "name", value: (e) => e.name, type: "text", label: "氏名", align: "text", render: (e) => <span {...CLARITY_MASK}>{e.name}</span> },
+    { id: "kana", value: (e) => e.name_kana, type: "text", label: "カナ", align: "text", render: (e) => <span {...CLARITY_MASK}>{e.name_kana}</span> },
+    { id: "address", value: (e) => addressLine(addresses[e.employee_id]), type: "text", label: "住所", align: "text", render: (e) => {
       const address = addresses[e.employee_id];
       const text = addressLine(address);
       return <span style={{ color: address?.full ? colors.text : colors.textMuted }} {...CLARITY_MASK}>{text}</span>;
-    }, width: 260, wrap: true },
-    { key: "company", header: "法人", align: "left", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, width: 160 },
-    { key: "team", header: "チーム", align: "left", render: (e) => e.current_team || "所属なし", width: 120 },
-    { key: "business", header: "事業", align: "left", render: (e) => e.business || "—", width: 160 },
-    { key: "emp_type", header: "雇用形態", align: "left", render: (e) => e.employment_type, width: 80 },
-    { key: "garden_role", header: "Garden権限", align: "left", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], width: 110 },
-    { key: "salary", header: "給与体系", align: "left", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, width: 130 },
-    { key: "hire", header: "入社日", align: "center", render: (e) => e.hire_date, width: 110 },
-    { key: "birthday", header: "生年月日", align: "center", render: (e) => e.birthday ?? "—", width: 110 },
-    { key: "termination", header: "退職日", align: "center", render: (e) => e.termination_date ?? "—", width: 110 },
-    { key: "status", header: "状態", render: (e) => <StatusBadge active={e.is_active} />, width: 80, align: "center" },
-    { key: "actions", header: "", render: (e) => (
-      <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(e)} disabled={!canOpenEmployeeModal} title={!canOpenEmployeeModal ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
-        <Button variant="secondary" onClick={() => openHistory(e)}>履歴</Button>
-        <Button
-          variant="secondary"
-          onClick={() => openRoleDialog(e)}
-          disabled={rootUser?.garden_role !== "super_admin" || e.garden_role === "super_admin"}
-          title={rootUser?.garden_role !== "super_admin" ? "Garden権限の変更は全権管理者のみ行えます" : e.garden_role === "super_admin" ? "全権管理者のGarden権限は画面から変更できません" : undefined}
-        >
-          権限
-        </Button>
-        <Button variant={e.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(e)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{e.is_active ? "無効化" : "有効化"}</Button>
-      </div>
-    ), width: 280, align: "left" },
+    }, wrap: true },
+    { id: "company", value: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id, type: "text", label: "法人", align: "text", render: (e) => companyMap.get(e.company_id)?.company_name ?? e.company_id },
+    { id: "team", value: (e) => e.current_team || "所属なし", type: "text", label: "チーム", align: "text", render: (e) => e.current_team || "所属なし" },
+    { id: "business", value: (e) => e.business || "未設定", type: "text", label: "事業", align: "text", render: (e) => e.business || "—" },
+    { id: "emp_type", value: (e) => e.employment_type, type: "text", label: "雇用形態", align: "text", render: (e) => e.employment_type },
+    { id: "garden_role", value: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"], type: "text", label: "Garden権限", align: "text", render: (e) => GARDEN_ROLE_LABELS[e.garden_role ?? "staff"] },
+    { id: "salary", value: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id, type: "text", label: "給与体系", align: "text", render: (e) => salaryMap.get(e.salary_system_id)?.system_name ?? e.salary_system_id },
+    { id: "hire", value: (e) => e.hire_date, type: "date", label: "入社日", align: "fixed", render: (e) => e.hire_date },
+    { id: "birthday", value: (e) => e.birthday ?? "", type: "date", label: "生年月日", align: "fixed", render: (e) => e.birthday ?? "—" },
+    { id: "termination", value: (e) => e.termination_date ?? "", type: "date", filterValue: (e) => e.termination_date || "なし", label: "退職日", align: "fixed", render: (e) => e.termination_date ?? "—" },
+    { id: "status", value: (e) => e.is_active ? "在籍" : "退職", type: "text", label: "状態", render: (e) => <StatusBadge active={e.is_active} />, align: "fixed" },
+
   ];
 
   const canAdd = companies.length > 0 && salarySystems.length > 0;
@@ -780,21 +754,11 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
     <>
       <PageHeader
         title="従業員マスタ"
-        description="給与処理対象者。退職時は退職日を入力し無効化。業務委託は登録対象外。Ctrl+Shift+G 検索・Ctrl+↑↓ 行移動・Ctrl+Enter 編集。"
       />
       <UpdatedStampRow>
         <UpdatedStamp label="従業員名簿" date={rosterSyncedAt} onRefresh={handleRosterSync} busy={rosterSyncing} disabled={!canSyncRoster} refreshLabel="Kintone の従業員名簿と同期する" title="Kintone の従業員名簿と同期する" />
       </UpdatedStampRow>
       {rosterSyncResult && <div role="status" style={{ color: colors.textMuted, fontSize: 12, textAlign: "right", marginBottom: 12 }}>更新 {rosterSyncResult.updated}・無効化 {rosterSyncResult.authBanned}</div>}
-      <FilterRow style={{ display: "flex", gap: 8, flexWrap: "wrap", minWidth: 0, width: "100%", margin: "12px 0" }}>
-        <ChoiceFilter label="法人" value={filterCompany} onValueChange={value => setFilterCompany(value)}>
-          <option value="">すべての法人</option>
-          {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
-        </ChoiceFilter>
-        <FilterBox label="氏名・番号で検索（Ctrl+Shift+G）" search><input ref={searchRef} type="text" placeholder="氏名・番号で検索（Ctrl+Shift+G）" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.border}`, fontSize: 13, flex: "1 1 260px", minWidth: 0 }} /></FilterBox>
-        <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
-        <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
-      </FilterRow>
       {!canAdd && !loading && <div style={{ background: colors.warningBg, color: colors.warning, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>従業員を追加するには、先に法人マスタと給与体系マスタを登録してください。</div>}
       {tokenSyncResult && (
         <div style={{ background: colors.warningBg, color: colors.warning, padding: "10px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13, lineHeight: 1.7 }}>
@@ -807,7 +771,9 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
         </div>
       )}
       {error && <div style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>{error}</div>}
-      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <DataTable stickyFirstColumn columns={columns} rows={filtered} activeIndex={activeIndex} onRowClick={setEditTarget} />}
+      {loading ? <div style={{ color: colors.textMuted, padding: 40, textAlign: "center" }}>読込中...</div> : <div ref={tableRef}><DataTable columns={columns} rows={employees} rowKey={(e) => e.employee_id} defaultSort={{ id: "num", direction: "asc" }} searchText={(e) => [e.name, e.name_kana, e.employee_number].join(" ")} searchPlaceholder="氏名・カナ・社員番号" pageSize={500} onRowClick={setEditTarget} toolbar={<>        <Button variant="secondary" onClick={handleChatworkTokenSync} disabled={tokenSyncing || !canSyncChatworkTokens} title={!canSyncChatworkTokens ? "責任者以上の権限が必要です" : undefined}>{tokenSyncing ? "取り込み中..." : "Chatwork トークンを取り込む"}</Button>
+        <Button onClick={() => setEditTarget(empty(nextId(employees), companies[0]?.company_id ?? "", salarySystems[0]?.salary_system_id ?? ""))} disabled={!canAdd || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>+ 新規追加</Button>
+</>} /></div>}
 
       <Modal open={!!historyTarget} onClose={() => setHistoryTarget(null)} title={`${historyTarget?.name ?? ""}（${historyTarget?.employee_number ?? ""}）の履歴`} width={960}>
         {historyLoading ? <div style={{ color: colors.textMuted }}>読込中...</div> : historyError ? <div role="alert" style={{ background: colors.dangerBg, color: colors.danger, padding: "8px 12px", borderRadius: 4 }}>{historyError}</div> : profileHistory ? (
@@ -895,6 +861,20 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
         {editTarget && (
           <div>
             <SystemTabs>{[['basic','基本'],['address','住所・連絡先'],['bank','口座・通勤'],['employment','雇用の条件']].map(([id,label])=><button type="button" role="tab" aria-selected={editTab===id} key={id} onClick={()=>setEditTab(id)}>{label}</button>)}</SystemTabs>
+            {editTarget.created_at && (
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }} onClick={(ev) => ev.stopPropagation()}>
+        <Button variant="secondary" onClick={() => openHistory(editTarget)}>履歴を見る</Button>
+        <Button
+          variant="secondary"
+          onClick={() => openRoleDialog(editTarget)}
+          disabled={rootUser?.garden_role !== "super_admin" || editTarget.garden_role === "super_admin"}
+          title={rootUser?.garden_role !== "super_admin" ? "Garden権限の変更は全権管理者のみ行えます" : editTarget.garden_role === "super_admin" ? "全権管理者のGarden権限は画面から変更できません" : undefined}
+        >
+          Garden 権限を変更する
+        </Button>
+        <Button variant={editTarget.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(editTarget)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{editTarget.is_active ? "無効にする" : "有効にする"}</Button>
+      </div>
+            )}
             {!profileReady && editTarget.created_at && <p>履歴を読み込み中です。</p>}
             <div hidden={editTab!=='basic'}>
             <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: colors.textMuted }}>基本情報</h3>

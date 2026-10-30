@@ -10,7 +10,7 @@ export type ModalProps = {
   title: string;
   children: ReactNode;
   onClose: () => void;
-  size?: "md" | "sm";
+  size?: "sm" | "md" | "lg";
   actions?: ReactNode;
   className?: string;
 };

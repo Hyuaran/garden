@@ -15,6 +15,8 @@ export type MasterShortcutsOptions<T> = {
   rows: T[];
   modalOpen: boolean;
   searchRef?: RefObject<HTMLInputElement | null>;
+  onSearch?: () => void;
+  rowNavigation?: boolean;
   onEditRow?: (row: T) => void;
 };
 
@@ -23,6 +25,8 @@ export function useMasterShortcuts<T>({
   modalOpen,
   searchRef,
   onEditRow,
+  onSearch,
+  rowNavigation = true,
 }: MasterShortcutsOptions<T>) {
   const [rawActiveIndex, setActiveIndex] = useState<number>(-1);
 
@@ -37,14 +41,15 @@ export function useMasterShortcuts<T>({
 
       // 正本: 検索ボックスへジャンプ = Ctrl+Shift+G（Ctrl+F は廃止）
       if (e.shiftKey && (e.key === "g" || e.key === "G")) {
-        if (searchRef?.current) {
+        if (onSearch) { e.preventDefault(); onSearch(); }
+        else if (searchRef?.current) {
           e.preventDefault();
           searchRef.current.focus();
           searchRef.current.select();
         }
         return;
       }
-      if (e.shiftKey) return;
+      if (e.shiftKey || !rowNavigation) return;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -64,7 +69,7 @@ export function useMasterShortcuts<T>({
         return;
       }
     },
-    [modalOpen, rows, searchRef, onEditRow, activeIndex],
+    [modalOpen, rows, searchRef, onEditRow, onSearch, rowNavigation, activeIndex],
   );
 
   useEffect(() => {

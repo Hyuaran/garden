@@ -97,13 +97,14 @@ function renderPage() {
 }
 
 async function openEmployee() {
-  fireEvent.click(await screen.findByRole("button", { name: "編集" }));
+  fireEvent.click(await screen.findByRole("cell", { name: "毛利テスト" }));
   await waitFor(()=>expect(screen.queryByText('履歴を読み込み中です。')).not.toBeInTheDocument());
   return screen.getByLabelText("Garden権限") as HTMLSelectElement;
 }
 
 async function openRoleDialog() {
-  fireEvent.click(await screen.findByRole("button", { name: "権限" }));
+  await openEmployee();
+  fireEvent.click(await screen.findByRole("button", { name: "Garden 権限を変更する" }));
   return screen.getByLabelText("変更後") as HTMLSelectElement;
 }
 
@@ -151,7 +152,7 @@ describe("Garden権限の編集UI", () => {
     mocks.operatorRole = "manager";
     vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ latest: null }) } as Response);
     renderPage();
-    await screen.findByRole("button", { name: "編集" });
+    await screen.findByRole("cell", { name: "毛利テスト" });
     expect(screen.getByText("従業員名簿最終更新：未取得")).toBeInTheDocument();
     const button = screen.getByRole("button", { name: "Kintone の従業員名簿と同期する" });
     expect(button).toBeDisabled();
@@ -166,7 +167,7 @@ describe("Garden権限の編集UI", () => {
       return { ok: true, json: async () => ({ latest: null }) } as Response;
     });
     renderPage();
-    await screen.findByRole("button", { name: "編集" });
+    await screen.findByRole("cell", { name: "毛利テスト" });
     const button = screen.getByRole("button", { name: "Kintone の従業員名簿と同期する" });
     expect(button).not.toHaveAttribute("title");
     fireEvent.click(button);
@@ -179,6 +180,29 @@ describe("Garden権限の編集UI", () => {
     expect(await screen.findByText("従業員名簿最終更新：2026/10/21(水) 10:00")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("更新 3・無効化 1");
     await waitFor(() => expect(button).toBeEnabled());
+  });
+
+  it("共通の検索と列の絞り込みを使い、行から履歴を開く", async () => {
+    renderPage();
+    await screen.findByRole("cell", { name: "毛利テスト" });
+    expect(screen.getByRole("searchbox", { name: "検索" })).toHaveAttribute("placeholder", "氏名・カナ・社員番号");
+    expect(screen.queryByRole("button", { name: "編集" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "退職日の並べ替え・絞り込み" }));
+    expect(screen.getByRole("checkbox", { name: "なし (1)" })).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    await openEmployee();
+    expect(screen.getByRole("dialog", { name: "従業員を編集" })).toHaveAttribute("data-size", "lg");
+    fireEvent.click(screen.getByRole("button", { name: "履歴を見る" }));
+    expect(await screen.findByRole("dialog", { name: "毛利テスト（1404）の履歴" })).toHaveAttribute("data-size", "lg");
+  });
+
+  it("新規追加では履歴・権限変更・状態変更のボタンを出さない", async () => {
+    renderPage();
+    await screen.findByRole("cell", { name: "毛利テスト" });
+    fireEvent.click(screen.getByRole("button", { name: "+ 新規追加" }));
+    expect(screen.queryByRole("button", { name: "履歴を見る" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Garden 権限を変更する" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "無効にする" })).not.toBeInTheDocument();
   });
 
   it("全権管理者には指定順の日本語選択肢だけを編集可能で表示する", () => {
@@ -224,7 +248,7 @@ describe("Garden権限の編集UI", () => {
 
   it("一覧に日本語のGarden権限を表示する", async () => {
     renderPage();
-    expect(await screen.findByRole("columnheader", { name: "Garden権限" })).toBeInTheDocument();
+    expect(await screen.findByRole("columnheader", { name: /Garden権限/ })).toBeInTheDocument();
     expect(screen.getAllByText("正社員")).toHaveLength(2);
   });
 
@@ -432,7 +456,7 @@ describe("Garden権限の編集UI", () => {
         action: "master_update", targetId: employee.employee_id,
       }));
       expect(mocks.setEmployeeActive).not.toHaveBeenCalled();
-      expect(await screen.findByRole("columnheader", { name: "退職日" })).toBeInTheDocument();
+      expect(await screen.findByRole("columnheader", { name: /退職日/ })).toBeInTheDocument();
       expect(await screen.findByRole("cell", { name: "2026-06-30" })).toBeInTheDocument();
     });
 
@@ -463,7 +487,8 @@ describe("Garden権限の編集UI", () => {
     it("退職日保存と無効化は従来どおり独立した操作として監査される", async () => {
       mocks.fetchEmployees.mockResolvedValue([{ ...employeeWithoutBank, termination_date: "2026-06-30" }]);
       renderPage();
-      fireEvent.click(await screen.findByRole("button", { name: "無効化" }));
+      await openEmployee();
+      fireEvent.click(screen.getByRole("button", { name: "無効にする" }));
       await waitFor(() => expect(mocks.setEmployeeActive).toHaveBeenCalledWith(employee.employee_id, false));
       expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "master_update", payload: { toggle_active: false } }));
       expect(mocks.upsertEmployee).not.toHaveBeenCalled();
@@ -474,8 +499,9 @@ describe("Garden権限の編集UI", () => {
       mocks.operatorRole = "staff";
       mocks.fetchEmployees.mockResolvedValue([{ ...employeeWithoutBank, termination_date: "2026-06-30" }]);
       renderPage();
-      expect(await screen.findByRole("button", { name: "編集" })).toBeDisabled();
-      expect(screen.getByRole("button", { name: "無効化" })).toBeDisabled();
+      await openEmployee();
+      expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "無効にする" })).toBeDisabled();
       expect(mocks.upsertEmployee).not.toHaveBeenCalled();
     });
   });
@@ -483,7 +509,8 @@ describe("Garden権限の編集UI", () => {
   describe("権限だけを変更するダイアログ", () => {
     it("全権管理者には権限ボタンを有効にする", async () => {
       renderPage();
-      expect(await screen.findByRole("button", { name: "権限" })).toBeEnabled();
+      await openEmployee();
+      expect(screen.getByRole("button", { name: "Garden 権限を変更する" })).toBeEnabled();
     });
 
     it.each(["admin", "manager"] as const)(
@@ -491,7 +518,8 @@ describe("Garden権限の編集UI", () => {
       async (operatorRole) => {
         mocks.operatorRole = operatorRole;
         renderPage();
-        const button = await screen.findByRole("button", { name: "権限" });
+        await openEmployee();
+        const button = screen.getByRole("button", { name: "Garden 権限を変更する" });
         expect(button).toBeDisabled();
         expect(button).toHaveAttribute(
           "title",
@@ -525,7 +553,7 @@ describe("Garden権限の編集UI", () => {
       await waitFor(() => expect(mocks.updateEmployeeGardenRole).toHaveBeenCalledTimes(1));
       expect(mocks.updateEmployeeGardenRole).toHaveBeenCalledWith("EMP-1404", "closer");
       expect(mocks.upsertEmployee).not.toHaveBeenCalled();
-      expect(await screen.findByText("クローザー")).toBeInTheDocument();
+      expect(await screen.findByRole("cell", { name: "クローザー" })).toBeInTheDocument();
     });
 
     it("現在と同じ権限なら更新せず閉じる", async () => {

@@ -53,3 +53,8 @@ it("確認必須の小窓は閉じる操作を受け付けない", () => {
   expect(screen.queryByRole("button", { name: "閉じる" })).toBeNull();
   expect(onClose).not.toHaveBeenCalled();
 });
+
+it("lg の幅指定をパネルに付ける", () => {
+ render(<Modal title="大きい小窓" size="lg" onClose={vi.fn()}>本文</Modal>);
+ expect(screen.getByRole("dialog", { name: "大きい小窓" })).toHaveAttribute("data-size", "lg");
+});

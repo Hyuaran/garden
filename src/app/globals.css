@@ -3585,6 +3585,7 @@ table :is(td, th):is(.garden-cell-text, .garden-cell-fixed, .garden-cell-mark, .
 :where(dialog) { position: fixed; inset: 0; }
 :where(dialog)::backdrop { background: var(--modal-backdrop) !important; }
 [data-garden-modal="panel"][data-size="sm"] { width: min(520px, calc(100vw / var(--garden-zoom, 1) - 32px)) !important; }
+[data-garden-modal="panel"][data-size="lg"] { width: min(960px, calc(100vw / var(--garden-zoom, 1) - 32px)) !important; }
 [data-garden-modal="overlay"] {
   position: fixed !important;
   inset: 0 !important;
