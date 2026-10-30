@@ -85,12 +85,12 @@ describe("ShachoShell rail layout", () => {
     expect(css).toMatch(/\.actionTip\{[^}]*z-index:30/);
   });
 
-  it("centers the sidebarless main while retaining the base max width", () => {
+  it("centers the sidebarless main and lets the base main use the full width", () => {
     expect(mainFullRule).toContain("width:100%");
     expect(mainFullRule).toContain("margin:0 auto");
     expect(mainFullRule).toContain("box-sizing:border-box");
     expect(mainFullRule).not.toContain("max-width");
-    expect(css.match(/\.main\{([^}]+)\}/)?.[1]).toContain("max-width:1180px");
+    expect(css.match(/\.main\{([^}]+)\}/)?.[1]).toContain("max-width:none");
   });
 
   it("shows a thin theme-colored pending bar without covering content", () => {

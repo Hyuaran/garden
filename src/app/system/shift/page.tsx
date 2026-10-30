@@ -1,6 +1,10 @@
-import { redirect } from "next/navigation";
-import { MY_PAGE_ROUTES } from "@/app/system/mypage/types";
+import { withSystemView } from "@/lib/auth/system-view-page.server";
+import MyPageSectionPage from "../mypage/_components/MyPageSectionPage";
 
-export default function Page() {
-  redirect(MY_PAGE_ROUTES.shift);
+export const metadata = { title: "シフト | Garden" };
+
+function ShiftPage() {
+  return <MyPageSectionPage section="shift" />;
 }
+
+export default withSystemView("system-shift", ShiftPage);

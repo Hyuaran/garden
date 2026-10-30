@@ -24,10 +24,10 @@ export function shouldHideSidebar(role: GardenRole) {
 }
 
 export const LIMITED_MENU_ITEMS: SystemMenuItem[] = [
-  { label: "自分の情報", description: "自分の登録情報を確認します。", icon: "person", href: "/my?tab=profile" },
-  { label: "勤怠打刻", description: "出勤・退勤の打刻をします。", icon: "clock", href: "/my?tab=attendance", activePrefixes: ["/system/attendance"] },
-  { label: "シフト", description: "シフトの提出と勤務予定を確認します。", icon: "shift", href: "/my?tab=shift" },
-  { label: "前確依頼", description: "前確依頼を出します。", icon: "zenkaku", href: "/my?tab=zenkaku" },
+  { label: "自分の情報", description: "自分の登録情報を確認します。", icon: "person", href: "/system/mypage" },
+  { label: "勤怠打刻", description: "出勤・退勤の打刻をします。", icon: "clock", href: "/system/attendance" },
+  { label: "シフト", description: "シフトの提出と勤務予定を確認します。", icon: "shift", href: "/system/shift" },
+  { label: "前確依頼", description: "前確依頼を出します。", icon: "zenkaku", href: "/system/zenkaku" },
   { label: "通話・録音", description: "自分の通話と録音を確認します。", icon: "message", href: "/system/innovera-calls" },
 ];
 
@@ -36,10 +36,10 @@ export const SYSTEM_MENU_ITEMS: SystemMenuItem[] = [
   { label: "資料", description: "会社説明など、社内で読む資料をまとめています。", icon: "book", href: "/system/docs" },
   { label: "マニュアル", description: "Garden の使い方と仕組みの資料です。操作マニュアルは社員向け、仕組みと仕様は全権管理者向けです。", icon: "book", href: "/system/manuals", minRole: "staff" },
   { label: "入社手続き", description: "入社時の情報を入力し、提出した内容を確認できます。", icon: "document", href: "/system/onboarding" },
-  { label: "自分の情報", description: "自分の登録情報を確認し、住所・口座・交通費などの届出を出せます。", icon: "person", href: "/my?tab=profile" },
-  { label: "勤怠打刻", description: "出勤・退勤の打刻をします。打刻の記録はそのまま勤怠の集計につながります。", icon: "clock", href: "/my?tab=attendance", activePrefixes: ["/system/attendance"] },
-  { label: "シフト", description: "シフトの提出と勤務予定の確認を行う画面です。", icon: "shift", href: "/my?tab=shift" },
-  { label: "前確依頼", description: "営業IDの登録内容を確認し、取次先へ前確依頼を出します。", icon: "zenkaku", href: "/my?tab=zenkaku" },
+  { label: "自分の情報", description: "自分の登録情報を確認し、住所・口座・交通費などの届出を出せます。", icon: "person", href: "/system/mypage" },
+  { label: "勤怠打刻", description: "出勤・退勤の打刻をします。打刻の記録はそのまま勤怠の集計につながります。", icon: "clock", href: "/system/attendance" },
+  { label: "シフト", description: "シフトの提出と勤務予定の確認を行う画面です。", icon: "shift", href: "/system/shift" },
+  { label: "前確依頼", description: "営業IDの登録内容を確認し、取次先へ前確依頼を出します。", icon: "zenkaku", href: "/system/zenkaku" },
   { label: "テレマ コール集計", description: "架電の件数や結果を日ごと・リストごとに見られます。コールセンターへの共有もここから。", icon: "chart", href: "/system/call-metrics", minRole: "staff" },
   { label: "INNOVERA履歴・録音", description: "INNOVERA の通話履歴を見て、終話後の録音をその場で聞けます。自分の発信番号の切り替えもここから。", icon: "message", href: "/system/innovera-calls", minRole: "cs" },
   { label: "業務管理ツール", description: "日々の連絡や申請の入力、自動で動いている仕組み、Kintone に入れたしかけをまとめた入口です。", icon: "document", href: "/system/forms", activePrefixes: ["/system/innovera"], minRole: "staff" },

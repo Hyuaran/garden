@@ -12,13 +12,14 @@ import MyPagePage from "../page";
 describe("legacy mypage redirects",()=>{
   beforeEach(()=>redirect.mockReset());
   it("moves the Tree URL to System",async()=>{await TreeMyPage();expect(redirect).toHaveBeenCalledWith("/system/mypage");});
-  it("moves an old attendance query to the standalone URL",async()=>{
+  it("moves an old attendance query to the System attendance page",async()=>{
     await MyPagePage({searchParams:Promise.resolve({tab:"attendance"})});
-    expect(redirect).toHaveBeenCalledWith("/my?tab=attendance");
+    expect(redirect).toHaveBeenCalledWith("/system/attendance");
   });
-  it("connects each standalone URL to its existing tab content",async()=>{
-    await AttendancePage(); expect(redirect).toHaveBeenLastCalledWith("/my?tab=attendance");
-    await ShiftPage(); expect(redirect).toHaveBeenLastCalledWith("/my?tab=shift");
-    await ZenkakuPage(); expect(redirect).toHaveBeenLastCalledWith("/my?tab=zenkaku");
+  it("opens each System page inside System instead of leaving for /my",()=>{
+    expect(AttendancePage()).toMatchObject({props:{section:"attendance"}});
+    expect(ShiftPage()).toMatchObject({props:{section:"shift"}});
+    expect(ZenkakuPage()).toMatchObject({props:{section:"zenkaku"}});
+    expect(redirect).not.toHaveBeenCalled();
   });
 });

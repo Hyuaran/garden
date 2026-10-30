@@ -31,10 +31,10 @@ export type MyPageProfile = {
 export type MyPageTab = "profile" | "attendance" | "shift" | "zenkaku";
 
 export const MY_PAGE_ROUTES: Record<MyPageTab, string> = {
-  profile: "/my?tab=profile",
-  attendance: "/my?tab=attendance",
-  shift: "/my?tab=shift",
-  zenkaku: "/my?tab=zenkaku",
+  profile: "/system/mypage",
+  attendance: "/system/attendance",
+  shift: "/system/shift",
+  zenkaku: "/system/zenkaku",
 };
 
 export const MY_PAGE_TITLES: Record<MyPageTab, string> = {

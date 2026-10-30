@@ -45,10 +45,10 @@ describe("system home", () => {
     expect(screen.queryByText("SYSTEM")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "資料" }).closest("a")).toHaveAttribute("href", "/system/docs");
     expect(screen.getByRole("heading", { name: "入社手続き" }).closest("a")).toHaveAttribute("href", "/system/onboarding");
-    expect(screen.getByRole("heading", { name: "自分の情報" }).closest("a")).toHaveAttribute("href", "/my?tab=profile");
-    expect(screen.getByRole("heading", { name: "勤怠打刻" }).closest("a")).toHaveAttribute("href", "/my?tab=attendance");
-    expect(screen.getByRole("heading", { name: "シフト" }).closest("a")).toHaveAttribute("href", "/my?tab=shift");
-    expect(screen.getByRole("heading", { name: "前確依頼" }).closest("a")).toHaveAttribute("href", "/my?tab=zenkaku");
+    expect(screen.getByRole("heading", { name: "自分の情報" }).closest("a")).toHaveAttribute("href", "/system/mypage");
+    expect(screen.getByRole("heading", { name: "勤怠打刻" }).closest("a")).toHaveAttribute("href", "/system/attendance");
+    expect(screen.getByRole("heading", { name: "シフト" }).closest("a")).toHaveAttribute("href", "/system/shift");
+    expect(screen.getByRole("heading", { name: "前確依頼" }).closest("a")).toHaveAttribute("href", "/system/zenkaku");
     expect(screen.getByRole("heading", { name: "テレマ コール集計" }).closest("a")).toHaveAttribute("href", "/system/call-metrics");
     expect(screen.getByRole("heading", { name: "業務管理ツール" }).closest("a")).toHaveAttribute("href", "/system/forms");
     expect(screen.getByRole("heading", { name: "自動配信" }).closest("a")).toHaveAttribute("href", "/system/deliveries");

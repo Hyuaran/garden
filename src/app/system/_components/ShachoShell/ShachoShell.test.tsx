@@ -71,7 +71,7 @@ describe("ShachoShell", () => {
   });
 
   it("opens and closes the mobile drawer with modules, menu, user area, backdrop, Escape, and item clicks", () => {
-    renderShell("/my?tab=profile");
+    renderShell("/system/mypage");
     const open = screen.getByRole("button", { name: "メニューを開く" });
     expect(open).toHaveAttribute("aria-expanded", "false");
 
@@ -135,7 +135,7 @@ describe("ShachoShell", () => {
   });
 
   it("marks mypage as the current System menu item", () => {
-    renderShell("/my?tab=profile");
+    renderShell("/system/mypage");
     expect(screen.getByRole("link", { name: "自分の情報", current: "page" })).toBeInTheDocument();
   });
 
@@ -174,10 +174,10 @@ describe("ShachoShell", () => {
     ["/system", "ホーム"],
     ["/system/docs", "資料"],
     ["/system/docs/company", "資料"],
-    ["/my?tab=profile", "自分の情報"],
-    ["/my?tab=attendance", "勤怠打刻"],
-    ["/my?tab=shift", "シフト"],
-    ["/my?tab=zenkaku", "前確依頼"],
+    ["/system/mypage", "自分の情報"],
+    ["/system/attendance", "勤怠打刻"],
+    ["/system/shift", "シフト"],
+    ["/system/zenkaku", "前確依頼"],
     ["/system/call-metrics", "テレマ コール集計"],
     ["/system/innovera-calls", "INNOVERA履歴・録音"],
     ["/system/forms", "業務管理ツール"],
@@ -264,7 +264,7 @@ describe("ShachoShell", () => {
   it.each(["super_admin", "admin", "manager", "staff", "cs"] as const)(
     "keeps the rail and sidebar for %s",
     (role) => {
-      renderShell("/my?tab=profile", { ...manager, role });
+      renderShell("/system/mypage", { ...manager, role });
       expect(screen.getByRole("complementary", { name: "Gardenシリーズ" })).toBeInTheDocument();
       expect(screen.getByRole("navigation", { name: "Systemメニュー" })).toBeInTheDocument();
       expect(screen.getByRole("main")).not.toHaveClass(styles.mainFull);
@@ -290,7 +290,7 @@ describe("ShachoShell", () => {
   it.each(["closer", "toss", "outsource"] as const)(
     "shows the limited sidebar and non-clickable rail for %s",
     (role) => {
-      renderShell("/my?tab=profile", { ...manager, role });
+      renderShell("/system/mypage", { ...manager, role });
       const rail = screen.getByRole("complementary", { name: "Gardenシリーズ" });
       expect(rail).toBeInTheDocument();
       expect(within(rail).queryByRole("link")).not.toBeInTheDocument();
@@ -314,7 +314,7 @@ describe("ShachoShell", () => {
 });
 
 it("honors explicit grants and hides denied menu items, including the limited sidebar", () => {
-  render(<ThemeProvider><ShachoShell user={{ ...manager, role: "toss" }} allowedHrefs={["/system/list"]} hiddenHrefs={["/my?tab=attendance"]}><p>body</p></ShachoShell></ThemeProvider>);
+  render(<ThemeProvider><ShachoShell user={{ ...manager, role: "toss" }} allowedHrefs={["/system/list"]} hiddenHrefs={["/system/attendance"]}><p>body</p></ShachoShell></ThemeProvider>);
   expect(document.querySelector('aside a[href="/system/list"]')).not.toBeNull();
-  expect(document.querySelector('aside a[href="/my?tab=attendance"]')).toBeNull();
+  expect(document.querySelector('aside a[href="/system/attendance"]')).toBeNull();
 });

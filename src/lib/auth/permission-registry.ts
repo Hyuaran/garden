@@ -61,7 +61,7 @@ function slugifyLabel(label: string) {
 // サイドバーが出ない役職（トス・クローザー・業務委託）がマイページ用サイドバーで使える 5 画面
 // （マイページ／勤怠打刻／シフト／前確依頼／通話・録音）
 // ＋入社手続き（新しく入った人はログイン直後に案内される。役職の制限なし）
-const SIDEBARLESS_TAB_HREFS = new Set(["/my?tab=profile", "/my?tab=attendance", "/my?tab=shift", "/my?tab=zenkaku", "/system/innovera-calls", "/system/onboarding"]);
+const SIDEBARLESS_TAB_HREFS = new Set(["/system/mypage", "/system/attendance", "/system/shift", "/system/zenkaku", "/system/innovera-calls", "/system/onboarding"]);
 
 // System のメニュー項目：サイドバーが出ない役職は限定サイドバーの 5 画面だけを使う。
 // minRole の無い項目でも、サイドバーが隠れる役職には ×。まだ画面の無い項目（準備中）は全員 ×
