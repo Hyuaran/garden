@@ -65,6 +65,8 @@
 .searchField .searchIcon { left:12px; }
 .topRow .controls { align-items:stretch; }
 .topRow .controls .clear { align-self:flex-end; }
+/* 表の上に置くボタン（新規追加など）は箱の高さに引き伸ばさず、1 行のふつうのボタンのまま中央にそろえる（2026-10-30） */
+.topRow .controls > button { align-self:center; white-space:nowrap; }
 /* 期間・検索の箱は「1 行目＝小さな見出し・2 行目＝入力」の縦並び。検索欄は箱の幅いっぱい */
 .topRow .controls > label { display:grid; grid-auto-flow:row; align-content:start; justify-items:stretch; gap:6px; white-space:nowrap; }
 .topRow .controls .searchBox { flex:1 1 240px; min-width:220px; max-width:380px; }
