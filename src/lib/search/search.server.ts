@@ -120,7 +120,8 @@ export async function gardenSearch(query: string, expanded: Set<string>): Promis
   })));
   const mfGroups = hasBud ? await context.db.from("bud_mf_group_viewers").select("kind,employee_ids") : { data: [], error: null };
   if (mfGroups.error) throw new Error("閲覧権限を確認できませんでした。");
-  const dataGroups = await Promise.all(SEARCH_SOURCES.map(async source => {
+  // 1 つの表で失敗しても、ほかの結果は出す（失敗は表の名前だけ記録に残す）
+  const dataGroups = await Promise.all(SEARCH_SOURCES.map(source => (async () => {
     if (!await allowed(source.page, source.tab)) return null;
     if (source.client === "soil" && !resolveCanView(permissions, "soil-overview", "", context.viewer, isRoleAtLeast(context.viewer.role, "manager"))) return null;
     // Bud base access remains mandatory; per-row and per-status rules stay in the user's RLS.
@@ -151,7 +152,7 @@ export async function gardenSearch(query: string, expanded: Set<string>): Promis
       if ((data ?? []).length < 1000) break;
     }
     return { source, hits };
-  }));
+  })().catch(error => { console.error("[search] source failed", source.table, error instanceof Error ? error.message : "unknown"); return null; })));
   for (const group of dataGroups) if (group) add(group.source.key, group.source.label, group.hits, `${group.source.module}:${group.source.label}`);
   return [...pools.values()].map(pool => ({ key: pool.key, label: pool.label, ...limitHits([...new Map(pool.hits.map(hit => [hit.id, hit])).values()], expanded.has(pool.key) ? 20 : 5) }));
 }

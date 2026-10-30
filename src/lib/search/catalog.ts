@@ -290,9 +290,24 @@ export const SEARCH_SOURCES: SearchSource[] = [
         "phone": false
       },
       {
-        "column": "contact",
+        "column": "contact1_name",
         "label": "担当者1 氏名",
         "phone": false
+      },
+      {
+        "column": "contact1_phone",
+        "label": "担当者1 電話",
+        "phone": true
+      },
+      {
+        "column": "contact2_name",
+        "label": "担当者2 氏名",
+        "phone": false
+      },
+      {
+        "column": "contact2_phone",
+        "label": "担当者2 電話",
+        "phone": true
       }
     ]
   },
@@ -2771,7 +2786,7 @@ export const SEARCH_SOURCES: SearchSource[] = [
     "page": "bud-transfers",
     "tab": "",
     "client": "user",
-    "pk": "id",
+    "pk": "transfer_id",
     "title": "payee_name",
     "date": "created_at",
     "href": "/bud/transfers",
@@ -2921,26 +2936,6 @@ export const SEARCH_SOURCES: SearchSource[] = [
       {
         "column": "manual_paid_at",
         "label": "支払済み（確認操作）",
-        "phone": false
-      }
-    ]
-  },
-  {
-    "key": "bud_statements-list",
-    "table": "bud_statements",
-    "page": "bud-statements",
-    "tab": "list",
-    "client": "user",
-    "pk": "id",
-    "title": "matched_transfer_id",
-    "date": "",
-    "href": "/bud/statements",
-    "label": "明細",
-    "module": "Bud",
-    "fields": [
-      {
-        "column": "matched_transfer_id",
-        "label": "振込を選ぶ",
         "phone": false
       }
     ]
