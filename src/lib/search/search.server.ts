@@ -144,7 +144,7 @@ export async function gardenSearch(query: string, expanded: Set<string>): Promis
       if (source.table === "system_line_target") request = request.eq("active", true).in("account", ["dev", "official"]).in("target_type", ["group", "room"]);
       if (source.table === "system_hire_candidates") request = source.tab === "confirmations" ? request.eq("status", "hired") : request.in("status", ["planned", "hiring", "no_show"]);
       const { data, error } = await request;
-      if (error) throw new Error("検索対象を読み込めませんでした。");
+      if (error) throw new Error(`検索対象を読み込めませんでした（${source.table}: ${error.message}）`);
       let rows = (data ?? []) as unknown as Record<string, unknown>[];
       if (source.table === "bud_mf_accounts") rows = visibleAccounts(rows as unknown as MfAccount[], context.viewer.employeeId, context.viewer.role === "super_admin", mfGroups.data as GroupViewers[]) as unknown as Record<string, unknown>[];
       for (const row of rows) { const hit = rowHit(source, row, query); if (hit) hits.push(hit); }

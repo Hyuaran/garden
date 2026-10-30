@@ -13,7 +13,8 @@ export async function GET(request: Request) {
     const expanded = new Set((params.get("expanded") ?? "").split(","));
     return Response.json({ groups: await gardenSearch(query, expanded) }, { headers });
   } catch (error) {
-    // Never log query text, DB errors, request URLs or snippets.
+    // 検索した文字・URL・抜き出した文は残さない。失敗した表と DB のエラー文だけ残す
+    if (!(error instanceof ViewPermissionError)) console.error("[search] failed", error instanceof Error ? error.message : "unknown");
     return Response.json({ error: "検索できませんでした。" }, { status: error instanceof ViewPermissionError ? error.status : 503, headers });
   }
 }
