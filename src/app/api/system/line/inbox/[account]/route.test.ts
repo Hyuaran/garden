@@ -36,7 +36,7 @@ describe("LINE official account inbox", () => {
 
   it("署名を確認し、改行を保って開発ルームに送る", async () => {
     expect((await post([event({ type: "text", text: "1\n2\n3" })])).status).toBe(200);
-    expect(sendMessage).toHaveBeenCalledWith("dev-room", "[info][title]ヒカリのプロ からメッセージが届きました[/title]送った人：山田 太郎\n1\n2\n3[/info]");
+    expect(sendMessage).toHaveBeenCalledWith("dev-room", "[info][title]ヒカリのプロ からメッセージが届きました[/title]送信者：山田 太郎\n1\n2\n3[/info]");
     expect(fetchMock).toHaveBeenCalledExactlyOnceWith("https://api.line.me/v2/bot/profile/U123", { headers: { Authorization: "Bearer hikari-token" } });
   });
   it.each(["bad", "x".repeat(44), ""])("不正署名 %s は401", async signature => {
@@ -67,12 +67,12 @@ describe("LINE official account inbox", () => {
     else if (mode === "network") fetchMock.mockRejectedValue(new Error("offline"));
     else fetchMock.mockResolvedValue(new Response("{}"));
     await post([event({ type: "text", text: "test" })]);
-    expect(sendMessage).toHaveBeenCalledWith("dev-room", expect.stringContaining("送った人：（名前を取得できませんでした）"));
+    expect(sendMessage).toHaveBeenCalledWith("dev-room", expect.stringContaining("送信者：（名前を取得できませんでした）"));
   });
   it("本文・表示名・ファイル名内のChatwork記法を無効化", async () => {
     fetchMock.mockImplementation(async () => new Response(JSON.stringify({ displayName: "[/title][To:123]" })));
     await post([event({ type: "text", text: "[info]\n[/info][title][To:456]" }), event({ type: "file", fileName: "[To:789].pdf" })]);
-    expect(sendMessage.mock.calls[0][1]).toContain("送った人：［/title]［To:123]\n［info]\n［/info]［title]［To:456]");
+    expect(sendMessage.mock.calls[0][1]).toContain("送信者：［/title]［To:123]\n［info]\n［/info]［title]［To:456]");
     expect(sendMessage.mock.calls[1][1]).toContain("（ファイル：［To:789].pdf）");
   });
   it("送信失敗後も次のイベントを処理し200", async () => {

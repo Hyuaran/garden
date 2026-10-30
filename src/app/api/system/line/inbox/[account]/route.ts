@@ -81,7 +81,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ acc
       }
       await new ChatworkClient(chatworkToken, {
         dryRun: /^(true|1|yes)$/i.test(process.env.BLOOM_CHATWORK_DRY_RUN || ""),
-      }).sendMessage(roomId, `[info][title]${label} からメッセージが届きました[/title]送った人：${safe(name)}\n${safe(messageText(event.message))}[/info]`);
+      }).sendMessage(roomId, `[info][title]${label} からメッセージが届きました[/title]送信者：${safe(name)}\n${safe(messageText(event.message))}[/info]`);
     } catch (error) {
       console.error("line_inbox_event_failed", account, error instanceof Error ? error.message : error);
     }
