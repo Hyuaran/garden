@@ -1,18 +1,64 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CHECKLIST_KEYS, checklistComplete, checklistPriority, parseChecklist, nextEmployeeNumber, parseHireInput, rosterPayload, type HireCandidate } from "./hire-candidates";
-const mocks = vi.hoisted(()=>({server:vi.fn(),admin:vi.fn(),employees:vi.fn(),create:vi.fn(),records:vi.fn(),record:vi.fn(),sync:vi.fn()}));
+const mocks = vi.hoisted(()=>({server:vi.fn(),admin:vi.fn(),employees:vi.fn(),create:vi.fn(),records:vi.fn(),record:vi.fn(),sync:vi.fn(),options:vi.fn(),after:vi.fn()}));
 vi.mock("server-only",()=>({}));
+vi.mock("next/server",()=>({after:mocks.after}));
 vi.mock("@/app/_lib/supabase/server",()=>({createServerClient:mocks.server}));
 vi.mock("@/lib/supabase/admin",()=>({getSupabaseAdmin:mocks.admin}));
-vi.mock("@/app/root/_lib/kot-api",()=>({fetchKotHireEmployees:mocks.employees,createKotEmployee:mocks.create,fetchKotHireOptions:vi.fn()}));
+vi.mock("@/app/root/_lib/kot-api",()=>({fetchKotHireEmployees:mocks.employees,createKotEmployee:mocks.create,fetchKotHireOptions:mocks.options}));
 vi.mock("@/lib/kintone/records",()=>({getAllRecords:mocks.records,createRecord:mocks.record}));
 vi.mock("@/app/root/_lib/roster-sync.server",()=>({syncRootRoster:mocks.sync}));
-import { ensureRoster, hireCandidate, listCandidates } from "./hire-candidates.server";
+import { candidateOptions, ensureRoster, hireCandidate, listCandidates } from "./hire-candidates.server";
 import { GET, POST } from "@/app/api/system/hire-candidates/route";
 import { PATCH } from "@/app/api/system/hire-candidates/[id]/route";
 import { POST as hire } from "@/app/api/system/hire-candidates/[id]/hire/route";
 import { GET as options } from "@/app/api/system/hire-candidates/kot-options/route";
 import { POST as retryFilemaker } from "@/app/api/system/hire-candidates/[id]/filemaker/route";
+describe("candidate options cache",()=>{
+ const kot={divisions:[{code:"01",name:"所属"}],workingTypes:[{code:"02",name:"区分"}]};
+ const companies=[{company_id:"COMP-002",company_name:"法人"}];
+ function setup(age: number | null, writeError: unknown = null) {
+  const cache=age===null?null:{divisions:kot.divisions,working_types:kot.workingTypes,updated_at:new Date(Date.now()-age).toISOString()};
+  const upsert=vi.fn(async()=>({data:null,error:writeError}));
+  const q={select:vi.fn(),eq:vi.fn(),maybeSingle:vi.fn(async()=>({data:cache,error:null})),upsert};
+  q.select.mockReturnValue(q);q.eq.mockReturnValue(q);
+  const db={from:vi.fn((table:string)=>table==="system_kot_options_cache"?q:{select:()=>({order:async()=>({data:companies,error:null})})})};
+  mocks.admin.mockReturnValue(db);mocks.options.mockReset();mocks.options.mockResolvedValue(kot);
+  return {context:{db:db as never,userId:"admin"},upsert};
+ }
+ it.each([0,10*60_000])("returns the cache immediately at age %s without fetching KOT",async age=>{
+  vi.useFakeTimers();
+  try {
+   const {context,upsert}=setup(age);
+   expect(await candidateOptions(context)).toEqual({...kot,companies,cached:true});
+   expect(mocks.options).not.toHaveBeenCalled();expect(mocks.after).not.toHaveBeenCalled();expect(upsert).not.toHaveBeenCalled();
+  } finally {vi.useRealTimers();}
+ });
+ it("defers refreshing an old cache until after the response",async()=>{
+  const {context,upsert}=setup(10*60_000+1000);
+  expect(await candidateOptions(context)).toEqual({...kot,companies,cached:true});
+  expect(mocks.options).not.toHaveBeenCalled();expect(mocks.after).toHaveBeenCalledTimes(1);
+  await mocks.after.mock.calls[0][0]();
+  expect(mocks.options).toHaveBeenCalledTimes(1);
+  expect(upsert).toHaveBeenCalledWith({id:"hire",divisions:kot.divisions,working_types:kot.workingTypes,updated_at:expect.any(String)});
+ });
+ it("fetches and saves before returning when the cache is absent",async()=>{
+  const {context,upsert}=setup(null);
+  expect(await candidateOptions(context)).toEqual({...kot,companies});
+  expect(mocks.options).toHaveBeenCalledTimes(1);expect(upsert).toHaveBeenCalledTimes(1);expect(mocks.after).not.toHaveBeenCalled();
+ });
+ it.each(["fetch","write"])("keeps the cached response when background %s fails",async failure=>{
+  const {context,upsert}=setup(11*60_000,failure==="write"?new Error("database"):null);
+  if(failure==="fetch")mocks.options.mockRejectedValueOnce(new Error("KOT unavailable"));
+  const log=vi.spyOn(console,"error").mockImplementation(()=>{});
+  try {
+   expect(await candidateOptions(context)).toEqual({...kot,companies,cached:true});
+   await expect(mocks.after.mock.calls[0][0]()).resolves.toBeUndefined();
+   expect(log).toHaveBeenCalledWith("[hire-kot-options] Refresh failed",expect.any(Error));
+   if(failure==="fetch")expect(upsert).not.toHaveBeenCalled();
+  } finally {log.mockRestore();}
+ });
+});
 const candidate = ():HireCandidate=>({id:"candidate",last_name:"山田",first_name:"太郎",last_name_kana:"ヤマダ",first_name_kana:"タロウ",birthday:"2000-01-01",hire_date:"2026-10-24",gender:"male",employment_type:"アルバイト",company_id:"COMP-002",kot_division_code:"01",kot_type_code:"02",status:"hiring",employee_number:"1571",employee_id:null,kintone_roster_record_id:null,steps:{number:{done:true}}});
 function dbFor(row:HireCandidate) {
  const db = {from:vi.fn(),rpc:vi.fn()};

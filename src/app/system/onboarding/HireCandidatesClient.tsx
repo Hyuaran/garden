@@ -132,7 +132,6 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  {id:"complete",label:"①締結",align:"mark",type:"number",value:checklistPriority,render:r=><span className={signaturesComplete(r)?layout.done:layout.pending}>{[r.checklist?.contract_signed,r.checklist?.nda_signed,r.checklist?.emergency_signed].filter(Boolean).length}/3</span>},
  {id:"line",label:"②LINE",align:"mark",type:"text",value:r=>r.line_verified_at?"確認済み":r.checklist?.line_skipped?"登録しない":"未",render:r=><span className={lineComplete(r)?layout.done:layout.pending}>{r.line_verified_at?"確認済み":r.checklist?.line_skipped?"登録しない":"未"}</span>},
  {id:"filemaker",label:"③FileMaker",align:"mark",type:"text",value:r=>r.checklist?.filemaker_added?"追加済み":"未",render:r=><span className={r.checklist?.filemaker_added?layout.done:layout.pending}>{r.checklist?.filemaker_added?"追加済み":"未"}</span>},
- {id:"review",label:"操作",align:"mark",type:"text",value:()=>"",render:r=><button className={layout.reviewButton} onClick={()=>setReviewId(r.id)}>確認する</button>}
  ];
  const reviewRow=rows.find(r=>r.id===reviewId);
  const candidateRows=rows.filter(r=>r.status==="planned"||r.status==="hiring"||(showNoShow&&r.status==="no_show"));

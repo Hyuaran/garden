@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { overallStatus } from "./filemaker-accounts.server";
 import { canView, viewPermissionContext } from "@/lib/auth/view-permission.server";
 import { randomUUID } from "node:crypto";
@@ -54,17 +55,24 @@ export async function listCandidates({db}: Context, tab?: "candidates" | "confir
 }
 export async function candidateOptions({db}: Context) {
  const companies = checked(await db.from("root_companies").select("company_id,company_name").order("established_on",{ascending:true}));
- // KOT の選択肢は控えておき、KOT が止まっている時間（8:30〜10:00・17:30〜18:30）や読めないときは控えを使う（登録するだけなら KOT は要らない・2026-10-26）
+ // KOT の選択肢は控えをすぐ返し、10 分より古ければ返したあと裏で取り直す（KOT は毎回 4 秒以上かかる・止まる時間もある・2026-10-30）。控えが無いときだけその場で取りに行く
  const admin = getSupabaseAdmin();
- try {
+ const refresh = async () => {
   const options = await fetchKotHireOptions();
-  await admin.from("system_kot_options_cache").upsert({ id: "hire", divisions: options.divisions, working_types: options.workingTypes, updated_at: new Date().toISOString() });
-  return { ...options, companies };
- } catch (error) {
-  const { data } = await admin.from("system_kot_options_cache").select("divisions,working_types").eq("id", "hire").maybeSingle();
-  if (!data) throw error;
+  checked(await admin.from("system_kot_options_cache").upsert({ id: "hire", divisions: options.divisions, working_types: options.workingTypes, updated_at: new Date().toISOString() }));
+  return options;
+ };
+ const { data } = await admin.from("system_kot_options_cache").select("divisions,working_types,updated_at").eq("id", "hire").maybeSingle();
+ if (data) {
+  if (Date.now() - Date.parse(data.updated_at) > 10 * 60_000) {
+   after(async () => {
+    try { await refresh(); }
+    catch (error) { console.error("[hire-kot-options] Refresh failed", error); }
+   });
+  }
   return { divisions: data.divisions, workingTypes: data.working_types, companies, cached: true };
  }
+ return { ...await refresh(), companies };
 }
 export async function saveCandidate(context: Context, raw: unknown, id?: string) {
  const {db,userId} = context;
