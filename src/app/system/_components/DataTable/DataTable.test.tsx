@@ -9,6 +9,34 @@ const columns: DataColumn<typeof rows[number]>[] = [
 ];
 function fixture() { render(<DataTable rows={rows} columns={columns} rowKey={r => r.id} searchText={r => `${r.name} ${r.amount}`} defaultSort={{id:"date",direction:"desc"}} pageSize={2} />); }
 function open(label = "内容") { fireEvent.click(screen.getByRole("button",{name:`${label}の並べ替え・絞り込み`})); return within(screen.getByRole("dialog")); }
+it("filters individual tags with OR within a column and AND across columns, including unset values", () => {
+  const people = [
+    {id:"a",tags:["研修", "通知"],team:"東"},
+    {id:"b",tags:["通知"],team:"西"},
+    {id:"c",tags:[],team:"東"},
+  ];
+  render(<DataTable rows={people} columns={[
+    {id:"id",label:"人",type:"text",value:r=>r.id},
+    {id:"tags",label:"タグ",type:"text",value:r=>r.tags.join("・"),filterValue:r=>r.tags.length?r.tags:["未設定"]},
+    {id:"team",label:"チーム",type:"text",value:r=>r.team},
+  ]} rowKey={r=>r.id} searchText={r=>r.id} defaultSort={{id:"id",direction:"asc"}} />);
+  let menu = open("タグ");
+  expect(menu.getByLabelText("通知 (2)")).toBeInTheDocument();
+  fireEvent.click(menu.getByLabelText("すべて選択"));
+  fireEvent.click(menu.getByLabelText("通知 (2)"));
+  fireEvent.click(menu.getByRole("button",{name:"OK"}));
+  expect(screen.getAllByRole("row")).toHaveLength(3);
+  menu = open("チーム");
+  fireEvent.click(menu.getByLabelText("西 (1)"));
+  fireEvent.click(menu.getByRole("button",{name:"OK"}));
+  expect(screen.getAllByRole("row")).toHaveLength(2);
+  expect(screen.getAllByRole("row")[1]).toHaveTextContent("a研修・通知東");
+  menu = open("タグ");
+  fireEvent.click(menu.getByLabelText("通知 (2)"));
+  fireEvent.click(menu.getByLabelText("未設定 (1)"));
+  fireEvent.click(menu.getByRole("button",{name:"OK"}));
+  expect(screen.getAllByRole("row")[1]).toHaveTextContent("c東");
+});
 it("sorts numeric values ascending and descending before paging", () => {
   fixture();
   fireEvent.click(open("金額").getByRole("button",{name:"昇順"}));

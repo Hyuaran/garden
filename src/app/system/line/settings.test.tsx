@@ -12,6 +12,33 @@ beforeEach(()=>{
   localStorage.clear(); window.history.replaceState(null,'','/?tab=people');
 });
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.unstubAllEnvs();});
+it('人とタグは見出しで自由タグを個別に絞り、一斉送信の宛先指定は残す',async()=>{
+  const employee={employee_id:'E1',employee_number:'0001',name:'山田 花子',employment_type:'正社員',garden_role:'staff',hire_date:null,termination_date:null,is_active:true,line_user_id:null,line_link_source:null};
+  const people=[employee,{...employee,employee_id:'E2',employee_number:'0002',name:'佐藤 太郎'},{...employee,employee_id:'E3',employee_number:'0003',name:'鈴木 次郎'}];
+  const tags=[{id:'t1',kind:'free',name:'研修',sort:0},{id:'t2',kind:'free',name:'通知',sort:1}];
+  const members=[{employee_id:'E1',tag_id:'t1',source:'manual'},{employee_id:'E1',tag_id:'t2',source:'manual'},{employee_id:'E2',tag_id:'t2',source:'manual'}];
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({...data,employees:people,tags,members})}));
+  render(<LineManager/>);
+  await screen.findByText('山田 花子');
+  for(const label of ['雇用形態','事業','在籍','役割','チーム','自由タグ']) expect(screen.queryByRole('button',{name:label})).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'自由タグの並べ替え・絞り込み'}));
+  let menu=within(screen.getByRole('dialog'));
+  fireEvent.click(menu.getByLabelText('すべて選択'));
+  fireEvent.click(menu.getByLabelText('通知 (2)'));
+  fireEvent.click(menu.getByRole('button',{name:'OK'}));
+  expect(screen.getByText('山田 花子')).toBeInTheDocument();
+  expect(screen.getByText('佐藤 太郎')).toBeInTheDocument();
+  expect(screen.queryByText('鈴木 次郎')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'自由タグの並べ替え・絞り込み'}));
+  menu=within(screen.getByRole('dialog'));
+  fireEvent.click(menu.getByLabelText('通知 (2)'));
+  fireEvent.click(menu.getByLabelText('— (1)'));
+  fireEvent.click(menu.getByRole('button',{name:'OK'}));
+  expect(screen.getByText('鈴木 次郎')).toBeInTheDocument();
+  expect(screen.queryByText('山田 花子')).toBeNull();
+  fireEvent.click(screen.getByRole('tab',{name:'一斉送信'}));
+  for(const label of ['雇用形態','事業','在籍','役割','チーム','自由タグ']) expect(screen.getByRole('button',{name:label})).toBeInTheDocument();
+});
 it('申告フォームの説明はLINE内の2種類の申告である',()=>{
   vi.stubEnv('NEXT_PUBLIC_LIFF_FORMS_ID','123-forms');
   render(<RichMenuSettings data={data} busy={false} act={vi.fn()}/>);

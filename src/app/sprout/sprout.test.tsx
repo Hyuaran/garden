@@ -44,6 +44,30 @@ it("keeps only the name and phone search", async () => {
  expect(screen.getByText("名前・電話で探す")).toBeInTheDocument();
 });
 
+it("uses header filters for status and month while initially showing this month", async () => {
+ const full = applicant({ $id: { value: "43" }, 従業員名_姓名: { value: "佐藤 太郎" } });
+ const {raw: _raw, ...older} = full;
+ older.applied_date = "2020-01-15";
+ older.status = "過去の応募";
+ const current = (await m.load()).applicants[0];
+ current.status = "確認中";
+ m.load.mockResolvedValue({applicants:[current, older],hearings:[],sent:[],updated:null});
+ render(<Sprout />);
+ await screen.findByRole("button",{name:"山田 花子"});
+ expect(screen.queryByRole("button",{name:"佐藤 太郎"})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'期間'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'状況'})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole("button",{name:"応募日の並べ替え・絞り込み"}));
+ fireEvent.click(within(screen.getByRole("dialog")).getByRole("button",{name:"解除"}));
+ expect(screen.getByRole("button",{name:"佐藤 太郎"})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole("button",{name:"状況の並べ替え・絞り込み"}));
+ const menu = within(screen.getByRole("dialog"));
+ fireEvent.click(menu.getByLabelText("確認中 (1)"));
+ fireEvent.click(menu.getByRole("button",{name:"OK"}));
+ expect(screen.queryByRole("button",{name:"山田 花子"})).not.toBeInTheDocument();
+ expect(screen.getByRole("button",{name:"佐藤 太郎"})).toBeInTheDocument();
+});
+
 it("hides a single permitted tab and keeps the gear beside the heading", async () => {
  render(<SystemViewProvider value={{ pageKey: "sprout", admin: true, canAdd: false, tabs: ["applicants", "interviews", "training"].map(key => ({key, label: key, allowed: key === "applicants", canAdd: false})) }}><Sprout /></SystemViewProvider>);
  await screen.findByRole("button", {name:"山田 花子"});

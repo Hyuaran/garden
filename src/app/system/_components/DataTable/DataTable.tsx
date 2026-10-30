@@ -9,18 +9,21 @@ import styles from "./DataTable.module.css";
 type Value = string | number;
 export type DataColumn<T> = {
   id: string; label: string; value: (row: T) => Value; type: "text" | "number" | "date";
-  filterValue?: (row: T) => string; render?: (row: T) => ReactNode; align?: "text" | "fixed" | "mark" | "number"; right?: boolean; wrap?: boolean;
+  filterValue?: (row: T) => string | string[]; render?: (row: T) => ReactNode; align?: "text" | "fixed" | "mark" | "number"; right?: boolean; wrap?: boolean;
 };
 // align の指定を優先し、未指定の列はデータ型から決める。
 export const cellAlignment = <T,>(column: DataColumn<T>) => column.align ?? (column.type === "date" ? "fixed" : column.type === "number" ? "number" : "text");
 type Sort = { id: string; direction: "asc" | "desc" };
 const normalize = (value: string) => normalizeSearch(value);
 const matchesSearch = (text: string, query: string) => normalize(text).includes(normalize(query)) || (/^[\d\s+()‐‑‒–—−ー-]+$/.test(query.normalize("NFKC")) && normalizeSearch(text, true).includes(normalizeSearch(query, true)));
-const filterKey = <T,>(column: DataColumn<T>, row: T) => column.filterValue?.(row) ?? String(column.value(row));
-export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, rowClickable, emptyText }: {
+const filterKeys = <T,>(column: DataColumn<T>, row: T): string[] => {
+  const value = column.filterValue?.(row) ?? String(column.value(row));
+  return Array.isArray(value) ? [...new Set(value.length ? value : [""])] : [value];
+};
+export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, defaultFilters = {}, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, rowClickable, emptyText }: {
   rows: T[]; columns: DataColumn<T>[]; rowKey: (row: T) => string;
   searchText: (row: T) => string; summary?: (rows: T[]) => ReactNode; toolbar?: ReactNode;
-  defaultSort: Sort; pageSize?: number; searchable?: boolean; searchPlaceholder?: string;
+  defaultSort: Sort; defaultFilters?: Record<string, string[]>; pageSize?: number; searchable?: boolean; searchPlaceholder?: string;
   onRowClick?: (row: T) => void; rowClickable?: (row: T) => boolean;
   /** 0 件のときの文（既定「該当する明細はありません。」） */
   emptyText?: string;
@@ -37,7 +40,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
     window.addEventListener("popstate", read); window.addEventListener("garden-search-navigate", navigate);
     return () => { window.removeEventListener("popstate", read); window.removeEventListener("garden-search-navigate", navigate); };
   }, []);
-  const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [filters, setFilters] = useState<Record<string, string[]>>(defaultFilters);
   const [sort, setSort] = useState(defaultSort);
   const [page, setPage] = useState(1);
   const [menu, setMenu] = useState<string | null>(null);
@@ -59,7 +62,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
     window.addEventListener("scroll", dismiss, true);
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); window.removeEventListener("resize", dismiss); window.removeEventListener("scroll", dismiss, true); };
   }, [menu]);
-  const filtered = useMemo(() => rows.filter(row => (!searchable || !search || matchesSearch(searchText(row), search)) && columns.every(column => !filters[column.id] || filters[column.id].includes(filterKey(column, row)))), [rows, columns, filters, search, searchText, searchable]);
+  const filtered = useMemo(() => rows.filter(row => (!searchable || !search || matchesSearch(searchText(row), search)) && columns.every(column => !filters[column.id] || filterKeys(column, row).some(key => filters[column.id].includes(key)))), [rows, columns, filters, search, searchText, searchable]);
   const sorted = useMemo(() => {
     const column = columns.find(column => column.id === sort.id);
     if (!column) return filtered;
@@ -72,7 +75,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(page, pages);
   const column = columns.find(column => column.id === menu);
-  const options = column ? Array.from(rows.reduce((values, row) => { const key = filterKey(column, row); values.set(key, (values.get(key) ?? 0) + 1); return values; }, new Map<string, number>())).sort(([a], [b]) => a.localeCompare(b, "ja", { numeric: true })) : [];
+  const options = column ? Array.from(rows.reduce((values, row) => { for (const key of filterKeys(column, row)) values.set(key, (values.get(key) ?? 0) + 1); return values; }, new Map<string, number>())).sort(([a], [b]) => a.localeCompare(b, "ja", { numeric: true })) : [];
   const visibleOptions = options.filter(([key]) => normalize(key).includes(normalize(menuSearch)));
   const apply = (values?: string[]) => {
     if (!column) return;
@@ -89,7 +92,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
       trigger.current = event.currentTarget;
       const rect = event.currentTarget.getBoundingClientRect();
       setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 328)), top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 440)) });
-      setDraft(filters[column.id] ?? Array.from(new Set(rows.map(row => filterKey(column, row))))); setMenuSearch(""); setMenu(column.id);
+      setDraft(filters[column.id] ?? Array.from(new Set(rows.flatMap(row => filterKeys(column, row))))); setMenuSearch(""); setMenu(column.id);
     }}>{column.label}<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="m4 6 4 4 4-4" /></svg>{filters[column.id] && <svg aria-label="絞り込み中" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2 3h12L9 9v4l-2 1V9Z" /></svg>}</button><button type="button" className={[styles.sortButton, sort.id === column.id ? styles.sortActive : ""].join(" ")} aria-label={sort.id === column.id ? `${column.label}を${sort.direction === "asc" ? "降順" : "昇順"}に並べ替える（今は${sort.direction === "asc" ? "昇順" : "降順"}）` : `${column.label}で並べ替える`} title={sort.id === column.id ? (sort.direction === "asc" ? "昇順（押すと降順）" : "降順（押すと昇順）") : "並べ替え"} onClick={() => { setSort(sort.id === column.id ? { id: column.id, direction: sort.direction === "asc" ? "desc" : "asc" } : { id: column.id, direction: column.type === "text" ? "asc" : "desc" }); setPage(1); close(); }}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d={sort.id !== column.id ? "M5 2v12M2.5 4.5 5 2l2.5 2.5M11 14V2m-2.5 9.5L11 14l2.5-2.5" : sort.direction === "asc" ? "M8 14V2m-4 4 4-4 4 4" : "M8 2v12m-4-4 4 4 4-4"} /></svg></button></th>)}</tr></thead><tbody>{sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(row => <tr key={rowKey(row)} className={onRowClick && (rowClickable?.(row) ?? true) ? styles.clickableRow : undefined}
  tabIndex={onRowClick && (rowClickable?.(row) ?? true) ? 0 : undefined}
  onClick={event=>{if(onRowClick && (rowClickable?.(row) ?? true) && !(event.target as Element).closest('button, a, input, select, textarea, label, [role="button"], [contenteditable]')) onRowClick(row);}}
