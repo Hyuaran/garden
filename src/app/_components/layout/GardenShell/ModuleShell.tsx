@@ -1,6 +1,7 @@
 "use client";
 import FontSizeButton from "@/app/system/_components/FontSizeButton";
 
+import { PageSearchProvider, PageSearchActions } from "@/app/system/_components/PageSearchSlot/PageSearchSlot";
 import { HeaderViewProvider, HeaderViewSlot } from "@/app/system/_components/HeaderViewToggle";
 import { NoticeBell } from "@/app/_components/notices/NoticeBell";
 import Image from "next/image";
@@ -77,7 +78,7 @@ export function ModuleShell({ children, moduleId, moduleName, moduleLabel, garde
   }, [drawerOpen]);
 
   return (
-    <HeaderViewProvider><div className={`${systemStyles.shell} ${systemStyles.hasSidebar} ${rootStyles.shell}`}>
+    <HeaderViewProvider><PageSearchProvider><div className={`${systemStyles.shell} ${systemStyles.hasSidebar} ${rootStyles.shell}`}>
       <aside className={systemStyles.rail} aria-label="Gardenシリーズ">
         <div className={systemStyles.railInner}>
           {renderModuleRail()}
@@ -147,7 +148,7 @@ export function ModuleShell({ children, moduleId, moduleName, moduleLabel, garde
       </div>}
 
       <main className={`${systemStyles.main} ${rootStyles.main}`}>
-        <div className={systemStyles.actions}>
+        <div className={systemStyles.actions}><PageSearchActions>
           {userName && <span className={systemStyles.accountName} {...CLARITY_MASK}>{userName}さん</span>}
           <HeaderViewSlot />
           <NoticeBell className={systemStyles.iconButton} /><FontSizeButton className={systemStyles.iconButton} tipClassName={systemStyles.actionTip} />
@@ -159,12 +160,12 @@ export function ModuleShell({ children, moduleId, moduleName, moduleLabel, garde
             <svg viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6" /></svg>
             <span className={systemStyles.actionTip}>ログアウト</span>
           </button>
-        </div>
+        </PageSearchActions></div>
         <div className={rootStyles.content}>
           {children}
         </div>
         {footer}
       </main>
-    </div></HeaderViewProvider>
+    </div></PageSearchProvider></HeaderViewProvider>
   );
 }
