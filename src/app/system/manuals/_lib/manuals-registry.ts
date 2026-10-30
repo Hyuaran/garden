@@ -62,6 +62,7 @@ export const SYSTEM_MANUALS: ManualDefinition[] = [
   manual("system", "expense", "業務管理ツール（経費 報告）", "立て替えた経費・会社クレジットカードの利用の報告のしかた。3 種類のフォームとスマホの入口、Kintone 経費一覧への写り方。"),
   manual("system", "ap-daily", "AP日報", "マイページの「AP日報」タブで日報を入力し、Chatwork のスタッフ連絡用のルームへ送る仕組み。コール履歴からの自動の数字と、振り返りタブ。"),
   manual("system", "line", "公式LINE", "従業員向けの公式 LINE を人ごとに運用する設定画面。タグ・あいさつ文・一斉送信・連絡先・リッチメニューの反映と、LINE の中の申告・シフトのページ。"),
+  manual("system", "global-search", "Garden全体の検索", "右上の虫眼鏡（Ctrl+K）で、画面で入力した内容・画面の名前・マニュアルの題名を Garden 全体から探す使い方と仕組み。表の右上の検索窓（今の画面の中の検索）も。"),
   manual("system", "innovera", "業務管理ツール（INNOVERA番号の同期）", "INNOVERA の回線一覧を Kintone の番号一覧へ 5 分ごとに写す仕組み。差分の見方と「今すぐ反映」の使い方。"),
   manual("system", "host-relay", "業務管理ツール（ホスト PC 中継）", "INNOVERA への通信を社内ホスト PC から出す仕組み。ホスト PC の常駐の止め方・動かし方・ログの見方と、止まったときの対処・設置し直す手順。"),
   manual("system", "vercel-usage", "業務管理ツール（Vercel 料金の見張り）", "Garden のサーバー（Vercel）の料金を毎日 18:05 に確かめ、込み分を超えそう・急に増えたときに Garden通知で知らせる仕組み。知らせの読み方と、増えたときの調べ方。"),
