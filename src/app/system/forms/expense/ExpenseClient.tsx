@@ -81,6 +81,6 @@ export default function ExpenseClient({ submitterName, employeeNumber, fixedForm
       <SubmitButton type="submit" busy={sending}>{fixedForm ? '送信する' : '報告内容を送信する'}</SubmitButton>
     </fieldset></form>
     <ResultMessage success={status === '送信しました'}>{status}</ResultMessage>
-    <RecentList title="自分の最近の報告（直近 1 週間）" items={reports.map(row => <p key={row.id}>{row.paid_on}　{row.business}　{row.purpose}　{row.purpose_detail}　{row.amount.toLocaleString()} 円　{jstTimestamp(new Date(row.created_at))}</p>)}>{!fixedForm ? <DataTable rows={reports} columns={columns} rowKey={row => row.id} searchText={row => [row.business, row.purpose, row.purpose_detail].join(" ")} defaultSort={{ id: 'created', direction: 'desc' }} /> : undefined}</RecentList>
+    <RecentList title="自分の最近の報告（直近 1 週間）" items={reports.map(row => <p key={row.id}>{row.paid_on}　{row.business}　{row.purpose}　{row.purpose_detail}　{row.amount.toLocaleString()} 円　{jstTimestamp(new Date(row.created_at))}</p>)}>{!fixedForm ? <DataTable rows={reports} columns={columns} rowKey={row => row.id} searchPlaceholder="事業・目的" searchText={row => [row.business, row.purpose, row.purpose_detail].join(" ")} defaultSort={{ id: 'created', direction: 'desc' }} /> : undefined}</RecentList>
   </FormPage>;
 }

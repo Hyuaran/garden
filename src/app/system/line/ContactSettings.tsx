@@ -18,7 +18,7 @@ export default function ContactSettings({data,busy,act}:{data:{contacts:Contact[
  }
  return <>
  <ActionRow><ActionButton disabled={busy} onClick={()=>{setAdding(true);setConfirm(false);setError('');setEdit({key:'',label:'',url:'',updated_at:'',updated_by:null});}}>連絡先を追加する</ActionButton></ActionRow>
- <DataTable rows={rows} rowKey={c=>c.key} searchText={c=>c.label+c.url} defaultSort={{id:'name',direction:'asc'}} columns={[
+ <DataTable rows={rows} rowKey={c=>c.key} searchPlaceholder="氏名・リンク" searchText={c=>c.label+c.url} defaultSort={{id:'name',direction:'asc'}} columns={[
  {id:'name',label:'氏名',type:'text',value:c=>c.label},{id:'url',label:'リンク',type:'text',value:c=>c.url||'未登録'}
  ]} onRowClick={c=>{setAdding(false);setConfirm(false);setError('');setEdit({...c});}}/>
  {edit&&<Modal title={adding?'連絡先を追加する':edit.label+'の連絡先'} onClose={()=>setEdit(undefined)} actions={<>

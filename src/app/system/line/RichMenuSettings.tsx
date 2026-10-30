@@ -31,13 +31,13 @@ export default function RichMenuSettings({data,busy,act}:{data:Data;busy:boolean
   })||[];
   return <>
     <h2>メニューの担当</h2>
-    <DataTable rows={data.contacts.filter(c=>Object.hasOwn(roleLabels,c.key))} rowKey={c=>c.key} searchText={c=>roleLabels[c.key]+c.label} defaultSort={{id:'role',direction:'asc'}} onRowClick={c=>setRole({...c})} columns={[
+    <DataTable rows={data.contacts.filter(c=>Object.hasOwn(roleLabels,c.key))} rowKey={c=>c.key} searchPlaceholder="役割・名前" searchText={c=>roleLabels[c.key]+c.label} defaultSort={{id:'role',direction:'asc'}} onRowClick={c=>setRole({...c})} columns={[
       {id:'role',label:'役割',type:'text',value:c=>roleLabels[c.key]},
       {id:'owner',label:'担当',type:'text',value:c=>c.label||'マネージャーが担当'},
     ]}/>
     {saved&&<ResultMessage success>登録したら［リッチメニューに反映する］を押してください。</ResultMessage>}
     <div style={{display:'flex',justifyContent:'flex-end'}}><SubmitButton style={{width:'auto'}} busy={busy} onClick={()=>act({action:'applyMenus'})}>リッチメニューに反映する</SubmitButton></div>
-    <DataTable rows={[...menuGroups]} rowKey={g=>g} searchText={g=>groupLabels[g]} defaultSort={{id:'group',direction:'asc'}} onRowClick={setGroup} columns={[
+    <DataTable rows={[...menuGroups]} rowKey={g=>g} searchPlaceholder="グループ" searchText={g=>groupLabels[g]} defaultSort={{id:'group',direction:'asc'}} onRowClick={setGroup} columns={[
       {id:'group',label:'組み合わせ',type:'text',value:g=>groupLabels[g]},
       {id:'count',label:'人数',type:'number',value:g=>g==='guest'?-1:people(g).length,render:g=>g==='guest'?'—':String(people(g).length)},
       {id:'date',label:'最後に反映した日時',type:'text',align:'fixed',value:g=>{const date=data.menus.find(m=>m.group_key===g)?.applied_at;return date?new Date(date).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}):'反映していません';}},

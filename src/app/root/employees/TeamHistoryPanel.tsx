@@ -28,7 +28,7 @@ export default function TeamHistoryPanel({employeeId,canWrite,onChanged}:{employ
   }
   return <section><h3>チーム所属</h3>{canWrite&&<ActionButton onClick={()=>setEdit({effective_date:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'}),team:'',memo:''})}>所属を追加する</ActionButton>}
     {message&&<ResultMessage>{message}</ResultMessage>}
-    <DataTable rows={rows} rowKey={r=>r.id} searchText={r=>r.team+(r.memo||'')} defaultSort={{id:'date',direction:'desc'}} onRowClick={r=>setEdit({...r})} columns={[
+    <DataTable rows={rows} rowKey={r=>r.id} searchPlaceholder="チーム・メモ" searchText={r=>r.team+(r.memo||'')} defaultSort={{id:'date',direction:'desc'}} onRowClick={r=>setEdit({...r})} columns={[
       {id:'date',label:'移動日',type:'text',align:'fixed',value:r=>r.effective_date},
       {id:'team',label:'チーム',type:'text',value:r=>r.team},
       {id:'memo',label:'メモ',type:'text',wrap:true,value:r=>r.memo||'—'},

@@ -35,7 +35,7 @@ export default function GroupSettings() {
   return <>
     <ActionRow><ActionButton onClick={()=>open({label:'',room:'',notify:false})}>グループを追加する</ActionButton></ActionRow>
     {error&&!draft&&<ResultMessage>{error}</ResultMessage>}
-    <DataTable rows={groups} rowKey={g=>g.id} searchText={g=>`${g.label||''} ${g.chatwork_room_id||''}`} defaultSort={{id:'label',direction:'asc'}} onRowClick={g=>open({id:g.id,label:g.label||'',room:g.chatwork_room_id||'',notify:g.notify_enabled})} columns={[
+    <DataTable rows={groups} rowKey={g=>g.id} searchPlaceholder="グループ名・ルームID" searchText={g=>`${g.label||''} ${g.chatwork_room_id||''}`} defaultSort={{id:'label',direction:'asc'}} onRowClick={g=>open({id:g.id,label:g.label||'',room:g.chatwork_room_id||'',notify:g.notify_enabled})} columns={[
       {id:'label',label:'グループの名前',type:'text',value:g=>g.label||'（名前なし）'},
       {id:'account',label:'アカウント',type:'text',value:g=>g.account==='dev'?'開発用':'従業員向け'},
       {id:'room',label:'知らせ先のルーム',type:'text',align:'fixed',value:g=>g.chatwork_room_id||'—'},

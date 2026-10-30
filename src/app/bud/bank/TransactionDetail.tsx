@@ -50,7 +50,7 @@ export default function TransactionDetail({ id, initialPeriod = "current" }: { i
     {!data && error && <div className={styles.toolbar}>{periodControl}</div>}
     {data && <>
       <DataTable key={`${id}:${period}`} rows={data.transactions} columns={columns} rowKey={t => t.mf_transaction_id} defaultSort={{ id:"date", direction:"desc" }} toolbar={periodControl}
-        searchText={t => `${t.content} ${Number(t.value)} ${Number(t.value).toLocaleString("ja-JP")} ${transactionAmount(t)} ${transactionAmount(t).toLocaleString("ja-JP")}`}
+        searchPlaceholder="内容・金額" searchText={t => `${t.content} ${Number(t.value)} ${Number(t.value).toLocaleString("ja-JP")} ${transactionAmount(t)} ${transactionAmount(t).toLocaleString("ja-JP")}`}
         summary={rows => <>
           {!card && <div className={styles.statBox}><small>今の残高</small><strong>{data.account.balance_mode === "manual_check" || data.account.balance === null ? "マネーフォワードで確認" : yen(Number(data.account.balance))}</strong></div>}
           {card

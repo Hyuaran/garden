@@ -15,7 +15,7 @@ export const cellAlignment = <T,>(column: DataColumn<T>) => column.align ?? (col
 type Sort = { id: string; direction: "asc" | "desc" };
 const normalize = (value: string) => value.normalize("NFKC").toLocaleLowerCase("ja-JP");
 const filterKey = <T,>(column: DataColumn<T>, row: T) => column.filterValue?.(row) ?? String(column.value(row));
-export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, pageSize = 100, searchable = true, searchPlaceholder = "内容・金額", onRowClick, rowClickable, emptyText }: {
+export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, rowClickable, emptyText }: {
   rows: T[]; columns: DataColumn<T>[]; rowKey: (row: T) => string;
   searchText: (row: T) => string; summary?: (rows: T[]) => ReactNode; toolbar?: ReactNode;
   defaultSort: Sort; pageSize?: number; searchable?: boolean; searchPlaceholder?: string;
