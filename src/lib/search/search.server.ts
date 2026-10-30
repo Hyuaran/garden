@@ -51,6 +51,11 @@ export function rowHit(source: SearchSource, row: Record<string, unknown>, query
   const suffix = source.table === "bud_mf_axis_order" ? `:${row.axis}` : source.table === "system_line_tag_member" ? `:${row.tag_id}` : "";
   return { id: `${source.table}:${row[source.pk]}${suffix}`, title, label: match.label, value: match.value.slice(start, start + 180), phone: match.phone, module: source.module, href: resultHref(source, row, query), rank: match.rank, updated: printable(row.updated_at ?? row.created_at ?? row[source.date]) };
 }
+/** Escape PostgREST LIKE metacharacters after matching the generated column normalization. */
+export function searchPattern(query: string): string {
+  const normalized = query.trim().normalize("NFKC").toLocaleLowerCase("ja-JP").replace(/[,，]/g, "");
+  return "%" + normalized.replace(/[\\%_]/g, character => "\\" + character) + "%";
+}
 export async function gardenSearch(query: string, expanded: Set<string>): Promise<SearchGroup[]> {
   const context = await viewPermissionContext();
   // Route handlers do not share React's render cache. Read permissions exactly once per request.
@@ -131,9 +136,13 @@ export async function gardenSearch(query: string, expanded: Set<string>): Promis
     const db = admin ? getSupabaseAdmin() : context.db;
     const columns = [...new Set([source.pk, source.title, source.date, ...source.fields.map(field => field.select ?? field.column), ...(["root_employee_team_history", "root_employee_profile_history"].includes(source.table) ? ["employee_id"] : []), ...(source.table === "bud_mf_accounts" ? ["kind", "hidden", "visible_employee_ids", "sort_order"] : []), ...(source.table === "bud_mf_axis_order" ? ["axis"] : [])].filter(Boolean))].join(",");
     const hits: SearchHit[] = [];
-    // Supabase defaults to 1000 rows. Page through all authorized rows, never truncate before matching.
+    // Account visibility is evaluated before matching; other sources are filtered in PostgreSQL.
     for (let offset = 0; ; offset += 1000) {
-      let request = db.from(source.table).select(columns).order(source.pk).range(offset, offset + 999);
+      // 検索は search_v_<表>（検索用の文字の列 search_text を持つビュー・権限は元の表の RLS のまま）から読む
+      let request = db.from(source.table === "bud_mf_accounts" ? source.table : `search_v_${source.table}`).select(columns).order(source.pk);
+      request = source.table === "bud_mf_accounts"
+        ? request.range(offset, offset + 999)
+        : request.ilike("search_text", searchPattern(query)).limit(21);
       if (source.table === "bud_mf_axis_order") request = request.order("axis");
       if (source.table === "system_line_tag_member") request = request.order("tag_id");
       if (source.client === "self") request = request.eq("employee_id", context.viewer.employeeId);
@@ -149,7 +158,7 @@ export async function gardenSearch(query: string, expanded: Set<string>): Promis
       let rows = (data ?? []) as unknown as Record<string, unknown>[];
       if (source.table === "bud_mf_accounts") rows = visibleAccounts(rows as unknown as MfAccount[], context.viewer.employeeId, context.viewer.role === "super_admin", mfGroups.data as GroupViewers[]) as unknown as Record<string, unknown>[];
       for (const row of rows) { const hit = rowHit(source, row, query); if (hit) hits.push(hit); }
-      if ((data ?? []).length < 1000) break;
+      if (source.table !== "bud_mf_accounts" || (data ?? []).length < 1000) break;
     }
     return { source, hits };
   })().catch(error => { console.error("[search] source failed", source.table, error instanceof Error ? error.message : "unknown"); return null; })));
