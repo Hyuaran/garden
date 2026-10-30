@@ -1,4 +1,5 @@
 "use client";
+import { GlobalSearchButton } from "@/app/_components/search/GlobalSearch";
 import { PageSearchProvider, PageSearchActions } from "@/app/system/_components/PageSearchSlot/PageSearchSlot";
 
 import { budPageKey } from "@/lib/auth/bud-view-scopes";
@@ -151,7 +152,7 @@ export function BudShachoShell({ children, viewNavigation }: { children: ReactNo
         <button ref={openButtonRef} className={systemStyles.menuButton} type="button" aria-label="メニューを開く" aria-expanded={drawerOpen} aria-controls={drawerId} onClick={() => setDrawerOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
         <Link href="/" className={systemStyles.mobileBrand} aria-label="Garden ホームへ（上部）"><Image className={systemStyles.mobileBrandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized /><span>Garden ／ Bud</span></Link>
         <div className={systemStyles.mobileActions}>
-          <HeaderViewSlot mobile /><NoticeBell className={systemStyles.iconButton} /><FontSizeButton className={systemStyles.iconButton} tipClassName={systemStyles.actionTip} />
+          <HeaderViewSlot mobile /><GlobalSearchButton className={systemStyles.iconButton} /><NoticeBell className={systemStyles.iconButton} /><FontSizeButton className={systemStyles.iconButton} tipClassName={systemStyles.actionTip} />
           <button className={systemStyles.iconButton} type="button" aria-label="テーマを切り替える" onClick={toggleTheme}>
             {theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" /></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z" /></svg>}
           </button>
@@ -188,7 +189,7 @@ export function BudShachoShell({ children, viewNavigation }: { children: ReactNo
       <main className={`${systemStyles.main} ${styles.main}`}>
         <div className={styles.topbar}><PageSearchActions><div className={styles.actions}>
           {userName && <span className={systemStyles.accountName} {...CLARITY_MASK}>{userName}さん</span>}
-          <HeaderViewSlot /><NoticeBell className={systemStyles.iconButton} /><FontSizeButton className={systemStyles.iconButton} tipClassName={systemStyles.actionTip} />
+          <HeaderViewSlot /><GlobalSearchButton className={systemStyles.iconButton} /><NoticeBell className={systemStyles.iconButton} /><FontSizeButton className={systemStyles.iconButton} tipClassName={systemStyles.actionTip} />
           <button className={systemStyles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>
             {theme === "dark" ? <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" /></svg> : <svg viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z" /></svg>}
             <span className={systemStyles.actionTip}>{themeLabel}</span>

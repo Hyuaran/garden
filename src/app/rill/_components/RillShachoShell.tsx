@@ -1,4 +1,5 @@
 "use client";
+import { GlobalSearchButton } from "@/app/_components/search/GlobalSearch";
 import { PageSearchProvider, PageSearchActions } from "@/app/system/_components/PageSearchSlot/PageSearchSlot";
 
 import FontSizeButton from "@/app/system/_components/FontSizeButton";
@@ -251,7 +252,7 @@ export default function RillShachoShell({ children, user, mailAllowed = true }: 
       <button ref={openButtonRef} className={styles.menuButton} type="button" aria-label="メニューを開く" aria-expanded={drawerOpen} aria-controls={drawerId} onClick={() => setDrawerOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
       <Link href="/" className={styles.mobileBrand} aria-label="Garden ホームへ（上部）"><Image className={styles.mobileBrandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized /><span>Garden ／ Rill</span></Link>
       <div className={styles.mobileActions}>
-        <button className={styles.iconButton} type="button" aria-label="通知" onClick={() => setActivityOpen(true)}><BellIcon /></button>
+        <GlobalSearchButton className={styles.iconButton} /><button className={styles.iconButton} type="button" aria-label="通知" onClick={() => setActivityOpen(true)}><BellIcon /></button>
         <FontSizeButton className={styles.iconButton} tipClassName={styles.actionTip} />
         <button className={styles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}</button>
         <button className={styles.iconButton} type="button" aria-label="ユーザーメニュー" onClick={() => setUserOpen((value) => !value)}><UserIcon /></button>
@@ -298,7 +299,7 @@ export default function RillShachoShell({ children, user, mailAllowed = true }: 
           <span className={styles.infoItem}><StatusIcon />すべてのシステム正常</span>
         </div>
         <PageSearchActions><div className={styles.headerActions}>
-          <button className={styles.iconButton} type="button" aria-label="通知" onClick={() => setActivityOpen(true)}><BellIcon /></button>
+          <GlobalSearchButton className={styles.iconButton} /><button className={styles.iconButton} type="button" aria-label="通知" onClick={() => setActivityOpen(true)}><BellIcon /></button>
           <FontSizeButton className={styles.iconButton} tipClassName={styles.actionTip} />
           <button className={styles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}<span className={styles.actionTip}>{themeLabel}</span></button>
           <button className={styles.iconButton} type="button" aria-label="ヘルプ" onClick={() => setShortcutsOpen(true)}><HelpIcon /></button>

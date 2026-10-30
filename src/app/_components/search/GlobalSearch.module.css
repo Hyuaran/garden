@@ -1,0 +1,16 @@
+.modal { width: min(960px, calc(100vw - 32px)); font-family: "Meiryo", "メイリオ", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; word-break: auto-phrase; line-break: strict; text-wrap: pretty; overflow-wrap: break-word; }
+.input { width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--border, #aaa); border-radius: 8px; background: var(--bg-panel, Canvas); color: inherit; font: inherit; }
+.results { max-height: 60dvh; overflow-y: auto; padding: 8px 0; }
+.modal .results h3 { font-size: 13px !important; opacity: .7; margin: 16px 8px 4px; }
+.hit { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-radius: 8px; color: inherit; text-decoration: none; }
+.hit > span { min-width: 0; overflow-wrap: break-word; }
+.hit small { display: block; opacity: .75; }
+.hit > small { flex-shrink: 0; }
+.title { display: block; margin-bottom: 4px; }
+.hit[data-active=true], .hit:hover { background: color-mix(in srgb, currentColor 9%, transparent); }
+.hit strong { font-weight: 800; text-decoration: underline; }
+/* ListProcessingOverlay spinner, reduced for the dispatch's inline search status. */
+.spinner { display: inline-block; width: 16px; height: 16px; margin-right: 8px; border: 2px solid var(--line); border-top-color: #0ea5a0; border-right-color: var(--ink); border-radius: 50%; animation: spin .85s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 600px) { .modal[data-garden-modal="panel"][data-size="lg"] { width: calc(100vw / var(--garden-zoom, 1)) !important; max-width: calc(100vw / var(--garden-zoom, 1)) !important; height: calc(100dvh / var(--garden-zoom, 1)) !important; max-height: calc(100dvh / var(--garden-zoom, 1)) !important; margin: 0 !important; border-radius: 0 !important; padding: 18px !important; } .results { max-height: calc(100dvh / var(--garden-zoom, 1) - 210px); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }

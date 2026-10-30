@@ -17,6 +17,7 @@ import { ThemeProvider } from "./_lib/theme/ThemeProvider";
 import { AuthProvider } from "./_lib/auth-unified";
 import ClarityTracker from "./_components/analytics/ClarityTracker";
 import { NoticeProvider } from "./_components/notices/NoticeProvider";
+import GlobalSearch from "./_components/search/GlobalSearch";
 import NoticeModal from "./_components/notices/NoticeModal";
 
 export const metadata: Metadata = {
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <ClarityTracker />
             <NoticeProvider>
               <NoticeModal />
+              <GlobalSearch />
               <ShojiStatusProvider>{children}</ShojiStatusProvider>
             </NoticeProvider>
           </ThemeProvider></FontSizeProvider>

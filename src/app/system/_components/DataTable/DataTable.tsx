@@ -1,4 +1,5 @@
 "use client";
+import { normalizeSearch } from "@/lib/search/match";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -13,7 +14,8 @@ export type DataColumn<T> = {
 // align の指定を優先し、未指定の列はデータ型から決める。
 export const cellAlignment = <T,>(column: DataColumn<T>) => column.align ?? (column.type === "date" ? "fixed" : column.type === "number" ? "number" : "text");
 type Sort = { id: string; direction: "asc" | "desc" };
-const normalize = (value: string) => value.normalize("NFKC").toLocaleLowerCase("ja-JP");
+const normalize = (value: string) => normalizeSearch(value);
+const matchesSearch = (text: string, query: string) => normalize(text).includes(normalize(query)) || (/^[\d\s+()‐‑‒–—−ー-]+$/.test(query.normalize("NFKC")) && normalizeSearch(text, true).includes(normalizeSearch(query, true)));
 const filterKey = <T,>(column: DataColumn<T>, row: T) => column.filterValue?.(row) ?? String(column.value(row));
 export default function DataTable<T>({ rows, columns, rowKey, searchText, summary, toolbar, defaultSort, pageSize = 100, searchable = true, searchPlaceholder = "キーワード", onRowClick, rowClickable, emptyText }: {
   rows: T[]; columns: DataColumn<T>[]; rowKey: (row: T) => string;
@@ -27,6 +29,14 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
   const searchId = useId();
   const searchTarget = usePageSearchTarget(rootRef, searchable);
   const [search, setSearch] = useState("");
+  useEffect(() => {
+    const read = () => { setSearch(new URLSearchParams(window.location.search).get("q") ?? ""); setPage(1); };
+    const navigate = (event: Event) => { const url = new URL((event as CustomEvent<string>).detail, window.location.origin); if (url.pathname === window.location.pathname) { setSearch(url.searchParams.get("q") ?? ""); setPage(1); } };
+    const initialQuery = new URLSearchParams(window.location.search).get("q");
+    if (initialQuery !== null) setSearch(initialQuery);
+    window.addEventListener("popstate", read); window.addEventListener("garden-search-navigate", navigate);
+    return () => { window.removeEventListener("popstate", read); window.removeEventListener("garden-search-navigate", navigate); };
+  }, []);
   const [filters, setFilters] = useState<Record<string, string[]>>({});
   const [sort, setSort] = useState(defaultSort);
   const [page, setPage] = useState(1);
@@ -49,7 +59,7 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
     window.addEventListener("scroll", dismiss, true);
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); window.removeEventListener("resize", dismiss); window.removeEventListener("scroll", dismiss, true); };
   }, [menu]);
-  const filtered = useMemo(() => rows.filter(row => (!searchable || !search || normalize(searchText(row)).includes(normalize(search))) && columns.every(column => !filters[column.id] || filters[column.id].includes(filterKey(column, row)))), [rows, columns, filters, search, searchText, searchable]);
+  const filtered = useMemo(() => rows.filter(row => (!searchable || !search || matchesSearch(searchText(row), search)) && columns.every(column => !filters[column.id] || filters[column.id].includes(filterKey(column, row)))), [rows, columns, filters, search, searchText, searchable]);
   const sorted = useMemo(() => {
     const column = columns.find(column => column.id === sort.id);
     if (!column) return filtered;
