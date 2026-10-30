@@ -1,6 +1,7 @@
 .headingRow { display: flex; align-items: center; gap: 8px; width: 100%; }
 .headingAction { display: inline-flex; vertical-align: middle; margin-left: 8px; align-items: center; }
-.dialog { box-sizing: border-box; width: min(640px, calc(100vw - 32px)); max-height: 85dvh; overflow: auto; padding: 28px; color: var(--ink, #17212e); background: var(--card, #fff); border: 1px solid var(--line, #e3eaf3); border-radius: 12px; font: inherit; margin: auto; }
+.dialog { box-sizing: border-box; width: min(640px, calc(100vw - 32px)); max-height: 85dvh; overflow: auto; padding: 28px; color: var(--ink, #17212e); background: var(--card, #fff); border: 1px solid var(--line, #e3eaf3); border-radius: 12px; font-family: inherit; font-size: 15px; font-weight: 400; line-height: 1.5; letter-spacing: normal; text-align: left; margin: auto; }
+/* 見出し（h1・共通の小窓と同じ15px）の中に置くので、見出しの文字の大きさ・太さを小窓へ持ち込まない（自分の情報で30pxのボタンになった・2026-10-30） */
 /* 画面の真ん中に出す（全体のリセットで margin:0 になり左上に寄っていたため 2026-10-26） */
 .dialog { margin: auto; }
 .dialog::backdrop { background: #10282066; }
