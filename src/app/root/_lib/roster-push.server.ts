@@ -137,14 +137,16 @@ export async function pushEmployeeToRoster(employeeId: string, options: Options 
   const app = process.env.KINTONE_EMPLOYEE_ROSTER_APP_ID || '56';
   if (!token || !sub) throw new Error('Kintone環境変数未設定');
   const fetchImpl = options.fetchImpl ?? fetch;
-  const headers = { 'content-type':'application/json','X-Cybozu-API-Token':token };
+  // Kintone の GET は content-type を付けると 400 になるので、読み出しは token だけ
+  const getHeaders = { 'X-Cybozu-API-Token':token };
+  const headers = { ...getHeaders, 'content-type':'application/json' };
   let id = employee.data.roster_record_id;
   let current = options.currentRecord;
   if (!id && !current) {
     const kot = employee.data.kot_employee_id;
     if (!kot) throw new MissingRosterRecord('打刻IDがありません');
     const query = `打刻ID = "${String(kot).replace(/\\/g,'\\\\').replace(/"/g,'\\"')}" order by 作成日時 desc limit 1`;
-    const response = await fetchImpl(`https://${sub}.cybozu.com/k/v1/records.json?${new URLSearchParams({app,query,'fields[0]':'$id'})}`, {headers,cache:'no-store',signal:AbortSignal.timeout(30000)});
+    const response = await fetchImpl(`https://${sub}.cybozu.com/k/v1/records.json?${new URLSearchParams({app,query,'fields[0]':'$id'})}`, {headers:getHeaders,cache:'no-store',signal:AbortSignal.timeout(30000)});
     if (!response.ok) throw new Error(`名簿検索失敗: ${response.status}`);
     id = (await response.json()).records?.[0]?.$id?.value;
     if (!id) throw new MissingRosterRecord('打刻IDが名簿にありません');
@@ -154,7 +156,7 @@ export async function pushEmployeeToRoster(employeeId: string, options: Options 
     }
   }
   if (!current) {
-    const response = await fetchImpl(`https://${sub}.cybozu.com/k/v1/record.json?${new URLSearchParams({app,id:String(id)})}`, {headers,cache:'no-store',signal:AbortSignal.timeout(30000)});
+    const response = await fetchImpl(`https://${sub}.cybozu.com/k/v1/record.json?${new URLSearchParams({app,id:String(id)})}`, {headers:getHeaders,cache:'no-store',signal:AbortSignal.timeout(30000)});
     if (!response.ok) throw new Error(`名簿取得失敗: ${response.status}`);
     current = (await response.json()).record as RosterRecord;
   }
