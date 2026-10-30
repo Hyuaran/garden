@@ -1,4 +1,6 @@
 "use client";
+import { findTableSearch } from "@/app/system/_components/PageSearchSlot/PageSearchSlot";
+
 import SystemTabs from '@/app/system/_components/SystemTabs/SystemTabs';
 import RosterProfileFields, {type ProfileDraft} from './RosterProfileFields';
 import TeamHistoryPanel from './TeamHistoryPanel';
@@ -451,7 +453,7 @@ export default function EmployeesPage() {
 
   useMasterShortcuts<Employee>({
     rows: employees, modalOpen: !!editTarget || !!historyTarget || !!roleTarget,
-    onSearch: () => { const input = tableRef.current?.querySelector<HTMLInputElement>('input[type="search"]'); input?.focus(); input?.select(); },
+    onSearch: () => { const input = findTableSearch(tableRef.current); input?.focus(); input?.select(); },
     rowNavigation: false,
   });
 

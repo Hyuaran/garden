@@ -1,4 +1,6 @@
 "use client";
+import { PageSearchProvider, PageSearchActions } from "@/app/system/_components/PageSearchSlot/PageSearchSlot";
+
 import FontSizeButton from "@/app/system/_components/FontSizeButton";
 
 import Image from "next/image";
@@ -244,7 +246,7 @@ export default function RillShachoShell({ children, user, mailAllowed = true }: 
     </nav>
   );
 
-  return <div className={styles.shell}>
+  return <PageSearchProvider><div className={styles.shell}>
     <header className={styles.mobileTopbar}>
       <button ref={openButtonRef} className={styles.menuButton} type="button" aria-label="メニューを開く" aria-expanded={drawerOpen} aria-controls={drawerId} onClick={() => setDrawerOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
       <Link href="/" className={styles.mobileBrand} aria-label="Garden ホームへ（上部）"><Image className={styles.mobileBrandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized /><span>Garden ／ Rill</span></Link>
@@ -295,7 +297,7 @@ export default function RillShachoShell({ children, user, mailAllowed = true }: 
           <span className={styles.infoItem}><WeatherIcon kind={weather.kind} /><b>{weather.temp}</b><small>{weather.label}</small></span>
           <span className={styles.infoItem}><StatusIcon />すべてのシステム正常</span>
         </div>
-        <div className={styles.headerActions}>
+        <PageSearchActions><div className={styles.headerActions}>
           <button className={styles.iconButton} type="button" aria-label="通知" onClick={() => setActivityOpen(true)}><BellIcon /></button>
           <FontSizeButton className={styles.iconButton} tipClassName={styles.actionTip} />
           <button className={styles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}<span className={styles.actionTip}>{themeLabel}</span></button>
@@ -322,7 +324,7 @@ export default function RillShachoShell({ children, user, mailAllowed = true }: 
               <button type="button" onClick={() => void logout()}><LogoutIcon />ログアウト</button>
             </div>
           </div>
-        </div>
+        </div></PageSearchActions>
       </header>
       <main className={styles.main}>{children}</main>
     </div>
@@ -332,5 +334,5 @@ export default function RillShachoShell({ children, user, mailAllowed = true }: 
       <p className={styles.activityEmpty}>新しいお知らせはありません</p>
     </div>
     <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-  </div>;
+  </div></PageSearchProvider>;
 }

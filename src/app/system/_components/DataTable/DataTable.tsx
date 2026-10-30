@@ -1,6 +1,8 @@
 "use client";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { usePageSearchTarget } from "../PageSearchSlot/PageSearchSlot";
 import styles from "./DataTable.module.css";
 
 type Value = string | number;
@@ -21,6 +23,9 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
   /** 0 件のときの文（既定「該当する明細はありません。」） */
   emptyText?: string;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const searchId = useId();
+  const searchTarget = usePageSearchTarget(rootRef, searchable);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
   const [sort, setSort] = useState(defaultSort);
@@ -64,9 +69,11 @@ export default function DataTable<T>({ rows, columns, rowKey, searchText, summar
     setFilters(previous => { const next = { ...previous }; if (!values || options.every(([key]) => values.includes(key))) delete next[column.id]; else next[column.id] = values; return next; });
     setPage(1); close(true);
   };
-  return <div className={styles.root}>
+  const searchControl = <div className={`${styles.search} ${searchTarget ? styles.headerSearch : styles.searchBox}`}>{!searchTarget && <small>検索</small>}<div className={styles.searchRow}><label className={styles.searchLabel}><span className={styles.searchField}><svg className={styles.searchIcon} viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg><input className={styles.searchInput} id={searchId} type="search" aria-label={searchTarget ? "この画面の中を検索" : "検索"} placeholder={searchPlaceholder} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></span></label><button type="button" className={styles.clear} disabled={!search && !Object.keys(filters).length} aria-label="絞り込みをすべて解除" title="絞り込みをすべて解除" onClick={() => { setSearch(""); setFilters({}); setPage(1); close(); }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5Z" /><path d="m16 15 5 5M21 15l-5 5" /></svg></button></div></div>;
+  return <div ref={rootRef} data-table-search-id={searchId} className={styles.root}>
+    {searchTarget && createPortal(searchControl, searchTarget)}
     <div className={styles.topRow}>{summary && <div className={styles.summary}>{summary(filtered)}</div>}
-    <div className={[styles.toolbar, styles.controls].join(" ")}>{toolbar}{searchable && <div className={`${styles.search} ${styles.searchBox}`}><small>検索</small><div className={styles.searchRow}><label className={styles.searchLabel}><span className={styles.searchField}><svg className={styles.searchIcon} viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg><input className={styles.searchInput} type="search" aria-label="検索" placeholder={searchPlaceholder} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></span></label><button type="button" className={styles.clear} disabled={!search && !Object.keys(filters).length} aria-label="絞り込みをすべて解除" title="絞り込みをすべて解除" onClick={() => { setSearch(""); setFilters({}); setPage(1); close(); }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5Z" /><path d="m16 15 5 5M21 15l-5 5" /></svg></button></div></div>}</div></div>
+    <div className={[styles.toolbar, styles.controls].join(" ")}>{toolbar}{searchable && !searchTarget && searchControl}</div></div>
     <div className={styles.tableWrap}><StickyTable><thead><tr>{columns.map(column => <th key={column.id} aria-sort={sort.id === column.id ? sort.direction === "asc" ? "ascending" : "descending" : "none"}><button type="button" aria-label={`${column.label}の並べ替え・絞り込み`} aria-haspopup="dialog" aria-expanded={menu === column.id} onClick={event => {
       if (menu === column.id) { close(); return; }
       trigger.current = event.currentTarget;

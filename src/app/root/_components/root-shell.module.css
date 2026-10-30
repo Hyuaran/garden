@@ -295,3 +295,5 @@
 
 .compactTable td > div { flex-wrap: wrap; min-width: 0; }
 .compactTable button:not(:where([data-garden-box-select] *)) { padding-inline: 8px !important; }
+
+@media(min-width:801px) { .pageHeaderActions { margin-right:var(--page-search-width, 0px); } .pageHeader { min-height:calc(var(--page-search-bottom, 0px) - 30px); } :global(main[style*="--page-search-width"]) .pageHeader { align-items:flex-start !important; } }

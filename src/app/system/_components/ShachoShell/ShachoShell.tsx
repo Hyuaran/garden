@@ -1,4 +1,6 @@
 "use client";
+import { PageSearchProvider, PageSearchActions } from "@/app/system/_components/PageSearchSlot/PageSearchSlot";
+
 import { HeaderViewProvider } from "@/app/system/_components/HeaderViewToggle";
 
 import Image from "next/image";
@@ -120,7 +122,7 @@ export default function ShachoShell({ children, user, hiddenHrefs = [], allowedH
     ? <span className={styles.mobileBrand}><Image className={styles.mobileBrandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized/><span>Garden ／ System</span></span>
     : <Link href="/" className={styles.mobileBrand} aria-label="Garden ホームへ（上部）"><Image className={styles.mobileBrandMark} src="/themes/garden-shell/images/login/mark-tree-emblem.png" width={256} height={256} alt="" unoptimized/><span>Garden ／ System</span></Link>;
 
-  return <HeaderViewProvider><div className={`${styles.shell} ${styles.hasSidebar}`}>
+  return <HeaderViewProvider><PageSearchProvider><div className={`${styles.shell} ${styles.hasSidebar}`}>
     <><aside className={styles.rail} aria-label="Gardenシリーズ">
       <div className={styles.railInner}>
         {moduleRail}
@@ -157,9 +159,9 @@ export default function ShachoShell({ children, user, hiddenHrefs = [], allowedH
     </div>}
     <main className={styles.main}>
       <div className={styles.actions}>
-        <GardenHeaderActions name={user.name} />
+        <PageSearchActions><GardenHeaderActions name={user.name} /></PageSearchActions>
       </div>
       {children}
     </main>
-  </div></HeaderViewProvider>;
+  </div></PageSearchProvider></HeaderViewProvider>;
 }

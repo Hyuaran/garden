@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import SystemBreadcrumb from '../_components/SystemBreadcrumb/SystemBreadcrumb';
+import pageSearchStyles from '../_components/PageSearchSlot/PageSearchSlot.module.css';
 import SystemTabs from '../_components/SystemTabs/SystemTabs';
 import UpdatedStamp, { UpdatedStampRow } from '../_components/UpdatedStamp/UpdatedStamp';
 import DataTable, { type DataColumn } from '../_components/DataTable/DataTable';
@@ -34,7 +35,7 @@ export default function LineManager() {
   const options=(kind:string)=>data?.tags.filter(t=>t.kind===kind).map(t=>({value:t.id,label:t.name}))||[];
   const filters=data&&<div style={{display:'flex',flexWrap:'wrap',gap:12}}>{Object.entries(kindLabels).map(([kind,label])=><BoxSelect key={kind} label={label} value={selected.filter(id=>data.tags.some(t=>t.id===id&&t.kind===kind))} options={[{value:'',label:'指定なし'},...options(kind)]} onChange={ids=>{setSelected([...selected.filter(id=>!data.tags.some(t=>t.id===id&&t.kind===kind)),...ids.filter(Boolean)]);setPreview(undefined);}} />)}</div>;
   const columns:DataColumn<Employee>[]=[{id:'name',label:'氏名',type:'text',value:e=>e.name},{id:'number',label:'社員番号',type:'text',align:'fixed',value:e=>e.employee_number},{id:'line',label:'LINEの紐づき',type:'text',align:'mark',value:e=>e.line_user_id&&e.line_link_source!=='unfollowed'?'済':'未'},...Object.entries(kindLabels).map(([kind,label]):DataColumn<Employee>=>({id:kind,label,type:'text',value:e=>names(e,kind)}))];
-  return <main className={formStyles.pageShell}><SystemBreadcrumb items={[{label:'公式 LINE'}]}/><h1 style={{fontSize:30}}>公式 LINE</h1><UpdatedStampRow><UpdatedStamp label="LINE" date={data?.updatedAt} onRefresh={()=>load().catch(e=>setMessage(e.message))} refreshLabel="一覧を更新" busy={busy}/></UpdatedStampRow>
+  return <main className={formStyles.pageShell}><header data-page-search-heading className={pageSearchStyles.heading}><SystemBreadcrumb items={[{label:'公式 LINE'}]}/><h1 style={{fontSize:30}}>公式 LINE</h1></header><UpdatedStampRow><UpdatedStamp label="LINE" date={data?.updatedAt} onRefresh={()=>load().catch(e=>setMessage(e.message))} refreshLabel="一覧を更新" busy={busy}/></UpdatedStampRow>
     <HeaderViewToggle><button type="button" disabled={tab!=='greeting'} aria-label={viewMode==='list'?'カード表示にする':'一覧表示にする'} title={tab==='greeting'?(viewMode==='list'?'カード表示にする':'一覧表示にする'):'このタブは表示の切り替えがありません'} onClick={()=>{const next=viewMode==='list'?'grid':'list';setViewMode(next);try{localStorage.setItem('garden.line.greeting.viewMode',next);}catch{}}}><svg viewBox="0 0 24 24" aria-hidden="true">{viewMode==='list'?<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>:<path d="M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11"/>}</svg></button></HeaderViewToggle>
     <SystemTabs>{[['people','人とタグ'],['greeting','あいさつ文'],['broadcast','一斉送信'],['contacts','連絡先'],['richmenu','リッチメニュー'],['groups','グループ']].map(([id,label])=><button key={id} role="tab" aria-selected={tab===id} onClick={()=>changeTab(id)}>{label}</button>)}</SystemTabs>
     {tab==='groups'&&<GroupSettings/>}

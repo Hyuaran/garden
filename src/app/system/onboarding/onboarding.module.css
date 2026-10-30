@@ -114,3 +114,5 @@
 
 .hireSpinner { display:inline-block; width:1em; height:1em; margin-right:.5em; border:2px solid #ddd; border-top-color:currentColor; border-radius:50%; animation:hireSpin 1s linear infinite; }
 @keyframes hireSpin { to { transform:rotate(360deg); } }
+
+@media(min-width:801px) { .header { min-height:max(86px, calc(var(--page-search-bottom, 0px) - 30px)); } }

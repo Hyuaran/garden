@@ -1,4 +1,6 @@
 "use client";
+import { PageSearchProvider, PageSearchActions } from "@/app/system/_components/PageSearchSlot/PageSearchSlot";
+
 import { budPageKey } from "@/lib/auth/bud-view-scopes";
 import { createBrowserClient } from "@/app/_lib/supabase/browser";
 import FontSizeButton from "@/app/system/_components/FontSizeButton";
@@ -115,7 +117,7 @@ export function BudShachoShell({ children, viewNavigation }: { children: ReactNo
   if (pathname === "/bud/login") return <>{children}</>;
 
   return (
-    <HeaderViewProvider><div className={`${systemStyles.shell} ${systemStyles.hasSidebar} ${styles.shell}`}>
+    <HeaderViewProvider><PageSearchProvider><div className={`${systemStyles.shell} ${systemStyles.hasSidebar} ${styles.shell}`}>
       <aside className={systemStyles.rail} aria-label="Gardenシリーズ">
         <div className={systemStyles.railInner}>
           {renderModuleRail()}
@@ -184,7 +186,7 @@ export function BudShachoShell({ children, viewNavigation }: { children: ReactNo
       </div>}
 
       <main className={`${systemStyles.main} ${styles.main}`}>
-        <div className={styles.topbar}><div className={styles.actions}>
+        <div className={styles.topbar}><PageSearchActions><div className={styles.actions}>
           {userName && <span className={systemStyles.accountName} {...CLARITY_MASK}>{userName}さん</span>}
           <HeaderViewSlot /><NoticeBell className={systemStyles.iconButton} /><FontSizeButton className={systemStyles.iconButton} tipClassName={systemStyles.actionTip} />
           <button className={systemStyles.iconButton} type="button" aria-label={themeLabel} onClick={toggleTheme}>
@@ -195,13 +197,13 @@ export function BudShachoShell({ children, viewNavigation }: { children: ReactNo
             <svg viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6" /></svg>
             <span className={systemStyles.actionTip}>ログアウト</span>
           </button>
-        </div>
+        </div></PageSearchActions>
         </div>
         <div className={styles.content}>
           {children}
         </div>
 
       </main>
-    </div></HeaderViewProvider>
+    </div></PageSearchProvider></HeaderViewProvider>
   );
 }

@@ -104,3 +104,14 @@
 .tableWrap .clickableRow:focus-visible { outline:2px solid var(--teal,#0ea5a0); outline-offset:-2px; }
 /* スマホ幅：表の上の部品（ボタン・数字の箱・検索の箱）は縦に並べて全幅に（入社予定者で検索が「氏名・」と切れたため 2026-10-26） */
 @media (max-width:600px) { .topRow .controls { flex:1 1 100%; flex-direction:column; align-items:stretch; } .topRow .controls > * { flex:none; width:100%; max-width:none; min-width:0; } }
+
+.headerSearch { display:block; width:100%; max-width:none; box-sizing:border-box; font:inherit; color:var(--ink,#17212e); }
+.headerSearch .searchRow { height:36px; box-sizing:border-box; gap:0; border:1px solid var(--line,#d7dfea); border-radius:8px; background:var(--card,#fff); }
+.headerSearch .searchInput { width:100%; height:34px; min-height:0; min-width:0; padding:6px 12px 6px 38px; border:0; border-radius:8px; background:transparent; color:inherit; font:inherit; box-sizing:border-box; }
+.headerSearch .clear { min-height:0; display:grid; place-items:center; flex:0 0 40px; width:40px; height:34px; padding:0; border:0; border-radius:8px; background:transparent; color:var(--sub,#617286); cursor:pointer; }
+.headerSearch .clear:disabled { opacity:.5; cursor:default; }
+.headerSearch .clear svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; }
+.headerSearch :is(input,button):focus-visible { outline:2px solid var(--teal,#0ea5a0); outline-offset:2px; }
+@media(max-width:800px) { .topRow .controls .searchBox { flex:1 1 100%; max-width:none; width:100%; } }
+
+.headerSearch .searchInput::placeholder { color:var(--sub,#617286); opacity:1; }
