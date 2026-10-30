@@ -105,6 +105,12 @@ describe("system mypage", () => {
     expect(document.body.textContent).not.toContain("1234");
     expect(document.body.textContent).not.toContain(profile.birthday);
   });
+  it("shows the employee link to /my only on the System profile page", () => {
+    renderMyPage();
+    expect(screen.getByText("従業員用リンク")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /\/my$/ })).toHaveAttribute("href", "/my");
+    expect(screen.getByRole("button", { name: "コピー" })).toBeInTheDocument();
+  });
   it("shows the mypage route without upper tabs", () => {
     renderMyPage({ ...baseProps, tabbed: false });
     const breadcrumb = screen.getByRole("navigation", { name: "現在地" });

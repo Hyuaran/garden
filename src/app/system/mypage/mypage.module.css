@@ -104,3 +104,11 @@
   .confirmationBanner { align-items:flex-start; flex-direction:column; } .confirmationActions { width:100%; flex-wrap:wrap; }
   .checkForm { grid-template-columns:1fr; } .checkForm label:not(:has(> input[type="radio"])) { grid-column:auto; }
 }
+
+/* 自分の情報（System の中）の見出しの下：従業員に渡す /my の入口 */
+.employeeLink { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:8px 0 0; font-size:14px; color:var(--sub); }
+.employeeLink span { font-weight:700; color:var(--ink); }
+.employeeLink a { color:var(--teal-d); font-weight:700; overflow-wrap:anywhere; }
+.employeeLink button { min-height:32px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); font-size:13px; font-weight:700; cursor:pointer; }
+:global([data-theme="dark"]) .employeeLink a { color:#5fd6cf; }
+@media (prefers-color-scheme: dark) { :global(html:not([data-theme="light"])) .employeeLink a { color:#5fd6cf; } }
