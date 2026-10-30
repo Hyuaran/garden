@@ -3587,8 +3587,9 @@ table :is(td, th):is(.garden-cell-text, .garden-cell-fixed, .garden-cell-mark, .
 [data-garden-modal="panel"][data-size="sm"] { width: min(520px, calc(100vw / var(--garden-zoom, 1) - 32px)) !important; }
 [data-garden-modal="panel"][data-size="lg"] { width: min(960px, calc(100vw / var(--garden-zoom, 1) - 32px)) !important; }
 /* 小窓はスクロールバーを出さずにスクロール（全部の小窓・2026-10-30。前は入社後の確認だけだった） */
-:where(dialog), [data-garden-modal], .garden-modal-body { scrollbar-width: none; }
-:where(dialog)::-webkit-scrollbar, [data-garden-modal]::-webkit-scrollbar, .garden-modal-body::-webkit-scrollbar { display: none; }
+/* 共通の Modal を使わない小窓（role="dialog"・aria-modal）も対象。中の欄・表も同じ */
+:where(dialog, [role="dialog"], [aria-modal="true"], [data-garden-modal]), :where(dialog, [role="dialog"], [aria-modal="true"], [data-garden-modal]) * { scrollbar-width: none; }
+:where(dialog, [role="dialog"], [aria-modal="true"], [data-garden-modal])::-webkit-scrollbar, :where(dialog, [role="dialog"], [aria-modal="true"], [data-garden-modal]) *::-webkit-scrollbar { display: none; }
 [data-garden-modal="overlay"] {
   position: fixed !important;
   inset: 0 !important;
