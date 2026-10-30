@@ -162,6 +162,14 @@ export async function gardenSearch(query: string, expanded: Set<string>): Promis
     }
     return { source, hits };
   })().catch(error => { console.error("[search] source failed", source.table, error instanceof Error ? error.message : "unknown"); return null; })));
+  // 見出しが従業員 ID（EMP-…）だけの結果は、だれのことか分かるよう氏名（社員番号）に置き換える
+  const byEmployee = new Set(["root_attendance", "root_employee_profile_history", "system_employment_contracts", "system_line_contact"]);
+  const employeeIds = [...new Set(dataGroups.flatMap(group => group && byEmployee.has(group.source.table) ? group.hits.map(hit => hit.title) : []))];
+  if (employeeIds.length) {
+    const { data } = await getSupabaseAdmin().from("root_employees").select("employee_id,name,employee_number").in("employee_id", employeeIds);
+    const names = new Map((data ?? []).map(row => [row.employee_id, `${row.name}（${row.employee_number ?? row.employee_id}）`]));
+    for (const group of dataGroups) if (group && byEmployee.has(group.source.table)) for (const hit of group.hits) hit.title = names.get(hit.title) ?? hit.title;
+  }
   for (const group of dataGroups) if (group) add(group.source.key, group.source.label, group.hits, `${group.source.module}:${group.source.label}`);
   return [...pools.values()].map(pool => ({ key: pool.key, label: pool.label, ...limitHits([...new Map(pool.hits.map(hit => [hit.id, hit])).values()], expanded.has(pool.key) ? 20 : 5) }));
 }
