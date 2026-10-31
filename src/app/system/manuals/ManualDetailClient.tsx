@@ -12,6 +12,7 @@ import SystemBreadcrumb from "@/app/system/_components/SystemBreadcrumb/SystemBr
 import type { ManualDefinition, ManualDoc, ManualModule } from "./_lib/manuals-registry";
 import { renderMarkdown } from "./_lib/render-markdown";
 import styles from "./manuals.module.css";
+import { applyGardenTheme, useGardenThemeSync } from "./_lib/doc-theme";
 
 type ManualVersion = {
   id: string;
@@ -86,7 +87,12 @@ export default function ManualDetailClient({
     setMeasuredHeight(docHeight);
   }, [setMeasuredHeight]);
 
+  const getFrameDocument = useCallback(() => iframeRef.current?.contentDocument, []);
+  useGardenThemeSync(getFrameDocument);
+
   const handleIframeLoad = useCallback(() => {
+    // 資料の明暗を Garden の切り替えに合わせる（合わせないとパソコンの設定がダークのとき、ライトの画面でも資料だけ暗い）
+    applyGardenTheme(iframeRef.current?.contentDocument);
     disconnectResizeObserver();
     clearMeasureTimeouts();
     measureIframeContent();

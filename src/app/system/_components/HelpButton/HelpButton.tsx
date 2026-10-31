@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Modal from "../Modal/Modal";
 import { TabActionButton } from "../SystemTabs/SystemTabs";
 import { findManualForPath, type ManualDefinition } from "../../manuals/_lib/manuals-registry";
+import { applyGardenTheme, useGardenThemeSync } from "../../manuals/_lib/doc-theme";
 import styles from "./help-button.module.css";
 
 export default function HelpButton() {
@@ -32,6 +33,8 @@ function RouteHelp() {
 function HelpDocument({ manual }: { manual: ManualDefinition }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(600);
+  const getDoc = useCallback(() => ref.current?.contentDocument, []);
+  useGardenThemeSync(getDoc);
   const src = `/api/system/manuals/${manual.moduleSlug}/${manual.slug}/1_operation.html?embed=1`;
   useEffect(() => {
     function receive(event: MessageEvent) {
@@ -47,9 +50,7 @@ function HelpDocument({ manual }: { manual: ManualDefinition }) {
     if (!doc) return;
     // 小窓の中では、資料の場所の表示と大きい題は出さない（小窓の題と二重になる）。
     // 背景は小窓と同じ色（透明）にし、明暗は Garden の切り替えに合わせる（資料は :root[data-theme] で色が変わる）
-    const theme = document.documentElement.dataset.theme;
-    const dark = theme === "dark" || (theme !== "light" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
-    doc.documentElement.dataset.theme = dark ? "dark" : "light";
+    applyGardenTheme(doc);
     if (!doc.getElementById("garden-help-embed")) {
       const style = doc.createElement("style");
       style.id = "garden-help-embed";
