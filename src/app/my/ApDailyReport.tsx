@@ -10,7 +10,16 @@ export default function ApDailyReport({ history = false }: { history?: boolean }
   const [data,setData] = useState<Data|null>(null), [report,setReport] = useState<Report|null>(null);
   const [loading,setLoading] = useState(true), [busy,setBusy] = useState(false), [result,setResult] = useState(''), [success,setSuccess] = useState(false);
   const sending = useRef(false);
+  const [recent,setRecent] = useState<Report[]>([]);
   useEffect(()=>{
+    if (!history) return;
+    // 振り返りは直近 31 日の日報だけ読む（入力用の集計を待たない）
+    const controller = new AbortController(); setLoading(true); setResult('');
+    fetch('/api/my/ap-daily-report?view=review',{signal:controller.signal}).then(async response=>{ const d = await response.json(); if (!response.ok) throw new Error(d.error); setRecent(d.recent ?? []); }).catch(e=>{if (!controller.signal.aborted) setResult(e.message || '日報を読み込めませんでした');}).finally(()=>{if (!controller.signal.aborted) setLoading(false);});
+    return ()=>controller.abort();
+  },[history]);
+  useEffect(()=>{
+    if (history) return;
     const controller = new AbortController(); setLoading(true); setReport(null); setResult('');
     fetch('/api/my/ap-daily-report?date='+date,{signal:controller.signal}).then(async response=>{ const d = await response.json(); if (!response.ok) throw new Error(d.error); return d as Data; }).then(d=>{
       setData(d);
@@ -18,7 +27,7 @@ export default function ApDailyReport({ history = false }: { history?: boolean }
       setReport({...d.auto,...Object.fromEntries(coinKeys.map(k=>[k,null])),report_date:date,kind,employee_name:d.employee.name,auto_count:d.auto[kind],count:d.auto[kind],month_total:d.totals[kind],efficiency:0,reflection:'',sent_count:0,...d.record,start_time:(d.record?.start_time ?? d.auto.start_time).slice(0,5),end_time:(d.record?.end_time ?? d.auto.end_time).slice(0,5)} as Report);
     }).catch(e=>{if (!controller.signal.aborted) setResult(e.message || '日報を読み込めませんでした');}).finally(()=>{if (!controller.signal.aborted) setLoading(false);});
     return ()=>controller.abort();
-  },[date]);
+  },[date,history]);
   function change(patch: Partial<Report>) { setReport(r=>r ? {...r,...patch} : r); }
   const monthlyMinutes = data && report ? data.monthMinutes-(data.record?.work_minutes ?? data.auto.work_minutes)+report.work_minutes : 0;
   const current = report && data ? {...report,calls:data.auto.calls,absent:data.auto.absent,prospect:data.auto.prospect,effective_rate:data.auto.effective_rate,efficiency:monthlyMinutes > 0 ? report.month_total/(monthlyMinutes/60) : 0} : null;
@@ -35,7 +44,7 @@ export default function ApDailyReport({ history = false }: { history?: boolean }
     finally { sending.current=false; setBusy(false); }
   }
   return <FormPage embedded hideHeading title="AP日報" submitterName={data?.employee.name ?? ''} employeeNumber={data?.employee.number ?? ''}>
-    {history ? <ApDailyReview recent={data?.recent ?? []} loading={loading}/> : <>
+    {history ? <ApDailyReview recent={recent} loading={loading}/> : <>
       <FormRow grouped label="1 日付"><TextField aria-label="日付" type="date" value={date} disabled={busy} onChange={e=>{if(e.target.value) setDate(e.target.value);}} /></FormRow>
       {loading && <FixedValue>読み込み中...</FixedValue>}
       {current && data && <form onSubmit={e=>{e.preventDefault();void submit();}}><fieldset disabled={busy || loading}>

@@ -11,6 +11,8 @@
 .tableWrap th { text-align:center; background:var(--navy,#10233f); color:#fff; }
 .tableWrap th button { display:inline-flex; align-items:center; gap:5px; color:inherit; background:transparent; border:0; }
 .tableWrap td:first-child { position:sticky; left:0; background:var(--table-card); }
+/* 固定した 1 列目は border-collapse の線が背景に隠れるので、下の線を影で描く（行の線が 1 列目だけ途切れていた・2026-10-31） */
+.tableWrap td:first-child { box-shadow: inset 0 -1px 0 var(--table-line); }
 /* 見出しの 1 列目も本文と一緒に左へ固定する（横に送ると見出しだけ流れていた・2026-10-30） */
 .tableWrap th:first-child { position:sticky; left:0; z-index:2; }
 .tableWrap .money { text-align:right; font-variant-numeric:tabular-nums; }

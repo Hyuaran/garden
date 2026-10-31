@@ -52,12 +52,22 @@ async function load(employee: NonNullable<Awaited<ReturnType<typeof identity>>>,
   for (const kind of ['toss','closer'] as const) totals[kind] = all.reduce((s,r)=>s+(kind === 'toss' ? r.tossCount : r.acquiredCount),0)+monthRecords.filter(r=>r.kind === kind).reduce((s,r)=>s+r.count-r.auto_count,0);
   return { record, recent: rows.filter(r=>r.report_date >= since && r.report_date <= today), auto, totals, monthMinutes, employee: { name:employee.name, number:employee.employee_number, kind:fixedKind(employee.garden_role) } };
 }
+async function recentReports(employeeId: string) {
+  const today = parseJstDate(null).date;
+  const since = new Date(Date.parse(today+'T00:00:00Z')-30*86400000).toISOString().slice(0,10);
+  const { data, error } = await getSupabaseAdmin().from('system_ap_daily_report').select('*').eq('employee_id',employeeId).gte('report_date',since).lte('report_date',today).order('report_date',{ascending:false});
+  if (error) throw new Error('日報の情報を読み込めませんでした');
+  return (data ?? []) as Report[];
+}
 export async function GET(request: Request) {
   try {
     const employee = await identity();
     if (!employee) return NextResponse.json({error:'ログイン中の在籍者のみ利用できます'},{status:401});
+    const params = new URL(request.url).searchParams;
+    // 振り返りは直近 31 日の日報だけ読む（今日の入力用のコール集計・打刻は計算しない＝速く開く・2026-10-31）
+    if (params.get('view') === 'review') return NextResponse.json({ recent: await recentReports(employee.employee_id) });
     let date: string;
-    try { date = parseJstDate(new URL(request.url).searchParams.get('date')).date; } catch { return NextResponse.json({error:'日付を確認してください'},{status:400}); }
+    try { date = parseJstDate(params.get('date')).date; } catch { return NextResponse.json({error:'日付を確認してください'},{status:400}); }
     return NextResponse.json(await load(employee,date));
   } catch { return NextResponse.json({error:'日報の情報を読み込めませんでした'},{status:500}); }
 }
