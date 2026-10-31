@@ -99,7 +99,8 @@ describe("InnoveraCallsClient", () => {
     fireEvent.click(screen.getByRole("tab", { name: "発信番号" }));
     await screen.findByRole("option", { name: "代表回線" });
     expect(screen.getByRole("group", { name: "代表番号" }).tagName).toBe("OPTGROUP");
-    expect(screen.getByRole("group", { name: "空の表題" })).toBeInTheDocument();
+    // 使える番号が 1 つもない見出しは出さない
+    expect(screen.queryByRole("group", { name: "空の表題" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "並べ替え" })).toBeEnabled();
     expect(window.location.search).toBe("?tab=line");
     fireEvent.click(screen.getByRole("tab", { name: "通話・録音" }));

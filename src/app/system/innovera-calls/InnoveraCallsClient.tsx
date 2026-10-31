@@ -476,7 +476,8 @@ export default function InnoveraCallsClient({
         </div>
         <select aria-label="変更後の発信番号" value={selectedCircuit} onChange={event => setSelectedCircuit(event.target.value)} disabled={lineLoading || !circuits.length}>
           <option value="">選択してください</option>
-          {circuitGroups.some(g => g.id !== null) ? circuitGroups.map(g => <optgroup key={g.id ?? "other"} label={g.name}>{g.circuits.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>) : circuits.map((item) => (
+          {/* その人が使える番号が 1 つもない見出しは出さない（2026-11-01） */}
+          {circuitGroups.some(g => g.id !== null && g.circuits.length) ? circuitGroups.filter(g => g.circuits.length).map(g => <optgroup key={g.id ?? "other"} label={g.name}>{g.circuits.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>) : circuits.map((item) => (
             <option key={item.id} value={item.id}>{item.name}</option>
           ))}
         </select>
