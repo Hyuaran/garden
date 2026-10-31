@@ -59,7 +59,14 @@ export default function CircuitOrderEditor({ onBusy }: { onBusy: (busy: boolean)
     if (from < 0 || to < 0) return;
     next.splice(to, 0, next.splice(from, 1)[0]); save(next);
   }
-  // 表題の上に落とす＝その表題の先頭（表題の下に線）。同じ表題の中で下へ動かす＝相手の後ろ（下に線）。それ以外は相手の前（上に線）
+  // 表題の上に落とす＝その表題の一番下（線は表題の中の一番下の番号の下・空の表題なら表題の下）（2026-11-01 東海林さん）。
+  // 同じ表題の中で下へ動かす＝相手の後ろ（下に線）。それ以外は相手の前（上に線）
+  function circuitMarkKey(target: string) {
+    if (!target.startsWith("g:")) return target;
+    const group = current.current.find(g => `g:${g.id ?? "other"}` === target);
+    const last = group?.circuits.at(-1);
+    return last ? `c:${last.id}` : target;
+  }
   function circuitDropSide(key: string, target: string): "before" | "after" {
     if (target.startsWith("g:")) return "after";
     const group = current.current.find(g => g.circuits.some(c => `c:${c.id}` === key));
@@ -72,8 +79,8 @@ export default function CircuitOrderEditor({ onBusy }: { onBusy: (busy: boolean)
     const dest = next.find(g => `g:${g.id ?? "other"}` === target || g.circuits.some(c => `c:${c.id}` === target));
     if (!source || !dest) return;
     const from = source.circuits.findIndex(c => `c:${c.id}` === key);
-    const to = target.startsWith("g:") ? 0 : dest.circuits.findIndex(c => `c:${c.id}` === target);
-    const item = source.circuits.splice(from, 1)[0]; dest.circuits.splice(to, 0, item); save(next);
+    const to = target.startsWith("g:") ? -1 : dest.circuits.findIndex(c => `c:${c.id}` === target);
+    const item = source.circuits.splice(from, 1)[0]; if (to < 0) dest.circuits.push(item); else dest.circuits.splice(to, 0, item); save(next);
   }
   function submitDialog() {
     if (!dialog) return;
@@ -103,7 +110,7 @@ export default function CircuitOrderEditor({ onBusy }: { onBusy: (busy: boolean)
         {g.id !== null && <><RowActionButton kind="edit" label={g.name + "を編集"} onClick={() => open({ kind: "rename", id: g.id!, name: g.name })} /><RowActionButton kind="delete" label={g.name + "を削除"} onClick={() => open({ kind: "delete", id: g.id!, name: g.name })} /></>}
       </div>
       {g.circuits.map(c => <div className={styles.orderCircuit} key={c.id} data-order-item={`c:${c.id}`}>
-        <ReorderGrip label={c.name} itemKey={`c:${c.id}`} keys={circuitKeys.filter(key => key !== `g:${g.id ?? "other"}`)} selector="[data-order-item]" attribute="data-order-item" onMove={moveCircuit} dropSide={circuitDropSide} />
+        <ReorderGrip label={c.name} itemKey={`c:${c.id}`} keys={circuitKeys.filter(key => key !== `g:${g.id ?? "other"}`)} selector="[data-order-item]" attribute="data-order-item" onMove={moveCircuit} dropSide={circuitDropSide} markKey={circuitMarkKey} />
         <span>{c.name}</span>
       </div>)}
     </div>)}
