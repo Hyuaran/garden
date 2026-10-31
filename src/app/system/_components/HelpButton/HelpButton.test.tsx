@@ -14,6 +14,9 @@ it("opens the matching operation document and links to its manual page", () => {
   expect(iframe).toHaveAttribute("src", "/api/system/manuals/system/innovera-calls/1_operation.html?embed=1");
   expect(iframe).toHaveAttribute("scrolling", "no");
   expect(within(dialog).getByRole("link", { name: "別のタブで開く" })).toHaveAttribute("href", "/system/manuals/system/innovera-calls?tab=operation");
+  // 別のタブで開くは題の行（× の左）・下の［閉じる］は無い
+  expect(dialog.querySelector(".garden-modal-heading")?.contains(within(dialog).getByRole("link", { name: "別のタブで開く" }))).toBe(true);
+  expect(within(dialog).getAllByRole("button", { name: "閉じる" })).toHaveLength(1);
   expect(within(dialog).getByRole("link")).toHaveAttribute("target", "_blank");
   act(() => window.dispatchEvent(new MessageEvent("message", { source: iframe.contentWindow, origin: window.location.origin, data: { __docHeight: 1200 } })));
   expect(iframe).toHaveStyle({ height: "1200px" });
