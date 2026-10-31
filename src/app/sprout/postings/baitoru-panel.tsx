@@ -1,4 +1,5 @@
 "use client";
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useEffect,useState } from 'react';
 import { loadBaitoru,saveBaitoru,retryBaitoru,createPosting,endPosting,cancelPosting,changeContentOption } from './baitoru-actions';
 import { postingStatus, todayJst, type Posting } from '@/lib/sprout/postings';
@@ -42,7 +43,7 @@ export default function BaitoruPanel() {
    <label>掲載内容<select required value={s.content_options.includes(content)?content:s.content_options[0] || ''} onChange={e=>setContent(e.target.value)}>{!s.content_options.length && <option value="">選択肢を追加してください</option>}{s.content_options.map(v=><option key={v}>{v}</option>)}</select></label><button type="submit" disabled={!s.content_options.length}>掲載する</button>
   </fieldset></form>
   <h2>掲載の一覧</h2><DataTable rows={data?.postings || []} columns={columns} rowKey={p=>p.id} searchPlaceholder="内容" searchText={p=>p.content} defaultSort={{id:'created_at',direction:'desc'}}/>
-  <form onSubmit={e=>{e.preventDefault();void change(()=>changeContentOption(option),'選択肢を追加しました');setOption('');}}><h2>掲載内容の選択肢</h2><fieldset disabled={busy}>{s.content_options.map(v=><span key={v}>{v} <button type="button" aria-label={`${v}を削除`} onClick={()=>void change(()=>changeContentOption(v,true),'選択肢を削除しました')}>×</button> </span>)}<label>追加する文字<input required maxLength={200} value={option} onChange={e=>setOption(e.target.value)}/></label><button type="submit">追加</button></fieldset></form></>}
+  <form onSubmit={e=>{e.preventDefault();void change(()=>changeContentOption(option),'選択肢を追加しました');setOption('');}}><h2>掲載内容の選択肢</h2><fieldset disabled={busy}>{s.content_options.map(v=><span key={v}>{v} <RowActionButton kind="delete" label={`${v}を削除`} onClick={()=>void change(()=>changeContentOption(v,true),'選択肢を削除しました')} /> </span>)}<label>追加する文字<input required maxLength={200} value={option} onChange={e=>setOption(e.target.value)}/></label><button type="submit">追加</button></fieldset></form></>}
   {s && <div className={styles.card}><h2>取り込みの設定</h2><fieldset disabled={busy}>
    <legend>取り込み</legend><p>掲載期間中は自動で取り込み、期間が終わると止まります。</p>
    <label>今回だけ除外する問合せ番号（カンマ区切り）<input value={excluded} onChange={e=>setExcluded(e.target.value)}/></label>

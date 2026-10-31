@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
@@ -133,13 +134,13 @@ export default function SiteNewsPanel({ data, role }: { data: CorporateSitesData
             <td className="garden-cell-text">{item.is_published ? item.title : `（非公開）${item.title}`}</td>
             <td className="garden-cell-text">{kindLabel(item)}</td>
             <td className="garden-cell-mark">{item.is_published ? "公開" : "非公開"}</td>
-            <td className="garden-cell-text">{canEdit ? <button type="button" className={styles.secondaryButton} onClick={() => setForm({
+            <td className="garden-cell-text">{canEdit ? <RowActionButton kind="edit" onClick={() => setForm({
               id: item.id,
               published_on: item.published_on,
               title: item.title,
               body: item.body,
               is_published: item.is_published,
-            })}>編集</button> : null}</td>
+            })} /> : null}</td>
           </tr>)}
         </tbody>
       </StickyTable>

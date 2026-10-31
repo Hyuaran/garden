@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Link from "next/link";
@@ -253,15 +254,7 @@ function EditDigestContent() {
                       >
                         ↓
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => removePage(i)}
-                        disabled={saving}
-                        style={{ ...iconBtnStyle(saving), color: "#7f1d1d" }}
-                        aria-label="削除"
-                      >
-                        ×
-                      </button>
+                      <RowActionButton kind="delete" label="削除" onClick={() => removePage(i)} disabled={saving} />
                     </div>
                   </div>
                   <input

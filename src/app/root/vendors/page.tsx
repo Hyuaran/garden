@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
@@ -166,7 +167,7 @@ export default function VendorsPage() {
     { key: "status", header: "状態", render: (v) => <StatusBadge active={v.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (v) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(v)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <RowActionButton kind="edit" onClick={() => setEditTarget(v)} disabled={!canWrite} />
         <Button variant={v.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(v)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{v.is_active ? "無効化" : "有効化"}</Button>
       </div>
     ), width: 170, align: "left" },

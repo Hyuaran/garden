@@ -1,4 +1,5 @@
 "use client";
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 import { useEffect, useMemo, useState } from "react";
@@ -225,12 +226,7 @@ export default function BankAccountsPage() {
       render: (a) => (<div style={{
         display: "flex",
         gap: 6
-      }} onClick={(e) => e.stopPropagation()}>        <Button
-          variant="secondary"
-          onClick={() => setEditTarget(a)}
-          disabled={!canWrite}
-          title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}
-        >編集</Button>        <Button
+      }} onClick={(e) => e.stopPropagation()}>        <RowActionButton kind="edit" onClick={() => setEditTarget(a)} disabled={!canWrite} />        <Button
           variant={a.is_active ? "danger" : "primary"}
           onClick={() => handleToggleActive(a)}
           disabled={!canWrite}

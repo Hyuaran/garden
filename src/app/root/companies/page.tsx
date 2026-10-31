@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useEffect, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
@@ -238,14 +239,7 @@ export default function CompaniesPage() {
           style={{ display: "flex", gap: 6 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <Button
-            variant="secondary"
-            onClick={() => setEditTarget(c)}
-            disabled={!canWrite}
-            title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}
-          >
-            編集
-          </Button>
+          <RowActionButton kind="edit" onClick={() => setEditTarget(c)} disabled={!canWrite} />
           <Button
             variant={c.is_active ? "danger" : "primary"}
             onClick={() => handleToggleActive(c)}

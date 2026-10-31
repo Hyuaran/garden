@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useEffect, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
@@ -139,7 +140,7 @@ export default function InsurancePage() {
     { key: "status", header: "状態",        render: (r) => <StatusBadge active={r.is_active} />, width: 80, align: "center" },
     { key: "actions", header: "", render: (r) => (
       <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <RowActionButton kind="edit" onClick={() => setEditTarget(r)} disabled={!canWrite} />
         <Button variant={r.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{r.is_active ? "無効化" : "有効化"}</Button>
       </div>
     ), width: 170, align: "left" },

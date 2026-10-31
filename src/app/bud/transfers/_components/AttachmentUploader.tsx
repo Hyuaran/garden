@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useRef } from "react";
 import {
   validateAttachment,
@@ -59,14 +60,7 @@ export function AttachmentUploader({
         </button>
         {file ? (
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => onChange(null)}
-              disabled={disabled}
-              className="text-xs text-text-warning underline transition hover:opacity-80"
-            >
-              削除
-            </button>
+            <RowActionButton kind="delete" onClick={() => onChange(null)} disabled={disabled} />
           </div>
         ) : null}
       </div>

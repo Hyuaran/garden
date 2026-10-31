@@ -21,7 +21,7 @@
 .orderEditor { margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
 .orderHeading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 44px; padding: 8px 0; }
 .orderHeading strong { overflow-wrap: anywhere; }
-.orderHeading > button:not(:first-child), .orderEditor > button { border: 1px solid var(--line); border-radius: 6px; background: var(--soft); color: var(--ink); padding: 6px 10px; font: inherit; cursor: pointer; }
+.orderEditor > button { display: block; margin-right: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--soft); color: var(--ink); padding: 6px 10px; font: inherit; cursor: pointer; }
 .orderCircuit { display: flex; align-items: center; gap: 8px; padding: 6px 0 6px 24px; min-width: 0; }
 .orderCircuit span { overflow-wrap: anywhere; min-width: 0; }
 .page > [role="tabpanel"] { margin-top: 16px; min-width: 0; }

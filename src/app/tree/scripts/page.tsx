@@ -1,4 +1,5 @@
 "use client";
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
@@ -167,9 +168,9 @@ export default function ScriptManagePage() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: C.textDark }}>{s.title}</span>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => startEdit(s)} style={{ fontSize: 11, color: "#3478c6", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "'Noto Sans JP', sans-serif" }}>編集</button>
+                        <RowActionButton kind="edit" onClick={() => startEdit(s)} />
                         <button onClick={() => setScripts((prev) => prev.map((sc) => sc.id === s.id ? { ...sc, visible: !sc.visible } : sc))} style={{ fontSize: 11, color: "#e67e22", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "'Noto Sans JP', sans-serif" }}>{s.visible ? "非表示" : "表示"}</button>
-                        <button onClick={() => setScripts((prev) => prev.filter((sc) => sc.id !== s.id))} style={{ fontSize: 11, color: C.red, background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "'Noto Sans JP', sans-serif" }}>削除</button>
+                        <RowActionButton kind="delete" onClick={() => setScripts((prev) => prev.filter((sc) => sc.id !== s.id))} />
                       </div>
                     </div>
                     <div style={{ fontSize: 12, color: C.textSub, lineHeight: 1.8, background: "rgba(0,0,0,0.02)", padding: "8px 12px", borderRadius: 8 }}>

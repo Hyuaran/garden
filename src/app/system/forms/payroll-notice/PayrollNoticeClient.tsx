@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
@@ -198,7 +199,7 @@ export default function PayrollNoticeClient({
         {input.commutePeople.map((person, index) => <div className={styles.personRow} key={index}>
           <Field label="該当者名" value={person.name} placeholder="例）山田太郎" onChange={(name) => update({ commutePeople: input.commutePeople.map((row, i) => i === index ? { ...row, name } : row) })} />
           <Field label="通勤最寄り駅" value={person.station} placeholder="例）梅田駅～難波駅" onChange={(station) => update({ commutePeople: input.commutePeople.map((row, i) => i === index ? { ...row, station } : row) })} />
-          <button type="button" className={styles.remove} onClick={() => update({ commutePeople: input.commutePeople.filter((_, i) => i !== index) })}>削除</button>
+          <RowActionButton kind="delete" onClick={() => update({ commutePeople: input.commutePeople.filter((_, i) => i !== index) })} />
         </div>)}
       </Rows>}
     </section>
@@ -209,7 +210,7 @@ export default function PayrollNoticeClient({
       {input.trainingFlag === "いる" && <Rows onAdd={() => update({ trainingPeople: [...input.trainingPeople, blankTraining()] })} addLabel="追加">
         {input.trainingPeople.map((person, index) => <div className={styles.personRowSingle} key={index}>
           <Field label="該当者名" value={person.name} placeholder="例）山田太郎" onChange={(name) => update({ trainingPeople: input.trainingPeople.map((row, i) => i === index ? { name } : row) })} />
-          <button type="button" className={styles.remove} onClick={() => update({ trainingPeople: input.trainingPeople.filter((_, i) => i !== index) })}>削除</button>
+          <RowActionButton kind="delete" onClick={() => update({ trainingPeople: input.trainingPeople.filter((_, i) => i !== index) })} />
         </div>)}
       </Rows>}
     </section>
@@ -221,7 +222,7 @@ export default function PayrollNoticeClient({
         {input.referralPeople.map((person, index) => <div className={styles.personRow} key={index}>
           <Field label="該当者名" value={person.name} placeholder="例）山田太郎" onChange={(name) => update({ referralPeople: input.referralPeople.map((row, i) => i === index ? { ...row, name } : row) })} />
           <Field label="紹介者名" value={person.referrer} placeholder="例）田中花子" onChange={(referrer) => update({ referralPeople: input.referralPeople.map((row, i) => i === index ? { ...row, referrer } : row) })} />
-          <button type="button" className={styles.remove} onClick={() => update({ referralPeople: input.referralPeople.filter((_, i) => i !== index) })}>削除</button>
+          <RowActionButton kind="delete" onClick={() => update({ referralPeople: input.referralPeople.filter((_, i) => i !== index) })} />
         </div>)}
       </Rows>}
     </section>

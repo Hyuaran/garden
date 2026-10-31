@@ -1,4 +1,5 @@
 "use client";
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
@@ -193,14 +194,14 @@ export default function BreakSchedulePage() {
               ))}
             </div>
             <div style={{ display: "flex", gap: 6, position: "relative" }}>
-              <button onClick={() => handleEdit(s)} style={{ fontSize: 11, color: "#3478c6", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "'Noto Sans JP', sans-serif" }}>編集</button>
+              <RowActionButton kind="edit" onClick={() => handleEdit(s)} />
               {deleteConfirmId === s.id ? (
                 <div style={{ display: "flex", gap: 4 }}>
                   <button onClick={() => handleDelete(s.id)} style={{ fontSize: 11, color: C.white, background: C.red, border: "none", borderRadius: 4, cursor: "pointer", padding: "2px 6px", fontFamily: "'Noto Sans JP', sans-serif" }}>削除</button>
                   <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 11, color: C.textMuted, background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 4, cursor: "pointer", padding: "2px 6px", fontFamily: "'Noto Sans JP', sans-serif" }}>取消</button>
                 </div>
               ) : (
-                <button onClick={() => setDeleteConfirmId(s.id)} style={{ fontSize: 11, color: C.red, background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "'Noto Sans JP', sans-serif" }}>削除</button>
+                <RowActionButton kind="delete" onClick={() => setDeleteConfirmId(s.id)} />
               )}
             </div>
           </div>

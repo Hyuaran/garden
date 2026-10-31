@@ -85,7 +85,7 @@ it('あいさつ文は一覧が初期表示で、編集・試し送信確認・�
   expect(screen.queryByRole('dialog',{name:'あいさつ文の編集'})).toBeNull();
   fireEvent.click(within(screen.getByRole('dialog',{name:'試し送信'})).getByRole('button',{name:'閉じる'}));
   fireEvent.click(screen.getByRole('button',{name:'カード表示にする'}));
-  expect(screen.getByRole('button',{name:'編集する'})).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'編集'})).toBeInTheDocument();
   expect(localStorage.getItem('garden.line.greeting.viewMode')).toBe('grid');
   fireEvent.click(screen.getByRole('button',{name:'一覧表示にする'}));
   expect(screen.getByText('こんにちは よろしくお願いします')).toBeInTheDocument();

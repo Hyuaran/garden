@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
@@ -137,7 +138,7 @@ export default function AttendancePage() {
     { key: "status", header: "取込", align: "center", render: (r) => r.import_status, width: 80 },
     { key: "actions", header: "", render: (r) => (
       <div onClick={(e) => e.stopPropagation()}>
-        <Button variant="secondary" onClick={() => setEditTarget(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>編集</Button>
+        <RowActionButton kind="edit" onClick={() => setEditTarget(r)} disabled={!canWrite} />
       </div>
     ), width: 80, align: "left" },
   ];

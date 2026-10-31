@@ -1,4 +1,5 @@
 "use client";
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
@@ -256,11 +257,7 @@ export default function QASearchPage() {
                               </div>
                             )}
                           </div>
-                          <button onClick={() => setEi(ri)} style={{
-                            border: "none", background: "rgba(214,48,49,0.05)", color: C.red,
-                            padding: "4px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,
-                            cursor: "pointer", fontFamily: "'Noto Sans JP', sans-serif", marginLeft: 12, flexShrink: 0,
-                          }}>✏️ 編集</button>
+                          <RowActionButton kind="edit" onClick={() => setEi(ri)} />
                         </div>
                       </div>
                     )

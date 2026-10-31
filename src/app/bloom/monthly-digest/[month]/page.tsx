@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import Link from "next/link";
@@ -193,13 +194,7 @@ function MonthDigestContent() {
           </button>
           {isAdmin && (
             <>
-              <button
-                type="button"
-                onClick={() => router.push(`/bloom/monthly-digest/${key}/edit`)}
-                style={secondaryBtnStyle}
-              >
-                ✏️ 編集
-              </button>
+              <RowActionButton kind="edit" onClick={() => router.push(`/bloom/monthly-digest/${key}/edit`)} />
               {digest.status === "draft" && (
                 <button type="button" onClick={handlePublish} style={primaryBtnStyle(false)}>
                   公開する

@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useState } from "react";
 
 import type { PlannedItem } from "../../_types/daily-log";
@@ -99,21 +100,7 @@ export function TodayPlanList({ items, onChange, disabled = false }: Props) {
                 </span>
               )}
             </span>
-            <button
-              type="button"
-              onClick={() => remove(i)}
-              disabled={disabled || saving}
-              aria-label="削除"
-              style={{
-                border: "none",
-                background: "transparent",
-                color: "#95d5b2",
-                cursor: disabled || saving ? "default" : "pointer",
-                fontSize: 14,
-              }}
-            >
-              ×
-            </button>
+            <RowActionButton kind="delete" label="削除" onClick={() => remove(i)} disabled={disabled || saving} />
           </li>
         ))}
       </ul>

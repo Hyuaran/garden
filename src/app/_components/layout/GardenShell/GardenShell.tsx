@@ -13,6 +13,7 @@
  *   - 謚倥ｊ逡ｳ縺ｿ譎・ --gs-nav-w / --gs-activity-w 繧・0 縺ｫ 竊・蜈ｨ隕∫ｴ蜷御ｸ繝輔Ξ繝ｼ繝蜀崎ｨ育ｮ・= 迢ｬ遶九ぜ繝ｬ辟｡縺・
  */
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 
@@ -900,17 +901,10 @@ export default function GardenShell({
                   <div className="favorite-dropdown-item" key={item.url} onClick={() => { window.location.href = item.url; }}>
                     <span className="favorite-dropdown-item-icon"><img src={item.icon || `${T}/images/icons_bloom/orb_bud.png`} alt="" /></span>
                     <span className="favorite-dropdown-item-label">{item.title}</span>
-                    <button
-                      className="favorite-dropdown-item-remove"
-                      type="button"
-                      onClick={(e) => {
+                    <RowActionButton kind="delete" label="お気に入りから削除" onClick={(e) => {
                         e.stopPropagation();
                         removeFavorite(item.url);
-                      }}
-                      aria-label="お気に入りから削除"
-                    >
-                      ×
-                    </button>
+                      }} />
                   </div>
                 ))}
               </div>

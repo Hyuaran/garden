@@ -1,5 +1,6 @@
 "use client";
 
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useMemo, useRef, useState } from "react";
 import { appendAttachments, isValidEmailAddress, recipientSuggestions, removeAttachment, type ComposeDraft } from "../_lib/compose";
 import styles from "./RillMailScreen.module.css";
@@ -37,7 +38,7 @@ export function RillComposePane({ draft, addresses, error, onChange, onSend, onM
   const keyDown = (field: "to" | "cc", value: string) => (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter" || event.key === "," || event.key === ";") { event.preventDefault(); add(field, value); }
   };
-  const chips = (field: "to" | "cc") => draft[field].map((address) => <span className={styles.composeChip} key={address}>{address}<button aria-label={`${address}を削除`} onClick={() => onChange({ ...draft, [field]: draft[field].filter((item) => item !== address) })}>×</button></span>);
+  const chips = (field: "to" | "cc") => draft[field].map((address) => <span className={styles.composeChip} key={address}>{address}<RowActionButton kind="delete" label={`${address}を削除`} onClick={() => onChange({ ...draft, [field]: draft[field].filter((item) => item !== address) })} /></span>);
   const addFiles = (files: File[]) => {
     try { onChange({ ...draft, attachments: appendAttachments(draft.attachments, files) }); setAttachmentError(""); }
     catch (cause) { setAttachmentError(cause instanceof Error ? cause.message : "添付ファイルを追加できませんでした"); }
@@ -59,7 +60,7 @@ export function RillComposePane({ draft, addresses, error, onChange, onSend, onM
     <div className={`${styles.composeDropZone} ${dragging ? styles.composeDropZoneActive : ""}`} onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }} onDrop={(event) => { event.preventDefault(); setDragging(false); addFiles(Array.from(event.dataTransfer.files)); }}>
       <input ref={fileInput} type="file" multiple hidden onChange={(event) => { addFiles(Array.from(event.target.files ?? [])); event.currentTarget.value = ""; }} />
       <button type="button" onClick={() => fileInput.current?.click()}>添付ファイルを選択</button><span>またはここにドロップ</span>
-      {draft.attachments.length > 0 && <ul>{draft.attachments.map((attachment) => <li key={attachment.id}><span title={attachment.name}>{attachment.name}</span><small>{formatFileSize(attachment.size)}</small><button type="button" aria-label={`${attachment.name}を削除`} onClick={() => onChange({ ...draft, attachments: removeAttachment(draft.attachments, attachment.id) })}>×</button></li>)}</ul>}
+      {draft.attachments.length > 0 && <ul>{draft.attachments.map((attachment) => <li key={attachment.id}><span title={attachment.name}>{attachment.name}</span><small>{formatFileSize(attachment.size)}</small><RowActionButton kind="delete" label={`${attachment.name}を削除`} onClick={() => onChange({ ...draft, attachments: removeAttachment(draft.attachments, attachment.id) })} /></li>)}</ul>}
     </div>
     <footer className={styles.composeFoot}><button onClick={onDiscard}>破棄</button><small>「−」で畳めば添付も未送信として残ります</small></footer>
     {(error || attachmentError) && <div className={styles.composeError}>{attachmentError || error}</div>}

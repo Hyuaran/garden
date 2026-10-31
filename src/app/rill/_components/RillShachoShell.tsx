@@ -1,4 +1,5 @@
 "use client";
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { GlobalSearchButton } from "@/app/_components/search/GlobalSearch";
 import { PageSearchProvider, PageSearchActions } from "@/app/system/_components/PageSearchSlot/PageSearchSlot";
 
@@ -309,7 +310,7 @@ export default function RillShachoShell({ children, user, mailAllowed = true }: 
               <div className={styles.favoriteHead}><span>お気に入り</span><b>{favorites.length}</b></div>
               <div className={styles.favoriteList}>
                 {favorites.map((item) => <div className={styles.favoriteItem} key={item.url} role="menuitem" onClick={() => { window.location.href = item.url; }}>
-                  <span>{item.title}</span><button type="button" aria-label="削除" onClick={(event) => { event.stopPropagation(); removeFavorite(item.url); }}>×</button>
+                  <span>{item.title}</span><RowActionButton kind="delete" label="削除" onClick={(event) => { event.stopPropagation(); removeFavorite(item.url); }} />
                 </div>)}
                 {!favorites.length && <div className={styles.favoriteEmpty}>お気に入りはまだありません</div>}
               </div>

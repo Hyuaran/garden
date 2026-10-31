@@ -1,4 +1,5 @@
 "use client";
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useEffect, useRef, useState } from "react";
 import type { CircuitGroup } from "@/lib/innovera/circuit-order.server";
 import ReorderGrip from "../_components/ReorderGrip/ReorderGrip";
@@ -92,24 +93,24 @@ export default function CircuitOrderEditor({ onBusy }: { onBusy: (busy: boolean)
   const circuitKeys = groups.flatMap(g => [`g:${g.id ?? "other"}`, ...g.circuits.map(c => `c:${c.id}`)]);
   const open = (value: NonNullable<typeof dialog>) => { setNameError(""); setDialog(value); };
   return <section className={styles.orderEditor} aria-label="発信番号の並び順">
+    {!loading && groups.length > 0 && <button type="button" onClick={() => open({ kind: "add", name: "" })}>＋ 表題を追加する</button>}
     {loading && <p role="status">確認中...</p>}
     {error && <p className={styles.error} role="alert">{error}</p>}
     {groups.map(g => <div key={g.id ?? "other"} data-order-group={g.id ?? "other"}>
       <div className={styles.orderHeading} data-order-item={`g:${g.id ?? "other"}`}>
         {g.id !== null && <ReorderGrip label={g.name} itemKey={g.id} keys={groupKeys} selector="[data-order-group]" attribute="data-order-group" onMove={moveGroup} />}
         <strong>{g.name}</strong>
-        {g.id !== null && <><button type="button" onClick={() => open({ kind: "rename", id: g.id!, name: g.name })}>名前を変更する</button><button type="button" onClick={() => open({ kind: "delete", id: g.id!, name: g.name })}>削除する</button></>}
+        {g.id !== null && <><RowActionButton kind="edit" label={g.name + "を編集"} onClick={() => open({ kind: "rename", id: g.id!, name: g.name })} /><RowActionButton kind="delete" label={g.name + "を削除"} onClick={() => open({ kind: "delete", id: g.id!, name: g.name })} /></>}
       </div>
       {g.circuits.map(c => <div className={styles.orderCircuit} key={c.id} data-order-item={`c:${c.id}`}>
         <ReorderGrip label={c.name} itemKey={`c:${c.id}`} keys={circuitKeys.filter(key => key !== `g:${g.id ?? "other"}`)} selector="[data-order-item]" attribute="data-order-item" onMove={moveCircuit} dropSide={circuitDropSide} />
         <span>{c.name}</span>
       </div>)}
     </div>)}
-    {!loading && groups.length > 0 && <button type="button" onClick={() => open({ kind: "add", name: "" })}>＋ 表題を追加する</button>}
-    {dialog && <Modal size="sm" title={dialog.kind === "add" ? "表題を追加する" : dialog.kind === "rename" ? "名前を変更する" : "削除する"} onClose={() => setDialog(null)}>
+    {dialog && <Modal size="sm" title={dialog.kind === "add" ? "表題を追加する" : dialog.kind === "rename" ? "表題を編集" : "表題を削除"} onClose={() => setDialog(null)}>
       {dialog.kind === "delete" ? <p>『{dialog.name}』を削除します。中の番号は『その他』に移ります</p> : <label className={styles.modalField}>表題<input autoFocus value={dialog.name} onChange={e => setDialog({ ...dialog, name: e.target.value })} onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) submitDialog(); }} /></label>}
       {nameError && <p className={styles.error} role="alert">{nameError}</p>}
-      <div data-modal-actions><button type="button" data-modal-action="secondary" onClick={() => setDialog(null)}>キャンセル</button><button type="button" data-modal-action="primary" onClick={submitDialog}>{dialog.kind === "delete" ? "削除する" : dialog.kind === "add" ? "表題を追加する" : "名前を変更する"}</button></div>
+      <div data-modal-actions><button type="button" data-modal-action="secondary" onClick={() => setDialog(null)}>キャンセル</button><button type="button" data-modal-action="primary" onClick={submitDialog}>{dialog.kind === "delete" ? "削除する" : dialog.kind === "add" ? "表題を追加する" : "表題を編集"}</button></div>
     </Modal>}
   </section>;
 }

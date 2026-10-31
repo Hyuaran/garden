@@ -1,4 +1,5 @@
 "use client";
+import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { findTableSearch } from "@/app/system/_components/PageSearchSlot/PageSearchSlot";
 
 import SystemTabs from '@/app/system/_components/SystemTabs/SystemTabs';
@@ -1052,14 +1053,7 @@ function formatChatworkTokenUpdatedAt(value: string | null) {
                     </>
                   ) : "未登録"}
                   {chatworkTokenStatus.registered && (
-                    <Button
-                      variant="secondary"
-                      onClick={handleChatworkTokenDelete}
-                      disabled={chatworkTokenSaving}
-                      style={{ marginLeft: 12 }}
-                    >
-                      削除
-                    </Button>
+                    <RowActionButton kind="delete" onClick={handleChatworkTokenDelete} disabled={chatworkTokenSaving} />
                   )}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "end" }}>

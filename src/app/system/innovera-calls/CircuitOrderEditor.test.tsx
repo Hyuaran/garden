@@ -47,18 +47,20 @@ describe("CircuitOrderEditor", () => {
   it("adds, renames and deletes headings through the shared modal and moves deleted circuits to other", async () => {
     const fetchMock = vi.fn(async (_: unknown, init?: RequestInit) => init?.method === "PUT" ? reply(fromBody(init)) : reply());
     vi.stubGlobal("fetch", fetchMock); render(<CircuitOrderEditor onBusy={vi.fn()} />);
-    fireEvent.click(await screen.findByRole("button", { name: "＋ 表題を追加する" }));
+    const add = await screen.findByRole("button", { name: "＋ 表題を追加する" });
+    expect(add.compareDocumentPosition(screen.getByText("代表番号").closest("[data-order-group]")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(add);
     let dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("表題"), { target: { value: "追加" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "表題を追加する" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    fireEvent.click(within(screen.getByText("追加").closest("[data-order-group]")!).getByRole("button", { name: "名前を変更する" }));
-    dialog = screen.getByRole("dialog");
+    fireEvent.click(within(screen.getByText("追加").closest("[data-order-group]")!).getByRole("button", { name: "追加を編集" }));
+    dialog = screen.getByRole("dialog", { name: "表題を編集" });
     fireEvent.change(within(dialog).getByLabelText("表題"), { target: { value: "変更済み" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "名前を変更する" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "表題を編集" }));
     await screen.findByText("変更済み");
-    fireEvent.click(within(screen.getByText("代表番号").closest("[data-order-group]")!).getByRole("button", { name: "削除する" }));
-    dialog = screen.getByRole("dialog");
+    fireEvent.click(within(screen.getByText("代表番号").closest("[data-order-group]")!).getByRole("button", { name: "代表番号を削除" }));
+    dialog = screen.getByRole("dialog", { name: "表題を削除" });
     expect(dialog).toHaveTextContent("中の番号は『その他』に移ります");
     fireEvent.click(within(dialog).getByRole("button", { name: "削除する" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
