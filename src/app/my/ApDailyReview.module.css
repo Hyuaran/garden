@@ -1,4 +1,9 @@
 .root { width:100%; min-width:0; max-width:100%; }
+.heading { display:flex; align-items:center; gap:10px; margin:0 0 20px; }
+.heading h2 { margin:0; font-size:15px; font-weight:700; color:var(--heading,inherit); }
+.viewButton { display:inline-grid; place-items:center; width:34px; height:34px; padding:0; border:1px solid var(--line,#d8dee8); border-radius:8px; background:transparent; color:inherit; cursor:pointer; }
+.viewButton:hover { border-color:var(--teal,#0ea5a0); color:var(--teal,#0ea5a0); }
+.viewButton svg { width:18px; height:18px; }
 .chart { position:relative; width:100%; min-width:0; height:360px; }
 .summary { display:flex; flex-wrap:wrap; gap:8px 18px; font-variant-numeric:tabular-nums; }
 .details { margin:0; }
