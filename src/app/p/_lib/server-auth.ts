@@ -12,10 +12,19 @@ export class TossApiError extends Error {
   }
 }
 
+// 関電トスポータルは作り直しのため準備中（2026-11-01 東海林さん）。開発で見るため全権管理者だけは今までどおり使える
+export const TOSS_PREPARING_MESSAGE = "関電トスポータルは準備中です";
+export async function isTossPreparingFor(userId: string) {
+  const supabase = await createServerClient();
+  const { data } = await supabase.from("root_employees").select("garden_role").eq("user_id", userId).maybeSingle<{ garden_role: string | null }>();
+  return data?.garden_role !== "super_admin";
+}
+
 export async function requirePartnerOrStaff(): Promise<PartnerOrStaff> {
   const supabase = await createServerClient();
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError || !auth.user) throw new TossApiError("ログインが必要です", 401);
+  if (await isTossPreparingFor(auth.user.id)) throw new TossApiError(TOSS_PREPARING_MESSAGE, 503);
 
   const { data, error } = await supabase
     .from("toss_partners")
