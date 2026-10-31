@@ -1,5 +1,7 @@
 "use client";
 
+import Modal from "@/app/system/_components/Modal/Modal";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import { type CSSProperties, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -59,6 +61,7 @@ export function TransferInboxTray({
   onCountChange?: (count: number) => void;
 }) {
   const router = useRouter();
+  const [selected,setSelected] = useState<TransferInboxItem|null>(null);
   const [items, setItems] = useState<TransferInboxItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -119,6 +122,7 @@ export function TransferInboxTray({
         );
       }
       setItems((current) => current.filter((row) => row.id !== item.id));
+      setSelected(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -167,6 +171,7 @@ export function TransferInboxTray({
 
   return (
     <section style={panelStyle}>
+      {selected && <Modal title="未処理ファイル" onClose={()=>{if(!busyId)setSelected(null);}} actions={<><ConfirmedDangerAction label="破棄" disabled={!!busyId||importing} onConfirm={()=>handleDiscard(selected)}/><button data-modal-action="secondary" onClick={()=>setSelected(null)} disabled={!!busyId}>閉じる</button><button data-modal-action="primary" disabled={!!busyId||importing} onClick={()=>handleCreateTransfer(selected)}>振込依頼にする</button></>}><p>{selected.file_name}</p>{selected.public_url && <a href={selected.public_url} target="_blank" rel="noreferrer">プレビュー</a>}{error && <p role="alert">{error}</p>}</Modal>}
       <div style={panelHeadStyle}>
         <div>
           <h2 style={panelTitleStyle}>
@@ -224,7 +229,7 @@ export function TransferInboxTray({
                 <th style={thStyle}>ファイル</th>
                 <th style={thStyle}>形式</th>
                 <th style={thStyle}>取込日時</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>操作</th>
+                
               </tr>
             </thead>
             <tbody>
@@ -234,7 +239,7 @@ export function TransferInboxTray({
                 return (
                   <tr
                     key={item.id}
-                    style={stalled ? stalledRowStyle : undefined}
+                    role="button" tabIndex={0} onClick={e=>{if(!(e.target as HTMLElement).closest('a,button'))setSelected(item);}} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setSelected(item);}}} onMouseEnter={e=>{e.currentTarget.style.background='var(--soft)';}} onMouseLeave={e=>{e.currentTarget.style.background='';}} style={{...(stalled ? stalledRowStyle : {}),cursor:'pointer'}}
                   >
                     <td style={tdStyle} className="garden-cell-text">
                       <div style={fileNameRowStyle}>
@@ -275,32 +280,7 @@ export function TransferInboxTray({
                         </span>
                       )}
                     </td>
-                    <td style={{ ...tdStyle, textAlign: "right" }} className="garden-cell-mark">
-                      <div style={rowActionStyle}>
-                        <button
-                          type="button"
-                          onClick={() => handleCreateTransfer(item)}
-                          disabled={!!busyId || importing}
-                          style={buttonStyle(
-                            primarySmallButtonStyle,
-                            !!busyId || importing,
-                          )}
-                        >
-                          振込依頼にする
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDiscard(item)}
-                          disabled={busyId === item.id || !!busyId || importing}
-                          style={buttonStyle(
-                            secondarySmallButtonStyle,
-                            busyId === item.id || !!busyId || importing,
-                          )}
-                        >
-                          {busyId === item.id ? "処理中…" : "破棄"}
-                        </button>
-                      </div>
-                    </td>
+
                   </tr>
                 );
               })}

@@ -1165,12 +1165,13 @@ function InternalBlockReleaseModal({
         <p className={styles.modalHint}>例：本人から再架電の了承あり／登録間違い</p>
         {error && <p className={styles.modalError}>{error}</p>}
         <div className={styles.modalActions} data-modal-actions>
+          <button type="button" onClick={onSubmit} data-modal-action="danger" style={{marginRight:"auto"}} disabled={busy || reason.trim() === ""}>
+            {busy ? "解除中…" : "解除する"}
+          </button>
           <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={busy} data-modal-action="secondary">
             やめる
           </button>
-          <button type="button" onClick={onSubmit} disabled={busy || reason.trim() === ""}>
-            {busy ? "解除中…" : "解除する"}
-          </button>
+          
         </div>
       </section>
     </div>,
@@ -3278,7 +3279,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                     <tr><td colSpan={6} className={[styles.empty, "garden-cell-text"].join(" ")}>登録済み一覧はありません</td></tr>
                   )}
                   {internalBlockRows.map((row) => (
-                    <tr key={row.id} className={row.解除日 ? styles.releasedRow : undefined}>
+                    <tr key={row.id} className={row.解除日 ? styles.releasedRow : undefined} role={!row.解除日 ? "button" : undefined} tabIndex={!row.解除日 ? 0 : undefined} onClick={()=>{if(!row.解除日&&!internalBlockBusy)openInternalBlockRelease(row);}} onKeyDown={e=>{if(!row.解除日&&!internalBlockBusy&&e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openInternalBlockRelease(row);}}} style={{cursor:!row.解除日?'pointer':undefined}} onMouseEnter={e=>{if(!row.解除日)e.currentTarget.style.background='var(--soft)';}} onMouseLeave={e=>{e.currentTarget.style.background='';}}>
                       <td className="garden-cell-fixed">{row.電話番号}</td>
                       <td className="garden-cell-fixed">{formatJstWithWeekday(row.登録日)}</td>
                       <td className="garden-cell-text">{row.理由}</td>
@@ -3286,9 +3287,7 @@ export function ListMasterClient({ canSyncCalls = true }: { canSyncCalls?: boole
                       <td className="garden-cell-text">{row.出所}</td>
                       <td className="garden-cell-text">
                         {row.解除日 ? `${formatJstWithWeekday(row.解除日)} ${row.解除者 ?? ""}` : (
-                          <button type="button" className={styles.secondaryButton} onClick={() => openInternalBlockRelease(row)} disabled={internalBlockBusy}>
-                            解除
-                          </button>
+                          <span>登録中</span>
                         )}
                       </td>
                     </tr>

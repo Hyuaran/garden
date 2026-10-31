@@ -1,6 +1,6 @@
 "use client";
 
-import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import { useEffect, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
@@ -22,7 +22,7 @@ import {
 import { useMasterShortcuts } from "../_lib/useMasterShortcuts";
 import { sanitizeUpsertPayload, NULLABLE_DATE_KEYS } from "../_lib/sanitize-payload";
 
-const EMP_TYPES = ["役員", "正社員", "アルバイト", "共通"];
+const EMP_TYPES = ["正社員", "アルバイト", "共通"];
 const BASE_TYPES = ["月給", "時給", "日給"];
 
 const emptySystem = (nextId: string): SalarySystem => ({
@@ -134,25 +134,21 @@ export default function SalarySystemsPage() {
         targetId: s.salary_system_id,
         payload: { toggle_active: !s.is_active },
       });
+      setEditTarget(null);
       await load();
     } catch (e) { setError((e as Error).message); }
   }
 
   const columns: Column<SalarySystem>[] = [
-    { key: "id", header: "ID", align: "center", render: (s) => s.salary_system_id, width: 140 },
-    { key: "name", header: "体系名", align: "left", render: (s) => s.system_name, width: 200 },
-    { key: "emp", header: "対象", align: "left", render: (s) => s.employment_type, width: 100 },
-    { key: "base", header: "基本給", align: "left", render: (s) => s.base_salary_type, width: 80 },
+    { key: "id", align: "center", header: "ID", render: (s) => s.salary_system_id, width: 140 },
+    { key: "name", align: "left", header: "体系名", render: (s) => s.system_name, width: 200 },
+    { key: "emp", align: "left", header: "対象", render: (s) => s.employment_type, width: 100 },
+    { key: "base", align: "left", header: "基本給", render: (s) => s.base_salary_type, width: 80 },
     { key: "hours", header: "所定時間/日", render: (s) => `${s.working_hours_day}h`, width: 110, align: "right" },
     { key: "days", header: "所定日数/月", render: (s) => `${s.working_days_month}日`, width: 110, align: "right" },
-    { key: "ot", header: "残業/深夜/休日", align: "right", render: (s) => `${s.overtime_rate} / ${s.night_overtime_rate} / ${s.holiday_overtime_rate}`, width: 160 },
+    { key: "ot", header: "残業/深夜/休日", render: (s) => `${s.overtime_rate} / ${s.night_overtime_rate} / ${s.holiday_overtime_rate}`, width: 160 },
     { key: "status", header: "状態", render: (s) => <StatusBadge active={s.is_active} />, width: 80, align: "center" },
-    { key: "actions", header: "", render: (s) => (
-      <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <RowActionButton kind="edit" onClick={() => setEditTarget(s)} disabled={!canWrite} />
-        <Button variant={s.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(s)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{s.is_active ? "無効化" : "有効化"}</Button>
-      </div>
-    ), width: 170, align: "left" },
+    
   ];
 
   return (
@@ -185,6 +181,7 @@ export default function SalarySystemsPage() {
             </FormGrid>
             <TextareaField label="備考" value={editTarget.notes ?? ""} onChange={(e) => setEditTarget({ ...editTarget, notes: e.target.value || null })} />
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
+              {editTarget.created_at && <ConfirmedDangerAction label={editTarget.is_active ? "無効化" : "有効化"} disabled={saving || !canWrite} onConfirm={() => handleToggleActive(editTarget)} />}
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
               <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>

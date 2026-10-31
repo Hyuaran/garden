@@ -1,7 +1,7 @@
 "use client";
-import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import { useEffect, useMemo, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
@@ -177,6 +177,7 @@ export default function BankAccountsPage() {
         targetId: a.id,
         payload: { toggle_active: !a.is_active },
       });
+      setEditTarget(null);
       await load();
     }
     catch (e) {
@@ -220,20 +221,7 @@ export default function BankAccountsPage() {
       render: (a) => <StatusBadge active={a.is_active} />,
       align: "center"
     },
-    {
-      key: "actions",
-      header: "操作",
-      render: (a) => (<div style={{
-        display: "flex",
-        gap: 6
-      }} onClick={(e) => e.stopPropagation()}>        <RowActionButton kind="edit" onClick={() => setEditTarget(a)} disabled={!canWrite} />        <Button
-          variant={a.is_active ? "danger" : "primary"}
-          onClick={() => handleToggleActive(a)}
-          disabled={!canWrite}
-          title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}
-        >{a.is_active ? "停止" : "再開"}</Button>      </div>),
-      align: "left"
-    },
+    
   ];
   return (<div className={styles.page}>
     <PageHeader
@@ -273,7 +261,6 @@ export default function BankAccountsPage() {
           <span className={styles.number}>{a.account_type} <span {...CLARITY_MASK}>{a.account_number}</span></span>
           <span className={styles.cardLabel}>{columns.find(column => column.key === "sub")!.render(a)}</span>
         </button>
-        <div className={styles.cardActions}>{columns.find(column => column.key === "actions")!.render(a)}</div>
       </article>)}
     </div> : <div className={styles.table}><DataTable
       columns={columns}
@@ -421,7 +408,8 @@ export default function BankAccountsPage() {
           marginTop: 16,
           borderTop: `1px solid ${colors.border}`,
           paddingTop: 16
-        }}>          <Button
+        }}>          {editTarget.id && <ConfirmedDangerAction label={editTarget.is_active ? "停止" : "再開"} disabled={saving || !canWrite} onConfirm={() => handleToggleActive(editTarget)} />}
+              <Button
             variant="secondary"
             onClick={() => setEditTarget(null)}
             disabled={saving}

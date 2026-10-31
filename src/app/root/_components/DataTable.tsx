@@ -69,7 +69,10 @@ export function DataTable<T>({
                 <tr
                   key={i}
                   ref={isActive ? activeRowRef : undefined}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  role={onRowClick ? "button" : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onClick={onRowClick ? event => { if (!(event.target as HTMLElement).closest("button,a,input,select,textarea")) onRowClick(row); } : undefined}
+                  onKeyDown={onRowClick ? event => { if (event.target !== event.currentTarget) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onRowClick(row); } } : undefined}
                   style={{
                     borderBottom: `1px solid ${colors.border}`,
                     cursor: onRowClick ? "pointer" : "default",

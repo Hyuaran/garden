@@ -1,6 +1,6 @@
 "use client";
 
-import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
@@ -150,6 +150,7 @@ export default function VendorsPage() {
         targetId: v.vendor_id,
         payload: { toggle_active: !v.is_active },
       });
+      setEditTarget(null);
       await load();
     } catch (e) { setError((e as Error).message); }
   }
@@ -165,12 +166,7 @@ export default function VendorsPage() {
     { key: "fee", header: "手数料", align: "left", render: (v) => v.fee_bearer, width: 90 },
     { key: "company", header: "担当法人", align: "left", render: (v) => v.company_id ? companyMap.get(v.company_id)?.company_name ?? v.company_id : "—", width: 140 },
     { key: "status", header: "状態", render: (v) => <StatusBadge active={v.is_active} />, width: 80, align: "center" },
-    { key: "actions", header: "", render: (v) => (
-      <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <RowActionButton kind="edit" onClick={() => setEditTarget(v)} disabled={!canWrite} />
-        <Button variant={v.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(v)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{v.is_active ? "無効化" : "有効化"}</Button>
-      </div>
-    ), width: 170, align: "left" },
+    
   ];
 
   return (
@@ -218,6 +214,7 @@ export default function VendorsPage() {
             </FormGrid>
             <TextareaField label="備考" value={editTarget.notes ?? ""} onChange={(e) => setEditTarget({ ...editTarget, notes: e.target.value || null })} />
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
+              {editTarget.created_at && <ConfirmedDangerAction label={editTarget.is_active ? "無効化" : "有効化"} disabled={saving || !canWrite} onConfirm={() => handleToggleActive(editTarget)} />}
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
               <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>

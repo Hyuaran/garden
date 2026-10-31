@@ -23,10 +23,10 @@ export default function MinimumWagesPage(){
  {key:"from",header:"いつから",align:"center",render:r=>r.effective_from},
  {key:"source",header:"出典",render:r=>r.source_url?<a href={r.source_url} target="_blank" rel="noreferrer">出典を見る</a>:"—"},
  {key:"updated",header:"最終更新",render:r=>new Date(r.updated_at).toLocaleString("sv-SE",{timeZone:"Asia/Tokyo"})},
- ...(writable?[{key:"edit",header:"操作",render:(r:MinimumWage)=><Button variant="secondary" onClick={()=>setDraft({...r})}>修正</Button>}]:[])];
+  ];
  return <div><PageHeader title="最低賃金マスタ" description="契約書と入社手続きで使う最低賃金です。" actions={writable?<div style={{display:"flex",gap:8}}><Button disabled={busy} onClick={()=>setDraft(empty())}>追加</Button><Button disabled={busy} variant="secondary" onClick={()=>void sync()}>厚生労働省から取り込む</Button></div>:undefined}/>
  {loaded&&missingCurrentWage(rows)&&<p role="status" style={{background:"#fef3c7",color:"#854d0e",padding:12}}>今年の最低賃金が未登録です。大阪労働局の発表を見て追加してください</p>}
- <DataTable columns={columns} rows={rows}/>
+ <DataTable columns={columns} rows={rows} onRowClick={writable ? r=>setDraft({...r}) : undefined}/>
  <Modal open={!!draft&&!confirm} onClose={()=>{if(!busy)setDraft(null);}} onSubmit={review} title={draft?.id?"最低賃金を修正":"最低賃金を追加"}>
  {draft&&<div style={{display:"grid",gap:12}}><label>都道府県<input value={draft.prefecture} onChange={e=>setDraft({...draft,prefecture:e.target.value})}/></label><label>時給（円）<input type="number" min="1" step="1" value={draft.hourly_amount||""} onChange={e=>setDraft({...draft,hourly_amount:Number(e.target.value)})}/></label><label>いつから<input type="date" value={draft.effective_from} onChange={e=>setDraft({...draft,effective_from:e.target.value})}/></label><label>出典<input type="url" value={draft.source_url??""} onChange={e=>setDraft({...draft,source_url:e.target.value})}/></label><Button disabled={busy} onClick={review}>保存</Button></div>}</Modal>
  {confirm&&draft&&<ChangeConfirm title="最低賃金の保存" beforeLabel="変更前" before={rows.find(r=>r.id===draft.id)?describe(rows.find(r=>r.id===draft.id)!):"登録なし"} afterLabel="変更後" after={describe(draft)} question="この内容で保存しますか？" onClose={()=>{if(!busy)setConfirm(false);}} actions={<Button disabled={busy} onClick={()=>void save()}>保存する</Button>}/>}

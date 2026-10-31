@@ -69,7 +69,7 @@ export default function MailForwardingPage() {
       const days = remaining(latestFiling(r).filed_on, today), status = tone(days);
       return <span className={styles.status} data-tone={status}><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">{status === "ok" ? <><circle cx="10" cy="10" r="7.5"/><circle cx="10" cy="10" r="3.5"/></> : status === "wait" ? <path d="M10 3 17.5 16.5H2.5Z"/> : <path d="m4.5 4.5 11 11m0-11-11 11"/>}</svg>{days < 0 ? "切れ" : `${days} 日`}</span>;
     } },
-    { id: "actions", label: "操作", type: "text", align: "mark", value: () => "", render: r => writable && !r.stopped && <button disabled={saving || busy} onClick={() => open("filing", r)}>{latestFiling(r) ? "届け直した" : "届け出た"}</button> },
+    { id: "actions", label: "届出", type: "text", align: "mark", value: () => "", render: r => writable && !r.stopped && <button disabled={saving || busy} onClick={event => { event.stopPropagation(); open("filing", r); }}>{latestFiling(r) ? "届け直した" : "届け出た"}</button> },
   ];
   return <div className={styles.page} {...CLARITY_MASK}>
     <PageHeader title="郵便の転送" />

@@ -1,4 +1,5 @@
 "use client";
+import { useActionDialog } from "@/app/system/_components/Modal/useActionDialog";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
@@ -80,6 +81,7 @@ export function TransferApprovalPanel({
 }: {
   onInboxCountChange?: (count: number) => void;
 }) {
+  const actionDialog = useActionDialog();
   const { gardenRole, sessionUser } = useBudState();
   const canDelete = gardenRole === "super_admin";
   const [rows, setRows] = useState<ApprovalRow[]>([]);
@@ -279,7 +281,7 @@ export function TransferApprovalPanel({
   const runApproval = async () => {
     if (selectedRows.length === 0 || busyAction) return;
     if (
-      !window.confirm(
+      !await actionDialog.confirm(
         `${selectedRows.length}件を承認済みにします。よろしいですか？`,
       )
     )
@@ -360,7 +362,7 @@ export function TransferApprovalPanel({
       ?.trim();
     if (!deleteReason) return;
     if (
-      !window.confirm(
+      !await actionDialog.confirm(
         `${selectedRows.length}件（${yen(selectedAmount)}）を削除済みに移動します。`,
       )
     )
@@ -389,6 +391,7 @@ export function TransferApprovalPanel({
 
   return (
     <div style={{ fontFamily: serifFont }} data-transfer-approval-panel>
+      {actionDialog.dialog}
       <ChoiceFilter label="法人" value={corpId} onValueChange={value => { setCorpId(value); setPage(1); }}>{CORPS.map(corp => <option key={corp.id} value={corp.id}>{corp.label}</option>)}</ChoiceFilter>
 
       <TransferInboxTray onCountChange={onInboxCountChange} />
@@ -495,7 +498,7 @@ export function TransferApprovalPanel({
                     <th style={thStyle}>支払区分</th>
                     <th style={{ ...thStyle, textAlign: "right" }}>金額</th>
                     <th style={thStyle}>状態</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>操作</th>
+                    
                   </tr>
                 </thead>
                 <tbody {...CLARITY_MASK}>
@@ -505,7 +508,8 @@ export function TransferApprovalPanel({
                     return (
                       <tr
                         key={row.transfer_id}
-                        onClick={() => openDetail(row.transfer_id)}
+                        onMouseEnter={e=>{e.currentTarget.style.background="var(--soft)";}} onMouseLeave={e=>{e.currentTarget.style.background=selected?"rgba(212,165,65,0.07)":"transparent";}}
+                        role="button" tabIndex={0} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openDetail(row.transfer_id);}}} onClick={() => openDetail(row.transfer_id)}
                         style={{
                           background: selected
                             ? "rgba(212,165,65,0.07)"
@@ -559,18 +563,7 @@ export function TransferApprovalPanel({
                             {row.status ?? "—"}
                           </span>
                         </td>
-                        <td style={{ ...tdStyle, textAlign: "right" }} className="garden-cell-mark">
-                          <button
-                            type="button"
-                            style={detailButtonStyle}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openDetail(row.transfer_id);
-                            }}
-                          >
-                            詳細
-                          </button>
-                        </td>
+
                       </tr>
                     );
                   })}

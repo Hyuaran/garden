@@ -1,5 +1,5 @@
 import {it,expect,vi,beforeEach} from 'vitest';
-import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+import {render,screen,fireEvent,waitFor,cleanup,within} from '@testing-library/react';
 const m=vi.hoisted(()=>({load:vi.fn(),save:vi.fn(),retry:vi.fn(),create:vi.fn(),end:vi.fn(),cancel:vi.fn(),option:vi.fn()}));
 vi.mock('./baitoru-actions',()=>({loadBaitoru:m.load,saveBaitoru:m.save,retryBaitoru:m.retry,createPosting:m.create,endPosting:m.end,cancelPosting:m.cancel,changeContentOption:m.option}));
 import BaitoruPanel from './baitoru-panel';
@@ -23,11 +23,17 @@ it('shows end for active postings and cancel for future postings only',async()=>
   {id:'ended',start_date:'2000-01-01',end_date:'2000-01-02',content:'終了の内容',created_at:'2026-10-24T00:00:00Z',ended_early_at:null},
  ]});
  render(<BaitoruPanel/>);
- fireEvent.click(await screen.findByRole('button',{name:'今すぐ終える'}));
- await waitFor(()=>expect(m.end).toHaveBeenCalledWith('active'));await screen.findByText('掲載を終えました');
+ fireEvent.click(await screen.findByText('掲載中の内容'));
+ expect(screen.queryByRole('columnheader',{name:'操作'})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'今すぐ終える'}));
+ expect(m.end).not.toHaveBeenCalled();
+ fireEvent.click(within(screen.getByRole('dialog',{name:'今すぐ終えるの確認'})).getByRole('button',{name:'今すぐ終える'}));
+ await waitFor(()=>expect(m.end).toHaveBeenCalledWith('active'));await screen.findByText('掲載を変更しました');
+ fireEvent.click(screen.getByText('予定の内容'));
  expect(screen.getAllByRole('button',{name:'取り消す'})).toHaveLength(1);
  fireEvent.click(screen.getByRole('button',{name:'取り消す'}));
- await waitFor(()=>expect(m.cancel).toHaveBeenCalledWith('future'));await screen.findByText('掲載を取り消しました');
+ fireEvent.click(within(screen.getByRole('dialog',{name:'取り消すの確認'})).getByRole('button',{name:'取り消す'}));
+ await waitFor(()=>expect(m.cancel).toHaveBeenCalledWith('future'));await screen.findByText('掲載を変更しました');
 });
 it('shows posting registration, saves comma separated exclusions, and retries failed notices',async()=>{
  render(<BaitoruPanel/>);

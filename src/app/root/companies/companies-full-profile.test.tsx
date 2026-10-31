@@ -44,7 +44,7 @@ describe("company full profile modal", () => {
   });
   it("saves new profile fields with number and date types intact", async () => {
     render(<CompaniesPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "編集" }));
+    fireEvent.click((await screen.findByText(company.company_name)).closest("tr")!);
     expect(screen.getByRole("heading", { name: "基本" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "番号類" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "代表者" })).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe("company full profile modal", () => {
   });
   it("offers only fiscal months 1 through 12", async () => {
     render(<CompaniesPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "編集" }));
+    fireEvent.click((await screen.findByText(company.company_name)).closest("tr")!);
     const options = screen
       .getAllByRole("option")
       .filter((o) => /^\d+月$/.test(o.textContent ?? ""));

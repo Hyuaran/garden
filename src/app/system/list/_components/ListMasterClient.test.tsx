@@ -1222,7 +1222,7 @@ describe("ListMasterClient internal block release modal", () => {
     window.history.replaceState(null, "", "/system/list?tab=internal-block");
     render(<ListMasterClient />);
     expect(await screen.findByRole("tab", { name: "自社アポ禁", selected: true })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: "解除" }));
+    fireEvent.click((await screen.findByText("0285720215")).closest("tr")!);
     return fetchMock;
   }
 

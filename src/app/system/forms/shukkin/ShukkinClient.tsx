@@ -1,4 +1,6 @@
 "use client";
+import Modal from "@/app/system/_components/Modal/Modal";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import ReorderGrip from "@/app/system/_components/ReorderGrip/ReorderGrip";
@@ -389,6 +391,7 @@ type LineLinkPending = {
 };
 
 function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
+  const [unlinkTarget,setUnlinkTarget]=useState<LineLinkMember|null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -432,7 +435,7 @@ function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
   }, [load, open]);
 
   async function unlink(employeeNumber: string, name: string) {
-    if (!window.confirm(`${name || employeeNumber} の LINE の紐づけを外しますか。`)) return;
+
     setSaving(true);
     setMessage("");
     try {
@@ -477,6 +480,7 @@ function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
   }
 
   return <details className={styles.lineLinkPanel} open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+    {unlinkTarget && <Modal title="LINE の紐づけ" onClose={()=>{if(!saving)setUnlinkTarget(null);}} actions={<><ConfirmedDangerAction label="紐づけを外す" disabled={saving} onConfirm={async()=>{await unlink(unlinkTarget.employeeNumber,unlinkTarget.name);setUnlinkTarget(null);}}/><button type="button" data-modal-action="secondary" onClick={()=>setUnlinkTarget(null)} disabled={saving}>閉じる</button></>}><p>{unlinkTarget.employeeNumber} {unlinkTarget.name}</p><p>{unlinkTarget.lineDisplayName}</p></Modal>}
     <summary>LINE の紐づけ（済み {linkedCount} ／ 未 {Math.max(0, rows.length - linkedCount)}）</summary>
     {loading ? <p className={styles.notice}>読み込み中...</p> : <>
       {message && <p className={styles.message}>{message}</p>}
@@ -484,16 +488,16 @@ function LineLinkPanel({ members }: { members: ShukkinMember[] }) {
         <div>
           <h3>メンバー</h3>
           <StickyTable className={styles.linkTable}>
-            <thead><tr><th>社員番号</th><th>名前</th><th>状態</th><th></th></tr></thead>
+            <thead><tr><th>社員番号</th><th>名前</th><th>状態</th></tr></thead>
             <tbody>
               {rows.map((member) => {
                 const blocked = member.lineLinkSource === "unfollowed";
                 const linked = Boolean(member.lineUserId) && !blocked;
-                return <tr key={member.employeeNumber} {...CLARITY_MASK}>
+                return <tr key={member.employeeNumber} {...CLARITY_MASK} role={linked ? "button" : undefined} tabIndex={linked ? 0 : undefined} onClick={()=>{if(linked&&!saving)setUnlinkTarget(member);}} onKeyDown={e=>{if(linked&&!saving&&e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setUnlinkTarget(member);}}} style={{cursor:linked?'pointer':undefined}} onMouseEnter={e=>{if(linked)e.currentTarget.style.background='var(--soft)';}} onMouseLeave={e=>{e.currentTarget.style.background='';}}>
                   <td className="garden-cell-fixed">{member.employeeNumber}</td>
                   <td className="garden-cell-text">{member.name || "名前未設定"}</td>
                   <td className="garden-cell-mark">{blocked ? "ブロック中" : linked ? `済み（${member.lineDisplayName || "表示名なし"}）` : "未"}</td>
-                  <td className="garden-cell-text">{linked && <button type="button" disabled={saving} onClick={() => void unlink(member.employeeNumber, member.name)}>外す</button>}</td>
+
                 </tr>;
               })}
             </tbody>

@@ -1,4 +1,6 @@
 "use client";
+import { useActionDialog } from "@/app/system/_components/Modal/useActionDialog";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
@@ -96,6 +98,7 @@ function readInitialCorpFilter() {
 }
 
 export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) {
+  const actionDialog = useActionDialog();
   const supabase = useMemo(() => createBudViewClient("bud-expenses", "approve"), []);
   const { gardenRole } = useBudState();
   const canManageSoftDelete = canManageExpenseSoftDelete(gardenRole);
@@ -451,12 +454,12 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
 
   const softDeleteRows = async (rows: ExpenseSoftDeleteRow[]) => {
     if (!canManageSoftDelete || rows.length === 0 || busyId) return;
-    const reason = normalizeDeleteReason(window.prompt("削除理由を入力してください") ?? "");
+    const reason = normalizeDeleteReason(await actionDialog.prompt("削除理由を入力してください") ?? "");
     if (!reason) {
       alert("削除理由は必須です");
       return;
     }
-    if (!window.confirm(buildExpenseDeleteConfirmMessage(rows, reason))) return;
+    if (!await actionDialog.confirm(buildExpenseDeleteConfirmMessage(rows, reason))) return;
     setBusyId("soft-delete");
     try {
       const { error } = await supabase.rpc("bud_expense_soft_delete", {
@@ -497,7 +500,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
       alert("対象行を選択してください");
       return;
     }
-    const reason = action === "return" ? window.prompt("一括差戻し理由を入力してください") ?? "" : undefined;
+    const reason = action === "return" ? await actionDialog.prompt("一括差戻し理由を入力してください") ?? "" : undefined;
     if (action === "return" && !reason?.trim()) return;
     setBusyId("bulk");
     setProcessing({ count: selectedRows.length, action: action === "approve" ? "完了に" : "差戻し", done: 0 });
@@ -522,6 +525,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
 
   return (
     <div>
+      {actionDialog.dialog}
       <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} progress={processing ? { done: processing.done, total: processing.count } : null} />
       {!embedded && (
         <>
@@ -651,12 +655,12 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                         <th style={{ ...th, textAlign: "right" }}>金額</th>
                         <th style={th}>領収書</th>
                         <th style={th}>摘要</th>
-                        <th style={th}>操作</th>
+                        
                       </tr>
                     </thead>
                     <tbody>
                       {list.map((row, rowIndex) => (
-                        <tr key={row.id} style={rowIndex === idx ? selectedTr : tr} onClick={() => setIdx(rowIndex)}>
+                        <tr key={row.id} onMouseEnter={e=>{e.currentTarget.style.background="var(--soft)";}} onMouseLeave={e=>{e.currentTarget.style.background=rowIndex===idx?String(selectedTr.background):"";}} style={rowIndex === idx ? selectedTr : tr} role="button" tabIndex={0} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setIdx(rowIndex);openDetail(row,"detail");}}} onClick={() => {setIdx(rowIndex);openDetail(row,"detail");}}>
                           <td style={td} className="garden-cell-mark">
                             <input
                               type="checkbox"
@@ -680,22 +684,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
                             </button>
                           </td>
                           <td style={td} className="garden-cell-text">{row.description || row.store_name || "—"}</td>
-                          <td style={td} className="garden-cell-mark">
-                            <div style={actions}>
-                              <button type="button" disabled={busyId === row.id} style={approveBtn} onClick={(event) => {
-                                event.stopPropagation();
-                                void process(row, "approve");
-                              }}>
-                                完了
-                              </button>
-                              <button type="button" disabled={busyId === row.id} style={returnBtn} onClick={(event) => {
-                                event.stopPropagation();
-                                openDetail(row, "return");
-                              }}>
-                                差戻し
-                              </button>
-                            </div>
-                          </td>
+
                         </tr>
                       ))}
                     </tbody>
@@ -718,6 +707,7 @@ export function ExpenseFinalPanel({ embedded = false }: { embedded?: boolean }) 
           returnReason={returnReason}
           busy={busyId === detail.id}
           onReasonChange={setReturnReason}
+          onApprove={() => void process(detail, "approve")}
           onReturn={() => void process(detail, "return", returnReason)}
           onClose={() => {
             setDetail(null);
@@ -742,6 +732,7 @@ function DetailModal({
   returnReason,
   busy,
   onReasonChange,
+  onApprove,
   onReturn,
   onClose,
 }: {
@@ -753,6 +744,7 @@ function DetailModal({
   returnReason: string;
   busy: boolean;
   onReasonChange: (value: string) => void;
+  onApprove: () => void;
   onReturn: () => void;
   onClose: () => void;
 }) {
@@ -777,13 +769,11 @@ function DetailModal({
             <Row label="摘要">{row.description ?? "—"}</Row>
             <Row label="適格">{row.qualified_class ?? "—"}</Row>
             <Row label="登録番号">{row.qualified_number ?? "—"}</Row>
-            {mode === "return" && (
+            {(
               <div style={{ marginTop: 14 }}>
                 <label style={{ display: "block", color: "var(--text-sub)", fontSize: 12, marginBottom: 6 }}>差戻し理由</label>
                 <textarea value={returnReason} onChange={(event) => onReasonChange(event.target.value)} style={textarea} rows={4} />
-                <button type="button" disabled={busy} style={{ ...returnBtn, width: "100%", marginTop: 10, padding: "11px 14px" }} onClick={onReturn} data-modal-action="danger">
-                  {busy ? "処理中…" : "差戻しを確定"}
-                </button>
+                <div data-modal-actions><ConfirmedDangerAction label="差戻し" disabled={busy || !returnReason.trim()} onConfirm={onReturn}/><button type="button" disabled={busy} onClick={onApprove} data-modal-action="primary">完了</button></div>
               </div>
             )}
           </div>

@@ -161,6 +161,22 @@ describe("SitesHubClient", () => {
 
     expect(screen.queryByRole("button", { name: "+ 追加" })).toBeNull();
     expect(screen.queryByRole("button", { name: "編集" })).toBeNull();
+    fireEvent.click(screen.getByText("本店移転のお知らせ"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("opens news editing from the whole row with Enter or Space", async () => {
+    render(<SitesHubClient data={data} role="manager" />);
+    fireEvent.click(screen.getByRole("tab", { name: "お知らせ" }));
+    const row = (await screen.findByText("本店移転のお知らせ")).closest("tr")!;
+    expect(row.querySelector("button")).toBeNull();
+    expect(row.querySelectorAll("td")).toHaveLength(4);
+    for (const key of ["Enter", " "]) {
+      fireEvent.keyDown(row, { key });
+      const dialog = screen.getByRole("dialog", { name: "お知らせを編集" });
+      expect(within(dialog).getByLabelText("題名")).toHaveValue("本店移転のお知らせ");
+      fireEvent.click(within(dialog).getByRole("button", { name: "キャンセル" }));
+    }
   });
 
   it("shows news summary beside company headings on the sites tab", async () => {

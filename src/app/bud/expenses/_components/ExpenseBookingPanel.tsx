@@ -1,4 +1,6 @@
 "use client";
+import Modal from "@/app/system/_components/Modal/Modal";
+import { useActionDialog } from "@/app/system/_components/Modal/useActionDialog";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
@@ -98,6 +100,8 @@ function readInitialCorpFilter() {
 }
 
 export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }) {
+  const actionDialog = useActionDialog();
+  const [deleteTarget,setDeleteTarget] = useState<Req|null>(null);
   const supabase = useMemo(() => createBudViewClient("bud-expenses", "booking"), []);
   const { gardenRole } = useBudState();
   const canManageSoftDelete = canManageExpenseSoftDelete(gardenRole);
@@ -362,12 +366,12 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
 
   const softDeleteRows = async (targetRows: ExpenseSoftDeleteRow[], defaultReason = "") => {
     if (!canManageSoftDelete || targetRows.length === 0 || busy) return;
-    const reason = normalizeDeleteReason(window.prompt("削除理由を入力してください", defaultReason) ?? "");
+    const reason = normalizeDeleteReason(await actionDialog.prompt("削除理由を入力してください", defaultReason) ?? "");
     if (!reason) {
       setMessage("削除理由は必須です");
       return;
     }
-    if (!window.confirm(buildExpenseDeleteConfirmMessage(targetRows, reason))) return;
+    if (!await actionDialog.confirm(buildExpenseDeleteConfirmMessage(targetRows, reason))) return;
     setBusy(true);
     setProcessing({ count: targetRows.length, action: "削除" });
     setMessage(null);
@@ -466,6 +470,8 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
 
   return (
     <div style={shell}>
+      {actionDialog.dialog}
+      {deleteTarget && <Modal title="要確認の経費" onClose={()=>setDeleteTarget(null)} actions={<><button type="button" data-modal-action="danger" style={{marginRight:'auto'}} disabled={busy} onClick={()=>void softDeleteRows([deleteTarget],"対象外（要確認）").then(()=>setDeleteTarget(null))}>対象外として削除</button><button type="button" data-modal-action="secondary" onClick={()=>setDeleteTarget(null)}>閉じる</button></>}><p>{deleteTarget.store_name || deleteTarget.description || '要確認の経費'}</p>{message && <p role="status">{message}</p>}</Modal>}
       <ExpenseProcessingOverlay open={processing !== null} count={processing?.count ?? 0} action={processing?.action ?? "処理"} />
       {!embedded && (
         <><header style={{ marginBottom: 18 }}>
@@ -623,9 +629,10 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                       {!collapsed && group.items.map(({ row, applicant, category, journal }) => {
                         const checked = selectedIds.has(row.id) && journal.ok;
                         return (
-                    <tr key={row.id} style={journal.ok ? { ...(checked ? checkedTr : tr), cursor: "pointer" } : errorTr}
+                    <tr key={row.id} onMouseEnter={e=>{if(!journal.ok&&canManageSoftDelete)e.currentTarget.style.background="var(--soft)";}} onMouseLeave={e=>{if(!journal.ok)e.currentTarget.style.background=String(errorTr.background);}} style={journal.ok ? { ...(checked ? checkedTr : tr), cursor: "pointer" } : {...errorTr,cursor:canManageSoftDelete?"pointer":undefined}}
                       // 行のどこを押しても（プルダウン・ボタン・チェック以外）選ぶ／外す（東海林さん 2026-10-22）
-                      onClick={(event) => { if (!journal.ok || (event.target as HTMLElement).closest("button,input,select,a,label")) return; toggle(row.id, !checked); }}>
+                      role={!journal.ok && canManageSoftDelete ? "button" : undefined} tabIndex={!journal.ok && canManageSoftDelete ? 0 : undefined} onKeyDown={event=>{if(!journal.ok&&canManageSoftDelete&&event.target===event.currentTarget&&(event.key==='Enter'||event.key===' ')){event.preventDefault();setDeleteTarget(row);}}}
+                        onClick={(event) => { if ((event.target as HTMLElement).closest("button,input,select,a,label")) return; if(!journal.ok){if(canManageSoftDelete)setDeleteTarget(row);return;} toggle(row.id, !checked); }}>
                       <td style={td} className="garden-cell-mark">
                         <input
                           type="checkbox"
@@ -659,9 +666,7 @@ export function ExpenseBookingPanel({ embedded = false }: { embedded?: boolean }
                       <td style={td} className="garden-cell-text">現金</td>
                       <td style={td} className="garden-cell-text">{journal.description}</td>
                       <td style={td} className="garden-cell-text"><span style={journal.ok ? okBadge : errorBadge}>{journal.note}</span>
-                        {!journal.ok && canManageSoftDelete && (
-                          <button type="button" style={{ ...deleteBtn, marginLeft: 8, padding: "2px 10px", fontSize: 12 }} disabled={busy} onClick={() => void softDeleteRows([row], "対象外（要確認）")}>対象外として削除</button>
-                        )}
+                        
                       </td>
                     </tr>
                         );

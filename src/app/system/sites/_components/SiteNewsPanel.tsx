@@ -1,6 +1,6 @@
 "use client";
+import Modal from "@/app/system/_components/Modal/Modal";
 
-import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import StickyTable from "@/app/system/_components/StickyTable/useStickyTable";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { isRoleAtLeast, type GardenRole } from "@/app/root/_constants/types";
@@ -124,31 +124,35 @@ export default function SiteNewsPanel({ data, role }: { data: CorporateSitesData
     <div className={styles.tableWrap}>
       <StickyTable>
         <thead>
-          <tr><th>日付</th><th>題名</th><th>種別</th><th>公開</th><th></th></tr>
+          <tr><th>日付</th><th>題名</th><th>種別</th><th>公開</th></tr>
         </thead>
         <tbody>
-          {loading ? <tr><td colSpan={5} className="garden-cell-text">読込中...</td></tr> : null}
-          {!loading && items.length === 0 ? <tr><td colSpan={5} className="garden-cell-text">お知らせはありません</td></tr> : null}
-          {!loading && items.map((item) => <tr key={item.id}>
-            <td className="garden-cell-fixed">{item.published_on}</td>
-            <td className="garden-cell-text">{item.is_published ? item.title : `（非公開）${item.title}`}</td>
-            <td className="garden-cell-text">{kindLabel(item)}</td>
-            <td className="garden-cell-mark">{item.is_published ? "公開" : "非公開"}</td>
-            <td className="garden-cell-text">{canEdit ? <RowActionButton kind="edit" onClick={() => setForm({
+          {loading ? <tr><td colSpan={4} className="garden-cell-text">読込中...</td></tr> : null}
+          {!loading && items.length === 0 ? <tr><td colSpan={4} className="garden-cell-text">お知らせはありません</td></tr> : null}
+          {!loading && items.map((item) => <tr key={item.id} role={canEdit ? "button" : undefined} tabIndex={canEdit ? 0 : undefined} onClick={() => { if (canEdit) setForm({
               id: item.id,
               published_on: item.published_on,
               title: item.title,
               body: item.body,
               is_published: item.is_published,
-            })} /> : null}</td>
+            }); }} onKeyDown={e => { if (canEdit && e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setForm({
+              id: item.id,
+              published_on: item.published_on,
+              title: item.title,
+              body: item.body,
+              is_published: item.is_published,
+            }); } }} style={{ cursor: canEdit ? "pointer" : undefined }} onMouseEnter={e => { if (canEdit) e.currentTarget.style.background = "var(--soft)"; }} onMouseLeave={e => { e.currentTarget.style.background = ""; }}>
+            <td className="garden-cell-fixed">{item.published_on}</td>
+            <td className="garden-cell-text">{item.is_published ? item.title : `（非公開）${item.title}`}</td>
+            <td className="garden-cell-text">{kindLabel(item)}</td>
+            <td className="garden-cell-mark">{item.is_published ? "公開" : "非公開"}</td>
+
           </tr>)}
         </tbody>
       </StickyTable>
     </div>
 
-    {form ? <div className={styles.modalBackdrop} role="presentation" data-garden-modal="overlay">
-      <div className={styles.newsModal} role="dialog" aria-modal="true" aria-label={form.id ? "お知らせを編集" : "お知らせを追加"} data-garden-modal="panel">
-        <h2>{form.id ? "お知らせを編集" : "お知らせを追加"}</h2>
+    {form ? <Modal title={form.id ? "お知らせを編集" : "お知らせを追加"} onClose={()=>{if(!saving)setForm(null);}}>
         <label>日付<input type="date" value={form.published_on} onChange={(event) => setForm({ ...form, published_on: event.target.value })} /></label>
         <label>題名<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
         <label>本文<textarea rows={6} value={form.body} onChange={(event) => setForm({ ...form, body: event.target.value })} /></label>
@@ -157,7 +161,6 @@ export default function SiteNewsPanel({ data, role }: { data: CorporateSitesData
           <button type="button" className={styles.secondaryButton} onClick={() => setForm(null)} disabled={saving} data-modal-action="secondary">キャンセル</button>
           <button type="button" className={styles.primaryButton} onClick={save} disabled={saving} data-modal-action="primary">{saving ? "保存中..." : "保存"}</button>
         </div>
-      </div>
-    </div> : null}
+    </Modal> : null}
   </section>;
 }

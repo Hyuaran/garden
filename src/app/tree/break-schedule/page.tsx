@@ -1,5 +1,6 @@
 "use client";
-import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
+import Modal from "@/app/system/_components/Modal/Modal";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import HelpButton from "@/app/system/_components/HelpButton/HelpButton";
 import SystemTabs from "@/app/system/_components/SystemTabs/SystemTabs";
 import { SystemViewButton } from '@/app/system/_components/ViewPermissionButton/SystemViewContext';
@@ -60,7 +61,7 @@ const INITIAL_SCHEDULES: BreakSchedule[] = [
 export default function BreakSchedulePage() {
   const [schedules, setSchedules] = useState<BreakSchedule[]>(INITIAL_SCHEDULES);
   const [editId, setEditId] = useState<number | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+
   const [form, setForm] = useState({
     startTime: "12:00",
     endTime: "13:00",
@@ -99,7 +100,7 @@ export default function BreakSchedulePage() {
 
   const handleDelete = (id: number) => {
     setSchedules((prev) => prev.filter((s) => s.id !== id));
-    setDeleteConfirmId(null);
+    setEditId(null);
   };
 
   const inputSt: React.CSSProperties = {
@@ -107,15 +108,7 @@ export default function BreakSchedulePage() {
     fontSize: 13, fontFamily: "'Noto Sans JP', sans-serif", outline: "none",
   };
 
-  return (
-    <div style={{ padding: "24px 40px 80px", maxWidth: 1000, margin: "0 auto" }}>
-      <div style={{ position: "relative", marginBottom: 20 }}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><div className="garden-help-heading"><h1 style={{fontSize:18,margin:0}}>⏰ 休憩スケジュール管理</h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} />
-        <div style={{ paddingTop: 8 }} />
-      </div>
-
-      {/* フォーム */}
-      <GlassPanel style={{ padding: 20, marginBottom: 24 }}>
+  const editor = (<GlassPanel style={{ padding: 20, marginBottom: 24 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12 }}>
           {editId ? "スケジュール編集" : "スケジュール追加"}
         </div>
@@ -167,20 +160,30 @@ export default function BreakSchedulePage() {
           color={editId ? "#3478c6" : C.midGreen}
           onClick={editId ? handleUpdate : handleAdd}
         />
-      </GlassPanel>
+        {editId !== null && <div data-modal-actions><ConfirmedDangerAction label="削除" onConfirm={()=>handleDelete(editId)}/><button data-modal-action="secondary" onClick={()=>setEditId(null)}>閉じる</button></div>}
+      </GlassPanel>);
+  return (
+    <div style={{ padding: "24px 40px 80px", maxWidth: 1000, margin: "0 auto" }}>
+      <div style={{ position: "relative", marginBottom: 20 }}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><div className="garden-help-heading"><h1 style={{fontSize:18,margin:0}}>⏰ 休憩スケジュール管理</h1><HelpButton /></div></div><SystemTabs actions={<SystemViewButton />} />
+        <div style={{ paddingTop: 8 }} />
+      </div>
+
+      {/* フォーム */}
+      {editId !== null ? <Modal title="休憩スケジュールを編集" onClose={()=>setEditId(null)}>{editor}</Modal> : editor}
 
       {/* スケジュール一覧 */}
       <GlassPanel style={{ padding: 0, overflow: "hidden" }}>
         <div style={{
-          display: "grid", gridTemplateColumns: "80px 80px 100px 1fr 160px 120px",
+          display: "grid", gridTemplateColumns: "80px 80px 100px 1fr 160px",
           padding: "12px 16px", background: "linear-gradient(135deg, #e67e22, #f39c12)",
           color: C.white, fontSize: 11, fontWeight: 700, gap: 8,
         }}>
-          <div>開始</div><div>終了</div><div>種類</div><div>ラベル</div><div>対象</div><div>操作</div>
+          <div>開始</div><div>終了</div><div>種類</div><div>ラベル</div><div>対象</div>
         </div>
         {schedules.map((s) => (
-          <div key={s.id} style={{
-            display: "grid", gridTemplateColumns: "80px 80px 100px 1fr 160px 120px",
+          <div key={s.id} role="button" tabIndex={0} onClick={()=>handleEdit(s)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();handleEdit(s);}}} onMouseEnter={e=>{e.currentTarget.style.background='var(--soft)';}} onMouseLeave={e=>{e.currentTarget.style.background='';}} style={{ cursor:'pointer',
+            display: "grid", gridTemplateColumns: "80px 80px 100px 1fr 160px",
             padding: "12px 16px", gap: 8, alignItems: "center",
             borderBottom: "1px solid rgba(0,0,0,0.04)", fontSize: 13, color: C.textDark,
           }}>
@@ -193,17 +196,7 @@ export default function BreakSchedulePage() {
                 <span key={t} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(45,106,79,0.08)", color: C.midGreen }}>{TARGET_LABELS[t]}</span>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 6, position: "relative" }}>
-              <RowActionButton kind="edit" onClick={() => handleEdit(s)} />
-              {deleteConfirmId === s.id ? (
-                <div style={{ display: "flex", gap: 4 }}>
-                  <button onClick={() => handleDelete(s.id)} style={{ fontSize: 11, color: C.white, background: C.red, border: "none", borderRadius: 4, cursor: "pointer", padding: "2px 6px", fontFamily: "'Noto Sans JP', sans-serif" }}>削除</button>
-                  <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 11, color: C.textMuted, background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 4, cursor: "pointer", padding: "2px 6px", fontFamily: "'Noto Sans JP', sans-serif" }}>取消</button>
-                </div>
-              ) : (
-                <RowActionButton kind="delete" onClick={() => setDeleteConfirmId(s.id)} />
-              )}
-            </div>
+
           </div>
         ))}
       </GlassPanel>

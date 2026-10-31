@@ -24,6 +24,7 @@ it.each(["planned","hiring"])("shows success for %s and closes after three secon
   return Response.json([{...current,steps:current.status==="hiring"?stoppedRow.steps:{}}]);
  }));
  render(<CandidatePanel userId="success" tab="candidates"/>);
+ fireEvent.click(await screen.findByText("山田 太郎",{selector:"td"}));
  fireEvent.click(await screen.findByRole("button",{name:status==="planned"?"入社":"続きから"}));
  if(status==="planned"){
   await waitFor(()=>expect(screen.getByRole("button",{name:"登録する"})).toBeEnabled());
@@ -38,6 +39,7 @@ it.each(["planned","hiring"])("shows success for %s and closes after three secon
   current={...current,status:"hiring"};
   render(<CandidatePanel userId="success-timer" tab="candidates"/>);
   await act(async()=>{await Promise.resolve();});
+  fireEvent.click(screen.getByText("山田 太郎",{selector:"td"}));
   fireEvent.click(screen.getByRole("button",{name:"続きから"}));
   await act(async()=>{await Promise.resolve();});
   act(()=>vi.advanceTimersByTime(2999));
@@ -57,6 +59,7 @@ it("opens the stop dialog after registration and from the stopped row without ed
   return Response.json([current]);
  }));
  render(<CandidatePanel userId="admin" tab="candidates"/>);
+ fireEvent.click(await screen.findByText("山田 太郎",{selector:"td"}));
  fireEvent.click(await screen.findByRole("button",{name:"入社"}));
  await screen.findByRole("dialog",{name:"入社の確認"});
  await waitFor(()=>expect(screen.getByRole("button",{name:"登録する"})).toBeEnabled());
@@ -200,8 +203,9 @@ it("works when localStorage is unavailable",async()=>{
  expect(screen.getByRole("checkbox",{name:"辞退した人も表示"})).toBeChecked();
 });
 it("confirms the persisted employee number and does not hire on cancellation",async()=>{
- const fetch=vi.fn(async(url:string,init?:RequestInit)=>Response.json(init?.method==="POST"?{...row,employee_number:"1571"}:[row]));vi.stubGlobal("fetch",fetch);
+ const fetch=vi.fn(async(url:string,init?:RequestInit)=>Response.json(url.endsWith("kot-options")?{companies:[],divisions:[],workingTypes:[]}:init?.method==="POST"?{...row,employee_number:"1571"}:[row]));vi.stubGlobal("fetch",fetch);
  render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
+ fireEvent.click(await screen.findByText("山田 太郎",{selector:"td"}));
  fireEvent.click(await screen.findByRole("button",{name:"入社"}));
  expect(await screen.findByRole("dialog",{name:"入社の確認"})).toHaveTextContent("社員番号 1571");
  await waitFor(()=>expect(screen.getByRole("button",{name:"やめる"})).toBeEnabled());fireEvent.click(screen.getByRole("button",{name:"やめる"}));
@@ -232,11 +236,14 @@ it("opens the row editor and registration dialog, closes on cancel and backdrop,
  expect(screen.getByText("山田 太郎")).toBeVisible();
  expect(screen.queryByText("処理 太郎")).not.toBeInTheDocument();
 });
-it("declines without opening the editor and retains the no_show database value",async()=>{
- const fetch=vi.fn(async(_url:string,init?:RequestInit)=>Response.json(init?.method==="PATCH"?{...row,status:"no_show"}:[row]));
+it("declines from the editor with confirmation and retains the no_show database value",async()=>{
+ const fetch=vi.fn(async(url:string,init?:RequestInit)=>Response.json(url.endsWith("kot-options")?{companies:[],divisions:[],workingTypes:[]}:init?.method==="PATCH"?{...row,status:"no_show"}:[row]));
  vi.stubGlobal("fetch",fetch);
  render(<HireCandidatesClient userId="admin-1"><p>既存一覧</p></HireCandidatesClient>);
+ fireEvent.click(await screen.findByText("山田 太郎",{selector:"td"}));
  fireEvent.click(await screen.findByRole("button",{name:"辞退"}));
+ expect(fetch.mock.calls.some(([,init])=>init?.method==="PATCH")).toBe(false);
+ fireEvent.click(within(screen.getByRole("dialog",{name:"辞退の確認"})).getByRole("button",{name:"辞退"}));
  await waitFor(()=>expect(fetch).toHaveBeenCalledWith("/api/system/hire-candidates/c",expect.objectContaining({method:"PATCH",body:JSON.stringify({status:"no_show"})})));
  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
  expect(screen.queryByRole("heading",{name:"入社予定者を修正"})).not.toBeInTheDocument();

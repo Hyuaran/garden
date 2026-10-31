@@ -1,6 +1,5 @@
 "use client";
 
-import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
@@ -136,11 +135,7 @@ export default function AttendancePage() {
     { key: "nh", header: "深夜", render: (r) => `${r.night_hours}h`, width: 70, align: "right" },
     { key: "hh", header: "休出", render: (r) => `${r.holiday_hours}h`, width: 70, align: "right" },
     { key: "status", header: "取込", align: "center", render: (r) => r.import_status, width: 80 },
-    { key: "actions", header: "", render: (r) => (
-      <div onClick={(e) => e.stopPropagation()}>
-        <RowActionButton kind="edit" onClick={() => setEditTarget(r)} disabled={!canWrite} />
-      </div>
-    ), width: 80, align: "left" },
+    
   ];
 
   return (

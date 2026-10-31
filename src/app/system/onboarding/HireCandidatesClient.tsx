@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { usePolling } from "@/lib/hooks/usePolling";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import Modal from "@/app/system/_components/Modal/Modal";
 import layout from "./HireConfirmation.module.css";
 import HireConfirmationSteps from "./HireConfirmationSteps";
@@ -121,11 +122,7 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name},
  {id:"employment",label:"雇用形態",type:"text",value:r=>r.employment_type},
  {id:"status",label:"状態", align: "mark",type:"text",value:r=>status(r)+(checklistComplete(r)?" 完了":""),render:r=><span className={stopped(r)?styles.hireError:undefined}>{status(r)}</span>},
- {id:"actions",label:"操作", align: "mark",type:"text",value:()=>"",wrap:true,render:r=><div className={styles.hireRowActions}>
- {r.status==="planned"&&<button className={styles.hireDecline} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{await api("/"+r.id,"PATCH",{status:"no_show"});})}>辞退</button>}
- {r.status==="planned"&&<button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{const updated=await api("/"+r.id+"/hire","POST",{prepare:true});if(stopped(updated)){await load();setFailure(updated);return;}if(!updated.employee_number)throw new Error("社員番号を決められませんでした");setConfirmation(updated);})}>入社</button>}
- {r.status==="hiring"&&(stopped(r)?<button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(()=>register(r.id))}>続きから</button>:<span>処理中</span>)}
- </div>}
+
  ];
  const confirmationColumns:DataColumn<HireCandidate>[]=[
  {id:"name",label:"氏名",type:"text",value:r=>r.last_name+" "+r.first_name,wrap:true,render:r=><div><span>{r.last_name} {r.first_name}</span><p>{r.employee_number}・{r.hire_date} 入社</p>{checklistComplete(r)&&<span>完了</span>}</div>},
@@ -164,7 +161,9 @@ export default function HireCandidatesClient({userId,tab,canWrite = true}:{userI
  {field("last_name","姓")}{field("first_name","名")}{field("birthday","生年月日","date")}
  {field("hire_date","入社予定日","date")}{choice("company_id","所属法人",options.companies.map(c=>({value:c.company_id,label:c.company_name})))}{choice("employment_type","雇用形態",EMPLOYMENT_TYPES.map(value=>({value,label:value})))}
  {choice("kot_division_code","KING OF TIME の所属",options.divisions.map(c=>({value:c.code,label:c.name})))}{choice("kot_type_code","KING OF TIME の雇用区分",options.workingTypes.map(c=>({value:c.code,label:c.name})))}
-  </div></div><div className={styles.hireRowActions} data-modal-actions><button disabled={!canWrite||busy||!!saving} onClick={()=>setForm(null)} data-modal-action="secondary">閉じる</button>
+  </div></div><div className={styles.hireRowActions} data-modal-actions>{editing && rows.find(r=>r.id===editing)?.status==="planned" && <>
+<ConfirmedDangerAction label="辞退" disabled={!canWrite||busy||!!saving} onConfirm={()=>run(async()=>{await api("/"+editing,"PATCH",{status:"no_show"});setForm(null);})}/>
+<button disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{const updated=await api("/"+editing+"/hire","POST",{prepare:true});if(stopped(updated)){await load();setForm(null);setFailure(updated);return;}if(!updated.employee_number)throw new Error("社員番号を決められませんでした");setForm(null);setConfirmation(updated);})} data-modal-action="primary">入社</button></>}<button disabled={!canWrite||busy||!!saving} onClick={()=>setForm(null)} data-modal-action="secondary">閉じる</button>
 <button className={styles.hirePrimary} disabled={!canWrite||busy||!!saving} onClick={()=>run(async()=>{await api(editing?"/"+editing:"",editing?"PATCH":"POST",form);setForm(null);})} data-modal-action="primary">保存する</button></div></dialog>}
  {success&&<dialog ref={successDialog} aria-labelledby="hire-success-title" className={styles.panel+" "+styles.hireDialog+" "+styles.hireConfirmDialog} onCancel={()=>setSuccess(null)} onClick={event=>{if(event.target===event.currentTarget){const rect=event.currentTarget.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)setSuccess(null);}}} data-garden-modal="panel" data-size="sm">
  <h2 id="hire-success-title">入社の登録が完了しました</h2>

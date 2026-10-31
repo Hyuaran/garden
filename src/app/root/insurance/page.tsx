@@ -1,6 +1,6 @@
 "use client";
 
-import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import { useEffect, useState } from "react";
 import { PageHeader } from "../_components/PageHeader";
 import { Button } from "../_components/Button";
@@ -123,27 +123,23 @@ export default function InsurancePage() {
         targetId: r.insurance_id,
         payload: { toggle_active: !r.is_active },
       });
+      setEditTarget(null);
       await load();
     } catch (e) { setError((e as Error).message); }
   }
 
   const columns: Column<Insurance>[] = [
-    { key: "id",    header: "ID", align: "center",           render: (r) => r.insurance_id, width: 110 },
-    { key: "year",  header: "年度", align: "center",         render: (r) => r.fiscal_year,  width: 70 },
-    { key: "from",  header: "開始", align: "center",         render: (r) => r.effective_from, width: 120 },
-    { key: "to",    header: "終了", align: "center",         render: (r) => r.effective_to ?? "—", width: 120 },
+    { key: "id", align: "center",    header: "ID",           render: (r) => r.insurance_id, width: 110 },
+    { key: "year", align: "center",  header: "年度",         render: (r) => r.fiscal_year,  width: 70 },
+    { key: "from", align: "center",  header: "開始",         render: (r) => r.effective_from, width: 120 },
+    { key: "to", align: "center",    header: "終了",         render: (r) => r.effective_to ?? "—", width: 120 },
     { key: "health", header: "健康保険",    render: (r) => `${r.health_insurance_rate}%`, width: 90, align: "right" },
     { key: "nursing", header: "介護",        render: (r) => `${r.nursing_insurance_rate}%`, width: 80, align: "right" },
     { key: "pension", header: "厚生年金",    render: (r) => `${r.pension_rate}%`, width: 90, align: "right" },
     { key: "emp",    header: "雇用保険",    render: (r) => `${r.employment_insurance_rate}%`, width: 90, align: "right" },
     { key: "child",  header: "子育て支援",  render: (r) => `${r.child_support_rate}%`, width: 100, align: "right" },
     { key: "status", header: "状態",        render: (r) => <StatusBadge active={r.is_active} />, width: 80, align: "center" },
-    { key: "actions", header: "", render: (r) => (
-      <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-        <RowActionButton kind="edit" onClick={() => setEditTarget(r)} disabled={!canWrite} />
-        <Button variant={r.is_active ? "danger" : "primary"} onClick={() => handleToggleActive(r)} disabled={!canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{r.is_active ? "無効化" : "有効化"}</Button>
-      </div>
-    ), width: 170, align: "left" },
+    
   ];
 
   return (
@@ -171,9 +167,10 @@ export default function InsurancePage() {
               <TextField label="子ども・子育て支援金率（%）" type="number" step="0.001" min={0} max={100} value={editTarget.child_support_rate} onChange={(e) => setEditTarget({ ...editTarget, child_support_rate: Number(e.target.value) })} error={errors.child_support_rate} />
             </FormGrid>
             <div style={{ background: colors.infoBg, color: colors.info, padding: "8px 12px", borderRadius: 4, fontSize: 12, marginTop: 8 }}>
-              等級テーブル（grade_table）は画面からの編集未対応です。Supabaseダッシュボードで直接編集してください。
+              等級テーブル（grade_table）はUIからの編集未対応です。Supabaseダッシュボードで直接編集してください。
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, borderTop: `1px solid ${colors.border}`, paddingTop: 16 }}>
+              {editTarget.created_at && <ConfirmedDangerAction label={editTarget.is_active ? "無効化" : "有効化"} disabled={saving || !canWrite} onConfirm={() => handleToggleActive(editTarget)} />}
               <Button variant="secondary" onClick={() => setEditTarget(null)} disabled={saving}>キャンセル</Button>
               <Button onClick={handleSave} disabled={saving || !canWrite} title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}>{saving ? "保存中..." : "保存"}</Button>
             </div>

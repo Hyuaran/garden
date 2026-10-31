@@ -1,6 +1,6 @@
 "use client";
 
-import RowActionButton from "@/app/system/_components/RowActionButton/RowActionButton";
+import ConfirmedDangerAction from "@/app/system/_components/Modal/ConfirmedDangerAction";
 import { useEffect, useState } from "react";
 import { CLARITY_MASK } from "@/app/_lib/clarity-mask";
 import { PageHeader } from "../_components/PageHeader";
@@ -191,6 +191,7 @@ export default function CompaniesPage() {
         targetId: c.company_id,
         payload: { toggle_active: !c.is_active },
       });
+      setEditTarget(null);
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -198,32 +199,32 @@ export default function CompaniesPage() {
   }
 
   const columns: Column<Company>[] = [
-    { key: "id", header: "ID", align: "center", render: (c) => c.company_id, width: 100 },
+    { key: "id", align: "center", header: "ID", render: (c) => c.company_id, width: 100 },
     {
-      key: "name",
-      header: "法人名", align: "left",
+      key: "name", align: "left",
+      header: "法人名",
       render: (c) => c.company_name,
       width: 220,
     },
     {
-      key: "kana",
-      header: "カナ", align: "left",
+      key: "kana", align: "left",
+      header: "カナ",
       render: (c) => c.company_name_kana,
       width: 220,
     },
     {
-      key: "rep",
-      header: "代表者", align: "left",
+      key: "rep", align: "left",
+      header: "代表者",
       render: (c) => <span {...CLARITY_MASK}>{c.representative}</span>,
       width: 120,
     },
     {
-      key: "bank",
-      header: "デフォルト銀行", align: "left",
+      key: "bank", align: "left",
+      header: "デフォルト銀行",
       render: (c) => c.default_bank,
       width: 120,
     },
-    { key: "phone", header: "電話", align: "center", render: (c) => c.phone ?? "—" },
+    { key: "phone", align: "left", header: "電話", render: (c) => c.phone ?? "—" },
     {
       key: "status",
       header: "状態",
@@ -231,28 +232,7 @@ export default function CompaniesPage() {
       width: 80,
       align: "center",
     },
-    {
-      key: "actions",
-      header: "",
-      render: (c) => (
-        <div
-          style={{ display: "flex", gap: 6 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <RowActionButton kind="edit" onClick={() => setEditTarget(c)} disabled={!canWrite} />
-          <Button
-            variant={c.is_active ? "danger" : "primary"}
-            onClick={() => handleToggleActive(c)}
-            disabled={!canWrite}
-            title={!canWrite ? "編集権限がありません（管理者以上）" : undefined}
-          >
-            {c.is_active ? "無効化" : "有効化"}
-          </Button>
-        </div>
-      ),
-      width: 170,
-      align: "left",
-    },
+    
   ];
 
   return (
@@ -657,6 +637,7 @@ export default function CompaniesPage() {
                 paddingTop: 16,
               }}
             >
+              {editTarget.created_at && <ConfirmedDangerAction label={editTarget.is_active ? "無効化" : "有効化"} disabled={saving || !canWrite} onConfirm={() => handleToggleActive(editTarget)} />}
               <Button
                 variant="secondary"
                 onClick={() => setEditTarget(null)}
