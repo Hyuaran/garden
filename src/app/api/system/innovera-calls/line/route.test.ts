@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "./route";
+import { listInnoveraCircuits } from "@/lib/innovera/client";
 
 const mocks = vi.hoisted(() => ({
   employee: {
@@ -9,6 +10,8 @@ const mocks = vi.hoisted(() => ({
     innovera_mobile_extension: "1003",
   } as Record<string, unknown>,
   insert: vi.fn(async () => ({ error: null })),
+  groups: [] as { id: string; name: string; sort_order: number }[],
+  positions: [] as { circuit_id: string; group_id: string | null; sort_order: number }[],
   setDefaultCircuit: vi.fn(async () => undefined),
 }));
 
@@ -29,6 +32,9 @@ vi.mock("@/lib/supabase/admin", () => ({
   getSupabaseAdmin: () => ({
     from: vi.fn((table: string) => {
       if (table === "system_innovera_line_change_log") return { insert: mocks.insert };
+      if (table === "system_innovera_circuit_groups" || table === "system_innovera_circuit_positions") return {
+        select: () => ({ order: async () => ({ data: table.endsWith("groups") ? mocks.groups : mocks.positions, error: null }) }),
+      };
       return {
         select: vi.fn(() => ({
           eq: vi.fn(() => ({
@@ -55,6 +61,7 @@ vi.mock("@/lib/innovera/client", () => ({
 describe("innovera calls line route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.groups = []; mocks.positions = [];
     mocks.employee = {
       employee_id: "EMP-1",
       name: "Agent",
@@ -70,6 +77,30 @@ describe("innovera calls line route", () => {
     expect(body.user.id).toBe("user-pc");
     expect(body.employee).toMatchObject({ extension: "2040", mobileExtension: "1003" });
     expect(body.circuits.map((circuit: { id: string }) => circuit.id)).toEqual(["circuit-1"]);
+  });
+
+  it("returns saved headings and order, appends new circuits, omits removed and forbidden circuits", async () => {
+    const original = await listInnoveraCircuits();
+    vi.mocked(listInnoveraCircuits).mockResolvedValueOnce([
+      ...original,
+      { ...original[0], id: "new" },
+      { ...original[0], id: "saved-other" },
+      { ...original[0], id: "saved-first" },
+    ]);
+    mocks.groups = [{ id: "g1", name: "代表番号", sort_order: 0 }, { id: "g2", name: "空", sort_order: 1 }];
+    mocks.positions = [
+      { circuit_id: "saved-first", group_id: "g1", sort_order: 0 },
+      { circuit_id: "removed", group_id: "g1", sort_order: 1 },
+      { circuit_id: "circuit-2", group_id: "g1", sort_order: 2 },
+      { circuit_id: "saved-other", group_id: null, sort_order: 0 },
+    ];
+    const response = await GET(new Request("http://localhost/api/system/innovera-calls/line"));
+    const body = await response.json();
+    expect(body.circuits.map((c: { id: string }) => c.id)).toEqual(["saved-first", "saved-other", "circuit-1", "new"]);
+    expect(body.circuitGroups.map((g: { id: string | null; name: string; circuits: { id: string }[] }) => ({ ...g, circuits: g.circuits.map(c => c.id) }))).toEqual([
+      { id: "g1", name: "代表番号", circuits: ["saved-first"] }, { id: "g2", name: "空", circuits: [] },
+      { id: null, name: "その他", circuits: ["saved-other", "circuit-1", "new"] },
+    ]);
   });
 
   it("returns 400 when only the mobile extension is registered", async () => {

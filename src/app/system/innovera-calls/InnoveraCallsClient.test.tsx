@@ -58,7 +58,7 @@ const callsPayload = {
   },
 };
 
-type LineMock = { current: unknown; circuits: unknown[]; postOk?: boolean };
+type LineMock = { current: unknown; circuits: unknown[]; circuitGroups?: unknown[]; postOk?: boolean };
 
 function mockFetch(line?: LineMock) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -70,7 +70,7 @@ function mockFetch(line?: LineMock) {
         const next = (line?.circuits ?? []).find((item) => (item as { id: string }).id === body.circuitId) ?? null;
         return new Response(JSON.stringify({ ok: true, current: next }));
       }
-      return new Response(JSON.stringify({ ok: true, current: line?.current ?? null, employee: null, circuits: line?.circuits ?? [] }));
+      return new Response(JSON.stringify({ ok: true, current: line?.current ?? null, employee: null, circuits: line?.circuits ?? [], circuitGroups: line?.circuitGroups ?? [] }));
     }
     if (url.startsWith("/api/system/innovera-calls?")) {
       return new Response(JSON.stringify(callsPayload));
@@ -84,6 +84,62 @@ function mockFetch(line?: LineMock) {
 describe("InnoveraCallsClient", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    window.history.replaceState(null, "", "/system/innovera-calls");
+  });
+
+  it("defaults to calls, shows grouped line choices and enables the super-admin action only on line", async () => {
+    const c = { id: "a", name: "代表回線", number: "1", freeNumber: "", circuitNum: "1" };
+    mockFetch({ current: c, circuits: [c], circuitGroups: [{ id: "g", name: "代表番号", circuits: [c] }, { id: "empty", name: "空の表題", circuits: [] }] });
+    render(<InnoveraCallsClient access="all" ownExtension="2001" ownExtensions={["2001"]} role="super_admin" />);
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+    expect(screen.getByRole("tab", { name: "通話・録音" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByLabelText("変更後の発信番号")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "並べ替え" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "並べ替え" }).parentElement).toHaveAttribute("title", "このタブは並べ替えがありません");
+    fireEvent.click(screen.getByRole("tab", { name: "発信番号" }));
+    await screen.findByRole("option", { name: "代表回線" });
+    expect(screen.getByRole("group", { name: "代表番号" }).tagName).toBe("OPTGROUP");
+    expect(screen.getByRole("group", { name: "空の表題" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "並べ替え" })).toBeEnabled();
+    expect(window.location.search).toBe("?tab=line");
+    fireEvent.click(screen.getByRole("tab", { name: "通話・録音" }));
+    expect(screen.getByRole("button", { name: "並べ替え" })).toBeDisabled();
+  });
+
+  it("uses the line URL and never changes the embedded my-page URL", async () => {
+    mockFetch(); window.history.replaceState(null, "", "/system/innovera-calls?tab=line");
+    const view = render(<InnoveraCallsClient access="own" ownExtension="2001" ownExtensions={["2001"]} role="admin" />);
+    expect(await screen.findByLabelText("変更後の発信番号")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "並べ替え" })).toBeDisabled();
+    view.unmount(); window.history.replaceState(null, "", "/my?tab=calls");
+    render(<InnoveraCallsClient embedded access="own" ownExtension="2001" ownExtensions={["2001"]} role="cs" />);
+    fireEvent.click(screen.getByRole("tab", { name: "発信番号" }));
+    expect(await screen.findByLabelText("変更後の発信番号")).toBeInTheDocument();
+    expect(window.location.pathname + window.location.search).toBe("/my?tab=calls");
+    expect(screen.getByRole("button", { name: "並べ替え" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "並べ替え" }).parentElement).toHaveAttribute("title", "並べ替えは管理者だけが使えます");
+  });
+
+  it("loads all circuits on reorder entry, hides line controls and reloads personal choices on exit", async () => {
+    const original = mockFetch();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/system/innovera-calls/circuit-order") {
+        return new Response(JSON.stringify({ ok: true, circuitGroups: [] }));
+      }
+      return original(input, init);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<InnoveraCallsClient access="all" ownExtension="2001" ownExtensions={["2001"]} role="super_admin" />);
+    await screen.findByText(/通話 2 件/);
+    fireEvent.click(screen.getByRole("tab", { name: "発信番号" }));
+    fireEvent.click(screen.getByRole("button", { name: "並べ替え" }));
+    await screen.findByRole("button", { name: "＋ 表題を追加する" });
+    expect(screen.queryByLabelText("変更後の発信番号")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "並べ替え" })).toHaveAttribute("aria-pressed", "true");
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/circuit-order"))).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "並べ替え" }));
+    await screen.findByLabelText("変更後の発信番号");
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/line"))).toHaveLength(2);
   });
 
   it("loads today range by default and sends multiple extension params", async () => {
@@ -159,6 +215,7 @@ describe("InnoveraCallsClient", () => {
   it("changes the outbound line through the Garden modal: confirm, working, done", async () => {
     mockFetch({ current: lineA, circuits: [lineA, lineB] });
     render(<InnoveraCallsClient access="all" ownExtension="2001" ownExtensions={["2001"]} ownName="東海林" role="super_admin" />);
+    fireEvent.click(screen.getByRole("tab", { name: "発信番号" }));
     await screen.findAllByText(/【ARATAキャリア】/);
 
     const lineSelect = screen.getAllByRole("combobox").find((element) => Array.from((element as HTMLSelectElement).options).some((option) => option.value === "c-2")) as HTMLSelectElement;
@@ -183,6 +240,7 @@ describe("InnoveraCallsClient", () => {
   it("shows the failure inside the modal and lets the user retry", async () => {
     mockFetch({ current: lineA, circuits: [lineA, lineB], postOk: false });
     render(<InnoveraCallsClient access="all" ownExtension="2001" ownExtensions={["2001"]} ownName="東海林" role="super_admin" />);
+    fireEvent.click(screen.getByRole("tab", { name: "発信番号" }));
     await screen.findAllByText(/【ARATAキャリア】/);
     const lineSelect = screen.getAllByRole("combobox").find((element) => Array.from((element as HTMLSelectElement).options).some((option) => option.value === "c-2")) as HTMLSelectElement;
     fireEvent.change(lineSelect, { target: { value: "c-2" } });

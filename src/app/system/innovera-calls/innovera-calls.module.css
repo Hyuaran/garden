@@ -10,13 +10,22 @@
   --bg: #f4f6f8;
   --teal: #0ea5a0;
   --tealDark: #0b7773;
-  --warn: #b45309;
+  --warn: #e5484d;
   --shadowSoft: 0 4px 14px rgba(16, 35, 63, .06);
   width: 100%;
   min-width: 0;
   color: var(--ink);
   font-family: Meiryo, "Noto Sans JP", sans-serif;
 }
+
+.orderEditor { margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.orderHeading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 44px; padding: 8px 0; }
+.orderHeading strong { overflow-wrap: anywhere; }
+.orderHeading > button:not(:first-child), .orderEditor > button { border: 1px solid var(--line); border-radius: 6px; background: var(--soft); color: var(--ink); padding: 6px 10px; font: inherit; cursor: pointer; }
+.orderCircuit { display: flex; align-items: center; gap: 8px; padding: 6px 0 6px 24px; min-width: 0; }
+.orderCircuit span { overflow-wrap: anywhere; min-width: 0; }
+.page > [role="tabpanel"] { margin-top: 16px; min-width: 0; }
+.linePanel > * { min-width: 0; max-width: 100%; }
 
 :global(.dark) .page,
 :global([data-theme="dark"]) .page {
@@ -29,7 +38,7 @@
   --line: #31435a;
   --bg: #0c1726;
   --tealDark: #9ce5e1;
-  --warn: #fbbf24;
+  --warn: #ff8a8e;
   --shadowSoft: 0 4px 14px rgba(0, 0, 0, .35);
 }
 
@@ -142,7 +151,7 @@ section.linePanel > button:not(:where([data-garden-box-select] *)) {
   flex-wrap: wrap;
   gap: 10px;
   align-items: end;
-  /* 発信番号の枠と同じ枠に入れて、検索ボタンの右端＝変更するボタンの右端にそろえる（東海林さん 2026-10-08） */
+  /* 検索ボタンは絞り込み枠の右端にそろえる。 */
   margin: 0 0 14px;
   padding: 14px 16px;
   border: 1px solid var(--line);
@@ -826,4 +835,27 @@ section.linePanel > button:not(:where([data-garden-box-select] *)) {
 @media (max-width: 720px) {
   .filters .presetButtons button { flex: 0 0 auto; }
   .filters .submit { flex: 0 0 76px; margin-left: auto; }
+}
+
+/* 発信番号から独立した検索枠。広い画面では2行の右端をそろえる。 */
+@media (min-width: 1440px) {
+  .filters {
+    display: grid;
+    grid-template-columns: minmax(130px, 150px) minmax(90px, 108px) minmax(130px, 150px) minmax(90px, 108px) auto minmax(160px, 1fr) 76px;
+    align-items: stretch;
+  }
+  .filters .filterRow:first-child > [data-garden-filter-box] { min-width: 0; padding-inline: 10px; }
+  .filters .presetButtons { grid-column: 5; margin-left: 0; }
+  .filters .filterRow .employeePicker { display: flex; grid-column: 6 / 8; min-width: 0; gap: 12px; }
+  .filters .filterRow .circuitField { grid-column: 1 / 4; grid-row: 2; min-width: 0; }
+  .filters .filterRow .typeField { grid-column: 4; grid-row: 2; min-width: 0; }
+  .filters .filterRow .statusField { grid-column: 5; grid-row: 2; min-width: 0; }
+  .filters .filterRow .numberField { grid-column: 6; grid-row: 2; max-width: none; min-width: 0; }
+  .filters .filterRow .submit { grid-column: 7; grid-row: 2; }
+  .filters :is(.typeField, .statusField) [data-garden-filter-box] { min-width: 0; padding-inline: 10px; }
+}
+.linePanel { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) 76px; }
+.linePanel p { overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .linePanel { grid-template-columns: minmax(0, 1fr); }
 }

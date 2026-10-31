@@ -1,3 +1,4 @@
+import { circuitSummary, orderedCircuits } from "@/lib/innovera/circuit-order.server";
 import { NextResponse } from "next/server";
 import { isRoleAtLeast } from "@/app/root/_constants/types";
 import { allowedCircuitsForUser } from "@/lib/innovera/calls";
@@ -42,16 +43,6 @@ function findUserByExtension(users: Awaited<ReturnType<typeof listInnoveraUsers>
   return users.find((user) => text(user.number) === extension);
 }
 
-function circuitSummary(circuit: InnoveraCircuit) {
-  return {
-    id: text(circuit.id),
-    name: text(circuit.name),
-    number: text(circuit.number),
-    freeNumber: text(circuit.free_number),
-    circuitNum: text(circuit.circuit_num),
-  };
-}
-
 export async function GET(request: Request) {
   try {
     const ctx = await requireCallAccess();
@@ -69,7 +60,7 @@ export async function GET(request: Request) {
       employee: { id: employee.employee_id, name: employee.name, extension: employee.innovera_extension, mobileExtension: employee.innovera_mobile_extension ?? null },
       user: { id: user.id, name: user.name, number: user.number },
       current: current ? circuitSummary(current) : null,
-      circuits: allowed.map(circuitSummary),
+      ...await orderedCircuits(allowed),
     });
   } catch (error) {
     try {

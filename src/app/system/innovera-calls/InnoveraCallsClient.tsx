@@ -1,8 +1,10 @@
 "use client";
+import SystemTabs, { TabActionButton } from "../_components/SystemTabs/SystemTabs";
+import CircuitOrderEditor from "./CircuitOrderEditor";
+import type { CircuitGroup } from "@/lib/innovera/circuit-order.server";
 import Modal from "../_components/Modal/Modal";
 import ChangeConfirm from "../_components/ChangeConfirm/ChangeConfirm";
 import { SystemViewHeading } from "@/app/system/_components/ViewPermissionButton/SystemViewContext";
-import FilterRow from "@/app/system/_components/FilterBox/FilterRow";
 import FilterBox from "@/app/system/_components/FilterBox/FilterBox";
 import ChoiceFilter from "@/app/system/_components/ChoiceFilter";
 
@@ -146,6 +148,25 @@ export default function InnoveraCallsClient({
   ownName?: string;
   role: GardenRole;
 }) {
+  const [tab, setTab] = useState<"calls" | "line">("calls");
+  const [reordering, setReordering] = useState(false);
+  const [orderBusy, setOrderBusy] = useState(false);
+  const [circuitGroups, setCircuitGroups] = useState<CircuitGroup[]>([]);
+  useEffect(() => {
+    if (embedded) return;
+    const sync = () => setTab(new URLSearchParams(window.location.search).get("tab") === "line" ? "line" : "calls");
+    sync(); window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, [embedded]);
+  function changeTab(next: "calls" | "line") {
+    if (orderBusy) return;
+    if (reordering) { setReordering(false); void loadLine(); }
+    setTab(next);
+    if (!embedded) {
+      const url = new URL(window.location.href); url.searchParams.set("tab", next);
+      window.history.pushState(null, "", url);
+    }
+  }
   const [fromDate, setFromDate] = useState("");
   const [fromTime, setFromTime] = useState("");
   const [toDate, setToDate] = useState("");
@@ -288,6 +309,7 @@ export default function InnoveraCallsClient({
       setCurrentLine(result.current ?? null);
       setLineEmployee(result.employee ?? null);
       setCircuits(result.circuits ?? []);
+      setCircuitGroups(result.circuitGroups ?? []);
       setSelectedCircuit(result.current?.id ?? "");
     } catch (cause) {
       setLineError(cause instanceof Error ? cause.message : "発信番号を確認できませんでした");
@@ -420,7 +442,13 @@ export default function InnoveraCallsClient({
         <UpdatedStampRow><UpdatedStamp label="INNOVERA" date={loading ? null : lastLoadedAt} emptyText={loading ? "取得中..." : "未取得"} busy={loading} onRefresh={() => void loadCalls(true)} refreshLabel="INNOVERA から取り直す" title={loading ? "取得しています…" : "INNOVERA から取り直す（いまの絞り込み条件で最新の通話履歴を取得します）"} /></UpdatedStampRow>
       </header>
 
-      {usesDailyExtension && (
+      <SystemTabs aria-label="INNOVERA表示" actions={<span title={role !== "super_admin" ? "並べ替えは管理者だけが使えます" : tab !== "line" ? "このタブは並べ替えがありません" : "並べ替え"}><TabActionButton icon="sort" label="並べ替え" title={role !== "super_admin" ? "並べ替えは管理者だけが使えます" : tab !== "line" ? "このタブは並べ替えがありません" : "並べ替え"} pressed={reordering} disabled={tab !== "line" || role !== "super_admin" || orderBusy} onClick={() => { if (reordering) void loadLine(); setReordering(!reordering); }} /></span>}>
+        <button type="button" role="tab" id="innovera-tab-calls" aria-controls="innovera-panel-calls" aria-selected={tab === "calls"} onClick={() => changeTab("calls")}>通話・録音</button>
+        <button type="button" role="tab" id="innovera-tab-line" aria-controls="innovera-panel-line" aria-selected={tab === "line"} onClick={() => changeTab("line")}>発信番号</button>
+      </SystemTabs>
+      {orderBusy && <p role="status">並び順を保存中…</p>}
+
+      {tab === "calls" && usesDailyExtension && (
         <section className={styles.dailyExtensionPanel}>
           <div>
             <h2>今日の内線</h2>
@@ -436,7 +464,8 @@ export default function InnoveraCallsClient({
         </section>
       )}
 
-      <section className={styles.linePanel}>
+      {tab === "line" && <div role="tabpanel" id="innovera-panel-line" aria-labelledby="innovera-tab-line">
+      {reordering && role === "super_admin" ? <CircuitOrderEditor onBusy={setOrderBusy} /> : <section className={styles.linePanel}>
         <div>
           <h2>自分の発信番号</h2>
           <p>{lineLoading ? "確認中..." : currentLine ? currentLine.name : "未設定"}</p>
@@ -444,15 +473,17 @@ export default function InnoveraCallsClient({
         </div>
         <select aria-label="変更後の発信番号" value={selectedCircuit} onChange={event => setSelectedCircuit(event.target.value)} disabled={lineLoading || !circuits.length}>
           <option value="">選択してください</option>
-          {circuits.map((item) => (
+          {circuitGroups.some(g => g.id !== null) ? circuitGroups.map(g => <optgroup key={g.id ?? "other"} label={g.name}>{g.circuits.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>) : circuits.map((item) => (
             <option key={item.id} value={item.id}>{item.name}</option>
           ))}
         </select>
         <button type="button" onClick={openLineDialog} disabled={!selectedCircuit || selectedCircuit === currentLine?.id}>変更する</button>
         {lineError && <span className={styles.error}>{lineError}</span>}
-      </section>
+      </section>}
+      </div>}
 
-      <FilterRow className={styles.filters} onKeyDown={event => { if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT" && !(event.target as HTMLElement).closest('[role="dialog"]')) { event.preventDefault(); void loadCalls(true); } }}>
+      {tab === "calls" && <div role="tabpanel" id="innovera-panel-calls" aria-labelledby="innovera-tab-calls">
+      <div className={styles.filters} onKeyDown={event => { if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT" && !(event.target as HTMLElement).closest('[role="dialog"]')) { event.preventDefault(); void loadCalls(true); } }}>
         {!usesDailyExtension && <div className={styles.filterRow}>
         <FilterBox label="開始"><input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></FilterBox>
         <FilterBox label="時刻"><input type="time" value={fromTime} onChange={(event) => setFromTime(event.target.value)} /></FilterBox>
@@ -506,10 +537,10 @@ export default function InnoveraCallsClient({
             panelMinWidth={300}
           />
         </div>
-        <FilterBox label="番号"><input value={number} onChange={(event) => setNumber(event.target.value)} /></FilterBox>
+        <div className={styles.numberField}><FilterBox label="番号"><input value={number} onChange={(event) => setNumber(event.target.value)} /></FilterBox></div>
         <button type="button" onClick={() => void loadCalls(true)} className={styles.submit} disabled={loading}>{loading ? "検索中..." : "検索"}</button>
         </div>
-      </FilterRow>
+      </div>
 
       {error && <p className={styles.error} role="alert">{error}</p>}
       <p className={styles.summary}>{rangeText} の通話 {counts.total.toLocaleString()} 件（通話成功 {counts.success.toLocaleString()}・不在 {counts.missed.toLocaleString()}・通話中 {counts.inProgress.toLocaleString()}）</p>
@@ -553,6 +584,7 @@ export default function InnoveraCallsClient({
       )}
 
       <ListProcessingOverlay open={searchBusy} mode="search" title="INNOVERA の通話履歴を検索しています…" />
+      </div>}
 
       {lineDialog && <Modal title="発信番号の変更" size="sm" onClose={()=>{if(lineDialog.step!=="working")setLineDialog(null);}}>
       {lineDialog.step==="confirm" && <ChangeConfirm embedded title="発信番号の変更" beforeLabel="現状" before={currentLine?.name ?? "未設定"} afterLabel="変更後" after={lineDialog.next?.name ?? "選択した回線"} question="変更しますが、本当によろしいですか？" onClose={()=>setLineDialog(null)} actions={<><button type="button" onClick={()=>setLineDialog(null)} data-modal-action="secondary">キャンセル</button><button type="button" onClick={()=>void changeLine()} data-modal-action="primary">変更する</button></>}/>}
@@ -627,7 +659,7 @@ export default function InnoveraCallsClient({
         </div>
       )}
 
-      {canSeeMapping && (
+      {tab === "calls" && canSeeMapping && (
         <details className={styles.mappingNote}>
           <summary>内線の紐づけ確認{mapping ? `（未登録の従業員 ${mapping.unmappedEmployees.length} 人・未登録の内線 ${mapping.unmappedUsers.length}）` : ""}</summary>
           {mappingError && <p className={styles.error}>{mappingError}</p>}
